@@ -152,7 +152,7 @@ export const en: Record<string, string> = {
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",
   'neg.wageBill': 'Wage bill / budget', 'neg.fee': 'Transfer fee', 'neg.type': 'Type', 'neg.bosman': 'Bosman (free in summer)',
-  'neg.wage': 'Weekly wage', 'neg.years': 'Length (years)', 'neg.offer': 'Offer contract', 'neg.accepted': 'Deal agreed! 🎉',
+  'neg.wage': 'Weekly wage', 'neg.years': 'Length (years)', 'neg.offer': 'Offer contract', 'neg.cancel': 'Cancel the deal', 'neg.cancelConfirm': 'Withdraw the offer and cancel the deal?', 'myoffer.title': 'Your offer:', 'myoffer.theyWant': 'they want {fee}', 'neg.accepted': 'Deal agreed! 🎉',
   'neg.counter': 'The agent wants {wage} a week over {years} years.', 'neg.refused': 'The player has walked away from talks.',
   'neg.overWageBudget': 'The board says no – the wage budget ({budget}) would be exceeded (now {bill}).',
 

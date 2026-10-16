@@ -48,6 +48,7 @@ export function PlayerScreen({ id }: { id: number }) {
         {compareIds.length >= 2 && <button onClick={() => nav({ name: 'compare' })}>{t('player.showCompare')}</button>}
       </Head>
       {msg && <div className="insight">{msg}</div>}
+      {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} />}
       <div className="cols">
         <Panel title={t('player.info')}>
           <div className="kv">
@@ -346,6 +347,24 @@ function WantsAway({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
         <button className="small" onClick={() => onMsg(t(dispatch<string>({ t: 'talk', pid, choice: 'list' })))}>{t('pers.talk.list')}</button>
         <button className="small danger" onClick={() => onMsg(t(dispatch<string>({ t: 'talk', pid, choice: 'refuse' })))}>{t('pers.talk.refuse')}</button>
       </div>
+    </div>
+  );
+}
+
+/** Dit aktive bud på spilleren – med mulighed for at trække det tilbage */
+function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferOffer) => void }) {
+  const g = gs();
+  const o = g.offers.slice().reverse().find((x) => x.player === pid && x.buyer === g.userClub && ['pending', 'countered', 'negotiating'].includes(x.status));
+  if (!o) return null;
+  return (
+    <div className="insight warn row">
+      <span className="grow">
+        <b>{t('myoffer.title')}</b> {o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)} · <span className="tag warn">{t(`offer.${o.status}`)}</span>
+        {o.status === 'countered' && o.counter ? <> · {t('myoffer.theyWant', { fee: money(o.counter) })}</> : null}
+      </span>
+      {o.status === 'negotiating' && <button className="small primary" onClick={() => onNegotiate(o)}>{t('offer.negotiate')}</button>}
+      {o.status === 'countered' && <button className="small primary" onClick={() => { if (dispatch<string>({ t: 'acceptCounter', pid }) === 'ok') onNegotiate(o); }}>{t('offer.acceptCounter')}</button>}
+      <button className="small danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) dispatch({ t: 'withdraw', pid }); }}>{t('offer.withdraw')}</button>
     </div>
   );
 }

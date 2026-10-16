@@ -50,6 +50,8 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
         </label>
         {msg && <div className={`insight ${msg.tone}`}>{msg.text}</div>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
+          {offer && <button className="danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) { act({ t: 'withdraw', pid }); onClose(); } }}>{t('neg.cancel')}</button>}
+          <div className="grow" />
           <button onClick={onClose}>{t('common.close')}</button>
           <button className="primary" onClick={submit}>{t('neg.offer')}</button>
         </div>

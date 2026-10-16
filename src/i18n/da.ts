@@ -166,7 +166,7 @@ export const da: Record<string, string> = {
   // forhandling
   'neg.title': 'Kontraktforhandling – {player}', 'neg.currentWage': 'Nuværende løn', 'neg.agentHint': 'Agentens forventning',
   'neg.wageBill': 'Lønsum / lønbudget', 'neg.fee': 'Transfersum', 'neg.type': 'Type', 'neg.bosman': 'Bosman (gratis til sommer)',
-  'neg.wage': 'Ugeløn', 'neg.years': 'Kontraktlængde (år)', 'neg.offer': 'Tilbyd kontrakt', 'neg.accepted': 'Aftale i hus! 🎉',
+  'neg.wage': 'Ugeløn', 'neg.years': 'Kontraktlængde (år)', 'neg.offer': 'Tilbyd kontrakt', 'neg.cancel': 'Annullér handlen', 'neg.cancelConfirm': 'Vil du trække buddet tilbage og afbryde handlen?', 'myoffer.title': 'Dit bud:', 'myoffer.theyWant': 'de vil have {fee}', 'neg.accepted': 'Aftale i hus! 🎉',
   'neg.counter': 'Agenten kræver {wage} om ugen over {years} år.', 'neg.refused': 'Spilleren har afbrudt forhandlingerne.',
   'neg.overWageBudget': 'Bestyrelsen siger nej – lønbudgettet ({budget}) ville blive overskredet (nu {bill}).',
 
