@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "data": "python3 scripts/build-data.py --download",
-    "simulate": "tsx scripts/simulate-season.ts"
+    "simulate": "tsx scripts/simulate-season.ts",
+    "audit": "tsx scripts/audit.ts"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",

@@ -112,6 +112,9 @@ export function sellerDecision(p: Player, fee: number, buyer: Club): { answer: S
   return { answer: 'reject' };
 }
 
+/** Verdens højeste ugeløn (europæisk topniveau ~ 0,6-0,7 mio. €) */
+const MAX_WAGE = 750_000;
+
 export function wageDemand(p: Player, club: Club): number {
   const g = gs();
   const wealth = rulesFor(club.league, 20).wealth;
@@ -119,9 +122,12 @@ export function wageDemand(p: Player, club: Club): number {
   const current = p.contract?.wage ?? 0;
   const amb = 1 + (p.attrs[42 /* ambition */] - 10) / 60;
   const repGap = Math.max(0, p.rep - club.rep) / 100;
-  let d = Math.max(market, current * 1.12) * amb * (1 + repGap);
+  // nuværende løn tæller med, men kun op til 1,5× markedslønnen – ellers vokser lønnen eksponentielt ved hvert skifte
+  const anchor = Math.min(current, market * 1.5);
+  let d = Math.max(market, anchor * 1.1) * amb * (1 + repGap);
   if (!p.club) d *= 0.9;
-  if (p.club === club.id) d = Math.max(current * 1.05, market * 0.95) * amb;
+  if (p.club === club.id) d = Math.max(anchor * 1.04, market * 0.95) * amb;
+  d = Math.min(d, market * 2.2, MAX_WAGE);
   void g;
   return Math.round(d / 50) * 50;
 }
@@ -457,6 +463,15 @@ export function acceptCounter(id: number) {
 
 const REQUIRED: Record<Role, number> = { GK: 2, CB: 4, FB: 3, DM: 2, CM: 3, WM: 1, W: 2, AM: 1, ST: 3 };
 const GROUP: Record<Role, Role> = { GK: 'GK', CB: 'CB', FB: 'FB', DM: 'DM', CM: 'CM', WM: 'W', W: 'W', AM: 'AM', ST: 'ST' };
+/** Målmænd har systematisk lavere CA end markspillere på samme niveau (lavere markedsværdier) */
+const GK_OFFSET = 8;
+const roleOffset = (r: Role) => (r === 'GK' ? GK_OFFSET : 0);
+
+/** Spillerens plads i klubbens rangorden på hans position (0 = bedste) */
+function depthRank(p: Player): number {
+  const grp = GROUP[naturalRole(p)];
+  return squad(p.club).filter((x) => x.id !== p.id && !x.loan && GROUP[naturalRole(x)] === grp && x.ca > p.ca).length;
+}
 
 export function analyzeNeeds(clubId: number): { role: Role; score: number }[] {
   const sq = squad(clubId);
@@ -474,8 +489,9 @@ export function analyzeNeeds(clubId: number): { role: Role; score: number }[] {
     const list = (groups.get(r) ?? []).sort((a, b) => b.ca - a.ca);
     let score = Math.max(0, n - list.length) * 2;
     const best = list[0]?.ca ?? 0;
-    if (best < level - 10) score += 1.5;
-    if (list.length >= 2 && list[1].ca < level - 18) score += 0.6;
+    const lv = level - roleOffset(r);
+    if (best < lv - 10) score += 1.5;
+    if (list.length >= 2 && list[1].ca < lv - 18) score += 0.6;
     if (score > 0) out.push({ role: r, score });
   }
   return out.sort((a, b) => b.score - a.score);
@@ -496,12 +512,27 @@ function buildRoleIndex() {
   roleIndexDate = g.date;
 }
 
+/** Niveauet en AI-klub sigter efter: mindst lidt under ligaens nedre kvartil, så nyoprykkere og
+ *  svage hold forstærker sig og ligaerne ikke polariseres (ellers 11-pointshold og 150-målsmestre) */
+function leagueFloor(club: Club): number {
+  const g = gs();
+  const peers = g.comps[club.league]?.clubs ?? [];
+  if (peers.length < 6) return 0;
+  const lv = peers.map((c) => clubLevel(c)).sort((a, b) => a - b);
+  return lv[Math.floor(lv.length * 0.25)] - 4;
+}
+
+function targetLevel(club: Club): number {
+  return Math.max(clubLevel(club.id), leagueFloor(club));
+}
+
 function findTarget(club: Club, role: Role): Player | null {
   const g = gs();
   if (!roleIndex || g.date > addDays(roleIndexDate, 14)) buildRoleIndex();
   const ids = roleIndex!.get(role) ?? [];
-  const level = clubLevel(club.id);
-  const lo = level - 6, hi = level + 18;
+  const hasRole = squad(club.id).some((p) => GROUP[naturalRole(p)] === GROUP[role]);
+  const level = targetLevel(club) - roleOffset(role);
+  const lo = level - (hasRole ? 6 : 25), hi = level + 18;
   const cands: Player[] = [];
   // binær søgning på CA
   let a = 0, b = ids.length;
@@ -511,6 +542,8 @@ function findTarget(club: Club, role: Role): Player | null {
     if (!p) continue;
     if (p.ca > hi) break;
     if (p.club === club.id || p.loan || p.contract?.futureClub) continue;
+    // nyindkøbte spillere videresælges ikke samme sæson (medmindre de er sat til salg)
+    if (p.club && p.joined && !p.listed && p.joined > addDays(g.date, -300)) continue;
     const age = ageOn(p.dob, g.date);
     if (age > 31) continue;
     const price = p.club ? askingPrice(p) : 0;
@@ -568,10 +601,12 @@ function aiClubTurn(club: Club) {
     for (const p of surplus) p.listed = true;
   }
   const needs = analyzeNeeds(club.id);
-  if (sq.length >= 33) return;
+  // fuld trup: kun køb hvis en position helt mangler dækning
+  if (sq.length >= 33 && !(needs[0]?.score >= 2)) return;
   if (!needs.length) {
-    // ingen akutte behov: forsøg at forstærke en tilfældig rolle i ny og næ
-    if (!rng.chance(0.25)) return;
+    // ingen akutte behov: forsøg at forstærke en tilfældig rolle i ny og næ – oftere hvis holdet er bagud i ligaen
+    const behind = clubLevel(club.id) < leagueFloor(club);
+    if (!rng.chance(behind ? 0.7 : 0.25)) return;
     needs.push({ role: rng.pick(['CB', 'CM', 'ST', 'W', 'FB'] as Role[]), score: 0.5 });
   }
   const need = needs[0];
@@ -622,7 +657,8 @@ export function aiRenewals() {
     const level = clubLevel(p.club);
     const age = ageOn(p.dob, g.date);
     const left = staying.get(p.club) ?? 0;
-    const wanted = (p.ca >= level - 15 && age <= 32) || (p.ca >= level - 3 && age <= 38) || (age <= 23 && p.pa >= level - 5) || (left < 22 && age <= 34 && p.ca >= level - 30);
+    const lv = level - roleOffset(naturalRole(p));
+    const wanted = (depthRank(p) < (REQUIRED[naturalRole(p)] ?? 2) && age <= 34) || (p.ca >= lv - 15 && age <= 32) || (p.ca >= lv - 3 && age <= 38) || (age <= 23 && p.pa >= lv - 5) || (left < 22 && age <= 34 && p.ca >= lv - 30);
     if (!wanted) continue;
     const club = g.clubs[p.club];
     p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30` };
@@ -640,6 +676,17 @@ export function aiFillSquads(minSize = 22) {
   const taken = new Set<number>();
   for (const c of Object.values(g.clubs)) {
     if (isHumanClub(c.id)) continue;
+    // mindst to målmænd – ellers står en markspiller i mål
+    const gks = squad(c.id).filter((p) => naturalRole(p) === 'GK').length;
+    for (let i = gks; i < 2; i++) {
+      const lv = clubLevel(c.id) - GK_OFFSET;
+      const gk = free.find((p) => !taken.has(p.id) && naturalRole(p) === 'GK' && p.ca <= lv + 15 && p.ca >= lv - 50 && playerInterest(p, c) === 'yes');
+      if (!gk) break;
+      taken.add(gk.id);
+      gk.contract = { wage: Math.round(wageDemand(gk, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(gk) - 1)}-06-30` };
+      setClub(gk, c.id);
+      gk.joined = g.date;
+    }
     let size = squad(c.id).length;
     if (size >= minSize) continue;
     const level = clubLevel(c.id);

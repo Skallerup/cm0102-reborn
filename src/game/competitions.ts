@@ -331,7 +331,7 @@ export function setupPlayoff(id: string, spec: { seeds: [string, number][]; form
   for (const [lg, pos] of spec.seeds) {
     const comp = g.comps[lg];
     if (!comp) return;
-    const table = finalOrder(comp);
+    const table = comp.tier > 1 ? promotionOrder(comp) : finalOrder(comp);
     const club = table[pos - 1];
     if (club) clubs.push(club);
   }
@@ -343,6 +343,16 @@ export function setupPlayoff(id: string, spec: { seeds: [string, number][]; form
   } else {
     createTwoLegRound(comp, [[clubs[1], clubs[0]], [clubs[3], clubs[2]]], 'SF', cal.playoff.sf);
   }
+}
+
+/** Reservehold (fx "Real Sociedad B") må ikke rykke op i samme liga som førsteholdet */
+export function isReserveTeam(clubId: number): boolean {
+  return /\s(B|II)$/.test(gs().clubs[clubId]?.name ?? '');
+}
+
+/** Rækkefølgen for oprykning: som finalOrder, men uden reservehold */
+export function promotionOrder(comp: Competition): number[] {
+  return finalOrder(comp).filter((c) => !isReserveTeam(c));
 }
 
 /** Ligaens endelige rækkefølge (respekterer split-grupper) */

@@ -319,3 +319,6 @@ table.grid td.center, table.grid th.center { text-align: center; }
   .commentary { height: 280px; }
   .screen-head h2 { font-size: 20px; }
 }
+
+/* tastaturgenveje giver ikke mening på touch-enheder */
+@media (hover: none) { .kbd-hint { display: none; } }

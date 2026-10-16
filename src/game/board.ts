@@ -189,7 +189,10 @@ export function aiSackings() {
       if (!club || club.manager <= 0 || club.id === g.userClub) return;
       const { rank } = strengthRank(club);
       const under = i + 1 - rank;
-      if (under >= 6 && rng.chance(0.08 + under * 0.01)) {
+      // realistisk ~20-30 % trænerskifter pr. sæson: klart under forventning, nedrykningsfare eller sort stime
+      const inDrop = i >= sorted.length - 3 && under >= 2;
+      const p = (under >= 4 ? 0.05 + under * 0.015 : 0) + (inDrop ? 0.07 : 0) + (row.form === 'LLLLL' ? 0.1 : 0);
+      if (p > 0 && rng.chance(p)) {
         const m = g.staff[club.manager];
         if (m) m.club = 0;
         club.manager = 0;

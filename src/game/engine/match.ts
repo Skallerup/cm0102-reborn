@@ -74,9 +74,14 @@ interface TeamRT {
 const ZB = 5;
 const ZL = 3;
 const NZ = ZB * ZL;
+/** Global afslutningsskala (kalibreret mod ~2,7 mål/kamp, se scripts/calibrate.ts) */
+const FINISH_SCALE = 1.34;
 const zoneX = (b: number) => 10 + b * 20;
 const zoneY = (l: number) => 16.67 + l * 33.33;
 
+/** Dæmper niveauforskelle en smule: uden den bliver topholdene urealistisk dominerende (150 mål, 60-målsscorere) */
+const SQUASH = 0.84;
+const squash = (v: number) => 11 + (v - 11) * SQUASH;
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const logistic = (x: number) => 1 / (1 + Math.exp(-x));
 const logit = (p: number) => Math.log(p / (1 - p));
@@ -159,10 +164,10 @@ export class MatchSim {
     const morale = 0.95 + 0.1 * (p.morale / 20);
     const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult;
     const eff = new Float32Array(36);
-    for (let i = 0; i < 36; i++) eff[i] = p.attrs[i] * mult;
+    for (let i = 0; i < 36; i++) eff[i] = squash(p.attrs[i]) * mult;
     // Mentale/fysiske påvirkes mindre af forkert position
     const physMult = form * morale * rt.homeMult;
-    for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = p.attrs[k] * physMult;
+    for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = squash(p.attrs[k]) * physMult;
     const sp: SP = {
       p, team: rt.idx, slot, eff,
       cond: clamp(p.condition / 100, 0.3, 1),
@@ -381,7 +386,7 @@ export class MatchSim {
     if (this.breakaway) {
       const s = this.breakaway;
       this.breakaway = null;
-      if (this.r.chance(0.72)) { this.shoot(T, O, s, 'oneOnOne'); return; }
+      if (this.r.chance(0.55)) { this.shoot(T, O, s, 'oneOnOne'); return; }
     }
 
     const carrier = this.pick(T.zAtt[z]);
@@ -433,7 +438,14 @@ export class MatchSim {
       if (r < 0.78) return this.dribble(T, O, carrier);
       return this.pass(T, O, carrier, 0.0, true);
     }
-    if (r < 0.6) return this.shoot(T, O, carrier, 'box');
+    if (r < 0.6) {
+      // midtbanespillere der løber med ind i feltet afslutter også – ellers scorer angriberen næsten alt
+      if (this.r.chance(0.3)) {
+        const late = this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => Math.sqrt(this.finQ(x)) * (x.instr.runs + 1), carrier);
+        if (late) { this.lastPasser = carrier; this.lastPasserMoment = this.moment; return this.shoot(T, O, late, 'box'); }
+      }
+      return this.shoot(T, O, carrier, 'box');
+    }
     if (r < 0.74) return this.dribble(T, O, carrier);
     return this.pass(T, O, carrier, 0.0, true);
   }
@@ -472,7 +484,7 @@ export class MatchSim {
       this.lastPasser = s;
       this.lastPasserMoment = this.moment;
       if (cutback) {
-        const shooter = this.pick(T.zAtt[tz], (x) => this.finQ(x), s);
+        const shooter = this.pick(T.zAtt[tz], (x) => Math.sqrt(this.finQ(x)), s);
         if (shooter) { this.lastPasser = s; this.shoot(T, O, shooter, 'cutback'); }
       }
       if (trb >= 3 && this.r.chance(0.04)) this.line('pass-forward', s);
@@ -585,7 +597,7 @@ export class MatchSim {
       this.turnover(blocker);
       return;
     }
-    const target = this.pick(T.zAtt[boxZ], (x) => this.aerial(x) ** 2 * (x.instr.runs + 1), s);
+    const target = this.pick(T.zAtt[boxZ], (x) => this.aerial(x) ** 1.3 * (x.instr.runs + 1), s);
     const marker = this.pick(O.zDef[boxZ], (x) => this.aerial(x) ** 2);
     if (!target) { this.zone = boxZ; this.turnover(marker); return; }
     const gk = this.gk(O);
@@ -624,26 +636,29 @@ export class MatchSim {
 
   private foulCheck(T: TeamRT, O: TeamRT, victim: SP, def: SP, forced = false): boolean {
     const dirt = def.p.attrs[A.dirtiness] + this.a(def, A.aggression);
+    // en spiller med gult kort holder igen i tacklingerne
+    if (def.yellow > 0 && !forced && this.r.chance(0.6)) return false;
     const fp = forced ? 1 + (O.ti.tackling - 1) * 0.25 + (dirt - 20) / 40 - 0.25 : 0.11 + (O.ti.tackling - 1) * 0.05 + (dirt - 20) / 220;
     if (!this.r.chance(clamp(fp, 0.03, forced ? 1 : 0.35))) return false;
     O.stats.fouls++;
     this.rate(def, -0.05);
     this.injuryCheck(victim);
     // Kort
-    const yp = 0.13 + 0.1 * (def.p.attrs[A.dirtiness] / 20) + (O.ti.tackling === 2 ? 0.05 : 0) - (def.p.attrs[A.temperament] - 10) / 200;
-    if (this.r.chance(0.005 + def.p.attrs[A.dirtiness] / 2500)) this.sendOff(O, def, false);
+    const yp = (0.13 + 0.1 * (def.p.attrs[A.dirtiness] / 20) + (O.ti.tackling === 2 ? 0.05 : 0) - (def.p.attrs[A.temperament] - 10) / 200) * (def.yellow > 0 ? 0.3 : 1);
+    if (this.r.chance(0.0012 + def.p.attrs[A.dirtiness] / 9000)) this.sendOff(O, def, false);
     else if (this.r.chance(yp)) this.book(O, def);
     const rb = this.rb(T.idx);
     const lane = this.laneOf(T.idx);
     if (this.poss !== T.idx) return true; // røde kort kan ikke flytte bolden; sikkerhed
-    if (rb === 4) {
+    // kun en del af frisparkene i feltet er straffespark (~0,3 pr. kamp); resten er frispark lige uden for
+    if (rb === 4 && this.r.chance(0.3)) {
       this.line('penalty', victim, def, true);
       const takerId = T.tactic.penalties;
       const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? victim;
       this.shoot(T, O, taker, 'pen');
       return true;
     }
-    if (rb === 3) {
+    if (rb >= 3) {
       this.line('freekick', victim, def);
       const takerId = T.tactic.freeKicks;
       const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? victim;
@@ -681,7 +696,7 @@ export class MatchSim {
   }
 
   private injuryCheck(sp: SP) {
-    const p = 0.006 * (0.35 + sp.p.attrs[A.injuryProneness] / 12) * (sp.cond < 0.55 ? 1.6 : 1);
+    const p = 0.013 * (0.35 + sp.p.attrs[A.injuryProneness] / 12) * (sp.cond < 0.55 ? 1.6 : 1);
     if (!this.r.chance(p)) return;
     sp.line.injured = true;
     const t = this.teams[sp.team];
@@ -696,7 +711,7 @@ export class MatchSim {
 
   private shoot(T: TeamRT, O: TeamRT, s: SP, kind: string, bonus = 0) {
     const z = this.zone;
-    const base: Record<string, number> = { box: 0.12, boxWide: 0.05, long: 0.03, header: 0.085, oneOnOne: 0.33, cutback: 0.19, pen: 0.76, fk: 0.055, rebound: 0.24 };
+    const base: Record<string, number> = { box: 0.145, boxWide: 0.055, long: 0.035, header: 0.095, oneOnOne: 0.33, cutback: 0.21, pen: 0.76, fk: 0.055, rebound: 0.24 };
     let xg = (base[kind] ?? 0.08) + bonus;
     if (kind === 'box' || kind === 'boxWide' || kind === 'header' || kind === 'long' || kind === 'cutback') {
       xg *= clamp(1.28 - 0.16 * O.wDef[z], 0.55, 1.3);
@@ -713,7 +728,7 @@ export class MatchSim {
       : kind === 'fk' ? 0.7 * this.a(s, A.freeKicks) + 0.3 * this.a(s, A.technique)
       : this.finQ(s);
     const gq = kind === 'oneOnOne' ? this.gk1v1(gk) : this.gkQ(gk);
-    const mult = 1.04 * Math.exp((q - gq) / 13);
+    const mult = (kind === 'pen' ? 1.04 : FINISH_SCALE) * Math.exp((q - gq) / 13);
     const goalP = clamp(xg * mult, 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
@@ -744,7 +759,7 @@ export class MatchSim {
       this.line(kind === 'pen' ? 'pen-saved' : kind === 'header' ? 'header-saved' : xg > 0.25 ? 'bigsave' : 'save', s, gk, kind === 'pen' || xg > 0.25);
       if (kind === 'pen') this.events.push({ m: this.minute, t: T.idx, k: 'pen-miss', p: s.p.id });
       const rr = this.r.next();
-      if (rr < 0.12) { const fol = this.pick(T.zAtt[z], (x) => this.finQ(x)); if (fol) { this.rebound = fol; return; } }
+      if (rr < 0.12) { const fol = this.pick(T.zAtt[z], (x) => Math.sqrt(this.finQ(x))); if (fol) { this.rebound = fol; return; } }
       if (rr < 0.48) return this.corner(T, O);
       this.zone = this.zoneFor(O.idx, 0, 1);
       this.poss = O.idx;

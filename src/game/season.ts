@@ -1,5 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
-import { finalOrder } from './competitions';
+import { finalOrder, promotionOrder } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
@@ -73,7 +73,7 @@ function promotionRelegation() {
     const L = g.comps[rules.below];
     if (!U?.finished || !L?.finished) continue;
     const uOrder = finalOrder(U);
-    const lOrder = finalOrder(L);
+    const lOrder = promotionOrder(L);
     const lRules = LEAGUE_RULES[rules.below];
     const down = uOrder.slice(uOrder.length - (rules.relegated ?? 0));
     const up = lOrder.slice(0, lRules?.promoted ?? 0);
@@ -81,7 +81,6 @@ function promotionRelegation() {
     const poLower = g.comps[`PO-${rules.below}`];
     if (poLower?.winner && poLower.playoffFor === upper) {
       up.push(poLower.winner);
-      down.unshift(uOrder[uOrder.length - (rules.relegated ?? 0) - 1]);
     }
     // relegationsplayoff (fx 16. i Bundesliga mod 3. i 2. Bundesliga)
     const poUpper = g.comps[`PO-${upper}`];
@@ -90,6 +89,9 @@ function promotionRelegation() {
       const loser = (poUpper.clubs.find((c) => uOrder.includes(c)));
       if (loser) down.push(loser);
     }
+    // ligastørrelserne skal bevares: lige så mange op som ned
+    for (const c of uOrder.slice().reverse()) { if (up.length <= down.length) break; if (!down.includes(c)) down.push(c); }
+    for (const c of lOrder) { if (down.length <= up.length) break; if (!up.includes(c)) up.push(c); }
     for (const c of down) moves.set(c, rules.below);
     for (const c of up) moves.set(c, upper);
   }
@@ -97,6 +99,13 @@ function promotionRelegation() {
     const club = g.clubs[cid];
     const wasUp = (g.leagues[league]?.tier ?? 1) < (g.leagues[club.league]?.tier ?? 1);
     club.league = league;
+    // nedrykkede AI-klubber må sælge stjernerne (nedrykningsklausuler, lønninger) – ellers vinder de næste liga med 110+ point
+    if (!wasUp && !isHumanClub(cid)) {
+      for (const p of squad(cid).filter((x) => !x.loan && x.contract).sort((a, b) => b.ca - a.ca).slice(0, 8)) {
+        p.listed = true;
+        p.listPrice = Math.max(10_000, Math.round(p.value * 0.65 / 50_000) * 50_000);
+      }
+    }
     forEachHuman(() => {
       if (cid === g.userClub || g.leagues[league]?.nation === g.clubs[g.userClub]?.nation) {
         addNews({ cat: 'general', key: wasUp ? 'news.promoted' : 'news.relegated', params: { club: club.name, comp: g.leagues[league]?.name ?? league } });
