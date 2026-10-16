@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { exportSave, saveGame } from '../../game/save';
 import { notify } from '../../game/state';
-import { getLang, setLang, t } from '../../i18n';
+import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../../i18n';
 import { Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
@@ -18,6 +18,11 @@ export function Options() {
             <label className="row">{t('opt.language')}
               <select value={getLang()} onChange={(e) => { setLang(e.target.value as 'da' | 'en'); g.lang = e.target.value as 'da' | 'en'; notify(); }}>
                 <option value="da">Dansk</option><option value="en">English</option>
+              </select>
+            </label>
+            <label className="row">{t('opt.currency')}
+              <select value={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); notify(); }}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
               </select>
             </label>
             <label className="row"><input type="checkbox" checked={g.options.autosave} onChange={(e) => { g.options.autosave = e.target.checked; notify(); }} />{t('opt.autosave')}</label>

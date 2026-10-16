@@ -4,7 +4,7 @@ import { createGame, type WorldData } from '../game/newgame';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
 import { notify } from '../game/state';
 import type { Lang } from '../game/types';
-import { dateFmt, getLang, setLang, t } from '../i18n';
+import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { Panel } from './components';
 import { loadWorld } from './world';
 
@@ -44,6 +44,12 @@ export function Start({ onLang }: { onLang: (l: Lang) => void }) {
             <div className="row" style={{ justifyContent: 'center' }}>
               <button className={lang === 'da' ? 'primary' : ''} onClick={() => { setLang('da'); onLang('da'); }}>Dansk</button>
               <button className={lang === 'en' ? 'primary' : ''} onClick={() => { setLang('en'); onLang('en'); }}>English</button>
+            </div>
+            <div className="row" style={{ justifyContent: 'center' }}>
+              <label>{t('opt.currency')}</label>
+              <select defaultValue={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>
+                {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
+              </select>
             </div>
             {err && <div className="bad center">{err}</div>}
           </div>

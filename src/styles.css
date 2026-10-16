@@ -120,7 +120,8 @@ table.grid tr.releg td:first-child { box-shadow: inset 3px 0 var(--bad); }
 table.grid tr.euro td:first-child { box-shadow: inset 3px 0 var(--accent2); }
 table.grid tr.playoff td:first-child { box-shadow: inset 3px 0 var(--mid); }
 table.grid tr.injured td { color: var(--bad); }
-td.num, th.num { text-align: right; }
+table.grid td.num, table.grid th.num, td.num, th.num { text-align: right; }
+table.grid td.center, table.grid th.center { text-align: center; }
 .kit { display: inline-block; width: 11px; height: 11px; border: 2px solid; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .nat { display: inline-block; min-width: 30px; font-size: 10px; color: var(--muted); letter-spacing: 0.03em; }
 

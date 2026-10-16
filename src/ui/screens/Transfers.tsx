@@ -5,7 +5,7 @@ import { knowledgeOf, scoutStars } from '../../game/scouting';
 import { notify } from '../../game/state';
 import { acceptCounter, respondToOffer } from '../../game/transfers';
 import type { Player, Role, TransferOffer } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
 import { ClubLink, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav } from '../core';
 import { Head } from './common';
@@ -141,7 +141,7 @@ function Offers() {
                     <div className="row">
                       <button className="small primary" onClick={() => { respondToOffer(o.id, 'accept'); notify(); }}>{t('offer.accept')}</button>
                       <button className="small" onClick={() => { respondToOffer(o.id, 'reject'); notify(); }}>{t('offer.reject')}</button>
-                      <input type="number" style={{ width: 100 }} placeholder={t('offer.counterAmount')} value={counter[o.id] ?? ''} onChange={(e) => setCounter({ ...counter, [o.id]: Number(e.target.value) })} />
+                      <input type="number" style={{ width: 100 }} placeholder={`${t('offer.counterAmount')} (${currencySymbol()})`} value={counter[o.id] ? toCur(counter[o.id]) : ''} onChange={(e) => setCounter({ ...counter, [o.id]: fromCur(Number(e.target.value)) })} />
                       <button className="small" disabled={!counter[o.id]} onClick={() => { respondToOffer(o.id, 'counter', counter[o.id]); notify(); }}>{t('offer.counter')}</button>
                     </div>
                   )}

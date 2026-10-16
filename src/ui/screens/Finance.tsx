@@ -1,7 +1,7 @@
 import { requestBudget } from '../../game/board';
 import { currentWageBill } from '../../game/finance';
 import { notify } from '../../game/state';
-import { money, t } from '../../i18n';
+import { fromCur, money, t, toCur } from '../../i18n';
 import { Bar, Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
@@ -48,7 +48,7 @@ export function Finance() {
             <div className="muted">{t('fin.requestHint')}</div>
             <button onClick={() => { requestBudget('transfer'); notify(); }}>{t('fin.askTransfer')}</button>
             <button onClick={() => { requestBudget('wage'); notify(); }}>{t('fin.askWage')}</button>
-            <label>{t('fin.ticket')}: <input type="number" min={1} value={c.ticketPrice} onChange={(e) => { c.ticketPrice = Math.max(1, Number(e.target.value)); notify(); }} style={{ width: 70 }} /></label>
+            <label>{t('fin.ticket')}: <input type="number" min={1} value={toCur(c.ticketPrice)} onChange={(e) => { c.ticketPrice = Math.max(1, fromCur(Number(e.target.value))); notify(); }} style={{ width: 70 }} /></label>
           </div>
         </Panel>
       </div>

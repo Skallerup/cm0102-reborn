@@ -8,7 +8,7 @@ import {
   askingPrice, canPreContract, loanOut, makeBid, releasePlayer, startPreContract, toggleListed, windowOpen,
 } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
 import { AttrVal, Bar, ClubLink, Modal, Nat, Panel, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
 import { compareIds, toggleCompare } from '../compare';
@@ -191,7 +191,7 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
             <label>{t('bid.fee')}: <b className="accent">{money(fee)}</b></label>
             <div className="row">
               <button onClick={() => setFee(Math.max(0, fee - step))}>−</button>
-              <input type="number" value={fee} step={step} onChange={(e) => setFee(Math.max(0, Number(e.target.value)))} style={{ width: 140 }} />
+              <input type="number" value={toCur(fee)} step={toCur(step)} onChange={(e) => setFee(Math.max(0, fromCur(Number(e.target.value))))} style={{ width: 140 }} /> <span className="muted">{currencySymbol()}</span>
               <button onClick={() => setFee(fee + step)}>+</button>
             </div>
           </>

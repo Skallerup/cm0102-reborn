@@ -199,7 +199,7 @@ export const da: Record<string, string> = {
   'hist.trophyCabinet': 'Trofæskab', 'hist.noTrophies': 'Endnu ingen trofæer', 'hist.career': 'Karriere', 'hist.firstSeason': 'Første sæson er i gang',
 
   // indstillinger
-  'opt.general': 'Generelt', 'opt.language': 'Sprog', 'opt.autosave': 'Autogem hver måned', 'opt.speed': 'Kamphastighed',
+  'opt.general': 'Generelt', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danske kroner (kr.)', 'cur.GBP': 'Britiske pund (£)', 'opt.language': 'Sprog', 'opt.autosave': 'Autogem hver måned', 'opt.speed': 'Kamphastighed',
   'opt.saves': 'Gem / eksportér', 'opt.export': 'Eksportér save-fil', 'opt.exportHint': 'Gem filen og indlæs den på en anden enhed fra startskærmen.',
   'opt.about': 'Om spillet', 'opt.aboutText': 'En hyldest til Championship Manager 01/02 – bygget fra bunden som web-app. Matchmotoren er zonebaseret som CM3-motoren, men kalibreret mod moderne statistik.',
   'opt.dataCredit': 'Spillerdata: transfermarkt-datasets af David Cariboo (CC0). Attributterne er beregnede og ikke officielle.',

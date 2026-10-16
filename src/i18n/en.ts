@@ -178,7 +178,7 @@ export const en: Record<string, string> = {
   'hist.manager': 'Manager', 'hist.trophies': 'Trophies', 'hist.sacked': 'Sackings', 'hist.challenge': 'Challenge', 'hist.deadline': 'deadline',
   'hist.trophyCabinet': 'Trophy cabinet', 'hist.noTrophies': 'No trophies yet', 'hist.career': 'Career', 'hist.firstSeason': 'First season under way',
 
-  'opt.general': 'General', 'opt.language': 'Language', 'opt.autosave': 'Autosave every month', 'opt.speed': 'Match speed',
+  'opt.general': 'General', 'opt.currency': 'Currency', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danish kroner (kr.)', 'cur.GBP': 'Pound sterling (£)', 'opt.language': 'Language', 'opt.autosave': 'Autosave every month', 'opt.speed': 'Match speed',
   'opt.saves': 'Save / export', 'opt.export': 'Export save file', 'opt.exportHint': 'Save the file and load it on another device from the start screen.',
   'opt.about': 'About', 'opt.aboutText': 'A tribute to Championship Manager 01/02 – built from scratch as a web app. The match engine is zone-based like the CM3 engine, but calibrated against modern statistics.',
   'opt.dataCredit': 'Player data: transfermarkt-datasets by David Cariboo (CC0). Attributes are derived, not official.',
