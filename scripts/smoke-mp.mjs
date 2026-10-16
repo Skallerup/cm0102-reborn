@@ -43,7 +43,7 @@ await step('gæst tilmelder sig via link', async () => {
   await guest.getByPlaceholder('Dit navn').fill('Gæst');
   await guest.getByText('Brøndby IF', { exact: true }).click();
   await guest.getByRole('button', { name: 'Deltag i spillet' }).click();
-  await guest.getByText('Lobby').waitFor({ timeout: 90000 });
+  await guest.getByRole('heading', { name: 'Lobby' }).waitFor({ timeout: 90000 });
   await guest.screenshot({ path: `${shots}/mp-02-guest-lobby.png` });
 });
 
@@ -56,7 +56,7 @@ await step('første træk: gæsten kommer med i spillet', async () => {
   const before = await host.locator('.topbar .date').textContent();
   await readyBoth();
   await host.waitForFunction((d) => document.querySelector('.topbar .date')?.textContent !== d, before, { timeout: 180000 });
-  await guest.getByText('Lobby').waitFor({ state: 'detached', timeout: 120000 });
+  await guest.getByRole('heading', { name: 'Lobby' }).waitFor({ state: 'detached', timeout: 120000 });
   await guest.locator('.topbar .club', { hasText: 'Brøndby' }).waitFor({ timeout: 60000 });
   await guest.screenshot({ path: `${shots}/mp-03-guest-ingame.png` });
 });
