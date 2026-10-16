@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { addDays } from '../game/dates';
-import { saveGame } from '../game/save';
+import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { continueGame, runUntil } from '../game/sim';
-import { gs, notify, setGame } from '../game/state';
+import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest, Modal } from './components';
 import { Icon } from './icons';
@@ -61,6 +61,15 @@ export function Shell() {
   }, [toast]);
 
   const online = session();
+  // Autogem: kort efter enhver ændring (kun singleplayer – online gemmes på serveren)
+  useEffect(() => {
+    if (online) return;
+    const unsub = subscribe(() => { if (hasGame() && gs().options.autosave !== false) scheduleAutosave(); });
+    const onHide = () => { if (document.visibilityState === 'hidden') void flushAutosave(); };
+    document.addEventListener('visibilitychange', onHide);
+    window.addEventListener('pagehide', onHide);
+    return () => { unsub(); document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', onHide); };
+  }, [online]);
   const autosave = async () => {
     if (online) return;
     const month = gs().date.slice(0, 7);
@@ -131,8 +140,8 @@ export function Shell() {
         <div className="sep" />
         {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
         <button onClick={async () => {
-          if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); setGame(null); } return; }
-          if (confirm(t('top.quitConfirm'))) { await saveGame(); setGame(null); }
+          if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
+          if (confirm(t('top.quitConfirm'))) { await saveGame(); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
       </nav>
       <main className="main" ref={mainRef}>

@@ -6,7 +6,7 @@ export const en: Record<string, string> = {
 
   'start.subtitle': 'Reborn – with 20,000 real players from the 2025/26 season',
   'start.new': 'New game', 'start.load': 'Load game', 'start.challenges': 'Challenges', 'start.import': 'Import save file',
-  'start.importFailed': 'Could not load that file.', 'start.loading': 'Loading…', 'start.loadingDb': 'Loading player database…',
+  'start.importFailed': 'Could not load that file.', 'start.loading': 'Loading…', 'start.resuming': 'Resuming your game…', 'start.loadingDb': 'Loading player database…',
   'start.noSaves': 'No saved games yet.', 'start.savedAt': 'saved', 'start.confirmDelete': 'Delete this saved game?',
   'start.seasons': '{n} season(s)', 'start.managerName': 'Manager name', 'start.managerPlaceholder': 'Your name',
   'start.nations': 'Playable nations', 'start.nationsHint': 'Leagues in selected nations are fully simulated',

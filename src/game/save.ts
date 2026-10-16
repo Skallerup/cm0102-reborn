@@ -28,7 +28,46 @@ export async function saveGame(): Promise<SaveMeta> {
   };
   await set(`save:${g.id}`, blob);
   await set(`meta:${g.id}`, meta);
+  rememberLast({ kind: 'local', id: g.id });
   return meta;
+}
+
+// ---------- seneste spil (så en genindlæsning fortsætter hvor man slap) ----------
+
+export type LastGame = { kind: 'local'; id: string } | { kind: 'online'; code: string };
+const LAST_KEY = 'cm0102.last';
+
+export function rememberLast(l: LastGame) {
+  try { localStorage.setItem(LAST_KEY, JSON.stringify(l)); } catch { /* ignore */ }
+}
+
+export function getLast(): LastGame | null {
+  try { return JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null') as LastGame | null; } catch { return null; }
+}
+
+export function forgetLast() {
+  try { localStorage.removeItem(LAST_KEY); } catch { /* ignore */ }
+}
+
+// ---------- autogem ----------
+
+let timer: ReturnType<typeof setTimeout> | null = null;
+let saving = false;
+let dirty = false;
+
+/** Gem kort efter ændringer (debounced), så intet går tabt ved genindlæsning */
+export function scheduleAutosave(delay = 2500) {
+  dirty = true;
+  if (timer) clearTimeout(timer);
+  timer = setTimeout(() => { void flushAutosave(); }, delay);
+}
+
+export async function flushAutosave() {
+  if (timer) { clearTimeout(timer); timer = null; }
+  if (!dirty || saving) return;
+  saving = true;
+  dirty = false;
+  try { await saveGame(); } catch { dirty = true; } finally { saving = false; }
 }
 
 export async function listSaves(): Promise<SaveMeta[]> {
@@ -42,6 +81,7 @@ export async function loadGame(id: string): Promise<boolean> {
   if (!blob) return false;
   const g = await deserializeState(blob);
   setGame(g);
+  rememberLast({ kind: 'local', id });
   return true;
 }
 

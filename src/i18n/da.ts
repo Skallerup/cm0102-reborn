@@ -8,7 +8,7 @@ export const da: Record<string, string> = {
   // start
   'start.subtitle': 'Genfødt – med 20.000 rigtige spillere fra sæsonen 2025/26',
   'start.new': 'Nyt spil', 'start.load': 'Indlæs spil', 'start.challenges': 'Udfordringer', 'start.import': 'Importér save-fil',
-  'start.importFailed': 'Filen kunne ikke indlæses.', 'start.loading': 'Indlæser…', 'start.loadingDb': 'Indlæser spillerdatabasen…',
+  'start.importFailed': 'Filen kunne ikke indlæses.', 'start.loading': 'Indlæser…', 'start.resuming': 'Fortsætter dit spil…', 'start.loadingDb': 'Indlæser spillerdatabasen…',
   'start.noSaves': 'Ingen gemte spil endnu.', 'start.savedAt': 'gemt', 'start.confirmDelete': 'Slet dette gemte spil?',
   'start.seasons': '{n} sæson(er)', 'start.managerName': 'Managerens navn', 'start.managerPlaceholder': 'Dit navn',
   'start.nations': 'Spilbare nationer', 'start.nationsHint': 'Ligaer i valgte lande simuleres fuldt ud',

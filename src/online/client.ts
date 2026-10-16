@@ -14,6 +14,7 @@ import { rng } from '../game/rng';
 import { mpAdvance } from '../game/sim';
 import { deserializeState, serializeState } from '../game/snapshot';
 import { gs, notify, setGame } from '../game/state';
+import { rememberLast } from '../game/save';
 import type { GameState } from '../game/types';
 
 export interface RoomInfo {
@@ -294,6 +295,7 @@ export function session(): OnlineSession | null {
 export async function openSession(c: Credentials): Promise<OnlineSession> {
   current?.stop();
   rememberRoom(c);
+  rememberLast({ kind: 'online', code: c.code });
   current = new OnlineSession(c);
   await current.start();
   return current;
