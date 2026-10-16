@@ -116,7 +116,13 @@ export const da: Record<string, string> = {
   'tbl.europe': 'Europa', 'tbl.promotion': 'Oprykning', 'tbl.playoff': 'Playoff', 'tbl.relegation': 'Nedrykning',
 
   // transfers
-  'tr.search': 'Spillersøgning', 'tr.shortlist': 'Shortlist', 'tr.offers': 'Bud', 'tr.listed': 'Transferlisten', 'tr.known': 'Kendt',
+  'tr.search': 'Spillersøgning',
+  'real.col': 'Realisme', 'real.hint': 'Vil spilleren komme, vil klubben sælge, og har I råd? Hold musen over mærket for at se hvorfor.',
+  'real.all': 'Alle spillere', 'real.only': 'Kun realistiske mål', 'real.maybe': 'Realistiske + måske',
+  'real.level0': 'Realistisk', 'real.level1': 'Måske', 'real.level2': 'Urealistisk',
+  'real.reputation': 'Spilleren synes klubben er for lille', 'real.happy': 'Spilleren er glad i sin klub', 'real.repGap': 'Klubben er lidt lille for ham',
+  'real.unavailable': 'Udlejet eller har allerede aftalt nyt skifte', 'real.notForSale': 'Nøglespiller – ikke til salg', 'real.tooExpensive': 'Over transferbudgettet',
+  'real.listed': 'Står på transferlisten', 'real.bosman': 'Kan hentes gratis (Bosman)', 'real.free': 'Klubløs – ingen transfersum', 'real.wages': 'Lønkravet sprænger lønbudgettet', 'tr.shortlist': 'Shortlist', 'tr.offers': 'Bud', 'tr.listed': 'Transferlisten', 'tr.known': 'Kendt',
   'tr.filters': 'Filtre', 'tr.name': 'Navn…', 'tr.anyPos': 'Alle positioner', 'tr.anyValue': 'Alle værdier', 'tr.anyNation': 'Alle nationer', 'tr.anyLeague': 'Alle ligaer',
   'tr.free': 'Kun klubløse', 'tr.listedOnly': 'Kun til salg', 'tr.expiring': 'Udløbende kontrakt (Bosman)', 'tr.knownOnly': 'Kun kendte spillere', 'tr.results': 'resultater',
   'tr.incoming': 'Bud på dine spillere', 'tr.outgoing': 'Dine bud', 'tr.loan': 'Leje',
@@ -152,7 +158,12 @@ export const da: Record<string, string> = {
   'news.scoutDone': '{scout} har færdiggjort sin rapport om {player}',
 
   // staff
-  'staff.mine': 'Mit staff', 'staff.hire': 'Ansæt', 'staff.available': 'Ledige', 'staff.role': 'Rolle', 'staff.fire': 'Fyr', 'staff.hireBtn': 'Ansæt',
+  'staff.mine': 'Mit staff', 'staff.otherClubs': 'Staff i andre klubber', 'staff.sourceFree': 'Ledige (gratis)', 'staff.sourceClubs': 'Køb fri fra andre klubber',
+  'staff.onlyWilling': 'Kun dem der vil skifte', 'staff.fee': 'Kompensation', 'staff.buyOut': 'Køb fri', 'staff.fired': '{name} er fyret.',
+  'staff.poachConfirm': 'Køb {name} fri fra {club} for {fee}?', 'staff.poached': '{name} er købt fri fra {club} for {fee}',
+  'staff.result.ok': '{name} er ansat!', 'staff.result.limit': 'Du har nået grænsen for denne rolle – fyr nogen først.',
+  'staff.result.refused': '{name} vil ikke forlade sin nuværende klub.', 'staff.result.money': 'Klubben har ikke råd til kompensationen.',
+  'staff.explain2': 'Ledige folk koster kun løn. Folk i andre klubber kræver en kompensation (ca. et halvt års løn) og skifter sjældent til en mindre klub. Ved fyring betales 12 ugers løn.', 'staff.hire': 'Ansæt', 'staff.available': 'Ledige', 'staff.role': 'Rolle', 'staff.fire': 'Fyr', 'staff.hireBtn': 'Ansæt',
   'staff.fireConfirm': 'Fyr {name}? Kompensation: {pay}', 'staff.limit': 'Du har nået grænsen for denne rolle.',
   'staff.hired': '{name} er ansat som {role}', 'staff.explain': 'Trænere styrer spillernes udvikling, fysioterapeuter forkorter skader, og scouts afdækker spillere.',
   'role.staff.manager': 'Manager', 'role.staff.assistant': 'Assistent', 'role.staff.coach': 'Træner', 'role.staff.physio': 'Fysioterapeut', 'role.staff.scout': 'Scout',

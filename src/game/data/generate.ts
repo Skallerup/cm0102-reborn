@@ -317,7 +317,7 @@ export function makeStaff(o: { id: number; first: string; last: string; nation: 
     role: o.role,
     attrs,
     rep: clamp(Math.round(o.level + r.normal(0, 8)), 1, 100),
-    wage: Math.round((o.role === 'manager' ? 25 : 6) * Math.pow(1.06, o.level) / 10) * 10 + 500,
+    wage: Math.round(((o.role === 'manager' ? 800 : o.role === 'assistant' ? 330 : 250) * Math.pow(1.05, Math.max(0, o.level))) / 50) * 50 + 300,
     expires: `${y + r.int(1, 3)}-06-30`,
     style: o.role === 'manager' ? { formation: r.weighted(AI_FORMATIONS, (f) => f[1])![0], mentality: r.int(1, 3) } : undefined,
   };

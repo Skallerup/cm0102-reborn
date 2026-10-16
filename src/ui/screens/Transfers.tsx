@@ -3,7 +3,7 @@ import { naturalRole } from '../../game/attributes';
 import { ageOn } from '../../game/dates';
 import { knowledgeOf, scoutStars } from '../../game/scouting';
 import { notify } from '../../game/state';
-import { acceptCounter, respondToOffer } from '../../game/transfers';
+import { acceptCounter, respondToOffer, transferRealism } from '../../game/transfers';
 import type { Player, Role, TransferOffer } from '../../game/types';
 import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
 import { ClubLink, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
@@ -30,10 +30,17 @@ export function Transfers({ tab: initial }: { tab?: string }) {
   );
 }
 
-function PlayerList({ players }: { players: Player[] }) {
+function RealismTag({ p }: { p: Player }) {
+  const r = transferRealism(p);
+  const cls = r.level === 0 ? 'good' : r.level === 1 ? 'warn' : 'bad';
+  return <span className={`tag ${cls}`} title={r.reasons.map((k) => t(k)).join('\n')}>{t(`real.level${r.level}`)}</span>;
+}
+
+function PlayerList({ players, initialSort = 'val' }: { players: Player[]; initialSort?: string }) {
   const g = useGame()!;
   const { nav } = useNav();
   const cols: Col<Player>[] = [
+    ...(g.userClub ? [{ key: 'real', label: t('real.col'), render: (p: Player) => <RealismTag p={p} />, sort: (p: Player) => { const r = transferRealism(p); return -r.level * 100 + r.score; }, title: t('real.hint') }] : []),
     { key: 'name', label: t('col.name'), render: (p) => <PlayerLink p={p} />, sort: (p) => p.last },
     { key: 'pos', label: t('col.pos'), render: (p) => posStr(p) },
     { key: 'age', label: t('col.age'), render: (p) => ageOn(p.dob, g.date), sort: (p) => ageOn(p.dob, g.date), className: 'num' },
@@ -45,7 +52,7 @@ function PlayerList({ players }: { players: Player[] }) {
     { key: 'exp', label: t('col.expires'), render: (p) => (p.contract ? p.contract.expires.slice(0, 4) : '-'), sort: (p) => p.contract?.expires ?? '' },
     { key: 'k', label: t('tr.known'), render: (p) => `${Math.round(knowledgeOf(p))}%`, sort: (p) => knowledgeOf(p), className: 'num' },
   ];
-  return <Table rows={players} cols={cols} rowKey={(p) => p.id} onRow={(p) => nav({ name: 'player', id: p.id })} initialSort="val" limit={250} />;
+  return <Table rows={players} cols={cols} rowKey={(p) => p.id} onRow={(p) => nav({ name: 'player', id: p.id })} initialSort={initialSort} limit={250} />;
 }
 
 function Search() {
@@ -61,6 +68,7 @@ function Search() {
   const [onlyListed, setOnlyListed] = useState(false);
   const [expiring, setExpiring] = useState(false);
   const [onlyKnown, setOnlyKnown] = useState(false);
+  const [realism, setRealism] = useState(0); // 0 alle, 1 realistiske, 2 realistiske + måske
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => g.nations[a].name.localeCompare(g.nations[b].name)), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
   const results = useMemo(() => {
@@ -79,11 +87,15 @@ function Search() {
       if (expiring && (!p.contract || p.contract.expires > seasonEnd)) continue;
       if (onlyKnown && knowledgeOf(p) < 50) continue;
       if (role && naturalRole(p) !== role) continue;
+      if (realism) {
+        const r = transferRealism(p);
+        if (r.level > (realism === 1 ? 0 : 1)) continue;
+      }
       out.push(p);
       if (out.length > 3000) break;
     }
     return out;
-  }, [g, name, role, minAge, maxAge, maxValue, nation, league, onlyFree, onlyListed, expiring, onlyKnown, seasonEnd]);
+  }, [g, name, role, minAge, maxAge, maxValue, nation, league, onlyFree, onlyListed, expiring, onlyKnown, seasonEnd, realism]);
   return (
     <div>
       <Panel title={t('tr.filters')}>
@@ -105,6 +117,13 @@ function Search() {
           </select>
         </div>
         <div className="row" style={{ marginTop: 6 }}>
+          {g.userClub > 0 && (
+            <select value={realism} onChange={(e) => setRealism(Number(e.target.value))} title={t('real.hint')}>
+              <option value={0}>{t('real.all')}</option>
+              <option value={1}>{t('real.only')}</option>
+              <option value={2}>{t('real.maybe')}</option>
+            </select>
+          )}
           <label className="row"><input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.target.checked)} />{t('tr.free')}</label>
           <label className="row"><input type="checkbox" checked={onlyListed} onChange={(e) => setOnlyListed(e.target.checked)} />{t('tr.listedOnly')}</label>
           <label className="row"><input type="checkbox" checked={expiring} onChange={(e) => setExpiring(e.target.checked)} />{t('tr.expiring')}</label>
@@ -112,7 +131,7 @@ function Search() {
           <span className="muted">{results.length > 3000 ? '3000+' : results.length} {t('tr.results')}</span>
         </div>
       </Panel>
-      <PlayerList players={results} />
+      <PlayerList players={results} initialSort={realism ? 'real' : 'val'} />
     </div>
   );
 }

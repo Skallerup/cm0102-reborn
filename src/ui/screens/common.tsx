@@ -21,6 +21,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.injury === 'string') p.injury = t(`injury.${p.injury}`);
   if (typeof p.lane === 'string') p.lane = t(`lane.${p.lane}`);
   if (p.kind === 'transfer' || p.kind === 'wage') p.kind = t(`board.kind.${p.kind}`);
+  if (n.key === 'staff.hired' && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);
   return p;
 }

@@ -20,9 +20,59 @@ const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
 // ---------- værdi og krav ----------
 
+// Cache over truppernes CA-rækkefølge (nulstilles dagligt og ved transfers)
+let rankCache = new Map<number, number[]>();
+let rankCacheDate = '';
+
 export function keyPlayerRank(p: Player): number {
   if (!p.club) return 99;
-  return squad(p.club).map((x) => x.ca).sort((a, b) => b - a).indexOf(p.ca) + 1;
+  const g = gs();
+  if (rankCacheDate !== g.date) { rankCache = new Map(); rankCacheDate = g.date; }
+  let cas = rankCache.get(p.club);
+  if (!cas) {
+    cas = squad(p.club).map((x) => x.ca).sort((a, b) => b - a);
+    rankCache.set(p.club, cas);
+  }
+  return cas.indexOf(p.ca) + 1;
+}
+
+export type Realism = { level: 0 | 1 | 2; score: number; reasons: string[] };
+
+/**
+ * Hvor realistisk er en handel for brugerens klub? (0 = realistisk, 1 = måske, 2 = urealistisk)
+ * Ser på spillerens interesse, om klubben vil sælge, transfersum og lønkrav.
+ */
+export function transferRealism(p: Player): Realism {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  const reasons: string[] = [];
+  if (!club || p.club === club.id) return { level: 2, score: -99, reasons };
+  let score = 0;
+  let level: 0 | 1 | 2 = 0;
+  const bump = (l: 0 | 1 | 2, key: string, s: number) => { if (l > level) level = l; reasons.push(key); score -= s; };
+  const interest = playerInterest(p, club);
+  if (interest === 'reputation') bump(2, 'real.reputation', 50);
+  else if (interest === 'happy') bump(2, 'real.happy', 40);
+  else if (p.rep - club.rep > 15) bump(1, 'real.repGap', 10);
+  if (p.loan || p.contract?.futureClub) bump(2, 'real.unavailable', 50);
+  if (p.club) {
+    const seller = g.clubs[p.club];
+    const rank = keyPlayerRank(p);
+    if (rank <= 2 && seller && seller.rep >= club.rep) bump(2, 'real.notForSale', 30);
+    const price = askingPrice(p);
+    if (price > club.transferBudget) bump(price > club.transferBudget * 1.5 ? 2 : 1, 'real.tooExpensive', 25 * Math.min(4, price / Math.max(1, club.transferBudget)));
+    else score += 5 * (1 - price / Math.max(1, club.transferBudget));
+    if (p.listed) { score += 8; reasons.push('real.listed'); }
+    if (canPreContract(p)) { score += 6; reasons.push('real.bosman'); }
+  } else {
+    score += 6;
+    reasons.push('real.free');
+  }
+  const bill = squad(club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
+  if (bill + wageDemand(p, club) > club.wageBudget * 1.02) bump(1, 'real.wages', 10);
+  // Vil han få spilletid? Spillere langt over klubbens niveau er mere interesserede i store klubber
+  score += Math.max(-10, Math.min(10, (club.rep - p.rep) / 3));
+  return { level, score: Math.round(score * 10) / 10, reasons };
 }
 
 export function askingPrice(p: Player): number {
@@ -203,6 +253,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
     p.contract = { wage, expires: exp };
   }
   setClub(p, buyer.id);
+  rankCacheDate = '';
   p.listed = false;
   p.joined = g.date;
   p.morale = Math.min(20, p.morale + 2);
