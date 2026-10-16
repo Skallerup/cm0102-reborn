@@ -154,7 +154,7 @@ function Offers() {
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td><ClubLink id={o.buyer} /></td>
                 <td className="num">{o.loan ? `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}` : money(o.fee)}</td>
-                <td>{status(o)}</td>
+                <td>{status(o)}{o.priceRounds ? <span className="tag">{t('offer.round', { n: o.priceRounds })}</span> : null}{g.players[o.player]?.listPrice ? <div className="muted">{t('list.price')}: {money(g.players[o.player].listPrice!)}</div> : null}</td>
                 <td>
                   {o.status === 'pending' && (
                     <div className="row">

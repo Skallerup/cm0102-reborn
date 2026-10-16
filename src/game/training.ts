@@ -5,6 +5,9 @@ import { rng } from './rng';
 import { gs } from './state';
 import type { Player } from './types';
 import { valueFromCA } from './data/generate';
+import { ROLE_WEIGHTS, naturalRole } from './attributes';
+import { isHumanClub } from './humans';
+import { squad } from './state';
 
 export interface Schedule {
   key: string;
@@ -117,3 +120,91 @@ function roundV(v: number) {
 }
 
 export { ATTRS };
+
+// ---------- udviklingshistorik ----------
+
+/** Gem et øjebliksbillede af spillerens attributter (bruges til udviklingsgrafer) */
+export function recordDevelopment(p: Player, date = gs().date) {
+  const snap = { d: date, a: p.attrs.slice(0, 36).map((v) => Math.round(v * 10) / 10) };
+  const dev = p.dev ?? (p.dev = []);
+  const last = dev[dev.length - 1];
+  if (last && last.d.slice(0, 7) === date.slice(0, 7)) dev[dev.length - 1] = snap;
+  else dev.push(snap);
+  if (dev.length > 36) dev.shift();
+}
+
+/** Månedligt: øjebliksbilleder for alle menneskestyrede klubbers spillere */
+export function monthlyDevelopment() {
+  const g = gs();
+  for (const c of Object.values(g.clubs)) {
+    if (!isHumanClub(c.id)) continue;
+    for (const p of squad(c.id)) recordDevelopment(p);
+  }
+  // udlejede spillere følges også
+  for (const p of Object.values(g.players)) if (p.loan && isHumanClub(p.loan.from)) recordDevelopment(p);
+}
+
+// ---------- assistentens træningsforslag ----------
+
+export interface TrainingAdvice {
+  key: string;
+  reason: string;
+  attrs: string[];
+}
+
+const GK_KEYS = new Set(['handling', 'oneOnOnes', 'reflexes']);
+
+/** Hvad bør spilleren træne? Ser på rollens vigtigste attributter, alder, skader og dødbolde. */
+export function trainingAdvice(p: Player): TrainingAdvice {
+  const g = gs();
+  const age = ageOn(p.dob, g.date);
+  if (p.injury && p.injury.days > 7) return { key: 'rest', reason: 'adv.injured', attrs: [] };
+  const role = naturalRole(p);
+  const w = ROLE_WEIGHTS[role];
+  // reference: gennemsnit af rollens fem vigtigste attributter
+  const keyIdx = w.map((x, i) => [x, i] as const).filter(([, i]) => i < 36).sort((a, b) => b[0] - a[0]).slice(0, 5).map(([, i]) => i);
+  const ref = keyIdx.reduce((s, i) => s + p.attrs[i], 0) / keyIdx.length;
+  if (age >= 31) {
+    const phys = (p.attrs[A.pace] + p.attrs[A.stamina] + p.attrs[A.strength]) / 3;
+    if (phys < ref - 1) return { key: 'fitness', reason: 'adv.age', attrs: ['stamina', 'pace'] };
+  }
+  let best: TrainingAdvice = { key: 'general', reason: 'adv.balanced', attrs: [] };
+  let bestScore = 0.35;
+  for (const s of SCHEDULES) {
+    if (s.key === 'rest' || s.key === 'general') continue;
+    if (role !== 'GK' && s.key === 'goalkeeping') continue;
+    if (role === 'GK' && s.key !== 'goalkeeping' && s.key !== 'fitness') continue;
+    let score = 0;
+    const weak: [string, number][] = [];
+    for (const [k, fw] of Object.entries(s.focus) as [AttrKey, number][]) {
+      const i = A[k];
+      if (i >= 36) continue;
+      if (role !== 'GK' && GK_KEYS.has(k)) continue;
+      const gap = Math.max(0, ref - p.attrs[i]);
+      const contrib = gap * fw * (w[i] ?? 0.1);
+      score += contrib;
+      if (contrib > 0) weak.push([k, contrib]);
+    }
+    // dødboldsskytter får fordel af dødboldstræning
+    if (s.key === 'setpieces') {
+      const t = g.tactic;
+      const taker = !!t && p.club === g.userClub && [t.freeKicks, t.corners, t.penalties].includes(p.id);
+      score = taker ? score * 3 + 0.5 : score * 0.3;
+    }
+    if (age <= 21 && s.key !== 'fitness') score *= 1.15; // unge: fokuser på færdigheder
+    if (score > bestScore) {
+      bestScore = score;
+      best = { key: s.key, reason: age <= 21 ? 'adv.youth' : 'adv.weakness', attrs: weak.sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k) };
+    }
+  }
+  return best;
+}
+
+/** Månedlig besked fra assistenten om spillere der træner forkert */
+export function monthlyTrainingReport(): { mismatches: number } {
+  const g = gs();
+  if (!g.userClub) return { mismatches: 0 };
+  let mismatches = 0;
+  for (const p of squad(g.userClub)) if (trainingAdvice(p).key !== p.training) mismatches++;
+  return { mismatches };
+}

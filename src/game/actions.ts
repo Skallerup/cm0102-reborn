@@ -8,7 +8,7 @@ import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
 import { addNews, gs, notify } from './state';
 import {
-  acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, startPreContract, toggleListed,
+  acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
 import type { ScoutAssignment, Tactic, TransferOffer } from './types';
 
@@ -17,7 +17,7 @@ export type Action =
   | { t: 'savedTactics'; list: Tactic[] }
   | { t: 'training'; pid: number; key: string }
   | { t: 'trainingAll'; key: string }
-  | { t: 'listed'; pid: number }
+  | { t: 'listed'; pid: number; price?: number | null }
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
@@ -57,7 +57,11 @@ export function applyAction(a: Action): unknown {
     case 'savedTactics': g.savedTactics = a.list; return 'ok';
     case 'training': { const p = g.players[a.pid]; if (p?.club === g.userClub) p.training = a.key; return 'ok'; }
     case 'trainingAll': for (const p of Object.values(g.players)) if (p.club === g.userClub && g.userClub) p.training = a.key; return 'ok';
-    case 'listed': if (g.players[a.pid]?.club === g.userClub) toggleListed(a.pid); return 'ok';
+    case 'listed':
+      if (g.players[a.pid]?.club !== g.userClub) return 'error';
+      if (a.price === undefined) toggleListed(a.pid);
+      else setListPrice(a.pid, a.price);
+      return 'ok';
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
     case 'release': releasePlayer(a.pid); return 'ok';
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);

@@ -14,6 +14,7 @@ import { setBoardExpectation } from './board';
 import { fairTicketPrice, transferBudgetFor } from './finance';
 import { initKnowledge } from './scouting';
 import { CHALLENGES } from './challenges';
+import { monthlyDevelopment, recordDevelopment } from './training';
 
 export interface WorldData {
   version: number;
@@ -182,6 +183,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const club = g.clubs[o.clubId];
   takeOverClub(club);
   initKnowledge();
+  monthlyDevelopment();
   if (o.challenge) {
     const ch = CHALLENGES.find((c) => c.id === o.challenge);
     if (ch) {
@@ -236,6 +238,7 @@ export function takeOverClub(club: Club) {
     if (score > bestScore + 5) { bestScore = score; best = t; }
   }
   g.tactic = best;
+  for (const p of sq) recordDevelopment(p);
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };
   setBoardExpectation();
 }

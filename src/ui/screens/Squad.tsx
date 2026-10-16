@@ -13,7 +13,7 @@ export function statusTags(p: Player, userClub: number) {
     <>
       {p.injury && <span className="tag bad" title={t(`injury.${p.injury.key}`)}>{t('tag.inj')} {p.injury.days}d</span>}
       {p.banned > 0 && <span className="tag bad">{t('tag.ban')} {p.banned}</span>}
-      {p.listed && <span className="tag warn">{t('tag.listed')}</span>}
+      {p.listed && <span className="tag warn">{t('tag.listed')}{p.listPrice ? ` ${money(p.listPrice)}` : ''}</span>}
       {p.loan && <span className="tag">{p.loan.from === userClub ? t('tag.loanOut') : t('tag.loan')}</span>}
       {p.contract?.futureClub && <span className="tag warn">{t('tag.leaving')}</span>}
       {(p.unhappy ?? 0) > 60 && <span className="tag bad">{t('tag.unhappy')}</span>}

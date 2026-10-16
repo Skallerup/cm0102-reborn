@@ -101,6 +101,7 @@ export function Shell() {
         <div className="date">{dateFmt(g.date, true)}</div>
         {club && <div className="money">{t('top.balance')}: {money(club.balance)} · {t('top.budget')}: {money(club.transferBudget)}</div>}
         <div className="spacer" />
+        <FullscreenButton />
         {nextMatch && <span className="muted nowrap">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
         {online ? <OnlineControls /> : (
           <>
@@ -196,4 +197,20 @@ function Screen() {
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
   }
+}
+
+function FullscreenButton() {
+  const [on, setOn] = useState(!!document.fullscreenElement);
+  useEffect(() => {
+    const h = () => setOn(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', h);
+    return () => document.removeEventListener('fullscreenchange', h);
+  }, []);
+  if (!document.fullscreenEnabled) return null;
+  return (
+    <button className="small" title={on ? t('top.exitFullscreen') : t('top.fullscreen')} aria-label={on ? t('top.exitFullscreen') : t('top.fullscreen')}
+      onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen(); }}>
+      {on ? '⤡' : '⛶'}
+    </button>
+  );
 }

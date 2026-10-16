@@ -127,6 +127,9 @@ table.grid td.center, table.grid th.center { text-align: center; }
 .kit { display: inline-block; width: 11px; height: 11px; border: 2px solid; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
 .nat { display: inline-block; min-width: 30px; font-size: 10px; color: var(--muted); letter-spacing: 0.03em; }
 
+.dev-arrow { font-size: 10px; font-weight: bold; margin-right: 3px; }
+.dev-arrow.up { color: var(--good); }
+.dev-arrow.down { color: var(--bad); }
 .attr { display: inline-block; min-width: 22px; text-align: center; font-weight: bold; border-radius: 2px; }
 .a-top { color: #7dffa0; }
 .a-good { color: #c6f58a; }

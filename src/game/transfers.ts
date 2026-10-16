@@ -4,6 +4,7 @@ import { addDays, ageOn, month, year } from './dates';
 import { roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
 import { hash01, rng } from './rng';
+import { recordDevelopment } from './training';
 import { addNews, gs, setClub, squad } from './state';
 import { clubLevel } from './scouting';
 import type { Club, Player, Role, TransferOffer } from './types';
@@ -78,6 +79,7 @@ export function transferRealism(p: Player): Realism {
 
 export function askingPrice(p: Player): number {
   const g = gs();
+  if (p.listed && p.listPrice) return p.listPrice;
   let f = 1.15;
   const rank = keyPlayerRank(p);
   if (rank <= 3) f *= 1.5;
@@ -195,12 +197,23 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
     return;
   }
   if (action === 'counter' && counter) {
-    // AI accepterer modbud hvis inden for rækkevidde
-    if (counter <= o.fee * 1.25 && counter <= buyer.transferBudget) {
+    // Prisforhandling med AI-køberen
+    const max = o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25));
+    if (counter <= max) {
       o.fee = counter;
     } else {
-      o.status = 'withdrawn';
-      addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } });
+      o.priceRounds = (o.priceRounds ?? 0) + 1;
+      // bliver modbuddet ved at være langt over det de vil betale, eller er der forhandlet længe, går de
+      if (o.priceRounds >= 3 || counter > max * 1.6) {
+        o.status = 'withdrawn';
+        addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } });
+        return;
+      }
+      // ellers hæver de buddet et stykke mod deres smertegrænse
+      const step = o.priceRounds === 1 ? 0.6 : 1;
+      o.fee = roundValue(Math.min(max, o.fee + (max - o.fee) * step));
+      o.respondBy = addDays(g.date, 3);
+      addNews({ cat: 'transfer', key: o.fee >= max ? 'transfer.aiFinalOffer' : 'transfer.aiRaised', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } });
       return;
     }
   }
@@ -277,11 +290,12 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
   setClub(p, buyer.id);
   rankCacheDate = '';
   p.listed = false;
+  p.listPrice = undefined;
   p.joined = g.date;
   p.morale = Math.min(20, p.morale + 2);
   p.form = [];
   o.status = 'completed';
-  asOwner(buyer.id, () => { g.knowledge[p.id] = 100; });
+  asOwner(buyer.id, () => { g.knowledge[p.id] = 100; recordDevelopment(p); });
   // fjern fra AI-taktik
   if (seller?.tactic) seller.tactic = null;
   if (seller) asOwner(seller.id, () => {
@@ -307,7 +321,16 @@ function isUserLeague(c: Club) {
 
 export function toggleListed(pid: number) {
   const p = gs().players[pid];
-  if (p) p.listed = !p.listed;
+  if (p) { p.listed = !p.listed; if (!p.listed) p.listPrice = undefined; }
+}
+
+/** Sæt spilleren til salg med en udbudspris (null = fjern fra salgslisten) */
+export function setListPrice(pid: number, price: number | null) {
+  const p = gs().players[pid];
+  if (!p) return;
+  if (price === null) { p.listed = false; p.listPrice = undefined; return; }
+  p.listed = true;
+  p.listPrice = roundValue(Math.max(10_000, price));
 }
 
 export function releasePlayer(pid: number) {
@@ -549,7 +572,8 @@ function aiClubTurn(club: Club) {
   if (isHumanClub(target.club)) {
     // bud til en menneskelig manager
     if (g.offers.some((o) => o.player === target.id && o.status === 'pending')) return;
-    const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: target.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) };
+    const maxFee = roundValue(Math.min(club.transferBudget, fee * rng.range(1.05, 1.35)));
+    const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: target.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
     asOwner(target.club, () => addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(target), fee }, link: { kind: 'offer', id: o.id } }));
     return;
@@ -683,8 +707,10 @@ export function aiBidsForListed() {
   for (const p of squad(g.userClub)) {
     if (!p.listed || p.loan || p.contract?.futureClub) continue;
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
-    if (!rng.chance(chance)) continue;
     const ask = askingPrice(p);
+    // lav udbudspris i forhold til værdien gør spilleren ekstra attraktiv
+    const attract = Math.max(0.25, Math.min(3, Math.pow(p.value / Math.max(1, ask), 1.6)));
+    if (!rng.chance(Math.min(0.75, chance * attract))) continue;
     const role = GROUP[naturalRole(p)];
     const cands = Object.values(g.clubs).filter((c) => {
       if (c.id === g.userClub || isHumanClub(c.id)) return false;
@@ -695,8 +721,10 @@ export function aiBidsForListed() {
     });
     if (!cands.length) continue;
     const club = rng.weighted(cands, (c) => (analyzeNeeds(c.id).some((n) => n.role === role) ? 3 : 1) * (1 + c.rep / 50))!;
-    const fee = roundValue(Math.min(club.transferBudget, ask) * rng.range(0.7, 1.0));
-    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) };
+    const cheap = ask < p.value * 0.9;
+    const fee = roundValue(Math.min(club.transferBudget, ask) * (cheap ? rng.range(0.92, 1.02) : rng.range(0.72, 0.98)));
+    const maxFee = roundValue(Math.min(club.transferBudget, Math.max(fee, ask * rng.range(0.95, 1.12), p.value * rng.range(0.9, 1.2))));
+    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
     addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
   }

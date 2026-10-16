@@ -74,6 +74,10 @@ export interface Player {
   yellowCount: number; // gule kort mod karantæne
   training: string; // træningsskema-nøgle
   listed: boolean; // transferlistet
+  /** Månedlige øjebliksbilleder af attributterne (kun menneskestyrede klubbers spillere) */
+  dev?: { d: string; a: number[] }[];
+  /** Udbudspris sat af manageren når spilleren er til salg */
+  listPrice?: number;
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
   loan: { from: number; until: string; share?: number; fee?: number } | null;
   stats: SeasonStats;
@@ -301,6 +305,10 @@ export interface TransferOffer {
   rounds?: number;
   demand?: { wage: number; years: number };
   preContract?: boolean;
+  /** Det højeste en AI-køber vil betale (bruges i prisforhandling) */
+  maxFee?: number;
+  /** Antal forhandlingsrunder om prisen */
+  priceRounds?: number;
 }
 
 export interface ManagerProfile {
@@ -313,6 +321,8 @@ export interface ManagerProfile {
 }
 
 export interface BoardState {
+  /** Dato for bestyrelsens seneste kampkommentar */
+  lastComment?: string;
   confidence: number; // 0-100
   expectation: string; // nøgle: 'title' | 'top3' | 'tophalf' | 'mid' | 'survive' | 'promotion' | 'playoffs'
   expectedPos: number;

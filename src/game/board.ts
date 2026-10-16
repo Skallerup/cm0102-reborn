@@ -1,6 +1,7 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
 import { finalOrder, sortTable } from './competitions';
 import { rng } from './rng';
+import { addDays } from './dates';
 import { addNews, gs, squad } from './state';
 import type { Club } from './types';
 import { takeOverClub } from './newgame';
@@ -52,6 +53,40 @@ export function boardAfterMatch(scored: number, conceded: number, oppClub: numbe
   const pts = scored > conceded ? 3 : scored === conceded ? 1 : 0;
   const weight = compType === 'league' ? 1.6 : compType === 'continental' ? 1.2 : 0.8;
   g.board.confidence = clamp(g.board.confidence + (pts - expected) * weight, 0, 100);
+  boardMatchComment(scored, conceded, oppClub, compType, diff);
+}
+
+/** Af og til siger bestyrelsen sin mening om en bestemt kamp */
+function boardMatchComment(scored: number, conceded: number, oppClub: number, compType: string, diff: number) {
+  const g = gs();
+  const opp = g.clubs[oppClub];
+  if (!opp) return;
+  // højst én kommentar hver 10. dag
+  if (g.board.lastComment && g.board.lastComment > addDays(g.date, -10)) return;
+  const margin = scored - conceded;
+  const strongerOpp = diff < -0.6; // modstanderen er klart bedre
+  const weakerOpp = diff > 0.6;
+  let key: string | null = null;
+  let p = 0;
+  if (margin > 0 && strongerOpp) { key = 'board.c.upsetWin'; p = 0.8; }
+  else if (margin >= 4) { key = 'board.c.thrashing'; p = 0.6; }
+  else if (margin > 0 && compType === 'continental') { key = 'board.c.europeWin'; p = 0.45; }
+  else if (margin < 0 && weakerOpp && compType === 'cup') { key = 'board.c.cupShock'; p = 0.85; }
+  else if (margin <= -4) { key = 'board.c.humiliation'; p = 0.75; }
+  else if (margin < 0 && weakerOpp) { key = 'board.c.badLoss'; p = 0.5; }
+  else if (margin === 0 && weakerOpp && compType === 'league') { key = 'board.c.dropped'; p = 0.15; }
+  else if (margin > 0 && compType === 'league' && g.board.expectation === 'survive') { key = 'board.c.survivalWin'; p = 0.15; }
+  else if (margin >= 2 && !weakerOpp) { key = 'board.c.goodWin'; p = 0.3; }
+  // rækker i ligaen
+  if (!key && compType === 'league') {
+    const form = g.comps[g.clubs[g.userClub]?.league]?.table.find((r) => r.club === g.userClub)?.form ?? '';
+    if (form.length >= 5 && /^W{5}$/.test(form.slice(-5))) { key = 'board.c.winStreak'; p = 0.7; }
+    else if (form.length >= 4 && /^L{4}$/.test(form.slice(-4))) { key = 'board.c.lossStreak'; p = 0.8; }
+    else if (form.length >= 5 && !form.slice(-5).includes('W') && g.board.expectation !== 'survive') { key = 'board.c.noWins'; p = 0.6; }
+  }
+  if (!key || !rng.chance(p)) return;
+  g.board.lastComment = g.date;
+  addNews({ cat: 'board', key, params: { opp: opp.name, score: `${scored}-${conceded}` } });
 }
 
 /** Månedlig vurdering */

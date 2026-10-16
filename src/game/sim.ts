@@ -8,7 +8,7 @@ import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, Player, Tactic } from './types';
-import { monthlyValues, weeklyDevelopment } from './training';
+import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
 import { aiBidsForListed, aiBosman, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
@@ -261,6 +261,12 @@ function newDay() {
   if (day(d) === 1) {
     monthlyIncome();
     monthlyValues();
+    monthlyDevelopment();
+    forEachHuman(() => {
+      const { mismatches } = monthlyTrainingReport();
+      const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');
+      if (mismatches >= 3 && asst && month(d) % 3 === 1) addNews({ cat: 'general', key: 'news.trainingAdvice', params: { coach: `${asst.first} ${asst.last}`, n: mismatches } });
+    });
     forEachHuman(boardMonthly);
     if (month(d) >= 9 || month(d) <= 4) aiSackings();
     if (month(d) >= 1 && month(d) <= 5) aiRenewals();

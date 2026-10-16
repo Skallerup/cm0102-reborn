@@ -13,6 +13,8 @@ import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
+import { Arrow, DevelopmentChart, DevelopmentList, attrDelta, totalDelta } from '../dev';
+import { trainingAdvice } from '../../game/training';
 import { statusTags } from './Squad';
 
 export function PlayerScreen({ id }: { id: number }) {
@@ -23,6 +25,7 @@ export function PlayerScreen({ id }: { id: number }) {
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
   const k = knowledgeOf(p);
@@ -83,8 +86,11 @@ export function PlayerScreen({ id }: { id: number }) {
                     {SCHEDULES.map((s) => <option key={s.key} value={s.key}>{t(`train.${s.key}`)}</option>)}
                   </select>
                 </div>
+                <AdviceLine pid={p.id} />
                 <div className="row">
-                  <button onClick={() => dispatch({ t: 'listed', pid: p.id })}>{p.listed ? t('player.unlist') : t('player.list')}</button>
+                  {p.listed
+                    ? <><button onClick={() => setListOpen(true)}>{t('list.changePrice')}</button><button onClick={() => dispatch({ t: 'listed', pid: p.id, price: null })}>{t('player.unlist')}</button></>
+                    : <button onClick={() => setListOpen(true)}>{t('player.list')}</button>}
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
                   <button onClick={() => setLoanOut(true)} disabled={!!p.loan || !windowOpen()}>{t('player.loanOut')}</button>
                   <button className="danger" onClick={() => { if (confirm(t('player.releaseConfirm'))) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
@@ -127,7 +133,7 @@ export function PlayerScreen({ id }: { id: number }) {
               <div className="attr-list">
                 {GROUPS[grp].filter((a) => p.pos[0] >= 15 || !['handling', 'oneOnOnes', 'reflexes'].includes(a)).map((a) => {
                   const [lo, hi] = attrRange(p, A[a], k);
-                  return [<span key={a + 'l'}>{t(`attr.${a}`)}</span>, <AttrVal key={a + 'v'} lo={lo} hi={hi} />];
+                  return [<span key={a + 'l'}>{t(`attr.${a}`)}</span>, <span key={a + 'v'}>{mine && <Arrow d={attrDelta(p, A[a], 3)} small />}<AttrVal lo={lo} hi={hi} /></span>];
                 })}
               </div>
             </div>
@@ -141,6 +147,17 @@ export function PlayerScreen({ id }: { id: number }) {
           </div>
         </div>
       </Panel>
+      {p.dev && p.dev.length > 0 && (
+        <div className="cols">
+          <Panel title={t('dev.title')} right={<span className="muted">{t('dev.since', { date: dateFmt(p.dev[0].d) })}</span>}>
+            <DevelopmentChart p={p} />
+          </Panel>
+          <Panel title={t('dev.changes')}>
+            <DevelopmentList p={p} />
+            <div className="muted" style={{ marginTop: 6 }}>{t('dev.total')}: <Arrow d={totalDelta(p, 999)} /></div>
+          </Panel>
+        </div>
+      )}
       <div className="cols">
         <Panel title={t('player.thisSeason')}>
           <div className="kv">
@@ -164,6 +181,7 @@ export function PlayerScreen({ id }: { id: number }) {
         </Panel>
       </div>
       {bid && <BidModal pid={p.id} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
+      {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
       {neg && <NegotiationModal offer={neg.offer} renewPid={neg.renew} onClose={() => setNeg(null)} />}
       {club && <div className="muted">{t('player.clubRep')}: {club.rep}</div>}
@@ -249,5 +267,50 @@ function LoanOutModal({ pid, onClose, onDone }: { pid: number; onClose: () => vo
         </div>
       </div>
     </Modal>
+  );
+}
+
+function ListModal({ pid, onClose }: { pid: number; onClose: () => void }) {
+  const g = gs();
+  const p = g.players[pid];
+  const [pct, setPct] = useState(p.listPrice ? Math.round((p.listPrice / Math.max(1, p.value)) * 100) : 100);
+  const price = Math.max(10_000, Math.round((p.value * pct) / 100 / 10_000) * 10_000);
+  const hint = pct <= 60 ? 'list.hintBargain' : pct <= 90 ? 'list.hintCheap' : pct <= 115 ? 'list.hintFair' : pct <= 150 ? 'list.hintHigh' : 'list.hintTooHigh';
+  return (
+    <Modal title={t('list.title', { player: `${p.first} ${p.last}` })} onClose={onClose}>
+      <div className="col">
+        <div className="kv">
+          <span>{t('col.value')}</span><span>{money(p.value)}</span>
+          {p.contract && <><span>{t('col.expires')}</span><span>{dateFmt(p.contract.expires)}</span></>}
+        </div>
+        <label>{t('list.price')}: <b className="accent">{money(price)}</b> ({pct}% {t('list.ofValue')})
+          <input type="range" min={30} max={200} step={5} value={pct} onChange={(e) => setPct(Number(e.target.value))} style={{ width: '100%' }} />
+        </label>
+        <div className="row">
+          {[50, 75, 100, 125, 150].map((v) => <button key={v} className={`small ${pct === v ? 'primary' : ''}`} onClick={() => setPct(v)}>{v}%</button>)}
+        </div>
+        <div className={`insight ${pct <= 90 ? 'good' : pct > 150 ? 'bad' : ''}`}>{t(hint)}</div>
+        <div className="muted">{t('list.explain')}</div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={() => { dispatch({ t: 'listed', pid, price }); onClose(); }}>{p.listed ? t('list.update') : t('player.list')}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AdviceLine({ pid }: { pid: number }) {
+  const g = gs();
+  const p = g.players[pid];
+  const adv = trainingAdvice(p);
+  const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');
+  if (adv.key === p.training) return <div className="muted">✓ {t('adv.agrees', { coach: asst ? asst.last : t('role.staff.assistant') })}</div>;
+  return (
+    <div className="insight">
+      {t('adv.suggest', { coach: asst ? `${asst.first} ${asst.last}` : t('role.staff.assistant'), schedule: t(`train.${adv.key}`) })}{' '}
+      <span className="muted">{t(adv.reason, { attrs: adv.attrs.map((a) => t(`attr.${a}`)).join(` ${t('common.and')} `) })}</span>{' '}
+      <button className="small primary" onClick={() => dispatch({ t: 'training', pid, key: adv.key })}>{t('adv.use')}</button>
+    </div>
   );
 }
