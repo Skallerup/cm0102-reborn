@@ -410,6 +410,22 @@ export interface Options {
   fullCommentary: boolean;
 }
 
+export interface HumanSlot {
+  pid: string;
+  name: string;
+  userClub: number;
+  manager: ManagerProfile;
+  board: BoardState;
+  tactic: Tactic | null;
+  savedTactics: Tactic[];
+  knowledge: Record<number, number>;
+  shortlist: number[];
+  news: NewsItem[];
+  jobOffers: number[];
+  challenge: ChallengeState | null;
+  pendingFixture: number | null;
+}
+
 export interface GameState {
   version: number;
   id: string; // save-id
@@ -447,6 +463,11 @@ export interface GameState {
   vacancies: number[]; // klubber uden manager
   jobOffers: number[];
   lastMonthAward?: string;
+  /** Online multiplayer: menneskelige managere og hvem der er "aktiv" lige nu */
+  humans?: HumanSlot[];
+  active?: string;
+  /** Sidste handlings-index fra serveren der er indarbejdet i dette øjebliksbillede */
+  lastActionIdx?: number;
 }
 
 export interface SeasonSummary {

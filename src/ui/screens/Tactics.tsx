@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { roleScore, slotFit, slotRole } from '../../game/attributes';
-import { gs, notify, squad } from '../../game/state';
+import { gs, squad } from '../../game/state';
+import { act } from '../../game/actions';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic } from '../../game/tactics';
 import type { Player, PlayerInstructions, Tactic, TeamInstructions } from '../../game/types';
 import { t } from '../../i18n';
@@ -11,12 +12,12 @@ import { Head } from './common';
 export function Tactics() {
   const g = useGame()!;
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
-  const set = (tac: Tactic) => { g.tactic = tac; notify(); };
+  const set = (tac: Tactic) => act({ t: 'tactic', tactic: tac });
   return (
     <div>
       <Head title={t('nav.tactics')}>
         <button onClick={() => set(autoSelect(g.tactic!, squad(g.userClub)))}>{t('tac.assistantPick')}</button>
-        <button onClick={() => { g.savedTactics = [...g.savedTactics.filter((x) => x.formation !== g.tactic!.formation), structuredClone(g.tactic!)].slice(-6); notify(); }}>{t('tac.save')}</button>
+        <button onClick={() => act({ t: 'savedTactics', list: [...g.savedTactics.filter((x) => x.formation !== g.tactic!.formation), structuredClone(g.tactic!)].slice(-6) })}>{t('tac.save')}</button>
         {g.savedTactics.length > 0 && (
           <select value="" onChange={(e) => { const s = g.savedTactics[Number(e.target.value)]; if (s) set({ ...structuredClone(s), lineup: g.tactic!.lineup.length === s.lineup.length ? g.tactic!.lineup : s.lineup }); }}>
             <option value="">{t('tac.load')}</option>

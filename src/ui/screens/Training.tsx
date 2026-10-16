@@ -1,4 +1,5 @@
-import { notify, squad } from '../../game/state';
+import { squad } from '../../game/state';
+import { act } from '../../game/actions';
 import { SCHEDULES } from '../../game/training';
 import { ageOn } from '../../game/dates';
 import { t } from '../../i18n';
@@ -13,7 +14,7 @@ export function Training() {
   const coaches = Object.values(g.staff).filter((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant'));
   const avg = coaches.length ? coaches.reduce((s, c) => s + c.attrs.coaching, 0) / coaches.length : 0;
   const club = g.clubs[g.userClub];
-  const setAll = (key: string) => { for (const p of players) p.training = key; notify(); };
+  const setAll = (key: string) => act({ t: 'trainingAll', key });
   return (
     <div>
       <Head title={t('nav.training')}>
@@ -50,7 +51,7 @@ export function Training() {
                   <td><Stars range={scoutStars(p).potential} /></td>
                   <td><Bar value={p.condition} /></td>
                   <td>
-                    <select value={p.training} onChange={(e) => { p.training = e.target.value; notify(); }}>
+                    <select value={p.training} onChange={(e) => act({ t: 'training', pid: p.id, key: e.target.value })}>
                       {SCHEDULES.map((s) => <option key={s.key} value={s.key}>{t(`train.${s.key}`)}</option>)}
                     </select>
                   </td>

@@ -7,6 +7,7 @@ import { rng } from './rng';
 import { addNews, gs, setClub, squad } from './state';
 import { clubLevel } from './scouting';
 import type { Club, Player, Role, TransferOffer } from './types';
+import { asOwner, forEachHuman, isHumanClub } from './humans';
 
 export function windowOpen(date = gs().date): boolean {
   const m = month(date);
@@ -152,11 +153,16 @@ export function makeBid(pid: number, fee: number, loan = false): TransferOffer |
   if (p.club === buyer.id) return 'error';
   if (!loan && fee > buyer.transferBudget) return 'transfer.overBudget';
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
+  const humanSeller = isHumanClub(p.club);
   const o: TransferOffer = {
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,
-    status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, p.club ? rng.int(1, 3) : 7),
+    status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, !p.club ? 7 : humanSeller ? 5 : rng.int(1, 3)),
   };
   g.offers.push(o);
+  if (humanSeller) {
+    // Bud til en anden menneskelig manager
+    asOwner(p.club, () => addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
+  }
   return o;
 }
 
@@ -167,9 +173,25 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   if (!o || o.status !== 'pending' || o.seller !== g.userClub) return;
   const p = g.players[o.player];
   const buyer = g.clubs[o.buyer];
+  const myName = g.clubs[g.userClub]?.name ?? '';
   if (action === 'reject') {
     o.status = 'rejected';
     if (p && p.attrs[42] > 14 && keyPlayerRank(p) > 5) p.morale = Math.max(1, p.morale - 3);
+    if (isHumanClub(buyer.id)) asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidRejected', params: { player: pname(p), club: myName }, link: { kind: 'player', id: p.id } }));
+    return;
+  }
+  if (isHumanClub(buyer.id)) {
+    // Menneskelig køber: modbud eller videre til kontraktforhandling
+    if (action === 'counter' && counter) {
+      o.status = 'countered';
+      o.counter = counter;
+      asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidCountered', params: { player: pname(p), club: myName, fee: counter }, link: { kind: 'offer', id: o.id } }));
+    } else {
+      o.status = 'negotiating';
+      o.respondBy = addDays(g.date, 10);
+      const sellerName = g.clubs[o.seller]?.name ?? '';
+      asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidAccepted', params: { player: pname(p), club: sellerName, fee: o.fee }, link: { kind: 'offer', id: o.id } }));
+    }
     return;
   }
   if (action === 'counter' && counter) {
@@ -247,7 +269,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
     if (seller) {
       seller.balance += o.fee;
       seller.finance.transfersIn += o.fee;
-      seller.transferBudget += Math.round(o.fee * (seller.id === g.userClub ? 0.5 : 0.6));
+      seller.transferBudget += Math.round(o.fee * (isHumanClub(seller.id) ? 0.5 : 0.6));
     }
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     p.contract = { wage, expires: exp };
@@ -259,21 +281,22 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
   p.morale = Math.min(20, p.morale + 2);
   p.form = [];
   o.status = 'completed';
-  if (buyer.id === g.userClub) g.knowledge[p.id] = 100;
+  asOwner(buyer.id, () => { g.knowledge[p.id] = 100; });
   // fjern fra AI-taktik
   if (seller?.tactic) seller.tactic = null;
-  if (seller && seller.id === g.userClub && g.tactic) {
-    g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === p.id ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== p.id) };
-  }
-  const important = buyer.id === g.userClub || seller?.id === g.userClub || o.fee >= 15_000_000 || isUserLeague(buyer) || (seller && isUserLeague(seller));
-  if (important) {
-    addNews({
-      cat: 'transfer',
-      key: o.loan ? 'transfer.loanDone' : o.seller ? 'transfer.done' : 'transfer.freeDone',
-      params: { player: pname(p), from: sellerName(o.seller), to: buyer.name, fee: o.fee },
-      link: { kind: 'player', id: p.id },
-    });
-  }
+  if (seller) asOwner(seller.id, () => {
+    if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === p.id ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== p.id) };
+  });
+  const news = {
+    cat: 'transfer' as const,
+    key: o.loan ? 'transfer.loanDone' : o.seller ? 'transfer.done' : 'transfer.freeDone',
+    params: { player: pname(p), from: sellerName(o.seller), to: buyer.name, fee: o.fee },
+    link: { kind: 'player' as const, id: p.id },
+  };
+  forEachHuman(() => {
+    const involved = buyer.id === g.userClub || seller?.id === g.userClub;
+    if (involved || o.fee >= 15_000_000 || isUserLeague(buyer) || (seller && isUserLeague(seller))) addNews(news);
+  });
 }
 
 function isUserLeague(c: Club) {
@@ -348,7 +371,9 @@ export function startPreContract(pid: number): TransferOffer | string {
 export function processOffers() {
   const g = gs();
   for (const o of g.offers) {
-    if (o.status === 'pending' && o.buyer === g.userClub && g.date >= o.respondBy) {
+    if (o.status === 'pending' && o.buyer === g.userClub && isHumanClub(o.seller) && g.date > o.respondBy) {
+      o.status = 'withdrawn'; // den anden manager svarede ikke
+    } else if (o.status === 'pending' && o.buyer === g.userClub && !isHumanClub(o.seller) && g.date >= o.respondBy) {
       const p = g.players[o.player];
       const buyer = g.clubs[o.buyer];
       if (!p || p.club !== o.seller) { o.status = 'withdrawn'; continue; }
@@ -482,7 +507,7 @@ export function aiTransferTick() {
   const n = Math.max(1, Math.round(clubs.length * rate));
   for (let i = 0; i < n; i++) {
     const club = rng.pick(clubs);
-    if (!club || club.id === g.userClub) continue;
+    if (!club || isHumanClub(club.id)) continue;
     aiClubTurn(club);
   }
 }
@@ -521,12 +546,12 @@ function aiClubTurn(club: Club) {
   }
   const ask = askingPrice(target);
   const fee = roundValue(ask * rng.range(0.85, 1.1));
-  if (target.club === g.userClub) {
-    // bud til brugeren
+  if (isHumanClub(target.club)) {
+    // bud til en menneskelig manager
     if (g.offers.some((o) => o.player === target.id && o.status === 'pending')) return;
-    const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) };
+    const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: target.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) };
     g.offers.push(o);
-    addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(target), fee }, link: { kind: 'offer', id: o.id } });
+    asOwner(target.club, () => addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(target), fee }, link: { kind: 'offer', id: o.id } }));
     return;
   }
   const d = sellerDecision(target, fee, club);
@@ -541,7 +566,7 @@ export function aiRenewals() {
   const g = gs();
   const seasonEnd = `${year(g.date)}-06-30`;
   for (const p of Object.values(g.players)) {
-    if (!p.club || p.club === g.userClub || !p.contract || p.loan) continue;
+    if (!p.club || isHumanClub(p.club) || !p.contract || p.loan) continue;
     if (p.contract.expires > seasonEnd || p.contract.futureClub) continue;
     if (rng.chance(0.25)) {
       const level = clubLevel(p.club);
@@ -571,7 +596,7 @@ export function aiBosman() {
   for (const p of squad(g.userClub)) {
     if (!canPreContractAny(p) || p.contract!.futureClub) continue;
     if (!rng.chance(0.02)) continue;
-    const suitors = Object.values(g.clubs).filter((c) => c.id !== g.userClub && c.rep >= p.rep - 15 && c.rep <= p.rep + 25);
+    const suitors = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.rep >= p.rep - 15 && c.rep <= p.rep + 25);
     const c = rng.pick(suitors);
     if (!c) continue;
     p.contract!.futureClub = c.id;

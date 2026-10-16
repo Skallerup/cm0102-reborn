@@ -6,12 +6,15 @@ import { notify } from '../game/state';
 import type { Lang } from '../game/types';
 import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { Panel } from './components';
+import { OnlineMenu } from './Online';
+import { createOnlineGame } from '../online/client';
 import { loadWorld } from './world';
 
-type View = 'menu' | 'new' | 'load' | 'challenges';
+type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline';
 
 export function Start({ onLang }: { onLang: (l: Lang) => void }) {
-  const [view, setView] = useState<View>('menu');
+  const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
+  const [view, setView] = useState<View>(roomParam ? 'online' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
@@ -36,6 +39,7 @@ export function Start({ onLang }: { onLang: (l: Lang) => void }) {
           <div className="menu-btns">
             <button className="primary" onClick={() => { setChallenge(undefined); setView('new'); }}>{t('start.new')}</button>
             <button onClick={() => setView('load')}>{t('start.load')}</button>
+            <button onClick={() => setView('online')}>🌐 {t('mp.title')}</button>
             <button onClick={() => setView('challenges')}>{t('start.challenges')}</button>
             <label className="row" style={{ justifyContent: 'center' }}>
               <button onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
@@ -71,6 +75,8 @@ export function Start({ onLang }: { onLang: (l: Lang) => void }) {
           </Panel>
         )}
         {view === 'new' && <NewGame challenge={challenge} onBack={() => setView('menu')} setBusy={setBusy} />}
+        {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} setBusy={setBusy} initialCode={roomParam} />}
+        {view === 'newOnline' && <NewGame online onBack={() => setView('online')} setBusy={setBusy} />}
         <div className="footer-note">{t('start.footer')}</div>
       </div>
       {busy && <div className="progress"><div>{busy}</div></div>}
@@ -102,7 +108,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 
 const DEFAULT_NATIONS = ['Denmark', 'England'];
 
-function NewGame({ challenge, onBack, setBusy }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void }) {
+function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean }) {
   const [world, setWorld] = useState<WorldData | null>(null);
   const [err, setErr] = useState('');
   const ch = CHALLENGES.find((c) => c.id === challenge);
@@ -139,20 +145,25 @@ function NewGame({ challenge, onBack, setBusy }: { challenge?: string; onBack: (
   const canStart = name.trim().length > 0 && club > 0 && clubNation !== undefined && active.has(clubNation);
 
   const start = () => {
-    setBusy(t('start.creating'));
-    setTimeout(() => {
-      createGame(world, {
-        managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
-        lang: getLang(), masking, seed, challenge,
-      });
-      notify();
+    setBusy(online ? t('mp.creating') : t('start.creating'));
+    const opts = {
+      managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
+      lang: getLang(), masking, seed, challenge,
+    };
+    setTimeout(async () => {
+      if (online) {
+        try { await createOnlineGame(world, opts); } catch (e) { setErr(String((e as Error).message)); }
+      } else {
+        createGame(world, opts);
+        notify();
+      }
       setBusy('');
     }, 30);
   };
 
   return (
     <div>
-      <Panel title={ch ? t(`challenge.${ch.id}.title`) : t('start.new')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
+      <Panel title={ch ? t(`challenge.${ch.id}.title`) : online ? t('mp.create') : t('start.new')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
         <div className="col">
           {ch && <div className="insight good">{t(`challenge.${ch.id}.desc`)}</div>}
           <label>{t('start.managerName')}
@@ -202,7 +213,7 @@ function NewGame({ challenge, onBack, setBusy }: { challenge?: string; onBack: (
       </Panel>
       <div className="row" style={{ justifyContent: 'flex-end' }}>
         {!canStart && <span className="muted">{t('start.needNameClub')}</span>}
-        <button className="primary" disabled={!canStart} onClick={start}>{t('start.begin')}</button>
+        <button className="primary" disabled={!canStart} onClick={start}>{online ? t('mp.createBtn') : t('start.begin')}</button>
       </div>
       <div className="muted" style={{ marginTop: 8 }}>{t('start.dataNote', { src: world.source })}</div>
     </div>

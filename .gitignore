@@ -4,3 +4,5 @@ data-src
 *.local
 .DS_Store
 smoke-shots
+.vercel
+.env*

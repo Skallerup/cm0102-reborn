@@ -31,6 +31,17 @@ export const da: Record<string, string> = {
   'holiday.title': 'Tag på ferie', 'holiday.text': 'Assistenten passer holdet og spiller kampene, mens du er væk.',
   'holiday.days': '{n} dage', 'holiday.season': 'Sæsonafslutning', 'holiday.go': 'Afsted',
 
+  // online multiplayer
+  'mp.title': 'Online multiplayer', 'mp.useVercel': 'Online multiplayer kræver spillets server og findes kun på hovedadressen:', 'mp.explain': 'Spil mod dine venner i samme verden – hver styrer sit eget hold. Alle laver deres ændringer (taktik, transfers, træning …) og trykker "Klar". Når alle er klar, spilles der frem til efter næste kampdag.',
+  'mp.create': 'Opret online spil', 'mp.createBtn': 'Opret og få invitationslink', 'mp.creating': 'Opretter online spil…', 'mp.join': 'Deltag', 'mp.joinBtn': 'Deltag i spillet',
+  'mp.codePlaceholder': 'Kode', 'mp.myGames': 'Mine online spil', 'mp.connecting': 'Forbinder…', 'mp.players': 'Spillere', 'mp.taken': 'Taget',
+  'mp.invite': 'Invitér', 'mp.inviteLink': 'Invitationslink', 'mp.copied': 'Link kopieret!', 'mp.ready': 'Klar ✓', 'mp.notReady': 'Ikke klar',
+  'mp.waitingFor': 'Venter på: {names}', 'mp.allReady': 'Alle er klar', 'mp.processing': 'Simulerer næste træk…', 'mp.otherProcessing': 'En anden simulerer trækket…',
+  'mp.loading': 'Henter nyt træk…', 'mp.lobby': 'Lobby', 'mp.lobbyText': 'Du er tilmeldt! Du kommer med i spillet, når næste træk er spillet. Når alle har trykket "Klar", går det i gang.',
+  'mp.isReady': 'Klar', 'mp.notReadyYet': 'Ikke klar', 'mp.leaveConfirm': 'Forlad spillet? Du kan altid vende tilbage via Online multiplayer.',
+  'mp.joined': '{manager} har overtaget {club}', 'mp.err.not-found': 'Spillet findes ikke – tjek koden.', 'mp.err.club-taken': 'Klubben er allerede taget.',
+  'mp.err.full': 'Spillet er fyldt (max 8 managere).', 'mp.err.not-ready': 'Værten er ved at oprette spillet – prøv igen om lidt.',
+
   // indbakke
   'inbox.markRead': 'Markér alle læst', 'inbox.messages': 'Beskeder', 'inbox.empty': 'Ingen beskeder', 'inbox.open': 'Åbn',
   'inbox.select': 'Vælg en besked',

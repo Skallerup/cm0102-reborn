@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { gs, notify } from '../../game/state';
-import { negotiate, preferredYears, renewContract, wageDemand } from '../../game/transfers';
+import { gs } from '../../game/state';
+import { act } from '../../game/actions';
+import { preferredYears, wageDemand } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
 import { money, t } from '../../i18n';
 import { Modal } from '../components';
@@ -18,8 +19,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
 
   const submit = () => {
-    const res = offer ? negotiate(offer.id, wage, years) : renewContract(pid, wage, years);
-    notify();
+    const res = offer ? act<string>({ t: 'negotiate', pid, wage, years }) : act<string>({ t: 'renew', pid, wage, years });
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 900); }
     else if (res === 'counter') {
       const d = offer?.demand?.wage ?? wageDemand(p, club);

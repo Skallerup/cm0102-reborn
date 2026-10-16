@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { notify } from '../../game/state';
+import { act } from '../../game/actions';
 import { t } from '../../i18n';
 import { Bar, Panel, PlayerLink } from '../components';
 import { useGame } from '../core';
@@ -37,14 +37,11 @@ export function Scouting() {
                   <td><Bar value={s.attrs.judgingPotential} max={20} /> {s.attrs.judgingPotential}</td>
                   <td>
                     {a?.kind === 'player' ? (
-                      <>{t('scout.watching')} <PlayerLink p={g.players[a.target as number]} /> <button className="small" onClick={() => { s.assignment = null; notify(); }}>×</button></>
+                      <>{t('scout.watching')} <PlayerLink p={g.players[a.target as number]} /> <button className="small" onClick={() => act({ t: 'scout', staffId: s.id, assignment: null })}>×</button></>
                     ) : (
                       <select value={value} onChange={(e) => {
                         const v = e.target.value;
-                        if (!v) s.assignment = null;
-                        else if (v.startsWith('n:')) s.assignment = { kind: 'nation', target: Number(v.slice(2)) };
-                        else s.assignment = { kind: 'league', target: v.slice(2) };
-                        notify();
+                        act({ t: 'scout', staffId: s.id, assignment: !v ? null : v.startsWith('n:') ? { kind: 'nation', target: Number(v.slice(2)) } : { kind: 'league', target: v.slice(2) } });
                       }}>
                         <option value="">{t('scout.ownLeague')}</option>
                         <optgroup label={t('scout.leagues')}>

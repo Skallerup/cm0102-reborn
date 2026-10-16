@@ -109,8 +109,17 @@ export function removePlayer(p: Player) {
 
 // ---------- nyheder ----------
 
-export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }) {
+/** Ny besked til den aktive manager. all=true sender til alle menneskelige managere (multiplayer). */
+export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();
-  g.news.unshift({ id: g.nextId.news++, date: n.date ?? g.date, read: false, ...n });
+  const item = { id: g.nextId.news++, date: n.date ?? g.date, read: false, ...n };
+  g.news.unshift(item);
   if (g.news.length > 400) g.news.length = 400;
+  if (opts?.all && g.humans) {
+    for (const h of g.humans) {
+      if (h.pid === g.active) continue;
+      h.news.unshift({ ...item });
+      if (h.news.length > 400) h.news.length = 400;
+    }
+  }
 }

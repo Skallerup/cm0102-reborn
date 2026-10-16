@@ -13,6 +13,7 @@ import { aiBosman, aiRenewals, aiTransferTick, contractReminders, processOffers 
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
 import { squadStrength } from './board';
+import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -85,9 +86,8 @@ function importance(f: Fixture): number {
 }
 
 export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number } {
-  const g = gs();
-  const ht = f.home === g.userClub ? userTactic(userAuto) : aiTactic(f.home, f.away, true);
-  const at = f.away === g.userClub ? userTactic(userAuto) : aiTactic(f.away, f.home, false);
+  const ht = tacticFor(f.home, f.away, true, userAuto);
+  const at = tacticFor(f.away, f.home, false, userAuto);
   return {
     home: engineTeam(f.home, ht),
     away: engineTeam(f.away, at),
@@ -95,6 +95,17 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     needsWinner: needsWinnerFn(f),
     importance: importance(f),
   };
+}
+
+/** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
+function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean): Tactic {
+  const g = gs();
+  if (club === g.userClub && g.userClub) return userTactic(userAuto);
+  if (isHumanClub(club)) {
+    const o = ownerOf(club);
+    if (o) return withHuman(o, () => userTactic(userAuto));
+  }
+  return aiTactic(club, opp, home);
 }
 
 export function createLiveMatch(f: Fixture): MatchSim {
@@ -106,9 +117,12 @@ export function createLiveMatch(f: Fixture): MatchSim {
   }, rng);
 }
 
-export function simulateFixture(f: Fixture, userAuto = true): MatchReport {
+export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const rep = quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id }, rng);
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id };
+  const rep = commentary
+    ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
+    : quickMatch(m.home, m.away, opts, rng);
   applyMatchResult(f, rep);
   return rep;
 }
@@ -153,7 +167,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {
       if (!played.has(p.id) && p.banned > 0) p.banned--;
-      if (!played.has(p.id) && p.ca >= 0 && club === g.userClub) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1));
+      if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1));
       else if (played.has(p.id)) p.unhappy = Math.max(0, (p.unhappy ?? 0) - 5);
     }
   }
@@ -168,8 +182,18 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
       c.finance.prize += amount;
     }
   }
-  // brugerens kamp
-  if (f.home === g.userClub || f.away === g.userClub) {
+  // menneskelige managere i kampen
+  for (const club of [f.home, f.away]) {
+    if (!isHumanClub(club) && club !== g.userClub) continue;
+    asOwner(club, () => userMatchResult(f, rep));
+  }
+}
+
+function userMatchResult(f: Fixture, rep: MatchReport) {
+  const g = gs();
+  const [hs, as] = rep.stats;
+  const comp = g.comps[f.comp];
+  {
     const userHome = f.home === g.userClub;
     const opp = userHome ? f.away : f.home;
     const scored = userHome ? hs.goals : as.goals;
@@ -219,15 +243,15 @@ function newDay() {
       if (p.injury.days <= 0) {
         p.injury = null;
         p.condition = Math.min(p.condition, 75);
-        if (p.club === g.userClub) addNews({ cat: 'injury', key: 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } });
+        asOwner(p.club, () => addNews({ cat: 'injury', key: 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       }
     }
     if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
-  processOffers();
+  forEachHuman(processOffers);
   aiTransferTick();
-  scoutDaily();
+  forEachHuman(scoutDaily);
   if (day(d) % 3 === 0) fillVacancies();
   if (weekday(d) === 1) {
     weeklyDevelopment();
@@ -236,12 +260,12 @@ function newDay() {
   if (day(d) === 1) {
     monthlyIncome();
     monthlyValues();
-    boardMonthly();
+    forEachHuman(boardMonthly);
     if (month(d) >= 9 || month(d) <= 4) aiSackings();
     if (month(d) >= 1 && month(d) <= 5) aiRenewals();
-    if (month(d) === 1 || month(d) === 3) contractReminders();
+    if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }
-  if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) aiBosman();
+  if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
   if (month(d) === 3 && day(d) === 15) youthIntake();
 }
 
@@ -252,11 +276,13 @@ function playDay(): DayResult {
   for (const id of fixturesOn(g.date)) {
     const f = g.fixtures[id];
     if (!f || f.result) continue;
-    if (g.userClub && (f.home === g.userClub || f.away === g.userClub)) {
+    if (!isMultiplayer(g) && g.userClub && (f.home === g.userClub || f.away === g.userClub)) {
       userMatch = f.id;
       continue;
     }
-    simulateFixture(f);
+    // multiplayer: menneskenes kampe simuleres med fuld kommentar, så de kan ses bagefter
+    const human = isHumanClub(f.home) || isHumanClub(f.away);
+    simulateFixture(f, !human, human);
   }
   if (userMatch !== undefined) {
     g.pendingFixture = userMatch;
@@ -329,4 +355,32 @@ export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean;
 
 export function availableForSelection(p: Player) {
   return available(p);
+}
+
+// ---------- online multiplayer ----------
+
+const IMPORTANT = ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.bidCountered', 'news.jobOffer', 'board.sacked', 'board.sackedSeason'];
+
+/**
+ * Ét multiplayer-"træk": spil dage frem til og med næste dag hvor en menneskelig manager har kamp,
+ * eller til der kommer en vigtig besked til nogen (højst 14 dage).
+ */
+export function mpAdvance(): { days: number; reason: string } {
+  const g = gs();
+  const startNews = g.nextId.news;
+  for (let i = 1; i <= 14; i++) {
+    newDay();
+    const humansPlaying = fixturesOn(g.date).some((id) => {
+      const f = g.fixtures[id];
+      return f && (isHumanClub(f.home) || isHumanClub(f.away));
+    });
+    playDay();
+    g.dayDone = true;
+    g.pendingFixture = null;
+    if (humansPlaying) return { days: i, reason: 'match' };
+    let important = false;
+    forEachHuman(() => { if (g.news.some((n) => n.id >= startNews && IMPORTANT.includes(n.key))) important = true; });
+    if (important) return { days: i, reason: 'news' };
+  }
+  return { days: 14, reason: 'limit' };
 }

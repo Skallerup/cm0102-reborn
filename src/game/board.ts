@@ -4,6 +4,7 @@ import { rng } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Club } from './types';
 import { takeOverClub } from './newgame';
+import { forEachHuman } from './humans';
 
 export function squadStrength(clubId: number): number {
   const ps = squad(clubId).map((p) => p.ca).sort((a, b) => b - a).slice(0, 16);
@@ -153,7 +154,7 @@ export function aiSackings() {
         if (m) m.club = 0;
         club.manager = 0;
         g.vacancies.push(club.id);
-        addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } });
+        addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }, { all: true });
       }
     });
   }
@@ -162,17 +163,24 @@ export function aiSackings() {
 /** Fyld ledige stillinger (efter nogle dage) og send jobtilbud til brugeren */
 export function fillVacancies() {
   const g = gs();
+  // Jobtilbud til de menneskelige managere
+  const offered = new Set<number>();
+  forEachHuman(() => {
+    for (const cid of g.vacancies) {
+      const club = g.clubs[cid];
+      if (!club || club.manager !== 0) continue;
+      if ((g.userClub === 0 || g.manager.rep > club.rep + 5) && !g.jobOffers.includes(cid) && g.manager.rep + 12 >= club.rep && rng.chance(g.userClub === 0 ? 0.35 : 0.08)) {
+        g.jobOffers.push(cid);
+        offered.add(cid);
+        addNews({ cat: 'job', key: 'news.jobOffer', params: { club: club.name }, link: { kind: 'club', id: cid } });
+      }
+    }
+  });
   const still: number[] = [];
   for (const cid of g.vacancies) {
     const club = g.clubs[cid];
     if (!club || club.manager !== 0) continue;
-    // Brugeren kan få tilbud
-    if ((g.userClub === 0 || g.manager.rep > club.rep + 5) && !g.jobOffers.includes(cid) && g.manager.rep + 12 >= club.rep && rng.chance(g.userClub === 0 ? 0.35 : 0.08)) {
-      g.jobOffers.push(cid);
-      addNews({ cat: 'job', key: 'news.jobOffer', params: { club: club.name }, link: { kind: 'club', id: cid } });
-      still.push(cid);
-      continue;
-    }
+    if (offered.has(cid)) { still.push(cid); continue; }
     if (rng.chance(0.15)) {
       const pool = Object.values(g.staff).filter((s) => s.role === 'manager' && s.club === 0).sort((a, b) => Math.abs(a.rep - club.rep) - Math.abs(b.rep - club.rep));
       const m = pool[0];
@@ -180,8 +188,8 @@ export function fillVacancies() {
         m.club = cid;
         club.manager = m.id;
         club.tactic = null;
-        addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } });
-        g.jobOffers = g.jobOffers.filter((x) => x !== cid);
+        addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } }, { all: true });
+        forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
         continue;
       }
     }
@@ -209,6 +217,7 @@ export function acceptJob(cid: number) {
     g.vacancies.push(oldClub.id);
   }
   g.vacancies = g.vacancies.filter((x) => x !== cid);
+  forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
   g.jobOffers = [];
   takeOverClub(club);
   addNews({ cat: 'job', key: 'news.newJob', params: { club: club.name } });

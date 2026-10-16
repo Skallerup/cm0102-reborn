@@ -1,6 +1,5 @@
-import { requestBudget } from '../../game/board';
+import { act } from '../../game/actions';
 import { currentWageBill } from '../../game/finance';
-import { notify } from '../../game/state';
 import { fromCur, money, t, toCur } from '../../i18n';
 import { Bar, Panel } from '../components';
 import { useGame } from '../core';
@@ -46,9 +45,9 @@ export function Finance() {
         <Panel title={t('fin.board')}>
           <div className="col">
             <div className="muted">{t('fin.requestHint')}</div>
-            <button onClick={() => { requestBudget('transfer'); notify(); }}>{t('fin.askTransfer')}</button>
-            <button onClick={() => { requestBudget('wage'); notify(); }}>{t('fin.askWage')}</button>
-            <label>{t('fin.ticket')}: <input type="number" min={1} value={toCur(c.ticketPrice)} onChange={(e) => { c.ticketPrice = Math.max(1, fromCur(Number(e.target.value))); notify(); }} style={{ width: 70 }} /></label>
+            <button onClick={() => act({ t: 'budget', kind: 'transfer' })}>{t('fin.askTransfer')}</button>
+            <button onClick={() => act({ t: 'budget', kind: 'wage' })}>{t('fin.askWage')}</button>
+            <label>{t('fin.ticket')}: <input type="number" min={1} value={toCur(c.ticketPrice)} onChange={(e) => act({ t: 'ticket', price: Math.max(1, fromCur(Number(e.target.value))) })} style={{ width: 70 }} /></label>
           </div>
         </Panel>
       </div>

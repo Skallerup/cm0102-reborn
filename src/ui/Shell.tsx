@@ -5,6 +5,8 @@ import { continueGame, runUntil } from '../game/sim';
 import { gs, notify, setGame } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest, Modal } from './components';
+import { Lobby, OnlineControls } from './Online';
+import { closeSession, session } from '../online/client';
 import { useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
@@ -41,7 +43,7 @@ export function Shell() {
   const [holiday, setHoliday] = useState(false);
   const [toast, setToast] = useState('');
   const stopRef = useRef(false);
-  const club = g.clubs[g.userClub];
+  const club = session() && !session()!.inGame ? undefined : g.clubs[g.userClub];
   const unread = g.news.filter((n) => !n.read).length;
   const lastSaveMonth = useRef(g.date.slice(0, 7));
 
@@ -51,7 +53,9 @@ export function Shell() {
     return () => clearTimeout(id);
   }, [toast]);
 
+  const online = session();
   const autosave = async () => {
+    if (online) return;
     const month = gs().date.slice(0, 7);
     if (gs().options.autosave && month !== lastSaveMonth.current) {
       lastSaveMonth.current = month;
@@ -87,15 +91,19 @@ export function Shell() {
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
-          {club ? <><Crest id={club.id} size={22} />{club.name}</> : <span className="muted">{t('top.unemployed')}</span>}
+          {club ? <><Crest id={club.id} size={22} />{club.name}</> : <span className="muted">{online && !online.inGame ? t('mp.lobby') : t('top.unemployed')}</span>}
         </div>
         <div className="date">{dateFmt(g.date, true)}</div>
         {club && <div className="money">{t('top.balance')}: {money(club.balance)} · {t('top.budget')}: {money(club.transferBudget)}</div>}
         <div className="spacer" />
         {nextMatch && <span className="muted nowrap">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
-        <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
-        <button onClick={() => setHoliday(true)}>{t('top.holiday')}</button>
-        <button className="primary continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}</button>
+        {online ? <OnlineControls /> : (
+          <>
+            <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
+            <button onClick={() => setHoliday(true)}>{t('top.holiday')}</button>
+            <button className="primary continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}</button>
+          </>
+        )}
       </div>
       <nav className={`sidenav ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
         {items.map(([k, label]) => (
@@ -113,12 +121,19 @@ export function Shell() {
           </button>
         ))}
         <div className="sep" />
-        <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}>{t('nav.save')}</button>
-        <button onClick={async () => { if (confirm(t('top.quitConfirm'))) { await saveGame(); setGame(null); } }}>{t('nav.quit')}</button>
+        {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}>{t('nav.save')}</button>}
+        <button onClick={async () => {
+          if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); setGame(null); } return; }
+          if (confirm(t('top.quitConfirm'))) { await saveGame(); setGame(null); }
+        }}>{t('nav.quit')}</button>
       </nav>
       <main className="main">
-        <Screen />
+        {online && !online.inGame ? <Lobby /> : <Screen />}
+        {online?.status === 'error' && <div className="toast">{online.error}</div>}
       </main>
+      {online && (online.status === 'processing' || online.status === 'loading') && (
+        <div className="progress"><div>{online.status === 'processing' ? t('mp.processing') : t('mp.loading')}</div></div>
+      )}
       {running && (
         <div className="progress">
           <div>{t('top.running')} {running}</div>

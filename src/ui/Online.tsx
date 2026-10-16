@@ -1,0 +1,172 @@
+import { useEffect, useMemo, useState } from 'react';
+import type { WorldData } from '../game/newgame';
+import type { GameState } from '../game/types';
+import { t } from '../i18n';
+import {
+  downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, type RoomInfo,
+} from '../online/client';
+import { Panel } from './components';
+import { gs, hasGame } from '../game/state';
+import { loadWorld } from './world';
+
+/** Startmenuens online-del: opret, deltag eller genoptag */
+export function OnlineMenu({ onBack, onCreate, setBusy, initialCode }: { onBack: () => void; onCreate: () => void; setBusy: (s: string) => void; initialCode?: string }) {
+  const [code, setCode] = useState(initialCode ?? '');
+  const [joining, setJoining] = useState<string | null>(initialCode ? initialCode.toUpperCase() : null);
+  const [err, setErr] = useState('');
+  const rooms = savedRooms();
+  if (location.hostname.endsWith('github.io')) {
+    return (
+      <Panel title={t('mp.title')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
+        <p>{t('mp.useVercel')}</p>
+        <a className="link" href={`https://cm0102-reborn.vercel.app/${initialCode ? `?room=${initialCode}` : ''}`}>https://cm0102-reborn.vercel.app</a>
+      </Panel>
+    );
+  }
+  if (joining) return <JoinRoom code={joining} onBack={() => setJoining(null)} setBusy={setBusy} />;
+  return (
+    <Panel title={t('mp.title')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
+      <div className="col">
+        <p className="muted">{t('mp.explain')}</p>
+        <button className="primary" onClick={onCreate}>{t('mp.create')}</button>
+        <div className="row">
+          <input placeholder={t('mp.codePlaceholder')} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={5} style={{ width: 120, textTransform: 'uppercase' }} />
+          <button disabled={code.length < 5} onClick={() => setJoining(code)}>{t('mp.join')}</button>
+        </div>
+        {rooms.length > 0 && (
+          <>
+            <h4 className="accent">{t('mp.myGames')}</h4>
+            {rooms.map((r) => (
+              <div key={r.code} className="choice">
+                <div className="grow" onClick={async () => {
+                  setBusy(t('mp.connecting'));
+                  try { await openSession(r); } catch (e) { setErr(String((e as Error).message)); }
+                  setBusy('');
+                }}>
+                  <b>{r.code}</b> <span className="muted">— {r.name}</span>
+                </div>
+                <button className="small" onClick={() => { forgetRoom(r.code); setErr(''); setCode(''); }}>{t('common.delete')}</button>
+              </div>
+            ))}
+          </>
+        )}
+        {err && <div className="bad">{t(`mp.err.${err}`) !== `mp.err.${err}` ? t(`mp.err.${err}`) : err}</div>}
+      </div>
+    </Panel>
+  );
+}
+
+function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void; setBusy: (s: string) => void }) {
+  const [room, setRoom] = useState<RoomInfo | null>(null);
+  const [state, setState] = useState<GameState | null>(null);
+  const [world, setWorld] = useState<WorldData | null>(null);
+  const [err, setErr] = useState('');
+  const [name, setName] = useState('');
+  const [league, setLeague] = useState('');
+  const [club, setClub] = useState(0);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = await fetchRoom(code);
+        setRoom(r);
+        if (!r.snapshot) { setErr('not-ready'); return; }
+        const [{ state: s }, w] = await Promise.all([downloadSnapshot(r.snapshot), loadWorld()]);
+        setState(s);
+        setWorld(w);
+        const firstLeague = Object.keys(s.comps).find((id) => s.comps[id].type === 'league');
+        if (firstLeague) setLeague(firstLeague);
+      } catch (e) {
+        setErr(String((e as Error).message));
+      }
+    })();
+  }, [code]);
+
+  const taken = useMemo(() => new Set(room?.players.map((p) => p.club) ?? []), [room]);
+  if (err) return <Panel title={`${t('mp.join')} ${code}`} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}><div className="bad">{t(`mp.err.${err}`) !== `mp.err.${err}` ? t(`mp.err.${err}`) : err}</div></Panel>;
+  if (!room || !state || !world) return <Panel title={`${t('mp.join')} ${code}`}><div className="muted">{t('mp.connecting')}</div></Panel>;
+  const leagues = Object.values(state.comps).filter((c) => c.type === 'league');
+  const clubs = (state.comps[league]?.clubs ?? []).map((id) => state.clubs[id]).filter(Boolean).sort((a, b) => a.short.localeCompare(b.short));
+  const canJoin = name.trim() && club && !taken.has(club);
+  return (
+    <Panel title={`${t('mp.join')} ${code}`} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
+      <div className="col">
+        <div className="muted">{t('mp.players')}: {room.players.map((p) => `${p.name} (${state.clubs[p.club]?.short ?? '?'})`).join(', ')}</div>
+        <label>{t('start.managerName')} <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('start.managerPlaceholder')} autoFocus style={{ marginLeft: 8 }} /></label>
+        <select value={league} onChange={(e) => { setLeague(e.target.value); setClub(0); }}>
+          {leagues.map((l) => <option key={l.id} value={l.id}>{state.nations[l.nation]?.name} – {l.name}</option>)}
+        </select>
+        <div className="grid-choices">
+          {clubs.map((c) => (
+            <div key={c.id} className={`choice ${club === c.id ? 'on' : ''}`} style={taken.has(c.id) ? { opacity: 0.4, pointerEvents: 'none' } : undefined} onClick={() => setClub(c.id)}>
+              {c.short}{taken.has(c.id) && <span className="tag">{t('mp.taken')}</span>}
+            </div>
+          ))}
+        </div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button className="primary" disabled={!canJoin} onClick={async () => {
+            setBusy(t('mp.connecting'));
+            try { await joinOnlineGame(code, name.trim(), club, state.clubs[club].nation); } catch (e) { setErr(String((e as Error).message)); }
+            setBusy('');
+          }}>{t('mp.joinBtn')}</button>
+        </div>
+      </div>
+    </Panel>
+  );
+}
+
+/** Topbar-kontroller i online-spil */
+export function OnlineControls() {
+  const s = session();
+  const [copied, setCopied] = useState(false);
+  if (!s || !s.room) return null;
+  const me = s.me;
+  const waiting = s.room.players.filter((p) => !p.ready).map((p) => p.name);
+  const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
+  return (
+    <>
+      <button className="small" title={link} onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>
+        {copied ? t('mp.copied') : `${t('mp.invite')} · ${s.creds.code}`}
+      </button>
+      <span className="muted nowrap">
+        {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
+      </span>
+      <button className={`continue ${me?.ready ? '' : 'primary'}`} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => void s.setReady(!me?.ready)}>
+        {me?.ready ? t('mp.notReady') : t('mp.ready')}
+      </button>
+    </>
+  );
+}
+
+/** Vises når man har tilmeldt sig, men endnu ikke er med i spillet */
+export function Lobby() {
+  const s = session();
+  if (!s?.room) return null;
+  return (
+    <Panel title={t('mp.lobby')}>
+      <div className="col">
+        <p>{t('mp.lobbyText')}</p>
+        <OnlinePlayers />
+      </div>
+    </Panel>
+  );
+}
+
+export function OnlinePlayers() {
+  const s = session();
+  if (!s?.room) return null;
+  const clubs = hasGame() ? gs().clubs : {};
+  return (
+    <table className="grid">
+      <tbody>
+        {s.room.players.map((p) => (
+          <tr key={p.pid} className={p.pid === s.creds.pid ? 'me' : ''}>
+            <td>{p.name}</td>
+            <td>{clubs[p.club]?.short ?? p.club}</td>
+            <td>{p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}

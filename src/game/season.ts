@@ -11,6 +11,7 @@ import { setupSeasonComps } from './newgame';
 import { CHALLENGES } from './challenges';
 import { initKnowledge } from './scouting';
 import type { Player, SeasonSummary } from './types';
+import { asOwner, forEachHuman, isHumanClub } from './humans';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
@@ -41,14 +42,17 @@ function seasonAwards(): SeasonSummary {
         const row = comp.table.find((r) => r.club === cid);
         g.clubs[cid].history.push({ season: g.season, league: comp.id, pos: i + 1, pts: row?.pts ?? 0 });
       });
-      if (g.userClub && order.includes(g.userClub)) {
+      forEachHuman(() => {
+        if (!g.userClub || !order.includes(g.userClub)) return;
         if (best) addNews({ cat: 'award', key: 'award.playerOfYear', params: { player: pname(best), comp: comp.name }, link: { kind: 'player', id: best.id } });
         if (top) addNews({ cat: 'award', key: 'award.topScorer', params: { player: pname(top), goals: top.stats.lgGoals, comp: comp.name }, link: { kind: 'player', id: top.id } });
-      }
+      });
     } else {
       entry.runnerUp = comp.meta?.runnerUp as number | undefined;
     }
-    if (comp.winner === g.userClub && comp.type !== 'playoff') g.manager.trophies.push({ season: g.season, comp: comp.name, club: g.userClub });
+    forEachHuman(() => {
+      if (g.userClub && comp.winner === g.userClub && comp.type !== 'playoff') g.manager.trophies.push({ season: g.season, comp: comp.name, club: g.userClub });
+    });
     sum.comps.push(entry);
   }
   return sum;
@@ -88,9 +92,11 @@ function promotionRelegation() {
     const club = g.clubs[cid];
     const wasUp = (g.leagues[league]?.tier ?? 1) < (g.leagues[club.league]?.tier ?? 1);
     club.league = league;
-    if (cid === g.userClub || g.leagues[league]?.nation === g.clubs[g.userClub]?.nation) {
-      addNews({ cat: 'general', key: wasUp ? 'news.promoted' : 'news.relegated', params: { club: club.name, comp: g.leagues[league]?.name ?? league } });
-    }
+    forEachHuman(() => {
+      if (cid === g.userClub || g.leagues[league]?.nation === g.clubs[g.userClub]?.nation) {
+        addNews({ cat: 'general', key: wasUp ? 'news.promoted' : 'news.relegated', params: { club: club.name, comp: g.leagues[league]?.name ?? league } });
+      }
+    });
   }
 }
 
@@ -106,13 +112,15 @@ function contractsAndLoans() {
       if (p.contract.futureClub && g.clubs[p.contract.futureClub]) {
         const to = p.contract.futureClub;
         const fromName = g.clubs[p.club]?.name ?? '-';
+        const fromClub = p.club;
         p.contract = { wage: p.contract.futureWage ?? p.contract.wage, expires: p.contract.futureExpires ?? `${g.season + 3}-06-30` };
         setClub(p, to);
         p.joined = today;
-        if (to === g.userClub) g.knowledge[p.id] = 100;
-        if (to === g.userClub || p.club === g.userClub) addNews({ cat: 'transfer', key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } });
+        const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
+        asOwner(to, () => { g.knowledge[p.id] = 100; addNews(msg); });
+        if (fromClub !== to) asOwner(fromClub, () => addNews(msg));
       } else {
-        if (p.club === g.userClub) addNews({ cat: 'contract', key: 'contract.left', params: { player: pname(p) } });
+        asOwner(p.club, () => addNews({ cat: 'contract', key: 'contract.left', params: { player: pname(p) } }));
         setClub(p, 0);
         p.contract = null;
       }
@@ -130,7 +138,9 @@ function retirements() {
     else if (!p.club && age >= 31) prob = 0.35;
     else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
     if (prob > 0 && rng.chance(prob)) {
-      if (p.club === g.userClub || p.rep >= 75) addNews({ cat: 'general', key: 'news.retired', params: { player: pname(p), age } });
+      const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
+      if (p.rep >= 75) addNews(msg, { all: true });
+      else if (isHumanClub(p.club)) asOwner(p.club, () => addNews(msg));
       removePlayer(p);
     }
   }
@@ -161,10 +171,10 @@ export function youthIntake() {
       p.value = Math.max(10_000, p.value);
       if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
       addPlayer(p);
-      if (c.id === g.userClub) {
+      asOwner(c.id, () => {
         g.knowledge[p.id] = 100;
         addNews({ cat: 'youth', key: 'news.youth', params: { player: pname(p), pos: sub }, link: { kind: 'player', id: p.id } });
-      }
+      });
     }
   }
 }
@@ -216,13 +226,16 @@ export function seasonRollover() {
   seasonPrizeMoney();
   const summary = seasonAwards();
   g.seasonHistory.push(summary);
-  let challengeResult: 'won' | 'lost' | null = null;
-  if (g.challenge && !g.challenge.done) {
-    const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
-    if (ch?.check(g)) challengeResult = 'won';
-    else if (g.season >= g.challenge.deadlineSeason) challengeResult = 'lost';
-  }
-  boardSeasonEnd();
+  // Udfordringer og bestyrelsens dom – pr. menneskelig manager
+  const challengeResults = new Map<string | undefined, 'won' | 'lost'>();
+  forEachHuman(() => {
+    if (g.challenge && !g.challenge.done) {
+      const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
+      if (ch?.check(g)) challengeResults.set(g.active, 'won');
+      else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
+    }
+    boardSeasonEnd();
+  });
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);
@@ -238,14 +251,17 @@ export function seasonRollover() {
   rebuildIndexes();
   newSeasonBudgets();
   setupSeasonComps(g.season, prevTables);
-  for (const c of Object.values(g.clubs)) c.tactic = null;
-  if (g.userClub) setBoardExpectation();
-  initKnowledgeKeep();
-  if (challengeResult) {
-    g.challenge!.done = challengeResult;
-    addNews({ cat: 'general', key: challengeResult === 'won' ? 'challenge.won' : 'challenge.lost', params: { id: g.challenge!.id } });
-  }
-  addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } });
+  for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
+  forEachHuman(() => {
+    if (g.userClub) setBoardExpectation();
+    initKnowledgeKeep();
+    const result = challengeResults.get(g.active);
+    if (result && g.challenge) {
+      g.challenge.done = result;
+      addNews({ cat: 'general', key: result === 'won' ? 'challenge.won' : 'challenge.lost', params: { id: g.challenge.id } });
+    }
+  });
+  addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } }, { all: true });
 }
 
 function initKnowledgeKeep() {

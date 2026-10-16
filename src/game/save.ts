@@ -1,7 +1,7 @@
 // Gem/indlæs i IndexedDB som gzip-komprimeret JSON (≈4-5 MB pr. save).
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame } from './state';
-import { rng } from './rng';
+import { deserializeState, serializeState } from './snapshot';
 import type { GameState } from './types';
 
 export interface SaveMeta {
@@ -12,28 +12,12 @@ export interface SaveMeta {
   saved: string;
 }
 
-const round = (_k: string, v: unknown) => (typeof v === 'number' && !Number.isInteger(v) ? Math.round(v * 100) / 100 : v);
-
-async function gzip(text: string): Promise<Blob> {
-  if (typeof CompressionStream === 'undefined') return new Blob([text]);
-  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'));
-  return new Response(stream).blob();
-}
-
-async function gunzip(blob: Blob): Promise<string> {
-  const head = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
-  if (head[0] !== 0x1f || head[1] !== 0x8b) return blob.text();
-  const stream = blob.stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Response(stream).text();
-}
-
 export async function serialize(g: GameState): Promise<Blob> {
-  return gzip(JSON.stringify(g, round));
+  return serializeState(g);
 }
 
 export async function saveGame(): Promise<SaveMeta> {
   const g = gs();
-  g.rng = rng.state;
   const blob = await serialize(g);
   const meta: SaveMeta = {
     id: g.id,
@@ -56,7 +40,7 @@ export async function listSaves(): Promise<SaveMeta[]> {
 export async function loadGame(id: string): Promise<boolean> {
   const blob = await get<Blob>(`save:${id}`);
   if (!blob) return false;
-  const g = JSON.parse(await gunzip(blob)) as GameState;
+  const g = await deserializeState(blob);
   setGame(g);
   return true;
 }
@@ -80,7 +64,7 @@ export async function exportSave(): Promise<void> {
 
 export async function importSave(file: File): Promise<boolean> {
   try {
-    const g = JSON.parse(await gunzip(file)) as GameState;
+    const g = await deserializeState(file);
     if (!g.players || !g.clubs) return false;
     g.id = `save-${Date.now().toString(36)}`;
     setGame(g);

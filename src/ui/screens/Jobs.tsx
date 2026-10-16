@@ -1,5 +1,4 @@
-import { acceptJob, applyForJob } from '../../game/board';
-import { notify } from '../../game/state';
+import { act } from '../../game/actions';
 import { t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
 import { useGame } from '../core';
@@ -20,8 +19,8 @@ export function Jobs() {
                 <tr key={id}>
                   <td><ClubLink id={id} long /></td>
                   <td>{g.leagues[g.clubs[id]?.league]?.name}</td>
-                  <td><button className="small primary" onClick={() => { if (confirm(t('jobs.acceptConfirm', { club: g.clubs[id].name }))) { acceptJob(id); notify(); } }}>{t('jobs.accept')}</button>
-                    <button className="small" onClick={() => { g.jobOffers = g.jobOffers.filter((x) => x !== id); notify(); }}>{t('jobs.decline')}</button></td>
+                  <td><button className="small primary" onClick={() => { if (confirm(t('jobs.acceptConfirm', { club: g.clubs[id].name }))) { act({ t: 'acceptJob', club: id }); } }}>{t('jobs.accept')}</button>
+                    <button className="small" onClick={() => act({ t: 'declineJob', club: id })}>{t('jobs.decline')}</button></td>
                 </tr>
               ))}
             </tbody>
@@ -36,7 +35,7 @@ export function Jobs() {
                   <td><ClubLink id={c.id} long /></td>
                   <td>{g.leagues[c.league]?.name}</td>
                   <td className="num">{c.rep}</td>
-                  <td><button className="small" onClick={() => { applyForJob(c.id); notify(); }}>{t('jobs.apply')}</button></td>
+                  <td><button className="small" onClick={() => act({ t: 'applyJob', club: c.id })}>{t('jobs.apply')}</button></td>
                 </tr>
               ))}
             </tbody>

@@ -2,15 +2,14 @@ import { useState } from 'react';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
 import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
-import { gs, notify } from '../../game/state';
+import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import {
-  askingPrice, canPreContract, loanOut, makeBid, releasePlayer, startPreContract, toggleListed, windowOpen,
-} from '../../game/transfers';
+import { askingPrice, canPreContract, windowOpen } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
 import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
 import { AttrVal, Bar, ClubLink, Modal, Nat, Panel, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
+import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
@@ -32,7 +31,6 @@ export function PlayerScreen({ id }: { id: number }) {
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
 
   const act = (r: TransferOffer | string) => {
-    notify();
     if (typeof r === 'string') { if (r !== 'ok') setMsg(t(r)); else setMsg(t('player.done')); }
     else if (r.status === 'negotiating') setNeg({ offer: r });
     else setMsg(t('player.bidSent'));
@@ -80,15 +78,15 @@ export function PlayerScreen({ id }: { id: number }) {
               <>
                 <div className="row">
                   <label>{t('nav.training')}</label>
-                  <select value={p.training} onChange={(e) => { p.training = e.target.value; notify(); }}>
+                  <select value={p.training} onChange={(e) => dispatch({ t: 'training', pid: p.id, key: e.target.value })}>
                     {SCHEDULES.map((s) => <option key={s.key} value={s.key}>{t(`train.${s.key}`)}</option>)}
                   </select>
                 </div>
                 <div className="row">
-                  <button onClick={() => { toggleListed(p.id); notify(); }}>{p.listed ? t('player.unlist') : t('player.list')}</button>
+                  <button onClick={() => dispatch({ t: 'listed', pid: p.id })}>{p.listed ? t('player.unlist') : t('player.list')}</button>
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
-                  <button onClick={() => act(loanOut(p.id))} disabled={!!p.loan}>{t('player.loanOut')}</button>
-                  <button className="danger" onClick={() => { if (confirm(t('player.releaseConfirm'))) { releasePlayer(p.id); notify(); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
+                  <button onClick={() => act(dispatch<string>({ t: 'loanOut', pid: p.id }))} disabled={!!p.loan}>{t('player.loanOut')}</button>
+                  <button className="danger" onClick={() => { if (confirm(t('player.releaseConfirm'))) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
                 </div>
               </>
             )}
@@ -96,16 +94,16 @@ export function PlayerScreen({ id }: { id: number }) {
               <>
                 <div className="row">
                   {p.club > 0 && <button className="primary" disabled={!windowOpen()} onClick={() => setBid(true)}>{t('player.bid')}</button>}
-                  {!p.club && <button className="primary" onClick={() => act(makeBid(p.id, 0))}>{t('player.offerContract')}</button>}
-                  {canPreContract(p) && <button onClick={() => act(startPreContract(p.id))}>{t('player.preContract')}</button>}
-                  <button onClick={() => { if (shortlisted) g.shortlist = g.shortlist.filter((x) => x !== p.id); else g.shortlist.push(p.id); notify(); }}>{shortlisted ? t('player.unshortlist') : t('player.shortlist')}</button>
+                  {!p.club && <button className="primary" onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
+                  {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
+                  <button onClick={() => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted })}>{shortlisted ? t('player.unshortlist') : t('player.shortlist')}</button>
                 </div>
                 {!windowOpen() && <div className="muted">{t('transfer.windowClosed')}</div>}
                 {scouts.length > 0 && g.options.masking && k < 100 && (
                   <div className="row">
                     <select defaultValue="" onChange={(e) => {
                       const s = g.staff[Number(e.target.value)];
-                      if (s) { s.assignment = { kind: 'player', target: p.id }; setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); notify(); }
+                      if (s) { dispatch({ t: 'scout', staffId: s.id, assignment: { kind: 'player', target: p.id } }); setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); }
                     }}>
                       <option value="" disabled>{t('player.sendScout')}</option>
                       {scouts.map((s) => <option key={s.id} value={s.id}>{s.first} {s.last}</option>)}
@@ -115,7 +113,7 @@ export function PlayerScreen({ id }: { id: number }) {
               </>
             )}
             <label className="col">{t('player.notes')}
-              <textarea rows={2} defaultValue={p.notes ?? ''} onBlur={(e) => { p.notes = e.target.value; notify(); }} />
+              <textarea rows={2} defaultValue={p.notes ?? ''} onBlur={(e) => { if (e.target.value !== (p.notes ?? '')) dispatch({ t: 'notes', pid: p.id, text: e.target.value }); }} />
             </label>
           </div>
         </Panel>
@@ -198,7 +196,7 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
         )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={() => onDone(makeBid(pid, loan ? 0 : fee, loan))}>{t('bid.submit')}</button>
+          <button className="primary" onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan }))}>{t('bid.submit')}</button>
         </div>
       </div>
     </Modal>

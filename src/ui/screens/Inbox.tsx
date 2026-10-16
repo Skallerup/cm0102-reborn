@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { notify } from '../../game/state';
+import { act } from '../../game/actions';
 import { dateFmt, t } from '../../i18n';
 import { Empty, Panel } from '../components';
 import { useGame } from '../core';
@@ -15,7 +15,7 @@ export function Inbox() {
   const open = useOpenLink();
   const list = g.news.filter((n) => cat === 'all' || n.cat === cat);
   const item = g.news.find((n) => n.id === sel);
-  if (item && !item.read) { item.read = true; queueMicrotask(notify); }
+  if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
 
   return (
     <div>
@@ -23,7 +23,7 @@ export function Inbox() {
         <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>
           {CATS.map((c) => <option key={c} value={c}>{t(`cat.${c}`)}</option>)}
         </select>
-        <button className="small" onClick={() => { g.news.forEach((n) => (n.read = true)); notify(); }}>{t('inbox.markRead')}</button>
+        <button className="small" onClick={() => act({ t: 'read', ids: 'all' })}>{t('inbox.markRead')}</button>
       </Head>
       <div className="cols2">
         <Panel title={t('inbox.messages')} className="flush">

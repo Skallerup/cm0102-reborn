@@ -25,6 +25,9 @@ Alt det, vi husker fra CM 01/02:
 - **Ungdom og regens:** årlig ungdomsårgang med sjældne wonderkids. Spillerne går på pension
 - **Historik:** mestre, topscorere, årets spiller, årets talent, trofæskab og managerkarriere
 - **Gem/indlæs** i browseren (IndexedDB) og **eksport/import** af save-filer mellem enheder
+- **Online multiplayer** (2–8 managere): opret et spil og send invitationslinket, så styrer hver sit hold i samme verden. Alle laver deres ændringer og trykker "Klar". Når alle er klar, spilles der frem til efter næste kampdag
+- **Klublogoer** for de europæiske ligaer. De hentes ved kørsel fra [luukhopman/football-logos](https://github.com/luukhopman/football-logos) via jsDelivr og ligger ikke i repo'et
+- **Valuta:** euro, danske kroner eller britiske pund
 
 ## De 10 forbedringsforslag
 
@@ -71,6 +74,27 @@ npx tsx scripts/simulate-season.ts 1 190     # simulér en hel sæson headless (
 node scripts/smoke.mjs                       # end-to-end-test i browser (kræver npm run dev)
 ```
 
+## Online multiplayer – sådan virker det
+
+Online-spil findes kun på Vercel-adressen (https://cm0102-reborn.vercel.app), fordi de kræver en server.
+
+```
+Klient A ─┐                         ┌─ Upstash Redis: rum, spillere, "klar", handlinger, lås
+Klient B ─┼── /api/mp (Vercel Fn) ──┤
+Klient C ─┘                         └─ Vercel Blob: øjebliksbilleder af spillet (gzip, ~4-5 MB)
+```
+
+1. Hver ændring en manager laver, er en serialiserbar **handling** (`src/game/actions.ts`). Den anvendes lokalt med det samme og sendes til serveren.
+2. Når alle har trykket **Klar**, tager én klient en lås. Den henter det uberørte øjebliksbillede, afspiller alle handlinger i rækkefølge og simulerer frem til efter næste kampdag (`mpAdvance`). Derefter uploader den en ny version.
+3. De andre klienter opdager den nye version, henter den og genanvender egne handlinger, der ikke nåede med.
+4. Hver menneskelig manager har sin egen "slot" med indbakke, taktik, bestyrelse, kendskab osv. (`src/game/humans.ts`).
+
+Begrænsninger:
+- Kampene kan ikke ses live i multiplayer. De simuleres med fuld kommentar og kan ses bagefter som kamprapport.
+- Spillet venter på, at alle trykker Klar.
+
+Lokal udvikling af online-delen: `vercel dev --listen 3000` og derefter `node scripts/smoke-mp.mjs` (to browsere spiller mod hinanden).
+
 ## Arkitektur
 
 ```
@@ -83,6 +107,10 @@ src/game/                 Ren TypeScript-spilmotor (ingen UI-afhængigheder)
   season.ts               Sæsonskifte, priser, op/nedrykning, regens
   sim.ts                  Dag-for-dag-løkke
   analysis.ts             Assistent og kampanalyse
+  actions.ts              Alle managerhandlinger (bruges også til multiplayer)
+  humans.ts               Flere menneskelige managere i samme verden
+src/online/client.ts      Online-klient: synkronisering, træk og upload
+api/mp.ts                 Multiplayer-server (Vercel Function + Upstash Redis + Vercel Blob)
 src/worker/               Web Worker til taktik-benchmark
 src/ui/                   React-brugerflade (CM 01/02-inspireret)
 src/i18n/                 Dansk og engelsk

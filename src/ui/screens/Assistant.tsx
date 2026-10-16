@@ -2,7 +2,8 @@ import { useMemo, useRef, useState } from 'react';
 import { ATTRS } from '../../game/attributes';
 import { opponentReport, radar, RADAR_AXES } from '../../game/analysis';
 import { attrRange } from '../../game/scouting';
-import { gs, notify, squad } from '../../game/state';
+import { gs, squad } from '../../game/state';
+import { act } from '../../game/actions';
 import { autoSelect, FORMATIONS } from '../../game/tactics';
 import { userTactic } from '../../game/sim';
 import { t } from '../../i18n';
@@ -82,7 +83,7 @@ function Suggest() {
       <Panel title={t('as.current')}>
         <ol>{cur.lineup.map((id, i) => <li key={i}><span className="muted">{cur.slots[i].pos}{cur.slots[i].side !== 'C' ? cur.slots[i].side : ''}</span> <PlayerLink p={g.players[id]} /></li>)}</ol>
       </Panel>
-      <Panel title={t('as.suggested')} right={changed ? <button className="small primary" onClick={() => { g.tactic = sugg; notify(); }}>{t('as.use')}</button> : undefined}>
+      <Panel title={t('as.suggested')} right={changed ? <button className="small primary" onClick={() => act({ t: 'tactic', tactic: sugg })}>{t('as.use')}</button> : undefined}>
         <ol>{sugg.lineup.map((id, i) => <li key={i} className={id !== cur.lineup[i] ? 'accent' : ''}><span className="muted">{sugg.slots[i].pos}{sugg.slots[i].side !== 'C' ? sugg.slots[i].side : ''}</span> <PlayerLink p={g.players[id]} /></li>)}</ol>
         {!changed && <div className="muted">{t('as.agrees')}</div>}
         <div className="muted">{t('as.suggestHint')}</div>

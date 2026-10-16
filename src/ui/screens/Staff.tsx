@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { ageOn } from '../../game/dates';
-import { fireStaff, hireStaff, poachFee, staffCount, STAFF_LIMITS, willJoin } from '../../game/staff';
-import { notify } from '../../game/state';
+import { poachFee, staffCount, STAFF_LIMITS, willJoin } from '../../game/staff';
+import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
 import { money, t } from '../../i18n';
 import { ClubLink, Panel, Tabs } from '../components';
@@ -29,15 +29,13 @@ export function StaffScreen() {
 
   const fire = (s: Staff) => {
     if (!confirm(t('staff.fireConfirm', { name: `${s.first} ${s.last}`, pay: money(s.wage * 12) }))) return;
-    fireStaff(s.id);
+    act({ t: 'fireStaff', id: s.id });
     setMsg({ text: t('staff.fired', { name: `${s.first} ${s.last}` }), tone: 'neutral' });
-    notify();
   };
   const hire = (s: Staff) => {
     if (s.club && !confirm(t('staff.poachConfirm', { name: `${s.first} ${s.last}`, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) }))) return;
-    const r = hireStaff(s.id);
+    const r = act<string>({ t: 'hireStaff', id: s.id });
     setMsg({ text: t(`staff.result.${r}`, { name: `${s.first} ${s.last}` }), tone: r === 'ok' ? 'good' : 'bad' });
-    notify();
   };
 
   const table = (list: Staff[], action: (s: Staff) => ReactNode, showClub = false) => (

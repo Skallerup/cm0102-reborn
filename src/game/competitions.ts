@@ -408,13 +408,13 @@ function checkLeagueProgress(comp: Competition) {
   const rules = LEAGUE_RULES[comp.id];
   if (rules?.split && !comp.splitDone) {
     generateSplit(comp);
-    addNews({ cat: 'general', key: 'news.split', params: { comp: comp.name } });
+    addNews({ cat: 'general', key: 'news.split', params: { comp: comp.name } }, { all: true });
     return;
   }
   comp.finished = true;
   const order = finalOrder(comp);
   comp.winner = order[0];
-  addNews({ cat: 'general', key: 'news.champions', params: { club: g.clubs[order[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } });
+  addNews({ cat: 'general', key: 'news.champions', params: { club: g.clubs[order[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }, { all: true });
   if (rules?.playoff) {
     // Playoffs startes når alle involverede ligaer er færdige
     const leagues = [...new Set(rules.playoff.seeds.map((s) => s[0]))];
@@ -509,7 +509,7 @@ function advance(comp: Competition, stage: string) {
     comp.winner = winners[0];
     const runnerUp = stageTies[0].a === winners[0] ? stageTies[0].b : stageTies[0].a;
     comp.meta = { ...(comp.meta ?? {}), runnerUp };
-    addNews({ cat: 'general', key: comp.type === 'playoff' ? 'news.playoffWin' : 'news.cupWin', params: { club: g.clubs[winners[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } });
+    addNews({ cat: 'general', key: comp.type === 'playoff' ? 'news.playoffWin' : 'news.cupWin', params: { club: g.clubs[winners[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }, { all: true });
     return;
   }
   if (comp.type === 'cup') {
