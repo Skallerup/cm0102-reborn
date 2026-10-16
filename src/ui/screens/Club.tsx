@@ -1,7 +1,7 @@
 import { squadStrength } from '../../game/board';
 import { gs, squad } from '../../game/state';
 import { money, t } from '../../i18n';
-import { Bar, Panel } from '../components';
+import { Bar, Crest, Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 import { SquadTable } from './Squad';
@@ -16,7 +16,7 @@ export function ClubScreen({ id }: { id?: number }) {
   const players = squad(cid);
   return (
     <div>
-      <Head title={<><i className="kit" style={{ background: c.colors[0], borderColor: c.colors[1] }} />{c.name}</>} />
+      <Head title={<><Crest id={c.id} size={40} /> {c.name}</>} />
       <div className="cols">
         <Panel title={t('club.info')}>
           <div className="kv">

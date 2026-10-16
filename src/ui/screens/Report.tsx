@@ -3,7 +3,7 @@ import { matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
-import { ClubLink, Panel, PlayerLink, Tabs } from '../components';
+import { ClubLink, Crest, Panel, PlayerLink, Tabs } from '../components';
 import { useGame } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
@@ -22,12 +22,12 @@ export function ReportScreen({ id }: { id: number }) {
     <div>
       <Head title={t('report.title')} />
       <div className="scoreboard">
-        <div className="team"><ClubLink id={rep.home} /></div>
+        <div className="team"><Crest id={rep.home} size={34} /><ClubLink id={rep.home} /></div>
         <div>
           <div className="score">{rep.stats[0].goals} - {rep.stats[1].goals}</div>
           <div className="minute">{rep.pens ? `${t('fix.pens')} ${rep.pens[0]}-${rep.pens[1]}` : rep.et ? t('fix.aet') : t('match.ft')} · xG {rep.stats[0].xg.toFixed(2)} - {rep.stats[1].xg.toFixed(2)}</div>
         </div>
-        <div className="team away"><ClubLink id={rep.away} /></div>
+        <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} /></div>
       </div>
       <Goals rep={rep} />
       <Tabs tabs={[['analysis', t('report.analysis')], ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />

@@ -2,8 +2,12 @@ import { useState } from 'react';
 import type { Lang } from '../game/types';
 import { getLang } from '../i18n';
 import { NavProvider, useGame } from './core';
+import { notify } from '../game/state';
 import { Shell } from './Shell';
 import { Start } from './Start';
+import { loadLogos } from './logos';
+
+void loadLogos().then(() => notify());
 
 export default function App() {
   const g = useGame();

@@ -4,7 +4,7 @@ import { saveGame } from '../game/save';
 import { continueGame, runUntil } from '../game/sim';
 import { gs, notify, setGame } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
-import { Modal } from './components';
+import { Crest, Modal } from './components';
 import { useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
@@ -87,7 +87,7 @@ export function Shell() {
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
-          {club ? <><i className="kit" style={{ background: club.colors[0], borderColor: club.colors[1] }} />{club.name}</> : <span className="muted">{t('top.unemployed')}</span>}
+          {club ? <><Crest id={club.id} size={22} />{club.name}</> : <span className="muted">{t('top.unemployed')}</span>}
         </div>
         <div className="date">{dateFmt(g.date, true)}</div>
         {club && <div className="money">{t('top.balance')}: {money(club.balance)} · {t('top.budget')}: {money(club.transferBudget)}</div>}

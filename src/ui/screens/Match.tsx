@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { opponentReport } from '../../game/analysis';
 import type { MatchSim } from '../../game/engine/match';
 import { createLiveMatch, finishUserMatch, quickPlayUserMatch, userTactic } from '../../game/sim';
-import { fixturesOn, gs, notify, squad } from '../../game/state';
+import { fixturesOn, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
-import { Bar, ClubLink, Panel, Pct, PlayerLink, Tabs } from '../components';
+import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
@@ -72,15 +72,14 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
 }
 
 function Scoreboard({ home, away, hg, ag, minute }: { home: number; away: number; hg: number | null; ag: number | null; minute: string }) {
-  const g = gs();
   return (
     <div className="scoreboard">
-      <div className="team"><i className="kit" style={{ background: g.clubs[home].colors[0], borderColor: g.clubs[home].colors[1] }} /><ClubLink id={home} /></div>
+      <div className="team"><Crest id={home} size={34} /><ClubLink id={home} /></div>
       <div>
         <div className="score">{hg === null ? 'v' : `${hg} - ${ag}`}</div>
         <div className="minute">{minute}</div>
       </div>
-      <div className="team away"><i className="kit" style={{ background: g.clubs[away].colors[0], borderColor: g.clubs[away].colors[1] }} /><ClubLink id={away} /></div>
+      <div className="team away"><Crest id={away} size={34} /><ClubLink id={away} /></div>
     </div>
   );
 }
