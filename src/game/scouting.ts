@@ -89,13 +89,13 @@ export function scoutDaily() {
         const club = g.clubs[g.userClub];
         const clubs = Object.values(g.clubs).filter((c) => c.league === club.league && c.id !== club.id);
         const other = rng.pick(clubs);
-        if (other) for (const p of squad(other.id).slice(0, 3)) addKnowledge(p.id, 6 * skill);
+        if (other) for (const p of squad(other.id).slice(0, 3)) scoutKnowledge(p.id, 6 * skill, s.id);
       }
       continue;
     }
     if (a.kind === 'player') {
       const pid = a.target as number;
-      addKnowledge(pid, 9 + 8 * skill);
+      scoutKnowledge(pid, 9 + 8 * skill, s.id);
       if ((g.knowledge[pid] ?? 0) >= 100) {
         s.assignment = null;
         const p = g.players[pid];
@@ -108,8 +108,25 @@ export function scoutDaily() {
         if (!c) break;
         const ps = squad(c.id);
         const p = rng.pick(ps);
-        if (p) addKnowledge(p.id, 18 * skill + 6);
+        if (p) scoutKnowledge(p.id, 18 * skill + 6, s.id);
       }
+    }
+  }
+}
+
+/** Kendskab fra en scout: når en spiller er godt afdækket, kommer han på listen over fund */
+function scoutKnowledge(pid: number, amount: number, scoutId: number) {
+  const g = gs();
+  const before = g.knowledge[pid] ?? 0;
+  addKnowledge(pid, amount);
+  if (before < 60 && (g.knowledge[pid] ?? 0) >= 60) {
+    const finds = g.scoutFinds ?? (g.scoutFinds = {});
+    finds[pid] = g.date;
+    const p = g.players[pid];
+    const s = g.staff[scoutId];
+    // Gode fund meldes i indbakken
+    if (p && s && p.club !== g.userClub && scoutStars(p).potential[0] >= 4) {
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutTalent', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, read: false, link: { kind: 'player', id: pid } });
     }
   }
 }

@@ -180,8 +180,10 @@ export function trainingAdvice(p: Player): TrainingAdvice {
       const i = A[k];
       if (i >= 36) continue;
       if (role !== 'GK' && GK_KEYS.has(k)) continue;
+      const rw = w[i] ?? 0;
+      if (rw < 0.45) continue; // kun attributter der betyder noget for rollen
       const gap = Math.max(0, ref - p.attrs[i]);
-      const contrib = gap * fw * (w[i] ?? 0.1);
+      const contrib = gap * fw * rw * rw;
       score += contrib;
       if (contrib > 0) weak.push([k, contrib]);
     }

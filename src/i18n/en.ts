@@ -172,7 +172,7 @@ export const en: Record<string, string> = {
   'contract.leavingBosman': '{player} has agreed to join {club} in the summer', 'contract.left': '{player} has left the club (contract expired)',
   'contract.renewed': '{player} has signed a {years}-year extension',
 
-  'scout.maskingOff': 'Attribute masking is off – you can see every attribute.', 'scout.overview': 'Overview', 'scout.found': 'Scout findings', 'scout.foundHint': 'Players your scouts know well – best first', 'scout.noFinds': 'No findings yet – give your scouts an assignment and press Continue.', 'scout.scouts': 'Scouts',
+  'scout.maskingOff': 'Attribute masking is off – you can see every attribute.', 'scout.overview': 'Overview', 'scout.found': 'Scout findings', 'scout.foundDate': 'Found', 'scout.new': 'New', 'scout.onlyFinds': 'Only players your scouts found (otherwise all known players)', 'news.scoutTalent': '{scout} has found a big talent: {player}', 'scout.foundHint': 'Players your scouts know well – best first', 'scout.noFinds': 'No findings yet – give your scouts an assignment and press Continue.', 'scout.scouts': 'Scouts',
   'scout.wellKnown': 'Well-known players', 'scout.explain': 'Unscouted players show attribute ranges (e.g. 9–14). Scouts with good judging get to know players faster. Playing against a team also teaches you about its players.',
   'scout.assignments': 'Assignments', 'scout.assignment': 'Assignment', 'scout.watching': 'Watching', 'scout.ownLeague': 'Own league (default)', 'scout.leagues': 'Leagues',
   'scout.nations': 'Nations', 'scout.none': 'You have no scouts – hire some under Staff.',

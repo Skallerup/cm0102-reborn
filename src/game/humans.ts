@@ -8,7 +8,7 @@ import { gs } from './state';
 import type { GameState, HumanSlot } from './types';
 
 export const PERSONAL_KEYS = [
-  'userClub', 'manager', 'board', 'tactic', 'savedTactics', 'knowledge', 'shortlist', 'news', 'jobOffers', 'challenge', 'pendingFixture',
+  'userClub', 'manager', 'board', 'tactic', 'savedTactics', 'knowledge', 'scoutFinds', 'shortlist', 'news', 'jobOffers', 'challenge', 'pendingFixture',
 ] as const;
 
 type PersonalKey = (typeof PERSONAL_KEYS)[number];
@@ -81,7 +81,7 @@ export function emptySlot(pid: string, name: string, nation: number): HumanSlot 
     pid, name, userClub: 0,
     manager: { name, nation, rep: 40, history: [], trophies: [], sacked: 0 },
     board: { confidence: 60, expectation: 'mid', expectedPos: 10, warnings: 0 },
-    tactic: null, savedTactics: [], knowledge: {}, shortlist: [], news: [], jobOffers: [], challenge: null, pendingFixture: null,
+    tactic: null, savedTactics: [], knowledge: {}, scoutFinds: {}, shortlist: [], news: [], jobOffers: [], challenge: null, pendingFixture: null,
   };
 }
 

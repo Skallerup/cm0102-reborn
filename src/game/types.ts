@@ -430,6 +430,7 @@ export interface HumanSlot {
   tactic: Tactic | null;
   savedTactics: Tactic[];
   knowledge: Record<number, number>;
+  scoutFinds?: Record<number, string>;
   shortlist: number[];
   news: NewsItem[];
   jobOffers: number[];
@@ -460,6 +461,8 @@ export interface GameState {
   fixtures: Record<number, Fixture>;
   news: NewsItem[];
   knowledge: Record<number, number>;
+  /** Spillere scouterne har afdækket: id → dato */
+  scoutFinds?: Record<number, string>;
   shortlist: number[];
   offers: TransferOffer[];
   tactic: Tactic | null; // brugerens taktik
