@@ -314,6 +314,7 @@ export const en: Record<string, string> = {
   'hist.trophyCabinet': 'Trophy cabinet', 'hist.noTrophies': 'No trophies yet', 'hist.career': 'Career', 'hist.firstSeason': 'First season under way',
 
   'opt.general': 'General', 'opt.currency': 'Currency', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danish kroner (kr.)', 'cur.GBP': 'Pound sterling (£)', 'opt.language': 'Language', 'opt.autosave': 'Autosave',
+  'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',
   'opt.save.daily.hint': 'Saves when a game day has passed. Tactics changes etc. are saved with the next day.',

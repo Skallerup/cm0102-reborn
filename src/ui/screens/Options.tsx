@@ -31,6 +31,11 @@ export function Options() {
               </select>
             </label>
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
+            <label className="row">{t('opt.news')}
+              <select value={g.options.newsScope ?? 'nation'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
+                {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}
+              </select>
+            </label>
             <label className="row"><input type="checkbox" checked={g.options.masking} onChange={(e) => { g.options.masking = e.target.checked; notify(); }} />{t('start.masking')}</label>
             <label className="col">{t('opt.speed')}
               <input type="range" min={60} max={1500} step={20} value={1560 - g.options.matchSpeed} onChange={(e) => { g.options.matchSpeed = 1560 - Number(e.target.value); notify(); }} />

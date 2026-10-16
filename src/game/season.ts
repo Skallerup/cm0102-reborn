@@ -4,7 +4,7 @@ import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
-import { addNews, addPlayer, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
+import { addNews, addPlayer, newsRelevant, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
 import { boardSeasonEnd, setBoardExpectation } from './board';
 import { ffpReview, newSeasonBudgets, seasonPrizeMoney, sponsorSeasonBonus } from './finance';
 import { fillSquad, setupSeasonComps } from './newgame';
@@ -155,7 +155,7 @@ function retirements() {
     else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
     if (prob > 0 && rng.chance(prob)) {
       const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
-      if (p.rep >= 75) addNews(msg, { all: true });
+      if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
       else if (isHumanClub(p.club)) asOwner(p.club, () => addNews(msg));
       removePlayer(p);
     }

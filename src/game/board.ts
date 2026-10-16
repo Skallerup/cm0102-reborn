@@ -7,7 +7,7 @@ import { rulesFor } from './leagues';
 function rulesForLeague(league: string) {
   return rulesFor(league, 20).wealth;
 }
-import { addNews, gs, squad } from './state';
+import { addNews, gs, newsRelevant, squad } from './state';
 import type { Club } from './types';
 import { takeOverClub } from './newgame';
 import { forEachHuman } from './humans';
@@ -197,7 +197,7 @@ export function aiSackings() {
         if (m) m.club = 0;
         club.manager = 0;
         g.vacancies.push(club.id);
-        addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }, { all: true });
+        forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
       }
     });
   }
@@ -231,7 +231,7 @@ export function fillVacancies() {
         m.club = cid;
         club.manager = m.id;
         club.tactic = null;
-        addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } }, { all: true });
+        forEachHuman(() => { if (newsRelevant(cid)) addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } }); });
         forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
         continue;
       }

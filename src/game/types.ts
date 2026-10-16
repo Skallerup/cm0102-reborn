@@ -451,6 +451,8 @@ export interface Options {
   autosaveMode?: 'changes' | 'daily' | 'weekly' | 'monthly' | 'off';
   matchSpeed: number; // ms pr. kommentarlinje
   fullCommentary: boolean;
+  /** Hvilke nyheder om andre klubber man får (standard: kun eget land) */
+  newsScope?: 'league' | 'nation' | 'world';
 }
 
 export interface HumanSlot {

@@ -6,7 +6,7 @@ import { rulesFor } from './leagues';
 import { hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
-import { addNews, gs, setClub, squad } from './state';
+import { addNews, gs, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import type { Club, Player, Role, TransferOffer } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
@@ -319,14 +319,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
   };
   forEachHuman(() => {
     const involved = buyer.id === g.userClub || seller?.id === g.userClub;
-    if (involved || o.fee >= 15_000_000 || isUserLeague(buyer) || (seller && isUserLeague(seller))) addNews(news);
+    if (involved || newsRelevant(buyer.id, seller?.id)) addNews(news);
   });
-}
-
-function isUserLeague(c: Club) {
-  const g = gs();
-  const u = g.clubs[g.userClub];
-  return !!u && c.league === u.league;
 }
 
 export function toggleListed(pid: number) {
@@ -618,7 +612,7 @@ function aiClubTurn(club: Club) {
     target.contract = { wage, expires: `${year(g.date) + preferredYears(target)}-06-30` };
     setClub(target, club.id);
     target.joined = g.date;
-    if (isUserLeague(club)) addNews({ cat: 'transfer', key: 'transfer.freeDone', params: { player: pname(target), from: '-', to: club.name, fee: 0 }, link: { kind: 'player', id: target.id } });
+    if (newsRelevant(club.id)) addNews({ cat: 'transfer', key: 'transfer.freeDone', params: { player: pname(target), from: '-', to: club.name, fee: 0 }, link: { kind: 'player', id: target.id } });
     return;
   }
   const ask = askingPrice(target);

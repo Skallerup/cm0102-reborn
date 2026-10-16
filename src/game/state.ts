@@ -109,6 +109,21 @@ export function removePlayer(p: Player) {
 
 // ---------- nyheder ----------
 
+/** Er en begivenhed i disse klubber relevant for den aktive manager (ud fra nyhedsindstillingen)? */
+export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
+  const g = gs();
+  const me = g.clubs[g.userClub];
+  const scope = g.options.newsScope ?? 'nation';
+  if (scope === 'world') return true;
+  return clubIds.some((id) => {
+    const c = id ? g.clubs[id] : undefined;
+    if (!c) return false;
+    if (id === g.userClub) return true;
+    if (!me) return scope === 'nation';
+    return scope === 'league' ? c.league === me.league : c.nation === me.nation;
+  });
+}
+
 /** Ny besked til den aktive manager. all=true sender til alle menneskelige managere (multiplayer). */
 export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();

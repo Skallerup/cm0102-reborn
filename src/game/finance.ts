@@ -171,7 +171,8 @@ export function estimateGate(club: Club, price: number): { attendance: number; i
 // ---------- sponsoraftaler ----------
 
 import type { SponsorDeal, SponsorKind } from './types';
-import { addNews } from './state';
+import { addNews, newsRelevant } from './state';
+import { forEachHuman } from './humans';
 
 /** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */
 export function sponsorBase(c: Club): number {
@@ -271,7 +272,7 @@ export function ffpReview() {
       c.balance -= fine;
       ffp.sanction = 'restricted';
       const msg = { cat: 'finance' as const, key: 'ffp.sanction', params: { club: c.name, fee: fine } };
-      if (c.manager === -1 || c.rep >= 75) addNews(msg, { all: true });
+      if (c.manager === -1 || c.rep >= 75) forEachHuman(() => { if (newsRelevant(c.id)) addNews(msg); });
     }
   }
 }
