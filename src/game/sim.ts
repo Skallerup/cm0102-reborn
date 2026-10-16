@@ -3,7 +3,7 @@ import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacanc
 import { needsWinnerFn, recordResult } from './competitions';
 import { addDays, day, month, weekday } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
-import { gateReceipts, monthlyIncome, weeklyWages } from './finance';
+import { gateReceipts, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
@@ -13,6 +13,8 @@ import { aiBidsForListed, aiBosman, aiFillSquads, aiRenewals, aiTransferTick, co
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
 import { squadStrength } from './board';
+import { chemistryMorale, monthlyPersonality } from './personality';
+import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 
 export const INJURIES: [string, number, number, number][] = [
@@ -72,7 +74,7 @@ export function userTactic(auto = false): Tactic {
 export function engineTeam(clubId: number, tactic: Tactic): EngineTeam {
   const map = new Map<number, Player>();
   for (const p of squad(clubId)) map.set(p.id, p);
-  return { club: clubId, tactic, players: map };
+  return { club: clubId, tactic, players: map, morale: chemistryMorale(tactic) };
 }
 
 function importance(f: Fixture): number {
@@ -182,6 +184,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
       c.finance.prize += amount;
     }
   }
+  // sponsorernes sejrsbonus
+  if (isLeague && hs.goals !== as.goals) sponsorWinBonus(hs.goals > as.goals ? f.home : f.away);
   // menneskelige managere i kampen
   for (const club of [f.home, f.away]) {
     if (!isHumanClub(club) && club !== g.userClub) continue;
@@ -263,6 +267,8 @@ function newDay() {
     monthlyIncome();
     monthlyValues();
     monthlyDevelopment();
+    monthlyPersonality();
+    if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
     forEachHuman(() => {
       const { mismatches } = monthlyTrainingReport();
       const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');

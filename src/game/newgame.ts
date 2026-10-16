@@ -192,6 +192,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     }
   }
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
+  addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   rebuildIndexes();
   return g;
 }

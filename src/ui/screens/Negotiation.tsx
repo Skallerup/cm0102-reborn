@@ -13,7 +13,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
   const demand = offer?.demand?.wage ?? wageDemand(p, club);
-  const [wage, setWage] = useState(Math.round(demand * 0.9 / 50) * 50);
+  const [wage, setWage] = useState(Math.round(demand / 50) * 50);
   const [years, setYears] = useState(offer?.demand?.years ?? preferredYears(p));
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
@@ -23,6 +23,8 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 900); }
     else if (res === 'counter') {
       const d = offer?.demand?.wage ?? wageDemand(p, club);
+      setWage(Math.round(d / 50) * 50);
+      setYears(offer?.demand?.years ?? preferredYears(p));
       setMsg({ text: t('neg.counter', { wage: money(d), years: offer?.demand?.years ?? preferredYears(p) }), tone: 'warn' });
     } else if (res === 'budget') setMsg({ text: t('neg.overWageBudget', { budget: money(club.wageBudget), bill: money(bill) }), tone: 'bad' });
     else { setMsg({ text: t('neg.refused'), tone: 'bad' }); setTimeout(onClose, 1400); }

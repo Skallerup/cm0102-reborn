@@ -29,43 +29,71 @@ export const SCHEDULES: Schedule[] = [
 
 const SCHEDULE_MAP = new Map(SCHEDULES.map((s) => [s.key, s]));
 
-function coachQuality(clubId: number): number {
+export interface CoachingInfo {
+  /** samlet træningskvalitet 0-1 */
+  quality: number;
+  /** udviklingsfaktor i forhold til en gennemsnitlig klub (1 = normal) */
+  factor: number;
+  /** trænernes disciplin dæmper dovne/problemspillere (0-1) */
+  discipline: number;
+  /** trænernes motivation løfter moralen (0-1) */
+  motivating: number;
+  coaches: number;
+}
+
+/** Trænerholdets kvalitet: de bedste trænere vejer tungest, antallet og faciliteterne tæller med */
+export function coachingInfo(clubId: number): CoachingInfo {
   const g = gs();
-  let sum = 0, n = 0;
-  for (const s of Object.values(g.staff)) {
-    if (s.club !== clubId) continue;
-    if (s.role === 'coach' || s.role === 'assistant') { sum += s.attrs.coaching; n++; }
-  }
+  const staff = Object.values(g.staff).filter((s) => s.club === clubId && (s.role === 'coach' || s.role === 'assistant'));
+  const sorted = staff.map((s) => s.attrs.coaching).sort((a, b) => b - a);
+  // de tre bedste trænere tæller dobbelt
+  const weights = sorted.map((_, i) => (i < 3 ? 2 : 1));
+  const wsum = weights.reduce((s, w) => s + w, 0) || 1;
+  const avg = sorted.length ? sorted.reduce((s, v, i) => s + v * weights[i], 0) / wsum : 6;
+  const depth = Math.min(1, staff.length / 5);
   const club = g.clubs[clubId];
-  const avg = n ? sum / n : 8;
-  const depth = Math.min(1, n / 5);
-  return (avg / 20) * (0.75 + 0.25 * depth) * (0.75 + 0.25 * ((club?.facilities ?? 10) / 20));
+  const quality = (avg / 20) * (0.7 + 0.3 * depth) * (0.75 + 0.25 * ((club?.facilities ?? 10) / 20));
+  const avgOf = (k: 'discipline' | 'motivating') => (staff.length ? staff.reduce((s, x) => s + x.attrs[k], 0) / staff.length / 20 : 0.4);
+  // 0.3 + 1.2*q: svage trænere (q≈0.3) ≈ 0.66, gode (q≈0.75) ≈ 1.2 – næsten dobbelt så hurtig udvikling
+  return { quality, factor: (0.3 + 1.2 * quality) / (0.3 + 1.2 * 0.5), discipline: avgOf('discipline'), motivating: avgOf('motivating'), coaches: staff.length };
+}
+
+function coachQuality(clubId: number): CoachingInfo {
+  return coachingInfo(clubId);
 }
 
 /** Kører hver mandag for alle spillere */
 export function weeklyDevelopment() {
   const g = gs();
-  const cq = new Map<number, number>();
+  const cq = new Map<number, CoachingInfo>();
+  const none: CoachingInfo = { quality: 0.25, factor: 0.6, discipline: 0.3, motivating: 0.3, coaches: 0 };
   for (const p of Object.values(g.players)) {
-    if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club) : 0.3);
-    develop(p, cq.get(p.club)!);
+    if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club) : none);
+    const ci = cq.get(p.club)!;
+    develop(p, ci);
+    // motiverende trænere løfter moralen en smule hver uge
+    if (p.club && ci.motivating > 0.55) p.morale = Math.min(20, p.morale + (ci.motivating - 0.55) * 0.6);
   }
 }
 
-function develop(p: Player, coachQ: number) {
+function develop(p: Player, ci: CoachingInfo) {
+  const coachF = 0.3 + 1.2 * ci.quality;
   const g = gs();
   const age = ageOn(p.dob, g.date);
   const sched = SCHEDULE_MAP.get(p.training) ?? SCHEDULES[0];
-  const prof = (p.attrs[A.professionalism] + p.attrs[A.determination]) / 40; // 0.05-1
+  // disciplinerede trænere får mere ud af umotiverede spillere
+  const rawProf = (p.attrs[A.professionalism] + p.attrs[A.determination]) / 40; // 0.05-1
+  const prof = rawProf + (1 - rawProf) * ci.discipline * 0.35;
   const minutesBoost = Math.min(1, p.stats.minutes / Math.max(1, 90 * 20)) * 0.4 + 0.8;
   let delta = 0;
   if (age <= 23) {
     const ageF = age <= 18 ? 1 : age <= 20 ? 0.9 : age <= 22 ? 0.65 : 0.45;
-    delta = (p.pa - p.ca) * 0.0075 * ageF * (0.45 + coachQ) * (0.55 + prof * 0.7) * minutesBoost * sched.load;
+    delta = (p.pa - p.ca) * 0.0075 * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
   } else if (age <= 28) {
-    delta = (p.pa - p.ca) * 0.004 * (0.45 + coachQ) * (0.6 + prof * 0.6) * minutesBoost;
+    delta = (p.pa - p.ca) * 0.004 * coachF * (0.6 + prof * 0.6) * minutesBoost;
   } else if (age >= 31) {
-    delta = -(0.03 + (age - 30) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3);
+    // gode trænere og fysioterapi bremser tilbagegangen en smule
+    delta = -(0.03 + (age - 30) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
   }
   delta += rng.normal(0, 0.05);
   if (Math.abs(delta) < 0.01) return;

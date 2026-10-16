@@ -5,6 +5,7 @@ import { roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
 import { hash01, rng } from './rng';
 import { recordDevelopment } from './training';
+import { merchStarSigning } from './finance';
 import { addNews, gs, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import type { Club, Player, Role, TransferOffer } from './types';
@@ -288,9 +289,12 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
     p.contract = { wage, expires: exp };
   }
   setClub(p, buyer.id);
+  if (!o.loan) merchStarSigning(buyer.id, p.rep);
   rankCacheDate = '';
   p.listed = false;
   p.listPrice = undefined;
+  p.wantsAway = false;
+  p.promiseUntil = undefined;
   p.joined = g.date;
   p.morale = Math.min(20, p.morale + 2);
   p.form = [];

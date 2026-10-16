@@ -6,6 +6,8 @@ import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
+import { talkToPlayer } from './personality';
+import { chooseSponsor } from './finance';
 import { addNews, gs, notify } from './state';
 import {
   acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
@@ -34,6 +36,8 @@ export type Action =
   | { t: 'fireStaff'; id: number }
   | { t: 'budget'; kind: 'transfer' | 'wage' }
   | { t: 'project'; kind: 'stadium' | 'training' | 'youth' }
+  | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
+  | { t: 'sponsor'; kind: 'safe' | 'bonus' | 'ambitious' }
   | { t: 'ticket'; price: number }
   | { t: 'read'; ids: number[] | 'all' }
   | { t: 'acceptJob'; club: number }
@@ -86,6 +90,8 @@ export function applyAction(a: Action): unknown {
     case 'fireStaff': return fireStaff(a.id);
     case 'budget': return requestBudget(a.kind);
     case 'project': return requestProject(a.kind);
+    case 'talk': return talkToPlayer(a.pid, a.choice);
+    case 'sponsor': return chooseSponsor(a.kind);
     case 'ticket': if (club) club.ticketPrice = Math.max(1, Math.round(a.price * 100) / 100); return 'ok';
     case 'read':
       for (const n of g.news) if (a.ids === 'all' || a.ids.includes(n.id)) n.read = true;

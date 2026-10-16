@@ -7,7 +7,7 @@ import { Bar, Panel, PlayerLink, Stars, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 import { scoutStars } from '../../game/scouting';
-import { trainingAdvice } from '../../game/training';
+import { coachingInfo, trainingAdvice } from '../../game/training';
 import { Arrow, totalDelta } from '../dev';
 
 export function Training() {
@@ -16,6 +16,7 @@ export function Training() {
   const coaches = Object.values(g.staff).filter((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant'));
   const avg = coaches.length ? coaches.reduce((s, c) => s + c.attrs.coaching, 0) / coaches.length : 0;
   const club = g.clubs[g.userClub];
+  const ci = coachingInfo(g.userClub);
   const setAll = (key: string) => act({ t: 'trainingAll', key });
   return (
     <div>
@@ -32,7 +33,17 @@ export function Training() {
             <span>{t('train.coaches')}</span><span>{coaches.length}</span>
             <span>{t('train.avgCoaching')}</span><span><Bar value={avg} max={20} /> {avg.toFixed(1)}</span>
             <span>{t('club.facilities')}</span><span><Bar value={club.facilities} max={20} /> {club.facilities}</span>
+            <span>{t('train.effect')}</span><span className={ci.factor >= 1 ? 'good' : 'bad'}><b>{ci.factor >= 1 ? '+' : ''}{Math.round((ci.factor - 1) * 100)}%</b> {t('train.effectVs')}</span>
+            <span>{t('staff.discipline')}</span><span><Bar value={ci.discipline * 20} max={20} /> <span className="muted">{t('train.disciplineHint')}</span></span>
+            <span>{t('staff.motivating')}</span><span><Bar value={ci.motivating * 20} max={20} /> <span className="muted">{t('train.motivatingHint')}</span></span>
           </div>
+          <table className="grid" style={{ marginTop: 10 }}>
+            <tbody>
+              {coaches.sort((a, b) => b.attrs.coaching - a.attrs.coaching).map((c) => (
+                <tr key={c.id}><td>{c.first} {c.last}</td><td className="muted">{t(`role.staff.${c.role}`)}</td><td className="num"><span className={`attr ${c.attrs.coaching >= 16 ? 'a-top' : c.attrs.coaching >= 13 ? 'a-good' : c.attrs.coaching >= 9 ? 'a-mid' : 'a-low'}`}>{c.attrs.coaching}</span></td></tr>
+              ))}
+            </tbody>
+          </table>
           <p className="muted">{t('train.explain')}</p>
         </Panel>
         <Panel title={t('train.schedules')}>

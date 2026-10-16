@@ -89,6 +89,10 @@ export interface Player {
   joined?: string; // dato for ankomst til klub
   /** ikke-tilfredshed pga. spilletid (0-100) */
   unhappy?: number;
+  /** Stjerne der vil sælges (ambitiøs spiller i en klub uden succes) */
+  wantsAway?: boolean;
+  /** Manageren har lovet titler – frist */
+  promiseUntil?: string;
 }
 
 export interface StaffAttrs {
@@ -178,6 +182,11 @@ export interface Club {
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */
   projects?: ClubProject[];
+  sponsor?: SponsorDeal;
+  /** Merchandise-boost efter stjernekøb */
+  merchBoost?: { until: string; factor: number };
+  /** Financial Fair Play: resultat for seneste sæsoner og evt. straf */
+  ffp?: { results: number[]; sanction?: string };
 }
 
 export interface TeamInstructions {
@@ -297,7 +306,7 @@ export interface NewsItem {
   params: Record<string, string | number>;
   read: boolean;
   /** link til spiller/klub/kamp/tilbud */
-  link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp'; id: number | string };
+  link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards'; id: number | string };
 }
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'negotiating' | 'completed' | 'withdrawn' | 'collapsed';
@@ -492,11 +501,38 @@ export interface GameState {
   /** Online multiplayer: menneskelige managere og hvem der er "aktiv" lige nu */
   humans?: HumanSlot[];
   active?: string;
+  /** Månedens priser i indeværende sæson */
+  monthAwards?: MonthAward[];
+  /** Øjebliksbillede ved månedens start til månedens priser */
+  monthSnap?: { players: Record<number, [number, number, number]>; tables: Record<string, Record<number, number>> };
   /** Sidste handlings-index fra serveren der er indarbejdet i dette øjebliksbillede */
   lastActionIdx?: number;
 }
 
 export interface SeasonSummary {
   season: number;
-  comps: { id: string; name: string; winner: number; runnerUp?: number; topScorer?: [number, number]; best?: number; young?: number }[];
+  comps: { id: string; name: string; winner: number; runnerUp?: number; topScorer?: [number, number]; best?: number; young?: number; teamOfYear?: number[]; surprise?: { club: number; expected: number; actual: number } }[];
+  /** Årets spiller i verden (top 10) */
+  ballonDor?: number[];
+  ballonDorNames?: [string, number][];
+  managerOfYear?: { name: string; club: number; comp: string };
+  monthAwards?: MonthAward[];
+}
+
+export interface MonthAward {
+  month: string; // YYYY-MM
+  comp: string;
+  player: number;
+  manager: number; // klub-id
+  managerName: string;
+}
+
+export type SponsorKind = 'safe' | 'bonus' | 'ambitious';
+
+export interface SponsorDeal {
+  kind: SponsorKind;
+  base: number; // pr. måned
+  winBonus: number; // pr. ligasejr
+  trophyBonus: number; // pr. trofæ / opfyldt mål ved sæsonslut
+  season: number;
 }

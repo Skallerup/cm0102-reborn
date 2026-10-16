@@ -25,6 +25,7 @@ import { Assistant } from './screens/Assistant';
 import { MatchScreen } from './screens/Match';
 import { ReportScreen } from './screens/Report';
 import { History } from './screens/History';
+import { Awards } from './screens/Awards';
 import { Jobs } from './screens/Jobs';
 import { Options } from './screens/Options';
 
@@ -33,8 +34,8 @@ const MENU: [ScreenName, string][] = [
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'],
 ];
-const MENU2: [ScreenName, string][] = [['history', 'nav.history'], ['jobs', 'nav.jobs'], ['options', 'nav.options']];
-const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers'];
+const MENU2: [ScreenName, string][] = [['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['options', 'nav.options']];
+const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards'];
 
 export function Shell() {
   const g = useGame()!;
@@ -195,6 +196,7 @@ function Screen() {
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return <History />;
+    case 'awards': return <Awards />;
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
   }

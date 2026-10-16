@@ -17,6 +17,7 @@ export function statusTags(p: Player, userClub: number) {
       {p.loan && <span className="tag">{p.loan.from === userClub ? t('tag.loanOut') : t('tag.loan')}</span>}
       {p.contract?.futureClub && <span className="tag warn">{t('tag.leaving')}</span>}
       {(p.unhappy ?? 0) > 60 && <span className="tag bad">{t('tag.unhappy')}</span>}
+      {p.wantsAway && <span className="tag bad">{t('tag.wantsAway')}</span>}
     </>
   );
 }

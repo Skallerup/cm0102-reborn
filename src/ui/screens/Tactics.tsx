@@ -5,6 +5,7 @@ import { act } from '../../game/actions';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic } from '../../game/tactics';
 import type { Player, PlayerInstructions, Tactic, TeamInstructions } from '../../game/types';
 import { t } from '../../i18n';
+import { chemistry } from '../../game/personality';
 import { Bar, Panel, PlayerLink, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
@@ -25,6 +26,7 @@ export function Tactics() {
           </select>
         )}
       </Head>
+      <ChemistryPanel />
       <TacticEditor tactic={g.tactic} players={squad(g.userClub)} onChange={set} />
     </div>
   );
@@ -211,6 +213,24 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
             </table>
           </div>
         </Panel>
+      </div>
+    </div>
+  );
+}
+
+function ChemistryPanel() {
+  const g = useGame()!;
+  const tac = g.tactic!;
+  const ch = chemistry(tac.lineup.map((id) => g.players[id]).filter(Boolean), tac.captain);
+  const tone = ch.score >= 60 ? 'good' : ch.score < 45 ? 'bad' : 'warn';
+  return (
+    <div className={`insight ${tone}`}>
+      <div className="row" style={{ justifyContent: 'space-between' }}>
+        <b>{t('chem.title')}: {ch.score}/100 <Bar value={ch.score} /></b>
+        <span className="muted">{t('chem.effect', { pct: ((ch.score - 50) * 0.06).toFixed(1) })}</span>
+      </div>
+      <div className="row" style={{ marginTop: 6 }}>
+        {ch.parts.filter((p) => p.value !== 0).map((p) => <span key={p.key} className={`tag ${p.value > 0 ? 'good' : 'bad'}`}>{t(p.key, p.params)} {p.value > 0 ? '+' : ''}{p.value}</span>)}
       </div>
     </div>
   );

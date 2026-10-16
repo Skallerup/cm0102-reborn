@@ -48,5 +48,6 @@ export function useOpenLink() {
     else if (l.kind === 'fixture') nav(gs().reports[Number(l.id)] ? { name: 'report', id: l.id } : { name: 'fixtures' });
     else if (l.kind === 'offer') nav({ name: 'transfers', tab: 'offers' });
     else if (l.kind === 'comp') nav({ name: 'competitions', id: l.id });
+    else if (l.kind === 'awards') nav({ name: 'awards' });
   };
 }

@@ -15,6 +15,7 @@ import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 import { Arrow, DevelopmentChart, DevelopmentList, attrDelta, totalDelta } from '../dev';
 import { trainingAdvice } from '../../game/training';
+import { GOOD_TRAITS, traits } from '../../game/personality';
 import { statusTags } from './Squad';
 
 export function PlayerScreen({ id }: { id: number }) {
@@ -71,6 +72,8 @@ export function PlayerScreen({ id }: { id: number }) {
             <span>{t('col.form')}</span><span>{p.form.length ? p.form.map((r) => r.toFixed(1)).join(' · ') : '-'}</span>
             {p.injury && <><span>{t('player.injury')}</span><span className="bad">{t(`injury.${p.injury.key}`)} ({p.injury.days} {t('common.days')})</span></>}
             {p.banned > 0 && <><span>{t('tag.ban')}</span><span className="bad">{p.banned}</span></>}
+            {(mine || k >= 60) && traits(p).length > 0 && <><span>{t('pers.title')}</span><span>{traits(p).map((x) => <span key={x} className={`tag ${GOOD_TRAITS.has(x) ? 'good' : x === 'troublemaker' || x === 'lazy' || x === 'mercenary' ? 'bad' : 'warn'}`} title={t(`trait.${x}.desc`)}>{t(`trait.${x}`)}</span>)}</span></>}
+            {p.promiseUntil && <><span>{t('pers.promise')}</span><span className="muted">{t('pers.promiseUntil', { date: dateFmt(p.promiseUntil) })}</span></>}
             <span>{t('player.ability')}</span><span><Stars range={stars.ability} /></span>
             <span>{t('player.potential')}</span><span><Stars range={stars.potential} /></span>
             {g.options.masking && !mine && <><span>{t('player.knowledge')}</span><span><Bar value={k} /> {Math.round(k)}%</span></>}
@@ -125,6 +128,7 @@ export function PlayerScreen({ id }: { id: number }) {
           </div>
         </Panel>
       </div>
+      {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">
@@ -326,6 +330,22 @@ function ScoutReport({ pid }: { pid: number }) {
     <div className={`insight ${rec.level < 0 ? '' : rec.level <= 1 ? 'good' : rec.level >= 3 ? 'bad' : 'warn'}`}>
       <div className="row"><b>{t('rec.title', { scout: scout ? `${scout.first} ${scout.last}` : t('role.staff.scout') })}</b> <RecTag level={rec.level} /></div>
       <div style={{ marginTop: 4 }}>{t(rec.key)}{rec.reasons.length > 0 && ' '}{rec.reasons.map((r) => t(r.key, r.params)).join(' ')}</div>
+    </div>
+  );
+}
+
+function WantsAway({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) {
+  const g = gs();
+  const p = g.players[pid];
+  return (
+    <div className="insight bad">
+      <b>{t('pers.wantsAwayTitle', { player: p.last })}</b>
+      <div className="muted" style={{ margin: '4px 0 8px' }}>{t('pers.wantsAwayText')}</div>
+      <div className="row">
+        <button className="small primary" disabled={!!p.promiseUntil} onClick={() => onMsg(t(dispatch<string>({ t: 'talk', pid, choice: 'promise' })))}>{t('pers.talk.promise')}</button>
+        <button className="small" onClick={() => onMsg(t(dispatch<string>({ t: 'talk', pid, choice: 'list' })))}>{t('pers.talk.list')}</button>
+        <button className="small danger" onClick={() => onMsg(t(dispatch<string>({ t: 'talk', pid, choice: 'refuse' })))}>{t('pers.talk.refuse')}</button>
+      </div>
     </div>
   );
 }

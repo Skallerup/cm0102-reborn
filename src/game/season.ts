@@ -6,11 +6,12 @@ import { LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { addNews, addPlayer, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
 import { boardSeasonEnd, setBoardExpectation } from './board';
-import { newSeasonBudgets, seasonPrizeMoney } from './finance';
+import { ffpReview, newSeasonBudgets, seasonPrizeMoney, sponsorSeasonBonus } from './finance';
 import { fillSquad, setupSeasonComps } from './newgame';
 import { aiFillSquads } from './transfers';
 import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
+import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { initKnowledge } from './scouting';
 import type { Player, SeasonSummary } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
@@ -39,6 +40,8 @@ function seasonAwards(): SeasonSummary {
       if (best) entry.best = best.id;
       const young = eligible.filter((p) => ageOn(p.dob, g.date) <= 21).sort((a, b) => avgRating(b) - avgRating(a))[0];
       if (young) entry.young = young.id;
+      entry.teamOfYear = teamOfYear(comp);
+      entry.surprise = surpriseOfSeason(comp);
       // klubhistorik
       order.forEach((cid, i) => {
         const row = comp.table.find((r) => r.club === cid);
@@ -230,11 +233,21 @@ function prune() {
 export function seasonRollover() {
   const g = gs();
   seasonPrizeMoney();
+  monthlyAwards(); // juni-kåringer inden arkivering
   const summary = seasonAwards();
+  seasonGala(summary);
   g.seasonHistory.push(summary);
   // Udfordringer og bestyrelsens dom – pr. menneskelig manager
   const challengeResults = new Map<string | undefined, 'won' | 'lost'>();
+  ffpReview();
   forEachHuman(() => {
+    const club = g.clubs[g.userClub];
+    if (club) {
+      const comp = g.comps[club.league];
+      const pos = comp ? finalOrder(comp).indexOf(club.id) + 1 : 99;
+      const trophy = Object.values(g.comps).some((c) => c.winner === club.id && c.type !== 'playoff');
+      sponsorSeasonBonus(pos, g.board.expectedPos, trophy);
+    }
     if (g.challenge && !g.challenge.done) {
       const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
       if (ch?.check(g)) challengeResults.set(g.active, 'won');
@@ -274,7 +287,7 @@ export function seasonRollover() {
   setupSeasonComps(g.season, prevTables);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
   forEachHuman(() => {
-    if (g.userClub) setBoardExpectation();
+    if (g.userClub) { setBoardExpectation(); addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
     initKnowledgeKeep();
     const result = challengeResults.get(g.active);
     if (result && g.challenge) {

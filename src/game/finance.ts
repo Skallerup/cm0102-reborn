@@ -72,9 +72,13 @@ export function monthlyIncome() {
     const wealth = rulesFor(c.league, 20).wealth;
     const tier = g.leagues[c.league]?.tier ?? 2;
     const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
-    const sponsor = Math.round(Math.pow(c.rep, 2.5) * 25 * wealth);
-    const merch = Math.round(c.rep * c.rep * 25 * wealth);
-    c.balance += tv + sponsor + merch;
+    const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
+    const boost = c.merchBoost && c.merchBoost.until >= g.date ? 1 + c.merchBoost.factor : 1;
+    const merch = Math.round(c.rep * c.rep * 25 * wealth * boost);
+    // driftsomkostninger: stadion, administration, scouting-netværk m.m.
+    const upkeep = Math.round(c.seats * 0.8 * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
+    c.balance += tv + sponsor + merch - upkeep;
+    c.finance.other += upkeep;
     // ligaer der ikke simuleres har ingen kampe – giv dem et skøn over billetindtægterne (≈2 hjemmekampe/md.)
     if (!g.comps[c.league] && g.date.slice(5, 7) !== '06' && g.date.slice(5, 7) !== '07') {
       const att = c.seats * Math.min(1, 0.3 + c.rep / 160 + 0.06);
@@ -131,6 +135,7 @@ export function newSeasonBudgets() {
     const wealth = rulesFor(c.league, 20).wealth;
     const sv = squad(c.id).reduce((s, p) => s + p.value, 0);
     c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
+    if (c.ffp?.sanction) c.transferBudget = Math.round(c.transferBudget * 0.4 / 50_000) * 50_000;
     const bill = currentWageBill(c.id);
     c.wageBudget = Math.round(Math.max(bill * 1.05, bill + 2000) / 500) * 500;
     c.finance = { gate: 0, tv: 0, prize: 0, sponsor: 0, merch: 0, transfersIn: 0, transfersOut: 0, wages: 0, other: 0 };
@@ -142,7 +147,7 @@ export function fairTicketPrice(rep: number, league: string): number {
 }
 
 export function transferBudgetFor(squadValue: number, wealth: number, balance: number): number {
-  const base = squadValue * 0.08 * Math.min(1.5, wealth + 0.2) + Math.max(0, balance) * 0.25;
+  const base = squadValue * 0.08 * Math.min(1.5, wealth + 0.2) + Math.max(0, balance) * (balance > 50_000_000 ? 0.4 : 0.25);
   const cap = Math.max(0, balance) * 0.8 + 1_000_000;
   return Math.round(Math.max(50_000, Math.min(base, cap)) / 50_000) * 50_000;
 }
@@ -162,3 +167,113 @@ export function estimateGate(club: Club, price: number): { attendance: number; i
   const attendance = Math.round(club.seats * fill);
   return { attendance, income: attendance * price, fill };
 }
+
+// ---------- sponsoraftaler ----------
+
+import type { SponsorDeal, SponsorKind } from './types';
+import { addNews } from './state';
+
+/** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */
+export function sponsorBase(c: Club): number {
+  return Math.round(Math.pow(c.rep, 2.5) * 25 * rulesFor(c.league, 20).wealth);
+}
+
+/** Tre tilbud: sikker, bonus eller ambitiøs */
+export function sponsorOffers(c: Club): SponsorDeal[] {
+  const g = gs();
+  const b = sponsorBase(c);
+  return [
+    { kind: 'safe', base: Math.round(b * 1.0), winBonus: 0, trophyBonus: 0, season: g.season },
+    { kind: 'bonus', base: Math.round(b * 0.75), winBonus: Math.round(b * 0.1), trophyBonus: Math.round(b * 3), season: g.season },
+    { kind: 'ambitious', base: Math.round(b * 0.45), winBonus: Math.round(b * 0.16), trophyBonus: Math.round(b * 9), season: g.season },
+  ];
+}
+
+export function chooseSponsor(kind: SponsorKind): string {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (!c) return 'error';
+  if (c.sponsor && c.sponsor.season === g.season) return 'sponsor.locked';
+  const deal = sponsorOffers(c).find((d) => d.kind === kind)!;
+  c.sponsor = deal;
+  addNews({ cat: 'finance', key: 'sponsor.signed', params: { kind } });
+  return 'ok';
+}
+
+/** Sejrsbonus fra sponsoren (ligakampe) */
+export function sponsorWinBonus(clubId: number) {
+  const g = gs();
+  const c = g.clubs[clubId];
+  if (!c?.sponsor || c.sponsor.season !== g.season || !c.sponsor.winBonus) return;
+  c.balance += c.sponsor.winBonus;
+  c.finance.sponsor += c.sponsor.winBonus;
+}
+
+/** Ved sæsonslut: bonus hvis målet nås (bonus: forventningen, ambitiøs: 2 pladser bedre eller trofæ) */
+export function sponsorSeasonBonus(pos: number, expectedPos: number, trophy: boolean) {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  const d = c?.sponsor;
+  if (!c || !d || d.season !== g.season || d.kind === 'safe') return;
+  const hit = d.kind === 'bonus' ? pos <= expectedPos || trophy : pos <= Math.max(1, expectedPos - 2) || trophy;
+  if (hit) {
+    c.balance += d.trophyBonus;
+    c.finance.sponsor += d.trophyBonus;
+  }
+  addNews({ cat: 'finance', key: hit ? 'sponsor.bonusPaid' : 'sponsor.bonusMissed', params: { fee: d.trophyBonus } });
+}
+
+// ---------- merchandise ----------
+
+/** Et stjernekøb sælger trøjer */
+export function merchStarSigning(clubId: number, rep: number) {
+  const g = gs();
+  const c = g.clubs[clubId];
+  if (!c || rep < 72) return;
+  const factor = Math.min(0.8, 0.15 + (rep - 72) / 40);
+  if (!c.merchBoost || c.merchBoost.until < g.date || c.merchBoost.factor < factor) c.merchBoost = { until: addDaysIso(g.date, 365), factor };
+}
+
+function addDaysIso(d: string, n: number) {
+  const x = new Date(d + 'T00:00:00Z');
+  x.setUTCDate(x.getUTCDate() + n);
+  return x.toISOString().slice(0, 10);
+}
+
+// ---------- Financial Fair Play ----------
+
+/** Ved sæsonslut: registrér resultat og straf klubber der taber for mange penge to år i træk */
+export function ffpReview() {
+  const g = gs();
+  // AI-ejere geninvesterer store overskud (anlæg, akademi, lån, udbytte) i stedet for at hobe penge op
+  for (const c of Object.values(g.clubs)) {
+    if (c.manager === -1) continue;
+    const cap = 80_000_000 * Math.max(0.3, rulesFor(c.league, 20).wealth);
+    if (c.balance > cap) {
+      const invest = Math.round((c.balance - cap) * 0.6);
+      c.balance -= invest;
+      if (c.facilities < 20 && invest > 5_000_000) c.facilities++;
+      if (c.youth < 20 && invest > 15_000_000) c.youth++;
+    }
+  }
+  for (const c of Object.values(g.clubs)) {
+    const f = c.finance;
+    const income = f.gate + f.tv + f.prize + f.sponsor + f.merch + f.transfersIn;
+    const expense = f.wages + f.transfersOut + f.other;
+    const result = income - expense;
+    const ffp = (c.ffp ??= { results: [] });
+    ffp.results = [...ffp.results, Math.round(result)].slice(-3);
+    ffp.sanction = undefined;
+    const lastTwo = ffp.results.slice(-2);
+    const limit = Math.max(15_000_000, income * 0.3) * rulesFor(c.league, 20).wealth;
+    if (lastTwo.length === 2 && lastTwo[0] + lastTwo[1] < -limit && g.leagues[c.league]?.tier === 1) {
+      const fine = Math.round(Math.max(1_000_000, income * 0.05));
+      c.balance -= fine;
+      ffp.sanction = 'restricted';
+      const msg = { cat: 'finance' as const, key: 'ffp.sanction', params: { club: c.name, fee: fine } };
+      if (c.manager === -1 || c.rep >= 75) addNews(msg, { all: true });
+    }
+  }
+}
+
+export { sponsorOffers as _sponsorOffers };

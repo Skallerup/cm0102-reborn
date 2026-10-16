@@ -1,5 +1,5 @@
 import { act } from '../../game/actions';
-import { currentWageBill, estimateGate, fairTicketPrice } from '../../game/finance';
+import { currentWageBill, estimateGate, fairTicketPrice, sponsorOffers } from '../../game/finance';
 import { projectOffer } from '../../game/board';
 import type { ProjectKind } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
@@ -51,6 +51,10 @@ export function Finance() {
             <button onClick={() => act({ t: 'budget', kind: 'wage' })}>{t('fin.askWage')}</button>
           </div>
         </Panel>
+      </div>
+      <div className="cols">
+        <SponsorPanel />
+        <FfpPanel />
       </div>
       <div className="cols">
         <TicketPanel />
@@ -137,6 +141,64 @@ function ProjectsPanel() {
           );
         })}
         <div className="muted">{t('proj.hint')}</div>
+      </div>
+    </Panel>
+  );
+}
+
+function SponsorPanel() {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const current = c.sponsor && c.sponsor.season === g.season ? c.sponsor : null;
+  const offers = sponsorOffers(c);
+  return (
+    <Panel title={t('sponsor.title')}>
+      {current ? (
+        <div className="col">
+          <div className="insight good"><b>{t(`sponsor.kind.${current.kind}`)}</b> – {t(`sponsor.desc.${current.kind}`)}</div>
+          <div className="kv">
+            <span>{t('sponsor.base')}</span><span>{money(current.base)} / {t('sponsor.month')}</span>
+            {current.winBonus > 0 && <><span>{t('sponsor.win')}</span><span>{money(current.winBonus)}</span></>}
+            {current.trophyBonus > 0 && <><span>{t('sponsor.goal')}</span><span>{money(current.trophyBonus)}</span></>}
+          </div>
+          <div className="muted">{t('sponsor.lockedHint')}</div>
+        </div>
+      ) : (
+        <div className="col">
+          <div className="muted">{t('sponsor.choose')}</div>
+          {offers.map((o) => (
+            <div key={o.kind} className="choice" onClick={() => act({ t: 'sponsor', kind: o.kind })}>
+              <div className="grow">
+                <b>{t(`sponsor.kind.${o.kind}`)}</b>
+                <div className="muted">{t(`sponsor.desc.${o.kind}`)}</div>
+                <div>{money(o.base)} / {t('sponsor.month')}{o.winBonus ? ` · +${money(o.winBonus)} ${t('sponsor.perWin')}` : ''}{o.trophyBonus ? ` · +${money(o.trophyBonus)} ${t('sponsor.ifGoal')}` : ''}</div>
+              </div>
+              <button className="small primary">{t('sponsor.sign')}</button>
+            </div>
+          ))}
+        </div>
+      )}
+      {c.merchBoost && c.merchBoost.until >= g.date && <div className="insight good" style={{ marginTop: 8 }}>{t('merch.boost', { pct: Math.round(c.merchBoost.factor * 100), date: dateFmt(c.merchBoost.until) })}</div>}
+    </Panel>
+  );
+}
+
+function FfpPanel() {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const f = c.finance;
+  const income = f.gate + f.tv + f.prize + f.sponsor + f.merch + f.transfersIn;
+  const expense = f.wages + f.transfersOut + f.other;
+  const results = c.ffp?.results ?? [];
+  return (
+    <Panel title={t('ffp.title')}>
+      <div className="col">
+        <div className="kv">
+          <span>{t('ffp.thisSeason')}</span><span className={income - expense >= 0 ? 'good' : 'bad'}>{money(income - expense)}</span>
+          {results.map((r, i) => [<span key={`l${i}`}>{t('ffp.season', { n: results.length - i })}</span>, <span key={`v${i}`} className={r >= 0 ? 'good' : 'bad'}>{money(r)}</span>])}
+          <span>{t('ffp.status')}</span><span>{c.ffp?.sanction ? <span className="tag bad">{t('ffp.restricted')}</span> : <span className="tag good">{t('ffp.ok')}</span>}</span>
+        </div>
+        <div className="muted">{t('ffp.explain')}</div>
       </div>
     </Panel>
   );
