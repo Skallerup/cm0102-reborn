@@ -58,7 +58,7 @@ Opdatér databasen med `npm run data`. Kommandoen henter de nyeste CSV-filer og 
 
 ```bash
 npm install
-npm run dev        # http://localhost:5173/cm0102-reborn/
+npm run dev        # http://localhost:5173/cm0102-reborn/ (på Vercel bruges roden /)
 npm test           # motorkalibrering, exploit-test, kampprogram, scouting
 npm run build
 ```

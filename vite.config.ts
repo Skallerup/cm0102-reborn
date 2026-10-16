@@ -2,9 +2,9 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
-// base = repo-navn på GitHub Pages
+// base: roden på Vercel, repo-navnet på GitHub Pages (sættes af workflowet)
 export default defineConfig({
-  base: process.env.BASE_PATH ?? '/cm0102-reborn/',
+  base: process.env.BASE_PATH ?? (process.env.VERCEL ? '/' : '/cm0102-reborn/'),
   plugins: [
     react(),
     VitePWA({
