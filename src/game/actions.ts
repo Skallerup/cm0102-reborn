@@ -20,7 +20,7 @@ export type Action =
   | { t: 'listed'; pid: number }
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
-  | { t: 'loanOut'; pid: number }
+  | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean }
   | { t: 'preContract'; pid: number }
   | { t: 'shortlist'; pid: number; on: boolean }
@@ -60,7 +60,7 @@ export function applyAction(a: Action): unknown {
     case 'listed': if (g.players[a.pid]?.club === g.userClub) toggleListed(a.pid); return 'ok';
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
     case 'release': releasePlayer(a.pid); return 'ok';
-    case 'loanOut': return loanOut(a.pid);
+    case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
     case 'bid': return makeBid(a.pid, a.fee, a.loan);
     case 'preContract': return startPreContract(a.pid);
     case 'shortlist':

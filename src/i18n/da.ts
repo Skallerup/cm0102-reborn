@@ -86,6 +86,10 @@ export const da: Record<string, string> = {
   'player.rangeHint': 'Intervaller indsnævres jo mere spilleren scoutes', 'player.positions': 'Positioner', 'player.thisSeason': 'Denne sæson',
   'player.mom': 'Kampens spiller', 'player.cards': 'Gule / røde', 'player.career': 'Karriere', 'player.noHistory': 'Ingen tidligere sæsoner',
   'player.bidSent': 'Buddet er sendt. Svaret kommer i indbakken.', 'player.done': 'Udført.', 'player.clubRep': 'Klubbens omdømme',
+  'loan.title': 'Udlej {player}', 'loan.explain': 'Vælg hvor stor en del af lønnen lejeklubben skal betale, og evt. et lejegebyr. Jo bedre vilkår for dig, jo færre klubber vil være med. Resten af lønnen betaler din klub.',
+  'loan.share': 'Lejeklubben betaler', 'loan.theyPay': 'betaler lejeklubben', 'loan.youPay': 'betaler du', 'loan.fee': 'Lejegebyr',
+  'loan.maxShare': 'Maks. løndel', 'loan.maxFee': 'Maks. gebyr', 'loan.accepts': 'Accepterer', 'loan.declines': 'Siger nej', 'loan.interested': 'klubber accepterer vilkårene',
+  'loan.agree': 'Udlej til valgt klub', 'transfer.loanTermsRejected': 'Klubben accepterer ikke de vilkår.',
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

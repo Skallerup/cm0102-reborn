@@ -1,8 +1,8 @@
-import { useState } from 'react';
+
 import { act } from '../../game/actions';
 import { dateFmt, t } from '../../i18n';
 import { Empty, Panel } from '../components';
-import { useGame } from '../core';
+import { useGame, useRouteState } from '../core';
 import { Head, newsBody, newsTitle, useOpenLink } from './common';
 import type { NewsCategory } from '../../game/types';
 
@@ -10,8 +10,8 @@ const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 
 
 export function Inbox() {
   const g = useGame()!;
-  const [cat, setCat] = useState<NewsCategory | 'all'>('all');
-  const [sel, setSel] = useState<number | null>(g.news[0]?.id ?? null);
+  const [cat, setCat] = useRouteState<NewsCategory | 'all'>('cat', 'all');
+  const [sel, setSel] = useRouteState<number | null>('sel', g.news[0]?.id ?? null);
   const open = useOpenLink();
   const list = g.news.filter((n) => cat === 'all' || n.cat === cat);
   const item = g.news.find((n) => n.id === sel);

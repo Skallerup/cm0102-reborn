@@ -1,11 +1,11 @@
-import { useState } from 'react';
+
 import { A } from '../../game/attributes';
 import { squad } from '../../game/state';
 import type { Player } from '../../game/types';
 import { avgRating } from '../../game/season';
 import { money, t, dateFmt } from '../../i18n';
 import { Bar, Nat, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 
 export function statusTags(p: Player, userClub: number) {
@@ -61,7 +61,7 @@ export function SquadTable({ players, view, userClub }: { players: Player[]; vie
 
 export function Squad() {
   const g = useGame()!;
-  const [view, setView] = useState('general');
+  const [view, setView] = useRouteState('view', 'general');
   const players = squad(g.userClub);
   const loanedOut = Object.values(g.players).filter((p) => p.loan?.from === g.userClub);
   return (

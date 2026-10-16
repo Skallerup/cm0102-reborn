@@ -9,16 +9,35 @@ export function weeklyWages() {
   const g = gs();
   const staffWages = new Map<number, number>();
   for (const s of Object.values(g.staff)) if (s.club) staffWages.set(s.club, (staffWages.get(s.club) ?? 0) + s.wage);
+  // Lejede spillere: lejeklubben betaler sin andel, moderklubben resten
+  const parentPays = new Map<number, number>();
   for (const c of Object.values(g.clubs)) {
     let w = staffWages.get(c.id) ?? 0;
-    for (const p of squad(c.id)) w += p.contract?.wage ?? 0;
+    for (const p of squad(c.id)) {
+      const wage = p.contract?.wage ?? 0;
+      if (p.loan) {
+        const share = p.loan.share ?? 1;
+        w += wage * share;
+        parentPays.set(p.loan.from, (parentPays.get(p.loan.from) ?? 0) + wage * (1 - share));
+      } else w += wage;
+    }
+    c.balance -= w;
+    c.finance.wages += w;
+  }
+  for (const [cid, w] of parentPays) {
+    const c = g.clubs[cid];
+    if (!c || !w) continue;
     c.balance -= w;
     c.finance.wages += w;
   }
 }
 
 export function currentWageBill(clubId: number): number {
-  return squad(clubId).reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
+  const g = gs();
+  let bill = squad(clubId).reduce((s, p) => s + (p.contract?.wage ?? 0) * (p.loan ? p.loan.share ?? 1 : 1), 0);
+  // udlejede spillere hvor vi stadig betaler en del
+  for (const p of Object.values(g.players)) if (p.loan?.from === clubId) bill += (p.contract?.wage ?? 0) * (1 - (p.loan.share ?? 1));
+  return bill;
 }
 
 /** Tilskuere og billetindtægt for en hjemmekamp */

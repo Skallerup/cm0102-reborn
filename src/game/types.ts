@@ -74,7 +74,8 @@ export interface Player {
   yellowCount: number; // gule kort mod karantæne
   training: string; // træningsskema-nøgle
   listed: boolean; // transferlistet
-  loan: { from: number; until: string } | null;
+  /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
+  loan: { from: number; until: string; share?: number; fee?: number } | null;
   stats: SeasonStats;
   history: CareerLine[];
   caps: number;

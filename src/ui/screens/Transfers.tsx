@@ -7,14 +7,14 @@ import { act } from '../../game/actions';
 import type { Player, Role, TransferOffer } from '../../game/types';
 import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
 import { ClubLink, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 
 const ROLES: (Role | '')[] = ['', 'GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'];
 
 export function Transfers({ tab: initial }: { tab?: string }) {
-  const [tab, setTab] = useState(initial ?? 'search');
+  const [tab, setTab] = useRouteState('tab', initial ?? 'search');
   const g = useGame()!;
   const pending = g.offers.filter((o) => o.status === 'pending' && o.seller === g.userClub).length;
   return (
@@ -57,18 +57,18 @@ function PlayerList({ players, initialSort = 'val' }: { players: Player[]; initi
 
 function Search() {
   const g = useGame()!;
-  const [name, setName] = useState('');
-  const [role, setRole] = useState<Role | ''>('');
-  const [minAge, setMinAge] = useState(15);
-  const [maxAge, setMaxAge] = useState(40);
-  const [maxValue, setMaxValue] = useState(0);
-  const [nation, setNation] = useState(-1);
-  const [league, setLeague] = useState('');
-  const [onlyFree, setOnlyFree] = useState(false);
-  const [onlyListed, setOnlyListed] = useState(false);
-  const [expiring, setExpiring] = useState(false);
-  const [onlyKnown, setOnlyKnown] = useState(false);
-  const [realism, setRealism] = useState(0); // 0 alle, 1 realistiske, 2 realistiske + måske
+  const [name, setName] = useRouteState('name', '');
+  const [role, setRole] = useRouteState<Role | ''>('role', '');
+  const [minAge, setMinAge] = useRouteState('minAge', 15);
+  const [maxAge, setMaxAge] = useRouteState('maxAge', 40);
+  const [maxValue, setMaxValue] = useRouteState('maxValue', 0);
+  const [nation, setNation] = useRouteState('nation', -1);
+  const [league, setLeague] = useRouteState('league', '');
+  const [onlyFree, setOnlyFree] = useRouteState('onlyFree', false);
+  const [onlyListed, setOnlyListed] = useRouteState('onlyListed', false);
+  const [expiring, setExpiring] = useRouteState('expiring', false);
+  const [onlyKnown, setOnlyKnown] = useRouteState('onlyKnown', false);
+  const [realism, setRealism] = useRouteState('realism', 0);
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => g.nations[a].name.localeCompare(g.nations[b].name)), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
   const results = useMemo(() => {
@@ -153,7 +153,7 @@ function Offers() {
               <tr key={o.id}>
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td><ClubLink id={o.buyer} /></td>
-                <td className="num">{money(o.fee)}</td>
+                <td className="num">{o.loan ? `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}` : money(o.fee)}</td>
                 <td>{status(o)}</td>
                 <td>
                   {o.status === 'pending' && (

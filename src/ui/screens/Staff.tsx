@@ -5,7 +5,7 @@ import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
 import { money, t } from '../../i18n';
 import { ClubLink, Panel, Tabs } from '../components';
-import { useGame } from '../core';
+import { useGame, useRouteState } from '../core';
 import { Head } from './common';
 
 const ATTRS: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
@@ -14,10 +14,10 @@ const KEY_ATTR: Record<StaffRole, keyof Staff['attrs']> = { manager: 'tactics', 
 
 export function StaffScreen() {
   const g = useGame()!;
-  const [tab, setTab] = useState('mine');
-  const [role, setRole] = useState<StaffRole>('coach');
-  const [source, setSource] = useState<'free' | 'clubs'>('free');
-  const [onlyWilling, setOnlyWilling] = useState(true);
+  const [tab, setTab] = useRouteState('tab', 'mine');
+  const [role, setRole] = useRouteState<StaffRole>('role', 'coach');
+  const [source, setSource] = useRouteState<'free' | 'clubs'>('source', 'free');
+  const [onlyWilling, setOnlyWilling] = useRouteState('onlyWilling', true);
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
   const mine = Object.values(g.staff).filter((s) => s.club === g.userClub);
   const club = g.clubs[g.userClub];

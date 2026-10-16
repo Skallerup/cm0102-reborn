@@ -4,7 +4,7 @@ import { ageOn } from '../game/dates';
 import { gs } from '../game/state';
 import type { Player } from '../game/types';
 import { t } from '../i18n';
-import { useNav } from './core';
+import { useNav, useRouteState } from './core';
 import { logoUrl } from './logos';
 
 export function PlayerLink({ p, short }: { p: Player | undefined; short?: boolean }) {
@@ -104,8 +104,12 @@ export interface Col<T> {
 export function Table<T>({ rows, cols, rowKey, onRow, initialSort, initialDir = -1, rowClass, limit }: {
   rows: T[]; cols: Col<T>[]; rowKey: (r: T) => string | number; onRow?: (r: T) => void; initialSort?: string; initialDir?: 1 | -1; rowClass?: (r: T) => string; limit?: number;
 }) {
-  const [sortKey, setSortKey] = useState(initialSort);
-  const [dir, setDir] = useState<1 | -1>(initialDir);
+  const sk = `sort:${cols.map((c) => c.key).join(',')}`;
+  const [sortState, setSortState] = useRouteState<{ key?: string; dir: 1 | -1 }>(sk, { key: initialSort, dir: initialDir });
+  const sortKey = sortState.key;
+  const dir = sortState.dir;
+  const setSortKey = (k: string) => setSortState({ key: k, dir: -1 });
+  const setDir = (f: (d: 1 | -1) => 1 | -1) => setSortState({ key: sortKey, dir: f(dir) });
   const sorted = useMemo(() => {
     const col = cols.find((c) => c.key === sortKey);
     if (!col?.sort) return rows;
@@ -123,7 +127,7 @@ export function Table<T>({ rows, cols, rowKey, onRow, initialSort, initialDir = 
           <tr>
             {cols.map((c) => (
               <th key={c.key} className={`${c.className ?? ''} ${c.sort ? 'sortable' : ''} ${sortKey === c.key ? 'sorted' : ''}`} title={c.title}
-                onClick={() => { if (!c.sort) return; if (sortKey === c.key) setDir((d) => (d === 1 ? -1 : 1)); else { setSortKey(c.key); setDir(-1); } }}>
+                onClick={() => { if (!c.sort) return; if (sortKey === c.key) setDir((d) => (d === 1 ? -1 : 1)); else setSortKey(c.key); }}>
                 {c.label}{sortKey === c.key ? (dir === 1 ? ' ▲' : ' ▼') : ''}
               </th>
             ))}

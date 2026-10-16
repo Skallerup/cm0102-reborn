@@ -9,7 +9,7 @@ import { addNews, fixturesOn, gs, squad } from './state';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, Player, Tactic } from './types';
 import { monthlyValues, weeklyDevelopment } from './training';
-import { aiBosman, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
+import { aiBidsForListed, aiBosman, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
 import { squadStrength } from './board';
@@ -250,6 +250,7 @@ function newDay() {
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   forEachHuman(processOffers);
+  forEachHuman(aiBidsForListed);
   aiTransferTick();
   forEachHuman(scoutDaily);
   if (day(d) % 3 === 0) fillVacancies();

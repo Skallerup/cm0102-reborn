@@ -76,6 +76,10 @@ export const en: Record<string, string> = {
   'player.rangeHint': 'Ranges narrow the more the player is scouted', 'player.positions': 'Positions', 'player.thisSeason': 'This season',
   'player.mom': 'Man of the match', 'player.cards': 'Yellow / red', 'player.career': 'Career', 'player.noHistory': 'No previous seasons',
   'player.bidSent': 'Offer sent. The reply will arrive in your inbox.', 'player.done': 'Done.', 'player.clubRep': 'Club reputation',
+  'loan.title': 'Loan out {player}', 'loan.explain': 'Choose how much of his wage the borrowing club pays, and optionally a loan fee. The better the terms for you, the fewer clubs will agree. Your club pays the rest of the wage.',
+  'loan.share': 'Borrowing club pays', 'loan.theyPay': 'paid by the borrower', 'loan.youPay': 'paid by you', 'loan.fee': 'Loan fee',
+  'loan.maxShare': 'Max wage share', 'loan.maxFee': 'Max fee', 'loan.accepts': 'Accepts', 'loan.declines': 'Declines', 'loan.interested': 'clubs accept the terms',
+  'loan.agree': 'Loan to selected club', 'transfer.loanTermsRejected': 'The club does not accept those terms.',
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

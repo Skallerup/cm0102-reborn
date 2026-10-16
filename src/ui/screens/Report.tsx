@@ -1,10 +1,10 @@
-import { useState } from 'react';
+
 import { matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
 import { ClubLink, Crest, Panel, PlayerLink, Tabs } from '../components';
-import { useGame } from '../core';
+import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { StatsPanel } from './Match';
@@ -12,7 +12,7 @@ import { StatsPanel } from './Match';
 export function ReportScreen({ id }: { id: number }) {
   const g = useGame()!;
   const rep = g.reports[id];
-  const [tab, setTab] = useState('analysis');
+  const [tab, setTab] = useRouteState('tab', 'analysis');
   if (!rep) return <Head title={t('report.missing')} />;
   const side: 0 | 1 = rep.away === g.userClub ? 1 : 0;
   const home = g.clubs[rep.home]?.short ?? '?', away = g.clubs[rep.away]?.short ?? '?';

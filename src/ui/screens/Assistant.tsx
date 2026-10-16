@@ -10,11 +10,11 @@ import { t } from '../../i18n';
 import type { BenchRow } from '../../worker/bench.worker';
 import { AttrVal, Panel, Pct, PlayerLink, Radar, Tabs } from '../components';
 import { compareIds, toggleCompare } from '../compare';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 
 export function Assistant({ tab: initial }: { tab?: string }) {
-  const [tab, setTab] = useState(initial ?? 'opponent');
+  const [tab, setTab] = useRouteState('tab', initial ?? 'opponent');
   return (
     <div>
       <Head title={t('nav.assistant')}>
@@ -140,7 +140,7 @@ function Benchmark() {
   const g = useGame()!;
   const [rows, setRows] = useState<BenchRow[] | null>(null);
   const [progress, setProgress] = useState(0);
-  const [matches, setMatches] = useState(100);
+  const [matches, setMatches] = useRouteState('matches', 100);
   const worker = useRef<Worker | null>(null);
   const run = () => {
     worker.current?.terminate();

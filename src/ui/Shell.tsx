@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { addDays } from '../game/dates';
 import { saveGame } from '../game/save';
 import { continueGame, runUntil } from '../game/sim';
@@ -7,7 +7,7 @@ import { dateFmt, money, t } from '../i18n';
 import { Crest, Modal } from './components';
 import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
-import { useGame, useNav, type ScreenName } from './core';
+import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
 import { PlayerScreen } from './screens/PlayerScreen';
@@ -43,6 +43,11 @@ export function Shell() {
   const [holiday, setHoliday] = useState(false);
   const [toast, setToast] = useState('');
   const stopRef = useRef(false);
+  const mainRef = useRef<HTMLElement>(null);
+  useEffect(() => { setScrollElement(mainRef.current); return () => setScrollElement(null); }, []);
+  useLayoutEffect(() => {
+    if (mainRef.current) mainRef.current.scrollTop = route.scroll ?? 0;
+  }, [route]);
   const club = session() && !session()!.inGame ? undefined : g.clubs[g.userClub];
   const unread = g.news.filter((n) => !n.read).length;
   const lastSaveMonth = useRef(g.date.slice(0, 7));
@@ -127,7 +132,7 @@ export function Shell() {
           if (confirm(t('top.quitConfirm'))) { await saveGame(); setGame(null); }
         }}>{t('nav.quit')}</button>
       </nav>
-      <main className="main">
+      <main className="main" ref={mainRef}>
         {online && !online.inGame ? <Lobby /> : <Screen />}
         {online?.status === 'error' && <div className="toast">{online.error}</div>}
       </main>

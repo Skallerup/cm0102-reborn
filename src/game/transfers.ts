@@ -3,7 +3,7 @@ import { naturalRole } from './attributes';
 import { addDays, ageOn, month, year } from './dates';
 import { roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
-import { rng } from './rng';
+import { hash01, rng } from './rng';
 import { addNews, gs, setClub, squad } from './state';
 import { clubLevel } from './scouting';
 import type { Club, Player, Role, TransferOffer } from './types';
@@ -613,20 +613,91 @@ function canPreContractAny(p: Player) {
   return p.contract.expires <= `${year(g.date)}-06-30` && m >= 1 && m <= 5;
 }
 
-/** Udlej en af brugerens spillere til en klub hvor han får spilletid */
-export function loanOut(pid: number): string {
+export interface LoanSuitor {
+  club: number;
+  maxShare: number; // højeste andel af lønnen klubben vil betale (0-1)
+  maxFee: number; // højeste lejegebyr
+}
+
+/** Hvilke klubber vil leje spilleren – og på hvilke vilkår? */
+export function loanSuitors(pid: number): LoanSuitor[] {
+  const g = gs();
+  const p = g.players[pid];
+  const me = g.clubs[p?.club ?? 0];
+  if (!p || !me || !p.contract) return [];
+  const wage = Math.max(1, p.contract.wage);
+  const role = naturalRole(p);
+  const out: LoanSuitor[] = [];
+  for (const c of Object.values(g.clubs)) {
+    if (c.id === me.id || isHumanClub(c.id)) continue;
+    const level = clubLevel(c.id);
+    // spilleren skal kunne spille på holdet, og klubben må ikke være meget større
+    if (p.ca < level - 8 || p.ca > level + 35 || c.rep > me.rep + 10) continue;
+    if (playerInterest(p, c) !== 'yes') continue;
+    if (squad(c.id).length >= 32) continue;
+    const need = analyzeNeeds(c.id).some((n) => GROUP[role] === n.role) ? 0.15 : 0;
+    // forholdet mellem spillerens løn og klubbens gennemsnitsløn
+    const avgWage = c.wageBudget / Math.max(18, squad(c.id).length);
+    const ratio = Math.min(1.4, avgWage / wage);
+    const quality = Math.max(-0.2, Math.min(0.2, (p.ca - level) / 80));
+    const mood = (hash01(c.id, p.id, 5) - 0.5) * 0.3; // hver klub vurderer lidt forskelligt
+    const maxShare = Math.max(0, Math.min(1, 0.05 + ratio * 0.5 + need + quality + mood));
+    if (maxShare < 0.1) continue;
+    const feeRoom = Math.min(c.transferBudget * 0.1, p.value * 0.1) * (0.3 + hash01(c.id, p.id, 6) * 0.7);
+    const maxFee = maxShare >= 0.6 ? roundValue(feeRoom * (maxShare - 0.5) * 2) : 0;
+    out.push({ club: c.id, maxShare: Math.round(maxShare * 100) / 100, maxFee });
+  }
+  return out.sort((a, b) => b.maxShare - a.maxShare || g.clubs[b.club].rep - g.clubs[a.club].rep).slice(0, 25);
+}
+
+/** Udlej til en bestemt klub: share = andel af lønnen lejeklubben betaler, fee = lejegebyr */
+export function loanOut(pid: number, club: number, share: number, fee: number): string {
   const g = gs();
   const p = g.players[pid];
   if (!p || p.club !== g.userClub || p.loan) return 'error';
   if (!windowOpen()) return 'transfer.windowClosed';
+  const s = loanSuitors(pid).find((x) => x.club === club);
+  if (!s) return 'transfer.noLoanClub';
+  if (share > s.maxShare + 1e-6 || fee > s.maxFee) return 'transfer.loanTermsRejected';
   const me = g.clubs[g.userClub];
-  const cands = Object.values(g.clubs)
-    .filter((c) => c.id !== me.id && c.rep < me.rep && c.rep >= me.rep - 35 && clubLevel(c.id) <= p.ca + 8)
-    .sort((a, b) => b.rep - a.rep);
-  const club = cands.slice(0, 12)[rng.int(0, Math.min(11, Math.max(0, cands.length - 1)))];
-  if (!club) return 'transfer.noLoanClub';
-  const o: TransferOffer = { id: g.nextId.offer++, player: pid, buyer: club.id, seller: me.id, fee: 0, loan: true, status: 'negotiating', created: g.date, respondBy: g.date };
+  const o: TransferOffer = { id: g.nextId.offer++, player: pid, buyer: club, seller: me.id, fee: 0, loan: true, status: 'negotiating', created: g.date, respondBy: g.date };
   g.offers.push(o);
   completeTransfer(o, p.contract?.wage ?? 0, 0);
+  p.loan = { from: me.id, until: `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, share, fee };
+  if (fee > 0) {
+    const borrower = g.clubs[club];
+    borrower.balance -= fee;
+    borrower.finance.transfersOut += fee;
+    me.balance += fee;
+    me.finance.transfersIn += fee;
+  }
   return 'ok';
+}
+
+/** AI-klubber byder på brugerens transferlistede spillere */
+export function aiBidsForListed() {
+  const g = gs();
+  if (!g.userClub || !windowOpen()) return;
+  const m = month(g.date);
+  const chance = m === 7 || m === 8 || m === 1 ? 0.2 : 0.1;
+  for (const p of squad(g.userClub)) {
+    if (!p.listed || p.loan || p.contract?.futureClub) continue;
+    if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
+    if (!rng.chance(chance)) continue;
+    const ask = askingPrice(p);
+    const role = GROUP[naturalRole(p)];
+    const cands = Object.values(g.clubs).filter((c) => {
+      if (c.id === g.userClub || isHumanClub(c.id)) return false;
+      const level = clubLevel(c.id);
+      if (p.ca < level - 15 || p.ca > level + 25) return false;
+      if (c.transferBudget < ask * 0.55) return false;
+      return playerInterest(p, c) === 'yes' && squad(c.id).length < 32;
+    });
+    if (!cands.length) continue;
+    const club = rng.weighted(cands, (c) => (analyzeNeeds(c.id).some((n) => n.role === role) ? 3 : 1) * (1 + c.rep / 50))!;
+    const fee = roundValue(Math.min(club.transferBudget, ask) * rng.range(0.7, 1.0));
+    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) };
+    g.offers.push(o);
+    addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
+  }
 }

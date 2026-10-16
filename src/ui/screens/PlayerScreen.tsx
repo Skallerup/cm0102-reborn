@@ -4,7 +4,7 @@ import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, loanSuitors, windowOpen } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
 import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
 import { AttrVal, Bar, ClubLink, Modal, Nat, Panel, Stars, age, posStr } from '../components';
@@ -22,6 +22,7 @@ export function PlayerScreen({ id }: { id: number }) {
   const [bid, setBid] = useState(false);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
+  const [loanOutOpen, setLoanOut] = useState(false);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
   const k = knowledgeOf(p);
@@ -85,7 +86,7 @@ export function PlayerScreen({ id }: { id: number }) {
                 <div className="row">
                   <button onClick={() => dispatch({ t: 'listed', pid: p.id })}>{p.listed ? t('player.unlist') : t('player.list')}</button>
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
-                  <button onClick={() => act(dispatch<string>({ t: 'loanOut', pid: p.id }))} disabled={!!p.loan}>{t('player.loanOut')}</button>
+                  <button onClick={() => setLoanOut(true)} disabled={!!p.loan || !windowOpen()}>{t('player.loanOut')}</button>
                   <button className="danger" onClick={() => { if (confirm(t('player.releaseConfirm'))) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
                 </div>
               </>
@@ -163,6 +164,7 @@ export function PlayerScreen({ id }: { id: number }) {
         </Panel>
       </div>
       {bid && <BidModal pid={p.id} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
+      {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
       {neg && <NegotiationModal offer={neg.offer} renewPid={neg.renew} onClose={() => setNeg(null)} />}
       {club && <div className="muted">{t('player.clubRep')}: {club.rep}</div>}
     </div>
@@ -197,6 +199,53 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
           <button className="primary" onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan }))}>{t('bid.submit')}</button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function LoanOutModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; onDone: (r: string) => void }) {
+  const g = gs();
+  const p = g.players[pid];
+  const wage = p.contract?.wage ?? 0;
+  const suitors = loanSuitors(pid);
+  const [share, setShare] = useState(100);
+  const [fee, setFee] = useState(0);
+  const [club, setClub] = useState(0);
+  const willing = suitors.filter((s) => s.maxShare * 100 >= share - 0.01 && s.maxFee >= fee);
+  return (
+    <Modal title={t('loan.title', { player: `${p.first} ${p.last}` })} onClose={onClose} wide>
+      <div className="col">
+        <div className="muted">{t('loan.explain')}</div>
+        <label>{t('loan.share')}: <b className="accent">{share}%</b> ({money(wage * share / 100)} / {t('common.week')} {t('loan.theyPay')}, {money(wage * (100 - share) / 100)} {t('loan.youPay')})
+          <input type="range" min={0} max={100} step={5} value={share} onChange={(e) => { setShare(Number(e.target.value)); setClub(0); }} style={{ width: '100%' }} />
+        </label>
+        <label className="row">{t('loan.fee')}: <input type="number" min={0} step={toCur(10_000)} value={toCur(fee)} onChange={(e) => { setFee(Math.max(0, fromCur(Number(e.target.value)))); setClub(0); }} style={{ width: 130 }} /> <span className="muted">{currencySymbol()}</span></label>
+        <div className="table-wrap" style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <table className="grid">
+            <thead><tr><th>{t('col.club')}</th><th>{t('col.comp')}</th><th className="num">{t('loan.maxShare')}</th><th className="num">{t('loan.maxFee')}</th><th></th></tr></thead>
+            <tbody>
+              {suitors.length === 0 && <tr><td colSpan={5} className="muted">{t('transfer.noLoanClub')}</td></tr>}
+              {suitors.map((s) => {
+                const ok = willing.includes(s);
+                return (
+                  <tr key={s.club} className={`${ok ? 'clickable' : 'injured'} ${club === s.club ? 'me' : ''}`} onClick={() => ok && setClub(s.club)}>
+                    <td><ClubLink id={s.club} /></td>
+                    <td>{g.leagues[g.clubs[s.club]?.league]?.name}</td>
+                    <td className="num">{Math.round(s.maxShare * 100)}%</td>
+                    <td className="num">{money(s.maxFee)}</td>
+                    <td>{ok ? <span className="tag good">{t('loan.accepts')}</span> : <span className="tag bad">{t('loan.declines')}</span>}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <span className="muted">{willing.length} {t('loan.interested')}</span>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" disabled={!club} onClick={() => onDone(dispatch<string>({ t: 'loanOut', pid, club, share: share / 100, fee }))}>{t('loan.agree')}</button>
         </div>
       </div>
     </Modal>

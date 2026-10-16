@@ -1,11 +1,11 @@
-import { useState } from 'react';
+
 import { nationRanking, sortTable } from '../../game/competitions';
 import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { gs, squad } from '../../game/state';
 import type { Competition, TableRow } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
 import { ClubLink, Panel, PlayerLink, Tabs } from '../components';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { resultStr, stageLabel } from './Fixtures';
 
@@ -13,8 +13,8 @@ export function Competitions({ id }: { id?: string }) {
   const g = useGame()!;
   const userComp = g.clubs[g.userClub]?.league;
   const comps = Object.values(g.comps);
-  const [cid, setCid] = useState<string>(id ?? userComp ?? comps[0]?.id ?? '');
-  const [tab, setTab] = useState('table');
+  const [cid, setCid] = useRouteState<string>('cid', id ?? userComp ?? comps[0]?.id ?? '');
+  const [tab, setTab] = useRouteState('tab', 'table');
   const comp = g.comps[id && id !== cid ? id : cid] ?? g.comps[cid];
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
@@ -148,7 +148,7 @@ function CompFixtures({ comp }: { comp: Competition }) {
   const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date));
   const dates = [...new Set(list.map((f) => f.date))];
   const next = dates.find((d) => d >= g.date) ?? dates[dates.length - 1];
-  const [date, setDate] = useState(next);
+  const [date, setDate] = useRouteState(`date:${comp.id}`, next);
   const shown = list.filter((f) => f.date === date);
   const idx = dates.indexOf(date);
   return (
