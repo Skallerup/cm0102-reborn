@@ -79,7 +79,7 @@ export const en: Record<string, string> = {
   'mp.isReady': 'Ready', 'mp.notReadyYet': 'Not ready', 'mp.leaveConfirm': 'Leave the game? You can always come back via Online multiplayer.',
   'mp.joined': '{manager} has taken over {club}', 'mp.err.not-found': 'Game not found – check the code.', 'mp.err.club-taken': 'That club is already taken.',
   'mp.err.full': 'The game is full (max 8 managers).', 'mp.err.not-ready': 'The host is still creating the game – try again shortly.',
-  'inbox.markRead': 'Mark all read', 'inbox.messages': 'Messages', 'inbox.empty': 'No messages', 'inbox.open': 'Open', 'inbox.select': 'Select a message',
+  'inbox.markRead': 'Mark all read', 'inbox.keys': '↑↓ change message · → next unread · Enter open', 'inbox.messages': 'Messages', 'inbox.empty': 'No messages', 'inbox.open': 'Open', 'inbox.select': 'Select a message',
   'cat.all': 'All', 'cat.match': 'Matches', 'cat.transfer': 'Transfers', 'cat.contract': 'Contracts', 'cat.injury': 'Injuries',
   'cat.board': 'Board', 'cat.scout': 'Scouting', 'cat.award': 'Awards', 'cat.youth': 'Youth', 'cat.job': 'Jobs', 'cat.general': 'General', 'cat.finance': 'Finance',
 
@@ -313,7 +313,7 @@ export const en: Record<string, string> = {
   'match.kickoff': 'Kick off ▶', 'match.notToday': 'This match is not today.', 'match.ft': 'Full time', 'match.resume': 'Resume', 'match.pause': 'Pause',
   'match.toEnd': 'Skip to end', 'match.continue': 'Continue ›', 'match.commentary': 'Commentary', 'match.stats': 'Statistics', 'match.myTeam': 'My team',
   'match.subsLeft': '{n} subs left', 'match.vidiprinter': 'Other matches', 'match.noOther': 'No other matches today', 'match.rating': 'Rating',
-  'match.subOff': 'Substitute…', 'match.subFailed': 'That substitution was not possible.',
+  'match.subOff': 'Substitute…', 'match.paused': 'PAUSED', 'match.keys': 'Keyboard: Space = pause · 1-4 = speed · T = tactics · U = substitutions · S = stats · K = commentary · E = skip to end', 'match.keysDone': 'Press Enter to continue', 'match.subFailed': 'That substitution was not possible.',
   'stat.possession': 'Possession', 'stat.xg': 'xG (expected goals)', 'stat.shots': 'Shots', 'stat.onTarget': 'On target', 'stat.corners': 'Corners',
   'stat.fouls': 'Fouls', 'stat.yellows': 'Yellow cards', 'stat.reds': 'Red cards', 'stat.offsides': 'Offsides', 'stat.passPct': 'Pass completion %',
 

@@ -11,6 +11,7 @@ import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { TacticEditor } from './Tactics';
 import { stageLabel } from './Fixtures';
+import { useHotkeys } from '../hotkeys';
 
 // Den igangværende kamp overlever navigation mellem skærme
 let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number } | null = null;
@@ -36,6 +37,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   const tac = userTactic(false);
   const xi = tac.lineup.map((pid) => g.players[pid]).filter(Boolean);
   const isToday = g.pendingFixture === id;
+  useHotkeys((e) => { if (isToday && e.key === 'Enter') { onPlay(); return true; } });
   return (
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`} />
@@ -134,6 +136,21 @@ function LiveMatch({ id }: { id: number }) {
     if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
   });
 
+  useHotkeys((e) => {
+    const k = e.key.toLowerCase();
+    if (report) {
+      if (e.key === 'Enter' || e.key === ' ') { done(); return true; }
+      return;
+    }
+    if (e.key === ' ' || k === 'p') { setPaused(!paused); return true; }
+    if (['1', '2', '3', '4'].includes(e.key)) { setSpeed([1, 2, 4, 8][Number(e.key) - 1]); return true; }
+    if (k === 't') { setPaused(true); setTab('tactics'); return true; }
+    if (k === 'u' || k === 'h') { setPaused(true); setTab('team'); return true; }
+    if (k === 'c' || k === 'k') { setTab('commentary'); return true; }
+    if (k === 's') { setTab('stats'); return true; }
+    if (k === 'e') { finishNow(); return true; }
+  });
+
   const finishNow = () => {
     while (sim.step());
     pull();
@@ -163,7 +180,8 @@ function LiveMatch({ id }: { id: number }) {
         </>}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
-      <Scoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} minute={minute + (sim.pens ? ` (${t('fix.pens')} ${sim.pens[0]}-${sim.pens[1]})` : '')} />
+      <Scoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} minute={minute + (sim.pens ? ` (${t('fix.pens')} ${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ` · ${t('match.paused')}` : '')} />
+      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
       <Tabs tabs={[['commentary', t('match.commentary')], ['stats', t('match.stats')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')]]} value={tab} onChange={setTab} />
       {msg && <div className="insight">{msg}</div>}
       {tab === 'commentary' && (
