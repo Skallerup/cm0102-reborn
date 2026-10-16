@@ -1,7 +1,9 @@
 import { act } from '../../game/actions';
-import { currentWageBill } from '../../game/finance';
-import { fromCur, money, t, toCur } from '../../i18n';
-import { Bar, Panel } from '../components';
+import { currentWageBill, estimateGate, fairTicketPrice } from '../../game/finance';
+import { projectOffer } from '../../game/board';
+import type { ProjectKind } from '../../game/types';
+import { dateFmt, money, t } from '../../i18n';
+import { Bar, MoneyInput, Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 
@@ -47,10 +49,95 @@ export function Finance() {
             <div className="muted">{t('fin.requestHint')}</div>
             <button onClick={() => act({ t: 'budget', kind: 'transfer' })}>{t('fin.askTransfer')}</button>
             <button onClick={() => act({ t: 'budget', kind: 'wage' })}>{t('fin.askWage')}</button>
-            <label>{t('fin.ticket')}: <input type="number" min={1} value={toCur(c.ticketPrice)} onChange={(e) => act({ t: 'ticket', price: Math.max(1, fromCur(Number(e.target.value))) })} style={{ width: 70 }} /></label>
           </div>
         </Panel>
       </div>
+      <div className="cols">
+        <TicketPanel />
+        <ProjectsPanel />
+      </div>
     </div>
+  );
+}
+
+function TicketPanel() {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const fair = fairTicketPrice(c.rep, c.league);
+  const now = estimateGate(c, c.ticketPrice);
+  const options = [0.6, 0.8, 1, 1.15, 1.3, 1.6].map((f) => Math.max(1, Math.round(fair * f)));
+  if (!options.includes(c.ticketPrice)) options.push(c.ticketPrice);
+  options.sort((a, b) => a - b);
+  const rows = options.map((price) => ({ price, ...estimateGate(c, price) }));
+  const best = rows.reduce((a, b) => (b.income > a.income ? b : a));
+  return (
+    <Panel title={t('ticket.title')}>
+      <div className="col">
+        <label className="row">{t('fin.ticket')}:
+          <MoneyInput value={c.ticketPrice} min={1} width={90} onChange={(v) => act({ t: 'ticket', price: v })} />
+        </label>
+        <div className="kv">
+          <span>{t('ticket.fair')}</span><span>{money(fair)}</span>
+          <span>{t('ticket.expected')}</span><span>{now.attendance.toLocaleString()} / {c.seats.toLocaleString()} ({Math.round(now.fill * 100)}%)</span>
+          <span>{t('ticket.incomeMatch')}</span><span><b>{money(now.income)}</b></span>
+          <span>{t('ticket.incomeSeason')}</span><span>{money(now.income * 19)}</span>
+        </div>
+        <table className="grid">
+          <thead><tr><th>{t('fin.ticket')}</th><th className="num">{t('ticket.att')}</th><th className="num">{t('ticket.fill')}</th><th className="num">{t('ticket.incomeMatch')}</th><th></th></tr></thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.price} className={`clickable ${r.price === c.ticketPrice ? 'me' : ''}`} onClick={() => act({ t: 'ticket', price: r.price })}>
+                <td>{money(r.price)}</td>
+                <td className="num">{r.attendance.toLocaleString()}</td>
+                <td className="num">{Math.round(r.fill * 100)}%</td>
+                <td className="num">{money(r.income)}</td>
+                <td>{r === best && <span className="tag good">{t('ticket.best')}</span>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="insight">{t('ticket.help')}</div>
+      </div>
+    </Panel>
+  );
+}
+
+function ProjectsPanel() {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const kinds: ProjectKind[] = ['stadium', 'training', 'youth'];
+  const current: Record<ProjectKind, string> = {
+    stadium: `${c.seats.toLocaleString()} ${t('proj.seats')}`,
+    training: `${c.facilities}/20`,
+    youth: `${c.youth}/20`,
+  };
+  return (
+    <Panel title={t('proj.title')}>
+      <div className="col">
+        {kinds.map((k) => {
+          const running = c.projects?.find((p) => p.kind === k);
+          const offer = projectOffer(k);
+          return (
+            <div key={k} className="insight">
+              <div className="row" style={{ justifyContent: 'space-between' }}>
+                <b>{t(`proj.${k}`)}</b>
+                <span className="muted">{t('proj.now')}: {current[k]}</span>
+              </div>
+              <div className="muted" style={{ margin: '4px 0 8px' }}>{t(`proj.${k}.effect`)}</div>
+              {running ? (
+                <div><span className="tag warn">{t('proj.building')}</span> {t('proj.ready', { date: dateFmt(running.done) })} · +{running.amount.toLocaleString()}{k === 'stadium' ? ` ${t('proj.seats')}` : ''}</div>
+              ) : offer ? (
+                <div className="row">
+                  <span>+{offer.amount.toLocaleString()}{k === 'stadium' ? ` ${t('proj.seats')}` : ` ${t('proj.levels')}`} · {money(offer.cost)} · {t('proj.months', { n: offer.months })}</span>
+                  <button className="small primary" disabled={c.balance < offer.cost} onClick={() => act({ t: 'project', kind: k })}>{t('proj.request')}</button>
+                  {c.balance < offer.cost && <span className="muted">{t('proj.cantAfford')}</span>}
+                </div>
+              ) : <span className="muted">{t('proj.max')}</span>}
+            </div>
+          );
+        })}
+        <div className="muted">{t('proj.hint')}</div>
+      </div>
+    </Panel>
   );
 }

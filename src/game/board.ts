@@ -2,6 +2,11 @@
 import { finalOrder, sortTable } from './competitions';
 import { rng } from './rng';
 import { addDays } from './dates';
+import { rulesFor } from './leagues';
+
+function rulesForLeague(league: string) {
+  return rulesFor(league, 20).wealth;
+}
 import { addNews, gs, squad } from './state';
 import type { Club } from './types';
 import { takeOverClub } from './newgame';
@@ -260,4 +265,74 @@ export function acceptJob(cid: number) {
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+// ---------- byggeprojekter ----------
+
+import type { ProjectKind } from './types';
+
+export interface ProjectOffer {
+  kind: ProjectKind;
+  cost: number;
+  months: number;
+  amount: number;
+}
+
+/** Hvad vil et projekt koste og give? */
+export function projectOffer(kind: ProjectKind): ProjectOffer | null {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (!c) return null;
+  const wealth = Math.max(0.3, rulesForLeague(c.league));
+  if (kind === 'stadium') {
+    const amount = Math.max(1000, Math.round((c.seats * 0.15) / 500) * 500);
+    return { kind, amount, months: 10, cost: Math.round((amount * 2200 * Math.sqrt(wealth)) / 100_000) * 100_000 };
+  }
+  const level = kind === 'training' ? c.facilities : c.youth;
+  if (level >= 20) return null;
+  const amount = level >= 17 ? 1 : 2;
+  return { kind, amount, months: kind === 'training' ? 6 : 8, cost: Math.round((Math.pow(level + 1, 2) * 45_000 * Math.sqrt(wealth)) / 50_000) * 50_000 };
+}
+
+/** Anmod bestyrelsen om et byggeprojekt */
+export function requestProject(kind: ProjectKind): 'ok' | 'busy' | 'money' | 'confidence' | 'max' {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  const offer = projectOffer(kind);
+  if (!c || !offer) return 'max';
+  if ((c.projects ?? []).some((p) => p.kind === kind)) return 'busy';
+  if (g.board.confidence < 45) {
+    addNews({ cat: 'board', key: 'board.project.noConfidence', params: { kind } });
+    return 'confidence';
+  }
+  if (c.balance < offer.cost) {
+    addNews({ cat: 'board', key: 'board.project.noMoney', params: { kind, cost: offer.cost } });
+    return 'money';
+  }
+  c.balance -= offer.cost;
+  c.finance.other += offer.cost;
+  const done = addDays(g.date, offer.months * 30);
+  (c.projects ??= []).push({ kind, started: g.date, done, cost: offer.cost, amount: offer.amount });
+  g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
+  addNews({ cat: 'board', key: 'board.project.approved', params: { kind, cost: offer.cost, done } });
+  return 'ok';
+}
+
+/** Dagligt: færdiggør projekter */
+export function completeProjects() {
+  const g = gs();
+  for (const c of Object.values(g.clubs)) {
+    if (!c.projects?.length) continue;
+    const finished = c.projects.filter((p) => p.done <= g.date);
+    if (!finished.length) continue;
+    c.projects = c.projects.filter((p) => p.done > g.date);
+    for (const p of finished) {
+      if (p.kind === 'stadium') c.seats += p.amount;
+      else if (p.kind === 'training') c.facilities = Math.min(20, c.facilities + p.amount);
+      else c.youth = Math.min(20, c.youth + p.amount);
+      forEachHuman(() => {
+        if (g.userClub === c.id) addNews({ cat: 'board', key: 'board.project.done', params: { kind: p.kind, amount: p.amount, seats: c.seats } });
+      });
+    }
+  }
 }

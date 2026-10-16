@@ -1,7 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
-import { acceptJob, applyForJob, requestBudget } from './board';
+import { acceptJob, applyForJob, requestBudget, requestProject } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { initKnowledge } from './scouting';
@@ -33,6 +33,7 @@ export type Action =
   | { t: 'hireStaff'; id: number }
   | { t: 'fireStaff'; id: number }
   | { t: 'budget'; kind: 'transfer' | 'wage' }
+  | { t: 'project'; kind: 'stadium' | 'training' | 'youth' }
   | { t: 'ticket'; price: number }
   | { t: 'read'; ids: number[] | 'all' }
   | { t: 'acceptJob'; club: number }
@@ -84,7 +85,8 @@ export function applyAction(a: Action): unknown {
     case 'hireStaff': return hireStaff(a.id);
     case 'fireStaff': return fireStaff(a.id);
     case 'budget': return requestBudget(a.kind);
-    case 'ticket': if (club) club.ticketPrice = Math.max(1, Math.round(a.price)); return 'ok';
+    case 'project': return requestProject(a.kind);
+    case 'ticket': if (club) club.ticketPrice = Math.max(1, Math.round(a.price * 100) / 100); return 'ok';
     case 'read':
       for (const n of g.news) if (a.ids === 'all' || a.ids.includes(n.id)) n.read = true;
       return 'ok';

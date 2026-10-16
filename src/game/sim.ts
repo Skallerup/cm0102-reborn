@@ -1,5 +1,5 @@
 // Spillets dag-for-dag-løkke.
-import { boardAfterMatch, boardMonthly, aiSackings, fillVacancies } from './board';
+import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies } from './board';
 import { needsWinnerFn, recordResult } from './competitions';
 import { addDays, day, month, weekday } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
@@ -9,7 +9,7 @@ import { addNews, fixturesOn, gs, squad } from './state';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiBidsForListed, aiBosman, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
+import { aiBidsForListed, aiBosman, aiFillSquads, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
 import { squadStrength } from './board';
@@ -250,6 +250,7 @@ function newDay() {
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   forEachHuman(processOffers);
+  completeProjects();
   forEachHuman(aiBidsForListed);
   aiTransferTick();
   forEachHuman(scoutDaily);
@@ -274,6 +275,8 @@ function newDay() {
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
   if (month(d) === 3 && day(d) === 15) youthIntake();
+  // AI-trupper fyldes op i sommer- og vinterpausen
+  if ((month(d) === 7 || month(d) === 8 || month(d) === 1) && weekday(d) === 2) aiFillSquads(22);
 }
 
 /** Spil dagens kampe (undtagen brugerens) */

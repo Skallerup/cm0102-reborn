@@ -7,7 +7,9 @@ import { Rng, hash, rng } from './rng';
 import { addNews, addPlayer, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
 import { boardSeasonEnd, setBoardExpectation } from './board';
 import { newSeasonBudgets, seasonPrizeMoney } from './finance';
-import { setupSeasonComps } from './newgame';
+import { fillSquad, setupSeasonComps } from './newgame';
+import { aiFillSquads } from './transfers';
+import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { initKnowledge } from './scouting';
 import type { Player, SeasonSummary } from './types';
@@ -133,9 +135,11 @@ function retirements() {
   for (const p of Object.values(g.players)) {
     const age = ageOn(p.dob, g.date);
     let prob = 0;
-    if (age >= 39) prob = 1;
-    else if (age >= 34) prob = (age - 33) * 0.17 + (p.ca < 90 ? 0.12 : 0);
-    else if (!p.club && age >= 31) prob = 0.35;
+    const keeper = p.pos[0] >= 15;
+    if (age >= (keeper ? 42 : 40)) prob = 1;
+    else if (age >= 35) prob = (age - 34) * 0.16 + (p.ca < 100 ? 0.12 : 0) - (keeper ? 0.12 : 0);
+    else if (age === 34) prob = p.ca < 90 ? 0.15 : 0.05;
+    else if (!p.club && age >= 32) prob = 0.4;
     else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
     if (prob > 0 && rng.chance(prob)) {
       const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
@@ -151,7 +155,7 @@ export function youthIntake() {
   const g = gs();
   const active = new Set(g.activeNations);
   for (const c of Object.values(g.clubs)) {
-    if (!active.has(c.nation) && rng.chance(0.6)) continue; // inaktive nationer får færre
+    if (!active.has(c.nation) && rng.chance(0.3)) continue; // inaktive nationer får lidt færre
     const r = new Rng(hash(g.seed, c.id, g.season, 31));
     const n = r.int(2, 4);
     for (let i = 0; i < n; i++) {
@@ -161,8 +165,8 @@ export function youthIntake() {
       const sub: SubPos = randomSub(r);
       const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4;
       const ca = Math.round(28 + quality * 45 + r.normal(0, 8));
-      let pa = Math.round(ca + 30 + quality * 55 + r.normal(0, 22));
-      if (r.chance(0.015 + quality * 0.02)) pa = r.int(165, 195); // wonderkid
+      let pa = Math.round(ca + 22 + quality * 45 + r.normal(0, 18));
+      if (r.chance(0.006 + quality * 0.01)) pa = r.int(160, 195); // wonderkid
       const p = makePlayer({
         id: g.nextId.player++, first, last, dob: randomDob(age, g.date, r), nation, club: c.id, sub,
         foot: r.chance(0.25) ? 'L' : 'R', height: 0, ca, pa: Math.min(200, Math.max(ca + 5, pa)), date: g.date, seed: g.seed, regen: true,
@@ -212,7 +216,9 @@ function prune() {
   // fri agenter med lav værdi forsvinder
   const free = Object.values(g.players).filter((p) => !p.club);
   for (const p of free) {
-    if (p.ca < 70 && ageOn(p.dob, g.date) >= 27) removePlayer(p);
+    const age = ageOn(p.dob, g.date);
+    // klubløse der ikke er gode nok, eller er for gamle til at få kontrakt, forsvinder ud af fodbolden
+    if ((p.ca < 85 && age >= 25) || (age >= 33 && p.ca < 100) || age >= 38 || (p.ca < 45 && age >= 21)) removePlayer(p);
   }
   // gamle kampe og rapporter
   g.fixtures = {};
@@ -249,6 +255,21 @@ export function seasonRollover() {
   g.comps = {};
   g.season += 1;
   rebuildIndexes();
+  // ingen klub må starte sæsonen med for få spillere
+  aiFillSquads(20);
+  for (const c of Object.values(g.clubs)) {
+    const sq = squad(c.id);
+    if (c.manager === -1) {
+      // menneskestyret klub: reserveholdet sørger for at der er nok spillere til at stille hold
+      if (sq.length < 16) {
+        const before = sq.length;
+        fillSquad(c, sq, clubLevel(c.id) - 15, g.date, hash(g.seed, g.season, c.id), 16);
+        asOwner(c.id, () => addNews({ cat: 'youth', key: 'news.reservesPromoted', params: { n: squad(c.id).length - before } }));
+      }
+      continue;
+    }
+    if (sq.length < 18) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
+  }
   newSeasonBudgets();
   setupSeasonComps(g.season, prevTables);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;

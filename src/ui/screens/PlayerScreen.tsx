@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
-import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
+import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, loanSuitors, windowOpen } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
-import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
-import { AttrVal, Bar, ClubLink, Modal, Nat, Panel, Stars, age, posStr } from '../components';
+import { dateFmt, money, t } from '../../i18n';
+import { AttrVal, Bar, ClubLink, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
 import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
@@ -125,6 +125,7 @@ export function PlayerScreen({ id }: { id: number }) {
           </div>
         </Panel>
       </div>
+      {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">
           {(['technical', 'mental', 'physical', ...(p.pos[0] >= 15 ? ['goalkeeping'] : [])] as (keyof typeof GROUPS)[]).map((grp) => (
@@ -209,7 +210,7 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
             <label>{t('bid.fee')}: <b className="accent">{money(fee)}</b></label>
             <div className="row">
               <button onClick={() => setFee(Math.max(0, fee - step))}>−</button>
-              <input type="number" value={toCur(fee)} step={toCur(step)} onChange={(e) => setFee(Math.max(0, fromCur(Number(e.target.value))))} style={{ width: 140 }} /> <span className="muted">{currencySymbol()}</span>
+              <MoneyInput value={fee} onChange={setFee} width={140} />
               <button onClick={() => setFee(fee + step)}>+</button>
             </div>
           </>
@@ -239,7 +240,7 @@ function LoanOutModal({ pid, onClose, onDone }: { pid: number; onClose: () => vo
         <label>{t('loan.share')}: <b className="accent">{share}%</b> ({money(wage * share / 100)} / {t('common.week')} {t('loan.theyPay')}, {money(wage * (100 - share) / 100)} {t('loan.youPay')})
           <input type="range" min={0} max={100} step={5} value={share} onChange={(e) => { setShare(Number(e.target.value)); setClub(0); }} style={{ width: '100%' }} />
         </label>
-        <label className="row">{t('loan.fee')}: <input type="number" min={0} step={toCur(10_000)} value={toCur(fee)} onChange={(e) => { setFee(Math.max(0, fromCur(Number(e.target.value)))); setClub(0); }} style={{ width: 130 }} /> <span className="muted">{currencySymbol()}</span></label>
+        <label className="row">{t('loan.fee')}: <MoneyInput value={fee} onChange={(v) => { setFee(v); setClub(0); }} /></label>
         <div className="table-wrap" style={{ maxHeight: 320, overflowY: 'auto' }}>
           <table className="grid">
             <thead><tr><th>{t('col.club')}</th><th>{t('col.comp')}</th><th className="num">{t('loan.maxShare')}</th><th className="num">{t('loan.maxFee')}</th><th></th></tr></thead>
@@ -311,6 +312,20 @@ function AdviceLine({ pid }: { pid: number }) {
       {t('adv.suggest', { coach: asst ? `${asst.first} ${asst.last}` : t('role.staff.assistant'), schedule: t(`train.${adv.key}`) })}{' '}
       <span className="muted">{t(adv.reason, { attrs: adv.attrs.map((a) => t(`attr.${a}`)).join(` ${t('common.and')} `) })}</span>{' '}
       <button className="small primary" onClick={() => dispatch({ t: 'training', pid, key: adv.key })}>{t('adv.use')}</button>
+    </div>
+  );
+}
+
+function ScoutReport({ pid }: { pid: number }) {
+  const g = gs();
+  const p = g.players[pid];
+  const rec = scoutRecommendation(p);
+  const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout').sort((a, b) => b.attrs.judgingAbility - a.attrs.judgingAbility);
+  const scout = scouts[0];
+  return (
+    <div className={`insight ${rec.level < 0 ? '' : rec.level <= 1 ? 'good' : rec.level >= 3 ? 'bad' : 'warn'}`}>
+      <div className="row"><b>{t('rec.title', { scout: scout ? `${scout.first} ${scout.last}` : t('role.staff.scout') })}</b> <RecTag level={rec.level} /></div>
+      <div style={{ marginTop: 4 }}>{t(rec.key)}{rec.reasons.length > 0 && ' '}{rec.reasons.map((r) => t(r.key, r.params)).join(' ')}</div>
     </div>
   );
 }

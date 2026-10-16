@@ -5,8 +5,8 @@ import { knowledgeOf, scoutStars } from '../../game/scouting';
 import { transferRealism } from '../../game/transfers';
 import { act } from '../../game/actions';
 import type { Player, Role, TransferOffer } from '../../game/types';
-import { currencySymbol, dateFmt, fromCur, money, t, toCur } from '../../i18n';
-import { ClubLink, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
+import { dateFmt, money, t } from '../../i18n';
+import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
@@ -139,7 +139,7 @@ function Search() {
 function Offers() {
   const g = useGame()!;
   const [neg, setNeg] = useState<TransferOffer | null>(null);
-  const [counter, setCounter] = useState<Record<number, number>>({});
+  const [counterFor, setCounterFor] = useState<TransferOffer | null>(null);
   const incoming = g.offers.filter((o) => o.seller === g.userClub && o.buyer !== g.userClub).slice().reverse();
   const outgoing = g.offers.filter((o) => o.buyer === g.userClub).slice().reverse();
   const status = (o: TransferOffer) => <span className={`tag ${o.status === 'completed' ? 'good' : ['rejected', 'collapsed', 'withdrawn'].includes(o.status) ? 'bad' : 'warn'}`}>{t(`offer.${o.status}`)}</span>;
@@ -160,8 +160,7 @@ function Offers() {
                     <div className="row">
                       <button className="small primary" onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'accept' })}>{t('offer.accept')}</button>
                       <button className="small" onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'reject' })}>{t('offer.reject')}</button>
-                      <input type="number" style={{ width: 100 }} placeholder={`${t('offer.counterAmount')} (${currencySymbol()})`} value={counter[o.id] ? toCur(counter[o.id]) : ''} onChange={(e) => setCounter({ ...counter, [o.id]: fromCur(Number(e.target.value)) })} />
-                      <button className="small" disabled={!counter[o.id]} onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'counter', counter: counter[o.id] })}>{t('offer.counter')}</button>
+                      <button className="small" onClick={() => setCounterFor(o)}>{t('offer.counter')}…</button>
                     </div>
                   )}
                 </td>
@@ -191,6 +190,39 @@ function Offers() {
         </table>
       </Panel>
       {neg && <NegotiationModal offer={neg} onClose={() => setNeg(null)} />}
+      {counterFor && <CounterModal offer={counterFor} onClose={() => setCounterFor(null)} />}
     </div>
+  );
+}
+
+/** Modbud med skyder – samme princip som udbudsprisen */
+function CounterModal({ offer, onClose }: { offer: TransferOffer; onClose: () => void }) {
+  const g = useGame()!;
+  const p = g.players[offer.player];
+  const buyer = g.clubs[offer.buyer];
+  const [pct, setPct] = useState(130);
+  const amount = Math.max(offer.fee + 10_000, Math.round((offer.fee * pct) / 100 / 10_000) * 10_000);
+  const vsValue = amount / Math.max(1, p.value);
+  const hint = pct <= 115 ? 'counter.hintSmall' : pct <= 150 ? 'counter.hintFair' : pct <= 200 ? 'counter.hintBold' : 'counter.hintRisky';
+  return (
+    <Modal title={t('counter.title', { player: `${p.first} ${p.last}`, club: buyer.name })} onClose={onClose}>
+      <div className="col">
+        <div className="kv">
+          <span>{t('counter.theirBid')}</span><span>{money(offer.fee)}</span>
+          <span>{t('col.value')}</span><span>{money(p.value)}</span>
+          {p.listPrice && <><span>{t('list.price')}</span><span>{money(p.listPrice)}</span></>}
+          {offer.priceRounds ? <><span>{t('counter.rounds')}</span><span>{offer.priceRounds} / 3</span></> : null}
+        </div>
+        <label>{t('counter.yourDemand')}: <b className="accent">{money(amount)}</b> ({pct}% {t('counter.ofBid')}, {Math.round(vsValue * 100)}% {t('list.ofValue')})
+          <input type="range" min={105} max={300} step={5} value={pct} onChange={(e) => setPct(Number(e.target.value))} style={{ width: '100%' }} />
+        </label>
+        <div className="row">{[110, 125, 150, 200].map((v) => <button key={v} className={`small ${pct === v ? 'primary' : ''}`} onClick={() => setPct(v)}>+{v - 100}%</button>)}</div>
+        <div className={`insight ${pct > 200 ? 'bad' : pct <= 150 ? 'good' : 'warn'}`}>{t(hint)}</div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={() => { act({ t: 'respond', pid: offer.player, buyer: offer.buyer, action: 'counter', counter: amount }); onClose(); }}>{t('counter.send')}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }

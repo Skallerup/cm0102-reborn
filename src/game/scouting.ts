@@ -3,8 +3,10 @@
 // jo bedre spilleren er scoutet. Ved 100 vises den præcise værdi som i CM 01/02.
 import { hash01 } from './rng';
 import { gs, squad } from './state';
-import type { Player } from './types';
+import type { Club, Player } from './types';
 import { rng } from './rng';
+import { A, naturalRole } from './attributes';
+import { ageOn } from './dates';
 
 export function initKnowledge() {
   const g = gs();
@@ -135,4 +137,63 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number) {
 export function knowledgeAfterMatch(oppClub: number, playerIds: number[]) {
   for (const id of playerIds) addKnowledge(id, 15);
   void oppClub;
+}
+
+// ---------- scoutens anbefaling ----------
+
+export interface ScoutRecommendation {
+  /** 0 = køb ham!, 1 = anbefales, 2 = brugbar, 3 = ikke bedre end det vi har, 4 = frarådes, -1 = for lidt viden */
+  level: number;
+  key: string;
+  reasons: { key: string; params?: Record<string, string | number> }[];
+}
+
+/** Kort vurdering fra scouten: anbefaler han spilleren eller ej? */
+export function scoutRecommendation(p: Player): ScoutRecommendation {
+  const g = gs();
+  const k = knowledgeOf(p);
+  if (k < 35) return { level: -1, key: 'rec.unknown', reasons: [] };
+  const club = g.clubs[g.userClub];
+  if (!club) return { level: -1, key: 'rec.unknown', reasons: [] };
+  const age = ageOn(p.dob, g.date);
+  // sammenlign med de bedste i truppen på hans rolle
+  const role = naturalRole(p);
+  const mates = squad(club.id).filter((x) => x.id !== p.id && naturalRole(x) === role).sort((a, b) => b.ca - a.ca);
+  const best = mates[0]?.ca ?? 0;
+  const second = mates[1]?.ca ?? 0;
+  const level = clubLevel(club.id);
+  // scouten ser ikke den præcise evne – vurderingen bygger på stjernerne (med usikkerhed)
+  const st = scoutStars(p);
+  const ref = level;
+  const estCA = ref - 50 + ((st.ability[0] + st.ability[1]) / 2) * 20;
+  const estPA = ref - 50 + ((st.potential[0] + st.potential[1]) / 2) * 20;
+  const reasons: ScoutRecommendation['reasons'] = [];
+  let score = 0;
+  if (estCA >= best + 5) { score += 3; reasons.push({ key: 'rec.r.betterThanBest' }); }
+  else if (estCA >= second) { score += 1.5; reasons.push({ key: 'rec.r.firstTeam' }); }
+  else if (estCA >= level - 15) { score += 0.5; reasons.push({ key: 'rec.r.squad' }); }
+  else { score -= 1.5; reasons.push({ key: 'rec.r.notGoodEnough' }); }
+  if (age <= 21 && estPA >= level + 5) { score += 2; reasons.push({ key: 'rec.r.talent', params: { age } }); }
+  else if (age <= 23 && estPA > estCA + 8) { score += 0.8; reasons.push({ key: 'rec.r.canGrow' }); }
+  if (age >= 31) { score -= 1; reasons.push({ key: 'rec.r.old', params: { age } }); }
+  if (mates.length <= 1) { score += 0.8; reasons.push({ key: 'rec.r.weNeed' }); }
+  // pris og vilkår
+  const fee = p.club ? askingPriceSafe(p) : 0;
+  if (!p.club) { score += 0.8; reasons.push({ key: 'rec.r.free' }); }
+  else if (fee > club.transferBudget * 1.2) { score -= fee > club.transferBudget * 2 ? 3 : 1.5; reasons.unshift({ key: 'rec.r.tooExpensive' }); }
+  else if (p.value > fee * 1.3) { score += 0.6; reasons.push({ key: 'rec.r.bargain' }); }
+  if (interestFn(p, club) !== 'yes') { score -= 2; reasons.unshift({ key: 'rec.r.wontCome' }); }
+  if (p.attrs[A.injuryProneness] >= 15 && k >= 70) { score -= 0.8; reasons.push({ key: 'rec.r.injuryProne' }); }
+  if (p.attrs[A.professionalism] >= 15 && k >= 70) { score += 0.3; reasons.push({ key: 'rec.r.professional' }); }
+  if (p.attrs[A.temperament] <= 6 && k >= 70) { score -= 0.4; reasons.push({ key: 'rec.r.temper' }); }
+  const lvl = score >= 3.5 ? 0 : score >= 2 ? 1 : score >= 0.8 ? 2 : score >= -0.5 ? 3 : 4;
+  return { level: lvl, key: `rec.l${lvl}`, reasons: reasons.slice(0, 3) };
+}
+
+// undgå cirkulær import: transfers → scouting → transfers
+let askingPriceSafe: (p: Player) => number = (p) => p.value;
+let interestFn: (p: Player, c: Club) => string = () => 'yes';
+export function registerAskingPrice(fn: (p: Player) => number, interest?: (p: Player, c: Club) => string) {
+  askingPriceSafe = fn;
+  if (interest) interestFn = interest;
 }

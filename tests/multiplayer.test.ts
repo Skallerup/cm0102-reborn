@@ -38,14 +38,16 @@ describe('online multiplayer (motor)', () => {
     }
     expect(g.season).toBe(2026);
     expect(humanMatchTurns).toBeGreaterThan(25);
-    // menneskeklubber blev aldrig overtaget af AI
-    expect(g.clubs[190].manager).toBe(-1);
-    expect(g.clubs[206].manager).toBe(-1);
+    // menneskeklubber styres af mennesker – medmindre manageren er blevet fyret
+    for (const h of g.humans!) {
+      const club = h.pid === g.active ? g.userClub : h.userClub;
+      if (club) expect(g.clubs[club].manager).toBe(-1);
+    }
     // begge har fået kampnyheder og rapporter med kommentar
     for (const pid of ['p1', 'p2']) {
       withHuman(pid, () => {
         expect(g.news.filter((n) => n.cat === 'match').length).toBeGreaterThan(10);
-        expect(g.manager.history.length).toBe(1);
+        expect(g.manager.history.length + g.manager.sacked).toBeGreaterThanOrEqual(1);
       });
     }
     const someReport = Object.values(g.reports)[0];

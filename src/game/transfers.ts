@@ -6,7 +6,7 @@ import { rulesFor } from './leagues';
 import { hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { addNews, gs, setClub, squad } from './state';
-import { clubLevel } from './scouting';
+import { clubLevel, registerAskingPrice } from './scouting';
 import type { Club, Player, Role, TransferOffer } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 
@@ -538,6 +538,21 @@ export function aiTransferTick() {
 function aiClubTurn(club: Club) {
   const g = gs();
   const sq = squad(club.id);
+  // Økonomisk krise: sæt de dyreste (ikke-nøgle)spillere til salg, og frigiv ældre storlønnede
+  if (club.balance < 0) {
+    const bill = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
+    const pricey = sq.filter((p) => p.contract && !p.loan && keyPlayerRank(p) > 3).sort((a, b) => (b.contract!.wage) - (a.contract!.wage));
+    for (const p of pricey.slice(0, 3)) p.listed = true;
+    const old = pricey.find((p) => ageOn(p.dob, g.date) >= 31 && p.contract!.wage > bill / Math.max(10, sq.length) * 1.5);
+    if (old && sq.length > 22 && club.balance < -club.wageBudget * 20) {
+      const pay = Math.round(old.contract!.wage * 10);
+      club.balance -= pay;
+      setClub(old, 0);
+      old.contract = null;
+    }
+    club.transferBudget = 0;
+    return;
+  }
   // Sælg/frigiv overskud
   if (sq.length > 34) {
     const old = sq.filter((p) => p.contract && !p.loan).sort((a, b) => a.ca - b.ca)[0];
@@ -568,7 +583,7 @@ function aiClubTurn(club: Club) {
     return;
   }
   const ask = askingPrice(target);
-  const fee = roundValue(ask * rng.range(0.85, 1.1));
+  const fee = Math.max(10_000, roundValue(ask * rng.range(0.85, 1.1)));
   if (isHumanClub(target.club)) {
     // bud til en menneskelig manager
     if (g.offers.some((o) => o.player === target.id && o.status === 'pending')) return;
@@ -589,16 +604,52 @@ function aiClubTurn(club: Club) {
 export function aiRenewals() {
   const g = gs();
   const seasonEnd = `${year(g.date)}-06-30`;
+  // hvor mange spillere har hver klub efter sommeren, hvis ingen fornyes?
+  const staying = new Map<number, number>();
   for (const p of Object.values(g.players)) {
-    if (!p.club || isHumanClub(p.club) || !p.contract || p.loan) continue;
-    if (p.contract.expires > seasonEnd || p.contract.futureClub) continue;
-    if (rng.chance(0.25)) {
-      const level = clubLevel(p.club);
-      const age = ageOn(p.dob, g.date);
-      if ((p.ca >= level - 12 && age <= 32) || (age <= 23 && p.pa >= level)) {
-        const club = g.clubs[p.club];
-        p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + preferredYears(p)}-06-30` };
-      }
+    if (!p.club || p.loan) continue;
+    if (!p.contract || p.contract.expires > seasonEnd) staying.set(p.club, (staying.get(p.club) ?? 0) + 1);
+  }
+  const expiring = Object.values(g.players)
+    .filter((p) => p.club && !isHumanClub(p.club) && p.contract && !p.loan && p.contract.expires <= seasonEnd && !p.contract.futureClub)
+    .sort((a, b) => b.ca - a.ca);
+  for (const p of expiring) {
+    if (!rng.chance(0.35)) continue;
+    const level = clubLevel(p.club);
+    const age = ageOn(p.dob, g.date);
+    const left = staying.get(p.club) ?? 0;
+    const wanted = (p.ca >= level - 15 && age <= 32) || (p.ca >= level - 3 && age <= 38) || (age <= 23 && p.pa >= level - 5) || (left < 22 && age <= 34 && p.ca >= level - 30);
+    if (!wanted) continue;
+    const club = g.clubs[p.club];
+    p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30` };
+    staying.set(p.club, left + 1);
+  }
+}
+
+/**
+ * Sommer/januar: AI-klubber med for små trupper henter klubløse spillere (eller rykker
+ * ungdomsspillere op), så ingen klub står med for få spillere.
+ */
+export function aiFillSquads(minSize = 22) {
+  const g = gs();
+  const free = Object.values(g.players).filter((p) => !p.club && p.ca >= 30).sort((a, b) => b.ca - a.ca);
+  const taken = new Set<number>();
+  for (const c of Object.values(g.clubs)) {
+    if (isHumanClub(c.id)) continue;
+    let size = squad(c.id).length;
+    if (size >= minSize) continue;
+    const level = clubLevel(c.id);
+    const needs = analyzeNeeds(c.id).map((n) => n.role);
+    while (size < minSize) {
+      // bedste ledige spiller der passer niveauet og vil komme – helst i en position klubben mangler
+      const cand = free.find((p) => !taken.has(p.id) && p.ca <= level + 15 && p.ca >= level - 35 && playerInterest(p, c) === 'yes' && (needs.length === 0 || needs.includes(GROUP[naturalRole(p)])))
+        ?? free.find((p) => !taken.has(p.id) && p.ca <= level + 15 && p.ca >= level - 45 && playerInterest(p, c) === 'yes');
+      if (!cand) break;
+      taken.add(cand.id);
+      cand.contract = { wage: Math.round(wageDemand(cand, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(cand) - 1)}-06-30` };
+      setClub(cand, c.id);
+      cand.joined = g.date;
+      size++;
     }
   }
 }
@@ -722,10 +773,12 @@ export function aiBidsForListed() {
     if (!cands.length) continue;
     const club = rng.weighted(cands, (c) => (analyzeNeeds(c.id).some((n) => n.role === role) ? 3 : 1) * (1 + c.rep / 50))!;
     const cheap = ask < p.value * 0.9;
-    const fee = roundValue(Math.min(club.transferBudget, ask) * (cheap ? rng.range(0.92, 1.02) : rng.range(0.72, 0.98)));
+    const fee = Math.max(10_000, roundValue(Math.min(club.transferBudget, ask) * (cheap ? rng.range(0.92, 1.02) : rng.range(0.72, 0.98))));
     const maxFee = roundValue(Math.min(club.transferBudget, Math.max(fee, ask * rng.range(0.95, 1.12), p.value * rng.range(0.9, 1.2))));
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
     addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
   }
 }
+
+registerAskingPrice(askingPrice, playerInterest);

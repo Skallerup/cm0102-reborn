@@ -145,6 +145,16 @@ export interface ClubSeasonHistory {
   pts: number;
 }
 
+export type ProjectKind = 'stadium' | 'training' | 'youth';
+
+export interface ClubProject {
+  kind: ProjectKind;
+  started: string;
+  done: string;
+  cost: number;
+  amount: number; // nye pladser eller niveau-stigning
+}
+
 export interface Club {
   id: number;
   name: string;
@@ -166,6 +176,8 @@ export interface Club {
   history: ClubSeasonHistory[];
   ticketPrice: number;
   boardTrust?: number;
+  /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */
+  projects?: ClubProject[];
 }
 
 export interface TeamInstructions {

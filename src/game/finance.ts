@@ -50,10 +50,8 @@ export function gateReceipts(f: Fixture): number {
   const big = comp?.type === 'continental' ? 1.3 : comp?.type === 'cup' && f.stage === 'F' ? 1.5 : 1;
   const row = comp?.table.find((r) => r.club === home.id);
   const formBoost = row ? (row.form.split('W').length - 1) * 0.02 : 0;
-  const fair = fairTicketPrice(home.rep, home.league);
-  const priceF = Math.max(0.3, Math.min(1.2, 1 - (home.ticketPrice / fair - 1) * 0.5));
-  const demand = Math.min(1, (0.3 + home.rep / 160 + away.rep / 800 + formBoost) * big * priceF);
-  const att = Math.round(home.seats * Math.max(0.15, demand) * (0.95 + rng.next() * 0.05));
+  const demand = ticketDemand(home, home.ticketPrice, away.rep, formBoost, big);
+  const att = Math.round(home.seats * demand * (0.95 + rng.next() * 0.05));
   const income = att * home.ticketPrice * (comp?.type === 'continental' ? 1.5 : 1);
   home.balance += income;
   home.finance.gate += income;
@@ -77,6 +75,13 @@ export function monthlyIncome() {
     const sponsor = Math.round(Math.pow(c.rep, 2.5) * 25 * wealth);
     const merch = Math.round(c.rep * c.rep * 25 * wealth);
     c.balance += tv + sponsor + merch;
+    // ligaer der ikke simuleres har ingen kampe – giv dem et skøn over billetindtægterne (≈2 hjemmekampe/md.)
+    if (!g.comps[c.league] && g.date.slice(5, 7) !== '06' && g.date.slice(5, 7) !== '07') {
+      const att = c.seats * Math.min(1, 0.3 + c.rep / 160 + 0.06);
+      const gate = Math.round(att * c.ticketPrice * 2);
+      c.balance += gate;
+      c.finance.gate += gate;
+    }
     c.finance.tv += tv;
     c.finance.sponsor += sponsor;
     c.finance.merch += merch;
@@ -85,6 +90,22 @@ export function monthlyIncome() {
 
 export function seasonPrizeMoney() {
   const g = gs();
+  // ligaer der ikke simuleres: præmie efter omdømme-rangering
+  const unsim = new Map<string, Club[]>();
+  for (const c of Object.values(g.clubs)) {
+    if (g.comps[c.league]) continue;
+    if (!unsim.has(c.league)) unsim.set(c.league, []);
+    unsim.get(c.league)!.push(c);
+  }
+  for (const [lg, clubs] of unsim) {
+    const wealth = rulesFor(lg, clubs.length).wealth;
+    const tier = g.leagues[lg]?.tier ?? 1;
+    clubs.sort((a, b) => b.rep - a.rep).forEach((c, i) => {
+      const prize = Math.round((clubs.length - i) * 400_000 * wealth * wealth * (tier === 1 ? 1 : 0.3));
+      c.balance += prize;
+      c.finance.prize += prize;
+    });
+  }
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
     const order = finalOrder(comp);
@@ -124,4 +145,20 @@ export function transferBudgetFor(squadValue: number, wealth: number, balance: n
   const base = squadValue * 0.08 * Math.min(1.5, wealth + 0.2) + Math.max(0, balance) * 0.25;
   const cap = Math.max(0, balance) * 0.8 + 1_000_000;
   return Math.round(Math.max(50_000, Math.min(base, cap)) / 50_000) * 50_000;
+}
+
+/** Andel af stadion der fyldes (0.15-1) ved en given billetpris */
+export function ticketDemand(home: Club, price: number, awayRep = 40, formBoost = 0, big = 1): number {
+  const fair = fairTicketPrice(home.rep, home.league);
+  // tilskuerne er mere følsomme over for dyre end for billige billetter
+  const ratio = price / fair;
+  const priceF = Math.max(0.15, Math.min(1.25, ratio > 1 ? 1 - (ratio - 1) * 0.95 : 1 + (1 - ratio) * 0.45));
+  return Math.max(0.15, Math.min(1, (0.3 + home.rep / 160 + awayRep / 800 + formBoost) * big * priceF));
+}
+
+/** Forventet tilskuertal og indtægt pr. ligakamp ved en given pris (mod en gennemsnitlig modstander) */
+export function estimateGate(club: Club, price: number): { attendance: number; income: number; fill: number } {
+  const fill = ticketDemand(club, price, 45);
+  const attendance = Math.round(club.seats * fill);
+  return { attendance, income: attendance * price, fill };
 }

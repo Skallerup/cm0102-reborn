@@ -39,7 +39,7 @@ function coachQuality(clubId: number): number {
   const club = g.clubs[clubId];
   const avg = n ? sum / n : 8;
   const depth = Math.min(1, n / 5);
-  return (avg / 20) * (0.75 + 0.25 * depth) * (0.85 + 0.15 * ((club?.facilities ?? 10) / 20));
+  return (avg / 20) * (0.75 + 0.25 * depth) * (0.75 + 0.25 * ((club?.facilities ?? 10) / 20));
 }
 
 /** Kører hver mandag for alle spillere */
@@ -65,7 +65,7 @@ function develop(p: Player, coachQ: number) {
   } else if (age <= 28) {
     delta = (p.pa - p.ca) * 0.004 * (0.45 + coachQ) * (0.6 + prof * 0.6) * minutesBoost;
   } else if (age >= 31) {
-    delta = -(0.06 + (age - 30) * 0.045) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3);
+    delta = -(0.03 + (age - 30) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3);
   }
   delta += rng.normal(0, 0.05);
   if (Math.abs(delta) < 0.01) return;

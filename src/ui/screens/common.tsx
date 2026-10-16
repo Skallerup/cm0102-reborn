@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { has, t } from '../../i18n';
+import { dateFmt, has, money, t } from '../../i18n';
 import { useNav } from '../core';
 import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
@@ -21,6 +21,9 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.injury === 'string') p.injury = t(`injury.${p.injury}`);
   if (typeof p.lane === 'string') p.lane = t(`lane.${p.lane}`);
   if (p.kind === 'transfer' || p.kind === 'wage') p.kind = t(`board.kind.${p.kind}`);
+  if (p.kind === 'stadium' || p.kind === 'training' || p.kind === 'youth') p.kind = t(`proj.kind.${p.kind}`);
+  if (typeof p.done === 'string') p.done = dateFmt(p.done);
+  if (typeof p.cost === 'number') p.cost = money(p.cost);
   if (n.key === 'staff.hired' && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);
   return p;

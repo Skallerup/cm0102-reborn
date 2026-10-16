@@ -61,6 +61,11 @@ export function toCur(eur: number): number {
   return Math.round(eur * RATE[currency]);
 }
 
+/** Valgt valuta → euro (med decimaler) */
+export function fromCurExact(v: number): number {
+  return Math.round((v / RATE[currency]) * 100) / 100;
+}
+
 /** Valgt valuta → euro */
 export function fromCur(v: number): number {
   return Math.round(v / RATE[currency]);

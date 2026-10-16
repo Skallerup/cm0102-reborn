@@ -3,7 +3,7 @@ import { positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import { gs } from '../game/state';
 import type { Player } from '../game/types';
-import { t } from '../i18n';
+import { currencySymbol, fromCurExact, getLang, t, toCur } from '../i18n';
 import { useNav, useRouteState } from './core';
 import { logoUrl } from './logos';
 
@@ -199,4 +199,32 @@ export function Pct({ v }: { v: number }) {
 
 export function Empty({ text }: { text: string }) {
   return <div className="empty">{text}</div>;
+}
+
+/**
+ * Beløbsfelt i den valgte valuta. Teksten redigeres frit og omregnes først til euro,
+ * når man forlader feltet eller trykker Enter (så små tal i kroner ikke rundes til 0 undervejs).
+ */
+export function MoneyInput({ value, onChange, min = 0, width = 130 }: { value: number; onChange: (eur: number) => void; min?: number; width?: number }) {
+  const [text, setText] = useState<string | null>(null);
+  const commit = () => {
+    if (text === null) return;
+    const n = Number(text.replace(/[^0-9.,]/g, '').replace(/\./g, '').replace(',', '.'));
+    if (Number.isFinite(n)) onChange(Math.max(min, fromCurExact(n)));
+    setText(null);
+  };
+  return (
+    <span className="row" style={{ gap: 4, display: 'inline-flex' }}>
+      <input inputMode="numeric" value={text ?? toCur(value).toLocaleString(getLang() === 'da' ? 'da-DK' : 'en-GB')} style={{ width }}
+        onFocus={(e) => { setText(String(toCur(value))); requestAnimationFrame(() => e.target.select()); }}
+        onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
+      <span className="muted">{currencySymbol()}</span>
+    </span>
+  );
+}
+
+export function RecTag({ level }: { level: number }) {
+  if (level < 0) return <span className="tag">{t('rec.short.unknown')}</span>;
+  const cls = level <= 1 ? 'good' : level === 2 ? '' : level === 3 ? 'warn' : 'bad';
+  return <span className={`tag ${cls}`}>{t(`rec.short.l${level}`)}</span>;
 }

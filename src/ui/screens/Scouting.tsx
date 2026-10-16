@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { act } from '../../game/actions';
 import { dateFmt, money, t } from '../../i18n';
-import { scoutStars } from '../../game/scouting';
+import { scoutRecommendation, scoutStars } from '../../game/scouting';
 import { addDays, ageOn } from '../../game/dates';
-import { Bar, ClubLink, Panel, PlayerLink, Stars, posStr } from '../components';
+import { Bar, ClubLink, Panel, PlayerLink, RecTag, Stars, posStr } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
 
@@ -86,7 +86,7 @@ function ScoutFinds() {
     <>
     {toggle}
     <table className="grid">
-      <thead><tr><th>{t('scout.foundDate')}</th><th>{t('col.name')}</th><th>{t('col.pos')}</th><th className="num">{t('col.age')}</th><th>{t('col.club')}</th><th>{t('player.ability')}</th><th>{t('player.potential')}</th><th className="num">{t('col.value')}</th></tr></thead>
+      <thead><tr><th>{t('scout.foundDate')}</th><th>{t('col.name')}</th><th>{t('col.pos')}</th><th className="num">{t('col.age')}</th><th>{t('col.club')}</th><th>{t('player.ability')}</th><th>{t('player.potential')}</th><th>{t('rec.col')}</th><th className="num">{t('col.value')}</th></tr></thead>
       <tbody>
         {rows.map(({ p, st, found }) => (
           <tr key={p.id}>
@@ -97,6 +97,7 @@ function ScoutFinds() {
             <td>{p.club ? <ClubLink id={p.club} /> : t('common.free')}</td>
             <td><Stars range={st.ability} /></td>
             <td><Stars range={st.potential} /></td>
+            <td>{(() => { const r = scoutRecommendation(p); return <span title={r.reasons.map((x) => t(x.key, x.params)).join(' ')}><RecTag level={r.level} /></span>; })()}</td>
             <td className="num">{money(p.value)}</td>
           </tr>
         ))}

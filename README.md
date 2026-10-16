@@ -28,6 +28,11 @@ Alt det, vi husker fra CM 01/02:
 - **Online multiplayer** (2–8 managere): opret et spil og send invitationslinket, så styrer hver sit hold i samme verden. Alle laver deres ændringer og trykker "Klar". Når alle er klar, spilles der frem til efter næste kampdag
 - **Klublogoer** for de europæiske ligaer. De hentes ved kørsel fra [luukhopman/football-logos](https://github.com/luukhopman/football-logos) via jsDelivr og ligger ikke i repo'et
 - **Valuta:** euro, danske kroner eller britiske pund
+- **Stadion og anlæg:** udvid stadion, byg bedre træningsanlæg eller ungdomsakademi (bestyrelsen skal godkende, og byggeriet tager måneder). Billetpris-hjælper viser forventede tilskuere og indtægter ved forskellige priser
+- **Scouting:** scouternes fund med dato og "Ny"-mærke. Scouterne vurderer kort, om de anbefaler en spiller, og hvorfor
+- **Træning:** udviklingsgraf på spillerprofiler, og assistenten foreslår træning
+- **Bestyrelsen** kommenterer kampe og sejrs- og nederlagsrækker og kan fyre dig. AI-klubber fyrer deres managere, og du kan søge ledige jobs
+- **Langtidstestet:** `npx tsx scripts/long-run.ts 6` kører 6 sæsoner og måler regens, pensioner, truppe og økonomi
 
 ## De 10 forbedringsforslag
 

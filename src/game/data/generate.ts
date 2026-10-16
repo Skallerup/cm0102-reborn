@@ -67,7 +67,7 @@ export function potentialFor(ca: number, age: number, r: Rng): number {
   else if (age <= 26) gap = r.range(0, 9);
   else gap = r.range(0, 3);
   // Sjældne "wonderkids" – CM 01/02-ånden
-  if (age <= 19 && r.chance(0.04)) gap += r.range(15, 35);
+  if (age <= 19 && r.chance(0.02)) gap += r.range(12, 30);
   return clamp(Math.round(ca + gap), Math.round(ca), 200);
 }
 
