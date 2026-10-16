@@ -29,6 +29,8 @@ export interface EngineOptions {
   /** Afgør om der skal findes en vinder ved dette resultat (forlænget + straffe) */
   needsWinner?: (hg: number, ag: number) => boolean;
   fixtureId?: number;
+  /** Kampdato (bruges til midlertidige effekter som "tændt" efter en samtale) */
+  date?: string;
   /** AI håndterer udskiftninger for hold 0/1 */
   aiSubs?: [boolean, boolean];
 }
@@ -151,7 +153,8 @@ export class MatchSim {
     const s = rt.tactic.slots[slot];
     const fit = fitFactor(slotFit(p, s));
     const consistency = p.attrs[A.consistency];
-    const form = clamp(this.r.normal(1, 0.065 * (1.2 - consistency / 20)), 0.86, 1.1);
+    const firedUp = p.fired && this.opts.date && p.fired >= this.opts.date ? 0.02 : 0;
+    const form = clamp(this.r.normal(1 + firedUp, 0.065 * (1.2 - consistency / 20) * (firedUp ? 0.7 : 1)), 0.86, 1.12);
     const imp = this.opts.importance ? 0.97 + 0.06 * (p.attrs[A.importantMatches] / 20) * this.opts.importance + (1 - this.opts.importance) * 0.03 : 1;
     const morale = 0.95 + 0.1 * (p.morale / 20);
     const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult;

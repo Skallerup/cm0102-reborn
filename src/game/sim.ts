@@ -114,14 +114,14 @@ export function createLiveMatch(f: Fixture): MatchSim {
   const m = prepareMatch(f);
   const g = gs();
   return new MatchSim(m.home, m.away, {
-    commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id,
+    commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id };
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, date: gs().date };
   const rep = commentary
     ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : quickMatch(m.home, m.away, opts, rng);
@@ -160,7 +160,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
       p.yellowCount++;
       if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; }
     }
-    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); }
+    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; }
     if (line.injured) injure(p);
     const res = line.team === 0 ? Math.sign(hs.goals - as.goals) : Math.sign(as.goals - hs.goals);
     p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));
@@ -338,7 +338,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, aiSubs: [true, true] }, rng);
+  const rep = quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng);
   finishUserMatch(rep);
   return rep;
 }

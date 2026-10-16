@@ -7,6 +7,7 @@ import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, loanSuitors, windowOpen } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
+import { daysBetween } from '../../game/dates';
 import { AttrVal, Bar, ClubLink, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
 import { act as dispatch } from '../../game/actions';
@@ -130,6 +131,7 @@ export function PlayerScreen({ id }: { id: number }) {
         </Panel>
       </div>
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
+      {mine && <TalkPanel pid={p.id} />}
       {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">
@@ -366,5 +368,42 @@ function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferO
       {o.status === 'countered' && <button className="small primary" onClick={() => { if (dispatch<string>({ t: 'acceptCounter', pid }) === 'ok') onNegotiate(o); }}>{t('offer.acceptCounter')}</button>}
       <button className="small danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) dispatch({ t: 'withdraw', pid }); }}>{t('offer.withdraw')}</button>
     </div>
+  );
+}
+
+function TalkPanel({ pid }: { pid: number }) {
+  const g = useGame()!;
+  const p = g.players[pid];
+  const [res, setRes] = useState<{ key: string; mood: string } | null>(null);
+  const cooldown = p.lastTalk ? 10 - daysBetween(p.lastTalk, g.date) : 0;
+  const form = p.form.slice(-3);
+  const avgForm = form.length ? form.reduce((s, x) => s + x, 0) / form.length : null;
+  const reason = p.lastRed && daysBetween(p.lastRed, g.date) <= 30 ? t('talk.reasonRed', { date: dateFmt(p.lastRed) })
+    : p.lastIncident && daysBetween(p.lastIncident, g.date) <= 45 ? t('talk.reasonIncident', { date: dateFmt(p.lastIncident) }) : null;
+  const doTalk = (kind: 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop') => {
+    if ((kind === 'fine' || kind === 'fineHeavy' || kind === 'drop') && !reason && !confirm(t('talk.noReasonConfirm'))) return;
+    setRes(dispatch<{ key: string; mood: string }>({ t: 'interact', pid, kind }));
+  };
+  const wage = p.contract?.wage ?? 0;
+  return (
+    <Panel title={t('talk.title', { player: p.last })}>
+      <div className="col">
+        <div className="kv">
+          <span>{t('talk.form')}</span><span>{avgForm !== null ? `${avgForm.toFixed(1)} (${form.map((x) => x.toFixed(1)).join(' · ')})` : t('talk.noGames')}</span>
+          <span>{t('col.morale')}</span><span><Bar value={p.morale} max={20} /></span>
+          <span>{t('talk.discipline')}</span><span className={reason ? 'bad' : 'muted'}>{reason ?? t('talk.noReason')}</span>
+        </div>
+        <div className="row">
+          <button disabled={cooldown > 0} onClick={() => doTalk('praise')}>👏 {t('talk.praise')}</button>
+          <button disabled={cooldown > 0} onClick={() => doTalk('encourage')}>🤝 {t('talk.encourage')}</button>
+          <button disabled={cooldown > 0} onClick={() => doTalk('criticise')}>☝️ {t('talk.criticise')}</button>
+          <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('fine')}>{t('talk.fine', { fee: money(wage) })}</button>
+          <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('fineHeavy')}>{t('talk.fineHeavy', { fee: money(wage * 2) })}</button>
+          <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('drop')}>{t('talk.drop')}</button>
+        </div>
+        {cooldown > 0 && !res && <div className="muted">{t('talk.cooldown', { n: cooldown })}</div>}
+        {res && <div className={`insight ${res.mood}`}>{t(res.key, { player: p.last })}</div>}
+      </div>
+    </Panel>
   );
 }

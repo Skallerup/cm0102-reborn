@@ -6,7 +6,7 @@ import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
-import { talkToPlayer } from './personality';
+import { interact, talkToPlayer, teamTalk } from './personality';
 import { chooseSponsor } from './finance';
 import { addNews, gs, notify } from './state';
 import {
@@ -37,6 +37,8 @@ export type Action =
   | { t: 'budget'; kind: 'transfer' | 'wage' }
   | { t: 'project'; kind: 'stadium' | 'training' | 'youth' }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
+  | { t: 'interact'; pid: number; kind: 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop' }
+  | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
   | { t: 'sponsor'; kind: 'safe' | 'bonus' | 'ambitious' }
   | { t: 'ticket'; price: number }
   | { t: 'read'; ids: number[] | 'all' }
@@ -91,6 +93,8 @@ export function applyAction(a: Action): unknown {
     case 'budget': return requestBudget(a.kind);
     case 'project': return requestProject(a.kind);
     case 'talk': return talkToPlayer(a.pid, a.choice);
+    case 'interact': return interact(a.pid, a.kind);
+    case 'teamTalk': return teamTalk(a.kind);
     case 'sponsor': return chooseSponsor(a.kind);
     case 'ticket': if (club) club.ticketPrice = Math.max(1, Math.round(a.price * 100) / 100); return 'ok';
     case 'read':

@@ -32,6 +32,29 @@ export const da: Record<string, string> = {
   'holiday.days': '{n} dage', 'holiday.season': 'Sæsonafslutning', 'holiday.go': 'Afsted',
 
 
+
+  'talk.title': 'Tal med {player}', 'talk.form': 'Seneste form', 'talk.noGames': 'Ingen kampe endnu', 'talk.discipline': 'Disciplin',
+  'talk.reasonRed': 'Rødt kort {date} – grund til straf', 'talk.reasonIncident': 'Ballade {date} – grund til straf', 'talk.noReason': 'Ingen grund til straf lige nu',
+  'talk.praise': 'Ros', 'talk.encourage': 'Opmuntr', 'talk.criticise': 'Kritisér', 'talk.fine': 'Bøde: 1 uges løn ({fee})', 'talk.fineHeavy': 'Stor bøde: 2 ugers løn ({fee})', 'talk.drop': 'Sæt af holdet',
+  'talk.cooldown': 'Du har lige talt med ham – vent {n} dage.', 'talk.noReasonConfirm': 'Han har ikke gjort noget forkert. En straf vil føles uretfærdig og kan ødelægge stemningen. Vil du fortsætte?',
+  'talk.r.error': 'Det kunne ikke lade sig gøre.', 'talk.r.tooSoon': 'Du har allerede talt med ham for nylig.',
+  'talk.r.praiseDeserved': '{player} smiler bredt – rosen er fortjent, og han er klar til mere.', 'talk.r.praiseOk': '{player} er glad for rosen.',
+  'talk.r.praiseNoGames': '{player} takker høfligt, men har jo ikke spillet endnu.', 'talk.r.praiseSeeThrough': '{player} kan godt se, at hans form ikke fortjener ros – han tager det ikke seriøst.',
+  'talk.r.praiseUndeserved': '{player} tager imod rosen, selvom formen ikke har været god.', 'talk.r.critUnfair': '{player} er dybt uenig – han har spillet godt og føler sig uretfærdigt behandlet.',
+  'talk.r.critExplodes': '{player} eksploderer og smækker med døren. Det hjalp ikke.', 'talk.r.critFiredUp': '{player} tager kritikken til sig og vil bevise, at du tager fejl. Han er tændt!',
+  'talk.r.critSulks': '{player} surmuler og virker endnu mere usikker.', 'talk.r.critAccepts': '{player} accepterer kritikken og lover at arbejde hårdere.',
+  'talk.r.encourageHelps': '{player} får selvtilliden tilbage – opmuntringen kom på det rigtige tidspunkt.', 'talk.r.encourageFine': '{player} sætter pris på det, men havde det allerede fint.',
+  'talk.r.fineAccepted': '{player} accepterer straffen. Truppen ser, at du tager disciplin alvorligt.', 'talk.r.fineWantsAway': '{player} er rasende over bøden og vil nu væk fra klubben.',
+  'talk.r.fineUnjust': '{player} forstår ikke, hvorfor han straffes. Han er vred, og truppen synes, det var uretfærdigt.',
+  'talk.r.dropDeserved': '{player} er sat af holdet. Han forstår hvorfor – og truppen respekterer beslutningen.', 'talk.r.dropUnjust': '{player} er sat af holdet uden grund og er meget utilfreds.',
+  'team.meeting': 'Holdmøde', 'team.recent': 'Seneste 5 ligakampe', 'team.hint': 'Hvad du siger, påvirker hele truppens moral – og det skal passe til resultaterne.',
+  'team.praise': '👏 Ros holdet for indsatsen', 'team.calm': '🧘 Tag presset af – bare spil jeres spil', 'team.demand': '💪 Kræv mere – vi skal vinde', 'team.criticise': '☝️ Kritisér holdet – det er ikke godt nok',
+  'team.cooldown': 'Næste holdmøde om {n} dage.', 'team.r.tooSoon': 'Du har holdt holdmøde for nylig.',
+  'team.r.praiseDeserved': 'Spillerne vokser af rosen efter de gode resultater.', 'team.r.praiseOdd': 'Rosen klinger hult efter de dårlige resultater – de professionelle ryster på hovedet.',
+  'team.r.praiseOk': 'Truppen er glad for opbakningen.', 'team.r.critUnfair': 'Spillerne forstår ikke kritikken efter de gode resultater. Stemningen falder.',
+  'team.r.critReaction': 'De viljestærke spillere er tændt – de hidsige surmuler.', 'team.r.demand': 'Selvsikre spillere tager udfordringen op, usikre bliver nervøse.',
+  'team.r.calmHelps': 'Presset letter, og spillerne finder roen igen.', 'team.r.calmFine': 'Spillerne nikker – de var ikke specielt pressede.',
+
   // personlighed og kemi
   'nav.awards': 'Priser', 'tag.wantsAway': 'Vil væk',
   'pers.title': 'Personlighed', 'pers.promise': 'Løfte', 'pers.promiseUntil': 'Du har lovet succes inden {date}',

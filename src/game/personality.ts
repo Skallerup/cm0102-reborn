@@ -116,6 +116,7 @@ export function monthlyPersonality() {
       // problembørn laver ballade
       if (t.includes('troublemaker') && rng.chance(0.12)) {
         const incident = rng.pick(['late', 'fight', 'nightclub', 'media']);
+        p.lastIncident = g.date;
         p.morale = Math.max(1, p.morale - 2);
         for (const mate of squad(c.id)) if (mate !== p) mate.morale = Math.max(1, mate.morale - 0.3);
         asOwner(c.id, () => addNews({ cat: 'general', key: `pers.incident.${incident}`, params: { player: `${p.first} ${p.last}` }, link: { kind: 'player', id: p.id } }));
@@ -158,3 +159,118 @@ export function talkToPlayer(pid: number, choice: 'promise' | 'list' | 'refuse')
 }
 
 export { finalOrder };
+
+// ---------- samtaler med spillerne ----------
+
+export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop';
+
+function recentForm(p: Player): number {
+  const f = p.form.slice(-3);
+  return f.length ? f.reduce((s, x) => s + x, 0) / f.length : 6.6;
+}
+
+/** Ros, kritik, opmuntring eller straf. Reaktionen afhænger af form, personlighed og om det er fortjent. */
+export function interact(pid: number, kind: TalkKind): { key: string; mood: 'good' | 'bad' | 'neutral' } {
+  const g = gs();
+  const p = g.players[pid];
+  const club = g.clubs[g.userClub];
+  if (!p || !club || p.club !== club.id) return { key: 'talk.r.error', mood: 'neutral' };
+  if (p.lastTalk && daysBetween(p.lastTalk, g.date) < 10) return { key: 'talk.r.tooSoon', mood: 'neutral' };
+  p.lastTalk = g.date;
+  const t = traits(p);
+  const form = recentForm(p);
+  const played = p.form.length > 0;
+  const det = p.attrs[A.determination];
+  const hot = t.includes('troublemaker') || t.includes('temperamental');
+  const bump = (d: number) => { p.morale = Math.max(1, Math.min(20, p.morale + d)); };
+  const fire = (days: number) => { p.fired = addDays(g.date, days); };
+  const misbehaved = (p.lastIncident && daysBetween(p.lastIncident, g.date) <= 45) || (p.lastRed && daysBetween(p.lastRed, g.date) <= 30);
+
+  switch (kind) {
+    case 'praise':
+      if (!played) { bump(0.5); return { key: 'talk.r.praiseNoGames', mood: 'neutral' }; }
+      if (form >= 7) { bump(2.5); fire(14); return { key: 'talk.r.praiseDeserved', mood: 'good' }; }
+      if (form >= 6.6) { bump(1.2); return { key: 'talk.r.praiseOk', mood: 'good' }; }
+      // ufortjent ros
+      if (t.includes('professional')) { bump(-0.5); return { key: 'talk.r.praiseSeeThrough', mood: 'bad' }; }
+      bump(0.8);
+      return { key: 'talk.r.praiseUndeserved', mood: 'neutral' };
+    case 'criticise':
+      if (played && form >= 7) { bump(-3); if (hot) p.unhappy = Math.min(100, (p.unhappy ?? 0) + 25); return { key: 'talk.r.critUnfair', mood: 'bad' }; }
+      if (hot) { bump(-4); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 30); return { key: 'talk.r.critExplodes', mood: 'bad' }; }
+      if (det >= 14 || t.includes('professional') || t.includes('leader')) { bump(1); fire(21); return { key: 'talk.r.critFiredUp', mood: 'good' }; }
+      if (det <= 8) { bump(-2.5); return { key: 'talk.r.critSulks', mood: 'bad' }; }
+      bump(-1); fire(10);
+      return { key: 'talk.r.critAccepts', mood: 'neutral' };
+    case 'encourage':
+      if (p.morale <= 10 || (played && form < 6.4)) { bump(2); return { key: 'talk.r.encourageHelps', mood: 'good' }; }
+      bump(0.5);
+      return { key: 'talk.r.encourageFine', mood: 'neutral' };
+    case 'fine':
+    case 'fineHeavy': {
+      const weeks = kind === 'fine' ? 1 : 2;
+      const amount = Math.round((p.contract?.wage ?? 0) * weeks);
+      if (misbehaved) {
+        club.balance += amount;
+        club.finance.other -= amount;
+        bump(kind === 'fine' ? -1.5 : -3);
+        p.lastIncident = undefined;
+        p.lastRed = undefined;
+        // truppen respekterer konsekvent ledelse
+        for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.min(20, mate.morale + 0.3);
+        if (hot && kind === 'fineHeavy' && rng.chance(0.4)) { p.wantsAway = true; return { key: 'talk.r.fineWantsAway', mood: 'bad' }; }
+        return { key: 'talk.r.fineAccepted', mood: 'neutral' };
+      }
+      // straf uden grund
+      bump(-5);
+      p.unhappy = Math.min(100, (p.unhappy ?? 0) + 40);
+      for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.max(1, mate.morale - 0.4);
+      if (!t.includes('loyal') && rng.chance(0.5)) p.wantsAway = true;
+      return { key: 'talk.r.fineUnjust', mood: 'bad' };
+    }
+    case 'drop':
+      // sat af holdet som straf
+      if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === pid ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== pid) };
+      if (misbehaved) { bump(-1.5); for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.min(20, mate.morale + 0.2); return { key: 'talk.r.dropDeserved', mood: 'neutral' }; }
+      bump(-3.5);
+      p.unhappy = Math.min(100, (p.unhappy ?? 0) + 25);
+      return { key: 'talk.r.dropUnjust', mood: 'bad' };
+  }
+}
+
+export type TeamTalkKind = 'praise' | 'criticise' | 'demand' | 'calm';
+
+/** Holdmøde: påvirker hele truppen ud fra de seneste resultater */
+export function teamTalk(kind: TeamTalkKind): { key: string; mood: 'good' | 'bad' | 'neutral' } {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (!club) return { key: 'talk.r.error', mood: 'neutral' };
+  if (g.board.lastTeamTalk && daysBetween(g.board.lastTeamTalk, g.date) < 14) return { key: 'team.r.tooSoon', mood: 'neutral' };
+  g.board.lastTeamTalk = g.date;
+  const form = g.comps[club.league]?.table.find((r) => r.club === club.id)?.form ?? '';
+  const recent = form.slice(-5);
+  const wins = (recent.match(/W/g) ?? []).length;
+  const losses = (recent.match(/L/g) ?? []).length;
+  const players = squad(club.id);
+  const all = (d: (p: Player) => number) => { for (const p of players) p.morale = Math.max(1, Math.min(20, p.morale + d(p))); };
+  switch (kind) {
+    case 'praise':
+      if (wins >= 3) { all(() => 1.5); return { key: 'team.r.praiseDeserved', mood: 'good' }; }
+      if (losses >= 3) { all((p) => (traits(p).includes('professional') ? -0.5 : 0.3)); return { key: 'team.r.praiseOdd', mood: 'neutral' }; }
+      all(() => 0.6);
+      return { key: 'team.r.praiseOk', mood: 'good' };
+    case 'criticise':
+      if (wins >= 3) { all(() => -1.5); return { key: 'team.r.critUnfair', mood: 'bad' }; }
+      all((p) => (p.attrs[A.determination] >= 14 ? 0.8 : traits(p).some((x) => x === 'troublemaker' || x === 'temperamental') ? -1.5 : -0.4));
+      for (const p of players) if (p.attrs[A.determination] >= 14) p.fired = addDays(g.date, 14);
+      return { key: 'team.r.critReaction', mood: 'neutral' };
+    case 'demand':
+      all((p) => (p.morale >= 12 ? 0.6 : -0.6));
+      for (const p of players) if (p.morale >= 12) p.fired = addDays(g.date, 10);
+      return { key: 'team.r.demand', mood: 'neutral' };
+    case 'calm':
+      if (losses >= 2) { all(() => 1); return { key: 'team.r.calmHelps', mood: 'good' }; }
+      all(() => 0.3);
+      return { key: 'team.r.calmFine', mood: 'neutral' };
+  }
+}

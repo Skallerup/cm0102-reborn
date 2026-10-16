@@ -93,6 +93,13 @@ export interface Player {
   wantsAway?: boolean;
   /** Manageren har lovet titler – frist */
   promiseUntil?: string;
+  /** Seneste samtale med manageren (cooldown) */
+  lastTalk?: string;
+  /** Seneste episode (ballade) og seneste røde kort – grundlag for at straffe */
+  lastIncident?: string;
+  lastRed?: string;
+  /** Kortvarigt "tændt" efter kritik/ros: bonus på stabilitet til og med dato */
+  fired?: string;
 }
 
 export interface StaffAttrs {
@@ -342,6 +349,8 @@ export interface ManagerProfile {
 }
 
 export interface BoardState {
+  /** Seneste holdmøde */
+  lastTeamTalk?: string;
   /** Dato for bestyrelsens seneste kampkommentar */
   lastComment?: string;
   confidence: number; // 0-100
