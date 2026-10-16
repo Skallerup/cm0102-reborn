@@ -189,7 +189,7 @@ export const da: Record<string, string> = {
   'contract.renewed': '{player} har forlænget med {years} år',
 
   // scouting
-  'scout.maskingOff': 'Attribut-maskering er slået fra – du kan se alle spilleres attributter.', 'scout.overview': 'Overblik', 'scout.scouts': 'Scouts',
+  'scout.maskingOff': 'Attribut-maskering er slået fra – du kan se alle spilleres attributter.', 'scout.overview': 'Overblik', 'scout.found': 'Scouternes fund', 'scout.foundHint': 'Spillere dine scouts kender godt – bedste først', 'scout.noFinds': 'Ingen fund endnu – giv dine scouts en opgave og tryk Fortsæt.', 'scout.scouts': 'Scouts',
   'scout.wellKnown': 'Velkendte spillere', 'scout.explain': 'Uscoutede spillere vises med intervaller (fx 9–14). Scouts med høj vurderingsevne lærer spillerne hurtigere at kende. Du lærer også modstandere at kende ved at spille mod dem.',
   'scout.assignments': 'Opgaver', 'scout.assignment': 'Opgave', 'scout.watching': 'Ser', 'scout.ownLeague': 'Egen liga (standard)', 'scout.leagues': 'Ligaer',
   'scout.nations': 'Nationer', 'scout.none': 'Du har ingen scouts – ansæt nogle under Staff.',

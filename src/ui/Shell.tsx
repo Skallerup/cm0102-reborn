@@ -5,6 +5,7 @@ import { continueGame, runUntil } from '../game/sim';
 import { gs, notify, setGame } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest, Modal } from './components';
+import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
@@ -114,7 +115,7 @@ export function Shell() {
       <nav className={`sidenav ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
         {items.map(([k, label]) => (
           <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
-            {t(label)}
+            <Icon name={k} />{t(label)}
             {k === 'inbox' && unread > 0 && <span className="badge">{unread}</span>}
             {k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) && <span className="badge">!</span>}
           </button>
@@ -122,16 +123,16 @@ export function Shell() {
         <div className="sep" />
         {MENU2.map(([k, label]) => (
           <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
-            {t(label)}
+            <Icon name={k} />{t(label)}
             {k === 'jobs' && g.jobOffers.length > 0 && <span className="badge">{g.jobOffers.length}</span>}
           </button>
         ))}
         <div className="sep" />
-        {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}>{t('nav.save')}</button>}
+        {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
         <button onClick={async () => {
           if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); setGame(null); } return; }
           if (confirm(t('top.quitConfirm'))) { await saveGame(); setGame(null); }
-        }}>{t('nav.quit')}</button>
+        }}><Icon name="quit" />{t('nav.quit')}</button>
       </nav>
       <main className="main" ref={mainRef}>
         {online && !online.inGame ? <Lobby /> : <Screen />}

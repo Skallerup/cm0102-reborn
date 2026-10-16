@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Championship Manager 01/02 Reborn',
         short_name: 'CM 01/02',
         description: 'Fodboldmanager i CM 01/02-stil med rigtige spillere',
-        theme_color: '#16285a',
-        background_color: '#0f1d3d',
+        theme_color: '#070b16',
+        background_color: '#070b16',
         display: 'standalone',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
@@ -27,6 +27,10 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [{
+          urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
+          handler: 'CacheFirst',
+          options: { cacheName: 'fonts', expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
+        }, {
           urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/gh\/luukhopman\/football-logos/,
           handler: 'CacheFirst',
           options: { cacheName: 'club-logos', expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 90 }, cacheableResponse: { statuses: [0, 200] } },

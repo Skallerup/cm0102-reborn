@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { act } from '../../game/actions';
-import { t } from '../../i18n';
-import { Bar, Panel, PlayerLink } from '../components';
+import { money, t } from '../../i18n';
+import { scoutStars } from '../../game/scouting';
+import { ageOn } from '../../game/dates';
+import { Bar, ClubLink, Panel, PlayerLink, Stars, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 
@@ -60,6 +62,38 @@ export function Scouting() {
           </tbody>
         </table>
       </Panel>
+      <Panel title={t('scout.found')} right={<span className="muted">{t('scout.foundHint')}</span>} className="flush">
+        <ScoutFinds />
+      </Panel>
     </div>
+  );
+}
+
+function ScoutFinds() {
+  const g = useGame()!;
+  const rows = Object.entries(g.knowledge)
+    .filter(([id, k]) => k >= 60 && g.players[Number(id)] && g.players[Number(id)].club !== g.userClub)
+    .map(([id]) => g.players[Number(id)])
+    .map((p) => ({ p, st: scoutStars(p) }))
+    .sort((a, b) => b.st.potential[0] + b.st.ability[0] - (a.st.potential[0] + a.st.ability[0]))
+    .slice(0, 60);
+  if (!rows.length) return <div className="empty">{t('scout.noFinds')}</div>;
+  return (
+    <table className="grid">
+      <thead><tr><th>{t('col.name')}</th><th>{t('col.pos')}</th><th className="num">{t('col.age')}</th><th>{t('col.club')}</th><th>{t('player.ability')}</th><th>{t('player.potential')}</th><th className="num">{t('col.value')}</th></tr></thead>
+      <tbody>
+        {rows.map(({ p, st }) => (
+          <tr key={p.id}>
+            <td><PlayerLink p={p} /></td>
+            <td>{posStr(p)}</td>
+            <td className="num">{ageOn(p.dob, g.date)}</td>
+            <td>{p.club ? <ClubLink id={p.club} /> : t('common.free')}</td>
+            <td><Stars range={st.ability} /></td>
+            <td><Stars range={st.potential} /></td>
+            <td className="num">{money(p.value)}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }
