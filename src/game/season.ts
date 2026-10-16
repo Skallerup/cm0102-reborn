@@ -1,0 +1,256 @@
+// Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { finalOrder } from './competitions';
+import { ageOn } from './dates';
+import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
+import { LEAGUE_RULES } from './leagues';
+import { Rng, hash, rng } from './rng';
+import { addNews, addPlayer, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
+import { boardSeasonEnd, setBoardExpectation } from './board';
+import { newSeasonBudgets, seasonPrizeMoney } from './finance';
+import { setupSeasonComps } from './newgame';
+import { CHALLENGES } from './challenges';
+import { initKnowledge } from './scouting';
+import type { Player, SeasonSummary } from './types';
+
+const pname = (p: Player) => `${p.first} ${p.last}`.trim();
+
+export function avgRating(p: Player) {
+  return p.stats.ratingCount ? p.stats.ratingSum / p.stats.ratingCount : 0;
+}
+
+/** Sæsonens priser og historik pr. turnering */
+function seasonAwards(): SeasonSummary {
+  const g = gs();
+  const sum: SeasonSummary = { season: g.season, comps: [] };
+  for (const comp of Object.values(g.comps)) {
+    if (!comp.winner) continue;
+    const entry: SeasonSummary['comps'][number] = { id: comp.id, name: comp.name, winner: comp.winner };
+    if (comp.type === 'league') {
+      const order = finalOrder(comp);
+      entry.runnerUp = order[1];
+      const players = order.flatMap((cid) => squad(cid));
+      const top = players.slice().sort((a, b) => b.stats.lgGoals - a.stats.lgGoals)[0];
+      if (top) entry.topScorer = [top.id, top.stats.lgGoals];
+      const eligible = players.filter((p) => p.stats.lgApps >= Math.max(8, comp.table[0]?.p * 0.5));
+      const best = eligible.slice().sort((a, b) => avgRating(b) + b.stats.lgGoals * 0.02 - (avgRating(a) + a.stats.lgGoals * 0.02))[0];
+      if (best) entry.best = best.id;
+      const young = eligible.filter((p) => ageOn(p.dob, g.date) <= 21).sort((a, b) => avgRating(b) - avgRating(a))[0];
+      if (young) entry.young = young.id;
+      // klubhistorik
+      order.forEach((cid, i) => {
+        const row = comp.table.find((r) => r.club === cid);
+        g.clubs[cid].history.push({ season: g.season, league: comp.id, pos: i + 1, pts: row?.pts ?? 0 });
+      });
+      if (g.userClub && order.includes(g.userClub)) {
+        if (best) addNews({ cat: 'award', key: 'award.playerOfYear', params: { player: pname(best), comp: comp.name }, link: { kind: 'player', id: best.id } });
+        if (top) addNews({ cat: 'award', key: 'award.topScorer', params: { player: pname(top), goals: top.stats.lgGoals, comp: comp.name }, link: { kind: 'player', id: top.id } });
+      }
+    } else {
+      entry.runnerUp = comp.meta?.runnerUp as number | undefined;
+    }
+    if (comp.winner === g.userClub && comp.type !== 'playoff') g.manager.trophies.push({ season: g.season, comp: comp.name, club: g.userClub });
+    sum.comps.push(entry);
+  }
+  return sum;
+}
+
+/** Op- og nedrykning. Returnerer nye ligatilhørsforhold */
+function promotionRelegation() {
+  const g = gs();
+  const moves = new Map<number, string>();
+  for (const [upper, rules] of Object.entries(LEAGUE_RULES)) {
+    if (!rules.below) continue;
+    const U = g.comps[upper];
+    const L = g.comps[rules.below];
+    if (!U?.finished || !L?.finished) continue;
+    const uOrder = finalOrder(U);
+    const lOrder = finalOrder(L);
+    const lRules = LEAGUE_RULES[rules.below];
+    const down = uOrder.slice(uOrder.length - (rules.relegated ?? 0));
+    const up = lOrder.slice(0, lRules?.promoted ?? 0);
+    // playoff i nederste liga (fx Championship)
+    const poLower = g.comps[`PO-${rules.below}`];
+    if (poLower?.winner && poLower.playoffFor === upper) {
+      up.push(poLower.winner);
+      down.unshift(uOrder[uOrder.length - (rules.relegated ?? 0) - 1]);
+    }
+    // relegationsplayoff (fx 16. i Bundesliga mod 3. i 2. Bundesliga)
+    const poUpper = g.comps[`PO-${upper}`];
+    if (poUpper?.winner && lOrder.includes(poUpper.winner)) {
+      up.push(poUpper.winner);
+      const loser = (poUpper.clubs.find((c) => uOrder.includes(c)));
+      if (loser) down.push(loser);
+    }
+    for (const c of down) moves.set(c, rules.below);
+    for (const c of up) moves.set(c, upper);
+  }
+  for (const [cid, league] of moves) {
+    const club = g.clubs[cid];
+    const wasUp = (g.leagues[league]?.tier ?? 1) < (g.leagues[club.league]?.tier ?? 1);
+    club.league = league;
+    if (cid === g.userClub || g.leagues[league]?.nation === g.clubs[g.userClub]?.nation) {
+      addNews({ cat: 'general', key: wasUp ? 'news.promoted' : 'news.relegated', params: { club: club.name, comp: g.leagues[league]?.name ?? league } });
+    }
+  }
+}
+
+function contractsAndLoans() {
+  const g = gs();
+  const today = g.date; // 1. juli
+  for (const p of Object.values(g.players)) {
+    if (p.loan && p.loan.until < today) {
+      setClub(p, p.loan.from);
+      p.loan = null;
+    }
+    if (p.contract && p.contract.expires < today) {
+      if (p.contract.futureClub && g.clubs[p.contract.futureClub]) {
+        const to = p.contract.futureClub;
+        const fromName = g.clubs[p.club]?.name ?? '-';
+        p.contract = { wage: p.contract.futureWage ?? p.contract.wage, expires: p.contract.futureExpires ?? `${g.season + 3}-06-30` };
+        setClub(p, to);
+        p.joined = today;
+        if (to === g.userClub) g.knowledge[p.id] = 100;
+        if (to === g.userClub || p.club === g.userClub) addNews({ cat: 'transfer', key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } });
+      } else {
+        if (p.club === g.userClub) addNews({ cat: 'contract', key: 'contract.left', params: { player: pname(p) } });
+        setClub(p, 0);
+        p.contract = null;
+      }
+    }
+  }
+}
+
+function retirements() {
+  const g = gs();
+  for (const p of Object.values(g.players)) {
+    const age = ageOn(p.dob, g.date);
+    let prob = 0;
+    if (age >= 39) prob = 1;
+    else if (age >= 34) prob = (age - 33) * 0.17 + (p.ca < 90 ? 0.12 : 0);
+    else if (!p.club && age >= 31) prob = 0.35;
+    else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
+    if (prob > 0 && rng.chance(prob)) {
+      if (p.club === g.userClub || p.rep >= 75) addNews({ cat: 'general', key: 'news.retired', params: { player: pname(p), age } });
+      removePlayer(p);
+    }
+  }
+}
+
+/** Ungdomsårgang – kaldes i marts */
+export function youthIntake() {
+  const g = gs();
+  const active = new Set(g.activeNations);
+  for (const c of Object.values(g.clubs)) {
+    if (!active.has(c.nation) && rng.chance(0.6)) continue; // inaktive nationer får færre
+    const r = new Rng(hash(g.seed, c.id, g.season, 31));
+    const n = r.int(2, 4);
+    for (let i = 0; i < n; i++) {
+      const nation = r.chance(0.88) ? c.nation : r.pick(Object.keys(g.names).map(Number));
+      const [first, last] = randomName(g.names, nation, r);
+      const age = r.int(15, 17);
+      const sub: SubPos = randomSub(r);
+      const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4;
+      const ca = Math.round(28 + quality * 45 + r.normal(0, 8));
+      let pa = Math.round(ca + 30 + quality * 55 + r.normal(0, 22));
+      if (r.chance(0.015 + quality * 0.02)) pa = r.int(165, 195); // wonderkid
+      const p = makePlayer({
+        id: g.nextId.player++, first, last, dob: randomDob(age, g.date, r), nation, club: c.id, sub,
+        foot: r.chance(0.25) ? 'L' : 'R', height: 0, ca, pa: Math.min(200, Math.max(ca + 5, pa)), date: g.date, seed: g.seed, regen: true,
+        contractEnd: `${g.season + 3}-06-30`,
+      });
+      p.value = Math.max(10_000, p.value);
+      if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+      addPlayer(p);
+      if (c.id === g.userClub) {
+        g.knowledge[p.id] = 100;
+        addNews({ cat: 'youth', key: 'news.youth', params: { player: pname(p), pos: sub }, link: { kind: 'player', id: p.id } });
+      }
+    }
+  }
+}
+
+function archiveStats() {
+  const g = gs();
+  for (const p of Object.values(g.players)) {
+    if (p.stats.apps + p.stats.subs > 0) {
+      p.history.push({ season: g.season, club: p.club, apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, avg: Math.round(avgRating(p) * 100) / 100 });
+      if (p.history.length > 25) p.history.shift();
+    }
+    p.stats = emptyStats();
+    p.yellowCount = 0;
+    p.banned = 0;
+    p.form = [];
+  }
+}
+
+function updateClubReps() {
+  const g = gs();
+  for (const comp of Object.values(g.comps)) {
+    if (comp.type !== 'league') continue;
+    const order = finalOrder(comp);
+    order.forEach((cid, i) => {
+      const c = g.clubs[cid];
+      const expectedRank = order.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep).indexOf(cid);
+      c.rep = Math.max(3, Math.min(99, Math.round(c.rep + (expectedRank - i) * 0.6 + (i === 0 ? 2 : 0))));
+    });
+  }
+  if (g.comps.CL?.winner) g.clubs[g.comps.CL.winner].rep = Math.min(99, g.clubs[g.comps.CL.winner].rep + 3);
+}
+
+function prune() {
+  const g = gs();
+  // fri agenter med lav værdi forsvinder
+  const free = Object.values(g.players).filter((p) => !p.club);
+  for (const p of free) {
+    if (p.ca < 70 && ageOn(p.dob, g.date) >= 27) removePlayer(p);
+  }
+  // gamle kampe og rapporter
+  g.fixtures = {};
+  const reportIds = Object.keys(g.reports).map(Number).sort((a, b) => b - a);
+  for (const id of reportIds.slice(40)) delete g.reports[id];
+}
+
+/** Kaldes 1. juli */
+export function seasonRollover() {
+  const g = gs();
+  seasonPrizeMoney();
+  const summary = seasonAwards();
+  g.seasonHistory.push(summary);
+  let challengeResult: 'won' | 'lost' | null = null;
+  if (g.challenge && !g.challenge.done) {
+    const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
+    if (ch?.check(g)) challengeResult = 'won';
+    else if (g.season >= g.challenge.deadlineSeason) challengeResult = 'lost';
+  }
+  boardSeasonEnd();
+  updateClubReps();
+  const prevTables: Record<string, number[]> = {};
+  for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);
+  promotionRelegation();
+  // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
+  for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
+  archiveStats();
+  contractsAndLoans();
+  retirements();
+  prune();
+  g.comps = {};
+  g.season += 1;
+  rebuildIndexes();
+  newSeasonBudgets();
+  setupSeasonComps(g.season, prevTables);
+  for (const c of Object.values(g.clubs)) c.tactic = null;
+  if (g.userClub) setBoardExpectation();
+  initKnowledgeKeep();
+  if (challengeResult) {
+    g.challenge!.done = challengeResult;
+    addNews({ cat: 'general', key: challengeResult === 'won' ? 'challenge.won' : 'challenge.lost', params: { id: g.challenge!.id } });
+  }
+  addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } });
+}
+
+function initKnowledgeKeep() {
+  const g = gs();
+  const old = g.knowledge;
+  initKnowledge();
+  for (const [k, v] of Object.entries(old)) g.knowledge[Number(k)] = Math.max(g.knowledge[Number(k)] ?? 0, v * 0.85);
+}
