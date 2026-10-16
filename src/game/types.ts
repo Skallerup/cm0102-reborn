@@ -438,6 +438,8 @@ export interface ChallengeState {
 export interface Options {
   masking: boolean;
   autosave: boolean;
+  /** Hvor ofte der gemmes automatisk (standard: efter hver ændring) */
+  autosaveMode?: 'changes' | 'daily' | 'weekly' | 'monthly' | 'off';
   matchSpeed: number; // ms pr. kommentarlinje
   fullCommentary: boolean;
 }

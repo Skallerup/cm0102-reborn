@@ -52,7 +52,6 @@ export function Shell() {
   }, [route]);
   const club = session() && !session()!.inGame ? undefined : g.clubs[g.userClub];
   const unread = g.news.filter((n) => !n.read).length;
-  const lastSaveMonth = useRef(g.date.slice(0, 7));
 
   useEffect(() => {
     if (!toast) return;
@@ -64,26 +63,26 @@ export function Shell() {
   // Autogem: kort efter enhver ændring (kun singleplayer – online gemmes på serveren)
   useEffect(() => {
     if (online) return;
-    const unsub = subscribe(() => { if (hasGame() && gs().options.autosave !== false) scheduleAutosave(); });
+    let lastSavedDate = hasGame() ? gs().date : '';
+    const unsub = subscribe(() => {
+      if (!hasGame()) return;
+      const g2 = gs();
+      const mode = g2.options.autosaveMode ?? (g2.options.autosave === false ? 'off' : 'changes');
+      if (mode === 'off') return;
+      if (mode === 'changes') { scheduleAutosave(); return; }
+      const days = mode === 'daily' ? 1 : mode === 'weekly' ? 7 : 30;
+      const since = lastSavedDate ? (Date.parse(g2.date) - Date.parse(lastSavedDate)) / 86400000 : days;
+      if (since >= days) { lastSavedDate = g2.date; scheduleAutosave(800); }
+    });
     const onHide = () => { if (document.visibilityState === 'hidden') void flushAutosave(); };
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
     return () => { unsub(); document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', onHide); };
   }, [online]);
-  const autosave = async () => {
-    if (online) return;
-    const month = gs().date.slice(0, 7);
-    if (gs().options.autosave && month !== lastSaveMonth.current) {
-      lastSaveMonth.current = month;
-      await saveGame();
-    }
-  };
-
   const handle = (r: { match?: number; stop?: string }) => {
     notify();
     if (r.match !== undefined) nav({ name: 'match', id: r.match });
     else if (r.stop) nav({ name: 'inbox' });
-    void autosave();
   };
 
   const onContinue = () => {

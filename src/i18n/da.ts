@@ -316,7 +316,13 @@ export const da: Record<string, string> = {
   'hist.trophyCabinet': 'Trofæskab', 'hist.noTrophies': 'Endnu ingen trofæer', 'hist.career': 'Karriere', 'hist.firstSeason': 'Første sæson er i gang',
 
   // indstillinger
-  'opt.general': 'Generelt', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danske kroner (kr.)', 'cur.GBP': 'Britiske pund (£)', 'opt.language': 'Sprog', 'opt.autosave': 'Autogem hver måned', 'opt.speed': 'Kamphastighed',
+  'opt.general': 'Generelt', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danske kroner (kr.)', 'cur.GBP': 'Britiske pund (£)', 'opt.language': 'Sprog', 'opt.autosave': 'Gem automatisk',
+  'opt.save.changes': 'Efter hver ændring', 'opt.save.daily': 'Hver spildag', 'opt.save.weekly': 'Hver uge i spillet', 'opt.save.monthly': 'Hver måned i spillet', 'opt.save.off': 'Aldrig (kun manuelt)',
+  'opt.save.changes.hint': 'Sikrest: alt gemmes få sekunder efter du ændrer noget, så en genindlæsning aldrig koster noget.',
+  'opt.save.daily.hint': 'Gemmer når der er gået en dag i spillet. Ændringer i taktik o.l. gemmes med ved næste dag.',
+  'opt.save.weekly.hint': 'Gemmer en gang om ugen i spillet – lidt hurtigere på svage enheder.',
+  'opt.save.monthly.hint': 'Gemmer en gang om måneden i spillet. Du kan miste op til en måneds spil ved genindlæsning.',
+  'opt.save.off.hint': 'Spillet gemmes kun, når du selv trykker Gem spil. Genindlæser du siden, mister du alt siden sidste gem.', 'opt.speed': 'Kamphastighed',
   'opt.saves': 'Gem / eksportér', 'opt.export': 'Eksportér save-fil', 'opt.exportHint': 'Gem filen og indlæs den på en anden enhed fra startskærmen.',
   'opt.about': 'Om spillet', 'opt.aboutText': 'En hyldest til Championship Manager 01/02 – bygget fra bunden som web-app. Matchmotoren er zonebaseret som CM3-motoren, men kalibreret mod moderne statistik.',
   'opt.dataCredit': 'Spillerdata: transfermarkt-datasets af David Cariboo (CC0). Attributterne er beregnede og ikke officielle.',

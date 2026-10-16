@@ -25,7 +25,12 @@ export function Options() {
                 {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
               </select>
             </label>
-            <label className="row"><input type="checkbox" checked={g.options.autosave} onChange={(e) => { g.options.autosave = e.target.checked; notify(); }} />{t('opt.autosave')}</label>
+            <label className="row">{t('opt.autosave')}
+              <select value={g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes')} onChange={(e) => { g.options.autosaveMode = e.target.value as 'changes'; g.options.autosave = e.target.value !== 'off'; notify(); }}>
+                {(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => <option key={m} value={m}>{t(`opt.save.${m}`)}</option>)}
+              </select>
+            </label>
+            <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
             <label className="row"><input type="checkbox" checked={g.options.masking} onChange={(e) => { g.options.masking = e.target.checked; notify(); }} />{t('start.masking')}</label>
             <label className="col">{t('opt.speed')}
               <input type="range" min={60} max={1500} step={20} value={1560 - g.options.matchSpeed} onChange={(e) => { g.options.matchSpeed = 1560 - Number(e.target.value); notify(); }} />
