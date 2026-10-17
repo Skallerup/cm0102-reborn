@@ -15,7 +15,9 @@ const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 
 export function Inbox() {
   const g = useGame()!;
   const [cat, setCat] = useRouteState<NewsCategory | 'all'>('cat', 'all');
-  const [sel, setSel] = useRouteState<number | null>('sel', () => takeFocus() ?? g.news[0]?.id ?? null);
+  // altid den ældste uåbnede besked først (listen er sorteret nyeste øverst)
+  const oldestUnread = () => g.news.filter((n) => !n.read).pop()?.id;
+  const [sel, setSel] = useRouteState<number | null>('sel', () => takeFocus() ?? oldestUnread() ?? g.news[0]?.id ?? null);
   const open = useOpenLink();
   const list = g.news.filter((n) => cat === 'all' || n.cat === cat);
   const item = g.news.find((n) => n.id === sel);
@@ -29,8 +31,8 @@ export function Inbox() {
       setSel(id);
       requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
     };
-    const f = takeFocus();
-    if (f !== null) show(f);
+    const f = takeFocus() ?? oldestUnread();
+    if (f !== undefined && f !== null) show(f);
     return onFocusNews((id) => { takeFocus(); show(id); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const move = (dir: number) => {
@@ -46,8 +48,7 @@ export function Inbox() {
     if (e.key === 'Enter' && item?.link) { open(item); return true; }
     if (e.key === 'ArrowRight') {
       // næste ulæste
-      const i = shown.findIndex((n) => n.id === sel);
-      const next = shown.slice(i + 1).find((n) => !n.read) ?? shown.find((n) => !n.read);
+      const next = shown.filter((n) => !n.read && n.id !== sel).pop();
       if (next) { setSel(next.id); requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' })); }
       return true;
     }

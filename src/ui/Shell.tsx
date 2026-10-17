@@ -101,7 +101,12 @@ export function Shell() {
   const handle = (r: { match?: number; stop?: string }) => {
     notify();
     if (r.match !== undefined) nav({ name: 'match', id: r.match });
-    else if (r.stop) nav({ name: 'inbox' });
+    else if (r.stop) {
+      nav({ name: 'inbox' });
+      // vis den ældste uåbnede besked
+      const next = gs().news.filter((n) => !n.read).pop();
+      if (next) focusNews(next.id);
+    }
   };
 
   // Fortsæt: læs først de ulæste beskeder én ad gangen (ældste først), derefter næste dag
