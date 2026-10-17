@@ -11,6 +11,7 @@ import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { bumpFans } from './fans';
 import { pushCareerLine } from './season';
+import { playerPraises } from './will';
 import type { Club, Player, Role, TransferOffer } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 
@@ -400,8 +401,11 @@ export function renewContract(pid: number, wage: number, years: number): 'accept
   if (wage >= demand * 0.97) {
     const startYear = year(g.date) + (month(g.date) >= 7 ? 1 : 0);
     p.contract = { wage, expires: `${startYear + years - 1}-06-30` };
+    const hadDemand = !!p.demand;
     p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
+    // en tilfreds spiller takker for den nye kontrakt
+    if (hadDemand || wage >= demand * 1.1) playerPraises(p, 'contract');
     addNews({ cat: 'contract', key: 'contract.renewed', params: { player: pname(p), years } });
     return 'accepted';
   }

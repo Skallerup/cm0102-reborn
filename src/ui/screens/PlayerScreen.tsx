@@ -55,6 +55,8 @@ export function PlayerScreen({ id }: { id: number }) {
       </Head>
       {msg && <div className="insight">{msg}</div>}
       {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} />}
+      {mine && p.complaint && <Complaint pid={p.id} onMsg={setMsg} />}
+      {mine && p.playPromise && <div className="insight warn" style={{ marginBottom: 12 }}>{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
       <div className="cols">
         <Panel title={t('player.info')}>
           <div className="kv">
@@ -487,6 +489,23 @@ function CareerPanel({ pid }: { pid: number }) {
         </div>
       )}
       {real && real.length > 0 && <div className="muted" style={{ fontSize: 11.5, padding: '6px 12px 10px' }}>{t('career.source')}</div>}
+    </Panel>
+  );
+}
+
+/** Spilleren har bedt om en samtale – manageren svarer */
+function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) {
+  const g = useGame()!;
+  const p = g.players[pid];
+  if (!p) return null;
+  const kind = p.complaint?.kind ?? 'time';
+  const choices: ('promise' | 'fight' | 'list' | 'listen')[] = kind === 'time' ? ['promise', 'fight', 'list', 'listen'] : ['listen', 'fight', 'list'];
+  return (
+    <Panel title={t('complaint.title', { player: `${p.first} ${p.last}` })}>
+      <p style={{ marginTop: 0, lineHeight: 1.5 }}>“{t(`complaint.says.${kind}`)}”</p>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+        {choices.map((c) => <button key={c} className={c === 'promise' ? 'primary' : ''} title={t(`complaint.hint.${c}`)} onClick={() => onMsg(`${p.last}: ${t(dispatch<string>({ t: 'complaint', pid, choice: c }), { player: p.last })}`)}>{t(`complaint.opt.${c}`)}</button>)}
+      </div>
     </Panel>
   );
 }

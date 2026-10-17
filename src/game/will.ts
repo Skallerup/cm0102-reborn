@@ -91,3 +91,85 @@ export function monthlyWill() {
     }
   }
 }
+
+// ---------- spillere der henvender sig til manageren ----------
+
+const recently = (p: Player, days: number) => !!p.lastContact && daysBetween(p.lastContact, gs().date) < days;
+
+/** En spiller beder om en samtale (klage) – manageren svarer fra spillerens profil */
+export function playerComplains(p: Player, kind: 'time' | 'morale' | 'press') {
+  const g = gs();
+  if (p.complaint || recently(p, 30)) return;
+  p.complaint = { kind, date: g.date };
+  p.lastContact = g.date;
+  asOwner(p.club, () => addNews({ cat: 'contract', key: `will.complain.${kind}`, params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
+}
+
+/** En spiller roser manageren – ledere smitter resten af truppen */
+export function playerPraises(p: Player, kind: 'form' | 'press' | 'contract') {
+  const g = gs();
+  if (recently(p, 90)) return;
+  p.lastContact = g.date;
+  const leader = p.attrs[A.influence] >= 15 && p.attrs[A.determination] >= 13;
+  if (leader) for (const m of squad(p.club)) if (m !== p) m.morale = Math.min(20, m.morale + 0.3);
+  asOwner(p.club, () => addNews({ cat: 'contract', key: `will.praise.${kind}${leader ? 'Leader' : ''}`, params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
+}
+
+/** Ugentligt: spillere der tager kontakt (kun menneskestyrede klubber) */
+export function weeklyPlayerContact() {
+  const g = gs();
+  for (const c of Object.values(g.clubs)) {
+    if (!isHumanClub(c.id)) continue;
+    const sq = squad(c.id);
+    const level = sq.map((p) => p.ca).sort((a, b) => b - a).slice(0, 14).reduce((s, v, _, arr) => s + v / arr.length, 0);
+    for (const p of sq) {
+      if (p.loan && p.loan.from !== c.id) continue;
+      // løfte om spilletid: holdt eller brudt?
+      if (p.playPromise && g.date >= p.playPromise.until) {
+        const played = p.stats.apps + p.stats.subs - p.playPromise.apps;
+        p.playPromise = undefined;
+        if (played >= 3) { p.morale = Math.min(20, p.morale + 3); p.unhappy = 0; asOwner(c.id, () => addNews({ cat: 'contract', key: 'will.promiseKept', params: { player: pname(p) }, link: { kind: 'player', id: p.id } })); }
+        else { p.morale = Math.max(1, p.morale - 4); p.wantsAway = true; asOwner(c.id, () => addNews({ cat: 'contract', key: 'will.promiseBrokenTime', params: { player: pname(p) }, link: { kind: 'player', id: p.id } })); }
+        continue;
+      }
+      if (p.complaint || p.wantsAway) continue;
+      // klager: for lidt spilletid for en god spiller, eller meget lav moral
+      if ((p.unhappy ?? 0) >= 30 && p.ca >= level - 25 && p.attrs[A.ambition] >= 10 && ageOn(p.dob, g.date) >= 19 && !p.playPromise && rng.chance(0.3)) { playerComplains(p, 'time'); continue; }
+      if (p.morale <= 10 && rng.chance(0.2)) { playerComplains(p, 'morale'); continue; }
+      // ros: spillere i topform med god moral
+      if (p.morale >= 13.5 && p.form.length >= 3 && avgForm(p) >= 6.95 && rng.chance(0.07)) playerPraises(p, 'form');
+    }
+  }
+}
+
+/** Manageren svarer på en klage */
+export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list' | 'listen'): string {
+  const g = gs();
+  const p = g.players[pid];
+  if (!p || p.club !== g.userClub || !p.complaint) return 'error';
+  const kind = p.complaint.kind;
+  p.complaint = undefined;
+  const strong = p.attrs[A.determination] >= 14 || p.attrs[A.professionalism] >= 15;
+  const hot = p.attrs[A.temperament] <= 8;
+  switch (choice) {
+    case 'promise':
+      p.playPromise = { until: new Date(Date.parse(g.date) + 45 * 864e5).toISOString().slice(0, 10), apps: p.stats.apps + p.stats.subs };
+      p.morale = Math.min(20, p.morale + 2);
+      p.unhappy = Math.max(0, (p.unhappy ?? 0) - 30);
+      return 'complaint.r.promise';
+    case 'fight':
+      if (strong) { p.morale = Math.min(20, p.morale + 1); p.fired = new Date(Date.parse(g.date) + 21 * 864e5).toISOString().slice(0, 10); return 'complaint.r.fightGood'; }
+      p.morale = Math.max(1, p.morale - 2);
+      p.unhappy = Math.min(100, (p.unhappy ?? 0) + 15);
+      if (hot) { p.wantsAway = true; return 'complaint.r.fightAngry'; }
+      return 'complaint.r.fightSulk';
+    case 'list':
+      p.listed = true;
+      p.morale = Math.min(20, p.morale + 1);
+      return 'complaint.r.list';
+    case 'listen':
+      p.morale = Math.min(20, p.morale + (kind === 'morale' ? 2.5 : 1));
+      if (kind === 'press') p.unhappy = Math.max(0, (p.unhappy ?? 0) - 15);
+      return kind === 'time' ? 'complaint.r.listenTime' : 'complaint.r.listen';
+  }
+}

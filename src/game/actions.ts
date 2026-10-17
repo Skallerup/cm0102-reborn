@@ -9,6 +9,7 @@ import { fireStaff, hireStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
 import { applyPress, type Tone } from './press';
+import { answerComplaint } from './will';
 import { addNews, gs, notify } from './state';
 import {
   acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
@@ -49,6 +50,7 @@ export type Action =
   | { t: 'applyJob'; club: number }
   | { t: 'declineJob'; club: number }
   | { t: 'join'; name: string; club: number; nation: number }
+  | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
   | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
 
 const ACTIVE: TransferOffer['status'][] = ['pending', 'negotiating', 'countered'];
@@ -111,6 +113,7 @@ export function applyAction(a: Action): unknown {
     case 'declineJob': g.jobOffers = g.jobOffers.filter((x) => x !== a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'press': return applyPress(a.answers, a.headline, a.body);
+    case 'complaint': return answerComplaint(a.pid, a.choice);
   }
 }
 

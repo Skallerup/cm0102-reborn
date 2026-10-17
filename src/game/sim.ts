@@ -15,7 +15,7 @@ import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
-import { monthlyWill } from './will';
+import { monthlyWill, weeklyPlayerContact } from './will';
 import { recordRivalry } from './careers';
 import { boardMeeting, fansAfterMatch, fansMonthly } from './fans';
 import { expirePress, invitePress, motivation, resolvePressPromise } from './press';
@@ -293,6 +293,7 @@ function newDay() {
   if (day(d) % 3 === 0) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
+    weeklyPlayerContact();
     weeklyDevelopment();
     weeklyWages();
   }

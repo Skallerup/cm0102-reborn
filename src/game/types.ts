@@ -104,6 +104,11 @@ export interface Player {
   demand?: { since: string; wage: number; leaked?: boolean };
   /** Seneste uro i spillerens gruppering (dato) */
   cliqueAlert?: string;
+  /** Spillerens henvendelse til manageren (klage) der venter på svar, og et løfte om spilletid */
+  complaint?: { kind: 'time' | 'morale' | 'press'; date: string };
+  playPromise?: { until: string; apps: number };
+  /** Seneste ros/henvendelse (for ikke at gentage sig) */
+  lastContact?: string;
   /** Seneste samtale med manageren (cooldown) */
   lastTalk?: string;
   /** Seneste episode (ballade) og seneste røde kort – grundlag for at straffe */

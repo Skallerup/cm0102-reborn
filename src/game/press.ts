@@ -7,6 +7,7 @@ import { squadStrength } from './board';
 import { rivalryInfo } from './careers';
 import { bumpFans } from './fans';
 import { traits } from './personality';
+import { playerComplains, playerPraises } from './will';
 import { rng } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Fixture, Player } from './types';
@@ -255,6 +256,8 @@ export function applyPress(answers: { topic: string; tone: Tone }[], headline?: 
       case 'backPlayer':
         if (p) {
           p.morale = Math.min(20, p.morale + 2);
+          // spilleren sætter pris på opbakningen offentligt
+          if (h01(pc.fixture, p.id, 'thanks') < 0.4) playerPraises(p, 'press');
           if (topic.kind === 'unsettled' && p.wantsAway && rng.chance(0.25)) p.wantsAway = false;
         }
         break;
@@ -262,7 +265,7 @@ export function applyPress(answers: { topic: string; tone: Tone }[], headline?: 
         if (p) {
           const tr = traits(p);
           if (tr.includes('professional') || tr.includes('leader') || p.attrs[A.determination] >= 15) { p.morale = Math.min(20, p.morale + 1); p.fired = addDays(g.date, 14); }
-          else if (tr.includes('troublemaker') || tr.includes('temperamental')) { p.morale = Math.max(1, p.morale - 3); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 20); }
+          else if (tr.includes('troublemaker') || tr.includes('temperamental')) { p.morale = Math.max(1, p.morale - 3); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 20); playerComplains(p, 'press'); }
           else p.morale = Math.max(1, p.morale - 1.5);
         }
         break;
