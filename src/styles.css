@@ -418,3 +418,21 @@ label.button.file-btn { display: inline-flex; align-items: center; cursor: point
 label.button.file-btn.primary { background: linear-gradient(180deg, #ffd95e, #ffc21a); color: var(--accent-ink); border-color: transparent; }
 label.button.file-btn input { display: none; }
 .scout-criteria { width: 100%; flex-wrap: wrap; gap: 6px; padding-top: 4px; }
+
+/* pressemøde som samtale */
+.press-room .panel-body { padding: 0; }
+.press-feed { display: flex; flex-direction: column; gap: 10px; padding: 16px; max-height: 58vh; overflow-y: auto; }
+.press-feed p { margin: 2px 0 0; line-height: 1.5; }
+.press-who { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--muted); }
+.press-q { align-self: flex-start; max-width: 80%; background: var(--surface2); border: 1px solid var(--line2); border-radius: 14px 14px 14px 4px; padding: 10px 14px; animation: press-in 0.25s ease-out; }
+.press-q p { font-size: 15px; }
+.press-a { align-self: flex-end; max-width: 75%; background: rgba(255, 207, 63, 0.12); border: 1px solid rgba(255, 207, 63, 0.3); border-radius: 14px 14px 4px 14px; padding: 10px 14px; animation: press-in 0.2s ease-out; }
+.press-a .press-who { color: var(--accent); }
+.press-r { align-self: center; display: flex; flex-direction: column; align-items: center; gap: 6px; color: var(--muted); font-style: italic; font-size: 13px; text-align: center; animation: press-in 0.3s ease-out; }
+.press-effects { display: inline-flex; flex-wrap: wrap; gap: 4px; justify-content: center; align-items: center; font-style: normal; }
+.press-typing { align-self: flex-start; display: flex; gap: 4px; padding: 10px 14px; background: var(--surface2); border-radius: 14px; }
+.press-typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: press-dot 1s infinite; }
+.press-typing i:nth-child(2) { animation-delay: 0.15s; } .press-typing i:nth-child(3) { animation-delay: 0.3s; }
+.press-answer { border-top: 1px solid var(--line); padding: 12px 16px 14px; }
+@keyframes press-in { from { opacity: 0; transform: translateY(6px); } }
+@keyframes press-dot { 50% { opacity: 0.25; transform: translateY(-2px); } }

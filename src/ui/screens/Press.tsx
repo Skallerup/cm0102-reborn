@@ -1,41 +1,64 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Info } from '../help';
 import { act } from '../../game/actions';
-import { tonesFor, type PressTopic, type Tone } from '../../game/press';
+import { effectsOf, followUpFor, tonesFor, type PressConf, type PressTopic, type Tone } from '../../game/press';
 import { sortTable } from '../../game/competitions';
 import { aiCall, aiText, setAiText } from '../../ai/client';
-import { t } from '../../i18n';
-import { Panel } from '../components';
+import { has, t } from '../../i18n';
+import { Bar, Panel } from '../components';
 import { useGame, useNav } from '../core';
 import { useAiAvailable } from '../ai';
 import { Head } from './common';
 
-/** Skabelonspørgsmål (bruges uden AI og mens AI-spørgsmålene hentes) */
-export function templateQuestion(tp: PressTopic): string {
+const hashN = (s: string, n: number) => { let h = 7; for (const c of s) h = (h * 31 + c.charCodeAt(0)) >>> 0; return h % n; };
+
+/** Skabelonspørgsmål med flere formuleringer (bruges uden AI og mens AI-spørgsmålene hentes) */
+export function templateQuestion(tp: PressTopic, seed = ''): string {
   const p = tp.params;
   const variant = tp.kind === 'result' ? `.${p.res}` : tp.kind === 'formerClub' ? `.${p.sacked}` : tp.kind === 'form' ? `.${p.streak}` : tp.kind === 'opponent' ? `.${p.fav}` : '';
-  return t(`press.q.${tp.kind}${variant}`, p);
+  const base = `press.q.${tp.kind}${variant}`;
+  const alts = [base, `${base}.2`, `${base}.3`].filter((k) => has(k));
+  return t(alts.length ? alts[hashN(seed + tp.id, alts.length)] : base, p);
 }
 
 /** Opfundne journalister og medier (ingen rigtige personer eller redaktioner) */
 const JOURNALISTS = { da: ['Mette Kjær, Boldposten', 'Jonas Bach, Sportsavisen Dag', 'Sofie Lund, Radio Bold', 'Kasper Holm, Kampbladet', 'Line Vestergaard, Fodbold Live'], en: ['Tom Hughes, The Touchline', 'Sarah Cole, Matchday Radio', 'Danny Price, The Terrace', 'Rachel Ford, Pitchside TV', 'Mark Ellis, The Football Post'] };
+
+type Line = { who: 'q'; journalist: string; text: string } | { who: 'a'; text: string } | { who: 'r'; text: string; effects: string[] };
+
+function effClass(e: string) {
+  if (e === 'oppMotivated' || e === 'playerRisk' || e === 'promise') return 'warn';
+  return /Up/.test(e) ? 'good' : /Down/.test(e) ? 'bad' : '';
+}
 
 export function PressScreen() {
   const g = useGame()!;
   const { back } = useNav();
   const pc = g.press;
   const ai = useAiAvailable();
-  const [answers, setAnswers] = useState<Record<string, { tone: Tone; text?: string }>>({});
-  const [draft, setDraft] = useState<Record<string, string>>({});
-  const [busy, setBusy] = useState<string | null>(null);
-  const [done, setDone] = useState<{ headline: string; body: string } | null>(null);
   const key = pc ? `press:${pc.fixture}:${pc.phase}` : '';
-  const [questions, setQuestions] = useState<Record<string, { text: string }>>(() => {
-    try { return JSON.parse(aiText(key) ?? '{}'); } catch { return {}; }
-  });
+  const [aiQ, setAiQ] = useState<Record<string, string>>(() => { try { const v = JSON.parse(aiText(key) ?? '{}'); return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, typeof x === 'string' ? x : (x as { text: string }).text])); } catch { return {}; } });
+  // kø af spørgsmål (opfølgninger indsættes undervejs), svar og samtalen
+  const [queue, setQueue] = useState<PressTopic[]>(() => pc?.topics.slice() ?? []);
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<{ topic: string; tone: Tone; text?: string; q: string }[]>([]);
+  const [lines, setLines] = useState<Line[]>([]);
+  const [draft, setDraft] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const [typing, setTyping] = useState(false);
+  const [done, setDone] = useState<{ headline: string; body: string; effects: string[] } | null>(null);
+  const endRef = useRef<HTMLDivElement>(null);
+  const journalists = JOURNALISTS[g.lang === 'en' ? 'en' : 'da'];
+  const questionText = (tp: PressTopic) => aiQ[tp.id] ?? templateQuestion(tp, `${pc?.fixture}`);
+  const journalistFor = (i: number, tp: PressTopic, prev: Line[]) => {
+    // opfølgninger stilles af samme journalist
+    if (tp.kind.startsWith('follow')) { const q = prev.filter((l) => l.who === 'q').pop() as { journalist: string } | undefined; if (q) return q.journalist; }
+    return journalists[((pc?.fixture ?? 0) + i) % journalists.length];
+  };
 
+  // AI formulerer hovedspørgsmålene, hvis den er tilgængelig
   useEffect(() => {
-    if (!pc || !ai || Object.keys(questions).length) return;
+    if (!pc || !ai || Object.keys(aiQ).length) return;
     const me = g.clubs[g.userClub];
     const comp = g.comps[me?.league ?? ''];
     const pos = comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === g.userClub) + 1 : 0;
@@ -45,41 +68,85 @@ export function PressScreen() {
       topics: pc.topics.map((tp) => ({ id: tp.id, kind: tp.kind, facts: tp.params, example: templateQuestion(tp) })),
     }).then((r) => {
       if (!r?.questions?.length) return;
-      const map = Object.fromEntries(r.questions.filter((q) => pc.topics.some((tp) => tp.id === q.id)).map((q) => [q.id, { text: q.text }]));
-      setQuestions(map);
+      const map = Object.fromEntries(r.questions.filter((q) => pc.topics.some((tp) => tp.id === q.id)).map((q) => [q.id, q.text]));
+      setAiQ(map);
       setAiText(key, JSON.stringify(map));
     });
   }, [ai, key]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!pc && !done) {
-    return <div><Head title={t('press.title')} /><div className="empty">{t('press.none')}</div></div>;
-  }
+  // første spørgsmål stilles, når skærmen åbnes – og opdateres, hvis AI-formuleringen kommer bagefter
+  useEffect(() => {
+    if (pc && queue.length && !lines.length) setLines([{ who: 'q', journalist: journalistFor(0, queue[0], []), text: questionText(queue[0]) }]);
+  }, [pc?.fixture]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const first = queue[0];
+    if (first && aiQ[first.id] && lines.length === 1 && lines[0].who === 'q') setLines([{ ...lines[0], text: aiQ[first.id] }]);
+  }, [aiQ]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, [lines.length, typing]);
 
-  const finish = async (all?: Tone) => {
-    if (!pc) return;
-    const list = pc.topics.map((tp) => ({ topic: tp.id, tone: all ?? answers[tp.id]?.tone ?? 'deflect' }));
-    setBusy('finish');
-    let report: { headline: string; body: string } | null = null;
-    if (!all) {
-      report = await aiCall<{ headline: string; body: string }>('pressReport', {
-        manager: g.manager.name, club: g.clubs[g.userClub]?.name, opponent: g.clubs[pc.opp]?.name, phase: pc.phase,
-        qa: pc.topics.map((tp) => ({ question: questions[tp.id]?.text ?? templateQuestion(tp), answer: answers[tp.id]?.text ?? t(`press.tone.${answers[tp.id]?.tone ?? 'deflect'}`), tone: answers[tp.id]?.tone })),
-      }, 12_000);
-    }
-    act({ t: 'press', answers: list, headline: report?.headline, body: report?.body });
-    setBusy(null);
-    setDone(report ?? { headline: t(all ? 'press.sentAssistant' : 'press.reportPlain', { opp: g.clubs[pc.opp]?.name ?? '' }), body: '' });
+  if (!pc && !done) return <div><Head title={t('press.title')} /><div className="empty">{t('press.none')}</div></div>;
+
+  const current = queue[step];
+  const media = Math.round(g.manager.media ?? 50);
+
+  const answer = (tone: Tone, text?: string) => {
+    if (!pc || !current || typing) return;
+    const conf = pc as PressConf;
+    const effects = effectsOf(current, tone, conf.phase);
+    const reaction = t(`press.react.${tone}.${1 + hashN(`${conf.fixture}${current.id}${tone}`, 3)}`);
+    setAnswers([...answers, { topic: current.id, tone, text, q: questionText(current) }]);
+    const follow = followUpFor(conf, current, tone);
+    const nextQueue = follow ? [...queue.slice(0, step + 1), follow, ...queue.slice(step + 1)] : queue;
+    setQueue(nextQueue);
+    const afterAnswer: Line[] = [...lines, { who: 'a', text: text ?? t(`press.say.${tone}`) }];
+    setLines(afterAnswer);
+    setDraft('');
+    setTyping(true);
+    // lokalet reagerer – og næste spørgsmål stilles lidt efter
+    setTimeout(() => {
+      const withReaction: Line[] = [...afterAnswer, { who: 'r', text: reaction, effects }];
+      setLines(withReaction);
+      const next = nextQueue[step + 1];
+      setTimeout(() => {
+        if (next) setLines([...withReaction, { who: 'q', journalist: journalistFor(step + 1, next, withReaction), text: questionText(next) }]);
+        setStep(step + 1);
+        setTyping(false);
+      }, next ? 700 : 0);
+    }, 450);
   };
 
-  const freeAnswer = async (tp: PressTopic) => {
-    const text = (draft[tp.id] ?? '').trim().slice(0, 400);
-    if (!text) return;
-    setBusy(tp.id);
-    const allowed = tonesFor(tp.kind);
-    const r = await aiCall<{ tone: string }>('pressAnswer', { question: questions[tp.id]?.text ?? templateQuestion(tp), answer: text, allowed, meaning: Object.fromEntries(allowed.map((x) => [x, t(`press.tone.${x}.hint`)])) });
+  const freeAnswer = async () => {
+    const text = draft.trim().slice(0, 400);
+    if (!text || !current) return;
+    setBusy('free');
+    const allowed = tonesFor(current.kind);
+    const r = await aiCall<{ tone: string }>('pressAnswer', { question: questionText(current), answer: text, allowed, meaning: Object.fromEntries(allowed.map((x) => [x, t(`press.tone.${x}.hint`)])) });
     setBusy(null);
-    const tone = (allowed.includes(r?.tone as Tone) ? r!.tone : 'calm') as Tone;
-    setAnswers({ ...answers, [tp.id]: { tone, text } });
+    answer((allowed.includes(r?.tone as Tone) ? r!.tone : allowed.includes('calm') ? 'calm' : allowed[0]) as Tone, text);
+  };
+
+  const finish = async (assistant?: boolean) => {
+    if (!pc) return;
+    setBusy('finish');
+    const list = assistant ? pc.topics.map((tp) => ({ topic: tp.id, tone: 'deflect' as Tone })) : answers.map(({ topic, tone }) => ({ topic, tone }));
+    let report: { headline: string; body: string } | null = null;
+    if (!assistant) {
+      report = await aiCall<{ headline: string; body: string }>('pressReport', {
+        manager: g.manager.name, club: g.clubs[g.userClub]?.name, opponent: g.clubs[pc.opp]?.name, phase: pc.phase,
+        qa: answers.map((a) => ({ question: a.q, answer: a.text ?? t(`press.say.${a.tone}`), tone: a.tone })),
+      }, 12_000);
+    }
+    // uden AI: overskrift ud fra det mest markante svar
+    if (!report && !assistant && answers.length) {
+      const tones = answers.map((a) => a.tone);
+      const pick = (['promise', 'fiery', 'pressurePlayer', 'deflect', 'confident', 'backPlayer', 'calm', 'backtrack'] as Tone[]).find((x) => tones.includes(x))!;
+      const k = pick === 'deflect' && tones.filter((x) => x === 'deflect').length * 2 < tones.length ? 'calm' : pick;
+      report = { headline: t(`press.head.${k}.${1 + hashN(`${pc.fixture}${k}`, 2)}`, { manager: g.manager.name, opp: g.clubs[pc.opp]?.name ?? '', club: g.clubs[g.userClub]?.short ?? '' }), body: '' };
+    }
+    const effects = assistant ? ['fansDown', 'mediaDown'] : [...new Set(answers.flatMap((a) => { const tp = queue.find((x) => x.id === a.topic); return tp ? effectsOf(tp, a.tone, pc.phase) : []; }))];
+    act({ t: 'press', answers: list, headline: report?.headline, body: report?.body });
+    setBusy(null);
+    setDone({ ...(report ?? { headline: t(assistant ? 'press.sentAssistant' : 'press.reportPlain', { opp: g.clubs[pc.opp]?.name ?? '' }), body: '' }), effects });
   };
 
   if (done) {
@@ -89,44 +156,63 @@ export function PressScreen() {
         <Panel title={t('press.headlines')}>
           <h3 style={{ marginTop: 0 }}>{done.headline}</h3>
           {done.body && <p style={{ lineHeight: 1.55 }}>{done.body}</p>}
+          {done.effects.length > 0 && (
+            <div className="press-effects" style={{ margin: '10px 0 14px', justifyContent: 'flex-start' }}>
+              <span className="muted">{t('press.summary')}</span>
+              {done.effects.map((e) => <span key={e} className={`tag ${effClass(e)}`}>{t(`press.eff.${e}`)}</span>)}
+            </div>
+          )}
+          <div className="kv" style={{ marginBottom: 12 }}><span>{t('press.media')}</span><span><Bar value={Math.round(g.manager.media ?? 50)} /> {Math.round(g.manager.media ?? 50)}</span></div>
           <button className="primary" onClick={back}>{t('common.back')}</button>
         </Panel>
       </div>
     );
   }
 
-  const journalists = JOURNALISTS[g.lang === 'en' ? 'en' : 'da'];
-  const allAnswered = pc!.topics.every((tp) => answers[tp.id]);
+  const conf = pc!;
+  const finished = !current;
   return (
     <div>
-      <Head title={t(pc!.phase === 'pre' ? 'press.titlePre' : 'press.titlePost', { opp: g.clubs[pc!.opp]?.name ?? '' })} />
-      <div className="muted" style={{ marginBottom: 12 }}>{t('press.intro')}<Info topic="press" /></div>
-      {pc!.topics.map((tp, i) => {
-        const q = questions[tp.id];
-        const a = answers[tp.id];
-        return (
-          <Panel key={tp.id} title={journalists[(pc!.fixture + i) % journalists.length]}>
-            <p style={{ fontSize: 15, lineHeight: 1.5, marginTop: 0 }}>“{q?.text ?? templateQuestion(tp)}”</p>
+      <Head title={t(conf.phase === 'pre' ? 'press.titlePre' : 'press.titlePost', { opp: g.clubs[conf.opp]?.name ?? '' })} />
+      <div className="row" style={{ marginBottom: 12, justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <span className="muted">{t('press.intro')}<Info topic="press" /></span>
+        <span className="row" title={t('press.mediaHint')}>{t('press.media')} <Bar value={media} /> {media}</span>
+      </div>
+      <Panel className="press-room">
+        <div className="press-feed">
+          {lines.map((l, i) => l.who === 'q' ? (
+            <div key={i} className="press-q"><span className="press-who">🎤 {l.journalist}</span><p>“{l.text}”</p></div>
+          ) : l.who === 'a' ? (
+            <div key={i} className="press-a"><span className="press-who">{g.manager.name}</span><p>{l.text}</p></div>
+          ) : (
+            <div key={i} className="press-r">
+              <span>{l.text}</span>
+              {l.effects.length > 0 && <span className="press-effects">{l.effects.map((e) => <span key={e} className={`tag ${effClass(e)}`}>{t(`press.eff.${e}`)}</span>)}</span>}
+            </div>
+          ))}
+          {typing && <div className="press-typing"><i /><i /><i /></div>}
+          <div ref={endRef} />
+        </div>
+        {!finished && !typing && current && (
+          <div className="press-answer">
             <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-              {tonesFor(tp.kind).map((tone) => (
-                <button key={tone} className={a?.tone === tone && !a.text ? 'primary' : ''} title={t(`press.tone.${tone}.hint`)} onClick={() => setAnswers({ ...answers, [tp.id]: { tone } })}>
-                  {t(`press.tone.${tone}`)}
-                </button>
+              {tonesFor(current.kind).map((tone) => (
+                <button key={tone} title={t(`press.tone.${tone}.hint`)} onClick={() => answer(tone)}>{t(`press.tone.${tone}`)}</button>
               ))}
             </div>
             {ai && (
               <div className="row" style={{ marginTop: 8 }}>
-                <input style={{ flex: 1 }} maxLength={400} placeholder={t('press.freePlaceholder')} value={draft[tp.id] ?? ''} onChange={(e) => setDraft({ ...draft, [tp.id]: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') freeAnswer(tp); }} />
-                <button disabled={busy === tp.id || !(draft[tp.id] ?? '').trim()} onClick={() => freeAnswer(tp)}>{busy === tp.id ? '…' : t('press.answer')}</button>
+                <input style={{ flex: 1 }} maxLength={400} placeholder={t('press.freePlaceholder')} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') freeAnswer(); }} />
+                <button disabled={busy === 'free' || !draft.trim()} onClick={freeAnswer}>{busy === 'free' ? '…' : t('press.answer')}</button>
               </div>
             )}
-            {a && <div className="muted" style={{ marginTop: 6 }}>{a.text ? t('press.interpreted', { tone: t(`press.tone.${a.tone}`) }) : t(`press.tone.${a.tone}.hint`)}</div>}
-          </Panel>
-        );
-      })}
+            <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{t('press.progress', { n: step + 1, total: queue.length })}</div>
+          </div>
+        )}
+      </Panel>
       <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
-        <button onClick={() => finish('deflect')} disabled={!!busy}>{t('press.sendAssistant')}</button>
-        <button className="primary" disabled={!allAnswered || !!busy} onClick={() => finish()}>{busy === 'finish' ? t('press.writing') : t('press.finish')}</button>
+        {!answers.length && <button onClick={() => finish(true)} disabled={!!busy}>{t('press.sendAssistant')}</button>}
+        {finished && !typing && <button className="primary" disabled={!!busy} onClick={() => finish()}>{busy === 'finish' ? t('press.writing') : t('press.finish')}</button>}
       </div>
     </div>
   );

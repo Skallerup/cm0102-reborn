@@ -18,7 +18,7 @@ import { chemistryMorale, monthlyPersonality } from './personality';
 import { monthlyWill } from './will';
 import { recordRivalry } from './careers';
 import { boardMeeting, fansAfterMatch, fansMonthly } from './fans';
-import { expirePress, invitePress, motivation } from './press';
+import { expirePress, invitePress, motivation, resolvePressPromise } from './press';
 import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
@@ -213,6 +213,7 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     const conceded = userHome ? as.goals : hs.goals;
     boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
     recordRivalry(opp, scored, conceded);
+    resolvePressPromise(f.id, scored, conceded);
     invitePress(f, 'post');
     fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
