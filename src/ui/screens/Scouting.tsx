@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Info } from '../help';
 import { act } from '../../game/actions';
 import { dateFmt, money, t } from '../../i18n';
 import { scoutRecommendation, scoutStars } from '../../game/scouting';
@@ -14,7 +15,7 @@ export function Scouting() {
   const known = Object.values(g.knowledge).filter((k) => k >= 80).length;
   return (
     <div>
-      <Head title={t('nav.scouting')} />
+      <Head title={<>{t('nav.scouting')}<Info topic="scouting" /></>} />
       {!g.options.masking && <div className="insight">{t('scout.maskingOff')}</div>}
       <div className="cols">
         <Panel title={t('scout.overview')}>

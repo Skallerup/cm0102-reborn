@@ -1,4 +1,5 @@
 import { squad } from '../../game/state';
+import { Info } from '../help';
 import { act } from '../../game/actions';
 import { SCHEDULES } from '../../game/training';
 import { ageOn } from '../../game/dates';
@@ -20,7 +21,7 @@ export function Training() {
   const setAll = (key: string) => act({ t: 'trainingAll', key });
   return (
     <div>
-      <Head title={t('nav.training')}>
+      <Head title={<>{t('nav.training')}<Info topic="development" /></>}>
         <button className="primary" onClick={() => { for (const p of players) { const a = trainingAdvice(p); if (a.key !== p.training) act({ t: 'training', pid: p.id, key: a.key }); } }}>{t('adv.followAll')}</button>
         <select value="" onChange={(e) => e.target.value && setAll(e.target.value)}>
           <option value="">{t('train.setAll')}</option>

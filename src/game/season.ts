@@ -236,7 +236,20 @@ function updateClubReps() {
       c.rep = Math.max(3, Math.min(99, Math.round(c.rep + (expectedRank - i) * 0.6 + (i === 0 ? 2 : 0))));
     });
   }
-  if (g.comps.CL?.winner) g.clubs[g.comps.CL.winner].rep = Math.min(99, g.clubs[g.comps.CL.winner].rep + 3);
+  const bump = (cid: number | undefined, d: number) => { const c = cid ? g.clubs[cid] : undefined; if (c) c.rep = Math.max(3, Math.min(99, c.rep + d)); };
+  // pokaltitler
+  for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.finished) bump(comp.winner, 1);
+  // Europa: jo længere, jo mere omdømme (kvartfinale +1, semifinale +2, finale +3, CL-sejr +5 / UEFA-sejr +3)
+  for (const [id, win] of [['CL', 5], ['UEFA', 3]] as const) {
+    const comp = g.comps[id];
+    if (!comp) continue;
+    const reached = new Map<number, number>();
+    for (const t of comp.ties) {
+      const lvl = t.stage === 'QF' ? 1 : t.stage === 'SF' ? 2 : t.stage === 'F' ? 3 : 0;
+      for (const c of [t.a, t.b]) reached.set(c, Math.max(reached.get(c) ?? 0, lvl));
+    }
+    for (const [cid, lvl] of reached) bump(cid, cid === comp.winner ? win : lvl);
+  }
 }
 
 function prune() {

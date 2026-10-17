@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Info } from '../help';
 import { act } from '../../game/actions';
 import { tonesFor, type PressTopic, type Tone } from '../../game/press';
 import { sortTable } from '../../game/competitions';
@@ -99,7 +100,7 @@ export function PressScreen() {
   return (
     <div>
       <Head title={t(pc!.phase === 'pre' ? 'press.titlePre' : 'press.titlePost', { opp: g.clubs[pc!.opp]?.name ?? '' })} />
-      <div className="muted" style={{ marginBottom: 12 }}>{t('press.intro')}</div>
+      <div className="muted" style={{ marginBottom: 12 }}>{t('press.intro')}<Info topic="press" /></div>
       {pc!.topics.map((tp, i) => {
         const q = questions[tp.id];
         const a = answers[tp.id];

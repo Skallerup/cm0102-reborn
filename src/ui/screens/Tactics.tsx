@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Info } from '../help';
 import { roleScore, slotFit, slotRole } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
@@ -226,7 +227,7 @@ function ChemistryPanel() {
   return (
     <div className={`insight ${tone}`}>
       <div className="row" style={{ justifyContent: 'space-between' }}>
-        <b>{t('chem.title')}: {ch.score}/100 <Bar value={ch.score} /></b>
+        <b>{t('chem.title')}: {ch.score}/100 <Bar value={ch.score} /></b><Info topic="chemistry" />
         <span className="muted">{t('chem.effect', { pct: ((ch.score - 50) * 0.06).toFixed(1) })}</span>
       </div>
       <div className="row" style={{ marginTop: 6 }}>

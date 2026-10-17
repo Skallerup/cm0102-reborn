@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Info } from '../help';
 import { naturalRole } from '../../game/attributes';
 import { ageOn } from '../../game/dates';
 import { knowledgeOf, scoutStars } from '../../game/scouting';
@@ -19,7 +20,7 @@ export function Transfers({ tab: initial }: { tab?: string }) {
   const pending = g.offers.filter((o) => o.status === 'pending' && o.seller === g.userClub).length;
   return (
     <div>
-      <Head title={t('nav.transfers')}>
+      <Head title={<>{t('nav.transfers')}<Info topic="transfers" /></>}>
         <Tabs tabs={[['search', t('tr.search')], ['shortlist', `${t('tr.shortlist')} (${g.shortlist.length})`], ['offers', `${t('tr.offers')}${pending ? ` (${pending})` : ''}`], ['listed', t('tr.listed')]]} value={tab} onChange={setTab} />
       </Head>
       {tab === 'search' && <Search />}

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Info } from '../help';
 import { squadStrength } from '../../game/board';
 import { recentFanEvents } from '../../game/fans';
 import { gs, squad } from '../../game/state';
@@ -30,7 +31,7 @@ export function ClubScreen({ id }: { id?: number }) {
             <span>{t('col.nat')}</span><span>{g.nations[c.nation]?.name}</span>
             <span>{t('club.manager')}</span><span>{c.manager === -1 ? g.manager.name : manager ? `${manager.first} ${manager.last}` : t('club.vacant')}</span>
             <span>{t('club.stadium')}</span><span>{c.stadium} ({c.seats.toLocaleString()})</span>
-            <span>{t('club.rep')}</span><span><Bar value={c.rep} /> {c.rep}</span>
+            <span>{t('club.rep')}<Info topic="rep" /></span><span><Bar value={c.rep} /> {c.rep}</span>
             <span>{t('club.strength')}</span><span>{squadStrength(cid).toFixed(0)}</span>
             {c.manager !== -1 && <><span>{t('club.strategy')}</span><span title={t(`strategy.${clubStrategy(c)}.hint`)}>{t(`strategy.${clubStrategy(c)}`)}</span></>}
             <span>{t('club.youth')}</span><span><Bar value={c.youth} max={20} /></span>
@@ -41,10 +42,10 @@ export function ClubScreen({ id }: { id?: number }) {
         {mine && (
           <Panel title={t('club.board')}>
             <div className="kv">
-              <span>{t('club.expectation')}</span><span className="accent">{t(`exp.${g.board.expectation}`)}</span>
-              <span>{t('club.confidence')}</span><span><Bar value={g.board.confidence} /> {Math.round(g.board.confidence)}%</span>
+              <span>{t('club.expectation')}<Info topic="board" /></span><span className="accent">{t(`exp.${g.board.expectation}`)}</span>
+              <span>{t('club.confidence')}<Info topic="board" /></span><span><Bar value={g.board.confidence} /> {Math.round(g.board.confidence)}%</span>
               <span>{t('club.warnings')}</span><span>{g.board.warnings}</span>
-              <span>{t('club.managerRep')}</span><span><Bar value={g.manager.rep} /> {Math.round(g.manager.rep)}</span>
+              <span>{t('club.managerRep')}<Info topic="managerRep" /></span><span><Bar value={g.manager.rep} /> {Math.round(g.manager.rep)}</span>
             </div>
             <p className="muted">{t(`conf.${g.board.confidence >= 75 ? 'delighted' : g.board.confidence >= 55 ? 'pleased' : g.board.confidence >= 35 ? 'concerned' : 'danger'}`)}</p>
           </Panel>
@@ -117,7 +118,7 @@ function FansPanel({ club }: { club: Club }) {
   return (
     <Panel title={t('fans.title')}>
       <div className="kv">
-        <span>{t('fans.mood')}</span><span><Bar value={mood} /> {t(`fans.mood.${moodKey}`)}</span>
+        <span>{t('fans.mood')}<Info topic="fans" /></span><span><Bar value={mood} /> {t(`fans.mood.${moodKey}`)}</span>
       </div>
       {events.length > 0 && <div className="muted" style={{ fontSize: 12, margin: '6px 0' }}>{events.slice(-4).map((e) => `${t(`fan.ev.${e.k}`)} (${e.v > 0 ? '+' : ''}${e.v})`).join(' · ')}</div>}
       <div className="col" style={{ gap: 6, marginTop: 6 }}>

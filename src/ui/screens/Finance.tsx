@@ -1,4 +1,5 @@
 import { act } from '../../game/actions';
+import { Info } from '../help';
 import { currentWageBill, estimateGate, fairTicketPrice, sponsorOffers } from '../../game/finance';
 import { SHIFT_WEEKS, boardMood, projectOffer, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
@@ -32,7 +33,7 @@ export function Finance() {
             <span>{t('club.stadium')}</span><span>{c.stadium} ({c.seats.toLocaleString()})</span>
           </div>
         </Panel>
-        <Panel title={t('fin.season')}>
+        <Panel title={<>{t('fin.season')}<Info topic="finance" /></>}>
           <div className="kv">
             <span>{t('fin.gate')}</span><span>{money(f.gate)}</span>
             <span>{t('fin.tv')}</span><span>{money(f.tv)}</span>
@@ -47,7 +48,7 @@ export function Finance() {
             <span><b>{t('fin.expense')}</b></span><span><b className="bad">{money(expense)}</b></span>
           </div>
         </Panel>
-        <Panel title={t('fin.board')}>
+        <Panel title={<>{t('fin.board')}<Info topic="board" /></>}>
           <div className="col">
             <div className="muted">{t('budget.hint')}</div>
             <div className="kv">
@@ -81,7 +82,7 @@ function TicketPanel() {
   const rows = options.map((price) => ({ price, ...estimateGate(c, price) }));
   const best = rows.reduce((a, b) => (b.income > a.income ? b : a));
   return (
-    <Panel title={t('ticket.title')}>
+    <Panel title={<>{t('ticket.title')}<Info topic="tickets" /></>}>
       <div className="col">
         <label className="row">{t('fin.ticket')}:
           <MoneyInput value={c.ticketPrice} min={1} width={90} onChange={(v) => act({ t: 'ticket', price: v })} />
@@ -219,6 +220,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
   const [res, setRes] = useState<{ result: string; pct?: number; reasons?: string[] } | null>(null);
   const [toWage, setToWage] = useState(true);
   const [amount, setAmount] = useState(0);
+  const [shifted, setShifted] = useState<string | null>(null);
   const kind = tab === 'shift' ? 'wage' : tab;
   const base = kind === 'wage' ? c.wageBudget : c.transferBudget;
   const maxPct = kind === 'wage' ? 30 : 80;
@@ -230,7 +232,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title={t('budget.title')} onClose={onClose}>
       <div className="col">
-        <Tabs tabs={[['wage', t('budget.tab.wage')], ['transfer', t('budget.tab.transfer')], ['shift', t('budget.tab.shift')]]} value={tab} onChange={(v) => { setTab(v as BudgetKind | 'shift'); setRes(null); setAmount(0); }} />
+        <Tabs tabs={[['wage', t('budget.tab.wage')], ['transfer', t('budget.tab.transfer')], ['shift', t('budget.tab.shift')]]} value={tab} onChange={(v) => { if (v === tab) return; setTab(v as BudgetKind | 'shift'); setRes(null); setAmount(0); setShifted(null); }} />
         {tab !== 'shift' ? (
           <>
             <div className="kv">
@@ -266,13 +268,21 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
               <button className={!toWage ? 'primary' : ''} onClick={() => { setToWage(false); setAmount(0); }}>{t('budget.toTransfer')}</button>
             </div>
             <label>{toWage ? t('budget.moveTransfer') : t('budget.moveWage')}: <b className="accent">{money(amount)}{toWage ? '' : ` / ${t('common.week')}`}</b>
-              <input type="range" min={0} max={Math.max(0, Math.floor(shiftMax / shiftStep) * shiftStep)} step={shiftStep} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: '100%' }} />
+              <input type="range" min={0} max={Math.max(0, Math.floor(shiftMax / shiftStep) * shiftStep)} step={shiftStep} value={amount} onChange={(e) => { setAmount(Number(e.target.value)); setShifted(null); }} style={{ width: '100%' }} />
             </label>
+            <div className="row">
+              {[10, 25, 50].map((q) => <button key={q} className="small" onClick={() => { setAmount(Math.floor((shiftMax * q) / 100 / shiftStep) * shiftStep); setShifted(null); }}>{q} %</button>)}
+            </div>
             <div className="kv">
               <span>{t('budget.tab.transfer')}</span><span>{money(c.transferBudget)} → <b>{money(after.tr)}</b></span>
               <span>{t('budget.tab.wage')}</span><span>{money(c.wageBudget)} → <b>{money(after.wg)}</b> / {t('common.week')}</span>
             </div>
-            <button className="primary" disabled={amount <= 0} onClick={() => { act({ t: 'budgetShift', toWage, amount }); setAmount(0); }}>{t('budget.doShift')}</button>
+            <button className="primary" disabled={amount <= 0} onClick={() => {
+              act({ t: 'budgetShift', toWage, amount });
+              setShifted(t('budget.shifted', { tr: money(after.tr), wg: money(after.wg) }));
+              setAmount(0);
+            }}>{amount > 0 ? t('budget.doShiftAmount', { amount: money(amount) }) : t('budget.pickAmount')}</button>
+            {shifted && <div className="insight good">{shifted}</div>}
           </>
         )}
       </div>

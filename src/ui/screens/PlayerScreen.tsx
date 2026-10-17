@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Info } from '../help';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
 import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
@@ -73,8 +74,8 @@ export function PlayerScreen({ id }: { id: number }) {
         </Panel>
         <Panel title={t('player.status')}>
           <div className="kv">
-            <span>{t('col.cond')}</span><span><Bar value={p.condition} /> {Math.round(p.condition)}%</span>
-            <span>{t('col.morale')}</span><span>{t(`morale.${p.morale >= 16 ? 'superb' : p.morale >= 13 ? 'good' : p.morale >= 9 ? 'okay' : 'poor'}`)}</span>
+            <span>{t('col.cond')}<Info topic="condition" /></span><span><Bar value={p.condition} /> {Math.round(p.condition)}%</span>
+            <span>{t('col.morale')}<Info topic="morale" /></span><span>{t(`morale.${p.morale >= 16 ? 'superb' : p.morale >= 13 ? 'good' : p.morale >= 9 ? 'okay' : 'poor'}`)}</span>
             <span>{t('col.form')}</span><span>{p.form.length ? p.form.map((r) => r.toFixed(1)).join(' · ') : '-'}</span>
             {p.injury && <><span>{t('player.injury')}</span><span className="bad">{t(`injury.${p.injury.key}`)} ({p.injury.days} {t('common.days')})</span></>}
             {p.banned > 0 && <><span>{t('tag.ban')}</span><span className="bad">{p.banned}</span></>}

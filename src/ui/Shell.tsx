@@ -33,14 +33,15 @@ import { Jobs } from './screens/Jobs';
 import { Options } from './screens/Options';
 import { PressScreen } from './screens/Press';
 import { RankingScreen } from './screens/Ranking';
+import { HelpScreen } from './help';
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'],
 ];
-const MENU2: [ScreenName, string][] = [['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['options', 'nav.options']];
-const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking'];
+const MENU2: [ScreenName, string][] = [['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help'];
 
 export function Shell() {
   const g = useGame()!;
@@ -234,6 +235,7 @@ function Screen() {
     case 'options': return <Options />;
     case 'press': return <PressScreen />;
     case 'ranking': return <RankingScreen />;
+    case 'help': return <HelpScreen id={route.id as string | undefined} />;
   }
 }
 
