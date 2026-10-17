@@ -403,6 +403,8 @@ export const en: Record<string, string> = {
   'rank.howLine.cup': 'Cup: +25 × league weight for the title, +10 for the final.', 'rank.howLine.cl': 'Champions League: 8 (group stage) to 100 (winner).', 'rank.howLine.uefa': 'UEFA Cup: 5 to 60 (winner).',
   'rank.howLine.board': 'Board: +10 for high confidence, −10 per warning.', 'rank.howLine.sacked': 'Sacked: −40.', 'rank.howLine.finance': 'Finances: up to ±8 for the season\'s result relative to the wage budget.', 'rank.howLine.youth': 'Youth: up to +15 for minutes given to players aged 21 or younger.',
   'rank.howWeight': 'Your current league weight: {w}. Top-5 leagues: 1.5 · next five: 1.25 · others: 0.9-1.05 · second tier: about 45%.',
+  'opt.transferNews': 'Transfer news about other clubs', 'opt.transferNews.own': 'My own club only', 'opt.transferNews.big': 'Big deals in my league', 'opt.transferNews.all': 'All (per the news filter)',
+  'top.continueUnread': '{n} unread messages – Continue shows them one at a time, then the game moves on',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',

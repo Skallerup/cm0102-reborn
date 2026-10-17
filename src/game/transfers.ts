@@ -122,6 +122,22 @@ export function sellerDecision(p: Player, fee: number, buyer: Club): { answer: S
   return { answer: 'reject' };
 }
 
+/**
+ * Skal den aktive manager have en nyhed om en handel mellem andre klubber?
+ * Standard ('big'): kun store handler i ens egen liga – ellers drukner indbakken.
+ */
+function otherTransferNews(buyer: Club, seller: Club | undefined, fee: number, loan: boolean): boolean {
+  const g = gs();
+  const mode = g.options.transferNews ?? 'big';
+  if (mode === 'own') return false;
+  if (mode === 'all') return newsRelevant(buyer.id, seller?.id);
+  const me = g.clubs[g.userClub];
+  if (!me || loan || fee <= 0) return false;
+  const inMyLeague = buyer.league === me.league || seller?.league === me.league;
+  const big = Math.max(500_000, rulesFor(me.league, 20).wealth * 2_000_000);
+  return inMyLeague && fee >= big;
+}
+
 /** Verdens højeste ugeløn (europæisk topniveau ~ 0,6-0,7 mio. €) */
 const MAX_WAGE = 750_000;
 
@@ -333,7 +349,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
   };
   forEachHuman(() => {
     const involved = buyer.id === g.userClub || seller?.id === g.userClub;
-    if (involved || newsRelevant(buyer.id, seller?.id)) addNews(news);
+    if (involved || otherTransferNews(buyer, seller, o.fee, o.loan)) addNews(news);
   });
 }
 
@@ -649,7 +665,7 @@ function aiClubTurn(club: Club) {
     target.contract = { wage, expires: `${year(g.date) + preferredYears(target)}-06-30` };
     setClub(target, club.id);
     target.joined = g.date;
-    if (newsRelevant(club.id)) addNews({ cat: 'transfer', key: 'transfer.freeDone', params: { player: pname(target), from: '-', to: club.name, fee: 0 }, link: { kind: 'player', id: target.id } });
+    if (otherTransferNews(club, undefined, 0, false)) addNews({ cat: 'transfer', key: 'transfer.freeDone', params: { player: pname(target), from: '-', to: club.name, fee: 0 }, link: { kind: 'player', id: target.id } });
     return;
   }
   const ask = askingPrice(target);

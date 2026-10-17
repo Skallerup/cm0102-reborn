@@ -1,5 +1,6 @@
 
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
+import { onFocusNews, takeFocus } from '../inboxFocus';
 import { act } from '../../game/actions';
 import { useHotkeys } from '../hotkeys';
 import { dateFmt, t } from '../../i18n';
@@ -14,13 +15,24 @@ const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 
 export function Inbox() {
   const g = useGame()!;
   const [cat, setCat] = useRouteState<NewsCategory | 'all'>('cat', 'all');
-  const [sel, setSel] = useRouteState<number | null>('sel', g.news[0]?.id ?? null);
+  const [sel, setSel] = useRouteState<number | null>('sel', () => takeFocus() ?? g.news[0]?.id ?? null);
   const open = useOpenLink();
   const list = g.news.filter((n) => cat === 'all' || n.cat === cat);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
   const shown = list.slice(0, 200);
+  // Fortsæt-knappen: vis den næste ulæste besked
+  useEffect(() => {
+    const show = (id: number) => {
+      setCat('all');
+      setSel(id);
+      requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
+    };
+    const f = takeFocus();
+    if (f !== null) show(f);
+    return onFocusNews((id) => { takeFocus(); show(id); });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const move = (dir: number) => {
     if (!shown.length) return;
     const i = shown.findIndex((n) => n.id === sel);

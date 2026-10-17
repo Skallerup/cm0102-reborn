@@ -429,6 +429,8 @@ export const da: Record<string, string> = {
   'rank.howLine.cup': 'Pokal: +25 × ligavægt for titlen, +10 for finalen.', 'rank.howLine.cl': 'Champions League: 8 (gruppespil) til 100 (vinder).', 'rank.howLine.uefa': 'UEFA Cup: 5 til 60 (vinder).',
   'rank.howLine.board': 'Bestyrelsen: +10 ved stor tillid, −10 pr. advarsel.', 'rank.howLine.sacked': 'Fyring: −40.', 'rank.howLine.finance': 'Økonomi: op til ±8 efter sæsonens resultat i forhold til lønbudgettet.', 'rank.howLine.youth': 'Ungdom: op til +15 for spilletid til spillere på 21 år eller yngre.',
   'rank.howWeight': 'Din nuværende ligavægt: {w}. Top-5-ligaer: 1,5 · næste fem: 1,25 · øvrige: 0,9-1,05 · 2. division: ca. 45 %.',
+  'opt.transferNews': 'Transfernyheder om andre klubber', 'opt.transferNews.own': 'Kun min egen klub', 'opt.transferNews.big': 'Store handler i min liga', 'opt.transferNews.all': 'Alle (efter nyhedsfilteret)',
+  'top.continueUnread': '{n} ulæste beskeder – Fortsæt viser dem én ad gangen, derefter går spillet videre',
   'opt.news': 'Nyheder om andre klubber', 'opt.news.league': 'Kun min liga', 'opt.news.nation': 'Kun mit land', 'opt.news.world': 'Hele verden',
   'opt.save.changes': 'Efter hver ændring', 'opt.save.daily': 'Hver spildag', 'opt.save.weekly': 'Hver uge i spillet', 'opt.save.monthly': 'Hver måned i spillet', 'opt.save.off': 'Aldrig (kun manuelt)',
   'opt.save.changes.hint': 'Sikrest: alt gemmes få sekunder efter du ændrer noget, så en genindlæsning aldrig koster noget.',

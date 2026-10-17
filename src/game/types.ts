@@ -489,6 +489,8 @@ export interface Options {
   fullCommentary: boolean;
   /** Hvilke nyheder om andre klubber man får (standard: kun eget land) */
   newsScope?: 'league' | 'nation' | 'world';
+  /** Transfernyheder om andre klubber: kun egen klub, store handler i egen liga (standard) eller alle (efter nyhedsfilteret) */
+  transferNews?: 'own' | 'big' | 'all';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
 }

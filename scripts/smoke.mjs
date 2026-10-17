@@ -77,8 +77,11 @@ await step('benchmark (web worker)', async () => {
   await shot('18-benchmark');
 });
 await step('næste kamp + simulér', async () => {
-  await page.getByRole('button', { name: 'Næste kamp »' }).click();
-  await page.getByRole('button', { name: 'Simulér resultat' }).waitFor({ timeout: 60000 });
+  // spillet stopper ved vigtige nyheder (fx bud på spillere) – tryk igen indtil kampen er klar
+  for (let i = 0; i < 6; i++) {
+    await page.getByRole('button', { name: 'Næste kamp »' }).click();
+    if (await page.getByRole('button', { name: 'Simulér resultat' }).waitFor({ timeout: 20000 }).then(() => true, () => false)) break;
+  }
   await page.getByRole('button', { name: 'Simulér resultat' }).click();
   await page.getByText('Kamprapport').waitFor();
 });

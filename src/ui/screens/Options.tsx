@@ -36,6 +36,11 @@ export function Options() {
                 {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}
               </select>
             </label>
+            <label className="row">{t('opt.transferNews')}
+              <select value={g.options.transferNews ?? 'big'} onChange={(e) => { g.options.transferNews = e.target.value as 'big'; notify(); }}>
+                {(['own', 'big', 'all'] as const).map((m) => <option key={m} value={m}>{t(`opt.transferNews.${m}`)}</option>)}
+              </select>
+            </label>
             <label className="row"><input type="checkbox" checked={g.options.ai !== false} onChange={(e) => { g.options.ai = e.target.checked; notify(); }} />{t('opt.ai')}</label>
             <div className="muted">{t('opt.ai.hint')}</div>
             <label className="row"><input type="checkbox" checked={g.options.masking} onChange={(e) => { g.options.masking = e.target.checked; notify(); }} />{t('start.masking')}</label>

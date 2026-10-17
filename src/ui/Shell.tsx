@@ -9,6 +9,8 @@ import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
+import { focusNews } from './inboxFocus';
+import { act } from '../game/actions';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
@@ -100,8 +102,16 @@ export function Shell() {
     else if (r.stop) nav({ name: 'inbox' });
   };
 
+  // Fortsæt: læs først de ulæste beskeder én ad gangen (ældste først), derefter næste dag
   const onContinue = () => {
     if (g.pendingFixture) { nav({ name: 'match', id: g.pendingFixture }); return; }
+    const next = g.news.filter((n) => !n.read).pop();
+    if (next) {
+      act({ t: 'read', ids: [next.id] });
+      focusNews(next.id);
+      if (route.name !== 'inbox') nav({ name: 'inbox' });
+      return;
+    }
     handle(continueGame());
   };
 
@@ -132,7 +142,7 @@ export function Shell() {
           <>
             <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
             <button onClick={() => setHoliday(true)}>{t('top.holiday')}</button>
-            <button className="primary continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}</button>
+            <button className="primary continue" onClick={onContinue} title={unread ? t('top.continueUnread', { n: unread }) : undefined}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unread > 0 && <span className="cont-badge">{unread}</span>}</button>
           </>
         )}
       </div>
