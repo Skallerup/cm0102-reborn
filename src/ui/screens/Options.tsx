@@ -36,6 +36,8 @@ export function Options() {
                 {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}
               </select>
             </label>
+            <label className="row"><input type="checkbox" checked={g.options.ai !== false} onChange={(e) => { g.options.ai = e.target.checked; notify(); }} />{t('opt.ai')}</label>
+            <div className="muted">{t('opt.ai.hint')}</div>
             <label className="row"><input type="checkbox" checked={g.options.masking} onChange={(e) => { g.options.masking = e.target.checked; notify(); }} />{t('start.masking')}</label>
             <label className="col">{t('opt.speed')}
               <input type="range" min={60} max={1500} step={20} value={1560 - g.options.matchSpeed} onChange={(e) => { g.options.matchSpeed = 1560 - Number(e.target.value); notify(); }} />

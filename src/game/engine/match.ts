@@ -69,6 +69,8 @@ interface TeamRT {
   homeMult: number;
   moraleMult: number;
   all: SP[]; // alle der har været på banen
+  /** AI-trænerens udgangspunkt for mentaliteten (til justeringer undervejs) */
+  baseMentality?: number;
 }
 
 const ZB = 5;
@@ -867,6 +869,8 @@ export class MatchSim {
   }
 
   private aiManage() {
+    if (this.minute < 46) return;
+    for (const t of this.teams) if (this.opts.aiSubs?.[t.idx]) this.aiShift(t);
     if (this.minute < 55) return;
     for (const t of this.teams) {
       if (!this.opts.aiSubs?.[t.idx]) continue;
@@ -876,6 +880,31 @@ export class MatchSim {
       const cands = t.on.filter((s) => !s.off && t.tactic.slots[s.slot].pos !== 'GK');
       const worst = cands.sort((a, b) => a.cond * 10 + a.rating - (b.cond * 10 + b.rating))[0];
       if (worst && (worst.cond < 0.72 || worst.rating < 6.1)) this.autoSub(t, worst);
+    }
+  }
+
+  /** AI-træneren reagerer på stillingen: jagter udligning eller lukker kampen */
+  private aiShift(t: TeamRT) {
+    const o = this.teams[1 - t.idx];
+    const diff = t.stats.goals - o.stats.goals;
+    const base = (t.baseMentality ??= t.ti.mentality);
+    let want = base;
+    if (diff < 0 && this.minute >= 55) want = Math.min(4, base + (this.minute >= 75 || diff <= -2 ? 2 : 1));
+    else if (diff > 0 && this.minute >= 70) want = Math.max(0, base - (diff === 1 && this.minute >= 82 ? 2 : 1));
+    if (want === t.ti.mentality) return;
+    const chasing = want > base;
+    const ti: TeamInstructions = { ...t.ti, mentality: want, counter: chasing ? false : want < base || t.ti.counter, tempo: chasing ? 2 : t.ti.tempo };
+    t.ti = ti;
+    t.tactic = { ...t.tactic, team: ti };
+    this.buildZones(t);
+    const capt = t.on.find((s) => !s.off && s.p.id === t.tactic.captain) ?? t.on.find((s) => !s.off) ?? null;
+    this.line(chasing ? 'ai-push' : want < base ? 'ai-shut' : 'tactic-change', capt, null);
+    // jagter: skift en ekstra angriber ind for den svageste midtbanespiller
+    if (chasing && t.subsLeft > 0 && this.minute >= 60) {
+      const bench = t.benchIds.map((id) => t.players.get(id)).filter((p): p is Player => !!p && p.pos[0] < 15);
+      const att = bench.sort((a, b) => b.attrs[A.finishing] + b.attrs[A.offTheBall] - (a.attrs[A.finishing] + a.attrs[A.offTheBall]))[0];
+      const out = t.on.filter((s) => !s.off && ['DM', 'M', 'WB'].includes(t.tactic.slots[s.slot].pos)).sort((a, b) => a.rating - b.rating)[0];
+      if (att && out && att.attrs[A.finishing] >= 11) this.substitute(t.idx, out.p.id, att.id);
     }
   }
 

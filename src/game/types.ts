@@ -1,4 +1,5 @@
 // Central datamodel for hele spillet. Alt i GameState skal kunne serialiseres (gemmes i IndexedDB).
+import type { PressConf } from './press';
 
 export type Lang = 'da' | 'en';
 export type Foot = 'R' | 'L' | 'B' | '';
@@ -79,7 +80,7 @@ export interface Player {
   /** Udbudspris sat af manageren når spilleren er til salg */
   listPrice?: number;
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
-  loan: { from: number; until: string; share?: number; fee?: number } | null;
+  loan: { from: number; until: string; share?: number; fee?: number; option?: number } | null;
   stats: SeasonStats;
   history: CareerLine[];
   caps: number;
@@ -93,6 +94,10 @@ export interface Player {
   wantsAway?: boolean;
   /** Manageren har lovet titler – frist */
   promiseUntil?: string;
+  /** Kontraktkrav fra spilleren/agenten efter en god periode */
+  demand?: { since: string; wage: number; leaked?: boolean };
+  /** Seneste uro i spillerens gruppering (dato) */
+  cliqueAlert?: string;
   /** Seneste samtale med manageren (cooldown) */
   lastTalk?: string;
   /** Seneste episode (ballade) og seneste røde kort – grundlag for at straffe */
@@ -135,6 +140,10 @@ export interface Staff {
   assignment?: ScoutAssignment | null;
   /** AI-managerens foretrukne formation */
   style?: { formation: string; mentality: number };
+  /** Trænerkarriere: klubber, trofæer og seneste sæsons form (placering mod forventning) */
+  career?: { club: number; from: string; to?: string; why?: 'sacked' | 'poached' | 'left' }[];
+  trophies?: number;
+  form?: number;
 }
 
 export interface ClubFinance {
@@ -194,6 +203,11 @@ export interface Club {
   merchBoost?: { until: string; factor: number };
   /** Financial Fair Play: resultat for seneste sæsoner og evt. straf */
   ffp?: { results: number[]; sanction?: string };
+  /** Fansenes humør 0-100 (kun menneskestyrede klubber) og hvad der har påvirket det */
+  fanMood?: number;
+  fanEvents?: { d: string; k: string; v: number }[];
+  /** Modstanderen er ekstra motiveret efter managerens pressemøde (til og med dato) */
+  motivatedUntil?: string;
 }
 
 export interface TeamInstructions {
@@ -313,7 +327,7 @@ export interface NewsItem {
   params: Record<string, string | number>;
   read: boolean;
   /** link til spiller/klub/kamp/tilbud */
-  link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards'; id: number | string };
+  link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards' | 'press'; id: number | string };
 }
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'negotiating' | 'completed' | 'withdrawn' | 'collapsed';
@@ -337,6 +351,20 @@ export interface TransferOffer {
   maxFee?: number;
   /** Antal forhandlingsrunder om prisen */
   priceRounds?: number;
+  /** Budkrig: en rivaliserende klubs bud på samme spiller */
+  rival?: { club: number; fee: number };
+  /** Leje med købsoption (pris) */
+  option?: number;
+}
+
+/** En AI-klub der jagter en spiller (vender tilbage med højere bud) */
+export interface Pursuit {
+  club: number;
+  player: number;
+  lastFee: number;
+  maxFee: number;
+  tries: number;
+  next: string;
 }
 
 export interface ManagerProfile {
@@ -346,6 +374,10 @@ export interface ManagerProfile {
   history: { season: number; club: number; league: string; pos: number }[];
   trophies: { season: number; comp: string; club: number }[];
   sacked: number;
+  /** Indbyrdes resultater mod AI-trænere: staff-id → [V, U, T] */
+  rivals?: Record<number, [number, number, number]>;
+  /** Klubber der har fyret manageren */
+  sackedBy?: number[];
 }
 
 export interface BoardState {
@@ -453,6 +485,8 @@ export interface Options {
   fullCommentary: boolean;
   /** Hvilke nyheder om andre klubber man får (standard: kun eget land) */
   newsScope?: 'league' | 'nation' | 'world';
+  /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
+  ai?: boolean;
 }
 
 export interface HumanSlot {
@@ -470,6 +504,7 @@ export interface HumanSlot {
   jobOffers: number[];
   challenge: ChallengeState | null;
   pendingFixture: number | null;
+  press?: PressConf | null;
 }
 
 export interface GameState {
@@ -520,6 +555,11 @@ export interface GameState {
   monthSnap?: { players: Record<number, [number, number, number]>; tables: Record<string, Record<number, number>> };
   /** Sidste handlings-index fra serveren der er indarbejdet i dette øjebliksbillede */
   lastActionIdx?: number;
+  pursuits?: Pursuit[];
+  /** Ventende pressemøde for den aktive manager */
+  press?: PressConf | null;
+  /** Kosmetiske AI-tekster (artikler, fanindlæg …) – påvirker ikke spillets regler */
+  aiText?: Record<string, string>;
 }
 
 export interface SeasonSummary {

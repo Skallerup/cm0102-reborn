@@ -50,7 +50,7 @@ export function gateReceipts(f: Fixture): number {
   const big = comp?.type === 'continental' ? 1.3 : comp?.type === 'cup' && f.stage === 'F' ? 1.5 : 1;
   const row = comp?.table.find((r) => r.club === home.id);
   const formBoost = row ? (row.form.split('W').length - 1) * 0.02 : 0;
-  const demand = ticketDemand(home, home.ticketPrice, away.rep, formBoost, big);
+  const demand = Math.min(1, ticketDemand(home, home.ticketPrice, away.rep, formBoost, big) * fanAttendance(home));
   const att = Math.round(home.seats * demand * (0.95 + rng.next() * 0.05));
   const income = att * home.ticketPrice * (comp?.type === 'continental' ? 1.5 : 1);
   home.balance += income;
@@ -172,6 +172,7 @@ export function estimateGate(club: Club, price: number): { attendance: number; i
 
 import type { SponsorDeal, SponsorKind } from './types';
 import { addNews, newsRelevant } from './state';
+import { fanAttendance } from './fans';
 import { forEachHuman } from './humans';
 
 /** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */

@@ -6,14 +6,20 @@ import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { gateReceipts, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
+import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiBidsForListed, aiBosman, aiFillSquads, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
+import { monthlyWill } from './will';
+import { recordRivalry } from './careers';
+import { boardMeeting, fansAfterMatch, fansMonthly } from './fans';
+import { expirePress, invitePress, motivation } from './press';
+import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 
@@ -33,13 +39,16 @@ export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
   const m = g.staff[club.manager];
   const formation = m?.style?.formation ?? '4-4-2';
   let mentality = m?.style?.mentality ?? 2;
+  let plan: CounterPlan = { team: {} };
   if (oppId !== undefined) {
     const diff = squadStrength(clubId) - squadStrength(oppId) + (home ? 3 : -3);
     if (diff > 12) mentality = Math.min(4, mentality + 1);
     else if (diff < -12) mentality = Math.max(0, mentality - 1);
+    plan = counterPlan(clubId, oppId, diff, formation, mentality);
   }
-  const base = newTactic(formation, mentality);
+  const base = newTactic(plan.formation ?? formation, mentality);
   if (mentality <= 1) base.team.counter = true;
+  base.team = { ...base.team, ...plan.team };
   return autoSelect(base, squad(clubId));
 }
 
@@ -74,7 +83,7 @@ export function userTactic(auto = false): Tactic {
 export function engineTeam(clubId: number, tactic: Tactic): EngineTeam {
   const map = new Map<number, Player>();
   for (const p of squad(clubId)) map.set(p.id, p);
-  return { club: clubId, tactic, players: map, morale: chemistryMorale(tactic) };
+  return { club: clubId, tactic, players: map, morale: chemistryMorale(tactic) + motivation(clubId, gs().date) };
 }
 
 function importance(f: Fixture): number {
@@ -203,6 +212,9 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     const scored = userHome ? hs.goals : as.goals;
     const conceded = userHome ? as.goals : hs.goals;
     boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
+    recordRivalry(opp, scored, conceded);
+    invitePress(f, 'post');
+    fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
@@ -214,6 +226,15 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
       }
     }
   }
+}
+
+/** Storkamp/topopgør: to af ligaens fire største klubber med næsten samme omdømme */
+export function isBigMatch(a: number, b: number): boolean {
+  const g = gs();
+  const A = g.clubs[a], B = g.clubs[b];
+  if (!A || !B || A.league !== B.league || Math.abs(A.rep - B.rep) > 6) return false;
+  const top = Object.values(g.clubs).filter((c) => c.league === A.league).sort((x, y) => y.rep - x.rep).slice(0, 4).map((c) => c.id);
+  return top.includes(a) && top.includes(b);
 }
 
 function injure(p: Player) {
@@ -254,12 +275,23 @@ function newDay() {
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   forEachHuman(processOffers);
+  forEachHuman(() => {
+    expirePress();
+    // pressemøde dagen før kampen
+    for (const id of fixturesOn(addDays(d, 1))) {
+      const f = g.fixtures[id];
+      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub)) invitePress(f, 'pre');
+    }
+  });
   completeProjects();
   forEachHuman(aiBidsForListed);
+  aiPursuits();
+  if (weekday(d) === 4) forEachHuman(aiLoanOptions);
   aiTransferTick();
   forEachHuman(scoutDaily);
   if (day(d) % 3 === 0) fillVacancies();
   if (weekday(d) === 1) {
+    forEachHuman(weeklyRumours);
     weeklyDevelopment();
     weeklyWages();
   }
@@ -268,6 +300,10 @@ function newDay() {
     monthlyValues();
     monthlyDevelopment();
     monthlyPersonality();
+    monthlyWill();
+    fansMonthly();
+    if (month(d) !== 7) monthlyColumn();
+    forEachHuman(boardMeeting);
     if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
     forEachHuman(() => {
       const { mismatches } = monthlyTrainingReport();

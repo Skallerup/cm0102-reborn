@@ -25,7 +25,7 @@ export function t(key: string, params?: Record<string, string | number | undefin
   let s = dicts[lang][key] ?? dicts.en[key] ?? key;
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      s = s.split(`{${k}}`).join(v === undefined ? '' : typeof v === 'number' && k === 'fee' ? money(v) : String(v));
+      s = s.split(`{${k}}`).join(v === undefined ? '' : typeof v === 'number' && (k === 'fee' || k === 'wage' || k === 'balance') ? money(v) : String(v));
     }
   }
   return s;

@@ -51,6 +51,24 @@ Før byggeriet blev der stillet 10 forslag til forbedringer. De 8 valgte er impl
 | 9 | **Hurtig simulering**: "Næste kamp", ferie til dato, spring kamp over | ✅ |
 | 10 | **Challenges + dansk/engelsk + delbar seed** | ✅ |
 
+## AI i spillet
+
+Spillet har to slags AI:
+
+**Spil-AI (altid aktiv, deterministisk)**
+- *Taktisk modspil*: AI-trænere scouter din opstilling (fx 4-2-4 → lav blok og kontra, smal diamant → angreb på kanterne) og reagerer på stillingen undervejs (jagter udligning med ekstra angriber, lukker en føring ned). Taktisk dygtige trænere tilpasser sig oftere.
+- *Transferstrategier*: klubber er topklubber, udviklingsklubber, sælgerklubber eller balancerede. De jagter dine spillere og vender tilbage med højere bud, starter budkrige om spillere du byder på og tilbyder leje med købsoption.
+- *Spillernes vilje*: kontraktkrav efter gode perioder, utilfredshed der lækkes til pressen, og grupperinger i omklædningsrummet hvor lederens humør smitter.
+- *Trænerkarrierer*: historik, trofæer og form; storklubber headhunter overpræsterende trænere, og du får indbyrdes opgør mod AI-trænere og tidligere klubber.
+- *Fans og bestyrelse*: fansenes humør påvirker tilskuertal og bestyrelsens tillid; kvartalsvise bestyrelsesmøder.
+
+**Sprogmodel (valgfri, kun tekst)** – `api/ai.ts` via Vercel AI Gateway
+- Pressemøder før/efter kampe (spørgsmål ud fra situationen, fritekstsvar), spillersamtaler i fri tekst, agentreplikker i kontraktforhandlinger, kamprapporter, rygter, klummer, bestyrelsesreferater og fanforum.
+- Modellen skriver kun tekst og klassificerer fritekst til spillets faste udfald – reglerne afgør alle effekter, så spillet er retfærdigt og multiplayer forbliver deterministisk.
+- Uden AI (offline, GitHub Pages, slået fra i Indstillinger) bruges faste skabeloner og nøgleordstolkning.
+- Model: `AI_MODEL` (standard Claude Haiku 4.5) med automatisk fallback til `AI_FALLBACK_MODEL` (standard Gemini 2.5 Flash Lite), hvis kontoen ikke har adgang. Dagligt loft `AI_DAILY_CAP` (standard 4000 kald) og 40 kald/min pr. IP via Upstash.
+- Alle journalister, medier og agenter i spillet er opfundne.
+
 ## Spillerdatabasen
 
 Data kommer fra **[dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets)** (CC0 / public domain). Transfermarkt har ingen 1–20-attributter, så de beregnes deterministisk i `src/game/data/generate.ts`:

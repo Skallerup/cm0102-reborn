@@ -1,10 +1,15 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { aiCall } from '../../ai/client';
 import { gs } from '../../game/state';
 import { act } from '../../game/actions';
 import { preferredYears, wageDemand } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
 import { money, t } from '../../i18n';
 import { Modal } from '../components';
+
+const AGENT_PERSONAS = ['tough', 'friendly', 'greedy', 'calm'] as const;
+/** Opfundne agenter (ingen rigtige personer) */
+const AGENT_NAMES = ['Marco Vellini', 'Sara Holm', 'Duarte Fonseca', 'Lars Møller', 'Nadia Okafor', 'Victor Brandt', 'Elena Rossi-Kahn', 'Tomás Ibarra'];
 
 /** Kontraktforhandling – både nye spillere (via tilbud) og forlængelser */
 export function NegotiationModal({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
@@ -17,17 +22,43 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const [years, setYears] = useState(offer?.demand?.years ?? preferredYears(p));
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
+  // spilleragenten: fast persona pr. spiller, replikker skrevet af AI (tallene kommer fra spillet)
+  const persona = AGENT_PERSONAS[p.id % AGENT_PERSONAS.length];
+  const agentName = AGENT_NAMES[(p.id >> 2) % AGENT_NAMES.length];
+  const [agentLine, setAgentLine] = useState<string | null>(null);
+  const otherClubs = [...new Set([
+    ...g.offers.filter((o) => o.player === pid && o.buyer !== g.userClub && ['pending', 'negotiating', 'countered'].includes(o.status)).map((o) => o.buyer),
+    ...(g.pursuits ?? []).filter((x) => x.player === pid && x.club !== g.userClub).map((x) => x.club),
+    ...(offer?.rival ? [offer.rival.club] : []),
+  ])].map((c) => g.clubs[c]?.name).filter(Boolean);
+  const speak = (outcome: string, offered?: { wage: number; years: number }) => {
+    const demandW = money(offer?.demand?.wage ?? wageDemand(p, club));
+    const demandY = offer?.demand?.years ?? preferredYears(p);
+    const situation = {
+      opening: `Forhandlingen begynder. Du fremlægger din klients krav: ${demandW} om ugen i ${demandY} år.`,
+      counter: `Manageren tilbød ${money(offered?.wage ?? 0)} om ugen i ${offered?.years} år. Det er for lidt – du afviser og står fast på ${demandW} i ${demandY} år.`,
+      accepted: `Manageren tilbød ${money(offered?.wage ?? 0)} om ugen i ${offered?.years} år, og din klient accepterer. I er enige.`,
+      refused: 'Forhandlingerne er brudt sammen – din klient vil ikke skrive under.',
+      budget: 'Klubben har ikke plads i lønbudgettet til tilbuddet. Du reagerer på det.',
+    }[outcome] ?? outcome;
+    aiCall<{ line: string }>('agent', {
+      persona, youAre: `${agentName}, agent for ${p.first} ${p.last}`, talkingTo: `manageren for ${club.name}`,
+      contract: offer ? 'ny spiller til klubben' : 'kontraktforlængelse', situation, otherInterestedClubs: otherClubs,
+    }).then((r) => { if (r?.line) setAgentLine(r.line); });
+  };
+  useEffect(() => { speak('opening'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = () => {
     const res = offer ? act<string>({ t: 'negotiate', pid, wage, years }) : act<string>({ t: 'renew', pid, wage, years });
-    if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 900); }
+    speak(res, { wage, years });
+    if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 2200); }
     else if (res === 'counter') {
       const d = offer?.demand?.wage ?? wageDemand(p, club);
       setWage(Math.round(d / 50) * 50);
       setYears(offer?.demand?.years ?? preferredYears(p));
       setMsg({ text: t('neg.counter', { wage: money(d), years: offer?.demand?.years ?? preferredYears(p) }), tone: 'warn' });
     } else if (res === 'budget') setMsg({ text: t('neg.overWageBudget', { budget: money(club.wageBudget), bill: money(bill) }), tone: 'bad' });
-    else { setMsg({ text: t('neg.refused'), tone: 'bad' }); setTimeout(onClose, 1400); }
+    else { setMsg({ text: t('neg.refused'), tone: 'bad' }); setTimeout(onClose, 2600); }
   };
 
   return (
@@ -48,7 +79,10 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
             {[1, 2, 3, 4, 5].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </label>
-        {msg && <div className={`insight ${msg.tone}`}>{msg.text}</div>}
+        <div className="chat">
+          <div className={`chat-them insight ${msg?.tone ?? ''}`}><b>{agentName} ({t(`agent.${persona}`)}):</b> {agentLine ?? msg?.text ?? t('neg.agentOpening', { wage: money(demand), years: offer?.demand?.years ?? preferredYears(p) })}</div>
+          {msg && agentLine && <div className="muted" style={{ fontSize: 12 }}>{msg.text}</div>}
+        </div>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           {offer && <button className="danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) { act({ t: 'withdraw', pid }); onClose(); } }}>{t('neg.cancel')}</button>}
           <div className="grow" />

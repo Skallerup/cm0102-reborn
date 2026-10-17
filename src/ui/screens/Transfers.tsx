@@ -157,7 +157,7 @@ function Offers() {
               <tr key={o.id}>
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td><ClubLink id={o.buyer} /></td>
-                <td className="num">{o.loan ? `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}` : money(o.fee)}</td>
+                <td className="num">{o.loan ? (o.option ? t('tr.loanOption', { fee: money(o.option) }) : `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}`) : money(o.fee)}</td>
                 <td>{status(o)}{o.priceRounds ? <span className="tag">{t('offer.round', { n: o.priceRounds })}</span> : null}{g.players[o.player]?.listPrice ? <div className="muted">{t('list.price')}: {money(g.players[o.player].listPrice!)}</div> : null}</td>
                 <td className="actions">
                   {o.status === 'pending' && (
@@ -184,7 +184,7 @@ function Offers() {
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td>{o.seller ? <ClubLink id={o.seller} /> : t('common.free')}</td>
                 <td className="num">{o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)}{o.counter && o.status === 'countered' ? ` → ${money(o.counter)}` : ''}</td>
-                <td className="nowrap">{status(o)} <span className="muted">{dateFmt(o.created)}</span></td>
+                <td className="nowrap">{status(o)} <span className="muted">{dateFmt(o.created)}</span>{o.rival && active(o) === 0 && <div className="bad" style={{ fontSize: 12 }}>{t('tr.rival', { club: g.clubs[o.rival.club]?.name ?? '?', fee: money(o.rival.fee) })}</div>}</td>
                 <td className="actions">
                   {o.status === 'negotiating' && <button className="small primary" onClick={() => setNeg(o)}>{t('offer.negotiate')}</button>}
                   {o.status === 'countered' && <button className="small primary" onClick={() => { const r = act<string>({ t: 'acceptCounter', pid: o.player }); if (r === 'ok') setNeg(o); }}>{t('offer.acceptCounter')}</button>}

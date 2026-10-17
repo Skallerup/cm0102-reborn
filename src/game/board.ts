@@ -8,6 +8,7 @@ function rulesForLeague(league: string) {
   return rulesFor(league, 20).wealth;
 }
 import { addNews, gs, newsRelevant, squad } from './state';
+import { careerEnd, careerStart, pickManager } from './careers';
 import type { Club } from './types';
 import { takeOverClub } from './newgame';
 import { forEachHuman } from './humans';
@@ -107,6 +108,8 @@ export function boardMonthly() {
   const delta = (g.board.expectedPos - pos) * 0.8;
   g.board.confidence = clamp(g.board.confidence + delta, 0, 100);
   if (club.balance < -5_000_000) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
+  // bestyrelsen lytter til fansene
+  g.board.confidence = clamp(g.board.confidence + ((club.fanMood ?? 60) - 60) / 40, 0, 100);
   if (g.challenge) return; // udfordringer: ingen fyring undervejs
   if (g.board.confidence < 25 && g.board.warnings < 2) {
     g.board.warnings++;
@@ -122,6 +125,7 @@ export function sackUser(key: string) {
   if (!club) return;
   addNews({ cat: 'job', key, params: { club: club.name } });
   g.manager.sacked++;
+  g.manager.sackedBy = [...(g.manager.sackedBy ?? []), club.id].slice(-10);
   g.manager.rep = clamp(g.manager.rep - 8, 1, 100);
   club.manager = 0;
   g.vacancies.push(club.id);
@@ -194,7 +198,7 @@ export function aiSackings() {
       const p = (under >= 4 ? 0.05 + under * 0.015 : 0) + (inDrop ? 0.07 : 0) + (row.form === 'LLLLL' ? 0.1 : 0);
       if (p > 0 && rng.chance(p)) {
         const m = g.staff[club.manager];
-        if (m) m.club = 0;
+        if (m) { careerEnd(m, 'sacked'); m.club = 0; }
         club.manager = 0;
         g.vacancies.push(club.id);
         forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
@@ -225,10 +229,10 @@ export function fillVacancies() {
     if (!club || club.manager !== 0) continue;
     if (offered.has(cid)) { still.push(cid); continue; }
     if (rng.chance(0.15)) {
-      const pool = Object.values(g.staff).filter((s) => s.role === 'manager' && s.club === 0).sort((a, b) => Math.abs(a.rep - club.rep) - Math.abs(b.rep - club.rep));
-      const m = pool[0];
+      const m = pickManager(cid);
       if (m) {
         m.club = cid;
+        careerStart(m, cid);
         club.manager = m.id;
         club.tactic = null;
         forEachHuman(() => { if (newsRelevant(cid)) addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } }); });

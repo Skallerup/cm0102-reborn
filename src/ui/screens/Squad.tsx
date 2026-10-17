@@ -4,7 +4,8 @@ import { squad } from '../../game/state';
 import type { Player } from '../../game/types';
 import { avgRating } from '../../game/season';
 import { money, t, dateFmt } from '../../i18n';
-import { Bar, Modal, Nat, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
+import { Bar, Modal, Nat, Panel, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
+import { cliques } from '../../game/will';
 import { useGame, useNav, useRouteState } from '../core';
 import { useState } from 'react';
 import { act } from '../../game/actions';
@@ -20,6 +21,7 @@ export function statusTags(p: Player, userClub: number) {
       {p.contract?.futureClub && <span className="tag warn">{t('tag.leaving')}</span>}
       {(p.unhappy ?? 0) > 60 && <span className="tag bad">{t('tag.unhappy')}</span>}
       {p.wantsAway && <span className="tag bad">{t('tag.wantsAway')}</span>}
+      {p.demand && <span className="tag warn" title={t('tag.demandHint', { wage: money(p.demand.wage) })}>{t('tag.demand')}</span>}
     </>
   );
 }
@@ -75,6 +77,7 @@ export function Squad() {
         <Tabs tabs={[['general', t('squad.general')], ['attrs', t('squad.attrs')], ['contracts', t('squad.contracts')]]} value={view} onChange={setView} />
       </Head>
       <SquadTable players={players} view={view} userClub={g.userClub} />
+      <Cliques />
       {meeting && <TeamMeeting onClose={() => setMeeting(false)} />}
       {loanedOut.length > 0 && (
         <>
@@ -83,6 +86,33 @@ export function Squad() {
         </>
       )}
     </div>
+  );
+}
+
+/** Omklædningsrummet: grupperinger og deres ledere */
+function Cliques() {
+  const g = useGame()!;
+  const list = cliques(g.userClub);
+  if (!list.length) return null;
+  return (
+    <Panel title={t('clique.title')} className="flush" style={{ marginTop: 12 }}>
+      <table className="grid">
+        <tbody>
+          {list.map((c, i) => {
+            const leader = g.players[c.leader];
+            return (
+              <tr key={i}>
+                <td>{t(`clique.${c.key}`, { nation: c.nation !== undefined ? g.nations[c.nation]?.name ?? '' : '' })}</td>
+                <td className="num">{c.members.length}</td>
+                <td>{t('clique.leader')}: <PlayerLink p={leader} /></td>
+                <td style={{ minWidth: 140 }}><Bar value={c.mood} max={20} /></td>
+                <td className={leader && (leader.wantsAway || leader.morale < 8) ? 'bad' : 'muted'}>{leader && (leader.wantsAway || leader.morale < 8) ? t('clique.unrest') : leader && leader.morale >= 15 ? t('clique.lifts') : t('clique.calm')}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Panel>
   );
 }
 

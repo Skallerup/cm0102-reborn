@@ -5,10 +5,11 @@ import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos }
 import { LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { addNews, addPlayer, newsRelevant, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
-import { boardSeasonEnd, setBoardExpectation } from './board';
+import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
+import { seasonCareers } from './careers';
 import { ffpReview, newSeasonBudgets, seasonPrizeMoney, sponsorSeasonBonus } from './finance';
 import { fillSquad, setupSeasonComps } from './newgame';
-import { aiFillSquads } from './transfers';
+import { aiFillSquads, exerciseLoanOption } from './transfers';
 import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
@@ -118,7 +119,7 @@ function contractsAndLoans() {
   const g = gs();
   const today = g.date; // 1. juli
   for (const p of Object.values(g.players)) {
-    if (p.loan && p.loan.until < today) {
+    if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
       setClub(p, p.loan.from);
       p.loan = null;
     }
@@ -264,6 +265,7 @@ export function seasonRollover() {
     }
     boardSeasonEnd();
   });
+  seasonCareers((cid) => strengthRank(g.clubs[cid]).rank);
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);

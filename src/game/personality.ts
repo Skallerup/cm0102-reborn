@@ -162,7 +162,7 @@ export { finalOrder };
 
 // ---------- samtaler med spillerne ----------
 
-export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop';
+export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop' | 'demand' | 'chat';
 
 function recentForm(p: Player): number {
   const f = p.form.slice(-3);
@@ -228,6 +228,15 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
       if (!t.includes('loyal') && rng.chance(0.5)) p.wantsAway = true;
       return { key: 'talk.r.fineUnjust', mood: 'bad' };
     }
+    case 'demand':
+      // krav om mere – virker på de målrettede, provokerer de hidsige
+      if (hot) { bump(-1.5); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 10); return { key: 'talk.r.demandAngry', mood: 'bad' }; }
+      if (det >= 12 || t.includes('professional') || t.includes('leader')) { bump(0.5); fire(14); return { key: 'talk.r.demandAccepted', mood: 'good' }; }
+      bump(-0.3);
+      return { key: 'talk.r.demandOk', mood: 'neutral' };
+    case 'chat':
+      bump(p.morale < 10 ? 0.8 : 0.3);
+      return { key: 'talk.r.chat', mood: 'neutral' };
     case 'drop':
       // sat af holdet som straf
       if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === pid ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== pid) };

@@ -1,0 +1,51 @@
+// Medierne: rygter om interesse for manageres spillere (der kan blive til rigtige bud) og
+// månedens klumme om ligaen. Selve teksterne kan skrives af AI, når beskeden åbnes.
+import { addDays } from './dates';
+import { roundValue } from './data/generate';
+import { forEachHuman, isHumanClub } from './humans';
+import { rng } from './rng';
+import { clubLevel } from './scouting';
+import { addNews, gs, squad } from './state';
+import { sortTable } from './competitions';
+import type { Player } from './types';
+
+const pname = (p: Player) => `${p.first} ${p.last}`.trim();
+const avgForm = (p: Player) => (p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 0);
+
+/** Ugentligt: rygter om større klubbers interesse for brugerens bedste/formstærke spillere */
+export function weeklyRumours() {
+  const g = gs();
+  const me = g.clubs[g.userClub];
+  if (!me) return;
+  const m = Number(g.date.slice(5, 7));
+  if (!rng.chance(m >= 5 && m <= 8 || m === 12 || m === 1 ? 0.35 : 0.15)) return;
+  const cands = squad(me.id).filter((p) => !p.loan && p.contract && (avgForm(p) >= 7 || p.ca >= clubLevel(me.id) + 6) && !p.contract.futureClub);
+  const p = rng.pick(cands);
+  if (!p) return;
+  const suitors = Object.values(g.clubs).filter((c) => c.id !== me.id && !isHumanClub(c.id) && c.rep >= me.rep + 4 && c.transferBudget >= p.value * 0.8 && Math.abs(clubLevel(c.id) - p.ca) <= 18);
+  const club = rng.pick(suitors);
+  if (!club) return;
+  // halvdelen af rygterne er sande: klubben byder senere
+  const real = rng.chance(0.5);
+  if (real) {
+    const list = (g.pursuits ??= []).filter((x) => !(x.club === club.id && x.player === p.id));
+    list.push({ club: club.id, player: p.id, lastFee: roundValue(p.value * 0.85), maxFee: roundValue(Math.min(club.transferBudget, p.value * rng.range(1.1, 1.5))), tries: 0, next: addDays(g.date, rng.int(10, 30)) });
+    g.pursuits = list;
+  }
+  addNews({ cat: 'transfer', key: 'rumour.interest', params: { player: pname(p), club: club.name, outlet: rng.pick(['tabloid', 'paper', 'insider']) }, link: { kind: 'player', id: p.id } });
+}
+
+/** Den 1. i måneden: klumme om brugerens liga */
+export function monthlyColumn() {
+  forEachHuman(() => {
+    const g = gs();
+    const me = g.clubs[g.userClub];
+    const comp = me ? g.comps[me.league] : undefined;
+    if (!comp || comp.type !== 'league') return;
+    const rows = sortTable(comp.table.slice());
+    if ((rows[0]?.p ?? 0) < 4) return;
+    const leader = rows[0], second = rows[1];
+    const myPos = rows.findIndex((r) => r.club === me!.id) + 1;
+    addNews({ cat: 'general', key: 'column.month', params: { comp: comp.name, leader: g.clubs[leader.club]?.name ?? '', gap: leader.pts - (second?.pts ?? 0), pos: myPos, club: me!.name } });
+  });
+}

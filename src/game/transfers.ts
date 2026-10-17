@@ -8,6 +8,8 @@ import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
 import { addNews, gs, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
+import { clubStrategy } from './strategy';
+import { bumpFans } from './fans';
 import type { Club, Player, Role, TransferOffer } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 
@@ -106,8 +108,16 @@ export function sellerDecision(p: Player, fee: number, buyer: Club): { answer: S
   const seller = g.clubs[p.club];
   const ask = askingPrice(p);
   const rank = keyPlayerRank(p);
-  if (seller && rank <= 2 && seller.rep >= buyer.rep && fee < ask * 1.6) return { answer: 'notforsale' };
-  if (fee >= ask) return { answer: 'accept' };
+  const strat = seller && !isHumanClub(seller.id) ? clubStrategy(seller) : 'balanced';
+  const age = ageOn(p.dob, g.date);
+  // topklubber sælger nødigt til mindre klubber; udviklingsklubber holder på de helt unge
+  if (seller && strat === 'big' && rank <= 4 && seller.rep >= buyer.rep - 5 && fee < ask * 1.8) return { answer: 'notforsale' };
+  if (seller && strat === 'develop' && age <= 20 && rank <= 11 && fee < ask * 1.4) return { answer: 'notforsale' };
+  if (seller && strat !== 'seller' && rank <= 2 && seller.rep >= buyer.rep && fee < ask * 1.6) return { answer: 'notforsale' };
+  if (seller && strat === 'seller' && rank <= 1 && seller.rep >= buyer.rep && fee < ask * 1.3) return { answer: 'notforsale' };
+  // sælgerklubber og udviklingsklubber (med spillere over 22) tager imod lidt under prisen
+  const accept = strat === 'seller' ? 0.9 : strat === 'develop' && age >= 23 ? 0.95 : 1;
+  if (fee >= ask * accept) return { answer: 'accept' };
   if (fee >= ask * 0.72) return { answer: 'counter', counter: ask };
   return { answer: 'reject' };
 }
@@ -185,6 +195,7 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   const myName = g.clubs[g.userClub]?.name ?? '';
   if (action === 'reject') {
     o.status = 'rejected';
+    if (!isHumanClub(buyer.id) && !o.loan) startPursuit(o);
     if (p && p.attrs[42] > 14 && keyPlayerRank(p) > 5) p.morale = Math.max(1, p.morale - 3);
     if (isHumanClub(buyer.id)) asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidRejected', params: { player: pname(p), club: myName }, link: { kind: 'player', id: p.id } }));
     return;
@@ -281,7 +292,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
   const seller = o.seller ? g.clubs[o.seller] : undefined;
   if (!p || !buyer) return;
   if (o.loan) {
-    p.loan = { from: p.club, until: `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30` };
+    p.loan = { from: p.club, until: `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
   } else {
     buyer.balance -= o.fee;
     buyer.transferBudget = Math.max(0, buyer.transferBudget - o.fee);
@@ -294,8 +305,11 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     p.contract = { wage, expires: exp };
   }
+  // fansene reagerer på stjernesalg og -køb
+  if (!o.loan && seller && isHumanClub(seller.id) && keyPlayerRank(p) <= 3) bumpFans(seller.id, -6, 'starSold');
   setClub(p, buyer.id);
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
+  if (!o.loan && isHumanClub(buyer.id) && p.rep >= buyer.rep - 5) bumpFans(buyer.id, 4, 'starSigned');
   rankCacheDate = '';
   p.listed = false;
   p.listPrice = undefined;
@@ -367,7 +381,8 @@ export function renewContract(pid: number, wage: number, years: number): 'accept
   if (wage >= demand * 0.97) {
     const startYear = year(g.date) + (month(g.date) >= 7 ? 1 : 0);
     p.contract = { wage, expires: `${startYear + years - 1}-06-30` };
-    p.morale = Math.min(20, p.morale + 2);
+    p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
+    p.demand = undefined;
     addNews({ cat: 'contract', key: 'contract.renewed', params: { player: pname(p), years } });
     return 'accepted';
   }
@@ -417,7 +432,12 @@ export function processOffers() {
         }
         continue;
       }
-      const d = sellerDecision(p, o.fee, buyer);
+      let d = sellerDecision(p, o.fee, buyer);
+      o.rival = rivalBid(o, p);
+      if (o.rival && d.answer !== 'notforsale' && o.fee < o.rival.fee) {
+        d = { answer: 'counter', counter: roundValue(o.rival.fee * 1.05) };
+        addNews({ cat: 'transfer', key: 'transfer.biddingWar', params: { player: pname(p), club: sellerName(o.rival.club), fee: o.rival.fee }, link: { kind: 'offer', id: o.id } });
+      }
       if (d.answer === 'accept') {
         o.status = 'negotiating';
         o.respondBy = addDays(g.date, 10);
@@ -432,6 +452,14 @@ export function processOffers() {
       }
     } else if ((o.status === 'negotiating' || o.status === 'countered') && g.date > o.respondBy) {
       o.status = 'collapsed';
+      // budkrigen tabt: rivalen køber spilleren
+      const p = g.players[o.player];
+      const rival = o.rival ? g.clubs[o.rival.club] : undefined;
+      if (p && rival && o.buyer === g.userClub && p.club === o.seller && !isHumanClub(p.club) && rival.transferBudget >= o.rival!.fee) {
+        const ro: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: rival.id, seller: p.club, fee: o.rival!.fee, loan: false, status: 'negotiating', created: g.date, respondBy: g.date };
+        completeTransfer(ro, wageDemand(p, rival), preferredYears(p));
+        addNews({ cat: 'transfer', key: 'transfer.lostBiddingWar', params: { player: pname(p), club: rival.name, fee: ro.fee }, link: { kind: 'player', id: p.id } });
+      }
     } else if (o.status === 'pending' && o.seller === g.userClub && g.date > o.respondBy) {
       o.status = 'withdrawn';
     }
@@ -547,7 +575,16 @@ function findTarget(club: Club, role: Role): Player | null {
   }
   if (!cands.length) return null;
   const budget = Math.max(1, club.transferBudget);
-  const score = (p: Player) => p.ca - level - (p.club ? askingPrice(p) / budget : 0) * 6 + (ageOn(p.dob, g.date) <= 24 ? 2 : 0);
+  const strat = clubStrategy(club);
+  const priceW = strat === 'big' ? 3 : strat === 'seller' ? 10 : 6;
+  const score = (p: Player) => {
+    const age = ageOn(p.dob, g.date);
+    let v = p.ca - level - (p.club ? askingPrice(p) / budget : 0) * priceW + (age <= 24 ? 2 : 0);
+    if (strat === 'develop') v += (age <= 21 ? 6 : age >= 27 ? -6 : 0) + (p.pa - p.ca) / 8;
+    if (strat === 'seller') v += (age <= 23 ? 4 : age >= 28 ? -5 : 0) + (p.pa - p.ca) / 12;
+    if (strat === 'big') v += (p.ca - level) * 0.3;
+    return v;
+  };
   cands.sort((x, y) => score(y) - score(x));
   return rng.pick(cands.slice(0, 8));
 }
@@ -631,6 +668,107 @@ function aiClubTurn(club: Club) {
     const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: target.club, fee: d.answer === 'accept' ? fee : d.counter!, loan: false, status: 'negotiating', created: g.date, respondBy: g.date };
     completeTransfer(o, wageDemand(target, club), preferredYears(target));
   }
+}
+
+// ---------- jagt, budkrige og købsoptioner ----------
+
+/** En AI-klub der har fået afslag, vender måske tilbage med et højere bud */
+function startPursuit(o: TransferOffer) {
+  const g = gs();
+  const buyer = g.clubs[o.buyer];
+  const p = g.players[o.player];
+  if (!buyer || !p) return;
+  const keen = clubStrategy(buyer) === 'big' ? 0.75 : 0.5;
+  if (!rng.chance(keen)) return;
+  const max = Math.max(o.maxFee ?? o.fee, o.fee) * rng.range(1.1, 1.35);
+  const list = (g.pursuits ??= []).filter((x) => !(x.club === buyer.id && x.player === p.id));
+  const prev = g.pursuits.find((x) => x.club === buyer.id && x.player === p.id);
+  list.push({ club: buyer.id, player: p.id, lastFee: o.fee, maxFee: roundValue(Math.min(buyer.transferBudget, max)), tries: (prev?.tries ?? 0) + 1, next: addDays(g.date, rng.int(6, 16)) });
+  g.pursuits = list.filter((x) => x.tries <= 3);
+}
+
+/** Dagligt: klubber der jagter en spiller kommer igen med forhøjet bud */
+export function aiPursuits() {
+  const g = gs();
+  if (!g.pursuits?.length || !windowOpen()) return;
+  const keep: typeof g.pursuits = [];
+  for (const pu of g.pursuits) {
+    const p = g.players[pu.player];
+    const club = g.clubs[pu.club];
+    if (!p || !club || !p.club || !isHumanClub(p.club)) continue;
+    if (g.date < pu.next) { keep.push(pu); continue; }
+    if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) { keep.push(pu); continue; }
+    const fee = roundValue(Math.min(pu.maxFee, pu.lastFee * rng.range(1.08, 1.2)));
+    if (fee <= pu.lastFee) continue;
+    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: p.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: pu.maxFee };
+    g.offers.push(o);
+    asOwner(p.club, () => {
+      addNews({ cat: 'transfer', key: pu.tries === 0 ? 'transfer.incomingBid' : 'transfer.pursuitReturn', params: { club: club.name, player: pname(p), fee, n: pu.tries + 1 }, link: { kind: 'offer', id: o.id } });
+      // en ambitiøs spiller bliver urolig, når en større klub bliver ved med at banke på
+      const own = g.clubs[p.club];
+      if (pu.tries >= 2 && own && club.rep >= own.rep + 8 && p.attrs[42] >= 14 && !p.wantsAway) {
+        p.wantsAway = true;
+        p.morale = Math.max(1, p.morale - 2);
+        addNews({ cat: 'general', key: 'will.unsettled', params: { player: pname(p), club: club.name }, link: { kind: 'player', id: p.id } });
+      }
+    });
+  }
+  g.pursuits = keep;
+}
+
+/** Budkrig: når brugeren byder på en attraktiv spiller, kan en anden klub melde sig */
+function rivalBid(o: TransferOffer, p: Player): TransferOffer['rival'] {
+  const g = gs();
+  if (o.rival !== undefined || p.value < 1_500_000 || !rng.chance(0.25)) return o.rival;
+  const ask = askingPrice(p);
+  const level = (c: Club) => clubLevel(c.id);
+  const cands = Object.values(g.clubs).filter((c) => c.id !== o.buyer && c.id !== p.club && !isHumanClub(c.id) && c.transferBudget >= ask && Math.abs(level(c) - p.ca) <= 20 && playerInterest(p, c) === 'yes');
+  if (!cands.length) return undefined;
+  const club = rng.pick(cands);
+  return { club: club.id, fee: roundValue(Math.min(club.transferBudget, Math.max(o.fee, ask) * rng.range(1.02, 1.15))) };
+}
+
+/** Leje med købsoption: AI-klubber vil låne brugerens unge/ubrugte spillere med mulighed for at købe */
+export function aiLoanOptions() {
+  const g = gs();
+  if (!g.userClub || !windowOpen()) return;
+  for (const p of squad(g.userClub)) {
+    if (p.loan || p.listed || p.contract?.futureClub || keyPlayerRank(p) <= 14) continue;
+    if (ageOn(p.dob, g.date) > 23 || !rng.chance(0.04)) continue;
+    if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
+    const cands = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.id !== g.userClub && Math.abs(clubLevel(c.id) - p.ca) <= 12 && c.transferBudget >= p.value);
+    if (!cands.length) continue;
+    const club = rng.pick(cands);
+    const option = roundValue(Math.max(p.value * rng.range(1.0, 1.3), 50_000));
+    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee: 0, loan: true, option, status: 'pending', created: g.date, respondBy: addDays(g.date, 6) };
+    g.offers.push(o);
+    addNews({ cat: 'transfer', key: 'transfer.loanOptionBid', params: { club: club.name, player: pname(p), fee: option }, link: { kind: 'offer', id: o.id } });
+  }
+}
+
+/** Sommer: lejeklubben aktiverer købsoptionen, hvis spilleren har gjort det godt */
+export function exerciseLoanOption(p: Player): boolean {
+  const g = gs();
+  const loan = p.loan;
+  if (!loan?.option) return false;
+  const buyer = g.clubs[p.club];
+  const seller = g.clubs[loan.from];
+  if (!buyer || !seller) return false;
+  // sæsonens statistik er arkiveret i historikken, når lejen udløber 1. juli
+  const last = p.history.find((h) => h.season === g.season && h.club === p.club);
+  const rating = last?.avg ?? 0;
+  const played = last?.apps ?? 0;
+  if (played < 10 || rating < 6.6 || buyer.transferBudget < loan.option * 0.8) return false;
+  buyer.balance -= loan.option;
+  buyer.transferBudget = Math.max(0, buyer.transferBudget - loan.option);
+  buyer.finance.transfersOut += loan.option;
+  seller.balance += loan.option;
+  seller.finance.transfersIn += loan.option;
+  p.loan = null;
+  p.contract = { wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` };
+  p.joined = g.date;
+  asOwner(seller.id, () => addNews({ cat: 'transfer', key: 'transfer.optionExercised', params: { club: buyer.name, player: pname(p), fee: loan.option! }, link: { kind: 'player', id: p.id } }));
+  return true;
 }
 
 /** AI fornyer kontrakter for spillere den vil beholde (januar-maj) */

@@ -28,6 +28,7 @@ import { History } from './screens/History';
 import { Awards } from './screens/Awards';
 import { Jobs } from './screens/Jobs';
 import { Options } from './screens/Options';
+import { PressScreen } from './screens/Press';
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
@@ -207,6 +208,7 @@ function Screen() {
     case 'awards': return <Awards />;
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
+    case 'press': return <PressScreen />;
   }
 }
 

@@ -6,8 +6,9 @@ import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
-import { interact, talkToPlayer, teamTalk } from './personality';
+import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
+import { applyPress, type Tone } from './press';
 import { addNews, gs, notify } from './state';
 import {
   acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
@@ -37,7 +38,7 @@ export type Action =
   | { t: 'budget'; kind: 'transfer' | 'wage' }
   | { t: 'project'; kind: 'stadium' | 'training' | 'youth' }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
-  | { t: 'interact'; pid: number; kind: 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop' }
+  | { t: 'interact'; pid: number; kind: TalkKind }
   | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
   | { t: 'sponsor'; kind: 'safe' | 'bonus' | 'ambitious' }
   | { t: 'ticket'; price: number }
@@ -45,7 +46,8 @@ export type Action =
   | { t: 'acceptJob'; club: number }
   | { t: 'applyJob'; club: number }
   | { t: 'declineJob'; club: number }
-  | { t: 'join'; name: string; club: number; nation: number };
+  | { t: 'join'; name: string; club: number; nation: number }
+  | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
 
 const ACTIVE: TransferOffer['status'][] = ['pending', 'negotiating', 'countered'];
 
@@ -104,6 +106,7 @@ export function applyAction(a: Action): unknown {
     case 'applyJob': return applyForJob(a.club);
     case 'declineJob': g.jobOffers = g.jobOffers.filter((x) => x !== a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
+    case 'press': return applyPress(a.answers, a.headline, a.body);
   }
 }
 

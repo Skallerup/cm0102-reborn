@@ -6,6 +6,7 @@ import { dateFmt, t } from '../../i18n';
 import { Empty, Panel } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head, newsBody, newsTitle, useOpenLink } from './common';
+import { AiArticle } from '../aiArticle';
 import type { NewsCategory } from '../../game/types';
 
 const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 'injury', 'board', 'scout', 'award', 'youth', 'job', 'general'];
@@ -67,6 +68,7 @@ export function Inbox() {
             <div className="col">
               <h3 style={{ color: 'var(--accent)' }}>{newsTitle(item)}</h3>
               {newsBody(item) && <p style={{ lineHeight: 1.5 }}>{newsBody(item)}</p>}
+              <AiArticle item={item} />
               {item.link && <div><button onClick={() => open(item)}>{t('inbox.open')}</button></div>}
             </div>
           ) : <Empty text={t('inbox.select')} />}

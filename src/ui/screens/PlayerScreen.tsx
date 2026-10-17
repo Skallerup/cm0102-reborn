@@ -7,7 +7,7 @@ import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, loanSuitors, windowOpen } from '../../game/transfers';
 import type { TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
-import { daysBetween } from '../../game/dates';
+import { ageOn, daysBetween } from '../../game/dates';
 import { AttrVal, Bar, ClubLink, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
 import { act as dispatch } from '../../game/actions';
@@ -16,7 +16,10 @@ import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 import { Arrow, DevelopmentChart, DevelopmentList, attrDelta, totalDelta } from '../dev';
 import { trainingAdvice } from '../../game/training';
-import { GOOD_TRAITS, traits } from '../../game/personality';
+import { GOOD_TRAITS, traits, type TalkKind } from '../../game/personality';
+import { aiCall } from '../../ai/client';
+import { guessIntent } from '../../ai/fallback';
+import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
 
 export function PlayerScreen({ id }: { id: number }) {
@@ -380,9 +383,36 @@ function TalkPanel({ pid }: { pid: number }) {
   const avgForm = form.length ? form.reduce((s, x) => s + x, 0) / form.length : null;
   const reason = p.lastRed && daysBetween(p.lastRed, g.date) <= 30 ? t('talk.reasonRed', { date: dateFmt(p.lastRed) })
     : p.lastIncident && daysBetween(p.lastIncident, g.date) <= 45 ? t('talk.reasonIncident', { date: dateFmt(p.lastIncident) }) : null;
-  const doTalk = (kind: 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop') => {
-    if ((kind === 'fine' || kind === 'fineHeavy' || kind === 'drop') && !reason && !confirm(t('talk.noReasonConfirm'))) return;
-    setRes(dispatch<{ key: string; mood: string }>({ t: 'interact', pid, kind }));
+  const ai = useAiAvailable();
+  const [msgText, setMsgText] = useState('');
+  const [convo, setConvo] = useState<{ me: string; reply: string; mood: string } | null>(null);
+  const [thinking, setThinking] = useState(false);
+  const doTalk = (kind: TalkKind): { key: string; mood: string } | null => {
+    if ((kind === 'fine' || kind === 'fineHeavy' || kind === 'drop') && !reason && !confirm(t('talk.noReasonConfirm'))) return null;
+    const r = dispatch<{ key: string; mood: string }>({ t: 'interact', pid, kind });
+    setRes(r);
+    setConvo(null);
+    return r;
+  };
+  // fritekst: AI tolker hensigten, spillets regler afgør reaktionen, AI skriver spillerens svar
+  const sendMessage = async () => {
+    const text = msgText.trim().slice(0, 400);
+    if (!text || thinking) return;
+    setThinking(true);
+    const allowed: TalkKind[] = ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat'];
+    const r = await aiCall<{ intent: string }>('talkIntent', { message: text, allowed });
+    const intent = (allowed.includes(r?.intent as TalkKind) ? r!.intent : guessIntent(text)) as TalkKind;
+    const out = doTalk(intent);
+    if (!out) { setThinking(false); return; }
+    const outcome = t(out.key, { player: p.last });
+    setConvo({ me: text, reply: outcome, mood: out.mood });
+    setMsgText('');
+    const reply = await aiCall<{ reply: string }>('talkReply', {
+      player: `${p.first} ${p.last}`, age: ageOn(p.dob, g.date), traits: traits(p), morale: Math.round(p.morale), recentRatings: p.form,
+      managerMessage: text, interpretedAs: intent, outcome, mood: out.mood,
+    });
+    if (reply?.reply) setConvo({ me: text, reply: reply.reply, mood: out.mood });
+    setThinking(false);
   };
   const wage = p.contract?.wage ?? 0;
   return (
@@ -401,8 +431,18 @@ function TalkPanel({ pid }: { pid: number }) {
           <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('fineHeavy')}>{t('talk.fineHeavy', { fee: money(wage * 2) })}</button>
           <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('drop')}>{t('talk.drop')}</button>
         </div>
-        {cooldown > 0 && !res && <div className="muted">{t('talk.cooldown', { n: cooldown })}</div>}
-        {res && <div className={`insight ${res.mood}`}>{t(res.key, { player: p.last })}</div>}
+        <div className="row">
+          <input style={{ flex: 1 }} maxLength={400} disabled={cooldown > 0 || thinking} placeholder={t('talk.freePlaceholder', { player: p.first || p.last })} value={msgText} onChange={(e) => setMsgText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }} />
+          <button disabled={cooldown > 0 || thinking || !msgText.trim()} onClick={sendMessage}>{thinking ? '…' : t('talk.send')}</button>
+        </div>
+        {!ai && <div className="muted" style={{ fontSize: 12 }}>{t('talk.noAi')}</div>}
+        {cooldown > 0 && !res && !convo && <div className="muted">{t('talk.cooldown', { n: cooldown })}</div>}
+        {convo ? (
+          <div className="chat">
+            <div className="chat-me">{convo.me}</div>
+            <div className={`chat-them insight ${convo.mood}`}><b>{p.last}:</b> {convo.reply}</div>
+          </div>
+        ) : res && <div className={`insight ${res.mood}`}>{t(res.key, { player: p.last })}</div>}
       </div>
     </Panel>
   );
