@@ -1,9 +1,10 @@
 import { act } from '../../game/actions';
 import { currentWageBill, estimateGate, fairTicketPrice, sponsorOffers } from '../../game/finance';
-import { projectOffer } from '../../game/board';
+import { SHIFT_WEEKS, boardMood, projectOffer, type BudgetKind } from '../../game/board';
+import { useState } from 'react';
 import type { ProjectKind } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
-import { Bar, MoneyInput, Panel } from '../components';
+import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 
@@ -15,8 +16,10 @@ export function Finance() {
   const f = c.finance;
   const income = f.gate + f.tv + f.prize + f.sponsor + f.merch + f.transfersIn;
   const expense = f.wages + f.transfersOut + f.other;
+  const [talk, setTalk] = useState(false);
   return (
     <div>
+      {talk && <BudgetModal onClose={() => setTalk(false)} />}
       <Head title={t('nav.finance')} />
       <div className="cols">
         <Panel title={t('fin.overview')}>
@@ -46,9 +49,12 @@ export function Finance() {
         </Panel>
         <Panel title={t('fin.board')}>
           <div className="col">
-            <div className="muted">{t('fin.requestHint')}</div>
-            <button onClick={() => act({ t: 'budget', kind: 'transfer' })}>{t('fin.askTransfer')}</button>
-            <button onClick={() => act({ t: 'budget', kind: 'wage' })}>{t('fin.askWage')}</button>
+            <div className="muted">{t('budget.hint')}</div>
+            <div className="kv">
+              <span>{t('budget.tab.wage')}</span><span className={`mood-${boardMood('wage')}`}>{t(`budget.mood.${boardMood('wage')}`)}</span>
+              <span>{t('budget.tab.transfer')}</span><span className={`mood-${boardMood('transfer')}`}>{t(`budget.mood.${boardMood('transfer')}`)}</span>
+            </div>
+            <button className="primary" onClick={() => setTalk(true)}>{t('budget.open')}</button>
           </div>
         </Panel>
       </div>
@@ -201,5 +207,75 @@ function FfpPanel() {
         <div className="muted">{t('ffp.explain')}</div>
       </div>
     </Panel>
+  );
+}
+
+/** Forhandling med bestyrelsen om løn- og transferbudget, samt omfordeling mellem dem */
+function BudgetModal({ onClose }: { onClose: () => void }) {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const [tab, setTab] = useState<BudgetKind | 'shift'>('wage');
+  const [pct, setPct] = useState(10);
+  const [res, setRes] = useState<{ result: string; pct?: number; reasons?: string[] } | null>(null);
+  const [toWage, setToWage] = useState(true);
+  const [amount, setAmount] = useState(0);
+  const kind = tab === 'shift' ? 'wage' : tab;
+  const base = kind === 'wage' ? c.wageBudget : c.transferBudget;
+  const maxPct = kind === 'wage' ? 30 : 80;
+  const ask = () => setRes(act({ t: 'budget', kind, pct: pct / 100 }));
+  const counter = g.board.budgetCounter;
+  const shiftMax = toWage ? c.transferBudget : c.wageBudget;
+  const shiftStep = toWage ? 50_000 : 100;
+  const after = toWage ? { tr: c.transferBudget - amount, wg: c.wageBudget + Math.round(amount / SHIFT_WEEKS) } : { tr: c.transferBudget + amount * SHIFT_WEEKS, wg: c.wageBudget - amount };
+  return (
+    <Modal title={t('budget.title')} onClose={onClose}>
+      <div className="col">
+        <Tabs tabs={[['wage', t('budget.tab.wage')], ['transfer', t('budget.tab.transfer')], ['shift', t('budget.tab.shift')]]} value={tab} onChange={(v) => { setTab(v as BudgetKind | 'shift'); setRes(null); setAmount(0); }} />
+        {tab !== 'shift' ? (
+          <>
+            <div className="kv">
+              <span>{t('budget.current')}</span><span>{money(base)}{kind === 'wage' ? ` / ${t('common.week')}` : ''}</span>
+              <span>{t('budget.mood')}</span><span className={`mood-${boardMood(kind)}`}>{t(`budget.mood.${boardMood(kind)}`)}</span>
+            </div>
+            <label>{t('budget.ask', { pct })}: <b className="accent">{money(Math.round(base * (1 + pct / 100)))}{kind === 'wage' ? ` / ${t('common.week')}` : ''}</b>
+              <input type="range" min={1} max={maxPct} value={pct} onChange={(e) => { setPct(Number(e.target.value)); setRes(null); }} style={{ width: '100%' }} />
+            </label>
+            {!res && <button className="primary" onClick={ask}>{t('budget.send')}</button>}
+            {res?.result === 'tooSoon' && <div className="insight bad">{t('budget.tooSoon')}</div>}
+            {res?.result === 'ok' && <div className="insight good">{t('budget.ok', { pct: Math.round((res.pct ?? 0) * 100) })}</div>}
+            {res?.result === 'no' && <div className="insight bad">{t('budget.no')}</div>}
+            {res?.result === 'counter' && counter && (
+              <div className="insight warn">
+                {t('budget.counter', { pct: Math.round(counter.pct * 100), amount: money(Math.round(base * (1 + counter.pct))) })}
+                <div className="row" style={{ marginTop: 8 }}>
+                  <button className="primary" onClick={() => { act({ t: 'budgetCounter', accept: true }); setRes({ result: 'ok', pct: counter.pct, reasons: res.reasons }); }}>{t('budget.accept')}</button>
+                  <button onClick={() => { act({ t: 'budgetCounter', accept: false }); setRes({ result: 'declined', reasons: res.reasons }); }}>{t('budget.decline')}</button>
+                </div>
+              </div>
+            )}
+            {res?.result === 'declined' && <div className="insight">{t('budget.declined')}</div>}
+            {res?.reasons && res.reasons.length > 0 && (
+              <ul className="muted" style={{ margin: 0, paddingLeft: 18 }}>{res.reasons.map((r) => <li key={r}>{t(r)}</li>)}</ul>
+            )}
+          </>
+        ) : (
+          <>
+            <div className="muted">{t('budget.shiftHint', { weeks: SHIFT_WEEKS })}</div>
+            <div className="row">
+              <button className={toWage ? 'primary' : ''} onClick={() => { setToWage(true); setAmount(0); }}>{t('budget.toWage')}</button>
+              <button className={!toWage ? 'primary' : ''} onClick={() => { setToWage(false); setAmount(0); }}>{t('budget.toTransfer')}</button>
+            </div>
+            <label>{toWage ? t('budget.moveTransfer') : t('budget.moveWage')}: <b className="accent">{money(amount)}{toWage ? '' : ` / ${t('common.week')}`}</b>
+              <input type="range" min={0} max={Math.max(0, Math.floor(shiftMax / shiftStep) * shiftStep)} step={shiftStep} value={amount} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: '100%' }} />
+            </label>
+            <div className="kv">
+              <span>{t('budget.tab.transfer')}</span><span>{money(c.transferBudget)} → <b>{money(after.tr)}</b></span>
+              <span>{t('budget.tab.wage')}</span><span>{money(c.wageBudget)} → <b>{money(after.wg)}</b> / {t('common.week')}</span>
+            </div>
+            <button className="primary" disabled={amount <= 0} onClick={() => { act({ t: 'budgetShift', toWage, amount }); setAmount(0); }}>{t('budget.doShift')}</button>
+          </>
+        )}
+      </div>
+    </Modal>
   );
 }

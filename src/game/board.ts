@@ -160,24 +160,118 @@ export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   return 'ok';
 }
 
-let lastRequest = '';
-export function requestBudget(kind: 'transfer' | 'wage'): boolean {
+export type BudgetKind = 'transfer' | 'wage';
+
+/**
+ * Hvor meget vil bestyrelsen give? Bestemt af tillid, økonomi, resultater og fansenes humør –
+ * ikke af tilfældigheder. Returnerer maks. stigning (andel af nuværende budget) og begrundelser.
+ */
+export function budgetLimits(kind: BudgetKind): { max: number; reasons: string[] } {
   const g = gs();
   const club = g.clubs[g.userClub];
-  if (!club) return false;
-  if (lastRequest === g.date.slice(0, 7) + kind) {
-    addNews({ cat: 'board', key: 'board.requestTooSoon', params: {} });
-    return false;
+  if (!club) return { max: 0, reasons: [] };
+  const reasons: string[] = [];
+  const conf = g.board.confidence;
+  let max = kind === 'wage'
+    ? (conf >= 80 ? 0.22 : conf >= 65 ? 0.15 : conf >= 50 ? 0.09 : conf >= 35 ? 0.04 : 0)
+    : (conf >= 80 ? 0.6 : conf >= 65 ? 0.4 : conf >= 50 ? 0.22 : conf >= 35 ? 0.1 : 0);
+  if (conf >= 65) reasons.push('budget.r.trust'); else if (conf < 50) reasons.push('budget.r.lowTrust');
+  // resultater i forhold til forventningen
+  const comp = g.comps[club.league];
+  const played = comp?.table.find((r) => r.club === club.id)?.p ?? 0;
+  if (comp && played >= 5) {
+    const pos = sortTable(comp.table.slice()).findIndex((r) => r.club === club.id) + 1;
+    const diff = g.board.expectedPos - pos;
+    if (diff >= 2) { max *= 1.25; reasons.push('budget.r.results'); }
+    else if (diff <= -3) { max *= 0.6; reasons.push('budget.r.poorResults'); }
   }
-  lastRequest = g.date.slice(0, 7) + kind;
-  const ok = g.board.confidence >= 60 && club.balance > club.transferBudget * 0.5 && rng.chance(0.4 + (g.board.confidence - 60) / 80);
-  if (ok) {
-    if (kind === 'transfer') club.transferBudget = Math.round(club.transferBudget * 1.2 + 250_000);
-    else club.wageBudget = Math.round(club.wageBudget * 1.1);
-    g.board.confidence = clamp(g.board.confidence - 4, 0, 100);
+  if ((club.fanMood ?? 60) >= 72) { max *= 1.1; reasons.push('budget.r.fans'); }
+  // økonomien: kan klubben bære det?
+  if (club.balance < 0) { max = 0; reasons.push('budget.r.debt'); }
+  else if (kind === 'wage') {
+    // en lønstigning skal kunne betales i mindst to sæsoner af den nuværende formue
+    const affordable = club.balance / Math.max(1, club.wageBudget * 52 * 2);
+    if (affordable < max) { max = Math.max(0, affordable); reasons.push('budget.r.finances'); }
+  } else {
+    const affordable = (club.balance * 0.7 - club.transferBudget) / Math.max(1, club.transferBudget);
+    if (affordable < max) { max = Math.max(0, affordable); reasons.push('budget.r.finances'); }
   }
-  addNews({ cat: 'board', key: ok ? 'board.requestOk' : 'board.requestNo', params: { kind } });
-  return ok;
+  if (club.ffp?.sanction) { max = Math.min(max, 0.03); reasons.push('budget.r.ffp'); }
+  return { max: Math.floor(Math.min(kind === 'wage' ? 0.3 : 0.8, max) * 100) / 100, reasons };
+}
+
+/** Bestyrelsens humør over for en anmodning (vises før man spørger – uden at afsløre tallet) */
+export function boardMood(kind: BudgetKind): 'open' | 'cautious' | 'closed' {
+  const m = budgetLimits(kind).max;
+  return m >= (kind === 'wage' ? 0.1 : 0.25) ? 'open' : m >= 0.03 ? 'cautious' : 'closed';
+}
+
+function grant(kind: BudgetKind, pct: number) {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (kind === 'transfer') club.transferBudget = Math.round((club.transferBudget * (1 + pct)) / 50_000) * 50_000;
+  else club.wageBudget = Math.round((club.wageBudget * (1 + pct)) / 100) * 100;
+  // store ønsker koster lidt tillid – bestyrelsen forventer resultater til gengæld
+  g.board.confidence = clamp(g.board.confidence - pct * (kind === 'wage' ? 20 : 8), 0, 100);
+}
+
+/** Spørg bestyrelsen om en stigning på pct (fx 0.1 = +10 %). Svar: ja, modbud eller nej. */
+export function requestBudget(kind: BudgetKind, pct = 0.1): { result: 'ok' | 'counter' | 'no' | 'tooSoon'; pct?: number; reasons?: string[] } {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (!club) return { result: 'no' };
+  const month = g.date.slice(0, 7);
+  if (g.board.budgetAsked?.[kind] === month) return { result: 'tooSoon' };
+  pct = Math.max(0.01, Math.min(1, pct));
+  const { max, reasons } = budgetLimits(kind);
+  const params = { kind, pct: Math.round(pct * 100) };
+  if (pct <= max + 1e-9) {
+    grant(kind, pct);
+    (g.board.budgetAsked ??= {})[kind] = month;
+    g.board.budgetCounter = undefined;
+    addNews({ cat: 'board', key: 'board.requestOk', params });
+    return { result: 'ok', pct, reasons };
+  }
+  if (max >= 0.02) {
+    g.board.budgetCounter = { kind, pct: max, until: addDays(g.date, 3) };
+    return { result: 'counter', pct: max, reasons };
+  }
+  (g.board.budgetAsked ??= {})[kind] = month;
+  addNews({ cat: 'board', key: 'board.requestNo', params });
+  return { result: 'no', reasons };
+}
+
+/** Svar på bestyrelsens modbud */
+export function answerBudgetCounter(accept: boolean): 'ok' | 'expired' {
+  const g = gs();
+  const c = g.board.budgetCounter;
+  if (!c || g.date > c.until) { g.board.budgetCounter = undefined; return 'expired'; }
+  g.board.budgetCounter = undefined;
+  (g.board.budgetAsked ??= {})[c.kind] = g.date.slice(0, 7);
+  if (accept) {
+    grant(c.kind, c.pct);
+    addNews({ cat: 'board', key: 'board.requestOk', params: { kind: c.kind, pct: Math.round(c.pct * 100) } });
+  }
+  return 'ok';
+}
+
+/** Flyt penge fra transferbudgettet til lønbudgettet (eller omvendt) – altid tilladt.
+ *  1 kr. om ugen i løn svarer til 104 kr. i transferbudget (to sæsoner). */
+export const SHIFT_WEEKS = 104;
+export function shiftBudget(toWage: boolean, amount: number): 'ok' | 'error' {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (!club || !(amount > 0)) return 'error';
+  if (toWage) {
+    const a = Math.min(amount, club.transferBudget);
+    club.transferBudget -= a;
+    club.wageBudget += Math.round(a / SHIFT_WEEKS);
+  } else {
+    const weekly = Math.min(amount, club.wageBudget);
+    club.wageBudget -= weekly;
+    club.transferBudget += weekly * SHIFT_WEEKS;
+  }
+  return 'ok';
 }
 
 // ---------- AI-managere og jobmarked ----------

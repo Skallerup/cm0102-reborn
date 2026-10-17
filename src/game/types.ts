@@ -395,6 +395,9 @@ export interface BoardState {
   /** Dato for bestyrelsens seneste kampkommentar */
   lastComment?: string;
   confidence: number; // 0-100
+  /** Seneste svar på budgetanmodninger (måned pr. type) og et åbent modbud */
+  budgetAsked?: { transfer?: string; wage?: string };
+  budgetCounter?: { kind: 'transfer' | 'wage'; pct: number; until: string };
   expectation: string; // nøgle: 'title' | 'top3' | 'tophalf' | 'mid' | 'survive' | 'promotion' | 'playoffs'
   expectedPos: number;
   warnings: number;

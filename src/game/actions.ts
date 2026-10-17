@@ -1,7 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
-import { acceptJob, applyForJob, requestBudget, requestProject } from './board';
+import { acceptJob, answerBudgetCounter, applyForJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { initKnowledge } from './scouting';
@@ -35,7 +35,9 @@ export type Action =
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number }
   | { t: 'fireStaff'; id: number }
-  | { t: 'budget'; kind: 'transfer' | 'wage' }
+  | { t: 'budget'; kind: 'transfer' | 'wage'; pct?: number }
+  | { t: 'budgetCounter'; accept: boolean }
+  | { t: 'budgetShift'; toWage: boolean; amount: number }
   | { t: 'project'; kind: 'stadium' | 'training' | 'youth' }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
   | { t: 'interact'; pid: number; kind: TalkKind }
@@ -92,7 +94,9 @@ export function applyAction(a: Action): unknown {
     case 'withdraw': { const o = myOffer(a.pid); if (o) o.status = 'withdrawn'; return 'ok'; }
     case 'hireStaff': return hireStaff(a.id);
     case 'fireStaff': return fireStaff(a.id);
-    case 'budget': return requestBudget(a.kind);
+    case 'budget': return requestBudget(a.kind, a.pct);
+    case 'budgetCounter': return answerBudgetCounter(a.accept);
+    case 'budgetShift': return shiftBudget(a.toWage, a.amount);
     case 'project': return requestProject(a.kind);
     case 'talk': return talkToPlayer(a.pid, a.choice);
     case 'interact': return interact(a.pid, a.kind);
