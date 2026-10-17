@@ -295,7 +295,7 @@ export function aiSackings() {
         if (m) { careerEnd(m, 'sacked'); m.club = 0; }
         club.manager = 0;
         openVacancy(club.id);
-        forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
+        forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' }, link: { kind: 'club', id: club.id } }); });
       }
     });
   }
@@ -307,7 +307,7 @@ export function aiSackings() {
     if (m) { careerEnd(m, 'sacked'); m.club = 0; }
     club.manager = 0;
     openVacancy(club.id);
-    forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
+    forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' }, link: { kind: 'club', id: club.id } }); });
   }
 }
 
@@ -328,7 +328,7 @@ export function summerManagerChanges() {
     if (m) { careerEnd(m, 'left'); m.club = 0; }
     club.manager = 0;
     openVacancy(club.id);
-    forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
+    forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' }, link: { kind: 'club', id: club.id } }); });
   }
 }
 

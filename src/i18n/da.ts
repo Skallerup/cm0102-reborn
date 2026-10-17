@@ -549,6 +549,8 @@ export const da: Record<string, string> = {
   'db.missing': 'Mangler filerne: {files}. Vælg hele Data-mappen.', 'db.failed': 'Filerne kunne ikke læses som en CM 01/02-database.',
   'db.privacy': 'Databasen forlader aldrig din computer – den læses og gemmes kun lokalt i din browser.',
   'db.imported': 'Importeret: {leagues} ligaer · {clubs} klubber · {players} spillere', 'db.reimport': 'Importér igen', 'db.remove': 'Fjern',
+  'vac.title': 'Stillingen som manager er ledig', 'vac.apply': 'Søg jobbet som manager', 'vac.accept': 'Tag jobbet', 'vac.offered': 'Klubben har tilbudt dig jobbet.', 'vac.rejected': 'Klubben har afvist din ansøgning.', 'vac.leaveConfirm': 'Søge jobbet hos {club}? Får du det, forlader du {current}.',
+  'vac.chance.good': 'Gode chancer – dit omdømme ({rep}) matcher klubbens ({clubRep}).', 'vac.chance.fair': 'Mulig chance – klubben ({clubRep}) er lidt over dit omdømme ({rep}).', 'vac.chance.low': 'Lille chance – klubbens omdømme ({clubRep}) er langt over dit ({rep}).', 'vac.chance.sure': '',
   'opt.news': 'Nyheder om andre klubber', 'opt.news.league': 'Kun min liga', 'opt.news.nation': 'Kun mit land', 'opt.news.world': 'Hele verden',
   'opt.save.changes': 'Efter hver ændring', 'opt.save.daily': 'Hver spildag', 'opt.save.weekly': 'Hver uge i spillet', 'opt.save.monthly': 'Hver måned i spillet', 'opt.save.off': 'Aldrig (kun manuelt)',
   'opt.save.changes.hint': 'Sikrest: alt gemmes få sekunder efter du ændrer noget, så en genindlæsning aldrig koster noget.',
