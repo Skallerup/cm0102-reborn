@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Info } from '../help';
 import { act } from '../../game/actions';
 import { dateFmt, money, t } from '../../i18n';
 import { scoutRecommendation, scoutStars } from '../../game/scouting';
 import { addDays, ageOn } from '../../game/dates';
+import type { ScoutAssignment, Staff } from '../../game/types';
 import { Bar, ClubLink, Panel, PlayerLink, RecTag, Stars, posStr } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
@@ -30,35 +31,7 @@ export function Scouting() {
         <table className="grid">
           <thead><tr><th>{t('col.name')}</th><th>{t('staff.judgingAbility')}</th><th>{t('staff.judgingPotential')}</th><th>{t('scout.assignment')}</th></tr></thead>
           <tbody>
-            {scouts.map((s) => {
-              const a = s.assignment;
-              const value = !a ? '' : a.kind === 'player' ? `p:${a.target}` : a.kind === 'nation' ? `n:${a.target}` : `l:${a.target}`;
-              return (
-                <tr key={s.id}>
-                  <td>{s.first} {s.last}</td>
-                  <td><Bar value={s.attrs.judgingAbility} max={20} /> {s.attrs.judgingAbility}</td>
-                  <td><Bar value={s.attrs.judgingPotential} max={20} /> {s.attrs.judgingPotential}</td>
-                  <td>
-                    {a?.kind === 'player' ? (
-                      <>{t('scout.watching')} <PlayerLink p={g.players[a.target as number]} /> <button className="small" onClick={() => act({ t: 'scout', staffId: s.id, assignment: null })}>×</button></>
-                    ) : (
-                      <select value={value} onChange={(e) => {
-                        const v = e.target.value;
-                        act({ t: 'scout', staffId: s.id, assignment: !v ? null : v.startsWith('n:') ? { kind: 'nation', target: Number(v.slice(2)) } : { kind: 'league', target: v.slice(2) } });
-                      }}>
-                        <option value="">{t('scout.ownLeague')}</option>
-                        <optgroup label={t('scout.leagues')}>
-                          {g.leagueOrder.filter((l) => g.leagues[l]).map((l) => <option key={l} value={`l:${l}`}>{g.nations[g.leagues[l].nation]?.name} – {g.leagues[l].name}</option>)}
-                        </optgroup>
-                        <optgroup label={t('scout.nations')}>
-                          {nations.map((n) => <option key={n} value={`n:${n}`}>{g.nations[n].name}</option>)}
-                        </optgroup>
-                      </select>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
+            {scouts.map((s) => <ScoutRow key={s.id} s={s} nations={nations} />)}
             {scouts.length === 0 && <tr><td colSpan={4} className="muted">{t('scout.none')}</td></tr>}
           </tbody>
         </table>
@@ -105,5 +78,58 @@ function ScoutFinds() {
       </tbody>
     </table>
     </>
+  );
+}
+
+/** Én scout: send ud med mål, varighed og fokus – eller kald hjem */
+function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
+  const g = useGame()!;
+  const a = s.assignment;
+  const [target, setTarget] = useState(`l:${g.clubs[g.userClub]?.league ?? ''}`);
+  const [months, setMonths] = useState(3);
+  const [focus, setFocus] = useState<'any' | 'young' | 'prime'>('any');
+  const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? g.nations[x.target as number]?.name : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${g.leagues[x.target as string]?.name ?? x.target}` : '';
+  const send = () => {
+    const kind = target.startsWith('n:') ? 'nation' : 'league';
+    const tgt = kind === 'nation' ? Number(target.slice(2)) : target.slice(2);
+    const until = months ? (() => { const d = new Date(g.date + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + months); return d.toISOString().slice(0, 10); })() : undefined;
+    act({ t: 'scout', staffId: s.id, assignment: { kind, target: tgt, since: g.date, until, focus, found: [] } });
+  };
+  const recall = () => act({ t: 'scout', staffId: s.id, assignment: null });
+  return (
+    <tr>
+      <td>{s.first} {s.last}</td>
+      <td><Bar value={s.attrs.judgingAbility} max={20} /> {s.attrs.judgingAbility}</td>
+      <td><Bar value={s.attrs.judgingPotential} max={20} /> {s.attrs.judgingPotential}</td>
+      <td>
+        {a?.kind === 'player' ? (
+          <div className="row">{t('scout.watching')} <PlayerLink p={g.players[a.target as number]} /> <button className="small" onClick={recall}>{t('scout.recall')}</button></div>
+        ) : a ? (
+          <div className="col" style={{ gap: 4 }}>
+            <div className="row"><b>{targetName(a)}</b>{a.focus && a.focus !== 'any' && <span className="tag">{t(`scout.focus.${a.focus}`)}</span>}<button className="small danger" onClick={recall}>{t('scout.recall')}</button></div>
+            <span className="muted" style={{ fontSize: 12 }}>{t('scout.status', { since: a.since ? dateFmt(a.since) : '–', n: a.found?.length ?? 0, until: a.until ? t('scout.until', { date: dateFmt(a.until) }) : '' })}</span>
+          </div>
+        ) : (
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+            <span className="muted" style={{ width: '100%', fontSize: 12 }}>{t('scout.home')}</span>
+            <select value={target} onChange={(e) => setTarget(e.target.value)}>
+              <optgroup label={t('scout.leagues')}>
+                {g.leagueOrder.filter((l) => g.leagues[l]).map((l) => <option key={l} value={`l:${l}`}>{g.nations[g.leagues[l].nation]?.name} – {g.leagues[l].name}</option>)}
+              </optgroup>
+              <optgroup label={t('scout.nations')}>
+                {nations.map((n) => <option key={n} value={`n:${n}`}>{g.nations[n].name}</option>)}
+              </optgroup>
+            </select>
+            <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>
+              {[1, 3, 6, 0].map((m) => <option key={m} value={m}>{t(`scout.dur.${m}`)}</option>)}
+            </select>
+            <select value={focus} onChange={(e) => setFocus(e.target.value as 'any')} title={t('scout.focus')}>
+              {(['any', 'young', 'prime'] as const).map((f) => <option key={f} value={f}>{t(`scout.focus.${f}`)}</option>)}
+            </select>
+            <button className="small primary" onClick={send}>{t('scout.send')}</button>
+          </div>
+        )}
+      </td>
+    </tr>
   );
 }

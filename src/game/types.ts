@@ -128,7 +128,14 @@ export type StaffRole = 'manager' | 'assistant' | 'coach' | 'physio' | 'scout';
 export interface ScoutAssignment {
   kind: 'player' | 'nation' | 'league';
   target: number | string;
+  /** Opgaven slutter (scouten vender hjem med en rapport); udeladt = indtil kaldt hjem */
   until?: string;
+  since?: string;
+  /** Fokus: kun unge eller etablerede spillere */
+  focus?: 'any' | 'young' | 'prime';
+  /** Spillere scouten har afdækket på denne tur, og dem han følger lige nu */
+  found?: number[];
+  queue?: number[];
 }
 
 export interface Staff {

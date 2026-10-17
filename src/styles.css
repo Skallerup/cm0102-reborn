@@ -363,3 +363,10 @@ tr.career-total td { border-top: 1px solid var(--line2); }
 .info-pop { position: fixed; z-index: 60; width: min(300px, calc(100vw - 24px)); display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; background: #111b33; border: 1px solid var(--line2); box-shadow: 0 18px 40px -12px rgba(0, 0, 0, 0.8); font-size: 13px; font-weight: 400; line-height: 1.5; color: var(--text); text-transform: none; letter-spacing: 0; white-space: normal; text-align: left; }
 .info-pop b { color: var(--accent); }
 @media (max-width: 760px) { .help-layout { grid-template-columns: 1fr; } }
+
+/* udvidet spillersøgning */
+.filter-row { flex-wrap: wrap; gap: 8px; }
+.filter-more { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.filter-group { display: flex; flex-direction: column; gap: 7px; }
+.filter-group h4 { margin: 0 0 2px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.filter-group label.row { gap: 6px; flex-wrap: wrap; }

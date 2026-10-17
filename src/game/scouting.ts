@@ -3,7 +3,7 @@
 // jo bedre spilleren er scoutet. Ved 100 vises den præcise værdi som i CM 01/02.
 import { hash01 } from './rng';
 import { gs, squad } from './state';
-import type { Club, Player } from './types';
+import type { Club, Player, ScoutAssignment } from './types';
 import { rng } from './rng';
 import { A, naturalRole } from './attributes';
 import { ageOn } from './dates';
@@ -104,16 +104,38 @@ export function scoutDaily() {
         if (p) g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutDone', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, read: false, link: { kind: 'player', id: pid } });
       }
     } else {
-      const clubs = Object.values(g.clubs).filter((c) => (a.kind === 'nation' ? c.nation === a.target : c.league === a.target));
-      for (let i = 0; i < 3; i++) {
-        const c = rng.pick(clubs);
-        if (!c) break;
-        const ps = squad(c.id);
-        const p = rng.pick(ps);
-        if (p) scoutKnowledge(p.id, 18 * skill + 6, s.id);
+      // turen er slut: scouten vender hjem med en rapport
+      if (a.until && g.date >= a.until) {
+        scoutReturns(s.first + ' ' + s.last, a);
+        s.assignment = null;
+        continue;
       }
+      const clubs = Object.values(g.clubs).filter((c) => (a.kind === 'nation' ? c.nation === a.target : c.league === a.target));
+      const fits = (p: Player) => {
+        if (!a.focus || a.focus === 'any') return true;
+        const age = ageOn(p.dob, g.date);
+        return a.focus === 'young' ? age <= 21 : age >= 22 && age <= 29;
+      };
+      // scouten følger to spillere ad gangen, til de er afdækket, og finder så nye
+      const queue = (a.queue ??= []).filter((id) => g.players[id] && (g.knowledge[id] ?? 0) < 60);
+      for (let tries = 0; queue.length < 2 && tries < 6; tries++) {
+        const c = rng.pick(clubs);
+        const p = c ? rng.pick(squad(c.id).filter((x) => fits(x) && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id))) : undefined;
+        if (p) queue.push(p.id);
+      }
+      a.queue = queue;
+      for (const id of queue) scoutKnowledge(id, 18 * skill + 6, s.id);
     }
   }
+}
+
+/** En scout vender hjem: rapport med antal fund og det bedste talent */
+function scoutReturns(name: string, a: ScoutAssignment) {
+  const g = gs();
+  const found = (a.found ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p);
+  const best = found.sort((x, y) => { const sx = scoutStars(x), sy = scoutStars(y); return sy.potential[0] + sy.ability[0] - (sx.potential[0] + sx.ability[0]); })[0];
+  const target = a.kind === 'nation' ? g.nations[a.target as number]?.name ?? '?' : g.leagues[a.target as string]?.name ?? String(a.target);
+  g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutReturned', params: { scout: name, target, n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, read: false, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
 }
 
 /** Kendskab fra en scout: når en spiller er godt afdækket, kommer han på listen over fund */
@@ -124,6 +146,8 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number) {
   if (before < 60 && (g.knowledge[pid] ?? 0) >= 60) {
     const finds = g.scoutFinds ?? (g.scoutFinds = {});
     finds[pid] = g.date;
+    const asg = g.staff[scoutId]?.assignment;
+    if (asg && asg.kind !== 'player') (asg.found ??= []).push(pid);
     const p = g.players[pid];
     const s = g.staff[scoutId];
     // Gode fund meldes i indbakken

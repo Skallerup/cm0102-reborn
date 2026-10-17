@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react';
 import { Info } from '../help';
-import { naturalRole } from '../../game/attributes';
+import { ATTRS, naturalRole } from '../../game/attributes';
 import { ageOn } from '../../game/dates';
-import { knowledgeOf, scoutStars } from '../../game/scouting';
-import { transferRealism } from '../../game/transfers';
+import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../game/scouting';
+import { traits, type Trait } from '../../game/personality';
+import { regionOf, type Region } from '../../game/leagues';
+import { playerInterest, transferRealism } from '../../game/transfers';
 import { act } from '../../game/actions';
 import type { Player, Role, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
@@ -56,83 +58,185 @@ function PlayerList({ players, initialSort = 'val' }: { players: Player[]; initi
   return <Table rows={players} cols={cols} rowKey={(p) => p.id} onRow={(p) => nav({ name: 'player', id: p.id })} initialSort={initialSort} limit={250} />;
 }
 
+/** Søgefelter: alle gemmes på ruten, så de huskes når man går tilbage */
+const DEFAULTS = {
+  name: '', role: '' as Role | '', minAge: 15, maxAge: 40, minValue: 0, maxValue: 0, maxWage: 0, nation: -1, league: '', tier: 0, region: '',
+  onlyFree: false, onlyListed: false, expiring: false, onlyKnown: false, realism: 0, minAbility: 0, minPotential: 0,
+  attr1: -1, attr1Min: 12, attr2: -1, attr2Min: 12, attr3: -1, attr3Min: 12, foot: '', minHeight: 0, contractBy: 0,
+  trait: '', noTrouble: false, rec: -1, interested: false, noInjured: false, notLoaned: false, shortlist: false,
+};
+type Filters = typeof DEFAULTS;
+
 function Search() {
   const g = useGame()!;
-  const [name, setName] = useRouteState('name', '');
-  const [role, setRole] = useRouteState<Role | ''>('role', '');
-  const [minAge, setMinAge] = useRouteState('minAge', 15);
-  const [maxAge, setMaxAge] = useRouteState('maxAge', 40);
-  const [maxValue, setMaxValue] = useRouteState('maxValue', 0);
-  const [nation, setNation] = useRouteState('nation', -1);
-  const [league, setLeague] = useRouteState('league', '');
-  const [onlyFree, setOnlyFree] = useRouteState('onlyFree', false);
-  const [onlyListed, setOnlyListed] = useRouteState('onlyListed', false);
-  const [expiring, setExpiring] = useRouteState('expiring', false);
-  const [onlyKnown, setOnlyKnown] = useRouteState('onlyKnown', false);
-  const [realism, setRealism] = useRouteState('realism', 0);
+  const [f, setF] = useRouteState<Filters>('filters', { ...DEFAULTS });
+  const [more, setMore] = useRouteState('more', false);
+  const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF({ ...f, [k]: v });
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => g.nations[a].name.localeCompare(g.nations[b].name)), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
+  const me = g.clubs[g.userClub];
+  const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
   const results = useMemo(() => {
-    const q = name.trim().toLowerCase();
+    const q = f.name.trim().toLowerCase();
+    const attrs = ([[f.attr1, f.attr1Min], [f.attr2, f.attr2Min], [f.attr3, f.attr3Min]] as [number, number][]).filter(([a]) => a >= 0);
     const out: Player[] = [];
     for (const p of Object.values(g.players)) {
       if (p.club === g.userClub) continue;
       if (q && !`${p.first} ${p.last}`.toLowerCase().includes(q)) continue;
       const a = ageOn(p.dob, g.date);
-      if (a < minAge || a > maxAge) continue;
-      if (maxValue && p.value > maxValue) continue;
-      if (nation >= 0 && p.nation !== nation) continue;
-      if (league && g.clubs[p.club]?.league !== league) continue;
-      if (onlyFree && p.club) continue;
-      if (onlyListed && !p.listed) continue;
-      if (expiring && (!p.contract || p.contract.expires > seasonEnd)) continue;
-      if (onlyKnown && knowledgeOf(p) < 50) continue;
-      if (role && naturalRole(p) !== role) continue;
-      if (realism) {
+      if (a < f.minAge || a > f.maxAge) continue;
+      if (f.maxValue && p.value > f.maxValue) continue;
+      if (f.minValue && p.value < f.minValue) continue;
+      if (f.maxWage && (p.contract?.wage ?? 0) > f.maxWage) continue;
+      if (f.nation >= 0 && p.nation !== f.nation) continue;
+      const club = g.clubs[p.club];
+      if (f.league && club?.league !== f.league) continue;
+      if (f.tier && (g.leagues[club?.league ?? '']?.tier ?? 0) !== f.tier) continue;
+      if (f.region && (!club || regionOf(g.nations[club.nation]?.name) !== f.region)) continue;
+      if (f.onlyFree && p.club) continue;
+      if (f.onlyListed && !p.listed) continue;
+      if (f.expiring && (!p.contract || p.contract.expires > seasonEnd)) continue;
+      if (f.contractBy && (!p.contract || Number(p.contract.expires.slice(0, 4)) > f.contractBy)) continue;
+      if (f.onlyKnown && knowledgeOf(p) < 50) continue;
+      if (f.role && naturalRole(p) !== f.role) continue;
+      if (f.foot && p.foot !== f.foot && p.foot !== 'B') continue;
+      if (f.minHeight && p.height < f.minHeight) continue;
+      if (f.noInjured && p.injury) continue;
+      if (f.notLoaned && p.loan) continue;
+      if (f.shortlist && !g.shortlist.includes(p.id)) continue;
+      if (f.minAbility || f.minPotential) {
+        const st = scoutStars(p);
+        if (f.minAbility && (st.ability[0] + st.ability[1]) / 2 < f.minAbility) continue;
+        if (f.minPotential && (st.potential[0] + st.potential[1]) / 2 < f.minPotential) continue;
+      }
+      // attributkrav – med skjulte evner bruges scoutens skøn (midten af intervallet)
+      if (attrs.some(([idx, min]) => { const [lo, hi] = attrRange(p, idx); return (lo + hi) / 2 < min; })) continue;
+      if (f.trait || f.noTrouble) {
+        if (knowledgeOf(p) < 50) continue; // personligheden kendes kun for afdækkede spillere
+        const tr = traits(p);
+        if (f.trait && !tr.includes(f.trait as Trait)) continue;
+        if (f.noTrouble && (tr.includes('troublemaker') || tr.includes('lazy'))) continue;
+      }
+      if (f.rec >= 0) { const r = scoutRecommendation(p); if (r.level < 0 || r.level > f.rec) continue; }
+      if (f.interested && me && playerInterest(p, me) !== 'yes') continue;
+      if (f.realism) {
         const r = transferRealism(p);
-        if (r.level > (realism === 1 ? 0 : 1)) continue;
+        if (r.level > (f.realism === 1 ? 0 : 1)) continue;
       }
       out.push(p);
       if (out.length > 3000) break;
     }
     return out;
-  }, [g, name, role, minAge, maxAge, maxValue, nation, league, onlyFree, onlyListed, expiring, onlyKnown, seasonEnd, realism]);
+  }, [g, f, seasonEnd, me]);
+  const attrOptions = ATTRS.slice(0, 36).map((k, i) => [i, t(`attr.${k}`)] as [number, string]).sort((a, b) => a[1].localeCompare(b[1]));
+  const attrRow = (n: 1 | 2 | 3) => {
+    const ak = `attr${n}` as 'attr1', mk = `attr${n}Min` as 'attr1Min';
+    return (
+      <label className="row" key={n}>
+        <select value={f[ak]} onChange={(e) => set(ak, Number(e.target.value))}>
+          <option value={-1}>{t('tr.f.attr')}</option>
+          {attrOptions.map(([i, label]) => <option key={i} value={i}>{label}</option>)}
+        </select>
+        {f[ak] >= 0 && <>≥ <input type="number" min={1} max={20} value={f[mk]} onChange={(e) => set(mk, Number(e.target.value))} style={{ width: 52 }} /></>}
+      </label>
+    );
+  };
+  const stars = [0, 1, 2, 3, 4, 5];
   return (
     <div>
-      <Panel title={t('tr.filters')}>
-        <div className="row">
-          <input placeholder={t('tr.name')} value={name} onChange={(e) => setName(e.target.value)} />
-          <select value={role} onChange={(e) => setRole(e.target.value as Role | '')}>{ROLES.map((r) => <option key={r} value={r}>{r ? t(`role.${r}`) : t('tr.anyPos')}</option>)}</select>
-          <label>{t('col.age')} <input type="number" value={minAge} onChange={(e) => setMinAge(Number(e.target.value))} style={{ width: 50 }} />–<input type="number" value={maxAge} onChange={(e) => setMaxAge(Number(e.target.value))} style={{ width: 50 }} /></label>
-          <select value={maxValue} onChange={(e) => setMaxValue(Number(e.target.value))}>
+      <Panel title={t('tr.filters')} right={<div className="row">
+        {active > 0 && <span className="tag">{t('tr.f.active', { n: active })}</span>}
+        <button className="small" onClick={() => setMore(!more)}>{more ? t('tr.f.less') : t('tr.f.more')}</button>
+        {active > 0 && <button className="small" onClick={() => setF({ ...DEFAULTS })}>{t('tr.f.reset')}</button>}
+      </div>}>
+        <div className="row filter-row">
+          <input placeholder={t('tr.name')} value={f.name} onChange={(e) => set('name', e.target.value)} />
+          <select value={f.role} onChange={(e) => set('role', e.target.value as Role | '')}>{ROLES.map((r) => <option key={r} value={r}>{r ? t(`role.${r}`) : t('tr.anyPos')}</option>)}</select>
+          <label>{t('col.age')} <input type="number" value={f.minAge} onChange={(e) => set('minAge', Number(e.target.value))} style={{ width: 50 }} />–<input type="number" value={f.maxAge} onChange={(e) => set('maxAge', Number(e.target.value))} style={{ width: 50 }} /></label>
+          <select value={f.maxValue} onChange={(e) => set('maxValue', Number(e.target.value))}>
             <option value={0}>{t('tr.anyValue')}</option>
             {[250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
           </select>
-          <select value={nation} onChange={(e) => setNation(Number(e.target.value))}>
+          <select value={f.nation} onChange={(e) => set('nation', Number(e.target.value))}>
             <option value={-1}>{t('tr.anyNation')}</option>
             {nations.map((n) => <option key={n} value={n}>{g.nations[n].name}</option>)}
           </select>
-          <select value={league} onChange={(e) => setLeague(e.target.value)}>
+          <select value={f.league} onChange={(e) => set('league', e.target.value)}>
             <option value="">{t('tr.anyLeague')}</option>
             {g.leagueOrder.filter((l) => g.leagues[l]).map((l) => <option key={l} value={l}>{g.nations[g.leagues[l].nation]?.name} – {g.leagues[l].name}</option>)}
           </select>
         </div>
-        <div className="row" style={{ marginTop: 6 }}>
+        <div className="row filter-row" style={{ marginTop: 6 }}>
           {g.userClub > 0 && (
-            <select value={realism} onChange={(e) => setRealism(Number(e.target.value))} title={t('real.hint')}>
+            <select value={f.realism} onChange={(e) => set('realism', Number(e.target.value))} title={t('real.hint')}>
               <option value={0}>{t('real.all')}</option>
               <option value={1}>{t('real.only')}</option>
               <option value={2}>{t('real.maybe')}</option>
             </select>
           )}
-          <label className="row"><input type="checkbox" checked={onlyFree} onChange={(e) => setOnlyFree(e.target.checked)} />{t('tr.free')}</label>
-          <label className="row"><input type="checkbox" checked={onlyListed} onChange={(e) => setOnlyListed(e.target.checked)} />{t('tr.listedOnly')}</label>
-          <label className="row"><input type="checkbox" checked={expiring} onChange={(e) => setExpiring(e.target.checked)} />{t('tr.expiring')}</label>
-          {g.options.masking && <label className="row"><input type="checkbox" checked={onlyKnown} onChange={(e) => setOnlyKnown(e.target.checked)} />{t('tr.knownOnly')}</label>}
+          <label className="row"><input type="checkbox" checked={f.onlyFree} onChange={(e) => set('onlyFree', e.target.checked)} />{t('tr.free')}</label>
+          <label className="row"><input type="checkbox" checked={f.onlyListed} onChange={(e) => set('onlyListed', e.target.checked)} />{t('tr.listedOnly')}</label>
+          <label className="row"><input type="checkbox" checked={f.expiring} onChange={(e) => set('expiring', e.target.checked)} />{t('tr.expiring')}</label>
+          {g.options.masking && <label className="row"><input type="checkbox" checked={f.onlyKnown} onChange={(e) => set('onlyKnown', e.target.checked)} />{t('tr.knownOnly')}</label>}
           <span className="muted">{results.length > 3000 ? '3000+' : results.length} {t('tr.results')}</span>
         </div>
+        {more && (
+          <div className="filter-more">
+            <div className="filter-group">
+              <h4>{t('tr.f.ability')}</h4>
+              <label className="row">{t('player.ability')} ≥ <select value={f.minAbility} onChange={(e) => set('minAbility', Number(e.target.value))}>{stars.map((n) => <option key={n} value={n}>{n ? '★'.repeat(n) : t('tr.f.any')}</option>)}</select></label>
+              <label className="row">{t('player.potential')} ≥ <select value={f.minPotential} onChange={(e) => set('minPotential', Number(e.target.value))}>{stars.map((n) => <option key={n} value={n}>{n ? '★'.repeat(n) : t('tr.f.any')}</option>)}</select></label>
+              {attrRow(1)}{attrRow(2)}{attrRow(3)}
+              {g.options.masking && <div className="muted" style={{ fontSize: 11.5 }}>{t('tr.f.attrHint')}</div>}
+            </div>
+            <div className="filter-group">
+              <h4>{t('tr.f.money')}</h4>
+              <label className="row">{t('tr.f.minValue')} <select value={f.minValue} onChange={(e) => set('minValue', Number(e.target.value))}>
+                <option value={0}>{t('tr.f.any')}</option>
+                {[250_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000].map((v) => <option key={v} value={v}>≥ {money(v)}</option>)}
+              </select></label>
+              <label className="row">{t('tr.f.maxWage')} <select value={f.maxWage} onChange={(e) => set('maxWage', Number(e.target.value))}>
+                <option value={0}>{t('tr.f.any')}</option>
+                {[2_000, 5_000, 10_000, 25_000, 50_000, 100_000, 200_000].map((v) => <option key={v} value={v}>≤ {money(v)} / {t('common.week')}</option>)}
+              </select></label>
+              <label className="row">{t('tr.f.contractBy')} <select value={f.contractBy} onChange={(e) => set('contractBy', Number(e.target.value))}>
+                <option value={0}>{t('tr.f.any')}</option>
+                {[0, 1, 2].map((d) => { const y = Number(seasonEnd.slice(0, 4)) + d; return <option key={y} value={y}>≤ {y}</option>; })}
+              </select></label>
+              <label className="row"><input type="checkbox" checked={f.interested} onChange={(e) => set('interested', e.target.checked)} />{t('tr.f.interested')}</label>
+              <label className="row"><input type="checkbox" checked={f.notLoaned} onChange={(e) => set('notLoaned', e.target.checked)} />{t('tr.f.notLoaned')}</label>
+            </div>
+            <div className="filter-group">
+              <h4>{t('tr.f.player')}</h4>
+              <label className="row">{t('tr.f.foot')} <select value={f.foot} onChange={(e) => set('foot', e.target.value)}>
+                <option value="">{t('tr.f.any')}</option><option value="L">{t('tr.f.left')}</option><option value="R">{t('tr.f.right')}</option>
+              </select></label>
+              <label className="row">{t('tr.f.height')} ≥ <select value={f.minHeight} onChange={(e) => set('minHeight', Number(e.target.value))}>
+                <option value={0}>{t('tr.f.any')}</option>{[175, 180, 185, 190].map((h) => <option key={h} value={h}>{h} cm</option>)}
+              </select></label>
+              <label className="row">{t('tr.f.trait')} <select value={f.trait} onChange={(e) => set('trait', e.target.value)}>
+                <option value="">{t('tr.f.any')}</option>{(['leader', 'professional', 'bigGame', 'loyal', 'ambitious'] as Trait[]).map((x) => <option key={x} value={x}>{t(`trait.${x}`)}</option>)}
+              </select></label>
+              <label className="row"><input type="checkbox" checked={f.noTrouble} onChange={(e) => set('noTrouble', e.target.checked)} />{t('tr.f.noTrouble')}</label>
+              <label className="row"><input type="checkbox" checked={f.noInjured} onChange={(e) => set('noInjured', e.target.checked)} />{t('tr.f.noInjured')}</label>
+            </div>
+            <div className="filter-group">
+              <h4>{t('tr.f.where')}</h4>
+              <label className="row">{t('tr.f.tier')} <select value={f.tier} onChange={(e) => set('tier', Number(e.target.value))}>
+                <option value={0}>{t('tr.f.any')}</option><option value={1}>{t('tr.f.tier1')}</option><option value={2}>{t('tr.f.tier2')}</option>
+              </select></label>
+              <label className="row">{t('tr.f.region')} <select value={f.region} onChange={(e) => set('region', e.target.value)}>
+                <option value="">{t('tr.f.any')}</option>{(['europe', 'northAmerica', 'southAmerica', 'asia', 'africa'] as Region[]).map((r) => <option key={r} value={r}>{t(`region.${r}`)}</option>)}
+              </select></label>
+              <label className="row">{t('rec.col')} <select value={f.rec} onChange={(e) => set('rec', Number(e.target.value))}>
+                <option value={-1}>{t('tr.f.any')}</option>{[0, 1, 2].map((l) => <option key={l} value={l}>≥ {t(`rec.short.l${l}`)}</option>)}
+              </select></label>
+              <label className="row"><input type="checkbox" checked={f.shortlist} onChange={(e) => set('shortlist', e.target.checked)} />{t('tr.f.shortlist')}</label>
+            </div>
+          </div>
+        )}
       </Panel>
-      <PlayerList players={results} initialSort={realism ? 'real' : 'val'} />
+      <PlayerList players={results} initialSort={f.realism ? 'real' : 'val'} />
     </div>
   );
 }
