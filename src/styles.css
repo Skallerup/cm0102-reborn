@@ -417,3 +417,4 @@ tr.career-total td { border-top: 1px solid var(--line2); }
 label.button.file-btn { display: inline-flex; align-items: center; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; background: var(--surface3); border: 1px solid var(--line2); color: var(--text); }
 label.button.file-btn.primary { background: linear-gradient(180deg, #ffd95e, #ffc21a); color: var(--accent-ink); border-color: transparent; }
 label.button.file-btn input { display: none; }
+.scout-criteria { width: 100%; flex-wrap: wrap; gap: 6px; padding-top: 4px; }

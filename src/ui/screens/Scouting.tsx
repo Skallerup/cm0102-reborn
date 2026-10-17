@@ -5,7 +5,8 @@ import { act } from '../../game/actions';
 import { dateFmt, money, t } from '../../i18n';
 import { scoutRecommendation, scoutStars } from '../../game/scouting';
 import { addDays, ageOn } from '../../game/dates';
-import type { ScoutAssignment, Staff } from '../../game/types';
+import type { Role, ScoutAssignment, Staff } from '../../game/types';
+import { ATTRS } from '../../game/attributes';
 import { Bar, ClubLink, Panel, PlayerLink, RecTag, Stars, posStr } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
@@ -89,12 +90,20 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
   const [target, setTarget] = useState(`l:${g.clubs[g.userClub]?.league ?? ''}`);
   const [months, setMonths] = useState(3);
   const [focus, setFocus] = useState<'any' | 'young' | 'prime'>('any');
+  const [role, setRole] = useState<Role | ''>('');
+  const [attr, setAttr] = useState(-1);
+  const [attrMin, setAttrMin] = useState(15);
+  const [maxValue, setMaxValue] = useState(0);
+  const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping') }));
   const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? g.nations[x.target as number]?.name : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${g.leagues[x.target as string]?.name ?? x.target}` : '';
   const send = () => {
     const kind = target.startsWith('n:') ? 'nation' : 'league';
     const tgt = kind === 'nation' ? Number(target.slice(2)) : target.slice(2);
     const until = months ? (() => { const d = new Date(g.date + 'T00:00:00Z'); d.setUTCMonth(d.getUTCMonth() + months); return d.toISOString().slice(0, 10); })() : undefined;
-    act({ t: 'scout', staffId: s.id, assignment: { kind, target: tgt, since: g.date, until, focus, found: [] } });
+    act({ t: 'scout', staffId: s.id, assignment: {
+      kind, target: tgt, since: g.date, until, focus, found: [],
+      ...(role ? { role } : {}), ...(attr >= 0 ? { attr, attrMin } : {}), ...(maxValue ? { maxValue } : {}),
+    } });
   };
   const recall = () => act({ t: 'scout', staffId: s.id, assignment: null });
   return (
@@ -107,7 +116,12 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
           <div className="row">{t('scout.watching')} <PlayerLink p={g.players[a.target as number]} /> <button className="small" onClick={recall}>{t('scout.recall')}</button></div>
         ) : a ? (
           <div className="col" style={{ gap: 4 }}>
-            <div className="row"><b>{targetName(a)}</b>{a.focus && a.focus !== 'any' && <span className="tag">{t(`scout.focus.${a.focus}`)}</span>}<button className="small danger" onClick={recall}>{t('scout.recall')}</button></div>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}><b>{targetName(a)}</b>
+              {a.focus && a.focus !== 'any' && <span className="tag">{t(`scout.focus.${a.focus}`)}</span>}
+              {a.role && <span className="tag">{t(`role.${a.role}`)}</span>}
+              {a.attr !== undefined && a.attr >= 0 && <span className="tag">{t(`attr.${ATTRS[a.attr]}`)} ≥ {a.attrMin}</span>}
+              {a.maxValue ? <span className="tag">≤ {money(a.maxValue)}</span> : null}
+              <button className="small danger" onClick={recall}>{t('scout.recall')}</button></div>
             <span className="muted" style={{ fontSize: 12 }}>{t('scout.status', { since: a.since ? dateFmt(a.since) : '–', n: a.found?.length ?? 0, until: a.until ? t('scout.until', { date: dateFmt(a.until) }) : '' })}</span>
           </div>
         ) : (
@@ -124,6 +138,19 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
               {(['any', 'young', 'prime'] as const).map((f) => <option key={f} value={f}>{t(`scout.focus.${f}`)}</option>)}
             </select>
             <button className="small primary" onClick={send}>{t('scout.send')}</button>
+            <div className="row scout-criteria">
+              <span className="muted">{t('scout.criteria')}</span>
+              <select value={role} onChange={(e) => setRole(e.target.value as Role | '')}>
+                <option value="">{t('tr.anyPos')}</option>
+                {(['GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'] as Role[]).map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
+              </select>
+              <Select value={attr} onChange={setAttr} width={170} options={[{ value: -1, label: t('tr.f.attr') }, ...attrOptions]} />
+              {attr >= 0 && <label className="row">≥ <input type="number" min={1} max={20} value={attrMin} onChange={(e) => setAttrMin(Math.max(1, Math.min(20, Number(e.target.value))))} style={{ width: 54 }} /></label>}
+              <select value={maxValue} onChange={(e) => setMaxValue(Number(e.target.value))}>
+                <option value={0}>{t('tr.anyValue')}</option>
+                {[500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
+              </select>
+            </div>
           </div>
         )}
       </td>

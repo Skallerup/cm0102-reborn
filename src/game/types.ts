@@ -133,6 +133,11 @@ export interface ScoutAssignment {
   since?: string;
   /** Fokus: kun unge eller etablerede spillere */
   focus?: 'any' | 'young' | 'prime';
+  /** Søgekriterier: position, attributkrav (index i ATTRS + minimum) og maks. værdi */
+  role?: Role;
+  attr?: number;
+  attrMin?: number;
+  maxValue?: number;
   /** Spillere scouten har afdækket på denne tur, og dem han følger lige nu */
   found?: number[];
   queue?: number[];

@@ -111,17 +111,30 @@ export function scoutDaily() {
         continue;
       }
       const clubs = Object.values(g.clubs).filter((c) => (a.kind === 'nation' ? c.nation === a.target : c.league === a.target));
+      // scoutens skøn af en evne: dårlige scouts tager mere fejl (deterministisk pr. spiller og scout)
+      const judged = (p: Player, idx: number) => p.attrs[idx] + (hash01(p.id, idx, s.id) - 0.5) * (20 - s.attrs.judgingAbility) / 3;
       const fits = (p: Player) => {
-        if (!a.focus || a.focus === 'any') return true;
         const age = ageOn(p.dob, g.date);
-        return a.focus === 'young' ? age <= 21 : age >= 22 && age <= 29;
+        if (a.focus === 'young' && age > 21) return false;
+        if (a.focus === 'prime' && (age < 22 || age > 29)) return false;
+        if (a.role && naturalRole(p) !== a.role) return false;
+        if (a.maxValue && p.value > a.maxValue) return false;
+        if (a.attr !== undefined && a.attr >= 0 && judged(p, a.attr) < (a.attrMin ?? 1) - 0.5) return false;
+        return true;
       };
-      // scouten følger to spillere ad gangen, til de er afdækket, og finder så nye
+      // scouten følger to spillere ad gangen, til de er afdækket, og finder så nye blandt dem der passer
       const queue = (a.queue ??= []).filter((id) => g.players[id] && (g.knowledge[id] ?? 0) < 60);
-      for (let tries = 0; queue.length < 2 && tries < 6; tries++) {
-        const c = rng.pick(clubs);
-        const p = c ? rng.pick(squad(c.id).filter((x) => fits(x) && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id))) : undefined;
-        if (p) queue.push(p.id);
+      if (queue.length < 2) {
+        const strict = a.role || (a.attr !== undefined && a.attr >= 0) || a.maxValue;
+        const pool = strict
+          ? clubs.flatMap((c) => squad(c.id)).filter((x) => x.club !== g.userClub && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id) && fits(x))
+          : [];
+        for (let tries = 0; queue.length < 2 && tries < 6; tries++) {
+          let p: Player | undefined;
+          if (strict) p = rng.pick(pool.filter((x) => !queue.includes(x.id)));
+          else { const c = rng.pick(clubs); p = c ? rng.pick(squad(c.id).filter((x) => fits(x) && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id))) : undefined; }
+          if (p) queue.push(p.id);
+        }
       }
       a.queue = queue;
       for (const id of queue) scoutKnowledge(id, 18 * skill + 6, s.id);
