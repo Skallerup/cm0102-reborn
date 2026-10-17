@@ -1,5 +1,6 @@
 // Central datamodel for hele spillet. Alt i GameState skal kunne serialiseres (gemmes i IndexedDB).
 import type { PressConf } from './press';
+import type { SeasonScore } from './rating';
 
 export type Lang = 'da' | 'en';
 export type Foot = 'R' | 'L' | 'B' | '';
@@ -378,6 +379,9 @@ export interface ManagerProfile {
   rivals?: Record<number, [number, number, number]>;
   /** Klubber der har fyret manageren */
   sackedBy?: number[];
+  /** Manager Score pr. sæson (ranglister) og udgangspunktet for den igangværende sæson */
+  scores?: SeasonScore[];
+  seasonStart?: { season: number; club: number; balance: number; sacked: number };
 }
 
 export interface BoardState {

@@ -8,6 +8,7 @@ import { Crest, Modal } from './components';
 import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
+import { submitPending } from '../online/rank';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
@@ -29,14 +30,15 @@ import { Awards } from './screens/Awards';
 import { Jobs } from './screens/Jobs';
 import { Options } from './screens/Options';
 import { PressScreen } from './screens/Press';
+import { RankingScreen } from './screens/Ranking';
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'],
 ];
-const MENU2: [ScreenName, string][] = [['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['options', 'nav.options']];
-const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards'];
+const MENU2: [ScreenName, string][] = [['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['options', 'nav.options']];
+const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking'];
 
 export function Shell() {
   const g = useGame()!;
@@ -79,6 +81,18 @@ export function Shell() {
     document.addEventListener('visibilitychange', onHide);
     window.addEventListener('pagehide', onHide);
     return () => { unsub(); document.removeEventListener('visibilitychange', onHide); window.removeEventListener('pagehide', onHide); };
+  }, [online]);
+  // Ranglister: send nye sæsonscorer, når sæsonen skifter (og ved start)
+  useEffect(() => {
+    if (online) return;
+    let season = hasGame() ? gs().season : 0;
+    void submitPending();
+    const unsub = subscribe(() => {
+      if (!hasGame() || gs().season === season) return;
+      season = gs().season;
+      void submitPending();
+    });
+    return () => { unsub(); };
   }, [online]);
   const handle = (r: { match?: number; stop?: string }) => {
     notify();
@@ -209,6 +223,7 @@ function Screen() {
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
     case 'press': return <PressScreen />;
+    case 'ranking': return <RankingScreen />;
   }
 }
 

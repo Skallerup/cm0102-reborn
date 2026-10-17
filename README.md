@@ -69,6 +69,12 @@ Spillet har to slags AI:
 - Model: `AI_MODEL` (standard Claude Haiku 4.5) med automatisk fallback til `AI_FALLBACK_MODEL` (standard Gemini 2.5 Flash Lite), hvis kontoen ikke har adgang. Dagligt loft `AI_DAILY_CAP` (standard 4000 kald) og 40 kald/min pr. IP via Upstash.
 - Alle journalister, medier og agenter i spillet er opfundne.
 
+## Ranglister (singleplayer)
+
+Hver sæson giver en **Manager Score** ud fra opgaven: ligaplacering og forventning (vægtet efter ligaens styrke), mesterskab (mere for underdogs), op-/nedrykning, pokaler, Europa, bestyrelsens tillid, fyringer, økonomi og spilletid til unge spillere. Se fanen *Sådan gives point* i spillet.
+
+Scorerne sendes automatisk til globale ranglister (`api/rank.ts`, Upstash Redis): karriere i alt, bedste sæson, denne måned og pr. liga. Profilen er et unikt managernavn med et hemmeligt token i browseren; kun den første indsendelse af hver sæson tæller (ingen gevinst ved at genindlæse), og serveren validerer linjer, grænser og sum. Spillet kører i browseren, så ranglisten er tillidsbaseret ud over disse kontroller.
+
 ## Spillerdatabasen
 
 Data kommer fra **[dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets)** (CC0 / public domain). Transfermarkt har ingen 1–20-attributter, så de beregnes deterministisk i `src/game/data/generate.ts`:

@@ -7,6 +7,7 @@ import { Rng, hash, rng } from './rng';
 import { addNews, addPlayer, newsRelevant, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
 import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
 import { seasonCareers } from './careers';
+import { computeSeasonScore, recordSeasonScore, startScoreSeason } from './rating';
 import { ffpReview, newSeasonBudgets, seasonPrizeMoney, sponsorSeasonBonus } from './finance';
 import { fillSquad, setupSeasonComps } from './newgame';
 import { aiFillSquads, exerciseLoanOption } from './transfers';
@@ -263,7 +264,10 @@ export function seasonRollover() {
       if (ch?.check(g)) challengeResults.set(g.active, 'won');
       else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
     }
-    boardSeasonEnd();
+    // Manager Score beregnes før bestyrelsens dom (en fyring ved sæsonslut trækker fra)
+    const score = computeSeasonScore(false);
+    const verdict = boardSeasonEnd();
+    recordSeasonScore(score, verdict === 'sacked');
   });
   seasonCareers((cid) => strengthRank(g.clubs[cid]).rank);
   updateClubReps();
@@ -299,6 +303,7 @@ export function seasonRollover() {
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
   forEachHuman(() => {
     if (g.userClub) { setBoardExpectation(); addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
+    startScoreSeason();
     initKnowledgeKeep();
     const result = challengeResults.get(g.active);
     if (result && g.challenge) {

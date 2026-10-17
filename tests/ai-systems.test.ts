@@ -9,6 +9,7 @@ import { gs, squad } from '../src/game/state';
 import { clubStrategy } from '../src/game/strategy';
 import { newTactic } from '../src/game/tactics';
 import { cliques } from '../src/game/will';
+import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
 let world: WorldData;
 beforeAll(() => {
@@ -85,4 +86,22 @@ describe('pressemøder', () => {
     expect(g.news[0].key).toBe('press.report');
     expect(squad(g.userClub).reduce((s, p) => s + p.morale, 0)).toBeGreaterThanOrEqual(before);
   }, 60_000);
+});
+
+describe('Manager Score', () => {
+  it('prognosen holder sig inden for grænserne, og summen passer', () => {
+    const s = computeSeasonScore(true)!;
+    expect(s).toBeTruthy();
+    for (const l of s.lines) {
+      const [lo, hi] = SCORE_LIMITS[l.key];
+      expect(l.pts).toBeGreaterThanOrEqual(lo);
+      expect(l.pts).toBeLessThanOrEqual(hi);
+    }
+    expect(s.lines.reduce((a, l) => a + l.pts, 0)).toBe(s.points);
+  });
+
+  it('serverens grænser er de samme som spillets', () => {
+    const src = readFileSync('api/rank.ts', 'utf8');
+    for (const [k, [lo, hi]] of Object.entries(SCORE_LIMITS)) expect(src).toContain(`${k}: [${lo}, ${hi}]`);
+  });
 });

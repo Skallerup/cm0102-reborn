@@ -1,4 +1,5 @@
 // Opret et nyt spil ud fra world.json
+import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
 import { europeanQualifiers, setupChampionsLeague, setupCup, setupLeague, setupUefaCup } from './competitions';
 import { ageOn } from './dates';
@@ -191,6 +192,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       ch.setup?.(g);
     }
   }
+  startScoreSeason();
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
   addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   rebuildIndexes();
