@@ -526,6 +526,7 @@ export const en: Record<string, string> = {
   'vac.title': 'The manager\'s job is vacant', 'vac.apply': 'Apply for the manager\'s job', 'vac.accept': 'Take the job', 'vac.offered': 'The club has offered you the job.', 'vac.rejected': 'The club has rejected your application.', 'vac.leaveConfirm': 'Apply for the job at {club}? If you get it, you leave {current}.',
   'vac.chance.good': 'Good chance – your reputation ({rep}) matches the club\'s ({clubRep}).', 'vac.chance.fair': 'Possible – the club ({clubRep}) is a little above your reputation ({rep}).', 'vac.chance.low': 'Slim chance – the club\'s reputation ({clubRep}) is far above yours ({rep}).', 'vac.chance.sure': '',
   'scout.criteria': 'Look for:',
+  'top.continueHint': 'Continues until something needs your attention (a match, a bid, news about your club …)',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',

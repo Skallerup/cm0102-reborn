@@ -1,14 +1,14 @@
 // Spillets dag-for-dag-løkke.
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, summerManagerChanges } from './board';
 import { needsWinnerFn, recordResult } from './competitions';
-import { addDays, day, month, weekday } from './dates';
+import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { gateReceipts, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
-import type { Fixture, MatchReport, Player, Tactic } from './types';
+import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
@@ -381,10 +381,28 @@ export function quickPlayUserMatch(): MatchReport | null {
 }
 
 /** Ferie / spring frem til næste kamp. Kører i bidder så UI'et forbliver responsivt. */
-export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean; autoPlay?: boolean; onProgress?: (date: string) => void; shouldStop?: () => boolean }): Promise<DayResult> {
+/** Rene informationsnyheder (andre klubbers handler, trænerskifter, klummer, kåringer …) stopper ikke Fortsæt */
+const INFO_KEYS = new Set([
+  'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',
+  'award.monthPlayer', 'award.monthManager', 'award.ballonDor', 'news.champions', 'news.cupWin', 'news.playoffWin', 'rumour.interest',
+  'news.retired', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
+]);
+export function needsAttention(n: NewsItem): boolean {
+  if (!INFO_KEYS.has(n.key)) return true;
+  // egne handler er vigtige
+  const me = gs().clubs[gs().userClub]?.name;
+  return !!me && (n.params.to === me || n.params.from === me || n.params.club === me);
+}
+
+export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean; untilNews?: boolean; maxDays?: number; autoPlay?: boolean; onProgress?: (date: string) => void; shouldStop?: () => boolean }): Promise<DayResult> {
   const g = gs();
   let steps = 0;
+  const firstNews = g.nextId.news;
+  const startDate = g.date;
   for (;;) {
+    // stop når der er kommet en ny ulæst besked (Fortsæt: kør til der sker noget)
+    if (opts.untilNews && g.dayDone && g.news.some((n) => n.id >= firstNews && !n.read && needsAttention(n))) return { stop: 'news' };
+    if (opts.maxDays && g.dayDone && daysBetween(startDate, g.date) >= opts.maxDays) return {};
     if (opts.shouldStop?.()) return {};
     if (opts.untilDate && g.date >= opts.untilDate && g.dayDone && !g.pendingFixture) return {};
     const r = continueGame();

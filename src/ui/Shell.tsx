@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { addDays } from '../game/dates';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
-import { continueGame, runUntil } from '../game/sim';
+import { needsAttention, runUntil } from '../game/sim';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest, Modal } from './components';
@@ -58,6 +58,7 @@ export function Shell() {
   }, [route]);
   const club = session() && !session()!.inGame ? undefined : g.clubs[g.userClub];
   const unread = g.news.filter((n) => !n.read).length;
+  const unreadImportant = g.news.filter((n) => !n.read && needsAttention(n)).length;
 
   useEffect(() => {
     if (!toast) return;
@@ -106,22 +107,36 @@ export function Shell() {
   // Fortsæt: læs først de ulæste beskeder én ad gangen (ældste først), derefter næste dag
   const onContinue = () => {
     if (g.pendingFixture) { nav({ name: 'match', id: g.pendingFixture }); return; }
-    const next = g.news.filter((n) => !n.read).pop();
+    // vigtige ulæste beskeder vises én ad gangen; rene informationsnyheder kan læses i indbakken
+    const next = g.news.filter((n) => !n.read && needsAttention(n)).pop();
     if (next) {
       act({ t: 'read', ids: [next.id] });
       focusNews(next.id);
       if (route.name !== 'inbox') nav({ name: 'inbox' });
       return;
     }
-    handle(continueGame());
+    // ingen ulæste: kør dage frem, indtil der sker noget (kamp, bud, ny besked …) – højst 60 dage
+    const firstNew = g.nextId.news;
+    void run({ untilMatch: true, untilNews: true, maxDays: 60 }).then((r) => {
+      if (r.match !== undefined) return;
+      const first = gs().news.filter((n) => !n.read && n.id >= firstNew && needsAttention(n)).pop() ?? gs().news.filter((n) => !n.read && n.id >= firstNew).pop();
+      if (first) {
+        act({ t: 'read', ids: [first.id] });
+        focusNews(first.id);
+        nav({ name: 'inbox' });
+      }
+    });
   };
 
   const run = async (opts: Parameters<typeof runUntil>[0]) => {
     stopRef.current = false;
-    setRunning(dateFmt(gs().date));
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { setRunning(dateFmt(d)); } });
+    // fremdriften vises først, hvis kørslen tager mere end et øjeblik (ingen blink ved 1-2 dage)
+    const t0 = Date.now();
+    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (Date.now() - t0 > 300) setRunning(dateFmt(d)); } });
     setRunning(null);
+    if (r.stop === 'news') { notify(); return r; }
     handle(r);
+    return r;
   };
 
   const items = MENU.filter(([k]) => g.userClub || UNEMPLOYED.includes(k));
@@ -143,7 +158,7 @@ export function Shell() {
           <>
             <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
             <button onClick={() => setHoliday(true)}>{t('top.holiday')}</button>
-            <button className="primary continue" onClick={onContinue} title={unread ? t('top.continueUnread', { n: unread }) : undefined}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unread > 0 && <span className="cont-badge">{unread}</span>}</button>
+            <button className="primary continue" onClick={onContinue} title={unreadImportant ? t('top.continueUnread', { n: unreadImportant }) : t('top.continueHint')}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unreadImportant > 0 && <span className="cont-badge">{unreadImportant}</span>}</button>
           </>
         )}
       </div>
