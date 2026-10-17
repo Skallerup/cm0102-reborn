@@ -3,6 +3,7 @@
 import { finalOrder } from './competitions';
 import { forEachHuman, isHumanClub } from './humans';
 import { gs, newsRelevant, addNews } from './state';
+import { openVacancy } from './board';
 import type { Staff } from './types';
 
 const mname = (m: Staff) => `${m.first} ${m.last}`.trim();
@@ -34,7 +35,7 @@ export function pickManager(clubId: number): Staff | undefined {
         careerEnd(hunted, 'poached');
         old.manager = 0;
         old.tactic = null;
-        g.vacancies.push(old.id);
+        openVacancy(old.id);
         forEachHuman(() => { if (newsRelevant(old.id, clubId)) addNews({ cat: 'job', key: 'mgr.poached', params: { manager: mname(hunted), from: old.name, to: club.name } }); });
       }
       return hunted;

@@ -1,5 +1,5 @@
 // Spillets dag-for-dag-løkke.
-import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies } from './board';
+import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, summerManagerChanges } from './board';
 import { needsWinnerFn, recordResult } from './competitions';
 import { addDays, day, month, weekday } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
@@ -312,6 +312,7 @@ function newDay() {
     });
     forEachHuman(boardMonthly);
     if (month(d) >= 9 || month(d) <= 4) aiSackings();
+    if (month(d) === 6) summerManagerChanges();
     if (month(d) >= 1 && month(d) <= 5) aiRenewals();
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }

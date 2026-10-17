@@ -1,7 +1,7 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
 import { finalOrder, sortTable } from './competitions';
 import { rng } from './rng';
-import { addDays } from './dates';
+import { addDays, daysBetween } from './dates';
 import { rulesFor } from './leagues';
 
 function rulesForLeague(league: string) {
@@ -128,7 +128,7 @@ export function sackUser(key: string) {
   g.manager.sackedBy = [...(g.manager.sackedBy ?? []), club.id].slice(-10);
   g.manager.rep = clamp(g.manager.rep - 8, 1, 100);
   club.manager = 0;
-  g.vacancies.push(club.id);
+  openVacancy(club.id);
   g.userClub = 0;
   g.tactic = null;
   g.pendingFixture = null;
@@ -200,11 +200,49 @@ export function aiSackings() {
         const m = g.staff[club.manager];
         if (m) { careerEnd(m, 'sacked'); m.club = 0; }
         club.manager = 0;
-        g.vacancies.push(club.id);
+        openVacancy(club.id);
         forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
       }
     });
   }
+  // ligaer der ikke simuleres har ingen tabel – her skifter trænerne tilfældigt (~15-20 % pr. sæson),
+  // så jobmarkedet også findes i resten af Europa
+  for (const club of Object.values(g.clubs)) {
+    if (g.comps[club.league] || club.manager <= 0 || !rng.chance(0.02)) continue;
+    const m = g.staff[club.manager];
+    if (m) { careerEnd(m, 'sacked'); m.club = 0; }
+    club.manager = 0;
+    openVacancy(club.id);
+    forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
+  }
+}
+
+/** Sæsonslut (1. juni): mange trænerskifter sker i sommerpausen – flest hos dem der skuffede */
+export function summerManagerChanges() {
+  const g = gs();
+  for (const club of Object.values(g.clubs)) {
+    if (club.manager <= 0) continue;
+    const comp = g.comps[club.league];
+    let p = 0.04;
+    if (comp?.type === 'league') {
+      const pos = sortTable(comp.table.slice()).findIndex((r) => r.club === club.id) + 1;
+      const under = pos - strengthRank(club).rank;
+      p = under >= 5 ? 0.22 : under >= 3 ? 0.1 : under <= -3 ? 0.02 : 0.04;
+    }
+    if (!rng.chance(p)) continue;
+    const m = g.staff[club.manager];
+    if (m) { careerEnd(m, 'left'); m.club = 0; }
+    club.manager = 0;
+    openVacancy(club.id);
+    forEachHuman(() => { if (newsRelevant(club.id)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: club.name, manager: m ? `${m.first} ${m.last}` : '?' } }); });
+  }
+}
+
+/** En stilling bliver ledig */
+export function openVacancy(clubId: number) {
+  const g = gs();
+  if (!g.vacancies.includes(clubId)) g.vacancies.push(clubId);
+  (g.vacancySince ??= {})[clubId] = g.date;
 }
 
 /** Fyld ledige stillinger (efter nogle dage) og send jobtilbud til brugeren */
@@ -216,7 +254,14 @@ export function fillVacancies() {
     for (const cid of g.vacancies) {
       const club = g.clubs[cid];
       if (!club || club.manager !== 0) continue;
-      if ((g.userClub === 0 || g.manager.rep > club.rep + 5) && !g.jobOffers.includes(cid) && g.manager.rep + 12 >= club.rep && rng.chance(g.userClub === 0 ? 0.35 : 0.08)) {
+      // arbejdsløs: klubber op til lidt over ens omdømme. I job: klubber på samme niveau eller lidt over –
+      // jo mere tilfreds ens nuværende bestyrelse er, jo mere attraktiv er man
+      const my = g.clubs[g.userClub];
+      const eligible = !my
+        ? g.manager.rep + 12 >= club.rep
+        : club.id !== my.id && club.rep >= my.rep - 6 && club.rep <= Math.max(g.manager.rep, my.rep) + 8;
+      const chance = !my ? 0.35 : Math.max(0.01, 0.04 + (g.board.confidence - 50) / 1000) * (club.rep > my.rep ? 1.5 : 1);
+      if (eligible && !g.jobOffers.includes(cid) && rng.chance(chance)) {
         g.jobOffers.push(cid);
         offered.add(cid);
         addNews({ cat: 'job', key: 'news.jobOffer', params: { club: club.name }, link: { kind: 'club', id: cid } });
@@ -228,13 +273,16 @@ export function fillVacancies() {
     const club = g.clubs[cid];
     if (!club || club.manager !== 0) continue;
     if (offered.has(cid)) { still.push(cid); continue; }
-    if (rng.chance(0.15)) {
+    // stillinger står typisk åbne i 1-4 uger, så man kan nå at søge dem
+    const open = g.vacancySince?.[cid] ? daysBetween(g.vacancySince[cid], g.date) : 30;
+    if (rng.chance(open < 7 ? 0 : open < 21 ? 0.12 : 0.3)) {
       const m = pickManager(cid);
       if (m) {
         m.club = cid;
         careerStart(m, cid);
         club.manager = m.id;
         club.tactic = null;
+        if (g.vacancySince) delete g.vacancySince[cid];
         forEachHuman(() => { if (newsRelevant(cid)) addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } }); });
         forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
         continue;
@@ -261,9 +309,10 @@ export function acceptJob(cid: number) {
   if (g.userClub && g.clubs[g.userClub]) {
     const oldClub = g.clubs[g.userClub];
     oldClub.manager = 0;
-    g.vacancies.push(oldClub.id);
+    openVacancy(oldClub.id);
   }
   g.vacancies = g.vacancies.filter((x) => x !== cid);
+  if (g.vacancySince) delete g.vacancySince[cid];
   forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
   g.jobOffers = [];
   takeOverClub(club);

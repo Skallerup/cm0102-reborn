@@ -544,6 +544,8 @@ export interface GameState {
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
   dayDone: boolean;
   vacancies: number[]; // klubber uden manager
+  /** Hvornår hver stilling blev ledig (klub-id → dato) */
+  vacancySince?: Record<number, string>;
   jobOffers: number[];
   lastMonthAward?: string;
   /** Online multiplayer: menneskelige managere og hvem der er "aktiv" lige nu */

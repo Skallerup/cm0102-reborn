@@ -6,7 +6,7 @@ import { Head } from './common';
 
 export function Jobs() {
   const g = useGame()!;
-  const vac = g.vacancies.map((id) => g.clubs[id]).filter((c) => c && c.manager === 0);
+  const vac = g.vacancies.map((id) => g.clubs[id]).filter((c) => c && c.manager === 0).sort((a, b) => b.rep - a.rep);
   return (
     <div>
       <Head title={t('nav.jobs')} />
