@@ -25,7 +25,7 @@ await step('startskærm', async () => {
 await step('nyt spil', async () => {
   await page.getByRole('button', { name: 'Nyt spil' }).click();
   await page.getByPlaceholder('Dit navn').fill('Smoke Tester');
-  await page.locator('select').first().waitFor();
+  await page.locator('.sel, select').first().waitFor();
   await page.getByText('FC København', { exact: true }).click();
   await shot('02-newgame');
   await page.getByRole('button', { name: 'Start karrieren' }).click();
