@@ -322,3 +322,11 @@ table.grid td.center, table.grid th.center { text-align: center; }
 
 /* tastaturgenveje giver ikke mening på touch-enheder */
 @media (hover: none) { .kbd-hint { display: none; } }
+
+/* tabeller under hinanden i fuld bredde – så handlingsknapperne aldrig klippes af */
+.cols-wide { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+.cols2 > *, .cols3 > *, .cols > *, .cols-wide > * { min-width: 0; }
+td.nowrap { white-space: nowrap; }
+td.actions { white-space: nowrap; text-align: right; }
+td.actions .row { justify-content: flex-end; flex-wrap: nowrap; }
+td.actions button + button { margin-left: 6px; }

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import { gs } from '../game/state';
@@ -146,9 +146,9 @@ export function Table<T>({ rows, cols, rowKey, onRow, initialSort, initialDir = 
   );
 }
 
-export function Panel({ title, children, right, className }: { title?: ReactNode; children: ReactNode; right?: ReactNode; className?: string }) {
+export function Panel({ title, children, right, className, style }: { title?: ReactNode; children: ReactNode; right?: ReactNode; className?: string; style?: CSSProperties }) {
   return (
-    <section className={`panel ${className ?? ''}`}>
+    <section className={`panel ${className ?? ''}`} style={style}>
       {title && <header><h3>{title}</h3>{right && <div className="right">{right}</div>}</header>}
       <div className="panel-body">{children}</div>
     </section>

@@ -140,12 +140,16 @@ function Offers() {
   const g = useGame()!;
   const [neg, setNeg] = useState<TransferOffer | null>(null);
   const [counterFor, setCounterFor] = useState<TransferOffer | null>(null);
-  const incoming = g.offers.filter((o) => o.seller === g.userClub && o.buyer !== g.userClub).slice().reverse();
-  const outgoing = g.offers.filter((o) => o.buyer === g.userClub).slice().reverse();
+  // aktive bud (som kræver handling) øverst, derefter historik – nyeste først
+  const active = (o: TransferOffer) => (['pending', 'countered', 'negotiating'].includes(o.status) ? 0 : 1);
+  const order = (list: TransferOffer[]) => list.slice().reverse().sort((a, b) => active(a) - active(b));
+  const incoming = order(g.offers.filter((o) => o.seller === g.userClub && o.buyer !== g.userClub));
+  const outgoing = order(g.offers.filter((o) => o.buyer === g.userClub));
   const status = (o: TransferOffer) => <span className={`tag ${o.status === 'completed' ? 'good' : ['rejected', 'collapsed', 'withdrawn'].includes(o.status) ? 'bad' : 'warn'}`}>{t(`offer.${o.status}`)}</span>;
   return (
-    <div className="cols2">
+    <div className="cols-wide">
       <Panel title={t('tr.incoming')} className="flush">
+        <div className="table-wrap">
         <table className="grid">
           <tbody>
             {incoming.length === 0 && <tr><td className="muted">{t('common.none')}</td></tr>}
@@ -155,7 +159,7 @@ function Offers() {
                 <td><ClubLink id={o.buyer} /></td>
                 <td className="num">{o.loan ? `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}` : money(o.fee)}</td>
                 <td>{status(o)}{o.priceRounds ? <span className="tag">{t('offer.round', { n: o.priceRounds })}</span> : null}{g.players[o.player]?.listPrice ? <div className="muted">{t('list.price')}: {money(g.players[o.player].listPrice!)}</div> : null}</td>
-                <td>
+                <td className="actions">
                   {o.status === 'pending' && (
                     <div className="row">
                       <button className="small primary" onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'accept' })}>{t('offer.accept')}</button>
@@ -168,8 +172,10 @@ function Offers() {
             ))}
           </tbody>
         </table>
+        </div>
       </Panel>
-      <Panel title={t('tr.outgoing')} className="flush">
+      <Panel title={t('tr.outgoing')} className="flush" style={outgoing.some((o) => !active(o)) && !incoming.some((o) => !active(o)) ? { order: -1 } : undefined}>
+        <div className="table-wrap">
         <table className="grid">
           <tbody>
             {outgoing.length === 0 && <tr><td className="muted">{t('common.none')}</td></tr>}
@@ -178,8 +184,8 @@ function Offers() {
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td>{o.seller ? <ClubLink id={o.seller} /> : t('common.free')}</td>
                 <td className="num">{o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)}{o.counter && o.status === 'countered' ? ` → ${money(o.counter)}` : ''}</td>
-                <td>{status(o)} <span className="muted">{dateFmt(o.created)}</span></td>
-                <td>
+                <td className="nowrap">{status(o)} <span className="muted">{dateFmt(o.created)}</span></td>
+                <td className="actions">
                   {o.status === 'negotiating' && <button className="small primary" onClick={() => setNeg(o)}>{t('offer.negotiate')}</button>}
                   {o.status === 'countered' && <button className="small primary" onClick={() => { const r = act<string>({ t: 'acceptCounter', pid: o.player }); if (r === 'ok') setNeg(o); }}>{t('offer.acceptCounter')}</button>}
                   {['pending', 'countered', 'negotiating'].includes(o.status) && <button className="small" onClick={() => act({ t: 'withdraw', pid: o.player })}>{t('offer.withdraw')}</button>}
@@ -188,6 +194,7 @@ function Offers() {
             ))}
           </tbody>
         </table>
+        </div>
       </Panel>
       {neg && <NegotiationModal offer={neg} onClose={() => setNeg(null)} />}
       {counterFor && <CounterModal offer={counterFor} onClose={() => setCounterFor(null)} />}
