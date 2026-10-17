@@ -12,7 +12,7 @@ import { loadWorld } from './world';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline';
 
-export function Start({ onLang }: { onLang: (l: Lang) => void }) {
+export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
   const [view, setView] = useState<View>(roomParam ? 'online' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
@@ -30,6 +30,7 @@ export function Start({ onLang }: { onLang: (l: Lang) => void }) {
 
   return (
     <div className="start">
+      {onHome && view === 'menu' && <button className="small start-home" onClick={onHome}>{t('start.toLanding')}</button>}
       <div className="start-box">
         <div className="logo">
           <h1>Championship Manager <span>01/02</span></h1>

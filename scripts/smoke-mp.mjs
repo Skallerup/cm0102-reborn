@@ -22,6 +22,7 @@ let code = '';
 
 await step('vært opretter online spil', async () => {
   await host.goto(url);
+  await host.locator('.lp-hero .lp-cta').click({ timeout: 5000 }).catch(() => {});
   await host.getByRole('button', { name: 'Dansk' }).click();
   await host.getByRole('button', { name: /Online multiplayer/ }).click();
   await host.getByRole('button', { name: 'Opret online spil' }).click();
@@ -40,6 +41,7 @@ await step('vært opretter online spil', async () => {
 
 await step('gæst tilmelder sig via link', async () => {
   await guest.goto(`${url}?room=${code}`);
+  await guest.locator('.lp-hero .lp-cta').click({ timeout: 5000 }).catch(() => {});
   await guest.getByPlaceholder('Dit navn').fill('Gæst');
   await guest.getByText('Brøndby IF', { exact: true }).click();
   await guest.getByRole('button', { name: 'Deltag i spillet' }).click();

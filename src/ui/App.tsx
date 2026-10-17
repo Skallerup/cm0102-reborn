@@ -7,6 +7,7 @@ import { getLast, forgetLast, loadGame } from '../game/save';
 import { openSession, savedRooms } from '../online/client';
 import { Shell } from './Shell';
 import { Start } from './Start';
+import { Landing } from './Landing';
 import { loadLogos } from './logos';
 
 void loadLogos().then(() => notify());
@@ -15,6 +16,19 @@ export default function App() {
   const g = useGame();
   const [lang, setLangState] = useState<Lang>(getLang());
   const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
+  // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
+  const [landing, setLanding] = useState(() => {
+    try { return !new URLSearchParams(location.search).get('room') && sessionStorage.getItem('cm0102.play') !== '1'; } catch { return true; }
+  });
+  const play = () => {
+    try { sessionStorage.setItem('cm0102.play', '1'); } catch { /* ignorer */ }
+    setLanding(false);
+    window.scrollTo(0, 0);
+  };
+  const home = () => {
+    try { sessionStorage.removeItem('cm0102.play'); } catch { /* ignorer */ }
+    setLanding(true);
+  };
 
   // Genoptag det seneste spil efter en genindlæsning
   useEffect(() => {
@@ -37,7 +51,8 @@ export default function App() {
   }, [resuming]);
 
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;
-  if (!g) return <Start key={lang} onLang={setLangState} />;
+  if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
+  if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
   return (
     <NavProvider key={`${g.id}-${g.lang}`} initial={{ name: g.pendingFixture ? 'match' : 'inbox', id: g.pendingFixture ?? undefined }}>
       <Shell />

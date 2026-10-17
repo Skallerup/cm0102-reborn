@@ -18,6 +18,7 @@ const step = async (name, fn) => {
 
 await step('startskærm', async () => {
   await page.goto(url);
+  await page.locator('.lp-hero .lp-cta').click({ timeout: 5000 }).catch(() => {});
   await page.getByRole('button', { name: 'Dansk' }).click();
   await shot('01-start');
 });
