@@ -65,6 +65,22 @@ export const UEFA_NATIONS = new Set([
   'Serbia', 'Ukraine', 'Denmark',
 ]);
 
+export type Region = 'europe' | 'northAmerica' | 'southAmerica' | 'asia' | 'africa';
+
+const REGION_OF: Record<string, Region> = {
+  Russia: 'europe', Wales: 'europe', 'Northern Ireland': 'europe', Ireland: 'europe', Finland: 'europe', Hungary: 'europe', Bulgaria: 'europe', Slovakia: 'europe', Slovenia: 'europe', Bosnia: 'europe', Israel: 'europe', Cyprus: 'europe', Iceland: 'europe',
+  'United States': 'northAmerica', Mexico: 'northAmerica', Canada: 'northAmerica', 'Costa Rica': 'northAmerica', Honduras: 'northAmerica', Jamaica: 'northAmerica',
+  Argentina: 'southAmerica', Brazil: 'southAmerica', Colombia: 'southAmerica', Uruguay: 'southAmerica', Chile: 'southAmerica', Peru: 'southAmerica', Ecuador: 'southAmerica', Paraguay: 'southAmerica', Venezuela: 'southAmerica', Bolivia: 'southAmerica',
+  Japan: 'asia', 'Korea, South': 'asia', 'Saudi Arabia': 'asia', Australia: 'asia', China: 'asia', Qatar: 'asia', 'United Arab Emirates': 'asia', Iran: 'asia',
+  Egypt: 'africa', Morocco: 'africa', 'South Africa': 'africa', Nigeria: 'africa', Tunisia: 'africa', Algeria: 'africa',
+};
+
+/** Verdensdel for en nation (bruges til jobtilbud) – ukendte lande regnes som Europa */
+export function regionOf(nationName: string | undefined): Region {
+  if (!nationName) return 'europe';
+  return UEFA_NATIONS.has(nationName) ? 'europe' : REGION_OF[nationName] ?? 'europe';
+}
+
 /** CL-pladser pr. landerangering (index = rang) */
 export const CL_SPOTS = [4, 4, 4, 4, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 export const UEFA_SPOTS = [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];

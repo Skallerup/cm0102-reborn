@@ -1,12 +1,18 @@
 import { act } from '../../game/actions';
+import { managerRegion } from '../../game/board';
+import { regionOf } from '../../game/leagues';
 import { t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
-import { useGame } from '../core';
+import { useGame, useRouteState } from '../core';
 import { Head } from './common';
 
 export function Jobs() {
   const g = useGame()!;
-  const vac = g.vacancies.map((id) => g.clubs[id]).filter((c) => c && c.manager === 0).sort((a, b) => b.rep - a.rep);
+  const [scope, setScope] = useRouteState<'region' | 'world'>('scope', 'region');
+  const region = managerRegion();
+  const vac = g.vacancies.map((id) => g.clubs[id]).filter((c) => c && c.manager === 0)
+    .filter((c) => scope === 'world' || regionOf(g.nations[c.nation]?.name) === region)
+    .sort((a, b) => b.rep - a.rep);
   return (
     <div>
       <Head title={t('nav.jobs')} />
@@ -26,7 +32,12 @@ export function Jobs() {
             </tbody>
           </table>
         </Panel>
-        <Panel title={t('jobs.vacancies')} className="flush">
+        <Panel title={t('jobs.vacancies')} className="flush" right={
+          <select value={scope} onChange={(e) => setScope(e.target.value as 'region')}>
+            <option value="region">{t('jobs.myRegion', { region: t(`region.${region}`) })}</option>
+            <option value="world">{t('jobs.world')}</option>
+          </select>
+        }>
           <table className="grid">
             <tbody>
               {vac.length === 0 && <tr><td className="muted">{t('common.none')}</td></tr>}

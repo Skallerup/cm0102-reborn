@@ -454,6 +454,8 @@ export const en: Record<string, string> = {
   'land.footerData': 'Player data: transfermarkt-datasets (CC0)',
   'land.disclaimer': 'Unofficial fan project. Not affiliated with, endorsed by or connected to Sports Interactive, Square Enix/Eidos or the Championship Manager trademark. Club and player names belong to their respective owners.',
   'start.toLanding': '← Home',
+  'jobs.myRegion': 'My region ({region})', 'jobs.world': 'Whole world',
+  'region.europe': 'Europe', 'region.northAmerica': 'North America', 'region.southAmerica': 'South America', 'region.asia': 'Asia and Oceania', 'region.africa': 'Africa',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',

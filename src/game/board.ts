@@ -2,7 +2,7 @@
 import { finalOrder, sortTable } from './competitions';
 import { rng } from './rng';
 import { addDays, daysBetween } from './dates';
-import { rulesFor } from './leagues';
+import { rulesFor, regionOf, type Region } from './leagues';
 
 function rulesForLeague(league: string) {
   return rulesFor(league, 20).wealth;
@@ -238,6 +238,13 @@ export function summerManagerChanges() {
   }
 }
 
+/** Den aktive managers område: nuværende klub, ellers seneste klub, ellers nationalitet */
+export function managerRegion(): Region {
+  const g = gs();
+  const club = g.clubs[g.userClub] ?? g.clubs[g.manager.history[g.manager.history.length - 1]?.club ?? -1];
+  return regionOf(g.nations[club ? club.nation : g.manager.nation]?.name);
+}
+
 /** En stilling bliver ledig */
 export function openVacancy(clubId: number) {
   const g = gs();
@@ -257,6 +264,8 @@ export function fillVacancies() {
       // arbejdsløs: klubber op til lidt over ens omdømme. I job: klubber på samme niveau eller lidt over –
       // jo mere tilfreds ens nuværende bestyrelse er, jo mere attraktiv er man
       const my = g.clubs[g.userClub];
+      // kun jobtilbud fra samme verdensdel som ens klub (eller seneste klub/nationalitet, hvis arbejdsløs)
+      if (regionOf(g.nations[club.nation]?.name) !== managerRegion()) continue;
       const eligible = !my
         ? g.manager.rep + 12 >= club.rep
         : club.id !== my.id && club.rep >= my.rep - 6 && club.rep <= Math.max(g.manager.rep, my.rep) + 8;
