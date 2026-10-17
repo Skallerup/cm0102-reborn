@@ -51,6 +51,20 @@ Før byggeriet blev der stillet 10 forslag til forbedringer. De 8 valgte er impl
 | 9 | **Hurtig simulering**: "Næste kamp", ferie til dato, spring kamp over | ✅ |
 | 10 | **Challenges + dansk/engelsk + delbar seed** | ✅ |
 
+## To databaser: moderne eller original CM 01/02
+
+Ved nyt spil vælger man database:
+
+- **Moderne 2025/26** – åbne data fra transfermarkt-datasets (CC0), følger med spillet.
+- **Original CM 01/02 (2001/02)** – fra spillerens *egen* installation af Championship Manager 01/02
+  (gratis siden 2008). Databasen er ophavsretligt beskyttet og ligger derfor **ikke** i repoet: man vælger
+  sin `Data`-mappe, og `src/game/data/cm0102.ts` læser `index.dat`, `staff.dat`, `club.dat`, `nation.dat`,
+  `club_comp.dat` og navnefilerne direkte i browseren. Resultatet gemmes lokalt (IndexedDB) – intet sendes
+  nogen steder hen. Originalens CA/PA, evner (intrinsiske evner omregnes som i CM0102Patcher), positioner,
+  personlighed og klubomdømme bruges; evner originalen ikke har sat, får en rolleprofil. De to bedste rækker
+  i hvert land importeres (ca. 70 ligaer, 1.100 klubber, 29.000 spillere), med op-/nedrykning mellem dem.
+  Filformatet er dokumenteret af fællesskabets værktøjer (TransferTool, CM0102Patcher).
+
 ## AI i spillet
 
 Spillet har to slags AI:

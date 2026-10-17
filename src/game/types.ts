@@ -581,6 +581,9 @@ export interface GameState {
   pursuits?: Pursuit[];
   /** Ventende pressemøde for den aktive manager */
   press?: PressConf | null;
+  /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
+  dbKind?: 'cm0102';
+  customRules?: Record<string, import('./leagues').LeagueRules>;
   /** Kosmetiske AI-tekster (artikler, fanindlæg …) – påvirker ikke spillets regler */
   aiText?: Record<string, string>;
 }

@@ -11,6 +11,7 @@ import { Rng, hash, rng } from './rng';
 import { addNews, addPlayer, gs, rebuildIndexes, setGame, squad } from './state';
 import { autoSelect, newTactic, FORMATIONS } from './tactics';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
+import type { CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
 import { fairTicketPrice, transferBudgetFor } from './finance';
 import { initKnowledge } from './scouting';
@@ -89,6 +90,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     vacancies: [],
     jobOffers: [],
   };
+  const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
+  if (cm) { g.dbKind = 'cm0102'; g.customRules = cm.rules as GameState['customRules']; }
   setGame(g);
 
   const leagueById = new Map(world.leagues.map((l) => [l.id, l]));
@@ -121,10 +124,16 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const p = makePlayer({
       id: r[F.id] as number, first: r[F.first] as string, last: r[F.last] as string, dob, nation: r[F.nation] as number,
       club, sub: r[F.pos] as SubPos, foot: r[F.foot] as Player['foot'], height: r[F.height] as number,
-      ca: caFromValue(value, age), value, caps: r[F.caps] as number, intGoals: r[F.intGoals] as number,
+      ca: cm?.ratings[r[F.id] as number]?.ca ?? caFromValue(value, age), value, caps: r[F.caps] as number, intGoals: r[F.intGoals] as number,
       stats: { apps: r[F.apps] as number, minutes: r[F.minutes] as number, goals: r[F.goals] as number, assists: r[F.assists] as number, yellows: r[F.yellows] as number, reds: r[F.reds] as number },
       contractEnd: (r[F.contract] as string) || undefined, date, seed, wealth,
     });
+    // CM 01/02: originalens evner, potentiale og positioner
+    const rt = cm?.ratings[p.id];
+    if (rt) {
+      // evner originalen ikke har sat (0) beholder rolleprofilen fra position og CA
+      p.ca = rt.ca; p.pa = Math.max(rt.ca, rt.pa); p.attrs = rt.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
+    }
     if (!value) p.value = valueFromCA(p.ca, p.pa, age);
     addPlayer(p);
   }
@@ -151,9 +160,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const sq = squad(c.id);
     const values = sq.map((p) => p.value).sort((a, b) => b - a).slice(0, 20);
     const sv = values.reduce((s, v) => s + v, 0);
-    c.rep = Math.round(Math.max(5, Math.min(98, (Math.log10(Math.max(sv, 1e6)) - 6) * 30)));
+    c.rep = cm?.clubRep[c.id] ?? Math.round(Math.max(5, Math.min(98, (Math.log10(Math.max(sv, 1e6)) - 6) * 30)));
     const lg = leagueById.get(c.league);
     if (lg?.tier === 2) c.rep = Math.min(c.rep, 62);
+    if (cm?.clubColors[c.id]) c.colors = cm.clubColors[c.id];
     const wealth = rulesFor(c.league, 20).wealth;
     for (const p of sq) if (p.contract) p.contract.wage = wageFor(p.value, wealth);
     const wages = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);

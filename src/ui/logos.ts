@@ -1,3 +1,4 @@
+import { gs, hasGame } from '../game/state';
 // Klublogoer hentes ved kørsel fra luukhopman/football-logos via jsDelivr (ikke bundlet i projektet)
 let base = '';
 let map: Record<string, string> = {};
@@ -14,6 +15,8 @@ export function loadLogos(): Promise<void> {
 }
 
 export function logoUrl(clubId: number): string | null {
+  // logoerne hører til den moderne database (Transfermarkt-ID'er) – ikke til CM 01/02-klubber
+  if (hasGame() && gs().dbKind === 'cm0102') return null;
   const p = map[clubId];
   return p ? base + p.split('/').map(encodeURIComponent).join('/') : null;
 }

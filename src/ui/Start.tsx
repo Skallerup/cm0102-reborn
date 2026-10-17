@@ -9,7 +9,8 @@ import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, typ
 import { Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
-import { loadWorld } from './world';
+import { forgetCMWorld, importCMFiles, loadCMWorld, loadWorld } from './world';
+import type { CMWorld } from '../game/data/cm0102';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline';
 
@@ -120,9 +121,15 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
   const [club, setClub] = useState<number>(ch?.club ?? 0);
   const [masking, setMasking] = useState(true);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
+  // database: den moderne (2025/26) eller originalen fra spillerens egen CM 01/02-installation
+  const [db, setDbState] = useState<'modern' | 'cm0102'>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'cm0102' ? 'cm0102' : 'modern'; } catch { return 'modern'; } });
+  const [needImport, setNeedImport] = useState(false);
+  const setDb = (d: 'modern' | 'cm0102') => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
 
   useEffect(() => {
-    loadWorld().then((w) => {
+    setNeedImport(false);
+    (db === 'cm0102' ? loadCMWorld() : loadWorld()).then((w) => {
+      if (!w) { setNeedImport(true); return; }
       setWorld(w);
       const names = ch ? ch.nations : DEFAULT_NATIONS;
       const ids = names.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
@@ -130,7 +137,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
       const first = w.leagues.find((l) => l.nation === ids[0]);
       if (first) setLeague(first.id);
     }).catch((e) => setErr(String(e)));
-  }, [ch]);
+  }, [ch, db]);
 
   const leagueNations = useMemo(() => {
     if (!world) return [];
@@ -138,8 +145,22 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
     return ns.sort((a, b) => world.nations[a].name.localeCompare(world.nations[b].name));
   }, [world]);
 
+  const dbPicker = !ch && (
+    <Panel title={t('db.title')}>
+      <div className="db-choice">
+        <button className={`db-opt ${db === 'modern' ? 'on' : ''}`} onClick={() => setDb('modern')}>
+          <b>{t('db.modern')}</b><span>{t('db.modernHint')}</span>
+        </button>
+        <button className={`db-opt ${db === 'cm0102' ? 'on' : ''}`} onClick={() => setDb('cm0102')}>
+          <b>{t('db.cm')}</b><span>{t('db.cmHint')}</span>
+        </button>
+      </div>
+      {db === 'cm0102' && world && <CMImportInfo world={world as CMWorld} onRemove={async () => { await forgetCMWorld(); setWorld(null); setNeedImport(true); }} onReimport={() => setNeedImport(true)} />}
+    </Panel>
+  );
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
-  if (!world) return <Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel>;
+  if (needImport) return <div>{dbPicker}<CMImport onDone={(w) => { setNeedImport(false); setWorld(w); const ids = DEFAULT_NATIONS.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0); setActive(new Set(ids)); const f = w.leagues.find((l) => l.nation === ids[0]); if (f) setLeague(f.id); }} onBack={onBack} /></div>;
+  if (!world) return <div>{dbPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
   const leagues = world.leagues.filter((l) => active.has(l.nation));
   const clubs = world.clubs.filter((c) => c[4] === league).sort((a, b) => a[2].localeCompare(b[2]));
@@ -165,6 +186,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
 
   return (
     <div>
+      {dbPicker}
       <Panel title={ch ? t(`challenge.${ch.id}.title`) : online ? t('mp.create') : t('start.new')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
         <div className="col">
           {ch && <div className="insight good">{t(`challenge.${ch.id}.desc`)}</div>}
@@ -217,6 +239,56 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
         <button className="primary" disabled={!canStart} onClick={start}>{online ? t('mp.createBtn') : t('start.begin')}</button>
       </div>
       <div className="muted" style={{ marginTop: 8 }}>{t('start.dataNote', { src: world.source })}</div>
+    </div>
+  );
+}
+
+/** Import af den originale CM 01/02-database fra spillerens egen installation */
+function CMImport({ onDone, onBack }: { onDone: (w: CMWorld) => void; onBack: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const read = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setBusy(true); setErr('');
+    try { onDone(await importCMFiles(files)); }
+    catch (e) {
+      const m = String((e as Error).message);
+      setErr(m.startsWith('missing:') ? t('db.missing', { files: m.slice(8) }) : t('db.failed'));
+    }
+    setBusy(false);
+  };
+  return (
+    <Panel title={t('db.importTitle')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
+      <div className="col">
+        <p style={{ margin: 0, lineHeight: 1.55 }}>{t('db.importIntro')}</p>
+        <ol className="db-steps">
+          <li>{t('db.step1')}</li>
+          <li>{t('db.step2')}</li>
+          <li>{t('db.step3')}</li>
+        </ol>
+        <div className="row">
+          <label className="button primary file-btn">
+            {busy ? t('db.reading') : t('db.pickFolder')}
+            <input type="file" multiple {...{ webkitdirectory: '', directory: '' }} disabled={busy} onChange={(e) => read(e.target.files)} />
+          </label>
+          <label className="button file-btn">
+            {t('db.pickFiles')}
+            <input type="file" multiple accept=".dat" disabled={busy} onChange={(e) => read(e.target.files)} />
+          </label>
+        </div>
+        {err && <div className="insight bad">{err}</div>}
+        <div className="muted" style={{ fontSize: 12 }}>{t('db.privacy')}</div>
+      </div>
+    </Panel>
+  );
+}
+
+function CMImportInfo({ world, onRemove, onReimport }: { world: CMWorld; onRemove: () => void; onReimport: () => void }) {
+  return (
+    <div className="row" style={{ marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
+      <span className="tag good">{t('db.imported', { leagues: world.leagues.length, clubs: world.clubs.length.toLocaleString(), players: world.players.length.toLocaleString() })}</span>
+      <button className="small" onClick={onReimport}>{t('db.reimport')}</button>
+      <button className="small danger" onClick={onRemove}>{t('db.remove')}</button>
     </div>
   );
 }

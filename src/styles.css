@@ -406,3 +406,14 @@ tr.career-total td { border-top: 1px solid var(--line2); }
 .filter-group { display: flex; flex-direction: column; gap: 7px; }
 .filter-group h4 { margin: 0 0 2px; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
 .filter-group label.row { gap: 6px; flex-wrap: wrap; }
+
+/* valg af database ved nyt spil */
+.db-choice { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.db-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 14px 16px; border-radius: 14px; background: var(--surface2); border: 1px solid var(--line2); box-shadow: none; }
+.db-opt b { font-size: 14px; }
+.db-opt span { color: var(--muted); font-size: 12.5px; font-weight: 400; line-height: 1.45; }
+.db-opt.on { border-color: var(--accent); background: rgba(255, 207, 63, 0.08); box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.35); }
+.db-steps { margin: 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; }
+label.button.file-btn { display: inline-flex; align-items: center; cursor: pointer; font-size: 12.5px; font-weight: 600; padding: 7px 14px; border-radius: 999px; background: var(--surface3); border: 1px solid var(--line2); color: var(--text); }
+label.button.file-btn.primary { background: linear-gradient(180deg, #ffd95e, #ffc21a); color: var(--accent-ink); border-color: transparent; }
+label.button.file-btn input { display: none; }

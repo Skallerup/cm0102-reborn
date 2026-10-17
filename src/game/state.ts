@@ -1,3 +1,4 @@
+import { LEAGUE_RULES } from './leagues';
 import { rng } from './rng';
 import type { GameState, NewsItem, Player } from './types';
 
@@ -16,6 +17,8 @@ export function hasGame(): boolean {
 }
 
 export function setGame(g: GameState | null) {
+  // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres
+  if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);
   G = g;
   if (g) rng.state = g.rng;
   rebuildIndexes();

@@ -1,3 +1,4 @@
+import { gs, hasGame } from '../game/state';
 // Spillernes virkelige karriere før spilstart (public/data/careers.json) – hentes først når en
 // spillerprofil åbnes og caches i hukommelsen.
 export interface RealSeason { season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes: number }
@@ -16,6 +17,8 @@ function load(): Promise<CareersFile | null> {
 }
 
 export async function realCareer(pid: number): Promise<RealSeason[]> {
+  // karrierefilen hører til den moderne database
+  if (hasGame() && gs().dbKind === 'cm0102') return [];
   const f = await load();
   const flat = f?.players[String(pid)];
   if (!f || !flat) return [];
