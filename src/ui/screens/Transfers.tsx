@@ -67,11 +67,21 @@ const DEFAULTS = {
   trait: '', noTrouble: false, rec: -1, interested: false, noInjured: false, notLoaned: false, shortlist: false,
 };
 type Filters = typeof DEFAULTS;
+const FILTER_KEY = 'cm0102.transferFilters';
+function loadFilters(): Partial<Filters> & { __more?: boolean } {
+  try { return JSON.parse(localStorage.getItem(FILTER_KEY) ?? '{}'); } catch { return {}; }
+}
+function saveFilters(v: Filters & { __more?: boolean }) {
+  try { localStorage.setItem(FILTER_KEY, JSON.stringify(v)); } catch { /* ignorer */ }
+}
 
 function Search() {
   const g = useGame()!;
-  const [f, setF] = useRouteState<Filters>('filters', { ...DEFAULTS });
-  const [more, setMore] = useRouteState('more', false);
+  // filtrene huskes på tværs af besøg (gemt i browseren), indtil man trykker Nulstil
+  const [f, setFRoute] = useRouteState<Filters>('filters', () => ({ ...DEFAULTS, ...loadFilters() }));
+  const [more, setMoreRoute] = useRouteState('more', () => loadFilters().__more === true);
+  const setF = (v: Filters) => { setFRoute(v); saveFilters({ ...v, __more: more }); };
+  const setMore = (v: boolean) => { setMoreRoute(v); saveFilters({ ...f, __more: v }); };
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF({ ...f, [k]: v });
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => g.nations[a].name.localeCompare(g.nations[b].name)), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
