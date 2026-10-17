@@ -482,6 +482,8 @@ export const da: Record<string, string> = {
   'start.toLanding': '← Forsiden',
   'jobs.myRegion': 'Mit område ({region})', 'jobs.world': 'Hele verden',
   'region.europe': 'Europa', 'region.northAmerica': 'Nordamerika', 'region.southAmerica': 'Sydamerika', 'region.asia': 'Asien og Oceanien', 'region.africa': 'Afrika',
+  'career.minutes': 'Min.', 'career.now': 'nu', 'career.loan': 'leje', 'career.total': 'I alt', 'career.source': 'Sæsoner før 2025/26: rigtige kampe fra transfermarkt-datasets (CC0) – kun ligaer og turneringer i datasættet. Karakterer findes kun for sæsoner spillet i spillet.',
+  'common.loading': 'Henter…',
   'opt.news': 'Nyheder om andre klubber', 'opt.news.league': 'Kun min liga', 'opt.news.nation': 'Kun mit land', 'opt.news.world': 'Hele verden',
   'opt.save.changes': 'Efter hver ændring', 'opt.save.daily': 'Hver spildag', 'opt.save.weekly': 'Hver uge i spillet', 'opt.save.monthly': 'Hver måned i spillet', 'opt.save.off': 'Aldrig (kun manuelt)',
   'opt.save.changes.hint': 'Sikrest: alt gemmes få sekunder efter du ændrer noget, så en genindlæsning aldrig koster noget.',

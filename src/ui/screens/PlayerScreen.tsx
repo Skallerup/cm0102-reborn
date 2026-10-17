@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
 import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
@@ -21,6 +21,7 @@ import { aiCall } from '../../ai/client';
 import { guessIntent } from '../../ai/fallback';
 import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
+import { realCareer, type RealSeason } from '../careers';
 
 export function PlayerScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -180,16 +181,7 @@ export function PlayerScreen({ id }: { id: number }) {
             <span>{t('col.avr')}</span><span>{p.stats.ratingCount ? avgRating(p).toFixed(2) : '-'}</span>
           </div>
         </Panel>
-        <Panel title={t('player.career')}>
-          {p.history.length === 0 ? <div className="muted">{t('player.noHistory')}</div> : (
-            <table className="grid">
-              <thead><tr><th>{t('col.season')}</th><th>{t('col.club')}</th><th className="num">{t('col.apps')}</th><th className="num">{t('col.goals')}</th><th className="num">{t('col.avr')}</th></tr></thead>
-              <tbody>{p.history.slice().reverse().map((h) => (
-                <tr key={h.season + '-' + h.club}><td>{h.season}/{String(h.season + 1).slice(2)}</td><td><ClubLink id={h.club} /></td><td className="num">{h.apps}</td><td className="num">{h.goals}</td><td className="num">{h.avg.toFixed(2)}</td></tr>
-              ))}</tbody>
-            </table>
-          )}
-        </Panel>
+        <CareerPanel pid={p.id} />
       </div>
       {bid && <BidModal pid={p.id} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
@@ -444,6 +436,56 @@ function TalkPanel({ pid }: { pid: number }) {
           </div>
         ) : res && <div className={`insight ${res.mood}`}>{t(res.key, { player: p.last })}</div>}
       </div>
+    </Panel>
+  );
+}
+
+/** Karriere: virkelige sæsoner før spilstart + sæsoner i spillet + den igangværende sæson */
+function CareerPanel({ pid }: { pid: number }) {
+  const g = useGame()!;
+  const p = g.players[pid];
+  const [real, setReal] = useState<RealSeason[] | null>(null);
+  useEffect(() => { let alive = true; realCareer(pid).then((r) => { if (alive) setReal(r); }); return () => { alive = false; }; }, [pid]);
+  if (!p) return null;
+  type Row = { key: string; season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes?: number; avg?: number; loan?: boolean; real?: boolean; live?: boolean };
+  const rows: Row[] = [
+    ...(real ?? []).map((r, i) => ({ key: `r${i}`, ...r, real: true })),
+    ...p.history.map((h, i) => ({ key: `h${i}`, ...h })),
+  ];
+  // den igangværende sæson (minus det der allerede er bogført på en tidligere klub)
+  const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
+  const liveApps = p.stats.apps + p.stats.subs - b.apps;
+  if (liveApps > 0 && p.club) {
+    const rc = p.stats.ratingCount - b.ratingCount;
+    rows.push({ key: 'live', season: g.season, club: p.club, apps: liveApps, goals: p.stats.goals - b.goals, assists: p.stats.assists - b.assists, minutes: p.stats.minutes - b.minutes, avg: rc > 0 ? (p.stats.ratingSum - b.ratingSum) / rc : undefined, loan: !!p.loan, live: true });
+  }
+  rows.sort((x, y) => y.season - x.season || (x.live ? -1 : 0));
+  const tot = rows.reduce((s, r) => ({ apps: s.apps + r.apps, goals: s.goals + r.goals, assists: s.assists + r.assists, minutes: s.minutes + (r.minutes ?? 0) }), { apps: 0, goals: 0, assists: 0, minutes: 0 });
+  const seasonLabel = (s: number) => `${s}/${String(s + 1).slice(2)}`;
+  return (
+    <Panel title={t('player.career')} className="flush">
+      {real === null && rows.length === 0 ? <div className="empty">{t('common.loading')}</div> : rows.length === 0 ? <div className="empty">{t('player.noHistory')}</div> : (
+        <div className="table-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
+          <table className="grid">
+            <thead><tr><th>{t('col.season')}</th><th>{t('col.club')}</th><th className="num">{t('col.apps')}</th><th className="num">{t('col.goals')}</th><th className="num">{t('col.assists')}</th><th className="num">{t('career.minutes')}</th><th className="num">{t('col.avr')}</th></tr></thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.key} className={r.live ? 'me' : ''}>
+                  <td className="nowrap">{seasonLabel(r.season)}{r.live && <span className="muted"> · {t('career.now')}</span>}</td>
+                  <td className="nowrap">{gs().clubs[r.club] ? <ClubLink id={r.club} long /> : <span>{r.clubName ?? '?'}</span>}{r.loan && <span className="muted"> ({t('career.loan')})</span>}</td>
+                  <td className="num">{r.apps}</td>
+                  <td className="num">{r.goals}</td>
+                  <td className="num">{r.assists}</td>
+                  <td className="num">{r.minutes ? r.minutes.toLocaleString() : '–'}</td>
+                  <td className="num">{r.avg ? r.avg.toFixed(2) : '–'}</td>
+                </tr>
+              ))}
+              <tr className="career-total"><td colSpan={2}><b>{t('career.total')}</b></td><td className="num"><b>{tot.apps}</b></td><td className="num"><b>{tot.goals}</b></td><td className="num"><b>{tot.assists}</b></td><td className="num"><b>{tot.minutes ? tot.minutes.toLocaleString() : '–'}</b></td><td /></tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      {real && real.length > 0 && <div className="muted" style={{ fontSize: 11.5, padding: '6px 12px 10px' }}>{t('career.source')}</div>}
     </Panel>
   );
 }

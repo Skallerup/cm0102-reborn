@@ -343,3 +343,4 @@ td.actions button + button { margin-left: 6px; }
 .start-home { position: fixed; top: 16px; left: 16px; z-index: 5; }
 .news-head a.link { color: inherit; text-decoration: underline; text-decoration-color: rgba(255, 207, 63, 0.4); text-underline-offset: 3px; }
 .news-head a.link:hover { text-decoration-color: currentColor; }
+tr.career-total td { border-top: 1px solid var(--line2); }

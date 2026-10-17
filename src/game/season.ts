@@ -197,13 +197,27 @@ export function youthIntake() {
   }
 }
 
+/** Bogfør sæsonens tal siden sidste skifte på en klub i karrieren */
+export function pushCareerLine(p: Player, club: number, loan: boolean) {
+  const g = gs();
+  const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
+  const apps = p.stats.apps + p.stats.subs - b.apps;
+  if (apps <= 0) return;
+  const rc = p.stats.ratingCount - b.ratingCount;
+  p.history.push({
+    season: g.season, club, apps, goals: p.stats.goals - b.goals, assists: p.stats.assists - b.assists, minutes: p.stats.minutes - b.minutes,
+    avg: rc > 0 ? Math.round(((p.stats.ratingSum - b.ratingSum) / rc) * 100) / 100 : 0, ...(loan ? { loan: true } : {}),
+  });
+  if (p.history.length > 30) p.history.shift();
+  p.split = { apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, minutes: p.stats.minutes, ratingSum: p.stats.ratingSum, ratingCount: p.stats.ratingCount };
+}
+
 function archiveStats() {
   const g = gs();
   for (const p of Object.values(g.players)) {
-    if (p.stats.apps + p.stats.subs > 0) {
-      p.history.push({ season: g.season, club: p.club, apps: p.stats.apps + p.stats.subs, goals: p.stats.goals, assists: p.stats.assists, avg: Math.round(avgRating(p) * 100) / 100 });
-      if (p.history.length > 25) p.history.shift();
-    }
+    // sæsonens tal for den nuværende klub (minus det der er bogført på en tidligere klub)
+    if (p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
+    p.split = undefined;
     p.stats = emptyStats();
     p.yellowCount = 0;
     p.banned = 0;

@@ -456,6 +456,8 @@ export const en: Record<string, string> = {
   'start.toLanding': '← Home',
   'jobs.myRegion': 'My region ({region})', 'jobs.world': 'Whole world',
   'region.europe': 'Europe', 'region.northAmerica': 'North America', 'region.southAmerica': 'South America', 'region.asia': 'Asia and Oceania', 'region.africa': 'Africa',
+  'career.minutes': 'Min', 'career.now': 'now', 'career.loan': 'loan', 'career.total': 'Total', 'career.source': 'Seasons before 2025/26: real matches from transfermarkt-datasets (CC0) – only leagues and competitions in the dataset. Ratings exist only for seasons played in the game.',
+  'common.loading': 'Loading…',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',

@@ -25,8 +25,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
+        // karrierehistorikken hentes først når en spillerprofil åbnes
+        globIgnores: ['**/data/careers.json'],
         maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         runtimeCaching: [{
+          urlPattern: /\/data\/careers\.json$/,
+          handler: 'StaleWhileRevalidate',
+          options: { cacheName: 'careers', expiration: { maxEntries: 2 } },
+        }, {
           urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
           handler: 'CacheFirst',
           options: { cacheName: 'fonts', expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
