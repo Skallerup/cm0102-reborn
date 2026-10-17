@@ -20,6 +20,8 @@ export interface EngineTeam {
   tactic: Tactic;
   players: Map<number, Player>;
   morale?: number; // holdmoral-bonus (-1..1)
+  /** Holdsnakkens virkning pr. spiller (faktor, fx 1.03) */
+  talk?: Record<number, number>;
 }
 
 export interface EngineOptions {
@@ -68,6 +70,8 @@ interface TeamRT {
   stats: MatchStatsSide;
   homeMult: number;
   moraleMult: number;
+  /** Holdsnak: faktor pr. spiller-id */
+  talk: Map<number, number>;
   all: SP[]; // alle der har været på banen
   /** AI-trænerens udgangspunkt for mentaliteten (til justeringer undervejs) */
   baseMentality?: number;
@@ -146,6 +150,7 @@ export class MatchSim {
       stats: emptyStats(),
       homeMult,
       moraleMult: 1 + (t.morale ?? 0) * 0.03,
+      talk: new Map(Object.entries(t.talk ?? {}).map(([k, v]) => [Number(k), v])),
       all: [],
     };
     t.tactic.lineup.forEach((id, slot) => {
@@ -164,11 +169,12 @@ export class MatchSim {
     const form = clamp(this.r.normal(1 + firedUp, 0.065 * (1.2 - consistency / 20) * (firedUp ? 0.7 : 1)), 0.86, 1.12);
     const imp = this.opts.importance ? 0.97 + 0.06 * (p.attrs[A.importantMatches] / 20) * this.opts.importance + (1 - this.opts.importance) * 0.03 : 1;
     const morale = 0.95 + 0.1 * (p.morale / 20);
-    const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult;
+    const talk = rt.talk.get(p.id) ?? 1;
+    const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult * talk;
     const eff = new Float32Array(36);
     for (let i = 0; i < 36; i++) eff[i] = squash(p.attrs[i]) * mult;
     // Mentale/fysiske påvirkes mindre af forkert position
-    const physMult = form * morale * rt.homeMult;
+    const physMult = form * morale * rt.homeMult * talk;
     for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = squash(p.attrs[k]) * physMult;
     const sp: SP = {
       p, team: rt.idx, slot, eff,
@@ -838,6 +844,19 @@ export class MatchSim {
     this.line('sub', sp, out);
     this.buildZones(t);
     return true;
+  }
+
+  /** Holdsnak (fx i pausen): ny faktor pr. spiller; erstatter den tidligere snaks virkning */
+  applyTalk(teamIdx: number, boosts: Record<number, number>) {
+    const t = this.teams[teamIdx];
+    for (const sp of t.on) {
+      if (sp.off) continue;
+      const old = t.talk.get(sp.p.id) ?? 1;
+      const nf = boosts[sp.p.id] ?? 1;
+      for (let i = 0; i < 36; i++) sp.eff[i] = (sp.eff[i] / old) * nf;
+    }
+    t.talk = new Map(Object.entries(boosts).map(([k, v]) => [Number(k), v]));
+    this.buildZones(t);
   }
 
   setTactic(teamIdx: number, tactic: Tactic) {

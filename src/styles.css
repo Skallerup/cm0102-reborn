@@ -436,3 +436,18 @@ label.button.file-btn input { display: none; }
 .press-answer { border-top: 1px solid var(--line); padding: 12px 16px 14px; }
 @keyframes press-in { from { opacity: 0; transform: translateY(6px); } }
 @keyframes press-dot { 50% { opacity: 0.25; transform: translateY(-2px); } }
+
+/* holdsnak */
+.tt-tones { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.tt-tone { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; padding: 10px 12px; height: auto; white-space: normal; border-radius: 12px; }
+.tt-tone .muted { font-size: 12px; font-style: italic; }
+.tt-tone.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.tt-ind { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; max-height: 320px; overflow-y: auto; }
+.tt-ind-row { gap: 8px; }
+.tt-reactions { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 4px 12px; }
+.tt-r { display: flex; align-items: center; gap: 6px; }
+.tt-r .tag { margin-left: auto; }
+
+/* kontraktklausuler */
+.clauses { display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface2); }
+.clauses .row { flex-wrap: wrap; gap: 6px; }

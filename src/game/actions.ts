@@ -14,7 +14,8 @@ import { addNews, gs, notify } from './state';
 import {
   acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
-import type { ScoutAssignment, Tactic, TransferOffer } from './types';
+import type { ContractClauses, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
+import { giveTalk, matchExpectation } from './teamtalk';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -25,13 +26,13 @@ export type Action =
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
-  | { t: 'bid'; pid: number; fee: number; loan: boolean }
+  | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number }
   | { t: 'preContract'; pid: number }
   | { t: 'shortlist'; pid: number; on: boolean }
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
-  | { t: 'negotiate'; pid: number; wage: number; years: number }
-  | { t: 'renew'; pid: number; wage: number; years: number }
-  | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number }
+  | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number }
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number }
@@ -43,6 +44,7 @@ export type Action =
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
   | { t: 'interact'; pid: number; kind: TalkKind }
   | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
+  | { t: 'matchTalk'; fixture: number; stage: TalkStage; tone: TalkTone; pids: number[]; diff: number; ratings: Record<number, number>; individual?: Record<number, TalkTone> }
   | { t: 'sponsor'; kind: 'safe' | 'bonus' | 'ambitious' }
   | { t: 'ticket'; price: number }
   | { t: 'read'; ids: number[] | 'all' }
@@ -78,18 +80,18 @@ export function applyAction(a: Action): unknown {
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
     case 'release': releasePlayer(a.pid); return 'ok';
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
-    case 'bid': return makeBid(a.pid, a.fee, a.loan);
+    case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn });
     case 'preContract': return startPreContract(a.pid);
     case 'shortlist':
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
       if (a.on) g.shortlist.push(a.pid);
       return 'ok';
     case 'scout': { const s = g.staff[a.staffId]; if (s && s.club === g.userClub) s.assignment = a.assignment; return 'ok'; }
-    case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years) : 'refused'; }
-    case 'renew': return renewContract(a.pid, a.wage, a.years);
+    case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
+    case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {
       const o = g.offers.slice().reverse().find((x) => x.player === a.pid && x.buyer === a.buyer && x.seller === g.userClub && x.status === 'pending');
-      if (o) respondToOffer(o.id, a.action, a.counter);
+      if (o) respondToOffer(o.id, a.action, a.counter, a.sellOn);
       return 'ok';
     }
     case 'acceptCounter': { const o = myOffer(a.pid); return o ? acceptCounter(o.id) : 'error'; }
@@ -103,6 +105,7 @@ export function applyAction(a: Action): unknown {
     case 'talk': return talkToPlayer(a.pid, a.choice);
     case 'interact': return interact(a.pid, a.kind);
     case 'teamTalk': return teamTalk(a.kind);
+    case 'matchTalk': { const ex = matchExpectation(a.fixture); return giveTalk({ stage: a.stage, fixture: a.fixture, e: ex.e, big: ex.big, diff: a.diff, ratings: a.ratings }, a.tone, a.pids, a.individual); }
     case 'sponsor': return chooseSponsor(a.kind);
     case 'ticket': if (club) club.ticketPrice = Math.max(1, Math.round(a.price * 100) / 100); return 'ok';
     case 'read':

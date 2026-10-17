@@ -3,7 +3,7 @@ import { finalOrder, promotionOrder } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
-import { Rng, hash, rng } from './rng';
+import { Rng, hash, hash01, rng } from './rng';
 import { addNews, addPlayer, newsRelevant, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
 import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
 import { seasonCareers } from './careers';
@@ -11,11 +11,12 @@ import { computeSeasonScore, recordSeasonScore, startScoreSeason } from './ratin
 import { ffpReview, newSeasonBudgets, seasonPrizeMoney, sponsorSeasonBonus } from './finance';
 import { fillSquad, setupSeasonComps } from './newgame';
 import { aiFillSquads, exerciseLoanOption } from './transfers';
+import { seasonWageClauses } from './clauses';
 import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { initKnowledge } from './scouting';
-import type { Player, SeasonSummary } from './types';
+import type { Club, Player, SeasonSummary } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -129,7 +130,10 @@ function contractsAndLoans() {
         const to = p.contract.futureClub;
         const fromName = g.clubs[p.club]?.name ?? '-';
         const fromClub = p.club;
-        p.contract = { wage: p.contract.futureWage ?? p.contract.wage, expires: p.contract.futureExpires ?? `${g.season + 3}-06-30` };
+        p.contract = { wage: p.contract.futureWage ?? p.contract.wage, expires: p.contract.futureExpires ?? `${g.season + 3}-06-30`, ...(p.futureClauses ?? {}) };
+        p.futureClauses = undefined;
+        p.sellOn = undefined;
+        p.addOn = undefined;
         setClub(p, to);
         p.joined = today;
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
@@ -164,35 +168,104 @@ function retirements() {
   }
 }
 
+/** Datoen for årets ungdomsdag (15. marts) */
+export function intakeDate(): string {
+  const g = gs();
+  return `${g.season + 1}-03-15`;
+}
+
+interface IntakeSpec { first: string; last: string; nation: number; dob: string; sub: SubPos; foot: 'L' | 'R'; ca: number; pa: number }
+
+/** Årets ungdomsårgang for en klub – deterministisk, så den kan forudsiges i en rapport inden ungdomsdagen */
+export function planIntake(c: Club): IntakeSpec[] {
+  const g = gs();
+  const date = intakeDate();
+  const r = new Rng(hash(g.seed, c.id, g.season, 31));
+  const n = r.int(2, 4);
+  const out: IntakeSpec[] = [];
+  for (let i = 0; i < n; i++) {
+    const nation = r.chance(0.88) ? c.nation : r.pick(Object.keys(g.names).map(Number));
+    const [first, last] = randomName(g.names, nation, r);
+    const age = r.int(15, 17);
+    const sub: SubPos = randomSub(r);
+    const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4;
+    const ca = Math.round(28 + quality * 45 + r.normal(0, 8));
+    let pa = Math.round(ca + 22 + quality * 45 + r.normal(0, 18));
+    if (r.chance(0.006 + quality * 0.01)) pa = r.int(160, 195); // wonderkid
+    const dob = randomDob(age, date, r);
+    const foot = r.chance(0.25) ? 'L' : 'R';
+    out.push({ first, last, nation, dob, sub, foot, ca, pa: Math.min(200, Math.max(ca + 5, pa)) });
+  }
+  return out;
+}
+
+export type IntakeVerdict = 'golden' | 'good' | 'average' | 'poor';
+
+/** Hvor god er årgangen i forhold til klubbens niveau? */
+export function intakeVerdict(specs: { pa: number }[], level: number): IntakeVerdict {
+  const best = Math.max(0, ...specs.map((s) => s.pa));
+  const strong = specs.filter((s) => s.pa >= level).length;
+  if (best >= level + 15 || strong >= 2) return 'golden';
+  if (best >= level - 5) return 'good';
+  if (best >= level - 25) return 'average';
+  return 'poor';
+}
+
+const VERDICTS: IntakeVerdict[] = ['poor', 'average', 'good', 'golden'];
+
+/** 1. februar: ungdomschefens rapport om den kommende årgang (kun menneskestyrede klubber) */
+export function youthPreview() {
+  const g = gs();
+  forEachHuman(() => {
+    const c = g.clubs[g.userClub];
+    if (!c) return;
+    const specs = planIntake(c);
+    const level = clubLevel(c.id);
+    // rapporten kommer fra den bedste talentbedømmer i staben – en svag bedømmer kan tage fejl
+    const staff = Object.values(g.staff).filter((s) => s.club === c.id && (s.role === 'assistant' || s.role === 'coach'));
+    const judge = staff.sort((a, b) => b.attrs.judgingPotential - a.attrs.judgingPotential)[0];
+    const skill = judge?.attrs.judgingPotential ?? 8;
+    let idx = VERDICTS.indexOf(intakeVerdict(specs, level));
+    const miss = hash01(g.seed, c.id, g.season, 41);
+    if (miss < (20 - skill) / 40) idx = Math.max(0, Math.min(3, idx + (hash01(g.seed, c.id, g.season, 42) < 0.5 ? -1 : 1)));
+    const verdict = VERDICTS[idx];
+    const best = specs.slice().sort((a, b) => b.pa - a.pa)[0];
+    const standout = best && best.pa >= level - 5 ? best.sub : undefined;
+    g.board.youthPreview = { season: g.season, verdict, n: specs.length, standout, wonderkid: !!best && best.pa >= 160 && skill >= 12 };
+    addNews({
+      cat: 'youth', key: `youth.preview.${verdict}`,
+      params: { coach: judge ? `${judge.first} ${judge.last}` : '', n: specs.length, pos: standout ?? '' },
+    });
+  });
+}
+
 /** Ungdomsårgang – kaldes i marts */
 export function youthIntake() {
   const g = gs();
   const active = new Set(g.activeNations);
   for (const c of Object.values(g.clubs)) {
     if (!active.has(c.nation) && rng.chance(0.3)) continue; // inaktive nationer får lidt færre
-    const r = new Rng(hash(g.seed, c.id, g.season, 31));
-    const n = r.int(2, 4);
-    for (let i = 0; i < n; i++) {
-      const nation = r.chance(0.88) ? c.nation : r.pick(Object.keys(g.names).map(Number));
-      const [first, last] = randomName(g.names, nation, r);
-      const age = r.int(15, 17);
-      const sub: SubPos = randomSub(r);
-      const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4;
-      const ca = Math.round(28 + quality * 45 + r.normal(0, 8));
-      let pa = Math.round(ca + 22 + quality * 45 + r.normal(0, 18));
-      if (r.chance(0.006 + quality * 0.01)) pa = r.int(160, 195); // wonderkid
+    const specs = planIntake(c);
+    const human = isHumanClub(c.id);
+    const added: [Player, SubPos][] = [];
+    for (const sp of specs) {
       const p = makePlayer({
-        id: g.nextId.player++, first, last, dob: randomDob(age, g.date, r), nation, club: c.id, sub,
-        foot: r.chance(0.25) ? 'L' : 'R', height: 0, ca, pa: Math.min(200, Math.max(ca + 5, pa)), date: g.date, seed: g.seed, regen: true,
+        id: g.nextId.player++, first: sp.first, last: sp.last, dob: sp.dob, nation: sp.nation, club: c.id, sub: sp.sub,
+        foot: sp.foot, height: 0, ca: sp.ca, pa: sp.pa, date: g.date, seed: g.seed, regen: true,
         contractEnd: `${g.season + 3}-06-30`,
       });
       p.value = Math.max(10_000, p.value);
       if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
       addPlayer(p);
-      asOwner(c.id, () => {
+      added.push([p, sp.sub]);
+      if (human) asOwner(c.id, () => {
         g.knowledge[p.id] = 100;
-        addNews({ cat: 'youth', key: 'news.youth', params: { player: pname(p), pos: sub }, link: { kind: 'player', id: p.id } });
+        addNews({ cat: 'youth', key: 'news.youth', params: { player: pname(p), pos: sp.sub }, link: { kind: 'player', id: p.id } });
       });
+    }
+    if (human && added.length) {
+      const [best, pos] = added.slice().sort((a, b) => b[0].pa - a[0].pa)[0];
+      asOwner(c.id, () => addNews({ cat: 'youth', key: 'youth.intakeDay', params: { n: added.length, player: pname(best), pos }, link: { kind: 'player', id: best.id } }));
     }
   }
 }
@@ -300,7 +373,9 @@ export function seasonRollover() {
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);
+  const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));
   promotionRelegation();
+  seasonWageClauses(tierBefore);
   // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
   for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
   archiveStats();

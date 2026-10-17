@@ -319,6 +319,7 @@ function CounterModal({ offer, onClose }: { offer: TransferOffer; onClose: () =>
   const p = g.players[offer.player];
   const buyer = g.clubs[offer.buyer];
   const [pct, setPct] = useState(130);
+  const [sellOn, setSellOn] = useState(0);
   const amount = Math.max(offer.fee + 10_000, Math.round((offer.fee * pct) / 100 / 10_000) * 10_000);
   const vsValue = amount / Math.max(1, p.value);
   const hint = pct <= 115 ? 'counter.hintSmall' : pct <= 150 ? 'counter.hintFair' : pct <= 200 ? 'counter.hintBold' : 'counter.hintRisky';
@@ -336,9 +337,10 @@ function CounterModal({ offer, onClose }: { offer: TransferOffer; onClose: () =>
         </label>
         <div className="row">{[110, 125, 150, 200].map((v) => <button key={v} className={`small ${pct === v ? 'primary' : ''}`} onClick={() => setPct(v)}>+{v - 100}%</button>)}</div>
         <div className={`insight ${pct > 200 ? 'bad' : pct <= 150 ? 'good' : 'warn'}`}>{t(hint)}</div>
+        <div className="row">{t('clause.sellOnAsk')}: {[0, 10, 15, 20, 30].map((v) => <button key={v} className={`small ${sellOn === v ? 'primary' : ''}`} onClick={() => setSellOn(v)}>{v ? `${v}%` : t('common.none')}</button>)}</div>
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={() => { act({ t: 'respond', pid: offer.player, buyer: offer.buyer, action: 'counter', counter: amount }); onClose(); }}>{t('counter.send')}</button>
+          <button className="primary" onClick={() => { act({ t: 'respond', pid: offer.player, buyer: offer.buyer, action: 'counter', counter: amount, sellOn: sellOn || undefined }); onClose(); }}>{t('counter.send')}</button>
         </div>
       </div>
     </Modal>

@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { aiCall } from '../../ai/client';
 import { gs } from '../../game/state';
 import { act } from '../../game/actions';
-import { preferredYears, wageDemand } from '../../game/transfers';
-import type { TransferOffer } from '../../game/types';
+import { clausesWorthFor, preferredYears, wageDemand } from '../../game/transfers';
+import { clauseCost } from '../../game/clauses';
+import type { ContractClauses, TransferOffer } from '../../game/types';
+import { MoneyInput } from '../components';
 import { money, t } from '../../i18n';
 import { Modal } from '../components';
 
@@ -21,6 +23,10 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const [wage, setWage] = useState(Math.round(demand / 50) * 50);
   const [years, setYears] = useState(offer?.demand?.years ?? preferredYears(p));
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  const [cl, setCl] = useState<ContractClauses>({});
+  const worth = clausesWorthFor(p, club.id, wage, years, cl);
+  const rank = 1 + Object.values(g.players).filter((x) => x.club === club.id && x.id !== p.id && x.ca > p.ca + 1).length;
+  const cost = clauseCost(p, wage, years, cl, rank);
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
   // spilleragenten: fast persona pr. spiller, replikker skrevet af AI (tallene kommer fra spillet)
   const persona = AGENT_PERSONAS[p.id % AGENT_PERSONAS.length];
@@ -49,7 +55,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   useEffect(() => { speak('opening'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const submit = () => {
-    const res = offer ? act<string>({ t: 'negotiate', pid, wage, years }) : act<string>({ t: 'renew', pid, wage, years });
+    const res = offer ? act<string>({ t: 'negotiate', pid, wage, years, clauses: cl }) : act<string>({ t: 'renew', pid, wage, years, clauses: cl });
     speak(res, { wage, years });
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 2200); }
     else if (res === 'counter') {
@@ -79,6 +85,14 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
             {[1, 2, 3, 4, 5].map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </label>
+        <Clauses p={p} c={cl} onChange={setCl} />
+        {(worth !== 0 || cost > 0) && (
+          <div className="kv">
+            <span>{t('clause.worth')}</span><span className={worth >= 0 ? 'good' : 'bad'}>{worth >= 0 ? '+' : '−'}{money(Math.abs(worth))} / {t('common.week')}</span>
+            {cost > 0 && <><span>{t('clause.cost')}</span><span>≈ {money(cost)} / {t('common.week')}</span></>}
+            <span>{t('clause.total')}</span><span><b className={wage + worth >= demand * 0.97 ? 'good' : 'warn'}>{money(wage + worth)}</b> / {money(demand)}</span>
+          </div>
+        )}
         <div className="chat">
           <div className={`chat-them insight ${msg?.tone ?? ''}`}><b>{agentName} ({t(`agent.${persona}`)}):</b> {agentLine ?? msg?.text ?? t('neg.agentOpening', { wage: money(demand), years: offer?.demand?.years ?? preferredYears(p) })}</div>
           {msg && agentLine && <div className="muted" style={{ fontSize: 12 }}>{msg.text}</div>}
@@ -91,5 +105,28 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
         </div>
       </div>
     </Modal>
+  );
+}
+
+const RISES = [0, 5, 10, 15];
+const CUTS = [0, 10, 25, 50];
+
+/** Klausuler i en kontrakt: frikøbsklausul, lønstigning, bonusser og lønnedgang ved nedrykning */
+function Clauses({ p, c, onChange }: { p: { value: number; contract: { wage: number } | null }; c: ContractClauses; onChange: (c: ContractClauses) => void }) {
+  const [open, setOpen] = useState(false);
+  const set = (k: keyof ContractClauses, v: number | undefined) => onChange({ ...c, [k]: v || undefined });
+  const n = Object.values(c).filter(Boolean).length;
+  if (!open) return <button className="small" style={{ alignSelf: 'flex-start' }} onClick={() => setOpen(true)}>+ {t('clause.add')}{n ? ` (${n})` : ''}</button>;
+  const relDefault = Math.round((p.value * 2.5) / 100_000) * 100_000;
+  return (
+    <div className="clauses">
+      <div className="muted" style={{ fontSize: 12 }}>{t('clause.intro')}</div>
+      <label className="row"><input type="checkbox" checked={!!c.release} onChange={(e) => set('release', e.target.checked ? relDefault : undefined)} /> {t('clause.release')}</label>
+      {c.release ? <div className="row" style={{ paddingLeft: 24 }}><MoneyInput value={c.release} onChange={(v) => set('release', v)} width={140} /><span className="muted">{t('clause.releaseHint')}</span></div> : null}
+      <div className="row">{t('clause.wageRise')}: {RISES.map((v) => <button key={v} className={`small ${(c.wageRise ?? 0) === v ? 'primary' : ''}`} onClick={() => set('wageRise', v)}>{v ? `+${v}%` : t('common.none')}</button>)}</div>
+      <div className="row">{t('clause.appBonus')}: <MoneyInput value={c.appBonus ?? 0} onChange={(v) => set('appBonus', v)} width={110} /></div>
+      <div className="row">{t('clause.goalBonus')}: <MoneyInput value={c.goalBonus ?? 0} onChange={(v) => set('goalBonus', v)} width={110} /></div>
+      <div className="row">{t('clause.relegationCut')}: {CUTS.map((v) => <button key={v} className={`small ${(c.relegationCut ?? 0) === v ? 'primary' : ''}`} onClick={() => set('relegationCut', v)}>{v ? `−${v}%` : t('common.none')}</button>)}</div>
+    </div>
   );
 }

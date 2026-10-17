@@ -12,7 +12,8 @@ import { clubStrategy } from './strategy';
 import { bumpFans } from './fans';
 import { pushCareerLine } from './season';
 import { playerPraises } from './will';
-import type { Club, Player, Role, TransferOffer } from './types';
+import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
+import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 
 export function windowOpen(date = gs().date): boolean {
@@ -181,7 +182,7 @@ export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'h
 
 // ---------- brugerens handlinger ----------
 
-export function makeBid(pid: number, fee: number, loan = false): TransferOffer | string {
+export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number }): TransferOffer | string {
   const g = gs();
   const p = g.players[pid];
   const buyer = g.clubs[g.userClub];
@@ -195,6 +196,8 @@ export function makeBid(pid: number, fee: number, loan = false): TransferOffer |
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,
     status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, !p.club ? 7 : humanSeller ? 5 : rng.int(1, 3)),
   };
+  if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
+  if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
   g.offers.push(o);
   if (humanSeller) {
     // Bud til en anden menneskelig manager
@@ -204,7 +207,7 @@ export function makeBid(pid: number, fee: number, loan = false): TransferOffer |
 }
 
 /** Brugeren sælger: svar på et bud */
-export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counter', counter?: number) {
+export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counter', counter?: number, sellOn?: number) {
   const g = gs();
   const o = g.offers.find((x) => x.id === id);
   if (!o || o.status !== 'pending' || o.seller !== g.userClub) return;
@@ -235,8 +238,18 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   if (action === 'counter' && counter) {
     // Prisforhandling med AI-køberen
     const max = o.maxFee ?? Math.min(buyer.transferBudget, Math.round(o.fee * 1.25));
-    if (counter <= max) {
+    // en ønsket videresalgsprocent koster køberen noget – den tæller med i deres smertegrænse
+    const extra = sellOn ? bidClauseWorth(p, counter, sellOn) : 0;
+    if (counter + extra <= max && counter <= buyer.transferBudget) {
       o.fee = counter;
+      if (sellOn) o.sellOn = sellOn;
+    } else if (sellOn && counter <= max && (o.priceRounds ?? 0) >= 1) {
+      // de betaler prisen, men vil ikke give videresalg
+      o.priceRounds = (o.priceRounds ?? 0) + 1;
+      o.fee = counter;
+      addNews({ cat: 'transfer', key: 'transfer.aiNoSellOn', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+      o.respondBy = addDays(g.date, 3);
+      return;
     } else {
       o.priceRounds = (o.priceRounds ?? 0) + 1;
       // bliver modbuddet ved at være langt over det de vil betale, eller er der forhandlet længe, går de
@@ -263,7 +276,17 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
 }
 
 /** Kontraktforhandling: brugeren tilbyder løn og længde */
-export function negotiate(offerId: number, wage: number, years: number): 'accepted' | 'counter' | 'refused' | 'budget' {
+/** Spillerens forventede plads i trupen (1 = bedst) – bruges til at vurdere bonusser */
+function rankIn(p: Player, clubId: number): number {
+  return 1 + squad(clubId).filter((x) => x.id !== p.id && x.ca > p.ca + 1).length;
+}
+
+/** Klausulernes værdi for spilleren i en given klub */
+export function clausesWorthFor(p: Player, clubId: number, wage: number, years: number, c: ContractClauses): number {
+  return clauseWorth(p, wage, years, c, rankIn(p, clubId));
+}
+
+export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' {
   const g = gs();
   const o = g.offers.find((x) => x.id === offerId);
   if (!o) return 'refused';
@@ -280,14 +303,16 @@ export function negotiate(offerId: number, wage: number, years: number): 'accept
   o.rounds = (o.rounds ?? 0) + 1;
   const yearsOk = Math.abs(years - want) <= (want >= 3 ? 2 : 1);
   if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
-  if (wage >= demand * 0.97 && yearsOk) {
+  const cl = cleanClauses(clauses);
+  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * 0.97 && yearsOk) {
     if (o.preContract) {
       p.contract = { ...(p.contract ?? { wage, expires: g.date }), futureClub: club.id, futureWage: wage, futureExpires: `${year(g.date) + years + (month(g.date) >= 7 ? 1 : 0)}-06-30` };
+      p.futureClauses = Object.keys(cl).length ? cl : undefined;
       o.status = 'completed';
       addNews({ cat: 'transfer', key: 'transfer.preContract', params: { player: pname(p), club: club.name }, link: { kind: 'player', id: p.id } });
       return 'accepted';
     }
-    completeTransfer(o, wage, years);
+    completeTransfer(o, wage, years, cl);
     return 'accepted';
   }
   if (o.rounds >= 3) {
@@ -303,7 +328,7 @@ function currentBill(clubId: number) {
   return squad(clubId).reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
 }
 
-export function completeTransfer(o: TransferOffer, wage: number, years: number) {
+export function completeTransfer(o: TransferOffer, wage: number, years: number, clauses?: ContractClauses) {
   const g = gs();
   const p = g.players[o.player];
   const buyer = g.clubs[o.buyer];
@@ -312,6 +337,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
   if (o.loan) {
     p.loan = { from: p.club, until: `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
   } else {
+    // en tidligere klub kan have krav på en del af fortjenesten
+    if (o.fee > 0) settleSellOn(p, o.fee, seller);
     buyer.balance -= o.fee;
     buyer.transferBudget = Math.max(0, buyer.transferBudget - o.fee);
     buyer.finance.transfersOut += o.fee;
@@ -321,7 +348,11 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number) 
       seller.transferBudget += Math.round(o.fee * (isHumanClub(seller.id) ? 0.5 : 0.6));
     }
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
-    p.contract = { wage, expires: exp };
+    const rel = isHumanClub(buyer.id) ? undefined : defaultRelease(p, buyer);
+    p.contract = { wage, expires: exp, ...(clauses ?? {}), ...(rel ? { release: rel } : {}) };
+    p.addOn = undefined;
+    if (seller && o.sellOn) p.sellOn = { club: seller.id, pct: o.sellOn, base: o.fee };
+    if (seller && o.addOn) p.addOn = { club: seller.id, payer: buyer.id, fee: o.addOn, left: ADDON_APPS };
   }
   // skifte midt i sæsonen: bogfør tallene hos den gamle klub
   if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
@@ -390,7 +421,7 @@ export function releasePlayer(pid: number) {
 }
 
 /** Forlæng kontrakt for egen spiller – brugeren tilbyder løn/år */
-export function renewContract(pid: number, wage: number, years: number): 'accepted' | 'counter' | 'refused' | 'budget' {
+export function renewContract(pid: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' {
   const g = gs();
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
@@ -398,9 +429,10 @@ export function renewContract(pid: number, wage: number, years: number): 'accept
   if ((p.unhappy ?? 0) > 70 && p.attrs[43] < 10) return 'refused';
   const demand = wageDemand(p, club);
   if (currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget) return 'budget';
-  if (wage >= demand * 0.97) {
+  const cl = cleanClauses(clauses);
+  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * 0.97) {
     const startYear = year(g.date) + (month(g.date) >= 7 ? 1 : 0);
-    p.contract = { wage, expires: `${startYear + years - 1}-06-30` };
+    p.contract = { wage, expires: `${startYear + years - 1}-06-30`, ...cl };
     const hadDemand = !!p.demand;
     p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
@@ -455,9 +487,18 @@ export function processOffers() {
         }
         continue;
       }
-      let d = sellerDecision(p, o.fee, buyer);
+      // frikøbsklausulen er betalt: sælgeren kan ikke sige nej
+      if (p.contract?.release && o.fee >= p.contract.release) {
+        o.status = 'negotiating';
+        o.respondBy = addDays(g.date, 10);
+        addNews({ cat: 'transfer', key: 'transfer.releaseMet', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+        continue;
+      }
+      const worth = bidClauseWorth(p, o.fee, o.sellOn, o.addOn);
+      let d = sellerDecision(p, o.fee + worth, buyer);
+      if (d.answer === 'counter' && d.counter) d.counter = roundValue(Math.max(o.fee, d.counter - worth));
       o.rival = rivalBid(o, p);
-      if (o.rival && d.answer !== 'notforsale' && o.fee < o.rival.fee) {
+      if (o.rival && d.answer !== 'notforsale' && o.fee + worth < o.rival.fee) {
         d = { answer: 'counter', counter: roundValue(o.rival.fee * 1.05) };
         addNews({ cat: 'transfer', key: 'transfer.biddingWar', params: { player: pname(p), club: sellerName(o.rival.club), fee: o.rival.fee }, link: { kind: 'offer', id: o.id } });
       }
@@ -816,7 +857,8 @@ export function aiRenewals() {
     const wanted = (depthRank(p) < (REQUIRED[naturalRole(p)] ?? 2) && age <= 34) || (p.ca >= lv - 15 && age <= 32) || (p.ca >= lv - 3 && age <= 38) || (age <= 23 && p.pa >= lv - 5) || (left < 22 && age <= 34 && p.ca >= lv - 30);
     if (!wanted) continue;
     const club = g.clubs[p.club];
-    p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30` };
+    const rel = defaultRelease(p, club);
+    p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30`, ...(rel ? { release: rel } : {}) };
     staying.set(p.club, left + 1);
   }
 }
@@ -988,3 +1030,37 @@ export function aiBidsForListed() {
 }
 
 registerAskingPrice(askingPrice, playerInterest);
+
+// ---------- frikøbsklausuler hos menneskestyrede klubber ----------
+
+/**
+ * Ugentligt i transfervinduet: AI-klubber aktiverer billige frikøbsklausuler hos menneskestyrede klubber.
+ * Spilleren bestemmer selv, om han vil skifte.
+ */
+export function aiReleaseClauses() {
+  const g = gs();
+  if (!windowOpen()) return;
+  const clubs = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.balance > 0);
+  for (const p of Object.values(g.players)) {
+    const rel = p.contract?.release;
+    if (!rel || !p.club || !isHumanClub(p.club) || p.loan || p.contract?.futureClub) continue;
+    const cur = g.clubs[p.club];
+    // jo billigere klausulen er i forhold til værdien, jo mere fristende
+    const bargain = p.value / rel;
+    const chance = bargain >= 1.5 ? 0.35 : bargain >= 1 ? 0.18 : bargain >= 0.7 ? 0.06 : 0.015;
+    if (!rng.chance(chance)) continue;
+    const buyers = clubs.filter((c) => c.transferBudget >= rel && c.rep >= cur.rep - 5 && p.ca >= clubLevel(c.id) - 8 && playerInterest(p, c) === 'yes');
+    if (!buyers.length) continue;
+    const buyer = buyers.sort((a, b) => b.rep - a.rep)[Math.min(buyers.length - 1, rng.int(0, 2))];
+    // spilleren vælger: større klub eller utilfreds → ja
+    const keen = p.wantsAway || buyer.rep > cur.rep + 3 || (p.unhappy ?? 0) > 40 || (buyer.rep >= cur.rep - 5 && p.morale < 10);
+    if (!keen) {
+      asOwner(cur.id, () => addNews({ cat: 'transfer', key: 'clause.releaseDeclined', params: { player: pname(p), club: buyer.name, fee: rel }, link: { kind: 'player', id: p.id } }));
+      continue;
+    }
+    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: buyer.id, seller: cur.id, fee: rel, loan: false, status: 'negotiating', created: g.date, respondBy: g.date };
+    g.offers.push(o);
+    asOwner(cur.id, () => addNews({ cat: 'transfer', key: 'clause.releaseTriggered', params: { player: pname(p), club: buyer.name, fee: rel }, link: { kind: 'player', id: p.id } }));
+    completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
+  }
+}

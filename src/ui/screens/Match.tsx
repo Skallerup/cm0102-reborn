@@ -12,9 +12,11 @@ import { Head } from './common';
 import { TacticEditor } from './Tactics';
 import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
+import { TeamTalk } from '../teamtalk';
+import { talkDone } from '../../game/teamtalk';
 
 // Den igangværende kamp overlever navigation mellem skærme
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -63,6 +65,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
           {rep.insights.map((i, k) => <div key={k} className={`insight ${i.tone}`}>{t(i.key, { ...i.params, lane: i.params?.lane ? t(`lane.${i.params.lane}`) : undefined })}</div>)}
         </Panel>
       </div>
+      {isToday && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
       {isToday ? (
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onQuick}>{t('match.quick')}</button>
@@ -122,6 +125,12 @@ function LiveMatch({ id }: { id: number }) {
     }
     pull();
     if (sim.finished && !report) setReport(sim.report());
+    // pausen: stop og giv holdet en peptalk
+    else if (sim.half === 2 && !L.halfShown && !talkDone(id, 'half')) {
+      L.halfShown = true;
+      setPaused(true);
+      setTab('talk');
+    }
     force((x) => x + 1);
   };
 
@@ -167,6 +176,10 @@ function LiveMatch({ id }: { id: number }) {
 
   const st = sim.teams.map((tm) => tm.stats);
   const myLive = sim.live(me);
+  const halfTalk = sim.half === 2 && !report && (tab === 'talk' || (!talkDone(id, 'half') && sim.minute <= 50));
+  const myGoals = sim.teams[me].stats.goals - sim.teams[1 - me].stats.goals;
+  const liveRatings = Object.fromEntries(myLive.on.filter((s) => !s.off).map((s) => [s.id, Math.round(s.rating * 10) / 10]));
+
   const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result);
   const minute = sim.finished ? t('match.ft') : `${sim.minute}'`;
 
@@ -182,7 +195,11 @@ function LiveMatch({ id }: { id: number }) {
       </Head>
       <Scoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} minute={minute + (sim.pens ? ` (${t('fix.pens')} ${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ` · ${t('match.paused')}` : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
-      <Tabs tabs={[['commentary', t('match.commentary')], ['stats', t('match.stats')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')]]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['commentary', t('match.commentary')], ['stats', t('match.stats')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+      {tab === 'talk' && halfTalk && (
+        <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
+          onGiven={(boosts) => sim.applyTalk(me, boosts)} />
+      )}
       {msg && <div className="insight">{msg}</div>}
       {tab === 'commentary' && (
         <div className="cols" style={{ gridTemplateColumns: '2fr 1fr' }}>

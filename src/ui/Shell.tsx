@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { addDays } from '../game/dates';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
-import { needsAttention, runUntil } from '../game/sim';
+import { runUntil } from '../game/sim';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest, Modal } from './components';
@@ -58,7 +58,7 @@ export function Shell() {
   }, [route]);
   const club = session() && !session()!.inGame ? undefined : g.clubs[g.userClub];
   const unread = g.news.filter((n) => !n.read).length;
-  const unreadImportant = g.news.filter((n) => !n.read && needsAttention(n)).length;
+  const unreadImportant = g.news.filter((n) => !n.read).length;
 
   useEffect(() => {
     if (!toast) return;
@@ -105,26 +105,20 @@ export function Shell() {
   };
 
   // Fortsæt: læs først de ulæste beskeder én ad gangen (ældste først), derefter næste dag
+  const showOldestUnread = (news: typeof g.news) => {
+    const next = news.filter((n) => !n.read).pop();
+    if (!next) return false;
+    act({ t: 'read', ids: [next.id] });
+    focusNews(next.id);
+    if (route.name !== 'inbox') nav({ name: 'inbox' });
+    return true;
+  };
   const onContinue = () => {
     if (g.pendingFixture) { nav({ name: 'match', id: g.pendingFixture }); return; }
-    // vigtige ulæste beskeder vises én ad gangen; rene informationsnyheder kan læses i indbakken
-    const next = g.news.filter((n) => !n.read && needsAttention(n)).pop();
-    if (next) {
-      act({ t: 'read', ids: [next.id] });
-      focusNews(next.id);
-      if (route.name !== 'inbox') nav({ name: 'inbox' });
-      return;
-    }
+    if (showOldestUnread(g.news)) return;
     // ingen ulæste: kør dage frem, indtil der sker noget (kamp, bud, ny besked …) – højst 60 dage
-    const firstNew = g.nextId.news;
     void run({ untilMatch: true, untilNews: true, maxDays: 60 }).then((r) => {
-      if (r.match !== undefined) return;
-      const first = gs().news.filter((n) => !n.read && n.id >= firstNew && needsAttention(n)).pop() ?? gs().news.filter((n) => !n.read && n.id >= firstNew).pop();
-      if (first) {
-        act({ t: 'read', ids: [first.id] });
-        focusNews(first.id);
-        nav({ name: 'inbox' });
-      }
+      if (r.match === undefined) showOldestUnread(gs().news);
     });
   };
 

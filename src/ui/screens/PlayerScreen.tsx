@@ -6,7 +6,7 @@ import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, loanSuitors, windowOpen } from '../../game/transfers';
-import type { TransferOffer } from '../../game/types';
+import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
 import { AttrVal, Bar, ClubLink, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
@@ -69,6 +69,10 @@ export function PlayerScreen({ id }: { id: number }) {
             <span>{t('col.value')}</span><span>{money(p.value)}</span>
             {p.contract && <><span>{t('col.wage')}</span><span>{money(p.contract.wage)} / {t('common.week')}</span>
               <span>{t('col.expires')}</span><span>{dateFmt(p.contract.expires)}</span></>}
+            {p.contract?.release && (mine || k >= 40) ? <><span>{t('clause.release')}</span><span>{money(p.contract.release)}</span></> : null}
+            {mine && p.contract && clauseText(p.contract) && <><span>{t('clause.title')}</span><span>{clauseText(p.contract)}</span></>}
+            {mine && p.sellOn && <><span>{t('clause.sellOn')}</span><span>{t('clause.sellOnTo', { pct: p.sellOn.pct, club: g.clubs[p.sellOn.club]?.name ?? '?' })}</span></>}
+            {p.addOn && (mine || p.addOn.club === g.userClub) && <><span>{t('clause.addOnShort')}</span><span>{t('clause.addOnLeft', { fee: money(p.addOn.fee), club: g.clubs[p.addOn.club]?.name ?? '?', n: p.addOn.left })}</span></>}
             {p.contract?.futureClub && <><span>{t('player.nextClub')}</span><span><ClubLink id={p.contract.futureClub} /></span></>}
             <span>{t('player.caps')}</span><span>{p.caps} / {p.intGoals}</span>
             {!mine && p.club > 0 && <><span>{t('player.asking')}</span><span>{k >= 40 ? `≈ ${money(askingPrice(p))}` : t('player.unknown')}</span></>}
@@ -201,7 +205,10 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
   const budget = g.clubs[g.userClub].transferBudget;
   const [fee, setFee] = useState(Math.min(budget, Math.round(p.value / 50_000) * 50_000));
   const [loan, setLoan] = useState(false);
+  const [sellOn, setSellOn] = useState(0);
+  const [addOn, setAddOn] = useState(0);
   const step = fee >= 10_000_000 ? 500_000 : fee >= 1_000_000 ? 100_000 : 25_000;
+  const release = p.contract?.release;
   return (
     <Modal title={t('bid.title', { player: `${p.first} ${p.last}` })} onClose={onClose}>
       <div className="col">
@@ -218,11 +225,20 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
               <MoneyInput value={fee} onChange={setFee} width={140} />
               <button onClick={() => setFee(fee + step)}>+</button>
             </div>
+            {release ? (
+              <div className="insight row">
+                <span className="grow">{t('clause.releaseKnown', { fee: money(release) })}</span>
+                <button className="small" disabled={release > budget} onClick={() => { setFee(release); setSellOn(0); setAddOn(0); }}>{t('clause.payRelease')}</button>
+              </div>
+            ) : null}
+            <div className="row">{t('clause.sellOn')}: {[0, 10, 15, 20, 30].map((v) => <button key={v} className={`small ${sellOn === v ? 'primary' : ''}`} onClick={() => setSellOn(v)}>{v ? `${v}%` : t('common.none')}</button>)}</div>
+            <div className="row">{t('clause.addOn', { n: 25 })}: <MoneyInput value={addOn} onChange={setAddOn} width={130} /></div>
+            {(sellOn > 0 || addOn > 0) && <div className="muted" style={{ fontSize: 12 }}>{t('clause.bidHint')}</div>}
           </>
         )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan }))}>{t('bid.submit')}</button>
+          <button className="primary" onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn }))}>{t('bid.submit')}</button>
         </div>
       </div>
     </Modal>
@@ -508,4 +524,14 @@ function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
       </div>
     </Panel>
   );
+}
+
+/** Kort tekst med kontraktens klausuler (uden frikøbsklausul) */
+function clauseText(c: Contract): string {
+  const parts: string[] = [];
+  if (c.wageRise) parts.push(t('clause.sumRise', { n: c.wageRise }));
+  if (c.appBonus) parts.push(t('clause.sumApp', { fee: money(c.appBonus) }));
+  if (c.goalBonus) parts.push(t('clause.sumGoal', { fee: money(c.goalBonus) }));
+  if (c.relegationCut) parts.push(t('clause.sumCut', { n: c.relegationCut }));
+  return parts.join(' · ');
 }

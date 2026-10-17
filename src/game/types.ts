@@ -20,6 +20,21 @@ export interface Contract {
   futureClub?: number;
   futureWage?: number;
   futureExpires?: string;
+  /** Klausuler: frikøbsklausul (€), årlig lønstigning (%), bonus pr. kamp og pr. mål (€), lønnedgang ved nedrykning (%) */
+  release?: number;
+  wageRise?: number;
+  appBonus?: number;
+  goalBonus?: number;
+  relegationCut?: number;
+}
+
+/** Klausuler i et kontrakttilbud */
+export interface ContractClauses {
+  release?: number;
+  wageRise?: number;
+  appBonus?: number;
+  goalBonus?: number;
+  relegationCut?: number;
 }
 
 export interface SeasonStats {
@@ -109,6 +124,12 @@ export interface Player {
   playPromise?: { until: string; apps: number };
   /** Seneste ros/henvendelse (for ikke at gentage sig) */
   lastContact?: string;
+  /** Videresalgsprocent til en tidligere klub (af fortjenesten over base) */
+  sellOn?: { club: number; pct: number; base: number };
+  /** Ekstra transfersum når spilleren har spillet et antal kampe for køberen */
+  addOn?: { club: number; payer: number; fee: number; left: number };
+  /** Klausuler i en aftalt Bosman-kontrakt (træder i kraft ved skiftet) */
+  futureClauses?: ContractClauses;
   /** Seneste samtale med manageren (cooldown) */
   lastTalk?: string;
   /** Seneste episode (ballade) og seneste røde kort – grundlag for at straffe */
@@ -378,6 +399,9 @@ export interface TransferOffer {
   rival?: { club: number; fee: number };
   /** Leje med købsoption (pris) */
   option?: number;
+  /** Klausuler i buddet: videresalgsprocent til sælger og ekstra beløb efter 25 kampe */
+  sellOn?: number;
+  addOn?: number;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */
@@ -410,6 +434,8 @@ export interface ManagerProfile {
 }
 
 export interface BoardState {
+  /** Ungdomschefens rapport om den kommende årgang */
+  youthPreview?: { season: number; verdict: 'golden' | 'good' | 'average' | 'poor'; n: number; standout?: string; wonderkid?: boolean };
   /** Seneste holdmøde */
   lastTeamTalk?: string;
   /** Dato for bestyrelsens seneste kampkommentar */
@@ -539,6 +565,7 @@ export interface HumanSlot {
   challenge: ChallengeState | null;
   pendingFixture: number | null;
   press?: PressConf | null;
+  matchTalk?: MatchTalk | null;
 }
 
 export interface GameState {
@@ -576,6 +603,8 @@ export interface GameState {
   names: Record<number, [string[], string[]]>;
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
+  /** Holdsnak til dagens kamp (før kampen / i pausen / efter kampen) */
+  matchTalk?: MatchTalk | null;
   dayDone: boolean;
   vacancies: number[]; // klubber uden manager
   /** Hvornår hver stilling blev ledig (klub-id → dato) */
@@ -627,4 +656,15 @@ export interface SponsorDeal {
   winBonus: number; // pr. ligasejr
   trophyBonus: number; // pr. trofæ / opfyldt mål ved sæsonslut
   season: number;
+}
+
+export type TalkStage = 'pre' | 'half' | 'post';
+export type TalkTone = 'noPressure' | 'motivate' | 'demand' | 'focus' | 'passionate' | 'praise' | 'calm' | 'criticise' | 'disappointed';
+export type TalkReaction = 'fired' | 'focused' | 'neutral' | 'complacent' | 'nervous' | 'angry' | 'deflated';
+
+export interface MatchTalk {
+  fixture: number;
+  /** Faktor pr. spiller til kampmotoren (fra seneste snak før/under kampen) */
+  boosts: Record<number, number>;
+  done: TalkStage[];
 }

@@ -10,9 +10,10 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
+import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
-import { seasonRollover, youthIntake } from './season';
+import { seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
 import { monthlyWill, weeklyPlayerContact } from './will';
@@ -83,7 +84,9 @@ export function userTactic(auto = false): Tactic {
 export function engineTeam(clubId: number, tactic: Tactic): EngineTeam {
   const map = new Map<number, Player>();
   for (const p of squad(clubId)) map.set(p.id, p);
-  return { club: clubId, tactic, players: map, morale: chemistryMorale(tactic) + motivation(clubId, gs().date) };
+  const g = gs();
+  const talk = clubId === g.userClub && g.matchTalk && g.matchTalk.fixture === g.pendingFixture ? g.matchTalk.boosts : undefined;
+  return { club: clubId, tactic, players: map, morale: chemistryMorale(tactic) + motivation(clubId, g.date), talk };
 }
 
 function importance(f: Fixture): number {
@@ -163,6 +166,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     s.ratingCount++;
     if (rep.mom === p.id) s.mom++;
     p.form = [...p.form, line.rating].slice(-5);
+    if (p.contract?.appBonus || p.contract?.goalBonus || p.addOn) afterAppearance(p, line.goals);
     p.condition = Math.max(20, Math.min(100, line.cond));
     if (line.yellow) {
       s.yellows++;
@@ -294,6 +298,7 @@ function newDay() {
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
     weeklyPlayerContact();
+    aiReleaseClauses();
     weeklyDevelopment();
     weeklyWages();
   }
@@ -319,6 +324,7 @@ function newDay() {
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
+  if (month(d) === 2 && day(d) === 1) youthPreview();
   if (month(d) === 3 && day(d) === 15) youthIntake();
   // AI-trupper fyldes op i sommer- og vinterpausen
   if ((month(d) === 7 || month(d) === 8 || month(d) === 1) && weekday(d) === 2) aiFillSquads(22);
@@ -387,7 +393,7 @@ export function quickPlayUserMatch(): MatchReport | null {
 const INFO_KEYS = new Set([
   'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',
   'award.monthPlayer', 'award.monthManager', 'award.ballonDor', 'news.champions', 'news.cupWin', 'news.playoffWin', 'rumour.interest',
-  'news.retired', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
+  'news.retired', 'news.youth', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
 ]);
 export function needsAttention(n: NewsItem): boolean {
   if (!INFO_KEYS.has(n.key)) return true;

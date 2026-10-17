@@ -36,6 +36,9 @@ export function ClubScreen({ id }: { id?: number }) {
             <span>{t('club.strength')}</span><span>{squadStrength(cid).toFixed(0)}</span>
             {c.manager !== -1 && <><span>{t('club.strategy')}</span><span title={t(`strategy.${clubStrategy(c)}.hint`)}>{t(`strategy.${clubStrategy(c)}`)}</span></>}
             <span>{t('club.youth')}</span><span><Bar value={c.youth} max={20} /></span>
+            {c.id === g.userClub && <><span>{t('club.youthPreview')}</span><span>{g.board.youthPreview?.season === g.season
+              ? <><span className={`tag ${({ golden: 'good', good: 'good', average: '', poor: 'warn' } as const)[g.board.youthPreview.verdict]}`}>{t(`youth.verdict.${g.board.youthPreview.verdict}`)}</span>{g.board.youthPreview.standout ? <span className="muted"> · {t('youth.standout', { pos: g.board.youthPreview.standout })}</span> : null}{g.board.youthPreview.wonderkid ? <span className="tag good">{t('youth.wonderkid')}</span> : null}</>
+              : <span className="muted">{t('club.youthPreviewNone')}</span>}</span></>}
             <span>{t('club.facilities')}</span><span><Bar value={c.facilities} max={20} /></span>
             {(mine || !g.options.masking) && <><span>{t('top.balance')}</span><span>{money(c.balance)}</span></>}
           </div>

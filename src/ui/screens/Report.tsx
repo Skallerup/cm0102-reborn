@@ -8,6 +8,7 @@ import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { StatsPanel } from './Match';
+import { TeamTalk } from '../teamtalk';
 
 export function ReportScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -18,6 +19,11 @@ export function ReportScreen({ id }: { id: number }) {
   const home = g.clubs[rep.home]?.short ?? '?', away = g.clubs[rep.away]?.short ?? '?';
   const verdict = matchVerdict(rep, side);
   const mom = g.players[rep.mom];
+  const mine = rep.home === g.userClub || rep.away === g.userClub;
+  // samme dag som kampen: holdsnak efter kampen (komponenten viser intet, når den er holdt)
+  const talking = mine && g.fixtures[id]?.date === g.date;
+  const myLines = rep.players.filter((l) => l.team === side);
+  const diff = rep.stats[side].goals - rep.stats[1 - side].goals + (rep.pens ? Math.sign(rep.pens[side] - rep.pens[1 - side]) : 0);
   return (
     <div>
       <Head title={t('report.title')} />
@@ -30,6 +36,7 @@ export function ReportScreen({ id }: { id: number }) {
         <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} /></div>
       </div>
       <Goals rep={rep} />
+      {talking && <TeamTalk fixture={id} stage="post" pids={myLines.map((l) => l.id)} diff={diff} ratings={Object.fromEntries(myLines.map((l) => [l.id, l.rating]))} />}
       <Tabs tabs={[['analysis', t('report.analysis')], ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />
       {tab === 'analysis' && (
         <div className="cols">
