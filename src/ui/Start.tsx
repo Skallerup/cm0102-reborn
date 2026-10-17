@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Select } from './select';
 import { CHALLENGES } from '../game/challenges';
 import { createGame, type WorldData } from '../game/newgame';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
@@ -193,9 +194,8 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
       {!ch && (
         <Panel title={t('start.pickClub')}>
           <div className="row" style={{ marginBottom: 8 }}>
-            <select value={league} onChange={(e) => { setLeague(e.target.value); setClub(0); }}>
-              {leagues.map((l) => <option key={l.id} value={l.id}>{world.nations[l.nation].name} – {l.name}</option>)}
-            </select>
+            <Select value={league} onChange={(v) => { setLeague(v); setClub(0); }} width={300}
+              options={leagues.map((l) => ({ value: l.id, label: l.name, group: world.nations[l.nation].name }))} />
           </div>
           <div className="grid-choices">
             {clubs.map((c) => (

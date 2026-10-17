@@ -539,6 +539,8 @@ export const da: Record<string, string> = {
   'scout.focus': 'Fokus', 'scout.focus.any': 'Alle spillere', 'scout.focus.young': 'Unge (≤21)', 'scout.focus.prime': 'Etablerede (22-29)',
   'scout.recall': 'Kald hjem', 'scout.send': 'Send ud', 'scout.home': 'Hjemme – holder øje med egen liga', 'scout.status': 'Siden {since} · {n} fund{until}', 'scout.until': ' · hjem {date}',
   'news.scoutReturned': '{scout} er vendt hjem fra {target}', 'news.scoutReturned.body': 'Han afdækkede {n} spillere. Bedste fund: {best}. Se dem under Scouting → Fund.',
+  'select.search': 'Søg…', 'select.none': 'Ingen match',
+  'comp.europe': 'Europa',
   'opt.news': 'Nyheder om andre klubber', 'opt.news.league': 'Kun min liga', 'opt.news.nation': 'Kun mit land', 'opt.news.world': 'Hele verden',
   'opt.save.changes': 'Efter hver ændring', 'opt.save.daily': 'Hver spildag', 'opt.save.weekly': 'Hver uge i spillet', 'opt.save.monthly': 'Hver måned i spillet', 'opt.save.off': 'Aldrig (kun manuelt)',
   'opt.save.changes.hint': 'Sikrest: alt gemmes få sekunder efter du ændrer noget, så en genindlæsning aldrig koster noget.',

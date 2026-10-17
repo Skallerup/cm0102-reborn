@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Info } from '../help';
+import { Select } from '../select';
 import { act } from '../../game/actions';
 import { dateFmt, money, t } from '../../i18n';
 import { scoutRecommendation, scoutStars } from '../../game/scouting';
@@ -112,14 +113,10 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
         ) : (
           <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
             <span className="muted" style={{ width: '100%', fontSize: 12 }}>{t('scout.home')}</span>
-            <select value={target} onChange={(e) => setTarget(e.target.value)}>
-              <optgroup label={t('scout.leagues')}>
-                {g.leagueOrder.filter((l) => g.leagues[l]).map((l) => <option key={l} value={`l:${l}`}>{g.nations[g.leagues[l].nation]?.name} – {g.leagues[l].name}</option>)}
-              </optgroup>
-              <optgroup label={t('scout.nations')}>
-                {nations.map((n) => <option key={n} value={`n:${n}`}>{g.nations[n].name}</option>)}
-              </optgroup>
-            </select>
+            <Select value={target} onChange={setTarget} width={240} options={[
+              ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${g.leagues[l].name}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
+              ...nations.map((n) => ({ value: `n:${n}`, label: g.nations[n].name, hint: g.nations[n].code, group: t('scout.nations') })),
+            ]} />
             <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>
               {[1, 3, 6, 0].map((m) => <option key={m} value={m}>{t(`scout.dur.${m}`)}</option>)}
             </select>

@@ -1,4 +1,5 @@
 
+import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
 import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { gs, squad } from '../../game/state';
@@ -20,9 +21,8 @@ export function Competitions({ id }: { id?: string }) {
   return (
     <div>
       <Head title={comp?.name ?? t('nav.competitions')}>
-        <select value={comp?.id ?? ''} onChange={(e) => { setCid(e.target.value); setTab('table'); }}>
-          {ordered.map((c) => <option key={c.id} value={c.id}>{c.nation >= 0 ? `${g.nations[c.nation]?.name} – ` : ''}{c.name}</option>)}
-        </select>
+        <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
+          options={ordered.map((c) => ({ value: c.id, label: c.name, group: c.nation >= 0 ? g.nations[c.nation]?.name : t('comp.europe') }))} />
       </Head>
       {comp && (
         <>

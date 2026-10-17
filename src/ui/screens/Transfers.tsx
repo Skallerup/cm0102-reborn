@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Select } from '../select';
 import { Info } from '../help';
 import { ATTRS, naturalRole } from '../../game/attributes';
 import { ageOn } from '../../game/dates';
@@ -128,15 +129,14 @@ function Search() {
     }
     return out;
   }, [g, f, seasonEnd, me]);
-  const attrOptions = ATTRS.slice(0, 36).map((k, i) => [i, t(`attr.${k}`)] as [number, string]).sort((a, b) => a[1].localeCompare(b[1]));
+  const groupOf = (i: number) => t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping');
+  const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: groupOf(i) }))
+    .sort((a, b) => a.value - b.value).sort((a, b) => (a.group === b.group ? a.label.localeCompare(b.label) : 0));
   const attrRow = (n: 1 | 2 | 3) => {
     const ak = `attr${n}` as 'attr1', mk = `attr${n}Min` as 'attr1Min';
     return (
       <label className="row" key={n}>
-        <select value={f[ak]} onChange={(e) => set(ak, Number(e.target.value))}>
-          <option value={-1}>{t('tr.f.attr')}</option>
-          {attrOptions.map(([i, label]) => <option key={i} value={i}>{label}</option>)}
-        </select>
+        <Select value={f[ak]} onChange={(v) => set(ak, v)} width={170} options={[{ value: -1, label: t('tr.f.attr') }, ...attrOptions]} />
         {f[ak] >= 0 && <>≥ <input type="number" min={1} max={20} value={f[mk]} onChange={(e) => set(mk, Number(e.target.value))} style={{ width: 52 }} /></>}
       </label>
     );
@@ -157,14 +157,10 @@ function Search() {
             <option value={0}>{t('tr.anyValue')}</option>
             {[250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
           </select>
-          <select value={f.nation} onChange={(e) => set('nation', Number(e.target.value))}>
-            <option value={-1}>{t('tr.anyNation')}</option>
-            {nations.map((n) => <option key={n} value={n}>{g.nations[n].name}</option>)}
-          </select>
-          <select value={f.league} onChange={(e) => set('league', e.target.value)}>
-            <option value="">{t('tr.anyLeague')}</option>
-            {g.leagueOrder.filter((l) => g.leagues[l]).map((l) => <option key={l} value={l}>{g.nations[g.leagues[l].nation]?.name} – {g.leagues[l].name}</option>)}
-          </select>
+          <Select value={f.nation} onChange={(v) => set('nation', v)} width={190}
+            options={[{ value: -1, label: t('tr.anyNation') }, ...nations.map((n) => ({ value: n, label: g.nations[n].name, hint: g.nations[n].code }))]} />
+          <Select value={f.league} onChange={(v) => set('league', v)} width={230}
+            options={[{ value: '', label: t('tr.anyLeague') }, ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: l, label: g.leagues[l].name, group: g.nations[g.leagues[l].nation]?.name }))]} />
         </div>
         <div className="row filter-row" style={{ marginTop: 6 }}>
           {g.userClub > 0 && (

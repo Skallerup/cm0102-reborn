@@ -70,6 +70,42 @@ input, select, textarea {
   border: 1px solid var(--line2); border-radius: var(--radius-sm); padding: 6px 10px; transition: border-color 0.15s;
 }
 input:hover, select:hover, textarea:hover { border-color: rgba(148, 170, 255, 0.32); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: rgba(108, 210, 255, 0.6); box-shadow: 0 0 0 3px rgba(108, 210, 255, 0.15); }
+
+/* indbyggede dropdowns: egen pil, luft og mørke valgmuligheder */
+:root { color-scheme: dark; }
+select {
+  appearance: none; -webkit-appearance: none; cursor: pointer; min-height: 32px; padding: 6px 32px 6px 12px; font-weight: 500;
+  background-color: var(--surface2); border-radius: 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5 7.5l5 5 5-5' fill='none' stroke='%238e9cc2' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; background-size: 14px;
+  transition: border-color 0.15s, background-color 0.15s, box-shadow 0.15s;
+}
+select:hover { background-color: var(--surface3); }
+select option, select optgroup { background: #0f182d; color: var(--text); }
+select optgroup { color: var(--accent); font-weight: 700; }
+select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* søgbar vælger (src/ui/select.tsx) */
+.sel { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; max-width: 100%; padding: 6px 10px 6px 12px; border-radius: 10px; background: var(--surface2); border: 1px solid var(--line2); color: var(--text); font-weight: 500; font-size: 12.5px; cursor: pointer; text-align: left; box-shadow: none; }
+.sel:hover { background: var(--surface3); border-color: rgba(148, 170, 255, 0.32); }
+.sel.open, .sel:focus-visible { border-color: rgba(108, 210, 255, 0.6); box-shadow: 0 0 0 3px rgba(108, 210, 255, 0.15); outline: none; }
+.sel-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-chev { width: 14px; height: 14px; flex: none; fill: none; stroke: var(--muted); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s; }
+.sel.open .sel-chev { transform: rotate(180deg); }
+.sel-pop { position: fixed; z-index: 80; display: flex; flex-direction: column; max-height: 340px; padding: 6px; border-radius: 14px; background: #111b33; border: 1px solid var(--line2); box-shadow: 0 24px 50px -16px rgba(0, 0, 0, 0.85); animation: sel-in 0.12s ease-out; }
+.sel-pop.up { transform: translateY(-100%); }
+@keyframes sel-in { from { opacity: 0; margin-top: -4px; } }
+.sel-search { margin: 2px 2px 6px; padding: 8px 10px; border-radius: 9px; }
+.sel-list { overflow-y: auto; outline: none; }
+.sel-group { padding: 8px 10px 4px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; color: var(--accent); }
+.sel-opt { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.sel-opt.hi { background: rgba(108, 210, 255, 0.12); }
+.sel-opt.on { color: var(--accent); font-weight: 600; }
+.sel-opt > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sel-hint { font-size: 11px; color: var(--faint); font-family: var(--mono); }
+.sel-check { color: var(--accent); font-weight: 800; }
+.sel-empty { padding: 12px; color: var(--muted); text-align: center; }
 input[type='range'] { padding: 0; accent-color: var(--accent); background: none; border: none; }
 input[type='checkbox'] { accent-color: var(--accent); width: 15px; height: 15px; }
 label { color: var(--muted); }

@@ -513,6 +513,8 @@ export const en: Record<string, string> = {
   'scout.focus': 'Focus', 'scout.focus.any': 'All players', 'scout.focus.young': 'Young (≤21)', 'scout.focus.prime': 'Established (22-29)',
   'scout.recall': 'Recall', 'scout.send': 'Send out', 'scout.home': 'At home – watching our own league', 'scout.status': 'Since {since} · {n} finds{until}', 'scout.until': ' · back {date}',
   'news.scoutReturned': '{scout} is back from {target}', 'news.scoutReturned.body': 'He uncovered {n} players. Best find: {best}. See them under Scouting → Finds.',
+  'select.search': 'Search…', 'select.none': 'No matches',
+  'comp.europe': 'Europe',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',
