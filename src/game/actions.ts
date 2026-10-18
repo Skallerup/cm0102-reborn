@@ -15,6 +15,7 @@ import {
   acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
 import { addBot } from './bots';
+import { markChatRead, sendChat } from './chat';
 import type { BotStyle, ContractClauses, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 
@@ -54,6 +55,8 @@ export type Action =
   | { t: 'declineJob'; club: number }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
+  | { t: 'chat'; to: string; text: string }
+  | { t: 'chatRead' }
   | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
   | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
 
@@ -118,6 +121,8 @@ export function applyAction(a: Action): unknown {
     case 'declineJob': g.jobOffers = g.jobOffers.filter((x) => x !== a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
+    case 'chat': return sendChat(a.to, a.text);
+    case 'chatRead': markChatRead(); return 'ok';
     case 'press': return applyPress(a.answers, a.headline, a.body);
     case 'complaint': return answerComplaint(a.pid, a.choice);
   }

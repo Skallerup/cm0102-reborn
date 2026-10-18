@@ -51,6 +51,7 @@ export function useOpenLink() {
     else if (l.kind === 'comp') nav({ name: 'competitions', id: l.id });
     else if (l.kind === 'awards') nav({ name: 'awards' });
     else if (l.kind === 'press') nav({ name: 'press', id: l.id });
+    else if (l.kind === 'chat') nav({ name: 'managers', id: l.id });
   };
 }
 

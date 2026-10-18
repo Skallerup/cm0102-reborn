@@ -2,6 +2,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import { gs } from '../game/state';
+import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
 import { currencySymbol, fromCurExact, getLang, t, toCur } from '../i18n';
 import { useNav, useRouteState } from './core';
@@ -37,7 +38,27 @@ export function ClubLink({ id, long }: { id: number; long?: boolean }) {
     <a className="link club-link" onClick={(e) => { e.stopPropagation(); nav({ name: 'club', id }); }}>
       <Crest id={id} />
       {long ? c.name : c.short}
+      {c.manager === -1 && id !== gs().userClub && <MgrChip clubId={id} />}
     </a>
+  );
+}
+
+/** Farve pr. manager (så den samme manager altid har samme farve) */
+export function mgrHue(name: string): number {
+  let h = 0;
+  for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return h;
+}
+
+/** Lille mærke på klubber der styres af en anden manager: initialer (menneske) eller AI */
+export function MgrChip({ clubId }: { clubId: number }) {
+  const m = humanManager(clubId);
+  if (!m) return null;
+  const initials = m.name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  return (
+    <span className={`mgr-chip ${m.bot ? 'ai' : 'human'}`} style={{ ['--h' as string]: mgrHue(m.name) } as CSSProperties} title={t(m.bot ? 'chat.chipAi' : 'chat.chipHuman', { name: m.name })}>
+      {m.bot ? 'AI' : initials}
+    </span>
   );
 }
 

@@ -8,7 +8,7 @@ import { gs } from './state';
 import type { GameState, HumanSlot } from './types';
 
 export const PERSONAL_KEYS = [
-  'userClub', 'manager', 'board', 'tactic', 'savedTactics', 'knowledge', 'scoutFinds', 'shortlist', 'news', 'jobOffers', 'challenge', 'pendingFixture', 'press', 'matchTalk',
+  'userClub', 'manager', 'board', 'tactic', 'savedTactics', 'knowledge', 'scoutFinds', 'shortlist', 'news', 'jobOffers', 'challenge', 'pendingFixture', 'press', 'matchTalk', 'chatRead',
 ] as const;
 
 type PersonalKey = (typeof PERSONAL_KEYS)[number];
@@ -93,4 +93,15 @@ export function enableMultiplayer(hostPid: string, hostName: string) {
   g.humans = [slot];
   g.active = hostPid;
   stash(g);
+}
+
+/** Navnet på den menneskelige manager (eller AI-manager) der styrer klubben */
+export function humanManager(clubId: number): { name: string; bot: boolean } | null {
+  const g = gs();
+  if (!clubId || g.clubs[clubId]?.manager !== -1) return null;
+  const active = g.humans?.find((h) => h.pid === g.active);
+  if (g.userClub === clubId) return { name: g.manager.name, bot: !!active?.bot };
+  // den aktive managers egen slot kan have en forældet klub – spring den over
+  const h = g.humans?.find((x) => x.pid !== g.active && x.userClub === clubId);
+  return h ? { name: h.name, bot: !!h.bot } : null;
 }

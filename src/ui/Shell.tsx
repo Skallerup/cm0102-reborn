@@ -33,6 +33,8 @@ import { Jobs } from './screens/Jobs';
 import { Options } from './screens/Options';
 import { PressScreen } from './screens/Press';
 import { RankingScreen } from './screens/Ranking';
+import { ManagersScreen } from './screens/Managers';
+import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
 
 const MENU: [ScreenName, string][] = [
@@ -41,7 +43,7 @@ const MENU: [ScreenName, string][] = [
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'],
 ];
 const MENU2: [ScreenName, string][] = [['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
-const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help'];
+const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
   const g = useGame()!;
@@ -58,6 +60,7 @@ export function Shell() {
   }, [route]);
   const club = session() && !session()!.inGame ? undefined : g.clubs[g.userClub];
   const unread = g.news.filter((n) => !n.read).length;
+  const chatUnread = (g.humans ? unreadChat() : 0) + (session()?.unreadChat() ?? 0);
   const unreadImportant = g.news.filter((n) => !n.read).length;
 
   useEffect(() => {
@@ -189,6 +192,12 @@ export function Shell() {
           </button>
         ))}
         <div className="sep" />
+        {g.humans && g.humans.length > 1 && (
+          <button className={route.name === 'managers' ? 'on' : ''} onClick={() => nav({ name: 'managers' })}>
+            <Icon name="managers" />{t('nav.managers')}
+            {chatUnread > 0 && <span className="badge">{chatUnread}</span>}
+          </button>
+        )}
         {MENU2.map(([k, label]) => (
           <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
             <Icon name={k} />{t(label)}
@@ -268,6 +277,7 @@ function Screen() {
     case 'options': return <Options />;
     case 'press': return <PressScreen />;
     case 'ranking': return <RankingScreen />;
+    case 'managers': return <ManagersScreen />;
     case 'help': return <HelpScreen id={route.id as string | undefined} />;
   }
 }

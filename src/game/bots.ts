@@ -16,7 +16,8 @@ import { fixturesOn, gs, squad } from './state';
 import { autoSelect, newTactic } from './tactics';
 import { analyzeNeeds, askingPrice, findTarget, keyPlayerRank, playerInterest, preferredYears, wageDemand, windowOpen } from './transfers';
 import { clubLevel } from './scouting';
-import { withHuman } from './humans';
+import { isHumanClub, withHuman } from './humans';
+import { botAnnounceBid, botHello } from './chat';
 import type { BotStyle, Club, HumanSlot, Player, TransferOffer } from './types';
 
 /** Opfundne managernavne */
@@ -55,6 +56,7 @@ export function addBot(name: string, club: number, nation: number, style: BotSty
   if (r !== 'ok') return String(r);
   const slot = g.humans!.find((h) => h.pid === pid)!;
   slot.bot = { style };
+  botHello(pid);
   return 'ok';
 }
 
@@ -151,16 +153,21 @@ function answerComplaints(pid: string) {
 
 const live = (o: TransferOffer) => ['pending', 'negotiating', 'countered'].includes(o.status);
 
+/** Hvad en AI-manager vil have for en af sine spillere */
+export function botWant(p: Player, style: BotStyle): number {
+  const rank = keyPlayerRank(p);
+  return Math.round(askingPrice(p) * STYLE[style].sellAt * (rank <= 3 ? 1.5 : rank <= 11 ? 1.15 : 0.9) * (p.wantsAway || p.listed ? 0.85 : 1) / 50_000) * 50_000;
+}
+
 /** Svar på bud på egne spillere – samme muligheder som en menneskelig manager */
 function handleIncomingBids(pid: string) {
   const g = gs();
-  const style = STYLE[(g.humans!.find((h) => h.pid === pid)!.bot!.style)];
+  const h = g.humans!.find((x) => x.pid === pid)!;
   for (const o of g.offers.filter((x) => x.seller === g.userClub && x.status === 'pending')) {
     const p = g.players[o.player];
     if (!p) continue;
-    const ask = askingPrice(p);
     const rank = keyPlayerRank(p);
-    const want = ask * style.sellAt * (rank <= 3 ? 1.5 : rank <= 11 ? 1.15 : 0.9) * (p.wantsAway || p.listed ? 0.85 : 1);
+    const want = botWant(p, h.bot!.style);
     if (o.loan) { applyActionAs(pid, { t: 'respond', pid: p.id, buyer: o.buyer, action: rank > 16 ? 'accept' : 'reject' }); continue; }
     if (o.fee >= want) applyActionAs(pid, { t: 'respond', pid: p.id, buyer: o.buyer, action: 'accept' });
     else if (o.fee >= want * 0.7 && (o.priceRounds ?? 0) < 2) applyActionAs(pid, { t: 'respond', pid: p.id, buyer: o.buyer, action: 'counter', counter: Math.round(want / 50_000) * 50_000 });
@@ -210,7 +217,9 @@ function weeklyTransfers(pid: string, style: BotStyle) {
   if (fee > club.transferBudget) return;
   // handlende managere bruger videresalgsprocent for at presse prisen
   const sellOn = style === 'trader' && ageOn(target.dob, g.date) <= 23 ? 15 : undefined;
-  applyActionAs(pid, { t: 'bid', pid: target.id, fee, loan: false, sellOn });
+  const r = applyActionAs(pid, { t: 'bid', pid: target.id, fee, loan: false, sellOn });
+  // byder de på en anden managers spiller, skriver de også en besked
+  if (typeof r !== 'string' && isHumanClub(target.club)) botAnnounceBid(pid, target, fee);
 }
 
 /** En spiller hos en anden manager der passer ind: sat til salg eller uden fast plads, og til at betale */

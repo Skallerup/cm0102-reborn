@@ -9,7 +9,7 @@ import { ClubLink } from '../components';
 import { createProfile, fetchBoard, getProfile, rankingAvailable, submitPending, type Board, type RankRow } from '../../online/rank';
 import { t } from '../../i18n';
 import { Panel, Tabs } from '../components';
-import { useGame, useRouteState } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 
 const lineText = (key: string, params?: Record<string, string | number>) => t(`score.${key}`, params?.stage ? { ...params, stage: t(`rank.stage.${params.stage}`) } : params);
@@ -29,7 +29,8 @@ function ScoreTable({ s }: { s: SeasonScore }) {
 
 export function RankingScreen() {
   const g = useGame()!;
-  const [tab, setTab] = useRouteState('tab', isMultiplayer(g) ? 'managers' : 'mine');
+  const { route } = useNav();
+  const [tab, setTab] = useRouteState('tab', route.tab ?? (isMultiplayer(g) ? 'managers' : 'mine'));
   return (
     <div>
       <Head title={t('nav.ranking')}>

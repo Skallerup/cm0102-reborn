@@ -371,7 +371,7 @@ export interface NewsItem {
   params: Record<string, string | number>;
   read: boolean;
   /** link til spiller/klub/kamp/tilbud */
-  link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards' | 'press'; id: number | string };
+  link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards' | 'press' | 'chat'; id: number | string };
 }
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'negotiating' | 'completed' | 'withdrawn' | 'collapsed';
@@ -570,6 +570,8 @@ export interface HumanSlot {
   pendingFixture: number | null;
   press?: PressConf | null;
   matchTalk?: MatchTalk | null;
+  /** Seneste læste chatbesked (id) */
+  chatRead?: number;
 }
 
 export interface GameState {
@@ -609,6 +611,9 @@ export interface GameState {
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
   localMp?: boolean;
+  /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
+  chat?: ChatMsg[];
+  chatRead?: number;
   /** Holdsnak til dagens kamp (før kampen / i pausen / efter kampen) */
   matchTalk?: MatchTalk | null;
   dayDone: boolean;
@@ -673,4 +678,15 @@ export interface MatchTalk {
   /** Faktor pr. spiller til kampmotoren (fra seneste snak før/under kampen) */
   boosts: Record<number, number>;
   done: TalkStage[];
+}
+
+/** Besked mellem managere. Tekst fra mennesker, eller en tekstnøgle (AI-managere) så den vises på læserens sprog */
+export interface ChatMsg {
+  id: number;
+  from: string;
+  to: string;
+  date: string;
+  text?: string;
+  key?: string;
+  params?: Record<string, string | number>;
 }

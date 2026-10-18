@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { humanManager } from '../../game/humans';
 import { act } from '../../game/actions';
 import { Info } from '../help';
 import { squadStrength } from '../../game/board';
@@ -9,13 +10,14 @@ import type { Club, Staff } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { aiCall, aiText, ensureAiText } from '../../ai/client';
 import { useAiAvailable } from '../ai';
-import { Bar, ClubLink, Crest, Panel } from '../components';
-import { useGame } from '../core';
+import { Bar, ClubLink, Crest, MgrChip, Panel } from '../components';
+import { useGame, useNav } from '../core';
 import { Head } from './common';
 import { SquadTable } from './Squad';
 
 export function ClubScreen({ id }: { id?: number }) {
   const g = useGame()!;
+  const { nav } = useNav();
   const cid = id ?? g.userClub;
   const c = g.clubs[cid];
   if (!c) return <Head title="?" />;
@@ -30,7 +32,7 @@ export function ClubScreen({ id }: { id?: number }) {
           <div className="kv">
             <span>{t('col.comp')}</span><span>{g.leagues[c.league]?.name ?? c.league}</span>
             <span>{t('col.nat')}</span><span>{g.nations[c.nation]?.name}</span>
-            <span>{t('club.manager')}</span><span>{c.manager === -1 ? g.manager.name : manager ? `${manager.first} ${manager.last}` : t('club.vacant')}</span>
+            <span>{t('club.manager')}</span><span>{c.manager === -1 ? <>{humanManager(c.id)?.name ?? '?'}<MgrChip clubId={c.id} /></> : manager ? `${manager.first} ${manager.last}` : t('club.vacant')}</span>
             <span>{t('club.stadium')}</span><span>{c.stadium} ({c.seats.toLocaleString()})</span>
             <span>{t('club.rep')}<Info topic="rep" /></span><span><Bar value={c.rep} /> {c.rep}</span>
             <span>{t('club.strength')}</span><span>{squadStrength(cid).toFixed(0)}</span>
@@ -43,6 +45,15 @@ export function ClubScreen({ id }: { id?: number }) {
             {(mine || !g.options.masking) && <><span>{t('top.balance')}</span><span>{money(c.balance)}</span></>}
           </div>
           {!mine && c.manager === 0 && <VacancyBox clubId={c.id} />}
+          {!mine && c.manager === -1 && (() => {
+            const h = g.humans?.find((x) => x.pid !== g.active && x.userClub === c.id);
+            return h ? (
+              <div className="insight row" style={{ marginTop: 10 }}>
+                <span className="grow">{t(h.bot ? 'chat.clubAi' : 'chat.clubHuman', { name: h.name })}</span>
+                <button className="primary small" onClick={() => nav({ name: 'managers', id: h.pid })}>{t('chat.writeTo', { name: h.name.split(' ')[0] })}</button>
+              </div>
+            ) : null;
+          })()}
         </Panel>
         {mine && (
           <Panel title={t('club.board')}>

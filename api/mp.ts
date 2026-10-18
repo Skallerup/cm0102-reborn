@@ -22,6 +22,15 @@ interface PlayerRec {
   joined: string;
 }
 
+interface ChatRec {
+  id: number;
+  from: string;
+  name: string;
+  to: string;
+  text: string;
+  at: string;
+}
+
 interface RoomRec {
   code: string;
   host: string;
@@ -36,7 +45,8 @@ interface RoomRec {
   lastTurn: string;
 }
 
-const k = (code: string) => ({ room: `room:${code}`, players: `room:${code}:players`, actions: `room:${code}:actions`, lock: `room:${code}:lock` });
+const k = (code: string) => ({ room: `room:${code}`, players: `room:${code}:players`, actions: `room:${code}:actions`, lock: `room:${code}:lock`, chat: `room:${code}:chat` });
+const CHAT_KEEP = 300;
 
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -49,7 +59,7 @@ function rid(len: number, alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789') {
 
 async function touch(code: string) {
   const keys = k(code);
-  await Promise.all([redis.expire(keys.room, TTL), redis.expire(keys.players, TTL), redis.expire(keys.actions, TTL)]);
+  await Promise.all([redis.expire(keys.room, TTL), redis.expire(keys.players, TTL), redis.expire(keys.actions, TTL), redis.expire(keys.chat, TTL)]);
 }
 
 async function getRoom(code: string): Promise<RoomRec | null> {
@@ -81,11 +91,14 @@ async function publicRoom(code: string) {
   const players = await getPlayers(code);
   const lock = await redis.get<string>(k(code).lock);
   const actionCount = await redis.llen(k(code).actions);
+  const chatRaw = await redis.lrange<string | ChatRec>(k(code).chat, -100, -1);
+  const chat = chatRaw.map((c) => (typeof c === 'string' ? (JSON.parse(c) as ChatRec) : c));
   return {
     code: room.code, host: room.host, status: room.status, version: room.version, snapshot: room.snapshot, date: room.date,
     lastApplied: room.lastApplied, actionCount, settings: typeof room.settings === 'string' ? JSON.parse(room.settings || '{}') : (room.settings ?? {}), lastTurn: room.lastTurn,
     processing: lock ?? null,
     players: players.map((p) => ({ pid: p.pid, name: p.name, club: p.club, ready: p.ready, joined: p.joined })),
+    chat,
   };
 }
 
@@ -154,6 +167,20 @@ export async function POST(request: Request) {
       if (me.ready && actions.length) { me.ready = false; await savePlayer(code, me); }
       await touch(code);
       return json({ last });
+    }
+    case 'chat': {
+      // beskeder mellem menneskelige managere (leveres med det samme, uafhængigt af trækkene)
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const text = String(body.text ?? '').trim().slice(0, 500);
+      const to = String(body.to ?? 'all').slice(0, 40);
+      if (!text) return json({ error: 'empty' }, 400);
+      const n = await redis.incr(`${keys.chat}:seq`);
+      const rec: ChatRec = { id: n, from: me.pid, name: me.name, to, text, at: new Date().toISOString() };
+      await redis.rpush(keys.chat, JSON.stringify(rec));
+      await redis.ltrim(keys.chat, -CHAT_KEEP, -1);
+      await Promise.all([touch(code), redis.expire(`${keys.chat}:seq`, TTL)]);
+      return json(rec);
     }
     case 'ready': {
       const me = await auth(code, String(body.pid), String(body.token));

@@ -59,6 +59,7 @@ export function LeagueTable({ rows, comp, compact }: { rows: TableRow[]; comp: C
   const cls = (i: number, club: number) => {
     const c: string[] = [];
     if (club === g.userClub) c.push('me');
+    else if (g.clubs[club]?.manager === -1) c.push('rival');
     if (rules?.promoted && i < rules.promoted) c.push('promo');
     else if (rules?.playoff && rules.playoff.seeds.some(([lg, pos]) => lg === comp.id && pos === i + 1)) c.push('playoff');
     else if (rules?.relegated && i >= n - rules.relegated) c.push('releg');

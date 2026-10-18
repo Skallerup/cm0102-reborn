@@ -31,6 +31,16 @@ export interface RoomInfo {
   processing: string | null;
   lastTurn: string;
   players: { pid: string; name: string; club: number; ready: boolean; joined: string }[];
+  chat?: RoomChat[];
+}
+
+export interface RoomChat {
+  id: number;
+  from: string;
+  name: string;
+  to: string;
+  text: string;
+  at: string;
 }
 
 export interface Credentials {
@@ -177,6 +187,30 @@ export class OnlineSession {
       this.error = String((e as Error).message);
       this.emit();
     }
+  }
+
+  // ----- beskeder til andre mennesker -----
+
+  async sendChat(to: string, text: string) {
+    const rec = await post<RoomChat>('chat', { ...this.creds, to, text });
+    if (this.room) this.room.chat = [...(this.room.chat ?? []), rec];
+    this.emit();
+  }
+
+  /** Ulæste beskeder fra andre mennesker (husket pr. rum i denne browser) */
+  chatSeen(): number {
+    try { return Number(localStorage.getItem(`cm0102.chatSeen.${this.creds.code}`) ?? 0); } catch { return 0; }
+  }
+
+  markChatSeen() {
+    const last = this.room?.chat?.at(-1)?.id ?? 0;
+    try { localStorage.setItem(`cm0102.chatSeen.${this.creds.code}`, String(last)); } catch { /* ignorer */ }
+    this.emit();
+  }
+
+  unreadChat(): number {
+    const seen = this.chatSeen();
+    return (this.room?.chat ?? []).filter((m) => m.id > seen && m.from !== this.creds.pid && (m.to === 'all' || m.to === this.creds.pid)).length;
   }
 
   // ----- klar / synkronisering -----

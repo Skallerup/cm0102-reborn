@@ -24,6 +24,7 @@ import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 import { botsDaily, isBotClub } from './bots';
+import { botsAfterMatch } from './chat';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -150,6 +151,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const scorers: [number, number, number][] = rep.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.p!]);
   const att = gateReceipts(f);
   recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att });
+  if (g.humans) botsAfterMatch(f);
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';
   const played = new Set<number>();

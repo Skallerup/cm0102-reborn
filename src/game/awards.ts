@@ -1,7 +1,7 @@
 // Priser og kåringer (forslag #10): månedens spiller/manager, årets hold, Ballon d'Or, gallaaften.
 import { naturalRole } from './attributes';
 import { finalOrder, sortTable } from './competitions';
-import { forEachHuman } from './humans';
+import { forEachHuman, humanManager } from './humans';
 import { addNews, gs, squad } from './state';
 import type { Competition, MonthAward, Player, Role, SeasonSummary } from './types';
 
@@ -17,10 +17,7 @@ function managerName(clubId: number): string {
   const g = gs();
   const c = g.clubs[clubId];
   if (!c) return '?';
-  if (c.manager === -1) {
-    if (g.userClub === clubId) return g.manager.name;
-    return g.humans?.find((h) => h.userClub === clubId)?.name ?? g.manager.name;
-  }
+  if (c.manager === -1) return humanManager(clubId)?.name ?? '?';
   const s = g.staff[c.manager];
   return s ? `${s.first} ${s.last}`.trim() : '?';
 }
