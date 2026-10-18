@@ -14,7 +14,8 @@ import { addNews, gs, notify } from './state';
 import {
   acceptCounter, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
-import type { ContractClauses, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
+import { addBot } from './bots';
+import type { BotStyle, ContractClauses, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 
 export type Action =
@@ -52,6 +53,7 @@ export type Action =
   | { t: 'applyJob'; club: number }
   | { t: 'declineJob'; club: number }
   | { t: 'join'; name: string; club: number; nation: number }
+  | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
   | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
   | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
 
@@ -115,6 +117,7 @@ export function applyAction(a: Action): unknown {
     case 'applyJob': return applyForJob(a.club);
     case 'declineJob': g.jobOffers = g.jobOffers.filter((x) => x !== a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
+    case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'press': return applyPress(a.answers, a.headline, a.body);
     case 'complaint': return answerComplaint(a.pid, a.choice);
   }
@@ -136,6 +139,11 @@ export function applyActionAs(pid: string, a: Action): unknown {
       return 'ok';
     });
   }
+  if (a.t === 'addBot') {
+    // kun en menneskelig manager kan invitere en AI-manager ind
+    if (!g.humans?.some((h) => h.pid === pid && !h.bot)) return 'unknown';
+    return addBot(a.name, a.club, a.nation, a.style);
+  }
   if (!g.humans?.some((h) => h.pid === pid)) return 'unknown';
   return withHuman(pid, () => applyAction(a));
 }
@@ -154,7 +162,7 @@ export function setActionSink(s: Sink | null) {
 export function act<T = unknown>(a: Action): T {
   const g = gs();
   if (g.humans && g.active) activate(g.active, g);
-  const r = applyAction(a) as T;
+  const r = (a.t === 'addBot' && g.active ? applyActionAs(g.active, a) : applyAction(a)) as T;
   sink?.(a);
   notify();
   return r;

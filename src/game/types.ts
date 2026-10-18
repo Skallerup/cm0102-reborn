@@ -549,9 +549,13 @@ export interface Options {
   ai?: boolean;
 }
 
+export type BotStyle = 'ambitious' | 'developer' | 'trader' | 'pragmatic';
+
 export interface HumanSlot {
   pid: string;
   name: string;
+  /** AI-manager der spiller som et menneske (samme handlinger) */
+  bot?: { style: BotStyle; lastDay?: string };
   userClub: number;
   manager: ManagerProfile;
   board: BoardState;
@@ -603,6 +607,8 @@ export interface GameState {
   names: Record<number, [string[], string[]]>;
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
+  /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
+  localMp?: boolean;
   /** Holdsnak til dagens kamp (før kampen / i pausen / efter kampen) */
   matchTalk?: MatchTalk | null;
   dayDone: boolean;

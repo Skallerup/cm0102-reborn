@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { Select } from './select';
 import { CHALLENGES } from '../game/challenges';
 import { createGame, type WorldData } from '../game/newgame';
+import { setupBots, type BotScope } from '../game/bots';
+import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
-import { notify } from '../game/state';
+import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
 import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { Panel } from './components';
@@ -121,6 +123,8 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
   const [club, setClub] = useState<number>(ch?.club ?? 0);
   const [masking, setMasking] = useState(true);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
+  const [bots, setBots] = useState(0);
+  const [botScope, setBotScope] = useState<BotScope>('league');
   // database: den moderne (2025/26) eller originalen fra spillerens egen CM 01/02-installation
   const [db, setDbState] = useState<'modern' | 'cm0102'>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'cm0102' ? 'cm0102' : 'modern'; } catch { return 'modern'; } });
   const [needImport, setNeedImport] = useState(false);
@@ -175,9 +179,15 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
     };
     setTimeout(async () => {
       if (online) {
-        try { await createOnlineGame(world, opts); } catch (e) { setErr(String((e as Error).message)); }
+        try { await createOnlineGame(world, opts, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
       } else {
         createGame(world, opts);
+        if (bots > 0) {
+          // lokalt spil mod AI-managere: samme multiplayer-regler, men du spiller dine kampe live
+          enableMultiplayer('host', opts.managerName);
+          gs().localMp = true;
+          setupBots(bots, botScope);
+        }
         notify();
       }
       setBusy('');
@@ -223,6 +233,21 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
             {clubs.map((c) => (
               <div key={c[0]} className={`choice ${club === c[0] ? 'on' : ''}`} onClick={() => setClub(c[0])}>{c[2]}</div>
             ))}
+          </div>
+        </Panel>
+      )}
+      {!ch && (
+        <Panel title={t('bots.title')}>
+          <div className="col">
+            <div className="muted">{t(online ? 'bots.hintOnline' : 'bots.hint')}</div>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+              {[0, 1, 2, 3, 5, 7].map((n) => <button key={n} className={`small ${bots === n ? 'primary' : ''}`} onClick={() => setBots(n)}>{n === 0 ? t('bots.none') : n}</button>)}
+            </div>
+            {bots > 0 && (
+              <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                {t('bots.where')}: {(['league', 'nation', 'world'] as const).map((s) => <button key={s} className={`small ${botScope === s ? 'primary' : ''}`} onClick={() => setBotScope(s)}>{t(`bots.scope.${s}`)}</button>)}
+              </div>
+            )}
           </div>
         </Panel>
       )}

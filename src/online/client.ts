@@ -9,6 +9,7 @@
 import { upload } from '@vercel/blob/client';
 import { applyActionAs, setActionSink, type Action } from '../game/actions';
 import { activate, enableMultiplayer } from '../game/humans';
+import { setupBots, type BotScope } from '../game/bots';
 import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
 import { rng } from '../game/rng';
 import { mpAdvance } from '../game/sim';
@@ -309,13 +310,14 @@ export function closeSession() {
 // ---------- opret / deltag ----------
 
 /** Opret et nyt online spil: værten opretter verden lokalt og uploader første version */
-export async function createOnlineGame(world: WorldData, o: NewGameOptions): Promise<OnlineSession> {
+export async function createOnlineGame(world: WorldData, o: NewGameOptions, bots?: { count: number; scope: BotScope }): Promise<OnlineSession> {
   const created = await post<{ code: string; pid: string; token: string }>('create', {
     name: o.managerName, club: o.clubId, settings: { nations: o.activeNations, seed: o.seed, masking: o.masking },
   });
   const creds: Credentials = { code: created.code, pid: created.pid, token: created.token, name: o.managerName };
   createGame(world, o);
   enableMultiplayer(creds.pid, o.managerName);
+  if (bots?.count) setupBots(bots.count, bots.scope);
   const state = gs();
   state.lastActionIdx = 0;
   const blob = await serializeState(state);

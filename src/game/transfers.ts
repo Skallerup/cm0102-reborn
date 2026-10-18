@@ -612,7 +612,7 @@ function targetLevel(club: Club): number {
   return Math.max(clubLevel(club.id), leagueFloor(club));
 }
 
-function findTarget(club: Club, role: Role): Player | null {
+export function findTarget(club: Club, role: Role): Player | null {
   const g = gs();
   if (!roleIndex || g.date > addDays(roleIndexDate, 14)) buildRoleIndex();
   const ids = roleIndex!.get(role) ?? [];

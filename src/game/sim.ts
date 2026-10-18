@@ -23,6 +23,7 @@ import { expirePress, invitePress, motivation, resolvePressPromise } from './pre
 import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
+import { botsDaily, isBotClub } from './bots';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -334,10 +335,12 @@ function newDay() {
 function playDay(): DayResult {
   const g = gs();
   let userMatch: number | undefined;
+  // AI-managere (botter) træffer dagens beslutninger, inden der spilles
+  if (g.humans) botsDaily();
   for (const id of fixturesOn(g.date)) {
     const f = g.fixtures[id];
     if (!f || f.result) continue;
-    if (!isMultiplayer(g) && g.userClub && (f.home === g.userClub || f.away === g.userClub)) {
+    if ((!isMultiplayer(g) || g.localMp) && g.userClub && (f.home === g.userClub || f.away === g.userClub)) {
       userMatch = f.id;
       continue;
     }
@@ -451,14 +454,14 @@ export function mpAdvance(): { days: number; reason: string } {
     newDay();
     const humansPlaying = fixturesOn(g.date).some((id) => {
       const f = g.fixtures[id];
-      return f && (isHumanClub(f.home) || isHumanClub(f.away));
+      return f && ((isHumanClub(f.home) && !isBotClub(f.home)) || (isHumanClub(f.away) && !isBotClub(f.away)));
     });
     playDay();
     g.dayDone = true;
     g.pendingFixture = null;
     if (humansPlaying) return { days: i, reason: 'match' };
     let important = false;
-    forEachHuman(() => { if (g.news.some((n) => n.id >= startNews && IMPORTANT.includes(n.key))) important = true; });
+    for (const h of g.humans ?? []) if (!h.bot) withHuman(h.pid, () => { if (g.news.some((n) => n.id >= startNews && IMPORTANT.includes(n.key))) important = true; });
     if (important) return { days: i, reason: 'news' };
   }
   return { days: 14, reason: 'limit' };

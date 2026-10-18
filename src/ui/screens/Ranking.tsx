@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react';
 import { careerPoints, computeSeasonScore, leagueWeight, type SeasonScore } from '../../game/rating';
-import { isMultiplayer } from '../../game/humans';
+import { enableMultiplayer, isMultiplayer, withHuman } from '../../game/humans';
+import { session } from '../../online/client';
+import { finalOrder } from '../../game/competitions';
+import { nextBot, pickBotClub, type BotScope } from '../../game/bots';
+import { act } from '../../game/actions';
+import { ClubLink } from '../components';
 import { createProfile, fetchBoard, getProfile, rankingAvailable, submitPending, type Board, type RankRow } from '../../online/rank';
 import { t } from '../../i18n';
 import { Panel, Tabs } from '../components';
@@ -24,12 +29,13 @@ function ScoreTable({ s }: { s: SeasonScore }) {
 
 export function RankingScreen() {
   const g = useGame()!;
-  const [tab, setTab] = useRouteState('tab', 'mine');
+  const [tab, setTab] = useRouteState('tab', isMultiplayer(g) ? 'managers' : 'mine');
   return (
     <div>
       <Head title={t('nav.ranking')}>
-        <Tabs tabs={[['mine', t('rank.mine')], ['boards', t('rank.boards')], ['how', t('rank.how')]]} value={tab} onChange={setTab} />
+        <Tabs tabs={[['managers', t('bots.managers')], ['mine', t('rank.mine')], ['boards', t('rank.boards')], ['how', t('rank.how')]]} value={tab} onChange={setTab} />
       </Head>
+      {tab === 'managers' && <Managers />}
       {tab === 'mine' && <Mine />}
       {tab === 'boards' && (isMultiplayer(g) ? <div className="empty">{t('rank.singleOnly')}</div> : <Boards />)}
       {tab === 'how' && <How />}
@@ -166,5 +172,66 @@ function How() {
       </ul>
       <p className="muted">{t('rank.howWeight', { w: lw.toFixed(2) })}</p>
     </Panel>
+  );
+}
+
+/** Alle managere i spillet (mennesker og AI-managere) – stilling, point og karriere */
+function Managers() {
+  const g = useGame()!;
+  const [scope, setScope] = useState<BotScope>('league');
+  const [msg, setMsg] = useState('');
+  const slots = g.humans ?? [{ pid: '', name: g.manager.name, bot: undefined }];
+  const rows = slots.map((h) => withHuman(h.pid, () => {
+    const c = g.clubs[g.userClub];
+    const comp = c ? g.comps[c.league] : undefined;
+    const pos = comp ? finalOrder(comp).indexOf(c.id) + 1 : 0;
+    const live = computeSeasonScore(true);
+    return { pid: h.pid, name: h.name, bot: h.bot?.style, club: g.userClub, league: comp?.name ?? '', pos, live: live?.points ?? 0, career: careerPoints(), trophies: g.manager.trophies.length, conf: Math.round(g.board.confidence) };
+  })).sort((a, b) => b.career + b.live - (a.career + a.live));
+  const add = () => {
+    if (!isMultiplayer(g)) {
+      // solospil → lokalt spil mod AI-managere (den globale rangliste gælder ikke længere)
+      if (!confirm(t('bots.convertConfirm'))) return;
+      enableMultiplayer('host', g.manager.name);
+      g.localMp = true;
+    }
+    const c = pickBotClub(scope, (g.humans?.length ?? 0) * 7 + 3);
+    if (!c) { setMsg(t('bots.noClub')); return; }
+    const b = nextBot();
+    const r = act<string>({ t: 'addBot', name: b.name, club: c.id, nation: c.nation, style: b.style });
+    setMsg(r === 'ok' ? t('bots.added', { name: b.name, club: c.name }) : t('bots.noClub'));
+  };
+  return (
+    <div className="col">
+      <Panel title={t('bots.managers')} className="flush">
+        <table className="grid">
+          <thead><tr><th>#</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('bots.pos')}</th><th className="num">{t('bots.season')}</th><th className="num">{t('bots.career')}</th><th className="num">{t('bots.trophies')}</th><th className="num">{t('bots.board')}</th></tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.pid || 'me'} className={!r.pid || r.pid === g.active ? 'me' : ''}>
+                <td>{i + 1}</td>
+                <td>{r.name} {r.bot ? <span className="tag" title={t(`bots.style.${r.bot}.hint`)}>AI · {t(`bots.style.${r.bot}`)}</span> : null}</td>
+                <td>{r.club ? <><ClubLink id={r.club} /> <span className="muted">{r.league}</span></> : <span className="muted">{t('bots.unemployed')}</span>}</td>
+                <td className="num">{r.pos || '–'}</td>
+                <td className="num">{r.live}</td>
+                <td className="num"><b>{r.career + r.live}</b></td>
+                <td className="num">{r.trophies}</td>
+                <td className="num">{r.conf}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Panel>
+      <Panel title={t('bots.addTitle')}>
+        <div className="col">
+          <div className="muted">{t(session() ? 'bots.addHintOnline' : isMultiplayer(g) ? 'bots.addHint' : 'bots.addHintSolo')}</div>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+            {t('bots.where')}: {(['league', 'nation', 'world'] as const).map((s) => <button key={s} className={`small ${scope === s ? 'primary' : ''}`} onClick={() => setScope(s)}>{t(`bots.scope.${s}`)}</button>)}
+            <button className="primary small" disabled={(g.humans?.length ?? 0) >= 12} onClick={add}>+ {t('bots.add')}</button>
+          </div>
+          {msg && <div className="insight">{msg}</div>}
+        </div>
+      </Panel>
+    </div>
   );
 }
