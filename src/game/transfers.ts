@@ -384,7 +384,9 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   };
   forEachHuman(() => {
     const involved = buyer.id === g.userClub || seller?.id === g.userClub;
-    if (involved || otherTransferNews(buyer, seller, o.fee, o.loan)) addNews(news);
+    if (involved) addNews(news);
+    // andre klubbers handler samles i ugens transferoverblik
+    else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
   });
 }
 
@@ -725,7 +727,7 @@ function aiClubTurn(club: Club) {
     target.contract = { wage, expires: `${year(g.date) + preferredYears(target)}-06-30` };
     setClub(target, club.id);
     target.joined = g.date;
-    if (otherTransferNews(club, undefined, 0, false)) addNews({ cat: 'transfer', key: 'transfer.freeDone', params: { player: pname(target), from: '-', to: club.name, fee: 0 }, link: { kind: 'player', id: target.id } });
+    forEachHuman(() => { if (otherTransferNews(club, undefined, 0, false)) (g.transferDigest ??= []).push({ player: target.id, from: 0, to: club.id, fee: 0 }); });
     return;
   }
   const ask = askingPrice(target);
@@ -808,9 +810,11 @@ function rivalBid(o: TransferOffer, p: Player): TransferOffer['rival'] {
 export function aiLoanOptions() {
   const g = gs();
   if (!g.userClub || !windowOpen()) return;
+  // højst ét åbent lejetilbud ad gangen (ellers fylder de indbakken)
+  if (g.offers.some((o) => o.seller === g.userClub && o.loan && o.option && o.status === 'pending')) return;
   for (const p of squad(g.userClub)) {
     if (p.loan || p.listed || p.contract?.futureClub || keyPlayerRank(p) <= 14) continue;
-    if (ageOn(p.dob, g.date) > 23 || !rng.chance(0.04)) continue;
+    if (ageOn(p.dob, g.date) > 23 || !rng.chance(0.015)) continue;
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
     const cands = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.id !== g.userClub && Math.abs(clubLevel(c.id) - p.ca) <= 12 && c.transferBudget >= p.value);
     if (!cands.length) continue;
@@ -819,6 +823,7 @@ export function aiLoanOptions() {
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee: 0, loan: true, option, status: 'pending', created: g.date, respondBy: addDays(g.date, 6) };
     g.offers.push(o);
     addNews({ cat: 'transfer', key: 'transfer.loanOptionBid', params: { club: club.name, player: pname(p), fee: option }, link: { kind: 'offer', id: o.id } });
+    return;
   }
 }
 
@@ -1075,4 +1080,19 @@ export function aiReleaseClauses() {
     asOwner(cur.id, () => addNews({ cat: 'transfer', key: 'clause.releaseTriggered', params: { player: pname(p), club: buyer.name, fee: rel }, link: { kind: 'player', id: p.id } }));
     completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
   }
+}
+
+/** Mandag: ugens handler mellem andre klubber som én samlet nyhed (kun den aktive manager) */
+export function weeklyTransferDigest() {
+  const g = gs();
+  const deals = g.transferDigest ?? [];
+  g.transferDigest = [];
+  if (!deals.length) return;
+  deals.sort((a, b) => b.fee - a.fee);
+  const top = deals[0];
+  addNews({
+    cat: 'transfer', key: deals.length === 1 ? 'transfer.digestOne' : 'transfer.digest',
+    params: { n: deals.length, player: pname(g.players[top.player] ?? ({ first: '?', last: '' } as Player)), to: g.clubs[top.to]?.name ?? '', fee: top.fee },
+    deals: deals.slice(0, 25),
+  });
 }

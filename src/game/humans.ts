@@ -8,7 +8,7 @@ import { gs } from './state';
 import type { GameState, HumanSlot } from './types';
 
 export const PERSONAL_KEYS = [
-  'userClub', 'manager', 'board', 'tactic', 'savedTactics', 'knowledge', 'scoutFinds', 'shortlist', 'news', 'jobOffers', 'challenge', 'pendingFixture', 'press', 'matchTalk', 'chatRead',
+  'userClub', 'manager', 'board', 'tactic', 'savedTactics', 'knowledge', 'scoutFinds', 'shortlist', 'news', 'jobOffers', 'challenge', 'pendingFixture', 'press', 'matchTalk', 'chatRead', 'transferDigest',
 ] as const;
 
 type PersonalKey = (typeof PERSONAL_KEYS)[number];

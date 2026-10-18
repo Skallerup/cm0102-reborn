@@ -1,6 +1,6 @@
 // Medierne: rygter om interesse for manageres spillere (der kan blive til rigtige bud) og
 // månedens klumme om ligaen. Selve teksterne kan skrives af AI, når beskeden åbnes.
-import { addDays } from './dates';
+import { addDays, daysBetween } from './dates';
 import { roundValue } from './data/generate';
 import { forEachHuman, isHumanClub } from './humans';
 import { rng } from './rng';
@@ -18,7 +18,9 @@ export function weeklyRumours() {
   const me = g.clubs[g.userClub];
   if (!me) return;
   const m = Number(g.date.slice(5, 7));
-  if (!rng.chance(m >= 5 && m <= 8 || m === 12 || m === 1 ? 0.35 : 0.15)) return;
+  // højst ét rygte hver tredje uge
+  if (g.board.lastRumour && daysBetween(g.board.lastRumour, g.date) < 21) return;
+  if (!rng.chance(m >= 5 && m <= 8 || m === 12 || m === 1 ? 0.22 : 0.07)) return;
   const cands = squad(me.id).filter((p) => !p.loan && p.contract && (avgForm(p) >= 7 || p.ca >= clubLevel(me.id) + 6) && !p.contract.futureClub);
   const p = rng.pick(cands);
   if (!p) return;
@@ -32,6 +34,7 @@ export function weeklyRumours() {
     list.push({ club: club.id, player: p.id, lastFee: roundValue(p.value * 0.85), maxFee: roundValue(Math.min(club.transferBudget, p.value * rng.range(1.1, 1.5))), tries: 0, next: addDays(g.date, rng.int(10, 30)) });
     g.pursuits = list;
   }
+  g.board.lastRumour = g.date;
   addNews({ cat: 'transfer', key: 'rumour.interest', params: { player: pname(p), club: club.name, outlet: rng.pick(['tabloid', 'paper', 'insider']) }, link: { kind: 'player', id: p.id } });
 }
 

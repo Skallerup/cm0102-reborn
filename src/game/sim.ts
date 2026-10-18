@@ -10,7 +10,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, weeklyTransferDigest } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { seasonRollover, youthIntake, youthPreview } from './season';
@@ -300,6 +300,7 @@ function newDay() {
   if (day(d) % 3 === 0) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
+    forEachHuman(weeklyTransferDigest);
     weeklyPlayerContact();
     aiReleaseClauses();
     weeklyDevelopment();
@@ -398,7 +399,7 @@ export function quickPlayUserMatch(): MatchReport | null {
 const INFO_KEYS = new Set([
   'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',
   'award.monthPlayer', 'award.monthManager', 'award.ballonDor', 'news.champions', 'news.cupWin', 'news.playoffWin', 'rumour.interest',
-  'news.retired', 'news.youth', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
+  'news.retired', 'news.youth', 'transfer.digest', 'transfer.digestOne', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
 ]);
 export function needsAttention(n: NewsItem): boolean {
   if (!INFO_KEYS.has(n.key)) return true;

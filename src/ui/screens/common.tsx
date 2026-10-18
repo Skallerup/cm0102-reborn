@@ -1,6 +1,7 @@
 import { Fragment, type ReactNode } from 'react';
 import { dateFmt, has, money, t } from '../../i18n';
 import { useNav } from '../core';
+import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
 import type { GameState } from '../../game/types';
@@ -125,5 +126,24 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 
 export function NewsBody({ n }: { n: NewsItem }) {
   const k = `${n.key}.body`;
-  return has(k) ? <>{linked(n, k)}</> : null;
+  const body = has(k) ? <>{linked(n, k)}</> : null;
+  if (!n.deals?.length) return body;
+  const g = gs();
+  // ugens transferoverblik: alle handlerne i en lille tabel
+  return (
+    <>
+      {body}
+      <table className="grid deals" style={{ marginTop: 8 }}>
+        <tbody>
+          {n.deals.map((d, i) => (
+            <tr key={i}>
+              <td><PlayerLink p={g.players[d.player]} /></td>
+              <td>{d.from ? <ClubLink id={d.from} /> : <span className="muted">{t('common.free')}</span>} → <ClubLink id={d.to} /></td>
+              <td className="num">{d.loan ? t('tr.loan') : d.fee ? money(d.fee) : t('transfer.digestFree')}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </>
+  );
 }

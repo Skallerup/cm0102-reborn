@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.5.2',
+    date: '2026-10-18',
+    title: { da: 'Roligere indbakke', en: 'Calmer inbox' },
+    items: [
+      { da: 'Andre klubbers handler samles i ét ugentligt transferoverblik med links', en: "Other clubs' deals are collected in one weekly transfer round-up with links" },
+      { da: 'Færre rygter (højst ét hver tredje uge) og færre lejetilbud på dine spillere', en: 'Fewer rumours (at most one every three weeks) and fewer loan offers for your players' },
+    ],
+  },
+  {
     version: '0.5.1',
     date: '2026-10-18',
     title: { da: 'Tydeligere online-træk', en: 'Clearer online turns' },

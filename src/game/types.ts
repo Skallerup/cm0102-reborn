@@ -382,7 +382,11 @@ export interface NewsItem {
   read: boolean;
   /** link til spiller/klub/kamp/tilbud */
   link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards' | 'press' | 'chat'; id: number | string };
+  /** Ugentligt transferoverblik: ugens handler mellem andre klubber */
+  deals?: TransferDeal[];
 }
+
+export interface TransferDeal { player: number; from: number; to: number; fee: number; loan?: boolean }
 
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'countered' | 'negotiating' | 'completed' | 'withdrawn' | 'collapsed';
 
@@ -450,6 +454,8 @@ export interface BoardState {
   youthPreview?: { season: number; verdict: 'golden' | 'good' | 'average' | 'poor'; n: number; standout?: string; wonderkid?: boolean };
   /** Seneste holdmøde */
   lastTeamTalk?: string;
+  /** Seneste rygte om interesse for ens spillere */
+  lastRumour?: string;
   /** Dato for bestyrelsens seneste kampkommentar */
   lastComment?: string;
   confidence: number; // 0-100
@@ -584,6 +590,7 @@ export interface HumanSlot {
   matchTalk?: MatchTalk | null;
   /** Seneste læste chatbesked (id) */
   chatRead?: number;
+  transferDigest?: TransferDeal[];
 }
 
 export interface GameState {
@@ -626,6 +633,8 @@ export interface GameState {
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
   chat?: ChatMsg[];
   chatRead?: number;
+  /** Andre klubbers handler samlet til ugens transferoverblik */
+  transferDigest?: TransferDeal[];
   /** Holdsnak til dagens kamp (før kampen / i pausen / efter kampen) */
   matchTalk?: MatchTalk | null;
   dayDone: boolean;
