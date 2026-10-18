@@ -352,6 +352,9 @@ export function fillVacancies() {
   // Jobtilbud til de menneskelige managere
   const offered = new Set<number>();
   forEachHuman(() => {
+    // gamle tilbud fra klubber der ikke er større end ens nuværende fjernes
+    const cur = g.clubs[g.userClub];
+    if (cur) g.jobOffers = g.jobOffers.filter((id) => { const c = g.clubs[id]; return !!c && (c.rep >= cur.rep + 4 || (g.leagues[c.league]?.tier ?? 9) < (g.leagues[cur.league]?.tier ?? 9)); });
     for (const cid of g.vacancies) {
       const club = g.clubs[cid];
       if (!club || club.manager !== 0) continue;
@@ -360,12 +363,18 @@ export function fillVacancies() {
       const my = g.clubs[g.userClub];
       // kun jobtilbud fra samme verdensdel som ens klub (eller seneste klub/nationalitet, hvis arbejdsløs)
       if (regionOf(g.nations[club.nation]?.name) !== managerRegion()) continue;
+      // i job: kun klubber der er tydeligt større end ens nuværende (omdømme, eller en højere liga),
+      // og højst ét tilbud pr. ~3 måneder
+      const tier = (c: typeof club) => g.leagues[c.league]?.tier ?? 9;
+      const better = !!my && club.id !== my.id && (club.rep >= my.rep + 4 || (tier(club) < tier(my) && club.rep >= my.rep - 2));
+      const rested = !g.manager.lastJobOffer || daysBetween(g.manager.lastJobOffer, g.date) >= 90;
       const eligible = !my
         ? g.manager.rep + 12 >= club.rep
-        : club.id !== my.id && club.rep >= my.rep - 6 && club.rep <= Math.max(g.manager.rep, my.rep) + 8;
-      const chance = !my ? 0.35 : Math.max(0.01, 0.04 + (g.board.confidence - 50) / 1000) * (club.rep > my.rep ? 1.5 : 1);
+        : better && rested && club.rep <= Math.max(g.manager.rep, my.rep) + 12;
+      const chance = !my ? 0.35 : Math.max(0.005, 0.025 + (g.board.confidence - 50) / 1500);
       if (eligible && !g.jobOffers.includes(cid) && rng.chance(chance)) {
         g.jobOffers.push(cid);
+        if (my) g.manager.lastJobOffer = g.date;
         offered.add(cid);
         addNews({ cat: 'job', key: 'news.jobOffer', params: { club: club.name }, link: { kind: 'club', id: cid } });
       }

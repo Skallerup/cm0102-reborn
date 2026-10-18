@@ -418,6 +418,8 @@ export interface ManagerProfile {
   name: string;
   nation: number;
   rep: number; // 0-100
+  /** Seneste jobtilbud (mens man er i job) – der går mindst et par måneder mellem dem */
+  lastJobOffer?: string;
   history: { season: number; club: number; league: string; pos: number }[];
   trophies: { season: number; comp: string; club: number }[];
   sacked: number;
