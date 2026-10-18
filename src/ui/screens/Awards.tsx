@@ -93,7 +93,7 @@ function Gala({ s, comp, setComp }: { s: SeasonSummary; comp: string; setComp: (
         <Panel title={t('aw.season')}>
           <div className="kv">
             {s.managerOfYear && <><span>{t('aw.managerOfYear')}</span><span><b>{s.managerOfYear.name}</b> (<ClubLink id={s.managerOfYear.club} />, {s.managerOfYear.comp})</span></>}
-            {s.comps.filter((c) => c.id === 'CL' || c.id === 'UEFA').map((c) => [<span key={c.id + 'l'}>{c.name}</span>, <span key={c.id + 'v'}><ClubLink id={c.winner} long /></span>])}
+            {s.comps.filter((c) => c.id === 'CL' || c.id === 'UEFA' || c.id === 'UECL').map((c) => [<span key={c.id + 'l'}>{c.name}</span>, <span key={c.id + 'v'}><ClubLink id={c.winner} long /></span>])}
           </div>
         </Panel>
       </div>

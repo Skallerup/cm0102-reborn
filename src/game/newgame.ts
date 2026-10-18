@@ -215,7 +215,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   return g;
 }
 
-export function setupSeasonComps(season: number, prevTables: Record<string, number[]>) {
+export function setupSeasonComps(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number> = {}) {
   const g = gs();
   const active = new Set(g.activeNations);
   const byLeague = new Map<string, number[]>();
@@ -234,9 +234,10 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
     const clubs = leagues.flatMap((l) => byLeague.get(l) ?? []);
     if (clubs.length >= 8) setupCup(nation, cupName ?? `${g.nations[nation].name} Cup`, clubs, season);
   }
-  const { cl, uefa } = europeanQualifiers(prevTables);
+  const { cl, uefa, conf } = europeanQualifiers(prevTables, cupWinners);
   setupChampionsLeague(cl, season);
   setupUefaCup(uefa, season);
+  setupUefaCup(conf, season, 'UECL', 'Conference League');
 }
 
 export function takeOverClub(club: Club) {

@@ -44,6 +44,7 @@ function order(c: Competition) {
   if (user && c.nation === user.nation) return 1 + c.tier;
   if (c.id === 'CL') return 5;
   if (c.id === 'UEFA') return 6;
+  if (c.id === 'UECL') return 7;
   return 10 + c.tier;
 }
 

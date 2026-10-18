@@ -1,6 +1,7 @@
 // Gem/indlæs i IndexedDB som gzip-komprimeret JSON (≈4-5 MB pr. save).
+import { addMissingConference } from './competitions';
 import { del, get, keys, set } from 'idb-keyval';
-import { gs, setGame } from './state';
+import { gs, setGame, addNews, notify } from './state';
 import { deserializeState, serializeState } from './snapshot';
 import type { GameState } from './types';
 
@@ -76,11 +77,22 @@ export async function listSaves(): Promise<SaveMeta[]> {
   return (metas.filter(Boolean) as SaveMeta[]).sort((a, b) => b.saved.localeCompare(a.saved));
 }
 
+/** Opgradér gemte spil fra ældre versioner (nye turneringer m.m.) */
+function upgradeLoaded() {
+  const g = gs();
+  if (addMissingConference()) {
+    const club = g.clubs[g.userClub];
+    if (club && g.comps.UECL?.clubs.includes(club.id)) addNews({ cat: 'general', key: 'news.ueclQualified', params: { club: club.name } });
+    notify();
+  }
+}
+
 export async function loadGame(id: string): Promise<boolean> {
   const blob = await get<Blob>(`save:${id}`);
   if (!blob) return false;
   const g = await deserializeState(blob);
   setGame(g);
+  upgradeLoaded();
   rememberLast({ kind: 'local', id });
   return true;
 }
@@ -108,6 +120,7 @@ export async function importSave(file: File): Promise<boolean> {
     if (!g.players || !g.clubs) return false;
     g.id = `save-${Date.now().toString(36)}`;
     setGame(g);
+    upgradeLoaded();
     await saveGame();
     return true;
   } catch {

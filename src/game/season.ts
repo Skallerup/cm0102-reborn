@@ -383,7 +383,7 @@ function updateClubReps() {
   // pokaltitler
   for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.finished) bump(comp.winner, 1);
   // Europa: jo længere, jo mere omdømme (kvartfinale +1, semifinale +2, finale +3, CL-sejr +5 / UEFA-sejr +3)
-  for (const [id, win] of [['CL', 5], ['UEFA', 3]] as const) {
+  for (const [id, win] of [['CL', 5], ['UEFA', 3], ['UECL', 2]] as const) {
     const comp = g.comps[id];
     if (!comp) continue;
     const reached = new Map<number, number>();
@@ -391,7 +391,7 @@ function updateClubReps() {
       const lvl = t.stage === 'QF' ? 1 : t.stage === 'SF' ? 2 : t.stage === 'F' ? 3 : 0;
       for (const c of [t.a, t.b]) reached.set(c, Math.max(reached.get(c) ?? 0, lvl));
     }
-    for (const [cid, lvl] of reached) bump(cid, cid === comp.winner ? win : lvl);
+    for (const [cid, lvl] of reached) bump(cid, cid === comp.winner ? win : id === 'UECL' ? Math.max(0, lvl - 1) : lvl);
   }
 }
 
@@ -443,6 +443,9 @@ export function seasonRollover() {
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);
+  // pokalvindere (pr. nation) får en europæisk plads
+  const cupWinners: Record<number, number> = {};
+  for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0) cupWinners[comp.nation] = comp.winner;
   const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));
   promotionRelegation();
   seasonWageClauses(tierBefore);
@@ -471,7 +474,7 @@ export function seasonRollover() {
     if (sq.length < 18) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
   }
   newSeasonBudgets();
-  setupSeasonComps(g.season, prevTables);
+  setupSeasonComps(g.season, prevTables, cupWinners);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
   forEachHuman(() => {
     if (g.userClub) { setBoardExpectation(); addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }

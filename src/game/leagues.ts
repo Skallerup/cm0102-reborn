@@ -84,3 +84,5 @@ export function regionOf(nationName: string | undefined): Region {
 /** CL-pladser pr. landerangering (index = rang) */
 export const CL_SPOTS = [4, 4, 4, 4, 3, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
 export const UEFA_SPOTS = [3, 3, 3, 3, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+/** Conference League: mellemstore nationer får flest pladser (som i virkeligheden) */
+export const CONF_SPOTS = [1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1];

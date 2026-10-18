@@ -1,6 +1,6 @@
 // Turneringer: kalender, kampprogram, tabeller, pokaler, CL/UEFA og playoffs.
 import { addDays, nthWeekday, weekday } from './dates';
-import { CL_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, rulesFor } from './leagues';
+import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, rulesFor } from './leagues';
 import { rng } from './rng';
 import { addNews, gs, indexFixture, newsRelevant } from './state';
 import { forEachHuman } from './humans';
@@ -234,19 +234,27 @@ function tier1League(nation: number): string | undefined {
 }
 
 /** Find europæiske deltagere – bruger sluttabeller hvis ligaen blev spillet, ellers reputation */
-export function europeanQualifiers(prevTables: Record<string, number[]>): { cl: number[]; uefa: number[] } {
+export function europeanQualifiers(prevTables: Record<string, number[]>, cupWinners: Record<number, number> = {}): { cl: number[]; uefa: number[]; conf: number[] } {
   const g = gs();
   const ranking = nationRanking();
   const cl: number[] = [];
   const uefa: number[] = [];
+  const conf: number[] = [];
   ranking.forEach((nation, r) => {
     const lg = tier1League(nation);
     if (!lg) return;
     const order = prevTables[lg] ?? Object.values(g.clubs).filter((c) => c.league === lg).sort((a, b) => b.rep - a.rep).map((c) => c.id);
     const nCL = CL_SPOTS[r] ?? 0;
     const nU = UEFA_SPOTS[r] ?? 0;
-    cl.push(...order.slice(0, nCL));
-    uefa.push(...order.slice(nCL, nCL + nU));
+    const nC = CONF_SPOTS[r] ?? 0;
+    const taken = new Set<number>();
+    const take = (arr: number[], n: number) => { for (const c of order) { if (n <= 0) break; if (!taken.has(c)) { arr.push(c); taken.add(c); n--; } } };
+    take(cl, nCL);
+    // pokalvinderen får en plads i UEFA Cup (er han allerede med, går pladsen videre i tabellen)
+    const cup = cupWinners[nation];
+    if (cup !== undefined && !taken.has(cup) && g.clubs[cup]) { uefa.push(cup); taken.add(cup); take(uefa, nU); }
+    else take(uefa, nU + (cup !== undefined ? 1 : 0)); // pokalvinderen var allerede med: pladsen går videre i tabellen
+    take(conf, nC);
   });
   const fill = (arr: number[], n: number, exclude: Set<number>) => {
     if (arr.length > n) arr.length = n;
@@ -262,7 +270,8 @@ export function europeanQualifiers(prevTables: Record<string, number[]>): { cl: 
   };
   fill(cl, 32, new Set());
   fill(uefa, 32, new Set(cl));
-  return { cl, uefa };
+  fill(conf, 32, new Set([...cl, ...uefa]));
+  return { cl, uefa, conf };
 }
 
 export function setupChampionsLeague(clubs: number[], season: number) {
@@ -291,11 +300,11 @@ export function setupChampionsLeague(clubs: number[], season: number) {
   });
 }
 
-export function setupUefaCup(clubs: number[], season: number) {
+export function setupUefaCup(clubs: number[], season: number, id = 'UEFA', name = 'UEFA Cup') {
   const g = gs();
   const cal = calendar(season);
-  const comp: Competition = { id: 'UEFA', name: 'UEFA Cup', type: 'continental', nation: -1, tier: 0, clubs: clubs.slice(), table: [], ties: [], stage: 'R32', finished: false, pending: 0 };
-  g.comps.UEFA = comp;
+  const comp: Competition = { id, name, type: 'continental', nation: -1, tier: 0, clubs: clubs.slice(), table: [], ties: [], stage: 'R32', finished: false, pending: 0 };
+  g.comps[id] = comp;
   const sorted = clubs.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep);
   const seeds = rng.shuffle(sorted.slice(0, 16));
   const unseeded = rng.shuffle(sorted.slice(16));
@@ -557,5 +566,35 @@ function advance(comp: Competition, stage: string) {
 export function compPrize(compId: string, stage: string): number {
   if (compId === 'CL') return ({ G: 2_500_000, R16: 11_000_000, QF: 12_500_000, SF: 15_000_000, F: 18_000_000 } as Record<string, number>)[stage] ?? 0;
   if (compId === 'UEFA') return ({ R32: 1_000_000, R16: 1_500_000, QF: 2_500_000, SF: 4_000_000, F: 6_000_000 } as Record<string, number>)[stage] ?? 0;
+  if (compId === 'UECL') return ({ R32: 500_000, R16: 800_000, QF: 1_200_000, SF: 2_000_000, F: 3_000_000 } as Record<string, number>)[stage] ?? 0;
   return 0;
+}
+
+/**
+ * Ældre gem fra før Conference League: tilføj turneringen til den igangværende sæson, hvis den
+ * første runde ikke er spillet endnu. Sidste sæsons slutstillinger findes i klubbernes historik.
+ */
+export function addMissingConference(): boolean {
+  const g = gs();
+  if (g.comps.UECL || !g.comps.UEFA || g.humans?.some((h) => !h.bot && h.pid !== g.active)) return false;
+  const cal = calendar(g.season);
+  if (g.date >= cal.uefa.r32[0]) return false;
+  const prevTables: Record<string, number[]> = {};
+  for (const c of Object.values(g.clubs)) {
+    const h = c.history.find((x) => x.season === g.season - 1);
+    if (!h || g.leagues[h.league]?.tier !== 1) continue;
+    (prevTables[h.league] ??= [])[h.pos - 1] = c.id;
+  }
+  for (const k of Object.keys(prevTables)) prevTables[k] = prevTables[k].filter((x) => x !== undefined);
+  const cupWinners: Record<number, number> = {};
+  for (const c of g.seasonHistory.at(-1)?.comps ?? []) if (c.id.startsWith('CUP-') && c.winner) cupWinners[Number(c.id.slice(4))] = c.winner;
+  // allerede kvalificerede (CL/UEFA) bevares; Conference League fyldes efter de nye regler
+  const inEurope = new Set([...g.comps.CL?.clubs ?? [], ...g.comps.UEFA.clubs]);
+  const conf = europeanQualifiers(prevTables, cupWinners).conf.filter((id) => !inEurope.has(id));
+  if (conf.length < 32) {
+    const extra = Object.values(g.clubs).filter((c) => !inEurope.has(c.id) && !conf.includes(c.id) && UEFA_NATIONS.has(g.nations[c.nation]?.name) && g.leagues[c.league]?.tier === 1).sort((a, b) => b.rep - a.rep);
+    for (const c of extra) { if (conf.length >= 32) break; conf.push(c.id); }
+  }
+  setupUefaCup(conf.slice(0, 32), g.season, 'UECL', 'Conference League');
+  return true;
 }
