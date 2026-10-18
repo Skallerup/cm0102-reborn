@@ -76,6 +76,9 @@ export function weeklyDevelopment() {
   }
 }
 
+const YOUTH_RATE = 0.0115;
+const PRIME_RATE = 0.003;
+
 function develop(p: Player, ci: CoachingInfo) {
   const coachF = 0.3 + 1.2 * ci.quality;
   const g = gs();
@@ -88,12 +91,14 @@ function develop(p: Player, ci: CoachingInfo) {
   let delta = 0;
   if (age <= 23) {
     const ageF = age <= 18 ? 1 : age <= 20 ? 0.9 : age <= 22 ? 0.65 : 0.45;
-    delta = (p.pa - p.ca) * 0.0075 * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
+    // kalibreret (scripts/player-pool.ts): talenter når tæt på deres potentiale omkring 22-23 år
+    delta = (p.pa - p.ca) * YOUTH_RATE * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
   } else if (age <= 28) {
-    delta = (p.pa - p.ca) * 0.004 * coachF * (0.6 + prof * 0.6) * minutesBoost;
-  } else if (age >= 31) {
+    // de fleste topper midt i 20'erne – kun en langsom vækst herfra (ellers vokser antallet af stjerner hvert år)
+    delta = (p.pa - p.ca) * PRIME_RATE * coachF * (0.6 + prof * 0.6) * minutesBoost;
+  } else if (age >= 30) {
     // gode trænere og fysioterapi bremser tilbagegangen en smule
-    delta = -(0.03 + (age - 30) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
+    delta = -(0.03 + (age - 29) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
   }
   delta += rng.normal(0, 0.05);
   if (Math.abs(delta) < 0.01) return;

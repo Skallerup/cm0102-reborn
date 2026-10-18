@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.2',
+    date: '2026-10-18',
+    title: { da: 'Flere gode spillere over tid', en: 'More good players over time' },
+    items: [
+      { da: 'Ungdomsspillere udvikler sig hurtigere og når tæt på deres potentiale omkring 22-23 år', en: 'Youth players develop faster and get close to their potential around 22-23' },
+      { da: 'Lidt flere og bedre ungdomsspillere hvert år, så spillere på mellemniveau ikke slipper op', en: 'Slightly more and better youth players each year, so mid-level players do not run out' },
+      { da: 'Spillere topper midt i 20\'erne og begynder at dale fra 30 år', en: 'Players peak in their mid-20s and start to decline from 30' },
+    ],
+  },
+  {
     version: '0.7.1',
     date: '2026-10-18',
     title: { da: 'Spillere reagerer på afviste bud', en: 'Players react to rejected bids' },

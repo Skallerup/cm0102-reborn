@@ -191,6 +191,8 @@ function retirements() {
   }
 }
 
+const PA_BASE = 30, PA_Q = 55, PA_SD = 22;
+
 /** Datoen for årets ungdomsdag (15. marts) */
 export function intakeDate(): string {
   const g = gs();
@@ -204,7 +206,7 @@ export function planIntake(c: Club): IntakeSpec[] {
   const g = gs();
   const date = intakeDate();
   const r = new Rng(hash(g.seed, c.id, g.season, 31));
-  const n = r.int(2, 4);
+  const n = r.int(3, 4);
   const out: IntakeSpec[] = [];
   for (let i = 0; i < n; i++) {
     const nation = r.chance(0.88) ? c.nation : r.pick(Object.keys(g.names).map(Number));
@@ -213,7 +215,8 @@ export function planIntake(c: Club): IntakeSpec[] {
     const sub: SubPos = randomSub(r);
     const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4;
     const ca = Math.round(28 + quality * 45 + r.normal(0, 8));
-    let pa = Math.round(ca + 22 + quality * 45 + r.normal(0, 18));
+    // kalibreret (scripts/player-pool.ts): nok talenter til at erstatte dem der stopper, uden at oversvømme toppen
+    let pa = Math.round(ca + PA_BASE + quality * PA_Q + r.normal(0, PA_SD));
     if (r.chance(0.006 + quality * 0.01)) pa = r.int(160, 195); // wonderkid
     const dob = randomDob(age, date, r);
     const foot = r.chance(0.25) ? 'L' : 'R';
