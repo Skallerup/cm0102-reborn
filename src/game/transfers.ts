@@ -12,7 +12,7 @@ import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
 import { bumpFans } from './fans';
 import { pushCareerLine } from './season';
-import { playerPraises } from './will';
+import { blockedMoveReaction, playerPraises, targetReaction } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
@@ -226,7 +226,8 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   if (action === 'reject') {
     o.status = 'rejected';
     if (!isHumanClub(buyer.id) && !o.loan) startPursuit(o);
-    if (p && p.attrs[42] > 14 && keyPlayerRank(p) > 5) p.morale = Math.max(1, p.morale - 3);
+    // spilleren kan blive skuffet og bede om en samtale (især ambitiøse spillere ved et skridt op)
+    if (p) blockedMoveReaction(p, buyer.id, o.fee);
     if (isHumanClub(buyer.id)) asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidRejected', params: { player: pname(p), club: myName }, link: { kind: 'player', id: p.id } }));
     return;
   }
@@ -265,6 +266,7 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
       if (o.priceRounds >= 3 || counter > max * 1.6) {
         o.status = 'withdrawn';
         addNews({ cat: 'transfer', key: 'transfer.aiWithdrew', params: { club: buyer.name, player: pname(p) } });
+        blockedMoveReaction(p, buyer.id, o.fee);
         return;
       }
       // ellers hæver de buddet et stykke mod deres smertegrænse
@@ -536,6 +538,8 @@ export function processOffers() {
       } else {
         o.status = 'rejected';
         addNews({ cat: 'transfer', key: d.answer === 'notforsale' ? 'transfer.notForSale' : 'transfer.bidRejected', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'player', id: p.id } });
+        // spilleren ville måske gerne – han kan kontakte køberen og bede om at blive sat til salg
+        targetReaction(p, buyer.id);
       }
     } else if ((o.status === 'negotiating' || o.status === 'countered') && g.date > o.respondBy) {
       o.status = 'collapsed';

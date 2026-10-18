@@ -97,12 +97,12 @@ export function monthlyWill() {
 const recently = (p: Player, days: number) => !!p.lastContact && daysBetween(p.lastContact, gs().date) < days;
 
 /** En spiller beder om en samtale (klage) – manageren svarer fra spillerens profil */
-export function playerComplains(p: Player, kind: 'time' | 'morale' | 'press') {
+export function playerComplains(p: Player, kind: 'time' | 'morale' | 'press' | 'blocked', club?: number) {
   const g = gs();
   if (p.complaint || recently(p, 30)) return;
-  p.complaint = { kind, date: g.date };
+  p.complaint = { kind, date: g.date, ...(club ? { club } : {}) };
   p.lastContact = g.date;
-  asOwner(p.club, () => addNews({ cat: 'contract', key: `will.complain.${kind}`, params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
+  asOwner(p.club, () => addNews({ cat: 'contract', key: `will.complain.${kind}`, params: { player: pname(p), club: club ? g.clubs[club]?.name ?? '' : '' }, link: { kind: 'player', id: p.id } }));
 }
 
 /** En spiller roser manageren – ledere smitter resten af truppen */
@@ -148,7 +148,9 @@ export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list
   const p = g.players[pid];
   if (!p || p.club !== g.userClub || !p.complaint) return 'error';
   const kind = p.complaint.kind;
+  const suitor = p.complaint.club;
   p.complaint = undefined;
+  if (kind === 'blocked') return answerBlocked(p, choice, suitor);
   const strong = p.attrs[A.determination] >= 14 || p.attrs[A.professionalism] >= 15;
   const hot = p.attrs[A.temperament] <= 8;
   switch (choice) {
@@ -171,5 +173,74 @@ export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list
       p.morale = Math.min(20, p.morale + (kind === 'morale' ? 2.5 : 1));
       if (kind === 'press') p.unhappy = Math.max(0, (p.unhappy ?? 0) - 15);
       return kind === 'time' ? 'complaint.r.listenTime' : 'complaint.r.listen';
+  }
+}
+
+// ---------- skuffelse over afviste bud ----------
+
+/** Egen spiller: manageren afviste et bud på ham. Ambitiøse spillere tager det tungt, når det var et skridt op. */
+export function blockedMoveReaction(p: Player, buyerId: number, fee: number) {
+  const g = gs();
+  const buyer = g.clubs[buyerId];
+  const mine = g.clubs[p.club];
+  if (!buyer || !mine || p.loan) return;
+  const amb = p.attrs[A.ambition];
+  const stepUp = buyer.rep - mine.rep;
+  // kun når det var et attraktivt skifte for spilleren (større klub eller et stort bud)
+  if (stepUp < 3 && fee < p.value * 1.4) return;
+  const chance = Math.min(0.9, 0.15 + Math.max(0, stepUp) / 40 + Math.max(0, amb - 10) / 20 - Math.max(0, p.attrs[A.loyalty] - 12) / 15);
+  if (!rng.chance(chance)) return;
+  p.unhappy = Math.min(100, (p.unhappy ?? 0) + 20 + Math.max(0, stepUp));
+  p.morale = Math.max(1, p.morale - 1.5);
+  playerComplains(p, 'blocked', buyerId);
+}
+
+/** Spiller man har budt på: hans klub sagde nej. Han kan kontakte en og – hvis han er meget ambitiøs – bede om at blive sat til salg. */
+export function targetReaction(p: Player, buyerId: number) {
+  const g = gs();
+  const buyer = g.clubs[buyerId];
+  const cur = g.clubs[p.club];
+  if (!buyer || !cur || p.loan || p.contract?.futureClub || isHumanClub(p.club)) return;
+  if (buyer.rep < cur.rep - 3) return; // ikke et skridt op – han er ligeglad
+  const amb = p.attrs[A.ambition];
+  if (!rng.chance(Math.min(0.75, 0.2 + (buyer.rep - cur.rep) / 40 + Math.max(0, amb - 10) / 15))) return;
+  p.unhappy = Math.min(100, (p.unhappy ?? 0) + 25);
+  const request = amb >= 14 && rng.chance(0.5 + (buyer.rep - cur.rep) / 50);
+  if (request) {
+    // han beder om at blive sat til salg – klubben sætter en realistisk pris
+    p.listed = true;
+    p.listPrice = Math.round(p.value * (1.05 + rng.next() * 0.2) / 50_000) * 50_000;
+  }
+  asOwner(buyerId, () => addNews({ cat: 'transfer', key: request ? 'will.targetRequest' : 'will.targetUpset', params: { player: pname(p), club: cur.name, fee: p.listPrice ?? 0 }, link: { kind: 'player', id: p.id } }));
+}
+
+function answerBlocked(p: Player, choice: 'promise' | 'fight' | 'list' | 'listen', suitor?: number): string {
+  const g = gs();
+  const amb = p.attrs[A.ambition];
+  const hot = p.attrs[A.temperament] <= 8;
+  switch (choice) {
+    case 'promise': {
+      // lov ham en bedre kontrakt – han forventer et tilbud (ignoreres det, lækker han og vil til sidst væk)
+      const club = g.clubs[p.club];
+      const market = club ? wageFor(p.value, rulesFor(club.league, 20).wealth) : p.contract?.wage ?? 0;
+      p.demand = { since: g.date, wage: Math.round(Math.max(market, (p.contract?.wage ?? 0) * 1.2) / 50) * 50 };
+      p.morale = Math.min(20, p.morale + 2);
+      p.unhappy = Math.max(0, (p.unhappy ?? 0) - 25);
+      return 'complaint.r.blocked.promise';
+    }
+    case 'fight':
+      // "du er for vigtig til at blive solgt" – virker på loyale, ikke på de mest ambitiøse
+      if (p.attrs[A.loyalty] >= 13 || amb <= 11) { p.morale = Math.min(20, p.morale + 1.5); p.unhappy = Math.max(0, (p.unhappy ?? 0) - 20); return 'complaint.r.blocked.important'; }
+      p.morale = Math.max(1, p.morale - 2);
+      if (hot || amb >= 16) { p.wantsAway = true; return 'complaint.r.blocked.angry'; }
+      return 'complaint.r.blocked.sulk';
+    case 'list':
+      p.listed = true;
+      p.morale = Math.min(20, p.morale + 2);
+      p.unhappy = Math.max(0, (p.unhappy ?? 0) - 30);
+      return suitor ? 'complaint.r.blocked.list' : 'complaint.r.list';
+    case 'listen':
+      p.morale = Math.min(20, p.morale + 0.8);
+      return 'complaint.r.blocked.listen';
   }
 }

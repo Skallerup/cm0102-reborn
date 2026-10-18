@@ -524,12 +524,14 @@ function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
   const p = g.players[pid];
   if (!p) return null;
   const kind = p.complaint?.kind ?? 'time';
-  const choices: ('promise' | 'fight' | 'list' | 'listen')[] = kind === 'time' ? ['promise', 'fight', 'list', 'listen'] : ['listen', 'fight', 'list'];
+  const choices: ('promise' | 'fight' | 'list' | 'listen')[] = kind === 'time' || kind === 'blocked' ? ['promise', 'fight', 'list', 'listen'] : ['listen', 'fight', 'list'];
+  const label = (c: string, part: 'opt' | 'hint') => (kind === 'blocked' ? t(`complaint.${part}.blocked.${c}`) : t(`complaint.${part}.${c}`));
+  const suitor = p.complaint?.club ? g.clubs[p.complaint.club]?.name ?? '' : '';
   return (
     <Panel title={t('complaint.title', { player: `${p.first} ${p.last}` })}>
-      <p style={{ marginTop: 0, lineHeight: 1.5 }}>“{t(`complaint.says.${kind}`)}”</p>
+      <p style={{ marginTop: 0, lineHeight: 1.5 }}>“{t(`complaint.says.${kind}`, { club: suitor })}”</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-        {choices.map((c) => <button key={c} className={c === 'promise' ? 'primary' : ''} title={t(`complaint.hint.${c}`)} onClick={() => onMsg(`${p.last}: ${t(dispatch<string>({ t: 'complaint', pid, choice: c }), { player: p.last })}`)}>{t(`complaint.opt.${c}`)}</button>)}
+        {choices.map((c) => <button key={c} className={c === 'promise' ? 'primary' : ''} title={label(c, 'hint')} onClick={() => onMsg(`${p.last}: ${t(dispatch<string>({ t: 'complaint', pid, choice: c }), { player: p.last, club: suitor })}`)}>{label(c, 'opt')}</button>)}
       </div>
     </Panel>
   );

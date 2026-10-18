@@ -120,7 +120,7 @@ export interface Player {
   /** Seneste uro i spillerens gruppering (dato) */
   cliqueAlert?: string;
   /** Spillerens henvendelse til manageren (klage) der venter på svar, og et løfte om spilletid */
-  complaint?: { kind: 'time' | 'morale' | 'press'; date: string };
+  complaint?: { kind: 'time' | 'morale' | 'press' | 'blocked'; date: string; club?: number };
   playPromise?: { until: string; apps: number };
   /** Seneste ros/henvendelse (for ikke at gentage sig) */
   lastContact?: string;

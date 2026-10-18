@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.1',
+    date: '2026-10-18',
+    title: { da: 'Spillere reagerer på afviste bud', en: 'Players react to rejected bids' },
+    items: [
+      { da: 'Afviser du et bud på en spiller fra en større klub, kan han blive skuffet og bede om en samtale – lov en bedre kontrakt, sig at han er for vigtig, lad ham gå eller lyt', en: 'If you turn down a bid for a player from a bigger club, he may be disappointed and ask to talk – promise a better contract, say he is too important, let him go or listen' },
+      { da: 'Spillere du byder på, kan kontakte dig, når deres klub siger nej – de ambitiøse beder om at blive sat til salg, så du kan prøve igen', en: 'Players you bid for may contact you when their club says no – ambitious ones ask to be transfer listed so you can try again' },
+    ],
+  },
+  {
     version: '0.7.0',
     date: '2026-10-18',
     title: { da: 'Conference League og pokalvindere i Europa', en: 'Conference League and cup winners in Europe' },
