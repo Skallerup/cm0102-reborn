@@ -25,6 +25,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (p.kind === 'transfer' || p.kind === 'wage') p.kind = t(`board.kind.${p.kind}`);
   if (p.kind === 'stadium' || p.kind === 'training' || p.kind === 'youth') p.kind = t(`proj.kind.${p.kind}`);
   if (typeof p.done === 'string') p.done = dateFmt(p.done);
+  if (typeof p.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.date)) p.date = dateFmt(p.date);
   if (typeof p.cost === 'number') p.cost = money(p.cost);
   if (n.key === 'staff.hired' && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);

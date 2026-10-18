@@ -130,6 +130,13 @@ export function OnlineControls() {
       <button className="small" title={link} onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>
         {copied ? t('mp.copied') : `${t('mp.invite')} · ${s.creds.code}`}
       </button>
+      {(() => {
+        const dl = s.deadline();
+        if (!dl || !waiting.length || s.room.processing) return null;
+        const left = dl - Date.now();
+        const h = Math.floor(left / 3_600_000), m = Math.max(0, Math.floor((left % 3_600_000) / 60_000));
+        return <span className="muted nowrap" title={t('mp.deadlineTip')}>⏱ {left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
+      })()}
       <span className="muted nowrap">
         {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>

@@ -3,6 +3,7 @@ import { careerPoints, computeSeasonScore, leagueWeight, type SeasonScore } from
 import { enableMultiplayer, isMultiplayer, withHuman } from '../../game/humans';
 import { session } from '../../online/client';
 import { finalOrder } from '../../game/competitions';
+import { h2hFor } from '../../game/h2h';
 import { nextBot, pickBotClub, type BotScope } from '../../game/bots';
 import { act } from '../../game/actions';
 import { ClubLink } from '../components';
@@ -187,7 +188,7 @@ function Managers() {
     const comp = c ? g.comps[c.league] : undefined;
     const pos = comp ? finalOrder(comp).indexOf(c.id) + 1 : 0;
     const live = computeSeasonScore(true);
-    return { pid: h.pid, name: h.name, bot: h.bot?.style, club: g.userClub, league: comp?.name ?? '', pos, live: live?.points ?? 0, career: careerPoints(), trophies: g.manager.trophies.length, conf: Math.round(g.board.confidence) };
+    return { pid: h.pid, name: h.name, bot: h.bot?.style, h2h: h.pid && g.active && h.pid !== g.active ? h2hFor(g.active, h.pid) : null, club: g.userClub, league: comp?.name ?? '', pos, live: live?.points ?? 0, career: careerPoints(), trophies: g.manager.trophies.length, conf: Math.round(g.board.confidence) };
   })).sort((a, b) => b.career + b.live - (a.career + a.live));
   const add = () => {
     if (!isMultiplayer(g)) {
@@ -206,7 +207,7 @@ function Managers() {
     <div className="col">
       <Panel title={t('bots.managers')} className="flush">
         <table className="grid">
-          <thead><tr><th>#</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('bots.pos')}</th><th className="num">{t('bots.season')}</th><th className="num">{t('bots.career')}</th><th className="num">{t('bots.trophies')}</th><th className="num">{t('bots.board')}</th></tr></thead>
+          <thead><tr><th>#</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('bots.pos')}</th><th className="num">{t('bots.season')}</th><th className="num">{t('bots.career')}</th><th className="num">{t('bots.trophies')}</th><th className="num">{t('bots.board')}</th><th className="num">{t('h2h.vsYou')}</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.pid || 'me'} className={!r.pid || r.pid === g.active ? 'me' : ''}>
@@ -218,6 +219,7 @@ function Managers() {
                 <td className="num"><b>{r.career + r.live}</b></td>
                 <td className="num">{r.trophies}</td>
                 <td className="num">{r.conf}%</td>
+                <td className="num" title={r.h2h ? t('h2h.goals', { gf: r.h2h.gf, ga: r.h2h.ga }) : undefined}>{r.h2h ? <><b className="good">{r.h2h.w}</b>-{r.h2h.d}-<b className="bad">{r.h2h.l}</b></> : '–'}</td>
               </tr>
             ))}
           </tbody>

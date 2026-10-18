@@ -40,6 +40,8 @@ export interface NewGameOptions {
   masking: boolean;
   seed: number;
   challenge?: string;
+  /** Online: frist pr. træk i timer (0 = ingen) */
+  deadlineHours?: number;
 }
 
 const PALETTE = ['#c8102e', '#003399', '#ffffff', '#111111', '#ffd200', '#00843d', '#6cabdd', '#7a263a', '#f68b1f', '#5c2d91', '#0057b8', '#e30613'];

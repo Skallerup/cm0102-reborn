@@ -258,7 +258,7 @@ function Offers() {
   const order = (list: TransferOffer[]) => list.slice().reverse().sort((a, b) => active(a) - active(b));
   const incoming = order(g.offers.filter((o) => o.seller === g.userClub && o.buyer !== g.userClub));
   const outgoing = order(g.offers.filter((o) => o.buyer === g.userClub));
-  const status = (o: TransferOffer) => <span className={`tag ${o.status === 'completed' ? 'good' : ['rejected', 'collapsed', 'withdrawn'].includes(o.status) ? 'bad' : 'warn'}`}>{t(`offer.${o.status}`)}</span>;
+  const status = (o: TransferOffer) => <><span className={`tag ${o.status === 'completed' ? 'good' : ['rejected', 'collapsed', 'withdrawn'].includes(o.status) ? 'bad' : 'warn'}`}>{t(o.outbid ? 'offer.outbid' : `offer.${o.status}`)}</span>{o.auction && o.status === 'pending' && <span className="tag" title={t('auction.hint')}>{t('auction.tag')}</span>}</>;
   return (
     <div className="cols-wide">
       <Panel title={t('tr.incoming')} className="flush">

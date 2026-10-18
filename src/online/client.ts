@@ -8,13 +8,13 @@
 //  4. De andre opdager den nye version, henter den og genanvender egne handlinger der ikke nåede med.
 import { upload } from '@vercel/blob/client';
 import { applyActionAs, setActionSink, type Action } from '../game/actions';
-import { activate, enableMultiplayer } from '../game/humans';
+import { activate, enableMultiplayer, withHuman } from '../game/humans';
 import { setupBots, type BotScope } from '../game/bots';
 import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
 import { rng } from '../game/rng';
 import { mpAdvance } from '../game/sim';
 import { deserializeState, serializeState } from '../game/snapshot';
-import { gs, notify, setGame } from '../game/state';
+import { addNews, gs, notify, setGame } from '../game/state';
 import { rememberLast } from '../game/save';
 import type { GameState } from '../game/types';
 
@@ -27,10 +27,10 @@ export interface RoomInfo {
   date: string;
   lastApplied: number;
   actionCount: number;
-  settings: { nations?: number[]; seed?: number; masking?: boolean };
+  settings: { nations?: number[]; seed?: number; masking?: boolean; deadlineHours?: number };
   processing: string | null;
   lastTurn: string;
-  players: { pid: string; name: string; club: number; ready: boolean; joined: string }[];
+  players: { pid: string; name: string; club: number; ready: boolean; joined: string; auto?: boolean }[];
   chat?: RoomChat[];
 }
 
@@ -258,9 +258,21 @@ export class OnlineSession {
     this.emit();
   }
 
+  /** Hvornår udløber trækkets frist (ms siden epoch), eller null hvis rummet ikke har en frist */
+  deadline(): number | null {
+    const h = this.room?.settings?.deadlineHours;
+    if (!h || !this.room?.lastTurn) return null;
+    return Date.parse(this.room.lastTurn) + h * 3_600_000;
+  }
+
   private async maybeProcess() {
     const room = this.room;
     if (!room || this.busy || room.processing) return;
+    // fristen er udløbet: gør de manglende klar (deres assistent tager over i trækket)
+    const dl = this.deadline();
+    if (dl && Date.now() >= dl && room.players.some((p) => !p.ready)) {
+      try { this.room = await post<RoomInfo>('autoready', { ...this.creds }); this.emit(); } catch { return; }
+    }
     if (!room.players.length || !room.players.every((p) => p.ready)) return;
     if (room.version !== this.version) return;
     // Den første spiller (efter pid) prøver først; de andre venter lidt, så ikke alle forsøger samtidig
@@ -294,8 +306,12 @@ export class OnlineSession {
         last = idx;
       }
       state.lastActionIdx = last;
+      // spillere der ikke nåede at trykke Klar: deres assistent styrer trækket
+      const auto = new Set((this.room?.players ?? []).filter((p) => p.auto).map((p) => p.pid));
+      for (const h of state.humans ?? []) if (auto.has(h.pid)) h.autopilot = true;
       // hvis nogen stadig ikke er med i spillet (fx deres join fejlede), springes de over
       this.lastTurn = mpAdvance();
+      for (const h of state.humans ?? []) if (h.autopilot) { h.autopilot = false; withHuman(h.pid, () => addNews({ cat: 'general', key: 'mp.autopilot', params: { days: this.lastTurn?.days ?? 0 } })); }
       state.rng = rng.state;
       const blob = await serializeState(state);
       const url = await uploadSnapshot(this.creds, this.version + 1, blob);
@@ -346,7 +362,7 @@ export function closeSession() {
 /** Opret et nyt online spil: værten opretter verden lokalt og uploader første version */
 export async function createOnlineGame(world: WorldData, o: NewGameOptions, bots?: { count: number; scope: BotScope }): Promise<OnlineSession> {
   const created = await post<{ code: string; pid: string; token: string }>('create', {
-    name: o.managerName, club: o.clubId, settings: { nations: o.activeNations, seed: o.seed, masking: o.masking },
+    name: o.managerName, club: o.clubId, settings: { nations: o.activeNations, seed: o.seed, masking: o.masking, deadlineHours: o.deadlineHours ?? 0 },
   });
   const creds: Credentials = { code: created.code, pid: created.pid, token: created.token, name: o.managerName };
   createGame(world, o);

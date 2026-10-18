@@ -65,6 +65,12 @@ export function botsDaily() {
   const g = gs();
   if (!g.humans) return;
   for (const h of g.humans) {
+    // menneske på autopilot (fristen udløb): assistenten tager sig af det mest nødvendige
+    if (h.autopilot && !h.bot && h.autopilotDay !== g.date) {
+      h.autopilotDay = g.date;
+      withHuman(h.pid, () => { answerPress(h.pid); answerComplaints(h.pid, true); });
+      continue;
+    }
     if (!h.bot || h.bot.lastDay === g.date) continue;
     h.bot.lastDay = g.date;
     const pid = h.pid;
@@ -139,12 +145,13 @@ function answerPress(pid: string) {
   applyActionAs(pid, { t: 'press', answers });
 }
 
-function answerComplaints(pid: string) {
+function answerComplaints(pid: string, cautious = false) {
   const g = gs();
   for (const p of squad(g.userClub)) {
     if (!p.complaint) continue;
     const rank = keyPlayerRank(p);
-    const choice = p.complaint.kind !== 'time' ? 'listen' : rank <= 13 ? 'promise' : p.attrs[A.determination] >= 14 ? 'fight' : 'list';
+    // assistenten lover ikke noget på managerens vegne – den lytter bare
+    const choice = cautious || p.complaint.kind !== 'time' ? 'listen' : rank <= 13 ? 'promise' : p.attrs[A.determination] >= 14 ? 'fight' : 'list';
     applyActionAs(pid, { t: 'complaint', pid: p.id, choice });
   }
 }

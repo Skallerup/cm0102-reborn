@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { act } from '../../game/actions';
 import { clubOf, managerName } from '../../game/chat';
+import { h2hFor } from '../../game/h2h';
 import { finalOrder } from '../../game/competitions';
 import { squad } from '../../game/state';
 import type { ChatMsg } from '../../game/types';
@@ -126,6 +127,23 @@ export function ManagersScreen() {
               {target.bot && <span className="muted">{t(`bots.style.${target.bot.style}.hint`)}</span>}
             </div>
           )}
+          {target && (() => {
+            const h = h2hFor(me, target.pid);
+            return (
+              <div className="h2h">
+                <span className="h2h-label">{t('h2h.title')}</span>
+                {!h ? <span className="muted">{t('h2h.none')}</span> : (
+                  <>
+                    <span className="h2h-score"><b className="good">{h.w}</b> {t('h2h.w')} · <b>{h.d}</b> {t('h2h.d')} · <b className="bad">{h.l}</b> {t('h2h.l')}</span>
+                    <span className="muted">{t('h2h.goals', { gf: h.gf, ga: h.ga })}</span>
+                    {h.best && <span className="muted">{t('h2h.best', { score: `${h.best[0]}-${h.best[1]}`, date: dateFmt(h.best[2]) })}</span>}
+                    {h.worst && <span className="muted">{t('h2h.worst', { score: `${h.worst[1]}-${h.worst[0]}`, date: dateFmt(h.worst[2]) })}</span>}
+                    {h.last && <span className="muted">{t('h2h.last', { score: `${h.last.gf}-${h.last.ga}`, comp: h.last.comp, date: dateFmt(h.last.date) })}</span>}
+                  </>
+                )}
+              </div>
+            );
+          })()}
           <div className="chat-thread" ref={box}>
             {lines.length === 0 && <div className="muted" style={{ textAlign: 'center', padding: 20 }}>{t(target?.bot ? 'chat.emptyAi' : 'chat.empty')}</div>}
             {lines.map((l) => (

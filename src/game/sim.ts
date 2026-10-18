@@ -10,7 +10,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, weeklyTransferDigest } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, resolveAuctions, weeklyTransferDigest } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
@@ -25,6 +25,7 @@ import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
 import { botsDaily, isBotClub } from './bots';
 import { botsAfterMatch } from './chat';
+import { recordH2H } from './h2h';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -151,7 +152,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const scorers: [number, number, number][] = rep.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.p!]);
   const gate = gateReceipts(f);
   recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
-  if (g.humans) botsAfterMatch(f);
+  if (g.humans) { recordH2H(f); botsAfterMatch(f); }
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';
   const played = new Set<number>();
@@ -282,6 +283,7 @@ function newDay() {
     if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
+  if (g.humans) resolveAuctions();
   forEachHuman(processOffers);
   forEachHuman(() => {
     expirePress();

@@ -418,6 +418,10 @@ export interface TransferOffer {
   /** Klausuler i buddet: videresalgsprocent til sælger og ekstra beløb efter 25 kampe */
   sellOn?: number;
   addOn?: number;
+  /** Lukket budrunde mellem managere om samme spiller */
+  auction?: boolean;
+  /** Tabte budrunden til en anden manager */
+  outbid?: boolean;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */
@@ -576,6 +580,9 @@ export interface HumanSlot {
   name: string;
   /** AI-manager der spiller som et menneske (samme handlinger) */
   bot?: { style: BotStyle; lastDay?: string };
+  /** Spilleren nåede ikke at trykke Klar: assistenten styrer dette træk */
+  autopilot?: boolean;
+  autopilotDay?: string;
   userClub: number;
   manager: ManagerProfile;
   board: BoardState;
@@ -637,6 +644,8 @@ export interface GameState {
   chatRead?: number;
   /** Andre klubbers handler samlet til ugens transferoverblik */
   transferDigest?: TransferDeal[];
+  /** Indbyrdes regnskab mellem managere (nøgle "pidA|pidB", sorteret) */
+  h2h?: Record<string, H2HRecord>;
   /** Holdsnak til dagens kamp (før kampen / i pausen / efter kampen) */
   matchTalk?: MatchTalk | null;
   dayDone: boolean;
@@ -712,4 +721,15 @@ export interface ChatMsg {
   text?: string;
   key?: string;
   params?: Record<string, string | number>;
+}
+
+/** Indbyrdes regnskab mellem to managere – set fra den første (a) i nøglen */
+export interface H2HRecord {
+  a: string; b: string;
+  w: number; d: number; l: number;
+  gf: number; ga: number;
+  /** Største sejr for hver: [mål for, mål imod, dato] */
+  bestA?: [number, number, string];
+  bestB?: [number, number, string];
+  last?: { date: string; fixture: number; gf: number; ga: number; comp: string };
 }

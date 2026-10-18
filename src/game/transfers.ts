@@ -203,6 +203,8 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
     id: g.nextId.offer++, player: pid, buyer: buyer.id, seller: p.club, fee: p.club ? fee : 0, loan,
     status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, !p.club ? 7 : humanSeller ? 5 : rng.int(1, 3)),
   };
+  // byder en anden manager også på spilleren hos en AI-klub: lukket budrunde med fælles frist
+  if (p.club && !loan && !humanSeller) startAuction(o, p);
   if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
   if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
   g.offers.push(o);
@@ -1102,4 +1104,47 @@ export function weeklyTransferDigest() {
     params: { n: deals.length, player: pname(g.players[top.player] ?? ({ first: '?', last: '' } as Player)), to: g.clubs[top.to]?.name ?? '', fee: top.fee },
     deals: deals.slice(0, 25),
   });
+}
+
+// ---------- lukkede budrunder mellem managere ----------
+
+const AUCTION_DAYS = 3;
+
+/** Et nyt bud møder et andet managers ventende bud på samme spiller: begge får besked og samme frist */
+function startAuction(o: TransferOffer, p: Player) {
+  const g = gs();
+  const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan && x.buyer !== o.buyer && isHumanClub(x.buyer));
+  if (!rivals.length) return;
+  const all = [o, ...rivals];
+  const deadline = all.reduce((d, x) => (x.respondBy > d ? x.respondBy : d), addDays(g.date, AUCTION_DAYS));
+  for (const x of all) {
+    const fresh = !x.auction;
+    x.auction = true;
+    x.respondBy = deadline;
+    if (fresh || x === o) asOwner(x.buyer, () => addNews({ cat: 'transfer', key: 'auction.started', params: { player: pname(p), n: all.length, date: deadline }, link: { kind: 'offer', id: x.id } }));
+  }
+}
+
+/** Dagligt (før buddene behandles): afgør budrunder, hvor fristen er nået – højeste bud går videre */
+export function resolveAuctions() {
+  const g = gs();
+  const byPlayer = new Map<number, TransferOffer[]>();
+  for (const o of g.offers) if (o.auction && o.status === 'pending') byPlayer.set(o.player, [...(byPlayer.get(o.player) ?? []), o]);
+  for (const [pid, list] of byPlayer) {
+    if (!list.some((o) => g.date >= o.respondBy)) continue;
+    const p = g.players[pid];
+    if (!p) continue;
+    if (list.length < 2) { list[0].auction = false; continue; }
+    // transfersum + klausulernes værdi for sælger; ved lige bud vinder det først afgivne
+    const value = (o: TransferOffer) => o.fee + bidClauseWorth(p, o.fee, o.sellOn, o.addOn);
+    const sorted = list.slice().sort((a, b) => value(b) - value(a) || a.created.localeCompare(b.created) || a.id - b.id);
+    const [win, ...lose] = sorted;
+    win.respondBy = g.date;
+    asOwner(win.buyer, () => addNews({ cat: 'transfer', key: 'auction.won', params: { player: pname(p), n: list.length, club: sellerName(p.club) }, link: { kind: 'offer', id: win.id } }));
+    for (const o of lose) {
+      o.status = 'rejected';
+      o.outbid = true;
+      asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'auction.lost', params: { player: pname(p), club: g.clubs[win.buyer]?.name ?? '', fee: win.fee }, link: { kind: 'player', id: p.id } }));
+    }
+  }
 }

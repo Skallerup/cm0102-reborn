@@ -124,6 +124,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
   const [masking, setMasking] = useState(true);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
   const [bots, setBots] = useState(0);
+  const [deadline, setDeadline] = useState(24);
   const [botScope, setBotScope] = useState<BotScope>('league');
   // database: den moderne (2025/26) eller originalen fra spillerens egen CM 01/02-installation
   const [db, setDbState] = useState<'modern' | 'cm0102'>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'cm0102' ? 'cm0102' : 'modern'; } catch { return 'modern'; } });
@@ -179,7 +180,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
     };
     setTimeout(async () => {
       if (online) {
-        try { await createOnlineGame(world, opts, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
+        try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
       } else {
         createGame(world, opts);
         if (bots > 0) {
@@ -248,6 +249,16 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
                 {t('bots.where')}: {(['league', 'nation', 'world'] as const).map((s) => <button key={s} className={`small ${botScope === s ? 'primary' : ''}`} onClick={() => setBotScope(s)}>{t(`bots.scope.${s}`)}</button>)}
               </div>
             )}
+          </div>
+        </Panel>
+      )}
+      {online && (
+        <Panel title={t('mp.deadlineTitle')}>
+          <div className="col">
+            <div className="muted">{t('mp.deadlineHint')}</div>
+            <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+              {[0, 6, 12, 24, 48].map((h) => <button key={h} className={`small ${deadline === h ? 'primary' : ''}`} onClick={() => setDeadline(h)}>{h ? t('mp.hours', { n: h }) : t('mp.noDeadline')}</button>)}
+            </div>
           </div>
         </Panel>
       )}

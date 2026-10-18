@@ -20,6 +20,8 @@ interface PlayerRec {
   token: string;
   ready: boolean;
   joined: string;
+  /** Gjort klar automatisk, fordi trækkets frist udløb (assistenten tager over) */
+  auto?: boolean;
 }
 
 interface ChatRec {
@@ -97,7 +99,7 @@ async function publicRoom(code: string) {
     code: room.code, host: room.host, status: room.status, version: room.version, snapshot: room.snapshot, date: room.date,
     lastApplied: room.lastApplied, actionCount, settings: typeof room.settings === 'string' ? JSON.parse(room.settings || '{}') : (room.settings ?? {}), lastTurn: room.lastTurn,
     processing: lock ?? null,
-    players: players.map((p) => ({ pid: p.pid, name: p.name, club: p.club, ready: p.ready, joined: p.joined })),
+    players: players.map((p) => ({ pid: p.pid, name: p.name, club: p.club, ready: p.ready, joined: p.joined, auto: !!p.auto })),
     chat,
   };
 }
@@ -182,10 +184,24 @@ export async function POST(request: Request) {
       await Promise.all([touch(code), redis.expire(`${keys.chat}:seq`, TTL)]);
       return json(rec);
     }
+    case 'autoready': {
+      // trækkets frist er udløbet: alle der ikke er klar, gøres klar – deres assistent tager over
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      if (!room) return json({ error: 'not-found' }, 404);
+      const settings = typeof room.settings === 'string' ? JSON.parse(room.settings || '{}') : (room.settings ?? {});
+      const hours = Number(settings.deadlineHours ?? 0);
+      if (!hours) return json({ error: 'no-deadline' }, 400);
+      if (Date.now() - Date.parse(room.lastTurn) < hours * 3_600_000) return json({ error: 'too-early' }, 409);
+      for (const p of await getPlayers(code)) if (!p.ready) { p.ready = true; p.auto = true; await savePlayer(code, p); }
+      return json(await publicRoom(code));
+    }
     case 'ready': {
       const me = await auth(code, String(body.pid), String(body.token));
       if (!me) return json({ error: 'auth' }, 403);
       me.ready = !!body.ready;
+      me.auto = false;
       await savePlayer(code, me);
       return json(await publicRoom(code));
     }
@@ -230,7 +246,7 @@ export async function POST(request: Request) {
         date: String(body.date ?? ''), status: 'playing', lastTurn: new Date().toISOString(),
       });
       const players = await getPlayers(code);
-      for (const p of players) if (p.ready) { p.ready = false; await savePlayer(code, p); }
+      for (const p of players) if (p.ready || p.auto) { p.ready = false; p.auto = false; await savePlayer(code, p); }
       await redis.del(keys.lock);
       await touch(code);
       return json(await publicRoom(code));
