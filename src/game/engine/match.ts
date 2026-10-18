@@ -91,6 +91,8 @@ const zoneY = (l: number) => 16.67 + l * 33.33;
 const SQUASH = 0.84;
 /** Fordel pr. ekstra mand på banen i hver duel (røde kort) – kalibreret mod rigtige kampe, se scripts/redcard.ts */
 const MAN_EDGE = 0.45;
+/** Chance for direkte rødt kort pr. frispark (plus spillerens 'beskidthed') */
+const RED_BASE = 0.0029;
 /** Ekstra chancekvalitet pr. manglende forsvarsspiller */
 const SPACE_XG = 0.17;
 const squash = (v: number) => 11 + (v - 11) * SQUASH;
@@ -655,14 +657,17 @@ export class MatchSim {
     const dirt = def.p.attrs[A.dirtiness] + this.a(def, A.aggression);
     // en spiller med gult kort holder igen i tacklingerne
     if (def.yellow > 0 && !forced && this.r.chance(0.6)) return false;
-    const fp = forced ? 1 + (O.ti.tackling - 1) * 0.25 + (dirt - 20) / 40 - 0.25 : 0.11 + (O.ti.tackling - 1) * 0.05 + (dirt - 20) / 220;
+    let fp = forced ? 1 + (O.ti.tackling - 1) * 0.25 + (dirt - 20) / 40 - 0.25 : 0.11 + (O.ti.tackling - 1) * 0.05 + (dirt - 20) / 220;
+    // … også i de pressede dueller (ellers bliver andet gule kort alt for almindeligt)
+    if (def.yellow > 0) fp *= 0.6;
     if (!this.r.chance(clamp(fp, 0.03, forced ? 1 : 0.35))) return false;
     O.stats.fouls++;
     this.rate(def, -0.05);
     this.injuryCheck(victim);
     // Kort
-    const yp = (0.13 + 0.1 * (def.p.attrs[A.dirtiness] / 20) + (O.ti.tackling === 2 ? 0.05 : 0) - (def.p.attrs[A.temperament] - 10) / 200) * (def.yellow > 0 ? 0.3 : 1);
-    if (this.r.chance(0.0012 + def.p.attrs[A.dirtiness] / 9000)) this.sendOff(O, def, false);
+    // kalibreret (scripts/cards.ts): ~2 røde kort pr. hold pr. sæson, heraf ~40% andet gule kort
+    const yp = (0.13 + 0.1 * (def.p.attrs[A.dirtiness] / 20) + (O.ti.tackling === 2 ? 0.03 : 0) - (def.p.attrs[A.temperament] - 10) / 200) * (def.yellow > 0 ? 0.2 : 1);
+    if (this.r.chance(RED_BASE + def.p.attrs[A.dirtiness] / 8000)) this.sendOff(O, def, false);
     else if (this.r.chance(yp)) this.book(O, def);
     const rb = this.rb(T.idx);
     const lane = this.laneOf(T.idx);
