@@ -9,6 +9,7 @@ import { regionOf, type Region } from '../../game/leagues';
 import { playerInterest, transferRealism } from '../../game/transfers';
 import { act } from '../../game/actions';
 import { session } from '../../online/client';
+import { AcceptCounterButton } from '../counterAccept';
 import type { Player, Role, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
@@ -300,7 +301,7 @@ function Offers() {
                   {o.status === 'pending' && <div className="muted" style={{ fontSize: 12 }}>{t(session() ? 'offer.answerByOnline' : 'offer.answerBy', { date: dateFmt(o.respondBy) })}</div>}{o.rival && active(o) === 0 && <div className="bad" style={{ fontSize: 12 }}>{t('tr.rival', { club: g.clubs[o.rival.club]?.name ?? '?', fee: money(o.rival.fee) })}</div>}</td>
                 <td className="actions">
                   {o.status === 'negotiating' && <button className="small primary" onClick={() => setNeg(o)}>{t('offer.negotiate')}</button>}
-                  {o.status === 'countered' && <button className="small primary" onClick={() => { const r = act<string>({ t: 'acceptCounter', pid: o.player }); if (r === 'ok') setNeg(o); }}>{t('offer.acceptCounter')}</button>}
+                  {o.status === 'countered' && <AcceptCounterButton o={o} onOk={() => setNeg(o)} />}
                   {['pending', 'countered', 'negotiating'].includes(o.status) && <button className="small" onClick={() => act({ t: 'withdraw', pid: o.player })}>{t('offer.withdraw')}</button>}
                 </td>
               </tr>

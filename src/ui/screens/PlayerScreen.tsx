@@ -15,6 +15,7 @@ import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
+import { AcceptCounterButton } from '../counterAccept';
 import { Arrow, DevelopmentChart, DevelopmentList, attrDelta, totalDelta } from '../dev';
 import { trainingAdvice } from '../../game/training';
 import { GOOD_TRAITS, traits, type TalkKind } from '../../game/personality';
@@ -386,7 +387,7 @@ function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferO
         {o.status === 'countered' && o.counter ? <> · {t('myoffer.theyWant', { fee: money(o.counter) })}</> : null}
       </span>
       {o.status === 'negotiating' && <button className="small primary" onClick={() => onNegotiate(o)}>{t('offer.negotiate')}</button>}
-      {o.status === 'countered' && <button className="small primary" onClick={() => { if (dispatch<string>({ t: 'acceptCounter', pid }) === 'ok') onNegotiate(o); }}>{t('offer.acceptCounter')}</button>}
+      {o.status === 'countered' && <AcceptCounterButton o={o} onOk={() => onNegotiate(o)} />}
       <button className="small danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) dispatch({ t: 'withdraw', pid }); }}>{t('offer.withdraw')}</button>
     </div>
   );

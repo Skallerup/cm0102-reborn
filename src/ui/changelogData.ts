@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.5.5',
+    date: '2026-10-18',
+    title: { da: 'Modbud over budgettet', en: 'Counter-offers above budget' },
+    items: [
+      { da: '"Acceptér modbud" gjorde ingenting, når modbuddet var over transferbudgettet – nu forklares det, og du kan flytte penge fra lønbudgettet med ét klik', en: '"Accept counter-offer" did nothing when the counter was above the transfer budget – it is now explained, and you can move money from the wage budget with one click' },
+    ],
+  },
+  {
     version: '0.5.4',
     date: '2026-10-18',
     title: { da: 'Flere realistiske spillere', en: 'More realistic players' },
