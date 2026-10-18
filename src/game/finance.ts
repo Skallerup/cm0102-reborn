@@ -41,11 +41,11 @@ export function currentWageBill(clubId: number): number {
 }
 
 /** Tilskuere og billetindtægt for en hjemmekamp */
-export function gateReceipts(f: Fixture): number {
+export function gateReceipts(f: Fixture): { att: number; income: number } {
   const g = gs();
   const home = g.clubs[f.home];
   const away = g.clubs[f.away];
-  if (!home || !away) return 0;
+  if (!home || !away) return { att: 0, income: 0 };
   const comp = g.comps[f.comp];
   const big = comp?.type === 'continental' ? 1.3 : comp?.type === 'cup' && f.stage === 'F' ? 1.5 : 1;
   const row = comp?.table.find((r) => r.club === home.id);
@@ -62,8 +62,9 @@ export function gateReceipts(f: Fixture): number {
     away.finance.gate += half;
     home.balance -= half;
     home.finance.gate -= half;
+    return { att, income: income - half };
   }
-  return att;
+  return { att, income };
 }
 
 export function monthlyIncome() {
@@ -166,6 +167,14 @@ export function estimateGate(club: Club, price: number): { attendance: number; i
   const fill = ticketDemand(club, price, 45);
   const attendance = Math.round(club.seats * fill);
   return { attendance, income: attendance * price, fill };
+}
+
+/** Hvor mange vil gerne se en typisk hjemmekamp (uden at stadionet sætter loftet)? Bruges til at vurdere en udvidelse */
+export function wantedAttendance(club: Club, price: number): number {
+  const fair = fairTicketPrice(club.rep, club.league);
+  const ratio = price / fair;
+  const priceF = Math.max(0.15, Math.min(1.25, ratio > 1 ? 1 - (ratio - 1) * 0.95 : 1 + (1 - ratio) * 0.45));
+  return Math.round(club.seats * Math.max(0.15, (0.3 + club.rep / 160 + 45 / 800) * priceF) * fanAttendance(club));
 }
 
 // ---------- sponsoraftaler ----------

@@ -16,7 +16,7 @@ import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { initKnowledge } from './scouting';
-import type { Club, Player, SeasonSummary } from './types';
+import type { Club, Player, SeasonFinance, SeasonSummary } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -25,10 +25,25 @@ export function avgRating(p: Player) {
   return p.stats.ratingCount ? p.stats.ratingSum / p.stats.ratingCount : 0;
 }
 
+/** Tilskuere til hver klubs hjemmekampe i ligaen denne sæson */
+export function homeAttendance(): Map<number, { sum: number; n: number }> {
+  const g = gs();
+  const map = new Map<number, { sum: number; n: number }>();
+  for (const f of Object.values(g.fixtures)) {
+    if (!f.result?.att || g.comps[f.comp]?.type !== 'league') continue;
+    const e = map.get(f.home) ?? { sum: 0, n: 0 };
+    e.sum += f.result.att;
+    e.n++;
+    map.set(f.home, e);
+  }
+  return map;
+}
+
 /** Sæsonens priser og historik pr. turnering */
 function seasonAwards(): SeasonSummary {
   const g = gs();
   const sum: SeasonSummary = { season: g.season, comps: [] };
+  const att = homeAttendance();
   for (const comp of Object.values(g.comps)) {
     if (!comp.winner) continue;
     const entry: SeasonSummary['comps'][number] = { id: comp.id, name: comp.name, winner: comp.winner };
@@ -45,10 +60,18 @@ function seasonAwards(): SeasonSummary {
       if (young) entry.young = young.id;
       entry.teamOfYear = teamOfYear(comp);
       entry.surprise = surpriseOfSeason(comp);
-      // klubhistorik
+      // klubhistorik (med sæsonens økonomi og tilskuere)
       order.forEach((cid, i) => {
         const row = comp.table.find((r) => r.club === cid);
-        g.clubs[cid].history.push({ season: g.season, league: comp.id, pos: i + 1, pts: row?.pts ?? 0 });
+        const c = g.clubs[cid];
+        const f = c.finance;
+        const a = att.get(cid);
+        const fin: SeasonFinance = {
+          gate: Math.round(f.gate), tv: Math.round(f.tv), sponsor: Math.round(f.sponsor), merch: Math.round(f.merch), prize: Math.round(f.prize),
+          wages: Math.round(f.wages), sales: Math.round(f.transfersIn), buys: Math.round(f.transfersOut), other: Math.round(f.other),
+          avgAtt: a ? Math.round(a.sum / a.n) : 0, seats: c.seats, homeGames: a?.n ?? 0, ticket: c.ticketPrice, balance: Math.round(c.balance),
+        };
+        c.history.push({ season: g.season, league: comp.id, pos: i + 1, pts: row?.pts ?? 0, fin });
       });
       forEachHuman(() => {
         if (!g.userClub || !order.includes(g.userClub)) return;

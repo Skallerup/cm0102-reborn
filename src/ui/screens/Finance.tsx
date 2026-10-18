@@ -1,12 +1,12 @@
 import { act } from '../../game/actions';
 import { Info } from '../help';
 import { currentWageBill, estimateGate, fairTicketPrice, sponsorOffers } from '../../game/finance';
-import { SHIFT_WEEKS, boardMood, projectOffer, type BudgetKind } from '../../game/board';
+import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
-import type { ProjectKind } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
-import { useGame } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
+import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
 import { Head } from './common';
 
 export function Finance() {
@@ -18,10 +18,18 @@ export function Finance() {
   const income = f.gate + f.tv + f.prize + f.sponsor + f.merch + f.transfersIn;
   const expense = f.wages + f.transfersOut + f.other;
   const [talk, setTalk] = useState(false);
+  const { route } = useNav();
+  const [tab, setTab] = useRouteState('tab', route.tab ?? 'overview');
   return (
     <div>
       {talk && <BudgetModal onClose={() => setTalk(false)} />}
-      <Head title={t('nav.finance')} />
+      <Head title={t('nav.finance')}>
+        <Tabs tabs={[['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />
+      </Head>
+      {tab === 'stadium' && <AttendanceTab ticketPanel={<TicketPanel />} />}
+      {tab === 'facilities' && <FacilitiesTab />}
+      {tab === 'history' && <FinanceHistoryTab />}
+      {tab === 'overview' && <>
       <div className="cols">
         <Panel title={t('fin.overview')}>
           <div className="kv">
@@ -63,10 +71,12 @@ export function Finance() {
         <SponsorPanel />
         <FfpPanel />
       </div>
-      <div className="cols">
-        <TicketPanel />
-        <ProjectsPanel />
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <button onClick={() => setTab('stadium')}>{t('fin.goStadium')}</button>
+        <button onClick={() => setTab('facilities')}>{t('fin.goFacilities')}</button>
+        <button onClick={() => setTab('history')}>{t('fin.goHistory')}</button>
       </div>
+      </>}
     </div>
   );
 }
@@ -108,46 +118,6 @@ function TicketPanel() {
           </tbody>
         </table>
         <div className="insight">{t('ticket.help')}</div>
-      </div>
-    </Panel>
-  );
-}
-
-function ProjectsPanel() {
-  const g = useGame()!;
-  const c = g.clubs[g.userClub];
-  const kinds: ProjectKind[] = ['stadium', 'training', 'youth'];
-  const current: Record<ProjectKind, string> = {
-    stadium: `${c.seats.toLocaleString()} ${t('proj.seats')}`,
-    training: `${c.facilities}/20`,
-    youth: `${c.youth}/20`,
-  };
-  return (
-    <Panel title={t('proj.title')}>
-      <div className="col">
-        {kinds.map((k) => {
-          const running = c.projects?.find((p) => p.kind === k);
-          const offer = projectOffer(k);
-          return (
-            <div key={k} className="insight">
-              <div className="row" style={{ justifyContent: 'space-between' }}>
-                <b>{t(`proj.${k}`)}</b>
-                <span className="muted">{t('proj.now')}: {current[k]}</span>
-              </div>
-              <div className="muted" style={{ margin: '4px 0 8px' }}>{t(`proj.${k}.effect`)}</div>
-              {running ? (
-                <div><span className="tag warn">{t('proj.building')}</span> {t('proj.ready', { date: dateFmt(running.done) })} · +{running.amount.toLocaleString()}{k === 'stadium' ? ` ${t('proj.seats')}` : ''}</div>
-              ) : offer ? (
-                <div className="row">
-                  <span>+{offer.amount.toLocaleString()}{k === 'stadium' ? ` ${t('proj.seats')}` : ` ${t('proj.levels')}`} · {money(offer.cost)} · {t('proj.months', { n: offer.months })}</span>
-                  <button className="small primary" disabled={c.balance < offer.cost} onClick={() => act({ t: 'project', kind: k })}>{t('proj.request')}</button>
-                  {c.balance < offer.cost && <span className="muted">{t('proj.cantAfford')}</span>}
-                </div>
-              ) : <span className="muted">{t('proj.max')}</span>}
-            </div>
-          );
-        })}
-        <div className="muted">{t('proj.hint')}</div>
       </div>
     </Panel>
   );

@@ -207,6 +207,14 @@ export interface ClubSeasonHistory {
   league: string;
   pos: number;
   pts: number;
+  /** Sæsonens økonomi og tilskuere */
+  fin?: SeasonFinance;
+}
+
+export interface SeasonFinance {
+  gate: number; tv: number; sponsor: number; merch: number; prize: number;
+  wages: number; sales: number; buys: number; other: number;
+  avgAtt: number; seats: number; homeGames: number; ticket: number; balance: number;
 }
 
 export type ProjectKind = 'stadium' | 'training' | 'youth';
@@ -316,6 +324,8 @@ export interface MatchResultShort {
   pens?: [number, number];
   scorers: [number, number, number][]; // [minut, team(0/1), spiller-id]
   att?: number;
+  /** Hjemmeholdets billetindtægt (efter deling i pokalkampe) */
+  gate?: number;
 }
 
 export interface TableRow {

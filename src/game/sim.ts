@@ -149,8 +149,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const g = gs();
   const [hs, as] = rep.stats;
   const scorers: [number, number, number][] = rep.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.p!]);
-  const att = gateReceipts(f);
-  recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att });
+  const gate = gateReceipts(f);
+  recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
   if (g.humans) botsAfterMatch(f);
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';

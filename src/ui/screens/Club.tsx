@@ -44,6 +44,12 @@ export function ClubScreen({ id }: { id?: number }) {
             <span>{t('club.facilities')}</span><span><Bar value={c.facilities} max={20} /></span>
             {(mine || !g.options.masking) && <><span>{t('top.balance')}</span><span>{money(c.balance)}</span></>}
           </div>
+          {mine && (
+            <div className="row" style={{ marginTop: 10, gap: 8, flexWrap: 'wrap' }}>
+              <button className="small" onClick={() => nav({ name: 'finance', tab: 'facilities' })}>{t('fac.goFacilities')}</button>
+              <button className="small" onClick={() => nav({ name: 'finance', tab: 'stadium' })}>{t('fac.goAttendance')}</button>
+            </div>
+          )}
           {!mine && c.manager === 0 && <VacancyBox clubId={c.id} />}
           {!mine && c.manager === -1 && (() => {
             const h = g.humans?.find((x) => x.pid !== g.active && x.userClub === c.id);

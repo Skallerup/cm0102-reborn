@@ -480,3 +480,36 @@ table.grid tr.rival td:first-child { box-shadow: inset 3px 0 0 rgba(120, 160, 25
 .chat-input { display: flex; gap: 8px; }
 .chat-input input { flex: 1; }
 @media (max-width: 760px) { .chat-layout { grid-template-columns: 1fr; } .chat-msg { max-width: 92%; } }
+
+/* nøgletal */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface2); }
+.kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.kpi-value { font-size: 22px; font-weight: 800; }
+.kpi-sub { font-size: 12px; color: var(--muted); }
+
+/* tilskuere pr. kamp */
+.att-chart { position: relative; display: flex; align-items: flex-end; gap: 0; height: 140px; padding-top: 14px; border-bottom: 1px solid var(--line); background: linear-gradient(var(--line), var(--line)) 0 14px / 100% 1px no-repeat; }
+.att-col { display: flex; align-items: flex-end; height: 100%; padding: 0 2px; box-sizing: border-box; }
+.att-bar { width: 100%; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, var(--accent), rgba(255, 207, 63, 0.45)); }
+.att-bar.full { background: linear-gradient(180deg, var(--good), rgba(61, 220, 151, 0.45)); }
+.att-bar.low { background: linear-gradient(180deg, var(--bad), rgba(255, 93, 108, 0.4)); }
+.att-cap { position: absolute; top: 0; right: 0; font-size: 10.5px; color: var(--muted); }
+
+/* faciliteter */
+.fac-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.fac-level { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.fac-level b { font-size: 26px; }
+.fac-effect { margin: 8px 0; line-height: 1.5; }
+.fac-offer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; }
+
+/* indtægtsfordeling pr. sæson */
+.mix-legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 12px; margin-bottom: 10px; }
+.mix-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.mix-row { display: grid; grid-template-columns: 70px 1fr 110px; align-items: center; gap: 10px; margin-bottom: 6px; }
+.mix-label { font-size: 12px; color: var(--muted); }
+.mix-bar { display: flex; height: 16px; border-radius: 5px; overflow: hidden; min-width: 4px; }
+.mix-total { font-size: 12px; text-align: right; }
+.mix-gate { background: #ffcf3f; } .mix-tv { background: #6aa8ff; } .mix-sponsor { background: #3ddc97; }
+.mix-merch { background: #c77dff; } .mix-prize { background: #ff9f43; } .mix-sales { background: #9aa4b2; }
+.table-scroll { overflow-x: auto; }
