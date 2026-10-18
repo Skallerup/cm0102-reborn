@@ -715,6 +715,8 @@ export const en: Record<string, string> = {
   'att.avgAll': 'Average attendance (all home games)',
   'adv.core': 'This is the core training for his position.',
   'changelog.title': "What's new", 'changelog.short': 'Changelog', 'changelog.new': 'New',
+  'mp.you': 'you', 'mp.soloHint': 'Press Continue to play on – your bids and actions are processed every turn', 'mp.continueSolo': 'Continue ›', 'mp.processingShort': 'Simulating…',
+  'offer.answerBy': 'Answer by {date}', 'offer.answerByOnline': 'Answer by {date} – processed on the next turn',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',

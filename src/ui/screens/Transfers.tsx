@@ -8,6 +8,7 @@ import { traits, type Trait } from '../../game/personality';
 import { regionOf, type Region } from '../../game/leagues';
 import { playerInterest, transferRealism } from '../../game/transfers';
 import { act } from '../../game/actions';
+import { session } from '../../online/client';
 import type { Player, Role, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
@@ -295,7 +296,8 @@ function Offers() {
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td>{o.seller ? <ClubLink id={o.seller} /> : t('common.free')}</td>
                 <td className="num">{o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)}{o.counter && o.status === 'countered' ? ` → ${money(o.counter)}` : ''}</td>
-                <td className="nowrap">{status(o)} <span className="muted">{dateFmt(o.created)}</span>{o.rival && active(o) === 0 && <div className="bad" style={{ fontSize: 12 }}>{t('tr.rival', { club: g.clubs[o.rival.club]?.name ?? '?', fee: money(o.rival.fee) })}</div>}</td>
+                <td className="nowrap">{status(o)} <span className="muted">{dateFmt(o.created)}</span>
+                  {o.status === 'pending' && <div className="muted" style={{ fontSize: 12 }}>{t(session() ? 'offer.answerByOnline' : 'offer.answerBy', { date: dateFmt(o.respondBy) })}</div>}{o.rival && active(o) === 0 && <div className="bad" style={{ fontSize: 12 }}>{t('tr.rival', { club: g.clubs[o.rival.club]?.name ?? '?', fee: money(o.rival.fee) })}</div>}</td>
                 <td className="actions">
                   {o.status === 'negotiating' && <button className="small primary" onClick={() => setNeg(o)}>{t('offer.negotiate')}</button>}
                   {o.status === 'countered' && <button className="small primary" onClick={() => { const r = act<string>({ t: 'acceptCounter', pid: o.player }); if (r === 'ok') setNeg(o); }}>{t('offer.acceptCounter')}</button>}

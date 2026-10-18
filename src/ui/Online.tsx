@@ -121,7 +121,9 @@ export function OnlineControls() {
   const [copied, setCopied] = useState(false);
   if (!s || !s.room) return null;
   const me = s.me;
-  const waiting = s.room.players.filter((p) => !p.ready).map((p) => p.name);
+  // alene i rummet (evt. med AI-managere): knappen fungerer som Fortsæt
+  const solo = s.room.players.length === 1;
+  const waiting = s.room.players.filter((p) => !p.ready).map((p) => (p.pid === s.creds.pid ? t('mp.you') : p.name));
   const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
   return (
     <>
@@ -129,10 +131,10 @@ export function OnlineControls() {
         {copied ? t('mp.copied') : `${t('mp.invite')} · ${s.creds.code}`}
       </button>
       <span className="muted nowrap">
-        {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
+        {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
       <button className={`continue ${me?.ready ? '' : 'primary'}`} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => void s.setReady(!me?.ready)}>
-        {me?.ready ? t('mp.notReady') : t('mp.ready')}
+        {solo ? (me?.ready ? t('mp.processingShort') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
       </button>
     </>
   );
