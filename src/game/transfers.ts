@@ -454,6 +454,18 @@ export function canPreContract(p: Player): boolean {
   return p.contract.expires <= seasonEnd && m >= 1 && m <= 6;
 }
 
+/** Hvorfor man (endnu) ikke kan tilbyde en Bosman-kontrakt – til forklaring i UI'et */
+export function preContractBlock(p: Player): 'ok' | 'notExpiring' | 'fromJanuary' | 'taken' | null {
+  const g = gs();
+  if (!p.contract || !p.club || p.club === g.userClub) return null;
+  if (canPreContract(p)) return 'ok';
+  const m = month(g.date);
+  const seasonEnd = `${year(g.date) + (m >= 7 ? 1 : 0)}-06-30`;
+  if (p.contract.expires > seasonEnd) return 'notExpiring';
+  if (p.contract.futureClub) return 'taken';
+  return 'fromJanuary';
+}
+
 export function startPreContract(pid: number): TransferOffer | string {
   const g = gs();
   const p = g.players[pid];

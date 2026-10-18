@@ -5,7 +5,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, loanSuitors, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, loanSuitors, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -119,6 +119,13 @@ export function PlayerScreen({ id }: { id: number }) {
                   {p.club > 0 && <button className="primary" disabled={!windowOpen()} onClick={() => setBid(true)}>{t('player.bid')}</button>}
                   {!p.club && <button className="primary" onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
                   {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
+                  {(preContractBlock(p) === 'fromJanuary' || preContractBlock(p) === 'taken') && (
+                    <div className="muted" style={{ fontSize: 12, flexBasis: '100%' }}>
+                      {preContractBlock(p) === 'taken'
+                        ? t('player.bosmanTaken', { club: g.clubs[p.contract!.futureClub!]?.name ?? '' })
+                        : t('player.bosmanFromJan', { year: Number(p.contract!.expires.slice(0, 4)) })}
+                    </div>
+                  )}
                   <button onClick={() => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted })}>{shortlisted ? t('player.unshortlist') : t('player.shortlist')}</button>
                 </div>
                 {!windowOpen() && <div className="muted">{t('transfer.windowClosed')}</div>}
