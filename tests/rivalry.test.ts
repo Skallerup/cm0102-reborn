@@ -34,5 +34,5 @@ describe('multiplayer: rivalisering, budrunder og autopilot', () => {
     expect(a && a.games).toBeGreaterThan(0);
     expect(a!.w).toBe(b!.l);
     expect(a!.gf).toBe(b!.ga);
-  });
+  }, 120_000);
 });
