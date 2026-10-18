@@ -236,6 +236,8 @@ export interface Club {
   stadium: string;
   seats: number;
   rep: number; // 0-100
+  /** Opsparet omdømmeændring i løbet af sæsonen (brøkdele, før de bliver til hele point) */
+  repDrift?: number;
   balance: number;
   transferBudget: number;
   wageBudget: number; // pr. uge

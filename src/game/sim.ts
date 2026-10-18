@@ -13,7 +13,7 @@ import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelop
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, weeklyTransferDigest } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
-import { seasonRollover, youthIntake, youthPreview } from './season';
+import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
 import { monthlyWill, weeklyPlayerContact } from './will';
@@ -316,6 +316,7 @@ function newDay() {
     if (month(d) !== 7) monthlyColumn();
     forEachHuman(boardMeeting);
     if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
+    monthlyClubReps();
     forEachHuman(() => {
       const { mismatches } = monthlyTrainingReport();
       const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');

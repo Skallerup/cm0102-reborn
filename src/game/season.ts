@@ -1,5 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
-import { finalOrder, promotionOrder } from './competitions';
+import { finalOrder, promotionOrder, sortTable } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
@@ -321,15 +321,62 @@ function archiveStats() {
   }
 }
 
+/**
+ * Det omdømme en placering "er værd" i ligaen: omdømmet hos den klub der normalt ligger der
+ * (ligaens omdømmer sorteret). Mesteren får lidt ekstra.
+ */
+export function repTargets(clubIds: number[]): number[] {
+  const g = gs();
+  const reps = clubIds.map((id) => g.clubs[id]?.rep ?? 0).sort((a, b) => b - a);
+  return reps.map((r, i) => r + (i === 0 ? 3 : 0));
+}
+
+/** Flyt omdømmet en brøkdel mod målet; brøkdele opspares, så små ændringer ikke forsvinder i afrunding */
+function driftRep(cid: number, target: number, rate: number) {
+  const c = gs().clubs[cid];
+  if (!c) return;
+  c.repDrift = (c.repDrift ?? 0) + (target - c.rep) * rate;
+  const whole = Math.trunc(c.repDrift);
+  if (whole !== 0) {
+    c.rep = Math.max(3, Math.min(99, c.rep + whole));
+    c.repDrift -= whole;
+  }
+}
+
+/** Den 1. i måneden: omdømmet følger den aktuelle tabelplacering (når der er spillet nok kampe) */
+export function monthlyClubReps() {
+  const g = gs();
+  for (const comp of Object.values(g.comps)) {
+    if (comp.type !== 'league' || comp.finished) continue;
+    const rows = sortTable(comp.table.slice());
+    if ((rows[0]?.p ?? 0) < 6) continue;
+    const targets = repTargets(comp.clubs);
+    rows.forEach((r, i) => driftRep(r.club, targets[i], 0.06));
+  }
+}
+
+/** Hvilken vej går klubbens omdømme lige nu? (til visning) */
+export function repTrend(cid: number): -1 | 0 | 1 {
+  const g = gs();
+  const c = g.clubs[cid];
+  const comp = c ? g.comps[c.league] : undefined;
+  if (!c || !comp || comp.type !== 'league') return 0;
+  const rows = sortTable(comp.table.slice());
+  if ((rows[0]?.p ?? 0) < 3) return 0;
+  const target = repTargets(comp.clubs)[rows.findIndex((r) => r.club === cid)] ?? c.rep;
+  return target >= c.rep + 3 ? 1 : target <= c.rep - 3 ? -1 : 0;
+}
+
 function updateClubReps() {
   const g = gs();
+  // sæsonslut: et større skridt mod det omdømme slutplaceringen er værd (løbende ændringer er sket hver måned)
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
     const order = finalOrder(comp);
+    const targets = repTargets(comp.clubs);
     order.forEach((cid, i) => {
-      const c = g.clubs[cid];
-      const expectedRank = order.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep).indexOf(cid);
-      c.rep = Math.max(3, Math.min(99, Math.round(c.rep + (expectedRank - i) * 0.6 + (i === 0 ? 2 : 0))));
+      driftRep(cid, targets[i], 0.4);
+      if (i === 0) driftRep(cid, g.clubs[cid].rep + 2, 1);
     });
   }
   const bump = (cid: number | undefined, d: number) => { const c = cid ? g.clubs[cid] : undefined; if (c) c.rep = Math.max(3, Math.min(99, c.rep + d)); };
