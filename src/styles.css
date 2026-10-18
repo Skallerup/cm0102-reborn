@@ -513,3 +513,15 @@ table.grid tr.rival td:first-child { box-shadow: inset 3px 0 0 rgba(120, 160, 25
 .mix-gate { background: #ffcf3f; } .mix-tv { background: #6aa8ff; } .mix-sponsor { background: #3ddc97; }
 .mix-merch { background: #c77dff; } .mix-prize { background: #ff9f43; } .mix-sales { background: #9aa4b2; }
 .table-scroll { overflow-x: auto; }
+
+/* version og changelog */
+.sidenav .nav-version { margin-top: auto; display: flex; align-items: center; gap: 6px; padding: 6px 12px; font-size: 11px; font-weight: 500; color: var(--muted); background: transparent; border: 0; box-shadow: none; opacity: .8; }
+.sidenav .nav-version:hover { opacity: 1; color: var(--text); }
+.sidenav .nav-version .tag { margin-left: 2px; font-size: 9.5px; padding: 1px 6px; }
+.changelog { display: flex; flex-direction: column; gap: 16px; max-height: 65vh; overflow-y: auto; padding-right: 4px; }
+.cl-entry header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.cl-version { font-size: 12px; font-weight: 800; padding: 2px 8px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--line); }
+.cl-version.latest { background: var(--accent); color: #111; border-color: var(--accent); }
+.cl-date { margin-left: auto; font-size: 12px; }
+.cl-entry ul { margin: 0; padding-left: 20px; line-height: 1.55; }
+.cl-entry li { margin: 2px 0; }

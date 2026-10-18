@@ -36,6 +36,7 @@ import { RankingScreen } from './screens/Ranking';
 import { ManagersScreen } from './screens/Managers';
 import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
+import { VersionButton } from './Changelog';
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
@@ -210,6 +211,7 @@ export function Shell() {
           if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
           if (confirm(t('top.quitConfirm'))) { await saveGame(); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
+        <VersionButton />
       </nav>
       <main className="main" ref={mainRef}>
         {online && !online.inGame ? <Lobby /> : <Screen />}
