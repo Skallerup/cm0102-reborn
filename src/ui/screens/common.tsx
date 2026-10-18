@@ -126,13 +126,15 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 
 export function NewsBody({ n }: { n: NewsItem }) {
   const k = `${n.key}.body`;
-  const body = has(k) ? <>{linked(n, k)}</> : null;
-  if (!n.deals?.length) return body;
+  return has(k) ? <>{linked(n, k)}</> : null;
+}
+
+/** Ugens transferoverblik: alle handlerne i en lille tabel (vises under brødteksten) */
+export function NewsDeals({ n }: { n: NewsItem }) {
+  if (!n.deals?.length) return null;
   const g = gs();
-  // ugens transferoverblik: alle handlerne i en lille tabel
   return (
     <>
-      {body}
       <table className="grid deals" style={{ marginTop: 8 }}>
         <tbody>
           {n.deals.map((d, i) => (

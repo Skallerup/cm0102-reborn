@@ -6,7 +6,7 @@ import { useHotkeys } from '../hotkeys';
 import { dateFmt, t } from '../../i18n';
 import { Empty, Panel } from '../components';
 import { useGame, useRouteState } from '../core';
-import { Head, NewsBody, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
+import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
 import { AiArticle } from '../aiArticle';
 import type { NewsCategory } from '../../game/types';
 
@@ -81,6 +81,7 @@ export function Inbox() {
             <div className="col">
               <h3 style={{ color: 'var(--accent)' }} className="news-head"><NewsTitle n={item} /></h3>
               {newsBody(item) && <p style={{ lineHeight: 1.5 }}><NewsBody n={item} /></p>}
+              <NewsDeals n={item} />
               <AiArticle item={item} />
               {item.link && <div><button onClick={() => open(item)}>{t('inbox.open')}</button></div>}
             </div>
