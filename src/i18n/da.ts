@@ -739,6 +739,7 @@ export const da: Record<string, string> = {
   'hist.season': 'Sæson', 'hist.pos': 'Plac.', 'hist.transfers': 'Transfers (netto)', 'hist.result': 'Resultat',
   'hist.first': 'Historikken fyldes op, når den første sæson er spillet færdig.',
   'att.avgAll': 'Snit tilskuere (alle hjemmekampe)',
+  'adv.core': 'Det er kernetræningen for hans position.',
   'opt.news': 'Nyheder om andre klubber', 'opt.news.league': 'Kun min liga', 'opt.news.nation': 'Kun mit land', 'opt.news.world': 'Hele verden',
   'opt.save.changes': 'Efter hver ændring', 'opt.save.daily': 'Hver spildag', 'opt.save.weekly': 'Hver uge i spillet', 'opt.save.monthly': 'Hver måned i spillet', 'opt.save.off': 'Aldrig (kun manuelt)',
   'opt.save.changes.hint': 'Sikrest: alt gemmes få sekunder efter du ændrer noget, så en genindlæsning aldrig koster noget.',

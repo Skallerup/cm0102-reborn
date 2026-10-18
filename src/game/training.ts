@@ -3,7 +3,7 @@ import { A, ATTRS, type AttrKey } from './attributes';
 import { ageOn } from './dates';
 import { rng } from './rng';
 import { gs } from './state';
-import type { Player } from './types';
+import type { Player, Role } from './types';
 import { valueFromCA } from './data/generate';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
@@ -196,15 +196,16 @@ export function trainingAdvice(p: Player): TrainingAdvice {
     const phys = (p.attrs[A.pace] + p.attrs[A.stamina] + p.attrs[A.strength]) / 3;
     if (phys < ref - 1) return { key: 'fitness', reason: 'adv.age', attrs: ['stamina', 'pace'] };
   }
-  let best: TrainingAdvice = { key: 'general', reason: 'adv.balanced', attrs: [] };
+  let best: TrainingAdvice = { key: CORE[role][0], reason: 'adv.core', attrs: [] };
   let bestScore = 0.35;
-  for (const s of SCHEDULES) {
-    if (s.key === 'rest' || s.key === 'general') continue;
-    if (role !== 'GK' && s.key === 'goalkeeping') continue;
-    if (role === 'GK' && s.key !== 'goalkeeping' && s.key !== 'fitness') continue;
+  for (const key of ALLOWED[role]) {
+    const s = SCHEDULE_MAP.get(key);
+    if (!s) continue;
     let score = 0;
     const weak: [string, number][] = [];
     for (const [k, fw] of Object.entries(s.focus) as [AttrKey, number][]) {
+      // kun programmets hovedattributter (ellers styrer fx hovedstød i afslutningstræning en forsvarers forslag)
+      if (fw < 1.2) continue;
       const i = A[k];
       if (i >= 36) continue;
       if (role !== 'GK' && GK_KEYS.has(k)) continue;
@@ -221,14 +222,36 @@ export function trainingAdvice(p: Player): TrainingAdvice {
       const taker = !!t && p.club === g.userClub && [t.freeKicks, t.corners, t.penalties].includes(p.id);
       score = taker ? score * 3 + 0.5 : score * 0.3;
     }
+    // fysisk træning kun ved en tydelig fysisk svaghed – undtagen hvor fart er kernen (backer og kanter)
+    if (s.key === 'fitness' && role !== 'FB' && role !== 'W' && role !== 'WM') score *= 0.55;
+    // positionens kerneprogram foretrækkes, når der ikke er en tydelig svaghed andetsteds
+    if (CORE[role].includes(s.key)) score = score * 1.4 + 0.9;
     if (age <= 21 && s.key !== 'fitness') score *= 1.15; // unge: fokuser på færdigheder
     if (score > bestScore) {
       bestScore = score;
-      best = { key: s.key, reason: age <= 21 ? 'adv.youth' : 'adv.weakness', attrs: weak.sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k) };
+      const reason = weak.length ? (age <= 21 ? 'adv.youth' : 'adv.weakness') : 'adv.core';
+      best = { key: s.key, reason, attrs: weak.sort((a, b) => b[1] - a[1]).slice(0, 2).map(([k]) => k) };
     }
   }
   return best;
 }
+
+/** Træningsprogrammer der giver mening for hver position (det første er positionens kerne) */
+const ALLOWED: Record<Role, string[]> = {
+  GK: ['goalkeeping', 'fitness'],
+  CB: ['defending', 'fitness', 'ballcontrol', 'setpieces'],
+  FB: ['defending', 'attacking', 'fitness', 'ballcontrol'],
+  DM: ['defending', 'ballcontrol', 'fitness'],
+  CM: ['ballcontrol', 'fitness', 'shooting', 'defending', 'setpieces'],
+  WM: ['attacking', 'ballcontrol', 'fitness', 'setpieces'],
+  AM: ['ballcontrol', 'shooting', 'attacking', 'setpieces'],
+  W: ['attacking', 'shooting', 'ballcontrol', 'fitness', 'setpieces'],
+  ST: ['shooting', 'attacking', 'ballcontrol', 'fitness'],
+};
+const CORE: Record<Role, string[]> = {
+  GK: ['goalkeeping'], CB: ['defending'], FB: ['defending', 'attacking'], DM: ['defending'], CM: ['ballcontrol'],
+  WM: ['attacking'], AM: ['ballcontrol', 'shooting'], W: ['attacking'], ST: ['shooting'],
+};
 
 /** Månedlig besked fra assistenten om spillere der træner forkert */
 export function monthlyTrainingReport(): { mismatches: number } {

@@ -713,6 +713,7 @@ export const en: Record<string, string> = {
   'hist.season': 'Season', 'hist.pos': 'Pos.', 'hist.transfers': 'Transfers (net)', 'hist.result': 'Result',
   'hist.first': 'The history fills up once the first season has been completed.',
   'att.avgAll': 'Average attendance (all home games)',
+  'adv.core': 'This is the core training for his position.',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',
