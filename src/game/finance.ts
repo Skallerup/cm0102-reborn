@@ -138,7 +138,9 @@ export function newSeasonBudgets() {
     c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
     if (c.ffp?.sanction) c.transferBudget = Math.round(c.transferBudget * 0.4 / 50_000) * 50_000;
     const bill = currentWageBill(c.id);
-    c.wageBudget = Math.round(Math.max(bill * 1.05, bill + 2000) / 500) * 500;
+    // menneskestyrede klubber får lidt luft, så der er plads til en ny spiller uden først at sælge
+    const room = c.manager === -1 ? 1.1 : 1.05;
+    c.wageBudget = Math.round(Math.max(bill * room, bill + 2000) / 500) * 500;
     c.finance = { gate: 0, tv: 0, prize: 0, sponsor: 0, merch: 0, transfersIn: 0, transfersOut: 0, wages: 0, other: 0 };
   }
 }

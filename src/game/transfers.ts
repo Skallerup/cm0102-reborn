@@ -9,6 +9,7 @@ import { merchStarSigning } from './finance';
 import { addNews, gs, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
+import { SHIFT_WEEKS } from './board';
 import { bumpFans } from './fans';
 import { pushCareerLine } from './season';
 import { playerPraises } from './will';
@@ -77,7 +78,13 @@ export function transferRealism(p: Player): Realism {
     reasons.push('real.free');
   }
   const bill = squad(club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
-  if (bill + wageDemand(p, club) > club.wageBudget * 1.02) bump(1, 'real.wages', 10);
+  // lønnen: passer den ikke i lønbudgettet, kan transferbudget omfordeles (1 uges løn = SHIFT_WEEKS kr. transferbudget)
+  const missing = bill + wageDemand(p, club) - club.wageBudget;
+  if (missing > 0) {
+    const fee = p.club ? askingPrice(p) : 0;
+    if (fee + missing * SHIFT_WEEKS <= club.transferBudget) { reasons.push('real.wagesShift'); score -= 3; }
+    else bump(1, 'real.wages', 10);
+  }
   // Vil han få spilletid? Spillere langt over klubbens niveau er mere interesserede i store klubber
   score += Math.max(-10, Math.min(10, (club.rep - p.rep) / 3));
   return { level, score: Math.round(score * 10) / 10, reasons };

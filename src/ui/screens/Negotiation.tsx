@@ -4,6 +4,7 @@ import { gs } from '../../game/state';
 import { act } from '../../game/actions';
 import { clausesWorthFor, preferredYears, wageDemand } from '../../game/transfers';
 import { clauseCost } from '../../game/clauses';
+import { SHIFT_WEEKS } from '../../game/board';
 import type { ContractClauses, TransferOffer } from '../../game/types';
 import { MoneyInput } from '../components';
 import { money, t } from '../../i18n';
@@ -22,7 +23,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const demand = offer?.demand?.wage ?? wageDemand(p, club);
   const [wage, setWage] = useState(Math.round(demand / 50) * 50);
   const [years, setYears] = useState(offer?.demand?.years ?? preferredYears(p));
-  const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  const [msg, setMsg] = useState<{ text: string; tone: string; budget?: boolean } | null>(null);
   const [cl, setCl] = useState<ContractClauses>({});
   const worth = clausesWorthFor(p, club.id, wage, years, cl);
   const rank = 1 + Object.values(g.players).filter((x) => x.club === club.id && x.id !== p.id && x.ca > p.ca + 1).length;
@@ -63,7 +64,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
       setWage(Math.round(d / 50) * 50);
       setYears(offer?.demand?.years ?? preferredYears(p));
       setMsg({ text: t('neg.counter', { wage: money(d), years: offer?.demand?.years ?? preferredYears(p) }), tone: 'warn' });
-    } else if (res === 'budget') setMsg({ text: t('neg.overWageBudget', { budget: money(club.wageBudget), bill: money(bill) }), tone: 'bad' });
+    } else if (res === 'budget') setMsg({ text: t('neg.overWageBudget', { budget: money(club.wageBudget), bill: money(bill) }), tone: 'bad', budget: true });
     else { setMsg({ text: t('neg.refused'), tone: 'bad' }); setTimeout(onClose, 2600); }
   };
 
@@ -97,6 +98,18 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
           <div className={`chat-them insight ${msg?.tone ?? ''}`}><b>{agentName} ({t(`agent.${persona}`)}):</b> {agentLine ?? msg?.text ?? t('neg.agentOpening', { wage: money(demand), years: offer?.demand?.years ?? preferredYears(p) })}</div>
           {msg && agentLine && <div className="muted" style={{ fontSize: 12 }}>{msg.text}</div>}
         </div>
+        {msg?.budget && (() => {
+          // manglende ugeløn → flyt fra transferbudgettet (samme kurs som på økonomisiden)
+          const prevWage = offer ? 0 : p.contract?.wage ?? 0;
+          const missing = Math.max(0, bill - prevWage + wage - club.wageBudget);
+          const cost = Math.ceil(missing * SHIFT_WEEKS / 10_000) * 10_000;
+          return missing > 0 && cost <= club.transferBudget ? (
+            <div className="insight warn row">
+              <span className="grow">{t('neg.shiftHint', { cost: money(cost), wage: money(missing) })}</span>
+              <button className="small primary" onClick={() => { act({ t: 'budgetShift', toWage: true, amount: cost }); setMsg(null); submit(); }}>{t('neg.shiftAndOffer')}</button>
+            </div>
+          ) : <div className="muted" style={{ fontSize: 12 }}>{t('neg.shiftImpossible')}</div>;
+        })()}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           {offer && <button className="danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) { act({ t: 'withdraw', pid }); onClose(); } }}>{t('neg.cancel')}</button>}
           <div className="grow" />
