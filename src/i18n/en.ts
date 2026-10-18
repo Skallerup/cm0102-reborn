@@ -683,7 +683,7 @@ export const en: Record<string, string> = {
   'match.kickoff': 'Kick off ▶', 'match.notToday': 'This match is not today.', 'match.ft': 'Full time', 'match.resume': 'Resume', 'match.pause': 'Pause',
   'match.toEnd': 'Skip to end', 'match.continue': 'Continue ›', 'match.commentary': 'Commentary', 'match.stats': 'Statistics', 'match.myTeam': 'My team',
   'match.subsLeft': '{n} subs left', 'match.vidiprinter': 'Other matches', 'match.noOther': 'No other matches today', 'match.rating': 'Rating',
-  'match.subOff': 'Substitute…', 'match.paused': 'PAUSED', 'match.keys': 'Keyboard: Space = pause · 1-4 = speed · T = tactics · U = substitutions · S = stats · K = commentary · E = skip to end', 'match.keysDone': 'Press Enter to continue', 'match.subFailed': 'That substitution was not possible.',
+  'match.subOff': 'Substitute…', 'match.paused': 'PAUSED', 'match.keys': 'Keyboard: P = pause · 1-4 = speed · T = tactics · U = substitutions · S = stats · K = commentary · E = skip to end', 'match.keysDone': 'Press Space or Enter to continue', 'match.subFailed': 'That substitution was not possible.',
   'stat.possession': 'Possession', 'stat.xg': 'xG (expected goals)', 'stat.shots': 'Shots', 'stat.onTarget': 'On target', 'stat.corners': 'Corners',
   'stat.fouls': 'Fouls', 'stat.yellows': 'Yellow cards', 'stat.reds': 'Red cards', 'stat.offsides': 'Offsides', 'stat.passPct': 'Pass completion %',
 

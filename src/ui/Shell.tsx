@@ -66,6 +66,25 @@ export function Shell() {
     return () => clearTimeout(id);
   }, [toast]);
 
+  // Mellemrum = Fortsæt, uanset hvor fokus er (undtagen når man skriver tekst).
+  // Fanges før alt andet, så en fokuseret knap eller skærmens egne genveje ikke reagerer.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      const typing = el?.isContentEditable || el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button', 'submit'].includes((el as HTMLInputElement).type));
+      if (typing) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (e.repeat) return;
+      // skærmens egen Fortsæt (fx Kick-off eller Fortsæt efter kampen) går forud for topbjælkens
+      const btn = document.querySelector<HTMLButtonElement>('.main .continue:not(:disabled)') ?? document.querySelector<HTMLButtonElement>('.topbar .continue:not(:disabled)');
+      btn?.click();
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, []);
+
   const online = session();
   // Autogem: kort efter enhver ændring (kun singleplayer – online gemmes på serveren)
   useEffect(() => {

@@ -148,10 +148,10 @@ function LiveMatch({ id }: { id: number }) {
   useHotkeys((e) => {
     const k = e.key.toLowerCase();
     if (report) {
-      if (e.key === 'Enter' || e.key === ' ') { done(); return true; }
+      if (e.key === 'Enter') { done(); return true; }
       return;
     }
-    if (e.key === ' ' || k === 'p') { setPaused(!paused); return true; }
+    if (k === 'p') { setPaused(!paused); return true; }
     if (['1', '2', '3', '4'].includes(e.key)) { setSpeed([1, 2, 4, 8][Number(e.key) - 1]); return true; }
     if (k === 't') { setPaused(true); setTab('tactics'); return true; }
     if (k === 'u' || k === 'h') { setPaused(true); setTab('team'); return true; }
