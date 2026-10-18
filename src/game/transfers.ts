@@ -1071,7 +1071,7 @@ export function aiBidsForListed() {
   }
 }
 
-registerAskingPrice(askingPrice, playerInterest);
+registerAskingPrice(askingPrice, playerInterest, (p) => transferRealism(p).level);
 
 // ---------- frikøbsklausuler hos menneskestyrede klubber ----------
 

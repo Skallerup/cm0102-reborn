@@ -129,11 +129,13 @@ export function scoutDaily() {
         const pool = strict
           ? clubs.flatMap((c) => squad(c.id)).filter((x) => x.club !== g.userClub && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id) && fits(x))
           : [];
-        for (let tries = 0; queue.length < 2 && tries < 6; tries++) {
+        // urealistiske spillere (vil ikke komme, sælges ikke, alt for dyre) springes over
+        for (let tries = 0; queue.length < 2 && tries < 14; tries++) {
           let p: Player | undefined;
           if (strict) p = rng.pick(pool.filter((x) => !queue.includes(x.id)));
           else { const c = rng.pick(clubs); p = c ? rng.pick(squad(c.id).filter((x) => fits(x) && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id))) : undefined; }
-          if (p) queue.push(p.id);
+          if (p && realistic(p)) queue.push(p.id);
+          else if (p && strict) pool.splice(pool.indexOf(p), 1);
         }
       }
       a.queue = queue;
@@ -145,7 +147,7 @@ export function scoutDaily() {
 /** En scout vender hjem: rapport med antal fund og det bedste talent */
 function scoutReturns(name: string, a: ScoutAssignment) {
   const g = gs();
-  const found = (a.found ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p);
+  const found = (a.found ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p && realistic(p));
   const best = found.sort((x, y) => { const sx = scoutStars(x), sy = scoutStars(y); return sy.potential[0] + sy.ability[0] - (sx.potential[0] + sx.ability[0]); })[0];
   const target = a.kind === 'nation' ? g.nations[a.target as number]?.name ?? '?' : g.leagues[a.target as string]?.name ?? String(a.target);
   g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutReturned', params: { scout: name, target, n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, read: false, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
@@ -164,7 +166,7 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number) {
     const p = g.players[pid];
     const s = g.staff[scoutId];
     // Gode fund meldes i indbakken
-    if (p && s && p.club !== g.userClub && scoutStars(p).potential[0] >= 4) {
+    if (p && s && p.club !== g.userClub && scoutStars(p).potential[0] >= 4 && realistic(p)) {
       g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutTalent', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, read: false, link: { kind: 'player', id: pid } });
     }
   }
@@ -223,14 +225,26 @@ export function scoutRecommendation(p: Player): ScoutRecommendation {
   if (p.attrs[A.injuryProneness] >= 15 && k >= 70) { score -= 0.8; reasons.push({ key: 'rec.r.injuryProne' }); }
   if (p.attrs[A.professionalism] >= 15 && k >= 70) { score += 0.3; reasons.push({ key: 'rec.r.professional' }); }
   if (p.attrs[A.temperament] <= 6 && k >= 70) { score -= 0.4; reasons.push({ key: 'rec.r.temper' }); }
-  const lvl = score >= 3.5 ? 0 : score >= 2 ? 1 : score >= 0.8 ? 2 : score >= -0.5 ? 3 : 4;
+  let lvl = score >= 3.5 ? 0 : score >= 2 ? 1 : score >= 0.8 ? 2 : score >= -0.5 ? 3 : 4;
+  // urealistiske handler anbefales aldrig – højst "brugbar" hvis han er lidt svær at hente
+  const real = realismFn(p);
+  if (real >= 2) { lvl = Math.max(lvl, 3); if (!reasons.some((r) => r.key === 'rec.r.wontCome' || r.key === 'rec.r.tooExpensive')) reasons.unshift({ key: 'rec.r.unrealistic' }); }
+  else if (real === 1 && lvl === 0) { lvl = 1; reasons.push({ key: 'rec.r.hard' }); }
   return { level: lvl, key: `rec.l${lvl}`, reasons: reasons.slice(0, 3) };
 }
 
 // undgå cirkulær import: transfers → scouting → transfers
 let askingPriceSafe: (p: Player) => number = (p) => p.value;
 let interestFn: (p: Player, c: Club) => string = () => 'yes';
-export function registerAskingPrice(fn: (p: Player) => number, interest?: (p: Player, c: Club) => string) {
+/** Transfer-realisme for brugerens klub (0 realistisk, 1 måske, 2 urealistisk) */
+let realismFn: (p: Player) => number = () => 0;
+export function registerAskingPrice(fn: (p: Player) => number, interest?: (p: Player, c: Club) => string, realism?: (p: Player) => number) {
   askingPriceSafe = fn;
   if (interest) interestFn = interest;
+  if (realism) realismFn = realism;
+}
+
+/** Kan klubben realistisk hente spilleren? Scouterne bruger ikke tid på urealistiske mål */
+function realistic(p: Player): boolean {
+  return p.club === gs().userClub || realismFn(p) < 2;
 }

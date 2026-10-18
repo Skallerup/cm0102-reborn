@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { transferRealism } from '../../game/transfers';
 import { Info } from '../help';
 import { Select } from '../select';
 import { act } from '../../game/actions';
@@ -49,14 +50,22 @@ function ScoutFinds() {
   const g = useGame()!;
   const finds = g.scoutFinds ?? {};
   const [onlyFinds, setOnlyFinds] = useRouteState('onlyFinds', true);
+  const [showUnreal, setShowUnreal] = useRouteState('showUnreal', false);
   const rows = Object.entries(g.knowledge)
     .filter(([id, k]) => k >= 60 && g.players[Number(id)] && g.players[Number(id)].club !== g.userClub && (!onlyFinds || finds[Number(id)]))
+    // urealistiske fund skjules som standard (fx gamle fund fra før, eller spillere der er blevet for dyre)
+    .filter(([id]) => showUnreal || transferRealism(g.players[Number(id)]).level < 2)
     .map(([id]) => g.players[Number(id)])
     .map((p) => ({ p, st: scoutStars(p), found: finds[p.id] ?? '' }))
     .sort((a, b) => b.found.localeCompare(a.found) || b.st.potential[0] + b.st.ability[0] - (a.st.potential[0] + a.st.ability[0]))
     .slice(0, 80);
   const recent = addDays(g.date, -14);
-  const toggle = <label className="row" style={{ padding: '10px 14px' }}><input type="checkbox" checked={onlyFinds} onChange={(e) => setOnlyFinds(e.target.checked)} />{t('scout.onlyFinds')}</label>;
+  const toggle = (
+    <div className="row" style={{ padding: '10px 14px', gap: 18, flexWrap: 'wrap' }}>
+      <label className="row"><input type="checkbox" checked={onlyFinds} onChange={(e) => setOnlyFinds(e.target.checked)} />{t('scout.onlyFinds')}</label>
+      <label className="row"><input type="checkbox" checked={showUnreal} onChange={(e) => setShowUnreal(e.target.checked)} />{t('scout.showUnreal')}</label>
+    </div>
+  );
   if (!rows.length) return <>{toggle}<div className="empty">{t('scout.noFinds')}</div></>;
   return (
     <>
