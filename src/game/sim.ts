@@ -10,7 +10,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, resolveAuctions, weeklyTransferDigest } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, weeklyTransferDigest } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
@@ -319,6 +319,7 @@ function newDay() {
     forEachHuman(boardMeeting);
     if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
     monthlyClubReps();
+    refreshShortlists();
     forEachHuman(() => {
       const { mismatches } = monthlyTrainingReport();
       const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');

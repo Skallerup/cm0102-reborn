@@ -635,7 +635,8 @@ function targetLevel(club: Club): number {
   return Math.max(clubLevel(club.id), leagueFloor(club));
 }
 
-export function findTarget(club: Club, role: Role): Player | null {
+/** Klubbens bedste mål til en rolle, sorteret (bruges til køb og til klubbens shortliste) */
+export function rankTargets(club: Club, role: Role, watch = false): Player[] {
   const g = gs();
   if (!roleIndex || g.date > addDays(roleIndexDate, 14)) buildRoleIndex();
   const ids = roleIndex!.get(role) ?? [];
@@ -646,21 +647,24 @@ export function findTarget(club: Club, role: Role): Player | null {
   // binær søgning på CA
   let a = 0, b = ids.length;
   while (a < b) { const m = (a + b) >> 1; if ((g.players[ids[m]]?.ca ?? 0) < lo) a = m + 1; else b = m; }
-  for (let i = a; i < ids.length && cands.length < 60; i++) {
+  let end = a, e2 = ids.length;
+  while (end < e2) { const m = (end + e2) >> 1; if ((g.players[ids[m]]?.ca ?? 0) <= hi) end = m + 1; else e2 = m; }
+  // jævnt udvalg over hele intervallet (ellers ses kun de svageste 60 kandidater)
+  const step = Math.max(1, Math.floor((end - a) / (watch ? 400 : 150)));
+  for (let i = a; i < end && cands.length < (watch ? 200 : 60); i += step) {
     const p = g.players[ids[i]];
     if (!p) continue;
-    if (p.ca > hi) break;
     if (p.club === club.id || p.loan || p.contract?.futureClub) continue;
     // nyindkøbte spillere videresælges ikke samme sæson (medmindre de er sat til salg)
     if (p.club && p.joined && !p.listed && p.joined > addDays(g.date, -300)) continue;
     const age = ageOn(p.dob, g.date);
     if (age > 31) continue;
     const price = p.club ? askingPrice(p) : 0;
-    if (price > club.transferBudget * 1.05) continue;
+    if (price > club.transferBudget * (watch ? 1.6 : 1.05)) continue;
     if (playerInterest(p, club) !== 'yes') continue;
     cands.push(p);
   }
-  if (!cands.length) return null;
+  if (!cands.length) return [];
   const budget = Math.max(1, club.transferBudget);
   const strat = clubStrategy(club);
   const priceW = strat === 'big' ? 3 : strat === 'seller' ? 10 : 6;
@@ -672,8 +676,20 @@ export function findTarget(club: Club, role: Role): Player | null {
     if (strat === 'big') v += (p.ca - level) * 0.3;
     return v;
   };
-  cands.sort((x, y) => score(y) - score(x));
-  return rng.pick(cands.slice(0, 8));
+  // shortliste: hvem er bedst i forhold til klubben (prisen betyder mindre, når man bare holder øje)
+  // klubber scouter mest i eget land og i de ligaer der følges (aktive nationer)
+  const near = (p: Player) => { const pc = g.clubs[p.club]; return !pc ? 0 : (pc.nation === club.nation ? 6 : 0) + (g.comps[pc.league] ? 3 : 0); };
+  const watchScore = (p: Player) => p.ca - level + (ageOn(p.dob, g.date) <= 24 ? 3 : 0) - (p.club ? askingPrice(p) / budget : 0) * 2 + near(p);
+  cands.sort(watch ? (x, y) => watchScore(y) - watchScore(x) : (x, y) => score(y) - score(x));
+  return cands;
+}
+
+export function findTarget(club: Club, role: Role): Player | null {
+  // spillere klubben allerede har på sin shortliste foretrækkes
+  const listed = (club.shortlist ?? []).map((id) => gs().players[id]).filter((p): p is Player => !!p && p.club !== club.id && GROUP[naturalRole(p)] === GROUP[role] && !p.loan && !p.contract?.futureClub && (p.club ? askingPrice(p) : 0) <= club.transferBudget * 1.05);
+  if (listed.length && rng.chance(0.7)) return rng.pick(listed);
+  const cands = rankTargets(club, role);
+  return cands.length ? rng.pick(cands.slice(0, 8)) : null;
 }
 
 export function aiTransferTick() {
@@ -1147,4 +1163,83 @@ export function resolveAuctions() {
       asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'auction.lost', params: { player: pname(p), club: g.clubs[win.buyer]?.name ?? '', fee: win.fee }, link: { kind: 'player', id: p.id } }));
     }
   }
+}
+
+// ---------- klubbernes shortlister (interesse i spillere) ----------
+
+const SHORTLIST_MAX = 8;
+
+/** Den 1. i måneden: AI-klubber (og AI-managere) opdaterer deres shortliste ud fra behov og budget */
+export function refreshShortlists() {
+  const g = gs();
+  for (const club of Object.values(g.clubs)) {
+    if (!g.comps[club.league]) continue; // kun ligaer der spilles
+    if (club.manager === -1 && !isBotClubId(club.id)) continue; // menneskers shortliste er deres egen
+    const needs = analyzeNeeds(club.id);
+    // de største behov + en rolle der skifter fra måned til måned (klubber scouter bredt)
+    const extra = (['CB', 'CM', 'ST', 'W', 'FB', 'DM', 'AM', 'GK'] as Role[])[(club.id + month(g.date)) % 8];
+    const roles = [...new Set([...needs.slice(0, 2).map((n) => n.role), extra])];
+    const keep = (club.shortlist ?? []).filter((id) => { const p = g.players[id]; return p && p.club !== club.id && !p.contract?.futureClub; }).slice(0, 2);
+    const picks = new Set(keep);
+    // et tilfældigt udvalg blandt de 15 bedste mål – ellers ender alle klubber på de samme få spillere
+    for (const role of roles) {
+      const pool = rankTargets(club, role, true).slice(0, 25);
+      for (let k = 0; k < 2 && pool.length && picks.size < SHORTLIST_MAX; k++) picks.add(pool.splice(rng.int(0, pool.length - 1), 1)[0].id);
+    }
+    // klubber der jagter en spiller efter et afslag har ham også på listen
+    for (const x of g.pursuits ?? []) if (x.club === club.id && picks.size < SHORTLIST_MAX) picks.add(x.player);
+    club.shortlist = [...picks];
+  }
+  noticeStandouts();
+}
+
+/**
+ * Profilerne bliver bemærket: hver klubs bedste spillere og spillere i topform får interesse fra
+ * 1-2 større klubber, der har råd og hvor spilleren passer ind (ellers ser alle kun på de samme få).
+ */
+function noticeStandouts() {
+  const g = gs();
+  const suitors = Object.values(g.clubs).filter((c) => g.comps[c.league] && (c.manager !== -1 || isBotClubId(c.id)));
+  const levels = new Map(suitors.map((c) => [c.id, clubLevel(c.id)]));
+  for (const club of Object.values(g.clubs)) {
+    if (!g.comps[club.league]) continue;
+    const sq = squad(club.id).filter((p) => !p.loan && !p.contract?.futureClub && ageOn(p.dob, g.date) <= 31);
+    const form = (p: Player) => (p.form.length >= 3 ? p.form.reduce((x, y) => x + y, 0) / p.form.length : 0);
+    const stars = new Set([...sq.sort((x, y) => y.ca - x.ca).slice(0, 3), ...sq.filter((p) => form(p) >= 7.3)]);
+    for (const p of stars) {
+      const price = askingPrice(p);
+      const fits = suitors.filter((c) => c.id !== club.id && c.rep >= club.rep + 5 && c.transferBudget * 1.6 >= price
+        && Math.abs((levels.get(c.id) ?? 0) - p.ca) <= 12 && (c.shortlist?.length ?? 0) < SHORTLIST_MAX + 2 && playerInterest(p, c) === 'yes');
+      const n = Math.min(fits.length, rng.int(1, 2));
+      for (let k = 0; k < n; k++) {
+        const c = fits.splice(rng.int(0, fits.length - 1), 1)[0];
+        if (!c.shortlist?.includes(p.id)) (c.shortlist ??= []).push(p.id);
+      }
+    }
+  }
+}
+
+function isBotClubId(clubId: number): boolean {
+  const g = gs();
+  if (!g.humans) return false;
+  if (g.userClub === clubId) return !!g.humans.find((h) => h.pid === g.active)?.bot;
+  return !!g.humans.find((h) => h.pid !== g.active && h.userClub === clubId)?.bot;
+}
+
+export interface Interest { club: number; human?: string; bot?: boolean }
+
+/** Hvilke klubber er interesserede i spilleren? (AI-klubbers shortlister + menneskers egne shortlister) */
+export function interestedClubs(p: Player): Interest[] {
+  const g = gs();
+  const out: Interest[] = [];
+  for (const c of Object.values(g.clubs)) {
+    if (c.id === p.club) continue;
+    if (c.shortlist?.includes(p.id)) out.push({ club: c.id, ...(isBotClubId(c.id) ? { bot: true } : {}) });
+  }
+  // menneskelige managere: deres egen shortliste (den aktive vises særskilt i UI'et)
+  for (const h of g.humans ?? []) {
+    if (h.bot || h.pid === g.active || !h.userClub || h.userClub === p.club) continue;
+    if (h.shortlist.includes(p.id)) out.push({ club: h.userClub, human: h.name });
+  }
+  return out.sort((a, b) => (g.clubs[b.club]?.rep ?? 0) - (g.clubs[a.club]?.rep ?? 0));
 }

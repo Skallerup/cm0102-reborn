@@ -10,6 +10,7 @@ import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { addNews, addPlayer, gs, rebuildIndexes, setGame, squad } from './state';
 import { initReleaseClauses } from './clauses';
+import { refreshShortlists } from './transfers';
 import { autoSelect, newTactic, FORMATIONS } from './tactics';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
 import type { CMWorld } from './data/cm0102';
@@ -206,6 +207,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     }
   }
   initReleaseClauses();
+  refreshShortlists();
   startScoreSeason();
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
   addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });

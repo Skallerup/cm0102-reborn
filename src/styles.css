@@ -529,3 +529,7 @@ table.grid tr.rival td:first-child { box-shadow: inset 3px 0 0 rgba(120, 160, 25
 /* indbyrdes regnskab */
 .h2h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; padding: 8px 12px; margin-bottom: 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface2); font-size: 13px; }
 .h2h-label { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+/* interesserede klubber */
+.interest-list { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.interest-club { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface2); }

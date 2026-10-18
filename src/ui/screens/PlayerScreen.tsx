@@ -5,7 +5,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, loanSuitors, preContractBlock, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, loanSuitors, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -152,6 +152,7 @@ export function PlayerScreen({ id }: { id: number }) {
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {mine && <TalkPanel pid={p.id} />}
       {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
+      <InterestPanel pid={p.id} mine={mine} />
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">
           {(['technical', 'mental', 'physical', ...(p.pos[0] >= 15 ? ['goalkeeping'] : [])] as (keyof typeof GROUPS)[]).map((grp) => (
@@ -542,4 +543,32 @@ function clauseText(c: Contract): string {
   if (c.goalBonus) parts.push(t('clause.sumGoal', { fee: money(c.goalBonus) }));
   if (c.relegationCut) parts.push(t('clause.sumCut', { n: c.relegationCut }));
   return parts.join(' · ');
+}
+
+/** Hvilke klubber holder øje med spilleren (klubbernes shortlister) */
+function InterestPanel({ pid, mine }: { pid: number; mine: boolean }) {
+  const g = useGame()!;
+  const p = g.players[pid];
+  const [all, setAll] = useState(false);
+  if (!p) return null;
+  const list = interestedClubs(p);
+  const onMine = !mine && g.shortlist.includes(p.id);
+  const shown = all ? list : list.slice(0, 8);
+  return (
+    <Panel title={t('interest.title')} right={list.length ? <span className="muted">{t('interest.count', { n: list.length })}</span> : undefined}>
+      {mine && list.length > 0 && <div className="insight warn" style={{ marginBottom: 8 }}>{t('interest.mine', { n: list.length })}</div>}
+      {onMine && <div className="muted" style={{ marginBottom: 6 }}>{t('interest.onYourList')}</div>}
+      {list.length === 0 ? <div className="muted">{t('interest.none')}</div> : (
+        <div className="interest-list">
+          {shown.map((x) => (
+            <span key={x.club} className="interest-club">
+              <ClubLink id={x.club} />
+              {x.human && <span className="muted"> · {t('interest.humanList', { name: x.human })}</span>}
+            </span>
+          ))}
+          {!all && list.length > 8 && <button className="small" onClick={() => setAll(true)}>{t('interest.more', { n: list.length - 8 })}</button>}
+        </div>
+      )}
+    </Panel>
+  );
 }

@@ -7,7 +7,7 @@ import { rng } from './rng';
 import { clubLevel } from './scouting';
 import { addNews, gs, squad } from './state';
 import { sortTable } from './competitions';
-import type { Player } from './types';
+import type { Player, Club } from './types';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 const avgForm = (p: Player) => (p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 0);
@@ -21,11 +21,22 @@ export function weeklyRumours() {
   // højst ét rygte hver tredje uge
   if (g.board.lastRumour && daysBetween(g.board.lastRumour, g.date) < 21) return;
   if (!rng.chance(m >= 5 && m <= 8 || m === 12 || m === 1 ? 0.22 : 0.07)) return;
-  const cands = squad(me.id).filter((p) => !p.loan && p.contract && (avgForm(p) >= 7 || p.ca >= clubLevel(me.id) + 6) && !p.contract.futureClub);
-  const p = rng.pick(cands);
+  // rygterne bygger på klubbernes rigtige shortlister, når der er nogen
+  const interested = Object.values(g.clubs).filter((c) => c.id !== me.id && !isHumanClub(c.id) && c.shortlist?.some((id) => g.players[id]?.club === me.id));
+  let p: Player | undefined;
+  let club: Club | undefined;
+  if (interested.length) {
+    club = rng.pick(interested);
+    const ids: number[] = club.shortlist!.filter((id) => g.players[id]?.club === me.id);
+    p = g.players[rng.pick(ids)!];
+  } else {
+    const cands = squad(me.id).filter((x) => !x.loan && x.contract && (avgForm(x) >= 7 || x.ca >= clubLevel(me.id) + 6) && !x.contract.futureClub);
+    p = rng.pick(cands);
+    if (!p) return;
+    const pp = p;
+    club = rng.pick(Object.values(g.clubs).filter((c) => c.id !== me.id && !isHumanClub(c.id) && c.rep >= me.rep + 4 && c.transferBudget >= pp.value * 0.8 && Math.abs(clubLevel(c.id) - pp.ca) <= 18));
+  }
   if (!p) return;
-  const suitors = Object.values(g.clubs).filter((c) => c.id !== me.id && !isHumanClub(c.id) && c.rep >= me.rep + 4 && c.transferBudget >= p.value * 0.8 && Math.abs(clubLevel(c.id) - p.ca) <= 18);
-  const club = rng.pick(suitors);
   if (!club) return;
   // halvdelen af rygterne er sande: klubben byder senere
   const real = rng.chance(0.5);
