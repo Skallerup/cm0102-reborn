@@ -72,6 +72,8 @@ interface TeamRT {
   moraleMult: number;
   /** Holdsnak: faktor pr. spiller-id */
   talk: Map<number, number>;
+  /** Antal spillere på banen (færre efter røde kort) */
+  men: number;
   all: SP[]; // alle der har været på banen
   /** AI-trænerens udgangspunkt for mentaliteten (til justeringer undervejs) */
   baseMentality?: number;
@@ -87,6 +89,10 @@ const zoneY = (l: number) => 16.67 + l * 33.33;
 
 /** Dæmper niveauforskelle en smule: uden den bliver topholdene urealistisk dominerende (150 mål, 60-målsscorere) */
 const SQUASH = 0.84;
+/** Fordel pr. ekstra mand på banen i hver duel (røde kort) – kalibreret mod rigtige kampe, se scripts/redcard.ts */
+const MAN_EDGE = 0.45;
+/** Ekstra chancekvalitet pr. manglende forsvarsspiller */
+const SPACE_XG = 0.17;
 const squash = (v: number) => 11 + (v - 11) * SQUASH;
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const logistic = (x: number) => 1 / (1 + Math.exp(-x));
@@ -151,6 +157,7 @@ export class MatchSim {
       homeMult,
       moraleMult: 1 + (t.morale ?? 0) * 0.03,
       talk: new Map(Object.entries(t.talk ?? {}).map(([k, v]) => [Number(k), v])),
+      men: 11,
       all: [],
     };
     t.tactic.lineup.forEach((id, slot) => {
@@ -192,6 +199,7 @@ export class MatchSim {
 
   /** Beregn zonedækning for et hold (efter formation, instruktioner og hvem der er på banen) */
   buildZones(rt: TeamRT) {
+    rt.men = rt.on.filter((s) => !s.off).length;
     const ti = rt.ti;
     rt.zAtt = Array.from({ length: NZ }, () => []);
     rt.zDef = Array.from({ length: NZ }, () => []);
@@ -282,7 +290,8 @@ export class MatchSim {
     return t.on.find((s) => !s.off && t.tactic.slots[s.slot].pos === 'GK') ?? t.on.find((s) => !s.off)!;
   }
   private overload(z: number, att: TeamRT, def: TeamRT): number {
-    return 0.5 * Math.log((att.wAtt[z] + 0.45) / (def.wDef[z] + 0.45));
+    // undertal mærkes over hele banen: modstanderen har altid en fri mand
+    return 0.5 * Math.log((att.wAtt[z] + 0.45) / (def.wDef[z] + 0.45)) + MAN_EDGE * (att.men - def.men);
   }
   private rate(sp: SP | null, d: number) {
     if (sp) sp.rating += d;
@@ -367,7 +376,7 @@ export class MatchSim {
       for (const s of t.on) {
         if (s.off) continue;
         const isGK = t.tactic.slots[s.slot].pos === 'GK';
-        const drain = 0.00143 * (1.3 - s.p.attrs[A.stamina] / 36) * (isGK ? 0.25 : tf) * (1 + 0.06 * (s.p.attrs[A.workRate] - 10) / 10) * (1.1 - s.p.attrs[A.naturalFitness] / 100);
+        const drain = 0.00143 * (1.3 - s.p.attrs[A.stamina] / 36) * (isGK ? 0.25 : tf * (1 + 0.12 * Math.max(0, 11 - t.men))) * (1 + 0.06 * (s.p.attrs[A.workRate] - 10) / 10) * (1.1 - s.p.attrs[A.naturalFitness] / 100);
         s.cond = Math.max(0.2, s.cond - drain);
       }
     }
@@ -723,6 +732,8 @@ export class MatchSim {
     let xg = (base[kind] ?? 0.08) + bonus;
     if (kind === 'box' || kind === 'boxWide' || kind === 'header' || kind === 'long' || kind === 'cutback') {
       xg *= clamp(1.28 - 0.16 * O.wDef[z], 0.55, 1.3);
+      // mere plads når forsvaret er i undertal
+      if (O.men < T.men) xg *= 1 + SPACE_XG * (T.men - O.men);
     }
     xg = clamp(xg, 0.01, 0.8);
     T.stats.shots++;
