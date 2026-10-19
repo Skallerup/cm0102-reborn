@@ -1,7 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
-import { acceptJob, answerBudgetCounter, applyForJob, requestBudget, requestProject, shiftBudget } from './board';
+import { acceptJob, answerBudgetCounter, applyForJob, declineJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { initKnowledge } from './scouting';
@@ -118,7 +118,7 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     case 'acceptJob': if (g.jobOffers.includes(a.club) && g.clubs[a.club]?.manager === 0) acceptJob(a.club); return 'ok';
     case 'applyJob': return applyForJob(a.club);
-    case 'declineJob': g.jobOffers = g.jobOffers.filter((x) => x !== a.club); return 'ok';
+    case 'declineJob': declineJob(a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'chat': return sendChat(a.to, a.text);

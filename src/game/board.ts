@@ -55,7 +55,9 @@ export function boardAfterMatch(scored: number, conceded: number, oppClub: numbe
   const club = g.clubs[g.userClub];
   if (!club) return;
   const diff = (squadStrength(club.id) - squadStrength(oppClub)) / 12;
-  const expected = Math.max(0.3, Math.min(2.6, 1.35 + diff));
+  // forventede point mod netop den modstander (kalibreret mod motoren, se scripts/ppgcalib.ts):
+  // selv et klart bedre hold tager kun ~1,8 point i snit, så uafgjort mod et svagere hold er ikke en katastrofe
+  const expected = 1.37 + 1.05 * Math.tanh(diff * 0.45);
   const pts = scored > conceded ? 3 : scored === conceded ? 1 : 0;
   const weight = compType === 'league' ? 1.6 : compType === 'continental' ? 1.2 : 0.8;
   g.board.confidence = clamp(g.board.confidence + (pts - expected) * weight, 0, 100);
@@ -111,10 +113,13 @@ export function boardMonthly() {
   // bestyrelsen lytter til fansene
   g.board.confidence = clamp(g.board.confidence + ((club.fanMood ?? 60) - 60) / 40, 0, 100);
   if (g.challenge) return; // udfordringer: ingen fyring undervejs
-  if (g.board.confidence < 25 && g.board.warnings < 2) {
+  // ligger holdet på (eller tæt på) målet, fyrer bestyrelsen ikke midt i sæsonen – og den falder til ro igen når det går bedre
+  const onTarget = pos <= g.board.expectedPos + 1;
+  if (g.board.confidence >= 35 && g.board.warnings > 0) g.board.warnings--;
+  else if (g.board.confidence < 25 && g.board.warnings < 2 && !onTarget) {
     g.board.warnings++;
     addNews({ cat: 'board', key: 'board.warning', params: { club: club.name } });
-  } else if (g.board.confidence < 12 && g.board.warnings >= 2 && played >= 10) {
+  } else if (g.board.confidence < 12 && g.board.warnings >= 2 && played >= 10 && !onTarget) {
     sackUser('board.sacked');
   }
 }
@@ -363,6 +368,10 @@ export function fillVacancies() {
       const my = g.clubs[g.userClub];
       // kun jobtilbud fra samme verdensdel som ens klub (eller seneste klub/nationalitet, hvis arbejdsløs)
       if (regionOf(g.nations[club.nation]?.name) !== managerRegion()) continue;
+      // ingen tilbud fra klubber der har fyret en, eller som man for nylig har sagt nej til
+      if ((g.manager.sackedBy ?? []).includes(cid)) continue;
+      const declined = g.manager.declinedJobs?.[cid];
+      if (declined && daysBetween(declined, g.date) < 365) continue;
       // i job: kun klubber der er tydeligt større end ens nuværende (omdømme, eller en højere liga),
       // og højst ét tilbud pr. ~3 måneder
       const tier = (c: typeof club) => g.leagues[c.league]?.tier ?? 9;
@@ -403,6 +412,12 @@ export function fillVacancies() {
     still.push(cid);
   }
   g.vacancies = still;
+}
+
+export function declineJob(cid: number) {
+  const g = gs();
+  g.jobOffers = g.jobOffers.filter((x) => x !== cid);
+  (g.manager.declinedJobs ??= {})[cid] = g.date;
 }
 
 export function applyForJob(cid: number): boolean {
