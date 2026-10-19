@@ -116,7 +116,7 @@ export function removePlayer(p: Player) {
 export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
   const g = gs();
   const me = g.clubs[g.userClub];
-  const scope = g.options.newsScope ?? 'nation';
+  const scope = g.options.newsScope ?? 'league';
   if (scope === 'world') return true;
   return clubIds.some((id) => {
     const c = id ? g.clubs[id] : undefined;

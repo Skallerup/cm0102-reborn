@@ -32,7 +32,7 @@ export function Options() {
             </label>
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
             <label className="row">{t('opt.news')}
-              <select value={g.options.newsScope ?? 'nation'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
+              <select value={g.options.newsScope ?? 'league'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
                 {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}
               </select>
             </label>

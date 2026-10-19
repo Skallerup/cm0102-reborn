@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.15',
+    date: '2026-10-19',
+    title: { da: 'Du følger din egen liga', en: 'You follow your own league' },
+    items: [
+      { da: 'Indbakken følger som standard kun den liga, du er manager i – de andre valgte ligaer spiller kampe og handler videre i baggrunden', en: 'By default the inbox only follows the league you manage in – the other chosen leagues keep playing and trading in the background' },
+      { da: 'Op- og nedrykninger vises kun, når de berører din liga. Under Indstillinger kan du stadig vælge hele landet eller hele verden', en: 'Promotions and relegations are only shown when they affect your league. In Options you can still choose the whole country or the whole world' },
+    ],
+  },
+  {
     version: '0.7.14',
     date: '2026-10-19',
     title: { da: 'Jobsamtaler', en: 'Job talks' },

@@ -125,6 +125,7 @@ function promotionRelegation() {
   for (const [cid, league] of moves) {
     const club = g.clubs[cid];
     const wasUp = (g.leagues[league]?.tier ?? 1) < (g.leagues[club.league]?.tier ?? 1);
+    const oldLeague = club.league;
     club.league = league;
     // nedrykkede AI-klubber må sælge stjernerne (nedrykningsklausuler, lønninger) – ellers vinder de næste liga med 110+ point
     if (!wasUp && !isHumanClub(cid)) {
@@ -134,7 +135,12 @@ function promotionRelegation() {
       }
     }
     forEachHuman(() => {
-      if (cid === g.userClub || g.leagues[league]?.nation === g.clubs[g.userClub]?.nation) {
+      // kun op-/nedrykninger, der berører ens egen liga (eller ens land/verden, hvis man har valgt det)
+      const me = g.clubs[g.userClub];
+      const scope = g.options.newsScope ?? 'league';
+      const relevant = cid === g.userClub || scope === 'world'
+        || (scope === 'nation' ? g.leagues[league]?.nation === me?.nation : !!me && (league === me.league || oldLeague === me.league));
+      if (relevant) {
         addNews({ cat: 'general', key: wasUp ? 'news.promoted' : 'news.relegated', params: { club: club.name, comp: g.leagues[league]?.name ?? league } });
       }
     });
