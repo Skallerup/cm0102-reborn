@@ -104,7 +104,14 @@ function importance(f: Fixture): number {
   return comp.type === 'cup' ? 0.5 : 0.4;
 }
 
-export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number } {
+/** Turneringer med VAR (videodommer): de største ligaer og de europæiske turneringer */
+const VAR_LEAGUES = new Set(['GB1', 'ES1', 'IT1', 'L1', 'FR1', 'NL1', 'PO1', 'BE1', 'DK1', 'TR1', 'SC1', 'A1', 'C1', 'GR1', 'SE1', 'NO1', 'PL1', 'MLS1', 'BRA1', 'SA1', 'JAP1', 'MEX1', 'ARG1']);
+function usesVar(f: Fixture): boolean {
+  const c = gs().comps[f.comp];
+  return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
+}
+
+export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean } {
   const ht = tacticFor(f.home, f.away, true, userAuto);
   const at = tacticFor(f.away, f.home, false, userAuto);
   return {
@@ -113,6 +120,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     neutral: f.stage === 'F',
     needsWinner: needsWinnerFn(f),
     importance: importance(f),
+    var: usesVar(f),
   };
 }
 
@@ -131,14 +139,14 @@ export function createLiveMatch(f: Fixture): MatchSim {
   const m = prepareMatch(f);
   const g = gs();
   return new MatchSim(m.home, m.away, {
-    commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, date: g.date,
+    commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, date: gs().date };
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, date: gs().date };
   const rep = commentary
     ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : quickMatch(m.home, m.away, opts, rng);
@@ -470,7 +478,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng);
+  const rep = quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng);
   finishUserMatch(rep);
   return rep;
 }

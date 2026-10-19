@@ -35,6 +35,8 @@ export interface EngineOptions {
   date?: string;
   /** AI håndterer udskiftninger for hold 0/1 */
   aiSubs?: [boolean, boolean];
+  /** Turneringen bruger VAR (videodommer) – tætte offsidesituationer bliver tjekket */
+  var?: boolean;
 }
 
 interface SP {
@@ -83,7 +85,7 @@ const ZB = 5;
 const ZL = 3;
 const NZ = ZB * ZL;
 /** Global afslutningsskala (kalibreret mod ~2,7 mål/kamp, se scripts/calibrate.ts) */
-const FINISH_SCALE = 1.34;
+const FINISH_SCALE = 1.43;
 const zoneX = (b: number) => 10 + b * 20;
 const zoneY = (l: number) => 16.67 + l * 33.33;
 
@@ -772,9 +774,35 @@ export class MatchSim {
       return;
     }
     if (this.r.chance(goalP)) {
+      // offside? Gennembrud og afslutninger i feltet kan være offside – linjedommeren kan tage fejl,
+      // men med VAR bliver tætte situationer tjekket og rettet
+      const risk = kind === 'oneOnOne' ? 0.11 : kind === 'box' || kind === 'cutback' || kind === 'header' || kind === 'rebound' ? 0.05 : 0;
+      let routineCheck = false;
+      if (risk > 0) {
+        const reallyOff = this.r.chance(risk + (O.ti.offside ? 0.04 : 0));
+        const flagged = reallyOff ? this.r.chance(0.85) : this.r.chance(0.025);
+        const checked = !!this.opts.var && (reallyOff !== flagged || flagged || this.r.chance(0.12));
+        const disallow = checked ? reallyOff : flagged;
+        if (disallow) {
+          rec.outcome = 'offside';
+          T.stats.offsides++;
+          this.rate(s, -0.05);
+          if (checked) { this.line('var-check', s, null, true); this.line('var-disallowed', s, null, true); }
+          else this.line('goal-offside', s, null, true);
+          this.events.push({ m: this.minute, t: T.idx, k: 'offside-goal', p: s.p.id });
+          this.zone = this.zoneFor(O.idx, 0, 1);
+          this.poss = O.idx;
+          return;
+        }
+        // flaget gik op, men VAR godkender målet
+        if (checked && flagged) { this.line('var-check', s, null, true); this.line('var-given', s, null, true); }
+        else routineCheck = checked;
+      }
       rec.outcome = 'goal';
       T.stats.onTarget++;
       this.goal(T, O, s, assister, kind);
+      // rutinetjek: målet står ved magt
+      if (routineCheck) { this.line('var-check', s, null, true); this.line('var-stands', s, null, true); }
       return;
     }
     const onT = clamp(0.19 + q / 70 + (kind === 'oneOnOne' ? 0.12 : 0) + (kind === 'pen' ? 0.5 : 0), 0.2, 0.92);

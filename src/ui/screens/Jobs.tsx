@@ -4,7 +4,7 @@ import { jobTerms, managerRegion } from '../../game/board';
 import { regionOf } from '../../game/leagues';
 import { dateFmt, money, t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
-import { useGame, useRouteState } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 
 export function Jobs() {
@@ -60,6 +60,7 @@ export function Jobs() {
 
 /** Et jobtilbud med klubbens vilkår – man kan forhandle én gang om budget og forventninger */
 function JobOffer({ cid }: { cid: number }) {
+  const { nav } = useNav();
   const g = useGame()!;
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
   const c = g.clubs[cid];
@@ -87,7 +88,7 @@ function JobOffer({ cid }: { cid: number }) {
       {msg && <div className={`insight ${msg.tone}`} style={{ marginTop: 8 }}>{msg.text}</div>}
       <div className="row" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
         <button className="small" onClick={() => act({ t: 'declineJob', club: cid })}>{t('jobs.decline')}</button>
-        <button className="small primary" onClick={() => { if (!me || confirm(t('jobs.acceptConfirm', { club: c.name }))) act({ t: 'acceptJob', club: cid }); }}>{t('jobs.accept')}</button>
+        <button className="small primary" onClick={() => { if (!me || confirm(t('jobs.acceptConfirm', { club: c.name }))) { act({ t: 'acceptJob', club: cid }); nav({ name: 'inbox' }); } }}>{t('jobs.accept')}</button>
       </div>
     </div>
   );

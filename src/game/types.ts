@@ -581,7 +581,7 @@ export interface ShotRecord {
   t: number;
   zone: number;
   xg: number;
-  outcome: 'goal' | 'saved' | 'off' | 'blocked';
+  outcome: 'goal' | 'saved' | 'off' | 'blocked' | 'offside';
   p: number;
   kind: string;
 }

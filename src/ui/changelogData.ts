@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.51',
+    date: '2026-10-19',
+    title: { da: 'Offside, VAR og bedre 2D-højdepunkter', en: 'Offside, VAR and better 2D highlights' },
+    items: [
+      { da: 'Nyt: mål kan blive annulleret for offside. Linjedommeren kan tage fejl – men i ligaer og turneringer med VAR (de store ligaer, Superligaen, Europa og pokalfinaler) bliver tætte situationer tjekket og rettet', en: 'New: goals can be ruled out for offside. The linesman can get it wrong – but in leagues and competitions with VAR (the big leagues, the Danish Superliga, Europe and cup finals) close calls are checked and corrected' },
+      { da: '2D: teksten følger nu billederne (opspil → aflevering → afslutning → udfald), og udfaldet og stillingen afsløres først, når bolden er i nettet', en: '2D: the text now follows the frames (build-up → pass → shot → outcome), and the outcome and score are only revealed when the ball is in the net' },
+      { da: '2D: straffespark vises rigtigt – skytten ved pletten, målmanden på stregen, alle andre uden for feltet', en: '2D: penalties are shown properly – taker at the spot, keeper on the line, everyone else outside the box' },
+      { da: 'Pausen kommer først, når et højdepunkt er færdigt', en: 'Half-time only starts once a highlight has finished' },
+      { da: 'Rettet: efter et jobskifte kunne den gamle klubs kamp stadig vises – nu kommer du til indbakken', en: 'Fixed: after changing jobs the old club\'s match could still be shown – you now go to the inbox' },
+    ],
+  },
+  {
     version: '0.7.50',
     date: '2026-10-19',
     title: { da: 'Jobskifte på en kampdag', en: 'Changing jobs on a match day' },

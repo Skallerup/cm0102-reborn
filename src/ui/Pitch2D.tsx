@@ -6,6 +6,39 @@ import type { ShotRecord } from '../game/types';
 import { hash01 } from '../game/rng';
 
 export type Snap = ReturnType<MatchSim['pitch']>;
+/** Straffespark: hvilket hold skyder, og hvor langt tilløbet er nået (0 opstilling, 1 tilløb, 2 skud) */
+type PenSnap = Snap & { pen: number; penStep: number };
+
+/** Straffesparksopstilling: skytten ved pletten, målmanden på stregen, alle andre uden for feltet */
+function penLayout(s: PenSnap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
+  const toRight = s.pen === 0;
+  const goalX = toRight ? 100 : 0;
+  const spotX = toRight ? 89 : 11;
+  const edgeX = toRight ? 80 : 20;
+  const pos = new Map<number, [number, number]>();
+  const shooter = s.players.find((p) => p.id === s.holder);
+  let k = 0;
+  for (const p of s.players) {
+    if (p.id === shooter?.id) continue;
+    if (p.gk) {
+      const defending = p.team !== s.pen;
+      pos.set(p.id, defending ? [toRight ? 99 : 1, 50] : [p.team === 0 ? 6 : 94, 50]);
+      continue;
+    }
+    // spredt i to rækker uden for feltet
+    const row = k % 2, col = Math.floor(k / 2) % 9;
+    k++;
+    pos.set(p.id, [edgeX - (toRight ? 1 : -1) * (row * 6 + Math.abs(col - 4) * 0.8), 20 + col * 7.5 + row * 3.5]);
+  }
+  const back = s.penStep === 0 ? 6 : s.penStep === 1 ? 2 : 0.5;
+  if (shooter) pos.set(shooter.id, [spotX - (toRight ? back : -back), 50 + (s.penStep === 0 ? 3 : 1)]);
+  let ball: [number, number] = [spotX, 50];
+  if (s.shot) {
+    const inNet = s.shot.outcome === 'goal';
+    ball = inNet ? [goalX + (toRight ? -0.5 : 0.5), 46] : s.shot.outcome === 'saved' ? [toRight ? 98 : 2, 52] : [toRight ? 99.5 : 0.5, 38];
+  }
+  return { pos, ball, holder: shooter };
+}
 const W = 105, H = 68;
 
 /** Zonens midte (0-100 i begge akser; hold 0 angriber mod højre) */
@@ -21,6 +54,7 @@ const clampP = (v: number, lo = 1, hi = 99) => Math.max(lo, Math.min(hi, v));
  * Returnerer positionerne, boldens placering og hvem der har bolden.
  */
 function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
+  if ((s as PenSnap).pen !== undefined) return penLayout(s as PenSnap);
   const [zx, zy] = zoneCenter(s);
   const pos = new Map<number, [number, number]>();
   for (const p of s.players) {
@@ -73,7 +107,8 @@ function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, n
   if (s.shot) {
     // afslutning: bolden på vej mod (eller i) mål
     const toRight = s.shot.team === 0;
-    ball = [s.shot.outcome === 'goal' ? (toRight ? 99.5 : 0.5) : toRight ? 96 : 4, s.shot.outcome === 'off' ? (hash01(s.moment, 13, 3) < 0.5 ? 40 : 60) : 46 + hash01(s.moment, 14, 4) * 8];
+    const inNet = s.shot.outcome === 'goal' || s.shot.outcome === 'offside';
+    ball = [inNet ? (toRight ? 99.5 : 0.5) : toRight ? 96 : 4, s.shot.outcome === 'off' ? (hash01(s.moment, 13, 3) < 0.5 ? 40 : 60) : 46 + hash01(s.moment, 14, 4) * 8];
   }
   // skub spillere, der står oven i hinanden, lidt fra hinanden
   const ids = [...pos.keys()];
@@ -163,7 +198,10 @@ export function highlightFrames(base: Snap, shot: ShotRecord, assister?: number)
   const mid = mates.slice().sort((a, b) => Math.abs((a.dx + a.ax) / 2 - 50) - Math.abs((b.dx + b.ax) / 2 - 50))[0];
   const fwd = (assister && mates.find((p) => p.id === assister)) || mates.filter((p) => p.id !== shot.p).sort((a, b) => (team === 0 ? b.ax - a.ax : a.ax - b.ax))[0];
   const f = (rb: number, l: number, holder: number | undefined, k: number, sh: Snap['shot'] = null): Snap => ({ ...base, poss: team, zone: abs(rb) * 3 + l, holder: holder ?? shot.p, moment: base.moment * 10 + k, shot: sh });
-  if (shot.kind === 'pen') return [f(4, 1, shot.p, 1), f(4, 1, shot.p, 2), f(4, 1, shot.p, 3, { team, outcome: shot.outcome, zone: shot.zone })];
+  if (shot.kind === 'pen') {
+    const pen = (step: number, sh: Snap['shot'] = null): Snap => ({ ...f(4, 1, shot.p, step, sh), pen: team, penStep: step } as PenSnap);
+    return [pen(0), pen(1), pen(2, { team, outcome: shot.outcome, zone: shot.zone })];
+  }
   return [
     f(2, lane === 1 ? 1 : lane, mid?.id, 1),
     f(3, lane, fwd?.id, 2),

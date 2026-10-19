@@ -39,6 +39,10 @@ export function MatchScreen({ id }: { id: number }) {
   const f = g.fixtures[id];
   const [phase, setPhase] = useState<'pre' | 'live'>(live?.fixture === id ? 'live' : 'pre');
   if (!f) return <Head title="?" />;
+  // en kamp for en klub, man ikke (længere) styrer – fx lige efter et jobskifte
+  if (!f.result && f.home !== g.userClub && f.away !== g.userClub && live?.fixture !== id) {
+    return <div><Head title={t('match.notYours')} /><p className="muted">{t('match.notYoursText', { club: g.clubs[g.userClub]?.name ?? '' })}</p><button className="primary" onClick={() => nav({ name: 'inbox' })}>{t('nav.inbox')}</button></div>;
+  }
   if (f.result && g.reports[id] && phase !== 'live') {
     return <div><Head title={t('match.played')} /><button onClick={() => nav({ name: 'report', id })}>{t('fix.report')}</button></div>;
   }
@@ -177,7 +181,7 @@ function LiveMatch({ id }: { id: number }) {
   // husk om man ser kampen i 2D eller som kommentar
   const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary') { try { localStorage.setItem('cm-match-view', v); } catch { /* ignorér */ } } };
   const [report, setReport] = useState<MatchReport | null>(null);
-  const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string } | null>(null);
+  const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number } | null>(null);
   const [msg, setMsg] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
@@ -199,25 +203,40 @@ function LiveMatch({ id }: { id: number }) {
       if (!sim.step()) break;
       n++;
     }
+    const linesBefore = L.lines.length;
     pull();
     // store chancer og mål afspilles på 2D-banen (kampen venter imens)
     const seen = L.shotsSeen ?? 0;
     const fresh = sim.shots.slice(seen);
     L.shotsSeen = sim.shots.length;
-    const big = fresh.filter((sh) => sh.outcome === 'goal' || sh.xg >= 0.1 || sh.kind === 'pen' || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)).at(-1);
+    const big = fresh.filter((sh) => sh.outcome === 'goal' || sh.outcome === 'offside' || sh.xg >= 0.1 || sh.kind === 'pen' || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)).at(-1);
+    let started = false;
     if (big && tab === '2d' && (speed < 8 || big.outcome === 'goal')) {
       const assist = big.outcome === 'goal' ? sim.events.filter((e) => e.k === 'goal' && e.p === big.p).at(-1)?.p2 : undefined;
-      setHl({ frames: highlightFrames(sim.pitch(), big, assist), i: 0, outcome: big.outcome });
+      const frames = highlightFrames(sim.pitch(), big, assist);
+      // teksten følger billederne: opspil → aflevering → afslutning → det, der faktisk skete
+      const name = (fr: Snap) => fr.players.find((p) => p.id === fr.holder)?.name ?? '';
+      const shooter = frames.at(-1) ? name(frames.at(-1)!) : '';
+      const result = L.lines.slice(linesBefore).map((l) => l.text).join(' · ') || (L.lines.at(-1)?.text ?? '');
+      const texts = big.kind === 'pen'
+        ? [t('hl.penSetup', { a: shooter }), t('hl.penRun', { a: shooter }), result]
+        : frames.map((fr, i) => (i === frames.length - 1 ? result : i === 0 ? t('hl.build', { a: name(fr) }) : i === 1 ? t('hl.pass', { a: name(fr), b: shooter }) : t('hl.shoot', { a: shooter })));
+      setHl({ frames, i: 0, outcome: big.outcome, texts, hideFrom: linesBefore, team: big.t });
+      started = true;
     }
     if (sim.finished && !report) setReport(sim.report());
-    // pausen: stop og giv holdet en peptalk – bagefter tilbage til den visning, man kom fra
-    else if (sim.half === 2 && !L.halfShown && !talkDone(id, 'half')) {
+    else if (!started) maybeHalftime();
+    force((x) => x + 1);
+  };
+
+  // pausen: stop og giv holdet en peptalk – bagefter tilbage til den visning, man kom fra
+  const maybeHalftime = () => {
+    if (sim.half === 2 && !L.halfShown && !talkDone(id, 'half') && !sim.finished) {
       L.halfShown = true;
       L.prevTab = tab === 'talk' ? '2d' : tab;
       setPaused(true);
       setTab('talk');
     }
-    force((x) => x + 1);
   };
 
   useEffect(() => {
@@ -232,7 +251,7 @@ function LiveMatch({ id }: { id: number }) {
   useEffect(() => {
     if (!hl || paused) return;
     const last = hl.i >= hl.frames.length - 1;
-    const h = setTimeout(() => setHl(last ? null : { ...hl, i: hl.i + 1 }), last ? frameMs * 2 : frameMs);
+    const h = setTimeout(() => { if (last) { setHl(null); maybeHalftime(); } else setHl({ ...hl, i: hl.i + 1 }); }, last ? frameMs * 2.2 : frameMs);
     return () => clearTimeout(h);
   }, [hl, paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -279,6 +298,8 @@ function LiveMatch({ id }: { id: number }) {
   const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result && x.comp === f.comp);
   const minute = sim.finished ? t('match.ft') : `${sim.minute}'`;
   const colors = teamColors(f.home, f.away, me);
+  // et mål vises først på resultattavlen, når højdepunktet når frem til målet
+  const spoil = hl && hl.outcome === 'goal' && hl.i < hl.frames.length - 1 ? hl.team : -1;
 
   return (
     <div>
@@ -290,7 +311,7 @@ function LiveMatch({ id }: { id: number }) {
         </>}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
-      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
+      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0)} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
       <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
@@ -303,7 +324,7 @@ function LiveMatch({ id }: { id: number }) {
           <div style={{ position: 'relative' }}>
             {hl ? (
               <Pitch2D snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
-                banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''}
+                banner={hl.texts[hl.i] ?? ''} bannerCls={hl.i === hl.frames.length - 1 && hl.outcome === 'goal' ? 'goal' : ''}
                 flash={hl.i === hl.frames.length - 1 ? t(`hl.${hl.outcome}`) : undefined} />
             ) : (
               // mellem højdepunkterne: holdene i ro i deres formation
@@ -313,7 +334,7 @@ function LiveMatch({ id }: { id: number }) {
             {hl && <div className="p2d-replay">{t('hl.chance')}</div>}
           </div>
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
-            {L.lines.slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+            {(hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines).slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
           </div>
         </div>
       )}
