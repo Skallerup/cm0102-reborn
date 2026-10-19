@@ -197,6 +197,31 @@ export async function POST(request: Request) {
       for (const p of await getPlayers(code)) if (!p.ready) { p.ready = true; p.auto = true; await savePlayer(code, p); }
       return json(await publicRoom(code));
     }
+    case 'force': {
+      // værten tvinger trækket igennem: alle der ikke er klar, gøres klar (assistenten tager over)
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      if (!room) return json({ error: 'not-found' }, 404);
+      if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
+      for (const p of await getPlayers(code)) if (!p.ready) { p.ready = true; p.auto = true; await savePlayer(code, p); }
+      await touch(code);
+      return json(await publicRoom(code));
+    }
+    case 'kick': {
+      // værten fjerner en spiller (fx gået offline) – klubben overtages af en AI-manager i næste træk
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      if (!room) return json({ error: 'not-found' }, 404);
+      if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
+      const target = String(body.target ?? '');
+      if (!target || target === room.host) return json({ error: 'target' }, 400);
+      await redis.hdel(keys.players, target);
+      await redis.rpush(keys.actions, JSON.stringify({ pid: me.pid, a: { t: 'removeHuman', pid: target } }));
+      await touch(code);
+      return json(await publicRoom(code));
+    }
     case 'ready': {
       const me = await auth(code, String(body.pid), String(body.token));
       if (!me) return json({ error: 'auth' }, 403);

@@ -105,3 +105,25 @@ export function humanManager(clubId: number): { name: string; bot: boolean } | n
   const h = g.humans?.find((x) => x.pid !== g.active && x.userClub === clubId);
   return h ? { name: h.name, bot: !!h.bot } : null;
 }
+
+/** Fjern en manager fra spillet: klubben får en AI-manager (eller bliver en ledig stilling) */
+export function removeHuman(pid: string): string {
+  const g = gs();
+  const slot = g.humans?.find((h) => h.pid === pid);
+  if (!slot || !g.humans) return 'unknown';
+  if (g.active === pid) return 'unknown';
+  const clubId = slot.userClub;
+  g.humans = g.humans.filter((h) => h.pid !== pid);
+  g.offers = g.offers.map((o) => (o.buyer === clubId && ['pending', 'negotiating', 'countered'].includes(o.status) ? { ...o, status: 'withdrawn' as const } : o));
+  const club = g.clubs[clubId];
+  if (club) {
+    club.manager = 0;
+    club.tactic = null;
+    removeHooks.onRemoved?.(clubId);
+  }
+  for (const h of g.humans) if (!h.bot) withHuman(h.pid, () => removeHooks.news?.(slot.name, club?.name ?? ''));
+  return 'ok';
+}
+
+/** Undgå cirkulære imports: board/state registrerer hvordan klubben får ny manager og nyheden skrives */
+export const removeHooks: { onRemoved?: (clubId: number) => void; news?: (name: string, club: string) => void } = {};

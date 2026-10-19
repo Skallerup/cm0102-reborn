@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.34',
+    date: '2026-10-19',
+    title: { da: 'Værtens kontrolpanel', en: 'Host controls' },
+    items: [
+      { da: 'Den der startede et online-spil, har en 👑 Vært-knap: se hvem der er klar, tving et træk igennem (assistenten passer holdene for dem, der ikke er klar) eller fjern spillere, der er gået offline', en: 'Whoever started an online game has a 👑 Host button: see who is ready, force a turn through (the assistant looks after the teams of those who aren\'t ready) or remove players who have gone offline' },
+      { da: 'En fjernet spillers klub overtages af en AI-manager fra næste træk', en: 'A removed player\'s club is taken over by an AI manager from the next turn' },
+    ],
+  },
+  {
     version: '0.7.33',
     date: '2026-10-19',
     title: { da: 'Lønforhandling med staff og mellemrumstasten', en: 'Staff wage talks and the space bar' },

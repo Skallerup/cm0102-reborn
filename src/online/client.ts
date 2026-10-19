@@ -215,6 +215,27 @@ export class OnlineSession {
 
   // ----- klar / synkronisering -----
 
+  /** Er jeg værten (den der startede spillet)? */
+  get isHost(): boolean {
+    return !!this.room && this.room.host === this.creds.pid;
+  }
+
+  /** Værten: tving trækket igennem uden at vente på de andre */
+  async forceContinue() {
+    await this.flush();
+    this.room = await post<RoomInfo>('force', { ...this.creds });
+    this.emit();
+    await this.maybeProcess();
+  }
+
+  /** Værten: fjern en spiller fra spillet – klubben får en AI-manager */
+  async kick(target: string) {
+    await this.flush();
+    this.room = await post<RoomInfo>('kick', { ...this.creds, target });
+    this.emit();
+    await this.maybeProcess();
+  }
+
   async setReady(ready: boolean) {
     await this.flush();
     this.room = await post<RoomInfo>('ready', { ...this.creds, ready });

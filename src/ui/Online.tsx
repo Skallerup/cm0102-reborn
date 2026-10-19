@@ -5,7 +5,7 @@ import { t } from '../i18n';
 import {
   downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, type RoomInfo,
 } from '../online/client';
-import { Panel } from './components';
+import { Modal, Panel } from './components';
 import { gs, hasGame } from '../game/state';
 import { act } from '../game/actions';
 import { useNav } from './core';
@@ -137,6 +137,7 @@ function blinkTitle(on: boolean) {
 export function OnlineControls() {
   const s = session();
   const [copied, setCopied] = useState(false);
+  const [hostOpen, setHostOpen] = useState(false);
   const { nav, route } = useNav();
   const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
   // (beregnes før det tidlige return, så hooket altid kaldes)
@@ -162,6 +163,9 @@ export function OnlineControls() {
         const h = Math.floor(left / 3_600_000), m = Math.max(0, Math.floor((left % 3_600_000) / 60_000));
         return <span className="muted nowrap" title={t('mp.deadlineTip')}>⏱ {left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
       })()}
+      {s.isHost && s.room.players.length > 1 && <button className="small" title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>👑 {t('mp.host')}</button>}
+      {hostOpen && <HostModal onClose={() => setHostOpen(false)} />}
+      {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
       {othersWaiting && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
       <span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
         {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
@@ -178,6 +182,41 @@ export function OnlineControls() {
         {!me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
     </>
+  );
+}
+
+/** Værten: se hvem der er klar, tving trækket igennem eller fjern spillere, der er gået offline */
+function HostModal({ onClose }: { onClose: () => void }) {
+  const s = session();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  if (!s?.room) return null;
+  const clubs = hasGame() ? gs().clubs : {};
+  const notReady = s.room.players.filter((p) => !p.ready);
+  const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(String((e as Error).message)); } setBusy(false); };
+  return (
+    <Modal title={t('mp.hostTitle')} onClose={onClose}>
+      <div className="col">
+        <table className="grid">
+          <tbody>
+            {s.room.players.map((p) => (
+              <tr key={p.pid}>
+                <td>{p.name}{p.pid === s.room!.host ? ' 👑' : ''}</td>
+                <td>{clubs[p.club]?.short ?? ''}</td>
+                <td>{p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
+                <td>{p.pid !== s.room!.host && <button className="small danger" disabled={busy} onClick={() => { if (confirm(t('mp.kickConfirm', { name: p.name }))) void run(() => s.kick(p.pid)); }}>{t('mp.kick')}</button>}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="muted" style={{ fontSize: 12 }}>{t('mp.kickHint')}</div>
+        {err && <div className="insight bad">{err}</div>}
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" disabled={busy || notReady.length === 0} title={t('mp.forceHint')} onClick={() => { if (confirm(t('mp.forceConfirm', { names: notReady.map((p) => p.name).join(', ') }))) void run(async () => { await s.forceContinue(); onClose(); }); }}>{t('mp.force')}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

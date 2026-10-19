@@ -11,7 +11,7 @@ import { addNews, gs, newsRelevant, squad } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
 import type { Club, JobTalk } from './types';
 import { takeOverClub } from './newgame';
-import { forEachHuman } from './humans';
+import { forEachHuman, removeHooks } from './humans';
 
 export function squadStrength(clubId: number): number {
   const ps = squad(clubId).map((p) => p.ca).sort((a, b) => b - a).slice(0, 16);
@@ -614,3 +614,13 @@ export function completeProjects() {
     }
   }
 }
+
+// en fjernet manager (multiplayer): klubben får straks en AI-manager
+removeHooks.onRemoved = (clubId) => {
+  const g = gs();
+  const club = g.clubs[clubId];
+  const m = pickManager(clubId);
+  if (m && club) { m.club = clubId; careerStart(m, clubId); club.manager = m.id; }
+  else openVacancy(clubId);
+};
+removeHooks.news = (name, club) => addNews({ cat: 'general', key: 'mp.removed', params: { manager: name, club } });

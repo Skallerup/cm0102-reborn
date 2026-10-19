@@ -12,6 +12,7 @@ import { chooseSponsor } from './finance';
 import { applyPress, type Tone } from './press';
 import { answerComplaint } from './will';
 import { answerBet, proposeBet, sendJab } from './rivalry';
+import { removeHuman } from './humans';
 import { addNews, gs, notify } from './state';
 import {
   acceptCounter, enquire, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
@@ -64,6 +65,7 @@ export type Action =
   | { t: 'jab'; to: string; line: number; text: string }
   | { t: 'bet'; to: string; amount: number }
   | { t: 'betAnswer'; id: number; accept: boolean }
+  | { t: 'removeHuman'; pid: string }
   | { t: 'chatRead' }
   | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
   | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
@@ -163,6 +165,11 @@ export function applyActionAs(pid: string, a: Action): unknown {
       addNews({ cat: 'general', key: 'mp.joined', params: { manager: a.name, club: club.name } }, { all: true });
       return 'ok';
     });
+  }
+  if (a.t === 'removeHuman') {
+    // kun værten (første menneskelige slot) – serveren tjekker det også
+    if (g.humans?.[0]?.pid !== pid || a.pid === pid) return 'unknown';
+    return removeHuman(a.pid);
   }
   if (a.t === 'addBot') {
     // kun en menneskelig manager kan invitere en AI-manager ind
