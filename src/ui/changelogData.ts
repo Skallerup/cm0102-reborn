@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.7',
+    date: '2026-10-19',
+    title: { da: 'Store køb begejstrer', en: 'Big signings excite' },
+    items: [
+      { da: 'Fans og bestyrelse jubler, når et stort navn kommer til klubben – jo større navnet er i forhold til klubben, jo gladere bliver de', en: 'Fans and the board celebrate when a big name joins the club – the bigger the name compared with the club, the happier they are' },
+      { da: 'Stjernekøb og sensationer får deres egen nyhed i indbakken; gode forstærkninger glæder også fansene lidt', en: 'Star signings and sensations get their own news item in the inbox; good reinforcements also please the fans a little' },
+      { da: 'Lejemål og veteraner over 33 begejstrer lidt mindre', en: 'Loans and veterans over 33 cause a little less excitement' },
+    ],
+  },
+  {
     version: '0.7.6',
     date: '2026-10-19',
     title: { da: 'Forespørgsler og budslider', en: 'Enquiries and an offer slider' },

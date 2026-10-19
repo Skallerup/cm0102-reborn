@@ -1,10 +1,10 @@
 // Fanstemning og bestyrelsesmøder. Fansenes humør (0-100) påvirker tilskuertallet og
 // bestyrelsens tillid; det reagerer på resultater, billetpriser, stjernesalg og pressemøder.
-import { daysBetween } from './dates';
+import { ageOn, daysBetween } from './dates';
 import { fairTicketPrice } from './finance';
-import { isHumanClub } from './humans';
-import { addNews, gs } from './state';
-import type { Club } from './types';
+import { asOwner, isHumanClub } from './humans';
+import { addNews, gs, squad } from './state';
+import type { Club, Player } from './types';
 
 export const fanMood = (c: Club | undefined) => c?.fanMood ?? 60;
 
@@ -15,6 +15,37 @@ export function bumpFans(clubId: number, d: number, why?: string) {
   c.fanMood = Math.max(0, Math.min(100, fanMood(c) + d));
   if (why) (c.fanEvents ??= []).push({ d: g.date, k: why, v: Math.round(d) });
   if (c.fanEvents && c.fanEvents.length > 12) c.fanEvents.splice(0, c.fanEvents.length - 12);
+}
+
+/**
+ * Hvor stort et navn er en ny spiller for klubben? 0 = ingen særlig, 1 = god forstærkning, 2 = stjernekøb, 3 = sensation.
+ * Kaldes efter at spilleren er skiftet til klubben.
+ */
+export function signingHype(p: Player, club: Club): 0 | 1 | 2 | 3 {
+  const gap = p.rep - club.rep;
+  const rank = squad(club.id).filter((x) => x.id !== p.id && x.ca > p.ca).length + 1; // nr. i truppen efter evne
+  // et kendt navn tæller kun, hvis han også bliver en af de bedste i truppen
+  let h: 0 | 1 | 2 | 3 = rank <= 2 && gap >= 20 ? 3 : (rank <= 3 && gap >= 8) || (rank <= 5 && gap >= 15) ? 2 : rank <= 6 && gap >= -3 ? 1 : 0;
+  // veteraner på vej ned begejstrer mindre
+  if (h > 0 && ageOn(p.dob, gs().date) >= 33) h = (h - 1) as 0 | 1 | 2;
+  return h;
+}
+
+const HYPE_FANS = [0, 2.5, 6, 10];
+const HYPE_BOARD = [0, 0.5, 2.5, 5];
+
+/** Fans og bestyrelse reagerer på et nyt køb til en menneskestyret klub */
+export function fansOnSigning(p: Player, club: Club, loan: boolean) {
+  if (!isHumanClub(club.id)) return;
+  let hype: number = signingHype(p, club);
+  if (loan) hype = Math.max(0, hype - 1); // et lejemål er ikke helt det samme
+  if (!hype) return;
+  bumpFans(club.id, HYPE_FANS[hype], hype >= 2 ? 'starSigned' : 'goodSigning');
+  asOwner(club.id, () => {
+    const g = gs();
+    g.board.confidence = Math.min(100, g.board.confidence + HYPE_BOARD[hype]);
+    if (hype >= 2) addNews({ cat: 'general', key: `fans.signing${hype}`, params: { player: `${p.first} ${p.last}`.trim(), club: club.name }, link: { kind: 'player', id: p.id } });
+  });
 }
 
 /** Tilskuerfaktor: glade fans fylder stadion, sure fans bliver hjemme (0,92-1,06) */

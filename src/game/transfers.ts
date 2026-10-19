@@ -10,7 +10,7 @@ import { addNews, gs, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
-import { bumpFans } from './fans';
+import { bumpFans, fansOnSigning } from './fans';
 import { pushCareerLine } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
@@ -430,7 +430,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   if (!o.loan && seller && isHumanClub(seller.id) && keyPlayerRank(p) <= 3) bumpFans(seller.id, -6, 'starSold');
   setClub(p, buyer.id);
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
-  if (!o.loan && isHumanClub(buyer.id) && p.rep >= buyer.rep - 5) bumpFans(buyer.id, 4, 'starSigned');
+  fansOnSigning(p, buyer, o.loan);
   rankCacheDate = '';
   p.listed = false;
   p.listPrice = undefined;
