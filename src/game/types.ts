@@ -571,6 +571,8 @@ export interface Options {
   newsScope?: 'league' | 'nation' | 'world';
   /** Transfernyheder om andre klubber: kun egen klub, store handler i egen liga (standard) eller alle (efter nyhedsfilteret) */
   transferNews?: 'own' | 'big' | 'all';
+  /** Transfervinduer: rigtige (sommer + januar, standard) eller næsten hele året som i CM 01/02 */
+  transferWindows?: 'real' | 'classic';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
 }

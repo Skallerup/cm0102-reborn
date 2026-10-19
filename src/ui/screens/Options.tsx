@@ -41,6 +41,11 @@ export function Options() {
                 {(['own', 'big', 'all'] as const).map((m) => <option key={m} value={m}>{t(`opt.transferNews.${m}`)}</option>)}
               </select>
             </label>
+            <label className="row">{t('opt.windows')}
+              <select value={g.options.transferWindows ?? 'real'} onChange={(e) => { g.options.transferWindows = e.target.value as 'real'; notify(); }}>
+                {(['real', 'classic'] as const).map((m) => <option key={m} value={m}>{t(`opt.windows.${m}`)}</option>)}
+              </select>
+            </label>
             <label className="row"><input type="checkbox" checked={g.options.ai !== false} onChange={(e) => { g.options.ai = e.target.checked; notify(); }} />{t('opt.ai')}</label>
             <div className="muted">{t('opt.ai.hint')}</div>
             <label className="row"><input type="checkbox" checked={g.options.masking} onChange={(e) => { g.options.masking = e.target.checked; notify(); }} />{t('start.masking')}</label>

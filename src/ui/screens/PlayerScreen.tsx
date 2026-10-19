@@ -5,7 +5,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, loanSuitors, preContractBlock, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, loanSuitors, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -117,7 +117,8 @@ export function PlayerScreen({ id }: { id: number }) {
             {!mine && g.userClub > 0 && (
               <>
                 <div className="row">
-                  {p.club > 0 && <button className="primary" disabled={!windowOpen()} onClick={() => setBid(true)}>{t('player.bid')}</button>}
+                  {p.club > 0 && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => setBid(true)}>{t('player.bid')}</button>}
+                  {p.club > 0 && !windowOpen() && <span className="muted" style={{ fontSize: 12 }}>{t('transfer.windowOpens', { date: dateFmt(nextWindow()) })}</span>}
                   {!p.club && <button className="primary" onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
                   {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
                   {(preContractBlock(p) === 'fromJanuary' || preContractBlock(p) === 'taken') && (

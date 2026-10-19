@@ -19,7 +19,27 @@ import { asOwner, forEachHuman, isHumanClub } from './humans';
 
 export function windowOpen(date = gs().date): boolean {
   const m = month(date);
-  return !(m === 4 || m === 5);
+  // som i CM 01/02: handler hele året undtagen i slutspurten (april-maj)
+  if (gs().options?.transferWindows === 'classic') return !(m === 4 || m === 5);
+  // rigtige vinduer: sommer (15. juni – 31. august) og januar
+  return m === 7 || m === 8 || m === 1 || (m === 6 && Number(date.slice(8, 10)) >= 15);
+}
+
+/** Hvornår åbner transfervinduet næste gang? */
+export function nextWindow(date = gs().date): string {
+  const y = Number(date.slice(0, 4)), m = month(date);
+  if (gs().options?.transferWindows === 'classic') return `${y}-06-01`;
+  return m >= 9 ? `${y + 1}-01-01` : `${y}-06-15`;
+}
+
+/** Må en AI-klub byde på en spiller hos en menneskestyret klub lige nu? (så der ikke regner bud ned) */
+function canBidOnHuman(p: Player, buyer: number): boolean {
+  const g = gs();
+  const pending = g.offers.filter((o) => o.seller === p.club && o.status === 'pending' && !isHumanClub(o.buyer)).length;
+  if (pending >= 3) return false;
+  // efter et afslag venter andre klubber et par uger (den afviste klub kan dog vende tilbage)
+  const since = addDays(g.date, -21);
+  return !g.offers.some((o) => o.player === p.id && o.buyer !== buyer && o.created >= since && ['rejected', 'withdrawn', 'pending'].includes(o.status));
 }
 
 function sellerName(id: number) {
@@ -763,7 +783,7 @@ function aiClubTurn(club: Club) {
   const fee = Math.max(10_000, roundValue(ask * rng.range(0.85, 1.1)));
   if (isHumanClub(target.club)) {
     // bud til en menneskelig manager
-    if (g.offers.some((o) => o.player === target.id && o.status === 'pending')) return;
+    if (!canBidOnHuman(target, club.id)) return;
     const maxFee = roundValue(Math.min(club.transferBudget, fee * rng.range(1.05, 1.35)));
     const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: target.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
@@ -1052,6 +1072,7 @@ export function aiBidsForListed() {
   for (const p of squad(g.userClub)) {
     if (!p.listed || p.loan || p.contract?.futureClub) continue;
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
+    if (g.offers.filter((o) => o.seller === g.userClub && o.status === 'pending' && !isHumanClub(o.buyer)).length >= 3) break;
     const ask = askingPrice(p);
     // lav udbudspris i forhold til værdien gør spilleren ekstra attraktiv
     const attract = Math.max(0.25, Math.min(3, Math.pow(p.value / Math.max(1, ask), 1.6)));
@@ -1209,7 +1230,8 @@ function noticeStandouts() {
     if (!g.comps[club.league]) continue;
     const sq = squad(club.id).filter((p) => !p.loan && !p.contract?.futureClub && ageOn(p.dob, g.date) <= 31);
     const form = (p: Player) => (p.form.length >= 3 ? p.form.reduce((x, y) => x + y, 0) / p.form.length : 0);
-    const stars = new Set([...sq.sort((x, y) => y.ca - x.ca).slice(0, 3), ...sq.filter((p) => form(p) >= 7.3)]);
+    // de tre bedste + spillere i helt usædvanlig form – højst fire pr. klub
+    const stars = [...new Set([...sq.sort((x, y) => y.ca - x.ca).slice(0, 3), ...sq.filter((p) => form(p) >= 7.6)])].slice(0, 4);
     for (const p of stars) {
       const price = askingPrice(p);
       const fits = suitors.filter((c) => c.id !== club.id && c.rep >= club.rep + 5 && c.transferBudget * 1.6 >= price

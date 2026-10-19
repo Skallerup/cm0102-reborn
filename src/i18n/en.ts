@@ -735,6 +735,8 @@ export const en: Record<string, string> = {
   'complaint.r.blocked.promise': 'Okay. If the club shows it believes in me, I am happy to stay. But I expect an offer.', 'complaint.r.blocked.important': 'Good to hear you are counting on me. I will give it everything.', 'complaint.r.blocked.angry': 'Then I decide. I want out – find a buyer.', 'complaint.r.blocked.sulk': 'Fine… but I am not happy about it.', 'complaint.r.blocked.list': 'Thanks, boss. Then I hope {club} come back.', 'complaint.r.blocked.listen': 'I understand your reasons. But it still hurts.',
   'will.targetUpset': '{player} is disappointed {club} said no', 'will.targetUpset.body': 'His agent lets you know he wanted to join you. He is now unhappy at {club} – consider trying again later with a better bid.',
   'will.targetRequest': '{player} has asked to be transfer listed', 'will.targetRequest.body': 'After your bid was turned down, he asked {club} to let him go. He is now listed for about {fee} – a new chance to sign him.',
+  'opt.windows': 'Transfer windows', 'opt.windows.real': 'Real windows (15 June – 31 August and January)', 'opt.windows.classic': 'Like CM 01/02 (all year except April–May)',
+  'transfer.windowOpens': 'The transfer window is closed – it opens on {date}',
   'opt.news': 'News about other clubs', 'opt.news.league': 'My league only', 'opt.news.nation': 'My country only', 'opt.news.world': 'Whole world',
   'opt.save.changes': 'After every change', 'opt.save.daily': 'Every game day', 'opt.save.weekly': 'Every game week', 'opt.save.monthly': 'Every game month', 'opt.save.off': 'Never (manual only)',
   'opt.save.changes.hint': 'Safest: everything is saved a few seconds after you change something, so reloading never costs you anything.',
