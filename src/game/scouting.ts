@@ -65,7 +65,13 @@ export function scoutStars(p: Player): { ability: [number, number]; potential: [
   const g = gs();
   const k = knowledgeOf(p);
   const ref = g.userClub ? clubLevel(g.userClub) : 120;
-  const toStars = (ca: number) => Math.max(0.5, Math.min(5, Math.round(((ca - ref + 50) / 20) * 2) / 2));
+  // 2,5 stjerner = holdets niveau, 20 CA pr. stjerne. Over niveauet presses skalaen sammen, så 5 stjerner
+  // altid kan nås (verdens bedste ligger omkring 190-200) – ellers har storklubber ingen 5-stjernede spillere
+  const top = Math.min(ref + 50, 195);
+  const toStars = (ca: number) => {
+    const raw = ca <= ref ? (ca - ref + 50) / 20 : 2.5 + (2.5 * (ca - ref)) / Math.max(15, top - ref);
+    return Math.max(0.5, Math.min(5, Math.round(raw * 2) / 2));
+  };
   const a = toStars(p.ca);
   const eff = effectivePA(p);
   const pot = toStars(eff);

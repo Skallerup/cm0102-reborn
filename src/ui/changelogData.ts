@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.17',
+    date: '2026-10-19',
+    title: { da: '5 stjerner også for storklubber', en: '5 stars for big clubs too' },
+    items: [
+      { da: 'Stjerneskalaen presses sammen over dit holds niveau, så verdens bedste spillere og største talenter kan få 5 stjerner – også når du styrer en topklub', en: 'The star scale is compressed above your team\'s level, so the world\'s best players and biggest talents can get 5 stars – also when you manage a top club' },
+    ],
+  },
+  {
     version: '0.7.16',
     date: '2026-10-19',
     title: { da: 'Januarbudget og mere interesse', en: 'January budget and more interest' },
