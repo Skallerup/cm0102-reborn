@@ -436,6 +436,19 @@ export interface Pursuit {
   next: string;
 }
 
+export interface JobTalk {
+  stage: 'applied' | 'offer';
+  /** applied: hvornår klubben svarer, og om svaret bliver ja */
+  answerOn?: string;
+  ok?: boolean;
+  exp: string;
+  expectedPos: number;
+  budget: number;
+  wageBudget: number;
+  /** Hvad man allerede har forhandlet om */
+  asked: ('budget' | 'exp')[];
+}
+
 export interface ManagerProfile {
   name: string;
   nation: number;
@@ -451,6 +464,8 @@ export interface ManagerProfile {
   sackedBy?: number[];
   /** Afviste jobtilbud: klub-id → dato (klubben spørger ikke igen foreløbig) */
   declinedJobs?: Record<number, string>;
+  /** Jobsamtaler: søgte stillinger (venter på svar) og tilbud med vilkår, man kan forhandle om */
+  jobTalks?: Record<number, JobTalk>;
   /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
   enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;
   /** Forholdet til pressen (0-100, start 50) og et løfte om sejr givet på et pressemøde */

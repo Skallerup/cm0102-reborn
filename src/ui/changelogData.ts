@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.14',
+    date: '2026-10-19',
+    title: { da: 'Jobsamtaler', en: 'Job talks' },
+    items: [
+      { da: 'Søger du et job, svarer klubben efter et par dage – med et afslag eller et tilbud', en: 'When you apply for a job, the club replies after a few days – with a rejection or an offer' },
+      { da: 'Tilbuddet viser bestyrelsens forventninger, transfer- og lønbudget, saldo og omdømme, før du siger ja', en: 'The offer shows the board\'s expectations, transfer and wage budgets, balance and reputation before you say yes' },
+      { da: 'Du kan forhandle én gang om et større transferbudget og én gang om lavere forventninger – men pas på, klubben kan trække tilbuddet tilbage', en: 'You can negotiate once for a bigger transfer budget and once for lower expectations – but careful, the club may withdraw the offer' },
+    ],
+  },
+  {
     version: '0.7.13',
     date: '2026-10-19',
     title: { da: 'Job i en ny liga virker', en: 'A job in a new league works' },

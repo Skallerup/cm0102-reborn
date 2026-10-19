@@ -156,22 +156,16 @@ function FansPanel({ club }: { club: Club }) {
 function VacancyBox({ clubId }: { clubId: number }) {
   const g = useGame()!;
   const c = g.clubs[clubId];
-  const [res, setRes] = useState<'no' | null>(null);
+  const { nav } = useNav();
   const offered = g.jobOffers.includes(clubId);
-  const me = g.clubs[g.userClub];
+  const talk = g.manager.jobTalks?.[clubId];
   const chance = offered ? 'sure' : g.manager.rep + 10 >= c.rep ? 'good' : g.manager.rep + 25 >= c.rep ? 'fair' : 'low';
-  const go = () => {
-    if (me && !confirm(t('vac.leaveConfirm', { club: c.name, current: me.name }))) return;
-    if (offered) { act({ t: 'acceptJob', club: clubId }); return; }
-    const ok = act<boolean>({ t: 'applyJob', club: clubId });
-    if (!ok) setRes('no');
-  };
   return (
     <div className="insight" style={{ marginTop: 12 }}>
       <b>{t('vac.title')}</b>
-      <div className="muted" style={{ margin: '4px 0 8px' }}>{offered ? t('vac.offered') : t(`vac.chance.${chance}`, { rep: Math.round(g.manager.rep), clubRep: c.rep })}</div>
-      {res === 'no' ? <div className="bad">{t('vac.rejected')}</div>
-        : <button className="primary" onClick={go}>{offered ? t('vac.accept') : t('vac.apply')}</button>}
+      <div className="muted" style={{ margin: '4px 0 8px' }}>{offered ? t('vac.offered') : talk ? t('jobs.awaiting', { date: dateFmt(talk.answerOn ?? g.date) }) : t(`vac.chance.${chance}`, { rep: Math.round(g.manager.rep), clubRep: c.rep })}</div>
+      {offered ? <button className="primary" onClick={() => nav({ name: 'jobs' })}>{t('vac.seeOffer')}</button>
+        : !talk && <button className="primary" onClick={() => act({ t: 'applyJob', club: clubId })}>{t('vac.apply')}</button>}
     </div>
   );
 }

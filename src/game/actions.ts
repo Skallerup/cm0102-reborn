@@ -1,7 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
-import { acceptJob, answerBudgetCounter, applyForJob, declineJob, requestBudget, requestProject, shiftBudget } from './board';
+import { acceptJob, answerBudgetCounter, applyForJob, declineJob, negotiateJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { activateNation } from './sim';
@@ -55,6 +55,7 @@ export type Action =
   | { t: 'read'; ids: number[] | 'all' }
   | { t: 'acceptJob'; club: number }
   | { t: 'applyJob'; club: number }
+  | { t: 'negotiateJob'; club: number; ask: 'budget' | 'exp' }
   | { t: 'declineJob'; club: number }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
@@ -128,7 +129,8 @@ export function applyAction(a: Action): unknown {
       for (const n of g.news) if (a.ids === 'all' || a.ids.includes(n.id)) n.read = true;
       return 'ok';
     case 'acceptJob': if (g.jobOffers.includes(a.club) && g.clubs[a.club]?.manager === 0) { acceptJob(a.club); startLeague(); } return 'ok';
-    case 'applyJob': { const ok = applyForJob(a.club); startLeague(); return ok; }
+    case 'applyJob': return applyForJob(a.club);
+    case 'negotiateJob': return negotiateJob(a.club, a.ask);
     case 'declineJob': declineJob(a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs

@@ -9,7 +9,7 @@ function rulesForLeague(league: string) {
 }
 import { addNews, gs, newsRelevant, squad } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
-import type { Club } from './types';
+import type { Club, JobTalk } from './types';
 import { takeOverClub } from './newgame';
 import { forEachHuman } from './humans';
 
@@ -26,24 +26,40 @@ export function strengthRank(club: Club): { rank: number; size: number } {
   return { rank: sorted.findIndex((x) => x[0] === club.id) + 1, size: rivals.length };
 }
 
+/** Bestyrelsens forventning til en klub ud fra truppens styrke i ligaen (shift > 0 = lavere forventning) */
+export function expectationFor(club: Club, shift = 0): { exp: string; pos: number } {
+  const g = gs();
+  const { size } = strengthRank(club);
+  let { rank } = strengthRank(club);
+  const tier = g.leagues[club.league]?.tier ?? 1;
+  const at = (r: number): { exp: string; pos: number } => {
+    if (tier === 2) {
+      if (r <= 2) return { exp: 'promotion', pos: 2 };
+      if (r <= 6) return { exp: 'playoffs', pos: 6 };
+      if (r <= size - 5) return { exp: 'mid', pos: Math.ceil(size * 0.6) };
+      return { exp: 'survive', pos: size - 3 };
+    }
+    if (r === 1) return { exp: 'title', pos: 1 };
+    if (r <= 3) return { exp: 'top3', pos: 3 };
+    if (r <= Math.floor(size / 2)) return { exp: 'tophalf', pos: Math.floor(size / 2) };
+    if (r <= size - 4) return { exp: 'mid', pos: size - 4 };
+    return { exp: 'survive', pos: size - 3 };
+  };
+  let e = at(rank);
+  // hvert trin ned: find næste lavere forventning
+  for (let i = 0; i < shift; i++) {
+    const cur = e.exp;
+    while (rank < size && at(rank).exp === cur) rank++;
+    e = at(rank);
+  }
+  return e;
+}
+
 export function setBoardExpectation() {
   const g = gs();
   const club = g.clubs[g.userClub];
   if (!club) return;
-  const { rank, size } = strengthRank(club);
-  const tier = g.leagues[club.league]?.tier ?? 1;
-  let exp: string;
-  let pos: number;
-  if (tier === 2) {
-    if (rank <= 2) { exp = 'promotion'; pos = 2; }
-    else if (rank <= 6) { exp = 'playoffs'; pos = 6; }
-    else if (rank <= size - 5) { exp = 'mid'; pos = Math.ceil(size * 0.6); }
-    else { exp = 'survive'; pos = size - 3; }
-  } else if (rank === 1) { exp = 'title'; pos = 1; }
-  else if (rank <= 3) { exp = 'top3'; pos = 3; }
-  else if (rank <= Math.floor(size / 2)) { exp = 'tophalf'; pos = Math.floor(size / 2); }
-  else if (rank <= size - 4) { exp = 'mid'; pos = size - 4; }
-  else { exp = 'survive'; pos = size - 3; }
+  const { exp, pos } = expectationFor(club);
   g.board.expectation = exp;
   g.board.expectedPos = pos;
   addNews({ cat: 'board', key: `board.exp.${exp}`, params: { club: club.name } });
@@ -357,9 +373,11 @@ export function fillVacancies() {
   // Jobtilbud til de menneskelige managere
   const offered = new Set<number>();
   forEachHuman(() => {
-    // gamle tilbud fra klubber der ikke er større end ens nuværende fjernes
+    // stillinger man er i samtaler med, holdes åbne
+    for (const id of Object.keys(g.manager.jobTalks ?? {})) offered.add(Number(id));
+    // gamle tilbud fra klubber der ikke er større end ens nuværende fjernes (ikke dem man selv har søgt)
     const cur = g.clubs[g.userClub];
-    if (cur) g.jobOffers = g.jobOffers.filter((id) => { const c = g.clubs[id]; return !!c && (c.rep >= cur.rep + 4 || (g.leagues[c.league]?.tier ?? 9) < (g.leagues[cur.league]?.tier ?? 9)); });
+    if (cur) g.jobOffers = g.jobOffers.filter((id) => { const c = g.clubs[id]; return !!c && (!!g.manager.jobTalks?.[id] || c.rep >= cur.rep + 4 || (g.leagues[c.league]?.tier ?? 9) < (g.leagues[cur.league]?.tier ?? 9)); });
     for (const cid of g.vacancies) {
       const club = g.clubs[cid];
       if (!club || club.manager !== 0) continue;
@@ -417,22 +435,90 @@ export function fillVacancies() {
 export function declineJob(cid: number) {
   const g = gs();
   g.jobOffers = g.jobOffers.filter((x) => x !== cid);
+  if (g.manager.jobTalks) delete g.manager.jobTalks[cid];
   (g.manager.declinedJobs ??= {})[cid] = g.date;
 }
 
-export function applyForJob(cid: number): boolean {
+/** Klubbens vilkår: forventning og budgetter (som de står nu) */
+export function jobTerms(cid: number): JobTalk {
   const g = gs();
   const club = g.clubs[cid];
-  if (!club || club.manager !== 0) return false;
-  const ok = g.jobOffers.includes(cid) || g.manager.rep + 10 >= club.rep || rng.chance(Math.max(0.05, 0.5 - (club.rep - g.manager.rep) / 40));
-  if (ok) acceptJob(cid);
-  else addNews({ cat: 'job', key: 'news.applyRejected', params: { club: club.name } });
-  return ok;
+  const talk = g.manager.jobTalks?.[cid];
+  if (talk && talk.stage === 'offer') return talk;
+  const { exp, pos } = expectationFor(club);
+  return { stage: 'offer', exp, expectedPos: pos, budget: club.transferBudget, wageBudget: club.wageBudget, asked: [] };
+}
+
+/** Søg et job: klubben svarer efter et par dage (afslag eller et tilbud med vilkår) */
+export function applyForJob(cid: number): 'sent' | 'offer' | 'error' {
+  const g = gs();
+  const club = g.clubs[cid];
+  if (!club || club.manager !== 0) return 'error';
+  if (g.jobOffers.includes(cid)) return 'offer';
+  if (g.manager.jobTalks?.[cid]) return 'sent';
+  const ok = g.manager.rep + 10 >= club.rep || rng.chance(Math.max(0.05, 0.5 - (club.rep - g.manager.rep) / 40));
+  (g.manager.jobTalks ??= {})[cid] = { stage: 'applied', answerOn: addDays(g.date, rng.int(2, 4)), ok, exp: '', expectedPos: 0, budget: 0, wageBudget: 0, asked: [] };
+  addNews({ cat: 'job', key: 'job.applied', params: { club: club.name }, link: { kind: 'club', id: cid } });
+  return 'sent';
+}
+
+/** Dagligt: klubber man har søgt, svarer */
+export function processJobTalks() {
+  const g = gs();
+  const talks = g.manager.jobTalks;
+  if (!talks) return;
+  for (const [id, talk] of Object.entries(talks)) {
+    const cid = Number(id);
+    const club = g.clubs[cid];
+    if (!club || club.manager !== 0) {
+      // stillingen er besat
+      if (talk.stage === 'applied' && club) addNews({ cat: 'job', key: 'job.filled', params: { club: club.name } });
+      delete talks[cid];
+      g.jobOffers = g.jobOffers.filter((x) => x !== cid);
+      continue;
+    }
+    if (talk.stage !== 'applied' || g.date < (talk.answerOn ?? '')) continue;
+    if (!talk.ok) {
+      delete talks[cid];
+      addNews({ cat: 'job', key: 'news.applyRejected', params: { club: club.name } });
+      continue;
+    }
+    const { exp, pos } = expectationFor(club);
+    talks[cid] = { stage: 'offer', exp, expectedPos: pos, budget: club.transferBudget, wageBudget: club.wageBudget, asked: [] };
+    if (!g.jobOffers.includes(cid)) g.jobOffers.push(cid);
+    addNews({ cat: 'job', key: 'job.invite', params: { club: club.name }, link: { kind: 'club', id: cid } });
+  }
+}
+
+/** Forhandl om et jobtilbud: mere transferbudget eller lavere forventninger (hver én gang) */
+export function negotiateJob(cid: number, ask: 'budget' | 'exp'): 'yes' | 'no' | 'withdrawn' | 'already' | 'error' {
+  const g = gs();
+  const club = g.clubs[cid];
+  if (!club || club.manager !== 0 || !g.jobOffers.includes(cid)) return 'error';
+  const talk = jobTerms(cid);
+  if (talk.asked.includes(ask)) return 'already';
+  talk.asked.push(ask);
+  (g.manager.jobTalks ??= {})[cid] = talk;
+  // en anerkendt manager har mere at forhandle med; at bede om lavere forventninger er sværere
+  const p = clamp(0.55 + (g.manager.rep - club.rep) / 40 - (ask === 'exp' ? 0.1 : 0), 0.15, 0.9);
+  if (rng.chance(p)) {
+    if (ask === 'budget') talk.budget = Math.round(Math.max(talk.budget * 1.3, talk.budget + 1_000_000) / 100_000) * 100_000;
+    else { const e = expectationFor(club, 1); talk.exp = e.exp; talk.expectedPos = e.pos; }
+    return 'yes';
+  }
+  if (rng.chance(clamp(0.3 - (g.manager.rep - club.rep) / 60, 0.1, 0.45))) {
+    delete g.manager.jobTalks![cid];
+    g.jobOffers = g.jobOffers.filter((x) => x !== cid);
+    addNews({ cat: 'job', key: 'job.withdrawn', params: { club: club.name } });
+    return 'withdrawn';
+  }
+  return 'no';
 }
 
 export function acceptJob(cid: number) {
   const g = gs();
   const club = g.clubs[cid];
+  const terms = jobTerms(cid);
   if (g.userClub && g.clubs[g.userClub]) {
     const oldClub = g.clubs[g.userClub];
     oldClub.manager = 0;
@@ -442,7 +528,16 @@ export function acceptJob(cid: number) {
   if (g.vacancySince) delete g.vacancySince[cid];
   forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
   g.jobOffers = [];
+  g.manager.jobTalks = {};
   takeOverClub(club);
+  // de aftalte vilkår gælder
+  club.transferBudget = Math.max(club.transferBudget, terms.budget);
+  if (terms.exp && terms.exp !== g.board.expectation) {
+    g.board.expectation = terms.exp;
+    g.board.expectedPos = terms.expectedPos;
+    const n = g.news.find((x) => x.key.startsWith('board.exp.'));
+    if (n) n.key = `board.exp.${terms.exp}`;
+  }
   addNews({ cat: 'job', key: 'news.newJob', params: { club: club.name } });
 }
 
