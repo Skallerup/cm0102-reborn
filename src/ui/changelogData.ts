@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.22',
+    date: '2026-10-19',
+    title: { da: 'Klubskifter i karrieren og interesse i truppen', en: 'Club moves in the career and interest in the squad' },
+    items: [
+      { da: 'Karrieren viser klubskifterne med transfersum – også de virkelige skifter før spilstart (fra transfermarkt-datasets), "Fri" for gratis skifter og "?" hvor beløbet ikke er kendt', en: 'The career shows club moves with transfer fees – including real moves before the game started (from transfermarkt-datasets), "Free" for free moves and "?" where the fee is unknown' },
+      { da: 'Den nuværende klub vises altid i karrieren, også før spilleren har spillet en kamp, og karrieren fylder nu hele bredden', en: 'The current club is always shown in the career, also before the player has played a match, and the career now uses the full width' },
+      { da: 'Et øje-ikon i truppen viser, hvor mange klubber der holder øje med en spiller – hold musen over for at se hvilke', en: 'An eye icon in the squad shows how many clubs are watching a player – hover to see which' },
+    ],
+  },
+  {
     version: '0.7.21',
     date: '2026-10-19',
     title: { da: 'Spillere, der ikke vil forlænge', en: 'Players who won\'t extend' },

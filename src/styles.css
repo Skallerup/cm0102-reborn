@@ -538,3 +538,5 @@ table.grid tr.rival td:first-child { box-shadow: inset 3px 0 0 rgba(120, 160, 25
 /* interesserede klubber */
 .interest-list { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
 .interest-club { display: inline-flex; align-items: center; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface2); }
+
+.tag.interest { color: #6cd2ff; background: color-mix(in srgb, #6cd2ff 14%, transparent); }

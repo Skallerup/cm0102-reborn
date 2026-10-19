@@ -23,7 +23,7 @@ import { aiCall } from '../../ai/client';
 import { guessIntent } from '../../ai/fallback';
 import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
-import { realCareer, type RealSeason } from '../careers';
+import { realCareer, realMoves, type RealMove, type RealSeason } from '../careers';
 
 export function PlayerScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -204,8 +204,8 @@ export function PlayerScreen({ id }: { id: number }) {
             <span>{t('col.avr')}</span><span>{p.stats.ratingCount ? avgRating(p).toFixed(2) : '-'}</span>
           </div>
         </Panel>
-        <CareerPanel pid={p.id} />
       </div>
+      <div style={{ marginTop: 14 }}><CareerPanel pid={p.id} /></div>
       {bid && <BidModal pid={p.id} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
@@ -515,9 +515,15 @@ function CareerPanel({ pid }: { pid: number }) {
   const g = useGame()!;
   const p = g.players[pid];
   const [real, setReal] = useState<RealSeason[] | null>(null);
-  useEffect(() => { let alive = true; realCareer(pid).then((r) => { if (alive) setReal(r); }); return () => { alive = false; }; }, [pid]);
+  const [realMv, setRealMv] = useState<RealMove[]>([]);
+  useEffect(() => {
+    let alive = true;
+    realCareer(pid).then((r) => { if (alive) setReal(r); });
+    realMoves(pid).then((m) => { if (alive) setRealMv(m); });
+    return () => { alive = false; };
+  }, [pid]);
   if (!p) return null;
-  type Row = { key: string; season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes?: number; avg?: number; loan?: boolean; real?: boolean; live?: boolean };
+  type Row = { key: string; season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes?: number; avg?: number; loan?: boolean; real?: boolean; live?: boolean; move?: { fee: number; loan?: boolean; from: number; fromName?: string } };
   const rows: Row[] = [
     ...(real ?? []).map((r, i) => ({ key: `r${i}`, ...r, real: true })),
     ...p.history.map((h, i) => ({ key: `h${i}`, ...h })),
@@ -529,7 +535,24 @@ function CareerPanel({ pid }: { pid: number }) {
     const rc = p.stats.ratingCount - b.ratingCount;
     rows.push({ key: 'live', season: g.season, club: p.club, apps: liveApps, goals: p.stats.goals - b.goals, assists: p.stats.assists - b.assists, minutes: p.stats.minutes - b.minutes, avg: rc > 0 ? (p.stats.ratingSum - b.ratingSum) / rc : undefined, loan: !!p.loan, live: true });
   }
-  rows.sort((x, y) => y.season - x.season || (x.live ? -1 : 0));
+  // den nuværende klub vises altid – også uden kampe endnu
+  if (p.club && !rows.some((r) => r.live) && !p.history.some((h) => h.season === g.season && h.club === p.club)) {
+    rows.push({ key: 'live', season: g.season, club: p.club, apps: 0, goals: 0, assists: 0, loan: !!p.loan, live: true });
+  }
+  // klubskifter: transfersummen på sæsonen i den nye klub (og en linje, hvis han ikke nåede at spille)
+  for (const [i, m] of (p.moves ?? []).entries()) {
+    const row = rows.find((r) => !r.real && r.season === m.season && r.club === m.to && !r.move);
+    if (row) row.move = m;
+    else rows.push({ key: `m${i}`, season: m.season, club: m.to, apps: 0, goals: 0, assists: 0, loan: m.loan, move: m });
+  }
+  // virkelige klubskifter før spilstart (transfersum fra datasættet, hvis kendt)
+  for (const [i, m] of realMv.entries()) {
+    const row = rows.find((r) => r.season === m.season && r.club === m.to && !r.move);
+    const mv = { fee: m.fee, from: m.from, fromName: m.fromName };
+    if (row) row.move = mv;
+    else rows.push({ key: `rm${i}`, season: m.season, club: m.to, clubName: m.toName, apps: 0, goals: 0, assists: 0, real: true, move: mv });
+  }
+  rows.sort((x, y) => y.season - x.season || (x.live ? -1 : y.live ? 1 : 0) || (x.move && !y.move ? -1 : y.move && !x.move ? 1 : 0));
   const tot = rows.reduce((s, r) => ({ apps: s.apps + r.apps, goals: s.goals + r.goals, assists: s.assists + r.assists, minutes: s.minutes + (r.minutes ?? 0) }), { apps: 0, goals: 0, assists: 0, minutes: 0 });
   const seasonLabel = (s: number) => `${s}/${String(s + 1).slice(2)}`;
   return (
@@ -542,12 +565,14 @@ function CareerPanel({ pid }: { pid: number }) {
               {rows.map((r) => (
                 <tr key={r.key} className={r.live ? 'me' : ''}>
                   <td className="nowrap">{seasonLabel(r.season)}{r.live && <span className="muted"> · {t('career.now')}</span>}</td>
-                  <td className="nowrap">{gs().clubs[r.club] ? <ClubLink id={r.club} long /> : <span>{r.clubName ?? '?'}</span>}{r.loan && <span className="muted"> ({t('career.loan')})</span>}</td>
+                  <td className="nowrap">{gs().clubs[r.club] ? <ClubLink id={r.club} long /> : <span>{r.clubName ?? '?'}</span>}{r.loan && <span className="muted"> ({t('career.loan')})</span>}
+                    {r.move && <span className="muted" style={{ fontSize: 12 }} title={t('career.from', { club: gs().clubs[r.move.from]?.name ?? r.move.fromName ?? '?' }) + (r.move.fee < 0 ? ` · ${t('career.unknownFee')}` : '')}> · ↘ {r.move.loan ? t('career.loanFee', { fee: r.move.fee > 0 ? money(r.move.fee) : '' }).trim() : r.move.fee < 0 ? '?' : r.move.fee ? money(r.move.fee) : t('career.free')}</span>}</td>
                   <td className="num">{r.apps}</td>
                   <td className="num">{r.goals}</td>
                   <td className="num">{r.assists}</td>
                   <td className="num">{r.minutes ? r.minutes.toLocaleString() : '–'}</td>
                   <td className="num">{r.avg ? r.avg.toFixed(2) : '–'}</td>
+
                 </tr>
               ))}
               <tr className="career-total"><td colSpan={2}><b>{t('career.total')}</b></td><td className="num"><b>{tot.apps}</b></td><td className="num"><b>{tot.goals}</b></td><td className="num"><b>{tot.assists}</b></td><td className="num"><b>{tot.minutes ? tot.minutes.toLocaleString() : '–'}</b></td><td /></tr>

@@ -5,7 +5,9 @@ Læser appearances fra transfermarkt-datasets (CC0) og summerer kampe, mål, ass
 pr. spiller, sæson og klub for spillerne i world.json. Filen hentes først, når man åbner en
 spillerprofil, så den gør hverken spillet eller de gemte spil større.
 
-Kør: python3 scripts/build-careers.py   (forudsætter data-src/appearances.csv.gz og clubs.csv.gz)
+Klubskifter (med transfersum, hvis den er kendt) kommer fra transfers.csv.gz.
+
+Kør: python3 scripts/build-careers.py   (forudsætter data-src/appearances.csv.gz, clubs.csv.gz og transfers.csv.gz)
 Bemærk: datasættet dækker de ligaer og turneringer Transfermarkt-datasættet indeholder –
 ophold i mindre ligaer kan mangle.
 """
@@ -72,16 +74,40 @@ def main():
         # fladt format: sæson-offset, klub, kampe, mål, assists, minutter
         careers[pid] += [season - FIRST_SEASON, club, apps, goals, assists, minutes]
 
+    # klubskifter før spilstart: sæson-offset, fra-klub, til-klub, transfersum i tusinder (-1 = ukendt)
+    moves = collections.defaultdict(list)
+    for t in rows("transfers"):
+        pid = to_int(t["player_id"])
+        if pid not in wanted:
+            continue
+        d = t["transfer_date"]
+        if not d or d >= "2025-07-01":
+            continue
+        y, m = int(d[:4]), int(d[5:7])
+        season = y if m >= 7 else y - 1
+        if season < FIRST_SEASON:
+            continue
+        fc, tc = to_int(t["from_club_id"]), to_int(t["to_club_id"])
+        if fc == tc:
+            continue
+        fee = -1 if t["transfer_fee"] == "" else round(float(t["transfer_fee"]) / 1000)
+        for club, name in ((fc, t["from_club_name"]), (tc, t["to_club_name"])):
+            if club not in game_clubs and club not in hist_clubs:
+                hist_clubs[club] = names.get(club, name or "?")
+        moves[pid].append((d, [season - FIRST_SEASON, fc, tc, fee]))
+
     out = {
         "source": "transfermarkt-datasets (CC0)",
         "first": FIRST_SEASON,
         "fields": ["season", "club", "apps", "goals", "assists", "minutes"],
         "clubs": {str(k): v for k, v in hist_clubs.items()},
         "players": {str(k): v for k, v in careers.items()},
+        "moveFields": ["season", "from", "to", "feeThousands (-1 = ukendt)"],
+        "moves": {str(k): [x for _, row in sorted(v) for x in row] for k, v in moves.items()},
     }
     with open(OUT, "w", encoding="utf-8") as f:
         json.dump(out, f, ensure_ascii=False, separators=(",", ":"))
-    print(f"{len(careers)} spillere, {sum(len(v) // 6 for v in careers.values())} sæsonlinjer, {len(hist_clubs)} historiske klubber → {OUT}")
+    print(f"{len(careers)} spillere, {sum(len(v) // 6 for v in careers.values())} sæsonlinjer, {sum(len(v) for v in moves.values())} klubskifter, {len(hist_clubs)} historiske klubber → {OUT}")
 
 
 if __name__ == "__main__":

@@ -1,6 +1,8 @@
 
 import { A } from '../../game/attributes';
-import { squad } from '../../game/state';
+import { gs, squad } from '../../game/state';
+import { interestedClubs } from '../../game/transfers';
+import { EyeIcon } from '../icons';
 import type { Player } from '../../game/types';
 import { avgRating } from '../../game/season';
 import { money, t, dateFmt } from '../../i18n';
@@ -22,8 +24,18 @@ export function statusTags(p: Player, userClub: number) {
       {(p.unhappy ?? 0) > 60 && <span className="tag bad">{t('tag.unhappy')}</span>}
       {p.wantsAway && <span className="tag bad">{t('tag.wantsAway')}</span>}
       {p.demand && <span className="tag warn" title={t('tag.demandHint', { wage: money(p.demand.wage) })}>{t('tag.demand')}</span>}
+      {p.club === userClub && !!userClub && <InterestTag p={p} />}
     </>
   );
+}
+
+/** Øje-ikon med antal klubber, der holder øje med en af ens egne spillere */
+function InterestTag({ p }: { p: Player }) {
+  const g = gs();
+  const list = interestedClubs(p);
+  if (!list.length) return null;
+  const names = list.map((i) => g.clubs[i.club]?.name).filter(Boolean).join(', ');
+  return <span className="tag interest" title={t('tag.interestHint', { clubs: names })}><EyeIcon /> {list.length}</span>;
 }
 
 export function SquadTable({ players, view, userClub }: { players: Player[]; view: string; userClub: number }) {

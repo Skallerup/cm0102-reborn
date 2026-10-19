@@ -164,6 +164,7 @@ function contractsAndLoans() {
         p.futureClauses = undefined;
         p.sellOn = undefined;
         p.addOn = undefined;
+        recordMove(p, to, 0);
         setClub(p, to);
         p.joined = today;
         const msg = { cat: 'transfer' as const, key: 'transfer.bosmanDone', params: { player: pname(p), from: fromName, to: g.clubs[to].name } };
@@ -305,6 +306,13 @@ export function youthIntake() {
 }
 
 /** Bogfør sæsonens tal siden sidste skifte på en klub i karrieren */
+/** Bogfør et klubskifte (til karriereoversigten) – kaldes før spilleren skifter */
+export function recordMove(p: Player, to: number, fee: number, loan = false) {
+  const g = gs();
+  (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}) });
+  if (p.moves.length > 20) p.moves.shift();
+}
+
 export function pushCareerLine(p: Player, club: number, loan: boolean) {
   const g = gs();
   const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };

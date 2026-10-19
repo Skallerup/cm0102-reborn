@@ -52,6 +52,15 @@ export interface SeasonStats {
   lgApps: number;
 }
 
+export interface PlayerMove {
+  season: number;
+  date: string;
+  from: number;
+  to: number;
+  fee: number;
+  loan?: boolean;
+}
+
 export interface CareerLine {
   season: number;
   club: number;
@@ -102,6 +111,8 @@ export interface Player {
   loan: { from: number; until: string; share?: number; fee?: number; option?: number } | null;
   stats: SeasonStats;
   history: CareerLine[];
+  /** Klubskifter i spillet: hvorhen, hvornår og for hvad */
+  moves?: PlayerMove[];
   caps: number;
   intGoals: number;
   regen?: boolean;

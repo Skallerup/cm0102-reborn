@@ -11,7 +11,7 @@ import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
 import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
-import { pushCareerLine } from './season';
+import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
@@ -441,6 +441,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   }
   // skifte midt i sæsonen: bogfør tallene hos den gamle klub
   if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
+  recordMove(p, buyer.id, o.fee, o.loan);
   // fansene reagerer på stjernesalg og -køb
   if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
   setClub(p, buyer.id);
@@ -852,6 +853,7 @@ function aiClubTurn(club: Club) {
     // fri agent
     const wage = wageDemand(target, club);
     target.contract = { wage, expires: `${year(g.date) + preferredYears(target)}-06-30` };
+    recordMove(target, club.id, 0);
     setClub(target, club.id);
     target.joined = g.date;
     forEachHuman(() => { if (otherTransferNews(club, undefined, 0, false)) (g.transferDigest ??= []).push({ player: target.id, from: 0, to: club.id, fee: 0 }); });
