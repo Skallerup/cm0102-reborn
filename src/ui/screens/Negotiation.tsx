@@ -57,6 +57,8 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
 
   const submit = () => {
     const res = offer ? act<string>({ t: 'negotiate', pid, wage, years, clauses: cl }) : act<string>({ t: 'renew', pid, wage, years, clauses: cl });
+    // spillets eget svar vises med det samme; agentens AI-replik erstatter det, når den kommer
+    setAgentLine(null);
     speak(res, { wage, years });
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 2200); }
     else if (res === 'counter') {

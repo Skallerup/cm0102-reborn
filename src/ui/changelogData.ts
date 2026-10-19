@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.9',
+    date: '2026-10-19',
+    title: { da: 'Ingen ventetid på AI', en: 'No waiting for the AI' },
+    items: [
+      { da: 'Pressemødet afsluttes med det samme – kommer journalisternes AI-overskrift senere, skiftes den ind bagefter', en: 'The press conference ends straight away – if the journalists\' AI headline arrives later, it is swapped in afterwards' },
+      { da: 'Kamprapporter og andre AI-artikler skrives i baggrunden, så de er klar, når du åbner beskeden', en: 'Match reports and other AI articles are written in the background, so they are ready when you open the message' },
+      { da: 'I kontraktforhandlinger ser du agentens svar med det samme i stedet for den gamle replik', en: 'In contract talks you see the agent\'s answer straight away instead of the old line' },
+    ],
+  },
+  {
     version: '0.7.8',
     date: '2026-10-19',
     title: { da: 'Ingen dobbelte bud', en: 'No duplicate offers' },

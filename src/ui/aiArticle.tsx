@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { aiCall, aiText, ensureAiText } from '../ai/client';
 import { sortTable } from '../game/competitions';
+import { addDays } from '../game/dates';
 import { gs, squad } from '../game/state';
 import type { NewsItem, Player } from '../game/types';
 import { money, t } from '../i18n';
@@ -65,6 +66,24 @@ function facts(n: NewsItem): Record<string, unknown> | null {
     return { type: 'avisartikel: spiller utilfreds med sin kontrakt (kilder tæt på spilleren)', player: pname(p), club: me?.name, currentWeeklyWage: money(p.contract?.wage ?? 0), wantedWeeklyWage: p.demand ? money(p.demand.wage) : undefined, avgRating: avg(p) };
   }
   return null;
+}
+
+/** Skriv artiklerne til de nyeste ulæste beskeder i baggrunden, så de er klar når beskeden åbnes */
+const prefetched = new Set<number>();
+export function prefetchArticles() {
+  const g = gs();
+  // kun helt nye beskeder – efter en ferie skal der ikke skrives artikler til alt det, man sprang over
+  const since = addDays(g.date, -3);
+  const items = g.news.filter((n) => !n.read && n.date >= since && hasArticle(n) && !prefetched.has(n.id) && !aiText(`news:${n.id}`)).slice(0, 3);
+  for (const n of items) {
+    prefetched.add(n.id);
+    const f = facts(n);
+    if (!f) continue;
+    void ensureAiText(`news:${n.id}`, async () => {
+      const r = await aiCall<{ headline: string; body: string }>('article', f);
+      return r ? JSON.stringify(r) : null;
+    });
+  }
 }
 
 export function AiArticle({ item }: { item: NewsItem }) {

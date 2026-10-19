@@ -130,11 +130,15 @@ export function PressScreen() {
     setBusy('finish');
     const list = assistant ? pc.topics.map((tp) => ({ topic: tp.id, tone: 'deflect' as Tone })) : answers.map(({ topic, tone }) => ({ topic, tone }));
     let report: { headline: string; body: string } | null = null;
+    // AI-referatet må højst holde spilleren hen i et par sekunder; kommer det senere, skiftes overskriften ud bagefter
+    let late: Promise<{ headline: string; body: string } | null> | null = null;
     if (!assistant) {
-      report = await aiCall<{ headline: string; body: string }>('pressReport', {
+      late = aiCall<{ headline: string; body: string }>('pressReport', {
         manager: g.manager.name, club: g.clubs[g.userClub]?.name, opponent: g.clubs[pc.opp]?.name, phase: pc.phase,
         qa: answers.map((a) => ({ question: a.q, answer: a.text ?? t(`press.say.${a.tone}`), tone: a.tone })),
       }, 12_000);
+      report = await Promise.race([late, new Promise<null>((res) => setTimeout(() => res(null), 2500))]);
+      if (report) late = null;
     }
     // uden AI: overskrift ud fra det mest markante svar
     if (!report && !assistant && answers.length) {
@@ -147,6 +151,7 @@ export function PressScreen() {
     act({ t: 'press', answers: list, headline: report?.headline, body: report?.body });
     setBusy(null);
     setDone({ ...(report ?? { headline: t(assistant ? 'press.sentAssistant' : 'press.reportPlain', { opp: g.clubs[pc.opp]?.name ?? '' }), body: '' }), effects });
+    late?.then((r) => { if (r?.headline) setDone((d) => (d ? { ...d, headline: r.headline, body: r.body ?? '' } : d)); });
   };
 
   if (done) {
