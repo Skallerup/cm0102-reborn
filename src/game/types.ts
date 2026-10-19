@@ -227,6 +227,18 @@ export interface ClubProject {
   amount: number; // nye pladser eller niveau-stigning
 }
 
+export interface ClubSeasonStats {
+  n: number;
+  shots: number;
+  sot: number;
+  xg: number;
+  xga: number;
+  poss: number;
+  cs: number;
+  yel: number;
+  red: number;
+}
+
 export interface Club {
   id: number;
   name: string;
@@ -240,6 +252,8 @@ export interface Club {
   repDrift?: number;
   /** Spillere klubben holder øje med (AI-klubbernes shortliste) */
   shortlist?: number[];
+  /** Holdstatistik for sæsonens ligakampe (nulstilles ved sæsonstart) */
+  lgStats?: ClubSeasonStats;
   balance: number;
   transferBudget: number;
   wageBudget: number; // pr. uge

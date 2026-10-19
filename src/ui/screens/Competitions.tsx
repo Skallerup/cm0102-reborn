@@ -3,9 +3,9 @@ import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
 import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { gs, squad } from '../../game/state';
-import type { Competition, TableRow } from '../../game/types';
+import type { Club, Competition, Player, TableRow } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
-import { ClubLink, Panel, PlayerLink, Tabs } from '../components';
+import { ClubLink, Panel, PlayerLink, Table, Tabs, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { resultStr, stageLabel } from './Fixtures';
@@ -26,10 +26,11 @@ export function Competitions({ id }: { id?: string }) {
       </Head>
       {comp && (
         <>
-          <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ['history', t('comp.history')]]} value={tab} onChange={setTab} />
+          <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ...(comp.type === 'league' ? [['stats', t('comp.stats')] as [string, string]] : []), ['history', t('comp.history')]]} value={tab} onChange={setTab} />
           {tab === 'table' && (comp.type === 'league' ? <LeagueTables comp={comp} /> : <CupView comp={comp} />)}
           {tab === 'fixtures' && <CompFixtures comp={comp} />}
           {tab === 'scorers' && <Scorers comp={comp} />}
+          {tab === 'stats' && comp.type === 'league' && <LeagueStats comp={comp} />}
           {tab === 'history' && <CompHistory comp={comp} />}
         </>
       )}
@@ -200,6 +201,59 @@ function Scorers({ comp }: { comp: Competition }) {
         </tbody>
       </table>
     </Panel>
+  );
+}
+
+/** Ligaens statistik: spillernes toplister og holdenes kampstatistik */
+function LeagueStats({ comp }: { comp: Competition }) {
+  const g = useGame()!;
+  const ps = comp.clubs.flatMap((c) => squad(c));
+  const maxPlayed = Math.max(1, ...comp.table.map((r) => r.p));
+  const avg = (p: Player) => p.stats.ratingSum / Math.max(1, p.stats.ratingCount);
+  const top = (list: Player[], v: (p: Player) => number) => list.filter((p) => v(p) > 0).sort((a, b) => v(b) - v(a)).slice(0, 10);
+  const boards: { key: string; list: Player[]; val: (p: Player) => string }[] = [
+    { key: 'rating', list: top(ps.filter((p) => p.stats.ratingCount >= Math.max(3, maxPlayed * 0.4)), avg), val: (p) => avg(p).toFixed(2) },
+    { key: 'assists', list: top(ps, (p) => p.stats.assists), val: (p) => String(p.stats.assists) },
+    { key: 'ga', list: top(ps, (p) => p.stats.goals + p.stats.assists), val: (p) => `${p.stats.goals}+${p.stats.assists}` },
+    { key: 'mom', list: top(ps, (p) => p.stats.mom), val: (p) => String(p.stats.mom) },
+    { key: 'cards', list: top(ps, (p) => p.stats.yellows + p.stats.reds * 3), val: (p) => `${p.stats.yellows}/${p.stats.reds}` },
+  ];
+  const clubs = comp.clubs.map((id) => g.clubs[id]).filter((c): c is Club => !!c && !!c.lgStats?.n);
+  const per = (c: Club, v: number) => v / Math.max(1, c.lgStats!.n);
+  const cols: Col<Club>[] = [
+    { key: 'club', label: t('col.club'), render: (c) => <ClubLink id={c.id} />, sort: (c) => c.name },
+    { key: 'n', label: t('col.apps'), render: (c) => c.lgStats!.n, sort: (c) => c.lgStats!.n, className: 'num' },
+    { key: 'xg', label: 'xG', render: (c) => c.lgStats!.xg.toFixed(1), sort: (c) => c.lgStats!.xg, className: 'num' },
+    { key: 'xga', label: 'xGA', render: (c) => c.lgStats!.xga.toFixed(1), sort: (c) => -c.lgStats!.xga, className: 'num', title: t('stats.xgaHint') },
+    { key: 'xgd', label: t('stats.xgd'), render: (c) => { const d = c.lgStats!.xg - c.lgStats!.xga; return <span className={d >= 0 ? 'good' : 'bad'}>{d >= 0 ? '+' : ''}{d.toFixed(1)}</span>; }, sort: (c) => c.lgStats!.xg - c.lgStats!.xga, className: 'num' },
+    { key: 'shots', label: t('stats.shots'), render: (c) => per(c, c.lgStats!.shots).toFixed(1), sort: (c) => per(c, c.lgStats!.shots), className: 'num' },
+    { key: 'sot', label: t('stats.sot'), render: (c) => per(c, c.lgStats!.sot).toFixed(1), sort: (c) => per(c, c.lgStats!.sot), className: 'num' },
+    { key: 'poss', label: t('stats.poss'), render: (c) => `${Math.round(per(c, c.lgStats!.poss))}%`, sort: (c) => per(c, c.lgStats!.poss), className: 'num' },
+    { key: 'cs', label: t('stats.cs'), render: (c) => c.lgStats!.cs, sort: (c) => c.lgStats!.cs, className: 'num' },
+    { key: 'cards', label: t('stats.cards'), render: (c) => `${c.lgStats!.yel}${c.lgStats!.red ? ` / ${c.lgStats!.red}` : ''}`, sort: (c) => c.lgStats!.yel + c.lgStats!.red * 3, className: 'num' },
+  ];
+  return (
+    <div className="col">
+      <Panel title={t('stats.teams')} className="flush">
+        {clubs.length ? <div className="table-wrap"><Table rows={clubs} cols={cols} rowKey={(c) => c.id} initialSort="xgd" rowClass={(c) => (c.id === g.userClub ? 'me' : '')} /></div>
+          : <div className="muted" style={{ padding: 12 }}>{t('stats.noTeamStats')}</div>}
+      </Panel>
+      <div className="cols3">
+        {boards.map((b) => (
+          <Panel key={b.key} title={t(`stats.${b.key}`)} className="flush">
+            <table className="grid">
+              <tbody>
+                {b.list.length === 0 && <tr><td className="muted">{t('common.none')}</td></tr>}
+                {b.list.map((p, i) => (
+                  <tr key={p.id} className={p.club === g.userClub ? 'me' : ''}><td className="num">{i + 1}</td><td><PlayerLink p={p} /></td><td><ClubLink id={p.club} /></td><td className="num nowrap"><b>{b.val(p)}</b></td></tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
+        ))}
+      </div>
+      <div className="muted" style={{ fontSize: 12 }}>{t('stats.note')}</div>
+    </div>
   );
 }
 

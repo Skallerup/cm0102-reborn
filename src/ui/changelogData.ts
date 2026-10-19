@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.19',
+    date: '2026-10-19',
+    title: { da: 'Ligastatistik', en: 'League stats' },
+    items: [
+      { da: 'Ny fane "Statistik" under ligaen: holdenes xG, xG imod, skud, boldbesiddelse, clean sheets og kort – sortérbar', en: 'New "Stats" tab in the league: teams\' xG, xG against, shots, possession, clean sheets and cards – sortable' },
+      { da: 'Toplister for bedste gennemsnitsrating, assists, mål + assists, kampens spiller og kort', en: 'Leaderboards for best average rating, assists, goals + assists, player of the match and cards' },
+      { da: 'Holdstatistikken samles fra den første ligakamp efter opdateringen', en: 'Team stats are collected from the first league match after the update' },
+    ],
+  },
+  {
     version: '0.7.18',
     date: '2026-10-19',
     title: { da: 'Stjernerne forklaret', en: 'Stars explained' },

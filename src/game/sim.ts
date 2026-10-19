@@ -190,6 +190,17 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
       else if (played.has(p.id)) p.unhappy = Math.max(0, (p.unhappy ?? 0) - 5);
     }
   }
+  // holdstatistik for ligaen (til Statistik-fanen)
+  if (isLeague) {
+    for (const [cid, me, opp] of [[f.home, hs, as], [f.away, as, hs]] as const) {
+      const c = g.clubs[cid];
+      if (!c) continue;
+      const st = (c.lgStats ??= { n: 0, shots: 0, sot: 0, xg: 0, xga: 0, poss: 0, cs: 0, yel: 0, red: 0 });
+      st.n++; st.shots += me.shots; st.sot += me.onTarget; st.xg += me.xg; st.xga += opp.xg; st.poss += me.possession;
+      if (opp.goals === 0) st.cs++;
+      st.yel += me.yellows; st.red += me.reds;
+    }
+  }
   // præmiepenge i Europa
   if (comp?.type === 'continental') {
     const win = comp.id === 'CL' ? 2_800_000 : 800_000;

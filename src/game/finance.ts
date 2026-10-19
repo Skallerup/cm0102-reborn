@@ -142,6 +142,7 @@ export function newSeasonBudgets() {
     const room = c.manager === -1 ? 1.1 : 1.05;
     c.wageBudget = Math.round(Math.max(bill * room, bill + 2000) / 500) * 500;
     c.finance = { gate: 0, tv: 0, prize: 0, sponsor: 0, merch: 0, transfersIn: 0, transfersOut: 0, wages: 0, other: 0 };
+    c.lgStats = undefined;
   }
 }
 
