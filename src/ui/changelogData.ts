@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.39',
+    date: '2026-10-19',
+    title: { da: 'Rigtige klubfarver', en: 'Real club colours' },
+    items: [
+      { da: 'Klubtemaet bruger klubbens officielle farver (fra Wikidata) for ca. 250 klubber – fx Manchester United rød/hvid, Juventus sort/hvid – med den præcise nuance fra logoet', en: 'The club theme uses the club\'s official colours (from Wikidata) for about 250 clubs – e.g. Manchester United red/white, Juventus black/white – with the exact shade from the crest' },
+      { da: 'Rettet: klubtemaet kunne falde tilbage på tilfældige farver, hvis logoerne ikke var hentet endnu', en: 'Fixed: the club theme could fall back to random colours if the crests had not loaded yet' },
+      { da: 'Hvid tekst på farvede flader – mørk tekst kun på rigtig lyse farver som gul og hvid', en: 'White text on coloured surfaces – dark text only on really light colours such as yellow and white' },
+    ],
+  },
+  {
     version: '0.7.38',
     date: '2026-10-19',
     title: { da: 'Klubtema i to farver', en: 'Two-colour club theme' },

@@ -1,7 +1,7 @@
 // Farvetema: mørkt (standard), lyst eller i klubbens farver. Klubfarverne aflæses fra klubbens
 // logo (de to mest dominerende farver), så Brøndby bliver gul/blå, FCK hvid/blå osv.
 // Valget er personligt og gemmes i browseren – ikke i spillet.
-import { logoUrl } from './logos';
+import { loadLogos, logoUrl } from './logos';
 import { gs, hasGame } from '../game/state';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark';
@@ -41,8 +41,8 @@ function rgbFromHsl(h: number, s: number, l: number): RGB {
 function logoColors(clubId: number): Promise<RGB[] | null> {
   const hit = cache.get(clubId);
   if (hit) return hit;
-  const url = logoUrl(clubId);
-  const p = !url ? Promise.resolve(null) : new Promise<RGB[] | null>((resolve) => {
+  // vent på logolisten – ellers ender vi med de tilfældige farver fra datasættet
+  const p = loadLogos().then(() => logoUrl(clubId)).then((url) => !url ? null : new Promise<RGB[] | null>((resolve) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -68,9 +68,9 @@ function logoColors(clubId: number): Promise<RGB[] | null> {
         const cols = [...buckets.values()].sort((a, b) => b.n - a.n).map((b) => b.sum.map((v) => Math.round(v / b.n)) as RGB);
         const out: RGB[] = [];
         for (const col of cols) {
-          if (out.length >= 2) break;
-          // anden farve skal have en tydeligt anden tone
-          if (out.length === 1) { const dh = Math.abs(hsl(out[0])[0] - hsl(col)[0]); if (Math.min(dh, 360 - dh) < 35) continue; }
+          if (out.length >= 4) break;
+          // hver farve skal have en tydeligt anden tone end de foregående
+          if (out.some((o) => { const dh = Math.abs(hsl(o)[0] - hsl(col)[0]); return Math.min(dh, 360 - dh) < 35; })) continue;
           out.push(col);
         }
         if (out.length === 1 && whites > 40) out.push([240, 244, 255]);
@@ -79,9 +79,51 @@ function logoColors(clubId: number): Promise<RGB[] | null> {
     };
     img.onerror = () => resolve(null);
     img.src = url;
-  });
+  }));
   cache.set(clubId, p);
   return p;
+}
+
+// officielle klubfarver fra Wikidata (public/data/clubcolors.json)
+let official: Promise<Record<string, string[]>> | null = null;
+function officialColors(): Promise<Record<string, string[]>> {
+  if (!official) {
+    official = fetch(`${import.meta.env.BASE_URL}data/clubcolors.json`)
+      .then((r) => (r.ok ? r.json() : { colors: {} }))
+      .then((d: { colors: Record<string, string[]> }) => d.colors ?? {})
+      .catch(() => { official = null; return {}; });
+  }
+  return official;
+}
+
+const fromHex = (h: string): RGB => [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+const hueDist = (x: RGB, y: RGB) => { const d = Math.abs(hsl(x)[0] - hsl(y)[0]); return Math.min(d, 360 - d); };
+
+/**
+ * Klubbens to farver: de officielle (Wikidata) bestemmer HVILKE farver, logoet giver den præcise nuance.
+ * Uden officielle farver bruges logoets to mest dominerende farver.
+ */
+async function clubPalette(clubId: number, fallback: RGB[]): Promise<[RGB, RGB | undefined]> {
+  const [logo, off] = await Promise.all([logoColors(clubId), officialColors()]);
+  const wd = (off[String(clubId)] ?? []).map(fromHex);
+  const lg = logo ?? [];
+  if (!wd.length) return [lg[0] ?? fallback[0], lg[1] ?? fallback[1]];
+  const isWhite = (c: RGB) => hsl(c)[2] >= 0.9;
+  const isBlack = (c: RGB) => hsl(c)[2] <= 0.12;
+  // logoets nuance, hvis det har en farve i samme tone – ellers en dæmpet udgave af den rene farve
+  const refine = (c: RGB): RGB => {
+    const m = lg.find((x) => hueDist(x, c) < 35 && hsl(x)[1] >= 0.3);
+    if (m) return m;
+    const [h, sat, l] = hsl(c);
+    return sat > 0.9 && Math.abs(l - 0.5) < 0.06 ? rgbFromHsl(h, 0.78, 0.44) : c;
+  };
+  const rank = (c: RGB) => { const i = lg.findIndex((x) => hueDist(x, c) < 35); return i < 0 ? 99 : i; };
+  const black = wd.find(isBlack), white = wd.find(isWhite);
+  // sort/hvid-klubber (fx Juventus): en farve, der ikke er i logoet, er typisk en gammel trøje – spring den over
+  const colours = wd.filter((c) => !isWhite(c) && !isBlack(c) && !(black && white && rank(c) === 99)).sort((x, y) => rank(x) - rank(y)).map(refine);
+  const a = colours[0] ?? (black ? [24, 24, 28] as RGB : lg[0] ?? fallback[0]);
+  const b = colours[1] ?? (white ? WHITE : black && colours.length ? [24, 24, 28] as RGB : lg.find((x) => hueDist(x, a) >= 35) ?? fallback[1]);
+  return [a, b];
 }
 
 /** Gør en farve læsbar på mørk baggrund (lys nok, ikke for grå) */
@@ -109,7 +151,8 @@ function contrast(a: RGB, b: RGB): number {
 const WHITE: RGB = [255, 255, 255];
 const INK: RGB = [17, 22, 36];
 /** Tekstfarve med skarpest kontrast mod en baggrund */
-const textOn = (bg: RGB): RGB => (contrast(bg, WHITE) >= contrast(bg, INK) ? WHITE : INK);
+// hvid tekst ser bedst ud på farvede flader – mørk tekst kun på rigtig lyse farver (fx gul eller hvid)
+const textOn = (bg: RGB): RGB => (contrast(bg, WHITE) >= 2.6 ? WHITE : INK);
 /** Gør en farve mørkere (samme nuance), indtil den har kontrast nok mod hvid */
 function onWhite(c: RGB, min: number): RGB {
   let [h, s, l] = hsl(c);
@@ -132,10 +175,9 @@ export function applyTheme() {
   if ((theme !== 'club' && theme !== 'clubDark') || !hasGame()) return;
   const club = gs().clubs[gs().userClub];
   if (!club) return;
-  void logoColors(club.id).then((cols) => {
+  const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+  void clubPalette(club.id, club.colors.map(hex)).then(([a0, b0]) => {
     if (token !== applied) return;
-    const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-    const [a0, b0] = cols ?? club.colors.map(hex);
     // en hvid/grå farve i logoet duer ikke som hovedfarve – brug den anden
     const [a, b] = washed(a0) && b0 && !washed(b0) ? [b0, a0] : [a0, b0];
     const second = b && !washed(b) ? b : undefined;
