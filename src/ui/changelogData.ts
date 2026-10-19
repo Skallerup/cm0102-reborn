@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.47',
+    date: '2026-10-19',
+    title: { da: 'Bedre taktiktavle', en: 'Better tactics board' },
+    items: [
+      { da: 'Træk en spiller ud på en tom plet på banen for at flytte hans plads (fx en angriber ned som offensiv midtbane) – slip ham oven på en anden for at bytte', en: 'Drag a player onto an empty spot on the pitch to move his position (e.g. a striker back to attacking midfield) – drop him on another player to swap' },
+      { da: 'Pilene: offensiv = pil frem, balanceret = ingen pil, defensiv = gul pil tilbage', en: 'Arrows: attacking = arrow forward, balanced = no arrow, defensive = yellow arrow back' },
+      { da: 'Rettet: den valgte spiller på tavlen fik en grå boks omkring sig, og trækbilledet er nu et rent navneskilt', en: 'Fixed: the selected player on the board got a grey box around him, and the drag image is now a clean name tag' },
+    ],
+  },
+  {
     version: '0.7.46',
     date: '2026-10-19',
     title: { da: 'Kampskærm i CM-stil', en: 'CM-style match screen' },

@@ -163,6 +163,18 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
           <span className="muted">{t(editPos ? 'tac.movePosHint' : 'tac.hint2')}</span>
         </div>
         <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef}
+          onDragOver={(e) => { if (drag !== null && tactic.lineup.includes(drag)) e.preventDefault(); }}
+          onDrop={(e) => {
+            // sluppet på en tom plet: flyt spillerens plads dertil (egen formation)
+            if (drag === null) return;
+            const i = tactic.lineup.indexOf(drag);
+            setDrag(null);
+            if (i < 0 || tactic.slots[i].pos === 'GK') return;
+            const { x, y } = toPitch(e.clientX, e.clientY);
+            const slots = tactic.slots.slice();
+            slots[i] = { ...slotAt(x, y), x: Math.round(x), y: Math.round(y) };
+            onChange({ ...tactic, slots, formation: shapeName(slots) });
+          }}
           onPointerMove={(e) => { if (moving) setMoving({ i: moving.i, ...toPitch(e.clientX, e.clientY) }); }}
           onPointerUp={finishMove} onPointerLeave={finishMove}>
           <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
@@ -181,12 +193,13 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
             <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#fff" /></marker></defs>
             {tactic.slots.map((s0, i) => {
               const sl = moving?.i === i ? { ...s0, x: moving.x, y: moving.y } : s0;
-              const runs = tactic.individual[i]?.runs ?? 0;
-              if (sl.pos === 'GK' || runs === 0 || !tactic.lineup[i]) return null;
-              const len = runs === 2 ? 15 : 7.5;
+              const runs = tactic.individual[i]?.runs ?? 1;
+              // offensiv: pil frem · balanceret: ingen pil · defensiv: pil tilbage (står dybere)
+              if (sl.pos === 'GK' || runs === 1 || !tactic.lineup[i]) return null;
+              const forward = runs === 2;
               const inward = sl.side === 'L' ? 5 : sl.side === 'R' ? -5 : 0;
-              const x1 = slotLeft(sl), y1 = slotTop(sl) - 4;
-              return <line key={i} x1={x1} y1={y1} x2={x1 + inward * (runs / 2)} y2={y1 - len} stroke="#fff" strokeWidth="1.6" strokeDasharray="3 2.4" vectorEffect="non-scaling-stroke" markerEnd="url(#arrowhead)" opacity="0.9" />;
+              const x1 = slotLeft(sl), y1 = slotTop(sl) + (forward ? -4 : 4);
+              return <line key={i} x1={x1} y1={y1} x2={x1 + (forward ? inward : 0)} y2={y1 + (forward ? -15 : 9)} stroke={forward ? '#fff' : '#ffd166'} strokeWidth="1.6" strokeDasharray="3 2.4" vectorEffect="non-scaling-stroke" markerEnd="url(#arrowhead)" opacity="0.9" />;
             })}
           </svg>
           {tactic.slots.map((s0, i) => {
@@ -195,7 +208,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
             const fit = p ? slotFit(p, s) : 0;
             const club = gs().clubs[gs().userClub];
             return (
-              <div key={i} className={`slot ${sel === i ? 'sel' : ''} ${p ? '' : 'empty'} ${drag !== null ? 'drop' : ''} ${moving?.i === i ? 'moving' : ''}`}
+              <div key={i} className={`slot ${sel === i ? 'picked' : ''} ${p ? '' : 'empty'} ${drag !== null ? 'drop' : ''} ${moving?.i === i ? 'moving' : ''}`}
                 style={{ left: `${slotLeft(s)}%`, top: `${slotTop(s)}%` }}
                 onClick={() => { if (!editPos) setSel(sel === i ? null : i); }}
                 onContextMenu={(e) => { if (!p || s.pos === 'GK' && false) return; e.preventDefault(); setSel(i); setMenu({ i, left: e.clientX, top: e.clientY }); }}
@@ -206,9 +219,19 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
                 }}
                 onPointerUp={() => { if (press.current) { clearTimeout(press.current); press.current = null; } }}
                 onDragOver={(e) => e.preventDefault()}
-                onDrop={() => { if (drag !== null) assign(i, drag); setDrag(null); }}
+                onDrop={(e) => { e.stopPropagation(); if (drag !== null) assign(i, drag); setDrag(null); }}
                 draggable={!!p && !editPos}
-                onDragStart={() => p && setDrag(p.id)}
+                onDragStart={(e) => {
+                  if (!p) return;
+                  setDrag(p.id);
+                  // et lille rent trækbillede i stedet for browserens "spøgelse"
+                  const ghost = document.createElement('div');
+                  ghost.className = 'drag-ghost';
+                  ghost.textContent = p.last;
+                  document.body.appendChild(ghost);
+                  e.dataTransfer.setDragImage(ghost, 20, 14);
+                  setTimeout(() => ghost.remove(), 0);
+                }}
                 onDragEnd={() => setDrag(null)}>
                 <div className="shirt" style={{ background: club?.colors[0] ?? '#c00', color: club?.colors[1] ?? '#fff' }}>{s.pos}{s.side !== 'C' ? s.side : ''}</div>
                 <div className="nm">{p ? p.last : t('tac.empty')}</div>
@@ -233,7 +256,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
             <div className="ctx-menu" style={{ left: Math.min(menu.left, window.innerWidth - 340), top: Math.min(menu.top, window.innerHeight - 300) }} onClick={(e) => e.stopPropagation()}>
               <div className="ctx-title">{p.last} · {sl.pos}{sl.side !== 'C' ? ' ' + sl.side : ''}</div>
               <div className="ctx-row role">
-                {([[0, '⬇', 'tac.roleDef'], [1, '➡', 'tac.roleBal'], [2, '⬆', 'tac.roleAtt']] as const).map(([v, ic, k]) => (
+                {([[0, '⬇', 'tac.roleDef'], [1, '●', 'tac.roleBal'], [2, '⬆', 'tac.roleAtt']] as const).map(([v, ic, k]) => (
                   <button key={v} className={`small ${ins.runs === v ? 'primary' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { runs: v }); }}>{ic} {t(k)}</button>
                 ))}
               </div>
