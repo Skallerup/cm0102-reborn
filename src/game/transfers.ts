@@ -10,7 +10,7 @@ import { addNews, gs, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
-import { bumpFans, fansOnSigning } from './fans';
+import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
@@ -435,7 +435,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   // skifte midt i sæsonen: bogfør tallene hos den gamle klub
   if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
   // fansene reagerer på stjernesalg og -køb
-  if (!o.loan && seller && isHumanClub(seller.id) && keyPlayerRank(p) <= 3) bumpFans(seller.id, -6, 'starSold');
+  if (!o.loan && seller) fansOnDeparture(p, seller, 'sold', o.fee);
   setClub(p, buyer.id);
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
   fansOnSigning(p, buyer, o.loan);
@@ -493,6 +493,7 @@ export function releasePlayer(pid: number) {
     club.balance -= pay;
     club.finance.other += pay;
   }
+  fansOnDeparture(p, club, 'released');
   setClub(p, 0);
   p.contract = null;
   p.listed = false;
@@ -519,6 +520,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
     // en tilfreds spiller takker for den nye kontrakt
     if (hadDemand || wage >= demand * 1.1) playerPraises(p, 'contract');
     addNews({ cat: 'contract', key: 'contract.renewed', params: { player: pname(p), years } });
+    fansOnRenewal(p, club);
     return 'accepted';
   }
   return 'counter';
@@ -1044,6 +1046,8 @@ export function aiBosman() {
     const suitors = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.rep >= p.rep - 15 && c.rep <= p.rep + 25);
     const c = rng.pick(suitors);
     if (!c) continue;
+    // fansene hører det med det samme: han forlader klubben gratis til sommer
+    fansOnDeparture(p, g.clubs[g.userClub], 'free');
     p.contract!.futureClub = c.id;
     p.contract!.futureWage = wageDemand(p, c);
     p.contract!.futureExpires = `${year(g.date) + preferredYears(p)}-06-30`;

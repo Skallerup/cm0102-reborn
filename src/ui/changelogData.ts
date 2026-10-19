@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.12',
+    date: '2026-10-19',
+    title: { da: 'Fansene følger med i kontrakterne', en: 'The fans follow contracts' },
+    items: [
+      { da: 'Fansene jubler, når en profil forlænger – jo vigtigere spilleren er (og jo længere han har været i klubben), jo gladere', en: 'The fans celebrate when a key player extends – the more important he is (and the longer he has been at the club), the happier they are' },
+      { da: 'De bliver skuffede, når en profil bliver solgt, og endnu mere, når han forlader klubben gratis eller bliver fritstillet. En stor transfersum lindrer', en: 'They are disappointed when a key player is sold, and even more so when he leaves for free or is released. A big fee softens the blow' },
+    ],
+  },
+  {
     version: '0.7.11',
     date: '2026-10-19',
     title: { da: 'Forklar spilleren, hvorfor du siger nej', en: 'Tell the player why you said no' },

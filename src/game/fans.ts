@@ -48,6 +48,45 @@ export function fansOnSigning(p: Player, club: Club, loan: boolean) {
   });
 }
 
+/**
+ * Hvor meget holder fansene af en spiller i truppen? 0 = ingen særlig, 1 = fast mand, 2 = profil, 3 = stjerne/klubikon.
+ * Ud fra hans plads i truppen, hans navn i forhold til klubben og hvor længe han har været der.
+ */
+export function fanStanding(p: Player, club: Club): 0 | 1 | 2 | 3 {
+  const rank = squad(club.id).filter((x) => x.id !== p.id && !x.loan && x.ca > p.ca).length + 1;
+  let h = rank <= 2 ? (p.rep >= club.rep - 5 ? 3 : 2) : rank <= 5 ? 2 : rank <= 11 ? 1 : 0;
+  // klubikon: mange år i klubben
+  if (h >= 1 && p.joined && ageOn(p.joined, gs().date) >= 5) h++;
+  return Math.min(3, h) as 0 | 1 | 2 | 3;
+}
+
+const RENEW_FANS = [0, 1, 3, 5.5];
+const SOLD_FANS = [0, -1, -3, -7];
+const FREE_FANS = [0, -1.5, -4, -9];
+
+/** Fansene jubler, når en profil forlænger */
+export function fansOnRenewal(p: Player, club: Club) {
+  if (!isHumanClub(club.id)) return;
+  const h = fanStanding(p, club);
+  if (!h) return;
+  bumpFans(club.id, RENEW_FANS[h], h >= 2 ? 'starRenewed' : 'renewed');
+  if (h >= 2) asOwner(club.id, () => addNews({ cat: 'general', key: `fans.renew${h}`, params: { player: `${p.first} ${p.last}`.trim(), club: club.name }, link: { kind: 'player', id: p.id } }));
+}
+
+/**
+ * Fansene er kede af, at en spiller forlader klubben. Kaldes før han skifter.
+ * how: 'sold' (en stor transfersum lindrer), 'free' (udløbet eller Bosman), 'released' (fritstillet af manageren)
+ */
+export function fansOnDeparture(p: Player, club: Club, how: 'sold' | 'free' | 'released', fee = 0) {
+  if (!isHumanClub(club.id) || p.loan) return;
+  const h = fanStanding(p, club);
+  if (!h) return;
+  let d = (how === 'sold' ? SOLD_FANS : FREE_FANS)[h];
+  if (how === 'sold' && fee >= p.value * 1.5) d *= 0.6;
+  bumpFans(club.id, d, how === 'sold' ? (h >= 2 ? 'starSold' : 'sold') : 'leftFree');
+  if (h >= 2) asOwner(club.id, () => addNews({ cat: 'general', key: `fans.leave.${how}${h}`, params: { player: `${p.first} ${p.last}`.trim(), club: club.name }, link: { kind: 'player', id: p.id } }));
+}
+
 /** Tilskuerfaktor: glade fans fylder stadion, sure fans bliver hjemme (0,92-1,06) */
 export function fanAttendance(c: Club): number {
   return isHumanClub(c.id) ? 0.92 + (fanMood(c) / 100) * 0.14 : 1;

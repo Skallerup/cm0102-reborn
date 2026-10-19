@@ -5,6 +5,7 @@ import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos }
 import { LEAGUE_RULES } from './leagues';
 import { Rng, hash, hash01, rng } from './rng';
 import { addNews, addPlayer, newsRelevant, gs, rebuildIndexes, removePlayer, setClub, squad } from './state';
+import { fansOnDeparture } from './fans';
 import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
 import { seasonCareers } from './careers';
 import { computeSeasonScore, recordSeasonScore, startScoreSeason } from './rating';
@@ -164,6 +165,7 @@ function contractsAndLoans() {
         if (fromClub !== to) asOwner(fromClub, () => addNews(msg));
       } else {
         asOwner(p.club, () => addNews({ cat: 'contract', key: 'contract.left', params: { player: pname(p) } }));
+        if (g.clubs[p.club]) fansOnDeparture(p, g.clubs[p.club], 'free');
         setClub(p, 0);
         p.contract = null;
       }
