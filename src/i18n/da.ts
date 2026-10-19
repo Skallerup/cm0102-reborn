@@ -216,6 +216,7 @@ export const da: Record<string, string> = {
   'c.goal-offside.1': "MÅL! …men linjedommeren vifter med flaget – {a} var offside!", 'c.goal-offside.2': "{a} sætter den ind – men målet annulleres for offside!", 'c.goal-offside.3': "Jubel i et sekund – så går flaget op. Offside på {a}.", 'c.var-check.1': "VAR tjekker situationen omkring {a}…", 'c.var-check.2': "Dommeren holder hånden for øret – VAR kigger på målet…", 'c.var-disallowed.1': "VAR annullerer målet! {a} var offside med en skulder.", 'c.var-disallowed.2': "Efter VAR-tjekket: ingen mål – {a} stod offside.", 'c.var-given.1': "VAR overrules linjedommeren – {a} var ikke offside! Målet tæller!", 'c.var-given.2': "Flaget var forkert! VAR godkender målet.", 'c.var-stands.1': "VAR har tjekket – målet står ved magt!", 'c.var-stands.2': "Alt i orden efter VAR-tjekket. Målet tæller.", 'hl.offside': "OFFSIDE!",
   'hl.build': "{a} sætter angrebet i gang…", 'hl.pass': "{a} finder {b}…", 'hl.shoot': "{a} går til afslutning!", 'hl.penSetup': "Straffespark! {a} lægger bolden på pletten…", 'hl.penRun': "{a} tager tilløb…",
   'match.notYours': "Ikke din kamp længere", 'match.notYoursText': "Du styrer nu {club}. Denne kamp spilles automatisk af den gamle klub.",
+  'match.subsTitle': "Udskiftere", 'match.subInFor': "Skift ind for…", 'match.noSubsLeft': "Ingen udskiftninger tilbage",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

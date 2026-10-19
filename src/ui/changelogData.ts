@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.54',
+    date: '2026-10-19',
+    title: { da: 'Tydelige udskiftere under kampen', en: 'Clear substitutes during the match' },
+    items: [
+      { da: 'Fanen "Mit hold" er væk – alt samles under "Taktik", der viser hvor mange udskiftninger du har tilbage', en: 'The "My team" tab is gone – everything is under "Tactics", which shows how many substitutions you have left' },
+      { da: 'Øverst under Taktik står bænken som kort med position og kondition. Vælg "Skift ind for…" og se hvem der er på banen med position, kondition, gule kort og karakter', en: 'At the top of Tactics the bench is shown as cards with position and condition. Pick "Bring on for…" and see who is on the pitch with position, condition, yellow cards and rating' },
+      { da: 'U (udskiftninger) åbner nu Taktik', en: 'U (substitutions) now opens Tactics' },
+    ],
+  },
+  {
     version: '0.7.53',
     date: '2026-10-19',
     title: { da: 'Mellemrum starter og pauser kampen', en: 'Space plays and pauses the match' },

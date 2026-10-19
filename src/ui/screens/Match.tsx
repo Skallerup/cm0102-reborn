@@ -5,7 +5,7 @@ import { createLiveMatch, finishUserMatch, quickPlayUserMatch, userTactic } from
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
-import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, Rating, Tabs } from '../components';
+import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
@@ -268,7 +268,7 @@ function LiveMatch({ id }: { id: number }) {
     if (k === 'p') { setPaused(!paused); return true; }
     if (['1', '2', '3', '4'].includes(e.key)) { setSpeed([1, 2, 4, 8][Number(e.key) - 1]); return true; }
     if (k === 't') { setPaused(true); setTab('tactics'); return true; }
-    if (k === 'u' || k === 'h') { setPaused(true); setTab('team'); return true; }
+    if (k === 'u' || k === 'h') { setPaused(true); setTab('tactics'); return true; }
     if (k === 'c' || k === 'k') { setTab('commentary'); return true; }
     if (k === 's') { setTab('stats'); return true; }
     if (k === 'e') { finishNow(); return true; }
@@ -313,7 +313,7 @@ function LiveMatch({ id }: { id: number }) {
       </Head>
       <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0)} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
-      <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
@@ -372,39 +372,8 @@ function LiveMatch({ id }: { id: number }) {
       {tab === 'table' && g.comps[f.comp]?.type === 'league' && <Panel className="flush"><LeagueTable rows={sortTable(g.comps[f.comp].table.slice())} comp={g.comps[f.comp]} /></Panel>}
       {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
       <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''}</div>
-      {tab === 'team' && (
-        <Panel className="flush">
-          <table className="grid">
-            <thead><tr><th>{t('col.pos')}</th><th>{t('col.name')}</th><th>{t('col.cond')}</th><th className="num">{t('match.rating')}</th><th></th></tr></thead>
-            <tbody>
-              {myLive.on.map((s) => {
-                const p = g.players[s.id];
-                const slot = myLive.tactic.slots[s.slot];
-                return (
-                  <tr key={s.id} className={s.off ? 'injured' : ''}>
-                    <td>{slot.pos}{slot.side !== 'C' ? slot.side : ''}</td>
-                    <td><PlayerLink p={p} short />{s.yellow ? <span className="tag warn">🟨</span> : null}{s.injured ? <span className="tag bad">{t('tag.inj')}</span> : null}{s.goals ? ' ⚽'.repeat(s.goals) : ''}</td>
-                    <td><Bar value={s.cond} /> {s.cond}%</td>
-                    <td className="num"><Rating r={s.rating} /></td>
-                    <td>
-                      {!s.off && myLive.subsLeft > 0 && !report && (
-                        <select value="" onChange={(e) => {
-                          const ok = sim.substitute(me, s.id, Number(e.target.value));
-                          setMsg(ok ? '' : t('match.subFailed'));
-                          pull();
-                          force((x) => x + 1);
-                        }}>
-                          <option value="">{t('match.subOff')}</option>
-                          {myLive.bench.map((bid) => <option key={bid} value={bid}>{g.players[bid]?.last}</option>)}
-                        </select>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Panel>
+      {tab === 'tactics' && !report && (
+        <SubsPanel sim={sim} me={me} live={myLive} onDone={(ok) => { setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}
       {tab === 'tactics' && !report && (
         <TacticEditor tactic={myLive.tactic} players={squad(g.userClub).filter((p) => myLive.on.some((s) => s.id === p.id && !s.off) || myLive.bench.includes(p.id))} matchMode
@@ -412,6 +381,36 @@ function LiveMatch({ id }: { id: number }) {
           onSub={(out, inn) => { const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}
     </div>
+  );
+}
+
+/** Udskiftninger under kampen: bænken som tydelige kort – vælg hvem der skal ud */
+function SubsPanel({ sim, me, live, onDone }: { sim: MatchSim; me: number; live: ReturnType<MatchSim['live']>; onDone: (ok: boolean) => void }) {
+  const g = useGame()!;
+  const onPitch = live.on.filter((s) => !s.off);
+  const slotName = (slot: number) => { const sl = live.tactic.slots[slot]; return sl ? `${sl.pos}${sl.side !== 'C' ? sl.side : ''}` : ''; };
+  return (
+    <Panel title={`${t('match.subsTitle')} · ${t('match.subsLeft', { n: live.subsLeft })}`} className="subs-panel">
+      {live.bench.length === 0 && <div className="muted">{t('common.none')}</div>}
+      <div className="subs-grid">
+        {live.bench.map((bid) => {
+          const p = g.players[bid];
+          if (!p) return null;
+          return (
+            <div key={bid} className="sub-card">
+              <div className="sub-head"><span className="tag">{posStr(p)}</span><PlayerLink p={p} short /></div>
+              <div className="row muted" style={{ fontSize: 12 }}><Bar value={p.condition} /> {Math.round(p.condition)}%</div>
+              {live.subsLeft > 0 ? (
+                <select value="" onChange={(e) => onDone(sim.substitute(me, Number(e.target.value), bid))}>
+                  <option value="">{t('match.subInFor')}</option>
+                  {onPitch.map((s) => <option key={s.id} value={s.id}>{slotName(s.slot)} {g.players[s.id]?.last} – {Math.round(s.cond)}%{s.yellow ? ' 🟨' : ''}{s.injured ? ' ✚' : ''} ({s.rating.toFixed(1)})</option>)}
+                </select>
+              ) : <span className="muted">{t('match.noSubsLeft')}</span>}
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
   );
 }
 
