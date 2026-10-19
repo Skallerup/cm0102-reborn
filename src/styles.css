@@ -717,3 +717,5 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
   .cm-ratings { grid-template-columns: 1fr; }
 }
 .drag-ghost { position: fixed; top: -100px; left: -100px; padding: 5px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-ink); font-weight: 800; font-size: 13px; box-shadow: 0 6px 16px rgba(0,0,0,0.35); }
+.p2d-flash { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); font-size: clamp(28px, 6vw, 64px); font-weight: 900; color: #fff; text-shadow: 0 4px 18px rgba(0,0,0,0.6); letter-spacing: 0.04em; animation: pop 0.4s; pointer-events: none; }
+.p2d-replay { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); background: #e3202f; color: #fff; font-weight: 800; font-size: 12px; padding: 3px 10px; border-radius: 999px; letter-spacing: 0.08em; }

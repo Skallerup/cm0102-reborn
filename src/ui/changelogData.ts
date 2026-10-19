@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.49',
+    date: '2026-10-19',
+    title: { da: '2D-højdepunkter', en: '2D highlights' },
+    items: [
+      { da: '2D-banen viser nu højdepunkter: ved mål, store chancer, frispil og straffespark stopper kampen, og aktionen afspilles – opspil, aflevering og afslutning – med præcis det udfald, der skete (mål, redning, forbi)', en: 'The 2D pitch now shows highlights: for goals, big chances, one-on-ones and penalties the match pauses and the move is replayed – build-up, pass and shot – with exactly the outcome that happened (goal, save, wide)' },
+      { da: 'Mellem højdepunkterne står holdene i ro i deres formation, og kommentaren kører i den gule bjælke', en: 'Between highlights the teams stand still in their formation, and the commentary runs in the yellow bar' },
+      { da: 'Efter peptalken i pausen kommer du tilbage til den visning, du kom fra', en: 'After the half-time team talk you return to the view you came from' },
+    ],
+  },
+  {
     version: '0.7.48',
     date: '2026-10-19',
     title: { da: 'Andre kampe fra samme liga', en: 'Other matches from the same league' },

@@ -9,7 +9,7 @@ import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, Rating, Tabs } from '../c
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
-import { Pitch2D } from '../Pitch2D';
+import { Pitch2D, highlightFrames, type Snap } from '../Pitch2D';
 import { LeagueTable } from './Competitions';
 import { sortTable } from '../../game/competitions';
 import { TacticEditor } from './Tactics';
@@ -31,7 +31,7 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -177,6 +177,7 @@ function LiveMatch({ id }: { id: number }) {
   // husk om man ser kampen i 2D eller som kommentar
   const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary') { try { localStorage.setItem('cm-match-view', v); } catch { /* ignorér */ } } };
   const [report, setReport] = useState<MatchReport | null>(null);
+  const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string } | null>(null);
   const [msg, setMsg] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
@@ -199,10 +200,20 @@ function LiveMatch({ id }: { id: number }) {
       n++;
     }
     pull();
+    // store chancer og mål afspilles på 2D-banen (kampen venter imens)
+    const seen = L.shotsSeen ?? 0;
+    const fresh = sim.shots.slice(seen);
+    L.shotsSeen = sim.shots.length;
+    const big = fresh.filter((sh) => sh.outcome === 'goal' || sh.xg >= 0.1 || sh.kind === 'pen' || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)).at(-1);
+    if (big && tab === '2d' && (speed < 8 || big.outcome === 'goal')) {
+      const assist = big.outcome === 'goal' ? sim.events.filter((e) => e.k === 'goal' && e.p === big.p).at(-1)?.p2 : undefined;
+      setHl({ frames: highlightFrames(sim.pitch(), big, assist), i: 0, outcome: big.outcome });
+    }
     if (sim.finished && !report) setReport(sim.report());
-    // pausen: stop og giv holdet en peptalk
+    // pausen: stop og giv holdet en peptalk – bagefter tilbage til den visning, man kom fra
     else if (sim.half === 2 && !L.halfShown && !talkDone(id, 'half')) {
       L.halfShown = true;
+      L.prevTab = tab === 'talk' ? '2d' : tab;
       setPaused(true);
       setTab('talk');
     }
@@ -210,12 +221,20 @@ function LiveMatch({ id }: { id: number }) {
   };
 
   useEffect(() => {
-    if (paused || report) return;
-    // 2D: ét øjeblik ad gangen, så man kan følge bolden; ellers til næste kommentarlinje
-    const ms = tab === '2d' ? Math.max(60, (g.options.matchSpeed * 0.6) / speed) : Math.max(30, g.options.matchSpeed / speed);
-    const h = setInterval(() => (tab === '2d' ? advance(1, false) : advance(speed >= 8 ? 40 : 12)), ms);
+    if (paused || report || hl) return;
+    const ms = Math.max(30, g.options.matchSpeed / speed);
+    const h = setInterval(() => advance(speed >= 8 ? 40 : 12), ms);
     return () => clearInterval(h);
   });
+
+  // afspil højdepunktet billede for billede – det sidste billede (udfaldet) bliver stående lidt længere
+  const frameMs = Math.round(950 / Math.sqrt(speed));
+  useEffect(() => {
+    if (!hl || paused) return;
+    const last = hl.i >= hl.frames.length - 1;
+    const h = setTimeout(() => setHl(last ? null : { ...hl, i: hl.i + 1 }), last ? frameMs * 2 : frameMs);
+    return () => clearTimeout(h);
+  }, [hl, paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
@@ -276,13 +295,23 @@ function LiveMatch({ id }: { id: number }) {
       <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
-          onGiven={(boosts) => sim.applyTalk(me, boosts)} />
+          onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
       )}
       {msg && <div className="insight">{msg}</div>}
       {tab === '2d' && (
         <div className="cols match2d">
-          <Pitch2D sim={sim} me={me} colors={colors} minute={minute}
-            banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} stepMs={Math.max(60, (g.options.matchSpeed * 0.6) / speed)} />
+          <div style={{ position: 'relative' }}>
+            {hl ? (
+              <Pitch2D snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
+                banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''}
+                flash={hl.i === hl.frames.length - 1 ? t(`hl.${hl.outcome}`) : undefined} />
+            ) : (
+              // mellem højdepunkterne: holdene i ro i deres formation
+              <Pitch2D snap={{ ...sim.pitch(), zone: 7, poss: me, holder: 0, moment: 0, shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
+                banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} />
+            )}
+            {hl && <div className="p2d-replay">{t('hl.chance')}</div>}
+          </div>
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
             {L.lines.slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
           </div>

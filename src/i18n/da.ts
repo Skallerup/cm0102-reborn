@@ -210,9 +210,9 @@ export const da: Record<string, string> = {
   'opt.notify': "Browser-notifikationer", 'opt.notify.hint': "Få besked, når det er din tur i multiplayer, eller når der kommer bud, jobtilbud og andet vigtigt – mens spillet ligger i en anden fane.", 'mp.newTurn': "Nyt træk spillet – det er nu {date}",
   'top.more': "Mere",
   'top.notify': "Notifikationer", 'top.notifyHint': "Få besked i browseren, når det er din tur, eller der kommer bud og jobtilbud – også når spillet ligger i en anden fane", 'top.notifyOn': "Notifikationer er slået til 🔔", 'top.notifyDenied': "Browseren tillod ikke notifikationer – du kan ændre det i browserens indstillinger for siden", 'top.install': "Installér app", 'top.installHint': "Installér spillet som en app – så kører det i sit eget vindue, og notifikationer virker også på mobilen", 'top.installed': "Spillet er installeret som app",
-  'match.pitch2d': "2D-bane",
   'tac.customFormation': "Egen formation ({name})", 'tac.movePos': "Flyt pladser", 'tac.movePosDone': "Færdig", 'tac.movePosHint': "Træk spillerne rundt for at lave din egen formation – pladsens rolle følger, hvor den står", 'tac.hint2': "Klik en plads og vælg en spiller · træk en spiller oven på en anden for at bytte, eller ud på banen for at flytte hans plads · højreklik for instruktioner", 'tac.roleDef': "Defensiv", 'tac.roleBal': "Balanceret", 'tac.roleAtt': "Offensiv",
   'match.ratings': "Spillerkarakterer", 'rt.off': "ud {m}'", 'rt.on': "ind {m}'", 'rt.sentOff': "udvist", 'match.noTable': "Ingen stilling i denne turnering.",
+  'hl.chance': "CHANCE", 'hl.goal': "MÅL!", 'hl.saved': "REDNING!", 'hl.off': "FORBI!", 'hl.blocked': "BLOKERET!", 'match.pitch2d': "2D (højdepunkter)",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

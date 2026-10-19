@@ -2,9 +2,10 @@
 // angrebspositioner fra taktikken, alt efter hvor bolden er – så man kan se, hvad taktikken gør.
 import { useMemo } from 'react';
 import type { MatchSim } from '../game/engine/match';
+import type { ShotRecord } from '../game/types';
 import { hash01 } from '../game/rng';
 
-type Snap = ReturnType<MatchSim['pitch']>;
+export type Snap = ReturnType<MatchSim['pitch']>;
 const W = 105, H = 68;
 
 /** Zonens midte (0-100 i begge akser; hold 0 angriber mod højre) */
@@ -92,10 +93,10 @@ function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, n
   return { pos, ball, holder };
 }
 
-export function Pitch2D({ sim, me, colors, minute, banner, bannerCls, stepMs }: {
-  sim: MatchSim; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number;
+export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, flash }: {
+  snap: Snap; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number; flash?: string;
 }) {
-  const s = sim.pitch();
+  const s = snap;
   const { pos, ball, holder } = useMemo(() => layout(s), [s.moment, s.zone, s.poss, s.holder, s.players.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const [bx, by] = ball;
   const dur = `${Math.max(80, Math.min(900, stepMs))}ms`;
@@ -143,7 +144,30 @@ export function Pitch2D({ sim, me, colors, minute, banner, bannerCls, stepMs }: 
       </svg>
       <div className="p2d-minute">{minute}</div>
       {holder && <div className="p2d-poss" style={{ background: s.poss === 0 ? colors[0] : colors[2], color: s.poss === 0 ? colors[1] : colors[3] }}>⚽ {holder.name}</div>}
+      {flash && <div className="p2d-flash">{flash}</div>}
       <div className={`p2d-banner ${bannerCls}`}>{banner}</div>
     </div>
   );
+}
+
+/**
+ * En chance som korte 2D-billeder: opspil på midtbanen → aflevering → afslutning → udfald.
+ * Bygget ud fra motorens registrerede skud, så det, man ser, er præcis det, der skete.
+ */
+export function highlightFrames(base: Snap, shot: ShotRecord, assister?: number): Snap[] {
+  const team = shot.t;
+  const lane = shot.zone % 3;
+  const abs = (rb: number) => (team === 0 ? rb : 4 - rb);
+  const mates = base.players.filter((p) => p.team === team && !p.gk);
+  // opspilleren: en midtbanespiller (tættest på midten) – afleveringen: assistgiveren eller en offensiv holdkammerat
+  const mid = mates.slice().sort((a, b) => Math.abs((a.dx + a.ax) / 2 - 50) - Math.abs((b.dx + b.ax) / 2 - 50))[0];
+  const fwd = (assister && mates.find((p) => p.id === assister)) || mates.filter((p) => p.id !== shot.p).sort((a, b) => (team === 0 ? b.ax - a.ax : a.ax - b.ax))[0];
+  const f = (rb: number, l: number, holder: number | undefined, k: number, sh: Snap['shot'] = null): Snap => ({ ...base, poss: team, zone: abs(rb) * 3 + l, holder: holder ?? shot.p, moment: base.moment * 10 + k, shot: sh });
+  if (shot.kind === 'pen') return [f(4, 1, shot.p, 1), f(4, 1, shot.p, 2), f(4, 1, shot.p, 3, { team, outcome: shot.outcome, zone: shot.zone })];
+  return [
+    f(2, lane === 1 ? 1 : lane, mid?.id, 1),
+    f(3, lane, fwd?.id, 2),
+    f(4, lane, shot.p, 3),
+    f(4, lane, shot.p, 4, { team, outcome: shot.outcome, zone: shot.zone }),
+  ];
 }
