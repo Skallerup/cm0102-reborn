@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.10',
+    date: '2026-10-19',
+    title: { da: 'Spillersøgning uden budgetfilter', en: 'Player search without a budget filter' },
+    items: [
+      { da: 'Spillere med udløbende kontrakt (Bosman) vurderes ikke længere efter transfersum – de koster ikke noget', en: 'Players with an expiring contract (Bosman) are no longer judged on transfer fee – they cost nothing' },
+      { da: 'Spillere over dit transferbudget står som "måske" i stedet for "urealistisk", så de stadig vises under "Realistiske + måske"', en: 'Players above your transfer budget are marked "maybe" instead of "unrealistic", so they still show under "Realistic + maybe"' },
+    ],
+  },
+  {
     version: '0.7.9',
     date: '2026-10-19',
     title: { da: 'Ingen ventetid på AI', en: 'No waiting for the AI' },

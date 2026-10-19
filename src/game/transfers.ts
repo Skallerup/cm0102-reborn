@@ -87,15 +87,20 @@ export function transferRealism(p: Player): Realism {
   else if (interest === 'happy') bump(2, 'real.happy', 40);
   else if (p.rep - club.rep > 15) bump(1, 'real.repGap', 10);
   if (p.loan || p.contract?.futureClub) bump(2, 'real.unavailable', 50);
-  if (p.club) {
+  const bosman = !!p.club && canPreContract(p);
+  if (bosman) {
+    // fri kontrakt fra sommer: hverken prisen eller klubbens vilje til at sælge betyder noget
+    score += 6;
+    reasons.push('real.bosman');
+  } else if (p.club) {
     const seller = g.clubs[p.club];
     const rank = keyPlayerRank(p);
     if (rank <= 2 && seller && seller.rep >= club.rep) bump(2, 'real.notForSale', 30);
+    // for dyr er højst "måske": budgettet kan flyttes, forhøjes eller spares op
     const price = askingPrice(p);
-    if (price > club.transferBudget) bump(price > club.transferBudget * 1.5 ? 2 : 1, 'real.tooExpensive', 25 * Math.min(4, price / Math.max(1, club.transferBudget)));
+    if (price > club.transferBudget) bump(1, 'real.tooExpensive', 25 * Math.min(4, price / Math.max(1, club.transferBudget)));
     else score += 5 * (1 - price / Math.max(1, club.transferBudget));
     if (p.listed) { score += 8; reasons.push('real.listed'); }
-    if (canPreContract(p)) { score += 6; reasons.push('real.bosman'); }
   } else {
     score += 6;
     reasons.push('real.free');
@@ -104,7 +109,7 @@ export function transferRealism(p: Player): Realism {
   // lønnen: passer den ikke i lønbudgettet, kan transferbudget omfordeles (1 uges løn = SHIFT_WEEKS kr. transferbudget)
   const missing = bill + wageDemand(p, club) - club.wageBudget;
   if (missing > 0) {
-    const fee = p.club ? askingPrice(p) : 0;
+    const fee = p.club && !bosman ? askingPrice(p) : 0;
     if (fee + missing * SHIFT_WEEKS <= club.transferBudget) { reasons.push('real.wagesShift'); score -= 3; }
     else bump(1, 'real.wages', 10);
   }
