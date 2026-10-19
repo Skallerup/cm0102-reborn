@@ -733,7 +733,8 @@ export class MatchSim {
     const t = this.teams[sp.team];
     this.events.push({ m: this.minute, t: t.idx, k: 'injury', p: sp.p.id });
     this.line('injury', sp, null, true);
-    if (t.subsLeft > 0 && t.benchIds.length) {
+    // menneskets hold skifter selv ud (kampen pauses i UI'et) – kun AI-hold skifter automatisk
+    if (t.subsLeft > 0 && t.benchIds.length && this.opts.aiSubs?.[t.idx] !== false) {
       this.autoSub(t, sp);
     } else {
       sp.cond = Math.min(sp.cond, 0.35);

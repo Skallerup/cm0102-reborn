@@ -169,6 +169,8 @@ export function OnlineControls() {
     if (!f || f.result || skippedMatches.has(f.id)) return 0;
     return f.id;
   })();
+  // mens man spiller sin kamp, styres alt inde på kampskærmen – ingen "Til kampen"/Klar i topbjælken
+  const onMyMatch = !!myMatch && route.name === 'match' && (route as { id?: number }).id === myMatch;
   return (
     <>
       <button className="small" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>
@@ -195,9 +197,9 @@ export function OnlineControls() {
       {s.isHost && s.room.players.length > 1 && <button className="small" title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>👑 {t('mp.host')}</button>}
       {hostOpen && <HostModal onClose={() => setHostOpen(false)} />}
       {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
-      {othersWaiting && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
+      {othersWaiting && !onMyMatch && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
       {!solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
-      <span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
+      {!onMyMatch && <><span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
         {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
       <button className={`${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
@@ -213,6 +215,7 @@ export function OnlineControls() {
         {!me?.ready && myMatch ? t('top.toTheMatch') : solo ? (me?.ready ? t('mp.processingShort') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
         {!me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
+      </>}
     </>
   );
 }

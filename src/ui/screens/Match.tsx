@@ -35,7 +35,7 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -280,6 +280,17 @@ function LiveMatch({ id }: { id: number }) {
           bump: all.map((_, j) => (j >= gi && j < all.length - 1 ? 1 : 0)), reveal: all.map((_, j) => (j < gi ? 0 : ci + (j - gi) + 1)) });
       } else setHl({ frames, i: 0, outcome: big.outcome, texts, hideFrom: linesBefore, team: big.t });
       started = true;
+    }
+    // skade eller rødt kort på mit hold: pause og over på taktik, så man selv kan justere
+    const newEv = sim.events.slice(L.evSeen ?? 0);
+    L.evSeen = sim.events.length;
+    const hit = newEv.filter((e) => e.t === me && (e.k === 'injury' || e.k === 'red')).at(-1);
+    if (hit && !sim.finished) {
+      const name = hit.p ? g.players[hit.p]?.last ?? '' : '';
+      if (!h2h) setPaused(true);
+      if (tab !== 'tactics') L.prevTab = tab;
+      setTab('tactics');
+      setMsg(t(hit.k === 'injury' ? 'match.injuryStop' : 'match.redStop', { name }));
     }
     if (sim.finished && !report) setReport(sim.report());
     else if (!started) maybeHalftime();
