@@ -590,6 +590,10 @@ export interface ShotRecord {
   kind: string;
   /** skuddet kom efter et hjørnespark taget af denne spiller */
   corner?: number;
+  /** hvordan chancen opstod: counter, through, cross, dribble, press */
+  origin?: string;
+  /** ramte stolpen/overliggeren */
+  post?: boolean;
 }
 
 export interface CommentaryLine {

@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.72',
+    date: '2026-10-19',
+    title: { da: '10 nye højdepunkter styret af attributter og taktik', en: '10 new highlights driven by attributes and tactics' },
+    items: [
+      { da: 'Nye situationer i kampene, hver med sin egen 2D-afspilning og kommentar: kontraangreb (kontra + fart), gennembrudsaflevering (instruktion + kreativitet/løb), indlæg og hovedstød, driblingssolo (løb med bolden + dribling/flair), langskud, direkte frispark med mur, cutback fra baglinjen, højt pres (presspil "Ofte" + arbejdsrate/aggression), redningstackling (tackling/fart – med hårde tacklinger risiko for straffe og kort) og stolpe/overligger med returbold', en: 'New match situations, each with its own 2D replay and commentary: counter-attacks (counter + pace), through balls (instruction + creativity/runs), crosses and headers, solo dribbles (run with ball + dribbling/flair), long shots, direct free kicks with a wall, cutbacks from the byline, high press (closing down "Often" + work rate/aggression), last-ditch tackles (tackling/pace – with hard tackling a risk of penalties and cards) and woodwork with rebounds' },
+      { da: 'Højdepunkterne er mærket med typen (KONTRA, GENNEMBRUD, INDLÆG …), så du kan se, hvad din taktik skaber', en: 'Highlights are labelled by type (COUNTER, THROUGH BALL, CROSS …) so you can see what your tactics create' },
+    ],
+  },
+  {
     version: '0.7.71',
     date: '2026-10-19',
     title: { da: 'Budkrig mellem managere', en: 'Bidding wars between managers' },

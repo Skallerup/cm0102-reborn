@@ -123,6 +123,14 @@ export class MatchSim {
   /** Til 2D-visningen: spilleren med bolden (påvirker ikke kampen) */
   holder = 0;
   private breakaway: SP | null = null;
+  /** hvordan gennembruddet opstod (kontra / gennembrudsaflevering) – vises i 2D */
+  private breakawayOrigin = '';
+  /** oprindelse for næste afslutning (indlæg, dribling, pres …) */
+  private originNext = '';
+  /** højt pres: en angriber har erobret bolden højt og får en chance */
+  private pressed: SP | null = null;
+  /** højdepunkter uden afslutning (redningstacklinger) til 2D-visningen */
+  highlights: { m: number; t: number; kind: string; p: number; p2: number; moment: number }[] = [];
   private rebound: SP | null = null;
   private lastPasser: SP | null = null;
   private lastPasserMoment = -10;
@@ -372,6 +380,7 @@ export class MatchSim {
     this.zone = 7;
     this.breakaway = null;
     this.rebound = null;
+    this.pressed = null;
   }
 
   private recoverHalftime() {
@@ -408,10 +417,36 @@ export class MatchSim {
       this.shoot(T, O, s, 'rebound');
       return;
     }
+    if (this.pressed) {
+      const s = this.pressed;
+      this.pressed = null;
+      this.originNext = 'press';
+      this.shoot(T, O, s, 'box', 0.03);
+      return;
+    }
     if (this.breakaway) {
       const s = this.breakaway;
+      const origin = this.breakawayOrigin;
       this.breakaway = null;
-      if (this.r.chance(0.55)) { this.shoot(T, O, s, 'oneOnOne'); return; }
+      this.breakawayOrigin = '';
+      if (this.r.chance(0.55)) {
+        // redningstackling: den sidste forsvarer når hjem (tackling + fart mod løberens fart + dribling)
+        const cover = this.pick(O.zDef[this.zone], (x) => this.a(x, A.pace) + this.a(x, A.tackling));
+        if (cover && this.r.chance(clamp(0.1 + (this.a(cover, A.tackling) + this.a(cover, A.pace) - this.a(s, A.pace) - this.a(s, A.dribbling)) / 80, 0.04, 0.3))) {
+          // hårde tacklinger: risiko for frispark/straffe og kort
+          if (O.ti.tackling === 2 && this.r.chance(0.35) && this.foulCheck(T, O, s, cover, true)) return;
+          cover.line.tackles++;
+          this.rate(cover, 0.2);
+          this.line('lastditch', cover, s, true);
+          this.highlights.push({ m: this.minute, t: T.idx, kind: 'lastDitch', p: s.p.id, p2: cover.p.id, moment: this.moment });
+          if (this.r.chance(0.4)) return this.corner(T, O);
+          this.turnover(cover);
+          return;
+        }
+        this.originNext = origin;
+        this.shoot(T, O, s, 'oneOnOne');
+        return;
+      }
     }
 
     const carrier = this.pick(T.zAtt[z]);
@@ -561,6 +596,7 @@ export class MatchSim {
         if (rb + 1 >= 3 && this.r.chance(0.18)) this.line('dribble', s, def);
       } else {
         this.line('dribble-box', s, def);
+        this.originNext = 'dribble';
         this.shoot(T, O, s, 'box', 0.04);
       }
       return;
@@ -602,6 +638,7 @@ export class MatchSim {
       if (rb + 1 >= 3) {
         this.line('throughball', s, runner);
         this.breakaway = runner;
+        this.breakawayOrigin = 'through';
       }
     } else {
       this.rate(s, -0.03);
@@ -642,6 +679,7 @@ export class MatchSim {
       this.lastPasserMoment = this.moment;
       this.zone = boxZ;
       if (this.opts.commentary && this.r.chance(0.5)) this.line(setPiece ? 'corner-in' : 'cross', s, target);
+      if (!setPiece) this.originNext = 'cross';
       this.shoot(T, O, target, 'header');
     } else {
       this.rate(marker, 0.05);
@@ -767,6 +805,7 @@ export class MatchSim {
     const goalP = clamp(xg * mult, 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
+    if (this.originNext) { rec.origin = this.originNext; this.originNext = ''; }
     // skud direkte efter et hjørnespark (samme øjeblik)
     const cn = this.corners.at(-1);
     if (cn && cn.moment === this.moment && cn.t === T.idx && !cn.shot) { cn.shot = true; rec.corner = cn.taker; }
@@ -832,6 +871,16 @@ export class MatchSim {
       return;
     }
     rec.outcome = 'off';
+    // træværket: gode afslutninger kan ramme stolpen/overliggeren – og give returbold
+    if (kind !== 'pen' && xg >= 0.08 && this.r.chance(0.16)) {
+      rec.post = true;
+      this.line('post', s, null, true);
+      const fol = this.r.chance(0.3) ? this.pick(T.zAtt[z], (x) => Math.sqrt(this.finQ(x)), s) : null;
+      if (fol) { this.rebound = fol; return; }
+      this.zone = this.zoneFor(O.idx, 0, 1);
+      this.poss = O.idx;
+      return;
+    }
     this.rate(s, kind === 'oneOnOne' || kind === 'pen' ? -0.35 : -0.05);
     this.line(kind === 'pen' ? 'pen-miss' : kind === 'header' ? 'header-wide' : kind === 'oneOnOne' ? 'miss-1v1' : kind === 'long' ? 'long-wide' : 'wide', s, null, kind === 'pen' || kind === 'oneOnOne');
     if (kind === 'pen') this.events.push({ m: this.minute, t: T.idx, k: 'pen-miss', p: s.p.id });
@@ -864,6 +913,12 @@ export class MatchSim {
     const O = this.teams[1 - this.poss];
     this.poss = O.idx;
     this.lastPasser = null;
+    // højt pres ("Ofte"): erobrer en angriber bolden højt på banen, er der straks en chance (arbejdsrate + aggression)
+    if (winner && O.ti.closingDown === 2 && this.rb(O.idx) >= 3 && this.r.chance(clamp(0.05 + (this.a(winner, A.workRate) + this.a(winner, A.aggression) - 20) / 200, 0.02, 0.12))) {
+      this.pressed = winner;
+      this.line('press-win', winner, null, true);
+      return;
+    }
     // Kontra
     if (O.ti.counter) {
       const rb = this.rb(O.idx);
@@ -876,7 +931,7 @@ export class MatchSim {
           if (this.r.chance(p * 0.55)) {
             this.zone = this.zoneFor(O.idx, Math.min(3, rb + 2), 1);
             this.line('counter', winner ?? runner, runner);
-            if (this.r.chance(0.35)) this.breakaway = runner;
+            if (this.r.chance(0.35)) { this.breakaway = runner; this.breakawayOrigin = 'counter'; }
           }
         }
       }
