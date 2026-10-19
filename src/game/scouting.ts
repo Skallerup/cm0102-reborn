@@ -50,18 +50,32 @@ export function attrRange(p: Player, idx: number, k = knowledgeOf(p)): [number, 
 }
 
 /** Scoutens vurdering af evne/potentiale (0-5 stjerner i halve), relativt til brugerens klub */
+/**
+ * Realistisk potentiale: hvad spilleren kan nå i sin alder. Unge kan nå hele deres loft; fra midten af
+ * 20'erne vokser man kun lidt (se udviklingsmodellen), og fra 29 år er potentialet = evnen.
+ */
+export function effectivePA(p: Player): number {
+  const age = ageOn(p.dob, gs().date);
+  if (age <= 23) return Math.max(p.ca, p.pa);
+  const share = age >= 29 ? 0 : [0.45, 0.35, 0.25, 0.15, 0.05][age - 24];
+  return p.ca + Math.max(0, p.pa - p.ca) * share;
+}
+
 export function scoutStars(p: Player): { ability: [number, number]; potential: [number, number] } {
   const g = gs();
   const k = knowledgeOf(p);
   const ref = g.userClub ? clubLevel(g.userClub) : 120;
   const toStars = (ca: number) => Math.max(0.5, Math.min(5, Math.round(((ca - ref + 50) / 20) * 2) / 2));
   const a = toStars(p.ca);
-  const pot = toStars(p.pa);
+  const eff = effectivePA(p);
+  const pot = toStars(eff);
+  // ekstra usikkerhed om potentialet kun når der er plads til at udvikle sig
+  const growUnc = k < 60 && eff > p.ca + 3 ? 0.5 : 0;
   const unc = k >= 90 ? 0 : k >= 60 ? 0.5 : k >= 25 ? 1 : 1.5;
   const off = Math.round(hash01(p.id, 3) * unc * 2) / 2;
   return {
     ability: [Math.max(0.5, a - off), Math.min(5, a - off + unc)],
-    potential: [Math.max(0.5, pot - off), Math.min(5, pot - off + unc + (k < 60 ? 0.5 : 0))],
+    potential: [Math.max(0.5, pot - off), Math.min(5, pot - off + unc + growUnc)],
   };
 }
 
