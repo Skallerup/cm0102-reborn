@@ -1,10 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { addDays } from '../game/dates';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil } from '../game/sim';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
-import { Crest, Modal } from './components';
+import { Crest } from './components';
 import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
@@ -52,7 +51,6 @@ export function Shell() {
   const { route, nav } = useNav();
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
-  const [holiday, setHoliday] = useState(false);
   const [toast, setToast] = useState('');
   const stopRef = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
@@ -184,7 +182,6 @@ export function Shell() {
         {online ? <OnlineControls /> : (
           <>
             <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
-            <button onClick={() => setHoliday(true)}>{t('top.holiday')}</button>
             <button className="primary continue" onClick={onContinue} title={unreadImportant ? t('top.continueUnread', { n: unreadImportant }) : t('top.continueHint')}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unreadImportant > 0 && <span className="cont-badge">{unreadImportant}</span>}</button>
           </>
         )}
@@ -231,30 +228,8 @@ export function Shell() {
           <button onClick={() => { stopRef.current = true; }}>{t('common.stop')}</button>
         </div>
       )}
-      {holiday && <HolidayModal onClose={() => setHoliday(false)} onGo={(date) => { setHoliday(false); void run({ untilDate: date, autoPlay: true }); }} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
-  );
-}
-
-function HolidayModal({ onClose, onGo }: { onClose: () => void; onGo: (date: string) => void }) {
-  const g = gs();
-  const [date, setDate] = useState(addDays(g.date, 14));
-  return (
-    <Modal title={t('holiday.title')} onClose={onClose}>
-      <div className="col">
-        <div className="muted">{t('holiday.text')}</div>
-        <div className="row">
-          {[7, 14, 30, 60].map((d) => <button key={d} onClick={() => setDate(addDays(g.date, d))}>{t('holiday.days', { n: d })}</button>)}
-          <button onClick={() => setDate(`${g.season + 1}-06-30`)}>{t('holiday.season')}</button>
-        </div>
-        <input type="date" value={date} min={addDays(g.date, 1)} onChange={(e) => setDate(e.target.value)} />
-        <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={() => onGo(date)}>{t('holiday.go')}</button>
-        </div>
-      </div>
-    </Modal>
   );
 }
 

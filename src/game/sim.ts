@@ -456,7 +456,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   return rep;
 }
 
-/** Ferie / spring frem til næste kamp. Kører i bidder så UI'et forbliver responsivt. */
+/** Spring frem til næste kamp. Kører i bidder så UI'et forbliver responsivt. */
 /** Rene informationsnyheder (andre klubbers handler, trænerskifter, klummer, kåringer …) stopper ikke Fortsæt */
 const INFO_KEYS = new Set([
   'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',

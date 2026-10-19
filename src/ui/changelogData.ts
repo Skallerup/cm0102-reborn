@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.26',
+    date: '2026-10-19',
+    title: { da: 'Ferie fjernet', en: 'Holiday removed' },
+    items: [
+      { da: 'Knappen "Ferie…" er fjernet – brug "Næste kamp" eller Fortsæt', en: 'The "Holiday…" button has been removed – use "Next match" or Continue' },
+    ],
+  },
+  {
     version: '0.7.25',
     date: '2026-10-19',
     title: { da: 'Målscorere i kamprapporten', en: 'Scorers in the match report' },

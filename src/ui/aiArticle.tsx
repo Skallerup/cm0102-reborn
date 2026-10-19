@@ -72,7 +72,7 @@ function facts(n: NewsItem): Record<string, unknown> | null {
 const prefetched = new Set<number>();
 export function prefetchArticles() {
   const g = gs();
-  // kun helt nye beskeder – efter en ferie skal der ikke skrives artikler til alt det, man sprang over
+  // kun helt nye beskeder – efter mange dage i træk skal der ikke skrives artikler til alt det, man sprang over
   const since = addDays(g.date, -3);
   const items = g.news.filter((n) => !n.read && n.date >= since && hasArticle(n) && !prefetched.has(n.id) && !aiText(`news:${n.id}`)).slice(0, 3);
   for (const n of items) {

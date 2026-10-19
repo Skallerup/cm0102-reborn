@@ -48,7 +48,7 @@ Før byggeriet blev der stillet 10 forslag til forbedringer. De 8 valgte er impl
 | 6 | Moderne regler som valgfrit (5 udskiftninger, ny CL-ligafase) | ⏸️ Ikke valgt – klassiske 2001-regler |
 | 7 | **Smartere AI-klubber**: behovsanalyse pr. position, budget- og omdømmestyrede køb | ✅ |
 | 8 | **Exploit-sikret motor + taktik-benchmark** i en Web Worker | ✅ |
-| 9 | **Hurtig simulering**: "Næste kamp", ferie til dato, spring kamp over | ✅ |
+| 9 | **Hurtig simulering**: "Næste kamp", spring kamp over | ✅ |
 | 10 | **Challenges + dansk/engelsk + delbar seed** | ✅ |
 
 ## To databaser: moderne eller original CM 01/02

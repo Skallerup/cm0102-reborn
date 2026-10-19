@@ -20,13 +20,11 @@ export const en: Record<string, string> = {
 
   'top.unemployed': 'Unemployed', 'top.balance': 'Balance', 'top.budget': 'Transfer budget', 'top.next': 'Next',
   'top.continue': 'Continue', 'top.toTheMatch': 'To the match ›', 'top.toMatch': 'Next match »', 'top.toMatchHint': 'Skip to the next match (stops on important news)',
-  'top.holiday': 'Holiday…', 'top.fullscreen': 'Full screen', 'top.exitFullscreen': 'Exit full screen', 'top.running': 'Simulating…', 'top.saved': 'Game saved', 'top.quitConfirm': 'Save and quit to the main menu?',
+  'top.fullscreen': 'Full screen', 'top.exitFullscreen': 'Exit full screen', 'top.running': 'Simulating…', 'top.saved': 'Game saved', 'top.quitConfirm': 'Save and quit to the main menu?',
   'nav.inbox': 'Inbox', 'nav.squad': 'Squad', 'nav.tactics': 'Tactics', 'nav.training': 'Training', 'nav.fixtures': 'Fixtures',
   'nav.competitions': 'Competitions', 'nav.transfers': 'Transfers', 'nav.scouting': 'Scouting', 'nav.assistant': 'Assistant',
   'nav.staff': 'Staff', 'nav.finance': 'Finances', 'nav.club': 'Club', 'nav.history': 'History', 'nav.jobs': 'Job centre',
   'nav.options': 'Options', 'nav.save': 'Save game', 'nav.quit': 'Quit',
-  'holiday.title': 'Go on holiday', 'holiday.text': 'Your assistant picks the team and plays the matches while you are away.',
-  'holiday.days': '{n} days', 'holiday.season': 'End of season', 'holiday.go': 'Go',
 
 
 

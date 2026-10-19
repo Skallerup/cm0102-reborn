@@ -86,11 +86,8 @@ await step('næste kamp + simulér', async () => {
   await page.getByRole('button', { name: 'Simulér resultat' }).click();
   await page.getByText('Kamprapport').waitFor();
 });
-await step('ferie 60 dage', async () => {
-  await page.getByRole('button', { name: 'Ferie…' }).click();
-  await page.getByRole('button', { name: '60 dage' }).click();
-  await page.getByRole('button', { name: 'Afsted' }).click();
-  await page.locator('.progress').waitFor({ state: 'detached', timeout: 180000 });
+await step('spol 60 dage frem', async () => {
+  await page.evaluate(() => window.__cm.advance(60));
   await page.locator('.sidenav').getByRole('button', { name: 'Turneringer', exact: true }).click();
   await shot('19-after-holiday');
 });

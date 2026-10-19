@@ -35,11 +35,8 @@ await page.getByText('FC København', { exact: true }).click();
 await page.getByRole('button', { name: 'Start karrieren' }).click();
 await page.getByText('Indbakke').first().waitFor({ timeout: 30000 });
 
-// ferie et stykke ind i sæsonen, så tabeller og statistik er fyldt
-await page.getByRole('button', { name: 'Ferie…' }).click();
-await page.getByRole('button', { name: '60 dage' }).click();
-await page.getByRole('button', { name: 'Afsted' }).click();
-await page.locator('.progress').waitFor({ state: 'detached', timeout: 180000 });
+// spol et stykke ind i sæsonen, så tabeller og statistik er fyldt
+await page.evaluate(() => window.__cm.advance(60));
 await page.evaluate(() => { const { gs, notify } = window.__cm; for (const n of gs().news) n.read = true; notify(); });
 
 await nav('Taktik');
