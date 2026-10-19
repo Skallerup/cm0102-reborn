@@ -488,7 +488,7 @@ export function quickPlayUserMatch(): MatchReport | null {
 const INFO_KEYS = new Set([
   'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',
   'award.monthPlayer', 'award.monthManager', 'award.ballonDor', 'news.champions', 'news.cupWin', 'news.playoffWin', 'rumour.interest',
-  'news.retired', 'news.youth', 'transfer.digest', 'transfer.digestOne', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
+  'news.retired', 'news.youth', 'war.headline', 'war.result', 'war.staffHeadline', 'war.staffResult', 'transfer.digest', 'transfer.digestOne', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
 ]);
 export function needsAttention(n: NewsItem): boolean {
   if (!INFO_KEYS.has(n.key)) return true;

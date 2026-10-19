@@ -441,6 +441,20 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
       o.signing = { wage, years, clauses: Object.keys(cl).length ? cl : undefined };
       o.respondBy = addDays(g.date, 1);
       addNews({ cat: 'transfer', key: 'signing.pending', params: { player: pname(p) }, link: { kind: 'player', id: p.id } });
+      // en anden manager har også et tilbud liggende: budkrig – begge kan hæve én gang, blindt
+      const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && x.signing && x.buyer !== o.buyer && isHumanClub(x.buyer));
+      if (rivals.length) {
+        const all = [o, ...rivals];
+        const newWar = rivals.every((x) => !x.war);
+        const deadline = addDays(g.date, 2);
+        for (const x of all) {
+          const fresh = !x.war;
+          x.war = true;
+          x.respondBy = deadline;
+          if (fresh || x === o) asOwner(x.buyer, () => addNews({ cat: 'transfer', key: 'war.startedWage', params: { player: pname(p), n: all.length, date: deadline, oid: x.id }, link: { kind: 'player', id: p.id } }));
+        }
+        if (newWar) warHeadline(p, all.map((x) => x.buyer));
+      }
       return 'pending';
     }
     if (o.preContract) {
@@ -482,18 +496,20 @@ export function resolveSignings() {
     const p = g.players[pid];
     const valid = list.filter((o) => p && (o.preContract ? !p.contract?.futureClub && p.club !== o.buyer : !p.club) && g.clubs[o.buyer]);
     const score = (o: TransferOffer) => o.signing!.wage / Math.max(1, wageDemand(p, g.clubs[o.buyer])) + (g.clubs[o.buyer].rep - p.rep) / 150;
-    const win = valid.slice().sort((a, b) => score(b) - score(a) || a.id - b.id)[0];
+    const sortedValid = valid.slice().sort((a, b) => score(b) - score(a) || a.id - b.id);
+    const win = sortedValid[0];
+    if (win && list.some((o) => o.war) && sortedValid.length > 1) warReveal(p, sortedValid, true);
     if (win) {
       const sg = win.signing!;
       if (win.preContract) completePreContract(win, sg.wage, sg.years, sg.clauses ?? {});
       else completeTransfer(win, sg.wage, sg.years, sg.clauses);
-      if (list.length > 1) asOwner(win.buyer, () => addNews({ cat: 'transfer', key: 'signing.won', params: { player: pname(p), n: list.length }, link: { kind: 'player', id: p.id } }));
+      if (list.length > 1 && !list.some((o) => o.war)) asOwner(win.buyer, () => addNews({ cat: 'transfer', key: 'signing.won', params: { player: pname(p), n: list.length }, link: { kind: 'player', id: p.id } }));
     }
     for (const o of list) {
       if (o === win) continue;
       o.status = 'rejected';
       o.outbid = true;
-      asOwner(o.buyer, () => addNews({ cat: 'transfer', key: win ? 'signing.lost' : 'signing.gone', params: { player: pname(p), club: win ? g.clubs[win.buyer]?.name ?? '' : '' }, link: { kind: 'player', id: pid } }));
+      if (!(win && o.war)) asOwner(o.buyer, () => addNews({ cat: 'transfer', key: win ? 'signing.lost' : 'signing.gone', params: { player: pname(p), club: win ? g.clubs[win.buyer]?.name ?? '' : '' }, link: { kind: 'player', id: pid } }));
     }
   }
 }
@@ -1355,12 +1371,52 @@ function startAuction(o: TransferOffer, p: Player) {
   if (!rivals.length) return;
   const all = [o, ...rivals];
   const deadline = all.reduce((d, x) => (x.respondBy > d ? x.respondBy : d), addDays(g.date, AUCTION_DAYS));
+  const newWar = rivals.every((x) => !x.auction);
   for (const x of all) {
     const fresh = !x.auction;
     x.auction = true;
     x.respondBy = deadline;
-    if (fresh || x === o) asOwner(x.buyer, () => addNews({ cat: 'transfer', key: 'auction.started', params: { player: pname(p), n: all.length, date: deadline }, link: { kind: 'offer', id: x.id } }));
+    if (fresh || x === o) asOwner(x.buyer, () => addNews({ cat: 'transfer', key: 'war.started', params: { player: pname(p), n: all.length, date: deadline, oid: x.id }, link: { kind: 'offer', id: x.id } }));
   }
+  if (newWar) warHeadline(p, all.map((x) => x.buyer));
+}
+
+/** Pressen dækker budkrigen – alle managere ser overskriften */
+function warHeadline(p: Player, clubs: number[]) {
+  const g = gs();
+  const [a, b] = clubs.map((c) => g.clubs[c]?.name ?? '');
+  addNews({ cat: 'general', key: 'war.headline', params: { player: pname(p), a, b: b ?? '', n: clubs.length }, link: { kind: 'player', id: p.id } }, { all: true });
+}
+
+/** Afsløringen: alle deltagere ser begge bud – og alle managere får resultatet som overskrift */
+function warReveal(p: Player, sorted: TransferOffer[], wage: boolean) {
+  const g = gs();
+  const [win, second] = sorted;
+  const amount = (o: TransferOffer) => (wage ? o.signing?.wage ?? 0 : o.fee);
+  const params = { player: pname(p), a: g.clubs[win.buyer]?.name ?? '', b: g.clubs[second.buyer]?.name ?? '', n: sorted.length, ...(wage ? { wage: amount(win), wage2: amount(second) } : { fee: amount(win), bid2: amount(second) }) };
+  for (const o of sorted) asOwner(o.buyer, () => addNews({ cat: 'transfer', key: o === win ? (wage ? 'war.revealWonWage' : 'war.revealWon') : (wage ? 'war.revealLostWage' : 'war.revealLost'), params, link: { kind: 'player', id: p.id } }));
+  addNews({ cat: 'general', key: 'war.result', params, link: { kind: 'player', id: p.id } }, { all: true });
+}
+
+/** Budkrig: hæv dit bud én gang – blindt, før fristen */
+export function raiseBid(offerId: number, amount: number): string {
+  const g = gs();
+  const o = g.offers.find((x) => x.id === offerId);
+  if (!o || o.buyer !== g.userClub || o.status !== 'pending' || !(o.auction || o.war) || o.raised) return 'error';
+  const club = g.clubs[o.buyer];
+  if (o.signing) {
+    const w = Math.round(amount / 50) * 50;
+    if (w <= o.signing.wage) return 'low';
+    if (currentBill(club.id) + w > club.wageBudget) return 'budget';
+    o.signing.wage = w;
+  } else {
+    const fee = roundValue(amount);
+    if (fee <= o.fee) return 'low';
+    if (fee > club.transferBudget) return 'transfer.overBudget';
+    o.fee = fee;
+  }
+  o.raised = true;
+  return 'ok';
 }
 
 /** Dagligt (før buddene behandles): afgør budrunder, hvor fristen er nået – højeste bud går videre */
@@ -1378,11 +1434,12 @@ export function resolveAuctions() {
     const sorted = list.slice().sort((a, b) => value(b) - value(a) || a.created.localeCompare(b.created) || a.id - b.id);
     const [win, ...lose] = sorted;
     win.respondBy = g.date;
+    warReveal(p, sorted, false);
     asOwner(win.buyer, () => addNews({ cat: 'transfer', key: 'auction.won', params: { player: pname(p), n: list.length, club: sellerName(p.club) }, link: { kind: 'offer', id: win.id } }));
     for (const o of lose) {
       o.status = 'rejected';
       o.outbid = true;
-      asOwner(o.buyer, () => addNews({ cat: 'transfer', key: 'auction.lost', params: { player: pname(p), club: g.clubs[win.buyer]?.name ?? '', fee: win.fee }, link: { kind: 'player', id: p.id } }));
+      // taberen får besked via afsløringen (warReveal)
     }
   }
 }

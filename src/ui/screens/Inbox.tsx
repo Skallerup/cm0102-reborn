@@ -1,15 +1,15 @@
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { onFocusNews, takeFocus } from '../inboxFocus';
 import { act } from '../../game/actions';
 import { useHotkeys } from '../hotkeys';
-import { dateFmt, t } from '../../i18n';
+import { dateFmt, money, t } from '../../i18n';
 import { Empty, Panel } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
 import { AiArticle } from '../aiArticle';
 import { NewsIcon } from '../icons';
-import type { NewsCategory } from '../../game/types';
+import type { NewsCategory, NewsItem } from '../../game/types';
 
 const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 'injury', 'board', 'scout', 'award', 'youth', 'job', 'general'];
 
@@ -83,12 +83,58 @@ export function Inbox() {
               <h3 style={{ color: 'var(--accent)', display: 'flex', gap: 10, alignItems: 'center' }} className="news-head"><NewsIcon newsKey={item.key} cat={item.cat} /><span><NewsTitle n={item} /></span></h3>
               {newsBody(item) && <p style={{ lineHeight: 1.5 }}><NewsBody n={item} /></p>}
               <NewsDeals n={item} />
+              <WarRaise item={item} />
               <AiArticle item={item} />
               {item.link && <div><button onClick={() => open(item)}>{t('inbox.open')}</button></div>}
             </div>
           ) : <Empty text={t('inbox.select')} />}
         </Panel>
       </div>
+    </div>
+  );
+}
+
+/** Budkrig: hæv dit bud én gang – blindt – før afsløringen */
+function WarRaise({ item }: { item: NewsItem }) {
+  const g = useGame()!;
+  const [amount, setAmount] = useState(0);
+  const [res, setRes] = useState('');
+  let cur = 0, raised = false, wage = false, max = 0, send: ((v: number) => string) | null = null;
+  if (item.key === 'war.started' || item.key === 'war.startedWage') {
+    const o = g.offers.find((x) => x.id === Number(item.params.oid));
+    if (!o || o.buyer !== g.userClub || o.status !== 'pending' || !(o.auction || o.war)) return null;
+    wage = !!o.signing;
+    cur = wage ? o.signing!.wage : o.fee;
+    raised = !!o.raised;
+    max = wage ? Math.round(cur * 1.6) : Math.min(g.clubs[g.userClub].transferBudget, Math.round(cur * 1.6));
+    send = (v) => act<string>({ t: 'raiseBid', offer: o.id, amount: v });
+  } else if (item.key === 'war.staffStarted') {
+    const b = g.staffBids?.find((x) => x.staff === Number(item.params.sid) && x.club === g.userClub);
+    if (!b || !b.war) return null;
+    wage = true;
+    cur = b.wage ?? 0;
+    raised = !!b.raised;
+    max = Math.round(cur * 1.6);
+    send = (v) => act<string>({ t: 'raiseStaff', staff: b.staff, wage: v });
+  } else return null;
+  const step = wage ? 50 : 50_000;
+  const v = Math.min(max, Math.max(amount || cur, cur));
+  return (
+    <div className="war-box">
+      <div className="war-title">⚔️ {t('war.boxTitle')}</div>
+      <div>{t(wage ? 'war.boxCurWage' : 'war.boxCur', { amount: money(cur) })}</div>
+      {raised ? <div className="muted">{t('war.boxRaised')}</div> : max > cur ? (
+        <>
+          <label>{t('war.boxNew')}: <b className="accent">{money(v)}</b>{wage ? ` / ${t('common.week')}` : ''} (+{Math.round(((v - cur) / Math.max(1, cur)) * 100)}%)
+            <input type="range" min={cur} max={max} step={step} value={v} onChange={(e) => setAmount(Number(e.target.value))} style={{ width: '100%' }} />
+          </label>
+          <div className="row">
+            <button className="primary" disabled={v <= cur || !send} onClick={() => setRes(send!(v))}>{t('war.boxRaise')}</button>
+            <span className="muted">{t('war.boxOnce')}</span>
+          </div>
+        </>
+      ) : <div className="muted">{t('war.boxNoRoom')}</div>}
+      {res && res !== 'ok' && <div className="bad">{t(`war.err.${res}`) !== `war.err.${res}` ? t(`war.err.${res}`) : t(res)}</div>}
     </div>
   );
 }

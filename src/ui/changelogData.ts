@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.71',
+    date: '2026-10-19',
+    title: { da: 'Budkrig mellem managere', en: 'Bidding wars between managers' },
+    items: [
+      { da: 'Byder to managere på samme spiller eller staff, starter en ⚔️ budkrig: begge får besked og kan hæve deres bud én gang – blindt – direkte i beskeden. Derefter kommer afsløringen med begge bud side om side', en: 'If two managers bid for the same player or staff member, a ⚔️ bidding war starts: both are told and can raise their bid once – blind – directly in the message. Then comes the reveal with both bids side by side' },
+      { da: 'Pressen dækker det: alle managere får overskriften "Transferkrig: A og B slås om X" – og resultatet bagefter', en: 'The press covers it: all managers get the headline "Transfer war: A and B battle for X" – and the result afterwards' },
+    ],
+  },
+  {
     version: '0.7.70',
     date: '2026-10-19',
     title: { da: 'Vælg selv tempoet i kampe mellem managere', en: 'Choose the pace in matches between managers' },

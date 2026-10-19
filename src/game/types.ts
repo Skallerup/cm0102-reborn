@@ -455,6 +455,10 @@ export interface TransferOffer {
   addOn?: number;
   /** Lukket budrunde mellem managere om samme spiller */
   auction?: boolean;
+  /** budkrig mellem managere: fri spiller/Bosman (auction bruges for spillere i AI-klubber) */
+  war?: boolean;
+  /** buddet er hævet i budkrigen (kun én gang) */
+  raised?: boolean;
   /** Tabte budrunden til en anden manager */
   outbid?: boolean;
   /** Byttehandel: spillere fra køberen, der indgår i handlen */
@@ -709,7 +713,7 @@ export interface GameState {
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
   chat?: ChatMsg[];
   /** Multiplayer: tilbud til staff, der afgøres dagen efter */
-  staffBids?: { staff: number; club: number; date: string; wage?: number }[];
+  staffBids?: { staff: number; club: number; date: string; wage?: number; war?: boolean; raised?: boolean }[];
   /** Stikpiller i pressen mellem managere */
   jabs?: { id: number; from: string; to: string; date: string; line: number; text: string; fixture?: number; resolved?: boolean }[];
   /** Prestige-væddemål om næste indbyrdes kamp */

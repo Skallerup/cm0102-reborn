@@ -753,3 +753,5 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 .countdown { font-size: 72px; font-weight: 900; line-height: 1; color: var(--accent); animation: pop 0.4s; }
 .leave-note { font-size: 12px; margin: -4px 0 8px; }
+.war-box { border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--tint1, transparent); }
+.war-title { font-weight: 800; letter-spacing: 0.04em; }

@@ -6,7 +6,7 @@ import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { activateNation, playPendingAsAi, submitMatchResult } from './sim';
 import { initKnowledge } from './scouting';
-import { fireStaff, hireStaff } from './staff';
+import { fireStaff, hireStaff, raiseStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
 import { applyPress, type Tone } from './press';
@@ -15,7 +15,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { removeHuman } from './humans';
 import { addNews, gs, notify } from './state';
 import {
-  acceptCounter, enquire, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
+  acceptCounter, enquire, loanOut, makeBid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
@@ -63,6 +63,8 @@ export type Action =
   | { t: 'fixPending' }
   | { t: 'setWindows'; mode: 'real' | 'classic' }
   | { t: 'setH2hTime'; minutes: number }
+  | { t: 'raiseBid'; offer: number; amount: number }
+  | { t: 'raiseStaff'; staff: number; wage: number }
   | { t: 'matchResult'; fixture: number; rep: MatchReport }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
@@ -145,6 +147,8 @@ export function applyAction(a: Action): unknown {
     case 'declineJob': declineJob(a.club); return 'ok';
     case 'resign': playPendingAsAi(); return resignJob();
     case 'fixPending': playPendingAsAi(); return 'ok';
+    case 'raiseBid': return raiseBid(a.offer, a.amount);
+    case 'raiseStaff': return raiseStaff(a.staff, a.wage);
     case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
     case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(1, Math.round(a.minutes))); return 'ok';
     case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';

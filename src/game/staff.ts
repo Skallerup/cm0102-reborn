@@ -1,5 +1,6 @@
 // Staff: ansæt, fyr og køb fri fra andre klubber
 import { addNews, gs } from './state';
+import { addDays } from './dates';
 import { isMultiplayer, ownerOf, withHuman } from './humans';
 import { hash01 } from './rng';
 import type { Staff, StaffRole } from './types';
@@ -47,9 +48,26 @@ export function hireStaff(id: number, wage?: number): HireResult {
   if (isMultiplayer(g)) {
     g.staffBids ??= [];
     const mine = g.staffBids.find((b) => b.staff === id && b.club === club.id);
-    if (mine) { mine.wage = offer; return 'pending'; }
+    if (mine) { if (!mine.war) mine.wage = offer; return 'pending'; }
     g.staffBids.push({ staff: id, club: club.id, date: g.date, wage: offer });
     addNews({ cat: 'general', key: 'staff.bidSent', params: { name: `${s.first} ${s.last}`, wage: offer } });
+    // en anden manager byder også: budkrig – begge kan hæve én gang, blindt, og svaret kommer en dag senere
+    const all = g.staffBids.filter((b) => b.staff === id);
+    if (all.length > 1) {
+      const newWar = all.every((b) => !b.war);
+      const deadline = addDays(g.date, 1);
+      for (const b of all) {
+        const fresh = !b.war;
+        b.war = true;
+        b.date = deadline;
+        const owner = ownerOf(b.club);
+        if (owner && (fresh || b.club === club.id)) withHuman(owner, () => addNews({ cat: 'general', key: 'war.staffStarted', params: { name: `${s.first} ${s.last}`, n: all.length, sid: id } }));
+      }
+      if (newWar) {
+        const [a, b] = all.map((x) => g.clubs[x.club]?.name ?? '');
+        addNews({ cat: 'general', key: 'war.staffHeadline', params: { name: `${s.first} ${s.last}`, a, b } }, { all: true });
+      }
+    }
     return 'pending';
   }
   return doHire(s.id, offer);
@@ -114,17 +132,36 @@ export function resolveStaffBids() {
     const score = (b: (typeof bids)[number]) => (b.wage ?? demand) / demand + (g.clubs[b.club]?.rep ?? 0) / 200 + hash01(g.seed, sid, b.club) * 0.005;
     const order = bids.slice().sort((a, b) => score(b) - score(a));
     let winner = 0;
+    // budkrig: afsløring af de to bedste tilbud
+    if (bids.some((b) => b.war) && order.length > 1) {
+      const params = { name, a: g.clubs[order[0].club]?.name ?? '', b: g.clubs[order[1].club]?.name ?? '', wage: order[0].wage ?? demand, wage2: order[1].wage ?? demand };
+      for (const b of bids) { const owner = ownerOf(b.club); if (owner) withHuman(owner, () => addNews({ cat: 'general', key: b === order[0] ? 'war.staffWon' : 'war.staffLost', params })); }
+      addNews({ cat: 'general', key: 'war.staffResult', params }, { all: true });
+    }
     for (const b of order) {
       const owner = ownerOf(b.club);
       if (!owner) continue;
       const r = withHuman(owner, () => doHire(sid, b.wage));
       if (r === 'ok') { winner = b.club; break; }
     }
+    const war = bids.some((b) => b.war) && order.length > 1;
     for (const b of bids) {
       const owner = ownerOf(b.club);
-      if (!owner || b.club === winner) continue;
+      if (!owner || b.club === winner || (war && winner)) continue;
       withHuman(owner, () => addNews({ cat: 'general', key: winner ? 'staff.bidLost' : 'staff.bidFailed', params: { name, club: g.clubs[winner]?.name ?? '' } }));
     }
-    if (winner && bids.length > 1) { const owner = ownerOf(winner); if (owner) withHuman(owner, () => addNews({ cat: 'general', key: 'staff.bidWon', params: { name, n: bids.length } })); }
+    if (winner && bids.length > 1 && !war) { const owner = ownerOf(winner); if (owner) withHuman(owner, () => addNews({ cat: 'general', key: 'staff.bidWon', params: { name, n: bids.length } })); }
   }
+}
+
+/** Budkrig om en ansat: hæv dit lønbud én gang – blindt, før svaret */
+export function raiseStaff(id: number, wage: number): string {
+  const g = gs();
+  const mine = g.staffBids?.find((b) => b.staff === id && b.club === g.userClub);
+  if (!mine || !mine.war || mine.raised) return 'error';
+  const w = Math.round(wage / 50) * 50;
+  if (w <= (mine.wage ?? 0)) return 'low';
+  mine.wage = Math.min(w, (mine.wage ?? w) * 2);
+  mine.raised = true;
+  return 'ok';
 }
