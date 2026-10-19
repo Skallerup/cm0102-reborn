@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.30',
+    date: '2026-10-19',
+    title: { da: 'Farvetemaer', en: 'Colour themes' },
+    items: [
+      { da: 'Vælg farvetema under Indstillinger: mørkt, lyst eller klubbens farver', en: 'Choose a colour theme in Options: dark, light or club colours' },
+      { da: 'Klubtemaet henter farverne fra logoet på den klub, du styrer (fx blå og gul for Brøndby), og skifter med, når du skifter klub', en: 'The club theme takes the colours from the crest of the club you manage (e.g. blue and yellow for Brøndby) and changes when you change club' },
+    ],
+  },
+  {
     version: '0.7.29',
     date: '2026-10-19',
     title: { da: 'Byttehandler', en: 'Swap deals' },

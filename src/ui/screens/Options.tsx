@@ -5,10 +5,12 @@ import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currenc
 import { Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
+import { getTheme, setTheme, type Theme } from '../theme';
 
 export function Options() {
   const g = useGame()!;
   const [msg, setMsg] = useState('');
+  const [theme, setThemeState] = useState<Theme>(getTheme());
   return (
     <div>
       <Head title={t('nav.options')} />
@@ -31,6 +33,12 @@ export function Options() {
               </select>
             </label>
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
+            <label className="row">{t('opt.theme')}
+              <select value={theme} onChange={(e) => { setThemeState(e.target.value as Theme); setTheme(e.target.value as Theme); }}>
+                {(['dark', 'light', 'club'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
+              </select>
+            </label>
+            {theme === 'club' && <div className="muted">{t('opt.theme.clubHint')}</div>}
             <label className="row">{t('opt.news')}
               <select value={g.options.newsScope ?? 'league'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
                 {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}

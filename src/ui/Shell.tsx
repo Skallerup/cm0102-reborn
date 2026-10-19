@@ -37,6 +37,7 @@ import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
+import { applyTheme } from './theme';
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
@@ -63,6 +64,8 @@ export function Shell() {
   const chatUnread = (g.humans ? unreadChat() : 0) + (session()?.unreadChat() ?? 0);
   const unreadImportant = g.news.filter((n) => !n.read).length;
 
+  // klubtema følger den klub, man styrer
+  useEffect(() => { applyTheme(); }, [g.userClub]);
   // AI-artikler (kamprapporter m.m.) skrives i baggrunden, så de er klar når beskeden åbnes
   const newestNews = g.news[0]?.id;
   useEffect(() => { if (newestNews !== undefined) prefetchArticles(); }, [newestNews, g.userClub]);
