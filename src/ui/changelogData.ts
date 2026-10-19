@@ -14,6 +14,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: { da: 'Skader og røde kort pauser kampen', en: 'Injuries and red cards pause the match' },
     items: [
       { da: 'Bliver en af dine spillere skadet eller udvist, pauses kampen, og du sendes til Taktik, så du selv kan skifte ud og justere formationen. Assistenten skifter ikke længere skadede spillere ud for dig', en: 'If one of your players is injured or sent off, the match pauses and you are taken to Tactics so you can substitute and adjust the formation yourself. The assistant no longer substitutes injured players for you' },
+      { da: 'Boldbesiddelse vises altid i procent (100 % i alt) – også under kampen', en: 'Possession is always shown as a percentage (100% in total) – also during the match' },
       { da: 'Online: "Til kampen"/Klar og "Alle venter på dig" vises ikke i topbjælken, mens du spiller din kamp', en: 'Online: "To the match"/Ready and "Everyone is waiting for you" are not shown in the top bar while you play your match' },
     ],
   },

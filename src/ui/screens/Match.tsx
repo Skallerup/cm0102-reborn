@@ -455,7 +455,7 @@ function LiveMatch({ id }: { id: number }) {
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
       <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
-      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
+      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>
       <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
@@ -675,8 +675,11 @@ function FollowMatch({ id }: { id: number }) {
 }
 
 export function StatsPanel({ stats, home, away }: { stats: [MatchReport['stats'][0], MatchReport['stats'][1]]; home: string; away: string }) {
+  const possSum = stats[0].possession + stats[1].possession;
+  const pct0 = possSum > 0 ? Math.round((100 * stats[0].possession) / possSum) : 50;
   const rows: [string, number, number, boolean?][] = [
-    ['possession', stats[0].possession, stats[1].possession],
+    // besiddelse i procent (under kampen tælles der i øjeblikke) – altid 100 % i alt
+    ['possession', pct0, 100 - pct0],
     ['xg', stats[0].xg, stats[1].xg, true],
     ['shots', stats[0].shots, stats[1].shots],
     ['onTarget', stats[0].onTarget, stats[1].onTarget],
@@ -693,9 +696,9 @@ export function StatsPanel({ stats, home, away }: { stats: [MatchReport['stats']
         const tot = h + a || 1;
         return (
           <div key={k} className="statline">
-            <span className="h">{dec ? h.toFixed(2) : h}</span>
+            <span className="h">{dec ? h.toFixed(2) : h}{k === 'possession' || k === 'passPct' ? '%' : ''}</span>
             <span className="lbl">{t(`stat.${k}`)}</span>
-            <span className="a">{dec ? a.toFixed(2) : a}</span>
+            <span className="a">{dec ? a.toFixed(2) : a}{k === 'possession' || k === 'passPct' ? '%' : ''}</span>
             <div className="statbar"><i style={{ width: `${(h / tot) * 100}%` }} /><i style={{ width: `${(a / tot) * 100}%` }} /></div>
           </div>
         );
