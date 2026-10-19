@@ -8,6 +8,7 @@ import { traits, type Trait } from '../../game/personality';
 import { regionOf, type Region } from '../../game/leagues';
 import { playerInterest, transferRealism } from '../../game/transfers';
 import { act } from '../../game/actions';
+import { gs } from '../../game/state';
 import { session } from '../../online/client';
 import { AcceptCounterButton } from '../counterAccept';
 import type { Player, Role, TransferOffer } from '../../game/types';
@@ -250,6 +251,13 @@ function Search() {
   );
 }
 
+/** "+ Navn, Navn" for byttespillere i et bud */
+function swapLabel(o: TransferOffer) {
+  if (!o.swap?.length) return null;
+  const g = gs();
+  return <div className="muted" style={{ fontSize: 12 }}>{t('swap.plus', { names: o.swap.map((id) => g.players[id]?.last ?? '?').join(', ') })}</div>;
+}
+
 function Offers() {
   const g = useGame()!;
   const [neg, setNeg] = useState<TransferOffer | null>(null);
@@ -274,7 +282,7 @@ function Offers() {
               <tr key={o.id}>
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td><ClubLink id={o.buyer} /></td>
-                <td className="num">{o.loan ? (o.option ? t('tr.loanOption', { fee: money(o.option) }) : `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}`) : money(o.fee)}</td>
+                <td className="num">{o.loan ? (o.option ? t('tr.loanOption', { fee: money(o.option) }) : `${t('tr.loan')}${g.players[o.player]?.loan?.share !== undefined ? ` (${Math.round((g.players[o.player].loan!.share ?? 1) * 100)}%)` : ''}`) : money(o.fee)}{swapLabel(o)}</td>
                 <td>{status(o)}{o.priceRounds ? <span className="tag">{t('offer.round', { n: o.priceRounds })}</span> : null}{g.players[o.player]?.listPrice ? <div className="muted">{t('list.price')}: {money(g.players[o.player].listPrice!)}</div> : null}</td>
                 <td className="actions">
                   {o.status === 'pending' && (
@@ -300,7 +308,7 @@ function Offers() {
               <tr key={o.id}>
                 <td><PlayerLink p={g.players[o.player]} /></td>
                 <td>{o.seller ? <ClubLink id={o.seller} /> : t('common.free')}</td>
-                <td className="num">{o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)}{o.counter && o.status === 'countered' ? ` → ${money(o.counter)}` : ''}</td>
+                <td className="num">{o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)}{swapLabel(o)}{o.counter && o.status === 'countered' ? ` → ${money(o.counter)}` : ''}</td>
                 <td className="nowrap">{status(o)} <span className="muted">{dateFmt(o.created)}</span>
                   {o.status === 'pending' && <div className="muted" style={{ fontSize: 12 }}>{t(session() ? 'offer.answerByOnline' : 'offer.answerBy', { date: dateFmt(o.respondBy) })}</div>}{o.rival && active(o) === 0 && <div className="bad" style={{ fontSize: 12 }}>{t('tr.rival', { club: g.clubs[o.rival.club]?.name ?? '?', fee: money(o.rival.fee) })}</div>}</td>
                 <td className="actions">

@@ -5,7 +5,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -241,16 +241,21 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
   const [loan, setLoan] = useState(false);
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);
+  const [swap, setSwap] = useState<number[]>([]);
+  const cands = p.club ? swapCandidates(p.club, pid) : [];
+  const swapVal = swap.reduce((s, id) => s + swapWorth(id, p.club), 0);
   const release = p.contract?.release;
   // slideren går op til budgettet, men ikke meget længere end spilleren er værd (ellers kan den ikke styres)
   const ref = Math.max(p.value, known?.fee ?? 0, release && release <= budget ? release : 0);
   const max = Math.max(fee, Math.min(budget, ref * 2));
   const step = feeStep(max);
   const pct = Math.round((fee / Math.max(1, p.value)) * 100);
+  // byttespillere tæller med i buddets værdi
+  const total = fee + swapVal;
   const hint = !known ? 'bid.hintUnknown'
-    : known.nfs ? (fee >= known.fee ? 'bid.hintNfsMet' : 'bid.hintNfs')
-    : fee > known.fee * 1.15 ? 'bid.hintOver' : fee >= known.fee ? 'bid.hintAtAsk' : fee >= known.fee * 0.75 ? 'bid.hintClose' : 'bid.hintLow';
-  const tone = !known ? '' : fee >= known.fee ? 'good' : known.nfs || fee < known.fee * 0.75 ? 'bad' : 'warn';
+    : known.nfs ? (total >= known.fee ? 'bid.hintNfsMet' : 'bid.hintNfs')
+    : total > known.fee * 1.15 ? 'bid.hintOver' : total >= known.fee ? 'bid.hintAtAsk' : total >= known.fee * 0.75 ? 'bid.hintClose' : 'bid.hintLow';
+  const tone = !known ? '' : total >= known.fee ? 'good' : known.nfs || total < known.fee * 0.75 ? 'bad' : 'warn';
   return (
     <Modal title={t('bid.title', { player: `${p.first} ${p.last}` })} onClose={onClose}>
       <div className="col">
@@ -282,6 +287,18 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
                 <button className="small" disabled={release > budget} onClick={() => { setFee(release); setSellOn(0); setAddOn(0); }}>{t('clause.payRelease')}</button>
               </div>
             ) : null}
+            {cands.length > 0 && (
+              <div className="col" style={{ gap: 4 }}>
+                <div>{t('swap.title')} <span className="muted" style={{ fontSize: 12 }}>{t('swap.hint', { club: gs().clubs[p.club]?.short ?? '' })}</span></div>
+                <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+                  {cands.map((x) => {
+                    const on = swap.includes(x.id);
+                    return <button key={x.id} className={`small ${on ? 'primary' : ''}`} disabled={!on && swap.length >= 3} title={t('swap.worth', { fee: money(swapWorth(x.id, p.club)) })} onClick={() => setSwap(on ? swap.filter((i) => i !== x.id) : [...swap, x.id])}>{x.last} · {posStr(x)} · {money(swapWorth(x.id, p.club))}</button>;
+                  })}
+                </div>
+                {swap.length > 0 && <div className="muted" style={{ fontSize: 12 }}>{t('swap.total', { cash: money(fee), swap: money(swapVal), total: money(total) })}</div>}
+              </div>
+            )}
             <div className="row">{t('clause.sellOn')}: {[0, 10, 15, 20, 30].map((v) => <button key={v} className={`small ${sellOn === v ? 'primary' : ''}`} onClick={() => setSellOn(v)}>{v ? `${v}%` : t('common.none')}</button>)}</div>
             <div className="row">{t('clause.addOn', { n: 25 })}: <MoneyInput value={addOn} onChange={setAddOn} width={130} /></div>
             {(sellOn > 0 || addOn > 0) && <div className="muted" style={{ fontSize: 12 }}>{t('clause.bidHint')}</div>}
@@ -289,7 +306,7 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
         )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={!loan && fee > budget} onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn }))}>{t('bid.submit')}</button>
+          <button className="primary" disabled={!loan && fee > budget} onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn, swap: loan ? [] : swap }))}>{t('bid.submit')}</button>
         </div>
       </div>
     </Modal>
@@ -426,7 +443,7 @@ function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferO
   return (
     <div className="insight warn row">
       <span className="grow">
-        <b>{t('myoffer.title')}</b> {o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)} · <span className="tag warn">{t(`offer.${o.status}`)}</span>
+        <b>{t('myoffer.title')}</b> {o.loan ? t('tr.loan') : o.preContract ? t('neg.bosman') : money(o.fee)}{o.swap?.length ? ` ${t('swap.plus', { names: o.swap.map((id) => g.players[id]?.last ?? '?').join(', ') })}` : ''} · <span className="tag warn">{t(`offer.${o.status}`)}</span>
         {o.status === 'countered' && o.counter ? <> · {t('myoffer.theyWant', { fee: money(o.counter) })}</> : null}
       </span>
       {o.status === 'negotiating' && <button className="small primary" onClick={() => onNegotiate(o)}>{t('offer.negotiate')}</button>}
@@ -524,7 +541,7 @@ function CareerPanel({ pid }: { pid: number }) {
     return () => { alive = false; };
   }, [pid]);
   if (!p) return null;
-  type Row = { key: string; season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes?: number; avg?: number; loan?: boolean; real?: boolean; live?: boolean; move?: { fee: number; loan?: boolean; from: number; fromName?: string } };
+  type Row = { key: string; season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes?: number; avg?: number; loan?: boolean; real?: boolean; live?: boolean; move?: { fee: number; loan?: boolean; from: number; fromName?: string; swap?: boolean } };
   const rows: Row[] = [
     ...(real ?? []).map((r, i) => ({ key: `r${i}`, ...r, real: true })),
     ...p.history.map((h, i) => ({ key: `h${i}`, ...h })),
@@ -567,7 +584,7 @@ function CareerPanel({ pid }: { pid: number }) {
                 <tr key={r.key} className={r.live ? 'me' : ''}>
                   <td className="nowrap">{seasonLabel(r.season)}{r.live && <span className="muted"> · {t('career.now')}</span>}</td>
                   <td className="nowrap">{gs().clubs[r.club] ? <ClubLink id={r.club} long /> : <span>{r.clubName ?? '?'}</span>}{r.loan && <span className="muted"> ({t('career.loan')})</span>}
-                    {r.move && <span className="muted" style={{ fontSize: 12 }} title={t('career.from', { club: gs().clubs[r.move.from]?.name ?? r.move.fromName ?? '?' }) + (r.move.fee < 0 ? ` · ${t('career.unknownFee')}` : '')}> · ↘ {r.move.loan ? t('career.loanFee', { fee: r.move.fee > 0 ? money(r.move.fee) : '' }).trim() : r.move.fee < 0 ? '?' : r.move.fee ? money(r.move.fee) : t('career.free')}</span>}</td>
+                    {r.move && <span className="muted" style={{ fontSize: 12 }} title={t('career.from', { club: gs().clubs[r.move.from]?.name ?? r.move.fromName ?? '?' }) + (r.move.fee < 0 ? ` · ${t('career.unknownFee')}` : '')}> · ↘ {r.move.swap ? t('career.swap') : r.move.loan ? t('career.loanFee', { fee: r.move.fee > 0 ? money(r.move.fee) : '' }).trim() : r.move.fee < 0 ? '?' : r.move.fee ? money(r.move.fee) : t('career.free')}</span>}</td>
                   <td className="num">{r.apps}</td>
                   <td className="num">{r.goals}</td>
                   <td className="num">{r.assists}</td>

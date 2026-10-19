@@ -59,6 +59,8 @@ export interface PlayerMove {
   to: number;
   fee: number;
   loan?: boolean;
+  /** Indgik i en byttehandel */
+  swap?: boolean;
 }
 
 export interface CareerLine {
@@ -455,6 +457,8 @@ export interface TransferOffer {
   auction?: boolean;
   /** Tabte budrunden til en anden manager */
   outbid?: boolean;
+  /** Byttehandel: spillere fra køberen, der indgår i handlen */
+  swap?: number[];
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

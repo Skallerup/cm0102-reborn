@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.29',
+    date: '2026-10-19',
+    title: { da: 'Byttehandler', en: 'Swap deals' },
+    items: [
+      { da: 'Når du byder, kan du tilbyde op til 3 af dine egne spillere som en del af handlen – listen viser kun spillere, den sælgende klub kunne være interesseret i', en: 'When you bid, you can offer up to 3 of your own players as part of the deal – the list only shows players the selling club might be interested in' },
+      { da: 'Byttespillerne tæller med i buddets værdi (mere, hvis de dækker et behov hos klubben), og budvinduet viser kontant + spillere i alt', en: 'Swap players count towards the value of the offer (more if they fill a need at the club), and the offer window shows cash + players in total' },
+      { da: 'Byttehandler står i budoversigten og i spillernes karriere', en: 'Swap deals are shown in the offers overview and in the players\' careers' },
+    ],
+  },
+  {
     version: '0.7.28',
     date: '2026-10-19',
     title: { da: 'Farvede karakterer', en: 'Coloured ratings' },

@@ -307,9 +307,9 @@ export function youthIntake() {
 
 /** Bogfør sæsonens tal siden sidste skifte på en klub i karrieren */
 /** Bogfør et klubskifte (til karriereoversigten) – kaldes før spilleren skifter */
-export function recordMove(p: Player, to: number, fee: number, loan = false) {
+export function recordMove(p: Player, to: number, fee: number, loan = false, swap = false) {
   const g = gs();
-  (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}) });
+  (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}), ...(swap ? { swap: true } : {}) });
   if (p.moves.length > 20) p.moves.shift();
 }
 

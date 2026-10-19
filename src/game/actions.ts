@@ -31,7 +31,7 @@ export type Action =
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
-  | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number }
+  | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
   | { t: 'shortlist'; pid: number; on: boolean }
@@ -101,7 +101,7 @@ export function applyAction(a: Action): unknown {
     case 'release': releasePlayer(a.pid); return 'ok';
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
     case 'enquire': return enquire(a.pid);
-    case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn });
+    case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });
     case 'preContract': return startPreContract(a.pid);
     case 'shortlist':
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);

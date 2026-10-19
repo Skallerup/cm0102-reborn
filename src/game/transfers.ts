@@ -234,9 +234,42 @@ export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'h
   return 'yes';
 }
 
+// ---------- byttehandler ----------
+
+/** Hvor meget er en byttespiller værd for den sælgende klub? (mere, hvis han dækker et behov) */
+export function swapWorth(pid: number, sellerId: number): number {
+  const g = gs();
+  const p = g.players[pid];
+  if (!p) return 0;
+  const needs = analyzeNeeds(sellerId).slice(0, 2).map((n) => n.role);
+  return Math.round(p.value * (needs.includes(naturalRole(p)) ? 0.9 : 0.7));
+}
+
+/** Egne spillere, som den sælgende klub kunne have interesse i at få med i en byttehandel */
+export function swapCandidates(sellerId: number, targetId: number): Player[] {
+  const g = gs();
+  const seller = g.clubs[sellerId];
+  if (!seller || !g.userClub) return [];
+  const level = clubLevel(sellerId);
+  const needs = analyzeNeeds(sellerId).slice(0, 3).map((n) => n.role);
+  return squad(g.userClub)
+    .filter((p) => p.id !== targetId && !p.loan && p.contract && !p.contract.futureClub && !(p.injury && p.injury.days > 30))
+    // god nok til klubben – og enten på en plads, de mangler, eller klart en forstærkning
+    .filter((p) => p.ca >= level - 12 && (needs.includes(naturalRole(p)) || p.ca >= level + 3))
+    .filter((p) => playerInterest(p, seller) === 'yes')
+    .sort((a, b) => swapWorth(b.id, sellerId) - swapWorth(a.id, sellerId))
+    .slice(0, 12);
+}
+
+/** Samlet værdi af byttespillerne i et bud (kun dem, der stadig er i køberens klub) */
+function offerSwapWorth(o: TransferOffer): number {
+  const g = gs();
+  return (o.swap ?? []).filter((id) => g.players[id]?.club === o.buyer).reduce((s, id) => s + swapWorth(id, o.seller), 0);
+}
+
 // ---------- brugerens handlinger ----------
 
-export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number }): TransferOffer | string {
+export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn?: number; addOn?: number; swap?: number[] }): TransferOffer | string {
   const g = gs();
   const p = g.players[pid];
   const buyer = g.clubs[g.userClub];
@@ -254,6 +287,10 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (p.club && !loan && !humanSeller) startAuction(o, p);
   if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
   if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
+  if (p.club && !loan && extra?.swap?.length) {
+    const ok = [...new Set(extra.swap)].filter((id) => { const x = g.players[id]; return x && x.club === buyer.id && x.id !== pid && !x.loan; }).slice(0, 3);
+    if (ok.length) o.swap = ok;
+  }
   g.offers.push(o);
   if (humanSeller) {
     // Bud til en anden menneskelig manager
@@ -447,6 +484,26 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   setClub(p, buyer.id);
   if (!o.loan) merchStarSigning(buyer.id, p.rep);
   fansOnSigning(p, buyer, o.loan);
+  // byttehandel: køberens spillere skifter den anden vej
+  if (!o.loan && seller && o.swap?.length) {
+    for (const id of o.swap) {
+      const x = g.players[id];
+      if (!x || x.club !== buyer.id || x.loan) continue;
+      if (x.stats.apps + x.stats.subs > 0) pushCareerLine(x, x.club, false);
+      fansOnDeparture(x, buyer, 'sold', swapWorth(x.id, seller.id));
+      recordMove(x, seller.id, swapWorth(x.id, seller.id), false, true);
+      x.contract = { wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` };
+      x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.renewal = undefined; x.complaint = undefined;
+      setClub(x, seller.id);
+      x.joined = g.date;
+      asOwner(buyer.id, () => {
+        if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((pid2) => (pid2 === x.id ? 0 : pid2)), bench: g.tactic.bench.filter((pid2) => pid2 !== x.id) };
+      });
+      asOwner(seller.id, () => { g.knowledge[x.id] = 100; });
+      forEachHuman(() => { if (buyer.id === g.userClub || seller.id === g.userClub) addNews({ cat: 'transfer', key: 'transfer.swapPart', params: { player: pname(x), from: buyer.name, to: seller.name }, link: { kind: 'player', id: x.id } }); });
+    }
+    if (buyer.tactic) buyer.tactic = null;
+  }
   rankCacheDate = '';
   p.listed = false;
   p.listPrice = undefined;
@@ -618,7 +675,7 @@ export function processOffers() {
         addNews({ cat: 'transfer', key: 'transfer.releaseMet', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
         continue;
       }
-      const worth = bidClauseWorth(p, o.fee, o.sellOn, o.addOn);
+      const worth = bidClauseWorth(p, o.fee, o.sellOn, o.addOn) + offerSwapWorth(o);
       let d = sellerDecision(p, o.fee + worth, buyer);
       if (d.answer === 'counter' && d.counter) d.counter = roundValue(Math.max(o.fee, d.counter - worth));
       o.rival = rivalBid(o, p);
