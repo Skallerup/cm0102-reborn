@@ -81,6 +81,8 @@ function logoColors(clubId: number): Promise<RGB[] | null> {
     img.src = url;
   }));
   cache.set(clubId, p);
+  // et mislykket opslag (netværk, logo ikke klar) huskes ikke – så prøver vi igen næste gang
+  void p.then((r) => { if (!r) cache.delete(clubId); });
   return p;
 }
 
@@ -103,11 +105,11 @@ const hueDist = (x: RGB, y: RGB) => { const d = Math.abs(hsl(x)[0] - hsl(y)[0]);
  * Klubbens to farver: de officielle (Wikidata) bestemmer HVILKE farver, logoet giver den præcise nuance.
  * Uden officielle farver bruges logoets to mest dominerende farver.
  */
-async function clubPalette(clubId: number, fallback: RGB[]): Promise<[RGB, RGB | undefined]> {
+async function clubPalette(clubId: number, fallback: RGB[]): Promise<[RGB, RGB | undefined, boolean]> {
   const [logo, off] = await Promise.all([logoColors(clubId), officialColors()]);
   const wd = (off[String(clubId)] ?? []).map(fromHex);
   const lg = logo ?? [];
-  if (!wd.length) return [lg[0] ?? fallback[0], lg[1] ?? fallback[1]];
+  if (!wd.length) return [lg[0] ?? fallback[0], lg[1] ?? fallback[1], lg.length > 0];
   const isWhite = (c: RGB) => hsl(c)[2] >= 0.9;
   const isBlack = (c: RGB) => hsl(c)[2] <= 0.12;
   // logoets nuance, hvis det har en farve i samme tone – ellers en dæmpet udgave af den rene farve
@@ -120,10 +122,10 @@ async function clubPalette(clubId: number, fallback: RGB[]): Promise<[RGB, RGB |
   const rank = (c: RGB) => { const i = lg.findIndex((x) => hueDist(x, c) < 35); return i < 0 ? 99 : i; };
   const black = wd.find(isBlack), white = wd.find(isWhite);
   // sort/hvid-klubber (fx Juventus): en farve, der ikke er i logoet, er typisk en gammel trøje – spring den over
-  const colours = wd.filter((c) => !isWhite(c) && !isBlack(c) && !(black && white && rank(c) === 99)).sort((x, y) => rank(x) - rank(y)).map(refine);
+  const colours = wd.filter((c) => !isWhite(c) && !isBlack(c) && !(lg.length && black && white && rank(c) === 99)).sort((x, y) => rank(x) - rank(y)).map(refine);
   const a = colours[0] ?? (black ? [24, 24, 28] as RGB : lg[0] ?? fallback[0]);
   const b = colours[1] ?? (white ? WHITE : black && colours.length ? [24, 24, 28] as RGB : lg.find((x) => hueDist(x, a) >= 35) ?? fallback[1]);
-  return [a, b];
+  return [a, b, lg.length > 0];
 }
 
 /** Gør en farve læsbar på mørk baggrund (lys nok, ikke for grå) */
@@ -176,8 +178,8 @@ export function applyTheme() {
   const club = gs().clubs[gs().userClub];
   if (!club) return;
   const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-  void clubPalette(club.id, club.colors.map(hex)).then(([a0, b0]) => {
-    if (token !== applied) return;
+  const palKey = `cm-pal-${club.id}`;
+  const paint = ([a0, b0]: [RGB, RGB | undefined]) => {
     // en hvid/grå farve i logoet duer ikke som hovedfarve – brug den anden
     const [a, b] = washed(a0) && b0 && !washed(b0) ? [b0, a0] : [a0, b0];
     const second = b && !washed(b) ? b : undefined;
@@ -213,5 +215,16 @@ export function applyTheme() {
     const ta = dark ? 0.22 : 0.10, tb = dark ? 0.14 : 0.06;
     root.style.setProperty('--tint1', `rgba(${a[0]}, ${a[1]}, ${a[2]}, ${ta})`);
     root.style.setProperty('--tint2', `rgba(${(second ?? a)[0]}, ${(second ?? a)[1]}, ${(second ?? a)[2]}, ${tb})`);
+  };
+  // sidst kendte farver med det samme (ingen blink), derefter de friske
+  try { const saved = JSON.parse(localStorage.getItem(palKey) ?? 'null') as [RGB, RGB | null] | null; if (saved) paint([saved[0], saved[1] ?? undefined]); } catch { /* ignorér */ }
+  let hadSaved = false;
+  try { hadSaved = !!localStorage.getItem(palKey); } catch { /* ignorér */ }
+  void clubPalette(club.id, club.colors.map(hex)).then(([a, b, fromLogo]) => {
+    if (token !== applied) return;
+    // uden logo er beregningen usikker – behold de gemte farver, hvis vi har nogen
+    if (!fromLogo && hadSaved) return;
+    paint([a, b]);
+    if (fromLogo) { try { localStorage.setItem(palKey, JSON.stringify([a, b ?? null])); } catch { /* ignorér */ } }
   });
 }

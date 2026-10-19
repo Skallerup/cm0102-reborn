@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.43',
+    date: '2026-10-19',
+    title: { da: 'Stabile klubfarver', en: 'Stable club colours' },
+    items: [
+      { da: 'Rettet: klubtemaet kunne skifte farve mellem indlæsninger (fx Manchester United sort i stedet for rød), når logoet ikke var hentet endnu', en: 'Fixed: the club theme could change colour between loads (e.g. Manchester United black instead of red) when the crest had not loaded yet' },
+      { da: 'Klubfarverne huskes i browseren, så det rigtige tema vises med det samme uden at blinke', en: 'The club colours are remembered in the browser, so the right theme is shown immediately without flickering' },
+    ],
+  },
+  {
     version: '0.7.42',
     date: '2026-10-19',
     title: { da: '2D-kampvisning', en: '2D match view' },
