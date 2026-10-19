@@ -296,9 +296,10 @@ export class OnlineSession {
     }
     if (!room.players.length || !room.players.every((p) => p.ready)) return;
     if (room.version !== this.version) return;
-    // Den første spiller (efter pid) prøver først; de andre venter lidt, så ikke alle forsøger samtidig
-    const order = room.players.map((p) => p.pid).sort();
-    const delay = Math.max(0, order.indexOf(this.creds.pid)) * 4000;
+    // Værten simulerer trækket. De andre tager kun over, hvis værten ikke er online (efter 45 sek.),
+    // og så i fast rækkefølge, så ikke alle forsøger samtidig
+    const order = room.players.map((p) => p.pid).filter((pid) => pid !== room.host).sort();
+    const delay = this.isHost ? 0 : 45_000 + Math.max(0, order.indexOf(this.creds.pid)) * 4000;
     if (delay) {
       await new Promise((r) => setTimeout(r, delay));
       try { this.room = await fetchRoom(this.creds.code); } catch { return; }

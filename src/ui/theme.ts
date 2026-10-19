@@ -86,13 +86,25 @@ function logoColors(clubId: number): Promise<RGB[] | null> {
   return p;
 }
 
+// Superligaen mangler farver i Wikidata – de er sat i hånden (klub-id → farver)
+const MANUAL_COLORS: Record<string, string[]> = {
+  190: ['#ffffff', '#0a2d6e'], // FC København
+  1177: ['#d0021b', '#ffffff'], // Silkeborg IF
+  2778: ['#d41a1f', '#ffffff'], // FC Nordsjælland
+  5724: ['#0039a6', '#ffffff'], // Randers FC
+  5776: ['#d0021b', '#ffffff'], // FC Fredericia
+  5817: ['#3a9bd9', '#ffffff'], // Sønderjyske Fodbold
+  1063: ['#00843d', '#ffffff'], // Viborg FF
+  443: ['#d1001c', '#ffffff'], // Vejle Boldklub
+  865: ['#c8102e', '#111111'], // FC Midtjylland
+};
 // officielle klubfarver fra Wikidata (public/data/clubcolors.json)
 let official: Promise<Record<string, string[]>> | null = null;
 function officialColors(): Promise<Record<string, string[]>> {
   if (!official) {
     official = fetch(`${import.meta.env.BASE_URL}data/clubcolors.json`)
       .then((r) => (r.ok ? r.json() : { colors: {} }))
-      .then((d: { colors: Record<string, string[]> }) => d.colors ?? {})
+      .then((d: { colors: Record<string, string[]> }) => ({ ...MANUAL_COLORS, ...(d.colors ?? {}) }))
       .catch(() => { official = null; return {}; });
   }
   return official;

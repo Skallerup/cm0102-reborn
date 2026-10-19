@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.61',
+    date: '2026-10-19',
+    title: { da: 'Værten simulerer, og rigtige Superliga-farver', en: 'The host simulates, and proper Superliga colours' },
+    items: [
+      { da: 'Online: det er nu værten, der simulerer trækket. De andre tager kun over, hvis værten ikke er online efter 45 sekunder', en: 'Online: the host now simulates the turn. Others only take over if the host is not online after 45 seconds' },
+      { da: 'Superliga-klubberne har fået deres rigtige farver (fx FC København blå/hvid, Viborg grøn/hvid) – før blev de gættet ud fra logoet', en: 'Superliga clubs now have their real colours (e.g. FC København blue/white, Viborg green/white) – previously they were guessed from the crest' },
+    ],
+  },
+  {
     version: '0.7.60',
     date: '2026-10-19',
     title: { da: 'Tydeligere invitation og egne farver i lobbyen', en: 'Clearer invite and own colours in the lobby' },
