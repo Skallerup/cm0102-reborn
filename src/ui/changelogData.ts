@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.69',
+    date: '2026-10-19',
+    title: { da: 'Kampen mod en anden manager kører videre', en: 'The match against another manager keeps running' },
+    items: [
+      { da: 'Rettet: klikkede hjemmeholdets manager rundt i spillet under en kamp mod en anden manager, gik kampen i stå. Nu kører den videre i baggrunden (udeholdet ser den stadig live), og du kan vende tilbage når som helst via "Til kampen"', en: 'Fixed: if the home manager clicked around the game during a match against another manager, the match stalled. Now it keeps running in the background (the away side still sees it live), and you can return at any time via "To the match"' },
+    ],
+  },
+  {
     version: '0.7.68',
     date: '2026-10-19',
     title: { da: 'Advarsel mod at genindlæse under kampen', en: 'Warning against reloading during a match' },

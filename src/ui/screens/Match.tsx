@@ -35,7 +35,7 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -177,6 +177,82 @@ function Scoreboard({ home, away, hg, ag, minute }: { home: number; away: number
   );
 }
 
+type H2hState = { phase: 'wait' | 'countdown' | 'play' | 'half'; awayReady: boolean; startAt: number; halfEnd: number; played: number; lastPing: number; awayTalked: boolean; seq: number; solo: boolean; waitSince: number };
+
+/** Udeholdets ændringer (fra live-kanalen) lægges ind i kampen */
+function applyAwayCmds(sim: MatchSim, s: H2hState, cmds: LiveCmd[]) {
+  for (const c of cmds) {
+    s.lastPing = Date.now();
+    if (c.k === 'ready') s.awayReady = true;
+    else if (c.k === 'sub') sim.substitute(1, c.out, c.inn);
+    else if (c.k === 'ment') { const tac = sim.live(1).tactic; sim.setTactic(1, { ...tac, team: { ...tac.team, mentality: c.v } }); }
+    else if (c.k === 'tactic') sim.setTactic(1, c.tac);
+    else if (c.k === 'talk') { sim.applyTalk(1, c.boosts); s.awayTalked = true; }
+  }
+}
+
+let bgTimer: ReturnType<typeof setInterval> | null = null;
+function stopH2hBackground() { if (bgTimer) { clearInterval(bgTimer); bgTimer = null; } }
+
+/**
+ * Kamp mod en anden manager, mens hjemmeholdets manager er på en anden skærm: kampen kører videre i fast tempo,
+ * live-visningen sendes stadig til udeholdet, og ved slutfløjt lægges resultatet ind.
+ */
+function startH2hBackground(id: number) {
+  const L = live;
+  const sess = session();
+  if (!L || !L.h2h || !sess || bgTimer || L.fixture !== id) return;
+  const g = gs();
+  const f = g.fixtures[id];
+  const sim = L.sim, s = L.h2h;
+  const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
+  const msPerMoment = ((g.options.h2hHalfMinutes ?? 4) * 2 * 60_000) / sim.totalMoments;
+  let n = 0, busy = false, done = false;
+  bgTimer = setInterval(() => {
+    const now = Date.now();
+    if (s.phase === 'wait' && s.awayReady) { s.phase = 'countdown'; s.startAt = now + 4000; }
+    if (s.phase === 'countdown' && now >= s.startAt) s.phase = 'play';
+    if (s.phase === 'half' && (now >= s.halfEnd || s.awayTalked)) s.phase = 'play';
+    if (!s.solo && s.phase === 'play' && now - s.lastPing > 30_000) { s.solo = true; sim.opts.aiSubs = [false, true]; }
+    if (s.phase === 'play' && !sim.finished) {
+      s.played += 250;
+      const target = Math.floor(s.played / msPerMoment);
+      while (sim.moment < target && sim.step()) { /* frem til uret */ }
+      if (sim.half === 2 && !L.halfShown && !sim.finished) { L.halfShown = true; s.phase = 'half'; s.halfEnd = now + 60_000; }
+    }
+    if (++n % 4 !== 0 || busy || done) return;
+    // kommentaren formateres som på kampskærmen
+    const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}` };
+    while (L.consumed < sim.commentary.length) {
+      const l = sim.commentary[L.consumed];
+      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls: l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '', m: l.m, k: l.k });
+      L.consumed++;
+    }
+    const finished = sim.finished;
+    const report = finished ? sim.report() : undefined;
+    const st = sim.teams.map((tm) => tm.stats);
+    const data: FollowData = {
+      seq: ++s.seq, phase: s.phase, awayReady: s.awayReady,
+      countdown: s.phase === 'countdown' ? Math.max(0, Math.ceil((s.startAt - now) / 1000)) : 0,
+      halfLeft: s.phase === 'half' ? Math.max(0, Math.ceil((s.halfEnd - now) / 1000)) : 0,
+      minute: finished ? t('match.ft') : `${sim.minute}'`, hg: st[0].goals, ag: st[1].goals, finished, stats: [st[0], st[1]],
+      lines: L.lines.slice(-60), live: [sim.live(0), sim.live(1)], events: sim.events,
+      snap: { ...sim.pitch(), zone: 7, poss: 0, holder: 0, moment: 0, shot: null }, banner: L.lines.at(-1)?.text ?? '', report,
+    };
+    busy = true;
+    sess.livePush(id, data).then((cmds) => applyAwayCmds(sim, s, cmds)).catch(() => {}).finally(() => {
+      busy = false;
+      if (finished && report) {
+        // slutfløjt: resultatet lægges ind (og sendes til værten) – kampen er færdig
+        done = true;
+        stopH2hBackground();
+        act({ t: 'matchResult', fixture: id, rep: report });
+        if (live === L) live = null;
+      }
+    });
+  }, 250);
+}
+
 function LiveMatch({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
@@ -189,7 +265,15 @@ function LiveMatch({ id }: { id: number }) {
   // online, kamp mod en anden manager: fælles kickoff, fast tempo og fælles pause – vi (hjemmeholdet) kører kampen
   const sess = session();
   const h2h = !!sess && !!g.humans && me === 0 && isHumanClub(f.away) && !isBotClub(f.away);
-  const H = useRef({ phase: 'wait' as 'wait' | 'countdown' | 'play' | 'half', awayReady: false, startAt: 0, halfEnd: 0, played: 0, lastPing: Date.now(), awayTalked: false, seq: 0, solo: false, waitSince: Date.now() });
+  // tilstanden ligger på kampen (ikke komponenten), så den overlever, at man klikker rundt i spillet
+  if (!L.h2h) L.h2h = { phase: 'wait', awayReady: false, startAt: 0, halfEnd: 0, played: 0, lastPing: Date.now(), awayTalked: false, seq: 0, solo: false, waitSince: Date.now() };
+  const H = { current: L.h2h };
+  // kampen kører i baggrunden, mens man er på andre skærme – her på kampskærmen overtager komponenten igen
+  useEffect(() => {
+    if (!h2h) return;
+    stopH2hBackground();
+    return () => { if (live && !live.sim.finished) startH2hBackground(id); };
+  }, [h2h, id]);
   if (h2h && !L.h2hInit) { L.h2hInit = true; sim.opts.aiSubs = [false, false]; }
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
@@ -428,14 +512,7 @@ function LiveMatch({ id }: { id: number }) {
       busy = true;
       sess.livePush(id, liveRef.current).then((cmds) => {
         // udeholdets ændringer
-        for (const c of cmds) {
-          H.current.lastPing = Date.now();
-          if (c.k === 'ready') H.current.awayReady = true;
-          else if (c.k === 'sub') sim.substitute(1, c.out, c.inn);
-          else if (c.k === 'ment') { const tac = sim.live(1).tactic; sim.setTactic(1, { ...tac, team: { ...tac.team, mentality: c.v } }); }
-          else if (c.k === 'tactic') sim.setTactic(1, c.tac);
-          else if (c.k === 'talk') { sim.applyTalk(1, c.boosts); H.current.awayTalked = true; }
-        }
+        applyAwayCmds(sim, H.current, cmds);
         if (cmds.length) { pull(); force((x) => x + 1); }
       }).catch(() => {}).finally(() => { busy = false; });
     }, 1000);
