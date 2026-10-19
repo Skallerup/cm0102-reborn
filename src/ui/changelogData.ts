@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.52',
+    date: '2026-10-19',
+    title: { da: 'Ryddeligere topbjælke under kampen', en: 'Cleaner top bar during matches' },
+    items: [
+      { da: 'På kampskærmen skjules "Til kampen", "Næste kamp" og "Næste: …" i topbjælken – kampen styres inde på skærmen, og efter slutfløjt fører Fortsæt (eller mellemrum) videre', en: 'On the match screen, "To the match", "Next match" and "Next: …" are hidden from the top bar – the match is controlled on the screen, and after full time Continue (or space) moves on' },
+    ],
+  },
+  {
     version: '0.7.51',
     date: '2026-10-19',
     title: { da: 'Offside, VAR og bedre 2D-højdepunkter', en: 'Offside, VAR and better 2D highlights' },

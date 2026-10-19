@@ -55,6 +55,8 @@ const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'o
 export function Shell() {
   const g = useGame()!;
   const { route, nav } = useNav();
+  // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
+  const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
   const [toast, setToast] = useState('');
@@ -211,8 +213,8 @@ export function Shell() {
         <div className="spacer" />
         <AppButtons onMsg={setToast} />
         <FullscreenButton />
-        {nextMatch && <span className="muted nowrap top-next">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
-        {online ? <OnlineControls /> : (
+        {nextMatch && !inMatch && <span className="muted nowrap top-next">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
+        {online ? <OnlineControls /> : inMatch ? null : (
           <>
             <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
             <button className="primary continue" onClick={onContinue} title={unreadImportant ? t('top.continueUnread', { n: unreadImportant }) : t('top.continueHint')}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unreadImportant > 0 && <span className="cont-badge">{unreadImportant}</span>}</button>
