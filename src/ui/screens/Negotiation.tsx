@@ -47,6 +47,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
       accepted: `Manageren tilbød ${money(offered?.wage ?? 0)} om ugen i ${offered?.years} år, og din klient accepterer. I er enige.`,
       refused: 'Forhandlingerne er brudt sammen – din klient vil ikke skrive under.',
       budget: 'Klubben har ikke plads i lønbudgettet til tilbuddet. Du reagerer på det.',
+      pending: `Manageren tilbød ${money(offered?.wage ?? 0)} om ugen i ${offered?.years} år. Din klient kan lide tilbuddet, men der er andre klubber med i billedet – han giver svar i morgen.`,
     }[outcome] ?? outcome;
     aiCall<{ line: string }>('agent', {
       persona, youAre: `${agentName}, agent for ${p.first} ${p.last}`, talkingTo: `manageren for ${club.name}`,
@@ -61,6 +62,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
     setAgentLine(null);
     speak(res, { wage, years });
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 2200); }
+    else if (res === 'pending') { setMsg({ text: t('neg.pendingMp'), tone: 'warn' }); setTimeout(onClose, 3200); }
     else if (res === 'counter') {
       const d = offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club));
       setWage(Math.round(d / 50) * 50);

@@ -200,7 +200,8 @@ export const da: Record<string, string> = {
   'swap.title': "Byt spillere (højst 3):", 'swap.hint': "Kun spillere, {club} kunne være interesseret i", 'swap.worth': "Værdi for klubben: {fee}", 'swap.total': "Kontant {cash} + spillere {swap} = {total} i alt", 'swap.plus': "+ {names}", 'transfer.swapPart': "{player} skifter fra {from} til {to} som en del af byttehandlen",
   'career.swap': "Bytte",
   'opt.theme': "Farvetema", 'opt.theme.dark': "Mørkt", 'opt.theme.light': "Lyst", 'opt.theme.club': "Klubbens farver", 'opt.theme.clubHint': "Farverne hentes fra logoet på den klub, du styrer – og skifter med, når du skifter klub.",
-  'mp.othersWaiting': "De andre er klar og venter på dig", 'mp.othersWaitingShort': "Din tur!",
+  'mp.othersWaiting': "De andre er klar og venter på dig", 'mp.othersWaitingShort': "Alle venter på dig!",
+  'mp.allWaitingBanner': "ALLE VENTER PÅ DIG – tryk Klar, når du er færdig", 'neg.pendingMp': "Han kan lide tilbuddet, men andre klubber kan også byde – han giver svar i morgen.", 'signing.pending': "{player} overvejer dit tilbud og giver svar i morgen", 'signing.won': "{player} valgte dig frem for {n} tilbud i alt!", 'signing.lost': "{player} valgte {club} i stedet for dig", 'signing.gone': "{player} er ikke længere til rådighed", 'staff.result.pending': "Tilbuddet er sendt – {name} giver svar i morgen (andre kan også byde).", 'staff.result.already': "Du har allerede givet {name} et tilbud.", 'staff.bidSent': "Du har givet {name} et jobtilbud – svar i morgen", 'staff.bidWon': "{name} takker ja til dig – {n} klubber bød", 'staff.bidLost': "{name} valgte {club} i stedet for dig", 'staff.bidFailed': "{name} kunne ikke ansættes alligevel",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.32',
+    date: '2026-10-19',
+    title: { da: 'Kamp om spillere og staff i multiplayer', en: 'Competition for players and staff in multiplayer' },
+    items: [
+      { da: 'Multiplayer: frie spillere, Bosman-spillere og staff ansættes ikke længere med det samme – alle kan give et tilbud, og dagen efter vælger de, hvor de vil hen', en: 'Multiplayer: free agents, Bosman players and staff are no longer signed instantly – everyone can make an offer, and the next day they choose where to go' },
+      { da: 'Spillere vælger det bedste tilbud i forhold til hvad de kræver (og klubbens omdømme); staff vælger klubben med størst omdømme', en: 'Players choose the best offer relative to their demands (and the club\'s reputation); staff choose the club with the highest reputation' },
+      { da: 'Når alle andre er klar, blinker et stort rødt banner "ALLE VENTER PÅ DIG", og Klar-knappen blinker rødt', en: 'When everyone else is ready, a big red banner "EVERYONE IS WAITING FOR YOU" flashes, and the Ready button flashes red' },
+    ],
+  },
+  {
     version: '0.7.31',
     date: '2026-10-19',
     title: { da: 'Du bliver ventet på', en: 'They\'re waiting for you' },

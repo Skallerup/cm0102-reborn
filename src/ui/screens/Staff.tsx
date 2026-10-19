@@ -35,7 +35,7 @@ export function StaffScreen() {
   const hire = (s: Staff) => {
     if (s.club && !confirm(t('staff.poachConfirm', { name: `${s.first} ${s.last}`, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) }))) return;
     const r = act<string>({ t: 'hireStaff', id: s.id });
-    setMsg({ text: t(`staff.result.${r}`, { name: `${s.first} ${s.last}` }), tone: r === 'ok' ? 'good' : 'bad' });
+    setMsg({ text: t(`staff.result.${r}`, { name: `${s.first} ${s.last}` }), tone: r === 'ok' ? 'good' : r === 'pending' ? 'warn' : 'bad' });
   };
 
   const table = (list: Staff[], action: (s: Staff) => ReactNode, showClub = false) => (

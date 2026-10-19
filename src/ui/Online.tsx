@@ -162,8 +162,9 @@ export function OnlineControls() {
         const h = Math.floor(left / 3_600_000), m = Math.max(0, Math.floor((left % 3_600_000) / 60_000));
         return <span className="muted nowrap" title={t('mp.deadlineTip')}>⏱ {left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
       })()}
-      <span className="muted nowrap">
-        {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
+      {othersWaiting && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
+      <span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
+        {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
       <button className={`continue ${me?.ready ? '' : 'primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
         // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar

@@ -592,4 +592,9 @@ table.grid tr.rival td:first-child { box-shadow: inset 3px 0 0 rgba(120, 160, 25
 
 /* multiplayer: de andre venter på dig */
 @keyframes nudge { 0%, 100% { box-shadow: var(--glow); transform: scale(1); } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 45%, transparent), 0 0 28px 6px color-mix(in srgb, var(--accent) 60%, transparent); transform: scale(1.06); } }
-button.continue.nudge { animation: nudge 1s ease-in-out infinite; }
+@keyframes nudgeColor { 0%, 100% { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, white), var(--accent)); color: var(--accent-ink); } 50% { background: linear-gradient(180deg, #ff7a86, #e8303f); color: #fff; } }
+button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0.9s steps(1) infinite; font-weight: 800; }
+@keyframes bannerFlash { 0%, 100% { background: #e8303f; } 50% { background: color-mix(in srgb, var(--accent) 90%, black); } }
+.waiting-banner { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 70; padding: 12px 26px; border-radius: 999px; font-size: 16px; font-weight: 800; letter-spacing: 0.02em; color: #fff; box-shadow: 0 10px 40px -6px rgba(232, 48, 63, 0.7); animation: bannerFlash 0.9s steps(1) infinite; pointer-events: none; white-space: nowrap; }
+@keyframes blinkText { 50% { opacity: 0.25; } }
+.waiting-me { color: #ff5d6c; font-weight: 800; text-transform: uppercase; animation: blinkText 0.9s steps(1) infinite; }

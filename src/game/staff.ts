@@ -1,5 +1,7 @@
 // Staff: ansæt, fyr og køb fri fra andre klubber
 import { addNews, gs } from './state';
+import { isMultiplayer, ownerOf, withHuman } from './humans';
+import { hash01 } from './rng';
 import type { Staff, StaffRole } from './types';
 
 export const STAFF_LIMITS: Record<StaffRole, number> = { manager: 0, assistant: 1, coach: 7, physio: 3, scout: 6 };
@@ -14,7 +16,7 @@ export function poachFee(s: Staff): number {
   return Math.round((s.wage * 26 * (1 + s.rep / 100)) / 1000) * 1000;
 }
 
-export type HireResult = 'ok' | 'limit' | 'refused' | 'money';
+export type HireResult = 'ok' | 'limit' | 'refused' | 'money' | 'pending' | 'already';
 
 /** Vil den ansatte skifte? Folk forlader sjældent en klub med højere omdømme */
 export function willJoin(s: Staff): boolean {
@@ -27,6 +29,26 @@ export function willJoin(s: Staff): boolean {
 }
 
 export function hireStaff(id: number): HireResult {
+  const g = gs();
+  const s = g.staff[id];
+  const club = g.clubs[g.userClub];
+  if (!s || !club || s.club === club.id) return 'refused';
+  if (staffCount(s.role) >= STAFF_LIMITS[s.role]) return 'limit';
+  if (s.club > 0 && !willJoin(s)) return 'refused';
+  if (s.club > 0 && club.balance < poachFee(s)) return 'money';
+  // multiplayer: alle kan give et tilbud – den ansatte vælger først i morgen
+  if (isMultiplayer(g)) {
+    g.staffBids ??= [];
+    if (g.staffBids.some((b) => b.staff === id && b.club === club.id)) return 'already';
+    g.staffBids.push({ staff: id, club: club.id, date: g.date });
+    addNews({ cat: 'general', key: 'staff.bidSent', params: { name: `${s.first} ${s.last}` } });
+    return 'pending';
+  }
+  return doHire(s.id);
+}
+
+/** Selve ansættelsen for den aktive manager */
+function doHire(id: number): HireResult {
   const g = gs();
   const s = g.staff[id];
   const club = g.clubs[g.userClub];
@@ -64,4 +86,36 @@ export function fireStaff(id: number): number {
   s.club = 0;
   s.assignment = null;
   return pay;
+}
+
+/** Dagligt i multiplayer: de ansatte, der har fået tilbud, vælger klub (den med størst omdømme vinder) */
+export function resolveStaffBids() {
+  const g = gs();
+  if (!g.staffBids?.length) return;
+  const due = g.staffBids.filter((b) => b.date < g.date);
+  if (!due.length) return;
+  g.staffBids = g.staffBids.filter((b) => b.date >= g.date);
+  const byStaff = new Map<number, typeof due>();
+  for (const b of due) byStaff.set(b.staff, [...(byStaff.get(b.staff) ?? []), b]);
+  for (const [sid, bids] of byStaff) {
+    const s = g.staff[sid];
+    if (!s) continue;
+    const name = `${s.first} ${s.last}`;
+    // størst omdømme vinder – lidt tilfældighed afgør næsten lige tilbud
+    const score = (cid: number) => (g.clubs[cid]?.rep ?? 0) + hash01(g.seed, sid, cid) * 4;
+    const order = bids.slice().sort((a, b) => score(b.club) - score(a.club));
+    let winner = 0;
+    for (const b of order) {
+      const owner = ownerOf(b.club);
+      if (!owner) continue;
+      const r = withHuman(owner, () => doHire(sid));
+      if (r === 'ok') { winner = b.club; break; }
+    }
+    for (const b of bids) {
+      const owner = ownerOf(b.club);
+      if (!owner || b.club === winner) continue;
+      withHuman(owner, () => addNews({ cat: 'general', key: winner ? 'staff.bidLost' : 'staff.bidFailed', params: { name, club: g.clubs[winner]?.name ?? '' } }));
+    }
+    if (winner && bids.length > 1) { const owner = ownerOf(winner); if (owner) withHuman(owner, () => addNews({ cat: 'general', key: 'staff.bidWon', params: { name, n: bids.length } })); }
+  }
 }

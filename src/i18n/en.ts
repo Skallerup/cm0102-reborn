@@ -187,7 +187,8 @@ export const en: Record<string, string> = {
   'swap.title': "Swap players (max 3):", 'swap.hint': "Only players {club} might be interested in", 'swap.worth': "Value to the club: {fee}", 'swap.total': "Cash {cash} + players {swap} = {total} in total", 'swap.plus': "+ {names}", 'transfer.swapPart': "{player} moves from {from} to {to} as part of the swap deal",
   'career.swap': "Swap",
   'opt.theme': "Colour theme", 'opt.theme.dark': "Dark", 'opt.theme.light': "Light", 'opt.theme.club': "Club colours", 'opt.theme.clubHint': "The colours are taken from the crest of the club you manage – and change when you change club.",
-  'mp.othersWaiting': "The others are ready and waiting for you", 'mp.othersWaitingShort': "Your turn!",
+  'mp.othersWaiting': "The others are ready and waiting for you", 'mp.othersWaitingShort': "Everyone is waiting for you!",
+  'mp.allWaitingBanner': "EVERYONE IS WAITING FOR YOU – press Ready when you are done", 'neg.pendingMp': "He likes the offer, but other clubs can bid too – he will answer tomorrow.", 'signing.pending': "{player} is considering your offer and will answer tomorrow", 'signing.won': "{player} chose you out of {n} offers!", 'signing.lost': "{player} chose {club} instead of you", 'signing.gone': "{player} is no longer available", 'staff.result.pending': "The offer is sent – {name} will answer tomorrow (others can bid too).", 'staff.result.already': "You have already made {name} an offer.", 'staff.bidSent': "You have offered {name} a job – answer tomorrow", 'staff.bidWon': "{name} accepts your offer – {n} clubs bid", 'staff.bidLost': "{name} chose {club} instead of you", 'staff.bidFailed': "{name} could not be hired after all",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

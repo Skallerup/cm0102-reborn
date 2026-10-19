@@ -15,7 +15,7 @@ import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
-import { asOwner, forEachHuman, isHumanClub } from './humans';
+import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 
 export function windowOpen(date = gs().date): boolean {
   const m = month(date);
@@ -408,7 +408,7 @@ export function clausesWorthFor(p: Player, clubId: number, wage: number, years: 
   return clauseWorth(p, wage, years, c, rankIn(p, clubId));
 }
 
-export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' {
+export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' | 'pending' {
   const g = gs();
   const o = g.offers.find((x) => x.id === offerId);
   if (!o) return 'refused';
@@ -427,11 +427,16 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * 0.97 && yearsOk) {
+    // multiplayer: frie spillere og Bosman-aftaler kan andre også byde på – spilleren svarer i morgen
+    if (isMultiplayer(g) && (o.preContract || !o.seller)) {
+      o.status = 'pending';
+      o.signing = { wage, years, clauses: Object.keys(cl).length ? cl : undefined };
+      o.respondBy = addDays(g.date, 1);
+      addNews({ cat: 'transfer', key: 'signing.pending', params: { player: pname(p) }, link: { kind: 'player', id: p.id } });
+      return 'pending';
+    }
     if (o.preContract) {
-      p.contract = { ...(p.contract ?? { wage, expires: g.date }), futureClub: club.id, futureWage: wage, futureExpires: `${year(g.date) + years + (month(g.date) >= 7 ? 1 : 0)}-06-30` };
-      p.futureClauses = Object.keys(cl).length ? cl : undefined;
-      o.status = 'completed';
-      addNews({ cat: 'transfer', key: 'transfer.preContract', params: { player: pname(p), club: club.name }, link: { kind: 'player', id: p.id } });
+      completePreContract(o, wage, years, cl);
       return 'accepted';
     }
     completeTransfer(o, wage, years, cl);
@@ -444,6 +449,45 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   }
   o.demand = { wage: Math.round(demand * (1 + (o.rounds - 1) * 0.03) / 50) * 50, years: want };
   return 'counter';
+}
+
+function completePreContract(o: TransferOffer, wage: number, years: number, cl: ContractClauses) {
+  const g = gs();
+  const p = g.players[o.player];
+  const club = g.clubs[o.buyer];
+  p.contract = { ...(p.contract ?? { wage, expires: g.date }), futureClub: club.id, futureWage: wage, futureExpires: `${year(g.date) + years + (month(g.date) >= 7 ? 1 : 0)}-06-30` };
+  p.futureClauses = Object.keys(cl).length ? cl : undefined;
+  o.status = 'completed';
+  asOwner(club.id, () => addNews({ cat: 'transfer', key: 'transfer.preContract', params: { player: pname(p), club: club.name }, link: { kind: 'player', id: p.id } }));
+}
+
+/**
+ * Dagligt i multiplayer: frie spillere og Bosman-spillere vælger mellem kontrakttilbuddene.
+ * Bedste tilbud i forhold til hvad han kræver hos den klub – et større omdømme trækker også.
+ */
+export function resolveSignings() {
+  const g = gs();
+  const byPlayer = new Map<number, TransferOffer[]>();
+  for (const o of g.offers) if (o.signing && o.status === 'pending') byPlayer.set(o.player, [...(byPlayer.get(o.player) ?? []), o]);
+  for (const [pid, list] of byPlayer) {
+    if (!list.some((o) => g.date >= o.respondBy)) continue;
+    const p = g.players[pid];
+    const valid = list.filter((o) => p && (o.preContract ? !p.contract?.futureClub && p.club !== o.buyer : !p.club) && g.clubs[o.buyer]);
+    const score = (o: TransferOffer) => o.signing!.wage / Math.max(1, wageDemand(p, g.clubs[o.buyer])) + (g.clubs[o.buyer].rep - p.rep) / 150;
+    const win = valid.slice().sort((a, b) => score(b) - score(a) || a.id - b.id)[0];
+    if (win) {
+      const sg = win.signing!;
+      if (win.preContract) completePreContract(win, sg.wage, sg.years, sg.clauses ?? {});
+      else completeTransfer(win, sg.wage, sg.years, sg.clauses);
+      if (list.length > 1) asOwner(win.buyer, () => addNews({ cat: 'transfer', key: 'signing.won', params: { player: pname(p), n: list.length }, link: { kind: 'player', id: p.id } }));
+    }
+    for (const o of list) {
+      if (o === win) continue;
+      o.status = 'rejected';
+      o.outbid = true;
+      asOwner(o.buyer, () => addNews({ cat: 'transfer', key: win ? 'signing.lost' : 'signing.gone', params: { player: pname(p), club: win ? g.clubs[win.buyer]?.name ?? '' : '' }, link: { kind: 'player', id: pid } }));
+    }
+  }
 }
 
 function currentBill(clubId: number) {
@@ -639,6 +683,7 @@ export function startPreContract(pid: number): TransferOffer | string {
 
 export function processOffers() {
   const g = gs();
+  const skip = (o: TransferOffer) => !!o.signing;
   // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
   const best = new Map<string, TransferOffer>();
   for (const o of g.offers) {
@@ -649,6 +694,7 @@ export function processOffers() {
     else if (o.fee > cur.fee) { cur.status = 'withdrawn'; best.set(k, o); } else o.status = 'withdrawn';
   }
   for (const o of g.offers) {
+    if (skip(o)) continue;
     if (o.status === 'pending' && o.buyer === g.userClub && isHumanClub(o.seller) && g.date > o.respondBy) {
       o.status = 'withdrawn'; // den anden manager svarede ikke
     } else if (o.status === 'pending' && o.buyer === g.userClub && !isHumanClub(o.seller) && g.date >= o.respondBy) {

@@ -10,7 +10,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, weeklyTransferDigest } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
@@ -26,6 +26,7 @@ import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman }
 import { botsDaily, isBotClub } from './bots';
 import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
+import { resolveStaffBids } from './staff';
 import { rivalryAfterMatch } from './rivalry';
 
 export const INJURIES: [string, number, number, number][] = [
@@ -295,7 +296,7 @@ function newDay() {
     if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
-  if (g.humans) resolveAuctions();
+  if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }
   forEachHuman(processOffers);
   forEachHuman(processJobTalks);
   forEachHuman(() => {

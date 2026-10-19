@@ -459,6 +459,8 @@ export interface TransferOffer {
   outbid?: boolean;
   /** Byttehandel: spillere fra køberen, der indgår i handlen */
   swap?: number[];
+  /** Multiplayer: et kontrakttilbud til en fri spiller (eller Bosman), som spilleren svarer på dagen efter */
+  signing?: { wage: number; years: number; clauses?: ContractClauses };
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */
@@ -699,6 +701,8 @@ export interface GameState {
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
   chat?: ChatMsg[];
+  /** Multiplayer: tilbud til staff, der afgøres dagen efter */
+  staffBids?: { staff: number; club: number; date: string }[];
   /** Stikpiller i pressen mellem managere */
   jabs?: { id: number; from: string; to: string; date: string; line: number; text: string; fixture?: number; resolved?: boolean }[];
   /** Prestige-væddemål om næste indbyrdes kamp */
