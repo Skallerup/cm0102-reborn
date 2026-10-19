@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.25',
+    date: '2026-10-19',
+    title: { da: 'Målscorere i kamprapporten', en: 'Scorers in the match report' },
+    items: [
+      { da: 'Målscorere og røde kort i kamprapporten kan klikkes, og assisten står i parentes', en: 'Scorers and red cards in the match report are clickable, and the assist is shown in brackets' },
+    ],
+  },
+  {
     version: '0.7.24',
     date: '2026-10-19',
     title: { da: '"Du er fremtiden"', en: '"You\'re the future"' },
