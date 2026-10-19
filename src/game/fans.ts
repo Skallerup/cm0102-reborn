@@ -1,5 +1,6 @@
 // Fanstemning og bestyrelsesmøder. Fansenes humør (0-100) påvirker tilskuertallet og
 // bestyrelsens tillid; det reagerer på resultater, billetpriser, stjernesalg og pressemøder.
+import { A } from './attributes';
 import { ageOn, daysBetween } from './dates';
 import { fairTicketPrice } from './finance';
 import { asOwner, isHumanClub } from './humans';
@@ -131,4 +132,35 @@ export function boardMeeting() {
 export function recentFanEvents(c: Club, days = 45) {
   const g = gs();
   return (c.fanEvents ?? []).filter((e) => daysBetween(e.d, g.date) <= days);
+}
+
+// ---------- trofæer: hele klubben fejrer ----------
+
+/**
+ * Manageren har vundet et trofæ: bestyrelse, fans, anføreren og pressen hylder ham.
+ * kind: 'league' (mesterskab), 'cup' (national pokal), 'europe' (europæisk turnering)
+ */
+export function celebrateTrophy(clubId: number, compName: string, kind: 'league' | 'cup' | 'europe') {
+  const g = gs();
+  const club = g.clubs[clubId];
+  if (!club || !isHumanClub(clubId)) return;
+  const big = kind === 'league' || kind === 'europe';
+  bumpFans(clubId, big ? 14 : 9, 'trophy');
+  asOwner(clubId, () => {
+    const gg = gs();
+    gg.board.confidence = Math.min(100, gg.board.confidence + (big ? 15 : 8));
+    gg.manager.rep = Math.min(100, gg.manager.rep + (kind === 'europe' ? 5 : big ? 3 : 2));
+    // holdet svæver
+    for (const p of squad(clubId)) p.morale = Math.min(20, p.morale + 2);
+    // hvor mange gange har manageren vundet netop denne turnering?
+    const n = gg.manager.trophies.filter((x) => x.comp === compName).length + 1;
+    const params = { club: club.name, comp: compName, manager: gg.manager.name, n };
+    const lineup = gg.tactic?.lineup ?? [];
+    const cap = gg.players[lineup[gg.tactic?.captain ?? 0] ?? 0] ?? squad(clubId).sort((a, b) => b.attrs[A.influence] - a.attrs[A.influence])[0];
+    // nyeste øverst i indbakken: bestyrelsen først, så fans, anfører og presse
+    addNews({ cat: 'general', key: `trophy.press.${kind}`, params });
+    if (cap) addNews({ cat: 'contract', key: `trophy.captain.${kind}`, params: { ...params, player: `${cap.first} ${cap.last}`.trim() }, link: { kind: 'player', id: cap.id } });
+    addNews({ cat: 'general', key: `trophy.fans.${kind}`, params });
+    addNews({ cat: 'board', key: `trophy.board.${kind}${n > 1 ? 'Again' : ''}`, params });
+  });
 }

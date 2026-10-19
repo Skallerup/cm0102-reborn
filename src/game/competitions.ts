@@ -4,6 +4,7 @@ import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, rulesFor 
 import { rng } from './rng';
 import { addNews, gs, indexFixture, newsRelevant } from './state';
 import { forEachHuman } from './humans';
+import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 
 // ---------- kalender ----------
@@ -436,6 +437,7 @@ function checkLeagueProgress(comp: Competition) {
   const order = finalOrder(comp);
   comp.winner = order[0];
   forEachHuman(() => { if (newsRelevant(...comp.clubs)) addNews({ cat: 'general', key: 'news.champions', params: { club: g.clubs[order[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }); });
+  celebrateTrophy(order[0], comp.name, 'league');
   if (rules?.playoff) {
     // Playoffs startes når alle involverede ligaer er færdige
     const leagues = [...new Set(rules.playoff.seeds.map((s) => s[0]))];
@@ -531,6 +533,7 @@ function advance(comp: Competition, stage: string) {
     const runnerUp = stageTies[0].a === winners[0] ? stageTies[0].b : stageTies[0].a;
     comp.meta = { ...(comp.meta ?? {}), runnerUp };
     forEachHuman(() => { if (comp.type === 'continental' || newsRelevant(...comp.clubs)) addNews({ cat: 'general', key: comp.type === 'playoff' ? 'news.playoffWin' : 'news.cupWin', params: { club: g.clubs[winners[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }); });
+    if (comp.type !== 'playoff') celebrateTrophy(winners[0], comp.name, comp.type === 'continental' ? 'europe' : 'cup');
     return;
   }
   if (comp.type === 'cup') {

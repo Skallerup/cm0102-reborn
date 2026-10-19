@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.23',
+    date: '2026-10-19',
+    title: { da: 'Trofæer bliver fejret', en: 'Trophies are celebrated' },
+    items: [
+      { da: 'Vinder du ligaen, pokalen eller en europæisk turnering, hylder bestyrelsen, fansene, anføreren og pressen dig i indbakken', en: 'When you win the league, the cup or a European competition, the board, the fans, the captain and the press salute you in the inbox' },
+      { da: 'Trofæet giver et løft i bestyrelsens tillid, fanstemningen, truppens moral og dit manager-omdømme – mest for mesterskaber og Europa', en: 'The trophy boosts board confidence, fan mood, squad morale and your manager reputation – most for league titles and Europe' },
+      { da: 'Vinder du igen, kan bestyrelsen godt huske det', en: 'Win it again and the board remembers' },
+    ],
+  },
+  {
     version: '0.7.22',
     date: '2026-10-19',
     title: { da: 'Klubskifter i karrieren og interesse i truppen', en: 'Club moves in the career and interest in the squad' },
