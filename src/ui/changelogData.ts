@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-19',
     title: { da: 'Klubfarver uden fejlfarver', en: 'Club colours without wrong colours' },
     items: [
+      { da: 'Rettet: "Slet" under Mine online spil gjorde ikke noget synligt – nu forsvinder spillet fra listen (efter en bekræftelse)', en: 'Fixed: "Delete" under My online games did nothing visible – the game now disappears from the list (after a confirmation)' },
       { da: 'Rettet: når klublogoet ikke var hentet endnu (fx i et nyt spil), kunne menuen få forkerte tilfældige farver (Vejle blev blå). Nu vises det neutrale tema, indtil de rigtige farver er klar, og der prøves automatisk igen', en: 'Fixed: if the club crest had not loaded yet (e.g. in a new game), the menu could get random wrong colours (Vejle turned blue). Now the neutral theme is shown until the real colours are ready, with automatic retries' },
     ],
   },

@@ -18,7 +18,7 @@ export function OnlineMenu({ onBack, onCreate, setBusy, initialCode }: { onBack:
   const [code, setCode] = useState(initialCode ?? '');
   const [joining, setJoining] = useState<string | null>(initialCode ? initialCode.toUpperCase() : null);
   const [err, setErr] = useState('');
-  const rooms = savedRooms();
+  const [rooms, setRooms] = useState(savedRooms);
   if (location.hostname.endsWith('github.io')) {
     return (
       <Panel title={t('mp.title')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
@@ -49,7 +49,7 @@ export function OnlineMenu({ onBack, onCreate, setBusy, initialCode }: { onBack:
                 }}>
                   <b>{r.code}</b> <span className="muted">— {r.name}</span>
                 </div>
-                <button className="small" onClick={() => { forgetRoom(r.code); setErr(''); setCode(''); }}>{t('common.delete')}</button>
+                <button className="small danger" onClick={() => { if (!confirm(t('mp.forgetConfirm', { code: r.code }))) return; forgetRoom(r.code); setRooms(savedRooms()); setErr(''); }}>{t('common.delete')}</button>
               </div>
             ))}
           </>
