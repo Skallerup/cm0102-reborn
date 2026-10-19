@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.44',
+    date: '2026-10-19',
+    title: { da: 'Mere ægte 2D-bevægelser', en: 'More realistic 2D movement' },
+    items: [
+      { da: '2D-banen: bolden er altid ved en spiller – boldholderen eller, efter et boldtab, holdkammeraten nærmest bolden', en: '2D pitch: the ball is always with a player – the ball carrier or, after losing the ball, the teammate nearest to it' },
+      { da: 'Spillerne holder sig tættere på deres pladser i formationen, bevæger sig roligere og står ikke længere oven i hinanden', en: 'Players stay closer to their positions in the formation, move more calmly and no longer stand on top of each other' },
+    ],
+  },
+  {
     version: '0.7.43',
     date: '2026-10-19',
     title: { da: 'Stabile klubfarver', en: 'Stable club colours' },

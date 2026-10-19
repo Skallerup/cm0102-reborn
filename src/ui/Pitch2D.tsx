@@ -7,65 +7,99 @@ import { hash01 } from '../game/rng';
 type Snap = ReturnType<MatchSim['pitch']>;
 const W = 105, H = 68;
 
-/** Boldens position (0-100 i begge akser; hold 0 angriber mod højre) */
-function ballPos(s: Snap): [number, number] {
+/** Zonens midte (0-100 i begge akser; hold 0 angriber mod højre) */
+function zoneCenter(s: Snap): [number, number] {
   const b = Math.floor(s.zone / 3), l = s.zone % 3;
-  let x = 10 + b * 20 + (hash01(s.moment, 11, 1) - 0.5) * 12;
-  let y = 16.67 + l * 33.33 + (hash01(s.moment, 12, 2) - 0.5) * 18;
+  return [10 + b * 20, 16.67 + l * 33.33];
+}
+
+const clampP = (v: number, lo = 1, hi = 99) => Math.max(lo, Math.min(hi, v));
+
+/**
+ * Spillernes positioner ud fra taktikken og boldens zone – og bolden ved boldholderens fødder.
+ * Returnerer positionerne, boldens placering og hvem der har bolden.
+ */
+function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
+  const [zx, zy] = zoneCenter(s);
+  const pos = new Map<number, [number, number]>();
+  for (const p of s.players) {
+    const prog = p.team === 0 ? zx / 100 : 1 - zx / 100; // hvor langt bolden er i holdets angrebsretning
+    const attacking = p.team === s.poss;
+    const f = attacking ? 0.25 + 0.6 * prog : 0.1 * prog;
+    const bx0 = p.dx + (p.ax - p.dx) * f, by0 = p.dy + (p.ay - p.dy) * f;
+    let x = bx0, y = by0;
+    if (p.gk) y = 50 + (zy - 50) * 0.12;
+    else {
+      // holdet trækker sig lidt sammen mod bolden – men ikke langt væk fra sin plads
+      x += (zx - x) * 0.1;
+      y += (zy - y) * 0.14;
+      const dx = x - bx0, dy = y - by0, d = Math.hypot(dx, dy), max = 9;
+      if (d > max) { x = bx0 + (dx / d) * max; y = by0 + (dy / d) * max; }
+    }
+    x += (hash01(s.moment, p.id, 5) - 0.5) * 1.2;
+    y += (hash01(s.moment, p.id, 6) - 0.5) * 1.2;
+    pos.set(p.id, [clampP(x), clampP(y, 2, 98)]);
+  }
+  // boldholderen: den registrerede spiller – eller (efter et boldtab) holdkammeraten nærmest bolden
+  let holder = s.players.find((p) => p.id === s.holder && p.team === s.poss);
+  if (!holder) {
+    let best = Infinity;
+    for (const p of s.players) {
+      if (p.team !== s.poss || p.gk) continue;
+      const [x, y] = pos.get(p.id)!;
+      const d = (x - zx) ** 2 + (y - zy) ** 2;
+      if (d < best) { best = d; holder = p; }
+    }
+  }
+  let ball: [number, number] = [zx, zy];
+  if (holder) {
+    // boldholderen går ind i zonen (halvvejs fra sin plads), og bolden er ved hans fødder
+    const [hx, hy] = pos.get(holder.id)!;
+    const nx = clampP(hx + (zx - hx) * 0.5), ny = clampP(hy + (zy - hy) * 0.5, 2, 98);
+    pos.set(holder.id, [nx, ny]);
+    const dir = holder.team === 0 ? 1 : -1;
+    ball = [clampP(nx + dir * 1.4), ny + 0.6];
+    // den nærmeste modspiller presser ham
+    let best: { id: number; d: number } | null = null;
+    for (const p of s.players) {
+      if (p.team === holder.team || p.gk) continue;
+      const [x, y] = pos.get(p.id)!;
+      const d = (x - nx) ** 2 + (y - ny) ** 2;
+      if (!best || d < best.d) best = { id: p.id, d };
+    }
+    if (best) { const [x, y] = pos.get(best.id)!; pos.set(best.id, [x + (nx + dir * 3 - x) * 0.55, y + (ny - y) * 0.55]); }
+  }
   if (s.shot) {
     // afslutning: bolden på vej mod (eller i) mål
     const toRight = s.shot.team === 0;
-    x = s.shot.outcome === 'goal' ? (toRight ? 99.5 : 0.5) : toRight ? 93 : 7;
-    y = s.shot.outcome === 'off' ? (hash01(s.moment, 13, 3) < 0.5 ? 38 : 62) : 47 + hash01(s.moment, 14, 4) * 6;
+    ball = [s.shot.outcome === 'goal' ? (toRight ? 99.5 : 0.5) : toRight ? 96 : 4, s.shot.outcome === 'off' ? (hash01(s.moment, 13, 3) < 0.5 ? 40 : 60) : 46 + hash01(s.moment, 14, 4) * 8];
   }
-  return [Math.max(1, Math.min(99, x)), Math.max(3, Math.min(97, y))];
-}
-
-/** Spillernes positioner ud fra taktikken og boldens placering */
-function layout(s: Snap): Map<number, [number, number]> {
-  const [bx, by] = ballPos(s);
-  const out = new Map<number, [number, number]>();
-  for (const p of s.players) {
-    const prog = p.team === 0 ? bx / 100 : 1 - bx / 100; // hvor langt bolden er i holdets angrebsretning
-    const attacking = p.team === s.poss;
-    const f = attacking ? 0.3 + 0.7 * prog : 0.15 * prog;
-    let x = p.dx + (p.ax - p.dx) * f;
-    let y = p.dy + (p.ay - p.dy) * f;
-    if (p.gk) { y = 50 + (by - 50) * 0.15; }
-    else {
-      // holdet trækker sig sammen mod bolden
-      x += (bx - x) * 0.18;
-      y += (by - y) * 0.22;
+  // skub spillere, der står oven i hinanden, lidt fra hinanden
+  const ids = [...pos.keys()];
+  for (let it = 0; it < 3; it++) {
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = pos.get(ids[i])!, b = pos.get(ids[j])!;
+        const dx = b[0] - a[0], dy = (b[1] - a[1]) * 0.68, d = Math.hypot(dx, dy);
+        if (d > 0 && d < 3.2) {
+          const push = (3.2 - d) / 2 / d;
+          if (ids[i] !== holder?.id) pos.set(ids[i], [a[0] - dx * push, a[1] - (dy / 0.68) * push]);
+          if (ids[j] !== holder?.id) pos.set(ids[j], [b[0] + dx * push, b[1] + (dy / 0.68) * push]);
+        }
+      }
     }
-    x += (hash01(s.moment, p.id, 5) - 0.5) * 3;
-    y += (hash01(s.moment, p.id, 6) - 0.5) * 3;
-    out.set(p.id, [x, y]);
   }
-  // boldholderen står ved bolden, og den nærmeste modspiller presser ham
-  const h = s.players.find((p) => p.id === s.holder && p.team === s.poss);
-  if (h && !s.shot?.outcome.startsWith('goal')) {
-    out.set(h.id, [bx - (h.team === 0 ? 1.2 : -1.2), by]);
-    let best: { id: number; d: number } | null = null;
-    for (const p of s.players) {
-      if (p.team === h.team || p.gk) continue;
-      const [x, y] = out.get(p.id)!;
-      const d = (x - bx) ** 2 + (y - by) ** 2;
-      if (!best || d < best.d) best = { id: p.id, d };
-    }
-    if (best) { const [x, y] = out.get(best.id)!; out.set(best.id, [x + (bx - x) * 0.6, y + (by - y) * 0.6]); }
-  }
-  return out;
+  return { pos, ball, holder };
 }
 
 export function Pitch2D({ sim, me, colors, minute, banner, bannerCls, stepMs }: {
   sim: MatchSim; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number;
 }) {
   const s = sim.pitch();
-  const pos = useMemo(() => layout(s), [s.moment, s.zone, s.poss, s.holder, s.players.length]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [bx, by] = ballPos(s);
+  const { pos, ball, holder } = useMemo(() => layout(s), [s.moment, s.zone, s.poss, s.holder, s.players.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [bx, by] = ball;
   const dur = `${Math.max(80, Math.min(900, stepMs))}ms`;
   const X = (x: number) => (x / 100) * W, Y = (y: number) => (y / 100) * H;
-  const holder = s.players.find((p) => p.id === s.holder);
   return (
     <div className="pitch2d">
       <svg viewBox={`-3 -3 ${W + 6} ${H + 6}`} role="img" aria-label="2D">
@@ -99,7 +133,7 @@ export function Pitch2D({ sim, me, colors, minute, banner, bannerCls, stepMs }: 
               <title>{p.name}</title>
               <circle r="1.9" fill={bg} stroke={mine ? '#fff' : 'rgba(0,0,0,0.55)'} strokeWidth="0.35" />
               <text y="0.65" textAnchor="middle" fontSize="1.9" fontWeight="800" fill={fg}>{p.num}</text>
-              {p.id === s.holder && <text y="-2.7" textAnchor="middle" fontSize="1.9" fontWeight="700" fill="#fff" stroke="rgba(0,0,0,0.6)" strokeWidth="0.25" paintOrder="stroke">{p.name}</text>}
+              {p.id === holder?.id && <text y="-2.7" textAnchor="middle" fontSize="1.9" fontWeight="700" fill="#fff" stroke="rgba(0,0,0,0.6)" strokeWidth="0.25" paintOrder="stroke">{p.name}</text>}
             </g>
           );
         })}
