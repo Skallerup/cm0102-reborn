@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.8',
+    date: '2026-10-19',
+    title: { da: 'Ingen dobbelte bud', en: 'No duplicate offers' },
+    items: [
+      { da: 'En klub byder ikke igen på den samme spiller, mens dens bud stadig venter på svar – kommer den tilbage efter et afslag, er det med et højere bud', en: 'A club no longer bids again for the same player while its offer is still awaiting a reply – if it returns after a rejection, it is with a higher offer' },
+      { da: 'Gamle dobbeltbud i eksisterende saves ryddes op, så kun det højeste står tilbage', en: 'Old duplicate offers in existing saves are cleaned up so only the highest remains' },
+    ],
+  },
+  {
     version: '0.7.7',
     date: '2026-10-19',
     title: { da: 'Store køb begejstrer', en: 'Big signings excite' },

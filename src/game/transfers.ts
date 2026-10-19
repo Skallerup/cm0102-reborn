@@ -37,8 +37,11 @@ function canBidOnHuman(p: Player, buyer: number): boolean {
   const g = gs();
   const pending = g.offers.filter((o) => o.seller === p.club && o.status === 'pending' && !isHumanClub(o.buyer)).length;
   if (pending >= 3) return false;
-  // efter et afslag venter andre klubber et par uger (den afviste klub kan dog vende tilbage)
   const since = addDays(g.date, -21);
+  // samme klub byder ikke igen, mens dens bud er åbent – og efter et afslag kommer den kun igen via en jagt (med et højere bud)
+  if (g.offers.some((o) => o.player === p.id && o.buyer === buyer && (['pending', 'countered', 'negotiating'].includes(o.status) || (o.created >= since && ['rejected', 'withdrawn'].includes(o.status))))) return false;
+  if (g.pursuits?.some((x) => x.club === buyer && x.player === p.id)) return false;
+  // efter et afslag venter andre klubber et par uger
   return !g.offers.some((o) => o.player === p.id && o.buyer !== buyer && o.created >= since && ['rejected', 'withdrawn', 'pending'].includes(o.status));
 }
 
@@ -551,6 +554,15 @@ export function startPreContract(pid: number): TransferOffer | string {
 
 export function processOffers() {
   const g = gs();
+  // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
+  const best = new Map<string, TransferOffer>();
+  for (const o of g.offers) {
+    if (o.status !== 'pending' || isHumanClub(o.buyer) || !isHumanClub(o.seller)) continue;
+    const k = `${o.buyer}|${o.player}|${o.loan ? 1 : 0}`;
+    const cur = best.get(k);
+    if (!cur) best.set(k, o);
+    else if (o.fee > cur.fee) { cur.status = 'withdrawn'; best.set(k, o); } else o.status = 'withdrawn';
+  }
   for (const o of g.offers) {
     if (o.status === 'pending' && o.buyer === g.userClub && isHumanClub(o.seller) && g.date > o.respondBy) {
       o.status = 'withdrawn'; // den anden manager svarede ikke
