@@ -187,6 +187,7 @@ export const en: Record<string, string> = {
   'swap.title': "Swap players (max 3):", 'swap.hint': "Only players {club} might be interested in", 'swap.worth': "Value to the club: {fee}", 'swap.total': "Cash {cash} + players {swap} = {total} in total", 'swap.plus': "+ {names}", 'transfer.swapPart': "{player} moves from {from} to {to} as part of the swap deal",
   'career.swap': "Swap",
   'opt.theme': "Colour theme", 'opt.theme.dark': "Dark", 'opt.theme.light': "Light", 'opt.theme.club': "Club colours", 'opt.theme.clubHint': "The colours are taken from the crest of the club you manage – and change when you change club.",
+  'mp.othersWaiting': "The others are ready and waiting for you", 'mp.othersWaitingShort': "Your turn!",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

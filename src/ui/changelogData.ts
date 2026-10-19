@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.31',
+    date: '2026-10-19',
+    title: { da: 'Du bliver ventet på', en: 'They\'re waiting for you' },
+    items: [
+      { da: 'Online: når alle de andre er klar, pulserer Klar-knappen, og fanen i browseren blinker "Din tur!" – også når du er i en anden fane', en: 'Online: when everyone else is ready, the Ready button pulses and the browser tab blinks "Your turn!" – also when you are in another tab' },
+    ],
+  },
+  {
     version: '0.7.30',
     date: '2026-10-19',
     title: { da: 'Farvetemaer', en: 'Colour themes' },

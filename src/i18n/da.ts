@@ -200,6 +200,7 @@ export const da: Record<string, string> = {
   'swap.title': "Byt spillere (højst 3):", 'swap.hint': "Kun spillere, {club} kunne være interesseret i", 'swap.worth': "Værdi for klubben: {fee}", 'swap.total': "Kontant {cash} + spillere {swap} = {total} i alt", 'swap.plus': "+ {names}", 'transfer.swapPart': "{player} skifter fra {from} til {to} som en del af byttehandlen",
   'career.swap': "Bytte",
   'opt.theme': "Farvetema", 'opt.theme.dark': "Mørkt", 'opt.theme.light': "Lyst", 'opt.theme.club': "Klubbens farver", 'opt.theme.clubHint': "Farverne hentes fra logoet på den klub, du styrer – og skifter med, når du skifter klub.",
+  'mp.othersWaiting': "De andre er klar og venter på dig", 'mp.othersWaitingShort': "Din tur!",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

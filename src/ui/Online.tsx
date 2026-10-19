@@ -119,16 +119,36 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
 }
 
 /** Topbar-kontroller i online-spil */
+let titleTimer: ReturnType<typeof setInterval> | null = null;
+let titleBase = '';
+/** Fanens titel skifter, så man også kan se det, når man er i en anden fane */
+function blinkTitle(on: boolean) {
+  if (on && !titleTimer) {
+    titleBase = document.title;
+    let flip = false;
+    titleTimer = setInterval(() => { flip = !flip; document.title = flip ? `⏳ ${t('mp.othersWaitingShort')}` : titleBase; }, 1000);
+  } else if (!on && titleTimer) {
+    clearInterval(titleTimer);
+    titleTimer = null;
+    document.title = titleBase || document.title;
+  }
+}
+
 export function OnlineControls() {
   const s = session();
   const [copied, setCopied] = useState(false);
   const { nav, route } = useNav();
   const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
+  // (beregnes før det tidlige return, så hooket altid kaldes)
+  const waitingForMe = !!s?.room && s.room.players.length > 1 && !s.me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
+  useEffect(() => { blinkTitle(waitingForMe); return () => blinkTitle(false); }, [waitingForMe]);
   if (!s || !s.room) return null;
   const me = s.me;
   // alene i rummet (evt. med AI-managere): knappen fungerer som Fortsæt
   const solo = s.room.players.length === 1;
   const waiting = s.room.players.filter((p) => !p.ready).map((p) => (p.pid === s.creds.pid ? t('mp.you') : p.name));
+  // alle de andre er klar – nu venter de kun på mig
+  const othersWaiting = !solo && !me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
   const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
   return (
     <>
@@ -145,7 +165,7 @@ export function OnlineControls() {
       <span className="muted nowrap">
         {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
-      <button className={`continue ${me?.ready ? '' : 'primary'}`} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
+      <button className={`continue ${me?.ready ? '' : 'primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
         // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar
         if (!me?.ready && hasGame()) {
           const next = gs().news.filter((n) => !n.read).pop();
