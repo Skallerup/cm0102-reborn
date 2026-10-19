@@ -16,6 +16,7 @@ import {
 } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
+import type { RejectReason } from './will';
 import type { BotStyle, ContractClauses, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 
@@ -35,7 +36,7 @@ export type Action =
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
-  | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number }
+  | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number }
@@ -98,8 +99,8 @@ export function applyAction(a: Action): unknown {
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {
       const o = g.offers.slice().reverse().find((x) => x.player === a.pid && x.buyer === a.buyer && x.seller === g.userClub && x.status === 'pending');
-      if (o) respondToOffer(o.id, a.action, a.counter, a.sellOn);
-      return 'ok';
+      const reply = o ? respondToOffer(o.id, a.action, a.counter, a.sellOn, a.reason) : null;
+      return reply ?? 'ok';
     }
     case 'acceptCounter': { const o = myOffer(a.pid); return o ? acceptCounter(o.id) : 'error'; }
     case 'withdraw': { const o = myOffer(a.pid); if (o) o.status = 'withdrawn'; return 'ok'; }

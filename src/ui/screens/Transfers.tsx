@@ -15,6 +15,7 @@ import { dateFmt, money, t } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import type { RejectReason } from '../../game/will';
 import { NegotiationModal } from './Negotiation';
 
 const ROLES: (Role | '')[] = ['', 'GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'];
@@ -253,6 +254,8 @@ function Offers() {
   const g = useGame()!;
   const [neg, setNeg] = useState<TransferOffer | null>(null);
   const [counterFor, setCounterFor] = useState<TransferOffer | null>(null);
+  const [rejectFor, setRejectFor] = useState<TransferOffer | null>(null);
+  const [reply, setReply] = useState<{ key: string; tone: string; player: string; club: string } | null>(null);
   // aktive bud (som kræver handling) øverst, derefter historik – nyeste først
   const active = (o: TransferOffer) => (['pending', 'countered', 'negotiating'].includes(o.status) ? 0 : 1);
   const order = (list: TransferOffer[]) => list.slice().reverse().sort((a, b) => active(a) - active(b));
@@ -261,6 +264,7 @@ function Offers() {
   const status = (o: TransferOffer) => <><span className={`tag ${o.status === 'completed' ? 'good' : ['rejected', 'collapsed', 'withdrawn'].includes(o.status) ? 'bad' : 'warn'}`}>{t(o.outbid ? 'offer.outbid' : `offer.${o.status}`)}</span>{o.auction && o.status === 'pending' && <span className="tag" title={t('auction.hint')}>{t('auction.tag')}</span>}</>;
   return (
     <div className="cols-wide">
+      {reply && <div className={`insight ${reply.tone}`} style={{ gridColumn: '1 / -1' }}>{t(reply.key, { player: reply.player, club: reply.club })}</div>}
       <Panel title={t('tr.incoming')} className="flush">
         <div className="table-wrap">
         <table className="grid">
@@ -276,7 +280,7 @@ function Offers() {
                   {o.status === 'pending' && (
                     <div className="row">
                       <button className="small primary" onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'accept' })}>{t('offer.accept')}</button>
-                      <button className="small" onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'reject' })}>{t('offer.reject')}</button>
+                      <button className="small" onClick={() => setRejectFor(o)}>{t('offer.reject')}</button>
                       <button className="small" onClick={() => setCounterFor(o)}>{t('offer.counter')}…</button>
                     </div>
                   )}
@@ -312,7 +316,38 @@ function Offers() {
       </Panel>
       {neg && <NegotiationModal offer={neg} onClose={() => setNeg(null)} />}
       {counterFor && <CounterModal offer={counterFor} onClose={() => setCounterFor(null)} />}
+      {rejectFor && <RejectModal offer={rejectFor} onClose={() => setRejectFor(null)} onReply={(key) => {
+        const p = g.players[rejectFor.player];
+        setReply(key ? { key, tone: key.endsWith('.2') ? 'good' : key.endsWith('.0') ? 'bad' : '', player: p ? `${p.first} ${p.last}` : '', club: g.clubs[rejectFor.buyer]?.name ?? '' } : null);
+        setRejectFor(null);
+      }} />}
     </div>
+  );
+}
+
+/** Afvis et bud – evt. med en begrundelse til spilleren */
+function RejectModal({ offer, onClose, onReply }: { offer: TransferOffer; onClose: () => void; onReply: (key: string | null) => void }) {
+  const g = useGame()!;
+  const p = g.players[offer.player];
+  const [reason, setReason] = useState<RejectReason>('key');
+  const name = p ? `${p.first} ${p.last}` : '';
+  return (
+    <Modal title={t('reject.title', { player: name })} onClose={onClose}>
+      <div className="col">
+        <div className="muted">{t('reject.ask', { player: name })}</div>
+        {(['key', 'low', 'contract', 'none'] as RejectReason[]).map((r) => (
+          <label key={r} className="row"><input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} /> {t(`reject.reason.${r}`)}</label>
+        ))}
+        {reason === 'contract' && <div className="muted" style={{ fontSize: 12 }}>{t('reject.contractHint')}</div>}
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={() => {
+            const r = act<string>({ t: 'respond', pid: offer.player, buyer: offer.buyer, action: 'reject', reason });
+            onReply(r && r.startsWith('reject.r.') ? r : null);
+          }}>{t('reject.submit')}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }
 

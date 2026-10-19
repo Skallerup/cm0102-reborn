@@ -179,20 +179,46 @@ export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list
 // ---------- skuffelse over afviste bud ----------
 
 /** Egen spiller: manageren afviste et bud på ham. Ambitiøse spillere tager det tungt, når det var et skridt op. */
-export function blockedMoveReaction(p: Player, buyerId: number, fee: number) {
+export type RejectReason = 'none' | 'key' | 'low' | 'contract';
+
+/**
+ * Brugeren afviste et bud på en af sine spillere – evt. med en begrundelse til spilleren.
+ * En begrundelse, der passer til virkeligheden, kan gøre ham glad for afvisningen; en der ikke gør, gør det værre.
+ * Returnerer spillerens svar (i18n-nøgle) eller null, hvis han var ligeglad.
+ */
+export function blockedMoveReaction(p: Player, buyerId: number, fee: number, reason: RejectReason = 'none'): string | null {
   const g = gs();
   const buyer = g.clubs[buyerId];
   const mine = g.clubs[p.club];
-  if (!buyer || !mine || p.loan) return;
+  if (!buyer || !mine || p.loan) return null;
   const amb = p.attrs[A.ambition];
   const stepUp = buyer.rep - mine.rep;
   // kun når det var et attraktivt skifte for spilleren (større klub eller et stort bud)
-  if (stepUp < 3 && fee < p.value * 1.4) return;
-  const chance = Math.min(0.9, 0.15 + Math.max(0, stepUp) / 40 + Math.max(0, amb - 10) / 20 - Math.max(0, p.attrs[A.loyalty] - 12) / 15);
-  if (!rng.chance(chance)) return;
+  const tempting = stepUp >= 3 || fee >= p.value * 1.4;
+  let chance = Math.min(0.9, 0.15 + Math.max(0, stepUp) / 40 + Math.max(0, amb - 10) / 20 - Math.max(0, p.attrs[A.loyalty] - 12) / 15);
+  let reply: string | null = null;
+  if (reason !== 'none') {
+    // passer begrundelsen? 2 = overbevisende, 1 = halvt, 0 = han tror ikke på den
+    const rank = squad(p.club).filter((x) => x !== p && x.ca > p.ca).length + 1;
+    const fit = reason === 'key' ? (rank <= 6 ? 2 : rank <= 11 ? 1 : 0)
+      : reason === 'low' ? (fee < p.value * 1.15 ? 2 : fee < p.value * 1.5 ? 1 : 0)
+      : 2;
+    if (reason === 'contract') {
+      // et løfte om ny kontrakt: han forventer et tilbud (ignoreres det, lækker han og vil til sidst væk)
+      const market = wageFor(p.value, rulesFor(mine.league, 20).wealth);
+      p.demand = { since: g.date, wage: Math.round(Math.max(market, (p.contract?.wage ?? 0) * 1.2) / 50) * 50 };
+    }
+    if (fit === 2) { chance = 0; p.morale = Math.min(20, p.morale + (tempting ? 1.5 : 1)); p.unhappy = Math.max(0, (p.unhappy ?? 0) - 15); }
+    else if (fit === 1) { chance *= 0.4; p.morale = Math.min(20, p.morale + 0.5); }
+    else { chance = Math.min(0.95, chance * 1.4 + 0.1); p.morale = Math.max(1, p.morale - 1); }
+    reply = `reject.r.${reason}.${fit}${fit < 2 && !tempting ? 'Calm' : ''}`;
+    asOwner(p.club, () => addNews({ cat: 'contract', key: reply!, params: { player: pname(p), club: buyer.name }, link: { kind: 'player', id: p.id } }));
+  }
+  if (!tempting || !rng.chance(chance)) return reply;
   p.unhappy = Math.min(100, (p.unhappy ?? 0) + 20 + Math.max(0, stepUp));
   p.morale = Math.max(1, p.morale - 1.5);
   playerComplains(p, 'blocked', buyerId);
+  return reply;
 }
 
 /** Spiller man har budt på: hans klub sagde nej. Han kan kontakte en og – hvis han er meget ambitiøs – bede om at blive sat til salg. */

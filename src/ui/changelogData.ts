@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.11',
+    date: '2026-10-19',
+    title: { da: 'Forklar spilleren, hvorfor du siger nej', en: 'Tell the player why you said no' },
+    items: [
+      { da: 'Når du afviser et bud, kan du give spilleren en begrundelse: nøglespiller, for lavt bud eller en ny kontrakt', en: 'When you reject an offer, you can give the player a reason: key player, offer too low or a new contract' },
+      { da: 'Passer begrundelsen til virkeligheden, bliver han glad for at blive – tror han ikke på den, bliver han mere skuffet', en: 'If the reason fits reality, he is happy to stay – if he doesn\'t believe it, he is more disappointed' },
+      { da: 'Spillerens svar vises med det samme og kommer i indbakken', en: 'The player\'s reply is shown straight away and arrives in the inbox' },
+    ],
+  },
+  {
     version: '0.7.10',
     date: '2026-10-19',
     title: { da: 'Spillersøgning uden budgetfilter', en: 'Player search without a budget filter' },

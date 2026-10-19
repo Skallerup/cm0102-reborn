@@ -12,7 +12,7 @@ import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
 import { bumpFans, fansOnSigning } from './fans';
 import { pushCareerLine } from './season';
-import { blockedMoveReaction, playerPraises, targetReaction } from './will';
+import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
@@ -283,7 +283,7 @@ export function knownEnquiry(pid: number) {
 }
 
 /** Brugeren sælger: svar på et bud */
-export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counter', counter?: number, sellOn?: number) {
+export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counter', counter?: number, sellOn?: number, reason?: RejectReason): string | null | void {
   const g = gs();
   const o = g.offers.find((x) => x.id === id);
   if (!o || o.status !== 'pending' || o.seller !== g.userClub) return;
@@ -294,9 +294,9 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
     o.status = 'rejected';
     if (!isHumanClub(buyer.id) && !o.loan) startPursuit(o);
     // spilleren kan blive skuffet og bede om en samtale (især ambitiøse spillere ved et skridt op)
-    if (p) blockedMoveReaction(p, buyer.id, o.fee);
+    const reply = p ? blockedMoveReaction(p, buyer.id, o.fee, reason) : null;
     if (isHumanClub(buyer.id)) asOwner(buyer.id, () => addNews({ cat: 'transfer', key: 'transfer.bidRejected', params: { player: pname(p), club: myName }, link: { kind: 'player', id: p.id } }));
-    return;
+    return reply;
   }
   if (isHumanClub(buyer.id)) {
     // Menneskelig køber: modbud eller videre til kontraktforhandling
