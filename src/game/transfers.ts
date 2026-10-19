@@ -1,6 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { naturalRole } from './attributes';
-import { addDays, ageOn, month, year } from './dates';
+import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
 import { hash01, rng } from './rng';
@@ -131,20 +131,32 @@ export function askingPrice(p: Player): number {
   return roundValue(Math.max(10_000, p.value * f));
 }
 
+/** Hvor mange gange udbudsprisen skal der til, før klubben overhovedet vil sælge (0 = spilleren er til salg) */
+function notForSaleMult(p: Player, buyer: Club): number {
+  const g = gs();
+  const seller = g.clubs[p.club];
+  if (!seller) return 0;
+  const rank = keyPlayerRank(p);
+  const strat = !isHumanClub(seller.id) ? clubStrategy(seller) : 'balanced';
+  const age = ageOn(p.dob, g.date);
+  let m = 0;
+  // topklubber sælger nødigt til mindre klubber; udviklingsklubber holder på de helt unge
+  if (strat === 'big' && rank <= 4 && seller.rep >= buyer.rep - 5) m = Math.max(m, 1.8);
+  if (strat === 'develop' && age <= 20 && rank <= 11) m = Math.max(m, 1.4);
+  if (strat !== 'seller' && rank <= 2 && seller.rep >= buyer.rep) m = Math.max(m, 1.6);
+  if (strat === 'seller' && rank <= 1 && seller.rep >= buyer.rep) m = Math.max(m, 1.3);
+  return m;
+}
+
 export type SellerAnswer = 'accept' | 'counter' | 'reject' | 'notforsale';
 
 export function sellerDecision(p: Player, fee: number, buyer: Club): { answer: SellerAnswer; counter?: number } {
   const g = gs();
   const seller = g.clubs[p.club];
   const ask = askingPrice(p);
-  const rank = keyPlayerRank(p);
   const strat = seller && !isHumanClub(seller.id) ? clubStrategy(seller) : 'balanced';
   const age = ageOn(p.dob, g.date);
-  // topklubber sælger nødigt til mindre klubber; udviklingsklubber holder på de helt unge
-  if (seller && strat === 'big' && rank <= 4 && seller.rep >= buyer.rep - 5 && fee < ask * 1.8) return { answer: 'notforsale' };
-  if (seller && strat === 'develop' && age <= 20 && rank <= 11 && fee < ask * 1.4) return { answer: 'notforsale' };
-  if (seller && strat !== 'seller' && rank <= 2 && seller.rep >= buyer.rep && fee < ask * 1.6) return { answer: 'notforsale' };
-  if (seller && strat === 'seller' && rank <= 1 && seller.rep >= buyer.rep && fee < ask * 1.3) return { answer: 'notforsale' };
+  if (fee < ask * notForSaleMult(p, buyer)) return { answer: 'notforsale' };
   // sælgerklubber og udviklingsklubber (med spillere over 22) tager imod lidt under prisen
   const accept = strat === 'seller' ? 0.9 : strat === 'develop' && age >= 23 ? 0.95 : 1;
   if (fee >= ask * accept) return { answer: 'accept' };
@@ -233,6 +245,33 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
     asOwner(p.club, () => addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
   }
   return o;
+}
+
+/** Forespørgsel: hvad vil klubben have for spilleren? Svaret gemmes, så budvinduet kan bruge det. */
+export function enquire(pid: number): string {
+  const g = gs();
+  const p = g.players[pid];
+  const buyer = g.clubs[g.userClub];
+  const seller = p && g.clubs[p.club];
+  if (!p || !buyer || !seller || p.club === buyer.id) return 'error';
+  if (isHumanClub(seller.id)) return 'enquiry.human';
+  const m = notForSaleMult(p, buyer);
+  // rund op, så et bud på den nævnte pris altid er nok
+  const need = askingPrice(p) * Math.max(1, m);
+  let fee = roundValue(need);
+  if (fee < need) fee = roundValue(need + (need < 1_000_000 ? 12_500 : need < 10_000_000 ? 50_000 : 250_000));
+  const all = (g.manager.enquiries ??= {});
+  for (const [id, e] of Object.entries(all)) if (daysBetween(e.date, g.date) > 90) delete all[Number(id)];
+  all[pid] = { date: g.date, club: seller.id, fee, nfs: m > 0 };
+  addNews({ cat: 'transfer', key: m > 0 ? 'enquiry.nfs' : p.listed ? 'enquiry.listed' : 'enquiry.price', params: { club: seller.name, player: pname(p), fee }, link: { kind: 'player', id: pid } });
+  return m > 0 ? 'enquiry.nfs' : p.listed ? 'enquiry.listed' : 'enquiry.price';
+}
+
+/** Seneste svar på en forespørgsel (kun hvis spilleren stadig er i samme klub) */
+export function knownEnquiry(pid: number) {
+  const g = gs();
+  const e = g.manager.enquiries?.[pid];
+  return e && g.players[pid]?.club === e.club ? e : undefined;
 }
 
 /** Brugeren sælger: svar på et bud */

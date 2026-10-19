@@ -451,6 +451,8 @@ export interface ManagerProfile {
   sackedBy?: number[];
   /** Afviste jobtilbud: klub-id → dato (klubben spørger ikke igen foreløbig) */
   declinedJobs?: Record<number, string>;
+  /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
+  enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;
   /** Forholdet til pressen (0-100, start 50) og et løfte om sejr givet på et pressemøde */
   media?: number;
   pressPromise?: { fixture: number; opp: number };

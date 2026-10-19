@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.6',
+    date: '2026-10-19',
+    title: { da: 'Forespørgsler og budslider', en: 'Enquiries and an offer slider' },
+    items: [
+      { da: 'Forespørg på en spiller i stedet for at byde: klubben svarer med sin pris – eller at han ikke er til salg under et bestemt beløb', en: 'Enquire about a player instead of bidding: the club replies with its price – or that he is not for sale below a certain fee' },
+      { da: 'Beløbet i budvinduet styres med en slider som lønnen, og du ser med det samme, hvordan buddet ligger i forhold til klubbens pris', en: 'The fee in the offer window is set with a slider like the wage, and you see straight away how the offer compares with the club\'s price' },
+    ],
+  },
+  {
     version: '0.7.5',
     date: '2026-10-19',
     title: { da: 'Mere fair bestyrelse og jobtilbud', en: 'Fairer board and job offers' },

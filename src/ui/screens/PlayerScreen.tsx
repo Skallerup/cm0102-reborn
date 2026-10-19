@@ -5,7 +5,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, loanSuitors, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -43,7 +43,10 @@ export function PlayerScreen({ id }: { id: number }) {
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
 
   const act = (r: TransferOffer | string) => {
-    if (typeof r === 'string') { if (r !== 'ok') setMsg(t(r)); else setMsg(t('player.done')); }
+    if (typeof r === 'string') {
+      if (r.startsWith('enquiry.') && r !== 'enquiry.human') setMsg(''); // svaret står under knapperne
+      else if (r !== 'ok') setMsg(t(r)); else setMsg(t('player.done'));
+    }
     else if (r.status === 'negotiating') setNeg({ offer: r });
     else setMsg(t('player.bidSent'));
   };
@@ -118,6 +121,7 @@ export function PlayerScreen({ id }: { id: number }) {
               <>
                 <div className="row">
                   {p.club > 0 && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => setBid(true)}>{t('player.bid')}</button>}
+                  {p.club > 0 && <button onClick={() => act(dispatch<string>({ t: 'enquire', pid: p.id }))}>{t('player.enquire')}</button>}
                   {p.club > 0 && !windowOpen() && <span className="muted" style={{ fontSize: 12 }}>{t('transfer.windowOpens', { date: dateFmt(nextWindow()) })}</span>}
                   {!p.club && <button className="primary" onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
                   {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
@@ -130,6 +134,7 @@ export function PlayerScreen({ id }: { id: number }) {
                   )}
                   <button onClick={() => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted })}>{shortlisted ? t('player.unshortlist') : t('player.shortlist')}</button>
                 </div>
+                <EnquiryLine pid={p.id} />
                 {!windowOpen() && <div className="muted">{t('transfer.windowClosed')}</div>}
                 {scouts.length > 0 && g.options.masking && k < 100 && (
                   <div className="row">
@@ -209,32 +214,67 @@ export function PlayerScreen({ id }: { id: number }) {
   );
 }
 
-function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void }) {
+/** Klubbens svar på seneste forespørgsel */
+function EnquiryLine({ pid }: { pid: number }) {
   const g = gs();
+  const e = knownEnquiry(pid);
+  if (!e) return null;
+  const club = g.clubs[e.club]?.name ?? '';
+  return <div className={`insight ${e.nfs ? 'warn' : ''}`}>{t(e.nfs ? 'enquiry.answerNfs' : 'enquiry.answer', { club, fee: money(e.fee), date: dateFmt(e.date) })}</div>;
+}
+
+/** Pæne trin til budslideren */
+function feeStep(max: number) {
+  const raw = max / 200;
+  const mag = 10 ** Math.floor(Math.log10(Math.max(1, raw)));
+  const n = raw / mag;
+  return Math.max(5_000, (n <= 1 ? 1 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag);
+}
+
+function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void }) {
+  const g = useGame()!;
   const p = g.players[pid];
   const budget = g.clubs[g.userClub].transferBudget;
-  const [fee, setFee] = useState(Math.min(budget, Math.round(p.value / 50_000) * 50_000));
+  const known = knownEnquiry(pid);
+  const [fee, setFee] = useState(Math.min(budget, known?.fee ?? Math.round(p.value / 50_000) * 50_000));
   const [loan, setLoan] = useState(false);
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);
-  const step = fee >= 10_000_000 ? 500_000 : fee >= 1_000_000 ? 100_000 : 25_000;
   const release = p.contract?.release;
+  // slideren går op til budgettet, men ikke meget længere end spilleren er værd (ellers kan den ikke styres)
+  const ref = Math.max(p.value, known?.fee ?? 0, release && release <= budget ? release : 0);
+  const max = Math.max(fee, Math.min(budget, ref * 2));
+  const step = feeStep(max);
+  const pct = Math.round((fee / Math.max(1, p.value)) * 100);
+  const hint = !known ? 'bid.hintUnknown'
+    : known.nfs ? (fee >= known.fee ? 'bid.hintNfsMet' : 'bid.hintNfs')
+    : fee > known.fee * 1.15 ? 'bid.hintOver' : fee >= known.fee ? 'bid.hintAtAsk' : fee >= known.fee * 0.75 ? 'bid.hintClose' : 'bid.hintLow';
+  const tone = !known ? '' : fee >= known.fee ? 'good' : known.nfs || fee < known.fee * 0.75 ? 'bad' : 'warn';
   return (
     <Modal title={t('bid.title', { player: `${p.first} ${p.last}` })} onClose={onClose}>
       <div className="col">
         <div className="kv">
           <span>{t('col.value')}</span><span>{money(p.value)}</span>
           <span>{t('top.budget')}</span><span>{money(budget)}</span>
+          {known && <><span>{t('bid.theirPrice')}</span><span>{money(known.fee)}{known.nfs ? ` (${t('bid.nfsShort')})` : ''}</span></>}
         </div>
         <label className="row"><input type="checkbox" checked={loan} onChange={(e) => setLoan(e.target.checked)} /> {t('bid.loan')}</label>
         {!loan && (
           <>
-            <label>{t('bid.fee')}: <b className="accent">{money(fee)}</b></label>
+            <label>{t('bid.fee')}: <b className="accent">{money(fee)}</b> ({pct}% {t('list.ofValue')})
+              <input type="range" min={0} max={max} step={step} value={fee} onChange={(e) => setFee(Number(e.target.value))} style={{ width: '100%' }} />
+            </label>
             <div className="row">
               <button onClick={() => setFee(Math.max(0, fee - step))}>−</button>
               <MoneyInput value={fee} onChange={setFee} width={140} />
-              <button onClick={() => setFee(fee + step)}>+</button>
+              <button onClick={() => setFee(Math.min(budget, fee + step))}>+</button>
+              {known && known.fee <= budget && <button className="small" onClick={() => setFee(known.fee)}>{t('bid.matchPrice')}</button>}
             </div>
+            <div className={`insight row ${tone}`}>
+              <span className="grow">{t(hint, { fee: money(known?.fee ?? 0) })}</span>
+              {!known && <button className="small" onClick={() => dispatch({ t: 'enquire', pid })}>{t('player.enquire')}</button>}
+            </div>
+            {fee > budget && <div className="insight bad">{t('transfer.overBudget')}</div>}
             {release ? (
               <div className="insight row">
                 <span className="grow">{t('clause.releaseKnown', { fee: money(release) })}</span>
@@ -248,7 +288,7 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
         )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn }))}>{t('bid.submit')}</button>
+          <button className="primary" disabled={!loan && fee > budget} onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn }))}>{t('bid.submit')}</button>
         </div>
       </div>
     </Modal>
