@@ -422,10 +422,27 @@ function ensureHumanLeagues() {
   });
 }
 
+/**
+ * Manageren skifter klub (eller siger op) midt på en kampdag: den kamp, der ventede på ham, spilles
+ * automatisk, så turneringen ikke går i stå – og den nye klub starter uden en "fremmed" kamp.
+ */
+export function playPendingAsAi() {
+  const g = gs();
+  const id = g.pendingFixture;
+  g.pendingFixture = null;
+  const f = id ? g.fixtures[id] : undefined;
+  if (f && !f.result) simulateFixture(f, true, false);
+}
+
 /** "Fortsæt" – én dag frem */
 export function continueGame(): DayResult {
   const g = gs();
   ensureHumanLeagues();
+  // gamle saves: en ventende kamp, der ikke er ens egen klubs (efter et jobskifte)
+  if (g.pendingFixture) {
+    const f = g.fixtures[g.pendingFixture];
+    if (!f || f.result || (f.home !== g.userClub && f.away !== g.userClub)) playPendingAsAi();
+  }
   if (g.pendingFixture) return { match: g.pendingFixture };
   if (!g.dayDone) return playDay();
   const lastNews = g.nextId.news;

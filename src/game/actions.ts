@@ -4,7 +4,7 @@
 import { acceptJob, answerBudgetCounter, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
-import { activateNation } from './sim';
+import { activateNation, playPendingAsAi } from './sim';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
@@ -60,6 +60,7 @@ export type Action =
   | { t: 'negotiateJob'; club: number; ask: 'budget' | 'exp' }
   | { t: 'declineJob'; club: number }
   | { t: 'resign' }
+  | { t: 'fixPending' }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
   | { t: 'chat'; to: string; text: string }
@@ -135,11 +136,12 @@ export function applyAction(a: Action): unknown {
     case 'read':
       for (const n of g.news) if (a.ids === 'all' || a.ids.includes(n.id)) n.read = true;
       return 'ok';
-    case 'acceptJob': if (g.jobOffers.includes(a.club) && g.clubs[a.club]?.manager === 0) { acceptJob(a.club); startLeague(); } return 'ok';
+    case 'acceptJob': if (g.jobOffers.includes(a.club) && g.clubs[a.club]?.manager === 0) { playPendingAsAi(); acceptJob(a.club); startLeague(); } return 'ok';
     case 'applyJob': return applyForJob(a.club);
     case 'negotiateJob': return negotiateJob(a.club, a.ask);
     case 'declineJob': declineJob(a.club); return 'ok';
-    case 'resign': return resignJob();
+    case 'resign': playPendingAsAi(); return resignJob();
+    case 'fixPending': playPendingAsAi(); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'chat': return sendChat(a.to, a.text);

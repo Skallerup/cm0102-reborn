@@ -172,7 +172,12 @@ export function Shell() {
     return true;
   };
   const onContinue = () => {
-    if (g.pendingFixture) { nav({ name: 'match', id: g.pendingFixture }); return; }
+    if (g.pendingFixture) {
+      const pf = g.fixtures[g.pendingFixture];
+      // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk
+      if (!pf || pf.result || (pf.home !== g.userClub && pf.away !== g.userClub)) act({ t: 'fixPending' });
+      else { nav({ name: 'match', id: g.pendingFixture }); return; }
+    }
     if (showOldestUnread(g.news)) return;
     // ingen ulæste: kør dage frem, indtil der sker noget (kamp, bud, ny besked …) – højst 60 dage
     void run({ untilMatch: true, untilNews: true, maxDays: 60 }).then((r) => {

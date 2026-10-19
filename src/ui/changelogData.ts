@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.50',
+    date: '2026-10-19',
+    title: { da: 'Jobskifte på en kampdag', en: 'Changing jobs on a match day' },
+    items: [
+      { da: 'Rettet: skiftede du job (eller sagde op) på en kampdag, skulle du stadig spille den gamle klubs kamp. Nu spilles den automatisk, og du starter rent i den nye klub', en: 'Fixed: if you changed jobs (or resigned) on a match day, you still had to play the old club\'s match. Now it is played automatically, and you start fresh at the new club' },
+      { da: 'Saves med en hængende kamp fra en tidligere klub repareres automatisk, næste gang du trykker Fortsæt', en: 'Saves with a stuck match from a previous club are repaired automatically the next time you press Continue' },
+    ],
+  },
+  {
     version: '0.7.49',
     date: '2026-10-19',
     title: { da: '2D-højdepunkter', en: '2D highlights' },
