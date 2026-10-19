@@ -149,6 +149,37 @@ export function fairTicketPrice(rep: number, league: string): number {
   return Math.round(10 + rep * 0.35 * Math.sqrt(Math.max(0.25, rulesFor(league, 20).wealth)));
 }
 
+/** Hvad budgettet ville blive, hvis det blev sat i dag */
+function freshBudget(c: Club): number {
+  const sv = squad(c.id).reduce((s, p) => s + p.value, 0);
+  const b = transferBudgetFor(sv, rulesFor(c.league, 20).wealth, c.balance);
+  return c.ffp?.sanction ? Math.round(b * 0.4 / 50_000) * 50_000 : b;
+}
+
+/** Januar: menneskestyrede klubber får fyldt transferbudgettet op til halvdelen af et nyt sæsonbudget */
+export function januaryBudgetTopUp() {
+  const g = gs();
+  if (g.options.transferWindows === 'classic') return; // ingen vintervindue
+  for (const c of Object.values(g.clubs)) {
+    if (c.manager !== -1) continue;
+    const target = Math.round(freshBudget(c) * 0.5 / 50_000) * 50_000;
+    if (target <= c.transferBudget) continue;
+    const add = target - c.transferBudget;
+    c.transferBudget = target;
+    asOwnerFinance(c.id, () => addNews({ cat: 'finance', key: 'budget.january', params: { fee: add, budget: target } }));
+  }
+}
+
+/** Hvornår fornyes transferbudgettet, og hvor stort bliver det cirka? */
+export function nextBudgetInfo(c: Club): { date: string; amount: number } {
+  const g = gs();
+  const y = Number(g.date.slice(0, 4)), m = Number(g.date.slice(5, 7));
+  const fresh = freshBudget(c);
+  const july = { date: `${m >= 7 ? y + 1 : y}-07-01`, amount: fresh };
+  if (g.options.transferWindows === 'classic' || m < 7) return july;
+  return { date: `${y + 1}-01-01`, amount: Math.max(c.transferBudget, Math.round(fresh * 0.5 / 50_000) * 50_000) };
+}
+
 export function transferBudgetFor(squadValue: number, wealth: number, balance: number): number {
   const base = squadValue * 0.08 * Math.min(1.5, wealth + 0.2) + Math.max(0, balance) * (balance > 50_000_000 ? 0.4 : 0.25);
   const cap = Math.max(0, balance) * 0.8 + 1_000_000;
@@ -184,7 +215,7 @@ export function wantedAttendance(club: Club, price: number): number {
 import type { SponsorDeal, SponsorKind } from './types';
 import { addNews, newsRelevant } from './state';
 import { fanAttendance } from './fans';
-import { forEachHuman } from './humans';
+import { asOwner as asOwnerFinance, forEachHuman } from './humans';
 
 /** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */
 export function sponsorBase(c: Club): number {

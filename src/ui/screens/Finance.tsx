@@ -1,6 +1,6 @@
 import { act } from '../../game/actions';
 import { Info } from '../help';
-import { currentWageBill, estimateGate, fairTicketPrice, sponsorOffers } from '../../game/finance';
+import { currentWageBill, estimateGate, fairTicketPrice, nextBudgetInfo, sponsorOffers } from '../../game/finance';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
 import { dateFmt, money, t } from '../../i18n';
@@ -34,7 +34,7 @@ export function Finance() {
         <Panel title={t('fin.overview')}>
           <div className="kv">
             <span>{t('top.balance')}</span><span className={c.balance < 0 ? 'bad' : 'good'}><b>{money(c.balance)}</b></span>
-            <span>{t('top.budget')}</span><span>{money(c.transferBudget)}</span>
+            <span>{t('top.budget')}</span><span>{money(c.transferBudget)}{(() => { const n = nextBudgetInfo(c); return <div className="muted" style={{ fontSize: 12 }}>{t('budget.next', { date: dateFmt(n.date), amount: money(n.amount) })}</div>; })()}</span>
             <span>{t('fin.wageBudget')}</span><span>{money(c.wageBudget)} / {t('common.week')}</span>
             <span>{t('fin.wageBill')}</span><span><Bar value={bill} max={c.wageBudget} tone={bill > c.wageBudget ? 'bad' : 'good'} /> {money(bill)} + {money(staffBill)} {t('fin.staff')}</span>
             <span>{t('fin.ticket')}</span><span>{money(c.ticketPrice)}</span>

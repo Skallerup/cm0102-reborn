@@ -9,6 +9,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.16',
+    date: '2026-10-19',
+    title: { da: 'Januarbudget og mere interesse', en: 'January budget and more interest' },
+    items: [
+      { da: 'Når vinduet åbner i januar, fylder bestyrelsen dit transferbudget op til halvdelen af et nyt sæsonbudget, hvis klubben har pengene', en: 'When the window opens in January, the board tops up your transfer budget to half a new season budget if the club has the money' },
+      { da: 'Økonomi viser, hvornår transferbudgettet fornyes, og cirka hvor stort det bliver', en: 'Finances show when the transfer budget is renewed and roughly how big it will be' },
+      { da: 'Spillere i de største klubber får også interesse fra jævnbyrdige rivaler, og flere klubber kan holde øje med den samme spiller', en: 'Players at the biggest clubs also attract interest from rivals of the same size, and more clubs can watch the same player' },
+      { da: 'En klub, der byder på en spiller, står nu altid blandt de interesserede klubber', en: 'A club that bids for a player now always appears among the interested clubs' },
+    ],
+  },
+  {
     version: '0.7.15',
     date: '2026-10-19',
     title: { da: 'Du følger din egen liga', en: 'You follow your own league' },

@@ -3,7 +3,7 @@ import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacanc
 import { needsWinnerFn, recordResult, setupLeague } from './competitions';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
-import { gateReceipts, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
+import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
@@ -333,6 +333,7 @@ function newDay() {
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
+  if (month(d) === 1 && day(d) === 1) januaryBudgetTopUp();
   if (month(d) === 2 && day(d) === 1) youthPreview();
   if (month(d) === 3 && day(d) === 15) youthIntake();
   // AI-trupper fyldes op i sommer- og vinterpausen

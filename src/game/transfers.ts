@@ -45,6 +45,13 @@ function canBidOnHuman(p: Player, buyer: number): boolean {
   return !g.offers.some((o) => o.player === p.id && o.buyer !== buyer && o.created >= since && ['rejected', 'withdrawn', 'pending'].includes(o.status));
 }
 
+/** En AI-klub der byder på en spiller, har ham selvfølgelig på sin shortliste */
+function noteInterest(clubId: number, pid: number) {
+  const c = gs().clubs[clubId];
+  if (!c || c.manager === -1) return;
+  if (!(c.shortlist ??= []).includes(pid)) c.shortlist.push(pid);
+}
+
 function sellerName(id: number) {
   return id ? gs().clubs[id]?.name ?? '?' : '-';
 }
@@ -845,6 +852,7 @@ function aiClubTurn(club: Club) {
     const maxFee = roundValue(Math.min(club.transferBudget, fee * rng.range(1.05, 1.35)));
     const o: TransferOffer = { id: g.nextId.offer++, player: target.id, buyer: club.id, seller: target.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
+    noteInterest(o.buyer, o.player);
     asOwner(target.club, () => addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(target), fee }, link: { kind: 'offer', id: o.id } }));
     return;
   }
@@ -887,6 +895,7 @@ export function aiPursuits() {
     if (fee <= pu.lastFee) continue;
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: p.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: pu.maxFee };
     g.offers.push(o);
+    noteInterest(o.buyer, o.player);
     asOwner(p.club, () => {
       addNews({ cat: 'transfer', key: pu.tries === 0 ? 'transfer.incomingBid' : 'transfer.pursuitReturn', params: { club: club.name, player: pname(p), fee, n: pu.tries + 1 }, link: { kind: 'offer', id: o.id } });
       // en ambitiøs spiller bliver urolig, når en større klub bliver ved med at banke på
@@ -1152,6 +1161,7 @@ export function aiBidsForListed() {
     const maxFee = roundValue(Math.min(club.transferBudget, Math.max(fee, ask * rng.range(0.95, 1.12), p.value * rng.range(0.9, 1.2))));
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
+    noteInterest(o.buyer, o.player);
     addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
   }
 }
@@ -1286,17 +1296,20 @@ function noticeStandouts() {
   const g = gs();
   const suitors = Object.values(g.clubs).filter((c) => g.comps[c.league] && (c.manager !== -1 || isBotClubId(c.id)));
   const levels = new Map(suitors.map((c) => [c.id, clubLevel(c.id)]));
-  for (const club of Object.values(g.clubs)) {
-    if (!g.comps[club.league]) continue;
+  // tilfældig rækkefølge – ellers fylder de første klubbers spillere de store klubbers lister op
+  const clubs = Object.values(g.clubs).filter((c) => g.comps[c.league]);
+  for (let i = clubs.length - 1; i > 0; i--) { const j = rng.int(0, i); [clubs[i], clubs[j]] = [clubs[j], clubs[i]]; }
+  for (const club of clubs) {
     const sq = squad(club.id).filter((p) => !p.loan && !p.contract?.futureClub && ageOn(p.dob, g.date) <= 31);
     const form = (p: Player) => (p.form.length >= 3 ? p.form.reduce((x, y) => x + y, 0) / p.form.length : 0);
     // de tre bedste + spillere i helt usædvanlig form – højst fire pr. klub
     const stars = [...new Set([...sq.sort((x, y) => y.ca - x.ca).slice(0, 3), ...sq.filter((p) => form(p) >= 7.6)])].slice(0, 4);
     for (const p of stars) {
       const price = askingPrice(p);
-      const fits = suitors.filter((c) => c.id !== club.id && c.rep >= club.rep + 5 && c.transferBudget * 1.6 >= price
-        && Math.abs((levels.get(c.id) ?? 0) - p.ca) <= 12 && (c.shortlist?.length ?? 0) < SHORTLIST_MAX + 2 && playerInterest(p, c) === 'yes');
-      const n = Math.min(fits.length, rng.int(1, 2));
+      // større klubber – og for de største klubber også jævnbyrdige rivaler
+      const fits = suitors.filter((c) => c.id !== club.id && c.rep >= Math.min(club.rep + 5, Math.max(club.rep - 3, 75)) && c.transferBudget * 1.6 >= price
+        && Math.abs((levels.get(c.id) ?? 0) - p.ca) <= 12 && (c.shortlist?.length ?? 0) < SHORTLIST_MAX + 8 && playerInterest(p, c) === 'yes');
+      const n = Math.min(fits.length, rng.int(1, 3));
       for (let k = 0; k < n; k++) {
         const c = fits.splice(rng.int(0, fits.length - 1), 1)[0];
         if (!c.shortlist?.includes(p.id)) (c.shortlist ??= []).push(p.id);
