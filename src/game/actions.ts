@@ -146,7 +146,7 @@ export function applyAction(a: Action): unknown {
     case 'resign': playPendingAsAi(); return resignJob();
     case 'fixPending': playPendingAsAi(); return 'ok';
     case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
-    case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(2, Math.round(a.minutes))); return 'ok';
+    case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(1, Math.round(a.minutes))); return 'ok';
     case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
@@ -184,7 +184,7 @@ export function applyActionAs(pid: string, a: Action): unknown {
   }
   if (a.t === 'setH2hTime') {
     if (g.humans && g.humans[0]?.pid !== pid) return 'host-only';
-    g.options.h2hHalfMinutes = Math.min(15, Math.max(2, Math.round(a.minutes)));
+    g.options.h2hHalfMinutes = Math.min(15, Math.max(1, Math.round(a.minutes)));
     return 'ok';
   }
   if (a.t === 'removeHuman') {

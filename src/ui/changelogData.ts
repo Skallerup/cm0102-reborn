@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.70',
+    date: '2026-10-19',
+    title: { da: 'Vælg selv tempoet i kampe mellem managere', en: 'Choose the pace in matches between managers' },
+    items: [
+      { da: 'I kampe mellem to managere vælger I hver jeres tempo (1×, 2× eller 4×) – kampen kører med det langsomste af de to valg, så ingen bliver presset', en: 'In matches between two managers you each pick a pace (1×, 2× or 4×) – the match runs at the slower of the two, so nobody is rushed' },
+      { da: 'Standard er nu 3 min. pr. halvleg ved 1× (værten kan vælge 1–10 min.)', en: 'The default is now 3 min. per half at 1× (the host can pick 1–10 min.)' },
+    ],
+  },
+  {
     version: '0.7.69',
     date: '2026-10-19',
     title: { da: 'Kampen mod en anden manager kører videre', en: 'The match against another manager keeps running' },

@@ -36,7 +36,7 @@ export interface RoomInfo {
 }
 
 /** Udeholdets ændringer under en kamp mellem to managere */
-export type LiveCmd = { k: 'sub'; out: number; inn: number } | { k: 'ment'; v: number } | { k: 'ready' } | { k: 'ping' } | { k: 'talk'; boosts: Record<number, number> } | { k: 'tactic'; tac: Tactic };
+export type LiveCmd = { k: 'sub'; out: number; inn: number } | { k: 'ment'; v: number } | { k: 'ready' } | { k: 'ping' } | { k: 'talk'; boosts: Record<number, number> } | { k: 'tactic'; tac: Tactic } | { k: 'speed'; v: number };
 /** Kampe udeholdet har valgt at lade assistenten tage (hjemmeholdet dukkede ikke op) */
 export const skippedMatches = new Set<number>();
 

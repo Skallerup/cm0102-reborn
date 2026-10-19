@@ -177,7 +177,7 @@ function Scoreboard({ home, away, hg, ag, minute }: { home: number; away: number
   );
 }
 
-type H2hState = { phase: 'wait' | 'countdown' | 'play' | 'half'; awayReady: boolean; startAt: number; halfEnd: number; played: number; lastPing: number; awayTalked: boolean; seq: number; solo: boolean; waitSince: number };
+type H2hState = { phase: 'wait' | 'countdown' | 'play' | 'half'; homeSpeed: number; awaySpeed: number; awayReady: boolean; startAt: number; halfEnd: number; played: number; lastPing: number; awayTalked: boolean; seq: number; solo: boolean; waitSince: number };
 
 /** Udeholdets ændringer (fra live-kanalen) lægges ind i kampen */
 function applyAwayCmds(sim: MatchSim, s: H2hState, cmds: LiveCmd[]) {
@@ -188,6 +188,7 @@ function applyAwayCmds(sim: MatchSim, s: H2hState, cmds: LiveCmd[]) {
     else if (c.k === 'ment') { const tac = sim.live(1).tactic; sim.setTactic(1, { ...tac, team: { ...tac.team, mentality: c.v } }); }
     else if (c.k === 'tactic') sim.setTactic(1, c.tac);
     else if (c.k === 'talk') { sim.applyTalk(1, c.boosts); s.awayTalked = true; }
+    else if (c.k === 'speed') s.awaySpeed = c.v;
   }
 }
 
@@ -206,7 +207,7 @@ function startH2hBackground(id: number) {
   const f = g.fixtures[id];
   const sim = L.sim, s = L.h2h;
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
-  const msPerMoment = ((g.options.h2hHalfMinutes ?? 4) * 2 * 60_000) / sim.totalMoments;
+  const msPerMoment = ((g.options.h2hHalfMinutes ?? 3) * 2 * 60_000) / sim.totalMoments;
   let n = 0, busy = false, done = false;
   bgTimer = setInterval(() => {
     const now = Date.now();
@@ -215,7 +216,8 @@ function startH2hBackground(id: number) {
     if (s.phase === 'half' && (now >= s.halfEnd || s.awayTalked)) s.phase = 'play';
     if (!s.solo && s.phase === 'play' && now - s.lastPing > 30_000) { s.solo = true; sim.opts.aiSubs = [false, true]; }
     if (s.phase === 'play' && !sim.finished) {
-      s.played += 250;
+      // tempoet er det langsomste af de to managers valg
+      s.played += 250 * Math.min(s.homeSpeed, s.awaySpeed);
       const target = Math.floor(s.played / msPerMoment);
       while (sim.moment < target && sim.step()) { /* frem til uret */ }
       if (sim.half === 2 && !L.halfShown && !sim.finished) { L.halfShown = true; s.phase = 'half'; s.halfEnd = now + 60_000; }
@@ -232,7 +234,7 @@ function startH2hBackground(id: number) {
     const report = finished ? sim.report() : undefined;
     const st = sim.teams.map((tm) => tm.stats);
     const data: FollowData = {
-      seq: ++s.seq, phase: s.phase, awayReady: s.awayReady,
+      seq: ++s.seq, phase: s.phase, awayReady: s.awayReady, homeSpeed: s.homeSpeed, awaySpeed: s.awaySpeed,
       countdown: s.phase === 'countdown' ? Math.max(0, Math.ceil((s.startAt - now) / 1000)) : 0,
       halfLeft: s.phase === 'half' ? Math.max(0, Math.ceil((s.halfEnd - now) / 1000)) : 0,
       minute: finished ? t('match.ft') : `${sim.minute}'`, hg: st[0].goals, ag: st[1].goals, finished, stats: [st[0], st[1]],
@@ -266,7 +268,7 @@ function LiveMatch({ id }: { id: number }) {
   const sess = session();
   const h2h = !!sess && !!g.humans && me === 0 && isHumanClub(f.away) && !isBotClub(f.away);
   // tilstanden ligger på kampen (ikke komponenten), så den overlever, at man klikker rundt i spillet
-  if (!L.h2h) L.h2h = { phase: 'wait', awayReady: false, startAt: 0, halfEnd: 0, played: 0, lastPing: Date.now(), awayTalked: false, seq: 0, solo: false, waitSince: Date.now() };
+  if (!L.h2h) L.h2h = { phase: 'wait', homeSpeed: 1, awaySpeed: 1, awayReady: false, startAt: 0, halfEnd: 0, played: 0, lastPing: Date.now(), awayTalked: false, seq: 0, solo: false, waitSince: Date.now() };
   const H = { current: L.h2h };
   // kampen kører i baggrunden, mens man er på andre skærme – her på kampskærmen overtager komponenten igen
   useEffect(() => {
@@ -401,7 +403,7 @@ function LiveMatch({ id }: { id: number }) {
   tabRef.current = tab;
   useEffect(() => {
     if (!h2h || report) return;
-    const msPerMoment = ((g.options.h2hHalfMinutes ?? 4) * 2 * 60_000) / sim.totalMoments;
+    const msPerMoment = ((g.options.h2hHalfMinutes ?? 3) * 2 * 60_000) / sim.totalMoments;
     const h = setInterval(() => {
       const s = H.current;
       const now = Date.now();
@@ -412,7 +414,8 @@ function LiveMatch({ id }: { id: number }) {
       if (!s.solo && s.phase === 'play' && now - s.lastPing > 30_000) { s.solo = true; sim.opts.aiSubs = [false, true]; }
       force((x) => x + 1);
       if (s.phase !== 'play' || hlRef.current) return;
-      s.played += 250;
+      // tempoet er det langsomste af de to managers valg
+      s.played += 250 * Math.min(s.homeSpeed, s.awaySpeed);
       const target = Math.floor(s.played / msPerMoment);
       if (target > sim.moment) advRef.current(target - sim.moment, false);
     }, 250);
@@ -495,7 +498,7 @@ function LiveMatch({ id }: { id: number }) {
   const liveRef = useRef<FollowData | null>(null);
   if (h2h) {
     liveRef.current = {
-      seq: ++hs.seq, phase: hs.phase, awayReady: hs.awayReady, countdown, halfLeft,
+      seq: ++hs.seq, phase: hs.phase, awayReady: hs.awayReady, homeSpeed: hs.homeSpeed, awaySpeed: hs.awaySpeed, countdown, halfLeft,
       minute, hg, ag, finished: !!report, stats: [st[0], st[1]],
       lines: shownLines.slice(-60), live: [sim.live(0), sim.live(1)], events: sim.events,
       snap: hl ? hl.frames[hl.i] : { ...sim.pitch(), zone: 7, poss: 0, holder: 0, moment: 0, shot: null },
@@ -530,7 +533,7 @@ function LiveMatch({ id }: { id: number }) {
   return (
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
-        {!report && h2h && <span className="muted">{t('mp.h2hFixed', { min: g.options.h2hHalfMinutes ?? 4 })}</span>}
+        {!report && h2h && <H2hSpeed mine={hs.homeSpeed} theirs={hs.awaySpeed} name={humanManager(f.away)?.name ?? ''} onPick={(v) => { hs.homeSpeed = v; force((x) => x + 1); }} />}
         {!report && !h2h && <>
           <button data-space onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
           {[1, 2, 4, 8].map((s) => <button key={s} className={speed === s ? 'primary small' : 'small'} onClick={() => setSpeed(s)}>{s}×</button>)}
@@ -656,9 +659,20 @@ function SubsPanel({ sim, me, live, onDone }: { sim: MatchSim; me: number; live:
   );
 }
 
+/** Tempo i en kamp mellem to managere: hver vælger, og det langsomste valg gælder */
+function H2hSpeed({ mine, theirs, name, onPick }: { mine: number; theirs: number; name: string; onPick: (v: number) => void }) {
+  const eff = Math.min(mine, theirs);
+  return (
+    <>
+      <span className="muted nowrap" title={t('mp.h2hSpeedHint')}>{t('mp.h2hSpeedNow', { x: eff })}{theirs !== mine ? ` · ${t('mp.h2hSpeedTheirs', { name, x: theirs })}` : ''}</span>
+      {[1, 2, 4].map((v) => <button key={v} className={mine === v ? 'primary small' : 'small'} title={t('mp.h2hSpeedHint')} onClick={() => onPick(v)}>{v}×</button>)}
+    </>
+  );
+}
+
 /** Det, hjemmeholdet sender til udeholdet under en kamp mellem to managere */
 type FollowData = {
-  seq: number; phase: 'wait' | 'countdown' | 'play' | 'half'; awayReady: boolean; countdown: number; halfLeft: number;
+  seq: number; phase: 'wait' | 'countdown' | 'play' | 'half'; awayReady: boolean; homeSpeed: number; awaySpeed: number; countdown: number; halfLeft: number;
   minute: string; hg: number; ag: number; finished: boolean; stats: [MatchReport['stats'][0], MatchReport['stats'][1]];
   lines: { text: string; cls: string; m: number }[]; live: [LiveTeam, LiveTeam]; events: MatchSim['events'];
   snap: Snap; banner: string; flash?: string; report?: MatchReport;
@@ -678,6 +692,7 @@ function FollowMatch({ id }: { id: number }) {
   readyRef.current = ready;
   const lastReadySent = useRef(0);
   const [talked, setTalked] = useState(false);
+  const [mySpeed, setMySpeed] = useState(1);
   const lastSeq = useRef({ seq: -1, at: Date.now() });
   const [, force] = useState(0);
   useEffect(() => {
@@ -714,7 +729,7 @@ function FollowMatch({ id }: { id: number }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [data?.finished]);
-  const head = <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
+  const head = <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>{data && !data.finished && <H2hSpeed mine={mySpeed} theirs={data.homeSpeed} name={homeMgr} onPick={(v) => { setMySpeed(v); send({ k: 'speed', v }); }} />}{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
   // før kampen: klar-tjek og nedtælling
   if (!data || data.phase === 'wait' || data.phase === 'countdown') {
     const iAmReady = ready;
@@ -725,7 +740,7 @@ function FollowMatch({ id }: { id: number }) {
         <div className="sim-card" style={{ margin: '16px auto' }}>
           {data?.phase === 'countdown' ? <><div className="countdown">{data.countdown || '⚽'}</div><h2>{t('mp.h2hKickoff')}</h2></> : <>
             <h2>{t('mp.h2hWaitTitle')}</h2>
-            <div className="muted">{iAmReady ? t(data ? 'mp.h2hYouReady' : 'mp.h2hWaitHome', { name: homeMgr }) : t('mp.h2hPressReady', { name: homeMgr, min: g.options.h2hHalfMinutes ?? 4 })}</div>
+            <div className="muted">{iAmReady ? t(data ? 'mp.h2hYouReady' : 'mp.h2hWaitHome', { name: homeMgr }) : t('mp.h2hPressReady', { name: homeMgr, min: g.options.h2hHalfMinutes ?? 3 })}</div>
             {!iAmReady ? <button className="primary continue" onClick={sayReady}>{t('mp.h2hReady')}</button> : <div className="sim-bar"><span /></div>}
             <button className="small" onClick={skip}>{t('mp.h2hSkip')}</button>
           </>}
