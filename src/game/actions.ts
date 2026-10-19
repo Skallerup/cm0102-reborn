@@ -1,7 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
-import { acceptJob, answerBudgetCounter, applyForJob, declineJob, negotiateJob, requestBudget, requestProject, shiftBudget } from './board';
+import { acceptJob, answerBudgetCounter, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { activateNation } from './sim';
@@ -59,6 +59,7 @@ export type Action =
   | { t: 'applyJob'; club: number }
   | { t: 'negotiateJob'; club: number; ask: 'budget' | 'exp' }
   | { t: 'declineJob'; club: number }
+  | { t: 'resign' }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
   | { t: 'chat'; to: string; text: string }
@@ -138,6 +139,7 @@ export function applyAction(a: Action): unknown {
     case 'applyJob': return applyForJob(a.club);
     case 'negotiateJob': return negotiateJob(a.club, a.ask);
     case 'declineJob': declineJob(a.club); return 'ok';
+    case 'resign': return resignJob();
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'chat': return sendChat(a.to, a.text);

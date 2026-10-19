@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.37',
+    date: '2026-10-19',
+    title: { da: 'Opsig jobbet', en: 'Resign' },
+    items: [
+      { da: 'Ny knap "Opsig jobbet" i Jobcenter: du bliver arbejdsløs og kan søge nye job. Siger du op midt i sæsonen, koster det lidt omdømme', en: 'New "Resign" button in the Job centre: you become unemployed and can apply for new jobs. Resigning mid-season costs a little reputation' },
+    ],
+  },
+  {
     version: '0.7.36',
     date: '2026-10-19',
     title: { da: 'Mere luft i topbjælken', en: 'More room in the top bar' },

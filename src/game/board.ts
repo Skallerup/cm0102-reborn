@@ -155,6 +155,26 @@ export function sackUser(key: string) {
   g.pendingFixture = null;
 }
 
+/** Manageren siger op. Stillingen bliver ledig; at gå midt i sæsonen koster lidt omdømme. */
+export function resignJob(): string {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (!club) return 'error';
+  const m = Number(g.date.slice(5, 7));
+  const midSeason = m >= 8 || m <= 4;
+  if (midSeason) g.manager.rep = clamp(g.manager.rep - 3, 1, 100);
+  g.manager.declinedJobs = { ...(g.manager.declinedJobs ?? {}), [club.id]: g.date }; // de ringer ikke lige foreløbig
+  addNews({ cat: 'job', key: midSeason ? 'job.resignedMid' : 'job.resigned', params: { club: club.name } });
+  club.manager = 0;
+  club.tactic = null;
+  openVacancy(club.id);
+  g.userClub = 0;
+  g.tactic = null;
+  g.pendingFixture = null;
+  g.jobOffers = [];
+  return 'ok';
+}
+
 /** Sæsonafslutning: bestyrelsens dom */
 export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   const g = gs();

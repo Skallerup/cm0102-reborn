@@ -17,7 +17,9 @@ export function Jobs() {
   const pending = Object.entries(g.manager.jobTalks ?? {}).filter(([, tk]) => tk.stage === 'applied').map(([id, tk]) => [Number(id), tk] as const);
   return (
     <div>
-      <Head title={t('nav.jobs')} />
+      <Head title={t('nav.jobs')}>
+        {g.userClub > 0 && <button className="small danger" onClick={() => { if (confirm(t('jobs.resignConfirm', { club: g.clubs[g.userClub]?.name ?? '' }))) act({ t: 'resign' }); }}>{t('jobs.resign')}</button>}
+      </Head>
       <div className="cols2">
         <Panel title={t('jobs.offers')}>
           <div className="col">
