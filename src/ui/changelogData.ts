@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-19',
     title: { da: 'Ryddeligere topbjælke under kampen', en: 'Cleaner top bar during matches' },
     items: [
+      { da: 'Rettet: beløb i nyheder (fx det nye transferbudget i januar) blev vist som et rå tal – nu formateres de som beløb, og over en milliard vises som "mia."', en: 'Fixed: amounts in news (e.g. the new transfer budget in January) were shown as raw numbers – they are now formatted, and amounts over a billion show as "bn"' },
       { da: 'På kampskærmen skjules "Til kampen", "Næste kamp" og "Næste: …" i topbjælken – kampen styres inde på skærmen, og efter slutfløjt fører Fortsæt (eller mellemrum) videre', en: 'On the match screen, "To the match", "Next match" and "Next: …" are hidden from the top bar – the match is controlled on the screen, and after full time Continue (or space) moves on' },
     ],
   },

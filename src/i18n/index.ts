@@ -84,7 +84,8 @@ export function money(eur: number): string {
   const dec = (n: number, d: number) => n.toLocaleString(loc, { minimumFractionDigits: d, maximumFractionDigits: d });
   let num: string;
   let unit = '';
-  if (a >= 1_000_000) { num = dec(a / 1_000_000, a >= 10_000_000 ? 1 : 2); unit = da ? ' mio.' : 'M'; }
+  if (a >= 1_000_000_000) { num = dec(a / 1_000_000_000, 2); unit = da ? ' mia.' : 'bn'; }
+  else if (a >= 1_000_000) { num = dec(a / 1_000_000, a >= 10_000_000 ? 1 : 2); unit = da ? ' mio.' : 'M'; }
   else if (a >= 100_000) { num = dec(Math.round(a / 1000), 0); unit = da ? ' t.' : 'K'; }
   else num = dec(currency === 'EUR' ? Math.round(a) : Math.round(a / 10) * 10, 0);
   let s: string;

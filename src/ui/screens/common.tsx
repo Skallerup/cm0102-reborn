@@ -60,7 +60,7 @@ export function useOpenLink() {
 // ---------- nyheder med links til spillere og klubber ----------
 
 const CLUB_PARAMS = new Set(['club', 'from', 'to', 'opp', 'leader', 'buyer', 'seller']);
-const MONEY_PARAMS = new Set(['fee', 'wage', 'balance']);
+const MONEY_PARAMS = new Set(['fee', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount']);
 
 let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number> } | null = null;
 
