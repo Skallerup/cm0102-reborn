@@ -108,9 +108,11 @@ function Search() {
       if (f.league && club?.league !== f.league) continue;
       if (f.tier && (g.leagues[club?.league ?? '']?.tier ?? 0) !== f.tier) continue;
       if (f.region && (!club || regionOf(g.nations[club.nation]?.name) !== f.region)) continue;
-      if (f.onlyFree && p.club) continue;
-      if (f.onlyListed && !p.listed) continue;
-      if (f.expiring && (!p.contract || p.contract.expires > seasonEnd)) continue;
+      // tilgængelighed (klubløs / til salg / udløbende kontrakt) lægges sammen: mindst én af de valgte
+      if (f.onlyFree || f.onlyListed || f.expiring) {
+        const free = !p.club, listed = !!p.listed, exp = !!p.contract && p.contract.expires <= seasonEnd;
+        if (!((f.onlyFree && free) || (f.onlyListed && listed) || (f.expiring && exp))) continue;
+      }
       if (f.contractBy && (!p.contract || Number(p.contract.expires.slice(0, 4)) > f.contractBy)) continue;
       if (f.onlyKnown && knowledgeOf(p) < 50) continue;
       if (f.role && naturalRole(p) !== f.role) continue;
