@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.45',
+    date: '2026-10-19',
+    title: { da: 'Taktiktavle som i det rigtige spil', en: 'Tactics board like the real game' },
+    items: [
+      { da: '"Flyt pladser": træk spillerne rundt på tavlen og lav din egen formation – pladsens rolle (D, WB, DM, M, AM, ANG) følger, hvor den står, og kampmotoren bruger de nye placeringer', en: '"Move positions": drag players around the board to make your own formation – the position\'s role (D, WB, DM, M, AM, ST) follows where it stands, and the match engine uses the new positions' },
+      { da: 'Stiplede pile viser, hvor meget hver spiller går med frem', en: 'Dashed arrows show how much each player gets forward' },
+      { da: 'Højreklik (langt tryk på mobil) på en spiller: defensiv/balanceret/offensiv rolle, langskud, indlæg, løb med bolden, gennembrudsafleveringer, tæt markering og fri rolle', en: 'Right-click (long press on mobile) a player: defensive/balanced/attacking role, long shots, crosses, run with ball, through balls, tight marking and free role' },
+    ],
+  },
+  {
     version: '0.7.44',
     date: '2026-10-19',
     title: { da: 'Mere ægte 2D-bevægelser', en: 'More realistic 2D movement' },

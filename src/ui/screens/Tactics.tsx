@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Info } from '../help';
 import { roleScore, slotFit, slotRole } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic } from '../../game/tactics';
-import type { Player, PlayerInstructions, Tactic, TeamInstructions } from '../../game/types';
+import type { Player, PlayerInstructions, PosKey, Side, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { t } from '../../i18n';
 import { chemistry } from '../../game/personality';
 import { Bar, Panel, PlayerLink, posStr } from '../components';
@@ -33,11 +33,67 @@ export function Tactics() {
   );
 }
 
+/** Pladsens betegnelse ud fra hvor den står på banen (x: 0 eget mål → 100 modstanderens, y: 0 venstre → 100 højre) */
+function slotAt(x: number, y: number): { pos: PosKey; side: Side } {
+  const side: Side = y < 30 ? 'L' : y > 70 ? 'R' : 'C';
+  const pos: PosKey = x < 15 && side === 'C' ? 'SW' : x < 27 ? 'D' : x < 36 ? (side === 'C' ? 'DM' : 'WB') : x < 56 ? 'M' : x < 70 ? 'AM' : 'ST';
+  return { pos, side };
+}
+
+/** Navn til en egen formation ud fra pladserne, fx "4-1-2-3*" */
+function shapeName(slots: Slot[]): string {
+  const n = { d: 0, dm: 0, m: 0, am: 0, st: 0 };
+  for (const s of slots) {
+    if (s.pos === 'GK') continue;
+    if (s.pos === 'D' || s.pos === 'SW' || (s.pos === 'WB' && s.x < 36)) n.d++;
+    else if (s.pos === 'DM') n.dm++;
+    else if (s.pos === 'M' || s.pos === 'WB') n.m++;
+    else if (s.pos === 'AM') n.am++;
+    else n.st++;
+  }
+  return `${[n.d, n.dm, n.m, n.am, n.st].filter((x) => x > 0).join('-')}*`;
+}
+
+/** Banens koordinater i procent af tavlen */
+const slotLeft = (s: Slot) => s.y;
+const slotTop = (s: Slot) => 97 - s.x * 0.92;
+
 export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
   tactic: Tactic; players: Player[]; onChange: (t: Tactic) => void; matchMode?: boolean; onSub?: (outId: number, inId: number) => void;
 }) {
   const [sel, setSel] = useState<number | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
+  // flyt pladser (egen formation) og højrekliksmenu med spillerinstruktioner
+  const [editPos, setEditPos] = useState(false);
+  const [moving, setMoving] = useState<{ i: number; x: number; y: number } | null>(null);
+  const [menu, setMenu] = useState<{ i: number; left: number; top: number } | null>(null);
+  const pitchRef = useRef<HTMLDivElement>(null);
+  const press = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const close = (e: Event) => { if (e instanceof KeyboardEvent && e.key !== 'Escape') return; setMenu(null); };
+    window.addEventListener('click', close);
+    window.addEventListener('keydown', close);
+    return () => { window.removeEventListener('click', close); window.removeEventListener('keydown', close); };
+  }, [menu]);
+  const toPitch = (cx: number, cy: number) => {
+    const r = pitchRef.current!.getBoundingClientRect();
+    const left = ((cx - r.left) / r.width) * 100, top = ((cy - r.top) / r.height) * 100;
+    return { x: Math.max(10, Math.min(90, (97 - top) / 0.92)), y: Math.max(4, Math.min(96, left)) };
+  };
+  const finishMove = () => {
+    if (!moving) return;
+    const slots = tactic.slots.slice();
+    const { pos, side } = slotAt(moving.x, moving.y);
+    slots[moving.i] = { pos, side, x: Math.round(moving.x), y: Math.round(moving.y) };
+    setMoving(null);
+    onChange({ ...tactic, slots, formation: shapeName(slots) });
+  };
+  const setIndFor = (i: number, patch: Partial<PlayerInstructions>) => {
+    const individual = tactic.individual.slice();
+    individual[i] = { ...individual[i], ...patch };
+    onChange({ ...tactic, individual });
+  };
   const byId = new Map(players.map((p) => [p.id, p]));
   const inXI = new Set(tactic.lineup);
   const selSlot = sel !== null ? tactic.slots[sel] : null;
@@ -100,11 +156,15 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
       <div className="col">
         <div className="row">
           <select value={tactic.formation} disabled={matchMode && false} onChange={(e) => onChange(changeFormation(tactic, e.target.value))}>
+            {!FORMATIONS.includes(tactic.formation) && <option value={tactic.formation}>{t('tac.customFormation', { name: tactic.formation })}</option>}
             {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
-          <span className="muted">{t('tac.hint')}</span>
+          <button className={`small ${editPos ? 'primary' : ''}`} onClick={() => { setEditPos(!editPos); setSel(null); }} title={t('tac.movePosHint')}>✥ {t(editPos ? 'tac.movePosDone' : 'tac.movePos')}</button>
+          <span className="muted">{t(editPos ? 'tac.movePosHint' : 'tac.hint2')}</span>
         </div>
-        <div className="pitch">
+        <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef}
+          onPointerMove={(e) => { if (moving) setMoving({ i: moving.i, ...toPitch(e.clientX, e.clientY) }); }}
+          onPointerUp={finishMove} onPointerLeave={finishMove}>
           <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
             <g stroke="#ffffffaa" strokeWidth="0.4" fill="none">
               <rect x="1" y="1" width="66" height="98" />
@@ -116,17 +176,38 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
               <rect x="25" y="93" width="18" height="6" />
             </g>
           </svg>
-          {tactic.slots.map((s, i) => {
+          {/* pile: hvor meget spilleren går med frem (løb) */}
+          <svg className="run-arrows" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#fff" /></marker></defs>
+            {tactic.slots.map((s0, i) => {
+              const sl = moving?.i === i ? { ...s0, x: moving.x, y: moving.y } : s0;
+              const runs = tactic.individual[i]?.runs ?? 0;
+              if (sl.pos === 'GK' || runs === 0 || !tactic.lineup[i]) return null;
+              const len = runs === 2 ? 15 : 7.5;
+              const inward = sl.side === 'L' ? 5 : sl.side === 'R' ? -5 : 0;
+              const x1 = slotLeft(sl), y1 = slotTop(sl) - 4;
+              return <line key={i} x1={x1} y1={y1} x2={x1 + inward * (runs / 2)} y2={y1 - len} stroke="#fff" strokeWidth="1.6" strokeDasharray="3 2.4" vectorEffect="non-scaling-stroke" markerEnd="url(#arrowhead)" opacity="0.9" />;
+            })}
+          </svg>
+          {tactic.slots.map((s0, i) => {
+            const s = moving?.i === i ? { ...s0, ...slotAt(moving.x, moving.y), x: moving.x, y: moving.y } : s0;
             const p = byId.get(tactic.lineup[i]);
             const fit = p ? slotFit(p, s) : 0;
             const club = gs().clubs[gs().userClub];
             return (
-              <div key={i} className={`slot ${sel === i ? 'sel' : ''} ${p ? '' : 'empty'} ${drag !== null ? 'drop' : ''}`}
-                style={{ left: `${s.y}%`, top: `${97 - s.x * 0.92}%` }}
-                onClick={() => setSel(sel === i ? null : i)}
+              <div key={i} className={`slot ${sel === i ? 'sel' : ''} ${p ? '' : 'empty'} ${drag !== null ? 'drop' : ''} ${moving?.i === i ? 'moving' : ''}`}
+                style={{ left: `${slotLeft(s)}%`, top: `${slotTop(s)}%` }}
+                onClick={() => { if (!editPos) setSel(sel === i ? null : i); }}
+                onContextMenu={(e) => { if (!p || s.pos === 'GK' && false) return; e.preventDefault(); setSel(i); setMenu({ i, left: e.clientX, top: e.clientY }); }}
+                onPointerDown={(e) => {
+                  if (editPos && s.pos !== 'GK') { e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); setMoving({ i, x: s.x, y: s.y }); return; }
+                  // langt tryk (mobil) åbner menuen
+                  if (e.pointerType === 'touch' && p) { const { clientX, clientY } = e; press.current = setTimeout(() => { setSel(i); setMenu({ i, left: clientX, top: clientY }); }, 550); }
+                }}
+                onPointerUp={() => { if (press.current) { clearTimeout(press.current); press.current = null; } }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => { if (drag !== null) assign(i, drag); setDrag(null); }}
-                draggable={!!p}
+                draggable={!!p && !editPos}
                 onDragStart={() => p && setDrag(p.id)}
                 onDragEnd={() => setDrag(null)}>
                 <div className="shirt" style={{ background: club?.colors[0] ?? '#c00', color: club?.colors[1] ?? '#fff' }}>{s.pos}{s.side !== 'C' ? s.side : ''}</div>
@@ -136,6 +217,37 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
             );
           })}
         </div>
+        {menu && (() => {
+          const i = menu.i;
+          const ins = tactic.individual[i];
+          const p = byId.get(tactic.lineup[i]);
+          if (!ins || !p) return null;
+          const sl = tactic.slots[i];
+          const tri = (k: 'longShots' | 'crossing', label: string) => (
+            <div className="ctx-row"><span>{label}</span>{[0, 1, 2].map((v) => <button key={v} className={`small ${ins[k] === v ? 'primary' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { [k]: v } as Partial<PlayerInstructions>); }}>{t(['ti.rarely', 'ti.sometimes', 'ti.often'][v])}</button>)}</div>
+          );
+          const tog = (k: 'runWithBall' | 'throughBalls' | 'freeRole' | 'tightMarking', label: string) => (
+            <button className={`ctx-toggle ${ins[k] ? 'on' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { [k]: !ins[k] } as Partial<PlayerInstructions>); }}>{ins[k] ? '✓' : '○'} {label}</button>
+          );
+          return (
+            <div className="ctx-menu" style={{ left: Math.min(menu.left, window.innerWidth - 340), top: Math.min(menu.top, window.innerHeight - 300) }} onClick={(e) => e.stopPropagation()}>
+              <div className="ctx-title">{p.last} · {sl.pos}{sl.side !== 'C' ? ' ' + sl.side : ''}</div>
+              <div className="ctx-row role">
+                {([[0, '⬇', 'tac.roleDef'], [1, '➡', 'tac.roleBal'], [2, '⬆', 'tac.roleAtt']] as const).map(([v, ic, k]) => (
+                  <button key={v} className={`small ${ins.runs === v ? 'primary' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { runs: v }); }}>{ic} {t(k)}</button>
+                ))}
+              </div>
+              {tri('longShots', t('pi.longShots'))}
+              {tri('crossing', t('pi.crossing'))}
+              <div className="ctx-toggles">
+                {tog('runWithBall', t('pi.runWithBall'))}
+                {tog('throughBalls', t('pi.throughBalls'))}
+                {tog('tightMarking', t('pi.tightMarking'))}
+                {tog('freeRole', t('pi.freeRole'))}
+              </div>
+            </div>
+          );
+        })()}
         <Panel title={t('tac.setPieces')}>
           <div className="col">
             {(['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => (
