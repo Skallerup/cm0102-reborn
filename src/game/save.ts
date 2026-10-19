@@ -19,6 +19,8 @@ export async function serialize(g: GameState): Promise<Blob> {
 
 export async function saveGame(): Promise<SaveMeta> {
   const g = gs();
+  // online-spil gemmes på serveren – en lokal kopi ville blive genoptaget i stedet for det rigtige spil
+  if (g.humans?.length) throw new Error('online');
   const blob = await serialize(g);
   const meta: SaveMeta = {
     id: g.id,
@@ -91,6 +93,8 @@ export async function loadGame(id: string): Promise<boolean> {
   const blob = await get<Blob>(`save:${id}`);
   if (!blob) return false;
   const g = await deserializeState(blob);
+  // en gammel lokal kopi af et online-spil: åbn ikke den (det rigtige spil ligger på serveren)
+  if (g.humans?.length) return false;
   setGame(g);
   upgradeLoaded();
   rememberLast({ kind: 'local', id });

@@ -252,7 +252,7 @@ export function Shell() {
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
           if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
-          if (confirm(t('top.quitConfirm'))) { await saveGame(); forgetLast(); setGame(null); }
+          if (confirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
         <VersionButton />
       </nav>

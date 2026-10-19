@@ -41,7 +41,12 @@ export default function App() {
     (async () => {
       try {
         if (last?.kind === 'local') {
-          if (!(await loadGame(last.id))) forgetLast();
+          if (!(await loadGame(last.id))) {
+            forgetLast();
+            // var det en lokal kopi af et online-spil, så åbn det seneste online-spil i stedet
+            const room = savedRooms()[0];
+            if (room) await openSession(room);
+          }
         } else if (last?.kind === 'online') {
           const creds = savedRooms().find((r) => r.code === last.code);
           if (creds) await openSession(creds);

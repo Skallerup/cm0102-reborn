@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.63',
+    date: '2026-10-19',
+    title: { da: 'Rettelser: klubfarver og online-værten', en: 'Fixes: club colours and the online host' },
+    items: [
+      { da: 'Rettet: de nye Superliga-farver blev læst forkert, så menuen blev hvid. Nu får fx FC København blå menu og Vejle rød', en: 'Fixed: the new Superliga colours were read incorrectly, so the menu turned white. Now e.g. FC København gets a blue menu and Vejle a red one' },
+      { da: 'Rettet: værten kunne ende i en lokal kopi af online-spillet (uden de andre spillere) efter en genindlæsning. Online-spil gemmes nu aldrig lokalt, og en gammel kopi springes over til fordel for online-spillet', en: 'Fixed: the host could end up in a local copy of the online game (without the other players) after a reload. Online games are never saved locally now, and an old copy is skipped in favour of the online game' },
+    ],
+  },
+  {
     version: '0.7.62',
     date: '2026-10-19',
     title: { da: 'Simuleringsvisning i online-spil', en: 'Simulation screen in online games' },
