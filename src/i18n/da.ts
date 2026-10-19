@@ -218,6 +218,7 @@ export const da: Record<string, string> = {
   'match.notYours': "Ikke din kamp længere", 'match.notYoursText': "Du styrer nu {club}. Denne kamp spilles automatisk af den gamle klub.",
   'match.subsTitle': "Udskiftere", 'match.subInFor': "Skift ind for…", 'match.noSubsLeft': "Ingen udskiftninger tilbage",
   'hl.cornerSetup': "Hjørnespark! {a} gør klar ved flaget…", 'hl.cornerCross': "{a} slår bolden ind i feltet…", 'hl.cornerCleared': "Forsvaret rydder.", 'hl.cleared': "RYDDET", 'hl.corner': "HJØRNESPARK",
+  'tac.undo': "Fortryd", 'tac.undoHint': "Fortryd seneste ændring (Cmd/Ctrl+Z)", 'tac.withBall': "Med bolden", 'tac.withoutBall': "Uden bolden", 'tih.mentality': "hvor mange der går med frem", 'tih.passing': "korte kombinationer eller lange bolde", 'tih.tempo': "hvor hurtigt I spiller bolden frem", 'tih.width': "spil centralt eller ud på kanterne", 'tih.counter': "angrib hurtigt efter erobring", 'tih.closingDown': "hvor højt og ofte I presser", 'tih.tackling': "hårde tacklinger vinder bolde, men giver kort", 'tih.marking': "dæk områder eller bestemte spillere", 'tih.offside': "rykker forsvaret op – risikabelt mod hurtige angribere",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

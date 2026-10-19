@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.56',
+    date: '2026-10-19',
+    title: { da: 'Fortryd og pænere holdinstruktioner', en: 'Undo and nicer team instructions' },
+    items: [
+      { da: 'Taktik: ny Fortryd-knap (og Cmd/Ctrl+Z) – klik dig tilbage gennem de seneste ændringer af opstilling, formation og instruktioner', en: 'Tactics: new Undo button (and Cmd/Ctrl+Z) – step back through recent changes to lineup, formation and instructions' },
+      { da: 'Holdinstruktionerne er nu knapgrupper delt i "Med bolden" og "Uden bolden", med en kort forklaring af hver', en: 'Team instructions are now button groups split into "In possession" and "Out of possession", each with a short explanation' },
+    ],
+  },
+  {
     version: '0.7.55',
     date: '2026-10-19',
     title: { da: 'Hjørnespark i 2D', en: 'Corners in 2D' },

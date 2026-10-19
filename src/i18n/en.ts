@@ -205,6 +205,7 @@ export const en: Record<string, string> = {
   'match.notYours': "No longer your match", 'match.notYoursText': "You now manage {club}. This match is played automatically by your old club.",
   'match.subsTitle': "Substitutes", 'match.subInFor': "Bring on for…", 'match.noSubsLeft': "No substitutions left",
   'hl.cornerSetup': "Corner! {a} gets ready at the flag…", 'hl.cornerCross': "{a} whips it into the box…", 'hl.cornerCleared': "The defence clears.", 'hl.cleared': "CLEARED", 'hl.corner': "CORNER",
+  'tac.undo': "Undo", 'tac.undoHint': "Undo the last change (Cmd/Ctrl+Z)", 'tac.withBall': "In possession", 'tac.withoutBall': "Out of possession", 'tih.mentality': "how many push forward", 'tih.passing': "short combinations or long balls", 'tih.tempo': "how quickly you move the ball", 'tih.width': "play through the middle or out wide", 'tih.counter': "attack quickly after winning the ball", 'tih.closingDown': "how high and often you press", 'tih.tackling': "hard tackles win the ball but bring cards", 'tih.marking': "cover areas or specific players", 'tih.offside': "pushes the defence up – risky against fast forwards",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",
