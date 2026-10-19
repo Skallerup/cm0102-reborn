@@ -827,7 +827,7 @@ export const da: Record<string, string> = {
   'match.kickoff': 'Kick-off ▶', 'match.notToday': 'Kampen spilles ikke i dag.', 'match.ft': 'Slut', 'match.resume': 'Fortsæt', 'match.pause': 'Pause',
   'match.toEnd': 'Spring til slut', 'match.continue': 'Fortsæt ›', 'match.commentary': 'Kommentar', 'match.stats': 'Statistik', 'match.myTeam': 'Mit hold',
   'match.subsLeft': '{n} udsk. tilbage', 'match.vidiprinter': 'Andre kampe', 'match.noOther': 'Ingen andre kampe i dag', 'match.rating': 'Karakter',
-  'match.subOff': 'Skift ud…', 'match.paused': 'PAUSE', 'match.keys': 'Tastatur: P = pause · 1-4 = hastighed · T = taktik · U = udskiftninger · S = statistik · K = kommentar · E = spring til slut', 'match.keysDone': 'Tryk mellemrum eller Enter for at fortsætte', 'match.subFailed': 'Udskiftningen kunne ikke gennemføres.',
+  'match.subOff': 'Skift ud…', 'match.paused': 'PAUSE', 'match.keys': 'Tastatur: mellemrum/P = start/pause · 1-4 = hastighed · T = taktik · U = udskiftninger · S = statistik · K = kommentar · E = spring til slut', 'match.keysDone': 'Tryk mellemrum eller Enter for at fortsætte', 'match.subFailed': 'Udskiftningen kunne ikke gennemføres.',
   'stat.possession': 'Boldbesiddelse', 'stat.xg': 'xG (forventede mål)', 'stat.shots': 'Skud', 'stat.onTarget': 'På mål', 'stat.corners': 'Hjørnespark',
   'stat.fouls': 'Frispark begået', 'stat.yellows': 'Gule kort', 'stat.reds': 'Røde kort', 'stat.offsides': 'Offside', 'stat.passPct': 'Afleveringer %',
 

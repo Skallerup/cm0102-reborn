@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.53',
+    date: '2026-10-19',
+    title: { da: 'Mellemrum starter og pauser kampen', en: 'Space plays and pauses the match' },
+    items: [
+      { da: 'Under kampen starter og pauser mellemrumstasten kampen (ligesom P). Før kampen giver den kick-off, og efter slutfløjt går den videre', en: 'During the match the space bar plays and pauses (like P). Before the match it kicks off, and after full time it moves on' },
+    ],
+  },
+  {
     version: '0.7.52',
     date: '2026-10-19',
     title: { da: 'Ryddeligere topbjælke under kampen', en: 'Cleaner top bar during matches' },

@@ -104,7 +104,8 @@ export function Shell() {
       e.stopImmediatePropagation();
       if (e.repeat) return;
       // skærmens egen Fortsæt (fx Kick-off eller Fortsæt efter kampen) går forud for topbjælkens
-      const btn = document.querySelector<HTMLButtonElement>('.main .continue:not(:disabled)') ?? document.querySelector<HTMLButtonElement>('.topbar .continue:not(:disabled)');
+      // under en kamp: mellemrum starter og pauser kampen
+      const btn = document.querySelector<HTMLButtonElement>('.main [data-space]:not(:disabled)') ?? document.querySelector<HTMLButtonElement>('.main .continue:not(:disabled)') ?? document.querySelector<HTMLButtonElement>('.topbar .continue:not(:disabled)');
       btn?.click();
     };
     // en fokuseret knap aktiveres af mellemrum ved keyup – det skal også stoppes

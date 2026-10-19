@@ -305,7 +305,7 @@ function LiveMatch({ id }: { id: number }) {
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
         {!report && <>
-          <button onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
+          <button data-space onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
           {[1, 2, 4, 8].map((s) => <button key={s} className={speed === s ? 'primary small' : 'small'} onClick={() => setSpeed(s)}>{s}×</button>)}
           <button onClick={finishNow}>{t('match.toEnd')}</button>
         </>}
