@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.18',
+    date: '2026-10-19',
+    title: { da: 'Stjernerne forklaret', en: 'Stars explained' },
+    items: [
+      { da: 'Hold musen over stjernerne for at se, hvad de betyder: de er i forhold til dit hold (2½ ★ = holdets niveau), mens attributterne er absolutte', en: 'Hover over the stars to see what they mean: they are relative to your team (2½ ★ = the team\'s level), while attributes are absolute' },
+    ],
+  },
+  {
     version: '0.7.17',
     date: '2026-10-19',
     title: { da: '5 stjerner også for storklubber', en: '5 stars for big clubs too' },

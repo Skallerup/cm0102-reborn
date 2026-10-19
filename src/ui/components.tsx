@@ -1,7 +1,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
-import { gs } from '../game/state';
+import { gs, hasGame } from '../game/state';
 import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
 import { currencySymbol, fromCurExact, getLang, t, toCur } from '../i18n';
@@ -80,7 +80,12 @@ export function Stars({ range }: { range: [number, number] }) {
     const cls = lo >= i ? 's-full' : lo >= i - 0.5 ? 's-half' : hi >= i - 0.5 ? 's-maybe' : 's-empty';
     out.push(<i key={i} className={`star ${cls}`} />);
   }
-  return <span className="stars" title={`${lo}–${hi}`}>{out}</span>;
+  // stjernerne er relative til ens eget hold – forklar det, så de ikke forveksles med attributternes absolutte tal
+  const g = hasGame() ? gs() : null;
+  const club = g ? g.clubs[g.userClub]?.name : undefined;
+  const value = lo === hi ? `${lo} ★` : `${lo}–${hi} ★`;
+  const tip = `${value}\n${club ? t('stars.tip', { club }) : t('stars.tipNoClub')}${lo !== hi ? `\n${t('stars.tipUnsure')}` : ''}`;
+  return <span className="stars" title={tip}>{out}</span>;
 }
 
 export function Bar({ value, max = 100, tone }: { value: number; max?: number; tone?: 'good' | 'bad' | 'auto' }) {
