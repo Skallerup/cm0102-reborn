@@ -598,3 +598,7 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .waiting-banner { position: fixed; top: 64px; left: 50%; transform: translateX(-50%); z-index: 70; padding: 12px 26px; border-radius: 999px; font-size: 16px; font-weight: 800; letter-spacing: 0.02em; color: #fff; box-shadow: 0 10px 40px -6px rgba(232, 48, 63, 0.7); animation: bannerFlash 0.9s steps(1) infinite; pointer-events: none; white-space: nowrap; }
 @keyframes blinkText { 50% { opacity: 0.25; } }
 .waiting-me { color: #ff5d6c; font-weight: 800; text-transform: uppercase; animation: blinkText 0.9s steps(1) infinite; }
+
+/* topbjælken: hold elementerne på én linje */
+.topbar .club, .topbar .date, .topbar .money, .topbar button { white-space: nowrap; }
+.topbar .money { overflow: hidden; text-overflow: ellipsis; min-width: 0; }

@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.36',
+    date: '2026-10-19',
+    title: { da: 'Mere luft i topbjælken', en: 'More room in the top bar' },
+    items: [
+      { da: 'Hjælpeteksten om Fortsæt i online-spil er fjernet, og topbjælkens elementer holdes på én linje', en: 'The help text about Continue in online games has been removed, and the top bar items stay on one line' },
+    ],
+  },
+  {
     version: '0.7.35',
     date: '2026-10-19',
     title: { da: 'Klubbens farver som standard', en: 'Club colours by default' },
