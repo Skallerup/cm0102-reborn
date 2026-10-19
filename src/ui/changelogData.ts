@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.57',
+    date: '2026-10-19',
+    title: { da: 'Jubel – og så VAR', en: 'Celebrations – then VAR' },
+    items: [
+      { da: 'Annullerede mål er nu et rigtigt drama: først "MÅL!" og stillingen går op, så "VAR tjekker…" (eller linjedommerens flag), og så bliver målet taget fra jer igen. Både på 2D-banen og i kommentaren', en: 'Disallowed goals are now real drama: first "GOAL!" and the score goes up, then "VAR is checking…" (or the linesman\'s flag), and then the goal is taken away again. On the 2D pitch and in the commentary' },
+      { da: 'Offside-mål sker oftere – cirka i hver tredje kamp bliver et mål annulleret', en: 'Offside goals happen more often – roughly every third match has a goal ruled out' },
+    ],
+  },
+  {
     version: '0.7.56',
     date: '2026-10-19',
     title: { da: 'Fortryd og pænere holdinstruktioner', en: 'Undo and nicer team instructions' },

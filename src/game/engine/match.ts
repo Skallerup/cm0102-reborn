@@ -85,7 +85,7 @@ const ZB = 5;
 const ZL = 3;
 const NZ = ZB * ZL;
 /** Global afslutningsskala (kalibreret mod ~2,7 mål/kamp, se scripts/calibrate.ts) */
-const FINISH_SCALE = 1.43;
+const FINISH_SCALE = 1.5;
 const zoneX = (b: number) => 10 + b * 20;
 const zoneY = (l: number) => 16.67 + l * 33.33;
 
@@ -783,7 +783,7 @@ export class MatchSim {
     if (this.r.chance(goalP)) {
       // offside? Gennembrud og afslutninger i feltet kan være offside – linjedommeren kan tage fejl,
       // men med VAR bliver tætte situationer tjekket og rettet
-      const risk = kind === 'oneOnOne' ? 0.11 : kind === 'box' || kind === 'cutback' || kind === 'header' || kind === 'rebound' ? 0.05 : 0;
+      const risk = kind === 'oneOnOne' ? 0.2 : kind === 'box' || kind === 'cutback' || kind === 'header' || kind === 'rebound' ? 0.1 : 0;
       let routineCheck = false;
       if (risk > 0) {
         const reallyOff = this.r.chance(risk + (O.ti.offside ? 0.04 : 0));
@@ -794,6 +794,8 @@ export class MatchSim {
           rec.outcome = 'offside';
           T.stats.offsides++;
           this.rate(s, -0.05);
+          // først jubel – så kommer skuffelsen
+          this.line('goal-cheer', s, null, true);
           if (checked) { this.line('var-check', s, null, true); this.line('var-disallowed', s, null, true); }
           else this.line('goal-offside', s, null, true);
           this.events.push({ m: this.minute, t: T.idx, k: 'offside-goal', p: s.p.id });

@@ -31,7 +31,7 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -181,7 +181,8 @@ function LiveMatch({ id }: { id: number }) {
   // husk om man ser kampen i 2D eller som kommentar
   const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary') { try { localStorage.setItem('cm-match-view', v); } catch { /* ignorér */ } } };
   const [report, setReport] = useState<MatchReport | null>(null);
-  const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number } | null>(null);
+  // flashes/bump/reveal: pr. billede – stor tekst, midlertidig ændring af stillingen (jubel før et annulleret mål) og hvor mange nye kommentarlinjer der vises
+  const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number; flashes?: (string | undefined)[]; bump?: number[]; reveal?: number[] } | null>(null);
   const [msg, setMsg] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
@@ -190,8 +191,8 @@ function LiveMatch({ id }: { id: number }) {
     const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}` };
     while (L.consumed < sim.commentary.length) {
       const l = sim.commentary[L.consumed];
-      const cls = l.k.startsWith('goal') ? 'goal' : l.hi ? 'hi' : '';
-      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m });
+      const cls = l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '';
+      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k });
       L.consumed++;
     }
   };
@@ -228,7 +229,8 @@ function LiveMatch({ id }: { id: number }) {
       setHl({ frames: cornerFrames(sim.pitch(), plainCorner), i: 0, outcome: result ? 'none' : 'cleared', texts: [t('hl.cornerSetup', { a: taker }), t('hl.cornerCross', { a: taker }), result || t('hl.cornerCleared')], hideFrom: linesBefore, team: plainCorner.t });
       started = true;
     }
-    if (bigOrCorner && tab === '2d' && (speed < 8 || bigOrCorner.outcome === 'goal')) {
+    // annullerede mål vises med jubel → skuffelse i alle visninger (også kommentaren)
+    if (bigOrCorner && (tab === '2d' || (bigOrCorner.outcome === 'offside' && speed < 8)) && (speed < 8 || bigOrCorner.outcome === 'goal')) {
       const big = bigOrCorner;
       const assist = big.outcome === 'goal' ? sim.events.filter((e) => e.k === 'goal' && e.p === big.p).at(-1)?.p2 : undefined;
       const frames = highlightFrames(sim.pitch(), big, assist);
@@ -245,7 +247,22 @@ function LiveMatch({ id }: { id: number }) {
         : big.kind === 'pen'
         ? [t('hl.penSetup', { a: shooter }), t('hl.penRun', { a: shooter }), result]
         : frames.map((fr, i) => (i === frames.length - 1 ? result : i === 0 ? t('hl.build', { a: name(fr) }) : i === 1 ? t('hl.pass', { a: name(fr), b: shooter }) : t('hl.shoot', { a: shooter })));
-      setHl({ frames, i: 0, outcome: big.outcome, texts, hideFrom: linesBefore, team: big.t });
+      const fl = L.lines.slice(linesBefore);
+      const ci = fl.findIndex((l) => l.k === 'goal-cheer');
+      if (big.outcome === 'offside' && ci >= 0) {
+        // annulleret mål: MÅL! (stillingen går op) → evt. VAR-tjek → AFLYST/OFFSIDE
+        const tail = fl.slice(ci);
+        const gi = frames.length - 1;
+        const all = [...frames, ...tail.slice(1).map((_, j) => ({ ...frames[gi], moment: frames[gi].moment + j + 1 }))];
+        const tx = [...texts.slice(0, gi), ...tail.map((l) => l.text)];
+        const flashes = all.map((_, j) => {
+          if (j < gi) return undefined;
+          const k = tail[j - gi]?.k;
+          return k === 'goal-cheer' ? t('hl.goal') : k === 'var-check' ? t('hl.varCheck') : k === 'var-disallowed' ? t('hl.disallowed') : k === 'goal-offside' ? t('hl.offside') : undefined;
+        });
+        setHl({ frames: all, i: tab === '2d' ? 0 : gi, outcome: 'offside', texts: tx, hideFrom: linesBefore, team: big.t, flashes,
+          bump: all.map((_, j) => (j >= gi && j < all.length - 1 ? 1 : 0)), reveal: all.map((_, j) => (j < gi ? 0 : ci + (j - gi) + 1)) });
+      } else setHl({ frames, i: 0, outcome: big.outcome, texts, hideFrom: linesBefore, team: big.t });
       started = true;
     }
     if (sim.finished && !report) setReport(sim.report());
@@ -275,7 +292,8 @@ function LiveMatch({ id }: { id: number }) {
   useEffect(() => {
     if (!hl || paused) return;
     const last = hl.i >= hl.frames.length - 1;
-    const h = setTimeout(() => { if (last) { setHl(null); maybeHalftime(); } else setHl({ ...hl, i: hl.i + 1 }); }, last ? frameMs * 2.2 : frameMs);
+    const slow = hl.flashes?.[hl.i] === t('hl.varCheck') ? 2 : hl.flashes?.[hl.i] === t('hl.goal') ? 1.6 : 1;
+    const h = setTimeout(() => { if (last) { setHl(null); maybeHalftime(); } else setHl({ ...hl, i: hl.i + 1 }); }, last ? frameMs * 2.2 : frameMs * slow);
     return () => clearTimeout(h);
   }, [hl, paused]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -324,6 +342,8 @@ function LiveMatch({ id }: { id: number }) {
   const colors = teamColors(f.home, f.away, me);
   // et mål vises først på resultattavlen, når højdepunktet når frem til målet
   const spoil = hl && hl.outcome === 'goal' && hl.i < hl.frames.length - 1 ? hl.team : -1;
+  // jubel før et annulleret mål: stillingen står midlertidigt et mål højere
+  const fake = hl?.bump?.[hl.i] ? hl.team : -1;
 
   return (
     <div>
@@ -335,7 +355,7 @@ function LiveMatch({ id }: { id: number }) {
         </>}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
-      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0)} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
+      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
       <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
@@ -348,8 +368,8 @@ function LiveMatch({ id }: { id: number }) {
           <div style={{ position: 'relative' }}>
             {hl ? (
               <Pitch2D snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
-                banner={hl.texts[hl.i] ?? ''} bannerCls={hl.i === hl.frames.length - 1 && hl.outcome === 'goal' ? 'goal' : ''}
-                flash={hl.i === hl.frames.length - 1 && hl.outcome !== 'none' ? t(`hl.${hl.outcome}`) : undefined} />
+                banner={hl.texts[hl.i] ?? ''} bannerCls={(hl.i === hl.frames.length - 1 && hl.outcome === 'goal') || hl.flashes?.[hl.i] === t('hl.goal') ? 'goal' : ''}
+                flash={hl.flashes ? hl.flashes[hl.i] : hl.i === hl.frames.length - 1 && hl.outcome !== 'none' ? t(`hl.${hl.outcome}`) : undefined} />
             ) : (
               // mellem højdepunkterne: holdene i ro i deres formation
               <Pitch2D snap={{ ...sim.pitch(), zone: 7, poss: me, holder: 0, moment: 0, shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
@@ -358,14 +378,14 @@ function LiveMatch({ id }: { id: number }) {
             {hl && <div className="p2d-replay">{t('corner' in hl.frames[0] ? 'hl.corner' : 'hl.chance')}</div>}
           </div>
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
-            {(hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines).slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+            {(hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines).slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
           </div>
         </div>
       )}
       {tab === 'commentary' && (
         <div className="cols" style={{ gridTemplateColumns: '2fr 1fr' }}>
           <div className="commentary" ref={boxRef}>
-            {L.lines.map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+            {(hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : L.lines).map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
           </div>
           <Panel title={t('match.vidiprinter')}>
             <div className="vidiprinter">
