@@ -73,7 +73,9 @@ export function monthlyWill() {
         }
       }
     }
-    // 3) grupperinger: lederens humør smitter
+    // 3) sidste kontraktår: vil han overhovedet forlænge?
+    for (const p of squad(c.id)) renewalCheck(p, c.id);
+    // 4) grupperinger: lederens humør smitter
     for (const cl of cliques(c.id)) {
       const leader = g.players[cl.leader];
       if (!leader) continue;
@@ -97,7 +99,7 @@ export function monthlyWill() {
 const recently = (p: Player, days: number) => !!p.lastContact && daysBetween(p.lastContact, gs().date) < days;
 
 /** En spiller beder om en samtale (klage) – manageren svarer fra spillerens profil */
-export function playerComplains(p: Player, kind: 'time' | 'morale' | 'press' | 'blocked', club?: number) {
+export function playerComplains(p: Player, kind: 'time' | 'morale' | 'press' | 'blocked' | 'renewal', club?: number) {
   const g = gs();
   if (p.complaint || recently(p, 30)) return;
   p.complaint = { kind, date: g.date, ...(club ? { club } : {}) };
@@ -142,6 +144,94 @@ export function weeklyPlayerContact() {
   }
 }
 
+/**
+ * I sidste kontraktår gør spilleren op med sig selv, om han vil forlænge (én gang pr. sæson).
+ * Ambitiøse spillere med større klubber efter sig, spillere uden spilletid og underbetalte spillere
+ * kan sige fra – og beder så om en samtale.
+ */
+function renewalCheck(p: Player, clubId: number) {
+  const g = gs();
+  if (p.loan || !p.contract || p.contract.futureClub || p.complaint) return;
+  const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
+  if (p.contract.expires > seasonEnd) return;
+  if (p.renewal && p.renewal.season === g.season) return;
+  if ((p.renewalChecked ?? -1) === g.season) return;
+  p.renewalChecked = g.season;
+  const club = g.clubs[clubId];
+  const age = ageOn(p.dob, g.date);
+  const amb = p.attrs[A.ambition], loyal = p.attrs[A.loyalty];
+  const sq = squad(clubId).filter((x) => !x.loan);
+  const rank = sq.filter((x) => x.ca > p.ca).length + 1;
+  // større klubber, der holder øje med ham
+  const bigger = Object.values(g.clubs).some((c) => c.id !== clubId && c.shortlist?.includes(p.id) && c.rep >= club.rep + 5);
+  const market = wageFor(p.value, rulesFor(club.league, 20).wealth);
+  const reasons: [RenewalReason, number][] = [
+    ['ambition', (bigger ? 0.5 : 0) + Math.max(0, amb - 12) * 0.08 + Math.max(0, p.rep - club.rep) / 40],
+    ['time', ((p.unhappy ?? 0) >= 30 || rank > 16 ? 0.45 : 0) + Math.max(0, amb - 10) * 0.04 - (age >= 32 ? 0.2 : 0)],
+    ['money', (p.contract.wage < market * 0.8 ? 0.35 : 0) + Math.max(0, amb - 11) * 0.03],
+  ];
+  reasons.sort((a, b) => b[1] - a[1]);
+  const [reason, w] = reasons[0];
+  // loyale spillere og spillere, der har det godt, bliver gerne
+  const score = w - Math.max(0, loyal - 11) * 0.06 - (p.morale >= 15 ? 0.1 : 0);
+  if (score < 0.35 || !rng.chance(Math.min(0.9, score))) return;
+  const stance = score >= 0.65 ? 'refuses' : 'hesitant';
+  p.renewal = { stance, reason, since: g.date, season: g.season };
+  p.lastContact = undefined; // samtalen er vigtig nok til at bryde igennem
+  playerComplains(p, 'renewal');
+}
+
+type RenewalReason = 'ambition' | 'time' | 'money';
+
+/** Svar til en spiller, der ikke vil forlænge */
+function answerRenewal(p: Player, choice: 'promise' | 'fight' | 'list' | 'listen'): string {
+  const g = gs();
+  const r = p.renewal;
+  if (!r) return 'error';
+  const club = g.clubs[p.club];
+  switch (choice) {
+    case 'promise': {
+      if (r.reason === 'time') {
+        // større rolle: han forlænger gerne, hvis løftet bliver holdt
+        p.playPromise = { until: new Date(Date.parse(g.date) + 45 * 864e5).toISOString().slice(0, 10), apps: p.stats.apps + p.stats.subs };
+        r.convinced = true;
+        p.morale = Math.min(20, p.morale + 2);
+        return 'complaint.r.renewal.time';
+      }
+      if (r.reason === 'money') {
+        // en løn, der matcher: han forhandler, men kræver mere
+        r.convinced = true;
+        r.wageFactor = r.stance === 'refuses' ? 1.3 : 1.2;
+        p.morale = Math.min(20, p.morale + 1);
+        return 'complaint.r.renewal.money';
+      }
+      // ambitioner: troværdigt, hvis klubben er stor nok eller holdet ligger i toppen
+      const comp = g.comps[club?.league ?? ''];
+      const pos = comp ? comp.table.slice().sort((a, b) => b.pts - a.pts).findIndex((x) => x.club === p.club) + 1 : 99;
+      const believable = (club && club.rep >= p.rep - 3) || pos <= 3 || (r.stance === 'hesitant' && p.attrs[A.ambition] < 16);
+      if (believable) { r.convinced = true; r.wageFactor = 1.1; p.morale = Math.min(20, p.morale + 1.5); return 'complaint.r.renewal.ambitionOk'; }
+      p.morale = Math.max(1, p.morale - 1);
+      return 'complaint.r.renewal.ambitionNo';
+    }
+    case 'listen':
+      // han sætter pris på ærligheden – en tøvende spiller kan blive overtalt senere
+      p.morale = Math.min(20, p.morale + 1);
+      if (r.stance === 'hesitant') r.wageFactor = 1.15, r.convinced = true;
+      return r.stance === 'hesitant' ? 'complaint.r.renewal.listenOk' : 'complaint.r.renewal.listen';
+    case 'fight': {
+      const pro = p.attrs[A.professionalism] >= 14;
+      if (pro) return 'complaint.r.renewal.fightPro';
+      p.morale = Math.max(1, p.morale - 2);
+      p.unhappy = Math.min(100, (p.unhappy ?? 0) + 15);
+      return 'complaint.r.renewal.fightBad';
+    }
+    case 'list':
+      p.listed = true;
+      p.morale = Math.min(20, p.morale + 1.5);
+      return 'complaint.r.renewal.list';
+  }
+}
+
 /** Manageren svarer på en klage */
 export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list' | 'listen'): string {
   const g = gs();
@@ -151,6 +241,7 @@ export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list
   const suitor = p.complaint.club;
   p.complaint = undefined;
   if (kind === 'blocked') return answerBlocked(p, choice, suitor);
+  if (kind === 'renewal') return answerRenewal(p, choice);
   const strong = p.attrs[A.determination] >= 14 || p.attrs[A.professionalism] >= 15;
   const hot = p.attrs[A.temperament] <= 8;
   switch (choice) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { aiCall } from '../../ai/client';
 import { gs } from '../../game/state';
 import { act } from '../../game/actions';
-import { clausesWorthFor, preferredYears, wageDemand } from '../../game/transfers';
+import { clausesWorthFor, preferredYears, renewalDemand, wageDemand } from '../../game/transfers';
 import { clauseCost } from '../../game/clauses';
 import { SHIFT_WEEKS } from '../../game/board';
 import type { ContractClauses, TransferOffer } from '../../game/types';
@@ -20,7 +20,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const pid = offer?.player ?? renewPid!;
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
-  const demand = offer?.demand?.wage ?? wageDemand(p, club);
+  const demand = offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club));
   const [wage, setWage] = useState(Math.round(demand / 50) * 50);
   const [years, setYears] = useState(offer?.demand?.years ?? preferredYears(p));
   const [msg, setMsg] = useState<{ text: string; tone: string; budget?: boolean } | null>(null);
@@ -39,7 +39,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
     ...(offer?.rival ? [offer.rival.club] : []),
   ])].map((c) => g.clubs[c]?.name).filter(Boolean);
   const speak = (outcome: string, offered?: { wage: number; years: number }) => {
-    const demandW = money(offer?.demand?.wage ?? wageDemand(p, club));
+    const demandW = money(offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
     const demandY = offer?.demand?.years ?? preferredYears(p);
     const situation = {
       opening: `Forhandlingen begynder. Du fremlægger din klients krav: ${demandW} om ugen i ${demandY} år.`,
@@ -62,7 +62,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
     speak(res, { wage, years });
     if (res === 'accepted') { setMsg({ text: t('neg.accepted'), tone: 'good' }); setTimeout(onClose, 2200); }
     else if (res === 'counter') {
-      const d = offer?.demand?.wage ?? wageDemand(p, club);
+      const d = offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club));
       setWage(Math.round(d / 50) * 50);
       setYears(offer?.demand?.years ?? preferredYears(p));
       setMsg({ text: t('neg.counter', { wage: money(d), years: offer?.demand?.years ?? preferredYears(p) }), tone: 'warn' });

@@ -451,6 +451,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   p.listPrice = undefined;
   p.wantsAway = false;
   p.promiseUntil = undefined;
+  p.renewal = undefined;
+  p.complaint = undefined;
   p.joined = g.date;
   p.morale = Math.min(20, p.morale + 2);
   p.form = [];
@@ -508,6 +510,13 @@ export function releasePlayer(pid: number) {
   addNews({ cat: 'contract', key: 'transfer.released', params: { player: pname(p) } });
 }
 
+/** Lønkrav ved forlængelse: en spiller, der har tøvet, vil have mere */
+export function renewalDemand(p: Player, club: Club): number {
+  const r = p.renewal;
+  const f = r ? (r.wageFactor ?? (r.stance === 'hesitant' ? 1.15 : 1)) : 1;
+  return Math.round(wageDemand(p, club) * f / 50) * 50;
+}
+
 /** Forlæng kontrakt for egen spiller – brugeren tilbyder løn/år */
 export function renewContract(pid: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' {
   const g = gs();
@@ -515,7 +524,10 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const club = g.clubs[g.userClub];
   if (!p || !club || p.club !== club.id) return 'refused';
   if ((p.unhappy ?? 0) > 70 && p.attrs[43] < 10) return 'refused';
-  const demand = wageDemand(p, club);
+  // en spiller, der har sagt fra, forhandler ikke, før han er overtalt – og en tøvende vil have mere
+  const r = p.renewal;
+  if (r && !r.convinced && r.stance === 'refuses') return 'refused';
+  const demand = renewalDemand(p, club);
   if (currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget) return 'budget';
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * 0.97) {
@@ -524,6 +536,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
     const hadDemand = !!p.demand;
     p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
+    p.renewal = undefined;
     // en tilfreds spiller takker for den nye kontrakt
     if (hadDemand || wage >= demand * 1.1) playerPraises(p, 'contract');
     addNews({ cat: 'contract', key: 'contract.renewed', params: { player: pname(p), years } });
@@ -1051,7 +1064,8 @@ export function aiBosman() {
   const g = gs();
   for (const p of squad(g.userClub)) {
     if (!canPreContractAny(p) || p.contract!.futureClub) continue;
-    if (!rng.chance(0.02)) continue;
+    // spillere, der har sagt nej til at forlænge, er meget mere åbne over for andre klubber
+    if (!rng.chance(p.renewal && !p.renewal.convinced ? (p.renewal.stance === 'refuses' ? 0.1 : 0.05) : 0.02)) continue;
     const suitors = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.rep >= p.rep - 15 && c.rep <= p.rep + 25);
     const c = rng.pick(suitors);
     if (!c) continue;

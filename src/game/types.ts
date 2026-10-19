@@ -120,7 +120,11 @@ export interface Player {
   /** Seneste uro i spillerens gruppering (dato) */
   cliqueAlert?: string;
   /** Spillerens henvendelse til manageren (klage) der venter på svar, og et løfte om spilletid */
-  complaint?: { kind: 'time' | 'morale' | 'press' | 'blocked'; date: string; club?: number };
+  complaint?: { kind: 'time' | 'morale' | 'press' | 'blocked' | 'renewal'; date: string; club?: number };
+  /** Sæson hvor spilleren sidst overvejede at forlænge */
+  renewalChecked?: number;
+  /** Spilleren vil ikke (eller tøver med at) forlænge sin kontrakt – og hvorfor */
+  renewal?: { stance: 'refuses' | 'hesitant'; reason: 'ambition' | 'time' | 'money'; since: string; convinced?: boolean; wageFactor?: number; season: number };
   playPromise?: { until: string; apps: number };
   /** Seneste ros/henvendelse (for ikke at gentage sig) */
   lastContact?: string;

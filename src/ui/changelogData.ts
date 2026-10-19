@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.21',
+    date: '2026-10-19',
+    title: { da: 'Spillere, der ikke vil forlænge', en: 'Players who won\'t extend' },
+    items: [
+      { da: 'I sidste kontraktår kan en spiller sige, at han ikke vil forlænge – fordi han vil videre, mangler spilletid eller er underbetalt – og beder om en samtale', en: 'In the last year of his contract a player may say he won\'t extend – because he wants to move on, lacks playing time or is underpaid – and asks for a talk' },
+      { da: 'Du kan overbevise ham (større rolle, bedre løn eller ambitioner), respektere det, holde ham til kontrakten eller sælge ham, så klubben får noget for ham', en: 'You can persuade him (bigger role, better wage or ambitions), respect it, hold him to his contract or sell him so the club gets something' },
+      { da: 'En spiller, der nægter, forhandler ikke før han er overtalt, og er langt mere åben for Bosman-tilbud; en tøvende spiller vil have højere løn', en: 'A player who refuses won\'t negotiate until persuaded and is far more open to Bosman offers; a hesitant player wants a higher wage' },
+    ],
+  },
+  {
     version: '0.7.20',
     date: '2026-10-19',
     title: { da: 'Ikoner i indbakken', en: 'Inbox icons' },

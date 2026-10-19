@@ -60,6 +60,7 @@ export function PlayerScreen({ id }: { id: number }) {
       {msg && <div className="insight">{msg}</div>}
       {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} />}
       {mine && p.complaint && <Complaint pid={p.id} onMsg={setMsg} />}
+      {mine && p.renewal && !p.complaint && <div className={`insight ${p.renewal.convinced ? '' : 'warn'}`} style={{ marginBottom: 12 }}>{t(p.renewal.convinced ? 'renewal.status.convinced' : `renewal.status.${p.renewal.stance}`, { player: p.last })}</div>}
       {mine && p.playPromise && <div className="insight warn" style={{ marginBottom: 12 }}>{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
       <div className="cols">
         <Panel title={t('player.info')}>
@@ -565,12 +566,15 @@ function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
   const p = g.players[pid];
   if (!p) return null;
   const kind = p.complaint?.kind ?? 'time';
-  const choices: ('promise' | 'fight' | 'list' | 'listen')[] = kind === 'time' || kind === 'blocked' ? ['promise', 'fight', 'list', 'listen'] : ['listen', 'fight', 'list'];
-  const label = (c: string, part: 'opt' | 'hint') => (kind === 'blocked' ? t(`complaint.${part}.blocked.${c}`) : t(`complaint.${part}.${c}`));
+  const reason = p.renewal?.reason ?? 'ambition';
+  const choices: ('promise' | 'fight' | 'list' | 'listen')[] = kind === 'time' || kind === 'blocked' || kind === 'renewal' ? ['promise', 'listen', 'fight', 'list'] : ['listen', 'fight', 'list'];
+  const label = (c: string, part: 'opt' | 'hint') => (kind === 'blocked' ? t(`complaint.${part}.blocked.${c}`)
+    : kind === 'renewal' ? t(c === 'promise' ? `complaint.${part}.renewal.promise.${reason}` : `complaint.${part}.renewal.${c}`)
+    : t(`complaint.${part}.${c}`));
   const suitor = p.complaint?.club ? g.clubs[p.complaint.club]?.name ?? '' : '';
   return (
     <Panel title={t('complaint.title', { player: `${p.first} ${p.last}` })}>
-      <p style={{ marginTop: 0, lineHeight: 1.5 }}>“{t(`complaint.says.${kind}`, { club: suitor })}”</p>
+      <p style={{ marginTop: 0, lineHeight: 1.5 }}>“{t(kind === 'renewal' ? `complaint.says.renewal.${reason}.${p.renewal?.stance ?? 'hesitant'}` : `complaint.says.${kind}`, { club: suitor })}”</p>
       <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
         {choices.map((c) => <button key={c} className={c === 'promise' ? 'primary' : ''} title={label(c, 'hint')} onClick={() => onMsg(`${p.last}: ${t(dispatch<string>({ t: 'complaint', pid, choice: c }), { player: p.last, club: suitor })}`)}>{label(c, 'opt')}</button>)}
       </div>
