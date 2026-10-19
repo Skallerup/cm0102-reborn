@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.13',
+    date: '2026-10-19',
+    title: { da: 'Job i en ny liga virker', en: 'A job in a new league works' },
+    items: [
+      { da: 'Tager du et job i et land, der ikke var valgt fra start, sættes landets ligaer op med det samme – de kampe, der allerede er spillet, simuleres, og resten af sæsonen spilles normalt (pokalen fra næste sæson)', en: 'If you take a job in a country that was not chosen at the start, its leagues are set up straight away – matches already due are simulated, and the rest of the season is played normally (the cup from next season)' },
+      { da: 'Eksisterende saves rettes automatisk, næste gang du trykker Fortsæt', en: 'Existing saves are fixed automatically the next time you press Continue' },
+      { da: 'Beskeden om mesterskabs- og nedrykningsspil kommer kun til managere i den pågældende liga', en: 'The message about the championship and relegation rounds only goes to managers in that league' },
+    ],
+  },
+  {
     version: '0.7.12',
     date: '2026-10-19',
     title: { da: 'Fansene følger med i kontrakterne', en: 'The fans follow contracts' },

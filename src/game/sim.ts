@@ -1,6 +1,6 @@
 // Spillets dag-for-dag-løkke.
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, summerManagerChanges } from './board';
-import { needsWinnerFn, recordResult } from './competitions';
+import { needsWinnerFn, recordResult, setupLeague } from './competitions';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { gateReceipts, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
@@ -363,9 +363,54 @@ function playDay(): DayResult {
   return {};
 }
 
+/**
+ * En menneskelig manager har overtaget en klub i et land, der ikke simuleres (ingen liga).
+ * Landet gøres aktivt: ligaerne sættes op for indeværende sæson, og de kampe, der allerede
+ * skulle have været spillet, simuleres med det samme (som AI-kampe), så tabellen er realistisk.
+ * Pokalturneringen starter fra næste sæson.
+ */
+export function activateNation(nation: number) {
+  const g = gs();
+  if (g.activeNations.includes(nation)) return;
+  g.activeNations.push(nation);
+  const byLeague = new Map<string, number[]>();
+  for (const c of Object.values(g.clubs)) if (c.nation === nation) (byLeague.get(c.league) ?? byLeague.set(c.league, []).get(c.league)!).push(c.id);
+  const ids: string[] = [];
+  for (const [id, clubs] of byLeague) {
+    const m = g.leagues[id];
+    if (!m || g.comps[id] || clubs.length < 4) continue;
+    setupLeague(id, m.name, m.nation, m.tier, clubs, g.season);
+    ids.push(id);
+  }
+  // indhent de kampe, der allerede skulle være spillet – uden at de tæller for menneskelige managere
+  const humans = Object.values(g.clubs).filter((c) => c.nation === nation && c.manager === -1);
+  for (const c of humans) c.manager = 0;
+  const userClub = g.userClub;
+  g.userClub = 0;
+  try {
+    const past = Object.values(g.fixtures)
+      .filter((f) => ids.includes(f.comp) && !f.result && (f.date < g.date || (f.date === g.date && g.dayDone)))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    for (const f of past) simulateFixture(f, true, false);
+  } finally {
+    g.userClub = userClub;
+    for (const c of humans) c.manager = -1;
+  }
+}
+
+/** Ligger en menneskelig managers klub i en liga uden turnering? Så startes landets ligaer */
+function ensureHumanLeagues() {
+  const g = gs();
+  forEachHuman(() => {
+    const c = g.clubs[g.userClub];
+    if (c && !g.comps[c.league] && g.leagues[c.league]) activateNation(c.nation);
+  });
+}
+
 /** "Fortsæt" – én dag frem */
 export function continueGame(): DayResult {
   const g = gs();
+  ensureHumanLeagues();
   if (g.pendingFixture) return { match: g.pendingFixture };
   if (!g.dayDone) return playDay();
   const lastNews = g.nextId.news;

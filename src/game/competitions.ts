@@ -428,7 +428,8 @@ function checkLeagueProgress(comp: Competition) {
   const rules = LEAGUE_RULES[comp.id];
   if (rules?.split && !comp.splitDone) {
     generateSplit(comp);
-    addNews({ cat: 'general', key: 'news.split', params: { comp: comp.name } }, { all: true });
+    // kun til managere, hvis klub spiller i ligaen
+    forEachHuman(() => { if (g.clubs[g.userClub]?.league === comp.id) addNews({ cat: 'general', key: 'news.split', params: { comp: comp.name } }); });
     return;
   }
   comp.finished = true;

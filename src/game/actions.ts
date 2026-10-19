@@ -4,6 +4,7 @@
 import { acceptJob, answerBudgetCounter, applyForJob, declineJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
+import { activateNation } from './sim';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
@@ -62,6 +63,13 @@ export type Action =
   | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
   | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
 
+/** Ny klub i et land uden simulerede ligaer: start ligaen med det samme */
+function startLeague() {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (c && !g.comps[c.league] && g.leagues[c.league]) activateNation(c.nation);
+}
+
 const ACTIVE: TransferOffer['status'][] = ['pending', 'negotiating', 'countered'];
 
 /** Find det aktive tilbud hvor den aktive manager er køber */
@@ -119,8 +127,8 @@ export function applyAction(a: Action): unknown {
     case 'read':
       for (const n of g.news) if (a.ids === 'all' || a.ids.includes(n.id)) n.read = true;
       return 'ok';
-    case 'acceptJob': if (g.jobOffers.includes(a.club) && g.clubs[a.club]?.manager === 0) acceptJob(a.club); return 'ok';
-    case 'applyJob': return applyForJob(a.club);
+    case 'acceptJob': if (g.jobOffers.includes(a.club) && g.clubs[a.club]?.manager === 0) { acceptJob(a.club); startLeague(); } return 'ok';
+    case 'applyJob': { const ok = applyForJob(a.club); startLeague(); return ok; }
     case 'declineJob': declineJob(a.club); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
