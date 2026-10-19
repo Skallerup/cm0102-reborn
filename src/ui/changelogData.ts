@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.28',
+    date: '2026-10-19',
+    title: { da: 'Farvede karakterer', en: 'Coloured ratings' },
+    items: [
+      { da: 'Kampkarakterer og snit er farvet overalt: grøn for gode præstationer (7,0+), orange for svage (under 6,5) og rød for dårlige (under 6,0)', en: 'Match ratings and averages are coloured everywhere: green for good performances (7.0+), orange for weak (below 6.5) and red for poor (below 6.0)' },
+    ],
+  },
+  {
     version: '0.7.27',
     date: '2026-10-19',
     title: { da: 'Rivalisering mellem managere', en: 'Rivalry between managers' },

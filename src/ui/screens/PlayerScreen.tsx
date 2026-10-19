@@ -9,7 +9,7 @@ import { askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
-import { AttrVal, Bar, ClubLink, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
+import { AttrVal, Bar, ClubLink, FormList, Rating, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
 import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
@@ -87,7 +87,7 @@ export function PlayerScreen({ id }: { id: number }) {
           <div className="kv">
             <span>{t('col.cond')}<Info topic="condition" /></span><span><Bar value={p.condition} /> {Math.round(p.condition)}%</span>
             <span>{t('col.morale')}<Info topic="morale" /></span><span>{t(`morale.${p.morale >= 16 ? 'superb' : p.morale >= 13 ? 'good' : p.morale >= 9 ? 'okay' : 'poor'}`)}</span>
-            <span>{t('col.form')}</span><span>{p.form.length ? p.form.map((r) => r.toFixed(1)).join(' · ') : '-'}</span>
+            <span>{t('col.form')}</span><span><FormList form={p.form} /></span>
             {p.injury && <><span>{t('player.injury')}</span><span className="bad">{t(`injury.${p.injury.key}`)} ({p.injury.days} {t('common.days')})</span></>}
             {p.banned > 0 && <><span>{t('tag.ban')}</span><span className="bad">{p.banned}</span></>}
             {(mine || k >= 60) && traits(p).length > 0 && <><span>{t('pers.title')}</span><span>{traits(p).map((x) => <span key={x} className={`tag ${GOOD_TRAITS.has(x) ? 'good' : x === 'troublemaker' || x === 'lazy' || x === 'mercenary' ? 'bad' : 'warn'}`} title={t(`trait.${x}.desc`)}>{t(`trait.${x}`)}</span>)}</span></>}
@@ -201,7 +201,7 @@ export function PlayerScreen({ id }: { id: number }) {
             <span>{t('col.assists')}</span><span>{p.stats.assists}</span>
             <span>{t('player.mom')}</span><span>{p.stats.mom}</span>
             <span>{t('player.cards')}</span><span>{p.stats.yellows} / {p.stats.reds}</span>
-            <span>{t('col.avr')}</span><span>{p.stats.ratingCount ? avgRating(p).toFixed(2) : '-'}</span>
+            <span>{t('col.avr')}</span><span>{p.stats.ratingCount ? <Rating r={avgRating(p)} digits={2} /> : '-'}</span>
           </div>
         </Panel>
       </div>
@@ -481,7 +481,7 @@ function TalkPanel({ pid }: { pid: number }) {
     <Panel title={t('talk.title', { player: p.last })}>
       <div className="col">
         <div className="kv">
-          <span>{t('talk.form')}</span><span>{avgForm !== null ? `${avgForm.toFixed(1)} (${form.map((x) => x.toFixed(1)).join(' · ')})` : t('talk.noGames')}</span>
+          <span>{t('talk.form')}</span><span>{avgForm !== null ? <><Rating r={avgForm} /> (<FormList form={form} />)</> : t('talk.noGames')}</span>
           <span>{t('col.morale')}</span><span><Bar value={p.morale} max={20} /></span>
           <span>{t('talk.discipline')}</span><span className={reason ? 'bad' : 'muted'}>{reason ?? t('talk.noReason')}</span>
         </div>
@@ -572,7 +572,7 @@ function CareerPanel({ pid }: { pid: number }) {
                   <td className="num">{r.goals}</td>
                   <td className="num">{r.assists}</td>
                   <td className="num">{r.minutes ? r.minutes.toLocaleString() : '–'}</td>
-                  <td className="num">{r.avg ? r.avg.toFixed(2) : '–'}</td>
+                  <td className="num">{r.avg ? <Rating r={r.avg} digits={2} /> : '–'}</td>
 
                 </tr>
               ))}

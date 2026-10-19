@@ -5,7 +5,7 @@ import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { gs, squad } from '../../game/state';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
-import { ClubLink, Panel, PlayerLink, Table, Tabs, type Col } from '../components';
+import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { resultStr, stageLabel } from './Fixtures';
@@ -211,8 +211,8 @@ function LeagueStats({ comp }: { comp: Competition }) {
   const maxPlayed = Math.max(1, ...comp.table.map((r) => r.p));
   const avg = (p: Player) => p.stats.ratingSum / Math.max(1, p.stats.ratingCount);
   const top = (list: Player[], v: (p: Player) => number) => list.filter((p) => v(p) > 0).sort((a, b) => v(b) - v(a)).slice(0, 10);
-  const boards: { key: string; list: Player[]; val: (p: Player) => string }[] = [
-    { key: 'rating', list: top(ps.filter((p) => p.stats.ratingCount >= Math.max(3, maxPlayed * 0.4)), avg), val: (p) => avg(p).toFixed(2) },
+  const boards: { key: string; list: Player[]; val: (p: Player) => string; rating?: true }[] = [
+    { key: 'rating', list: top(ps.filter((p) => p.stats.ratingCount >= Math.max(3, maxPlayed * 0.4)), avg), val: (p) => avg(p).toFixed(2), rating: true as const },
     { key: 'assists', list: top(ps, (p) => p.stats.assists), val: (p) => String(p.stats.assists) },
     { key: 'ga', list: top(ps, (p) => p.stats.goals + p.stats.assists), val: (p) => `${p.stats.goals}+${p.stats.assists}` },
     { key: 'mom', list: top(ps, (p) => p.stats.mom), val: (p) => String(p.stats.mom) },
@@ -245,7 +245,7 @@ function LeagueStats({ comp }: { comp: Competition }) {
               <tbody>
                 {b.list.length === 0 && <tr><td className="muted">{t('common.none')}</td></tr>}
                 {b.list.map((p, i) => (
-                  <tr key={p.id} className={p.club === g.userClub ? 'me' : ''}><td className="num">{i + 1}</td><td><PlayerLink p={p} /></td><td><ClubLink id={p.club} /></td><td className="num nowrap"><b>{b.val(p)}</b></td></tr>
+                  <tr key={p.id} className={p.club === g.userClub ? 'me' : ''}><td className="num">{i + 1}</td><td><PlayerLink p={p} /></td><td><ClubLink id={p.club} /></td><td className="num nowrap"><b>{b.rating ? <Rating r={avg(p)} digits={2} /> : b.val(p)}</b></td></tr>
                 ))}
               </tbody>
             </table>

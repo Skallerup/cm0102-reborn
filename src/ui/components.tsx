@@ -254,3 +254,18 @@ export function RecTag({ level }: { level: number }) {
   const cls = level <= 1 ? 'good' : level === 2 ? '' : level === 3 ? 'warn' : 'bad';
   return <span className={`tag ${cls}`}>{t(`rec.short.l${level}`)}</span>;
 }
+
+/** Farve for en kampkarakter: grøn = god, rød = dårlig */
+export function ratingClass(r: number): string {
+  return r >= 7.5 ? 'r-top' : r >= 7 ? 'r-good' : r >= 6.5 ? 'r-ok' : r >= 6 ? 'r-meh' : 'r-bad';
+}
+
+export function Rating({ r, digits = 1 }: { r: number; digits?: number }) {
+  return <span className={`rating ${ratingClass(r)}`}>{r.toFixed(digits)}</span>;
+}
+
+/** Seneste karakterer, farvet */
+export function FormList({ form, sep = ' · ' }: { form: number[]; sep?: string }) {
+  if (!form.length) return <>-</>;
+  return <>{form.map((r, i) => <span key={i}>{i > 0 && sep}<Rating r={r} /></span>)}</>;
+}

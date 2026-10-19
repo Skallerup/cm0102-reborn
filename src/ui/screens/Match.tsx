@@ -5,7 +5,7 @@ import { createLiveMatch, finishUserMatch, quickPlayUserMatch, userTactic } from
 import { fixturesOn, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
-import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, Tabs } from '../components';
+import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
@@ -232,7 +232,7 @@ function LiveMatch({ id }: { id: number }) {
                     <td>{slot.pos}{slot.side !== 'C' ? slot.side : ''}</td>
                     <td><PlayerLink p={p} short />{s.yellow ? <span className="tag warn">🟨</span> : null}{s.injured ? <span className="tag bad">{t('tag.inj')}</span> : null}{s.goals ? ' ⚽'.repeat(s.goals) : ''}</td>
                     <td><Bar value={s.cond} /> {s.cond}%</td>
-                    <td className="num">{s.rating.toFixed(1)}</td>
+                    <td className="num"><Rating r={s.rating} /></td>
                     <td>
                       {!s.off && myLive.subsLeft > 0 && !report && (
                         <select value="" onChange={(e) => {

@@ -3,7 +3,7 @@ import { matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
-import { ClubLink, Crest, Panel, PlayerLink, Tabs } from '../components';
+import { ClubLink, Crest, Panel, PlayerLink, Rating, Tabs } from '../components';
 import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
@@ -42,7 +42,7 @@ export function ReportScreen({ id }: { id: number }) {
         <div className="cols">
           <Panel title={t('report.verdict')}>
             {verdict.map((v, i) => <div key={i} className={`insight ${v.tone}`}>{t(v.key, { ...v.params, lane: v.params?.lane ? t(`lane.${v.params.lane}`) : undefined })}</div>)}
-            {mom && <div className="insight good">{t('report.mom')}: <PlayerLink p={mom} /> ({rep.players.find((p) => p.id === mom.id)?.rating.toFixed(1)})</div>}
+            {mom && <div className="insight good">{t('report.mom')}: <PlayerLink p={mom} /> (<Rating r={rep.players.find((p) => p.id === mom.id)?.rating ?? 0} />)</div>}
           </Panel>
           <Panel title={t('report.momentum')}><Momentum rep={rep} home={home} away={away} /></Panel>
           <Panel title={t('report.heatmap')}>
@@ -71,7 +71,7 @@ export function ReportScreen({ id }: { id: number }) {
                       <td className="num">{l.assists || ''}</td>
                       <td className="num">{l.shots || ''}</td>
                       <td className="num">{l.passesOk}/{l.passes}</td>
-                      <td className="num"><b>{l.rating.toFixed(1)}</b></td>
+                      <td className="num"><Rating r={l.rating} /></td>
                     </tr>
                   ))}
                 </tbody>

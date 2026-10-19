@@ -6,7 +6,7 @@ import { EyeIcon } from '../icons';
 import type { Player } from '../../game/types';
 import { avgRating } from '../../game/season';
 import { money, t, dateFmt } from '../../i18n';
-import { Bar, Modal, Nat, Panel, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
+import { Bar, FormList, Rating, Modal, Nat, Panel, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
 import { cliques } from '../../game/will';
 import { useGame, useNav, useRouteState } from '../core';
 import { useState } from 'react';
@@ -68,8 +68,8 @@ export function SquadTable({ players, view, userClub }: { players: Player[]; vie
       { key: 'apps', label: t('col.apps'), render: (p) => `${p.stats.apps}${p.stats.subs ? ` (${p.stats.subs})` : ''}`, sort: (p) => p.stats.apps + p.stats.subs, className: 'num' },
       { key: 'gls', label: t('col.goals'), render: (p) => p.stats.goals, sort: (p) => p.stats.goals, className: 'num' },
       { key: 'ast', label: t('col.assists'), render: (p) => p.stats.assists, sort: (p) => p.stats.assists, className: 'num' },
-      { key: 'av', label: t('col.avr'), render: (p) => (p.stats.ratingCount ? avgRating(p).toFixed(2) : '-'), sort: (p) => avgRating(p), className: 'num' },
-      { key: 'form', label: t('col.form'), render: (p) => p.form.map((r) => r.toFixed(1)).join(' '), sort: (p) => (p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 0) },
+      { key: 'av', label: t('col.avr'), render: (p) => (p.stats.ratingCount ? <Rating r={avgRating(p)} digits={2} /> : '-'), sort: (p) => avgRating(p), className: 'num' },
+      { key: 'form', label: t('col.form'), render: (p) => <span className="nowrap"><FormList form={p.form} sep=" " /></span>, sort: (p) => (p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 0) },
       { key: 'value', label: t('col.value'), render: (p) => money(p.value), sort: (p) => p.value, className: 'num' },
     ];
   }
