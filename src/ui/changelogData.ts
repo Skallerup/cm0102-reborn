@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.68',
+    date: '2026-10-19',
+    title: { da: 'Advarsel mod at genindlæse under kampen', en: 'Warning against reloading during a match' },
+    items: [
+      { da: 'Browseren advarer, hvis du prøver at genindlæse eller lukke siden under en kamp, og kampskærmen skriver konsekvensen (kampen starter forfra – i en kamp mod en anden manager for jer begge)', en: 'The browser warns you if you try to reload or close the page during a match, and the match screen states the consequence (the match starts over – for both of you in a match against another manager)' },
+      { da: 'Rettet: genindlæste hjemmeholdet under en kamp mod en anden manager, hang kampen på "Venter på Klar til kamp". Udeholdet melder nu automatisk klar igen', en: 'Fixed: if the home side reloaded during a match against another manager, the match got stuck on "Waiting for Ready for kick-off". The away side now automatically reports ready again' },
+    ],
+  },
+  {
     version: '0.7.67',
     date: '2026-10-19',
     title: { da: 'Skader og røde kort pauser kampen', en: 'Injuries and red cards pause the match' },

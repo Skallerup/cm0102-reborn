@@ -442,6 +442,13 @@ function LiveMatch({ id }: { id: number }) {
     return () => clearInterval(h);
   }, [h2h, id]); // eslint-disable-line react-hooks/exhaustive-deps
   const awayName = humanManager(f.away)?.name ?? '';
+  // advar mod at genindlæse/lukke midt i kampen
+  useEffect(() => {
+    if (report) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [report]);
 
   return (
     <div>
@@ -461,6 +468,7 @@ function LiveMatch({ id }: { id: number }) {
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
       )}
+      {!report && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       {msg && <div className="insight">{msg}</div>}
       {h2h && hs.phase === 'half' && <div className="insight">{t('mp.h2hHalf', { s: halfLeft })}</div>}
       {h2h && (hs.phase === 'wait' || hs.phase === 'countdown') && (
@@ -589,6 +597,9 @@ function FollowMatch({ id }: { id: number }) {
   const [tab, setTab] = useState('2d');
   const [sent, setSent] = useState('');
   const [ready, setReady] = useState(false);
+  const readyRef = useRef(false);
+  readyRef.current = ready;
+  const lastReadySent = useRef(0);
   const [talked, setTalked] = useState(false);
   const lastSeq = useRef({ seq: -1, at: Date.now() });
   const [, force] = useState(0);
@@ -597,7 +608,15 @@ function FollowMatch({ id }: { id: number }) {
     const tick = async () => {
       try {
         const d = await sess.liveGet<FollowData>(id);
-        if (!stop && d) { if (d.seq !== lastSeq.current.seq) lastSeq.current = { seq: d.seq, at: Date.now() }; setData(d); }
+        if (!stop && d) {
+          if (d.seq !== lastSeq.current.seq) lastSeq.current = { seq: d.seq, at: Date.now() };
+          // hjemmeholdet har genindlæst, og kampen venter forfra: send vores "klar" igen
+          if (d.phase === 'wait' && !d.awayReady && readyRef.current && Date.now() - lastReadySent.current > 3000) {
+            lastReadySent.current = Date.now();
+            void sess.liveCmd(id, { k: 'ready' }).catch(() => {});
+          }
+          setData(d);
+        }
       } catch { /* prøv igen */ }
       if (!stop) { force((x) => x + 1); setTimeout(tick, 1000); }
     };
@@ -609,13 +628,19 @@ function FollowMatch({ id }: { id: number }) {
   const colors = teamColors(f.home, f.away, 1);
   const homeMgr = humanManager(f.home)?.name ?? '';
   const send = (cmd: LiveCmd, label?: string) => { void sess.liveCmd(id, cmd).then(() => { if (label) setSent(label); }).catch(() => setSent(t('mp.followFail'))); };
-  const sayReady = () => { setReady(true); send({ k: 'ready' }); };
+  const sayReady = () => { setReady(true); lastReadySent.current = Date.now(); send({ k: 'ready' }); };
   const skip = () => { skippedMatches.add(id); nav({ name: 'inbox' }); };
   const lost = !!data && !data.finished && Date.now() - lastSeq.current.at > 30_000;
+  useEffect(() => {
+    if (data?.finished) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [data?.finished]);
   const head = <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
   // før kampen: klar-tjek og nedtælling
   if (!data || data.phase === 'wait' || data.phase === 'countdown') {
-    const iAmReady = ready || !!data?.awayReady;
+    const iAmReady = ready;
     return (
       <div>
         {head}
@@ -639,7 +664,7 @@ function FollowMatch({ id }: { id: number }) {
     <div>
       {head}
       <CmScoreboard home={f.home} away={f.away} hg={data.hg} ag={data.ag} colors={colors} minute={data.minute} />
-      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{t('mp.followHint', { name: homeMgr })}</div>
+      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{t('mp.followHint', { name: homeMgr })} · ⚠️ {t('match.leaveAway', { name: homeMgr })}</div>
       {lost && <div className="insight bad">{t('mp.h2hLost', { name: homeMgr })} <button className="small" onClick={skip}>{t('mp.h2hSkip')}</button></div>}
       {data.phase === 'half' && !talked && (
         <>
