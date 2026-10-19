@@ -55,6 +55,14 @@ export function Options() {
                 {(['own', 'big', 'all'] as const).map((m) => <option key={m} value={m}>{t(`opt.transferNews.${m}`)}</option>)}
               </select>
             </label>
+            {g.humans && (
+              <label className="row">{t('opt.h2hTime')}
+                <select value={g.options.h2hHalfMinutes ?? 4} disabled={!session()?.isHost} title={!session()?.isHost ? t('opt.hostOnly') : undefined}
+                  onChange={(e) => act({ t: 'setH2hTime', minutes: Number(e.target.value) })}>
+                  {[2, 3, 4, 5, 7, 10, 15].map((m) => <option key={m} value={m}>{t('opt.h2hMin', { n: m })}</option>)}
+                </select>
+              </label>
+            )}
             <label className="row">{t('opt.windows')}
               <select value={g.options.transferWindows ?? 'real'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
                 onChange={(e) => { act({ t: 'setWindows', mode: e.target.value as 'real' | 'classic' }); }}>

@@ -622,6 +622,8 @@ export interface ChallengeState {
 }
 
 export interface Options {
+  /** online: minutter pr. halvleg i kampe mellem to managere (fast tempo) */
+  h2hHalfMinutes?: number;
   masking: boolean;
   autosave: boolean;
   /** Hvor ofte der gemmes automatisk (standard: efter hver ændring) */

@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.66',
+    date: '2026-10-19',
+    title: { da: 'Live-kampe mellem to managere', en: 'Live matches between two managers' },
+    items: [
+      { da: 'Når to managere mødes, spiller begge live: begge trykker "Klar til kamp", der tælles ned 3-2-1, og kampen kører i fast tempo (værten vælger 2–15 min. pr. halvleg, standard 4) – ingen kan pause eller skrue op', en: 'When two managers meet, both play live: both press "Ready for kick-off", there is a 3-2-1 countdown, and the match runs at a fixed pace (the host picks 2–15 min. per half, default 4) – nobody can pause or speed up' },
+      { da: 'Begge har fuld kontrol: hele taktiktavlen, udskiftninger og en fælles pause på 60 sek. med peptalk', en: 'Both have full control: the whole tactics board, substitutions and a shared 60-second half-time break with team talk' },
+      { da: 'Falder udeholdet fra, tager dets assistent over. Dukker modstanderen ikke op, kan hjemmeholdet starte uden ham efter et minut, og udeholdet kan lade assistenten tage kampen', en: 'If the away side drops out, its assistant takes over. If the opponent does not show up, the home side can start without them after a minute, and the away side can let the assistant take the match' },
+    ],
+  },
+  {
     version: '0.7.65',
     date: '2026-10-19',
     title: { da: 'Online: følg kampen mod en anden manager live', en: 'Online: follow the match against another manager live' },

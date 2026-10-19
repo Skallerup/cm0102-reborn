@@ -16,6 +16,7 @@ import { mpAdvance } from '../game/sim';
 import { deserializeState, serializeState } from '../game/snapshot';
 import { addNews, gs, notify, setGame } from '../game/state';
 import { rememberLast } from '../game/save';
+import type { Tactic } from '../game/types';
 import type { GameState } from '../game/types';
 
 export interface RoomInfo {
@@ -35,7 +36,9 @@ export interface RoomInfo {
 }
 
 /** Udeholdets ændringer under en kamp mellem to managere */
-export type LiveCmd = { k: 'sub'; out: number; inn: number } | { k: 'ment'; v: number };
+export type LiveCmd = { k: 'sub'; out: number; inn: number } | { k: 'ment'; v: number } | { k: 'ready' } | { k: 'ping' } | { k: 'talk'; boosts: Record<number, number> } | { k: 'tactic'; tac: Tactic };
+/** Kampe udeholdet har valgt at lade assistenten tage (hjemmeholdet dukkede ikke op) */
+export const skippedMatches = new Set<number>();
 
 export interface RoomChat {
   id: number;

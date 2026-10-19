@@ -62,6 +62,7 @@ export type Action =
   | { t: 'resign' }
   | { t: 'fixPending' }
   | { t: 'setWindows'; mode: 'real' | 'classic' }
+  | { t: 'setH2hTime'; minutes: number }
   | { t: 'matchResult'; fixture: number; rep: MatchReport }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
@@ -145,6 +146,7 @@ export function applyAction(a: Action): unknown {
     case 'resign': playPendingAsAi(); return resignJob();
     case 'fixPending': playPendingAsAi(); return 'ok';
     case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
+    case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(2, Math.round(a.minutes))); return 'ok';
     case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
@@ -178,6 +180,11 @@ export function applyActionAs(pid: string, a: Action): unknown {
   if (a.t === 'setWindows') {
     if (g.humans && g.humans[0]?.pid !== pid) return 'host-only';
     g.options.transferWindows = a.mode;
+    return 'ok';
+  }
+  if (a.t === 'setH2hTime') {
+    if (g.humans && g.humans[0]?.pid !== pid) return 'host-only';
+    g.options.h2hHalfMinutes = Math.min(15, Math.max(2, Math.round(a.minutes)));
     return 'ok';
   }
   if (a.t === 'removeHuman') {

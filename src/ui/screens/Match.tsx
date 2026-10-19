@@ -5,7 +5,7 @@ import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
 import { act } from '../../game/actions';
 import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
-import { session, type LiveCmd } from '../../online/client';
+import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
@@ -35,7 +35,7 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -66,6 +66,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   const isToday = g.pendingFixture === id;
   // online: to menneskelige managere mod hinanden – hjemmeholdets manager spiller kampen
   const awayVsHuman = !!g.humans && f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home);
+  const homeVsHuman = !!g.humans && !!session() && f.home === g.userClub && isHumanClub(f.away) && !isBotClub(f.away);
   useHotkeys((e) => { if (isToday && !awayVsHuman && e.key === 'Enter') { onPlay(); return true; } });
   return (
     <div>
@@ -97,8 +98,8 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
         <div className="insight">{t('mp.h2hAway', { name: humanManager(f.home)?.name ?? '' })}</div>
       ) : isToday ? (
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <button onClick={onQuick}>{t('match.quick')}</button>
-          <button className="primary continue" onClick={onPlay}>{t('match.kickoff')}</button>
+          {!homeVsHuman && <button onClick={onQuick}>{t('match.quick')}</button>}
+          <button className="primary continue" onClick={onPlay}>{homeVsHuman ? t('mp.h2hReady') : t('match.kickoff')}</button>
         </div>
       ) : <div className="muted">{t('match.notToday')}</div>}
     </div>
@@ -185,6 +186,11 @@ function LiveMatch({ id }: { id: number }) {
   const sim = L.sim;
   const me = f.home === g.userClub ? 0 : 1;
   const [, force] = useState(0);
+  // online, kamp mod en anden manager: fælles kickoff, fast tempo og fælles pause – vi (hjemmeholdet) kører kampen
+  const sess = session();
+  const h2h = !!sess && !!g.humans && me === 0 && isHumanClub(f.away) && !isBotClub(f.away);
+  const H = useRef({ phase: 'wait' as 'wait' | 'countdown' | 'play' | 'half', awayReady: false, startAt: 0, halfEnd: 0, played: 0, lastPing: Date.now(), awayTalked: false, seq: 0, solo: false, waitSince: Date.now() });
+  if (h2h && !L.h2hInit) { L.h2hInit = true; sim.opts.aiSubs = [false, false]; }
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [tab, setTabState] = useState(() => { try { return localStorage.getItem('cm-match-view') === 'commentary' ? 'commentary' : '2d'; } catch { return '2d'; } });
@@ -285,12 +291,41 @@ function LiveMatch({ id }: { id: number }) {
     if (sim.half === 2 && !L.halfShown && !talkDone(id, 'half') && !sim.finished) {
       L.halfShown = true;
       L.prevTab = tab === 'talk' ? '2d' : tab;
-      setPaused(true);
+      if (h2h) { H.current.phase = 'half'; H.current.halfEnd = Date.now() + 60_000; }
+      else setPaused(true);
       setTab('talk');
     }
   };
 
+  // seneste udgaver til det faste ur (intervallet oprettes kun én gang)
+  const advRef = useRef(advance);
+  advRef.current = advance;
+  const hlRef = useRef(hl);
+  hlRef.current = hl;
+  const tabRef = useRef(tab);
+  tabRef.current = tab;
   useEffect(() => {
+    if (!h2h || report) return;
+    const msPerMoment = ((g.options.h2hHalfMinutes ?? 4) * 2 * 60_000) / sim.totalMoments;
+    const h = setInterval(() => {
+      const s = H.current;
+      const now = Date.now();
+      if (s.phase === 'wait' && s.awayReady) { s.phase = 'countdown'; s.startAt = now + 4000; }
+      if (s.phase === 'countdown' && now >= s.startAt) s.phase = 'play';
+      if (s.phase === 'half' && (now >= s.halfEnd || (s.awayTalked && talkDone(id, 'half')))) { s.phase = 'play'; setTab(L.prevTab ?? '2d'); }
+      // udeholdet er faldet fra (intet livstegn i 30 sek.): dets assistent tager over
+      if (!s.solo && s.phase === 'play' && now - s.lastPing > 30_000) { s.solo = true; sim.opts.aiSubs = [false, true]; }
+      force((x) => x + 1);
+      if (s.phase !== 'play' || hlRef.current) return;
+      s.played += 250;
+      const target = Math.floor(s.played / msPerMoment);
+      if (target > sim.moment) advRef.current(target - sim.moment, false);
+    }, 250);
+    return () => clearInterval(h);
+  }, [h2h, report]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (h2h) return; // fast tempo – styres ovenfor
     if (paused || report || hl) return;
     const ms = Math.max(30, g.options.matchSpeed / speed);
     const h = setInterval(() => advance(speed >= 8 ? 40 : 12), ms);
@@ -356,15 +391,17 @@ function LiveMatch({ id }: { id: number }) {
   // jubel før et annulleret mål: stillingen står midlertidigt et mål højere
   const fake = hl?.bump?.[hl.i] ? hl.team : -1;
 
-  // online, kamp mod en anden manager: vi kører kampen og sender en live-visning til udeholdet hvert sekund
-  const sess = session();
-  const h2hDriver = !!sess && !!g.humans && me === 0 && isHumanClub(f.away) && !isBotClub(f.away);
+  // live-visningen til udeholdet hvert sekund
   const hg = st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0), ag = st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0);
   const shownLines = hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines;
+  const hs = H.current;
+  const countdown = hs.phase === 'countdown' ? Math.max(0, Math.ceil((hs.startAt - Date.now()) / 1000)) : 0;
+  const halfLeft = hs.phase === 'half' ? Math.max(0, Math.ceil((hs.halfEnd - Date.now()) / 1000)) : 0;
   const liveRef = useRef<FollowData | null>(null);
-  if (h2hDriver) {
+  if (h2h) {
     liveRef.current = {
-      minute: minute + (paused && !report ? ' ❚❚' : ''), hg, ag, finished: !!report, stats: [st[0], st[1]],
+      seq: ++hs.seq, phase: hs.phase, awayReady: hs.awayReady, countdown, halfLeft,
+      minute, hg, ag, finished: !!report, stats: [st[0], st[1]],
       lines: shownLines.slice(-60), live: [sim.live(0), sim.live(1)], events: sim.events,
       snap: hl ? hl.frames[hl.i] : { ...sim.pitch(), zone: 7, poss: 0, holder: 0, moment: 0, shot: null },
       banner: hl ? hl.texts[hl.i] ?? '' : L.lines.at(-1)?.text ?? '',
@@ -373,7 +410,7 @@ function LiveMatch({ id }: { id: number }) {
     };
   }
   useEffect(() => {
-    if (!h2hDriver || !sess) return;
+    if (!h2h || !sess) return;
     let busy = false;
     const h = setInterval(() => {
       if (busy || !liveRef.current) return;
@@ -381,19 +418,25 @@ function LiveMatch({ id }: { id: number }) {
       sess.livePush(id, liveRef.current).then((cmds) => {
         // udeholdets ændringer
         for (const c of cmds) {
-          if (c.k === 'sub') sim.substitute(1, c.out, c.inn);
+          H.current.lastPing = Date.now();
+          if (c.k === 'ready') H.current.awayReady = true;
+          else if (c.k === 'sub') sim.substitute(1, c.out, c.inn);
           else if (c.k === 'ment') { const tac = sim.live(1).tactic; sim.setTactic(1, { ...tac, team: { ...tac.team, mentality: c.v } }); }
+          else if (c.k === 'tactic') sim.setTactic(1, c.tac);
+          else if (c.k === 'talk') { sim.applyTalk(1, c.boosts); H.current.awayTalked = true; }
         }
         if (cmds.length) { pull(); force((x) => x + 1); }
       }).catch(() => {}).finally(() => { busy = false; });
     }, 1000);
     return () => clearInterval(h);
-  }, [h2hDriver, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [h2h, id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const awayName = humanManager(f.away)?.name ?? '';
 
   return (
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
-        {!report && <>
+        {!report && h2h && <span className="muted">{t('mp.h2hFixed', { min: g.options.h2hHalfMinutes ?? 4 })}</span>}
+        {!report && !h2h && <>
           <button data-space onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
           {[1, 2, 4, 8].map((s) => <button key={s} className={speed === s ? 'primary small' : 'small'} onClick={() => setSpeed(s)}>{s}×</button>)}
           <button onClick={finishNow}>{t('match.toEnd')}</button>
@@ -408,6 +451,20 @@ function LiveMatch({ id }: { id: number }) {
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
       )}
       {msg && <div className="insight">{msg}</div>}
+      {h2h && hs.phase === 'half' && <div className="insight">{t('mp.h2hHalf', { s: halfLeft })}</div>}
+      {h2h && (hs.phase === 'wait' || hs.phase === 'countdown') && (
+        <div className="sim-overlay"><div className="sim-card">
+          {hs.phase === 'wait' ? <>
+            <h2>{t('mp.h2hWaitTitle')}</h2>
+            <div className="muted">{t('mp.h2hWaitAway', { name: awayName })}</div>
+            <div className="sim-bar"><span /></div>
+            {Date.now() - hs.waitSince > 60_000 && <button className="small" onClick={() => { hs.solo = true; sim.opts.aiSubs = [false, true]; hs.awayReady = true; }}>{t('mp.h2hStartAlone', { name: awayName })}</button>}
+          </> : <>
+            <div className="countdown">{countdown || '⚽'}</div>
+            <h2>{t('mp.h2hKickoff')}</h2>
+          </>}
+        </div></div>
+      )}
       {tab === '2d' && (
         <div className="cols match2d">
           <div style={{ position: 'relative' }}>
@@ -505,12 +562,13 @@ function SubsPanel({ sim, me, live, onDone }: { sim: MatchSim; me: number; live:
 
 /** Det, hjemmeholdet sender til udeholdet under en kamp mellem to managere */
 type FollowData = {
+  seq: number; phase: 'wait' | 'countdown' | 'play' | 'half'; awayReady: boolean; countdown: number; halfLeft: number;
   minute: string; hg: number; ag: number; finished: boolean; stats: [MatchReport['stats'][0], MatchReport['stats'][1]];
   lines: { text: string; cls: string; m: number }[]; live: [LiveTeam, LiveTeam]; events: MatchSim['events'];
   snap: Snap; banner: string; flash?: string; report?: MatchReport;
 };
 
-/** Udeholdet følger kampen live (hjemmeholdets manager kører den) og kan skifte ud og ændre mentalitet */
+/** Udeholdet spiller med live: kampen kører hos hjemmeholdet i fast tempo – vi sender klar, taktik, udskiftninger og peptalk */
 function FollowMatch({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
@@ -519,38 +577,68 @@ function FollowMatch({ id }: { id: number }) {
   const [data, setData] = useState<FollowData | null>(null);
   const [tab, setTab] = useState('2d');
   const [sent, setSent] = useState('');
+  const [ready, setReady] = useState(false);
+  const [talked, setTalked] = useState(false);
+  const lastSeq = useRef({ seq: -1, at: Date.now() });
+  const [, force] = useState(0);
   useEffect(() => {
     let stop = false;
     const tick = async () => {
-      try { const d = await sess.liveGet<FollowData>(id); if (!stop && d) setData(d); } catch { /* prøv igen */ }
-      if (!stop) setTimeout(tick, 1000);
+      try {
+        const d = await sess.liveGet<FollowData>(id);
+        if (!stop && d) { if (d.seq !== lastSeq.current.seq) lastSeq.current = { seq: d.seq, at: Date.now() }; setData(d); }
+      } catch { /* prøv igen */ }
+      if (!stop) { force((x) => x + 1); setTimeout(tick, 1000); }
     };
     void tick();
-    return () => { stop = true; };
+    // livstegn, så hjemmeholdet ved, at vi stadig er her
+    const ping = setInterval(() => { void sess.liveCmd(id, { k: 'ping' }).catch(() => {}); }, 8000);
+    return () => { stop = true; clearInterval(ping); };
   }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   const colors = teamColors(f.home, f.away, 1);
   const homeMgr = humanManager(f.home)?.name ?? '';
-  if (!data) {
+  const send = (cmd: LiveCmd, label?: string) => { void sess.liveCmd(id, cmd).then(() => { if (label) setSent(label); }).catch(() => setSent(t('mp.followFail'))); };
+  const sayReady = () => { setReady(true); send({ k: 'ready' }); };
+  const skip = () => { skippedMatches.add(id); nav({ name: 'inbox' }); };
+  const lost = !!data && !data.finished && Date.now() - lastSeq.current.at > 30_000;
+  const head = <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
+  // før kampen: klar-tjek og nedtælling
+  if (!data || data.phase === 'wait' || data.phase === 'countdown') {
+    const iAmReady = ready || !!data?.awayReady;
     return (
       <div>
-        <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`} />
+        {head}
         <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} />
-        <div className="insight">{t('mp.followWait', { name: homeMgr })}</div>
+        <div className="sim-card" style={{ margin: '16px auto' }}>
+          {data?.phase === 'countdown' ? <><div className="countdown">{data.countdown || '⚽'}</div><h2>{t('mp.h2hKickoff')}</h2></> : <>
+            <h2>{t('mp.h2hWaitTitle')}</h2>
+            <div className="muted">{iAmReady ? t(data ? 'mp.h2hYouReady' : 'mp.h2hWaitHome', { name: homeMgr }) : t('mp.h2hPressReady', { name: homeMgr, min: g.options.h2hHalfMinutes ?? 4 })}</div>
+            {!iAmReady ? <button className="primary continue" onClick={sayReady}>{t('mp.h2hReady')}</button> : <div className="sim-bar"><span /></div>}
+            <button className="small" onClick={skip}>{t('mp.h2hSkip')}</button>
+          </>}
+        </div>
       </div>
     );
   }
   const mine = data.live[1];
   const proxy = { events: data.events, live: (tm: number) => data.live[tm] } as unknown as MatchSim;
-  const send = (cmd: LiveCmd, label: string) => { void sess.liveCmd(id, cmd).then(() => setSent(label)).catch(() => setSent(t('mp.followFail'))); };
   const subProxy = { substitute: (_t: number, out: number, inn: number) => { send({ k: 'sub', out, inn }, t('mp.followSubSent', { a: g.players[inn]?.last ?? '', b: g.players[out]?.last ?? '' })); return true; } } as unknown as MatchSim;
-  const finish = () => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); };
+  const players = squad(g.userClub).filter((p) => mine.on.some((x) => x.id === p.id && !x.off) || mine.bench.includes(p.id));
   return (
     <div>
-      <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
-        <span className="muted">{t('mp.followHint', { name: homeMgr })}</span>
-        {data.finished && <button className="primary continue" onClick={finish}>{t('match.continue')}</button>}
-      </Head>
+      {head}
       <CmScoreboard home={f.home} away={f.away} hg={data.hg} ag={data.ag} colors={colors} minute={data.minute} />
+      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{t('mp.followHint', { name: homeMgr })}</div>
+      {lost && <div className="insight bad">{t('mp.h2hLost', { name: homeMgr })} <button className="small" onClick={skip}>{t('mp.h2hSkip')}</button></div>}
+      {data.phase === 'half' && !talked && (
+        <>
+          <div className="insight">{t('mp.h2hHalf', { s: data.halfLeft })}</div>
+          <TeamTalk fixture={id} stage="half" pids={[...mine.on.filter((x) => !x.off).map((x) => x.id), ...mine.bench]} diff={data.ag - data.hg}
+            ratings={Object.fromEntries(mine.on.filter((x) => !x.off).map((x) => [x.id, Math.round(x.rating * 10) / 10]))}
+            onGiven={(boosts) => { setTalked(true); send({ k: 'talk', boosts }); }} />
+        </>
+      )}
+      {data.phase === 'half' && talked && <div className="insight">{t('mp.h2hHalf', { s: data.halfLeft })}</div>}
       <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['stats', t('match.stats')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: mine.subsLeft })})`]]} value={tab} onChange={setTab} />
       {sent && <div className="insight">{sent}</div>}
       {tab === '2d' && (
@@ -565,12 +653,10 @@ function FollowMatch({ id }: { id: number }) {
       {tab === 'stats' && <StatsPanel stats={data.stats} home={g.clubs[f.home].name} away={g.clubs[f.away].name} />}
       {tab === 'tactics' && !data.finished && (
         <>
-          <Panel title={t('ti.mentality')}>
-            <div className="seg">
-              {[0, 1, 2, 3, 4].map((v) => <button key={v} type="button" className={mine.tactic.team.mentality === v ? 'on' : ''} onClick={() => send({ k: 'ment', v }, t('mp.followMentSent', { v: t(`ment.${v}`) }))}>{t(`ment.short.${v}`)}</button>)}
-            </div>
-          </Panel>
           <SubsPanel sim={subProxy} me={1} live={mine} onDone={() => {}} />
+          <TacticEditor tactic={mine.tactic} players={players} matchMode
+            onChange={(tac) => send({ k: 'tactic', tac }, t('mp.followTacticSent'))}
+            onSub={(out, inn) => send({ k: 'sub', out, inn }, t('mp.followSubSent', { a: g.players[inn]?.last ?? '', b: g.players[out]?.last ?? '' }))} />
         </>
       )}
     </div>

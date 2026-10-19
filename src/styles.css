@@ -751,3 +751,4 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 @keyframes sim-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
 .sim-players { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+.countdown { font-size: 72px; font-weight: 900; line-height: 1; color: var(--accent); animation: pop 0.4s; }

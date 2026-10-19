@@ -3,13 +3,11 @@ import type { WorldData } from '../game/newgame';
 import type { GameState } from '../game/types';
 import { dateFmt, t } from '../i18n';
 import {
-  downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, type RoomInfo,
+  downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, skippedMatches, type RoomInfo,
 } from '../online/client';
 import { Modal, Panel } from './components';
 import { gs, hasGame } from '../game/state';
 import { act } from '../game/actions';
-import { isHumanClub } from '../game/humans';
-import { isBotClub } from '../game/bots';
 import { useNav } from './core';
 import { focusNews } from './inboxFocus';
 import { notifyUser } from './notify';
@@ -168,8 +166,7 @@ export function OnlineControls() {
     if (!hasGame() || !s.inGame) return 0;
     const g = gs();
     const f = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
-    if (!f || f.result) return 0;
-    if (f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home)) return 0;
+    if (!f || f.result || skippedMatches.has(f.id)) return 0;
     return f.id;
   })();
   return (
