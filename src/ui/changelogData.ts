@@ -9,6 +9,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.40',
+    date: '2026-10-19',
+    title: { da: 'Agenter, dårlige kontrakter, notifikationer og mobil', en: 'Agents, bad contracts, notifications and mobile' },
+    items: [
+      { da: 'Hver spiller har en agent med personlighed: grisk (højere lønkrav), hård, venlig (accepterer lidt under kravet), loyal (billig at forlænge) eller "vil til en storliga" (afviser skifter i samme land eller til mindre ligaer). Agenten står på spillerprofilen', en: 'Every player has an agent with a personality: greedy (higher wage demands), tough, friendly (accepts a little below the demand), loyal (cheap to extend) or "wants a bigger league" (rejects moves within the country or to smaller leagues). The agent is shown on the player profile' },
+      { da: 'Bestyrelsen kommenterer dyre spillere, der ikke spiller, og en lønsum over budget – det koster lidt tillid', en: 'The board comments on expensive players who don\'t play and on a wage bill over budget – it costs a little confidence' },
+      { da: 'Browser-notifikationer (slå til under Indstillinger): når det er din tur i multiplayer, og ved bud, jobtilbud og andet vigtigt, mens spillet ligger i en anden fane', en: 'Browser notifications (turn on in Options): when it\'s your turn in multiplayer, and for offers, job offers and other important things while the game is in another tab' },
+      { da: 'Mobil: kompakt topbjælke og en fast bundmenu med Indbakke, Trup, Taktik, Transfers og Mere', en: 'Mobile: compact top bar and a fixed bottom menu with Inbox, Squad, Tactics, Transfers and More' },
+    ],
+  },
+  {
     version: '0.7.39',
     date: '2026-10-19',
     title: { da: 'Rigtige klubfarver', en: 'Real club colours' },

@@ -522,6 +522,9 @@ export interface BoardState {
   lastRumour?: string;
   /** Dato for bestyrelsens seneste kampkommentar */
   lastComment?: string;
+  /** Spillere bestyrelsen allerede har kommenteret som dyre bænkevarmere (spiller-id → sæson) og seneste advarsel om lønsummen */
+  wasteNoted?: Record<number, number>;
+  lastWageWarning?: string;
   confidence: number; // 0-100
   /** Seneste svar på budgetanmodninger (måned pr. type) og et åbent modbud */
   budgetAsked?: { transfer?: string; wage?: string };

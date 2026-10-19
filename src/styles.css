@@ -638,3 +638,24 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 
 /* trøjerne på taktiktavlen i klubbens farver */
 :root[data-club] .pitch .slot .shirt { background: var(--nav-bg) !important; color: var(--nav-fg) !important; border-color: var(--top-bg) !important; }
+
+/* ---------- mobil ---------- */
+.date-short, .mobile-tabs, .menu-backdrop { display: none; }
+@media (max-width: 860px) {
+  .topbar { padding: 8px 10px; gap: 6px; row-gap: 6px; }
+  .topbar .club { font-size: 14px; gap: 6px; max-width: 45vw; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .date { font-size: 11.5px; padding: 3px 8px; }
+  .topbar .date-long, .topbar .top-next, .topbar .fullscreen-btn { display: none; }
+  .topbar .date-short { display: inline; }
+  .topbar .continue, .topbar .unready { padding: 7px 16px; font-size: 13px; margin-left: auto; }
+  .topbar button.small { padding: 4px 9px; }
+  .main { padding-bottom: 84px; }
+  .mobile-tabs { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 35; background: var(--nav-bg, var(--surface)); border-top: 1px solid var(--line2); padding: 4px 4px calc(4px + env(safe-area-inset-bottom)); box-shadow: 0 -6px 20px -10px rgba(0, 0, 0, 0.4); }
+  .mobile-tabs button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 2px; border: 0; border-radius: 10px; background: transparent; color: var(--nav-fg, var(--muted)); font-size: 10.5px; font-weight: 600; position: relative; }
+  .mobile-tabs button svg { width: 20px; height: 20px; }
+  .mobile-tabs button.on { background: var(--nav-active, var(--surface3)); color: var(--nav-fg, var(--text)); }
+  .mobile-tabs .burger { font-size: 18px; line-height: 20px; }
+  .mobile-tabs .dot { position: absolute; top: 2px; right: 22%; min-width: 16px; height: 16px; border-radius: 999px; background: var(--bad); color: #fff; font-size: 9.5px; font-style: normal; display: grid; place-items: center; padding: 0 4px; }
+  .menu-backdrop { display: block; position: fixed; inset: 0; z-index: 39; background: rgba(0, 0, 0, 0.35); }
+  .waiting-banner { top: auto; bottom: 76px; font-size: 13px; padding: 10px 16px; white-space: normal; text-align: center; width: max-content; max-width: 92vw; }
+}

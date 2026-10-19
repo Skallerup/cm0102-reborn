@@ -6,11 +6,13 @@ import { Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
 import { getTheme, setTheme, type Theme } from '../theme';
+import { notifyEnabled, notifySupported, setNotify } from '../notify';
 
 export function Options() {
   const g = useGame()!;
   const [msg, setMsg] = useState('');
   const [theme, setThemeState] = useState<Theme>(getTheme());
+  const [notif, setNotif] = useState(notifyEnabled());
   return (
     <div>
       <Head title={t('nav.options')} />
@@ -39,6 +41,8 @@ export function Options() {
               </select>
             </label>
             {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
+            {notifySupported() && <label className="row"><input type="checkbox" checked={notif} onChange={async (e) => setNotif(await setNotify(e.target.checked))} />{t('opt.notify')}</label>}
+            {notifySupported() && <div className="muted">{t('opt.notify.hint')}</div>}
             <label className="row">{t('opt.news')}
               <select value={g.options.newsScope ?? 'league'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
                 {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}

@@ -126,6 +126,7 @@ export function boardMonthly() {
   const delta = (g.board.expectedPos - pos) * 0.8;
   g.board.confidence = clamp(g.board.confidence + delta, 0, 100);
   if (club.balance < -5_000_000) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
+  badContracts(club, played);
   // bestyrelsen lytter til fansene
   g.board.confidence = clamp(g.board.confidence + ((club.fanMood ?? 60) - 60) / 40, 0, 100);
   if (g.challenge) return; // udfordringer: ingen fyring undervejs
@@ -137,6 +138,33 @@ export function boardMonthly() {
     addNews({ cat: 'board', key: 'board.warning', params: { club: club.name } });
   } else if (g.board.confidence < 12 && g.board.warnings >= 2 && played >= 10 && !onTarget) {
     sackUser('board.sacked');
+  }
+}
+
+/**
+ * Dårlige kontrakter: bestyrelsen kommenterer dyre spillere, der ikke spiller, og en lønsum over budget.
+ * Hver spiller nævnes højst én gang pr. sæson; lønsummen højst hver tredje måned.
+ */
+function badContracts(club: Club, played: number) {
+  const g = gs();
+  const sq = squad(club.id).filter((p) => p.contract && !(p.loan && p.loan.from === club.id));
+  const wages = sq.map((p) => p.contract!.wage).sort((a, b) => b - a);
+  const top = wages[Math.min(wages.length - 1, Math.floor(wages.length / 3))] ?? 0;
+  const noted = (g.board.wasteNoted ??= {});
+  const bench = sq
+    .filter((p) => p.contract!.wage >= top && p.contract!.wage > 0 && noted[p.id] !== g.season)
+    .filter((p) => !(p.injury && p.injury.days > 21) && p.stats.minutes < played * 90 * 0.25 && (p.joined ? daysBetween(p.joined, g.date) > 60 : true))
+    .sort((a, b) => b.contract!.wage - a.contract!.wage)[0];
+  if (bench) {
+    noted[bench.id] = g.season;
+    g.board.confidence = clamp(g.board.confidence - 1, 0, 100);
+    addNews({ cat: 'board', key: 'board.wasteWage', params: { player: `${bench.first} ${bench.last}`.trim(), wage: bench.contract!.wage, minutes: bench.stats.minutes }, link: { kind: 'player', id: bench.id } });
+  }
+  const bill = wages.reduce((a, b) => a + b, 0);
+  if (bill > club.wageBudget * 1.05 && (!g.board.lastWageWarning || daysBetween(g.board.lastWageWarning, g.date) >= 85)) {
+    g.board.lastWageWarning = g.date;
+    g.board.confidence = clamp(g.board.confidence - 2, 0, 100);
+    addNews({ cat: 'board', key: 'board.overWage', params: { wage: bill, budget: club.wageBudget } });
   }
 }
 

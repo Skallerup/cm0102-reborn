@@ -10,6 +10,7 @@ import { gs, hasGame } from '../game/state';
 import { act } from '../game/actions';
 import { useNav } from './core';
 import { focusNews } from './inboxFocus';
+import { notifyUser } from './notify';
 import { loadWorld } from './world';
 
 /** Startmenuens online-del: opret, deltag eller genoptag */
@@ -142,7 +143,11 @@ export function OnlineControls() {
   const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
   // (beregnes før det tidlige return, så hooket altid kaldes)
   const waitingForMe = !!s?.room && s.room.players.length > 1 && !s.me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
-  useEffect(() => { blinkTitle(waitingForMe); return () => blinkTitle(false); }, [waitingForMe]);
+  useEffect(() => {
+    blinkTitle(waitingForMe);
+    if (waitingForMe) notifyUser(t('mp.othersWaitingShort'), t('mp.allWaitingBanner'), 'turn');
+    return () => blinkTitle(false);
+  }, [waitingForMe]);
   if (!s || !s.room) return null;
   const me = s.me;
   // alene i rummet (evt. med AI-managere): knappen fungerer som Fortsæt

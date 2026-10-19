@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { aiCall } from '../../ai/client';
+import { agentOf } from '../../game/agents';
 import { gs } from '../../game/state';
 import { act } from '../../game/actions';
 import { clausesWorthFor, preferredYears, renewalDemand, wageDemand } from '../../game/transfers';
@@ -10,9 +11,6 @@ import { MoneyInput } from '../components';
 import { money, t } from '../../i18n';
 import { Modal } from '../components';
 
-const AGENT_PERSONAS = ['tough', 'friendly', 'greedy', 'calm'] as const;
-/** Opfundne agenter (ingen rigtige personer) */
-const AGENT_NAMES = ['Marco Vellini', 'Sara Holm', 'Duarte Fonseca', 'Lars Møller', 'Nadia Okafor', 'Victor Brandt', 'Elena Rossi-Kahn', 'Tomás Ibarra'];
 
 /** Kontraktforhandling – både nye spillere (via tilbud) og forlængelser */
 export function NegotiationModal({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
@@ -30,8 +28,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   const cost = clauseCost(p, wage, years, cl, rank);
   const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((s, x) => s + (x.contract?.wage ?? 0), 0);
   // spilleragenten: fast persona pr. spiller, replikker skrevet af AI (tallene kommer fra spillet)
-  const persona = AGENT_PERSONAS[p.id % AGENT_PERSONAS.length];
-  const agentName = AGENT_NAMES[(p.id >> 2) % AGENT_NAMES.length];
+  const { name: agentName, style: persona } = agentOf(p);
   const [agentLine, setAgentLine] = useState<string | null>(null);
   const otherClubs = [...new Set([
     ...g.offers.filter((o) => o.player === pid && o.buyer !== g.userClub && ['pending', 'negotiating', 'countered'].includes(o.status)).map((o) => o.buyer),
@@ -99,7 +96,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
           </div>
         )}
         <div className="chat">
-          <div className={`chat-them insight ${msg?.tone ?? ''}`}><b>{agentName} ({t(`agent.${persona}`)}):</b> {agentLine ?? msg?.text ?? t('neg.agentOpening', { wage: money(demand), years: offer?.demand?.years ?? preferredYears(p) })}</div>
+          <div className={`chat-them insight ${msg?.tone ?? ''}`}><b title={t(`agent.${persona}.hint`)}>{agentName} ({t(`agent.${persona}`)}):</b> {agentLine ?? msg?.text ?? t('neg.agentOpening', { wage: money(demand), years: offer?.demand?.years ?? preferredYears(p) })}</div>
           {msg && agentLine && <div className="muted" style={{ fontSize: 12 }}>{msg.text}</div>}
         </div>
         {msg?.budget && (() => {

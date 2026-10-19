@@ -8,6 +8,7 @@ import { rulesFor } from './leagues';
 import { rng } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Player } from './types';
+import { agentOf } from './agents';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 const avgForm = (p: Player) => (p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 0);
@@ -173,7 +174,9 @@ function renewalCheck(p: Player, clubId: number) {
   reasons.sort((a, b) => b[1] - a[1]);
   const [reason, w] = reasons[0];
   // loyale spillere og spillere, der har det godt, bliver gerne
-  const score = w - Math.max(0, loyal - 11) * 0.06 - (p.morale >= 15 ? 0.1 : 0);
+  // agenten: en loyal agent holder ham i klubben, en agent der vil til udlandet skubber på
+  const st = agentOf(p).style;
+  const score = w - Math.max(0, loyal - 11) * 0.06 - (p.morale >= 15 ? 0.1 : 0) - (st === 'loyal' ? 0.2 : 0) + (st === 'abroad' ? 0.1 : 0);
   if (score < 0.35 || !rng.chance(Math.min(0.9, score))) return;
   const stance = score >= 0.65 ? 'refuses' : 'hesitant';
   p.renewal = { stance, reason, since: g.date, season: g.season };

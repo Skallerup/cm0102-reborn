@@ -16,6 +16,7 @@ import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason }
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
+import { AGENT_RULES, agentOf } from './agents';
 
 export function windowOpen(date = gs().date): boolean {
   const m = month(date);
@@ -92,6 +93,7 @@ export function transferRealism(p: Player): Realism {
   const interest = playerInterest(p, club);
   if (interest === 'reputation') bump(2, 'real.reputation', 50);
   else if (interest === 'happy') bump(2, 'real.happy', 40);
+  else if (interest === 'abroad') bump(2, 'real.abroad', 40);
   else if (p.rep - club.rep > 15) bump(1, 'real.repGap', 10);
   if (p.loan || p.contract?.futureClub) bump(2, 'real.unavailable', 50);
   const bosman = !!p.club && canPreContract(p);
@@ -209,8 +211,11 @@ export function wageDemand(p: Player, club: Club): number {
   const anchor = Math.min(current, market * 1.5);
   let d = Math.max(market, anchor * 1.1) * amb * (1 + repGap);
   if (!p.club) d *= 0.9;
-  if (p.club === club.id) d = Math.max(anchor * 1.04, market * 0.95) * amb;
-  d = Math.min(d, market * 2.2, MAX_WAGE);
+  // agenten: en grisk agent forlanger mere, en loyal er billigere at forlænge med
+  const ag = AGENT_RULES[agentOf(p).style];
+  d *= ag.wage;
+  if (p.club === club.id) d = Math.max(anchor * 1.04, market * 0.95) * amb * ag.renew;
+  d = Math.min(d, market * 2.4, MAX_WAGE);
   void g;
   return Math.round(d / 50) * 50;
 }
@@ -224,13 +229,16 @@ export function preferredYears(p: Player): number {
 }
 
 /** Vil spilleren overhovedet tale med klubben? */
-export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'happy' {
+export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'happy' | 'abroad' {
   const g = gs();
   if (p.club === club.id) return 'yes';
   const cur = p.club ? g.clubs[p.club] : undefined;
   const gap = p.rep - club.rep;
   if (gap > 28 + (p.attrs[41] - 10)) return 'reputation';
   if (cur && cur.rep > club.rep + 25 && keyPlayerRank(p) <= 11 && p.attrs[43] > 13) return 'happy';
+  // agent der vil have spilleren til en større liga: ikke et skifte i samme land eller til en fattigere liga – medmindre klubben er markant større
+  if (cur && agentOf(p).style === 'abroad' && club.rep < cur.rep + 10
+    && (club.nation === cur.nation || rulesFor(club.league, 20).wealth < rulesFor(cur.league, 20).wealth)) return 'abroad';
   return 'yes';
 }
 
@@ -417,7 +425,7 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   const interest = playerInterest(p, club);
   if (interest !== 'yes') {
     o.status = 'collapsed';
-    addNews({ cat: 'transfer', key: interest === 'reputation' ? 'transfer.refuseRep' : 'transfer.refuseHappy', params: { player: pname(p), club: club.name } });
+    addNews({ cat: 'transfer', key: interest === 'reputation' ? 'transfer.refuseRep' : interest === 'abroad' ? 'transfer.refuseAbroad' : 'transfer.refuseHappy', params: { player: pname(p), club: club.name } });
     return 'refused';
   }
   const demand = wageDemand(p, club);
@@ -426,7 +434,7 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   const yearsOk = Math.abs(years - want) <= (want >= 3 ? 2 : 1);
   if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
   const cl = cleanClauses(clauses);
-  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * 0.97 && yearsOk) {
+  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept && yearsOk) {
     // multiplayer: frie spillere og Bosman-aftaler kan andre også byde på – spilleren svarer i morgen
     if (isMultiplayer(g) && (o.preContract || !o.seller)) {
       o.status = 'pending';
@@ -632,7 +640,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const demand = renewalDemand(p, club);
   if (currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget) return 'budget';
   const cl = cleanClauses(clauses);
-  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * 0.97) {
+  if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     const startYear = year(g.date) + (month(g.date) >= 7 ? 1 : 0);
     p.contract = { wage, expires: `${startYear + years - 1}-06-30`, ...cl };
     const hadDemand = !!p.demand;

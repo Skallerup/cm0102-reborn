@@ -23,6 +23,7 @@ import { aiCall } from '../../ai/client';
 import { guessIntent } from '../../ai/fallback';
 import { useAiAvailable } from '../ai';
 import { statusTags } from './Squad';
+import { agentOf } from '../../game/agents';
 import { realCareer, realMoves, type RealMove, type RealSeason } from '../careers';
 
 export function PlayerScreen({ id }: { id: number }) {
@@ -80,6 +81,7 @@ export function PlayerScreen({ id }: { id: number }) {
             {p.addOn && (mine || p.addOn.club === g.userClub) && <><span>{t('clause.addOnShort')}</span><span>{t('clause.addOnLeft', { fee: money(p.addOn.fee), club: g.clubs[p.addOn.club]?.name ?? '?', n: p.addOn.left })}</span></>}
             {p.contract?.futureClub && <><span>{t('player.nextClub')}</span><span><ClubLink id={p.contract.futureClub} /></span></>}
             <span>{t('player.caps')}</span><span>{p.caps} / {p.intGoals}</span>
+            {(() => { const a = agentOf(p); return <><span>{t('player.agent')}</span><span title={t(`agent.${a.style}.hint`)}>{a.name} <span className="tag">{t(`agent.${a.style}`)}</span></span></>; })()}
             {!mine && p.club > 0 && <><span>{t('player.asking')}</span><span>{k >= 40 ? `≈ ${money(askingPrice(p))}` : t('player.unknown')}</span></>}
           </div>
         </Panel>

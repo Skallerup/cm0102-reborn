@@ -38,6 +38,11 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme } from './theme';
+import { notifyUser } from './notify';
+import { newsTitle } from './screens/common';
+
+/** Nyheder der giver en browser-notifikation */
+const NOTIFY_KEYS = ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.bidCountered', 'auction.', 'signing.', 'staff.bid', 'job.invite', 'news.jobOffer', 'board.sacked', 'board.warning', 'jab.received', 'bet.proposed', 'chat.news', 'trophy.board', 'will.complain'];
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
@@ -69,6 +74,15 @@ export function Shell() {
   // AI-artikler (kamprapporter m.m.) skrives i baggrunden, så de er klar når beskeden åbnes
   const newestNews = g.news[0]?.id;
   useEffect(() => { if (newestNews !== undefined) prefetchArticles(); }, [newestNews, g.userClub]);
+  // browser-notifikationer om vigtige nyheder, når fanen ikke er i fokus
+  const notifiedUpTo = useRef(g.news[0]?.id ?? 0);
+  useEffect(() => {
+    const fresh = g.news.filter((n) => n.id > notifiedUpTo.current && !n.read);
+    notifiedUpTo.current = Math.max(notifiedUpTo.current, g.news[0]?.id ?? 0);
+    const imp = fresh.filter((n) => NOTIFY_KEYS.some((k) => n.key.startsWith(k)));
+    if (imp.length) notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', imp.slice(0, 3).map((n) => newsTitle(n)).join('\n'), 'news');
+    else if (fresh.length && session()) notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', t('mp.newTurn', { date: dateFmt(g.date) }), 'news');
+  }, [newestNews]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!toast) return;
@@ -187,11 +201,11 @@ export function Shell() {
         <div className="club">
           {club ? <><Crest id={club.id} size={22} />{club.name}</> : <span className="muted">{online && !online.inGame ? t('mp.lobby') : t('top.unemployed')}</span>}
         </div>
-        <div className="date">{dateFmt(g.date, true)}</div>
+        <div className="date"><span className="date-long">{dateFmt(g.date, true)}</span><span className="date-short">{dateFmt(g.date)}</span></div>
         {club && <div className="money">{t('top.balance')}: {money(club.balance)} · {t('top.budget')}: {money(club.transferBudget)}</div>}
         <div className="spacer" />
         <FullscreenButton />
-        {nextMatch && <span className="muted nowrap">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
+        {nextMatch && <span className="muted nowrap top-next">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
         {online ? <OnlineControls /> : (
           <>
             <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
@@ -229,6 +243,18 @@ export function Shell() {
         }}><Icon name="quit" />{t('nav.quit')}</button>
         <VersionButton />
       </nav>
+      {club && (
+        <nav className="mobile-tabs">
+          {(['inbox', 'squad', 'tactics', 'transfers'] as ScreenName[]).map((k) => (
+            <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
+              <Icon name={k} /><span>{t(MENU.find(([x]) => x === k)?.[1] ?? k)}</span>
+              {k === 'inbox' && unread > 0 && <i className="dot">{unread > 99 ? '99+' : unread}</i>}
+            </button>
+          ))}
+          <button onClick={() => setMenuOpen(true)}><span className="burger">☰</span><span>{t('top.more')}</span></button>
+        </nav>
+      )}
+      {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <main className="main" ref={mainRef}>
         {online && !online.inGame ? <Lobby /> : <Screen />}
         {online?.status === 'error' && <div className="toast">{online.error}</div>}
@@ -287,7 +313,7 @@ function FullscreenButton() {
   }, []);
   if (!document.fullscreenEnabled) return null;
   return (
-    <button className="small" title={on ? t('top.exitFullscreen') : t('top.fullscreen')} aria-label={on ? t('top.exitFullscreen') : t('top.fullscreen')}
+    <button className="small fullscreen-btn" title={on ? t('top.exitFullscreen') : t('top.fullscreen')} aria-label={on ? t('top.exitFullscreen') : t('top.fullscreen')}
       onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen(); }}>
       {on ? '⤡' : '⛶'}
     </button>
