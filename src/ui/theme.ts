@@ -110,6 +110,7 @@ async function clubPalette(clubId: number, fallback: RGB[]): Promise<[RGB, RGB |
   const wd = (off[String(clubId)] ?? []).map(fromHex);
   const lg = logo ?? [];
   if (!wd.length) return [lg[0] ?? fallback[0], lg[1] ?? fallback[1], lg.length > 0];
+  // (fallback er tilfældige farver fra datasættet – applyTheme maler dem aldrig)
   const isWhite = (c: RGB) => hsl(c)[2] >= 0.9;
   const isBlack = (c: RGB) => hsl(c)[2] <= 0.12;
   // logoets nuance, hvis det har en farve i samme tone – ellers en dæmpet udgave af den rene farve
@@ -165,6 +166,7 @@ function onWhite(c: RGB, min: number): RGB {
 const lum = ([r, g, b]: RGB) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
 let applied = 0;
+const retries = new Map<number, number>();
 export function applyTheme() {
   const root = document.documentElement;
   const theme = getTheme();
@@ -220,10 +222,16 @@ export function applyTheme() {
   try { const saved = JSON.parse(localStorage.getItem(palKey) ?? 'null') as [RGB, RGB | null] | null; if (saved) paint([saved[0], saved[1] ?? undefined]); } catch { /* ignorér */ }
   let hadSaved = false;
   try { hadSaved = !!localStorage.getItem(palKey); } catch { /* ignorér */ }
-  void clubPalette(club.id, club.colors.map(hex)).then(([a, b, fromLogo]) => {
+  void Promise.all([clubPalette(club.id, club.colors.map(hex)), officialColors()]).then(([[a, b, fromLogo], off]) => {
     if (token !== applied) return;
     // uden logo er beregningen usikker – behold de gemte farver, hvis vi har nogen
     if (!fromLogo && hadSaved) return;
+    // hverken logo eller officielle farver (fx logoet er ikke hentet endnu): mal ikke datasættets tilfældige farver – prøv igen lidt senere
+    if (!fromLogo && !off[String(club.id)]?.length) {
+      const n = retries.get(club.id) ?? 0;
+      if (n < 4) { retries.set(club.id, n + 1); setTimeout(() => { if (token === applied) applyTheme(); }, 1500 * (n + 1)); }
+      return;
+    }
     paint([a, b]);
     if (fromLogo) { try { localStorage.setItem(palKey, JSON.stringify([a, b ?? null])); } catch { /* ignorér */ } }
   });
