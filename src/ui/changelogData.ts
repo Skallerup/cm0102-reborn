@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.60',
+    date: '2026-10-19',
+    title: { da: 'Tydeligere invitation og egne farver i lobbyen', en: 'Clearer invite and own colours in the lobby' },
+    items: [
+      { da: 'Online: "🔗 Invitér" åbner nu en boks med den store kode, linket, Kopiér link og Del…', en: 'Online: "🔗 Invite" now opens a box with the big code, the link, Copy link and Share…' },
+      { da: 'Rettet: mens man venter i lobbyen på at komme med, blev værtens klubfarver vist – nu bruges farverne fra den klub, du selv har valgt', en: 'Fixed: while waiting in the lobby to join, the host\'s club colours were shown – now the colours of the club you picked are used' },
+    ],
+  },
+  {
     version: '0.7.59',
     date: '2026-10-19',
     title: { da: 'Klubfarver uden fejlfarver', en: 'Club colours without wrong colours' },

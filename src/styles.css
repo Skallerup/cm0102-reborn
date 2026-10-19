@@ -737,3 +737,4 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .seg button:hover { background: rgba(127,127,127,0.12); }
 .seg button.on { background: var(--accent); color: var(--accent-ink, #fff); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 @media (max-width: 520px) { .ti-groups { grid-template-columns: 1fr; } .seg { flex-wrap: wrap; } }
+.invite-code { font-size: 40px; font-weight: 900; letter-spacing: 0.2em; text-align: center; padding: 10px; border-radius: 12px; background: var(--line); font-family: ui-monospace, monospace; }

@@ -37,7 +37,7 @@ import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
-import { applyTheme } from './theme';
+import { applyTheme, setThemeClub } from './theme';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -73,6 +73,10 @@ export function Shell() {
 
   // klubtema følger den klub, man styrer
   useEffect(() => { applyTheme(); }, [g.userClub]);
+  // online-lobbyen: ens egen valgte klub, indtil man er med i spillet
+  const lobbySess = session();
+  const lobbyClub = lobbySess && !lobbySess.inGame ? lobbySess.me?.club : undefined;
+  useEffect(() => { setThemeClub(lobbyClub); }, [lobbyClub]);
   // AI-artikler (kamprapporter m.m.) skrives i baggrunden, så de er klar når beskeden åbnes
   const newestNews = g.news[0]?.id;
   useEffect(() => { if (newestNews !== undefined) prefetchArticles(); }, [newestNews, g.userClub]);

@@ -139,6 +139,7 @@ export function OnlineControls() {
   const s = session();
   const [copied, setCopied] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const { nav, route } = useNav();
   const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
   // (beregnes før det tidlige return, så hooket altid kaldes)
@@ -158,9 +159,20 @@ export function OnlineControls() {
   const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
   return (
     <>
-      <button className="small" title={link} onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>
-        {copied ? t('mp.copied') : `${t('mp.invite')} · ${s.creds.code}`}
-      </button>
+      <button className="small" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>
+      {inviteOpen && (
+        <Modal title={t('mp.inviteTitle')} onClose={() => setInviteOpen(false)}>
+          <div className="col">
+            <p className="muted">{t('mp.inviteText')}</p>
+            <div className="invite-code">{s.creds.code}</div>
+            <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ width: '100%' }} />
+            <div className="row" style={{ justifyContent: 'flex-end' }}>
+              {'share' in navigator && <button onClick={() => { void navigator.share({ title: 'CM 01/02 Reborn', text: t('mp.shareText', { code: s.creds.code }), url: link }).catch(() => {}); }}>{t('mp.share')}</button>}
+              <button className="primary" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>{copied ? t('mp.copied') : t('mp.copyLink')}</button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {(() => {
         const dl = s.deadline();
         if (!dl || !waiting.length || s.room.processing) return null;

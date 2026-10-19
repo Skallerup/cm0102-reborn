@@ -166,6 +166,13 @@ function onWhite(c: RGB, min: number): RGB {
 const lum = ([r, g, b]: RGB) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
 let applied = 0;
+/** I online-lobbyen (før man er kommet med i spillet) gælder ens egen valgte klub – ikke værtens */
+let themeClub: number | undefined;
+export function setThemeClub(id: number | undefined) {
+  if (id === themeClub) return;
+  themeClub = id;
+  applyTheme();
+}
 const retries = new Map<number, number>();
 export function applyTheme() {
   const root = document.documentElement;
@@ -177,7 +184,7 @@ export function applyTheme() {
   delete root.dataset.club;
   for (const v of VARS) root.style.removeProperty(v);
   if ((theme !== 'club' && theme !== 'clubDark') || !hasGame()) return;
-  const club = gs().clubs[gs().userClub];
+  const club = gs().clubs[themeClub ?? gs().userClub];
   if (!club) return;
   const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
   const palKey = `cm-pal-${club.id}`;
