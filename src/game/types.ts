@@ -695,6 +695,10 @@ export interface GameState {
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
   chat?: ChatMsg[];
+  /** Stikpiller i pressen mellem managere */
+  jabs?: { id: number; from: string; to: string; date: string; line: number; text: string; fixture?: number; resolved?: boolean }[];
+  /** Prestige-væddemål om næste indbyrdes kamp */
+  bets?: { id: number; from: string; to: string; fixture: number; amount: number; status: 'proposed' | 'accepted' | 'declined' | 'settled' | 'void'; date: string }[];
   chatRead?: number;
   /** Andre klubbers handler samlet til ugens transferoverblik */
   transferDigest?: TransferDeal[];

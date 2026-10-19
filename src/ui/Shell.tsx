@@ -209,6 +209,7 @@ export function Shell() {
         ))}
         <div className="sep" />
         {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
+        {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
           if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
           if (confirm(t('top.quitConfirm'))) { await saveGame(); forgetLast(); setGame(null); }

@@ -93,6 +93,7 @@ const RE = {
   thanks: /(tak|thanks|thank you|cheers)/,
   luck: /(held og lykke|good luck|lykke til)/,
   banter: /(slå|knuse|smadre|tabe|taber|svag|ydmyge|beat|smash|crush|lose|loser|weak|easy)/,
+  insult: /(svin|grim|idiot|klovn|fjols|nar|kedelig|lort|amatør|noob|tosse|ugly|clown|stupid|fool|boring|rubbish|trash|amateur)/,
 };
 
 /**
@@ -149,6 +150,7 @@ function botReply(bot: string, human: string, text: string): Pick<ChatMsg, 'key'
   }
   if (has(lc, RE.congrats)) return say('chat.r.thanks');
   if (has(lc, RE.luck)) return say('chat.r.luck');
+  if (has(lc, RE.insult)) return say('chat.r.insult', { club: g.clubs[humanClub]?.short ?? '', mine: g.clubs[botClub]?.short ?? '' });
   if (has(lc, RE.banter)) return say('chat.r.banter', { club: g.clubs[humanClub]?.short ?? '' });
   if (has(lc, RE.hello)) return say('chat.r.hello', { club: g.clubs[botClub]?.name ?? '' });
   if (has(lc, RE.thanks)) return say('chat.r.welcome');

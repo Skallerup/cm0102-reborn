@@ -66,6 +66,11 @@ export function newsVisual(key: string, cat: string): { icon: string; tone: Tone
   if (key === 'match.lost') return { icon: 'ball', tone: 'red' };
   if (key === 'match.drew') return { icon: 'ball', tone: 'grey' };
   if (key.startsWith('press.') || key.startsWith('pressConf')) return { icon: 'press', tone: 'grey' };
+  if (key === 'jab.right') return { icon: 'press', tone: 'green' };
+  if (key === 'jab.backfired') return { icon: 'press', tone: 'red' };
+  if (key.startsWith('jab.')) return { icon: 'press', tone: 'pink' };
+  if (key === 'bet.won') return { icon: 'money', tone: 'green' };
+  if (key === 'bet.lost') return { icon: 'money', tone: 'red' };
   if (key.startsWith('fans.') || key.startsWith('trophy.fans')) return { icon: 'fans', tone: 'pink' };
   if (key === 'news.champions' || key === 'news.cupWin' || key === 'news.playoffWin' || key.startsWith('trophy.board') || key.startsWith('trophy.press')) return { icon: 'trophy', tone: 'orange' };
   if (key.startsWith('trophy.captain')) return { icon: 'chat', tone: 'orange' };

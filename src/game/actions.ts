@@ -11,6 +11,7 @@ import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
 import { applyPress, type Tone } from './press';
 import { answerComplaint } from './will';
+import { answerBet, proposeBet, sendJab } from './rivalry';
 import { addNews, gs, notify } from './state';
 import {
   acceptCounter, enquire, loanOut, makeBid, negotiate, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
@@ -60,6 +61,9 @@ export type Action =
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
   | { t: 'chat'; to: string; text: string }
+  | { t: 'jab'; to: string; line: number; text: string }
+  | { t: 'bet'; to: string; amount: number }
+  | { t: 'betAnswer'; id: number; accept: boolean }
   | { t: 'chatRead' }
   | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
   | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
@@ -135,6 +139,9 @@ export function applyAction(a: Action): unknown {
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'chat': return sendChat(a.to, a.text);
+    case 'jab': return sendJab(a.to, a.line, a.text);
+    case 'bet': return proposeBet(a.to, a.amount);
+    case 'betAnswer': return answerBet(a.id, a.accept);
     case 'chatRead': markChatRead(); return 'ok';
     case 'press': return applyPress(a.answers, a.headline, a.body);
     case 'complaint': return answerComplaint(a.pid, a.choice);

@@ -9,6 +9,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.27',
+    date: '2026-10-19',
+    title: { da: 'Rivalisering mellem managere', en: 'Rivalry between managers' },
+    items: [
+      { da: 'Stikpiller i pressen: lang ud efter en anden manager – vinder du jeres næste kamp, fik du ret (fans og medier jubler), taber du, rammer den dig selv. Modstanderens spillere bliver ekstra tændte', en: 'Jabs in the press: have a go at another manager – win your next match and you were right (fans and media cheer), lose and it backfires. The opponent\'s players get extra fired up' },
+      { da: 'Prestige-væddemål om næste indbyrdes kamp: taberen betaler vinderen fra klubkassen, uafgjort går lige op. AI-managere tager imod, hvis de tror på deres hold', en: 'Prestige bets on your next match against each other: the loser pays the winner from the club account, a draw is void. AI managers accept if they believe in their team' },
+      { da: 'Spiller- og klubnavne i chatten kan klikkes, og AI-managere svarer igen på fornærmelser', en: 'Player and club names in the chat are clickable, and AI managers fire back at insults' },
+      { da: 'Online: Fortsæt/Klar viser først de ulæste beskeder (også med mellemrumstasten), og menuen viser, at spillet gemmes automatisk', en: 'Online: Continue/Ready first shows unread messages (also with the space bar), and the menu shows that the game is saved automatically' },
+    ],
+  },
+  {
     version: '0.7.26',
     date: '2026-10-19',
     title: { da: 'Ferie fjernet', en: 'Holiday removed' },

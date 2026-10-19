@@ -121,6 +121,41 @@ function linked(n: NewsItem, key: string): ReactNode {
   });
 }
 
+/**
+ * Fritekst (chat) hvor spiller- og klubnavne bliver til links. Fulde navne slås op i hele verden;
+ * et efternavn alene kun blandt spillerne i de klubber, samtalen handler om.
+ */
+export function LinkedText({ text, clubs = [] }: { text: string; clubs?: number[] }) {
+  const g = gs();
+  const idx = names();
+  const local = new Map<string, number>();
+  for (const c of clubs) for (const p of Object.values(g.players)) if (p.club === c && p.last.length >= 3) local.set(p.last.toLowerCase(), local.has(p.last.toLowerCase()) ? -1 : p.id);
+  const tokens = text.split(/(\s+)/);
+  const out: ReactNode[] = [];
+  for (let i = 0; i < tokens.length; ) {
+    let hit: { kind: 'player' | 'club'; id: number; span: number; label: string } | null = null;
+    // længste match først: op til fire ord
+    for (let n = 4; n >= 1 && !hit; n--) {
+      const parts = tokens.slice(i, i + n * 2 - 1);
+      if (parts.length < n * 2 - 1 || /^\s/.test(parts[0])) continue;
+      const raw = parts.join('');
+      const label = raw.replace(/[.,!?:;"'”“)]+$/u, '');
+      const ids = idx.players.get(label);
+      const pid = ids?.length === 1 ? ids[0] : ids?.find((id) => clubs.includes(g.players[id]?.club));
+      if (pid) hit = { kind: 'player', id: pid, span: n * 2 - 1, label };
+      else if (n >= 2 || label.length >= 4) { const cid = idx.clubs.get(label); if (cid) hit = { kind: 'club', id: cid, span: n * 2 - 1, label }; }
+      if (!hit && n === 1 && /^\p{Lu}/u.test(label)) { const l = local.get(label.toLowerCase()); if (l && l > 0) hit = { kind: 'player', id: l, span: 1, label }; }
+    }
+    if (hit) {
+      const raw = tokens.slice(i, i + hit.span).join('');
+      out.push(<NewsLink key={i} kind={hit.kind} id={hit.id} text={hit.label} />);
+      if (raw.length > hit.label.length) out.push(<Fragment key={`${i}t`}>{raw.slice(hit.label.length)}</Fragment>);
+      i += hit.span;
+    } else { out.push(<Fragment key={i}>{tokens[i]}</Fragment>); i++; }
+  }
+  return <>{out}</>;
+}
+
 export function NewsTitle({ n }: { n: NewsItem }) {
   return <>{linked(n, n.key)}</>;
 }

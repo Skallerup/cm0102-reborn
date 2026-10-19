@@ -7,6 +7,9 @@ import {
 } from '../online/client';
 import { Panel } from './components';
 import { gs, hasGame } from '../game/state';
+import { act } from '../game/actions';
+import { useNav } from './core';
+import { focusNews } from './inboxFocus';
 import { loadWorld } from './world';
 
 /** Startmenuens online-del: opret, deltag eller genoptag */
@@ -119,6 +122,8 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
 export function OnlineControls() {
   const s = session();
   const [copied, setCopied] = useState(false);
+  const { nav, route } = useNav();
+  const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
   if (!s || !s.room) return null;
   const me = s.me;
   // alene i rummet (evt. med AI-managere): knappen fungerer som Fortsæt
@@ -140,8 +145,16 @@ export function OnlineControls() {
       <span className="muted nowrap">
         {s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
-      <button className={`continue ${me?.ready ? '' : 'primary'}`} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => void s.setReady(!me?.ready)}>
+      <button className={`continue ${me?.ready ? '' : 'primary'}`} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
+        // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar
+        if (!me?.ready && hasGame()) {
+          const next = gs().news.filter((n) => !n.read).pop();
+          if (next) { act({ t: 'read', ids: [next.id] }); focusNews(next.id); if (route.name !== 'inbox') nav({ name: 'inbox' }); return; }
+        }
+        void s.setReady(!me?.ready);
+      }}>
         {solo ? (me?.ready ? t('mp.processingShort') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
+        {!me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
     </>
   );

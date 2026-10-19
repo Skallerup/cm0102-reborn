@@ -11,7 +11,9 @@ import { session } from '../../online/client';
 import { ClubLink, Crest, Panel, mgrHue } from '../components';
 import { useGame, useNav } from '../core';
 import { Select } from '../select';
-import { Head } from './common';
+import { Head, LinkedText } from './common';
+import { JAB_LINES, nextMeeting } from '../../game/rivalry';
+import { money } from '../../i18n';
 
 interface Line { id: string; mine: boolean; who: string; text: string; when: string }
 
@@ -144,12 +146,13 @@ export function ManagersScreen() {
               </div>
             );
           })()}
+          {target && tclub > 0 && myClub > 0 && <Rivalry pid={target.pid} tclub={tclub} />}
           <div className="chat-thread" ref={box}>
             {lines.length === 0 && <div className="muted" style={{ textAlign: 'center', padding: 20 }}>{t(target?.bot ? 'chat.emptyAi' : 'chat.empty')}</div>}
             {lines.map((l) => (
               <div key={l.id} className={`chat-msg ${l.mine ? 'mine' : ''}`}>
                 {!l.mine && <div className="chat-who">{l.who}</div>}
-                <div className="chat-bubble">{l.text}</div>
+                <div className="chat-bubble"><LinkedText text={l.text} clubs={[myClub, tclub].filter(Boolean)} /></div>
                 <div className="chat-when">{l.when}</div>
               </div>
             ))}
@@ -177,6 +180,47 @@ export function ManagersScreen() {
           {err && <div className="insight bad">{err}</div>}
         </Panel>
       </div>
+    </div>
+  );
+}
+
+/** Rivalisering: stikpiller i pressen og prestige-væddemål om næste indbyrdes kamp */
+function Rivalry({ pid, tclub }: { pid: string; tclub: number }) {
+  const g = useGame()!;
+  const me = g.active ?? '';
+  const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  const myClub = g.userClub;
+  const f = nextMeeting(myClub, tclub);
+  const theirName = managerName(pid);
+  const club = g.clubs[tclub];
+  const bets = (g.bets ?? []).filter((b) => ((b.from === me && b.to === pid) || (b.from === pid && b.to === me)) && ['proposed', 'accepted'].includes(b.status));
+  const bal = g.clubs[myClub]?.balance ?? 0;
+  const amounts = [100_000, 500_000, 1_000_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000].filter((a) => a <= bal * 0.25);
+  const say = (r0: string, params: Record<string, string | number> = {}) => { const r = r0 === 'error' ? 'riv.error' : r0; setMsg({ text: t(r, { name: theirName, ...params }), tone: /ok|accepted|sent/i.test(r) ? 'good' : /declined|tooSoon|noMoney|noMatch|exists|error/.test(r) ? 'warn' : '' }); };
+  return (
+    <div className="rivalry">
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+        <span className="h2h-label">{t('riv.title')}</span>
+        <span className="muted">{f ? t('riv.next', { date: dateFmt(f.date), comp: g.comps[f.comp]?.name ?? '' }) : t('riv.noMatch')}</span>
+        <Select<number> value={-1} width={260} placeholder={t('riv.jab')}
+          options={Array.from({ length: JAB_LINES }, (_, i) => ({ value: i, label: t(`jab.line.${i}`, { club: club?.short ?? '', name: theirName }) }))}
+          onChange={(i) => { const text = t(`jab.line.${i}`, { club: club?.short ?? '', name: theirName }); say(act<string>({ t: 'jab', to: pid, line: i, text })); }} />
+        {f && amounts.length > 0 && (
+          <Select<number> value={0} width={220} placeholder={t('riv.bet')}
+            options={amounts.map((a) => ({ value: a, label: t('riv.betAmount', { fee: money(a) }) }))}
+            onChange={(a) => say(act<string>({ t: 'bet', to: pid, amount: a }), { fee: money(a) })} />
+        )}
+      </div>
+      {bets.map((b) => (
+        <div key={b.id} className="row" style={{ gap: 8, marginTop: 6 }}>
+          <span>🎲 {t(b.status === 'accepted' ? 'riv.betOn' : b.from === me ? 'riv.betWaiting' : 'riv.betOffered', { fee: money(b.amount), name: theirName, date: dateFmt(g.fixtures[b.fixture]?.date ?? g.date) })}</span>
+          {b.status === 'proposed' && b.to === me && <>
+            <button className="small primary" onClick={() => say(act<string>({ t: 'betAnswer', id: b.id, accept: true }))}>{t('riv.accept')}</button>
+            <button className="small" onClick={() => say(act<string>({ t: 'betAnswer', id: b.id, accept: false }))}>{t('riv.decline')}</button>
+          </>}
+        </div>
+      ))}
+      {msg && <div className={`insight ${msg.tone}`} style={{ marginTop: 6 }}>{msg.text}</div>}
     </div>
   );
 }
