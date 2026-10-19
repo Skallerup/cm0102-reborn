@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.35',
+    date: '2026-10-19',
+    title: { da: 'Klubbens farver som standard', en: 'Club colours by default' },
+    items: [
+      { da: 'Spillet bruger nu som standard klubbens farver på lys baggrund – farverne holdes tro mod logoet (fx Vejles røde i stedet for en lyserød)', en: 'The game now uses the club\'s colours on a light background by default – the colours stay true to the crest (e.g. Vejle\'s red instead of a pink)' },
+      { da: 'Er en af logoets farver hvid, bruges klubbens hovedfarve; klubfarver på mørk baggrund kan stadig vælges under Indstillinger', en: 'If one of the crest\'s colours is white, the club\'s main colour is used; club colours on a dark background can still be chosen in Options' },
+    ],
+  },
+  {
     version: '0.7.34',
     date: '2026-10-19',
     title: { da: 'Værtens kontrolpanel', en: 'Host controls' },

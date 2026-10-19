@@ -35,10 +35,10 @@ export function Options() {
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
             <label className="row">{t('opt.theme')}
               <select value={theme} onChange={(e) => { setThemeState(e.target.value as Theme); setTheme(e.target.value as Theme); }}>
-                {(['dark', 'light', 'club'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
+                {(['club', 'clubDark', 'light', 'dark'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
               </select>
             </label>
-            {theme === 'club' && <div className="muted">{t('opt.theme.clubHint')}</div>}
+            {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
             <label className="row">{t('opt.news')}
               <select value={g.options.newsScope ?? 'league'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
                 {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}

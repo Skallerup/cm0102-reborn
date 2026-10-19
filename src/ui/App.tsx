@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame } from './core';
+import { applyTheme } from './theme';
 import { notify } from '../game/state';
 import { getLast, forgetLast, loadGame } from '../game/save';
 import { openSession, savedRooms } from '../online/client';
@@ -14,6 +15,9 @@ void loadLogos().then(() => notify());
 
 export default function App() {
   const g = useGame();
+  // temaet skifter, når et spil indlæses eller lukkes
+  const inGame = !!g;
+  useEffect(() => { applyTheme(); }, [inGame]);
   const [lang, setLangState] = useState<Lang>(getLang());
   const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)

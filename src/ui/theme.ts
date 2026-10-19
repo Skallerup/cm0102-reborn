@@ -4,12 +4,13 @@
 import { logoUrl } from './logos';
 import { gs, hasGame } from '../game/state';
 
-export type Theme = 'dark' | 'light' | 'club';
+export type Theme = 'club' | 'clubDark' | 'light' | 'dark';
 const KEY = 'cm-theme';
 const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2'];
 
 export function getTheme(): Theme {
-  try { const v = localStorage.getItem(KEY); return v === 'light' || v === 'club' ? v : 'dark'; } catch { return 'dark'; }
+  // standard: klubbens farver på lys baggrund
+  try { const v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' || v === 'clubDark' ? v : 'club'; } catch { return 'club'; }
 }
 
 export function setTheme(t: Theme) {
@@ -89,6 +90,15 @@ function forDark(c: RGB, minL = 0.58): RGB {
   return rgbFromHsl(h, Math.max(s, 0.55), Math.max(l, minL));
 }
 
+/** Gør en farve læsbar på hvid baggrund – behold klubbens nuance, gør kun for lyse farver mørkere */
+function forLight(c: RGB, maxL = 0.45): RGB {
+  const [h, s, l] = hsl(c);
+  return l <= maxL ? c : rgbFromHsl(h, s, maxL);
+}
+
+/** Er farven så lys/grå, at den ikke duer som accent (fx hvid)? */
+const washed = (c: RGB) => { const [, s, l] = hsl(c); return l > 0.85 || s < 0.15; };
+
 const css = (c: RGB) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
 const lum = ([r, g, b]: RGB) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
@@ -97,21 +107,28 @@ export function applyTheme() {
   const root = document.documentElement;
   const theme = getTheme();
   const token = ++applied;
-  root.dataset.theme = theme === 'light' ? 'light' : 'dark';
+  // forsiden og startmenuen er designet mørke – temaet gælder inde i spillet
+  const dark = theme === 'dark' || theme === 'clubDark' || !hasGame();
+  root.dataset.theme = dark ? 'dark' : 'light';
   for (const v of VARS) root.style.removeProperty(v);
-  if (theme !== 'club' || !hasGame()) return;
+  if ((theme !== 'club' && theme !== 'clubDark') || !hasGame()) return;
   const club = gs().clubs[gs().userClub];
   if (!club) return;
   void logoColors(club.id).then((cols) => {
     if (token !== applied) return;
     const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
-    const [a, b] = cols ?? club.colors.map(hex);
-    const accent = forDark(a);
-    const accent2 = forDark(b ?? a, 0.66);
+    const [a0, b0] = cols ?? club.colors.map(hex);
+    // en hvid/grå farve i logoet duer ikke som accent – brug klubbens hovedfarve
+    const [a, b] = washed(a0) && b0 && !washed(b0) ? [b0, a0] : [a0, b0];
+    const second = b && !washed(b) ? b : undefined;
+    const accent = dark ? forDark(a) : forLight(a);
+    // links: anden klubfarve – eller en mørkere udgave af hovedfarven (fx Vejle: rød og hvid)
+    const accent2 = dark ? forDark(second ?? a, 0.66) : forLight(second ?? a, second ? 0.42 : 0.34);
     root.style.setProperty('--accent', css(accent));
     root.style.setProperty('--accent-ink', lum(accent) > 0.55 ? '#141008' : '#ffffff');
     root.style.setProperty('--accent2', css(accent2));
-    root.style.setProperty('--tint1', `rgba(${a[0]}, ${a[1]}, ${a[2]}, 0.22)`);
-    root.style.setProperty('--tint2', `rgba(${(b ?? a)[0]}, ${(b ?? a)[1]}, ${(b ?? a)[2]}, 0.14)`);
+    const ta = dark ? 0.22 : 0.10, tb = dark ? 0.14 : 0.06;
+    root.style.setProperty('--tint1', `rgba(${a[0]}, ${a[1]}, ${a[2]}, ${ta})`);
+    root.style.setProperty('--tint2', `rgba(${(second ?? a)[0]}, ${(second ?? a)[1]}, ${(second ?? a)[2]}, ${tb})`);
   });
 }
