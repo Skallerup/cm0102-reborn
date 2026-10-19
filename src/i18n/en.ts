@@ -199,6 +199,7 @@ export const en: Record<string, string> = {
   'top.notify': "Notifications", 'top.notifyHint': "Get notified in the browser when it's your turn or offers and job offers arrive – also when the game is in another tab", 'top.notifyOn': "Notifications are on 🔔", 'top.notifyDenied': "The browser did not allow notifications – you can change it in the browser's site settings", 'top.install': "Install app", 'top.installHint': "Install the game as an app – it runs in its own window, and notifications also work on mobile", 'top.installed': "The game is installed as an app",
   'match.pitch2d': "2D pitch",
   'tac.customFormation': "Custom formation ({name})", 'tac.movePos': "Move positions", 'tac.movePosDone': "Done", 'tac.movePosHint': "Drag the players around to make your own formation – the position's role follows where it stands", 'tac.hint2': "Click a position and pick a player (or drag and drop) · right-click for instructions", 'tac.roleDef': "Defensive", 'tac.roleBal': "Balanced", 'tac.roleAtt': "Attacking",
+  'match.ratings': "Player ratings", 'rt.off': "off {m}'", 'rt.on': "on {m}'", 'rt.sentOff': "sent off", 'match.noTable': "No table in this competition.",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

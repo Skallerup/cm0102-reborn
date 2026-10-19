@@ -1049,7 +1049,9 @@ export class MatchSim {
   live(teamIdx: number) {
     const t = this.teams[teamIdx];
     return {
-      on: t.on.map((s) => ({ id: s.p.id, slot: s.slot, off: s.off, cond: Math.round(s.cond * 100), rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, injured: s.line.injured, goals: s.line.goals })),
+      on: t.on.map((s) => ({ id: s.p.id, slot: s.slot, off: s.off, cond: Math.round(s.cond * 100), rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, injured: s.line.injured, goals: s.line.goals, red: !!s.line.red, enteredAt: s.enteredAt })),
+      /** udskiftede spillere (til karakteroversigten) */
+      gone: t.all.filter((s) => !t.on.includes(s)).map((s) => ({ id: s.p.id, slot: s.slot, rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, goals: s.line.goals, enteredAt: s.enteredAt })),
       bench: t.benchIds.slice(),
       subsLeft: t.subsLeft,
       stats: t.stats,

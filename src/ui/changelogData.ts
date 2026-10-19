@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.46',
+    date: '2026-10-19',
+    title: { da: 'Kampskærm i CM-stil', en: 'CM-style match screen' },
+    items: [
+      { da: 'Store holdbjælker i holdenes farver med stor score og minuttet i en boks – som i det klassiske spil', en: 'Big team bars in the teams\' colours with a big score and the minute in a box – like the classic game' },
+      { da: 'Ny fane "Spillerkarakterer": begge hold side om side med trøjenummer, karakter, mål, kort og ind/ud-minut; reserver står nedtonet', en: 'New "Player ratings" tab: both teams side by side with shirt number, rating, goals, cards and on/off minute; substitutes are dimmed' },
+      { da: 'Faner til andre kampe og stillingen under kampen, og stadion står nederst', en: 'Tabs for other matches and the table during the match, and the stadium is shown at the bottom' },
+    ],
+  },
+  {
     version: '0.7.45',
     date: '2026-10-19',
     title: { da: 'Taktiktavle som i det rigtige spil', en: 'Tactics board like the real game' },

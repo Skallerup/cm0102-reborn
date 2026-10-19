@@ -10,6 +10,8 @@ import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { Pitch2D } from '../Pitch2D';
+import { LeagueTable } from './Competitions';
+import { sortTable } from '../../game/competitions';
 import { TacticEditor } from './Tactics';
 import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
@@ -87,6 +89,64 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
       ) : <div className="muted">{t('match.notToday')}</div>}
     </div>
   );
+}
+
+/** CM-stil: holdbjælker i holdfarverne med stor score og minuttet til venstre */
+function CmScoreboard({ home, away, hg, ag, minute, colors }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string] }) {
+  const g = gs();
+  return (
+    <div className="cm-board">
+      <div className="cm-minute">{minute}</div>
+      <div className="cm-team" style={{ background: colors[0], color: colors[1] }}>
+        <span className="cm-name"><Crest id={home} size={30} />{g.clubs[home]?.name}</span>
+        <span className="cm-score">{hg}</span>
+      </div>
+      <div className="cm-team away" style={{ background: colors[2], color: colors[3] }}>
+        <span className="cm-score">{ag}</span>
+        <span className="cm-name">{g.clubs[away]?.name}<Crest id={away} size={30} /></span>
+      </div>
+    </div>
+  );
+}
+
+type LiveTeam = ReturnType<MatchSim['live']>;
+
+/** Spillerkarakterer for begge hold side om side (som i CM): startere, indskiftede og ubrugte reserver */
+function RatingsBoard({ sim, colors }: { sim: MatchSim; colors: [string, string, string, string] }) {
+  const g = gs();
+  const subMinute = (team: number, id: number, field: 'p' | 'p2') => sim.events.find((e) => e.k === 'sub' && e.t === team && e[field] === id)?.m;
+  const cards = (team: number, id: number) => sim.events.filter((e) => e.t === team && e.p === id && (e.k === 'yellow' || e.k === 'red')).map((e) => e.k);
+  const col = (lt: LiveTeam, team: number) => {
+    const [bg, fg] = team === 0 ? [colors[0], colors[1]] : [colors[2], colors[3]];
+    type Row = { id: number; num: number; rating?: number; goals?: number; info?: string; dim?: boolean };
+    const starters = [...lt.on.filter((x) => x.enteredAt === 0), ...lt.gone.filter((x) => x.enteredAt === 0)].sort((a, b) => a.slot - b.slot);
+    const rows: Row[] = starters.map((x) => {
+      const out = subMinute(team, x.id, 'p2');
+      const offRed = lt.on.find((o) => o.id === x.id)?.red;
+      return { id: x.id, num: x.slot + 1, rating: x.rating, goals: x.goals, info: out ? t('rt.off', { m: out }) : offRed ? t('rt.sentOff') : undefined, dim: !!out || !!offRed };
+    });
+    let n = 12;
+    for (const x of [...lt.on, ...lt.gone].filter((y) => y.enteredAt > 0)) rows.push({ id: x.id, num: n++, rating: x.rating, goals: x.goals, info: t('rt.on', { m: subMinute(team, x.id, 'p') ?? x.enteredAt }) });
+    for (const id of lt.bench) rows.push({ id, num: n++, dim: true });
+    return (
+      <div className="cm-col">
+        {rows.map((r) => {
+          const p = g.players[r.id];
+          const cs = cards(team, r.id);
+          return (
+            <div key={r.id} className={`cm-row ${r.dim ? 'dim' : ''}`}>
+              <span className="cm-num" style={{ background: bg, color: fg }}>{r.num}</span>
+              <span className="cm-pl">{cs.includes('red') ? <i className="cm-card red" /> : cs.includes('yellow') ? <i className="cm-card" /> : null}<PlayerLink p={p} /></span>
+              <span className="cm-info">{r.info ?? ''}</span>
+              <span className="cm-rt">{r.rating !== undefined && !(r.dim && !r.info) ? <Rating r={r.rating} /> : ''}</span>
+              <span className="cm-goals">{r.goals ? '⚽'.repeat(Math.min(3, r.goals)) : ''}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+  return <div className="cm-ratings">{col(sim.live(0), 0)}{col(sim.live(1), 1)}</div>;
 }
 
 function Scoreboard({ home, away, hg, ag, minute }: { home: number; away: number; hg: number | null; ag: number | null; minute: string }) {
@@ -198,6 +258,7 @@ function LiveMatch({ id }: { id: number }) {
 
   const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result);
   const minute = sim.finished ? t('match.ft') : `${sim.minute}'`;
+  const colors = teamColors(f.home, f.away, me);
 
   return (
     <div>
@@ -209,9 +270,9 @@ function LiveMatch({ id }: { id: number }) {
         </>}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
-      <Scoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} minute={minute + (sim.pens ? ` (${t('fix.pens')} ${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ` · ${t('match.paused')}` : '')} />
+      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} colors={colors} minute={minute + (sim.pens ? ` (${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ' ❚❚' : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
-      <Tabs tabs={[['2d', t('match.pitch2d')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => sim.applyTalk(me, boosts)} />
@@ -219,7 +280,7 @@ function LiveMatch({ id }: { id: number }) {
       {msg && <div className="insight">{msg}</div>}
       {tab === '2d' && (
         <div className="cols match2d">
-          <Pitch2D sim={sim} me={me} colors={teamColors(f.home, f.away, me)} minute={minute}
+          <Pitch2D sim={sim} me={me} colors={colors} minute={minute}
             banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} stepMs={Math.max(60, (g.options.matchSpeed * 0.6) / speed)} />
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
             {L.lines.slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
@@ -244,6 +305,22 @@ function LiveMatch({ id }: { id: number }) {
         </div>
       )}
       {tab === 'stats' && <StatsPanel stats={[st[0], st[1]]} home={home} away={away} />}
+      {tab === 'ratings' && <RatingsBoard sim={sim} colors={colors} />}
+      {tab === 'scores' && (
+        <Panel title={t('match.vidiprinter')}>
+          <div className="vidiprinter cm-scores">
+            {others.map((o) => {
+              const goals = o.result!.scorers.filter(([m]) => m <= (sim.finished ? 200 : sim.minute));
+              const hg = goals.filter(([, tm]) => tm === 0).length, ag = goals.length - hg;
+              return <div key={o.id}><span>{g.clubs[o.home]?.name}</span><b>{hg} - {ag}</b><span>{g.clubs[o.away]?.name}</span></div>;
+            })}
+            {others.length === 0 && <span className="muted">{t('match.noOther')}</span>}
+          </div>
+        </Panel>
+      )}
+      {tab === 'table' && g.comps[f.comp]?.type === 'league' && <Panel className="flush"><LeagueTable rows={sortTable(g.comps[f.comp].table.slice())} comp={g.comps[f.comp]} /></Panel>}
+      {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
+      <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''}</div>
       {tab === 'team' && (
         <Panel className="flush">
           <table className="grid">
