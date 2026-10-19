@@ -659,3 +659,4 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
   .menu-backdrop { display: block; position: fixed; inset: 0; z-index: 39; background: rgba(0, 0, 0, 0.35); }
   .waiting-banner { top: auto; bottom: 76px; font-size: 13px; padding: 10px 16px; white-space: normal; text-align: center; width: max-content; max-width: 92vw; }
 }
+@media (max-width: 860px) { .app-btn-label { display: none; } }

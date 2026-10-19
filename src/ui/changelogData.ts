@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.41',
+    date: '2026-10-19',
+    title: { da: 'Notifikationer med ét klik', en: 'Notifications in one click' },
+    items: [
+      { da: 'Ny 🔔-knap i topbjælken slår browser-notifikationer til med ét klik (vises kun, indtil de er slået til)', en: 'New 🔔 button in the top bar turns on browser notifications in one click (only shown until they are on)' },
+      { da: 'Når browseren tillader det, er der også en "Installér app"-knap – så kører spillet i sit eget vindue, og notifikationer virker på mobilen', en: 'When the browser allows it, there is also an "Install app" button – the game then runs in its own window, and notifications work on mobile' },
+    ],
+  },
+  {
     version: '0.7.40',
     date: '2026-10-19',
     title: { da: 'Agenter, dårlige kontrakter, notifikationer og mobil', en: 'Agents, bad contracts, notifications and mobile' },

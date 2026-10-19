@@ -29,3 +29,36 @@ export function notifyUser(title: string, body: string, tag: string) {
     n.onclick = () => { window.focus(); n.close(); };
   } catch { /* fx iOS uden PWA */ }
 }
+
+// ---------- installér som app (PWA) ----------
+
+type InstallEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
+let installEvent: InstallEvent | null = null;
+const listeners = new Set<() => void>();
+if (typeof window !== 'undefined') {
+  window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); installEvent = e as InstallEvent; listeners.forEach((f) => f()); });
+  window.addEventListener('appinstalled', () => { installEvent = null; listeners.forEach((f) => f()); });
+}
+
+export function canInstall(): boolean {
+  return !!installEvent;
+}
+
+export function onInstallChange(f: () => void): () => void {
+  listeners.add(f);
+  return () => { listeners.delete(f); };
+}
+
+export async function installApp(): Promise<boolean> {
+  if (!installEvent) return false;
+  await installEvent.prompt();
+  const r = await installEvent.userChoice;
+  installEvent = null;
+  listeners.forEach((f) => f());
+  return r.outcome === 'accepted';
+}
+
+/** Kan man bede om lov til notifikationer (understøttet og ikke allerede afvist)? */
+export function notifyAskable(): boolean {
+  return notifySupported() && Notification.permission !== 'denied';
+}

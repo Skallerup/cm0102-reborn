@@ -38,7 +38,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme } from './theme';
-import { notifyUser } from './notify';
+import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
 /** Nyheder der giver en browser-notifikation */
@@ -204,6 +204,7 @@ export function Shell() {
         <div className="date"><span className="date-long">{dateFmt(g.date, true)}</span><span className="date-short">{dateFmt(g.date)}</span></div>
         {club && <div className="money">{t('top.balance')}: {money(club.balance)} · {t('top.budget')}: {money(club.transferBudget)}</div>}
         <div className="spacer" />
+        <AppButtons onMsg={setToast} />
         <FullscreenButton />
         {nextMatch && <span className="muted nowrap top-next">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
         {online ? <OnlineControls /> : (
@@ -302,6 +303,25 @@ function Screen() {
     case 'managers': return <ManagersScreen />;
     case 'help': return <HelpScreen id={route.id as string | undefined} />;
   }
+}
+
+/** Klokken (slå notifikationer til) og "Installér app", kun når de er relevante */
+function AppButtons({ onMsg }: { onMsg: (m: string) => void }) {
+  const [notif, setNotif] = useState(notifyEnabled());
+  const [inst, setInst] = useState(canInstall());
+  useEffect(() => onInstallChange(() => setInst(canInstall())), []);
+  return (
+    <>
+      {!notif && notifyAskable() && (
+        <button className="small app-btn" title={t('top.notifyHint')} onClick={async () => {
+          const ok = await setNotify(true);
+          setNotif(ok);
+          onMsg(t(ok ? 'top.notifyOn' : 'top.notifyDenied'));
+        }}>🔔 <span className="app-btn-label">{t('top.notify')}</span></button>
+      )}
+      {inst && <button className="small app-btn" title={t('top.installHint')} onClick={async () => { if (await installApp()) onMsg(t('top.installed')); }}>⬇ <span className="app-btn-label">{t('top.install')}</span></button>}
+    </>
+  );
 }
 
 function FullscreenButton() {
