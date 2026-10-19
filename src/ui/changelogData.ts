@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.48',
+    date: '2026-10-19',
+    title: { da: 'Andre kampe fra samme liga', en: 'Other matches from the same league' },
+    items: [
+      { da: 'Under kampen viser "Andre kampe" kun kampe fra samme turnering som din egen', en: 'During the match, "Other matches" only shows matches from the same competition as your own' },
+    ],
+  },
+  {
     version: '0.7.47',
     date: '2026-10-19',
     title: { da: 'Bedre taktiktavle', en: 'Better tactics board' },

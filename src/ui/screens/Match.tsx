@@ -256,7 +256,8 @@ function LiveMatch({ id }: { id: number }) {
   const myGoals = sim.teams[me].stats.goals - sim.teams[1 - me].stats.goals;
   const liveRatings = Object.fromEntries(myLive.on.filter((s) => !s.off).map((s) => [s.id, Math.round(s.rating * 10) / 10]));
 
-  const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result);
+  // kun kampe i samme turnering (samme liga eller pokal)
+  const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result && x.comp === f.comp);
   const minute = sim.finished ? t('match.ft') : `${sim.minute}'`;
   const colors = teamColors(f.home, f.away, me);
 
