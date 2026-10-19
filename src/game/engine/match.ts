@@ -116,6 +116,8 @@ export class MatchSim {
   finished = false;
   poss = 0;
   zone = 7; // midten
+  /** Til 2D-visningen: spilleren med bolden (påvirker ikke kampen) */
+  holder = 0;
   private breakaway: SP | null = null;
   private rebound: SP | null = null;
   private lastPasser: SP | null = null;
@@ -410,6 +412,7 @@ export class MatchSim {
 
     const carrier = this.pick(T.zAtt[z]);
     if (!carrier) { this.turnover(null); return; }
+    this.holder = carrier.p.id;
     // Løbende dueller/frispark uden for de egentlige aktioner
     if (this.r.chance(0.11)) {
       const def = this.pick(O.zDef[z]);
@@ -732,6 +735,7 @@ export class MatchSim {
   }
 
   private shoot(T: TeamRT, O: TeamRT, s: SP, kind: string, bonus = 0) {
+    this.holder = s.p.id;
     const z = this.zone;
     const base: Record<string, number> = { box: 0.145, boxWide: 0.055, long: 0.035, header: 0.095, oneOnOne: 0.33, cutback: 0.21, pen: 0.76, fk: 0.055, rebound: 0.24 };
     let xg = (base[kind] ?? 0.08) + bonus;
@@ -1026,6 +1030,22 @@ export class MatchSim {
   }
 
   /** Aktuelle on-pitch spillere (til live UI) */
+  /** Øjebliksbillede til 2D-visningen: boldens zone, hvem der har den, og spillernes positioner fra taktikken */
+  pitch() {
+    const last = this.shots.at(-1);
+    return {
+      zone: this.zone,
+      poss: this.poss,
+      holder: this.holder,
+      moment: this.moment,
+      shot: last && last.m === this.minute ? { team: last.t, outcome: last.outcome, zone: last.zone } : null,
+      players: this.teams.flatMap((t) => t.on.filter((sp) => !sp.off).map((sp) => ({
+        id: sp.p.id, team: t.idx, num: sp.slot + 1, gk: t.tactic.slots[sp.slot]?.pos === 'GK',
+        ax: sp.ax, ay: sp.ay, dx: sp.dx, dy: sp.dy, name: sp.p.last,
+      }))),
+    };
+  }
+
   live(teamIdx: number) {
     const t = this.teams[teamIdx];
     return {

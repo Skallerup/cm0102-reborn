@@ -210,6 +210,7 @@ export const da: Record<string, string> = {
   'opt.notify': "Browser-notifikationer", 'opt.notify.hint': "Få besked, når det er din tur i multiplayer, eller når der kommer bud, jobtilbud og andet vigtigt – mens spillet ligger i en anden fane.", 'mp.newTurn': "Nyt træk spillet – det er nu {date}",
   'top.more': "Mere",
   'top.notify': "Notifikationer", 'top.notifyHint': "Få besked i browseren, når det er din tur, eller der kommer bud og jobtilbud – også når spillet ligger i en anden fane", 'top.notifyOn': "Notifikationer er slået til 🔔", 'top.notifyDenied': "Browseren tillod ikke notifikationer – du kan ændre det i browserens indstillinger for siden", 'top.install': "Installér app", 'top.installHint': "Installér spillet som en app – så kører det i sit eget vindue, og notifikationer virker også på mobilen", 'top.installed': "Spillet er installeret som app",
+  'match.pitch2d': "2D-bane",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

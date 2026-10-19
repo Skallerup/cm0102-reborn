@@ -197,6 +197,7 @@ export const en: Record<string, string> = {
   'opt.notify': "Browser notifications", 'opt.notify.hint': "Get notified when it's your turn in multiplayer, or when offers, job offers and other important things arrive – while the game is in another tab.", 'mp.newTurn': "A new turn has been played – it is now {date}",
   'top.more': "More",
   'top.notify': "Notifications", 'top.notifyHint': "Get notified in the browser when it's your turn or offers and job offers arrive – also when the game is in another tab", 'top.notifyOn': "Notifications are on 🔔", 'top.notifyDenied': "The browser did not allow notifications – you can change it in the browser's site settings", 'top.install': "Install app", 'top.installHint': "Install the game as an app – it runs in its own window, and notifications also work on mobile", 'top.installed': "The game is installed as an app",
+  'match.pitch2d': "2D pitch",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

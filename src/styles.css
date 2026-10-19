@@ -660,3 +660,15 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
   .waiting-banner { top: auto; bottom: 76px; font-size: 13px; padding: 10px 16px; white-space: normal; text-align: center; width: max-content; max-width: 92vw; }
 }
 @media (max-width: 860px) { .app-btn-label { display: none; } }
+
+/* ---------- 2D-kamp ---------- */
+.pitch2d { position: relative; border-radius: 14px; overflow: hidden; background: #2e6f2b; box-shadow: var(--shadow); }
+.pitch2d svg { display: block; width: 100%; height: auto; }
+.p2d-player, .p2d-ball { transition-property: transform; transition-timing-function: ease-in-out; }
+.p2d-minute { position: absolute; top: 10px; left: 12px; background: rgba(0, 0, 0, 0.45); color: #ffe066; font-weight: 800; font-family: var(--mono); padding: 3px 10px; border-radius: 8px; font-size: 15px; }
+.p2d-poss { position: absolute; top: 10px; right: 12px; padding: 3px 10px; border-radius: 8px; font-weight: 700; font-size: 12.5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); }
+.p2d-banner { background: #ffe14d; color: #1b1400; text-align: center; font-weight: 800; font-size: 16px; padding: 9px 12px; min-height: 40px; }
+.p2d-banner.goal { background: #22c55e; color: #fff; animation: flash 0.6s 3; }
+.p2d-banner.hi { background: #ffd23f; }
+.match2d { grid-template-columns: 2fr 1fr; }
+@media (max-width: 860px) { .match2d { grid-template-columns: 1fr; } .p2d-banner { font-size: 13px; } }

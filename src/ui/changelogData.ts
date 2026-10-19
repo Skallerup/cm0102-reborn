@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.42',
+    date: '2026-10-19',
+    title: { da: '2D-kampvisning', en: '2D match view' },
+    items: [
+      { da: 'Se kampen på en klassisk 2D-bane: spillerne bevæger sig mellem deres forsvars- og angrebspositioner fra taktikken, holdet trækker sig sammen mod bolden, og den nærmeste modspiller presser boldholderen', en: 'Watch the match on a classic 2D pitch: players move between their defensive and attacking positions from the tactics, the team shifts towards the ball, and the nearest opponent presses the ball carrier' },
+      { da: 'Ændrer du mentalitet, bredde eller løb under kampen, kan du se det på banen. Boldholderen vises med navn, og kommentaren kører i den gule bjælke', en: 'Change mentality, width or runs during the match and you can see it on the pitch. The ball carrier is shown by name, and the commentary runs in the yellow bar' },
+      { da: 'Vælg mellem 2D-bane og kommentar – spillet husker dit valg', en: 'Choose between 2D pitch and commentary – the game remembers your choice' },
+    ],
+  },
+  {
     version: '0.7.41',
     date: '2026-10-19',
     title: { da: 'Notifikationer med ét klik', en: 'Notifications in one click' },

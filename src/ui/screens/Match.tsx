@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { opponentReport } from '../../game/analysis';
 import type { MatchSim } from '../../game/engine/match';
 import { createLiveMatch, finishUserMatch, quickPlayUserMatch, userTactic } from '../../game/sim';
-import { fixturesOn, notify, squad } from '../../game/state';
+import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
+import { Pitch2D } from '../Pitch2D';
 import { TacticEditor } from './Tactics';
 import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
@@ -16,6 +17,18 @@ import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
 
 // Den igangværende kamp overlever navigation mellem skærme
+/** Holdfarver til 2D-banen: ens eget hold i klubtemaets farver, modstanderen i en farve der skiller sig ud */
+function teamColors(home: number, away: number, me: number): [string, string, string, string] {
+  const g = gs();
+  const css = getComputedStyle(document.documentElement);
+  const navBg = css.getPropertyValue('--nav-bg').trim(), navFg = css.getPropertyValue('--nav-fg').trim();
+  const own: [string, string] = navBg ? [navBg, navFg || '#fff'] : [g.clubs[me === 0 ? home : away]?.colors[0] ?? '#d7263d', g.clubs[me === 0 ? home : away]?.colors[1] ?? '#fff'];
+  // modstanderen: hvid, medmindre vores egen farve er lys – så mørkeblå
+  const lum = (c: string) => { const m = c.match(/\d+/g); if (!m) return c.toLowerCase().startsWith('#f') ? 1 : 0.4; const [r, gg, b] = m.map(Number); return (0.2126 * r + 0.7152 * gg + 0.0722 * b) / 255; };
+  const opp: [string, string] = lum(own[0]) > 0.7 ? ['#1d2b53', '#ffffff'] : ['#f4f4f4', '#1b2233'];
+  return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
+}
+
 let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
@@ -100,7 +113,9 @@ function LiveMatch({ id }: { id: number }) {
   const [, force] = useState(0);
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [tab, setTab] = useState('commentary');
+  const [tab, setTabState] = useState(() => { try { return localStorage.getItem('cm-match-view') === 'commentary' ? 'commentary' : '2d'; } catch { return '2d'; } });
+  // husk om man ser kampen i 2D eller som kommentar
+  const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary') { try { localStorage.setItem('cm-match-view', v); } catch { /* ignorér */ } } };
   const [report, setReport] = useState<MatchReport | null>(null);
   const [msg, setMsg] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
@@ -116,10 +131,10 @@ function LiveMatch({ id }: { id: number }) {
     }
   };
 
-  const advance = (maxMoments: number) => {
+  const advance = (maxMoments: number, untilLine = true) => {
     const before = sim.commentary.length;
     let n = 0;
-    while (n < maxMoments && sim.commentary.length === before) {
+    while (n < maxMoments && (!untilLine || sim.commentary.length === before)) {
       if (!sim.step()) break;
       n++;
     }
@@ -136,8 +151,9 @@ function LiveMatch({ id }: { id: number }) {
 
   useEffect(() => {
     if (paused || report) return;
-    const ms = Math.max(30, g.options.matchSpeed / speed);
-    const h = setInterval(() => advance(speed >= 8 ? 40 : 12), ms);
+    // 2D: ét øjeblik ad gangen, så man kan følge bolden; ellers til næste kommentarlinje
+    const ms = tab === '2d' ? Math.max(60, (g.options.matchSpeed * 0.6) / speed) : Math.max(30, g.options.matchSpeed / speed);
+    const h = setInterval(() => (tab === '2d' ? advance(1, false) : advance(speed >= 8 ? 40 : 12)), ms);
     return () => clearInterval(h);
   });
 
@@ -195,12 +211,21 @@ function LiveMatch({ id }: { id: number }) {
       </Head>
       <Scoreboard home={f.home} away={f.away} hg={st[0].goals} ag={st[1].goals} minute={minute + (sim.pens ? ` (${t('fix.pens')} ${sim.pens[0]}-${sim.pens[1]})` : '') + (paused && !report ? ` · ${t('match.paused')}` : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : t('match.keys')}</div>
-      <Tabs tabs={[['commentary', t('match.commentary')], ['stats', t('match.stats')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['2d', t('match.pitch2d')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['team', `${t('match.myTeam')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ['tactics', t('nav.tactics')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => sim.applyTalk(me, boosts)} />
       )}
       {msg && <div className="insight">{msg}</div>}
+      {tab === '2d' && (
+        <div className="cols match2d">
+          <Pitch2D sim={sim} me={me} colors={teamColors(f.home, f.away, me)} minute={minute}
+            banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} stepMs={Math.max(60, (g.options.matchSpeed * 0.6) / speed)} />
+          <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
+            {L.lines.slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+          </div>
+        </div>
+      )}
       {tab === 'commentary' && (
         <div className="cols" style={{ gridTemplateColumns: '2fr 1fr' }}>
           <div className="commentary" ref={boxRef}>
