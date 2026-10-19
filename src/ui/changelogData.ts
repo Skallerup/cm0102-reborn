@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.62',
+    date: '2026-10-19',
+    title: { da: 'Simuleringsvisning i online-spil', en: 'Simulation screen in online games' },
+    items: [
+      { da: 'Online: så snart alle er klar, vises en simuleringsvisning for alle spillere – hvem der simulerer (værten), hvor langt der spilles frem, og næste kamp. Den forsvinder af sig selv, når det nye træk er klar (og kan skjules)', en: 'Online: as soon as everyone is ready, a simulation screen is shown to all players – who is simulating (the host), how far ahead it plays, and the next match. It disappears by itself when the new turn is ready (and can be hidden)' },
+    ],
+  },
+  {
     version: '0.7.61',
     date: '2026-10-19',
     title: { da: 'Værten simulerer, og rigtige Superliga-farver', en: 'The host simulates, and proper Superliga colours' },

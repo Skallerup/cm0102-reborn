@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { WorldData } from '../game/newgame';
 import type { GameState } from '../game/types';
-import { t } from '../i18n';
+import { dateFmt, t } from '../i18n';
 import {
   downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, type RoomInfo,
 } from '../online/client';
@@ -140,6 +140,10 @@ export function OnlineControls() {
   const [copied, setCopied] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
+  // simuleringsvisningen kan skjules – den kommer igen ved næste træk
+  const [simHidden, setSimHidden] = useState(false);
+  const turnKey = s?.room ? `${s.room.version}` : '';
+  useEffect(() => { setSimHidden(false); }, [turnKey]);
   const { nav, route } = useNav();
   const unread = hasGame() ? gs().news.filter((n) => !n.read).length : 0;
   // (beregnes før det tidlige return, så hooket altid kaldes)
@@ -184,6 +188,7 @@ export function OnlineControls() {
       {hostOpen && <HostModal onClose={() => setHostOpen(false)} />}
       {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
       {othersWaiting && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
+      {!solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
       <span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
         {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
@@ -199,6 +204,33 @@ export function OnlineControls() {
         {!me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
     </>
+  );
+}
+
+/** Når alle er klar: en simuleringsvisning for alle spillere, indtil det nye træk er klar */
+function SimOverlay({ onHide }: { onHide: () => void }) {
+  const s = session();
+  if (!s?.room) return null;
+  const host = s.room.players.find((p) => p.pid === s.room!.host);
+  const g = hasGame() ? gs() : null;
+  const club = g?.userClub;
+  const next = g && club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === club || f.away === club)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
+  const opp = next && g ? g.clubs[next.home === club ? next.away : next.home] : undefined;
+  const stage = s.status === 'processing' ? t('mp.simYou') : s.room.processing ? t('mp.simOther', { name: host?.name ?? '' }) : t('mp.simWaitHost', { name: host?.name ?? '' });
+  return (
+    <div className="sim-overlay" role="status">
+      <div className="sim-card">
+        <div className="sim-ball">⚽</div>
+        <h2>{t('mp.simTitle')}</h2>
+        <div className="muted">{stage}</div>
+        {next && opp && g && <div className="sim-next">{t('mp.simUntil', { date: dateFmt(next.date), opp: opp.name })}</div>}
+        <div className="sim-bar"><span /></div>
+        <div className="sim-players">
+          {s.room.players.map((p) => <span key={p.pid} className="tag good">✓ {p.name}{g?.clubs[p.club] ? ` · ${g.clubs[p.club].short}` : ''}</span>)}
+        </div>
+        <button className="small" onClick={onHide}>{t('mp.simHide')}</button>
+      </div>
+    </div>
   );
 }
 

@@ -738,3 +738,16 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .seg button.on { background: var(--accent); color: var(--accent-ink, #fff); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
 @media (max-width: 520px) { .ti-groups { grid-template-columns: 1fr; } .seg { flex-wrap: wrap; } }
 .invite-code { font-size: 40px; font-weight: 900; letter-spacing: 0.2em; text-align: center; padding: 10px; border-radius: 12px; background: var(--line); font-family: ui-monospace, monospace; }
+
+/* online: simuleringsvisning, når alle er klar */
+.sim-overlay { position: fixed; inset: 0; z-index: 200; display: grid; place-items: center; background: rgba(8, 12, 24, 0.62); backdrop-filter: blur(3px); animation: fadein 0.25s; }
+.sim-card { background: var(--surface); color: var(--text); border-radius: 18px; padding: 28px 34px; width: min(440px, calc(100vw - 32px)); text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.35); display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.sim-card h2 { margin: 4px 0 0; }
+.sim-ball { font-size: 46px; animation: sim-bounce 0.9s ease-in-out infinite; }
+@keyframes sim-bounce { 0%, 100% { transform: translateY(0) rotate(0); } 50% { transform: translateY(-14px) rotate(180deg); } }
+.sim-next { font-weight: 600; }
+.sim-bar { width: 100%; height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.sim-bar span { display: block; height: 100%; width: 35%; border-radius: 99px; background: var(--accent); animation: sim-slide 1.3s ease-in-out infinite; }
+@keyframes sim-slide { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+.sim-players { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+@keyframes fadein { from { opacity: 0; } to { opacity: 1; } }

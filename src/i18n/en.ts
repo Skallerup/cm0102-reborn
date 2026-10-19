@@ -210,6 +210,8 @@ export const en: Record<string, string> = {
   'ment.short.0': "V. defensive", 'ment.short.1': "Defensive", 'ment.short.2': "Normal", 'ment.short.3': "Attacking", 'ment.short.4': "V. attacking", 'tac.roleHead': "Role", 'pih.runs': "stays back or joins the attack", 'pih.longShots': "shoots from distance", 'pih.crossing': "crosses from wide", 'pih.runWithBall': "carries the ball forward", 'pih.throughBalls': "looks for the killer pass", 'pih.tightMarking': "stays tight to his man", 'pih.freeRole': "free to roam",
   'mp.forgetConfirm': "Remove game {code} from your list? You can always rejoin with the code.",
   'mp.inviteTitle': "Invite friends", 'mp.inviteText': "Send the link to your friends – or give them the code to enter under Online multiplayer. They pick a club and join at the next turn.", 'mp.copyLink': "Copy link", 'mp.share': "Share…", 'mp.shareText': "Come play CM 01/02 with me! Code: {code}",
+  'mp.simTitle': "Simulating the match day…", 'mp.simYou': "You are the host – your browser is simulating the turn for everyone", 'mp.simOther': "{name} (host) is simulating the turn for everyone", 'mp.simWaitHost': "Everyone is ready – waiting for {name} (host) to start…", 'mp.simUntil': "Playing until {date} – next match against {opp}",
+  'mp.simHide': "Hide",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

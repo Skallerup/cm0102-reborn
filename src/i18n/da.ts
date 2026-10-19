@@ -223,6 +223,8 @@ export const da: Record<string, string> = {
   'ment.short.0': "Meget def.", 'ment.short.1': "Defensiv", 'ment.short.2': "Normal", 'ment.short.3': "Offensiv", 'ment.short.4': "Meget off.", 'tac.roleHead': "Rolle", 'pih.runs': "bliver hjemme eller går med frem", 'pih.longShots': "skyder fra distancen", 'pih.crossing': "slår bolden ind fra kanten", 'pih.runWithBall': "driver selv bolden frem", 'pih.throughBalls': "leder efter den dybe aflevering", 'pih.tightMarking': "går tæt på sin mand", 'pih.freeRole': "må bevæge sig frit rundt",
   'mp.forgetConfirm': "Fjern spillet {code} fra din liste? Du kan altid komme med igen med koden.",
   'mp.inviteTitle': "Invitér venner", 'mp.inviteText': "Send linket til dine venner – eller giv dem koden, som de skriver under Online multiplayer. De vælger selv et hold og kommer med ved næste træk.", 'mp.copyLink': "Kopiér link", 'mp.share': "Del…", 'mp.shareText': "Kom og spil CM 01/02 med mig! Kode: {code}",
+  'mp.simTitle': "Kampdagen simuleres…", 'mp.simYou': "Du er vært – din browser simulerer trækket for alle", 'mp.simOther': "{name} (vært) simulerer trækket for alle", 'mp.simWaitHost': "Alle er klar – venter på at {name} (vært) går i gang…", 'mp.simUntil': "Spiller frem til {date} – næste kamp mod {opp}",
+  'mp.simHide': "Skjul",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling
