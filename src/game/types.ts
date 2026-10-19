@@ -584,6 +584,8 @@ export interface ShotRecord {
   outcome: 'goal' | 'saved' | 'off' | 'blocked' | 'offside';
   p: number;
   kind: string;
+  /** skuddet kom efter et hjørnespark taget af denne spiller */
+  corner?: number;
 }
 
 export interface CommentaryLine {

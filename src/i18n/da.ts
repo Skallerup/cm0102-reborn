@@ -217,6 +217,7 @@ export const da: Record<string, string> = {
   'hl.build': "{a} sætter angrebet i gang…", 'hl.pass': "{a} finder {b}…", 'hl.shoot': "{a} går til afslutning!", 'hl.penSetup': "Straffespark! {a} lægger bolden på pletten…", 'hl.penRun': "{a} tager tilløb…",
   'match.notYours': "Ikke din kamp længere", 'match.notYoursText': "Du styrer nu {club}. Denne kamp spilles automatisk af den gamle klub.",
   'match.subsTitle': "Udskiftere", 'match.subInFor': "Skift ind for…", 'match.noSubsLeft': "Ingen udskiftninger tilbage",
+  'hl.cornerSetup': "Hjørnespark! {a} gør klar ved flaget…", 'hl.cornerCross': "{a} slår bolden ind i feltet…", 'hl.cornerCleared': "Forsvaret rydder.", 'hl.cleared': "RYDDET", 'hl.corner': "HJØRNESPARK",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

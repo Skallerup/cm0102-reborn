@@ -112,6 +112,8 @@ export class MatchSim {
   private r: Rng;
   totalMoments: number;
   moment = 0;
+  /** Hjørnespark i kampen (til 2D-visningen): hvem tog det, fra hvilken side, og førte det til et skud */
+  corners: { m: number; t: number; taker: number; lane: number; moment: number; shot?: boolean }[] = [];
   minute = 0;
   half = 1;
   extraTime = false;
@@ -653,7 +655,9 @@ export class MatchSim {
     T.stats.corners++;
     const takerId = T.tactic.corners;
     const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? this.pick(T.zAtt[this.zoneFor(T.idx, 3, 1)]) ?? T.on[0];
-    this.zone = this.zoneFor(T.idx, 4, this.r.chance(0.5) ? 0 : 2);
+    const lane = this.r.chance(0.5) ? 0 : 2;
+    this.zone = this.zoneFor(T.idx, 4, lane);
+    this.corners.push({ m: this.minute, t: T.idx, taker: taker.p.id, lane, moment: this.moment });
     if (this.r.chance(0.3)) this.line('corner', taker);
     this.cross(T, O, taker, true);
   }
@@ -762,6 +766,9 @@ export class MatchSim {
     const goalP = clamp(xg * mult, 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
+    // skud direkte efter et hjørnespark (samme øjeblik)
+    const cn = this.corners.at(-1);
+    if (cn && cn.moment === this.moment && cn.t === T.idx && !cn.shot) { cn.shot = true; rec.corner = cn.taker; }
     this.shots.push(rec);
     // Blokering
     if ((kind === 'box' || kind === 'long' || kind === 'boxWide') && this.r.chance(clamp(0.1 + 0.05 * O.wDef[z], 0.08, 0.3))) {

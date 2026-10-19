@@ -9,7 +9,7 @@ import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } fr
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
-import { Pitch2D, highlightFrames, type Snap } from '../Pitch2D';
+import { Pitch2D, cornerFrames, highlightFrames, type Snap } from '../Pitch2D';
 import { LeagueTable } from './Competitions';
 import { sortTable } from '../../game/competitions';
 import { TacticEditor } from './Tactics';
@@ -31,7 +31,7 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -211,14 +211,38 @@ function LiveMatch({ id }: { id: number }) {
     L.shotsSeen = sim.shots.length;
     const big = fresh.filter((sh) => sh.outcome === 'goal' || sh.outcome === 'offside' || sh.xg >= 0.1 || sh.kind === 'pen' || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)).at(-1);
     let started = false;
-    if (big && tab === '2d' && (speed < 8 || big.outcome === 'goal')) {
+    // hjørnespark: med afslutning vises de som chancen; uden afslutning som et kort indlæg, forsvaret rydder
+    const newCorners = sim.corners.slice(L.cornersSeen ?? 0);
+    L.cornersSeen = sim.corners.length;
+    const lastCorner = newCorners.at(-1);
+    // et skud i samme minut som hjørnesparket (fx efter en clearing) vises også som hjørnesparkets afslutning
+    const cornerShot = fresh.filter((sh) => sh.corner).at(-1)
+      ?? (lastCorner && fresh.at(-1) && fresh.at(-1)!.m === lastCorner.m && fresh.at(-1)!.t === lastCorner.t ? { ...fresh.at(-1)!, corner: lastCorner.taker } : undefined);
+    const bigOrCorner = big ? (cornerShot && cornerShot.m === big.m && cornerShot.p === big.p ? cornerShot : big) : cornerShot;
+    const plainCorner = !bigOrCorner && fresh.length === 0 && lastCorner;
+    if (plainCorner && tab === '2d' && speed < 8) {
+      const taker = g.players[plainCorner.taker]?.last ?? '';
+      const lastNew = L.lines.length > linesBefore ? L.lines.at(-1)!.text : '';
+      // er den sidste linje bare "Hjørnespark. X gør klar", står der intet om udfaldet – så rydder forsvaret
+      const result = L.lines.length > linesBefore && sim.commentary.at(-1)?.k !== 'corner' ? lastNew : '';
+      setHl({ frames: cornerFrames(sim.pitch(), plainCorner), i: 0, outcome: result ? 'none' : 'cleared', texts: [t('hl.cornerSetup', { a: taker }), t('hl.cornerCross', { a: taker }), result || t('hl.cornerCleared')], hideFrom: linesBefore, team: plainCorner.t });
+      started = true;
+    }
+    if (bigOrCorner && tab === '2d' && (speed < 8 || bigOrCorner.outcome === 'goal')) {
+      const big = bigOrCorner;
       const assist = big.outcome === 'goal' ? sim.events.filter((e) => e.k === 'goal' && e.p === big.p).at(-1)?.p2 : undefined;
       const frames = highlightFrames(sim.pitch(), big, assist);
       // teksten følger billederne: opspil → aflevering → afslutning → det, der faktisk skete
       const name = (fr: Snap) => fr.players.find((p) => p.id === fr.holder)?.name ?? '';
       const shooter = frames.at(-1) ? name(frames.at(-1)!) : '';
-      const result = L.lines.slice(linesBefore).map((l) => l.text).join(' · ') || (L.lines.at(-1)?.text ?? '');
-      const texts = big.kind === 'pen'
+      // kun linjerne om selve afslutningen: ved mål fra mållinjen og frem (mål, stilling, evt. VAR), ellers den sidste linje
+      const fresh = L.lines.slice(linesBefore);
+      const gi = big.outcome === 'goal' ? fresh.findIndex((l) => l.cls === 'goal') : -1;
+      const result = (gi >= 0 ? fresh.slice(gi).map((l) => l.text).join(' · ') : fresh.at(-1)?.text) || (L.lines.at(-1)?.text ?? '');
+      const taker = big.corner ? g.players[big.corner]?.last ?? '' : '';
+      const texts = big.corner
+        ? [t('hl.cornerSetup', { a: taker }), t('hl.cornerCross', { a: taker }), result]
+        : big.kind === 'pen'
         ? [t('hl.penSetup', { a: shooter }), t('hl.penRun', { a: shooter }), result]
         : frames.map((fr, i) => (i === frames.length - 1 ? result : i === 0 ? t('hl.build', { a: name(fr) }) : i === 1 ? t('hl.pass', { a: name(fr), b: shooter }) : t('hl.shoot', { a: shooter })));
       setHl({ frames, i: 0, outcome: big.outcome, texts, hideFrom: linesBefore, team: big.t });
@@ -325,13 +349,13 @@ function LiveMatch({ id }: { id: number }) {
             {hl ? (
               <Pitch2D snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
                 banner={hl.texts[hl.i] ?? ''} bannerCls={hl.i === hl.frames.length - 1 && hl.outcome === 'goal' ? 'goal' : ''}
-                flash={hl.i === hl.frames.length - 1 ? t(`hl.${hl.outcome}`) : undefined} />
+                flash={hl.i === hl.frames.length - 1 && hl.outcome !== 'none' ? t(`hl.${hl.outcome}`) : undefined} />
             ) : (
               // mellem højdepunkterne: holdene i ro i deres formation
               <Pitch2D snap={{ ...sim.pitch(), zone: 7, poss: me, holder: 0, moment: 0, shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
                 banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} />
             )}
-            {hl && <div className="p2d-replay">{t('hl.chance')}</div>}
+            {hl && <div className="p2d-replay">{t('corner' in hl.frames[0] ? 'hl.corner' : 'hl.chance')}</div>}
           </div>
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
             {(hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines).slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}

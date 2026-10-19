@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.55',
+    date: '2026-10-19',
+    title: { da: 'Hjørnespark i 2D', en: 'Corners in 2D' },
+    items: [
+      { da: 'Hjørnespark vises nu på 2D-banen: skytten ved flaget, spillerne samles i feltet med markering, indlægget slås ind – og så ser du udfaldet: hovedstød/skud (mål, redning, forbi) eller at forsvaret rydder', en: 'Corners are now shown on the 2D pitch: the taker at the flag, players gathering in the box with markers, the delivery – and then the outcome: header/shot (goal, save, wide) or the defence clearing' },
+    ],
+  },
+  {
     version: '0.7.54',
     date: '2026-10-19',
     title: { da: 'Tydelige udskiftere under kampen', en: 'Clear substitutes during the match' },

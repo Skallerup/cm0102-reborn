@@ -9,6 +9,56 @@ export type Snap = ReturnType<MatchSim['pitch']>;
 /** Straffespark: hvilket hold skyder, og hvor langt tilløbet er nået (0 opstilling, 1 tilløb, 2 skud) */
 type PenSnap = Snap & { pen: number; penStep: number };
 
+/** Hjørnespark: hvilket hold, fra hvilken side (0 = top, 2 = bund), hvem tager det, hvem afslutter, og hvor langt vi er (0 klar, 1 indlæg, 2 afslutning/clearing) */
+type CornerSnap = Snap & { corner: { team: number; lane: number; taker: number; target?: number; step: number; cleared?: boolean } };
+
+/** Hjørnesparksopstilling: skytten ved flaget, angribere og forsvarere i feltet, resten længere ude */
+function cornerLayout(s: CornerSnap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
+  const c = s.corner;
+  const toRight = c.team === 0;
+  const dir = toRight ? 1 : -1;
+  const goalX = toRight ? 100 : 0;
+  const flag: [number, number] = [toRight ? 99.3 : 0.7, c.lane === 0 ? 1.5 : 98.5];
+  const pos = new Map<number, [number, number]>();
+  const att = s.players.filter((p) => p.team === c.team && !p.gk && p.id !== c.taker)
+    .sort((a, b) => dir * (b.ax - a.ax)); // de mest offensive først
+  const def = s.players.filter((p) => p.team !== c.team && !p.gk);
+  // fem angribere i feltet (afslutteren foran), to ved feltets kant, resten bliver hjemme
+  const target = att.find((p) => p.id === c.target);
+  const inBox = [...(target ? [target] : []), ...att.filter((p) => p !== target)].slice(0, 5);
+  const spots: [number, number][] = [[8, 50 + (c.lane === 0 ? -4 : 4)], [6, 38], [11, 60], [13, 45], [5, 64]];
+  inBox.forEach((p, i) => pos.set(p.id, [goalX - dir * spots[i][0], spots[i][1]]));
+  const rest = att.filter((p) => !inBox.includes(p));
+  rest.forEach((p, i) => pos.set(p.id, i < 2 ? [goalX - dir * 20, 38 + i * 24] : [50 - dir * (6 + i * 3), 30 + ((i * 17) % 40)]));
+  // forsvarerne markerer angriberne i feltet (lidt nærmere målet), resten dækker stolper og kant
+  def.forEach((p, i) => {
+    const m = inBox[i];
+    if (m) { const [x, y] = pos.get(m.id)!; pos.set(p.id, [x + dir * 2.6, y + 3]); }
+    else pos.set(p.id, i % 2 ? [goalX - dir * 2, c.lane === 0 ? 44 : 56] : [goalX - dir * (16 + i), 30 + ((i * 13) % 40)]);
+  });
+  for (const p of s.players.filter((x) => x.gk)) pos.set(p.id, p.team === c.team ? [toRight ? 8 : 92, 50] : [toRight ? 98.5 : 1.5, 50]);
+  const taker = s.players.find((p) => p.id === c.taker);
+  if (taker) pos.set(taker.id, [flag[0] - dir * 1.2, flag[1] + (c.lane === 0 ? 1.5 : -1.5)]);
+  let ball: [number, number] = flag;
+  let holder = taker;
+  if (c.step >= 1 && inBox[0]) {
+    const [x, y] = pos.get(inBox[0].id)!;
+    ball = [x + dir * 0.8, y];
+    holder = inBox[0];
+  }
+  if (c.step >= 2) {
+    if (c.cleared) {
+      // forsvaret header bolden væk
+      ball = [goalX - dir * 24, c.lane === 0 ? 30 : 70];
+      holder = undefined;
+    } else if (s.shot) {
+      const o = s.shot.outcome;
+      ball = o === 'goal' || o === 'offside' ? [goalX - dir * 0.5, 47] : o === 'saved' ? [goalX - dir * 2, 51] : o === 'blocked' ? [goalX - dir * 9, 50] : [goalX - dir * 0.3, 39];
+    }
+  }
+  return { pos, ball, holder };
+}
+
 /** Straffesparksopstilling: skytten ved pletten, målmanden på stregen, alle andre uden for feltet */
 function penLayout(s: PenSnap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
   const toRight = s.pen === 0;
@@ -55,6 +105,7 @@ const clampP = (v: number, lo = 1, hi = 99) => Math.max(lo, Math.min(hi, v));
  */
 function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
   if ((s as PenSnap).pen !== undefined) return penLayout(s as PenSnap);
+  if ((s as CornerSnap).corner) return cornerLayout(s as CornerSnap);
   const [zx, zy] = zoneCenter(s);
   const pos = new Map<number, [number, number]>();
   for (const p of s.players) {
@@ -198,6 +249,10 @@ export function highlightFrames(base: Snap, shot: ShotRecord, assister?: number)
   const mid = mates.slice().sort((a, b) => Math.abs((a.dx + a.ax) / 2 - 50) - Math.abs((b.dx + b.ax) / 2 - 50))[0];
   const fwd = (assister && mates.find((p) => p.id === assister)) || mates.filter((p) => p.id !== shot.p).sort((a, b) => (team === 0 ? b.ax - a.ax : a.ax - b.ax))[0];
   const f = (rb: number, l: number, holder: number | undefined, k: number, sh: Snap['shot'] = null): Snap => ({ ...base, poss: team, zone: abs(rb) * 3 + l, holder: holder ?? shot.p, moment: base.moment * 10 + k, shot: sh });
+  if (shot.corner) {
+    const cn = (step: number, sh: Snap['shot'] = null): Snap => ({ ...f(4, lane, step === 0 ? shot.corner : shot.p, step, sh), corner: { team, lane: lane === 1 ? 0 : lane, taker: shot.corner!, target: shot.p, step } } as CornerSnap);
+    return [cn(0), cn(1), cn(2, { team, outcome: shot.outcome, zone: shot.zone })];
+  }
   if (shot.kind === 'pen') {
     const pen = (step: number, sh: Snap['shot'] = null): Snap => ({ ...f(4, 1, shot.p, step, sh), pen: team, penStep: step } as PenSnap);
     return [pen(0), pen(1), pen(2, { team, outcome: shot.outcome, zone: shot.zone })];
@@ -208,4 +263,10 @@ export function highlightFrames(base: Snap, shot: ShotRecord, assister?: number)
     f(4, lane, shot.p, 3),
     f(4, lane, shot.p, 4, { team, outcome: shot.outcome, zone: shot.zone }),
   ];
+}
+
+/** Et hjørnespark uden afslutning: klar ved flaget → indlæg → forsvaret rydder */
+export function cornerFrames(base: Snap, c: { t: number; taker: number; lane: number }): Snap[] {
+  const cn = (step: number): Snap => ({ ...base, poss: c.t, holder: c.taker, moment: base.moment * 10 + step, shot: null, corner: { team: c.t, lane: c.lane, taker: c.taker, step, cleared: true } } as CornerSnap);
+  return [cn(0), cn(1), cn(2)];
 }
