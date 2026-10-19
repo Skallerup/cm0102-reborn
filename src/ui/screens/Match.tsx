@@ -5,6 +5,7 @@ import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
 import { act } from '../../game/actions';
 import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
+import { session, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
@@ -49,6 +50,8 @@ export function MatchScreen({ id }: { id: number }) {
   if (f.result && g.reports[id] && phase !== 'live') {
     return <div><Head title={t('match.played')} /><button onClick={() => nav({ name: 'report', id })}>{t('fix.report')}</button></div>;
   }
+  // online: udeholdet i en kamp mod en anden manager følger kampen live
+  if (!f.result && g.pendingFixture === id && g.humans && f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home) && session()) return <FollowMatch id={id} />;
   if (phase === 'pre') return <PreMatch id={id} onPlay={() => setPhase('live')} onQuick={() => { const rep = quickReport(); if (rep) { act({ t: 'matchResult', fixture: f.id, rep }); nav({ name: 'report', id: f.id }); } }} />;
   return <LiveMatch id={id} />;
 }
@@ -353,6 +356,40 @@ function LiveMatch({ id }: { id: number }) {
   // jubel før et annulleret mål: stillingen står midlertidigt et mål højere
   const fake = hl?.bump?.[hl.i] ? hl.team : -1;
 
+  // online, kamp mod en anden manager: vi kører kampen og sender en live-visning til udeholdet hvert sekund
+  const sess = session();
+  const h2hDriver = !!sess && !!g.humans && me === 0 && isHumanClub(f.away) && !isBotClub(f.away);
+  const hg = st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0), ag = st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0);
+  const shownLines = hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines;
+  const liveRef = useRef<FollowData | null>(null);
+  if (h2hDriver) {
+    liveRef.current = {
+      minute: minute + (paused && !report ? ' ❚❚' : ''), hg, ag, finished: !!report, stats: [st[0], st[1]],
+      lines: shownLines.slice(-60), live: [sim.live(0), sim.live(1)], events: sim.events,
+      snap: hl ? hl.frames[hl.i] : { ...sim.pitch(), zone: 7, poss: 0, holder: 0, moment: 0, shot: null },
+      banner: hl ? hl.texts[hl.i] ?? '' : L.lines.at(-1)?.text ?? '',
+      flash: hl ? (hl.flashes ? hl.flashes[hl.i] : hl.i === hl.frames.length - 1 && hl.outcome !== 'none' ? t(`hl.${hl.outcome}`) : undefined) : undefined,
+      report: report ?? undefined,
+    };
+  }
+  useEffect(() => {
+    if (!h2hDriver || !sess) return;
+    let busy = false;
+    const h = setInterval(() => {
+      if (busy || !liveRef.current) return;
+      busy = true;
+      sess.livePush(id, liveRef.current).then((cmds) => {
+        // udeholdets ændringer
+        for (const c of cmds) {
+          if (c.k === 'sub') sim.substitute(1, c.out, c.inn);
+          else if (c.k === 'ment') { const tac = sim.live(1).tactic; sim.setTactic(1, { ...tac, team: { ...tac.team, mentality: c.v } }); }
+        }
+        if (cmds.length) { pull(); force((x) => x + 1); }
+      }).catch(() => {}).finally(() => { busy = false; });
+    }, 1000);
+    return () => clearInterval(h);
+  }, [h2hDriver, id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   return (
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
@@ -463,6 +500,80 @@ function SubsPanel({ sim, me, live, onDone }: { sim: MatchSim; me: number; live:
         })}
       </div>
     </Panel>
+  );
+}
+
+/** Det, hjemmeholdet sender til udeholdet under en kamp mellem to managere */
+type FollowData = {
+  minute: string; hg: number; ag: number; finished: boolean; stats: [MatchReport['stats'][0], MatchReport['stats'][1]];
+  lines: { text: string; cls: string; m: number }[]; live: [LiveTeam, LiveTeam]; events: MatchSim['events'];
+  snap: Snap; banner: string; flash?: string; report?: MatchReport;
+};
+
+/** Udeholdet følger kampen live (hjemmeholdets manager kører den) og kan skifte ud og ændre mentalitet */
+function FollowMatch({ id }: { id: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const f = g.fixtures[id];
+  const sess = session()!;
+  const [data, setData] = useState<FollowData | null>(null);
+  const [tab, setTab] = useState('2d');
+  const [sent, setSent] = useState('');
+  useEffect(() => {
+    let stop = false;
+    const tick = async () => {
+      try { const d = await sess.liveGet<FollowData>(id); if (!stop && d) setData(d); } catch { /* prøv igen */ }
+      if (!stop) setTimeout(tick, 1000);
+    };
+    void tick();
+    return () => { stop = true; };
+  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const colors = teamColors(f.home, f.away, 1);
+  const homeMgr = humanManager(f.home)?.name ?? '';
+  if (!data) {
+    return (
+      <div>
+        <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`} />
+        <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} />
+        <div className="insight">{t('mp.followWait', { name: homeMgr })}</div>
+      </div>
+    );
+  }
+  const mine = data.live[1];
+  const proxy = { events: data.events, live: (tm: number) => data.live[tm] } as unknown as MatchSim;
+  const send = (cmd: LiveCmd, label: string) => { void sess.liveCmd(id, cmd).then(() => setSent(label)).catch(() => setSent(t('mp.followFail'))); };
+  const subProxy = { substitute: (_t: number, out: number, inn: number) => { send({ k: 'sub', out, inn }, t('mp.followSubSent', { a: g.players[inn]?.last ?? '', b: g.players[out]?.last ?? '' })); return true; } } as unknown as MatchSim;
+  const finish = () => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); };
+  return (
+    <div>
+      <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
+        <span className="muted">{t('mp.followHint', { name: homeMgr })}</span>
+        {data.finished && <button className="primary continue" onClick={finish}>{t('match.continue')}</button>}
+      </Head>
+      <CmScoreboard home={f.home} away={f.away} hg={data.hg} ag={data.ag} colors={colors} minute={data.minute} />
+      <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['stats', t('match.stats')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: mine.subsLeft })})`]]} value={tab} onChange={setTab} />
+      {sent && <div className="insight">{sent}</div>}
+      {tab === '2d' && (
+        <div className="cols match2d">
+          <Pitch2D snap={data.snap} me={1} colors={colors} minute={data.minute} stepMs={800} banner={data.banner} bannerCls="" flash={data.flash} />
+          <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
+            {data.lines.slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+          </div>
+        </div>
+      )}
+      {tab === 'ratings' && <RatingsBoard sim={proxy} colors={colors} />}
+      {tab === 'stats' && <StatsPanel stats={data.stats} home={g.clubs[f.home].name} away={g.clubs[f.away].name} />}
+      {tab === 'tactics' && !data.finished && (
+        <>
+          <Panel title={t('ti.mentality')}>
+            <div className="seg">
+              {[0, 1, 2, 3, 4].map((v) => <button key={v} type="button" className={mine.tactic.team.mentality === v ? 'on' : ''} onClick={() => send({ k: 'ment', v }, t('mp.followMentSent', { v: t(`ment.${v}`) }))}>{t(`ment.short.${v}`)}</button>)}
+            </div>
+          </Panel>
+          <SubsPanel sim={subProxy} me={1} live={mine} onDone={() => {}} />
+        </>
+      )}
+    </div>
   );
 }
 

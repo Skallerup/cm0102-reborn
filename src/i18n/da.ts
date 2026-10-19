@@ -226,6 +226,8 @@ export const da: Record<string, string> = {
   'mp.simTitle': "Kampdagen simuleres…", 'mp.simYou': "Du er vært – din browser simulerer trækket for alle", 'mp.simOther': "{name} (vært) simulerer trækket for alle", 'mp.simWaitHost': "Alle er klar – venter på at {name} (vært) går i gang…", 'mp.simUntil': "Spiller frem til {date} – næste kamp mod {opp}",
   'mp.simHide': "Skjul",
   'mp.h2hAway': "Det er en kamp mellem to managere – {name} har hjemmebane og spiller kampen. Resultatet kommer i næste træk. Tryk Klar, når du er færdig med dine forberedelser.",
+  'mp.followWait': "Kampen spilles hos {name} (hjemmeholdet). Den vises her live, så snart den bliver sat i gang – du kan skifte ud og ændre mentalitet undervejs.", 'mp.followHint': "Live fra {name} – dine ændringer sendes med det samme", 'mp.followSubSent': "Udskiftning sendt: {a} ind for {b}", 'mp.followMentSent': "Mentalitet sendt: {v}", 'mp.followFail': "Kunne ikke sende – prøv igen",
+  'opt.hostOnly': "Fastsat af værten – gælder alle i online-spillet",
   'bid.title': 'Bud på {player}', 'bid.loan': 'Lejeaftale (resten af sæsonen)', 'bid.fee': 'Beløb', 'bid.submit': 'Afgiv bud',
 
   // forhandling

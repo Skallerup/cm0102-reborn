@@ -213,6 +213,8 @@ export const en: Record<string, string> = {
   'mp.simTitle': "Simulating the match day…", 'mp.simYou': "You are the host – your browser is simulating the turn for everyone", 'mp.simOther': "{name} (host) is simulating the turn for everyone", 'mp.simWaitHost': "Everyone is ready – waiting for {name} (host) to start…", 'mp.simUntil': "Playing until {date} – next match against {opp}",
   'mp.simHide': "Hide",
   'mp.h2hAway': "This is a match between two managers – {name} is at home and plays the match. The result arrives with the next turn. Press Ready when you have finished your preparations.",
+  'mp.followWait': "The match is played at {name}'s (home side). It is shown here live as soon as it kicks off – you can make substitutions and change mentality along the way.", 'mp.followHint': "Live from {name} – your changes are sent immediately", 'mp.followSubSent': "Substitution sent: {a} on for {b}", 'mp.followMentSent': "Mentality sent: {v}", 'mp.followFail': "Could not send – try again",
+  'opt.hostOnly': "Set by the host – applies to everyone in the online game",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

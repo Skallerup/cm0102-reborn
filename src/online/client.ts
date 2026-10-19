@@ -34,6 +34,9 @@ export interface RoomInfo {
   chat?: RoomChat[];
 }
 
+/** Udeholdets ændringer under en kamp mellem to managere */
+export type LiveCmd = { k: 'sub'; out: number; inn: number } | { k: 'ment'; v: number };
+
 export interface RoomChat {
   id: number;
   from: string;
@@ -190,6 +193,21 @@ export class OnlineSession {
   }
 
   // ----- beskeder til andre mennesker -----
+
+  // ----- live-kamp mellem to managere -----
+  async livePush(fixture: number, data: unknown): Promise<LiveCmd[]> {
+    const r = await post<{ cmds: LiveCmd[] }>('livepush', { ...this.creds, fixture, data });
+    return r.cmds ?? [];
+  }
+
+  async liveGet<T>(fixture: number): Promise<T | null> {
+    const r = await post<{ data: T | null }>('liveget', { ...this.creds, fixture });
+    return r.data;
+  }
+
+  async liveCmd(fixture: number, cmd: LiveCmd) {
+    await post('livecmd', { ...this.creds, fixture, cmd });
+  }
 
   async sendChat(to: string, text: string) {
     const rec = await post<RoomChat>('chat', { ...this.creds, to, text });

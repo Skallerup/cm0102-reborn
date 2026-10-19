@@ -170,6 +170,31 @@ export async function POST(request: Request) {
       await touch(code);
       return json({ last });
     }
+    // ----- kamp mellem to managere: hjemmeholdet kører kampen og sender en live-visning; udeholdet følger med og sender ændringer -----
+    case 'livepush': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const fx = Number(body.fixture);
+      await redis.set(`room:${code}:live:${fx}`, JSON.stringify(body.data ?? null), { ex: 3600 });
+      const ck = `room:${code}:livecmd:${fx}`;
+      const raw = await redis.lrange<string | Record<string, unknown>>(ck, 0, -1);
+      if (raw.length) await redis.del(ck);
+      return json({ cmds: raw.map((x) => (typeof x === 'string' ? JSON.parse(x) : x)) });
+    }
+    case 'liveget': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const raw = await redis.get<string | Record<string, unknown>>(`room:${code}:live:${Number(body.fixture)}`);
+      return json({ data: raw == null ? null : typeof raw === 'string' ? JSON.parse(raw) : raw });
+    }
+    case 'livecmd': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const ck = `room:${code}:livecmd:${Number(body.fixture)}`;
+      await redis.rpush(ck, JSON.stringify(body.cmd ?? null));
+      await redis.expire(ck, 3600);
+      return json({ ok: true });
+    }
     case 'chat': {
       // beskeder mellem menneskelige managere (leveres med det samme, uafhængigt af trækkene)
       const me = await auth(code, String(body.pid), String(body.token));

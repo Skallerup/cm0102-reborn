@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { exportSave, saveGame } from '../../game/save';
 import { notify } from '../../game/state';
+import { act } from '../../game/actions';
+import { session } from '../../online/client';
 import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../../i18n';
 import { Panel } from '../components';
 import { useGame } from '../core';
@@ -54,7 +56,8 @@ export function Options() {
               </select>
             </label>
             <label className="row">{t('opt.windows')}
-              <select value={g.options.transferWindows ?? 'real'} onChange={(e) => { g.options.transferWindows = e.target.value as 'real'; notify(); }}>
+              <select value={g.options.transferWindows ?? 'real'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
+                onChange={(e) => { act({ t: 'setWindows', mode: e.target.value as 'real' | 'classic' }); }}>
                 {(['real', 'classic'] as const).map((m) => <option key={m} value={m}>{t(`opt.windows.${m}`)}</option>)}
               </select>
             </label>

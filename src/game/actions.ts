@@ -61,6 +61,7 @@ export type Action =
   | { t: 'declineJob'; club: number }
   | { t: 'resign' }
   | { t: 'fixPending' }
+  | { t: 'setWindows'; mode: 'real' | 'classic' }
   | { t: 'matchResult'; fixture: number; rep: MatchReport }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
@@ -143,6 +144,7 @@ export function applyAction(a: Action): unknown {
     case 'declineJob': declineJob(a.club); return 'ok';
     case 'resign': playPendingAsAi(); return resignJob();
     case 'fixPending': playPendingAsAi(); return 'ok';
+    case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
     case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
@@ -171,6 +173,12 @@ export function applyActionAs(pid: string, a: Action): unknown {
       addNews({ cat: 'general', key: 'mp.joined', params: { manager: a.name, club: club.name } }, { all: true });
       return 'ok';
     });
+  }
+  // fælles spilleregler: kun værten (første manager) må ændre dem
+  if (a.t === 'setWindows') {
+    if (g.humans && g.humans[0]?.pid !== pid) return 'host-only';
+    g.options.transferWindows = a.mode;
+    return 'ok';
   }
   if (a.t === 'removeHuman') {
     // kun værten (første menneskelige slot) – serveren tjekker det også
