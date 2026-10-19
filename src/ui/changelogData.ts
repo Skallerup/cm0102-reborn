@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.38',
+    date: '2026-10-19',
+    title: { da: 'Klubtema i to farver', en: 'Two-colour club theme' },
+    items: [
+      { da: 'Klubtemaet bruger klubbens to farver: menuen i den ene, topbjælken i den anden (fx Brøndby blå/gul, Vejle rød/hvid) – tekst og ikoner skifter automatisk til hvid eller mørk, så kontrasten altid er skarp', en: 'The club theme uses the club\'s two colours: the menu in one, the top bar in the other (e.g. Brøndby blue/yellow, Vejle red/white) – text and icons switch automatically to white or dark so the contrast is always sharp' },
+      { da: 'Links og knapper på den hvide flade får en klubfarve med god kontrast, og trøjerne på taktiktavlen er i klubbens farver', en: 'Links and buttons on the white surface get a club colour with good contrast, and the shirts on the tactics board are in the club\'s colours' },
+      { da: 'Lyst tema: spillernavne på banen, mærkater, attributter og karakterer har fået farver, der kan læses på lys baggrund', en: 'Light theme: player names on the pitch, tags, attributes and ratings now have colours that are readable on a light background' },
+    ],
+  },
+  {
     version: '0.7.37',
     date: '2026-10-19',
     title: { da: 'Opsig jobbet', en: 'Resign' },

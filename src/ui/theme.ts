@@ -6,7 +6,7 @@ import { gs, hasGame } from '../game/state';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark';
 const KEY = 'cm-theme';
-const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2'];
+const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2', '--nav-bg', '--nav-fg', '--nav-muted', '--nav-hover', '--nav-active', '--top-bg', '--top-fg', '--top-muted', '--top-chip'];
 
 export function getTheme(): Theme {
   // standard: klubbens farver på lys baggrund
@@ -90,16 +90,33 @@ function forDark(c: RGB, minL = 0.58): RGB {
   return rgbFromHsl(h, Math.max(s, 0.55), Math.max(l, minL));
 }
 
-/** Gør en farve læsbar på hvid baggrund – behold klubbens nuance, gør kun for lyse farver mørkere */
-function forLight(c: RGB, maxL = 0.45): RGB {
-  const [h, s, l] = hsl(c);
-  return l <= maxL ? c : rgbFromHsl(h, s, maxL);
-}
 
 /** Er farven så lys/grå, at den ikke duer som accent (fx hvid)? */
 const washed = (c: RGB) => { const [, s, l] = hsl(c); return l > 0.85 || s < 0.15; };
 
 const css = (c: RGB) => `rgb(${c[0]}, ${c[1]}, ${c[2]})`;
+const rgba = (c: RGB, a: number) => `rgba(${c[0]}, ${c[1]}, ${c[2]}, ${a})`;
+
+/** WCAG: relativ luminans og kontrast mellem to farver */
+function relLum([r, g, b]: RGB): number {
+  const f = (v: number) => { const x = v / 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; };
+  return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+}
+function contrast(a: RGB, b: RGB): number {
+  const [x, y] = [relLum(a), relLum(b)].sort((m, n) => n - m);
+  return (x + 0.05) / (y + 0.05);
+}
+const WHITE: RGB = [255, 255, 255];
+const INK: RGB = [17, 22, 36];
+/** Tekstfarve med skarpest kontrast mod en baggrund */
+const textOn = (bg: RGB): RGB => (contrast(bg, WHITE) >= contrast(bg, INK) ? WHITE : INK);
+/** Gør en farve mørkere (samme nuance), indtil den har kontrast nok mod hvid */
+function onWhite(c: RGB, min: number): RGB {
+  let [h, s, l] = hsl(c);
+  let out = c;
+  while (contrast(out, WHITE) < min && l > 0.05) { l -= 0.03; out = rgbFromHsl(h, s, l); }
+  return out;
+}
 const lum = ([r, g, b]: RGB) => (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
 
 let applied = 0;
@@ -110,6 +127,7 @@ export function applyTheme() {
   // forsiden og startmenuen er designet mørke – temaet gælder inde i spillet
   const dark = theme === 'dark' || theme === 'clubDark' || !hasGame();
   root.dataset.theme = dark ? 'dark' : 'light';
+  delete root.dataset.club;
   for (const v of VARS) root.style.removeProperty(v);
   if ((theme !== 'club' && theme !== 'clubDark') || !hasGame()) return;
   const club = gs().clubs[gs().userClub];
@@ -118,15 +136,38 @@ export function applyTheme() {
     if (token !== applied) return;
     const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
     const [a0, b0] = cols ?? club.colors.map(hex);
-    // en hvid/grå farve i logoet duer ikke som accent – brug klubbens hovedfarve
+    // en hvid/grå farve i logoet duer ikke som hovedfarve – brug den anden
     const [a, b] = washed(a0) && b0 && !washed(b0) ? [b0, a0] : [a0, b0];
     const second = b && !washed(b) ? b : undefined;
-    const accent = dark ? forDark(a) : forLight(a);
-    // links: anden klubfarve – eller en mørkere udgave af hovedfarven (fx Vejle: rød og hvid)
-    const accent2 = dark ? forDark(second ?? a, 0.66) : forLight(second ?? a, second ? 0.42 : 0.34);
-    root.style.setProperty('--accent', css(accent));
-    root.style.setProperty('--accent-ink', lum(accent) > 0.55 ? '#141008' : '#ffffff');
-    root.style.setProperty('--accent2', css(accent2));
+    if (dark) {
+      const accent = forDark(a);
+      root.style.setProperty('--accent', css(accent));
+      root.style.setProperty('--accent-ink', lum(accent) > 0.55 ? '#141008' : '#ffffff');
+      root.style.setProperty('--accent2', css(forDark(second ?? a, 0.66)));
+    } else {
+      root.dataset.club = '1';
+      // lyst klubtema: menuen i den ene klubfarve, topbjælken i den anden (hvid, hvis klubben er fx rød/hvid)
+      // meget mættede logofarver (fx ren gul) dæmpes en anelse på store flader
+      const soften = (c: RGB): RGB => { const [h, sat, l] = hsl(c); return sat > 0.9 && l > 0.35 && l < 0.65 ? rgbFromHsl(h, 0.82, l) : c; };
+      const navBg = soften(a);
+      const topBg: RGB = b ? soften(b) : WHITE;
+      const navFg = textOn(navBg), topFg = textOn(topBg);
+      root.style.setProperty('--nav-bg', css(navBg));
+      root.style.setProperty('--nav-fg', css(navFg));
+      root.style.setProperty('--nav-muted', rgba(navFg, 0.72));
+      root.style.setProperty('--nav-hover', rgba(navFg, 0.1));
+      root.style.setProperty('--nav-active', rgba(navFg, 0.18));
+      root.style.setProperty('--top-bg', css(topBg));
+      root.style.setProperty('--top-fg', css(topFg));
+      root.style.setProperty('--top-muted', rgba(topFg, 0.72));
+      root.style.setProperty('--top-chip', rgba(topFg, 0.1));
+      // knapper og fremhævninger på den hvide flade: den klubfarve med bedst kontrast mod hvid
+      const pick = second && contrast(second, WHITE) > contrast(a, WHITE) ? second : a;
+      const accent = onWhite(pick, 3);
+      root.style.setProperty('--accent', css(accent));
+      root.style.setProperty('--accent-ink', css(textOn(accent)));
+      root.style.setProperty('--accent2', css(onWhite(pick, 4.5)));
+    }
     const ta = dark ? 0.22 : 0.10, tb = dark ? 0.14 : 0.06;
     root.style.setProperty('--tint1', `rgba(${a[0]}, ${a[1]}, ${a[2]}, ${ta})`);
     root.style.setProperty('--tint2', `rgba(${(second ?? a)[0]}, ${(second ?? a)[1]}, ${(second ?? a)[2]}, ${tb})`);

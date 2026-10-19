@@ -602,3 +602,39 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 /* topbjælken: hold elementerne på én linje */
 .topbar .club, .topbar .date, .topbar .money, .topbar button { white-space: nowrap; }
 .topbar .money { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* ---------- lyst klubtema: menu og topbjælke i klubbens to farver ---------- */
+:root[data-club] .sidenav { background: var(--nav-bg); border-right-color: transparent; }
+:root[data-club] .sidenav button { color: var(--nav-fg); }
+:root[data-club] .sidenav button svg { opacity: 0.9; }
+:root[data-club] .sidenav button:hover { background: var(--nav-hover); color: var(--nav-fg); }
+:root[data-club] .sidenav button.on { background: var(--nav-active); color: var(--nav-fg); border-color: transparent; box-shadow: none; }
+:root[data-club] .sidenav button.on svg { color: var(--nav-fg); }
+:root[data-club] .sidenav .sep { background: var(--nav-hover); }
+:root[data-club] .sidenav .badge { background: var(--nav-fg); color: var(--nav-bg); }
+:root[data-club] .sidenav .nav-version, :root[data-club] .nav-note { color: var(--nav-muted); }
+:root[data-club] .topbar { background: var(--top-bg); color: var(--top-fg); border-bottom-color: rgba(0, 0, 0, 0.08); }
+:root[data-club] .topbar::after { display: none; }
+:root[data-club] .topbar .money, :root[data-club] .topbar .muted { color: var(--top-muted); }
+:root[data-club] .topbar .date { color: var(--top-fg); background: var(--top-chip); border-color: transparent; }
+
+/* ---------- lyst tema: farver der var tænkt til mørk baggrund ---------- */
+.pitch .slot .nm { color: #fff; }
+:root[data-theme='light'] .tag { background: rgba(20, 40, 90, 0.07); color: #3a4560; }
+:root[data-theme='light'] .tag.good { background: rgba(17, 147, 90, 0.12); color: #0b6b41; }
+:root[data-theme='light'] .tag.bad { background: rgba(210, 58, 74, 0.12); color: #a51d2c; }
+:root[data-theme='light'] .tag.warn { background: rgba(201, 149, 0, 0.15); color: #7a5600; }
+:root[data-theme='light'] .tag.interest { background: rgba(10, 111, 176, 0.1); color: #0a5f94; }
+:root[data-theme='light'] .a-good { color: #0b6b41; background: rgba(17, 147, 90, 0.14); }
+:root[data-theme='light'] .a-mid { background: rgba(20, 40, 90, 0.06); }
+:root[data-theme='light'] .a-low { color: #8a4b00; background: rgba(255, 140, 0, 0.14); }
+:root[data-theme='light'] .a-bad { color: #a51d2c; background: rgba(210, 58, 74, 0.12); }
+:root[data-theme='light'] .r-top { color: #0b7a49; }
+:root[data-theme='light'] .r-good { color: #3a7d1c; }
+:root[data-theme='light'] .r-meh { color: #b35a00; }
+:root[data-theme='light'] .r-bad { color: #c0283a; }
+:root[data-theme='light'] .news-icon { color: color-mix(in srgb, var(--c) 62%, black); }
+:root[data-theme='light'] .insight { color: var(--text); }
+
+/* trøjerne på taktiktavlen i klubbens farver */
+:root[data-club] .pitch .slot .shirt { background: var(--nav-bg) !important; color: var(--nav-fg) !important; border-color: var(--top-bg) !important; }
