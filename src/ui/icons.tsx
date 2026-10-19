@@ -32,3 +32,70 @@ export function Icon({ name }: { name: string }) {
     </svg>
   );
 }
+
+// ---------- ikoner til indbakken: én pr. slags nyhed, farvet efter kategori/udfald ----------
+
+const N: Record<string, string> = {
+  ball: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M12 7.5l3.5 2.5-1.3 4h-4.4l-1.3-4zM12 3v4.5M15.5 10l4.8-1.6M14.2 14l3 4M9.8 14l-3 4M8.5 10l-4.8-1.6',
+  injury: 'M9.5 3h5v6.5H21v5h-6.5V21h-5v-6.5H3v-5h6.5z',
+  bid: P.transfers,
+  done: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M8 12.5l2.8 2.8L16.5 9.5',
+  rumour: 'M3 10.5v3a1 1 0 0 0 1 1h3l5 4v-13l-5 4H4a1 1 0 0 0-1 1M16 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11',
+  digest: 'M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01',
+  press: 'M12 3a3 3 0 0 1 3 3v5a3 3 0 0 1-6 0V6a3 3 0 0 1 3-3M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7',
+  contract: 'M6 3h8.5L19 7.5V21H6zM14 3v5h5M9 13h6M9 17h4',
+  chat: 'M4 5h16v11H10l-5 4v-4H4z',
+  board: 'M4 21h16M6 21V9.5L12 5l6 4.5V21M10 21v-5h4v5M9.5 12h.01M14.5 12h.01',
+  warning: 'M12 4l9 16H3zM12 10v4.5M12 17.5h.01',
+  money: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18M14.5 9h-3.2a1.8 1.8 0 0 0 0 3.5h1.4a1.8 1.8 0 0 1 0 3.5H9.5M12 7.5V9M12 16v1.5',
+  trophy: P.competitions,
+  medal: P.awards,
+  youth: 'M12 21v-8.5M12 12.5c0-4.5 3-7.5 8-7.5 0 5-3 7.5-8 7.5M12 15c0-3.5-2.5-5.5-7-5.5 0 4 2.5 5.5 7 5.5',
+  scout: P.scouting,
+  job: P.jobs,
+  fans: 'M12 20s-7.5-4.6-7.5-10.2A4.2 4.2 0 0 1 12 7.3a4.2 4.2 0 0 1 7.5 2.5C19.5 15.4 12 20 12 20z',
+  news: 'M4 5h13v14H6a2 2 0 0 1-2-2zM17 9h3v8a2 2 0 0 1-2 2M8 9h5M8 13h5M8 16h3',
+  star: P.assistant,
+};
+
+type Tone = 'green' | 'red' | 'grey' | 'blue' | 'yellow' | 'purple' | 'teal' | 'orange' | 'pink' | 'lime';
+
+/** Ikon og farve ud fra nyhedens nøgle (og kategori som reserve) */
+export function newsVisual(key: string, cat: string): { icon: string; tone: Tone } {
+  if (key === 'match.won') return { icon: 'ball', tone: 'green' };
+  if (key === 'match.lost') return { icon: 'ball', tone: 'red' };
+  if (key === 'match.drew') return { icon: 'ball', tone: 'grey' };
+  if (key.startsWith('press.') || key.startsWith('pressConf')) return { icon: 'press', tone: 'grey' };
+  if (key.startsWith('fans.')) return { icon: 'fans', tone: 'pink' };
+  if (key.startsWith('rumour.')) return { icon: 'rumour', tone: 'blue' };
+  if (key.startsWith('transfer.digest')) return { icon: 'digest', tone: 'blue' };
+  if (/^transfer\.(bidRejected|notForSale|talksCollapsed|refuse|lostBiddingWar|aiWithdrew|loanRejected|playerRefusedMove)/.test(key)) return { icon: 'bid', tone: 'red' };
+  if (key === 'board.sacked' || key === 'board.sackedSeason' || key === 'board.warning' || key === 'news.applyRejected' || key === 'job.withdrawn') return { icon: 'warning', tone: 'red' };
+  if (key.startsWith('will.') || key.startsWith('reject.r.') || key.startsWith('complaint')) return { icon: 'chat', tone: 'purple' };
+  if (key.startsWith('enquiry.')) return { icon: 'chat', tone: 'blue' };
+  if (key.startsWith('budget.') || key.startsWith('sponsor.') || key.startsWith('ffp')) return { icon: 'money', tone: 'yellow' };
+  if (/^transfer\.(done|freeDone|loanDone|bosmanDone|bidAccepted|loanAccepted|releaseMet|optionExercised)/.test(key) || key === 'news.newJob' || key === 'job.invite') return { icon: 'done', tone: key.startsWith('transfer.') ? 'blue' : 'pink' };
+  if (key.startsWith('award.month') || key.startsWith('award.player') || key.startsWith('award.top')) return { icon: 'medal', tone: 'orange' };
+  switch (cat) {
+    case 'match': return { icon: 'ball', tone: 'green' };
+    case 'injury': return { icon: 'injury', tone: 'red' };
+    case 'transfer': return { icon: 'bid', tone: 'blue' };
+    case 'contract': return { icon: 'contract', tone: 'purple' };
+    case 'board': return { icon: 'board', tone: 'yellow' };
+    case 'finance': return { icon: 'money', tone: 'yellow' };
+    case 'award': return { icon: 'trophy', tone: 'orange' };
+    case 'youth': return { icon: 'youth', tone: 'lime' };
+    case 'scout': return { icon: 'scout', tone: 'teal' };
+    case 'job': return { icon: 'job', tone: 'pink' };
+    default: return { icon: 'news', tone: 'grey' };
+  }
+}
+
+export function NewsIcon({ newsKey, cat }: { newsKey: string; cat: string }) {
+  const v = newsVisual(newsKey, cat);
+  return (
+    <span className={`news-icon tone-${v.tone}`} aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round"><path d={N[v.icon]} /></svg>
+    </span>
+  );
+}

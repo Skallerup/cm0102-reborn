@@ -245,6 +245,11 @@ table.grid td.center, table.grid th.center { text-align: center; }
 .cat-board { background: #ffcf3f; } .cat-contract { background: #b28bff; } .cat-scout { background: #4ff0d1; }
 .cat-award { background: #ffa94d; } .cat-job { background: #ff8fd0; } .cat-youth { background: #b6ff6b; }
 .cat-general { background: #8e9cc2; } .cat-finance { background: #ffd166; }
+.news-icon { --c: #8e9cc2; width: 26px; height: 26px; border-radius: 8px; flex-shrink: 0; display: inline-grid; place-items: center; color: var(--c); background: color-mix(in srgb, var(--c) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 28%, transparent); }
+.news-icon svg { width: 16px; height: 16px; }
+.news-item:not(.unread) .news-icon { opacity: 0.6; }
+.tone-green { --c: #3ddc97; } .tone-red { --c: #ff5d6c; } .tone-grey { --c: #9aa6c7; } .tone-blue { --c: #6cd2ff; } .tone-yellow { --c: #ffcf3f; }
+.tone-purple { --c: #b28bff; } .tone-teal { --c: #4ff0d1; } .tone-orange { --c: #ffa94d; } .tone-pink { --c: #ff8fd0; } .tone-lime { --c: #b6ff6b; }
 
 .empty { padding: 40px; text-align: center; color: var(--muted); }
 .kbd-hint { font-size: 11.5px; }

@@ -8,6 +8,7 @@ import { Empty, Panel } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
 import { AiArticle } from '../aiArticle';
+import { NewsIcon } from '../icons';
 import type { NewsCategory } from '../../game/types';
 
 const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 'injury', 'board', 'scout', 'award', 'youth', 'job', 'general'];
@@ -69,7 +70,7 @@ export function Inbox() {
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }} ref={listRef}>
             {shown.map((n) => (
               <div key={n.id} data-id={n.id} className={`news-item ${n.read ? '' : 'unread'}`} onClick={() => setSel(n.id)} style={sel === n.id ? { background: 'var(--rowhover)' } : undefined}>
-                <span className={`cat cat-${n.cat}`} />
+                <NewsIcon newsKey={n.key} cat={n.cat} />
                 <span className="date">{dateFmt(n.date)}</span>
                 <span className="title">{newsTitle(n)}</span>
               </div>
@@ -79,7 +80,7 @@ export function Inbox() {
         <Panel title={item ? dateFmt(item.date, true) : ''}>
           {item ? (
             <div className="col">
-              <h3 style={{ color: 'var(--accent)' }} className="news-head"><NewsTitle n={item} /></h3>
+              <h3 style={{ color: 'var(--accent)', display: 'flex', gap: 10, alignItems: 'center' }} className="news-head"><NewsIcon newsKey={item.key} cat={item.cat} /><span><NewsTitle n={item} /></span></h3>
               {newsBody(item) && <p style={{ lineHeight: 1.5 }}><NewsBody n={item} /></p>}
               <NewsDeals n={item} />
               <AiArticle item={item} />

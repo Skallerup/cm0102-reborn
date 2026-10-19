@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.20',
+    date: '2026-10-19',
+    title: { da: 'Ikoner i indbakken', en: 'Inbox icons' },
+    items: [
+      { da: 'Hver slags besked har sit eget ikon og sin egen farve: kampe (grøn sejr, rød nederlag, grå uafgjort), skader, bud, handler, rygter, pressemøder, spillersamtaler, bestyrelse, økonomi, priser, ungdom, scouting, job og fans', en: 'Each kind of message has its own icon and colour: matches (green win, red defeat, grey draw), injuries, bids, deals, rumours, press conferences, player talks, board, finances, awards, youth, scouting, jobs and fans' },
+    ],
+  },
+  {
     version: '0.7.19',
     date: '2026-10-19',
     title: { da: 'Ligastatistik', en: 'League stats' },
