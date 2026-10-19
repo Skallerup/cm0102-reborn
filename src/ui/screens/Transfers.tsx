@@ -329,13 +329,13 @@ function Offers() {
 function RejectModal({ offer, onClose, onReply }: { offer: TransferOffer; onClose: () => void; onReply: (key: string | null) => void }) {
   const g = useGame()!;
   const p = g.players[offer.player];
-  const [reason, setReason] = useState<RejectReason>('key');
+  const [reason, setReason] = useState<RejectReason>(p && ageOn(p.dob, g.date) <= 23 ? 'future' : 'key');
   const name = p ? `${p.first} ${p.last}` : '';
   return (
     <Modal title={t('reject.title', { player: name })} onClose={onClose}>
       <div className="col">
         <div className="muted">{t('reject.ask', { player: name })}</div>
-        {(['key', 'low', 'contract', 'none'] as RejectReason[]).map((r) => (
+        {([...(p && ageOn(p.dob, g.date) <= 23 ? ['future'] : []), 'key', 'low', 'contract', 'none'] as RejectReason[]).map((r) => (
           <label key={r} className="row"><input type="radio" name="reason" checked={reason === r} onChange={() => setReason(r)} /> {t(`reject.reason.${r}`)}</label>
         ))}
         {reason === 'contract' && <div className="muted" style={{ fontSize: 12 }}>{t('reject.contractHint')}</div>}

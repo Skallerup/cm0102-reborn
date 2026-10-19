@@ -162,7 +162,7 @@ export { finalOrder };
 
 // ---------- samtaler med spillerne ----------
 
-export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop' | 'demand' | 'chat';
+export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop' | 'demand' | 'chat' | 'future';
 
 function recentForm(p: Player): number {
   const f = p.form.slice(-3);
@@ -237,6 +237,24 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
     case 'chat':
       bump(p.morale < 10 ? 0.8 : 0.3);
       return { key: 'talk.r.chat', mood: 'neutral' };
+    case 'future': {
+      // "du er fremtiden": et talent med potentiale til at blive en af de bedste vokser af det
+      const age = ageOn(p.dob, g.date);
+      const level = squad(club.id).map((x) => x.ca).sort((a, b) => b - a).slice(0, 11).reduce((s, v, _, arr) => s + v / arr.length, 0);
+      const again = p.toldFuture && daysBetween(p.toldFuture, g.date) < 120;
+      p.toldFuture = g.date;
+      if (age > 23) { bump(-0.3); return { key: 'talk.r.futureTooOld', mood: 'neutral' }; }
+      if (again) { bump(0.3); return { key: 'talk.r.futureAgain', mood: 'neutral' }; }
+      if (p.pa >= level + 5) {
+        bump(2.5); fire(21);
+        p.unhappy = Math.max(0, (p.unhappy ?? 0) - 20);
+        if (p.wantsAway && t.includes('loyal')) p.wantsAway = false;
+        return { key: 'talk.r.futureBelieves', mood: 'good' };
+      }
+      if (p.pa >= level - 10) { bump(1.2); return { key: 'talk.r.futureHopeful', mood: 'good' }; }
+      bump(0.3);
+      return { key: 'talk.r.futureDoubt', mood: 'neutral' };
+    }
     case 'drop':
       // sat af holdet som straf
       if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === pid ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== pid) };

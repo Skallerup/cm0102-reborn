@@ -270,7 +270,7 @@ export function answerComplaint(pid: number, choice: 'promise' | 'fight' | 'list
 // ---------- skuffelse over afviste bud ----------
 
 /** Egen spiller: manageren afviste et bud på ham. Ambitiøse spillere tager det tungt, når det var et skridt op. */
-export type RejectReason = 'none' | 'key' | 'low' | 'contract';
+export type RejectReason = 'none' | 'key' | 'low' | 'contract' | 'future';
 
 /**
  * Brugeren afviste et bud på en af sine spillere – evt. med en begrundelse til spilleren.
@@ -291,7 +291,11 @@ export function blockedMoveReaction(p: Player, buyerId: number, fee: number, rea
   if (reason !== 'none') {
     // passer begrundelsen? 2 = overbevisende, 1 = halvt, 0 = han tror ikke på den
     const rank = squad(p.club).filter((x) => x !== p && x.ca > p.ca).length + 1;
-    const fit = reason === 'key' ? (rank <= 6 ? 2 : rank <= 11 ? 1 : 0)
+    // "du er fremtiden": troværdigt for unge med potentiale til at blive blandt holdets bedste
+    const age = ageOn(p.dob, g.date);
+    const level = squad(p.club).map((x) => x.ca).sort((a, b) => b - a).slice(0, 11).reduce((s2, v, _, arr) => s2 + v / arr.length, 0);
+    const fit = reason === 'future' ? (age <= 23 && p.pa >= level + 5 ? 2 : age <= 23 && p.pa >= level - 10 ? 1 : 0)
+      : reason === 'key' ? (rank <= 6 ? 2 : rank <= 11 ? 1 : 0)
       : reason === 'low' ? (fee < p.value * 1.15 ? 2 : fee < p.value * 1.5 ? 1 : 0)
       : 2;
     if (reason === 'contract') {

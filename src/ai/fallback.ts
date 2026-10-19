@@ -2,6 +2,7 @@
 import type { TalkKind } from '../game/personality';
 
 const RULES: [TalkKind, RegExp][] = [
+  ['future', /(fremtid|future|bygger .* om dig|building .* around you)/i],
   ['fine', /\b(bøde|boede|straf|fine|punish|penalt)/i],
   ['criticise', /\b(dårlig|darlig|skuffe|skuffende|elendig|ikke godt nok|pinlig|bad|poor|disappoint|terrible|not good enough|awful)/i],
   ['demand', /\b(mere|skal|forventer|kræver|kraever|giv alt|op i gear|more|expect|demand|step up|need you to)/i],

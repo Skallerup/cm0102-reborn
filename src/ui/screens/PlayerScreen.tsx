@@ -461,7 +461,7 @@ function TalkPanel({ pid }: { pid: number }) {
     const text = msgText.trim().slice(0, 400);
     if (!text || thinking) return;
     setThinking(true);
-    const allowed: TalkKind[] = ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat'];
+    const allowed: TalkKind[] = ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat', ...(ageOn(p.dob, g.date) <= 23 ? ['future' as TalkKind] : [])];
     const r = await aiCall<{ intent: string }>('talkIntent', { message: text, allowed });
     const intent = (allowed.includes(r?.intent as TalkKind) ? r!.intent : guessIntent(text)) as TalkKind;
     const out = doTalk(intent);
@@ -488,6 +488,7 @@ function TalkPanel({ pid }: { pid: number }) {
         <div className="row">
           <button disabled={cooldown > 0} onClick={() => doTalk('praise')}>👏 {t('talk.praise')}</button>
           <button disabled={cooldown > 0} onClick={() => doTalk('encourage')}>🤝 {t('talk.encourage')}</button>
+          {ageOn(p.dob, g.date) <= 23 && <button disabled={cooldown > 0} onClick={() => doTalk('future')} title={t('talk.futureHint')}>🌱 {t('talk.future')}</button>}
           <button disabled={cooldown > 0} onClick={() => doTalk('criticise')}>☝️ {t('talk.criticise')}</button>
           <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('fine')}>{t('talk.fine', { fee: money(wage) })}</button>
           <button className="danger" disabled={cooldown > 0} onClick={() => doTalk('fineHeavy')}>{t('talk.fineHeavy', { fee: money(wage * 2) })}</button>

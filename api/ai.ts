@@ -54,7 +54,7 @@ const SPECS: Record<string, Spec> = {
   },
   // Spillersamtale: hvad vil manageren?
   talkIntent: {
-    system: 'Klassificér managerens besked til spilleren til netop én af de tilladte hensigter (allowed): praise=ros, encourage=opmuntring/støtte, criticise=kritik, demand=krav om mere, fine=bøde, chat=almindelig snak uden tydelig hensigt.',
+    system: 'Klassificér managerens besked til spilleren til netop én af de tilladte hensigter (allowed): praise=ros, encourage=opmuntring/støtte, criticise=kritik, demand=krav om mere, fine=bøde, future=fortæller et ungt talent, at han er klubbens fremtid, chat=almindelig snak uden tydelig hensigt.',
     schema: z.object({ intent: z.string() }),
     maxTokens: 60,
     temperature: 0,

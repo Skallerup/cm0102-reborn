@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.24',
+    date: '2026-10-19',
+    title: { da: '"Du er fremtiden"', en: '"You\'re the future"' },
+    items: [
+      { da: 'Afviser du et bud på et talent (23 år eller yngre), kan du sige "Du er fremtiden" – det virker, hvis han har potentiale til at blive en af holdets bedste', en: 'When you reject an offer for a talent (23 or younger), you can say "You\'re the future" – it works if he has the potential to become one of the team\'s best' },
+      { da: 'Samme besked kan gives i samtalen med spilleren – den løfter moralen og motivationen, men gentager du den for tit, vil han se det på banen', en: 'The same message can be given in the player conversation – it lifts morale and motivation, but repeat it too often and he wants to see it on the pitch' },
+    ],
+  },
+  {
     version: '0.7.23',
     date: '2026-10-19',
     title: { da: 'Trofæer bliver fejret', en: 'Trophies are celebrated' },

@@ -147,6 +147,8 @@ export interface Player {
   futureClauses?: ContractClauses;
   /** Seneste samtale med manageren (cooldown) */
   lastTalk?: string;
+  /** Seneste gang manageren sagde "du er fremtiden" */
+  toldFuture?: string;
   /** Seneste episode (ballade) og seneste røde kort – grundlag for at straffe */
   lastIncident?: string;
   lastRed?: string;
