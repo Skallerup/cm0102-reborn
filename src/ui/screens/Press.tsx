@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Info } from '../help';
 import { act } from '../../game/actions';
-import { effectsOf, followUpFor, tonesFor, type PressConf, type PressTopic, type Tone } from '../../game/press';
+import { effectsOf, followUpFor, toneOf, tonesFor, type PressConf, type PressTopic, type Tone } from '../../game/press';
 import { sortTable } from '../../game/competitions';
 import { aiCall, aiText, setAiText } from '../../ai/client';
 import { has, t } from '../../i18n';
@@ -41,7 +41,7 @@ export function PressScreen() {
   // kø af spørgsmål (opfølgninger indsættes undervejs), svar og samtalen
   const [queue, setQueue] = useState<PressTopic[]>(() => pc?.topics.slice() ?? []);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState<{ topic: string; tone: Tone; text?: string; q: string }[]>([]);
+  const [answers, setAnswers] = useState<{ topic: string; tone: string; kind: string; text?: string; q: string }[]>([]);
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
@@ -89,16 +89,18 @@ export function PressScreen() {
   const current = queue[step];
   const media = Math.round(g.manager.media ?? 50);
 
-  const answer = (tone: Tone, text?: string) => {
+  const sayText = (kind: string, id: string) => t(`press.a.${kind}.${id}`);
+  const answer = (id: string, text?: string) => {
     if (!pc || !current || typing) return;
     const conf = pc as PressConf;
-    const effects = effectsOf(current, tone, conf.phase);
+    const tone = toneOf(current.kind, id);
+    const effects = effectsOf(current, id, conf.phase);
     const reaction = t(`press.react.${tone}.${1 + hashN(`${conf.fixture}${current.id}${tone}`, 3)}`);
-    setAnswers([...answers, { topic: current.id, tone, text, q: questionText(current) }]);
-    const follow = followUpFor(conf, current, tone);
+    setAnswers([...answers, { topic: current.id, tone: id, kind: current.kind, text, q: questionText(current) }]);
+    const follow = followUpFor(conf, current, id);
     const nextQueue = follow ? [...queue.slice(0, step + 1), follow, ...queue.slice(step + 1)] : queue;
     setQueue(nextQueue);
-    const afterAnswer: Line[] = [...lines, { who: 'a', text: text ?? t(`press.say.${tone}`) }];
+    const afterAnswer: Line[] = [...lines, { who: 'a', text: text ?? sayText(current.kind, id) }];
     setLines(afterAnswer);
     setDraft('');
     setTyping(true);
@@ -120,29 +122,29 @@ export function PressScreen() {
     if (!text || !current) return;
     setBusy('free');
     const allowed = tonesFor(current.kind);
-    const r = await aiCall<{ tone: string }>('pressAnswer', { question: questionText(current), answer: text, allowed, meaning: Object.fromEntries(allowed.map((x) => [x, t(`press.tone.${x}.hint`)])) });
+    const r = await aiCall<{ tone: string }>('pressAnswer', { question: questionText(current), answer: text, allowed, meaning: Object.fromEntries(allowed.map((x) => [x, sayText(current.kind, x)])) });
     setBusy(null);
-    answer((allowed.includes(r?.tone as Tone) ? r!.tone : allowed.includes('calm') ? 'calm' : allowed[0]) as Tone, text);
+    answer(allowed.includes(r?.tone ?? '') ? r!.tone : allowed.find((x) => toneOf(current.kind, x) === 'calm') ?? allowed[0], text);
   };
 
   const finish = async (assistant?: boolean) => {
     if (!pc) return;
     setBusy('finish');
-    const list = assistant ? pc.topics.map((tp) => ({ topic: tp.id, tone: 'deflect' as Tone })) : answers.map(({ topic, tone }) => ({ topic, tone }));
+    const list = assistant ? pc.topics.map((tp) => ({ topic: tp.id, tone: 'deflect' })) : answers.map(({ topic, tone }) => ({ topic, tone }));
     let report: { headline: string; body: string } | null = null;
     // AI-referatet må højst holde spilleren hen i et par sekunder; kommer det senere, skiftes overskriften ud bagefter
     let late: Promise<{ headline: string; body: string } | null> | null = null;
     if (!assistant) {
       late = aiCall<{ headline: string; body: string }>('pressReport', {
         manager: g.manager.name, club: g.clubs[g.userClub]?.name, opponent: g.clubs[pc.opp]?.name, phase: pc.phase,
-        qa: answers.map((a) => ({ question: a.q, answer: a.text ?? t(`press.say.${a.tone}`), tone: a.tone })),
+        qa: answers.map((a) => ({ question: a.q, answer: a.text ?? sayText(a.kind, a.tone), tone: toneOf(a.kind as PressTopic['kind'], a.tone) })),
       }, 12_000);
       report = await Promise.race([late, new Promise<null>((res) => setTimeout(() => res(null), 2500))]);
       if (report) late = null;
     }
     // uden AI: overskrift ud fra det mest markante svar
     if (!report && !assistant && answers.length) {
-      const tones = answers.map((a) => a.tone);
+      const tones = answers.map((a) => toneOf(a.kind as PressTopic['kind'], a.tone));
       const pick = (['promise', 'fiery', 'pressurePlayer', 'deflect', 'confident', 'backPlayer', 'calm', 'backtrack'] as Tone[]).find((x) => tones.includes(x))!;
       const k = pick === 'deflect' && tones.filter((x) => x === 'deflect').length * 2 < tones.length ? 'calm' : pick;
       report = { headline: t(`press.head.${k}.${1 + hashN(`${pc.fixture}${k}`, 2)}`, { manager: g.manager.name, opp: g.clubs[pc.opp]?.name ?? '', club: g.clubs[g.userClub]?.short ?? '' }), body: '' };
@@ -201,8 +203,11 @@ export function PressScreen() {
         {!finished && !typing && current && (
           <div className="press-answer">
             <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-              {tonesFor(current.kind).map((tone) => (
-                <button key={tone} title={t(`press.tone.${tone}.hint`)} onClick={() => answer(tone)}>{t(`press.tone.${tone}`)}</button>
+              {tonesFor(current.kind).map((id) => (
+                <button key={id} className="press-opt" title={t(`press.tone.${toneOf(current.kind, id)}.hint`)} onClick={() => answer(id)}>
+                  <span>“{sayText(current.kind, id)}”</span>
+                  <span className="press-opt-fx">{effectsOf(current, id, (pc as PressConf).phase).map((e) => <span key={e} className={`tag ${effClass(e)}`}>{t(`press.eff.${e}`)}</span>)}</span>
+                </button>
               ))}
             </div>
             {ai && (

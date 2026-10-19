@@ -10,7 +10,7 @@ import { isReserveTeam } from './competitions';
 import { A, naturalRole } from './attributes';
 import { ageOn, month, weekday } from './dates';
 import { squadStrength } from './board';
-import { tonesFor, type Tone } from './press';
+import { tonesFor } from './press';
 import { hash01, rng } from './rng';
 import { fixturesOn, gs, squad } from './state';
 import { autoSelect, newTactic } from './tactics';
@@ -139,7 +139,7 @@ function answerPress(pid: string) {
   if (!pc) return;
   const answers = pc.topics.map((topic) => {
     const tones = tonesFor(topic.kind).filter((t) => t !== 'promise');
-    const tone: Tone = tones[Math.floor(hash01(g.seed, topic.id.length, pc.fixture, pid.length) * tones.length)] ?? tones[0];
+    const tone: string = tones[Math.floor(hash01(g.seed, topic.id.length, pc.fixture, pid.length) * tones.length)] ?? tones[0];
     return { topic: topic.id, tone };
   });
   applyActionAs(pid, { t: 'press', answers });

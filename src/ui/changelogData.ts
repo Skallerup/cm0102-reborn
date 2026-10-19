@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.73',
+    date: '2026-10-19',
+    title: { da: 'Pressemøder med 56 slags spørgsmål og egne svar', en: 'Press conferences with 56 kinds of questions and tailored answers' },
+    items: [
+      { da: '33 nye spørgsmålstyper (56 i alt): sene sejrsmål, comebacks, dommeren, målmandsfejl, boldbesiddelse uden sejr, transfervinduet og deadline day, kontraktforhandlinger, veteraner, lejespillere, skadeskrise, tæt kampprogram, pokalen, underdog-kampe, økonomien, jobrygter, sæsonstart, oprykningskamp, karantæner, jeres spillestil (defensiv/offensiv/højt pres/lange bolde), træthed og stemningen i omklædningsrummet', en: '33 new question types (56 in total): late winners, comebacks, the referee, goalkeeper errors, possession without winning, the transfer window and deadline day, contract talks, veterans, loan players, injury crises, fixture congestion, the cup, underdog games, finances, job rumours, season start, promotion races, suspensions, your playing style (defensive/attacking/high press/long balls), fatigue and the dressing-room mood' },
+      { da: 'Hvert spørgsmål har sine egne 3–4 svar som rigtige citater – og effekten (trup, fans, bestyrelse, presse, spiller, modstander) står under hvert svar, før du vælger', en: 'Each question has its own 3–4 answers as real quotes – and the effect (squad, fans, board, press, player, opponent) is shown under each answer before you choose' },
+      { da: 'Samme spørgsmål kommer sjældnere igen ved de næste pressemøder, så der er mere variation', en: 'The same question comes back less often at the next press conferences, for more variety' },
+    ],
+  },
+  {
     version: '0.7.72',
     date: '2026-10-19',
     title: { da: '10 nye højdepunkter styret af attributter og taktik', en: '10 new highlights driven by attributes and tactics' },

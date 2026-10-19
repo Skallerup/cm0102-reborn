@@ -755,3 +755,6 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .leave-note { font-size: 12px; margin: -4px 0 8px; }
 .war-box { border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--tint1, transparent); }
 .war-title { font-weight: 800; letter-spacing: 0.04em; }
+.press-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; white-space: normal; max-width: 360px; padding: 8px 12px; height: auto; line-height: 1.35; border-radius: 12px; }
+.press-opt-fx { display: flex; flex-wrap: wrap; gap: 4px; }
+.press-opt-fx .tag { font-size: 10px; }

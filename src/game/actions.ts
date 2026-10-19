@@ -9,7 +9,7 @@ import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff, raiseStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
-import { applyPress, type Tone } from './press';
+import { applyPress } from './press';
 import { answerComplaint } from './will';
 import { answerBet, proposeBet, sendJab } from './rivalry';
 import { removeHuman } from './humans';
@@ -75,7 +75,7 @@ export type Action =
   | { t: 'removeHuman'; pid: string }
   | { t: 'chatRead' }
   | { t: 'complaint'; pid: number; choice: 'promise' | 'fight' | 'list' | 'listen' }
-  | { t: 'press'; answers: { topic: string; tone: Tone }[]; headline?: string; body?: string };
+  | { t: 'press'; answers: { topic: string; tone: string }[]; headline?: string; body?: string };
 
 /** Ny klub i et land uden simulerede ligaer: start ligaen med det samme */
 function startLeague() {
