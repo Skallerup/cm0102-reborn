@@ -272,7 +272,8 @@ export function Shell() {
         {online && !online.inGame ? <Lobby /> : <Screen />}
         {online?.status === 'error' && <div className="toast">{online.error}</div>}
       </main>
-      {online && (online.status === 'processing' || online.status === 'loading') && (
+      {/* med flere spillere viser simuleringsvisningen (Online.tsx) trækket – her kun ved indlæsning og alene-spil */}
+      {online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) && (
         <div className="progress"><div>{online.status === 'processing' ? t('mp.processing') : t('mp.loading')}</div></div>
       )}
       {running && (
