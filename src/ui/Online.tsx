@@ -8,6 +8,8 @@ import {
 import { Modal, Panel } from './components';
 import { gs, hasGame } from '../game/state';
 import { act } from '../game/actions';
+import { isHumanClub } from '../game/humans';
+import { isBotClub } from '../game/bots';
 import { useNav } from './core';
 import { focusNews } from './inboxFocus';
 import { notifyUser } from './notify';
@@ -161,6 +163,15 @@ export function OnlineControls() {
   // alle de andre er klar – nu venter de kun på mig
   const othersWaiting = !solo && !me?.ready && s.room.players.every((p) => p.ready || p.pid === s.creds.pid);
   const link = `${location.origin}${location.pathname}?room=${s.creds.code}`;
+  // min kamp i dag, som endnu ikke er spillet (ikke når en anden menneskelig manager har hjemmekampen)
+  const myMatch = (() => {
+    if (!hasGame() || !s.inGame) return 0;
+    const g = gs();
+    const f = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
+    if (!f || f.result) return 0;
+    if (f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home)) return 0;
+    return f.id;
+  })();
   return (
     <>
       <button className="small" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>
@@ -193,6 +204,8 @@ export function OnlineControls() {
         {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
       <button className={`${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
+        // kampdag: spil først din kamp (eller tag et hurtigt resultat på kampskærmen)
+        if (!me?.ready && myMatch) { nav({ name: 'match', id: myMatch }); return; }
         // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar
         if (!me?.ready && hasGame()) {
           const next = gs().news.filter((n) => !n.read).pop();
@@ -200,7 +213,7 @@ export function OnlineControls() {
         }
         void s.setReady(!me?.ready);
       }}>
-        {solo ? (me?.ready ? t('mp.processingShort') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
+        {!me?.ready && myMatch ? t('top.toTheMatch') : solo ? (me?.ready ? t('mp.processingShort') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
         {!me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
     </>

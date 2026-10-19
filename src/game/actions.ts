@@ -4,7 +4,7 @@
 import { acceptJob, answerBudgetCounter, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
-import { activateNation, playPendingAsAi } from './sim';
+import { activateNation, playPendingAsAi, submitMatchResult } from './sim';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
@@ -20,7 +20,7 @@ import {
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
-import type { BotStyle, ContractClauses, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
+import type { BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 
 export type Action =
@@ -61,6 +61,7 @@ export type Action =
   | { t: 'declineJob'; club: number }
   | { t: 'resign' }
   | { t: 'fixPending' }
+  | { t: 'matchResult'; fixture: number; rep: MatchReport }
   | { t: 'join'; name: string; club: number; nation: number }
   | { t: 'addBot'; name: string; club: number; nation: number; style: BotStyle }
   | { t: 'chat'; to: string; text: string }
@@ -142,6 +143,7 @@ export function applyAction(a: Action): unknown {
     case 'declineJob': declineJob(a.club); return 'ok';
     case 'resign': playPendingAsAi(); return resignJob();
     case 'fixPending': playPendingAsAi(); return 'ok';
+    case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'chat': return sendChat(a.to, a.text);

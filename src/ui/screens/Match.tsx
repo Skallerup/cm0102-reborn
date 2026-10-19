@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { opponentReport } from '../../game/analysis';
 import type { MatchSim } from '../../game/engine/match';
-import { createLiveMatch, finishUserMatch, quickPlayUserMatch, userTactic } from '../../game/sim';
+import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
+import { act } from '../../game/actions';
+import { humanManager, isHumanClub } from '../../game/humans';
+import { isBotClub } from '../../game/bots';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
@@ -46,7 +49,7 @@ export function MatchScreen({ id }: { id: number }) {
   if (f.result && g.reports[id] && phase !== 'live') {
     return <div><Head title={t('match.played')} /><button onClick={() => nav({ name: 'report', id })}>{t('fix.report')}</button></div>;
   }
-  if (phase === 'pre') return <PreMatch id={id} onPlay={() => setPhase('live')} onQuick={() => { const rep = quickPlayUserMatch(); notify(); if (rep) nav({ name: 'report', id: f.id }); }} />;
+  if (phase === 'pre') return <PreMatch id={id} onPlay={() => setPhase('live')} onQuick={() => { const rep = quickReport(); if (rep) { act({ t: 'matchResult', fixture: f.id, rep }); nav({ name: 'report', id: f.id }); } }} />;
   return <LiveMatch id={id} />;
 }
 
@@ -58,7 +61,9 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   const tac = userTactic(false);
   const xi = tac.lineup.map((pid) => g.players[pid]).filter(Boolean);
   const isToday = g.pendingFixture === id;
-  useHotkeys((e) => { if (isToday && e.key === 'Enter') { onPlay(); return true; } });
+  // online: to menneskelige managere mod hinanden – hjemmeholdets manager spiller kampen
+  const awayVsHuman = !!g.humans && f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home);
+  useHotkeys((e) => { if (isToday && !awayVsHuman && e.key === 'Enter') { onPlay(); return true; } });
   return (
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`} />
@@ -85,7 +90,9 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
         </Panel>
       </div>
       {isToday && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
-      {isToday ? (
+      {isToday && awayVsHuman ? (
+        <div className="insight">{t('mp.h2hAway', { name: humanManager(f.home)?.name ?? '' })}</div>
+      ) : isToday ? (
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onQuick}>{t('match.quick')}</button>
           <button className="primary continue" onClick={onPlay}>{t('match.kickoff')}</button>
@@ -324,7 +331,8 @@ function LiveMatch({ id }: { id: number }) {
 
   const done = () => {
     if (!report) return;
-    finishUserMatch(report);
+    // via en handling, så resultatet også når værten i online-spil
+    act({ t: 'matchResult', fixture: id, rep: report });
     live = null;
     notify();
     nav({ name: 'report', id });

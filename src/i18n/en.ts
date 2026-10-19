@@ -212,6 +212,7 @@ export const en: Record<string, string> = {
   'mp.inviteTitle': "Invite friends", 'mp.inviteText': "Send the link to your friends – or give them the code to enter under Online multiplayer. They pick a club and join at the next turn.", 'mp.copyLink': "Copy link", 'mp.share': "Share…", 'mp.shareText': "Come play CM 01/02 with me! Code: {code}",
   'mp.simTitle': "Simulating the match day…", 'mp.simYou': "You are the host – your browser is simulating the turn for everyone", 'mp.simOther': "{name} (host) is simulating the turn for everyone", 'mp.simWaitHost': "Everyone is ready – waiting for {name} (host) to start…", 'mp.simUntil': "Playing until {date} – next match against {opp}",
   'mp.simHide': "Hide",
+  'mp.h2hAway': "This is a match between two managers – {name} is at home and plays the match. The result arrives with the next turn. Press Ready when you have finished your preparations.",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
 
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",

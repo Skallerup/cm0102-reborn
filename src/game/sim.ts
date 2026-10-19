@@ -533,28 +533,87 @@ export function availableForSelection(p: Player) {
 
 // ---------- online multiplayer ----------
 
-const IMPORTANT = ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.bidCountered', 'news.jobOffer', 'job.invite', 'board.sacked', 'board.sackedSeason'];
 
 /**
  * Ét multiplayer-"træk": spil dage frem til og med næste dag hvor en menneskelig manager har kamp,
- * eller til der kommer en vigtig besked til nogen (højst 14 dage).
+ * eller til en manager får noget at forholde sig til – samme regel som Fortsæt i singleplayer (højst 14 dage).
  */
 export function mpAdvance(): { days: number; reason: string } {
   const g = gs();
   const startNews = g.nextId.news;
+  // forrige træk stoppede på en kampdag: menneskenes kampe er spillet live (resultaterne kom som handlinger) –
+  // de kampe, ingen nåede at spille, simuleres nu, og dagen gøres færdig
+  if (!g.dayDone) finishMatchDay();
   for (let i = 1; i <= 14; i++) {
     newDay();
-    const humansPlaying = fixturesOn(g.date).some((id) => {
+    const humanFixtures = fixturesOn(g.date).filter((id) => {
       const f = g.fixtures[id];
-      return f && ((isHumanClub(f.home) && !isBotClub(f.home)) || (isHumanClub(f.away) && !isBotClub(f.away)));
+      return f && !f.result && ((isHumanClub(f.home) && !isBotClub(f.home)) || (isHumanClub(f.away) && !isBotClub(f.away)));
     });
+    if (humanFixtures.length) {
+      // kampdag: AI-kampene spilles nu, menneskenes kampe venter – hver manager spiller sin egen live
+      if (g.humans) botsDaily();
+      for (const id of fixturesOn(g.date)) {
+        const f = g.fixtures[id];
+        if (!f || f.result || humanFixtures.includes(id)) continue;
+        simulateFixture(f, true, false);
+      }
+      for (const h of g.humans ?? []) {
+        if (h.bot) continue;
+        withHuman(h.pid, () => {
+          const mine = humanFixtures.find((id) => g.fixtures[id].home === g.userClub || g.fixtures[id].away === g.userClub);
+          g.pendingFixture = mine ?? null;
+        });
+      }
+      return { days: i, reason: 'match' };
+    }
     playDay();
     g.dayDone = true;
     g.pendingFixture = null;
-    if (humansPlaying) return { days: i, reason: 'match' };
     let important = false;
-    for (const h of g.humans ?? []) if (!h.bot) withHuman(h.pid, () => { if (g.news.some((n) => n.id >= startNews && IMPORTANT.includes(n.key))) important = true; });
+    // som i singleplayer: stop så snart en manager får noget at forholde sig til (bud, pressemøde, bestyrelse, jobtilbud …)
+    for (const h of g.humans ?? []) if (!h.bot) withHuman(h.pid, () => { if (g.news.some((n) => n.id >= startNews && !n.read && needsAttention(n))) important = true; });
     if (important) return { days: i, reason: 'news' };
   }
   return { days: 14, reason: 'limit' };
+}
+
+/** Kampdagen gøres færdig: kampe uden resultat (manageren nåede ikke at spille) simuleres med assistenten */
+function finishMatchDay() {
+  const g = gs();
+  for (const id of fixturesOn(g.date)) {
+    const f = g.fixtures[id];
+    if (!f || f.result) continue;
+    const human = isHumanClub(f.home) || isHumanClub(f.away);
+    simulateFixture(f, true, human);
+  }
+  for (const h of g.humans ?? []) withHuman(h.pid, () => { g.pendingFixture = null; });
+  g.pendingFixture = null;
+  g.dayDone = true;
+}
+
+/**
+ * Manageren har spillet sin kamp (live eller hurtigt resultat). I online-spil sendes resultatet som en handling,
+ * så værten lægger præcis samme resultat ind – dagen gøres først færdig i næste træk.
+ */
+export function submitMatchResult(fixture: number, rep: MatchReport) {
+  const g = gs();
+  const f = g.fixtures[fixture];
+  if (!f || f.result || (f.home !== g.userClub && f.away !== g.userClub)) return;
+  if (!isMultiplayer(g) || g.localMp) {
+    if (g.pendingFixture === fixture) finishUserMatch(rep);
+    else applyMatchResult(f, rep);
+    return;
+  }
+  applyMatchResult(f, rep);
+  if (g.pendingFixture === fixture) g.pendingFixture = null;
+}
+
+/** Hurtigt resultat for den ventende kamp – uden at se den */
+export function quickReport(): MatchReport | null {
+  const g = gs();
+  const f = g.fixtures[g.pendingFixture!];
+  if (!f) return null;
+  const m = prepareMatch(f, false);
+  return quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng);
 }

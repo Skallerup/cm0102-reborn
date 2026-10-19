@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.64',
+    date: '2026-10-19',
+    title: { da: 'Online: spil dine kampe live', en: 'Online: play your matches live' },
+    items: [
+      { da: 'Online-spil stopper nu på kampdagen før kampene: Klar-knappen bliver til "Til kampen", og du spiller din kamp live med 2D, taktik og udskiftninger – præcis som i singleplayer. Resultatet sendes til værten. Vil du ikke se den, kan du tage et hurtigt resultat', en: 'Online games now stop on match day before the matches: the Ready button becomes "To the match", and you play your match live with 2D, tactics and substitutions – exactly like single player. The result is sent to the host. If you do not want to watch, take a quick result' },
+      { da: 'Kampe mellem to managere spilles af hjemmeholdets manager (live-visning for udeholdet kommer snart). Når ingen når at spille, tager assistenten kampen', en: 'Matches between two managers are played by the home manager (a live view for the away side is coming soon). If nobody plays, the assistant takes the match' },
+      { da: 'Trækkene stopper nu efter samme regel som Fortsæt i singleplayer: så snart en manager får bud, pressemøder, bestyrelsesmøder eller andet at forholde sig til', en: 'Turns now stop by the same rule as Continue in single player: as soon as a manager gets bids, press conferences, board meetings or anything else to deal with' },
+    ],
+  },
+  {
     version: '0.7.63',
     date: '2026-10-19',
     title: { da: 'Rettelser: klubfarver og online-værten', en: 'Fixes: club colours and the online host' },
