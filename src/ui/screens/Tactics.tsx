@@ -151,6 +151,17 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
   });
   const ind = sel !== null ? tactic.individual[sel] : null;
   const tm = tactic.team;
+  const iopt = (k: keyof NonNullable<typeof ind>, vals: [number | boolean, string][]) => ind && (
+    <div className="ti-row">
+      <div className="ti-label"><b>{t(`pi.${k}`)}</b><span className="muted">{t(`pih.${k}`)}</span></div>
+      <div className="seg" role="radiogroup">
+        {vals.map(([v, l]) => (
+          <button key={String(v)} type="button" role="radio" aria-checked={ind[k] === v} className={ind[k] === v ? 'on' : ''}
+            onClick={() => setInd({ [k]: v } as Partial<NonNullable<typeof ind>>)}>{l}</button>
+        ))}
+      </div>
+    </div>
+  );
   const opt = (k: keyof TeamInstructions, vals: [number | string | boolean, string][]) => (
     <div className="ti-row">
       <div className="ti-label"><b>{t(`ti.${k}`)}</b><span className="muted">{t(`tih.${k}`)}</span></div>
@@ -302,7 +313,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
           <div className="ti-groups">
             <div className="ti-group">
               <div className="ti-head">⚽ {t('tac.withBall')}</div>
-              {opt('mentality', [0, 1, 2, 3, 4].map((v) => [v, t(`ment.${v}`)]))}
+              {opt('mentality', [0, 1, 2, 3, 4].map((v) => [v, t(`ment.short.${v}`)]))}
               {opt('passing', [[0, t('ti.short')], [1, t('ti.mixed')], [2, t('ti.long')]])}
               {opt('tempo', [[0, t('ti.slow')], [1, t('ti.normal')], [2, t('ti.fast')]])}
               {opt('width', [[0, t('ti.narrow')], [1, t('ti.normal')], [2, t('ti.wide')]])}
@@ -319,23 +330,21 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
         </Panel>
         {ind && selSlot && (
           <Panel title={`${t('tac.individual')}: ${selSlot.pos}${selSlot.side !== 'C' ? ' ' + selSlot.side : ''} – ${byId.get(tactic.lineup[sel!])?.last ?? ''}`}>
-            <div className="cols2">
-              <label className="row"><span style={{ width: 120 }}>{t('pi.runs')}</span>
-                <select value={ind.runs} onChange={(e) => setInd({ runs: Number(e.target.value) })}>
-                  <option value={0}>{t('ti.rarely')}</option><option value={1}>{t('ti.mixed')}</option><option value={2}>{t('ti.often')}</option>
-                </select></label>
-              <label className="row"><span style={{ width: 120 }}>{t('pi.longShots')}</span>
-                <select value={ind.longShots} onChange={(e) => setInd({ longShots: Number(e.target.value) })}>
-                  <option value={0}>{t('ti.rarely')}</option><option value={1}>{t('ti.mixed')}</option><option value={2}>{t('ti.often')}</option>
-                </select></label>
-              <label className="row"><span style={{ width: 120 }}>{t('pi.crossing')}</span>
-                <select value={ind.crossing} onChange={(e) => setInd({ crossing: Number(e.target.value) })}>
-                  <option value={0}>{t('ti.rarely')}</option><option value={1}>{t('ti.mixed')}</option><option value={2}>{t('ti.often')}</option>
-                </select></label>
-              <label className="row"><input type="checkbox" checked={ind.runWithBall} onChange={(e) => setInd({ runWithBall: e.target.checked })} /> {t('pi.runWithBall')}</label>
-              <label className="row"><input type="checkbox" checked={ind.throughBalls} onChange={(e) => setInd({ throughBalls: e.target.checked })} /> {t('pi.throughBalls')}</label>
-              <label className="row"><input type="checkbox" checked={ind.tightMarking} onChange={(e) => setInd({ tightMarking: e.target.checked })} /> {t('pi.tightMarking')}</label>
-              <label className="row"><input type="checkbox" checked={ind.freeRole} onChange={(e) => setInd({ freeRole: e.target.checked })} /> {t('pi.freeRole')}</label>
+            <div className="ti-groups">
+              <div className="ti-group">
+                <div className="ti-head">⚽ {t('tac.withBall')}</div>
+                {iopt('runs', [[0, t('tac.roleDef')], [1, t('tac.roleBal')], [2, t('tac.roleAtt')]])}
+                {iopt('longShots', [[0, t('ti.rarely')], [1, t('ti.mixed')], [2, t('ti.often')]])}
+                {iopt('crossing', [[0, t('ti.rarely')], [1, t('ti.mixed')], [2, t('ti.often')]])}
+                {iopt('runWithBall', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('throughBalls', [[false, t('common.no')], [true, t('common.yes')]])}
+              </div>
+              <div className="ti-group">
+                <div className="ti-head">🛡 {t('tac.withoutBall')}</div>
+                {iopt('tightMarking', [[false, t('common.no')], [true, t('common.yes')]])}
+                <div className="ti-head" style={{ marginTop: 6 }}>✦ {t('tac.roleHead')}</div>
+                {iopt('freeRole', [[false, t('common.no')], [true, t('common.yes')]])}
+              </div>
             </div>
           </Panel>
         )}

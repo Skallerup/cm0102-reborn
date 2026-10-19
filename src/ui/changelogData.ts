@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.58',
+    date: '2026-10-19',
+    title: { da: 'Individuelle instruktioner i nyt design', en: 'Individual instructions redesigned' },
+    items: [
+      { da: 'Individuelle instruktioner bruger nu samme knapgrupper som holdinstruktionerne (Med bolden / Uden bolden / Rolle) med korte forklaringer', en: 'Individual instructions now use the same button groups as team instructions (In possession / Out of possession / Role) with short explanations' },
+      { da: 'Mentalitet står på én linje (kortere navne), og kolonnerne lægger sig under hinanden, når der ikke er plads', en: 'Mentality fits on one line (shorter labels), and columns stack when space is tight' },
+    ],
+  },
+  {
     version: '0.7.57',
     date: '2026-10-19',
     title: { da: 'Jubel – og så VAR', en: 'Celebrations – then VAR' },
