@@ -166,7 +166,7 @@ export function OnlineControls() {
       <span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
         {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo && !me?.ready ? t('mp.soloHint') : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
-      <button className={`continue ${me?.ready ? '' : 'primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
+      <button className={`${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
         // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar
         if (!me?.ready && hasGame()) {
           const next = gs().news.filter((n) => !n.read).pop();

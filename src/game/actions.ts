@@ -41,7 +41,7 @@ export type Action =
   | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
-  | { t: 'hireStaff'; id: number }
+  | { t: 'hireStaff'; id: number; wage?: number }
   | { t: 'fireStaff'; id: number }
   | { t: 'budget'; kind: 'transfer' | 'wage'; pct?: number }
   | { t: 'budgetCounter'; accept: boolean }
@@ -117,7 +117,7 @@ export function applyAction(a: Action): unknown {
     }
     case 'acceptCounter': { const o = myOffer(a.pid); return o ? acceptCounter(o.id) : 'error'; }
     case 'withdraw': { const o = myOffer(a.pid); if (o) o.status = 'withdrawn'; return 'ok'; }
-    case 'hireStaff': return hireStaff(a.id);
+    case 'hireStaff': return hireStaff(a.id, a.wage);
     case 'fireStaff': return fireStaff(a.id);
     case 'budget': return requestBudget(a.kind, a.pct);
     case 'budgetCounter': return answerBudgetCounter(a.accept);

@@ -16,7 +16,12 @@ export function poachFee(s: Staff): number {
   return Math.round((s.wage * 26 * (1 + s.rep / 100)) / 1000) * 1000;
 }
 
-export type HireResult = 'ok' | 'limit' | 'refused' | 'money' | 'pending' | 'already';
+export type HireResult = 'ok' | 'limit' | 'refused' | 'money' | 'pending' | 'already' | 'lowWage';
+
+/** Hvad den ansatte forlanger i ugeløn (lidt mere for at forlade en anden klub) */
+export function staffDemand(s: Staff): number {
+  return Math.round((s.wage * (s.club > 0 ? 1.1 : 1)) / 50) * 50;
+}
 
 /** Vil den ansatte skifte? Folk forlader sjældent en klub med højere omdømme */
 export function willJoin(s: Staff): boolean {
@@ -28,7 +33,7 @@ export function willJoin(s: Staff): boolean {
   return theirs.rep <= mine.rep + 5;
 }
 
-export function hireStaff(id: number): HireResult {
+export function hireStaff(id: number, wage?: number): HireResult {
   const g = gs();
   const s = g.staff[id];
   const club = g.clubs[g.userClub];
@@ -36,19 +41,22 @@ export function hireStaff(id: number): HireResult {
   if (staffCount(s.role) >= STAFF_LIMITS[s.role]) return 'limit';
   if (s.club > 0 && !willJoin(s)) return 'refused';
   if (s.club > 0 && club.balance < poachFee(s)) return 'money';
-  // multiplayer: alle kan give et tilbud – den ansatte vælger først i morgen
+  const offer = Math.round((wage ?? staffDemand(s)) / 50) * 50;
+  if (offer < staffDemand(s) * 0.95) return 'lowWage';
+  // multiplayer: alle kan give et tilbud – den ansatte vælger det bedste i morgen
   if (isMultiplayer(g)) {
     g.staffBids ??= [];
-    if (g.staffBids.some((b) => b.staff === id && b.club === club.id)) return 'already';
-    g.staffBids.push({ staff: id, club: club.id, date: g.date });
-    addNews({ cat: 'general', key: 'staff.bidSent', params: { name: `${s.first} ${s.last}` } });
+    const mine = g.staffBids.find((b) => b.staff === id && b.club === club.id);
+    if (mine) { mine.wage = offer; return 'pending'; }
+    g.staffBids.push({ staff: id, club: club.id, date: g.date, wage: offer });
+    addNews({ cat: 'general', key: 'staff.bidSent', params: { name: `${s.first} ${s.last}`, wage: offer } });
     return 'pending';
   }
-  return doHire(s.id);
+  return doHire(s.id, offer);
 }
 
 /** Selve ansættelsen for den aktive manager */
-function doHire(id: number): HireResult {
+function doHire(id: number, wage?: number): HireResult {
   const g = gs();
   const s = g.staff[id];
   const club = g.clubs[g.userClub];
@@ -69,7 +77,7 @@ function doHire(id: number): HireResult {
   }
   s.club = club.id;
   s.assignment = null;
-  s.wage = Math.round(s.wage * (poached ? 1.1 : 1));
+  s.wage = wage ?? Math.round(s.wage * (poached ? 1.1 : 1));
   s.expires = `${Number(g.date.slice(0, 4)) + 2}-06-30`;
   return 'ok';
 }
@@ -101,14 +109,15 @@ export function resolveStaffBids() {
     const s = g.staff[sid];
     if (!s) continue;
     const name = `${s.first} ${s.last}`;
-    // størst omdømme vinder – lidt tilfældighed afgør næsten lige tilbud
-    const score = (cid: number) => (g.clubs[cid]?.rep ?? 0) + hash01(g.seed, sid, cid) * 4;
-    const order = bids.slice().sort((a, b) => score(b.club) - score(a.club));
+    // bedste kontrakt vinder; klubbens omdømme vejer lidt (5 omdømmepoint ≈ 2,5 % i løn)
+    const demand = Math.max(1, staffDemand(s));
+    const score = (b: (typeof bids)[number]) => (b.wage ?? demand) / demand + (g.clubs[b.club]?.rep ?? 0) / 200 + hash01(g.seed, sid, b.club) * 0.005;
+    const order = bids.slice().sort((a, b) => score(b) - score(a));
     let winner = 0;
     for (const b of order) {
       const owner = ownerOf(b.club);
       if (!owner) continue;
-      const r = withHuman(owner, () => doHire(sid));
+      const r = withHuman(owner, () => doHire(sid, b.wage));
       if (r === 'ok') { winner = b.club; break; }
     }
     for (const b of bids) {

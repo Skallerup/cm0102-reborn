@@ -1,10 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { ageOn } from '../../game/dates';
-import { poachFee, staffCount, STAFF_LIMITS, willJoin } from '../../game/staff';
+import { poachFee, staffCount, staffDemand, STAFF_LIMITS, willJoin } from '../../game/staff';
+import { isMultiplayer } from '../../game/humans';
 import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
 import { money, t } from '../../i18n';
-import { ClubLink, Panel, Tabs } from '../components';
+import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
 
@@ -19,6 +20,7 @@ export function StaffScreen() {
   const [source, setSource] = useRouteState<'free' | 'clubs'>('source', 'free');
   const [onlyWilling, setOnlyWilling] = useRouteState('onlyWilling', true);
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  const [offerFor, setOfferFor] = useState<Staff | null>(null);
   const mine = Object.values(g.staff).filter((s) => s.club === g.userClub);
   const club = g.clubs[g.userClub];
   const sortKey = KEY_ATTR[role];
@@ -32,10 +34,12 @@ export function StaffScreen() {
     act({ t: 'fireStaff', id: s.id });
     setMsg({ text: t('staff.fired', { name: `${s.first} ${s.last}` }), tone: 'neutral' });
   };
-  const hire = (s: Staff) => {
+  const hire = (s: Staff) => setOfferFor(s);
+  const sendOffer = (s: Staff, wage: number) => {
     if (s.club && !confirm(t('staff.poachConfirm', { name: `${s.first} ${s.last}`, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) }))) return;
-    const r = act<string>({ t: 'hireStaff', id: s.id });
-    setMsg({ text: t(`staff.result.${r}`, { name: `${s.first} ${s.last}` }), tone: r === 'ok' ? 'good' : r === 'pending' ? 'warn' : 'bad' });
+    const r = act<string>({ t: 'hireStaff', id: s.id, wage });
+    setOfferFor(null);
+    setMsg({ text: t(`staff.result.${r}`, { name: `${s.first} ${s.last}`, wage: money(staffDemand(s)) }), tone: r === 'ok' ? 'good' : r === 'pending' ? 'warn' : 'bad' });
   };
 
   const table = (list: Staff[], action: (s: Staff) => ReactNode, showClub = false) => (
@@ -92,7 +96,35 @@ export function StaffScreen() {
           ), source === 'clubs')}
         </Panel>
       )}
+      {offerFor && <StaffOfferModal s={offerFor} onClose={() => setOfferFor(null)} onSend={(w) => sendOffer(offerFor, w)} />}
       <p className="muted">{t('staff.explain')} {t('staff.explain2')}</p>
     </div>
+  );
+}
+
+/** Kontrakttilbud til en ansat: lønnen kan forhandles – i multiplayer vinder det bedste tilbud */
+function StaffOfferModal({ s, onClose, onSend }: { s: Staff; onClose: () => void; onSend: (wage: number) => void }) {
+  const g = useGame()!;
+  const demand = staffDemand(s);
+  const [wage, setWage] = useState(demand);
+  const mp = isMultiplayer(g);
+  const pct = Math.round((wage / Math.max(1, demand)) * 100);
+  return (
+    <Modal title={t('staff.offerTitle', { name: `${s.first} ${s.last}` })} onClose={onClose}>
+      <div className="col">
+        <div className="kv">
+          <span>{t('staff.demand')}</span><span>{money(demand)} / {t('common.week')}</span>
+          {s.club > 0 && <><span>{t('staff.fee')}</span><span>{money(poachFee(s))}</span></>}
+        </div>
+        <label>{t('neg.wage')}: <b className="accent">{money(wage)}</b> / {t('common.week')} ({pct}%)
+          <input type="range" min={Math.round(demand * 0.8 / 50) * 50} max={Math.round(demand * 2 / 50) * 50} step={50} value={wage} onChange={(e) => setWage(Number(e.target.value))} style={{ width: '100%' }} />
+        </label>
+        <div className={`insight ${wage < demand * 0.95 ? 'bad' : ''}`}>{t(wage < demand * 0.95 ? 'staff.offerLow' : mp ? 'staff.offerMp' : 'staff.offerOk')}</div>
+        <div className="row" style={{ justifyContent: 'flex-end' }}>
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" disabled={wage < demand * 0.95} onClick={() => onSend(wage)}>{t('staff.sendOffer')}</button>
+        </div>
+      </div>
+    </Modal>
   );
 }

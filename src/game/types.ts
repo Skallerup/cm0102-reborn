@@ -702,7 +702,7 @@ export interface GameState {
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
   chat?: ChatMsg[];
   /** Multiplayer: tilbud til staff, der afgøres dagen efter */
-  staffBids?: { staff: number; club: number; date: string }[];
+  staffBids?: { staff: number; club: number; date: string; wage?: number }[];
   /** Stikpiller i pressen mellem managere */
   jabs?: { id: number; from: string; to: string; date: string; line: number; text: string; fixture?: number; resolved?: boolean }[];
   /** Prestige-væddemål om næste indbyrdes kamp */

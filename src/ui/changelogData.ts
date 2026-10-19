@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.33',
+    date: '2026-10-19',
+    title: { da: 'Lønforhandling med staff og mellemrumstasten', en: 'Staff wage talks and the space bar' },
+    items: [
+      { da: 'Når du ansætter staff, vælger du selv lønnen ud fra deres krav. I multiplayer vælger de dagen efter det bedste tilbud – klubbens omdømme tæller lidt med', en: 'When you hire staff, you choose the wage based on their demand. In multiplayer they pick the best offer the next day – the club\'s reputation counts a little' },
+      { da: 'Mellemrumstasten trykker ikke længere på en knap, der har fokus (fx Indbakke), og online melder den dig ikke fra igen, når du allerede er klar', en: 'The space bar no longer presses a focused button (e.g. Inbox), and online it no longer un-readies you when you are already ready' },
+    ],
+  },
+  {
     version: '0.7.32',
     date: '2026-10-19',
     title: { da: 'Kamp om spillere og staff i multiplayer', en: 'Competition for players and staff in multiplayer' },

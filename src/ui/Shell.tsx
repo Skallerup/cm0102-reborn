@@ -91,8 +91,18 @@ export function Shell() {
       const btn = document.querySelector<HTMLButtonElement>('.main .continue:not(:disabled)') ?? document.querySelector<HTMLButtonElement>('.topbar .continue:not(:disabled)');
       btn?.click();
     };
+    // en fokuseret knap aktiveres af mellemrum ved keyup – det skal også stoppes
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      const typing = el?.isContentEditable || el?.tagName === 'TEXTAREA' || (el?.tagName === 'INPUT' && !['checkbox', 'radio', 'range', 'button', 'submit'].includes((el as HTMLInputElement).type));
+      if (typing) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
     window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
+    window.addEventListener('keyup', onKeyUp, true);
+    return () => { window.removeEventListener('keydown', onKey, true); window.removeEventListener('keyup', onKeyUp, true); };
   }, []);
 
   const online = session();
