@@ -11,6 +11,7 @@ import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, typ
 import { Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
+import { notifyNewCareer } from '../online/notify';
 import { forgetCMWorld, importCMFiles, loadCMWorld, loadWorld } from './world';
 import type { CMWorld } from '../game/data/cm0102';
 
@@ -190,6 +191,11 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
           setupBots(bots, botScope);
         }
         notify();
+        const c = world.clubs.find((x) => x[0] === club), lg = world.leagues.find((l) => l.id === c?.[4]);
+        notifyNewCareer({
+          manager: opts.managerName, club: c?.[2] ?? String(club), league: lg?.name, nation: world.nations[clubNation ?? -1]?.name,
+          challenge, bots, db, lang: opts.lang,
+        });
       }
       setBusy('');
     }, 30);
