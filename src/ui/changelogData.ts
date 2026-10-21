@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-21',
     title: { da: 'Prøvespillere og venskabskampe', en: 'Trialists and friendlies' },
     items: [
+      { da: 'Kamprapporten: momentum og taktiske ændringer vises samlet i fuld bredde, så holdnavne, markører og tallene før og efter kan læses', en: 'Match report: momentum and tactical changes are shown together at full width, so team names, markers and the before-and-after figures are readable' },
       { da: 'Rettet: topklubber fik ingen storklubber at vælge imellem til venskabskampe', en: 'Fixed: top clubs got no big clubs to choose from for friendlies' },
       { da: 'Invitér klubløse spillere til to ugers prøvetræning: trænerne lærer dem gradvist at kende, og til sidst får du en vurdering, før du tilbyder kontrakt (højst tre ad gangen)', en: 'Invite free agents for a two-week trial: the coaches gradually get to know them, and at the end you get a verdict before offering a contract (up to three at a time)' },
       { da: 'Arrangér venskabskampe under Kampprogram: en nem modstander giver selvtillid og kampform, en storklub giver fuldt hus og en hård test', en: 'Arrange friendlies under Fixtures: an easy opponent gives confidence and match fitness, a big club gives a full house and a tough test' },

@@ -1121,3 +1121,19 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .fr-row { gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
 .fr-opps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
 .fr-opp, .fr-opp:hover:not(:disabled) { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; border-radius: 12px; text-align: left; }
+
+/* kampens forløb (kamprapport) */
+.flow-panel { margin-bottom: 14px; }
+.momentum .chart { max-height: 240px; }
+.mom-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; font-weight: 600; margin-top: 4px; }
+.mom-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
+.mom-legend .muted { font-weight: 500; font-size: 12px; }
+.ti-wrap { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.ti-h { margin: 0 0 10px; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.ti-cols { display: grid; grid-template-columns: minmax(220px, 1fr) minmax(0, 1.6fr); gap: 16px; align-items: start; }
+.ti-list { display: flex; flex-direction: column; gap: 4px; }
+.ti-pick, .ti-pick:hover:not(:disabled) { text-align: left; padding: 7px 10px; border-radius: 9px; font-size: 13px; }
+.ti-pick.on, .ti-pick.on:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); }
+.ti-glyph { display: inline-block; min-width: 16px; text-align: center; font-weight: 800; color: var(--accent); }
+.ti-table td.num, .ti-table th.num { white-space: nowrap; }
+@media (max-width: 760px) { .ti-cols { grid-template-columns: 1fr; } }

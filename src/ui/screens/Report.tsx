@@ -58,22 +58,27 @@ export function ReportScreen({ id }: { id: number }) {
       <Tabs tabs={[['analysis', t('report.analysis')], ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />
       {tab === 'analysis' && mine && <LeadLossPanel rep={rep} side={side} />}
       {tab === 'analysis' && (
-        <div className="cols">
-          <Panel title={t('report.verdict')}>
-            {verdict.map((v, i) => <div key={i} className={`insight ${v.tone}`}>{t(v.key, { ...v.params, lane: v.params?.lane ? t(`lane.${v.params.lane}`) : undefined })}</div>)}
-            {mom && <div className="insight good">{t('report.mom')}: <PlayerLink p={mom} /> (<Rating r={rep.players.find((p) => p.id === mom.id)?.rating ?? 0} />)</div>}
+        <>
+          {/* kampens forløb i fuld bredde: momentum, markører og (for egne kampe) taktiske ændringer før/efter */}
+          <Panel title={t('report.momentum')} className="flow-panel">
+            <Momentum rep={rep} home={home} away={away} colors={mine ? statColors(rep.home, rep.away, side) : ['var(--accent)', 'var(--accent2)']} />
+            {mine && <TacticImpact rep={rep} side={side} />}
           </Panel>
-          <Panel title={t('report.momentum')}><Momentum rep={rep} home={home} away={away} colors={mine ? statColors(rep.home, rep.away, side) : ['var(--accent)', 'var(--accent2)']} /></Panel>
-          {mine && <TacticImpact rep={rep} side={side} />}
-          <Panel title={t('report.heatmap')}>
-            <div className="row" style={{ alignItems: 'flex-start' }}>
-              <Heat rep={rep} team={0} label={home} />
-              <Heat rep={rep} team={1} label={away} />
-            </div>
-            <div className="muted">{t('report.heatHint')}</div>
-          </Panel>
-          <Panel title={t('report.shotmap')}><ShotMap rep={rep} home={home} away={away} /></Panel>
-        </div>
+          <div className="cols">
+            <Panel title={t('report.verdict')}>
+              {verdict.map((v, i) => <div key={i} className={`insight ${v.tone}`}>{t(v.key, { ...v.params, lane: v.params?.lane ? t(`lane.${v.params.lane}`) : undefined })}</div>)}
+              {mom && <div className="insight good">{t('report.mom')}: <PlayerLink p={mom} /> (<Rating r={rep.players.find((p) => p.id === mom.id)?.rating ?? 0} />)</div>}
+            </Panel>
+            <Panel title={t('report.heatmap')}>
+              <div className="row" style={{ alignItems: 'flex-start' }}>
+                <Heat rep={rep} team={0} label={home} />
+                <Heat rep={rep} team={1} label={away} />
+              </div>
+              <div className="muted">{t('report.heatHint')}</div>
+            </Panel>
+            <Panel title={t('report.shotmap')}><ShotMap rep={rep} home={home} away={away} /></Panel>
+          </div>
+        </>
       )}
       {tab === 'stats' && <StatsPanel stats={rep.stats} home={home} away={away} colors={mine ? statColors(rep.home, rep.away, side) : undefined} />}
       {tab === 'players' && (
@@ -139,12 +144,13 @@ function Goals({ rep }: { rep: MatchReport }) {
 
 function Momentum({ rep, home, away, colors }: { rep: MatchReport; home: string; away: string; colors: [string, string] }) {
   const vals = rep.momentum;
-  const W = 300, H = 120, mid = H / 2;
+  const W = 640, H = 130, mid = H / 2;
   const max = Math.max(1, ...vals.map((v) => Math.abs(v)));
   const bw = W / Math.max(18, vals.length);
   // målene står over/under grafen; holdnavnene i en forklaring nederst, så intet overlapper
   return (
-    <svg viewBox={`0 -12 ${W} ${H + 44}`} className="chart" role="img" aria-label="momentum">
+    <div className="momentum">
+    <svg viewBox={`0 -12 ${W} ${H + 36}`} className="chart" role="img" aria-label="momentum">
       <line x1={0} x2={W} y1={mid} y2={mid} stroke="#ffffff33" />
       <line x1={W * 0.5} x2={W * 0.5} y1={0} y2={H} stroke="#ffffff22" strokeDasharray="2 2" />
       {vals.map((v, i) => {
@@ -165,11 +171,13 @@ function Momentum({ rep, home, away, colors }: { rep: MatchReport; home: string;
         <text key={i} x={Math.min(W - 6, ((e.m - 1) / 5) * bw + bw / 2)} y={e.t === 0 ? -2 : H + 8} textAnchor="middle" fontSize="9">⚽</text>
       ))}
       <text x={2} y={H + 20}>0'</text><text x={W / 2} y={H + 20} textAnchor="middle">45'</text><text x={W - 2} y={H + 20} textAnchor="end">90'</text>
-      <rect x={0} y={H + 26} width={8} height={8} rx={2} fill={colors[0]} />
-      <text x={12} y={H + 33.5}>{home} ↑</text>
-      <rect x={W / 2 + 4} y={H + 26} width={8} height={8} rx={2} fill={colors[1]} />
-      <text x={W / 2 + 16} y={H + 33.5}>{away} ↓</text>
     </svg>
+    <div className="mom-legend">
+      <span><i style={{ background: colors[0] }} />{home} ↑</span>
+      <span><i style={{ background: colors[1] }} />{away} ↓</span>
+      {markers(rep).length > 0 && <span className="muted">{t('mom.markers')}</span>}
+    </div>
+    </div>
   );
 }
 
@@ -259,11 +267,13 @@ function TacticImpact({ rep, side }: { rep: MatchReport; side: 0 | 1 }) {
     return <tr key={label}><td>{label}</td><td className="num">{a.toFixed(dec)}</td><td className={`num ${better ? 'good' : worse ? 'bad' : ''}`}>{b.toFixed(dec)}</td></tr>;
   };
   return (
-    <Panel title={t('ti.title')}>
-      <div className="row" style={{ flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-        {mine.map((m, i) => <button key={i} className={`small ${i === sel ? 'primary' : ''}`} onClick={() => setSel(i)}>{m.m}' {m.glyph} {m.label}</button>)}
+    <div className="ti-wrap">
+      <h4 className="ti-h">{t('ti.title')}</h4>
+      <div className="ti-cols">
+      <div className="ti-list">
+        {mine.map((m, i) => <button key={i} className={`ti-pick ${i === sel ? 'on' : ''}`} onClick={() => setSel(i)}><b>{m.m}'</b> <span className="ti-glyph">{m.glyph}</span> {m.label}</button>)}
       </div>
-      <table className="grid">
+      <table className="grid ti-table">
         <thead><tr><th></th><th className="num">{t('ti.before', { m: mk.m })}</th><th className="num">{t('ti.after', { m: mk.m })}</th></tr></thead>
         <tbody>
           {row(t('ti.xgFor'), xg(side, false), xg(side, true))}
@@ -274,8 +284,9 @@ function TacticImpact({ rep, side }: { rep: MatchReport; side: 0 | 1 }) {
           {row(t('ti.goals'), goals(side, false) - goals(1 - side, false), goals(side, true) - goals(1 - side, true), 0)}
         </tbody>
       </table>
+      </div>
       <p className="muted" style={{ marginBottom: 0, fontSize: 12.5 }}>{t('ti.caveat')}</p>
-    </Panel>
+    </div>
   );
 }
 
