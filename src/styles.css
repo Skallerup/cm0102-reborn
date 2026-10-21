@@ -95,8 +95,10 @@ button:hover:not(:disabled) { background: var(--hover); border-color: rgba(148, 
 button:active:not(:disabled) { transform: translateY(1px); }
 button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent2); outline-offset: 2px; }
 button:disabled { opacity: 0.4; cursor: default; }
-button.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 82%, white), var(--accent)); color: var(--accent-ink); border-color: transparent; box-shadow: var(--glow); }
-button.primary:hover:not(:disabled) { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 65%, white), color-mix(in srgb, var(--accent) 90%, white)); }
+button.primary { background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 94%, white), var(--accent)); color: var(--accent-ink); border-color: transparent; box-shadow: var(--glow); }
+/* hover: en anelse mørkere – aldrig lysere, så hvid tekst på klubfarven altid kan læses */
+button.primary:hover:not(:disabled) { background: color-mix(in srgb, var(--accent) 86%, black); color: var(--accent-ink); }
+button.primary:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 60%, transparent); outline-offset: 2px; }
 button.danger { background: rgba(255, 93, 108, 0.14); border-color: rgba(255, 93, 108, 0.4); color: #ffb3ba; }
 button.danger:hover:not(:disabled) { background: rgba(255, 93, 108, 0.24); }
 button.small { padding: 4px 10px; font-size: 11.5px; }
@@ -1082,3 +1084,37 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .sidenav .nav-head:hover { opacity: 0.9; }
 .nav-chev { margin-left: auto; font-size: 10px; }
 .nav-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); }
+.sidenav .nav-head.here { opacity: 1; }
+.sidenav .nav-head.here span:first-child::before { content: '● '; }
+
+/* fyld boksene ud */
+.ti-group .seg { display: flex; width: 100%; }
+.ti-group .seg button { flex: 1; }
+.setpiece-row { display: grid !important; grid-template-columns: 110px 1fr; }
+.setpiece-row select { width: 100%; }
+.tac-players { table-layout: auto; }
+.tac-players th:first-child, .tac-players td:first-child { width: 52px; }
+.tac-players th:nth-child(2), .tac-players td:nth-child(2) { width: 90px; }
+.tac-players th:nth-child(4), .tac-players td:nth-child(4) { width: 120px; }
+.fc-sponsor { margin-top: 10px; display: grid; gap: 4px; font-size: 13px; }
+.fc-sp-head, .fc-sp-row { display: grid; grid-template-columns: minmax(0, 1.4fr) repeat(3, minmax(0, 1fr)); gap: 8px; align-items: baseline; }
+.fc-sp-head { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.fc-sp-head span:not(:first-child), .fc-sp-row b { text-align: right; font-variant-numeric: tabular-nums; }
+.fc-sp-row { padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.fc-sp-row em { display: block; font-style: normal; font-size: 11.5px; color: var(--muted); }
+.scout-who { white-space: nowrap; } .scout-who b, .scout-who span { display: block; } .scout-who span { font-size: 12px; }
+.scout-form { display: flex; flex-direction: column; gap: 6px; }
+.scout-form select, .scout-criteria select { padding-top: 5px; padding-bottom: 5px; }
+
+/* topbjælken: større logo og nøgletal */
+.topbar .club { font-size: 18px; font-weight: 900; letter-spacing: -0.02em; gap: 12px; }
+.topbar .club .crest { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.18)); }
+.top-stats { display: flex; gap: 18px; padding-left: 14px; border-left: 1px solid color-mix(in srgb, currentColor 15%, transparent); }
+.top-stat { display: inline-flex; flex-direction: column; line-height: 1.15; }
+.top-stat small { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.6; }
+.top-stat b { font-size: 14px; font-weight: 800; font-variant-numeric: tabular-nums; display: inline-flex; align-items: center; gap: 5px; }
+.top-stat b.neg { color: var(--bad); }
+.topbar .top-next { color: inherit; padding: 0 6px; }
+:root[data-club] .top-stat small { color: var(--top-muted); opacity: 1; }
+@media (max-width: 860px) { .topbar .club { font-size: 15px; } .topbar .club .crest { width: 26px !important; height: 26px !important; } }
+.fc-kv > :nth-child(even) { white-space: nowrap; text-align: right; }

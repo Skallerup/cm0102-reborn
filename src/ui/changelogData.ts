@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.2',
+    date: '2026-10-21',
+    title: { da: 'Flottere topbjælke, kompakte sider og læsbare knapper', en: 'Nicer top bar, compact pages and readable buttons' },
+    items: [
+      { da: 'Topbjælken har et større klublogo og viser saldo, transferbudget og næste kamp som nøgletal', en: 'The top bar has a bigger club crest and shows balance, transfer budget and the next match as key figures' },
+      { da: 'Menuen starter med kun Holdet foldet ud og husker derefter, hvad du folder ud og ind', en: 'The menu starts with only Team expanded and then remembers what you expand and collapse' },
+      { da: 'Knapper i klubfarver kan altid læses – også når musen holdes over dem', en: 'Buttons in club colours are always readable – also when hovered' },
+      { da: 'Holdinstruktioner, dødbolde, spillerlisten, sponsorprognosen og scoutingopgaverne fylder boksene bedre og er mere kompakte', en: 'Team instructions, set pieces, the player list, the sponsor forecast and scouting assignments fill their boxes better and are more compact' },
+      { da: 'Nye forsidebilleder med klublogoer og den nye menu', en: 'New front-page screenshots with club crests and the new menu' },
+    ],
+  },
+  {
     version: '0.8.1',
     date: '2026-10-21',
     title: { da: 'Kortere menu og engelsk som standard', en: 'Shorter menu and English by default' },

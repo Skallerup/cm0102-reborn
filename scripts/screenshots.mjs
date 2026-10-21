@@ -1,6 +1,6 @@
 // Laver screenshots til forsiden (public/landing/*.webp) fra en rigtig spilsession.
 // Kør: npm run dev (i en anden terminal) og derefter: node scripts/screenshots.mjs [url]
-// Klublogoer blokeres, så billederne ikke indeholder varemærker (spillet viser sine egne farvemærker).
+// Klublogoerne vises (og klubtemaet farves efter dem), som i spillet.
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -13,18 +13,23 @@ mkdirSync(tmp, { recursive: true });
 
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1.5 });
-await ctx.route(/cdn\.jsdelivr\.net\/gh\/luukhopman/, (r) => r.abort());
 const page = await ctx.newPage();
 const shots = [];
 const shot = async (name, opts = {}) => {
-  await page.waitForTimeout(350);
+  await page.waitForTimeout(900);
   const png = `${tmp}/${name}.png`;
   await page.screenshot({ path: png, ...opts });
   const webp = `${out}/${name}.webp`;
   execFileSync('cwebp', ['-quiet', '-q', '80', '-resize', opts.mobile ? '585' : '1600', '0', png, '-o', webp]);
   shots.push(webp);
 };
-const nav = (name) => page.locator('.sidenav').getByRole('button', { name: new RegExp(`^${name}`) }).click();
+// menupunkter i lukkede grupper: fold den rigtige gruppe ud først (som en manager ville gøre)
+const GROUP_OF = { Competitions: 'Matches', Fixtures: 'Matches', Transfers: 'Transfer market', Scouting: 'Transfer market', Club: 'Club', Board: 'Club', Finances: 'Club', Staff: 'Club', Rankings: 'Manager', Awards: 'Manager', History: 'Manager' };
+const nav = async (name) => {
+  const btn = page.locator('.sidenav').getByRole('button', { name: new RegExp(`^${name}`) });
+  if (!(await btn.count()) && GROUP_OF[name]) await page.locator('.sidenav .nav-head', { hasText: GROUP_OF[name] }).first().click();
+  await btn.first().click();
+};
 
 await page.goto(url);
   await page.locator('.lp-hero .lp-cta').click({ timeout: 5000 }).catch(() => {});

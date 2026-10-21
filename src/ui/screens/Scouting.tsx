@@ -8,7 +8,7 @@ import { scoutRecommendation, scoutStars } from '../../game/scouting';
 import { addDays, ageOn } from '../../game/dates';
 import type { Role, ScoutAssignment, Staff } from '../../game/types';
 import { ATTRS } from '../../game/attributes';
-import { Bar, ClubLink, Panel, PlayerLink, RecTag, Stars, posStr } from '../components';
+import { ClubLink, Panel, PlayerLink, RecTag, Stars, posStr } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
 
@@ -32,10 +32,10 @@ export function Scouting() {
       </div>
       <Panel title={t('scout.assignments')} className="flush">
         <table className="grid">
-          <thead><tr><th>{t('col.name')}</th><th>{t('staff.judgingAbility')}</th><th>{t('staff.judgingPotential')}</th><th>{t('scout.assignment')}</th></tr></thead>
+          <thead><tr><th>{t('col.name')}</th><th>{t('scout.assignment')}</th></tr></thead>
           <tbody>
             {scouts.map((s) => <ScoutRow key={s.id} s={s} nations={nations} />)}
-            {scouts.length === 0 && <tr><td colSpan={4} className="muted">{t('scout.none')}</td></tr>}
+            {scouts.length === 0 && <tr><td colSpan={2} className="muted">{t('scout.none')}</td></tr>}
           </tbody>
         </table>
       </Panel>
@@ -103,6 +103,7 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
   const [attr, setAttr] = useState(-1);
   const [attrMin, setAttrMin] = useState(15);
   const [maxValue, setMaxValue] = useState(0);
+  const [crit, setCrit] = useState(false);
   const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping') }));
   const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? natName(g.nations[x.target as number]?.name) : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${g.leagues[x.target as string]?.name ?? x.target}` : '';
   const send = () => {
@@ -117,9 +118,10 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
   const recall = () => act({ t: 'scout', staffId: s.id, assignment: null });
   return (
     <tr>
-      <td>{s.first} {s.last}</td>
-      <td><Bar value={s.attrs.judgingAbility} max={20} /> {s.attrs.judgingAbility}</td>
-      <td><Bar value={s.attrs.judgingPotential} max={20} /> {s.attrs.judgingPotential}</td>
+      <td className="scout-who">
+        <b>{s.first} {s.last}</b>
+        <span className="muted" title={`${t('staff.judgingAbility')} / ${t('staff.judgingPotential')}`}>{t('scout.short.ab')} {s.attrs.judgingAbility} · {t('scout.short.pot')} {s.attrs.judgingPotential}</span>
+      </td>
       <td>
         {a?.kind === 'player' ? (
           <div className="row">{t('scout.watching')} <PlayerLink p={g.players[a.target as number]} /> <button className="small" onClick={recall}>{t('scout.recall')}</button></div>
@@ -134,32 +136,36 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
             <span className="muted" style={{ fontSize: 12 }}>{t('scout.status', { since: a.since ? dateFmt(a.since) : '–', n: a.found?.length ?? 0, until: a.until ? t('scout.until', { date: dateFmt(a.until) }) : '' })}</span>
           </div>
         ) : (
-          <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
-            <span className="muted" style={{ width: '100%', fontSize: 12 }}>{t('scout.home')}</span>
-            <Select value={target} onChange={setTarget} width={240} options={[
-              ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${g.leagues[l].name}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
-              ...nations.map((n) => ({ value: `n:${n}`, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code, group: t('scout.nations') })),
-            ]} />
-            <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>
-              {[1, 3, 6, 0].map((m) => <option key={m} value={m}>{t(`scout.dur.${m}`)}</option>)}
-            </select>
-            <select value={focus} onChange={(e) => setFocus(e.target.value as 'any')} title={t('scout.focus')}>
-              {(['any', 'young', 'prime'] as const).map((f) => <option key={f} value={f}>{t(`scout.focus.${f}`)}</option>)}
-            </select>
-            <button className="small primary" onClick={send}>{t('scout.send')}</button>
-            <div className="row scout-criteria">
-              <span className="muted">{t('scout.criteria')}</span>
-              <select value={role} onChange={(e) => setRole(e.target.value as Role | '')}>
-                <option value="">{t('tr.anyPos')}</option>
-                {(['GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'] as Role[]).map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
+          <div className="scout-form">
+            <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
+              <span className="tag" title={t('scout.home')}>🏠</span>
+              <Select value={target} onChange={setTarget} width={200} options={[
+                ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${g.leagues[l].name}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
+                ...nations.map((n) => ({ value: `n:${n}`, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code, group: t('scout.nations') })),
+              ]} />
+              <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>
+                {[1, 3, 6, 0].map((m) => <option key={m} value={m}>{t(`scout.dur.${m}`)}</option>)}
               </select>
-              <Select value={attr} onChange={setAttr} width={170} options={[{ value: -1, label: t('tr.f.attr') }, ...attrOptions]} />
-              {attr >= 0 && <label className="row">≥ <input type="number" min={1} max={20} value={attrMin} onChange={(e) => setAttrMin(Math.max(1, Math.min(20, Number(e.target.value))))} style={{ width: 54 }} /></label>}
-              <select value={maxValue} onChange={(e) => setMaxValue(Number(e.target.value))}>
-                <option value={0}>{t('tr.anyValue')}</option>
-                {[500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
+              <select value={focus} onChange={(e) => setFocus(e.target.value as 'any')} title={t('scout.focus')}>
+                {(['any', 'young', 'prime'] as const).map((f) => <option key={f} value={f}>{t(`scout.focus.${f}`)}</option>)}
               </select>
+              {!crit && <button className="small" onClick={() => setCrit(true)}>+ {t('scout.criteriaBtn')}</button>}
+              <button className="small primary" onClick={send}>{t('scout.send')}</button>
             </div>
+            {crit && (
+              <div className="row scout-criteria">
+                <select value={role} onChange={(e) => setRole(e.target.value as Role | '')}>
+                  <option value="">{t('tr.anyPos')}</option>
+                  {(['GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'] as Role[]).map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
+                </select>
+                <Select value={attr} onChange={setAttr} width={160} options={[{ value: -1, label: t('tr.f.attr') }, ...attrOptions]} />
+                {attr >= 0 && <label className="row">≥ <input type="number" min={1} max={20} value={attrMin} onChange={(e) => setAttrMin(Math.max(1, Math.min(20, Number(e.target.value))))} style={{ width: 54 }} /></label>}
+                <select value={maxValue} onChange={(e) => setMaxValue(Number(e.target.value))}>
+                  <option value={0}>{t('tr.anyValue')}</option>
+                  {[500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
+                </select>
+              </div>
+            )}
           </div>
         )}
       </td>

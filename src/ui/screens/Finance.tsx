@@ -156,18 +156,14 @@ function SponsorPanel() {
           ))}
         </div>
       )}
-      <div className="table-wrap" style={{ marginTop: 10 }}>
-        <table className="grid">
-          <thead><tr><th>{t('fc.sponsorSeason')}</th>{[10, 15, 20].map((w) => <th key={w} className="num">{t('fc.wins', { n: w })}</th>)}</tr></thead>
-          <tbody>
-            {(current ? [current] : offers).map((o) => (
-              <tr key={o.kind}>
-                <td>{t(`sponsor.kind.${o.kind}`)}</td>
-                {[10, 15, 20].map((w) => { const v = sponsorSeasonValue(o, w); return <td key={w} className="num">{money(v.plain)}{o.trophyBonus ? <div className="muted" style={{ fontSize: 11.5 }}>{t('fc.withGoal', { fee: money(v.withGoal) })}</div> : null}</td>; })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="fc-sponsor">
+        <div className="fc-sp-head"><span>{t('fc.sponsorSeason')}</span>{[10, 15, 20].map((w) => <span key={w}>{t('fc.wins', { n: w })}</span>)}</div>
+        {(current ? [current] : offers).map((o) => (
+          <div key={o.kind} className="fc-sp-row">
+            <span>{t(`sponsor.kind.${o.kind}`)}{o.trophyBonus ? <em>{t('fc.goalBonus', { fee: money(o.trophyBonus) })}</em> : null}</span>
+            {[10, 15, 20].map((w) => <b key={w}>{money(sponsorSeasonValue(o, w).plain)}</b>)}
+          </div>
+        ))}
       </div>
       {c.merchBoost && c.merchBoost.until >= g.date && <div className="insight good" style={{ marginTop: 8 }}>{t('merch.boost', { pct: Math.round(c.merchBoost.factor * 100), date: dateFmt(c.merchBoost.until) })}</div>}
     </Panel>
@@ -181,7 +177,7 @@ function ForecastPanel() {
   const row = (k: string, v: number, sign = 1) => <><span>{t(k)}</span><span className={v === 0 ? 'muted' : sign > 0 ? 'good' : 'bad'}>{sign > 0 ? '+' : '−'}{money(Math.abs(v))}</span></>;
   return (
     <Panel title={t('fc.title', { date: `30/6 ${g.season + 1}` })}>
-      <div className="kv">
+      <div className="kv fc-kv">
         <span>{t('fc.now')}</span><span>{money(f.now)}</span>
         {row('fc.fixed', f.fixed, f.fixed >= 0 ? 1 : -1)}
         {row('fc.gate', f.gate)}

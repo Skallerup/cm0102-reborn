@@ -302,7 +302,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
         <Panel title={t('tac.setPieces')}>
           <div className="col">
             {(['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => (
-              <label key={k} className="row"><span style={{ width: 110 }}>{t(`tac.${k}`)}</span>
+              <label key={k} className="row setpiece-row"><span>{t(`tac.${k}`)}</span>
                 <select value={tactic[k]} onChange={(e) => change({ ...tactic, [k]: Number(e.target.value) })}>
                   <option value={0}>—</option>
                   {tactic.lineup.map((id) => byId.get(id)).filter(Boolean).map((p) => <option key={p!.id} value={p!.id}>{p!.last}</option>)}
@@ -354,7 +354,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
         )}
         <Panel title={selSlot ? t('tac.bestFor', { slot: `${selSlot.pos}${selSlot.side !== 'C' ? ' ' + selSlot.side : ''}` }) : t('tac.players')} className="flush">
           <div className="table-wrap" style={{ maxHeight: 420, overflowY: 'auto' }}>
-            <table className="grid">
+            <table className="grid tac-players">
               <thead><tr><th></th><th>{t('col.pos')}</th><th>{t('col.name')}</th><th>{t('col.cond')}</th>{selSlot && <th>{t('tac.suit')}</th>}<th></th></tr></thead>
               <tbody>
                 {listed.map((p) => {

@@ -237,7 +237,7 @@ export function Shell() {
     return r;
   };
 
-  const [closed, setClosed] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) ?? '["manager","community"]'); } catch { return ['manager', 'community']; } });
+  const [closed, setClosed] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) ?? '["matches","market","club","manager","community"]'); } catch { return ['matches', 'market', 'club', 'manager', 'community']; } });
   const toggleGroup = (k: string) => { const n = closed.includes(k) ? closed.filter((x) => x !== k) : [...closed, k]; setClosed(n); try { localStorage.setItem(GROUP_KEY, JSON.stringify(n)); } catch { /* ignorer */ } };
   const nextMatch = club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
 
@@ -246,14 +246,24 @@ export function Shell() {
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
-          {club ? <><Crest id={club.id} size={22} />{club.name}</> : <span className="muted">{online && !online.inGame ? t('mp.lobby') : t('top.unemployed')}</span>}
+          {club ? <><Crest id={club.id} size={34} /><span className="club-name">{club.name}</span></> : <span className="muted">{online && !online.inGame ? t('mp.lobby') : t('top.unemployed')}</span>}
         </div>
         <div className="date"><span className="date-long">{dateFmt(g.date, true)}</span><span className="date-short">{dateFmt(g.date)}</span></div>
-        {club && <div className="money">{t('top.balance')}: {money(club.balance)} · {t('top.budget')}: {money(club.transferBudget)}</div>}
+        {club && (
+          <div className="money top-stats">
+            <span className="top-stat"><small>{t('top.balance')}</small><b className={club.balance < 0 ? 'neg' : ''}>{money(club.balance)}</b></span>
+            <span className="top-stat"><small>{t('top.budget')}</small><b>{money(club.transferBudget)}</b></span>
+          </div>
+        )}
         <div className="spacer" />
         <AppButtons onMsg={setToast} />
         <FullscreenButton />
-        {nextMatch && !inMatch && <span className="muted nowrap top-next">{t('top.next')}: {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short} ({dateFmt(nextMatch.date)})</span>}
+        {nextMatch && !inMatch && (
+          <span className="nowrap top-next top-stat">
+            <small>{t('top.next')} · {dateFmt(nextMatch.date)}</small>
+            <b><Crest id={nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home} size={16} /> {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short}{nextMatch.home === g.userClub ? '' : ` (${t('week.away')})`}</b>
+          </span>
+        )}
         {online ? <OnlineControls /> : inMatch ? null : (
           <>
             <button onClick={() => run({ untilMatch: true })} title={t('top.toMatchHint')}>{t('top.toMatch')}</button>
@@ -284,12 +294,13 @@ export function Shell() {
               {GROUPS.map((gr) => {
                 const ks = gr.items.filter(allowed);
                 if (!ks.length) return null;
+                // menuen viser præcis det, manageren har foldet ud (huskes) – står man på en side i en lukket gruppe, fremhæves overskriften
                 const active = ks.includes(route.name);
-                const open = active || !closed.includes(gr.key);
+                const open = !closed.includes(gr.key);
                 const hasBadge = !open && ks.some((k) => badge(k));
                 return (
                   <div key={gr.key} className="nav-group">
-                    <button className="nav-head" onClick={(e) => { e.stopPropagation(); toggleGroup(gr.key); }} aria-expanded={open}>
+                    <button className={`nav-head ${active && !open ? 'here' : ''}`} onClick={(e) => { e.stopPropagation(); toggleGroup(gr.key); }} aria-expanded={open}>
                       <span>{t(`navg.${gr.key}`)}</span>{hasBadge && <i className="nav-dot" />}<span className="nav-chev">{open ? '▾' : '▸'}</span>
                     </button>
                     {open && ks.map(item)}
