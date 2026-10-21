@@ -30,13 +30,13 @@ export function Crest({ id, size = 14 }: { id: number; size?: number }) {
   return <i className="kit" style={{ background: c.colors[0], borderColor: c.colors[1], width: size * 0.8, height: size * 0.8 }} />;
 }
 
-export function ClubLink({ id, long }: { id: number; long?: boolean }) {
+export function ClubLink({ id, long, noCrest }: { id: number; long?: boolean; noCrest?: boolean }) {
   const { nav } = useNav();
   const c = gs().clubs[id];
   if (!c) return <span className="muted">{t('common.free')}</span>;
   return (
     <a className="link club-link" onClick={(e) => { e.stopPropagation(); nav({ name: 'club', id }); }}>
-      <Crest id={id} />
+      {!noCrest && <Crest id={id} />}
       {long ? c.name : c.short}
       {c.manager === -1 && id !== gs().userClub && <MgrChip clubId={id} />}
     </a>

@@ -28,12 +28,12 @@ export function ReportScreen({ id }: { id: number }) {
     <div>
       <Head title={t('report.title')} />
       <div className="scoreboard">
-        <div className="team"><Crest id={rep.home} size={34} /><ClubLink id={rep.home} /></div>
+        <div className="team"><Crest id={rep.home} size={34} /><ClubLink id={rep.home} noCrest /></div>
         <div>
           <div className="score">{rep.stats[0].goals} - {rep.stats[1].goals}</div>
           <div className="minute">{rep.pens ? `${t('fix.pens')} ${rep.pens[0]}-${rep.pens[1]}` : rep.et ? t('fix.aet') : t('match.ft')} · xG {rep.stats[0].xg.toFixed(2)} - {rep.stats[1].xg.toFixed(2)}</div>
         </div>
-        <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} /></div>
+        <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} noCrest /></div>
       </div>
       <Goals rep={rep} />
       {rep.shootout && (

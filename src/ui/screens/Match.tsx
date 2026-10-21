@@ -195,12 +195,12 @@ function RatingsBoard({ sim, colors }: { sim: MatchSim; colors: [string, string,
 function Scoreboard({ home, away, hg, ag, minute }: { home: number; away: number; hg: number | null; ag: number | null; minute: string }) {
   return (
     <div className="scoreboard">
-      <div className="team"><Crest id={home} size={34} /><ClubLink id={home} /></div>
+      <div className="team"><Crest id={home} size={34} /><ClubLink id={home} noCrest /></div>
       <div>
         <div className="score">{hg === null ? 'v' : `${hg} - ${ag}`}</div>
         <div className="minute">{minute}</div>
       </div>
-      <div className="team away"><Crest id={away} size={34} /><ClubLink id={away} /></div>
+      <div className="team away"><Crest id={away} size={34} /><ClubLink id={away} noCrest /></div>
     </div>
   );
 }
