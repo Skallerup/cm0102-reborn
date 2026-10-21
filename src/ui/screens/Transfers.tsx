@@ -11,7 +11,7 @@ import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { session } from '../../online/client';
 import { AcceptCounterButton } from '../counterAccept';
-import type { Player, Role, TransferOffer } from '../../game/types';
+import type { Player, PlayerMove, Role, TransferOffer } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
@@ -28,12 +28,12 @@ export function Transfers({ tab: initial }: { tab?: string }) {
   return (
     <div>
       <Head title={<>{t('nav.transfers')}<Info topic="transfers" /></>}>
-        <Tabs tabs={[['search', t('tr.search')], ['shortlist', `${t('tr.shortlist')} (${g.shortlist.length})`], ['offers', `${t('tr.offers')}${pending ? ` (${pending})` : ''}`], ['listed', t('tr.listed')]]} value={tab} onChange={setTab} />
+        <Tabs tabs={[['search', t('tr.search')], ['shortlist', `${t('tr.shortlist')} (${g.shortlist.length})`], ['offers', `${t('tr.offers')}${pending ? ` (${pending})` : ''}`], ['deals', t('tr.deals')]]} value={tab} onChange={setTab} />
       </Head>
       {tab === 'search' && <Search />}
       {tab === 'shortlist' && <PlayerList players={g.shortlist.map((id) => g.players[id]).filter(Boolean)} />}
       {tab === 'offers' && <Offers />}
-      {tab === 'listed' && <PlayerList players={Object.values(g.players).filter((p) => p.listed && p.club !== g.userClub).slice(0, 400)} />}
+      {(tab === 'deals' || tab === 'listed') && <Deals />}
     </div>
   );
 }
@@ -248,7 +248,15 @@ function Search() {
           </div>
         )}
       </Panel>
+      {results.length === 0 && f.realism > 0 ? (
+        <div className="insight warn row" style={{ flexWrap: 'wrap' }}>
+          <span className="grow">{t(f.realism === 1 ? 'tr.noRealistic' : 'tr.noRealisticMaybe', { fee: money(me?.transferBudget ?? 0) })}</span>
+          {f.realism === 1 && <button className="small" onClick={() => set('realism', 2)}>{t('tr.showMaybe')}</button>}
+          <button className="small" onClick={() => set('realism', 0)}>{t('tr.showAll')}</button>
+        </div>
+      ) : (
       <PlayerList players={results} initialSort={f.realism ? 'real' : 'val'} />
+      )}
     </div>
   );
 }
@@ -433,5 +441,56 @@ function CounterModal({ offer, onClose }: { offer: TransferOffer; onClose: () =>
         </div>
       </div>
     </Modal>
+  );
+}
+
+/** Alle gennemførte handler: hvem skiftede hvorhen og for hvor meget (nyeste først) */
+function Deals() {
+  const g = useGame()!;
+  const me = g.clubs[g.userClub];
+  const [scope, setScope] = useRouteState<'league' | 'nation' | 'world' | 'mine'>('dealScope', 'league');
+  const [kind, setKind] = useRouteState<'all' | 'buy' | 'loan' | 'free'>('dealKind', 'all');
+  const [season, setSeason] = useRouteState<number>('dealSeason', g.season);
+  const rows = useMemo(() => {
+    const out: { p: Player; m: PlayerMove }[] = [];
+    for (const p of Object.values(g.players)) {
+      for (const m of p.moves ?? []) {
+        if (m.season !== season) continue;
+        const from = g.clubs[m.from], to = g.clubs[m.to];
+        if (scope === 'mine' && m.from !== g.userClub && m.to !== g.userClub) continue;
+        if (scope === 'league' && me && from?.league !== me.league && to?.league !== me.league) continue;
+        if (scope === 'nation' && me && from?.nation !== me.nation && to?.nation !== me.nation) continue;
+        if (kind === 'loan' && !m.loan) continue;
+        if (kind === 'buy' && (m.loan || !m.fee)) continue;
+        if (kind === 'free' && (m.loan || m.fee)) continue;
+        out.push({ p, m });
+      }
+    }
+    return out.sort((a, b) => b.m.date.localeCompare(a.m.date) || b.m.fee - a.m.fee);
+  }, [g, scope, kind, season]);
+  const total = rows.filter((r) => !r.m.loan).reduce((s, r) => s + r.m.fee, 0);
+  const cols: Col<{ p: Player; m: PlayerMove }>[] = [
+    { key: 'date', label: t('deal.date'), render: (r) => dateFmt(r.m.date), sort: (r) => r.m.date },
+    { key: 'name', label: t('col.name'), render: (r) => <PlayerLink p={r.p} />, sort: (r) => r.p.last },
+    { key: 'pos', label: t('col.pos'), render: (r) => posStr(r.p) },
+    { key: 'nat', label: t('col.nat'), render: (r) => <Nat n={r.p.nation} /> },
+    { key: 'from', label: t('deal.from'), render: (r) => (r.m.from ? <ClubLink id={r.m.from} /> : <span className="muted">{t('common.free')}</span>) },
+    { key: 'to', label: t('deal.to'), render: (r) => <ClubLink id={r.m.to} /> },
+    { key: 'fee', label: t('deal.fee'), className: 'num', render: (r) => (r.m.loan ? <span className="tag">{t('tr.loan')}</span> : r.m.fee ? <b>{money(r.m.fee)}</b> : <span className="muted">{t('transfer.digestFree')}</span>), sort: (r) => (r.m.loan ? -1 : r.m.fee) },
+  ];
+  return (
+    <div>
+      <div className="row" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
+        <div className="seg">{(['mine', 'league', 'nation', 'world'] as const).map((k) => <button key={k} className={scope === k ? 'on' : ''} onClick={() => setScope(k)}>{t(`deal.scope.${k}`)}</button>)}</div>
+        <div className="seg">{(['all', 'buy', 'free', 'loan'] as const).map((k) => <button key={k} className={kind === k ? 'on' : ''} onClick={() => setKind(k)}>{t(`deal.kind.${k}`)}</button>)}</div>
+        <select value={season} onChange={(e) => setSeason(Number(e.target.value))}>
+          {[g.season, g.season - 1, g.season - 2].map((y) => <option key={y} value={y}>{y}/{String(y + 1).slice(2)}</option>)}
+        </select>
+        <span className="muted">{t('deal.count', { n: rows.length, fee: money(total) })}</span>
+      </div>
+      <Panel className="flush">
+        <Table rows={rows} cols={cols} rowKey={(r) => `${r.p.id}-${r.m.date}-${r.m.to}`} initialSort="date" limit={400} />
+      </Panel>
+    </div>
   );
 }

@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.82',
+    date: '2026-10-21',
+    title: { da: 'Alle handler samlet og en forklaring, når søgningen er tom', en: 'All deals in one place and an explanation when the search is empty' },
+    items: [
+      { da: 'Transfers → Handler viser alle gennemførte handler: dato, spiller, fra, til og sum – for din klub, din liga, dit land eller hele verden, og kun køb, frie skifter eller lejeaftaler', en: 'Transfers → Deals shows every completed deal: date, player, from, to and fee – for your club, league, country or the whole world, and only purchases, free transfers or loans' },
+      { da: 'Er der ingen realistiske mål med dit transferbudget, forklarer søgningen hvorfor, og du kan vise "måske"-mål eller alle spillere med ét klik', en: 'If there are no realistic targets with your transfer budget, the search explains why, and you can show "maybe" targets or all players with one click' },
+    ],
+  },
+  {
     version: '0.7.81',
     date: '2026-10-21',
     title: { da: 'Forhandl om bud direkte i vinduet', en: 'Negotiate bids right in the window' },
