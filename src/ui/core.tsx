@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { getVersion, gs, hasGame, subscribe } from '../game/state';
 import type { GameState } from '../game/types';
 
@@ -36,8 +36,32 @@ interface NavCtx {
 
 const Ctx = createContext<NavCtx>({ route: { name: 'inbox' }, nav: () => {}, back: () => {}, canBack: false });
 
-export function NavProvider({ children, initial }: { children: ReactNode; initial?: Route }) {
-  const [stack, setStack] = useState<Route[]>([initial ?? { name: 'inbox' }]);
+/** Navigationshistorikken gemmes i sessionStorage, så en genindlæsning af browseren bliver på samme side */
+function loadStack(key: string | undefined): Route[] | null {
+  if (!key) return null;
+  try {
+    const v = JSON.parse(sessionStorage.getItem(key) ?? 'null') as Route[] | null;
+    return Array.isArray(v) && v.length && v.every((r) => typeof r?.name === 'string') ? v : null;
+  } catch { return null; }
+}
+
+export function NavProvider({ children, initial, storageKey, valid }: { children: ReactNode; initial?: Route; storageKey?: string; valid?: (r: Route) => boolean }) {
+  const [stack, setStack] = useState<Route[]>(() => {
+    const saved = loadStack(storageKey)?.filter((r) => !valid || valid(r));
+    return saved?.length ? saved : [initial ?? { name: 'inbox' }];
+  });
+  useEffect(() => {
+    if (!storageKey) return;
+    const save = () => {
+      const top = stack[stack.length - 1];
+      top.scroll = scrollEl?.scrollTop ?? top.scroll;
+      try { sessionStorage.setItem(storageKey, JSON.stringify(stack.slice(-30))); } catch { /* fuld eller blokeret */ }
+    };
+    save();
+    // skærmenes egen tilstand (faner, filtre) og scroll ændres uden ny rute – gem også lige før siden lukkes
+    window.addEventListener('pagehide', save);
+    return () => window.removeEventListener('pagehide', save);
+  }, [stack, storageKey]);
   const value = useMemo<NavCtx>(() => ({
     route: stack[stack.length - 1],
     nav: (r) => setStack((s) => {

@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.76',
+    date: '2026-10-21',
+    title: { da: 'Bliv på siden, når du genindlæser', en: 'Stay on the page when you reload' },
+    items: [
+      { da: 'Genindlæser du browseren, kommer du tilbage til den side, du var på – med faner, filtre, scroll og Tilbage-historikken', en: 'If you reload the browser, you return to the page you were on – with tabs, filters, scroll and the Back history' },
+      { da: 'Optakten og kamprapporten viser ikke længere klublogoet to gange', en: 'The preview and match report no longer show the club crest twice' },
+    ],
+  },
+  {
     version: '0.7.75',
     date: '2026-10-21',
     title: { da: 'Problembørn kan rehabiliteres, holdkemi forklaret og ny startmenu', en: 'Troublemakers can be rehabilitated, chemistry explained and a new start menu' },

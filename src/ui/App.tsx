@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { Lang } from '../game/types';
+import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
-import { NavProvider, useGame } from './core';
+import { NavProvider, useGame, type Route } from './core';
 import { applyTheme } from './theme';
 import { notify } from '../game/state';
 import { getLast, forgetLast, loadGame } from '../game/save';
@@ -63,8 +63,19 @@ export default function App() {
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
   return (
-    <NavProvider key={`${g.id}-${g.lang}`} initial={{ name: g.pendingFixture ? 'match' : 'inbox', id: g.pendingFixture ?? undefined }}>
+    <NavProvider key={`${g.id}-${g.lang}`} initial={{ name: g.pendingFixture ? 'match' : 'inbox', id: g.pendingFixture ?? undefined }}
+      storageKey={`cm-nav:${g.id}`} valid={(r) => validRoute(g, r)}>
       <Shell />
     </NavProvider>
   );
+}
+
+/** Findes det, en gemt side peger på, stadig (fx efter at have indlæst et ældre gemt spil)? */
+function validRoute(g: GameState, r: Route): boolean {
+  const id = Number(r.id);
+  if (r.name === 'player') return !!g.players[id];
+  if (r.name === 'club') return !!g.clubs[id];
+  if (r.name === 'report') return !!g.reports[id];
+  if (r.name === 'match') return !!g.fixtures[id];
+  return true;
 }
