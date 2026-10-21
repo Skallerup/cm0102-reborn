@@ -7,7 +7,7 @@ import { recentFanEvents } from '../../game/fans';
 import { gs, squad } from '../../game/state';
 import { clubStrategy } from '../../game/strategy';
 import type { Club, Staff } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { dateFmt, money, t, natName } from '../../i18n';
 import { aiCall, aiText, ensureAiText } from '../../ai/client';
 import { useAiAvailable } from '../ai';
 import { Bar, ClubLink, Crest, MgrChip, Panel } from '../components';
@@ -32,7 +32,7 @@ export function ClubScreen({ id }: { id?: number }) {
         <Panel title={t('club.info')}>
           <div className="kv">
             <span>{t('col.comp')}</span><span>{g.leagues[c.league]?.name ?? c.league}</span>
-            <span>{t('col.nat')}</span><span>{g.nations[c.nation]?.name}</span>
+            <span>{t('col.nat')}</span><span>{natName(g.nations[c.nation]?.name)}</span>
             <span>{t('club.manager')}</span><span>{c.manager === -1 ? <>{humanManager(c.id)?.name ?? '?'}<MgrChip clubId={c.id} /></> : manager ? `${manager.first} ${manager.last}` : t('club.vacant')}</span>
             <span>{t('club.stadium')}</span><span>{c.stadium} ({c.seats.toLocaleString()})</span>
             <span>{t('club.rep')}<Info topic="rep" /></span><span><Bar value={c.rep} /> {c.rep}{repTrend(c.id) !== 0 && <span className={repTrend(c.id) > 0 ? 'good' : 'bad'} title={t(repTrend(c.id) > 0 ? 'club.repUp' : 'club.repDown')}> {repTrend(c.id) > 0 ? '▲' : '▼'}</span>}</span>

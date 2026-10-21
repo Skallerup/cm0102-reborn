@@ -378,6 +378,9 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
   );
 }
 
+/** Kemiens faktorer (se chemistry() i personality.ts) */
+const CHEM_ROWS = ['chem.nation', 'chem.tenure', 'chem.newcomers', 'chem.leaders', 'chem.captain', 'chem.pros', 'chem.trouble', 'chem.wantsAway'];
+
 function ChemistryPanel() {
   const g = useGame()!;
   const tac = g.tactic!;
@@ -392,6 +395,19 @@ function ChemistryPanel() {
       <div className="row" style={{ marginTop: 6 }}>
         {ch.parts.filter((p) => p.value !== 0).map((p) => <span key={p.key} className={`tag ${p.value > 0 ? 'good' : 'bad'}`}>{t(p.key, p.params)} {p.value > 0 ? '+' : ''}{p.value}</span>)}
       </div>
+      <details className="chem-how">
+        <summary>{t('chem.how')}</summary>
+        <p>{t('chem.howEffect', { score: ch.score, pct: ((ch.score - 50) * 0.06).toFixed(1) })}</p>
+        <table className="grid">
+          <thead><tr><th>{t('chem.howFactor')}</th><th className="num">{t('chem.howNow')}</th><th className="num">{t('chem.howRange')}</th><th>{t('chem.howImprove')}</th></tr></thead>
+          <tbody>
+            {CHEM_ROWS.map((key) => {
+              const v = ch.parts.find((x) => x.key === key)?.value ?? 0;
+              return <tr key={key}><td>{t(`${key}.name`)}</td><td className={`num ${v > 0 ? 'good' : v < 0 ? 'bad' : 'muted'}`}>{v > 0 ? '+' : ''}{v}</td><td className="num muted">{t(`${key}.range`)}</td><td className="muted">{t(`${key}.how`)}</td></tr>;
+            })}
+          </tbody>
+        </table>
+      </details>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { transferRealism } from '../../game/transfers';
 import { Info } from '../help';
 import { Select } from '../select';
 import { act } from '../../game/actions';
-import { dateFmt, money, t } from '../../i18n';
+import { dateFmt, money, t, natName } from '../../i18n';
 import { scoutRecommendation, scoutStars } from '../../game/scouting';
 import { addDays, ageOn } from '../../game/dates';
 import type { Role, ScoutAssignment, Staff } from '../../game/types';
@@ -15,7 +15,7 @@ import { Head } from './common';
 export function Scouting() {
   const g = useGame()!;
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
-  const nations = useMemo(() => [...new Set(Object.values(g.clubs).map((c) => c.nation))].sort((a, b) => g.nations[a].name.localeCompare(g.nations[b].name)), [g]);
+  const nations = useMemo(() => [...new Set(Object.values(g.clubs).map((c) => c.nation))].sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name))), [g]);
   const known = Object.values(g.knowledge).filter((k) => k >= 80).length;
   return (
     <div>
@@ -104,7 +104,7 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
   const [attrMin, setAttrMin] = useState(15);
   const [maxValue, setMaxValue] = useState(0);
   const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping') }));
-  const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? g.nations[x.target as number]?.name : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${g.leagues[x.target as string]?.name ?? x.target}` : '';
+  const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? natName(g.nations[x.target as number]?.name) : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${g.leagues[x.target as string]?.name ?? x.target}` : '';
   const send = () => {
     const kind = target.startsWith('n:') ? 'nation' : 'league';
     const tgt = kind === 'nation' ? Number(target.slice(2)) : target.slice(2);
@@ -138,7 +138,7 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
             <span className="muted" style={{ width: '100%', fontSize: 12 }}>{t('scout.home')}</span>
             <Select value={target} onChange={setTarget} width={240} options={[
               ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${g.leagues[l].name}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
-              ...nations.map((n) => ({ value: `n:${n}`, label: g.nations[n].name, hint: g.nations[n].code, group: t('scout.nations') })),
+              ...nations.map((n) => ({ value: `n:${n}`, label: natName(g.nations[n].name), hint: g.nations[n].code, group: t('scout.nations') })),
             ]} />
             <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>
               {[1, 3, 6, 0].map((m) => <option key={m} value={m}>{t(`scout.dur.${m}`)}</option>)}

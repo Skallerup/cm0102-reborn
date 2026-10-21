@@ -7,7 +7,7 @@ import { ClubLink, Crest, Panel, PlayerLink, Rating, Tabs } from '../components'
 import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
-import { StatsPanel } from './Match';
+import { StatsPanel, statColors } from './Match';
 import { TeamTalk } from '../teamtalk';
 
 export function ReportScreen({ id }: { id: number }) {
@@ -58,7 +58,7 @@ export function ReportScreen({ id }: { id: number }) {
             {verdict.map((v, i) => <div key={i} className={`insight ${v.tone}`}>{t(v.key, { ...v.params, lane: v.params?.lane ? t(`lane.${v.params.lane}`) : undefined })}</div>)}
             {mom && <div className="insight good">{t('report.mom')}: <PlayerLink p={mom} /> (<Rating r={rep.players.find((p) => p.id === mom.id)?.rating ?? 0} />)</div>}
           </Panel>
-          <Panel title={t('report.momentum')}><Momentum rep={rep} home={home} away={away} /></Panel>
+          <Panel title={t('report.momentum')}><Momentum rep={rep} home={home} away={away} colors={mine ? statColors(rep.home, rep.away, side) : ['var(--accent)', 'var(--accent2)']} /></Panel>
           <Panel title={t('report.heatmap')}>
             <div className="row" style={{ alignItems: 'flex-start' }}>
               <Heat rep={rep} team={0} label={home} />
@@ -69,7 +69,7 @@ export function ReportScreen({ id }: { id: number }) {
           <Panel title={t('report.shotmap')}><ShotMap rep={rep} home={home} away={away} /></Panel>
         </div>
       )}
-      {tab === 'stats' && <StatsPanel stats={rep.stats} home={home} away={away} />}
+      {tab === 'stats' && <StatsPanel stats={rep.stats} home={home} away={away} colors={mine ? statColors(rep.home, rep.away, side) : undefined} />}
       {tab === 'players' && (
         <div className="cols2">
           {[0, 1].map((tm) => (
@@ -131,25 +131,28 @@ function Goals({ rep }: { rep: MatchReport }) {
   );
 }
 
-function Momentum({ rep, home, away }: { rep: MatchReport; home: string; away: string }) {
+function Momentum({ rep, home, away, colors }: { rep: MatchReport; home: string; away: string; colors: [string, string] }) {
   const vals = rep.momentum;
   const W = 300, H = 120, mid = H / 2;
   const max = Math.max(1, ...vals.map((v) => Math.abs(v)));
   const bw = W / Math.max(18, vals.length);
+  // målene står over/under grafen; holdnavnene i en forklaring nederst, så intet overlapper
   return (
-    <svg viewBox={`0 0 ${W} ${H + 14}`} className="chart" role="img" aria-label="momentum">
+    <svg viewBox={`0 -12 ${W} ${H + 44}`} className="chart" role="img" aria-label="momentum">
       <line x1={0} x2={W} y1={mid} y2={mid} stroke="#ffffff33" />
       <line x1={W * 0.5} x2={W * 0.5} y1={0} y2={H} stroke="#ffffff22" strokeDasharray="2 2" />
       {vals.map((v, i) => {
         const h = (Math.abs(v) / max) * (mid - 4);
-        return <rect key={i} x={i * bw + 1} width={bw - 2} y={v >= 0 ? mid - h : mid} height={h} rx={1} fill={v >= 0 ? 'var(--accent)' : 'var(--accent2)'} />;
+        return <rect key={i} x={i * bw + 1} width={bw - 2} y={v >= 0 ? mid - h : mid} height={h} rx={1} fill={v >= 0 ? colors[0] : colors[1]} />;
       })}
       {rep.events.filter((e) => e.k === 'goal').map((e, i) => (
-        <text key={i} x={((e.m - 1) / 5) * bw + bw / 2} y={e.t === 0 ? 9 : H - 2} textAnchor="middle">⚽</text>
+        <text key={i} x={Math.min(W - 6, ((e.m - 1) / 5) * bw + bw / 2)} y={e.t === 0 ? -2 : H + 8} textAnchor="middle" fontSize="9">⚽</text>
       ))}
-      <text x={2} y={H + 12}>0'</text><text x={W / 2} y={H + 12} textAnchor="middle">45'</text><text x={W - 2} y={H + 12} textAnchor="end">90'</text>
-      <text x={W - 2} y={10} textAnchor="end" style={{ fill: 'var(--accent)' }}>{home}</text>
-      <text x={W - 2} y={H - 4} textAnchor="end" style={{ fill: 'var(--accent2)' }}>{away}</text>
+      <text x={2} y={H + 20}>0'</text><text x={W / 2} y={H + 20} textAnchor="middle">45'</text><text x={W - 2} y={H + 20} textAnchor="end">90'</text>
+      <rect x={0} y={H + 26} width={8} height={8} rx={2} fill={colors[0]} />
+      <text x={12} y={H + 33.5}>{home} ↑</text>
+      <rect x={W / 2 + 4} y={H + 26} width={8} height={8} rx={2} fill={colors[1]} />
+      <text x={W / 2 + 16} y={H + 33.5}>{away} ↓</text>
     </svg>
   );
 }

@@ -45,16 +45,7 @@ export function Options() {
             {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
             {notifySupported() && <label className="row"><input type="checkbox" checked={notif} onChange={async (e) => setNotif(await setNotify(e.target.checked))} />{t('opt.notify')}</label>}
             {notifySupported() && <div className="muted">{t('opt.notify.hint')}</div>}
-            <label className="row">{t('opt.news')}
-              <select value={g.options.newsScope ?? 'league'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
-                {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}
-              </select>
-            </label>
-            <label className="row">{t('opt.transferNews')}
-              <select value={g.options.transferNews ?? 'big'} onChange={(e) => { g.options.transferNews = e.target.value as 'big'; notify(); }}>
-                {(['own', 'big', 'all'] as const).map((m) => <option key={m} value={m}>{t(`opt.transferNews.${m}`)}</option>)}
-              </select>
-            </label>
+            <div className="muted">{t('opt.newsMoved')}</div>
             {g.humans && (
               <label className="row">{t('opt.h2hTime')}
                 <select value={g.options.h2hHalfMinutes ?? 3} disabled={!session()?.isHost} title={!session()?.isHost ? t('opt.hostOnly') : undefined}

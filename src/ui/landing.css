@@ -28,20 +28,21 @@
 .lp-nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .lp-lang { display: flex; background: rgba(148, 170, 255, 0.08); border-radius: 999px; padding: 3px; }
 .lp-lang button { background: none; border: 0; color: var(--muted); padding: 4px 10px; font-size: 12px; font-weight: 700; border-radius: 999px; box-shadow: none; }
-.lp-lang button.on { background: rgba(255, 255, 255, 0.1); color: var(--text); }
+.lp-lang button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.06); color: var(--text); }
+.lp-lang button.on, .lp-lang button.on:hover:not(:disabled) { background: rgba(255, 255, 255, 0.1); color: var(--text); }
 
 /* knapper */
 .lp-cta { display: inline-flex; align-items: center; gap: 10px; border: 0; cursor: pointer; font-weight: 800; font-size: 15px; color: #1b1400;
   background: linear-gradient(180deg, #ffe07a, #ffc21a); padding: 12px 22px; border-radius: 999px;
   box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.5), 0 12px 34px -10px rgba(255, 196, 30, 0.75); transition: transform 0.15s, box-shadow 0.2s; }
-.lp-cta:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.7), 0 18px 44px -12px rgba(255, 196, 30, 0.95); }
+.lp-cta:hover, .lp-cta:hover:not(:disabled) { background: linear-gradient(180deg, #ffe78f, #ffc72e); border: 0; color: #1b1400; transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.7), 0 18px 44px -12px rgba(255, 196, 30, 0.95); }
 .lp-cta span { transition: transform 0.2s; }
 .lp-cta:hover span { transform: translateX(4px); }
 .lp-cta.small { padding: 8px 16px; font-size: 13px; }
 .lp-cta.big { padding: 16px 30px; font-size: 17px; animation: lp-pulse 2.8s ease-in-out infinite; }
 @keyframes lp-pulse { 0%, 100% { box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.5), 0 12px 34px -10px rgba(255, 196, 30, 0.75), 0 0 0 0 rgba(255, 207, 63, 0.35); } 50% { box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.6), 0 14px 40px -10px rgba(255, 196, 30, 0.85), 0 0 0 12px rgba(255, 207, 63, 0); } }
 .lp-ghost { background: rgba(148, 170, 255, 0.08); border: 1px solid var(--line2); color: var(--text); font-weight: 700; font-size: 15px; padding: 15px 24px; border-radius: 999px; cursor: pointer; transition: background 0.15s; }
-.lp-ghost:hover { background: rgba(148, 170, 255, 0.15); }
+.lp-ghost:hover, .lp-ghost:hover:not(:disabled) { background: rgba(148, 170, 255, 0.15); border-color: var(--line2); color: var(--text); }
 
 /* hero */
 .lp-hero { padding: 56px 0 40px; }

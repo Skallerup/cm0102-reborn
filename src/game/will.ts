@@ -1,5 +1,6 @@
 // Spillernes egen vilje: kontraktkrav efter gode perioder, utilfredshed der lækkes til pressen,
 // og grupperinger i omklædningsrummet med deres egne ledere.
+import { natName } from '../i18n';
 import { A } from './attributes';
 import { ageOn, daysBetween } from './dates';
 import { wageFor } from './data/generate';
@@ -89,7 +90,7 @@ export function monthlyWill() {
       }
       if (unhappy && (!leader.cliqueAlert || daysBetween(leader.cliqueAlert, g.date) > 60)) {
         leader.cliqueAlert = g.date;
-        asOwner(c.id, () => addNews({ cat: 'general', key: `will.cliqueUnrest.${cl.key}`, params: { player: pname(leader), n: cl.members.length - 1, nation: cl.nation !== undefined ? g.nations[cl.nation]?.name ?? '' : '' }, link: { kind: 'player', id: leader.id } }));
+        asOwner(c.id, () => addNews({ cat: 'general', key: `will.cliqueUnrest.${cl.key}`, params: { player: pname(leader), n: cl.members.length - 1, nation: cl.nation !== undefined ? natName(g.nations[cl.nation]?.name) : '' }, link: { kind: 'player', id: leader.id } }));
       }
     }
   }

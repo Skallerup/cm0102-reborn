@@ -5,12 +5,10 @@ import { interestedClubs } from '../../game/transfers';
 import { EyeIcon } from '../icons';
 import type { Player } from '../../game/types';
 import { avgRating } from '../../game/season';
-import { money, t, dateFmt } from '../../i18n';
-import { Bar, FormList, Rating, Modal, Nat, Panel, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
+import { money, t, dateFmt, natName } from '../../i18n';
+import { Bar, FormList, Rating, Nat, Panel, PlayerLink, Table, Tabs, age, posStr, type Col } from '../components';
 import { cliques } from '../../game/will';
 import { useGame, useNav, useRouteState } from '../core';
-import { useState } from 'react';
-import { act } from '../../game/actions';
 import { Head } from './common';
 
 export function statusTags(p: Player, userClub: number) {
@@ -79,18 +77,15 @@ export function SquadTable({ players, view, userClub }: { players: Player[]; vie
 export function Squad() {
   const g = useGame()!;
   const [view, setView] = useRouteState('view', 'general');
-  const [meeting, setMeeting] = useState(false);
   const players = squad(g.userClub);
   const loanedOut = Object.values(g.players).filter((p) => p.loan?.from === g.userClub);
   return (
     <div>
       <Head title={`${t('nav.squad')} (${players.length})`}>
-        <button onClick={() => setMeeting(true)}>🗣️ {t('team.meeting')}</button>
         <Tabs tabs={[['general', t('squad.general')], ['attrs', t('squad.attrs')], ['contracts', t('squad.contracts')]]} value={view} onChange={setView} />
       </Head>
       <SquadTable players={players} view={view} userClub={g.userClub} />
       <Cliques />
-      {meeting && <TeamMeeting onClose={() => setMeeting(false)} />}
       {loanedOut.length > 0 && (
         <>
           <h3 style={{ margin: '12px 0 6px' }} className="accent">{t('squad.loanedOut')}</h3>
@@ -114,7 +109,7 @@ function Cliques() {
             const leader = g.players[c.leader];
             return (
               <tr key={i}>
-                <td>{t(`clique.${c.key}`, { nation: c.nation !== undefined ? g.nations[c.nation]?.name ?? '' : '' })}</td>
+                <td>{t(`clique.${c.key}`, { nation: c.nation !== undefined ? natName(g.nations[c.nation]?.name) : '' })}</td>
                 <td className="num">{c.members.length}</td>
                 <td>{t('clique.leader')}: <PlayerLink p={leader} /></td>
                 <td style={{ minWidth: 140 }}><Bar value={c.mood} max={20} /></td>
@@ -128,27 +123,3 @@ function Cliques() {
   );
 }
 
-function TeamMeeting({ onClose }: { onClose: () => void }) {
-  const g = useGame()!;
-  const [res, setRes] = useState<{ key: string; mood: string } | null>(null);
-  const club = g.clubs[g.userClub];
-  const form = g.comps[club.league]?.table.find((r) => r.club === club.id)?.form ?? '';
-  const last = g.board.lastTeamTalk;
-  const cooldown = last ? 14 - Math.round((Date.parse(g.date) - Date.parse(last)) / 86400000) : 0;
-  const say = (kind: 'praise' | 'criticise' | 'demand' | 'calm') => setRes(act<{ key: string; mood: string }>({ t: 'teamTalk', kind }));
-  return (
-    <Modal title={t('team.meeting')} onClose={onClose}>
-      <div className="col">
-        <div className="kv"><span>{t('team.recent')}</span><span><b>{form.slice(-5) || '–'}</b></span></div>
-        <div className="muted">{t('team.hint')}</div>
-        <div className="col">
-          {(['praise', 'calm', 'demand', 'criticise'] as const).map((k) => (
-            <button key={k} disabled={cooldown > 0 || !!res} onClick={() => say(k)} style={{ textAlign: 'left' }}>{t(`team.${k}`)}</button>
-          ))}
-        </div>
-        {cooldown > 0 && !res && <div className="muted">{t('team.cooldown', { n: cooldown })}</div>}
-        {res && <div className={`insight ${res.mood}`}>{t(res.key)}</div>}
-      </div>
-    </Modal>
-  );
-}

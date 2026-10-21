@@ -12,7 +12,7 @@ import { gs } from '../../game/state';
 import { session } from '../../online/client';
 import { AcceptCounterButton } from '../counterAccept';
 import type { Player, Role, TransferOffer } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { dateFmt, money, t, natName } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -87,7 +87,7 @@ function Search() {
   const setF = (v: Filters) => { setFRoute(v); saveFilters({ ...v, __more: more }); };
   const setMore = (v: boolean) => { setMoreRoute(v); saveFilters({ ...f, __more: v }); };
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF({ ...f, [k]: v });
-  const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => g.nations[a].name.localeCompare(g.nations[b].name)), [g]);
+  const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name))), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
   const me = g.clubs[g.userClub];
   const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
@@ -174,7 +174,7 @@ function Search() {
             {[250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
           </select>
           <Select value={f.nation} onChange={(v) => set('nation', v)} width={190}
-            options={[{ value: -1, label: t('tr.anyNation') }, ...nations.map((n) => ({ value: n, label: g.nations[n].name, hint: g.nations[n].code }))]} />
+            options={[{ value: -1, label: t('tr.anyNation') }, ...nations.map((n) => ({ value: n, label: natName(g.nations[n].name), hint: g.nations[n].code }))]} />
           <Select value={f.league} onChange={(v) => set('league', v)} width={230}
             options={[{ value: '', label: t('tr.anyLeague') }, ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: l, label: g.leagues[l].name, group: g.nations[g.leagues[l].nation]?.name }))]} />
         </div>

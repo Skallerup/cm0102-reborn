@@ -7,7 +7,7 @@ import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
 import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
-import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
+import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
 import { Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
@@ -34,30 +34,31 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   };
 
   return (
-    <div className="start">
+    <div className={`start ${view === 'menu' ? 'start-menu' : ''}`}>
+      <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       {onHome && view === 'menu' && <button className="small start-home" onClick={onHome}>{t('start.toLanding')}</button>}
       <div className="start-box">
         <div className="logo">
+          {view === 'menu' && <div className="start-pill"><span className="start-live" />{t('start.pill')}</div>}
           <h1>Championship Manager <span>01/02</span></h1>
           <p>{t('start.subtitle')}</p>
         </div>
         {view === 'menu' && (
           <div className="menu-btns">
-            <button className="primary" onClick={() => { setChallenge(undefined); setView('new'); }}>{t('start.new')}</button>
-            <button onClick={() => setView('load')}>{t('start.load')}</button>
-            <button onClick={() => setView('online')}>🌐 {t('mp.title')}</button>
-            <button onClick={() => setView('challenges')}>{t('start.challenges')}</button>
-            <label className="row" style={{ justifyContent: 'center' }}>
-              <button onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
-              <input id="import-file" type="file" accept=".cm0102,.json,.gz" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files?.[0])} />
-            </label>
-            <div className="row" style={{ justifyContent: 'center' }}>
-              <button className={lang === 'da' ? 'primary' : ''} onClick={() => { setLang('da'); onLang('da'); }}>Dansk</button>
-              <button className={lang === 'en' ? 'primary' : ''} onClick={() => { setLang('en'); onLang('en'); }}>English</button>
+            <button className="start-cta" onClick={() => { setChallenge(undefined); setView('new'); }}>{t('start.new')} <span>→</span></button>
+            <div className="start-cards">
+              <button className="start-card" onClick={() => setView('load')}><b>💾 {t('start.load')}</b><span>{t('start.loadDesc')}</span></button>
+              <button className="start-card" onClick={() => setView('online')}><b>🌐 {t('mp.title')}</b><span>{t('start.onlineDesc')}</span></button>
+              <button className="start-card" onClick={() => setView('challenges')}><b>🏆 {t('start.challenges')}</b><span>{t('start.challengesDesc')}</span></button>
             </div>
-            <div className="row" style={{ justifyContent: 'center' }}>
-              <label>{t('opt.currency')}</label>
-              <select defaultValue={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>
+            <div className="start-foot">
+              <button className="start-ghost" onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
+              <input id="import-file" type="file" accept=".cm0102,.json,.gz" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files?.[0])} />
+              <div className="start-lang">
+                <button className={lang === 'da' ? 'on' : ''} onClick={() => { setLang('da'); onLang('da'); }}>DA</button>
+                <button className={lang === 'en' ? 'on' : ''} onClick={() => { setLang('en'); onLang('en'); }}>EN</button>
+              </div>
+              <select className="start-cur" aria-label={t('opt.currency')} defaultValue={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
               </select>
             </div>
@@ -148,7 +149,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
   const leagueNations = useMemo(() => {
     if (!world) return [];
     const ns = [...new Set(world.leagues.map((l) => l.nation))];
-    return ns.sort((a, b) => world.nations[a].name.localeCompare(world.nations[b].name));
+    return ns.sort((a, b) => natName(world.nations[a].name).localeCompare(natName(world.nations[b].name)));
   }, [world]);
 
   const dbPicker = !ch && (
@@ -193,7 +194,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
         notify();
         const c = world.clubs.find((x) => x[0] === club), lg = world.leagues.find((l) => l.id === c?.[4]);
         notifyNewCareer({
-          manager: opts.managerName, club: c?.[2] ?? String(club), league: lg?.name, nation: world.nations[clubNation ?? -1]?.name,
+          manager: opts.managerName, club: c?.[2] ?? String(club), league: lg?.name, nation: natName(world.nations[clubNation ?? -1]?.name),
           challenge, bots, db, lang: opts.lang,
         });
       }
@@ -222,7 +223,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
                   if (s.has(n)) s.delete(n); else s.add(n);
                   setActive(s);
                 }} />
-                {world.nations[n].name}
+                {natName(world.nations[n].name)}
                 <span className="muted" style={{ marginLeft: 'auto' }}>{world.leagues.filter((l) => l.nation === n).length}</span>
               </label>
             ))}
@@ -234,7 +235,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
         <Panel title={t('start.pickClub')}>
           <div className="row" style={{ marginBottom: 8 }}>
             <Select value={league} onChange={(v) => { setLeague(v); setClub(0); }} width={300}
-              options={leagues.map((l) => ({ value: l.id, label: l.name, group: world.nations[l.nation].name }))} />
+              options={leagues.map((l) => ({ value: l.id, label: l.name, group: natName(world.nations[l.nation].name) }))} />
           </div>
           <div className="grid-choices">
             {clubs.map((c) => (

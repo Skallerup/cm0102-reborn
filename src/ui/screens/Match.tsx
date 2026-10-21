@@ -35,6 +35,34 @@ function teamColors(home: number, away: number, me: number): [string, string, st
   return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
 }
 
+/** RGB fra '#rrggbb', 'rrggbb', '#rgb' eller 'rgb(r, g, b)' */
+function rgbOf(c: string): [number, number, number] | null {
+  const m = c.match(/\d+/g);
+  if (c.startsWith('rgb') && m && m.length >= 3) return [Number(m[0]), Number(m[1]), Number(m[2])];
+  let h = c.replace('#', '').trim();
+  if (h.length === 3) h = h.split('').map((x) => x + x).join('');
+  if (!/^[0-9a-f]{6}$/i.test(h)) return null;
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+
+/**
+ * Farver til statistikbjælkerne: eget hold i klubfarven, modstanderen i sin primære farve –
+ * eller sekundærfarven, hvis den primære ligner vores for meget eller ikke kan ses (næsten hvid/sort).
+ */
+export function statColors(home: number, away: number, me: number): [string, string] {
+  const g = gs();
+  const own = teamColors(home, away, me)[me === 0 ? 0 : 2];
+  const ownRgb = rgbOf(own);
+  const opp = g.clubs[me === 0 ? away : home];
+  const lum = ([r, gg, b]: [number, number, number]) => (0.2126 * r + 0.7152 * gg + 0.0722 * b) / 255;
+  const pick = (opp?.colors ?? []).map((c) => (c.startsWith('#') || c.startsWith('rgb') ? c : `#${c}`)).find((c) => {
+    const rgb = rgbOf(c);
+    if (!rgb || lum(rgb) > 0.88 || lum(rgb) < 0.06) return false;
+    return !ownRgb || Math.hypot(rgb[0] - ownRgb[0], rgb[1] - ownRgb[1], rgb[2] - ownRgb[2]) > 110;
+  }) ?? (ownRgb && lum(ownRgb) < 0.3 && ownRgb[2] > ownRgb[0] ? '#9aa4b2' : '#1d2b53');
+  return me === 0 ? [own, pick] : [pick, own];
+}
+
 let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
@@ -629,7 +657,7 @@ function LiveMatch({ id }: { id: number }) {
           </Panel>
         </div>
       )}
-      {tab === 'stats' && <StatsPanel stats={[st[0], st[1]]} home={home} away={away} />}
+      {tab === 'stats' && <StatsPanel stats={[st[0], st[1]]} home={home} away={away} colors={statColors(f.home, f.away, me)} />}
       {tab === 'ratings' && <RatingsBoard sim={sim} colors={colors} />}
       {tab === 'scores' && (
         <Panel title={t('match.vidiprinter')}>
@@ -808,7 +836,7 @@ function FollowMatch({ id }: { id: number }) {
         </div>
       )}
       {tab === 'ratings' && <RatingsBoard sim={proxy} colors={colors} />}
-      {tab === 'stats' && <StatsPanel stats={data.stats} home={g.clubs[f.home].name} away={g.clubs[f.away].name} />}
+      {tab === 'stats' && <StatsPanel stats={data.stats} home={g.clubs[f.home].name} away={g.clubs[f.away].name} colors={statColors(f.home, f.away, f.away === g.userClub ? 1 : 0)} />}
       {tab === 'tactics' && !data.finished && (
         <>
           <SubsPanel sim={subProxy} me={1} live={mine} onDone={() => {}} />
@@ -821,7 +849,7 @@ function FollowMatch({ id }: { id: number }) {
   );
 }
 
-export function StatsPanel({ stats, home, away }: { stats: [MatchReport['stats'][0], MatchReport['stats'][1]]; home: string; away: string }) {
+export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport['stats'][0], MatchReport['stats'][1]]; home: string; away: string; colors?: [string, string] }) {
   const possSum = stats[0].possession + stats[1].possession;
   const pct0 = possSum > 0 ? Math.round((100 * stats[0].possession) / possSum) : 50;
   const rows: [string, number, number, boolean?][] = [
@@ -846,7 +874,7 @@ export function StatsPanel({ stats, home, away }: { stats: [MatchReport['stats']
             <span className="h">{dec ? h.toFixed(2) : h}{k === 'possession' || k === 'passPct' ? '%' : ''}</span>
             <span className="lbl">{t(`stat.${k}`)}</span>
             <span className="a">{dec ? a.toFixed(2) : a}{k === 'possession' || k === 'passPct' ? '%' : ''}</span>
-            <div className="statbar"><i style={{ width: `${(h / tot) * 100}%` }} /><i style={{ width: `${(a / tot) * 100}%` }} /></div>
+            <div className="statbar"><i style={{ width: `${(h / tot) * 100}%`, background: colors?.[0] }} /><i style={{ width: `${(a / tot) * 100}%`, background: colors?.[1] }} /></div>
           </div>
         );
       })}

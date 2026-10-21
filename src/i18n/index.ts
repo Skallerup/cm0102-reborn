@@ -1,6 +1,7 @@
 import { da } from './da';
 import { en } from './en';
 import type { Lang } from '../game/types';
+import { nationLabel } from './nations';
 
 const dicts: Record<Lang, Record<string, string>> = { da, en };
 let lang: Lang = (() => {
@@ -10,6 +11,11 @@ let lang: Lang = (() => {
   } catch { /* ingen storage */ }
   return navigator.language?.startsWith('da') ? 'da' : 'en';
 })();
+
+/** Landenavn på det valgte sprog (databasens navne er engelske) */
+export function natName(name: string | undefined): string {
+  return nationLabel(name, lang);
+}
 
 export function getLang(): Lang {
   return lang;

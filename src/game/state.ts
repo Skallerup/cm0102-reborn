@@ -130,7 +130,8 @@ export function newsRelevant(...clubIds: (number | undefined)[]): boolean {
 /** Ny besked til den aktive manager. all=true sender til alle menneskelige managere (multiplayer). */
 export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: string }, opts?: { all?: boolean }) {
   const g = gs();
-  const item = { id: g.nextId.news++, date: n.date ?? g.date, read: false, ...n };
+  const muted = !!g.options.mutedNews?.includes(n.cat);
+  const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}) };
   g.news.unshift(item);
   if (g.news.length > 400) g.news.length = 400;
   if (opts?.all && g.humans) {

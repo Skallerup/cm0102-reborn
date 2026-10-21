@@ -154,6 +154,8 @@ export interface Player {
   /** Seneste episode (ballade) og seneste røde kort – grundlag for at straffe */
   lastIncident?: string;
   lastRed?: string;
+  /** Rehabilitering af et problembarn/hidsig spiller (0-100; ved 100 falder han til ro: temperament +1) */
+  reform?: number;
   /** Kortvarigt "tændt" efter kritik/ros: bonus på stabilitet til og med dato */
   fired?: string;
 }
@@ -421,6 +423,8 @@ export interface NewsItem {
   link?: { kind: 'player' | 'club' | 'fixture' | 'offer' | 'comp' | 'awards' | 'press' | 'chat'; id: number | string };
   /** Ugentligt transferoverblik: ugens handler mellem andre klubber */
   deals?: TransferDeal[];
+  /** Dæmpet kategori: markeret som læst og kun vist, når man filtrerer på kategorien */
+  muted?: boolean;
 }
 
 export interface TransferDeal { player: number; from: number; to: number; fee: number; loan?: boolean }
@@ -647,6 +651,8 @@ export interface Options {
   newsScope?: 'league' | 'nation' | 'world';
   /** Transfernyheder om andre klubber: kun egen klub, store handler i egen liga (standard) eller alle (efter nyhedsfilteret) */
   transferNews?: 'own' | 'big' | 'all';
+  /** Dæmpede nyhedskategorier (vælges i indbakken) */
+  mutedNews?: NewsCategory[];
   /** Transfervinduer: rigtige (sommer + januar, standard) eller næsten hele året som i CM 01/02 */
   transferWindows?: 'real' | 'classic';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */

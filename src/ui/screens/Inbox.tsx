@@ -4,12 +4,16 @@ import { onFocusNews, takeFocus } from '../inboxFocus';
 import { act } from '../../game/actions';
 import { useHotkeys } from '../hotkeys';
 import { dateFmt, money, t } from '../../i18n';
-import { Empty, Panel } from '../components';
+import { Empty, Modal, Panel } from '../components';
+import { notify } from '../../game/state';
 import { useGame, useRouteState } from '../core';
 import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
 import { AiArticle } from '../aiArticle';
 import { NewsIcon } from '../icons';
 import type { NewsCategory, NewsItem } from '../../game/types';
+
+/** Kategorier, der kan dæmpes (bestyrelse, job, kontrakter og transfers kræver ofte svar – transfers styres af transferfilteret) */
+const MUTABLE: NewsCategory[] = ['match', 'injury', 'scout', 'award', 'youth', 'finance', 'general'];
 
 const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 'injury', 'board', 'scout', 'award', 'youth', 'job', 'general'];
 
@@ -20,7 +24,8 @@ export function Inbox() {
   const oldestUnread = () => g.news.filter((n) => !n.read).pop()?.id;
   const [sel, setSel] = useRouteState<number | null>('sel', () => takeFocus() ?? oldestUnread() ?? g.news[0]?.id ?? null);
   const open = useOpenLink();
-  const list = g.news.filter((n) => cat === 'all' || n.cat === cat);
+  const list = g.news.filter((n) => (cat === 'all' ? !n.muted : n.cat === cat));
+  const [settings, setSettings] = useState(false);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
@@ -63,7 +68,9 @@ export function Inbox() {
         </select>
         <span className="muted kbd-hint">{t('inbox.keys')}</span>
         <button className="small" onClick={() => act({ t: 'read', ids: 'all' })}>{t('inbox.markRead')}</button>
+        <button className="small" onClick={() => setSettings(true)}>⚙ {t('inbox.settings')}</button>
       </Head>
+      {settings && <NewsSettings onClose={() => setSettings(false)} />}
       <div className="cols2">
         <Panel title={t('inbox.messages')} className="flush">
           {list.length === 0 && <Empty text={t('inbox.empty')} />}
@@ -136,5 +143,45 @@ function WarRaise({ item }: { item: NewsItem }) {
       ) : <div className="muted">{t('war.boxNoRoom')}</div>}
       {res && res !== 'ok' && <div className="bad">{t(`war.err.${res}`) !== `war.err.${res}` ? t(`war.err.${res}`) : t(res)}</div>}
     </div>
+  );
+}
+
+/** Hvilke og hvor mange nyheder man får – direkte fra indbakken */
+function NewsSettings({ onClose }: { onClose: () => void }) {
+  const g = useGame()!;
+  const muted = new Set(g.options.mutedNews ?? []);
+  const toggle = (c: NewsCategory) => {
+    const on = !muted.has(c);
+    g.options.mutedNews = on ? [...muted, c] : [...muted].filter((x) => x !== c);
+    // også de beskeder, der allerede ligger i indbakken
+    for (const n of g.news) if (n.cat === c) { n.muted = on || undefined; if (on) n.read = true; }
+    notify();
+  };
+  return (
+    <Modal title={t('inbox.settings')} onClose={onClose}>
+      <div className="col news-settings">
+        <label className="row">{t('opt.news')}
+          <select value={g.options.newsScope ?? 'league'} onChange={(e) => { g.options.newsScope = e.target.value as 'nation'; notify(); }}>
+            {(['league', 'nation', 'world'] as const).map((m) => <option key={m} value={m}>{t(`opt.news.${m}`)}</option>)}
+          </select>
+        </label>
+        <label className="row">{t('opt.transferNews')}
+          <select value={g.options.transferNews ?? 'big'} onChange={(e) => { g.options.transferNews = e.target.value as 'big'; notify(); }}>
+            {(['own', 'big', 'all'] as const).map((m) => <option key={m} value={m}>{t(`opt.transferNews.${m}`)}</option>)}
+          </select>
+        </label>
+        <div>
+          <b>{t('inbox.categories')}</b>
+          <div className="muted" style={{ fontSize: 12.5, margin: '2px 0 8px' }}>{t('inbox.mutedHint')}</div>
+          <div className="news-cats">
+            {MUTABLE.map((c) => (
+              <label key={c} className={`choice ${muted.has(c) ? '' : 'on'}`}>
+                <input type="checkbox" checked={!muted.has(c)} onChange={() => toggle(c)} />{t(`cat.${c}`)}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Modal>
   );
 }

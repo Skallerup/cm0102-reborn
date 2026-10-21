@@ -7,7 +7,7 @@ import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { dateFmt, money, t, natName } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
 import { AttrVal, Bar, ClubLink, FormList, Rating, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
 import { useGame, useNav } from '../core';
@@ -18,7 +18,7 @@ import { NegotiationModal } from './Negotiation';
 import { AcceptCounterButton } from '../counterAccept';
 import { Arrow, DevelopmentChart, DevelopmentList, attrDelta, totalDelta } from '../dev';
 import { trainingAdvice } from '../../game/training';
-import { GOOD_TRAITS, traits, type TalkKind } from '../../game/personality';
+import { GOOD_TRAITS, reformFactors, traits, type TalkKind } from '../../game/personality';
 import { aiCall } from '../../ai/client';
 import { guessIntent } from '../../ai/fallback';
 import { useAiAvailable } from '../ai';
@@ -68,7 +68,7 @@ export function PlayerScreen({ id }: { id: number }) {
           <div className="kv">
             <span>{t('col.club')}</span><span>{p.club ? <ClubLink id={p.club} long /> : t('common.free')}{p.loan && <> ({t('tag.loan')} {t('common.from')} <ClubLink id={p.loan.from} />)</>}</span>
             <span>{t('col.age')}</span><span>{age(p)} ({dateFmt(p.dob)})</span>
-            <span>{t('col.nat')}</span><span><Nat n={p.nation} /> {g.nations[p.nation]?.name}</span>
+            <span>{t('col.nat')}</span><span><Nat n={p.nation} /> {natName(g.nations[p.nation]?.name)}</span>
             <span>{t('col.pos')}</span><span>{posStr(p)}</span>
             <span>{t('player.foot')}</span><span>{t(`foot.${p.foot || 'R'}`)}</span>
             <span>{t('player.height')}</span><span>{p.height} cm</span>
@@ -126,7 +126,7 @@ export function PlayerScreen({ id }: { id: number }) {
                   {p.club > 0 && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => setBid(true)}>{t('player.bid')}</button>}
                   {p.club > 0 && <button onClick={() => act(dispatch<string>({ t: 'enquire', pid: p.id }))}>{t('player.enquire')}</button>}
                   {p.club > 0 && !windowOpen() && <span className="muted" style={{ fontSize: 12 }}>{t('transfer.windowOpens', { date: dateFmt(nextWindow()) })}</span>}
-                  {!p.club && <button className="primary" onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
+                  {!p.club && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
                   {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
                   {(preContractBlock(p) === 'fromJanuary' || preContractBlock(p) === 'taken') && (
                     <div className="muted" style={{ fontSize: 12, flexBasis: '100%' }}>
@@ -159,6 +159,7 @@ export function PlayerScreen({ id }: { id: number }) {
         </Panel>
       </div>
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
+      {mine && (traits(p).includes('troublemaker') || traits(p).includes('temperamental')) && <ReformPanel pid={p.id} />}
       {mine && <TalkPanel pid={p.id} />}
       {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
       <InterestPanel pid={p.id} mine={mine} />
@@ -661,6 +662,26 @@ function InterestPanel({ pid, mine }: { pid: number; mine: boolean }) {
           {!all && list.length > 8 && <button className="small" onClick={() => setAll(true)}>{t('interest.more', { n: list.length - 8 })}</button>}
         </div>
       )}
+    </Panel>
+  );
+}
+
+/** Problembarn/hidsig spiller: hvor langt rehabiliteringen er, og hvad der hjælper */
+function ReformPanel({ pid }: { pid: number }) {
+  const g = useGame()!;
+  const p = g.players[pid];
+  const fs = reformFactors(p, g.userClub);
+  const sum = fs.reduce((s, f) => s + f.value, 0);
+  const months = sum > 0 ? Math.ceil((100 - (p.reform ?? 0)) / sum) : null;
+  return (
+    <Panel title={t('reform.title')} right={<Info topic="chemistry" />}>
+      <div className="row"><Bar value={p.reform ?? 0} max={100} /> <b>{Math.round(p.reform ?? 0)}%</b>
+        <span className="muted">{months !== null ? t('reform.eta', { n: months }) : t('reform.stalled')}</span></div>
+      <div className="row" style={{ marginTop: 8 }}>
+        {fs.map((f) => <span key={f.key} className={`tag ${f.value > 0 ? 'good' : 'bad'}`}>{t(f.key)} {f.value > 0 ? '+' : ''}{f.value}</span>)}
+        <span className="muted">{t('reform.perMonth', { n: sum })}</span>
+      </div>
+      <p className="muted" style={{ marginBottom: 0 }}>{t('reform.explain')}</p>
     </Panel>
   );
 }

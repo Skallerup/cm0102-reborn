@@ -5,6 +5,7 @@ import { finalOrder, sortTable } from './competitions';
 import { asOwner, isHumanClub } from './humans';
 import { rng } from './rng';
 import { clubLevel } from './scouting';
+import { coachingInfo } from './training';
 import { addNews, gs, squad } from './state';
 import type { Player, Tactic } from './types';
 
@@ -113,8 +114,10 @@ export function monthlyPersonality() {
         asOwner(c.id, () => addNews({ cat: 'contract', key: 'pers.wantsAway', params: { player: `${p.first} ${p.last}` }, link: { kind: 'player', id: p.id } }));
       }
       if (p.wantsAway) p.morale = Math.min(p.morale, 8);
-      // problembørn laver ballade
-      if (t.includes('troublemaker') && rng.chance(0.12)) {
+      // problembørn og hidsige spillere kan falde til ro over tid
+      if (t.includes('troublemaker') || t.includes('temperamental')) reformStep(p, c.id);
+      // problembørn laver ballade – sjældnere, jo længere rehabiliteringen er nået
+      if (traits(p).includes('troublemaker') && rng.chance(0.12 * (1 - (p.reform ?? 0) / 160))) {
         const incident = rng.pick(['late', 'fight', 'nightclub', 'media']);
         p.lastIncident = g.date;
         p.morale = Math.max(1, p.morale - 2);
@@ -127,6 +130,57 @@ export function monthlyPersonality() {
       }
     }
   }
+}
+
+export interface ReformFactor { key: string; value: number }
+
+/**
+ * Hvad der lige nu hjælper eller trækker ned i en hidsig spillers rehabilitering (point pr. måned).
+ * Ledere i truppen, trænere med disciplin, spilletid, god moral og ro på (ingen episoder) hjælper;
+ * nye episoder og høj alder trækker ned.
+ */
+export function reformFactors(p: Player, clubId: number): ReformFactor[] {
+  const g = gs();
+  const out: ReformFactor[] = [{ key: 'reform.f.base', value: 3 }];
+  const mates = squad(clubId).filter((x) => x.id !== p.id);
+  const leaders = mates.filter((x) => traits(x).includes('leader')).length;
+  if (leaders) out.push({ key: 'reform.f.leaders', value: Math.min(8, leaders * 4) });
+  const tac = clubId === g.userClub ? g.tactic : undefined;
+  const captain = tac ? g.players[tac.captain] : undefined;
+  if (captain && captain.id !== p.id && traits(captain).includes('leader')) out.push({ key: 'reform.f.captain', value: 3 });
+  const ci = coachingInfo(clubId);
+  out.push({ key: 'reform.f.discipline', value: Math.round((ci.discipline - 0.5) * 16) });
+  if (tac?.lineup.includes(p.id)) out.push({ key: 'reform.f.plays', value: 4 });
+  if (p.morale >= 14) out.push({ key: 'reform.f.happy', value: 3 });
+  else if (p.morale <= 8) out.push({ key: 'reform.f.unhappy', value: -4 });
+  if (p.attrs[A.professionalism] >= 13) out.push({ key: 'reform.f.pro', value: 3 });
+  const age = ageOn(p.dob, g.date);
+  if (age <= 23) out.push({ key: 'reform.f.young', value: 3 });
+  else if (age >= 30) out.push({ key: 'reform.f.old', value: -3 });
+  if (p.lastIncident && daysBetween(p.lastIncident, g.date) <= 30) out.push({ key: 'reform.f.incident', value: -10 });
+  if (p.wantsAway) out.push({ key: 'reform.f.wantsAway', value: -5 });
+  return out.filter((f) => f.value !== 0);
+}
+
+/** Én måneds rehabilitering. Ved 100 falder spilleren til ro: temperamentet (og evt. sportsånden) stiger. */
+function reformStep(p: Player, clubId: number) {
+  const gain = reformFactors(p, clubId).reduce((s, f) => s + f.value, 0);
+  p.reform = Math.max(0, Math.min(100, (p.reform ?? 0) + gain));
+  if (p.reform < 100) return;
+  p.reform = 0;
+  const wasTrouble = traits(p).includes('troublemaker');
+  p.attrs[A.temperament] = Math.min(20, p.attrs[A.temperament] + 1);
+  if (p.attrs[A.sportsmanship] <= 5) p.attrs[A.sportsmanship] += 1;
+  const now = traits(p);
+  const key = wasTrouble && !now.includes('troublemaker') ? 'reform.news.noLongerTrouble'
+    : !now.includes('troublemaker') && !now.includes('temperamental') ? 'reform.news.calm' : 'reform.news.progress';
+  asOwner(clubId, () => addNews({ cat: 'general', key, params: { player: `${p.first} ${p.last}` }, link: { kind: 'player', id: p.id } }));
+}
+
+/** Rehabiliteringen påvirkes af, hvordan manageren håndterer spilleren */
+function reformNudge(p: Player, d: number) {
+  const t = traits(p);
+  if (t.includes('troublemaker') || t.includes('temperamental')) p.reform = Math.max(0, Math.min(99, (p.reform ?? 0) + d));
 }
 
 /** Manageren taler med en utilfreds stjerne */
@@ -197,13 +251,14 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
       return { key: 'talk.r.praiseUndeserved', mood: 'neutral' };
     case 'criticise':
       if (played && form >= 7) { bump(-3); if (hot) p.unhappy = Math.min(100, (p.unhappy ?? 0) + 25); return { key: 'talk.r.critUnfair', mood: 'bad' }; }
-      if (hot) { bump(-4); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 30); return { key: 'talk.r.critExplodes', mood: 'bad' }; }
+      if (hot) { bump(-4); reformNudge(p, -8); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 30); return { key: 'talk.r.critExplodes', mood: 'bad' }; }
       if (det >= 14 || t.includes('professional') || t.includes('leader')) { bump(1); fire(21); return { key: 'talk.r.critFiredUp', mood: 'good' }; }
       if (det <= 8) { bump(-2.5); return { key: 'talk.r.critSulks', mood: 'bad' }; }
       bump(-1); fire(10);
       return { key: 'talk.r.critAccepts', mood: 'neutral' };
     case 'encourage':
-      if (p.morale <= 10 || (played && form < 6.4)) { bump(2); return { key: 'talk.r.encourageHelps', mood: 'good' }; }
+      if (p.morale <= 10 || (played && form < 6.4)) { bump(2); reformNudge(p, 4); return { key: 'talk.r.encourageHelps', mood: 'good' }; }
+      reformNudge(p, 2);
       bump(0.5);
       return { key: 'talk.r.encourageFine', mood: 'neutral' };
     case 'fine':
@@ -216,6 +271,8 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
         bump(kind === 'fine' ? -1.5 : -3);
         p.lastIncident = undefined;
         p.lastRed = undefined;
+        // konsekvent, fair straf er den bedste vej ud af dårlige vaner
+        reformNudge(p, kind === 'fine' ? 12 : 8);
         // truppen respekterer konsekvent ledelse
         for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.min(20, mate.morale + 0.3);
         if (hot && kind === 'fineHeavy' && rng.chance(0.4)) { p.wantsAway = true; return { key: 'talk.r.fineWantsAway', mood: 'bad' }; }
@@ -223,6 +280,7 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
       }
       // straf uden grund
       bump(-5);
+      reformNudge(p, -15);
       p.unhappy = Math.min(100, (p.unhappy ?? 0) + 40);
       for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.max(1, mate.morale - 0.4);
       if (!t.includes('loyal') && rng.chance(0.5)) p.wantsAway = true;
@@ -230,12 +288,13 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
     }
     case 'demand':
       // krav om mere – virker på de målrettede, provokerer de hidsige
-      if (hot) { bump(-1.5); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 10); return { key: 'talk.r.demandAngry', mood: 'bad' }; }
+      if (hot) { bump(-1.5); reformNudge(p, -4); p.unhappy = Math.min(100, (p.unhappy ?? 0) + 10); return { key: 'talk.r.demandAngry', mood: 'bad' }; }
       if (det >= 12 || t.includes('professional') || t.includes('leader')) { bump(0.5); fire(14); return { key: 'talk.r.demandAccepted', mood: 'good' }; }
       bump(-0.3);
       return { key: 'talk.r.demandOk', mood: 'neutral' };
     case 'chat':
       bump(p.morale < 10 ? 0.8 : 0.3);
+      reformNudge(p, 3);
       return { key: 'talk.r.chat', mood: 'neutral' };
     case 'future': {
       // "du er fremtiden": et talent med potentiale til at blive en af de bedste vokser af det
@@ -258,7 +317,7 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
     case 'drop':
       // sat af holdet som straf
       if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === pid ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== pid) };
-      if (misbehaved) { bump(-1.5); for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.min(20, mate.morale + 0.2); return { key: 'talk.r.dropDeserved', mood: 'neutral' }; }
+      if (misbehaved) { bump(-1.5); reformNudge(p, 6); for (const mate of squad(club.id)) if (mate !== p) mate.morale = Math.min(20, mate.morale + 0.2); return { key: 'talk.r.dropDeserved', mood: 'neutral' }; }
       bump(-3.5);
       p.unhappy = Math.min(100, (p.unhappy ?? 0) + 25);
       return { key: 'talk.r.dropUnjust', mood: 'bad' };

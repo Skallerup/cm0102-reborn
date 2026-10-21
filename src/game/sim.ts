@@ -473,13 +473,13 @@ export function finishUserMatch(rep: MatchReport) {
   g.dayDone = true;
 }
 
-/** Simulér brugerens ventende kamp uden at se den */
+/** Simulér brugerens ventende kamp uden at se den (med kommentar, så kamprapporten har den) */
 export function quickPlayUserMatch(): MatchReport | null {
   const g = gs();
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng);
+  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
 }
@@ -616,5 +616,5 @@ export function quickReport(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  return quickMatch(m.home, m.away, { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng);
+  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
 }

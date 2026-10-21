@@ -9,6 +9,8 @@ import { gs, squad } from '../src/game/state';
 import { clubStrategy } from '../src/game/strategy';
 import { newTactic } from '../src/game/tactics';
 import { cliques } from '../src/game/will';
+import { A } from '../src/game/attributes';
+import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
 let world: WorldData;
@@ -103,5 +105,30 @@ describe('Manager Score', () => {
   it('serverens grænser er de samme som spillets', () => {
     const src = readFileSync('api/rank.ts', 'utf8');
     for (const [k, [lo, hi]] of Object.entries(SCORE_LIMITS)) expect(src).toContain(`${k}: [${lo}, ${hi}]`);
+  });
+});
+
+describe('problembørn', () => {
+  it('kan rehabiliteres over tid med gode forhold', () => {
+    const g = gs();
+    const p = squad(g.userClub).find((x) => g.tactic!.lineup.includes(x.id))!;
+    p.attrs[A.temperament] = 5;
+    p.attrs[A.professionalism] = 14;
+    p.morale = 15;
+    p.lastIncident = undefined;
+    p.wantsAway = false;
+    expect(traits(p)).toContain('troublemaker');
+    const gain = reformFactors(p, g.userClub).reduce((s, f) => s + f.value, 0);
+    expect(gain).toBeGreaterThan(0);
+    // en fair bøde efter en episode rykker rehabiliteringen
+    p.lastIncident = g.date;
+    p.lastTalk = undefined;
+    const before = p.reform ?? 0;
+    interact(p.id, 'fine');
+    expect(p.reform).toBeGreaterThan(before);
+    // nok måneder: han falder til ro og er ikke længere et problembarn
+    for (let m = 0; m < 60 && traits(p).includes('troublemaker'); m++) { p.morale = 15; p.lastIncident = undefined; monthlyPersonality(); }
+    expect(p.attrs[A.temperament]).toBeGreaterThan(5);
+    expect(traits(p)).not.toContain('troublemaker');
   });
 });

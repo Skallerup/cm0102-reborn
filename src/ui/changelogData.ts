@@ -9,6 +9,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.75',
+    date: '2026-10-21',
+    title: { da: 'Problembørn kan rehabiliteres, holdkemi forklaret og ny startmenu', en: 'Troublemakers can be rehabilitated, chemistry explained and a new start menu' },
+    items: [
+      { da: 'Problembørn og hidsige spillere kan nu falde til ro over tid: spillersiden viser rehabiliteringen med det, der hjælper (ledere, trænere med disciplin, spilletid, god moral, fair straf efter episoder) og det, der trækker ned', en: 'Troublemakers and hot-headed players can now calm down over time: the player page shows their rehabilitation with what helps (leaders, coaches with discipline, playing time, good morale, fair punishment after incidents) and what holds them back' },
+      { da: 'Holdkemi: "Hvad giver ekstra?" forklarer hver faktor, hvor meget den kan give, og hvordan du forbedrer den – og hvad effekten på præstationen betyder', en: 'Team chemistry: "What gives extra?" explains each factor, how much it can give and how to improve it – and what the effect on performance means' },
+      { da: 'Træning: filtrér truppen på position, alder og træning, vis kun spillere hvor assistenten foreslår andet, og sortér', en: 'Training: filter the squad by position, age and schedule, show only players where the assistant suggests otherwise, and sort' },
+      { da: 'Indbakke: ⚙ Nyheder vælger hvilke klubber og kategorier du får nyheder om (flyttet fra Indstillinger)', en: 'Inbox: ⚙ News chooses which clubs and categories you get news about (moved from Options)' },
+      { da: 'Kamprapporten har nu altid kommentar – også for kampe, der blev simuleret', en: 'The match report now always has commentary – also for simulated matches' },
+      { da: 'Statistik og momentum viser modstanderen i sin egen klubfarve, og målikonerne ligger ikke længere oven i holdnavnene', en: 'Statistics and momentum show the opponent in their own club colour, and the goal icons no longer cover the team names' },
+      { da: 'Landenavne er på dansk i den danske udgave, og AI-tekster skrives på det sprog, spillet står på', en: 'Country names are translated, and AI texts are written in the language the game is set to' },
+      { da: 'Startmenuen har fået forsidens udseende, og "Spil gratis nu" bliver ikke længere blå ved hover', en: 'The start menu now matches the front page, and "Play free now" no longer turns blue on hover' },
+      { da: '"Tilbyd kontrakt" er slået fra, når transfervinduet er lukket, og holdmødet er fjernet fra trupsiden', en: '"Offer contract" is disabled when the transfer window is closed, and the team meeting has been removed from the squad page' },
+    ],
+  },
+  {
     version: '0.7.74',
     date: '2026-10-21',
     title: { da: 'Straffesparkskonkurrence live og bedre kampvisning på mobil', en: 'Live penalty shoot-outs and a better match view on mobile' },

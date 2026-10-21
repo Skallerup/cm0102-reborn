@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { WorldData } from '../game/newgame';
 import type { GameState } from '../game/types';
-import { dateFmt, t } from '../i18n';
+import { dateFmt, t, natName } from '../i18n';
 import {
   downloadSnapshot, fetchRoom, forgetRoom, joinOnlineGame, openSession, savedRooms, session, skippedMatches, type RoomInfo,
 } from '../online/client';
@@ -98,7 +98,7 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
         <div className="muted">{t('mp.players')}: {room.players.map((p) => `${p.name} (${state.clubs[p.club]?.short ?? '?'})`).join(', ')}</div>
         <label>{t('start.managerName')} <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('start.managerPlaceholder')} autoFocus style={{ marginLeft: 8 }} /></label>
         <select value={league} onChange={(e) => { setLeague(e.target.value); setClub(0); }}>
-          {leagues.map((l) => <option key={l.id} value={l.id}>{state.nations[l.nation]?.name} – {l.name}</option>)}
+          {leagues.map((l) => <option key={l.id} value={l.id}>{natName(state.nations[l.nation]?.name)} – {l.name}</option>)}
         </select>
         <div className="grid-choices">
           {clubs.map((c) => (

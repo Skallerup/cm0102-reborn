@@ -1,6 +1,7 @@
 // Scouting med usikkerhedsintervaller (forbedring #5).
 // Kendskab 0-100 pr. spiller. Attributter vises som interval (fx 12–15), der indsnævres
 // jo bedre spilleren er scoutet. Ved 100 vises den præcise værdi som i CM 01/02.
+import { natName } from '../i18n';
 import { hash01 } from './rng';
 import { gs, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
@@ -169,7 +170,7 @@ function scoutReturns(name: string, a: ScoutAssignment) {
   const g = gs();
   const found = (a.found ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p && realistic(p));
   const best = found.sort((x, y) => { const sx = scoutStars(x), sy = scoutStars(y); return sy.potential[0] + sy.ability[0] - (sx.potential[0] + sx.ability[0]); })[0];
-  const target = a.kind === 'nation' ? g.nations[a.target as number]?.name ?? '?' : g.leagues[a.target as string]?.name ?? String(a.target);
+  const target = a.kind === 'nation' ? natName(g.nations[a.target as number]?.name) || '?' : g.leagues[a.target as string]?.name ?? String(a.target);
   g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutReturned', params: { scout: name, target, n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, read: false, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
 }
 

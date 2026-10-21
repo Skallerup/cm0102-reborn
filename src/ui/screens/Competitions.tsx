@@ -4,7 +4,7 @@ import { nationRanking, sortTable } from '../../game/competitions';
 import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { gs, squad } from '../../game/state';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
-import { dateFmt, t } from '../../i18n';
+import { dateFmt, t, natName } from '../../i18n';
 import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -22,7 +22,7 @@ export function Competitions({ id }: { id?: string }) {
     <div>
       <Head title={comp?.name ?? t('nav.competitions')}>
         <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
-          options={ordered.map((c) => ({ value: c.id, label: c.name, group: c.nation >= 0 ? g.nations[c.nation]?.name : t('comp.europe') }))} />
+          options={ordered.map((c) => ({ value: c.id, label: c.name, group: c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
       </Head>
       {comp && (
         <>

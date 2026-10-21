@@ -6,7 +6,7 @@ export const da: Record<string, string> = {
   'common.week': 'uge', 'common.and': 'og', 'common.years': 'år',
 
   // start
-  'start.subtitle': 'Genfødt – med 20.000 rigtige spillere fra sæsonen 2025/26',
+  'start.pill': 'Ny sæson · 20.000+ rigtige spillere', 'start.loadDesc': 'Fortsæt en gemt karriere', 'start.onlineDesc': 'Spil mod dine venner i samme verden', 'start.challengesDesc': 'Klare mål med en deadline', 'start.subtitle': 'Genfødt – med 20.000 rigtige spillere fra sæsonen 2025/26',
   'start.new': 'Nyt spil', 'start.load': 'Indlæs spil', 'start.challenges': 'Udfordringer', 'start.import': 'Importér save-fil',
   'start.importFailed': 'Filen kunne ikke indlæses.', 'start.loading': 'Indlæser…', 'start.resuming': 'Fortsætter dit spil…', 'start.loadingDb': 'Indlæser spillerdatabasen…',
   'start.noSaves': 'Ingen gemte spil endnu.', 'start.savedAt': 'gemt', 'start.confirmDelete': 'Slet dette gemte spil?',
@@ -71,6 +71,21 @@ export const da: Record<string, string> = {
   'pers.brokenPromise': '{player} føler sig snydt – løftet blev ikke holdt', 'pers.brokenPromise.body': 'Han vil nu sælges, og hans moral er i bund.',
   'pers.incident.late': '{player} kom for sent til træning igen', 'pers.incident.fight': '{player} kom op at slås med en holdkammerat',
   'pers.incident.nightclub': '{player} blev set på natklub aftenen før kamp', 'pers.incident.media': '{player} kritiserede holdet i pressen',
+  'reform.title': 'Rehabilitering', 'reform.eta': 'ca. {n} mdr. til næste skridt', 'reform.stalled': 'Står stille lige nu – se hvad der trækker ned', 'reform.perMonth': '= {n} pr. måned',
+  'reform.explain': 'Når bjælken når 100 %, falder han lidt mere til ro (temperament +1). Et problembarn bliver typisk normalt efter et eller flere skridt. Det hjælper: ledere i truppen og en anfører, der er leder, trænere med disciplin, spilletid, god moral og en rolig samtale eller opmuntring. En fair bøde eller at sætte ham af holdet efter en episode viser konsekvens og rykker meget. Straf uden grund, kritik og krav får ham til at eksplodere og sætter ham tilbage.',
+  'reform.f.base': 'Tiden', 'reform.f.leaders': 'Ledere i truppen', 'reform.f.captain': 'Leder som anfører', 'reform.f.discipline': 'Trænernes disciplin', 'reform.f.plays': 'Spiller fast', 'reform.f.happy': 'God moral', 'reform.f.unhappy': 'Dårlig moral', 'reform.f.pro': 'Professionel indstilling', 'reform.f.young': 'Ung og formbar', 'reform.f.old': 'Fastlåst i sine vaner', 'reform.f.incident': 'Ny episode', 'reform.f.wantsAway': 'Vil væk',
+  'reform.news.progress': '{player} er begyndt at falde til ro – personalet mærker en forskel', 'reform.news.calm': '{player} er faldet helt til ro og er ikke længere hidsig', 'reform.news.noLongerTrouble': '{player} har vendt det hele – han er ikke længere et problembarn!',
+  'chem.how': 'Hvad giver ekstra – og hvordan forbedrer jeg kemien?', 'chem.howEffect': 'Kemien starter på 50. Hvert point over 50 giver +0,06 % på alle spillernes evner i kampene (hvert point under trækker tilsvarende ned) – fra −3 % ved 0 til +3 % ved 100. Med {score}/100 får holdet {pct} %. Det svarer til forskellen på en god og en dårlig dag for hele holdet.',
+  'chem.howFactor': 'Faktor', 'chem.howNow': 'Nu', 'chem.howRange': 'Mulig', 'chem.howImprove': 'Sådan forbedrer du den',
+  'chem.nation.name': 'Samme nationalitet', 'chem.nation.how': 'Hvert par spillere fra samme land i startopstillingen giver +0,7. Køb landsmænd af dine faste spillere.',
+  'chem.tenure.name': 'Tid sammen', 'chem.tenure.how': 'Gennemsnitlig tid i klubben (op til 4 år tæller): +6 pr. år, minus 6. Behold kernen af holdet i stedet for at udskifte mange hvert år.',
+  'chem.newcomers.name': 'Nye spillere', 'chem.newcomers.how': 'Spillere, der har været i klubben under 3 måneder, skal falde til. Få nye ad gangen i startopstillingen.',
+  'chem.leaders.name': 'Ledere', 'chem.leaders.how': 'Spillere med indflydelse 15+ og beslutsomhed 13+ (trækket "Leder"). Se personlighed på spillersiden.',
+  'chem.captain.name': 'Anfører er leder', 'chem.captain.how': 'Vælg en leder som anfører under spillerroller.',
+  'chem.pros.name': 'Professionelle', 'chem.pros.how': 'Tre eller flere spillere med trækket "Professionel" (professionalisme 16+) i startopstillingen.',
+  'chem.trouble.name': 'Problembørn', 'chem.trouble.how': 'Sælg dem, sæt dem på bænken, eller rehabilitér dem over tid (se spillersiden).',
+  'chem.wantsAway.name': 'Utilfredse stjerner', 'chem.wantsAway.how': 'Tal med dem: et løfte eller transferlisten fjerner utilfredsheden.',
+  'chem.nation.range': '0 … +14', 'chem.tenure.range': '−6 … +12', 'chem.newcomers.range': '−2,5 pr. spiller', 'chem.leaders.range': '+4 pr. leder (maks. +10)', 'chem.captain.range': '+4', 'chem.pros.range': '+4', 'chem.trouble.range': '−5 pr. spiller', 'chem.wantsAway.range': '−4 pr. spiller',
   'chem.title': 'Holdkemi', 'chem.effect': 'Effekt på præstationen: {pct}%', 'chem.nation': 'Samme nationalitet', 'chem.tenure': 'Tid sammen ({years} år)',
   'chem.newcomers': 'Nye spillere ({n})', 'chem.leaders': 'Ledere ({n})', 'chem.captain': 'Anfører er en leder', 'chem.trouble': 'Problembørn ({n})',
   'chem.wantsAway': 'Utilfredse stjerner ({n})', 'chem.pros': 'Mange professionelle',
@@ -109,7 +124,7 @@ export const da: Record<string, string> = {
   'mp.err.full': 'Spillet er fyldt (max 8 managere).', 'mp.err.not-ready': 'Værten er ved at oprette spillet – prøv igen om lidt.',
 
   // indbakke
-  'inbox.markRead': 'Markér alle læst', 'inbox.keys': '↑↓ skift besked · → næste ulæste · Enter åbn', 'inbox.messages': 'Beskeder', 'inbox.empty': 'Ingen beskeder', 'inbox.open': 'Åbn',
+  'inbox.settings': 'Nyheder', 'inbox.categories': 'Kategorier i indbakken', 'inbox.mutedHint': 'Fravalgte kategorier markeres som læst og vises kun, når du filtrerer på dem – så du går ikke glip af noget, men indbakken bliver roligere. Bestyrelse, job, kontrakter og transfers kan ikke fravælges, fordi de ofte kræver et svar.', 'opt.newsMoved': 'Hvilke og hvor mange nyheder du får, vælger du nu under ⚙ Nyheder i indbakken.', 'inbox.markRead': 'Markér alle læst', 'inbox.keys': '↑↓ skift besked · → næste ulæste · Enter åbn', 'inbox.messages': 'Beskeder', 'inbox.empty': 'Ingen beskeder', 'inbox.open': 'Åbn',
   'inbox.select': 'Vælg en besked',
   'cat.all': 'Alle', 'cat.match': 'Kampe', 'cat.transfer': 'Transfers', 'cat.contract': 'Kontrakter', 'cat.injury': 'Skader',
   'cat.board': 'Bestyrelse', 'cat.scout': 'Scouting', 'cat.award': 'Priser', 'cat.youth': 'Ungdom', 'cat.job': 'Job', 'cat.general': 'Generelt', 'cat.finance': 'Økonomi',
@@ -523,7 +538,7 @@ export const da: Record<string, string> = {
 
   // træning
   'train.setAll': 'Sæt for hele truppen…', 'train.quality': 'Træningskvalitet', 'train.effect': 'Effekt på udvikling', 'train.effectVs': 'i forhold til en gennemsnitlig klub', 'train.disciplineHint': 'får mere ud af dovne spillere', 'train.motivatingHint': 'løfter moralen', 'train.coaches': 'Trænere', 'train.avgCoaching': 'Gns. træneregenskab',
-  'train.explain': 'Unge spillere udvikler sig mod deres potentiale. Trænernes træningsevne betyder mest – de tre bedste tæller dobbelt, og et stærkt trænerhold kan næsten fordoble udviklingen. Gode trænere, faciliteter, spilletid og spillerens vilje/professionalisme gør en stor forskel. Træningsfokus bestemmer, hvilke attributter der vokser mest. Spillere over 30 går tilbage fysisk.',
+  'train.f.all': 'Alle', 'train.f.gk': 'Målmænd', 'train.f.def': 'Forsvar', 'train.f.mid': 'Midtbane', 'train.f.att': 'Angreb', 'train.f.anyAge': 'Alle aldre', 'train.f.u21': '21 år og yngre', 'train.f.a2229': '22–29 år', 'train.f.o30': '30 år og ældre', 'train.f.anySched': 'Al træning', 'train.f.advice': 'Kun hvor assistenten foreslår andet', 'train.f.sortPos': 'Sortér: position', 'train.f.sortName': 'Sortér: navn', 'train.f.sortAge': 'Sortér: yngst først', 'train.f.sortDev': 'Sortér: udvikling', 'train.f.sortCond': 'Sortér: laveste kondi', 'train.explain': 'Unge spillere udvikler sig mod deres potentiale. Trænernes træningsevne betyder mest – de tre bedste tæller dobbelt, og et stærkt trænerhold kan næsten fordoble udviklingen. Gode trænere, faciliteter, spilletid og spillerens vilje/professionalisme gør en stor forskel. Træningsfokus bestemmer, hvilke attributter der vokser mest. Spillere over 30 går tilbage fysisk.',
   'train.schedules': 'Træningsprogrammer', 'train.restDesc': 'Hvile – genopbygger kondition',
   'train.general': 'Generel', 'train.goalkeeping': 'Målmand', 'train.defending': 'Forsvar', 'train.ballcontrol': 'Boldkontrol', 'train.attacking': 'Angreb',
   'train.shooting': 'Afslutninger', 'train.fitness': 'Fysik', 'train.setpieces': 'Dødbolde', 'train.rest': 'Hvile',
@@ -828,7 +843,7 @@ export const da: Record<string, string> = {
   'help.condition.title': 'Kondition', 'help.condition.short': 'Hvor frisk spilleren er. Trætte spillere præsterer dårligere og bliver oftere skadet.',
   'help.condition.tips': 'Falder under kampen – mest for spillere med lav udholdenhed.|Genvindes hver dag med 4 % + naturlig form/4.|Under ca. 55 % er skaderisikoen markant højere.|Roter truppen ved tætte kampprogrammer (Europa, pokal).|Efter en skade starter spilleren på højst 75 %.',
   'help.chemistry.title': 'Holdkemi', 'help.chemistry.short': 'Hvor godt startopstillingen fungerer sammen (0-100). Påvirker præstationen med op til ca. ±3 %.',
-  'help.chemistry.tips': 'Spillere fra samme land giver plus.|Tid sammen i klubben giver op til +12; mange nye spillere trækker ned.|Ledere i holdet (og en anfører der er leder) løfter kemien.|Tre eller flere professionelle giver ekstra.|Problembørn og spillere der vil væk trækker ned.',
+  'help.chemistry.tips': 'Spillere fra samme land giver plus.|Tid sammen i klubben giver op til +12; mange nye spillere trækker ned.|Ledere i holdet (og en anfører der er leder) løfter kemien.|Tre eller flere professionelle giver ekstra.|Problembørn og spillere der vil væk trækker ned.|Problembørn kan rehabiliteres over tid: ledere, trænere med disciplin, spilletid og fair konsekvens efter episoder hjælper. Følg forløbet på spillersiden.',
   'help.development.title': 'Spillerudvikling', 'help.development.short': 'Unge spillere vokser mod deres potentiale; spillere over 30 går gradvist tilbage. Træning, trænere og spilletid afgør hvor hurtigt.',
   'help.development.tips': 'Alder: hurtigst til og med 18 år, derefter aftagende; efter 23 kun langsom vækst.|Trænerne: de tre bedste trænere tæller dobbelt, og træningsfaciliteterne forstærker dem – ansæt gode trænere under Staff.|Spilletid: op til 50 % hurtigere udvikling for spillere der spiller.|Personlighed: professionalisme og determination gør en stor forskel.|Træningsskemaet styrer hvilke evner der forbedres – assistenten foreslår et fokus.|Over 30: naturlig form og gode trænere bremser tilbagegangen.|Byg bedre træningsanlæg under Økonomi → Projekter.',
   'help.youth.title': 'Ungdomsarbejde', 'help.youth.short': 'Hvert år d. 15. marts kommer nye ungdomsspillere. Kvaliteten afhænger af ungdomsarbejdet (60 %) og klubbens omdømme (40 %).',

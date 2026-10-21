@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { squad } from '../../game/state';
 import { Info } from '../help';
 import { act } from '../../game/actions';
@@ -11,9 +12,33 @@ import { scoutStars } from '../../game/scouting';
 import { coachingInfo, trainingAdvice } from '../../game/training';
 import { Arrow, totalDelta } from '../dev';
 
+/** Positionsgruppe ud fra spillerens bedste position (GK, SW, D, DM, M, AM, F, WB) */
+function posGroup(p: { pos: number[] }): string {
+  const i = p.pos.indexOf(Math.max(...p.pos));
+  return i === 0 ? 'gk' : i === 1 || i === 2 || i === 7 ? 'def' : i === 3 || i === 4 ? 'mid' : 'att';
+}
+
 export function Training() {
   const g = useGame()!;
-  const players = squad(g.userClub).sort((a, b) => b.pos.indexOf(20) - a.pos.indexOf(20));
+  const all = squad(g.userClub).sort((a, b) => b.pos.indexOf(20) - a.pos.indexOf(20));
+  const [f, setF] = useState<{ grp: string; age: string; sched: string; advice: boolean; sort: string }>(() => {
+    try { return { grp: '', age: '', sched: '', advice: false, sort: '', ...JSON.parse(localStorage.getItem('cm-train-filter') ?? '{}') }; } catch { return { grp: '', age: '', sched: '', advice: false, sort: '' }; }
+  });
+  const upd = (x: Partial<typeof f>) => { const n = { ...f, ...x }; setF(n); try { localStorage.setItem('cm-train-filter', JSON.stringify(n)); } catch { /* ignorér */ } };
+  const players = all.filter((p) => {
+    if (f.grp && posGroup(p) !== f.grp) return false;
+    const age = ageOn(p.dob, g.date);
+    if (f.age === 'u21' && age > 21) return false;
+    if (f.age === 'mid' && (age < 22 || age > 29)) return false;
+    if (f.age === 'o30' && age < 30) return false;
+    if (f.sched && p.training !== f.sched) return false;
+    if (f.advice && trainingAdvice(p).key === p.training) return false;
+    return true;
+  });
+  if (f.sort === 'age') players.sort((a, b) => a.dob.localeCompare(b.dob) * -1);
+  else if (f.sort === 'dev') players.sort((a, b) => totalDelta(b, 3) - totalDelta(a, 3));
+  else if (f.sort === 'cond') players.sort((a, b) => a.condition - b.condition);
+  else if (f.sort === 'name') players.sort((a, b) => a.last.localeCompare(b.last));
   const coaches = Object.values(g.staff).filter((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant'));
   const avg = coaches.length ? coaches.reduce((s, c) => s + c.attrs.coaching, 0) / coaches.length : 0;
   const club = g.clubs[g.userClub];
@@ -22,7 +47,7 @@ export function Training() {
   return (
     <div>
       <Head title={<>{t('nav.training')}<Info topic="development" /></>}>
-        <button className="primary" onClick={() => { for (const p of players) { const a = trainingAdvice(p); if (a.key !== p.training) act({ t: 'training', pid: p.id, key: a.key }); } }}>{t('adv.followAll')}</button>
+        <button className="primary" onClick={() => { for (const p of all) { const a = trainingAdvice(p); if (a.key !== p.training) act({ t: 'training', pid: p.id, key: a.key }); } }}>{t('adv.followAll')}</button>
         <select value="" onChange={(e) => e.target.value && setAll(e.target.value)}>
           <option value="">{t('train.setAll')}</option>
           {SCHEDULES.map((s) => <option key={s.key} value={s.key}>{t(`train.${s.key}`)}</option>)}
@@ -53,7 +78,30 @@ export function Training() {
           </div>
         </Panel>
       </div>
-      <Panel title={t('nav.squad')} className="flush">
+      <Panel title={`${t('nav.squad')} (${players.length}/${all.length})`} className="flush">
+        <div className="row train-filter">
+          <div className="seg">
+            {['', 'gk', 'def', 'mid', 'att'].map((k) => <button key={k} className={f.grp === k ? 'on' : ''} onClick={() => upd({ grp: k })}>{t(`train.f.${k || 'all'}`)}</button>)}
+          </div>
+          <select value={f.age} onChange={(e) => upd({ age: e.target.value })}>
+            <option value="">{t('train.f.anyAge')}</option>
+            <option value="u21">{t('train.f.u21')}</option>
+            <option value="mid">{t('train.f.a2229')}</option>
+            <option value="o30">{t('train.f.o30')}</option>
+          </select>
+          <select value={f.sched} onChange={(e) => upd({ sched: e.target.value })}>
+            <option value="">{t('train.f.anySched')}</option>
+            {SCHEDULES.map((s) => <option key={s.key} value={s.key}>{t(`train.${s.key}`)}</option>)}
+          </select>
+          <label className="row" style={{ gap: 6 }}><input type="checkbox" checked={f.advice} onChange={(e) => upd({ advice: e.target.checked })} />{t('train.f.advice')}</label>
+          <select value={f.sort} onChange={(e) => upd({ sort: e.target.value })}>
+            <option value="">{t('train.f.sortPos')}</option>
+            <option value="name">{t('train.f.sortName')}</option>
+            <option value="age">{t('train.f.sortAge')}</option>
+            <option value="dev">{t('train.f.sortDev')}</option>
+            <option value="cond">{t('train.f.sortCond')}</option>
+          </select>
+        </div>
         <div className="table-wrap">
           <table className="grid">
             <thead><tr><th>{t('col.pos')}</th><th>{t('col.name')}</th><th className="num">{t('col.age')}</th><th>{t('player.potential')}</th><th>{t('col.cond')}</th><th>{t('dev.col3m')}</th><th>{t('nav.training')}</th><th>{t('adv.col')}</th></tr></thead>
