@@ -16,7 +16,7 @@ const LIMITS: Record<string, [number, number]> = {
 };
 
 // samme id'er som src/game/achievements.ts (ACHIEVEMENTS)
-const ACH_IDS = new Set(['firstWin', 'bigWin', 'hattrick', 'fullHouse', 'shootout', 'europe', 'giantKiller', 'comeback', 'winStreak5', 'unbeaten10', 'kidsWin', 'survivor', 'promotion', 'cup', 'bigSale', 'loyal', 'legend', 'century', 'title', 'doublePromotion', 'clWin']);
+const ACH_IDS = new Set(['firstWin', 'bigWin', 'hattrick', 'fullHouse', 'shootout', 'europe', 'giantKiller', 'comeback', 'winStreak5', 'unbeaten10', 'kidsWin', 'survivor', 'promotion', 'cup', 'bigSale', 'loyal', 'legend', 'century', 'title', 'doublePromotion', 'clWin', 'patron']);
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const month = () => new Date().toISOString().slice(0, 7);
@@ -165,7 +165,7 @@ export async function GET(request: Request) {
       const rank = await redis.zrevrank('lb:career', id);
       return c ? { id, club: c.club, league: c.league, total: Number(c.total ?? 0), seasons: Number(c.seasons ?? 0), rank: rank === null ? null : rank + 1 } : null;
     }))).filter(Boolean).sort((a, b) => b!.total - a!.total);
-    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '' });
+    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '', supporter: h.supporter || null, regen: h.regenName || null });
   }
   const board = url.searchParams.get('board') ?? 'career';
   const league = (url.searchParams.get('league') ?? '').replace(/[^A-Z0-9-]/g, '');
@@ -177,7 +177,8 @@ export async function GET(request: Request) {
   const isCareer = key === 'lb:career';
   const rows = await Promise.all(ids.map(async ({ member, score }) => {
     const h = isCareer ? await redis.hgetall<Record<string, string>>(`career:${member}`) : await redis.hgetall<Record<string, string>>(`entry:${member}`);
-    return { id: member, pid: isCareer ? h?.pid : undefined, points: score, name: h?.name ?? '?', club: h?.club ?? '', league: h?.league ?? '', season: h?.season ? Number(h.season) : undefined, seasons: h?.seasons ? Number(h.seasons) : undefined };
+    const tier = h?.pid ? await redis.hget<string>(`prof:${h.pid}`, 'supporter') : null;
+    return { id: member, pid: isCareer ? h?.pid : undefined, supporter: tier ?? undefined, points: score, name: h?.name ?? '?', club: h?.club ?? '', league: h?.league ?? '', season: h?.season ? Number(h.season) : undefined, seasons: h?.seasons ? Number(h.seasons) : undefined };
   }));
   // egen placering (bedste række for karrieren)
   let me: { rank: number; points: number } | null = null;

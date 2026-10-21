@@ -27,7 +27,7 @@ const cleanBody = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, 
 interface Suggestion {
   id: number; title: string; body: string; cat: string; lang: string; pid: string; name: string; created: string;
   status: Status; votes: number; comments: number; reply?: string; releasedIn?: string; hidden?: boolean; reports?: number;
-  meta?: string; hasImage?: boolean; mergedInto?: number;
+  meta?: string; hasImage?: boolean; mergedInto?: number; supporter?: string;
 }
 
 async function auth(pid: string, token: string) {
@@ -41,10 +41,17 @@ const isAdmin = (req: Request, body?: Record<string, unknown>) => {
   return !!tok && (req.headers.get('x-admin-token') === tok || body?.admin === tok);
 };
 
+/** Supporterniveau pr. profil (kort cache pr. kald) */
+const tierCache = new Map<string, string | null>();
+async function tierOf(pid: string): Promise<string | null> {
+  if (!tierCache.has(pid)) tierCache.set(pid, (await redis.hget<string>(`prof:${pid}`, 'supporter')) ?? null);
+  return tierCache.get(pid) ?? null;
+}
+
 async function getSug(id: number): Promise<Suggestion | null> {
   const s = await redis.hgetall<Record<string, unknown>>(`sg:${id}`);
   if (!s?.id) return null;
-  return { ...(s as unknown as Suggestion), id: Number(s.id), votes: Number(s.votes ?? 0), comments: Number(s.comments ?? 0), reports: Number(s.reports ?? 0), hidden: s.hidden === true || s.hidden === 'true', hasImage: s.hasImage === true || s.hasImage === 'true', mergedInto: s.mergedInto ? Number(s.mergedInto) : undefined };
+  return { ...(s as unknown as Suggestion), supporter: (await tierOf(String(s.pid))) ?? undefined, id: Number(s.id), votes: Number(s.votes ?? 0), comments: Number(s.comments ?? 0), reports: Number(s.reports ?? 0), hidden: s.hidden === true || s.hidden === 'true', hasImage: s.hasImage === true || s.hasImage === 'true', mergedInto: s.mergedInto ? Number(s.mergedInto) : undefined };
 }
 
 /** Hvor mange aktive stemmer har profilen brugt? */
@@ -78,6 +85,7 @@ async function rateLimit(req: Request, key: string, max: number, seconds: number
 // ---------- GET ----------
 
 export async function GET(request: Request) {
+  tierCache.clear();
   const url = new URL(request.url);
   const me = (url.searchParams.get('pid') ?? '').replace(/[^a-f0-9]/g, '');
   const admin = isAdmin(request);
@@ -88,7 +96,8 @@ export async function GET(request: Request) {
     const s = await getSug(one);
     if (!s || (s.hidden && !admin)) return json({ error: 'not-found' }, 404);
     const raw = (await redis.lrange<string | Record<string, unknown>>(`sg:${one}:comments`, 0, 199)) ?? [];
-    const comments = raw.map((c, i) => ({ i, ...(typeof c === 'string' ? JSON.parse(c) : c) })).filter((c) => admin || !c.hidden);
+    const parsed = raw.map((c, i) => ({ i, ...(typeof c === 'string' ? JSON.parse(c) : c) })).filter((c) => admin || !c.hidden);
+    const comments = await Promise.all(parsed.map(async (c) => ({ ...c, supporter: c.pid ? (await tierOf(String(c.pid))) ?? undefined : undefined })));
     const image = s.hasImage ? await redis.get<string>(`sg:${one}:img`) : null;
     const voted = me ? !!(await redis.sismember(`sg:${one}:voters`, me)) : false;
     return json({ suggestion: s, comments, image, voted });
@@ -170,6 +179,11 @@ export async function POST(request: Request) {
       return json({ ok: true });
     }
     if (op === 'admin:reply') { await redis.hset(`sg:${id}`, { reply: cleanBody(body.text, 1000) }); return json({ ok: true }); }
+    if (op === 'admin:comment') {
+      await redis.rpush(`sg:${id}:comments`, JSON.stringify({ pid: '', name: 'Developer', text: cleanBody(body.text, 1000), at: now(), dev: true }));
+      await redis.hincrby(`sg:${id}`, 'comments', 1);
+      return json({ ok: true });
+    }
     if (op === 'admin:hide') { await redis.hset(`sg:${id}`, { hidden: !!body.hidden }); return json({ ok: true }); }
     if (op === 'admin:merge') {
       const into = Number(body.into);

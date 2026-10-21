@@ -1,4 +1,6 @@
 // Min profil: billede, navn, nationalitet og motto – plus præstationer og den offentlige profil, der kan deles.
+import { mySupport } from '../../online/support';
+import { SupporterBadge } from '../Support';
 import { useEffect, useMemo, useState } from 'react';
 import { act } from '../../game/actions';
 import { natName, t } from '../../i18n';
@@ -76,7 +78,7 @@ export function ProfileScreen() {
           <div className="prof-card">
             <div className="pub-avatar">{avatar ? <img src={avatar} alt="" /> : initials}</div>
             <div>
-              <b className="prof-card-name">{g.manager.name}</b>
+              <b className="prof-card-name">{g.manager.name}</b> <SupporterBadge tier={mySupport()?.tier} />
               <div className="muted"><Flag name={g.nations[g.manager.nation]?.name} />{natName(g.nations[g.manager.nation]?.name)}</div>
               {g.manager.motto && <div className="prof-motto">“{g.manager.motto}”</div>}
             </div>

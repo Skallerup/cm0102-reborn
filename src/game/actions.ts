@@ -1,6 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { unlock } from './achievements';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
 import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
@@ -54,6 +55,7 @@ export type Action =
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
+  | { t: 'patron' }
   | { t: 'onboard'; step: 'weak' | 'style' | 'needs' | 'brief' | 'skip'; style?: StyleKey; needs?: string[] }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
@@ -146,6 +148,7 @@ export function applyAction(a: Action): unknown {
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
+    case 'patron': unlock('patron'); return 'ok';
     case 'onboard': {
       const ob = (g.manager.onboard ??= {});
       if (a.step === 'weak') ob.weak = true;

@@ -1,4 +1,6 @@
 import { BoardScreen } from './screens/Board';
+import { refreshSupport, syncSupporterRegens } from '../online/support';
+import { SupportPage } from './Support';
 import { Head } from './screens/common';
 import { ProfileScreen } from './screens/Profile';
 import { BugReportButton, CommunityBoard } from './Community';
@@ -55,8 +57,8 @@ const MENU: [ScreenName, string][] = [
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
-const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
-const UNEMPLOYED: ScreenName[] = ['community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
+const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+const UNEMPLOYED: ScreenName[] = ['support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
   const g = useGame()!;
@@ -86,6 +88,11 @@ export function Shell() {
   // AI-artikler (kamprapporter m.m.) skrives i baggrunden, så de er klar når beskeden åbnes
   const newestNews = g.news[0]?.id;
   useEffect(() => { if (newestNews !== undefined) prefetchArticles(); }, [newestNews, g.userClub]);
+  // supportere: status, præstationen "Patron of the game" og supporternes regen-navne
+  useEffect(() => {
+    refreshSupport().then((m) => { if (m?.tier && !gs().manager.ach?.patron) { act({ t: 'patron' }); } });
+    void syncSupporterRegens();
+  }, [g.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // browser-notifikationer om vigtige nyheder, når fanen ikke er i fokus
   const notifiedUpTo = useRef(g.news[0]?.id ?? 0);
   useEffect(() => {
@@ -321,6 +328,7 @@ function Screen() {
     case 'club': return <ClubScreen id={route.id as number | undefined} />;
     case 'board': return <BoardScreen />;
     case 'profile': return <ProfileScreen />;
+    case 'support': return <div><Head title={t('sup.title')} /><SupportPage /></div>;
     case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p><CommunityBoard defaultName={gs().manager.name} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;
     case 'compare': return <Assistant tab="compare" />;

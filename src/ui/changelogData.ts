@@ -9,6 +9,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.0',
+    date: '2026-10-21',
+    title: { da: 'Fællesskabet: forslag, afstemninger, roadmap og støt spillet', en: 'The community: suggestions, polls, roadmap and supporting the game' },
+    items: [
+      { da: 'Ny side "Fællesskab": foreslå ændringer, stem (10 stemmer, som du får tilbage, når et forslag er udgivet), kommentér og følg roadmappen fra "Overvejes" til "Udgivet" – også som offentlig side uden at spille', en: 'New "Community" page: suggest changes, vote (10 votes, which you get back when a suggestion ships), comment and follow the roadmap from "Considering" to "Released" – also as a public page without playing' },
+      { da: 'Månedens afstemning: vinderen bliver bygget som det næste', en: "This month's poll: the winner gets built next" },
+      { da: 'Fejlrapport med ét klik fra menuen – version og skærm sendes med automatisk', en: 'One-click bug reports from the menu – version and screen are sent automatically' },
+      { da: 'Lignende forslag vises, mens du skriver, så stemmerne samles', en: 'Similar suggestions are shown while you type, so the votes come together' },
+      { da: 'Støt spillet: engangsbeløb eller månedligt via Stripe. Supportere får et mærke ved navnet, kommer på supporterlisten, får præstationen "Patron of the game", tidlig adgang, guld- og retrotema – og Sølv og Guld kan navngive en ungdomsspiller, der kan dukke op i alles spil', en: 'Support the game: one-off or monthly via Stripe. Supporters get a badge next to their name, a place on the supporters list, the "Patron of the game" achievement, early access and gold and retro themes – and Silver and Gold can name a youth player who can appear in everyone\'s game' },
+      { da: 'Engelsk er standard for nye besøgende (dansk, hvis browseren står på dansk)', en: 'English is the default for new visitors (Danish if the browser is set to Danish)' },
+    ],
+  },
+  {
     version: '0.7.83',
     date: '2026-10-21',
     title: { da: 'Første arbejdsdag, sæsonfortælling, transferdrama og moderne regler', en: 'First day at work, season story, transfer drama and modern rules' },

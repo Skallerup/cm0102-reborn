@@ -11,6 +11,7 @@ import { Start } from './Start';
 import { Landing } from './Landing';
 import { PublicProfilePage } from './Achievements';
 import { PublicCommunityPage } from './Community';
+import { AdminPage } from './Admin';
 import { loadLogos } from './logos';
 
 void loadLogos().then(() => notify());
@@ -23,6 +24,7 @@ export default function App() {
   const [lang, setLangState] = useState<Lang>(getLang());
   // offentlig managerprofil (delt link: ?manager=<id>)
   const [managerParam, setManagerParam] = useState(() => new URLSearchParams(location.search).get('manager') ?? '');
+  const [adminParam, setAdminParam] = useState(() => new URLSearchParams(location.search).get('admin') === '1');
   // offentlig fællesskabsside (?community=1 eller ?suggestion=ID)
   const [communityParam, setCommunityParam] = useState(() => { const q = new URLSearchParams(location.search); return q.get('suggestion') ? Number(q.get('suggestion')) : q.get('community') ? 0 : -1; });
   const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
@@ -65,6 +67,7 @@ export default function App() {
     })();
   }, [resuming]);
 
+  if (adminParam) return <AdminPage onClose={() => { history.replaceState(null, '', location.pathname); setAdminParam(false); }} />;
   if (communityParam >= 0) return <PublicCommunityPage id={communityParam || undefined} onClose={() => { history.replaceState(null, '', location.pathname); setCommunityParam(-1); }} />;
   if (managerParam) return <PublicProfilePage pid={managerParam} onClose={() => { history.replaceState(null, '', location.pathname); setManagerParam(''); }} />;
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;

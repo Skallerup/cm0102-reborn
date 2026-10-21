@@ -7,7 +7,7 @@ import type { Fixture, MatchReport } from './types';
 
 export type AchId =
   | 'firstWin' | 'bigWin' | 'winStreak5' | 'unbeaten10' | 'century' | 'giantKiller' | 'comeback' | 'hattrick' | 'shootout'
-  | 'fullHouse' | 'kidsWin' | 'europe' | 'title' | 'cup' | 'clWin' | 'promotion' | 'doublePromotion' | 'survivor' | 'loyal' | 'legend' | 'bigSale';
+  | 'fullHouse' | 'kidsWin' | 'europe' | 'title' | 'cup' | 'clWin' | 'promotion' | 'doublePromotion' | 'survivor' | 'loyal' | 'legend' | 'bigSale' | 'patron';
 
 /** Rækkefølge og sværhedsgrad (bronze/sølv/guld) */
 export const ACHIEVEMENTS: { id: AchId; icon: string; tier: 1 | 2 | 3 }[] = [
@@ -17,6 +17,7 @@ export const ACHIEVEMENTS: { id: AchId; icon: string; tier: 1 | 2 | 3 }[] = [
   { id: 'promotion', icon: '⬆️', tier: 2 }, { id: 'cup', icon: '🏆', tier: 2 }, { id: 'bigSale', icon: '💰', tier: 2 }, { id: 'loyal', icon: '🤝', tier: 2 },
   { id: 'legend', icon: '⭐', tier: 3 }, { id: 'century', icon: '💯', tier: 3 }, { id: 'title', icon: '👑', tier: 3 }, { id: 'doublePromotion', icon: '🚀', tier: 3 },
   { id: 'clWin', icon: '🌟', tier: 3 },
+  { id: 'patron', icon: '💛', tier: 3 },
 ];
 
 /** Lås en præstation op for den aktive manager (én gang) */

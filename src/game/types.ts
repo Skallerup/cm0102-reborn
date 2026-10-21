@@ -164,6 +164,8 @@ export interface Player {
   reform?: number;
   /** Kortvarigt "tændt" efter kritik/ros: bonus på stabilitet til og med dato */
   fired?: string;
+  /** Navngivet af en supporter (vises med en stjerne) */
+  supporterNamed?: string;
 }
 
 export interface StaffAttrs {
@@ -807,6 +809,8 @@ export interface GameState {
   seasonHistory: SeasonSummary[];
   challenge: ChallengeState | null;
   names: Record<number, [string[], string[]]>;
+  /** Supporternes regen-navne (hentet fra serveren) og hvilke der allerede er brugt i dette spil */
+  supporterRegens?: { first: string; last: string; by: string; used?: boolean }[];
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */

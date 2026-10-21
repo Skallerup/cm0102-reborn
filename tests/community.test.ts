@@ -13,6 +13,7 @@ class FakeRedis {
   async hget(k: string, f: string) { return (store.get(k) as Record<string, unknown> | undefined)?.[f] ?? null; }
   async hincrby(k: string, f: string, n: number) { const h = H(k); h[f] = Number(h[f] ?? 0) + n; return h[f]; }
   async incr(k: string) { const v = Number(store.get(k) ?? 0) + 1; store.set(k, v); return v; }
+  async incrby(k: string, n: number) { const v = Number(store.get(k) ?? 0) + n; store.set(k, v); return v; }
   async expire() { return 1; }
   async smembers(k: string) { return [...S(k)]; }
   async sadd(k: string, v: string | number) { const s = S(k); const had = s.has(String(v)); s.add(String(v)); return had ? 0 : 1; }
@@ -29,7 +30,7 @@ class FakeRedis {
   async ltrim() { return 'OK'; }
   async lindex(k: string, i: number) { return L(k)[i] ?? null; }
   async lset(k: string, i: number, v: string) { L(k)[i] = v; return 'OK'; }
-  async set(k: string, v: unknown) { store.set(k, v); return 'OK'; }
+  async set(k: string, v: unknown, o?: { nx?: boolean }) { if (o?.nx && store.has(k)) return null; store.set(k, v); return 'OK'; }
   async get(k: string) { return store.get(k) ?? null; }
   async del(k: string) { store.delete(k); return 1; }
 }
@@ -88,5 +89,41 @@ describe('fællesskab', () => {
     // fem rapporteringer skjuler forslaget
     for (let i = 0; i < 5; i++) { store.set(`prof:ccc${i}cccc`, { name: 'r', th: await sha('t'), created: '' }); await post({ op: 'report', pid: `ccc${i}cccc`, token: 't', id: 4 }); }
     expect((await get('list=new')).items.some((x: { id: number }) => x.id === 4)).toBe(false);
+  });
+});
+
+describe('donationer', () => {
+  let sup: typeof import('../api/support');
+  const sign = async (payload: string, secret: string) => {
+    const t = Math.floor(Date.now() / 1000);
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${t}.${payload}`));
+    return `t=${t},v1=${[...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
+  };
+  const hook = async (ev: unknown, secret = 'whsec_test') => {
+    const payload = JSON.stringify(ev);
+    const r = await sup.POST(new Request('http://x/api/support?webhook=1', { method: 'POST', body: payload, headers: { 'stripe-signature': await sign(payload, secret) } }));
+    return r.status;
+  };
+  beforeAll(async () => { process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test'; sup = await import('../api/support'); });
+
+  it('krediterer kun ægte, betalte betalinger – og kun én gang', async () => {
+    const ev = { id: 'evt_1', type: 'checkout.session.completed', data: { object: { payment_status: 'paid', mode: 'payment', amount_total: 3000, metadata: { pid: me.pid } } } };
+    expect(await hook(ev, 'forkert-hemmelighed')).toBe(400);
+    expect(await hook(ev)).toBe(200);
+    expect(await hook(ev)).toBe(200); // samme hændelse igen
+    const p = store.get(`prof:${me.pid}`) as Record<string, unknown>;
+    expect(p.donated).toBe(3000);
+    expect(p.supporter).toBe('silver');
+    await hook({ ...ev, id: 'evt_2', data: { object: { ...ev.data.object, amount_total: 3500 } } });
+    expect((store.get(`prof:${me.pid}`) as Record<string, unknown>).supporter).toBe('gold');
+  });
+
+  it('kun Sølv og Guld kan navngive en regen', async () => {
+    const call = (pid: string, token: string) => sup.POST(new Request('http://x/api/support', { method: 'POST', body: JSON.stringify({ op: 'regen', pid, token, first: 'Martin', last: 'Skallerup' }) }));
+    expect((await call(other.pid, other.token)).status).toBe(403);
+    expect((await call(me.pid, me.token)).status).toBe(200);
+    const list = await (await sup.GET(new Request('http://x/api/support?regens=1'))).json();
+    expect(list.regens[0].first).toBe('Martin');
   });
 });

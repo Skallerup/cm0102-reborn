@@ -264,6 +264,10 @@ export function Landing({ onPlay, onLang }: { onPlay: () => void; onLang: (l: La
         </div>
       </section>
 
+      <div className="lp-support lp-wrap">
+        <span>💛 {t('land.supportLine')}</span>
+        <a className="link" href="?community=1">{t('land.community')}</a>
+      </div>
       <footer className="lp-footer lp-wrap">
         <div>© {new Date().getFullYear()} CM 01/02 Reborn · {t('land.footerData')}</div>
         <div className="lp-disclaimer">{t('land.disclaimer')}</div>

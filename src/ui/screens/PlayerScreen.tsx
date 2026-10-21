@@ -57,7 +57,7 @@ export function PlayerScreen({ id }: { id: number }) {
 
   return (
     <div>
-      <Head title={<>{p.first} {p.last} {statusTags(p, g.userClub)}</>}>
+      <Head title={<>{p.first} {p.last} {p.supporterNamed && <span className="tag sup-gold" title={t('sup.namedBy', { name: p.supporterNamed })}>⭐</span>} {statusTags(p, g.userClub)}</>}>
         <button className={compareIds.includes(p.id) ? 'primary' : ''} onClick={() => toggleCompare(p.id)}>{t('player.compare')} ({compareIds.length})</button>
         {compareIds.length >= 2 && <button onClick={() => nav({ name: 'compare' })}>{t('player.showCompare')}</button>}
       </Head>

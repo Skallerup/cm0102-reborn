@@ -294,6 +294,9 @@ export function youthIntake() {
     const human = isHumanClub(c.id);
     const added: [Player, SubPos][] = [];
     for (const sp of specs) {
+      // supporternes navne: et af årets talenter i en spillet nation kan få et navn fra en supporter
+      const sr = active.has(c.nation) && rng.chance(0.04) ? g.supporterRegens?.find((x) => !x.used) : undefined;
+      if (sr) { sr.used = true; sp.first = sr.first; sp.last = sr.last; }
       const p = makePlayer({
         id: g.nextId.player++, first: sp.first, last: sp.last, dob: sp.dob, nation: sp.nation, club: c.id, sub: sp.sub,
         foot: sp.foot, height: 0, ca: sp.ca, pa: sp.pa, date: g.date, seed: g.seed, regen: true,
@@ -301,6 +304,7 @@ export function youthIntake() {
       });
       p.value = Math.max(10_000, p.value);
       if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+      if (sr) p.supporterNamed = sr.by;
       addPlayer(p);
       added.push([p, sp.sub]);
       if (human) asOwner(c.id, () => {

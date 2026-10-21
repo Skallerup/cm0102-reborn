@@ -4,13 +4,13 @@
 import { loadLogos, logoUrl } from './logos';
 import { gs, hasGame } from '../game/state';
 
-export type Theme = 'club' | 'clubDark' | 'light' | 'dark';
+export type Theme = 'club' | 'clubDark' | 'light' | 'dark' | 'gold' | 'retro';
 const KEY = 'cm-theme';
 const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2', '--nav-bg', '--nav-fg', '--nav-muted', '--nav-hover', '--nav-active', '--top-bg', '--top-fg', '--top-muted', '--top-chip'];
 
 export function getTheme(): Theme {
   // standard: klubbens farver på lys baggrund
-  try { const v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' || v === 'clubDark' ? v : 'club'; } catch { return 'club'; }
+  try { const v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' || v === 'clubDark' || v === 'gold' || v === 'retro' ? v : 'club'; } catch { return 'club'; }
 }
 
 export function setTheme(t: Theme) {
@@ -191,10 +191,13 @@ export function applyTheme() {
   const theme = getTheme();
   const token = ++applied;
   // forsiden og startmenuen er designet mørke – temaet gælder inde i spillet
-  const dark = theme === 'dark' || theme === 'clubDark' || !hasGame();
+  const dark = theme === 'dark' || theme === 'clubDark' || theme === 'gold' || theme === 'retro' || !hasGame();
   root.dataset.theme = dark ? 'dark' : 'light';
   delete root.dataset.club;
+  delete root.dataset.skin;
   for (const v of VARS) root.style.removeProperty(v);
+  // supportertemaer: guld og retro-CM
+  if ((theme === 'gold' || theme === 'retro') && hasGame()) { root.dataset.skin = theme; return; }
   if ((theme !== 'club' && theme !== 'clubDark') || !hasGame()) return;
   const club = gs().clubs[themeClub ?? gs().userClub];
   if (!club) return;

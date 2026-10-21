@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { SupporterBadge } from '../Support';
 import { askConfirm } from '../confirm';
 import { careerPoints, computeSeasonScore, leagueWeight, type SeasonScore } from '../../game/rating';
 import { enableMultiplayer, isMultiplayer, withHuman } from '../../game/humans';
@@ -146,7 +147,7 @@ function Boards() {
                   return (
                     <tr key={r.id} className={mine ? 'me' : ''}>
                       <td className="num">{i + 1}</td>
-                      <td>{r.pid ? <a className="link" onClick={() => window.open(profileUrl(r.pid!), '_blank')}>{r.name}</a> : r.name}</td>
+                      <td>{r.pid ? <a className="link" onClick={() => window.open(profileUrl(r.pid!), '_blank')}>{r.name}</a> : r.name} <SupporterBadge tier={r.supporter} /></td>
                       <td>{r.club}</td>
                       <td className="muted">{r.league}</td>
                       {board === 'career' ? <td className="num">{r.seasons ?? ''}</td> : <td>{r.season ? `${r.season}/${String(r.season + 1).slice(2)}` : ''}</td>}

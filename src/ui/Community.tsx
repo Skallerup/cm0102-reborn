@@ -1,5 +1,6 @@
 // Fællesskabet: forslag og fejlrapporter, stemmer (med budget), kommentarer, månedens afstemning og en roadmap.
 // Bruges både i spillet (Community-siden) og som offentlig side (?community=1 og ?suggestion=ID).
+import { SupporterBadge } from './Support';
 import { useEffect, useState } from 'react';
 import { SG_CATS, comment, communityAvailable, communityUrl, getPoll, getSuggestion, listSuggestions, myVotes, pollVote, reportBug, reportContent, shrinkImage, similar, suggest, suggestionUrl, vote, type SgComment, type SgStatus, type Suggestion } from '../online/community';
 import { createProfile, getProfile } from '../online/rank';
@@ -93,7 +94,7 @@ export function CommunityBoard({ initialId, defaultName }: { initialId?: number;
                   <span className={`sg-status s-${s.status}`}>{t(`cm.st.${s.status}`)}</span>
                   <span className="tag">{t(`cm.cat.${s.cat}`)}</span>
                   {s.lang === 'da' && <span className="tag" title={t('cm.danish')}>DA</span>}
-                  {s.supporter && <span className={`tag sup-${s.supporter}`}>{t(`sup.tier.${s.supporter}`)}</span>}
+                  <SupporterBadge tier={s.supporter} />
                   {s.reply && <span className="tag good">💬 {t('cm.devReplied')}</span>}
                   <span className="muted">{s.name} · {dateFmt(s.created.slice(0, 10))} · 💬 {s.comments}</span>
                 </span>
@@ -173,7 +174,7 @@ function SuggestionModal({ id, onClose }: { id: number; onClose: () => void }) {
         <h4 style={{ margin: '6px 0 0' }}>{t('cm.comments', { n: d.comments.length })}</h4>
         <div className="sg-comments">
           {d.comments.map((c: SgComment) => (
-            <div key={c.i} className={`sg-comment ${c.dev ? 'dev' : ''}`}><b>{c.name}{c.supporter ? <span className={`tag sup-${c.supporter}`}>{t(`sup.tier.${c.supporter}`)}</span> : null}</b> <span className="muted">{dateFmt(c.at.slice(0, 10))}</span><p>{c.text}</p></div>
+            <div key={c.i} className={`sg-comment ${c.dev ? 'dev' : ''}`}><b>{c.dev ? '🛠️ ' : ''}{c.name} <SupporterBadge tier={c.supporter} /></b> <span className="muted">{dateFmt(c.at.slice(0, 10))}</span><p>{c.text}</p></div>
           ))}
           {!d.comments.length && <div className="muted">{t('cm.noComments')}</div>}
         </div>

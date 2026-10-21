@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { isSupporter } from '../../online/support';
 import { exportSave, saveGame } from '../../game/save';
 import { notify } from '../../game/state';
 import { act } from '../../game/actions';
@@ -40,6 +41,7 @@ export function Options() {
             <label className="row">{t('opt.theme')}
               <select value={theme} onChange={(e) => { setThemeState(e.target.value as Theme); setTheme(e.target.value as Theme); }}>
                 {(['club', 'clubDark', 'light', 'dark'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
+                {(['gold', 'retro'] as const).map((m) => <option key={m} value={m} disabled={!isSupporter()}>{t(`opt.theme.${m}`)}{isSupporter() ? '' : ` (${t('sup.supportersOnly')})`}</option>)}
               </select>
             </label>
             {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
