@@ -1,6 +1,6 @@
 // Turneringer: kalender, kampprogram, tabeller, pokaler, CL/UEFA og playoffs.
 import { addDays, nthWeekday, weekday } from './dates';
-import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, rulesFor } from './leagues';
+import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, inBreak, rulesFor } from './leagues';
 import { rng } from './rng';
 import { addNews, gs, indexFixture, newsRelevant } from './state';
 import { forEachHuman } from './humans';
@@ -51,6 +51,30 @@ export function calendar(y: number): SeasonCalendar {
   }
   const playoff = { sf: [addDays(end, 4), addDays(end, 7)], final: addDays(end, 14), rel: [addDays(end, 5), addDays(end, 9)] };
   return { saturdays, tuesdays, cupRounds, cupFinal, cl, uefa, playoff };
+}
+
+/** Ligaens egne kampdage: tidligere sæsonstart (fx Danmark i juli) og ingen kampe i vinterpausen */
+export function leagueCalendar(cal: SeasonCalendar, rules: { start?: string; winterBreak?: [string, string] }, season: number): SeasonCalendar {
+  let saturdays = cal.saturdays.slice();
+  if (rules.start && saturdays.length) {
+    const extra: string[] = [];
+    let d = `${season}-${rules.start}`;
+    while (weekday(d) !== 6) d = addDays(d, 1);
+    for (; d < saturdays[0]; d = addDays(d, 7)) extra.push(d);
+    saturdays = [...extra, ...saturdays];
+  }
+  return {
+    ...cal,
+    saturdays: saturdays.filter((d) => !inBreak(d, rules.winterBreak)),
+    tuesdays: cal.tuesdays.filter((d) => !inBreak(d, rules.winterBreak)),
+  };
+}
+
+/** Vinterpausen i en nations bedste række (bruges også til pokalturneringen) */
+function nationBreak(nation: number): [string, string] | undefined {
+  const g = gs();
+  const top = Object.entries(g.leagues).find(([, l]) => l.nation === nation && l.tier === 1);
+  return top ? LEAGUE_RULES[top[0]]?.winterBreak : undefined;
 }
 
 /** Vælg n datoer jævnt fordelt fra en sorteret liste */
@@ -136,7 +160,7 @@ export function setupLeague(id: string, name: string, nation: number, tier: numb
     total = rules.split.after + (per - 1) * rules.split.rounds;
     rounds.length = Math.min(rounds.length, rules.split.after);
   }
-  const dates = leagueDates(cal, total);
+  const dates = leagueDates(leagueCalendar(cal, rules, season), total);
   comp.meta = { dates };
   rounds.forEach((r, i) => r.forEach(([h, a]) => newFixture(id, dates[i], h, a, i + 1)));
 }
@@ -195,7 +219,13 @@ function createCupRound(comp: Competition, pairs: [number, number][], round: num
   const total = comp.meta!.roundsTotal as number;
   const stage = cupStageName(round, total);
   const idx = Math.max(0, cal.cupRounds.length - (total - 1) + (round - 1));
-  const date = stage === 'F' ? cal.cupFinal : cal.cupRounds[Math.min(cal.cupRounds.length - 1, idx)];
+  let date = stage === 'F' ? cal.cupFinal : cal.cupRounds[Math.min(cal.cupRounds.length - 1, idx)];
+  // pokalrunder i vinterpausen flyttes til første onsdag efter pausen
+  const brk = comp.nation >= 0 ? nationBreak(comp.nation) : undefined;
+  if (stage !== 'F' && inBreak(date, brk)) {
+    while (inBreak(date, brk) || weekday(date) !== 3) date = addDays(date, 1);
+    if (date >= cal.cupFinal) date = addDays(cal.cupFinal, -7);
+  }
   comp.stage = stage;
   comp.meta!.round = round;
   for (const [a, b] of pairs) {

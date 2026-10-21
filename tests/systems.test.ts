@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { roundRobin } from '../src/game/competitions';
 import { makePlayer } from '../src/game/data/generate';
 import { attrRange } from '../src/game/scouting';
-import { calendar } from '../src/game/competitions';
+import { calendar, leagueCalendar, leagueDates } from '../src/game/competitions';
+import { LEAGUE_RULES } from '../src/game/leagues';
 import { leadLoss } from '../src/game/analysis';
 
 describe('kampprogram', () => {
@@ -83,5 +84,16 @@ describe('tabt føring', () => {
     expect(a.weakLane).toBe('left');
     // en sejr er ikke en tabt føring
     expect(leadLoss({ ...rep, stats: [{ ...side, goals: 3 }, side] } as unknown as Parameters<typeof leadLoss>[0], 0)).toBeNull();
+  });
+});
+
+describe('dansk sæsonkalender', () => {
+  it('Superligaen starter i juli og holder vinterpause fra december til februar', () => {
+    const cal = leagueCalendar(calendar(2025), LEAGUE_RULES.DK1, 2025);
+    const dates = leagueDates(cal, 32);
+    expect(dates.length).toBe(32);
+    expect(dates[0] < '2025-08-01').toBe(true);
+    for (const d of dates) expect(d > '2025-12-08' && d < '2026-02-14').toBe(false);
+    expect(dates.at(-1)! <= '2026-06-01').toBe(true);
   });
 });
