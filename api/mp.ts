@@ -161,7 +161,15 @@ async function publicRoom(code: string) {
     players: players.map((p) => ({ pid: p.pid, name: p.name, club: p.club, ready: p.ready, joined: p.joined, auto: !!p.auto })),
     chat,
     draft: await publicDraft(code),
+    voice: await voiceMembers(code),
   };
+}
+
+/** Hvem er med i voice-chatten lige nu (hjerteslag inden for 25 sekunder) */
+async function voiceMembers(code: string): Promise<string[]> {
+  const h = (await redis.hgetall<Record<string, number | string>>(`room:${code}:voice`)) ?? {};
+  const now = Date.now();
+  return Object.entries(h).filter(([, ts]) => now - Number(ts) < 25_000).map(([pid]) => pid);
 }
 
 async function publicDraft(code: string) {
@@ -399,6 +407,33 @@ export async function POST(request: Request) {
       await redis.del(keys.lock);
       await touch(code);
       return json(await publicRoom(code));
+    }
+    // ----- voice-chat: serveren formidler kun forbindelsen (WebRTC), lyden går direkte mellem browserne -----
+    case 'voice': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      if (body.on) await redis.hset(`room:${code}:voice`, { [me.pid]: Date.now() });
+      else await redis.hdel(`room:${code}:voice`, me.pid);
+      await redis.expire(`room:${code}:voice`, 3600);
+      return json({ voice: await voiceMembers(code) });
+    }
+    case 'sig': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const to = String(body.to ?? '').replace(/[^a-z0-9]/g, '');
+      if (!to) return json({ error: 'to' }, 400);
+      const key = `room:${code}:sig:${to}`;
+      await redis.rpush(key, JSON.stringify({ from: me.pid, data: body.data ?? null }));
+      await redis.expire(key, 120);
+      return json({ ok: true });
+    }
+    case 'sigpull': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const key = `room:${code}:sig:${me.pid}`;
+      const raw = await redis.lrange<string | Record<string, unknown>>(key, 0, -1);
+      if (raw.length) await redis.del(key);
+      return json({ msgs: raw.map((x) => (typeof x === 'string' ? JSON.parse(x) : x)), voice: await voiceMembers(code) });
     }
     // ----- draft-liga -----
     case 'dteam': {

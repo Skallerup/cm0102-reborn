@@ -11,8 +11,9 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '0.10.1',
     date: '2026-10-21',
-    title: { da: 'Draft-liga: rettelser og ønskeliste før draften', en: 'Draft League: fixes and a wishlist before the draft' },
+    title: { da: 'Draft-liga: chat, voice-chat og ønskeliste før draften', en: 'Draft League: chat, voice chat and a wishlist before the draft' },
     items: [
+      { da: 'Chat og voice-chat under draften – lyden går direkte mellem jer, og det ses, hvem der taler', en: 'Chat and voice chat during the draft – the audio goes directly between you, and you can see who is talking' },
       { da: 'Rettet: assistenten valgte for managerne efter første runde, og draften kunne gå i stå ved sidste valg', en: 'Fixed: the assistant picked for managers after the first round, and the draft could stall on the last pick' },
       { da: 'Rettet: ligaens indstillinger (fx antal runder) kunne ikke ændres i lobbyen', en: 'Fixed: league settings (such as the number of rounds) could not be changed in the lobby' },
       { da: 'Gennemse puljen og byg din ønskeliste, mens I venter på, at draften starter', en: 'Browse the pool and build your wishlist while you wait for the draft to start' },

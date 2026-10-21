@@ -1,5 +1,6 @@
 // Draft-liga: oprettelse, tilmelding, lobby, keepers og selve draften (live, 60 sekunder pr. valg).
 // Når draften er færdig, bygges sæsonen, og spillet fortsætter i den almindelige brugerflade (med færre menupunkter).
+import { RoomChat } from './RoomChat';
 import { useEffect, useMemo, useState } from 'react';
 import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
@@ -241,6 +242,7 @@ export function DraftRoom() {
       {d.phase === 'keepers' && <Keepers settings={settings} />}
       {d.phase === 'draft' && (pool.length ? <LiveDraft pool={pool} byId={byId} settings={settings} year={world?.season ?? 2025} /> : <div className="empty">{t('start.loading')}</div>)}
       {(d.phase === 'done' || d.phase === 'playing') && <DraftFinished byId={byId} />}
+      <RoomChat />
     </div>
   );
 }

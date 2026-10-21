@@ -38,6 +38,8 @@ export interface RoomInfo {
   chat?: RoomChat[];
   /** Draft-liga: fase, rækkefølge, hold og valg */
   draft?: DraftRoomInfo;
+  /** Hvem er med i voice-chatten */
+  voice?: string[];
 }
 
 export interface DraftRoomInfo {
@@ -93,6 +95,8 @@ export function forgetRoom(code: string) {
 }
 
 // ---------- HTTP ----------
+
+export async function mpPost<T>(op: string, body: Record<string, unknown>): Promise<T> { return post<T>(op, body); }
 
 async function post<T>(op: string, body: Record<string, unknown>): Promise<T> {
   const r = await fetch(`${API}?op=${op}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
