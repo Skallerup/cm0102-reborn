@@ -40,6 +40,8 @@ export interface EngineOptions {
   var?: boolean;
   /** Vejret (påvirker afleveringer, luftdueller, træthed og afslutninger) */
   weather?: Weather;
+  /** Antal udskiftninger (moderne regler: 5, klassiske: 3) */
+  subs?: number;
 }
 
 interface SP {
@@ -180,7 +182,7 @@ export class MatchSim {
       ti: t.tactic.team,
       on: [],
       benchIds: t.tactic.bench.slice(),
-      subsLeft: 3,
+      subsLeft: this.opts.subs ?? 5,
       players: t.players,
       zAtt: [], zDef: [], wAtt: [], wDef: [],
       stats: emptyStats(),

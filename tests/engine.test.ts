@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ageOn } from '../src/game/dates';
 import { caFromValue, makePlayer, type SubPos } from '../src/game/data/generate';
-import { quickMatch, type EngineTeam } from '../src/game/engine/match';
+import { MatchSim, quickMatch, type EngineTeam } from '../src/game/engine/match';
+import { A } from '../src/game/attributes';
 import { Rng } from '../src/game/rng';
 import { autoSelect, newTactic } from '../src/game/tactics';
 import type { Foot, Player } from '../src/game/types';
@@ -109,26 +110,25 @@ describe('matchmotor', () => {
 });
 
 describe('instruktioner mod modstanderen', () => {
-  it('tæt markering og pres af deres stjerner koster dem chancer', () => {
+  it('tæt markering svækker den markerede spiller, og hårde tacklinger giver flere frispark', () => {
     const [h, a] = [clubs[0], clubs[1]];
     const away = team(a);
-    // deres to mest offensive spillere
     const stars = [...away.tactic.lineup].map((id) => away.players.get(id)!).sort((x, y) => (y.attrs[2] + y.attrs[6]) - (x.attrs[2] + x.attrs[6])).slice(0, 2);
-    const run = (withOi: boolean) => {
-      const r = new Rng(3);
-      let theirGoals = 0, ourFouls = 0;
-      for (let i = 0; i < 400; i++) {
-        const home = team(h);
-        if (withOi) home.tactic = { ...home.tactic, opp: { fixture: 1, targets: [{ pid: stars[0].id, kind: 'tight' }, { pid: stars[1].id, kind: 'hard' }] } };
-        const rep = quickMatch(home, team(a), { fixtureId: 1 }, r);
-        theirGoals += rep.stats[1].goals;
-        ourFouls += rep.stats[0].fouls;
-      }
-      return { theirGoals, ourFouls };
+    const withOi = (home: ReturnType<typeof team>) => ({ ...home, tactic: { ...home.tactic, opp: { fixture: 1, targets: [{ pid: stars[0].id, kind: 'tight' as const }, { pid: stars[1].id, kind: 'hard' as const }] } } });
+    // samme frø → samme dagsform; kun instruktionen er forskellig
+    const effOf = (oi: boolean) => {
+      const sim = new MatchSim(oi ? withOi(team(h)) : team(h), team(a), { commentary: false, fixtureId: 1 }, new Rng(5));
+      const sp = (sim.teams[1] as unknown as { on: { p: { id: number }; eff: Float32Array }[] }).on.find((x) => x.p.id === stars[0].id)!;
+      return sp.eff[A.finishing];
     };
-    const base = run(false), oi = run(true);
-    expect(oi.theirGoals).toBeLessThan(base.theirGoals);
-    expect(oi.ourFouls).toBeGreaterThan(base.ourFouls);
+    expect(effOf(true) / effOf(false)).toBeCloseTo(0.92, 2);
+    const fouls = (oi: boolean) => {
+      const r = new Rng(3);
+      let n = 0;
+      for (let i = 0; i < 300; i++) n += quickMatch(oi ? withOi(team(h)) : team(h), team(a), { fixtureId: 1 }, r).stats[0].fouls;
+      return n;
+    };
+    expect(fouls(true)).toBeGreaterThan(fouls(false));
   });
 });
 

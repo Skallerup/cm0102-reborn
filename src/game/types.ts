@@ -725,6 +725,8 @@ export interface Options {
   transferWindows?: 'real' | 'classic';
   /** Højdepunkter i 2D: kun mål, store chancer (standard) eller alt (også små chancer, offside, kort og skader) */
   highlights?: 'goals' | 'big' | 'all';
+  /** Kampregler: moderne (5 udskiftninger, 9 på bænken) eller klassiske CM-regler (3 og 5). Standard: moderne – klassisk med CM 01/02-databasen */
+  rules?: 'modern' | 'classic';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
 }

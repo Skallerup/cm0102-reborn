@@ -52,6 +52,7 @@ export type Action =
   | { t: 'boardAsk'; kind: BoardAsk }
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
+  | { t: 'setRules'; rules: 'modern' | 'classic' }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
   | { t: 'interact'; pid: number; kind: TalkKind }
@@ -142,6 +143,7 @@ export function applyAction(a: Action): unknown {
     case 'boardAsk': return boardAsk(a.kind);
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
+    case 'setRules': g.options.rules = a.rules; return 'ok';
     case 'managerProfile': {
       const name = a.name?.replace(/\s+/g, ' ').trim().slice(0, 30);
       if (name) {

@@ -1,4 +1,5 @@
 import { fitFactor, roleScore, slotFit, slotRole } from './attributes';
+import { benchSize } from './rules';
 import type { Player, PlayerInstructions, PosKey, Side, Slot, Tactic, TeamInstructions } from './types';
 
 type S = [PosKey, Side, number, number];
@@ -107,11 +108,11 @@ export function pickLineup(players: Player[], slots: Slot[], considerCondition =
   // sørg for spredning: forsvar, midtbane, angreb
   const want = ['D', 'M', 'ST', 'AM', 'DM'];
   for (const w of want) {
-    if (bench.length >= 5) break;
+    if (bench.length >= benchSize()) break;
     const idx = others.findIndex((p) => p.pos[['GK', 'SW', 'D', 'DM', 'M', 'AM', 'ST', 'WB'].indexOf(w)] >= 15);
     if (idx >= 0) bench.push(others.splice(idx, 1)[0].id);
   }
-  while (bench.length < 5 && others.length) bench.push(others.shift()!.id);
+  while (bench.length < benchSize() && others.length) bench.push(others.shift()!.id);
   return { lineup, bench };
 }
 

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { benchSize } from '../../game/rules';
 import { Info } from '../help';
 import { roleScore, slotFit, slotRole } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
@@ -129,7 +130,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
     } else {
       lineup[slot] = pid;
       bench = bench.filter((x) => x !== pid);
-      if (prev && bench.length < 5) bench.push(prev);
+      if (prev && bench.length < benchSize()) bench.push(prev);
     }
     change({ ...tactic, lineup, bench });
   };
@@ -137,7 +138,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
   const toggleBench = (pid: number) => {
     if (matchMode) return;
     if (tactic.bench.includes(pid)) change({ ...tactic, bench: tactic.bench.filter((x) => x !== pid) });
-    else if (tactic.bench.length < 5 && !inXI.has(pid)) change({ ...tactic, bench: [...tactic.bench, pid] });
+    else if (tactic.bench.length < benchSize() && !inXI.has(pid)) change({ ...tactic, bench: [...tactic.bench, pid] });
   };
 
   const setTeam = (patch: Partial<TeamInstructions>) => change({ ...tactic, team: { ...tactic.team, ...patch } });

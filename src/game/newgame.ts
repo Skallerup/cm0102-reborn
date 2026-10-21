@@ -68,7 +68,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     userClub: o.clubId,
     manager: { name: o.managerName, nation: o.managerNation, rep: 40, history: [], trophies: [], sacked: 0 },
     board: { confidence: 60, expectation: 'mid', expectedPos: 10, warnings: 0 },
-    options: { masking: o.masking, autosave: true, matchSpeed: 650, fullCommentary: true },
+    options: { masking: o.masking, autosave: true, matchSpeed: 650, fullCommentary: true, rules: world.source.startsWith('Championship Manager 01/02') ? 'classic' : 'modern' },
     activeNations: o.activeNations.slice(),
     nations: world.nations,
     leagueOrder: world.leagues.map((l) => l.id),
