@@ -2,6 +2,7 @@ import { t } from '../../i18n';
 import { ClubLink, Panel, PlayerLink } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
+import { SeasonCard, StoryTimeline } from '../story';
 
 export function History() {
   const g = useGame()!;
@@ -30,6 +31,12 @@ export function History() {
           )}
         </Panel>
       </div>
+      <StoryTimeline />
+      {(m.stories ?? []).length > 0 && (
+        <Panel title={t('story.cards')}>
+          <div className="season-cards">{m.stories!.slice().reverse().map((s) => <SeasonCard key={s.season} s={s} />)}</div>
+        </Panel>
+      )}
       {g.seasonHistory.slice().reverse().map((s) => (
         <Panel key={s.season} title={`${t('col.season')} ${s.season}/${String(s.season + 1).slice(2)}`} className="flush">
           <table className="grid">

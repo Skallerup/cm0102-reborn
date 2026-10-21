@@ -1,6 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
+import { storyAdd, storySeasonEnd } from './story';
 import { finalOrder, promotionOrder, leagueRows } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
@@ -87,6 +88,7 @@ function seasonAwards(): SeasonSummary {
     forEachHuman(() => {
       if (g.userClub && comp.winner === g.userClub && comp.type !== 'playoff') {
         g.manager.trophies.push({ season: g.season, comp: comp.name, club: g.userClub });
+        storyAdd({ k: 'trophy', w: comp.type === 'league' || comp.type === 'continental' ? 12 : 9, p: { comp: comp.name } });
         unlock(comp.type === 'league' && comp.tier === 1 ? 'title' : comp.type === 'cup' ? 'cup' : comp.id === 'CL' ? 'clWin' : comp.type === 'league' ? 'promotion' : 'europe');
       }
     });
@@ -486,6 +488,7 @@ export function seasonRollover() {
   promotionRelegation();
   seasonWageClauses(tierBefore);
   achievementsSeasonEnd(tierBefore);
+  storySeasonEnd(tierBefore);
   // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
   for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
   archiveStats();

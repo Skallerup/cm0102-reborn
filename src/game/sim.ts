@@ -9,6 +9,7 @@ import { maxSubs } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { achievementsAfterMatch } from './achievements';
+import { storyAfterMatch } from './story';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
@@ -172,6 +173,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
   recordsAfterMatch(f, rep, gate.att);
   achievementsAfterMatch(f, rep, gate.att);
+  storyAfterMatch(f, rep, isBigMatch(f.home, f.away));
   if (g.humans) { recordH2H(f); botsAfterMatch(f); rivalryAfterMatch(f); }
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';

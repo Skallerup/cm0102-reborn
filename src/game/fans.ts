@@ -5,6 +5,7 @@ import { ageOn, daysBetween } from './dates';
 import { fairTicketPrice } from './finance';
 import { asOwner, isHumanClub } from './humans';
 import { addNews, gs, squad } from './state';
+import { storyAdd } from './story';
 import type { Club, Player } from './types';
 
 export const fanMood = (c: Club | undefined) => c?.fanMood ?? 60;
@@ -42,6 +43,7 @@ export function fansOnSigning(p: Player, club: Club, loan: boolean) {
   if (loan) hype = Math.max(0, hype - 1); // et lejemål er ikke helt det samme
   if (!hype) return;
   bumpFans(club.id, HYPE_FANS[hype], hype >= 2 ? 'starSigned' : 'goodSigning');
+  if (hype >= 2 && !loan) asOwner(club.id, () => storyAdd({ k: 'signing', w: 3 + hype, pid: p.id, p: { player: `${p.first} ${p.last}`.trim() } }));
   asOwner(club.id, () => {
     const g = gs();
     g.board.confidence = Math.min(100, g.board.confidence + HYPE_BOARD[hype]);
@@ -113,6 +115,11 @@ export function fansMonthly() {
     if (ratio > 1.25) bumpFans(c.id, -2.5, 'tickets');
     else if (ratio < 0.9) bumpFans(c.id, 1, 'cheapTickets');
     c.fanMood = fanMood(c) + (60 - fanMood(c)) * 0.06;
+    // store udsving i stemningen (måned til måned) bliver en del af sæsonfortællingen
+    const prev = c.fanMoodPrev ?? fanMood(c);
+    const d = fanMood(c) - prev;
+    if (Math.abs(d) >= 10) asOwner(c.id, () => storyAdd({ k: d > 0 ? 'fansUp' : 'fansDown', w: 2, p: { mood: Math.round(fanMood(c)) } }));
+    c.fanMoodPrev = fanMood(c);
   }
 }
 

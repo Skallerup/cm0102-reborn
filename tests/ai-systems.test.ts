@@ -278,3 +278,16 @@ describe('pakker ved modbud', () => {
     expect(checked).toBeGreaterThan(0);
   });
 });
+
+describe('sæsonfortælling', () => {
+  it('samler vendepunkter og laver et sæsonkort ved sæsonslut', () => {
+    const g = gs();
+    const start = g.season;
+    for (let i = 0; i < 400 && g.season === start; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    expect(g.season).toBe(start + 1);
+    const card = g.manager.stories?.at(-1);
+    expect(card?.season).toBe(start);
+    expect(card!.record.reduce((a, b) => a + b, 0)).toBeGreaterThan(10);
+    expect(g.news.some((n) => n.key === 'story.ready')).toBe(true);
+  }, 240_000);
+});

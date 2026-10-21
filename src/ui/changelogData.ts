@@ -9,6 +9,23 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.83',
+    date: '2026-10-21',
+    title: { da: 'Første arbejdsdag, sæsonfortælling, transferdrama og moderne regler', en: 'First day at work, season story, transfer drama and modern rules' },
+    items: [
+      { da: 'Første arbejdsdag: tre korte opgaver (svageste position, spillestil, transferbehov) og et konkret oplæg fra assistenten med realistiske købsmål', en: 'First day at work: three quick tasks (weakest position, playing style, transfer needs) and a concrete plan from the assistant with realistic targets' },
+      { da: 'Sæsonfortælling under Historik: årets vendepunkter samles undervejs, og hver sæson ender med et sæsonkort med dit største øjeblik, som kan deles som billede', en: 'Season story under History: the turning points of the year are collected as you go, and each season ends with a season card with your biggest moment that can be shared as an image' },
+      { da: 'Budvinduet viser samlet pris og risiko, konkurrerende bud og agentens frist – og ved modbud kan du vælge mellem kontant, bonus eller videresalg', en: 'The bid window shows total price and risk, competing bids and the agent\'s deadline – and on a counter-offer you can choose cash, a bonus or a sell-on' },
+      { da: 'Moderne kampregler: 5 udskiftninger og 9 på bænken (klassiske CM-regler kan vælges, og er standard med CM 01/02-databasen)', en: 'Modern match rules: 5 substitutions and 9 on the bench (classic CM rules can be chosen, and are the default with the CM 01/02 database)' },
+      { da: 'Troværdig sæsonkalender: Superligaen starter i juli og holder vinterpause fra december til februar – også andre lande har deres pauser', en: 'Believable season calendar: the Danish Superliga starts in July and has a winter break from December to February – other countries have their breaks too' },
+      { da: 'Kamprapporten forklarer en tabt føring (xG før og efter, træthed, modstanderens ændringer, vores svage side), og momentumgrafen viser taktiske ændringer med tal før og efter', en: 'The match report explains a lost lead (xG before and after, fatigue, the opponent\'s changes, our weak side), and the momentum chart shows tactical changes with before-and-after figures' },
+      { da: 'Taktik: korte rollebeskrivelser ved hver spiller ("god boldvinder · svag spilfordeler"), og konditionen på banen under kampen er den samme som i udskiftningsmenuen', en: 'Tactics: short role notes for each player ("good ball-winner · weak distributor"), and the condition shown during a match matches the substitutions menu' },
+      { da: 'Økonomi: prognose for saldoen ved sæsonslut og sponsorernes indtægt ved 10, 15 og 20 sejre', en: 'Finances: a forecast of the balance at season end and the sponsors\' income at 10, 15 and 20 wins' },
+      { da: 'Fart betyder mere: hurtige angribere og kantspillere udnytter langsomme forsvarere ved stikninger og på kanten', en: 'Pace matters more: quick strikers and wingers exploit slow defenders with through balls and down the flanks' },
+      { da: 'En ny karriere starter med rene transferfiltre og uden profilbillede – begge kan hentes fra den forrige karriere', en: 'A new career starts with clean transfer filters and no profile picture – both can be brought over from the previous career' },
+    ],
+  },
+  {
     version: '0.7.82',
     date: '2026-10-21',
     title: { da: 'Alle handler samlet og en forklaring, når søgningen er tom', en: 'All deals in one place and an explanation when the search is empty' },

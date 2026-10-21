@@ -196,6 +196,13 @@ export interface ScoutAssignment {
   queue?: number[];
 }
 
+export interface StoryItem { d: string; k: string; w: number; p: Record<string, string | number>; fixture?: number; pid?: number }
+export interface SeasonStory {
+  season: number; club: number; clubName: string; league: string; pos: number;
+  record: [number, number, number]; gf: number; ga: number; top?: { name: string; goals: number };
+  items: StoryItem[]; fanMood: number;
+}
+
 export interface TrainingCamp {
   dest: string; start: string; end: string; cost: number; status: 'planned' | 'running' | 'done';
   report?: { morale: number; cond: number; bond: number; star?: number; injured?: number; incident?: number; income: number };
@@ -331,6 +338,8 @@ export interface Club {
   ffp?: { results: number[]; sanction?: string };
   /** Fansenes humør 0-100 (kun menneskestyrede klubber) og hvad der har påvirket det */
   fanMood?: number;
+  /** fanstemningen ved sidste månedsskifte (til sæsonfortællingen) */
+  fanMoodPrev?: number;
   fanEvents?: { d: string; k: string; v: number }[];
   /** Modstanderen er ekstra motiveret efter managerens pressemøde (til og med dato) */
   motivatedUntil?: string;
@@ -571,6 +580,9 @@ export interface ManagerProfile {
   /** Præstationer: id → dato for oplåsning, og tællere til dem */
   ach?: Record<string, string>;
   achStats?: { wins: number; streak: number; unbeaten: number; lastPromotion?: number };
+  /** Sæsonfortælling: årets vendepunkter (igangværende) og tidligere sæsoners kort */
+  story?: { season: number; items: StoryItem[] };
+  stories?: SeasonStory[];
   /** Første arbejdsdag: opgaver og assistentens oplæg */
   onboard?: { weak?: boolean; style?: string; needs?: string[]; briefed?: boolean; plan?: { weakest: string; style: string; fit: number; bestStyle: string; targets: Record<string, number[]> } };
   /** Managerprofil: motto (vises på den offentlige profil) */
