@@ -6,7 +6,7 @@ import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import {
   BENCH, BENCH_PLACE, CREST_SHAPES, DEFAULT_SETTINGS, KEEPER_SECONDS, MAX_TEAMS, PICK_SECONDS, REPLACE_DAYS, STARTERS,
-  aiTeam, allKeepers, autoPick, clubIdOf, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
+  aiTeam, allKeepers, autoPick, canPlayRole, clubIdOf, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
   type DraftPick, type DraftTeam,
 } from '../game/draft';
 import { act } from '../game/actions';
@@ -27,7 +27,7 @@ const ROLES: Role[] = ['GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'];
 const slotLabel = (formation: string, place: number) => {
   if (place === BENCH_PLACE) return t('dr.bench');
   const s = formationSlots(formation)[place];
-  return s ? `${s.pos}${s.side !== 'C' ? ' ' + s.side : ''}` : '?';
+  return s ? (s.pos === 'GK' ? 'GK' : `${s.pos} ${s.side}`) : '?';
 };
 /** Spillerens evne på en skala 1-100 (CA er 1-200) */
 const rating = (p: Player) => Math.round(p.ca / 2);
@@ -410,7 +410,7 @@ function PoolPanel({ pool, byId, taken, mine, picks, sel, onSel, year, title }: 
   const [fitOnly, setFitOnly] = useState(false);
   const [wishOnly, setWishOnly] = useState(false);
   const list = pool.filter((p) => !taken.has(p.id))
-    .filter((p) => !role || naturalRole(p) === role)
+    .filter((p) => !role || canPlayRole(p, role))
     .filter((p) => !q || `${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase()))
     .filter((p) => !wishOnly || !!mine?.wish.includes(p.id))
     .filter((p) => !fitOnly || !mine || placesFor(mine, picks, p, byId).length > 0)
@@ -547,7 +547,7 @@ function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Recor
       </div>
       {suggestion && byId[suggestion.player] && (
         <div className="insight good row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
-          <span>💡 {t('dr.assistant', { player: `${byId[suggestion.player].first} ${byId[suggestion.player].last}`.trim(), place: slotLabel(mine!.formation, suggestion.place) })}</span>
+          <span>💡 {t('dr.assistantPre')} <a className="link" onClick={() => setSel(suggestion.player)}><b>{`${byId[suggestion.player].first} ${byId[suggestion.player].last}`.trim()}</b></a> <span className="muted">({positionString(byId[suggestion.player])} · {rating(byId[suggestion.player])})</span> {t('dr.assistantTo', { place: slotLabel(mine!.formation, suggestion.place) })}</span>
           <button className="small primary" disabled={busy} onClick={() => pick(suggestion.player, suggestion.place)}>{t('dr.takeSuggestion')}</button>
         </div>
       )}

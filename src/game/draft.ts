@@ -14,6 +14,7 @@ import { emptyFinance, type WorldData } from './newgame';
 import { Rng, hash, rng } from './rng';
 import { addNews, gs, rebuildIndexes, setGame, squad } from './state';
 import { formationSlots, newTactic } from './tactics';
+import { POSITIONS, SIDES } from './types';
 import type { Club, Competition, DraftAllTime, DraftInfo, DraftSettings, GameState, Lang, Player, Tactic } from './types';
 
 export const POOL_SIZE = 500;
@@ -26,8 +27,8 @@ export const KEEPER_SECONDS = 120;
 export const CLUB_BASE = 900_000;
 /** Pladsen "på bænken" (startere har 0-10) */
 export const BENCH_PLACE = -1;
-/** Hvor godt en spiller skal passe til en plads for at kunne draftes til den */
-export const FIT_MIN = 0.7;
+/** Hvor godt en spiller skal passe til en plads for at kunne draftes til den (svarer til de positioner, der vises ved spilleren) */
+export const FIT_MIN = 0.75;
 export const MAX_TEAMS = 16;
 
 export const DEFAULT_SETTINGS: DraftSettings = { rounds: 2, playoff: 'none', keepers: 0, injuries: true };
@@ -126,7 +127,7 @@ export function canPlace(team: DraftTeam, picks: DraftPick[], player: Player, pl
   if (place >= 0) {
     if (!open.starters.includes(place)) return false;
     const slot = formationSlots(team.formation)[place];
-    return !!slot && slotFit(player, slot) >= FIT_MIN;
+    return !!slot && fitsSlot(player, slot);
   }
   if (open.bench <= 0) return false;
   // sidste bænkplads skal være en målmand, hvis der ikke allerede er en
@@ -141,6 +142,35 @@ export function placesFor(team: DraftTeam, picks: DraftPick[], player: Player, p
     .filter((i) => canPlace(team, picks, player, i, players))
     .sort((a, b) => slotFit(player, slots[b]) - slotFit(player, slots[a]));
   return canPlace(team, picks, player, BENCH_PLACE, players) ? [...starters, BENCH_PLACE] : starters;
+}
+
+/**
+ * Kan spilleren draftes til pladsen? Præcis de positioner og sider, der vises ved spilleren
+ * (rating 15+), så det, man ser, og det, man må, altid stemmer overens.
+ */
+export function fitsSlot(p: Player, slot: { pos: import('./types').PosKey; side: import('./types').Side }): boolean {
+  const pi = POSITIONS.indexOf(slot.pos);
+  const best = Math.max(...p.pos);
+  const posOk = p.pos[pi] >= 15 || (best < 15 && p.pos[pi] === best);
+  if (!posOk) return false;
+  if (slot.pos === 'GK') return true;
+  return p.side[SIDES.indexOf(slot.side)] >= 15;
+}
+
+/** Kan spilleren spille rollen (til positionsfilteret)? Fløjroller tæller begge sider */
+export function canPlayRole(p: Player, role: import('./types').Role): boolean {
+  const S = (pos: import('./types').PosKey, side: import('./types').Side) => fitsSlot(p, { pos, side });
+  switch (role) {
+    case 'GK': return S('GK', 'C');
+    case 'CB': return S('D', 'C') || S('SW', 'C');
+    case 'FB': return S('D', 'L') || S('D', 'R') || S('WB', 'L') || S('WB', 'R');
+    case 'DM': return S('DM', 'C');
+    case 'CM': return S('M', 'C');
+    case 'WM': return S('M', 'L') || S('M', 'R');
+    case 'AM': return S('AM', 'C');
+    case 'W': return S('AM', 'L') || S('AM', 'R');
+    case 'ST': return S('ST', 'C');
+  }
 }
 
 /** Hvor godt passer spilleren til pladsen (0-1) – til visning */
@@ -166,8 +196,8 @@ export function autoPick(team: DraftTeam, picks: DraftPick[], pool: Player[], ke
   let best: { p: Player; place: number; score: number } | null = null;
   for (const place of open.starters) {
     for (const p of free) {
+      if (!fitsSlot(p, slots[place])) continue;
       const fit = slotFit(p, slots[place]);
-      if (fit < FIT_MIN) continue;
       const score = p.ca * (0.7 + 0.3 * fit);
       if (!best || score > best.score) best = { p, place, score };
       break; // puljen er sorteret efter evne: den første der passer er den bedste til pladsen

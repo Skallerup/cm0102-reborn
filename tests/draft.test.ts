@@ -9,7 +9,8 @@ import {
 } from '../src/game/draft';
 import { mpAdvance } from '../src/game/sim';
 import { gs, squad } from '../src/game/state';
-import { naturalRole } from '../src/game/attributes';
+import { naturalRole, positionString } from '../src/game/attributes';
+import { formationSlots } from '../src/game/tactics';
 import { serializeState, deserializeState } from '../src/game/snapshot';
 
 const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
@@ -55,6 +56,15 @@ describe('draft-liga', () => {
       const bench = mine.filter((p) => p.place === BENCH_PLACE).map((p) => pool[p.player]);
       expect(bench).toHaveLength(5);
       expect(bench.some((p) => naturalRole(p) === 'GK')).toBe(true);
+    }
+    // startere står kun på pladser, der vises i deres positionsfelt
+    for (const pk of picks.filter((p) => p.place >= 0)) {
+      const t = teams.find((x) => x.slot === pk.slot)!;
+      const slot = formationSlots(t.formation)[pk.place];
+      const ps = positionString(pool[pk.player]);
+      const name = slot.pos === 'ST' ? 'F' : slot.pos;
+      expect(ps.split(' ')[0].split('/')).toContain(name);
+      if (slot.pos !== 'GK') expect(ps.split(' ')[1] ?? '').toContain(slot.side);
     }
     // en markspiller kan ikke stå i mål
     const outfield = Object.values(pool).find((p) => naturalRole(p) === 'ST')!;
