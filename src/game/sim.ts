@@ -4,6 +4,7 @@ import { needsWinnerFn, recordResult, setupLeague } from './competitions';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { weatherFor, type Weather } from './weather';
+import { recordsAfterMatch } from './records';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
@@ -165,6 +166,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const scorers: [number, number, number][] = rep.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.p!]);
   const gate = gateReceipts(f);
   recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
+  recordsAfterMatch(f, rep, gate.att);
   if (g.humans) { recordH2H(f); botsAfterMatch(f); rivalryAfterMatch(f); }
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';

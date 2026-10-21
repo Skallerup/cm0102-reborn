@@ -15,6 +15,7 @@ import { useGame, useNav } from '../core';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
+import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
 
 export function ClubScreen({ id }: { id?: number }) {
   const g = useGame()!;
@@ -83,6 +84,7 @@ export function ClubScreen({ id }: { id?: number }) {
           )}
         </Panel>
       </div>
+      {c.records && <RecordsPanel club={c} />}
       {!mine && <SquadTable players={players} view="general" userClub={g.userClub} />}
     </div>
   );
@@ -167,5 +169,47 @@ function VacancyBox({ clubId }: { clubId: number }) {
       {offered ? <button className="primary" onClick={() => nav({ name: 'jobs' })}>{t('vac.seeOffer')}</button>
         : !talk && <button className="primary" onClick={() => act({ t: 'applyJob', club: clubId })}>{t('vac.apply')}</button>}
     </div>
+  );
+}
+
+/** Rekordbogen: flest kampe og mål, største sejr/nederlag, publikum, handler og legender */
+function RecordsPanel({ club }: { club: Club }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const r = club.records!;
+  const players = Object.entries(r.players).map(([id, e]) => ({ id: Number(id), ...e }));
+  const top = (k: 'apps' | 'goals') => players.filter((p) => p[k] > 0).sort((a, b) => b[k] - a[k]).slice(0, 5);
+  const who = (p: { id: number; name: string }) => (g.players[p.id] ? <a className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.name}</a> : <span>{p.name} <span className="muted">({t('recb.retired')})</span></span>);
+  const match = (m?: { fixture: number; gf: number; ga: number; opp: number; date: string }) => m
+    ? <span><a className="link" onClick={() => g.reports[m.fixture] && nav({ name: 'report', id: m.fixture })}>{m.gf}-{m.ga}</a> {t('recb.vs')} {g.clubs[m.opp]?.name} <span className="muted">({dateFmt(m.date)})</span></span>
+    : <span className="muted">–</span>;
+  const legends = players.filter((p) => p.legend);
+  return (
+    <Panel title={t('recb.title')} right={<span className="muted">{t('recb.since', { date: dateFmt(r.since) })}</span>}>
+      <div className="rec-grid">
+        {(['apps', 'goals'] as const).map((k) => (
+          <div key={k}>
+            <div className="rec-h">{t(`recb.top.${k}`)}</div>
+            {top(k).length === 0 && <div className="muted">–</div>}
+            <ol className="rec-list">{top(k).map((p) => <li key={p.id}>{who(p)}{p.legend ? ' ⭐' : ''}<b>{p[k]}</b></li>)}</ol>
+          </div>
+        ))}
+        <div>
+          <div className="rec-h">{t('recb.club')}</div>
+          <div className="kv">
+            <span>{t('recb.bigWin')}</span>{match(r.bigWin)}
+            <span>{t('recb.bigLoss')}</span>{match(r.bigLoss)}
+            <span>{t('recb.topAtt')}</span><span>{r.topAtt ? <>{r.topAtt.att.toLocaleString()} <span className="muted">({g.clubs[r.topAtt.opp]?.name})</span></> : '–'}</span>
+            <span>{t('recb.seasonGoals')}</span><span>{r.seasonGoals ? <>{r.seasonGoals.name} – {r.seasonGoals.goals} <span className="muted">({r.seasonGoals.season}/{String(r.seasonGoals.season + 1).slice(2)})</span></> : '–'}</span>
+            <span>{t('recb.bestFinish')}</span><span>{r.bestFinish ? <>{r.bestFinish.pos}. {r.bestFinish.league} <span className="muted">({r.bestFinish.season}/{String(r.bestFinish.season + 1).slice(2)})</span></> : '–'}</span>
+            <span>{t('recb.buy')}</span><span>{r.buy ? <>{r.buy.name} – {money(r.buy.fee)}</> : '–'}</span>
+            <span>{t('recb.sale')}</span><span>{r.sale ? <>{r.sale.name} – {money(r.sale.fee)}</> : '–'}</span>
+          </div>
+        </div>
+      </div>
+      <div className="rec-h" style={{ marginTop: 12 }}>{t('recb.legends')}</div>
+      {legends.length ? <div className="row">{legends.map((p) => <span key={p.id} className="tag good">⭐ {p.name} · {p.apps} {t('recb.appsShort')} · {p.goals} {t('recb.goalsShort')}</span>)}</div>
+        : <div className="muted">{t('recb.noLegends', { apps: LEGEND_APPS, goals: LEGEND_GOALS })}</div>}
+    </Panel>
   );
 }

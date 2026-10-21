@@ -12,6 +12,7 @@ import { cliques } from '../src/game/will';
 import { A } from '../src/game/attributes';
 import { boardAsk, boardAskInfo } from '../src/game/board';
 import { planIntake } from '../src/game/season';
+import { retireIntoStaff } from '../src/game/records';
 import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
@@ -155,5 +156,26 @@ describe('bestyrelsesønsker', () => {
     expect(boardAskInfo('confidenceVote').blocked).toBe('ba.blocked.notNeeded');
     g.board.confidence = 30;
     expect(boardAskInfo('confidenceVote').blocked).toBeUndefined();
+  });
+});
+
+describe('rekordbog og legender', () => {
+  it('fører kampe og mål for klubben, og en legende kan blive træner', () => {
+    const g = gs();
+    for (let i = 0; i < 40 && !g.clubs[g.userClub].records; i++) {
+      continueGame();
+      if (g.pendingFixture) quickPlayUserMatch();
+    }
+    const r = g.clubs[g.userClub].records!;
+    expect(r).toBeDefined();
+    const entries = Object.values(r.players);
+    expect(entries.some((e) => e.apps > 0)).toBe(true);
+    // gør en spiller til legende og lad ham stoppe
+    const [pid, e] = Object.entries(r.players)[0];
+    e.legend = true;
+    const s = retireIntoStaff(g.players[Number(pid)]);
+    expect(s).not.toBeNull();
+    expect(s!.exPlayer?.legendOf).toBe(g.userClub);
+    expect(['coach', 'assistant', 'scout']).toContain(s!.role);
   });
 });

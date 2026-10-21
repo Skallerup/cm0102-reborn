@@ -909,3 +909,9 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .weather-note { margin-bottom: 12px; }
 .ba-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }
 .ba-desc { margin: 0 0 8px; line-height: 1.5; }
+.rec-grid { display: grid; grid-template-columns: 1fr 1fr 1.6fr; gap: 20px; }
+.rec-h { font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.rec-list { margin: 0; padding-left: 18px; }
+.rec-list li { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+.rec-list li b { font-variant-numeric: tabular-nums; }
+@media (max-width: 860px) { .rec-grid { grid-template-columns: 1fr; } }

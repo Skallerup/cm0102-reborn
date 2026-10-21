@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { gs } from '../../game/state';
 import { ageOn } from '../../game/dates';
 import { poachFee, staffCount, staffDemand, STAFF_LIMITS, willJoin } from '../../game/staff';
 import { isMultiplayer } from '../../game/humans';
@@ -50,7 +51,7 @@ export function StaffScreen() {
           {list.length === 0 && <tr><td colSpan={12} className="muted">{t('common.none')}</td></tr>}
           {list.map((s) => (
             <tr key={s.id}>
-              <td>{s.first} {s.last}</td>
+              <td>{s.first} {s.last}{s.exPlayer && <span className={`tag ${s.exPlayer.legendOf ? 'good' : ''}`} style={{ marginLeft: 6 }} title={s.exPlayer.legendOf ? t('recb.legendOf', { club: gs().clubs[s.exPlayer.legendOf]?.name ?? '' }) : undefined}>{s.exPlayer.legendOf ? `⭐ ${t('recb.legend')}` : t('recb.exPlayer')}</span>}</td>
               <td>{t(`role.staff.${s.role}`)}</td>
               {showClub && <td><ClubLink id={s.club} /></td>}
               <td className="num">{ageOn(s.dob, g.date)}</td>

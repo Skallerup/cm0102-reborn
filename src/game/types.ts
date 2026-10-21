@@ -190,6 +190,21 @@ export interface ScoutAssignment {
   queue?: number[];
 }
 
+export interface RecMatch { fixture: number; gf: number; ga: number; opp: number; date: string; comp: string }
+export interface RecMove { pid: number; name: string; fee: number; club: number; date: string }
+export interface ClubRecords {
+  since: string;
+  /** spillere, der har spillet for klubben: navn (huskes efter karrieren), kampe og mål */
+  players: Record<number, { name: string; apps: number; goals: number; from: string; to?: string; legend?: boolean }>;
+  bigWin?: RecMatch;
+  bigLoss?: RecMatch;
+  topAtt?: { att: number; opp: number; date: string };
+  buy?: RecMove;
+  sale?: RecMove;
+  seasonGoals?: { pid: number; name: string; goals: number; season: number };
+  bestFinish?: { season: number; pos: number; league: string; tier: number };
+}
+
 export interface Staff {
   id: number;
   first: string;
@@ -209,6 +224,8 @@ export interface Staff {
   career?: { club: number; from: string; to?: string; why?: 'sacked' | 'poached' | 'left' }[];
   trophies?: number;
   form?: number;
+  /** tidligere spiller (evt. legende i en klub) */
+  exPlayer?: { pid: number; legendOf?: number };
 }
 
 export interface ClubFinance {
@@ -289,6 +306,8 @@ export interface Club {
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */
   projects?: ClubProject[];
+  /** Klubrekorder (kun menneskestyrede klubber, siden spillets start) */
+  records?: ClubRecords;
   /** Sæson, hvor bestyrelsen har betalt for ekstra ungdomsrekruttering (større og bedre årgang i marts) */
   youthDrive?: number;
   sponsor?: SponsorDeal;

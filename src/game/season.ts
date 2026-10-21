@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { finalOrder, promotionOrder, sortTable } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
@@ -195,6 +196,7 @@ function retirements() {
       const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
       if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
       else if (isHumanClub(p.club)) asOwner(p.club, () => addNews(msg));
+      retireIntoStaff(p);
       removePlayer(p);
     }
   }
@@ -311,6 +313,7 @@ export function youthIntake() {
 /** Bogfør et klubskifte (til karriereoversigten) – kaldes før spilleren skifter */
 export function recordMove(p: Player, to: number, fee: number, loan = false, swap = false) {
   const g = gs();
+  recordsAfterMove(p, to, fee, loan);
   (p.moves ??= []).push({ season: g.season, date: g.date, from: p.club, to, fee, ...(loan ? { loan: true } : {}), ...(swap ? { swap: true } : {}) });
   if (p.moves.length > 20) p.moves.shift();
 }
@@ -467,6 +470,8 @@ export function seasonRollover() {
   // pokalvindere (pr. nation) får en europæisk plads
   const cupWinners: Record<number, number> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0) cupWinners[comp.nation] = comp.winner;
+  // rekordbogen: før op/nedrykning (placeringen i den liga, klubben spillede i) og før statistikken nulstilles
+  recordsSeasonEnd((c) => (prevTables[c.league] ?? []).indexOf(c.id) + 1);
   const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));
   promotionRelegation();
   seasonWageClauses(tierBefore);
