@@ -10,7 +10,9 @@ import type { Club, Staff } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { aiCall, aiText, ensureAiText } from '../../ai/client';
 import { useAiAvailable } from '../ai';
-import { Bar, ClubLink, Crest, MgrChip, Panel } from '../components';
+import { Bar, ClubLink, Crest, MgrChip, Panel, PlayerLink, Stars, posStr } from '../components';
+import { scoutStars } from '../../game/scouting';
+import { ageOn } from '../../game/dates';
 import { useGame, useNav } from '../core';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
@@ -84,6 +86,7 @@ export function ClubScreen({ id }: { id?: number }) {
           )}
         </Panel>
       </div>
+      {mine && g.board.lastIntake && <IntakePanel />}
       {c.records && <RecordsPanel club={c} />}
       {!mine && <SquadTable players={players} view="general" userClub={g.userClub} />}
     </div>
@@ -210,6 +213,22 @@ function RecordsPanel({ club }: { club: Club }) {
       <div className="rec-h" style={{ marginTop: 12 }}>{t('recb.legends')}</div>
       {legends.length ? <div className="row">{legends.map((p) => <span key={p.id} className="tag good">⭐ {p.name} · {p.apps} {t('recb.appsShort')} · {p.goals} {t('recb.goalsShort')}</span>)}</div>
         : <div className="muted">{t('recb.noLegends', { apps: LEGEND_APPS, goals: LEGEND_GOALS })}</div>}
+    </Panel>
+  );
+}
+
+/** Årets ungdomsårgang: spillerne fra ungdomsdagen med position, alder og potentiale */
+function IntakePanel() {
+  const g = useGame()!;
+  const li = g.board.lastIntake!;
+  const ps = li.ids.map((id) => g.players[id]).filter((p) => p && p.club === g.userClub);
+  return (
+    <Panel title={t('youth.intakeTitle', { season: `${li.season}/${String(li.season + 1).slice(2)}` })} right={<span className={`tag ${li.verdict === 'golden' || li.verdict === 'good' ? 'good' : li.verdict === 'poor' ? 'warn' : ''}`}>{t(`youth.verdict.${li.verdict}`)}</span>}>
+      {ps.length === 0 ? <div className="muted">{t('youth.intakeGone')}</div> : (
+        <table className="grid">
+          <tbody>{ps.map((p) => <tr key={p.id}><td>{posStr(p)}</td><td><PlayerLink p={p} /></td><td className="num">{ageOn(p.dob, g.date)}</td><td><Stars range={scoutStars(p).potential} /></td></tr>)}</tbody>
+        </table>
+      )}
     </Panel>
   );
 }

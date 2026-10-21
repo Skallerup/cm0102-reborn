@@ -26,6 +26,9 @@ export interface Contract {
   appBonus?: number;
   goalBonus?: number;
   relegationCut?: number;
+  /** lønstigning ved oprykning (%) og bonus pr. kamp uden indkasserede mål (kun når spilleren spiller) */
+  promotionRise?: number;
+  cleanSheetBonus?: number;
 }
 
 /** Klausuler i et kontrakttilbud */
@@ -35,6 +38,9 @@ export interface ContractClauses {
   appBonus?: number;
   goalBonus?: number;
   relegationCut?: number;
+  /** lønstigning ved oprykning (%) og bonus pr. kamp uden indkasserede mål (kun når spilleren spiller) */
+  promotionRise?: number;
+  cleanSheetBonus?: number;
 }
 
 export interface SeasonStats {
@@ -564,6 +570,8 @@ export type BoardAsk = 'lowerExp' | 'confidenceVote' | 'youthDrive' | 'trainingC
 export interface BoardState {
   /** Ungdomschefens rapport om den kommende årgang */
   youthPreview?: { season: number; verdict: 'golden' | 'good' | 'average' | 'poor'; n: number; standout?: string; wonderkid?: boolean };
+  /** Årets ungdomsårgang (ungdomsdagen) */
+  lastIntake?: { season: number; ids: number[]; verdict: 'golden' | 'good' | 'average' | 'poor' };
   /** Seneste holdmøde */
   lastTeamTalk?: string;
   /** Seneste rygte om interesse for ens spillere */

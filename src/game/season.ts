@@ -308,7 +308,13 @@ export function youthIntake() {
     }
     if (human && added.length) {
       const [best, pos] = added.slice().sort((a, b) => b[0].pa - a[0].pa)[0];
-      asOwner(c.id, () => addNews({ cat: 'youth', key: 'youth.intakeDay', params: { n: added.length, player: pname(best), pos }, link: { kind: 'player', id: best.id } }));
+      asOwner(c.id, () => {
+        addNews({ cat: 'youth', key: 'youth.intakeDay', params: { n: added.length, player: pname(best), pos }, link: { kind: 'player', id: best.id } });
+        // pressemeddelelsen: tonen afhænger af, hvor god årgangen er i forhold til klubbens niveau
+        const verdict = intakeVerdict(added.map(([p]) => p), clubLevel(c.id));
+        g.board.lastIntake = { season: g.season, ids: added.map(([p]) => p.id), verdict };
+        addNews({ cat: 'youth', key: `youth.press.${verdict}`, params: { club: c.name, n: added.length, player: pname(best), pos } });
+      });
     }
   }
 }

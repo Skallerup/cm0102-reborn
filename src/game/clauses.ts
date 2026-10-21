@@ -21,6 +21,12 @@ function expectedShare(rank: number): number {
   return rank <= 11 ? 0.8 : rank <= 16 ? 0.45 : 0.2;
 }
 
+/** Forventede kampe uden mål imod pr. sæson for spilleren (målmænd og forsvarere tæller mest) */
+function cleanSheets(p: Player): number {
+  const r = naturalRole(p);
+  return r === 'GK' || r === 'CB' || r === 'FB' ? 11 : r === 'DM' ? 6 : 2;
+}
+
 function expectedGoals(p: Player): number {
   const r = naturalRole(p);
   return r === 'ST' ? 14 : r === 'AM' || r === 'W' ? 7 : r === 'CM' || r === 'WM' ? 3 : 1;
@@ -45,13 +51,15 @@ export function clauseWorth(p: Player, wage: number, years: number, c: ContractC
   if (c.appBonus) w += (c.appBonus * 40 * share / 52) * 0.7;
   if (c.goalBonus) w += (c.goalBonus * expectedGoals(p) * share / 52) * 0.7;
   if (c.relegationCut) w -= wage * (c.relegationCut / 100) * 0.25;
+  if (c.promotionRise) w += wage * (c.promotionRise / 100) * 0.12;
+  if (c.cleanSheetBonus) w += (c.cleanSheetBonus * cleanSheets(p) * share / 52) * 0.7;
   return Math.round(w);
 }
 
 /** Hvad klausulerne forventes at koste klubben om ugen (vises i forhandlingen) */
 export function clauseCost(p: Player, wage: number, years: number, c: ContractClauses, rank: number): number {
   const share = expectedShare(rank);
-  return Math.round((c.appBonus ?? 0) * 40 * share / 52 + (c.goalBonus ?? 0) * expectedGoals(p) * share / 52 + wage * ((c.wageRise ?? 0) / 100) * Math.max(0, years - 1) / 2);
+  return Math.round((c.appBonus ?? 0) * 40 * share / 52 + (c.goalBonus ?? 0) * expectedGoals(p) * share / 52 + (c.cleanSheetBonus ?? 0) * cleanSheets(p) * share / 52 + wage * ((c.wageRise ?? 0) / 100) * Math.max(0, years - 1) / 2);
 }
 
 export function cleanClauses(c?: ContractClauses): ContractClauses {
@@ -62,6 +70,8 @@ export function cleanClauses(c?: ContractClauses): ContractClauses {
   if (c.appBonus && c.appBonus > 0) out.appBonus = round(c.appBonus, 50);
   if (c.goalBonus && c.goalBonus > 0) out.goalBonus = round(c.goalBonus, 50);
   if (c.relegationCut && c.relegationCut > 0) out.relegationCut = Math.min(50, Math.round(c.relegationCut));
+  if (c.promotionRise && c.promotionRise > 0) out.promotionRise = Math.min(50, Math.round(c.promotionRise));
+  if (c.cleanSheetBonus && c.cleanSheetBonus > 0) out.cleanSheetBonus = round(c.cleanSheetBonus, 50);
   return out;
 }
 
@@ -103,12 +113,12 @@ export function settleSellOn(p: Player, fee: number, seller: Club | undefined) {
 }
 
 /** Efter hver kamp: kamp- og målbonusser (kun kontrakter med bonusser) og nedtælling af add-ons */
-export function afterAppearance(p: Player, goals: number) {
+export function afterAppearance(p: Player, goals: number, cleanSheet = false) {
   const g = gs();
   const club = g.clubs[p.club];
   const c = p.contract;
   if (club && c && !p.loan) {
-    const bonus = (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals;
+    const bonus = (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
     if (bonus > 0) { club.balance -= bonus; club.finance.wages += bonus; }
   }
   const a = p.addOn;
@@ -139,6 +149,12 @@ export function seasonWageClauses(tierBefore: Map<number, number>) {
       c.wage = round(c.wage * (1 - c.relegationCut / 100), 50);
       c.relegationCut = undefined;
       if (isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'contract', key: 'clause.relegatedWage', params: { player: pname(p), wage: c.wage, old }, link: { kind: 'player', id: p.id } }));
+    }
+    if (c.promotionRise && before !== undefined && now !== undefined && now < before) {
+      const old = c.wage;
+      c.wage = round(c.wage * (1 + c.promotionRise / 100), 50);
+      c.promotionRise = undefined;
+      if (isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'contract', key: 'clause.promotedWage', params: { player: pname(p), wage: c.wage, old }, link: { kind: 'player', id: p.id } }));
     }
   }
 }

@@ -629,6 +629,8 @@ function clauseText(c: Contract): string {
   if (c.appBonus) parts.push(t('clause.sumApp', { fee: money(c.appBonus) }));
   if (c.goalBonus) parts.push(t('clause.sumGoal', { fee: money(c.goalBonus) }));
   if (c.relegationCut) parts.push(t('clause.sumCut', { n: c.relegationCut }));
+  if (c.promotionRise) parts.push(t('clause.sumPromo', { n: c.promotionRise }));
+  if (c.cleanSheetBonus) parts.push(t('clause.sumClean', { fee: money(c.cleanSheetBonus) }));
   return parts.join(' · ');
 }
 

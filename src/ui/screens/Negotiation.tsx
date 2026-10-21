@@ -124,6 +124,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
 
 const RISES = [0, 5, 10, 15];
 const CUTS = [0, 10, 25, 50];
+const PROMOS = [0, 10, 25, 50];
 
 /** Klausuler i en kontrakt: frikøbsklausul, lønstigning, bonusser og lønnedgang ved nedrykning */
 function Clauses({ p, c, onChange }: { p: { value: number; contract: { wage: number } | null }; c: ContractClauses; onChange: (c: ContractClauses) => void }) {
@@ -141,6 +142,8 @@ function Clauses({ p, c, onChange }: { p: { value: number; contract: { wage: num
       <div className="row">{t('clause.appBonus')}: <MoneyInput value={c.appBonus ?? 0} onChange={(v) => set('appBonus', v)} width={110} /></div>
       <div className="row">{t('clause.goalBonus')}: <MoneyInput value={c.goalBonus ?? 0} onChange={(v) => set('goalBonus', v)} width={110} /></div>
       <div className="row">{t('clause.relegationCut')}: {CUTS.map((v) => <button key={v} className={`small ${(c.relegationCut ?? 0) === v ? 'primary' : ''}`} onClick={() => set('relegationCut', v)}>{v ? `−${v}%` : t('common.none')}</button>)}</div>
+      <div className="row">{t('clause.promotionRise')}: {PROMOS.map((v) => <button key={v} className={`small ${(c.promotionRise ?? 0) === v ? 'primary' : ''}`} onClick={() => set('promotionRise', v)}>{v ? `+${v}%` : t('common.none')}</button>)}</div>
+      <div className="row">{t('clause.cleanSheetBonus')}: <MoneyInput value={c.cleanSheetBonus ?? 0} onChange={(v) => set('cleanSheetBonus', v)} width={110} /></div>
     </div>
   );
 }

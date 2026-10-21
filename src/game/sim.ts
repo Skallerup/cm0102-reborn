@@ -188,7 +188,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     s.ratingCount++;
     if (rep.mom === p.id) s.mom++;
     p.form = [...p.form, line.rating].slice(-5);
-    if (p.contract?.appBonus || p.contract?.goalBonus || p.addOn) afterAppearance(p, line.goals);
+    if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
     p.condition = Math.max(20, Math.min(100, line.cond));
     if (line.yellow) {
       s.yellows++;
