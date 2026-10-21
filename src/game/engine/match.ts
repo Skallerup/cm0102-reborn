@@ -654,6 +654,7 @@ export class MatchSim {
       T.stats.offsides++;
       this.rate(runner, -0.05);
       this.line('offside', runner);
+      this.highlights.push({ m: this.minute, t: T.idx, kind: 'offside', p: runner.p.id, p2: s.p.id, moment: this.moment });
       this.zone = this.zoneFor(T.idx, Math.min(4, rb + 1), 1);
       this.turnover(null);
       return;

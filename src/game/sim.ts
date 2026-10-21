@@ -1,6 +1,6 @@
 // Spillets dag-for-dag-løkke.
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
-import { needsWinnerFn, recordResult, setupLeague, sortTable } from './competitions';
+import { needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
@@ -643,7 +643,7 @@ function weeklySummary() {
     return `${r} ${gf}-${ga} ${g.clubs[home ? f.away : f.home]?.short ?? ''}`;
   }).join(' · ');
   const comp = g.comps[c.league];
-  const pos = comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === c.id) + 1 : 0;
+  const pos = comp ? leagueRows(comp).findIndex((r) => r.club === c.id) + 1 : 0;
   const prev = g.manager.week;
   const move = !prev || !pos || prev.pos === pos ? t('week.posSame') : prev.pos > pos ? t('week.posUp', { n: prev.pos - pos }) : t('week.posDown', { n: pos - prev.pos });
   const balance = prev ? c.balance - prev.balance : 0;

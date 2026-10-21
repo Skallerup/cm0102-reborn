@@ -706,6 +706,8 @@ export interface Options {
   mutedNews?: NewsCategory[];
   /** Transfervinduer: rigtige (sommer + januar, standard) eller næsten hele året som i CM 01/02 */
   transferWindows?: 'real' | 'classic';
+  /** Højdepunkter i 2D: kun mål, store chancer (standard) eller alt (også små chancer, offside, kort og skader) */
+  highlights?: 'goals' | 'big' | 'all';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
 }

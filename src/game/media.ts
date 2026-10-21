@@ -6,7 +6,7 @@ import { forEachHuman, isHumanClub } from './humans';
 import { rng } from './rng';
 import { clubLevel } from './scouting';
 import { addNews, gs, squad } from './state';
-import { sortTable } from './competitions';
+import { leagueRows } from './competitions';
 import type { Player, Club } from './types';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -56,7 +56,7 @@ export function monthlyColumn() {
     const me = g.clubs[g.userClub];
     const comp = me ? g.comps[me.league] : undefined;
     if (!comp || comp.type !== 'league') return;
-    const rows = sortTable(comp.table.slice());
+    const rows = leagueRows(comp);
     if ((rows[0]?.p ?? 0) < 4) return;
     const leader = rows[0], second = rows[1];
     const myPos = rows.findIndex((r) => r.club === me!.id) + 1;

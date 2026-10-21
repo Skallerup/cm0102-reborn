@@ -53,7 +53,7 @@ function cornerLayout(s: CornerSnap): { pos: Map<number, [number, number]>; ball
       holder = undefined;
     } else if (s.shot) {
       const o = s.shot.outcome;
-      ball = o === 'goal' || o === 'offside' ? [goalX - dir * 0.5, 47] : o === 'saved' ? [goalX - dir * 2, 51] : o === 'blocked' ? [goalX - dir * 9, 50] : [goalX - dir * 0.3, 39];
+      ball = o === 'goal' || o === 'offside' ? [goalX - dir * 0.5, 47] : o === 'saved' ? [goalX - dir * 2, 51] : o === 'blocked' ? [goalX - dir * 9, 50] : missSpot(toRight, s.moment);
     }
   }
   return { pos, ball, holder };
@@ -79,7 +79,7 @@ function fkLayout(s: FkSnap): { pos: Map<number, [number, number]>; ball: [numbe
   let ball: [number, number] = [bx, by];
   if (s.shot) {
     const o = s.shot.outcome as string;
-    ball = o === 'goal' ? [goalX - dir * 0.5, 45] : o === 'saved' ? [goalX - dir * 2, 47] : o === 'post' ? [goalX - dir * 0.4, 44.3] : o === 'blocked' ? [wx - dir * 1, wy] : [goalX - dir * 0.3, 38];
+    ball = o === 'goal' ? [goalX - dir * 0.5, 45] : o === 'saved' ? [goalX - dir * 2, 47] : o === 'post' ? [goalX - dir * 0.4, 44.3] : o === 'blocked' ? [wx - dir * 1, wy] : missSpot(toRight, s.moment);
   }
   return { pos, ball, holder: shooter };
 }
@@ -130,6 +130,14 @@ function penLayout(s: PenSnap): { pos: Map<number, [number, number]>; ball: [num
   return { pos, ball, holder: shooter };
 }
 const W = 105, H = 68;
+
+/** Hvor bolden ender ved et forbiskud: lige uden for stolpen eller bag mål (over overliggeren) – aldrig langt væk */
+function missSpot(toRight: boolean, seed: number): [number, number] {
+  const u = hash01(seed, 13, 3), v = hash01(seed, 14, 4);
+  const lineX = toRight ? 100.9 : -0.9;
+  if (u < 0.35) return [toRight ? 101.6 : -1.6, 46.5 + v * 7]; // over mål
+  return [lineX, u < 0.68 ? 42.5 - v * 3 : 57.5 + v * 3]; // forbi stolpen
+}
 
 /** Zonens midte (0-100 i begge akser; hold 0 angriber mod højre) */
 function zoneCenter(s: Snap): [number, number] {
@@ -204,7 +212,7 @@ function layout(s: Snap, gap = 3.2): { pos: Map<number, [number, number]>; ball:
       // på stolpen/overliggeren
       return { pos, ball: [toRight ? 99.6 : 0.4, 44.2], holder: undefined };
     }
-    ball = [inNet ? (toRight ? 99.5 : 0.5) : toRight ? 96 : 4, s.shot.outcome === 'off' ? (hash01(s.moment, 13, 3) < 0.5 ? 40 : 60) : 46 + hash01(s.moment, 14, 4) * 8];
+    ball = s.shot.outcome === 'off' ? missSpot(toRight, s.moment) : [inNet ? (toRight ? 99.5 : 0.5) : toRight ? 96 : 4, 46 + hash01(s.moment, 14, 4) * 8];
   }
   // skub spillere, der står oven i hinanden, lidt fra hinanden
   const ids = [...pos.keys()];
@@ -383,4 +391,21 @@ export function lastDitchFrames(base: Snap, h: { t: number; p: number; p2: numbe
   const abs = (rb: number) => (h.t === 0 ? rb : 4 - rb);
   const f = (rb: number, holder: number, poss: number, k: number): Snap => ({ ...base, poss, zone: abs(rb) * 3 + 1, holder, moment: base.moment * 10 + k, shot: null });
   return [f(3, h.p, h.t, 1), f(4, h.p, h.t, 2), f(4, h.p2, 1 - h.t, 3)];
+}
+
+/** Offside: afleveringen spilles frem, løberen er for tidligt af sted – linjevogteren løfter flaget */
+export function offsideFrames(base: Snap, h: { t: number; p: number; p2: number }): Snap[] {
+  const abs = (rb: number) => (h.t === 0 ? rb : 4 - rb);
+  const f = (rb: number, holder: number, k: number): Snap => ({ ...base, poss: h.t, zone: abs(rb) * 3 + 1, holder, moment: base.moment * 10 + k, shot: null });
+  return [f(2, h.p2, 1), f(4, h.p, 2)];
+}
+
+/** Frispark med kort eller en skade: modstanderen har bolden, og situationen stopper op */
+export function incidentFrames(base: Snap, e: { t: number; p: number }): Snap[] {
+  // den anden part har bolden et sted på midten af banen
+  const victimTeam = 1 - e.t;
+  const rb = 2;
+  const abs = victimTeam === 0 ? rb : 4 - rb;
+  const f = (k: number): Snap => ({ ...base, poss: victimTeam, zone: abs * 3 + 1, holder: 0, moment: base.moment * 10 + k, shot: null });
+  return [f(1), f(2)];
 }

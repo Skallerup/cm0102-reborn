@@ -1,7 +1,7 @@
 // Spillerpersonligheder, holdkemi og stjerner der vil sælges (forslag #8).
 import { A } from './attributes';
 import { ageOn, addDays, daysBetween } from './dates';
-import { finalOrder, sortTable } from './competitions';
+import { finalOrder, leagueRows } from './competitions';
 import { asOwner, isHumanClub } from './humans';
 import { rng } from './rng';
 import { clubLevel } from './scouting';
@@ -91,7 +91,7 @@ export function monthlyPersonality() {
   for (const c of Object.values(g.clubs)) {
     if (!isHumanClub(c.id)) continue;
     const comp = g.comps[c.league];
-    const pos = comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === c.id) + 1 : 99;
+    const pos = comp ? leagueRows(comp).findIndex((r) => r.club === c.id) + 1 : 99;
     const level = clubLevel(c.id);
     const won = c.history.slice(-2).some((h) => h.pos === 1);
     for (const p of squad(c.id)) {

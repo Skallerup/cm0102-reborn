@@ -49,7 +49,7 @@ function order(c: Competition) {
   return 10 + c.tier;
 }
 
-export function LeagueTable({ rows, comp, compact }: { rows: TableRow[]; comp: Competition; compact?: boolean }) {
+export function LeagueTable({ rows, comp, compact, offset = 0 }: { rows: TableRow[]; comp: Competition; compact?: boolean; offset?: number }) {
   const g = gs();
   const { nav } = useNav();
   const sorted = sortTable(rows.slice());
@@ -74,7 +74,7 @@ export function LeagueTable({ rows, comp, compact }: { rows: TableRow[]; comp: C
       <tbody>
         {sorted.map((r, i) => (
           <tr key={r.club} className={`clickable ${cls(i, r.club)}`} onClick={() => nav({ name: 'club', id: r.club })}>
-            <td className="num">{i + 1}</td>
+            <td className="num">{i + 1 + offset}</td>
             <td><ClubLink id={r.club} /></td>
             <td className="num">{r.p}</td>
             {!compact && <><td className="num">{r.w}</td><td className="num">{r.d}</td><td className="num">{r.l}</td><td className="num">{r.gf}</td><td className="num">{r.ga}</td></>}
@@ -88,12 +88,12 @@ export function LeagueTable({ rows, comp, compact }: { rows: TableRow[]; comp: C
   );
 }
 
-function LeagueTables({ comp }: { comp: Competition }) {
+export function LeagueTables({ comp }: { comp: Competition }) {
   if (comp.groups && comp.splitDone) {
     return (
       <div className="cols2">
         <Panel title={t('fix.champ')} className="flush"><LeagueTable rows={comp.groups.champ ?? []} comp={comp} /></Panel>
-        <Panel title={t('fix.releg')} className="flush"><LeagueTable rows={comp.groups.releg ?? []} comp={{ ...comp, id: comp.id + '-rel' }} /></Panel>
+        <Panel title={t('fix.releg')} className="flush"><LeagueTable rows={comp.groups.releg ?? []} comp={{ ...comp, id: comp.id + '-rel' }} offset={comp.groups.champ?.length ?? 0} /></Panel>
       </div>
     );
   }

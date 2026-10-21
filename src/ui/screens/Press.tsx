@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Info } from '../help';
 import { act } from '../../game/actions';
 import { effectsOf, followUpFor, toneOf, tonesFor, type PressConf, type PressTopic, type Tone } from '../../game/press';
-import { sortTable } from '../../game/competitions';
+import { leagueRows } from '../../game/competitions';
 import { aiCall, aiText, setAiText } from '../../ai/client';
 import { has, t } from '../../i18n';
 import { Bar, Panel } from '../components';
@@ -61,7 +61,7 @@ export function PressScreen() {
     if (!pc || !ai || Object.keys(aiQ).length) return;
     const me = g.clubs[g.userClub];
     const comp = g.comps[me?.league ?? ''];
-    const pos = comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === g.userClub) + 1 : 0;
+    const pos = comp ? leagueRows(comp).findIndex((r) => r.club === g.userClub) + 1 : 0;
     aiCall<{ questions: { id: string; text: string }[] }>('press', {
       manager: g.manager.name, club: me?.name, league: comp?.name, position: pos || undefined, opponent: g.clubs[pc.opp]?.name,
       phase: pc.phase === 'pre' ? 'før kampen' : 'efter kampen',

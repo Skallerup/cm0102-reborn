@@ -1,5 +1,5 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
-import { finalOrder, sortTable } from './competitions';
+import { finalOrder, leagueRows } from './competitions';
 import { rng } from './rng';
 import { addDays, daysBetween } from './dates';
 import { rulesFor, regionOf, type Region } from './leagues';
@@ -122,7 +122,7 @@ export function boardMonthly() {
   if (!comp) return;
   const played = comp.table.find((r) => r.club === club.id)?.p ?? 0;
   if (played < 6) return;
-  const pos = sortTable(comp.table.slice()).findIndex((r) => r.club === club.id) + 1;
+  const pos = leagueRows(comp).findIndex((r) => r.club === club.id) + 1;
   const delta = (g.board.expectedPos - pos) * 0.8;
   g.board.confidence = clamp(g.board.confidence + delta, 0, 100);
   if (club.balance < -5_000_000) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
@@ -249,7 +249,7 @@ export function budgetLimits(kind: BudgetKind): { max: number; reasons: string[]
   const comp = g.comps[club.league];
   const played = comp?.table.find((r) => r.club === club.id)?.p ?? 0;
   if (comp && played >= 5) {
-    const pos = sortTable(comp.table.slice()).findIndex((r) => r.club === club.id) + 1;
+    const pos = leagueRows(comp).findIndex((r) => r.club === club.id) + 1;
     const diff = g.board.expectedPos - pos;
     if (diff >= 2) { max *= 1.25; reasons.push('budget.r.results'); }
     else if (diff <= -3) { max *= 0.6; reasons.push('budget.r.poorResults'); }
@@ -349,7 +349,7 @@ export function aiSackings() {
   const g = gs();
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
-    const sorted = sortTable(comp.table.slice());
+    const sorted = leagueRows(comp);
     sorted.forEach((row, i) => {
       if (row.p < 8) return;
       const club = g.clubs[row.club];
@@ -388,7 +388,7 @@ export function summerManagerChanges() {
     const comp = g.comps[club.league];
     let p = 0.04;
     if (comp?.type === 'league') {
-      const pos = sortTable(comp.table.slice()).findIndex((r) => r.club === club.id) + 1;
+      const pos = leagueRows(comp).findIndex((r) => r.club === club.id) + 1;
       const under = pos - strengthRank(club).rank;
       p = under >= 5 ? 0.22 : under >= 3 ? 0.1 : under <= -3 ? 0.02 : 0.04;
     }
@@ -696,7 +696,7 @@ const leaguePos = () => {
   const g = gs();
   const c = g.clubs[g.userClub];
   const comp = c ? g.comps[c.league] : undefined;
-  return comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === c!.id) + 1 : 99;
+  return comp ? leagueRows(comp).findIndex((r) => r.club === c!.id) + 1 : 99;
 };
 /** Er ønsket allerede stillet i denne sæson (eller inden for days dage)? */
 function askedRecently(kind: BoardAsk, days: number): boolean {

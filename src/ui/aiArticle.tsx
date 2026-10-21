@@ -2,7 +2,7 @@
 // Teksten hentes første gang beskeden åbnes og gemmes med spillet; uden AI vises intet ekstra.
 import { useEffect, useState } from 'react';
 import { aiCall, aiText, ensureAiText } from '../ai/client';
-import { sortTable } from '../game/competitions';
+import { leagueRows } from '../game/competitions';
 import { addDays } from '../game/dates';
 import { gs, squad } from '../game/state';
 import type { NewsItem, Player } from '../game/types';
@@ -49,7 +49,7 @@ function facts(n: NewsItem): Record<string, unknown> | null {
   if (type === 'column') {
     const comp = me ? g.comps[me.league] : undefined;
     if (!comp) return null;
-    const table = sortTable(comp.table.slice()).map((r, i) => ({ pos: i + 1, club: g.clubs[r.club]?.name, pts: r.pts, played: r.p, form: r.form }));
+    const table = leagueRows(comp).map((r, i) => ({ pos: i + 1, club: g.clubs[r.club]?.name, pts: r.pts, played: r.p, form: r.form }));
     const scorers = comp.clubs.flatMap((c) => squad(c)).sort((a, b) => b.stats.lgGoals - a.stats.lgGoals).slice(0, 3).map((p) => ({ player: pname(p), club: g.clubs[p.club]?.name, goals: p.stats.lgGoals }));
     return { type: 'månedens klumme om ligaen', league: comp.name, top: table.slice(0, 5), bottom: table.slice(-3), readersClub: me?.name, readersClubPos: table.findIndex((r) => r.club === me?.name) + 1, topScorers: scorers };
   }

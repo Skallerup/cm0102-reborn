@@ -140,8 +140,8 @@ function Search() {
         const r = transferRealism(p);
         if (r.level > (f.realism === 1 ? 0 : 1)) continue;
       }
+      // ingen grænse her: alle matchende spillere sorteres, før listen vises (ellers manglede de bedste)
       out.push(p);
-      if (out.length > 3000) break;
     }
     return out;
   }, [g, f, seasonEnd, me]);
@@ -190,7 +190,7 @@ function Search() {
           <label className="row"><input type="checkbox" checked={f.onlyListed} onChange={(e) => set('onlyListed', e.target.checked)} />{t('tr.listedOnly')}</label>
           <label className="row"><input type="checkbox" checked={f.expiring} onChange={(e) => set('expiring', e.target.checked)} />{t('tr.expiring')}</label>
           {g.options.masking && <label className="row"><input type="checkbox" checked={f.onlyKnown} onChange={(e) => set('onlyKnown', e.target.checked)} />{t('tr.knownOnly')}</label>}
-          <span className="muted">{results.length > 3000 ? '3000+' : results.length} {t('tr.results')}</span>
+          <span className="muted">{results.length.toLocaleString()} {t('tr.results')}</span>
         </div>
         {more && (
           <div className="filter-more">

@@ -1,7 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
-import { finalOrder, promotionOrder, sortTable } from './competitions';
+import { finalOrder, promotionOrder, leagueRows } from './competitions';
 import { ageOn } from './dates';
 import { emptyStats, makePlayer, randomDob, randomName, randomSub, type SubPos } from './data/generate';
 import { LEAGUE_RULES } from './leagues';
@@ -382,7 +382,7 @@ export function monthlyClubReps() {
   const g = gs();
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league' || comp.finished) continue;
-    const rows = sortTable(comp.table.slice());
+    const rows = leagueRows(comp);
     if ((rows[0]?.p ?? 0) < 6) continue;
     const targets = repTargets(comp.clubs);
     rows.forEach((r, i) => driftRep(r.club, targets[i], 0.06));
@@ -395,7 +395,7 @@ export function repTrend(cid: number): -1 | 0 | 1 {
   const c = g.clubs[cid];
   const comp = c ? g.comps[c.league] : undefined;
   if (!c || !comp || comp.type !== 'league') return 0;
-  const rows = sortTable(comp.table.slice());
+  const rows = leagueRows(comp);
   if ((rows[0]?.p ?? 0) < 3) return 0;
   const target = repTargets(comp.clubs)[rows.findIndex((r) => r.club === cid)] ?? c.rep;
   return target >= c.rep + 3 ? 1 : target <= c.rep - 3 ? -1 : 0;

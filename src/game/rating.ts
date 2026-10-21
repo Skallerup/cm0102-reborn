@@ -2,7 +2,7 @@
 // Svære opgaver (svag klub, stærk liga, høje forventninger indfriet) giver flere point end at vinde
 // med favoritten. Point bruges til de globale ranglister (singleplayer).
 import { strengthRank } from './board';
-import { finalOrder, nationRanking, sortTable } from './competitions';
+import { finalOrder, nationRanking, leagueRows } from './competitions';
 import { ageOn } from './dates';
 import { LEAGUE_RULES } from './leagues';
 import { gs, squad } from './state';
@@ -83,7 +83,7 @@ export function computeSeasonScore(provisional = false): SeasonScore | null {
   const lw = leagueWeight(club.league);
   const comp = g.comps[club.league];
   if (comp?.type === 'league' && comp.table.length > 1) {
-    const order = provisional ? sortTable(comp.table.slice()).map((r) => r.club) : finalOrder(comp);
+    const order = provisional ? leagueRows(comp).map((r) => r.club) : finalOrder(comp);
     const n = order.length;
     const pos = order.indexOf(club.id) + 1;
     const played = comp.table.find((r) => r.club === club.id)?.p ?? 0;

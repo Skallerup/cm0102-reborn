@@ -366,6 +366,18 @@ export function promotionOrder(comp: Competition): number[] {
   return finalOrder(comp).filter((c) => !isReserveTeam(c));
 }
 
+/**
+ * Ligatabellen i rigtig rækkefølge: i en split-liga står hele mesterskabsspillet over nedrykningsspillet,
+ * uanset point (rækkerne har sæsonens samlede tal). Bruges til placeringer og visning.
+ */
+export function leagueRows(comp: Competition): TableRow[] {
+  if (comp.type === 'league' && comp.groups && comp.splitDone) {
+    const byClub = new Map(comp.table.map((r) => [r.club, r]));
+    return finalOrder(comp).map((c) => byClub.get(c)).filter((r): r is TableRow => !!r);
+  }
+  return sortTable(comp.table.slice());
+}
+
 /** Ligaens endelige rækkefølge (respekterer split-grupper) */
 export function finalOrder(comp: Competition): number[] {
   if (comp.groups && comp.type === 'league') {

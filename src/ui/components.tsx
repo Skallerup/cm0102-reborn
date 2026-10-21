@@ -145,11 +145,10 @@ export function Table<T>({ rows, cols, rowKey, onRow, initialSort, initialDir = 
   const sorted = useMemo(() => {
     const col = cols.find((c) => c.key === sortKey);
     if (!col?.sort) return rows;
-    const f = col.sort;
-    return rows.slice().sort((a, b) => {
-      const va = f(a), vb = f(b);
-      return (va < vb ? -1 : va > vb ? 1 : 0) * dir;
-    });
+    // værdien beregnes én gang pr. række (store lister, fx transfersøgningen over hele databasen)
+    const keyed = rows.map((r) => [col.sort!(r), r] as const);
+    keyed.sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0) * dir);
+    return keyed.map((x) => x[1]);
   }, [rows, cols, sortKey, dir]);
   const shown = limit ? sorted.slice(0, limit) : sorted;
   return (

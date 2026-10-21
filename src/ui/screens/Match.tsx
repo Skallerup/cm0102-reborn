@@ -14,9 +14,9 @@ import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } fr
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
-import { Pitch2D, cornerFrames, highlightFrames, lastDitchFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
-import { LeagueTable } from './Competitions';
-import { sortTable } from '../../game/competitions';
+import { Pitch2D, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
+import { LeagueTable, LeagueTables } from './Competitions';
+import { leagueRows } from '../../game/competitions';
 import { TacticEditor } from './Tactics';
 import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
@@ -196,6 +196,13 @@ function OppInstructionsPanel({ fixture, rep }: { fixture: number; rep: ReturnTy
       </div>
     </Panel>
   );
+}
+
+/** De sidste n linjer, nyeste først, med en fast nøgle (linjens plads i hele kommentaren) – så en
+ *  mållinje ikke flytter til et nyt element og blinker igen, hver gang der kommer en ny linje */
+function lastLines<T>(lines: T[], n: number): [T, number][] {
+  const from = Math.max(0, lines.length - n);
+  return lines.slice(from).map((l, i) => [l, from + i] as [T, number]).reverse();
 }
 
 /** CM-stil: holdbjælker i holdfarverne med stor score og minuttet til venstre */
@@ -408,8 +415,10 @@ function LiveMatch({ id }: { id: number }) {
     const fresh = sim.shots.slice(seen);
     L.shotsSeen = sim.shots.length;
     // højdepunkter: mål, store chancer – og de taktiske situationer (kontra, gennembrud, indlæg, solo, pres, frispark, cutback, langskud, stolpe)
-    const big = fresh.filter((sh) => sh.outcome === 'goal' || sh.outcome === 'offside' || sh.xg >= 0.1 || sh.kind === 'pen' || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)
-      || !!sh.origin || sh.post || sh.kind === 'fk' || sh.kind === 'cutback' || (sh.kind === 'long' && (sh.outcome === 'saved' || sh.xg >= 0.05))).at(-1);
+    // hvor mange højdepunkter: kun mål, store chancer (standard) eller alle afslutninger
+    const level = g.options.highlights ?? 'big';
+    const big = fresh.filter((sh) => level === 'all' || sh.outcome === 'goal' || sh.outcome === 'offside' || sh.kind === 'pen' || (level === 'big' && (sh.xg >= 0.1 || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)
+      || !!sh.origin || sh.post || sh.kind === 'fk' || sh.kind === 'cutback' || (sh.kind === 'long' && (sh.outcome === 'saved' || sh.xg >= 0.05))))).at(-1);
     let started = false;
     // hjørnespark: med afslutning vises de som chancen; uden afslutning som et kort indlæg, forsvaret rydder
     const newCorners = sim.corners.slice(L.cornersSeen ?? 0);
@@ -418,8 +427,8 @@ function LiveMatch({ id }: { id: number }) {
     // et skud i samme minut som hjørnesparket (fx efter en clearing) vises også som hjørnesparkets afslutning
     const cornerShot = fresh.filter((sh) => sh.corner).at(-1)
       ?? (lastCorner && fresh.at(-1) && fresh.at(-1)!.m === lastCorner.m && fresh.at(-1)!.t === lastCorner.t ? { ...fresh.at(-1)!, corner: lastCorner.taker } : undefined);
-    const bigOrCorner = big ? (cornerShot && cornerShot.m === big.m && cornerShot.p === big.p ? cornerShot : big) : cornerShot;
-    const plainCorner = !bigOrCorner && fresh.length === 0 && lastCorner;
+    const bigOrCorner = big ? (cornerShot && cornerShot.m === big.m && cornerShot.p === big.p ? cornerShot : big) : level === 'goals' ? undefined : cornerShot;
+    const plainCorner = level !== 'goals' && !bigOrCorner && fresh.length === 0 && lastCorner;
     if (plainCorner && tab === '2d' && speed < 8) {
       const taker = g.players[plainCorner.taker]?.last ?? '';
       const lastNew = L.lines.length > linesBefore ? L.lines.at(-1)!.text : '';
@@ -489,11 +498,27 @@ function LiveMatch({ id }: { id: number }) {
     // redningstackling (ingen afslutning): løberen alene – forsvareren redder
     const newLd = sim.highlights.slice(L.ldSeen ?? 0);
     L.ldSeen = sim.highlights.length;
-    const ld = newLd.at(-1);
-    if (!started && ld && tab === '2d' && speed < 8) {
+    const ld = newLd.filter((h) => h.kind === 'lastDitch').at(-1);
+    if (!started && ld && level !== 'goals' && tab === '2d' && speed < 8) {
       const runner = g.players[ld.p]?.last ?? '', cover = g.players[ld.p2]?.last ?? '';
       setHl({ frames: lastDitchFrames(sim.pitch(), ld), i: 0, outcome: 'lastDitch', texts: [t('hl.t.lastDitch', { a: runner }), t('hl.t2.lastDitch', { a: runner, b: cover }), L.lines.at(-1)?.text ?? ''], hideFrom: linesBefore, team: ld.t, label: 'hl.k.lastDitch' });
       started = true;
+    }
+    // mindre højdepunkter (kun ved "Alle"): offside, kort og skader
+    if (!started && level === 'all' && tab === '2d' && speed < 8) {
+      const off = newLd.filter((h) => h.kind === 'offside').at(-1);
+      const inc = newEv.filter((e) => e.k === 'yellow' || e.k === 'red' || e.k === 'injury').at(-1);
+      const lineFor = (...ks: string[]) => L.lines.slice(linesBefore).reverse().find((l) => ks.some((k) => l.k?.startsWith(k)))?.text ?? L.lines.at(-1)?.text ?? '';
+      if (off) {
+        const runner = g.players[off.p]?.last ?? '', passer = g.players[off.p2]?.last ?? '';
+        setHl({ frames: offsideFrames(sim.pitch(), off), i: 0, outcome: 'offsideFlag', texts: [t('hl.t.offside', { a: passer, b: runner }), lineFor('offside')], hideFrom: linesBefore, team: off.t, label: 'hl.k.offside' });
+        started = true;
+      } else if (inc) {
+        const who = g.players[inc.p ?? 0]?.last ?? '';
+        const kind = inc.k as 'yellow' | 'red' | 'injury';
+        setHl({ frames: incidentFrames(sim.pitch(), { t: inc.t, p: inc.p ?? 0 }), i: 0, outcome: kind, texts: [t(`hl.t.${kind}`, { a: who }), lineFor(...(kind === 'red' ? ['red', 'second-yellow'] : [kind]))], hideFrom: linesBefore, team: inc.t, label: `hl.k.${kind}` });
+        started = true;
+      }
     }
     if (sim.finished && !report) setReport(sim.report());
     else if (!started) maybeHalftime();
@@ -661,6 +686,11 @@ function LiveMatch({ id }: { id: number }) {
           {[1, 2, 4, 8].map((s) => <button key={s} className={speed === s ? 'primary small' : 'small'} onClick={() => setSpeed(s)}>{s}×</button>)}
           <button onClick={finishNow}>{t('match.toEnd')}</button>
         </>}
+        {!report && (
+          <select className="hl-level" value={g.options.highlights ?? 'big'} title={t('hl.level')} onChange={(e) => { g.options.highlights = e.target.value as 'big'; notify(); }}>
+            {(['goals', 'big', 'all'] as const).map((k) => <option key={k} value={k}>{t('hl.level')}: {t(`hl.level.${k}`)}</option>)}
+          </select>
+        )}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
       <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
@@ -700,7 +730,7 @@ function LiveMatch({ id }: { id: number }) {
             {hl && <div className="p2d-replay">{t(hl.label ?? ('corner' in hl.frames[0] ? 'hl.corner' : 'hl.chance'))}</div>}
           </div>
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
-            {(hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines).slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+            {lastLines(hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines, 14).map(([l, k]) => <div key={k} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
           </div>
         </div>
       )}
@@ -735,7 +765,7 @@ function LiveMatch({ id }: { id: number }) {
           </div>
         </Panel>
       )}
-      {tab === 'table' && g.comps[f.comp]?.type === 'league' && <Panel className="flush"><LeagueTable rows={sortTable(g.comps[f.comp].table.slice())} comp={g.comps[f.comp]} /></Panel>}
+      {tab === 'table' && g.comps[f.comp]?.type === 'league' && (g.comps[f.comp].splitDone ? <LeagueTables comp={g.comps[f.comp]} /> : <Panel className="flush"><LeagueTable rows={leagueRows(g.comps[f.comp])} comp={g.comps[f.comp]} /></Panel>)}
       {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
       {!report && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}</div>
@@ -895,7 +925,7 @@ function FollowMatch({ id }: { id: number }) {
         <div className="cols match2d">
           <Pitch2D snap={data.snap} me={1} colors={colors} minute={data.minute} stepMs={800} banner={data.banner} bannerCls="" flash={data.flash} />
           <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
-            {data.lines.slice(-14).reverse().map((l, i) => <div key={i} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
+            {lastLines(data.lines, 14).map(([l, k]) => <div key={`${k}-${l.m}-${l.text.length}`} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
           </div>
         </div>
       )}

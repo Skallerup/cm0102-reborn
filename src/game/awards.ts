@@ -1,6 +1,6 @@
 // Priser og kåringer (forslag #10): månedens spiller/manager, årets hold, Ballon d'Or, gallaaften.
 import { naturalRole } from './attributes';
-import { finalOrder, sortTable } from './competitions';
+import { finalOrder, leagueRows } from './competitions';
 import { forEachHuman, humanManager } from './humans';
 import { addNews, gs, squad } from './state';
 import type { Competition, MonthAward, Player, Role, SeasonSummary } from './types';
@@ -47,7 +47,7 @@ export function monthlyAwards() {
     if (!before) continue;
     // månedens manager: flest point (måldifference som tiebreak via tabellens sortering)
     let bestClub = 0, bestPts = -1;
-    for (const r of sortTable(comp.table.slice())) {
+    for (const r of leagueRows(comp)) {
       const gained = r.pts - (before[r.club] ?? 0);
       if (gained > bestPts) { bestPts = gained; bestClub = r.club; }
     }
