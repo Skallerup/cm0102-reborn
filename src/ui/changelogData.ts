@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.81',
+    date: '2026-10-21',
+    title: { da: 'Forhandl om bud direkte i vinduet', en: 'Negotiate bids right in the window' },
+    items: [
+      { da: 'Når du byder på en spiller, svarer klubben med det samme i budvinduet: acceptér deres modbud, byd igen eller træk dig – vinduet lukker ikke undervejs. Bliver I enige, går du direkte videre til kontraktforhandlingen', en: 'When you bid for a player, the club answers straight away in the bid window: accept their counter, bid again or walk away – the window stays open. Once you agree, you go straight on to the contract talks' },
+      { da: 'Klubben har en grænse for, hvor mange bud den gider – byder du for mange gange, afbryder den forhandlingerne', en: 'Clubs have a limit to how many bids they will entertain – bid too many times and they break off talks' },
+      { da: 'Et lille indlæsningsikon viser, når AI\'en skriver: artikler, fansenes indlæg, agentens svar, spillersamtaler og pressemøder', en: 'A small loading icon shows while the AI is writing: articles, fan posts, agent replies, player talks and press conferences' },
+    ],
+  },
+  {
     version: '0.7.80',
     date: '2026-10-21',
     title: { da: 'Min profil og svar på bud fra spillersiden', en: 'My profile and answering bids from the player page' },

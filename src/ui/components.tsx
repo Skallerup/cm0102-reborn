@@ -283,3 +283,8 @@ export function FormList({ form, sep = ' · ' }: { form: number[]; sep?: string 
   if (!form.length) return <>-</>;
   return <>{form.map((r, i) => <span key={i}>{i > 0 && sep}<Rating r={r} /></span>)}</>;
 }
+
+/** Lille indlæsningsikon, mens AI'en skriver (tre prikker der pulserer) */
+export function AiSpinner({ text }: { text?: string }) {
+  return <span className="ai-spin" role="status" aria-live="polite"><i /><i /><i />{text && <span>{text}</span>}</span>;
+}

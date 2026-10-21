@@ -5,7 +5,7 @@ import { effectsOf, followUpFor, toneOf, tonesFor, type PressConf, type PressTop
 import { leagueRows } from '../../game/competitions';
 import { aiCall, aiText, setAiText } from '../../ai/client';
 import { has, t } from '../../i18n';
-import { Bar, Panel } from '../components';
+import { Bar, Panel, AiSpinner } from '../components';
 import { useGame, useNav } from '../core';
 import { useAiAvailable } from '../ai';
 import { Head } from './common';
@@ -45,6 +45,7 @@ export function PressScreen() {
   const [lines, setLines] = useState<Line[]>([]);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
+  const [qLoading, setQLoading] = useState(false);
   const [typing, setTyping] = useState(false);
   const [done, setDone] = useState<{ headline: string; body: string; effects: string[] } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,7 @@ export function PressScreen() {
   // AI formulerer hovedspørgsmålene, hvis den er tilgængelig
   useEffect(() => {
     if (!pc || !ai || Object.keys(aiQ).length) return;
+    setQLoading(true);
     const me = g.clubs[g.userClub];
     const comp = g.comps[me?.league ?? ''];
     const pos = comp ? leagueRows(comp).findIndex((r) => r.club === g.userClub) + 1 : 0;
@@ -67,6 +69,7 @@ export function PressScreen() {
       phase: pc.phase === 'pre' ? 'før kampen' : 'efter kampen',
       topics: pc.topics.map((tp) => ({ id: tp.id, kind: tp.kind, facts: tp.params, example: templateQuestion(tp) })),
     }).then((r) => {
+      setQLoading(false);
       if (!r?.questions?.length) return;
       const map = Object.fromEntries(r.questions.filter((q) => pc.topics.some((tp) => tp.id === q.id)).map((q) => [q.id, q.text]));
       setAiQ(map);
@@ -187,6 +190,7 @@ export function PressScreen() {
       </div>
       <Panel className="press-room">
         <div className="press-feed">
+          {qLoading && <AiSpinner text={t('ai.pressTyping')} />}
           {lines.map((l, i) => l.who === 'q' ? (
             <div key={i} className="press-q"><span className="press-who">🎤 {l.journalist}</span><p>“{l.text}”</p></div>
           ) : l.who === 'a' ? (
@@ -213,7 +217,7 @@ export function PressScreen() {
             {ai && (
               <div className="row" style={{ marginTop: 8 }}>
                 <input style={{ flex: 1 }} maxLength={400} placeholder={t('press.freePlaceholder')} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') freeAnswer(); }} />
-                <button disabled={busy === 'free' || !draft.trim()} onClick={freeAnswer}>{busy === 'free' ? '…' : t('press.answer')}</button>
+                <button disabled={busy === 'free' || !draft.trim()} onClick={freeAnswer}>{busy === 'free' ? <AiSpinner /> : t('press.answer')}</button>
               </div>
             )}
             <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{t('press.progress', { n: step + 1, total: queue.length })}</div>
@@ -222,7 +226,7 @@ export function PressScreen() {
       </Panel>
       <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
         {!answers.length && <button onClick={() => finish(true)} disabled={!!busy}>{t('press.sendAssistant')}</button>}
-        {finished && !typing && <button className="primary" disabled={!!busy} onClick={() => finish()}>{busy === 'finish' ? t('press.writing') : t('press.finish')}</button>}
+        {finished && !typing && <button className="primary" disabled={!!busy} onClick={() => finish()}>{busy === 'finish' ? <AiSpinner text={t('press.writing')} /> : t('press.finish')}</button>}
       </div>
     </div>
   );

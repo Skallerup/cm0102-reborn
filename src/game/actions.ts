@@ -16,7 +16,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { removeHuman } from './humans';
 import { addNews, gs, notify } from './state';
 import {
-  acceptCounter, enquire, loanOut, makeBid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
+  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
@@ -69,6 +69,8 @@ export type Action =
   | { t: 'setWindows'; mode: 'real' | 'classic' }
   | { t: 'setH2hTime'; minutes: number }
   | { t: 'raiseBid'; offer: number; amount: number }
+  | { t: 'bidNow'; offer: number }
+  | { t: 'rebid'; offer: number; fee: number }
   | { t: 'raiseStaff'; staff: number; wage: number }
   | { t: 'matchResult'; fixture: number; rep: MatchReport }
   | { t: 'join'; name: string; club: number; nation: number }
@@ -167,6 +169,8 @@ export function applyAction(a: Action): unknown {
     case 'resign': playPendingAsAi(); return resignJob();
     case 'fixPending': playPendingAsAi(); return 'ok';
     case 'raiseBid': return raiseBid(a.offer, a.amount);
+    case 'bidNow': return bidNow(a.offer);
+    case 'rebid': return rebid(a.offer, a.fee);
     case 'raiseStaff': return raiseStaff(a.staff, a.wage);
     case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
     case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(1, Math.round(a.minutes))); return 'ok';

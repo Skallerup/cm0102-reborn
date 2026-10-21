@@ -8,7 +8,7 @@ import { clausesWorthFor, preferredYears, renewalDemand, wageDemand } from '../.
 import { clauseCost } from '../../game/clauses';
 import { SHIFT_WEEKS } from '../../game/board';
 import type { ContractClauses, TransferOffer } from '../../game/types';
-import { MoneyInput } from '../components';
+import { MoneyInput, AiSpinner } from '../components';
 import { money, t } from '../../i18n';
 import { Modal } from '../components';
 
@@ -31,6 +31,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
   // spilleragenten: fast persona pr. spiller, replikker skrevet af AI (tallene kommer fra spillet)
   const { name: agentName, style: persona } = agentOf(p);
   const [agentLine, setAgentLine] = useState<string | null>(null);
+  const [agentTyping, setAgentTyping] = useState(false);
   const otherClubs = [...new Set([
     ...g.offers.filter((o) => o.player === pid && o.buyer !== g.userClub && ['pending', 'negotiating', 'countered'].includes(o.status)).map((o) => o.buyer),
     ...(g.pursuits ?? []).filter((x) => x.player === pid && x.club !== g.userClub).map((x) => x.club),
@@ -47,10 +48,11 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
       budget: 'Klubben har ikke plads i lønbudgettet til tilbuddet. Du reagerer på det.',
       pending: `Manageren tilbød ${money(offered?.wage ?? 0)} om ugen i ${offered?.years} år. Din klient kan lide tilbuddet, men der er andre klubber med i billedet – han giver svar i morgen.`,
     }[outcome] ?? outcome;
+    setAgentTyping(true);
     aiCall<{ line: string }>('agent', {
       persona, youAre: `${agentName}, agent for ${p.first} ${p.last}`, talkingTo: `manageren for ${club.name}`,
       contract: offer ? 'ny spiller til klubben' : 'kontraktforlængelse', situation, otherInterestedClubs: otherClubs,
-    }).then((r) => { if (r?.line) setAgentLine(r.line); });
+    }).then((r) => { setAgentTyping(false); if (r?.line) setAgentLine(r.line); });
   };
   useEffect(() => { speak('opening'); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -98,6 +100,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
         )}
         <div className="chat">
           <div className={`chat-them insight ${msg?.tone ?? ''}`}><b title={t(`agent.${persona}.hint`)}>{agentName} ({t(`agent.${persona}`)}):</b> {agentLine ?? msg?.text ?? t('neg.agentOpening', { wage: money(demand), years: offer?.demand?.years ?? preferredYears(p) })}</div>
+          {agentTyping && <AiSpinner text={t('ai.agentTyping', { name: agentName })} />}
           {msg && agentLine && <div className="muted" style={{ fontSize: 12 }}>{msg.text}</div>}
         </div>
         {msg?.budget && (() => {

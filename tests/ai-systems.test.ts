@@ -15,6 +15,7 @@ import { planIntake } from '../src/game/season';
 import { retireIntoStaff } from '../src/game/records';
 import { ACHIEVEMENTS, unlock } from '../src/game/achievements';
 import { campWindows, planCamp } from '../src/game/camp';
+import { bidNow, makeBid, rebid, windowOpen } from '../src/game/transfers';
 import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
@@ -234,5 +235,24 @@ describe('træningslejr', () => {
     expect(c.camp?.status).toBe('done');
     expect(g.news.some((n) => n.key === 'camp.report')).toBe(true);
     expect(c.campBond?.pts).toBeGreaterThan(0);
+  });
+});
+
+describe('live-forhandling om bud', () => {
+  it('klubben svarer med det samme, og man kan byde igen i samme forhandling', () => {
+    const g = gs();
+    const c = g.clubs[g.userClub];
+    c.transferBudget = 500_000_000;
+    // find et åbent vindue
+    for (let i = 0; i < 200 && !windowOpen(); i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    const p = Object.values(g.players).find((x) => x.club && x.club !== g.userClub && g.clubs[x.club].manager !== -1 && x.value > 1_000_000 && x.value < 5_000_000)!;
+    const o = makeBid(p.id, Math.round(p.value * 0.3), false);
+    expect(typeof o).toBe('object');
+    const st = bidNow((o as { id: number }).id);
+    expect(['countered', 'rejected', 'negotiating']).toContain(st);
+    if (st !== 'negotiating' && !(o as { nfs?: boolean }).nfs) {
+      const st2 = rebid((o as { id: number }).id, p.value * 3);
+      expect(['negotiating', 'countered']).toContain(st2);
+    }
   });
 });

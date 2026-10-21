@@ -515,6 +515,9 @@ export interface TransferOffer {
   swap?: number[];
   /** Multiplayer: et kontrakttilbud til en fri spiller (eller Bosman), som spilleren svarer på dagen efter */
   signing?: { wage: number; years: number; clauses?: ContractClauses };
+  /** live-forhandling: antal bud i samme forhandling, og om klubben har sagt 'ikke til salg' */
+  bidRounds?: number;
+  nfs?: boolean;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

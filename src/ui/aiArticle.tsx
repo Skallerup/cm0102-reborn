@@ -1,5 +1,6 @@
 // AI-skrevne artikler i indbakken: kamprapporter, rygter, klummer og bestyrelsesmøder.
 // Teksten hentes første gang beskeden åbnes og gemmes med spillet; uden AI vises intet ekstra.
+import { AiSpinner } from './components';
 import { useEffect, useState } from 'react';
 import { aiCall, aiText, ensureAiText } from '../ai/client';
 import { leagueRows } from '../game/competitions';
@@ -105,7 +106,7 @@ export function AiArticle({ item }: { item: NewsItem }) {
     return () => { alive = false; };
   }, [ai, key]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!hasArticle(item)) return null;
-  if (loading && !text) return <div className="muted">{t('ai.writing')}</div>;
+  if (loading && !text) return <div><AiSpinner text={t('ai.writing')} /></div>;
   if (!text) return null;
   let art: { headline?: string; body?: string } = {};
   try { art = JSON.parse(text); } catch { art = { body: text }; }

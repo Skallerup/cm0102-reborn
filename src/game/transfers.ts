@@ -722,51 +722,7 @@ export function processOffers() {
     if (o.status === 'pending' && o.buyer === g.userClub && isHumanClub(o.seller) && g.date > o.respondBy) {
       o.status = 'withdrawn'; // den anden manager svarede ikke
     } else if (o.status === 'pending' && o.buyer === g.userClub && !isHumanClub(o.seller) && g.date >= o.respondBy) {
-      const p = g.players[o.player];
-      const buyer = g.clubs[o.buyer];
-      if (!p || p.club !== o.seller) { o.status = 'withdrawn'; continue; }
-      if (o.loan) {
-        const rank = keyPlayerRank(p);
-        const age = ageOn(p.dob, g.date);
-        if (rank > 13 && (age <= 24 || rank > 18)) {
-          o.status = 'negotiating';
-          addNews({ cat: 'transfer', key: 'transfer.loanAccepted', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'offer', id: o.id } });
-          completeTransfer(o, p.contract?.wage ?? 0, 0);
-        } else {
-          o.status = 'rejected';
-          addNews({ cat: 'transfer', key: 'transfer.loanRejected', params: { player: pname(p), club: sellerName(o.seller) } });
-        }
-        continue;
-      }
-      // frikøbsklausulen er betalt: sælgeren kan ikke sige nej
-      if (p.contract?.release && o.fee >= p.contract.release) {
-        o.status = 'negotiating';
-        o.respondBy = addDays(g.date, 10);
-        addNews({ cat: 'transfer', key: 'transfer.releaseMet', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
-        continue;
-      }
-      const worth = bidClauseWorth(p, o.fee, o.sellOn, o.addOn) + offerSwapWorth(o);
-      let d = sellerDecision(p, o.fee + worth, buyer);
-      if (d.answer === 'counter' && d.counter) d.counter = roundValue(Math.max(o.fee, d.counter - worth));
-      o.rival = rivalBid(o, p);
-      if (o.rival && d.answer !== 'notforsale' && o.fee + worth < o.rival.fee) {
-        d = { answer: 'counter', counter: roundValue(o.rival.fee * 1.05) };
-        addNews({ cat: 'transfer', key: 'transfer.biddingWar', params: { player: pname(p), club: sellerName(o.rival.club), fee: o.rival.fee }, link: { kind: 'offer', id: o.id } });
-      }
-      if (d.answer === 'accept') {
-        o.status = 'negotiating';
-        o.respondBy = addDays(g.date, 10);
-        addNews({ cat: 'transfer', key: 'transfer.bidAccepted', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
-      } else if (d.answer === 'counter') {
-        o.status = 'countered';
-        o.counter = d.counter;
-        addNews({ cat: 'transfer', key: 'transfer.bidCountered', params: { player: pname(p), club: sellerName(o.seller), fee: d.counter ?? 0 }, link: { kind: 'offer', id: o.id } });
-      } else {
-        o.status = 'rejected';
-        addNews({ cat: 'transfer', key: d.answer === 'notforsale' ? 'transfer.notForSale' : 'transfer.bidRejected', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'player', id: p.id } });
-        // spilleren ville måske gerne – han kan kontakte køberen og bede om at blive sat til salg
-        targetReaction(p, buyer.id);
-      }
+      aiAnswerBid(o);
     } else if ((o.status === 'negotiating' || o.status === 'countered') && g.date > o.respondBy) {
       o.status = 'collapsed';
       // budkrigen tabt: rivalen køber spilleren
@@ -783,6 +739,58 @@ export function processOffers() {
   }
   // ryd gamle tilbud
   if (g.offers.length > 120) g.offers = g.offers.filter((o) => ['pending', 'negotiating', 'countered'].includes(o.status) || o.created > addDays(g.date, -60));
+}
+
+
+/** En AI-klub svarer på brugerens bud: accept, modbud eller nej (bruges dagligt og med det samme i budvinduet) */
+function aiAnswerBid(o: TransferOffer) {
+  const g = gs();
+  const p = g.players[o.player];
+  const buyer = g.clubs[o.buyer];
+  if (!p || p.club !== o.seller) { o.status = 'withdrawn'; return; }
+  if (o.loan) {
+    const rank = keyPlayerRank(p);
+    const age = ageOn(p.dob, g.date);
+    if (rank > 13 && (age <= 24 || rank > 18)) {
+      o.status = 'negotiating';
+      addNews({ cat: 'transfer', key: 'transfer.loanAccepted', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'offer', id: o.id } });
+      completeTransfer(o, p.contract?.wage ?? 0, 0);
+    } else {
+      o.status = 'rejected';
+      addNews({ cat: 'transfer', key: 'transfer.loanRejected', params: { player: pname(p), club: sellerName(o.seller) } });
+    }
+    return;
+  }
+  // frikøbsklausulen er betalt: sælgeren kan ikke sige nej
+  if (p.contract?.release && o.fee >= p.contract.release) {
+    o.status = 'negotiating';
+    o.respondBy = addDays(g.date, 10);
+    addNews({ cat: 'transfer', key: 'transfer.releaseMet', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+    return;
+  }
+  const worth = bidClauseWorth(p, o.fee, o.sellOn, o.addOn) + offerSwapWorth(o);
+  let d = sellerDecision(p, o.fee + worth, buyer);
+  if (d.answer === 'counter' && d.counter) d.counter = roundValue(Math.max(o.fee, d.counter - worth));
+  o.rival = rivalBid(o, p);
+  if (o.rival && d.answer !== 'notforsale' && o.fee + worth < o.rival.fee) {
+    d = { answer: 'counter', counter: roundValue(o.rival.fee * 1.05) };
+    addNews({ cat: 'transfer', key: 'transfer.biddingWar', params: { player: pname(p), club: sellerName(o.rival.club), fee: o.rival.fee }, link: { kind: 'offer', id: o.id } });
+  }
+  if (d.answer === 'accept') {
+    o.status = 'negotiating';
+    o.respondBy = addDays(g.date, 10);
+    addNews({ cat: 'transfer', key: 'transfer.bidAccepted', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+  } else if (d.answer === 'counter') {
+    o.status = 'countered';
+    o.counter = d.counter;
+    addNews({ cat: 'transfer', key: 'transfer.bidCountered', params: { player: pname(p), club: sellerName(o.seller), fee: d.counter ?? 0 }, link: { kind: 'offer', id: o.id } });
+  } else {
+    o.status = 'rejected';
+    if (d.answer === 'notforsale') o.nfs = true;
+    addNews({ cat: 'transfer', key: d.answer === 'notforsale' ? 'transfer.notForSale' : 'transfer.bidRejected', params: { player: pname(p), club: sellerName(o.seller) }, link: { kind: 'player', id: p.id } });
+    // spilleren ville måske gerne – han kan kontakte køberen og bede om at blive sat til salg
+    targetReaction(p, buyer.id);
+  }
 }
 
 /** Brugeren accepterer et modbud */
@@ -1557,4 +1565,40 @@ export function windowNews() {
     else if ([7, 3, 2, 1].includes(left)) addNews({ cat: 'transfer', key: left === 1 ? 'window.closingTomorrow' : 'window.closing', params: { n: left, date: last } });
   }
   if (today.slice(5) === '01-01') addNews({ cat: 'transfer', key: 'window.bosman', params: { season: Number(today.slice(0, 4)) } });
+}
+
+/** Live-forhandling i budvinduet: AI-klubben svarer med det samme (ikke ved menneskelige sælgere eller budrunder) */
+export function bidNow(offerId: number): TransferOffer['status'] | 'error' {
+  const g = gs();
+  const o = g.offers.find((x) => x.id === offerId);
+  if (!o || o.buyer !== g.userClub || o.status !== 'pending' || isHumanClub(o.seller) || o.auction || o.war) return 'error';
+  aiAnswerBid(o);
+  return o.status;
+}
+
+/** Højst så mange bud i samme forhandling, før klubben afbryder */
+export const MAX_BID_ROUNDS = 4;
+
+/** Byd igen efter et modbud eller et nej (samme forhandling – klubben svarer med det samme) */
+export function rebid(offerId: number, fee: number): TransferOffer['status'] | string {
+  const g = gs();
+  const o = g.offers.find((x) => x.id === offerId);
+  if (!o || o.buyer !== g.userClub || !['countered', 'rejected'].includes(o.status) || isHumanClub(o.seller)) return 'error';
+  if (o.nfs) return 'transfer.notForSale';
+  const buyer = g.clubs[o.buyer];
+  const amount = roundValue(fee);
+  if (amount > buyer.transferBudget) return 'transfer.overBudget';
+  o.bidRounds = (o.bidRounds ?? 1) + 1;
+  if (o.bidRounds > MAX_BID_ROUNDS) {
+    o.status = 'rejected';
+    o.nfs = true;
+    const p = g.players[o.player];
+    addNews({ cat: 'transfer', key: 'transfer.talksOver', params: { player: p ? pname(p) : '', club: sellerName(o.seller) }, link: { kind: 'player', id: o.player } });
+    return 'transfer.talksOver';
+  }
+  o.fee = amount;
+  o.counter = undefined;
+  o.status = 'pending';
+  aiAnswerBid(o);
+  return o.status;
 }

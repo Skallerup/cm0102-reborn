@@ -10,7 +10,7 @@ import type { Club, Staff } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { aiCall, aiText, ensureAiText } from '../../ai/client';
 import { useAiAvailable } from '../ai';
-import { Bar, ClubLink, Crest, Flag, MgrChip, Panel, PlayerLink, Stars, posStr } from '../components';
+import { AiSpinner, Bar, ClubLink, Crest, Flag, MgrChip, Panel, PlayerLink, Stars, posStr } from '../components';
 import { scoutStars } from '../../game/scouting';
 import { ageOn } from '../../game/dates';
 import { useGame, useNav } from '../core';
@@ -129,8 +129,10 @@ function FansPanel({ club }: { club: Club }) {
   const week = `${g.date.slice(0, 4)}-${Math.floor(Number(g.date.slice(5, 7)) * 4.35 + Number(g.date.slice(8, 10)) / 7)}`;
   const key = `fans:${club.id}:${week}`;
   const [posts, setPosts] = useState<{ user: string; text: string }[] | null>(() => { try { return JSON.parse(aiText(key) ?? 'null'); } catch { return null; } });
+  const [fansLoading, setFansLoading] = useState(false);
   useEffect(() => {
     if (!ai || aiText(key)) return;
+    setFansLoading(true);
     const comp = g.comps[club.league];
     const row = comp?.table.find((r) => r.club === club.id);
     ensureAiText(key, async () => {
@@ -139,12 +141,12 @@ function FansPanel({ club }: { club: Club }) {
         ticketPrice: money(club.ticketPrice), manager: g.manager.name,
       });
       return r?.posts?.length ? JSON.stringify(r.posts) : null;
-    }).then((v) => { if (v) { try { setPosts(JSON.parse(v)); } catch { /* ignorer */ } } });
+    }).then((v) => { setFansLoading(false); if (v) { try { setPosts(JSON.parse(v)); } catch { /* ignorer */ } } });
   }, [ai, key]); // eslint-disable-line react-hooks/exhaustive-deps
   const moodKey = mood >= 75 ? 'euphoric' : mood >= 58 ? 'happy' : mood >= 42 ? 'restless' : 'angry';
   const shown = posts ?? [{ user: 'Fan1904', text: t(`fan.tpl.${moodKey}.1`) }, { user: 'TribuneTina', text: t(`fan.tpl.${moodKey}.2`) }];
   return (
-    <Panel title={t('fans.title')}>
+    <Panel title={t('fans.title')} right={fansLoading && !posts ? <AiSpinner /> : undefined}>
       <div className="kv">
         <span>{t('fans.mood')}<Info topic="fans" /></span><span><Bar value={mood} /> {t(`fans.mood.${moodKey}`)}</span>
       </div>

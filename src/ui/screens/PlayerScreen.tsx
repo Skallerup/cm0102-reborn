@@ -7,11 +7,11 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
+import { MAX_BID_ROUNDS, askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
-import { AttrVal, Bar, ClubLink, FormList, Rating, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr } from '../components';
+import { AttrVal, Bar, ClubLink, FormList, Rating, Modal, MoneyInput, Nat, Panel, RecTag, Stars, age, posStr, AiSpinner } from '../components';
 import { useGame, useNav } from '../core';
 import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
@@ -32,7 +32,7 @@ export function PlayerScreen({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const p = g.players[id];
-  const [bid, setBid] = useState(false);
+  const [bid, setBid] = useState<boolean | number>(false);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
@@ -61,7 +61,7 @@ export function PlayerScreen({ id }: { id: number }) {
         {compareIds.length >= 2 && <button onClick={() => nav({ name: 'compare' })}>{t('player.showCompare')}</button>}
       </Head>
       {msg && <div className="insight">{msg}</div>}
-      {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} />}
+      {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} onOpen={(o) => setBid(o.id)} />}
       {mine && p.complaint && <Complaint pid={p.id} onMsg={setMsg} />}
       {mine && p.renewal && !p.complaint && <div className={`insight ${p.renewal.convinced ? '' : 'warn'}`} style={{ marginBottom: 12 }}>{t(p.renewal.convinced ? 'renewal.status.convinced' : `renewal.status.${p.renewal.stance}`, { player: p.last })}</div>}
       {mine && p.playPromise && <div className="insight warn" style={{ marginBottom: 12 }}>{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
@@ -206,7 +206,7 @@ export function PlayerScreen({ id }: { id: number }) {
         </Panel>
       </div>
       <div style={{ marginTop: 14 }}><CareerPanel pid={p.id} /></div>
-      {bid && <BidModal pid={p.id} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
+      {bid !== false && <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
       {neg && <NegotiationModal offer={neg.offer} renewPid={neg.renew} onClose={() => setNeg(null)} />}
@@ -232,7 +232,7 @@ function feeStep(max: number) {
   return Math.max(5_000, (n <= 1 ? 1 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag);
 }
 
-function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void }) {
+function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number }) {
   const g = useGame()!;
   const p = g.players[pid];
   const budget = g.clubs[g.userClub].transferBudget;
@@ -242,6 +242,25 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);
   const [swap, setSwap] = useState<number[]>([]);
+  // live-forhandling: buddet sendes, klubben svarer med det samme her i vinduet
+  const [offerId, setOfferId] = useState<number | null>(initialOffer ?? null);
+  const [stage, setStage] = useState<'form' | 'answer'>(initialOffer ? 'answer' : 'form');
+  const [err, setErr] = useState('');
+  const live = offerId !== null ? g.offers.find((x) => x.id === offerId) : undefined;
+  const submit = () => {
+    setErr('');
+    if (live && (live.status === 'countered' || live.status === 'rejected')) {
+      const r = dispatch<string>({ t: 'rebid', offer: live.id, fee });
+      if (['pending', 'countered', 'rejected', 'negotiating', 'withdrawn'].includes(r) || r === 'transfer.talksOver') setStage('answer'); else setErr(t(r));
+      return;
+    }
+    const r = dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn, swap: loan ? [] : swap });
+    if (typeof r === 'string') { setErr(t(r)); return; }
+    if (r.status === 'negotiating') { onDone(r); return; } // klubløs: direkte til kontrakten
+    dispatch({ t: 'bidNow', offer: r.id });
+    setOfferId(r.id);
+    setStage('answer');
+  };
   const cands = p.club ? swapCandidates(p.club, pid) : [];
   const swapVal = swap.reduce((s, id) => s + swapWorth(id, p.club), 0);
   const release = p.contract?.release;
@@ -256,6 +275,53 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
     : known.nfs ? (total >= known.fee ? 'bid.hintNfsMet' : 'bid.hintNfs')
     : total > known.fee * 1.15 ? 'bid.hintOver' : total >= known.fee ? 'bid.hintAtAsk' : total >= known.fee * 0.75 ? 'bid.hintClose' : 'bid.hintLow';
   const tone = !known ? '' : total >= known.fee ? 'good' : known.nfs || total < known.fee * 0.75 ? 'bad' : 'warn';
+  if (stage === 'answer' && live) {
+    const seller = gs().clubs[live.seller]?.name ?? '';
+    const left = MAX_BID_ROUNDS - (live.bidRounds ?? 1);
+    return (
+      <Modal title={t('bid.title', { player: `${p.first} ${p.last}` })} onClose={onClose}>
+        <div className="col">
+          <div className="kv">
+            <span>{t('bid.yourBid')}</span><span><b>{live.loan ? t('tr.loan') : money(live.fee)}</b></span>
+            <span>{t('col.value')}</span><span>{money(p.value)}</span>
+          </div>
+          {live.status === 'negotiating' && (
+            <>
+              <div className="insight good">{t('bid.live.accepted', { club: seller, fee: money(live.fee) })}</div>
+              <div className="row" style={{ justifyContent: 'flex-end' }}><button className="primary" onClick={() => onDone(live)}>{t('offer.negotiate')}</button></div>
+            </>
+          )}
+          {live.status === 'countered' && (
+            <>
+              <div className="insight warn">{t('bid.live.counter', { club: seller, fee: money(live.counter ?? 0) })}{live.rival ? ` ${t('bid.live.rival', { club: gs().clubs[live.rival.club]?.name ?? '' })}` : ''}</div>
+              <div className="muted" style={{ fontSize: 12.5 }}>{left > 0 ? t('bid.live.roundsLeft', { n: left }) : t('bid.live.lastRound')}</div>
+              <div className="row" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                <button className="danger" onClick={() => { dispatch({ t: 'withdraw', pid }); onClose(); }}>{t('offer.withdraw')}</button>
+                {left > 0 && <button onClick={() => { setFee(Math.round(((live.fee + (live.counter ?? live.fee)) / 2) / 10_000) * 10_000); setStage('form'); }}>{t('bid.live.again')}</button>}
+                <button className="primary" disabled={(live.counter ?? 0) > budget} onClick={() => { const r = dispatch<string>({ t: 'acceptCounter', pid }); if (r !== 'ok') setErr(t(r)); }}>{t('bid.live.acceptCounter', { fee: money(live.counter ?? 0) })}</button>
+              </div>
+            </>
+          )}
+          {live.status === 'rejected' && (
+            <>
+              <div className="insight bad">{t(live.nfs ? 'bid.live.nfs' : 'bid.live.rejected', { club: seller })}</div>
+              <div className="row" style={{ justifyContent: 'flex-end' }}>
+                <button onClick={onClose}>{t('common.close')}</button>
+                {!live.nfs && left > 0 && <button className="primary" onClick={() => { setFee(Math.round((live.fee * 1.15) / 10_000) * 10_000); setStage('form'); }}>{t('bid.live.again')}</button>}
+              </div>
+            </>
+          )}
+          {(live.status === 'pending' || live.status === 'withdrawn' || live.status === 'collapsed') && (
+            <>
+              <div className="insight">{live.status === 'pending' ? t('bid.live.pending', { club: seller, date: dateFmt(live.respondBy) }) : t(`offer.${live.status}`)}</div>
+              <div className="row" style={{ justifyContent: 'flex-end' }}><button onClick={onClose}>{t('common.close')}</button></div>
+            </>
+          )}
+          {err && <div className="insight bad">{err}</div>}
+        </div>
+      </Modal>
+    );
+  }
   return (
     <Modal title={t('bid.title', { player: `${p.first} ${p.last}` })} onClose={onClose}>
       <div className="col">
@@ -304,9 +370,10 @@ function BidModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; 
             {(sellOn > 0 || addOn > 0) && <div className="muted" style={{ fontSize: 12 }}>{t('clause.bidHint')}</div>}
           </>
         )}
+        {err && <div className="insight bad">{err}</div>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={!loan && fee > budget} onClick={() => onDone(dispatch<TransferOffer | string>({ t: 'bid', pid, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn, swap: loan ? [] : swap }))}>{t('bid.submit')}</button>
+          <button className="primary" disabled={!loan && fee > budget} onClick={submit}>{live ? t('bid.live.send') : t('bid.submit')}</button>
         </div>
       </div>
     </Modal>
@@ -436,7 +503,7 @@ function WantsAway({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
 }
 
 /** Dit aktive bud på spilleren – med mulighed for at trække det tilbage */
-function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferOffer) => void }) {
+function MyOffer({ pid, onNegotiate, onOpen }: { pid: number; onNegotiate: (o: TransferOffer) => void; onOpen: (o: TransferOffer) => void }) {
   const g = gs();
   const o = g.offers.slice().reverse().find((x) => x.player === pid && x.buyer === g.userClub && ['pending', 'countered', 'negotiating'].includes(x.status));
   if (!o) return null;
@@ -448,6 +515,7 @@ function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferO
       </span>
       {o.status === 'negotiating' && <button className="small primary" onClick={() => onNegotiate(o)}>{t('offer.negotiate')}</button>}
       {o.status === 'countered' && <AcceptCounterButton o={o} onOk={() => onNegotiate(o)} />}
+      {o.status === 'countered' && <button className="small" onClick={() => onOpen(o)}>{t('bid.live.again')}</button>}
       <button className="small danger" onClick={async () => { if (await askConfirm(t('neg.cancelConfirm'))) dispatch({ t: 'withdraw', pid }); }}>{t('offer.withdraw')}</button>
     </div>
   );
@@ -513,7 +581,7 @@ function TalkPanel({ pid }: { pid: number }) {
         </div>
         <div className="row">
           <input style={{ flex: 1 }} maxLength={400} disabled={cooldown > 0 || thinking} placeholder={t('talk.freePlaceholder', { player: p.first || p.last })} value={msgText} onChange={(e) => setMsgText(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }} />
-          <button disabled={cooldown > 0 || thinking || !msgText.trim()} onClick={sendMessage}>{thinking ? '…' : t('talk.send')}</button>
+          <button disabled={cooldown > 0 || thinking || !msgText.trim()} onClick={sendMessage}>{thinking ? <AiSpinner /> : t('talk.send')}</button>
         </div>
         {!ai && <div className="muted" style={{ fontSize: 12 }}>{t('talk.noAi')}</div>}
         {cooldown > 0 && !res && !convo && <div className="muted">{t('talk.cooldown', { n: cooldown })}</div>}

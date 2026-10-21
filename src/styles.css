@@ -971,3 +971,10 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .prof-card-name { font-size: 22px; font-weight: 900; }
 .prof-motto { margin-top: 4px; font-style: italic; color: var(--muted); }
 .prof-stats { grid-template-columns: repeat(4, 1fr); }
+.ai-spin { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12.5px; vertical-align: middle; }
+.ai-spin i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.3; animation: ai-dot 1s ease-in-out infinite; }
+.ai-spin i:nth-child(2) { animation-delay: 0.15s; }
+.ai-spin i:nth-child(3) { animation-delay: 0.3s; }
+.ai-spin span { margin-left: 4px; }
+@keyframes ai-dot { 50% { opacity: 1; transform: translateY(-2px); } }
+@media (prefers-reduced-motion: reduce) { .ai-spin i { animation: none; opacity: 0.6; } }
