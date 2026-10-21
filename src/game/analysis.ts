@@ -137,3 +137,57 @@ export function matchVerdict(rep: MatchReport, side: 0 | 1): Insight[] {
 export function suggestedTactic(base: Tactic): Tactic {
   return userTactic(true) && { ...userTactic(true), team: base.team, individual: base.individual };
 }
+
+// ---------- tabt føring ----------
+
+export interface LeadLoss {
+  lead: number;
+  /** minuttet, hvor den største føring blev etableret, og hvor den var væk igen */
+  leadMin: number;
+  lostMin: number;
+  xgBefore: [number, number];
+  xgAfter: [number, number];
+  shotsAfter: [number, number];
+  oppSubs: number;
+  oppChanges: { m: number; kind: string; to?: string }[];
+  ourSubs: number;
+  ourChanges: number;
+  tired: { id: number; cond: number }[];
+  /** vores side, hvor de fleste af deres chancer kom (set fra os), hvis der er et klart mønster */
+  weakLane?: 'left' | 'centre' | 'right';
+}
+
+/** Hvis holdet førte og ikke vandt: hvad ændrede sig efter føringen? (samtidighed er ikke bevis for årsag) */
+export function leadLoss(rep: MatchReport, side: 0 | 1): LeadLoss | null {
+  const goals = rep.events.filter((e) => e.k === 'goal').sort((a, b) => a.m - b.m);
+  let diff = 0, best = 0, leadMin = 0, lostMin = 0;
+  for (const e of goals) {
+    diff += e.t === side ? 1 : -1;
+    if (diff > best) { best = diff; leadMin = e.m; lostMin = 0; }
+    if (best > 0 && diff <= 0 && !lostMin) lostMin = e.m;
+  }
+  const final = rep.stats[side].goals - rep.stats[1 - side].goals;
+  const pensWon = !!rep.pens && rep.pens[side] > rep.pens[1 - side];
+  if (best < 1 || final > 0 || pensWon || !lostMin) return null;
+  const xg = (t: number, after: boolean) => Math.round(rep.shots.filter((s) => s.t === t && (after ? s.m > leadMin : s.m <= leadMin)).reduce((a, s) => a + s.xg, 0) * 100) / 100;
+  const shots = (t: number) => rep.shots.filter((s) => s.t === t && s.m > leadMin).length;
+  const opp = 1 - side;
+  const oppShots = rep.shots.filter((s) => s.t === opp && s.m > leadMin);
+  // banen er absolut (hold 0 angriber mod højre); vores venstre side er øverst for hold 0 og nederst for hold 1
+  const lanes = [0, 0, 0];
+  for (const s of oppShots) lanes[s.zone % 3]++;
+  const top = lanes.indexOf(Math.max(...lanes));
+  const names = ['left', 'centre', 'right'] as const;
+  const weakLane = oppShots.length >= 3 && lanes[top] / oppShots.length >= 0.5 ? names[side === 0 ? top : 2 - top] : undefined;
+  return {
+    lead: best, leadMin, lostMin,
+    xgBefore: [xg(side, false), xg(opp, false)], xgAfter: [xg(side, true), xg(opp, true)],
+    shotsAfter: [shots(side), shots(opp)],
+    oppSubs: rep.events.filter((e) => e.k === 'sub' && e.t === opp && e.m > leadMin).length,
+    oppChanges: (rep.changes ?? []).filter((c) => c.t === opp && c.m > leadMin).map((c) => ({ m: c.m, kind: c.kind, to: c.to })),
+    ourSubs: rep.events.filter((e) => e.k === 'sub' && e.t === side && e.m > leadMin).length,
+    ourChanges: (rep.changes ?? []).filter((c) => c.t === side && c.m > leadMin).length,
+    tired: rep.players.filter((l) => l.team === side && !l.red && l.minutes >= 60 && l.cond < 62).sort((a, b) => a.cond - b.cond).slice(0, 3).map((l) => ({ id: l.id, cond: l.cond })),
+    weakLane,
+  };
+}

@@ -3,6 +3,7 @@ import { roundRobin } from '../src/game/competitions';
 import { makePlayer } from '../src/game/data/generate';
 import { attrRange } from '../src/game/scouting';
 import { calendar } from '../src/game/competitions';
+import { leadLoss } from '../src/game/analysis';
 
 describe('kampprogram', () => {
   it('cirkelmetoden: alle møder alle præcis én gang', () => {
@@ -58,5 +59,29 @@ describe('spillergenerering', () => {
     const b = makePlayer({ id: 7, first: 'A', last: 'B', dob: '1999-03-03', nation: 0, club: 1, sub: 'CF', foot: 'L', height: 185, ca: 150, date: '2025-07-01', seed: 5 });
     expect(a.attrs).toEqual(b.attrs);
     expect(a.pos[6]).toBe(20);
+  });
+});
+
+describe('tabt føring', () => {
+  it('finder føringen, udligningen og ændringen i chancerne', () => {
+    const ev = (m: number, t: number, k = 'goal') => ({ m, t, k, p: 1 });
+    const shot = (m: number, t: number, xg: number, zone: number) => ({ m, t, xg, zone, outcome: 'off' as const, p: 1, kind: 'normal' });
+    const side = { goals: 2, shots: 0, onTarget: 0, xg: 0, possession: 50, corners: 0, fouls: 0, yellows: 0, reds: 0, offsides: 0, passes: 0, passesCompleted: 0 };
+    const rep = {
+      fixture: 1, home: 1, away: 2, stats: [side, { ...side }], players: [], momentum: [], heat: [[], []], zoneControl: [], mom: 0, commentary: [], formations: ['4-4-2', '4-4-2'],
+      events: [ev(10, 0), ev(20, 0), ev(70, 1), ev(80, 1), ev(60, 1, 'sub')],
+      shots: [shot(10, 0, 0.4, 13), shot(20, 0, 0.3, 13), shot(65, 1, 0.3, 0), shot(70, 1, 0.4, 0), shot(80, 1, 0.5, 0)],
+      changes: [{ m: 62, t: 1, kind: 'mentality' as const, from: '2', to: '4' }],
+    };
+    const a = leadLoss(rep as unknown as Parameters<typeof leadLoss>[0], 0)!;
+    expect(a.lead).toBe(2);
+    expect(a.leadMin).toBe(20);
+    expect(a.lostMin).toBe(80);
+    expect(a.xgAfter[1]).toBeCloseTo(1.2);
+    expect(a.oppSubs).toBe(1);
+    expect(a.oppChanges.length).toBe(1);
+    expect(a.weakLane).toBe('left');
+    // en sejr er ikke en tabt føring
+    expect(leadLoss({ ...rep, stats: [{ ...side, goals: 3 }, side] } as unknown as Parameters<typeof leadLoss>[0], 0)).toBeNull();
   });
 });

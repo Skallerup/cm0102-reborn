@@ -58,9 +58,12 @@ function shapeName(slots: Slot[]): string {
 const slotLeft = (s: Slot) => s.y;
 const slotTop = (s: Slot) => 97 - s.x * 0.92;
 
-export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
+export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond }: {
   tactic: Tactic; players: Player[]; onChange: (t: Tactic) => void; matchMode?: boolean; onSub?: (outId: number, inId: number) => void;
+  /** under kampen: den aktuelle kondition pr. spiller (samme tal som i udskiftningsmenuen) */
+  cond?: Record<number, number>;
 }) {
+  const condOf = (p: Player) => cond?.[p.id] ?? p.condition;
   const [sel, setSel] = useState<number | null>(null);
   const [drag, setDrag] = useState<number | null>(null);
   // fortryd: de seneste ændringer gemmes, så man kan klikke sig tilbage
@@ -259,7 +262,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
                 onDragEnd={() => setDrag(null)}>
                 <div className="shirt" style={{ background: club?.colors[0] ?? '#c00', color: club?.colors[1] ?? '#fff' }}>{s.pos}{s.side !== 'C' ? s.side : ''}</div>
                 <div className="nm">{p ? p.last : t('tac.empty')}</div>
-                {p && <div className="fit" style={{ color: fit > 0.85 ? '#9f9' : fit > 0.6 ? '#ff9' : '#f99' }}>{fit > 0.85 ? '●' : fit > 0.6 ? '◐' : '○'} {Math.round(p.condition)}%</div>}
+                {p && <div className="fit" style={{ color: fit > 0.85 ? '#9f9' : fit > 0.6 ? '#ff9' : '#f99' }}>{fit > 0.85 ? '●' : fit > 0.6 ? '◐' : '○'} {Math.round(condOf(p))}%</div>}
               </div>
             );
           })}
@@ -363,7 +366,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
                       <td>{xi >= 0 ? <span className="tag good">{tactic.slots[xi].pos}</span> : onBench ? <span className="tag">{t('tac.sub')}</span> : ''}</td>
                       <td>{posStr(p)}</td>
                       <td><PlayerLink p={p} short />{p.injury && <span className="tag bad">{t('tag.inj')}</span>}{p.banned > 0 && <span className="tag bad">{t('tag.ban')}</span>}</td>
-                      <td><Bar value={p.condition} /></td>
+                      <td><Bar value={condOf(p)} /></td>
                       {selSlot && <td className="num">{suit.toFixed(1)}</td>}
                       <td>{!matchMode && xi < 0 && available(p) && <button className="small" onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{onBench ? '−' : '+'} {t('tac.sub')}</button>}</td>
                     </tr>

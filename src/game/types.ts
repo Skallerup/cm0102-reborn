@@ -691,8 +691,12 @@ export interface MatchReport {
   shootout?: ShootoutKick[];
   /** vejret under kampen (se weather.ts) */
   weather?: string;
+  /** taktiske ændringer undervejs */
+  changes?: TacticChange[];
   formations: [string, string];
 }
+
+export interface TacticChange { m: number; t: number; kind: 'formation' | 'mentality' | 'instructions'; from?: string; to?: string }
 
 export interface ShootoutKick { t: number; p: number; gk: number; outcome: 'goal' | 'saved' | 'off' }
 

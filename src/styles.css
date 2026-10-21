@@ -978,3 +978,8 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .ai-spin span { margin-left: 4px; }
 @keyframes ai-dot { 50% { opacity: 1; transform: translateY(-2px); } }
 @media (prefers-reduced-motion: reduce) { .ai-spin i { animation: none; opacity: 0.6; } }
+.ll-panel { margin-bottom: 14px; }
+.ll-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 12px 0; }
+.ll-grid > div { display: flex; flex-direction: column; gap: 2px; font-size: 13.5px; }
+.ll-grid b { font-size: 11.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.ll-grid em { font-style: normal; font-size: 12.5px; }

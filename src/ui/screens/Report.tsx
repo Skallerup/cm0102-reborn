@@ -1,5 +1,5 @@
 
-import { matchVerdict } from '../../game/analysis';
+import { leadLoss, matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
@@ -54,6 +54,7 @@ export function ReportScreen({ id }: { id: number }) {
       )}
       {talking && <TeamTalk fixture={id} stage="post" pids={myLines.map((l) => l.id)} diff={diff} ratings={Object.fromEntries(myLines.map((l) => [l.id, l.rating]))} />}
       <Tabs tabs={[['analysis', t('report.analysis')], ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />
+      {tab === 'analysis' && mine && <LeadLossPanel rep={rep} side={side} />}
       {tab === 'analysis' && (
         <div className="cols">
           <Panel title={t('report.verdict')}>
@@ -213,5 +214,33 @@ function ShotMap({ rep, home, away }: { rep: MatchReport; home: string; away: st
         <span className="muted">{home} → · ← {away}</span>
       </div>
     </div>
+  );
+}
+
+const MENT = ['ment.0', 'ment.1', 'ment.2', 'ment.3', 'ment.4'];
+
+/** Føringen glippede: hvad ændrede sig efter føringen? (sammenfald – ikke bevis for årsag) */
+function LeadLossPanel({ rep, side }: { rep: MatchReport; side: 0 | 1 }) {
+  const g = useGame()!;
+  const a = leadLoss(rep, side);
+  if (!a) return null;
+  const opp = g.clubs[side === 0 ? rep.away : rep.home]?.short ?? '';
+  const swing = a.xgAfter[1] - a.xgAfter[0] - (a.xgBefore[1] - a.xgBefore[0]);
+  const change = (c: { kind: string; to?: string }) => c.kind === 'formation' ? t('ll.c.formation', { f: c.to ?? '' }) : c.kind === 'mentality' ? t('ll.c.mentality', { m: t(MENT[Number(c.to)] ?? 'ment.2') }) : t('ll.c.instr');
+  return (
+    <Panel title={t('ll.title')} className="ll-panel">
+      <div className="insight bad">{t('ll.intro', { lead: a.lead, min: a.leadMin, lost: a.lostMin })}</div>
+      <div className="ll-grid">
+        <div><b>xG</b><span>{t('ll.xg', { a: a.xgBefore[0].toFixed(2), b: a.xgBefore[1].toFixed(2), c: a.xgAfter[0].toFixed(2), d: a.xgAfter[1].toFixed(2) })}</span>
+          <em className={swing > 0.3 ? 'bad' : 'muted'}>{swing > 0.3 ? t('ll.xgSwing', { opp }) : t('ll.xgEven')}</em></div>
+        <div><b>{t('ll.shots')}</b><span>{t('ll.shotsAfter', { a: a.shotsAfter[0], b: a.shotsAfter[1], opp })}</span></div>
+        <div><b>{t('ll.oppChanges', { opp })}</b>
+          <span>{a.oppSubs || a.oppChanges.length ? [a.oppSubs ? t('ll.subs', { n: a.oppSubs }) : '', ...a.oppChanges.map((c) => `${c.m}': ${change(c)}`)].filter(Boolean).join(' · ') : t('ll.none')}</span></div>
+        <div><b>{t('ll.ourChanges')}</b><span>{a.ourSubs || a.ourChanges ? t('ll.ours', { subs: a.ourSubs, n: a.ourChanges }) : t('ll.noneOurs')}</span></div>
+        <div><b>{t('ll.fatigue')}</b><span>{a.tired.length ? a.tired.map((x) => `${g.players[x.id]?.last ?? '?'} (${x.cond}%)`).join(', ') : t('ll.fresh')}</span></div>
+        <div><b>{t('ll.zone')}</b><span>{a.weakLane ? t('ll.weakLane', { lane: t(`lane.${a.weakLane}`) }) : t('ll.noPattern')}</span></div>
+      </div>
+      <p className="muted" style={{ marginBottom: 0, fontSize: 12.5 }}>{t('ll.caveat')}</p>
+    </Panel>
   );
 }

@@ -774,6 +774,7 @@ function LiveMatch({ id }: { id: number }) {
       )}
       {tab === 'tactics' && !report && (
         <TacticEditor tactic={myLive.tactic} players={squad(g.userClub).filter((p) => myLive.on.some((s) => s.id === p.id && !s.off) || myLive.bench.includes(p.id))} matchMode
+          cond={Object.fromEntries(myLive.on.map((s) => [s.id, s.cond]))}
           onChange={(tac) => { sim.setTactic(me, tac); pull(); force((x) => x + 1); }}
           onSub={(out, inn) => { const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}

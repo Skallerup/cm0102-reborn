@@ -13,7 +13,7 @@ import type { Rng } from '../rng';
 import { weatherFx, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
-  OppInstructions, ShootoutKick, ShotRecord, Tactic, TeamInstructions,
+  OppInstructions, ShootoutKick, TacticChange, ShotRecord, Tactic, TeamInstructions,
 } from '../types';
 
 export interface EngineTeam {
@@ -134,6 +134,8 @@ export class MatchSim {
   private pressed: SP | null = null;
   /** højdepunkter uden afslutning (redningstacklinger) til 2D-visningen */
   highlights: { m: number; t: number; kind: string; p: number; p2: number; moment: number }[] = [];
+  /** taktiske ændringer i kampen (formation, mentalitet, instruktioner) – udskiftninger står i events */
+  changes: TacticChange[] = [];
   private rebound: SP | null = null;
   private lastPasser: SP | null = null;
   private lastPasserMoment = -10;
@@ -1010,6 +1012,10 @@ export class MatchSim {
 
   setTactic(teamIdx: number, tactic: Tactic) {
     const t = this.teams[teamIdx];
+    // taktiske ændringer registreres (vises på momentumgrafen og i analysen)
+    if (tactic.formation !== t.tactic.formation) this.changes.push({ m: this.minute, t: teamIdx, kind: 'formation', to: tactic.formation });
+    if (tactic.team.mentality !== t.ti.mentality) this.changes.push({ m: this.minute, t: teamIdx, kind: 'mentality', from: String(t.ti.mentality), to: String(tactic.team.mentality) });
+    else if (tactic.formation === t.tactic.formation && JSON.stringify(tactic.team) !== JSON.stringify(t.ti)) this.changes.push({ m: this.minute, t: teamIdx, kind: 'instructions' });
     // Pladser kan være byttet om
     t.tactic = { ...tactic, lineup: t.tactic.lineup.slice(), bench: t.tactic.bench.slice() };
     t.ti = tactic.team;
@@ -1062,6 +1068,7 @@ export class MatchSim {
     if (want === t.ti.mentality) return;
     const chasing = want > base;
     const ti: TeamInstructions = { ...t.ti, mentality: want, counter: chasing ? false : want < base || t.ti.counter, tempo: chasing ? 2 : t.ti.tempo };
+    this.changes.push({ m: this.minute, t: t.idx, kind: 'mentality', from: String(t.ti.mentality), to: String(want) });
     t.ti = ti;
     t.tactic = { ...t.tactic, team: ti };
     this.buildZones(t);
@@ -1162,6 +1169,7 @@ export class MatchSim {
       pens: this.pens,
       shootout: this.shootout?.kicks,
       weather: this.opts.weather,
+      changes: this.changes,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
     };
   }
