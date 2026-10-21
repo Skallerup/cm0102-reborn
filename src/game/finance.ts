@@ -67,17 +67,24 @@ export function gateReceipts(f: Fixture): { att: number; income: number } {
   return { att, income };
 }
 
+/** En måneds faste indtægter og driftsudgifter for en klub (bruges af monthlyIncome og prognosen) */
+export function monthlyFigures(c: Club) {
+  const g = gs();
+  const wealth = rulesFor(c.league, 20).wealth;
+  const tier = g.leagues[c.league]?.tier ?? 2;
+  const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
+  const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
+  const boost = c.merchBoost && c.merchBoost.until >= g.date ? 1 + c.merchBoost.factor : 1;
+  const merch = Math.round(c.rep * c.rep * 25 * wealth * boost);
+  // driftsomkostninger: stadion, administration, scouting-netværk m.m.
+  const upkeep = Math.round(c.seats * 0.8 * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
+  return { wealth, tv, sponsor, merch, upkeep };
+}
+
 export function monthlyIncome() {
   const g = gs();
   for (const c of Object.values(g.clubs)) {
-    const wealth = rulesFor(c.league, 20).wealth;
-    const tier = g.leagues[c.league]?.tier ?? 2;
-    const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
-    const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
-    const boost = c.merchBoost && c.merchBoost.until >= g.date ? 1 + c.merchBoost.factor : 1;
-    const merch = Math.round(c.rep * c.rep * 25 * wealth * boost);
-    // driftsomkostninger: stadion, administration, scouting-netværk m.m.
-    const upkeep = Math.round(c.seats * 0.8 * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
+    const { tv, sponsor, merch, upkeep } = monthlyFigures(c);
     c.balance += tv + sponsor + merch - upkeep;
     c.finance.other += upkeep;
     // ligaer der ikke simuleres har ingen kampe – giv dem et skøn over billetindtægterne (≈2 hjemmekampe/md.)
@@ -322,3 +329,34 @@ export function ffpReview() {
 }
 
 export { sponsorOffers as _sponsorOffers };
+
+// ---------- prognose ----------
+
+/** Forventet sæsonindtægt fra en sponsoraftale ved et antal ligasejre (uden og med målbonus) */
+export function sponsorSeasonValue(d: SponsorDeal, wins: number): { plain: number; withGoal: number } {
+  const plain = d.base * 12 + d.winBonus * wins;
+  return { plain, withGoal: plain + d.trophyBonus };
+}
+
+/**
+ * Forventet saldo ved sæsonslut (30. juni): faste indtægter og driftsudgifter for de resterende måneder,
+ * billetindtægter fra resterende hjemmekampe, løn til spillere og stab, aktive bud og en planlagt træningslejr.
+ */
+export function seasonForecast(clubId: number) {
+  const g = gs();
+  const c = g.clubs[clubId];
+  const end = `${g.season + 1}-06-30`;
+  const days = Math.max(0, (Date.parse(end) - Date.parse(g.date)) / 86_400_000);
+  const months = Math.floor(days / 30.4);
+  const weeks = days / 7;
+  const m = monthlyFigures(c);
+  const fixed = (m.tv + m.sponsor + m.merch - m.upkeep) * months;
+  const homeLeft = Object.values(g.fixtures).filter((f) => f.home === clubId && !f.result && f.date <= end).length;
+  const gate = Math.round(estimateGate(c, c.ticketPrice).income * homeLeft);
+  const staff = Object.values(g.staff).filter((x) => x.club === clubId).reduce((a, x) => a + x.wage, 0);
+  const wages = Math.round((currentWageBill(clubId) + staff) * weeks);
+  const bids = g.offers.filter((o) => o.buyer === clubId && ['pending', 'negotiating', 'countered'].includes(o.status)).reduce((a, o) => a + (o.status === 'countered' ? o.counter ?? o.fee : o.fee), 0);
+  const camp = c.camp && c.camp.status === 'planned' ? c.camp.cost : 0;
+  const balance = Math.round(c.balance + fixed + gate - wages - bids - camp);
+  return { now: c.balance, months, fixed, gate, homeLeft, wages, bids, camp, balance };
+}

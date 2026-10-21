@@ -1,6 +1,6 @@
 import { act } from '../../game/actions';
 import { Info } from '../help';
-import { currentWageBill, estimateGate, fairTicketPrice, nextBudgetInfo, sponsorOffers } from '../../game/finance';
+import { currentWageBill, estimateGate, fairTicketPrice, nextBudgetInfo, seasonForecast, sponsorOffers, sponsorSeasonValue } from '../../game/finance';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
 import { dateFmt, money, t } from '../../i18n';
@@ -69,6 +69,7 @@ export function Finance() {
       </div>
       <div className="cols">
         <SponsorPanel />
+        <ForecastPanel />
         <FfpPanel />
       </div>
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
@@ -155,7 +156,41 @@ function SponsorPanel() {
           ))}
         </div>
       )}
+      <div className="table-wrap" style={{ marginTop: 10 }}>
+        <table className="grid">
+          <thead><tr><th>{t('fc.sponsorSeason')}</th>{[10, 15, 20].map((w) => <th key={w} className="num">{t('fc.wins', { n: w })}</th>)}</tr></thead>
+          <tbody>
+            {(current ? [current] : offers).map((o) => (
+              <tr key={o.kind}>
+                <td>{t(`sponsor.kind.${o.kind}`)}</td>
+                {[10, 15, 20].map((w) => { const v = sponsorSeasonValue(o, w); return <td key={w} className="num">{money(v.plain)}{o.trophyBonus ? <div className="muted" style={{ fontSize: 11.5 }}>{t('fc.withGoal', { fee: money(v.withGoal) })}</div> : null}</td>; })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       {c.merchBoost && c.merchBoost.until >= g.date && <div className="insight good" style={{ marginTop: 8 }}>{t('merch.boost', { pct: Math.round(c.merchBoost.factor * 100), date: dateFmt(c.merchBoost.until) })}</div>}
+    </Panel>
+  );
+}
+
+/** Forventet saldo ved sæsonslut – med det, der allerede er sat i gang */
+function ForecastPanel() {
+  const g = useGame()!;
+  const f = seasonForecast(g.userClub);
+  const row = (k: string, v: number, sign = 1) => <><span>{t(k)}</span><span className={v === 0 ? 'muted' : sign > 0 ? 'good' : 'bad'}>{sign > 0 ? '+' : '−'}{money(Math.abs(v))}</span></>;
+  return (
+    <Panel title={t('fc.title', { date: `30/6 ${g.season + 1}` })}>
+      <div className="kv">
+        <span>{t('fc.now')}</span><span>{money(f.now)}</span>
+        {row('fc.fixed', f.fixed, f.fixed >= 0 ? 1 : -1)}
+        {row('fc.gate', f.gate)}
+        {row('fc.wages', f.wages, -1)}
+        {f.bids > 0 && row('fc.bids', f.bids, -1)}
+        {f.camp > 0 && row('fc.camp', f.camp, -1)}
+        <span><b>{t('fc.end')}</b></span><span><b className={f.balance >= 0 ? 'good' : 'bad'}>{money(f.balance)}</b></span>
+      </div>
+      <p className="muted" style={{ marginBottom: 0, fontSize: 12.5 }}>{t('fc.hint', { months: f.months, games: f.homeLeft })}</p>
     </Panel>
   );
 }
