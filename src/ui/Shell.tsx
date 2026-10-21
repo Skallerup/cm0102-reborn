@@ -58,6 +58,17 @@ const MENU: [ScreenName, string][] = [
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
 const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+/** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
+const GROUPS: { key: string; items: ScreenName[] }[] = [
+  { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
+  { key: 'matches', items: ['fixtures', 'competitions'] },
+  { key: 'market', items: ['transfers', 'scouting'] },
+  { key: 'club', items: ['club', 'board', 'finance', 'staff'] },
+  { key: 'manager', items: ['profile', 'ranking', 'awards', 'history', 'jobs'] },
+  { key: 'community', items: ['community', 'support'] },
+];
+const ALL_ITEMS = Object.fromEntries([...MENU, ...MENU2]) as Record<ScreenName, string>;
+const GROUP_KEY = 'cm-nav-closed';
 const UNEMPLOYED: ScreenName[] = ['support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
@@ -226,7 +237,8 @@ export function Shell() {
     return r;
   };
 
-  const items = MENU.filter(([k]) => g.userClub || UNEMPLOYED.includes(k));
+  const [closed, setClosed] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) ?? '["manager","community"]'); } catch { return ['manager', 'community']; } });
+  const toggleGroup = (k: string) => { const n = closed.includes(k) ? closed.filter((x) => x !== k) : [...closed, k]; setClosed(n); try { localStorage.setItem(GROUP_KEY, JSON.stringify(n)); } catch { /* ignorer */ } };
   const nextMatch = club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
 
   return (
@@ -250,26 +262,46 @@ export function Shell() {
         )}
       </div>
       <nav className={`sidenav ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
-        {items.map(([k, label]) => (
-          <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
-            <Icon name={k} />{t(label)}
-            {k === 'inbox' && unread > 0 && <span className="badge">{unread}</span>}
-            {k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) && <span className="badge">!</span>}
-          </button>
-        ))}
-        <div className="sep" />
-        {g.humans && g.humans.length > 1 && (
-          <button className={route.name === 'managers' ? 'on' : ''} onClick={() => nav({ name: 'managers' })}>
-            <Icon name="managers" />{t('nav.managers')}
-            {chatUnread > 0 && <span className="badge">{chatUnread}</span>}
-          </button>
-        )}
-        {MENU2.map(([k, label]) => (
-          <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
-            <Icon name={k} />{t(label)}
-            {k === 'jobs' && g.jobOffers.length > 0 && <span className="badge">{g.jobOffers.length}</span>}
-          </button>
-        ))}
+        {(() => {
+          const allowed = (k: ScreenName) => !!g.userClub || UNEMPLOYED.includes(k);
+          const badge = (k: ScreenName) => (k === 'inbox' && unread > 0 ? <span className="badge">{unread}</span>
+            : k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) ? <span className="badge">!</span>
+            : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
+          const item = (k: ScreenName) => (
+            <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
+              <Icon name={k} />{t(ALL_ITEMS[k])}{badge(k)}
+            </button>
+          );
+          return (
+            <>
+              {item('inbox')}
+              {g.humans && g.humans.length > 1 && (
+                <button className={route.name === 'managers' ? 'on' : ''} onClick={() => nav({ name: 'managers' })}>
+                  <Icon name="managers" />{t('nav.managers')}
+                  {chatUnread > 0 && <span className="badge">{chatUnread}</span>}
+                </button>
+              )}
+              {GROUPS.map((gr) => {
+                const ks = gr.items.filter(allowed);
+                if (!ks.length) return null;
+                const active = ks.includes(route.name);
+                const open = active || !closed.includes(gr.key);
+                const hasBadge = !open && ks.some((k) => badge(k));
+                return (
+                  <div key={gr.key} className="nav-group">
+                    <button className="nav-head" onClick={(e) => { e.stopPropagation(); toggleGroup(gr.key); }} aria-expanded={open}>
+                      <span>{t(`navg.${gr.key}`)}</span>{hasBadge && <i className="nav-dot" />}<span className="nav-chev">{open ? '▾' : '▸'}</span>
+                    </button>
+                    {open && ks.map(item)}
+                  </div>
+                );
+              })}
+              <div className="sep" />
+              {item('help')}
+              {item('options')}
+            </>
+          );
+        })()}
         <div className="sep" />
         {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}

@@ -9,8 +9,8 @@ let lang: Lang = (() => {
     const v = localStorage.getItem('cm0102.lang');
     if (v === 'da' || v === 'en') return v;
   } catch { /* ingen storage */ }
-  // engelsk er standard – dansk kun når browseren står på dansk
-  return navigator.language?.startsWith('da') ? 'da' : 'en';
+  // engelsk er standard for alle – dansk kun når man selv vælger det
+  return 'en';
 })();
 try { document.documentElement.lang = lang; } catch { /* ingen DOM */ }
 

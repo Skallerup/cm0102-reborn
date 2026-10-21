@@ -1077,3 +1077,8 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .support .start-cta, .support .start-cta:hover:not(:disabled) { display: inline-flex; align-items: center; gap: 10px; border: 0; font-weight: 800; color: #1b1400; background: linear-gradient(180deg, #ffe07a, #ffc21a); padding: 12px 26px; border-radius: 999px; }
 .lp-support { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; margin: 10px 0; font-size: 13px; color: var(--muted); }
 @media (max-width: 760px) { .sup-tiers { grid-template-columns: 1fr; } }
+.nav-group { margin-top: 6px; }
+.sidenav .nav-head, .sidenav .nav-head:hover { display: flex; align-items: center; gap: 6px; padding: 6px 12px 4px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; opacity: 0.6; background: none; border-color: transparent; }
+.sidenav .nav-head:hover { opacity: 0.9; }
+.nav-chev { margin-left: auto; font-size: 10px; }
+.nav-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); }

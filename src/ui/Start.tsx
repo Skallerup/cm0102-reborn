@@ -114,7 +114,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
   );
 }
 
-const DEFAULT_NATIONS = ['Denmark', 'England'];
+const DEFAULT_NATIONS = ['England', 'Denmark'];
 
 function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean }) {
   const [world, setWorld] = useState<WorldData | null>(null);

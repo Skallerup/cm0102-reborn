@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.1',
+    date: '2026-10-21',
+    title: { da: 'Kortere menu og engelsk som standard', en: 'Shorter menu and English by default' },
+    items: [
+      { da: 'Menuen er samlet i grupper (Holdet, Kampe, Transfermarked, Klubben, Manager, Fællesskab), som kan foldes sammen', en: 'The menu is organised in groups (Team, Matches, Transfer market, Club, Manager, Community) that can be collapsed' },
+      { da: 'Spillet starter på engelsk for alle nye besøgende – dansk kan vælges på forsiden og i indstillingerne', en: 'The game starts in English for all new visitors – Danish can be chosen on the front page and in the options' },
+      { da: 'Nye billeder på forsiden fra Premier League, og et nyt spil starter i den engelske liga', en: 'New front-page screenshots from the Premier League, and a new game starts in the English league' },
+    ],
+  },
+  {
     version: '0.8.0',
     date: '2026-10-21',
     title: { da: 'Fællesskabet: forslag, afstemninger, roadmap og støt spillet', en: 'The community: suggestions, polls, roadmap and supporting the game' },

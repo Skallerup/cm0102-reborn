@@ -28,58 +28,58 @@ const nav = (name) => page.locator('.sidenav').getByRole('button', { name: new R
 
 await page.goto(url);
   await page.locator('.lp-hero .lp-cta').click({ timeout: 5000 }).catch(() => {});
-await page.getByRole('button', { name: 'Dansk' }).click();
-await page.getByRole('button', { name: 'Nyt spil' }).click();
-await page.getByPlaceholder('Dit navn').fill('Morten Olsen');
-await page.getByText('FC København', { exact: true }).click();
-await page.getByRole('button', { name: 'Start karrieren' }).click();
-await page.getByText('Indbakke').first().waitFor({ timeout: 30000 });
+await page.getByRole('button', { name: 'EN', exact: true }).click().catch(() => {});
+await page.getByRole('button', { name: /New game/ }).click();
+await page.getByPlaceholder('Your name').fill('Alex Morgan');
+await page.getByText('Aston Villa', { exact: true }).click();
+await page.getByRole('button', { name: 'Start career' }).click();
+await page.getByText('Inbox').first().waitFor({ timeout: 30000 });
 
 // spol et stykke ind i sæsonen, så tabeller og statistik er fyldt
 await page.evaluate(() => window.__cm.advance(60));
 await page.evaluate(() => { const { gs, notify } = window.__cm; for (const n of gs().news) n.read = true; notify(); });
 
-await nav('Taktik');
+await nav('Tactics');
 await shot('tactics');
-await nav('Turneringer');
+await nav('Competitions');
 await shot('table');
-await nav('Trup');
+await nav('Squad');
 await page.locator('table.grid tbody tr').nth(1).click();
 await shot('player');
-await nav('Klub');
+await nav('Club');
 await shot('club');
-await nav('Rangliste');
+await nav('Rankings');
 await shot('ranking');
 
 // frem til næste kamp og se den live
-for (let i = 0; i < 60; i++) {
-  const label = await page.locator('.topbar .continue').textContent();
-  if (label?.includes('Til kampen')) break;
-  await page.getByRole('button', { name: 'Næste kamp »' }).click();
-  await page.waitForTimeout(400);
+for (let i = 0; i < 80; i++) {
+  if (await page.getByRole('button', { name: /Kick off/ }).count()) break;
+  const go = page.getByRole('button', { name: /To the match|Go to match/ }).first();
+  if (await go.isVisible().catch(() => false)) { await go.click(); await page.waitForTimeout(600); continue; }
+  await page.getByRole('button', { name: /Next match/ }).first().click().catch(() => {});
+  await page.waitForTimeout(600);
 }
-await page.locator('.topbar .continue').click();
-await page.getByRole('button', { name: /Kick-off/ }).waitFor({ timeout: 15000 });
-await page.getByRole('button', { name: /Kick-off/ }).click();
+await page.getByRole('button', { name: /Kick off/ }).waitFor({ timeout: 15000 });
+await page.getByRole('button', { name: /Kick off/ }).click();
 await page.getByRole('button', { name: '4×' }).click().catch(() => {});
 await page.waitForTimeout(3200);
 await shot('match');
-await page.getByRole('button', { name: 'Statistik' }).click();
+await page.getByRole('button', { name: 'Statistics' }).click();
 await shot('match-stats');
-const skip = page.getByRole('button', { name: 'Spring til slut' });
+const skip = page.getByRole('button', { name: 'Skip to end' });
 if (await skip.isVisible().catch(() => false)) await skip.click();
-await page.getByRole('button', { name: 'Fortsæt ›' }).click();
-await page.getByText('Kamprapport').waitFor();
+await page.getByRole('button', { name: 'Continue ›' }).click();
+await page.getByText('Match report').first().waitFor();
 await shot('report');
 
 // pressemøde (efter kampen hvis inviteret, ellers et nyt)
 const hasPress = await page.evaluate(() => !!window.__cm.gs().press);
 if (hasPress) {
-  await nav('Indbakke');
-  const item = page.getByText(/Pressemøde|Pressen vil/).first();
+  await nav('Inbox');
+  const item = page.getByText(/Press conference|The press/).first();
   if (await item.isVisible().catch(() => false)) {
     await item.click();
-    await page.getByRole('button', { name: 'Åbn' }).first().click();
+    await page.getByRole('button', { name: 'Open' }).first().click();
     await page.locator('.panel button').first().click();
     await shot('press');
   }
@@ -87,7 +87,7 @@ if (hasPress) {
 
 // mobil
 await page.setViewportSize({ width: 390, height: 844 });
-await nav('Indbakke').catch(() => {});
+await nav('Inbox').catch(() => {});
 await shot('mobile', { mobile: true });
 
 await browser.close();
