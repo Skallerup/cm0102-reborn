@@ -1,5 +1,8 @@
 import { BoardScreen } from './screens/Board';
+import { Head } from './screens/common';
 import { ProfileScreen } from './screens/Profile';
+import { BugReportButton, CommunityBoard } from './Community';
+import { APP_VERSION } from './changelogData';
 import { askConfirm } from './confirm';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
@@ -52,8 +55,8 @@ const MENU: [ScreenName, string][] = [
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
-const MENU2: [ScreenName, string][] = [['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
-const UNEMPLOYED: ScreenName[] = ['profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
+const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+const UNEMPLOYED: ScreenName[] = ['community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
   const g = useGame()!;
@@ -267,6 +270,7 @@ export function Shell() {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
           if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
+        <BugReportButton screen={route.name} version={APP_VERSION} date={g.date} />
         <VersionButton />
       </nav>
       {club && (
@@ -317,6 +321,7 @@ function Screen() {
     case 'club': return <ClubScreen id={route.id as number | undefined} />;
     case 'board': return <BoardScreen />;
     case 'profile': return <ProfileScreen />;
+    case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p><CommunityBoard defaultName={gs().manager.name} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;
     case 'compare': return <Assistant tab="compare" />;
     case 'benchmark': return <Assistant tab="bench" />;

@@ -9,8 +9,10 @@ let lang: Lang = (() => {
     const v = localStorage.getItem('cm0102.lang');
     if (v === 'da' || v === 'en') return v;
   } catch { /* ingen storage */ }
+  // engelsk er standard – dansk kun når browseren står på dansk
   return navigator.language?.startsWith('da') ? 'da' : 'en';
 })();
+try { document.documentElement.lang = lang; } catch { /* ingen DOM */ }
 
 /** Landenavn på det valgte sprog (databasens navne er engelske) */
 export function natName(name: string | undefined): string {
@@ -23,6 +25,7 @@ export function getLang(): Lang {
 
 export function setLang(l: Lang) {
   lang = l;
+  try { document.documentElement.lang = l; } catch { /* ingen DOM */ }
   try { localStorage.setItem('cm0102.lang', l); } catch { /* ignore */ }
 }
 

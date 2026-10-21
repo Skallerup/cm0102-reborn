@@ -10,6 +10,7 @@ import { Shell } from './Shell';
 import { Start } from './Start';
 import { Landing } from './Landing';
 import { PublicProfilePage } from './Achievements';
+import { PublicCommunityPage } from './Community';
 import { loadLogos } from './logos';
 
 void loadLogos().then(() => notify());
@@ -22,6 +23,8 @@ export default function App() {
   const [lang, setLangState] = useState<Lang>(getLang());
   // offentlig managerprofil (delt link: ?manager=<id>)
   const [managerParam, setManagerParam] = useState(() => new URLSearchParams(location.search).get('manager') ?? '');
+  // offentlig fællesskabsside (?community=1 eller ?suggestion=ID)
+  const [communityParam, setCommunityParam] = useState(() => { const q = new URLSearchParams(location.search); return q.get('suggestion') ? Number(q.get('suggestion')) : q.get('community') ? 0 : -1; });
   const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
   const [landing, setLanding] = useState(() => {
@@ -62,6 +65,7 @@ export default function App() {
     })();
   }, [resuming]);
 
+  if (communityParam >= 0) return <PublicCommunityPage id={communityParam || undefined} onClose={() => { history.replaceState(null, '', location.pathname); setCommunityParam(-1); }} />;
   if (managerParam) return <PublicProfilePage pid={managerParam} onClose={() => { history.replaceState(null, '', location.pathname); setManagerParam(''); }} />;
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;

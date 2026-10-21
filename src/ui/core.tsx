@@ -10,7 +10,7 @@ export function useGame(): GameState | null {
 
 export type ScreenName =
   | 'inbox' | 'squad' | 'player' | 'tactics' | 'training' | 'fixtures' | 'competitions' | 'transfers' | 'scouting'
-  | 'staff' | 'finance' | 'club' | 'assistant' | 'match' | 'report' | 'history' | 'jobs' | 'options' | 'benchmark' | 'compare' | 'awards' | 'press' | 'ranking' | 'help' | 'managers' | 'board' | 'profile';
+  | 'staff' | 'finance' | 'club' | 'assistant' | 'match' | 'report' | 'history' | 'jobs' | 'options' | 'benchmark' | 'compare' | 'awards' | 'press' | 'ranking' | 'help' | 'managers' | 'board' | 'profile' | 'community';
 
 export interface Route {
   name: ScreenName;
