@@ -5,7 +5,7 @@ import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import {
   BENCH, BENCH_PLACE, CREST_SHAPES, DEFAULT_SETTINGS, KEEPER_SECONDS, MAX_TEAMS, PICK_SECONDS, REPLACE_DAYS, STARTERS,
-  aiTeam, allKeepers, autoPick, clubIdOf, crestSvg, draftPool, openPlaces, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
+  aiTeam, allKeepers, autoPick, clubIdOf, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
   type DraftPick, type DraftTeam,
 } from '../game/draft';
 import { act } from '../game/actions';
@@ -237,9 +237,10 @@ export function DraftRoom() {
       {msg && <div className="insight">{msg}</div>}
       {s.error && <div className="insight bad">{s.error}</div>}
       {d.phase === 'lobby' && <Lobby settings={settings} />}
+      {d.phase === 'lobby' && pool.length > 0 && <LobbyPool pool={pool} byId={byId} year={world?.season ?? 2025} />}
       {d.phase === 'keepers' && <Keepers settings={settings} />}
       {d.phase === 'draft' && (pool.length ? <LiveDraft pool={pool} byId={byId} settings={settings} year={world?.season ?? 2025} /> : <div className="empty">{t('start.loading')}</div>)}
-      {(d.phase === 'done' || d.phase === 'playing') && <div className="empty"><div className="ai-spinner" /> {t('dr.building')}</div>}
+      {(d.phase === 'done' || d.phase === 'playing') && <DraftFinished byId={byId} />}
     </div>
   );
 }
@@ -300,6 +301,51 @@ function Lobby({ settings }: { settings: DraftSettings }) {
   );
 }
 
+/** Før draften: gennemse puljen og byg din ønskeliste */
+function LobbyPool({ pool, byId, year }: { pool: Player[]; byId: Record<number, Player>; year: number }) {
+  const s = session()!;
+  const mine = s.myDraftTeam;
+  const [sel, setSel] = useState<number | null>(null);
+  const selP = sel ? byId[sel] : null;
+  return (
+    <>
+      <div className="insight">{t('dr.prepHint')}</div>
+      <div className="dr-grid">
+        <PoolPanel pool={pool} byId={byId} taken={new Set()} mine={mine} picks={[]} sel={sel} onSel={setSel} year={year} title={t('dr.pool', { n: pool.length })} />
+        <div className="col" style={{ gap: 14 }}>
+          {selP && <PlayerPanel p={selP} mine={mine} onClose={() => setSel(null)} />}
+          {mine && <WishPanel mine={mine} taken={new Set()} byId={byId} />}
+        </div>
+      </div>
+    </>
+  );
+}
+
+/** Draften er slut: dit hold på banen, og videre til sæsonen, når den er bygget */
+const SEEN = (code: string) => `cm0102.draftSeen.${code}`;
+export function draftSeen(code: string, season: number): boolean {
+  try { return Number(localStorage.getItem(SEEN(code)) ?? 0) >= season; } catch { return true; }
+}
+function DraftFinished({ byId }: { byId: Record<number, Player> }) {
+  const s = session()!;
+  const d = s.room!.draft!;
+  const mine = s.myDraftTeam;
+  const ready = d.phase === 'playing' && hasGame();
+  return (
+    <div className="dr-finished">
+      <Panel title={`🏁 ${t('dr.finishedTitle')}`}>
+        <p style={{ marginTop: 0 }}>{t(ready ? 'dr.finishedText' : 'dr.building')}</p>
+        {mine && Object.keys(byId).length > 0 && <TeamPitch team={mine} picks={d.picks} byId={byId} />}
+        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+          <button className="primary" disabled={!ready} onClick={() => { try { localStorage.setItem(SEEN(s.creds.code), String(d.season)); } catch { /* ignorér */ } notify(); }}>
+            {ready ? t('dr.toTeam') : <><span className="ai-spinner" /> {t('dr.buildingShort')}</>}
+          </button>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
 function Countdown({ until }: { until: number }) {
   const s = session()!;
   const left = Math.max(0, Math.ceil((until - s.serverNow()) / 1000));
@@ -352,31 +398,120 @@ function Keepers({ settings }: { settings: DraftSettings }) {
   );
 }
 
+/** Puljen: filtre og liste (bruges både i lobbyen og under draften) */
+function PoolPanel({ pool, byId, taken, mine, picks, sel, onSel, year, title }: {
+  pool: Player[]; byId: Record<number, Player>; taken: Set<number>; mine?: DraftTeam; picks: DraftPick[]; sel: number | null; onSel: (id: number) => void; year: number; title: string;
+}) {
+  const s = session()!;
+  const [role, setRole] = useState<Role | ''>('');
+  const [q, setQ] = useState('');
+  const [fitOnly, setFitOnly] = useState(false);
+  const [wishOnly, setWishOnly] = useState(false);
+  const list = pool.filter((p) => !taken.has(p.id))
+    .filter((p) => !role || naturalRole(p) === role)
+    .filter((p) => !q || `${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((p) => !wishOnly || !!mine?.wish.includes(p.id))
+    .filter((p) => !fitOnly || !mine || placesFor(mine, picks, p, byId).length > 0)
+    .slice(0, 200);
+  return (
+    <Panel title={title} className="flush">
+      <div className="row dr-filters">
+        <select value={role} onChange={(e) => setRole(e.target.value as Role | '')}>
+          <option value="">{t('tr.anyPos')}</option>
+          {ROLES.map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
+        </select>
+        <input placeholder={t('dr.search')} value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 120 }} />
+        {mine && <label className="row"><input type="checkbox" checked={fitOnly} onChange={(e) => setFitOnly(e.target.checked)} />{t('dr.fitOnly')}</label>}
+        {mine && <label className="row"><input type="checkbox" checked={wishOnly} onChange={(e) => setWishOnly(e.target.checked)} />★ {t('dr.wish')}</label>}
+      </div>
+      <div className="table-wrap" style={{ maxHeight: 560, overflowY: 'auto' }}>
+        <table className="grid">
+          <thead><tr><th></th><th>{t('col.pos')}</th><th>{t('col.name')}</th><th className="num">{t('col.age')}</th><th>{t('col.nat')}</th><th className="num">{t('dr.rating')}</th></tr></thead>
+          <tbody>
+            {list.map((p) => (
+              <tr key={p.id} className={`clickable ${sel === p.id ? 'me' : ''}`} onClick={() => onSel(p.id)}>
+                <td onClick={(e) => { e.stopPropagation(); if (mine) void s.draftTeam({ wish: toggled(mine.wish, p.id) }); }} title={t('dr.wish')} className="dr-star">{mine?.wish.includes(p.id) ? '★' : '☆'}</td>
+                <td className="muted">{positionString(p)}</td>
+                <td>{p.first} <b>{p.last}</b></td>
+                <td className="num">{ageOn(p.dob, `${year}-08-01`)}</td>
+                <td className="muted">{gsNation(p.nation)}</td>
+                <td className="num"><b>{rating(p)}</b></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
+  );
+}
+
+const toggled = (list: number[], id: number) => (list.includes(id) ? list.filter((x) => x !== id) : [...list, id]);
+
+/** Spillerkortet: attributter, ønskeliste og (når det er min tur) valg af plads */
+function PlayerPanel({ p, mine, onClose, places, onPick, busy }: { p: Player; mine?: DraftTeam; onClose: () => void; places?: number[]; onPick?: (place: number) => void; busy?: boolean }) {
+  const s = session()!;
+  const [place, setPlace] = useState<number | null>(null);
+  useEffect(() => setPlace(null), [p.id]);
+  return (
+    <Panel title={`${p.first} ${p.last}`} right={<button className="small" onClick={onClose}>×</button>}>
+      <div className="muted" style={{ marginBottom: 6 }}>{positionString(p)} · {t('dr.rating')} {rating(p)} · {t(`foot.${p.foot}`)}</div>
+      <AttrGrid p={p} />
+      <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
+        {mine && <button className="small" onClick={() => s.draftTeam({ wish: toggled(mine.wish, p.id) })}>{mine.wish.includes(p.id) ? t('dr.unwish') : t('dr.addWish')}</button>}
+        {onPick && places && (places.length ? (
+          <>
+            <span className="grow" />
+            <select value={place ?? places[0]} onChange={(e) => setPlace(Number(e.target.value))}>
+              {places.map((pl) => <option key={pl} value={pl}>{slotLabel(mine!.formation, pl)}</option>)}
+            </select>
+            <button className="primary" disabled={busy} onClick={() => onPick(place ?? places[0])}>{t('dr.pickBtn')}</button>
+          </>
+        ) : <div className="insight warn" style={{ flexBasis: '100%' }}>{t('dr.noPlace')}</div>)}
+      </div>
+      {onPick && places && places.length > 0 && <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{t('dr.clickPitch')}</div>}
+    </Panel>
+  );
+}
+
+function WishPanel({ mine, taken, byId }: { mine: DraftTeam; taken: Set<number>; byId: Record<number, Player> }) {
+  const s = session()!;
+  const list = mine.wish.filter((id) => !taken.has(id));
+  return (
+    <Panel title={t('dr.wishlist', { n: list.length })}>
+      {list.length === 0 ? <div className="muted">{t('dr.wishEmpty')}</div> : (
+        <ol className="dr-wish">
+          {list.map((id, i) => (
+            <li key={id}>
+              <span className="grow">{pname(byId[id])} <span className="muted">{byId[id] ? `${positionString(byId[id])} · ${rating(byId[id])}` : ''}</span></span>
+              <button className="small" disabled={i === 0} onClick={() => { const w = list.slice(); [w[i - 1], w[i]] = [w[i], w[i - 1]]; void s.draftTeam({ wish: w }); }}>↑</button>
+              <button className="small" onClick={() => s.draftTeam({ wish: mine.wish.filter((x) => x !== id) })}>×</button>
+            </li>
+          ))}
+        </ol>
+      )}
+      <div className="muted" style={{ fontSize: 12 }}>{t('dr.wishHint')}</div>
+    </Panel>
+  );
+}
+
 function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Record<number, Player>; settings: DraftSettings; year: number }) {
   const s = session()!;
   const room = s.room!;
   const d = room.draft!;
   const mine = s.myDraftTeam;
-  const [role, setRole] = useState<Role | ''>('');
-  const [q, setQ] = useState('');
-  const [fitOnly, setFitOnly] = useState(false);
   const [sel, setSel] = useState<number | null>(null);
-  const [place, setPlace] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const n = d.picks.length;
   const keepers = d.season > 1 ? settings.keepers : 0;
   const total = d.order.length * picksPerTeam(keepers);
-  const curSlot = slotForPick(d.order, n);
+  const curSlot = slotForPick(d.order, Math.min(n, total - 1));
   const cur = d.teams.find((x) => x.slot === curSlot)!;
-  const myTurn = !!mine && cur?.slot === mine.slot;
+  const myTurn = !!mine && cur?.slot === mine.slot && n < total;
   const reserved = allKeepers(d.teams);
   const taken = new Set([...d.picks.map((p) => p.player), ...reserved]);
-  const teamOf = new Map<number, DraftTeam>();
-  for (const p of d.picks) teamOf.set(p.player, d.teams.find((x) => x.slot === p.slot)!);
-  for (const x of d.teams) for (const k of x.keep) teamOf.set(k.player, x);
 
-  // blink i fanen og en lyd, når det er min tur
+  // blink i fanen, når det er min tur
   useEffect(() => {
     if (!myTurn) return;
     const base = document.title;
@@ -386,24 +521,13 @@ function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Recor
     return () => { clearInterval(h); document.title = base; };
   }, [myTurn, n]);
 
-  const suggestion = myTurn && mine ? autoPick({ ...mine, wish: mine.wish }, d.picks, pool, reserved) : null;
-  const open = mine ? openPlaces(mine, d.picks) : null;
-  const list = pool.filter((p) => !taken.has(p.id))
-    .filter((p) => !role || naturalRole(p) === role)
-    .filter((p) => !q || `${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase()))
-    .filter((p) => !fitOnly || !mine || placesFor(mine, d.picks, p, byId).length > 0)
-    .slice(0, 150);
+  const suggestion = myTurn && mine ? autoPick(mine, d.picks, pool, reserved) : null;
   const selP = sel ? byId[sel] : null;
-  const selPlaces = selP && mine ? placesFor(mine, d.picks, selP, byId) : [];
+  const selPlaces = selP && mine && !taken.has(selP.id) ? placesFor(mine, d.picks, selP, byId) : [];
   const pick = async (player: number, pl: number) => {
     setBusy(true); setErr('');
-    try { await s.draftPick(player, pl); setSel(null); setPlace(null); } catch (e) { setErr(t(`dr.err.${(e as Error).message}`)); }
+    try { await s.draftPick(player, pl); setSel(null); } catch (e) { setErr(t(`dr.err.${(e as Error).message}`)); }
     setBusy(false);
-  };
-  const toggleWish = (id: number) => {
-    if (!mine) return;
-    const wish = mine.wish.includes(id) ? mine.wish.filter((x) => x !== id) : [...mine.wish, id];
-    void s.draftTeam({ wish });
   };
 
   return (
@@ -412,7 +536,7 @@ function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Recor
         <div className="row" style={{ gap: 10 }}>
           <DraftCrestImg shape={cur.crest} colors={cur.colors} short={cur.short} size={40} />
           <div>
-            <div className="muted">{t('dr.pickOf', { n: n + 1, total, round: Math.floor(n / d.order.length) + 1 })}</div>
+            <div className="muted">{t('dr.pickOf', { n: Math.min(n + 1, total), total, round: Math.floor(Math.min(n, total - 1) / d.order.length) + 1 })}</div>
             <b style={{ fontSize: 18 }}>{myTurn ? t('dr.yourTurn') : t('dr.picking', { club: cur.name })}</b>
             {cur.ai && <span className="tag" style={{ marginLeft: 6 }}>AI</span>}
           </div>
@@ -427,92 +551,45 @@ function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Recor
       )}
       {err && <div className="insight bad">{err}</div>}
       <div className="dr-grid">
-        <Panel title={t('dr.pool', { n: pool.length - taken.size })} className="flush">
-          <div className="row dr-filters">
-            <select value={role} onChange={(e) => setRole(e.target.value as Role | '')}>
-              <option value="">{t('tr.anyPos')}</option>
-              {ROLES.map((r) => <option key={r} value={r}>{t(`role.${r}`)}</option>)}
-            </select>
-            <input placeholder={t('dr.search')} value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1, minWidth: 120 }} />
-            {mine && <label className="row"><input type="checkbox" checked={fitOnly} onChange={(e) => setFitOnly(e.target.checked)} />{t('dr.fitOnly')}</label>}
-          </div>
-          <div className="table-wrap" style={{ maxHeight: 520, overflowY: 'auto' }}>
-            <table className="grid">
-              <thead><tr><th></th><th>{t('col.pos')}</th><th>{t('col.name')}</th><th className="num">{t('col.age')}</th><th>{t('col.nat')}</th><th className="num">{t('dr.rating')}</th></tr></thead>
-              <tbody>
-                {list.map((p) => (
-                  <tr key={p.id} className={`clickable ${sel === p.id ? 'me' : ''}`} onClick={() => { setSel(p.id); setPlace(null); }}>
-                    <td onClick={(e) => { e.stopPropagation(); toggleWish(p.id); }} title={t('dr.wish')} className="dr-star">{mine?.wish.includes(p.id) ? '★' : '☆'}</td>
-                    <td className="muted">{positionString(p)}</td>
-                    <td>{p.first} <b>{p.last}</b></td>
-                    <td className="num">{ageOn(p.dob, `${year}-08-01`)}</td>
-                    <td className="muted">{gsNation(p.nation)}</td>
-                    <td className="num"><b>{rating(p)}</b></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Panel>
+        <PoolPanel pool={pool} byId={byId} taken={taken} mine={mine} picks={d.picks} sel={sel} onSel={setSel} year={year} title={t('dr.pool', { n: pool.length - taken.size })} />
         <div className="col" style={{ gap: 14 }}>
-          {selP && (
-            <Panel title={`${selP.first} ${selP.last}`} right={<button className="small" onClick={() => setSel(null)}>×</button>}>
-              <div className="muted" style={{ marginBottom: 6 }}>{positionString(selP)} · {t('dr.rating')} {rating(selP)} · {t(`foot.${selP.foot}`)}</div>
-              <AttrGrid p={selP} />
-              {myTurn && (selPlaces.length ? (
-                <div className="row" style={{ marginTop: 10, flexWrap: 'wrap' }}>
-                  <select value={place ?? selPlaces[0]} onChange={(e) => setPlace(Number(e.target.value))}>
-                    {selPlaces.map((pl) => <option key={pl} value={pl}>{slotLabel(mine!.formation, pl)}</option>)}
-                  </select>
-                  <button className="primary" disabled={busy} onClick={() => pick(selP.id, place ?? selPlaces[0])}>{t('dr.pickBtn')}</button>
-                </div>
-              ) : <div className="insight warn" style={{ marginTop: 8 }}>{t('dr.noPlace')}</div>)}
-              {!myTurn && mine && <button className="small" style={{ marginTop: 8 }} onClick={() => toggleWish(selP.id)}>{mine.wish.includes(selP.id) ? t('dr.unwish') : t('dr.addWish')}</button>}
-            </Panel>
-          )}
-          {mine && open && (
-            <Panel title={`${mine.name} · ${mine.formation}`}>
-              <MyTeam team={mine} picks={d.picks} byId={byId} />
-            </Panel>
-          )}
+          {selP && <PlayerPanel p={selP} mine={mine} onClose={() => setSel(null)} places={myTurn ? selPlaces : undefined} onPick={myTurn ? (pl) => pick(selP.id, pl) : undefined} busy={busy} />}
           {mine && (
-            <Panel title={t('dr.wishlist', { n: mine.wish.filter((id) => !taken.has(id)).length })}>
-              {mine.wish.filter((id) => !taken.has(id)).length === 0 ? <div className="muted">{t('dr.wishEmpty')}</div> : (
-                <ol className="dr-wish">
-                  {mine.wish.filter((id) => !taken.has(id)).map((id, i, arr) => (
-                    <li key={id}>
-                      <span className="grow">{pname(byId[id])} <span className="muted">{byId[id] ? positionString(byId[id]) : ''}</span></span>
-                      <button className="small" disabled={i === 0} onClick={() => { const w = arr.slice(); [w[i - 1], w[i]] = [w[i], w[i - 1]]; void s.draftTeam({ wish: w }); }}>↑</button>
-                      <button className="small" onClick={() => toggleWish(id)}>×</button>
-                    </li>
-                  ))}
-                </ol>
-              )}
-              <div className="muted" style={{ fontSize: 12 }}>{t('dr.wishHint')}</div>
+            <Panel title={`${mine.name} · ${mine.formation}`}>
+              <TeamPitch team={mine} picks={d.picks} byId={byId} highlight={myTurn ? selPlaces : []} onPlace={myTurn && selP ? (pl) => pick(selP.id, pl) : undefined} />
             </Panel>
           )}
+          {mine && <WishPanel mine={mine} taken={taken} byId={byId} />}
         </div>
       </div>
-      <Panel title={t('dr.board')} className="flush">
-        <div className="table-wrap">
-          <table className="grid dr-board">
-            <thead><tr><th>#</th>{d.order.map((slot) => { const x = d.teams.find((y) => y.slot === slot)!; return <th key={slot}><span className="row" style={{ gap: 4 }}><DraftCrestImg shape={x.crest} colors={x.colors} short={x.short} size={16} />{x.short}</span></th>; })}</tr></thead>
-            <tbody>
-              {Array.from({ length: picksPerTeam(keepers) }, (_, r) => (
-                <tr key={r}>
-                  <td className="muted">{r + 1}</td>
-                  {d.order.map((slot, i) => {
-                    const idx = r * d.order.length + (r % 2 === 0 ? i : d.order.length - 1 - i);
-                    const pk = d.picks[idx];
-                    return <td key={slot} className={idx === n ? 'dr-now' : ''}>{pk ? <span title={slotLabel(d.teams.find((y) => y.slot === slot)!.formation, pk.place)}>{pname(byId[pk.player])}{pk.auto ? <span className="muted"> ·A</span> : ''}</span> : ''}</td>;
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Panel>
+      <DraftBoard byId={byId} keepers={keepers} />
     </>
+  );
+}
+
+function DraftBoard({ byId, keepers }: { byId: Record<number, Player>; keepers: number }) {
+  const d = session()!.room!.draft!;
+  const n = d.picks.length;
+  return (
+    <Panel title={t('dr.board')} className="flush">
+      <div className="table-wrap">
+        <table className="grid dr-board">
+          <thead><tr><th>#</th>{d.order.map((slot) => { const x = d.teams.find((y) => y.slot === slot)!; return <th key={slot}><span className="row" style={{ gap: 4 }}><DraftCrestImg shape={x.crest} colors={x.colors} short={x.short} size={16} />{x.short}</span></th>; })}</tr></thead>
+          <tbody>
+            {Array.from({ length: picksPerTeam(keepers) }, (_, r) => (
+              <tr key={r}>
+                <td className="muted">{r + 1}</td>
+                {d.order.map((slot, i) => {
+                  const idx = r * d.order.length + (r % 2 === 0 ? i : d.order.length - 1 - i);
+                  const pk = d.picks[idx];
+                  return <td key={slot} className={idx === n ? 'dr-now' : ''}>{pk ? <span title={slotLabel(d.teams.find((y) => y.slot === slot)!.formation, pk.place)}>{pname(byId[pk.player])}{pk.auto ? <span className="muted"> ·A</span> : ''}</span> : ''}</td>;
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </Panel>
   );
 }
 
@@ -521,21 +598,38 @@ let nationNames: string[] = [];
 loadWorld().then((w) => { nationNames = w.nations.map((n) => n.code); }).catch(() => {});
 const gsNation = (i: number) => nationNames[i] ?? '';
 
-function MyTeam({ team, picks, byId }: { team: DraftTeam; picks: DraftPick[]; byId: Record<number, Player> }) {
+/** Holdet på banen i formationen (som på taktiksiden) + bænken. Pladser spilleren passer til lyser op */
+function TeamPitch({ team, picks, byId, highlight = [], onPlace }: { team: DraftTeam; picks: DraftPick[]; byId: Record<number, Player>; highlight?: number[]; onPlace?: (place: number) => void }) {
   const mine = teamPicks(team, picks);
   const at = (place: number) => mine.find((p) => p.place === place);
   const bench = mine.filter((p) => p.place === BENCH_PLACE);
+  const slots = formationSlots(team.formation);
   return (
-    <div className="dr-team">
-      {formationSlots(team.formation).map((_, i) => {
-        const pk = at(i);
-        return <div key={i} className={`dr-slot ${pk ? 'on' : ''}`}><span className="muted">{slotLabel(team.formation, i)}</span><b>{pk ? pname(byId[pk.player]) : '—'}</b>{pk && byId[pk.player] && <span className="muted">{rating(byId[pk.player])}</span>}</div>;
-      })}
+    <div className="dr-pitch-wrap">
+      <div className="dr-pitch">
+        <div className="dr-pitch-lines" />
+        {slots.map((slot, i) => {
+          const pk = at(i);
+          const p = pk ? byId[pk.player] : undefined;
+          const hi = !pk && highlight.includes(i);
+          return (
+            <div key={i} className={`dr-spot ${p ? 'on' : ''} ${hi ? 'hi' : ''} ${hi && onPlace ? 'clickable' : ''}`}
+              style={{ left: `${6 + slot.y * 0.88}%`, top: `${94 - slot.x * 0.88}%` }}
+              onClick={() => hi && onPlace?.(i)}>
+              <span className="dr-dot" style={p ? { background: team.colors[0], color: team.colors[1], borderColor: team.colors[1] } : undefined}>{p ? rating(p) : slotLabel(team.formation, i)}</span>
+              <span className="dr-spot-name">{p ? p.last : ''}</span>
+            </div>
+          );
+        })}
+      </div>
       <div className="dr-slot-h">{t('dr.bench')} ({bench.length}/{BENCH})</div>
-      {Array.from({ length: BENCH }, (_, i) => {
-        const pk = bench[i];
-        return <div key={`b${i}`} className={`dr-slot ${pk ? 'on' : ''}`}><span className="muted">{t('dr.sub')}</span><b>{pk ? pname(byId[pk.player]) : '—'}</b>{pk && byId[pk.player] && <span className="muted">{positionString(byId[pk.player])}</span>}</div>;
-      })}
+      <div className="dr-bench">
+        {Array.from({ length: BENCH }, (_, i) => {
+          const p = bench[i] ? byId[bench[i].player] : undefined;
+          const hi = !p && i === bench.length && highlight.includes(BENCH_PLACE);
+          return <div key={i} className={`dr-bench-spot ${p ? 'on' : ''} ${hi ? 'hi clickable' : ''}`} onClick={() => hi && onPlace?.(BENCH_PLACE)}>{p ? <><b>{p.last}</b><span className="muted">{positionString(p)} · {rating(p)}</span></> : <span className="muted">{t('dr.sub')}</span>}</div>;
+        })}
+      </div>
       {!bench.some((p) => byId[p.player] && naturalRole(byId[p.player]) === 'GK') && <div className="muted" style={{ fontSize: 12 }}>{t('dr.needGK')}</div>}
     </div>
   );
@@ -549,7 +643,7 @@ function AttrGrid({ p }: { p: Player }) {
         <div key={gname}>
           <div className="dr-attr-h">{t(`group.${gname}`)}</div>
           {GROUPS[gname].map((k) => {
-            const v = p.attrs[ATTRS.indexOf(k)];
+            const v = Math.round(p.attrs[ATTRS.indexOf(k)]);
             return <div key={k} className="dr-attr"><span>{t(`attr.${k}`)}</span><b className={v >= 16 ? 'good' : v <= 8 ? 'bad' : ''}>{v}</b></div>;
           })}
         </div>

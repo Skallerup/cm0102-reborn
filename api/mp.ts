@@ -96,6 +96,14 @@ const cleanTeam = (b: Record<string, unknown>, t: DraftTeamRec): DraftTeamRec =>
   if (Array.isArray(b.wish)) out.wish = b.wish.map(Number).filter(Number.isFinite).slice(0, 100);
   return out;
 };
+/** Rummets indstillinger (Upstash pakker JSON ud af sig selv – derfor både tekst og objekt) */
+function roomSettings(room: { settings: unknown }): Record<string, any> {
+  const v = room.settings;
+  if (!v) return {};
+  if (typeof v === 'string') { try { return JSON.parse(v); } catch { return {}; } }
+  return v as Record<string, any>;
+}
+
 async function touchDraft(code: string) {
   const d = dk(code);
   await Promise.all([redis.expire(d.teams, TTL), redis.expire(d.state, TTL), redis.expire(d.picks, TTL), redis.expire(d.taken, TTL)]);
@@ -157,8 +165,15 @@ async function publicRoom(code: string) {
 }
 
 async function publicDraft(code: string) {
-  const st = await draftState(code);
+  let st = await draftState(code);
   if (!st) return undefined;
+  // selvhelende: alle valg er registreret, men draften blev ikke markeret som færdig
+  if (st.phase === 'draft') {
+    const room = await getRoom(code);
+    const keepers = Number(room ? roomSettings(room).draft?.keepers ?? 0 : 0);
+    const total = st.order.length * (SQUAD - (st.season > 1 ? keepers : 0));
+    if (total > 0 && (await redis.llen(dk(code).picks)) >= total) { await setDraftState(code, { phase: 'done' }); st = { ...st, phase: 'done' }; }
+  }
   const teams = await draftTeams(code);
   return { ...st, teams, picks: await draftPicks(code), now: Date.now() };
 }
@@ -402,7 +417,7 @@ export async function POST(request: Request) {
       // navn, farver og formation kan kun ændres før draften (formationen bestemmer pladserne)
       if (st.phase === 'lobby' || st.phase === 'keepers') next = cleanTeam(b, next);
       if (st.phase === 'keepers' && Array.isArray(b.keep)) {
-        const n = Number(JSON.parse(String(room.settings || '{}')).draft?.keepers ?? 0);
+        const n = Number(roomSettings(room).draft?.keepers ?? 0);
         next.keep = (b.keep as { player: number; place: number }[]).slice(0, n).map((k) => ({ slot, player: Number(k.player), place: Number(k.place) }));
         next.keepReady = !!b.keepReady;
       }
@@ -441,7 +456,7 @@ export async function POST(request: Request) {
       if (!room || !st) return json({ error: 'not-found' }, 404);
       if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
       if (st.phase !== 'lobby') return json({ error: 'started' }, 409);
-      const cur = JSON.parse(String(room.settings || '{}'));
+      const cur = roomSettings(room);
       const d = (body.draft ?? {}) as Record<string, unknown>;
       cur.draft = {
         rounds: Math.max(1, Math.min(4, Math.round(Number(d.rounds ?? cur.draft?.rounds ?? 2)))),
@@ -495,7 +510,7 @@ export async function POST(request: Request) {
       if (!(await redis.set(`room:${code}:dpick:${st.season}:${n}`, me.pid, { nx: true, ex: 86_400 }))) return json({ error: 'stale' }, 409);
       await redis.rpush(dk(code).picks, JSON.stringify({ slot, player, place, auto: !mine || undefined }));
       await redis.sadd(dk(code).taken, String(player));
-      const keepers = Number(JSON.parse(String(room.settings || '{}')).draft?.keepers ?? 0);
+      const keepers = Number(roomSettings(room).draft?.keepers ?? 0);
       const total = st.order.length * (SQUAD - (st.season > 1 ? keepers : 0));
       await setDraftState(code, n + 1 >= total ? { phase: 'done', pickStart: Date.now() } : { pickStart: Date.now() });
       await touch(code); await touchDraft(code);
@@ -565,7 +580,7 @@ export async function POST(request: Request) {
       const teams = await draftTeams(code);
       const order = (Array.isArray(body.order) ? body.order.map(Number) : []).filter((x: number) => teams.some((t) => t.slot === x));
       if (order.length !== teams.length || new Set(order).size !== order.length) return json({ error: 'order' }, 400);
-      const keepers = Number(JSON.parse(String(room.settings || '{}')).draft?.keepers ?? 0);
+      const keepers = Number(roomSettings(room).draft?.keepers ?? 0);
       for (const t of teams) { t.keep = []; t.keepReady = false; await saveTeam(code, t); }
       await redis.del(dk(code).picks, dk(code).taken);
       await setDraftState(code, { phase: keepers > 0 ? 'keepers' : 'draft', season: st.season + 1, order, pickStart: Date.now(), keepStart: Date.now() });

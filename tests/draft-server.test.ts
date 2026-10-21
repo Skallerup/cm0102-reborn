@@ -7,8 +7,10 @@ const S = (k: string) => (store.get(k) as Set<string>) ?? (store.set(k, new Set(
 const L = (k: string) => (store.get(k) as string[]) ?? (store.set(k, []), store.get(k) as string[]);
 const sl = (arr: string[], a: number, b: number) => { const n = arr.length; const s = a < 0 ? Math.max(0, n + a) : a; const e = b < 0 ? n + b : b; return arr.slice(s, e + 1); };
 
+const auto = (v: unknown) => { if (typeof v !== 'string' || !/^[[{]/.test(v)) return v; try { return JSON.parse(v); } catch { return v; } };
 class FakeRedis {
-  async hgetall(k: string) { const h = store.get(k) as Record<string, unknown> | undefined; return h && Object.keys(h).length ? { ...h } : null; }
+  // som Upstash: JSON-tekst pakkes ud automatisk
+  async hgetall(k: string) { const h = store.get(k) as Record<string, unknown> | undefined; return h && Object.keys(h).length ? Object.fromEntries(Object.entries(h).map(([f, v]) => [f, auto(v)])) : null; }
   async hset(k: string, v: Record<string, unknown>) { Object.assign(H(k), v); return 1; }
   async hsetnx(k: string, f: string, v: unknown) { const h = H(k); if (f in h) return 0; h[f] = v; return 1; }
   async hget(k: string, f: string) { return (store.get(k) as Record<string, unknown> | undefined)?.[f] ?? null; }
@@ -46,6 +48,11 @@ describe('draft-liga (server)', () => {
     let room = (await post('dai', { ...A, team: { name: 'Robots' } })).body;
     expect(room.draft.teams).toHaveLength(3);
     expect(room.draft.teams[0].short).toBe('ANN');
+    // indstillinger kan ændres i lobbyen (rigtig Upstash leverer dem som objekt)
+    room = (await post('dsettings', { ...A, draft: { rounds: 3, playoff: 'semis' } })).body;
+    expect(room.settings.draft.rounds).toBe(3);
+    room = (await post('dsettings', { ...A, draft: { rounds: 1, playoff: 'none' } })).body;
+    expect(room.settings.draft).toMatchObject({ rounds: 1, playoff: 'none', keepers: 1 });
     expect((await post('dstart', { ...B })).status).toBe(403);
     room = (await post('dstart', { ...A })).body;
     expect(room.draft.phase).toBe('draft');
@@ -58,8 +65,12 @@ describe('draft-liga (server)', () => {
     let pid = 1000;
     for (let n = 0; n < 48; n++) {
       const slot = n % 6 < 3 ? order[n % 3] : order[2 - (n % 3)];
+      const before = room.draft.pickStart;
+      await new Promise((res) => setTimeout(res, 2));
       const r = await post('dpick', { ...cred(slot), n, player: pid++, place: n < 33 ? Math.floor(n / 3) : -1 });
       expect(r.status).toBe(200);
+      // nedtællingen starter forfra efter hvert valg
+      if (n < 47) expect(r.body.draft.pickStart).toBeGreaterThan(before);
       if (n === 0) {
         // samme valgnummer igen afvises, og samme spiller kan ikke tages to gange
         expect((await post('dpick', { ...A, n: 0, player: 5, place: 1 })).body.error).toBe('stale');

@@ -9,6 +9,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.1',
+    date: '2026-10-21',
+    title: { da: 'Draft-liga: rettelser og ønskeliste før draften', en: 'Draft League: fixes and a wishlist before the draft' },
+    items: [
+      { da: 'Rettet: assistenten valgte for managerne efter første runde, og draften kunne gå i stå ved sidste valg', en: 'Fixed: the assistant picked for managers after the first round, and the draft could stall on the last pick' },
+      { da: 'Rettet: ligaens indstillinger (fx antal runder) kunne ikke ændres i lobbyen', en: 'Fixed: league settings (such as the number of rounds) could not be changed in the lobby' },
+      { da: 'Gennemse puljen og byg din ønskeliste, mens I venter på, at draften starter', en: 'Browse the pool and build your wishlist while you wait for the draft to start' },
+      { da: 'Dit hold vises på banen i formationen – klik på en grøn plads for at drafte spilleren dertil', en: 'Your team is shown on the pitch in its formation – click a green spot to draft the player there' },
+      { da: 'Når draften er slut, ser du dit hold og går videre med "Gå til dit hold"', en: 'When the draft is over, you see your team and continue with "Go to your team"' },
+      { da: 'Attributter vises som hele tal', en: 'Attributes are shown as whole numbers' },
+    ],
+  },
+  {
     version: '0.10.0',
     date: '2026-10-21',
     title: { da: 'Ny spiltype: Draft-liga', en: 'New game mode: Draft League' },

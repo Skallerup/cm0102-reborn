@@ -1195,3 +1195,23 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .dr-board td, .dr-board th { font-size: 12px; padding: 5px 8px; }
 .dr-board td.dr-now { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
 @media (max-width: 900px) { .dr-grid { grid-template-columns: 1fr; } .dr-attrs { grid-template-columns: 1fr 1fr; } }
+
+/* draft: banen */
+.dr-pitch-wrap { display: flex; flex-direction: column; gap: 6px; }
+.dr-pitch { position: relative; aspect-ratio: 1.05; border-radius: 12px; background: repeating-linear-gradient(180deg, #2e8b45 0 9%, #2a8040 9% 18%); overflow: hidden; }
+.dr-pitch-lines { position: absolute; inset: 3%; border: 2px solid rgba(255,255,255,0.55); border-radius: 4px; }
+.dr-pitch-lines::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px solid rgba(255,255,255,0.55); }
+.dr-pitch-lines::after { content: ''; position: absolute; left: 30%; right: 30%; bottom: 0; height: 14%; border: 2px solid rgba(255,255,255,0.55); border-bottom: 0; }
+.dr-spot { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 70px; }
+.dr-dot { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 10.5px; font-weight: 800; background: rgba(255,255,255,0.18); color: #fff; border: 2px dashed rgba(255,255,255,0.6); }
+.dr-spot.on .dr-dot { border-style: solid; font-size: 12.5px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.dr-spot.hi .dr-dot { background: rgba(120, 255, 160, 0.35); border: 2px solid #8dffb0; box-shadow: 0 0 0 3px rgba(141,255,176,0.35); }
+.dr-spot.clickable { cursor: pointer; }
+.dr-spot-name { font-size: 11px; font-weight: 700; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.7); white-space: nowrap; max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+.dr-bench { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; }
+.dr-bench-spot { display: flex; flex-direction: column; gap: 1px; padding: 5px 6px; border-radius: 8px; font-size: 11.5px; background: color-mix(in srgb, var(--muted) 8%, transparent); min-height: 38px; overflow: hidden; }
+.dr-bench-spot.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.dr-bench-spot.hi { outline: 2px solid #3fbf6a; }
+.dr-bench-spot.clickable { cursor: pointer; }
+.dr-bench-spot b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-finished { max-width: 560px; width: 100%; margin: 0 auto; }

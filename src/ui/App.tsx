@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { DraftRoom } from './Draft';
+import { DraftRoom, draftSeen } from './Draft';
 import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame, type Route } from './core';
@@ -74,7 +74,7 @@ export default function App() {
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;
   // draft-liga: lobby, keepers og draft vises, indtil sæsonen er bygget
   const ds = session();
-  if (ds?.room?.draft && (ds.room.draft.phase !== 'playing' || !g)) return <DraftRoom />;
+  if (ds?.room?.draft && (ds.room.draft.phase !== 'playing' || !g || !draftSeen(ds.creds.code, ds.room.draft.season))) return <DraftRoom />;
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
   return (
