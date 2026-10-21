@@ -72,11 +72,21 @@ const DEFAULTS = {
 };
 type Filters = typeof DEFAULTS;
 const FILTER_KEY = 'cm0102.transferFilters';
+/** Filtrene huskes pr. karriere – en ny karriere starter med rene filtre (man kan hente dem fra den forrige) */
+const filterKey = () => `${FILTER_KEY}:${gs().id}`;
 function loadFilters(): Partial<Filters> & { __more?: boolean } {
-  try { return JSON.parse(localStorage.getItem(FILTER_KEY) ?? '{}'); } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(filterKey()) ?? '{}'); } catch { return {}; }
 }
 function saveFilters(v: Filters & { __more?: boolean }) {
-  try { localStorage.setItem(FILTER_KEY, JSON.stringify(v)); } catch { /* ignorer */ }
+  try { localStorage.setItem(filterKey(), JSON.stringify(v)); localStorage.setItem(FILTER_KEY, JSON.stringify(v)); } catch { /* ignorer */ }
+}
+/** Filtrene fra den senest brugte karriere (til knappen "Brug filtre fra sidste karriere") */
+function lastCareerFilters(): (Partial<Filters> & { __more?: boolean }) | null {
+  try {
+    if (localStorage.getItem(filterKey())) return null;
+    const v = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null');
+    return v && Object.keys(v).some((k) => k !== '__more' && (v as Record<string, unknown>)[k] !== (DEFAULTS as Record<string, unknown>)[k]) ? v : null;
+  } catch { return null; }
 }
 
 function Search() {
@@ -90,6 +100,7 @@ function Search() {
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name))), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
   const me = g.clubs[g.userClub];
+  const [prevFilters, setPrevFilters] = useState(lastCareerFilters);
   const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
   const results = useMemo(() => {
     const q = f.name.trim().toLowerCase();
@@ -248,6 +259,13 @@ function Search() {
           </div>
         )}
       </Panel>
+      {prevFilters && (
+        <div className="insight row" style={{ flexWrap: 'wrap' }}>
+          <span className="grow">{t('tr.prevFilters')}</span>
+          <button className="small" onClick={() => { setF({ ...DEFAULTS, ...prevFilters }); setPrevFilters(null); }}>{t('tr.usePrev')}</button>
+          <button className="small" onClick={() => setPrevFilters(null)}>{t('common.close')}</button>
+        </div>
+      )}
       {results.length === 0 && f.realism > 0 ? (
         <div className="insight warn row" style={{ flexWrap: 'wrap' }}>
           <span className="grow">{t(f.realism === 1 ? 'tr.noRealistic' : 'tr.noRealisticMaybe', { fee: money(me?.transferBudget ?? 0) })}</span>

@@ -1,6 +1,8 @@
 
 import { leadLoss, matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
+import { gs } from '../../game/state';
+import { useState } from 'react';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
 import { ClubLink, Crest, Panel, PlayerLink, Rating, Tabs } from '../components';
@@ -62,6 +64,7 @@ export function ReportScreen({ id }: { id: number }) {
             {mom && <div className="insight good">{t('report.mom')}: <PlayerLink p={mom} /> (<Rating r={rep.players.find((p) => p.id === mom.id)?.rating ?? 0} />)</div>}
           </Panel>
           <Panel title={t('report.momentum')}><Momentum rep={rep} home={home} away={away} colors={mine ? statColors(rep.home, rep.away, side) : ['var(--accent)', 'var(--accent2)']} /></Panel>
+          {mine && <TacticImpact rep={rep} side={side} />}
           <Panel title={t('report.heatmap')}>
             <div className="row" style={{ alignItems: 'flex-start' }}>
               <Heat rep={rep} team={0} label={home} />
@@ -148,6 +151,16 @@ function Momentum({ rep, home, away, colors }: { rep: MatchReport; home: string;
         const h = (Math.abs(v) / max) * (mid - 4);
         return <rect key={i} x={i * bw + 1} width={bw - 2} y={v >= 0 ? mid - h : mid} height={h} rx={1} fill={v >= 0 ? colors[0] : colors[1]} />;
       })}
+      {markers(rep).map((mk, i) => {
+        const x = Math.min(W - 2, ((mk.m - 1) / 5) * bw + bw / 2);
+        return (
+          <g key={`mk${i}`}>
+            <title>{`${mk.m}' ${mk.label}`}</title>
+            <line x1={x} x2={x} y1={4} y2={H - 4} stroke={mk.t === 0 ? colors[0] : colors[1]} strokeWidth={0.8} strokeDasharray="2 2" opacity={0.8} />
+            <text x={x} y={mk.t === 0 ? 10 : H - 6} textAnchor="middle" fontSize="7" className="mk-glyph">{mk.glyph}</text>
+          </g>
+        );
+      })}
       {rep.events.filter((e) => e.k === 'goal').map((e, i) => (
         <text key={i} x={Math.min(W - 6, ((e.m - 1) / 5) * bw + bw / 2)} y={e.t === 0 ? -2 : H + 8} textAnchor="middle" fontSize="9">⚽</text>
       ))}
@@ -214,6 +227,55 @@ function ShotMap({ rep, home, away }: { rep: MatchReport; home: string; away: st
         <span className="muted">{home} → · ← {away}</span>
       </div>
     </div>
+  );
+}
+
+/** Markører på momentumgrafen: formation (F), mentalitet (M), instruktioner (I) og udskiftninger (⇄) */
+function markers(rep: MatchReport): { m: number; t: number; glyph: string; label: string }[] {
+  const g = gs();
+  const out = (rep.changes ?? []).map((c) => ({ m: c.m, t: c.t, glyph: c.kind === 'formation' ? 'F' : c.kind === 'mentality' ? 'M' : 'I',
+    label: c.kind === 'formation' ? t('ll.c.formation', { f: c.to ?? '' }) : c.kind === 'mentality' ? t('ll.c.mentality', { m: t(MENT[Number(c.to)] ?? 'ment.2') }) : t('ll.c.instr') }));
+  for (const e of rep.events) if (e.k === 'sub') out.push({ m: e.m, t: e.t, glyph: '⇄', label: `${g.players[e.p ?? 0]?.last ?? ''} ↔ ${g.players[e.p2 ?? 0]?.last ?? ''}` });
+  return out.sort((a, b) => a.m - b.m);
+}
+
+/** Før og efter vores egne ændringer: chancer og pres pr. 10 minutter (sammenfald – ikke nødvendigvis årsag) */
+function TacticImpact({ rep, side }: { rep: MatchReport; side: 0 | 1 }) {
+  const mine = markers(rep).filter((m) => m.t === side && m.m < 88);
+  const [sel, setSel] = useState(0);
+  if (!mine.length) return null;
+  const mk = mine[Math.min(sel, mine.length - 1)];
+  const end = rep.et ? 120 : 90;
+  const per10 = (v: number, mins: number) => (mins > 0 ? (v / mins) * 10 : 0);
+  const span = (after: boolean) => (after ? end - mk.m : mk.m);
+  const inSpan = (m: number, after: boolean) => (after ? m > mk.m : m <= mk.m);
+  const xg = (tm: number, after: boolean) => per10(rep.shots.filter((x) => x.t === tm && inSpan(x.m, after)).reduce((a, x) => a + x.xg, 0), span(after));
+  const shots = (tm: number, after: boolean) => per10(rep.shots.filter((x) => x.t === tm && inSpan(x.m, after)).length, span(after));
+  const goals = (tm: number, after: boolean) => rep.events.filter((e) => e.k === 'goal' && e.t === tm && inSpan(e.m, after)).length;
+  const sign = side === 0 ? 1 : -1;
+  const mom = (after: boolean) => { const b = rep.momentum.filter((_, i) => inSpan(i * 5 + 5, after)); return b.length ? (b.reduce((a, v) => a + v, 0) / b.length) * sign : 0; };
+  const row = (label: string, a: number, b: number, dec = 2, goodUp = true) => {
+    const better = goodUp ? b > a + 0.01 : b < a - 0.01, worse = goodUp ? b < a - 0.01 : b > a + 0.01;
+    return <tr key={label}><td>{label}</td><td className="num">{a.toFixed(dec)}</td><td className={`num ${better ? 'good' : worse ? 'bad' : ''}`}>{b.toFixed(dec)}</td></tr>;
+  };
+  return (
+    <Panel title={t('ti.title')}>
+      <div className="row" style={{ flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+        {mine.map((m, i) => <button key={i} className={`small ${i === sel ? 'primary' : ''}`} onClick={() => setSel(i)}>{m.m}' {m.glyph} {m.label}</button>)}
+      </div>
+      <table className="grid">
+        <thead><tr><th></th><th className="num">{t('ti.before', { m: mk.m })}</th><th className="num">{t('ti.after', { m: mk.m })}</th></tr></thead>
+        <tbody>
+          {row(t('ti.xgFor'), xg(side, false), xg(side, true))}
+          {row(t('ti.xgAgainst'), xg(1 - side, false), xg(1 - side, true), 2, false)}
+          {row(t('ti.shotsFor'), shots(side, false), shots(side, true), 1)}
+          {row(t('ti.shotsAgainst'), shots(1 - side, false), shots(1 - side, true), 1, false)}
+          {row(t('ti.momentum'), mom(false), mom(true), 2)}
+          {row(t('ti.goals'), goals(side, false) - goals(1 - side, false), goals(side, true) - goals(1 - side, true), 0)}
+        </tbody>
+      </table>
+      <p className="muted" style={{ marginBottom: 0, fontSize: 12.5 }}>{t('ti.caveat')}</p>
+    </Panel>
   );
 }
 
