@@ -1,4 +1,5 @@
 
+import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
 import { onFocusNews, takeFocus } from '../inboxFocus';
 import { act } from '../../game/actions';
@@ -71,6 +72,7 @@ export function Inbox() {
         <button className="small" onClick={() => setSettings(true)}>⚙ {t('inbox.settings')}</button>
       </Head>
       {settings && <NewsSettings onClose={() => setSettings(false)} />}
+      <FirstDay />
       <div className="cols2">
         <Panel title={t('inbox.messages')} className="flush">
           {list.length === 0 && <Empty text={t('inbox.empty')} />}

@@ -571,6 +571,8 @@ export interface ManagerProfile {
   /** Præstationer: id → dato for oplåsning, og tællere til dem */
   ach?: Record<string, string>;
   achStats?: { wins: number; streak: number; unbeaten: number; lastPromotion?: number };
+  /** Første arbejdsdag: opgaver og assistentens oplæg */
+  onboard?: { weak?: boolean; style?: string; needs?: string[]; briefed?: boolean; plan?: { weakest: string; style: string; fit: number; bestStyle: string; targets: Record<string, number[]> } };
   /** Managerprofil: motto (vises på den offentlige profil) */
   motto?: string;
   /** Til ugens overblik: placering og saldo sidste mandag */

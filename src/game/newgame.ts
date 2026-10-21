@@ -210,6 +210,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   refreshShortlists();
   startScoreSeason();
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
+  g.manager.onboard = {};
   if (windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
   addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   rebuildIndexes();

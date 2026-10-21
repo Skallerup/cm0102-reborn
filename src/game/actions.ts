@@ -1,6 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
 import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
@@ -53,6 +54,7 @@ export type Action =
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
+  | { t: 'onboard'; step: 'weak' | 'style' | 'needs' | 'brief' | 'skip'; style?: StyleKey; needs?: string[] }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
   | { t: 'interact'; pid: number; kind: TalkKind }
@@ -144,6 +146,15 @@ export function applyAction(a: Action): unknown {
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
+    case 'onboard': {
+      const ob = (g.manager.onboard ??= {});
+      if (a.step === 'weak') ob.weak = true;
+      else if (a.step === 'style' && a.style) applyStyle(a.style);
+      else if (a.step === 'needs') ob.needs = (a.needs ?? []).slice(0, 4);
+      else if (a.step === 'brief') return briefing();
+      else if (a.step === 'skip') ob.briefed = true;
+      return 'ok';
+    }
     case 'managerProfile': {
       const name = a.name?.replace(/\s+/g, ' ').trim().slice(0, 30);
       if (name) {
