@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { benchSize } from '../../game/rules';
 import { Info } from '../help';
-import { roleScore, slotFit, slotRole } from '../../game/attributes';
+import { roleScore, slotFit, slotRole, roleProfile } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic } from '../../game/tactics';
@@ -366,7 +366,8 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                       onClick={() => { if (sel !== null && available(p)) assign(sel, p.id); }}>
                       <td>{xi >= 0 ? <span className="tag good">{tactic.slots[xi].pos}</span> : onBench ? <span className="tag">{t('tac.sub')}</span> : ''}</td>
                       <td>{posStr(p)}</td>
-                      <td><PlayerLink p={p} short />{p.injury && <span className="tag bad">{t('tag.inj')}</span>}{p.banned > 0 && <span className="tag bad">{t('tag.ban')}</span>}</td>
+                      <td><PlayerLink p={p} short />{p.injury && <span className="tag bad">{t('tag.inj')}</span>}{p.banned > 0 && <span className="tag bad">{t('tag.ban')}</span>}
+                        {selSlot && <RoleNote p={p} slot={selSlot} />}</td>
                       <td><Bar value={condOf(p)} /></td>
                       {selSlot && <td className="num">{suit.toFixed(1)}</td>}
                       <td>{!matchMode && xi < 0 && available(p) && <button className="small" onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{onBench ? '−' : '+'} {t('tac.sub')}</button>}</td>
@@ -378,6 +379,20 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
           </div>
         </Panel>
       </div>
+    </div>
+  );
+}
+
+/** Kort beskrivelse af, hvorfor spilleren passer til pladsen: styrker, svagheder og om det er et kompromis */
+function RoleNote({ p, slot }: { p: Player; slot: Slot }) {
+  const rp = roleProfile(p, slotRole(slot), slot);
+  const parts = [...rp.strengths.map((k) => t(`rp.s.${k}`)), ...rp.weaknesses.map((k) => t(`rp.w.${k}`))];
+  if (!parts.length && !rp.compromise) return null;
+  return (
+    <div className="role-note">
+      {rp.strengths.map((k) => <span key={k} className="good">{t(`rp.s.${k}`)}</span>)}
+      {rp.weaknesses.map((k) => <span key={k} className="bad">{t(`rp.w.${k}`)}</span>)}
+      {rp.compromise && <span className="warn">{t('rp.compromise')}</span>}
     </div>
   );
 }

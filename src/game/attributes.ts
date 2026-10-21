@@ -145,3 +145,16 @@ export function attr(p: Player, k: AttrKey): number {
 }
 
 export const POSITIONS_LABEL: [string, number][] = [['GK', 0], ['SW', 1], ['D', 2], ['DM', 3], ['M', 4], ['AM', 5], ['F', 6], ['WB', 7]];
+
+/**
+ * Hvorfor passer en spiller (ikke) til en rolle: hans stærkeste og svageste af rollens vigtige egenskaber,
+ * og om han er vant til pladsen. Bruges til korte beskrivelser som "god boldvinder · svag spilfordeler".
+ */
+export function roleProfile(p: Player, role: Role, slot?: Slot): { strengths: AttrKey[]; weaknesses: AttrKey[]; compromise: boolean } {
+  const keys = Object.entries(ROLE_KEYS[role]).filter(([, w]) => (w ?? 0) >= 0.6).map(([k]) => k as AttrKey);
+  const val = (k: AttrKey) => p.attrs[A[k]];
+  const sorted = keys.slice().sort((a, b) => val(b) - val(a));
+  const strengths = sorted.filter((k) => val(k) >= 14).slice(0, 2);
+  const weaknesses = sorted.slice().reverse().filter((k) => val(k) <= 10).slice(0, strengths.length ? 1 : 2);
+  return { strengths, weaknesses, compromise: !!slot && slotFit(p, slot) < 0.75 };
+}
