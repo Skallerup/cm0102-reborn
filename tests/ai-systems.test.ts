@@ -198,3 +198,18 @@ describe('præstationer', () => {
     expect(g.news.filter((x) => x.key === 'ach.unlocked').length).toBe(n);
   });
 });
+
+describe('transfervinduet', () => {
+  it('giver besked ved åbning, nedtælling, deadline day og lukning', () => {
+    const g = gs();
+    const keys = new Set<string>();
+    const start = g.news.length;
+    for (let i = 0; i < 200; i++) {
+      const r = continueGame();
+      if (r.match !== undefined) quickPlayUserMatch();
+      for (const n of g.news.slice(0, Math.max(0, g.news.length - start))) if (n.key.startsWith('window.')) keys.add(n.key);
+      if (keys.has('window.closed') && keys.has('window.deadlineDay')) break;
+    }
+    for (const k of ['window.closing', 'window.closingTomorrow', 'window.deadlineDay', 'window.closed']) expect(keys.has(k)).toBe(true);
+  });
+});

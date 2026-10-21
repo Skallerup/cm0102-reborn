@@ -942,3 +942,5 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .pub h2 { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
 .pub-link { padding: 6px 10px; border-radius: 8px; background: color-mix(in srgb, var(--muted) 12%, transparent); font-size: 12.5px; word-break: break-all; }
 @media (max-width: 640px) { .pub-stats { grid-template-columns: repeat(2, 1fr); } }
+.news-item.news-window { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+.news-item.news-window .title { font-weight: 700; }

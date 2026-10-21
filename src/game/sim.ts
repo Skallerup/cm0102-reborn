@@ -14,7 +14,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
@@ -313,6 +313,7 @@ function newDay() {
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }
+  forEachHuman(windowNews);
   forEachHuman(processOffers);
   forEachHuman(processJobTalks);
   forEachHuman(() => {

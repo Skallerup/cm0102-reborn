@@ -1526,3 +1526,35 @@ export function interestedClubs(p: Player): Interest[] {
   }
   return out.sort((a, b) => (g.clubs[b.club]?.rep ?? 0) - (g.clubs[a.club]?.rep ?? 0));
 }
+
+// ---------- beskeder om transfervinduet ----------
+
+/** Sidste dag i det vindue, der er åbent på datoen (eller null hvis lukket) */
+export function windowLastDay(date = gs().date): string | null {
+  if (!windowOpen(date)) return null;
+  let d = date;
+  for (let i = 0; i < 400 && windowOpen(addDays(d, 1)); i++) d = addDays(d, 1);
+  return d;
+}
+
+/**
+ * Dagligt: tydelige beskeder når vinduet åbner, en uge og 3/2/1 dage før det lukker, på deadline day
+ * og når det er lukket – plus 1. januar, når Bosman-aftaler bliver mulige.
+ */
+export function windowNews() {
+  const g = gs();
+  const today = g.date, yesterday = addDays(today, -1);
+  const open = windowOpen(today), wasOpen = windowOpen(yesterday);
+  if (open && !wasOpen) {
+    addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay(today) ?? today } });
+  } else if (!open && wasOpen) {
+    addNews({ cat: 'transfer', key: 'window.closed', params: { date: nextWindow(today) } });
+  }
+  if (open) {
+    const last = windowLastDay(today)!;
+    const left = Math.round((Date.parse(last) - Date.parse(today)) / 86_400_000);
+    if (left === 0) addNews({ cat: 'transfer', key: 'window.deadlineDay', params: {} });
+    else if ([7, 3, 2, 1].includes(left)) addNews({ cat: 'transfer', key: left === 1 ? 'window.closingTomorrow' : 'window.closing', params: { n: left, date: last } });
+  }
+  if (today.slice(5) === '01-01') addNews({ cat: 'transfer', key: 'window.bosman', params: { season: Number(today.slice(0, 4)) } });
+}

@@ -43,7 +43,7 @@ import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onIns
 import { newsTitle } from './screens/common';
 
 /** Nyheder der giver en browser-notifikation */
-const NOTIFY_KEYS = ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.bidCountered', 'auction.', 'signing.', 'staff.bid', 'job.invite', 'news.jobOffer', 'board.sacked', 'board.warning', 'jab.received', 'bet.proposed', 'chat.news', 'trophy.board', 'will.complain'];
+const NOTIFY_KEYS = ['window.opened', 'window.deadlineDay', 'window.closingTomorrow', 'transfer.incomingBid', 'transfer.bidAccepted', 'transfer.bidCountered', 'auction.', 'signing.', 'staff.bid', 'job.invite', 'news.jobOffer', 'board.sacked', 'board.warning', 'jab.received', 'bet.proposed', 'chat.news', 'trophy.board', 'will.complain'];
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],

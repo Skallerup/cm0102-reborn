@@ -76,7 +76,7 @@ export function Inbox() {
           {list.length === 0 && <Empty text={t('inbox.empty')} />}
           <div style={{ maxHeight: '70vh', overflowY: 'auto' }} ref={listRef}>
             {shown.map((n) => (
-              <div key={n.id} data-id={n.id} className={`news-item ${n.read ? '' : 'unread'}`} onClick={() => setSel(n.id)} style={sel === n.id ? { background: 'var(--rowhover)' } : undefined}>
+              <div key={n.id} data-id={n.id} className={`news-item ${n.read ? '' : 'unread'} ${n.key.startsWith('window.') ? 'news-window' : ''}`} onClick={() => setSel(n.id)} style={sel === n.id ? { background: 'var(--rowhover)' } : undefined}>
                 <NewsIcon newsKey={n.key} cat={n.cat} />
                 <span className="date">{dateFmt(n.date)}</span>
                 <span className="title">{newsTitle(n)}</span>
