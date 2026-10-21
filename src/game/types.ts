@@ -338,6 +338,8 @@ export interface Club {
   merchBoost?: { until: string; factor: number };
   /** Financial Fair Play: resultat for seneste sæsoner og evt. straf */
   ffp?: { results: number[]; sanction?: string };
+  /** Draft-liga: logo-skabelon for den fiktive klub */
+  crest?: number;
   /** Fansenes humør 0-100 (kun menneskestyrede klubber) og hvad der har påvirket det */
   fanMood?: number;
   /** fanstemningen ved sidste månedsskifte (til sæsonfortællingen) */
@@ -856,6 +858,37 @@ export interface GameState {
   customRules?: Record<string, import('./leagues').LeagueRules>;
   /** Kosmetiske AI-tekster (artikler, fanindlæg …) – påvirker ikke spillets regler */
   aiText?: Record<string, string>;
+  /** Draft-liga: fiktive klubber draftet fra de 500 bedste spillere (ingen økonomi, transfers eller staff) */
+  draft?: DraftInfo;
+}
+
+export interface DraftSettings {
+  /** Antal gange hvert hold møder hinanden */
+  rounds: number;
+  playoff: 'none' | 'final' | 'semis';
+  /** Spillere hvert hold må beholde til næste sæsons draft */
+  keepers: number;
+  injuries: boolean;
+}
+
+export interface DraftHistoryEntry {
+  season: number;
+  champion: number;
+  runnerUp?: number;
+  playoffWinner?: number;
+  topScorer?: { name: string; goals: number; club: number };
+  table: { club: number; pts: number; gd: number }[];
+}
+
+export interface DraftAllTime { club: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number; titles: number; playoffs: number }
+
+export interface DraftInfo {
+  settings: DraftSettings;
+  /** Draft-sæson (1, 2, …) */
+  season: number;
+  history: DraftHistoryEntry[];
+  allTime: Record<number, DraftAllTime>;
+  seasonOver?: boolean;
 }
 
 export interface SeasonSummary {

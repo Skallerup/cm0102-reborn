@@ -103,6 +103,8 @@ export function PlayerScreen({ id }: { id: number }) {
             {g.options.masking && !mine && <><span>{t('player.knowledge')}</span><span><Bar value={k} /> {Math.round(k)}%</span></>}
           </div>
         </Panel>
+        {/* draft-liga: ingen transfers, kontrakter eller træning */}
+        {!g.draft && (
         <Panel title={t('player.actions')}>
           <div className="col">
             {mine && (
@@ -164,6 +166,7 @@ export function PlayerScreen({ id }: { id: number }) {
             </label>
           </div>
         </Panel>
+        )}
       </div>
       {mine && <IncomingOffersFor pid={p.id} />}
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}

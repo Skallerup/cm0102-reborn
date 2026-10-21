@@ -1,4 +1,5 @@
 // Turneringer: kalender, kampprogram, tabeller, pokaler, CL/UEFA og playoffs.
+import { compHooks } from './hooks';
 import { addDays, nthWeekday, weekday } from './dates';
 import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, inBreak, rulesFor } from './leagues';
 import { rng } from './rng';
@@ -122,7 +123,7 @@ export function multiRoundRobin(clubs: number[], times: number): [number, number
   return out;
 }
 
-function newFixture(comp: string, date: string, home: number, away: number, round: number, extra: Partial<Fixture> = {}): Fixture {
+export function newFixture(comp: string, date: string, home: number, away: number, round: number, extra: Partial<Fixture> = {}): Fixture {
   const g = gs();
   const f: Fixture = { id: g.nextId.fixture++, comp, date, home, away, round, ...extra };
   g.fixtures[f.id] = f;
@@ -133,7 +134,7 @@ function newFixture(comp: string, date: string, home: number, away: number, roun
   return f;
 }
 
-function emptyRow(club: number): TableRow {
+export function emptyRow(club: number): TableRow {
   return { club, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: '' };
 }
 
@@ -468,6 +469,13 @@ export function recordResult(f: Fixture, res: MatchResultShort) {
 function checkLeagueProgress(comp: Competition) {
   const g = gs();
   if (comp.pending > 0) return;
+  // draft-liga: mester og evt. slutspil
+  if (comp.meta?.draft) {
+    comp.finished = true;
+    comp.winner = finalOrder(comp)[0];
+    compHooks.draftLeagueDone?.(comp);
+    return;
+  }
   const rules = LEAGUE_RULES[comp.id];
   if (rules?.split && !comp.splitDone) {
     generateSplit(comp);
@@ -592,7 +600,7 @@ function advance(comp: Competition, stage: string) {
     return;
   }
   if (comp.type === 'playoff') {
-    if (winners.length === 2) createFinal(comp, winners[0], winners[1], cal.playoff.final);
+    if (winners.length === 2) createFinal(comp, winners[0], winners[1], (comp.meta?.finalDate as string | undefined) ?? cal.playoff.final);
     return;
   }
   // kontinental

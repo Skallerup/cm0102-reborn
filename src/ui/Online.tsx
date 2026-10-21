@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DraftJoin } from './Draft';
 import { askConfirm } from './confirm';
 import type { WorldData } from '../game/newgame';
 import type { GameState } from '../game/types';
@@ -15,7 +16,7 @@ import { notifyUser } from './notify';
 import { loadWorld } from './world';
 
 /** Startmenuens online-del: opret, deltag eller genoptag */
-export function OnlineMenu({ onBack, onCreate, setBusy, initialCode }: { onBack: () => void; onCreate: () => void; setBusy: (s: string) => void; initialCode?: string }) {
+export function OnlineMenu({ onBack, onCreate, onCreateDraft, setBusy, initialCode }: { onBack: () => void; onCreate: () => void; onCreateDraft: () => void; setBusy: (s: string) => void; initialCode?: string }) {
   const [code, setCode] = useState(initialCode ?? '');
   const [joining, setJoining] = useState<string | null>(initialCode ? initialCode.toUpperCase() : null);
   const [err, setErr] = useState('');
@@ -34,6 +35,7 @@ export function OnlineMenu({ onBack, onCreate, setBusy, initialCode }: { onBack:
       <div className="col">
         <p className="muted">{t('mp.explain')}</p>
         <button className="primary" onClick={onCreate}>{t('mp.create')}</button>
+        <button className="draft-cta" onClick={onCreateDraft}><b>🃏 {t('dr.create')}</b><span>{t('dr.createShort')}</span></button>
         <div className="row">
           <input placeholder={t('mp.codePlaceholder')} value={code} onChange={(e) => setCode(e.target.value.toUpperCase())} maxLength={5} style={{ width: 120, textTransform: 'uppercase' }} />
           <button disabled={code.length < 5} onClick={() => setJoining(code)}>{t('mp.join')}</button>
@@ -75,6 +77,7 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
       try {
         const r = await fetchRoom(code);
         setRoom(r);
+        if (r.draft) return;
         if (!r.snapshot) { setErr('not-ready'); return; }
         const [{ state: s }, w] = await Promise.all([downloadSnapshot(r.snapshot), loadWorld()]);
         setState(s);
@@ -88,6 +91,8 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
   }, [code]);
 
   const taken = useMemo(() => new Set(room?.players.map((p) => p.club) ?? []), [room]);
+  // draft-liga: man opretter sin egen klub i stedet for at vælge en
+  if (room?.draft && !err) return <DraftJoin code={code} room={room} onBack={onBack} setBusy={setBusy} />;
   if (err) return <Panel title={`${t('mp.join')} ${code}`} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}><div className="bad">{t(`mp.err.${err}`) !== `mp.err.${err}` ? t(`mp.err.${err}`) : err}</div></Panel>;
   if (!room || !state || !world) return <Panel title={`${t('mp.join')} ${code}`}><div className="muted">{t('mp.connecting')}</div></Panel>;
   const leagues = Object.values(state.comps).filter((c) => c.type === 'league');

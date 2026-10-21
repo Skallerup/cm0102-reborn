@@ -17,7 +17,10 @@ import { deserializeState, serializeState } from '../game/snapshot';
 import { addNews, gs, notify, setGame } from '../game/state';
 import { rememberLast } from '../game/save';
 import type { Tactic } from '../game/types';
-import type { GameState } from '../game/types';
+import type { DraftSettings, GameState } from '../game/types';
+import { KEEPER_SECONDS, PICK_SECONDS, allKeepers, autoKeepers, autoPick, buildDraftGame, clubIdOf, draftPool, nextDraftOrder, slotForPick, type DraftPick, type DraftTeam } from '../game/draft';
+import { getLang } from '../i18n';
+import { loadWorld } from '../ui/world';
 
 export interface RoomInfo {
   code: string;
@@ -28,11 +31,25 @@ export interface RoomInfo {
   date: string;
   lastApplied: number;
   actionCount: number;
-  settings: { nations?: number[]; seed?: number; masking?: boolean; deadlineHours?: number };
+  settings: { nations?: number[]; seed?: number; masking?: boolean; deadlineHours?: number; mode?: 'draft'; draft?: DraftSettings };
   processing: string | null;
   lastTurn: string;
   players: { pid: string; name: string; club: number; ready: boolean; joined: string; auto?: boolean }[];
   chat?: RoomChat[];
+  /** Draft-liga: fase, rækkefølge, hold og valg */
+  draft?: DraftRoomInfo;
+}
+
+export interface DraftRoomInfo {
+  phase: 'lobby' | 'keepers' | 'draft' | 'done' | 'playing';
+  season: number;
+  order: number[];
+  pickStart: number;
+  keepStart: number;
+  teams: DraftTeam[];
+  picks: DraftPick[];
+  /** Serverens ur (til nedtællingen) */
+  now: number;
 }
 
 /** Udeholdets ændringer under en kamp mellem to managere */
@@ -157,8 +174,24 @@ export class OnlineSession {
   async start() {
     setActionSink((a) => this.enqueue(a));
     await this.refresh(true);
-    this.pollTimer = setInterval(() => { void this.refresh(false); }, 3500);
+    // under en draft opdateres der hyppigt (live), ellers hvert 3,5 sekund
+    this.pollTimer = setInterval(() => {
+      const live = this.draftLive();
+      if (live || Date.now() - this.lastRefresh >= 3400) void this.refresh(false);
+    }, 1200);
   }
+
+  private lastRefresh = 0;
+  /** Forskel mellem serverens og vores ur (ms) */
+  clockSkew = 0;
+
+  /** Er rummet en draft-liga, der ikke er i gang med at spille kampe? */
+  draftLive(): boolean {
+    const d = this.room?.draft;
+    return !!d && d.phase !== 'playing';
+  }
+
+  serverNow() { return Date.now() + this.clockSkew; }
 
   stop() {
     if (this.pollTimer) clearInterval(this.pollTimer);
@@ -234,6 +267,99 @@ export class OnlineSession {
     return (this.room?.chat ?? []).filter((m) => m.id > seen && m.from !== this.creds.pid && (m.to === 'all' || m.to === this.creds.pid)).length;
   }
 
+  // ----- draft-liga -----
+
+  private async dpost(op: string, body: Record<string, unknown> = {}) {
+    this.room = await post<RoomInfo>(op, { ...this.creds, ...body });
+    this.emit();
+    if (this.draftLive()) void this.draftDuty();
+  }
+
+  get myDraftTeam(): DraftTeam | undefined {
+    return this.room?.draft?.teams.find((t) => t.pid === this.creds.pid);
+  }
+
+  draftPick(player: number, place: number) { return this.dpost('dpick', { n: this.room?.draft?.picks.length ?? 0, player, place }); }
+  draftTeam(team: Partial<DraftTeam>, slot?: number) { return this.dpost('dteam', { team, slot }); }
+  draftAddAI(team: Partial<DraftTeam>) { return this.dpost('dai', { team }); }
+  draftRemoveAI(slot: number) { return this.dpost('dai', { remove: slot }); }
+  draftSettings(draft: Partial<DraftSettings>, deadlineHours?: number) { return this.dpost('dsettings', { draft, deadlineHours }); }
+  draftStart() { return this.dpost('dstart'); }
+
+  private duty = false;
+  /**
+   * Draftens automatik, som klienterne skiftes til at udføre (serveren kan ikke regne på spillerne):
+   * AI-holdenes valg, valg når tiden er løbet ud, manglende keepers og opbygning af sæsonen.
+   * Værten gør det straks; de andre kun hvis værten ikke er online (efter en forsinkelse).
+   */
+  private async draftDuty() {
+    const room = this.room;
+    const d = room?.draft;
+    if (!room || !d || this.duty) return;
+    const others = room.players.map((p) => p.pid).filter((p) => p !== room.host).sort();
+    const backup = (base: number) => (this.isHost ? 0 : base + Math.max(0, others.indexOf(this.creds.pid)) * 2500);
+    const now = this.serverNow();
+    this.duty = true;
+    try {
+      if (d.phase === 'draft') {
+        const n = d.picks.length;
+        const team = d.teams.find((t) => t.slot === slotForPick(d.order, n));
+        if (!team) return;
+        const timedOut = now >= d.pickStart + PICK_SECONDS * 1000 + 1200;
+        if (!team.ai && !timedOut) return;
+        // AI-hold tænker lidt, så draften kan følges
+        const wait = (team.ai ? Math.max(0, d.pickStart + 1500 - now) : 0) + backup(team.ai ? 4000 : 3000);
+        if (wait) await new Promise((r) => setTimeout(r, wait));
+        const fresh = await fetchRoom(this.creds.code);
+        this.room = fresh;
+        if (fresh.draft?.phase !== 'draft' || fresh.draft.picks.length !== n) return;
+        const world = await loadWorld();
+        const pool = draftPool(world, room.settings.seed ?? 1, world.season);
+        const pk = autoPick(team, fresh.draft.picks, pool, allKeepers(fresh.draft.teams));
+        if (!pk) return;
+        try { this.room = await post<RoomInfo>('dpick', { ...this.creds, n, player: pk.player, place: pk.place }); } catch { /* en anden nåede det */ }
+      } else if (d.phase === 'keepers') {
+        const allReady = d.teams.every((t) => t.ai || t.keepReady);
+        if (!allReady && now < d.keepStart + KEEPER_SECONDS * 1000 + 1000) return;
+        const wait = backup(4000);
+        if (wait) await new Promise((r) => setTimeout(r, wait));
+        const state = gs();
+        const k = state.draft?.settings.keepers ?? 0;
+        const keeps = Object.fromEntries(d.teams.map((t) => [t.slot, autoKeepers(clubIdOf(t.slot), k, state).map((x) => ({ player: x.player, place: x.place }))]));
+        try { this.room = await post<RoomInfo>('dkeepdone', { ...this.creds, keeps }); } catch { /* allerede gjort */ }
+      } else if (d.phase === 'done') {
+        const wait = backup(15000);
+        if (wait) await new Promise((r) => setTimeout(r, wait));
+        const lock = await post<{ ok: boolean }>('dbuildlock', { ...this.creds });
+        if (!lock.ok) return;
+        this.status = 'processing';
+        this.emit();
+        const world = await loadWorld();
+        const fresh = await fetchRoom(this.creds.code);
+        const fd = fresh.draft!;
+        let prev: GameState['draft'];
+        try { prev = gs().draft; } catch { prev = undefined; }
+        const state = buildDraftGame({
+          world, seed: room.settings.seed ?? 1, season: fd.season, lang: getLang(),
+          settings: room.settings.draft ?? { rounds: 2, playoff: 'none', keepers: 0, injuries: true },
+          teams: fd.teams, picks: fd.picks, hostPid: this.creds.pid, prev,
+        });
+        state.lastActionIdx = fresh.actionCount;
+        const blob = await serializeState(state);
+        const url = await uploadSnapshot(this.creds, fresh.version + 1, blob);
+        this.room = await post<RoomInfo>('dbuilt', { ...this.creds, url, date: state.date });
+        this.status = 'idle';
+        await this.loadVersion(this.room);
+      }
+    } catch (e) {
+      this.status = 'idle';
+      this.error = String((e as Error).message);
+    } finally {
+      this.duty = false;
+      this.emit();
+    }
+  }
+
   // ----- klar / synkronisering -----
 
   /** Er jeg værten (den der startede spillet)? */
@@ -266,13 +392,17 @@ export class OnlineSession {
 
   async refresh(force: boolean) {
     if (this.busy) return;
+    this.lastRefresh = Date.now();
     try {
+      const t0 = Date.now();
       const room = await fetchRoom(this.creds.code);
+      if (room.draft) this.clockSkew = room.draft.now - (t0 + Date.now()) / 2;
       this.room = room;
       if (room.version > this.version || (force && room.snapshot)) {
         await this.loadVersion(room);
       }
       this.emit();
+      if (this.draftLive()) { await this.draftDuty(); return; }
       await this.maybeProcess();
     } catch (e) {
       this.error = String((e as Error).message);
@@ -310,6 +440,7 @@ export class OnlineSession {
   private async maybeProcess() {
     const room = this.room;
     if (!room || this.busy || room.processing) return;
+    if (room.draft && room.draft.phase !== 'playing') return;
     // fristen er udløbet: gør de manglende klar (deres assistent tager over i trækket)
     const dl = this.deadline();
     if (dl && Date.now() >= dl && room.players.some((p) => !p.ready)) {
@@ -360,6 +491,10 @@ export class OnlineSession {
       const url = await uploadSnapshot(this.creds, this.version + 1, blob);
       this.room = await post<RoomInfo>('commit', { ...this.creds, version: this.version + 1, url, lastApplied: last, date: state.date });
       locked = false;
+      // draft-liga: sæsonen er slut – næste draft begynder (sidst placerede vælger først)
+      if (state.draft?.seasonOver) {
+        try { this.room = await post<RoomInfo>('dseason', { ...this.creds, season: state.draft.season, order: nextDraftOrder() }); } catch { /* en anden nåede det */ }
+      }
       this.pristine = blob;
       this.version += 1;
       if (state.humans?.some((h) => h.pid === this.creds.pid)) activate(this.creds.pid, state);
@@ -421,5 +556,19 @@ export async function createOnlineGame(world: WorldData, o: NewGameOptions, bots
 
 export async function joinOnlineGame(code: string, name: string, club: number, nation: number): Promise<OnlineSession> {
   const j = await post<{ code: string; pid: string; token: string }>('join', { code, name, club, nation });
+  return openSession({ code: j.code, pid: j.pid, token: j.token, name });
+}
+
+// ---------- draft-liga ----------
+
+/** Opret en draft-liga: værten opretter sin klub; spillet bygges først, når draften er færdig */
+export async function createDraftLeague(name: string, team: Partial<DraftTeam>, draft: DraftSettings, deadlineHours: number): Promise<OnlineSession> {
+  const seed = (Math.random() * 2 ** 31) >>> 0;
+  const created = await post<{ code: string; pid: string; token: string }>('create', { name, team, settings: { mode: 'draft', seed, draft, deadlineHours } });
+  return openSession({ code: created.code, pid: created.pid, token: created.token, name });
+}
+
+export async function joinDraftLeague(code: string, name: string, team: Partial<DraftTeam>): Promise<OnlineSession> {
+  const j = await post<{ code: string; pid: string; token: string }>('join', { code, name, team });
   return openSession({ code: j.code, pid: j.pid, token: j.token, name });
 }

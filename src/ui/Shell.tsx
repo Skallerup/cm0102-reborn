@@ -1,4 +1,5 @@
 import { BoardScreen } from './screens/Board';
+import { DraftLeagueScreen } from './Draft';
 import { refreshSupport, syncSupporterRegens } from '../online/support';
 import { SupportPage } from './Support';
 import { Head } from './screens/common';
@@ -61,13 +62,14 @@ const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
-  { key: 'matches', items: ['fixtures', 'competitions'] },
+  { key: 'matches', items: ['draft', 'fixtures', 'competitions'] },
   { key: 'market', items: ['transfers', 'scouting'] },
   { key: 'club', items: ['club', 'board', 'finance', 'staff'] },
   { key: 'manager', items: ['profile', 'ranking', 'awards', 'history', 'jobs'] },
   { key: 'community', items: ['community', 'support'] },
 ];
-const ALL_ITEMS = Object.fromEntries([...MENU, ...MENU2]) as Record<ScreenName, string>;
+const ALL_ITEMS = { ...Object.fromEntries([...MENU, ...MENU2]), draft: 'nav.draft' } as Record<ScreenName, string>;
+const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'support', 'help', 'options', 'managers'];
 const GROUP_KEY = 'cm-nav-closed';
 const UNEMPLOYED: ScreenName[] = ['support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
@@ -249,7 +251,7 @@ export function Shell() {
           {club ? <><Crest id={club.id} size={34} /><span className="club-name">{club.name}</span></> : <span className="muted">{online && !online.inGame ? t('mp.lobby') : t('top.unemployed')}</span>}
         </div>
         <div className="date"><span className="date-long">{dateFmt(g.date, true)}</span><span className="date-short">{dateFmt(g.date)}</span></div>
-        {club && (
+        {club && !g.draft && (
           <div className="money top-stats">
             <span className="top-stat"><small>{t('top.balance')}</small><b className={club.balance < 0 ? 'neg' : ''}>{money(club.balance)}</b></span>
             <span className="top-stat"><small>{t('top.budget')}</small><b>{money(club.transferBudget)}</b></span>
@@ -273,7 +275,8 @@ export function Shell() {
       </div>
       <nav className={`sidenav ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
         {(() => {
-          const allowed = (k: ScreenName) => !!g.userClub || UNEMPLOYED.includes(k);
+          // draft-liga: kun holdet, kampene og ligaen (ingen økonomi, transfers, staff, bestyrelse eller jobs)
+          const allowed = (k: ScreenName) => (g.draft ? DRAFT_SCREENS.includes(k) : k !== 'draft' && (!!g.userClub || UNEMPLOYED.includes(k)));
           const badge = (k: ScreenName) => (k === 'inbox' && unread > 0 ? <span className="badge">{unread}</span>
             : k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) ? <span className="badge">!</span>
             : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
@@ -371,6 +374,7 @@ function Screen() {
     case 'club': return <ClubScreen id={route.id as number | undefined} />;
     case 'board': return <BoardScreen />;
     case 'profile': return <ProfileScreen />;
+    case 'draft': return <DraftLeagueScreen />;
     case 'support': return <div><Head title={t('sup.title')} /><SupportPage /></div>;
     case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p><CommunityBoard defaultName={gs().manager.name} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;

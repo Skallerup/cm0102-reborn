@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { crestSvg } from '../game/draft';
 import { positionString } from '../game/attributes';
 import { flagUrl } from './flags';
 import { ageOn } from '../game/dates';
@@ -23,6 +24,8 @@ export function PlayerLink({ p, short }: { p: Player | undefined; short?: boolea
 export function Crest({ id, size = 14 }: { id: number; size?: number }) {
   const [failed, setFailed] = useState(false);
   const c = gs().clubs[id];
+  // draft-liga: klubbens eget logo
+  if (c?.crest !== undefined) return <img className="crest" src={`data:image/svg+xml;utf8,${encodeURIComponent(crestSvg(c.crest, c.colors[0], c.colors[1], c.short))}`} alt="" width={size} height={size} style={{ width: size, height: size }} />;
   const url = logoUrl(id);
   if (url && !failed) {
     return <img className="crest" src={url} alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)} style={{ width: size, height: size }} />;

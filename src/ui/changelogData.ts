@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.0',
+    date: '2026-10-21',
+    title: { da: 'Ny spiltype: Draft-liga', en: 'New game mode: Draft League' },
+    items: [
+      { da: 'Opret en fiktiv klub med navn, farver og logo, og draft 16 spillere (11 startere og 5 udskiftere) blandt de 500 bedste spillere i spillet – live, med 60 sekunder pr. valg', en: 'Create a fictional club with a name, colours and crest, and draft 16 players (11 starters and 5 substitutes) from the 500 best players in the game – live, with 60 seconds per pick' },
+      { da: 'Snake draft med ønskeliste og assistentens forslag. Løber tiden ud, vælger assistenten', en: 'Snake draft with a wishlist and the assistant\'s suggestion. If time runs out, the assistant picks' },
+      { da: 'Værten vælger antal runder, slutspil (finale eller semifinaler), keepers (0-3), skader og AI-hold', en: 'The host chooses the number of rounds, playoff (final or semi-finals), keepers (0-3), injuries and AI teams' },
+      { da: 'Ingen løn, transfers, staff eller bestyrelse – kun taktik, kampe og holdsnak. Langtidsskadede kan erstattes af udraftede spillere', en: 'No wages, transfers, staff or board – just tactics, matches and team talks. Long-term injured players can be replaced by undrafted players' },
+      { da: 'Når sæsonen er slut, starter en ny draft, hvor sidstepladsen vælger først. Mestre og alle tiders tabel gemmes', en: 'When the season ends, a new draft starts with last place picking first. Champions and an all-time table are kept' },
+    ],
+  },
+  {
     version: '0.9.0',
     date: '2026-10-21',
     title: { da: 'Spillet hedder nu CM Reborn', en: 'The game is now called CM Reborn' },

@@ -50,6 +50,57 @@ interface RoomRec {
 const k = (code: string) => ({ room: `room:${code}`, players: `room:${code}:players`, actions: `room:${code}:actions`, lock: `room:${code}:lock`, chat: `room:${code}:chat` });
 const CHAT_KEEP = 300;
 
+// ---------- draft-liga ----------
+const DRAFT_MAX = 16;
+const SQUAD = 16;
+const PICK_MS = 60_000;
+const KEEP_MS = 120_000;
+const CLUB_BASE = 900_000;
+const dk = (code: string) => ({ teams: `room:${code}:dteams`, state: `room:${code}:dstate`, picks: `room:${code}:dpicks`, taken: `room:${code}:dtaken` });
+
+interface DraftTeamRec {
+  slot: number; pid: string; ai: boolean; manager: string; name: string; short: string; colors: [string, string]; crest: number; formation: string;
+  wish: number[]; keep: { slot: number; player: number; place: number }[]; keepReady?: boolean;
+}
+interface DraftStateRec { phase: 'lobby' | 'keepers' | 'draft' | 'done' | 'playing'; season: number; order: number[]; pickStart: number; keepStart: number }
+
+async function draftTeams(code: string): Promise<DraftTeamRec[]> {
+  const h = await redis.hgetall<Record<string, DraftTeamRec | string>>(dk(code).teams);
+  return Object.values(h ?? {}).map((v) => (typeof v === 'string' ? (JSON.parse(v) as DraftTeamRec) : v)).sort((a, b) => a.slot - b.slot);
+}
+async function saveTeam(code: string, t: DraftTeamRec) { await redis.hset(dk(code).teams, { [String(t.slot)]: JSON.stringify(t) }); }
+async function draftState(code: string): Promise<DraftStateRec | null> {
+  const r = await redis.hgetall<Record<string, string | number>>(dk(code).state);
+  if (!r || !r.phase) return null;
+  const order = typeof r.order === 'string' ? JSON.parse(r.order || '[]') : (r.order ?? []);
+  return { phase: r.phase as DraftStateRec['phase'], season: Number(r.season), order: order as number[], pickStart: Number(r.pickStart ?? 0), keepStart: Number(r.keepStart ?? 0) };
+}
+async function setDraftState(code: string, st: Partial<DraftStateRec>) {
+  const v: Record<string, string | number> = {};
+  for (const [key, val] of Object.entries(st)) v[key] = Array.isArray(val) ? JSON.stringify(val) : (val as string | number);
+  await redis.hset(dk(code).state, v);
+}
+async function draftPicks(code: string) {
+  const raw = await redis.lrange<string | Record<string, unknown>>(dk(code).picks, 0, -1);
+  return raw.map((x) => (typeof x === 'string' ? JSON.parse(x) : x)) as { slot: number; player: number; place: number; auto?: boolean }[];
+}
+const slotForPick = (order: number[], n: number) => { const t = order.length, r = Math.floor(n / t), i = n % t; return r % 2 === 0 ? order[i] : order[t - 1 - i]; };
+const cleanTeam = (b: Record<string, unknown>, t: DraftTeamRec): DraftTeamRec => {
+  const col = (x: unknown, d: string) => (typeof x === 'string' && /^#[0-9a-fA-F]{6}$/.test(x) ? x : d);
+  const out = { ...t };
+  if (typeof b.name === 'string' && b.name.trim()) out.name = b.name.trim().slice(0, 28);
+  if (typeof b.short === 'string' && b.short.trim()) out.short = b.short.trim().slice(0, 3).toUpperCase();
+  if (Array.isArray(b.colors)) out.colors = [col(b.colors[0], t.colors[0]), col(b.colors[1], t.colors[1])];
+  if (b.crest !== undefined) out.crest = Math.max(0, Math.min(9, Math.round(Number(b.crest) || 0)));
+  if (typeof b.formation === 'string' && b.formation.length < 20) out.formation = b.formation;
+  if (Array.isArray(b.wish)) out.wish = b.wish.map(Number).filter(Number.isFinite).slice(0, 100);
+  return out;
+};
+async function touchDraft(code: string) {
+  const d = dk(code);
+  await Promise.all([redis.expire(d.teams, TTL), redis.expire(d.state, TTL), redis.expire(d.picks, TTL), redis.expire(d.taken, TTL)]);
+}
+
 function json(data: unknown, status = 200) {
   return new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 }
@@ -101,7 +152,15 @@ async function publicRoom(code: string) {
     processing: lock ?? null,
     players: players.map((p) => ({ pid: p.pid, name: p.name, club: p.club, ready: p.ready, joined: p.joined, auto: !!p.auto })),
     chat,
+    draft: await publicDraft(code),
   };
+}
+
+async function publicDraft(code: string) {
+  const st = await draftState(code);
+  if (!st) return undefined;
+  const teams = await draftTeams(code);
+  return { ...st, teams, picks: await draftPicks(code), now: Date.now() };
 }
 
 export async function GET(request: Request) {
@@ -124,8 +183,8 @@ export async function POST(request: Request) {
   switch (op) {
     case 'create': {
       const name = String(body.name ?? '').slice(0, 30).trim();
-      const club = Number(body.club);
-      if (!name || !club) return json({ error: 'missing' }, 400);
+      const club = (body.settings as Record<string, unknown> | undefined)?.mode === 'draft' ? CLUB_BASE + 1 : Number(body.club);
+      if (!name || (!club && (body.settings as Record<string, unknown> | undefined)?.mode !== 'draft')) return json({ error: 'missing' }, 400);
       let newCode = '';
       for (let i = 0; i < 5; i++) {
         const c = rid(5);
@@ -140,12 +199,35 @@ export async function POST(request: Request) {
         settings: JSON.stringify(body.settings ?? {}), created: now, lastTurn: now,
       });
       await savePlayer(newCode, { pid, name, club, token, ready: false, joined: now });
+      if ((body.settings as Record<string, unknown> | undefined)?.mode === 'draft') {
+        const team = cleanTeam((body.team ?? {}) as Record<string, unknown>, { slot: 1, pid, ai: false, manager: name, name: `${name} FC`, short: name.slice(0, 3).toUpperCase(), colors: ['#c8102e', '#ffffff'], crest: 0, formation: '4-4-2', wish: [], keep: [] });
+        await saveTeam(newCode, team);
+        await setDraftState(newCode, { phase: 'lobby', season: 1, order: [], pickStart: 0, keepStart: 0 });
+        await touchDraft(newCode);
+      }
       await touch(newCode);
       return json({ code: newCode, pid, token });
     }
     case 'join': {
       const room = await getRoom(code);
       if (!room) return json({ error: 'not-found' }, 404);
+      const dst = await draftState(code);
+      if (dst) {
+        // draft-liga: man får den første ledige plads og opretter sin egen klub
+        if (dst.phase !== 'lobby') return json({ error: 'started' }, 409);
+        const name = String(body.name ?? '').slice(0, 30).trim();
+        if (!name) return json({ error: 'missing' }, 400);
+        const teams = await draftTeams(code);
+        if (teams.length >= DRAFT_MAX) return json({ error: 'full' }, 409);
+        let slot = 1;
+        while (teams.some((t) => t.slot === slot)) slot++;
+        const pid = rid(10, 'abcdefghijkmnpqrstuvwxyz23456789');
+        const token = rid(24, 'abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789');
+        await savePlayer(code, { pid, name, club: CLUB_BASE + slot, token, ready: false, joined: new Date().toISOString() });
+        await saveTeam(code, cleanTeam((body.team ?? {}) as Record<string, unknown>, { slot, pid, ai: false, manager: name, name: `${name} FC`, short: name.slice(0, 3).toUpperCase(), colors: ['#003399', '#ffffff'], crest: slot % 6, formation: '4-4-2', wish: [], keep: [] }));
+        await touch(code); await touchDraft(code);
+        return json({ code, pid, token });
+      }
       const name = String(body.name ?? '').slice(0, 30).trim();
       const club = Number(body.club);
       const nation = Number(body.nation ?? 0);
@@ -244,6 +326,8 @@ export async function POST(request: Request) {
       if (!target || target === room.host) return json({ error: 'target' }, 400);
       await redis.hdel(keys.players, target);
       await redis.rpush(keys.actions, JSON.stringify({ pid: me.pid, a: { t: 'removeHuman', pid: target } }));
+      // draft-liga: holdet bliver et AI-hold (også i de kommende drafte)
+      for (const t of await draftTeams(code)) if (t.pid === target) { t.pid = ''; t.ai = true; t.manager = 'AI'; await saveTeam(code, t); }
       await touch(code);
       return json(await publicRoom(code));
     }
@@ -299,6 +383,193 @@ export async function POST(request: Request) {
       for (const p of players) if (p.ready || p.auto) { p.ready = false; p.auto = false; await savePlayer(code, p); }
       await redis.del(keys.lock);
       await touch(code);
+      return json(await publicRoom(code));
+    }
+    // ----- draft-liga -----
+    case 'dteam': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st) return json({ error: 'not-found' }, 404);
+      const teams = await draftTeams(code);
+      const slot = Number(body.slot ?? me.club - CLUB_BASE);
+      const t = teams.find((x) => x.slot === slot);
+      if (!t) return json({ error: 'slot' }, 404);
+      if (t.pid !== me.pid && !(t.ai && room.host === me.pid)) return json({ error: 'not-yours' }, 403);
+      const b = (body.team ?? {}) as Record<string, unknown>;
+      let next = { ...t, wish: Array.isArray(b.wish) ? cleanTeam({ wish: b.wish }, t).wish : t.wish };
+      // navn, farver og formation kan kun ændres før draften (formationen bestemmer pladserne)
+      if (st.phase === 'lobby' || st.phase === 'keepers') next = cleanTeam(b, next);
+      if (st.phase === 'keepers' && Array.isArray(b.keep)) {
+        const n = Number(JSON.parse(String(room.settings || '{}')).draft?.keepers ?? 0);
+        next.keep = (b.keep as { player: number; place: number }[]).slice(0, n).map((k) => ({ slot, player: Number(k.player), place: Number(k.place) }));
+        next.keepReady = !!b.keepReady;
+      }
+      await saveTeam(code, next);
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dai': {
+      // værten tilføjer/fjerner AI-hold i lobbyen
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st) return json({ error: 'not-found' }, 404);
+      if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
+      if (st.phase !== 'lobby') return json({ error: 'started' }, 409);
+      const teams = await draftTeams(code);
+      if (body.remove) {
+        const t = teams.find((x) => x.slot === Number(body.remove));
+        if (t?.ai) await redis.hdel(dk(code).teams, String(t.slot));
+      } else {
+        if (teams.length >= DRAFT_MAX) return json({ error: 'full' }, 409);
+        let slot = 1;
+        while (teams.some((t) => t.slot === slot)) slot++;
+        const t = cleanTeam((body.team ?? {}) as Record<string, unknown>, { slot, pid: '', ai: true, manager: 'AI', name: `AI ${slot}`, short: `AI${slot}`.slice(0, 3), colors: ['#555555', '#ffffff'], crest: slot % 6, formation: '4-3-3', wish: [], keep: [] });
+        await saveTeam(code, t);
+      }
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dsettings': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st) return json({ error: 'not-found' }, 404);
+      if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
+      if (st.phase !== 'lobby') return json({ error: 'started' }, 409);
+      const cur = JSON.parse(String(room.settings || '{}'));
+      const d = (body.draft ?? {}) as Record<string, unknown>;
+      cur.draft = {
+        rounds: Math.max(1, Math.min(4, Math.round(Number(d.rounds ?? cur.draft?.rounds ?? 2)))),
+        playoff: ['none', 'final', 'semis'].includes(String(d.playoff)) ? String(d.playoff) : (cur.draft?.playoff ?? 'none'),
+        keepers: Math.max(0, Math.min(3, Math.round(Number(d.keepers ?? cur.draft?.keepers ?? 0)))),
+        injuries: d.injuries === undefined ? (cur.draft?.injuries ?? true) : !!d.injuries,
+      };
+      if (body.deadlineHours !== undefined) cur.deadlineHours = Math.max(0, Math.min(168, Number(body.deadlineHours) || 0));
+      await redis.hset(keys.room, { settings: JSON.stringify(cur) });
+      return json(await publicRoom(code));
+    }
+    case 'dstart': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st) return json({ error: 'not-found' }, 404);
+      if (room.host !== me.pid) return json({ error: 'not-host' }, 403);
+      if (st.phase !== 'lobby') return json({ error: 'started' }, 409);
+      const teams = await draftTeams(code);
+      if (teams.length < 2) return json({ error: 'too-few' }, 409);
+      const order = teams.map((t) => t.slot);
+      for (let i = order.length - 1; i > 0; i--) { const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [order[i], order[j]] = [order[j], order[i]]; }
+      await redis.del(dk(code).picks, dk(code).taken);
+      await setDraftState(code, { phase: 'draft', season: 1, order, pickStart: Date.now() });
+      await touch(code); await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dpick': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st) return json({ error: 'not-found' }, 404);
+      if (st.phase !== 'draft') return json({ error: 'phase' }, 409);
+      const n = Number(body.n);
+      const len = await redis.llen(dk(code).picks);
+      if (n !== len) return json({ error: 'stale' }, 409);
+      const slot = slotForPick(st.order, n);
+      const teams = await draftTeams(code);
+      const team = teams.find((t) => t.slot === slot);
+      if (!team) return json({ error: 'slot' }, 404);
+      const mine = team.pid === me.pid;
+      const timedOut = Date.now() >= st.pickStart + PICK_MS + 1000;
+      if (!mine && !team.ai && !timedOut) return json({ error: 'not-your-turn' }, 403);
+      const player = Number(body.player);
+      const place = Number(body.place);
+      if (!Number.isFinite(player) || !Number.isFinite(place) || place < -1 || place > 10) return json({ error: 'bad' }, 400);
+      if (await redis.sismember(dk(code).taken, String(player))) return json({ error: 'taken' }, 409);
+      // kun ét valg pr. nummer, uanset hvor mange der prøver samtidig
+      if (!(await redis.set(`room:${code}:dpick:${st.season}:${n}`, me.pid, { nx: true, ex: 86_400 }))) return json({ error: 'stale' }, 409);
+      await redis.rpush(dk(code).picks, JSON.stringify({ slot, player, place, auto: !mine || undefined }));
+      await redis.sadd(dk(code).taken, String(player));
+      const keepers = Number(JSON.parse(String(room.settings || '{}')).draft?.keepers ?? 0);
+      const total = st.order.length * (SQUAD - (st.season > 1 ? keepers : 0));
+      await setDraftState(code, n + 1 >= total ? { phase: 'done', pickStart: Date.now() } : { pickStart: Date.now() });
+      await touch(code); await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dkeepdone': {
+      // keepers er valgt (eller tiden er gået): manglende hold får deres bedste spillere (beregnet af klienten)
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const st = await draftState(code);
+      if (!st || st.phase !== 'keepers') return json({ error: 'phase' }, 409);
+      const teams = await draftTeams(code);
+      const allReady = teams.every((t) => t.ai || t.keepReady);
+      if (!allReady && Date.now() < st.keepStart + KEEP_MS) return json({ error: 'too-early' }, 409);
+      if (!(await redis.set(`room:${code}:dkeep:${st.season}`, me.pid, { nx: true, ex: 86_400 }))) return json(await publicRoom(code));
+      const auto = (body.keeps ?? {}) as Record<string, { player: number; place: number }[]>;
+      for (const t of teams) {
+        if (!(t.keepReady && !t.ai) || !t.keep.length) {
+          const k = auto[String(t.slot)];
+          if (Array.isArray(k)) t.keep = k.map((x) => ({ slot: t.slot, player: Number(x.player), place: Number(x.place) }));
+        }
+        await saveTeam(code, t);
+        for (const k of t.keep) await redis.sadd(dk(code).taken, String(k.player));
+      }
+      await setDraftState(code, { phase: 'draft', pickStart: Date.now() });
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dbuildlock': {
+      // draften er færdig: én klient bygger sæsonens spil
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const st = await draftState(code);
+      if (!st || st.phase !== 'done') return json({ error: 'phase' }, 409);
+      const ok = await redis.set(`room:${code}:dbuild:${st.season}`, me.pid, { nx: true, ex: 120 });
+      return json({ ok: !!ok });
+    }
+    case 'dbuilt': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st || st.phase !== 'done') return json({ error: 'phase' }, 409);
+      if ((await redis.get<string>(`room:${code}:dbuild:${st.season}`)) !== me.pid) return json({ error: 'no-lock' }, 409);
+      const snapshot = String(body.url ?? '');
+      if (!snapshot.includes('.blob.vercel-storage.com/')) return json({ error: 'url' }, 400);
+      if (room.prevSnapshot) { try { await del(room.prevSnapshot); } catch { /* ignorér */ } }
+      const actions = await redis.llen(keys.actions);
+      await redis.hset(keys.room, {
+        version: room.version + 1, snapshot, prevSnapshot: room.snapshot || '', lastApplied: actions,
+        date: String(body.date ?? ''), status: 'playing', lastTurn: new Date().toISOString(),
+      });
+      for (const p of await getPlayers(code)) if (p.ready || p.auto) { p.ready = false; p.auto = false; await savePlayer(code, p); }
+      await redis.del(keys.lock);
+      await setDraftState(code, { phase: 'playing' });
+      await touch(code); await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dseason': {
+      // sæsonen er slut: næste draft (sidst placerede vælger først)
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st || st.phase !== 'playing') return json({ error: 'phase' }, 409);
+      if (Number(body.season) !== st.season) return json({ error: 'stale' }, 409);
+      const teams = await draftTeams(code);
+      const order = (Array.isArray(body.order) ? body.order.map(Number) : []).filter((x: number) => teams.some((t) => t.slot === x));
+      if (order.length !== teams.length || new Set(order).size !== order.length) return json({ error: 'order' }, 400);
+      const keepers = Number(JSON.parse(String(room.settings || '{}')).draft?.keepers ?? 0);
+      for (const t of teams) { t.keep = []; t.keepReady = false; await saveTeam(code, t); }
+      await redis.del(dk(code).picks, dk(code).taken);
+      await setDraftState(code, { phase: keepers > 0 ? 'keepers' : 'draft', season: st.season + 1, order, pickStart: Date.now(), keepStart: Date.now() });
+      await touch(code); await touchDraft(code);
       return json(await publicRoom(code));
     }
     default:

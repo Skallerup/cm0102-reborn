@@ -244,6 +244,8 @@ export function applyTheme() {
   try { const saved = JSON.parse(localStorage.getItem(palKey) ?? 'null') as [RGB, RGB | null] | null; if (saved) paint([saved[0], saved[1] ?? undefined]); } catch { /* ignorér */ }
   let hadSaved = false;
   try { hadSaved = !!localStorage.getItem(palKey); } catch { /* ignorér */ }
+  // draft-liga: klubbens egne farver (der er intet logo at aflæse)
+  if (club.crest !== undefined) { paint([hex(club.colors[0]), hex(club.colors[1])]); return; }
   void Promise.all([clubPalette(club.id, club.colors.map(hex)), officialColors()]).then(([[a, b, fromLogo], off]) => {
     if (token !== applied) return;
     // uden logo er beregningen usikker – behold de gemte farver, hvis vi har nogen

@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
+import { DraftRoom } from './Draft';
 import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame, type Route } from './core';
 import { applyTheme } from './theme';
 import { notify } from '../game/state';
 import { getLast, forgetLast, loadGame } from '../game/save';
-import { openSession, savedRooms } from '../online/client';
+import { openSession, savedRooms, session } from '../online/client';
 import { Shell } from './Shell';
 import { Start } from './Start';
 import { Landing } from './Landing';
@@ -71,6 +72,9 @@ export default function App() {
   if (communityParam >= 0) return <PublicCommunityPage id={communityParam || undefined} onClose={() => { history.replaceState(null, '', location.pathname); setCommunityParam(-1); }} />;
   if (managerParam) return <PublicProfilePage pid={managerParam} onClose={() => { history.replaceState(null, '', location.pathname); setManagerParam(''); }} />;
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;
+  // draft-liga: lobby, keepers og draft vises, indtil sæsonen er bygget
+  const ds = session();
+  if (ds?.room?.draft && (ds.room.draft.phase !== 'playing' || !g)) return <DraftRoom />;
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
   return (

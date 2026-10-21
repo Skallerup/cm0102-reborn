@@ -1,4 +1,5 @@
 // Spillets dag-for-dag-løkke.
+import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
 import { needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
@@ -254,11 +255,14 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     const opp = userHome ? f.away : f.home;
     const scored = userHome ? hs.goals : as.goals;
     const conceded = userHome ? as.goals : hs.goals;
-    boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
-    recordRivalry(opp, scored, conceded);
-    resolvePressPromise(f.id, scored, conceded);
-    invitePress(f, 'post');
-    fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
+    // draft-liga: ingen bestyrelse, presse eller fans
+    if (!g.draft) {
+      boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
+      recordRivalry(opp, scored, conceded);
+      resolvePressPromise(f.id, scored, conceded);
+      invitePress(f, 'post');
+      fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
+    }
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
@@ -289,6 +293,7 @@ function injure(p: Player) {
   const physios = Object.values(g.staff).filter((s) => s.club === p.club && s.role === 'physio');
   const best = Math.max(5, ...physios.map((s) => s.attrs.physio));
   days = Math.max(1, Math.round(days * (1.15 - best / 40)));
+  if (g.draft) { days = draftInjuryDays(days); if (!days) return; }
   p.injury = { key, days };
 }
 
@@ -304,6 +309,8 @@ function newDay() {
   g.date = addDays(g.date, 1);
   g.dayDone = false;
   const d = g.date;
+  // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson
+  if (g.draft) { draftDay(); return; }
   if (month(d) === 7 && day(d) === 1) seasonRollover();
   // daglige ting
   for (const p of Object.values(g.players)) {
@@ -563,6 +570,8 @@ export function mpAdvance(): { days: number; reason: string } {
   // forrige træk stoppede på en kampdag: menneskenes kampe er spillet live (resultaterne kom som handlinger) –
   // de kampe, ingen nåede at spille, simuleres nu, og dagen gøres færdig
   if (!g.dayDone) finishMatchDay();
+  // draft-liga: sæsonen er slut – næste draft begynder
+  if (g.draft && draftSeasonCheck()) return { days: 0, reason: 'season' };
   for (let i = 1; i <= 14; i++) {
     newDay();
     const humanFixtures = fixturesOn(g.date).filter((id) => {
@@ -589,6 +598,7 @@ export function mpAdvance(): { days: number; reason: string } {
     playDay();
     g.dayDone = true;
     g.pendingFixture = null;
+    if (g.draft && draftSeasonCheck()) return { days: i, reason: 'season' };
     let important = false;
     // som i singleplayer: stop så snart en manager får noget at forholde sig til (bud, pressemøde, bestyrelse, jobtilbud …)
     for (const h of g.humans ?? []) if (!h.bot) withHuman(h.pid, () => { if (g.news.some((n) => n.id >= startNews && !n.read && needsAttention(n))) important = true; });

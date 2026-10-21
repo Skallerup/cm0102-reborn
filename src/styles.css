@@ -1156,3 +1156,42 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .ti-pick, .ti-pick:hover:not(:disabled) { height: 32px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ti-list > .ti-pick:first-of-type { margin-top: 2px; }
 .ti-table td { height: 34px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; }
+
+/* draft-liga */
+.draft-page { max-width: 1400px; margin: 0 auto; padding: 20px 16px 60px; display: flex; flex-direction: column; gap: 14px; }
+.draft-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.draft-top h1 { margin: 0; font-size: 26px; }
+.draft-cta, .draft-cta:hover:not(:disabled) { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 12px 14px; border-radius: 12px; border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.draft-cta span { font-size: 12.5px; color: var(--muted); font-weight: 500; }
+.dr-editor { display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+.dr-crest-preview { padding: 8px; border-radius: 14px; background: color-mix(in srgb, var(--muted) 8%, transparent); }
+.dr-colors { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+.dr-colors input[type=color] { width: 30px; height: 26px; padding: 0; border: 0; background: none; }
+.dr-swatch, .dr-swatch:hover:not(:disabled) { width: 20px; height: 20px; min-width: 0; padding: 0; border-radius: 50%; border: 2px solid var(--line2); }
+.dr-swatch.on { box-shadow: 0 0 0 2px var(--accent); }
+.dr-shape, .dr-shape:hover:not(:disabled) { padding: 3px; border-radius: 8px; line-height: 0; }
+.dr-shape.on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.dr-settings { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.dr-rules { font-size: 12.5px; line-height: 1.6; padding-left: 18px; margin-bottom: 0; }
+.dr-status { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }
+.dr-status.mine { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.dr-clock { font-size: 28px; font-weight: 900; font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+.dr-clock.warn { color: var(--bad); }
+.dr-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 14px; align-items: start; }
+.dr-filters { padding: 10px 12px; gap: 8px; flex-wrap: wrap; border-bottom: 1px solid var(--line); }
+.dr-star { cursor: pointer; color: #e0a800; font-size: 16px; width: 26px; }
+.dr-team { display: grid; gap: 3px; }
+.dr-slot { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: center; padding: 4px 8px; border-radius: 8px; font-size: 13px; background: color-mix(in srgb, var(--muted) 6%, transparent); }
+.dr-slot.on { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.dr-slot-h { margin-top: 8px; font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.dr-wish { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13px; }
+.dr-wish li > * { vertical-align: middle; }
+.dr-wish li { display: list-item; }
+.dr-wish li .grow { display: inline-block; min-width: 60%; }
+.dr-attrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; font-size: 12.5px; }
+.dr-attr-h { font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+.dr-attr { display: flex; justify-content: space-between; gap: 6px; padding: 1px 0; }
+.dr-attr b.good { color: var(--good); } .dr-attr b.bad { color: var(--bad); }
+.dr-board td, .dr-board th { font-size: 12px; padding: 5px 8px; }
+.dr-board td.dr-now { background: color-mix(in srgb, var(--accent) 22%, transparent) !important; }
+@media (max-width: 900px) { .dr-grid { grid-template-columns: 1fr; } .dr-attrs { grid-template-columns: 1fr 1fr; } }

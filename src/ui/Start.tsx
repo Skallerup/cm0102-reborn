@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
 import { CHALLENGES } from '../game/challenges';
@@ -16,7 +17,7 @@ import { notifyNewCareer } from '../online/notify';
 import { forgetCMWorld, importCMFiles, loadCMWorld, loadWorld } from './world';
 import type { CMWorld } from '../game/data/cm0102';
 
-type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline';
+type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft';
 
 export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
@@ -83,7 +84,8 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
           </Panel>
         )}
         {view === 'new' && <NewGame challenge={challenge} onBack={() => setView('menu')} setBusy={setBusy} />}
-        {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} setBusy={setBusy} initialCode={roomParam} />}
+        {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} onCreateDraft={() => setView('newDraft')} setBusy={setBusy} initialCode={roomParam} />}
+        {view === 'newDraft' && <DraftCreate onBack={() => setView('online')} setBusy={setBusy} />}
         {view === 'newOnline' && <NewGame online onBack={() => setView('online')} setBusy={setBusy} />}
         <div className="footer-note">{t('start.footer')}</div>
       </div>

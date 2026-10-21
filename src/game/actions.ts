@@ -1,6 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
 import { unlock } from './achievements';
@@ -58,6 +59,7 @@ export type Action =
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
   | { t: 'patron' }
+  | { t: 'draftReplace'; out: number; inn: number }
   | { t: 'trial'; pid: number; end?: boolean }
   | { t: 'friendly'; opp: number; date: string; kind: FriendlyKind }
   | { t: 'friendlyCancel'; date: string }
@@ -154,6 +156,7 @@ export function applyAction(a: Action): unknown {
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
     case 'patron': unlock('patron'); return 'ok';
+    case 'draftReplace': return replacePlayer(gs().userClub, a.out, a.inn);
     case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);
     case 'friendly': return arrangeFriendly(a.opp, a.date, a.kind);
     case 'friendlyCancel': cancelFriendly(a.date); return 'ok';
