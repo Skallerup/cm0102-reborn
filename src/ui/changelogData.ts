@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.8.3',
+    date: '2026-10-21',
+    title: { da: 'Prøvespillere og venskabskampe', en: 'Trialists and friendlies' },
+    items: [
+      { da: 'Invitér klubløse spillere til to ugers prøvetræning: trænerne lærer dem gradvist at kende, og til sidst får du en vurdering, før du tilbyder kontrakt (højst tre ad gangen)', en: 'Invite free agents for a two-week trial: the coaches gradually get to know them, and at the end you get a verdict before offering a contract (up to three at a time)' },
+      { da: 'Arrangér venskabskampe under Kampprogram: en nem modstander giver selvtillid og kampform, en storklub giver fuldt hus og en hård test', en: 'Arrange friendlies under Fixtures: an easy opponent gives confidence and match fitness, a big club gives a full house and a tough test' },
+    ],
+  },
+  {
     version: '0.8.2',
     date: '2026-10-21',
     title: { da: 'Flottere topbjælke, kompakte sider og læsbare knapper', en: 'Nicer top bar, compact pages and readable buttons' },

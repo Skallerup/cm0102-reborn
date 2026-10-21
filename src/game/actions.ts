@@ -1,6 +1,8 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { endTrial, inviteTrial } from './trials';
+import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
 import { unlock } from './achievements';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
@@ -56,6 +58,9 @@ export type Action =
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
   | { t: 'patron' }
+  | { t: 'trial'; pid: number; end?: boolean }
+  | { t: 'friendly'; opp: number; date: string; kind: FriendlyKind }
+  | { t: 'friendlyCancel'; date: string }
   | { t: 'onboard'; step: 'weak' | 'style' | 'needs' | 'brief' | 'skip'; style?: StyleKey; needs?: string[] }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
@@ -149,6 +154,9 @@ export function applyAction(a: Action): unknown {
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
     case 'patron': unlock('patron'); return 'ok';
+    case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);
+    case 'friendly': return arrangeFriendly(a.opp, a.date, a.kind);
+    case 'friendlyCancel': cancelFriendly(a.date); return 'ok';
     case 'onboard': {
       const ob = (g.manager.onboard ??= {});
       if (a.step === 'weak') ob.weak = true;

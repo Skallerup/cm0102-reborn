@@ -8,6 +8,8 @@ import { weatherFor, type Weather } from './weather';
 import { maxSubs } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
+import { trialsDaily } from './trials';
+import { friendliesDaily } from './friendlies';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
@@ -330,6 +332,8 @@ function newDay() {
   });
   completeProjects();
   campDaily();
+  trialsDaily();
+  friendliesDaily();
   forEachHuman(aiBidsForListed);
   aiPursuits();
   if (weekday(d) === 4) forEachHuman(aiLoanOptions);

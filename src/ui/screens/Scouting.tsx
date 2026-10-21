@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { MAX_TRIALS } from '../../game/trials';
 import { transferRealism } from '../../game/transfers';
 import { Info } from '../help';
 import { Select } from '../select';
@@ -30,6 +31,7 @@ export function Scouting() {
           <p className="muted">{t('scout.explain')}</p>
         </Panel>
       </div>
+      <TrialsPanel />
       <Panel title={t('scout.assignments')} className="flush">
         <table className="grid">
           <thead><tr><th>{t('col.name')}</th><th>{t('scout.assignment')}</th></tr></thead>
@@ -170,5 +172,36 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
         )}
       </td>
     </tr>
+  );
+}
+
+/** Prøvespillere lige nu: hvor langt trænerne er med at lære dem at kende */
+function TrialsPanel() {
+  const g = useGame()!;
+  const list = g.manager.trials ?? [];
+  return (
+    <Panel title={t('trial.title', { n: list.length, max: MAX_TRIALS })} className="flush">
+      {!list.length ? <div className="muted" style={{ padding: '10px 14px' }}>{t('trial.empty')}</div> : (
+        <table className="grid">
+          <tbody>
+            {list.map((tr) => {
+              const p = g.players[tr.pid];
+              if (!p) return null;
+              const st = scoutStars(p);
+              return (
+                <tr key={tr.pid}>
+                  <td>{posStr(p)}</td>
+                  <td><PlayerLink p={p} /></td>
+                  <td><Stars range={st.ability} /></td>
+                  <td><Stars range={st.potential} /></td>
+                  <td className="muted">{t('trial.known', { pct: Math.round(g.knowledge[p.id] ?? 0) })} · {t('trial.ends', { date: dateFmt(tr.end) })}</td>
+                  <td><button className="small" onClick={() => act({ t: 'trial', pid: p.id, end: true })}>{t('trial.send')}</button></td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+    </Panel>
   );
 }

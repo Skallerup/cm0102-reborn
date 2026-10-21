@@ -585,6 +585,9 @@ export interface ManagerProfile {
   /** Sæsonfortælling: årets vendepunkter (igangværende) og tidligere sæsoners kort */
   story?: { season: number; items: StoryItem[] };
   stories?: SeasonStory[];
+  /** Prøvespillere (op til tre ad gangen) og venskabskampe */
+  trials?: { pid: number; start: string; end: string; startK: number }[];
+  friendlies?: { opp: number; date: string; kind: 'easy' | 'big'; done?: boolean; result?: [number, number] }[];
   /** Første arbejdsdag: opgaver og assistentens oplæg */
   onboard?: { weak?: boolean; style?: string; needs?: string[]; briefed?: boolean; plan?: { weakest: string; style: string; fit: number; bestStyle: string; targets: Record<string, number[]> } };
   /** Managerprofil: motto (vises på den offentlige profil) */

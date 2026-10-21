@@ -1118,3 +1118,6 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 :root[data-club] .top-stat small { color: var(--top-muted); opacity: 1; }
 @media (max-width: 860px) { .topbar .club { font-size: 15px; } .topbar .club .crest { width: 26px !important; height: 26px !important; } }
 .fc-kv > :nth-child(even) { white-space: nowrap; text-align: right; }
+.fr-row { gap: 10px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+.fr-opps { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+.fr-opp, .fr-opp:hover:not(:disabled) { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; border-radius: 12px; text-align: left; }

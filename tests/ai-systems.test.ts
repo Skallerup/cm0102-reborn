@@ -18,6 +18,8 @@ import { planIntake } from '../src/game/season';
 import { retireIntoStaff } from '../src/game/records';
 import { ACHIEVEMENTS, unlock } from '../src/game/achievements';
 import { campWindows, planCamp } from '../src/game/camp';
+import { inviteTrial } from '../src/game/trials';
+import { arrangeFriendly, friendlyDates, friendlyOpponents } from '../src/game/friendlies';
 import { bidNow, counterPackages, makeBid, rebid, windowOpen } from '../src/game/transfers';
 import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
@@ -290,4 +292,28 @@ describe('sæsonfortælling', () => {
     expect(card!.record.reduce((a, b) => a + b, 0)).toBeGreaterThan(10);
     expect(g.news.some((n) => n.key === 'story.ready')).toBe(true);
   }, 240_000);
+});
+
+describe('prøvespillere og venskabskampe', () => {
+  it('en prøvespiller bliver kendt over to uger og får en vurdering', () => {
+    const g = gs();
+    const free = Object.values(g.players).find((p) => !p.club && (g.knowledge[p.id] ?? 0) < 50)!;
+    expect(inviteTrial(free.id)).toBe('ok');
+    for (let i = 0; i < 40 && g.manager.trials?.length; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    expect(g.manager.trials?.length ?? 0).toBe(0);
+    expect(g.knowledge[free.id] === 100 || !!g.players[free.id]?.club).toBe(true);
+    expect(g.news.some((n) => n.key.startsWith('trial.verdict') || n.key === 'trial.signedElsewhere')).toBe(true);
+  });
+  it('en venskabskamp spilles på datoen og giver billetindtægt', () => {
+    const g = gs();
+    const date = friendlyDates()[0];
+    const opp = friendlyOpponents('big')[0] ?? friendlyOpponents('easy')[0];
+    expect(arrangeFriendly(opp.id, date, 'big')).toBe('ok');
+    const before = g.clubs[g.userClub].finance.gate;
+    for (let i = 0; i < 80 && g.date <= date; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    const fr = g.manager.friendlies!.find((x) => x.date === date)!;
+    expect(fr.done).toBe(true);
+    expect(fr.result).toHaveLength(2);
+    expect(g.clubs[g.userClub].finance.gate).toBeGreaterThan(before);
+  });
 });

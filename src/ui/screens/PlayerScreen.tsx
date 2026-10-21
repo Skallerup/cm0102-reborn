@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { trialOf } from '../../game/trials';
 import { bidClauseWorth } from '../../game/clauses';
 import { IncomingOffersFor } from './Transfers';
 import { askConfirm } from '../confirm';
@@ -130,6 +131,9 @@ export function PlayerScreen({ id }: { id: number }) {
                   {p.club > 0 && <button onClick={() => act(dispatch<string>({ t: 'enquire', pid: p.id }))}>{t('player.enquire')}</button>}
                   {p.club > 0 && !windowOpen() && <span className="muted" style={{ fontSize: 12 }}>{t('transfer.windowOpens', { date: dateFmt(nextWindow()) })}</span>}
                   {!p.club && <button className="primary" disabled={!windowOpen()} title={windowOpen() ? undefined : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })} onClick={() => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false }))}>{t('player.offerContract')}</button>}
+                  {!p.club && (trialOf(p.id)
+                    ? <span className="tag good" title={t('trial.until', { date: dateFmt(trialOf(p.id)!.end) })}>🧪 {t('trial.onTrial', { date: dateFmt(trialOf(p.id)!.end) })}</span>
+                    : <button onClick={() => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); }}>🧪 {t('trial.invite')}</button>)}
                   {canPreContract(p) && <button onClick={() => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id }))}>{t('player.preContract')}</button>}
                   {(preContractBlock(p) === 'fromJanuary' || preContractBlock(p) === 'taken') && (
                     <div className="muted" style={{ fontSize: 12, flexBasis: '100%' }}>

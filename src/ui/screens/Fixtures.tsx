@@ -1,7 +1,10 @@
 import { gs } from '../../game/state';
+import { useState } from 'react';
+import { MAX_FRIENDLIES, friendlyDates, friendlyGate, friendlyOpponents, type FriendlyKind } from '../../game/friendlies';
+import { act } from '../../game/actions';
 import type { Fixture } from '../../game/types';
-import { dateFmt, t } from '../../i18n';
-import { ClubLink, Panel } from '../components';
+import { dateFmt, money, t } from '../../i18n';
+import { ClubLink, Crest, Panel } from '../components';
 import { useGame, useNav } from '../core';
 import { Head } from './common';
 
@@ -28,6 +31,7 @@ export function Fixtures() {
   return (
     <div>
       <Head title={t('nav.fixtures')} />
+      <FriendliesPanel />
       <Panel className="flush">
         <table className="grid">
           <thead><tr><th>{t('col.date')}</th><th>{t('col.comp')}</th><th>{t('fix.stage')}</th><th>{t('fix.venue')}</th><th>{t('fix.opponent')}</th><th className="center">{t('fix.result')}</th><th></th></tr></thead>
@@ -54,5 +58,58 @@ export function Fixtures() {
         </table>
       </Panel>
     </div>
+  );
+}
+
+/** Venskabskampe: vælg dato og en nem modstander eller en storklub */
+function FriendliesPanel() {
+  const g = useGame()!;
+  const [kind, setKind] = useState<FriendlyKind>('easy');
+  const [date, setDate] = useState('');
+  const [opps, setOpps] = useState<number[]>([]);
+  const [msg, setMsg] = useState('');
+  const dates = friendlyDates();
+  const list = (g.manager.friendlies ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
+  const upcoming = list.filter((x) => !x.done), played = list.filter((x) => x.done).slice(-3).reverse();
+  const pick = (k: FriendlyKind) => { setKind(k); setOpps(friendlyOpponents(k).map((c) => c.id)); };
+  if (!g.userClub) return null;
+  return (
+    <Panel title={t('fr.title')}>
+      <p className="muted" style={{ marginTop: 0 }}>{t('fr.intro')}</p>
+      {upcoming.map((fr) => (
+        <div key={fr.date} className="row fr-row">
+          <b>{dateFmt(fr.date)}</b><span>{t('fr.vs')} <ClubLink id={fr.opp} /></span><span className={`tag ${fr.kind === 'big' ? 'warn' : 'good'}`}>{t(`fr.kind.${fr.kind}`)}</span>
+          <button className="small" onClick={() => act({ t: 'friendlyCancel', date: fr.date })}>{t('fr.cancel')}</button>
+        </div>
+      ))}
+      {played.map((fr) => <div key={fr.date} className="row fr-row muted"><span>{dateFmt(fr.date)}</span><span>{t('fr.vs')} {g.clubs[fr.opp]?.name}</span><b>{fr.result?.join('-')}</b></div>)}
+      {upcoming.length < MAX_FRIENDLIES && (dates.length === 0 ? <div className="insight warn">{t('fr.noDates')}</div> : (
+        <div className="col" style={{ marginTop: 8, gap: 8 }}>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 8 }}>
+            <div className="seg">
+              <button className={kind === 'easy' && opps.length ? 'on' : ''} onClick={() => pick('easy')}>{t('fr.kind.easy')}</button>
+              <button className={kind === 'big' && opps.length ? 'on' : ''} onClick={() => pick('big')}>{t('fr.kind.big')}</button>
+            </div>
+            <select value={date} onChange={(e) => setDate(e.target.value)}>
+              <option value="">{t('fr.pickDate')}</option>
+              {dates.map((d) => <option key={d} value={d}>{dateFmt(d)}</option>)}
+            </select>
+          </div>
+          {opps.length > 0 && <div className="muted" style={{ fontSize: 12.5 }}>{t(`fr.kind.${kind}.desc`)}</div>}
+          <div className="fr-opps">
+            {opps.map((id) => {
+              const c = g.clubs[id];
+              return (
+                <button key={id} className="fr-opp" disabled={!date} onClick={() => { const r = act<string>({ t: 'friendly', opp: id, date, kind }); setMsg(r === 'ok' ? '' : t(`fr.err.${r}`)); setOpps([]); setDate(''); }}>
+                  <Crest id={id} size={26} /><b>{c.name}</b><span className="muted">{t('fr.gate', { fee: money(friendlyGate(c)) })}</span>
+                </button>
+              );
+            })}
+          </div>
+          {opps.length > 0 && !date && <div className="muted" style={{ fontSize: 12 }}>{t('fr.pickDateFirst')}</div>}
+        </div>
+      ))}
+      {msg && <div className="insight bad">{msg}</div>}
+    </Panel>
   );
 }
