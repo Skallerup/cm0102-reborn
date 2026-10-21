@@ -869,9 +869,9 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .devp-chart { position: relative; }
 .devp-svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
 .devp-grid { stroke: currentColor; stroke-opacity: 0.09; }
-.devp-axis { fill: var(--muted); font-size: 11px; }
-.devp-lbl { fill: var(--text); font-size: 12.5px; font-weight: 700; }
-.devp-val { fill: var(--muted); font-size: 11.5px; font-weight: 600; }
+.devp-axis { fill: var(--muted); font-size: 9.5px; }
+.devp-lbl { fill: var(--text); font-size: 10.5px; font-weight: 700; }
+.devp-val { fill: var(--muted); font-size: 9.5px; font-weight: 600; }
 .devp-up { fill: var(--good); } .devp-down { fill: var(--bad); }
 .devp-leader { fill: none; stroke: currentColor; stroke-opacity: 0.18; }
 .devp-dot { stroke: var(--surface); stroke-width: 2; }
@@ -944,3 +944,15 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 @media (max-width: 640px) { .pub-stats { grid-template-columns: repeat(2, 1fr); } }
 .news-item.news-window { box-shadow: inset 4px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .news-item.news-window .title { font-weight: 700; }
+.flag { display: inline-block; width: 18px; height: 13px; border-radius: 2px; object-fit: cover; vertical-align: -2px; margin-right: 5px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.camp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.camp-card { display: flex; flex-direction: column; gap: 6px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; }
+.camp-card.off { opacity: 0.5; }
+.camp-card .row { justify-content: space-between; }
+.oi-suggest { cursor: pointer; border: 0; }
+.confirm-bg { z-index: 95; }
+.confirm-box { width: min(420px, 100%); padding: 20px 22px 16px; }
+.confirm-box p { margin: 0 0 18px; font-size: 15px; line-height: 1.5; }
+.confirm-btns { justify-content: flex-end; gap: 8px; }
+@media (max-width: 600px) { .devp-axis { font-size: 11px; } .devp-lbl { font-size: 12.5px; } .devp-val { font-size: 11.5px; } }
+.confirm-btns button.danger.primary, .confirm-btns button.danger.primary:hover:not(:disabled) { background: var(--bad); border-color: var(--bad); color: #fff; }

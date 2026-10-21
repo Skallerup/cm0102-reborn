@@ -56,9 +56,13 @@ export function opponentReport(f: Fixture) {
   // Deres forsvar pr. bane i deres eget tredjedel (bånd 0 set fra dem = zoner 0-2 i deres egen orientering)
   const defLane = [0, 1, 2].map((l) => tz.def[l] * (tz.defQ[l] || 1));
   const weakest = defLane.indexOf(Math.min(...defLane));
+  // kun en anbefaling, hvis siden er tydeligt svagere end de andre (ellers: ingen særlig side)
+  const sortedLanes = defLane.slice().sort((a, b) => a - b);
+  const clear = sortedLanes[1] > 0 && (sortedLanes[1] - sortedLanes[0]) / sortedLanes[1] >= 0.12;
   // deres venstre = vores højre
   const ourSide = LANES[2 - weakest];
-  insights.push({ key: 'an.attackLane', params: { lane: ourSide }, tone: 'good' });
+  if (clear) insights.push({ key: 'an.attackLane', params: { lane: ourSide }, tone: 'good' });
+  else insights.push({ key: 'an.attackLaneNone', tone: 'neutral' });
   // Deres angreb pr. bane i vores tredjedel
   const attLane = [12, 13, 14].map((z) => tz.att[z] * (tz.attQ[z] || 1));
   const strongest = attLane.indexOf(Math.max(...attLane));
@@ -80,7 +84,7 @@ export function opponentReport(f: Fixture) {
   const probs = winProbability(userHome ? mine : theirs, userHome ? theirs : mine, f.stage === 'F', 150);
   const [w, d, l] = userHome ? probs : [probs[2], probs[1], probs[0]];
   const form = g.comps[f.comp]?.table.find((r) => r.club === oppId)?.form ?? '';
-  return { opp, oppTactic, keyPlayers, insights, probs: [w, d, l] as [number, number, number], form, zones: { mine: mz, theirs: tz }, attackLane: 2 - weakest };
+  return { opp, oppTactic, keyPlayers, insights, probs: [w, d, l] as [number, number, number], form, zones: { mine: mz, theirs: tz }, attackLane: clear ? 2 - weakest : undefined };
 }
 
 export function winProbability(home: EngineTeam, away: EngineTeam, neutral: boolean, n = 150): [number, number, number] {

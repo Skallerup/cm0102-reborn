@@ -742,13 +742,6 @@ export function boardAskInfo(kind: BoardAsk): BoardAskInfo {
       if (conf >= 45) pros.push('ba.pro.trustOk'); else cons.push('ba.con.lowTrust');
       return { cost, likely: c.balance >= cost && conf >= 45 ? 'yes' : 'no', pros, cons };
     }
-    case 'trainingCamp': {
-      const cost = Math.max(50_000, Math.round(c.wageBudget * 3 / 10_000) * 10_000);
-      if (askedRecently(kind, 150)) return { blocked: 'ba.blocked.campRecent', cost, likely: 'no', pros, cons };
-      if (c.balance >= cost * 3) pros.push('ba.pro.money'); else if (c.balance < cost) cons.push('ba.con.money');
-      if (conf >= 35) pros.push('ba.pro.trustOk'); else cons.push('ba.con.lowTrust');
-      return { cost, likely: c.balance >= cost && conf >= 35 ? 'yes' : 'no', pros, cons };
-    }
   }
 }
 
@@ -785,12 +778,6 @@ export function boardAsk(kind: BoardAsk): 'yes' | 'no' | 'blocked' {
       c.finance.other += info.cost!;
       c.youthDrive = g.season;
       addNews({ cat: 'board', key: 'ba.yes.youthDrive', params: { cost: info.cost! } });
-      break;
-    case 'trainingCamp':
-      c.balance -= info.cost!;
-      c.finance.other += info.cost!;
-      for (const p of squad(c.id)) { p.morale = Math.min(20, p.morale + 2); p.condition = Math.min(100, p.condition + 6); }
-      addNews({ cat: 'board', key: 'ba.yes.trainingCamp', params: { cost: info.cost! } });
       break;
   }
   return 'yes';

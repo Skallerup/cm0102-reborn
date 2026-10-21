@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { askConfirm } from '../confirm';
 import { aiCall } from '../../ai/client';
 import { agentOf } from '../../game/agents';
 import { gs } from '../../game/state';
@@ -112,7 +113,7 @@ export function NegotiationModal({ offer, renewPid, onClose }: { offer?: Transfe
           ) : <div className="muted" style={{ fontSize: 12 }}>{t('neg.shiftImpossible')}</div>;
         })()}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          {offer && <button className="danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) { act({ t: 'withdraw', pid }); onClose(); } }}>{t('neg.cancel')}</button>}
+          {offer && <button className="danger" onClick={async () => { if (await askConfirm(t('neg.cancelConfirm'))) { act({ t: 'withdraw', pid }); onClose(); } }}>{t('neg.cancel')}</button>}
           <div className="grow" />
           <button onClick={onClose}>{t('common.close')}</button>
           <button className="primary" onClick={submit}>{t('neg.offer')}</button>

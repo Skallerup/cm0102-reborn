@@ -1,4 +1,5 @@
 import { BoardScreen } from './screens/Board';
+import { askConfirm } from './confirm';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil } from '../game/sim';
@@ -262,8 +263,8 @@ export function Shell() {
         {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
-          if (online) { if (confirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
-          if (confirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
+          if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
+          if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
         <VersionButton />
       </nav>

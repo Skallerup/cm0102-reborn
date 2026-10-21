@@ -379,7 +379,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub }: {
 }
 
 /** Kemiens faktorer (se chemistry() i personality.ts) */
-const CHEM_ROWS = ['chem.nation', 'chem.tenure', 'chem.newcomers', 'chem.leaders', 'chem.captain', 'chem.pros', 'chem.trouble', 'chem.wantsAway'];
+const CHEM_ROWS = ['chem.nation', 'chem.tenure', 'chem.newcomers', 'chem.leaders', 'chem.captain', 'chem.pros', 'chem.trouble', 'chem.wantsAway', 'chem.camp'];
 
 function ChemistryPanel() {
   const g = useGame()!;

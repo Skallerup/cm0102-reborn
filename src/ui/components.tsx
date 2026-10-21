@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { positionString } from '../game/attributes';
+import { flagUrl } from './flags';
 import { ageOn } from '../game/dates';
 import { gs, hasGame } from '../game/state';
 import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
-import { currencySymbol, fromCurExact, getLang, t, toCur } from '../i18n';
+import { currencySymbol, fromCurExact, getLang, natName, t, toCur } from '../i18n';
 import { useNav, useRouteState } from './core';
 import { logoUrl } from './logos';
 
@@ -62,9 +63,17 @@ export function MgrChip({ clubId }: { clubId: number }) {
   );
 }
 
-export function Nat({ n }: { n: number }) {
+/** Nationalitet: flag + landekode (koden alene, hvis flaget ikke kan hentes) */
+export function Nat({ n, noCode }: { n: number; noCode?: boolean }) {
   const nat = gs().nations[n];
-  return <span className="nat" title={nat?.name}>{nat?.code ?? '?'}</span>;
+  return <span className="nat" title={natName(nat?.name)}><Flag name={nat?.name} />{noCode ? null : nat?.code ?? '?'}</span>;
+}
+
+export function Flag({ name }: { name: string | undefined }) {
+  const [failed, setFailed] = useState(false);
+  const url = flagUrl(name);
+  if (!url || failed) return null;
+  return <img className="flag" src={url} alt="" width={18} height={13} loading="lazy" onError={() => setFailed(true)} />;
 }
 
 export function AttrVal({ lo, hi }: { lo: number; hi: number }) {

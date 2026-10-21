@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS } from '../game/achievements';
 import { dateFmt, natName, t } from '../i18n';
 import { fetchProfile, type PublicProfile } from '../online/rank';
+import { Flag } from './components';
 
 /** Alle præstationer: låst op (med dato) eller låst */
 export function AchievementsGrid({ unlocked }: { unlocked: Record<string, string | true> }) {
@@ -45,7 +46,7 @@ export function PublicProfilePage({ pid, onClose }: { pid: string; onClose: () =
               <div className="pub-avatar">{p.name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase()}</div>
               <div>
                 <h1>{p.name}</h1>
-                <div className="muted">{p.summary?.nation ? `${natName(p.summary.nation)} · ` : ''}{t('pub.since', { date: dateFmt(p.created.slice(0, 10)) })}</div>
+                <div className="muted">{p.summary?.nation ? <><Flag name={p.summary.nation} />{natName(p.summary.nation)} · </> : ''}{t('pub.since', { date: dateFmt(p.created.slice(0, 10)) })}</div>
                 {p.summary?.club && <div className="pub-club">{t('pub.now', { club: p.summary.club, league: p.summary.league })}</div>}
               </div>
             </div>

@@ -1,5 +1,6 @@
 // Pæn og søgbar vælger til lange lister (lande, ligaer, attributter, scoutmål).
 // Tastatur: ↑↓ flytter, Enter vælger, Esc lukker, og man kan skrive for at søge.
+import { Flag } from './components';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { t } from '../i18n';
 
@@ -9,6 +10,8 @@ export interface Opt<V extends string | number> {
   group?: string;
   /** lille tekst til højre (fx landekode) */
   hint?: string;
+  /** landets navn (databasen) – viser flaget foran teksten */
+  flag?: string;
 }
 
 export function Select<V extends string | number>({ value, onChange, options, placeholder, width, title, icon }: {
@@ -98,7 +101,7 @@ export function Select<V extends string | number>({ value, onChange, options, pl
                   {head && <div className="sel-group">{head}</div>}
                   <div role="option" aria-selected={o.value === value} className={`sel-opt ${i === hi ? 'hi' : ''} ${o.value === value ? 'on' : ''}`}
                     onMouseEnter={() => setHi(i)} onMouseDown={(e) => { e.preventDefault(); choose(o); }}>
-                    <span>{o.label}</span>
+                    <span>{o.flag && <Flag name={o.flag} />}{o.label}</span>
                     {o.hint && <span className="sel-hint">{o.hint}</span>}
                     {o.value === value && <span className="sel-check">✓</span>}
                   </div>

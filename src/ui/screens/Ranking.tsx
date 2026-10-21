@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { askConfirm } from '../confirm';
 import { careerPoints, computeSeasonScore, leagueWeight, type SeasonScore } from '../../game/rating';
 import { enableMultiplayer, isMultiplayer, withHuman } from '../../game/humans';
 import { session } from '../../online/client';
@@ -223,10 +224,10 @@ function Managers() {
     const live = computeSeasonScore(true);
     return { pid: h.pid, name: h.name, bot: h.bot?.style, h2h: h.pid && g.active && h.pid !== g.active ? h2hFor(g.active, h.pid) : null, club: g.userClub, league: comp?.name ?? '', pos, live: live?.points ?? 0, career: careerPoints(), trophies: g.manager.trophies.length, conf: Math.round(g.board.confidence) };
   })).sort((a, b) => b.career + b.live - (a.career + a.live));
-  const add = () => {
+  const add = async () => {
     if (!isMultiplayer(g)) {
       // solospil → lokalt spil mod AI-managere (den globale rangliste gælder ikke længere)
-      if (!confirm(t('bots.convertConfirm'))) return;
+      if (!(await askConfirm(t('bots.convertConfirm')))) return;
       enableMultiplayer('host', g.manager.name);
       g.localMp = true;
     }

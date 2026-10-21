@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { askConfirm } from './confirm';
 import { Select } from './select';
 import { CHALLENGES } from '../game/challenges';
 import { createGame, type WorldData } from '../game/newgame';
@@ -8,7 +9,7 @@ import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../g
 import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
 import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
-import { Panel } from './components';
+import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
@@ -105,7 +106,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
               <b>{s.club}</b> <span className="muted">— {s.manager}</span>
               <div className="muted">{dateFmt(s.date)} · {t('start.savedAt')} {new Date(s.saved).toLocaleString()}</div>
             </div>
-            <button className="small danger" onClick={async () => { if (confirm(t('start.confirmDelete'))) { await deleteSave(s.id); setSaves(await listSaves()); } }}>{t('common.delete')}</button>
+            <button className="small danger" onClick={async () => { if (await askConfirm(t('start.confirmDelete'), { danger: true })) { await deleteSave(s.id); setSaves(await listSaves()); } }}>{t('common.delete')}</button>
           </div>
         ))}
       </div>
@@ -223,7 +224,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
                   if (s.has(n)) s.delete(n); else s.add(n);
                   setActive(s);
                 }} />
-                {natName(world.nations[n].name)}
+                <Flag name={world.nations[n].name} />{natName(world.nations[n].name)}
                 <span className="muted" style={{ marginLeft: 'auto' }}>{world.leagues.filter((l) => l.nation === n).length}</span>
               </label>
             ))}

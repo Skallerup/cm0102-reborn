@@ -2,14 +2,15 @@
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { boardAskInfo } from '../../game/board';
+import { CAMP_DESTS, campCost, campWindows, type CampDest } from '../../game/camp';
 import type { BoardAsk } from '../../game/types';
-import { money, t } from '../../i18n';
+import { dateFmt, money, t } from '../../i18n';
 import { Bar, Panel } from '../components';
 import { useGame, useNav } from '../core';
 import { Info } from '../help';
 import { Head } from './common';
 
-const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive', 'trainingCamp'];
+const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
 
 export function BoardScreen() {
   const g = useGame()!;
@@ -37,6 +38,7 @@ export function BoardScreen() {
           </div>
         </Panel>
       </div>
+      <CampPanel />
       <div className="ba-grid">
         {ASKS.map((k) => {
           const info = boardAskInfo(k);
@@ -64,5 +66,72 @@ export function BoardScreen() {
         })}
       </div>
     </div>
+  );
+}
+
+const DESTS: CampDest[] = ['sun', 'alps', 'home', 'tour'];
+
+/** Træningslejr: vælg en periode uden kampe og en destination – rapporten kommer, når holdet er hjemme */
+function CampPanel() {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const windows = campWindows();
+  const [start, setStart] = useState(windows[0]?.start ?? '');
+  const [msg, setMsg] = useState('');
+  const camp = c.camp;
+  const m = Number((start || g.date).slice(5, 7));
+  const plan = (dest: CampDest) => {
+    const r = act<string>({ t: 'camp', dest, start });
+    setMsg(t(`camp.res.${r}`));
+  };
+  return (
+    <Panel title={t('camp.title')}>
+      {camp && camp.status !== 'done' ? (
+        <div className="row" style={{ flexWrap: 'wrap' }}>
+          <span className={`tag ${camp.status === 'running' ? 'good' : 'warn'}`}>{t(`camp.status.${camp.status}`)}</span>
+          <b>{t(`camp.dest.${camp.dest}`)}</b>
+          <span className="muted">{dateFmt(camp.start)} – {dateFmt(camp.end)} · {money(camp.cost)}</span>
+          {camp.status === 'planned' && <button className="small" onClick={() => { act({ t: 'campCancel' }); setMsg(''); }}>{t('camp.cancel')}</button>}
+        </div>
+      ) : (
+        <>
+          <p className="muted" style={{ marginTop: 0 }}>{t('camp.intro')}</p>
+          {camp?.report && <div className="insight">{t('camp.lastReport', { dest: t(`camp.dest.${camp.dest}`), date: dateFmt(camp.end) })}</div>}
+          {windows.length === 0 ? <div className="insight warn">{t('camp.noWindow')}</div> : (
+            <>
+              <div className="row" style={{ marginBottom: 10, flexWrap: 'wrap' }}>
+                <b>{t('camp.period')}</b>
+                <div className="seg">
+                  {windows.map((w) => <button key={w.start} className={start === w.start ? 'on' : ''} onClick={() => setStart(w.start)}>{dateFmt(w.start)} – {dateFmt(w.end)}</button>)}
+                </div>
+                <span className="muted">{t('camp.gap', { n: windows.find((w) => w.start === start)?.gap ?? 0 })}</span>
+              </div>
+              <div className="camp-grid">
+                {DESTS.map((d) => {
+                  const fx = CAMP_DESTS[d];
+                  const off = fx.summerOnly && !(m === 6 || m === 7 || m === 1);
+                  return (
+                    <div key={d} className={`camp-card ${off ? 'off' : ''}`}>
+                      <b>{t(`camp.dest.${d}`)}</b>
+                      <span className="muted">{t(`camp.desc.${d}`)}</span>
+                      <div className="row" style={{ gap: 4 }}>
+                        <span className="tag">{t('camp.fx.morale', { n: fx.morale })}</span>
+                        <span className="tag">{t('camp.fx.cond', { n: (fx.cond > 0 ? '+' : '') + fx.cond })}</span>
+                        <span className="tag good">{t('camp.fx.bond', { n: fx.bond })}</span>
+                        {fx.phys ? <span className="tag good">{t('camp.fx.phys')}</span> : null}
+                        {fx.income ? <span className="tag good">{t('camp.fx.income')}</span> : null}
+                      </div>
+                      <div className="row"><b>{money(campCost(c, d))}</b><button className="small primary" disabled={off || !start} onClick={() => plan(d)}>{t('camp.plan')}</button></div>
+                      {off && <span className="muted" style={{ fontSize: 12 }}>{t('camp.summerOnly')}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+      {msg && <div className="muted" style={{ marginTop: 8 }}>{msg}</div>}
+    </Panel>
   );
 }

@@ -196,6 +196,11 @@ export interface ScoutAssignment {
   queue?: number[];
 }
 
+export interface TrainingCamp {
+  dest: string; start: string; end: string; cost: number; status: 'planned' | 'running' | 'done';
+  report?: { morale: number; cond: number; bond: number; star?: number; injured?: number; incident?: number; income: number };
+}
+
 export interface RecMatch { fixture: number; gf: number; ga: number; opp: number; date: string; comp: string }
 export interface RecMove { pid: number; name: string; fee: number; club: number; date: string }
 export interface ClubRecords {
@@ -316,6 +321,9 @@ export interface Club {
   records?: ClubRecords;
   /** Sæson, hvor bestyrelsen har betalt for ekstra ungdomsrekruttering (større og bedre årgang i marts) */
   youthDrive?: number;
+  /** Træningslejr (planlagt, i gang eller afsluttet med rapport) og dens løft til holdkemien resten af sæsonen */
+  camp?: TrainingCamp;
+  campBond?: { season: number; pts: number };
   sponsor?: SponsorDeal;
   /** Merchandise-boost efter stjernekøb */
   merchBoost?: { until: string; factor: number };
@@ -565,7 +573,7 @@ export interface ManagerProfile {
   seasonStart?: { season: number; club: number; balance: number; sacked: number };
 }
 
-export type BoardAsk = 'lowerExp' | 'confidenceVote' | 'youthDrive' | 'trainingCamp';
+export type BoardAsk = 'lowerExp' | 'confidenceVote' | 'youthDrive';
 
 export interface BoardState {
   /** Ungdomschefens rapport om den kommende årgang */

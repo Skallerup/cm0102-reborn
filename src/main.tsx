@@ -2,6 +2,7 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './ui/App';
+import { ConfirmHost } from './ui/confirm';
 import './styles.css';
 import { gs, notify } from './game/state';
 import { runUntil } from './game/sim';
@@ -18,5 +19,6 @@ registerSW({ immediate: true });
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <ConfirmHost />
   </StrictMode>,
 );

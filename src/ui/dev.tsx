@@ -103,7 +103,7 @@ export function DevelopmentPanel({ p, date }: { p: Player; date: string }) {
   lo = Math.max(1, lo); hi = Math.min(20, hi);
   // smal skærm: et smallere koordinatsystem, så tekst og kurver bliver større
   const narrow = useNarrow();
-  const W = narrow ? 400 : 640, H = narrow ? 260 : 250, L = 28, R = narrow ? 112 : 168, T = 12, B = 24;
+  const W = narrow ? 400 : 640, H = narrow ? 260 : 250, L = 28, R = narrow ? 112 : 140, T = 12, B = 24;
   const x = (i: number) => L + (dev.length <= 1 ? (W - L - R) / 2 : (i / (dev.length - 1)) * (W - L - R));
   const y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
   const step = Math.max(1, Math.ceil((hi - lo) / 4));
@@ -111,7 +111,7 @@ export function DevelopmentPanel({ p, date }: { p: Player; date: string }) {
   for (let v = lo; v <= hi; v += step) ticks.push(v);
   const last = series.map((s) => s[s.length - 1]);
   const delta = series.map((s) => s[s.length - 1] - s[0]);
-  const labelY = spread(last.map(y), 30, T + 8, H - B - 4);
+  const labelY = spread(last.map(y), narrow ? 30 : 25, T + 8, H - B - 4);
   const total = totalDelta(p, 999);
   const months = Math.max(0, dev.length - 1);
 
@@ -175,7 +175,7 @@ export function DevelopmentPanel({ p, date }: { p: Player; date: string }) {
                 <circle cx={x(dev.length - 1)} cy={y(ser[ser.length - 1])} r={4.5} fill={SERIES[si]} className="devp-dot" />
                 <path d={`M${x(dev.length - 1) + 6},${y(ser[ser.length - 1])} L${W - R + 14},${labelY[si]}`} className="devp-leader" />
                 <text x={W - R + 18} y={labelY[si] - 2} className="devp-lbl">{t(`radar.${axes[si].key}`)}</text>
-                <text x={W - R + 18} y={labelY[si] + 12} className="devp-val">
+                <text x={W - R + 18} y={labelY[si] + (narrow ? 12 : 10)} className="devp-val">
                   {last[si].toFixed(1)} <tspan className={delta[si] > 0.05 ? 'devp-up' : delta[si] < -0.05 ? 'devp-down' : ''}>{delta[si] > 0.05 ? '▲' : delta[si] < -0.05 ? '▼' : '•'} {fmtD(delta[si])}</tspan>
                 </text>
               </g>

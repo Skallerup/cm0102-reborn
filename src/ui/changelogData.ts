@@ -9,6 +9,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.79',
+    date: '2026-10-21',
+    title: { da: 'Træningslejr med rapport, flag, transfervindue-beskeder og bedre 2D', en: 'Training camp with report, flags, transfer window alerts and better 2D' },
+    items: [
+      { da: 'Træningslejr planlægges under Bestyrelsen i en periode med mindst 14 dage uden kampe: vælg sol, højdetræning, lejr herhjemme eller sommerturné – og få en rapport, når holdet kommer hjem (moral, kondition, holdkemi, hvem imponerede, skader og episoder)', en: 'Plan a training camp under Board in a period with at least 14 days without matches: choose sun, altitude, a camp at home or a summer tour – and get a report when the squad returns (morale, condition, chemistry, who impressed, injuries and incidents)' },
+      { da: 'Tydelige beskeder om transfervinduet: når det åbner, 7, 3, 2 og 1 dag før det lukker, på deadline day og når det er lukket – og når Bosman-aftaler bliver mulige 1. januar', en: 'Clear transfer window alerts: when it opens, 7, 3, 2 and 1 days before it closes, on deadline day and when it has closed – and when Bosman pre-contracts become possible on 1 January' },
+      { da: 'Flag ved nationaliteter i trup, transfersøgning, spillerside, klubside, landevalg og managerprofil', en: 'Flags next to nationalities in the squad, transfer search, player page, club page, nation pickers and manager profile' },
+      { da: '2D: vælg om du vil se kun mål, store chancer eller alle højdepunkter – "Alle" viser også små chancer, offside, kort og skader. Forbiskud lander lige ved målet, og mål i kommentaren blinker kun én gang', en: '2D: choose goals only, big chances or all highlights – "All" also shows minor chances, offsides, cards and injuries. Missed shots end up next to the goal, and goals in the commentary only flash once' },
+      { da: 'Split-ligaer (fx Superligaen): mesterskabsspillet står altid øverst i tabellen – også i kampens stilling og i bestyrelsens forventninger', en: 'Split leagues (e.g. the Danish Superliga): the championship round always tops the table – also in the match standings and the board\'s expectations' },
+      { da: 'Transfersøgningen viser nu de bedste spillere i hele databasen, også uden filtre', en: 'Transfer search now shows the best players in the whole database, also without filters' },
+      { da: 'Assistenten anbefaler kun en angrebsside, når den er tydeligt svagere – ellers "Ingen" – og forslaget kan bruges med ét klik', en: 'The assistant only recommends an attacking side when it is clearly weaker – otherwise "None" – and the suggestion can be applied with one click' },
+      { da: 'Bekræftelser vises som spillets egen popup i stedet for browserens dialog, og udviklingsgrafens tekst er mindre', en: 'Confirmations use the game\'s own popup instead of the browser dialog, and the development chart text is smaller' },
+    ],
+  },
+  {
     version: '0.7.78',
     date: '2026-10-21',
     title: { da: 'Modstanderinstruktioner, vejr, bestyrelsesønsker, rekordbog, præstationer og managerprofil', en: 'Opposition instructions, weather, board requests, record book, achievements and manager profile' },

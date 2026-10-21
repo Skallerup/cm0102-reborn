@@ -27,6 +27,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.done === 'string') p.done = dateFmt(p.done);
   if (typeof p.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(p.date)) p.date = dateFmt(p.date);
   if (typeof p.cost === 'number') p.cost = money(p.cost);
+  if (n.key.startsWith('camp.') && typeof p.dest === 'string') p.dest = t(`camp.dest.${p.dest}`);
+  if (n.key === 'camp.report' && typeof p.mood === 'string') p.mood = t(`camp.mood.${p.mood}`);
   if ((n.key === 'staff.hired' || n.key === 'recb.news.legendStaff') && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);
   return p;

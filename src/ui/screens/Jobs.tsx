@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { askConfirm } from '../confirm';
 import { act } from '../../game/actions';
 import { jobTerms, managerRegion } from '../../game/board';
 import { regionOf } from '../../game/leagues';
@@ -18,7 +19,7 @@ export function Jobs() {
   return (
     <div>
       <Head title={t('nav.jobs')}>
-        {g.userClub > 0 && <button className="small danger" onClick={() => { if (confirm(t('jobs.resignConfirm', { club: g.clubs[g.userClub]?.name ?? '' }))) act({ t: 'resign' }); }}>{t('jobs.resign')}</button>}
+        {g.userClub > 0 && <button className="small danger" onClick={async () => { if (await askConfirm(t('jobs.resignConfirm', { club: g.clubs[g.userClub]?.name ?? '' }))) act({ t: 'resign' }); }}>{t('jobs.resign')}</button>}
       </Head>
       <div className="cols2">
         <Panel title={t('jobs.offers')}>
@@ -88,7 +89,7 @@ function JobOffer({ cid }: { cid: number }) {
       {msg && <div className={`insight ${msg.tone}`} style={{ marginTop: 8 }}>{msg.text}</div>}
       <div className="row" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
         <button className="small" onClick={() => act({ t: 'declineJob', club: cid })}>{t('jobs.decline')}</button>
-        <button className="small primary" onClick={() => { if (!me || confirm(t('jobs.acceptConfirm', { club: c.name }))) { act({ t: 'acceptJob', club: cid }); nav({ name: 'inbox' }); } }}>{t('jobs.accept')}</button>
+        <button className="small primary" onClick={async () => { if (!me || await askConfirm(t('jobs.acceptConfirm', { club: c.name }))) { act({ t: 'acceptJob', club: cid }); nav({ name: 'inbox' }); } }}>{t('jobs.accept')}</button>
       </div>
     </div>
   );

@@ -138,7 +138,7 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
             <span className="muted" style={{ width: '100%', fontSize: 12 }}>{t('scout.home')}</span>
             <Select value={target} onChange={setTarget} width={240} options={[
               ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${g.leagues[l].name}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
-              ...nations.map((n) => ({ value: `n:${n}`, label: natName(g.nations[n].name), hint: g.nations[n].code, group: t('scout.nations') })),
+              ...nations.map((n) => ({ value: `n:${n}`, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code, group: t('scout.nations') })),
             ]} />
             <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>
               {[1, 3, 6, 0].map((m) => <option key={m} value={m}>{t(`scout.dur.${m}`)}</option>)}

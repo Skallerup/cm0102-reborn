@@ -174,7 +174,7 @@ function Search() {
             {[250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000].map((v) => <option key={v} value={v}>≤ {money(v)}</option>)}
           </select>
           <Select value={f.nation} onChange={(v) => set('nation', v)} width={190}
-            options={[{ value: -1, label: t('tr.anyNation') }, ...nations.map((n) => ({ value: n, label: natName(g.nations[n].name), hint: g.nations[n].code }))]} />
+            options={[{ value: -1, label: t('tr.anyNation') }, ...nations.map((n) => ({ value: n, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code }))]} />
           <Select value={f.league} onChange={(v) => set('league', v)} width={230}
             options={[{ value: '', label: t('tr.anyLeague') }, ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: l, label: g.leagues[l].name, group: g.nations[g.leagues[l].nation]?.name }))]} />
         </div>

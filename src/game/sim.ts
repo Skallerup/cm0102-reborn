@@ -6,6 +6,7 @@ import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { weatherFor, type Weather } from './weather';
 import { recordsAfterMatch } from './records';
+import { campDaily } from './camp';
 import { achievementsAfterMatch } from './achievements';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
@@ -325,6 +326,7 @@ function newDay() {
     }
   });
   completeProjects();
+  campDaily();
   forEachHuman(aiBidsForListed);
   aiPursuits();
   if (weekday(d) === 4) forEachHuman(aiLoanOptions);

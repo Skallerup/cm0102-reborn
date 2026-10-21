@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { askConfirm } from './confirm';
 import type { WorldData } from '../game/newgame';
 import type { GameState } from '../game/types';
 import { dateFmt, t, natName } from '../i18n';
@@ -49,7 +50,7 @@ export function OnlineMenu({ onBack, onCreate, setBusy, initialCode }: { onBack:
                 }}>
                   <b>{r.code}</b> <span className="muted">— {r.name}</span>
                 </div>
-                <button className="small danger" onClick={() => { if (!confirm(t('mp.forgetConfirm', { code: r.code }))) return; forgetRoom(r.code); setRooms(savedRooms()); setErr(''); }}>{t('common.delete')}</button>
+                <button className="small danger" onClick={async () => { if (!(await askConfirm(t('mp.forgetConfirm', { code: r.code }), { danger: true }))) return; forgetRoom(r.code); setRooms(savedRooms()); setErr(''); }}>{t('common.delete')}</button>
               </div>
             ))}
           </>
@@ -266,7 +267,7 @@ function HostModal({ onClose }: { onClose: () => void }) {
                 <td>{p.name}{p.pid === s.room!.host ? ' 👑' : ''}</td>
                 <td>{clubs[p.club]?.short ?? ''}</td>
                 <td>{p.ready ? <span className="tag good">{t('mp.isReady')}</span> : <span className="tag warn">{t('mp.notReadyYet')}</span>}</td>
-                <td>{p.pid !== s.room!.host && <button className="small danger" disabled={busy} onClick={() => { if (confirm(t('mp.kickConfirm', { name: p.name }))) void run(() => s.kick(p.pid)); }}>{t('mp.kick')}</button>}</td>
+                <td>{p.pid !== s.room!.host && <button className="small danger" disabled={busy} onClick={async () => { if (await askConfirm(t('mp.kickConfirm', { name: p.name }))) void run(() => s.kick(p.pid)); }}>{t('mp.kick')}</button>}</td>
               </tr>
             ))}
           </tbody>
@@ -275,7 +276,7 @@ function HostModal({ onClose }: { onClose: () => void }) {
         {err && <div className="insight bad">{err}</div>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" disabled={busy || notReady.length === 0} title={t('mp.forceHint')} onClick={() => { if (confirm(t('mp.forceConfirm', { names: notReady.map((p) => p.name).join(', ') }))) void run(async () => { await s.forceContinue(); onClose(); }); }}>{t('mp.force')}</button>
+          <button className="primary" disabled={busy || notReady.length === 0} title={t('mp.forceHint')} onClick={async () => { if (await askConfirm(t('mp.forceConfirm', { names: notReady.map((p) => p.name).join(', ') }))) void run(async () => { await s.forceContinue(); onClose(); }); }}>{t('mp.force')}</button>
         </div>
       </div>
     </Modal>

@@ -1,7 +1,7 @@
 // Dansk
 export const da: Record<string, string> = {
   // fælles
-  'common.back': 'Tilbage', 'common.cancel': 'Annullér', 'common.close': 'Luk', 'common.days': 'dage', 'common.delete': 'Slet',
+  'common.ok': 'OK', 'common.back': 'Tilbage', 'common.cancel': 'Annullér', 'common.close': 'Luk', 'common.days': 'dage', 'common.delete': 'Slet',
   'common.free': 'Klubløs', 'common.from': 'fra', 'common.no': 'Nej', 'common.yes': 'Ja', 'common.none': 'Ingen', 'common.stop': 'Stop',
   'common.week': 'uge', 'common.and': 'og', 'common.years': 'år',
 
@@ -122,7 +122,16 @@ export const da: Record<string, string> = {
   'window.deadlineDay': '🚨 DEADLINE DAY – transfervinduet lukker i dag!', 'window.deadlineDay.body': 'I dag er sidste dag for køb, salg og leje. Handler, der ikke er på plads i dag, må vente til næste vindue.',
   'window.closed': '🔴 Transfervinduet er lukket – næste vindue åbner {date}', 'window.closed.body': 'Du kan stadig scoute og forberede bud, men handler kan først gennemføres, når vinduet åbner igen. Klubløse spillere kan heller ikke skrive under før.',
   'window.bosman': '📝 Bosman-aftaler er nu mulige', 'window.bosman.body': 'Spillere, hvis kontrakt udløber til sommer, må nu skrive under på en fremtidig aftale med din klub – helt gratis. Søg på "Udløbende kontrakt" under Transfers.',
-  'chem.title': 'Holdkemi', 'chem.effect': 'Effekt på præstationen: {pct}%', 'chem.nation': 'Samme nationalitet', 'chem.tenure': 'Tid sammen ({years} år)',
+  'camp.title': 'Træningslejr', 'camp.intro': 'Planlæg en uge væk med truppen i en periode med mindst 14 dage uden kampe. Bestyrelsen betaler, hvis der er råd og tillid nok – og når holdet kommer hjem, får du en rapport.', 'camp.noWindow': 'Der er ingen periode med 14 dage uden kampe de næste måneder – typisk i vinterpausen eller sommerens opstart.', 'camp.period': 'Periode:', 'camp.gap': '{n} dage uden kampe', 'camp.plan': 'Planlæg', 'camp.cancel': 'Aflys', 'camp.summerOnly': 'Kun i sommer- og vinterpausen', 'camp.status.planned': 'Planlagt', 'camp.status.running': 'I gang', 'camp.lastReport': 'Seneste lejr: {dest} (hjemme {date}) – se rapporten i indbakken.',
+  'camp.dest.sun': 'Sol i Marbella', 'camp.dest.alps': 'Højdetræning i Alperne', 'camp.dest.home': 'Lejr ved kysten herhjemme', 'camp.dest.tour': 'Sommerturné i udlandet',
+  'camp.desc.sun': 'Varme, gode baner og sammenhold – men fristelser for de urolige typer.', 'camp.desc.alps': 'Hård træning i tynd luft: bedre udholdenhed og form, men risiko for småskader.', 'camp.desc.home': 'Billigt og roligt – mest fokus på fællesskabet.', 'camp.desc.tour': 'Venskabskampe og sponsorer: penge og fans, men spillerne bliver trætte.',
+  'camp.fx.morale': 'Moral +{n}', 'camp.fx.cond': 'Kondi {n}', 'camp.fx.bond': 'Kemi +{n}', 'camp.fx.phys': 'Udholdenhed ↑', 'camp.fx.income': 'Indtægt',
+  'camp.res.ok': 'Bestyrelsen har godkendt lejren.', 'camp.res.busy': 'Der er allerede planlagt en lejr.', 'camp.res.money': 'Der er ikke råd lige nu.', 'camp.res.confidence': 'Bestyrelsen har ikke tillid nok til at betale.', 'camp.res.window': 'Perioden passer ikke – vælg en anden.', 'camp.res.season': 'Holdet har været på lejr for nylig.',
+  'camp.approved': 'Bestyrelsen godkender træningslejren: {dest} fra {date} ({cost})', 'camp.noMoney': 'Bestyrelsen siger nej til træningslejren – der er ikke råd ({cost})', 'camp.noConfidence': 'Bestyrelsen vil ikke betale for en træningslejr lige nu',
+  'camp.departed': '✈️ Truppen er rejst på træningslejr: {dest} (hjemme {date})',
+  'camp.mood.good': 'en succes', 'camp.mood.ok': 'en god uge', 'camp.mood.bad': 'en skuffelse',
+  'camp.report': '📋 Rapport fra træningslejren ({dest}): {mood}', 'camp.report.body': 'Moral: {morale} · Kondition: {cond}\nHoldkemi: +{bond} resten af sæsonen (tid sammen)\nUdholdenhed: {phys}\nImponerede mest: {star}\nSkadet: {injured}\nEpisode: {incident}\nIndtægt fra turnéen: {fee}',
+  'chem.camp': 'Træningslejr', 'chem.camp.name': 'Træningslejr', 'chem.camp.range': '0 … +8', 'chem.camp.how': 'En træningslejr giver et løft resten af sæsonen (planlæg den under Bestyrelsen).', 'an.attackLaneNone': 'Deres forsvar er lige stærkt i alle sider – ingen særlig side at angribe.', 'oi.useSuggest': 'Brug assistentens forslag', 'chem.title': 'Holdkemi', 'chem.effect': 'Effekt på præstationen: {pct}%', 'chem.nation': 'Samme nationalitet', 'chem.tenure': 'Tid sammen ({years} år)',
   'chem.newcomers': 'Nye spillere ({n})', 'chem.leaders': 'Ledere ({n})', 'chem.captain': 'Anfører er en leder', 'chem.trouble': 'Problembørn ({n})',
   'chem.wantsAway': 'Utilfredse stjerner ({n})', 'chem.pros': 'Mange professionelle',
   // økonomi

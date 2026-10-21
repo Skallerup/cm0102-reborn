@@ -1,6 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { cancelCamp, planCamp, type CampDest } from './camp';
 import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
@@ -49,6 +50,8 @@ export type Action =
   | { t: 'budgetShift'; toWage: boolean; amount: number }
   | { t: 'project'; kind: 'stadium' | 'training' | 'youth' }
   | { t: 'boardAsk'; kind: BoardAsk }
+  | { t: 'camp'; dest: CampDest; start: string }
+  | { t: 'campCancel' }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
   | { t: 'interact'; pid: number; kind: TalkKind }
   | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
@@ -134,6 +137,8 @@ export function applyAction(a: Action): unknown {
     case 'budgetShift': return shiftBudget(a.toWage, a.amount);
     case 'project': return requestProject(a.kind);
     case 'boardAsk': return boardAsk(a.kind);
+    case 'camp': return planCamp(a.dest, a.start);
+    case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'talk': return talkToPlayer(a.pid, a.choice);
     case 'interact': return interact(a.pid, a.kind);
     case 'teamTalk': return teamTalk(a.kind);

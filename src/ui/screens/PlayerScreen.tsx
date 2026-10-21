@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { askConfirm } from '../confirm';
 import { Info } from '../help';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
 import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../game/scouting';
@@ -116,7 +117,7 @@ export function PlayerScreen({ id }: { id: number }) {
                     : <button onClick={() => setListOpen(true)}>{t('player.list')}</button>}
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
                   <button onClick={() => setLoanOut(true)} disabled={!!p.loan || !windowOpen()}>{t('player.loanOut')}</button>
-                  <button className="danger" onClick={() => { if (confirm(t('player.releaseConfirm'))) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
+                  <button className="danger" onClick={async () => { if (await askConfirm(t('player.releaseConfirm'), { danger: true })) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
                 </div>
               </>
             )}
@@ -445,7 +446,7 @@ function MyOffer({ pid, onNegotiate }: { pid: number; onNegotiate: (o: TransferO
       </span>
       {o.status === 'negotiating' && <button className="small primary" onClick={() => onNegotiate(o)}>{t('offer.negotiate')}</button>}
       {o.status === 'countered' && <AcceptCounterButton o={o} onOk={() => onNegotiate(o)} />}
-      <button className="small danger" onClick={() => { if (confirm(t('neg.cancelConfirm'))) dispatch({ t: 'withdraw', pid }); }}>{t('offer.withdraw')}</button>
+      <button className="small danger" onClick={async () => { if (await askConfirm(t('neg.cancelConfirm'))) dispatch({ t: 'withdraw', pid }); }}>{t('offer.withdraw')}</button>
     </div>
   );
 }
@@ -463,8 +464,8 @@ function TalkPanel({ pid }: { pid: number }) {
   const [msgText, setMsgText] = useState('');
   const [convo, setConvo] = useState<{ me: string; reply: string; mood: string } | null>(null);
   const [thinking, setThinking] = useState(false);
-  const doTalk = (kind: TalkKind): { key: string; mood: string } | null => {
-    if ((kind === 'fine' || kind === 'fineHeavy' || kind === 'drop') && !reason && !confirm(t('talk.noReasonConfirm'))) return null;
+  const doTalk = async (kind: TalkKind): Promise<{ key: string; mood: string } | null> => {
+    if ((kind === 'fine' || kind === 'fineHeavy' || kind === 'drop') && !reason && !(await askConfirm(t('talk.noReasonConfirm')))) return null;
     const r = dispatch<{ key: string; mood: string }>({ t: 'interact', pid, kind });
     setRes(r);
     setConvo(null);
@@ -478,7 +479,7 @@ function TalkPanel({ pid }: { pid: number }) {
     const allowed: TalkKind[] = ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat', ...(ageOn(p.dob, g.date) <= 23 ? ['future' as TalkKind] : [])];
     const r = await aiCall<{ intent: string }>('talkIntent', { message: text, allowed });
     const intent = (allowed.includes(r?.intent as TalkKind) ? r!.intent : guessIntent(text)) as TalkKind;
-    const out = doTalk(intent);
+    const out = await doTalk(intent);
     if (!out) { setThinking(false); return; }
     const outcome = t(out.key, { player: p.last });
     setConvo({ me: text, reply: outcome, mood: out.mood });

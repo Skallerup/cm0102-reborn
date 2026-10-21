@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { askConfirm } from '../confirm';
 import { gs } from '../../game/state';
 import { ageOn } from '../../game/dates';
 import { poachFee, staffCount, staffDemand, STAFF_LIMITS, willJoin } from '../../game/staff';
@@ -30,14 +31,14 @@ export function StaffScreen() {
     .sort((a, b) => b.attrs[sortKey] - a.attrs[sortKey] || b.rep - a.rep)
     .slice(0, 60);
 
-  const fire = (s: Staff) => {
-    if (!confirm(t('staff.fireConfirm', { name: `${s.first} ${s.last}`, pay: money(s.wage * 12) }))) return;
+  const fire = async (s: Staff) => {
+    if (!(await askConfirm(t('staff.fireConfirm', { name: `${s.first} ${s.last}`, pay: money(s.wage * 12) })))) return;
     act({ t: 'fireStaff', id: s.id });
     setMsg({ text: t('staff.fired', { name: `${s.first} ${s.last}` }), tone: 'neutral' });
   };
   const hire = (s: Staff) => setOfferFor(s);
-  const sendOffer = (s: Staff, wage: number) => {
-    if (s.club && !confirm(t('staff.poachConfirm', { name: `${s.first} ${s.last}`, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) }))) return;
+  const sendOffer = async (s: Staff, wage: number) => {
+    if (s.club && !(await askConfirm(t('staff.poachConfirm', { name: `${s.first} ${s.last}`, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) })))) return;
     const r = act<string>({ t: 'hireStaff', id: s.id, wage });
     setOfferFor(null);
     setMsg({ text: t(`staff.result.${r}`, { name: `${s.first} ${s.last}`, wage: money(staffDemand(s)) }), tone: r === 'ok' ? 'good' : r === 'pending' ? 'warn' : 'bad' });

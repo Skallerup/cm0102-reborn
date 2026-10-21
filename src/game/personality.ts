@@ -72,6 +72,9 @@ export function chemistry(players: Player[], captainId?: number): Chemistry {
   if (away) parts.push({ key: 'chem.wantsAway', value: -away * 4, params: { n: away } });
   const pros = all.filter((t) => t.includes('professional')).length;
   if (pros >= 3) parts.push({ key: 'chem.pros', value: 4 });
+  // træningslejr i denne sæson: tid sammen giver et løft
+  const club = gs().clubs[xi[0]?.club ?? 0];
+  if (club?.campBond && club.campBond.season === gs().season) parts.push({ key: 'chem.camp', value: club.campBond.pts });
   const score = Math.max(0, Math.min(100, Math.round(50 + parts.reduce((s, x) => s + x.value, 0))));
   return { score, parts };
 }

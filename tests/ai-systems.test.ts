@@ -14,6 +14,7 @@ import { boardAsk, boardAskInfo } from '../src/game/board';
 import { planIntake } from '../src/game/season';
 import { retireIntoStaff } from '../src/game/records';
 import { ACHIEVEMENTS, unlock } from '../src/game/achievements';
+import { campWindows, planCamp } from '../src/game/camp';
 import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
@@ -211,5 +212,27 @@ describe('transfervinduet', () => {
       if (keys.has('window.closed') && keys.has('window.deadlineDay')) break;
     }
     for (const k of ['window.closing', 'window.closingTomorrow', 'window.deadlineDay', 'window.closed']) expect(keys.has(k)).toBe(true);
+  });
+});
+
+describe('træningslejr', () => {
+  it('kan kun ligge i en kampfri periode og giver en rapport ved hjemkomst', () => {
+    const g = gs();
+    const c = g.clubs[g.userClub];
+    c.balance = 50_000_000;
+    g.board.confidence = 70;
+    // spol frem, til der er en periode med 14 dage uden kampe
+    let w = campWindows();
+    for (let i = 0; i < 200 && !w.length; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); w = campWindows(); }
+    expect(w.length).toBeGreaterThan(0);
+    expect(planCamp('home', '1999-01-01')).toBe('window');
+    expect(planCamp('home', w[0].start)).toBe('ok');
+    // ingen af klubbens kampe ligger i lejrperioden
+    const mine = Object.values(g.fixtures).filter((f) => (f.home === c.id || f.away === c.id) && f.date >= w[0].start && f.date <= w[0].end);
+    expect(mine.length).toBe(0);
+    for (let i = 0; i < 60 && c.camp?.status !== 'done'; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    expect(c.camp?.status).toBe('done');
+    expect(g.news.some((n) => n.key === 'camp.report')).toBe(true);
+    expect(c.campBond?.pts).toBeGreaterThan(0);
   });
 });

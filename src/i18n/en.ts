@@ -1,6 +1,6 @@
 // English
 export const en: Record<string, string> = {
-  'common.back': 'Back', 'common.cancel': 'Cancel', 'common.close': 'Close', 'common.days': 'days', 'common.delete': 'Delete',
+  'common.ok': 'OK', 'common.back': 'Back', 'common.cancel': 'Cancel', 'common.close': 'Close', 'common.days': 'days', 'common.delete': 'Delete',
   'common.free': 'Free agent', 'common.from': 'from', 'common.no': 'No', 'common.yes': 'Yes', 'common.none': 'None', 'common.stop': 'Stop',
   'common.week': 'week', 'common.and': 'and', 'common.years': 'years',
 
@@ -118,7 +118,16 @@ export const en: Record<string, string> = {
   'window.deadlineDay': '🚨 DEADLINE DAY – the transfer window closes today!', 'window.deadlineDay.body': 'Today is the last day for buying, selling and loans. Deals not done today must wait for the next window.',
   'window.closed': '🔴 The transfer window is closed – the next window opens {date}', 'window.closed.body': 'You can still scout and prepare bids, but deals can only be completed when the window reopens. Free agents cannot sign before then either.',
   'window.bosman': '📝 Bosman pre-contracts are now possible', 'window.bosman.body': 'Players whose contract expires this summer can now sign a future deal with your club – completely free. Search for "Expiring contract" under Transfers.',
-  'chem.title': 'Team chemistry', 'chem.effect': 'Effect on performance: {pct}%', 'chem.nation': 'Same nationality', 'chem.tenure': 'Time together ({years} yrs)',
+  'camp.title': 'Training camp', 'camp.intro': 'Plan a week away with the squad in a period with at least 14 days without matches. The board pays if there is money and confidence – and when the squad returns, you get a report.', 'camp.noWindow': 'There is no 14-day period without matches in the coming months – typically the winter break or pre-season.', 'camp.period': 'Period:', 'camp.gap': '{n} days without matches', 'camp.plan': 'Plan', 'camp.cancel': 'Cancel', 'camp.summerOnly': 'Only in the summer and winter breaks', 'camp.status.planned': 'Planned', 'camp.status.running': 'Under way', 'camp.lastReport': 'Last camp: {dest} (home {date}) – see the report in the inbox.',
+  'camp.dest.sun': 'Sun in Marbella', 'camp.dest.alps': 'Altitude training in the Alps', 'camp.dest.home': 'Camp on the coast at home', 'camp.dest.tour': 'Summer tour abroad',
+  'camp.desc.sun': 'Warmth, good pitches and togetherness – but temptations for the restless types.', 'camp.desc.alps': 'Hard work in thin air: better stamina and fitness, but a risk of knocks.', 'camp.desc.home': 'Cheap and quiet – mostly about team spirit.', 'camp.desc.tour': 'Friendlies and sponsors: money and fans, but the players get tired.',
+  'camp.fx.morale': 'Morale +{n}', 'camp.fx.cond': 'Condition {n}', 'camp.fx.bond': 'Chemistry +{n}', 'camp.fx.phys': 'Stamina ↑', 'camp.fx.income': 'Income',
+  'camp.res.ok': 'The board has approved the camp.', 'camp.res.busy': 'A camp is already planned.', 'camp.res.money': 'There is no money right now.', 'camp.res.confidence': 'The board lacks the confidence to pay.', 'camp.res.window': 'That period does not fit – pick another.', 'camp.res.season': 'The squad was on a camp recently.',
+  'camp.approved': 'The board approves the training camp: {dest} from {date} ({cost})', 'camp.noMoney': 'The board says no to the training camp – no money ({cost})', 'camp.noConfidence': 'The board will not pay for a training camp right now',
+  'camp.departed': '✈️ The squad has left for a training camp: {dest} (home {date})',
+  'camp.mood.good': 'a success', 'camp.mood.ok': 'a good week', 'camp.mood.bad': 'a disappointment',
+  'camp.report': '📋 Training camp report ({dest}): {mood}', 'camp.report.body': 'Morale: {morale} · Condition: {cond}\nChemistry: +{bond} for the rest of the season (time together)\nStamina: {phys}\nImpressed most: {star}\nInjured: {injured}\nIncident: {incident}\nTour income: {fee}',
+  'chem.camp': 'Training camp', 'chem.camp.name': 'Training camp', 'chem.camp.range': '0 … +8', 'chem.camp.how': 'A training camp gives a boost for the rest of the season (plan it under Board).', 'an.attackLaneNone': 'Their defence is equally strong on all sides – no particular side to attack.', 'oi.useSuggest': "Use the assistant's suggestion", 'chem.title': 'Team chemistry', 'chem.effect': 'Effect on performance: {pct}%', 'chem.nation': 'Same nationality', 'chem.tenure': 'Time together ({years} yrs)',
   'chem.newcomers': 'New signings ({n})', 'chem.leaders': 'Leaders ({n})', 'chem.captain': 'Captain is a leader', 'chem.trouble': 'Troublemakers ({n})',
   'chem.wantsAway': 'Unhappy stars ({n})', 'chem.pros': 'Many professionals',
   'sponsor.title': 'Sponsorship deal', 'sponsor.choose': "Choose this season's main sponsor. The deal lasts the whole season.", 'sponsor.sign': 'Choose',

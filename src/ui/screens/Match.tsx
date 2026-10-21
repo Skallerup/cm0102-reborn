@@ -167,7 +167,7 @@ function OppInstructionsPanel({ fixture, rep }: { fixture: number; rep: ReturnTy
             </button>
           ))}
         </div>
-        <span className="tag good">{t('oi.suggest', { lane: t(`oi.lane${rep.attackLane}`) })}</span>
+        <button className="tag good oi-suggest" title={t('oi.useSuggest')} onClick={() => save({ ...cur, focusLane: rep.attackLane })}>{t('oi.suggest', { lane: rep.attackLane === undefined ? t('oi.none') : t(`oi.lane${rep.attackLane}`) })}</button>
       </div>
       <div className="table-wrap">
         <table className="grid">
