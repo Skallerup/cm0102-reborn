@@ -1,5 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+
+// mange af testene spoler dage frem i et rigtigt spil – det tager tid på CI
+vi.setConfig({ testTimeout: 60_000 });
 import { guessIntent } from '../src/ai/fallback';
 import { counterPlan } from '../src/game/aitactics';
 import { createGame, type WorldData } from '../src/game/newgame';
