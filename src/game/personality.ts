@@ -44,7 +44,8 @@ export interface Chemistry {
 /** Holdkemi for en startopstilling */
 export function chemistry(players: Player[], captainId?: number): Chemistry {
   const xi = players.filter(Boolean);
-  if (!xi.length) return { score: 50, parts: [] };
+  // draft-liga: ingen kemi (nationalitet, tid sammen osv.) – alle hold er lige
+  if (!xi.length || gs().draft) return { score: 50, parts: [] };
   const parts: Chemistry['parts'] = [];
   // fælles nationalitet: par af spillere fra samme land
   const byNation = new Map<number, number>();

@@ -196,7 +196,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (rep.mom === p.id) s.mom++;
     p.form = [...p.form, line.rating].slice(-5);
     if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
-    p.condition = Math.max(20, Math.min(100, line.cond));
+    // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag
+    p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
     if (line.yellow) {
       s.yellows++;
       p.yellowCount++;
@@ -205,7 +206,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; }
     if (line.injured) injure(p);
     const res = line.team === 0 ? Math.sign(hs.goals - as.goals) : Math.sign(as.goals - hs.goals);
-    p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));
+    if (!g.draft) p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));
   }
   // karantæner afsones for spillere der ikke spillede
   for (const club of [f.home, f.away]) {

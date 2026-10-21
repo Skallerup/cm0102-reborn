@@ -7,7 +7,7 @@
 import { naturalRole, slotFit } from './attributes';
 import { emptyRow, finalOrder, newFixture } from './competitions';
 import { compHooks } from './hooks';
-import { addDays, ageOn, weekday } from './dates';
+import { addDays, ageOn } from './dates';
 import { caFromValue, makePlayer, makeStaff, type SubPos } from './data/generate';
 import { activate, emptySlot, withHuman } from './humans';
 import { emptyFinance, type WorldData } from './newgame';
@@ -49,6 +49,7 @@ export interface DraftTeam {
   /** Spillere holdet beholder fra sidste sæson (med plads) */
   keep: DraftPick[];
   keepReady?: boolean;
+  summaryReady?: boolean;
 }
 
 export interface DraftPick { slot: number; player: number; place: number; auto?: boolean }
@@ -288,12 +289,12 @@ export interface BuildOpts {
   prev?: DraftInfo;
 }
 
-const firstSaturday = (date: string) => { let d = date; while (weekday(d) !== 6) d = addDays(d, 1); return d; };
 
 /** Byg sæsonens spilverden ud fra draften: klubber, trupper, taktikker og kampprogram */
 export function buildDraftGame(o: BuildOpts): GameState {
-  const year = o.world.season + o.season - 1;
-  const start = firstSaturday(`${year}-08-01`);
+  // alle kampe spilles "i dag": én runde pr. træk med dags dato som udgangspunkt
+  const start = new Date().toISOString().slice(0, 10);
+  const year = Number(start.slice(0, 4));
   const seed = hash(o.seed, o.season) >>> 0;
   rng.state = seed || 1;
   const g: GameState = {
@@ -301,7 +302,7 @@ export function buildDraftGame(o: BuildOpts): GameState {
     id: `draft-${Date.now().toString(36)}`,
     seed,
     rng: rng.state,
-    date: addDays(start, -2),
+    date: addDays(start, -1),
     season: year,
     lang: o.lang,
     userClub: 0,
@@ -339,6 +340,10 @@ export function buildDraftGame(o: BuildOpts): GameState {
       allTime: o.prev?.allTime ?? {},
     },
   };
+  // ligaen hører ikke til noget land: et eget "land" til ligaen og klubberne
+  const home = g.nations.length;
+  g.nations = [...g.nations, { name: 'Draft League', code: 'DL' }];
+  g.leagues.DL.nation = home;
   setGame(g);
 
   // puljen: alle 500 er med (de udraftede bruges som erstatning ved skader)
@@ -352,7 +357,7 @@ export function buildDraftGame(o: BuildOpts): GameState {
   for (const t of teams) {
     const id = clubIdOf(t.slot);
     const club: Club = {
-      id, name: t.name, short: t.short, nation: 0, league: 'DL', stadium: `${t.name} Park`, seats: 40_000,
+      id, name: t.name, short: t.short, nation: home, league: 'DL', stadium: `${t.name} Park`, seats: 40_000,
       rep: 75, balance: 0, transferBudget: 0, wageBudget: 0, youth: 10, facilities: 15, colors: t.colors,
       manager: 0, tactic: null, finance: emptyFinance(), history: [], ticketPrice: 0, crest: t.crest,
     };
@@ -391,12 +396,12 @@ export function buildDraftGame(o: BuildOpts): GameState {
   // kampprogram: hver runde én gang om ugen (lørdag)
   const clubIds = teams.map((t) => clubIdOf(t.slot));
   const comp: Competition = {
-    id: 'DL', name: 'Draft League', type: 'league', nation: 0, tier: 1, clubs: clubIds.slice(),
+    id: 'DL', name: 'Draft League', type: 'league', nation: home, tier: 1, clubs: clubIds.slice(),
     table: clubIds.map(emptyRow), ties: [], stage: 'regular', finished: false, pending: 0, meta: { draft: true },
   };
   g.comps.DL = comp;
   const rounds = draftRounds(clubIds, o.settings.rounds);
-  rounds.forEach((r, i) => r.forEach(([h, a]) => newFixture('DL', addDays(start, 7 * i), h, a, i + 1)));
+  rounds.forEach((r, i) => r.forEach(([h, a]) => newFixture('DL', addDays(start, i), h, a, i + 1)));
 
   // værten er den aktive manager i sin egen browser
   if (g.humans?.length) {
@@ -445,8 +450,9 @@ export function draftDay() {
       p.injury.days--;
       if (p.injury.days <= 0) { p.injury = null; p.condition = Math.min(p.condition, 80); }
     }
-    if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
-    if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
+    // ingen træthed eller moral i draft-ligaen
+    p.condition = 100;
+    p.morale = 13;
   }
   // AI-hold henter selv en erstatning for langtidsskadede
   for (const c of Object.values(g.clubs)) {
@@ -506,7 +512,7 @@ export function draftLeagueDone(comp: Competition) {
   const last = Object.values(g.fixtures).filter((f) => f.comp === 'DL').reduce((m, f) => (f.date > m ? f.date : m), g.date);
   const n = d.settings.playoff === 'semis' ? 4 : d.settings.playoff === 'final' ? 2 : 0;
   if (!n || order.length < n) return;
-  const po: Competition = { id: 'DLPO', name: 'Draft League Playoff', type: 'playoff', nation: 0, tier: 0, clubs: order.slice(0, n), table: [], ties: [], stage: '', finished: false, pending: 0, meta: { draft: true, finalDate: addDays(last, 11) } };
+  const po: Competition = { id: 'DLPO', name: 'Draft League Playoff', type: 'playoff', nation: g.leagues.DL?.nation ?? 0, tier: 0, clubs: order.slice(0, n), table: [], ties: [], stage: '', finished: false, pending: 0, meta: { draft: true, finalDate: addDays(last, 2) } };
   g.comps.DLPO = po;
   const tie = (a: number, b: number, stage: string, date: string) => {
     const t = { id: g.nextId.tie++, a, b, legs: 1, stage, fx: [] as number[] };
@@ -515,11 +521,11 @@ export function draftLeagueDone(comp: Competition) {
   };
   if (n === 4) {
     po.stage = 'SF';
-    tie(order[0], order[3], 'SF', addDays(last, 4));
-    tie(order[1], order[2], 'SF', addDays(last, 4));
+    tie(order[0], order[3], 'SF', addDays(last, 1));
+    tie(order[1], order[2], 'SF', addDays(last, 1));
   } else {
     po.stage = 'F';
-    tie(order[0], order[1], 'F', addDays(last, 7));
+    tie(order[0], order[1], 'F', addDays(last, 1));
   }
   addNews({ cat: 'general', key: n === 4 ? 'draft.news.semis' : 'draft.news.final', params: { a: g.clubs[order[0]].name, b: g.clubs[order[1]].name } }, { all: true });
 }

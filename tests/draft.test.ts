@@ -104,6 +104,12 @@ describe('draft-liga', () => {
       expect(g.news.some((n) => n.cat === 'finance' || n.cat === 'transfer' || n.key.startsWith('press'))).toBe(false);
       expect(g.news.filter((n) => n.cat === 'match').length).toBeGreaterThan(5);
     });
+    // ingen træthed, moral eller præstationer – runderne spilles dag for dag
+    expect(Object.values(g.players).every((p) => p.condition === 100 && Math.abs(p.morale - 13) < 0.01)).toBe(true);
+    withHuman('p1', () => expect(g.news.some((n) => n.key.startsWith('ach'))).toBe(false));
+    const dates = [...new Set(Object.values(g.fixtures).filter((f) => f.comp === 'DL').map((f) => f.date))].sort();
+    expect(dates).toHaveLength(6);
+    expect(new Date(dates[5]).getTime() - new Date(dates[0]).getTime()).toBe(5 * 86_400_000);
     // skader er højst to uger
     expect(Object.values(g.players).every((p) => (p.injury?.days ?? 0) <= 14)).toBe(true);
 

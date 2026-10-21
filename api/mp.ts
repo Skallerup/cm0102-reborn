@@ -60,9 +60,9 @@ const dk = (code: string) => ({ teams: `room:${code}:dteams`, state: `room:${cod
 
 interface DraftTeamRec {
   slot: number; pid: string; ai: boolean; manager: string; name: string; short: string; colors: [string, string]; crest: number; formation: string;
-  wish: number[]; keep: { slot: number; player: number; place: number }[]; keepReady?: boolean;
+  wish: number[]; keep: { slot: number; player: number; place: number }[]; keepReady?: boolean; summaryReady?: boolean;
 }
-interface DraftStateRec { phase: 'lobby' | 'keepers' | 'draft' | 'done' | 'playing'; season: number; order: number[]; pickStart: number; keepStart: number }
+interface DraftStateRec { phase: 'lobby' | 'summary' | 'keepers' | 'draft' | 'done' | 'playing'; season: number; order: number[]; pickStart: number; keepStart: number; nextPhase?: string }
 
 async function draftTeams(code: string): Promise<DraftTeamRec[]> {
   const h = await redis.hgetall<Record<string, DraftTeamRec | string>>(dk(code).teams);
@@ -73,7 +73,7 @@ async function draftState(code: string): Promise<DraftStateRec | null> {
   const r = await redis.hgetall<Record<string, string | number>>(dk(code).state);
   if (!r || !r.phase) return null;
   const order = typeof r.order === 'string' ? JSON.parse(r.order || '[]') : (r.order ?? []);
-  return { phase: r.phase as DraftStateRec['phase'], season: Number(r.season), order: order as number[], pickStart: Number(r.pickStart ?? 0), keepStart: Number(r.keepStart ?? 0) };
+  return { phase: r.phase as DraftStateRec['phase'], season: Number(r.season), order: order as number[], pickStart: Number(r.pickStart ?? 0), keepStart: Number(r.keepStart ?? 0), nextPhase: r.nextPhase ? String(r.nextPhase) : undefined };
 }
 async function setDraftState(code: string, st: Partial<DraftStateRec>) {
   const v: Record<string, string | number> = {};
@@ -551,6 +551,25 @@ export async function POST(request: Request) {
       await touch(code); await touchDraft(code);
       return json(await publicRoom(code));
     }
+    case 'dnext': {
+      // sæsonafslutningen: manageren klikker videre (værten kan starte uden at vente)
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      if (!room || !st || st.phase !== 'summary') return json(await publicRoom(code));
+      const teams = await draftTeams(code);
+      const mine = teams.find((t) => t.pid === me.pid);
+      if (mine) { mine.summaryReady = true; await saveTeam(code, mine); }
+      const all = teams.every((t) => t.ai || t.summaryReady || t.pid === me.pid);
+      if (all || (body.force && room.host === me.pid)) {
+        // picks fra sidste sæson ryddes først nu (afslutningen viser dem)
+        await redis.del(dk(code).picks, dk(code).taken);
+        await setDraftState(code, { phase: (st.nextPhase as DraftStateRec['phase']) ?? 'draft', pickStart: Date.now(), keepStart: Date.now() });
+      }
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
     case 'dkeepdone': {
       // keepers er valgt (eller tiden er gået): manglende hold får deres bedste spillere (beregnet af klienten)
       const me = await auth(code, String(body.pid), String(body.token));
@@ -616,9 +635,9 @@ export async function POST(request: Request) {
       const order = (Array.isArray(body.order) ? body.order.map(Number) : []).filter((x: number) => teams.some((t) => t.slot === x));
       if (order.length !== teams.length || new Set(order).size !== order.length) return json({ error: 'order' }, 400);
       const keepers = Number(roomSettings(room).draft?.keepers ?? 0);
-      for (const t of teams) { t.keep = []; t.keepReady = false; await saveTeam(code, t); }
-      await redis.del(dk(code).picks, dk(code).taken);
-      await setDraftState(code, { phase: keepers > 0 ? 'keepers' : 'draft', season: st.season + 1, order, pickStart: Date.now(), keepStart: Date.now() });
+      for (const t of teams) { t.keep = []; t.keepReady = false; t.summaryReady = false; await saveTeam(code, t); }
+      // først en afslutning med tabel og statistik – næste fase starter, når alle har klikket videre
+      await setDraftState(code, { phase: 'summary', nextPhase: keepers > 0 ? 'keepers' : 'draft', season: st.season + 1, order });
       await touch(code); await touchDraft(code);
       return json(await publicRoom(code));
     }

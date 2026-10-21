@@ -90,6 +90,11 @@ describe('draft-liga (server)', () => {
     // sæsonen slut: ny draft med keepers-fase
     expect((await post('dseason', { ...B, season: 1, order: [1, 2] })).body.error).toBe('order');
     room = (await post('dseason', { ...B, season: 1, order: [3, 2, 1] })).body;
+    // først sæsonafslutningen: næste fase starter, når alle har klikket videre
+    expect(room.draft.phase).toBe('summary');
+    room = (await post('dnext', { ...A })).body;
+    expect(room.draft.phase).toBe('summary');
+    room = (await post('dnext', { ...B })).body;
     expect(room.draft.phase).toBe('keepers');
     expect(room.draft.season).toBe(2);
     expect((await post('dseason', { ...A, season: 1, order: [3, 2, 1] })).status).toBe(409);

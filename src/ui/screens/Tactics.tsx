@@ -28,7 +28,7 @@ export function Tactics() {
           </select>
         )}
       </Head>
-      <ChemistryPanel />
+      {!g.draft && <ChemistryPanel />}
       <TacticEditor tactic={g.tactic} players={squad(g.userClub)} onChange={set} />
     </div>
   );
@@ -187,7 +187,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             {FORMATIONS.map((f) => <option key={f} value={f}>{f}</option>)}
           </select>
           <button className="small" disabled={!hist.length} onClick={undo} title={t('tac.undoHint')}>↶ {t('tac.undo')}{hist.length ? ` (${hist.length})` : ''}</button>
-          <button className={`small ${editPos ? 'primary' : ''}`} onClick={() => { setEditPos(!editPos); setSel(null); }} title={t('tac.movePosHint')}>✥ {t(editPos ? 'tac.movePosDone' : 'tac.movePos')}</button>
+          {!gs().draft && <button className={`small ${editPos ? 'primary' : ''}`} onClick={() => { setEditPos(!editPos); setSel(null); }} title={t('tac.movePosHint')}>✥ {t(editPos ? 'tac.movePosDone' : 'tac.movePos')}</button>}
           <span className="muted">{t(editPos ? 'tac.movePosHint' : 'tac.hint2')}</span>
         </div>
         <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef}
@@ -195,6 +195,8 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
           onDrop={(e) => {
             // sluppet på en tom plet: flyt spillerens plads dertil (egen formation)
             if (drag === null) return;
+            // draft-liga: formationen er den, der blev draftet – pladser flyttes ikke ved et uheld
+            if (gs().draft) { setDrag(null); return; }
             const i = tactic.lineup.indexOf(drag);
             setDrag(null);
             if (i < 0 || tactic.slots[i].pos === 'GK') return;

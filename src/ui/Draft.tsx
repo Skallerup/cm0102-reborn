@@ -16,7 +16,7 @@ import { gs, hasGame, notify, setGame, squad } from '../game/state';
 import { FORMATIONS, formationSlots } from '../game/tactics';
 import type { DraftSettings, Player, Role } from '../game/types';
 import { leagueRows } from '../game/competitions';
-import { dateFmt, t } from '../i18n';
+import { t } from '../i18n';
 import { closeSession, createDraftLeague, joinDraftLeague, session, type RoomInfo } from '../online/client';
 import { askConfirm } from './confirm';
 import { Panel } from './components';
@@ -234,11 +234,12 @@ export function DraftRoom() {
           <button className="small" onClick={leave}>{t('nav.quit')}</button>
         </div>
       </div>
-      {last && d.phase !== 'lobby' && hasGame() && (
+      {last && d.phase !== 'lobby' && d.phase !== 'summary' && hasGame() && (
         <div className="insight good">{t('dr.lastChampion', { n: last.season, club: gs().clubs[last.champion]?.name ?? '?' })}{last.playoffWinner ? ` · ${t('dr.lastPlayoff', { club: gs().clubs[last.playoffWinner]?.name ?? '?' })}` : ''}</div>
       )}
       {msg && <div className="insight">{msg}</div>}
       {s.error && <div className="insight bad">{s.error}</div>}
+      {d.phase === 'summary' && <SeasonSummary />}
       {d.phase === 'lobby' && <Lobby settings={settings} />}
       {d.phase === 'lobby' && pool.length > 0 && <LobbyPool pool={pool} byId={byId} year={world?.season ?? 2025} />}
       {d.phase === 'keepers' && <Keepers settings={settings} />}
@@ -344,6 +345,77 @@ function DraftFinished({ byId }: { byId: Record<number, Player> }) {
           <button className="primary" disabled={!ready} onClick={() => { try { localStorage.setItem(SEEN(s.creds.code), String(d.season)); } catch { /* ignorér */ } notify(); }}>
             {ready ? t('dr.toTeam') : <><span className="ai-spinner" /> {t('dr.buildingShort')}</>}
           </button>
+        </div>
+      </Panel>
+    </div>
+  );
+}
+
+/** Sæsonen er slut: sluttabel, mester og statistik – man klikker selv videre til næste draft */
+function SeasonSummary() {
+  const s = session()!;
+  const d = s.room!.draft!;
+  if (!hasGame()) return <div className="empty">{t('start.loading')}</div>;
+  const g = gs();
+  const h = g.draft?.history.at(-1);
+  const lg = g.comps.DL;
+  if (!h || !lg) return <div className="empty">{t('start.loading')}</div>;
+  const rows = leagueRows(lg);
+  const crest = (id: number, size = 18) => { const c = g.clubs[id]; return c ? <DraftCrestImg shape={c.crest ?? 0} colors={c.colors} short={c.short} size={size} /> : null; };
+  const inLeague = Object.values(g.players).filter((p) => p.club && p.stats.ratingCount > 0);
+  const top = (key: (p: Player) => number, n = 5) => inLeague.filter((p) => key(p) > 0).sort((a, b) => key(b) - key(a)).slice(0, n);
+  const minApps = Math.max(1, Math.floor(Math.max(...rows.map((r) => r.p)) / 2));
+  const avg = (p: Player) => (p.stats.ratingCount >= minApps ? p.stats.ratingSum / p.stats.ratingCount : 0);
+  const myRow = rows.findIndex((r) => r.club === g.userClub);
+  const me = d.teams.find((x) => x.pid === s.creds.pid);
+  const waiting = d.teams.filter((x) => !x.ai && !x.summaryReady);
+  const List = ({ title, list, val }: { title: string; list: Player[]; val: (p: Player) => string }) => (
+    <Panel title={title} className="flush">
+      <table className="grid"><tbody>
+        {list.map((p, i) => <tr key={p.id} className={p.club === g.userClub ? 'me' : ''}><td className="muted">{i + 1}</td><td><span className="row" style={{ gap: 6 }}>{crest(p.club, 16)}{p.first} <b>{p.last}</b></span></td><td className="num"><b>{val(p)}</b></td></tr>)}
+        {!list.length && <tr><td className="muted">–</td></tr>}
+      </tbody></table>
+    </Panel>
+  );
+  return (
+    <div className="col" style={{ gap: 14 }}>
+      <div className="dr-champion">
+        {crest(h.champion, 72)}
+        <div>
+          <div className="muted">{t('dr.sumTitle', { n: h.season })}</div>
+          <h2 style={{ margin: '2px 0' }}>🏆 {t('dr.sumChampion', { club: g.clubs[h.champion]?.name ?? '?' })}</h2>
+          {h.playoffWinner && <div>{t('dr.lastPlayoff', { club: g.clubs[h.playoffWinner]?.name ?? '?' })}</div>}
+          {myRow >= 0 && <div className="muted">{t('dr.sumYou', { pos: myRow + 1, pts: rows[myRow].pts, gf: rows[myRow].gf, ga: rows[myRow].ga })}</div>}
+        </div>
+      </div>
+      <div className="cols">
+        <Panel title={t('dr.table')} className="flush">
+          <table className="grid">
+            <thead><tr><th>#</th><th>{t('col.club')}</th><th className="num">{t('tbl.p')}</th><th className="num">{t('tbl.w')}</th><th className="num">{t('tbl.d')}</th><th className="num">{t('tbl.l')}</th><th className="num">{t('tbl.gd')}</th><th className="num">{t('tbl.pts')}</th></tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={r.club} className={r.club === g.userClub ? 'me' : ''}>
+                  <td>{i === 0 ? '🏆' : i + 1}</td>
+                  <td><span className="row" style={{ gap: 6 }}>{crest(r.club)}{g.clubs[r.club]?.name}</span></td>
+                  <td className="num">{r.p}</td><td className="num">{r.w}</td><td className="num">{r.d}</td><td className="num">{r.l}</td><td className="num">{r.gf - r.ga}</td><td className="num"><b>{r.pts}</b></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Panel>
+        <div className="col" style={{ gap: 14 }}>
+          <List title={t('dr.topScorer')} list={top((p) => p.stats.lgGoals)} val={(p) => String(p.stats.lgGoals)} />
+          <List title={t('dr.sumAssists')} list={top((p) => p.stats.assists)} val={(p) => String(p.stats.assists)} />
+          <List title={t('dr.sumRating')} list={top(avg)} val={(p) => avg(p).toFixed(2)} />
+        </div>
+      </div>
+      <Panel>
+        <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
+          <span className="muted">{waiting.length ? t('dr.sumWaiting', { names: waiting.map((x) => x.manager).join(', ') }) : t('dr.sumAllReady')}</span>
+          <div className="row">
+            {s.isHost && waiting.some((x) => x.pid !== s.creds.pid) && <button className="small" onClick={() => s.draftNext(true)}>{t('dr.sumForce')}</button>}
+            <button className="primary" disabled={!me || me.summaryReady} onClick={() => s.draftNext()}>{me?.summaryReady ? t('dr.sumWait') : t('dr.sumNext')}</button>
+          </div>
         </div>
       </Panel>
     </div>
@@ -660,6 +732,17 @@ function AttrGrid({ p }: { p: Player }) {
 
 // ---------- i spillet: ligaen, historik og skadeserstatning ----------
 
+/** Topbjælken i en draft-sæson: runde i stedet for dato */
+export function draftRoundLabel(): string {
+  const g = gs();
+  const all = Object.values(g.fixtures).filter((f) => f.comp === 'DL');
+  const total = all.reduce((m, f) => Math.max(m, f.round), 0);
+  const played = all.filter((f) => f.result).reduce((m, f) => Math.max(m, f.round), 0);
+  if (g.comps.DLPO && !g.comps.DLPO.finished) return t('dr.playoffTitle');
+  if (g.draft?.seasonOver) return t('dr.seasonDone');
+  return t('dr.roundOf', { n: Math.min(total, played + 1), total });
+}
+
 export function DraftLeagueScreen() {
   const g = gs();
   const d = g.draft;
@@ -756,7 +839,7 @@ export function DraftLeagueScreen() {
           )}
         </Panel>
       </div>
-      <p className="muted" style={{ fontSize: 12.5 }}>{t('dr.seasonEndHint', { date: dateFmt(Object.values(g.fixtures).reduce((m, f) => (f.date > m ? f.date : m), g.date)) })}</p>
+      <p className="muted" style={{ fontSize: 12.5 }}>{t('dr.seasonEndHint2')}</p>
     </div>
   );
 }

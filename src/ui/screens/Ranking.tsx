@@ -37,12 +37,12 @@ export function RankingScreen() {
   return (
     <div>
       <Head title={t('nav.ranking')}>
-        <Tabs tabs={[['managers', t('bots.managers')], ['mine', t('rank.mine')], ['boards', t('rank.boards')], ['how', t('rank.how')]]} value={tab} onChange={setTab} />
+        {!g.draft && <Tabs tabs={[['managers', t('bots.managers')], ['mine', t('rank.mine')], ['boards', t('rank.boards')], ['how', t('rank.how')]]} value={tab} onChange={setTab} />}
       </Head>
-      {tab === 'managers' && <Managers />}
-      {tab === 'mine' && <Mine />}
-      {tab === 'boards' && (isMultiplayer(g) ? <div className="empty">{t('rank.singleOnly')}</div> : <Boards />)}
-      {tab === 'how' && <How />}
+      {(tab === 'managers' || g.draft) && <Managers />}
+      {!g.draft && tab === 'mine' && <Mine />}
+      {!g.draft && tab === 'boards' && (isMultiplayer(g) ? <div className="empty">{t('rank.singleOnly')}</div> : <Boards />)}
+      {!g.draft && tab === 'how' && <How />}
     </div>
   );
 }
@@ -209,7 +209,7 @@ function Managers() {
     <div className="col">
       <Panel title={t('bots.managers')} className="flush">
         <table className="grid">
-          <thead><tr><th>#</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('bots.pos')}</th><th className="num">{t('bots.season')}</th><th className="num">{t('bots.career')}</th><th className="num">{t('bots.trophies')}</th><th className="num">{t('bots.board')}</th><th className="num">{t('h2h.vsYou')}</th></tr></thead>
+          <thead><tr><th>#</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('bots.pos')}</th>{!g.draft && <><th className="num">{t('bots.season')}</th><th className="num">{t('bots.career')}</th><th className="num">{t('bots.trophies')}</th><th className="num">{t('bots.board')}</th></>}<th className="num">{t('h2h.vsYou')}</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={r.pid || 'me'} className={!r.pid || r.pid === g.active ? 'me' : ''}>
@@ -217,17 +217,19 @@ function Managers() {
                 <td>{r.name} {r.bot ? <span className="tag" title={t(`bots.style.${r.bot}.hint`)}>AI · {t(`bots.style.${r.bot}`)}</span> : null}</td>
                 <td>{r.club ? <><ClubLink id={r.club} /> <span className="muted">{r.league}</span></> : <span className="muted">{t('bots.unemployed')}</span>}</td>
                 <td className="num">{r.pos || '–'}</td>
-                <td className="num">{r.live}</td>
-                <td className="num"><b>{r.career + r.live}</b></td>
-                <td className="num">{r.trophies}</td>
-                <td className="num">{r.conf}%</td>
+                {!g.draft && <>
+                  <td className="num">{r.live}</td>
+                  <td className="num"><b>{r.career + r.live}</b></td>
+                  <td className="num">{r.trophies}</td>
+                  <td className="num">{r.conf}%</td>
+                </>}
                 <td className="num" title={r.h2h ? t('h2h.goals', { gf: r.h2h.gf, ga: r.h2h.ga }) : undefined}>{r.h2h ? <><b className="good">{r.h2h.w}</b>-{r.h2h.d}-<b className="bad">{r.h2h.l}</b></> : '–'}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </Panel>
-      <Panel title={t('bots.addTitle')}>
+      {!g.draft && <Panel title={t('bots.addTitle')}>
         <div className="col">
           <div className="muted">{t(session() ? 'bots.addHintOnline' : isMultiplayer(g) ? 'bots.addHint' : 'bots.addHintSolo')}</div>
           <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
@@ -236,7 +238,7 @@ function Managers() {
           </div>
           {msg && <div className="insight">{msg}</div>}
         </div>
-      </Panel>
+      </Panel>}
     </div>
   );
 }

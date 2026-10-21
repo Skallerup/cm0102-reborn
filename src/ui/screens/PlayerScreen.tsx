@@ -171,9 +171,9 @@ export function PlayerScreen({ id }: { id: number }) {
       {mine && <IncomingOffersFor pid={p.id} />}
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {mine && (traits(p).includes('troublemaker') || traits(p).includes('temperamental')) && <ReformPanel pid={p.id} />}
-      {mine && <TalkPanel pid={p.id} />}
+      {mine && !g.draft && <TalkPanel pid={p.id} />}
       {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
-      <InterestPanel pid={p.id} mine={mine} />
+      {!g.draft && <InterestPanel pid={p.id} mine={mine} />}
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">
           {(['technical', 'mental', 'physical', ...(p.pos[0] >= 15 ? ['goalkeeping'] : [])] as (keyof typeof GROUPS)[]).map((grp) => (
@@ -633,8 +633,9 @@ function CareerPanel({ pid }: { pid: number }) {
   if (!p) return null;
   type Row = { key: string; season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes?: number; avg?: number; loan?: boolean; real?: boolean; live?: boolean; move?: { fee: number; loan?: boolean; from: number; fromName?: string; swap?: boolean } };
   const rows: Row[] = [
-    ...(real ?? []).map((r, i) => ({ key: `r${i}`, ...r, real: true })),
-    ...p.history.map((h, i) => ({ key: `h${i}`, ...h })),
+    // draft-liga: kun denne sæson
+    ...(g.draft ? [] : (real ?? []).map((r, i) => ({ key: `r${i}`, ...r, real: true }))),
+    ...(g.draft ? [] : p.history.map((h, i) => ({ key: `h${i}`, ...h }))),
   ];
   // den igangværende sæson (minus det der allerede er bogført på en tidligere klub)
   const b = p.split ?? { apps: 0, goals: 0, assists: 0, minutes: 0, ratingSum: 0, ratingCount: 0 };
@@ -688,7 +689,7 @@ function CareerPanel({ pid }: { pid: number }) {
           </table>
         </div>
       )}
-      {real && real.length > 0 && <div className="muted" style={{ fontSize: 11.5, padding: '6px 12px 10px' }}>{t('career.source')}</div>}
+      {!g.draft && real && real.length > 0 && <div className="muted" style={{ fontSize: 11.5, padding: '6px 12px 10px' }}>{t('career.source')}</div>}
     </Panel>
   );
 }

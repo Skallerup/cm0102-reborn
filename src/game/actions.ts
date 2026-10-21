@@ -205,8 +205,8 @@ export function applyAction(a: Action): unknown {
     case 'join': return 'ok'; // håndteres af applyActionAs
     case 'addBot': return 'ok'; // håndteres af applyActionAs
     case 'chat': return sendChat(a.to, a.text);
-    case 'jab': return sendJab(a.to, a.line, a.text);
-    case 'bet': return proposeBet(a.to, a.amount);
+    case 'jab': return gs().draft ? 'error' : sendJab(a.to, a.line, a.text);
+    case 'bet': return gs().draft ? 'error' : proposeBet(a.to, a.amount);
     case 'betAnswer': return answerBet(a.id, a.accept);
     case 'chatRead': markChatRead(); return 'ok';
     case 'press': return applyPress(a.answers, a.headline, a.body);

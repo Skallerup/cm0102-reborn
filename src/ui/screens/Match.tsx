@@ -124,7 +124,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
         </Panel>
       </div>
       {isToday && !awayVsHuman && <OppInstructionsPanel fixture={id} rep={rep} />}
-      {isToday && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
+      {isToday && !gs().draft && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
       {isToday && awayVsHuman ? (
         <div className="insight">{t('mp.h2hAway', { name: humanManager(f.home)?.name ?? '' })}</div>
       ) : isToday ? (
@@ -618,7 +618,7 @@ function LiveMatch({ id }: { id: number }) {
 
   const st = sim.teams.map((tm) => tm.stats);
   const myLive = sim.live(me);
-  const halfTalk = sim.half === 2 && !report && (tab === 'talk' || (!talkDone(id, 'half') && sim.minute <= 50));
+  const halfTalk = !gs().draft && sim.half === 2 && !report && (tab === 'talk' || (!talkDone(id, 'half') && sim.minute <= 50));
   const myGoals = sim.teams[me].stats.goals - sim.teams[1 - me].stats.goals;
   const liveRatings = Object.fromEntries(myLive.on.filter((s) => !s.off).map((s) => [s.id, Math.round(s.rating * 10) / 10]));
 
@@ -724,7 +724,7 @@ function LiveMatch({ id }: { id: number }) {
                 flash={hl.flashes ? hl.flashes[hl.i] : hl.i === hl.frames.length - 1 && hl.outcome !== 'none' ? t(`hl.${hl.outcome}`) : undefined} shootout={soTally} />
             ) : (
               // mellem højdepunkterne: holdene i ro i deres formation
-              <Pitch2D weather={weatherFor(f)} snap={sim.shootout ? shootoutIdle(sim.pitch(), sim.shootout.kicks.length % 2) : { ...sim.pitch(), zone: 7, poss: me, holder: 0, moment: 0, shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
+              <Pitch2D weather={weatherFor(f)} snap={sim.shootout ? shootoutIdle(sim.pitch(), sim.shootout.kicks.length % 2) : { ...sim.pitch(), shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
                 banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} shootout={soTally} />
             )}
             {hl && <div className="p2d-replay">{t(hl.label ?? ('corner' in hl.frames[0] ? 'hl.corner' : 'hl.chance'))}</div>}
@@ -911,7 +911,7 @@ function FollowMatch({ id }: { id: number }) {
       <CmScoreboard home={f.home} away={f.away} hg={data.hg} ag={data.ag} colors={colors} minute={data.minute} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{t('mp.followHint', { name: homeMgr })} · ⚠️ {t('match.leaveAway', { name: homeMgr })}</div>
       {lost && <div className="insight bad">{t('mp.h2hLost', { name: homeMgr })} <button className="small" onClick={skip}>{t('mp.h2hSkip')}</button></div>}
-      {data.phase === 'half' && !talked && (
+      {data.phase === 'half' && !talked && !gs().draft && (
         <>
           <div className="insight">{t('mp.h2hHalf', { s: data.halfLeft })}</div>
           <TeamTalk fixture={id} stage="half" pids={[...mine.on.filter((x) => !x.off).map((x) => x.id), ...mine.bench]} diff={data.ag - data.hg}

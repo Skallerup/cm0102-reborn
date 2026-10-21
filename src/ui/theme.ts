@@ -260,7 +260,8 @@ export function applyTheme() {
   let hadSaved = false;
   try { hadSaved = !!localStorage.getItem(palKey); } catch { /* ignorér */ }
   // draft-liga: klubbens egne farver (der er intet logo at aflæse)
-  if (club.crest !== undefined) { paint([hex(club.colors[0]), hex(club.colors[1])]); return; }
+  // draft-liga: spillets eget mærkeblå tema (blå menu, hvid topbjælke) – ikke klubbens farver
+  if (gs().draft || club.crest !== undefined) { paint([hex('#1f3a9e'), undefined]); return; }
   void Promise.all([clubPalette(club.id, club.colors.map(hex)), officialColors()]).then(([[a, b, fromLogo], off]) => {
     if (token !== applied) return;
     // uden logo er beregningen usikker – behold de gemte farver, hvis vi har nogen

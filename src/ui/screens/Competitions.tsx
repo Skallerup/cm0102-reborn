@@ -22,7 +22,7 @@ export function Competitions({ id }: { id?: string }) {
     <div>
       <Head title={comp?.name ?? t('nav.competitions')}>
         <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
-          options={ordered.map((c) => ({ value: c.id, label: c.name, group: c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
+          options={ordered.map((c) => ({ value: c.id, label: c.name, group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
       </Head>
       {comp && (
         <>
@@ -100,12 +100,12 @@ export function LeagueTables({ comp }: { comp: Competition }) {
   return (
     <Panel className="flush">
       <LeagueTable rows={comp.table} comp={comp} />
-      <div className="legend" style={{ padding: 8 }}>
+      {!gs().draft && <div className="legend" style={{ padding: 8 }}>
         <span><i style={{ background: 'var(--accent2)' }} />{t('tbl.europe')}</span>
         <span><i style={{ background: 'var(--good)' }} />{t('tbl.promotion')}</span>
         <span><i style={{ background: 'var(--mid)' }} />{t('tbl.playoff')}</span>
         <span><i style={{ background: 'var(--bad)' }} />{t('tbl.relegation')}</span>
-      </div>
+      </div>}
     </Panel>
   );
 }

@@ -24,7 +24,7 @@ export function ReportScreen({ id }: { id: number }) {
   const mom = g.players[rep.mom];
   const mine = rep.home === g.userClub || rep.away === g.userClub;
   // samme dag som kampen: holdsnak efter kampen (komponenten viser intet, når den er holdt)
-  const talking = mine && g.fixtures[id]?.date === g.date;
+  const talking = mine && !g.draft && g.fixtures[id]?.date === g.date;
   const myLines = rep.players.filter((l) => l.team === side);
   const diff = rep.stats[side].goals - rep.stats[1 - side].goals + (rep.pens ? Math.sign(rep.pens[side] - rep.pens[1 - side]) : 0);
   return (

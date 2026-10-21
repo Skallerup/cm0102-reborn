@@ -146,7 +146,7 @@ export function ManagersScreen() {
               </div>
             );
           })()}
-          {target && tclub > 0 && myClub > 0 && <Rivalry pid={target.pid} tclub={tclub} />}
+          {target && tclub > 0 && myClub > 0 && !g.draft && <Rivalry pid={target.pid} tclub={tclub} />}
           <div className="chat-thread" ref={box}>
             {lines.length === 0 && <div className="muted" style={{ textAlign: 'center', padding: 20 }}>{t(target?.bot ? 'chat.emptyAi' : 'chat.empty')}</div>}
             {lines.map((l) => (
@@ -161,12 +161,12 @@ export function ManagersScreen() {
             <div className="chat-quick">
               <button className="small" onClick={() => send(t('chat.q.hello'))}>{t('chat.q.hello')}</button>
               <button className="small" onClick={() => send(t('chat.q.luck'))}>{t('chat.q.luck')}</button>
-              {theirPlayers.length > 0 && (
+              {theirPlayers.length > 0 && !g.draft && (
                 <Select<number> value={0} width={230} placeholder={t('chat.q.askPlayer')}
                   options={theirPlayers.map((p) => ({ value: p.id, label: `${p.first} ${p.last}` }))}
                   onChange={(id) => { const p = g.players[id]; if (p) setText(t('chat.q.askPrice', { player: `${p.first} ${p.last}` })); }} />
               )}
-              {myPlayers.length > 0 && (
+              {myPlayers.length > 0 && !g.draft && (
                 <Select<number> value={0} width={230} placeholder={t('chat.q.offerPlayer')}
                   options={myPlayers.map((p) => ({ value: p.id, label: `${p.first} ${p.last}` }))}
                   onChange={(id) => { const p = g.players[id]; if (p) setText(t('chat.q.offer', { player: `${p.first} ${p.last}` })); }} />

@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.10.2',
+    date: '2026-10-21',
+    title: { da: 'Draft-liga: renere spil, alle kampe i dag og sæsonafslutning', en: 'Draft League: cleaner game, all matches today and a season finale' },
+    items: [
+      { da: 'Alle runder spilles i dag – én runde pr. træk, uden datoer, træthed eller moral, der hænger ved', en: 'All rounds are played today – one round per turn, with no dates, lingering fatigue or morale' },
+      { da: 'Sæsonafslutning med sluttabel, mester, topscorere, assists og bedste karakterer – alle klikker selv videre til næste draft', en: 'Season finale with the final table, champions, top scorers, assists and best ratings – everyone clicks on to the next draft themselves' },
+      { da: 'Fjernet fra draft-ligaen: kontrakter, omklædningsrum, kemi, holdsnak, præstationer, venskabskampe, pressestikpiller, væddemål, byttehandler, spillersamtaler, interesserede klubber, tidligere karriere, transfervinduer og klassiske regler', en: 'Removed from the Draft League: contracts, dressing room, chemistry, team talks, achievements, friendlies, press jabs, bets, trades, player talks, interested clubs, past career, transfer windows and classic rules' },
+      { da: 'Draft-ligaen har sit eget blå tema og hører ikke til et land. Pladser kan ikke flyttes ved et uheld på taktiksiden', en: 'The Draft League has its own blue theme and belongs to no country. Positions can no longer be moved by accident on the tactics page' },
+      { da: '2D-banen følger nu kampens forløb mellem chancerne i stedet for at starte fra midten hver gang', en: 'The 2D pitch now follows the flow of the match between chances instead of restarting from the centre each time' },
+    ],
+  },
+  {
     version: '0.10.1',
     date: '2026-10-21',
     title: { da: 'Draft-liga: chat, voice-chat og ønskeliste før draften', en: 'Draft League: chat, voice chat and a wishlist before the draft' },

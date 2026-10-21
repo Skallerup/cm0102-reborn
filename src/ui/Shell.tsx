@@ -1,4 +1,5 @@
 import { BoardScreen } from './screens/Board';
+import { draftRoundLabel } from './Draft';
 import { DraftLeagueScreen } from './Draft';
 import { refreshSupport, syncSupporterRegens } from '../online/support';
 import { SupportPage } from './Support';
@@ -250,7 +251,7 @@ export function Shell() {
         <div className="club">
           {club ? <><Crest id={club.id} size={34} /><span className="club-name">{club.name}</span></> : <span className="muted">{online && !online.inGame ? t('mp.lobby') : t('top.unemployed')}</span>}
         </div>
-        <div className="date"><span className="date-long">{dateFmt(g.date, true)}</span><span className="date-short">{dateFmt(g.date)}</span></div>
+        {g.draft ? <div className="date">{draftRoundLabel()}</div> : <div className="date"><span className="date-long">{dateFmt(g.date, true)}</span><span className="date-short">{dateFmt(g.date)}</span></div>}
         {club && !g.draft && (
           <div className="money top-stats">
             <span className="top-stat"><small>{t('top.balance')}</small><b className={club.balance < 0 ? 'neg' : ''}>{money(club.balance)}</b></span>
@@ -262,7 +263,7 @@ export function Shell() {
         <FullscreenButton />
         {nextMatch && !inMatch && (
           <span className="nowrap top-next top-stat">
-            <small>{t('top.next')} · {dateFmt(nextMatch.date)}</small>
+            <small>{t('top.next')} · {g.draft ? t('dr.roundN', { n: nextMatch.round }) : dateFmt(nextMatch.date)}</small>
             <b><Crest id={nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home} size={16} /> {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short}{nextMatch.home === g.userClub ? '' : ` (${t('week.away')})`}</b>
           </span>
         )}

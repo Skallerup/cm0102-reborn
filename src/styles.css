@@ -1233,3 +1233,4 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .rc-input { display: flex; gap: 6px; }
 .rc-input input { flex: 1; min-width: 0; }
 .draft-page { padding-bottom: 120px; }
+.dr-champion { display: flex; gap: 16px; align-items: center; padding: 16px 18px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, #ffcf3f 22%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, #ffcf3f 45%, var(--line)); }

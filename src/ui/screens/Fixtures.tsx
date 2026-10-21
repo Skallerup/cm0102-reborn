@@ -31,7 +31,7 @@ export function Fixtures() {
   return (
     <div>
       <Head title={t('nav.fixtures')} />
-      <FriendliesPanel />
+      {!g.draft && <FriendliesPanel />}
       <Panel className="flush">
         <table className="grid">
           <thead><tr><th>{t('col.date')}</th><th>{t('col.comp')}</th><th>{t('fix.stage')}</th><th>{t('fix.venue')}</th><th>{t('fix.opponent')}</th><th className="center">{t('fix.result')}</th><th></th></tr></thead>
@@ -44,7 +44,7 @@ export function Fixtures() {
               const cls = !r ? '' : my > their || (r.pens && (home ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0])) ? 'good' : my === their ? '' : 'bad';
               return (
                 <tr key={f.id} className={g.reports[f.id] ? 'clickable' : ''} onClick={() => g.reports[f.id] && nav({ name: 'report', id: f.id })}>
-                  <td>{dateFmt(f.date)}</td>
+                  <td>{g.draft ? t('dr.roundN', { n: f.round }) : dateFmt(f.date)}</td>
                   <td>{g.comps[f.comp]?.name}</td>
                   <td className="muted">{stageLabel(f)}</td>
                   <td>{f.stage === 'F' ? t('fix.neutral') : home ? t('fix.home') : t('fix.away')}</td>

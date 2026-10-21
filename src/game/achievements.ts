@@ -23,6 +23,8 @@ export const ACHIEVEMENTS: { id: AchId; icon: string; tier: 1 | 2 | 3 }[] = [
 /** Lås en præstation op for den aktive manager (én gang) */
 export function unlock(id: AchId) {
   const g = gs();
+  // draft-liga: ingen præstationer
+  if (g.draft) return;
   const a = (g.manager.ach ??= {});
   if (a[id]) return;
   a[id] = g.date;

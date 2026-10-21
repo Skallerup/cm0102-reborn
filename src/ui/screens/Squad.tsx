@@ -82,10 +82,10 @@ export function Squad() {
   return (
     <div>
       <Head title={`${t('nav.squad')} (${players.length})`}>
-        <Tabs tabs={[['general', t('squad.general')], ['attrs', t('squad.attrs')], ['contracts', t('squad.contracts')]]} value={view} onChange={setView} />
+        <Tabs tabs={[['general', t('squad.general')], ['attrs', t('squad.attrs')], ...(g.draft ? [] : [['contracts', t('squad.contracts')] as [string, string]])]} value={view} onChange={setView} />
       </Head>
       <SquadTable players={players} view={view} userClub={g.userClub} />
-      <Cliques />
+      {!g.draft && <Cliques />}
       {loanedOut.length > 0 && (
         <>
           <h3 style={{ margin: '12px 0 6px' }} className="accent">{t('squad.loanedOut')}</h3>

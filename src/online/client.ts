@@ -43,7 +43,7 @@ export interface RoomInfo {
 }
 
 export interface DraftRoomInfo {
-  phase: 'lobby' | 'keepers' | 'draft' | 'done' | 'playing';
+  phase: 'lobby' | 'summary' | 'keepers' | 'draft' | 'done' | 'playing';
   season: number;
   order: number[];
   pickStart: number;
@@ -289,6 +289,7 @@ export class OnlineSession {
   draftRemoveAI(slot: number) { return this.dpost('dai', { remove: slot }); }
   draftSettings(draft: Partial<DraftSettings>, deadlineHours?: number) { return this.dpost('dsettings', { draft, deadlineHours }); }
   draftStart() { return this.dpost('dstart'); }
+  draftNext(force = false) { return this.dpost('dnext', { force }); }
 
   private duty = false;
   /**
@@ -357,7 +358,9 @@ export class OnlineSession {
       }
     } catch (e) {
       this.status = 'idle';
-      this.error = String((e as Error).message);
+      // kapløb mellem klienterne (en anden nåede det først) er ikke fejl
+      const m = String((e as Error).message);
+      if (!['phase', 'stale', 'locked', 'too-early', 'no-lock', 'taken'].includes(m)) this.error = m;
     } finally {
       this.duty = false;
       this.emit();
