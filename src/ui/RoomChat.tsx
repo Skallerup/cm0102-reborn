@@ -15,7 +15,8 @@ export function RoomChat() {
   const msgs = (room?.chat ?? []).filter((m) => m.to === 'all' || m.to === s?.creds.pid || m.from === s?.creds.pid);
   const last = msgs.at(-1)?.id ?? 0;
   useEffect(() => { if (open) { list.current?.scrollTo(0, 1e9); s?.markChatSeen(); } }, [open, last]); // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => { void stopVoice(); }, []);
+  // voice-chatten fortsætter, når panelet flyttes mellem draft-skærmen og spillet – kun opdateringen kobles til
+  useEffect(() => { const v = voice(); if (v) v.onChange = () => force((x) => x + 1); }, []);
   if (!s || !room) return null;
   const setOpenP = (v: boolean) => { setOpen(v); try { localStorage.setItem('cm0102.roomChat', v ? '1' : '0'); } catch { /* ignorér */ } };
   const unread = open ? 0 : s.unreadChat();

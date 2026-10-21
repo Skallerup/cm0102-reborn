@@ -1,5 +1,6 @@
 // Draft-liga: oprettelse, tilmelding, lobby, keepers og selve draften (live, 60 sekunder pr. valg).
 // Når draften er færdig, bygges sæsonen, og spillet fortsætter i den almindelige brugerflade (med færre menupunkter).
+import { stopVoice } from '../online/voice';
 import { holdDarkTheme } from './theme';
 import { RoomChat } from './RoomChat';
 import { useEffect, useMemo, useState } from 'react';
@@ -217,7 +218,7 @@ export function DraftRoom() {
   if (!s || !room || !d) return <div className="start"><div className="empty">{t('mp.connecting')}</div></div>;
   const leave = async () => {
     if (!(await askConfirm(t('mp.leaveConfirm')))) return;
-    closeSession(); forgetLast();
+    void stopVoice(); closeSession(); forgetLast();
     if (hasGame()) setGame(null); else notify();
   };
   const settings = room.settings.draft ?? DEFAULT_SETTINGS;

@@ -1,4 +1,6 @@
 import { BoardScreen } from './screens/Board';
+import { stopVoice } from '../online/voice';
+import { RoomChat } from './RoomChat';
 import { draftRoundLabel } from './Draft';
 import { DraftLeagueScreen } from './Draft';
 import { refreshSupport, syncSupporterRegens } from '../online/support';
@@ -321,7 +323,7 @@ export function Shell() {
         {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
-          if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { closeSession(); forgetLast(); setGame(null); } return; }
+          if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
           if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
         <BugReportButton screen={route.name} version={APP_VERSION} date={g.date} />
@@ -354,6 +356,7 @@ export function Shell() {
         </div>
       )}
       {toast && <div className="toast">{toast}</div>}
+      {g.draft && online && <RoomChat />}
     </div>
   );
 }

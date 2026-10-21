@@ -76,7 +76,7 @@ export function PlayerScreen({ id }: { id: number }) {
             <span>{t('col.pos')}</span><span>{posStr(p)}</span>
             <span>{t('player.foot')}</span><span>{t(`foot.${p.foot || 'R'}`)}</span>
             <span>{t('player.height')}</span><span>{p.height} cm</span>
-            <span>{t('col.value')}</span><span>{money(p.value)}</span>
+            {!g.draft && <><span>{t('col.value')}</span><span>{money(p.value)}</span></>}
             {p.contract && <><span>{t('col.wage')}</span><span>{money(p.contract.wage)} / {t('common.week')}</span>
               <span>{t('col.expires')}</span><span>{dateFmt(p.contract.expires)}</span></>}
             {p.contract?.release && (mine || k >= 40) ? <><span>{t('clause.release')}</span><span>{money(p.contract.release)}</span></> : null}
@@ -85,21 +85,21 @@ export function PlayerScreen({ id }: { id: number }) {
             {p.addOn && (mine || p.addOn.club === g.userClub) && <><span>{t('clause.addOnShort')}</span><span>{t('clause.addOnLeft', { fee: money(p.addOn.fee), club: g.clubs[p.addOn.club]?.name ?? '?', n: p.addOn.left })}</span></>}
             {p.contract?.futureClub && <><span>{t('player.nextClub')}</span><span><ClubLink id={p.contract.futureClub} /></span></>}
             <span>{t('player.caps')}</span><span>{p.caps} / {p.intGoals}</span>
-            {(() => { const a = agentOf(p); return <><span>{t('player.agent')}</span><span title={t(`agent.${a.style}.hint`)}>{a.name} <span className="tag">{t(`agent.${a.style}`)}</span></span></>; })()}
-            {!mine && p.club > 0 && <><span>{t('player.asking')}</span><span>{k >= 40 ? `≈ ${money(askingPrice(p))}` : t('player.unknown')}</span></>}
+            {!g.draft && (() => { const a = agentOf(p); return <><span>{t('player.agent')}</span><span title={t(`agent.${a.style}.hint`)}>{a.name} <span className="tag">{t(`agent.${a.style}`)}</span></span></>; })()}
+            {!mine && !g.draft && p.club > 0 && <><span>{t('player.asking')}</span><span>{k >= 40 ? `≈ ${money(askingPrice(p))}` : t('player.unknown')}</span></>}
           </div>
         </Panel>
         <Panel title={t('player.status')}>
           <div className="kv">
             <span>{t('col.cond')}<Info topic="condition" /></span><span><Bar value={p.condition} /> {Math.round(p.condition)}%</span>
-            <span>{t('col.morale')}<Info topic="morale" /></span><span>{t(`morale.${p.morale >= 16 ? 'superb' : p.morale >= 13 ? 'good' : p.morale >= 9 ? 'okay' : 'poor'}`)}</span>
+            {!g.draft && <><span>{t('col.morale')}<Info topic="morale" /></span><span>{t(`morale.${p.morale >= 16 ? 'superb' : p.morale >= 13 ? 'good' : p.morale >= 9 ? 'okay' : 'poor'}`)}</span></>}
             <span>{t('col.form')}</span><span><FormList form={p.form} /></span>
             {p.injury && <><span>{t('player.injury')}</span><span className="bad">{t(`injury.${p.injury.key}`)} ({p.injury.days} {t('common.days')})</span></>}
             {p.banned > 0 && <><span>{t('tag.ban')}</span><span className="bad">{p.banned}</span></>}
-            {(mine || k >= 60) && traits(p).length > 0 && <><span>{t('pers.title')}</span><span>{traits(p).map((x) => <span key={x} className={`tag ${GOOD_TRAITS.has(x) ? 'good' : x === 'troublemaker' || x === 'lazy' || x === 'mercenary' ? 'bad' : 'warn'}`} title={t(`trait.${x}.desc`)}>{t(`trait.${x}`)}</span>)}</span></>}
+            {!g.draft && (mine || k >= 60) && traits(p).length > 0 && <><span>{t('pers.title')}</span><span>{traits(p).map((x) => <span key={x} className={`tag ${GOOD_TRAITS.has(x) ? 'good' : x === 'troublemaker' || x === 'lazy' || x === 'mercenary' ? 'bad' : 'warn'}`} title={t(`trait.${x}.desc`)}>{t(`trait.${x}`)}</span>)}</span></>}
             {p.promiseUntil && <><span>{t('pers.promise')}</span><span className="muted">{t('pers.promiseUntil', { date: dateFmt(p.promiseUntil) })}</span></>}
             <span>{t('player.ability')}</span><span><Stars range={stars.ability} /></span>
-            <span>{t('player.potential')}</span><span><Stars range={stars.potential} /></span>
+            {!g.draft && <><span>{t('player.potential')}</span><span><Stars range={stars.potential} /></span></>}
             {g.options.masking && !mine && <><span>{t('player.knowledge')}</span><span><Bar value={k} /> {Math.round(k)}%</span></>}
           </div>
         </Panel>
@@ -172,7 +172,7 @@ export function PlayerScreen({ id }: { id: number }) {
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {mine && (traits(p).includes('troublemaker') || traits(p).includes('temperamental')) && <ReformPanel pid={p.id} />}
       {mine && !g.draft && <TalkPanel pid={p.id} />}
-      {!mine && g.userClub > 0 && <ScoutReport pid={p.id} />}
+      {!mine && !g.draft && g.userClub > 0 && <ScoutReport pid={p.id} />}
       {!g.draft && <InterestPanel pid={p.id} mine={mine} />}
       <Panel title={t('player.attributes')} right={g.options.masking && k < 100 ? <span className="muted">{t('player.rangeHint')}</span> : undefined}>
         <div className="attr-groups">

@@ -179,7 +179,7 @@ export function OnlineControls() {
   const onMyMatch = !!myMatch && route.name === 'match' && (route as { id?: number }).id === myMatch;
   return (
     <>
-      <button className="small" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>
+      {!gs().draft && <button className="small" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>}
       {inviteOpen && (
         <Modal title={t('mp.inviteTitle')} onClose={() => setInviteOpen(false)}>
           <div className="col">

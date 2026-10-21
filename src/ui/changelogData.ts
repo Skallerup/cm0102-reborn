@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-21',
     title: { da: 'Draft-liga: renere spil, alle kampe i dag og sæsonafslutning', en: 'Draft League: cleaner game, all matches today and a season finale' },
     items: [
+      { da: 'Chat og voice-chat følger med gennem hele draft-spillet. Scouting, værdi, agent, personlighed og invitation efter start er fjernet', en: 'Chat and voice chat stay with you throughout the draft game. Scouting, value, agent, personality and inviting after the start are removed' },
       { da: 'Draft-ligaen har fået sin egen side, der viser, hvordan den virker, og hvad der er sjovt ved den', en: 'The Draft League has its own page showing how it works and what makes it fun' },
       { da: 'Alle runder spilles i dag – én runde pr. træk, uden datoer, træthed eller moral, der hænger ved', en: 'All rounds are played today – one round per turn, with no dates, lingering fatigue or morale' },
       { da: 'Sæsonafslutning med sluttabel, mester, topscorere, assists og bedste karakterer – alle klikker selv videre til næste draft', en: 'Season finale with the final table, champions, top scorers, assists and best ratings – everyone clicks on to the next draft themselves' },
