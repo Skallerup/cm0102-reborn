@@ -154,7 +154,7 @@ export const en: Record<string, string> = {
   'player.rangeHint': 'Ranges narrow the more the player is scouted', 'player.positions': 'Positions', 'player.thisSeason': 'This season',
   'player.mom': 'Man of the match', 'player.cards': 'Yellow / red', 'player.career': 'Career', 'player.noHistory': 'No previous seasons',
   'player.bidSent': 'Offer sent. The reply will arrive in your inbox.', 'player.done': 'Done.', 'player.clubRep': 'Club reputation',
-  'dev.title': 'Development', 'dev.since': 'since {date}', 'dev.chart': 'Development chart', 'dev.now': 'Now', 'dev.changes': 'Biggest changes',
+  'dev.months': '{n} months of data', 'dev.title': 'Development', 'dev.since': 'since {date}', 'dev.chart': 'Development chart', 'dev.now': 'Now', 'dev.changes': 'Biggest changes',
   'dev.noChange': 'No noticeable changes yet – development shows over weeks and months.', 'dev.total': 'Total development', 'dev.col3m': 'Progress (3 mo)',
   'adv.col': "Assistant's advice", 'adv.use': 'Use', 'adv.followAll': "Follow assistant's advice", 'adv.agrees': '{coach} agrees with the training.',
   'adv.suggest': '{coach} suggests: {schedule}.', 'adv.weakness': 'He lags behind on {attrs} for his role.', 'adv.youth': 'Young player – develop {attrs} in particular.',

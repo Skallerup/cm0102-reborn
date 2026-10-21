@@ -16,7 +16,7 @@ import { compareIds, toggleCompare } from '../compare';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 import { AcceptCounterButton } from '../counterAccept';
-import { Arrow, DevelopmentChart, DevelopmentList, attrDelta, totalDelta } from '../dev';
+import { Arrow, DevelopmentPanel, attrDelta } from '../dev';
 import { trainingAdvice } from '../../game/training';
 import { GOOD_TRAITS, reformFactors, traits, type TalkKind } from '../../game/personality';
 import { aiCall } from '../../ai/client';
@@ -186,15 +186,9 @@ export function PlayerScreen({ id }: { id: number }) {
         </div>
       </Panel>
       {p.dev && p.dev.length > 0 && (
-        <div className="cols">
-          <Panel title={t('dev.title')} right={<span className="muted">{t('dev.since', { date: dateFmt(p.dev[0].d) })}</span>}>
-            <DevelopmentChart p={p} />
-          </Panel>
-          <Panel title={t('dev.changes')}>
-            <DevelopmentList p={p} />
-            <div className="muted" style={{ marginTop: 6 }}>{t('dev.total')}: <Arrow d={totalDelta(p, 999)} /></div>
-          </Panel>
-        </div>
+        <Panel title={t('dev.title')} right={<span className="muted">{t('dev.since', { date: dateFmt(p.dev[0].d) })}</span>}>
+          <DevelopmentPanel p={p} date={g.date} />
+        </Panel>
       )}
       <div className="cols">
         <Panel title={t('player.thisSeason')}>

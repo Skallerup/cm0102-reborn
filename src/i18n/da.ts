@@ -167,7 +167,7 @@ export const da: Record<string, string> = {
   'player.rangeHint': 'Intervaller indsnævres jo mere spilleren scoutes', 'player.positions': 'Positioner', 'player.thisSeason': 'Denne sæson',
   'player.mom': 'Kampens spiller', 'player.cards': 'Gule / røde', 'player.career': 'Karriere', 'player.noHistory': 'Ingen tidligere sæsoner',
   'player.bidSent': 'Buddet er sendt. Svaret kommer i indbakken.', 'player.done': 'Udført.', 'player.clubRep': 'Klubbens omdømme',
-  'dev.title': 'Udvikling', 'dev.since': 'siden {date}', 'dev.chart': 'Udviklingsgraf', 'dev.now': 'Nu', 'dev.changes': 'Største ændringer',
+  'dev.months': '{n} måneders data', 'dev.title': 'Udvikling', 'dev.since': 'siden {date}', 'dev.chart': 'Udviklingsgraf', 'dev.now': 'Nu', 'dev.changes': 'Største ændringer',
   'dev.noChange': 'Ingen mærkbare ændringer endnu – udvikling ses over uger og måneder.', 'dev.total': 'Samlet udvikling', 'dev.col3m': 'Udvikling (3 md.)',
   'adv.col': 'Assistentens forslag', 'adv.use': 'Brug', 'adv.followAll': 'Følg assistentens forslag', 'adv.agrees': '{coach} er enig i træningen.',
   'adv.suggest': '{coach} foreslår: {schedule}.', 'adv.weakness': 'Han halter efter på {attrs} i forhold til sin rolle.', 'adv.youth': 'Ung spiller – udvikl især {attrs}.',

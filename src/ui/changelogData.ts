@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.77',
+    date: '2026-10-21',
+    title: { da: 'Ny udviklingsgraf på spillersiden', en: 'New development chart on the player page' },
+    items: [
+      { da: 'Udvikling og største ændringer er samlet i ét panel: den samlede fremgang som stort tal, bløde kurver med navn, niveau og ændring ved hver kurve, og ændringerne som bjælker', en: 'Development and biggest changes are combined in one panel: total progress as a big number, smooth curves with name, level and change next to each, and the changes as bars' },
+      { da: 'Hold musen over grafen for at se alle værdier på en dato, eller over et område for at fremhæve det', en: 'Hover the chart to see every value on a date, or an area to highlight it' },
+    ],
+  },
+  {
     version: '0.7.76',
     date: '2026-10-21',
     title: { da: 'Bliv på siden, når du genindlæser', en: 'Stay on the page when you reload' },
