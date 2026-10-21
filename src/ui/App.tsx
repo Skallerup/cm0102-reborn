@@ -9,6 +9,7 @@ import { openSession, savedRooms } from '../online/client';
 import { Shell } from './Shell';
 import { Start } from './Start';
 import { Landing } from './Landing';
+import { PublicProfilePage } from './Achievements';
 import { loadLogos } from './logos';
 
 void loadLogos().then(() => notify());
@@ -19,6 +20,8 @@ export default function App() {
   const inGame = !!g;
   useEffect(() => { applyTheme(); }, [inGame]);
   const [lang, setLangState] = useState<Lang>(getLang());
+  // offentlig managerprofil (delt link: ?manager=<id>)
+  const [managerParam, setManagerParam] = useState(() => new URLSearchParams(location.search).get('manager') ?? '');
   const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
   const [landing, setLanding] = useState(() => {
@@ -59,6 +62,7 @@ export default function App() {
     })();
   }, [resuming]);
 
+  if (managerParam) return <PublicProfilePage pid={managerParam} onClose={() => { history.replaceState(null, '', location.pathname); setManagerParam(''); }} />;
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;

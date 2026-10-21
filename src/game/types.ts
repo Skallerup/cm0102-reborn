@@ -551,6 +551,9 @@ export interface ManagerProfile {
   pressPromise?: { fixture: number; opp: number };
   /** Manager Score pr. sæson (ranglister) og udgangspunktet for den igangværende sæson */
   scores?: SeasonScore[];
+  /** Præstationer: id → dato for oplåsning, og tællere til dem */
+  ach?: Record<string, string>;
+  achStats?: { wins: number; streak: number; unbeaten: number; lastPromotion?: number };
   seasonStart?: { season: number; club: number; balance: number; sacked: number };
 }
 

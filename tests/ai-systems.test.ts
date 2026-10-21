@@ -13,6 +13,7 @@ import { A } from '../src/game/attributes';
 import { boardAsk, boardAskInfo } from '../src/game/board';
 import { planIntake } from '../src/game/season';
 import { retireIntoStaff } from '../src/game/records';
+import { ACHIEVEMENTS, unlock } from '../src/game/achievements';
 import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
@@ -177,5 +178,23 @@ describe('rekordbog og legender', () => {
     expect(s).not.toBeNull();
     expect(s!.exPlayer?.legendOf).toBe(g.userClub);
     expect(['coach', 'assistant', 'scout']).toContain(s!.role);
+  });
+});
+
+describe('præstationer', () => {
+  it('serveren kender de samme præstationer som spillet', () => {
+    const src = readFileSync('api/rank.ts', 'utf8');
+    for (const a of ACHIEVEMENTS) expect(src).toContain(`'${a.id}'`);
+  });
+  it('låses op undervejs og kun én gang', () => {
+    const g = gs();
+    for (let i = 0; i < 60 && !g.manager.ach?.firstWin; i++) {
+      const r = continueGame();
+      if (r.match !== undefined) quickPlayUserMatch();
+    }
+    expect(g.manager.ach?.firstWin).toBeDefined();
+    const n = g.news.filter((x) => x.key === 'ach.unlocked').length;
+    unlock('firstWin');
+    expect(g.news.filter((x) => x.key === 'ach.unlocked').length).toBe(n);
   });
 });

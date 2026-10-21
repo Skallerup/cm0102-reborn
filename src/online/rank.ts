@@ -4,7 +4,7 @@ import { gs, hasGame, notify } from '../game/state';
 import { isMultiplayer } from '../game/humans';
 
 export interface RankProfile { pid: string; token: string; name: string }
-export interface RankRow { id: string; points: number; name: string; club: string; league: string; season?: number; seasons?: number }
+export interface RankRow { id: string; pid?: string; points: number; name: string; club: string; league: string; season?: number; seasons?: number }
 export type Board = 'career' | 'season' | 'month' | 'league';
 
 const KEY = 'cm0102.rankProfile';
@@ -55,7 +55,46 @@ export async function submitPending(): Promise<number> {
     submitting = false;
   }
   if (sent) notify();
+  void syncProfile();
   return sent;
+}
+
+/** Præstationer og karriereoversigt til den offentlige managerprofil */
+export async function syncProfile(): Promise<boolean> {
+  if (!hasGame() || !rankingAvailable()) return false;
+  const g = gs();
+  const prof = getProfile();
+  if (!prof || isMultiplayer(g)) return false;
+  const club = g.clubs[g.userClub];
+  const titles = g.manager.trophies.filter((x) => !/month|Year/.test(x.comp)).length;
+  const summary = {
+    club: club?.name ?? '', league: club ? g.leagues[club.league]?.name ?? '' : '', nation: g.nations[g.manager.nation]?.name ?? '',
+    seasons: new Set(g.manager.history.map((h) => h.season)).size, wins: g.manager.achStats?.wins ?? 0,
+    trophies: g.manager.trophies.length, titles, rep: Math.round(g.manager.rep),
+    trophyList: g.manager.trophies.filter((x) => !/month/.test(x.comp)).slice(-30).map((x) => `${x.season}/${String(x.season + 1).slice(2)} ${x.comp}`),
+  };
+  try {
+    const r = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'sync', pid: prof.pid, token: prof.token, ach: Object.keys(g.manager.ach ?? {}), summary }) });
+    return r.ok;
+  } catch { return false; }
+}
+
+export interface PublicProfile {
+  name: string; created: string; ach: string[];
+  summary: { club: string; league: string; nation: string; seasons: number; wins: number; trophies: number; titles: number; rep: number; trophyList: string[] } | null;
+  careers: { id: string; club: string; league: string; total: number; seasons: number; rank: number | null }[];
+}
+
+export async function fetchProfile(pid: string): Promise<PublicProfile | null> {
+  try {
+    const r = await fetch(`/api/rank?profile=${encodeURIComponent(pid)}`);
+    return r.ok ? await r.json() : null;
+  } catch { return null; }
+}
+
+/** Link til en managers offentlige profil */
+export function profileUrl(pid: string): string {
+  return `${location.origin}${import.meta.env.BASE_URL}?manager=${pid}`;
 }
 
 export async function fetchBoard(board: Board, league?: string): Promise<{ rows: RankRow[]; me: { rank: number; points: number } | null; total: number } | null> {

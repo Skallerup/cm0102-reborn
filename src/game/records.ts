@@ -5,6 +5,7 @@ import { ageOn } from './dates';
 import { asOwner, isHumanClub } from './humans';
 import { hash01 } from './rng';
 import { addNews, gs } from './state';
+import { unlock } from './achievements';
 import type { Club, ClubRecords, Fixture, MatchReport, Player, Staff, StaffRole } from './types';
 
 /** Kampe eller mål for klubben, der gør en spiller til klublegende */
@@ -40,6 +41,7 @@ export function recordsAfterMatch(f: Fixture, rep: MatchReport, att: number) {
       e.goals += line.goals;
       if (!e.legend && (e.apps >= LEGEND_APPS || e.goals >= LEGEND_GOALS)) {
         e.legend = true;
+        asOwner(cid, () => unlock('legend'));
         news('recb.news.legend', { player: e.name, apps: e.apps, goals: e.goals }, { kind: 'player', id: p.id });
       }
     }
@@ -81,6 +83,7 @@ export function recordsAfterMove(p: Player, to: number, fee: number, loan: boole
     if (!loan && fee > 0 && (!r.sale || fee > r.sale.fee)) {
       const old = r.sale;
       r.sale = { pid: p.id, name: pname(p), fee, club: to, date: g.date };
+      if (fee >= 20_000_000) asOwner(from.id, () => unlock('bigSale'));
       if (old) asOwner(from.id, () => addNews({ cat: 'transfer', key: 'recb.news.sale', params: { player: pname(p), fee }, link: { kind: 'player', id: p.id } }));
     }
   }
