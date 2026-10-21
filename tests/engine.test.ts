@@ -131,3 +131,18 @@ describe('instruktioner mod modstanderen', () => {
     expect(oi.ourFouls).toBeGreaterThan(base.ourFouls);
   });
 });
+
+describe('vejr', () => {
+  it('skybrud giver flere fejlafleveringer end klart vejr', () => {
+    const pct = (weather: 'clear' | 'heavyRain') => {
+      const r = new Rng(11);
+      let ok = 0, all = 0;
+      for (let i = 0; i < 150; i++) {
+        const rep = quickMatch(team(clubs[2]), team(clubs[3]), { weather }, r);
+        for (const s of rep.stats) { ok += s.passesCompleted; all += s.passes; }
+      }
+      return ok / all;
+    };
+    expect(pct('heavyRain')).toBeLessThan(pct('clear') - 0.01);
+  });
+});

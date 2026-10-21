@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { opponentReport } from '../../game/analysis';
 import type { MatchSim } from '../../game/engine/match';
 import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
+import { WEATHER_ICON, weatherFor } from '../../game/weather';
 import { act } from '../../game/actions';
 import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
@@ -100,6 +101,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
     <div>
       <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`} />
       <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} />
+      <div className="insight weather-note">{WEATHER_ICON[weatherFor(f)]} <b>{t(`wx.${weatherFor(f)}`)}</b> – {t(`wx.d.${weatherFor(f)}`)}</div>
       <div className="cols">
         <Panel title={t('match.yourXI')}>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
@@ -687,12 +689,12 @@ function LiveMatch({ id }: { id: number }) {
         <div className="cols match2d">
           <div style={{ position: 'relative' }}>
             {hl ? (
-              <Pitch2D snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
+              <Pitch2D weather={weatherFor(f)} snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
                 banner={hl.texts[hl.i] ?? ''} bannerCls={(hl.i === hl.frames.length - 1 && hl.outcome === 'goal') || hl.flashes?.[hl.i] === t('hl.goal') ? 'goal' : ''}
                 flash={hl.flashes ? hl.flashes[hl.i] : hl.i === hl.frames.length - 1 && hl.outcome !== 'none' ? t(`hl.${hl.outcome}`) : undefined} shootout={soTally} />
             ) : (
               // mellem højdepunkterne: holdene i ro i deres formation
-              <Pitch2D snap={sim.shootout ? shootoutIdle(sim.pitch(), sim.shootout.kicks.length % 2) : { ...sim.pitch(), zone: 7, poss: me, holder: 0, moment: 0, shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
+              <Pitch2D weather={weatherFor(f)} snap={sim.shootout ? shootoutIdle(sim.pitch(), sim.shootout.kicks.length % 2) : { ...sim.pitch(), zone: 7, poss: me, holder: 0, moment: 0, shot: null }} me={me} colors={colors} minute={minute} stepMs={600}
                 banner={L.lines.at(-1)?.text ?? ''} bannerCls={L.lines.at(-1)?.cls ?? ''} shootout={soTally} />
             )}
             {hl && <div className="p2d-replay">{t(hl.label ?? ('corner' in hl.frames[0] ? 'hl.corner' : 'hl.chance'))}</div>}
@@ -736,7 +738,7 @@ function LiveMatch({ id }: { id: number }) {
       {tab === 'table' && g.comps[f.comp]?.type === 'league' && <Panel className="flush"><LeagueTable rows={sortTable(g.comps[f.comp].table.slice())} comp={g.comps[f.comp]} /></Panel>}
       {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
       {!report && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
-      <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''}</div>
+      <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}</div>
       {tab === 'tactics' && !report && (
         <SubsPanel sim={sim} me={me} live={myLive} onDone={(ok) => { setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}

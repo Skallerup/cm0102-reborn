@@ -638,6 +638,8 @@ export interface MatchReport {
   pens?: [number, number];
   /** sparkene i straffesparkskonkurrencen, i rækkefølge (hold, skytte, målmand, udfald) */
   shootout?: ShootoutKick[];
+  /** vejret under kampen (se weather.ts) */
+  weather?: string;
   formations: [string, string];
 }
 

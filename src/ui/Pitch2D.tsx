@@ -239,8 +239,8 @@ function useNarrow(): boolean {
 /** Straffesparkskonkurrencens tavle: hvert holds spark (✓ mål, ✕ brændt, ○ mangler af de første fem) */
 export interface ShootoutTally { names: [string, string]; kicks: [string[], string[]] }
 
-export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, flash, shootout }: {
-  snap: Snap; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number; flash?: string; shootout?: ShootoutTally;
+export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, flash, shootout, weather }: {
+  snap: Snap; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number; flash?: string; shootout?: ShootoutTally; weather?: string;
 }) {
   const s = snap;
   // på smalle skærme er banen lille – større spillere og navne, så de kan læses
@@ -250,7 +250,8 @@ export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, f
   const dur = `${Math.max(80, Math.min(900, stepMs))}ms`;
   const X = (x: number) => (x / 100) * W, Y = (y: number) => (y / 100) * H;
   return (
-    <div className="pitch2d">
+    <div className={`pitch2d wx-${weather ?? 'clear'}`}>
+      {(weather === 'rain' || weather === 'heavyRain' || weather === 'snow') && <div className="p2d-wx" aria-hidden />}
       <svg viewBox={`-3 -3 ${W + 6} ${H + 6}`} role="img" aria-label="2D">
         <defs>
           <pattern id="stripes" width="10.5" height={H} patternUnits="userSpaceOnUse">

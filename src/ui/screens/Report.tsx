@@ -8,6 +8,7 @@ import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { StatsPanel, statColors } from './Match';
+import { WEATHER_ICON, type Weather } from '../../game/weather';
 import { TeamTalk } from '../teamtalk';
 
 export function ReportScreen({ id }: { id: number }) {
@@ -31,6 +32,7 @@ export function ReportScreen({ id }: { id: number }) {
         <div className="team"><Crest id={rep.home} size={34} /><ClubLink id={rep.home} noCrest /></div>
         <div>
           <div className="score">{rep.stats[0].goals} - {rep.stats[1].goals}</div>
+          {rep.weather && <div className="minute">{WEATHER_ICON[rep.weather as Weather]} {t(`wx.${rep.weather}`)}</div>}
           <div className="minute">{rep.pens ? `${t('fix.pens')} ${rep.pens[0]}-${rep.pens[1]}` : rep.et ? t('fix.aet') : t('match.ft')} · xG {rep.stats[0].xg.toFixed(2)} - {rep.stats[1].xg.toFixed(2)}</div>
         </div>
         <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} noCrest /></div>

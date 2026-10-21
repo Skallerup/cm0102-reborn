@@ -3,6 +3,7 @@ import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacanc
 import { needsWinnerFn, recordResult, setupLeague } from './competitions';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
+import { weatherFor, type Weather } from './weather';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
@@ -111,7 +112,7 @@ function usesVar(f: Fixture): boolean {
   return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
 }
 
-export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean } {
+export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather } {
   const ht = tacticFor(f.home, f.away, true, userAuto);
   const at = tacticFor(f.away, f.home, false, userAuto);
   return {
@@ -119,6 +120,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     away: engineTeam(f.away, at),
     neutral: f.stage === 'F',
     needsWinner: needsWinnerFn(f),
+    weather: weatherFor(f),
     importance: importance(f),
     var: usesVar(f),
   };
@@ -140,14 +142,14 @@ export function createLiveMatch(f: Fixture): MatchSim {
   const g = gs();
   return new MatchSim(m.home, m.away, {
     // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
-    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, date: g.date,
+    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, date: gs().date };
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, fixtureId: f.id, date: gs().date };
   const rep = commentary
     ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : quickMatch(m.home, m.away, opts, rng);
@@ -479,7 +481,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
 }
@@ -616,5 +618,5 @@ export function quickReport(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
 }

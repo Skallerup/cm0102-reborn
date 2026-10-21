@@ -10,6 +10,7 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
+import { weatherFx, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
   OppInstructions, ShootoutKick, ShotRecord, Tactic, TeamInstructions,
@@ -37,6 +38,8 @@ export interface EngineOptions {
   aiSubs?: [boolean, boolean];
   /** Turneringen bruger VAR (videodommer) – tætte offsidesituationer bliver tjekket */
   var?: boolean;
+  /** Vejret (påvirker afleveringer, luftdueller, træthed og afslutninger) */
+  weather?: Weather;
 }
 
 interface SP {
@@ -146,18 +149,21 @@ export class MatchSim {
   shootout?: { takers: [SP[], SP[]]; score: [number, number]; kicks: ShootoutKick[] };
   /** Instruktioner mod modstanderen pr. hold (gives af hold i og rammer hold 1-i) */
   private oi: [OppInstructions | undefined, OppInstructions | undefined] = [undefined, undefined];
+  private wx: WeatherFx;
   private momentumBucket = 0;
   private bucketThreat = 0;
 
   constructor(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng) {
     this.r = r;
     this.opts = opts;
+    this.wx = weatherFx(opts.weather);
     const oiFor = (t: EngineTeam) => (t.tactic.opp && t.tactic.opp.fixture === opts.fixtureId ? t.tactic.opp : undefined);
     this.oi = [oiFor(home), oiFor(away)];
     this.teams = [this.makeTeam(home, 0), this.makeTeam(away, 1)];
     const tempo = (this.teams[0].ti.tempo + this.teams[1].ti.tempo) / 2;
     this.totalMoments = Math.round(240 * (1 + 0.07 * (tempo - 1)));
     this.poss = r.chance(0.5) ? 0 : 1;
+    if (opts.weather && opts.weather !== 'clear' && opts.weather !== 'cloudy') this.line(`weather-${opts.weather}`);
     this.line('kickoff', this.teams[this.poss].on[10]);
   }
 
@@ -412,7 +418,7 @@ export class MatchSim {
     for (const t of this.teams) {
       // tæt markering og pres af modstanderens spillere koster kræfter
       const extra = (this.oi[t.idx]?.targets ?? []).filter((x) => x.kind === 'tight' || x.kind === 'press').length;
-      const tf = (1 + 0.15 * (t.ti.tempo - 1) + 0.12 * (t.ti.closingDown - 1)) * (1 + 0.035 * extra);
+      const tf = (1 + 0.15 * (t.ti.tempo - 1) + 0.12 * (t.ti.closingDown - 1)) * (1 + 0.035 * extra) * this.wx.fatigue;
       for (const s of t.on) {
         if (s.off) continue;
         const isGK = t.tactic.slots[s.slot].pos === 'GK';
@@ -555,6 +561,7 @@ export class MatchSim {
       tl = lane === 1 ? (this.r.chance(0.5) ? 0 : 2) : 1;
       base = 0.92;
     }
+    base += this.wx.pass;
     if (T.ti.passing === 0) base += 0.035;
     if (T.ti.passing === 2) base -= 0.03;
     const tz = this.zoneFor(T.idx, trb, tl);
@@ -595,7 +602,7 @@ export class MatchSim {
     s.line.passes++;
     if (!recv) { this.zone = tz; this.turnover(def); return; }
     const pq = this.a(s, A.passing) * 0.6 + this.a(s, A.technique) * 0.4;
-    const p = logistic(logit(0.42) + (this.aerial(recv) - (def ? this.aerial(def) : 5)) / 4 + (pq - 10) / 12 + this.overload(tz, T, O) * 0.6);
+    const p = logistic(logit(0.42) + (this.aerial(recv) - (def ? this.aerial(def) : 5)) / 4 + (pq - 10) / 12 + this.overload(tz, T, O) * 0.6 + this.wx.air);
     this.zone = tz;
     if (this.r.chance(p)) {
       T.stats.passesCompleted++;
@@ -678,7 +685,7 @@ export class MatchSim {
     const boxZ = this.zoneFor(T.idx, 4, 1);
     const blocker = this.pick(O.zDef[this.zone]);
     const cq = 0.7 * this.a(s, setPiece ? A.corners : A.crossing) + 0.3 * this.a(s, A.technique);
-    const deliver = logistic(logit(setPiece ? 0.72 : 0.62) + (cq - (blocker ? this.a(blocker, A.positioning) : 5)) / 5 + bonus);
+    const deliver = logistic(logit(setPiece ? 0.72 : 0.62) + (cq - (blocker ? this.a(blocker, A.positioning) : 5)) / 5 + bonus + this.wx.air);
     if (!this.r.chance(deliver)) {
       this.rate(s, -0.03);
       if (!setPiece && this.r.chance(0.5)) return this.corner(T, O);
@@ -830,7 +837,7 @@ export class MatchSim {
       : this.finQ(s);
     const gq = kind === 'oneOnOne' ? this.gk1v1(gk) : this.gkQ(gk);
     const mult = (kind === 'pen' ? 1.04 : FINISH_SCALE) * Math.exp((q - gq) / 13);
-    const goalP = clamp(xg * mult, 0.004, 0.92);
+    const goalP = clamp(xg * mult * (kind === 'pen' ? 1 : this.wx.finish), 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
     if (this.originNext) { rec.origin = this.originNext; this.originNext = ''; }
@@ -1153,6 +1160,7 @@ export class MatchSim {
       et: this.extraTime || undefined,
       pens: this.pens,
       shootout: this.shootout?.kicks,
+      weather: this.opts.weather,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
     };
   }
