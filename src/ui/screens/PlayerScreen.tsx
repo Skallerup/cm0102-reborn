@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IncomingOffersFor } from './Transfers';
 import { askConfirm } from '../confirm';
 import { Info } from '../help';
 import { A, GROUPS, POSITIONS_LABEL } from '../../game/attributes';
@@ -159,6 +160,7 @@ export function PlayerScreen({ id }: { id: number }) {
           </div>
         </Panel>
       </div>
+      {mine && <IncomingOffersFor pid={p.id} />}
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {mine && (traits(p).includes('troublemaker') || traits(p).includes('temperamental')) && <ReformPanel pid={p.id} />}
       {mine && <TalkPanel pid={p.id} />}

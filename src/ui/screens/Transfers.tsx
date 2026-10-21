@@ -335,6 +335,47 @@ function Offers() {
   );
 }
 
+/** Aktive bud på én af mine spillere – samme svarmuligheder som under Transfers → Bud (bruges på spillersiden) */
+export function IncomingOffersFor({ pid }: { pid: number }) {
+  const g = useGame()!;
+  const [counterFor, setCounterFor] = useState<TransferOffer | null>(null);
+  const [rejectFor, setRejectFor] = useState<TransferOffer | null>(null);
+  const [reply, setReply] = useState<{ key: string; tone: string } | null>(null);
+  const offers = g.offers.filter((o) => o.player === pid && o.seller === g.userClub && o.buyer !== g.userClub && o.status === 'pending');
+  const p = g.players[pid];
+  if (!offers.length && !reply) return null;
+  return (
+    <Panel title={t('tr.bidsOnPlayer', { n: offers.length })} className="flush offers-on-player">
+      {reply && <div className={`insight ${reply.tone}`} style={{ margin: 10 }}>{t(reply.key, { player: p ? `${p.first} ${p.last}` : '', club: '' })}</div>}
+      <div className="table-wrap">
+        <table className="grid">
+          <tbody>
+            {offers.map((o) => (
+              <tr key={o.id}>
+                <td><ClubLink id={o.buyer} /></td>
+                <td className="num"><b>{o.loan ? (o.option ? t('tr.loanOption', { fee: money(o.option) }) : t('tr.loan')) : money(o.fee)}</b>{swapLabel(o)}</td>
+                <td className="muted">{p?.listPrice ? `${t('list.price')}: ${money(p.listPrice)}` : t('tr.value', { fee: money(p?.value ?? 0) })}</td>
+                <td className="actions">
+                  <div className="row">
+                    <button className="small primary" onClick={() => act({ t: 'respond', pid: o.player, buyer: o.buyer, action: 'accept' })}>{t('offer.accept')}</button>
+                    <button className="small" onClick={() => setRejectFor(o)}>{t('offer.reject')}</button>
+                    <button className="small" onClick={() => setCounterFor(o)}>{t('offer.counter')}…</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {counterFor && <CounterModal offer={counterFor} onClose={() => setCounterFor(null)} />}
+      {rejectFor && <RejectModal offer={rejectFor} onClose={() => setRejectFor(null)} onReply={(key) => {
+        setReply(key ? { key, tone: key.endsWith('.2') ? 'good' : key.endsWith('.0') ? 'bad' : '' } : null);
+        setRejectFor(null);
+      }} />}
+    </Panel>
+  );
+}
+
 /** Afvis et bud – evt. med en begrundelse til spilleren */
 function RejectModal({ offer, onClose, onReply }: { offer: TransferOffer; onClose: () => void; onReply: (key: string | null) => void }) {
   const g = useGame()!;
