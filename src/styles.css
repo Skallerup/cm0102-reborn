@@ -907,3 +907,5 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 @keyframes wx-snow { to { background-position: 12px 34px, 0 29px; } }
 @media (prefers-reduced-motion: reduce) { .p2d-wx { animation: none !important; } }
 .weather-note { margin-bottom: 12px; }
+.ba-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 14px; }
+.ba-desc { margin: 0 0 8px; line-height: 1.5; }

@@ -215,14 +215,16 @@ export function planIntake(c: Club): IntakeSpec[] {
   const g = gs();
   const date = intakeDate();
   const r = new Rng(hash(g.seed, c.id, g.season, 31));
-  const n = r.int(3, 4);
+  // ekstra ungdomsrekruttering (bestyrelsesønske): én spiller mere og en bedre årgang
+  const drive = c.youthDrive === g.season;
+  const n = r.int(3, 4) + (drive ? 1 : 0);
   const out: IntakeSpec[] = [];
   for (let i = 0; i < n; i++) {
     const nation = r.chance(0.88) ? c.nation : r.pick(Object.keys(g.names).map(Number));
     const [first, last] = randomName(g.names, nation, r);
     const age = r.int(15, 17);
     const sub: SubPos = randomSub(r);
-    const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4;
+    const quality = (c.youth / 20) * 0.6 + (c.rep / 100) * 0.4 + (drive ? 0.12 : 0);
     const ca = Math.round(28 + quality * 45 + r.normal(0, 8));
     // kalibreret (scripts/player-pool.ts): nok talenter til at erstatte dem der stopper, uden at oversvømme toppen
     let pa = Math.round(ca + PA_BASE + quality * PA_Q + r.normal(0, PA_SD));

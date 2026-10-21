@@ -1,3 +1,4 @@
+import { BoardScreen } from './screens/Board';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil } from '../game/sim';
@@ -47,7 +48,7 @@ const NOTIFY_KEYS = ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.b
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
-  ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'],
+  ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
 const MENU2: [ScreenName, string][] = [['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
 const UNEMPLOYED: ScreenName[] = ['inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
@@ -302,6 +303,7 @@ function Screen() {
     case 'staff': return <StaffScreen />;
     case 'finance': return <Finance />;
     case 'club': return <ClubScreen id={route.id as number | undefined} />;
+    case 'board': return <BoardScreen />;
     case 'assistant': return <Assistant tab={route.tab} />;
     case 'compare': return <Assistant tab="compare" />;
     case 'benchmark': return <Assistant tab="bench" />;

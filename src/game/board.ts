@@ -9,7 +9,7 @@ function rulesForLeague(league: string) {
 }
 import { addNews, gs, newsRelevant, squad } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
-import type { Club, JobTalk } from './types';
+import type { BoardAsk, Club, JobTalk } from './types';
 import { takeOverClub } from './newgame';
 import { forEachHuman, removeHooks } from './humans';
 
@@ -672,3 +672,126 @@ removeHooks.onRemoved = (clubId) => {
   else openVacancy(clubId);
 };
 removeHooks.news = (name, club) => addNews({ cat: 'general', key: 'mp.removed', params: { manager: name, club } });
+
+// ---------- øvrige ønsker til bestyrelsen ----------
+
+export interface BoardAskInfo {
+  /** kan ønsket stilles nu? ellers en nøgle med begrundelsen */
+  blocked?: string;
+  /** pris (for ønsker, der koster penge) */
+  cost?: number;
+  /** bestyrelsens sandsynlige svar, ud fra de samme regler som afgør det */
+  likely: 'yes' | 'maybe' | 'no';
+  /** hvad der taler for og imod (i18n-nøgler) */
+  pros: string[];
+  cons: string[];
+}
+
+const LEAGUE_PLAYED = () => {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  return g.comps[c?.league ?? '']?.table.find((r) => r.club === g.userClub)?.p ?? 0;
+};
+const leaguePos = () => {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  const comp = c ? g.comps[c.league] : undefined;
+  return comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === c!.id) + 1 : 99;
+};
+/** Er ønsket allerede stillet i denne sæson (eller inden for days dage)? */
+function askedRecently(kind: BoardAsk, days: number): boolean {
+  const g = gs();
+  const d = g.board.asked?.[kind];
+  return !!d && daysBetween(d, g.date) < days;
+}
+
+export function boardAskInfo(kind: BoardAsk): BoardAskInfo {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (!c) return { blocked: 'ba.blocked.noClub', likely: 'no', pros: [], cons: [] };
+  const pros: string[] = [], cons: string[] = [];
+  const conf = g.board.confidence;
+  switch (kind) {
+    case 'lowerExp': {
+      const played = LEAGUE_PLAYED();
+      if (askedRecently(kind, 300)) return { blocked: 'ba.blocked.season', likely: 'no', pros, cons };
+      if (played >= 8) return { blocked: 'ba.blocked.tooLate', likely: 'no', pros, cons };
+      const lower = expectationFor(c, 1);
+      if (lower.pos <= g.board.expectedPos) return { blocked: 'ba.blocked.alreadyLow', likely: 'no', pros, cons };
+      const { rank } = strengthRank(c);
+      const overrated = rank > g.board.expectedPos;
+      if (overrated) pros.push('ba.pro.overrated'); else cons.push('ba.con.fairExp');
+      if (conf >= 65) pros.push('ba.pro.trust'); else if (conf < 45) cons.push('ba.con.lowTrust');
+      return { likely: overrated || conf >= 65 ? 'yes' : conf >= 50 ? 'maybe' : 'no', pros, cons };
+    }
+    case 'confidenceVote': {
+      if (askedRecently(kind, 300)) return { blocked: 'ba.blocked.season', likely: 'no', pros, cons };
+      if (conf >= 55) return { blocked: 'ba.blocked.notNeeded', likely: 'no', pros, cons };
+      const fans = c.fanMood ?? 60;
+      const near = leaguePos() <= g.board.expectedPos + 2;
+      if (fans >= 50) pros.push('ba.pro.fans'); else cons.push('ba.con.fans');
+      if (near) pros.push('ba.pro.nearTarget'); else cons.push('ba.con.farFromTarget');
+      return { likely: fans >= 50 && near ? 'yes' : fans >= 50 || near ? 'maybe' : 'no', pros, cons };
+    }
+    case 'youthDrive': {
+      const cost = Math.max(100_000, Math.round(c.wageBudget * 6 / 10_000) * 10_000);
+      if (c.youthDrive === g.season) return { blocked: 'ba.blocked.youthDone', cost, likely: 'no', pros, cons };
+      const m = Number(g.date.slice(5, 7));
+      if (m === 3 && Number(g.date.slice(8, 10)) >= 15 || m === 4 || m === 5) return { blocked: 'ba.blocked.afterIntake', cost, likely: 'no', pros, cons };
+      if (c.balance >= cost * 3) pros.push('ba.pro.money'); else if (c.balance < cost) cons.push('ba.con.money');
+      if (conf >= 45) pros.push('ba.pro.trustOk'); else cons.push('ba.con.lowTrust');
+      return { cost, likely: c.balance >= cost && conf >= 45 ? 'yes' : 'no', pros, cons };
+    }
+    case 'trainingCamp': {
+      const cost = Math.max(50_000, Math.round(c.wageBudget * 3 / 10_000) * 10_000);
+      if (askedRecently(kind, 150)) return { blocked: 'ba.blocked.campRecent', cost, likely: 'no', pros, cons };
+      if (c.balance >= cost * 3) pros.push('ba.pro.money'); else if (c.balance < cost) cons.push('ba.con.money');
+      if (conf >= 35) pros.push('ba.pro.trustOk'); else cons.push('ba.con.lowTrust');
+      return { cost, likely: c.balance >= cost && conf >= 35 ? 'yes' : 'no', pros, cons };
+    }
+  }
+}
+
+/** Stil et ønske til bestyrelsen. Svaret følger reglerne i boardAskInfo (et "måske" afgøres af tilliden). */
+export function boardAsk(kind: BoardAsk): 'yes' | 'no' | 'blocked' {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  const info = boardAskInfo(kind);
+  if (!c || info.blocked) return 'blocked';
+  (g.board.asked ??= {})[kind] = g.date;
+  const yes = info.likely === 'yes' || (info.likely === 'maybe' && g.board.confidence + (c.fanMood ?? 60) / 4 >= 60);
+  if (!yes) {
+    if (kind === 'confidenceVote') { g.board.confidence = clamp(g.board.confidence - 6, 0, 100); g.board.warnings = Math.min(2, g.board.warnings + 1); }
+    else if (kind === 'lowerExp') g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
+    addNews({ cat: 'board', key: `ba.no.${kind}`, params: { club: c.name } });
+    return 'no';
+  }
+  switch (kind) {
+    case 'lowerExp': {
+      const e = expectationFor(c, 1);
+      g.board.expectation = e.exp;
+      g.board.expectedPos = e.pos;
+      g.board.confidence = clamp(g.board.confidence - 4, 0, 100);
+      addNews({ cat: 'board', key: 'ba.yes.lowerExp', params: { exp: e.exp, pos: e.pos } });
+      break;
+    }
+    case 'confidenceVote':
+      g.board.warnings = 0;
+      g.board.confidence = clamp(g.board.confidence + 10, 0, 100);
+      addNews({ cat: 'board', key: 'ba.yes.confidenceVote', params: { club: c.name } });
+      break;
+    case 'youthDrive':
+      c.balance -= info.cost!;
+      c.finance.other += info.cost!;
+      c.youthDrive = g.season;
+      addNews({ cat: 'board', key: 'ba.yes.youthDrive', params: { cost: info.cost! } });
+      break;
+    case 'trainingCamp':
+      c.balance -= info.cost!;
+      c.finance.other += info.cost!;
+      for (const p of squad(c.id)) { p.morale = Math.min(20, p.morale + 2); p.condition = Math.min(100, p.condition + 6); }
+      addNews({ cat: 'board', key: 'ba.yes.trainingCamp', params: { cost: info.cost! } });
+      break;
+  }
+  return 'yes';
+}

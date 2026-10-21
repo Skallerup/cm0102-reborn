@@ -289,6 +289,8 @@ export interface Club {
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */
   projects?: ClubProject[];
+  /** Sæson, hvor bestyrelsen har betalt for ekstra ungdomsrekruttering (større og bedre årgang i marts) */
+  youthDrive?: number;
   sponsor?: SponsorDeal;
   /** Merchandise-boost efter stjernekøb */
   merchBoost?: { until: string; factor: number };
@@ -533,6 +535,8 @@ export interface ManagerProfile {
   seasonStart?: { season: number; club: number; balance: number; sacked: number };
 }
 
+export type BoardAsk = 'lowerExp' | 'confidenceVote' | 'youthDrive' | 'trainingCamp';
+
 export interface BoardState {
   /** Ungdomschefens rapport om den kommende årgang */
   youthPreview?: { season: number; verdict: 'golden' | 'good' | 'average' | 'poor'; n: number; standout?: string; wonderkid?: boolean };
@@ -549,6 +553,8 @@ export interface BoardState {
   /** Seneste svar på budgetanmodninger (måned pr. type) og et åbent modbud */
   budgetAsked?: { transfer?: string; wage?: string };
   budgetCounter?: { kind: 'transfer' | 'wage'; pct: number; until: string };
+  /** Seneste svar på de øvrige ønsker til bestyrelsen (dato pr. ønske) */
+  asked?: Partial<Record<BoardAsk, string>>;
   expectation: string; // nøgle: 'title' | 'top3' | 'tophalf' | 'mid' | 'survive' | 'promotion' | 'playoffs'
   expectedPos: number;
   warnings: number;

@@ -10,6 +10,8 @@ import { clubStrategy } from '../src/game/strategy';
 import { newTactic } from '../src/game/tactics';
 import { cliques } from '../src/game/will';
 import { A } from '../src/game/attributes';
+import { boardAsk, boardAskInfo } from '../src/game/board';
+import { planIntake } from '../src/game/season';
 import { interact, monthlyPersonality, reformFactors, traits } from '../src/game/personality';
 import { SCORE_LIMITS, computeSeasonScore } from '../src/game/rating';
 
@@ -130,5 +132,28 @@ describe('problembørn', () => {
     for (let m = 0; m < 60 && traits(p).includes('troublemaker'); m++) { p.morale = 15; p.lastIncident = undefined; monthlyPersonality(); }
     expect(p.attrs[A.temperament]).toBeGreaterThan(5);
     expect(traits(p)).not.toContain('troublemaker');
+  });
+});
+
+describe('bestyrelsesønsker', () => {
+  it('ungdomsrekruttering giver en større og bedre årgang', () => {
+    const g = gs();
+    const c = g.clubs[g.userClub];
+    const before = planIntake(c);
+    c.balance = 50_000_000;
+    g.board.confidence = 70;
+    expect(boardAsk('youthDrive')).toBe('yes');
+    const after = planIntake(c);
+    expect(after.length).toBe(before.length + 1);
+    expect(Math.max(...after.map((s) => s.pa))).toBeGreaterThanOrEqual(Math.max(...before.map((s) => s.pa)));
+    // samme ønske to gange i samme sæson går ikke
+    expect(boardAsk('youthDrive')).toBe('blocked');
+  });
+  it('tillidserklæring kan kun bedes om, når tilliden er lav', () => {
+    const g = gs();
+    g.board.confidence = 80;
+    expect(boardAskInfo('confidenceVote').blocked).toBe('ba.blocked.notNeeded');
+    g.board.confidence = 30;
+    expect(boardAskInfo('confidenceVote').blocked).toBeUndefined();
   });
 });
