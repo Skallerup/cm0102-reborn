@@ -1,5 +1,6 @@
 // Draft-liga: oprettelse, tilmelding, lobby, keepers og selve draften (live, 60 sekunder pr. valg).
 // Når draften er færdig, bygges sæsonen, og spillet fortsætter i den almindelige brugerflade (med færre menupunkter).
+import { holdDarkTheme } from './theme';
 import { RoomChat } from './RoomChat';
 import { useEffect, useMemo, useState } from 'react';
 import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
@@ -206,6 +207,7 @@ export function DraftJoin({ code, room, onBack, setBusy }: { code: string; room:
 // ---------- draft-rummet ----------
 
 export function DraftRoom() {
+  useEffect(() => { holdDarkTheme(true); return () => holdDarkTheme(false); }, []);
   const s = session();
   const room = s?.room;
   const d = room?.draft;
@@ -294,7 +296,7 @@ function Lobby({ settings }: { settings: DraftSettings }) {
           <ul className="muted dr-rules">
             <li>{t('dr.rule.pool')}</li>
             <li>{t('dr.rule.snake', { s: PICK_SECONDS })}</li>
-            <li>{t('dr.rule.squad', { st: STARTERS, b: BENCH })}</li>
+            <li>{t(settings.injuries ? 'dr.rule.squad' : 'dr.rule.squadNoGK', { st: STARTERS, b: BENCH })}</li>
             <li>{t('dr.rule.season')}</li>
           </ul>
         </Panel>
@@ -405,6 +407,7 @@ function PoolPanel({ pool, byId, taken, mine, picks, sel, onSel, year, title }: 
   pool: Player[]; byId: Record<number, Player>; taken: Set<number>; mine?: DraftTeam; picks: DraftPick[]; sel: number | null; onSel: (id: number) => void; year: number; title: string;
 }) {
   const s = session()!;
+  const room = s.room;
   const [role, setRole] = useState<Role | ''>('');
   const [q, setQ] = useState('');
   const [fitOnly, setFitOnly] = useState(false);
@@ -413,7 +416,7 @@ function PoolPanel({ pool, byId, taken, mine, picks, sel, onSel, year, title }: 
     .filter((p) => !role || canPlayRole(p, role))
     .filter((p) => !q || `${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase()))
     .filter((p) => !wishOnly || !!mine?.wish.includes(p.id))
-    .filter((p) => !fitOnly || !mine || placesFor(mine, picks, p, byId).length > 0)
+    .filter((p) => !fitOnly || !mine || placesFor(mine, picks, p, byId, room?.settings.draft?.injuries ?? true).length > 0)
     .slice(0, 200);
   return (
     <Panel title={title} className="flush">
@@ -523,9 +526,10 @@ function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Recor
     return () => { clearInterval(h); document.title = base; };
   }, [myTurn, n]);
 
-  const suggestion = myTurn && mine ? autoPick(mine, d.picks, pool, reserved) : null;
+  const gkBench = settings.injuries;
+  const suggestion = myTurn && mine ? autoPick(mine, d.picks, pool, reserved, gkBench) : null;
   const selP = sel ? byId[sel] : null;
-  const selPlaces = selP && mine && !taken.has(selP.id) ? placesFor(mine, d.picks, selP, byId) : [];
+  const selPlaces = selP && mine && !taken.has(selP.id) ? placesFor(mine, d.picks, selP, byId, gkBench) : [];
   const pick = async (player: number, pl: number) => {
     setBusy(true); setErr('');
     try { await s.draftPick(player, pl); setSel(null); } catch (e) { setErr(t(`dr.err.${(e as Error).message}`)); }
@@ -632,7 +636,7 @@ function TeamPitch({ team, picks, byId, highlight = [], onPlace }: { team: Draft
           return <div key={i} className={`dr-bench-spot ${p ? 'on' : ''} ${hi ? 'hi clickable' : ''}`} onClick={() => hi && onPlace?.(BENCH_PLACE)}>{p ? <><b>{p.last}</b><span className="muted">{positionString(p)} · {rating(p)}</span></> : <span className="muted">{t('dr.sub')}</span>}</div>;
         })}
       </div>
-      {!bench.some((p) => byId[p.player] && naturalRole(byId[p.player]) === 'GK') && <div className="muted" style={{ fontSize: 12 }}>{t('dr.needGK')}</div>}
+      {(session()?.room?.settings.draft?.injuries ?? true) && !bench.some((p) => byId[p.player] && naturalRole(byId[p.player]) === 'GK') && <div className="muted" style={{ fontSize: 12 }}>{t('dr.needGK')}</div>}
     </div>
   );
 }

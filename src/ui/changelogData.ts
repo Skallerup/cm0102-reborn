@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-21',
     title: { da: 'Draft-liga: chat, voice-chat og ønskeliste før draften', en: 'Draft League: chat, voice chat and a wishlist before the draft' },
     items: [
+      { da: 'Draft-skærmen beholder det mørke tema, også når sæsonen er bygget. Uden skader behøver bænken ingen reservemålmand', en: 'The draft screen keeps the dark theme, also once the season has been built. Without injuries the bench needs no reserve goalkeeper' },
       { da: 'Spillere kan kun draftes til de positioner, der står ved dem, og positionsfilteret viser alle, der kan spille positionen. Klik på assistentens forslag for at se spilleren', en: 'Players can only be drafted to the positions shown next to them, and the position filter shows everyone who can play the position. Click the assistant\'s suggestion to see the player' },
       { da: 'Chat og voice-chat under draften – lyden går direkte mellem jer, og det ses, hvem der taler', en: 'Chat and voice chat during the draft – the audio goes directly between you, and you can see who is talking' },
       { da: 'Rettet: assistenten valgte for managerne efter første runde, og draften kunne gå i stå ved sidste valg', en: 'Fixed: the assistant picked for managers after the first round, and the draft could stall on the last pick' },

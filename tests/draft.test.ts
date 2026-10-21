@@ -133,3 +133,16 @@ describe('draft-liga', () => {
     expect(g.players[p.id].club).toBe(0);
   });
 });
+
+describe('draft uden skader', () => {
+  it('bænken behøver ingen målmand', () => {
+    const pool = draftPool(world, 7, world.season);
+    const byId = Object.fromEntries(pool.map((p) => [p.id, p]));
+    const team: DraftTeam = { ...aiTeam(5, []), formation: '4-4-2' };
+    const st = pool.filter((p) => naturalRole(p) === 'ST');
+    // fire markspillere på bænken: den femte må også være en markspiller, når der ikke er skader
+    const picks: DraftPick[] = st.slice(0, 4).map((p) => ({ slot: 5, player: p.id, place: BENCH_PLACE }));
+    expect(canPlace(team, picks, st[4], BENCH_PLACE, byId, true)).toBe(false);
+    expect(canPlace(team, picks, st[4], BENCH_PLACE, byId, false)).toBe(true);
+  });
+});

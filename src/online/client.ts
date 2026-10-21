@@ -319,7 +319,7 @@ export class OnlineSession {
         if (fresh.draft?.phase !== 'draft' || fresh.draft.picks.length !== n) return;
         const world = await loadWorld();
         const pool = draftPool(world, room.settings.seed ?? 1, world.season);
-        const pk = autoPick(team, fresh.draft.picks, pool, allKeepers(fresh.draft.teams));
+        const pk = autoPick(team, fresh.draft.picks, pool, allKeepers(fresh.draft.teams), room.settings.draft?.injuries ?? true);
         if (!pk) return;
         try { this.room = await post<RoomInfo>('dpick', { ...this.creds, n, player: pk.player, place: pk.place }); } catch { /* en anden nåede det */ }
       } else if (d.phase === 'keepers') {

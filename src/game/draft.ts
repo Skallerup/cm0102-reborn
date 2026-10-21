@@ -122,7 +122,7 @@ export function openPlaces(team: DraftTeam, picks: DraftPick[]): { starters: num
 const isGK = (p: Player) => naturalRole(p) === 'GK';
 
 /** Kan spilleren placeres her? Startere skal passe til pladsen; på bænken skal der være mindst én målmand */
-export function canPlace(team: DraftTeam, picks: DraftPick[], player: Player, place: number, players: Record<number, Player>): boolean {
+export function canPlace(team: DraftTeam, picks: DraftPick[], player: Player, place: number, players: Record<number, Player>, benchGK = true): boolean {
   const open = openPlaces(team, picks);
   if (place >= 0) {
     if (!open.starters.includes(place)) return false;
@@ -130,18 +130,20 @@ export function canPlace(team: DraftTeam, picks: DraftPick[], player: Player, pl
     return !!slot && fitsSlot(player, slot);
   }
   if (open.bench <= 0) return false;
+  // uden skader behøver bænken ingen målmand
+  if (!benchGK) return true;
   // sidste bænkplads skal være en målmand, hvis der ikke allerede er en
-  const benchGK = teamPicks(team, picks).some((p) => p.place === BENCH_PLACE && players[p.player] && isGK(players[p.player]));
-  return benchGK || open.bench > 1 || isGK(player);
+  const hasGK = teamPicks(team, picks).some((p) => p.place === BENCH_PLACE && players[p.player] && isGK(players[p.player]));
+  return hasGK || open.bench > 1 || isGK(player);
 }
 
 /** Pladser spilleren kan draftes til (bedst passende startplads først, bænken til sidst) */
-export function placesFor(team: DraftTeam, picks: DraftPick[], player: Player, players: Record<number, Player>): number[] {
+export function placesFor(team: DraftTeam, picks: DraftPick[], player: Player, players: Record<number, Player>, benchGK = true): number[] {
   const slots = formationSlots(team.formation);
   const starters = openPlaces(team, picks).starters
-    .filter((i) => canPlace(team, picks, player, i, players))
+    .filter((i) => canPlace(team, picks, player, i, players, benchGK))
     .sort((a, b) => slotFit(player, slots[b]) - slotFit(player, slots[a]));
-  return canPlace(team, picks, player, BENCH_PLACE, players) ? [...starters, BENCH_PLACE] : starters;
+  return canPlace(team, picks, player, BENCH_PLACE, players, benchGK) ? [...starters, BENCH_PLACE] : starters;
 }
 
 /**
@@ -180,7 +182,7 @@ export const placeFit = (player: Player, formation: string, place: number) => pl
  * Automatisk valg (AI-hold, eller når tiden løber ud): først ønskelisten, ellers den bedste ledige spiller
  * til den plads, hvor holdet mangler mest. Startpladserne fyldes før bænken.
  */
-export function autoPick(team: DraftTeam, picks: DraftPick[], pool: Player[], keepers: number[] = []): DraftPick | null {
+export function autoPick(team: DraftTeam, picks: DraftPick[], pool: Player[], keepers: number[] = [], benchGK = true): DraftPick | null {
   // taget: alle valg i denne draft og alle holds keepers
   const taken = new Set([...picks.map((p) => p.player), ...keepers]);
   const byId: Record<number, Player> = Object.fromEntries(pool.map((p) => [p.id, p]));
@@ -188,7 +190,7 @@ export function autoPick(team: DraftTeam, picks: DraftPick[], pool: Player[], ke
   for (const id of team.wish) {
     const p = byId[id];
     if (!p || taken.has(id)) continue;
-    const places = placesFor(team, picks, p, byId);
+    const places = placesFor(team, picks, p, byId, benchGK);
     if (places.length) return { slot: team.slot, player: id, place: places[0], auto: true };
   }
   const open = openPlaces(team, picks);
@@ -204,7 +206,7 @@ export function autoPick(team: DraftTeam, picks: DraftPick[], pool: Player[], ke
     }
   }
   if (!best && open.bench > 0) {
-    const p = free.find((x) => canPlace(team, picks, x, BENCH_PLACE, byId));
+    const p = free.find((x) => canPlace(team, picks, x, BENCH_PLACE, byId, benchGK));
     if (p) best = { p, place: BENCH_PLACE, score: p.ca };
   }
   // en startplads ingen i puljen passer til (meget usandsynligt): tag den bedste til bænken

@@ -186,10 +186,25 @@ export function setThemeClub(id: number | undefined) {
   applyTheme();
 }
 const retries = new Map<number, number>();
+/** Draft-skærmen er designet mørk – også når sæsonens spil er indlæst bagved */
+let holdDark = false;
+export function holdDarkTheme(on: boolean) {
+  if (holdDark === on) return;
+  holdDark = on;
+  applyTheme();
+}
+
 export function applyTheme() {
   const root = document.documentElement;
   const theme = getTheme();
   const token = ++applied;
+  if (holdDark) {
+    root.dataset.theme = 'dark';
+    delete root.dataset.club;
+    delete root.dataset.skin;
+    for (const v of VARS) root.style.removeProperty(v);
+    return;
+  }
   // forsiden og startmenuen er designet mørke – temaet gælder inde i spillet
   const dark = theme === 'dark' || theme === 'clubDark' || theme === 'gold' || theme === 'retro' || !hasGame();
   root.dataset.theme = dark ? 'dark' : 'light';
