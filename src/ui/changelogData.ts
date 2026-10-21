@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.80',
+    date: '2026-10-21',
+    title: { da: 'Min profil og svar på bud fra spillersiden', en: 'My profile and answering bids from the player page' },
+    items: [
+      { da: 'Ny side "Min profil": upload et billede, skift navn og nationalitet, og skriv et motto – vises også på din offentlige managerprofil, og navnet følger med på ranglisterne', en: 'New page "My profile": upload a picture, change your name and nationality, and write a motto – also shown on your public manager profile, and the name carries over to the rankings' },
+      { da: 'Præstationerne og linket til din offentlige profil ligger nu under Min profil', en: 'Achievements and the link to your public profile now live under My profile' },
+      { da: 'Når der bliver budt på en af dine spillere, kan du acceptere, afvise eller give modbud direkte på spillerens side', en: 'When one of your players receives a bid, you can accept, reject or counter directly on the player page' },
+    ],
+  },
+  {
     version: '0.7.79',
     date: '2026-10-21',
     title: { da: 'Træningslejr med rapport, flag, transfervindue-beskeder og bedre 2D', en: 'Training camp with report, flags, transfer window alerts and better 2D' },

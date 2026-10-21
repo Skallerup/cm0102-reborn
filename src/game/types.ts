@@ -568,6 +568,8 @@ export interface ManagerProfile {
   /** Præstationer: id → dato for oplåsning, og tællere til dem */
   ach?: Record<string, string>;
   achStats?: { wins: number; streak: number; unbeaten: number; lastPromotion?: number };
+  /** Managerprofil: motto (vises på den offentlige profil) */
+  motto?: string;
   /** Til ugens overblik: placering og saldo sidste mandag */
   week?: { pos: number; balance: number };
   seasonStart?: { season: number; club: number; balance: number; sacked: number };

@@ -94,8 +94,33 @@ export async function POST(request: Request) {
       trophies: num(sm.trophies, 500), titles: num(sm.titles, 200), rep: num(sm.rep, 100),
       trophyList: Array.isArray(sm.trophyList) ? sm.trophyList.slice(0, 30).map((x) => str(x, 80)) : [],
     };
-    await redis.hset(`prof:${pid}`, { ach: JSON.stringify(ach), summary: JSON.stringify(summary), updated: new Date().toISOString() });
+    // profilbillede (lille data-URL) og motto
+    const fields: Record<string, string> = { ach: JSON.stringify(ach), summary: JSON.stringify(summary), updated: new Date().toISOString() };
+    if (typeof body.avatar === 'string') {
+      const a = body.avatar;
+      if (a === '' || (/^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(a) && a.length <= 80_000)) fields.avatar = a;
+    }
+    if (typeof body.motto === 'string') fields.motto = str(body.motto.replace(/\s+/g, ' ').trim(), 140);
+    await redis.hset(`prof:${pid}`, fields);
     return json({ ok: true });
+  }
+
+  // nyt navn på ranglisterne (stadig unikt)
+  if (body.op === 'rename') {
+    const pid = String(body.pid ?? '');
+    const prof = await auth(pid, String(body.token));
+    if (!prof) return json({ error: 'auth' }, 401);
+    const name = cleanName(body.name);
+    if (!name) return json({ error: 'name' }, 400);
+    if (name.toLowerCase() !== prof.name.toLowerCase()) {
+      const ok = await redis.set(`name:${name.toLowerCase()}`, pid, { nx: true });
+      if (!ok) return json({ error: 'taken' }, 409);
+      await redis.del(`name:${prof.name.toLowerCase()}`);
+    }
+    await redis.hset(`prof:${pid}`, { name });
+    const careers = (await redis.smembers(`prof:${pid}:careers`)) as string[];
+    await Promise.all(careers.map((c) => redis.hset(`career:${c}`, { name })));
+    return json({ ok: true, name });
   }
 
   if (body.op === 'submit') {
@@ -140,7 +165,7 @@ export async function GET(request: Request) {
       const rank = await redis.zrevrank('lb:career', id);
       return c ? { id, club: c.club, league: c.league, total: Number(c.total ?? 0), seasons: Number(c.seasons ?? 0), rank: rank === null ? null : rank + 1 } : null;
     }))).filter(Boolean).sort((a, b) => b!.total - a!.total);
-    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers });
+    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '' });
   }
   const board = url.searchParams.get('board') ?? 'career';
   const league = (url.searchParams.get('league') ?? '').replace(/[^A-Z0-9-]/g, '');

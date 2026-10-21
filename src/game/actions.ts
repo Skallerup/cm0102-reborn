@@ -52,6 +52,7 @@ export type Action =
   | { t: 'boardAsk'; kind: BoardAsk }
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
+  | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
   | { t: 'interact'; pid: number; kind: TalkKind }
   | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
@@ -139,6 +140,17 @@ export function applyAction(a: Action): unknown {
     case 'boardAsk': return boardAsk(a.kind);
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
+    case 'managerProfile': {
+      const name = a.name?.replace(/\s+/g, ' ').trim().slice(0, 30);
+      if (name) {
+        g.manager.name = name;
+        const h = g.humans?.find((x) => x.pid === g.active);
+        if (h) h.name = name;
+      }
+      if (a.nation !== undefined && g.nations[a.nation]) g.manager.nation = a.nation;
+      if (a.motto !== undefined) g.manager.motto = a.motto.replace(/\s+/g, ' ').trim().slice(0, 140);
+      return 'ok';
+    }
     case 'talk': return talkToPlayer(a.pid, a.choice);
     case 'interact': return interact(a.pid, a.kind);
     case 'teamTalk': return teamTalk(a.kind);

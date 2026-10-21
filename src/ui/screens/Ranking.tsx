@@ -8,8 +8,7 @@ import { h2hFor } from '../../game/h2h';
 import { nextBot, pickBotClub, type BotScope } from '../../game/bots';
 import { act } from '../../game/actions';
 import { ClubLink } from '../components';
-import { createProfile, fetchBoard, getProfile, profileUrl, rankingAvailable, submitPending, syncProfile, type Board, type RankRow } from '../../online/rank';
-import { AchievementsGrid } from '../Achievements';
+import { createProfile, fetchBoard, getProfile, profileUrl, rankingAvailable, submitPending, type Board, type RankRow } from '../../online/rank';
 import { t } from '../../i18n';
 import { Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
@@ -37,44 +36,12 @@ export function RankingScreen() {
   return (
     <div>
       <Head title={t('nav.ranking')}>
-        <Tabs tabs={[['managers', t('bots.managers')], ['mine', t('rank.mine')], ['ach', t('ach.panel')], ['boards', t('rank.boards')], ['how', t('rank.how')]]} value={tab} onChange={setTab} />
+        <Tabs tabs={[['managers', t('bots.managers')], ['mine', t('rank.mine')], ['boards', t('rank.boards')], ['how', t('rank.how')]]} value={tab} onChange={setTab} />
       </Head>
       {tab === 'managers' && <Managers />}
       {tab === 'mine' && <Mine />}
-      {tab === 'ach' && <AchTab />}
       {tab === 'boards' && (isMultiplayer(g) ? <div className="empty">{t('rank.singleOnly')}</div> : <Boards />)}
       {tab === 'how' && <How />}
-    </div>
-  );
-}
-
-function AchTab() {
-  const g = useGame()!;
-  const prof = getProfile();
-  const [msg, setMsg] = useState('');
-  useEffect(() => { void syncProfile(); }, []);
-  const share = async () => {
-    if (!prof) return;
-    const url = profileUrl(prof.pid);
-    try {
-      if (navigator.share) await navigator.share({ title: `${prof.name} – CM 01/02 Reborn`, url });
-      else { await navigator.clipboard.writeText(url); setMsg(t('rank.copied')); }
-    } catch { /* afbrudt */ }
-  };
-  return (
-    <div>
-      <Panel title={t('pub.mine')}>
-        {!rankingAvailable() ? <div className="muted">{t('rank.offline')}</div> : !prof ? <div className="muted">{t('pub.needProfile')}</div> : (
-          <div className="row" style={{ flexWrap: 'wrap' }}>
-            <code className="pub-link">{profileUrl(prof.pid)}</code>
-            <button className="primary" onClick={share}>{t('pub.share')}</button>
-            <button onClick={() => window.open(profileUrl(prof.pid), '_blank')}>{t('pub.open')}</button>
-            {msg && <span className="muted">{msg}</span>}
-          </div>
-        )}
-        <p className="muted" style={{ marginBottom: 0 }}>{t('pub.hint')}</p>
-      </Panel>
-      <Panel title={t('ach.panel')}><AchievementsGrid unlocked={g.manager.ach ?? {}} /></Panel>
     </div>
   );
 }

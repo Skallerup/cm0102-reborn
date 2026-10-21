@@ -43,10 +43,12 @@ export function PublicProfilePage({ pid, onClose }: { pid: string; onClose: () =
         {p === 'loading' ? <div className="muted" style={{ marginTop: 40 }}>{t('pub.loading')}</div> : !p ? <div className="muted" style={{ marginTop: 40 }}>{t('pub.notFound')}</div> : (
           <>
             <div className="pub-head">
-              <div className="pub-avatar">{p.name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase()}</div>
+              <div className="pub-avatar">{p.avatar ? <img src={p.avatar} alt="" /> : p.name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase()}</div>
               <div>
                 <h1>{p.name}</h1>
                 <div className="muted">{p.summary?.nation ? <><Flag name={p.summary.nation} />{natName(p.summary.nation)} · </> : ''}{t('pub.since', { date: dateFmt(p.created.slice(0, 10)) })}</div>
+                {p.motto && <div className="prof-motto">“{p.motto}”</div>}
+                {p.motto && <div className="prof-motto">“{p.motto}”</div>}
                 {p.summary?.club && <div className="pub-club">{t('pub.now', { club: p.summary.club, league: p.summary.league })}</div>}
               </div>
             </div>

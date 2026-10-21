@@ -1,5 +1,6 @@
 // Klient til de globale ranglister (api/rank.ts). Profilen (navn + hemmeligt token) gemmes i browseren.
 // Kun singleplayer-sæsoner indsendes, og kun når ranglisterne findes (Vercel-udgaven).
+import { getAvatar } from '../ui/avatar';
 import { gs, hasGame, notify } from '../game/state';
 import { isMultiplayer } from '../game/humans';
 
@@ -74,13 +75,13 @@ export async function syncProfile(): Promise<boolean> {
     trophyList: g.manager.trophies.filter((x) => !/month/.test(x.comp)).slice(-30).map((x) => `${x.season}/${String(x.season + 1).slice(2)} ${x.comp}`),
   };
   try {
-    const r = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'sync', pid: prof.pid, token: prof.token, ach: Object.keys(g.manager.ach ?? {}), summary }) });
+    const r = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'sync', pid: prof.pid, token: prof.token, ach: Object.keys(g.manager.ach ?? {}), summary, avatar: getAvatar(), motto: g.manager.motto ?? '' }) });
     return r.ok;
   } catch { return false; }
 }
 
 export interface PublicProfile {
-  name: string; created: string; ach: string[];
+  name: string; created: string; ach: string[]; avatar: string | null; motto: string;
   summary: { club: string; league: string; nation: string; seasons: number; wins: number; trophies: number; titles: number; rep: number; trophyList: string[] } | null;
   careers: { id: string; club: string; league: string; total: number; seasons: number; rank: number | null }[];
 }
@@ -90,6 +91,19 @@ export async function fetchProfile(pid: string): Promise<PublicProfile | null> {
     const r = await fetch(`/api/rank?profile=${encodeURIComponent(pid)}`);
     return r.ok ? await r.json() : null;
   } catch { return null; }
+}
+
+/** Nyt navn på ranglisterne (stadig unikt) */
+export async function renameProfile(name: string): Promise<'ok' | string> {
+  const prof = getProfile();
+  if (!prof || !rankingAvailable()) return 'none';
+  try {
+    const r = await fetch('/api/rank', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'rename', pid: prof.pid, token: prof.token, name }) });
+    const j = await r.json();
+    if (!r.ok) return String(j.error ?? 'error');
+    try { localStorage.setItem(KEY, JSON.stringify({ ...prof, name: j.name })); } catch { /* ignorer */ }
+    return 'ok';
+  } catch { return 'network'; }
 }
 
 /** Link til en managers offentlige profil */
