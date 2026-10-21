@@ -1124,7 +1124,7 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 
 /* kampens forløb (kamprapport) */
 .flow-panel { margin-bottom: 14px; }
-.momentum .chart { max-height: 240px; }
+.momentum .chart { display: block; }
 .mom-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; font-weight: 600; margin-top: 4px; }
 .mom-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: -1px; }
 .mom-legend .muted { font-weight: 500; font-size: 12px; }
@@ -1137,3 +1137,22 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .ti-glyph { display: inline-block; min-width: 16px; text-align: center; font-weight: 800; color: var(--accent); }
 .ti-table td.num, .ti-table th.num { white-space: nowrap; }
 @media (max-width: 760px) { .ti-cols { grid-template-columns: 1fr; } }
+
+/* kamprapport: tættere layout */
+.goals-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; margin: -4px 0 10px; font-size: 13px; line-height: 1.6; }
+.goals-row .g-home { text-align: right; }
+.tt-actions { justify-content: space-between; margin-top: 8px; }
+.tt-tones { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .tt-tones { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); } }
+.ti-list { gap: 3px; }
+.ti-list-h { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); margin-bottom: 3px; }
+.ti-pick, .ti-pick:hover:not(:disabled) { padding: 5px 10px; }
+.ti-table td, .ti-table th { padding-top: 6px; padding-bottom: 6px; }
+.flow-panel .ti-wrap { margin-top: 10px; padding-top: 10px; }
+.mom-legend { margin-top: 0; }
+/* taktiske ændringer: listen og tabellen flugter (samme overskrift og rækkehøjde) */
+.ti-list { gap: 2px; }
+.ti-list-h { padding: 9px 12px; font-weight: 600; color: var(--faint); border-bottom: 1px solid var(--line2); margin-bottom: 0; line-height: normal; }
+.ti-pick, .ti-pick:hover:not(:disabled) { height: 32px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ti-list > .ti-pick:first-of-type { margin-top: 2px; }
+.ti-table td { height: 34px; box-sizing: border-box; padding-top: 0; padding-bottom: 0; }

@@ -72,7 +72,10 @@ export function TeamTalk({ fixture, stage, pids, diff, ratings, onGiven }: {
         ))}
       </div>
       {!showInd ? (
-        <button className="small" style={{ marginTop: 8 }} onClick={() => setShowInd(true)}>+ {t('tt.individual', { n: MAX_INDIVIDUAL })}</button>
+        <div className="row tt-actions">
+          <button className="small" onClick={() => setShowInd(true)}>+ {t('tt.individual', { n: MAX_INDIVIDUAL })}</button>
+          <button className="primary small" disabled={!tone} onClick={give}>{t('tt.give')}</button>
+        </div>
       ) : (
         <div className="tt-ind">
           <div className="muted" style={{ fontSize: 12 }}>{t('tt.individualHint', { n: MAX_INDIVIDUAL })}</div>
@@ -96,9 +99,11 @@ export function TeamTalk({ fixture, stage, pids, diff, ratings, onGiven }: {
           })}
         </div>
       )}
-      <div className="row" style={{ justifyContent: 'flex-end', marginTop: 10 }}>
-        <button className="primary" disabled={!tone} onClick={give}>{t('tt.give')}</button>
-      </div>
+      {showInd && (
+        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 8 }}>
+          <button className="primary small" disabled={!tone} onClick={give}>{t('tt.give')}</button>
+        </div>
+      )}
     </Panel>
   );
 }

@@ -124,16 +124,17 @@ export function ReportScreen({ id }: { id: number }) {
 
 function Goals({ rep }: { rep: MatchReport }) {
   const g = useGame()!;
-  const ev = rep.events.filter((e) => e.k === 'goal' || e.k === 'red');
+  const ev = rep.events.filter((e) => e.k === 'goal' || e.k === 'red').sort((a, b) => a.m - b.m);
   if (!ev.length) return null;
+  // samme opdeling som resultattavlen: hjemmeholdets mål højrestillet til venstre, udeholdets venstrestillet til højre
   return (
-    <div className="cols2" style={{ marginBottom: 8 }}>
+    <div className="goals-row">
       {[0, 1].map((tm) => (
-        <div key={tm} className={tm === 0 ? 'right' : ''}>
+        <div key={tm} className={tm === 0 ? 'g-home' : 'g-away'}>
           {ev.filter((e) => e.t === tm).map((e, i) => (
-            <div key={i} className="muted">
-              {e.k === 'goal' ? '⚽' : '🟥'} <PlayerLink p={g.players[e.p!]} short /> {e.m}'
-              {e.k === 'goal' && e.p2 && g.players[e.p2] ? <> (<PlayerLink p={g.players[e.p2]} short />)</> : null}
+            <div key={i}>
+              {e.k === 'goal' ? '⚽' : '🟥'} <PlayerLink p={g.players[e.p!]} short /> <span className="muted">{e.m}'</span>
+              {e.k === 'goal' && e.p2 && g.players[e.p2] ? <span className="muted"> ({g.players[e.p2].last})</span> : null}
             </div>
           ))}
         </div>
@@ -144,7 +145,7 @@ function Goals({ rep }: { rep: MatchReport }) {
 
 function Momentum({ rep, home, away, colors }: { rep: MatchReport; home: string; away: string; colors: [string, string] }) {
   const vals = rep.momentum;
-  const W = 640, H = 130, mid = H / 2;
+  const W = 1000, H = 140, mid = H / 2;
   const max = Math.max(1, ...vals.map((v) => Math.abs(v)));
   const bw = W / Math.max(18, vals.length);
   // målene står over/under grafen; holdnavnene i en forklaring nederst, så intet overlapper
@@ -271,6 +272,7 @@ function TacticImpact({ rep, side }: { rep: MatchReport; side: 0 | 1 }) {
       <h4 className="ti-h">{t('ti.title')}</h4>
       <div className="ti-cols">
       <div className="ti-list">
+        <div className="ti-list-h">{t('ti.change')}</div>
         {mine.map((m, i) => <button key={i} className={`ti-pick ${i === sel ? 'on' : ''}`} onClick={() => setSel(i)}><b>{m.m}'</b> <span className="ti-glyph">{m.glyph}</span> {m.label}</button>)}
       </div>
       <table className="grid ti-table">
