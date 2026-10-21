@@ -9,6 +9,22 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.78',
+    date: '2026-10-21',
+    title: { da: 'Modstanderinstruktioner, vejr, bestyrelsesønsker, rekordbog, præstationer og managerprofil', en: 'Opposition instructions, weather, board requests, record book, achievements and manager profile' },
+    items: [
+      { da: 'Instruktioner mod modstanderen i optakten: tæt markering, pres, hårde tacklinger eller vis på svage ben for op til tre spillere – og vælg hvilken side I angriber. Alt har en pris (kræfter eller frispark)', en: 'Opposition instructions in the preview: tight marking, pressing, hard tackling or show onto the weak foot for up to three players – and pick the side to attack. Everything has a cost (energy or fouls)' },
+      { da: 'Vejr og bane: regn, skybrud, blæst, sne og hede afhænger af land og årstid og påvirker afleveringer, lange bolde, træthed og målmændene. Vises i optakten, kommentaren og på 2D-banen', en: 'Weather and pitch: rain, downpours, wind, snow and heat depend on country and season and affect passing, long balls, fatigue and the keepers. Shown in the preview, commentary and on the 2D pitch' },
+      { da: 'Ny side: Bestyrelsen – tillid og forventning samlet, og nye ønsker: sænk forventningerne, tillidserklæring, ekstra ungdomsrekruttering og træningslejr', en: 'New page: Board – confidence and expectation in one place, and new requests: lower expectations, vote of confidence, extra youth recruitment and training camp' },
+      { da: 'Rekordbog på klubsiden: flest kampe og mål, største sejr og nederlag, publikumsrekord, rekordhandler og klublegender – med nyheder, når en rekord slås', en: 'Record book on the club page: most games and goals, biggest win and defeat, record attendance, record deals and club legends – with news when a record falls' },
+      { da: 'Kendte spillere kan blive trænere, assistenter eller scouts efter karrieren – dine egne legender vil gerne blive i klubben', en: 'Well-known players can become coaches, assistants or scouts after retiring – your own legends want to stay at the club' },
+      { da: '21 præstationer at låse op (fx Comeback, Kæmpedræber, Raketten) og en offentlig managerprofil med karriere, trofæer og præstationer, du kan dele med et link', en: '21 achievements to unlock (e.g. Comeback, Giant killer, Rocket) and a public manager profile with career, trophies and achievements you can share with a link' },
+      { da: 'Ugens overblik i indbakken efter uger med kampe, og en notifikation, når din kamp er klar', en: 'Week in review in the inbox after weeks with matches, and a notification when your match is ready' },
+      { da: 'Ungdomsdagen får en pressemeddelelse i tone med årgangen, og klubsiden viser årets årgang', en: 'Youth intake day gets a press release matching the quality of the intake, and the club page shows this year\'s intake' },
+      { da: 'Nye kontraktklausuler: lønstigning ved oprykning og bonus pr. kamp uden mål imod', en: 'New contract clauses: wage rise on promotion and a clean sheet bonus' },
+    ],
+  },
+  {
     version: '0.7.77',
     date: '2026-10-21',
     title: { da: 'Ny udviklingsgraf på spillersiden', en: 'New development chart on the player page' },

@@ -651,6 +651,6 @@ function weeklySummary() {
   const next = mine.filter((f) => !f.result && f.date > g.date).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 2)
     .map((f) => `${g.clubs[f.home === c.id ? f.away : f.home]?.short ?? ''} (${f.home === c.id ? t('week.home') : t('week.away')}, ${f.date.slice(8, 10)}/${f.date.slice(5, 7)})`).join(' · ');
   g.manager.week = { pos, balance: c.balance };
-  if (!prev && !played.length) return; // første mandag: kun udgangspunktet
+  if (!prev || !played.length) return; // første mandag (kun udgangspunktet) og uger uden kampe: ingen besked
   addNews({ cat: 'general', key: 'week.summary', params: { results: results || t('week.noGames'), pos, move, balance, injured, next: next || '–' } });
 }
