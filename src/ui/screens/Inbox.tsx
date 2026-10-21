@@ -88,7 +88,7 @@ export function Inbox() {
           {item ? (
             <div className="col">
               <h3 style={{ color: 'var(--accent)', display: 'flex', gap: 10, alignItems: 'center' }} className="news-head"><NewsIcon newsKey={item.key} cat={item.cat} /><span><NewsTitle n={item} /></span></h3>
-              {newsBody(item) && <p style={{ lineHeight: 1.5 }}><NewsBody n={item} /></p>}
+              {newsBody(item) && <p style={{ lineHeight: 1.5, whiteSpace: 'pre-line' }}><NewsBody n={item} /></p>}
               <NewsDeals n={item} />
               <WarRaise item={item} />
               <AiArticle item={item} />

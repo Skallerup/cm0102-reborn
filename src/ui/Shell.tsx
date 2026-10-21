@@ -91,6 +91,16 @@ export function Shell() {
     else if (fresh.length && session()) notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', t('mp.newTurn', { date: dateFmt(g.date) }), 'news');
   }, [newestNews]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // kampdag: besked når ens kamp er klar, mens fanen ligger i baggrunden (især online, hvor dagene kører uden én)
+  const pending = g.pendingFixture;
+  useEffect(() => {
+    if (!pending) return;
+    const f = g.fixtures[pending];
+    if (!f) return;
+    const opp = g.clubs[f.home === g.userClub ? f.away : f.home]?.name ?? '';
+    notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', t('notify.matchReady', { opp }), 'match');
+  }, [pending]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!toast) return;
     const id = setTimeout(() => setToast(''), 2500);

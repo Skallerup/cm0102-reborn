@@ -1,6 +1,7 @@
 // Spillets dag-for-dag-løkke.
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
-import { needsWinnerFn, recordResult, setupLeague } from './competitions';
+import { needsWinnerFn, recordResult, setupLeague, sortTable } from './competitions';
+import { t } from '../i18n';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { weatherFor, type Weather } from './weather';
@@ -332,6 +333,7 @@ function newDay() {
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
     forEachHuman(weeklyTransferDigest);
+    forEachHuman(weeklySummary);
     weeklyPlayerContact();
     aiReleaseClauses();
     weeklyDevelopment();
@@ -623,4 +625,32 @@ export function quickReport(): MatchReport | null {
   if (!f) return null;
   const m = prepareMatch(f, false);
   return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+}
+
+/** Mandag: ugens overblik – resultater, placering, økonomi, skader og de næste kampe */
+function weeklySummary() {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (!c) return;
+  const since = addDays(g.date, -7);
+  const mine = Object.values(g.fixtures).filter((f) => (f.home === c.id || f.away === c.id));
+  const played = mine.filter((f) => f.result && f.date > since && f.date <= g.date).sort((a, b) => a.date.localeCompare(b.date));
+  const results = played.map((f) => {
+    const home = f.home === c.id;
+    const gf = home ? f.result!.hg : f.result!.ag, ga = home ? f.result!.ag : f.result!.hg;
+    const pens = f.result!.pens ? (home ? f.result!.pens[0] > f.result!.pens[1] : f.result!.pens[1] > f.result!.pens[0]) : null;
+    const r = gf > ga || pens === true ? t('week.w') : gf < ga || pens === false ? t('week.l') : t('week.d');
+    return `${r} ${gf}-${ga} ${g.clubs[home ? f.away : f.home]?.short ?? ''}`;
+  }).join(' · ');
+  const comp = g.comps[c.league];
+  const pos = comp ? sortTable(comp.table.slice()).findIndex((r) => r.club === c.id) + 1 : 0;
+  const prev = g.manager.week;
+  const move = !prev || !pos || prev.pos === pos ? t('week.posSame') : prev.pos > pos ? t('week.posUp', { n: prev.pos - pos }) : t('week.posDown', { n: pos - prev.pos });
+  const balance = prev ? c.balance - prev.balance : 0;
+  const injured = squad(c.id).filter((p) => p.injury).length;
+  const next = mine.filter((f) => !f.result && f.date > g.date).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 2)
+    .map((f) => `${g.clubs[f.home === c.id ? f.away : f.home]?.short ?? ''} (${f.home === c.id ? t('week.home') : t('week.away')}, ${f.date.slice(8, 10)}/${f.date.slice(5, 7)})`).join(' · ');
+  g.manager.week = { pos, balance: c.balance };
+  if (!prev && !played.length) return; // første mandag: kun udgangspunktet
+  addNews({ cat: 'general', key: 'week.summary', params: { results: results || t('week.noGames'), pos, move, balance, injured, next: next || '–' } });
 }
