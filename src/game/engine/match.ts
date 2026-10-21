@@ -351,6 +351,8 @@ export class MatchSim {
   private finQ(s: SP) { return 0.62 * this.a(s, A.finishing) + 0.13 * this.a(s, A.technique) + 0.1 * this.a(s, A.decisions) + 0.15 * this.a(s, A.anticipation); }
   private gkQ(s: SP) { return 0.35 * this.a(s, A.reflexes) + 0.25 * this.a(s, A.handling) + 0.2 * this.a(s, A.positioning) + 0.2 * this.a(s, A.agility); }
   private gk1v1(s: SP) { return 0.5 * this.a(s, A.oneOnOnes) + 0.3 * this.a(s, A.reflexes) + 0.2 * this.a(s, A.anticipation); }
+  /** Fart + acceleration (til direkte fartdueller) */
+  private speed(s: SP) { return this.a(s, A.pace) + this.a(s, A.acceleration); }
   private runQ(s: SP) { return 0.4 * this.a(s, A.offTheBall) + 0.3 * this.a(s, A.pace) + 0.3 * this.a(s, A.anticipation); }
 
   // ---------- simulering ----------
@@ -625,7 +627,10 @@ export class MatchSim {
     const rb = this.rb(T.idx);
     const def = this.pick(O.zDef[this.zone], (x) => this.tackQ(x, O));
     const dq = def ? this.tackQ(def, O) : 5;
-    const p = logistic(logit(0.5) + (this.dribQ(s) - dq) / 4 + this.overload(this.zone, T, O) * 0.6);
+    // på kanten er der plads at løbe i: en hurtig kantspiller mod en langsom back er en fordel i sig selv
+    const wide = this.laneOf(T.idx) !== 1;
+    const speedDuel = wide && def ? (this.speed(s) - this.speed(def)) / 22 : 0;
+    const p = logistic(logit(0.5) + (this.dribQ(s) - dq) / 4 + this.overload(this.zone, T, O) * 0.6 + speedDuel);
     if (this.r.chance(p)) {
       this.rate(s, 0.07);
       if (rb < 4) {
@@ -665,7 +670,9 @@ export class MatchSim {
     }
     const tq = 0.5 * this.a(s, A.creativity) + 0.3 * this.a(s, A.passing) + 0.2 * this.a(s, A.decisions);
     const dq = def ? 0.35 * this.a(def, A.positioning) + 0.35 * this.a(def, A.anticipation) + 0.3 * this.a(def, A.pace) : 5;
-    const p = logistic(logit(0.36) + (0.5 * tq + 0.5 * this.runQ(runner) - dq) / 4 + (O.ti.offside ? 0.35 : 0) + this.overload(tz, T, O) * 0.4);
+    // stikningen bag kæden: løberens fart mod forsvarerens (en hurtig angriber mod langsomme forsvarere er en fordel)
+    const speedDuel = def ? (this.speed(runner) - this.speed(def)) / 22 : 0;
+    const p = logistic(logit(0.36) + (0.5 * tq + 0.5 * this.runQ(runner) - dq) / 4 + (O.ti.offside ? 0.35 : 0) + this.overload(tz, T, O) * 0.4 + speedDuel);
     if (this.r.chance(p)) {
       T.stats.passesCompleted++;
       s.line.passesOk++;

@@ -1,12 +1,23 @@
-// Managerens profilbillede: gemmes i browseren (følger dig på tværs af spil) og vises på den offentlige profil.
+// Managerens profilbillede: gemmes i browseren pr. karriere (et nyt spil starter uden billede, men kan hente det
+// fra den forrige karriere) og vises på den offentlige profil.
+import { gs, hasGame } from '../game/state';
+
 const KEY = 'cm0102.avatar';
+const careerKey = () => (hasGame() ? `${KEY}:${gs().id}` : KEY);
 
 export function getAvatar(): string {
-  try { return localStorage.getItem(KEY) ?? ''; } catch { return ''; }
+  try { return localStorage.getItem(careerKey()) ?? ''; } catch { return ''; }
 }
 
 export function setAvatar(dataUrl: string) {
-  try { if (dataUrl) localStorage.setItem(KEY, dataUrl); else localStorage.removeItem(KEY); } catch { /* fuld eller blokeret */ }
+  try {
+    if (dataUrl) { localStorage.setItem(careerKey(), dataUrl); localStorage.setItem(KEY, dataUrl); } else localStorage.removeItem(careerKey());
+  } catch { /* fuld eller blokeret */ }
+}
+
+/** Billedet fra den senest brugte karriere (hvis denne karriere ikke har sit eget) */
+export function lastAvatar(): string {
+  try { return getAvatar() ? '' : localStorage.getItem(KEY) ?? ''; } catch { return ''; }
 }
 
 /** Skær billedet til et kvadrat og skaler det ned til 192×192 (JPEG, ca. 10–25 kB) */

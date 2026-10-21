@@ -146,3 +146,22 @@ describe('vejr', () => {
     expect(pct('heavyRain')).toBeLessThan(pct('clear') - 0.01);
   });
 });
+
+describe('fart', () => {
+  it('en hurtig angriber skaber mere mod langsomme forsvarere end en langsom angriber', () => {
+    const [h, a] = [clubs[4], clubs[5]];
+    const run = (fast: boolean) => {
+      const r = new Rng(21);
+      let xg = 0;
+      for (let i = 0; i < 300; i++) {
+        const home = team(h), away = team(a);
+        // modstanderens forsvarere er langsomme; vores angribere enten hurtige eller langsomme
+        for (const id of away.tactic.lineup) { const p = away.players.get(id)!; if (p.pos[2] >= 15) { p.attrs[A.pace] = 7; p.attrs[A.acceleration] = 7; } }
+        for (const id of home.tactic.lineup) { const p = home.players.get(id)!; if (p.pos[6] >= 15 || p.pos[5] >= 15) { p.attrs[A.pace] = fast ? 18 : 8; p.attrs[A.acceleration] = fast ? 18 : 8; } }
+        xg += quickMatch(home, away, {}, r).stats[0].xg;
+      }
+      return xg;
+    };
+    expect(run(true)).toBeGreaterThan(run(false) * 1.05);
+  });
+});

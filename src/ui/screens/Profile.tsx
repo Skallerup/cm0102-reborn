@@ -4,7 +4,7 @@ import { act } from '../../game/actions';
 import { natName, t } from '../../i18n';
 import { getProfile, profileUrl, rankingAvailable, renameProfile, syncProfile } from '../../online/rank';
 import { AchievementsGrid } from '../Achievements';
-import { getAvatar, resizeImage, setAvatar } from '../avatar';
+import { getAvatar, lastAvatar, resizeImage, setAvatar } from '../avatar';
 import { Flag, Panel } from '../components';
 import { useGame } from '../core';
 import { Select } from '../select';
@@ -66,6 +66,7 @@ export function ProfileScreen() {
               <div className="row">
                 <button className="primary" onClick={save}>{t('prof.save')}</button>
                 {avatar && <button className="small" onClick={() => { setAvatar(''); setAv(''); void syncProfile(); }}>{t('prof.removeImg')}</button>}
+                {!avatar && lastAvatar() && <button className="small" onClick={() => { const a = lastAvatar(); setAvatar(a); setAv(a); void syncProfile(); }}>{t('prof.useLast')}</button>}
               </div>
               {msg && <div className={`insight ${msg.tone}`}>{msg.text}</div>}
             </div>
