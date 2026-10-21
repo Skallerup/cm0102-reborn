@@ -41,7 +41,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
       <div className="start-box">
         <div className="logo">
           {view === 'menu' && <div className="start-pill"><span className="start-live" />{t('start.pill')}</div>}
-          <h1>Championship Manager <span>01/02</span></h1>
+          <h1>CM <span>Reborn</span></h1>
           <p>{t('start.subtitle')}</p>
         </div>
         {view === 'menu' && (

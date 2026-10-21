@@ -61,7 +61,7 @@ function Frame({ src, alt, className = '', onOpen }: { src: string; alt: string;
   const leave = () => { ref.current?.style.removeProperty('--rx'); ref.current?.style.removeProperty('--ry'); };
   return (
     <div ref={ref} className={`lp-frame ${className}`} onMouseMove={move} onMouseLeave={leave} onClick={() => onOpen?.(src, alt)} role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined} onKeyDown={(e) => { if (e.key === 'Enter') onOpen?.(src, alt); }}>
-      <div className="lp-frame-bar"><i /><i /><i /><span>cm0102-reborn</span></div>
+      <div className="lp-frame-bar"><i /><i /><i /><span>CM Reborn</span></div>
       <img src={src} alt={alt} loading="lazy" decoding="async" />
     </div>
   );
@@ -132,7 +132,7 @@ export function Landing({ onPlay, onLang }: { onPlay: () => void; onLang: (l: La
       <div className="lp-aurora" aria-hidden="true"><i /><i /><i /></div>
       <header className={`lp-nav ${scrolled ? 'solid' : ''}`}>
         <div className="lp-wrap lp-nav-in">
-          <div className="lp-brand"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width="28" height="28" /> <b>CM 01/02</b> <span>Reborn</span></div>
+          <div className="lp-brand"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width="28" height="28" /> <b>CM</b> <span>Reborn</span></div>
           <nav className="lp-links">
             <a onClick={() => go('features')}>{t('land.nav.features')}</a>
             <a onClick={() => go('screens')}>{t('land.nav.screens')}</a>
@@ -269,7 +269,7 @@ export function Landing({ onPlay, onLang }: { onPlay: () => void; onLang: (l: La
         <a className="link" href="?community=1">{t('land.community')}</a>
       </div>
       <footer className="lp-footer lp-wrap">
-        <div>© {new Date().getFullYear()} CM 01/02 Reborn · {t('land.footerData')}</div>
+        <div>© {new Date().getFullYear()} CM Reborn · {t('land.footerData')}</div>
         <div className="lp-disclaimer">{t('land.disclaimer')}</div>
       </footer>
 

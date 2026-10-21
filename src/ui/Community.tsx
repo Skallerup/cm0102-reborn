@@ -277,7 +277,7 @@ export function PublicCommunityPage({ id, onClose }: { id?: number; onClose: () 
     <div className="pub">
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       <div className="pub-box" style={{ width: 'min(1100px, 100%)' }}>
-        <button className="small start-ghost" onClick={onClose}>← CM 01/02 Reborn</button>
+        <button className="small start-ghost" onClick={onClose}>← CM Reborn</button>
         <h1 style={{ margin: '24px 0 4px' }}>{t('cm.title')}</h1>
         <p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
         <CommunityBoard initialId={id} />

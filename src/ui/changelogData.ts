@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.9.0',
+    date: '2026-10-21',
+    title: { da: 'Spillet hedder nu CM Reborn', en: 'The game is now called CM Reborn' },
+    items: [
+      { da: 'Nyt navn, nyt ikon og nye tekster: spillet er inspireret af de klassiske managerspil og har efterhånden mange nye idéer – ikke kun elementer fra 01/02', en: 'New name, new icon and new texts: the game is inspired by the classic manager games and now has many new ideas of its own – not just elements from 01/02' },
+      { da: 'Din karriere, dine gemte spil og din profil er uændrede', en: 'Your career, saved games and profile are unchanged' },
+    ],
+  },
+  {
     version: '0.8.3',
     date: '2026-10-21',
     title: { da: 'Prøvespillere og venskabskampe', en: 'Trialists and friendlies' },

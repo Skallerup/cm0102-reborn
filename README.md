@@ -1,6 +1,6 @@
-# Championship Manager 01/02 – Reborn ⚽
+# CM Reborn ⚽
 
-En moderne genopførelse af det legendariske managerspil **Championship Manager: Season 01/02**. Spillet kører i browseren som PWA og virker derfor også offline og på iPad/mobil. Databasen har **20.000+ rigtige spillere fra sæsonen 2025/26**.
+**CM Reborn** er et moderne fodboldmanagerspil inspireret af de klassiske **Championship Manager**-spil – med mange nye idéer oveni. Spillet kører i browseren som PWA og virker derfor også offline og på iPad/mobil. Databasen har **20.000+ rigtige spillere fra sæsonen 2025/26**.
 
 > Uofficiel fan-hyldest. Indeholder hverken kode, data eller grafik fra det originale spil (© Sports Interactive / Eidos).
 
@@ -8,7 +8,7 @@ En moderne genopførelse af det legendariske managerspil **Championship Manager:
 
 ## Features
 
-Alt det, vi husker fra CM 01/02:
+Alt det, vi husker fra de klassiske managerspil:
 
 - **Rigtige spillere og klubber:** 38 ligaer, 662 klubber, 20.492 spillere. Alle 33 førstedivisioner fra datasættet er med, plus 2. divisioner i England, Danmark, Tyskland, Italien, Spanien og Frankrig
 - **CM 01/02-attributter:** 1–20-skala med tekniske, mentale, fysiske og målmandsattributter. Dertil skjulte attributter (CA/PA, Consistency, Important Matches, Injury Proneness …) og positionsratings (GK/SW/D/DM/M/AM/F/WB + højre/venstre/central)
@@ -155,7 +155,7 @@ src/game/                 Ren TypeScript-spilmotor (ingen UI-afhængigheder)
 src/online/client.ts      Online-klient: synkronisering, træk og upload
 api/mp.ts                 Multiplayer-server (Vercel Function + Upstash Redis + Vercel Blob)
 src/worker/               Web Worker til taktik-benchmark
-src/ui/                   React-brugerflade (CM 01/02-inspireret)
+src/ui/                   React-brugerflade
 src/i18n/                 Dansk og engelsk
 ```
 

@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
-        name: 'Championship Manager 01/02 Reborn',
-        short_name: 'CM 01/02',
-        description: 'Fodboldmanager i CM 01/02-stil med rigtige spillere',
+        name: 'CM Reborn',
+        short_name: 'CM Reborn',
+        description: 'Football manager with real players, free in your browser',
         theme_color: '#070b16',
         background_color: '#070b16',
         display: 'standalone',

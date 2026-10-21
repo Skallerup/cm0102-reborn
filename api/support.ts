@@ -136,7 +136,7 @@ export async function POST(request: Request) {
       'line_items[0][quantity]': '1',
       'line_items[0][price_data][currency]': CURRENCY,
       'line_items[0][price_data][unit_amount]': String(amount),
-      'line_items[0][price_data][product_data][name]': monthly ? 'CM 01/02 Reborn – monthly support' : 'CM 01/02 Reborn – support',
+      'line_items[0][price_data][product_data][name]': monthly ? 'CM Reborn – monthly support' : 'CM Reborn – support',
     };
     if (monthly) { form['line_items[0][price_data][recurring][interval]'] = 'month'; form['subscription_data[metadata][pid]'] = pid; }
     else form['payment_intent_data[metadata][pid]'] = pid;

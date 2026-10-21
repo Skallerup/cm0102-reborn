@@ -40,7 +40,7 @@ export function PublicProfilePage({ pid, onClose }: { pid: string; onClose: () =
     <div className="pub">
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       <div className="pub-box">
-        <button className="small start-ghost" onClick={onClose}>← CM 01/02 Reborn</button>
+        <button className="small start-ghost" onClick={onClose}>← CM Reborn</button>
         {p === 'loading' ? <div className="muted" style={{ marginTop: 40 }}>{t('pub.loading')}</div> : !p ? <div className="muted" style={{ marginTop: 40 }}>{t('pub.notFound')}</div> : (
           <>
             <div className="pub-head">

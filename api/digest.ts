@@ -26,7 +26,7 @@ export async function GET(request: Request) {
   const raised = Number((await redis.get(`support:month:${month}`)) ?? 0);
   const line = (s: Record<string, string>) => `  #${s.id} ▲${s.votes ?? 0} ${s.title} (${s.status})`;
   const text = [
-    `CM 01/02 Reborn – ugen der gik`,
+    `CM Reborn – ugen der gik`,
     ``,
     `Nye forslag (${ideas.length}):`, ...(ideas.length ? ideas.map(line) : ['  –']),
     ``,
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ from: process.env.NOTIFY_FROM ?? 'CM 01/02 Reborn <onboarding@resend.dev>', to: [to], subject: `Ugens fællesskab: ${ideas.length} forslag, ${bugs.length} fejl, ${sups.length} bidrag`, text }),
+    body: JSON.stringify({ from: process.env.NOTIFY_FROM ?? 'CM Reborn <onboarding@resend.dev>', to: [to], subject: `Ugens fællesskab: ${ideas.length} forslag, ${bugs.length} fejl, ${sups.length} bidrag`, text }),
   });
   return json({ ok: r.ok });
 }

@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     method: 'POST',
     headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      from: process.env.NOTIFY_FROM ?? 'CM 01/02 Reborn <onboarding@resend.dev>',
+      from: process.env.NOTIFY_FROM ?? 'CM Reborn <onboarding@resend.dev>',
       to: [to],
       subject: `Ny karriere: ${manager} – ${club}`,
       text: lines.join('\n'),

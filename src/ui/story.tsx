@@ -88,7 +88,7 @@ async function drawCard(s: SeasonStory, manager: string, season: string): Promis
   };
   const av = getAvatar();
   if (av) { const img = new Image(); img.src = av; await img.decode().catch(() => {}); x.save(); x.beginPath(); x.arc(150, 170, 80, 0, Math.PI * 2); x.clip(); x.drawImage(img, 70, 90, 160, 160); x.restore(); }
-  text('CM 01/02 REBORN', av ? 260 : 80, 120, 30, '#ffcf3f', 800);
+  text('CM REBORN', av ? 260 : 80, 120, 30, '#ffcf3f', 800);
   text(manager, av ? 260 : 80, 180, 56, '#fff', 900);
   text(`${s.clubName} · ${season}`, av ? 260 : 80, 232, 34, '#c2cbe6', 600);
   text(s.pos ? `${s.pos}.` : '–', 80, 420, 150, '#ffcf3f', 900);

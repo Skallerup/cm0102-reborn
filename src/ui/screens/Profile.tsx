@@ -44,7 +44,7 @@ export function ProfileScreen() {
     if (!prof) return;
     const url = profileUrl(prof.pid);
     try {
-      if (navigator.share) await navigator.share({ title: `${g.manager.name} – CM 01/02 Reborn`, url });
+      if (navigator.share) await navigator.share({ title: `${g.manager.name} – CM Reborn`, url });
       else { await navigator.clipboard.writeText(url); setMsg({ text: t('rank.copied'), tone: '' }); }
     } catch { /* afbrudt */ }
   };

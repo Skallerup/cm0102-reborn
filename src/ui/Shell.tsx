@@ -110,8 +110,8 @@ export function Shell() {
     const fresh = g.news.filter((n) => n.id > notifiedUpTo.current && !n.read);
     notifiedUpTo.current = Math.max(notifiedUpTo.current, g.news[0]?.id ?? 0);
     const imp = fresh.filter((n) => NOTIFY_KEYS.some((k) => n.key.startsWith(k)));
-    if (imp.length) notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', imp.slice(0, 3).map((n) => newsTitle(n)).join('\n'), 'news');
-    else if (fresh.length && session()) notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', t('mp.newTurn', { date: dateFmt(g.date) }), 'news');
+    if (imp.length) notifyUser(g.clubs[g.userClub]?.name ?? 'CM Reborn', imp.slice(0, 3).map((n) => newsTitle(n)).join('\n'), 'news');
+    else if (fresh.length && session()) notifyUser(g.clubs[g.userClub]?.name ?? 'CM Reborn', t('mp.newTurn', { date: dateFmt(g.date) }), 'news');
   }, [newestNews]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // kampdag: besked når ens kamp er klar, mens fanen ligger i baggrunden (især online, hvor dagene kører uden én)
@@ -121,7 +121,7 @@ export function Shell() {
     const f = g.fixtures[pending];
     if (!f) return;
     const opp = g.clubs[f.home === g.userClub ? f.away : f.home]?.name ?? '';
-    notifyUser(g.clubs[g.userClub]?.name ?? 'CM 01/02', t('notify.matchReady', { opp }), 'match');
+    notifyUser(g.clubs[g.userClub]?.name ?? 'CM Reborn', t('notify.matchReady', { opp }), 'match');
   }, [pending]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {

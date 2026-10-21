@@ -112,7 +112,7 @@ function Boards() {
     const text = me ? t('rank.shareText', { rank: me.rank, pts: me.points, board: t(`rank.board.${board}`) }) : t('rank.shareInvite');
     const url = location.origin;
     try {
-      if (navigator.share) await navigator.share({ title: 'CM 01/02 Reborn', text, url });
+      if (navigator.share) await navigator.share({ title: 'CM Reborn', text, url });
       else { await navigator.clipboard.writeText(`${text} ${url}`); setErr(t('rank.copied')); }
     } catch { /* afbrudt */ }
   };

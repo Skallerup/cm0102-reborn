@@ -182,7 +182,7 @@ export function OnlineControls() {
             <div className="invite-code">{s.creds.code}</div>
             <input readOnly value={link} onFocus={(e) => e.target.select()} style={{ width: '100%' }} />
             <div className="row" style={{ justifyContent: 'flex-end' }}>
-              {'share' in navigator && <button onClick={() => { void navigator.share({ title: 'CM 01/02 Reborn', text: t('mp.shareText', { code: s.creds.code }), url: link }).catch(() => {}); }}>{t('mp.share')}</button>}
+              {'share' in navigator && <button onClick={() => { void navigator.share({ title: 'CM Reborn', text: t('mp.shareText', { code: s.creds.code }), url: link }).catch(() => {}); }}>{t('mp.share')}</button>}
               <button className="primary" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { prompt(t('mp.inviteLink'), link); } }}>{copied ? t('mp.copied') : t('mp.copyLink')}</button>
             </div>
           </div>
