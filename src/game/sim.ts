@@ -139,7 +139,8 @@ export function createLiveMatch(f: Fixture): MatchSim {
   const m = prepareMatch(f);
   const g = gs();
   return new MatchSim(m.home, m.away, {
-    commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, date: g.date,
+    // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
+    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }

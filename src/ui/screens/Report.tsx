@@ -36,6 +36,20 @@ export function ReportScreen({ id }: { id: number }) {
         <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} /></div>
       </div>
       <Goals rep={rep} />
+      {rep.shootout && (
+        <Panel title={`${t('report.shootout')} ${rep.pens?.[0]}-${rep.pens?.[1]}`}>
+          <div className="so-list">
+            {[0, 1].map((tm) => (
+              <div key={tm}>
+                <b>{tm === 0 ? home : away}</b>
+                {rep.shootout!.filter((k) => k.t === tm).map((k, i) => (
+                  <div key={i} className={k.outcome === 'goal' ? 'good' : 'bad'}>{k.outcome === 'goal' ? '✓' : '✕'} {g.players[k.p]?.last ?? '?'}{k.outcome === 'saved' ? ` (${t('report.soSaved')})` : k.outcome === 'off' ? ` (${t('report.soWide')})` : ''}</div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </Panel>
+      )}
       {talking && <TeamTalk fixture={id} stage="post" pids={myLines.map((l) => l.id)} diff={diff} ratings={Object.fromEntries(myLines.map((l) => [l.id, l.rating]))} />}
       <Tabs tabs={[['analysis', t('report.analysis')], ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />
       {tab === 'analysis' && (

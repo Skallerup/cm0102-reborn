@@ -214,7 +214,7 @@ export const da: Record<string, string> = {
   'match.ratings': "Spillerkarakterer", 'rt.off': "ud {m}'", 'rt.on': "ind {m}'", 'rt.sentOff': "udvist", 'match.noTable': "Ingen stilling i denne turnering.",
   'hl.chance': "CHANCE", 'hl.goal': "MÅL!", 'hl.saved': "REDNING!", 'hl.off': "FORBI!", 'hl.blocked': "BLOKERET!", 'match.pitch2d': "2D (højdepunkter)",
   'c.var-check.1': "VAR tjekker situationen omkring {a}…", 'c.var-check.2': "Dommeren holder hånden for øret – VAR kigger på målet…", 'c.var-disallowed.1': "VAR annullerer målet! {a} var offside med en skulder.", 'c.var-disallowed.2': "Efter VAR-tjekket: ingen mål – {a} stod offside.", 'c.var-given.1': "VAR overrules linjedommeren – {a} var ikke offside! Målet tæller!", 'c.var-given.2': "Flaget var forkert! VAR godkender målet.", 'c.var-stands.1': "VAR har tjekket – målet står ved magt!", 'c.var-stands.2': "Alt i orden efter VAR-tjekket. Målet tæller.", 'hl.offside': "OFFSIDE!",
-  'hl.build': "{a} sætter angrebet i gang…", 'hl.pass': "{a} finder {b}…", 'hl.shoot': "{a} går til afslutning!", 'hl.penSetup': "Straffespark! {a} lægger bolden på pletten…", 'hl.penRun': "{a} tager tilløb…",
+  'hl.soSetup': "{a} går frem til pletten…", 'hl.k.shootout': "STRAFFESPARKSKONKURRENCE", 'hl.build': "{a} sætter angrebet i gang…", 'hl.pass': "{a} finder {b}…", 'hl.shoot': "{a} går til afslutning!", 'hl.penSetup': "Straffespark! {a} lægger bolden på pletten…", 'hl.penRun': "{a} tager tilløb…",
   'match.notYours': "Ikke din kamp længere", 'match.notYoursText': "Du styrer nu {club}. Denne kamp spilles automatisk af den gamle klub.",
   'match.subsTitle': "Udskiftere", 'match.subInFor': "Skift ind for…", 'match.noSubsLeft': "Ingen udskiftninger tilbage",
   'hl.cornerSetup': "Hjørnespark! {a} gør klar ved flaget…", 'hl.cornerCross': "{a} slår bolden ind i feltet…", 'hl.cornerCleared': "Forsvaret rydder.", 'hl.cleared': "RYDDET", 'hl.corner': "HJØRNESPARK",
@@ -1115,7 +1115,7 @@ export const da: Record<string, string> = {
   'stat.fouls': 'Frispark begået', 'stat.yellows': 'Gule kort', 'stat.reds': 'Røde kort', 'stat.offsides': 'Offside', 'stat.passPct': 'Afleveringer %',
 
   // rapport
-  'report.missing': 'Rapporten findes ikke', 'report.title': 'Kamprapport', 'report.analysis': 'Analyse', 'report.players': 'Spillere',
+  'report.shootout': 'Straffesparkskonkurrence', 'report.soSaved': 'reddet', 'report.soWide': 'forbi', 'report.missing': 'Rapporten findes ikke', 'report.title': 'Kamprapport', 'report.analysis': 'Analyse', 'report.players': 'Spillere',
   'report.verdict': 'Assistentens vurdering', 'report.mom': 'Kampens spiller', 'report.momentum': 'Momentum (trussel pr. 5 min)', 'report.heatmap': 'Heatmap (boldbesiddelse pr. zone)',
   'report.heatHint': 'Viser hvor holdet havde bolden. Pilen angiver angrebsretning.', 'report.shotmap': 'Skudkort (størrelse = xG)', 'report.min': 'Min',
   'report.passes': 'Afl.', 'report.noCommentary': 'Ingen kommentar for denne kamp.',
@@ -1188,5 +1188,5 @@ export const da: Record<string, string> = {
   'c.dribble.1': '{a} danser forbi {b}!', 'c.dribble.2': 'Lækker driblen af {a}.', 'c.dribble-box.1': '{a} driblet sig ind i feltet!',
   'c.counter.1': 'Kontra! {b} sætter afsted!', 'c.longball.1': 'Langt fra {a} op mod {b}.', 'c.pass-forward.1': '{a} spiller bolden fremad.',
   'c.gk-claims.1': '{a} griber indlægget sikkert.', 'c.tactic-change.1': 'Taktisk ændring på sidelinjen.',
-  'c.shootout.1': 'Straffesparkskonkurrence!', 'c.so-score.1': '{a} scorer.', 'c.so-miss.1': '{a} brænder – {b} redder!', 'c.shootout-end.1': 'Straffesparkskonkurrencen er slut!',
+  'c.shootout.1': 'Straffesparkskonkurrence! Spillerne samles i midtercirklen.', 'c.shootout.2': 'Det skal afgøres på straffespark!', 'c.so-score.1': '{a} scorer sikkert.', 'c.so-score.2': '{a} sender {b} den forkerte vej – mål!', 'c.so-score.3': '{a} hamrer den op i nettaget!', 'c.so-score.4': 'Iskold afslutning af {a}.', 'c.so-miss.1': '{a} brænder – {b} redder!', 'c.so-miss.2': '{b} gætter rigtigt og stopper {a}s forsøg!', 'c.so-miss.3': 'Redning! {b} kaster sig og tager {a}s straffe!', 'c.so-wide.1': '{a} sender den forbi stolpen!', 'c.so-wide.2': '{a} skyder over mål – nerverne!', 'c.so-wide.3': 'Uha! {a} rammer ved siden af!', 'c.shootout-end.1': '{team} vinder straffesparkskonkurrencen!', 'c.shootout-end.2': 'Det er afgjort – {team} går videre efter straffespark!',
 };

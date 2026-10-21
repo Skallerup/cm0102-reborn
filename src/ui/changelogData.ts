@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.7.74',
+    date: '2026-10-21',
+    title: { da: 'Straffesparkskonkurrence live og bedre kampvisning på mobil', en: 'Live penalty shoot-outs and a better match view on mobile' },
+    items: [
+      { da: 'Pokalkampe, der står lige efter forlænget spilletid, afgøres nu i en straffesparkskonkurrence, du kan følge spark for spark – i 2D står spillerne i midtercirklen, skytten går frem til pletten, og målmanden kaster sig', en: 'Cup ties level after extra time now go to a penalty shoot-out you can follow kick by kick – in 2D the players wait in the centre circle, the taker walks up to the spot and the keeper dives' },
+      { da: 'En tavle på banen viser hvert holds spark (✓/✕), stillingen i straffesparkskonkurrencen står ved minuttet, og kamprapporten viser alle skytter med redninger og forbiskud', en: 'A board on the pitch shows each side\'s kicks (✓/✕), the shoot-out score sits next to the minute, and the match report lists every taker with saves and misses' },
+      { da: 'Konkurrencen følger reglerne: fem spark hver, afgjort så snart det ene hold ikke kan indhente det andet, derefter sudden death med lige mange skytter på hver side', en: 'The shoot-out follows the rules: five kicks each, decided as soon as one side can no longer catch up, then sudden death with the same number of takers on each side' },
+      { da: 'Mobil: resultattavlen er én kompakt række, der bliver stående øverst, fanerne er én række, du kan rulle sidelæns, og 2D-banen har større spillere – kampen kan ses uden at rulle ned, og siden flyder ikke længere ud over kanten', en: 'Mobile: the scoreboard is one compact row that stays at the top, the tabs are a single row you can swipe, and the 2D pitch has bigger players – the match is visible without scrolling and the page no longer overflows sideways' },
+      { da: 'Mobil: optakten og kamprapporten viser holdnavnene uden at de løber ind i hinanden, og kommentaren fylder hele bredden', en: 'Mobile: the preview and match report show team names without overlapping, and the commentary uses the full width' },
+    ],
+  },
+  {
     version: '0.7.73',
     date: '2026-10-19',
     title: { da: 'Pressemøder med 56 slags spørgsmål og egne svar', en: 'Press conferences with 56 kinds of questions and tailored answers' },

@@ -1,13 +1,13 @@
 // Klassisk 2D-kampvisning (inspireret af CM/FM): spillerne bevæger sig mellem deres forsvars- og
 // angrebspositioner fra taktikken, alt efter hvor bolden er – så man kan se, hvad taktikken gør.
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MatchSim } from '../game/engine/match';
 import type { ShotRecord } from '../game/types';
 import { hash01 } from '../game/rng';
 
 export type Snap = ReturnType<MatchSim['pitch']>;
-/** Straffespark: hvilket hold skyder, og hvor langt tilløbet er nået (0 opstilling, 1 tilløb, 2 skud) */
-type PenSnap = Snap & { pen: number; penStep: number };
+/** Straffespark: hvilket hold skyder, og hvor langt tilløbet er nået (0 opstilling, 1 tilløb, 2 skud). so = straffesparkskonkurrence */
+type PenSnap = Snap & { pen: number; penStep: number; so?: boolean };
 
 /** Hjørnespark: hvilket hold, fra hvilken side (0 = top, 2 = bund), hvem tager det, hvem afslutter, og hvor langt vi er (0 klar, 1 indlæg, 2 afslutning/clearing) */
 type CornerSnap = Snap & { corner: { team: number; lane: number; taker: number; target?: number; step: number; cleared?: boolean } };
@@ -84,33 +84,48 @@ function fkLayout(s: FkSnap): { pos: Map<number, [number, number]>; ball: [numbe
   return { pos, ball, holder: shooter };
 }
 
-/** Straffesparksopstilling: skytten ved pletten, målmanden på stregen, alle andre uden for feltet */
+/**
+ * Straffesparksopstilling: skytten ved pletten, målmanden på stregen, alle andre uden for feltet.
+ * I en straffesparkskonkurrence skydes der altid mod samme mål, og spillerne står i midtercirklen.
+ */
 function penLayout(s: PenSnap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
-  const toRight = s.pen === 0;
+  const toRight = s.so ? true : s.pen === 0;
+  const dir = toRight ? 1 : -1;
   const goalX = toRight ? 100 : 0;
   const spotX = toRight ? 89 : 11;
   const edgeX = toRight ? 80 : 20;
   const pos = new Map<number, [number, number]>();
   const shooter = s.players.find((p) => p.id === s.holder);
-  let k = 0;
+  // skuddets side og målmandens gæt (samme for alle billeder af sparket)
+  const aim = hash01(Math.floor(s.moment / 10), s.holder, 21) < 0.5 ? -1 : 1;
+  const out = s.penStep >= 2 ? s.shot?.outcome : undefined;
+  const dive = out === 'saved' ? aim : out === 'goal' ? (hash01(Math.floor(s.moment / 10), s.holder, 22) < 0.8 ? -aim : aim) : out ? (hash01(Math.floor(s.moment / 10), s.holder, 23) < 0.5 ? -1 : 1) : 0;
+  const k = [0, 0];
   for (const p of s.players) {
     if (p.id === shooter?.id) continue;
     if (p.gk) {
       const defending = p.team !== s.pen;
-      pos.set(p.id, defending ? [toRight ? 99 : 1, 50] : [p.team === 0 ? 6 : 94, 50]);
+      if (defending) pos.set(p.id, [goalX - dir * (dive ? 1.6 : 1), 50 + dive * 5.5]);
+      else pos.set(p.id, s.so ? [goalX - dir * 13, 17] : [p.team === 0 ? 6 : 94, 50]);
+      continue;
+    }
+    const i = k[p.team]++;
+    if (s.so) {
+      // midtercirklen: hvert hold i to rækker på sin side af midterlinjen
+      const row = i % 2, col = Math.floor(i / 2) % 5;
+      pos.set(p.id, [50 + (p.team === 0 ? -1 : 1) * (2.6 + row * 4.4), 36 + col * 7]);
       continue;
     }
     // spredt i to rækker uden for feltet
-    const row = k % 2, col = Math.floor(k / 2) % 9;
-    k++;
-    pos.set(p.id, [edgeX - (toRight ? 1 : -1) * (row * 6 + Math.abs(col - 4) * 0.8), 20 + col * 7.5 + row * 3.5]);
+    const n = k[0] + k[1] - 1;
+    const row = n % 2, col = Math.floor(n / 2) % 9;
+    pos.set(p.id, [edgeX - dir * (row * 6 + Math.abs(col - 4) * 0.8), 20 + col * 7.5 + row * 3.5]);
   }
   const back = s.penStep === 0 ? 6 : s.penStep === 1 ? 2 : 0.5;
-  if (shooter) pos.set(shooter.id, [spotX - (toRight ? back : -back), 50 + (s.penStep === 0 ? 3 : 1)]);
+  if (shooter) pos.set(shooter.id, [spotX - dir * back, 50 + (s.penStep === 0 ? 3 : 1)]);
   let ball: [number, number] = [spotX, 50];
-  if (s.shot) {
-    const inNet = s.shot.outcome === 'goal';
-    ball = inNet ? [goalX + (toRight ? -0.5 : 0.5), 46] : s.shot.outcome === 'saved' ? [toRight ? 98 : 2, 52] : [toRight ? 99.5 : 0.5, 38];
+  if (out) {
+    ball = out === 'goal' || out === 'offside' ? [goalX - dir * 0.5, 50 + aim * 4] : out === 'saved' ? [goalX - dir * 4.5, 50 + aim * 9] : [goalX + dir * 0.5, 50 + aim * 10.5];
   }
   return { pos, ball, holder: shooter };
 }
@@ -128,7 +143,7 @@ const clampP = (v: number, lo = 1, hi = 99) => Math.max(lo, Math.min(hi, v));
  * Spillernes positioner ud fra taktikken og boldens zone – og bolden ved boldholderens fødder.
  * Returnerer positionerne, boldens placering og hvem der har bolden.
  */
-function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
+function layout(s: Snap, gap = 3.2): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
   if ((s as PenSnap).pen !== undefined) return penLayout(s as PenSnap);
   if ((s as CornerSnap).corner) return cornerLayout(s as CornerSnap);
   if ((s as FkSnap).fk !== undefined) return fkLayout(s as FkSnap);
@@ -198,8 +213,8 @@ function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, n
       for (let j = i + 1; j < ids.length; j++) {
         const a = pos.get(ids[i])!, b = pos.get(ids[j])!;
         const dx = b[0] - a[0], dy = (b[1] - a[1]) * 0.68, d = Math.hypot(dx, dy);
-        if (d > 0 && d < 3.2) {
-          const push = (3.2 - d) / 2 / d;
+        if (d > 0 && d < gap) {
+          const push = (gap - d) / 2 / d;
           if (ids[i] !== holder?.id) pos.set(ids[i], [a[0] - dx * push, a[1] - (dy / 0.68) * push]);
           if (ids[j] !== holder?.id) pos.set(ids[j], [b[0] + dx * push, b[1] + (dy / 0.68) * push]);
         }
@@ -209,11 +224,28 @@ function layout(s: Snap): { pos: Map<number, [number, number]>; ball: [number, n
   return { pos, ball, holder };
 }
 
-export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, flash }: {
-  snap: Snap; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number; flash?: string;
+const narrowQuery = '(max-width: 600px)';
+function useNarrow(): boolean {
+  const [narrow, setNarrow] = useState(() => typeof matchMedia !== 'undefined' && matchMedia(narrowQuery).matches);
+  useEffect(() => {
+    const m = matchMedia(narrowQuery);
+    const on = () => setNarrow(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return narrow;
+}
+
+/** Straffesparkskonkurrencens tavle: hvert holds spark (✓ mål, ✕ brændt, ○ mangler af de første fem) */
+export interface ShootoutTally { names: [string, string]; kicks: [string[], string[]] }
+
+export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, flash, shootout }: {
+  snap: Snap; me: number; colors: [string, string, string, string]; minute: string; banner: string; bannerCls: string; stepMs: number; flash?: string; shootout?: ShootoutTally;
 }) {
   const s = snap;
-  const { pos, ball, holder } = useMemo(() => layout(s), [s.moment, s.zone, s.poss, s.holder, s.players.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // på smalle skærme er banen lille – større spillere og navne, så de kan læses
+  const k = useNarrow() ? 1.4 : 1;
+  const { pos, ball, holder } = useMemo(() => layout(s, 3.2 * k), [s.moment, s.zone, s.poss, s.holder, s.players.length, k]); // eslint-disable-line react-hooks/exhaustive-deps
   const [bx, by] = ball;
   const dur = `${Math.max(80, Math.min(900, stepMs))}ms`;
   const X = (x: number) => (x / 100) * W, Y = (y: number) => (y / 100) * H;
@@ -248,19 +280,31 @@ export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, f
           return (
             <g key={p.id} className="p2d-player" style={{ transform: `translate(${X(x)}px, ${Y(y)}px)`, transitionDuration: dur }}>
               <title>{p.name}</title>
-              <circle r="1.9" fill={bg} stroke={mine ? '#fff' : 'rgba(0,0,0,0.55)'} strokeWidth="0.35" />
-              <text y="0.65" textAnchor="middle" fontSize="1.9" fontWeight="800" fill={fg}>{p.num}</text>
-              {p.id === holder?.id && <text y="-2.7" textAnchor="middle" fontSize="1.9" fontWeight="700" fill="#fff" stroke="rgba(0,0,0,0.6)" strokeWidth="0.25" paintOrder="stroke">{p.name}</text>}
+              <circle r={1.9 * k} fill={bg} stroke={mine ? '#fff' : 'rgba(0,0,0,0.55)'} strokeWidth={0.35 * k} />
+              <text y={0.65 * k} textAnchor="middle" fontSize={1.9 * k} fontWeight="800" fill={fg}>{p.num}</text>
+              {p.id === holder?.id && <text y={-2.7 * k} textAnchor="middle" fontSize={1.9 * k} fontWeight="700" fill="#fff" stroke="rgba(0,0,0,0.6)" strokeWidth="0.25" paintOrder="stroke">{p.name}</text>}
             </g>
           );
         })}
         <g className="p2d-ball" style={{ transform: `translate(${X(bx)}px, ${Y(by)}px)`, transitionDuration: dur }}>
-          <circle r="0.9" fill="#fff" stroke="#111" strokeWidth="0.2" />
+          <circle r={0.9 * Math.sqrt(k)} fill="#fff" stroke="#111" strokeWidth="0.2" />
         </g>
       </svg>
       <div className="p2d-minute">{minute}</div>
       {holder && <div className="p2d-poss" style={{ background: s.poss === 0 ? colors[0] : colors[2], color: s.poss === 0 ? colors[1] : colors[3] }}>⚽ {holder.name}</div>}
       {flash && <div className="p2d-flash">{flash}</div>}
+      {shootout && (
+        <div className="p2d-so">
+          {[0, 1].map((tm) => (
+            <div key={tm}>
+              <span className="p2d-so-name" style={{ background: tm === 0 ? colors[0] : colors[2], color: tm === 0 ? colors[1] : colors[3] }}>{shootout.names[tm]}</span>
+              {[...shootout.kicks[tm], ...new Array(Math.max(0, 5 - shootout.kicks[tm].length)).fill('')].map((o, i) => (
+                <span key={i} className={`p2d-so-k ${o === 'goal' ? 'good' : o ? 'bad' : ''}`}>{o === 'goal' ? '✓' : o ? '✕' : '○'}</span>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
       <div className={`p2d-banner ${bannerCls}`}>{banner}</div>
     </div>
   );
@@ -314,6 +358,17 @@ export function highlightFrames(base: Snap, shot: ShotRecord, assister?: number)
     f(4, lane, shot.p, 3),
     f(4, lane, shot.p, 4, out),
   ];
+}
+
+/** Et spark i straffesparkskonkurrencen: skytten lægger bolden → tilløb → udfald */
+export function shootoutFrames(base: Snap, k: { t: number; p: number; outcome: string }): Snap[] {
+  const pen = (step: number, sh: Snap['shot'] = null): Snap => ({ ...base, poss: k.t, zone: 13, holder: k.p, moment: base.moment * 10 + step, shot: sh, pen: k.t, penStep: step, so: true } as PenSnap);
+  return [pen(0), pen(1), pen(2, { team: k.t, outcome: k.outcome as NonNullable<Snap['shot']>['outcome'], zone: 13 })];
+}
+
+/** Mellem sparkene i straffesparkskonkurrencen: alle i midtercirklen, bolden på pletten */
+export function shootoutIdle(base: Snap, next: number): Snap {
+  return { ...base, poss: next, zone: 13, holder: 0, shot: null, pen: next, penStep: 0, so: true } as PenSnap;
 }
 
 /** Et hjørnespark uden afslutning: klar ved flaget → indlæg → forsvaret rydder */

@@ -670,7 +670,13 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .p2d-banner { background: #ffe14d; color: #1b1400; text-align: center; font-weight: 800; font-size: 16px; padding: 9px 12px; min-height: 40px; }
 .p2d-banner.goal { background: #22c55e; color: #fff; animation: flash 0.6s 3; }
 .p2d-banner.hi { background: #ffd23f; }
-.match2d { grid-template-columns: 2fr 1fr; }
+.p2d-so { position: absolute; left: 10px; bottom: 52px; display: flex; flex-direction: column; gap: 3px; background: rgba(0, 0, 0, 0.55); padding: 6px 9px; border-radius: 10px; font-size: 13px; font-weight: 800; color: #fff; pointer-events: none; }
+.p2d-so > div { display: flex; align-items: center; gap: 4px; }
+.p2d-so-name { min-width: 46px; padding: 1px 6px; border-radius: 6px; text-align: center; font-size: 11.5px; margin-right: 3px; }
+.p2d-so-k { width: 16px; text-align: center; opacity: 0.7; }
+.p2d-so-k.good { color: #4ade80; opacity: 1; }
+.p2d-so-k.bad { color: #f87171; opacity: 1; }
+.match2d, .match-comm { grid-template-columns: 2fr 1fr; }
 @media (max-width: 860px) { .match2d { grid-template-columns: 1fr; } .p2d-banner { font-size: 13px; } }
 
 /* ---------- taktiktavle: flyt pladser, løbepile og højrekliksmenu ---------- */
@@ -752,9 +758,57 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .sim-players { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 .countdown { font-size: 72px; font-weight: 900; line-height: 1; color: var(--accent); animation: pop 0.4s; }
-.leave-note { font-size: 12px; margin: -4px 0 8px; }
+.leave-note { font-size: 12px; margin: 10px 0 0; }
 .war-box { border: 2px solid var(--accent); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--tint1, transparent); }
 .war-title { font-weight: 800; letter-spacing: 0.04em; }
 .press-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; text-align: left; white-space: normal; max-width: 360px; padding: 8px 12px; height: auto; line-height: 1.35; border-radius: 12px; }
 .press-opt-fx { display: flex; flex-wrap: wrap; gap: 4px; }
 .press-opt-fx .tag { font-size: 10px; }
+
+/* ---------- mobil: kampskærm ---------- */
+.name-short { display: none; }
+@media (max-width: 860px) {
+  /* faner: én række, der kan rulles sidelæns, i stedet for flere linjer */
+  .tabs { display: flex; position: relative; flex-wrap: nowrap; overflow-x: auto; max-width: 100%; border-radius: 12px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tabs button { white-space: nowrap; flex-shrink: 0; padding: 6px 11px; font-size: 13px; }
+
+  /* optakt og kamprapport: holdnavnene over hinanden i stedet for at flyde ud over kanten */
+  .scoreboard { gap: 8px; }
+  .scoreboard .team, .scoreboard .team.away { flex: 1; flex-direction: column; justify-content: center; text-align: center; gap: 4px; font-size: 13px; overflow-wrap: anywhere; }
+  .scoreboard .score { min-width: 48px; font-size: 24px; }
+  .scoreboard > div:not(.team) { flex: 0 1 auto; min-width: 0; max-width: 38%; }
+  .scoreboard .minute { font-size: 11px; white-space: normal; }
+  .scoreboard .team a { white-space: normal; }
+
+  .match-screen .screen-head { gap: 6px; margin-bottom: 8px; }
+  .match-screen .screen-head h2 { font-size: 14px; font-weight: 700; color: var(--muted); flex: 1 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .match-screen .screen-head .grow { display: none; }
+  .match-screen .screen-head > button { padding: 5px 10px; font-size: 12.5px; }
+  .match-screen .tabs { margin-bottom: 8px; }
+
+  /* resultattavlen: én kompakt række, der bliver stående øverst, mens man ruller */
+  .cm-board { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 4px; margin-bottom: 8px; position: sticky; top: -14px; z-index: 6; padding: 4px 0; background: var(--bg); }
+  .cm-board .cm-team { grid-row: 1; grid-column: 1; min-width: 0; padding: 5px 6px 5px 8px; gap: 6px; border-radius: 10px; }
+  .cm-board .cm-team.away { grid-column: 3; padding: 5px 8px 5px 6px; }
+  .cm-minute { grid-row: 1; grid-column: 2; min-width: 0; max-width: 84px; padding: 2px 6px; font-size: 13px; line-height: 1.2; text-align: center; border-radius: 10px; }
+  .cm-name { font-size: 15px; gap: 5px; min-width: 0; }
+  .cm-name .crest { width: 20px !important; height: 20px !important; flex-shrink: 0; }
+  .cm-score { font-size: 20px; min-width: 30px; padding: 2px 6px; border-radius: 8px; }
+  .name-long { display: none; }
+  .name-short { display: inline; overflow: hidden; text-overflow: ellipsis; }
+
+  /* 2D: kommentaren under banen fylder mindre */
+  .match2d .commentary { max-height: 240px !important; }
+  .match-comm { grid-template-columns: 1fr; }
+  .match-comm .commentary { height: 50vh; }
+  .p2d-minute { top: 6px; left: 6px; font-size: 12px; padding: 2px 7px; }
+  .p2d-poss { top: 6px; right: 6px; font-size: 11px; padding: 2px 7px; }
+  .p2d-replay { top: 32px; left: 6px; transform: none; font-size: 10px; padding: 2px 8px; }
+  .p2d-so { left: 6px; bottom: 46px; transform: none; font-size: 11px; padding: 4px 6px; }
+  .p2d-so-name { min-width: 34px; font-size: 10px; }
+  .p2d-so-k { width: 12px; }
+  .p2d-banner { min-height: 36px; padding: 7px 10px; }
+}
+.so-list { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.so-list > div { display: flex; flex-direction: column; gap: 3px; }

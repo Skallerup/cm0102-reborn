@@ -201,7 +201,7 @@ export const en: Record<string, string> = {
   'match.ratings': "Player ratings", 'rt.off': "off {m}'", 'rt.on': "on {m}'", 'rt.sentOff': "sent off", 'match.noTable': "No table in this competition.",
   'hl.chance': "CHANCE", 'hl.goal': "GOAL!", 'hl.saved': "SAVED!", 'hl.off': "WIDE!", 'hl.blocked': "BLOCKED!", 'match.pitch2d': "2D (highlights)",
   'c.var-check.1': "VAR is checking the situation around {a}…", 'c.var-check.2': "The referee holds a hand to his ear – VAR is looking at the goal…", 'c.var-disallowed.1': "VAR rules out the goal! {a} was offside by a shoulder.", 'c.var-disallowed.2': "After the VAR check: no goal – {a} was offside.", 'c.var-given.1': "VAR overrules the linesman – {a} was onside! The goal stands!", 'c.var-given.2': "The flag was wrong! VAR awards the goal.", 'c.var-stands.1': "VAR has checked – the goal stands!", 'c.var-stands.2': "All clear after the VAR check. The goal counts.", 'hl.offside': "OFFSIDE!",
-  'hl.build': "{a} starts the attack…", 'hl.pass': "{a} finds {b}…", 'hl.shoot': "{a} goes for goal!", 'hl.penSetup': "Penalty! {a} places the ball on the spot…", 'hl.penRun': "{a} runs up…",
+  'hl.soSetup': "{a} walks up to the spot…", 'hl.k.shootout': "PENALTY SHOOT-OUT", 'hl.build': "{a} starts the attack…", 'hl.pass': "{a} finds {b}…", 'hl.shoot': "{a} goes for goal!", 'hl.penSetup': "Penalty! {a} places the ball on the spot…", 'hl.penRun': "{a} runs up…",
   'match.notYours': "No longer your match", 'match.notYoursText': "You now manage {club}. This match is played automatically by your old club.",
   'match.subsTitle': "Substitutes", 'match.subInFor': "Bring on for…", 'match.noSubsLeft': "No substitutions left",
   'hl.cornerSetup': "Corner! {a} gets ready at the flag…", 'hl.cornerCross': "{a} whips it into the box…", 'hl.cornerCleared': "The defence clears.", 'hl.cleared': "CLEARED", 'hl.corner': "CORNER",
@@ -1085,7 +1085,7 @@ export const en: Record<string, string> = {
   'stat.possession': 'Possession', 'stat.xg': 'xG (expected goals)', 'stat.shots': 'Shots', 'stat.onTarget': 'On target', 'stat.corners': 'Corners',
   'stat.fouls': 'Fouls', 'stat.yellows': 'Yellow cards', 'stat.reds': 'Red cards', 'stat.offsides': 'Offsides', 'stat.passPct': 'Pass completion %',
 
-  'report.missing': 'Report not found', 'report.title': 'Match report', 'report.analysis': 'Analysis', 'report.players': 'Players',
+  'report.shootout': 'Penalty shoot-out', 'report.soSaved': 'saved', 'report.soWide': 'missed', 'report.missing': 'Report not found', 'report.title': 'Match report', 'report.analysis': 'Analysis', 'report.players': 'Players',
   'report.verdict': "Assistant's verdict", 'report.mom': 'Man of the match', 'report.momentum': 'Momentum (threat per 5 min)', 'report.heatmap': 'Heatmap (possession by zone)',
   'report.heatHint': 'Shows where each team had the ball. The arrow shows the attacking direction.', 'report.shotmap': 'Shot map (size = xG)', 'report.min': 'Min',
   'report.passes': 'Pass', 'report.noCommentary': 'No commentary for this match.',
@@ -1155,5 +1155,5 @@ export const en: Record<string, string> = {
   'c.dribble.1': '{a} dances past {b}!', 'c.dribble.2': 'Lovely dribble from {a}.', 'c.dribble-box.1': '{a} dribbles into the box!',
   'c.counter.1': 'Counter attack! {b} breaks forward!', 'c.longball.1': 'Long ball from {a} towards {b}.', 'c.pass-forward.1': '{a} moves the ball forward.',
   'c.gk-claims.1': '{a} claims the cross.', 'c.tactic-change.1': 'A tactical change on the touchline.',
-  'c.shootout.1': 'Penalty shoot-out!', 'c.so-score.1': '{a} scores.', 'c.so-miss.1': '{a} misses – {b} saves!', 'c.shootout-end.1': 'The shoot-out is over!',
+  'c.shootout.1': 'Penalty shoot-out! The players gather in the centre circle.', 'c.shootout.2': 'It goes to penalties!', 'c.so-score.1': '{a} scores comfortably.', 'c.so-score.2': '{a} sends {b} the wrong way – goal!', 'c.so-score.3': '{a} smashes it into the roof of the net!', 'c.so-score.4': 'Ice-cool finish from {a}.', 'c.so-miss.1': '{a} misses – {b} saves!', 'c.so-miss.2': "{b} guesses right and stops {a}'s effort!", 'c.so-miss.3': "Save! {b} dives and keeps out {a}'s penalty!", 'c.so-wide.1': '{a} puts it wide of the post!', 'c.so-wide.2': '{a} blazes it over – nerves!', 'c.so-wide.3': 'Oh no! {a} misses the target!', 'c.shootout-end.1': '{team} win the shoot-out!', 'c.shootout-end.2': "It's settled – {team} go through on penalties!",
 };

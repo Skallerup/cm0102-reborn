@@ -621,8 +621,12 @@ export interface MatchReport {
   commentary: CommentaryLine[];
   et?: boolean;
   pens?: [number, number];
+  /** sparkene i straffesparkskonkurrencen, i rækkefølge (hold, skytte, målmand, udfald) */
+  shootout?: ShootoutKick[];
   formations: [string, string];
 }
+
+export interface ShootoutKick { t: number; p: number; gk: number; outcome: 'goal' | 'saved' | 'off' }
 
 export interface ChallengeState {
   id: string;

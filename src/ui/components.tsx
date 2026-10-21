@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import { gs, hasGame } from '../game/state';
@@ -95,8 +95,14 @@ export function Bar({ value, max = 100, tone }: { value: number; max?: number; t
 }
 
 export function Tabs({ tabs, value, onChange }: { tabs: [string, string][]; value: string; onChange: (v: string) => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  // på mobil er fanerne én række, der kan rulles – hold den valgte fane synlig
+  useEffect(() => {
+    const box = ref.current, on = box?.querySelector<HTMLElement>('button.on');
+    if (box && on && box.scrollWidth > box.clientWidth) box.scrollTo({ left: on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2, behavior: 'smooth' });
+  }, [value]);
   return (
-    <div className="tabs">
+    <div className="tabs" ref={ref}>
       {tabs.map(([k, label]) => (
         <button key={k} className={k === value ? 'on' : ''} onClick={() => onChange(k)}>{label}</button>
       ))}

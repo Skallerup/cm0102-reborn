@@ -26,6 +26,38 @@ const team = (club: number, f = '4-4-2'): EngineTeam => {
 };
 
 describe('matchmotor', () => {
+  it('afgør pokalkampe med en gyldig straffesparkskonkurrence', () => {
+    const r = new Rng(7);
+    let shootouts = 0, homeWins = 0;
+    for (let i = 0; i < 400; i++) {
+      const h = r.pick(clubs);
+      const a = r.pick(clubs.filter((c) => c !== h));
+      const rep = quickMatch(team(h), team(a), { needsWinner: (x, y) => x === y }, r);
+      if (rep.stats[0].goals !== rep.stats[1].goals) { expect(rep.pens).toBeUndefined(); continue; }
+      shootouts++;
+      expect(rep.et).toBe(true);
+      const so = rep.shootout!;
+      const score = [0, 1].map((t) => so.filter((k) => k.t === t && k.outcome === 'goal').length);
+      expect(score).toEqual(rep.pens);
+      expect(score[0]).not.toBe(score[1]);
+      if (score[0] > score[1]) homeWins++;
+      // skiftevis hjemme/ude
+      so.forEach((k, j) => expect(k.t).toBe(j % 2));
+      // stoppet præcis ved det spark, der afgjorde den (fem hver, derefter sudden death)
+      const decided = (ks: typeof so) => {
+        const sc = [0, 1].map((t) => ks.filter((k) => k.t === t && k.outcome === 'goal').length);
+        const n = [0, 1].map((t) => ks.filter((k) => k.t === t).length);
+        if (n[0] < 5 || n[1] < 5) return sc[0] + 5 - n[0] < sc[1] || sc[1] + 5 - n[1] < sc[0];
+        return n[0] === n[1] && sc[0] !== sc[1];
+      };
+      expect(decided(so)).toBe(true);
+      for (let j = 1; j < so.length; j++) expect(decided(so.slice(0, j))).toBe(false);
+    }
+    expect(shootouts).toBeGreaterThan(15);
+    expect(homeWins).toBeGreaterThan(shootouts * 0.25);
+    expect(homeWins).toBeLessThan(shootouts * 0.75);
+  });
+
   it('giver realistiske gennemsnit (mål, hjemmesejre, skud)', () => {
     const r = new Rng(99);
     let goals = 0, home = 0, shots = 0;

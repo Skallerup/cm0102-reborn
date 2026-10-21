@@ -12,7 +12,7 @@ import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
-  ShotRecord, Tactic, TeamInstructions,
+  ShootoutKick, ShotRecord, Tactic, TeamInstructions,
 } from '../types';
 
 export interface EngineTeam {
@@ -142,6 +142,8 @@ export class MatchSim {
   zonePoss: number[] = new Array(NZ).fill(0);
   zoneTotal: number[] = new Array(NZ).fill(0);
   pens?: [number, number];
+  /** straffesparkskonkurrencen, mens den står på (og bagefter til rapporten) */
+  shootout?: { takers: [SP[], SP[]]; score: [number, number]; kicks: ShootoutKick[] };
   private momentumBucket = 0;
   private bucketThreat = 0;
 
@@ -341,8 +343,14 @@ export class MatchSim {
         this.extraTime = true;
         this.line('extratime');
         this.kickoff(1);
+      } else if (this.extraTime && !this.pens && this.opts.needsWinner?.(this.teams[0].stats.goals, this.teams[1].stats.goals)) {
+        // straffesparkskonkurrence: ét spark pr. trin, så den kan følges live
+        this.moment++;
+        if (!this.shootout) { this.startShootout(); return true; }
+        if (this.shootoutKick()) return true;
+        this.finish();
+        return false;
       } else {
-        if (this.extraTime && this.opts.needsWinner?.(this.teams[0].stats.goals, this.teams[1].stats.goals)) this.penaltyShootout();
         this.finish();
         return false;
       }
@@ -1042,31 +1050,37 @@ export class MatchSim {
 
   // ---------- straffe ----------
 
-  private penaltyShootout() {
-    const score: [number, number] = [0, 0];
-    const takers = this.teams.map((t) => t.on.filter((s) => !s.off).sort((a, b) => this.a(b, A.penalties) - this.a(a, A.penalties)));
+  private startShootout() {
+    // lige mange skytter på hver side (holdet med flest spillere må undvære sine dårligste)
+    const on = this.teams.map((t) => t.on.filter((s) => !s.off).sort((a, b) => this.a(b, A.penalties) - this.a(a, A.penalties)));
+    const n = Math.min(on[0].length, on[1].length);
+    this.shootout = { takers: [on[0].slice(0, n), on[1].slice(0, n)], score: [0, 0], kicks: [] };
     this.line('shootout', null, null, true);
-    let round = 0;
-    while (round < 30) {
-      for (let ti = 0; ti < 2; ti++) {
-        const t = this.teams[ti];
-        const s = takers[ti][round % takers[ti].length];
-        const gk = this.gk(this.teams[1 - ti]);
-        const p = clamp(0.75 * Math.exp((0.7 * this.a(s, A.penalties) + 0.3 * s.p.attrs[A.pressure] - this.gkQ(gk)) / 22), 0.5, 0.92);
-        const scored = this.r.chance(p);
-        if (scored) score[ti]++;
-        this.line(scored ? 'so-score' : 'so-miss', s, gk);
-        void t;
-      }
-      round++;
-      if (round >= 5 && score[0] !== score[1]) break;
-      if (round < 5) {
-        const left = 5 - round;
-        if (score[0] > score[1] + left || score[1] > score[0] + left) break;
-      }
-    }
-    this.pens = score;
-    this.line('shootout-end', null, null, true);
+  }
+
+  /** Ét spark. Returnerer true, så længe konkurrencen ikke er afgjort. */
+  private shootoutKick(): boolean {
+    const so = this.shootout!;
+    const k = so.kicks.length;
+    const ti = k % 2, round = Math.floor(k / 2);
+    const s = so.takers[ti][round % so.takers[ti].length];
+    const gk = this.gk(this.teams[1 - ti]);
+    const p = clamp(0.75 * Math.exp((0.7 * this.a(s, A.penalties) + 0.3 * s.p.attrs[A.pressure] - this.gkQ(gk)) / 22), 0.5, 0.92);
+    // ét tal afgør både mål og (ved brændt) redning eller forbi
+    const u = this.r.next();
+    const scored = u < p, saved = !scored && u < p + (1 - p) * 0.65;
+    if (scored) so.score[ti]++;
+    so.kicks.push({ t: ti, p: s.p.id, gk: gk.p.id, outcome: scored ? 'goal' : saved ? 'saved' : 'off' });
+    this.line(scored ? 'so-score' : saved ? 'so-miss' : 'so-wide', s, gk);
+    const [a, b] = so.score;
+    const taken = [Math.ceil((k + 1) / 2), Math.floor((k + 1) / 2)];
+    let over: boolean;
+    if (taken[1] < 5 || taken[0] < 5) over = a + (5 - taken[0]) < b || b + (5 - taken[1]) < a;
+    else over = taken[0] === taken[1] && a !== b;
+    if (!over && k < 60) return true;
+    this.pens = [a, b];
+    this.line('shootout-end', so.takers[a > b ? 0 : 1][0], null, true);
+    return false;
   }
 
   // ---------- afslutning ----------
@@ -1118,6 +1132,7 @@ export class MatchSim {
       commentary: this.commentary,
       et: this.extraTime || undefined,
       pens: this.pens,
+      shootout: this.shootout?.kicks,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
     };
   }
