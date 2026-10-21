@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { bidClauseWorth } from '../../game/clauses';
 import { IncomingOffersFor } from './Transfers';
 import { askConfirm } from '../confirm';
 import { Info } from '../help';
@@ -7,7 +8,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { MAX_BID_ROUNDS, askingPrice, canPreContract, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
+import { MAX_BID_ROUNDS, askingPrice, canPreContract, counterPackages, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -288,12 +289,25 @@ function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number
           {live.status === 'negotiating' && (
             <>
               <div className="insight good">{t('bid.live.accepted', { club: seller, fee: money(live.fee) })}</div>
+              <div className="muted" style={{ fontSize: 12.5 }}>{t('bid.live.deadline', { date: dateFmt(live.respondBy) })}</div>
               <div className="row" style={{ justifyContent: 'flex-end' }}><button className="primary" onClick={() => onDone(live)}>{t('offer.negotiate')}</button></div>
             </>
           )}
           {live.status === 'countered' && (
             <>
               <div className="insight warn">{t('bid.live.counter', { club: seller, fee: money(live.counter ?? 0) })}{live.rival ? ` ${t('bid.live.rival', { club: gs().clubs[live.rival.club]?.name ?? '' })}` : ''}</div>
+              {live.rival && <div className="insight warn">{t('bid.live.rivalBid', { club: gs().clubs[live.rival.club]?.name ?? '', fee: money(live.rival.fee) })}</div>}
+              {left > 0 && (
+                <div className="pkg-grid">
+                  {counterPackages(live).filter((x) => x.kind !== 'cash').map((x) => (
+                    <button key={x.kind} className="pkg" disabled={x.fee > budget} onClick={() => { const r = dispatch<string>({ t: 'rebid', offer: live.id, fee: x.fee, sellOn: x.sellOn ?? 0, addOn: x.addOn ?? 0 }); if (!['pending', 'countered', 'rejected', 'negotiating'].includes(r) && r !== 'transfer.talksOver') setErr(t(r)); }}>
+                      <b>{t(`pkg.${x.kind}`)}</b>
+                      <span>{money(x.fee)}{x.addOn ? ` + ${money(x.addOn)} ${t('pkg.after25')}` : ''}{x.sellOn ? ` + ${x.sellOn}% ${t('pkg.ofResale')}` : ''}</span>
+                      <em>{t('pkg.max', { fee: money(x.maxCost) })} · {t(`pkg.risk.${x.kind}`)}</em>
+                    </button>
+                  ))}
+                </div>
+              )}
               <div className="muted" style={{ fontSize: 12.5 }}>{left > 0 ? t('bid.live.roundsLeft', { n: left }) : t('bid.live.lastRound')}</div>
               <div className="row" style={{ justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                 <button className="danger" onClick={() => { dispatch({ t: 'withdraw', pid }); onClose(); }}>{t('offer.withdraw')}</button>
@@ -365,6 +379,7 @@ function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number
                 {swap.length > 0 && <div className="muted" style={{ fontSize: 12 }}>{t('swap.total', { cash: money(fee), swap: money(swapVal), total: money(total) })}</div>}
               </div>
             )}
+            <PriceRisk p={p} fee={fee} sellOn={sellOn} addOn={addOn} swapVal={swapVal} />
             <div className="row">{t('clause.sellOn')}: {[0, 10, 15, 20, 30].map((v) => <button key={v} className={`small ${sellOn === v ? 'primary' : ''}`} onClick={() => setSellOn(v)}>{v ? `${v}%` : t('common.none')}</button>)}</div>
             <div className="row">{t('clause.addOn', { n: 25 })}: <MoneyInput value={addOn} onChange={setAddOn} width={130} /></div>
             {(sellOn > 0 || addOn > 0) && <div className="muted" style={{ fontSize: 12 }}>{t('clause.bidHint')}</div>}
@@ -750,5 +765,23 @@ function ReformPanel({ pid }: { pid: number }) {
       </div>
       <p className="muted" style={{ marginBottom: 0 }}>{t('reform.explain')}</p>
     </Panel>
+  );
+}
+
+/** Samlet pris og risiko for et bud: hvad det højst kan koste, hvad sælgeren ser, og hvad der kan udløses senere */
+function PriceRisk({ p, fee, sellOn, addOn, swapVal }: { p: { id: number }; fee: number; sellOn: number; addOn: number; swapVal: number }) {
+  const g = useGame()!;
+  const pl = g.players[p.id];
+  const worth = fee + swapVal + bidClauseWorth(pl, fee, sellOn, addOn);
+  const max = fee + addOn + swapVal;
+  const risk = (addOn ? addOn / Math.max(1, fee) : 0) + sellOn / 100;
+  const level = risk >= 0.45 ? 'high' : risk >= 0.15 ? 'mid' : 'low';
+  return (
+    <div className="price-risk">
+      <div><span>{t('pr.max')}</span><b>{money(max)}</b></div>
+      <div><span>{t('pr.sellerSees')}</span><b>{money(worth)}</b></div>
+      <div><span>{t('pr.risk')}</span><b className={level === 'high' ? 'bad' : level === 'mid' ? 'warn' : 'good'}>{t(`pr.risk.${level}`)}</b></div>
+      {(addOn > 0 || sellOn > 0) && <p className="muted">{[addOn ? t('pr.addOnNote', { fee: money(addOn) }) : '', sellOn ? t('pr.sellOnNote', { pct: sellOn }) : ''].filter(Boolean).join(' ')}</p>}
+    </div>
   );
 }

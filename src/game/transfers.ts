@@ -1580,7 +1580,7 @@ export function bidNow(offerId: number): TransferOffer['status'] | 'error' {
 export const MAX_BID_ROUNDS = 4;
 
 /** Byd igen efter et modbud eller et nej (samme forhandling – klubben svarer med det samme) */
-export function rebid(offerId: number, fee: number): TransferOffer['status'] | string {
+export function rebid(offerId: number, fee: number, clauses?: { sellOn?: number; addOn?: number }): TransferOffer['status'] | string {
   const g = gs();
   const o = g.offers.find((x) => x.id === offerId);
   if (!o || o.buyer !== g.userClub || !['countered', 'rejected'].includes(o.status) || isHumanClub(o.seller)) return 'error';
@@ -1597,8 +1597,32 @@ export function rebid(offerId: number, fee: number): TransferOffer['status'] | s
     return 'transfer.talksOver';
   }
   o.fee = amount;
+  if (clauses) { o.sellOn = clauses.sellOn || undefined; o.addOn = clauses.addOn || undefined; }
   o.counter = undefined;
   o.status = 'pending';
   aiAnswerBid(o);
   return o.status;
+}
+
+/**
+ * Tre måder at møde et modbud på: alt kontant, mindre kontant + bonus efter 25 kampe, eller mindre kontant + videresalg.
+ * Hver pakke er beregnet, så sælgeren vurderer den til mindst deres krav.
+ */
+export function counterPackages(o: TransferOffer): { kind: 'cash' | 'addOn' | 'sellOn'; fee: number; addOn?: number; sellOn?: number; worth: number; maxCost: number }[] {
+  const g = gs();
+  const p = g.players[o.player];
+  const target = o.counter ?? o.fee;
+  if (!p) return [];
+  const out: ReturnType<typeof counterPackages> = [{ kind: 'cash', fee: target, worth: target, maxCost: target }];
+  const feeA = roundValue(target * 0.85);
+  for (let addOn = roundValue((target - feeA) * 1.4); addOn <= target; addOn = roundValue(addOn * 1.15)) {
+    const worth = feeA + bidClauseWorth(p, feeA, 0, addOn);
+    if (worth >= target) { out.push({ kind: 'addOn', fee: feeA, addOn, worth, maxCost: feeA + addOn }); break; }
+  }
+  const feeS = roundValue(target * 0.88);
+  for (const sellOn of [10, 15, 20, 25, 30, 35]) {
+    const worth = feeS + bidClauseWorth(p, feeS, sellOn, 0);
+    if (worth >= target) { out.push({ kind: 'sellOn', fee: feeS, sellOn, worth, maxCost: feeS }); break; }
+  }
+  return out;
 }
