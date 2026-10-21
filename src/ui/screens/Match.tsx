@@ -7,7 +7,7 @@ import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
-import type { MatchReport } from '../../game/types';
+import type { MatchReport, OppInstructions, OppKind } from '../../game/types';
 import { t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
@@ -121,6 +121,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
           {rep.insights.map((i, k) => <div key={k} className={`insight ${i.tone}`}>{t(i.key, { ...i.params, lane: i.params?.lane ? t(`lane.${i.params.lane}`) : undefined })}</div>)}
         </Panel>
       </div>
+      {isToday && !awayVsHuman && <OppInstructionsPanel fixture={id} rep={rep} />}
       {isToday && <TeamTalk fixture={id} stage="pre" pids={[...tac.lineup, ...tac.bench].filter(Boolean)} diff={0} ratings={{}} />}
       {isToday && awayVsHuman ? (
         <div className="insight">{t('mp.h2hAway', { name: humanManager(f.home)?.name ?? '' })}</div>
@@ -131,6 +132,67 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
         </div>
       ) : <div className="muted">{t('match.notToday')}</div>}
     </div>
+  );
+}
+
+const OPP_KINDS: OppKind[] = ['tight', 'press', 'hard', 'weakFoot'];
+
+/** Instruktioner mod modstanderen: op til tre af deres spillere + hvilken side vi angriber */
+function OppInstructionsPanel({ fixture, rep }: { fixture: number; rep: ReturnType<typeof opponentReport> }) {
+  const g = useGame()!;
+  const tac = g.tactic;
+  if (!tac) return null;
+  const cur: OppInstructions = tac.opp?.fixture === fixture ? tac.opp : { fixture, targets: [] };
+  const save = (o: OppInstructions) => act({ t: 'tactic', tactic: { ...tac, opp: o } });
+  const setKind = (pid: number, kind: OppKind | '') => {
+    const targets = cur.targets.filter((x) => x.pid !== pid);
+    if (kind) targets.push({ pid, kind });
+    save({ ...cur, targets });
+  };
+  const xi = rep.oppTactic.lineup.map((pid, i) => ({ p: g.players[pid], slot: rep.oppTactic.slots[i] })).filter((x) => x.p);
+  // nøglespillerne først
+  xi.sort((a, b) => Number(rep.keyPlayers.includes(b.p.id)) - Number(rep.keyPlayers.includes(a.p.id)));
+  const full = cur.targets.length >= 3;
+  return (
+    <Panel title={t('oi.title')} right={<span className="muted">{t('oi.count', { n: cur.targets.length })}</span>}>
+      <div className="muted" style={{ marginBottom: 10 }}>{t('oi.intro')}</div>
+      <div className="row" style={{ marginBottom: 12, gap: 8 }}>
+        <b>{t('oi.focus')}</b>
+        <div className="seg">
+          {[undefined, 0, 1, 2].map((l) => (
+            <button key={String(l)} className={cur.focusLane === l ? 'on' : ''} onClick={() => save({ ...cur, focusLane: l })}>
+              {l === undefined ? t('oi.none') : t(`oi.lane${l}`)}
+            </button>
+          ))}
+        </div>
+        <span className="tag good">{t('oi.suggest', { lane: t(`oi.lane${rep.attackLane}`) })}</span>
+      </div>
+      <div className="table-wrap">
+        <table className="grid">
+          <thead><tr><th>{t('col.pos')}</th><th>{t('col.name')}</th><th>{t('oi.instruction')}</th></tr></thead>
+          <tbody>
+            {xi.map(({ p, slot }) => {
+              const mine = cur.targets.find((x) => x.pid === p.id);
+              return (
+                <tr key={p.id} className={mine ? 'me' : ''}>
+                  <td>{slot.pos}{slot.side !== 'C' ? slot.side : ''}</td>
+                  <td><PlayerLink p={p} />{rep.keyPlayers.includes(p.id) && <span className="tag warn" style={{ marginLeft: 6 }}>{t('oi.key')}</span>}</td>
+                  <td>
+                    <select value={mine?.kind ?? ''} disabled={!mine && full} onChange={(e) => setKind(p.id, e.target.value as OppKind | '')}>
+                      <option value="">–</option>
+                      {OPP_KINDS.filter((k) => k !== 'weakFoot' || p.foot !== 'B').map((k) => <option key={k} value={k}>{t(`oi.k.${k}`)}{k === 'weakFoot' ? ` (${t(p.foot === 'L' ? 'oi.right' : 'oi.left')})` : ''}</option>)}
+                    </select>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="oi-help">
+        {OPP_KINDS.map((k) => <div key={k}><b>{t(`oi.k.${k}`)}</b> – {t(`oi.d.${k}`)}</div>)}
+      </div>
+    </Panel>
   );
 }
 

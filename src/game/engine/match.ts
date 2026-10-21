@@ -12,7 +12,7 @@ import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
-  ShootoutKick, ShotRecord, Tactic, TeamInstructions,
+  OppInstructions, ShootoutKick, ShotRecord, Tactic, TeamInstructions,
 } from '../types';
 
 export interface EngineTeam {
@@ -144,12 +144,16 @@ export class MatchSim {
   pens?: [number, number];
   /** straffesparkskonkurrencen, mens den står på (og bagefter til rapporten) */
   shootout?: { takers: [SP[], SP[]]; score: [number, number]; kicks: ShootoutKick[] };
+  /** Instruktioner mod modstanderen pr. hold (gives af hold i og rammer hold 1-i) */
+  private oi: [OppInstructions | undefined, OppInstructions | undefined] = [undefined, undefined];
   private momentumBucket = 0;
   private bucketThreat = 0;
 
   constructor(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng) {
     this.r = r;
     this.opts = opts;
+    const oiFor = (t: EngineTeam) => (t.tactic.opp && t.tactic.opp.fixture === opts.fixtureId ? t.tactic.opp : undefined);
+    this.oi = [oiFor(home), oiFor(away)];
     this.teams = [this.makeTeam(home, 0), this.makeTeam(away, 1)];
     const tempo = (this.teams[0].ti.tempo + this.teams[1].ti.tempo) / 2;
     this.totalMoments = Math.round(240 * (1 + 0.07 * (tempo - 1)));
@@ -201,6 +205,15 @@ export class MatchSim {
     // Mentale/fysiske påvirkes mindre af forkert position
     const physMult = form * morale * rt.homeMult * talk;
     for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = squash(p.attrs[k]) * physMult;
+    // instruktioner fra modstanderen rettet mod denne spiller
+    for (const tg of this.oi[1 - rt.idx]?.targets ?? []) {
+      if (tg.pid !== p.id) continue;
+      const hit = (keys: number[], f: number) => { for (const k of keys) eff[k] *= f; };
+      if (tg.kind === 'tight') hit([A.offTheBall, A.finishing, A.heading, A.anticipation], 0.92);
+      else if (tg.kind === 'press') hit([A.passing, A.decisions, A.creativity, A.technique], 0.93);
+      else if (tg.kind === 'hard') hit([A.dribbling, A.technique, A.flair, A.agility], 0.92);
+      else if (tg.kind === 'weakFoot' && p.foot !== 'B') hit([A.finishing, A.longShots, A.dribbling, A.crossing], 0.94);
+    }
     const sp: SP = {
       p, team: rt.idx, slot, eff,
       cond: clamp(p.condition / 100, 0.3, 1),
@@ -397,7 +410,9 @@ export class MatchSim {
 
   private tickFatigue() {
     for (const t of this.teams) {
-      const tf = 1 + 0.15 * (t.ti.tempo - 1) + 0.12 * (t.ti.closingDown - 1);
+      // tæt markering og pres af modstanderens spillere koster kræfter
+      const extra = (this.oi[t.idx]?.targets ?? []).filter((x) => x.kind === 'tight' || x.kind === 'press').length;
+      const tf = (1 + 0.15 * (t.ti.tempo - 1) + 0.12 * (t.ti.closingDown - 1)) * (1 + 0.035 * extra);
       for (const s of t.on) {
         if (s.off) continue;
         const isGK = t.tactic.slots[s.slot].pos === 'GK';
@@ -531,6 +546,9 @@ export class MatchSim {
       // banevalg: bred taktik søger kanterne
       const wideP = 0.25 + 0.15 * T.ti.width;
       tl = this.r.chance(0.55) ? lane : lane === 1 ? (this.r.chance(wideP) ? (this.r.chance(0.5) ? 0 : 2) : 1) : 1;
+      // angrib især en bestemt side
+      const fl = this.oi[T.idx]?.focusLane;
+      if (fl !== undefined && fl !== tl && this.r.chance(0.3)) tl = fl;
     } else {
       const back = rb > 0 && this.r.chance(0.3);
       trb = back ? rb - 1 : rb;
@@ -715,6 +733,8 @@ export class MatchSim {
     let fp = forced ? 1 + (O.ti.tackling - 1) * 0.25 + (dirt - 20) / 40 - 0.25 : 0.11 + (O.ti.tackling - 1) * 0.05 + (dirt - 20) / 220;
     // … også i de pressede dueller (ellers bliver andet gule kort alt for almindeligt)
     if (def.yellow > 0) fp *= 0.6;
+    // hårde tacklinger på en bestemt spiller giver flere frispark (og kort)
+    if (this.oi[O.idx]?.targets.some((x) => x.pid === victim.p.id && x.kind === 'hard')) fp *= 1.45;
     if (!this.r.chance(clamp(fp, 0.03, forced ? 1 : 0.35))) return false;
     O.stats.fouls++;
     this.rate(def, -0.05);

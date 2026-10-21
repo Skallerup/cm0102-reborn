@@ -80,7 +80,7 @@ export function opponentReport(f: Fixture) {
   const probs = winProbability(userHome ? mine : theirs, userHome ? theirs : mine, f.stage === 'F', 150);
   const [w, d, l] = userHome ? probs : [probs[2], probs[1], probs[0]];
   const form = g.comps[f.comp]?.table.find((r) => r.club === oppId)?.form ?? '';
-  return { opp, oppTactic, keyPlayers, insights, probs: [w, d, l] as [number, number, number], form, zones: { mine: mz, theirs: tz } };
+  return { opp, oppTactic, keyPlayers, insights, probs: [w, d, l] as [number, number, number], form, zones: { mine: mz, theirs: tz }, attackLane: 2 - weakest };
 }
 
 export function winProbability(home: EngineTeam, away: EngineTeam, neutral: boolean, n = 150): [number, number, number] {

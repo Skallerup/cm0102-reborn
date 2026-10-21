@@ -341,6 +341,17 @@ export interface Tactic {
   penalties: number;
   freeKicks: number;
   corners: number;
+  /** Instruktioner mod modstanderen – gælder kun kampen med dette id */
+  opp?: OppInstructions;
+}
+
+export type OppKind = 'tight' | 'press' | 'hard' | 'weakFoot';
+export interface OppInstructions {
+  fixture: number;
+  /** højst tre af modstanderens spillere */
+  targets: { pid: number; kind: OppKind }[];
+  /** angrib især denne side (0 venstre, 1 centralt, 2 højre – set fra os) */
+  focusLane?: number;
 }
 
 export interface Fixture {

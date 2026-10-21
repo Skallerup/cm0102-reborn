@@ -107,3 +107,27 @@ describe('matchmotor', () => {
     expect(w).toBeGreaterThan(l * 2.5);
   });
 });
+
+describe('instruktioner mod modstanderen', () => {
+  it('tæt markering og pres af deres stjerner koster dem chancer', () => {
+    const [h, a] = [clubs[0], clubs[1]];
+    const away = team(a);
+    // deres to mest offensive spillere
+    const stars = [...away.tactic.lineup].map((id) => away.players.get(id)!).sort((x, y) => (y.attrs[2] + y.attrs[6]) - (x.attrs[2] + x.attrs[6])).slice(0, 2);
+    const run = (withOi: boolean) => {
+      const r = new Rng(3);
+      let theirGoals = 0, ourFouls = 0;
+      for (let i = 0; i < 400; i++) {
+        const home = team(h);
+        if (withOi) home.tactic = { ...home.tactic, opp: { fixture: 1, targets: [{ pid: stars[0].id, kind: 'tight' }, { pid: stars[1].id, kind: 'hard' }] } };
+        const rep = quickMatch(home, team(a), { fixtureId: 1 }, r);
+        theirGoals += rep.stats[1].goals;
+        ourFouls += rep.stats[0].fouls;
+      }
+      return { theirGoals, ourFouls };
+    };
+    const base = run(false), oi = run(true);
+    expect(oi.theirGoals).toBeLessThan(base.theirGoals);
+    expect(oi.ourFouls).toBeGreaterThan(base.ourFouls);
+  });
+});

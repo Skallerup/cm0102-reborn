@@ -893,3 +893,5 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .devp-track.mixed i.down { left: auto; right: calc(50% + 2px); background: var(--bad); border-radius: 4px 0 0 4px; }
 .devp-num { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
 @media (max-width: 860px) { .devp-body { grid-template-columns: 1fr; } .devp-total { font-size: 28px; } }
+.oi-help { margin-top: 10px; display: grid; gap: 4px; font-size: 12.5px; color: var(--muted); }
+.oi-help b { color: var(--text); }
