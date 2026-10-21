@@ -8,7 +8,7 @@ import './landing.css';
 const img = (name: string) => `${import.meta.env.BASE_URL}landing/${name}.webp`;
 
 /** Elementer glider ind, når de kommer i syne */
-function useReveal() {
+export function useReveal() {
   useEffect(() => {
     const els = document.querySelectorAll('.lp .reveal');
     if (!('IntersectionObserver' in window)) { els.forEach((e) => e.classList.add('in')); return; }
@@ -21,7 +21,7 @@ function useReveal() {
 }
 
 /** Tal der tæller op, når de kommer i syne */
-function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
+export function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [v, setV] = useState(0);
   useEffect(() => {
@@ -48,7 +48,7 @@ function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
 }
 
 /** Skærmbillede i en browserramme der vipper let efter musen */
-function Frame({ src, alt, className = '', onOpen }: { src: string; alt: string; className?: string; onOpen?: (src: string, alt: string) => void }) {
+export function Frame({ src, alt, className = '', onOpen }: { src: string; alt: string; className?: string; onOpen?: (src: string, alt: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const move = (e: React.MouseEvent) => {
     const el = ref.current;
@@ -101,7 +101,7 @@ const SHOWCASE: { key: string; imgs: string[] }[] = [
   { key: 'career', imgs: ['table', 'club'] },
 ];
 
-export function Landing({ onPlay, onLang }: { onPlay: () => void; onLang: (l: Lang) => void }) {
+export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLang: (l: Lang) => void; onDraft?: () => void }) {
   useReveal();
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
   const [top, setTop] = useState<RankRow[] | null>(null);
@@ -138,6 +138,7 @@ export function Landing({ onPlay, onLang }: { onPlay: () => void; onLang: (l: La
             <a onClick={() => go('screens')}>{t('land.nav.screens')}</a>
             <a onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
             <a onClick={() => go('faq')}>{t('land.nav.faq')}</a>
+            {onDraft && <a onClick={onDraft}>Draft</a>}
           </nav>
           <div className="lp-nav-right">
             <div className="lp-lang">
@@ -184,6 +185,20 @@ export function Landing({ onPlay, onLang }: { onPlay: () => void; onLang: (l: La
           <div key={k as string} className="lp-stat reveal"><b><Counter to={n as number} suffix={s as string} /></b><span>{t(`land.stat.${k}`)}</span></div>
         ))}
       </section>
+
+      {onDraft && (
+        <section className="lp-section lp-wrap">
+          <div className="lp-promo reveal">
+            <div>
+              <div className="lp-pill"><span className="lp-live" /> {t('land.promoPill')}</div>
+              <h2>{t('land.promoTitle')}</h2>
+              <p>{t('land.promoText')}</p>
+              <button className="lp-cta" onClick={onDraft}>{t('land.promoCta')} <span aria-hidden="true">→</span></button>
+            </div>
+            <Frame src={img('draft-live')} alt={t('dl.shot.live')} onOpen={open} />
+          </div>
+        </section>
+      )}
 
       <section id="features" className="lp-section lp-wrap">
         <h2 className="reveal">{t('land.featuresTitle')}</h2>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DraftLanding } from './DraftLanding';
 import { DraftRoom, draftSeen } from './Draft';
 import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
@@ -25,6 +26,8 @@ export default function App() {
   const [lang, setLangState] = useState<Lang>(getLang());
   // offentlig managerprofil (delt link: ?manager=<id>)
   const [managerParam, setManagerParam] = useState(() => new URLSearchParams(location.search).get('manager') ?? '');
+  // draft-ligaens egen landingsside (?draft=1)
+  const [draftPage, setDraftPage] = useState(() => new URLSearchParams(location.search).get('draft') === '1');
   const [adminParam, setAdminParam] = useState(() => new URLSearchParams(location.search).get('admin') === '1');
   // offentlig fællesskabsside (?community=1 eller ?suggestion=ID)
   const [communityParam, setCommunityParam] = useState(() => { const q = new URLSearchParams(location.search); return q.get('suggestion') ? Number(q.get('suggestion')) : q.get('community') ? 0 : -1; });
@@ -75,7 +78,8 @@ export default function App() {
   // draft-liga: lobby, keepers og draft vises, indtil sæsonen er bygget
   const ds = session();
   if (ds?.room?.draft && (ds.room.draft.phase !== 'playing' || !g || !draftSeen(ds.creds.code, ds.room.draft.season))) return <DraftRoom />;
-  if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
+  if (!g && draftPage) return <DraftLanding key={lang} onLang={setLangState} onBack={() => { history.replaceState(null, '', location.pathname); setDraftPage(false); window.scrollTo(0, 0); }} onCreate={() => { history.replaceState(null, '', `${location.pathname}?newdraft=1`); setDraftPage(false); play(); }} />;
+  if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} onDraft={() => { history.replaceState(null, '', `${location.pathname}?draft=1`); setDraftPage(true); window.scrollTo(0, 0); }} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
   return (
     <NavProvider key={`${g.id}-${g.lang}`} initial={{ name: g.pendingFixture ? 'match' : 'inbox', id: g.pendingFixture ?? undefined }}

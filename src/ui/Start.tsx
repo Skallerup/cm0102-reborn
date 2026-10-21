@@ -21,7 +21,7 @@ type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'n
 
 export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
-  const [view, setView] = useState<View>(roomParam ? 'online' : 'menu');
+  const [view, setView] = useState<View>(roomParam ? 'online' : new URLSearchParams(location.search).get('newdraft') ? 'newDraft' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');

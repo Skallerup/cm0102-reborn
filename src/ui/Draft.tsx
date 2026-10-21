@@ -226,7 +226,7 @@ export function DraftRoom() {
     <div className="draft-page">
       <div className="draft-top">
         <div>
-          <h1>{t('dr.title')} <span className="muted">· {t('dr.seasonN', { n: d.season })}</span></h1>
+          <h1>{t('dr.title')} <span className="muted">· {t('dr.seasonN', { n: d.phase === 'summary' ? d.season - 1 : d.season })}</span></h1>
           <div className="muted">{t('dr.code')}: <b>{room.code}</b> · {t(`dr.phase.${d.phase}`)}</div>
         </div>
         <div className="row">
