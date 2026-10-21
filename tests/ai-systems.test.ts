@@ -317,3 +317,15 @@ describe('prøvespillere og venskabskampe', () => {
     expect(g.clubs[g.userClub].finance.gate).toBeGreaterThan(before);
   });
 });
+
+describe('venskabskampe for topklubber', () => {
+  it('en topklub får også tilbudt storklubber og nemme modstandere', () => {
+    const g = gs();
+    const top = Object.values(g.clubs).sort((a, b) => b.rep - a.rep)[0];
+    const old = g.userClub;
+    g.userClub = top.id;
+    expect(friendlyOpponents('big').length).toBe(3);
+    expect(friendlyOpponents('easy').length).toBe(3);
+    g.userClub = old;
+  });
+});

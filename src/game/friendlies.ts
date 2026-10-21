@@ -33,9 +33,16 @@ export function friendlyOpponents(kind: FriendlyKind): Club[] {
   const me = g.clubs[g.userClub];
   if (!me) return [];
   const others = Object.values(g.clubs).filter((c) => c.id !== me.id && c.manager !== -1);
-  const pool = kind === 'easy'
-    ? others.filter((c) => c.nation === me.nation && c.rep <= me.rep - 12).sort((a, b) => b.rep - a.rep)
-    : others.filter((c) => c.rep >= Math.max(me.rep + 8, 78)).sort((a, b) => b.rep - a.rep);
+  let pool: Club[];
+  if (kind === 'easy') {
+    // nemme: klart lavere omdømme – helst fra eget land, ellers udlandet
+    pool = others.filter((c) => c.nation === me.nation && c.rep <= me.rep - 12).sort((a, b) => b.rep - a.rep);
+    if (pool.length < 3) pool = [...pool, ...others.filter((c) => c.nation !== me.nation && c.rep <= me.rep - 12).sort((a, b) => b.rep - a.rep)];
+  } else {
+    // storklubber: verdens største klubber med mindst samme omdømme (en topklub møder de andre topklubber)
+    pool = others.filter((c) => c.rep >= Math.min(me.rep + 8, 86) || c.rep >= me.rep - 3).sort((a, b) => b.rep - a.rep);
+    if (pool.length < 3) pool = others.slice().sort((a, b) => b.rep - a.rep);
+  }
   return pool.slice(0, 12).sort(() => rng.next() - 0.5).slice(0, 3);
 }
 

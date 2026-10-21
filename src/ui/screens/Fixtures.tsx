@@ -67,11 +67,12 @@ function FriendliesPanel() {
   const [kind, setKind] = useState<FriendlyKind>('easy');
   const [date, setDate] = useState('');
   const [opps, setOpps] = useState<number[]>([]);
+  const [picked, setPicked] = useState(false);
   const [msg, setMsg] = useState('');
   const dates = friendlyDates();
   const list = (g.manager.friendlies ?? []).slice().sort((a, b) => a.date.localeCompare(b.date));
   const upcoming = list.filter((x) => !x.done), played = list.filter((x) => x.done).slice(-3).reverse();
-  const pick = (k: FriendlyKind) => { setKind(k); setOpps(friendlyOpponents(k).map((c) => c.id)); };
+  const pick = (k: FriendlyKind) => { setKind(k); setPicked(true); setOpps(friendlyOpponents(k).map((c) => c.id)); };
   if (!g.userClub) return null;
   return (
     <Panel title={t('fr.title')}>
@@ -96,6 +97,7 @@ function FriendliesPanel() {
             </select>
           </div>
           {opps.length > 0 && <div className="muted" style={{ fontSize: 12.5 }}>{t(`fr.kind.${kind}.desc`)}</div>}
+          {picked && opps.length === 0 && <div className="insight warn">{t('fr.noOpps')}</div>}
           <div className="fr-opps">
             {opps.map((id) => {
               const c = g.clubs[id];
