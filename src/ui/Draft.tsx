@@ -426,8 +426,8 @@ function GradesPanel({ grades, byId }: { grades: TeamGrade[]; byId: Record<numbe
                 <div className="row" style={{ gap: 6 }}><DraftCrestImg shape={team.crest} colors={team.colors} short={team.short} size={20} /><b>{team.name}</b><span className="muted">{team.ai ? 'AI' : team.manager}</span></div>
                 <div className="dr-grade-line">“{t(gr.line)}”</div>
                 <div className="muted" style={{ fontSize: 12 }}>
-                  {gr.steal && (auction ? t('dr.gradeStealA', { player: name(gr.steal.player), price: `${priceOf(gr.steal.player)} mio.` }) : t('dr.gradeSteal', { player: name(gr.steal.player), rank: gr.steal.rank, pick: gr.steal.pick }))}
-                  {gr.reach && gr.reach.player !== gr.steal?.player && <> · {auction ? t('dr.gradeReachA', { player: name(gr.reach.player), price: `${priceOf(gr.reach.player)} mio.` }) : t('dr.gradeReach', { player: name(gr.reach.player), rank: gr.reach.rank, pick: gr.reach.pick })}</>}
+                  {gr.steal && (auction ? t('dr.gradeStealA', { player: name(gr.steal.player), price: `${priceOf(gr.steal.player)} ${t('dr.au.unit')}` }) : t('dr.gradeSteal', { player: name(gr.steal.player), rank: gr.steal.rank, pick: gr.steal.pick }))}
+                  {gr.reach && gr.reach.player !== gr.steal?.player && <> · {auction ? t('dr.gradeReachA', { player: name(gr.reach.player), price: `${priceOf(gr.reach.player)} ${t('dr.au.unit')}` }) : t('dr.gradeReach', { player: name(gr.reach.player), rank: gr.reach.rank, pick: gr.reach.pick })}</>}
                 </div>
               </div>
             </div>
@@ -801,7 +801,7 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
             </div>
             <div className="dr-au-bid">
               <small>{t('dr.au.highest')}</small>
-              <b>{a.bid} mio.</b>
+              <b>{a.bid} {t('dr.au.unit')}</b>
               <span className="row" style={{ gap: 4 }}>{leader && <DraftCrestImg shape={leader.crest} colors={leader.colors} short={leader.short} size={18} />}{leader?.slot === mine?.slot ? t('dr.au.youLead') : leader?.name}</span>
             </div>
           </div>
@@ -818,9 +818,14 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
       </div>
       {a && mine && (
         <div className="row dr-au-controls">
-          {[1, 5, 10].map((inc) => <button key={inc} className="primary" disabled={!canBid || busy || a.bid + inc > myMax} onClick={() => bid(a.bid + inc)}>+{inc} → {a.bid + inc} mio.</button>)}
-          <input type="number" min={a.bid + 1} max={myMax} placeholder={t('dr.au.custom')} value={custom} onChange={(e) => setCustom(e.target.value)} style={{ width: 110 }} />
+          {[1, 5, 10].map((inc) => <button key={inc} className="primary" disabled={!canBid || busy || a.bid + inc > myMax} onClick={() => bid(a.bid + inc)}>+{inc} → {a.bid + inc} {t('dr.au.unit')}</button>)}
+          <span className="dr-au-input">
+            <input type="number" min={a.bid + 1} max={myMax} placeholder={String(a.bid + 1)} value={custom} onChange={(e) => setCustom(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && canBid && Number(custom) > a.bid && Number(custom) <= myMax) { void bid(Number(custom)); setCustom(''); } }} />
+            <span>{t('dr.au.unit')}</span>
+          </span>
           <button disabled={!canBid || busy || !(Number(custom) > a.bid) || Number(custom) > myMax} onClick={() => { void bid(Number(custom)); setCustom(''); }}>{t('dr.au.bid')}</button>
+          {custom !== '' && canBid && (Number(custom) <= a.bid ? <span className="bad" style={{ fontSize: 12.5 }}>{t('dr.au.tooLow', { min: a.bid + 1 })}</span> : Number(custom) > myMax ? <span className="bad" style={{ fontSize: 12.5 }}>{t('dr.au.tooHigh', { max: myMax })}</span> : null)}
           <button className="danger" disabled={!canBid || busy} onClick={() => run(() => s.draftPass())}>✋ {t('dr.au.pass')}</button>
           <span className="muted">{iPassed ? t('dr.au.youPassed') : t('dr.au.budget', { b: mine.budget ?? BUDGET, max: myMax })}{a && !fits(ap) ? ` · ${t('dr.noPlace')}` : ''}</span>
         </div>
@@ -836,7 +841,7 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
               <AttrGrid p={selP} />
               {myNom && !taken.has(selP.id) && (fits(selP) ? (
                 <div className="row" style={{ marginTop: 10 }}>
-                  <label className="row">{t('dr.au.startBid')} <input type="number" min={1} max={myMax} value={nomBid} onChange={(e) => setNomBid(Math.max(1, Math.min(myMax, Number(e.target.value) || 1)))} style={{ width: 80 }} /> mio.</label>
+                  <label className="row">{t('dr.au.startBid')} <input type="number" min={1} max={myMax} value={nomBid} onChange={(e) => setNomBid(Math.max(1, Math.min(myMax, Number(e.target.value) || 1)))} style={{ width: 80 }} /> {t('dr.au.unit')}</label>
                   <button className="primary" disabled={busy} onClick={() => run(async () => { await s.draftNominate(selP.id, nomBid); setSel(null); setNomBid(1); })}>{t('dr.au.nominate')}</button>
                 </div>
               ) : <div className="insight warn" style={{ marginTop: 8 }}>{t('dr.noPlace')}</div>)}
@@ -849,7 +854,7 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
                 {d.teams.map((x) => (
                   <tr key={x.slot} className={x.pid === s.creds.pid ? 'me' : ''}>
                     <td><span className="row" style={{ gap: 6 }}><DraftCrestImg shape={x.crest} colors={x.colors} short={x.short} size={18} />{x.name}</span></td>
-                    <td className="num"><b>{x.budget ?? BUDGET}</b> mio.</td>
+                    <td className="num"><b>{x.budget ?? BUDGET}</b> {t('dr.au.unit')}</td>
                     <td className="num muted">{teamCount(x, d.picks)}/16</td>
                     <td className="num muted" title={t('dr.au.maxBid')}>≤ {maxBidFor(x, d.picks)}</td>
                   </tr>
@@ -872,7 +877,7 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
                     <td className="muted">{d.picks.length - i}</td>
                     <td>{p ? `${p.first} ${p.last}` : '?'} <span className="muted">{p ? positionString(p) : ''}</span></td>
                     <td><span className="row" style={{ gap: 6 }}>{x && <DraftCrestImg shape={x.crest} colors={x.colors} short={x.short} size={16} />}{x?.short}</span></td>
-                    <td className="num"><b>{pk.price ?? '–'}</b> mio.</td>
+                    <td className="num"><b>{pk.price ?? '–'}</b> {t('dr.au.unit')}</td>
                   </tr>
                 );
               })}
