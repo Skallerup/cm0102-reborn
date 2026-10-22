@@ -49,10 +49,12 @@ export interface DraftTeam {
   /** Spillere holdet beholder fra sidste sæson (med plads) */
   keep: DraftPick[];
   keepReady?: boolean;
+  /** Auktion: resterende budget (mio.) */
+  budget?: number;
   summaryReady?: boolean;
 }
 
-export interface DraftPick { slot: number; player: number; place: number; auto?: boolean }
+export interface DraftPick { slot: number; player: number; place: number; auto?: boolean; /** auktion: prisen (mio.) */ price?: number }
 
 export const clubIdOf = (slot: number) => CLUB_BASE + slot;
 
@@ -583,3 +585,90 @@ export function draftClubName(id: number): string {
 }
 
 export type { Player };
+
+// ---------- draftkarakterer ("eksperten") ----------
+
+export type Grade = 'A+' | 'A' | 'B+' | 'B' | 'C' | 'D' | 'F';
+export interface TeamGrade {
+  slot: number;
+  grade: Grade;
+  /** holdets styrke (gennemsnitlig evne, startere vejer mest) */
+  score: number;
+  /** sæsonens kup: valgt langt senere, end evnen tilsagde */
+  steal?: { player: number; pick: number; rank: number };
+  /** overbetalt / for tidligt valgt */
+  reach?: { player: number; pick: number; rank: number };
+  /** kommentar-nøgle (i18n) */
+  line: string;
+}
+
+/**
+ * Karakter til hvert hold efter draften: holdets styrke i forhold til de andre (startere på deres pladser vejer mest),
+ * plus kuppet og det mest tvivlsomme valg. Alt beregnes ud fra valgene og puljen – samme resultat for alle.
+ */
+export function draftGrades(teams: DraftTeam[], picks: DraftPick[], pool: Player[]): TeamGrade[] {
+  const byId: Record<number, Player> = Object.fromEntries(pool.map((p) => [p.id, p]));
+  const rank = new Map(pool.map((p, i) => [p.id, i + 1]));
+  const out = teams.map((t) => {
+    const mine = teamPicks(t, picks);
+    const slots = formationSlots(t.formation);
+    const st = mine.filter((p) => p.place >= 0 && byId[p.player]);
+    const bench = mine.filter((p) => p.place < 0 && byId[p.player]);
+    const stScore = st.reduce((a, p) => a + byId[p.player].ca * (0.75 + 0.25 * slotFit(byId[p.player], slots[p.place])), 0) / Math.max(1, st.length);
+    const bScore = bench.reduce((a, p) => a + byId[p.player].ca, 0) / Math.max(1, bench.length);
+    const score = Math.round(((stScore * 0.85 + bScore * 0.15) / 2) * 10) / 10;
+    // kup og tvivlsomme valg (keepers tæller ikke)
+    let steal: TeamGrade['steal'], reach: TeamGrade['reach'];
+    let stealD = -Infinity, reachD = Infinity;
+    picks.forEach((p, n) => {
+      if (p.slot !== t.slot || !rank.has(p.player)) return;
+      const r = rank.get(p.player)!;
+      // auktion: værdi i forhold til prisen; snake: valgt senere/tidligere end evnen tilsagde
+      const diff = p.price !== undefined ? marketValue(byId[p.player]) - p.price : n + 1 - r;
+      if (!steal || diff > stealD) { steal = { player: p.player, pick: n + 1, rank: r }; stealD = diff; }
+      if (!reach || diff < reachD) { reach = { player: p.player, pick: n + 1, rank: r }; reachD = diff; }
+    });
+    return { slot: t.slot, score, steal, reach };
+  });
+  const mean = out.reduce((a, x) => a + x.score, 0) / Math.max(1, out.length);
+  const sd = Math.sqrt(out.reduce((a, x) => a + (x.score - mean) ** 2, 0) / Math.max(1, out.length)) || 1;
+  return out.map((x) => {
+    const z = (x.score - mean) / sd;
+    const grade: Grade = z >= 1.2 ? 'A+' : z >= 0.6 ? 'A' : z >= 0.2 ? 'B+' : z >= -0.2 ? 'B' : z >= -0.6 ? 'C' : z >= -1.2 ? 'D' : 'F';
+    const variant = (hash(x.slot, Math.round(x.score * 10)) % 3) + 1;
+    return { ...x, grade, line: `dr.grade.${grade}.${variant}` };
+  });
+}
+
+// ---------- auktionsdraft ----------
+
+export const BUDGET = 200;
+export const NOM_SECONDS = 30;
+
+export const teamCount = (team: DraftTeam, picks: DraftPick[]) => teamPicks(team, picks).length;
+/** Højeste bud holdet må give: der skal være mindst 1 mio. tilbage pr. ledig plads */
+export const maxBidFor = (team: DraftTeam, picks: DraftPick[]) => (team.budget ?? BUDGET) - Math.max(0, SQUAD - teamCount(team, picks) - 1);
+
+/** Næste hold, der skal nominere (samme regel som serveren: fulde hold springes over) */
+export function nominatorSlot(order: number[], idx: number, teams: DraftTeam[], picks: DraftPick[]): number | null {
+  for (let k = 0; k < order.length; k++) {
+    const t = teams.find((x) => x.slot === order[(idx + k) % order.length]);
+    if (t && teamCount(t, picks) < SQUAD) return t.slot;
+  }
+  return null;
+}
+
+/** Hvad en spiller "er værd" på auktionen (mio.) – bruges af AI-holdene og af eksperten */
+export function marketValue(p: Player): number {
+  const r = p.ca / 2;
+  return Math.max(1, Math.round(Math.pow(Math.max(0, r - 60) / 37, 2.5) * 75));
+}
+
+/** AI-holdets maksimale bud: markedsværdi × behov × lidt personlighed – aldrig over budgetloftet */
+export function aiBidLimit(team: DraftTeam, picks: DraftPick[], p: Player, players: Record<number, Player>, benchGK = true): number {
+  const places = placesFor(team, picks, p, players, benchGK);
+  if (!places.length) return 0;
+  const need = places[0] >= 0 ? 1 : 0.4;
+  const mood = 0.85 + (hash(p.id, team.slot) % 31) / 100;
+  return Math.min(maxBidFor(team, picks), Math.max(1, Math.round(marketValue(p) * need * mood)));
+}

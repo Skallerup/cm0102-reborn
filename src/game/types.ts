@@ -869,6 +869,8 @@ export interface DraftSettings {
   /** Spillere hvert hold må beholde til næste sæsons draft */
   keepers: number;
   injuries: boolean;
+  /** Draftform: skiftevis (snake) eller auktion med budget */
+  format?: 'snake' | 'auction';
   /** Spillerpulje: tom = hele verden, en ligas id (fx 'DK1') eller en nationalitet ('n:<nationens indeks>') */
   pool?: string;
 }

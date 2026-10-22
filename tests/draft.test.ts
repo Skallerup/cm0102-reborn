@@ -4,7 +4,7 @@ import { applyActionAs } from '../src/game/actions';
 import { withHuman } from '../src/game/humans';
 import type { WorldData } from '../src/game/newgame';
 import {
-  BENCH_PLACE, SQUAD, aiTeam, allKeepers, autoKeepers, autoPick, buildDraftGame, canPlace, clubIdOf, draftPool, nextDraftOrder, slotForPick, totalPicks,
+  BENCH_PLACE, BUDGET, SQUAD, aiBidLimit, aiTeam, allKeepers, draftGrades, maxBidFor, nominatorSlot, placesFor, autoKeepers, autoPick, buildDraftGame, canPlace, clubIdOf, draftPool, nextDraftOrder, slotForPick, totalPicks,
   type DraftPick, type DraftTeam,
 } from '../src/game/draft';
 import { mpAdvance } from '../src/game/sim';
@@ -188,5 +188,57 @@ describe('draft efter nationalitet', () => {
     const dk1 = new Set(world.clubs.filter((c) => c[4] === 'DK1').map((c) => c[0]));
     const abroad = new Set(world.players.filter((r) => r[N] === dk && !dk1.has(r[C] as number)).map((r) => r[I] as number));
     expect(pool.some((p) => abroad.has(p.id))).toBe(true);
+  });
+});
+
+describe('draftkarakterer og auktion', () => {
+  it('karakterer: det stærkeste hold får den bedste karakter, og alle får kup og tvivlsomt valg', () => {
+    const pool = draftPool(world, 7, world.season);
+    const teams = [1, 2, 3, 4].map((s) => aiTeam(s, []));
+    const picks: DraftPick[] = [];
+    const order = [1, 2, 3, 4];
+    for (let n = 0; n < totalPicks(order, 0); n++) picks.push(autoPick(teams.find((t) => t.slot === slotForPick(order, n))!, picks, pool)!);
+    const grades = draftGrades(teams, picks, pool);
+    expect(grades).toHaveLength(4);
+    const best = grades.slice().sort((a, b) => b.score - a.score)[0];
+    const worst = grades.slice().sort((a, b) => a.score - b.score)[0];
+    expect(['A+', 'A', 'B+'].includes(best.grade)).toBe(true);
+    expect(['C', 'D', 'F', 'B'].includes(worst.grade)).toBe(true);
+    for (const g of grades) { expect(g.steal).toBeTruthy(); expect(g.reach).toBeTruthy(); expect(g.line).toMatch(/^dr\.grade\./); }
+  });
+
+  it('en hel auktion med AI-hold: alle hold fyldes, ingen overskrider budgettet', () => {
+    const pool = draftPool(world, 7, world.season);
+    const byId = Object.fromEntries(pool.map((p) => [p.id, p]));
+    const teams = [1, 2, 3, 4].map((s) => ({ ...aiTeam(s, []), budget: BUDGET }));
+    const picks: DraftPick[] = [];
+    const order = [1, 2, 3, 4];
+    let idx = 0, guard = 0;
+    while (picks.length < 64 && guard++ < 500) {
+      const slot = nominatorSlot(order, idx, teams, picks)!;
+      const nom = teams.find((t) => t.slot === slot)!;
+      const pk = autoPick(nom, picks, pool)!;
+      const p = byId[pk.player];
+      let bid = Math.max(1, Math.round(aiBidLimit(nom, picks, p, byId) * 0.4)), bidder = slot;
+      for (;;) {
+        const rivals = teams.filter((t) => t.slot !== bidder).map((t) => ({ t, l: aiBidLimit(t, picks, p, byId) })).filter((x) => x.l > bid).sort((a, b) => b.l - a.l);
+        if (!rivals.length) break;
+        bid = Math.min(rivals[0].l, bid + 1); bidder = rivals[0].t.slot;
+      }
+      const w = teams.find((t) => t.slot === bidder)!;
+      expect(bid).toBeLessThanOrEqual(maxBidFor(w, picks));
+      const place = placesFor(w, picks, p, byId)[0];
+      picks.push({ slot: bidder, player: p.id, place: place ?? BENCH_PLACE, price: bid });
+      w.budget! -= bid;
+      idx = order.indexOf(slot) + 1;
+    }
+    expect(picks).toHaveLength(64);
+    for (const t of teams) {
+      expect(picks.filter((p) => p.slot === t.slot)).toHaveLength(16);
+      expect(t.budget!).toBeGreaterThanOrEqual(0);
+    }
+    // stjernerne koster mere end reservespillerne
+    const top = picks.slice().sort((a, b) => byId[b.player].ca - byId[a.player].ca);
+    expect(top[0].price!).toBeGreaterThan(top.at(-1)!.price!);
   });
 });

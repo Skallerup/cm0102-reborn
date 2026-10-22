@@ -1236,3 +1236,17 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .dr-champion { display: flex; gap: 16px; align-items: center; padding: 16px 18px; border-radius: 16px; background: linear-gradient(135deg, color-mix(in srgb, #ffcf3f 22%, var(--surface)), var(--surface)); border: 1px solid color-mix(in srgb, #ffcf3f 45%, var(--line)); }
 @media (max-width: 860px) { .room-chat, .room-chat-fab { bottom: 76px; } }
 .dr-pool { grid-column: 1 / -1; }
+
+/* draftkarakterer */
+.dr-grades { display: grid; gap: 8px; }
+.dr-grade-row { display: grid; grid-template-columns: 54px 1fr; gap: 12px; align-items: start; padding: 10px; border-radius: 12px; background: color-mix(in srgb, var(--muted) 6%, transparent); }
+.dr-grade-row.me { background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.dr-grade-line { font-style: italic; margin: 4px 0 2px; }
+.dr-grade { display: grid; place-items: center; width: 50px; height: 50px; border-radius: 12px; font-weight: 900; font-size: 22px; color: #0b1226; }
+.dr-grade.small { display: inline-grid; width: 30px; height: 24px; font-size: 13px; border-radius: 6px; }
+.g-Ap { background: #3ee08f; } .g-A { background: #5fd38a; } .g-Bp { background: #a6d65a; } .g-B { background: #ffcf3f; } .g-C { background: #ffa94d; } .g-D { background: #ff7a59; } .g-F { background: #ff4d6d; }
+.dr-finished { display: flex; flex-direction: column; gap: 14px; }
+.dr-au-bid { display: flex; flex-direction: column; padding: 6px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dr-au-bid small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+.dr-au-bid b { font-size: 24px; }
+.dr-au-controls { flex-wrap: wrap; gap: 8px; padding: 10px 14px; border-radius: 14px; background: var(--surface); border: 1px solid var(--line); }

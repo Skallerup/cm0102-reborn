@@ -18,7 +18,7 @@ import { addNews, gs, notify, setGame } from '../game/state';
 import { rememberLast } from '../game/save';
 import type { Tactic } from '../game/types';
 import type { DraftSettings, GameState } from '../game/types';
-import { KEEPER_SECONDS, PICK_SECONDS, allKeepers, autoKeepers, autoPick, buildDraftGame, clubIdOf, draftPool, nextDraftOrder, slotForPick, type DraftPick, type DraftTeam } from '../game/draft';
+import { BENCH_PLACE, KEEPER_SECONDS, NOM_SECONDS, PICK_SECONDS, aiBidLimit, allKeepers, autoKeepers, autoPick, buildDraftGame, clubIdOf, draftPool, nextDraftOrder, nominatorSlot, openPlaces, placesFor, slotForPick, type DraftPick, type DraftTeam } from '../game/draft';
 import { getLang } from '../i18n';
 import { loadWorld } from '../ui/world';
 
@@ -52,6 +52,9 @@ export interface DraftRoomInfo {
   picks: DraftPick[];
   /** Serverens ur (til nedtællingen) */
   now: number;
+  /** Auktion: den igangværende auktion og hvem der nominerer */
+  auction?: { id: number; player: number; bid: number; bidder: number; nominator: number; endsAt: number; lastBid: number } | null;
+  nomIdx?: number;
 }
 
 /** Udeholdets ændringer under en kamp mellem to managere */
@@ -290,6 +293,8 @@ export class OnlineSession {
   draftSettings(draft: Partial<DraftSettings>, deadlineHours?: number) { return this.dpost('dsettings', { draft, deadlineHours }); }
   draftStart() { return this.dpost('dstart'); }
   draftNext(force = false) { return this.dpost('dnext', { force }); }
+  draftNominate(player: number, bid: number) { return this.dpost('dnominate', { player, bid }); }
+  draftBid(amount: number) { return this.dpost('dbid', { amount, id: this.room?.draft?.auction?.id }); }
 
   private duty = false;
   /**
@@ -306,7 +311,9 @@ export class OnlineSession {
     const now = this.serverNow();
     this.duty = true;
     try {
-      if (d.phase === 'draft') {
+      if (d.phase === 'draft' && room.settings.draft?.format === 'auction') {
+        await this.auctionDuty(room, now, backup);
+      } else if (d.phase === 'draft') {
         const n = d.picks.length;
         const team = d.teams.find((t) => t.slot === slotForPick(d.order, n));
         if (!team) return;
@@ -365,6 +372,65 @@ export class OnlineSession {
       this.duty = false;
       this.emit();
     }
+  }
+
+  /** Auktionens automatik: AI nominerer og byder, tiden løber ud, vinderen findes */
+  private async auctionDuty(room: RoomInfo, now: number, backup: (base: number) => number) {
+    const d = room.draft!;
+    const gk = room.settings.draft?.injuries ?? true;
+    const world = await loadWorld();
+    const pool = draftPool(world, room.settings.seed ?? 1, world.season, room.settings.draft?.pool ?? '');
+    const byId = Object.fromEntries(pool.map((p) => [p.id, p]));
+    const a = d.auction;
+    const post2 = async (op: string, body: Record<string, unknown>) => { try { this.room = await post<RoomInfo>(op, { ...this.creds, ...body }); } catch { /* en anden nåede det */ } };
+    if (a) {
+      if (now >= a.endsAt + 300) {
+        // tiden er gået: vinderen får spilleren på den bedste ledige plads
+        const wait = backup(2500);
+        if (wait) await new Promise((r) => setTimeout(r, wait));
+        const fresh = await fetchRoom(this.creds.code);
+        const fa = fresh.draft?.auction;
+        if (!fa || fa.id !== a.id) return;
+        const winner = fresh.draft!.teams.find((t) => t.slot === fa.bidder);
+        const p = byId[fa.player];
+        if (!winner || !p) return;
+        const places = placesFor(winner, fresh.draft!.picks, p, byId, gk);
+        const open = openPlaces(winner, fresh.draft!.picks);
+        const place = places[0] ?? (open.bench > 0 ? BENCH_PLACE : open.starters[0] ?? BENCH_PLACE);
+        await post2('dresolve', { place });
+        return;
+      }
+      // AI-holdene byder (værten; de andre kun hvis værten er væk)
+      if (!this.isHost && now - a.lastBid < 6000) return;
+      if (now - a.lastBid < 1200 + (a.id % 5) * 250) return;
+      const p = byId[a.player];
+      if (!p) return;
+      const bidders = d.teams.filter((t) => t.ai && t.slot !== a.bidder)
+        .map((t) => ({ t, limit: aiBidLimit(t, d.picks, p, byId, gk) }))
+        .filter((x) => x.limit > a.bid)
+        .sort((x, y) => y.limit - x.limit);
+      const best = bidders[0];
+      if (!best) return;
+      const step = a.bid < 20 ? 1 : a.bid < 60 ? 2 : 5;
+      // to AI-hold, der vil have samme spiller: den ivrigste byder lige over den næstivrigste
+      const amount = Math.min(best.limit, Math.max(a.bid + step, bidders[1] ? Math.min(best.limit, bidders[1].limit + 1) : a.bid + step));
+      await post2('dbid', { slot: best.t.slot, id: a.id, amount });
+      return;
+    }
+    // ingen auktion: den næste nominerer (AI straks, mennesker inden for tidsfristen)
+    const slot = nominatorSlot(d.order, d.nomIdx ?? 0, d.teams, d.picks);
+    const team = d.teams.find((t) => t.slot === slot);
+    if (!team) return;
+    const timedOut = now >= d.pickStart + NOM_SECONDS * 1000 + 1200;
+    if (!team.ai && !timedOut) return;
+    const wait = (team.ai ? Math.max(0, d.pickStart + 1800 - now) : 0) + backup(team.ai ? 4000 : 3000);
+    if (wait) await new Promise((r) => setTimeout(r, wait));
+    const fresh = await fetchRoom(this.creds.code);
+    if (fresh.draft?.auction || fresh.draft?.picks.length !== d.picks.length) return;
+    const pk = autoPick(team, fresh.draft.picks, pool, allKeepers(fresh.draft.teams), gk);
+    if (!pk) return;
+    const bid = team.ai ? Math.max(1, Math.round(aiBidLimit(team, fresh.draft.picks, byId[pk.player], byId, gk) * 0.4)) : 1;
+    await post2('dnominate', { player: pk.player, bid });
   }
 
   // ----- klar / synkronisering -----

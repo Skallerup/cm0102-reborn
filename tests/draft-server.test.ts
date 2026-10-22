@@ -23,7 +23,7 @@ class FakeRedis {
   async llen(k: string) { return L(k).length; }
   async rpush(k: string, ...v: string[]) { L(k).push(...v); return L(k).length; }
   async ltrim() { return 'OK'; }
-  async set(k: string, v: unknown, o?: { nx?: boolean }) { if (o?.nx && store.has(k)) return null; store.set(k, v); return 'OK'; }
+  async set(k: string, v: unknown, o?: { nx?: boolean; ex?: number; px?: number }) { if (o?.nx && store.has(k)) return null; store.set(k, v); return 'OK'; }
   async get(k: string) { return store.get(k) ?? null; }
   async del(...ks: string[]) { for (const k of ks) store.delete(k); return 1; }
 }
@@ -111,5 +111,39 @@ describe('draft-liga (server)', () => {
       room = (await post('dpick', { ...cred(slot), n, player: 5000 + n, place: -1 })).body;
     }
     expect(room.draft.phase).toBe('done');
+  });
+});
+
+describe('auktionsdraft (server)', () => {
+  it('nominering, bud, forlængelse, vinder og budget', async () => {
+    const host = (await post('create', { name: 'Ann', settings: { mode: 'draft', seed: 2, draft: { rounds: 1, playoff: 'none', keepers: 0, injuries: true, format: 'auction' } }, team: { name: 'Ann FC', short: 'ANF' } })).body;
+    const A = { code: host.code, pid: host.pid, token: host.token };
+    const bo = (await post('join', { code: host.code, name: 'Bo', team: { name: 'Bo FC', short: 'BOF' } })).body;
+    const B = { code: host.code, pid: bo.pid, token: bo.token };
+    let room = (await post('dstart', { ...A })).body;
+    expect(room.draft.teams.every((t: { budget: number }) => t.budget === 200)).toBe(true);
+    const first = room.draft.order[room.draft.nomIdx];
+    const N = first === 1 ? A : B, O = first === 1 ? B : A;
+    // kun nominatoren må nominere, og man kan ikke byde over sit budget (1 mio. pr. ledig plads)
+    expect((await post('dnominate', { ...O, player: 7, bid: 5 })).body.error).toBe('not-your-turn');
+    expect((await post('dnominate', { ...N, player: 7, bid: 190 })).body.error).toBe('bid');
+    room = (await post('dnominate', { ...N, player: 7, bid: 10 })).body;
+    expect(room.draft.auction).toMatchObject({ player: 7, bid: 10 });
+    expect((await post('dbid', { ...N, id: 0, amount: 12 })).body.error).toBe('leading');
+    expect((await post('dbid', { ...O, id: 0, amount: 10 })).body.error).toBe('bid');
+    room = (await post('dbid', { ...O, id: 0, amount: 15 })).body;
+    expect(room.draft.auction.bid).toBe(15);
+    expect((await post('dresolve', { ...A, place: 0 })).body.error).toBe('too-early');
+    // tiden løber ud
+    const st = store.get(`room:${host.code}:dstate`) as Record<string, unknown>;
+    const au = JSON.parse(String(st.auction)); au.endsAt = Date.now() - 1; st.auction = JSON.stringify(au);
+    room = (await post('dresolve', { ...A, place: 0 })).body;
+    expect(room.draft.picks[0]).toMatchObject({ player: 7, price: 15 });
+    expect(room.draft.auction).toBeFalsy();
+    const winner = room.draft.teams.find((t: { pid: string }) => t.pid === O.pid);
+    expect(winner.budget).toBe(185);
+    // næste nominator er den anden manager
+    expect(room.draft.order[room.draft.nomIdx]).not.toBe(first);
+    expect((await post('dpick', { ...A, n: 1, player: 9, place: 1 })).body.error).toBe('phase');
   });
 });

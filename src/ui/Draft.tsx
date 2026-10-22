@@ -1,5 +1,6 @@
 // Draft-liga: oprettelse, tilmelding, lobby, keepers og selve draften (live, 60 sekunder pr. valg).
 // Når draften er færdig, bygges sæsonen, og spillet fortsætter i den almindelige brugerflade (med færre menupunkter).
+import { drawDraftCard, shareDraftCard } from './draftCard';
 import { stopVoice } from '../online/voice';
 import { holdDarkTheme } from './theme';
 import { RoomChat } from './RoomChat';
@@ -8,8 +9,8 @@ import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import {
   BENCH, BENCH_PLACE, CREST_SHAPES, POOL_SIZE, SQUAD, maxTeamsFor, DEFAULT_SETTINGS, KEEPER_SECONDS, MAX_TEAMS, PICK_SECONDS, REPLACE_DAYS, STARTERS,
-  aiTeam, allKeepers, autoPick, canPlayRole, clubIdOf, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
-  type DraftPick, type DraftTeam,
+  BUDGET, CLUB_BASE, NOM_SECONDS, aiTeam, maxBidFor, nominatorSlot, teamCount, allKeepers, autoPick, canPlayRole, clubIdOf, draftGrades, marketValue, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
+  type DraftPick, type DraftTeam, type TeamGrade,
 } from '../game/draft';
 import { act } from '../game/actions';
 import { forgetLast } from '../game/save';
@@ -102,6 +103,12 @@ function TeamEditor({ team, onChange, formation = true }: { team: Partial<DraftT
 function SettingsEditor({ value, onChange, deadline, onDeadline, disabled }: { value: DraftSettings; onChange: (s: DraftSettings) => void; deadline: number; onDeadline: (h: number) => void; disabled?: boolean }) {
   return (
     <div className="dr-settings">
+      <label className="prof-field">{t('dr.format.label')}
+        <select disabled={disabled} value={value.format ?? 'snake'} onChange={(e) => onChange({ ...value, format: e.target.value as DraftSettings['format'] })}>
+          <option value="snake">{t('dr.format.snake')}</option>
+          <option value="auction">{t('dr.format.auction')}</option>
+        </select>
+      </label>
       <PoolSelect value={value.pool ?? ''} disabled={disabled} onChange={(pool) => onChange({ ...value, pool })} />
       <label className="prof-field">{t('dr.rounds')}
         <select disabled={disabled} value={value.rounds} onChange={(e) => onChange({ ...value, rounds: Number(e.target.value) })}>
@@ -281,12 +288,12 @@ export function DraftRoom() {
       )}
       {msg && <div className="insight">{msg}</div>}
       {s.error && <div className="insight bad">{s.error}</div>}
-      {d.phase === 'summary' && <SeasonSummary />}
+      {d.phase === 'summary' && <SeasonSummary pool={pool} byId={byId} />}
       {d.phase === 'lobby' && <Lobby settings={settings} poolSize={pool.length} />}
       {d.phase === 'lobby' && pool.length > 0 && <LobbyPool pool={pool} byId={byId} year={world?.season ?? 2025} />}
       {d.phase === 'keepers' && <Keepers settings={settings} />}
-      {d.phase === 'draft' && (pool.length ? <LiveDraft pool={pool} byId={byId} settings={settings} year={world?.season ?? 2025} /> : <div className="empty">{t('start.loading')}</div>)}
-      {(d.phase === 'done' || d.phase === 'playing') && <DraftFinished byId={byId} />}
+      {d.phase === 'draft' && (pool.length ? (settings.format === 'auction' ? <AuctionDraft pool={pool} byId={byId} settings={settings} year={world?.season ?? 2025} /> : <LiveDraft pool={pool} byId={byId} settings={settings} year={world?.season ?? 2025} />) : <div className="empty">{t('start.loading')}</div>)}
+      {(d.phase === 'done' || d.phase === 'playing') && <DraftFinished byId={byId} pool={pool} />}
       <RoomChat />
     </div>
   );
@@ -341,7 +348,7 @@ function Lobby({ settings, poolSize }: { settings: DraftSettings; poolSize: numb
           <SettingsEditor value={settings} disabled={!host} onChange={(x) => s.draftSettings(x)} deadline={room.settings.deadlineHours ?? 0} onDeadline={(h) => s.draftSettings(settings, h)} />
           <ul className="muted dr-rules">
             <li>{settings.pool?.startsWith('n:') ? t('dr.rule.poolNation', { n: POOL_SIZE }) : settings.pool ? t('dr.rule.poolLeague', { n: POOL_SIZE }) : t('dr.rule.pool')}</li>
-            <li>{t('dr.rule.snake', { s: PICK_SECONDS })}</li>
+            <li>{settings.format === 'auction' ? t('dr.rule.auction', { b: BUDGET }) : t('dr.rule.snake', { s: PICK_SECONDS })}</li>
             <li>{t(settings.injuries ? 'dr.rule.squad' : 'dr.rule.squadNoGK', { st: STARTERS, b: BENCH })}</li>
             <li>{t('dr.rule.season')}</li>
           </ul>
@@ -376,30 +383,77 @@ const SEEN = (code: string) => `cm0102.draftSeen.${code}`;
 export function draftSeen(code: string, season: number): boolean {
   try { return Number(localStorage.getItem(SEEN(code)) ?? 0) >= season; } catch { return true; }
 }
-function DraftFinished({ byId }: { byId: Record<number, Player> }) {
+function DraftFinished({ byId, pool }: { byId: Record<number, Player>; pool: Player[] }) {
   const s = session()!;
   const d = s.room!.draft!;
   const mine = s.myDraftTeam;
   const ready = d.phase === 'playing' && hasGame();
+  const grades = useMemo(() => (pool.length ? draftGrades(d.teams, d.picks, pool) : []), [pool, d.teams, d.picks]);
   return (
     <div className="dr-finished">
       <Panel title={`🏁 ${t('dr.finishedTitle')}`}>
         <p style={{ marginTop: 0 }}>{t(ready ? 'dr.finishedText' : 'dr.building')}</p>
         {mine && Object.keys(byId).length > 0 && <TeamPitch team={mine} picks={d.picks} byId={byId} />}
-        <div className="row" style={{ justifyContent: 'flex-end', marginTop: 12 }}>
+        <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap' }}>
+          {mine && <ShareCardButton team={mine} picks={d.picks} byId={byId} grade={grades.find((x) => x.slot === mine.slot)} season={d.season} />}
           <button className="primary" disabled={!ready} onClick={() => { try { localStorage.setItem(SEEN(s.creds.code), String(d.season)); } catch { /* ignorér */ } notify(); }}>
             {ready ? t('dr.toTeam') : <><span className="ai-spinner" /> {t('dr.buildingShort')}</>}
           </button>
         </div>
       </Panel>
+      {grades.length > 0 && <GradesPanel grades={grades} byId={byId} />}
     </div>
   );
 }
 
-/** Sæsonen er slut: sluttabel, mester og statistik – man klikker selv videre til næste draft */
-function SeasonSummary() {
+/** Ekspertens karakterer til alle hold */
+function GradesPanel({ grades, byId }: { grades: TeamGrade[]; byId: Record<number, Player> }) {
   const s = session()!;
   const d = s.room!.draft!;
+  const auction = (s.room!.settings.draft?.format ?? 'snake') === 'auction';
+  const priceOf = (player: number) => d.picks.find((p) => p.player === player)?.price ?? 0;
+  return (
+    <Panel title={`🎙️ ${t('dr.gradesTitle')}`}>
+      <div className="dr-grades">
+        {grades.slice().sort((a, b) => b.score - a.score).map((gr) => {
+          const team = d.teams.find((x) => x.slot === gr.slot);
+          if (!team) return null;
+          const name = (id?: number) => (id && byId[id] ? `${byId[id].first} ${byId[id].last}`.trim() : '');
+          return (
+            <div key={gr.slot} className={`dr-grade-row ${team.pid === s.creds.pid ? 'me' : ''}`}>
+              <span className={`dr-grade g-${gr.grade.replace('+', 'p')}`}>{gr.grade}</span>
+              <div>
+                <div className="row" style={{ gap: 6 }}><DraftCrestImg shape={team.crest} colors={team.colors} short={team.short} size={20} /><b>{team.name}</b><span className="muted">{team.ai ? 'AI' : team.manager}</span></div>
+                <div className="dr-grade-line">“{t(gr.line)}”</div>
+                <div className="muted" style={{ fontSize: 12 }}>
+                  {gr.steal && (auction ? t('dr.gradeStealA', { player: name(gr.steal.player), price: `${priceOf(gr.steal.player)} mio.` }) : t('dr.gradeSteal', { player: name(gr.steal.player), rank: gr.steal.rank, pick: gr.steal.pick }))}
+                  {gr.reach && gr.reach.player !== gr.steal?.player && <> · {auction ? t('dr.gradeReachA', { player: name(gr.reach.player), price: `${priceOf(gr.reach.player)} mio.` }) : t('dr.gradeReach', { player: name(gr.reach.player), rank: gr.reach.rank, pick: gr.reach.pick })}</>}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Panel>
+  );
+}
+
+function ShareCardButton({ team, picks, byId, grade, season }: { team: DraftTeam; picks: DraftPick[]; byId: Record<number, Player>; grade?: TeamGrade; season: number }) {
+  const [msg, setMsg] = useState('');
+  return (
+    <span className="row">
+      <button onClick={async () => { const b = await drawDraftCard(team, picks, byId, grade, season); if (!b) return; const r = await shareDraftCard(b, team.name); if (r === 'downloaded') setMsg(t('story.downloaded')); }}>📸 {t('dr.shareCard')}</button>
+      {msg && <span className="muted" style={{ fontSize: 12 }}>{msg}</span>}
+    </span>
+  );
+}
+
+/** Sæsonen er slut: sluttabel, mester og statistik – man klikker selv videre til næste draft */
+function SeasonSummary({ pool, byId }: { pool: Player[]; byId: Record<number, Player> }) {
+  const s = session()!;
+  const d = s.room!.draft!;
+  // karaktererne fra sæsonens draft (valgene ligger her, indtil alle har klikket videre)
+  const grades = useMemo(() => (pool.length && d.picks.length ? draftGrades(d.teams, d.picks, pool) : []), [pool, d.teams, d.picks]);
   if (!hasGame()) return <div className="empty">{t('start.loading')}</div>;
   const g = gs();
   const h = g.draft?.history.at(-1);
@@ -436,17 +490,24 @@ function SeasonSummary() {
       <div className="cols">
         <Panel title={t('dr.table')} className="flush">
           <table className="grid">
-            <thead><tr><th>#</th><th>{t('col.club')}</th><th className="num">{t('tbl.p')}</th><th className="num">{t('tbl.w')}</th><th className="num">{t('tbl.d')}</th><th className="num">{t('tbl.l')}</th><th className="num">{t('tbl.gd')}</th><th className="num">{t('tbl.pts')}</th></tr></thead>
+            <thead><tr><th>#</th><th>{t('col.club')}</th><th className="num">{t('tbl.p')}</th><th className="num">{t('tbl.w')}</th><th className="num">{t('tbl.d')}</th><th className="num">{t('tbl.l')}</th><th className="num">{t('tbl.gd')}</th><th className="num">{t('tbl.pts')}</th>{grades.length > 0 && <th className="num" title={t('dr.gradesTitle')}>{t('dr.sumGrade')}</th>}</tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={r.club} className={r.club === g.userClub ? 'me' : ''}>
                   <td>{i === 0 ? '🏆' : i + 1}</td>
                   <td><span className="row" style={{ gap: 6 }}>{crest(r.club)}{g.clubs[r.club]?.name}</span></td>
                   <td className="num">{r.p}</td><td className="num">{r.w}</td><td className="num">{r.d}</td><td className="num">{r.l}</td><td className="num">{r.gf - r.ga}</td><td className="num"><b>{r.pts}</b></td>
+                  {grades.length > 0 && (() => { const gr = grades.find((x) => x.slot === r.club - CLUB_BASE); return <td className="num">{gr && <span className={`dr-grade small g-${gr.grade.replace('+', 'p')}`}>{gr.grade}</span>}</td>; })()}
                 </tr>
               ))}
             </tbody>
           </table>
+          {grades.length > 0 && (() => {
+            // havde eksperten ret? mesterens karakter i forhold til den bedste karakter
+            const best = grades.slice().sort((a, b) => b.score - a.score)[0];
+            const right = best && best.slot === rows[0].club - CLUB_BASE;
+            return <div className="muted" style={{ padding: '8px 12px', fontSize: 12.5 }}>{right ? '✅' : '🙈'} {t(right ? 'dr.sumExpertRight' : 'dr.sumExpertWrong')}</div>;
+          })()}
         </Panel>
         <div className="col" style={{ gap: 14 }}>
           <List title={t('dr.topScorer')} list={top((p) => p.stats.lgGoals)} val={(p) => String(p.stats.lgGoals)} />
@@ -456,7 +517,10 @@ function SeasonSummary() {
       </div>
       <Panel>
         <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
-          <span className="muted">{waiting.length ? t('dr.sumWaiting', { names: waiting.map((x) => x.manager).join(', ') }) : t('dr.sumAllReady')}</span>
+          <span className="row" style={{ gap: 12 }}>
+            {me && d.picks.length > 0 && <ShareCardButton team={me} picks={d.picks} byId={byId} grade={grades.find((x) => x.slot === me.slot)} season={d.season - 1} />}
+            <span className="muted">{waiting.length ? t('dr.sumWaiting', { names: waiting.map((x) => x.manager).join(', ') }) : t('dr.sumAllReady')}</span>
+          </span>
           <div className="row">
             {s.isHost && waiting.some((x) => x.pid !== s.creds.pid) && <button className="small" onClick={() => s.draftNext(true)}>{t('dr.sumForce')}</button>}
             <button className="primary" disabled={!me || me.summaryReady} onClick={() => s.draftNext()}>{me?.summaryReady ? t('dr.sumWait') : t('dr.sumNext')}</button>
@@ -686,6 +750,134 @@ function LiveDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Recor
         </div>
       </div>
       <DraftBoard byId={byId} keepers={keepers} />
+    </>
+  );
+}
+
+/** Auktionsdraft: nominér en spiller, og alle byder live – højeste bud vinder */
+function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Record<number, Player>; settings: DraftSettings; year: number }) {
+  const s = session()!;
+  const d = s.room!.draft!;
+  const mine = s.myDraftTeam;
+  const [sel, setSel] = useState<number | null>(null);
+  const [nomBid, setNomBid] = useState(1);
+  const [custom, setCustom] = useState('');
+  const [err, setErr] = useState('');
+  const [busy, setBusy] = useState(false);
+  const gk = settings.injuries;
+  const a = d.auction;
+  const taken = new Set([...d.picks.map((p) => p.player), ...allKeepers(d.teams)]);
+  const nomSlot = nominatorSlot(d.order, d.nomIdx ?? 0, d.teams, d.picks);
+  const nominator = d.teams.find((x) => x.slot === (a ? a.nominator : nomSlot));
+  const leader = a ? d.teams.find((x) => x.slot === a.bidder) : undefined;
+  const myNom = !a && !!mine && nomSlot === mine.slot;
+  const ap = a ? byId[a.player] : undefined;
+  const myMax = mine ? maxBidFor(mine, d.picks) : 0;
+  const fits = (p?: Player) => !!p && !!mine && placesFor(mine, d.picks, p, byId, gk).length > 0;
+  const canBid = !!a && !!mine && a.bidder !== mine.slot && teamCount(mine, d.picks) < 16 && fits(ap) && myMax > a.bid;
+  const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(t(`dr.err.${(e as Error).message}`)); } setBusy(false); };
+  const bid = (amount: number) => run(() => s.draftBid(Math.min(amount, myMax)));
+  const selP = sel ? byId[sel] : null;
+  const total = d.order.length * picksPerTeam(d.season > 1 ? settings.keepers : 0);
+
+  useEffect(() => {
+    if (!myNom) return;
+    const base = document.title;
+    let flip = false;
+    const h = setInterval(() => { flip = !flip; document.title = flip ? `⏰ ${t('dr.au.yourNom')}` : base; }, 900);
+    return () => { clearInterval(h); document.title = base; };
+  }, [myNom]);
+
+  return (
+    <>
+      <div className={`dr-status ${myNom || (a && leader?.slot === mine?.slot) ? 'mine' : ''}`}>
+        {a && ap ? (
+          <div className="row" style={{ gap: 14, flexWrap: 'wrap' }}>
+            <div>
+              <div className="muted">{t('dr.au.lot', { n: d.picks.length + 1, total })} · {t('dr.au.nominatedBy', { club: nominator?.name ?? '' })}</div>
+              <b style={{ fontSize: 20 }}><a className="link" onClick={() => setSel(ap.id)}>{ap.first} {ap.last}</a></b> <span className="muted">{positionString(ap)} · {rating(ap)}</span>
+            </div>
+            <div className="dr-au-bid">
+              <small>{t('dr.au.highest')}</small>
+              <b>{a.bid} mio.</b>
+              <span className="row" style={{ gap: 4 }}>{leader && <DraftCrestImg shape={leader.crest} colors={leader.colors} short={leader.short} size={18} />}{leader?.slot === mine?.slot ? t('dr.au.youLead') : leader?.name}</span>
+            </div>
+          </div>
+        ) : (
+          <div className="row" style={{ gap: 10 }}>
+            {nominator && <DraftCrestImg shape={nominator.crest} colors={nominator.colors} short={nominator.short} size={40} />}
+            <div>
+              <div className="muted">{t('dr.au.lot', { n: d.picks.length + 1, total })}</div>
+              <b style={{ fontSize: 18 }}>{myNom ? t('dr.au.yourNom') : t('dr.au.nominating', { club: nominator?.name ?? '' })}</b>
+            </div>
+          </div>
+        )}
+        <Countdown until={a ? a.endsAt : d.pickStart + NOM_SECONDS * 1000} />
+      </div>
+      {a && mine && (
+        <div className="row dr-au-controls">
+          {[1, 5, 10].map((inc) => <button key={inc} className="primary" disabled={!canBid || busy || a.bid + inc > myMax} onClick={() => bid(a.bid + inc)}>+{inc} → {a.bid + inc} mio.</button>)}
+          <input type="number" min={a.bid + 1} max={myMax} placeholder={t('dr.au.custom')} value={custom} onChange={(e) => setCustom(e.target.value)} style={{ width: 110 }} />
+          <button disabled={!canBid || busy || !(Number(custom) > a.bid) || Number(custom) > myMax} onClick={() => { void bid(Number(custom)); setCustom(''); }}>{t('dr.au.bid')}</button>
+          <span className="muted">{t('dr.au.budget', { b: mine.budget ?? BUDGET, max: myMax })}{a && !fits(ap) ? ` · ${t('dr.noPlace')}` : ''}</span>
+        </div>
+      )}
+      {myNom && <div className="insight good">💡 {t('dr.au.nomHint')}</div>}
+      {err && <div className="insight bad">{err}</div>}
+      <div className="dr-grid">
+        <PoolPanel pool={pool} byId={byId} taken={taken} mine={mine} picks={d.picks} sel={sel} onSel={setSel} year={year} title={t('dr.pool', { n: pool.length - taken.size })} />
+        <div className="col" style={{ gap: 14 }}>
+          {selP && (
+            <Panel title={`${selP.first} ${selP.last}`} right={<button className="small" onClick={() => setSel(null)}>×</button>}>
+              <div className="muted" style={{ marginBottom: 6 }}>{positionString(selP)} · {t('dr.rating')} {rating(selP)} · {t('dr.au.value', { v: marketValue(selP) })}</div>
+              <AttrGrid p={selP} />
+              {myNom && !taken.has(selP.id) && (fits(selP) ? (
+                <div className="row" style={{ marginTop: 10 }}>
+                  <label className="row">{t('dr.au.startBid')} <input type="number" min={1} max={myMax} value={nomBid} onChange={(e) => setNomBid(Math.max(1, Math.min(myMax, Number(e.target.value) || 1)))} style={{ width: 80 }} /> mio.</label>
+                  <button className="primary" disabled={busy} onClick={() => run(async () => { await s.draftNominate(selP.id, nomBid); setSel(null); setNomBid(1); })}>{t('dr.au.nominate')}</button>
+                </div>
+              ) : <div className="insight warn" style={{ marginTop: 8 }}>{t('dr.noPlace')}</div>)}
+            </Panel>
+          )}
+          {mine && <Panel title={`${mine.name} · ${mine.formation}`}><TeamPitch team={mine} picks={d.picks} byId={byId} highlight={selP && !taken.has(selP.id) ? placesFor(mine, d.picks, selP, byId, gk) : []} /></Panel>}
+          <Panel title={t('dr.au.budgets')} className="flush">
+            <table className="grid">
+              <tbody>
+                {d.teams.map((x) => (
+                  <tr key={x.slot} className={x.pid === s.creds.pid ? 'me' : ''}>
+                    <td><span className="row" style={{ gap: 6 }}><DraftCrestImg shape={x.crest} colors={x.colors} short={x.short} size={18} />{x.name}</span></td>
+                    <td className="num"><b>{x.budget ?? BUDGET}</b> mio.</td>
+                    <td className="num muted">{teamCount(x, d.picks)}/16</td>
+                    <td className="num muted" title={t('dr.au.maxBid')}>≤ {maxBidFor(x, d.picks)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
+          {mine && <WishPanel mine={mine} taken={taken} byId={byId} />}
+        </div>
+      </div>
+      <Panel title={t('dr.au.log')} className="flush">
+        <div className="table-wrap" style={{ maxHeight: 320, overflowY: 'auto' }}>
+          <table className="grid">
+            <tbody>
+              {d.picks.slice().reverse().map((pk, i) => {
+                const x = d.teams.find((y) => y.slot === pk.slot);
+                const p = byId[pk.player];
+                return (
+                  <tr key={i}>
+                    <td className="muted">{d.picks.length - i}</td>
+                    <td>{p ? `${p.first} ${p.last}` : '?'} <span className="muted">{p ? positionString(p) : ''}</span></td>
+                    <td><span className="row" style={{ gap: 6 }}>{x && <DraftCrestImg shape={x.crest} colors={x.colors} short={x.short} size={16} />}{x?.short}</span></td>
+                    <td className="num"><b>{pk.price ?? '–'}</b> mio.</td>
+                  </tr>
+                );
+              })}
+              {!d.picks.length && <tr><td className="muted">{t('dr.au.logEmpty')}</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </Panel>
     </>
   );
 }

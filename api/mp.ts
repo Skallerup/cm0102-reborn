@@ -56,13 +56,21 @@ const SQUAD = 16;
 const PICK_MS = 60_000;
 const KEEP_MS = 120_000;
 const CLUB_BASE = 900_000;
+// auktionsdraft
+const BUDGET = 200;
+const NOM_MS = 30_000;
+const AUCTION_MS = 20_000;
+const BID_EXTEND_MS = 10_000;
 const dk = (code: string) => ({ teams: `room:${code}:dteams`, state: `room:${code}:dstate`, picks: `room:${code}:dpicks`, taken: `room:${code}:dtaken` });
 
 interface DraftTeamRec {
   slot: number; pid: string; ai: boolean; manager: string; name: string; short: string; colors: [string, string]; crest: number; formation: string;
   wish: number[]; keep: { slot: number; player: number; place: number }[]; keepReady?: boolean; summaryReady?: boolean;
+  /** auktion: resterende budget (mio.) */
+  budget?: number;
 }
-interface DraftStateRec { phase: 'lobby' | 'summary' | 'keepers' | 'draft' | 'done' | 'playing'; season: number; order: number[]; pickStart: number; keepStart: number; nextPhase?: string }
+interface AuctionRec { id: number; player: number; bid: number; bidder: number; nominator: number; endsAt: number; lastBid: number }
+interface DraftStateRec { phase: 'lobby' | 'summary' | 'keepers' | 'draft' | 'done' | 'playing'; season: number; order: number[]; pickStart: number; keepStart: number; nextPhase?: string; auction?: AuctionRec | null; nomIdx?: number }
 
 async function draftTeams(code: string): Promise<DraftTeamRec[]> {
   const h = await redis.hgetall<Record<string, DraftTeamRec | string>>(dk(code).teams);
@@ -73,11 +81,12 @@ async function draftState(code: string): Promise<DraftStateRec | null> {
   const r = await redis.hgetall<Record<string, string | number>>(dk(code).state);
   if (!r || !r.phase) return null;
   const order = typeof r.order === 'string' ? JSON.parse(r.order || '[]') : (r.order ?? []);
-  return { phase: r.phase as DraftStateRec['phase'], season: Number(r.season), order: order as number[], pickStart: Number(r.pickStart ?? 0), keepStart: Number(r.keepStart ?? 0), nextPhase: r.nextPhase ? String(r.nextPhase) : undefined };
+  const auction = !r.auction ? null : typeof r.auction === 'string' ? (JSON.parse(r.auction) as AuctionRec) : (r.auction as unknown as AuctionRec);
+  return { phase: r.phase as DraftStateRec['phase'], season: Number(r.season), order: order as number[], pickStart: Number(r.pickStart ?? 0), keepStart: Number(r.keepStart ?? 0), nextPhase: r.nextPhase ? String(r.nextPhase) : undefined, auction, nomIdx: Number(r.nomIdx ?? 0) };
 }
 async function setDraftState(code: string, st: Partial<DraftStateRec>) {
   const v: Record<string, string | number> = {};
-  for (const [key, val] of Object.entries(st)) v[key] = Array.isArray(val) ? JSON.stringify(val) : (val as string | number);
+  for (const [key, val] of Object.entries(st)) v[key] = Array.isArray(val) || (val && typeof val === 'object') ? JSON.stringify(val) : val === null ? '' : (val as string | number);
   await redis.hset(dk(code).state, v);
 }
 async function draftPicks(code: string) {
@@ -96,6 +105,24 @@ const cleanTeam = (b: Record<string, unknown>, t: DraftTeamRec): DraftTeamRec =>
   if (Array.isArray(b.wish)) out.wish = b.wish.map(Number).filter(Number.isFinite).slice(0, 100);
   return out;
 };
+/** Auktion: hvor mange spillere har holdet, og hvad må det højst byde (1 mio. tilbage pr. ledig plads) */
+function teamCount(t: DraftTeamRec, picks: { slot: number }[]) { return t.keep.length + picks.filter((p) => p.slot === t.slot).length; }
+function maxBid(t: DraftTeamRec, picks: { slot: number }[]) { return (t.budget ?? BUDGET) - Math.max(0, SQUAD - teamCount(t, picks) - 1); }
+/** Næste hold, der skal nominere (springer fulde hold over) */
+function nominatorFrom(order: number[], idx: number, teams: DraftTeamRec[], picks: { slot: number }[]): { slot: number; idx: number } | null {
+  for (let k = 0; k < order.length; k++) {
+    const i = (idx + k) % order.length;
+    const t = teams.find((x) => x.slot === order[i]);
+    if (t && teamCount(t, picks) < SQUAD) return { slot: t.slot, idx: i };
+  }
+  return null;
+}
+/** Start en auktionsdraft: alle får fuldt budget */
+async function startAuction(code: string, teams: DraftTeamRec[]) {
+  for (const t of teams) { t.budget = BUDGET; await saveTeam(code, t); }
+  await setDraftState(code, { auction: null, nomIdx: 0, pickStart: Date.now() });
+}
+
 /** Rummets indstillinger (Upstash pakker JSON ud af sig selv – derfor både tekst og objekt) */
 function roomSettings(room: { settings: unknown }): Record<string, any> {
   const v = room.settings;
@@ -498,6 +525,7 @@ export async function POST(request: Request) {
         playoff: ['none', 'final', 'semis'].includes(String(d.playoff)) ? String(d.playoff) : (cur.draft?.playoff ?? 'none'),
         keepers: Math.max(0, Math.min(3, Math.round(Number(d.keepers ?? cur.draft?.keepers ?? 0)))),
         injuries: d.injuries === undefined ? (cur.draft?.injuries ?? true) : !!d.injuries,
+        format: d.format === 'auction' ? 'auction' : d.format === 'snake' ? 'snake' : (cur.draft?.format ?? 'snake'),
         pool: d.pool === undefined ? (cur.draft?.pool ?? '') : /^(n:)?[A-Za-z0-9]{1,10}$/.test(String(d.pool)) ? String(d.pool) : '',
       };
       if (body.deadlineHours !== undefined) cur.deadlineHours = Math.max(0, Math.min(168, Number(body.deadlineHours) || 0));
@@ -518,6 +546,7 @@ export async function POST(request: Request) {
       for (let i = order.length - 1; i > 0; i--) { const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1); [order[i], order[j]] = [order[j], order[i]]; }
       await redis.del(dk(code).picks, dk(code).taken);
       await setDraftState(code, { phase: 'draft', season: 1, order, pickStart: Date.now() });
+      if (roomSettings(room).draft?.format === 'auction') await startAuction(code, teams);
       await touch(code); await touchDraft(code);
       return json(await publicRoom(code));
     }
@@ -528,6 +557,7 @@ export async function POST(request: Request) {
       const st = await draftState(code);
       if (!room || !st) return json({ error: 'not-found' }, 404);
       if (st.phase !== 'draft') return json({ error: 'phase' }, 409);
+      if (roomSettings(room).draft?.format === 'auction') return json({ error: 'phase' }, 409);
       const n = Number(body.n);
       const len = await redis.llen(dk(code).picks);
       if (n !== len) return json({ error: 'stale' }, 409);
@@ -567,6 +597,7 @@ export async function POST(request: Request) {
         // picks fra sidste sæson ryddes først nu (afslutningen viser dem)
         await redis.del(dk(code).picks, dk(code).taken);
         await setDraftState(code, { phase: (st.nextPhase as DraftStateRec['phase']) ?? 'draft', pickStart: Date.now(), keepStart: Date.now() });
+        if ((st.nextPhase ?? 'draft') === 'draft' && roomSettings(room).draft?.format === 'auction') await startAuction(code, await draftTeams(code));
       }
       await touchDraft(code);
       return json(await publicRoom(code));
@@ -591,7 +622,86 @@ export async function POST(request: Request) {
         for (const k of t.keep) await redis.sadd(dk(code).taken, String(k.player));
       }
       await setDraftState(code, { phase: 'draft', pickStart: Date.now() });
+      { const room = await getRoom(code); if (room && roomSettings(room).draft?.format === 'auction') await startAuction(code, await draftTeams(code)); }
       await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    // ----- auktionsdraft -----
+    case 'dnominate': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const st = await draftState(code);
+      if (!st || st.phase !== 'draft') return json({ error: 'phase' }, 409);
+      if (st.auction) return json({ error: 'stale' }, 409);
+      const teams = await draftTeams(code);
+      const picks = await draftPicks(code);
+      const nom = nominatorFrom(st.order, st.nomIdx ?? 0, teams, picks);
+      if (!nom) return json({ error: 'phase' }, 409);
+      const team = teams.find((t) => t.slot === nom.slot)!;
+      const timedOut = Date.now() >= st.pickStart + NOM_MS + 1000;
+      if (team.pid !== me.pid && !team.ai && !timedOut) return json({ error: 'not-your-turn' }, 403);
+      const player = Number(body.player);
+      const bid = Math.round(Number(body.bid));
+      if (!Number.isFinite(player) || !(bid >= 1) || bid > maxBid(team, picks)) return json({ error: 'bid' }, 400);
+      if (await redis.sismember(dk(code).taken, String(player))) return json({ error: 'taken' }, 409);
+      if (!(await redis.set(`room:${code}:dnom:${st.season}:${picks.length}`, me.pid, { nx: true, ex: 86_400 }))) return json({ error: 'stale' }, 409);
+      const now = Date.now();
+      await setDraftState(code, { auction: { id: picks.length, player, bid, bidder: team.slot, nominator: team.slot, endsAt: now + AUCTION_MS, lastBid: now }, nomIdx: nom.idx });
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dbid': {
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const st = await draftState(code);
+      const a = st?.auction;
+      if (!st || st.phase !== 'draft' || !a) return json({ error: 'phase' }, 409);
+      if (Date.now() >= a.endsAt) return json({ error: 'closed' }, 409);
+      const teams = await draftTeams(code);
+      const picks = await draftPicks(code);
+      const team = body.slot !== undefined ? teams.find((t) => t.slot === Number(body.slot)) : teams.find((t) => t.pid === me.pid);
+      if (!team || (team.pid !== me.pid && !team.ai)) return json({ error: 'not-yours' }, 403);
+      if (team.slot === a.bidder) return json({ error: 'leading' }, 409);
+      if (teamCount(team, picks) >= SQUAD) return json({ error: 'full' }, 409);
+      const amount = Math.round(Number(body.amount));
+      if (!(amount > a.bid) || amount > maxBid(team, picks)) return json({ error: 'bid' }, 400);
+      if (Number(body.id) !== a.id) return json({ error: 'stale' }, 409);
+      // kort lås: kun ét bud ad gangen, og kun hvis ingen andre har budt imellem
+      const lk = `room:${code}:dbidlock`;
+      if (!(await redis.set(lk, me.pid, { nx: true, px: 3000 }))) return json({ error: 'stale' }, 409);
+      try {
+        const fresh = (await draftState(code))?.auction;
+        if (!fresh || fresh.bid !== a.bid || fresh.bidder !== a.bidder || Date.now() >= fresh.endsAt) return json({ error: 'stale' }, 409);
+        const now = Date.now();
+        await setDraftState(code, { auction: { ...fresh, bid: amount, bidder: team.slot, endsAt: Math.max(fresh.endsAt, now + BID_EXTEND_MS), lastBid: now } });
+      } finally { await redis.del(lk); }
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dresolve': {
+      // auktionen er slut: højeste bud vinder (klienten angiver pladsen, den regner ud fra puljen)
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const room = await getRoom(code);
+      const st = await draftState(code);
+      const a = st?.auction;
+      if (!room || !st || st.phase !== 'draft' || !a) return json({ error: 'phase' }, 409);
+      if (Date.now() < a.endsAt) return json({ error: 'too-early' }, 409);
+      if (!(await redis.set(`room:${code}:dres:${st.season}:${a.id}`, me.pid, { nx: true, ex: 86_400 }))) return json({ error: 'stale' }, 409);
+      const place = Number(body.place);
+      if (!Number.isFinite(place) || place < -1 || place > 10) return json({ error: 'bad' }, 400);
+      const teams = await draftTeams(code);
+      const winner = teams.find((t) => t.slot === a.bidder)!;
+      await redis.rpush(dk(code).picks, JSON.stringify({ slot: winner.slot, player: a.player, place, price: a.bid }));
+      await redis.sadd(dk(code).taken, String(a.player));
+      winner.budget = (winner.budget ?? BUDGET) - a.bid;
+      await saveTeam(code, winner);
+      const picks = await draftPicks(code);
+      const keepers = Number(roomSettings(room).draft?.keepers ?? 0);
+      const total = st.order.length * (SQUAD - (st.season > 1 ? keepers : 0));
+      const next = nominatorFrom(st.order, (st.nomIdx ?? 0) + 1, teams.map((t) => (t.slot === winner.slot ? winner : t)), picks);
+      await setDraftState(code, picks.length >= total || !next ? { phase: 'done', auction: null, pickStart: Date.now() } : { auction: null, nomIdx: next.idx, pickStart: Date.now() });
+      await touch(code); await touchDraft(code);
       return json(await publicRoom(code));
     }
     case 'dbuildlock': {
