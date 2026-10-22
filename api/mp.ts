@@ -60,7 +60,7 @@ const CLUB_BASE = 900_000;
 const BUDGET = 200;
 const NOM_MS = 30_000;
 const AUCTION_MS = 20_000;
-const BID_EXTEND_MS = 10_000;
+const BID_EXTEND_MS = 15_000;
 /** når alle mennesker har meldt pas: kort frist, så AI-holdene kan nå et sidste bud */
 const PASS_END_MS = 3_500;
 const dk = (code: string) => ({ teams: `room:${code}:dteams`, state: `room:${code}:dstate`, picks: `room:${code}:dpicks`, taken: `room:${code}:dtaken` });

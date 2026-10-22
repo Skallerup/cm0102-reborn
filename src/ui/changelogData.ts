@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-10-22',
     title: { da: 'Draft-liga: auktion, ekspertens karakterer og draftkort', en: 'Draft League: auctions, expert grades and draft cards' },
     items: [
+      { da: 'Auktion: efter hvert bud er der mindst 15 sekunder til at byde igen', en: 'Auction: after every bid there are at least 15 seconds to bid again' },
       { da: 'Auktion: meld pas, når prisen er for høj. Har alle andre meldt pas, slutter auktionen med det samme – og spiller man alene mod AI-hold, går det hurtigt', en: 'Auction: pass when the price gets too high. Once everyone else has passed, the auction ends right away – and against AI clubs alone it moves quickly' },
       { da: 'Ny draftform – auktion: alle har 200 mio., klubberne skiftes til at nominere, og alle byder live. Hvert bud forlænger uret, og AI-holdene byder med', en: 'New draft format – auction: everyone has 200m, clubs take turns nominating and everyone bids live. Every bid extends the clock, and AI clubs join in' },
       { da: 'Eksperten giver alle hold en karakter (A+ til F) med en drillende kommentar, draftens kup og det mest tvivlsomme valg – og ved sæsonens afslutning ses, om eksperten havde ret', en: 'The expert grades every team (A+ to F) with a cheeky comment, the steal of the draft and the most questionable pick – and at the end of the season you see whether the expert was right' },
