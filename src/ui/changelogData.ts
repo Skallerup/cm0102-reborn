@@ -11,8 +11,9 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '0.10.3',
     date: '2026-10-22',
-    title: { da: 'Draft-liga: draft fra én liga', en: 'Draft League: draft from a single league' },
+    title: { da: 'Draft-liga: draft fra én liga eller én nationalitet', en: 'Draft League: draft from a single league or nationality' },
     items: [
+      { da: 'Draft efter nationalitet: fx alle danske spillere, uanset klub og liga', en: 'Draft by nationality: for example every Danish player, whatever their club or league' },
       { da: 'Vælg spillerpuljen: hele verden (de 500 bedste) eller de bedste fra én liga, fx Superligaen. Indstillingen viser, hvor mange spillere og klubber puljen rækker til', en: 'Choose the player pool: the whole world (the best 500) or the best from one league, such as the Danish Superliga. The setting shows how many players and clubs the pool covers' },
     ],
   },

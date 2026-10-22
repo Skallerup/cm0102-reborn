@@ -139,19 +139,33 @@ function PoolSelect({ value, onChange, disabled }: { value: string; onChange: (v
   const counts = useMemo(() => {
     if (!world) return new Map<string, number>();
     const F = world.playerFields.indexOf('club');
+    const N = world.playerFields.indexOf('nation');
     const lg = new Map(world.clubs.map((c) => [c[0], c[4]]));
     const m = new Map<string, number>();
-    for (const r of world.players) { const l = lg.get(r[F] as number); if (l) m.set(l, (m.get(l) ?? 0) + 1); }
+    for (const r of world.players) {
+      const l = lg.get(r[F] as number);
+      if (l) m.set(l, (m.get(l) ?? 0) + 1);
+      const n = `n:${r[N]}`;
+      m.set(n, (m.get(n) ?? 0) + 1);
+    }
     return m;
   }, [world]);
   const leagues = (world?.leagues ?? []).filter((l) => (counts.get(l.id) ?? 0) >= SQUAD * 2)
     .sort((a, b) => a.tier - b.tier || natName(world!.nations[a.nation]?.name).localeCompare(natName(world!.nations[b.nation]?.name)));
+  // nationaliteter med nok spillere til mindst to hold
+  const nations = (world?.nations ?? []).map((n, i) => ({ id: `n:${i}`, name: natName(n.name), count: counts.get(`n:${i}`) ?? 0 }))
+    .filter((n) => n.count >= SQUAD * 2).sort((a, b) => a.name.localeCompare(b.name));
   const size = value ? Math.min(POOL_SIZE, counts.get(value) ?? 0) : POOL_SIZE;
   return (
     <label className="prof-field dr-pool">{t('dr.pool.label')}
       <select disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{t('dr.pool.world')}</option>
-        {leagues.map((l) => <option key={l.id} value={l.id}>{l.name} ({natName(world!.nations[l.nation]?.name)}){l.tier > 1 ? ` · ${t('dr.pool.tier', { n: l.tier })}` : ''}</option>)}
+        <optgroup label={t('dr.pool.leagues')}>
+          {leagues.map((l) => <option key={l.id} value={l.id}>{l.name} ({natName(world!.nations[l.nation]?.name)}){l.tier > 1 ? ` · ${t('dr.pool.tier', { n: l.tier })}` : ''}</option>)}
+        </optgroup>
+        <optgroup label={t('dr.pool.nations')}>
+          {nations.map((n) => <option key={n.id} value={n.id}>{t('dr.pool.nation', { nation: n.name })} · {n.count}</option>)}
+        </optgroup>
       </select>
       {world && <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>{t('dr.pool.size', { n: size, teams: maxTeamsFor(size) })}</span>}
     </label>
@@ -326,7 +340,7 @@ function Lobby({ settings, poolSize }: { settings: DraftSettings; poolSize: numb
         <Panel title={t('dr.settings')}>
           <SettingsEditor value={settings} disabled={!host} onChange={(x) => s.draftSettings(x)} deadline={room.settings.deadlineHours ?? 0} onDeadline={(h) => s.draftSettings(settings, h)} />
           <ul className="muted dr-rules">
-            <li>{settings.pool ? t('dr.rule.poolLeague', { n: POOL_SIZE }) : t('dr.rule.pool')}</li>
+            <li>{settings.pool?.startsWith('n:') ? t('dr.rule.poolNation', { n: POOL_SIZE }) : settings.pool ? t('dr.rule.poolLeague', { n: POOL_SIZE }) : t('dr.rule.pool')}</li>
             <li>{t('dr.rule.snake', { s: PICK_SECONDS })}</li>
             <li>{t(settings.injuries ? 'dr.rule.squad' : 'dr.rule.squadNoGK', { st: STARTERS, b: BENCH })}</li>
             <li>{t('dr.rule.season')}</li>

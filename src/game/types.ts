@@ -869,7 +869,7 @@ export interface DraftSettings {
   /** Spillere hvert hold må beholde til næste sæsons draft */
   keepers: number;
   injuries: boolean;
-  /** Spillerpulje: tom = hele verden, ellers en ligas id (fx 'DK1') */
+  /** Spillerpulje: tom = hele verden, en ligas id (fx 'DK1') eller en nationalitet ('n:<nationens indeks>') */
   pool?: string;
 }
 

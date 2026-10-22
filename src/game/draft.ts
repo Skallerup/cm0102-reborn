@@ -70,9 +70,10 @@ export function draftPool(world: WorldData, seed: number, year: number, league =
   if (hit) return hit;
   const date = `${year}-08-01`;
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
-  // en bestemt liga: kun spillere fra ligaens klubber
-  const clubs = league ? new Set(world.clubs.filter((c) => c[4] === league).map((c) => c[0])) : null;
-  const rough = world.players.filter((r) => !clubs || clubs.has(r[F.club] as number)).map((r) => {
+  // en bestemt liga (kun spillere fra ligaens klubber) eller nationalitet ("n:12" = alle fra nation 12)
+  const nation = league.startsWith('n:') ? Number(league.slice(2)) : null;
+  const clubs = league && nation === null ? new Set(world.clubs.filter((c) => c[4] === league).map((c) => c[0])) : null;
+  const rough = world.players.filter((r) => (nation === null || r[F.nation] === nation) && (!clubs || clubs.has(r[F.club] as number))).map((r) => {
     const age = ageOn(r[F.dob] as string, date);
     return { r, age, ca: caFromValue(r[F.value] as number, age) };
   }).sort((a, b) => b.ca - a.ca).slice(0, POOL_SIZE + 250);

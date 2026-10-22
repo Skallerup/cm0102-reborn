@@ -176,3 +176,17 @@ describe('draft fra én liga', () => {
     expect(g.draft!.seasonOver).toBe(true);
   });
 });
+
+describe('draft efter nationalitet', () => {
+  it('alle danske spillere – uanset klub', () => {
+    const dk = world.nations.findIndex((n) => n.name === 'Denmark');
+    const pool = draftPool(world, 7, world.season, `n:${dk}`);
+    expect(pool.length).toBeGreaterThan(64);
+    expect(pool.every((p) => p.nation === dk)).toBe(true);
+    // også danskere i udenlandske klubber
+    const N = world.playerFields.indexOf('nation'), C = world.playerFields.indexOf('club'), I = world.playerFields.indexOf('id');
+    const dk1 = new Set(world.clubs.filter((c) => c[4] === 'DK1').map((c) => c[0]));
+    const abroad = new Set(world.players.filter((r) => r[N] === dk && !dk1.has(r[C] as number)).map((r) => r[I] as number));
+    expect(pool.some((p) => abroad.has(p.id))).toBe(true);
+  });
+});
