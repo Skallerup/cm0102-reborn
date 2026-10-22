@@ -6,7 +6,7 @@ import { asOwner, isHumanClub } from './humans';
 import { rng } from './rng';
 import { clubLevel } from './scouting';
 import { coachingInfo } from './training';
-import { addNews, gs, squad } from './state';
+import { addNews, gs, hasGame, squad } from './state';
 import type { Player, Tactic } from './types';
 
 export type Trait = 'leader' | 'professional' | 'troublemaker' | 'ambitious' | 'loyal' | 'mercenary' | 'bigGame' | 'lazy' | 'temperamental';
@@ -45,7 +45,7 @@ export interface Chemistry {
 export function chemistry(players: Player[], captainId?: number): Chemistry {
   const xi = players.filter(Boolean);
   // draft-liga: ingen kemi (nationalitet, tid sammen osv.) – alle hold er lige
-  if (!xi.length || gs().draft) return { score: 50, parts: [] };
+  if (!xi.length || (hasGame() && gs().draft)) return { score: 50, parts: [] };
   const parts: Chemistry['parts'] = [];
   // fælles nationalitet: par af spillere fra samme land
   const byNation = new Map<number, number>();

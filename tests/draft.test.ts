@@ -152,3 +152,27 @@ describe('draft uden skader', () => {
     expect(canPlace(team, picks, st[4], BENCH_PLACE, byId, false)).toBe(true);
   });
 });
+
+describe('draft fra én liga', () => {
+  it('puljen er de bedste fra Superligaen, og draft og sæson virker', () => {
+    const dk = new Set(world.clubs.filter((c) => c[4] === 'DK1').map((c) => c[0]));
+    const F = world.playerFields.indexOf('club');
+    const fromDk = new Set(world.players.filter((r) => dk.has(r[F] as number)).map((r) => r[world.playerFields.indexOf('id')] as number));
+    const pool = draftPool(world, 7, world.season, 'DK1');
+    expect(pool.length).toBeGreaterThan(64);
+    expect(pool.length).toBeLessThanOrEqual(500);
+    expect(pool.every((p) => fromDk.has(p.id))).toBe(true);
+    expect(pool[0].ca).toBeGreaterThanOrEqual(pool.at(-1)!.ca);
+    const teams = [{ ...aiTeam(1, []), ai: false, pid: 'p1' }, aiTeam(2, []), aiTeam(3, []), aiTeam(4, [])];
+    const picks: DraftPick[] = [];
+    const order = [1, 2, 3, 4];
+    for (let n = 0; n < totalPicks(order, 0); n++) picks.push(autoPick(teams.find((t) => t.slot === slotForPick(order, n))!, picks, pool)!);
+    expect(picks.every((p) => fromDk.has(p.player))).toBe(true);
+    const g = buildDraftGame({ world, seed: 7, season: 1, lang: 'da', settings: { rounds: 1, playoff: 'none', keepers: 0, injuries: true, pool: 'DK1' }, teams, picks, hostPid: 'p1' });
+    expect(Object.keys(g.players)).toHaveLength(pool.length);
+    expect(squad(clubIdOf(1))).toHaveLength(16);
+    let turns = 0;
+    while (!g.draft!.seasonOver && turns++ < 30) mpAdvance();
+    expect(g.draft!.seasonOver).toBe(true);
+  });
+});

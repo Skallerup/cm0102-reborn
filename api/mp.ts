@@ -498,6 +498,7 @@ export async function POST(request: Request) {
         playoff: ['none', 'final', 'semis'].includes(String(d.playoff)) ? String(d.playoff) : (cur.draft?.playoff ?? 'none'),
         keepers: Math.max(0, Math.min(3, Math.round(Number(d.keepers ?? cur.draft?.keepers ?? 0)))),
         injuries: d.injuries === undefined ? (cur.draft?.injuries ?? true) : !!d.injuries,
+        pool: d.pool === undefined ? (cur.draft?.pool ?? '') : /^[A-Za-z0-9]{1,10}$/.test(String(d.pool)) ? String(d.pool) : '',
       };
       if (body.deadlineHours !== undefined) cur.deadlineHours = Math.max(0, Math.min(168, Number(body.deadlineHours) || 0));
       await redis.hset(keys.room, { settings: JSON.stringify(cur) });

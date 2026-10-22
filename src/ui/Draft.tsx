@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import {
-  BENCH, BENCH_PLACE, CREST_SHAPES, DEFAULT_SETTINGS, KEEPER_SECONDS, MAX_TEAMS, PICK_SECONDS, REPLACE_DAYS, STARTERS,
+  BENCH, BENCH_PLACE, CREST_SHAPES, POOL_SIZE, SQUAD, maxTeamsFor, DEFAULT_SETTINGS, KEEPER_SECONDS, MAX_TEAMS, PICK_SECONDS, REPLACE_DAYS, STARTERS,
   aiTeam, allKeepers, autoPick, canPlayRole, clubIdOf, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
   type DraftPick, type DraftTeam,
 } from '../game/draft';
@@ -17,7 +17,7 @@ import { gs, hasGame, notify, setGame, squad } from '../game/state';
 import { FORMATIONS, formationSlots } from '../game/tactics';
 import type { DraftSettings, Player, Role } from '../game/types';
 import { leagueRows } from '../game/competitions';
-import { t } from '../i18n';
+import { natName, t } from '../i18n';
 import { closeSession, createDraftLeague, joinDraftLeague, session, type RoomInfo } from '../online/client';
 import { askConfirm } from './confirm';
 import { Panel } from './components';
@@ -50,14 +50,14 @@ function useTick(ms: number, on = true) {
   }, [ms, on]);
 }
 
-function usePool(seed: number | undefined): { pool: Player[]; byId: Record<number, Player>; world: WorldData | null } {
+function usePool(seed: number | undefined, league = ''): { pool: Player[]; byId: Record<number, Player>; world: WorldData | null } {
   const [world, setWorld] = useState<WorldData | null>(null);
   useEffect(() => { loadWorld().then(setWorld); }, []);
   return useMemo(() => {
     if (!world || seed === undefined) return { pool: [], byId: {}, world };
-    const pool = draftPool(world, seed, world.season);
+    const pool = draftPool(world, seed, world.season, league);
     return { pool, byId: Object.fromEntries(pool.map((p) => [p.id, p])), world };
-  }, [world, seed]);
+  }, [world, seed, league]);
 }
 
 // ---------- klubbens identitet ----------
@@ -102,6 +102,7 @@ function TeamEditor({ team, onChange, formation = true }: { team: Partial<DraftT
 function SettingsEditor({ value, onChange, deadline, onDeadline, disabled }: { value: DraftSettings; onChange: (s: DraftSettings) => void; deadline: number; onDeadline: (h: number) => void; disabled?: boolean }) {
   return (
     <div className="dr-settings">
+      <PoolSelect value={value.pool ?? ''} disabled={disabled} onChange={(pool) => onChange({ ...value, pool })} />
       <label className="prof-field">{t('dr.rounds')}
         <select disabled={disabled} value={value.rounds} onChange={(e) => onChange({ ...value, rounds: Number(e.target.value) })}>
           {[1, 2, 3, 4].map((n) => <option key={n} value={n}>{t('dr.roundsN', { n })}</option>)}
@@ -128,6 +129,32 @@ function SettingsEditor({ value, onChange, deadline, onDeadline, disabled }: { v
         </select>
       </label>
     </div>
+  );
+}
+
+/** Spillerpuljen: hele verden (top 500) eller de bedste fra én liga */
+function PoolSelect({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled?: boolean }) {
+  const [world, setWorld] = useState<WorldData | null>(null);
+  useEffect(() => { loadWorld().then(setWorld); }, []);
+  const counts = useMemo(() => {
+    if (!world) return new Map<string, number>();
+    const F = world.playerFields.indexOf('club');
+    const lg = new Map(world.clubs.map((c) => [c[0], c[4]]));
+    const m = new Map<string, number>();
+    for (const r of world.players) { const l = lg.get(r[F] as number); if (l) m.set(l, (m.get(l) ?? 0) + 1); }
+    return m;
+  }, [world]);
+  const leagues = (world?.leagues ?? []).filter((l) => (counts.get(l.id) ?? 0) >= SQUAD * 2)
+    .sort((a, b) => a.tier - b.tier || natName(world!.nations[a.nation]?.name).localeCompare(natName(world!.nations[b.nation]?.name)));
+  const size = value ? Math.min(POOL_SIZE, counts.get(value) ?? 0) : POOL_SIZE;
+  return (
+    <label className="prof-field dr-pool">{t('dr.pool.label')}
+      <select disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>
+        <option value="">{t('dr.pool.world')}</option>
+        {leagues.map((l) => <option key={l.id} value={l.id}>{l.name} ({natName(world!.nations[l.nation]?.name)}){l.tier > 1 ? ` · ${t('dr.pool.tier', { n: l.tier })}` : ''}</option>)}
+      </select>
+      {world && <span className="muted" style={{ fontSize: 12, fontWeight: 400 }}>{t('dr.pool.size', { n: size, teams: maxTeamsFor(size) })}</span>}
+    </label>
   );
 }
 
@@ -213,7 +240,7 @@ export function DraftRoom() {
   const room = s?.room;
   const d = room?.draft;
   useTick(500, !!d && (d.phase === 'draft' || d.phase === 'keepers'));
-  const { pool, byId, world } = usePool(room?.settings.seed);
+  const { pool, byId, world } = usePool(room?.settings.seed, room?.settings.draft?.pool ?? '');
   const [msg, setMsg] = useState('');
   if (!s || !room || !d) return <div className="start"><div className="empty">{t('mp.connecting')}</div></div>;
   const leave = async () => {
@@ -241,7 +268,7 @@ export function DraftRoom() {
       {msg && <div className="insight">{msg}</div>}
       {s.error && <div className="insight bad">{s.error}</div>}
       {d.phase === 'summary' && <SeasonSummary />}
-      {d.phase === 'lobby' && <Lobby settings={settings} />}
+      {d.phase === 'lobby' && <Lobby settings={settings} poolSize={pool.length} />}
       {d.phase === 'lobby' && pool.length > 0 && <LobbyPool pool={pool} byId={byId} year={world?.season ?? 2025} />}
       {d.phase === 'keepers' && <Keepers settings={settings} />}
       {d.phase === 'draft' && (pool.length ? <LiveDraft pool={pool} byId={byId} settings={settings} year={world?.season ?? 2025} /> : <div className="empty">{t('start.loading')}</div>)}
@@ -251,7 +278,7 @@ export function DraftRoom() {
   );
 }
 
-function Lobby({ settings }: { settings: DraftSettings }) {
+function Lobby({ settings, poolSize }: { settings: DraftSettings; poolSize: number }) {
   const s = session()!;
   const room = s.room!;
   const d = room.draft!;
@@ -259,9 +286,11 @@ function Lobby({ settings }: { settings: DraftSettings }) {
   const [team, setTeam] = useState<Partial<DraftTeam>>(mine ?? {});
   const [saved, setSaved] = useState(true);
   const host = s.isHost;
+  const maxTeams = poolSize ? maxTeamsFor(poolSize) : MAX_TEAMS;
+  const tooMany = d.teams.length > maxTeams;
   return (
     <div className="cols">
-      <Panel title={t('dr.teams', { n: d.teams.length, max: MAX_TEAMS })}>
+      <Panel title={t('dr.teams', { n: d.teams.length, max: maxTeams })}>
         <table className="grid">
           <tbody>
             {d.teams.map((x) => (
@@ -277,10 +306,11 @@ function Lobby({ settings }: { settings: DraftSettings }) {
         </table>
         {host && (
           <div className="row" style={{ marginTop: 10, justifyContent: 'space-between', flexWrap: 'wrap' }}>
-            <button className="small" disabled={d.teams.length >= MAX_TEAMS} onClick={() => { const a = aiTeam(d.teams.length + 1, d.teams.map((x) => x.name)); void s.draftAddAI(a); }}>+ {t('dr.addAI')}</button>
-            <button className="primary" disabled={d.teams.length < 2} onClick={async () => { if (await askConfirm(t('dr.startConfirm', { n: d.teams.length }))) await s.draftStart(); }}>{t('dr.start')}</button>
+            <button className="small" disabled={d.teams.length >= maxTeams} onClick={() => { const a = aiTeam(d.teams.length + 1, d.teams.map((x) => x.name)); void s.draftAddAI(a); }}>+ {t('dr.addAI')}</button>
+            <button className="primary" disabled={d.teams.length < 2 || tooMany} onClick={async () => { if (await askConfirm(t('dr.startConfirm', { n: d.teams.length }))) await s.draftStart(); }}>{t('dr.start')}</button>
           </div>
         )}
+        {tooMany && <div className="insight warn" style={{ marginTop: 8 }}>{t('dr.pool.tooSmall', { n: maxTeams })}</div>}
         {!host && <p className="muted">{t('dr.waitHost')}</p>}
         <p className="muted" style={{ fontSize: 12.5, marginBottom: 0 }}>{t('dr.lobbyHint')}</p>
       </Panel>
@@ -296,7 +326,7 @@ function Lobby({ settings }: { settings: DraftSettings }) {
         <Panel title={t('dr.settings')}>
           <SettingsEditor value={settings} disabled={!host} onChange={(x) => s.draftSettings(x)} deadline={room.settings.deadlineHours ?? 0} onDeadline={(h) => s.draftSettings(settings, h)} />
           <ul className="muted dr-rules">
-            <li>{t('dr.rule.pool')}</li>
+            <li>{settings.pool ? t('dr.rule.poolLeague', { n: POOL_SIZE }) : t('dr.rule.pool')}</li>
             <li>{t('dr.rule.snake', { s: PICK_SECONDS })}</li>
             <li>{t(settings.injuries ? 'dr.rule.squad' : 'dr.rule.squadNoGK', { st: STARTERS, b: BENCH })}</li>
             <li>{t('dr.rule.season')}</li>

@@ -64,13 +64,15 @@ const poolCache = new Map<string, Player[]>();
  * De 500 bedste spillere i databasen (efter evne). Beregnes ens på alle klienter ud fra databasen og rummets seed,
  * så serveren kun behøver at kende spillernes id'er.
  */
-export function draftPool(world: WorldData, seed: number, year: number): Player[] {
-  const key = `${seed}|${year}|${world.version}|${world.players.length}`;
+export function draftPool(world: WorldData, seed: number, year: number, league = ''): Player[] {
+  const key = `${seed}|${year}|${world.version}|${world.players.length}|${league}`;
   const hit = poolCache.get(key);
   if (hit) return hit;
   const date = `${year}-08-01`;
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
-  const rough = world.players.map((r) => {
+  // en bestemt liga: kun spillere fra ligaens klubber
+  const clubs = league ? new Set(world.clubs.filter((c) => c[4] === league).map((c) => c[0])) : null;
+  const rough = world.players.filter((r) => !clubs || clubs.has(r[F.club] as number)).map((r) => {
     const age = ageOn(r[F.dob] as string, date);
     return { r, age, ca: caFromValue(r[F.value] as number, age) };
   }).sort((a, b) => b.ca - a.ca).slice(0, POOL_SIZE + 250);
@@ -87,6 +89,9 @@ export function draftPool(world: WorldData, seed: number, year: number): Player[
 }
 
 // ---------- rækkefølgen ----------
+
+/** Hvor mange hold puljen kan dække (16 spillere pr. hold) */
+export const maxTeamsFor = (poolSize: number) => Math.min(MAX_TEAMS, Math.floor(poolSize / SQUAD));
 
 /** Antal valg pr. hold i denne draft (keepers er allerede på holdet) */
 export const picksPerTeam = (keepers: number) => SQUAD - keepers;
@@ -347,7 +352,7 @@ export function buildDraftGame(o: BuildOpts): GameState {
   setGame(g);
 
   // puljen: alle 500 er med (de udraftede bruges som erstatning ved skader)
-  for (const p of draftPool(o.world, o.seed, o.world.season)) {
+  for (const p of draftPool(o.world, o.seed, o.world.season, o.settings.pool ?? '')) {
     const c: Player = structuredClone(p);
     c.club = 0;
     g.players[c.id] = c;
