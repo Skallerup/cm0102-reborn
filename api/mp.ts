@@ -61,6 +61,8 @@ const BUDGET = 200;
 const NOM_MS = 30_000;
 const AUCTION_MS = 20_000;
 const BID_EXTEND_MS = 10_000;
+/** når alle mennesker har meldt pas: kort frist, så AI-holdene kan nå et sidste bud */
+const PASS_END_MS = 3_500;
 const dk = (code: string) => ({ teams: `room:${code}:dteams`, state: `room:${code}:dstate`, picks: `room:${code}:dpicks`, taken: `room:${code}:dtaken` });
 
 interface DraftTeamRec {
@@ -69,7 +71,7 @@ interface DraftTeamRec {
   /** auktion: resterende budget (mio.) */
   budget?: number;
 }
-interface AuctionRec { id: number; player: number; bid: number; bidder: number; nominator: number; endsAt: number; lastBid: number }
+interface AuctionRec { id: number; player: number; bid: number; bidder: number; nominator: number; endsAt: number; lastBid: number; /** klubber der har meldt pas */ passed?: number[] }
 interface DraftStateRec { phase: 'lobby' | 'summary' | 'keepers' | 'draft' | 'done' | 'playing'; season: number; order: number[]; pickStart: number; keepStart: number; nextPhase?: string; auction?: AuctionRec | null; nomIdx?: number }
 
 async function draftTeams(code: string): Promise<DraftTeamRec[]> {
@@ -108,6 +110,10 @@ const cleanTeam = (b: Record<string, unknown>, t: DraftTeamRec): DraftTeamRec =>
 /** Auktion: hvor mange spillere har holdet, og hvad må det højst byde (1 mio. tilbage pr. ledig plads) */
 function teamCount(t: DraftTeamRec, picks: { slot: number }[]) { return t.keep.length + picks.filter((p) => p.slot === t.slot).length; }
 function maxBid(t: DraftTeamRec, picks: { slot: number }[]) { return (t.budget ?? BUDGET) - Math.max(0, SQUAD - teamCount(t, picks) - 1); }
+/** Er alle menneskelige klubber (undtagen den førende) ude af auktionen – meldt pas, fulde eller uden råd? */
+function humansOut(teams: DraftTeamRec[], picks: { slot: number }[], a: AuctionRec) {
+  return teams.filter((t) => !t.ai && t.slot !== a.bidder).every((t) => a.passed?.includes(t.slot) || teamCount(t, picks) >= SQUAD || maxBid(t, picks) <= a.bid);
+}
 /** Næste hold, der skal nominere (springer fulde hold over) */
 function nominatorFrom(order: number[], idx: number, teams: DraftTeamRec[], picks: { slot: number }[]): { slot: number; idx: number } | null {
   for (let k = 0; k < order.length; k++) {
@@ -646,7 +652,10 @@ export async function POST(request: Request) {
       if (await redis.sismember(dk(code).taken, String(player))) return json({ error: 'taken' }, 409);
       if (!(await redis.set(`room:${code}:dnom:${st.season}:${picks.length}`, me.pid, { nx: true, ex: 86_400 }))) return json({ error: 'stale' }, 409);
       const now = Date.now();
-      await setDraftState(code, { auction: { id: picks.length, player, bid, bidder: team.slot, nominator: team.slot, endsAt: now + AUCTION_MS, lastBid: now }, nomIdx: nom.idx });
+      const auction: AuctionRec = { id: picks.length, player, bid, bidder: team.slot, nominator: team.slot, endsAt: now + AUCTION_MS, lastBid: now, passed: [] };
+      // ingen andre mennesker kan byde (fx alene mod AI-hold): kort auktion – AI-holdene byder hurtigt
+      if (humansOut(teams, picks, auction)) auction.endsAt = now + 5_000;
+      await setDraftState(code, { auction, nomIdx: nom.idx });
       await touchDraft(code);
       return json(await publicRoom(code));
     }
@@ -662,6 +671,7 @@ export async function POST(request: Request) {
       const team = body.slot !== undefined ? teams.find((t) => t.slot === Number(body.slot)) : teams.find((t) => t.pid === me.pid);
       if (!team || (team.pid !== me.pid && !team.ai)) return json({ error: 'not-yours' }, 403);
       if (team.slot === a.bidder) return json({ error: 'leading' }, 409);
+      if (a.passed?.includes(team.slot)) return json({ error: 'passed' }, 409);
       if (teamCount(team, picks) >= SQUAD) return json({ error: 'full' }, 409);
       const amount = Math.round(Number(body.amount));
       if (!(amount > a.bid) || amount > maxBid(team, picks)) return json({ error: 'bid' }, 400);
@@ -673,7 +683,32 @@ export async function POST(request: Request) {
         const fresh = (await draftState(code))?.auction;
         if (!fresh || fresh.bid !== a.bid || fresh.bidder !== a.bidder || Date.now() >= fresh.endsAt) return json({ error: 'stale' }, 409);
         const now = Date.now();
-        await setDraftState(code, { auction: { ...fresh, bid: amount, bidder: team.slot, endsAt: Math.max(fresh.endsAt, now + BID_EXTEND_MS), lastBid: now } });
+        const next = { ...fresh, bid: amount, bidder: team.slot, endsAt: Math.max(fresh.endsAt, now + BID_EXTEND_MS), lastBid: now };
+        if (humansOut(teams, picks, next)) next.endsAt = Math.min(next.endsAt, now + PASS_END_MS);
+        await setDraftState(code, { auction: next });
+      } finally { await redis.del(lk); }
+      await touchDraft(code);
+      return json(await publicRoom(code));
+    }
+    case 'dpass': {
+      // "jeg melder pas": klubben byder ikke mere på denne spiller
+      const me = await auth(code, String(body.pid), String(body.token));
+      if (!me) return json({ error: 'auth' }, 403);
+      const st = await draftState(code);
+      const a = st?.auction;
+      if (!st || st.phase !== 'draft' || !a || Number(body.id) !== a.id) return json({ error: 'stale' }, 409);
+      const teams = await draftTeams(code);
+      const picks = await draftPicks(code);
+      const team = teams.find((t) => t.pid === me.pid);
+      if (!team || team.slot === a.bidder) return json({ error: 'leading' }, 409);
+      const lk = `room:${code}:dbidlock`;
+      if (!(await redis.set(lk, me.pid, { nx: true, px: 3000 }))) return json({ error: 'stale' }, 409);
+      try {
+        const fresh = (await draftState(code))?.auction;
+        if (!fresh || fresh.id !== a.id) return json({ error: 'stale' }, 409);
+        const next = { ...fresh, passed: [...new Set([...(fresh.passed ?? []), team.slot])] };
+        if (humansOut(teams, picks, next)) next.endsAt = Math.min(next.endsAt, Date.now() + PASS_END_MS);
+        await setDraftState(code, { auction: next });
       } finally { await redis.del(lk); }
       await touchDraft(code);
       return json(await publicRoom(code));

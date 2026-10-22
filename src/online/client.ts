@@ -53,7 +53,7 @@ export interface DraftRoomInfo {
   /** Serverens ur (til nedtællingen) */
   now: number;
   /** Auktion: den igangværende auktion og hvem der nominerer */
-  auction?: { id: number; player: number; bid: number; bidder: number; nominator: number; endsAt: number; lastBid: number } | null;
+  auction?: { id: number; player: number; bid: number; bidder: number; nominator: number; endsAt: number; lastBid: number; passed?: number[] } | null;
   nomIdx?: number;
 }
 
@@ -295,6 +295,7 @@ export class OnlineSession {
   draftNext(force = false) { return this.dpost('dnext', { force }); }
   draftNominate(player: number, bid: number) { return this.dpost('dnominate', { player, bid }); }
   draftBid(amount: number) { return this.dpost('dbid', { amount, id: this.room?.draft?.auction?.id }); }
+  draftPass() { return this.dpost('dpass', { id: this.room?.draft?.auction?.id }); }
 
   private duty = false;
   /**

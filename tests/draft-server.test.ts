@@ -134,6 +134,12 @@ describe('auktionsdraft (server)', () => {
     room = (await post('dbid', { ...O, id: 0, amount: 15 })).body;
     expect(room.draft.auction.bid).toBe(15);
     expect((await post('dresolve', { ...A, place: 0 })).body.error).toBe('too-early');
+    // nominatoren melder pas: kan ikke byde mere, og da alle andre mennesker er ude, slutter auktionen om få sekunder
+    expect((await post('dpass', { ...O, id: 0 })).body.error).toBe('leading');
+    room = (await post('dpass', { ...N, id: 0 })).body;
+    expect(room.draft.auction.passed).toContain(first);
+    expect(room.draft.auction.endsAt - Date.now()).toBeLessThanOrEqual(3600);
+    expect((await post('dbid', { ...N, id: 0, amount: 20 })).body.error).toBe('passed');
     // tiden løber ud
     const st = store.get(`room:${host.code}:dstate`) as Record<string, unknown>;
     const au = JSON.parse(String(st.auction)); au.endsAt = Date.now() - 1; st.auction = JSON.stringify(au);

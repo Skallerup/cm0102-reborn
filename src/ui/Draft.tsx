@@ -774,7 +774,8 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
   const ap = a ? byId[a.player] : undefined;
   const myMax = mine ? maxBidFor(mine, d.picks) : 0;
   const fits = (p?: Player) => !!p && !!mine && placesFor(mine, d.picks, p, byId, gk).length > 0;
-  const canBid = !!a && !!mine && a.bidder !== mine.slot && teamCount(mine, d.picks) < 16 && fits(ap) && myMax > a.bid;
+  const iPassed = !!a && !!mine && !!a.passed?.includes(mine.slot);
+  const canBid = !!a && !!mine && !iPassed && a.bidder !== mine.slot && teamCount(mine, d.picks) < 16 && fits(ap) && myMax > a.bid;
   const run = async (f: () => Promise<void>) => { setBusy(true); setErr(''); try { await f(); } catch (e) { setErr(t(`dr.err.${(e as Error).message}`)); } setBusy(false); };
   const bid = (amount: number) => run(() => s.draftBid(Math.min(amount, myMax)));
   const selP = sel ? byId[sel] : null;
@@ -796,6 +797,7 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
             <div>
               <div className="muted">{t('dr.au.lot', { n: d.picks.length + 1, total })} · {t('dr.au.nominatedBy', { club: nominator?.name ?? '' })}</div>
               <b style={{ fontSize: 20 }}><a className="link" onClick={() => setSel(ap.id)}>{ap.first} {ap.last}</a></b> <span className="muted">{positionString(ap)} · {rating(ap)}</span>
+              {(a.passed?.length ?? 0) > 0 && <div className="muted" style={{ fontSize: 12 }}>✋ {t('dr.au.passedBy', { names: d.teams.filter((x) => a.passed!.includes(x.slot)).map((x) => x.short).join(', ') })}</div>}
             </div>
             <div className="dr-au-bid">
               <small>{t('dr.au.highest')}</small>
@@ -819,7 +821,8 @@ function AuctionDraft({ pool, byId, settings, year }: { pool: Player[]; byId: Re
           {[1, 5, 10].map((inc) => <button key={inc} className="primary" disabled={!canBid || busy || a.bid + inc > myMax} onClick={() => bid(a.bid + inc)}>+{inc} → {a.bid + inc} mio.</button>)}
           <input type="number" min={a.bid + 1} max={myMax} placeholder={t('dr.au.custom')} value={custom} onChange={(e) => setCustom(e.target.value)} style={{ width: 110 }} />
           <button disabled={!canBid || busy || !(Number(custom) > a.bid) || Number(custom) > myMax} onClick={() => { void bid(Number(custom)); setCustom(''); }}>{t('dr.au.bid')}</button>
-          <span className="muted">{t('dr.au.budget', { b: mine.budget ?? BUDGET, max: myMax })}{a && !fits(ap) ? ` · ${t('dr.noPlace')}` : ''}</span>
+          <button className="danger" disabled={!canBid || busy} onClick={() => run(() => s.draftPass())}>✋ {t('dr.au.pass')}</button>
+          <span className="muted">{iPassed ? t('dr.au.youPassed') : t('dr.au.budget', { b: mine.budget ?? BUDGET, max: myMax })}{a && !fits(ap) ? ` · ${t('dr.noPlace')}` : ''}</span>
         </div>
       )}
       {myNom && <div className="insight good">💡 {t('dr.au.nomHint')}</div>}
