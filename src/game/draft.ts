@@ -610,13 +610,8 @@ export function draftGrades(teams: DraftTeam[], picks: DraftPick[], pool: Player
   const byId: Record<number, Player> = Object.fromEntries(pool.map((p) => [p.id, p]));
   const rank = new Map(pool.map((p, i) => [p.id, i + 1]));
   const out = teams.map((t) => {
-    const mine = teamPicks(t, picks);
-    const slots = formationSlots(t.formation);
-    const st = mine.filter((p) => p.place >= 0 && byId[p.player]);
-    const bench = mine.filter((p) => p.place < 0 && byId[p.player]);
-    const stScore = st.reduce((a, p) => a + byId[p.player].ca * (0.75 + 0.25 * slotFit(byId[p.player], slots[p.place])), 0) / Math.max(1, st.length);
-    const bScore = bench.reduce((a, p) => a + byId[p.player].ca, 0) / Math.max(1, bench.length);
-    const score = Math.round(((stScore * 0.85 + bScore * 0.15) / 2) * 10) / 10;
+    // samme styrke som sæsonprognosen, så karakter og forventet placering hænger sammen
+    const score = Math.round(teamLines(t, picks, byId).strength * 10) / 10;
     // kup og tvivlsomme valg (keepers tæller ikke)
     let steal: TeamGrade['steal'], reach: TeamGrade['reach'];
     let stealD = -Infinity, reachD = Infinity;
@@ -631,7 +626,8 @@ export function draftGrades(teams: DraftTeam[], picks: DraftPick[], pool: Player
     return { slot: t.slot, score, steal, reach };
   });
   const mean = out.reduce((a, x) => a + x.score, 0) / Math.max(1, out.length);
-  const sd = Math.sqrt(out.reduce((a, x) => a + (x.score - mean) ** 2, 0) / Math.max(1, out.length)) || 1;
+  // spredningen har en bund, så næsten lige stærke hold ikke får ekstreme karakterer
+  const sd = Math.max(0.6, Math.sqrt(out.reduce((a, x) => a + (x.score - mean) ** 2, 0) / Math.max(1, out.length)));
   return out.map((x) => {
     const z = (x.score - mean) / sd;
     const grade: Grade = z >= 1.2 ? 'A+' : z >= 0.6 ? 'A' : z >= 0.2 ? 'B+' : z >= -0.2 ? 'B' : z >= -0.6 ? 'C' : z >= -1.2 ? 'D' : 'F';
@@ -671,4 +667,87 @@ export function aiBidLimit(team: DraftTeam, picks: DraftPick[], p: Player, playe
   const need = places[0] >= 0 ? 1 : 0.4;
   const mood = 0.85 + (hash(p.id, team.slot) % 31) / 100;
   return Math.min(maxBidFor(team, picks), Math.max(1, Math.round(marketValue(p) * need * mood)));
+}
+
+// ---------- sæsonprognose ----------
+
+export interface TeamPreview {
+  slot: number;
+  /** holdets samlede styrke (1-100) */
+  strength: number;
+  lines: { gk: number; def: number; mid: number; att: number };
+  /** nøglespilleren (højeste evne blandt starterne) */
+  star?: number;
+  /** forventet placering (1 = mester) og pointtal */
+  expPos: number;
+  expPts: number;
+  /** chancer i procent */
+  title: number;
+  topHalf: number;
+  last: number;
+}
+
+/** Holdets styrke pr. linje ud fra starterne på deres pladser */
+function teamLines(team: DraftTeam, picks: DraftPick[], byId: Record<number, Player>) {
+  const slots = formationSlots(team.formation);
+  const mine = teamPicks(team, picks).filter((p) => p.place >= 0 && byId[p.player]);
+  const group = (pos: string) => (pos === 'GK' ? 'gk' : pos === 'D' || pos === 'SW' || pos === 'WB' ? 'def' : pos === 'DM' || pos === 'M' ? 'mid' : 'att');
+  const acc: Record<string, number[]> = { gk: [], def: [], mid: [], att: [] };
+  for (const p of mine) {
+    const pl = byId[p.player];
+    acc[group(slots[p.place].pos)].push((pl.ca / 2) * (0.8 + 0.2 * slotFit(pl, slots[p.place])));
+  }
+  const avg = (a: number[]) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 50);
+  const lines = { gk: avg(acc.gk), def: avg(acc.def), mid: avg(acc.mid), att: avg(acc.att) };
+  const bench = teamPicks(team, picks).filter((p) => p.place < 0 && byId[p.player]).map((p) => byId[p.player].ca / 2);
+  // midtbane og forsvar vejer lidt mere end målmanden; bænken tæller lidt (udskiftninger)
+  const strength = lines.gk * 0.12 + lines.def * 0.3 + lines.mid * 0.3 + lines.att * 0.28 + (avg(bench) - 80) * 0.05;
+  const star = mine.slice().sort((a, b) => byId[b.player].ca - byId[a.player].ca)[0]?.player;
+  return { lines, strength, star };
+}
+
+/**
+ * Forventninger til sæsonen: hver kamp får sandsynligheder ud fra styrkeforskellen, og sæsonen simuleres mange gange.
+ * Seedet kommer fra valgene, så alle klienter får præcis de samme tal.
+ */
+export function seasonPreview(teams: DraftTeam[], picks: DraftPick[], pool: Player[], rounds: number, sims = 2000): TeamPreview[] {
+  const byId: Record<number, Player> = Object.fromEntries(pool.map((p) => [p.id, p]));
+  const info = teams.map((t) => ({ slot: t.slot, ...teamLines(t, picks, byId) }));
+  const n = info.length;
+  if (n < 2) return [];
+  const r = new Rng(hash(picks.length, ...picks.slice(0, 20).map((p) => p.player)));
+  const titles = new Array(n).fill(0), tops = new Array(n).fill(0), lasts = new Array(n).fill(0), pts = new Array(n).fill(0), posSum = new Array(n).fill(0);
+  const games = Math.max(1, rounds);
+  for (let s = 0; s < sims; s++) {
+    const p = new Array(n).fill(0);
+    const gd = new Array(n).fill(0);
+    for (let g = 0; g < games; g++) {
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        const home = g % 2 === 0 ? i : j, away = home === i ? j : i;
+        const d = info[home].strength - info[away].strength + 1.2;
+        const draw = 0.27 * Math.exp(-Math.abs(d) / 14);
+        const win = (1 - draw) / (1 + Math.exp(-d / 3.2));
+        const x = r.next();
+        if (x < win) { p[home] += 3; gd[home]++; gd[away]--; } else if (x < win + draw) { p[home]++; p[away]++; } else { p[away] += 3; gd[away]++; gd[home]--; }
+      }
+    }
+    const order = p.map((_, i) => i).sort((a, b) => p[b] - p[a] || gd[b] - gd[a] || r.next() - 0.5);
+    order.forEach((ti, k) => { posSum[ti] += k + 1; if (k < Math.ceil(n / 2)) tops[ti]++; });
+    titles[order[0]]++;
+    lasts[order[n - 1]]++;
+    for (let i = 0; i < n; i++) pts[i] += p[i];
+  }
+  const avgPos = posSum.map((v) => v / sims);
+  const rankBy = avgPos.map((_, i) => i).sort((a, b) => avgPos[a] - avgPos[b]);
+  return info.map((x, i) => ({
+    slot: x.slot,
+    strength: Math.round(x.strength * 10) / 10,
+    lines: { gk: Math.round(x.lines.gk), def: Math.round(x.lines.def), mid: Math.round(x.lines.mid), att: Math.round(x.lines.att) },
+    star: x.star,
+    expPos: rankBy.indexOf(i) + 1,
+    expPts: Math.round(pts[i] / sims),
+    title: Math.round((titles[i] / sims) * 100),
+    topHalf: Math.round((tops[i] / sims) * 100),
+    last: Math.round((lasts[i] / sims) * 100),
+  })).sort((a, b) => a.expPos - b.expPos);
 }

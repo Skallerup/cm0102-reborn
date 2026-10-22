@@ -1,12 +1,12 @@
 // Delbart draftkort (1080×1350): klubben, holdet i formationen, ekspertens karakter og kommentar.
-import { crestSvg, BENCH_PLACE, teamPicks, type DraftPick, type DraftTeam, type TeamGrade } from '../game/draft';
+import { crestSvg, BENCH_PLACE, teamPicks, type DraftPick, type DraftTeam, type TeamGrade, type TeamPreview } from '../game/draft';
 import { formationSlots } from '../game/tactics';
 import type { Player } from '../game/types';
 import { t } from '../i18n';
 
 const GRADE_COLOR: Record<string, string> = { 'A+': '#3ee08f', A: '#5fd38a', 'B+': '#a6d65a', B: '#ffcf3f', C: '#ffa94d', D: '#ff7a59', F: '#ff4d6d' };
 
-export async function drawDraftCard(team: DraftTeam, picks: DraftPick[], byId: Record<number, Player>, grade: TeamGrade | undefined, season: number): Promise<Blob | null> {
+export async function drawDraftCard(team: DraftTeam, picks: DraftPick[], byId: Record<number, Player>, grade: TeamGrade | undefined, season: number, preview?: TeamPreview): Promise<Blob | null> {
   const W = 1080, H = 1350;
   const c = document.createElement('canvas');
   c.width = W; c.height = H;
@@ -63,6 +63,7 @@ export async function drawDraftCard(team: DraftTeam, picks: DraftPick[], byId: R
   // bænken
   const bench = mine.filter((p) => p.place === BENCH_PLACE).map((p) => byId[p.player]?.last).filter(Boolean);
   text(`${t('dr.bench').toUpperCase()}: ${bench.join(' · ')}`, 70, 1135, 26, '#c2cbe6', 700);
+  if (preview) text(`🔮 ${t('dr.cardPreview', { pos: preview.expPos, pts: preview.expPts, pct: preview.title })}`, 70, 1230, 28, '#ffcf3f', 800);
   if (grade?.steal && byId[grade.steal.player]) text(`🔥 ${t('dr.cardSteal', { player: `${byId[grade.steal.player].first} ${byId[grade.steal.player].last}`.trim() })}`, 70, 1185, 28, '#9ff0bd', 800);
   text(t('dr.cardCta'), 70, H - 80, 30, '#fff', 800);
   text('cm0102-reborn.vercel.app/?draft=1', 70, H - 40, 26, '#8a93b5', 600);

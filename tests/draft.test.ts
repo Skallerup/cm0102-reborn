@@ -4,7 +4,7 @@ import { applyActionAs } from '../src/game/actions';
 import { withHuman } from '../src/game/humans';
 import type { WorldData } from '../src/game/newgame';
 import {
-  BENCH_PLACE, BUDGET, SQUAD, aiBidLimit, aiTeam, allKeepers, draftGrades, maxBidFor, nominatorSlot, placesFor, autoKeepers, autoPick, buildDraftGame, canPlace, clubIdOf, draftPool, nextDraftOrder, slotForPick, totalPicks,
+  BENCH_PLACE, BUDGET, SQUAD, aiBidLimit, aiTeam, allKeepers, draftGrades, maxBidFor, nominatorSlot, placesFor, seasonPreview, autoKeepers, autoPick, buildDraftGame, canPlace, clubIdOf, draftPool, nextDraftOrder, slotForPick, totalPicks,
   type DraftPick, type DraftTeam,
 } from '../src/game/draft';
 import { mpAdvance } from '../src/game/sim';
@@ -240,5 +240,25 @@ describe('draftkarakterer og auktion', () => {
     // stjernerne koster mere end reservespillerne
     const top = picks.slice().sort((a, b) => byId[b.player].ca - byId[a.player].ca);
     expect(top[0].price!).toBeGreaterThan(top.at(-1)!.price!);
+  });
+});
+
+describe('sæsonprognose', () => {
+  it('stærkeste hold er favorit, procenterne giver mening og er ens hver gang', () => {
+    const pool = draftPool(world, 7, world.season);
+    const teams = [1, 2, 3, 4, 5, 6].map((s) => aiTeam(s, []));
+    const picks: DraftPick[] = [];
+    const order = [1, 2, 3, 4, 5, 6];
+    for (let n = 0; n < totalPicks(order, 0); n++) picks.push(autoPick(teams.find((t) => t.slot === slotForPick(order, n))!, picks, pool)!);
+    const a = seasonPreview(teams, picks, pool, 2);
+    const b = seasonPreview(teams, picks, pool, 2);
+    expect(a).toEqual(b);
+    expect(a).toHaveLength(6);
+    expect(a.reduce((s, x) => s + x.title, 0)).toBeGreaterThanOrEqual(98);
+    expect(a.reduce((s, x) => s + x.title, 0)).toBeLessThanOrEqual(102);
+    expect(a[0].strength).toBeGreaterThanOrEqual(a[5].strength);
+    expect(a[0].title).toBeGreaterThan(a[5].title);
+    expect(a[0].expPts).toBeGreaterThan(a[5].expPts);
+    expect(a.every((x) => x.star && x.lines.gk > 0)).toBe(true);
   });
 });

@@ -1253,3 +1253,7 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .dr-au-input { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px 0 0; border-radius: 10px; border: 1px solid var(--line2); background: var(--surface2); }
 .dr-au-input input { width: 90px; border: 0; background: transparent; }
 .dr-au-input span { color: var(--muted); font-weight: 700; }
+.dr-pv-head { padding: 10px 14px; font-weight: 700; border-bottom: 1px solid var(--line); }
+.dr-pv td.good { color: var(--good); font-weight: 700; } .dr-pv td.bad { color: var(--bad); }
+.dr-finished { max-width: 1100px; }
+.dr-finished > .panel:first-child { max-width: 560px; width: 100%; margin: 0 auto; }

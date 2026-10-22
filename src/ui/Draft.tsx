@@ -9,8 +9,8 @@ import { ATTRS, GROUPS, naturalRole, positionString } from '../game/attributes';
 import { ageOn } from '../game/dates';
 import {
   BENCH, BENCH_PLACE, CREST_SHAPES, POOL_SIZE, SQUAD, maxTeamsFor, DEFAULT_SETTINGS, KEEPER_SECONDS, MAX_TEAMS, PICK_SECONDS, REPLACE_DAYS, STARTERS,
-  BUDGET, CLUB_BASE, NOM_SECONDS, aiTeam, maxBidFor, nominatorSlot, teamCount, allKeepers, autoPick, canPlayRole, clubIdOf, draftGrades, marketValue, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
-  type DraftPick, type DraftTeam, type TeamGrade,
+  BUDGET, CLUB_BASE, NOM_SECONDS, aiTeam, maxBidFor, nominatorSlot, teamCount, allKeepers, autoPick, canPlayRole, clubIdOf, draftGrades, marketValue, seasonPreview, crestSvg, draftPool, picksPerTeam, placesFor, replacementsFor, slotForPick, teamPicks,
+  type DraftPick, type DraftTeam, type TeamGrade, type TeamPreview,
 } from '../game/draft';
 import { act } from '../game/actions';
 import { forgetLast } from '../game/save';
@@ -389,20 +389,69 @@ function DraftFinished({ byId, pool }: { byId: Record<number, Player>; pool: Pla
   const mine = s.myDraftTeam;
   const ready = d.phase === 'playing' && hasGame();
   const grades = useMemo(() => (pool.length ? draftGrades(d.teams, d.picks, pool) : []), [pool, d.teams, d.picks]);
+  const rounds = s.room!.settings.draft?.rounds ?? 2;
+  const preview = useMemo(() => (pool.length ? seasonPreview(d.teams, d.picks, pool, rounds) : []), [pool, d.teams, d.picks, rounds]);
   return (
     <div className="dr-finished">
       <Panel title={`🏁 ${t('dr.finishedTitle')}`}>
         <p style={{ marginTop: 0 }}>{t(ready ? 'dr.finishedText' : 'dr.building')}</p>
         {mine && Object.keys(byId).length > 0 && <TeamPitch team={mine} picks={d.picks} byId={byId} />}
         <div className="row" style={{ justifyContent: 'space-between', marginTop: 12, flexWrap: 'wrap' }}>
-          {mine && <ShareCardButton team={mine} picks={d.picks} byId={byId} grade={grades.find((x) => x.slot === mine.slot)} season={d.season} />}
+          {mine && <ShareCardButton team={mine} picks={d.picks} byId={byId} grade={grades.find((x) => x.slot === mine.slot)} preview={preview.find((x) => x.slot === mine.slot)} season={d.season} />}
           <button className="primary" disabled={!ready} onClick={() => { try { localStorage.setItem(SEEN(s.creds.code), String(d.season)); } catch { /* ignorér */ } notify(); }}>
             {ready ? t('dr.toTeam') : <><span className="ai-spinner" /> {t('dr.buildingShort')}</>}
           </button>
         </div>
       </Panel>
+      {preview.length > 0 && <PreviewPanel preview={preview} grades={grades} byId={byId} />}
       {grades.length > 0 && <GradesPanel grades={grades} byId={byId} />}
     </div>
+  );
+}
+
+/** Sæsonens forventninger: styrke pr. linje, nøglespiller, forventet placering og chancer – for alle hold */
+function PreviewPanel({ preview, grades, byId }: { preview: TeamPreview[]; grades: TeamGrade[]; byId: Record<number, Player> }) {
+  const s = session()!;
+  const d = s.room!.draft!;
+  const fav = preview[0];
+  const favTeam = d.teams.find((x) => x.slot === fav?.slot);
+  const tone = (v: number) => (v >= 88 ? 'good' : v < 80 ? 'bad' : '');
+  return (
+    <Panel title={`🔮 ${t('dr.pv.title')}`} className="flush">
+      {favTeam && <div className="dr-pv-head">{t('dr.pv.favourite', { club: favTeam.name, pct: fav.title })}</div>}
+      <div className="table-wrap">
+        <table className="grid dr-pv">
+          <thead><tr>
+            <th>#</th><th>{t('col.club')}</th><th className="num" title={t('dr.gradesTitle')}>{t('dr.sumGrade')}</th><th className="num">{t('dr.pv.strength')}</th>
+            <th className="num" title={t('dr.pv.gkHint')}>{t('dr.pv.gk')}</th><th className="num" title={t('dr.pv.defHint')}>{t('dr.pv.def')}</th><th className="num" title={t('dr.pv.midHint')}>{t('dr.pv.mid')}</th><th className="num" title={t('dr.pv.attHint')}>{t('dr.pv.att')}</th>
+            <th>{t('dr.pv.star')}</th><th className="num">{t('dr.pv.pts')}</th><th className="num">🏆</th><th className="num">{t('dr.pv.topHalf')}</th><th className="num">{t('dr.pv.last')}</th>
+          </tr></thead>
+          <tbody>
+            {preview.map((p) => {
+              const team = d.teams.find((x) => x.slot === p.slot);
+              const gr = grades.find((x) => x.slot === p.slot);
+              if (!team) return null;
+              const star = p.star ? byId[p.star] : undefined;
+              return (
+                <tr key={p.slot} className={team.pid === s.creds.pid ? 'me' : ''}>
+                  <td>{p.expPos}</td>
+                  <td><span className="row" style={{ gap: 6 }}><DraftCrestImg shape={team.crest} colors={team.colors} short={team.short} size={18} /><b>{team.name}</b>{team.ai && <span className="tag">AI</span>}</span></td>
+                  <td className="num">{gr && <span className={`dr-grade small g-${gr.grade.replace('+', 'p')}`}>{gr.grade}</span>}</td>
+                  <td className="num"><b>{p.strength.toFixed(1)}</b></td>
+                  {(['gk', 'def', 'mid', 'att'] as const).map((k) => <td key={k} className={`num ${tone(p.lines[k])}`}>{p.lines[k]}</td>)}
+                  <td>{star ? `${star.last} (${rating(star)})` : '–'}</td>
+                  <td className="num">≈ {p.expPts}</td>
+                  <td className="num"><b>{p.title}%</b></td>
+                  <td className="num">{p.topHalf}%</td>
+                  <td className="num muted">{p.last}%</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+      <div className="muted" style={{ fontSize: 12, padding: '8px 12px' }}>{t('dr.pv.note')}</div>
+    </Panel>
   );
 }
 
@@ -438,11 +487,11 @@ function GradesPanel({ grades, byId }: { grades: TeamGrade[]; byId: Record<numbe
   );
 }
 
-function ShareCardButton({ team, picks, byId, grade, season }: { team: DraftTeam; picks: DraftPick[]; byId: Record<number, Player>; grade?: TeamGrade; season: number }) {
+function ShareCardButton({ team, picks, byId, grade, preview, season }: { team: DraftTeam; picks: DraftPick[]; byId: Record<number, Player>; grade?: TeamGrade; preview?: TeamPreview; season: number }) {
   const [msg, setMsg] = useState('');
   return (
     <span className="row">
-      <button onClick={async () => { const b = await drawDraftCard(team, picks, byId, grade, season); if (!b) return; const r = await shareDraftCard(b, team.name); if (r === 'downloaded') setMsg(t('story.downloaded')); }}>📸 {t('dr.shareCard')}</button>
+      <button onClick={async () => { const b = await drawDraftCard(team, picks, byId, grade, season, preview); if (!b) return; const r = await shareDraftCard(b, team.name); if (r === 'downloaded') setMsg(t('story.downloaded')); }}>📸 {t('dr.shareCard')}</button>
       {msg && <span className="muted" style={{ fontSize: 12 }}>{msg}</span>}
     </span>
   );
@@ -454,6 +503,7 @@ function SeasonSummary({ pool, byId }: { pool: Player[]; byId: Record<number, Pl
   const d = s.room!.draft!;
   // karaktererne fra sæsonens draft (valgene ligger her, indtil alle har klikket videre)
   const grades = useMemo(() => (pool.length && d.picks.length ? draftGrades(d.teams, d.picks, pool) : []), [pool, d.teams, d.picks]);
+  const preview = useMemo(() => (pool.length && d.picks.length ? seasonPreview(d.teams, d.picks, pool, s.room!.settings.draft?.rounds ?? 2) : []), [pool, d.teams, d.picks, s.room]);
   if (!hasGame()) return <div className="empty">{t('start.loading')}</div>;
   const g = gs();
   const h = g.draft?.history.at(-1);
@@ -490,7 +540,7 @@ function SeasonSummary({ pool, byId }: { pool: Player[]; byId: Record<number, Pl
       <div className="cols">
         <Panel title={t('dr.table')} className="flush">
           <table className="grid">
-            <thead><tr><th>#</th><th>{t('col.club')}</th><th className="num">{t('tbl.p')}</th><th className="num">{t('tbl.w')}</th><th className="num">{t('tbl.d')}</th><th className="num">{t('tbl.l')}</th><th className="num">{t('tbl.gd')}</th><th className="num">{t('tbl.pts')}</th>{grades.length > 0 && <th className="num" title={t('dr.gradesTitle')}>{t('dr.sumGrade')}</th>}</tr></thead>
+            <thead><tr><th>#</th><th>{t('col.club')}</th><th className="num">{t('tbl.p')}</th><th className="num">{t('tbl.w')}</th><th className="num">{t('tbl.d')}</th><th className="num">{t('tbl.l')}</th><th className="num">{t('tbl.gd')}</th><th className="num">{t('tbl.pts')}</th>{grades.length > 0 && <th className="num" title={t('dr.gradesTitle')}>{t('dr.sumGrade')}</th>}{preview.length > 0 && <th className="num" title={t('dr.pv.title')}>{t('dr.pv.expected')}</th>}</tr></thead>
             <tbody>
               {rows.map((r, i) => (
                 <tr key={r.club} className={r.club === g.userClub ? 'me' : ''}>
@@ -498,6 +548,7 @@ function SeasonSummary({ pool, byId }: { pool: Player[]; byId: Record<number, Pl
                   <td><span className="row" style={{ gap: 6 }}>{crest(r.club)}{g.clubs[r.club]?.name}</span></td>
                   <td className="num">{r.p}</td><td className="num">{r.w}</td><td className="num">{r.d}</td><td className="num">{r.l}</td><td className="num">{r.gf - r.ga}</td><td className="num"><b>{r.pts}</b></td>
                   {grades.length > 0 && (() => { const gr = grades.find((x) => x.slot === r.club - CLUB_BASE); return <td className="num">{gr && <span className={`dr-grade small g-${gr.grade.replace('+', 'p')}`}>{gr.grade}</span>}</td>; })()}
+                  {preview.length > 0 && (() => { const pv = preview.find((x) => x.slot === r.club - CLUB_BASE); if (!pv) return <td />; const diff = pv.expPos - (i + 1); return <td className="num">{pv.expPos}. <span className={diff > 0 ? 'good' : diff < 0 ? 'bad' : 'muted'}>{diff > 0 ? `▲${diff}` : diff < 0 ? `▼${-diff}` : '='}</span></td>; })()}
                 </tr>
               ))}
             </tbody>
