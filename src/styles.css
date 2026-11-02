@@ -1062,8 +1062,11 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 /* supportertemaer */
 :root[data-skin='gold'] { --accent: #ffcf3f; --accent-ink: #1b1400; --accent2: #ffe07a; --bg: #0d0b05; --bg2: #14110a; --surface: #1a160c; --surface2: #221d10; --surface3: #2a2414; --line: #3a3118; --line2: #4a3f1f; }
 :root[data-skin='gold'] body { background: radial-gradient(1200px 600px at 10% -10%, rgba(255, 207, 63, 0.12), transparent), #0d0b05; }
-:root[data-skin='retro'] { --accent: #f0f0f0; --accent-ink: #000080; --accent2: #ffff66; --bg: #000060; --bg2: #000080; --surface: #10109a; --surface2: #1818a8; --surface3: #2222b8; --line: #3a3ac8; --line2: #5050d8; --text: #ffffff; --muted: #c8c8ff; }
-:root[data-skin='retro'] body { background: #000060; font-family: 'Tahoma', 'Verdana', sans-serif; }
+:root[data-skin='retro'] { --accent: #ffd84d; --accent-ink: #001049; --accent2: #5bd6ff; --bg: #00004e; --bg2: #000066; --surface: #0b0b82; --surface2: #141499; --surface3: #1d1dab; --line: #3a3ac4; --line2: #5050d8; --text: #ffffff; --muted: #c2cdf2; --strong: #ffffff; }
+:root[data-skin='retro'] body { background: #00004e; font-family: 'Tahoma', 'Verdana', sans-serif; }
+/* CM 01/02-look: gule sektionsoverskrifter (og prik), cyan links, guld-accenter på mørkeblå */
+:root[data-skin='retro'] .panel > header h3 { color: #ffd84d; }
+:root[data-skin='retro'] .panel > header h3::before { background: #ffd84d; }
 /* supportere */
 .tag.sup-bronze { background: #f6e1cc; color: #7a4518; } .tag.sup-silver { background: #e5e7eb; color: #374151; } .tag.sup-gold { background: #fff1bf; color: #7a5800; }
 .sup-goal { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 15%, transparent); overflow: hidden; }

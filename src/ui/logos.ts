@@ -28,7 +28,10 @@ export function logoUrl(clubId: number): string | null {
 // normalisér et klubnavn til et sammenligneligt nøgleord (fjern accenter, tegn og gængse fodboldord)
 const STOP = new Set(['fc', 'cf', 'ac', 'sc', 'cp', 'sv', 'vfl', 'vfb', 'bsc', 'fk', 'if', 'bk', 'sk', 'rc', 'cd', 'ud', 'ssc', 'as', 'ssd', 'club', 'clube', 'futebol', 'calcio', 'football', 'sporting', 'de', 'do', 'da', 'the']);
 function norm(s: string): string {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.'’\-/]/g, ' ')
+  // NFD dekomponerer ikke de nordiske bogstaver (ø, æ, å) eller ß – map dem, så fx dansk "Brøndby"
+  // matcher logo-repoets "Bröndby" (ö → o)
+  return s.toLowerCase().replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/å/g, 'a').replace(/ß/g, 'ss')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.'’\-/]/g, ' ')
     .split(/\s+/).filter((w) => w && !STOP.has(w) && !/^(18|19|20)\d\d$/.test(w)).join(' ').trim();
 }
 

@@ -205,6 +205,15 @@ export function applyTheme() {
     for (const v of VARS) root.style.removeProperty(v);
     return;
   }
+  // Den originale CM 01/02-database (2001/02) får det klassiske retro-look som standard
+  // (kan altid skiftes i Indstillinger). Den moderne CM-data (sæson 2026) beholder klubtemaet.
+  if (theme === 'club' && hasGame() && gs().dbKind === 'cm0102' && gs().season <= 2002) {
+    root.dataset.theme = 'dark';
+    root.dataset.skin = 'retro';
+    delete root.dataset.club;
+    for (const v of VARS) root.style.removeProperty(v);
+    return;
+  }
   // forsiden og startmenuen er designet mørke – temaet gælder inde i spillet
   const dark = theme === 'dark' || theme === 'clubDark' || theme === 'gold' || theme === 'retro' || !hasGame();
   root.dataset.theme = dark ? 'dark' : 'light';
@@ -232,7 +241,10 @@ export function applyTheme() {
       // lyst klubtema: menuen i den ene klubfarve, topbjælken i den anden (hvid, hvis klubben er fx rød/hvid)
       // meget mættede logofarver (fx ren gul) dæmpes en anelse på store flader
       const soften = (c: RGB): RGB => { const [h, sat, l] = hsl(c); return sat > 0.9 && l > 0.35 && l < 0.65 ? rgbFromHsl(h, 0.82, l) : c; };
-      const navBg = soften(a);
+      // meget lyse/klare farver (fx gul) gøres mørkere på menuen, så hvid tekst bliver læsbar
+      // i stedet for sort på gul (bedre læsbarhed og mindre skarpt)
+      const navBg0 = soften(a);
+      const navBg = contrast(navBg0, WHITE) < 2.6 ? onWhite(navBg0, 3.4) : navBg0;
       const topBg: RGB = b ? soften(b) : WHITE;
       const navFg = textOn(navBg), topFg = textOn(topBg);
       root.style.setProperty('--nav-bg', css(navBg));
