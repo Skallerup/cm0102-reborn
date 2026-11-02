@@ -40,11 +40,12 @@ export function Options() {
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
             <label className="row">{t('opt.theme')}
               <select value={theme} onChange={(e) => { setThemeState(e.target.value as Theme); setTheme(e.target.value as Theme); }}>
-                {(['club', 'clubDark', 'light', 'dark'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
-                {(['gold', 'retro'] as const).map((m) => <option key={m} value={m} disabled={!isSupporter()}>{t(`opt.theme.${m}`)}{isSupporter() ? '' : ` (${t('sup.supportersOnly')})`}</option>)}
+                {(['club', 'clubDark', 'light', 'dark', 'retro'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
+                {(['gold'] as const).map((m) => <option key={m} value={m} disabled={!isSupporter()}>{t(`opt.theme.${m}`)}{isSupporter() ? '' : ` (${t('sup.supportersOnly')})`}</option>)}
               </select>
             </label>
             {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
+            {theme === 'retro' && <div className="muted">{t('opt.theme.retroHint')}</div>}
             {notifySupported() && <label className="row"><input type="checkbox" checked={notif} onChange={async (e) => setNotif(await setNotify(e.target.checked))} />{t('opt.notify')}</label>}
             {notifySupported() && <div className="muted">{t('opt.notify.hint')}</div>}
             <div className="muted">{t('opt.newsMoved')}</div>

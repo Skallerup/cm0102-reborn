@@ -2,7 +2,7 @@
 // logo (de to mest dominerende farver), så Brøndby bliver gul/blå, FCK hvid/blå osv.
 // Valget er personligt og gemmes i browseren – ikke i spillet.
 import { loadLogos, logoUrl } from './logos';
-import { gs, hasGame } from '../game/state';
+import { gs, hasGame, notify } from '../game/state';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark' | 'gold' | 'retro';
 const KEY = 'cm-theme';
@@ -24,6 +24,8 @@ export function isRetro(): boolean {
 export function setTheme(t: Theme) {
   try { localStorage.setItem(KEY, t); } catch { /* privat vindue */ }
   applyTheme();
+  // genrendér UI'et, så fx CM-navigationen (der afhænger af temaet) slår til med det samme
+  if (hasGame()) notify();
 }
 
 type RGB = [number, number, number];
