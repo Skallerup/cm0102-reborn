@@ -73,7 +73,9 @@ const GROUPS: { key: string; items: ScreenName[] }[] = [
 ];
 const ALL_ITEMS = { ...Object.fromEntries([...MENU, ...MENU2]), draft: 'nav.draft' } as Record<ScreenName, string>;
 const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'support', 'help', 'options', 'managers'];
-const GROUP_KEY = 'cm-nav-closed';
+export const GROUP_KEY = 'cm-nav-closed';
+// Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
+export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
 const UNEMPLOYED: ScreenName[] = ['support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
@@ -242,7 +244,7 @@ export function Shell() {
     return r;
   };
 
-  const [closed, setClosed] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) ?? '["matches","market","club","manager","community"]'); } catch { return ['matches', 'market', 'club', 'manager', 'community']; } });
+  const [closed, setClosed] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(GROUP_KEY) ?? JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { return NAV_CLOSED_DEFAULT; } });
   const toggleGroup = (k: string) => { const n = closed.includes(k) ? closed.filter((x) => x !== k) : [...closed, k]; setClosed(n); try { localStorage.setItem(GROUP_KEY, JSON.stringify(n)); } catch { /* ignorer */ } };
   const nextMatch = club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
 

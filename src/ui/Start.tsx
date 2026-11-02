@@ -15,6 +15,7 @@ import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
 import { forgetCMWorld, importCMFiles, loadCMWorld, loadOriginalWorld, loadWorld } from './world';
+import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 import type { CMWorld } from '../game/data/cm0102';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft';
@@ -187,6 +188,8 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
       managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
       lang: getLang(), masking, seed, challenge,
     };
+    // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
+    try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
     setTimeout(async () => {
       if (online) {
         try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
