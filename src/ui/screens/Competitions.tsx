@@ -49,7 +49,7 @@ function order(c: Competition) {
   return 10 + c.tier;
 }
 
-export function LeagueTable({ rows, comp, compact, offset = 0 }: { rows: TableRow[]; comp: Competition; compact?: boolean; offset?: number }) {
+export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: TableRow[]; comp: Competition; compact?: boolean; offset?: number; zones?: (i: number) => string }) {
   const g = gs();
   const { nav } = useNav();
   const sorted = sortTable(rows.slice());
@@ -62,6 +62,8 @@ export function LeagueTable({ rows, comp, compact, offset = 0 }: { rows: TableRo
     const c: string[] = [];
     if (club === g.userClub) c.push('me');
     else if (g.clubs[club]?.manager === -1) c.push('rival');
+    // kontinental ligafase: kvalifikationszoner sættes udefra
+    if (zones) { const z = zones(i); if (z) c.push(z); return c.join(' '); }
     if (rules?.promoted && i < rules.promoted) c.push('promo');
     else if (rules?.playoff && rules.playoff.seeds.some(([lg, pos]) => lg === comp.id && pos === i + 1)) c.push('playoff');
     else if (rules?.relegated && i >= n - rules.relegated) c.push('releg');
@@ -116,6 +118,16 @@ function CupView({ comp }: { comp: Competition }) {
   return (
     <div>
       {comp.winner && <div className="insight good">{t('comp.winner')}: <ClubLink id={comp.winner} long /></div>}
+      {comp.type === 'continental' && comp.table.length > 0 && (
+        <Panel title={t('stage.LP')} className="flush">
+          <LeagueTable rows={comp.table} comp={comp} zones={(i) => (i < 8 ? 'euro' : i < 24 ? 'playoff' : 'releg')} />
+          <div className="legend" style={{ padding: 8 }}>
+            <span><i style={{ background: 'var(--accent2)' }} />{t('cl.toR16')}</span>
+            <span><i style={{ background: 'var(--mid)' }} />{t('cl.toPlayoff')}</span>
+            <span><i style={{ background: 'var(--bad)' }} />{t('cl.out')}</span>
+          </div>
+        </Panel>
+      )}
       {comp.groups && (
         <div className="cols">
           {Object.entries(comp.groups).map(([k, rows]) => (

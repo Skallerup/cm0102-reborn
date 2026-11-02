@@ -8,7 +8,8 @@ import { finalOrder } from '../src/game/competitions';
 
 const seasons = Number(process.argv[2] ?? 1);
 const clubId = Number(process.argv[3] ?? 190);
-const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
+const worldPath = process.argv[4] ?? 'public/data/world.json';
+const world = JSON.parse(readFileSync(worldPath, 'utf8')) as WorldData;
 const nationIdx = (n: string) => world.nations.findIndex((x) => x.name === n);
 
 let t0 = performance.now();

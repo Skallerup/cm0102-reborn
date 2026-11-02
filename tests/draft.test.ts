@@ -13,7 +13,7 @@ import { naturalRole, positionString } from '../src/game/attributes';
 import { formationSlots } from '../src/game/tactics';
 import { serializeState, deserializeState } from '../src/game/snapshot';
 
-const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
+const world = JSON.parse(readFileSync('public/data/world-modern.json', 'utf8')) as WorldData;
 
 function runDraft(teams: DraftTeam[], order: number[], keepers = 0): DraftPick[] {
   const pool = draftPool(world, 7, world.season);

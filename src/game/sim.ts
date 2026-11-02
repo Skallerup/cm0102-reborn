@@ -109,7 +109,7 @@ function importance(f: Fixture): number {
   const comp = g.comps[f.comp];
   if (!comp) return 0.3;
   if (f.stage === 'F') return 1;
-  if (comp.type === 'continental') return f.stage?.startsWith('G') ? 0.6 : 0.85;
+  if (comp.type === 'continental') return f.stage?.startsWith('G') || f.stage === 'LP' ? 0.6 : 0.85;
   if (comp.type === 'playoff') return 0.9;
   return comp.type === 'cup' ? 0.5 : 0.4;
 }
@@ -234,7 +234,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     for (const [cid, gf, ga] of [[f.home, hs.goals, as.goals], [f.away, as.goals, hs.goals]] as const) {
       const c = g.clubs[cid];
       const amount = gf > ga ? win : gf === ga ? draw : 0;
-      c.balance += amount + (f.stage?.startsWith('G') ? 0 : win / 2);
+      c.balance += amount + (f.stage?.startsWith('G') || f.stage === 'LP' ? 0 : win / 2);
       c.finance.prize += amount;
     }
   }

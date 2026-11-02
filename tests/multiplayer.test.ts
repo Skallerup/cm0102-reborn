@@ -7,7 +7,7 @@ import { serializeState, deserializeState } from '../src/game/snapshot';
 import { mpAdvance } from '../src/game/sim';
 import { gs, squad } from '../src/game/state';
 
-const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
+const world = JSON.parse(readFileSync('public/data/world-modern.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
 
 describe('online multiplayer (motor)', () => {

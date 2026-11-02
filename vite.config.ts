@@ -27,7 +27,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         // karrierehistorikken hentes først når en spillerprofil åbnes
         globIgnores: ['**/data/careers.json'],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         runtimeCaching: [{
           urlPattern: /\/data\/careers\.json$/,
           handler: 'StaleWhileRevalidate',

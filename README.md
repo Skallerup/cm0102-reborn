@@ -1,6 +1,6 @@
 # CM Reborn ⚽
 
-**CM Reborn** er et moderne fodboldmanagerspil inspireret af de klassiske **Championship Manager**-spil – med mange nye idéer oveni. Spillet kører i browseren som PWA og virker derfor også offline og på iPad/mobil. Databasen har **20.000+ rigtige spillere fra sæsonen 2025/26**.
+**CM Reborn** er et moderne fodboldmanagerspil inspireret af de klassiske **Championship Manager**-spil – med mange nye idéer oveni. Spillet kører i browseren som PWA og virker derfor også offline og på iPad/mobil. Standarddatabasen er **October 2026-opdateringen** med ~25.000 rigtige spillere og de aktuelle trupper til **sæsonen 2026/27**.
 
 > Uofficiel fan-hyldest. Indeholder hverken kode, data eller grafik fra det originale spil (© Sports Interactive / Eidos).
 
@@ -15,7 +15,7 @@ Alt det, vi husker fra de klassiske managerspil:
 - **Tekstkommentar** linje for linje i valgfri hastighed. Mål blinker, og du kan følge vidiprinteren med de andre kampe
 - **Taktik:** 12 formationer og drag-and-drop på banen. Holdinstruktioner (mentalitet, afleveringer, tempo, bredde, presspil, tacklinger, markering, offsidefælde, kontra), individuelle instruktioner og dødboldsskytter
 - **Udskiftninger og taktikændringer** midt i kampen
-- **Turneringer:** ligaer med op-/nedrykning, split-format (Superligaen, Skotland, Østrig), playoffs (Championship, Serie B, LaLiga 2, Bundesliga-relegation), nationale pokalturneringer, **Champions League** (gruppespil + knockout) og **UEFA Cup**. Udebanemål, forlænget spilletid og straffesparkskonkurrence er med
+- **Turneringer:** ligaer med op-/nedrykning, split-format (Superligaen, Skotland, Østrig), playoffs (Championship, Serie B, LaLiga 2, Bundesliga-relegation), nationale pokalturneringer og de europæiske turneringer i det **nye UEFA-format (2024/25-)**: **Champions League**, **Europa League** og **Conference League** spiller en 36-holds ligafase (én samlet tabel, 8 kampe i CL/EL og 6 i Conference), hvorefter nr. 1-8 går direkte i 1/8-finalen, nr. 9-24 i en knockout-playoff og nr. 25-36 er ude. Forlænget spilletid og straffesparkskonkurrence er med
 - **Transfers:** bud, modbud, "ikke til salg", kontraktforhandling, lejeaftaler, fri transfers, **Bosman-aftaler**, transferliste og ophævelse af kontrakter
 - **Træning:** træningsprogrammer pr. spiller. Udviklingen afhænger af alder, potentiale, trænere, faciliteter, spilletid og spillerens vilje/professionalisme
 - **Bestyrelse:** forventninger, tillid, advarsler, fyring og budgetanmodninger
@@ -45,25 +45,29 @@ Før byggeriet blev der stillet 10 forslag til forbedringer. De 8 valgte er impl
 | 3 | **Gennemsigtig matchmotor**: xG, momentum-graf, zone-heatmap, skudkort og assistentens dom over kampen | ✅ |
 | 4 | **Assistent-analyse**: modstanderrapport med vinderchancer (Monte Carlo), holdforslag, radar-sammenligning | ✅ |
 | 5 | **Scouting med usikkerhed**: attributter vises som intervaller (fx 11–15), der indsnævres med scouting | ✅ |
-| 6 | Moderne regler som valgfrit (5 udskiftninger, ny CL-ligafase) | ⏸️ Ikke valgt – klassiske 2001-regler |
+| 6 | Moderne regler: ny CL/EL/Conference-ligafase (2024/25-) samt 5 udskiftninger | ✅ Ligafasen er indført; udskiftningsregler følger databasen (klassisk for CM-data) |
 | 7 | **Smartere AI-klubber**: behovsanalyse pr. position, budget- og omdømmestyrede køb | ✅ |
 | 8 | **Exploit-sikret motor + taktik-benchmark** i en Web Worker | ✅ |
 | 9 | **Hurtig simulering**: "Næste kamp", spring kamp over | ✅ |
 | 10 | **Challenges + dansk/engelsk + delbar seed** | ✅ |
 
-## To databaser: moderne eller original CM 01/02
+## To databaser: standard 2026/27 eller din egen CM 01/02
 
 Ved nyt spil vælger man database:
 
-- **Moderne 2025/26** – åbne data fra transfermarkt-datasets (CC0), følger med spillet.
-- **Original CM 01/02 (2001/02)** – fra spillerens *egen* installation af Championship Manager 01/02
-  (gratis siden 2008). Databasen er ophavsretligt beskyttet og ligger derfor **ikke** i repoet: man vælger
-  sin `Data`-mappe, og `src/game/data/cm0102.ts` læser `index.dat`, `staff.dat`, `club.dat`, `nation.dat`,
-  `club_comp.dat` og navnefilerne direkte i browseren. Resultatet gemmes lokalt (IndexedDB) – intet sendes
-  nogen steder hen. Originalens CA/PA, evner (intrinsiske evner omregnes som i CM0102Patcher), positioner,
-  personlighed og klubomdømme bruges; evner originalen ikke har sat, får en rolleprofil. De to bedste rækker
-  i hvert land importeres (ca. 70 ligaer, 1.100 klubber, 29.000 spillere), med op-/nedrykning mellem dem.
-  Filformatet er dokumenteret af fællesskabets værktøjer (TransferTool, CM0102Patcher).
+- **CM 2026/27 (standard)** – fællesskabets *October 2026-opdatering* til Championship Manager 01/02 med
+  aktuelle trupper. Den bygges til spillets verdensformat med `scripts/build-cm-data.mts` (`npm run data:cm`):
+  parseren (`src/game/data/cm0102.ts`) læser `index.dat`, `club.dat`, `nation.dat` m.fl., og alle datoer
+  skubbes +25 år, så sæsonen bliver 2026/27 med korrekte aldre (dataopdateringen holder originalens 2001-ur).
+  Databasen trimmes til ~38 ligaer, ~640 klubber og ~25.000 spillere, så den er let nok til mobil/PWA.
+- **Importér din egen CM 01/02** – fra spillerens *egen* installation (gratis siden 2008). Man vælger sin
+  `Data`-mappe, og den læses lokalt i browseren (IndexedDB) – intet sendes nogen steder hen. Originalens CA/PA,
+  evner (intrinsiske evner omregnes som i CM0102Patcher), positioner, personlighed og klubomdømme bruges;
+  evner originalen ikke har sat, får en rolleprofil. Filformatet er dokumenteret af fællesskabets værktøjer
+  (TransferTool, CM0102Patcher).
+
+Den tidligere moderne transfermarkt-database (CC0) ligger stadig i repoet som `public/data/world-modern.json`
+og bygges med `npm run data`.
 
 ## AI i spillet
 

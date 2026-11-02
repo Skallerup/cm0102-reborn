@@ -15,8 +15,10 @@ export interface SeasonCalendar {
   tuesdays: string[];
   cupRounds: string[];
   cupFinal: string;
-  cl: { group: string[]; r16: string[]; qf: string[]; sf: string[]; final: string };
-  uefa: { r32: string[]; r16: string[]; qf: string[]; sf: string[]; final: string };
+  // Ny UEFA-ligafase (2024/25-): 36 hold, samlet tabel, 8 (CL/EL) eller 6 (Conference) runder,
+  // dernæst knockout-playoff (nr. 9-24) og almindelig knockout (1/8 → finale).
+  cl: { league: string[]; po: string[]; r16: string[]; qf: string[]; sf: string[]; final: string };
+  uefa: { league: string[]; po: string[]; r16: string[]; qf: string[]; sf: string[]; final: string };
   playoff: { sf: string[]; final: string; rel: string[] };
 }
 
@@ -29,22 +31,27 @@ export function calendar(y: number): SeasonCalendar {
   for (let d = start; d <= end; d = addDays(d, 7)) if (!breaks.has(d) && d !== cupFinal) saturdays.push(d);
   // Ekstra juleprogram (2. juledag + nytår) bruges når der er brug for det
   const g1 = nthWeekday(y, 9, 2, 3);
+  // 8 ligafase-runder fra midten af september til slutningen af januar
+  const leagueDays = [0, 14, 35, 49, 70, 84, 126, 133];
   const cl = {
-    group: [0, 14, 35, 49, 70, 84].map((o) => addDays(g1, o)),
-    r16: [nthWeekday(y + 1, 2, 2, 3), addDays(nthWeekday(y + 1, 2, 2, 3), 21)],
+    league: leagueDays.map((o) => addDays(g1, o)),
+    po: [nthWeekday(y + 1, 2, 2, 2), addDays(nthWeekday(y + 1, 2, 2, 2), 7)],
+    r16: [nthWeekday(y + 1, 3, 2, 1), addDays(nthWeekday(y + 1, 3, 2, 1), 21)],
     qf: [nthWeekday(y + 1, 4, 2, 1), addDays(nthWeekday(y + 1, 4, 2, 1), 7)],
     sf: [nthWeekday(y + 1, 4, 2, 4), addDays(nthWeekday(y + 1, 4, 2, 4), 7)],
     final: addDays(end, 7),
   };
+  const thu = addDays(g1, 2);
   const uefa = {
-    r32: [addDays(g1, 2), addDays(g1, 16)],
-    r16: [addDays(g1, 44), addDays(g1, 58)],
-    qf: [nthWeekday(y + 1, 2, 4, 3), addDays(nthWeekday(y + 1, 2, 4, 3), 21)],
-    sf: [nthWeekday(y + 1, 4, 4, 1), addDays(nthWeekday(y + 1, 4, 4, 1), 14)],
+    league: leagueDays.map((o) => addDays(thu, o)),
+    po: [nthWeekday(y + 1, 2, 4, 2), addDays(nthWeekday(y + 1, 2, 4, 2), 7)],
+    r16: [nthWeekday(y + 1, 3, 4, 1), addDays(nthWeekday(y + 1, 3, 4, 1), 21)],
+    qf: [nthWeekday(y + 1, 4, 4, 1), addDays(nthWeekday(y + 1, 4, 4, 1), 7)],
+    sf: [nthWeekday(y + 1, 4, 4, 4), addDays(nthWeekday(y + 1, 4, 4, 4), 7)],
     final: nthWeekday(y + 1, 5, 3, 3),
   };
   const cupRounds = [nthWeekday(y, 8, 3, -1), nthWeekday(y, 9, 3, 4), nthWeekday(y, 10, 3, -1), nthWeekday(y, 12, 3, 1), nthWeekday(y + 1, 1, 3, 3), nthWeekday(y + 1, 2, 3, -1), nthWeekday(y + 1, 4, 3, 3)];
-  const busy = new Set([...cl.group, ...cl.r16, ...cl.qf, ...cl.sf, ...cupRounds]);
+  const busy = new Set([...cl.league, ...cl.po, ...cl.r16, ...cl.qf, ...cl.sf, ...cupRounds]);
   const busyWeeks = new Set([...busy].map((d) => addDays(d, -weekday(d))));
   const tuesdays: string[] = [];
   for (let d = nthWeekday(y, 9, 2, 1); d <= nthWeekday(y + 1, 4, 2, -1); d = addDays(d, 7)) {
@@ -300,48 +307,38 @@ export function europeanQualifiers(prevTables: Record<string, number[]>, cupWinn
       }
     }
   };
-  fill(cl, 32, new Set());
-  fill(uefa, 32, new Set(cl));
-  fill(conf, 32, new Set([...cl, ...uefa]));
+  // Ny ligafase: 36 hold i hver turnering
+  fill(cl, 36, new Set());
+  fill(uefa, 36, new Set(cl));
+  fill(conf, 36, new Set([...cl, ...uefa]));
   return { cl, uefa, conf };
 }
 
 export function setupChampionsLeague(clubs: number[], season: number) {
-  const g = gs();
-  const cal = calendar(season);
-  const comp: Competition = { id: 'CL', name: 'Champions League', type: 'continental', nation: -1, tier: 0, clubs: clubs.slice(), table: [], ties: [], stage: 'groups', finished: false, groups: {}, pending: 0 };
-  g.comps.CL = comp;
-  // 4 potter efter reputation, ingen to fra samme nation i en gruppe (best effort)
-  const sorted = clubs.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep);
-  const pots = [0, 1, 2, 3].map((i) => rng.shuffle(sorted.slice(i * 8, i * 8 + 8)));
-  const groups: number[][] = Array.from({ length: 8 }, () => []);
-  for (const pot of pots) {
-    for (const club of pot) {
-      const nation = g.clubs[club].nation;
-      const options = groups.map((_, i) => i).filter((i) => groups[i].length < pots.indexOf(pot) + 1);
-      const ok = options.filter((i) => !groups[i].some((c) => g.clubs[c].nation === nation));
-      const gi = (ok.length ? ok : options)[0];
-      groups[gi].push(club);
-    }
-  }
-  groups.forEach((clubsInGroup, gi) => {
-    const key = String.fromCharCode(65 + gi);
-    comp.groups![key] = clubsInGroup.map(emptyRow);
-    const rr = multiRoundRobin(clubsInGroup, 2);
-    rr.forEach((round, ri) => round.forEach(([h, a]) => newFixture('CL', cal.cl.group[ri], h, a, ri + 1, { stage: `G${key}` })));
-  });
+  setupEuroLeaguePhase('CL', 'Champions League', clubs, season, 8);
 }
 
-export function setupUefaCup(clubs: number[], season: number, id = 'UEFA', name = 'UEFA Cup') {
+export function setupUefaCup(clubs: number[], season: number, id = 'UEFA', name = 'UEFA Cup', matchdays = 8) {
+  setupEuroLeaguePhase(id, name, clubs, season, matchdays);
+}
+
+/**
+ * Ny UEFA-ligafase: 36 hold i én samlet tabel. Hvert hold spiller `matchdays` kampe (8 i CL/EL,
+ * 6 i Conference) mod forskellige modstandere. Efter ligafasen går nr. 1-8 direkte i 1/8-finalen,
+ * nr. 9-24 i en knockout-playoff, og nr. 25-36 er ude. Kampprogrammet er de første runder af en
+ * cirkelmetode-turnering (hver modstander mødes højst én gang, hjemme/ude balanceres).
+ */
+function setupEuroLeaguePhase(id: string, name: string, clubs: number[], season: number, matchdays: number) {
   const g = gs();
   const cal = calendar(season);
-  const comp: Competition = { id, name, type: 'continental', nation: -1, tier: 0, clubs: clubs.slice(), table: [], ties: [], stage: 'R32', finished: false, pending: 0 };
+  const dates = id === 'CL' ? cal.cl.league : cal.uefa.league;
+  const comp: Competition = { id, name, type: 'continental', nation: -1, tier: 0, clubs: clubs.slice(), table: clubs.map(emptyRow), ties: [], stage: 'league', finished: false, pending: 0, meta: { matchdays } };
   g.comps[id] = comp;
-  const sorted = clubs.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep);
-  const seeds = rng.shuffle(sorted.slice(0, 16));
-  const unseeded = rng.shuffle(sorted.slice(16));
-  const pairs: [number, number][] = seeds.map((s, i) => [unseeded[i], s]);
-  createTwoLegRound(comp, pairs, 'R32', cal.uefa.r32);
+  const n = Math.min(matchdays, Math.max(2, clubs.length - 1), dates.length);
+  const rounds = roundRobin(rng.shuffle(clubs.slice()));
+  for (let i = 0; i < n; i++) {
+    for (const [h, a] of rounds[i]) newFixture(id, dates[i], h, a, i + 1, { stage: 'LP' });
+  }
 }
 
 function createTwoLegRound(comp: Competition, pairs: [number, number][], stage: string, dates: string[]) {
@@ -453,6 +450,16 @@ export function recordResult(f: Fixture, res: MatchResultShort) {
     checkLeagueProgress(comp);
     return;
   }
+  // ny ligafase (samlet tabel)
+  if (comp.type === 'continental' && f.stage === 'LP') {
+    const h = comp.table.find((r) => r.club === f.home);
+    const a = comp.table.find((r) => r.club === f.away);
+    if (h) applyRow(h, res.hg, res.ag);
+    if (a) applyRow(a, res.ag, res.hg);
+    checkLeaguePhaseDone(comp);
+    return;
+  }
+  // gammelt gruppespil (fra gem før ligafasen)
   if (comp.type === 'continental' && f.stage?.startsWith('G')) {
     const key = f.stage.slice(1);
     const rows = comp.groups![key];
@@ -500,6 +507,41 @@ function checkLeagueProgress(comp: Competition) {
     const leagues = [...new Set(r.playoff.seeds.map((s) => s[0]))];
     if (leagues.every((l) => g.comps[l]?.finished) && !g.comps[`PO-${lid}`]) setupPlayoff(`PO-${lid}`, r.playoff, g.season);
   }
+}
+
+/**
+ * Ligafasen er slut: nr. 1-8 går direkte i 1/8-finalen (gemmes til senere), nr. 9-24 spiller en
+ * knockout-playoff (seedet 9-16 mod useedet 17-24, to kampe), og nr. 25-36 er ude.
+ */
+function checkLeaguePhaseDone(comp: Competition) {
+  const g = gs();
+  if (comp.pending > 0 || comp.stage !== 'league') return;
+  const order = sortTable(comp.table.slice()).map((r) => r.club);
+  comp.meta = { ...(comp.meta ?? {}), directR16: order.slice(0, 8) };
+  comp.winner = undefined;
+  const cal = calendar(g.season);
+  const poDates = comp.id === 'CL' ? cal.cl.po : cal.uefa.po;
+  const seeded = order.slice(8, 16);
+  const unseeded = order.slice(16, 24);
+  // seedet hold hjemme i den afgørende 2. kamp
+  const pairs: [number, number][] = seeded
+    .map((s, i) => [unseeded[7 - i], s] as [number, number])
+    .filter(([u, s]) => u !== undefined && s !== undefined);
+  if (!pairs.length) {
+    // for få hold (lille verden): spring playoff over og lad nr. 1-? gå videre
+    createKnockout(comp, order.slice(0, Math.max(2, Math.min(8, order.length))), 'R16', cal.cl.r16);
+    return;
+  }
+  createTwoLegRound(comp, pairs, 'KPO', poDates);
+}
+
+/** Lav en knockout-runde ved at parre en liste af hold to og to (bruges som reserve) */
+function createKnockout(comp: Competition, clubs: number[], stage: string, dates: string[]) {
+  const list = clubs.slice();
+  const pairs: [number, number][] = [];
+  for (let i = 0; i + 1 < list.length; i += 2) pairs.push([list[i], list[i + 1]]);
+  if (pairs.length === 1) { createFinal(comp, pairs[0][0], pairs[0][1], comp.id === 'CL' ? calendar(gs().season).cl.final : calendar(gs().season).uefa.final); return; }
+  createTwoLegRound(comp, pairs, stage, dates);
 }
 
 function checkGroupsDone(comp: Competition) {
@@ -604,23 +646,34 @@ function advance(comp: Competition, stage: string) {
     return;
   }
   // kontinental
+  const isCL = comp.id === 'CL';
+  // knockout-playoff slut: de 8 vindere møder de 8 direkte kvalificerede (nr. 1-8) i 1/8-finalen
+  if (stage === 'KPO') {
+    const direct = rng.shuffle(((comp.meta?.directR16 as number[]) ?? []).slice());
+    const poWinners = rng.shuffle(winners.slice());
+    // direkte kvalificeret (seedet) hjemme i den afgørende 2. kamp
+    const r16: [number, number][] = direct
+      .map((s, i) => [poWinners[i], s] as [number, number])
+      .filter(([w, s]) => w !== undefined && s !== undefined);
+    createTwoLegRound(comp, r16, 'R16', isCL ? cal.cl.r16 : cal.uefa.r16);
+    return;
+  }
   const list = rng.shuffle(winners.slice());
   const pairs: [number, number][] = [];
   for (let i = 0; i + 1 < list.length; i += 2) pairs.push([list[i], list[i + 1]]);
-  const isCL = comp.id === 'CL';
   if (list.length === 2) {
     createFinal(comp, list[0], list[1], isCL ? cal.cl.final : cal.uefa.final);
     return;
   }
-  const next = list.length === 16 ? 'R16' : list.length === 8 ? 'QF' : 'SF';
-  const dates = isCL ? (next === 'QF' ? cal.cl.qf : cal.cl.sf) : next === 'R16' ? cal.uefa.r16 : next === 'QF' ? cal.uefa.qf : cal.uefa.sf;
+  const next = list.length === 8 ? 'QF' : 'SF';
+  const dates = isCL ? (next === 'QF' ? cal.cl.qf : cal.cl.sf) : next === 'QF' ? cal.uefa.qf : cal.uefa.sf;
   createTwoLegRound(comp, pairs, next, dates);
 }
 
 export function compPrize(compId: string, stage: string): number {
-  if (compId === 'CL') return ({ G: 2_500_000, R16: 11_000_000, QF: 12_500_000, SF: 15_000_000, F: 18_000_000 } as Record<string, number>)[stage] ?? 0;
-  if (compId === 'UEFA') return ({ R32: 1_000_000, R16: 1_500_000, QF: 2_500_000, SF: 4_000_000, F: 6_000_000 } as Record<string, number>)[stage] ?? 0;
-  if (compId === 'UECL') return ({ R32: 500_000, R16: 800_000, QF: 1_200_000, SF: 2_000_000, F: 3_000_000 } as Record<string, number>)[stage] ?? 0;
+  if (compId === 'CL') return ({ LP: 2_100_000, G: 2_500_000, KPO: 1_000_000, R16: 11_000_000, QF: 12_500_000, SF: 15_000_000, F: 18_000_000 } as Record<string, number>)[stage] ?? 0;
+  if (compId === 'UEFA') return ({ LP: 630_000, R32: 1_000_000, KPO: 300_000, R16: 1_500_000, QF: 2_500_000, SF: 4_000_000, F: 6_000_000 } as Record<string, number>)[stage] ?? 0;
+  if (compId === 'UECL') return ({ LP: 400_000, R32: 500_000, KPO: 200_000, R16: 800_000, QF: 1_200_000, SF: 2_000_000, F: 3_000_000 } as Record<string, number>)[stage] ?? 0;
   return 0;
 }
 
@@ -632,7 +685,7 @@ export function addMissingConference(): boolean {
   const g = gs();
   if (g.comps.UECL || !g.comps.UEFA || g.humans?.some((h) => !h.bot && h.pid !== g.active)) return false;
   const cal = calendar(g.season);
-  if (g.date >= cal.uefa.r32[0]) return false;
+  if (g.date >= cal.uefa.league[0]) return false;
   const prevTables: Record<string, number[]> = {};
   for (const c of Object.values(g.clubs)) {
     const h = c.history.find((x) => x.season === g.season - 1);
@@ -645,10 +698,10 @@ export function addMissingConference(): boolean {
   // allerede kvalificerede (CL/UEFA) bevares; Conference League fyldes efter de nye regler
   const inEurope = new Set([...g.comps.CL?.clubs ?? [], ...g.comps.UEFA.clubs]);
   const conf = europeanQualifiers(prevTables, cupWinners).conf.filter((id) => !inEurope.has(id));
-  if (conf.length < 32) {
+  if (conf.length < 36) {
     const extra = Object.values(g.clubs).filter((c) => !inEurope.has(c.id) && !conf.includes(c.id) && UEFA_NATIONS.has(g.nations[c.nation]?.name) && g.leagues[c.league]?.tier === 1).sort((a, b) => b.rep - a.rep);
-    for (const c of extra) { if (conf.length >= 32) break; conf.push(c.id); }
+    for (const c of extra) { if (conf.length >= 36) break; conf.push(c.id); }
   }
-  setupUefaCup(conf.slice(0, 32), g.season, 'UECL', 'Conference League');
+  setupUefaCup(conf.slice(0, 36), g.season, 'UECL', 'Conference League', 6);
   return true;
 }

@@ -67,6 +67,8 @@ export const UEFA_NATIONS = new Set([
   'England', 'Spain', 'Italy', 'Germany', 'France', 'Netherlands', 'Portugal', 'Belgium', 'Scotland', 'Türkiye',
   'Austria', 'Switzerland', 'Greece', 'Norway', 'Sweden', 'Poland', 'Czech Republic', 'Croatia', 'Romania',
   'Serbia', 'Ukraine', 'Denmark',
+  // CM 01/02-databasen bruger ældre/andre landenavne
+  'Holland', 'Turkey',
 ]);
 
 export type Region = 'europe' | 'northAmerica' | 'southAmerica' | 'asia' | 'africa';

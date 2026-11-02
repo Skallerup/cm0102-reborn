@@ -8,7 +8,7 @@ import { Rng } from '../src/game/rng';
 import { autoSelect, newTactic } from '../src/game/tactics';
 import type { Foot, Player } from '../src/game/types';
 
-const world = JSON.parse(readFileSync('public/data/world.json', 'utf8'));
+const world = JSON.parse(readFileSync('public/data/world-modern.json', 'utf8'));
 const date = '2025-08-01';
 const squads = new Map<number, Player[]>();
 const clubs: number[] = world.clubs.filter((c: unknown[]) => c[4] === 'GB1').map((c: unknown[]) => c[0] as number);

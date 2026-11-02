@@ -8,7 +8,7 @@ import { gs } from '../src/game/state';
 import { h2hFor } from '../src/game/h2h';
 import { askingPrice } from '../src/game/transfers';
 
-const world = JSON.parse(readFileSync('public/data/world.json', 'utf8')) as WorldData;
+const world = JSON.parse(readFileSync('public/data/world-modern.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
 
 describe('multiplayer: rivalisering, budrunder og autopilot', () => {

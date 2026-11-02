@@ -42,15 +42,17 @@ export function leagueWeight(leagueId: string): number {
   return lg.tier === 1 ? nationF : nationF * 0.45;
 }
 
-const STAGE_PTS_CL: Record<string, number> = { G: 8, R16: 18, QF: 30, SF: 45, F: 65, W: 100 };
-const STAGE_PTS_UEFA: Record<string, number> = { R32: 5, R16: 10, QF: 18, SF: 28, F: 40, W: 60 };
-const ORDER = ['G', 'R32', 'R16', 'QF', 'SF', 'F', 'W'];
+// LP = ligafase, KPO = knockout-playoff (G/R32 beholdes for gamle gem fra gruppespillets tid)
+const STAGE_PTS_CL: Record<string, number> = { LP: 8, G: 8, KPO: 12, R16: 18, QF: 30, SF: 45, F: 65, W: 100 };
+const STAGE_PTS_UEFA: Record<string, number> = { LP: 4, G: 4, R32: 5, KPO: 7, R16: 10, QF: 18, SF: 28, F: 40, W: 60 };
+const ORDER = ['LP', 'G', 'R32', 'KPO', 'R16', 'QF', 'SF', 'F', 'W'];
 
 /** Hvor langt nåede klubben i en europæisk turnering? */
 function stageReached(comp: Competition | undefined, clubId: number): string | null {
   if (!comp || !comp.clubs.includes(clubId)) return null;
   if (comp.winner === clubId) return 'W';
-  let best = comp.id === 'CL' ? 'G' : 'R32';
+  // deltog i ligafasen/gruppespillet som udgangspunkt
+  let best = comp.stage === 'league' || comp.meta?.directR16 || comp.table?.length ? 'LP' : comp.id === 'CL' ? 'G' : 'R32';
   for (const t of comp.ties) {
     if (t.a !== clubId && t.b !== clubId) continue;
     const s = t.stage.startsWith('G') ? 'G' : t.stage;

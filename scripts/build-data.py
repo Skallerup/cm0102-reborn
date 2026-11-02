@@ -192,7 +192,8 @@ def download(src):
         if os.path.exists(path):
             continue
         print("henter", t, file=sys.stderr)
-        with urllib.request.urlopen(BASE_URL + t + ".csv.gz") as r:
+        req = urllib.request.Request(BASE_URL + t + ".csv.gz", headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req) as r:
             data = gzip.decompress(r.read())
         with open(path, "wb") as f:
             f.write(data)

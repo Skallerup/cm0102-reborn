@@ -239,7 +239,8 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
   const { cl, uefa, conf } = europeanQualifiers(prevTables, cupWinners);
   setupChampionsLeague(cl, season);
   setupUefaCup(uefa, season);
-  setupUefaCup(conf, season, 'UECL', 'Conference League');
+  // Conference League: ligafase med kun 6 runder
+  setupUefaCup(conf, season, 'UECL', 'Conference League', 6);
 }
 
 export function takeOverClub(club: Club) {

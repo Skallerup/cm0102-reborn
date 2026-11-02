@@ -10,6 +10,7 @@ import { Head } from './common';
 
 export function stageLabel(f: Fixture): string {
   if (!f.stage) return `${t('fix.round')} ${f.round}`;
+  if (f.stage === 'LP') return `${t('stage.LP')} ${f.round}`;
   if (f.stage.startsWith('G')) return `${t('fix.group')} ${f.stage.slice(1)}`;
   if (f.stage === 'champ' || f.stage === 'releg') return t(`fix.${f.stage}`);
   return t(`stage.${f.stage}`) + (f.leg === 2 ? ` (${t('fix.leg2')})` : f.tieId && gs().comps[f.comp]?.ties.find((x) => x.id === f.tieId)?.legs === 2 ? ` (${t('fix.leg1')})` : '');
