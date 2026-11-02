@@ -1,22 +1,22 @@
-// Byg spillets default-database (public/data/world.json) fra en CM 01/02 Data-mappe.
+// Byg en spilbar database (JSON) fra en CM 01/02 Data-mappe.
 //
-// Dataopdateringen ("October 2026") er moderne 2026-trupper lagt ind i CM 01/02-formatet, hvor
-// fødselsdatoerne er skubbet ~25 år tilbage, så aldrene passer til originalens 2001-ur. For at spille
-// sæsonen 2026/27 med korrekte aldre skubber vi alle datoer +25 år igen og sætter season=2026.
+// CM 01/02-databaser har et fast 2001-ur. "October 2026"-opdateringen er moderne trupper med
+// fødselsdatoer skubbet ~25 år tilbage, så de passer til 2001-uret. Vi angiver den ønskede sæson,
+// og alle datoer skubbes (sæson − 2001) år, så aldrene passer. Den originale 3.9.65-database spilles
+// som 2001/02 (ingen forskydning).
 //
-// Brug: npx tsx scripts/build-cm-data.mts "<Data-mappe>" [public/data/world.json]
+// Brug: npx tsx scripts/build-cm-data.mts "<Data-mappe>" [out.json] [sæson]
 import { readFileSync, readdirSync, writeFileSync, existsSync, copyFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseCM0102 } from '../src/game/data/cm0102';
 
-const SHIFT = 25; // 2026 - 2001
-const SEASON = 2026;
-
 // Standard: Data-mappen fra den udpakkede "October 2026 Data Update.zip" (pak zip'en ud i .data-update/)
 const dir = process.argv[2] ?? '.data-update/October 2026 Data Update';
 const out = process.argv[3] ?? 'public/data/world.json';
+const SEASON = Number(process.argv[4] ?? 2026);
+const SHIFT = SEASON - 2001; // CM-databasen har 2001-ur; skub datoer så sæsonen passer
 if (!existsSync(dir)) {
-  console.error(`Data-mappe ikke fundet: ${dir}\nPak "October 2026 Data Update.zip" ud i .data-update/ (eller angiv stien som argument).`);
+  console.error(`Data-mappe ikke fundet: ${dir} (angiv stien som argument)`);
   process.exit(1);
 }
 
@@ -96,7 +96,8 @@ for (const p of w.players) {
   p[F.maxValue] = 0;
 }
 w.season = SEASON;
-w.source = `Championship Manager 01/02 – October 2026 Data Update (${SEASON}/${String(SEASON + 1).slice(2)})`;
+const label = SEASON === 2001 ? 'original 3.9.65-database' : 'October 2026 Data Update';
+w.source = `Championship Manager 01/02 – ${label} (${SEASON}/${String(SEASON + 1).slice(2)})`;
 
 // gem den tidligere moderne database som backup, første gang
 if (existsSync(out)) {

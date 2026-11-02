@@ -15,6 +15,19 @@ export function loadWorld(): Promise<WorldData> {
   return cache;
 }
 
+// Den originale CM 01/02-database (3.9.65), bundlet som en valgmulighed ved nyt spil (sæson 2001/02)
+let origCache: Promise<WorldData> | null = null;
+export function loadOriginalWorld(): Promise<WorldData> {
+  if (!origCache) {
+    origCache = fetch(`${import.meta.env.BASE_URL}data/world-original.json`).then((r) => {
+      if (!r.ok) throw new Error(`world-original.json: ${r.status}`);
+      return r.json() as Promise<WorldData>;
+    });
+    origCache.catch(() => { origCache = null; });
+  }
+  return origCache;
+}
+
 // ---------- CM 01/02-databasen (brugerens egen installation, gemt lokalt i browseren) ----------
 
 const CM_KEY = 'cm0102-world';

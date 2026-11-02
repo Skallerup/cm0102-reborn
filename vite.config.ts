@@ -25,13 +25,14 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
-        // karrierehistorikken hentes først når en spillerprofil åbnes
-        globIgnores: ['**/data/careers.json'],
+        // store sekundære datafiler precaches ikke (de hentes ved kørsel, når de vælges):
+        // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
+        globIgnores: ['**/data/careers.json', '**/data/world-original.json', '**/data/world-modern.json'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         runtimeCaching: [{
-          urlPattern: /\/data\/careers\.json$/,
+          urlPattern: /\/data\/(careers|world-original|world-modern)\.json$/,
           handler: 'StaleWhileRevalidate',
-          options: { cacheName: 'careers', expiration: { maxEntries: 2 } },
+          options: { cacheName: 'big-data', expiration: { maxEntries: 4 } },
         }, {
           urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
           handler: 'CacheFirst',

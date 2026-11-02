@@ -14,7 +14,7 @@ import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
-import { forgetCMWorld, importCMFiles, loadCMWorld, loadWorld } from './world';
+import { forgetCMWorld, importCMFiles, loadCMWorld, loadOriginalWorld, loadWorld } from './world';
 import type { CMWorld } from '../game/data/cm0102';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft';
@@ -131,14 +131,15 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
   const [bots, setBots] = useState(0);
   const [deadline, setDeadline] = useState(24);
   const [botScope, setBotScope] = useState<BotScope>('league');
-  // database: den moderne (2025/26) eller originalen fra spillerens egen CM 01/02-installation
-  const [db, setDbState] = useState<'modern' | 'cm0102'>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'cm0102' ? 'cm0102' : 'modern'; } catch { return 'modern'; } });
+  // database: standard (CM 2026/27), den originale 01/02 (3.9.65) eller spillerens egen CM 01/02-installation
+  type Db = 'modern' | 'original' | 'cm0102';
+  const [db, setDbState] = useState<Db>(() => { try { const v = !challenge && localStorage.getItem('cm0102.db'); return v === 'cm0102' || v === 'original' ? v : 'modern'; } catch { return 'modern'; } });
   const [needImport, setNeedImport] = useState(false);
-  const setDb = (d: 'modern' | 'cm0102') => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
+  const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
 
   useEffect(() => {
     setNeedImport(false);
-    (db === 'cm0102' ? loadCMWorld() : loadWorld()).then((w) => {
+    (db === 'cm0102' ? loadCMWorld() : db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => {
       if (!w) { setNeedImport(true); return; }
       setWorld(w);
       const names = ch ? ch.nations : DEFAULT_NATIONS;
@@ -160,6 +161,9 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
       <div className="db-choice">
         <button className={`db-opt ${db === 'modern' ? 'on' : ''}`} onClick={() => setDb('modern')}>
           <b>{t('db.modern')}</b><span>{t('db.modernHint')}</span>
+        </button>
+        <button className={`db-opt ${db === 'original' ? 'on' : ''}`} onClick={() => setDb('original')}>
+          <b>{t('db.original')}</b><span>{t('db.originalHint')}</span>
         </button>
         <button className={`db-opt ${db === 'cm0102' ? 'on' : ''}`} onClick={() => setDb('cm0102')}>
           <b>{t('db.cm')}</b><span>{t('db.cmHint')}</span>

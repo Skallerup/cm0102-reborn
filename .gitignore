@@ -2,6 +2,7 @@ node_modules
 dist
 data-src
 .data-update
+.orig-db
 *.local
 .DS_Store
 smoke-shots

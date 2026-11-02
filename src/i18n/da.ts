@@ -1014,6 +1014,7 @@ export const da: Record<string, string> = {
   'select.search': 'Søg…', 'select.none': 'Ingen match',
   'comp.europe': 'Europa',
   'db.title': 'Database', 'db.modern': 'CM 2026/27 (standard)', 'db.modernHint': '~25.000 rigtige spillere til sæsonen 2026/27 (October 2026-opdateringen), 38 ligaer, med CM 01/02-evner.',
+  'db.original': 'Original CM 01/02 (2001/02)', 'db.originalHint': 'Den klassiske 3.9.65-database – Beckham, Zidane, Henry og resten, i sæsonen 2001/02.',
   'db.cm': 'Importér din egen CM 01/02', 'db.cmHint': 'Indlæs Data-mappen fra din egen installation af Championship Manager 01/02 (enhver dataopdatering) – læses lokalt i browseren.',
   'db.importTitle': 'Hent databasen fra din CM 01/02', 'db.importIntro': 'Den originale database er ophavsretligt beskyttet og følger derfor ikke med. Men Championship Manager 01/02 blev gjort gratis i 2008, så du kan selv hente spillet og læse databasen herind:',
   'db.step1': 'Hent og installér den gratis udgave af Championship Manager 01/02 (fx fra fanfællesskabet champman0102.co.uk).', 'db.step2': 'Find mappen “Data” i installationen (fx C:\\Program Files\\Championship Manager 01-02\\Data).', 'db.step3': 'Vælg mappen herunder. Filerne læses og konverteres her i browseren og gemmes til næste gang.',

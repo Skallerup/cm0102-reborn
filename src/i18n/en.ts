@@ -988,6 +988,7 @@ export const en: Record<string, string> = {
   'select.search': 'Search…', 'select.none': 'No matches',
   'comp.europe': 'Europe',
   'db.title': 'Database', 'db.modern': 'CM 2026/27 (default)', 'db.modernHint': '~25,000 real players for the 2026/27 season (October 2026 update), 38 leagues, with CM 01/02-style attributes.',
+  'db.original': 'Original CM 01/02 (2001/02)', 'db.originalHint': 'The classic 3.9.65 database – Beckham, Zidane, Henry and the rest, playing the 2001/02 season.',
   'db.cm': 'Import your own CM 01/02', 'db.cmHint': 'Load the Data folder from your own copy of Championship Manager 01/02 (any data update) – read locally in your browser.',
   'db.importTitle': 'Load the database from your CM 01/02', 'db.importIntro': 'The original database is copyrighted, so it is not included. But Championship Manager 01/02 was made free in 2008, so you can get the game yourself and load its database here:',
   'db.step1': 'Download and install the free version of Championship Manager 01/02 (e.g. from the fan community at champman0102.co.uk).', 'db.step2': 'Find the “Data” folder in the installation (e.g. C:\\Program Files\\Championship Manager 01-02\\Data).', 'db.step3': 'Select the folder below. The files are read and converted here in your browser and kept for next time.',
