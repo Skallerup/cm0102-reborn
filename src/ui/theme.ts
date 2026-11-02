@@ -262,6 +262,9 @@ export function applyTheme() {
   // draft-liga: klubbens egne farver (der er intet logo at aflæse)
   // draft-liga: spillets eget mærkeblå tema (blå menu, hvid topbjælke) – ikke klubbens farver
   if (gs().draft || club.crest !== undefined) { paint([hex('#1f3a9e'), undefined]); return; }
+  // CM 01/02-databasen har ingen logoer at aflæse, men klubbens to farver kommer direkte fra
+  // databasen (colour.dat) og er korrekte – mal dem direkte i stedet for at lede efter et logo.
+  if (gs().dbKind === 'cm0102') { paint([hex(club.colors[0]), hex(club.colors[1])]); return; }
   void Promise.all([clubPalette(club.id, club.colors.map(hex)), officialColors()]).then(([[a, b, fromLogo], off]) => {
     if (token !== applied) return;
     // uden logo er beregningen usikker – behold de gemte farver, hvis vi har nogen

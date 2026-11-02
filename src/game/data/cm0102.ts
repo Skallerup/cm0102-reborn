@@ -117,13 +117,27 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   // spillerdata findes via spillerpostens eget ID
   const playerAt = new Map<number, number>();
   for (let k = 0; k < tPlayer.count; k++) playerAt.set(S.i32(tPlayer.offset + k * playerSize), tPlayer.offset + k * playerSize);
-  // referencen til spillerdata ligger i postens sidste 12-13 bytes (afhænger af versionen) – find den der passer
-  const probe = Math.min(tStaff.count, 3000);
-  const PLAYER_REF = [staffSize - 13, staffSize - 12, staffSize - 9, 97].map((off) => {
-    let hits = 0;
-    for (let k = 0; k < probe; k++) if (playerAt.has(S.i32(tStaff.offset + k * staffSize + off))) hits++;
-    return [off, hits] as const;
-  }).sort((x, y) => y[1] - x[1])[0][0];
+  // Referencen til spillerdata ligger et sted i de sidste bytes (varierer med databaseversionen).
+  // Faldgruber: (1) et nabofelt indeholder spillerens EGET id (id-feltet, ikke en peger), og
+  // (2) et andet felt kan ramme mange poster, men kun få DISTINKTE (alle peger på samme default-post).
+  // Det ægte peger-felt kendes på at det linker til flest FORSKELLIGE spiller-poster (tæt på 1-til-1),
+  // uden at være en selvreference. Derfor scorer vi på antal distinkte poster, ikke på rå hits.
+  const probe = Math.min(tStaff.count, 20000);
+  const candidateOffsets = new Set<number>([97]);
+  for (let off = staffSize - 24; off <= staffSize - 2; off++) if (off > 0) candidateOffsets.add(off);
+  const scored = [...candidateOffsets].map((off) => {
+    const seen = new Set<number>();
+    for (let k = 0; k < probe; k++) {
+      const o = tStaff.offset + k * staffSize;
+      const ref = S.i32(o + off);
+      if (ref === S.i32(o)) continue; // postens eget id-felt – ikke en spiller-reference
+      const po = playerAt.get(ref);
+      if (po !== undefined) seen.add(po);
+    }
+    return { off, distinct: seen.size };
+  }).sort((a, b) => b.distinct - a.distinct);
+  if (!scored[0] || scored[0].distinct < probe * 0.05) throw new Error('index');
+  const PLAYER_REF = scored[0].off;
 
   // navne
   const names = (file: string) => {
