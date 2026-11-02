@@ -274,7 +274,7 @@ export const da: Record<string, string> = {
   'col.wage': 'Løn', 'col.expires': 'Udløber', 'col.joined': 'Ankom', 'col.cond': 'Kondi', 'col.morale': 'Moral', 'col.apps': 'Kampe',
   'col.goals': 'Mål', 'col.assists': 'Assist', 'col.avr': 'Snit', 'col.form': 'Form', 'col.season': 'Sæson', 'col.date': 'Dato', 'col.comp': 'Turnering',
   'squad.general': 'Overblik', 'squad.attrs': 'Attributter', 'squad.contracts': 'Kontrakter', 'squad.loanedOut': 'Udlejede spillere',
-  'tag.inj': 'Skadet', 'tag.ban': 'Karantæne', 'tag.listed': 'Til salg', 'tag.loan': 'Lejet', 'tag.loanOut': 'Udlejet', 'tag.leaving': 'Forlader', 'tag.unhappy': 'Utilfreds',
+  'tag.inj': 'Skadet', 'tag.ban': 'Karantæne', 'tag.listed': 'Til salg', 'tag.loan': 'Lejet', 'tag.loanOut': 'Udlejet', 'tag.leaving': 'Forlader', 'tag.unhappy': 'Utilfreds', 'tag.star': 'En af truppens tre bedste spillere',
   'morale.superb': 'Fremragende', 'morale.good': 'God', 'morale.okay': 'Okay', 'morale.poor': 'Dårlig',
   'short.cro': 'Ind', 'short.dri': 'Dri', 'short.fin': 'Afs', 'short.hea': 'Hov', 'short.mar': 'Mar', 'short.otb': 'UdB', 'short.pas': 'Afl',
   'short.tck': 'Tac', 'short.tec': 'Tek', 'short.cre': 'Kre', 'short.dec': 'Bes', 'short.pos': 'Pos', 'short.pac': 'Fart', 'short.sta': 'Udh',

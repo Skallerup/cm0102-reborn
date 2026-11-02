@@ -36,18 +36,32 @@ function norm(s: string): string {
 }
 
 let cmIndex: Map<string, string> | null = null;
+let cmKeys: { key: string; path: string }[] = [];
 function cmLogo(clubId: number): string | null {
   if (!Object.keys(map).length) return null; // logolisten er ikke hentet endnu
   if (!cmIndex) {
     cmIndex = new Map();
+    cmKeys = [];
     for (const p of Object.values(map)) {
       const name = p.split('/').pop()?.replace(/\.png$/i, '') ?? '';
       const k = norm(name);
-      if (k && !cmIndex.has(k)) cmIndex.set(k, p);
+      if (!k) continue;
+      if (!cmIndex.has(k)) cmIndex.set(k, p);
+      cmKeys.push({ key: k, path: p });
     }
   }
   const c = gs().clubs[clubId];
   if (!c) return null;
-  const p = cmIndex.get(norm(c.name)) ?? cmIndex.get(norm(c.short));
-  return p ? url(p) : null;
+  const nName = norm(c.name), nShort = norm(c.short);
+  // 1) præcist match på navn eller kort navn
+  const exact = cmIndex.get(nName) ?? cmIndex.get(nShort);
+  if (exact) return url(exact);
+  // 2) logo-navnet ender på klubbens korte navn og er entydigt (fx "espanyol" → "rcd espanyol",
+  //    "benfica" → "sl benfica", "mainz" → "1 fsv mainz"). Suffiks undgår falske match som inter → inter miami.
+  for (const q of [nShort, nName]) {
+    if (q.length < 4) continue;
+    const hits = cmKeys.filter((e) => e.key === q || e.key.endsWith(' ' + q));
+    if (hits.length === 1) return url(hits[0].path);
+  }
+  return null;
 }

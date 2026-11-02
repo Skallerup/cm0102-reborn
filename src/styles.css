@@ -294,6 +294,8 @@ table.grid td.center, table.grid th.center { text-align: center; }
 .kv > :nth-child(odd) { color: var(--muted); }
 .big-num { font-size: 28px; font-weight: 800; color: var(--accent); }
 .tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 700; background: rgba(148, 170, 255, 0.1); color: var(--muted); margin-left: 6px; letter-spacing: 0.02em; }
+/* stjernemarkering af truppens tre bedste spillere (som i CM 01/02) */
+.star-player { color: #ffcf3f; margin-right: 5px; font-size: 12px; cursor: default; }
 .tag.good { background: rgba(61, 220, 151, 0.14); color: #8ff0c3; }
 .tag.bad { background: rgba(255, 93, 108, 0.15); color: #ffb3ba; }
 .tag.warn { background: color-mix(in srgb, var(--accent) 14%, transparent); color: #ffe08a; }

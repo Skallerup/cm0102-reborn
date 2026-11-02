@@ -263,7 +263,7 @@ export const en: Record<string, string> = {
   'col.wage': 'Wage', 'col.expires': 'Expires', 'col.joined': 'Joined', 'col.cond': 'Cond', 'col.morale': 'Morale', 'col.apps': 'Apps',
   'col.goals': 'Gls', 'col.assists': 'Ast', 'col.avr': 'Av R', 'col.form': 'Form', 'col.season': 'Season', 'col.date': 'Date', 'col.comp': 'Competition',
   'squad.general': 'Overview', 'squad.attrs': 'Attributes', 'squad.contracts': 'Contracts', 'squad.loanedOut': 'Loaned out',
-  'tag.inj': 'Inj', 'tag.ban': 'Ban', 'tag.listed': 'Listed', 'tag.loan': 'Loan', 'tag.loanOut': 'Loaned out', 'tag.leaving': 'Leaving', 'tag.unhappy': 'Unhappy',
+  'tag.inj': 'Inj', 'tag.ban': 'Ban', 'tag.listed': 'Listed', 'tag.loan': 'Loan', 'tag.loanOut': 'Loaned out', 'tag.leaving': 'Leaving', 'tag.unhappy': 'Unhappy', 'tag.star': 'One of the squad’s three best players',
   'morale.superb': 'Superb', 'morale.good': 'Good', 'morale.okay': 'Okay', 'morale.poor': 'Poor',
   'short.cro': 'Cro', 'short.dri': 'Dri', 'short.fin': 'Fin', 'short.hea': 'Hea', 'short.mar': 'Mar', 'short.otb': 'OtB', 'short.pas': 'Pas',
   'short.tck': 'Tck', 'short.tec': 'Tec', 'short.cre': 'Cre', 'short.dec': 'Dec', 'short.pos': 'Pos', 'short.pac': 'Pac', 'short.sta': 'Sta',
