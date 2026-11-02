@@ -27,12 +27,17 @@ export function logoUrl(clubId: number): string | null {
 
 // normalisér et klubnavn til et sammenligneligt nøgleord (fjern accenter, tegn og gængse fodboldord)
 const STOP = new Set(['fc', 'cf', 'ac', 'sc', 'cp', 'sv', 'vfl', 'vfb', 'bsc', 'fk', 'if', 'bk', 'sk', 'rc', 'cd', 'ud', 'ssc', 'as', 'ssd', 'club', 'clube', 'futebol', 'calcio', 'football', 'sporting', 'de', 'do', 'da', 'the']);
+// Logo-repoet bruger nogle steder engelske/andre stavemåder af byer end CM-databaserne – map dem sammen
+const ALIAS: Record<string, string> = {
+  kobenhavn: 'copenhagen', munchen: 'munich', wien: 'vienna', praha: 'prague',
+  milano: 'milan', genova: 'genoa', moskva: 'moscow', beograd: 'belgrade', bucuresti: 'bucharest',
+};
 function norm(s: string): string {
   // NFD dekomponerer ikke de nordiske bogstaver (ø, æ, å) eller ß – map dem, så fx dansk "Brøndby"
-  // matcher logo-repoets "Bröndby" (ö → o)
+  // matcher logo-repoets "Bröndby" (ö → o). ALIAS retter forskelle som København ↔ Copenhagen.
   return s.toLowerCase().replace(/ø/g, 'o').replace(/æ/g, 'ae').replace(/å/g, 'a').replace(/ß/g, 'ss')
     .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.'’\-/]/g, ' ')
-    .split(/\s+/).filter((w) => w && !STOP.has(w) && !/^(18|19|20)\d\d$/.test(w)).join(' ').trim();
+    .split(/\s+/).map((w) => ALIAS[w] ?? w).filter((w) => w && !STOP.has(w) && !/^(18|19|20)\d\d$/.test(w)).join(' ').trim();
 }
 
 let cmIndex: Map<string, string> | null = null;

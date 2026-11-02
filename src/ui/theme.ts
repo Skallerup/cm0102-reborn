@@ -13,12 +13,9 @@ export function getTheme(): Theme {
   try { const v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' || v === 'clubDark' || v === 'gold' || v === 'retro' ? v : 'club'; } catch { return 'club'; }
 }
 
-/** Er retro-CM-skindet aktivt? (eksplicit valgt, eller standard for den originale 01/02-database) */
+/** Er retro-CM-skindet aktivt? (kun når det er valgt i Indstillinger – ikke længere auto-standard) */
 export function isRetro(): boolean {
-  if (!hasGame() || holdDark) return false;
-  const theme = getTheme();
-  if (theme === 'retro') return true;
-  return theme === 'club' && gs().dbKind === 'cm0102' && gs().season <= 2002;
+  return hasGame() && !holdDark && getTheme() === 'retro';
 }
 
 export function setTheme(t: Theme) {
@@ -212,15 +209,6 @@ export function applyTheme() {
     root.dataset.theme = 'dark';
     delete root.dataset.club;
     delete root.dataset.skin;
-    for (const v of VARS) root.style.removeProperty(v);
-    return;
-  }
-  // Den originale CM 01/02-database (2001/02) får det klassiske retro-look som standard
-  // (kan altid skiftes i Indstillinger). Den moderne CM-data (sæson 2026) beholder klubtemaet.
-  if (theme === 'club' && hasGame() && gs().dbKind === 'cm0102' && gs().season <= 2002) {
-    root.dataset.theme = 'dark';
-    root.dataset.skin = 'retro';
-    delete root.dataset.club;
     for (const v of VARS) root.style.removeProperty(v);
     return;
   }

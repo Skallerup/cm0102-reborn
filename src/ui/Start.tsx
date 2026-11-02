@@ -24,6 +24,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
   const [view, setView] = useState<View>(roomParam ? 'online' : new URLSearchParams(location.search).get('newdraft') ? 'newDraft' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
+  const [draftFrom, setDraftFrom] = useState<View>('menu'); // hvor man kom fra til draft-opret (tilbage-knap)
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const lang = getLang();
@@ -84,9 +85,9 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
             </div>
           </Panel>
         )}
-        {view === 'new' && <NewGame challenge={challenge} onBack={() => setView('menu')} setBusy={setBusy} />}
-        {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} onCreateDraft={() => setView('newDraft')} setBusy={setBusy} initialCode={roomParam} />}
-        {view === 'newDraft' && <DraftCreate onBack={() => setView('online')} setBusy={setBusy} />}
+        {view === 'new' && <NewGame challenge={challenge} onBack={() => setView('menu')} setBusy={setBusy} onDraft={() => { setDraftFrom('new'); setView('newDraft'); }} />}
+        {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} onCreateDraft={() => { setDraftFrom('online'); setView('newDraft'); }} setBusy={setBusy} initialCode={roomParam} />}
+        {view === 'newDraft' && <DraftCreate onBack={() => setView(draftFrom)} setBusy={setBusy} />}
         {view === 'newOnline' && <NewGame online onBack={() => setView('online')} setBusy={setBusy} />}
         <div className="footer-note">{t('start.footer')}</div>
       </div>
@@ -119,7 +120,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 
 const DEFAULT_NATIONS = ['England', 'Denmark'];
 
-function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean }) {
+function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void }) {
   const [world, setWorld] = useState<WorldData | null>(null);
   const [err, setErr] = useState('');
   const ch = CHALLENGES.find((c) => c.id === challenge);
@@ -169,6 +170,11 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
         <button className={`db-opt ${db === 'cm0102' ? 'on' : ''}`} onClick={() => setDb('cm0102')}>
           <b>{t('db.cm')}</b><span>{t('db.cmHint')}</span>
         </button>
+        {onDraft && !online && (
+          <button className="db-opt db-draft" onClick={onDraft}>
+            <b>{t('db.draft')}</b><span>{t('db.draftHint')}</span>
+          </button>
+        )}
       </div>
       {db === 'cm0102' && world && <CMImportInfo world={world as CMWorld} onRemove={async () => { await forgetCMWorld(); setWorld(null); setNeedImport(true); }} onReimport={() => setNeedImport(true)} />}
     </Panel>
