@@ -6,7 +6,7 @@ import { gs, hasGame, notify } from '../game/state';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark' | 'gold' | 'retro';
 const KEY = 'cm-theme';
-const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2', '--nav-bg', '--nav-fg', '--nav-muted', '--nav-hover', '--nav-active', '--top-bg', '--top-fg', '--top-muted', '--top-chip'];
+const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2', '--nav-bg', '--nav-fg', '--nav-muted', '--nav-hover', '--nav-active', '--top-bg', '--top-fg', '--top-muted', '--top-chip', '--cm-club', '--cm-club2', '--cm-club-ink'];
 
 export function getTheme(): Theme {
   // standard: klubbens farver på lys baggrund
@@ -219,7 +219,22 @@ export function applyTheme() {
   delete root.dataset.skin;
   for (const v of VARS) root.style.removeProperty(v);
   // supportertemaer: guld og retro-CM
-  if ((theme === 'gold' || theme === 'retro') && hasGame()) { root.dataset.skin = theme; return; }
+  if ((theme === 'gold' || theme === 'retro') && hasGame()) {
+    root.dataset.skin = theme;
+    // CM-retro: klub-farvet header-bjælke som i originalen
+    if (theme === 'retro') {
+      const club = gs().clubs[themeClub ?? gs().userClub];
+      if (club) {
+        const c0 = club.colors[0], c1 = club.colors[1] ?? '#ffffff';
+        const r = parseInt(c0.slice(1, 3), 16), g2 = parseInt(c0.slice(3, 5), 16), b = parseInt(c0.slice(5, 7), 16);
+        const lum = (0.299 * r + 0.587 * g2 + 0.114 * b) / 255;
+        root.style.setProperty('--cm-club', c0);
+        root.style.setProperty('--cm-club2', c1);
+        root.style.setProperty('--cm-club-ink', lum > 0.6 ? '#10131f' : '#ffffff');
+      }
+    }
+    return;
+  }
   if ((theme !== 'club' && theme !== 'clubDark') || !hasGame()) return;
   const club = gs().clubs[themeClub ?? gs().userClub];
   if (!club) return;

@@ -293,6 +293,43 @@ export function Shell() {
         )}
       </div>
       {cmNav && (
+        <aside className="cm-side">
+          <button className="cm-brand" onClick={() => nav({ name: 'inbox' })}>CM<b>Reborn</b></button>
+          <div className="cm-arrows">
+            <button disabled={!canBack} onClick={back} title={t('cm.back')}>◄</button>
+            <button disabled={!canForward} onClick={forward} title={t('cm.next')}>►</button>
+          </div>
+          {club && !g.draft && (
+            <div className="cm-side-info">
+              <div className="cm-si"><small>{t('top.balance')}</small><b className={club.balance < 0 ? 'neg' : ''}>{money(club.balance)}</b></div>
+              <div className="cm-si"><small>{t('top.budget')}</small><b>{money(club.transferBudget)}</b></div>
+              {nextMatch && !inMatch && <div className="cm-si"><small>{t('top.next')}</small><b><Crest id={nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home} size={13} /> {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short}</b></div>}
+            </div>
+          )}
+          {online ? <div className="cm-side-online"><OnlineControls /></div> : !inMatch && (
+            <div className="cm-go-wrap">
+              <button className="cm-go" onClick={() => run({ untilMatch: true })}>{t('top.toMatch')}</button>
+              <button className="cm-go primary" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unreadImportant > 0 ? ` (${unreadImportant})` : ''}</button>
+            </div>
+          )}
+          <div className="cm-side-foot">
+            {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}>{t('nav.save')}</button>}
+            <button onClick={() => nav({ name: 'options' })}>{t('nav.options')}</button>
+            <button onClick={async () => {
+              if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
+              if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
+            }}>{t('nav.quit')}</button>
+          </div>
+        </aside>
+      )}
+      {cmNav && (
+        <header className="cm-head">
+          {club ? <><Crest id={club.id} size={30} /><span className="cm-club-name">{club.name}</span></> : <span className="cm-club-name">{t('top.unemployed')}</span>}
+          <span className="cm-head-spacer" />
+          <span className="cm-head-date">{g.draft ? draftRoundLabel() : dateFmt(g.date, true)}</span>
+        </header>
+      )}
+      {cmNav && (
         <nav className="cm-tabs">
           {CM_TOP.filter(allowed).map(navItem)}
         </nav>
