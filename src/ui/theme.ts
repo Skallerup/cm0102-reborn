@@ -13,6 +13,14 @@ export function getTheme(): Theme {
   try { const v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' || v === 'clubDark' || v === 'gold' || v === 'retro' ? v : 'club'; } catch { return 'club'; }
 }
 
+/** Er retro-CM-skindet aktivt? (eksplicit valgt, eller standard for den originale 01/02-database) */
+export function isRetro(): boolean {
+  if (!hasGame() || holdDark) return false;
+  const theme = getTheme();
+  if (theme === 'retro') return true;
+  return theme === 'club' && gs().dbKind === 'cm0102' && gs().season <= 2002;
+}
+
 export function setTheme(t: Theme) {
   try { localStorage.setItem(KEY, t); } catch { /* privat vindue */ }
   applyTheme();

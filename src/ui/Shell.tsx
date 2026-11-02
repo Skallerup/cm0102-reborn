@@ -49,7 +49,7 @@ import { unreadChat } from '../game/chat';
 import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
-import { applyTheme, setThemeClub } from './theme';
+import { applyTheme, isRetro, setThemeClub } from './theme';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -62,6 +62,9 @@ const MENU: [ScreenName, string][] = [
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
 const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+// CM 01/02-navigation (retro-tilstand): faner øverst (primære skærme) og en bundlinje (sekundære) med Tilbage/Frem
+const CM_TOP: ScreenName[] = ['inbox', 'squad', 'tactics', 'training', 'fixtures', 'competitions', 'transfers', 'scouting', 'assistant'];
+const CM_BOTTOM: ScreenName[] = ['club', 'board', 'finance', 'staff', 'profile', 'history', 'awards', 'jobs'];
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
@@ -80,7 +83,7 @@ const UNEMPLOYED: ScreenName[] = ['support', 'community', 'profile', 'inbox', 'c
 
 export function Shell() {
   const g = useGame()!;
-  const { route, nav } = useNav();
+  const { route, nav, back, canBack, forward, canForward } = useNav();
   // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,6 +99,13 @@ export function Shell() {
   const unread = g.news.filter((n) => !n.read).length;
   const chatUnread = (g.humans ? unreadChat() : 0) + (session()?.unreadChat() ?? 0);
   const unreadImportant = g.news.filter((n) => !n.read).length;
+  // hvilke skærme er tilgængelige, og hvilke har et mærke (bruges af både sidemenuen og CM-navigationen)
+  const allowed = (k: ScreenName) => (g.draft ? DRAFT_SCREENS.includes(k) : k !== 'draft' && (!!g.userClub || UNEMPLOYED.includes(k)));
+  const badge = (k: ScreenName) => (k === 'inbox' && unread > 0 ? <span className="badge">{unread}</span>
+    : k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) ? <span className="badge">!</span>
+    : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
+  // CM 01/02-navigation: faner + bundlinje i stedet for sidemenu, når retro-skindet er aktivt (den originale database)
+  const cmNav = isRetro() && !!club && !g.draft;
 
   // klubtema følger den klub, man styrer
   useEffect(() => { applyTheme(); }, [g.userClub]);
@@ -248,8 +258,12 @@ export function Shell() {
   const toggleGroup = (k: string) => { const n = closed.includes(k) ? closed.filter((x) => x !== k) : [...closed, k]; setClosed(n); try { localStorage.setItem(GROUP_KEY, JSON.stringify(n)); } catch { /* ignorer */ } };
   const nextMatch = club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
 
+  const navItem = (k: ScreenName) => (
+    <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>{t(ALL_ITEMS[k])}{badge(k)}</button>
+  );
+
   return (
-    <div className="shell">
+    <div className={`shell ${cmNav ? 'cm-nav' : ''}`}>
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
@@ -278,13 +292,14 @@ export function Shell() {
           </>
         )}
       </div>
+      {cmNav && (
+        <nav className="cm-tabs">
+          {CM_TOP.filter(allowed).map(navItem)}
+        </nav>
+      )}
       <nav className={`sidenav ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
         {(() => {
           // draft-liga: kun holdet, kampene og ligaen (ingen økonomi, transfers, staff, bestyrelse eller jobs)
-          const allowed = (k: ScreenName) => (g.draft ? DRAFT_SCREENS.includes(k) : k !== 'draft' && (!!g.userClub || UNEMPLOYED.includes(k)));
-          const badge = (k: ScreenName) => (k === 'inbox' && unread > 0 ? <span className="badge">{unread}</span>
-            : k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) ? <span className="badge">!</span>
-            : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
           const item = (k: ScreenName) => (
             <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
               <Icon name={k} />{t(ALL_ITEMS[k])}{badge(k)}
@@ -331,7 +346,7 @@ export function Shell() {
         <BugReportButton screen={route.name} version={APP_VERSION} date={g.date} />
         <VersionButton />
       </nav>
-      {club && (
+      {club && !cmNav && (
         <nav className="mobile-tabs">
           {(['inbox', 'squad', 'tactics', 'transfers'] as ScreenName[]).map((k) => (
             <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>
@@ -347,6 +362,13 @@ export function Shell() {
         {online && !online.inGame ? <Lobby /> : <Screen />}
         {online?.status === 'error' && <div className="toast">{online.error}</div>}
       </main>
+      {cmNav && (
+        <nav className="cm-bottom">
+          <button className="cm-page" disabled={!canBack} onClick={back}>‹ {t('cm.back')}</button>
+          <div className="cm-bottom-mid">{CM_BOTTOM.filter(allowed).map(navItem)}</div>
+          <button className="cm-page" disabled={!canForward} onClick={forward}>{t('cm.next')} ›</button>
+        </nav>
+      )}
       {/* med flere spillere viser simuleringsvisningen (Online.tsx) trækket – her kun ved indlæsning og alene-spil */}
       {online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) && (
         <div className="progress"><div>{online.status === 'processing' ? t('mp.processing') : t('mp.loading')}</div></div>

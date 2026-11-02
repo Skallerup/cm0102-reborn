@@ -32,9 +32,11 @@ interface NavCtx {
   nav: (r: Route) => void;
   back: () => void;
   canBack: boolean;
+  forward: () => void;
+  canForward: boolean;
 }
 
-const Ctx = createContext<NavCtx>({ route: { name: 'inbox' }, nav: () => {}, back: () => {}, canBack: false });
+const Ctx = createContext<NavCtx>({ route: { name: 'inbox' }, nav: () => {}, back: () => {}, canBack: false, forward: () => {}, canForward: false });
 
 /** Navigationshistorikken gemmes i sessionStorage, så en genindlæsning af browseren bliver på samme side */
 function loadStack(key: string | undefined): Route[] | null {
@@ -62,17 +64,23 @@ export function NavProvider({ children, initial, storageKey, valid }: { children
     window.addEventListener('pagehide', save);
     return () => window.removeEventListener('pagehide', save);
   }, [stack, storageKey]);
+  const [fwd, setFwd] = useState<Route[]>([]);
   const value = useMemo<NavCtx>(() => ({
     route: stack[stack.length - 1],
-    nav: (r) => setStack((s) => {
-      const top = s[s.length - 1];
-      if (top.name === r.name && top.id === r.id && top.tab === r.tab) return s;
-      top.scroll = scrollEl?.scrollTop ?? 0;
-      return [...s.slice(-30), { ...r }];
-    }),
-    back: () => setStack((s) => (s.length > 1 ? s.slice(0, -1) : s)),
+    nav: (r) => {
+      setFwd([]); // en ny destination rydder "frem"-historikken (som i en browser)
+      setStack((s) => {
+        const top = s[s.length - 1];
+        if (top.name === r.name && top.id === r.id && top.tab === r.tab) return s;
+        top.scroll = scrollEl?.scrollTop ?? 0;
+        return [...s.slice(-30), { ...r }];
+      });
+    },
+    back: () => setStack((s) => { if (s.length <= 1) return s; setFwd((f) => [s[s.length - 1], ...f].slice(0, 30)); return s.slice(0, -1); }),
+    forward: () => setFwd((f) => { if (!f.length) return f; const [next, ...rest] = f; setStack((s) => [...s.slice(-30), next]); return rest; }),
     canBack: stack.length > 1,
-  }), [stack]);
+    canForward: fwd.length > 0,
+  }), [stack, fwd]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
