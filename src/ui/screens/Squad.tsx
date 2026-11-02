@@ -41,7 +41,7 @@ export function SquadTable({ players, view, userClub }: { players: Player[]; vie
   // de tre bedste spillere i truppen markeres med en stjerne (som i CM 01/02)
   const stars = new Set([...players].filter((p) => p.club === userClub).sort((a, b) => b.ca - a.ca).slice(0, 3).map((p) => p.id));
   const base: Col<Player>[] = [
-    { key: 'pos', label: t('col.pos'), render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
+    { key: 'pos', label: t('col.pos'), render: (p) => <span className="posk">{posStr(p)}</span>, sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
     { key: 'name', label: t('col.name'), render: (p) => <>{stars.has(p.id) && <span className="star-player" title={t('tag.star')}>★</span>}<PlayerLink p={p} />{statusTags(p, userClub)}</>, sort: (p) => p.last },
     { key: 'age', label: t('col.age'), render: (p) => age(p), sort: (p) => age(p), className: 'num' },
     { key: 'nat', label: t('col.nat'), render: (p) => <Nat n={p.nation} />, sort: (p) => p.nation },

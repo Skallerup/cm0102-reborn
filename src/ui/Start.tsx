@@ -14,9 +14,8 @@ import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
-import { forgetCMWorld, importCMFiles, loadCMWorld, loadOriginalWorld, loadWorld } from './world';
+import { loadOriginalWorld, loadWorld } from './world';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
-import type { CMWorld } from '../game/data/cm0102';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft';
 
@@ -133,16 +132,14 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   const [bots, setBots] = useState(0);
   const [deadline, setDeadline] = useState(24);
   const [botScope, setBotScope] = useState<BotScope>('league');
-  // database: standard (CM 2026/27), den originale 01/02 (3.9.68) eller spillerens egen CM 01/02-installation
-  type Db = 'modern' | 'original' | 'cm0102';
-  const [db, setDbState] = useState<Db>(() => { try { const v = !challenge && localStorage.getItem('cm0102.db'); return v === 'cm0102' || v === 'original' ? v : 'modern'; } catch { return 'modern'; } });
-  const [needImport, setNeedImport] = useState(false);
+  // database: standard (CM 2026/27) eller den originale 01/02 (3.9.68)
+  type Db = 'modern' | 'original';
+  const [db, setDbState] = useState<Db>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'original' ? 'original' : 'modern'; } catch { return 'modern'; } });
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
 
   useEffect(() => {
-    setNeedImport(false);
-    (db === 'cm0102' ? loadCMWorld() : db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => {
-      if (!w) { setNeedImport(true); return; }
+    (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => {
+      if (!w) return;
       setWorld(w);
       const names = ch ? ch.nations : DEFAULT_NATIONS;
       const ids = names.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
@@ -167,20 +164,15 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
         <button className={`db-opt ${db === 'original' ? 'on' : ''}`} onClick={() => setDb('original')}>
           <b>{t('db.original')}</b><span>{t('db.originalHint')}</span>
         </button>
-        <button className={`db-opt ${db === 'cm0102' ? 'on' : ''}`} onClick={() => setDb('cm0102')}>
-          <b>{t('db.cm')}</b><span>{t('db.cmHint')}</span>
-        </button>
         {onDraft && !online && (
           <button className="db-opt db-draft" onClick={onDraft}>
             <b>{t('db.draft')}</b><span>{t('db.draftHint')}</span>
           </button>
         )}
       </div>
-      {db === 'cm0102' && world && <CMImportInfo world={world as CMWorld} onRemove={async () => { await forgetCMWorld(); setWorld(null); setNeedImport(true); }} onReimport={() => setNeedImport(true)} />}
     </Panel>
   );
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
-  if (needImport) return <div>{dbPicker}<CMImport onDone={(w) => { setNeedImport(false); setWorld(w); const ids = DEFAULT_NATIONS.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0); setActive(new Set(ids)); const f = w.leagues.find((l) => l.nation === ids[0]); if (f) setLeague(f.id); }} onBack={onBack} /></div>;
   if (!world) return <div>{dbPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
   const leagues = world.leagues.filter((l) => active.has(l.nation));
@@ -302,52 +294,3 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   );
 }
 
-/** Import af den originale CM 01/02-database fra spillerens egen installation */
-function CMImport({ onDone, onBack }: { onDone: (w: CMWorld) => void; onBack: () => void }) {
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState('');
-  const read = async (files: FileList | null) => {
-    if (!files?.length) return;
-    setBusy(true); setErr('');
-    try { onDone(await importCMFiles(files)); }
-    catch (e) {
-      const m = String((e as Error).message);
-      setErr(m.startsWith('missing:') ? t('db.missing', { files: m.slice(8) }) : t('db.failed'));
-    }
-    setBusy(false);
-  };
-  return (
-    <Panel title={t('db.importTitle')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
-      <div className="col">
-        <p style={{ margin: 0, lineHeight: 1.55 }}>{t('db.importIntro')}</p>
-        <ol className="db-steps">
-          <li>{t('db.step1')}</li>
-          <li>{t('db.step2')}</li>
-          <li>{t('db.step3')}</li>
-        </ol>
-        <div className="row">
-          <label className="button primary file-btn">
-            {busy ? t('db.reading') : t('db.pickFolder')}
-            <input type="file" multiple {...{ webkitdirectory: '', directory: '' }} disabled={busy} onChange={(e) => read(e.target.files)} />
-          </label>
-          <label className="button file-btn">
-            {t('db.pickFiles')}
-            <input type="file" multiple accept=".dat" disabled={busy} onChange={(e) => read(e.target.files)} />
-          </label>
-        </div>
-        {err && <div className="insight bad">{err}</div>}
-        <div className="muted" style={{ fontSize: 12 }}>{t('db.privacy')}</div>
-      </div>
-    </Panel>
-  );
-}
-
-function CMImportInfo({ world, onRemove, onReimport }: { world: CMWorld; onRemove: () => void; onReimport: () => void }) {
-  return (
-    <div className="row" style={{ marginTop: 10, flexWrap: 'wrap', gap: 8 }}>
-      <span className="tag good">{t('db.imported', { leagues: world.leagues.length, clubs: world.clubs.length.toLocaleString(), players: world.players.length.toLocaleString() })}</span>
-      <button className="small" onClick={onReimport}>{t('db.reimport')}</button>
-      <button className="small danger" onClick={onRemove}>{t('db.remove')}</button>
-    </div>
-  );
-}

@@ -1091,6 +1091,8 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 /* CM 01/02-look: gule sektionsoverskrifter (og prik), cyan links, guld-accenter på mørkeblå */
 :root[data-skin='retro'] .panel > header h3 { color: #ffd84d; }
 :root[data-skin='retro'] .panel > header h3::before { background: #ffd84d; }
+/* gule positioner i trup-tabellen (som i CM 01/02) */
+:root[data-skin='retro'] .posk { color: #ffd84d; font-weight: 700; }
 /* supportere */
 .tag.sup-bronze { background: #f6e1cc; color: #7a4518; } .tag.sup-silver { background: #e5e7eb; color: #374151; } .tag.sup-gold { background: #fff1bf; color: #7a5800; }
 .sup-goal { height: 10px; border-radius: 999px; background: color-mix(in srgb, var(--muted) 15%, transparent); overflow: hidden; }
