@@ -324,13 +324,16 @@ export function fillSquad(c: Club, sq: Player[], level: number, date: string, se
   while (total < min) { needed.push(r.pick(['CB', 'CM', 'CF', 'DM', 'LB', 'RW'] as SubPos[])); total++; }
   const wealth = rulesFor(c.league, 20).wealth;
   for (const sub of needed) {
-    const nation = r.chance(0.82) ? c.nation : r.pick(Object.keys(g.names).map(Number));
+    const nation = r.chance(0.9) ? c.nation : r.pick(Object.keys(g.names).map(Number));
     const [first, last] = randomName(g.names, nation, r);
-    const age = r.int(18, 33);
+    // Udfyldninger er opdigtede spillere. For at de ikke forveksles med rigtige stjerner (fx en
+    // opfundet 3. målmand i en storklub med stjerne-CA) gøres de til unge reserve-/akademispillere
+    // tydeligt under førsteholdet. Starterne kommer altid fra de rigtige spillere.
+    const age = r.int(17, 23);
     const id = g.nextId.player++;
     const p = makePlayer({
       id, first, last, dob: randomDob(age, date, r), nation, club: c.id, sub, foot: r.chance(0.25) ? 'L' : 'R', height: 0,
-      ca: level + r.normal(-3, 9), date, seed, wealth,
+      ca: Math.max(40, Math.round(level * 0.72) + r.int(-8, 12)), date, seed, wealth, regen: true,
     });
     addPlayer(p);
   }

@@ -14,9 +14,37 @@ export function loadLogos(): Promise<void> {
   return loaded;
 }
 
+const url = (p: string) => base + p.split('/').map(encodeURIComponent).join('/');
+
 export function logoUrl(clubId: number): string | null {
-  // logoerne hører til den moderne database (Transfermarkt-ID'er) – ikke til CM 01/02-klubber
-  if (hasGame() && gs().dbKind === 'cm0102') return null;
+  // CM 01/02-klubber har ikke Transfermarkt-id'er – match logoet på klubbens navn i stedet
+  if (hasGame() && gs().dbKind === 'cm0102') return cmLogo(clubId);
   const p = map[clubId];
-  return p ? base + p.split('/').map(encodeURIComponent).join('/') : null;
+  return p ? url(p) : null;
+}
+
+// ---------- CM 01/02: match klubnavn til et logo ----------
+
+// normalisér et klubnavn til et sammenligneligt nøgleord (fjern accenter, tegn og gængse fodboldord)
+const STOP = new Set(['fc', 'cf', 'ac', 'sc', 'cp', 'sv', 'vfl', 'vfb', 'bsc', 'fk', 'if', 'bk', 'sk', 'rc', 'cd', 'ud', 'ssc', 'as', 'ssd', 'club', 'clube', 'futebol', 'calcio', 'football', 'sporting', 'de', 'do', 'da', 'the']);
+function norm(s: string): string {
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[.'’\-/]/g, ' ')
+    .split(/\s+/).filter((w) => w && !STOP.has(w) && !/^(18|19|20)\d\d$/.test(w)).join(' ').trim();
+}
+
+let cmIndex: Map<string, string> | null = null;
+function cmLogo(clubId: number): string | null {
+  if (!Object.keys(map).length) return null; // logolisten er ikke hentet endnu
+  if (!cmIndex) {
+    cmIndex = new Map();
+    for (const p of Object.values(map)) {
+      const name = p.split('/').pop()?.replace(/\.png$/i, '') ?? '';
+      const k = norm(name);
+      if (k && !cmIndex.has(k)) cmIndex.set(k, p);
+    }
+  }
+  const c = gs().clubs[clubId];
+  if (!c) return null;
+  const p = cmIndex.get(norm(c.name)) ?? cmIndex.get(norm(c.short));
+  return p ? url(p) : null;
 }
