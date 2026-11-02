@@ -132,7 +132,7 @@ function NewGame({ challenge, onBack, setBusy, online }: { challenge?: string; o
   const [bots, setBots] = useState(0);
   const [deadline, setDeadline] = useState(24);
   const [botScope, setBotScope] = useState<BotScope>('league');
-  // database: standard (CM 2026/27), den originale 01/02 (3.9.65) eller spillerens egen CM 01/02-installation
+  // database: standard (CM 2026/27), den originale 01/02 (3.9.68) eller spillerens egen CM 01/02-installation
   type Db = 'modern' | 'original' | 'cm0102';
   const [db, setDbState] = useState<Db>(() => { try { const v = !challenge && localStorage.getItem('cm0102.db'); return v === 'cm0102' || v === 'original' ? v : 'modern'; } catch { return 'modern'; } });
   const [needImport, setNeedImport] = useState(false);

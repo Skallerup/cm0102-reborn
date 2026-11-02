@@ -96,7 +96,7 @@ for (const p of w.players) {
   p[F.maxValue] = 0;
 }
 w.season = SEASON;
-const label = SEASON === 2001 ? 'original 3.9.65-database' : 'October 2026 Data Update';
+const label = SEASON === 2001 ? 'original 3.9.68-database' : 'October 2026 Data Update';
 w.source = `Championship Manager 01/02 – ${label} (${SEASON}/${String(SEASON + 1).slice(2)})`;
 
 // gem den tidligere moderne database som backup, første gang

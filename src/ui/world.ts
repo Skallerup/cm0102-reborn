@@ -15,7 +15,7 @@ export function loadWorld(): Promise<WorldData> {
   return cache;
 }
 
-// Den originale CM 01/02-database (3.9.65), bundlet som en valgmulighed ved nyt spil (sæson 2001/02)
+// Den originale CM 01/02-database (3.9.68), bundlet som en valgmulighed ved nyt spil (sæson 2001/02)
 let origCache: Promise<WorldData> | null = null;
 export function loadOriginalWorld(): Promise<WorldData> {
   if (!origCache) {
