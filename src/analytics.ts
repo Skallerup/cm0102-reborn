@@ -1,6 +1,7 @@
 // Google Analytics 4 – indlæses først, når den besøgende har sagt ja til statistik-cookies (GDPR).
-// Målings-id'et sættes ved build (VITE_GA_ID); uden det sker der intet.
-const GA_ID = (import.meta.env.VITE_GA_ID as string | undefined)?.trim() || '';
+// Kun på cm0102reborn.com (ikke lokalt eller på kopierne); VITE_GA_ID kan overstyre ved build.
+const GA_ID = (import.meta.env.VITE_GA_ID as string | undefined)?.trim()
+  || (typeof location !== 'undefined' && location.hostname === 'cm0102reborn.com' ? 'G-J9R8HSHLBE' : '');
 const KEY = 'cm-consent';
 
 type Consent = 'granted' | 'denied';
