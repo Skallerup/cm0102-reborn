@@ -5,7 +5,7 @@ import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame, type Route } from './core';
 import { applyTheme } from './theme';
-import { notify } from '../game/state';
+import { hasGame, notify } from '../game/state';
 import { getLast, forgetLast, loadGame } from '../game/save';
 import { openSession, savedRooms, session } from '../online/client';
 import { Shell } from './Shell';
@@ -25,6 +25,13 @@ export default function App() {
   const inGame = !!g;
   useEffect(() => { applyTheme(); }, [inGame]);
   const [lang, setLangState] = useState<Lang>(getLang());
+  // et sprog, der hentes efter et sprogskift: tegn alt igen, når teksterne er kommet
+  const [, setLangTick] = useState(0);
+  useEffect(() => {
+    const on = () => { setLangTick((x) => x + 1); setLangState(getLang()); if (hasGame()) notify(); };
+    window.addEventListener('cm-lang', on);
+    return () => window.removeEventListener('cm-lang', on);
+  }, []);
   // offentlig managerprofil (delt link: ?manager=<id>)
   const [managerParam, setManagerParam] = useState(() => new URLSearchParams(location.search).get('manager') ?? '');
   // draft-ligaens egen landingsside (?draft=1)

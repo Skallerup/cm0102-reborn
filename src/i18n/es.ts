@@ -941,7 +941,7 @@ export const es: Record<string, string> = {
   'land.play': 'Juega gratis ahora', 'land.playShort': 'Jugar ahora', 'land.seeScreens': 'Ver el juego',
   'land.pill': 'Nueva temporada · más de 40.000 jugadores reales', 'land.h1a': 'La leyenda ha vuelto.', 'land.h1b': 'Ahora en tu navegador.',
   'land.lead': 'El mánager de fútbol clásico, renacido: crea el equipo de tus sueños, descubre joyas ocultas, enfréntate a la prensa y lleva a tu club a lo más alto, con un motor de partidos que piensa y entrenadores IA que plantan cara.',
-  'land.check.free': 'Gratis', 'land.check.nodl': 'Sin descargas', 'land.check.lang': '5 idiomas', 'land.check.save': 'Guardado automático',
+  'land.check.free': 'Gratis', 'land.check.nodl': 'Sin descargas', 'land.check.lang': '8 idiomas', 'land.check.save': 'Guardado automático',
   'land.floatGoal': '¡GOL! Minuto 89', 'land.floatBid': 'Puja por tu estrella',
   'land.alt.report': 'Informe del partido con xG, dominio y mapa de calor', 'land.alt.mobile': 'El juego en el móvil',
   'land.tick1': "12' Pase al hueco… ¡y a la escuadra!", 'land.tick2': 'Rumor: un gigante sigue a tu capitán', 'land.tick3': "67' ¡Tarjeta roja! El entrenador mete otro delantero",

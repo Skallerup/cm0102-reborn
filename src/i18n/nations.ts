@@ -59,6 +59,9 @@ const UK: Record<string, Record<string, string>> = {
   es: { 'gb-eng': 'Inglaterra', 'gb-sct': 'Escocia', 'gb-wls': 'Gales', 'gb-nir': 'Irlanda del Norte' },
   fr: { 'gb-eng': 'Angleterre', 'gb-sct': 'Écosse', 'gb-wls': 'Pays de Galles', 'gb-nir': 'Irlande du Nord' },
   de: { 'gb-eng': 'England', 'gb-sct': 'Schottland', 'gb-wls': 'Wales', 'gb-nir': 'Nordirland' },
+  it: { 'gb-eng': 'Inghilterra', 'gb-sct': 'Scozia', 'gb-wls': 'Galles', 'gb-nir': 'Irlanda del Nord' },
+  pt: { 'gb-eng': 'Inglaterra', 'gb-sct': 'Escócia', 'gb-wls': 'País de Gales', 'gb-nir': 'Irlanda do Norte' },
+  tr: { 'gb-eng': 'İngiltere', 'gb-sct': 'İskoçya', 'gb-wls': 'Galler', 'gb-nir': 'Kuzey İrlanda' },
 };
 const displayNames = new Map<string, Intl.DisplayNames | null>();
 function regionName(iso: string, lang: string): string | undefined {

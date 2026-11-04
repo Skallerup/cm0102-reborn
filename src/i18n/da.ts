@@ -967,7 +967,7 @@ export const da: Record<string, string> = {
   'land.play': 'Spil gratis nu', 'land.playShort': 'Spil nu', 'land.seeScreens': 'Se spillet',
   'land.pill': 'Ny sæson · 40.000+ rigtige spillere', 'land.h1a': 'Legenden er tilbage.', 'land.h1b': 'Nu i din browser.',
   'land.lead': 'Den klassiske fodboldmanager, genfødt: byg dit drømmehold, find de skjulte talenter, mød pressen og før din klub til tops – med en kampmotor der tænker og AI-trænere der svarer igen.',
-  'land.check.free': 'Gratis', 'land.check.nodl': 'Ingen download', 'land.check.lang': '5 sprog', 'land.check.save': 'Gemmer automatisk',
+  'land.check.free': 'Gratis', 'land.check.nodl': 'Ingen download', 'land.check.lang': '8 sprog', 'land.check.save': 'Gemmer automatisk',
   'land.floatGoal': 'MÅL! 89. minut', 'land.floatBid': 'Budkrig om din stjerne',
   'land.alt.report': 'Kamprapport med xG, momentum og heatmap', 'land.alt.mobile': 'Spillet på mobilen',
   'land.tick1': "12' Gennembrudsbold – og den sidder i krydset!", 'land.tick2': 'Rygte: storklub holder øje med din anfører', 'land.tick3': "67' Rødt kort! Træneren kaster en ekstra angriber ind",

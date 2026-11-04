@@ -941,7 +941,7 @@ export const de: Record<string, string> = {
   'land.play': 'Jetzt kostenlos spielen', 'land.playShort': 'Jetzt spielen', 'land.seeScreens': 'Spiel ansehen',
   'land.pill': 'Neue Saison · 40.000+ echte Spieler', 'land.h1a': 'Die Legende ist zurück.', 'land.h1b': 'Jetzt im Browser.',
   'land.lead': 'Der klassische Fußballmanager, wiedergeboren: Bau dein Traumteam, entdecke verborgene Juwelen, stell dich der Presse und führe deinen Verein an die Spitze – mit einer Spiel-Engine, die mitdenkt, und AI-Trainern, die zurückschlagen.',
-  'land.check.free': 'Kostenlos', 'land.check.nodl': 'Kein Download', 'land.check.lang': '5 Sprachen', 'land.check.save': 'Speichert automatisch',
+  'land.check.free': 'Kostenlos', 'land.check.nodl': 'Kein Download', 'land.check.lang': '8 Sprachen', 'land.check.save': 'Speichert automatisch',
   'land.floatGoal': 'TOR! 89. Minute', 'land.floatBid': 'Bieterwettstreit um deinen Star',
   'land.alt.report': 'Spielbericht mit xG, Momentum und Heatmap', 'land.alt.mobile': 'Das Spiel auf dem Handy',
   'land.tick1': '12. Steilpass – und der Ball schlägt im Winkel ein!', 'land.tick2': 'Gerücht: Topklubs beobachten deinen Kapitän', 'land.tick3': '67. Rote Karte! Der Trainer bringt noch einen Stürmer',

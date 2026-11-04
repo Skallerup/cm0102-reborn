@@ -1,20 +1,27 @@
 import { da } from './da';
 import { en } from './en';
-import { es } from './es';
-import { fr } from './fr';
-import { de } from './de';
 import type { Lang } from '../game/types';
 import { nationLabel } from './nations';
 import { compLabel } from './comps';
 
-const dicts: Record<Lang, Record<string, string>> = { da, en, es, fr, de };
+// dansk og engelsk ligger i hovedfilen; de øvrige sprog hentes først, når de vælges (≈280 KB hver)
+const dicts: Partial<Record<Lang, Record<string, string>>> = { da, en };
+const LAZY: Partial<Record<Lang, () => Promise<Record<string, string>>>> = {
+  es: () => import('./es').then((m) => m.es), fr: () => import('./fr').then((m) => m.fr), de: () => import('./de').then((m) => m.de),
+  it: () => import('./it').then((m) => m.it), pt: () => import('./pt').then((m) => m.pt), tr: () => import('./tr').then((m) => m.tr),
+};
+/** Sørg for, at sprogets tekster er hentet (kaldes ved opstart og ved sprogskift) */
+export async function ensureLang(l: Lang): Promise<void> {
+  if (dicts[l] || !LAZY[l]) return;
+  try { dicts[l] = await LAZY[l]!(); } catch { /* offline uden cache: engelsk bruges i stedet */ }
+}
 /** Sprogene i spillet og på hjemmesiden (kort kode og navn på sproget selv) */
-export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['de', 'DE', 'Deutsch']];
+export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['de', 'DE', 'Deutsch'], ['it', 'IT', 'Italiano'], ['pt', 'PT', 'Português'], ['tr', 'TR', 'Türkçe']];
 export const isLang = (v: unknown): v is Lang => LANGS.some(([k]) => k === v);
 /** Sprogets locale til tal og datoer */
-export const LOCALE: Record<Lang, string> = { da: 'da-DK', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE' };
+export const LOCALE: Record<Lang, string> = { da: 'da-DK', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', tr: 'tr-TR' };
 // enheder for store beløb pr. sprog (mia./mio./t.)
-const UNITS: Record<Lang, [string, string, string]> = { da: [' mia.', ' mio.', ' t.'], en: ['bn', 'M', 'K'], es: [' mil M', ' M', ' mil'], fr: [' Md', ' M', ' k'], de: [' Mrd.', ' Mio.', ' Tsd.'] };
+const UNITS: Record<Lang, [string, string, string]> = { da: [' mia.', ' mio.', ' t.'], en: ['bn', 'M', 'K'], es: [' mil M', ' M', ' mil'], fr: [' Md', ' M', ' k'], de: [' Mrd.', ' Mio.', ' Tsd.'], it: [' mld', ' mln', ' mila'], pt: [' bi', ' mi', ' mil'], tr: [' Mr', ' Mn', ' B'] };
 let lang: Lang = (() => {
   try {
     const v = localStorage.getItem('cm0102.lang');
@@ -43,11 +50,13 @@ export function setLang(l: Lang) {
   lang = l;
   try { document.documentElement.lang = l; } catch { /* ingen DOM */ }
   try { localStorage.setItem('cm0102.lang', l); } catch { /* ignore */ }
+  // et sprog, der hentes: tegn siden igen, når teksterne er kommet (indtil da vises engelsk)
+  if (!dicts[l]) void ensureLang(l).then(() => { try { window.dispatchEvent(new Event('cm-lang')); } catch { /* ingen DOM */ } });
 }
 
 /** Oversæt nøgle med {param}-erstatning. Ukendte nøgler vises som nøglen selv. */
 export function t(key: string, params?: Record<string, string | number | undefined>): string {
-  let s = dicts[lang][key] ?? dicts.en[key] ?? key;
+  let s = dicts[lang]?.[key] ?? dicts.en![key] ?? key;
   if (params) {
     for (let [k, v] of Object.entries(params)) {
       if ((k === 'comp' || k === 'league') && typeof v === 'string') v = compLabel(v, lang);
@@ -58,7 +67,7 @@ export function t(key: string, params?: Record<string, string | number | undefin
 }
 
 export function has(key: string): boolean {
-  return key in dicts[lang] || key in dicts.en;
+  return key in (dicts[lang] ?? {}) || key in dicts.en!;
 }
 
 export type Currency = 'EUR' | 'DKK' | 'GBP';
