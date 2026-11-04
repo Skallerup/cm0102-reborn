@@ -157,7 +157,8 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
   );
 }
 
-const DEFAULT_NATIONS = ['England', 'Denmark'];
+// sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
+const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey' };
 
 function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void }) {
   const [world, setWorld] = useState<WorldData | null>(null);
@@ -183,10 +184,11 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
     (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => withCommunityEdits(w, db === 'original' ? 'original' : 'cm')).then((w) => {
       if (!w) return;
       setWorld(w);
-      const names = ch ? ch.nations : DEFAULT_NATIONS;
+      const own = LANG_NATION[getLang()];
+      const names = ch ? ch.nations : [w.leagues.some((l) => w.nations[l.nation]?.name === own) ? own : 'England'];
       const ids = names.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
       setActive(new Set(ids));
-      const first = w.leagues.find((l) => l.nation === ids[0]);
+      const first = w.leagues.filter((l) => l.nation === ids[0]).sort((a, b) => a.tier - b.tier)[0];
       if (first) setLeague(first.id);
       // udfordringens klub findes ud fra navnet i databasen
       if (ch) { const cid = challengeClub(ch, w); setClub(cid); const lg = w.clubs.find((c) => c[0] === cid)?.[4]; if (lg) setLeague(lg); }
