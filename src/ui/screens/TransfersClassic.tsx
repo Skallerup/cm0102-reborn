@@ -281,7 +281,7 @@ function ScoutTab({ scout, n }: { scout?: Staff; n: number }) {
   );
 }
 
-function Pager({ desc, pg, pages, setPg }: { desc: string; pg: number; pages: number; setPg: (n: number) => void }) {
+export function Pager({ desc, pg, pages, setPg }: { desc: string; pg: number; pages: number; setPg: (n: number) => void }) {
   return (
     <div className="cx-pager-line">
       <span className="grow">{desc}</span>

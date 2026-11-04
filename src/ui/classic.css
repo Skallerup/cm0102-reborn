@@ -509,3 +509,15 @@
 .cx-career-loan { color: #6cc4ff; font-size: 13px; }
 .cx-career .cx-lg-pos.now { background: linear-gradient(180deg, #f4f6fb, #c9cdd8); color: #0b1a5c; }
 @media (max-width: 760px) { .cx-career .cx-career-club { font-size: 14px; } }
+
+/* Find */
+:root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-findbtn { color: #fff; }
+.cx-find-label { color: #fff; font-weight: 700; padding: 0 8px; text-shadow: 1px 1px 0 #000; }
+.cx-find { display: flex; flex-direction: column; padding: 4px 18px; }
+.cx-find-row { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: baseline; min-height: 30px; }
+.cx-find-row.go { cursor: pointer; }
+.cx-find-name { color: #fff; font-size: 21px; font-weight: 800; text-shadow: 2px 2px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-find-row.go:hover .cx-find-name { color: #fff21f; }
+.cx-find-a { color: #fff21f; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-find-b { color: #ff9a2a; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 760px) { .cx-find { padding: 4px 6px; } .cx-find-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } .cx-find-b { display: none; } .cx-find-name { font-size: 15px; } .cx-find-a { font-size: 13px; } }

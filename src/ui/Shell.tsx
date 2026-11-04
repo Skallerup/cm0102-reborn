@@ -51,7 +51,8 @@ import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl } from './backgrounds';
-import { GameOptionsMenu, ManagerMenu, bgChanges } from './classicOptions';
+import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges } from './classicOptions';
+import { ClassicFind } from './screens/FindClassic';
 import { MatchDay } from './screens/MatchDayClassic';
 import { ClassicSlotCtx, classicDate, setClassicAllowed } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
@@ -80,7 +81,7 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
+const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
   const g = useGame()!;
@@ -316,7 +317,7 @@ export function Shell() {
             <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />
             {side('competitions', t('nav.competitions'))}
             {side('club', t('cl.nations'))}
-            {side('transfers', t('cl.find'))}
+            <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={async () => { await saveGame(); setToast(t('top.saved')); }} />
             <div className="cx-side-grow" />
@@ -436,6 +437,7 @@ function Screen() {
     case 'fixtures': return <Fixtures />;
     case 'competitions': return <Competitions id={route.id as string | undefined} />;
     case 'transfers': return <Transfers tab={route.tab} />;
+    case 'find': return <ClassicFind tab={route.tab} />;
     case 'scouting': return <Scouting />;
     case 'staff': return <StaffScreen />;
     case 'finance': return <Finance />;

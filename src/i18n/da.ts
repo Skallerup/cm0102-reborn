@@ -394,6 +394,7 @@ export const da: Record<string, string> = {
   'cl.menu.all': 'Alle skærme …',
   'cl.tag.Inj': 'Skd', 'cl.tag.Sus': 'Kar', 'cl.tag.Fut': 'Ny', 'cl.tag.Lst': 'Sal', 'cl.tag.Lon': 'Lej', 'cl.tag.Unh': 'Utf', 'cl.tag.Wnt': 'Øns', 'cl.tag.Fgn': 'Udl', 'cl.tag.Fre': 'Fri', 'cl.tag.Exp': 'Kon',
   'cl.pl.career': 'Spillerkarriere', 'career.sourceCm': 'Tidligere sæsoner fra Championship Manager 01/02-databasen.',
+  'cl.fd.nation': 'Nation', 'cl.fd.club': 'Klub', 'cl.fd.staff': 'Stab', 'cl.fd.player': 'Spiller', 'cl.fd.searchFor': 'Søg efter', 'cl.fd.noClub': 'Ingen klub', 'cl.fd.noDiv': 'Ingen division', 'cl.fd.all.nation': 'Alle nationer', 'cl.fd.all.club': 'Alle klubber', 'cl.fd.all.staff': 'Alle stabsfolk', 'cl.fd.all.player': 'Alle spillere', 'cl.fd.none': 'Ingen fundet', 'cl.fd.found': '{n} fundet',
   'cl.go.save': 'Gem spil', 'cl.go.status': 'Managerstatus', 'cl.go.settings': 'Spilindstillinger', 'cl.go.hall': 'Hall of Fame', 'cl.go.web': 'Websider', 'cl.go.all': 'Alle indstillinger…', 'cl.go.exit': 'Afslut spil',
   'cl.set.version': 'Version: {v}', 'cl.set.reset': 'Nulstil', 'cl.set.skin': 'Udseende', 'cl.set.classic': 'Klassisk', 'cl.set.bg': 'Skiftende baggrunde', 'cl.set.flash': 'Blinkende tekst',
   'cl.set.on': 'Til', 'cl.set.off': 'Fra', 'cl.set.save.changes': 'Altid', 'cl.set.save.daily': 'Dagligt', 'cl.set.save.weekly': 'Ugentligt', 'cl.set.save.monthly': 'Månedligt', 'cl.set.save.off': 'Aldrig',

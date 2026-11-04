@@ -381,6 +381,7 @@ export const en: Record<string, string> = {
   'cl.menu.all': 'All screens …',
   'cl.tag.Inj': 'Inj', 'cl.tag.Sus': 'Sus', 'cl.tag.Fut': 'Fut', 'cl.tag.Lst': 'Lst', 'cl.tag.Lon': 'Lon', 'cl.tag.Unh': 'Unh', 'cl.tag.Wnt': 'Wnt', 'cl.tag.Fgn': 'Fgn', 'cl.tag.Fre': 'Fre', 'cl.tag.Exp': 'Exp',
   'cl.pl.career': 'Playing Career', 'career.sourceCm': 'Earlier seasons from the Championship Manager 01/02 database.',
+  'cl.fd.nation': 'Nation', 'cl.fd.club': 'Club', 'cl.fd.staff': 'Non-Player', 'cl.fd.player': 'Player', 'cl.fd.searchFor': 'Search For', 'cl.fd.noClub': 'No Club', 'cl.fd.noDiv': 'No Division', 'cl.fd.all.nation': 'All Nations', 'cl.fd.all.club': 'All Clubs', 'cl.fd.all.staff': 'All Non-Players', 'cl.fd.all.player': 'All Players', 'cl.fd.none': 'Nothing found', 'cl.fd.found': '{n} found',
   'cl.go.save': 'Save Game', 'cl.go.status': 'Manager Status', 'cl.go.settings': 'Game Settings', 'cl.go.hall': 'Hall of Fame', 'cl.go.web': 'Web Sites', 'cl.go.all': 'All Options…', 'cl.go.exit': 'Exit Game',
   'cl.set.version': 'Version: {v}', 'cl.set.reset': 'Reset', 'cl.set.skin': 'Skin', 'cl.set.classic': 'Classic', 'cl.set.bg': 'Background Changes', 'cl.set.flash': 'Flashing Text',
   'cl.set.on': 'On', 'cl.set.off': 'Off', 'cl.set.save.changes': 'Always', 'cl.set.save.daily': 'Daily', 'cl.set.save.weekly': 'Weekly', 'cl.set.save.monthly': 'Monthly', 'cl.set.save.off': 'Never',

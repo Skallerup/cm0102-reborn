@@ -151,3 +151,12 @@ export function ManagerMenu({ onRetire, allowed }: { onRetire: () => void; allow
   items.push({ key: 'sep2', sep: true }, { key: 'retire', label: t('cl.mm.retire'), onClick: onRetire });
   return <CxDrop className="cx-gameopt" fixed caret={false} label={g.manager.name} items={items} btn={{ className: 'cx-sbtn cx-mgr' }} />;
 }
+
+// ---------- Find (sidebaren) ----------
+
+/** "Find" i sidebaren: grøn menu med Nation · Klub · Stab · Spiller */
+export function FindMenu() {
+  const { nav } = useNav();
+  const items: DropItem[] = (['nation', 'club', 'staff', 'player'] as const).map((k) => ({ key: k, label: t(`cl.fd.${k}`), onClick: () => nav({ name: 'find', tab: k, state: { ftab: k } }) }));
+  return <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.find')} items={items} btn={{ className: 'cx-sbtn cx-findbtn' }} />;
+}
