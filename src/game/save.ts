@@ -89,6 +89,28 @@ function upgradeLoaded() {
   }
 }
 
+/**
+ * Ret stadionkapaciteten i gemte spil fra CM-databaserne: en fejl i indlæsningen af stadium.dat gav
+ * alle klubber loftet 120.000 pladser. Kun klubber med præcis 120.000 rettes (egne udvidelser bevares).
+ */
+async function repairStadiums(): Promise<void> {
+  const g = gs();
+  if (g.dbKind !== 'cm0102') return;
+  const clubs = Object.values(g.clubs);
+  const capped = clubs.filter((c) => c.seats === 120_000);
+  if (capped.length < clubs.length / 2) return;
+  try {
+    const file = g.season < 2020 ? 'world-original.json' : 'world.json';
+    const r = await fetch(`${import.meta.env.BASE_URL}data/${file}`);
+    if (!r.ok) return;
+    const w = (await r.json()) as { clubs: [number, string, string, number, string, string, number, string][] };
+    const seats = new Map(w.clubs.map((c) => [c[0], c[6]]));
+    let fixed = 0;
+    for (const c of capped) { const s = seats.get(c.id); if (s && s !== 120_000) { c.seats = s; fixed++; } }
+    if (fixed) notify();
+  } catch { /* offline: prøv igen næste gang */ }
+}
+
 export async function loadGame(id: string): Promise<boolean> {
   const blob = await get<Blob>(`save:${id}`);
   if (!blob) return false;
@@ -97,6 +119,7 @@ export async function loadGame(id: string): Promise<boolean> {
   if (g.humans?.length) return false;
   setGame(g);
   upgradeLoaded();
+  await repairStadiums();
   rememberLast({ kind: 'local', id });
   return true;
 }
