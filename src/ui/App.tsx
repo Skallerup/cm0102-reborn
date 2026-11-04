@@ -16,10 +16,16 @@ import { PublicCommunityPage } from './Community';
 import { AdminPage } from './Admin';
 import type { HubTab } from './CommunityHub';
 import { loadLogos } from './logos';
+import { ConsentBanner } from './ConsentBanner';
+import { trackPage } from '../analytics';
 
 void loadLogos().then(() => notify());
 
 export default function App() {
+  return <><AppPage /><ConsentBanner /></>;
+}
+
+function AppPage() {
   const g = useGame();
   // temaet skifter, når et spil indlæses eller lukkes
   const inGame = !!g;
@@ -82,12 +88,18 @@ export default function App() {
     })();
   }, [resuming]);
 
+  // sidevisninger til statistik og canonical-link til søgemaskiner
+  const ds = session();
+  const page = adminParam ? '' : communityParam >= 0 ? 'community' : managerParam ? 'manager' : resuming && !g ? '' : ds?.room?.draft ? 'draft-room'
+    : !g && draftPage ? 'draft' : !g && landing ? 'landing' : !g ? 'start' : 'game';
+  const canonical = page === 'draft' ? '?draft=1' : page === 'community' ? '?community=1' : '';
+  useEffect(() => { if (page) trackPage(page, canonical); }, [page, canonical]);
+
   if (adminParam) return <AdminPage onClose={() => { history.replaceState(null, '', location.pathname); setAdminParam(false); }} />;
   if (communityParam >= 0) return <PublicCommunityPage id={communityParam || undefined} hallId={hallParam} tab={tabParam} onClose={() => { history.replaceState(null, '', location.pathname); setCommunityParam(-1); }} />;
   if (managerParam) return <PublicProfilePage pid={managerParam} onClose={() => { history.replaceState(null, '', location.pathname); setManagerParam(''); }} />;
   if (resuming && !g) return <div className="progress"><div>{t('start.resuming')}</div></div>;
   // draft-liga: lobby, keepers og draft vises, indtil sæsonen er bygget
-  const ds = session();
   if (ds?.room?.draft && (ds.room.draft.phase !== 'playing' || !g || !draftSeen(ds.creds.code, ds.room.draft.season))) return <DraftRoom />;
   if (!g && draftPage) return <DraftLanding key={lang} onLang={setLangState} onBack={() => { history.replaceState(null, '', location.pathname); setDraftPage(false); window.scrollTo(0, 0); }} onCreate={() => { history.replaceState(null, '', `${location.pathname}?newdraft=1`); setDraftPage(false); play(); }} />;
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} onDraft={() => { history.replaceState(null, '', `${location.pathname}?draft=1`); setDraftPage(true); window.scrollTo(0, 0); }} />;

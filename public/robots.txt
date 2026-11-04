@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /*?admin=
+
+Sitemap: https://cm0102reborn.com/sitemap.xml

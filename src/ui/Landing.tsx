@@ -1,4 +1,5 @@
 // Forsiden for nye besøgende: hero med animation, rigtige screenshots, features, rangliste og FAQ.
+import { ConsentLink } from './ConsentBanner';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Lang } from '../game/types';
 import { LANGS, LOCALE, getLang, setLang, t } from '../i18n';
@@ -368,6 +369,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
       <footer className="lp-footer lp-wrap">
         <div>© {new Date().getFullYear()} CM Reborn · {t('land.footerData')}</div>
         <div className="lp-disclaimer">{t('land.disclaimer')}</div>
+        <div><ConsentLink /></div>
       </footer>
 
       {lightbox && (

@@ -1,4 +1,5 @@
 // Fællesskabet i selve spillet: del karrieren i Hall of Fame og foreslå rettelser til CM-databasen.
+import { track } from '../analytics';
 import { useState } from 'react';
 import { ATTRS } from '../game/attributes';
 import { cmDatabase } from '../game/newgame';
@@ -45,6 +46,7 @@ export function ShareCareerPanel() {
   if (!hubAvailable()) return null;
   const share = async () => {
     const s = careerSummary(g);
+    track('share_career');
     const r = await shareCareer({ career: g.id, title, club: club?.name ?? s.history.at(-1)?.club ?? '', league: s.history.at(-1)?.league ?? '', db: s.db, seasons: s.seasons, trophies: s.trophies.length, summary: s });
     setMsg('error' in r ? { text: t(`hub.err.${r.error}`) === `hub.err.${r.error}` ? t('hub.err.error') : t(`hub.err.${r.error}`), bad: true } : { text: t('hub.share.done'), id: r.id });
   };

@@ -3,10 +3,22 @@ import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // base: roden på Vercel, repo-navnet på GitHub Pages (sættes af workflowet)
+// søgemaskiner: Search Console-verifikation (VITE_GSC_TOKEN) og noindex på kopien på GitHub Pages,
+// så kun cm0102reborn.com bliver indekseret
+const seoHtml = {
+  name: 'seo-html',
+  transformIndexHtml(html: string) {
+    const token = process.env.VITE_GSC_TOKEN?.trim();
+    const tags = [token ? `<meta name="google-site-verification" content="${token}" />` : '', process.env.BASE_PATH ? '<meta name="robots" content="noindex" />' : ''].filter(Boolean).join('\n    ');
+    return html.replace('<!--%SEARCH_CONSOLE%-->', tags);
+  },
+}
+
 export default defineConfig({
   base: process.env.BASE_PATH ?? (process.env.VERCEL ? '/' : '/cm0102-reborn/'),
   plugins: [
     react(),
+    seoHtml,
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],

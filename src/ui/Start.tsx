@@ -1,3 +1,4 @@
+import { track } from '../analytics';
 import { useEffect, useMemo, useState } from 'react';
 import { getTheme, setTheme } from './theme';
 import { DraftCreate } from './Draft';
@@ -206,6 +207,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
+    track('start_game', { mode: online ? 'online' : bots > 0 ? 'local_ai' : 'single', db, challenge: !!challenge, lang: opts.lang });
     setTimeout(async () => {
       if (online) {
         try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }

@@ -6,6 +6,7 @@
 //  3. Den klient tager det uberørte øjebliksbillede, afspiller alle handlinger i rækkefølge,
 //     simulerer frem til efter næste kampdag (mpAdvance) og uploader et nyt øjebliksbillede.
 //  4. De andre opdager den nye version, henter den og genanvender egne handlinger der ikke nåede med.
+import { track } from '../analytics';
 import { upload } from '@vercel/blob/client';
 import { applyActionAs, setActionSink, type Action } from '../game/actions';
 import { activate, enableMultiplayer, withHuman } from '../game/humans';
@@ -637,6 +638,7 @@ export async function joinOnlineGame(code: string, name: string, club: number, n
 
 /** Opret en draft-liga: værten opretter sin klub; spillet bygges først, når draften er færdig */
 export async function createDraftLeague(name: string, team: Partial<DraftTeam>, draft: DraftSettings, deadlineHours: number): Promise<OnlineSession> {
+  track('create_draft');
   const seed = (Math.random() * 2 ** 31) >>> 0;
   const created = await post<{ code: string; pid: string; token: string }>('create', { name, team, settings: { mode: 'draft', seed, draft, deadlineHours } });
   return openSession({ code: created.code, pid: created.pid, token: created.token, name });
