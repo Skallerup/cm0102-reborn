@@ -8,7 +8,7 @@ import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
 import { money, t } from '../../i18n';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
-import { useGame, useRouteState } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 
 const ATTRS: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
@@ -17,7 +17,7 @@ const KEY_ATTR: Record<StaffRole, keyof Staff['attrs']> = { manager: 'tactics', 
 
 export function StaffScreen() {
   const g = useGame()!;
-  const [tab, setTab] = useRouteState('tab', 'mine');
+  const [tab, setTab] = useRouteState('tab', useNav().route.tab ?? 'mine');
   const [role, setRole] = useRouteState<StaffRole>('role', 'coach');
   const [source, setSource] = useRouteState<'free' | 'clubs'>('source', 'free');
   const [onlyWilling, setOnlyWilling] = useRouteState('onlyWilling', true);

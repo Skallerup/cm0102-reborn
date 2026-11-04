@@ -11,7 +11,7 @@ import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { session } from '../../online/client';
 import { AcceptCounterButton } from '../counterAccept';
-import type { Player, PlayerMove, Role, TransferOffer } from '../../game/types';
+import { SIDES, type Player, type PlayerMove, type Role, type TransferOffer } from '../../game/types';
 import { compName, dateFmt, money, t, natName } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
@@ -20,6 +20,9 @@ import { isRetro } from '../theme';
 import { ClassicSearch, ClassicTransfers } from './TransfersClassic';
 import type { RejectReason } from '../../game/will';
 import { NegotiationModal } from './Negotiation';
+
+/** Positionsgrupper i den klassiske filterdialog (index i POSITIONS: GK SW D DM M AM ST WB) */
+const POS_GROUPS = { GK: [0], D: [1, 2, 7], M: [3, 4, 5], A: [6] } as const;
 
 const ROLES: (Role | '')[] = ['', 'GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'];
 
@@ -81,6 +84,9 @@ const DEFAULTS = {
   onlyFree: false, onlyListed: false, expiring: false, onlyKnown: false, realism: 0, minAbility: 0, minPotential: 0,
   attr1: -1, attr1Min: 12, attr2: -1, attr2Min: 12, attr3: -1, attr3Min: 12, foot: '', minHeight: 0, contractBy: 0,
   trait: '', noTrouble: false, rec: -1, interested: false, noInjured: false, notLoaned: false, shortlist: false,
+  // klassisk filterdialog: positionsgruppe, side, hvor spilleren spiller, lejet ud, egen trup med
+  posGroup: '' as '' | 'GK' | 'D' | 'M' | 'A', side: '' as '' | 'L' | 'C' | 'R', based: '' as '' | 'home' | 'abroad',
+  onLoan: false, includeSquad: false,
 };
 export type Filters = typeof DEFAULTS;
 const FILTER_KEY = 'cm0102.transferFilters';
@@ -112,6 +118,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name))), [g]);
   const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
   const me = g.clubs[g.userClub];
+  const homeNation = me?.nation ?? g.manager.nation;
   const [prevFilters, setPrevFilters] = useState(lastCareerFilters);
   const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
   const results = useMemo(() => {
@@ -119,7 +126,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
     const attrs = ([[f.attr1, f.attr1Min], [f.attr2, f.attr2Min], [f.attr3, f.attr3Min]] as [number, number][]).filter(([a]) => a >= 0);
     const out: Player[] = [];
     for (const p of Object.values(g.players)) {
-      if (p.club === g.userClub) continue;
+      if (p.club === g.userClub && !f.includeSquad) continue;
       if (q && !`${p.first} ${p.last}`.toLowerCase().includes(q)) continue;
       const a = ageOn(p.dob, g.date);
       if (a < f.minAge || a > f.maxAge) continue;
@@ -139,6 +146,11 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       if (f.contractBy && (!p.contract || Number(p.contract.expires.slice(0, 4)) > f.contractBy)) continue;
       if (f.onlyKnown && knowledgeOf(p) < 50) continue;
       if (f.role && naturalRole(p) !== f.role) continue;
+      // positionsgruppe og side: spilleren kan spille der (rating ≥ 15, som i positionsteksten "D/DM RC")
+      if (f.posGroup && !POS_GROUPS[f.posGroup].some((i) => p.pos[i] >= 15)) continue;
+      if (f.side && p.side[SIDES.indexOf(f.side)] < 15) continue;
+      if (f.based && (!club || (f.based === 'home') !== (club.nation === homeNation))) continue;
+      if (f.onLoan && !p.loan) continue;
       if (f.foot && p.foot !== f.foot && p.foot !== 'B') continue;
       if (f.minHeight && p.height < f.minHeight) continue;
       if (f.noInjured && p.injury) continue;
@@ -167,7 +179,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       out.push(p);
     }
     return out;
-  }, [g, f, seasonEnd, me]);
+  }, [g, f, seasonEnd, me, homeNation]);
   const groupOf = (i: number) => t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping');
   const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: groupOf(i) }))
     .sort((a, b) => a.value - b.value).sort((a, b) => (a.group === b.group ? a.label.localeCompare(b.label) : 0));
@@ -273,7 +285,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       </Panel>
     </>
   );
-  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} active={active} filterPanel={filterPanel} />;
+  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} active={active} nations={nations} />;
   return (
     <div>
       {filterPanel}
