@@ -1,8 +1,8 @@
 # CM Reborn ⚽
 
-**CM Reborn** er et moderne fodboldmanagerspil inspireret af de klassiske **Championship Manager**-spil – med mange nye idéer oveni. Spillet kører i browseren som PWA og virker derfor også offline og på iPad/mobil. Standarddatabasen er **October 2026-opdateringen** med ~25.000 rigtige spillere og de aktuelle trupper til **sæsonen 2026/27**.
+**CM Reborn** er et moderne fodboldmanagerspil inspireret af de klassiske **Championship Manager**-spil – med mange nye idéer oveni. Spillet kører i browseren som PWA og virker derfor også offline og på iPad/mobil. Standarddatabasen er **October 2026-opdateringen** med ~22.700 rigtige spillere og de aktuelle trupper til **sæsonen 2026/27**.
 
-> Uofficiel fan-hyldest. Indeholder hverken kode, data eller grafik fra det originale spil (© Sports Interactive / Eidos).
+> Uofficiel fan-hyldest uden kode fra det originale spil. Databaserne er Championship Manager 01/02-data (den originale 3.9.68-database og fællesskabets October 2026-opdatering), og det klassiske tema bruger baggrundsbilleder fra fællesskabets *Sunday League Pack*. Championship Manager © Sports Interactive / Eidos.
 
 **Spil det her:** https://skallerup.github.io/cm0102-reborn/
 
@@ -10,7 +10,9 @@
 
 Alt det, vi husker fra de klassiske managerspil:
 
-- **Rigtige spillere og klubber:** 38 ligaer, 662 klubber, 20.492 spillere. Alle 33 førstedivisioner fra datasættet er med, plus 2. divisioner i England, Danmark, Tyskland, Italien, Spanien og Frankrig
+- **Rigtige spillere og klubber:** standarddatabasen har 38 ligaer, 641 klubber og ~22.700 spillere med aktuelle trupper til 2026/27. Den originale 01/02-database (2001/02) har 33 ligaer, 559 klubber og ~18.700 spillere
+- **Draft-liga:** fiktive klubber drafter 16 spillere hver fra databasens 500 bedste, enten med snake-draft eller auktion. Draften styres af serveren, og bagefter følger ekspertens karakterer, sæsonprognose og et delbart draftkort. Ingen økonomi eller transfers, kun fodbold
+- **Klassisk CM 01/02-tema** (vælges i Indstillinger → Farvetema): klubfarvet titelbjælke, sidebar, faner og bundlinje med Tilbage/Frem, klassiske skærme for trup, spillerprofil, træning, transfers og kampdag samt skiftende baggrundsbilleder
 - **CM 01/02-attributter:** 1–20-skala med tekniske, mentale, fysiske og målmandsattributter. Dertil skjulte attributter (CA/PA, Consistency, Important Matches, Injury Proneness …) og positionsratings (GK/SW/D/DM/M/AM/F/WB + højre/venstre/central)
 - **Tekstkommentar** linje for linje i valgfri hastighed. Mål blinker, og du kan følge vidiprinteren med de andre kampe
 - **Taktik:** 12 formationer og drag-and-drop på banen. Holdinstruktioner (mentalitet, afleveringer, tempo, bredde, presspil, tacklinger, markering, offsidefælde, kontra), individuelle instruktioner og dødboldsskytter
@@ -40,7 +42,7 @@ Før byggeriet blev der stillet 10 forslag til forbedringer. De 8 valgte er impl
 
 | # | Forbedring | Status |
 |---|---|---|
-| 1 | To databaser (moderne + importer til ægte CM 01/02-data) | ⏸️ Ikke valgt |
+| 1 | To databaser (moderne + ægte CM 01/02-data) | ✅ Kom senere: CM 2026/27 og den originale 01/02 (3.9.68) |
 | 2 | **Browser/PWA**: offline, iPad/mobil, gemmer lokalt | ✅ |
 | 3 | **Gennemsigtig matchmotor**: xG, momentum-graf, zone-heatmap, skudkort og assistentens dom over kampen | ✅ |
 | 4 | **Assistent-analyse**: modstanderrapport med vinderchancer (Monte Carlo), holdforslag, radar-sammenligning | ✅ |
@@ -51,23 +53,35 @@ Før byggeriet blev der stillet 10 forslag til forbedringer. De 8 valgte er impl
 | 9 | **Hurtig simulering**: "Næste kamp", spring kamp over | ✅ |
 | 10 | **Challenges + dansk/engelsk + delbar seed** | ✅ |
 
-## To databaser: standard 2026/27 eller din egen CM 01/02
+## Databaser
 
 Ved nyt spil vælger man database:
 
 - **CM 2026/27 (standard)** – fællesskabets *October 2026-opdatering* til Championship Manager 01/02 med
-  aktuelle trupper. Den bygges til spillets verdensformat med `scripts/build-cm-data.mts` (`npm run data:cm`):
-  parseren (`src/game/data/cm0102.ts`) læser `index.dat`, `club.dat`, `nation.dat` m.fl., og alle datoer
-  skubbes +25 år, så sæsonen bliver 2026/27 med korrekte aldre (dataopdateringen holder originalens 2001-ur).
-  Databasen trimmes til ~38 ligaer, ~640 klubber og ~25.000 spillere, så den er let nok til mobil/PWA.
-- **Importér din egen CM 01/02** – fra spillerens *egen* installation (gratis siden 2008). Man vælger sin
-  `Data`-mappe, og den læses lokalt i browseren (IndexedDB) – intet sendes nogen steder hen. Originalens CA/PA,
-  evner (intrinsiske evner omregnes som i CM0102Patcher), positioner, personlighed og klubomdømme bruges;
-  evner originalen ikke har sat, får en rolleprofil. Filformatet er dokumenteret af fællesskabets værktøjer
-  (TransferTool, CM0102Patcher).
+  aktuelle trupper (`public/data/world.json`). Parseren (`src/game/data/cm0102.ts`) læser `index.dat`,
+  `club.dat`, `nation.dat`, `stadium.dat` m.fl., og alle datoer skubbes +25 år, så sæsonen bliver 2026/27 med
+  korrekte aldre (dataopdateringen holder originalens 2001-ur). Databasen trimmes til 38 ligaer, 641 klubber og
+  ~22.700 spillere, så den er let nok til mobil/PWA.
+- **Original CM 01/02 (3.9.68)** – den klassiske database spillet som 2001/02 uden datoforskydning
+  (`public/data/world-original.json`).
+- **Draft-liga** – bruger altid 2026/27-databasen.
 
 Den tidligere moderne transfermarkt-database (CC0) ligger stadig i repoet som `public/data/world-modern.json`
-og bygges med `npm run data`.
+og bygges med `npm run data` (se *Den moderne database* nedenfor).
+
+### Genbyg databaserne
+
+Kildefilerne (zip) ligger ikke i git, men i GitHub-release'n
+[`data-sources`](https://github.com/Skallerup/cm0102-reborn/releases/tag/data-sources):
+
+```bash
+npm run data:fetch   # henter og pakker ud til .data-update/, .orig-db/ og .sources/
+npm run data:cm      # October 2026 → public/data/world.json
+npx tsx scripts/build-cm-data.mts ".orig-db/Original-3.9.68-Database" public/data/world-original.json 2001
+```
+
+Release'n indeholder også *Sunday League Pack 800x600*, som baggrundene i `public/bg/` er konverteret fra
+(`.RGN` → JPEG).
 
 ## AI i spillet
 
@@ -93,16 +107,16 @@ Hver sæson giver en **Manager Score** ud fra opgaven: ligaplacering og forventn
 
 Scorerne sendes automatisk til globale ranglister (`api/rank.ts`, Upstash Redis): karriere i alt, bedste sæson, denne måned og pr. liga. Profilen er et unikt managernavn med et hemmeligt token i browseren; kun den første indsendelse af hver sæson tæller (ingen gevinst ved at genindlæse), og serveren validerer linjer, grænser og sum. Spillet kører i browseren, så ranglisten er tillidsbaseret ud over disse kontroller.
 
-## Spillerdatabasen
+## Den moderne database (transfermarkt)
 
-Data kommer fra **[dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets)** (CC0 / public domain). Transfermarkt har ingen 1–20-attributter, så de beregnes deterministisk i `src/game/data/generate.ts`:
+Den ældre moderne database (`world-modern.json`) bygger på **[dcaribou/transfermarkt-datasets](https://github.com/dcaribou/transfermarkt-datasets)** (CC0 / public domain). Transfermarkt har ingen 1–20-attributter, så de beregnes deterministisk i `src/game/data/generate.ts`:
 
 - **Current Ability** ← markedsværdi (log-skala) korrigeret for alder
 - **Potential Ability** ← alder + tilfældighed (med sjældne wonderkids)
 - **Attributprofil** ← position (målmand, stopper, back, kant, angriber …) vægtet efter rollen
 - **Finjustering** ← mål/90 og assists/90 (afslutning, kreativitet), kort (aggression, snavsethed), højde (hovedstød, spring), fod og landskampe
 
-Opdatér databasen med `npm run data`. Kommandoen henter de nyeste CSV-filer og skriver `public/data/world.json`.
+Opdatér den med `npm run data`. Kommandoen henter de nyeste CSV-filer. Bemærk, at datasættet stopper ved 6. juli 2026 og derfor ikke har 2026/27-trupperne.
 
 ## Kom i gang
 
@@ -145,7 +159,8 @@ Lokal udvikling af online-delen: `vercel dev --listen 3000` og derefter `node sc
 ## Arkitektur
 
 ```
-scripts/build-data.py     Transfermarkt CSV → public/data/world.json
+scripts/build-cm-data.mts CM 01/02 .dat-filer → public/data/world.json / world-original.json
+scripts/build-data.py     Transfermarkt CSV → public/data/world-modern.json
 src/game/                 Ren TypeScript-spilmotor (ingen UI-afhængigheder)
   engine/match.ts         Zonebaseret matchmotor (CM3-inspireret)
   competitions.ts         Kalender, ligaer, split, pokaler, CL/UEFA, playoffs
@@ -167,4 +182,4 @@ Læs mere i [docs/RESEARCH.md](docs/RESEARCH.md) (research om originalspillet) o
 
 ## Licens
 
-Koden er MIT-licenseret. Spillerdata er CC0 (transfermarkt-datasets). "Championship Manager" er et varemærke tilhørende dets ejere, og projektet er ikke tilknyttet dem.
+Koden er MIT-licenseret. Den moderne database er CC0 (transfermarkt-datasets). CM 01/02-databaserne og Sunday League Pack er fællesskabets/originalens data og er ikke omfattet af MIT-licensen. "Championship Manager" er et varemærke tilhørende dets ejere, og projektet er ikke tilknyttet dem.

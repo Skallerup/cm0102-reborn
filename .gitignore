@@ -8,3 +8,5 @@ data-src
 smoke-shots
 .vercel
 .env*
+.sources
+/*.zip
