@@ -475,3 +475,10 @@
 .cx-tabrow button:disabled, .cx-subrow button:disabled { opacity: 0.45; cursor: default; }
 @media (max-width: 760px) { .cx-filters .cx-set-grid { grid-template-columns: 1fr; } .cx-filters .cx-set-grid > span { font-size: 15px; } :root[data-skin='retro'] .cx-fl-tabs button { min-width: 0; padding: 0 10px; } }
 .cx-filters .cx-set-grid > .cx-fl-hint { font-size: 12px; font-weight: 400; color: #cfe8cf; text-shadow: none; }
+
+/* ▸-menuen på klubskærme: ligaens klubber i grøn CM-stil */
+.cx-menu-pop.cx-menu-clubs { min-width: 220px; padding: 3px 0; background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+.cx-menu-clubs button { font-weight: 700; padding: 4px 16px; }
+.cx-menu-clubs button:hover { background: #fff21f !important; color: #10164e !important; }
+.cx-menu-clubs button.on { color: #fff21f; }
+.cx-menu-clubs .cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }

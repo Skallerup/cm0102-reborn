@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createPortal } from 'react-dom';
 import { gs } from '../game/state';
 import type { GameState } from '../game/types';
-import { t } from '../i18n';
+import { natName, t } from '../i18n';
 import { useNav, type Route, type ScreenName } from './core';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
@@ -199,8 +199,10 @@ const MENU: [string, ScreenName[]][] = [
   ['navg.community', ['community', 'support', 'help']],
 ];
 
-function TitleMenu() {
+/** ▸-menuen: på klubskærme klubberne i klubbens liga (som i CM 01/02) og landet; ellers – eller via "Alle skærme" – alle skærme */
+function TitleMenu({ clubId }: { clubId?: number }) {
   const [open, setOpen] = useState(false);
+  const [all, setAll] = useState(false);
   const { nav } = useNav();
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -209,23 +211,37 @@ function TitleMenu() {
     document.addEventListener('mousedown', close);
     return () => document.removeEventListener('mousedown', close);
   }, [open]);
+  const g = gs();
+  const club = clubId ? g.clubs[clubId] : undefined;
+  const rivals = club?.league ? Object.values(g.clubs).filter((c) => c.league === club.league).sort((a, b) => a.short.localeCompare(b.short, t('cl.locale'))) : [];
+  const go = (r: Route) => { setOpen(false); nav(r); };
   return (
     <div className="cx-menu" ref={ref}>
-      <button className="cx-menu-btn" aria-label={t('cl.menu')} title={t('cl.menu')} onClick={() => setOpen(!open)}>▸</button>
-      {open && (
+      <button className="cx-menu-btn" aria-label={t('cl.menu')} title={t('cl.menu')} onClick={() => { setAll(false); setOpen(!open); }}>▸</button>
+      {open && (rivals.length && !all ? (
+        <div className="cx-menu-pop cx-menu-clubs" role="menu">
+          {rivals.map((c) => (
+            <button key={c.id} role="menuitem" className={c.id === clubId ? 'on' : ''} onClick={() => go(c.id === g.userClub ? { name: 'squad' } : { name: 'club', id: c.id })}>{c.short}</button>
+          ))}
+          <div className="cx-drop-sep" />
+          <button role="menuitem" onClick={() => go({ name: 'competitions', id: club!.league })}>{natName(g.nations[club!.nation]?.name)}</button>
+          <div className="cx-drop-sep" />
+          <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>
+        </div>
+      ) : (
         <div className="cx-menu-pop" role="menu">
-          {MENU.map(([g, ks]) => {
+          {MENU.map(([gr, ks]) => {
             const shown = ks.filter((k) => allowedFn(k));
             if (!shown.length) return null;
             return (
-              <div key={g} className="cx-menu-group">
-                <div className="cx-menu-head">{t(g)}</div>
-                {shown.map((k) => <button key={k} role="menuitem" onClick={() => { setOpen(false); nav({ name: k }); }}>{t(`nav.${k}`)}</button>)}
+              <div key={gr} className="cx-menu-group">
+                <div className="cx-menu-head">{t(gr)}</div>
+                {shown.map((k) => <button key={k} role="menuitem" onClick={() => go({ name: k })}>{t(`nav.${k}`)}</button>)}
               </div>
             );
           })}
         </div>
-      )}
+      ))}
     </div>
   );
 }
@@ -252,7 +268,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   return (
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg }}>
-        <TitleMenu />
+        <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} />
         <h2>{text}</h2>
         {action && <div className="cx-action">{action}</div>}
       </div>
