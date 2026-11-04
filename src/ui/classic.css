@@ -482,3 +482,15 @@
 .cx-menu-clubs button:hover { background: #fff21f !important; color: #10164e !important; }
 .cx-menu-clubs button.on { color: #fff21f; }
 .cx-menu-clubs .cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }
+
+/* Alle rullemenuer i klassisk tema: grøn baggrund med sort tekst (som i CM 01/02) */
+.cx-drop-pop, .cx-gameopt .cx-drop-pop { background: linear-gradient(180deg, #34962f, #237523); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+:root[data-skin='retro'] .cx-drop-pop button, :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #000; }
+:root[data-skin='retro'] .cx-drop-pop button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #5fc25a; color: #000; }
+:root[data-skin='retro'] .cx-drop-pop button:disabled { color: #145214; opacity: 0.6; }
+:root[data-skin='retro'] .cx-drop-pop button.danger { color: #6a0000; }
+.cx-drop-pop .cx-menu-head { color: #fff21f; text-shadow: 1px 1px 0 #000; }
+.cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }
+:root[data-skin='retro'] .cx-menu-clubs button { color: #000; }
+:root[data-skin='retro'] .cx-menu-clubs button:hover { background: #5fc25a !important; color: #000 !important; }
+:root[data-skin='retro'] .cx-menu-clubs button.on { color: #fff21f; text-shadow: 1px 1px 0 #000; }

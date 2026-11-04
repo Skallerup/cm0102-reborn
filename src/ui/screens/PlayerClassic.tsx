@@ -17,7 +17,7 @@ import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
 import { dateFmt, money, natName, t } from '../../i18n';
 import { askConfirm } from '../confirm';
-import { CxDrop, classicDate, type DropItem } from '../classic';
+import { CxDrop, classicDate, titleColors, type DropItem } from '../classic';
 import { compareIds, toggleCompare } from '../compare';
 import { Bar, ClubLink, FormList, Modal, Panel, Rating, Stars, Tabs, posStr } from '../components';
 import { gs } from '../../game/state';
@@ -35,9 +35,11 @@ import { IncomingOffersFor } from './Transfers';
 type Tab = 'profile' | 'injuries' | 'contract' | 'transfer' | 'history';
 type ActionItem = DropItem;
 
-/** Action-menuen i titelbjælken (fælles klassisk rullemenu) */
-function ActionMenu({ items }: { items: ActionItem[] }) {
-  return <CxDrop className="cx-act" label={t('cl.action')} items={items} align="right" />;
+/** Action-menuen i titelbjælken (fælles klassisk rullemenu) – knappen i farverne fra spillerens klub */
+function ActionMenu({ items, clubId }: { items: ActionItem[]; clubId?: number }) {
+  const col = titleColors(clubId);
+  return <CxDrop className="cx-act" label={t('cl.action')} items={items} align="right"
+    btn={col.neutral ? undefined : { style: { background: col.bg, color: col.fg } }} />;
 }
 
 // ---------- Profil-fanen ----------
@@ -349,7 +351,7 @@ export function ClassicPlayer({ id }: { id: number }) {
 
   return (
     <div>
-      <Head title={`${p.first} ${p.last}`} action={<ActionMenu items={items} />} />
+      <Head title={`${p.first} ${p.last}`} action={<ActionMenu items={items} clubId={p.club || undefined} />} />
       <Tabs tabs={tabs} value={tab} onChange={(v) => setTab(v as Tab)} />
       {msg && <div className="insight">{msg}</div>}
       {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} onOpen={(o) => setBid(o.id)} />}
