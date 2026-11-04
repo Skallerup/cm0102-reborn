@@ -27,7 +27,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         // store sekundære datafiler precaches ikke (de hentes ved kørsel, når de vælges):
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
-        globIgnores: ['**/data/careers.json', '**/data/world-original.json', '**/data/world-modern.json'],
+        globIgnores: ['**/data/careers*.json', '**/data/world-original.json', '**/data/world-modern.json'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         runtimeCaching: [{
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
@@ -35,9 +35,9 @@ export default defineConfig({
           handler: 'CacheFirst',
           options: { cacheName: 'backgrounds', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {
-          urlPattern: /\/data\/(careers|world-original|world-modern)\.json$/,
+          urlPattern: /\/data\/(careers[\w-]*|world-original|world-modern)\.json$/,
           handler: 'StaleWhileRevalidate',
-          options: { cacheName: 'big-data', expiration: { maxEntries: 4 } },
+          options: { cacheName: 'big-data', expiration: { maxEntries: 6 } },
         }, {
           urlPattern: /^https:\/\/fonts\.(googleapis|gstatic)\.com\//,
           handler: 'CacheFirst',

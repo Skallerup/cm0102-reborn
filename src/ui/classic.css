@@ -501,3 +501,11 @@
 :root[data-skin='retro'] button.cx-sq-tag.inj, :root[data-skin='retro'] button.cx-sq-tag.sus { background: linear-gradient(180deg, #ff6b5a, #b8261a); color: #fff; }
 /* knapper i samme række i en dialog får samme højde (også når en af dem har to linjer tekst) */
 :root[data-skin='retro'] .modal .row:has(> button) { align-items: stretch; }
+
+/* spillerkarriere (History) */
+.cx-career .cx-career-club { width: 40%; color: #fff; font-size: 17px; font-weight: 800; text-shadow: 2px 2px 0 #000; }
+.cx-career .cx-career-club .link { color: #fff; cursor: pointer; }
+.cx-career .cx-career-club .link:hover { color: #6fe3ff; }
+.cx-career-loan { color: #6cc4ff; font-size: 13px; }
+.cx-career .cx-lg-pos.now { background: linear-gradient(180deg, #f4f6fb, #c9cdd8); color: #0b1a5c; }
+@media (max-width: 760px) { .cx-career .cx-career-club { font-size: 14px; } }

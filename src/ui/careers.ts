@@ -1,34 +1,43 @@
 import { gs, hasGame } from '../game/state';
 // Spillernes virkelige karriere før spilstart (public/data/careers.json) – hentes først når en
 // spillerprofil åbnes og caches i hukommelsen.
-export interface RealSeason { season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes: number }
+export interface RealSeason { season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes: number; loan?: boolean }
 
-interface CareersFile { first: number; clubs: Record<string, string>; players: Record<string, number[]>; moves?: Record<string, number[]> }
+interface CareersFile { first: number; fields?: string[]; clubs: Record<string, string>; players: Record<string, number[]>; moves?: Record<string, number[]> }
 
 /** Klubskifte før spilstart (fee = -1: ukendt beløb) */
 export interface RealMove { season: number; from: number; to: number; fromName?: string; toName?: string; fee: number }
 
-let file: Promise<CareersFile | null> | null = null;
+const files = new Map<string, Promise<CareersFile | null>>();
 
-function load(): Promise<CareersFile | null> {
-  if (!file) {
-    file = fetch(`${import.meta.env.BASE_URL}data/careers.json`)
+/** Karrierefilen til spillets database: transfermarkt (moderne), CM 2026/27 eller den originale 01/02 */
+function careerFile(): string {
+  if (!hasGame() || gs().dbKind !== 'cm0102') return 'careers.json';
+  return gs().season < 2020 ? 'careers-original.json' : 'careers-cm.json';
+}
+
+function load(name = careerFile()): Promise<CareersFile | null> {
+  let f = files.get(name);
+  if (!f) {
+    f = fetch(`${import.meta.env.BASE_URL}data/${name}`)
       .then((r) => (r.ok ? (r.json() as Promise<CareersFile>) : null))
-      .catch(() => { file = null; return null; });
+      .catch(() => { files.delete(name); return null; });
+    files.set(name, f);
   }
-  return file;
+  return f;
 }
 
 export async function realCareer(pid: number): Promise<RealSeason[]> {
-  // karrierefilen hører til den moderne database
-  if (hasGame() && gs().dbKind === 'cm0102') return [];
   const f = await load();
   const flat = f?.players[String(pid)];
   if (!f || !flat) return [];
+  // CM-filerne har et leje-flag i stedet for minutter (CM 01/02's staff_history.dat)
+  const loanField = f.fields?.[5] === 'loan';
   const out: RealSeason[] = [];
   for (let i = 0; i + 5 < flat.length; i += 6) {
     const club = flat[i + 1];
-    out.push({ season: f.first + flat[i], club, clubName: f.clubs[String(club)], apps: flat[i + 2], goals: flat[i + 3], assists: flat[i + 4], minutes: flat[i + 5] });
+    out.push({ season: f.first + flat[i], club, clubName: f.clubs[String(club)], apps: flat[i + 2], goals: flat[i + 3], assists: flat[i + 4],
+      minutes: loanField ? 0 : flat[i + 5], ...(loanField && flat[i + 5] ? { loan: true } : {}) });
   }
   return out;
 }

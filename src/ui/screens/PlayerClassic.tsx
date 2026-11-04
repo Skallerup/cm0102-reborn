@@ -27,7 +27,7 @@ import { DevelopmentPanel } from '../dev';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 import {
-  AdviceLine, BidModal, CareerPanel, Complaint, EnquiryLine, ListModal, LoanOutModal, MyOffer,
+  AdviceLine, BidModal, Complaint, EnquiryLine, ListModal, LoanOutModal, MyOffer,
   ReformPanel, ScoutReport, TalkPanel, WantsAway, clauseText,
 } from './PlayerScreen';
 import { IncomingOffersFor } from './Transfers';
@@ -256,11 +256,55 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   );
 }
 
+/** "Playing Career" som i CM 01/02: én linje pr. sæson og klub – nyeste først, den igangværende sæson øverst */
+function ClassicCareer({ p }: { p: Player }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const [real, setReal] = useState<RealSeason[] | null>(null);
+  useEffect(() => {
+    let alive = true;
+    if (!g.draft) realCareer(p.id).then((r) => { if (alive) setReal(r); });
+    return () => { alive = false; };
+  }, [p.id, g.draft]);
+  type Row = { season: number; club: number; name?: string; apps: number; goals: number; assists?: number; mom?: number; avr?: number; loan?: boolean; now?: boolean };
+  const s = p.stats;
+  const rows: Row[] = [
+    ...(p.club ? [{ season: g.season, club: p.club, apps: s.apps + s.subs, goals: s.goals, assists: s.assists, mom: s.mom, avr: s.ratingCount ? avgRating(p) : 0, loan: !!p.loan, now: true }] : []),
+    ...(g.draft ? [] : (p.history ?? []).slice().reverse().map((h) => ({ season: h.season, club: h.club, apps: h.apps, goals: h.goals, assists: h.assists, avr: h.avg, loan: h.loan }))),
+    ...(real ?? []).slice().reverse().map((r) => ({ season: r.season, club: r.club, name: r.clubName, apps: r.apps, goals: r.goals, loan: r.loan })),
+  ];
+  const season = (y: number) => `${y}/${String((y + 1) % 100).padStart(2, '0')}`;
+  const dash = (v: number | undefined) => (v === undefined ? '' : v ? v : '-');
+  return (
+    <div className="cx-pl">
+      <div className="cx-subtitle small">{t('cl.pl.career')}</div>
+      {real === null && rows.length <= 1 ? <div className="cx-empty">{t('common.loading')}</div> : (
+        <div className="cx-tbl-wrap"><table className="cx-tbl cx-career">
+          <thead><tr><th /><th /><th className="c-num">{t('col.apps')}</th><th className="c-num">{t('col.goals')}</th><th className="c-num">{t('cl.pl.asts')}</th><th className="c-num" title={t('cl.pl.mom')}>{t('cl.tn.mom')}</th><th className="c-num">{t('col.avr')}</th></tr></thead>
+          <tbody>{rows.map((r, i) => {
+            const known = !!g.clubs[r.club];
+            return (
+              <tr key={i}>
+                <td className="btn-col"><span className={`cx-lg-pos ${r.now ? 'now' : ''}`}>{season(r.season)}</span></td>
+                <td className="cx-career-club">{known ? <span className="link" onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club].short}</span> : r.name ?? '?'}{r.loan && <span className="cx-career-loan"> ({t('career.loan')})</span>}</td>
+                <td className="c-num c-yel">{r.apps}</td><td className="c-num c-yel">{r.goals}</td>
+                <td className="c-num c-yel">{dash(r.assists)}</td><td className="c-num c-yel">{dash(r.mom)}</td>
+                <td className="c-val">{r.avr ? <Rating r={r.avr} digits={2} /> : '----'}</td>
+              </tr>
+            );
+          })}</tbody>
+        </table></div>
+      )}
+      {!g.draft && real && real.length > 0 && <div className="cx-fl-hint">{t(g.dbKind === 'cm0102' ? 'career.sourceCm' : 'career.source')}</div>}
+    </div>
+  );
+}
+
 function HistoryTab({ p }: { p: Player }) {
   const g = useGame()!;
   return (
     <>
-      <CareerPanel pid={p.id} />
+      <ClassicCareer p={p} />
       {p.dev && p.dev.length > 0 && (
         <Panel title={t('dev.title')} right={<span className="muted">{t('dev.since', { date: dateFmt(p.dev[0].d) })}</span>}>
           <DevelopmentPanel p={p} date={g.date} />

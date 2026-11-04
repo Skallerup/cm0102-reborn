@@ -380,6 +380,7 @@ export const en: Record<string, string> = {
   'cl.ct.moves': 'Transfers this season', 'cl.ct.none': 'No transfers this season yet', 'cl.ct.inOut': 'In/Out', 'cl.ct.club': 'Club', 'cl.ct.fee': 'Fee', 'cl.ct.in': 'In', 'cl.ct.out': 'Out', 'cl.ct.loan': 'Loan', 'cl.ct.listed': 'Transfer listed', 'cl.ct.noListed': 'No players on the transfer list', 'cl.cn.none': 'No more matches this season', 'cl.cn.form': 'Form', 'cl.cn.w': 'W', 'cl.cn.d': 'D', 'cl.cn.l': 'L', 'cl.ci.v.squad': 'Squad', 'cl.ci.v.transfers': 'Transfers', 'cl.ci.v.next': 'Next Match', 'cl.ci.v.fixtures': 'Fixtures',
   'cl.menu.all': 'All screens …',
   'cl.tag.Inj': 'Inj', 'cl.tag.Sus': 'Sus', 'cl.tag.Fut': 'Fut', 'cl.tag.Lst': 'Lst', 'cl.tag.Lon': 'Lon', 'cl.tag.Unh': 'Unh', 'cl.tag.Wnt': 'Wnt', 'cl.tag.Fgn': 'Fgn', 'cl.tag.Fre': 'Fre', 'cl.tag.Exp': 'Exp',
+  'cl.pl.career': 'Playing Career', 'career.sourceCm': 'Earlier seasons from the Championship Manager 01/02 database.',
   'cl.go.save': 'Save Game', 'cl.go.status': 'Manager Status', 'cl.go.settings': 'Game Settings', 'cl.go.hall': 'Hall of Fame', 'cl.go.web': 'Web Sites', 'cl.go.all': 'All Options…', 'cl.go.exit': 'Exit Game',
   'cl.set.version': 'Version: {v}', 'cl.set.reset': 'Reset', 'cl.set.skin': 'Skin', 'cl.set.classic': 'Classic', 'cl.set.bg': 'Background Changes', 'cl.set.flash': 'Flashing Text',
   'cl.set.on': 'On', 'cl.set.off': 'Off', 'cl.set.save.changes': 'Always', 'cl.set.save.daily': 'Daily', 'cl.set.save.weekly': 'Weekly', 'cl.set.save.monthly': 'Monthly', 'cl.set.save.off': 'Never',

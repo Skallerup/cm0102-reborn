@@ -114,6 +114,45 @@ if (existsSync(out)) {
 writeFileSync(out, JSON.stringify(w));
 const kb = Math.round(statSync(out).size / 1024);
 
+// ---- Spillerkarrierer (staff_history.dat) → en separat fil, der først hentes, når en profil åbnes.
+// Post (17 bytes): id (4) · person-id (4) · sæsonens startår (2) · klub (4) · leje (1) · kampe (1) · mål (1).
+// Klubnavnene tages fra hele club.dat (også klubber, der ikke er med i spillet).
+const careersOut = out.replace(/world([^/]*)\.json$/, 'careers$1.json').replace('careers.json', 'careers-cm.json');
+if (files['staff_history.dat'] && careersOut !== out) {
+  const H = new DataView(files['staff_history.dat']);
+  const C = new DataView(files['club.dat']);
+  const dec = new TextDecoder('windows-1252');
+  const str = (o: number, len: number) => { const b = new Uint8Array(files['club.dat'], o, len); const e = b.indexOf(0); return dec.decode(b.subarray(0, e < 0 ? len : e)).trim(); };
+  const clubName = new Map<number, string>();
+  for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
+    const long = str(o + 4, 51);
+    clubName.set(C.getInt32(o, true), CLUB_NAME_FIXES[long]?.[1] ?? str(o + 56, 26) ?? long);
+  }
+  const rows = new Map<number, [number, number, number, number, number][]>();
+  for (let o = 0; o + 17 <= files['staff_history.dat'].byteLength; o += 17) {
+    const pid = H.getInt32(o + 4, true);
+    if (!keptPlayers.has(pid)) continue;
+    const club = H.getInt32(o + 10, true);
+    if (!clubName.has(club)) continue;
+    const year = H.getInt16(o + 8, true) + SHIFT;
+    (rows.get(pid) ?? rows.set(pid, []).get(pid)!).push([year, club, H.getUint8(o + 15), H.getUint8(o + 16), H.getUint8(o + 14) ? 1 : 0]);
+  }
+  let first = Infinity;
+  for (const list of rows.values()) for (const r of list) first = Math.min(first, r[0]);
+  const used = new Set<number>();
+  const players: Record<string, number[]> = {};
+  for (const [pid, list] of rows) {
+    // ældste sæson først; inden for samme sæson i databasens rækkefølge
+    list.sort((a, b) => a[0] - b[0]);
+    // seneste sæson før spilstart ligger allerede i spillet som den aktuelle – medtag kun tidligere
+    players[pid] = list.filter((r) => r[0] < SEASON).flatMap((r) => { used.add(r[1]); return [r[0] - first, r[1], r[2], r[3], 0, r[4]]; });
+    if (!players[pid].length) delete players[pid];
+  }
+  const clubs = Object.fromEntries([...used].map((id) => [id, clubName.get(id)]));
+  writeFileSync(careersOut, JSON.stringify({ source: w.source, first, fields: ['season', 'club', 'apps', 'goals', 'assists', 'loan'], clubs, players }));
+  console.error(`karrierer: ${Object.keys(players).length} spillere, ${Object.keys(clubs).length} klubber -> ${careersOut} (${Math.round(statSync(careersOut).size / 1024)} KB)`);
+}
+
 // sanitetstjek: alder ved sæsonstart (dob er nu allerede skubbet)
 const ages = w.players.map((p) => ageAt(p[F.dob] as string)).sort((a, b) => a - b);
 const med = ages[Math.floor(ages.length / 2)];
