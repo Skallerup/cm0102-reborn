@@ -1,6 +1,7 @@
 // Turneringsnavne: CM-databaserne har engelske beskrivende navne ("Danish Premier Division"). På dansk
 // vises ligaernes egne navne (Superligaen, Premier League …), og pokalturneringerne ("Denmark Cup") får
 // deres rigtige navne. Navne der ikke kendes, vises uændret – fx de moderne databasers navne.
+import type { Lang } from '../game/types';
 import { isNationName, nationLabel } from './nations';
 
 const LEAGUES_DA: Record<string, string> = {
@@ -48,15 +49,21 @@ const CUPS: Record<string, string> = {
   Turkey: 'Tyrkiets pokal', 'Türkiye': 'Tyrkiets pokal', Greece: 'Grækenlands pokal',
 };
 
-export function compLabel<T extends string | undefined>(name: T, lang: 'da' | 'en'): T {
-  if (!name || lang !== 'da') return name;
-  const league = LEAGUES_DA[name] ?? CM_CUPS_DA[name];
+const DANISH_WORDS = /pokal\b|^Pokalturneringen$|^Kejserens|^Kongens|^Japans/;
+
+export function compLabel<T extends string | undefined>(name: T, lang: Lang): T {
+  // engelsk: CM-databasernes egne navne; de øvrige sprog: ligaernes og pokalernes rigtige navne
+  if (!name || lang === 'en') return name;
+  // danske fællesbetegnelser ("Tyrkiets pokal") bruges kun på dansk – de rigtige egennavne på alle sprog
+  const own = (v: string | undefined) => (v && (lang === 'da' || !DANISH_WORDS.test(v)) ? v : undefined);
+  const league = own(LEAGUES_DA[name]) ?? own(CM_CUPS_DA[name]);
   if (league) return league as T;
   if (name.startsWith('Playoff ')) return `Playoff ${compLabel(name.slice(8), lang)}` as T;
   const nation = name.endsWith(' Cup') ? name.slice(0, -4) : '';
-  if (CUPS[nation]) return CUPS[nation] as T;
+  if (own(CUPS[nation])) return CUPS[nation] as T;
   if (nation && isNationName(nation)) {
     const n = nationLabel(nation, lang);
+    if (lang !== 'da') return ({ es: `Copa de ${n}`, fr: `Coupe de ${n}`, de: `${n} Pokal` } as Record<string, string>)[lang] as T ?? name;
     return `${n}${/[sxz]$/.test(n) ? '' : 's'} pokal` as T;
   }
   return name;

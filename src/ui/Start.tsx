@@ -10,7 +10,7 @@ import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
 import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
-import { compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
+import { LANGS, compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
 import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
@@ -59,8 +59,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
               <button className="start-ghost" onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
               <input id="import-file" type="file" accept=".cm0102,.json,.gz" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files?.[0])} />
               <div className="start-lang">
-                <button className={lang === 'da' ? 'on' : ''} onClick={() => { setLang('da'); onLang('da'); }}>DA</button>
-                <button className={lang === 'en' ? 'on' : ''} onClick={() => { setLang('en'); onLang('en'); }}>EN</button>
+                {LANGS.map(([k, short, full]) => <button key={k} className={lang === k ? 'on' : ''} title={full} onClick={() => { setLang(k); onLang(k); }}>{short}</button>)}
               </div>
               <select className="start-cur" aria-label={t('opt.currency')} defaultValue={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}

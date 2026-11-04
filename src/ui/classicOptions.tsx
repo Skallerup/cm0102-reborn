@@ -2,8 +2,8 @@
 import { useState } from 'react';
 import { act } from '../game/actions';
 import { notify } from '../game/state';
-import type { GameState } from '../game/types';
-import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
+import type { GameState, Lang } from '../game/types';
+import { LANGS, CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
 import { CxDrop, type DropItem } from './classic';
 import { bgPack, setBgPack } from './backgrounds';
@@ -69,7 +69,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: 'da' | 'en'; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: boolean; save: string; notif: boolean };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: boolean; save: string; notif: boolean };
 
 export function Seg<T extends string | boolean>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
@@ -80,7 +80,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const { nav } = useNav();
   const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
-    lang: getLang() as 'da' | 'en', cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: futuristicFont(),
+    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: futuristicFont(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
   };
   const [d, setD] = useState<Draft>(initial);
@@ -107,7 +107,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
             <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: true })}>{t('cl.set.reset')}</button>
           </div>
           <div className="cx-set-grid">
-            {row(t('opt.language'), <Seg value={d.lang} opts={[['en', 'English'], ['da', 'Dansk']]} onChange={(v) => up({ lang: v })} />)}
+            {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
             {row(t('opt.currency'), <Seg value={d.cur} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`)] as [Currency, string])} onChange={(v) => up({ cur: v })} />)}
             {row(t('cl.set.skin'), <Seg value={d.theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]]} onChange={(v) => up({ theme: v })} />)}
             {row(t('cl.set.fonts'), <Seg value={d.font} opts={[[true, t('cl.set.futuristic')], [false, t('cl.set.standard')]]} onChange={(v) => up({ font: v })} />)}

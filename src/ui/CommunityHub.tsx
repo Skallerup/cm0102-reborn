@@ -133,7 +133,7 @@ function LegendsTab({ onLegend }: { onLegend?: (id: number) => void }) {
           return (
             <div key={l.key} className="hub-card legend">
               <b>{l.name}</b>
-              <span>{lang === 'da' ? l.da : l.en}</span>
+              <span>{lang === 'da' ? l.da : (l as unknown as Record<string, string>)[lang] ?? l.en}</span>
               <div className="row" style={{ marginTop: 'auto' }}>
                 <button className={`small ${on ? 'primary' : ''}`} disabled={!getProfile()} onClick={async () => { const r = await rememberLegend(l.key, !on); if (!('error' in r)) load(); }}>❤️ {t(on ? 'hub.legends.remembered' : 'hub.legends.remember')} · {counts[l.key] ?? 0}</button>
                 {onLegend && <button className="small" onClick={() => onLegend(l.id)}>{t('hub.legends.open')}</button>}

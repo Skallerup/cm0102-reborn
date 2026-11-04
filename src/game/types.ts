@@ -2,7 +2,7 @@
 import type { PressConf } from './press';
 import type { SeasonScore } from './rating';
 
-export type Lang = 'da' | 'en';
+export type Lang = 'da' | 'en' | 'es' | 'fr' | 'de';
 export type Foot = 'R' | 'L' | 'B' | '';
 
 /** Positioner som i CM 01/02 */

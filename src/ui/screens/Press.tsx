@@ -49,7 +49,7 @@ export function PressScreen() {
   const [typing, setTyping] = useState(false);
   const [done, setDone] = useState<{ headline: string; body: string; effects: string[] } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
-  const journalists = JOURNALISTS[g.lang === 'en' ? 'en' : 'da'];
+  const journalists = JOURNALISTS[g.lang === 'da' ? 'da' : 'en'];
   const questionText = (tp: PressTopic) => aiQ[tp.id] ?? templateQuestion(tp, `${pc?.fixture}`);
   const journalistFor = (i: number, tp: PressTopic, prev: Line[]) => {
     // opfølgninger stilles af samme journalist

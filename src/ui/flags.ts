@@ -26,6 +26,13 @@ const ISO: Record<string, string> = {
   'St. Vincent & Grenadinen': 'vc', Botswana: 'bw', Sudan: 'sd',
 };
 
+ISO.Holland = 'nl'; ISO['South Korea'] = 'kr'; ISO['North Korea'] = 'kp';
+
+/** ISO 3166-koden for et land (databasens navn), fx 'dk' eller 'gb-eng' */
+export function isoOf(name: string | undefined): string | undefined {
+  return name ? ISO[name] : undefined;
+}
+
 /** URL til flaget for et land (databasens navn) – eller null, hvis landet ikke kendes */
 export function flagUrl(name: string | undefined): string | null {
   const iso = name ? ISO[name] : undefined;

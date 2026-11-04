@@ -1,3 +1,5 @@
+import type { Lang } from '../game/types';
+import { isoOf } from '../ui/flags';
 // Landenavne: databasen har engelske navne (enkelte på tysk). Her oversættes de til dansk
 // og rettes til almindeligt engelsk. Ukendte navne vises uændret.
 
@@ -51,10 +53,27 @@ const EN: Record<string, string> = {
   'Brunei Darussalam': 'Brunei', Curacao: 'Curaçao', 'Southern Sudan': 'South Sudan', 'Bosnia-Herzegovina': 'Bosnia and Herzegovina',
 };
 
+// Spansk, fransk og tysk: browserens egne landenavne (Intl.DisplayNames) ud fra ISO-koden – de britiske
+// landshold har ingen ISO-landekode og står her
+const UK: Record<string, Record<string, string>> = {
+  es: { 'gb-eng': 'Inglaterra', 'gb-sct': 'Escocia', 'gb-wls': 'Gales', 'gb-nir': 'Irlanda del Norte' },
+  fr: { 'gb-eng': 'Angleterre', 'gb-sct': 'Écosse', 'gb-wls': 'Pays de Galles', 'gb-nir': 'Irlande du Nord' },
+  de: { 'gb-eng': 'England', 'gb-sct': 'Schottland', 'gb-wls': 'Wales', 'gb-nir': 'Nordirland' },
+};
+const displayNames = new Map<string, Intl.DisplayNames | null>();
+function regionName(iso: string, lang: string): string | undefined {
+  if (iso.startsWith('gb-')) return UK[lang]?.[iso];
+  if (!displayNames.has(lang)) { try { displayNames.set(lang, new Intl.DisplayNames([lang], { type: 'region' })); } catch { displayNames.set(lang, null); } }
+  try { return displayNames.get(lang)?.of(iso.toUpperCase()); } catch { return undefined; }
+}
+
 /** Landets navn på det valgte sprog (databasens navn ind, oversat navn ud) */
-export function nationLabel(name: string | undefined, lang: 'da' | 'en'): string {
+export function nationLabel(name: string | undefined, lang: Lang): string {
   if (!name) return '';
-  return (lang === 'da' ? DA[name] : EN[name]) ?? name;
+  if (lang === 'da') return DA[name] ?? name;
+  if (lang === 'en') return EN[name] ?? name;
+  const iso = isoOf(name);
+  return (iso && regionName(iso, lang)) || EN[name] || name;
 }
 
 /** Kender vi landet? (bruges til at genkende "<land> Cup") */

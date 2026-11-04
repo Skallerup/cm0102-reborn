@@ -940,7 +940,7 @@ export const en: Record<string, string> = {
   'land.play': 'Play free now', 'land.playShort': 'Play now', 'land.seeScreens': 'See the game',
   'land.pill': 'New season · 40,000+ real players', 'land.h1a': 'The legend is back.', 'land.h1b': 'Now in your browser.',
   'land.lead': 'The classic football manager, reborn: build your dream team, unearth hidden gems, face the press and take your club to the top – with a match engine that thinks and AI managers who fight back.',
-  'land.check.free': 'Free', 'land.check.nodl': 'No download', 'land.check.lang': 'English & Danish', 'land.check.save': 'Saves automatically',
+  'land.check.free': 'Free', 'land.check.nodl': 'No download', 'land.check.lang': '5 languages', 'land.check.save': 'Saves automatically',
   'land.floatGoal': 'GOAL! 89th minute', 'land.floatBid': 'Bidding war for your star',
   'land.alt.report': 'Match report with xG, momentum and heatmap', 'land.alt.mobile': 'The game on mobile',
   'land.tick1': "12' Through ball – and it's in the top corner!", 'land.tick2': 'Rumour: giants watching your captain', 'land.tick3': "67' Red card! The manager throws on another striker",

@@ -8,7 +8,7 @@ import { ageOn } from '../game/dates';
 import { gs, hasGame } from '../game/state';
 import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
-import { currencySymbol, fromCurExact, getLang, natName, t, toCur } from '../i18n';
+import { LOCALE, currencySymbol, fromCurExact, getLang, natName, t, toCur } from '../i18n';
 import { useNav, useRouteState } from './core';
 import { logoUrl } from './logos';
 
@@ -263,7 +263,7 @@ export function MoneyInput({ value, onChange, min = 0, width = 130 }: { value: n
   };
   return (
     <span className="row" style={{ gap: 4, display: 'inline-flex' }}>
-      <input inputMode="numeric" value={text ?? toCur(value).toLocaleString(getLang() === 'da' ? 'da-DK' : 'en-GB')} style={{ width }}
+      <input inputMode="numeric" value={text ?? toCur(value).toLocaleString(LOCALE[getLang()])} style={{ width }}
         onFocus={(e) => { setText(String(toCur(value))); requestAnimationFrame(() => e.target.select()); }}
         onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
       <span className="muted">{currencySymbol()}</span>

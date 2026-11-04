@@ -94,7 +94,7 @@ export function CommunityBoard({ initialId, defaultName }: { initialId?: number;
                 <span className="sg-meta">
                   <span className={`sg-status s-${s.status}`}>{t(`cm.st.${s.status}`)}</span>
                   <span className="tag">{t(`cm.cat.${s.cat}`)}</span>
-                  {s.lang === 'da' && <span className="tag" title={t('cm.danish')}>DA</span>}
+                  {s.lang !== 'en' && <span className="tag">{s.lang.toUpperCase()}</span>}
                   <SupporterBadge tier={s.supporter} />
                   {s.reply && <span className="tag good">💬 {t('cm.devReplied')}</span>}
                   <span className="muted">{s.name} · {dateFmt(s.created.slice(0, 10))} · 💬 {s.comments}</span>

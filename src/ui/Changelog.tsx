@@ -34,7 +34,7 @@ export function VersionButton() {
 }
 
 export function ChangelogModal({ onClose }: { onClose: () => void }) {
-  const lang = getLang() === 'en' ? 'en' : 'da';
+  const lang = getLang() === 'da' ? 'da' : 'en';
   return (
     <Modal title={t('changelog.title')} onClose={onClose}>
       <div className="changelog">

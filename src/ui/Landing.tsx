@@ -1,7 +1,7 @@
 // Forsiden for nye besøgende: hero med animation, rigtige screenshots, features, rangliste og FAQ.
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Lang } from '../game/types';
-import { getLang, setLang, t } from '../i18n';
+import { LANGS, LOCALE, getLang, setLang, t } from '../i18n';
 import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import { withAiManagers } from './aiManagers';
@@ -46,7 +46,7 @@ export function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
     io.observe(el);
     return () => { io.disconnect(); cancelAnimationFrame(raf); };
   }, [to]);
-  return <span ref={ref}>{v.toLocaleString(getLang() === 'da' ? 'da-DK' : 'en-GB')}{suffix}</span>;
+  return <span ref={ref}>{v.toLocaleString(LOCALE[getLang()])}{suffix}</span>;
 }
 
 /** Skærmbillede i en browserramme der vipper let efter musen */
@@ -219,8 +219,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           </nav>
           <div className="lp-nav-right">
             <div className="lp-lang">
-              <button className={lang === 'da' ? 'on' : ''} onClick={() => switchLang('da')}>DA</button>
-              <button className={lang === 'en' ? 'on' : ''} onClick={() => switchLang('en')}>EN</button>
+              {LANGS.map(([k, short, full]) => <button key={k} className={lang === k ? 'on' : ''} title={full} onClick={() => switchLang(k)}>{short}</button>)}
             </div>
             <button className="lp-cta small" onClick={onPlay}>{t('land.playShort')}</button>
           </div>

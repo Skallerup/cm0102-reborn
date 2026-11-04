@@ -1,14 +1,24 @@
 import { da } from './da';
 import { en } from './en';
+import { es } from './es';
+import { fr } from './fr';
+import { de } from './de';
 import type { Lang } from '../game/types';
 import { nationLabel } from './nations';
 import { compLabel } from './comps';
 
-const dicts: Record<Lang, Record<string, string>> = { da, en };
+const dicts: Record<Lang, Record<string, string>> = { da, en, es, fr, de };
+/** Sprogene i spillet og på hjemmesiden (kort kode og navn på sproget selv) */
+export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['de', 'DE', 'Deutsch']];
+export const isLang = (v: unknown): v is Lang => LANGS.some(([k]) => k === v);
+/** Sprogets locale til tal og datoer */
+export const LOCALE: Record<Lang, string> = { da: 'da-DK', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE' };
+// enheder for store beløb pr. sprog (mia./mio./t.)
+const UNITS: Record<Lang, [string, string, string]> = { da: [' mia.', ' mio.', ' t.'], en: ['bn', 'M', 'K'], es: [' mil M', ' M', ' mil'], fr: [' Md', ' M', ' k'], de: [' Mrd.', ' Mio.', ' Tsd.'] };
 let lang: Lang = (() => {
   try {
     const v = localStorage.getItem('cm0102.lang');
-    if (v === 'da' || v === 'en') return v;
+    if (isLang(v)) return v;
   } catch { /* ingen storage */ }
   // engelsk er standard for alle – dansk kun når man selv vælger det
   return 'en';
@@ -95,14 +105,14 @@ export function money(eur: number): string {
   const v = eur * RATE[currency];
   const neg = v < 0;
   const a = Math.abs(v);
-  const da = lang === 'da';
-  const loc = da ? 'da-DK' : 'en-GB';
+  const loc = LOCALE[lang];
+  const [bn, mn, th] = UNITS[lang];
   const dec = (n: number, d: number) => n.toLocaleString(loc, { minimumFractionDigits: d, maximumFractionDigits: d });
   let num: string;
   let unit = '';
-  if (a >= 1_000_000_000) { num = dec(a / 1_000_000_000, 2); unit = da ? ' mia.' : 'bn'; }
-  else if (a >= 1_000_000) { num = dec(a / 1_000_000, a >= 10_000_000 ? 1 : 2); unit = da ? ' mio.' : 'M'; }
-  else if (a >= 100_000) { num = dec(Math.round(a / 1000), 0); unit = da ? ' t.' : 'K'; }
+  if (a >= 1_000_000_000) { num = dec(a / 1_000_000_000, 2); unit = bn; }
+  else if (a >= 1_000_000) { num = dec(a / 1_000_000, a >= 10_000_000 ? 1 : 2); unit = mn; }
+  else if (a >= 100_000) { num = dec(Math.round(a / 1000), 0); unit = th; }
   else num = dec(currency === 'EUR' ? Math.round(a) : Math.round(a / 10) * 10, 0);
   let s: string;
   if (currency === 'DKK') s = `${num}${unit} kr.`;
@@ -112,5 +122,5 @@ export function money(eur: number): string {
 
 export function dateFmt(iso: string, long = false): string {
   const d = new Date(iso + 'T00:00:00Z');
-  return d.toLocaleDateString(lang === 'da' ? 'da-DK' : 'en-GB', { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric', weekday: long ? 'short' : undefined, timeZone: 'UTC' });
+  return d.toLocaleDateString(LOCALE[lang], { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric', weekday: long ? 'short' : undefined, timeZone: 'UTC' });
 }

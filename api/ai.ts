@@ -111,7 +111,7 @@ export async function POST(request: Request) {
   if (ctx.length > MAX_CTX) return json({ error: 'size' }, 413);
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
   if (!(await allowed(ip))) return json({ error: 'limit' }, 429);
-  const lang = body.lang === 'en' ? 'engelsk' : 'dansk';
+  const lang = ({ en: 'engelsk', es: 'spansk', fr: 'fransk', de: 'tysk' } as Record<string, string>)[String(body.lang)] ?? 'dansk';
   for (;;) {
     try {
       return json(await run(spec, lang, ctx, MODELS[modelIdx]));

@@ -4,7 +4,8 @@ import { exportSave, saveGame } from '../../game/save';
 import { notify } from '../../game/state';
 import { act } from '../../game/actions';
 import { session } from '../../online/client';
-import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../../i18n';
+import type { Lang } from '../../game/types';
+import { LANGS, CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../../i18n';
 import { Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
@@ -23,8 +24,8 @@ export function Options() {
         <Panel title={t('opt.general')}>
           <div className="col">
             <label className="row">{t('opt.language')}
-              <select value={getLang()} onChange={(e) => { setLang(e.target.value as 'da' | 'en'); g.lang = e.target.value as 'da' | 'en'; notify(); }}>
-                <option value="da">Dansk</option><option value="en">English</option>
+              <select value={getLang()} onChange={(e) => { setLang(e.target.value as Lang); g.lang = e.target.value as Lang; notify(); }}>
+                {LANGS.map(([k, , full]) => <option key={k} value={k}>{full}</option>)}
               </select>
             </label>
             <label className="row">{t('opt.currency')}
