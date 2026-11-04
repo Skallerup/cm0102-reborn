@@ -19,7 +19,13 @@ export async function serialize(g: GameState): Promise<Blob> {
   return serializeState(g);
 }
 
-export async function saveGame(): Promise<SaveMeta> {
+// gem også i skyen, når man er logget ind (sættes af src/online/cloudSync.ts – motoren kender ikke kontoen)
+type CloudHook = (meta: SaveMeta, blob: Blob, force: boolean) => void;
+let cloudHook: CloudHook | null = null;
+export function setCloudHook(h: CloudHook | null) { cloudHook = h; }
+
+/** Gem lokalt (og i skyen: altid ved cloud=true, ellers højst hvert 5. minut) */
+export async function saveGame(opts?: { cloud?: boolean }): Promise<SaveMeta> {
   const g = gs();
   // online-spil gemmes på serveren – en lokal kopi ville blive genoptaget i stedet for det rigtige spil
   if (g.humans?.length) throw new Error('online');
@@ -34,7 +40,18 @@ export async function saveGame(): Promise<SaveMeta> {
   await set(`save:${g.id}`, blob);
   await set(`meta:${g.id}`, meta);
   rememberLast({ kind: 'local', id: g.id });
+  cloudHook?.(meta, blob, !!opts?.cloud);
   return meta;
+}
+
+/** Læg et spil hentet fra skyen i den lokale database (overskriver en ældre lokal kopi) */
+export async function storeSave(meta: SaveMeta, blob: Blob) {
+  await set(`save:${meta.id}`, blob);
+  await set(`meta:${meta.id}`, meta);
+}
+
+export async function getSaveMeta(id: string): Promise<SaveMeta | undefined> {
+  return get<SaveMeta>(`meta:${id}`);
 }
 
 // ---------- seneste spil (så en genindlæsning fortsætter hvor man slap) ----------

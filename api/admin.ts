@@ -67,7 +67,9 @@ export async function GET(request: Request) {
       const c = await redis.hgetall<Record<string, string>>(`career:${top[i]}`);
       topRows.push({ career: top[i], points: Number(top[i + 1]), name: c?.name ?? '?', club: c?.club ?? '', league: c?.league ?? '' });
     }
+    const accounts = await redis.scard('acct:all');
     return json({
+      accounts,
       managers: names.length, careers, seasons, seasonsThisMonth: monthEntries,
       rooms: rooms.length, activeRooms: roomInfo.filter((x) => x?.lastTurn && Date.parse(x.lastTurn) > week).length,
       ai: { today: Number(aiToday ?? 0), yesterday: Number(aiYesterday ?? 0), cap: Number(process.env.AI_DAILY_CAP ?? 4000) },

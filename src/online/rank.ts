@@ -3,6 +3,7 @@
 import { getAvatar } from '../ui/avatar';
 import { gs, hasGame, notify } from '../game/state';
 import { isMultiplayer } from '../game/humans';
+import { profileCreated } from './account';
 
 export interface RankProfile { pid: string; token: string; name: string }
 export interface RankRow { id: string; pid?: string; supporter?: string; points: number; name: string; club: string; league: string; season?: number; seasons?: number }
@@ -25,6 +26,7 @@ export async function createProfile(name: string): Promise<RankProfile | string>
     if (!r.ok) return String(j.error ?? 'error');
     const prof = { pid: j.pid, token: j.token, name: j.name } as RankProfile;
     try { localStorage.setItem(KEY, JSON.stringify(prof)); } catch { /* ignorer */ }
+    profileCreated(prof);
     return prof;
   } catch {
     return 'network';

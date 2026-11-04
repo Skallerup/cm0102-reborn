@@ -9,7 +9,9 @@ import { CHALLENGES, challengeClub } from '../game/challenges';
 import { createGame, type WorldData } from '../game/newgame';
 import { setupBots, type BotScope } from '../game/bots';
 import { enableMultiplayer } from '../game/humans';
-import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
+import { deleteSave, importSave, listSaves, loadGame, storeSave, type SaveMeta } from '../game/save';
+import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
+import { AccountBar, useAccount } from './Login';
 import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
 import { compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
@@ -57,6 +59,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
               <button className="start-card" onClick={() => setView('online')}><b>🌐 {t('mp.title')}</b><span>{t('start.onlineDesc')}</span></button>
               <button className="start-card" onClick={() => setView('challenges')}><b>🏆 {t('start.challenges')}</b><span>{t('start.challengesDesc')}</span></button>
             </div>
+            <AccountBar />
             <div className="start-foot">
               <button className="start-ghost" onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
               <input id="import-file" type="file" accept=".cm0102,.json,.gz" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files?.[0])} />
@@ -95,21 +98,58 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   );
 }
 
+type Row = { id: string; club: string; manager: string; date: string; saved: string; local?: SaveMeta; cloud?: CloudSave };
+
 function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string) => void }) {
-  const [saves, setSaves] = useState<SaveMeta[] | null>(null);
-  useEffect(() => { listSaves().then(setSaves); }, []);
+  const acct = useAccount();
+  const [rows, setRows] = useState<Row[] | null>(null);
+  const [err, setErr] = useState('');
+  // lokale og gemte i skyen samlet pr. spil – den nyeste udgave åbnes
+  const refresh = async () => {
+    const [local, cloud] = await Promise.all([listSaves(), cloudSaves().catch(() => [] as CloudSave[])]);
+    const m = new Map<string, Row>();
+    for (const s of local) m.set(s.id, { ...s, local: s });
+    for (const c of cloud) {
+      const r = m.get(c.id);
+      if (!r) m.set(c.id, { id: c.id, club: c.club, manager: c.manager, date: c.date, saved: c.saved, cloud: c });
+      else { r.cloud = c; if (c.saved > r.saved) Object.assign(r, { club: c.club, manager: c.manager, date: c.date, saved: c.saved }); }
+    }
+    setRows([...m.values()].sort((a, b) => b.saved.localeCompare(a.saved)));
+  };
+  useEffect(() => { void refresh(); }, [acct?.sid]);
+  const open = async (r: Row) => {
+    setBusy(t('start.loading')); setErr('');
+    try {
+      if (r.cloud && (!r.local || r.cloud.saved > r.local.saved)) {
+        const blob = await downloadCloudSave(r.cloud);
+        await storeSave({ id: r.id, club: r.cloud.club, manager: r.cloud.manager, date: r.cloud.date, saved: r.cloud.saved }, blob);
+      }
+      if (!(await loadGame(r.id))) setErr(t('start.importFailed'));
+    } catch { setErr(t('acc.err.other')); }
+    setBusy('');
+  };
+  const remove = async (r: Row) => {
+    if (!(await askConfirm(t('start.confirmDelete'), { danger: true }))) return;
+    if (r.local) await deleteSave(r.id);
+    if (r.cloud) await deleteCloudSave(r.id).catch(() => {});
+    await refresh();
+  };
   return (
     <Panel title={t('start.load')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
-      {!saves && <div className="muted">{t('start.loading')}</div>}
-      {saves && saves.length === 0 && <div className="muted">{t('start.noSaves')}</div>}
+      <AccountBar />
+      {!rows && <div className="muted">{t('start.loading')}</div>}
+      {rows && rows.length === 0 && <div className="muted">{t('start.noSaves')}</div>}
+      {err && <div className="insight bad">{err}</div>}
       <div className="col">
-        {saves?.map((s) => (
+        {rows?.map((s) => (
           <div key={s.id} className="choice">
-            <div className="grow" onClick={async () => { setBusy(t('start.loading')); await loadGame(s.id); setBusy(''); }}>
+            <div className="grow" onClick={() => void open(s)}>
               <b>{s.club}</b> <span className="muted">— {s.manager}</span>
-              <div className="muted">{dateFmt(s.date)} · {t('start.savedAt')} {new Date(s.saved).toLocaleString()}</div>
+              {s.cloud && <span className="acc-tag" title={s.cloud.device ? t('acc.fromDevice', { device: s.cloud.device }) : undefined}>☁ {s.local && s.cloud.saved > s.local.saved ? t('acc.cloudNewer') : t('acc.cloud')}</span>}
+              {acct && !s.cloud && <span className="acc-tag dim">{t('acc.localOnly')}</span>}
+              <div className="muted">{dateFmt(s.date)} · {t('start.savedAt')} {new Date(s.saved).toLocaleString()}{s.cloud?.device && s.cloud.saved >= (s.local?.saved ?? '') ? ` · ${t('acc.fromDevice', { device: s.cloud.device })}` : ''}</div>
             </div>
-            <button className="small danger" onClick={async () => { if (await askConfirm(t('start.confirmDelete'), { danger: true })) { await deleteSave(s.id); setSaves(await listSaves()); } }}>{t('common.delete')}</button>
+            <button className="small danger" onClick={() => void remove(s)}>{t('common.delete')}</button>
           </div>
         ))}
       </div>

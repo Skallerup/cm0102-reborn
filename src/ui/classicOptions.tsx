@@ -1,4 +1,5 @@
 // Klassisk tema: "Game Options"-menuen i venstre kolonne og dialogen "Game Settings" (som i originalen).
+import { AccountBar } from './Login';
 import { useState } from 'react';
 import { act } from '../game/actions';
 import { notify } from '../game/state';
@@ -118,6 +119,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
       <div className="modal cx-settings" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head"><span>{t('cl.go.settings')}</span><button className="x" onClick={onClose}>×</button></div>
         <div className="modal-body">
+          <AccountBar />
           <div className="cx-set-top">
             <span>{t('cl.set.version', { v: APP_VERSION })}</span>
             <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: true })}>{t('cl.set.reset')}</button>

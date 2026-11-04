@@ -10,6 +10,7 @@ import { addDays } from './game/dates';
 import { invitePress } from './game/press';
 import { applyTheme } from './ui/theme';
 import { ensureLang, getLang, t } from './i18n';
+import './online/cloudSync'; // gemte spil i skyen, når man er logget ind
 import './ui/notify'; // fanger browserens "kan installeres"-signal tidligt
 
 // kun i udvikling: adgang til spiltilstanden fra konsollen/Playwright-tests (advance spoler dage frem)

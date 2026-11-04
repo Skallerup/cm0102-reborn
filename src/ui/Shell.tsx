@@ -301,7 +301,7 @@ export function Shell() {
         const [day, date] = classicDate(g.date);
         const quit = async () => {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
-          if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
+          if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
         };
         const side = (k: ScreenName | null, label: string, cls = '', onClick?: () => void) => (
           <button className={`cx-sbtn ${cls} ${k && route.name === k ? 'on' : ''}`} onClick={onClick ?? (() => k && nav({ name: k }))}>{label}</button>
@@ -322,7 +322,7 @@ export function Shell() {
             {club ? side('club', t('cl.nations')) : side('find', t('cl.nations'), '', () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }))}
             <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
-              onSave={async () => { await saveGame(); setToast(t('top.saved')); }} />
+              onSave={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }} />
             <div className="cx-side-grow" />
             {unread > 0 && <button className="cx-news" onClick={() => nav({ name: 'inbox' })}>{t('cl.youHaveNews')}</button>}
           </aside>
@@ -368,11 +368,11 @@ export function Shell() {
           );
         })()}
         <div className="sep" />
-        {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
+        {!online && <button onClick={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }}><Icon name="save" />{t('nav.save')}</button>}
         {online && <div className="muted nav-note" title={t('mp.autosaveHint')}><Icon name="save" />{t('mp.autosave')}</div>}
         <button onClick={async () => {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
-          if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
+          if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
         }}><Icon name="quit" />{t('nav.quit')}</button>
         <BugReportButton screen={route.name} version={APP_VERSION} date={g.date} />
         <VersionButton />

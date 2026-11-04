@@ -17,12 +17,16 @@ import { AdminPage } from './Admin';
 import type { HubTab } from './CommunityHub';
 import { loadLogos } from './logos';
 import { ConsentBanner } from './ConsentBanner';
+import { useLoginLink } from './Login';
 import { trackPage } from '../analytics';
 
 void loadLogos().then(() => notify());
 
 export default function App() {
-  return <><AppPage /><ConsentBanner /></>;
+  // login via linket i mailen (?login=…)
+  const [toast, setToast] = useState('');
+  useLoginLink((m) => { setToast(m); setTimeout(() => setToast(''), 6000); });
+  return <><AppPage /><ConsentBanner />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}</>;
 }
 
 function AppPage() {

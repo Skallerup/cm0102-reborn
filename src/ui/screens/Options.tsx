@@ -1,3 +1,4 @@
+import { AccountBar, CloudStatus } from '../Login';
 import { useState } from 'react';
 import { isSupporter } from '../../online/support';
 import { exportSave, saveGame } from '../../game/save';
@@ -83,11 +84,13 @@ export function Options() {
         </Panel>
         <Panel title={t('opt.saves')}>
           <div className="col">
-            <button onClick={async () => { await saveGame(); setMsg(t('top.saved')); }}>{t('nav.save')}</button>
+            <button onClick={async () => { await saveGame({ cloud: true }); setMsg(t('top.saved')); }}>{t('nav.save')}</button>
             <button onClick={() => exportSave()}>{t('opt.export')}</button>
             <div className="muted">{t('opt.exportHint')}</div>
             <div className="kv"><span>{t('start.seed')}</span><span>{g.seed}</span></div>
             {msg && <div className="good">{msg}</div>}
+            <CloudStatus />
+            <AccountBar />
           </div>
         </Panel>
         <Panel title={t('opt.about')}>

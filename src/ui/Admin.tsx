@@ -46,7 +46,7 @@ const ago = (iso?: string) => {
 };
 
 interface Overview {
-  managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
+  accounts?: number; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
   ai: { today: number; yesterday: number; cap: number }; suggestions: number; supporters: number;
   applications: { total: number; new: number }; top: { career: string; points: number; name: string; club: string; league: string }[];
   config: { email: boolean; stripe: boolean };
@@ -129,6 +129,7 @@ function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
     <>
       <div className="adm-stats">
         <Stat label="Applications" value={o.applications.total} sub={o.applications.new ? `${o.applications.new} new` : 'none new'} onClick={() => go('applications')} />
+        <Stat label="Accounts (cloud saves)" value={o.accounts ?? 0} sub="signed in with email" />
         <Stat label="Manager profiles" value={o.managers} sub={`${o.careers} careers on the board`} onClick={() => go('managers')} />
         <Stat label="Seasons submitted" value={o.seasons} sub={`${o.seasonsThisMonth} this month`} onClick={() => go('rankings')} />
         <Stat label="Multiplayer rooms" value={o.rooms} sub={`${o.activeRooms} active in the last 7 days`} onClick={() => go('rooms')} />
