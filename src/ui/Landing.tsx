@@ -139,6 +139,7 @@ const SHOWCASE: { key: string; imgs: string[] }[] = [
   { key: 'tactics', imgs: ['tactics', 'match'] },
   { key: 'people', imgs: ['player', 'press'] },
   { key: 'career', imgs: ['table', 'club'] },
+  { key: 'classic', imgs: ['classic-squad', 'classic-player'] },
 ];
 
 export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLang: (l: Lang) => void; onDraft?: () => void }) {
