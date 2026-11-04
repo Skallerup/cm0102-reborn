@@ -11,9 +11,12 @@ import { chemistry } from '../../game/personality';
 import { Bar, Panel, PlayerLink, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
+import { isRetro } from '../theme';
+import { ClassicTactics } from './TacticsClassic';
 
 export function Tactics() {
   const g = useGame()!;
+  if (isRetro() && !g.draft) return <ClassicTactics />;
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
   const set = (tac: Tactic) => act({ t: 'tactic', tactic: tac });
   return (
