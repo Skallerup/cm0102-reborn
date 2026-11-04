@@ -1,10 +1,12 @@
 // Klassisk tema: "Game Options"-menuen i venstre kolonne og dialogen "Game Settings" (som i originalen).
 import { useState } from 'react';
+import { act } from '../game/actions';
 import { notify } from '../game/state';
 import type { GameState } from '../game/types';
 import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
 import { CxDrop, type DropItem } from './classic';
+import { askConfirm } from './confirm';
 import { useGame, useNav } from './core';
 import { notifyEnabled, notifySupported, setNotify } from './notify';
 import { getTheme, setTheme, type Theme } from './theme';
@@ -120,4 +122,32 @@ function GameSettings({ onClose }: { onClose: () => void }) {
       </div>
     </div>
   );
+}
+
+// ---------- managerens menu (klik på navnet i sidebaren) ----------
+
+/** Pop op-menuen bag managerens navn: klubbens skærme øverst, managerens egne nedenunder (som i CM 01/02) */
+export function ManagerMenu({ onRetire, allowed }: { onRetire: () => void; allowed: (k: string) => boolean }) {
+  const g = useGame()! as GameState;
+  const { nav } = useNav();
+  const club = g.clubs[g.userClub];
+  const items: DropItem[] = [];
+  const add = (k: string, label: string, tab?: string) => { if (allowed(k)) items.push({ key: `${k}${tab ?? ''}`, label, onClick: () => nav({ name: k as never, tab }) }); };
+  if (club) {
+    add('squad', t('cl.mm.squad', { club: club.short }));
+    add('board', t('cl.mm.board'));
+    items.push({ key: 'resign', label: t('cl.mm.resign'), onClick: async () => {
+      if (await askConfirm(t('jobs.resignConfirm', { club: club.name }))) act({ t: 'resign' });
+    } });
+    items.push({ key: 'sep1', sep: true });
+  }
+  add('inbox', t('cl.mm.news'));
+  add('transfers', t('cl.tr.title'), 'search');
+  add('compare', t('cl.mm.compare'));
+  add('profile', t('cl.mm.stats'));
+  add('jobs', t('cl.mm.jobs'));
+  add('transfers', t('nav.transfers'), 'deals');
+  add('history', t('nav.history'));
+  items.push({ key: 'sep2', sep: true }, { key: 'retire', label: t('cl.mm.retire'), onClick: onRetire });
+  return <CxDrop className="cx-gameopt" fixed caret={false} label={g.manager.name} items={items} btn={{ className: 'cx-sbtn cx-mgr' }} />;
 }

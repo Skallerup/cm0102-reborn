@@ -370,6 +370,7 @@
 :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #fff; }
 :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #fff21f; color: #10164e; }
 .cx-gameopt .cx-drop-check { width: 8px; }
+:root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: var(--cx-cyan); }
 .cx-gameopt .cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }
 :root[data-flash='off'] .cx-news { animation: none; }
 :root[data-skin='retro'] .modal.cx-settings { max-width: 720px; background: linear-gradient(180deg, rgba(20, 70, 24, 0.96), rgba(12, 46, 16, 0.96)); border: 2px solid; border-color: #6cc26a #0c300c #0c300c #6cc26a; }

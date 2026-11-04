@@ -388,6 +388,7 @@ export const da: Record<string, string> = {
   'cl.tr.found': '{n} spillere fundet', 'cl.tr.custom': 'Din egen søgning ({n} filtre)',
   'cl.tr.p.all': 'Alle spillere', 'cl.tr.p.free': 'Frie transfers', 'cl.tr.p.listed': 'Spillere til salg', 'cl.tr.p.expiring': 'Udløbende kontrakter', 'cl.tr.p.young': 'Unge talenter (21 og yngre)', 'cl.tr.p.realistic': 'Realistiske mål',
   'cl.tr.v.general': 'Generelt', 'cl.tr.v.scouting': 'Scouting', 'cl.tr.v.contract': 'Kontrakt',
+  'cl.mm.squad': '{club} trup', 'cl.mm.board': 'Bestyrelsens tillid', 'cl.mm.resign': 'Sig op i klubben', 'cl.mm.news': 'Nyheder', 'cl.mm.compare': 'Sammenlign valgte spillere', 'cl.mm.stats': 'Managerstatistik', 'cl.mm.jobs': 'Jobinformation', 'cl.mm.retire': 'Gå på pension', 
   'cl.go.save': 'Gem spil', 'cl.go.status': 'Managerstatus', 'cl.go.settings': 'Spilindstillinger', 'cl.go.hall': 'Hall of Fame', 'cl.go.web': 'Websider', 'cl.go.all': 'Alle indstillinger…', 'cl.go.exit': 'Afslut spil',
   'cl.set.version': 'Version: {v}', 'cl.set.reset': 'Nulstil', 'cl.set.skin': 'Udseende', 'cl.set.classic': 'Klassisk', 'cl.set.bg': 'Skiftende baggrunde', 'cl.set.flash': 'Blinkende tekst',
   'cl.set.on': 'Til', 'cl.set.off': 'Fra', 'cl.set.save.changes': 'Altid', 'cl.set.save.daily': 'Dagligt', 'cl.set.save.weekly': 'Ugentligt', 'cl.set.save.monthly': 'Månedligt', 'cl.set.save.off': 'Aldrig',

@@ -51,7 +51,7 @@ import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl } from './backgrounds';
-import { GameOptionsMenu, bgChanges } from './classicOptions';
+import { GameOptionsMenu, ManagerMenu, bgChanges } from './classicOptions';
 import { MatchDay } from './screens/MatchDayClassic';
 import { ClassicSlotCtx, classicDate, setClassicAllowed } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
@@ -312,8 +312,8 @@ export function Shell() {
             {online ? <div className="cx-online"><OnlineControls /></div> : !inMatch && (
               <button className="cx-sbtn cx-continue continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
             )}
-            {/* managerens navn → klubbens trupskærm (som i originalen); profilen nås via ▸-menuen */}
-            {side('squad', g.manager.name, 'cx-mgr')}
+            {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
+            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />
             {side('competitions', t('nav.competitions'))}
             {side('club', t('cl.nations'))}
             {side('transfers', t('cl.find'))}

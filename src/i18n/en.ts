@@ -375,6 +375,7 @@ export const en: Record<string, string> = {
   'cl.tr.found': '{n} players found', 'cl.tr.custom': 'Your own search ({n} filters)',
   'cl.tr.p.all': 'All players', 'cl.tr.p.free': 'Free transfers', 'cl.tr.p.listed': 'Transfer listed players', 'cl.tr.p.expiring': 'Contracts running out', 'cl.tr.p.young': 'Young talents (21 and under)', 'cl.tr.p.realistic': 'Realistic targets',
   'cl.tr.v.general': 'General', 'cl.tr.v.scouting': 'Scouting', 'cl.tr.v.contract': 'Contract',
+  'cl.mm.squad': '{club} Squad', 'cl.mm.board': 'Board Confidence', 'cl.mm.resign': 'Resign from Club', 'cl.mm.news': 'News', 'cl.mm.compare': 'Compare chosen players', 'cl.mm.stats': 'Manager Stats', 'cl.mm.jobs': 'Job Information', 'cl.mm.retire': 'Retire', 
   'cl.go.save': 'Save Game', 'cl.go.status': 'Manager Status', 'cl.go.settings': 'Game Settings', 'cl.go.hall': 'Hall of Fame', 'cl.go.web': 'Web Sites', 'cl.go.all': 'All Options…', 'cl.go.exit': 'Exit Game',
   'cl.set.version': 'Version: {v}', 'cl.set.reset': 'Reset', 'cl.set.skin': 'Skin', 'cl.set.classic': 'Classic', 'cl.set.bg': 'Background Changes', 'cl.set.flash': 'Flashing Text',
   'cl.set.on': 'On', 'cl.set.off': 'Off', 'cl.set.save.changes': 'Always', 'cl.set.save.daily': 'Daily', 'cl.set.save.weekly': 'Weekly', 'cl.set.save.monthly': 'Monthly', 'cl.set.save.off': 'Never',
