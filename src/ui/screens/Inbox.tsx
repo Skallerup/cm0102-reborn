@@ -12,6 +12,19 @@ import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink 
 import { AiArticle } from '../aiArticle';
 import { NewsIcon } from '../icons';
 import type { NewsCategory, NewsItem } from '../../game/types';
+import { isRetro } from '../theme';
+import { Tabs } from '../components';
+import { ClassicSub } from '../classic';
+
+/** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
+const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
+const CX_SUB = ['contracts', 'transfers', 'jobs', 'records'] as const;
+type CxGroup = typeof CX_TOP[number] | typeof CX_SUB[number];
+const CX_CATS: Record<Exclude<CxGroup, 'all'>, NewsCategory[]> = {
+  messages: ['board', 'scout', 'youth', 'general'], competitions: ['match'], injuries: ['injury'],
+  contracts: ['contract'], transfers: ['transfer'], jobs: ['job'], records: ['award'],
+};
+const cxDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'short', day: 'numeric', month: 'short' });
 
 /** Kategorier, der kan dæmpes (bestyrelse, job, kontrakter og transfers kræver ofte svar – transfers styres af transferfilteret) */
 const MUTABLE: NewsCategory[] = ['match', 'injury', 'scout', 'award', 'youth', 'finance', 'general'];
@@ -21,11 +34,14 @@ const CATS: (NewsCategory | 'all')[] = ['all', 'match', 'transfer', 'contract', 
 export function Inbox() {
   const g = useGame()!;
   const [cat, setCat] = useRouteState<NewsCategory | 'all'>('cat', 'all');
+  const classic = isRetro();
+  const [grp, setGrp] = useRouteState<CxGroup>('grp', 'all');
   // altid den ældste uåbnede besked først (listen er sorteret nyeste øverst)
   const oldestUnread = () => g.news.filter((n) => !n.read).pop()?.id;
   const [sel, setSel] = useRouteState<number | null>('sel', () => takeFocus() ?? oldestUnread() ?? g.news[0]?.id ?? null);
   const open = useOpenLink();
-  const list = g.news.filter((n) => (cat === 'all' ? !n.muted : n.cat === cat));
+  const list = g.news.filter((n) => (classic && grp !== 'all' ? CX_CATS[grp].includes(n.cat) && (cat === 'all' || n.cat === cat)
+    : cat === 'all' ? !n.muted : n.cat === cat));
   const [settings, setSettings] = useState(false);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
@@ -35,6 +51,7 @@ export function Inbox() {
   useEffect(() => {
     const show = (id: number) => {
       setCat('all');
+      setGrp('all');
       setSel(id);
       requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
     };
@@ -53,13 +70,58 @@ export function Inbox() {
     if (e.key === 'ArrowDown' || e.key === 'j') { move(1); return true; }
     if (e.key === 'ArrowUp' || e.key === 'k') { move(-1); return true; }
     if (e.key === 'Enter' && item?.link) { open(item); return true; }
-    if (e.key === 'ArrowRight') {
-      // næste ulæste
-      const next = shown.filter((n) => !n.read && n.id !== sel).pop();
-      if (next) { setSel(next.id); requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' })); }
-      return true;
-    }
+    if (e.key === 'ArrowRight') { nextUnread(); return true; }
   });
+  function nextUnread() {
+    const next = shown.filter((n) => !n.read && n.id !== sel).pop();
+    if (next) { setSel(next.id); requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' })); }
+  }
+  const hasUnread = shown.some((n) => !n.read && n.id !== sel);
+
+  if (classic) {
+    const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
+    const cats = grp === 'all' ? CATS : (['all', ...CX_CATS[grp]] as (NewsCategory | 'all')[]);
+    return (
+      <div className="cx-inbox">
+        <Head title={t('cl.news', { name: g.manager.name })}>
+          <Tabs tabs={CX_TOP.map((k) => [k, t(`cl.tab.${k}`)] as [string, string])} value={(CX_TOP as readonly string[]).includes(grp) ? grp : ''} onChange={(v) => pick(v as CxGroup)} />
+        </Head>
+        <ClassicSub items={CX_SUB.map((k) => ({ key: k, label: t(`cl.tab.${k}`), on: grp === k, onClick: () => pick(k) }))} />
+        {settings && <NewsSettings onClose={() => setSettings(false)} />}
+        <div className="cx-nlist" ref={listRef}>
+          {list.length === 0 && <div className="cx-nempty">{t('inbox.empty')}</div>}
+          {shown.map((n) => (
+            <div key={n.id} data-id={n.id} className={`cx-nrow ${sel === n.id ? 'on' : ''} ${n.read ? '' : 'unread'}`} onClick={() => setSel(n.id)}>
+              <span className="cx-ndate">{cxDate(n.date)}</span>
+              <span className="cx-ntitle">{newsTitle(n)}</span>
+            </div>
+          ))}
+        </div>
+        <div className="cx-nbar">
+          <button className="cx-grey small" onClick={() => setSettings(true)}>{t('inbox.settings')}</button>
+          <button className="cx-grey small" onClick={() => act({ t: 'read', ids: 'all' })}>{t('inbox.markRead')}</button>
+          <span className="cx-grow" />
+          <label className="cx-nfilter">{t('cl.filter')} :
+            <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>
+              {cats.map((c) => <option key={c} value={c}>{t(`cat.${c}`)}</option>)}
+            </select>
+          </label>
+          <button className="cx-grey" disabled={!hasUnread} onClick={nextUnread}>{t('cl.nextUnread')}</button>
+        </div>
+        {item ? (
+          <div className="cx-nmsg">
+            <h3 className="cx-nhead"><NewsTitle n={item} /></h3>
+            {newsBody(item) && <p className="cx-nbody"><NewsBody n={item} /></p>}
+            <NewsDeals n={item} />
+            <WarRaise item={item} />
+            <AiArticle item={item} />
+            {item.link && <div><button className="cx-grey" onClick={() => open(item)}>{t('inbox.open')}</button></div>}
+          </div>
+        ) : <div className="cx-nmsg"><div className="cx-nempty">{t('inbox.select')}</div></div>}
+        <FirstDay />
+      </div>
+    );
+  }
 
   return (
     <div>

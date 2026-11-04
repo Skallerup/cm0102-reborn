@@ -8,6 +8,7 @@ import { dateFmt, t, natName } from '../../i18n';
 import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { isRetro } from '../theme';
 import { resultStr, stageLabel } from './Fixtures';
 
 export function Competitions({ id }: { id?: string }) {
@@ -49,6 +50,13 @@ function order(c: Competition) {
   return 10 + c.tier;
 }
 
+/** "1st", "2nd" … på engelsk, "1." på dansk */
+export function ordinal(n: number): string {
+  if (t('cl.locale').startsWith('da')) return `${n}.`;
+  const s = n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th';
+  return `${n}${s}`;
+}
+
 export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: TableRow[]; comp: Competition; compact?: boolean; offset?: number; zones?: (i: number) => string }) {
   const g = gs();
   const { nav } = useNav();
@@ -70,6 +78,28 @@ export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: 
     else if (i < cl + uefa && !rules?.promoted) c.push('euro');
     return c.join(' ');
   };
+  if (isRetro() && !compact) {
+    // klassisk tema: placering som blå knap, klubnavn i stort, grå kolonneknapper, point i lilla –
+    // og en stiplet gul linje hvor en zone (op-/nedrykning, Europa) slutter
+    const zone = (i: number) => cls(i, -1).split(' ').filter((x) => x !== 'me' && x !== 'rival').join(' ');
+    return (
+      <div className="cx-tbl-wrap">
+        <table className="cx-tbl cx-league">
+          <thead><tr><th className="btn-col" /><th className="btn-col" />{['cl.lg.pld', 'cl.lg.won', 'cl.lg.drn', 'cl.lg.lst', 'cl.lg.for', 'cl.lg.ag', 'cl.lg.pts'].map((k) => <th key={k} className="c-num">{t(k)}</th>)}</tr></thead>
+          <tbody>
+            {sorted.map((r, i) => (
+              <tr key={r.club} className={`${i > 0 && zone(i) !== zone(i - 1) ? 'zone-start' : ''} ${zone(i)}`}>
+                <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1 + offset)}</span></td>
+                <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.name}</td>
+                <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td>
+                <td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
   return (
     <table className="grid">
       <thead><tr><th className="num">#</th><th>{t('col.club')}</th><th className="num">{t('tbl.p')}</th>{!compact && <><th className="num">{t('tbl.w')}</th><th className="num">{t('tbl.d')}</th><th className="num">{t('tbl.l')}</th><th className="num">{t('tbl.gf')}</th><th className="num">{t('tbl.ga')}</th></>}<th className="num">{t('tbl.gd')}</th><th className="num">{t('tbl.pts')}</th>{!compact && <th>{t('col.form')}</th>}</tr></thead>

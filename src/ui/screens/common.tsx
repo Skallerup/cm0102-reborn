@@ -5,9 +5,14 @@ import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
 import type { GameState } from '../../game/types';
+import { isRetro } from '../theme';
+import { ClassicHead } from '../classic';
 
-export function Head({ title, children }: { title: ReactNode; children?: ReactNode }) {
+/** action: kun klassisk tema – fx en Action-menu i titelbjælkens højre hjørne */
+export function Head({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
   const { back, canBack } = useNav();
+  // klassisk tema: titelbjælke + hub-faner (Tilbage ligger i den brede bundbjælke)
+  if (isRetro()) return <ClassicHead title={title} action={action}>{children}</ClassicHead>;
   return (
     <div className="screen-head">
       {canBack && <button className="back small" onClick={back}>‹ {t('common.back')}</button>}

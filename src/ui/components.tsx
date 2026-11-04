@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { useClaimTabSlot } from './classic';
 import { crestSvg } from '../game/draft';
 import { positionString } from '../game/attributes';
 import { flagUrl } from './flags';
@@ -113,13 +115,16 @@ export function Tabs({ tabs, value, onChange }: { tabs: [string, string][]; valu
     const box = ref.current, on = box?.querySelector<HTMLElement>('button.on');
     if (box && on && box.scrollWidth > box.clientWidth) box.scrollTo({ left: on.offsetLeft - (box.clientWidth - on.offsetWidth) / 2, behavior: 'smooth' });
   }, [value]);
-  return (
-    <div className="tabs" ref={ref}>
+  // klassisk tema: den første Tabs på skærmen fylder hovedfanerækken, når hubben ikke har sine egne
+  const slot = useClaimTabSlot(useId());
+  const row = (
+    <div className={slot ? 'cx-tabrow' : 'tabs'} ref={ref}>
       {tabs.map(([k, label]) => (
         <button key={k} className={k === value ? 'on' : ''} onClick={() => onChange(k)}>{label}</button>
       ))}
     </div>
   );
+  return slot ? createPortal(row, slot) : row;
 }
 
 export function Modal({ title, onClose, children, wide }: { title: string; onClose: () => void; children: ReactNode; wide?: boolean }) {

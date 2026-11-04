@@ -10,6 +10,8 @@ import { Bar, FormList, Rating, Nat, Panel, PlayerLink, Table, Tabs, age, posStr
 import { cliques } from '../../game/will';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { isRetro } from '../theme';
+import { ClassicSquad } from './SquadClassic';
 
 export function statusTags(p: Player, userClub: number) {
   return (
@@ -78,6 +80,12 @@ export function SquadTable({ players, view, userClub }: { players: Player[]; vie
 
 export function Squad() {
   const g = useGame()!;
+  // klassisk tema: to kolonner med udtagelsesknapper (træk og slip)
+  return isRetro() && !g.draft ? <ClassicSquad /> : <ModernSquad />;
+}
+
+function ModernSquad() {
+  const g = useGame()!;
   const [view, setView] = useRouteState('view', 'general');
   const players = squad(g.userClub);
   const loanedOut = Object.values(g.players).filter((p) => p.loan?.from === g.userClub);
@@ -99,7 +107,7 @@ export function Squad() {
 }
 
 /** Omklædningsrummet: grupperinger og deres ledere */
-function Cliques() {
+export function Cliques() {
   const g = useGame()!;
   const list = cliques(g.userClub);
   if (!list.length) return null;

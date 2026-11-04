@@ -6,16 +6,20 @@ import { CAMP_DESTS, campCost, campWindows, type CampDest } from '../../game/cam
 import type { BoardAsk } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
 import { Bar, Panel } from '../components';
-import { useGame, useNav } from '../core';
+import { gs } from '../../game/state';
+import { useGame, useNav, useRouteState } from '../core';
+import { isRetro } from '../theme';
 import { Info } from '../help';
 import { Head } from './common';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
 
 export function BoardScreen() {
+  return isRetro() ? <ClassicBoard /> : <ModernBoard />;
+}
+
+function ModernBoard() {
   const g = useGame()!;
-  const { nav } = useNav();
-  const [answer, setAnswer] = useState<Partial<Record<BoardAsk, string>>>({});
   const conf = Math.round(g.board.confidence);
   const tone = conf >= 60 ? 'good' : conf >= 35 ? 'warn' : 'bad';
   return (
@@ -30,15 +34,31 @@ export function BoardScreen() {
           </div>
           <p className="muted">{t('ba.explain')}</p>
         </Panel>
-        <Panel title={t('ba.money')}>
-          <p className="muted" style={{ marginTop: 0 }}>{t('ba.moneyHint')}</p>
-          <div className="row">
-            <button onClick={() => nav({ name: 'finance', tab: 'overview' })}>{t('ba.toBudget')}</button>
-            <button onClick={() => nav({ name: 'finance', tab: 'facilities' })}>{t('ba.toProjects')}</button>
-          </div>
-        </Panel>
+        <MoneyPanel />
       </div>
       <CampPanel />
+      <BoardAsks />
+    </div>
+  );
+}
+
+function MoneyPanel() {
+  const { nav } = useNav();
+  return (
+    <Panel title={t('ba.money')}>
+      <p className="muted" style={{ marginTop: 0 }}>{t('ba.moneyHint')}</p>
+      <div className="row">
+        <button onClick={() => nav({ name: 'finance', tab: 'overview' })}>{t('ba.toBudget')}</button>
+        <button onClick={() => nav({ name: 'finance', tab: 'facilities' })}>{t('ba.toProjects')}</button>
+      </div>
+    </Panel>
+  );
+}
+
+/** Ønsker til bestyrelsen (lavere forventninger, tillidsafstemning, ungdomssatsning) */
+function BoardAsks() {
+  const [answer, setAnswer] = useState<Partial<Record<BoardAsk, string>>>({});
+  return (
       <div className="ba-grid">
         {ASKS.map((k) => {
           const info = boardAskInfo(k);
@@ -65,6 +85,40 @@ export function BoardScreen() {
           );
         })}
       </div>
+  );
+}
+
+/** Bestyrelsens udtalelse i klassisk stil: tillid, forventning, advarsler og økonomi i hele sætninger */
+function boardStatement(): string[] {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  const conf = g.board.confidence;
+  const lvl = conf >= 75 ? 'delighted' : conf >= 58 ? 'positive' : conf >= 45 ? 'satisfied' : conf >= 30 ? 'concerned' : 'angry';
+  const out = [t(`cl.ba.conf.${lvl}`, { club: club?.name ?? '' })];
+  out.push(t('cl.ba.expect', { exp: t(`exp.${g.board.expectation}`), pos: g.board.expectedPos }));
+  if (g.board.warnings) out.push(t('cl.ba.warnings', { n: g.board.warnings }));
+  const bal = club?.balance ?? 0;
+  out.push(t(bal >= 0 ? 'cl.ba.fin.secure' : bal > -5_000_000 ? 'cl.ba.fin.stretched' : 'cl.ba.fin.debt'));
+  return out;
+}
+
+/** Klassisk tema: klubbens navn i titlen, "Board Confidence" som overskrift og udtalelsen i stor tekst */
+function ClassicBoard() {
+  const [view, setView] = useRouteState<'confidence' | 'request' | 'camp'>('bview', 'confidence');
+  const views: ['confidence' | 'request' | 'camp', string][] = [['confidence', t('cl.ba.confidence')], ['request', t('cl.ba.request')], ['camp', t('camp.title')]];
+  return (
+    <div>
+      <Head title={t('nav.board')}>
+        {views.filter(([k]) => k !== view).map(([k, l]) => <button key={k} className="cx-greybtn" onClick={() => setView(k)}>{l}</button>)}
+      </Head>
+      <div className="cx-subtitle">{views.find(([k]) => k === view)?.[1]}</div>
+      {view === 'confidence' && (
+        <div className="cx-statement">
+          {boardStatement().map((x) => <p key={x}>{x}</p>)}
+        </div>
+      )}
+      {view === 'request' && <><BoardAsks /><MoneyPanel /></>}
+      {view === 'camp' && <CampPanel />}
     </div>
   );
 }

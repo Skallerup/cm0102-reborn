@@ -30,6 +30,11 @@ export default defineConfig({
         globIgnores: ['**/data/careers.json', '**/data/world-original.json', '**/data/world-modern.json'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         runtimeCaching: [{
+          // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
+          urlPattern: /\/bg\/[\w-]+\.jpg$/,
+          handler: 'CacheFirst',
+          options: { cacheName: 'backgrounds', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+        }, {
           urlPattern: /\/data\/(careers|world-original|world-modern)\.json$/,
           handler: 'StaleWhileRevalidate',
           options: { cacheName: 'big-data', expiration: { maxEntries: 4 } },

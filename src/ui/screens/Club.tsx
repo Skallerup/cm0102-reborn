@@ -13,13 +13,95 @@ import { useAiAvailable } from '../ai';
 import { AiSpinner, Bar, ClubLink, Crest, Flag, MgrChip, Panel, PlayerLink, Stars, posStr } from '../components';
 import { scoutStars } from '../../game/scouting';
 import { ageOn } from '../../game/dates';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
+import { isRetro } from '../theme';
+import { CxDrop } from '../classic';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
 
 export function ClubScreen({ id }: { id?: number }) {
+  return isRetro() ? <ClassicClub id={id} /> : <ModernClub id={id} />;
+}
+
+/** Klassisk tema: "Finances & Info" med View ▾ (General Info · Stats · Finances · Income · Expenditure) */
+function ClassicClub({ id }: { id?: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const cid = id ?? g.userClub;
+  const c = g.clubs[cid];
+  const [view, setView] = useRouteState('cview', 'info');
+  if (!c) return <Head title="?" />;
+  const mine = cid === g.userClub;
+  const showMoney = mine || !g.options.masking;
+  const views = ['info', 'stats', ...(showMoney ? ['finances', 'income', 'expenditure'] : [])];
+  const v = views.includes(view) ? view : 'info';
+  const f = c.finance;
+  const level = (x: number) => t(`cl.ci.lvl.${x >= 17 ? 5 : x >= 13 ? 4 : x >= 9 ? 3 : x >= 5 ? 2 : 1}`);
+  const manager = c.manager === -1 ? (mine ? g.manager.name : humanManager(c.id)?.name ?? '?') : g.staff[c.manager] ? `${g.staff[c.manager].first} ${g.staff[c.manager].last}` : t('club.vacant');
+  const staff = Object.values(g.staff).filter((x) => x.club === cid && x.id !== c.manager).sort((a, b) => ['assistant', 'coach', 'physio', 'scout'].indexOf(a.role) - ['assistant', 'coach', 'physio', 'scout'].indexOf(b.role));
+  const kv = (rows: [string, React.ReactNode, string?][]) => (
+    <div className="cx-kv big">{rows.map(([l, val, cls], i) => [<span key={`l${i}`}>{l}</span>, <span key={`v${i}`} className={cls}>{val}</span>])}</div>
+  );
+  const income = f.gate + f.tv + f.prize + f.sponsor + f.merch + f.transfersIn;
+  const expense = f.wages + f.transfersOut + f.other;
+  return (
+    <div>
+      <Head title={c.name}>
+        <CxDrop label={t('cl.sq.view')} items={views.map((k) => ({ key: k, label: t(`cl.ci.v.${k}`), checked: v === k, onClick: () => setView(k) }))} />
+        <span className="grow" />
+        {mine && showMoney && <button className="cx-greybtn" onClick={() => nav({ name: 'finance' })}>{t('cl.ci.budgets')}</button>}
+      </Head>
+      <div className="cx-subtitle">{t(`cl.ci.v.${v}`)}</div>
+      {v === 'info' && <>
+        {kv([
+          [t('col.nat'), natName(g.nations[c.nation]?.name)],
+          [t('col.comp'), g.leagues[c.league]?.name ?? c.league],
+          [t('club.rep'), level(c.rep / 5)],
+          ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? 'cl.ci.fin.secure' : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
+          [t('club.stadium'), c.stadium],
+          [t('cl.ci.capacity'), c.seats.toLocaleString()],
+          [t('club.facilities'), level(c.facilities)],
+          [t('club.youth'), level(c.youth)],
+        ])}
+        <div className="cx-section">{t('cl.ci.staff')}</div>
+        <div className="cx-kv big">
+          <span>{manager}</span><span>{t('role.staff.manager')}</span>
+          {staff.map((x) => [<span key={`n${x.id}`}>{x.first} {x.last}</span>, <span key={`r${x.id}`}>{t(`role.staff.${x.role}`)}</span>])}
+        </div>
+      </>}
+      {v === 'stats' && <>
+        {kv([
+          [t('club.strength'), squadStrength(cid).toFixed(0)],
+          [t('cl.ci.players'), squad(cid).length],
+          ...(c.manager !== -1 ? [[t('club.strategy'), t(`strategy.${clubStrategy(c)}`)] as [string, string]] : []),
+          ...(c.history.slice(-5).reverse().map((h) => [`${h.season}/${String(h.season + 1).slice(2)}`, `${gs().leagues[h.league]?.name ?? h.league} – ${h.pos}.`] as [string, string])),
+        ])}
+        {c.records && <RecordsPanel club={c} />}
+      </>}
+      {v === 'finances' && kv([
+        [t('top.balance'), money(c.balance), c.balance < 0 ? 'bad' : ''],
+        [t('top.budget'), money(c.transferBudget)],
+        [t('fin.wageBudget'), `${money(c.wageBudget)} / ${t('common.week')}`],
+        [t('fin.ticket'), money(c.ticketPrice)],
+        [t('fin.income'), money(income)],
+        [t('fin.expense'), money(expense)],
+        [t('cl.ci.result'), money(income - expense), income - expense < 0 ? 'bad' : ''],
+      ])}
+      {v === 'income' && kv([
+        [t('fin.gate'), money(f.gate)], [t('fin.tv'), money(f.tv)], [t('fin.prize'), money(f.prize)], [t('fin.sponsor'), money(f.sponsor)],
+        [t('fin.merch'), money(f.merch)], [t('fin.sales'), money(f.transfersIn)], [t('fin.income'), money(income)],
+      ])}
+      {v === 'expenditure' && kv([
+        [t('fin.wages'), money(f.wages)], [t('fin.purchases'), money(f.transfersOut)], [t('fin.other'), money(f.other)], [t('fin.expense'), money(expense)],
+      ])}
+      {!mine && v === 'info' && <div style={{ marginTop: 12 }}><SquadTable players={squad(cid)} view="general" userClub={g.userClub} /></div>}
+    </div>
+  );
+}
+
+function ModernClub({ id }: { id?: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const cid = id ?? g.userClub;

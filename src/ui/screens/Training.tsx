@@ -8,17 +8,52 @@ import { t } from '../../i18n';
 import { Bar, Panel, PlayerLink, Stars, posStr } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
+import { isRetro } from '../theme';
+import { ClassicTraining } from './TrainingClassic';
 import { scoutStars } from '../../game/scouting';
 import { coachingInfo, trainingAdvice } from '../../game/training';
 import { Arrow, totalDelta } from '../dev';
 
 /** Positionsgruppe ud fra spillerens bedste position (GK, SW, D, DM, M, AM, F, WB) */
-function posGroup(p: { pos: number[] }): string {
+export function posGroup(p: { pos: number[] }): string {
   const i = p.pos.indexOf(Math.max(...p.pos));
   return i === 0 ? 'gk' : i === 1 || i === 2 || i === 7 ? 'def' : i === 3 || i === 4 ? 'mid' : 'att';
 }
 
 export function Training() {
+  return isRetro() ? <ClassicTraining /> : <ModernTraining />;
+}
+
+/** Trænerstabens kvalitet og effekten på udviklingen (også i klassisk tema under "Coaches") */
+export function CoachingPanel() {
+  const g = useGame()!;
+  const coaches = Object.values(g.staff).filter((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant'));
+  const avg = coaches.length ? coaches.reduce((s, c) => s + c.attrs.coaching, 0) / coaches.length : 0;
+  const club = g.clubs[g.userClub];
+  const ci = coachingInfo(g.userClub);
+  return (
+    <Panel title={t('train.quality')}>
+      <div className="kv">
+        <span>{t('train.coaches')}</span><span>{coaches.length}</span>
+        <span>{t('train.avgCoaching')}</span><span><Bar value={avg} max={20} /> {avg.toFixed(1)}</span>
+        <span>{t('club.facilities')}</span><span><Bar value={club.facilities} max={20} /> {club.facilities}</span>
+        <span>{t('train.effect')}</span><span className={ci.factor >= 1 ? 'good' : 'bad'}><b>{ci.factor >= 1 ? '+' : ''}{Math.round((ci.factor - 1) * 100)}%</b> {t('train.effectVs')}</span>
+        <span>{t('staff.discipline')}</span><span><Bar value={ci.discipline * 20} max={20} /> <span className="muted">{t('train.disciplineHint')}</span></span>
+        <span>{t('staff.motivating')}</span><span><Bar value={ci.motivating * 20} max={20} /> <span className="muted">{t('train.motivatingHint')}</span></span>
+      </div>
+      <table className="grid" style={{ marginTop: 10 }}>
+        <tbody>
+          {coaches.sort((a, b) => b.attrs.coaching - a.attrs.coaching).map((c) => (
+            <tr key={c.id}><td>{c.first} {c.last}</td><td className="muted">{t(`role.staff.${c.role}`)}</td><td className="num"><span className={`attr ${c.attrs.coaching >= 16 ? 'a-top' : c.attrs.coaching >= 13 ? 'a-good' : c.attrs.coaching >= 9 ? 'a-mid' : 'a-low'}`}>{c.attrs.coaching}</span></td></tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted">{t('train.explain')}</p>
+    </Panel>
+  );
+}
+
+function ModernTraining() {
   const g = useGame()!;
   const all = squad(g.userClub).sort((a, b) => b.pos.indexOf(20) - a.pos.indexOf(20));
   const [f, setF] = useState<{ grp: string; age: string; sched: string; advice: boolean; sort: string }>(() => {
@@ -39,10 +74,6 @@ export function Training() {
   else if (f.sort === 'dev') players.sort((a, b) => totalDelta(b, 3) - totalDelta(a, 3));
   else if (f.sort === 'cond') players.sort((a, b) => a.condition - b.condition);
   else if (f.sort === 'name') players.sort((a, b) => a.last.localeCompare(b.last));
-  const coaches = Object.values(g.staff).filter((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant'));
-  const avg = coaches.length ? coaches.reduce((s, c) => s + c.attrs.coaching, 0) / coaches.length : 0;
-  const club = g.clubs[g.userClub];
-  const ci = coachingInfo(g.userClub);
   const setAll = (key: string) => act({ t: 'trainingAll', key });
   return (
     <div>
@@ -54,24 +85,7 @@ export function Training() {
         </select>
       </Head>
       <div className="cols">
-        <Panel title={t('train.quality')}>
-          <div className="kv">
-            <span>{t('train.coaches')}</span><span>{coaches.length}</span>
-            <span>{t('train.avgCoaching')}</span><span><Bar value={avg} max={20} /> {avg.toFixed(1)}</span>
-            <span>{t('club.facilities')}</span><span><Bar value={club.facilities} max={20} /> {club.facilities}</span>
-            <span>{t('train.effect')}</span><span className={ci.factor >= 1 ? 'good' : 'bad'}><b>{ci.factor >= 1 ? '+' : ''}{Math.round((ci.factor - 1) * 100)}%</b> {t('train.effectVs')}</span>
-            <span>{t('staff.discipline')}</span><span><Bar value={ci.discipline * 20} max={20} /> <span className="muted">{t('train.disciplineHint')}</span></span>
-            <span>{t('staff.motivating')}</span><span><Bar value={ci.motivating * 20} max={20} /> <span className="muted">{t('train.motivatingHint')}</span></span>
-          </div>
-          <table className="grid" style={{ marginTop: 10 }}>
-            <tbody>
-              {coaches.sort((a, b) => b.attrs.coaching - a.attrs.coaching).map((c) => (
-                <tr key={c.id}><td>{c.first} {c.last}</td><td className="muted">{t(`role.staff.${c.role}`)}</td><td className="num"><span className={`attr ${c.attrs.coaching >= 16 ? 'a-top' : c.attrs.coaching >= 13 ? 'a-good' : c.attrs.coaching >= 9 ? 'a-mid' : 'a-low'}`}>{c.attrs.coaching}</span></td></tr>
-              ))}
-            </tbody>
-          </table>
-          <p className="muted">{t('train.explain')}</p>
-        </Panel>
+        <CoachingPanel />
         <Panel title={t('train.schedules')}>
           <div className="kv">
             {SCHEDULES.map((s) => [<span key={s.key}>{t(`train.${s.key}`)}</span>, <span key={s.key + 'd'} className="muted">{Object.keys(s.focus).slice(0, 4).map((k) => t(`attr.${k}`)).join(', ') || t('train.restDesc')}</span>])}

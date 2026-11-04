@@ -16,12 +16,24 @@ import { dateFmt, money, t, natName } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { isRetro } from '../theme';
+import { ClassicSearch, ClassicTransfers } from './TransfersClassic';
 import type { RejectReason } from '../../game/will';
 import { NegotiationModal } from './Negotiation';
 
 const ROLES: (Role | '')[] = ['', 'GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'];
 
 export function Transfers({ tab: initial }: { tab?: string }) {
+  return isRetro() ? <ClassicTransfers tab={initial} /> : <ModernTransfers tab={initial} />;
+}
+
+export function ShortlistList() {
+  const g = useGame()!;
+  return <PlayerList players={g.shortlist.map((id) => g.players[id]).filter(Boolean)} />;
+}
+export { Offers, Deals };
+
+function ModernTransfers({ tab: initial }: { tab?: string }) {
   const [tab, setTab] = useRouteState('tab', initial ?? 'search');
   const g = useGame()!;
   const pending = g.offers.filter((o) => o.status === 'pending' && o.seller === g.userClub).length;
@@ -70,7 +82,7 @@ const DEFAULTS = {
   attr1: -1, attr1Min: 12, attr2: -1, attr2Min: 12, attr3: -1, attr3Min: 12, foot: '', minHeight: 0, contractBy: 0,
   trait: '', noTrouble: false, rec: -1, interested: false, noInjured: false, notLoaned: false, shortlist: false,
 };
-type Filters = typeof DEFAULTS;
+export type Filters = typeof DEFAULTS;
 const FILTER_KEY = 'cm0102.transferFilters';
 /** Filtrene huskes pr. karriere – en ny karriere starter med rene filtre (man kan hente dem fra den forrige) */
 const filterKey = () => `${FILTER_KEY}:${gs().id}`;
@@ -89,7 +101,7 @@ function lastCareerFilters(): (Partial<Filters> & { __more?: boolean }) | null {
   } catch { return null; }
 }
 
-function Search() {
+export function Search({ classic }: { classic?: boolean } = {}) {
   const g = useGame()!;
   // filtrene huskes på tværs af besøg (gemt i browseren), indtil man trykker Nulstil
   const [f, setFRoute] = useRouteState<Filters>('filters', () => ({ ...DEFAULTS, ...loadFilters() }));
@@ -169,8 +181,8 @@ function Search() {
     );
   };
   const stars = [0, 1, 2, 3, 4, 5];
-  return (
-    <div>
+  const filterPanel = (
+    <>
       <Panel title={t('tr.filters')} right={<div className="row">
         {active > 0 && <span className="tag">{t('tr.f.active', { n: active })}</span>}
         <button className="small" onClick={() => setMore(!more)}>{more ? t('tr.f.less') : t('tr.f.more')}</button>
@@ -259,6 +271,12 @@ function Search() {
           </div>
         )}
       </Panel>
+    </>
+  );
+  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} active={active} filterPanel={filterPanel} />;
+  return (
+    <div>
+      {filterPanel}
       {prevFilters && (
         <div className="insight row" style={{ flexWrap: 'wrap' }}>
           <span className="grow">{t('tr.prevFilters')}</span>

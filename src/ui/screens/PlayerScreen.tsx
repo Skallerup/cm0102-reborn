@@ -18,6 +18,8 @@ import { useGame, useNav } from '../core';
 import { act as dispatch } from '../../game/actions';
 import { compareIds, toggleCompare } from '../compare';
 import { Head } from './common';
+import { isRetro } from '../theme';
+import { ClassicPlayer } from './PlayerClassic';
 import { NegotiationModal } from './Negotiation';
 import { AcceptCounterButton } from '../counterAccept';
 import { Arrow, DevelopmentPanel, attrDelta } from '../dev';
@@ -31,6 +33,11 @@ import { agentOf } from '../../game/agents';
 import { realCareer, realMoves, type RealMove, type RealSeason } from '../careers';
 
 export function PlayerScreen({ id }: { id: number }) {
+  // klassisk tema: CM-profil med faner og Action-menu
+  return isRetro() ? <ClassicPlayer id={id} /> : <ModernPlayer id={id} />;
+}
+
+function ModernPlayer({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const p = g.players[id];
@@ -224,7 +231,7 @@ export function PlayerScreen({ id }: { id: number }) {
 }
 
 /** Klubbens svar på seneste forespørgsel */
-function EnquiryLine({ pid }: { pid: number }) {
+export function EnquiryLine({ pid }: { pid: number }) {
   const g = gs();
   const e = knownEnquiry(pid);
   if (!e) return null;
@@ -240,7 +247,7 @@ function feeStep(max: number) {
   return Math.max(5_000, (n <= 1 ? 1 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag);
 }
 
-function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number }) {
+export function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number }) {
   const g = useGame()!;
   const p = g.players[pid];
   const budget = g.clubs[g.userClub].transferBudget;
@@ -402,7 +409,7 @@ function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number
   );
 }
 
-function LoanOutModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; onDone: (r: string) => void }) {
+export function LoanOutModal({ pid, onClose, onDone }: { pid: number; onClose: () => void; onDone: (r: string) => void }) {
   const g = gs();
   const p = g.players[pid];
   const wage = p.contract?.wage ?? 0;
@@ -449,7 +456,7 @@ function LoanOutModal({ pid, onClose, onDone }: { pid: number; onClose: () => vo
   );
 }
 
-function ListModal({ pid, onClose }: { pid: number; onClose: () => void }) {
+export function ListModal({ pid, onClose }: { pid: number; onClose: () => void }) {
   const g = gs();
   const p = g.players[pid];
   const [pct, setPct] = useState(p.listPrice ? Math.round((p.listPrice / Math.max(1, p.value)) * 100) : 100);
@@ -479,7 +486,7 @@ function ListModal({ pid, onClose }: { pid: number; onClose: () => void }) {
   );
 }
 
-function AdviceLine({ pid }: { pid: number }) {
+export function AdviceLine({ pid }: { pid: number }) {
   const g = gs();
   const p = g.players[pid];
   const adv = trainingAdvice(p);
@@ -494,7 +501,7 @@ function AdviceLine({ pid }: { pid: number }) {
   );
 }
 
-function ScoutReport({ pid }: { pid: number }) {
+export function ScoutReport({ pid }: { pid: number }) {
   const g = gs();
   const p = g.players[pid];
   const rec = scoutRecommendation(p);
@@ -508,7 +515,7 @@ function ScoutReport({ pid }: { pid: number }) {
   );
 }
 
-function WantsAway({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) {
+export function WantsAway({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) {
   const g = gs();
   const p = g.players[pid];
   return (
@@ -525,7 +532,7 @@ function WantsAway({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
 }
 
 /** Dit aktive bud på spilleren – med mulighed for at trække det tilbage */
-function MyOffer({ pid, onNegotiate, onOpen }: { pid: number; onNegotiate: (o: TransferOffer) => void; onOpen: (o: TransferOffer) => void }) {
+export function MyOffer({ pid, onNegotiate, onOpen }: { pid: number; onNegotiate: (o: TransferOffer) => void; onOpen: (o: TransferOffer) => void }) {
   const g = gs();
   const o = g.offers.slice().reverse().find((x) => x.player === pid && x.buyer === g.userClub && ['pending', 'countered', 'negotiating'].includes(x.status));
   if (!o) return null;
@@ -543,7 +550,7 @@ function MyOffer({ pid, onNegotiate, onOpen }: { pid: number; onNegotiate: (o: T
   );
 }
 
-function TalkPanel({ pid }: { pid: number }) {
+export function TalkPanel({ pid }: { pid: number }) {
   const g = useGame()!;
   const p = g.players[pid];
   const [res, setRes] = useState<{ key: string; mood: string } | null>(null);
@@ -619,7 +626,7 @@ function TalkPanel({ pid }: { pid: number }) {
 }
 
 /** Karriere: virkelige sæsoner før spilstart + sæsoner i spillet + den igangværende sæson */
-function CareerPanel({ pid }: { pid: number }) {
+export function CareerPanel({ pid }: { pid: number }) {
   const g = useGame()!;
   const p = g.players[pid];
   const [real, setReal] = useState<RealSeason[] | null>(null);
@@ -695,7 +702,7 @@ function CareerPanel({ pid }: { pid: number }) {
 }
 
 /** Spilleren har bedt om en samtale – manageren svarer */
-function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) {
+export function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) {
   const g = useGame()!;
   const p = g.players[pid];
   if (!p) return null;
@@ -717,7 +724,7 @@ function Complaint({ pid, onMsg }: { pid: number; onMsg: (m: string) => void }) 
 }
 
 /** Kort tekst med kontraktens klausuler (uden frikøbsklausul) */
-function clauseText(c: Contract): string {
+export function clauseText(c: Contract): string {
   const parts: string[] = [];
   if (c.wageRise) parts.push(t('clause.sumRise', { n: c.wageRise }));
   if (c.appBonus) parts.push(t('clause.sumApp', { fee: money(c.appBonus) }));
@@ -729,7 +736,7 @@ function clauseText(c: Contract): string {
 }
 
 /** Hvilke klubber holder øje med spilleren (klubbernes shortlister) */
-function InterestPanel({ pid, mine }: { pid: number; mine: boolean }) {
+export function InterestPanel({ pid, mine }: { pid: number; mine: boolean }) {
   const g = useGame()!;
   const p = g.players[pid];
   const [all, setAll] = useState(false);
@@ -757,7 +764,7 @@ function InterestPanel({ pid, mine }: { pid: number; mine: boolean }) {
 }
 
 /** Problembarn/hidsig spiller: hvor langt rehabiliteringen er, og hvad der hjælper */
-function ReformPanel({ pid }: { pid: number }) {
+export function ReformPanel({ pid }: { pid: number }) {
   const g = useGame()!;
   const p = g.players[pid];
   const fs = reformFactors(p, g.userClub);

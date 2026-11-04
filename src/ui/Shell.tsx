@@ -10,7 +10,7 @@ import { ProfileScreen } from './screens/Profile';
 import { BugReportButton, CommunityBoard } from './Community';
 import { APP_VERSION } from './changelogData';
 import { askConfirm } from './confirm';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil } from '../game/sim';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
@@ -50,6 +50,10 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
+import { backgroundUrl } from './backgrounds';
+import { GameOptionsMenu, bgChanges } from './classicOptions';
+import { MatchDay } from './screens/MatchDayClassic';
+import { ClassicSlotCtx, classicDate, setClassicAllowed } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -62,9 +66,6 @@ const MENU: [ScreenName, string][] = [
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
 const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
-// CM 01/02-navigation (retro-tilstand): faner øverst (primære skærme) og en bundlinje (sekundære) med Tilbage/Frem
-const CM_TOP: ScreenName[] = ['inbox', 'squad', 'tactics', 'training', 'fixtures', 'competitions', 'transfers', 'scouting', 'assistant'];
-const CM_BOTTOM: ScreenName[] = ['club', 'board', 'finance', 'staff', 'profile', 'history', 'awards', 'jobs'];
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
@@ -104,9 +105,11 @@ export function Shell() {
   const badge = (k: ScreenName) => (k === 'inbox' && unread > 0 ? <span className="badge">{unread}</span>
     : k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) ? <span className="badge">!</span>
     : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
-  // CM 01/02-navigation: faner + bundlinje i stedet for sidemenu, når retro-skindet er aktivt (den originale database)
+  // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
   const cmNav = isRetro() && !!club && !g.draft;
-
+  setClassicAllowed(allowed);
+  const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
+  const [tabSlot, setTabSlot] = useState<HTMLElement | null>(null);
   // klubtema følger den klub, man styrer
   useEffect(() => { applyTheme(); }, [g.userClub]);
   // online-lobbyen: ens egen valgte klub, indtil man er med i spillet
@@ -211,7 +214,8 @@ export function Shell() {
   }, [online]);
   const handle = (r: { match?: number; stop?: string }) => {
     notify();
-    if (r.match !== undefined) nav({ name: 'match', id: r.match });
+    // klassisk tema: først dagens kampe (som i originalen) – Continue Game fører derefter til kampen
+    if (r.match !== undefined) nav(cmNav ? { name: 'matchday', id: r.match } : { name: 'match', id: r.match });
     else if (r.stop) {
       nav({ name: 'inbox' });
       // vis den ældste uåbnede besked
@@ -247,7 +251,7 @@ export function Shell() {
     stopRef.current = false;
     // fremdriften vises først, hvis kørslen tager mere end et øjeblik (ingen blink ved 1-2 dage)
     const t0 = Date.now();
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (Date.now() - t0 > 300) setRunning(dateFmt(d)); } });
+    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (Date.now() - t0 > 300) setRunning(d); } });
     setRunning(null);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);
@@ -258,12 +262,9 @@ export function Shell() {
   const toggleGroup = (k: string) => { const n = closed.includes(k) ? closed.filter((x) => x !== k) : [...closed, k]; setClosed(n); try { localStorage.setItem(GROUP_KEY, JSON.stringify(n)); } catch { /* ignorer */ } };
   const nextMatch = club ? Object.values(g.fixtures).filter((f) => !f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => a.date.localeCompare(b.date))[0] : undefined;
 
-  const navItem = (k: ScreenName) => (
-    <button key={k} className={route.name === k ? 'on' : ''} onClick={() => nav({ name: k })}>{t(ALL_ITEMS[k])}{badge(k)}</button>
-  );
 
   return (
-    <div className={`shell ${cmNav ? 'cm-nav' : ''}`}>
+    <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''}`}>
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
@@ -292,48 +293,37 @@ export function Shell() {
           </>
         )}
       </div>
-      {cmNav && (
-        <aside className="cm-side">
-          <button className="cm-brand" onClick={() => nav({ name: 'inbox' })}>CM<b>Reborn</b></button>
-          <div className="cm-arrows">
-            <button disabled={!canBack} onClick={back} title={t('cm.back')}>◄</button>
-            <button disabled={!canForward} onClick={forward} title={t('cm.next')}>►</button>
-          </div>
-          {club && !g.draft && (
-            <div className="cm-side-info">
-              <div className="cm-si"><small>{t('top.balance')}</small><b className={club.balance < 0 ? 'neg' : ''}>{money(club.balance)}</b></div>
-              <div className="cm-si"><small>{t('top.budget')}</small><b>{money(club.transferBudget)}</b></div>
-              {nextMatch && !inMatch && <div className="cm-si"><small>{t('top.next')}</small><b><Crest id={nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home} size={13} /> {g.clubs[nextMatch.home === g.userClub ? nextMatch.away : nextMatch.home]?.short}</b></div>}
+      {cmNav && (() => {
+        const [day, date] = classicDate(g.date);
+        const quit = async () => {
+          if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
+          if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
+        };
+        const side = (k: ScreenName | null, label: string, cls = '', onClick?: () => void) => (
+          <button className={`cx-sbtn ${cls} ${k && route.name === k ? 'on' : ''}`} onClick={onClick ?? (() => k && nav({ name: k }))}>{label}</button>
+        );
+        return (
+          <aside className="cx-side">
+            <div className="cx-date" title={dateFmt(g.date, true)}><b>{day}</b><span>{date}</span></div>
+            <div className="cx-arrows">
+              <button disabled={!canBack} onClick={back} aria-label={t('cm.back')}>←</button>
+              <button disabled={!canForward} onClick={forward} aria-label={t('cm.next')}>→</button>
             </div>
-          )}
-          {online ? <div className="cm-side-online"><OnlineControls /></div> : !inMatch && (
-            <div className="cm-go-wrap">
-              <button className="cm-go" onClick={() => run({ untilMatch: true })}>{t('top.toMatch')}</button>
-              <button className="cm-go primary" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('top.continue')}{!g.pendingFixture && unreadImportant > 0 ? ` (${unreadImportant})` : ''}</button>
-            </div>
-          )}
-          <div className="cm-side-foot">
-            {!online && <button onClick={async () => { await saveGame(); setToast(t('top.saved')); }}>{t('nav.save')}</button>}
-            <button onClick={() => nav({ name: 'options' })}>{t('nav.options')}</button>
-            <button onClick={async () => {
-              if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
-              if (await askConfirm(t('top.quitConfirm'))) { await saveGame().catch(() => {}); forgetLast(); setGame(null); }
-            }}>{t('nav.quit')}</button>
-          </div>
-        </aside>
-      )}
-      {cmNav && (
-        <header className="cm-head">
-          {club ? <><Crest id={club.id} size={30} /><span className="cm-club-name">{club.name}</span></> : <span className="cm-club-name">{t('top.unemployed')}</span>}
-          <span className="cm-head-spacer" />
-          <span className="cm-head-date">{g.draft ? draftRoundLabel() : dateFmt(g.date, true)}</span>
-        </header>
-      )}
-      {cmNav && (
-        <nav className="cm-tabs">
-          {CM_TOP.filter(allowed).map(navItem)}
-        </nav>
-      )}
+            {online ? <div className="cx-online"><OnlineControls /></div> : !inMatch && (
+              <button className="cx-sbtn cx-continue continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
+            )}
+            {/* managerens navn → klubbens trupskærm (som i originalen); profilen nås via ▸-menuen */}
+            {side('squad', g.manager.name, 'cx-mgr')}
+            {side('competitions', t('nav.competitions'))}
+            {side('club', t('cl.nations'))}
+            {side('transfers', t('cl.find'))}
+            <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
+              onSave={async () => { await saveGame(); setToast(t('top.saved')); }} />
+            <div className="cx-side-grow" />
+            {unread > 0 && <button className="cx-news" onClick={() => nav({ name: 'inbox' })}>{t('cl.youHaveNews')}</button>}
+          </aside>
+        );
+      })()}
       <nav className={`sidenav ${menuOpen ? 'open' : ''}`} onClick={() => setMenuOpen(false)}>
         {(() => {
           // draft-liga: kun holdet, kampene og ligaen (ingen økonomi, transfers, staff, bestyrelse eller jobs)
@@ -395,24 +385,37 @@ export function Shell() {
         </nav>
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
-      <main className="main" ref={mainRef}>
-        {online && !online.inGame ? <Lobby /> : <Screen />}
-        {online?.status === 'error' && <div className="toast">{online.error}</div>}
-      </main>
+      <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}` : ''}`} ref={mainRef}
+          style={cmNav ? ({ '--cx-photo': `url("${backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
+          {online && !online.inGame ? <Lobby /> : <Screen />}
+          {online?.status === 'error' && <div className="toast">{online.error}</div>}
+        </main>
+      </ClassicSlotCtx.Provider>
       {cmNav && (
-        <nav className="cm-bottom">
-          <button className="cm-page" disabled={!canBack} onClick={back}>‹ {t('cm.back')}</button>
-          <div className="cm-bottom-mid">{CM_BOTTOM.filter(allowed).map(navItem)}</div>
-          <button className="cm-page" disabled={!canForward} onClick={forward}>{t('cm.next')} ›</button>
-        </nav>
+        <footer className="cx-foot">
+          <div className="cx-sub" ref={setSubSlot} />
+          {running ? (
+            // simulering: én grå bjælke med datoen, der behandles (klik = stop)
+            <button className="cx-running" onClick={() => { stopRef.current = true; }} title={t('common.stop')}>
+              <span className="cx-ball" aria-hidden>⚽</span>
+              {new Date(`${running}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            </button>
+          ) : (
+            <div className="cx-backnext">
+              <button className="cx-back" disabled={!canBack} onClick={back}>{t('cm.back')}</button>
+              <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>
+            </div>
+          )}
+        </footer>
       )}
       {/* med flere spillere viser simuleringsvisningen (Online.tsx) trækket – her kun ved indlæsning og alene-spil */}
       {online && (online.status === 'loading' || (online.status === 'processing' && (online.room?.players.length ?? 1) <= 1)) && (
         <div className="progress"><div>{online.status === 'processing' ? t('mp.processing') : t('mp.loading')}</div></div>
       )}
-      {running && (
+      {running && !cmNav && (
         <div className="progress">
-          <div>{t('top.running')} {running}</div>
+          <div>{t('top.running')} {dateFmt(running)}</div>
           <button onClick={() => { stopRef.current = true; }}>{t('common.stop')}</button>
         </div>
       )}
@@ -446,6 +449,7 @@ function Screen() {
     case 'compare': return <Assistant tab="compare" />;
     case 'benchmark': return <Assistant tab="bench" />;
     case 'match': return <MatchScreen id={Number(route.id)} />;
+    case 'matchday': return <MatchDay id={Number(route.id)} />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return <History />;
     case 'awards': return <Awards />;
