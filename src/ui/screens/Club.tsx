@@ -19,6 +19,7 @@ import { CxDrop } from '../classic';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
+import { ClassicClubSquad } from './SquadClassic';
 import { ClassicFixtures } from './Fixtures';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
 
@@ -100,7 +101,7 @@ function ClassicClub({ id }: { id?: number }) {
       {v === 'expenditure' && kv([
         [t('fin.wages'), money(f.wages)], [t('fin.purchases'), money(f.transfersOut)], [t('fin.other'), money(f.other)], [t('fin.expense'), money(expense)],
       ])}
-      {v === 'squad' && <SquadTable players={squad(cid)} view="general" userClub={g.userClub} />}
+      {v === 'squad' && <ClassicClubSquad cid={cid} />}
       {v === 'transfers' && <ClubTransfers cid={cid} />}
       {v === 'next' && <ClubNextMatch cid={cid} />}
       {v === 'fixtures' && <ClassicFixtures clubId={cid} embedded />}

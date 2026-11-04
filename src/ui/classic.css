@@ -494,3 +494,4 @@
 :root[data-skin='retro'] .cx-menu-clubs button { color: #000; }
 :root[data-skin='retro'] .cx-menu-clubs button:hover { background: #5fc25a !important; color: #000 !important; }
 :root[data-skin='retro'] .cx-menu-clubs button.on { color: #fff21f; text-shadow: 1px 1px 0 #000; }
+:root[data-skin='retro'] .cx-selbtn.cx-selbtn-static { display: inline-block; flex: none; cursor: default; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }

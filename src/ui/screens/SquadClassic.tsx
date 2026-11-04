@@ -125,16 +125,63 @@ const FILTERS: [string, (p: Player, tac: Tactic) => boolean][] = [
 ];
 
 /** Kort mærke foran navnet (Inj, Sus, Lst, Lon, Fut, Unh, Wnt, Fgn) – det vigtigste vinder */
-function tagOf(p: Player, g: GameState): { k: string; title: string } | null {
+function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title: string } | null {
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };
   if ((p.unhappy ?? 0) > 60 || p.wantsAway) return { k: 'Unh', title: t('tag.unhappy') };
-  if (interestedClubs(p).length) return { k: 'Wnt', title: t('cl.sq.wanted') };
-  if (p.nation !== g.clubs[g.userClub]?.nation) return { k: 'Fgn', title: natName(g.nations[p.nation]?.name) ?? '' };
+  if (clubId === g.userClub && interestedClubs(p).length) return { k: 'Wnt', title: t('cl.sq.wanted') };
+  if (p.nation !== g.clubs[clubId]?.nation) return { k: 'Fgn', title: natName(g.nations[p.nation]?.name) ?? '' };
   return null;
+}
+
+/** Truppens tre bedste spillere (efter evne) – markeres med * efter navnet som i CM 01/02 */
+function starIds(players: Player[]): Set<number> {
+  return new Set([...players].sort((a, b) => b.ca - a.ca).slice(0, 3).map((p) => p.id));
+}
+const shortName = (p: Player | undefined, star = false) => (p ? `${p.last}${p.first ? `, ${p.first[0]}` : ''}${star ? '*' : ''}` : '');
+
+/** En anden klubs trup i klassisk stil: to kolonner med View og Sort By – uden udtagelse */
+export function ClassicClubSquad({ cid }: { cid: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const [view, setView] = useRouteState('csqview', 'pos');
+  const [sortKey, setSort] = useRouteState('csort', 'pos');
+  const players = squad(cid);
+  const stars = starIds(players);
+  const INFO = infos(g);
+  const SORTS = sorts(g, newTactic('4-4-2')).filter((x) => x.key !== 'sel');
+  const info = INFO.find((x) => x.key === view) ?? INFO[0];
+  const sort = SORTS.find((x): x is Extract<Sort, { cmp: unknown }> => 'cmp' in x && x.key === sortKey) ?? (SORTS[1] as Extract<Sort, { cmp: unknown }>);
+  const list = players.slice().sort(sort.cmp);
+  const half = Math.ceil(list.length / 2);
+  const row = (p: Player) => {
+    const tag = tagOf(p, g, cid);
+    return (
+      <div key={p.id} className="cx-sq-row">
+        <span className="cx-selbtn cx-selbtn-static" />
+        <span className={`cx-sq-tag ${tag ? tag.k.toLowerCase() : ''}`} title={tag?.title}>{tag?.k ?? ''}</span>
+        <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''}`} title={stars.has(p.id) ? t('tag.star') : undefined}
+          onClick={() => nav({ name: 'player', id: p.id })}>{shortName(p, stars.has(p.id))}</button>
+        <span className="cx-sq-info">{info.show(p)}</span>
+      </div>
+    );
+  };
+  return (
+    <div className="cx-sq">
+      <div className="cx-tools cx-tools-inline">
+        <CxDrop label={t('cl.sq.view')} items={INFO.map((x) => ({ key: x.key, label: x.label, checked: x.key === info.key, onClick: () => setView(x.key) }))} />
+        <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => setSort(x.key) })} />
+      </div>
+      <div className="cx-sq-head"><span>{info.label}</span></div>
+      <div className="cx-sq-cols">
+        <div className="cx-sq-col">{list.slice(0, half).map(row)}</div>
+        <div className="cx-sq-col">{list.slice(half).map(row)}</div>
+      </div>
+    </div>
+  );
 }
 
 // ---------- skærmen ----------
@@ -169,7 +216,8 @@ export function ClassicSquad() {
     ...Array.from({ length: nb }, (_, i) => ({ id: `b${i}`, label: `SB${i + 1}`, place: { kind: 'bench' as const, i }, pid: tac.bench[i] ?? 0 })),
   ];
   const labelOf = (pid: number) => { const pl = placeOf(tac, pid); return !pl ? '' : pl.kind === 'xi' ? slotLabel(tac.slots[pl.i]) : `SB${pl.i + 1}`; };
-  const short = (p: Player | undefined) => (p ? `${p.last}${p.first ? `, ${p.first[0]}` : ''}` : '');
+  const short = (p: Player | undefined) => shortName(p);
+  const stars = starIds(players);
 
   // træk og slip
   // DOM'en må ikke ændres i selve dragstart (så afbryder Chrome trækket) – derfor sættes tilstanden lidt efter
@@ -220,7 +268,7 @@ export function ClassicSquad() {
           btn={{ className: `cx-selbtn ${pl?.kind ?? ''}`, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: t('cl.sq.selHint') }} />
         <span className={`cx-sq-tag ${tag ? tag.k.toLowerCase() : ''}`} title={tag?.title}>{tag?.k ?? ''}</span>
         <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''}`} draggable onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
-          onClick={() => nav({ name: 'player', id: p.id })}>{short(p)}</button>
+          title={stars.has(p.id) ? t('tag.star') : undefined} onClick={() => nav({ name: 'player', id: p.id })}>{shortName(p, stars.has(p.id))}</button>
         <span className="cx-sq-info">{info.show(p)}</span>
       </div>
     );
