@@ -107,28 +107,6 @@ export function Frame({ src, alt, className = '', onOpen }: { src: string; alt: 
   );
 }
 
-/** Animeret bane i hero: spillere der bevæger sig og en bold der skydes i mål */
-function Pitch() {
-  return (
-    <svg className="lp-pitch" viewBox="0 0 400 260" aria-hidden="true">
-      <defs>
-        <linearGradient id="lpgrass" x1="0" x2="1">
-          <stop offset="0" stopColor="#0f5132" /><stop offset="1" stopColor="#14703f" />
-        </linearGradient>
-      </defs>
-      <rect x="0" y="0" width="400" height="260" rx="14" fill="url(#lpgrass)" />
-      {[...Array(8)].map((_, i) => <rect key={i} x={i * 50} y="0" width="25" height="260" fill="rgba(255,255,255,0.035)" />)}
-      <g stroke="rgba(255,255,255,0.55)" strokeWidth="1.6" fill="none">
-        <rect x="10" y="10" width="380" height="240" rx="4" /><line x1="200" y1="10" x2="200" y2="250" /><circle cx="200" cy="130" r="32" />
-        <rect x="10" y="70" width="52" height="120" /><rect x="338" y="70" width="52" height="120" />
-      </g>
-      {[[60, 130], [110, 70], [110, 190], [150, 130], [170, 90], [175, 175]].map(([x, y], i) => <circle key={`h${i}`} className={`lp-dot h d${i}`} cx={x} cy={y} r="7" />)}
-      {[[340, 130], [290, 80], [290, 180], [250, 130], [235, 60], [230, 205]].map(([x, y], i) => <circle key={`a${i}`} className={`lp-dot a d${i}`} cx={x} cy={y} r="7" />)}
-      <circle className="lp-ball" cx="200" cy="130" r="4.5" />
-    </svg>
-  );
-}
-
 const TICKER = ['tick1', 'tick2', 'tick3', 'tick4', 'tick5', 'tick6', 'tick7', 'tick8'];
 const FEATURES: [string, string][] = [
   ['⚽', 'engine'], ['🌍', 'players'], ['🔎', 'scouting'], ['🎙️', 'press'], ['💸', 'transfers'],
@@ -207,7 +185,8 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
             </ul>
           </div>
           <div className="lp-hero-visual reveal">
-            <Pitch />
+            {/* det klassiske CM 01/02-tema (2001/02-databasen) bag det moderne kamprapport-billede */}
+            <Frame src={img('classic-table')} alt={t('land.alt.classic')} className="lp-hero-classic" onOpen={open} />
             <Frame src={img('report')} alt={t('land.alt.report')} className="lp-hero-main" onOpen={open} />
             <div className="lp-phone"><img src={img('mobile')} alt={t('land.alt.mobile')} loading="lazy" /></div>
             <div className="lp-float goal">⚽ {t('land.floatGoal')}</div>

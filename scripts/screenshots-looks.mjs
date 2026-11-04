@@ -1,4 +1,5 @@
-// Skærmbilleder til forsidens "To udseender": samme spil (samme seed) i det moderne og det klassiske tema.
+// Skærmbilleder til forsiden: det moderne tema med 2026/27-databasen (Aston Villa) og det klassiske tema med den
+// originale 2001/02-database (Manchester United, Beckhams profil) – som man husker det.
 // Kør: npm run dev (i en anden terminal) og derefter: node scripts/screenshots-looks.mjs [url]
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
@@ -26,15 +27,17 @@ for (const look of ['modern', 'classic']) {
   await page.locator('.lp-hero .lp-cta').click({ timeout: 5000 }).catch(() => {});
   await page.getByRole('button', { name: /New game/ }).click();
   await page.getByPlaceholder('Your name').fill('Alex Morgan');
+  if (look === 'classic') { await page.getByText('Original CM 01/02 (2001/02)').click(); await page.waitForTimeout(2500); }
   await page.locator('input[type=number]').last().fill('20262027');
-  await page.getByText('Aston Villa', { exact: true }).click();
+  await page.getByText(look === 'classic' ? 'Man Utd' : 'Aston Villa', { exact: true }).click();
   await page.getByRole('button', { name: 'Start career' }).click();
   await page.waitForTimeout(4000);
   await page.evaluate(() => window.__cm.advance(60));
   await page.evaluate(() => { const { gs, notify } = window.__cm; for (const n of gs().news) n.read = true; notify(); });
   await page.waitForTimeout(800);
   // truppens bedste spiller (samme i begge udseender)
-  const star = await page.evaluate(() => { const g = window.__cm.gs(); return Object.values(g.players).filter((p) => p.club === g.userClub).sort((a, b) => b.ca - a.ca)[0].last; });
+  const star = look === 'classic' ? 'Beckham'
+    : await page.evaluate(() => { const g = window.__cm.gs(); return Object.values(g.players).filter((p) => p.club === g.userClub).sort((a, b) => b.ca - a.ca)[0].last; });
   if (look === 'modern') {
     const nav = async (name, group) => {
       const btn = page.locator('.sidenav').getByRole('button', { name: new RegExp(`^${name}`) });
