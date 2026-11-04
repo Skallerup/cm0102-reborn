@@ -202,8 +202,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (o.challenge) {
     const ch = CHALLENGES.find((c) => c.id === o.challenge);
     if (ch) {
-      g.challenge = { id: ch.id, deadlineSeason: season + ch.seasons - 1 };
-      ch.setup?.(g);
+      g.challenge = { id: ch.id, deadlineSeason: season + ch.seasons - 1, club: o.clubId };
+      ch.setup?.(g, o.clubId);
     }
   }
   initReleaseClauses();

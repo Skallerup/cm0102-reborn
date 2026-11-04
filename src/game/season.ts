@@ -469,11 +469,6 @@ export function seasonRollover() {
       const trophy = Object.values(g.comps).some((c) => c.winner === club.id && c.type !== 'playoff');
       sponsorSeasonBonus(pos, g.board.expectedPos, trophy);
     }
-    if (g.challenge && !g.challenge.done) {
-      const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
-      if (ch?.check(g)) challengeResults.set(g.active, 'won');
-      else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
-    }
     // Manager Score beregnes før bestyrelsens dom (en fyring ved sæsonslut trækker fra)
     const score = computeSeasonScore(false);
     const verdict = boardSeasonEnd();
@@ -490,6 +485,16 @@ export function seasonRollover() {
   recordsSeasonEnd((c) => (prevTables[c.league] ?? []).indexOf(c.id) + 1);
   const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));
   promotionRelegation();
+  // udfordringer tjekkes efter op/nedrykning (så "ryk op" tæller i oprykningssæsonen)
+  forEachHuman(() => {
+    if (!g.challenge || g.challenge.done) return;
+    const ch = CHALLENGES.find((c) => c.id === g.challenge!.id);
+    if (!ch) return;
+    // ældre gemte udfordringer har ingen klub – brug managerens
+    const club = g.challenge.club ?? g.userClub;
+    if (ch.check(g, club)) challengeResults.set(g.active, 'won');
+    else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
+  });
   seasonWageClauses(tierBefore);
   achievementsSeasonEnd(tierBefore);
   storySeasonEnd(tierBefore);

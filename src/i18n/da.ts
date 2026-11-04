@@ -17,7 +17,9 @@ export const da: Record<string, string> = {
   'start.maskingHint': 'Du ser kun præcise attributter for spillere, du kender. Andre vises som intervaller, fx 11–15, indtil de er scoutet.',
   'start.seed': 'Seed', 'start.seedHint': 'Samme seed + samme valg giver præcis samme verden – del den med en ven og konkurrér.',
   'start.needNameClub': 'Skriv et navn og vælg en klub', 'start.begin': 'Start karrieren', 'start.creating': 'Opretter verden…',
+  'start.dataNoteCm': 'Data: {src}. Evner, positioner og personlighed fra CM 01/02-databasen.',
   'start.dataNote': 'Data: {src}. Attributter er beregnet ud fra markedsværdi, alder og statistik.',
+  'start.look': 'Udseende', 'start.lookModernHint': 'Lyst eller mørkt tema i klubbens farver med sidemenu – bygget til mobil, tablet og computer.', 'start.lookClassicHint': 'Som Championship Manager 01/02: faner, Tilbage/Frem, grønne menuer og de gamle baggrundsfotos.',
   'start.footer': 'Uofficielt fanprojekt inspireret af de klassiske Championship Manager-spil. Ingen kode fra originalspillene; databaserne er CM 01/02-data og fællesskabets opdateringer.',
 
   // topbar og menu
@@ -1363,14 +1365,15 @@ export const da: Record<string, string> = {
   'radar.attack': 'Angreb', 'radar.creativity': 'Kreativitet', 'radar.defence': 'Forsvar', 'radar.physical': 'Fysik', 'radar.mental': 'Mentalt', 'radar.goalkeeping': 'Målmand',
 
   // udfordringer
-  'challenge.lyngby-up.title': 'Lyngby tilbage', 'challenge.lyngby-up.desc': 'Før Lyngby BK op i Superligaen på én sæson.',
-  'challenge.brondby-title.title': 'Brøndby-guld', 'challenge.brondby-title.desc': 'Vind Superligaen med Brøndby IF inden for to sæsoner.',
-  'challenge.fck-europe.title': 'Europas bedste', 'challenge.fck-europe.desc': 'Vind Champions League med FC København inden for fem sæsoner.',
-  'challenge.fredericia-survive.title': 'Fredericia-mirakel', 'challenge.fredericia-survive.desc': 'Hold FC Fredericia i Superligaen – med et minimalt budget.',
   'challenge.wrexham-dream.title': 'Hollywood-drømmen', 'challenge.wrexham-dream.desc': 'Før Wrexham op i Premier League inden for tre sæsoner.',
-  'challenge.schalke-return.title': 'Königsblau', 'challenge.schalke-return.desc': 'Få Schalke 04 tilbage i Bundesligaen inden for to sæsoner.',
-  'challenge.united-broke.title': 'Flad United', 'challenge.united-broke.desc': 'Top 4 med Manchester United – uden transferbudget.',
-  'challenge.aab-double.title': 'Nordjysk revival', 'challenge.aab-double.desc': 'Tag AaB fra 1. division til Superliga-guld inden for tre sæsoner.',
+  'challenge.united-broke.title': 'Flad United', 'challenge.united-broke.desc': 'Top 4 i Premier League med Manchester United – uden et transferbudget.',
+  'challenge.spurs-title.title': 'Endelig, Spurs', 'challenge.spurs-title.desc': 'Vind Premier League med Tottenham inden for tre sæsoner.',
+  'challenge.forest-europe.title': 'Cloughs arv', 'challenge.forest-europe.desc': 'Vind Champions League med Nottingham Forest inden for fem sæsoner – ligesom i 1979 og 1980.',
+  'challenge.depor-return.title': 'Super Depor', 'challenge.depor-return.desc': 'Før Deportivo La Coruña tilbage i top 4 i LaLiga inden for to sæsoner.',
+  'challenge.barca-europe.title': 'Més que un club', 'challenge.barca-europe.desc': 'Vind Champions League med Barcelona inden for to sæsoner.',
+  'challenge.schalke-title.title': 'Meister der Herzen', 'challenge.schalke-title.desc': 'Vind endelig Bundesligaen med Schalke 04 inden for fire sæsoner.',
+  'challenge.lautern-return.title': 'Betzenberg brænder', 'challenge.lautern-return.desc': 'Før Kaiserslautern tilbage i Bundesligaen inden for to sæsoner.',
+  'challenge.sampdoria-return.title': 'Tilbage til Marassi', 'challenge.sampdoria-return.desc': 'Før Sampdoria tilbage i Serie A inden for to sæsoner.',
 
   // kommentarer
   'c.kickoff': '{team} sparker kampen i gang!',

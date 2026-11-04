@@ -724,6 +724,8 @@ export interface ShootoutKick { t: number; p: number; gk: number; outcome: 'goal
 export interface ChallengeState {
   id: string;
   deadlineSeason: number;
+  /** udfordringens klub (målet gælder den, også hvis manageren skifter job) */
+  club?: number;
   done?: 'won' | 'lost';
 }
 

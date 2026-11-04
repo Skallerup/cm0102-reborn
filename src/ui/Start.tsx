@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
 import { backgroundUrl } from './backgrounds';
-import { setStartSkin } from './theme';
+import { getTheme, setStartSkin, setTheme } from './theme';
 import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
-import { CHALLENGES } from '../game/challenges';
+import { CHALLENGES, challengeClub } from '../game/challenges';
 import { createGame, type WorldData } from '../game/newgame';
 import { setupBots, type BotScope } from '../game/bots';
 import { enableMultiplayer } from '../game/humans';
@@ -131,7 +131,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   const [name, setName] = useState('');
   const [active, setActive] = useState<Set<number>>(new Set());
   const [league, setLeague] = useState('');
-  const [club, setClub] = useState<number>(ch?.club ?? 0);
+  const [club, setClub] = useState<number>(0);
   const [masking, setMasking] = useState(true);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
   const [bots, setBots] = useState(0);
@@ -140,6 +140,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   // database: standard (CM 2026/27) eller den originale 01/02 (3.9.68)
   type Db = 'modern' | 'original';
   const [db, setDbState] = useState<Db>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'original' ? 'original' : 'modern'; } catch { return 'modern'; } });
+  const [look, setLook] = useState<'modern' | 'classic'>(() => (getTheme() === 'retro' ? 'classic' : 'modern'));
+  const pickLook = (l: 'modern' | 'classic') => { setLook(l); setTheme(l === 'classic' ? 'retro' : getTheme() === 'retro' ? 'club' : getTheme()); };
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
 
   useEffect(() => {
@@ -151,6 +153,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
       setActive(new Set(ids));
       const first = w.leagues.find((l) => l.nation === ids[0]);
       if (first) setLeague(first.id);
+      // udfordringens klub findes ud fra navnet i databasen
+      if (ch) { const cid = challengeClub(ch, w); setClub(cid); const lg = w.clubs.find((c) => c[0] === cid)?.[4]; if (lg) setLeague(lg); }
     }).catch((e) => setErr(String(e)));
   }, [ch, db]);
 
@@ -177,8 +181,21 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
       </div>
     </Panel>
   );
+  // udseende: vælges her og slår igennem med det samme (også på denne side); kan altid skiftes i Indstillinger
+  const lookPicker = (
+    <Panel title={t('start.look')}>
+      <div className="db-choice">
+        <button className={`db-opt ${look === 'modern' ? 'on' : ''}`} onClick={() => pickLook('modern')}>
+          <b>{t('land.looks.modern')}</b><span>{t('start.lookModernHint')}</span>
+        </button>
+        <button className={`db-opt ${look === 'classic' ? 'on' : ''}`} onClick={() => pickLook('classic')}>
+          <b>{t('land.looks.classic')}</b><span>{t('start.lookClassicHint')}</span>
+        </button>
+      </div>
+    </Panel>
+  );
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
-  if (!world) return <div>{dbPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
+  if (!world) return <div>{dbPicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
   const leagues = world.leagues.filter((l) => active.has(l.nation));
   const clubs = world.clubs.filter((c) => c[4] === league).sort((a, b) => a[2].localeCompare(b[2]));
@@ -217,7 +234,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
 
   return (
     <div>
-      {dbPicker}
+      {dbPicker}{lookPicker}
       <Panel title={ch ? t(`challenge.${ch.id}.title`) : online ? t('mp.create') : t('start.new')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
         <div className="col">
           {ch && <div className="insight good">{t(`challenge.${ch.id}.desc`)}</div>}
@@ -294,7 +311,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
         {!canStart && <span className="muted">{t('start.needNameClub')}</span>}
         <button className="primary" disabled={!canStart} onClick={start}>{online ? t('mp.createBtn') : t('start.begin')}</button>
       </div>
-      <div className="muted" style={{ marginTop: 8 }}>{t('start.dataNote', { src: world.source })}</div>
+      <div className="muted" style={{ marginTop: 8 }}>{t((world as { kind?: string }).kind === 'cm0102' ? 'start.dataNoteCm' : 'start.dataNote', { src: world.source })}</div>
     </div>
   );
 }
