@@ -50,6 +50,58 @@ export function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
 }
 
 /** Skærmbillede i en browserramme der vipper let efter musen */
+const JOIN_ROLES = ['developer', 'designer', 'data', 'testing', 'translation', 'community', 'other'] as const;
+
+/** "Vil du være med?" – ansøgninger gemmes via api/admin.ts og læses i admin-interfacet (?admin=1) */
+function JoinForm() {
+  const [f, setF] = useState({ name: '', email: '', role: 'developer', message: '', website: '' });
+  const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [err, setErr] = useState('');
+  const live = rankingAvailable();
+  const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
+  const send = async (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    setState('sending'); setErr('');
+    try {
+      const r = await fetch('/api/admin', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ op: 'apply', ...f, lang: getLang() }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { setState('error'); setErr(t(`land.join.err.${j.error === 'email' || j.error === 'limit' || j.error === 'missing' ? j.error : 'other'}`)); return; }
+      setState('sent');
+    } catch { setState('error'); setErr(t('land.join.err.other')); }
+  };
+  return (
+    <section id="join" className="lp-section lp-wrap lp-join">
+      <div className="lp-join-text reveal">
+        <span className="lp-kicker">{t('land.join.kicker')}</span>
+        <h2>{t('land.join.title')}</h2>
+        <p>{t('land.join.text')}</p>
+        <ul>{[1, 2, 3].map((n) => <li key={n}>{t(`land.join.b${n}`)}</li>)}</ul>
+      </div>
+      <div className="lp-join-box reveal">
+        {state === 'sent' ? (
+          <div className="lp-join-done"><b>✓ {t('land.join.thanks')}</b><p>{t('land.join.thanksText')}</p></div>
+        ) : !live ? (
+          <div className="lp-join-done"><p>{t('land.join.offline')}</p><a className="lp-cta" href="https://cm0102-reborn.vercel.app/#join">{t('land.join.goLive')} <span aria-hidden="true">→</span></a></div>
+        ) : (
+          <form onSubmit={send}>
+            <label>{t('land.join.name')}<input required maxLength={80} value={f.name} onChange={set('name')} autoComplete="name" /></label>
+            <label>{t('land.join.email')}<input required type="email" maxLength={120} value={f.email} onChange={set('email')} autoComplete="email" /></label>
+            <label>{t('land.join.role')}
+              <select value={f.role} onChange={set('role')}>{JOIN_ROLES.map((r) => <option key={r} value={r}>{t(`land.join.role.${r}`)}</option>)}</select>
+            </label>
+            <label>{t('land.join.message')}<textarea required minLength={10} maxLength={3000} rows={5} value={f.message} onChange={set('message')} placeholder={t('land.join.placeholder')} /></label>
+            {/* honeypot – skjult for mennesker */}
+            <input className="lp-hp" tabIndex={-1} autoComplete="off" value={f.website} onChange={set('website')} aria-hidden="true" />
+            {err && <div className="lp-join-err">{err}</div>}
+            <button className="lp-cta" type="submit" disabled={state === 'sending'}>{state === 'sending' ? t('land.join.sending') : t('land.join.send')} <span aria-hidden="true">→</span></button>
+            <small className="lp-join-privacy">{t('land.join.privacy')}</small>
+          </form>
+        )}
+      </div>
+    </section>
+  );
+}
+
 const LOOK_SCREENS = ['squad', 'player', 'table'] as const;
 
 /** "To udseender": de samme skærme i det moderne og det klassiske CM 01/02-tema – og start spillet i det valgte */
@@ -160,6 +212,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
             <a onClick={() => go('screens')}>{t('land.nav.screens')}</a>
             <a onClick={() => go('looks')}>{t('land.nav.looks')}</a>
             <a onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
+            <a onClick={() => go('join')}>{t('land.nav.join')}</a>
             <a onClick={() => go('faq')}>{t('land.nav.faq')}</a>
             {onDraft && <a onClick={onDraft}>Draft</a>}
           </nav>
@@ -287,6 +340,8 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           ))}
         </div>
       </section>
+
+      <JoinForm />
 
       <section id="faq" className="lp-section lp-wrap lp-faq">
         <h2 className="reveal">{t('land.faqTitle')}</h2>

@@ -1260,3 +1260,15 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .dr-pv td.good { color: var(--good); font-weight: 700; } .dr-pv td.bad { color: var(--bad); }
 .dr-finished { max-width: 1100px; }
 .dr-finished > .panel:first-child { max-width: 560px; width: 100%; margin: 0 auto; }
+
+/* ---------- admin ---------- */
+.adm-tabs { margin: 14px 0; flex-wrap: wrap; }
+.adm-tabs .badge { margin-left: 6px; }
+.adm-stats { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 14px; }
+.adm-stat { display: flex; flex-direction: column; gap: 2px; padding: 14px 16px; border-radius: 12px; background: var(--surface); border: 1px solid var(--line); }
+.adm-stat.clickable { cursor: pointer; }
+.adm-stat.clickable:hover { border-color: var(--accent); }
+.adm-stat span { color: var(--muted); font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+.adm-stat b { font-size: 28px; font-weight: 900; }
+.adm-stat small { color: var(--muted); font-size: 12px; }
+.adm-login { max-width: 460px; }

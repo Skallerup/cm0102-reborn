@@ -1,25 +1,291 @@
-// Adminside (kun for udvikleren): ?admin=1. Kræver ADMIN_TOKEN (sat på serveren), gemt i browseren.
-import { useEffect, useState } from 'react';
+// Admin interface (developer only): ?admin=1. Requires the ADMIN_TOKEN set on the server, kept in this browser.
+// English on purpose. Tabs: overview, applications ("join the project"), managers, rankings, multiplayer rooms,
+// community moderation and supporters. Data comes from api/admin.ts and api/community.ts.
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SgStatus, Suggestion } from '../online/community';
 import { supporters, type SupporterList } from '../online/support';
-import { dateFmt } from '../i18n';
 import { Panel } from './components';
 
 const KEY = 'cm0102.admin';
 const STATUSES: SgStatus[] = ['new', 'considering', 'planned', 'progress', 'released', 'rejected'];
+const APP_STATUSES = ['new', 'contacted', 'accepted', 'rejected'] as const;
+const token = () => localStorage.getItem(KEY) ?? '';
 
-async function call(op: string, data: Record<string, unknown>) {
-  const admin = localStorage.getItem(KEY) ?? '';
-  const r = await fetch('/api/community', { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': admin }, body: JSON.stringify({ op: `admin:${op}`, admin, ...data }) });
+async function adminGet<T>(q: string): Promise<T | null> {
+  try { const r = await fetch(`/api/admin?${q}`, { headers: { 'x-admin-token': token() } }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+async function adminPost(op: string, data: Record<string, unknown>): Promise<{ ok?: boolean; error?: unknown }> {
+  try {
+    const r = await fetch('/api/admin', { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': token() }, body: JSON.stringify({ op, ...data }) });
+    return r.ok ? r.json() : { error: (await r.json().catch(() => ({}))).error ?? r.status };
+  } catch (e) { return { error: String(e) }; }
+}
+async function communityCall(op: string, data: Record<string, unknown>) {
+  const r = await fetch('/api/community', { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': token() }, body: JSON.stringify({ op: `admin:${op}`, admin: token(), ...data }) });
   return r.ok ? r.json() : { error: (await r.json()).error ?? r.status };
 }
-async function get<T>(q: string): Promise<T | null> {
-  const r = await fetch(`/api/community?${q}`, { headers: { 'x-admin-token': localStorage.getItem(KEY) ?? '' } });
+async function communityGet<T>(q: string): Promise<T | null> {
+  const r = await fetch(`/api/community?${q}`, { headers: { 'x-admin-token': token() } });
   return r.ok ? r.json() : null;
 }
 
+const when = (iso?: string) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '–');
+const ago = (iso?: string) => {
+  if (!iso) return '–';
+  const m = Math.round((Date.now() - Date.parse(iso)) / 60_000);
+  return m < 60 ? `${m} min ago` : m < 60 * 48 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} days ago`;
+};
+
+interface Overview {
+  managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
+  ai: { today: number; yesterday: number; cap: number }; suggestions: number; supporters: number;
+  applications: { total: number; new: number }; top: { career: string; points: number; name: string; club: string; league: string }[];
+  config: { email: boolean; stripe: boolean };
+}
+interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
+interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
+interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
+interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
+
+type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'supporters';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Community'], ['supporters', 'Supporters']];
+
 export function AdminPage({ onClose }: { onClose: () => void }) {
-  const [token, setToken] = useState(() => localStorage.getItem(KEY) ?? '');
+  const [tok, setTok] = useState(token);
+  const [authed, setAuthed] = useState<boolean | null>(token() ? null : false);
+  const [tab, setTab] = useState<Tab>('overview');
+  const [overview, setOverview] = useState<Overview | null>(null);
+  const [msg, setMsg] = useState('');
+  const refresh = async () => {
+    const o = await adminGet<Overview>('op=overview');
+    setAuthed(!!o);
+    setOverview(o);
+  };
+  useEffect(() => { if (token()) void refresh(); }, []);
+
+  if (!authed) {
+    return (
+      <div className="pub"><div className="pub-box adm-login">
+        <h1>CM Reborn admin</h1>
+        <p className="muted">Sign in with the ADMIN_TOKEN configured on the server.</p>
+        {authed === null ? <div className="muted">Checking…</div> : (
+          <form className="row" onSubmit={(e) => { e.preventDefault(); localStorage.setItem(KEY, tok); setAuthed(null); void refresh(); }}>
+            <input type="password" placeholder="ADMIN_TOKEN" value={tok} onChange={(e) => setTok(e.target.value)} autoFocus />
+            <button className="primary" type="submit">Sign in</button>
+          </form>
+        )}
+        {authed === false && token() && <div className="bad" style={{ marginTop: 8 }}>The token was not accepted.</div>}
+        <button className="small" style={{ marginTop: 12 }} onClick={onClose}>← Back to the game</button>
+      </div></div>
+    );
+  }
+  const badge = (t: Tab) => (t === 'applications' && overview?.applications.new ? <span className="badge">{overview.applications.new}</span> : null);
+  return (
+    <div className="pub adm"><div className="pub-box" style={{ width: 'min(1280px, 100%)' }}>
+      <div className="row" style={{ justifyContent: 'space-between', flexWrap: 'wrap' }}>
+        <h1 style={{ margin: 0 }}>CM Reborn admin</h1>
+        <div className="row">
+          <button className="small" onClick={() => void refresh()}>↻ Refresh</button>
+          <button className="small" onClick={() => { localStorage.removeItem(KEY); setTok(''); setAuthed(false); }}>Sign out</button>
+          <button className="small" onClick={onClose}>← Game</button>
+        </div>
+      </div>
+      <div className="tabs adm-tabs">
+        {TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMsg(''); }}>{l}{badge(k)}</button>)}
+      </div>
+      {msg && <div className="insight">{msg}</div>}
+      {tab === 'overview' && <OverviewTab o={overview} go={setTab} />}
+      {tab === 'applications' && <ApplicationsTab onChange={refresh} setMsg={setMsg} />}
+      {tab === 'managers' && <ManagersTab />}
+      {tab === 'rankings' && <RankingsTab setMsg={setMsg} />}
+      {tab === 'rooms' && <RoomsTab />}
+      {tab === 'community' && <CommunityTab setMsg={setMsg} />}
+      {tab === 'supporters' && <SupportersTab />}
+    </div></div>
+  );
+}
+
+function Stat({ label, value, sub, onClick }: { label: string; value: ReactNode; sub?: ReactNode; onClick?: () => void }) {
+  return <div className={`adm-stat ${onClick ? 'clickable' : ''}`} onClick={onClick}><span>{label}</span><b>{value}</b>{sub && <small>{sub}</small>}</div>;
+}
+
+function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
+  if (!o) return <div className="muted">Loading…</div>;
+  const pct = o.ai.cap ? Math.round((o.ai.today / o.ai.cap) * 100) : 0;
+  return (
+    <>
+      <div className="adm-stats">
+        <Stat label="Applications" value={o.applications.total} sub={o.applications.new ? `${o.applications.new} new` : 'none new'} onClick={() => go('applications')} />
+        <Stat label="Manager profiles" value={o.managers} sub={`${o.careers} careers on the board`} onClick={() => go('managers')} />
+        <Stat label="Seasons submitted" value={o.seasons} sub={`${o.seasonsThisMonth} this month`} onClick={() => go('rankings')} />
+        <Stat label="Multiplayer rooms" value={o.rooms} sub={`${o.activeRooms} active in the last 7 days`} onClick={() => go('rooms')} />
+        <Stat label="AI calls today" value={o.ai.today} sub={`${pct}% of the daily cap (${o.ai.cap}) · yesterday ${o.ai.yesterday}`} />
+        <Stat label="Community suggestions" value={o.suggestions} onClick={() => go('community')} />
+        <Stat label="Supporters" value={o.supporters} sub={o.config.stripe ? 'Stripe configured' : 'Stripe not configured'} onClick={() => go('supporters')} />
+        <Stat label="E-mail notifications" value={o.config.email ? 'On' : 'Off'} sub={o.config.email ? 'New applications are e-mailed' : 'Set RESEND_API_KEY + NOTIFY_EMAIL'} />
+      </div>
+      <Panel title="Top careers">
+        {o.top.length === 0 ? <div className="muted">No careers yet.</div> : (
+          <table className="grid"><thead><tr><th>#</th><th>Manager</th><th>Club</th><th>League</th><th className="num">Points</th></tr></thead>
+            <tbody>{o.top.map((r, i) => <tr key={r.career}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td><td className="num">{r.points}</td></tr>)}</tbody></table>
+        )}
+      </Panel>
+    </>
+  );
+}
+
+function ApplicationsTab({ onChange, setMsg }: { onChange: () => void; setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<Application[] | null>(null);
+  const [sel, setSel] = useState<number | null>(null);
+  const [filter, setFilter] = useState<string>('all');
+  const [note, setNote] = useState('');
+  const load = async () => setRows((await adminGet<{ rows: Application[] }>('op=applications'))?.rows ?? []);
+  useEffect(() => { void load(); }, []);
+  const cur = rows?.find((r) => r.id === sel) ?? null;
+  useEffect(() => setNote(cur?.note ?? ''), [cur?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const shown = (rows ?? []).filter((r) => filter === 'all' || r.status === filter);
+  const act = async (op: string, data: Record<string, unknown>, ok: string) => {
+    const r = await adminPost(op, data);
+    setMsg(r.error ? `Error: ${String(r.error)}` : ok);
+    await load(); onChange();
+  };
+  if (!rows) return <div className="muted">Loading…</div>;
+  return (
+    <div className="cols">
+      <Panel title={`Applications (${rows.length})`} right={
+        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
+          <option value="all">All</option>{APP_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>} className="flush">
+        {shown.length === 0 ? <div className="muted" style={{ padding: 12 }}>No applications{filter !== 'all' ? ` with status "${filter}"` : ''} yet.</div> : (
+          <div className="table-wrap" style={{ maxHeight: 560, overflowY: 'auto' }}>
+            <table className="grid"><thead><tr><th>Received</th><th>Name</th><th>Role</th><th>Status</th></tr></thead>
+              <tbody>{shown.map((r) => (
+                <tr key={r.id} className={`clickable ${sel === r.id ? 'me' : ''}`} onClick={() => setSel(r.id)}>
+                  <td className="muted nowrap">{when(r.created)}</td><td>{r.status === 'new' ? <b>{r.name}</b> : r.name}</td><td>{r.role}</td>
+                  <td><span className={`tag ${r.status === 'new' ? 'warn' : r.status === 'accepted' ? 'good' : r.status === 'rejected' ? 'bad' : ''}`}>{r.status}</span></td>
+                </tr>
+              ))}</tbody></table>
+          </div>
+        )}
+      </Panel>
+      <Panel title={cur ? `${cur.name} – ${cur.role}` : 'Select an application'}>
+        {cur && (
+          <div className="col">
+            <div className="kv">
+              <span>E-mail</span><span><a href={`mailto:${cur.email}?subject=${encodeURIComponent('CM Reborn – your application')}`}>{cur.email}</a></span>
+              <span>Received</span><span>{when(cur.created)}</span>
+              <span>Language</span><span>{cur.lang || '–'}</span>
+            </div>
+            <p style={{ whiteSpace: 'pre-line', margin: 0 }}>{cur.message}</p>
+            <div className="row" style={{ flexWrap: 'wrap' }}>
+              {APP_STATUSES.map((s) => <button key={s} className={`small ${cur.status === s ? 'primary' : ''}`} onClick={() => act('app-status', { id: cur.id, status: s }, `Marked as ${s} ✓`)}>{s}</button>)}
+            </div>
+            <textarea rows={3} value={note} onChange={(e) => setNote(e.target.value)} placeholder="Private note (only visible here)" />
+            <div className="row">
+              <button className="small primary" onClick={() => act('app-status', { id: cur.id, note }, 'Note saved ✓')}>Save note</button>
+              <a className="button small" href={`mailto:${cur.email}?subject=${encodeURIComponent('CM Reborn – your application')}`}>Reply by e-mail</a>
+              <span className="grow" />
+              <button className="small danger" onClick={() => { if (confirm(`Delete the application from ${cur.name}?`)) { setSel(null); void act('app-delete', { id: cur.id }, 'Deleted ✓'); } }}>Delete</button>
+            </div>
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function ManagersTab() {
+  const [rows, setRows] = useState<ManagerRow[] | null>(null);
+  const [q, setQ] = useState('');
+  const [sort, setSort] = useState<keyof ManagerRow>('created');
+  const [sel, setSel] = useState<string | null>(null);
+  const [detail, setDetail] = useState<{ profile: Record<string, unknown>; careers: { career: string; name?: string; club?: string; league?: string; seasons?: string; points: number; updated?: string }[] } | null>(null);
+  useEffect(() => { void adminGet<{ rows: ManagerRow[] }>('op=managers').then((r) => setRows(r?.rows ?? [])); }, []);
+  useEffect(() => { setDetail(null); if (sel) void adminGet<typeof detail>(`op=manager&pid=${sel}`).then(setDetail); }, [sel]);
+  const shown = useMemo(() => (rows ?? []).filter((r) => !q || r.name.toLowerCase().includes(q.toLowerCase()))
+    .sort((a, b) => { const x = a[sort], y = b[sort]; return typeof x === 'number' && typeof y === 'number' ? y - x : String(y ?? '').localeCompare(String(x ?? '')); }), [rows, q, sort]);
+  if (!rows) return <div className="muted">Loading managers…</div>;
+  const th = (k: keyof ManagerRow, l: string, num = false) => <th className={`clickable ${num ? 'num' : ''}`} onClick={() => setSort(k)}>{l}{sort === k ? ' ▾' : ''}</th>;
+  const summary = detail?.profile.summary as Record<string, unknown> | null | undefined;
+  return (
+    <div className="cols">
+      <Panel title={`Managers (${rows.length})`} right={<input placeholder="Search name…" value={q} onChange={(e) => setQ(e.target.value)} />} className="flush">
+        <div className="table-wrap" style={{ maxHeight: 600, overflowY: 'auto' }}>
+          <table className="grid"><thead><tr>{th('name', 'Name')}{th('created', 'Joined')}{th('careers', 'Careers', true)}{th('seasons', 'Seasons', true)}{th('best', 'Best', true)}<th>Supporter</th></tr></thead>
+            <tbody>{shown.map((r) => (
+              <tr key={r.pid} className={`clickable ${sel === r.pid ? 'me' : ''}`} onClick={() => setSel(r.pid)}>
+                <td>{r.name}</td><td className="muted nowrap">{r.created ? ago(r.created) : '–'}</td><td className="num">{r.careers}</td><td className="num">{r.seasons}</td><td className="num">{r.best}</td><td>{r.supporter ?? ''}</td>
+              </tr>
+            ))}</tbody></table>
+        </div>
+      </Panel>
+      <Panel title={detail ? String(detail.profile.name) : 'Select a manager'}>
+        {sel && !detail && <div className="muted">Loading…</div>}
+        {detail && (
+          <div className="col">
+            <div className="kv">
+              <span>Profile id</span><span className="muted">{String(detail.profile.pid)}</span>
+              <span>Joined</span><span>{when(detail.profile.created as string)}</span>
+              <span>Last sync</span><span>{when(detail.profile.updated as string)}</span>
+              {detail.profile.motto ? <><span>Motto</span><span>{String(detail.profile.motto)}</span></> : null}
+              {detail.profile.supporter ? <><span>Supporter</span><span>{String(detail.profile.supporter)} ({(Number(detail.profile.donated ?? 0) / 100).toFixed(2)})</span></> : null}
+              {summary?.club ? <><span>Current club</span><span>{String(summary.club)}</span></> : null}
+              {Array.isArray(detail.profile.ach) ? <><span>Achievements</span><span>{(detail.profile.ach as unknown[]).length}</span></> : null}
+            </div>
+            <table className="grid"><thead><tr><th>Career</th><th>Club</th><th>League</th><th className="num">Seasons</th><th className="num">Points</th></tr></thead>
+              <tbody>{detail.careers.map((c) => <tr key={c.career}><td className="muted">{c.career.slice(0, 14)}</td><td>{c.club}</td><td className="muted">{c.league}</td><td className="num">{c.seasons ?? 0}</td><td className="num">{c.points}</td></tr>)}</tbody></table>
+          </div>
+        )}
+      </Panel>
+    </div>
+  );
+}
+
+function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
+  const [board, setBoard] = useState<'career' | 'season'>('career');
+  const [rows, setRows] = useState<RankRow[] | null>(null);
+  const load = async () => { setRows(null); setRows((await adminGet<{ rows: RankRow[] }>(`op=rankings&board=${board}`))?.rows ?? []); };
+  useEffect(() => { void load(); }, [board]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <Panel title="Global rankings (top 100)" right={
+      <div className="tabs">{(['career', 'season'] as const).map((b) => <button key={b} className={board === b ? 'on' : ''} onClick={() => setBoard(b)}>{b === 'career' ? 'Career total' : 'Best season'}</button>)}</div>} className="flush">
+      {!rows ? <div className="muted" style={{ padding: 12 }}>Loading…</div> : rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>The board is empty.</div> : (
+        <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+          <table className="grid"><thead><tr><th>#</th><th>Manager</th><th>Club</th><th>League</th>{board === 'season' && <th>Season</th>}<th className="num">Points</th>{board === 'career' && <th />}</tr></thead>
+            <tbody>{rows.map((r, i) => (
+              <tr key={r.member}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td>{board === 'season' && <td>{r.season}</td>}<td className="num">{r.points}</td>
+                {board === 'career' && <td><button className="small danger" title="Remove from the career board (e.g. a manipulated score)" onClick={async () => {
+                  if (!confirm(`Remove ${r.name}'s career (${r.points} points) from the career board?`)) return;
+                  const res = await adminPost('unrank', { career: r.member }); setMsg(res.error ? `Error: ${String(res.error)}` : 'Removed from the board ✓'); void load();
+                }}>Remove</button></td>}
+              </tr>
+            ))}</tbody></table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function RoomsTab() {
+  const [rows, setRows] = useState<RoomRow[] | null>(null);
+  useEffect(() => { void adminGet<{ rows: RoomRow[] }>('op=rooms').then((r) => setRows(r?.rows ?? [])); }, []);
+  if (!rows) return <div className="muted">Loading rooms…</div>;
+  return (
+    <Panel title={`Multiplayer rooms (${rows.length})`} className="flush">
+      {rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No rooms.</div> : (
+        <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+          <table className="grid"><thead><tr><th>Code</th><th>Mode</th><th>Status</th><th>Players</th><th>Game date</th><th className="num">Turns</th><th>Last turn</th><th>Created</th></tr></thead>
+            <tbody>{rows.map((r) => (
+              <tr key={r.code}><td><a href={`/?room=${r.code}`} target="_blank" rel="noreferrer">{r.code}</a></td><td>{r.mode}</td><td>{r.status}</td><td>{r.players.join(', ')}</td>
+                <td className="muted">{r.date || '–'}</td><td className="num">{r.version}</td><td className="muted nowrap">{ago(r.lastTurn)}</td><td className="muted nowrap">{when(r.created)}</td></tr>
+            ))}</tbody></table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+function CommunityTab({ setMsg }: { setMsg: (s: string) => void }) {
   const [items, setItems] = useState<Suggestion[]>([]);
   const [sel, setSel] = useState<Suggestion | null>(null);
   const [reply, setReply] = useState('');
@@ -29,84 +295,73 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
   const [pollTitle, setPollTitle] = useState('What should we build next?');
   const [pollEnds, setPollEnds] = useState('');
   const [sus, setSus] = useState<{ id: number; ip: string; n: number }[]>([]);
-  const [sup, setSup] = useState<SupporterList | null>(null);
-  const [msg, setMsg] = useState('');
   const load = async () => {
-    const r = await get<{ items: Suggestion[] }>('list=new');
-    setItems(r?.items ?? []);
-    setSus((await get<{ items: { id: number; ip: string; n: number }[] }>('suspicious=1'))?.items ?? []);
-    setSup(await supporters());
+    setItems((await communityGet<{ items: Suggestion[] }>('list=new'))?.items ?? []);
+    setSus((await communityGet<{ items: { id: number; ip: string; n: number }[] }>('suspicious=1'))?.items ?? []);
   };
-  useEffect(() => { if (token) void load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  const done = (r: { error?: unknown }) => { setMsg(r.error ? `Fejl: ${String(r.error)}` : 'Gemt ✓'); void load(); };
-  if (!token || !localStorage.getItem(KEY)) {
-    return (
-      <div className="pub"><div className="pub-box">
-        <h1>Admin</h1>
-        <div className="row"><input type="password" placeholder="ADMIN_TOKEN" value={token} onChange={(e) => setToken(e.target.value)} /><button className="primary" onClick={() => { localStorage.setItem(KEY, token); void load(); setToken(token + ''); }}>Log ind</button></div>
-        <button className="small" style={{ marginTop: 12 }} onClick={onClose}>← Tilbage</button>
-      </div></div>
-    );
-  }
+  useEffect(() => { void load(); }, []);
+  const done = (r: { error?: unknown }) => { setMsg(r.error ? `Error: ${String(r.error)}` : 'Saved ✓'); void load(); };
   return (
-    <div className="pub"><div className="pub-box" style={{ width: 'min(1200px, 100%)' }}>
-      <div className="row" style={{ justifyContent: 'space-between' }}>
-        <h1 style={{ margin: 0 }}>Admin – fællesskab</h1>
-        <div className="row"><button className="small" onClick={() => { localStorage.removeItem(KEY); setToken(''); }}>Log ud</button><button className="small" onClick={onClose}>← Spillet</button></div>
-      </div>
-      {msg && <div className="insight">{msg}</div>}
-      <div className="cols" style={{ marginTop: 12 }}>
-        <Panel title={`Forslag (${items.length})`} className="flush">
+    <>
+      <div className="cols">
+        <Panel title={`Suggestions (${items.length})`} className="flush">
           <div className="table-wrap" style={{ maxHeight: 520, overflowY: 'auto' }}>
-            <table className="grid">
-              <tbody>
-                {items.map((s) => (
-                  <tr key={s.id} className={`clickable ${sel?.id === s.id ? 'me' : ''}`} onClick={() => { setSel(s); setReply(s.reply ?? ''); setReleased(s.releasedIn ?? ''); }}>
-                    <td><input type="checkbox" checked={poll.includes(s.id)} onClick={(e) => e.stopPropagation()} onChange={() => setPoll(poll.includes(s.id) ? poll.filter((x) => x !== s.id) : [...poll, s.id].slice(0, 5))} /></td>
-                    <td>#{s.id}</td><td>{s.hidden ? '🙈 ' : ''}{s.title}</td><td className="num">▲ {s.votes}</td><td>{s.status}</td><td className="muted">{s.cat}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <table className="grid"><tbody>
+              {items.map((s) => (
+                <tr key={s.id} className={`clickable ${sel?.id === s.id ? 'me' : ''}`} onClick={() => { setSel(s); setReply(s.reply ?? ''); setReleased(s.releasedIn ?? ''); }}>
+                  <td><input type="checkbox" checked={poll.includes(s.id)} onClick={(e) => e.stopPropagation()} onChange={() => setPoll(poll.includes(s.id) ? poll.filter((x) => x !== s.id) : [...poll, s.id].slice(0, 5))} /></td>
+                  <td>#{s.id}</td><td>{s.hidden ? '🙈 ' : ''}{s.title}</td><td className="num">▲ {s.votes}</td><td>{s.status}</td><td className="muted">{s.cat}</td>
+                </tr>
+              ))}
+            </tbody></table>
           </div>
         </Panel>
-        <Panel title={sel ? `#${sel.id} ${sel.title}` : 'Vælg et forslag'}>
+        <Panel title={sel ? `#${sel.id} ${sel.title}` : 'Select a suggestion'}>
           {sel && (
             <div className="col">
               <p style={{ whiteSpace: 'pre-line', margin: 0 }}>{sel.body}</p>
-              <div className="muted" style={{ fontSize: 12 }}>{sel.name} · {dateFmt(sel.created.slice(0, 10))} · {sel.lang}{sel.meta ? ` · ${sel.meta}` : ''}</div>
+              <div className="muted" style={{ fontSize: 12 }}>{sel.name} · {when(sel.created)} · {sel.lang}{sel.meta ? ` · ${sel.meta}` : ''}</div>
               <div className="row" style={{ flexWrap: 'wrap' }}>
-                {STATUSES.map((st) => <button key={st} className={`small ${sel.status === st ? 'primary' : ''}`} onClick={async () => done(await call('status', { id: sel.id, status: st, releasedIn: st === 'released' ? released : undefined }))}>{st}</button>)}
+                {STATUSES.map((st) => <button key={st} className={`small ${sel.status === st ? 'primary' : ''}`} onClick={async () => done(await communityCall('status', { id: sel.id, status: st, releasedIn: st === 'released' ? released : undefined }))}>{st}</button>)}
               </div>
-              <label className="row">Udgivet i version <input value={released} onChange={(e) => setReleased(e.target.value)} placeholder="0.7.84" style={{ width: 100 }} /></label>
-              <textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Officielt svar (vises øverst på forslaget)" />
+              <label className="row">Released in version <input value={released} onChange={(e) => setReleased(e.target.value)} placeholder="0.11.0" style={{ width: 100 }} /></label>
+              <textarea rows={3} value={reply} onChange={(e) => setReply(e.target.value)} placeholder="Official reply (shown at the top of the suggestion)" />
               <div className="row">
-                <button className="primary small" onClick={async () => done(await call('reply', { id: sel.id, text: reply }))}>Gem svar</button>
-                <button className="small" onClick={async () => done(await call('comment', { id: sel.id, text: reply }))}>Send som kommentar</button>
-                <button className="small danger" onClick={async () => done(await call('hide', { id: sel.id, hidden: !sel.hidden }))}>{sel.hidden ? 'Vis igen' : 'Skjul'}</button>
+                <button className="primary small" onClick={async () => done(await communityCall('reply', { id: sel.id, text: reply }))}>Save reply</button>
+                <button className="small" onClick={async () => done(await communityCall('comment', { id: sel.id, text: reply }))}>Post as comment</button>
+                <button className="small danger" onClick={async () => done(await communityCall('hide', { id: sel.id, hidden: !sel.hidden }))}>{sel.hidden ? 'Show again' : 'Hide'}</button>
               </div>
-              <div className="row">Slå sammen med #<input value={mergeInto} onChange={(e) => setMergeInto(e.target.value)} style={{ width: 70 }} /><button className="small" onClick={async () => done(await call('merge', { id: sel.id, into: Number(mergeInto) }))}>Slå sammen</button></div>
+              <div className="row">Merge into #<input value={mergeInto} onChange={(e) => setMergeInto(e.target.value)} style={{ width: 70 }} /><button className="small" onClick={async () => done(await communityCall('merge', { id: sel.id, into: Number(mergeInto) }))}>Merge</button></div>
             </div>
           )}
         </Panel>
       </div>
       <div className="cols">
-        <Panel title="Månedens afstemning">
-          <div className="muted">Markér 2–5 forslag i listen ({poll.map((x) => `#${x}`).join(', ') || 'ingen valgt'}).</div>
+        <Panel title="Monthly poll">
+          <div className="muted">Tick 2–5 suggestions in the list ({poll.map((x) => `#${x}`).join(', ') || 'none selected'}).</div>
           <div className="row" style={{ marginTop: 8 }}>
             <input value={pollTitle} onChange={(e) => setPollTitle(e.target.value)} />
             <input type="date" value={pollEnds} onChange={(e) => setPollEnds(e.target.value)} />
-            <button className="primary small" disabled={poll.length < 2} onClick={async () => done(await call('poll', { candidates: poll, title: pollTitle, ends: pollEnds }))}>Start afstemning</button>
+            <button className="primary small" disabled={poll.length < 2} onClick={async () => done(await communityCall('poll', { candidates: poll, title: pollTitle, ends: pollEnds }))}>Start poll</button>
           </div>
         </Panel>
-        <Panel title={`Mistænkelige stemmer (${sus.length})`}>
-          {sus.length === 0 ? <div className="muted">Intet mistænkeligt.</div> : <table className="grid"><tbody>{sus.map((x, i) => <tr key={i}><td>#{x.id}</td><td>{x.ip}</td><td className="num">{x.n} stemmer</td></tr>)}</tbody></table>}
+        <Panel title={`Suspicious votes (${sus.length})`}>
+          {sus.length === 0 ? <div className="muted">Nothing suspicious.</div> : <table className="grid"><tbody>{sus.map((x, i) => <tr key={i}><td>#{x.id}</td><td>{x.ip}</td><td className="num">{x.n} votes</td></tr>)}</tbody></table>}
         </Panel>
       </div>
-      <Panel title={`Supportere (${sup?.supporters.length ?? 0})`}>
-        {sup && <div className="muted">Denne måned: {(sup.month.raised / 100).toFixed(0)} af {(sup.month.goal / 100).toFixed(0)} {sup.currency.toUpperCase()}{sup.enabled ? '' : ' · Stripe er ikke sat op endnu'}</div>}
-        <div className="sup-wall" style={{ marginTop: 8 }}>{sup?.supporters.map((s) => <span key={s.pid}>{s.tier} · {s.name}{s.monthly ? ' ♥' : ''}{s.regen ? ` (regen: ${s.regen})` : ''}</span>)}</div>
-      </Panel>
-    </div></div>
+    </>
+  );
+}
+
+function SupportersTab() {
+  const [sup, setSup] = useState<SupporterList | null>(null);
+  useEffect(() => { void supporters().then(setSup); }, []);
+  if (!sup) return <div className="muted">Loading…</div>;
+  return (
+    <Panel title={`Supporters (${sup.supporters.length})`}>
+      <div className="muted">This month: {(sup.month.raised / 100).toFixed(0)} of {(sup.month.goal / 100).toFixed(0)} {sup.currency.toUpperCase()}{sup.enabled ? '' : ' · Stripe is not configured yet'}</div>
+      <table className="grid" style={{ marginTop: 8 }}><thead><tr><th>Name</th><th>Tier</th><th>Monthly</th><th>Regen</th></tr></thead>
+        <tbody>{sup.supporters.map((s) => <tr key={s.pid}><td>{s.name}</td><td>{s.tier}</td><td>{s.monthly ? '♥' : ''}</td><td className="muted">{s.regen ?? ''}</td></tr>)}</tbody></table>
+    </Panel>
   );
 }

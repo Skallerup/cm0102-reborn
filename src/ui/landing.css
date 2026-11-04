@@ -258,3 +258,19 @@
 .lp-rank-row.ai span { color: #c8d2ee; }
 .lp-rank-note { margin-top: 10px; font-size: 12px; color: var(--muted); }
 .lp-rank-row span.lp-rank-name { display: block; }
+
+/* Vil du være med? */
+.lp-join { display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 48px; align-items: start; }
+.lp-join-text ul { padding-left: 18px; color: var(--muted); line-height: 1.7; }
+.lp-join-box { padding: 24px; border-radius: 18px; background: rgba(148, 170, 255, 0.06); border: 1px solid rgba(148, 170, 255, 0.18); }
+.lp-join-box form { display: flex; flex-direction: column; gap: 12px; }
+.lp-join-box label { display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; font-weight: 700; color: #c8d2ee; }
+.lp-join-box input, .lp-join-box select, .lp-join-box textarea { width: 100%; padding: 11px 13px; border-radius: 10px; border: 1px solid rgba(148, 170, 255, 0.25); background: rgba(5, 8, 20, 0.6); color: var(--text); font: inherit; font-weight: 500; }
+.lp-join-box textarea { resize: vertical; }
+.lp-join-box .lp-cta { align-self: flex-start; }
+.lp-hp { position: absolute !important; left: -9999px !important; width: 1px !important; height: 1px !important; opacity: 0; }
+.lp-join-err { color: #ff8a80; font-size: 13.5px; font-weight: 700; }
+.lp-join-privacy { color: var(--muted); font-size: 12px; }
+.lp-join-done b { display: block; font-size: 20px; margin-bottom: 6px; color: var(--good, #6ee7a0); }
+.lp-join-done p { color: var(--muted); margin: 0 0 14px; }
+@media (max-width: 900px) { .lp-join { grid-template-columns: 1fr; gap: 24px; } }
