@@ -19,6 +19,7 @@ import { CxDrop } from '../classic';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
+import { ClassicFixtures } from './Fixtures';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
 
 export function ClubScreen({ id }: { id?: number }) {
@@ -31,12 +32,15 @@ function ClassicClub({ id }: { id?: number }) {
   const { nav } = useNav();
   const cid = id ?? g.userClub;
   const c = g.clubs[cid];
-  const [view, setView] = useRouteState('cview', 'info');
+  // en anden klub åbner på truppen (som i originalen); ens egen klub på "Økonomi & info"
+  const [view, setView] = useRouteState('cview', cid === g.userClub ? 'info' : 'squad');
   if (!c) return <Head title="?" />;
   const mine = cid === g.userClub;
   const showMoney = mine || !g.options.masking;
   const views = ['info', 'stats', ...(showMoney ? ['finances', 'income', 'expenditure'] : [])];
-  const v = views.includes(view) ? view : 'info';
+  // fanerne øverst (trup, transfers, næste kamp, kampprogram) er visninger af samme klubside
+  const tabViews = mine ? [] : ['squad', 'transfers', 'next', 'fixtures'];
+  const v = views.includes(view) || tabViews.includes(view) ? view : 'info';
   const f = c.finance;
   const level = (x: number) => t(`cl.ci.lvl.${x >= 17 ? 5 : x >= 13 ? 4 : x >= 9 ? 3 : x >= 5 ? 2 : 1}`);
   const manager = c.manager === -1 ? (mine ? g.manager.name : humanManager(c.id)?.name ?? '?') : g.staff[c.manager] ? `${g.staff[c.manager].first} ${g.staff[c.manager].last}` : t('club.vacant');
@@ -49,7 +53,7 @@ function ClassicClub({ id }: { id?: number }) {
   return (
     <div>
       <Head title={c.name}>
-        <CxDrop label={t('cl.sq.view')} items={views.map((k) => ({ key: k, label: t(`cl.ci.v.${k}`), checked: v === k, onClick: () => setView(k) }))} />
+        {!tabViews.includes(v) && <CxDrop label={t('cl.sq.view')} items={views.map((k) => ({ key: k, label: t(`cl.ci.v.${k}`), checked: v === k, onClick: () => setView(k) }))} />}
         <span className="grow" />
         {mine && showMoney && <button className="cx-greybtn" onClick={() => nav({ name: 'finance' })}>{t('cl.ci.budgets')}</button>}
       </Head>
@@ -96,7 +100,68 @@ function ClassicClub({ id }: { id?: number }) {
       {v === 'expenditure' && kv([
         [t('fin.wages'), money(f.wages)], [t('fin.purchases'), money(f.transfersOut)], [t('fin.other'), money(f.other)], [t('fin.expense'), money(expense)],
       ])}
-      {!mine && v === 'info' && <div style={{ marginTop: 12 }}><SquadTable players={squad(cid)} view="general" userClub={g.userClub} /></div>}
+      {v === 'squad' && <SquadTable players={squad(cid)} view="general" userClub={g.userClub} />}
+      {v === 'transfers' && <ClubTransfers cid={cid} />}
+      {v === 'next' && <ClubNextMatch cid={cid} />}
+      {v === 'fixtures' && <ClassicFixtures clubId={cid} embedded />}
+    </div>
+  );
+}
+
+/** En klubs transfers i denne sæson (ind og ud) og spillerne på transferlisten */
+function ClubTransfers({ cid }: { cid: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  type Row = { pid: number; date: string; from: number; to: number; fee: number; loan?: boolean };
+  const rows: Row[] = [];
+  for (const p of Object.values(g.players)) for (const m of p.moves ?? []) {
+    if (m.season === g.season && (m.from === cid || m.to === cid)) rows.push({ pid: p.id, date: m.date, from: m.from, to: m.to, fee: m.fee, loan: m.loan });
+  }
+  rows.sort((a, b) => b.date.localeCompare(a.date));
+  const listed = squad(cid).filter((p) => p.listed);
+  const club = (id: number) => (id ? <span className="link" onClick={() => nav({ name: 'club', id })}>{g.clubs[id]?.short ?? '?'}</span> : t('common.free'));
+  return (
+    <div>
+      <div className="cx-section">{t('cl.ct.moves')}</div>
+      {rows.length === 0 ? <div className="cx-empty">{t('cl.ct.none')}</div> : (
+        <div className="cx-tbl-wrap"><table className="cx-tbl"><thead><tr>
+          <th>{t('col.date')}</th><th>{t('col.name')}</th><th>{t('cl.ct.inOut')}</th><th>{t('cl.ct.club')}</th><th>{t('cl.ct.fee')}</th>
+        </tr></thead><tbody>{rows.map((r, i) => {
+          const p = g.players[r.pid], inn = r.to === cid;
+          return (
+            <tr key={i}>
+              <td className="c-yel">{dateFmt(r.date)}</td>
+              <td className="c-name"><span onClick={() => nav({ name: 'player', id: r.pid })}>{p ? `${p.last}${p.first ? `, ${p.first}` : ''}` : '?'}</span></td>
+              <td className={inn ? 'good' : 'bad'}>{t(inn ? 'cl.ct.in' : 'cl.ct.out')}</td>
+              <td className="c-club">{club(inn ? r.from : r.to)}</td>
+              <td className="c-val">{r.loan ? t('cl.ct.loan') : r.fee > 0 ? money(r.fee) : t('common.free')}</td>
+            </tr>
+          );
+        })}</tbody></table></div>
+      )}
+      <div className="cx-section">{t('cl.ct.listed')}</div>
+      {listed.length === 0 ? <div className="cx-empty">{t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />}
+    </div>
+  );
+}
+
+/** En klubs næste kamp og seneste resultater */
+function ClubNextMatch({ cid }: { cid: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const list = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).sort((a, b) => a.date.localeCompare(b.date));
+  const next = list.find((f) => !f.result);
+  const recent = list.filter((f) => f.result).slice(-5).reverse();
+  if (!next) return <div className="cx-empty">{t('cl.cn.none')}</div>;
+  const home = next.home === cid, opp = home ? next.away : next.home;
+  const form = recent.map((f) => { const h = f.home === cid, r = f.result!; const my = h ? r.hg : r.ag, th = h ? r.ag : r.hg; return my > th ? t('cl.cn.w') : my < th ? t('cl.cn.l') : t('cl.cn.d'); }).join(' ');
+  return (
+    <div className="cx-kv big">
+      <span>{t('col.date')}</span><span>{g.draft ? t('dr.roundN', { n: next.round }) : dateFmt(next.date)}</span>
+      <span>{t('fix.opponent')}</span><span className="link" onClick={() => nav({ name: 'club', id: opp })}>{g.clubs[opp]?.name ?? '?'}</span>
+      <span>{t('fix.venue')}</span><span>{next.stage === 'F' ? t('fix.neutral') : home ? t('fix.home') : t('fix.away')}</span>
+      <span>{t('col.comp')}</span><span>{compName(g.comps[next.comp]?.name) ?? ''}</span>
+      {form && <><span>{t('cl.cn.form')}</span><span>{form}</span></>}
     </div>
   );
 }

@@ -95,11 +95,14 @@ const LABEL: Partial<Record<string, string>> = {
 };
 const label = (k: string) => t(LABEL[k] ?? `nav.${k}`);
 
-/** Den seneste spillede kamp for ens klub (til "Sidste kamp") */
-function lastMatchId(g: GameState): number | undefined {
+/** Fanerne på en anden klubs side → klubsidens visninger */
+const VIEWED: Record<string, string> = { squad: 'squad', transfers: 'transfers', assistant: 'next', fixtures: 'fixtures', club: 'info', finance: 'finances' };
+
+/** Den seneste spillede kamp for en klub (til "Sidste kamp") */
+function lastMatchId(g: GameState, club: number): number | undefined {
   let best: { id: number; date: string } | undefined;
   for (const f of Object.values(g.fixtures)) {
-    if (!f.result || (f.home !== g.userClub && f.away !== g.userClub) || !g.reports[f.id]) continue;
+    if (!f.result || (f.home !== club && f.away !== club) || !g.reports[f.id]) continue;
     if (!best || f.date > best.date) best = { id: f.id, date: f.date };
   }
   return best?.id;
@@ -107,21 +110,23 @@ function lastMatchId(g: GameState): number | undefined {
 
 function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, route: Route, allowed: (k: ScreenName) => boolean): Item[] {
   if (!keys) return [];
-  // en anden klubs side: "Økonomi & info", "Økonomi" og "Division" gælder den klub – ikke ens egen
+  // en anden klubs side: fanerne (trup, transfers, næste kamp, kampprogram, økonomi & info) og under-knapperne
+  // (sidste kamp, division, økonomi) viser den klub – ikke ens egen. Taktik og træning findes kun for ens egen klub.
   const viewed = route.name === 'club' && route.id && Number(route.id) !== g.userClub ? Number(route.id) : 0;
   const out: Item[] = [];
   for (const k of keys) {
-    if (viewed && (k === 'club' || k === 'finance')) {
-      const cview = k === 'finance' ? 'finances' : 'info';
-      const cur = (route.state?.cview as string | undefined) ?? 'info';
+    if (viewed && (k === 'tactics' || k === 'training')) continue;
+    if (viewed && k in VIEWED) {
+      const cview = VIEWED[k];
+      const cur = (route.state?.cview as string | undefined) ?? 'squad';
+      const group = (x: string) => (x === 'finances' || x === 'income' || x === 'expenditure' ? 'finances' : x === 'stats' ? 'info' : x);
       // økonomien kan kun ses for andre klubber uden attribut-maskering (som på selve skærmen)
       const hidden = k === 'finance' && g.options.masking;
-      out.push({ key: k, label: label(k), route: hidden ? undefined : { name: 'club', id: viewed, state: { cview } }, disabled: hidden,
-        on: k === 'finance' ? cur === 'finances' : cur !== 'finances' && cur !== 'income' && cur !== 'expenditure' });
+      out.push({ key: k, label: label(k), route: hidden ? undefined : { name: 'club', id: viewed, state: { cview } }, disabled: hidden, on: group(cur) === cview });
       continue;
     }
     if (k === 'lastMatch') {
-      const id = lastMatchId(g);
+      const id = lastMatchId(g, viewed || g.userClub);
       out.push({ key: k, label: label(k), route: id ? { name: 'report', id } : undefined, disabled: !id, on: route.name === 'report' });
     } else if (k === 'division') {
       const lg = g.clubs[viewed || g.userClub]?.league;

@@ -30,30 +30,33 @@ export function Fixtures() {
   return isRetro() ? <ClassicFixtures /> : <ModernFixtures />;
 }
 
-/** Klassisk tema: "Season 2001/02" og en linje pr. kamp – dato, modstander, land, H/U, turnering og resultat */
-function ClassicFixtures() {
+/** Klassisk tema: "Season 2001/02" og en linje pr. kamp – dato, modstander, land, H/U, turnering og resultat.
+ * Kan vise en anden klubs program (fra klubsiden) – så uden eget skærmhoved og venskabskampe. */
+export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedded?: boolean } = {}) {
   const g = useGame()!;
+  const cid = clubId ?? g.userClub;
+  const mine = cid === g.userClub;
   const { nav } = useNav();
   const [arrange, setArrange] = useState(false);
   type Row = { key: string; date: string; opp: number; home?: boolean; comp: string; friendly?: boolean; res?: string; win: number; fid?: number };
-  const rows: Row[] = Object.values(g.fixtures).filter((f) => f.home === g.userClub || f.away === g.userClub).map((f) => {
-    const home = f.home === g.userClub, r = f.result;
+  const rows: Row[] = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).map((f) => {
+    const home = f.home === cid, r = f.result;
     const my = r ? (home ? r.hg : r.ag) : 0, their = r ? (home ? r.ag : r.hg) : 0;
     const win = !r ? 0 : my > their || (r.pens && (home ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0])) ? 1 : my === their ? 0 : -1;
     return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, res: r ? `${my}:${their}${r.pens ? ` (${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
   });
-  for (const fr of g.manager.friendlies ?? []) rows.push({ key: `fr${fr.date}`, date: fr.date, opp: fr.opp, comp: t('cl.fx.friendly'), friendly: true, res: fr.result ? `${fr.result[0]}:${fr.result[1]}` : undefined, win: fr.result ? Math.sign(fr.result[0] - fr.result[1]) : 0, fid: undefined });
+  if (mine) for (const fr of g.manager.friendlies ?? []) rows.push({ key: `fr${fr.date}`, date: fr.date, opp: fr.opp, comp: t('cl.fx.friendly'), friendly: true, res: fr.result ? `${fr.result[0]}:${fr.result[1]}` : undefined, win: fr.result ? Math.sign(fr.result[0] - fr.result[1]) : 0, fid: undefined });
   rows.sort((a, b) => a.date.localeCompare(b.date));
-  const myNation = g.clubs[g.userClub]?.nation;
+  const myNation = g.clubs[cid]?.nation;
   const d = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'short', day: 'numeric', month: 'short' });
   return (
     <div>
-      <Head title={t('nav.fixtures')}>
+      {!embedded && <Head title={t('nav.fixtures')}>
         <button className="cx-greybtn" disabled>{t('cl.fx.prev')}</button>
         <button className="cx-greybtn" disabled>{t('cl.fx.next')}</button>
         <span className="grow" />
         {!g.draft && g.userClub > 0 && <button className="cx-greybtn" onClick={() => setArrange(true)}>{t('cl.fx.arrange')}</button>}
-      </Head>
+      </Head>}
       <div className="cx-subtitle">{t('cl.fx.season', { s: `${g.season}/${String((g.season + 1) % 100).padStart(2, '0')}` })}</div>
       <div className="cx-fx">
         {rows.map((r) => {
@@ -68,7 +71,7 @@ function ClassicFixtures() {
               <span className="cx-fx-ha">{r.home === undefined ? '' : r.home ? t('cl.fx.h') : t('cl.fx.a')}</span>
               <span className={`cx-fx-comp ${r.friendly ? 'friendly' : ''}`}>{r.comp}</span>
               <span className={`cx-fx-res ${r.win > 0 ? 'w' : r.win < 0 ? 'l' : ''}`}>
-                {r.fid === g.pendingFixture ? <button className="small primary" onClick={(e) => { e.stopPropagation(); nav({ name: 'match', id: r.fid! }); }}>{t('top.toTheMatch')}</button> : r.res ?? '---'}
+                {mine && r.fid === g.pendingFixture ? <button className="small primary" onClick={(e) => { e.stopPropagation(); nav({ name: 'match', id: r.fid! }); }}>{t('top.toTheMatch')}</button> : r.res ?? '---'}
               </span>
             </div>
           );
