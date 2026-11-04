@@ -1,7 +1,7 @@
 // Fællesskabet: forslag, kommentarer, stemmer (med budget), månedens afstemning, fejlrapporter og en roadmap.
 // Identitet = ranglisteprofilen (prof:{pid} med hash af et hemmeligt token). Admin-handlinger kræver ADMIN_TOKEN.
 import { Redis } from '@upstash/redis';
-import { SITE, postDiscord } from './_lib/discord';
+import { SITE, postDiscord } from './_lib/discord.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 

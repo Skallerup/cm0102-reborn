@@ -6,7 +6,7 @@
 // Scoren valideres (linjenøgler, grænser, sum); selve spillet kører i browseren, så ranglisten
 // er tillidsbaseret ud over disse kontroller.
 import { Redis } from '@upstash/redis';
-import { postDiscord } from './_lib/discord';
+import { postDiscord } from './_lib/discord.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 

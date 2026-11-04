@@ -8,7 +8,7 @@
 // Identitet = ranglisteprofilen (prof:{pid} med hash af et hemmeligt token). Admin-handlinger kræver ADMIN_TOKEN.
 import { Redis } from '@upstash/redis';
 import { put } from '@vercel/blob';
-import { SITE, postDiscord } from './_lib/discord';
+import { SITE, postDiscord } from './_lib/discord.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

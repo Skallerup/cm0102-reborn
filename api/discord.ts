@@ -2,7 +2,7 @@
 // at hver forespørgsel er signeret med appens offentlige nøgle (DISCORD_PUBLIC_KEY, Ed25519).
 // Kommandoerne registreres én gang med scripts/discord-register.mjs.
 import { Redis } from '@upstash/redis';
-import { SITE } from './_lib/discord';
+import { SITE } from './_lib/discord.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 const reply = (content: string) => new Response(JSON.stringify({ type: 4, data: { content: content.slice(0, 1990), allowed_mentions: { parse: [] } } }), { headers: { 'content-type': 'application/json' } });
