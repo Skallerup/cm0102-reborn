@@ -196,7 +196,7 @@ function SuggestionModal({ id, onClose }: { id: number; onClose: () => void }) {
 }
 
 /** Skriv et nyt forslag eller en fejlrapport – med dubletkontrol og evt. skærmbillede */
-function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; onClose: (id?: number) => void; meta?: string }) {
+export function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; onClose: (id?: number) => void; meta?: string }) {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
   const [cat, setCat] = useState('gameplay');

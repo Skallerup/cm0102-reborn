@@ -5,6 +5,13 @@ import { notify } from '../game/state';
 import type { GameState, Lang } from '../game/types';
 import { LANGS, CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
+import { ChangelogModal, seenVersion } from './Changelog';
+import { ProfileGate, WriteModal } from './Community';
+import { Modal } from './components';
+import { createPortal } from 'react-dom';
+import { communityAvailable } from '../online/community';
+import { getProfile } from '../online/rank';
+import { gs } from '../game/state';
 import { CxDrop, type DropItem } from './classic';
 import { bgPack, setBgPack } from './backgrounds';
 import { askConfirm } from './confirm';
@@ -44,8 +51,9 @@ applyFlash();
 // ---------- Game Options-menuen ----------
 
 export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: () => void; onQuit: () => void; online: boolean; allowed: (k: string) => boolean }) {
-  const { nav } = useNav();
+  const { nav, route } = useNav();
   const [settings, setSettings] = useState(false);
+  const [show, setShow] = useState<'changelog' | 'bug' | 'suggest' | null>(null);
   const go = (k: string) => () => nav({ name: k as never });
   const items: DropItem[] = [];
   if (!online) items.push({ key: 'save', label: t('cl.go.save'), onClick: onSave });
@@ -58,11 +66,19 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   add('community', t('nav.community'));
   add('support', t('cl.go.web'));
   add('options', t('cl.go.all'));
+  // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
+  const fresh = seenVersion() !== APP_VERSION;
+  items.push({ key: 'sep0', sep: true }, { key: 'news', label: `${t('cl.go.whatsNew', { v: APP_VERSION })}${fresh ? ' ★' : ''}`, onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
+  if (communityAvailable()) items.push({ key: 'bug', label: `🐞 ${t('cm.reportBug')}`, onClick: () => setShow('bug') }, { key: 'idea', label: `💡 ${t('cl.go.feedback')}`, onClick: () => setShow('suggest') });
   items.push({ key: 'sep', sep: true }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
       <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-opt' }} />
       {settings && <GameSettings onClose={() => setSettings(false)} />}
+      {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
+      {(show === 'bug' || show === 'suggest') && createPortal(getProfile()
+        ? <WriteModal kind={show} meta={show === 'bug' ? `v${APP_VERSION} · ${route.name} · ${gs().date} · ${window.innerWidth}×${window.innerHeight} · classic` : undefined} onClose={() => setShow(null)} />
+        : <Modal title={t(show === 'bug' ? 'cm.reportBug' : 'cl.go.feedback')} onClose={() => setShow(null)}><ProfileGate onDone={() => setShow(null)} /></Modal>, document.body)}
     </>
   );
 }

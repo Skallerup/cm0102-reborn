@@ -7,7 +7,7 @@ import { Modal } from './components';
 
 const SEEN = 'cm0102.seenVersion';
 
-function seenVersion(): string {
+export function seenVersion(): string {
   try { return localStorage.getItem(SEEN) ?? ''; } catch { return ''; }
 }
 
