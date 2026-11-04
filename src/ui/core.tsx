@@ -65,6 +65,8 @@ export function NavProvider({ children, initial, storageKey, valid }: { children
     return () => window.removeEventListener('pagehide', save);
   }, [stack, storageKey]);
   const [fwd, setFwd] = useState<Route[]>([]);
+  // kun i udvikling: Playwright-scripts (skærmbilleder) kan skifte side direkte
+  useEffect(() => { if (import.meta.env.DEV) (window as unknown as { __cmNav?: unknown }).__cmNav = (r: Route) => setStack((st) => [...st, r]); }, []);
   const value = useMemo<NavCtx>(() => ({
     route: stack[stack.length - 1],
     nav: (r) => {

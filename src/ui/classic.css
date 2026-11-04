@@ -574,3 +574,28 @@
   :root[data-skin='retro'] .cx-tac-panes button { min-width: 0; padding: 0 10px; }
   .cx-ti-row { grid-template-columns: 1fr; }
 }
+
+/* ---------- draft-rummet i klassisk udseende ---------- */
+:root[data-skin='retro'] body:has(.draft-page) { background: radial-gradient(ellipse at 50% 0%, #142080 0%, #0a1050 45%, var(--cx-desk) 100%) fixed; }
+:root[data-skin='retro'] .draft-page { font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; gap: 8px; }
+:root[data-skin='retro'] .draft-page .draft-top { padding: 8px 12px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); align-items: center; }
+:root[data-skin='retro'] .draft-page .draft-top h1 { color: var(--cx-gold); font-size: 22px; font-weight: 700; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+:root[data-skin='retro'] .draft-page .panel { background: var(--cx-panel); border: 1px solid var(--cx-line); box-shadow: none; backdrop-filter: none; }
+:root[data-skin='retro'] .draft-page .panel > header { padding: 5px 10px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:root[data-skin='retro'] .draft-page .panel > header h3 { color: #fff; font-size: 13px; text-transform: none; letter-spacing: 0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); }
+:root[data-skin='retro'] .draft-page .panel > header h3::before { display: none; }
+:root[data-skin='retro'] .draft-page .panel-body { padding: 8px 10px; }
+:root[data-skin='retro'] .draft-page button { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: none; font-weight: 700; }
+:root[data-skin='retro'] .draft-page button:hover:not(:disabled) { background: #1c27a2; color: #fff; }
+:root[data-skin='retro'] .draft-page button.primary { background: linear-gradient(180deg, #34962f, #237523); color: #000; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+:root[data-skin='retro'] .draft-page button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #3fa83a, #2a852a); color: #000; }
+:root[data-skin='retro'] .draft-page input, :root[data-skin='retro'] .draft-page select { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); }
+:root[data-skin='retro'] .draft-page table.grid { background: transparent; }
+:root[data-skin='retro'] .draft-page table.grid thead th { background: rgba(160, 165, 180, 0.85); color: #fff; font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: 0; padding: 3px 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
+:root[data-skin='retro'] .draft-page table.grid tbody td { padding: 3px 6px; font-size: 13px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+:root[data-skin='retro'] .draft-page table.grid tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
+:root[data-skin='retro'] .draft-page table.grid tbody tr.clickable:hover td, :root[data-skin='retro'] .draft-page table.grid tbody tr.sel td { background: rgba(140, 16, 20, 0.55); }
+:root[data-skin='retro'] .draft-page .insight { border-radius: 0; background: rgba(10, 17, 80, 0.85); border: 1px solid var(--cx-line); }
+:root[data-skin='retro'] .draft-page .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
+:root[data-skin='retro'] .draft-page b, :root[data-skin='retro'] .draft-page strong { color: var(--cx-gold); }
+:root[data-skin='retro'] .draft-page .tag, :root[data-skin='retro'] .draft-page .chip, :root[data-skin='retro'] .draft-page .badge { border-radius: 0; }

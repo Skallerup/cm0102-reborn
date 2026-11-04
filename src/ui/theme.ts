@@ -211,6 +211,8 @@ export function applyTheme() {
     delete root.dataset.club;
     delete root.dataset.skin;
     for (const v of VARS) root.style.removeProperty(v);
+    // draft-rummet i klassisk udseende (CM-farver, firkantede knapper)
+    if (theme === 'retro') root.dataset.skin = 'retro';
     return;
   }
   // forsiden og startmenuen er designet mørke – temaet gælder inde i spillet

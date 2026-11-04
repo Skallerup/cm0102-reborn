@@ -1,7 +1,8 @@
 // Landingsside for Draft-ligaen (?draft=1): hvad det er, hvordan det virker, og det sjove ved det.
+import { LangMenu } from './LangMenu';
 import { useEffect, useState } from 'react';
 import type { Lang } from '../game/types';
-import { LANGS, getLang, setLang, t } from '../i18n';
+import { getLang, setLang, t } from '../i18n';
 import { Counter, Frame, useReveal } from './Landing';
 import './landing.css';
 
@@ -72,9 +73,7 @@ export function DraftLanding({ onCreate, onBack, onLang }: { onCreate: () => voi
             <a onClick={() => go('shots')}>{t('dl.nav.shots')}</a>
           </nav>
           <div className="lp-nav-right">
-            <div className="lp-lang">
-              {LANGS.map(([k, short, full]) => <button key={k} className={lang === k ? 'on' : ''} title={full} onClick={() => switchLang(k)}>{short}</button>)}
-            </div>
+            <LangMenu value={lang} onChange={switchLang} />
             <button className="lp-cta small" onClick={onCreate}>{t('dl.ctaShort')}</button>
           </div>
         </div>

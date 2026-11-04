@@ -1,14 +1,16 @@
 // Forsiden for nye besøgende: hero med animation, rigtige screenshots, features, rangliste og FAQ.
+import { LangMenu } from './LangMenu';
 import { ConsentLink } from './ConsentBanner';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Lang } from '../game/types';
-import { LANGS, LOCALE, getLang, setLang, t } from '../i18n';
+import { LOCALE, getLang, setLang, t } from '../i18n';
 import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import { withAiManagers } from './aiManagers';
 import './landing.css';
+import { shot } from './shots';
 
-const img = (name: string) => `${import.meta.env.BASE_URL}landing/${name}.webp`;
+const img = shot;
 
 /** Elementer glider ind, når de kommer i syne */
 export function useReveal() {
@@ -197,7 +199,18 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
   }, [lightbox]);
   const switchLang = (l: Lang) => { setLang(l); onLang(l); };
   const open = (src: string, alt: string) => setLightbox({ src, alt });
-  const go = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+  // billeder over målet indlæses undervejs og skubber det ned – ret efter, til sektionen står under menuen
+  const go = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth' });
+    let tries = 0;
+    const fix = () => {
+      const top = el.getBoundingClientRect().top;
+      if (Math.abs(top - 84) > 12 && tries++ < 4) { el.scrollIntoView({ behavior: tries > 2 ? 'instant' : 'smooth' }); setTimeout(fix, 700); }
+    };
+    setTimeout(fix, 900);
+  };
   const Cta = ({ big, children }: { big?: boolean; children?: ReactNode }) => (
     <button className={`lp-cta ${big ? 'big' : ''}`} onClick={onPlay}>{children ?? t('land.play')} <span aria-hidden="true">→</span></button>
   );
@@ -210,18 +223,16 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           <div className="lp-brand"><img src={`${import.meta.env.BASE_URL}icon.svg`} alt="" width="28" height="28" /> <b>CM</b> <span>Reborn</span></div>
           <nav className="lp-links">
             <a onClick={() => go('features')}>{t('land.nav.features')}</a>
-            <a onClick={() => go('screens')}>{t('land.nav.screens')}</a>
-            <a onClick={() => go('looks')}>{t('land.nav.looks')}</a>
-            <a onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
+            <a className="opt2" onClick={() => go('screens')}>{t('land.nav.screens')}</a>
+            <a className="opt2" onClick={() => go('looks')}>{t('land.nav.looks')}</a>
+            <a className="opt1" onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
             <a href="?community=1">{t('land.nav.community')}</a>
             <a onClick={() => go('join')}>{t('land.nav.join')}</a>
-            <a onClick={() => go('faq')}>{t('land.nav.faq')}</a>
+            <a className="opt1" onClick={() => go('faq')}>{t('land.nav.faq')}</a>
             {onDraft && <a onClick={onDraft}>Draft</a>}
           </nav>
           <div className="lp-nav-right">
-            <div className="lp-lang">
-              {LANGS.map(([k, short, full]) => <button key={k} className={lang === k ? 'on' : ''} title={full} onClick={() => switchLang(k)}>{short}</button>)}
-            </div>
+            <LangMenu value={lang} onChange={switchLang} />
             <button className="lp-cta small" onClick={onPlay}>{t('land.playShort')}</button>
           </div>
         </div>

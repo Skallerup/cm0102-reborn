@@ -23,7 +23,13 @@
 .lp-brand b { font-weight: 900; }
 .lp-brand span { color: var(--accent); font-weight: 700; }
 .lp-links { display: flex; gap: 22px; margin-left: 18px; }
-.lp-links a { color: var(--muted); font-size: 14px; font-weight: 500; transition: color 0.15s; }
+.lp-links a { color: var(--muted); font-size: 14px; font-weight: 500; transition: color 0.15s; white-space: nowrap; cursor: pointer; }
+.lp-brand, .lp-nav .lp-cta.small { white-space: nowrap; flex: none; }
+/* sektioner, der hoppes til fra menuen, lander under den faste topmenu */
+.lp [id] { scroll-margin-top: 84px; }
+/* mellemstore skærme: de mindst vigtige menupunkter skjules, så menuen bliver på én linje */
+@media (max-width: 1280px) { .lp-links { gap: 18px; } .lp-links .opt2 { display: none; } }
+@media (max-width: 1120px) { .lp-links .opt1 { display: none; } }
 .lp-links a:hover { color: var(--text); }
 .lp-nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 .lp-lang { display: flex; background: rgba(148, 170, 255, 0.08); border-radius: 999px; padding: 3px; }

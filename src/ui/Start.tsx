@@ -1,6 +1,7 @@
+import { LookPicker } from './LookPicker';
+import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
 import { useEffect, useMemo, useState } from 'react';
-import { getTheme, setTheme } from './theme';
 import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
@@ -11,7 +12,7 @@ import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
 import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
-import { LANGS, compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
+import { compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
 import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
@@ -59,9 +60,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
             <div className="start-foot">
               <button className="start-ghost" onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
               <input id="import-file" type="file" accept=".cm0102,.json,.gz" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files?.[0])} />
-              <div className="start-lang">
-                {LANGS.map(([k, short, full]) => <button key={k} className={lang === k ? 'on' : ''} title={full} onClick={() => { setLang(k); onLang(k); }}>{short}</button>)}
-              </div>
+              <LangMenu up value={lang} onChange={(k) => { setLang(k); onLang(k); }} />
               <select className="start-cur" aria-label={t('opt.currency')} defaultValue={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
               </select>
@@ -128,6 +127,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   const [active, setActive] = useState<Set<number>>(new Set());
   const [league, setLeague] = useState('');
   const [club, setClub] = useState<number>(0);
+  // kun i udvikling: skærmbillede-scriptet vælger klub direkte (uden at klikke sig gennem ligalisten)
+  useEffect(() => { if (import.meta.env.DEV && world) (window as unknown as { __cmPick?: unknown }).__cmPick = (id: number) => { const c = world.clubs.find((x) => x[0] === id); if (c) { setActive((a) => new Set([...a, c[3]])); setLeague(c[4]); setClub(id); } return !!c; }; }, [world]);
   const [masking, setMasking] = useState(true);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
   const [bots, setBots] = useState(0);
@@ -136,8 +137,6 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   // database: standard (CM 2026/27) eller den originale 01/02 (3.9.68)
   type Db = 'modern' | 'original';
   const [db, setDbState] = useState<Db>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'original' ? 'original' : 'modern'; } catch { return 'modern'; } });
-  const [look, setLook] = useState<'modern' | 'classic'>(() => (getTheme() === 'retro' ? 'classic' : 'modern'));
-  const pickLook = (l: 'modern' | 'classic') => { setLook(l); setTheme(l === 'classic' ? 'retro' : getTheme() === 'retro' ? 'club' : getTheme()); };
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
 
   useEffect(() => {
@@ -177,20 +176,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
       </div>
     </Panel>
   );
-  // udseende: gælder inde i spillet (start- og opret-siden har ét fælles design); kan altid skiftes i Indstillinger
-  const lookPicker = (
-    <Panel title={t('start.look')}>
-      <div className="db-choice">
-        <button className={`db-opt ${look === 'modern' ? 'on' : ''}`} onClick={() => pickLook('modern')}>
-          <b>{t('land.looks.modern')}</b><span>{t('start.lookModernHint')}</span>
-        </button>
-        <button className={`db-opt ${look === 'classic' ? 'on' : ''}`} onClick={() => pickLook('classic')}>
-          <b>{t('land.looks.classic')}</b><span>{t('start.lookClassicHint')}</span>
-        </button>
-      </div>
-      <div className="muted" style={{ marginTop: 8 }}>{t('start.lookNote')}</div>
-    </Panel>
-  );
+  const lookPicker = <LookPicker />;
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
   if (!world) return <div>{dbPicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 

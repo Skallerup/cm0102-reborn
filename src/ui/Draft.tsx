@@ -1,5 +1,6 @@
 // Draft-liga: oprettelse, tilmelding, lobby, keepers og selve draften (live, 60 sekunder pr. valg).
 // Når draften er færdig, bygges sæsonen, og spillet fortsætter i den almindelige brugerflade (med færre menupunkter).
+import { LookPicker } from './LookPicker';
 import { drawDraftCard, shareDraftCard } from './draftCard';
 import { stopVoice } from '../online/voice';
 import { holdDarkTheme } from './theme';
@@ -190,6 +191,8 @@ export function DraftCreate({ onBack, setBusy }: { onBack: () => void; setBusy: 
   const [err, setErr] = useState('');
   const ok = name.trim().length >= 2 && (team.name ?? '').trim().length >= 2 && (team.short ?? '').trim().length >= 2;
   return (
+    <>
+    <LookPicker />
     <Panel title={t('dr.create')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
       <div className="col">
         <p className="muted" style={{ marginTop: 0 }}>{t('dr.createIntro')}</p>
@@ -220,6 +223,7 @@ export function DraftCreate({ onBack, setBusy }: { onBack: () => void; setBusy: 
         </div>
       </div>
     </Panel>
+    </>
   );
 }
 
