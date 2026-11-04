@@ -21,7 +21,7 @@ import { CxDrop, classicDate, titleColors, type DropItem } from '../classic';
 import { compareIds, toggleCompare } from '../compare';
 import { Bar, ClubLink, FormList, Modal, Panel, Rating, Stars, Tabs, posStr } from '../components';
 import { gs } from '../../game/state';
-import { useGame, useNav } from '../core';
+import { useGame, useNav, useRouteState } from '../core';
 import { realCareer, type RealSeason } from '../careers';
 import { DevelopmentPanel } from '../dev';
 import { Head } from './common';
@@ -279,7 +279,8 @@ export function ClassicPlayer({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const p = g.players[id];
-  const [tab, setTab] = useState<Tab>('profile');
+  // fanen kan vælges udefra (fx et klik på Inj/Wnt/Fgn i truppen) og huskes på ruten
+  const [tab, setTab] = useRouteState<Tab>('ptab', (useNav().route.tab as Tab | undefined) ?? 'profile');
   const [bid, setBid] = useState<boolean | number>(false);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');

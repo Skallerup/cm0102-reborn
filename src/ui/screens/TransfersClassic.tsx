@@ -319,7 +319,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   };
   const based = (p: Player) => { const c = g.clubs[p.club]; return c ? natName(g.nations[c.nation]?.name) ?? '' : t('common.free'); };
   const base: CxCol<Player>[] = [
-    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{x[0]}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
+    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{t(`cl.tag.${x[0]}`)}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
     { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : '-'), sort: (p) => g.clubs[p.club]?.name ?? '' };

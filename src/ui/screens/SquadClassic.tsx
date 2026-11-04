@@ -137,6 +137,16 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   return null;
 }
 
+/** Hvilken fane på spillerprofilen der forklarer mærket */
+const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
+
+/** Mærket foran navnet – et klik åbner den del af spillerprofilen, der handler om det */
+function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }) {
+  const { nav } = useNav();
+  if (!tag) return <span className="cx-sq-tag" />;
+  return <button className={`cx-sq-tag ${tag.k.toLowerCase()}`} title={tag.title} onClick={() => nav({ name: 'player', id: p.id, tab: TAG_TAB[tag.k] })}>{t(`cl.tag.${tag.k}`)}</button>;
+}
+
 /** Truppens tre bedste spillere (efter evne) – markeres med * efter navnet som i CM 01/02 */
 function starIds(players: Player[]): Set<number> {
   return new Set([...players].sort((a, b) => b.ca - a.ca).slice(0, 3).map((p) => p.id));
@@ -162,7 +172,7 @@ export function ClassicClubSquad({ cid }: { cid: number }) {
     return (
       <div key={p.id} className="cx-sq-row">
         <span className="cx-selbtn cx-selbtn-static" />
-        <span className={`cx-sq-tag ${tag ? tag.k.toLowerCase() : ''}`} title={tag?.title}>{tag?.k ?? ''}</span>
+        <Tag p={p} tag={tag} />
         <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''}`} title={stars.has(p.id) ? t('tag.star') : undefined}
           onClick={() => nav({ name: 'player', id: p.id })}>{shortName(p, stars.has(p.id))}</button>
         <span className="cx-sq-info">{info.show(p)}</span>
@@ -266,7 +276,7 @@ export function ClassicSquad() {
       <div key={p.id} className={`cx-sq-row ${drag === p.id ? 'dragging' : ''} ${over === `p${p.id}` ? 'over' : ''}`} {...dropOn(`p${p.id}`, 'swapWith', p.id)}>
         <CxDrop className="cx-sel" caret={false} label={lbl || ' '} items={menuFor(p)}
           btn={{ className: `cx-selbtn ${pl?.kind ?? ''}`, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: t('cl.sq.selHint') }} />
-        <span className={`cx-sq-tag ${tag ? tag.k.toLowerCase() : ''}`} title={tag?.title}>{tag?.k ?? ''}</span>
+        <Tag p={p} tag={tag} />
         <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''}`} draggable onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
           title={stars.has(p.id) ? t('tag.star') : undefined} onClick={() => nav({ name: 'player', id: p.id })}>{shortName(p, stars.has(p.id))}</button>
         <span className="cx-sq-info">{info.show(p)}</span>

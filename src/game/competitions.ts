@@ -318,7 +318,8 @@ export function setupChampionsLeague(clubs: number[], season: number) {
   setupEuroLeaguePhase('CL', 'Champions League', clubs, season, 8);
 }
 
-export function setupUefaCup(clubs: number[], season: number, id = 'UEFA', name = 'UEFA Cup', matchdays = 8) {
+// turneringen hedder UEFA Cup i den originale 2001-database og Europa League fra 2009
+export function setupUefaCup(clubs: number[], season: number, id = 'UEFA', name = season >= 2009 ? 'Europa League' : 'UEFA Cup', matchdays = 8) {
   setupEuroLeaguePhase(id, name, clubs, season, matchdays);
 }
 

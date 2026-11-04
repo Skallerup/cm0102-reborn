@@ -26,6 +26,20 @@ const LEAGUES_DA: Record<string, string> = {
   'Australian National Soccer League': 'A-League', 'Saudi Premier League': 'Saudi Pro League',
 };
 
+/** Pokalturneringerne i CM-databaserne (deres engelske navne) */
+const CM_CUPS_DA: Record<string, string> = {
+  'Danish Cup': 'Pokalturneringen', 'English FA Cup': 'FA Cup', 'Scottish Cup': 'Scottish Cup', 'German Cup': 'DFB-Pokal',
+  'German League Cup': 'Ligapokal', 'Italian Cup': 'Coppa Italia', 'Spanish Cup': 'Copa del Rey', 'French Cup': 'Coupe de France',
+  'Dutch Cup': 'KNVB Beker', 'Dutch Super Cup': 'Johan Cruijff Schaal', 'Portuguese Cup': 'Taça de Portugal', 'Portuguese Super Cup': 'Supertaça',
+  'Belgian Cup': 'Beker van België', 'Swedish Cup': 'Svenska Cupen', 'Norwegian Cup': 'NM Cup', 'Austrian FA Cup': 'ÖFB-Cup',
+  'Swiss Cup': 'Schweizer Cup', 'Turkish FA Cup': 'Tyrkiets pokal', 'Greek Cup': 'Grækenlands pokal', 'Croatian Cup': 'Kroatiens pokal',
+  'Czech FA Cup': 'Tjekkiets pokal', 'Polish FA Cup': 'Polens pokal', 'Romanian Cup': 'Rumæniens pokal', 'Russian Cup': 'Ruslands pokal',
+  'Ukrainian Cup': 'Ukraines pokal', 'Serbian Cup': 'Serbiens pokal', 'US Open Cup': 'US Open Cup', 'Mexican Cup': 'Copa MX',
+  'Brazilian Cup': 'Copa do Brasil', 'Argentine Super Cup': 'Supercopa Argentina', 'Colombian Cup': 'Copa Colombia',
+  'Japanese Cup': "Kejserens pokal", 'Japanese Super Cup': 'Japans supercup', 'Korean FA Cup': 'Korea Cup', 'Australia Cup': 'Australia Cup',
+  "Saudi King's Cup": 'Kongens pokal', 'PrepreLibertadores Cup': 'Pre-Libertadores',
+};
+
 /** Nationale pokalturneringer ("<land> Cup" i databasen) */
 const CUPS: Record<string, string> = {
   Denmark: 'Pokalturneringen', England: 'FA Cup', Scotland: 'Scottish Cup', Germany: 'DFB-Pokal', Italy: 'Coppa Italia',
@@ -36,7 +50,7 @@ const CUPS: Record<string, string> = {
 
 export function compLabel<T extends string | undefined>(name: T, lang: 'da' | 'en'): T {
   if (!name || lang !== 'da') return name;
-  const league = LEAGUES_DA[name];
+  const league = LEAGUES_DA[name] ?? CM_CUPS_DA[name];
   if (league) return league as T;
   if (name.startsWith('Playoff ')) return `Playoff ${compLabel(name.slice(8), lang)}` as T;
   const nation = name.endsWith(' Cup') ? name.slice(0, -4) : '';

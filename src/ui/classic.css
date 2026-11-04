@@ -495,3 +495,9 @@
 :root[data-skin='retro'] .cx-menu-clubs button:hover { background: #5fc25a !important; color: #000 !important; }
 :root[data-skin='retro'] .cx-menu-clubs button.on { color: #fff21f; text-shadow: 1px 1px 0 #000; }
 :root[data-skin='retro'] .cx-selbtn.cx-selbtn-static { display: inline-block; flex: none; cursor: default; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+/* mærkerne i truppen er knapper: et klik åbner den del af profilen, der forklarer dem */
+:root[data-skin='retro'] button.cx-sq-tag { min-width: 0; height: 20px; padding: 0; font-size: 11px; font-weight: 800; color: #10164e; text-shadow: none; cursor: pointer; background: linear-gradient(180deg, #f4f0c8, #c9c08a); border: 1px solid; border-color: #fff #6b6440 #6b6440 #fff; }
+:root[data-skin='retro'] button.cx-sq-tag:hover { filter: brightness(1.12); }
+:root[data-skin='retro'] button.cx-sq-tag.inj, :root[data-skin='retro'] button.cx-sq-tag.sus { background: linear-gradient(180deg, #ff6b5a, #b8261a); color: #fff; }
+/* knapper i samme række i en dialog får samme højde (også når en af dem har to linjer tekst) */
+:root[data-skin='retro'] .modal .row:has(> button) { align-items: stretch; }
