@@ -1,6 +1,7 @@
 // Fællesskabet: forslag, kommentarer, stemmer (med budget), månedens afstemning, fejlrapporter og en roadmap.
 // Identitet = ranglisteprofilen (prof:{pid} med hash af et hemmeligt token). Admin-handlinger kræver ADMIN_TOKEN.
 import { Redis } from '@upstash/redis';
+import { SITE, postDiscord } from './_lib/discord';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 
@@ -243,6 +244,7 @@ export async function POST(request: Request) {
     await redis.zadd('sg:top', { score: 0, member: String(id) });
     await redis.rpush('sg:feed', JSON.stringify({ id, title, name: prof.name, cat, at: now() }));
     await redis.ltrim('sg:feed', -200, -1);
+    await postDiscord(`${op === 'bug' ? '🐞 Ny fejlrapport' : '💡 Nyt forslag'} fra **${prof.name}**: ${title}`, { title, url: `${SITE}/?suggestion=${id}`, description: text.slice(0, 300) });
     return json({ ok: true, id });
   }
 

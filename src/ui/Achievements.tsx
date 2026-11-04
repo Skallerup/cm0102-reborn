@@ -2,6 +2,8 @@
 import { SupporterBadge } from './Support';
 import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS } from '../game/achievements';
+import { follow, followState } from '../online/hub';
+import { getProfile } from '../online/rank';
 import { dateFmt, natName, t } from '../i18n';
 import { fetchProfile, type PublicProfile } from '../online/rank';
 import { Flag } from './components';
@@ -33,6 +35,21 @@ export function AchievementsGrid({ unlocked }: { unlocked: Record<string, string
 }
 
 /** Den offentlige profil (åbnes med ?manager=<id>) */
+/** Følg en manager (hans sæsoner og delte karrierer kommer i ens feed under Fællesskab → Feed) */
+function FollowButton({ pid }: { pid: string }) {
+  const [st, setSt] = useState<{ following: boolean; followers: number } | null>(null);
+  const load = () => void followState(pid).then(setSt);
+  useEffect(load, [pid]);
+  const mine = getProfile();
+  if (!st) return null;
+  return (
+    <div className="row" style={{ marginTop: 6 }}>
+      <span className="muted">{t('hub.followers', { n: st.followers })}</span>
+      {mine && mine.pid !== pid && <button className={`small ${st.following ? '' : 'primary'}`} onClick={async () => { await follow(pid, !st.following); load(); }}>{t(st.following ? 'hub.unfollow' : 'hub.follow')}</button>}
+    </div>
+  );
+}
+
 export function PublicProfilePage({ pid, onClose }: { pid: string; onClose: () => void }) {
   const [p, setP] = useState<PublicProfile | null | 'loading'>('loading');
   useEffect(() => { fetchProfile(pid).then(setP); }, [pid]);
@@ -50,7 +67,7 @@ export function PublicProfilePage({ pid, onClose }: { pid: string; onClose: () =
                 {p.regen && <div className="muted">⭐ {t('sup.regenNamed', { name: p.regen })}</div>}
                 <div className="muted">{p.summary?.nation ? <><Flag name={p.summary.nation} />{natName(p.summary.nation)} · </> : ''}{t('pub.since', { date: dateFmt(p.created.slice(0, 10)) })}</div>
                 {p.motto && <div className="prof-motto">“{p.motto}”</div>}
-                {p.motto && <div className="prof-motto">“{p.motto}”</div>}
+                <FollowButton pid={pid} />
                 {p.summary?.club && <div className="pub-club">{t('pub.now', { club: p.summary.club, league: p.summary.league })}</div>}
               </div>
             </div>

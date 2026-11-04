@@ -11,6 +11,7 @@ import { Flag, Panel } from '../components';
 import { useGame } from '../core';
 import { Select } from '../select';
 import { Head } from './common';
+import { ShareCareerPanel } from '../communityActions';
 
 export function ProfileScreen() {
   const g = useGame()!;
@@ -98,6 +99,7 @@ export function ProfileScreen() {
           <p className="muted" style={{ marginBottom: 0, fontSize: 12.5 }}>{t('pub.hint')}</p>
         </Panel>
       </div>
+      {!g.draft && <ShareCareerPanel />}
       <Panel title={t('ach.panel')}><AchievementsGrid unlocked={g.manager.ach ?? {}} /></Panel>
     </div>
   );

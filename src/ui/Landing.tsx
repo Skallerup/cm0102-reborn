@@ -212,6 +212,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
             <a onClick={() => go('screens')}>{t('land.nav.screens')}</a>
             <a onClick={() => go('looks')}>{t('land.nav.looks')}</a>
             <a onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
+            <a href="?community=1">{t('land.nav.community')}</a>
             <a onClick={() => go('join')}>{t('land.nav.join')}</a>
             <a onClick={() => go('faq')}>{t('land.nav.faq')}</a>
             {onDraft && <a onClick={onDraft}>Draft</a>}

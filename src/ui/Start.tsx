@@ -15,7 +15,7 @@ import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
-import { loadOriginalWorld, loadWorld } from './world';
+import { loadOriginalWorld, loadWorld, withCommunityEdits } from './world';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft';
@@ -141,7 +141,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
 
   useEffect(() => {
-    (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => {
+    (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => withCommunityEdits(w, db === 'original' ? 'original' : 'cm')).then((w) => {
       if (!w) return;
       setWorld(w);
       const names = ch ? ch.nations : DEFAULT_NATIONS;

@@ -1,8 +1,41 @@
 import { del, get, set } from 'idb-keyval';
 import type { WorldData } from '../game/newgame';
 import { CM_REQUIRED, type CMWorld } from '../game/data/cm0102';
+import { approvedEdits } from '../online/hub';
 
 let cache: Promise<WorldData> | null = null;
+
+/**
+ * Fællesskabets godkendte rettelser ("Community Update", se api/hub.ts) lægges oven på databasen, før et nyt spil
+ * bygges fra startsiden: navne og egenskaber på spillere, navne og farver på klubber. Uden net bruges databasen som den er.
+ */
+export async function withCommunityEdits(base: WorldData, db: 'cm' | 'original'): Promise<WorldData> {
+  const res = await Promise.race([approvedEdits(db), new Promise<null>((r) => setTimeout(() => r(null), 2500))]).catch(() => null);
+  if (!res?.edits.length) return base;
+  // en kopi: den delte database (bl.a. draft-ligaens spillerpulje) skal være ens hos alle klienter
+  const w = structuredClone(base);
+  const cm = w as WorldData & Partial<CMWorld>;
+  const F = Object.fromEntries((cm.playerFields ?? []).map((f, i) => [f, i]));
+  const players = new Map((w.players as unknown as unknown[][]).map((p) => [Number(p[0]), p]));
+  const clubs = new Map(w.clubs.map((c) => [c[0], c as unknown as unknown[]]));
+  for (const e of res.edits) {
+    const id = Number(e.target);
+    if (e.kind === 'player') {
+      const p = players.get(id);
+      if (!p) continue;
+      if (e.field === 'first' && F.first !== undefined) p[F.first] = e.value;
+      if (e.field === 'last' && F.last !== undefined) p[F.last] = e.value;
+      if (e.field === 'attr' && cm.ratings?.[id]) { const [i, v] = e.value.split(':').map(Number); if (cm.ratings[id].attrs[i] !== undefined) cm.ratings[id].attrs[i] = v; }
+    } else {
+      const c = clubs.get(id);
+      if (!c) continue;
+      if (e.field === 'name') c[1] = e.value;
+      if (e.field === 'short') c[2] = e.value;
+      if (e.field === 'color' && cm.clubColors) { const [a, b] = e.value.split(','); cm.clubColors[id] = [a, b ?? cm.clubColors[id]?.[1] ?? '#ffffff']; }
+    }
+  }
+  return w;
+}
 
 export function loadWorld(): Promise<WorldData> {
   if (!cache) {

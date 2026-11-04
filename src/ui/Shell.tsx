@@ -7,7 +7,9 @@ import { refreshSupport, syncSupporterRegens } from '../online/support';
 import { SupportPage } from './Support';
 import { Head } from './screens/common';
 import { ProfileScreen } from './screens/Profile';
-import { BugReportButton, CommunityBoard } from './Community';
+import { BugReportButton } from './Community';
+import { CommunityHub, type HubTab } from './CommunityHub';
+import { cmDatabase } from '../game/newgame';
 import { APP_VERSION } from './changelogData';
 import { askConfirm } from './confirm';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
@@ -452,7 +454,9 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'profile': return <ProfileScreen />;
     case 'draft': return <DraftLeagueScreen />;
     case 'support': return <div><Head title={t('sup.title')} /><SupportPage /></div>;
-    case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p><CommunityBoard defaultName={gs().manager.name} /></div>;
+    case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
+      <CommunityHub defaultName={gs().manager.name} initialTab={route.tab as HubTab | undefined}
+        onLegend={cmDatabase(gs()) === 'original' ? (id) => { if (gs().players[id]) nav({ name: 'player', id }); } : undefined} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;
     case 'compare': return <Assistant tab="compare" />;
     case 'benchmark': return <Assistant tab="bench" />;

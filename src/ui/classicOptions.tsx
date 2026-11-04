@@ -6,6 +6,7 @@ import type { GameState } from '../game/types';
 import { CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
 import { CxDrop, type DropItem } from './classic';
+import { bgPack, setBgPack } from './backgrounds';
 import { askConfirm } from './confirm';
 import { useGame, useNav } from './core';
 import { notifyEnabled, notifySupported, setNotify } from './notify';
@@ -76,6 +77,8 @@ export function Seg<T extends string | boolean>({ value, opts, onChange }: { val
 
 function GameSettings({ onClose }: { onClose: () => void }) {
   const g = useGame()! as GameState;
+  const { nav } = useNav();
+  const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
     lang: getLang() as 'da' | 'en', cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: futuristicFont(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
@@ -110,6 +113,11 @@ function GameSettings({ onClose }: { onClose: () => void }) {
             {row(t('cl.set.fonts'), <Seg value={d.font} opts={[[true, t('cl.set.futuristic')], [false, t('cl.set.standard')]]} onChange={(v) => up({ font: v })} />)}
             {row(t('cl.set.pixel'), <Seg value={d.pixel} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]]} onChange={(v) => up({ pixel: v })} />)}
             {row(t('cl.set.bg'), onOff(d.bg, (v) => up({ bg: v })))}
+            {row(t('hub.skins.setting'), <div className="cx-set-seg">
+              <button className={!pack ? 'on' : ''} onClick={() => { setBgPack(null); setPack(null); }}>{t('hub.skins.default')}</button>
+              {pack && <button className="on">{pack.title}</button>}
+              <button onClick={() => { onClose(); nav({ name: 'community', tab: 'skins' }); }}>{t('hub.skins.more')}</button>
+            </div>)}
             {row(t('cl.set.flash'), onOff(d.flash, (v) => up({ flash: v })))}
             {row(t('opt.autosave'), <Seg value={d.save} opts={(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => [m, t(`cl.set.save.${m}`)] as [string, string])} onChange={(v) => up({ save: v })} />)}
             {notifySupported() && row(t('opt.notify'), onOff(d.notif, (v) => up({ notif: v })))}

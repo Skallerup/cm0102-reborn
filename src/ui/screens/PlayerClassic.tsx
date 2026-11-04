@@ -24,6 +24,7 @@ import { gs } from '../../game/state';
 import { useGame, useNav, useRouteState } from '../core';
 import { realCareer, type RealSeason } from '../careers';
 import { DevelopmentPanel } from '../dev';
+import { ProposeEditModal, dbOf } from '../communityActions';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 import {
@@ -333,6 +334,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [trainOpen, setTrainOpen] = useState(false);
   useEffect(() => setMsg(''), [id]);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
@@ -392,6 +394,8 @@ export function ClassicPlayer({ id }: { id: number }) {
     { key: 'cmp', label: `${compareIds.includes(p.id) ? '✓ ' : ''}${t('player.compare')} (${compareIds.length})`, onClick: () => toggleCompare(p.id) },
   );
   if (compareIds.length >= 2) items.push({ key: 'cmp2', label: t('player.showCompare'), onClick: () => nav({ name: 'compare' }) });
+  // fællesskabet: foreslå en rettelse til CM-databasen (navn eller egenskaber)
+  if (dbOf(g) && !p.regen) items.push({ key: 'edit', label: t('hub.edit.action'), onClick: () => setEditOpen(true) });
 
   const tabs: [Tab, string][] = [['profile', t('cl.pl.profile')], ['injuries', t('cl.pl.injuries')]];
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
@@ -407,6 +411,7 @@ export function ClassicPlayer({ id }: { id: number }) {
       {mine && p.playPromise && <div className="insight warn">{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
       {!mine && trialOf(p.id) && <div className="insight">🧪 {t('trial.onTrial', { date: dateFmt(trialOf(p.id)!.end) })}</div>}
+      {editOpen && <ProposeEditModal kind="player" id={p.id} onClose={() => setEditOpen(false)} />}
       {tab === 'profile' && <ProfileTab p={p} />}
       {tab === 'injuries' && <InjuriesTab p={p} mine={mine} />}
       {tab === 'contract' && <ContractTab p={p} mine={mine} />}

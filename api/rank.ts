@@ -6,6 +6,7 @@
 // Scoren valideres (linjenøgler, grænser, sum); selve spillet kører i browseren, så ranglisten
 // er tillidsbaseret ud over disse kontroller.
 import { Redis } from '@upstash/redis';
+import { postDiscord } from './_lib/discord';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 
@@ -146,6 +147,13 @@ export async function POST(request: Request) {
       redis.zadd(`lb:month:${month()}`, { score: s.points, member }),
       redis.zadd(`lb:league:${s.league}`, { score: s.points, member }),
     ]);
+    // feedet for dem, der følger manageren – og Discord, når en karriere går til tops
+    await redis.lpush(`feed:${s.pid}`, JSON.stringify({ kind: 'season', text: `${s.season}/${String(s.season + 1).slice(2)}: ${s.club} – ${s.points} p`, club: s.club, league: s.leagueName, points: s.points, at: new Date().toISOString() }));
+    await redis.ltrim(`feed:${s.pid}`, 0, 49);
+    if ((await redis.zrevrank('lb:career', s.career)) === 0 && (await redis.get<string>('lb:leader')) !== s.career) {
+      await redis.set('lb:leader', s.career);
+      await postDiscord(`👑 **${prof.name}** er ny nr. 1 på karriere-ranglisten med ${total} point (${s.club}).`);
+    }
     return json({ ok: true, total, seasons });
   }
   return json({ error: 'op' }, 400);

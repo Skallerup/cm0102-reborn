@@ -7,6 +7,7 @@ import { createProfile, getProfile } from '../online/rank';
 import { dateFmt, getLang, t } from '../i18n';
 import { Modal, Panel, Tabs } from './components';
 import { APP_VERSION } from './changelogData';
+import { CommunityHub, type HubTab } from './CommunityHub';
 
 const ROADMAP: SgStatus[] = ['considering', 'planned', 'progress', 'released'];
 type List = 'trending' | 'top' | 'new' | 'roadmap';
@@ -111,7 +112,7 @@ export function CommunityBoard({ initialId, defaultName }: { initialId?: number;
 }
 
 /** Uden profil: opret en (samme som ranglisterne) for at kunne foreslå og stemme */
-function ProfileGate({ defaultName, onDone }: { defaultName?: string; onDone: () => void }) {
+export function ProfileGate({ defaultName, onDone }: { defaultName?: string; onDone: () => void }) {
   const [name, setName] = useState(defaultName ?? '');
   const [err, setErr] = useState('');
   return (
@@ -272,7 +273,7 @@ export function BugReportButton({ screen, version, date }: { screen: string; ver
 }
 
 /** Den offentlige side (uden spil): ?community=1 eller ?suggestion=ID */
-export function PublicCommunityPage({ id, onClose }: { id?: number; onClose: () => void }) {
+export function PublicCommunityPage({ id, hallId, tab, onClose }: { id?: number; hallId?: number; tab?: HubTab; onClose: () => void }) {
   return (
     <div className="pub">
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
@@ -280,7 +281,7 @@ export function PublicCommunityPage({ id, onClose }: { id?: number; onClose: () 
         <button className="small start-ghost" onClick={onClose}>← CM Reborn</button>
         <h1 style={{ margin: '24px 0 4px' }}>{t('cm.title')}</h1>
         <p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
-        <CommunityBoard initialId={id} />
+        <CommunityHub suggestionId={id} hallId={hallId} initialTab={tab} />
       </div>
     </div>
   );

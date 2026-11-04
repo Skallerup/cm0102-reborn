@@ -19,6 +19,7 @@ import { CxDrop, CxLink, nationRoute, staffRoute } from '../classic';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
+import { ProposeEditModal, dbOf } from '../communityActions';
 import { ClassicClubSquad } from './SquadClassic';
 import { ClassicFixtures } from './Fixtures';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
@@ -35,6 +36,7 @@ function ClassicClub({ id }: { id?: number }) {
   const c = g.clubs[cid];
   // en anden klub åbner på truppen (som i originalen); ens egen klub på "Økonomi & info"
   const [view, setView] = useRouteState('cview', cid === g.userClub ? 'info' : 'squad');
+  const [editOpen, setEditOpen] = useState(false);
   if (!c) return <Head title="?" />;
   const mine = cid === g.userClub;
   const showMoney = mine || !g.options.masking;
@@ -57,7 +59,9 @@ function ClassicClub({ id }: { id?: number }) {
         {!tabViews.includes(v) && <CxDrop label={t('cl.sq.view')} items={views.map((k) => ({ key: k, label: t(`cl.ci.v.${k}`), checked: v === k, onClick: () => setView(k) }))} />}
         <span className="grow" />
         {mine && showMoney && <button className="cx-greybtn" onClick={() => nav({ name: 'finance' })}>{t('cl.ci.budgets')}</button>}
+        {dbOf(g) && <button className="cx-greybtn" onClick={() => setEditOpen(true)}>{t('hub.edit.action')}</button>}
       </Head>
+      {editOpen && <ProposeEditModal kind="club" id={cid} onClose={() => setEditOpen(false)} />}
       <div className="cx-subtitle">{t(`cl.ci.v.${v}`)}</div>
       {v === 'info' && <>
         {kv([

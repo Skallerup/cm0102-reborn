@@ -1,4 +1,5 @@
 import { gs, hasGame } from '../game/state';
+import { cmDatabase } from '../game/newgame';
 // Spillernes virkelige karriere før spilstart (public/data/careers.json) – hentes først når en
 // spillerprofil åbnes og caches i hukommelsen.
 export interface RealSeason { season: number; club: number; clubName?: string; apps: number; goals: number; assists: number; minutes: number; loan?: boolean }
@@ -13,7 +14,7 @@ const files = new Map<string, Promise<CareersFile | null>>();
 /** Karrierefilen til spillets database: transfermarkt (moderne), CM 2026/27 eller den originale 01/02 */
 function careerFile(): string {
   if (!hasGame() || gs().dbKind !== 'cm0102') return 'careers.json';
-  return gs().season < 2020 ? 'careers-original.json' : 'careers-cm.json';
+  return cmDatabase(gs()) === 'original' ? 'careers-original.json' : 'careers-cm.json';
 }
 
 function load(name = careerFile()): Promise<CareersFile | null> {

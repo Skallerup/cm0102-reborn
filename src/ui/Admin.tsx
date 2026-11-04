@@ -20,6 +20,15 @@ async function adminPost(op: string, data: Record<string, unknown>): Promise<{ o
     return r.ok ? r.json() : { error: (await r.json().catch(() => ({}))).error ?? r.status };
   } catch (e) { return { error: String(e) }; }
 }
+async function hubGet<T>(q: string): Promise<T | null> {
+  try { const r = await fetch(`/api/hub?${q}`, { headers: { 'x-admin-token': token() } }); return r.ok ? await r.json() : null; } catch { return null; }
+}
+async function hubPost(op: string, data: Record<string, unknown>): Promise<{ ok?: boolean; error?: unknown }> {
+  try {
+    const r = await fetch('/api/hub', { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': token() }, body: JSON.stringify({ op, ...data }) });
+    return r.ok ? r.json() : { error: (await r.json().catch(() => ({}))).error ?? r.status };
+  } catch (e) { return { error: String(e) }; }
+}
 async function communityCall(op: string, data: Record<string, unknown>) {
   const r = await fetch('/api/community', { method: 'POST', headers: { 'content-type': 'application/json', 'x-admin-token': token() }, body: JSON.stringify({ op: `admin:${op}`, admin: token(), ...data }) });
   return r.ok ? r.json() : { error: (await r.json()).error ?? r.status };
@@ -47,8 +56,8 @@ interface ManagerRow { pid: string; name: string; created: string; updated: stri
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'supporters';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Community'], ['supporters', 'Supporters']];
+type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -100,6 +109,10 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       {tab === 'rankings' && <RankingsTab setMsg={setMsg} />}
       {tab === 'rooms' && <RoomsTab />}
       {tab === 'community' && <CommunityTab setMsg={setMsg} />}
+      {tab === 'hall' && <HallAdmin setMsg={setMsg} />}
+      {tab === 'edits' && <EditsAdmin setMsg={setMsg} />}
+      {tab === 'skins' && <SkinsAdmin setMsg={setMsg} />}
+      {tab === 'credits' && <CreditsAdmin setMsg={setMsg} />}
       {tab === 'supporters' && <SupportersTab />}
     </div></div>
   );
@@ -184,6 +197,7 @@ function ApplicationsTab({ onChange, setMsg }: { onChange: () => void; setMsg: (
             <div className="row">
               <button className="small primary" onClick={() => act('app-status', { id: cur.id, note }, 'Note saved ✓')}>Save note</button>
               <a className="button small" href={`mailto:${cur.email}?subject=${encodeURIComponent('CM Reborn – your application')}`}>Reply by e-mail</a>
+              <button className="small" onClick={async () => { const r = await hubPost('admin:credit', { key: `app${cur.id}`, name: cur.name, role: cur.role }); setMsg(r.error ? `Error: ${String(r.error)}` : `${cur.name} added to the credits ✓`); }}>Add to credits</button>
               <span className="grow" />
               <button className="small danger" onClick={() => { if (confirm(`Delete the application from ${cur.name}?`)) { setSel(null); void act('app-delete', { id: cur.id }, 'Deleted ✓'); } }}>Delete</button>
             </div>
@@ -362,6 +376,101 @@ function SupportersTab() {
       <div className="muted">This month: {(sup.month.raised / 100).toFixed(0)} of {(sup.month.goal / 100).toFixed(0)} {sup.currency.toUpperCase()}{sup.enabled ? '' : ' · Stripe is not configured yet'}</div>
       <table className="grid" style={{ marginTop: 8 }}><thead><tr><th>Name</th><th>Tier</th><th>Monthly</th><th>Regen</th></tr></thead>
         <tbody>{sup.supporters.map((s) => <tr key={s.pid}><td>{s.name}</td><td>{s.tier}</td><td>{s.monthly ? '♥' : ''}</td><td className="muted">{s.regen ?? ''}</td></tr>)}</tbody></table>
+    </Panel>
+  );
+}
+
+// ---------- community hub (api/hub.ts) ----------
+
+type HubRow = Record<string, unknown> & { id: number };
+
+function HallAdmin({ setMsg }: { setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<HubRow[] | null>(null);
+  const load = async () => setRows((await hubGet<{ rows: HubRow[] }>('op=hall&sort=new'))?.rows ?? []);
+  useEffect(() => { void load(); }, []);
+  if (!rows) return <div className="muted">Loading…</div>;
+  return (
+    <Panel title={`Shared careers (${rows.length})`} className="flush">
+      {rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No shared careers yet.</div> : (
+        <table className="grid"><thead><tr><th>Title</th><th>Manager</th><th>Club</th><th className="num">Seasons</th><th className="num">⭐</th><th className="num">💬</th><th>Shared</th><th /></tr></thead>
+          <tbody>{rows.map((r) => (
+            <tr key={r.id} className={r.hidden ? 'muted' : ''}><td><a href={`/?hall=${r.id}`} target="_blank" rel="noreferrer">{String(r.title)}</a>{r.hidden ? ' (hidden)' : ''}</td><td>{String(r.manager)}</td><td>{String(r.club)}</td>
+              <td className="num">{String(r.seasons)}</td><td className="num">{String(r.stars ?? 0)}</td><td className="num">{String(r.comments ?? 0)}</td><td className="muted nowrap">{when(String(r.created))}</td>
+              <td><button className="small danger" onClick={async () => { const x = await hubPost('admin:hall-hide', { id: r.id, hidden: !r.hidden }); setMsg(x.error ? `Error: ${String(x.error)}` : 'Saved ✓'); void load(); }}>{r.hidden ? 'Show' : 'Hide'}</button></td></tr>
+          ))}</tbody></table>
+      )}
+    </Panel>
+  );
+}
+
+function EditsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
+  const [status, setStatus] = useState<'open' | 'approved' | 'rejected'>('open');
+  const [rows, setRows] = useState<HubRow[] | null>(null);
+  const load = async () => { setRows(null); setRows((await hubGet<{ rows: HubRow[] }>(`op=edits&status=${status}`))?.rows ?? []); };
+  useEffect(() => { void load(); }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+  const set = async (id: number, st: string) => { const r = await hubPost('admin:edit', { id, status: st }); setMsg(r.error ? `Error: ${String(r.error)}` : `Marked as ${st} ✓ – approved edits apply to new games`); void load(); };
+  return (
+    <Panel title="Community database edits" right={<div className="tabs">{(['open', 'approved', 'rejected'] as const).map((s) => <button key={s} className={status === s ? 'on' : ''} onClick={() => setStatus(s)}>{s}</button>)}</div>} className="flush">
+      {!rows ? <div className="muted" style={{ padding: 12 }}>Loading…</div> : rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>Nothing here.</div> : (
+        <table className="grid"><thead><tr><th>Target</th><th>DB</th><th>Field</th><th>Old → new</th><th>Reason</th><th>By</th><th className="num">Votes</th><th /></tr></thead>
+          <tbody>{rows.map((e) => (
+            <tr key={e.id}><td><b>{String(e.targetName)}</b><div className="muted" style={{ fontSize: 12 }}>{String(e.kind)} #{String(e.target)}</div></td><td>{String(e.db)}</td><td>{String(e.field)}</td>
+              <td>{String(e.old) || '–'} → <b>{String(e.value)}</b></td><td className="muted" style={{ maxWidth: 280 }}>{String(e.reason)}</td><td className="muted">{String(e.name)}</td><td className="num">{String(e.votes)}</td>
+              <td className="nowrap">{status !== 'approved' && <button className="small primary" onClick={() => set(e.id, 'approved')}>Approve</button>} {status !== 'rejected' && <button className="small danger" onClick={() => set(e.id, 'rejected')}>Reject</button>} {status !== 'open' && <button className="small" onClick={() => set(e.id, 'open')}>Reopen</button>}</td></tr>
+          ))}</tbody></table>
+      )}
+    </Panel>
+  );
+}
+
+function SkinsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
+  const [pending, setPending] = useState<HubRow[] | null>(null);
+  const [live, setLive] = useState<HubRow[]>([]);
+  const load = async () => {
+    setPending((await hubGet<{ rows: HubRow[] }>('op=skins&status=pending'))?.rows ?? []);
+    setLive((await hubGet<{ rows: HubRow[] }>('op=skins'))?.rows ?? []);
+  };
+  useEffect(() => { void load(); }, []);
+  const set = async (id: number, st: string) => { const r = await hubPost('admin:skin', { id, status: st }); setMsg(r.error ? `Error: ${String(r.error)}` : `Skin ${st} ✓`); void load(); };
+  const card = (s: HubRow, actions: ReactNode) => (
+    <div key={s.id} className="adm-skin">
+      <div className="adm-skin-imgs">{(s.images as string[]).map((u) => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" /></a>)}</div>
+      <b>{String(s.title)}</b> <span className="muted">by {String(s.author)} · {(s.images as string[]).length} images · {when(String(s.created))}</span>
+      {s.desc ? <p className="muted" style={{ margin: '4px 0' }}>{String(s.desc)}</p> : null}
+      <div className="row">{actions}</div>
+    </div>
+  );
+  if (!pending) return <div className="muted">Loading…</div>;
+  return (
+    <>
+      <Panel title={`Waiting for review (${pending.length})`}>
+        <p className="muted" style={{ marginTop: 0 }}>Only approve packs the author made themselves or that are freely licensed – no screenshots or artwork from the original game or other commercial games.</p>
+        {pending.length === 0 ? <div className="muted">Nothing to review.</div> : pending.map((s) => card(s, <><button className="small primary" onClick={() => set(s.id, 'approved')}>Approve</button><button className="small danger" onClick={() => set(s.id, 'rejected')}>Reject</button></>))}
+      </Panel>
+      <Panel title={`Live packs (${live.length})`}>
+        {live.length === 0 ? <div className="muted">No packs yet.</div> : live.map((s) => card(s, <button className="small danger" onClick={() => set(s.id, 'rejected')}>Take down</button>))}
+      </Panel>
+    </>
+  );
+}
+
+function CreditsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<{ id: string; name: string; role: string; link?: string; since?: string }[] | null>(null);
+  const [f, setF] = useState({ name: '', role: '', link: '' });
+  const load = async () => setRows((await hubGet<{ rows: { id: string; name: string; role: string; link?: string; since?: string }[] }>('op=credits'))?.rows ?? []);
+  useEffect(() => { void load(); }, []);
+  return (
+    <Panel title="Credits – contributors shown on the community page">
+      <form className="row" style={{ flexWrap: 'wrap', marginBottom: 10 }} onSubmit={async (e) => { e.preventDefault(); const r = await hubPost('admin:credit', f); setMsg(r.error ? `Error: ${String(r.error)}` : 'Added ✓'); setF({ name: '', role: '', link: '' }); void load(); }}>
+        <input placeholder="Name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
+        <input placeholder="Role (e.g. Data, Testing)" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} />
+        <input placeholder="Link (optional)" value={f.link} onChange={(e) => setF({ ...f, link: e.target.value })} />
+        <button className="primary small" type="submit">Add</button>
+      </form>
+      {!rows ? <div className="muted">Loading…</div> : rows.length === 0 ? <div className="muted">No contributors yet.</div> : (
+        <table className="grid"><tbody>{rows.map((c) => <tr key={c.id}><td><b>{c.name}</b></td><td className="muted">{c.role}</td><td className="muted">{c.link}</td><td className="muted">{c.since}</td>
+          <td><button className="small danger" onClick={async () => { await hubPost('admin:credit', { key: c.id, remove: true }); void load(); }}>Remove</button></td></tr>)}</tbody></table>
+      )}
     </Panel>
   );
 }

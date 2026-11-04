@@ -101,6 +101,20 @@ Spillet har to slags AI:
 - Model: `AI_MODEL` (standard Claude Haiku 4.5) med automatisk fallback til `AI_FALLBACK_MODEL` (standard Gemini 2.5 Flash Lite), hvis kontoen ikke har adgang. Dagligt loft `AI_DAILY_CAP` (standard 4000 kald) og 40 kald/min pr. IP via Upstash.
 - Alle journalister, medier og agenter i spillet er opfundne.
 
+## Fællesskabet
+
+Fællesskabssiden (i spillet under Fællesskab og offentligt på `?community=1`) samler:
+
+- **Forslag og fejlrapporter** med stemmer, kommentarer, månedens afstemning og roadmap.
+- **Hall of Fame:** del din karriere (Min profil → Del karrieren) med sæsoner, trofæer og nøglespillere – andre giver stjerner og kommenterer. Delte karrierer har deres eget link (`?hall=ID`).
+- **CM-legender:** de kultspillere, alle husker fra CM 01/02 (Tonton Zola Moukoko, Bakircioglü, Taribo West …).
+- **Database-rettelser:** fans foreslår rettelser til navne, evner og klubfarver; fællesskabet stemmer, og godkendte rettelser lægges på databasen, når et nyt spil oprettes ("Community Update").
+- **Feed:** følg andre managere og se deres sæsoner og delte karrierer.
+- **Baggrundspakker:** fans uploader egne fotos til det klassiske tema; admin godkender, og spillerne vælger pakken i Spilindstillinger.
+- **Credits** og links til Discord og [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Serveren er `api/hub.ts`. Discord: sæt `DISCORD_WEBHOOK_URL` (nye forslag, karrierer, godkendte rettelser og skins, ny nr. 1), `DISCORD_INVITE` (vises i Credits) og – for botten med `/top`, `/hall` og `/player` – `DISCORD_PUBLIC_KEY` og kør `scripts/discord-register.mjs`. Interactions-URL: `https://cm0102reborn.com/api/discord`.
+
 ## Ranglister (singleplayer)
 
 Hver sæson giver en **Manager Score** ud fra opgaven: ligaplacering og forventning (vægtet efter ligaens styrke), mesterskab (mere for underdogs), op-/nedrykning, pokaler, Europa, bestyrelsens tillid, fyringer, økonomi og spilletid til unge spillere. Se fanen *Sådan gives point* i spillet.

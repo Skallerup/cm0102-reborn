@@ -857,6 +857,8 @@ export interface GameState {
   press?: PressConf | null;
   /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
   dbKind?: 'cm0102';
+  /** Sæsonen databasen startede i (2001 = den originale 01/02, 2026 = October 2026-opdateringen) */
+  dbYear?: number;
   customRules?: Record<string, import('./leagues').LeagueRules>;
   /** Kosmetiske AI-tekster (artikler, fanindlæg …) – påvirker ikke spillets regler */
   aiText?: Record<string, string>;

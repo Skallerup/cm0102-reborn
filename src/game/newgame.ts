@@ -49,6 +49,13 @@ const PALETTE = ['#c8102e', '#003399', '#ffffff', '#111111', '#ffd200', '#00843d
 
 export const START_DATE = (season: number) => `${season}-07-01`;
 
+/** Hvilken CM-database et spil bruger ('original' = 3.9.68 fra 2001, 'cm' = 2026/27); null = den moderne database */
+export function cmDatabase(g: GameState): 'cm' | 'original' | null {
+  if (g.dbKind !== 'cm0102') return null;
+  const start = g.dbYear ?? g.seasonHistory?.[0]?.season ?? g.season;
+  return start < 2020 ? 'original' : 'cm';
+}
+
 export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const season = world.season;
   const date = START_DATE(season);
@@ -95,7 +102,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     jobOffers: [],
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
-  if (cm) { g.dbKind = 'cm0102'; g.customRules = cm.rules as GameState['customRules']; }
+  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; g.customRules = cm.rules as GameState['customRules']; }
   setGame(g);
 
   const leagueById = new Map(world.leagues.map((l) => [l.id, l]));

@@ -46,6 +46,18 @@ export function backgroundIndex(iso: string, seed: string | number = ''): number
   return cur[k];
 }
 
+/** Valgt baggrundspakke fra fællesskabet (Spilindstillinger → Baggrunde); tom = spillets egne billeder */
+const PACK_KEY = 'cm-bgpack';
+export interface BgPack { id: number; title: string; images: string[] }
+export function bgPack(): BgPack | null {
+  try { const v = JSON.parse(localStorage.getItem(PACK_KEY) ?? 'null'); return v?.images?.length ? v : null; } catch { return null; }
+}
+export function setBgPack(p: BgPack | null) {
+  try { if (p) localStorage.setItem(PACK_KEY, JSON.stringify(p)); else localStorage.removeItem(PACK_KEY); } catch { /* privat vindue */ }
+}
+
 export function backgroundUrl(iso: string, seed: string | number = ''): string {
+  const pack = bgPack();
+  if (pack) return pack.images[(dayNo(iso) + String(seed).length) % pack.images.length];
   return `${import.meta.env.BASE_URL}bg/${NAMES[backgroundIndex(iso, seed)]}.jpg`;
 }

@@ -1,6 +1,7 @@
 // Gem/indlæs i IndexedDB som gzip-komprimeret JSON (≈4-5 MB pr. save).
 import { addMissingConference } from './competitions';
 import { fixClubName } from './data/clubNames';
+import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify } from './state';
 import { deserializeState, serializeState } from './snapshot';
@@ -108,7 +109,7 @@ async function repairStadiums(): Promise<void> {
   const capped = clubs.filter((c) => c.seats === 120_000);
   if (capped.length < clubs.length / 2) return;
   try {
-    const file = g.season < 2020 ? 'world-original.json' : 'world.json';
+    const file = cmDatabase(g) === 'original' ? 'world-original.json' : 'world.json';
     const r = await fetch(`${import.meta.env.BASE_URL}data/${file}`);
     if (!r.ok) return;
     const w = (await r.json()) as { clubs: [number, string, string, number, string, string, number, string][] };
