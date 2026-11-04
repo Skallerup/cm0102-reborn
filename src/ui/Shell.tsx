@@ -107,7 +107,8 @@ export function Shell() {
     : k === 'transfers' && g.offers.some((o) => o.status === 'pending' && o.seller === g.userClub) ? <span className="badge">!</span>
     : k === 'jobs' && g.jobOffers.length > 0 ? <span className="badge">{g.jobOffers.length}</span> : null);
   // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
-  const cmNav = isRetro() && !!club && !g.draft;
+  // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
+  const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
   const [tabSlot, setTabSlot] = useState<HTMLElement | null>(null);
@@ -316,7 +317,7 @@ export function Shell() {
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
             <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />
             {side('competitions', t('nav.competitions'))}
-            {side('club', t('cl.nations'))}
+            {club ? side('club', t('cl.nations')) : side('find', t('cl.nations'), '', () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }))}
             <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={async () => { await saveGame(); setToast(t('top.saved')); }} />
@@ -389,7 +390,7 @@ export function Shell() {
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
         <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}` : ''}`} ref={mainRef}
           style={cmNav ? ({ '--cx-photo': `url("${backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
-          {online && !online.inGame ? <Lobby /> : <Screen />}
+          {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
         </main>
       </ClassicSlotCtx.Provider>
@@ -426,8 +427,13 @@ export function Shell() {
   );
 }
 
-function Screen() {
-  const { route } = useNav();
+function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
+  const { route, nav } = useNav();
+  // en skærm man ikke længere har adgang til (fx bestyrelsen lige efter en opsigelse): videre til jobcentret/indbakken
+  const g = useGame()!;
+  const blocked = !g.draft && !g.userClub && !allowed(route.name) && route.name !== 'compare' && route.name !== 'player' && route.name !== 'club' && route.name !== 'match' && route.name !== 'report' && route.name !== 'matchday';
+  useEffect(() => { if (blocked) nav({ name: allowed('jobs') ? 'jobs' : 'inbox' }); }, [blocked]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (blocked) return null;
   switch (route.name) {
     case 'inbox': return <Inbox />;
     case 'squad': return <Squad />;
