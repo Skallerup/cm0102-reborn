@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Lang } from '../game/types';
 import { getLang, setLang, t } from '../i18n';
+import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import './landing.css';
 
@@ -48,6 +49,45 @@ export function Counter({ to, suffix = '' }: { to: number; suffix?: string }) {
 }
 
 /** Skærmbillede i en browserramme der vipper let efter musen */
+const LOOK_SCREENS = ['squad', 'player', 'table'] as const;
+
+/** "To udseender": de samme skærme i det moderne og det klassiske CM 01/02-tema – og start spillet i det valgte */
+function Looks({ onPlay, onOpen }: { onPlay: () => void; onOpen: (src: string, alt: string) => void }) {
+  const [look, setLook] = useState<'modern' | 'classic'>('classic');
+  const [screen, setScreen] = useState<(typeof LOOK_SCREENS)[number]>('squad');
+  const play = (l: 'modern' | 'classic') => { setTheme(l === 'classic' ? 'retro' : 'club'); onPlay(); };
+  return (
+    <section id="looks" className="lp-section lp-wrap lp-looks">
+      <span className="lp-kicker reveal">{t('land.looks.kicker')}</span>
+      <h2 className="reveal">{t('land.looks.title')}</h2>
+      <p className="lp-sub reveal">{t('land.looks.sub')}</p>
+      <div className="lp-looks-bar reveal">
+        <div className="lp-looks-toggle" role="tablist">
+          {(['modern', 'classic'] as const).map((l) => (
+            <button key={l} role="tab" aria-selected={look === l} className={look === l ? 'on' : ''} onClick={() => setLook(l)}>{t(`land.looks.${l}`)}</button>
+          ))}
+        </div>
+        <div className="lp-looks-screens">
+          {LOOK_SCREENS.map((s) => <button key={s} className={screen === s ? 'on' : ''} onClick={() => setScreen(s)}>{t(`land.looks.s.${s}`)}</button>)}
+        </div>
+      </div>
+      <div className="lp-looks-visual reveal">
+        <Frame src={img(`${look}-${screen}`)} alt={`${t(`land.looks.${look}`)} – ${t(`land.looks.s.${screen}`)}`} onOpen={onOpen} />
+      </div>
+      <div className="lp-looks-cards reveal">
+        {(['modern', 'classic'] as const).map((l) => (
+          <div key={l} className={`lp-looks-card ${look === l ? 'on' : ''}`} onMouseEnter={() => setLook(l)}>
+            <h3>{t(`land.looks.${l}`)}</h3>
+            <p>{t(`land.looks.${l}.text`)}</p>
+            <button className={l === 'classic' ? 'lp-cta' : 'lp-ghost'} onClick={() => play(l)}>{t(`land.looks.play.${l}`)} <span aria-hidden="true">→</span></button>
+          </div>
+        ))}
+      </div>
+      <p className="lp-looks-note reveal">{t('land.looks.note')}</p>
+    </section>
+  );
+}
+
 export function Frame({ src, alt, className = '', onOpen }: { src: string; alt: string; className?: string; onOpen?: (src: string, alt: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const move = (e: React.MouseEvent) => {
@@ -136,6 +176,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           <nav className="lp-links">
             <a onClick={() => go('features')}>{t('land.nav.features')}</a>
             <a onClick={() => go('screens')}>{t('land.nav.screens')}</a>
+            <a onClick={() => go('looks')}>{t('land.nav.looks')}</a>
             <a onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
             <a onClick={() => go('faq')}>{t('land.nav.faq')}</a>
             {onDraft && <a onClick={onDraft}>Draft</a>}
@@ -232,6 +273,8 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           </div>
         ))}
       </section>
+
+      <Looks onPlay={onPlay} onOpen={open} />
 
       <section id="ranking" className="lp-section lp-wrap lp-rank">
         <div className="lp-rank-text reveal">
