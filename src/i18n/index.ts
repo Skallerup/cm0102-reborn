@@ -2,6 +2,7 @@ import { da } from './da';
 import { en } from './en';
 import type { Lang } from '../game/types';
 import { nationLabel } from './nations';
+import { compLabel } from './comps';
 
 const dicts: Record<Lang, Record<string, string>> = { da, en };
 let lang: Lang = (() => {
@@ -19,6 +20,11 @@ export function natName(name: string | undefined): string {
   return nationLabel(name, lang);
 }
 
+/** Liga-/turneringsnavn på det valgte sprog (CM-databasernes navne er engelske) */
+export function compName<T extends string | undefined>(name: T): T {
+  return compLabel(name, lang);
+}
+
 export function getLang(): Lang {
   return lang;
 }
@@ -33,7 +39,8 @@ export function setLang(l: Lang) {
 export function t(key: string, params?: Record<string, string | number | undefined>): string {
   let s = dicts[lang][key] ?? dicts.en[key] ?? key;
   if (params) {
-    for (const [k, v] of Object.entries(params)) {
+    for (let [k, v] of Object.entries(params)) {
+      if ((k === 'comp' || k === 'league') && typeof v === 'string') v = compLabel(v, lang);
       s = s.split(`{${k}}`).join(v === undefined ? '' : typeof v === 'number' && (k === 'fee' || k === 'wage' || k === 'balance') ? money(v) : String(v));
     }
   }

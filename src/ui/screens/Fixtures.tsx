@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { MAX_FRIENDLIES, friendlyDates, friendlyGate, friendlyOpponents, type FriendlyKind } from '../../game/friendlies';
 import { act } from '../../game/actions';
 import type { Fixture } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { compName, dateFmt, money, t } from '../../i18n';
 import { ClubLink, Crest, Modal, Panel } from '../components';
 import { isRetro } from '../theme';
 import { useGame, useNav } from '../core';
@@ -40,7 +40,7 @@ function ClassicFixtures() {
     const home = f.home === g.userClub, r = f.result;
     const my = r ? (home ? r.hg : r.ag) : 0, their = r ? (home ? r.ag : r.hg) : 0;
     const win = !r ? 0 : my > their || (r.pens && (home ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0])) ? 1 : my === their ? 0 : -1;
-    return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: `${g.comps[f.comp]?.name ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, res: r ? `${my}:${their}${r.pens ? ` (${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
+    return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, res: r ? `${my}:${their}${r.pens ? ` (${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
   });
   for (const fr of g.manager.friendlies ?? []) rows.push({ key: `fr${fr.date}`, date: fr.date, opp: fr.opp, comp: t('cl.fx.friendly'), friendly: true, res: fr.result ? `${fr.result[0]}:${fr.result[1]}` : undefined, win: fr.result ? Math.sign(fr.result[0] - fr.result[1]) : 0, fid: undefined });
   rows.sort((a, b) => a.date.localeCompare(b.date));
@@ -100,7 +100,7 @@ function ModernFixtures() {
               return (
                 <tr key={f.id} className={g.reports[f.id] ? 'clickable' : ''} onClick={() => g.reports[f.id] && nav({ name: 'report', id: f.id })}>
                   <td>{g.draft ? t('dr.roundN', { n: f.round }) : dateFmt(f.date)}</td>
-                  <td>{g.comps[f.comp]?.name}</td>
+                  <td>{compName(g.comps[f.comp]?.name)}</td>
                   <td className="muted">{stageLabel(f)}</td>
                   <td>{f.stage === 'F' ? t('fix.neutral') : home ? t('fix.home') : t('fix.away')}</td>
                   <td><ClubLink id={opp} /></td>

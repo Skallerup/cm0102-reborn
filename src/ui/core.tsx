@@ -71,7 +71,8 @@ export function NavProvider({ children, initial, storageKey, valid }: { children
       setFwd([]); // en ny destination rydder "frem"-historikken (som i en browser)
       setStack((s) => {
         const top = s[s.length - 1];
-        if (top.name === r.name && top.id === r.id && top.tab === r.tab) return s;
+        // samme skærm: medsendt tilstand (fx en anden visning) skifter visningen uden et nyt historik-trin
+        if (top.name === r.name && top.id === r.id && top.tab === r.tab) return r.state ? [...s.slice(0, -1), { ...top, state: { ...top.state, ...r.state } }] : s;
         top.scroll = scrollEl?.scrollTop ?? 0;
         return [...s.slice(-30), { ...r }];
       });

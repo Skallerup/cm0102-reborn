@@ -18,7 +18,7 @@ import { gs, hasGame, notify, setGame, squad } from '../game/state';
 import { FORMATIONS, formationSlots } from '../game/tactics';
 import type { DraftSettings, Player, Role } from '../game/types';
 import { leagueRows } from '../game/competitions';
-import { natName, t } from '../i18n';
+import { compName, natName, t } from '../i18n';
 import { closeSession, createDraftLeague, joinDraftLeague, session, type RoomInfo } from '../online/client';
 import { askConfirm } from './confirm';
 import { Panel } from './components';
@@ -168,7 +168,7 @@ function PoolSelect({ value, onChange, disabled }: { value: string; onChange: (v
       <select disabled={disabled} value={value} onChange={(e) => onChange(e.target.value)}>
         <option value="">{t('dr.pool.world')}</option>
         <optgroup label={t('dr.pool.leagues')}>
-          {leagues.map((l) => <option key={l.id} value={l.id}>{l.name} ({natName(world!.nations[l.nation]?.name)}){l.tier > 1 ? ` · ${t('dr.pool.tier', { n: l.tier })}` : ''}</option>)}
+          {leagues.map((l) => <option key={l.id} value={l.id}>{compName(l.name)} ({natName(world!.nations[l.nation]?.name)}){l.tier > 1 ? ` · ${t('dr.pool.tier', { n: l.tier })}` : ''}</option>)}
         </optgroup>
         <optgroup label={t('dr.pool.nations')}>
           {nations.map((n) => <option key={n.id} value={n.id}>{t('dr.pool.nation', { nation: n.name })} · {n.count}</option>)}

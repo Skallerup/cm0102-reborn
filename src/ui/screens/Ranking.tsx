@@ -10,7 +10,7 @@ import { nextBot, pickBotClub, type BotScope } from '../../game/bots';
 import { act } from '../../game/actions';
 import { ClubLink } from '../components';
 import { createProfile, fetchBoard, getProfile, profileUrl, rankingAvailable, submitPending, type Board, type RankRow } from '../../online/rank';
-import { t } from '../../i18n';
+import { compName, t } from '../../i18n';
 import { Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -135,7 +135,7 @@ function Boards() {
         </div>
       )}
       {err && profile && <div className="muted">{err}</div>}
-      <Tabs tabs={[['career', t('rank.board.career')], ['season', t('rank.board.season')], ['month', t('rank.board.month')], ...(myLeague ? [['league', t('rank.board.league', { league: g.leagues[myLeague]?.name ?? myLeague })] as [string, string]] : [])]} value={board} onChange={(v) => setBoard(v as Board)} />
+      <Tabs tabs={[['career', t('rank.board.career')], ['season', t('rank.board.season')], ['month', t('rank.board.month')], ...(myLeague ? [['league', t('rank.board.league', { league: compName(g.leagues[myLeague]?.name) ?? myLeague })] as [string, string]] : [])]} value={board} onChange={(v) => setBoard(v as Board)} />
       <Panel className="flush" style={{ marginTop: 12 }}>
         {data === 'loading' ? <div className="empty">{t('rank.loading')}</div> : !data ? <div className="empty">{t('rank.error')}</div> : data.rows.length === 0 ? <div className="empty">{t('rank.empty')}</div> : (
           <div className="table-wrap">

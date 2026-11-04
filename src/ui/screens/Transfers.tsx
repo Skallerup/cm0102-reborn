@@ -12,7 +12,7 @@ import { gs } from '../../game/state';
 import { session } from '../../online/client';
 import { AcceptCounterButton } from '../counterAccept';
 import type { Player, PlayerMove, Role, TransferOffer } from '../../game/types';
-import { dateFmt, money, t, natName } from '../../i18n';
+import { compName, dateFmt, money, t, natName } from '../../i18n';
 import { ClubLink, Modal, Nat, Panel, PlayerLink, Stars, Table, Tabs, posStr, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -199,7 +199,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
           <Select value={f.nation} onChange={(v) => set('nation', v)} width={190}
             options={[{ value: -1, label: t('tr.anyNation') }, ...nations.map((n) => ({ value: n, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code }))]} />
           <Select value={f.league} onChange={(v) => set('league', v)} width={230}
-            options={[{ value: '', label: t('tr.anyLeague') }, ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: l, label: g.leagues[l].name, group: g.nations[g.leagues[l].nation]?.name }))]} />
+            options={[{ value: '', label: t('tr.anyLeague') }, ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: l, label: compName(g.leagues[l].name), group: g.nations[g.leagues[l].nation]?.name }))]} />
         </div>
         <div className="row filter-row" style={{ marginTop: 6 }}>
           {g.userClub > 0 && (

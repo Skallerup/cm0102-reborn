@@ -1,6 +1,6 @@
 import { positionString } from '../../game/attributes';
 import type { MonthAward, SeasonSummary } from '../../game/types';
-import { t } from '../../i18n';
+import { compName, t } from '../../i18n';
 import { ClubLink, Panel, PlayerLink, Tabs } from '../components';
 import { useGame, useRouteState } from '../core';
 import { Head } from './common';
@@ -44,7 +44,7 @@ function MonthList({ awards, comp, setComp }: { awards: MonthAward[]; comp: stri
     <Panel title={t('aw.month')} right={
       <select value={comp} onChange={(e) => setComp(e.target.value)}>
         <option value="">{t('aw.allLeagues')}</option>
-        {comps.map((c) => <option key={c} value={c}>{g.comps[c]?.name ?? g.leagues[c]?.name ?? c}</option>)}
+        {comps.map((c) => <option key={c} value={c}>{compName(g.comps[c]?.name) ?? compName(g.leagues[c]?.name) ?? c}</option>)}
       </select>
     } className="flush">
       {shown.length === 0 ? <div className="empty">{t('aw.noMonth')}</div> : (
@@ -54,7 +54,7 @@ function MonthList({ awards, comp, setComp }: { awards: MonthAward[]; comp: stri
             {shown.map((a, i) => (
               <tr key={i} className={a.manager === g.userClub ? 'me' : ''}>
                 <td>{new Date(a.month + '-01T00:00:00Z').toLocaleDateString(undefined, { month: 'long', year: 'numeric', timeZone: 'UTC' })}</td>
-                <td>{g.comps[a.comp]?.name ?? g.leagues[a.comp]?.name ?? a.comp}</td>
+                <td>{compName(g.comps[a.comp]?.name) ?? compName(g.leagues[a.comp]?.name) ?? a.comp}</td>
                 <td>{g.players[a.player] ? <><PlayerLink p={g.players[a.player]} /> <span className="muted">({g.clubs[g.players[a.player].club]?.short ?? '-'})</span></> : '?'}</td>
                 <td>{a.managerName} <ClubLink id={a.manager} /></td>
               </tr>
@@ -93,14 +93,14 @@ function Gala({ s, comp, setComp }: { s: SeasonSummary; comp: string; setComp: (
         <Panel title={t('aw.season')}>
           <div className="kv">
             {s.managerOfYear && <><span>{t('aw.managerOfYear')}</span><span><b>{s.managerOfYear.name}</b> (<ClubLink id={s.managerOfYear.club} />, {s.managerOfYear.comp})</span></>}
-            {s.comps.filter((c) => c.id === 'CL' || c.id === 'UEFA' || c.id === 'UECL').map((c) => [<span key={c.id + 'l'}>{c.name}</span>, <span key={c.id + 'v'}><ClubLink id={c.winner} long /></span>])}
+            {s.comps.filter((c) => c.id === 'CL' || c.id === 'UEFA' || c.id === 'UECL').map((c) => [<span key={c.id + 'l'}>{compName(c.name)}</span>, <span key={c.id + 'v'}><ClubLink id={c.winner} long /></span>])}
           </div>
         </Panel>
       </div>
       {lg && (
-        <Panel title={`${t('aw.league')}: ${lg.name}`} right={
+        <Panel title={`${t('aw.league')}: ${compName(lg.name)}`} right={
           <select value={lg.id} onChange={(e) => setComp(e.target.value)}>
-            {leagues.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {leagues.map((c) => <option key={c.id} value={c.id}>{compName(c.name)}</option>)}
           </select>
         }>
           <div className="cols">

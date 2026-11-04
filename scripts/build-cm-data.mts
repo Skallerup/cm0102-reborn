@@ -9,6 +9,7 @@
 import { readFileSync, readdirSync, writeFileSync, existsSync, copyFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseCM0102 } from '../src/game/data/cm0102';
+import { CLUB_NAME_FIXES } from '../src/game/data/clubNames';
 
 // Standard: Data-mappen fra den udpakkede "October 2026 Data Update.zip" (pak zip'en ud i .data-update/)
 const dir = process.argv[2] ?? '.data-update/October 2026 Data Update';
@@ -63,6 +64,11 @@ w.leagues = w.leagues.filter((l) => keptLeagues.has(l.id));
 const keptClubs = new Set<number>();
 w.clubs = w.clubs.filter((c) => keptLeagues.has(c[4] as string));
 for (const c of w.clubs) keptClubs.add(c[0] as number);
+// ret forkert stavede klubnavne (fx "Bröndby IF", "FC Copenhagen")
+for (const c of w.clubs) {
+  const fix = CLUB_NAME_FIXES[c[1] as string];
+  if (fix) { c[1] = fix[0]; if (fix[1]) c[2] = fix[1]; }
+}
 
 // Spillere: beholdes hvis klubben er med; frie agenter (klub 0) beholdes som signérbare stjerner.
 // Desuden frasorteres ex-spiller-trænere (staff-poster med en spiller-post, alle 40+ med værdi 0).

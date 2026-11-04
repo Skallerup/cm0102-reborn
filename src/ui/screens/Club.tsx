@@ -7,7 +7,7 @@ import { recentFanEvents } from '../../game/fans';
 import { gs, squad } from '../../game/state';
 import { clubStrategy } from '../../game/strategy';
 import type { Club, Staff } from '../../game/types';
-import { dateFmt, money, t, natName } from '../../i18n';
+import { compName, dateFmt, money, t, natName } from '../../i18n';
 import { aiCall, aiText, ensureAiText } from '../../ai/client';
 import { useAiAvailable } from '../ai';
 import { AiSpinner, Bar, ClubLink, Crest, Flag, MgrChip, Panel, PlayerLink, Stars, posStr } from '../components';
@@ -57,7 +57,7 @@ function ClassicClub({ id }: { id?: number }) {
       {v === 'info' && <>
         {kv([
           [t('col.nat'), natName(g.nations[c.nation]?.name)],
-          [t('col.comp'), g.leagues[c.league]?.name ?? c.league],
+          [t('col.comp'), compName(g.leagues[c.league]?.name) ?? c.league],
           [t('club.rep'), level(c.rep / 5)],
           ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? 'cl.ci.fin.secure' : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
           [t('club.stadium'), c.stadium],
@@ -76,7 +76,7 @@ function ClassicClub({ id }: { id?: number }) {
           [t('club.strength'), squadStrength(cid).toFixed(0)],
           [t('cl.ci.players'), squad(cid).length],
           ...(c.manager !== -1 ? [[t('club.strategy'), t(`strategy.${clubStrategy(c)}`)] as [string, string]] : []),
-          ...(c.history.slice(-5).reverse().map((h) => [`${h.season}/${String(h.season + 1).slice(2)}`, `${gs().leagues[h.league]?.name ?? h.league} – ${h.pos}.`] as [string, string])),
+          ...(c.history.slice(-5).reverse().map((h) => [`${h.season}/${String(h.season + 1).slice(2)}`, `${compName(gs().leagues[h.league]?.name) ?? h.league} – ${h.pos}.`] as [string, string])),
         ])}
         {c.records && <RecordsPanel club={c} />}
       </>}
@@ -116,7 +116,7 @@ function ModernClub({ id }: { id?: number }) {
       <div className="cols">
         <Panel title={t('club.info')}>
           <div className="kv">
-            <span>{t('col.comp')}</span><span>{g.leagues[c.league]?.name ?? c.league}</span>
+            <span>{t('col.comp')}</span><span>{compName(g.leagues[c.league]?.name) ?? c.league}</span>
             <span>{t('col.nat')}</span><span><Flag name={g.nations[c.nation]?.name} />{natName(g.nations[c.nation]?.name)}</span>
             <span>{t('club.manager')}</span><span>{c.manager === -1 ? <>{humanManager(c.id)?.name ?? '?'}<MgrChip clubId={c.id} /></> : manager ? `${manager.first} ${manager.last}` : t('club.vacant')}</span>
             <span>{t('club.stadium')}</span><span>{c.stadium} ({c.seats.toLocaleString()})</span>
@@ -163,7 +163,7 @@ function ModernClub({ id }: { id?: number }) {
         <Panel title={t('club.history')}>
           {c.history.length === 0 ? <div className="muted">{t('comp.noHistory')}</div> : (
             <table className="grid">
-              <tbody>{c.history.slice().reverse().map((h) => <tr key={h.season}><td>{h.season}/{String(h.season + 1).slice(2)}</td><td>{gs().leagues[h.league]?.name ?? h.league}</td><td className="num">{h.pos}.</td><td className="num">{h.pts} p</td></tr>)}</tbody>
+              <tbody>{c.history.slice().reverse().map((h) => <tr key={h.season}><td>{h.season}/{String(h.season + 1).slice(2)}</td><td>{compName(gs().leagues[h.league]?.name) ?? h.league}</td><td className="num">{h.pos}.</td><td className="num">{h.pts} p</td></tr>)}</tbody>
             </table>
           )}
         </Panel>

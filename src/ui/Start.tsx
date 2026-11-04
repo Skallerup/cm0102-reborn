@@ -9,7 +9,7 @@ import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, type SaveMeta } from '../game/save';
 import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
-import { CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
+import { compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
 import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
@@ -243,7 +243,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
         <Panel title={t('start.pickClub')}>
           <div className="row" style={{ marginBottom: 8 }}>
             <Select value={league} onChange={(v) => { setLeague(v); setClub(0); }} width={300}
-              options={leagues.map((l) => ({ value: l.id, label: l.name, group: natName(world.nations[l.nation].name) }))} />
+              options={leagues.map((l) => ({ value: l.id, label: compName(l.name), group: natName(world.nations[l.nation].name) }))} />
           </div>
           <div className="grid-choices">
             {clubs.map((c) => (

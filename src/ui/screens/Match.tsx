@@ -9,7 +9,7 @@ import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { MatchReport, OppInstructions, OppKind } from '../../game/types';
-import { t } from '../../i18n';
+import { compName, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
@@ -99,7 +99,7 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   useHotkeys((e) => { if (isToday && !awayVsHuman && e.key === 'Enter') { onPlay(); return true; } });
   return (
     <div>
-      <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`} />
+      <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`} />
       <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} />
       <div className="insight weather-note">{WEATHER_ICON[weatherFor(f)]} <b>{t(`wx.${weatherFor(f)}`)}</b> – {t(`wx.d.${weatherFor(f)}`)}</div>
       <div className="cols">
@@ -679,7 +679,7 @@ function LiveMatch({ id }: { id: number }) {
 
   return (
     <div className="match-screen">
-      <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>
+      <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`}>
         {!report && h2h && <H2hSpeed mine={hs.homeSpeed} theirs={hs.awaySpeed} name={humanManager(f.away)?.name ?? ''} onPick={(v) => { hs.homeSpeed = v; force((x) => x + 1); }} />}
         {!report && !h2h && <>
           <button data-space onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
@@ -882,7 +882,7 @@ function FollowMatch({ id }: { id: number }) {
     window.addEventListener('beforeunload', warn);
     return () => window.removeEventListener('beforeunload', warn);
   }, [data?.finished]);
-  const head = <Head title={`${g.comps[f.comp]?.name} – ${stageLabel(f)}`}>{data && !data.finished && <H2hSpeed mine={mySpeed} theirs={data.homeSpeed} name={homeMgr} onPick={(v) => { setMySpeed(v); send({ k: 'speed', v }); }} />}{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
+  const head = <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`}>{data && !data.finished && <H2hSpeed mine={mySpeed} theirs={data.homeSpeed} name={homeMgr} onPick={(v) => { setMySpeed(v); send({ k: 'speed', v }); }} />}{data?.finished && <button className="primary continue" onClick={() => { if (data.report) act({ t: 'matchResult', fixture: id, rep: data.report }); nav({ name: data.report ? 'report' : 'inbox', id }); }}>{t('match.continue')}</button>}</Head>;
   // før kampen: klar-tjek og nedtælling
   if (!data || data.phase === 'wait' || data.phase === 'countdown') {
     const iAmReady = ready;

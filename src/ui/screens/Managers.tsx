@@ -6,14 +6,13 @@ import { h2hFor } from '../../game/h2h';
 import { finalOrder } from '../../game/competitions';
 import { squad } from '../../game/state';
 import type { ChatMsg } from '../../game/types';
-import { dateFmt, has, t } from '../../i18n';
+import { compName, dateFmt, has, money, t } from '../../i18n';
 import { session } from '../../online/client';
 import { ClubLink, Crest, Panel, mgrHue } from '../components';
 import { useGame, useNav } from '../core';
 import { Select } from '../select';
 import { Head, LinkedText } from './common';
 import { JAB_LINES, nextMeeting } from '../../game/rivalry';
-import { money } from '../../i18n';
 
 interface Line { id: string; mine: boolean; who: string; text: string; when: string }
 
@@ -201,7 +200,7 @@ function Rivalry({ pid, tclub }: { pid: string; tclub: number }) {
     <div className="rivalry">
       <div className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
         <span className="h2h-label">{t('riv.title')}</span>
-        <span className="muted">{f ? t('riv.next', { date: dateFmt(f.date), comp: g.comps[f.comp]?.name ?? '' }) : t('riv.noMatch')}</span>
+        <span className="muted">{f ? t('riv.next', { date: dateFmt(f.date), comp: compName(g.comps[f.comp]?.name) ?? '' }) : t('riv.noMatch')}</span>
         <Select<number> value={-1} width={260} placeholder={t('riv.jab')}
           options={Array.from({ length: JAB_LINES }, (_, i) => ({ value: i, label: t(`jab.line.${i}`, { club: club?.short ?? '', name: theirName }) }))}
           onChange={(i) => { const text = t(`jab.line.${i}`, { club: club?.short ?? '', name: theirName }); say(act<string>({ t: 'jab', to: pid, line: i, text })); }} />

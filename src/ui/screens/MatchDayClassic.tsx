@@ -1,7 +1,7 @@
 // Kampdag i klassisk tema: dagens kampe pr. turnering (som originalens "Evening Fixtures"), én turnering ad gangen.
 // Continue Game i venstre kolonne fører videre til ens egen kamp.
 import type { Fixture } from '../../game/types';
-import { t } from '../../i18n';
+import { compName, t } from '../../i18n';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { stageLabel } from './Fixtures';
@@ -13,7 +13,7 @@ export function MatchDay({ id }: { id: number }) {
   const date = mine?.date ?? g.date;
   const today = Object.values(g.fixtures).filter((f) => f.date === date);
   // ens egen turnering først, derefter de øvrige
-  const comps = [...new Set(today.map((f) => f.comp))].sort((a, b) => Number(b === mine?.comp) - Number(a === mine?.comp) || (g.comps[a]?.name ?? '').localeCompare(g.comps[b]?.name ?? ''));
+  const comps = [...new Set(today.map((f) => f.comp))].sort((a, b) => Number(b === mine?.comp) - Number(a === mine?.comp) || (compName(g.comps[a]?.name) ?? '').localeCompare(compName(g.comps[b]?.name) ?? ''));
   const [i, setI] = useRouteState('mdi', 0);
   const cid = comps[Math.min(i, comps.length - 1)];
   const comp = g.comps[cid];
@@ -25,7 +25,7 @@ export function MatchDay({ id }: { id: number }) {
   const d = new Date(`${date}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <div>
-      <Head title={comp?.name ?? t('nav.fixtures')}>
+      <Head title={compName(comp?.name) ?? t('nav.fixtures')}>
         <button className="cx-greybtn" disabled={i <= 0} onClick={() => setI(i - 1)}>‹‹</button>
         <span className="cx-md-count">{t('cl.md.count', { n: Math.min(i, comps.length - 1) + 1, of: comps.length })}</span>
         <button className="cx-greybtn" disabled={i >= comps.length - 1} onClick={() => setI(i + 1)}>››</button>

@@ -3,7 +3,7 @@ import { act } from '../../game/actions';
 import { projectOffer } from '../../game/board';
 import { estimateGate, wantedAttendance } from '../../game/finance';
 import type { Club, Fixture, ProjectKind, SeasonFinance } from '../../game/types';
-import { dateFmt, money, t } from '../../i18n';
+import { compName, dateFmt, money, t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
 import { useGame } from '../core';
 import { gs } from '../../game/state';
@@ -16,7 +16,7 @@ function homeGames(clubId: number): HomeGame[] {
   return Object.values(g.fixtures)
     .filter((f) => f.home === clubId && f.result?.att)
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map((f) => ({ f, att: f.result!.att!, gate: f.result!.gate ?? 0, opp: f.away, comp: g.comps[f.comp]?.name ?? '' }));
+    .map((f) => ({ f, att: f.result!.att!, gate: f.result!.gate ?? 0, opp: f.away, comp: compName(g.comps[f.comp]?.name) ?? '' }));
 }
 
 /** Ligaens klubber med gennemsnitligt tilskuertal i ligakampe denne sæson */
@@ -240,7 +240,7 @@ export function FinanceHistoryTab() {
   };
   const rows: { season: number; pos?: number; league?: string; fin: SeasonFinance; live?: boolean }[] = [
     { season: g.season, fin: now, live: true },
-    ...c.history.filter((h) => h.fin).slice().reverse().map((h) => ({ season: h.season, pos: h.pos, league: g.comps[h.league]?.name ?? g.leagues[h.league]?.name ?? h.league, fin: h.fin! })),
+    ...c.history.filter((h) => h.fin).slice().reverse().map((h) => ({ season: h.season, pos: h.pos, league: compName(g.comps[h.league]?.name) ?? compName(g.leagues[h.league]?.name) ?? h.league, fin: h.fin! })),
   ];
   const income = (x: SeasonFinance) => x.gate + x.tv + x.sponsor + x.merch + x.prize + x.sales;
   const expense = (x: SeasonFinance) => x.wages + x.buys + x.other;

@@ -4,7 +4,7 @@ import { transferRealism } from '../../game/transfers';
 import { Info } from '../help';
 import { Select } from '../select';
 import { act } from '../../game/actions';
-import { dateFmt, money, t, natName } from '../../i18n';
+import { compName, dateFmt, money, t, natName } from '../../i18n';
 import { scoutRecommendation, scoutStars } from '../../game/scouting';
 import { addDays, ageOn } from '../../game/dates';
 import type { Role, ScoutAssignment, Staff } from '../../game/types';
@@ -107,7 +107,7 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
   const [maxValue, setMaxValue] = useState(0);
   const [crit, setCrit] = useState(false);
   const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping') }));
-  const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? natName(g.nations[x.target as number]?.name) : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${g.leagues[x.target as string]?.name ?? x.target}` : '';
+  const targetName = (x: ScoutAssignment) => x.kind === 'nation' ? natName(g.nations[x.target as number]?.name) : x.kind === 'league' ? `${g.nations[g.leagues[x.target as string]?.nation]?.name ?? ''} – ${compName(g.leagues[x.target as string]?.name) ?? x.target}` : '';
   const send = () => {
     const kind = target.startsWith('n:') ? 'nation' : 'league';
     const tgt = kind === 'nation' ? Number(target.slice(2)) : target.slice(2);
@@ -142,7 +142,7 @@ function ScoutRow({ s, nations }: { s: Staff; nations: number[] }) {
             <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>
               <span className="tag" title={t('scout.home')}>🏠</span>
               <Select value={target} onChange={setTarget} width={200} options={[
-                ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${g.leagues[l].name}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
+                ...g.leagueOrder.filter((l) => g.leagues[l]).map((l) => ({ value: `l:${l}`, label: `${compName(g.leagues[l].name)}`, hint: g.nations[g.leagues[l].nation]?.code, group: t('scout.leagues') })),
                 ...nations.map((n) => ({ value: `n:${n}`, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code, group: t('scout.nations') })),
               ]} />
               <select value={months} onChange={(e) => setMonths(Number(e.target.value))} title={t('scout.duration')}>

@@ -3,7 +3,7 @@ import { askConfirm } from '../confirm';
 import { act } from '../../game/actions';
 import { jobTerms, managerRegion } from '../../game/board';
 import { regionOf } from '../../game/leagues';
-import { dateFmt, money, t } from '../../i18n';
+import { compName, dateFmt, money, t } from '../../i18n';
 import { ClubLink, Panel } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -43,7 +43,7 @@ export function Jobs() {
               {vac.map((c) => (
                 <tr key={c.id}>
                   <td><ClubLink id={c.id} long /></td>
-                  <td>{g.leagues[c.league]?.name}</td>
+                  <td>{compName(g.leagues[c.league]?.name)}</td>
                   <td className="num">{c.rep}</td>
                   <td>{g.jobOffers.includes(c.id) ? <span className="tag good">{t('jobs.offered')}</span>
                     : g.manager.jobTalks?.[c.id] ? <span className="tag">{t('jobs.applied')}</span>
@@ -74,7 +74,7 @@ function JobOffer({ cid }: { cid: number }) {
   const me = g.clubs[g.userClub];
   return (
     <div className="insight">
-      <div className="row"><b className="grow"><ClubLink id={cid} long /></b><span className="muted">{g.leagues[c.league]?.name}</span></div>
+      <div className="row"><b className="grow"><ClubLink id={cid} long /></b><span className="muted">{compName(g.leagues[c.league]?.name)}</span></div>
       <div className="kv" style={{ margin: '8px 0' }}>
         <span>{t('club.expectation')}</span><span>{t(`exp.${terms.exp}`)} ({t('jobs.pos', { pos: terms.expectedPos })})</span>
         <span>{t('top.budget')}</span><span>{money(terms.budget)}</span>

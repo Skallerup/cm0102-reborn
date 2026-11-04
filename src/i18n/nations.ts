@@ -7,7 +7,7 @@ const DA: Record<string, string> = {
   Denmark: 'Danmark', Ukraine: 'Ukraine', Portugal: 'Portugal', Russia: 'Rusland', Netherlands: 'Holland', Greece: 'Grækenland',
   Belgium: 'Belgien', England: 'England', 'Saudi Arabia': 'Saudi-Arabien', Croatia: 'Kroatien', Mexico: 'Mexico',
   Australia: 'Australien', Scotland: 'Skotland', Austria: 'Østrig', 'Czech Republic': 'Tjekkiet', Germany: 'Tyskland',
-  Serbia: 'Serbien', Poland: 'Polen', 'Korea, South': 'Sydkorea', Switzerland: 'Schweiz', Romania: 'Rumænien',
+  Serbia: 'Serbien', Poland: 'Polen', 'Korea, South': 'Sydkorea', 'South Korea': 'Sydkorea', Switzerland: 'Schweiz', Romania: 'Rumænien',
   Bulgaria: 'Bulgarien', Paraguay: 'Paraguay', Hungary: 'Ungarn', Georgia: 'Georgien', 'North Macedonia': 'Nordmakedonien',
   Peru: 'Peru', Belarus: 'Hviderusland', Canada: 'Canada', "Cote d'Ivoire": 'Elfenbenskysten', Morocco: 'Marokko',
   Montenegro: 'Montenegro', 'Bosnia-Herzegovina': 'Bosnien-Hercegovina', Cameroon: 'Cameroun', Angola: 'Angola',
@@ -55,4 +55,9 @@ const EN: Record<string, string> = {
 export function nationLabel(name: string | undefined, lang: 'da' | 'en'): string {
   if (!name) return '';
   return (lang === 'da' ? DA[name] : EN[name]) ?? name;
+}
+
+/** Kender vi landet? (bruges til at genkende "<land> Cup") */
+export function isNationName(name: string): boolean {
+  return name in DA;
 }

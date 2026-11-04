@@ -4,7 +4,7 @@ import { nationRanking, sortTable } from '../../game/competitions';
 import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { gs, squad } from '../../game/state';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
-import { dateFmt, t, natName } from '../../i18n';
+import { compName, dateFmt, t, natName } from '../../i18n';
 import { ClubLink, Panel, PlayerLink, Rating, Table, Tabs, type Col } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -21,9 +21,9 @@ export function Competitions({ id }: { id?: string }) {
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div>
-      <Head title={comp?.name ?? t('nav.competitions')}>
+      <Head title={compName(comp?.name) ?? t('nav.competitions')}>
         <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
-          options={ordered.map((c) => ({ value: c.id, label: c.name, group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
+          options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
       </Head>
       {comp && (
         <>
@@ -90,7 +90,7 @@ export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: 
             {sorted.map((r, i) => (
               <tr key={r.club} className={`${i > 0 && zone(i) !== zone(i - 1) ? 'zone-start' : ''} ${zone(i)}`}>
                 <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1 + offset)}</span></td>
-                <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.name}</td>
+                <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.short}</td>
                 <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td>
                 <td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td>
               </tr>

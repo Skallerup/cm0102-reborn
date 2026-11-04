@@ -107,13 +107,24 @@ function lastMatchId(g: GameState): number | undefined {
 
 function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, route: Route, allowed: (k: ScreenName) => boolean): Item[] {
   if (!keys) return [];
+  // en anden klubs side: "Økonomi & info", "Økonomi" og "Division" gælder den klub – ikke ens egen
+  const viewed = route.name === 'club' && route.id && Number(route.id) !== g.userClub ? Number(route.id) : 0;
   const out: Item[] = [];
   for (const k of keys) {
+    if (viewed && (k === 'club' || k === 'finance')) {
+      const cview = k === 'finance' ? 'finances' : 'info';
+      const cur = (route.state?.cview as string | undefined) ?? 'info';
+      // økonomien kan kun ses for andre klubber uden attribut-maskering (som på selve skærmen)
+      const hidden = k === 'finance' && g.options.masking;
+      out.push({ key: k, label: label(k), route: hidden ? undefined : { name: 'club', id: viewed, state: { cview } }, disabled: hidden,
+        on: k === 'finance' ? cur === 'finances' : cur !== 'finances' && cur !== 'income' && cur !== 'expenditure' });
+      continue;
+    }
     if (k === 'lastMatch') {
       const id = lastMatchId(g);
       out.push({ key: k, label: label(k), route: id ? { name: 'report', id } : undefined, disabled: !id, on: route.name === 'report' });
     } else if (k === 'division') {
-      const lg = g.clubs[g.userClub]?.league;
+      const lg = g.clubs[viewed || g.userClub]?.league;
       out.push({ key: k, label: label(k), route: { name: 'competitions', id: lg }, disabled: !lg });
     } else {
       if (!allowed(k)) continue;

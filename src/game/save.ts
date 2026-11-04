@@ -1,5 +1,6 @@
 // Gem/indlæs i IndexedDB som gzip-komprimeret JSON (≈4-5 MB pr. save).
 import { addMissingConference } from './competitions';
+import { fixClubName } from './data/clubNames';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify } from './state';
 import { deserializeState, serializeState } from './snapshot';
@@ -93,6 +94,13 @@ function upgradeLoaded() {
  * Ret stadionkapaciteten i gemte spil fra CM-databaserne: en fejl i indlæsningen af stadium.dat gav
  * alle klubber loftet 120.000 pladser. Kun klubber med præcis 120.000 rettes (egne udvidelser bevares).
  */
+/** Ret forkert stavede klubnavne i gemte spil fra CM-databaserne (fx "Bröndby IF", "FC Copenhagen") */
+function repairClubNames() {
+  const g = gs();
+  if (g.dbKind !== 'cm0102') return;
+  for (const c of Object.values(g.clubs)) fixClubName(c);
+}
+
 async function repairStadiums(): Promise<void> {
   const g = gs();
   if (g.dbKind !== 'cm0102') return;
@@ -119,6 +127,7 @@ export async function loadGame(id: string): Promise<boolean> {
   if (g.humans?.length) return false;
   setGame(g);
   upgradeLoaded();
+  repairClubNames();
   await repairStadiums();
   rememberLast({ kind: 'local', id });
   return true;

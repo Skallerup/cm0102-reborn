@@ -1,4 +1,4 @@
-import { t } from '../../i18n';
+import { compName, t } from '../../i18n';
 import { ClubLink, Panel, PlayerLink } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
@@ -27,7 +27,7 @@ export function History() {
         </Panel>
         <Panel title={t('hist.career')}>
           {m.history.length === 0 ? <div className="muted">{t('hist.firstSeason')}</div> : (
-            <table className="grid"><tbody>{m.history.map((h, i) => <tr key={i}><td>{h.season}/{String(h.season + 1).slice(2)}</td><td><ClubLink id={h.club} /></td><td>{g.leagues[h.league]?.name}</td><td className="num">{h.pos}.</td></tr>)}</tbody></table>
+            <table className="grid"><tbody>{m.history.map((h, i) => <tr key={i}><td>{h.season}/{String(h.season + 1).slice(2)}</td><td><ClubLink id={h.club} /></td><td>{compName(g.leagues[h.league]?.name)}</td><td className="num">{h.pos}.</td></tr>)}</tbody></table>
           )}
         </Panel>
       </div>
