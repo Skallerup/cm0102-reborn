@@ -126,7 +126,7 @@ export async function POST(request: Request) {
     const amount = Math.round(Number(body.amount));
     if (!Number.isFinite(amount) || amount < 300 || amount > 50_000) return json({ error: 'amount' }, 400);
     const monthly = !!body.monthly;
-    const back = String(body.returnUrl ?? '').startsWith('http') ? String(body.returnUrl) : 'https://cm0102-reborn.vercel.app/';
+    const back = String(body.returnUrl ?? '').startsWith('http') ? String(body.returnUrl) : 'https://cm0102reborn.com/';
     const form: Record<string, string> = {
       mode: monthly ? 'subscription' : 'payment',
       success_url: `${back}${back.includes('?') ? '&' : '?'}support=thanks`,

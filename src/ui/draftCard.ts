@@ -66,7 +66,7 @@ export async function drawDraftCard(team: DraftTeam, picks: DraftPick[], byId: R
   if (preview) text(`🔮 ${t('dr.cardPreview', { pos: preview.expPos, pts: preview.expPts, pct: preview.title })}`, 70, 1230, 28, '#ffcf3f', 800);
   if (grade?.steal && byId[grade.steal.player]) text(`🔥 ${t('dr.cardSteal', { player: `${byId[grade.steal.player].first} ${byId[grade.steal.player].last}`.trim() })}`, 70, 1185, 28, '#9ff0bd', 800);
   text(t('dr.cardCta'), 70, H - 80, 30, '#fff', 800);
-  text('cm0102-reborn.vercel.app/?draft=1', 70, H - 40, 26, '#8a93b5', 600);
+  text('cm0102reborn.com/?draft=1', 70, H - 40, 26, '#8a93b5', 600);
   return new Promise((res) => c.toBlob((b) => res(b), 'image/png'));
 }
 

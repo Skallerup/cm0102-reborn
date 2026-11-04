@@ -25,7 +25,7 @@ export function OnlineMenu({ onBack, onCreate, onCreateDraft, setBusy, initialCo
     return (
       <Panel title={t('mp.title')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
         <p>{t('mp.useVercel')}</p>
-        <a className="link" href={`https://cm0102-reborn.vercel.app/${initialCode ? `?room=${initialCode}` : ''}`}>https://cm0102-reborn.vercel.app</a>
+        <a className="link" href={`https://cm0102reborn.com/${initialCode ? `?room=${initialCode}` : ''}`}>https://cm0102reborn.com</a>
       </Panel>
     );
   }

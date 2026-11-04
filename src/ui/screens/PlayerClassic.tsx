@@ -17,7 +17,7 @@ import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
 import { dateFmt, money, natName, t } from '../../i18n';
 import { askConfirm } from '../confirm';
-import { CxDrop, classicDate, titleColors, type DropItem } from '../classic';
+import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem } from '../classic';
 import { compareIds, toggleCompare } from '../compare';
 import { Bar, ClubLink, FormList, Modal, Panel, Rating, Stars, Tabs, posStr } from '../components';
 import { gs } from '../../game/state';
@@ -65,8 +65,11 @@ export function positionLong(p: Player): string {
 function BornLine({ p }: { p: Player }) {
   const g = useGame()!;
   const [, dob] = classicDate(p.dob);
-  const v = { date: dob, age: ageOn(p.dob, g.date), nation: natName(g.nations[p.nation]?.name) ?? '', caps: p.caps, goals: p.intGoals };
-  return <div className="cx-pl-born">{t(p.caps ? 'cl.pl.born' : 'cl.pl.bornNoCaps', v)}</div>;
+  const v = { date: dob, age: ageOn(p.dob, g.date), nation: '\u0000', caps: p.caps, goals: p.intGoals };
+  // nationen kan klikkes (åbner landets liga)
+  const [before, after] = t(p.caps ? 'cl.pl.born' : 'cl.pl.bornNoCaps', v).split('\u0000');
+  const nat = natName(g.nations[p.nation]?.name) ?? '';
+  return <div className="cx-pl-born">{before}{after !== undefined ? <><CxLink to={nationRoute(p.nation)}>{nat}</CxLink>{after}</> : null}</div>;
 }
 
 /** Statistik pr. turnering + positionen nederst – fælles for profil-, skade-, kontrakt- og transferfanen */
@@ -233,14 +236,14 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
     : p.contract?.futureClub ? t('tag.leaving')
     : k >= 40 ? t('cl.pl.av.asking', { fee: money(askingPrice(p)) }) : t('cl.pl.unknown');
   const offers = g.offers.filter((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating'));
-  const offerText = !offers.length ? t('common.none') : offers.map((o) => `${g.clubs[o.buyer]?.name ?? '?'} (${o.loan ? t('tag.loan') : money(o.fee)})`).join(', ');
-  const interest = interestedClubs(p).map((i) => g.clubs[i.club]?.name).filter(Boolean);
+  const offerText = <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
+  const interestIds = interestedClubs(p).map((i) => i.club);
   const fut = futureLines(p, mine, k);
   const rows: [string, ReactNode, string?][] = [
     [t('cl.pl.availability'), availability],
     [t('col.value'), money(p.value)],
     [t('cl.pl.offers'), offerText],
-    [t('cl.pl.interested'), interest.length ? interest.join(', ') : t('common.none')],
+    [t('cl.pl.interested'), <ClubList ids={interestIds} empty={t('common.none')} />],
     [t('cl.pl.future'), <>{fut.map((x) => <div key={x}>{x}</div>)}</>],
     [t('player.ability'), <Stars range={stars.ability} />],
     [t('player.potential'), <Stars range={stars.potential} />],

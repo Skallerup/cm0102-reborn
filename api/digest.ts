@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     `Nye bidrag (${sups.length}): ${sups.map((p) => `${p.name} (${p.supporter ?? '–'})`).join(', ') || '–'}`,
     `Indsamlet denne måned: ${(raised / 100).toFixed(2)}`,
     ``,
-    `Admin: https://cm0102-reborn.vercel.app/?admin=1`,
+    `Admin: https://cm0102reborn.com/?admin=1`,
   ].join('\n');
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',

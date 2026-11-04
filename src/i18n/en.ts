@@ -915,7 +915,7 @@ export const en: Record<string, string> = {
   'rank.mine': 'My score', 'rank.boards': 'Leaderboards', 'rank.how': 'How points work', 'rank.total': 'Total',
   'rank.liveTitle': 'Projection for {season}', 'rank.noLive': 'No projection yet.', 'rank.liveHint': 'The projection follows the current table. The final score is calculated at the end of the season and sent to the leaderboard automatically.',
   'rank.career': 'Career: {pts} points', 'rank.noSeasons': 'Finish your first season to get a score.', 'rank.lastSeason': 'Last season ({season})',
-  'rank.singleOnly': 'Leaderboards are for single-player careers only.', 'rank.offline': 'Leaderboards need the online version at cm0102-reborn.vercel.app.',
+  'rank.singleOnly': 'Leaderboards are for single-player careers only.', 'rank.offline': 'Leaderboards need the online version at cm0102reborn.com.',
   'rank.createTitle': 'Join the leaderboard', 'rank.createHint': 'Choose a manager name. Your seasons are sent automatically when finished – only manager name, club, league and points are public.',
   'rank.namePlaceholder': 'Manager name (3-24 characters)', 'rank.create': 'Create profile', 'rank.youAre': 'You are playing as {name}', 'rank.position': '#{rank} of {total}',
   'rank.err.name': 'The name must be 3-24 characters (letters, digits, spaces, . _ \' -).', 'rank.err.taken': 'That name is taken – pick another.', 'rank.err.network': 'Could not reach the server.', 'rank.err.limit': 'Too many attempts – wait a moment.', 'rank.err.error': 'Something went wrong.',

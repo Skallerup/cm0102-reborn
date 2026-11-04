@@ -99,6 +99,6 @@ async function drawCard(s: SeasonStory, manager: string, season: string): Promis
   let y = 760;
   if (s.items[0]) { text(t('story.bestMoment').toUpperCase(), 80, y, 26, '#ffcf3f', 800); y = wrap(storyText(s.items[0]), 80, y + 56, 46, W - 160, '#fff', 800) + 20; }
   for (const it of s.items.slice(1, 5)) y = wrap(`• ${storyText(it)}`, 80, y, 30, W - 160, '#c2cbe6', 500);
-  text('cm0102-reborn.vercel.app', 80, H - 70, 26, '#8a93b5', 600);
+  text('cm0102reborn.com', 80, H - 70, 26, '#8a93b5', 600);
   return new Promise((res) => c.toBlob((b) => res(b), 'image/png'));
 }

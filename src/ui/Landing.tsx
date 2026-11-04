@@ -81,7 +81,7 @@ function JoinForm() {
         {state === 'sent' ? (
           <div className="lp-join-done"><b>✓ {t('land.join.thanks')}</b><p>{t('land.join.thanksText')}</p></div>
         ) : !live ? (
-          <div className="lp-join-done"><p>{t('land.join.offline')}</p><a className="lp-cta" href="https://cm0102-reborn.vercel.app/#join">{t('land.join.goLive')} <span aria-hidden="true">→</span></a></div>
+          <div className="lp-join-done"><p>{t('land.join.offline')}</p><a className="lp-cta" href="https://cm0102reborn.com/#join">{t('land.join.goLive')} <span aria-hidden="true">→</span></a></div>
         ) : (
           <form onSubmit={send}>
             <label>{t('land.join.name')}<input required maxLength={80} value={f.name} onChange={set('name')} autoComplete="name" /></label>

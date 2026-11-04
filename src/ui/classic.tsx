@@ -8,7 +8,7 @@ import './classic.css';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { gs } from '../game/state';
-import type { GameState } from '../game/types';
+import type { GameState, Staff } from '../game/types';
 import { natName, t } from '../i18n';
 import { useNav, type Route, type ScreenName } from './core';
 
@@ -46,6 +46,39 @@ interface Hub {
 }
 
 const clubName = (g: GameState) => g.clubs[g.userClub]?.name ?? '';
+
+// ---------- klikbare navne (klubber, nationer, turneringer, stab) ----------
+
+/** Ruten til en klub: ens egen klub åbner truppen, andre klubber deres side */
+export const clubRoute = (id: number): Route => (id === gs().userClub ? { name: 'squad' } : { name: 'club', id });
+/** Ruten til en nation: dens øverste liga (ellers Find → Nation) */
+export function nationRoute(nation: number): Route {
+  const g = gs();
+  const top = g.leagueOrder.find((l) => g.leagues[l]?.nation === nation && g.comps[l]);
+  return top ? { name: 'competitions', id: top } : { name: 'find', tab: 'nation', state: { ftab: 'nation' } };
+}
+/** Ruten til en stabsperson: ens eget staff eller ansættelsen (ledig eller i en anden klub) */
+export function staffRoute(s: Staff): Route {
+  if (s.club === gs().userClub) return { name: 'staff' };
+  return { name: 'staff', tab: 'hire', state: { role: s.role === 'manager' ? 'coach' : s.role, source: s.club ? 'clubs' : 'free', onlyWilling: false } };
+}
+
+/** Et navn man kan klikke på i klassisk stil (beholder tekstens farve, lyser op ved hover) */
+export function CxLink({ to, children, title }: { to: Route; children: ReactNode; title?: string }) {
+  const { nav } = useNav();
+  return (
+    <span className="cx-link" role="link" tabIndex={0} title={title}
+      onClick={(e) => { e.stopPropagation(); nav(to); }} onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); nav(to); } }}>{children}</span>
+  );
+}
+
+/** Klubnavne adskilt af komma – hver af dem klikbar */
+export function ClubList({ ids, empty, suffix }: { ids: number[]; empty: ReactNode; suffix?: (id: number, i: number) => ReactNode }) {
+  const g = gs();
+  const list = ids.filter((id) => g.clubs[id]);
+  if (!list.length) return <>{empty}</>;
+  return <>{list.map((id, i) => <span key={`${id}-${i}`}>{i > 0 && ', '}<CxLink to={clubRoute(id)}>{g.clubs[id].name}</CxLink>{suffix?.(id, i)}</span>)}</>;
+}
 const mgrName = (g: GameState) => g.manager?.name ?? '';
 const own = (g: GameState) => g.userClub || undefined;
 
@@ -83,7 +116,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   support: { tabs: MGR_TABS, sub: MGR_SUB },
   managers: { tabs: MGR_TABS, sub: MGR_SUB },
   player: {
-    title: (g, r, st) => { const p = g.players[Number(r.id)]; return p ? `${p.first} ${p.last}${p.club ? ` (${g.clubs[p.club]?.name ?? ''})` : ''}` : st; },
+    // spillerens klub i titlen kan klikkes (som i originalen)
+    title: (g, r, st) => { const p = g.players[Number(r.id)]; return p ? <>{p.first} {p.last}{p.club && g.clubs[p.club] ? <> (<CxLink to={clubRoute(p.club)}>{g.clubs[p.club].name}</CxLink>)</> : null}</> : st; },
     club: (g, r) => g.players[Number(r.id)]?.club || undefined,
   },
   // konkurrencer, kampe, indstillinger, hjælp: skærmens egen titel og egne faner

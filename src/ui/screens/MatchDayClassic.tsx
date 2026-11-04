@@ -3,6 +3,7 @@
 import type { Fixture } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { useGame, useNav, useRouteState } from '../core';
+import { CxLink, clubRoute } from '../classic';
 import { Head } from './common';
 import { stageLabel } from './Fixtures';
 
@@ -21,7 +22,7 @@ export function MatchDay({ id }: { id: number }) {
   function isMine(f: Fixture) { return f.home === g.userClub || f.away === g.userClub; }
   const stages = [...new Set(list.map((f) => stageLabel(f)))];
   const code = (club: number) => g.nations[g.clubs[club]?.nation]?.code ?? '';
-  const name = (club: number) => <span className={club === g.userClub ? 'me' : ''}>{g.clubs[club]?.name ?? '?'}</span>;
+  const name = (club: number) => <span className={club === g.userClub ? 'me' : ''}>{g.clubs[club] ? <CxLink to={clubRoute(club)}>{g.clubs[club].name}</CxLink> : '?'}</span>;
   const d = new Date(`${date}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long' });
   return (
     <div>

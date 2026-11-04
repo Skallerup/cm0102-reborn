@@ -941,7 +941,7 @@ export const da: Record<string, string> = {
   'rank.mine': 'Min score', 'rank.boards': 'Ranglister', 'rank.how': 'Sådan gives point', 'rank.total': 'I alt',
   'rank.liveTitle': 'Prognose for {season}', 'rank.noLive': 'Ingen prognose endnu.', 'rank.liveHint': 'Prognosen følger tabellen lige nu. Den endelige score beregnes ved sæsonslut og sendes automatisk til ranglisten.',
   'rank.career': 'Karriere: {pts} point', 'rank.noSeasons': 'Spil din første sæson færdig for at få en score.', 'rank.lastSeason': 'Seneste sæson ({season})',
-  'rank.singleOnly': 'Ranglisterne gælder kun singleplayer-karrierer.', 'rank.offline': 'Ranglisterne kræver online-udgaven på cm0102-reborn.vercel.app.',
+  'rank.singleOnly': 'Ranglisterne gælder kun singleplayer-karrierer.', 'rank.offline': 'Ranglisterne kræver online-udgaven på cm0102reborn.com.',
   'rank.createTitle': 'Vær med på ranglisten', 'rank.createHint': 'Vælg et managernavn. Dine sæsoner sendes automatisk, når de er spillet færdig – kun managernavn, klub, liga og point vises offentligt.',
   'rank.namePlaceholder': 'Managernavn (3-24 tegn)', 'rank.create': 'Opret profil', 'rank.youAre': 'Du er med som {name}', 'rank.position': 'nr. {rank} af {total}',
   'rank.err.name': 'Navnet skal være 3-24 tegn (bogstaver, tal, mellemrum, . _ \' -).', 'rank.err.taken': 'Navnet er taget – vælg et andet.', 'rank.err.network': 'Kunne ikke kontakte serveren.', 'rank.err.limit': 'For mange forsøg – vent et øjeblik.', 'rank.err.error': 'Noget gik galt.',

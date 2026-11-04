@@ -15,7 +15,7 @@ import { scoutStars } from '../../game/scouting';
 import { ageOn } from '../../game/dates';
 import { useGame, useNav, useRouteState } from '../core';
 import { isRetro } from '../theme';
-import { CxDrop } from '../classic';
+import { CxDrop, CxLink, nationRoute, staffRoute } from '../classic';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
@@ -61,8 +61,8 @@ function ClassicClub({ id }: { id?: number }) {
       <div className="cx-subtitle">{t(`cl.ci.v.${v}`)}</div>
       {v === 'info' && <>
         {kv([
-          [t('col.nat'), natName(g.nations[c.nation]?.name)],
-          [t('col.comp'), compName(g.leagues[c.league]?.name) ?? c.league],
+          [t('col.nat'), <CxLink to={nationRoute(c.nation)}>{natName(g.nations[c.nation]?.name)}</CxLink>],
+          [t('col.comp'), g.comps[c.league] ? <CxLink to={{ name: 'competitions', id: c.league }}>{compName(g.leagues[c.league]?.name) ?? c.league}</CxLink> : compName(g.leagues[c.league]?.name) ?? c.league],
           [t('club.rep'), level(c.rep / 5)],
           ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? 'cl.ci.fin.secure' : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
           [t('club.stadium'), c.stadium],
@@ -72,8 +72,8 @@ function ClassicClub({ id }: { id?: number }) {
         ])}
         <div className="cx-section">{t('cl.ci.staff')}</div>
         <div className="cx-kv big">
-          <span>{manager}</span><span>{t('role.staff.manager')}</span>
-          {staff.map((x) => [<span key={`n${x.id}`}>{x.first} {x.last}</span>, <span key={`r${x.id}`}>{t(`role.staff.${x.role}`)}</span>])}
+          <span>{g.staff[c.manager] ? <CxLink to={staffRoute(g.staff[c.manager])}>{manager}</CxLink> : c.manager === -1 && !mine ? <CxLink to={{ name: 'managers' }}>{manager}</CxLink> : manager}</span><span>{t('role.staff.manager')}</span>
+          {staff.map((x) => [<span key={`n${x.id}`}><CxLink to={staffRoute(x)}>{x.first} {x.last}</CxLink></span>, <span key={`r${x.id}`}>{t(`role.staff.${x.role}`)}</span>])}
         </div>
       </>}
       {v === 'stats' && <>

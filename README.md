@@ -4,7 +4,7 @@
 
 > Uofficiel fan-hyldest uden kode fra det originale spil. Databaserne er Championship Manager 01/02-data (den originale 3.9.68-database og fællesskabets October 2026-opdatering), og det klassiske tema bruger baggrundsbilleder fra fællesskabets *Sunday League Pack*. Championship Manager © Sports Interactive / Eidos.
 
-**Spil det her:** https://skallerup.github.io/cm0102-reborn/
+**Spil det her:** https://cm0102reborn.com (spejl uden server: https://skallerup.github.io/cm0102-reborn/)
 
 ## Features
 
@@ -137,7 +137,7 @@ node scripts/smoke.mjs                       # end-to-end-test i browser (kræve
 
 ## Online multiplayer – sådan virker det
 
-Online-spil findes kun på Vercel-adressen (https://cm0102-reborn.vercel.app), fordi de kræver en server.
+Online-spil findes kun på https://cm0102reborn.com (Vercel), fordi de kræver en server.
 
 ```
 Klient A ─┐                         ┌─ Upstash Redis: rum, spillere, "klar", handlinger, lås
