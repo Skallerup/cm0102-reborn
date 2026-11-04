@@ -4,6 +4,7 @@ import type { Lang } from '../game/types';
 import { getLang, setLang, t } from '../i18n';
 import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
+import { withAiManagers } from './aiManagers';
 import './landing.css';
 
 const img = (name: string) => `${import.meta.env.BASE_URL}landing/${name}.webp`;
@@ -123,12 +124,14 @@ const SHOWCASE: { key: string; imgs: string[] }[] = [
 export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLang: (l: Lang) => void; onDraft?: () => void }) {
   useReveal();
   const [lightbox, setLightbox] = useState<{ src: string; alt: string } | null>(null);
-  const [top, setTop] = useState<RankRow[] | null>(null);
+  const [top, setTop] = useState<(RankRow & { ai?: boolean })[] | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const lang = getLang();
   useEffect(() => {
     document.title = t('land.docTitle');
-    if (rankingAvailable()) fetchBoard('career').then((d) => setTop(d?.rows.slice(0, 5) ?? []));
+    // de rigtige managere blandet med tydeligt mærkede AI-managere, så listen ikke står tom
+    if (rankingAvailable()) fetchBoard('career').then((d) => setTop(withAiManagers(d?.rows ?? [], 8)));
+    else setTop(withAiManagers([], 8));
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -202,7 +205,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
       </div>
 
       <section className="lp-stats lp-wrap">
-        {[[20000, '+', 'players'], [662, '', 'clubs'], [38, '', 'leagues'], [240, '', 'moments']].map(([n, s, k]) => (
+        {[[40000, '+', 'players'], [641, '', 'clubs'], [38, '', 'leagues'], [240, '', 'moments']].map(([n, s, k]) => (
           <div key={k as string} className="lp-stat reveal"><b><Counter to={n as number} suffix={s as string} /></b><span>{t(`land.stat.${k}`)}</span></div>
         ))}
       </section>
@@ -266,10 +269,11 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
         <div className="lp-rank-board reveal">
           <div className="lp-rank-head">🏆 {t('land.rankBoard')}</div>
           {top && top.length > 0 ? top.map((r, i) => (
-            <div key={r.id} className="lp-rank-row"><b>{i + 1}</b><span>{r.name}<small>{r.club} · {r.league}</small></span><em>{r.points}</em></div>
+            <div key={r.id} className={`lp-rank-row ${r.ai ? 'ai' : ''}`}><b>{i + 1}</b><span><span className="lp-rank-name">{r.name}{r.ai && <i className="lp-ai" title={t('land.rankAiHint')}>AI</i>}</span><small>{r.club} · {r.league}</small></span><em>{r.points}</em></div>
           )) : (
             <div className="lp-rank-empty">{t('land.rankEmpty')}</div>
           )}
+          {top?.some((r) => r.ai) && <div className="lp-rank-note">{t('land.rankAiNote')}</div>}
         </div>
       </section>
 
