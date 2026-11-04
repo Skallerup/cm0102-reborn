@@ -187,7 +187,10 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 /* ---- CM 01/02-shell (retro): venstre-sidebar, klub-farvet header, faner, bundlinje, firkantede knapper ---- */
 .cm-side, .cm-head, .cm-tabs, .cm-bottom { display: none; }
-.shell.cm-nav { grid-template-columns: 138px 1fr; grid-template-rows: auto auto 1fr auto; }
+/* minmax(0, 1fr) + min-width: 0: ellers vokser kolonnen til fanernes/tabellernes fulde bredde, og hele
+   shell'en (inkl. sidebaren med Fortsæt) skubbes ud over skærmkanten på smalle skærme */
+.shell.cm-nav { grid-template-columns: 138px minmax(0, 1fr); grid-template-rows: auto auto 1fr auto; }
+.shell.cm-nav > * { min-width: 0; }
 .shell.cm-nav .topbar, .shell.cm-nav .sidenav, .shell.cm-nav .mobile-tabs, .shell.cm-nav .menu-toggle { display: none !important; }
 .shell.cm-nav .cm-side { display: flex; grid-row: 1 / -1; grid-column: 1; }
 .shell.cm-nav .cm-head { display: flex; grid-row: 1; grid-column: 2; }
@@ -232,7 +235,8 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 /* bundlinje */
 .cm-bottom { align-items: center; gap: 8px; padding: 7px 10px; background: #000042; border-top: 2px solid #3a3ac4; }
-.cm-bottom-mid { display: flex; flex-wrap: nowrap; gap: 3px; flex: 1; justify-content: center; overflow-x: auto; }
+/* safe center: når knapperne ikke kan være der, starter de fra venstre og kan scrolles (ellers skæres de yderste af) */
+.cm-bottom-mid { display: flex; flex-wrap: nowrap; gap: 3px; flex: 1; min-width: 0; justify-content: safe center; overflow-x: auto; }
 .cm-bottom button { padding: 7px 13px; background: #10109a; color: #c2cdf2; border: 1px solid #3a3ac4; font-weight: 700; font-size: 12.5px; white-space: nowrap; }
 .cm-bottom button:hover:not(:disabled) { background: #1818a8; color: #fff; }
 .cm-bottom button.on { background: #1d1dab; color: #fff; border-color: #ffd84d; }
@@ -243,6 +247,27 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 /* firkantede knapper/felter i hele retro-tilstanden (som CM 01/02) */
 :root[data-skin='retro'] button, :root[data-skin='retro'] .button, :root[data-skin='retro'] input, :root[data-skin='retro'] select, :root[data-skin='retro'] .sel, :root[data-skin='retro'] .panel, :root[data-skin='retro'] .tag { border-radius: 2px; }
 :root[data-skin='retro'] .badge, :root[data-skin='retro'] .cm-tabs .badge, :root[data-skin='retro'] .cm-bottom .badge { border-radius: 999px; }
+
+/* mobil/smal tablet: sidebaren bliver en vandret bjælke under headeren (pile, Næste kamp, Fortsæt, Gem/Indstillinger/Afslut) */
+@media (max-width: 860px) {
+  .shell.cm-nav { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto 1fr auto; }
+  .shell.cm-nav .cm-head { grid-row: 1; grid-column: 1; min-height: 44px; padding: 0 12px; gap: 8px; }
+  .shell.cm-nav .cm-side { grid-row: 2; grid-column: 1; flex-direction: row; align-items: center; gap: 6px; padding: 6px 8px; overflow-x: auto; overflow-y: hidden; border-right: none; border-bottom: 2px solid #3a3ac4; }
+  .shell.cm-nav .cm-tabs { grid-row: 3; grid-column: 1; padding: 6px 8px 0; }
+  .shell.cm-nav .main { grid-row: 4; grid-column: 1; }
+  .shell.cm-nav .cm-bottom { grid-row: 5; grid-column: 1; gap: 6px; padding: 6px 8px; padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .cm-brand, .cm-side-info { display: none !important; }
+  .cm-side > * { flex-shrink: 0; }
+  .cm-arrows button { flex: none; padding: 6px 10px; }
+  .cm-go-wrap { flex-direction: row; }
+  .cm-go { white-space: nowrap; padding: 7px 10px; }
+  .cm-side-foot { flex-direction: row; margin-top: 0; margin-left: auto; padding-top: 0; padding-left: 6px; border-top: none; border-left: 1px solid #2a2a9a; }
+  .cm-side-foot button { white-space: nowrap; }
+  .cm-club-name { font-size: 18px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cm-head-date { font-size: 12px; white-space: nowrap; }
+  .cm-tabs button, .cm-bottom button { padding: 7px 11px; }
+  .cm-page { min-width: 0; }
+}
 
 .screen-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .screen-head h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }
