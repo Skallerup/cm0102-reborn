@@ -1,4 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { backgroundUrl } from './backgrounds';
+import { setStartSkin } from './theme';
 import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
@@ -27,6 +29,9 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const lang = getLang();
+  // klassisk tema: startmenuen i CM 01/02-stil med et af baggrundsbillederne
+  useEffect(() => { setStartSkin(true); return () => setStartSkin(false); }, []);
+  const photo = useMemo(() => backgroundUrl(new Date().toISOString().slice(0, 10), 'start'), []);
 
   const doImport = async (file: File | undefined) => {
     if (!file) return;
@@ -37,7 +42,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   };
 
   return (
-    <div className={`start ${view === 'menu' ? 'start-menu' : ''}`}>
+    <div className={`start ${view === 'menu' ? 'start-menu' : ''}`} style={{ '--cx-photo': `url("${photo}")` } as CSSProperties}>
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       {onHome && view === 'menu' && <button className="small start-home" onClick={onHome}>{t('start.toLanding')}</button>}
       <div className="start-box">

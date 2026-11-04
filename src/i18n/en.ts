@@ -16,7 +16,7 @@ export const en: Record<string, string> = {
   'start.seed': 'Seed', 'start.seedHint': 'Same seed + same choices gives exactly the same world – share it with a friend and compete.',
   'start.needNameClub': 'Enter a name and pick a club', 'start.begin': 'Start career', 'start.creating': 'Creating world…',
   'start.dataNote': 'Data: {src}. Attributes are derived from market value, age and statistics.',
-  'start.footer': 'Unofficial fan project inspired by the classic Championship Manager games. No original data or graphics.',
+  'start.footer': 'Unofficial fan project inspired by the classic Championship Manager games. No code from the original games; the databases are CM 01/02 data and community updates.',
 
   'top.unemployed': 'Unemployed', 'top.balance': 'Balance', 'top.budget': 'Transfer budget', 'top.next': 'Next',
   'top.continue': 'Continue', 'top.toTheMatch': 'To the match ›', 'top.toMatch': 'Next match »', 'top.toMatchHint': 'Skip to the next match (stops on important news)',

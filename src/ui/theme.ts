@@ -195,6 +195,13 @@ export function setThemeClub(id: number | undefined) {
 const retries = new Map<number, number>();
 /** Draft-skærmen er designet mørk – også når sæsonens spil er indlæst bagved */
 let holdDark = false;
+/** Startmenuen er åben: med det klassiske tema valgt får den også CM-skindet (forsiden/landingssiden gør ikke) */
+let startSkin = false;
+export function setStartSkin(on: boolean) {
+  if (startSkin === on) return;
+  startSkin = on;
+  applyTheme();
+}
 export function holdDarkTheme(on: boolean) {
   if (holdDark === on) return;
   holdDark = on;
@@ -218,6 +225,7 @@ export function applyTheme() {
   delete root.dataset.club;
   delete root.dataset.skin;
   for (const v of VARS) root.style.removeProperty(v);
+  if (theme === 'retro' && !hasGame() && startSkin) { root.dataset.skin = 'retro'; return; }
   // supportertemaer: guld og retro-CM
   if ((theme === 'gold' || theme === 'retro') && hasGame()) {
     root.dataset.skin = theme;

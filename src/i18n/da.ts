@@ -18,7 +18,7 @@ export const da: Record<string, string> = {
   'start.seed': 'Seed', 'start.seedHint': 'Samme seed + samme valg giver præcis samme verden – del den med en ven og konkurrér.',
   'start.needNameClub': 'Skriv et navn og vælg en klub', 'start.begin': 'Start karrieren', 'start.creating': 'Opretter verden…',
   'start.dataNote': 'Data: {src}. Attributter er beregnet ud fra markedsværdi, alder og statistik.',
-  'start.footer': 'Uofficielt fanprojekt inspireret af de klassiske Championship Manager-spil. Ingen originale data eller grafik.',
+  'start.footer': 'Uofficielt fanprojekt inspireret af de klassiske Championship Manager-spil. Ingen kode fra originalspillene; databaserne er CM 01/02-data og fællesskabets opdateringer.',
 
   // topbar og menu
   'top.unemployed': 'Arbejdsløs', 'top.balance': 'Saldo', 'top.budget': 'Transferbudget', 'top.next': 'Næste',
