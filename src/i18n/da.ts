@@ -20,6 +20,7 @@ export const da: Record<string, string> = {
   'start.dataNoteCm': 'Data: {src}. Evner, positioner og personlighed fra CM 01/02-databasen.',
   'start.dataNote': 'Data: {src}. Attributter er beregnet ud fra markedsværdi, alder og statistik.',
   'start.look': 'Udseende', 'start.lookModernHint': 'Lyst eller mørkt tema i klubbens farver med sidemenu – bygget til mobil, tablet og computer.', 'start.lookClassicHint': 'Som Championship Manager 01/02: faner, Tilbage/Frem, grønne menuer og de gamle baggrundsfotos.',
+  'start.lookNote': 'Udseendet gælder inde i spillet og kan altid skiftes i Indstillinger.',
   'start.footer': 'Uofficielt fanprojekt inspireret af de klassiske Championship Manager-spil. Ingen kode fra originalspillene; databaserne er CM 01/02-data og fællesskabets opdateringer.',
 
   // topbar og menu

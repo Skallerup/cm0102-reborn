@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { backgroundUrl } from './backgrounds';
-import { getTheme, setStartSkin, setTheme } from './theme';
+import { useEffect, useMemo, useState } from 'react';
+import { getTheme, setTheme } from './theme';
 import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
@@ -29,9 +28,6 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const lang = getLang();
-  // klassisk tema: startmenuen i CM 01/02-stil med et af baggrundsbillederne
-  useEffect(() => { setStartSkin(true); return () => setStartSkin(false); }, []);
-  const photo = useMemo(() => backgroundUrl(new Date().toISOString().slice(0, 10), 'start'), []);
 
   const doImport = async (file: File | undefined) => {
     if (!file) return;
@@ -42,7 +38,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   };
 
   return (
-    <div className={`start ${view === 'menu' ? 'start-menu' : ''}`} style={{ '--cx-photo': `url("${photo}")` } as CSSProperties}>
+    <div className={`start ${view === 'menu' ? 'start-menu' : ''}`}>
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       {onHome && view === 'menu' && <button className="small start-home" onClick={onHome}>{t('start.toLanding')}</button>}
       <div className="start-box">
@@ -181,7 +177,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
       </div>
     </Panel>
   );
-  // udseende: vælges her og slår igennem med det samme (også på denne side); kan altid skiftes i Indstillinger
+  // udseende: gælder inde i spillet (start- og opret-siden har ét fælles design); kan altid skiftes i Indstillinger
   const lookPicker = (
     <Panel title={t('start.look')}>
       <div className="db-choice">
@@ -192,6 +188,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
           <b>{t('land.looks.classic')}</b><span>{t('start.lookClassicHint')}</span>
         </button>
       </div>
+      <div className="muted" style={{ marginTop: 8 }}>{t('start.lookNote')}</div>
     </Panel>
   );
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;

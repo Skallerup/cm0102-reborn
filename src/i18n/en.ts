@@ -18,6 +18,7 @@ export const en: Record<string, string> = {
   'start.dataNoteCm': 'Data: {src}. Attributes, positions and personality from the CM 01/02 database.',
   'start.dataNote': 'Data: {src}. Attributes are derived from market value, age and statistics.',
   'start.look': 'Look', 'start.lookModernHint': 'Light or dark theme in your club colours with a side menu – built for phone, tablet and desktop.', 'start.lookClassicHint': 'Like Championship Manager 01/02: tabs, Back/Next, green menus and the old background photos.',
+  'start.lookNote': 'The look applies inside the game and can be changed any time in Options.',
   'start.footer': 'Unofficial fan project inspired by the classic Championship Manager games. No code from the original games; the databases are CM 01/02 data and community updates.',
 
   'top.unemployed': 'Unemployed', 'top.balance': 'Balance', 'top.budget': 'Transfer budget', 'top.next': 'Next',

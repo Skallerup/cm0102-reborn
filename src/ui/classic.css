@@ -522,24 +522,3 @@
 .cx-find-b { color: #ff9a2a; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 760px) { .cx-find { padding: 4px 6px; } .cx-find-row { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); } .cx-find-b { display: none; } .cx-find-name { font-size: 15px; } .cx-find-a { font-size: 13px; } }
 
-/* ---------- startmenuen i klassisk tema ---------- */
-:root[data-skin='retro'] .start { background: linear-gradient(rgba(4, 7, 28, 0.5), rgba(4, 7, 28, 0.78)), var(--cx-photo, none) center / cover fixed; }
-:root[data-skin='retro'] .start-aurora { display: none; }
-:root[data-skin='retro'] .start-box { padding: 14px; background: rgba(3, 5, 22, 0.78); border: 2px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: 6px 8px 0 rgba(0, 0, 0, 0.45); }
-:root[data-skin='retro'] .start .logo { margin-bottom: 14px; text-align: center; }
-:root[data-skin='retro'] .start .logo h1 { margin: 0; padding: 10px 12px; background: linear-gradient(180deg, #e0342a, #a31a14); color: #fff; font-size: clamp(28px, 5vw, 46px); font-weight: 900; letter-spacing: 0.01em; text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.45); border: 2px solid; border-color: #ff8a80 #5a0a06 #5a0a06 #ff8a80; }
-:root[data-skin='retro'] .start .logo h1 span { background: none; -webkit-text-fill-color: currentColor; color: #fff; }
-:root[data-skin='retro'] .start .logo p { color: var(--cx-cyan); font-weight: 700; text-shadow: 1px 1px 0 #000; }
-:root[data-skin='retro'] .start-pill { background: #0a1150; color: var(--cx-gold); border: 1px solid var(--cx-btn-hi); border-radius: 0; }
-:root[data-skin='retro'] .start-cta, :root[data-skin='retro'] .start-cta:hover:not(:disabled) { width: 100%; border-radius: 0; background: linear-gradient(180deg, #b3b7c2, #80858f); color: #fff; font-size: 20px; font-weight: 800; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; box-shadow: none; transform: none; }
-:root[data-skin='retro'] .start-cta:hover:not(:disabled) { background: linear-gradient(180deg, #c4c8d2, #8f949e); }
-:root[data-skin='retro'] .start-card, :root[data-skin='retro'] .start-card:hover:not(:disabled) { border-radius: 0; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: none; transform: none; }
-:root[data-skin='retro'] .start-card:hover:not(:disabled) { border-color: var(--cx-gold); }
-:root[data-skin='retro'] .start-card b { color: var(--cx-gold); }
-:root[data-skin='retro'] .start-card span { color: #d8defa; }
-:root[data-skin='retro'] .start-ghost, :root[data-skin='retro'] .start-lang, :root[data-skin='retro'] .start-cur, :root[data-skin='retro'] .start-lang button { border-radius: 0; }
-:root[data-skin='retro'] .start-ghost { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
-:root[data-skin='retro'] .start-lang { background: #0a1150; }
-:root[data-skin='retro'] .start-lang button.on { background: var(--cx-gold); color: #0b0f3a; }
-:root[data-skin='retro'] .start-home { border-radius: 0; }
-:root[data-skin='retro'] .start *:not(.badge):not(.start-live) { border-radius: 0; }
