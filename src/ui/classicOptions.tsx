@@ -170,9 +170,11 @@ export function ManagerMenu({ onRetire, allowed }: { onRetire: () => void; allow
   add('inbox', t('cl.mm.news'));
   add('transfers', t('cl.tr.title'), 'search');
   add('compare', t('cl.mm.compare'));
-  add('profile', t('cl.mm.stats'));
-  add('jobs', t('cl.mm.jobs'));
-  add('transfers', t('nav.transfers'), 'deals');
+  // Manager Stats, Job Information og Transfers: landets skærme (som i originalen)
+  const nat = (tab: string, label: string) => { if (allowed('nation')) items.push({ key: `nation${tab}`, label, onClick: () => nav({ name: 'nation', tab, state: { ntab: tab } }) }); };
+  nat('managers', t('cl.mm.stats'));
+  nat('jobs', t('cl.mm.jobs'));
+  nat('transfers', t('nav.transfers'));
   add('history', t('nav.history'));
   items.push({ key: 'sep2', sep: true }, { key: 'retire', label: t('cl.mm.retire'), onClick: onRetire });
   return <CxDrop className="cx-gameopt" fixed caret={false} label={g.manager.name} items={items} btn={{ className: 'cx-sbtn cx-mgr' }} />;
