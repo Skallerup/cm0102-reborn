@@ -7,6 +7,7 @@ import { Rng, hash } from './rng';
 import { addNews, gs, squad } from './state';
 import { traits } from './personality';
 import type { Club, TrainingCamp } from './types';
+import { econ } from './econ';
 
 export type CampDest = 'sun' | 'alps' | 'home' | 'tour';
 
@@ -21,7 +22,7 @@ export const CAMP_DESTS: Record<CampDest, { cost: number; morale: number; cond: 
 const CAMP_DAYS = 7;
 
 export function campCost(c: Club, dest: CampDest): number {
-  return Math.max(30_000, Math.round((c.wageBudget * CAMP_DESTS[dest].cost) / 10_000) * 10_000);
+  return Math.max(30_000 * econ(c.league), Math.round((c.wageBudget * CAMP_DESTS[dest].cost) / 10_000) * 10_000);
 }
 
 /** Perioder de næste ~5 måneder med mindst 14 dage uden kampe – lejren lægges midt i dem */

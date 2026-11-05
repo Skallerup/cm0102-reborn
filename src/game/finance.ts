@@ -72,12 +72,12 @@ export function monthlyFigures(c: Club) {
   const g = gs();
   const wealth = rulesFor(c.league, 20).wealth;
   const tier = g.leagues[c.league]?.tier ?? 2;
-  const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
+  const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * econ(c.league) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
   const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
   const boost = c.merchBoost && c.merchBoost.until >= g.date ? 1 + c.merchBoost.factor : 1;
-  const merch = Math.round(c.rep * c.rep * 25 * wealth * boost);
+  const merch = Math.round(c.rep * c.rep * 25 * econ(c.league) * wealth * boost);
   // driftsomkostninger: stadion, administration, scouting-netværk m.m.
-  const upkeep = Math.round(c.seats * 0.8 * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
+  const upkeep = Math.round(c.seats * 0.8 * econ(c.league) * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
   return { wealth, tv, sponsor, merch, upkeep };
 }
 
@@ -113,7 +113,7 @@ export function seasonPrizeMoney() {
     const wealth = rulesFor(lg, clubs.length).wealth;
     const tier = g.leagues[lg]?.tier ?? 1;
     clubs.sort((a, b) => b.rep - a.rep).forEach((c, i) => {
-      const prize = Math.round((clubs.length - i) * 400_000 * wealth * wealth * (tier === 1 ? 1 : 0.3));
+      const prize = Math.round((clubs.length - i) * 400_000 * econ(lg) * wealth * wealth * (tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
     });
@@ -124,7 +124,7 @@ export function seasonPrizeMoney() {
     const wealth = rulesFor(comp.id, order.length).wealth;
     order.forEach((cid, i) => {
       const c = g.clubs[cid];
-      const prize = Math.round((order.length - i) * 400_000 * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
+      const prize = Math.round((order.length - i) * 400_000 * econ(comp.id) * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
     });
@@ -154,7 +154,7 @@ export function newSeasonBudgets() {
 }
 
 export function fairTicketPrice(rep: number, league: string): number {
-  return Math.round(10 + rep * 0.35 * Math.sqrt(Math.max(0.25, rulesFor(league, 20).wealth)));
+  return Math.max(1, Math.round((10 + rep * 0.35 * Math.sqrt(Math.max(0.25, rulesFor(league, 20).wealth))) * econ(league)));
 }
 
 /** Hvad budgettet ville blive, hvis det blev sat i dag */
@@ -189,9 +189,9 @@ export function nextBudgetInfo(c: Club): { date: string; amount: number } {
 }
 
 export function transferBudgetFor(squadValue: number, wealth: number, balance: number): number {
-  const base = squadValue * 0.08 * Math.min(1.5, wealth + 0.2) + Math.max(0, balance) * (balance > 50_000_000 ? 0.4 : 0.25);
-  const cap = Math.max(0, balance) * 0.8 + 1_000_000;
-  return Math.round(Math.max(50_000, Math.min(base, cap)) / 50_000) * 50_000;
+  const base = squadValue * 0.08 * Math.min(1.5, wealth + 0.2) + Math.max(0, balance) * (balance > 50_000_000 * econ() ? 0.4 : 0.25);
+  const cap = Math.max(0, balance) * 0.8 + 1_000_000 * econ();
+  return Math.round(Math.max(50_000 * econ(), Math.min(base, cap)) / 50_000) * 50_000;
 }
 
 /** Andel af stadion der fyldes (0.15-1) ved en given billetpris */
@@ -224,10 +224,11 @@ import type { SponsorDeal, SponsorKind } from './types';
 import { addNews, newsRelevant } from './state';
 import { fanAttendance } from './fans';
 import { asOwner as asOwnerFinance, forEachHuman } from './humans';
+import { econ } from './econ';
 
 /** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */
 export function sponsorBase(c: Club): number {
-  return Math.round(Math.pow(c.rep, 2.5) * 25 * rulesFor(c.league, 20).wealth);
+  return Math.round(Math.pow(c.rep, 2.5) * 25 * econ(c.league) * rulesFor(c.league, 20).wealth);
 }
 
 /** Tre tilbud: sikker, bonus eller ambitiøs */
@@ -300,12 +301,12 @@ export function ffpReview() {
   // AI-ejere geninvesterer store overskud (anlæg, akademi, lån, udbytte) i stedet for at hobe penge op
   for (const c of Object.values(g.clubs)) {
     if (c.manager === -1) continue;
-    const cap = 80_000_000 * Math.max(0.3, rulesFor(c.league, 20).wealth);
+    const cap = 80_000_000 * econ(c.league) * Math.max(0.3, rulesFor(c.league, 20).wealth);
     if (c.balance > cap) {
       const invest = Math.round((c.balance - cap) * 0.6);
       c.balance -= invest;
-      if (c.facilities < 20 && invest > 5_000_000) c.facilities++;
-      if (c.youth < 20 && invest > 15_000_000) c.youth++;
+      if (c.facilities < 20 && invest > 5_000_000 * econ(c.league)) c.facilities++;
+      if (c.youth < 20 && invest > 15_000_000 * econ(c.league)) c.youth++;
     }
   }
   for (const c of Object.values(g.clubs)) {
@@ -317,9 +318,9 @@ export function ffpReview() {
     ffp.results = [...ffp.results, Math.round(result)].slice(-3);
     ffp.sanction = undefined;
     const lastTwo = ffp.results.slice(-2);
-    const limit = Math.max(15_000_000, income * 0.3) * rulesFor(c.league, 20).wealth;
+    const limit = Math.max(15_000_000 * econ(c.league), income * 0.3) * rulesFor(c.league, 20).wealth;
     if (lastTwo.length === 2 && lastTwo[0] + lastTwo[1] < -limit && g.leagues[c.league]?.tier === 1) {
-      const fine = Math.round(Math.max(1_000_000, income * 0.05));
+      const fine = Math.round(Math.max(1_000_000 * econ(c.league), income * 0.05));
       c.balance -= fine;
       ffp.sanction = 'restricted';
       const msg = { cat: 'finance' as const, key: 'ffp.sanction', params: { club: c.name, fee: fine } };

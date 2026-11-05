@@ -16,6 +16,9 @@ og læg ændringen i samme push.
 - SEO: `scripts/build-seo.ts` (kører i `prebuild`) laver statiske guides i `public/<slug>/index.html` (wonderkids, bedste
   spillere, taktik, 2026/27, Mac/iPad, FAQ, spil online) fra world-JSON'erne + `sitemap.xml` og `llms.txt`. Forsiden har
   læsbar tekst i `#root` til crawlere uden JS. Nye guides: tilføj i `pages` og i SW-`navigateFallbackDenylist`.
+- Prisniveau: `src/game/econ.ts`. Nye spil med den originale database får `GameState.econ` (faktor pr. liga, målt i
+  newgame.ts) – faste beløb ganges med `econ(liga)`, og `valueFromCA` bruger originalens værdikurve. Nye faste beløb
+  i økonomien skal ganges med `econ(...)`. Mål med `scripts/econ-run.ts`.
 - Tjek `git log` ved start – der arbejdes ofte på projektet i andre sessioner.
 
 ## Arkitektur i korte træk

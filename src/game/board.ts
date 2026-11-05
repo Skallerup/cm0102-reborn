@@ -125,7 +125,7 @@ export function boardMonthly() {
   const pos = leagueRows(comp).findIndex((r) => r.club === club.id) + 1;
   const delta = (g.board.expectedPos - pos) * 0.8;
   g.board.confidence = clamp(g.board.confidence + delta, 0, 100);
-  if (club.balance < -5_000_000) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
+  if (club.balance < -5_000_000 * econ(club.league)) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
   badContracts(club, played);
   // bestyrelsen lytter til fansene
   g.board.confidence = clamp(g.board.confidence + ((club.fanMood ?? 60) - 60) / 40, 0, 100);
@@ -550,7 +550,7 @@ export function negotiateJob(cid: number, ask: 'budget' | 'exp'): 'yes' | 'no' |
   // en anerkendt manager har mere at forhandle med; at bede om lavere forventninger er sværere
   const p = clamp(0.55 + (g.manager.rep - club.rep) / 40 - (ask === 'exp' ? 0.1 : 0), 0.15, 0.9);
   if (rng.chance(p)) {
-    if (ask === 'budget') talk.budget = Math.round(Math.max(talk.budget * 1.3, talk.budget + 1_000_000) / 100_000) * 100_000;
+    if (ask === 'budget') talk.budget = Math.round(Math.max(talk.budget * 1.3, talk.budget + 1_000_000 * econ()) / 100_000) * 100_000;
     else { const e = expectationFor(club, 1); talk.exp = e.exp; talk.expectedPos = e.pos; }
     return 'yes';
   }
@@ -596,6 +596,7 @@ function clamp(v: number, lo: number, hi: number) {
 // ---------- byggeprojekter ----------
 
 import type { ProjectKind } from './types';
+import { econ } from './econ';
 
 export interface ProjectOffer {
   kind: ProjectKind;
@@ -612,12 +613,12 @@ export function projectOffer(kind: ProjectKind): ProjectOffer | null {
   const wealth = Math.max(0.3, rulesForLeague(c.league));
   if (kind === 'stadium') {
     const amount = Math.max(1000, Math.round((c.seats * 0.15) / 500) * 500);
-    return { kind, amount, months: 10, cost: Math.round((amount * 2200 * Math.sqrt(wealth)) / 100_000) * 100_000 };
+    return { kind, amount, months: 10, cost: Math.round((amount * 2200 * econ() * Math.sqrt(wealth)) / 100_000) * 100_000 };
   }
   const level = kind === 'training' ? c.facilities : c.youth;
   if (level >= 20) return null;
   const amount = level >= 17 ? 1 : 2;
-  return { kind, amount, months: kind === 'training' ? 6 : 8, cost: Math.round((Math.pow(level + 1, 2) * 45_000 * Math.sqrt(wealth)) / 50_000) * 50_000 };
+  return { kind, amount, months: kind === 'training' ? 6 : 8, cost: Math.round((Math.pow(level + 1, 2) * 45_000 * econ() * Math.sqrt(wealth)) / 50_000) * 50_000 };
 }
 
 /** Anmod bestyrelsen om et byggeprojekt */
@@ -734,7 +735,7 @@ export function boardAskInfo(kind: BoardAsk): BoardAskInfo {
       return { likely: fans >= 50 && near ? 'yes' : fans >= 50 || near ? 'maybe' : 'no', pros, cons };
     }
     case 'youthDrive': {
-      const cost = Math.max(100_000, Math.round(c.wageBudget * 6 / 10_000) * 10_000);
+      const cost = Math.max(100_000 * econ(c.league), Math.round(c.wageBudget * 6 / 10_000) * 10_000);
       if (c.youthDrive === g.season) return { blocked: 'ba.blocked.youthDone', cost, likely: 'no', pros, cons };
       const m = Number(g.date.slice(5, 7));
       if (m === 3 && Number(g.date.slice(8, 10)) >= 15 || m === 4 || m === 5) return { blocked: 'ba.blocked.afterIntake', cost, likely: 'no', pros, cons };

@@ -28,16 +28,19 @@ import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
 
 // Den igangværende kamp overlever navigation mellem skærme
-/** Holdfarver til 2D-banen: ens eget hold i klubtemaets farver, modstanderen i en farve der skiller sig ud */
-function teamColors(home: number, away: number, me: number): [string, string, string, string] {
+/** Holdfarver (scoreboard, 2D, kommentar): begge hold i deres egne klubfarver – ligner de hinanden, spiller
+ *  udeholdet i sin anden farve (som et udebanesæt), og ellers i hvidt eller mørkeblåt */
+function teamColors(home: number, away: number, _me: number): [string, string, string, string] {
   const g = gs();
-  const css = getComputedStyle(document.documentElement);
-  const navBg = css.getPropertyValue('--nav-bg').trim(), navFg = css.getPropertyValue('--nav-fg').trim();
-  const own: [string, string] = navBg ? [navBg, navFg || '#fff'] : [g.clubs[me === 0 ? home : away]?.colors[0] ?? '#d7263d', g.clubs[me === 0 ? home : away]?.colors[1] ?? '#fff'];
-  // modstanderen: hvid, medmindre vores egen farve er lys – så mørkeblå
-  const lum = (c: string) => { const m = c.match(/\d+/g); if (!m) return c.toLowerCase().startsWith('#f') ? 1 : 0.4; const [r, gg, b] = m.map(Number); return (0.2126 * r + 0.7152 * gg + 0.0722 * b) / 255; };
-  const opp: [string, string] = lum(own[0]) > 0.7 ? ['#1d2b53', '#ffffff'] : ['#f4f4f4', '#1b2233'];
-  return me === 0 ? [own[0], own[1], opp[0], opp[1]] : [opp[0], opp[1], own[0], own[1]];
+  const kit = (id: number, fb: [string, string]): [string, string] => { const c = g.clubs[id]?.colors; return c?.[0] ? [c[0], c[1] ?? '#fff'] : fb; };
+  const h = kit(home, ['#d7263d', '#ffffff']);
+  let a = kit(away, ['#f4f4f4', '#1b2233']);
+  const dist = (x: string, y: string) => { const p = rgbOf(x), q = rgbOf(y); return p && q ? Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]) : 999; };
+  if (dist(h[0], a[0]) < 110) {
+    const alt: [string, string] = [a[1], a[0]];
+    a = dist(h[0], alt[0]) >= 110 ? alt : dist(h[0], '#f4f4f4') >= 110 ? ['#f4f4f4', '#1b2233'] : ['#1d2b53', '#ffffff'];
+  }
+  return [h[0], h[1], a[0], a[1]];
 }
 
 /** RGB fra '#rrggbb', 'rrggbb', '#rgb' eller 'rgb(r, g, b)' */

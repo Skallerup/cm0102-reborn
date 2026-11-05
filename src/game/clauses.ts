@@ -6,6 +6,7 @@ import { asOwner, isHumanClub } from './humans';
 import { hash01 } from './rng';
 import { addNews, gs } from './state';
 import type { Club, ContractClauses, Player } from './types';
+import { econ } from './econ';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 const round = (v: number, to: number) => Math.round(v / to) * to;
@@ -38,7 +39,7 @@ function expectedGoals(p: Player): number {
  */
 export function clauseWorth(p: Player, wage: number, years: number, c: ContractClauses, rank: number): number {
   let w = 0;
-  const v = Math.max(50_000, p.value);
+  const v = Math.max(50_000 * econ(), p.value);
   if (c.release) {
     // spillere kan lide en frikøbsklausul – jo lavere, jo mere frihed
     const ratio = c.release / v;
@@ -165,7 +166,7 @@ export function seasonWageClauses(tierBefore: Map<number, number>) {
 export function defaultRelease(p: Player, club: Club | undefined): number | undefined {
   const g = gs();
   if (!club) return undefined;
-  const v = Math.max(100_000, p.value);
+  const v = Math.max(100_000 * econ(), p.value);
   const r = hash01(g.seed, p.id, club.id, 77);
   if (g.nations[club.nation]?.code === 'ESP') return roundFee(v * (3 + r * 4));
   if (club.rep < 65 && r < 0.12) return roundFee(v * (2 + r * 10));

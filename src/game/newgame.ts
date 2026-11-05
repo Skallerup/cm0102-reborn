@@ -8,6 +8,7 @@ import {
 } from './data/generate';
 import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
+import { setEconomy } from './econ';
 import { addNews, addPlayer, ensureNumbers, gs, rebuildIndexes, setAutoNumbers, setGame, squad } from './state';
 import { initReleaseClauses } from './clauses';
 import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
@@ -103,6 +104,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
   if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; g.customRules = cm.rules as GameState['customRules']; }
+  // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
+  if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
   setGame(g);
 
   const leagueById = new Map(world.leagues.map((l) => [l.id, l]));
@@ -171,6 +174,27 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // trøjenumre: alle i hver trup får et unikt nummer
   for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
   setAutoNumbers(true);
+
+  // 2001-priser: pengeniveauet pr. liga = forholdet mellem klubbernes trupværdier (top 20) i 2001-priser og i
+  // nutidens priser – så TV-penge, sponsorer, præmier og billetpriser passer til spillerværdierne i hver liga
+  if (g.econ) {
+    const top = (vals: number[]) => vals.sort((a, b) => b - a).slice(0, 20).reduce((x, v) => x + v, 0);
+    const per: Record<string, number[]> = {};
+    for (const c of Object.values(g.clubs)) {
+      const sq = squad(c.id);
+      if (sq.length < 11) continue;
+      const old = top(sq.map((p) => p.value));
+      setEconomy(null);
+      const now = top(sq.map((p) => valueFromCA(p.ca, p.pa, ageOn(p.dob, date))));
+      setEconomy(g.econ);
+      (per[c.league] ??= []).push(old / Math.max(1, now));
+    }
+    const med = (xs: number[]) => xs.slice().sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+    for (const [l, xs] of Object.entries(per)) g.econ.leagues[l] = Math.round(med(xs) * 1000) / 1000;
+    const tops = world.leagues.filter((l) => l.tier === 1 && g.econ!.leagues[l.id]).map((l) => g.econ!.leagues[l.id]);
+    if (tops.length) g.econ.k = Math.round(med(tops) * 1000) / 1000;
+    setEconomy(g.econ);
+  }
 
   // Reputation og økonomi
   for (const c of Object.values(g.clubs)) {

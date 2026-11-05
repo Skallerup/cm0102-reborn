@@ -12,6 +12,7 @@ import { rng } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Fixture, Player } from './types';
 import { ANSWERS, NEW_KINDS, type PressFx } from './pressAnswers';
+import { econ } from './econ';
 
 export type PressKind = 'form' | 'opponent' | 'bigMatch' | 'starPlayer' | 'slump' | 'injury' | 'board' | 'rival' | 'formerClub' | 'unsettled' | 'result' | 'heavyLoss'
   | 'redCard' | 'hero' | 'newSigning' | 'youngster' | 'oppStar' | 'titleRace' | 'relegation' | 'europe' | 'fans' | 'rumour' | 'drought'
@@ -199,7 +200,7 @@ function topicsFor(f: Fixture, phase: 'pre' | 'post'): PressTopic[] {
   const mo = Number(g.date.slice(5, 7)), dd = Number(g.date.slice(8, 10));
   const windowOpen = mo === 7 || mo === 8 || mo === 1;
   const club = g.clubs[me];
-  if (club && windowOpen && club.transferBudget >= 2_000_000 && phase === 'pre') add('transferBudget');
+  if (club && windowOpen && club.transferBudget >= 2_000_000 * econ() && phase === 'pre') add('transferBudget');
   if ((mo === 8 && dd >= 27) || (mo === 1 && dd >= 27)) add('deadlineDay');
   if (club && club.balance < 0) add('finances');
   if (g.jobOffers.length) add('jobLinked');

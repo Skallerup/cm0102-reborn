@@ -16,10 +16,14 @@ export function hasGame(): boolean {
   return G !== null;
 }
 
+import { setEconomy } from './econ';
+
 export function setGame(g: GameState | null) {
   // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres
   if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);
   G = g;
+  // prisniveauet: nye spil med den originale 01/02-database spilles i 2001-priser (econ.ts)
+  setEconomy(g?.econ);
   if (g) rng.state = g.rng;
   rebuildIndexes();
   notify();

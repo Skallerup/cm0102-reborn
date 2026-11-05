@@ -1,3 +1,4 @@
+import { econ, isEra2001 } from '../econ';
 // Deterministisk generering af CM-attributter ud fra Transfermarkt-data,
 // samt fyld-spillere, regens og staff.
 import { A, ATTRS, ATTR_COUNT, ROLE_WEIGHTS, GROUPS } from '../attributes';
@@ -35,7 +36,9 @@ export function caFromValue(value: number, age: number): number {
 
 /** Omvendt: hvad er en spiller "værd" (bruges løbende i spillet) */
 export function valueFromCA(ca: number, pa: number, age: number): number {
-  let v = Math.pow(10, (ca - 40) / 35 + 4);
+  // 2001-priser (den originale database): originalens egen kurve – medianværdien for 24-29-årige i 3.9.68
+  // er £0,3 mio. ved CA 100, £2,2 mio. ved 140, £6 mio. ved 160 og £18 mio. ved 180 (i euro: / 0,86)
+  let v = isEra2001() ? Math.pow(10, (ca - 100) * 0.0225 + 5.48) / 0.86 : Math.pow(10, (ca - 40) / 35 + 4);
   if (age <= 23) {
     const pot = Math.max(0, pa - ca);
     v *= 1 + Math.min(3, pot / 25) * (age <= 20 ? 1 : 0.6);
@@ -53,7 +56,7 @@ export function roundValue(v: number): number {
 
 /** Ugeløn ud fra værdi og ligaens økonomi (0.4-1.6) */
 export function wageFor(value: number, wealth = 1): number {
-  const w = Math.max(400, value * 0.0021 * Math.sqrt(wealth) + 3000 * wealth);
+  const w = Math.max(400 * econ(), value * 0.0021 * Math.sqrt(wealth) + 3000 * econ() * wealth);
   if (w < 5000) return Math.round(w / 50) * 50;
   return Math.round(w / 500) * 500;
 }
@@ -317,7 +320,7 @@ export function makeStaff(o: { id: number; first: string; last: string; nation: 
     role: o.role,
     attrs,
     rep: clamp(Math.round(o.level + r.normal(0, 8)), 1, 100),
-    wage: Math.round(((o.role === 'manager' ? 800 : o.role === 'assistant' ? 330 : 250) * Math.pow(1.05, Math.max(0, o.level))) / 50) * 50 + 300,
+    wage: Math.round(((o.role === 'manager' ? 800 : o.role === 'assistant' ? 330 : 250) * econ() * Math.pow(1.05, Math.max(0, o.level))) / 50) * 50 + Math.round(300 * econ()),
     expires: `${y + r.int(1, 3)}-06-30`,
     style: o.role === 'manager' ? { formation: r.weighted(AI_FORMATIONS, (f) => f[1])![0], mentality: r.int(1, 3) } : undefined,
   };

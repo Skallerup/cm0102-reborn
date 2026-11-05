@@ -139,3 +139,63 @@ Hver kamp gemmer:
 - zonekontrol
 
 Assistenten bruger tallene til at forklare *hvorfor* kampen gik, som den gik.
+
+## Originalens regler – trin for trin (`rules: 'original'`)
+
+Kilde: `src/game/engine/cm0102-original-rules.ts`. Reglerne er læst fra `cm0102.exe` 3.9.68 og Mac-oversættelsen `cm0102_recomp`, og hver regel har adressen på originalens funktion. Reglerne indføres én ad gangen bag motorens valg `rules` (`'current'` er standard). Hvert trin måles mod originalens egen Premier League-sæson 2001/02. Tal, der ikke kommer fra originalen, er markeret som skønnede.
+
+### Trin 0 – baseline (2026-11-05, før ændringer)
+
+| Måling | Originalen | Original database (frø 2001 / 77) | Moderne database |
+|---|---|---|---|
+| Mål pr. kamp (9 sæsoner PL) | 2,87 | 2,87 / 2,83 | 2,67 (benchmark, topligaer) |
+| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 52 / 24 / 24 – 51 / 25 / 25 % | 44 / 24 / 32 % |
+| 0-0 | 5,3 % | 7,1 / 7,8 % | 8,5 % |
+| Mester / sidst (point) | 84 / 25 | 78 / 28 – 82 / 24 | PL 76 / 24 |
+| Topscorer | 23 | 31,2 / 30,8 | 29 (snit) |
+| Spredning scorede / indladte (sd) | 9 / 16 | 9,8 / 11,5 – 11,9 / 10,8 | – |
+| Skud / på mål pr. kamp (match-stats, 1500) | 17,2 / 10,3 | 16,5 / 10,6 | 27,8 / 9,7 |
+| Hjørnespark / offside | 5,0 / 7,4 | 5,3 / 4,3 | 8,2 / 3,9 |
+| Gule / røde | 1,70 / 0,14 | 1,63 / 0,12 | 3,49 / 0,17 |
+| Tillægstid efter 90' | – | 4,3 min | 4,4 min |
+| Uafgjort / ét måls føring holdt efter 75' (draw-diag) | – | – | 24,4 % / 82 % |
+
+Taktik-laboratoriet (1500 kampe) har samme udslag som før, fx at bytte angriber og midtstopper koster −0,50 point pr. kamp og at bytte målmand og angriber koster −0,89.
+
+### Trin 1 – valg og test
+
+- `rules?: 'current' | 'original'` i `EngineOptions` (match.ts) og i `prepareMatch` (sim.ts). Standard er `'current'`, så motoren er uændret.
+- `tests/original-rules.test.ts` tjekker regelfilen med de samme påstande som `check.ts`.
+
+### Trin 2 – karakterer (regel 1; begge databaser)
+
+Kilde: sub_6eaea0, _f_006eada0, sub_702050, sub_6ea4e0 og sub_6ce460.
+
+- Start: 6,1 for startelleveren og 6,4 for indskiftere. Før var det 6,2 for alle.
+- Mål: +0,65 (før +1,0). Assist: +0,275 (før +0,5).
+- Redning: +0,35, stor redning +0,60. Før var det 0,22 + 0,8 × xG.
+- Frispark uden kort: −0,025 (før −0,05). Et kort erstatter frisparkets fradrag.
+- Gult kort: −0,225, efter 45' ganget med 45/minut (før −0,3).
+- Rødt kort: −1,0, og −0,75 for et professionelt frispark (før −1,5).
+- Korte indhop trækkes mod deres egen startværdi.
+- Motorens egne små plusser og minusser (afleveringer, tacklinger, dueller) og tillæggene ved slutfløjt (resultat ±0,25, holdt nullet +0,35) er bevaret. Originalens tal for dem er ikke kendt.
+- Computerens udskiftning ved lav karakter: tærsklen følger starten (`RATING.start − 0,1` = 6,0). Før var den 6,1 med start 6,2.
+
+| `scripts/ratings-diag.ts`, 1000 kampe | Før (original / moderne) | Efter (original / moderne) |
+|---|---|---|
+| Snitkarakter | 6,60 / 6,54 | 6,53 / 6,50 |
+| Målmænd | 7,13 / 7,13 | 7,26 / 7,31 |
+| Målscorere | 7,70 / 7,65 | 7,24 / 7,24 |
+| Indskiftere | 6,22 / 6,21 | 6,41 / 6,41 |
+| Kampens spiller scorede | 60,7 / 55,7 % | 33,4 / 28,8 % |
+
+Original-lab med 9 sæsoner:
+
+| Frø | Mål før → efter | Topscorer før → efter |
+|---|---|---|
+| 2001 | 2,87 → 2,79 | 31,2 → 33,2 |
+| 77 | 2,83 → 2,82 | 30,8 → 36,8 |
+| 5 | 2,96 → 2,94 | 33,1 → 31,3 |
+| 11 | 2,90 → 2,75 | 34,0 → 29,7 |
+
+Topscorerens udsving er støj (±3), og der er ingen systematisk retning. Moderne benchmark: 2,68 mål, 43,5 / 24,2 / 32,3 %, topscorer 27 (før 28,8).

@@ -10,6 +10,7 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
+import { RATING, yellowRatingDelta } from './cm0102-original-rules';
 import { pitchFx, weatherFx, type Pitch, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
@@ -76,6 +77,9 @@ export interface EngineOptions {
   closeSlope?: number;
   /** tillæg til andelen af afslutninger, der går på mål (pr. database; påvirker ikke målene) */
   onTarget?: number;
+  /** Hvilke regler motoren følger: 'current' (vores egne, standard) eller 'original' (CM 01/02's regler læst fra
+   *  cm0102.exe 3.9.68, se cm0102-original-rules.ts) – indføres én regel ad gangen, se docs/ENGINE.md */
+  rules?: 'current' | 'original';
   /** Hvor meget et hold, der fører med 2+ mål, slapper af gennem hele kampen (pr. måls forspring ud over det første) */
   ease?: number;
   /** Banens tilstand */
@@ -204,6 +208,8 @@ export class MatchSim {
   private breakawayOrigin = '';
   /** oprindelse for næste afslutning (indlæg, dribling, pres …) */
   private originNext = '';
+  /** spilleren, der lige har begået frisparket (et kort erstatter frisparkets −0,025) */
+  private foulBy: SP | null = null;
   /** opspillet til den næste afslutning (2D) – gælder kun i samme eller næste øjeblik */
   private setupNext: { k: string; by: number; moment: number } | null = null;
   /** højt pres: en angriber har erobret bolden højt og får en chance */
@@ -329,7 +335,8 @@ export class MatchSim {
       instr: rt.tactic.individual[slot],
       ax: 0, ay: 0, dx: 0, dy: 0,
       off: false, yellow: 0,
-      rating: 6.2,
+      // originalen: 6,1 for startelleveren, 6,4 for spillere fra bænken (sub_6eaea0)
+      rating: minute > 0 ? RATING.startSubstitute : RATING.start,
       enteredAt: minute,
       line: { id: p.id, team: rt.idx, rating: 6, goals: 0, assists: 0, minutes: 0, yellow: 0, red: false, injured: false, sub: minute > 0, slot, shots: 0, tackles: 0, passes: 0, passesOk: 0, cond: p.condition },
     };
@@ -1142,7 +1149,9 @@ export class MatchSim {
       return false;
     }
     O.stats.fouls++;
-    this.rate(def, -0.05);
+    // frispark uden kort −0,025 (originalen, sub_6ea4e0) – et kort erstatter det (se book/sendOff)
+    this.rate(def, RATING.foulNoCard);
+    this.foulBy = def;
     this.injuryCheck(victim);
     // Kort
     // kalibreret (scripts/cards.ts): ~2 røde kort pr. hold pr. sæson, heraf ~40% andet gule kort
@@ -1182,7 +1191,9 @@ export class MatchSim {
     this.stoppage += 0.25;
     sp.yellow++;
     t.stats.yellows++;
-    this.rate(sp, -0.3);
+    // gult kort −0,225, efter 45' × 45/minut (originalen, sub_6ea4e0)
+    this.rate(sp, yellowRatingDelta(this.minute) - (this.foulBy === sp ? RATING.foulNoCard : 0));
+    this.foulBy = null;
     if (sp.yellow >= 2) {
       this.sendOff(t, sp, true);
       return;
@@ -1198,7 +1209,9 @@ export class MatchSim {
     sp.line.red = true;
     sp.line.yellow = second ? 1 : sp.line.yellow;
     t.stats.reds++;
-    this.rate(sp, -1.5);
+    // rødt kort −1,0 – for et professionelt frispark −0,75 (originalen, sub_6ea4e0)
+    this.rate(sp, (why === 'red-professional' ? RATING.redProfessional : RATING.red) - (this.foulBy === sp ? RATING.foulNoCard : 0));
+    this.foulBy = null;
     this.events.push({ m: this.minute, t: t.idx, k: 'red', p: sp.p.id });
     this.line(second ? 'second-yellow' : why ?? 'red', sp, null, true);
     sp.line.minutes = this.minute - sp.enteredAt;
@@ -1344,7 +1357,8 @@ export class MatchSim {
       rec.outcome = 'saved';
       T.stats.onTarget++;
       this.rate(s, 0.08);
-      this.rate(gk, 0.22 + xg * 0.8);
+      // redning +0,35, stor redning +0,60 (originalen, sub_702050)
+      this.rate(gk, xg > 0.25 || kind === 'pen' ? RATING.greatSave : RATING.goodSave);
       if (assister) this.rate(assister, 0.08);
       this.line(kind === 'pen' ? 'pen-saved' : kind === 'header' ? 'header-saved' : xg > 0.25 ? 'bigsave' : 'save', s, gk, kind === 'pen' || xg > 0.25);
       if (kind === 'pen') this.events.push({ m: this.minute, t: T.idx, k: 'pen-miss', p: s.p.id });
@@ -1402,10 +1416,11 @@ export class MatchSim {
     }
     T.stats.goals++;
     s.line.goals++;
-    this.rate(s, 1.0);
+    // mål +0,65, assist +0,275 (originalen, sub_702050)
+    this.rate(s, RATING.goal);
     if (assister && kind !== 'pen' && kind !== 'fk') {
       assister.line.assists++;
-      this.rate(assister, 0.5);
+      this.rate(assister, RATING.assist);
     }
     const gk = this.gk(O);
     this.rate(gk, -0.25);
@@ -1544,7 +1559,7 @@ export class MatchSim {
       if (!this.r.chance(chance)) continue;
       const cands = t.on.filter((s) => !s.off && t.tactic.slots[s.slot].pos !== 'GK');
       const worst = cands.sort((a, b) => a.cond * 10 + a.rating - (b.cond * 10 + b.rating))[0];
-      if (worst && (worst.cond < 0.72 || worst.rating < 6.1)) this.autoSub(t, worst);
+      if (worst && (worst.cond < 0.72 || worst.rating < RATING.start - 0.1)) this.autoSub(t, worst);
     }
   }
 
@@ -1640,7 +1655,8 @@ export class MatchSim {
         if (opp.stats.goals === 0 && (role === 'GK' || role === 'CB' || role === 'FB') && s.line.minutes >= 60) r += 0.35;
         // korte indhop trækkes mod 6
         const w = Math.min(1, s.line.minutes / 60);
-        r = 6.2 + (r - 6.2) * w;
+        const base = s.enteredAt > 0 ? RATING.startSubstitute : RATING.start;
+        r = base + (r - base) * w;
         s.line.rating = Math.round(clamp(r, 1, 10) * 10) / 10;
         s.line.cond = Math.round(s.cond * 100);
       }

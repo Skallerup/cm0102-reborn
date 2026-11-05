@@ -17,6 +17,7 @@ import type { Club, ContractClauses, Player, Role, TransferOffer } from './types
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
+import { econ } from './econ';
 
 export function windowOpen(date = gs().date): boolean {
   const m = month(date);
@@ -145,7 +146,7 @@ export function askingPrice(p: Player): number {
   }
   const club = g.clubs[p.club];
   if (club && club.balance < 0) f *= 0.85;
-  return roundValue(Math.max(10_000, p.value * f));
+  return roundValue(Math.max(10_000 * econ(), p.value * f));
 }
 
 /** Hvor mange gange udbudsprisen skal der til, før klubben overhovedet vil sælge (0 = spilleren er til salg) */
@@ -193,12 +194,13 @@ function otherTransferNews(buyer: Club, seller: Club | undefined, fee: number, l
   const me = g.clubs[g.userClub];
   if (!me || loan || fee <= 0) return false;
   const inMyLeague = buyer.league === me.league || seller?.league === me.league;
-  const big = Math.max(500_000, rulesFor(me.league, 20).wealth * 2_000_000);
+  const big = Math.max(500_000, rulesFor(me.league, 20).wealth * 2_000_000) * econ();
   return inMyLeague && fee >= big;
 }
 
 /** Verdens højeste ugeløn (europæisk topniveau ~ 0,6-0,7 mio. €) */
-const MAX_WAGE = 750_000;
+const MAX_WAGE_NOW = 750_000;
+const maxWage = () => MAX_WAGE_NOW * econ();
 
 export function wageDemand(p: Player, club: Club): number {
   const g = gs();
@@ -215,7 +217,7 @@ export function wageDemand(p: Player, club: Club): number {
   const ag = AGENT_RULES[agentOf(p).style];
   d *= ag.wage;
   if (p.club === club.id) d = Math.max(anchor * 1.04, market * 0.95) * amb * ag.renew;
-  d = Math.min(d, market * 2.4, MAX_WAGE);
+  d = Math.min(d, market * 2.4, maxWage());
   void g;
   return Math.round(d / 50) * 50;
 }
@@ -616,7 +618,7 @@ export function setListPrice(pid: number, price: number | null) {
   if (!p) return;
   if (price === null) { p.listed = false; p.listPrice = undefined; return; }
   p.listed = true;
-  p.listPrice = roundValue(Math.max(10_000, price));
+  p.listPrice = roundValue(Math.max(10_000 * econ(), price));
 }
 
 /** Kompensationen ved fritstilling: halvdelen af den resterende løn */
@@ -628,7 +630,7 @@ export function releaseCost(p: Player): number {
 
 /** Bestyrelsen blokerer fritstilling af en af truppens mest værdifulde spillere (som i CM 01/02) */
 export function releaseBlocked(p: Player): boolean {
-  if (!p.club || p.value < 500_000) return false;
+  if (!p.club || p.value < 500_000 * econ()) return false;
   const vals = squad(p.club).map((x) => x.value).sort((a, b) => b - a);
   return p.value >= (vals[4] ?? 0);
 }
@@ -1013,7 +1015,7 @@ function aiClubTurn(club: Club) {
     return;
   }
   const ask = askingPrice(target);
-  const fee = Math.max(10_000, roundValue(ask * rng.range(0.85, 1.1)));
+  const fee = Math.max(10_000 * econ(), roundValue(ask * rng.range(0.85, 1.1)));
   if (isHumanClub(target.club)) {
     // bud til en menneskelig manager
     if (!canBidOnHuman(target, club.id)) return;
@@ -1081,7 +1083,7 @@ export function aiPursuits() {
 /** Budkrig: når brugeren byder på en attraktiv spiller, kan en anden klub melde sig */
 function rivalBid(o: TransferOffer, p: Player): TransferOffer['rival'] {
   const g = gs();
-  if (o.rival !== undefined || p.value < 1_500_000 || !rng.chance(0.25)) return o.rival;
+  if (o.rival !== undefined || p.value < 1_500_000 * econ() || !rng.chance(0.25)) return o.rival;
   const ask = askingPrice(p);
   const level = (c: Club) => clubLevel(c.id);
   const cands = Object.values(g.clubs).filter((c) => c.id !== o.buyer && c.id !== p.club && !isHumanClub(c.id) && c.transferBudget >= ask && Math.abs(level(c) - p.ca) <= 20 && playerInterest(p, c) === 'yes');
@@ -1103,7 +1105,7 @@ export function aiLoanOptions() {
     const cands = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.id !== g.userClub && Math.abs(clubLevel(c.id) - p.ca) <= 12 && c.transferBudget >= p.value);
     if (!cands.length) continue;
     const club = rng.pick(cands);
-    const option = roundValue(Math.max(p.value * rng.range(1.0, 1.3), 50_000));
+    const option = roundValue(Math.max(p.value * rng.range(1.0, 1.3), 50_000 * econ()));
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee: 0, loan: true, option, status: 'pending', created: g.date, respondBy: addDays(g.date, 6) };
     g.offers.push(o);
     addNews({ cat: 'transfer', key: 'transfer.loanOptionBid', params: { club: club.name, player: pname(p), fee: option }, link: { kind: 'offer', id: o.id } });
@@ -1329,7 +1331,7 @@ export function aiBidsForListed() {
     if (!cands.length) continue;
     const club = rng.weighted(cands, (c) => (analyzeNeeds(c.id).some((n) => n.role === role) ? 3 : 1) * (1 + c.rep / 50))!;
     const cheap = ask < p.value * 0.9;
-    const fee = Math.max(10_000, roundValue(Math.min(club.transferBudget, ask) * (cheap ? rng.range(0.92, 1.02) : rng.range(0.72, 0.98))));
+    const fee = Math.max(10_000 * econ(), roundValue(Math.min(club.transferBudget, ask) * (cheap ? rng.range(0.92, 1.02) : rng.range(0.72, 0.98))));
     const maxFee = roundValue(Math.min(club.transferBudget, Math.max(fee, ask * rng.range(0.95, 1.12), p.value * rng.range(0.9, 1.2))));
     const o: TransferOffer = loanOnly
       ? { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee: 0, loan: true, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) }

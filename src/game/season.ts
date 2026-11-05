@@ -22,6 +22,7 @@ import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './award
 import { initKnowledge } from './scouting';
 import type { Club, Player, SeasonFinance, SeasonSummary } from './types';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
+import { econ } from './econ';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
@@ -138,7 +139,7 @@ function promotionRelegation() {
     if (!wasUp && !isHumanClub(cid)) {
       for (const p of squad(cid).filter((x) => !x.loan && x.contract).sort((a, b) => b.ca - a.ca).slice(0, 8)) {
         p.listed = true;
-        p.listPrice = Math.max(10_000, Math.round(p.value * 0.65 / 50_000) * 50_000);
+        p.listPrice = Math.max(10_000 * econ(), Math.round(p.value * 0.65 / 50_000) * 50_000);
       }
     }
     forEachHuman(() => {
