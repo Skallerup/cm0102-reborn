@@ -253,7 +253,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   const inGame = new Set(clubs.map((c) => c[0]));
 
   // spillere
-  const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds'];
+  const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number'];
   const players: WorldData['players'] = [];
   const ratings: Record<number, CMRatings> = {};
   const pName = names; void pName;
@@ -300,6 +300,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     players.push([
       id, commonName ? '' : firstName, commonName || lastName || firstName, dob, nation, club, subPos(pos, side), foot, 0,
       Math.round(value), Math.round(value), S.u8(o + 34), S.u8(o + 35), contract ? `${contract.slice(0, 4)}-06-30` : '', 0, 0, 0, 0, 0, 0,
+      // trøjenummeret (byte 4 i spillerposten, 0 = intet)
+      Math.max(0, Math.min(99, S.i8(po + 4))),
     ]);
     ratings[id] = { ca, pa, attrs, pos, side };
   }

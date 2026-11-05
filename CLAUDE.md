@@ -33,6 +33,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-05 – Squad Numbers: `Player.number`, læst fra CM-databaserne (byte 4 i spillerposten, felt `number` i
+  world-JSON). `setClub` giver nyt nummer ved klubskifte (`pickNumber`), `ensureNumbers` gør dem unikke (nyt spil og
+  ved indlæsning). Action `squadNumber` bytter med holdkammeraten. Skærm `SquadNumbers.tsx`. Test: tests/squadNumbers.test.ts.
 - 2026-11-05 – Moderne udseende: baggrundsfotos (`.main.mbg`, `--m-photo`, pref `cm-modern-bg`) og stadion på kampdage
   (`mbg-stadium`, samme pref `cm-stadium-bg` som klassisk). Begge kan slås fra i Options.
 - 2026-11-05 – 2D-opgradering: ShotRecord har `save` (hold/parry/spill/corner), `blocker`, `og`, `setup`/`setupBy`

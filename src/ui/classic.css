@@ -707,3 +707,7 @@
 .cx-title-logo .crest, .cx-title-logo .kit { width: 44px !important; height: 44px !important; object-fit: contain; }
 :root[data-cxlogo='off'] .cx-title-logo { display: none; }
 @media (max-width: 760px) { .cx-title-logo { left: 30px; } .cx-title-logo .crest, .cx-title-logo .kit { width: 28px !important; height: 28px !important; } }
+/* Squad Numbers (klassisk) */
+.cx-numbers { margin: 4px 8px; }
+.cx-numbers-hint { margin: 4px 0 8px; color: #fff; text-shadow: 1px 1px 0 #000; }
+.cx-numbers .sqn-num { color: #fff21f; }

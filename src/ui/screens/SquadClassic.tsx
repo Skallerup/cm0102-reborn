@@ -18,6 +18,7 @@ import { Rating, age, posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { Cliques, SquadTable } from './Squad';
+import { SquadNumbers } from './SquadNumbers';
 
 type Place = { kind: 'xi' | 'bench'; i: number } | null;
 
@@ -70,6 +71,7 @@ type Info = { key: string; label: string; show: (p: Player) => ReactNode };
 function infos(g: GameState): Info[] {
   return [
     { key: 'pos', label: t('cl.sq.positions'), show: (p) => posStr(p) },
+    { key: 'num', label: t('cl.sq.number'), show: (p) => p.number ?? '–' },
     { key: 'cond', label: t('cl.pl.condition'), show: (p) => `${Math.round(p.condition)}%` },
     { key: 'morale', label: t('col.morale'), show: (p) => t(moraleKey(p.morale)) },
     { key: 'form', label: t('col.form'), show: (p) => (p.form.length ? formAvg(p).toFixed(1) : '-') },
@@ -97,6 +99,7 @@ function sorts(g: GameState, tac: Tactic): Sort[] {
     { key: 'name', label: t('col.name'), cmp: name },
     { key: 'pos', label: t('cl.sq.positions'), cmp: asc(posOrder) },
     { key: 'sel', label: t('cl.sq.selection'), cmp: asc(sel) },
+    { key: 'num', label: t('cl.sq.number'), cmp: asc((p) => p.number ?? 100) },
     { key: 'form', label: t('col.form'), cmp: desc(formAvg) },
     { key: 'morale', label: t('col.morale'), cmp: desc((p) => p.morale) },
     { key: 'cond', label: t('cl.pl.condition'), cmp: desc((p) => p.condition) },
@@ -289,7 +292,7 @@ export function ClassicSquad() {
     ...INFO.map((x) => ({ key: x.key, label: x.label, checked: !table && x.key === info.key, onClick: () => setView(x.key) })),
     { key: 'sep', sep: true },
     { key: 'h', head: t('cl.sq.fullTable') },
-    ...([['tbl:general', 'squad.general'], ['tbl:attrs', 'squad.attrs'], ['tbl:contracts', 'squad.contracts']] as const).map(([k, l]) => ({ key: k, label: t(l), checked: view === k, onClick: () => setView(k) })),
+    ...([['tbl:general', 'squad.general'], ['tbl:attrs', 'squad.attrs'], ['tbl:contracts', 'squad.contracts'], ['tbl:numbers', 'sqn.title']] as const).map(([k, l]) => ({ key: k, label: t(l), checked: view === k, onClick: () => setView(k) })),
   ];
 
   return (
@@ -322,7 +325,7 @@ export function ClassicSquad() {
           </div>
         )}
       </Head>
-      {table ? <SquadTable players={players} view={view.slice(4)} userClub={g.userClub} /> : (
+      {view === 'tbl:numbers' && !g.draft ? <SquadNumbers players={players} classic /> : table ? <SquadTable players={players} view={view.slice(4)} userClub={g.userClub} /> : (
         <>
           {fil[0] !== 'all' && <div className="cx-sq-filtered">{t('cl.sq.filtered', { filter: t(`cl.sq.f.${fil[0]}`), n: list.length, total: players.length })}</div>}
           <div className="cx-sq-cols">

@@ -76,6 +76,16 @@ async function run(look) {
     { name: 'find' }, { name: 'staff', id: Number(await gs(() => Object.keys(window.__cm.gs().staff)[0])) }, { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
   ];
   for (const r of screens) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); });
+  // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
+  await step('trøjenumre: skift nummer', async () => {
+    await go({ name: 'squad', state: look === 'klassisk' ? { cview: 'tbl:numbers' } : { view: 'numbers' } });
+    await page.waitForTimeout(400);
+    const [a, b] = await gs(() => { const g = window.__cm.gs(); const sq = Object.values(g.players).filter((p) => p.club === g.userClub).sort((x, y) => x.number - y.number); return [sq[1].id, sq[2].number]; });
+    await page.locator('select[aria-label]').nth(1).selectOption(String(b));
+    await page.waitForTimeout(300);
+    const ok = await gs(([id, n]) => { const g = window.__cm.gs(); const sq = Object.values(g.players).filter((p) => p.club === g.userClub); return g.players[id].number === n && new Set(sq.map((p) => p.number)).size === sq.length; }, [a, b]);
+    if (!ok) throw new Error('nummeret blev ikke byttet');
+  });
   // turneringsvælgeren skal skifte turnering, også når skærmen er åbnet på en bestemt (fx Champions League)
   await step('turneringsvælger skifter turnering', async () => {
     await go({ name: 'competitions', id: 'CL' });

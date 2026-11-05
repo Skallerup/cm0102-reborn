@@ -88,13 +88,50 @@ export function setClub(p: Player, club: number) {
     const arr = squadIndex.get(p.club);
     if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
   }
+  const moved = p.club !== club;
   p.club = club;
   if (club) {
     let arr = squadIndex.get(club);
     if (!arr) squadIndex.set(club, (arr = []));
     arr.push(p.id);
   }
+  // nyt trøjenummer ved klubskifte: det gamle, hvis det er ledigt – ellers et passende ledigt nummer
+  if (moved) p.number = club ? pickNumber(p, club, p.number) : undefined;
 }
+
+/** Foretrukne trøjenumre pr. position (som de klassiske numre: 1 mål, 2-5 forsvar, 6-8 midtbane, 9-11 angreb) */
+const PREFERRED: Record<string, number[]> = {
+  GK: [1, 13, 12, 21, 25, 30, 31], DEF: [2, 3, 4, 5, 6, 12, 14, 15, 16, 22, 23, 24, 26], MID: [8, 6, 7, 4, 10, 14, 16, 17, 18, 19, 20, 21, 22],
+  ATT: [9, 10, 11, 7, 18, 19, 20, 17, 27, 28, 29],
+};
+export function numberGroup(p: Player): keyof typeof PREFERRED {
+  // POSITIONS: GK, SW, D, DM, M, AM, F, WB (se attributes.ts)
+  const best = p.pos.indexOf(Math.max(...p.pos));
+  return best === 0 ? 'GK' : best <= 2 || best === 7 ? 'DEF' : best <= 5 ? 'MID' : 'ATT';
+}
+/** Et ledigt nummer i klubben til spilleren (ønsket nummer først, så positionens numre, så det laveste ledige) */
+export function pickNumber(p: Player, club: number, want?: number): number {
+  const taken = new Set(squad(club).filter((x) => x.id !== p.id && x.number).map((x) => x.number!));
+  if (want && want >= 1 && want <= 99 && !taken.has(want)) return want;
+  for (const n of PREFERRED[numberGroup(p)]) if (!taken.has(n)) return n;
+  for (let n = 2; n <= 99; n++) if (!taken.has(n)) return n;
+  return 99;
+}
+/** Giv alle i truppen et unikt nummer (dubletter: den bedste spiller beholder nummeret) */
+export function ensureNumbers(club: number) {
+  const sq = squad(club).slice().sort((a, b) => b.ca - a.ca);
+  const used = new Set<number>();
+  const later: Player[] = [];
+  for (const p of sq) {
+    if (p.number && p.number <= 99 && !used.has(p.number)) used.add(p.number);
+    else { p.number = undefined; later.push(p); }
+  }
+  for (const p of later) { p.number = pickNumber(p, club); used.add(p.number); }
+}
+
+/** Slås fra, mens et nyt spil bygges (numrene uddeles samlet bagefter med ensureNumbers) */
+let autoNumbers = true;
+export function setAutoNumbers(on: boolean) { autoNumbers = on; }
 
 export function addPlayer(p: Player) {
   gs().players[p.id] = p;
@@ -102,6 +139,8 @@ export function addPlayer(p: Player) {
     let arr = squadIndex.get(p.club);
     if (!arr) squadIndex.set(p.club, (arr = []));
     arr.push(p.id);
+    // nye spillere i truppen (ungdomsindtag, regens) får et ledigt nummer
+    if (autoNumbers && !p.number) p.number = pickNumber(p, p.club);
   }
 }
 

@@ -1354,3 +1354,8 @@ button.hub-card:hover, .hub-card.on { border-color: var(--accent); }
 .acc-tag { display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; background: rgba(127, 227, 255, 0.14); color: #7fe3ff; vertical-align: 1px; }
 .acc-tag.dim { background: rgba(255, 255, 255, 0.06); color: var(--muted); }
 .acc-toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 10001; max-width: calc(100% - 32px); padding: 10px 18px; border-radius: 12px; background: #0f1626; color: #e6ebf5; border: 1px solid #2a3550; box-shadow: 0 12px 40px rgba(0,0,0,.45); font: 600 14px Inter, system-ui, sans-serif; cursor: pointer; }
+/* Squad Numbers (moderne) */
+.squad-numbers { padding: 14px 18px; }
+.squad-numbers .table th:first-child, .squad-numbers .table td:first-child { width: 48px; text-align: right; padding-right: 14px; }
+.squad-numbers select { min-width: 200px; }
+.sqn-num { font-family: var(--mono); font-size: 15px; }

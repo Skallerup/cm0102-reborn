@@ -146,6 +146,7 @@ function ProfileTab({ p }: { p: Player }) {
       return [t(`attr.${a}`), <span className={`cx-v ${tone(Math.round((lo + hi) / 2))}`}>{lo === hi ? lo : `${lo}-${hi}`}</span>];
     });
   cells.push(
+    ...(p.number ? [[t('cl.sq.number'), <span className="cx-v v17">{p.number}</span>] as [string, ReactNode]] : []),
     [t('cl.pl.foot'), <span className="cx-v v17">{t(`foot.${p.foot || 'R'}`)}</span>],
     [t('col.form'), <span className="cx-v v11">{form.length ? (form.reduce((x, y) => x + y, 0) / form.length).toFixed(1) : ''}</span>],
     [t('col.morale'), <span className="cx-v v17">{g.draft ? '-' : t(moraleKey(p.morale))}</span>],

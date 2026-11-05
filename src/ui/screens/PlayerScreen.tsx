@@ -81,6 +81,7 @@ function ModernPlayer({ id }: { id: number }) {
             <span>{t('col.age')}</span><span>{age(p)} ({dateFmt(p.dob)})</span>
             <span>{t('col.nat')}</span><span><Nat n={p.nation} /> {natName(g.nations[p.nation]?.name)}</span>
             <span>{t('col.pos')}</span><span>{posStr(p)}</span>
+            {p.number && <><span>{t('cl.sq.number')}</span><span>{p.number}</span></>}
             <span>{t('player.foot')}</span><span>{t(`foot.${p.foot || 'R'}`)}</span>
             <span>{t('player.height')}</span><span>{p.height} cm</span>
             {!g.draft && <><span>{t('col.value')}</span><span>{money(p.value)}</span></>}

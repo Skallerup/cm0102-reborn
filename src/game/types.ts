@@ -114,6 +114,8 @@ export interface Player {
   listed: boolean; // transferlistet
   /** Månedlige øjebliksbilleder af attributterne (kun menneskestyrede klubbers spillere) */
   dev?: { d: string; a: number[] }[];
+  /** Trøjenummer i klubben (Squad Numbers, som i CM 01/02) – unikt i truppen, følger spilleren til det skifter klub */
+  number?: number;
   /** Udbudspris sat af manageren når spilleren er til salg */
   listPrice?: number;
   /** Status i truppen sat af manageren (Squad Status) og udlejningsliste */

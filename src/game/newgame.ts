@@ -8,7 +8,7 @@ import {
 } from './data/generate';
 import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
-import { addNews, addPlayer, gs, rebuildIndexes, setGame, squad } from './state';
+import { addNews, addPlayer, ensureNumbers, gs, rebuildIndexes, setAutoNumbers, setGame, squad } from './state';
 import { initReleaseClauses } from './clauses';
 import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
 import { autoSelect, newTactic, FORMATIONS } from './tactics';
@@ -122,7 +122,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (g.clubs[id].colors[0] === g.clubs[id].colors[1]) g.clubs[id].colors[1] = g.clubs[id].colors[0] === '#ffffff' ? '#111111' : '#ffffff';
   }
 
-  // Spillere
+  // Spillere (trøjenumrene uddeles samlet, når trupperne er fyldt op)
+  setAutoNumbers(false);
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
   for (const r of world.players) {
     const club = r[F.club] as number;
@@ -146,6 +147,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       p.ca = rt.ca; p.pa = Math.max(rt.ca, rt.pa); p.attrs = rt.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
     }
     if (!value) p.value = valueFromCA(p.ca, p.pa, age);
+    // CM 01/02: trøjenummeret fra databasen (dubletter og manglende numre ordnes efter, at trupperne er fyldt op)
+    if (F.number !== undefined && (r[F.number] as number) > 0) p.number = r[F.number] as number;
     addPlayer(p);
   }
 
@@ -165,6 +168,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const lvl = sq.length >= 12 ? median(sq.map((p) => p.ca)) : (leagueLevel.get(c.league) ?? 90) - 4;
     fillSquad(c, sq, lvl, date, seed);
   }
+  // trøjenumre: alle i hver trup får et unikt nummer
+  for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
+  setAutoNumbers(true);
 
   // Reputation og økonomi
   for (const c of Object.values(g.clubs)) {

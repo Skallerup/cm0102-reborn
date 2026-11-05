@@ -19,7 +19,7 @@ import { applyPress } from './press';
 import { answerComplaint } from './will';
 import { answerBet, proposeBet, sendJab } from './rivalry';
 import { removeHuman } from './humans';
-import { addNews, gs, notify } from './state';
+import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
   acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
 } from './transfers';
@@ -37,6 +37,7 @@ export type Action =
   | { t: 'trainingAll'; key: string }
   | { t: 'listed'; pid: number; price?: number | null }
   | { t: 'squadStatus'; pid: number; status: SquadStatus | null; loanListed: boolean }
+  | { t: 'squadNumber'; pid: number; n: number }
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
@@ -132,6 +133,16 @@ export function applyAction(a: Action): unknown {
       if (p?.club !== g.userClub) return 'error';
       p.squadStatus = a.status ?? undefined;
       p.loanListed = a.loanListed || undefined;
+      return 'ok';
+    }
+    case 'squadNumber': {
+      // Squad Numbers: nyt nummer – har en holdkammerat det, bytter de
+      const p = g.players[a.pid];
+      if (p?.club !== g.userClub || !Number.isInteger(a.n) || a.n < 1 || a.n > 99) return 'error';
+      const other = squad(g.userClub).find((x) => x.id !== p.id && x.number === a.n);
+      if (other) other.number = p.number;
+      p.number = a.n;
+      if (other && !other.number) other.number = pickNumber(other, g.userClub);
       return 'ok';
     }
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }

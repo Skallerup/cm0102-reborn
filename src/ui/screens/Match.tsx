@@ -277,11 +277,11 @@ function RatingsBoard({ sim, colors }: { sim: MatchSim; colors: [string, string,
     const rows: Row[] = starters.map((x) => {
       const out = subMinute(team, x.id, 'p2');
       const offRed = lt.on.find((o) => o.id === x.id)?.red;
-      return { id: x.id, num: x.slot + 1, rating: x.rating, goals: x.goals, info: out ? t('rt.off', { m: out }) : offRed ? t('rt.sentOff') : undefined, dim: !!out || !!offRed };
+      return { id: x.id, num: x.num ?? x.slot + 1, rating: x.rating, goals: x.goals, info: out ? t('rt.off', { m: out }) : offRed ? t('rt.sentOff') : undefined, dim: !!out || !!offRed };
     });
     let n = 12;
-    for (const x of [...lt.on, ...lt.gone].filter((y) => y.enteredAt > 0)) rows.push({ id: x.id, num: n++, rating: x.rating, goals: x.goals, info: t('rt.on', { m: subMinute(team, x.id, 'p') ?? x.enteredAt }) });
-    for (const id of lt.bench) rows.push({ id, num: n++, dim: true });
+    for (const x of [...lt.on, ...lt.gone].filter((y) => y.enteredAt > 0)) rows.push({ id: x.id, num: x.num ?? n++, rating: x.rating, goals: x.goals, info: t('rt.on', { m: subMinute(team, x.id, 'p') ?? x.enteredAt }) });
+    for (const id of lt.bench) rows.push({ id, num: gs().players[id]?.number ?? n++, dim: true });
     return (
       <div className="cm-col">
         {rows.map((r) => {

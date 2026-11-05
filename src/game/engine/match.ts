@@ -1685,7 +1685,7 @@ export class MatchSim {
       moment: this.moment,
       shot: last && last.m === this.minute ? { team: last.t, outcome: last.outcome, zone: last.zone } as ShotSnap : null,
       players: this.teams.flatMap((t) => t.on.filter((sp) => !sp.off).map((sp) => ({
-        id: sp.p.id, team: t.idx, num: sp.slot + 1, gk: t.tactic.slots[sp.slot]?.pos === 'GK',
+        id: sp.p.id, team: t.idx, num: sp.p.number ?? sp.slot + 1, gk: t.tactic.slots[sp.slot]?.pos === 'GK',
         ax: sp.ax, ay: sp.ay, dx: sp.dx, dy: sp.dy, name: sp.p.last,
       }))),
     };
@@ -1694,9 +1694,9 @@ export class MatchSim {
   live(teamIdx: number) {
     const t = this.teams[teamIdx];
     return {
-      on: t.on.map((s) => ({ id: s.p.id, slot: s.slot, off: s.off, cond: Math.round(s.cond * 100), rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, injured: s.line.injured, goals: s.line.goals, red: !!s.line.red, enteredAt: s.enteredAt })),
+      on: t.on.map((s) => ({ id: s.p.id, slot: s.slot, num: s.p.number, off: s.off, cond: Math.round(s.cond * 100), rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, injured: s.line.injured, goals: s.line.goals, red: !!s.line.red, enteredAt: s.enteredAt })),
       /** udskiftede spillere (til karakteroversigten) */
-      gone: t.all.filter((s) => !t.on.includes(s)).map((s) => ({ id: s.p.id, slot: s.slot, rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, goals: s.line.goals, enteredAt: s.enteredAt })),
+      gone: t.all.filter((s) => !t.on.includes(s)).map((s) => ({ id: s.p.id, slot: s.slot, num: s.p.number, rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, goals: s.line.goals, enteredAt: s.enteredAt })),
       bench: t.benchIds.slice(),
       subsLeft: t.subsLeft,
       stats: t.stats,
