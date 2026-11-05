@@ -109,6 +109,8 @@ interface TeamRT {
   baseMentality?: number;
   /** Holdets gennemsnitlige beslutsomhed (hvordan det tager modgang) */
   det: number;
+  /** Faktor for sen kampvilje (bagud) eller nervøsitet (foran) – virker med det samme på alle spillere */
+  urge?: number;
   /** Fast boldfordeler og target-angriber (spiller-id) */
   playmaker?: number;
   targetMan?: number;
@@ -222,7 +224,7 @@ export class MatchSim {
   // ---------- opsætning ----------
 
   private makeTeam(t: EngineTeam, idx: number): TeamRT {
-    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.017 : 0.994;
+    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.019 : 0.993;
     const rt: TeamRT = {
       idx,
       club: t.club,
@@ -426,7 +428,7 @@ export class MatchSim {
   // ---------- hjælpere ----------
 
   private a(sp: SP, i: number): number {
-    return sp.eff[i] * (0.68 + 0.32 * sp.cond);
+    return sp.eff[i] * (0.68 + 0.32 * sp.cond) * (this.teams[sp.team].urge ?? 1);
   }
   private rb(team: number, z = this.zone): number {
     const b = Math.floor(z / ZL);
@@ -562,7 +564,7 @@ export class MatchSim {
     if (this.minute < 78 || this.extraTime) return false;
     const T = this.teams[this.poss], O = this.teams[1 - this.poss];
     if (this.stateDiff(T) <= 0 || T.ti.mentality >= (T.baseMentality ?? T.ti.mentality)) return false;
-    if (!this.r.chance(0.12)) return false;
+    if (!this.r.chance(0.06)) return false;
     this.stoppage += 0.25;
     const sp = this.pick(T.zAtt[this.zone]);
     if (sp && this.r.chance(0.03 * this.ref)) { this.line('time-wasting', sp); this.book(T, sp); }
@@ -1435,7 +1437,17 @@ export class MatchSim {
     this.substitute(t.idx, out.p.id, best.id);
   }
 
+  /** Sent i kampen: holdet der er bagud med ét mål, kæmper med alt (beslutsomhed), og føreren trækker sig nervøst */
+  private urgency() {
+    if (this.minute < 75 || this.extraTime) return;
+    for (const t of this.teams) {
+      const d = this.stateDiff(t);
+      t.urge = d === -1 || d === -0.5 ? 1 + 0.03 + 0.03 * (t.det / 20) : d === 1 || d === 0.5 ? 0.985 : 1;
+    }
+  }
+
   private aiManage() {
+    this.urgency();
     if (this.minute < 46) return;
     for (const t of this.teams) if (this.opts.aiSubs?.[t.idx]) this.aiShift(t);
     if (this.minute < 55) return;
@@ -1461,7 +1473,7 @@ export class MatchSim {
     if (diff >= 3 && this.minute >= 50) want = Math.max(0, base - 1);
     else if (diff <= -3 && this.minute >= 60) want = base;
     else if (diff < 0 && this.minute >= 55) want = Math.min(4, base + (this.minute >= 75 || diff <= -2 ? 2 : 1));
-    else if (diff > 0 && this.minute >= 70) want = Math.max(0, base - (diff === 1 && this.minute >= 82 ? 2 : 1));
+    else if (diff > 0 && this.minute >= 72) want = Math.max(0, base - 1);
     // uafgjort sent i kampen: et hold der ikke er favorit, tager gerne det ene point
     else if (diff === 0 && this.minute >= 72 && base <= 2) want = Math.max(0, base - 1);
     else if (diff === 0.5 && this.minute >= 70) want = Math.max(0, base - 1); // videre på udebanemål: luk kampen
