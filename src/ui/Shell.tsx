@@ -53,7 +53,7 @@ import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl, loadStadiumBgs, stadiumBgUrl } from './backgrounds';
-import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, stadiumBackgrounds } from './classicOptions';
+import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
@@ -118,6 +118,10 @@ export function Shell() {
   // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
+  // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
+  const modernPhoto = !cmNav && !g.draft && g.userClub
+    ? stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? (modernBackgrounds() ? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub) : null)
+    : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
   const [tabSlot, setTabSlot] = useState<HTMLElement | null>(null);
@@ -397,8 +401,8 @@ export function Shell() {
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
-        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : ''}`} ref={mainRef}
-          style={cmNav ? ({ '--cx-photo': `url("${stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : modernPhoto ? `mbg${stadiumBgUrl(venue, venueFix?.date ?? g.date) ? ' mbg-stadium' : ''}` : ''}`} ref={mainRef}
+          style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav ? ({ '--cx-photo': `url("${stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
         </main>

@@ -184,6 +184,15 @@ h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 .sidenav .sep { height: 1px; background: var(--line); margin: 10px 6px; }
 .sidenav .badge { margin-left: auto; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 1px 7px; font-size: 10.5px; font-weight: 800; }
 .main { overflow-y: auto; padding: 22px 26px 40px; }
+/* moderne udseende: dagens foto bag indholdet (stærkt sløret i temaets baggrundsfarve) – stadionet på kampdage står tydeligere */
+.main.mbg {
+  background-color: var(--bg);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--bg) 84%, transparent), color-mix(in srgb, var(--bg) 93%, transparent)), var(--m-photo);
+  background-size: cover; background-position: center; background-attachment: fixed;
+}
+.main.mbg.mbg-stadium {
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--bg) 55%, transparent) 0%, color-mix(in srgb, var(--bg) 80%, transparent) 45%, color-mix(in srgb, var(--bg) 92%, transparent) 100%), var(--m-photo);
+}
 
 .screen-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .screen-head h2 { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; display: flex; align-items: center; gap: 10px; }

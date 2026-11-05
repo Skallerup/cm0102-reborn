@@ -22,7 +22,7 @@ import { getTheme, setTheme, type Theme } from './theme';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
 
-const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo', stadium: 'cm-stadium-bg' } as const;
+const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo', stadium: 'cm-stadium-bg', modernBg: 'cm-modern-bg' } as const;
 const read = (k: string, def: boolean) => { try { const v = localStorage.getItem(k); return v === null ? def : v === 'on'; } catch { return def; } };
 const write = (k: string, on: boolean) => { try { localStorage.setItem(k, on ? 'on' : 'off'); } catch { /* ignorér */ } };
 /** Skifter baggrunden hver dag? (ellers samme billede hele karrieren) */
@@ -47,6 +47,10 @@ export const futuristicFont = () => classicFont() === 'futuristic';
 export const titleLogo = () => read(PREF.logo, true);
 /** Hjemmeholdets stadion som baggrund på kampdage (som [STADIUMS] i CM 01/02) */
 export const stadiumBackgrounds = () => read(PREF.stadium, true);
+export const setStadiumBackgrounds = (on: boolean) => write(PREF.stadium, on);
+/** Moderne udseende: daglige baggrundsfotos bag indholdet */
+export const modernBackgrounds = () => read(PREF.modernBg, true);
+export const setModernBackgrounds = (on: boolean) => write(PREF.modernBg, on);
 function applyFlash() {
   try {
     const el = document.documentElement;

@@ -12,12 +12,15 @@ import { useGame } from '../core';
 import { Head } from './common';
 import { getTheme, setTheme, type Theme } from '../theme';
 import { notifyEnabled, notifySupported, setNotify } from '../notify';
+import { modernBackgrounds, setModernBackgrounds, setStadiumBackgrounds, stadiumBackgrounds } from '../classicOptions';
 
 export function Options() {
   const g = useGame()!;
   const [msg, setMsg] = useState('');
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const [notif, setNotif] = useState(notifyEnabled());
+  const [mbg, setMbg] = useState(modernBackgrounds());
+  const [sbg, setSbg] = useState(stadiumBackgrounds());
   return (
     <div>
       <Head title={t('nav.options')} />
@@ -48,6 +51,8 @@ export function Options() {
             </label>
             {(theme === 'club' || theme === 'clubDark') && <div className="muted">{t('opt.theme.clubHint')}</div>}
             {theme === 'retro' && <div className="muted">{t('opt.theme.retroHint')}</div>}
+            {theme !== 'retro' && <label className="row"><input type="checkbox" checked={mbg} onChange={(e) => { setModernBackgrounds(e.target.checked); setMbg(e.target.checked); notify(); }} />{t('opt.bgPhotos')}</label>}
+            <label className="row"><input type="checkbox" checked={sbg} onChange={(e) => { setStadiumBackgrounds(e.target.checked); setSbg(e.target.checked); notify(); }} />{t('cl.set.stadium')}</label>
             {notifySupported() && <label className="row"><input type="checkbox" checked={notif} onChange={async (e) => setNotif(await setNotify(e.target.checked))} />{t('opt.notify')}</label>}
             {notifySupported() && <div className="muted">{t('opt.notify.hint')}</div>}
             <div className="muted">{t('opt.newsMoved')}</div>

@@ -33,6 +33,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-05 – Moderne udseende: baggrundsfotos (`.main.mbg`, `--m-photo`, pref `cm-modern-bg`) og stadion på kampdage
+  (`mbg-stadium`, samme pref `cm-stadium-bg` som klassisk). Begge kan slås fra i Options.
 - 2026-11-05 – 2D-opgradering: ShotRecord har `save` (hold/parry/spill/corner), `blocker`, `og`, `setup`/`setupBy`
   (layoff, knockdown, lowcross, longthrow, shortcorner, edge – kun til passende skudtyper, `SETUP_KINDS`), og
   highlights `closedDown`. Pitch2D tegner dem (`reboundFrames`, `closedDownFrames`). Moderne: stadionfoto i
