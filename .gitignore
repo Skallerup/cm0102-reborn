@@ -10,3 +10,4 @@ smoke-shots
 .env*
 .sources
 /*.zip
+e2e-shots

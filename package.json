@@ -13,7 +13,8 @@
     "data:cm": "tsx scripts/build-cm-data.mts",
     "simulate": "tsx scripts/simulate-season.ts",
     "audit": "tsx scripts/audit.ts",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "e2e": "node scripts/e2e.mjs"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",
