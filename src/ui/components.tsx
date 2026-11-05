@@ -271,8 +271,9 @@ export function MoneyInput({ value, onChange, min = 0, width = 130 }: { value: n
   );
 }
 
-export function RecTag({ level }: { level: number }) {
+export function RecTag({ level, out }: { level: number; out?: boolean }) {
   if (level < 0) return <span className="tag">{t('rec.short.unknown')}</span>;
+  if (out) return <span className="tag warn">{t('rec.short.out')}</span>;
   const cls = level <= 1 ? 'good' : level === 2 ? '' : level === 3 ? 'warn' : 'bad';
   return <span className={`tag ${cls}`}>{t(`rec.short.l${level}`)}</span>;
 }

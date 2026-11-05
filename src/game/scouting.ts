@@ -206,6 +206,8 @@ export interface ScoutRecommendation {
   level: number;
   key: string;
   reasons: { key: string; params?: Record<string, string | number> }[];
+  /** god nok, men urealistisk at hente (klubben sælger ikke, eller han kommer ikke) */
+  out?: boolean;
 }
 
 /** Kort vurdering fra scouten: anbefaler han spilleren eller ej? */
@@ -249,9 +251,11 @@ export function scoutRecommendation(p: Player): ScoutRecommendation {
   let lvl = score >= 3.5 ? 0 : score >= 2 ? 1 : score >= 0.8 ? 2 : score >= -0.5 ? 3 : 4;
   // urealistiske handler anbefales aldrig – højst "brugbar" hvis han er lidt svær at hente
   const real = realismFn(p);
-  if (real >= 2) { lvl = Math.max(lvl, 3); if (!reasons.some((r) => r.key === 'rec.r.wontCome' || r.key === 'rec.r.tooExpensive')) reasons.unshift({ key: 'rec.r.unrealistic' }); }
+  // god nok, men urealistisk: "uden for rækkevidde" – ikke "ikke bedre end det, vi har"
+  let out = false;
+  if (real >= 2) { out = lvl < 3; lvl = Math.max(lvl, 3); if (!reasons.some((r) => r.key === 'rec.r.wontCome' || r.key === 'rec.r.tooExpensive')) reasons.unshift({ key: 'rec.r.unrealistic' }); }
   else if (real === 1 && lvl === 0) { lvl = 1; reasons.push({ key: 'rec.r.hard' }); }
-  return { level: lvl, key: `rec.l${lvl}`, reasons: reasons.slice(0, 3) };
+  return { level: lvl, key: out ? 'rec.lOut' : `rec.l${lvl}`, reasons: reasons.slice(0, 3), out };
 }
 
 // undgå cirkulær import: transfers → scouting → transfers

@@ -780,7 +780,7 @@ export const en: Record<string, string> = {
   'contract.renewed': '{player} has signed a {years}-year extension',
 
   'scout.maskingOff': 'Attribute masking is off – you can see every attribute.', 'scout.overview': 'Overview', 'rec.title': '{scout} says:', 'rec.col': 'Advice', 'rec.unknown': 'We do not know him well enough yet – send a scout for an assessment.',
-  'rec.l0': 'Sign him! He would improve us straight away.', 'rec.l1': 'I recommend him.', 'rec.l2': 'He would be useful, but is not a must.', 'rec.l3': 'He is no better than what we have.', 'rec.l4': 'I advise against him.',
+  'rec.lOut': 'He would make us better, but he is out of reach.', 'rec.short.out': 'Out of reach', 'rec.l0': 'Sign him! He would improve us straight away.', 'rec.l1': 'I recommend him.', 'rec.l2': 'He would be useful, but is not a must.', 'rec.l3': 'He is no better than what we have.', 'rec.l4': 'I advise against him.',
   'rec.short.unknown': 'Unknown', 'rec.short.l0': 'Sign!', 'rec.short.l1': 'Recommended', 'rec.short.l2': 'Useful', 'rec.short.l3': 'No better', 'rec.short.l4': 'Avoid',
   'rec.r.wontCome': 'But he is unlikely to join us.', 'rec.r.betterThanBest': 'He is better than our best in his position.', 'rec.r.firstTeam': 'He can compete for a first-team place.', 'rec.r.squad': 'He is a decent squad player.',
   'rec.r.notGoodEnough': 'He is not good enough for our level.', 'rec.r.talent': 'A big talent at {age}.', 'rec.r.canGrow': 'He can still improve.',

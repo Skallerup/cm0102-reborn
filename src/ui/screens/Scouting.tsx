@@ -84,7 +84,7 @@ function ScoutFinds() {
             <td>{p.club ? <ClubLink id={p.club} /> : t('common.free')}</td>
             <td><Stars range={st.ability} /></td>
             <td><Stars range={st.potential} /></td>
-            <td>{(() => { const r = scoutRecommendation(p); return <span title={r.reasons.map((x) => t(x.key, x.params)).join(' ')}><RecTag level={r.level} /></span>; })()}</td>
+            <td>{(() => { const r = scoutRecommendation(p); return <span title={r.reasons.map((x) => t(x.key, x.params)).join(' ')}><RecTag level={r.level} out={r.out} /></span>; })()}</td>
             <td className="num">{money(p.value)}</td>
           </tr>
         ))}

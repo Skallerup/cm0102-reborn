@@ -800,7 +800,7 @@ export const da: Record<string, string> = {
 
   // scouting
   'scout.maskingOff': 'Attribut-maskering er slået fra – du kan se alle spilleres attributter.', 'scout.overview': 'Overblik', 'rec.title': '{scout} vurderer:', 'rec.col': 'Anbefaling', 'rec.unknown': 'Vi kender ham ikke godt nok endnu – send en scout for at få en vurdering.',
-  'rec.l0': 'Køb ham! Han vil gøre os bedre med det samme.', 'rec.l1': 'Jeg anbefaler ham.', 'rec.l2': 'Han kan bruges, men er ikke et must.', 'rec.l3': 'Han er ikke bedre end det, vi har.', 'rec.l4': 'Jeg fraråder ham.',
+  'rec.lOut': 'Han ville gøre os bedre, men han er uden for rækkevidde.', 'rec.short.out': 'Uden for rækkevidde', 'rec.l0': 'Køb ham! Han vil gøre os bedre med det samme.', 'rec.l1': 'Jeg anbefaler ham.', 'rec.l2': 'Han kan bruges, men er ikke et must.', 'rec.l3': 'Han er ikke bedre end det, vi har.', 'rec.l4': 'Jeg fraråder ham.',
   'rec.short.unknown': 'Ukendt', 'rec.short.l0': 'Køb!', 'rec.short.l1': 'Anbefales', 'rec.short.l2': 'Brugbar', 'rec.short.l3': 'Ikke bedre', 'rec.short.l4': 'Frarådes',
   'rec.r.wontCome': 'Men han vil næppe skifte til os.', 'rec.r.betterThanBest': 'Han er bedre end vores bedste på positionen.', 'rec.r.firstTeam': 'Han kan kæmpe om en plads på holdet.', 'rec.r.squad': 'Han er en god breddespiller.',
   'rec.r.notGoodEnough': 'Han er ikke god nok til vores niveau.', 'rec.r.talent': 'Et stort talent som {age}-årig.', 'rec.r.canGrow': 'Han kan stadig udvikle sig.',
