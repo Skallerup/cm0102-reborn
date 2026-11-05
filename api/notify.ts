@@ -1,5 +1,6 @@
 // Logger, når en ny singleplayer-karriere startes, så udvikleren kan se det i admin (fanen "New careers").
 // Der sendes ingen mail. Gemmes i Upstash Redis: nc:list (seneste 1000), nc:total og nc:d:{dag}.
+// { op: 'ping', vid } er browserens puls (hvert 2. minut, mens fanen er synlig): sorteret sæt "seen" (vid → tid).
 // Begrænset pr. IP, så ingen kan fylde listen op.
 import { Redis } from '@upstash/redis';
 
@@ -15,6 +16,20 @@ export async function POST(request: Request) {
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'json' }, 400); }
 
+  if (body.op === 'ping') {
+    const vid = clip(body.vid, 24).replace(/[^a-z0-9]/gi, '');
+    if (!vid) return json({ error: 'vid' }, 400);
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+    const hk = `pg:ip:${ip}:${Math.floor(Date.now() / 3_600_000)}`;
+    const hits = await redis.incr(hk);
+    if (hits === 1) await redis.expire(hk, 7200);
+    if (hits > 150) return json({ error: 'limit' }, 429);
+    const now = Date.now();
+    await redis.zadd('seen', { score: now, member: vid });
+    if (Math.random() < 0.01) await redis.zremrangebyscore('seen', 0, now - 30 * 86_400_000);
+    return json({ ok: true });
+  }
+
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
   const hour = Math.floor(Date.now() / 3_600_000);
   const [ipHits, allHits] = await Promise.all([redis.incr(`nt:ip:${ip}:${hour}`), redis.incr(`nt:all:${hour}`)]);
@@ -28,8 +43,11 @@ export async function POST(request: Request) {
     at: new Date().toISOString(), manager, club,
     league: clip(body.league), nation: clip(body.nation, 40), challenge: clip(body.challenge, 40),
     bots: Math.max(0, Math.min(99, Number(body.bots) || 0)), db: clip(body.db, 20) || 'standard', lang: clip(body.lang, 5),
+    theme: body.theme === 'classic' ? 'classic' : body.theme === 'modern' ? 'modern' : '',
+    vid: clip(body.vid, 24).replace(/[^a-z0-9]/gi, ''),
   };
   const day = entry.at.slice(0, 10);
+  if (entry.vid) await redis.zadd('seen', { score: Date.now(), member: entry.vid });
   await Promise.all([
     redis.lpush('nc:list', JSON.stringify(entry)).then(() => redis.ltrim('nc:list', 0, 999)),
     redis.incr('nc:total'),

@@ -46,14 +46,14 @@ const ago = (iso?: string) => {
 };
 
 interface Overview {
-  accounts?: number; newCareers?: { total: number; today: number; yesterday: number }; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
+  accounts?: number; online?: number; newCareers?: { total: number; today: number; yesterday: number }; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
   ai: { today: number; yesterday: number; cap: number }; suggestions: number; supporters: number;
   applications: { total: number; new: number }; top: { career: string; points: number; name: string; club: string; league: string }[];
   config: { email: boolean; stripe: boolean };
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
-interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string }
+interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number }
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
@@ -130,6 +130,7 @@ function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
   return (
     <>
       <div className="adm-stats">
+        <Stat label="Online now" value={o.online ?? 0} sub="browsers with the game open (last 5 min)" onClick={() => go('starts')} />
         <Stat label="New careers today" value={o.newCareers?.today ?? 0} sub={`yesterday ${o.newCareers?.yesterday ?? 0} · ${o.newCareers?.total ?? 0} in total`} onClick={() => go('starts')} />
         <Stat label="Applications" value={o.applications.total} sub={o.applications.new ? `${o.applications.new} new` : 'none new'} onClick={() => go('applications')} />
         <Stat label="Accounts (cloud saves)" value={o.accounts ?? 0} sub="signed in with email" />
@@ -285,8 +286,15 @@ function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
 }
 
 function NewCareersTab() {
-  const [data, setData] = useState<{ rows: NewCareer[]; days: Record<string, number> } | null>(null);
-  useEffect(() => { void adminGet<{ rows: NewCareer[]; days: Record<string, number> }>('op=new-careers').then((r) => setData(r ?? { rows: [], days: {} })); }, []);
+  type Data = { rows: NewCareer[]; days: Record<string, number>; online?: number; now?: number };
+  const [data, setData] = useState<Data | null>(null);
+  useEffect(() => {
+    const load = () => void adminGet<Data>('op=new-careers').then((r) => setData(r ?? { rows: [], days: {} }));
+    load();
+    // online-status opdateres løbende
+    const id = setInterval(load, 60_000);
+    return () => clearInterval(id);
+  }, []);
   if (!data) return <div className="muted">Loading new careers…</div>;
   const days = Object.entries(data.days).reverse();
   const max = Math.max(1, ...days.map(([, n]) => n));
@@ -303,14 +311,18 @@ function NewCareersTab() {
           ))}
         </div>
       </Panel>
-      <Panel title={`Latest new careers (${data.rows.length})`} className="flush">
+      <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now</span>} className="flush">
         {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
-            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Lang</th></tr></thead>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Status</th></tr></thead>
               <tbody>{data.rows.map((r, i) => (
                 <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
                   <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.challenge || ''}</td>
-                  <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td><td className="muted">{r.lang}</td></tr>
+                  <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td>
+                  <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}</td><td className="muted">{r.lang}</td>
+                  <td className="nowrap">{!r.vid ? <span className="muted">–</span> : r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000
+                    ? <span style={{ color: '#16a34a', fontWeight: 600 }}>● Online</span>
+                    : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td></tr>
               ))}</tbody></table>
           </div>
         )}

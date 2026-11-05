@@ -67,11 +67,13 @@ export async function GET(request: Request) {
       const c = await redis.hgetall<Record<string, string>>(`career:${top[i]}`);
       topRows.push({ career: top[i], points: Number(top[i + 1]), name: c?.name ?? '?', club: c?.club ?? '', league: c?.league ?? '' });
     }
-    const [accounts, ncTotal, ncToday, ncYesterday] = await Promise.all([
+    const [accounts, ncTotal, ncToday, ncYesterday, online] = await Promise.all([
       redis.scard('acct:all'), redis.get<number>('nc:total'), redis.get<number>(`nc:d:${day}`), redis.get<number>(`nc:d:${yesterday}`),
+      redis.zcount('seen', Date.now() - 5 * 60_000, '+inf'),
     ]);
     return json({
       accounts,
+      online,
       newCareers: { total: Number(ncTotal ?? 0), today: Number(ncToday ?? 0), yesterday: Number(ncYesterday ?? 0) },
       managers: names.length, careers, seasons, seasonsThisMonth: monthEntries,
       rooms: rooms.length, activeRooms: roomInfo.filter((x) => x?.lastTurn && Date.parse(x.lastTurn) > week).length,
@@ -120,12 +122,18 @@ export async function GET(request: Request) {
   // nye singleplayer-karrierer (logges af api/notify.ts)
   if (op === 'new-careers') {
     const raw = (await redis.lrange<unknown>('nc:list', 0, 999)) ?? [];
-    const rows = raw.map((x) => { try { return typeof x === 'string' ? JSON.parse(x) : x; } catch { return null; } }).filter(Boolean);
+    const rows = raw.map((x) => { try { return typeof x === 'string' ? JSON.parse(x) : x; } catch { return null; } }).filter(Boolean) as { vid?: string; seen?: number }[];
+    // sidst set (puls fra browseren) for hver karriere, der har et besøgs-id
+    const vids = [...new Set(rows.map((r) => r.vid).filter((v): v is string => !!v))];
+    const seen = vids.length ? ((await redis.zmscore('seen', vids)) ?? []) : [];
+    const seenBy = new Map(vids.map((v, i) => [v, Number(seen[i] ?? 0)]));
+    for (const r of rows) if (r.vid) r.seen = seenBy.get(r.vid) || undefined;
     const days: Record<string, number> = {};
     for (let i = 0; i < 14; i++) days[new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)] = 0;
     const counts = await Promise.all(Object.keys(days).map((d) => redis.get<number>(`nc:d:${d}`)));
     Object.keys(days).forEach((d, i) => { days[d] = Number(counts[i] ?? 0); });
-    return json({ rows, days });
+    const online = await redis.zcount('seen', Date.now() - 5 * 60_000, '+inf');
+    return json({ rows, days, online, now: Date.now() });
   }
 
   if (op === 'rooms') {

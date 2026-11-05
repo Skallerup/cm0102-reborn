@@ -12,12 +12,14 @@ import { applyTheme } from './ui/theme';
 import { ensureLang, getLang, t } from './i18n';
 import './online/cloudSync'; // gemte spil i skyen, når man er logget ind
 import './ui/notify'; // fanger browserens "kan installeres"-signal tidligt
+import { startPresence } from './online/notify';
 
 // kun i udvikling: adgang til spiltilstanden fra konsollen/Playwright-tests (advance spoler dage frem)
 if (import.meta.env.DEV) (window as unknown as { __cm: unknown }).__cm = { gs, notify, advance: (days: number) => runUntil({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), t, invitePress };
 
 applyTheme();
 registerSW({ immediate: true });
+startPresence(); // "online" i admin
 
 // hent det valgte sprogs tekster (spansk, fransk … ligger i egne filer), før siden tegnes
 void ensureLang(getLang()).finally(() => createRoot(document.getElementById('root')!).render(
