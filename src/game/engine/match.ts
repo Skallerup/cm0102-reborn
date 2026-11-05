@@ -48,6 +48,11 @@ export interface EngineOptions {
   refStrict?: number;
   /** Afslutningsskala for databasen (2001/02-databasen har bedre afsluttere end den moderne) */
   finish?: number;
+  /** Hjemmebanefordelen (1 = standard) og hvor meget afslutterens kvalitet betyder (deler, standard 13) – pr. database */
+  homeAdv?: number;
+  finSlope?: number;
+  /** dæmpning af niveauforskelle (standard SQUASH) */
+  squash?: number;
   /** Banens tilstand */
   pitch?: Pitch;
   /** Dagens dommer (navn vises i rapporten; strengheden styrer kort) */
@@ -139,7 +144,6 @@ const SPACE_XG = 0.17;
 const DAY_FORM = 0.05;
 /** Hvor meget boldholderen søger mod modstanderens svage zoner (ganges med overblik) */
 const SEEK = 1.6;
-const squash = (v: number) => 11 + (v - 11) * SQUASH;
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const logistic = (x: number) => 1 / (1 + Math.exp(-x));
 const logit = (p: number) => Math.log(p / (1 - p));
@@ -224,7 +228,8 @@ export class MatchSim {
   // ---------- opsætning ----------
 
   private makeTeam(t: EngineTeam, idx: number): TeamRT {
-    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.019 : 0.993;
+    const h = this.opts.homeAdv ?? 1;
+    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1 + 0.019 * h : 1 - 0.007 * h;
     const rt: TeamRT = {
       idx,
       club: t.club,
@@ -270,6 +275,8 @@ export class MatchSim {
     const crowd = !this.opts.neutral && rt.idx === 1 && this.opts.importance ? 1 - (1 - p.attrs[A.pressure] / 20) * 0.015 * this.opts.importance : 1;
     const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult * talk * crowd;
     const eff = new Float32Array(36);
+    const sq = this.opts.squash ?? SQUASH;
+    const squash = (v: number) => 11 + (v - 11) * sq;
     for (let i = 0; i < 36; i++) eff[i] = squash(p.attrs[i]) * mult;
     // Mentale/fysiske påvirkes mindre af forkert position
     const physMult = form * morale * rt.homeMult * talk;
@@ -1195,7 +1202,7 @@ export class MatchSim {
     const qf = weak ? q - 2.2 : q;
     if (weak && this.r.chance(0.08)) this.line('weak-foot', s);
     const gq = kind === 'oneOnOne' ? this.gk1v1(gk) : this.gkQ(gk);
-    const mult = (kind === 'pen' ? 1.04 : FINISH_SCALE * (this.opts.finish ?? 1)) * Math.exp((qf - gq) / 13);
+    const mult = (kind === 'pen' ? 1.04 : FINISH_SCALE * (this.opts.finish ?? 1)) * Math.exp((qf - gq) / (this.opts.finSlope ?? 13));
     const goalP = clamp(xg * mult * (kind === 'pen' ? 1 : this.wx.finish), 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };

@@ -77,7 +77,18 @@ Vi har studeret den originale installation (`events_eng.cfg` med 677 kampsituati
 | Rangkorrelation trup → tabel | 0,75 | ~0,75 |
 | Top 3 taber til bund 5 | 14 % | ~12 % |
 
-Den originale 2001/02-database giver cirka 2,9 mål pr. kamp.
+Den originale 2001/02-database kalibreres mod **det originale CM 01/02** og ikke mod virkeligheden. Ejeren spillede en hel sæson 2001/02 i originalen på ferie. `scripts/original-stats.ts` læser originalens egne filer (`~/Library/Application Support/cm0102`), og Premier League-tallene er bekræftet mod originalens printede tabel. Profilen `ORIGINAL` i `sim.ts` har fire knapper: afslutning, hjemmebane, afslutterkvalitet og dæmpning af niveauforskelle. Den måles med `npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [seed]` (England aktiv, cirka 15 sekunder pr. sæson).
+
+| Premier League (original database) | Originalen 2001/02 | Motor før | Motor nu (9 sæsoner) |
+|---|---|---|---|
+| Mål pr. kamp | 2,87 | 2,57 | 2,89 |
+| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 45 / 23 / 33 % | 52 / 22 / 27 % |
+| 0-0 | 5,3 % | 8,4 % | 6,9 % |
+| 1-0 | 14,7 % | 20,5 % | 16,0 % |
+| Mester / sidst | 84 / 25 p | 83–87 / 20 p | ~88 / 28 p |
+| Topscorer | 23 | 34–42 | ~33 (for høj: én angriber får for stor en del af holdets mål) |
+
+Originalens kampstatistik pr. kamp (begge hold, Premier League): 17,2 skud, 10,3 på mål, 5,0 hjørnespark, cirka 16 frispark og 8,6 frispark begået, 7,4 offside, 1,70 gule og 0,14 røde kort, 72 % lykkede afleveringer og 54 % vundne tacklinger. Kun ligaerne i de lande, der vælges ved spilstart, spilles i originalen, så de andre ligaer kræver en ny ferie-sæson.
 
 Hver spillers zonedækning er normaliseret (`ATT_COVER`/`DEF_COVER`). Uden normaliseringen dækker en central spiller flere zoner end en kantspiller, og smalle formationer får reelt flere spillere. Formationerne ligger nu inden for få point pr. sæson af hinanden og har modtræk mod hinanden. `scripts/formation-diag.ts` viser skud og mål efter type for to formationer.
 
