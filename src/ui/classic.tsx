@@ -9,7 +9,7 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { createPortal } from 'react-dom';
 import { gs } from '../game/state';
 import type { GameState, Staff } from '../game/types';
-import { natName, t } from '../i18n';
+import { compName, natName, t } from '../i18n';
 import { useNav, type Route, type ScreenName } from './core';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
@@ -258,7 +258,8 @@ function TitleMenu({ clubId }: { clubId?: number }) {
             <button key={c.id} role="menuitem" className={c.id === clubId ? 'on' : ''} onClick={() => go(c.id === g.userClub ? { name: 'squad' } : { name: 'club', id: c.id })}>{c.short}</button>
           ))}
           <div className="cx-drop-sep" />
-          <button role="menuitem" onClick={() => go({ name: 'competitions', id: club!.league })}>{natName(g.nations[club!.nation]?.name)}</button>
+          <button role="menuitem" onClick={() => go({ name: 'competitions', id: club!.league })}>{compName(g.leagues[club!.league]?.name)}</button>
+          <button role="menuitem" onClick={() => go({ name: 'nation', id: club!.nation })}>{natName(g.nations[club!.nation]?.name)}</button>
           <div className="cx-drop-sep" />
           <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>
         </div>

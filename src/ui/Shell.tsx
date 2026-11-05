@@ -55,6 +55,7 @@ import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl } from './backgrounds';
 import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
+import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
 import { ClassicSlotCtx, classicDate, setClassicAllowed } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
@@ -83,7 +84,7 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
+const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation'];
 
 export function Shell() {
   const g = useGame()!;
@@ -446,6 +447,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'competitions': return <Competitions id={route.id as string | undefined} />;
     case 'transfers': return <Transfers tab={route.tab} />;
     case 'find': return <ClassicFind tab={route.tab} />;
+    case 'nation': return <ClassicNation id={route.id as number | undefined} tab={route.tab} />;
     case 'scouting': return <Scouting />;
     case 'staff': return <StaffScreen />;
     case 'finance': return <Finance />;

@@ -602,3 +602,29 @@
 
 /* valgt spiller: klik på en tom plet på banen for at flytte hans plads */
 .cx-tac-pitch.moving { cursor: crosshair; }
+
+/* nationens skærme: Manager Stats, Job Information, Transfers */
+.cx-ntab { display: flex; flex-direction: column; gap: 3px; padding: 4px 18px; }
+.cx-nrow { display: grid; grid-template-columns: 96px minmax(0, 1.6fr) minmax(0, 1fr) 150px; gap: 14px; align-items: center; min-height: 30px; }
+.cx-nrow.job { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) 190px; }
+.cx-nrow.tr { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 150px; }
+.cx-nrank { align-self: stretch; display: flex; align-items: center; justify-content: center; background: #1414c8; border: 1px solid #4a4af0; color: #fff; font-size: 13px; font-weight: 700; }
+.cx-nname { color: #fff; font-size: 21px; font-weight: 700; text-shadow: 2px 2px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-nname.dim { color: #9a9aa8; }
+.cx-nrow.me .cx-nname { color: #fff21f; }
+.cx-nclub, .cx-nnat { color: #fff21f; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-ndiv { color: #ff9a2a; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-nval { align-self: stretch; display: flex; align-items: center; justify-content: center; background: #4a0a5e; border: 1px solid #7a2a90; color: #fff; font-size: 13px; font-weight: 700; }
+.cx-subtitle-nav { position: relative; }
+.cx-month-nav { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 3px; }
+.cx-month-nav button { min-width: 34px; min-height: 28px; background: #1414c8; color: #fff; border: 1px solid #4a4af0; font-weight: 800; cursor: pointer; }
+.cx-month-nav button:disabled { opacity: 0.4; cursor: default; }
+.cx-empty-mid { padding: 160px 24px; color: #fff; font-size: 19px; }
+@media (max-width: 760px) {
+  .cx-ntab { padding: 4px 6px; }
+  .cx-nrow, .cx-nrow.tr { grid-template-columns: 44px minmax(0, 1fr) minmax(0, 0.8fr) 84px; gap: 6px; }
+  .cx-nrow.tr { grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) 74px; }
+  .cx-nrow.job { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 80px; }
+  .cx-nrow.job .cx-nnat, .cx-nrow.job .cx-ndiv { display: none; }
+  .cx-nname { font-size: 15px; } .cx-nclub, .cx-nnat { font-size: 13px; } .cx-nval { font-size: 11px; }
+}
