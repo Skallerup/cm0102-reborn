@@ -54,6 +54,12 @@ export interface EngineOptions {
   /** dæmpning af niveauforskelle (standard SQUASH) – og særskilt for de offensive egenskaber (standard = squash) */
   squash?: number;
   squashAtt?: number;
+  /** særskilt dæmpning af de defensive egenskaber (standard = squash) */
+  squashDef?: number;
+  /** Andel af advarslerne og hjørnesparkene, der gives (1 = alle) – og om blokerede skud tælles som skud (pr. database) */
+  cards?: number;
+  corners?: number;
+  countBlocked?: boolean;
   /** Hvor meget et hold, der fører med 2+ mål, slapper af gennem hele kampen (pr. måls forspring ud over det første) */
   ease?: number;
   /** Banens tilstand */
@@ -145,6 +151,8 @@ const RED_BASE = 0.0011;
 const SPACE_XG = 0.17;
 /** De offensive egenskaber (afslutning, chanceskabelse) – kan dæmpes særskilt pr. database */
 const ATT_ATTRS = new Set<number>([A.crossing, A.dribbling, A.finishing, A.longShots, A.offTheBall, A.passing, A.technique, A.creativity, A.flair]);
+/** De defensive egenskaber (markering, tackling, placering, målmand) – kan dæmpes særskilt pr. database */
+const DEF_ATTRS = new Set<number>([A.marking, A.tackling, A.positioning, A.anticipation, A.handling, A.oneOnOnes, A.reflexes]);
 /** Holdets dagsform (spredning): giver overraskelser – uden den vinder favoritten altid ligaen */
 const DAY_FORM = 0.05;
 /** Hvor meget boldholderen søger mod modstanderens svage zoner (ganges med overblik) */
@@ -280,9 +288,9 @@ export class MatchSim {
     const crowd = !this.opts.neutral && rt.idx === 1 && this.opts.importance ? 1 - (1 - p.attrs[A.pressure] / 20) * 0.015 * this.opts.importance : 1;
     const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult * talk * crowd;
     const eff = new Float32Array(36);
-    const sq = this.opts.squash ?? SQUASH, sqA = this.opts.squashAtt ?? sq;
+    const sq = this.opts.squash ?? SQUASH, sqA = this.opts.squashAtt ?? sq, sqD = this.opts.squashDef ?? sq;
     const squash = (v: number) => 11 + (v - 11) * sq;
-    for (let i = 0; i < 36; i++) eff[i] = (11 + (p.attrs[i] - 11) * (ATT_ATTRS.has(i) ? sqA : sq)) * mult;
+    for (let i = 0; i < 36; i++) eff[i] = (11 + (p.attrs[i] - 11) * (ATT_ATTRS.has(i) ? sqA : DEF_ATTRS.has(i) ? sqD : sq)) * mult;
     // Mentale/fysiske påvirkes mindre af forkert position
     const physMult = form * morale * rt.homeMult * talk;
     for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = squash(p.attrs[k]) * physMult;
@@ -1047,7 +1055,16 @@ export class MatchSim {
     this.turnover(def);
   }
 
+  /** Et blokeret skud tæller ikke som skud i statistikken, hvis databasen ønsker det (som i originalen) */
+  private uncount(T: TeamRT, s: SP) {
+    if (this.opts.countBlocked !== false) return;
+    T.stats.shots--;
+    s.line.shots--;
+  }
+
   private corner(T: TeamRT, O: TeamRT): void {
+    // færre hjørnespark (original database): bolden går til målspark
+    if (this.opts.corners !== undefined && !this.r.chance(this.opts.corners)) { this.turnover(null); return; }
     T.stats.corners++;
     const takerId = T.tactic.corners;
     const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? this.pick(T.zAtt[this.zoneFor(T.idx, 3, 1)]) ?? T.on[0];
@@ -1137,6 +1154,8 @@ export class MatchSim {
   }
 
   private book(t: TeamRT, sp: SP) {
+    // færre advarsler (original database): dommeren nøjes med en irettesættelse
+    if (this.opts.cards !== undefined && !this.r.chance(this.opts.cards)) return;
     this.stoppage += 0.25;
     sp.yellow++;
     t.stats.yellows++;
@@ -1220,6 +1239,7 @@ export class MatchSim {
     // direkte frispark: muren tager en del af dem
     if (kind === 'fk' && this.r.chance(0.22)) {
       rec.outcome = 'blocked';
+      this.uncount(T, s);
       this.line('fk-wall', s);
       if (this.r.chance(0.4)) return this.corner(T, O);
       this.turnover(null);
@@ -1228,6 +1248,7 @@ export class MatchSim {
     const blk0 = this.pick(O.zDef[z]);
     if ((kind === 'box' || kind === 'long' || kind === 'boxWide') && this.r.chance(clamp((0.1 + 0.05 * O.wDef[z]) * (0.85 + (blk0 ? this.a(blk0, A.bravery) : 10) / 66), 0.08, 0.32))) {
       rec.outcome = 'blocked';
+      this.uncount(T, s);
       const blk = blk0;
       // et skud der rammer en forsvarer, kan gå i eget net
       if (blk && kind !== 'long' && this.r.chance(0.012)) { rec.outcome = 'goal'; this.goal(T, O, blk, null, 'og'); return; }

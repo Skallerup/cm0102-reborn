@@ -6,10 +6,16 @@ import { gs, squad } from '../src/game/state';
 import { MatchSim } from '../src/game/engine/match';
 import { Rng } from '../src/game/rng';
 import { autoSelect, newTactic } from '../src/game/tactics';
-import { aiTactic } from '../src/game/sim';
+import { ORIGINAL, aiTactic } from '../src/game/sim';
+import { cmDatabase } from '../src/game/newgame';
 import type { Player } from '../src/game/types';
 
 const N = Number(process.argv[2] ?? 1500);
+// original database: profilen kan overstyres (cards corners countBlocked)
+const [cards, corners, blocked] = process.argv.slice(4);
+if (cards) ORIGINAL.cards = Number(cards);
+if (corners) ORIGINAL.corners = Number(corners);
+if (blocked) ORIGINAL.countBlocked = blocked !== 'no';
 const world = JSON.parse(readFileSync(process.argv[3] ?? 'public/data/world.json', 'utf8')) as WorldData;
 const ni = (n: string) => world.nations.findIndex((x) => x.name === n);
 createGame(world, { managerName: 'Lab', managerNation: ni('England'), clubId: world.clubs[0][0], activeNations: [ni('England')], lang: 'da', masking: true, seed: 9 });
@@ -23,7 +29,7 @@ const add = (k: string, v = 1) => { c[k] = (c[k] ?? 0) + v; };
 for (let i = 0; i < N; i++) {
   const h = rng.pick(epl.clubs), a = rng.pick(epl.clubs.filter((x) => x !== h));
   const mk = (id: number, opp: number, home: boolean) => { const ps = fresh(id); return { club: id, tactic: aiTactic(id, opp, home), players: new Map(ps.map((p) => [p.id, p])) }; };
-  const sim = new MatchSim(mk(h, a, true), mk(a, h, false), { commentary: true, aiSubs: [true, true], importance: 0.5 }, rng);
+  const sim = new MatchSim(mk(h, a, true), mk(a, h, false), { commentary: true, aiSubs: [true, true], importance: 0.5, ...(cmDatabase(g) === 'original' ? ORIGINAL : {}) }, rng);
   const r = sim.runToEnd();
   for (const st of r.stats) { add('goals', st.goals); add('shots', st.shots); add('onT', st.onTarget); add('fouls', st.fouls); add('yel', st.yellows); add('red', st.reds); add('corners', st.corners); add('offs', st.offsides); }
   for (const e of r.events) { if (e.k === 'goal' && e.og) add('og'); }
