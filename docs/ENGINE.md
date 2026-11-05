@@ -88,6 +88,8 @@ Den originale 2001/02-database kalibreres mod **det originale CM 01/02** og ikke
 | Mester / sidst | 84 / 25 p | 83–87 / 20 p | ~88 / 28 p |
 | Topscorer | 23 | 34–42 | ~33 (for høj: én angriber får for stor en del af holdets mål) |
 
+**Næste skridt (åben):** i originalen er der lille forskel på holdenes scorede mål (spredning 9, max 68) og stor forskel på de indladte (spredning 16, mesteren lukkede kun 22 ind). De gode hold vinder altså på forsvaret. Vores motor har spredning 18 i scorede mål, og topholdene laver 85–105 mål. Det kan hverken `finSlope`, `squash` eller `squashAtt` rette uden at ødelægge målantallet. De stærke hold skaber deres overtag gennem chancemængden (dueller over hele banen), så rettelsen skal sidde i chanceskabelsen: kvalitet bør betyde mere for at forhindre chancer end for at skabe dem. `original-lab.ts` udskriver spredningen og topscorerens andel af holdets mål.
+
 Originalens kampstatistik pr. kamp (begge hold, Premier League): 17,2 skud, 10,3 på mål, 5,0 hjørnespark, cirka 16 frispark og 8,6 frispark begået, 7,4 offside, 1,70 gule og 0,14 røde kort, 72 % lykkede afleveringer og 54 % vundne tacklinger. Kun ligaerne i de lande, der vælges ved spilstart, spilles i originalen, så de andre ligaer kræver en ny ferie-sæson.
 
 Hver spillers zonedækning er normaliseret (`ATT_COVER`/`DEF_COVER`). Uden normaliseringen dækker en central spiller flere zoner end en kantspiller, og smalle formationer får reelt flere spillere. Formationerne ligger nu inden for få point pr. sæson af hinanden og har modtræk mod hinanden. `scripts/formation-diag.ts` viser skud og mål efter type for to formationer.
