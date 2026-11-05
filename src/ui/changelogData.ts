@@ -13,6 +13,7 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-05',
     title: { da: 'Ny matchmotor, flere CM 01/02-skærme og klassiske indstillinger', en: 'New match engine, more CM 01/02 screens and classic settings' },
     items: [
+      { da: "Stadionbaggrunde på kampdage som i CM 01/02: optakt, kamp og rapport viser hjemmeholdets stadion (658 stadioner fra Naydav's CM0102 Background Image Pack). Kan slås fra under Game Options → Settings. Klubberne har fået deres rigtige stadionnavne", en: "Stadium backgrounds on matchdays as in CM 01/02: the preview, match and report show the home team's stadium (658 stadiums from Naydav's CM0102 Background Image Pack). Can be turned off under Game Options → Settings. Clubs now have their real stadium names" },
       { da: 'Klassisk live-kamp: målscorerne står under holdene i Match Overview, og ved slutfløjt bliver Next-knappen nederst til Continue – som i CM 01/02', en: 'Classic live match: the scorers are listed under the teams in Match Overview, and at full time the Next button at the bottom becomes Continue – as in CM 01/02' },
       { da: 'Rettet: et annulleret mål kunne vises på 2D-banen med billederne af en anden afslutning (langt fra mål)', en: 'Fixed: a disallowed goal could be shown on the 2D pitch with the pictures of a different attempt (far from goal)' },
       { da: 'Rettet: turneringsvælgeren skiftede ikke turnering, når skærmen var åbnet fra menuen', en: 'Fixed: the competition picker did not switch competition when the screen was opened from the menu' },

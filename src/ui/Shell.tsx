@@ -52,8 +52,8 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl } from './backgrounds';
-import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges } from './classicOptions';
+import { backgroundUrl, loadStadiumBgs, stadiumBgUrl } from './backgrounds';
+import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
@@ -90,6 +90,11 @@ export function Shell() {
   const g = useGame()!;
   const { route, nav, back, canBack, forward, canForward } = useNav();
   const cxNext = useClassicNextAction();
+  // kampdage (optakt, kamp, rapport): hjemmeholdets stadion som baggrund, som i CM 01/02 – ikke ved finaler på neutral bane
+  const [, setStadiumsReady] = useState(0);
+  const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
+  const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() ? g.clubs[venueFix.home]?.stadium : undefined;
+  useEffect(() => { if (venue) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [venue]);
   // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -392,8 +397,8 @@ export function Shell() {
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
-        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}` : ''}`} ref={mainRef}
-          style={cmNav ? ({ '--cx-photo': `url("${backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : ''}`} ref={mainRef}
+          style={cmNav ? ({ '--cx-photo': `url("${stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
         </main>

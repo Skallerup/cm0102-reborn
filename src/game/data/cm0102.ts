@@ -177,6 +177,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
 
   // stadioner (kapacitet)
   const seatsOf = new Map<number, number>();
+  const stadiumName = new Map<number, string>();
   if (files['stadium.dat']) {
     const St = new Reader(files['stadium.dat']);
     // post: id (4) · navn (51) · by (4) · 1 byte · kapacitet (4, byte 60) · siddepladser (4, byte 64) · …
@@ -184,6 +185,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     for (let o = 0; o + 78 <= files['stadium.dat'].byteLength; o += 78) {
       const cap = St.i32(o + 60);
       if (cap > 0 && cap <= 150_000) seatsOf.set(St.i32(o), cap);
+      const nm = St.str(o + 4, 51).trim();
+      if (nm) stadiumName.set(St.i32(o), nm);
     }
   }
 
@@ -242,7 +245,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   for (const c of rawClubs) {
     if (!leagueSet.has(c.division)) continue;
     const seats = seatsOf.get(c.stadium) || (c.maxAtt > 0 && c.maxAtt <= 150_000 ? c.maxAtt : 0);
-    clubs.push([c.id, c.name, c.short || c.name, nationIdx.get(c.nation)!, lid(c.division), '', Math.min(120_000, seats), '']);
+    clubs.push([c.id, c.name, c.short || c.name, nationIdx.get(c.nation)!, lid(c.division), stadiumName.get(c.stadium) ?? '', Math.min(120_000, seats), '']);
     clubRep[c.id] = Math.max(3, Math.min(98, Math.round(Math.pow(c.rep / maxClubRep, 0.7) * 98)));
     const fg = colours.get(c.fg), bg = colours.get(c.bg);
     if (fg && bg) clubColors[c.id] = [bg, fg];

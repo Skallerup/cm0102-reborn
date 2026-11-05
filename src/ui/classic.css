@@ -67,6 +67,10 @@
 .cx-side-foot button:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
 
 /* ---------- indholdsområdet og baggrunde ---------- */
+/* stadionbilleder (kampdage) er allerede dæmpet i pakken – kun et let slør ovenpå */
+.shell.cx .main.cx-main.cx-stadium {
+  background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.15) 0%, rgba(6, 9, 34, 0.3) 100%), var(--cx-photo);
+}
 /* dagens foto (sat af Shell som --cx-photo) står fast bag indholdet og dæmpes, så teksten kan læses */
 .shell.cx .main.cx-main {
   padding: 6px 8px 14px;

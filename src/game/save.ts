@@ -111,6 +111,7 @@ function upgradeLoaded() {
 /**
  * Ret stadionkapaciteten i gemte spil fra CM-databaserne: en fejl i indlæsningen af stadium.dat gav
  * alle klubber loftet 120.000 pladser. Kun klubber med præcis 120.000 rettes (egne udvidelser bevares).
+ * Samme tur: stadionnavne ("<klub> Stadium" → det rigtige navn fra stadium.dat).
  */
 /** Ret forkert stavede klubnavne i gemte spil fra CM-databaserne (fx "Bröndby IF", "FC Copenhagen") */
 function repairClubNames() {
@@ -124,15 +125,19 @@ async function repairStadiums(): Promise<void> {
   if (g.dbKind !== 'cm0102') return;
   const clubs = Object.values(g.clubs);
   const capped = clubs.filter((c) => c.seats === 120_000);
-  if (capped.length < clubs.length / 2) return;
+  // ældre gemte spil har ingen stadionnavne ("<klub> Stadium") – de rigtige hentes fra databasen (stadionbaggrunde)
+  const generic = clubs.filter((c) => c.stadium === `${c.short} Stadium`);
+  if (capped.length < clubs.length / 2 && !generic.length) return;
   try {
     const file = cmDatabase(g) === 'original' ? 'world-original.json' : 'world.json';
     const r = await fetch(`${import.meta.env.BASE_URL}data/${file}`);
     if (!r.ok) return;
     const w = (await r.json()) as { clubs: [number, string, string, number, string, string, number, string][] };
     const seats = new Map(w.clubs.map((c) => [c[0], c[6]]));
+    const names = new Map(w.clubs.map((c) => [c[0], c[5]]));
     let fixed = 0;
-    for (const c of capped) { const s = seats.get(c.id); if (s && s !== 120_000) { c.seats = s; fixed++; } }
+    if (capped.length >= clubs.length / 2) for (const c of capped) { const s = seats.get(c.id); if (s && s !== 120_000) { c.seats = s; fixed++; } }
+    for (const c of generic) { const n = names.get(c.id); if (n) { c.stadium = n; fixed++; } }
     if (fixed) notify();
   } catch { /* offline: prøv igen næste gang */ }
 }

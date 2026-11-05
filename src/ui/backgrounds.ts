@@ -61,3 +61,20 @@ export function backgroundUrl(iso: string, seed: string | number = ''): string {
   if (pack) return pack.images[(dayNo(iso) + String(seed).length) % pack.images.length];
   return `${import.meta.env.BASE_URL}bg/${NAMES[backgroundIndex(iso, seed)]}.jpg`;
 }
+
+// ---------- stadioner på kampdage (Naydav's CM0102 Background Image Pack, se scripts/build-stadium-bg.py) ----------
+
+let stadiums: Record<string, string[]> | null = null;
+let stadiumsLoading: Promise<void> | null = null;
+/** Henter oversigten stadionnavn → billeder (kun én gang; uden net = ingen stadionbilleder) */
+export function loadStadiumBgs(): Promise<void> {
+  stadiumsLoading ??= fetch(`${import.meta.env.BASE_URL}data/stadium-bg.json`)
+    .then((r) => (r.ok ? r.json() : {})).then((d: Record<string, string[]>) => { stadiums = d; }).catch(() => { stadiums = {}; });
+  return stadiumsLoading;
+}
+/** Billede af stadionet (samme hele dagen, skifter mellem stadionets billeder fra kamp til kamp) – null hvis pakken ikke har det */
+export function stadiumBgUrl(stadium: string | undefined, iso: string): string | null {
+  const imgs = stadium ? stadiums?.[stadium] : undefined;
+  if (!imgs?.length) return null;
+  return `${import.meta.env.BASE_URL}stadiums/${imgs[dayNo(iso) % imgs.length]}.jpg`;
+}
