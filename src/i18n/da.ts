@@ -1409,7 +1409,7 @@ export const da: Record<string, string> = {
   'c.miss-1v1.1': 'Hvilken chance! {a} er alene, men skyder forbi!', 'c.miss-1v1.2': '{a} burde have scoret dér!',
   'c.long-wide.1': '{a} prøver fra distancen – et godt stykke forbi.', 'c.long-wide.2': 'Langskud fra {a} ryger over.',
   'c.wide.1': '{a} skyder forbi.', 'c.wide.2': '{a} afslutter – over mål.', 'c.wide.3': 'Chance til {a}, men bolden går forbi.',
-  'c.shot-blocked.1': '{a} skyder – blokeret af {b}!', 'c.shot-blocked.2': '{b} kaster sig ind foran skuddet fra {a}.',
+  'c.closed-down.1': "{a} lukker {b} ned, før han når at skyde.", 'c.closed-down.2': "{b} søger afslutningen, men {a} er hurtigt over og spærrer vejen.", 'c.closed-down.3': "Godt forsvarsspil af {a} – {b} får aldrig skuddet af.", 'c.shot-blocked.1': '{a} skyder – blokeret af {b}!', 'c.shot-blocked.2': '{b} kaster sig ind foran skuddet fra {a}.',
   'c.yellow.1': 'Gult kort til {a}.', 'c.yellow.2': 'Dommeren giver {a} et gult kort for en sen tackling.',
   'c.second-yellow.1': 'Andet gule kort – {a} er udvist!', 'c.red.1': 'RØDT KORT! {a} ryger direkte i bad!',
   'c.injury.1': '{a} ligger skadet på banen…', 'c.injury.2': 'Bekymring for {a}, som holder sig på benet.',

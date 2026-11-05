@@ -1,13 +1,16 @@
 // Kalibrering af den originale 2001/02-database mod det originale CM 01/02: spil hele sæsoner med England aktiv
 // og sammenlign Premier League med originalens egen sæson (scripts/original-stats.ts på en ferie-sæson 2001/02).
-// Kør: npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [squashAtt] [ease] [squashDef] [seed]
+// Kør: npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [squashAtt] [ease] [squashDef] [seed] [close] [closeSlope]
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { ORIGINAL, continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { finalOrder } from '../src/game/competitions';
 
-const [seasons = 1, finish, homeAdv, finSlope, squash, squashAtt, ease, squashDef, seed = 2001] = process.argv.slice(2).map(Number);
+const [seasons = 1, finish, homeAdv, finSlope, squash, squashAtt, ease, squashDef, seed = 2001, close, closeSlope] = process.argv.slice(2).map(Number);
+const P = ORIGINAL as typeof ORIGINAL & { close?: number; closeSlope?: number };
+if (close !== undefined) P.close = close;
+if (closeSlope) P.closeSlope = closeSlope;
 if (squashDef) ORIGINAL.squashDef = squashDef;
 if (ease) ORIGINAL.ease = ease;
 if (squash) ORIGINAL.squash = squash;
@@ -23,7 +26,9 @@ const eng = world.nations.findIndex((x) => x.name === 'England');
 const user = world.clubs.find((c) => world.nations[c[1] as number] && c[2] === 'Brøndby')?.[0] ?? world.clubs.at(-1)![0];
 createGame(world, { managerName: 'Lab', managerNation: eng, clubId: user, activeNations: [eng, world.nations.findIndex((x) => x.name === 'Denmark')], lang: 'da', masking: true, seed });
 const g = gs();
-const pl = Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && c.nation === eng)!;
+// sæsonskiftet laver nye turneringsobjekter – find Premier League igen hver dag
+const findPl = () => Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && c.nation === eng)!;
+let pl = findPl();
 
 const a = { n: 0, goals: 0, hw: 0, dr: 0, nil: 0, y: 0, r: 0, sh: 0, sot: 0, cor: 0, off: 0, fouls: 0, scores: {} as Record<string, number>, champ: [] as number[], last: [] as number[], top: [] as number[] };
 const end = g.season + seasons;
@@ -34,6 +39,7 @@ let days = 0;
 while (g.season < end && days++ < 420 * seasons) {
   const r = continueGame();
   if (r.match !== undefined) quickPlayUserMatch();
+  pl = findPl();
   if (!g.date.endsWith('-06-29') || !pl.finished) continue;
   const fin = finalOrder(pl), tbl = Object.fromEntries(pl.table.map((t) => [t.club, t]));
   a.champ.push(tbl[fin[0]].pts); a.last.push(tbl[fin.at(-1)!].pts);

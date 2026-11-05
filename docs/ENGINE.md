@@ -77,20 +77,24 @@ Vi har studeret den originale installation (`events_eng.cfg` med 677 kampsituati
 | Rangkorrelation trup → tabel | 0,75 | ~0,75 |
 | Top 3 taber til bund 5 | 14 % | ~12 % |
 
-Den originale 2001/02-database kalibreres mod **det originale CM 01/02** og ikke mod virkeligheden. Ejeren spillede en hel sæson 2001/02 i originalen på ferie. `scripts/original-stats.ts` læser originalens egne filer (`~/Library/Application Support/cm0102`), og Premier League-tallene er bekræftet mod originalens printede tabel. Profilen `ORIGINAL` i `sim.ts` har fire knapper: afslutning, hjemmebane, afslutterkvalitet og dæmpning af niveauforskelle. Den måles med `npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [seed]` (England aktiv, cirka 15 sekunder pr. sæson).
+Den originale 2001/02-database kalibreres mod **det originale CM 01/02** og ikke mod virkeligheden. Ejeren spillede en hel sæson 2001/02 i originalen på ferie. `scripts/original-stats.ts` læser originalens egne filer (`~/Library/Application Support/cm0102`), og Premier League-tallene er bekræftet mod originalens printede tabel. Profilen `ORIGINAL` i `sim.ts` har fire knapper: afslutning, hjemmebane, afslutterkvalitet og dæmpning af niveauforskelle. Den måles med `npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [squashAtt] [ease] [squashDef] [seed] [close] [closeSlope]` (0 = profilens værdi) (England aktiv, cirka 15 sekunder pr. sæson).
 
-| Premier League (original database) | Originalen 2001/02 | Motor før | Motor nu (9 sæsoner) |
+| Premier League (original database) | Originalen 2001/02 | Motor før | Motor nu (2 × 9 sæsoner) |
 |---|---|---|---|
-| Mål pr. kamp | 2,87 | 2,57 | 2,86 |
-| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 45 / 23 / 33 % | 52 / 24 / 24 % |
-| 0-0 | 5,3 % | 8,4 % | 6,6 % |
-| 1-0 / 2-1 / 2-0 / 1-1 | 14,7 / 15,5 / 15,5 / 10,3 % | 20,5 / 12,1 / 14,2 / 10,3 % | 16,2 / 15,8 / 13,8 / 10,3 % |
-| Mester / sidst | 84 / 25 p | 83–87 / 20 p | 84 / 25 p |
+| Mål pr. kamp | 2,87 | 2,57 | 2,85 |
+| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 45 / 23 / 33 % | 51 / 25 / 24 % |
+| 0-0 | 5,3 % | 8,4 % | 7,5 % |
+| 1-0 / 2-1 / 2-0 / 1-1 | 14,7 / 15,5 / 15,5 / 10,3 % | 20,5 / 12,1 / 14,2 / 10,3 % | 17,1 / 15,3 / 12,2 / 10,3 % |
+| Mester / sidst | 84 / 25 p | 83–87 / 20 p | 80 / 26 p |
 | Topscorer | 23 | 34–42 | ~31 |
-| Spredning i scorede / indladte mål (sd) | 9 / 16 | 18 / 14 | 12 / 9 |
-| Gule kort / røde kort pr. kamp | 1,70 / 0,14 | 3,3 / 0,19 | 1,74 / 0,11 |
-| Hjørnespark pr. kamp | 5,0 | 8,5 | 5,2 |
-| Skud / på mål pr. kamp | 17,2 / 10,3 | 29 / 9,8 | 22,9 / 9,2 |
+| Spredning i scorede / indladte mål (sd) | 9 / 16 | 18 / 14 | 10,9 / 11,2 |
+| Gule kort / røde kort pr. kamp | 1,70 / 0,14 | 3,3 / 0,19 | 1,63 / 0,12 |
+| Hjørnespark pr. kamp | 5,0 | 8,5 | 5,3 |
+| Skud / på mål pr. kamp | 17,2 / 10,3 | 29 / 9,8 | 16,5 / 10,6 |
+
+NB: før 2026-11-05 (aften) læste `original-lab.ts` tabellen fra første sæson igen hver sæson (turneringsobjektet skiftes ved
+sæsonskiftet). Mester/sidst/spredning i ældre målinger er derfor fra én sæson. Rettet mål for den forrige profil: spredning
+12,5 / 9,9, topscorer 33,5.
 
 Knapperne i `ORIGINAL`:
 - `finish`: afslutningsniveauet.
@@ -100,12 +104,15 @@ Knapperne i `ORIGINAL`:
 - `cards`: andelen af advarslerne, der gives.
 - `corners`: andelen af hjørnesparkene, der gives (resten bliver målspark).
 - `countBlocked: false`: blokerede skud tæller ikke som skud.
+- `close` / `closeSlope`: forsvareren lukker chancen før afslutningen (bliver til erobring). Sandsynligheden afhænger kun af forsvarerens markering, placering, overblik og tackling – gode forsvar forhindrer chancer, uden at de bedste angribere får mere.
+- `onTarget`: tillæg til andelen af afslutninger på mål (originalen: 60 % af skuddene på mål).
+- `squashAtt: 0.45` + `finSlope: 20`: angrebene ligger tættere, og afslutterens kvalitet betyder mindre (topscoreren).
 
 Den moderne database bruger ingen af dem.
 
 Den vigtigste knap var `ease`. Et hold, der fører med 2 mål eller mere, slapper af gennem hele kampen, så topholdene vinder 2-0 og ikke 5-0. I originalen er der lille forskel på holdenes scorede mål og stor forskel på de indladte, fordi de gode hold vinder på forsvaret.
 
-**Åbent:** spredningen i indladte mål er for lille (9 mod 16), topscoreren er stadig lidt for høj, og der er for mange skud, der ikke går på mål. `squash`/`squashAtt` flytter ikke de indladte mål uden at koste mål. Rettelsen skal sidde i chanceskabelsen: kvalitet bør betyde mere for at forhindre chancer end for at skabe dem.
+**Åbent:** spredningen i indladte mål er stadig for lille (11 mod 16), og topscoreren er ~31 mod 23. `close` hjalp lidt på begge spredninger, men forskellene er tæt på støjen mellem frø (mål altid med to frø, fx 2001 og 77). Mesteren ligger nu lidt lavt (80 mod 84).
 
 Originalens kampstatistik pr. kamp (begge hold, Premier League): 17,2 skud, 10,3 på mål, 5,0 hjørnespark, cirka 16 frispark og 8,6 frispark begået, 7,4 offside, 1,70 gule og 0,14 røde kort, 72 % lykkede afleveringer og 54 % vundne tacklinger. Kun ligaerne i de lande, der vælges ved spilstart, spilles i originalen, så de andre ligaer kræver en ny ferie-sæson.
 

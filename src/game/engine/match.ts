@@ -60,6 +60,12 @@ export interface EngineOptions {
   cards?: number;
   corners?: number;
   countBlocked?: boolean;
+  /** Forsvaret lukker chancen før afslutningen: grundsandsynlighed (0 = fra) og hvor meget forsvarerens kvalitet
+   *  betyder (deler) – gode forsvar forhindrer chancer i stedet for blot at gøre dem dårligere */
+  close?: number;
+  closeSlope?: number;
+  /** tillæg til andelen af afslutninger, der går på mål (pr. database; påvirker ikke målene) */
+  onTarget?: number;
   /** Hvor meget et hold, der fører med 2+ mål, slapper af gennem hele kampen (pr. måls forspring ud over det første) */
   ease?: number;
   /** Banens tilstand */
@@ -1211,6 +1217,21 @@ export class MatchSim {
       if (O.men < T.men) xg *= 1 + SPACE_XG * (T.men - O.men);
     }
     xg = clamp(xg, 0.01, 0.8);
+    // forsvaret når at lukke af, før skuddet går af (kun med profilens `close`)
+    if (this.opts.close && (kind === 'box' || kind === 'boxWide' || kind === 'long' || kind === 'cutback')) {
+      const d = this.pick(O.zDef[z]);
+      if (d) {
+        const dq = 0.35 * this.a(d, A.marking) + 0.3 * this.a(d, A.positioning) + 0.2 * this.a(d, A.anticipation) + 0.15 * this.a(d, A.tackling);
+        // kun forsvarerens kvalitet: gode forsvar lukker flere chancer, uden at de bedste angribere scorer endnu mere
+        if (this.r.chance(clamp(this.opts.close * Math.exp((dq - 12) / (this.opts.closeSlope ?? 6)), 0, 0.7))) {
+          d.line.tackles++;
+          this.rate(d, 0.05);
+          this.line('closed-down', d, s);
+          this.turnover(d);
+          return;
+        }
+      }
+    }
     T.stats.shots++;
     T.stats.xg += xg;
     s.line.shots++;
@@ -1292,7 +1313,7 @@ export class MatchSim {
       if (routineCheck) { this.line('var-check', s, null, true); this.line('var-stands', s, null, true); }
       return;
     }
-    const onT = clamp(0.19 + q / 70 + (kind === 'oneOnOne' ? 0.12 : 0) + (kind === 'pen' ? 0.5 : 0), 0.2, 0.92);
+    const onT = clamp(0.19 + q / 70 + (kind === 'oneOnOne' ? 0.12 : 0) + (kind === 'pen' ? 0.5 : 0) + (this.opts.onTarget ?? 0), 0.2, 0.92);
     if (this.r.chance((onT - goalP) / (1 - goalP))) {
       rec.outcome = 'saved';
       T.stats.onTarget++;

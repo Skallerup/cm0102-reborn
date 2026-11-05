@@ -1376,7 +1376,7 @@ export const en: Record<string, string> = {
   'c.miss-1v1.1': 'What a chance! {a} is clean through but shoots wide!', 'c.miss-1v1.2': '{a} should have scored there!',
   'c.long-wide.1': '{a} tries from distance – well wide.', 'c.long-wide.2': 'Long shot from {a} sails over.',
   'c.wide.1': '{a} shoots wide.', 'c.wide.2': '{a} fires over the bar.', 'c.wide.3': 'Chance for {a}, but it goes wide.',
-  'c.shot-blocked.1': '{a} shoots – blocked by {b}!', 'c.shot-blocked.2': '{b} throws himself in front of {a}\'s shot.',
+  'c.closed-down.1': "{a} closes {b} down before he can shoot.", 'c.closed-down.2': "{b} looks for the shot, but {a} is quickly across to block the way.", 'c.closed-down.3': "Good defending by {a} – {b} never gets the shot away.", 'c.shot-blocked.1': '{a} shoots – blocked by {b}!', 'c.shot-blocked.2': '{b} throws himself in front of {a}\'s shot.',
   'c.yellow.1': 'Yellow card for {a}.', 'c.yellow.2': 'The referee books {a} for a late challenge.',
   'c.second-yellow.1': 'Second yellow – {a} is sent off!', 'c.red.1': 'RED CARD! {a} is sent straight off!',
   'c.injury.1': '{a} is down injured…', 'c.injury.2': 'Concern for {a}, who is clutching his leg.',
