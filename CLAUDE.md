@@ -13,6 +13,9 @@ og læg ændringen i samme push.
   `screencapture -x -o -l <vindues-id>` (id via Swift `CGWindowListCopyWindowInfo`), også når det ligger bagved.
 - Spillernes ændringslog: `src/ui/changelogData.ts` (da+en, nyeste først) – tilføj punkter ved hver udgivelse, der kan
   mærkes i spillet, og hæv versionen i `package.json`/`package-lock.json` ved en ny version (testet i tests/changelog.test.ts).
+- SEO: `scripts/build-seo.ts` (kører i `prebuild`) laver statiske guides i `public/<slug>/index.html` (wonderkids, bedste
+  spillere, taktik, 2026/27, Mac/iPad, FAQ, spil online) fra world-JSON'erne + `sitemap.xml` og `llms.txt`. Forsiden har
+  læsbar tekst i `#root` til crawlere uden JS. Nye guides: tilføj i `pages` og i SW-`navigateFallbackDenylist`.
 - Tjek `git log` ved start – der arbejdes ofte på projektet i andre sessioner.
 
 ## Arkitektur i korte træk
@@ -33,6 +36,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-05 – SEO/AI-søgning: 7 statiske guides med data fra databaserne, llms.txt, sitemap med lastmod, crawlbar
+  forside. `paRaw` (originalens -1/-2 = tilfældigt PA) gemmes i ratings, bruges kun af guiden indtil videre.
 - 2026-11-05 – Admin "New careers": kolonnen Progress (sæson nr., spildato, ny klub, ligaplacering). Pulsen sender
   `prog` (gid, dato, klub, placering) → Redis-hash `prog`; karrieren gemmer `gid`/`start` ved start. Kun nye karrierer.
 - 2026-11-05 – Admin "New careers": land (flag) pr. karriere fra Vercels `x-vercel-ip-country` (kun landekoden gemmes,

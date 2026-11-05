@@ -1,0 +1,26 @@
+# CM Reborn
+
+> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database (patch 3.9.68, season 2001/02, 18,691 players) and a 2026/27 database (22,673 players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in eight languages.
+
+Key facts:
+- Price: free. No ads, no in-game purchases.
+- Play: open https://cm0102reborn.com, choose New game, pick a database and a look.
+- Databases: original CM 01/02 3.9.68 (2001/02, 33 leagues) and 2026/27 (38 leagues); real squad numbers, clubs and stadiums.
+- Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, Staff Search, Find, stadium backgrounds on matchdays.
+- Match engine calibrated against a full season of the original CM 01/02 (2.87 goals per game in the Premier League).
+- Saves are stored in the browser (export/import, optional cloud saves). Installable as an app (PWA), works offline.
+- Independent fan project, not affiliated with Sports Interactive, SEGA or Eidos.
+
+## Guides
+- [Play CM 01/02 online – free, in your browser](https://cm0102reborn.com/play-cm-01-02-online/): Play a Championship Manager 01/02 style football manager online for free: the original 2001/02 database and a 2026/27 update, 22,673+ real players, the classic CM look, multiplayer – no download, works on Mac, PC, iPad and phone.
+- [CM 01/02 wonderkids: the best young players in the original database](https://cm0102reborn.com/cm-01-02-wonderkids/): The real CM 01/02 wonderkids from the original 3.9.68 database: the 50 highest-potential players aged 21 or younger, the random-potential legends like Cherno Samba and Quaresma, and where to find them.
+- [CM 01/02 best players: the top 50 in the original database](https://cm0102reborn.com/cm-01-02-best-players/): The best players in Championship Manager 01/02 (patch 3.9.68), sorted by current ability: Zidane, Vieri, Vieira, Kahn, Totti, Ronaldo and more – plus the best per position.
+- [CM 01/02 with a 2026/27 database: best players and wonderkids](https://cm0102reborn.com/cm-01-02-2026-update/): Play CM 01/02 with today's players: the 2026/27 database with 22,673 players in 38 leagues. The best players, the top wonderkids and how to play it free in your browser.
+- [CM 01/02 tactics: the classic formations, and why they worked](https://cm0102reborn.com/cm-01-02-tactics/): The famous CM 01/02 tactics explained: 4-4-2, the overpowered DMC, the 4-2-4 with arrows, through balls and the offside trap – and how they play in CM Reborn, where no formation is a cheat code.
+- [Play CM 01/02 on Mac, iPad, Chromebook and Android](https://cm0102reborn.com/cm-01-02-mac-ipad-chromebook/): The original CM 01/02 only runs on Windows. CM Reborn is a free CM 01/02 remake that runs in the browser on Mac, iPad, iPhone, Chromebook, Android and Linux – with the 2001/02 database.
+- [CM Reborn – frequently asked questions](https://cm0102reborn.com/faq/): Everything about CM Reborn, the free browser remake of Championship Manager 01/02: price, databases, saves, multiplayer, devices and how it compares to the original.
+
+## Play
+- [Start a new game](https://cm0102reborn.com/)
+- [Fantasy draft league](https://cm0102reborn.com/?draft=1)
+- [Community hub](https://cm0102reborn.com/?community=1)

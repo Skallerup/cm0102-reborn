@@ -41,6 +41,8 @@ export default defineConfig({
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
         globIgnores: ['**/data/careers*.json', '**/data/world-original.json', '**/data/world-modern.json'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        // guiderne (statiske SEO-sider, scripts/build-seo.ts) er rigtige sider – ikke appen
+        navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|faq)\//, /^\/api\//, /^\/llms\.txt$/],
         runtimeCaching: [{
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
           urlPattern: /\/(bg|stadiums)\/[\w.-]+\.jpg$/,

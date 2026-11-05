@@ -9,7 +9,7 @@ import type { WorldData } from '../newgame';
 export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 'club_comp.dat', 'first_names.dat', 'second_names.dat', 'common_names.dat'];
 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
-export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[] }
+export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** originalens rå PA, når den er negativ (-1/-2 = tilfældigt potentiale i CM 01/02) */ paRaw?: number }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -274,6 +274,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     // spillere uden for de importerede ligaer kommer kun med som fri agenter, hvis de er gode nok
     if (!club && ca < 120) continue;
     let pa = S.i16(po + 7);
+    const paRaw = pa < 0 ? pa : undefined;
     const age = 2001 - Number(dob.slice(0, 4));
     // negativ PA = tilfældig potentiale i originalen: et deterministisk skøn ud fra alder
     if (pa <= 0 || pa < ca) pa = Math.min(200, ca + Math.round(((hashStr(String(id)) % 1000) / 1000) * Math.max(5, (24 - age) * 6)));
@@ -303,7 +304,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
       // trøjenummeret (byte 4 i spillerposten, 0 = intet)
       Math.max(0, Math.min(99, S.i8(po + 4))),
     ]);
-    ratings[id] = { ca, pa, attrs, pos, side };
+    ratings[id] = paRaw ? { ca, pa, attrs, pos, side, paRaw } : { ca, pa, attrs, pos, side };
   }
 
   // navnepuljer til regens (pr. nation)
