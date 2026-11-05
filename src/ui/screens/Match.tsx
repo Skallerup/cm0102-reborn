@@ -8,12 +8,13 @@ import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
-import type { MatchReport, OppInstructions, OppKind } from '../../game/types';
-import { compName, t } from '../../i18n';
+import type { Fixture, MatchReport, OppInstructions, OppKind } from '../../game/types';
+import { compName, dateFmt, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
+import { isRetro } from '../theme';
 import { Pitch2D, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables } from './Competitions';
 import { leagueRows } from '../../game/competitions';
@@ -64,7 +65,7 @@ export function statColors(home: number, away: number, me: number): [string, str
   return me === 0 ? [own, pick] : [pick, own];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string }[]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -227,6 +228,31 @@ function CmScoreboard({ home, away, hg, ag, minute, colors }: { home: number; aw
 
 type LiveTeam = ReturnType<MatchSim['live']>;
 
+/** Match Overview (CM 01/02): halvleg, dato og turnering, den seneste kommentar i farverne på holdet med bolden,
+ *  boldbesiddelsen de seneste 5 minutter, dommer og vejr */
+function CxOverview({ f, colors, line, poss, half }: { f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string }) {
+  const g = gs();
+  const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
+  const team = line?.t;
+  const bar = line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
+  const w = weatherFor(f);
+  return (
+    <div className="cx-mo">
+      <div className="cx-subtitle small">{half}</div>
+      <div className="cx-mo-meta"><span>{dateFmt(f.date, true)}</span><span>{compName(g.comps[f.comp]?.name)}</span></div>
+      <div className="cx-mo-line" style={bar}>{line?.text ?? ''}</div>
+      <div className="cx-mo-poss">
+        <span className="lbl">{t('match.last5')}</span>
+        <div className="cx-mo-bar">
+          <span style={{ width: `${home}%`, background: colors[0], color: colors[1] }}>{home}%</span>
+          <span style={{ width: `${100 - home}%`, background: colors[2], color: colors[3] }}>{100 - home}%</span>
+        </div>
+      </div>
+      <div className="cx-mo-foot"><span>{t('ref.label')} – {refereeFor(f).name}</span><span>{t('match.weather')} – {t(`wx.${w}`)}</span></div>
+    </div>
+  );
+}
+
 /** Spillerkarakterer for begge hold side om side (som i CM): startere, indskiftede og ubrugte reserver */
 function RatingsBoard({ sim, colors }: { sim: MatchSim; colors: [string, string, string, string] }) {
   const g = gs();
@@ -380,9 +406,12 @@ function LiveMatch({ id }: { id: number }) {
   if (h2h && !L.h2hInit) { L.h2hInit = true; sim.opts.aiSubs = [false, false]; }
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
-  const [tab, setTabState] = useState(() => { try { return localStorage.getItem('cm-match-view') === 'commentary' ? 'commentary' : '2d'; } catch { return '2d'; } });
-  // husk om man ser kampen i 2D eller som kommentar
-  const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary') { try { localStorage.setItem('cm-match-view', v); } catch { /* ignorér */ } } };
+  // klassisk tema: Match Overview (tekstkommentar som i CM 01/02) som standard
+  const [tab, setTabState] = useState(() => {
+    try { const v = localStorage.getItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view'); return v === 'commentary' || v === '2d' || (v === 'overview' && isRetro()) ? v : isRetro() ? 'overview' : '2d'; } catch { return isRetro() ? 'overview' : '2d'; }
+  });
+  // husk om man ser kampen i 2D, som kommentar eller (klassisk) som Match Overview
+  const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary' || v === 'overview') { try { localStorage.setItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view', v); } catch { /* ignorér */ } } };
   const [report, setReport] = useState<MatchReport | null>(null);
   // flashes/bump/reveal: pr. billede – stor tekst, midlertidig ændring af stillingen (jubel før et annulleret mål) og hvor mange nye kommentarlinjer der vises
   const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number; flashes?: (string | undefined)[]; bump?: number[]; reveal?: number[]; label?: string } | null>(null);
@@ -395,9 +424,13 @@ function LiveMatch({ id }: { id: number }) {
     while (L.consumed < sim.commentary.length) {
       const l = sim.commentary[L.consumed];
       const cls = l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '';
-      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k });
+      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k, t: l.t });
       L.consumed++;
     }
+    // boldbesiddelse de seneste 5 minutter (Match Overview i klassisk tema)
+    const ps = (L.poss5 ??= []);
+    ps.push([sim.minute, sim.pitch().poss]);
+    while (ps.length && ps[0][0] < sim.minute - 5) ps.shift();
   };
 
   const advance = (maxMoments: number, untilLine = true) => {
@@ -697,7 +730,7 @@ function LiveMatch({ id }: { id: number }) {
       </Head>
       <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>
-      <Tabs tabs={[['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+      <Tabs tabs={[...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
@@ -716,6 +749,9 @@ function LiveMatch({ id }: { id: number }) {
             <h2>{t('mp.h2hKickoff')}</h2>
           </>}
         </div></div>
+      )}
+      {tab === 'overview' && (
+        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={sim.finished ? t('match.ft') : sim.half === 2 ? t('match.half2') : t('match.half1')} />
       )}
       {tab === '2d' && (
         <div className="cols match2d">

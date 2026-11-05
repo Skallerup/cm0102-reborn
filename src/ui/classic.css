@@ -678,3 +678,15 @@
 @media (max-width: 760px) { .cx-ts-body { margin: 0 6px; padding: 8px; } .cx-ts-label { min-width: 0; } .cx-ts-price { margin-left: 0; flex-wrap: wrap; } .cx-ts-opt { margin-left: 12px; font-size: 14px; } .cx-ts-head { margin-left: 0; } }
 :root[data-skin='retro'] .cx-ts-buttons button { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; box-shadow: none; }
 .cx-ts-val.wide { min-width: 300px; }
+
+/* Match Overview (live-kampen i klassisk tema, som i CM 01/02) */
+.cx-mo { margin: 0 18px; padding: 4px 18px 10px; background: rgba(0, 0, 0, 0.35); }
+.cx-mo-meta { display: flex; justify-content: space-between; margin: 2px 0; }
+.cx-mo-meta span { background: rgba(0, 0, 0, 0.45); color: #6fe3ff; padding: 4px 30px; font-size: 13px; font-weight: 700; }
+.cx-mo-line { margin: 70px 40px 90px; min-height: 92px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px 24px; font-size: clamp(16px, 2vw, 24px); font-weight: 800; border: 1px solid rgba(0, 0, 0, 0.4); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.cx-mo-poss { display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 12px; margin: 0 60px 26px; padding: 8px 12px; background: linear-gradient(180deg, #a8acb6, #7e828e); }
+.cx-mo-poss .lbl { color: #fff; text-align: center; font-size: 13px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-mo-bar { display: flex; width: 100%; border: 2px solid #4a4e58; height: 24px; }
+.cx-mo-bar span { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; overflow: hidden; transition: width 0.6s; }
+.cx-mo-foot { display: flex; justify-content: space-between; color: #fff21f; font-weight: 800; font-size: 14px; text-shadow: 1px 1px 0 #000; padding: 4px 8px; }
+@media (max-width: 760px) { .cx-mo { margin: 0 4px; padding: 4px 6px; } .cx-mo-line { margin: 24px 4px 30px; min-height: 70px; } .cx-mo-poss { grid-template-columns: 80px 1fr; margin: 0 0 14px; } .cx-mo-meta span { padding: 3px 8px; } }
