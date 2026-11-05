@@ -1,7 +1,7 @@
 // Logger, når en ny singleplayer-karriere startes, så udvikleren kan se det i admin (fanen "New careers").
 // Der sendes ingen mail. Gemmes i Upstash Redis: nc:list (seneste 1000), nc:total og nc:d:{dag}.
 // { op: 'ping', vid } er browserens puls (hvert 2. minut, mens fanen er synlig): sorteret sæt "seen" (vid → tid).
-// Begrænset pr. IP, så ingen kan fylde listen op.
+// Begrænset pr. IP, så ingen kan fylde listen op. Landet (x-vercel-ip-country) gemmes – selve IP-adressen gemmes ikke.
 import { Redis } from '@upstash/redis';
 
 const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
@@ -45,6 +45,8 @@ export async function POST(request: Request) {
     bots: Math.max(0, Math.min(99, Number(body.bots) || 0)), db: clip(body.db, 20) || 'standard', lang: clip(body.lang, 5),
     theme: body.theme === 'classic' ? 'classic' : body.theme === 'modern' ? 'modern' : '',
     vid: clip(body.vid, 24).replace(/[^a-z0-9]/gi, ''),
+    // kun landet (fra Vercels geo-header) – IP-adressen gemmes ikke
+    country: (request.headers.get('x-vercel-ip-country') ?? '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2),
   };
   const day = entry.at.slice(0, 10);
   if (entry.vid) await redis.zadd('seen', { score: Date.now(), member: entry.vid });

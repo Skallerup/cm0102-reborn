@@ -53,7 +53,7 @@ interface Overview {
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
-interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number }
+interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string }
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
@@ -285,6 +285,10 @@ function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
   );
 }
 
+/** Flag-emoji ud fra landekoden (regional indicator symbols) og landets navn */
+const flag = (cc: string) => cc.length === 2 ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) : '';
+const countryName = (cc?: string) => { try { return cc ? new Intl.DisplayNames(['en'], { type: 'region' }).of(cc) ?? cc : ''; } catch { return cc ?? ''; } };
+
 function NewCareersTab() {
   type Data = { rows: NewCareer[]; days: Record<string, number>; online?: number; now?: number };
   const [data, setData] = useState<Data | null>(null);
@@ -311,15 +315,29 @@ function NewCareersTab() {
           ))}
         </div>
       </Panel>
+      {(() => {
+        // hvor kommer spillerne fra (landet ved spilstart, de seneste karrierer)
+        const by = new Map<string, number>();
+        for (const r of data.rows) if (r.country) by.set(r.country, (by.get(r.country) ?? 0) + 1);
+        const top = [...by.entries()].sort((a, b) => b[1] - a[1]);
+        return top.length ? (
+          <Panel title={`Countries (${top.length})`}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {top.map(([cc, n]) => <span key={cc} className="tag" title={countryName(cc)}>{flag(cc)} {cc} <b>{n}</b></span>)}
+            </div>
+          </Panel>
+        ) : null;
+      })()}
       <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now</span>} className="flush">
         {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
-            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Status</th></tr></thead>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Status</th></tr></thead>
               <tbody>{data.rows.map((r, i) => (
                 <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
                   <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.challenge || ''}</td>
                   <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td>
                   <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}</td><td className="muted">{r.lang}</td>
+                  <td className="nowrap" title={countryName(r.country)}>{r.country ? <>{flag(r.country)} {r.country}</> : <span className="muted">–</span>}</td>
                   <td className="nowrap">{!r.vid ? <span className="muted">–</span> : r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000
                     ? <span style={{ color: '#16a34a', fontWeight: 600 }}>● Online</span>
                     : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td></tr>
