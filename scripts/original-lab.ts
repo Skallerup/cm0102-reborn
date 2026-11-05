@@ -1,13 +1,14 @@
 // Kalibrering af den originale 2001/02-database mod det originale CM 01/02: spil hele sæsoner med England aktiv
 // og sammenlign Premier League med originalens egen sæson (scripts/original-stats.ts på en ferie-sæson 2001/02).
-// Kør: npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [squashAtt] [seed]
+// Kør: npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [squashAtt] [ease] [seed]
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { ORIGINAL, continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { finalOrder } from '../src/game/competitions';
 
-const [seasons = 1, finish, homeAdv, finSlope, squash, squashAtt, seed = 2001] = process.argv.slice(2).map(Number);
+const [seasons = 1, finish, homeAdv, finSlope, squash, squashAtt, ease, seed = 2001] = process.argv.slice(2).map(Number);
+if (ease) ORIGINAL.ease = ease;
 if (squash) ORIGINAL.squash = squash;
 ORIGINAL.squashAtt = squashAtt || ORIGINAL.squash;
 if (finish) ORIGINAL.finish = finish;

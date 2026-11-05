@@ -54,6 +54,8 @@ export interface EngineOptions {
   /** dæmpning af niveauforskelle (standard SQUASH) – og særskilt for de offensive egenskaber (standard = squash) */
   squash?: number;
   squashAtt?: number;
+  /** Hvor meget et hold, der fører med 2+ mål, slapper af gennem hele kampen (pr. måls forspring ud over det første) */
+  ease?: number;
   /** Banens tilstand */
   pitch?: Pitch;
   /** Dagens dommer (navn vises i rapporten; strengheden styrer kort) */
@@ -1449,9 +1451,13 @@ export class MatchSim {
 
   /** Sent i kampen: holdet der er bagud med ét mål, kæmper med alt (beslutsomhed), og føreren trækker sig nervøst */
   private urgency() {
-    if (this.minute < 75 || this.extraTime) return;
+    const ease = this.opts.ease ?? 0;
+    if ((this.minute < 75 && !ease) || this.extraTime) return;
     for (const t of this.teams) {
       const d = this.stateDiff(t);
+      // stort forspring: holdet slapper af (originalens topkampe ender 2-0, ikke 5-0)
+      if (ease && d >= 2) { t.urge = 1 - ease * Math.min(d - 1, 3); continue; }
+      if (this.minute < 75) { t.urge = 1; continue; }
       t.urge = d === -1 || d === -0.5 ? 1 + 0.03 + 0.03 * (t.det / 20) : d === 1 || d === 0.5 ? 0.985 : 1;
     }
   }

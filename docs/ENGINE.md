@@ -81,14 +81,18 @@ Den originale 2001/02-database kalibreres mod **det originale CM 01/02** og ikke
 
 | Premier League (original database) | Originalen 2001/02 | Motor før | Motor nu (9 sæsoner) |
 |---|---|---|---|
-| Mål pr. kamp | 2,87 | 2,57 | 2,89 |
-| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 45 / 23 / 33 % | 52 / 22 / 27 % |
+| Mål pr. kamp | 2,87 | 2,57 | 2,83 |
+| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 45 / 23 / 33 % | 50 / 25 / 25 % |
 | 0-0 | 5,3 % | 8,4 % | 6,9 % |
-| 1-0 | 14,7 % | 20,5 % | 16,0 % |
-| Mester / sidst | 84 / 25 p | 83–87 / 20 p | ~88 / 28 p |
-| Topscorer | 23 | 34–42 | ~33 (for høj: én angriber får for stor en del af holdets mål) |
+| 1-0 / 2-1 / 2-0 / 1-1 | 14,7 / 15,5 / 15,5 / 10,3 % | 20,5 / 12,1 / 14,2 / 10,3 % | 15,9 / 15,9 / 13,0 / 10,6 % |
+| Mester / sidst | 84 / 25 p | 83–87 / 20 p | 83 / 27 p |
+| Topscorer | 23 | 34–42 | ~31 |
+| Spredning i scorede mål pr. hold (sd) | 9 | 18 | 12,5 |
+| Spredning i indladte mål pr. hold (sd) | 16 | 14 | 10 |
 
-**Næste skridt (åben):** i originalen er der lille forskel på holdenes scorede mål (spredning 9, max 68) og stor forskel på de indladte (spredning 16, mesteren lukkede kun 22 ind). De gode hold vinder altså på forsvaret. Vores motor har spredning 18 i scorede mål, og topholdene laver 85–105 mål. Det kan hverken `finSlope`, `squash` eller `squashAtt` rette uden at ødelægge målantallet. De stærke hold skaber deres overtag gennem chancemængden (dueller over hele banen), så rettelsen skal sidde i chanceskabelsen: kvalitet bør betyde mere for at forhindre chancer end for at skabe dem. `original-lab.ts` udskriver spredningen og topscorerens andel af holdets mål.
+Den vigtigste knap var `ease`. Et hold, der fører med 2 mål eller mere, slapper af gennem hele kampen, så topholdene vinder 2-0 og ikke 5-0. I originalen er der lille forskel på holdenes scorede mål og stor forskel på de indladte, fordi de gode hold vinder på forsvaret.
+
+**Åbent:** spredningen i indladte mål er for lille (10 mod 16), og topscoreren er stadig lidt for høj. `squash`/`squashAtt` flytter ikke de indladte mål uden at koste mål. Rettelsen skal sidde i chanceskabelsen: kvalitet bør betyde mere for at forhindre chancer end for at skabe dem.
 
 Originalens kampstatistik pr. kamp (begge hold, Premier League): 17,2 skud, 10,3 på mål, 5,0 hjørnespark, cirka 16 frispark og 8,6 frispark begået, 7,4 offside, 1,70 gule og 0,14 røde kort, 72 % lykkede afleveringer og 54 % vundne tacklinger. Kun ligaerne i de lande, der vælges ved spilstart, spilles i originalen, så de andre ligaer kræver en ny ferie-sæson.
 
