@@ -38,7 +38,7 @@ type Tab = 'profile' | 'injuries' | 'contract' | 'transfer' | 'history';
 type ActionItem = DropItem;
 
 /** Action-menuen i titelbjælken (fælles klassisk rullemenu) – knappen i farverne fra spillerens klub */
-function ActionMenu({ items, clubId }: { items: ActionItem[]; clubId?: number }) {
+export function ActionMenu({ items, clubId }: { items: ActionItem[]; clubId?: number }) {
   const col = titleColors(clubId);
   return <CxDrop className="cx-act" label={t('cl.action')} items={items} align="right"
     btn={col.neutral ? undefined : { style: { background: col.bg, color: col.fg } }} />;

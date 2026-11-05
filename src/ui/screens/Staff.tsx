@@ -8,6 +8,8 @@ import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
 import { dateFmt, money, natName, t } from '../../i18n';
 import { repWord } from './NationClassic';
+import { ActionMenu } from './PlayerClassic';
+import type { DropItem } from '../classic';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -115,6 +117,7 @@ function StaffList() {
 function StaffProfile({ id }: { id: number }) {
   const g = useGame()!;
   const s = g.staff[id];
+  const { nav } = useNav();
   const [offer, setOffer] = useState(false);
   const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
   const mine = s.club === g.userClub && !!g.userClub;
@@ -132,10 +135,16 @@ function StaffProfile({ id }: { id: number }) {
     act({ t: 'fireStaff', id: s.id });
     setMsg({ text: t('staff.fired', { name }), tone: 'neutral' });
   };
-  const action = mine
-    ? <button className="small danger" onClick={fire}>{t('staff.fire')}</button>
-    : !g.userClub || !role ? null
-    : <button className="small primary" disabled={full || (s.club > 0 && (g.clubs[g.userClub]?.balance ?? 0) < poachFee(s))} title={full ? t('staff.limit') : undefined} onClick={() => setOffer(true)}>{s.club ? t('staff.buyOut') : t('staff.hireBtn')}</button>;
+  // Action-menuen i titelbjælken (som på spillerprofilen og i CM 01/02)
+  const items: DropItem[] = [];
+  if (mine) items.push({ key: 'fire', label: t('staff.fire'), danger: true, onClick: fire });
+  else if (g.userClub) {
+    const broke = s.club > 0 && (g.clubs[g.userClub]?.balance ?? 0) < poachFee(s);
+    items.push({ key: 'hire', label: s.club ? t('staff.buyOut') : t('staff.hireBtn'), disabled: !role || full || broke,
+      title: !role ? t('staff.noManagerHire') : full ? t('staff.limit') : broke ? t('staff.noMoney') : undefined, onClick: () => setOffer(true) });
+  }
+  if (s.club) items.push({ key: 'club', label: t('staff.viewClub', { club: g.clubs[s.club]?.short ?? '' }), onClick: () => nav(s.club === g.userClub ? { name: 'squad' } : { name: 'club', id: s.club }) });
+  const action = items.length ? <ActionMenu items={items} clubId={s.club || undefined} /> : null;
   return (
     <div>
       <Head title={`${name}${s.club ? ` (${g.clubs[s.club]?.short ?? ''})` : ''}`} action={action} />
