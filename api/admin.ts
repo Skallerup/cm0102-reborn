@@ -4,7 +4,7 @@
 //          (honeypot field "website", max 3 per IP per hour, 40 per hour in total). If RESEND_API_KEY and
 //          NOTIFY_EMAIL are set, the developer also gets an e-mail.
 // Admin:   every other op requires the ADMIN_TOKEN (header x-admin-token).
-//          GET ?op=overview | managers | manager&pid= | applications | rooms | rankings&board=
+//          GET ?op=overview | new-careers | managers | manager&pid= | applications | rooms | rankings&board=
 //          POST { op: 'app-status' | 'app-delete' | 'unrank' }
 import { Redis } from '@upstash/redis';
 
@@ -67,9 +67,12 @@ export async function GET(request: Request) {
       const c = await redis.hgetall<Record<string, string>>(`career:${top[i]}`);
       topRows.push({ career: top[i], points: Number(top[i + 1]), name: c?.name ?? '?', club: c?.club ?? '', league: c?.league ?? '' });
     }
-    const accounts = await redis.scard('acct:all');
+    const [accounts, ncTotal, ncToday, ncYesterday] = await Promise.all([
+      redis.scard('acct:all'), redis.get<number>('nc:total'), redis.get<number>(`nc:d:${day}`), redis.get<number>(`nc:d:${yesterday}`),
+    ]);
     return json({
       accounts,
+      newCareers: { total: Number(ncTotal ?? 0), today: Number(ncToday ?? 0), yesterday: Number(ncYesterday ?? 0) },
       managers: names.length, careers, seasons, seasonsThisMonth: monthEntries,
       rooms: rooms.length, activeRooms: roomInfo.filter((x) => x?.lastTurn && Date.parse(x.lastTurn) > week).length,
       ai: { today: Number(aiToday ?? 0), yesterday: Number(aiYesterday ?? 0), cap: Number(process.env.AI_DAILY_CAP ?? 4000) },
@@ -113,6 +116,17 @@ export async function GET(request: Request) {
   }
 
   if (op === 'applications') return json({ rows: await listApplications() });
+
+  // nye singleplayer-karrierer (logges af api/notify.ts)
+  if (op === 'new-careers') {
+    const raw = (await redis.lrange<unknown>('nc:list', 0, 999)) ?? [];
+    const rows = raw.map((x) => { try { return typeof x === 'string' ? JSON.parse(x) : x; } catch { return null; } }).filter(Boolean);
+    const days: Record<string, number> = {};
+    for (let i = 0; i < 14; i++) days[new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)] = 0;
+    const counts = await Promise.all(Object.keys(days).map((d) => redis.get<number>(`nc:d:${d}`)));
+    Object.keys(days).forEach((d, i) => { days[d] = Number(counts[i] ?? 0); });
+    return json({ rows, days });
+  }
 
   if (op === 'rooms') {
     const rooms = await scanKeys('room:?????', 1000);

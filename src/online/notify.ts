@@ -1,5 +1,5 @@
-// Fortæller serveren (api/notify.ts), at en ny singleplayer-karriere er startet, så udvikleren
-// får en mail. Fire-and-forget: fejl og manglende server (GitHub Pages) ignoreres.
+// Fortæller serveren (api/notify.ts), at en ny singleplayer-karriere er startet, så den vises i
+// admin under "New careers". Fire-and-forget: fejl og manglende server (GitHub Pages) ignoreres.
 import { rankingAvailable } from './rank';
 
 export function notifyNewCareer(info: { manager: string; club: string; league?: string; nation?: string; challenge?: string; bots: number; db: string; lang: string }): void {

@@ -1,5 +1,5 @@
 // Admin interface (developer only): ?admin=1. Requires the ADMIN_TOKEN set on the server, kept in this browser.
-// English on purpose. Tabs: overview, applications ("join the project"), managers, rankings, multiplayer rooms,
+// English on purpose. Tabs: overview, new careers, applications ("join the project"), managers, rankings, multiplayer rooms,
 // community moderation and supporters. Data comes from api/admin.ts and api/community.ts.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SgStatus, Suggestion } from '../online/community';
@@ -46,18 +46,19 @@ const ago = (iso?: string) => {
 };
 
 interface Overview {
-  accounts?: number; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
+  accounts?: number; newCareers?: { total: number; today: number; yesterday: number }; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
   ai: { today: number; yesterday: number; cap: number }; suggestions: number; supporters: number;
   applications: { total: number; new: number }; top: { career: string; points: number; name: string; club: string; league: string }[];
   config: { email: boolean; stripe: boolean };
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
+interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string }
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters']];
+type Tab = 'overview' | 'starts' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -104,6 +105,7 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       </div>
       {msg && <div className="insight">{msg}</div>}
       {tab === 'overview' && <OverviewTab o={overview} go={setTab} />}
+      {tab === 'starts' && <NewCareersTab />}
       {tab === 'applications' && <ApplicationsTab onChange={refresh} setMsg={setMsg} />}
       {tab === 'managers' && <ManagersTab />}
       {tab === 'rankings' && <RankingsTab setMsg={setMsg} />}
@@ -128,6 +130,7 @@ function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
   return (
     <>
       <div className="adm-stats">
+        <Stat label="New careers today" value={o.newCareers?.today ?? 0} sub={`yesterday ${o.newCareers?.yesterday ?? 0} · ${o.newCareers?.total ?? 0} in total`} onClick={() => go('starts')} />
         <Stat label="Applications" value={o.applications.total} sub={o.applications.new ? `${o.applications.new} new` : 'none new'} onClick={() => go('applications')} />
         <Stat label="Accounts (cloud saves)" value={o.accounts ?? 0} sub="signed in with email" />
         <Stat label="Manager profiles" value={o.managers} sub={`${o.careers} careers on the board`} onClick={() => go('managers')} />
@@ -278,6 +281,41 @@ function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
         </div>
       )}
     </Panel>
+  );
+}
+
+function NewCareersTab() {
+  const [data, setData] = useState<{ rows: NewCareer[]; days: Record<string, number> } | null>(null);
+  useEffect(() => { void adminGet<{ rows: NewCareer[]; days: Record<string, number> }>('op=new-careers').then((r) => setData(r ?? { rows: [], days: {} })); }, []);
+  if (!data) return <div className="muted">Loading new careers…</div>;
+  const days = Object.entries(data.days).reverse();
+  const max = Math.max(1, ...days.map(([, n]) => n));
+  return (
+    <>
+      <Panel title="New careers per day (last 14 days)">
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 90 }}>
+          {days.map(([d, n]) => (
+            <div key={d} title={`${d}: ${n}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <small className="muted">{n}</small>
+              <div style={{ width: '100%', height: Math.round((n / max) * 60), minHeight: 2, background: 'var(--accent, #3b82f6)', borderRadius: 2 }} />
+              <small className="muted">{d.slice(8)}</small>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      <Panel title={`Latest new careers (${data.rows.length})`} className="flush">
+        {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
+          <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Lang</th></tr></thead>
+              <tbody>{data.rows.map((r, i) => (
+                <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
+                  <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.challenge || ''}</td>
+                  <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td><td className="muted">{r.lang}</td></tr>
+              ))}</tbody></table>
+          </div>
+        )}
+      </Panel>
+    </>
   );
 }
 
