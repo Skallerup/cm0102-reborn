@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { opponentReport } from '../../game/analysis';
 import type { MatchSim } from '../../game/engine/match';
 import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
@@ -16,7 +16,9 @@ import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { useClassicNext } from '../classic';
-import { Pitch2D, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
+import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
+import { stadiumBackgrounds } from '../classicOptions';
+import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables } from './Competitions';
 import { leagueRows } from '../../game/competitions';
 import { TacticEditor } from './Tactics';
@@ -99,10 +101,11 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
   const awayVsHuman = !!g.humans && f.away === g.userClub && isHumanClub(f.home) && !isBotClub(f.home);
   const homeVsHuman = !!g.humans && !!session() && f.home === g.userClub && isHumanClub(f.away) && !isBotClub(f.away);
   useHotkeys((e) => { if (isToday && !awayVsHuman && e.key === 'Enter') { onPlay(); return true; } });
+  const photo = useStadiumPhoto(f);
   return (
     <div>
       <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`} />
-      <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} />
+      <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} photo={photo} venue={g.clubs[f.home]?.stadium} />
       <div className="insight weather-note">{WEATHER_ICON[weatherFor(f)]} <b>{t(`wx.${weatherFor(f)}`)}</b> – {t(`wx.d.${weatherFor(f)}`)}
         {pitchFor(f) !== 'normal' && <> · {PITCH_ICON[pitchFor(f)]} <b>{t(`pitch.${pitchFor(f)}`)}</b> – {t(`pitch.d.${pitchFor(f)}`)}</>}
         {' · '}{t('ref.label')}: <b>{refereeFor(f).name}</b> ({t(refereeFor(f).strict > 1.15 ? 'ref.strict' : refereeFor(f).strict < 0.85 ? 'ref.lenient' : 'ref.normal')})</div>
@@ -300,9 +303,19 @@ function RatingsBoard({ sim, colors }: { sim: MatchSim; colors: [string, string,
   return <div className="cm-ratings">{col(sim.live(0), 0)}{col(sim.live(1), 1)}</div>;
 }
 
-function Scoreboard({ home, away, hg, ag, minute }: { home: number; away: number; hg: number | null; ag: number | null; minute: string }) {
+/** Moderne udseende: hjemmeholdets stadion som baggrund i kampkortet på kampdage (klassisk: hele skærmen, se Shell) */
+function useStadiumPhoto(f: Fixture): string | null {
+  const [, ready] = useState(0);
+  const g = gs();
+  const stadium = !isRetro() && f.stage !== 'F' && stadiumBackgrounds() ? g.clubs[f.home]?.stadium : undefined;
+  useEffect(() => { if (stadium) void loadStadiumBgs().then(() => ready((x) => x + 1)); }, [stadium]);
+  return stadiumBgUrl(stadium, f.date);
+}
+
+function Scoreboard({ home, away, hg, ag, minute, photo, venue }: { home: number; away: number; hg: number | null; ag: number | null; minute: string; photo?: string | null; venue?: string }) {
   return (
-    <div className="scoreboard">
+    <div className={`scoreboard ${photo ? 'photo' : ''}`} style={photo ? ({ '--stadium': `url("${photo}")` } as CSSProperties) : undefined}>
+      {photo && venue && <div className="sb-venue">{venue}</div>}
       <div className="team"><Crest id={home} size={34} /><ClubLink id={home} noCrest /></div>
       <div>
         <div className="score">{hg === null ? 'v' : `${hg} - ${ag}`}</div>
@@ -488,7 +501,10 @@ function LiveMatch({ id }: { id: number }) {
     if (bigOrCorner && (tab === '2d' || (bigOrCorner.outcome === 'offside' && speed < 8)) && (speed < 8 || bigOrCorner.outcome === 'goal')) {
       const big = bigOrCorner;
       const assist = big.outcome === 'goal' ? sim.events.filter((e) => e.k === 'goal' && e.p === big.p).at(-1)?.p2 : undefined;
-      const frames = highlightFrames(sim.pitch(), big, assist);
+      // returbold: den første afslutning (redning/stolpe) vises først, så returen
+      const bi = sim.shots.lastIndexOf(big);
+      const first = big.kind === 'rebound' && bi > 0 && sim.shots[bi - 1].t === big.t ? sim.shots[bi - 1] : undefined;
+      const frames = first ? reboundFrames(sim.pitch(), first, big) : highlightFrames(sim.pitch(), big, assist);
       // teksten følger billederne: opspil → aflevering → afslutning → det, der faktisk skete
       const name = (fr: Snap) => fr.players.find((p) => p.id === fr.holder)?.name ?? '';
       const shooter = frames.at(-1) ? name(frames.at(-1)!) : '';
@@ -497,7 +513,7 @@ function LiveMatch({ id }: { id: number }) {
       const gi = big.outcome === 'goal' ? fresh.findIndex((l) => l.cls === 'goal') : -1;
       const result = (gi >= 0 ? fresh.slice(gi).map((l) => l.text).join(' · ') : fresh.at(-1)?.text) || (L.lines.at(-1)?.text ?? '');
       const taker = big.corner ? g.players[big.corner]?.last ?? '' : '';
-      const tag = big.origin ?? (['fk', 'long', 'cutback'].includes(big.kind) ? big.kind : '');
+      const tag = big.og || big.kind === 'og' ? 'og' : first ? 'rebound' : big.setup ?? big.origin ?? (['fk', 'long', 'cutback'].includes(big.kind) ? big.kind : '');
       const texts = big.corner
         ? [t('hl.cornerSetup', { a: taker }), t('hl.cornerCross', { a: taker }), result]
         : tag
@@ -554,9 +570,14 @@ function LiveMatch({ id }: { id: number }) {
     // mindre højdepunkter (kun ved "Alle"): offside, kort og skader
     if (!started && level === 'all' && tab === '2d' && speed < 8) {
       const off = newLd.filter((h) => h.kind === 'offside').at(-1);
+      const cd = newLd.filter((h) => h.kind === 'closedDown').at(-1);
       const inc = newEv.filter((e) => e.k === 'yellow' || e.k === 'red' || e.k === 'injury').at(-1);
       const lineFor = (...ks: string[]) => L.lines.slice(linesBefore).reverse().find((l) => ks.some((k) => l.k?.startsWith(k)))?.text ?? L.lines.at(-1)?.text ?? '';
-      if (off) {
+      if (cd && !off) {
+        const att = g.players[cd.p]?.last ?? '', def = g.players[cd.p2]?.last ?? '';
+        setHl({ frames: closedDownFrames(sim.pitch(), cd), i: 0, outcome: 'closedDown', texts: [t('hl.t.closedDown', { a: att }), t('hl.t2.closedDown', { a: att, b: def }), lineFor('closed-down')], hideFrom: linesBefore, team: cd.t, label: 'hl.k.closedDown' });
+        started = true;
+      } else if (off) {
         const runner = g.players[off.p]?.last ?? '', passer = g.players[off.p2]?.last ?? '';
         setHl({ frames: offsideFrames(sim.pitch(), off), i: 0, outcome: 'offsideFlag', texts: [t('hl.t.offside', { a: passer, b: runner }), lineFor('offside')], hideFrom: linesBefore, team: off.t, label: 'hl.k.offside' });
         started = true;
@@ -716,6 +737,7 @@ function LiveMatch({ id }: { id: number }) {
     return () => clearInterval(h);
   }, [h2h, id]); // eslint-disable-line react-hooks/exhaustive-deps
   const awayName = humanManager(f.away)?.name ?? '';
+  const photo = useStadiumPhoto(f);
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report ? t('match.continue') : null, done);
   // advar mod at genindlæse/lukke midt i kampen
@@ -742,7 +764,10 @@ function LiveMatch({ id }: { id: number }) {
         )}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
-      <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
+      <div className={photo ? 'cm-stage' : undefined} style={photo ? ({ '--stadium': `url("${photo}")` } as CSSProperties) : undefined}>
+        <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
+        {photo && <div className="cm-stage-venue">{g.clubs[f.home]?.stadium}</div>}
+      </div>
       <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>
       <Tabs tabs={[...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (

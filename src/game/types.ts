@@ -702,6 +702,15 @@ export interface ShotRecord {
   origin?: string;
   /** ramte stolpen/overliggeren */
   post?: boolean;
+  /** redningen: målmanden griber, slår ud (returbold), taber bolden eller tipper den til hjørnespark */
+  save?: 'hold' | 'parry' | 'spill' | 'corner';
+  /** forsvareren, der blokerede skuddet (eller lavede selvmål) */
+  blocker?: number;
+  /** selvmål: forsvareren der fik bolden i eget net (p er stadig den, der skød/slog indlægget) */
+  og?: number;
+  /** opspillet lige før afslutningen (2D): layoff, knockdown, lowcross, longthrow, shortcorner, edge, holdup – og hvem der lavede det */
+  setup?: string;
+  setupBy?: number;
 }
 
 export interface CommentaryLine {

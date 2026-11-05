@@ -25,6 +25,16 @@ export interface EngineTeam {
   talk?: Record<number, number>;
 }
 
+/** Afslutningen på 2D-banen (pitch()): udfald plus de detaljer, der skal tegnes */
+export interface ShotSnap {
+  team: number;
+  outcome: ShotRecord['outcome'] | 'post';
+  zone: number;
+  save?: ShotRecord['save'];
+  blocker?: number;
+  og?: number;
+}
+
 export interface EngineOptions {
   commentary: boolean;
   neutral?: boolean;
@@ -156,6 +166,8 @@ const RED_BASE = 0.0011;
 /** Ekstra chancekvalitet pr. manglende forsvarsspiller */
 const SPACE_XG = 0.17;
 /** De offensive egenskaber (afslutning, chanceskabelse) – kan dæmpes særskilt pr. database */
+/** Hvilke afslutninger hvert opspil kan føre til (2D) */
+const SETUP_KINDS: Record<string, string[]> = { layoff: ['box'], knockdown: ['box', 'header'], lowcross: ['box'], longthrow: ['header', 'box'], shortcorner: ['header', 'box', 'cutback'], edge: ['long'] };
 const ATT_ATTRS = new Set<number>([A.crossing, A.dribbling, A.finishing, A.longShots, A.offTheBall, A.passing, A.technique, A.creativity, A.flair]);
 /** De defensive egenskaber (markering, tackling, placering, målmand) – kan dæmpes særskilt pr. database */
 const DEF_ATTRS = new Set<number>([A.marking, A.tackling, A.positioning, A.anticipation, A.handling, A.oneOnOnes, A.reflexes]);
@@ -192,6 +204,8 @@ export class MatchSim {
   private breakawayOrigin = '';
   /** oprindelse for næste afslutning (indlæg, dribling, pres …) */
   private originNext = '';
+  /** opspillet til den næste afslutning (2D) – gælder kun i samme eller næste øjeblik */
+  private setupNext: { k: string; by: number; moment: number } | null = null;
   /** højt pres: en angriber har erobret bolden højt og får en chance */
   private pressed: SP | null = null;
   /** højdepunkter uden afslutning (redningstacklinger) til 2D-visningen */
@@ -712,7 +726,7 @@ export class MatchSim {
       if (this.r.chance(0.35)) this.line('hold-up', carrier);
       const lane = this.laneOf(T.idx);
       const late = rb >= 3 ? this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => Math.sqrt(this.finQ(x)) * (x.instr.runs + 1), carrier) : null;
-      if (late && this.r.chance(0.35)) { this.lastPasser = carrier; this.lastPasserMoment = this.moment; this.line('lay-off', carrier, late); return this.shoot(T, O, late, 'box', -0.04); }
+      if (late && this.r.chance(0.35)) { this.lastPasser = carrier; this.lastPasserMoment = this.moment; this.line('lay-off', carrier, late); this.setup('layoff', carrier); return this.shoot(T, O, late, 'box', -0.04); }
       return this.pass(T, O, carrier, 0.55, false, 0.5);
     }
     this.holder = carrier.p.id;
@@ -888,7 +902,7 @@ export class MatchSim {
       if (this.r.chance(0.06)) this.line('longball', s, recv);
       // en stærk angriber der holder bolden op, venter på medspillerne
       if ((recv.instr.holdUp || recv.p.id === T.targetMan) && this.r.chance(clamp(0.45 + (this.a(recv, A.strength) + this.a(recv, A.balance) - 22) / 30, 0.15, 0.8))) this.held = recv;
-      else if (trb >= 3 && this.r.chance(0.06)) this.line('knock-down', recv);
+      else if (trb >= 3 && this.r.chance(0.06)) { this.line('knock-down', recv); this.setup('knockdown', recv); }
     } else {
       this.rate(def, 0.05);
       this.turnover(def);
@@ -1053,10 +1067,11 @@ export class MatchSim {
       this.lastPasserMoment = this.moment;
       this.originNext = 'cross';
       if (this.r.chance(0.3)) this.line('low-cross', s, runner);
+      this.setup('lowcross', s);
       return this.shoot(T, O, runner, 'box', 0.015);
     }
     this.rate(def, 0.04);
-    if (def && this.r.chance(0.004)) { this.goal(T, O, def, null, 'og'); return; }
+    if (def && this.r.chance(0.004)) { this.shots.push({ m: this.minute, t: T.idx, zone: this.zone, xg: 0, outcome: 'goal', p: s.p.id, kind: 'og', og: def.p.id, origin: 'cross' }); this.goal(T, O, def, null, 'og'); return; }
     if (this.r.chance(0.3)) return this.corner(T, O);
     this.turnover(def);
   }
@@ -1082,13 +1097,14 @@ export class MatchSim {
     if (cr < 0.08) {
       // kort hjørnespark: bolden bliver på kanten
       if (this.r.chance(0.4)) this.line('short-corner', taker);
+      this.setup('shortcorner', taker);
       this.zone = this.zoneFor(T.idx, 3, lane);
       return;
     }
     if (cr < 0.12) {
       // til kanten af feltet: en med et godt skud venter
       const edge = this.pick(T.zAtt[this.zoneFor(T.idx, 3, 1)], (x) => this.a(x, A.longShots) ** 2, taker);
-      if (edge) { this.zone = this.zoneFor(T.idx, 3, 1); this.line('corner-edge', taker, edge); return this.shoot(T, O, edge, 'long', 0.01); }
+      if (edge) { this.zone = this.zoneFor(T.idx, 3, 1); this.line('corner-edge', taker, edge); this.setup('edge', taker); return this.shoot(T, O, edge, 'long', 0.01); }
     }
     this.cross(T, O, taker, true);
   }
@@ -1100,6 +1116,7 @@ export class MatchSim {
     if (!thrower) return false;
     if (this.a(thrower, A.throwIns) >= 13 && this.r.chance(0.55)) {
       this.line('long-throw', thrower);
+      this.setup('longthrow', thrower);
       this.zone = this.zoneFor(T.idx, 4, lane);
       this.cross(T, O, thrower, true, -0.2, true);
       return true;
@@ -1204,6 +1221,8 @@ export class MatchSim {
     }
   }
 
+  private setup(k: string, by: SP) { this.setupNext = { k, by: by.p.id, moment: this.moment }; }
+
   private shoot(T: TeamRT, O: TeamRT, s: SP, kind: string, bonus = 0): void {
     this.holder = s.p.id;
     const z = this.zone;
@@ -1227,6 +1246,9 @@ export class MatchSim {
           d.line.tackles++;
           this.rate(d, 0.05);
           this.line('closed-down', d, s);
+          this.setupNext = null;
+          this.originNext = '';
+          this.highlights.push({ m: this.minute, t: T.idx, kind: 'closedDown', p: s.p.id, p2: d.p.id, moment: this.moment });
           this.turnover(d);
           return;
         }
@@ -1252,6 +1274,9 @@ export class MatchSim {
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
     if (this.originNext) { rec.origin = this.originNext; this.originNext = ''; }
+    // opspillet hører kun til en afslutning af den rigtige slags (fx kanten af feltet → langskud)
+    if (this.setupNext && this.moment - this.setupNext.moment <= 2 && SETUP_KINDS[this.setupNext.k]?.includes(kind)) { rec.setup = this.setupNext.k; rec.setupBy = this.setupNext.by; }
+    this.setupNext = null;
     // skud direkte efter et hjørnespark (samme øjeblik)
     const cn = this.corners.at(-1);
     if (cn && cn.moment === this.moment && cn.t === T.idx && !cn.shot) { cn.shot = true; rec.corner = cn.taker; }
@@ -1271,8 +1296,9 @@ export class MatchSim {
       rec.outcome = 'blocked';
       this.uncount(T, s);
       const blk = blk0;
+      if (blk) rec.blocker = blk.p.id;
       // et skud der rammer en forsvarer, kan gå i eget net
-      if (blk && kind !== 'long' && this.r.chance(0.012)) { rec.outcome = 'goal'; this.goal(T, O, blk, null, 'og'); return; }
+      if (blk && kind !== 'long' && this.r.chance(0.012)) { rec.outcome = 'goal'; rec.og = blk.p.id; this.goal(T, O, blk, null, 'og'); return; }
       this.rate(blk, 0.06);
       this.line('shot-blocked', s, blk);
       if (this.r.chance(0.55)) return this.corner(T, O);
@@ -1325,6 +1351,7 @@ export class MatchSim {
       // griber målmanden bolden, eller slår han den ud? (grebssikkerhed, vådt vejr gør den glat)
       const hold = kind !== 'pen' && this.r.chance(clamp(0.42 + (this.a(gk, A.handling) - 11) / 22 + this.wx.pass * 2.5 - xg * 0.5, 0.15, 0.85));
       if (hold) {
+        rec.save = 'hold';
         if (this.r.chance(0.12)) this.line('gk-holds', gk);
         this.zone = this.zoneFor(O.idx, 0, 1);
         this.poss = O.idx;
@@ -1333,9 +1360,10 @@ export class MatchSim {
       const rr = this.r.next();
       if (rr < 0.24) {
         const fol = this.pick(T.zAtt[z], (x) => Math.sqrt(this.finQ(x)) * (0.6 + this.a(x, A.anticipation) / 25));
-        if (fol) { this.line(this.a(gk, A.handling) < 11 && this.r.chance(0.5) ? 'gk-spills' : 'gk-parry', gk, fol); this.rebound = fol; return; }
+        if (fol) { const spill = this.a(gk, A.handling) < 11 && this.r.chance(0.5); rec.save = spill ? 'spill' : 'parry'; this.line(spill ? 'gk-spills' : 'gk-parry', gk, fol); this.rebound = fol; return; }
       }
-      if (rr < 0.75) return this.corner(T, O);
+      if (rr < 0.75) { rec.save = 'corner'; return this.corner(T, O); }
+      rec.save = 'hold';
       this.zone = this.zoneFor(O.idx, 0, 1);
       this.poss = O.idx;
       return;
@@ -1655,7 +1683,7 @@ export class MatchSim {
       poss: this.poss,
       holder: this.holder,
       moment: this.moment,
-      shot: last && last.m === this.minute ? { team: last.t, outcome: last.outcome, zone: last.zone } : null,
+      shot: last && last.m === this.minute ? { team: last.t, outcome: last.outcome, zone: last.zone } as ShotSnap : null,
       players: this.teams.flatMap((t) => t.on.filter((sp) => !sp.off).map((sp) => ({
         id: sp.p.id, team: t.idx, num: sp.slot + 1, gk: t.tactic.slots[sp.slot]?.pos === 'GK',
         ax: sp.ax, ay: sp.ay, dx: sp.dx, dy: sp.dy, name: sp.p.last,

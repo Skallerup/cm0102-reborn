@@ -334,6 +334,15 @@ table.grid td.center, table.grid th.center { text-align: center; }
   background: radial-gradient(80% 140% at 50% 0%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 60%), var(--surface);
   border: 1px solid var(--line2); box-shadow: var(--shadow);
 }
+.scoreboard.photo { position: relative; padding: 34px 18px 26px; color: #fff; border-color: transparent;
+  background: linear-gradient(180deg, rgba(4, 10, 30, 0.25), rgba(4, 10, 30, 0.6)), var(--stadium) center / cover no-repeat; }
+.scoreboard.photo .team, .scoreboard.photo .team a, .scoreboard.photo .score { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7); }
+.scoreboard.photo .minute { color: #ffe066; }
+.sb-venue { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); }
+/* live-kamp (moderne): stadionet bag stillingen */
+.cm-stage { padding: 14px 14px 8px; margin-bottom: 12px; border-radius: 16px; background: linear-gradient(180deg, rgba(4, 10, 30, 0.2), rgba(4, 10, 30, 0.55)), var(--stadium) center 40% / cover no-repeat; box-shadow: var(--shadow); }
+.cm-stage .cm-board { margin-bottom: 6px; }
+.cm-stage-venue { text-align: center; font-size: 12px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); text-shadow: 0 1px 2px #000; }
 .scoreboard .team { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 800; min-width: 180px; }
 .scoreboard .team.away { justify-content: flex-end; flex-direction: row-reverse; }
 .scoreboard .score { font-size: 40px; font-weight: 800; color: var(--strong); font-family: var(--mono); min-width: 120px; text-align: center; letter-spacing: -0.02em; }
