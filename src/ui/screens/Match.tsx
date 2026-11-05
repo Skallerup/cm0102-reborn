@@ -15,6 +15,7 @@ import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { isRetro } from '../theme';
+import { useClassicNext } from '../classic';
 import { Pitch2D, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables } from './Competitions';
 import { leagueRows } from '../../game/competitions';
@@ -230,7 +231,7 @@ type LiveTeam = ReturnType<MatchSim['live']>;
 
 /** Match Overview (CM 01/02): halvleg, dato og turnering, den seneste kommentar i farverne på holdet med bolden,
  *  boldbesiddelsen de seneste 5 minutter, dommer og vejr */
-function CxOverview({ f, colors, line, poss, half }: { f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string }) {
+function CxOverview({ f, colors, line, poss, half, goals }: { f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[] }) {
   const g = gs();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
   const team = line?.t;
@@ -240,6 +241,14 @@ function CxOverview({ f, colors, line, poss, half }: { f: Fixture; colors: [stri
     <div className="cx-mo">
       <div className="cx-subtitle small">{half}</div>
       <div className="cx-mo-meta"><span>{dateFmt(f.date, true)}</span><span>{compName(g.comps[f.comp]?.name)}</span></div>
+      {/* målscorerne under hvert hold, som i CM 01/02 (selvmål står hos holdet, der fik målet) */}
+      <div className="cx-mo-scorers">
+        {[0, 1].map((side) => (
+          <div key={side} className={side ? 'away' : ''}>
+            {goals.filter((e) => e.t === side).map((e, i) => <div key={i}>{g.players[e.p]?.last ?? ''} {e.m}{e.og ? ` (${t('match.og')})` : ''}</div>)}
+          </div>
+        ))}
+      </div>
       <div className="cx-mo-line" style={bar}>{line?.text ?? ''}</div>
       <div className="cx-mo-poss">
         <span className="lbl">{t('match.last5')}</span>
@@ -452,8 +461,11 @@ function LiveMatch({ id }: { id: number }) {
     // højdepunkter: mål, store chancer – og de taktiske situationer (kontra, gennembrud, indlæg, solo, pres, frispark, cutback, langskud, stolpe)
     // hvor mange højdepunkter: kun mål, store chancer (standard) eller alle afslutninger
     const level = g.options.highlights ?? 'big';
-    const big = fresh.filter((sh) => level === 'all' || sh.outcome === 'goal' || sh.outcome === 'offside' || sh.kind === 'pen' || (level === 'big' && (sh.xg >= 0.1 || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)
-      || !!sh.origin || sh.post || sh.kind === 'fk' || sh.kind === 'cutback' || (sh.kind === 'long' && (sh.outcome === 'saved' || sh.xg >= 0.05))))).at(-1);
+    const bigs = fresh.filter((sh) => level === 'all' || sh.outcome === 'goal' || sh.outcome === 'offside' || sh.kind === 'pen' || (level === 'big' && (sh.xg >= 0.1 || sh.kind === 'oneOnOne' || (sh.outcome === 'saved' && sh.xg >= 0.07)
+      || !!sh.origin || sh.post || sh.kind === 'fk' || sh.kind === 'cutback' || (sh.kind === 'long' && (sh.outcome === 'saved' || sh.xg >= 0.05)))));
+    // flere afslutninger i samme opdatering: målet (eller det annullerede mål) vises – ellers den seneste. Ellers kunne
+    // et annulleret mål blive vist med billederne af en anden afslutning (bolden langt fra mål – og så offside)
+    const big = bigs.filter((sh) => sh.outcome === 'goal').at(-1) ?? bigs.filter((sh) => sh.outcome === 'offside').at(-1) ?? bigs.at(-1);
     let started = false;
     // hjørnespark: med afslutning vises de som chancen; uden afslutning som et kort indlæg, forsvaret rydder
     const newCorners = sim.corners.slice(L.cornersSeen ?? 0);
@@ -704,6 +716,8 @@ function LiveMatch({ id }: { id: number }) {
     return () => clearInterval(h);
   }, [h2h, id]); // eslint-disable-line react-hooks/exhaustive-deps
   const awayName = humanManager(f.away)?.name ?? '';
+  // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
+  useClassicNext(report ? t('match.continue') : null, done);
   // advar mod at genindlæse/lukke midt i kampen
   useEffect(() => {
     if (report) return;
@@ -751,7 +765,8 @@ function LiveMatch({ id }: { id: number }) {
         </div></div>
       )}
       {tab === 'overview' && (
-        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={sim.finished ? t('match.ft') : sim.half === 2 ? t('match.half2') : t('match.half1')} />
+        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={sim.finished ? t('match.ft') : sim.half === 2 ? t('match.half2') : t('match.half1')}
+          goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og }))} />
       )}
       {tab === '2d' && (
         <div className="cols match2d">

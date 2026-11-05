@@ -684,6 +684,9 @@
 .cx-mo { margin: 0 18px; padding: 4px 18px 10px; background: rgba(0, 0, 0, 0.35); }
 .cx-mo-meta { display: flex; justify-content: space-between; margin: 2px 0; }
 .cx-mo-meta span { background: rgba(0, 0, 0, 0.45); color: #6fe3ff; padding: 4px 30px; font-size: 13px; font-weight: 700; }
+.cx-mo-scorers { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin: 10px 40px 0; min-height: 22px; color: #fff; font-size: 15px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
+.cx-mo-scorers .away { text-align: right; }
+.cx-mo-scorers + .cx-mo-line { margin-top: 40px; }
 .cx-mo-line { margin: 70px 40px 90px; min-height: 92px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px 24px; font-size: clamp(16px, 2vw, 24px); font-weight: 800; border: 1px solid rgba(0, 0, 0, 0.4); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
 .cx-mo-poss { display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 12px; margin: 0 60px 26px; padding: 8px 12px; background: linear-gradient(180deg, #a8acb6, #7e828e); }
 .cx-mo-poss .lbl { color: #fff; text-align: center; font-size: 13px; font-weight: 700; text-shadow: 1px 1px 0 #000; }

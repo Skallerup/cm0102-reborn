@@ -76,6 +76,17 @@ async function run(look) {
     { name: 'find' }, { name: 'staff', id: Number(await gs(() => Object.keys(window.__cm.gs().staff)[0])) }, { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
   ];
   for (const r of screens) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); });
+  // turneringsvælgeren skal skifte turnering, også når skærmen er åbnet på en bestemt (fx Champions League)
+  await step('turneringsvælger skifter turnering', async () => {
+    await go({ name: 'competitions', id: 'CL' });
+    await page.waitForTimeout(300);
+    const want = await gs(() => { const g = window.__cm.gs(); return g.comps[g.clubs[g.userClub].league].id; });
+    await page.locator('.sel').first().click();
+    await page.locator('.sel-opt').filter({ hasNotText: 'Champions' }).first().click();
+    await page.waitForTimeout(300);
+    const label = await page.locator('.sel .sel-label').first().innerText();
+    if (/Champions/.test(label)) throw new Error(`valget blev ikke til en anden turnering (${label}, ${want})`);
+  });
 
   // ---------- taktik ----------
   await go({ name: 'tactics' });
@@ -175,7 +186,11 @@ async function run(look) {
       if (await resume.isVisible().catch(() => false)) await resume.click().catch(() => {});
       await page.waitForTimeout(500);
     }
-    await page.getByRole('button', { name: await t('match.continue') }).first().click({ timeout: 10000 });
+    if (look === 'klassisk') {
+      // som i CM 01/02: ved slutfløjt bliver Next-knappen nederst til Continue
+      await page.screenshot({ path: `${OUT}/klassisk-slutfloejt.png` });
+      await page.locator('.cx-next-go').click({ timeout: 10000 });
+    } else await page.getByRole('button', { name: await t('match.continue') }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
     const played = await gs(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).some((f) => f.result && (f.home === g.userClub || f.away === g.userClub)); });
     if (!played) throw new Error('kampen blev ikke spillet færdig');

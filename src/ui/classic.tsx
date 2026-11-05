@@ -5,7 +5,7 @@ import './classic.css';
 //
 // Shell'en ejer pladserne (slots) til faner og under-knapper; Head og Tabs fylder dem via portaler,
 // så de enkelte skærme ikke skal kende til layoutet.
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { gs } from '../game/state';
 import type { GameState, Staff } from '../game/types';
@@ -19,6 +19,28 @@ export interface ClassicSlots { tabs: HTMLElement | null; sub: HTMLElement | nul
 export const ClassicSlotCtx = createContext<ClassicSlots | null>(null);
 /** null = ikke klassisk tema */
 export function useClassicSlots() { return useContext(ClassicSlotCtx); }
+
+// ---------- Next-knappen nederst kan overtages af skærmen (fx "Continue" ved slutfløjt, som i CM 01/02) ----------
+
+let nextAction: { label: string; run: () => void } | null = null;
+const nextSubs = new Set<() => void>();
+const emitNext = () => nextSubs.forEach((f) => f());
+/** Skærmen lægger sin egen handling på Next-knappen, så længe `label` er sat */
+export function useClassicNext(label: string | null, run: () => void) {
+  const ref = useRef(run);
+  ref.current = run;
+  useEffect(() => {
+    if (!label) return;
+    const a = { label, run: () => ref.current() };
+    nextAction = a;
+    emitNext();
+    return () => { if (nextAction === a) { nextAction = null; emitNext(); } };
+  }, [label]);
+}
+/** Shell: den aktuelle overtagelse af Next-knappen (null = almindelig Frem) */
+export function useClassicNextAction() {
+  return useSyncExternalStore((f) => { nextSubs.add(f); return () => { nextSubs.delete(f); }; }, () => nextAction);
+}
 
 /** Hvem der har taget hovedfanerækken (den første Tabs på skærmen) – pr. slot-element */
 const tabOwner = new WeakMap<HTMLElement, string>();

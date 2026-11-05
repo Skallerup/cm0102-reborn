@@ -57,7 +57,7 @@ import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges } from './classicOpti
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, classicDate, setClassicAllowed } from './classic';
+import { ClassicSlotCtx, classicDate, setClassicAllowed, useClassicNextAction } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -89,6 +89,7 @@ const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'in
 export function Shell() {
   const g = useGame()!;
   const { route, nav, back, canBack, forward, canForward } = useNav();
+  const cxNext = useClassicNextAction();
   // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -409,7 +410,8 @@ export function Shell() {
           ) : (
             <div className="cx-backnext">
               <button className="cx-back" disabled={!canBack} onClick={back}>{t('cm.back')}</button>
-              <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>
+              {cxNext ? <button className="cx-next cx-next-go" onClick={cxNext.run}>{cxNext.label}</button>
+                : <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>}
             </div>
           )}
         </footer>

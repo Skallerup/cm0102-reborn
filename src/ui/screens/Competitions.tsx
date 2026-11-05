@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 
 import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
@@ -18,7 +19,10 @@ export function Competitions({ id }: { id?: string }) {
   const comps = Object.values(g.comps);
   const [cid, setCid] = useRouteState<string>('cid', id ?? userComp ?? comps[0]?.id ?? '');
   const [tab, setTab] = useRouteState('tab', 'table');
-  const comp = g.comps[id && id !== cid ? id : cid] ?? g.comps[cid];
+  // åbnes skærmen med en ny turnering (link/menu), skifter den dertil – men valget i listen gælder bagefter
+  const lastId = useRef(id);
+  useEffect(() => { if (id && id !== lastId.current) { lastId.current = id; setCid(id); } }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const comp = g.comps[cid] ?? (id ? g.comps[id] : undefined);
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div>
