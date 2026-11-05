@@ -1,14 +1,15 @@
 // Kalibrering af den originale 2001/02-database mod det originale CM 01/02: spil hele sæsoner med England aktiv
 // og sammenlign Premier League med originalens egen sæson (scripts/original-stats.ts på en ferie-sæson 2001/02).
-// Kør: npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [seed]
+// Kør: npx tsx scripts/original-lab.ts [sæsoner] [finish] [homeAdv] [finSlope] [squash] [squashAtt] [seed]
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { ORIGINAL, continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { finalOrder } from '../src/game/competitions';
 
-const [seasons = 1, finish, homeAdv, finSlope, squash, seed = 2001] = process.argv.slice(2).map(Number);
+const [seasons = 1, finish, homeAdv, finSlope, squash, squashAtt, seed = 2001] = process.argv.slice(2).map(Number);
 if (squash) ORIGINAL.squash = squash;
+ORIGINAL.squashAtt = squashAtt || ORIGINAL.squash;
 if (finish) ORIGINAL.finish = finish;
 if (homeAdv) ORIGINAL.homeAdv = homeAdv;
 if (finSlope) ORIGINAL.finSlope = finSlope;
@@ -23,6 +24,8 @@ const pl = Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 
 const a = { n: 0, goals: 0, hw: 0, dr: 0, nil: 0, y: 0, r: 0, sh: 0, sot: 0, cor: 0, off: 0, fouls: 0, scores: {} as Record<string, number>, champ: [] as number[], last: [] as number[], top: [] as number[] };
 const end = g.season + seasons;
 const tops: string[] = [];
+const shares: number[] = [];
+const gfs: number[] = [], gas: number[] = [];
 let days = 0;
 while (g.season < end && days++ < 420 * seasons) {
   const r = continueGame();
@@ -33,6 +36,12 @@ while (g.season < end && days++ < 420 * seasons) {
   // de bedste målscorere: mål, straffe, holdets mål og kampe
   tops.push(Object.values(g.players).filter((p) => pl.clubs.includes(p.club!)).sort((x, y) => y.stats.lgGoals - x.stats.lgGoals).slice(0, 5)
     .map((p) => `${p.last} (${g.clubs[p.club!]?.short}) ${p.stats.lgGoals}/${tbl[p.club!]?.gf} i ${p.stats.apps}`).join(' · '));
+  for (const t of pl.table) { gfs.push(t.gf); gas.push(t.ga); }
+  // hvert holds bedste målscorers andel af holdets ligamål (originalen: 31-43 % for de fem bedste)
+  for (const club of pl.clubs) {
+    const best = Object.values(g.players).filter((p) => p.club === club).reduce((m, p) => Math.max(m, p.stats.lgGoals), 0);
+    if (tbl[club]?.gf) shares.push(best / tbl[club].gf);
+  }
   a.top.push(Object.values(g.players).filter((p) => pl.clubs.includes(p.club!)).map((p) => p.stats.lgGoals).sort((x, y) => y - x)[0] ?? 0);
   for (const f of Object.values(g.fixtures)) {
     if (f.comp !== pl.id || !f.result) continue;
@@ -52,3 +61,7 @@ console.log('resultater:', Object.entries(a.scores).sort((x, y) => y[1] - x[1]).
 console.log(`mester ${avg(a.champ)} p (orig 84) · sidst ${avg(a.last)} p (orig 25) · topscorer ${avg(a.top)} (orig 23)`);
 console.log(`pr. kamp (${reps} rapporter): skud ${(a.sh / reps).toFixed(1)} (orig 17,2) · på mål ${(a.sot / reps).toFixed(1)} (10,3) · hjørnespark ${(a.cor / reps).toFixed(1)} (5,0) · offside ${(a.off / reps).toFixed(1)} (7,4) · frispark begået ${(a.fouls / reps).toFixed(1)} (~8,6) · gule ${(a.y / reps).toFixed(2)} (1,70) · røde ${(a.r / reps).toFixed(3)} (0,139)`);
 console.log('topscorere (mål/holdets mål i kampe):\n  ' + tops.join('\n  '));
+shares.sort((x, y) => x - y);
+console.log(`bedste målscorers andel af holdets mål: snit ${(avg(shares.map((x) => x * 100)))} % · median ${(shares[Math.floor(shares.length / 2)] * 100).toFixed(0)} % · max ${(shares.at(-1)! * 100).toFixed(0)} % · over 50 %: ${shares.filter((x) => x > 0.5).length} af ${shares.length}`);
+const sd = (xs: number[]) => { const m = xs.reduce((s, v) => s + v, 0) / xs.length; return Math.sqrt(xs.reduce((s, v) => s + (v - m) ** 2, 0) / xs.length).toFixed(1); };
+console.log(`scorede mål pr. hold: max ${Math.max(...gfs)} · min ${Math.min(...gfs)} · sd ${sd(gfs)} (orig 68/40/9,0) · indladte: max ${Math.max(...gas)} · min ${Math.min(...gas)} · sd ${sd(gas)} (orig 88/22/…)`);

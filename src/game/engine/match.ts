@@ -51,8 +51,9 @@ export interface EngineOptions {
   /** Hjemmebanefordelen (1 = standard) og hvor meget afslutterens kvalitet betyder (deler, standard 13) – pr. database */
   homeAdv?: number;
   finSlope?: number;
-  /** dæmpning af niveauforskelle (standard SQUASH) */
+  /** dæmpning af niveauforskelle (standard SQUASH) – og særskilt for de offensive egenskaber (standard = squash) */
   squash?: number;
+  squashAtt?: number;
   /** Banens tilstand */
   pitch?: Pitch;
   /** Dagens dommer (navn vises i rapporten; strengheden styrer kort) */
@@ -140,6 +141,8 @@ const MAN_EDGE = 0.45;
 const RED_BASE = 0.0011;
 /** Ekstra chancekvalitet pr. manglende forsvarsspiller */
 const SPACE_XG = 0.17;
+/** De offensive egenskaber (afslutning, chanceskabelse) – kan dæmpes særskilt pr. database */
+const ATT_ATTRS = new Set<number>([A.crossing, A.dribbling, A.finishing, A.longShots, A.offTheBall, A.passing, A.technique, A.creativity, A.flair]);
 /** Holdets dagsform (spredning): giver overraskelser – uden den vinder favoritten altid ligaen */
 const DAY_FORM = 0.05;
 /** Hvor meget boldholderen søger mod modstanderens svage zoner (ganges med overblik) */
@@ -275,9 +278,9 @@ export class MatchSim {
     const crowd = !this.opts.neutral && rt.idx === 1 && this.opts.importance ? 1 - (1 - p.attrs[A.pressure] / 20) * 0.015 * this.opts.importance : 1;
     const mult = fit * form * imp * morale * rt.homeMult * rt.moraleMult * talk * crowd;
     const eff = new Float32Array(36);
-    const sq = this.opts.squash ?? SQUASH;
+    const sq = this.opts.squash ?? SQUASH, sqA = this.opts.squashAtt ?? sq;
     const squash = (v: number) => 11 + (v - 11) * sq;
-    for (let i = 0; i < 36; i++) eff[i] = squash(p.attrs[i]) * mult;
+    for (let i = 0; i < 36; i++) eff[i] = (11 + (p.attrs[i] - 11) * (ATT_ATTRS.has(i) ? sqA : sq)) * mult;
     // Mentale/fysiske påvirkes mindre af forkert position
     const physMult = form * morale * rt.homeMult * talk;
     for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = squash(p.attrs[k]) * physMult;
