@@ -10,6 +10,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { resultStr, stageLabel } from './Fixtures';
+import { ClassicCup } from './CupClassic';
 
 export function Competitions({ id }: { id?: string }) {
   const g = useGame()!;
@@ -25,7 +26,8 @@ export function Competitions({ id }: { id?: string }) {
         <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
           options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
       </Head>
-      {comp && (
+      {comp && isRetro() && comp.type !== 'league' && <ClassicCup comp={comp} />}
+      {comp && !(isRetro() && comp.type !== 'league') && (
         <>
           <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ...(comp.type === 'league' ? [['stats', t('comp.stats')] as [string, string]] : []), ['history', t('comp.history')]]} value={tab} onChange={setTab} />
           {tab === 'table' && (comp.type === 'league' ? <LeagueTables comp={comp} /> : <CupView comp={comp} />)}
@@ -219,7 +221,7 @@ function CompFixtures({ comp }: { comp: Competition }) {
   );
 }
 
-function Scorers({ comp }: { comp: Competition }) {
+export function Scorers({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const clubs = comp.type === 'league' ? comp.clubs : comp.clubs;
   // Ligaer: ligamål. Pokaler: tæl fra kampenes målscorere
@@ -299,7 +301,7 @@ function LeagueStats({ comp }: { comp: Competition }) {
   );
 }
 
-function CompHistory({ comp }: { comp: Competition }) {
+export function CompHistory({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const rows = g.seasonHistory.flatMap((s) => s.comps.filter((c) => c.id === comp.id).map((c) => ({ season: s.season, ...c }))).reverse();
   if (!rows.length) return <div className="empty">{t('comp.noHistory')}</div>;

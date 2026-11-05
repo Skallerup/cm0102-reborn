@@ -35,7 +35,7 @@ export function useClaimTabSlot(id: string): HTMLElement | null {
 
 // ---------- hubs ----------
 
-type Item = { key: string; label: string; route?: Route; on?: boolean; disabled?: boolean; onClick?: () => void };
+export type Item = { key: string; label: string; route?: Route; on?: boolean; disabled?: boolean; onClick?: () => void };
 interface Hub {
   /** Titeltekst; undefined = skærmens egen titel */
   title?: (g: GameState, route: Route, screenTitle: ReactNode) => ReactNode;
