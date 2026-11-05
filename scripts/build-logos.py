@@ -73,8 +73,13 @@ def main():
             out[cid] = hit
         else:
             missing.append(name)
+    # "named": logoer fra TheSportsDB (engelske klubber uden for pakken, matchet på navn) – bevares ved genbygning
+    try:
+        named = json.load(open("public/data/logos.json", encoding="utf-8")).get("named", {})
+    except FileNotFoundError:
+        named = {}
     with open("public/data/logos.json", "w", encoding="utf-8") as f:
-        json.dump({"base": f"https://cdn.jsdelivr.net/gh/{REPO}@master/", "logos": out}, f, ensure_ascii=False, separators=(",", ":"))
+        json.dump({"base": f"https://cdn.jsdelivr.net/gh/{REPO}@master/", "logos": out, "named": named}, f, ensure_ascii=False, separators=(",", ":"))
     print(f"{len(out)} klubber med logo, {len(missing)} uden", file=sys.stderr)
 
 

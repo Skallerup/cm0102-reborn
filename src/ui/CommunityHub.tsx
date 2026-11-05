@@ -300,6 +300,7 @@ const DATA_CREDITS: [string, string, string?][] = [
   ['Sunday League Pack', 'The CM 01/02 community – background photos'],
   ['transfermarkt-datasets', 'dcaribou – open player data (CC0)', 'https://github.com/dcaribou/transfermarkt-datasets'],
   ['football-logos', 'luukhopman – club logos', 'https://github.com/luukhopman/football-logos'],
+  ['TheSportsDB', 'club logos for English clubs missing from the pack', 'https://www.thesportsdb.com'],
 ];
 
 function CreditsTab() {

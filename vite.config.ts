@@ -55,7 +55,7 @@ export default defineConfig({
           handler: 'CacheFirst',
           options: { cacheName: 'fonts', expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
         }, {
-          urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/gh\/luukhopman\/football-logos/,
+          urlPattern: /^https:\/\/(cdn\.jsdelivr\.net\/gh\/luukhopman\/football-logos|r2\.thesportsdb\.com\/images\/media\/team\/badge)\//,
           handler: 'CacheFirst',
           options: { cacheName: 'club-logos', expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 90 }, cacheableResponse: { statuses: [0, 200] } },
         }],
