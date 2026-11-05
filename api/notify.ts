@@ -1,10 +1,10 @@
 // Mail til udvikleren, når en ny singleplayer-karriere startes (Vercel Function + Resend).
 // Modtageren står i NOTIFY_EMAIL; mangler den eller RESEND_API_KEY, gør endpointet ingenting.
 // Begrænset pr. IP, så ingen kan bruge det til at oversvømme indbakken.
-import { Redis } from '@upstash/redis';
+import { makeRedis } from './_lib/redis.js';
 
 const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-  ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+  ? makeRedis()
   : null;
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

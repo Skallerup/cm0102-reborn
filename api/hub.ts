@@ -6,11 +6,12 @@
 //   skins   – fans' egne baggrundspakker (billeder i Vercel Blob, godkendes af admin)
 //   credits – bidragydere (vedligeholdes i admin) + Discord-invitation
 // Identitet = ranglisteprofilen (prof:{pid} med hash af et hemmeligt token). Admin-handlinger kræver ADMIN_TOKEN.
-import { Redis } from '@upstash/redis';
+import type { Redis } from '@upstash/redis';
 import { put } from '@vercel/blob';
 import { SITE, postDiscord } from './_lib/discord.js';
+import { makeRedis } from './_lib/redis.js';
 
-const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
+const redis = makeRedis();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const clean = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, max);
 const cleanBody = (v: unknown, max: number) => String(v ?? '').replace(/[<>]/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim().slice(0, max);

@@ -1,9 +1,8 @@
 // Admin interface (developer only): ?admin=1. Requires the ADMIN_TOKEN set on the server, kept in this browser.
 // English on purpose. Tabs: overview, applications ("join the project"), managers, rankings, multiplayer rooms,
-// community moderation and supporters. Data comes from api/admin.ts and api/community.ts.
+// and community moderation. Data comes from api/admin.ts and api/community.ts.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SgStatus, Suggestion } from '../online/community';
-import { supporters, type SupporterList } from '../online/support';
 import { Panel } from './components';
 
 const KEY = 'cm0102.admin';
@@ -47,17 +46,17 @@ const ago = (iso?: string) => {
 
 interface Overview {
   accounts?: number; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
-  ai: { today: number; yesterday: number; cap: number }; suggestions: number; supporters: number;
+  ai: { today: number; yesterday: number; cap: number }; suggestions: number;
   applications: { total: number; new: number }; top: { career: string; points: number; name: string; club: string; league: string }[];
-  config: { email: boolean; stripe: boolean };
+  config: { email: boolean };
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
-interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
+interface ManagerRow { pid: string; name: string; created: string; updated: string; careers: number; best: number; seasons: number }
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters']];
+type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -113,7 +112,6 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       {tab === 'edits' && <EditsAdmin setMsg={setMsg} />}
       {tab === 'skins' && <SkinsAdmin setMsg={setMsg} />}
       {tab === 'credits' && <CreditsAdmin setMsg={setMsg} />}
-      {tab === 'supporters' && <SupportersTab />}
     </div></div>
   );
 }
@@ -135,7 +133,6 @@ function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
         <Stat label="Multiplayer rooms" value={o.rooms} sub={`${o.activeRooms} active in the last 7 days`} onClick={() => go('rooms')} />
         <Stat label="AI calls today" value={o.ai.today} sub={`${pct}% of the daily cap (${o.ai.cap}) · yesterday ${o.ai.yesterday}`} />
         <Stat label="Community suggestions" value={o.suggestions} onClick={() => go('community')} />
-        <Stat label="Supporters" value={o.supporters} sub={o.config.stripe ? 'Stripe configured' : 'Stripe not configured'} onClick={() => go('supporters')} />
         <Stat label="E-mail notifications" value={o.config.email ? 'On' : 'Off'} sub={o.config.email ? 'New applications are e-mailed' : 'Set RESEND_API_KEY + NOTIFY_EMAIL'} />
       </div>
       <Panel title="Top careers">
@@ -226,10 +223,10 @@ function ManagersTab() {
     <div className="cols">
       <Panel title={`Managers (${rows.length})`} right={<input placeholder="Search name…" value={q} onChange={(e) => setQ(e.target.value)} />} className="flush">
         <div className="table-wrap" style={{ maxHeight: 600, overflowY: 'auto' }}>
-          <table className="grid"><thead><tr>{th('name', 'Name')}{th('created', 'Joined')}{th('careers', 'Careers', true)}{th('seasons', 'Seasons', true)}{th('best', 'Best', true)}<th>Supporter</th></tr></thead>
+          <table className="grid"><thead><tr>{th('name', 'Name')}{th('created', 'Joined')}{th('careers', 'Careers', true)}{th('seasons', 'Seasons', true)}{th('best', 'Best', true)}</tr></thead>
             <tbody>{shown.map((r) => (
               <tr key={r.pid} className={`clickable ${sel === r.pid ? 'me' : ''}`} onClick={() => setSel(r.pid)}>
-                <td>{r.name}</td><td className="muted nowrap">{r.created ? ago(r.created) : '–'}</td><td className="num">{r.careers}</td><td className="num">{r.seasons}</td><td className="num">{r.best}</td><td>{r.supporter ?? ''}</td>
+                <td>{r.name}</td><td className="muted nowrap">{r.created ? ago(r.created) : '–'}</td><td className="num">{r.careers}</td><td className="num">{r.seasons}</td><td className="num">{r.best}</td>
               </tr>
             ))}</tbody></table>
         </div>
@@ -243,7 +240,6 @@ function ManagersTab() {
               <span>Joined</span><span>{when(detail.profile.created as string)}</span>
               <span>Last sync</span><span>{when(detail.profile.updated as string)}</span>
               {detail.profile.motto ? <><span>Motto</span><span>{String(detail.profile.motto)}</span></> : null}
-              {detail.profile.supporter ? <><span>Supporter</span><span>{String(detail.profile.supporter)} ({(Number(detail.profile.donated ?? 0) / 100).toFixed(2)})</span></> : null}
               {summary?.club ? <><span>Current club</span><span>{String(summary.club)}</span></> : null}
               {Array.isArray(detail.profile.ach) ? <><span>Achievements</span><span>{(detail.profile.ach as unknown[]).length}</span></> : null}
             </div>
@@ -365,19 +361,6 @@ function CommunityTab({ setMsg }: { setMsg: (s: string) => void }) {
         </Panel>
       </div>
     </>
-  );
-}
-
-function SupportersTab() {
-  const [sup, setSup] = useState<SupporterList | null>(null);
-  useEffect(() => { void supporters().then(setSup); }, []);
-  if (!sup) return <div className="muted">Loading…</div>;
-  return (
-    <Panel title={`Supporters (${sup.supporters.length})`}>
-      <div className="muted">This month: {(sup.month.raised / 100).toFixed(0)} of {(sup.month.goal / 100).toFixed(0)} {sup.currency.toUpperCase()}{sup.enabled ? '' : ' · Stripe is not configured yet'}</div>
-      <table className="grid" style={{ marginTop: 8 }}><thead><tr><th>Name</th><th>Tier</th><th>Monthly</th><th>Regen</th></tr></thead>
-        <tbody>{sup.supporters.map((s) => <tr key={s.pid}><td>{s.name}</td><td>{s.tier}</td><td>{s.monthly ? '♥' : ''}</td><td className="muted">{s.regen ?? ''}</td></tr>)}</tbody></table>
-    </Panel>
   );
 }
 

@@ -3,7 +3,6 @@ export const en: Record<string, string> = {
   'common.ok': 'OK', 'common.back': 'Back', 'common.cancel': 'Cancel', 'common.close': 'Close', 'common.days': 'days', 'common.delete': 'Delete',
   'common.free': 'Free agent', 'common.from': 'from', 'common.no': 'No', 'common.yes': 'Yes', 'common.none': 'None', 'common.stop': 'Stop',
   'common.week': 'week', 'common.and': 'and', 'common.years': 'years',
-
   'start.pill': 'New season · 40,000+ real players', 'start.loadDesc': 'Continue a saved career', 'start.onlineDesc': 'Play against your friends in the same world', 'start.challengesDesc': 'Clear goals with a deadline', 'start.subtitle': 'The classic football manager – with 22,700 real players from 2026/27 and 18,700 from the original 2001/02 database',
   'start.new': 'New game', 'start.load': 'Load game', 'start.challenges': 'Challenges', 'start.import': 'Import save file',
   'start.importFailed': 'Could not load that file.', 'start.loading': 'Loading…', 'start.resuming': 'Resuming your game…', 'start.loadingDb': 'Loading player database…',
@@ -20,7 +19,6 @@ export const en: Record<string, string> = {
   'start.look': 'Look', 'start.lookModernHint': 'Light or dark theme in your club colours with a side menu – built for phone, tablet and desktop.', 'start.lookClassicHint': 'Like Championship Manager 01/02: tabs, Back/Next, green menus and the old background photos.',
   'start.lookNote': 'The look applies inside the game and can be changed any time in Options.',
   'start.footer': 'Unofficial fan project inspired by the classic Championship Manager games. No code from the original games; the databases are CM 01/02 data and community updates.',
-
   'top.unemployed': 'Unemployed', 'top.balance': 'Balance', 'top.budget': 'Transfer budget', 'top.next': 'Next',
   'top.continue': 'Continue', 'top.toTheMatch': 'To the match ›', 'top.toMatch': 'Next match »', 'top.toMatchHint': 'Skip to the next match (stops on important news)',
   'top.fullscreen': 'Full screen', 'top.exitFullscreen': 'Exit full screen', 'top.running': 'Simulating…', 'top.saved': 'Game saved', 'top.quitConfirm': 'Save and quit to the main menu?',
@@ -28,7 +26,6 @@ export const en: Record<string, string> = {
   'nav.competitions': 'Competitions', 'nav.transfers': 'Transfers', 'nav.scouting': 'Scouting', 'nav.assistant': 'Assistant',
   'nav.staff': 'Staff', 'nav.finance': 'Finances', 'nav.club': 'Club', 'nav.history': 'History', 'nav.jobs': 'Job centre',
   'nav.options': 'Options', 'nav.save': 'Save game', 'nav.quit': 'Quit',
-
 
 
   'talk.title': 'Talk to {player}', 'talk.form': 'Recent form', 'talk.noGames': 'No games yet', 'talk.discipline': 'Discipline',
@@ -52,7 +49,6 @@ export const en: Record<string, string> = {
   'team.r.praiseOk': 'The squad appreciates the backing.', 'team.r.critUnfair': 'The players do not understand the criticism after good results. The mood drops.',
   'team.r.critReaction': 'The determined players are fired up – the hot-heads sulk.', 'team.r.demand': 'Confident players rise to the challenge, nervous ones get anxious.',
   'team.r.calmHelps': 'The pressure eases and the players find their calm again.', 'team.r.calmFine': 'The players nod – they were not under much pressure.',
-
   'nav.awards': 'Awards', 'tag.wantsAway': 'Wants away',
   'pers.title': 'Personality', 'pers.promise': 'Promise', 'pers.promiseUntil': 'You promised success by {date}',
   'trait.leader': 'Leader', 'trait.professional': 'Professional', 'trait.troublemaker': 'Troublemaker', 'trait.temperamental': 'Hot-headed', 'trait.ambitious': 'Ambitious',
@@ -150,17 +146,16 @@ export const en: Record<string, string> = {
   'cm.notFound': 'Suggestion not found', 'cm.comments': 'Comments ({n})', 'cm.noComments': 'No comments yet.', 'cm.writeComment': 'Write a comment…', 'cm.send': 'Send', 'cm.share': 'Share suggestion', 'cm.report': 'Report as inappropriate', 'cm.reported': 'Thanks – it will be reviewed.',
   'cm.writeHint': 'Briefly describe what you would like and why it would make the game better. One suggestion per idea.', 'cm.bugHint': 'Describe what you did, what happened and what you expected. Version, screen and browser are sent automatically.', 'cm.titlePh': 'E.g. "Let me train set pieces"', 'cm.bugTitlePh': 'E.g. "The match freezes during penalties"', 'cm.category': 'Category', 'cm.description': 'Description', 'cm.bodyPh': 'What and why…', 'cm.bugBodyPh': 'What did you do? What happened? What did you expect?', 'cm.screenshot': 'Screenshot (optional)', 'cm.autoMeta': 'Sent along', 'cm.submit': 'Submit', 'cm.similar': 'Similar suggestions exist:', 'cm.similarHint': 'Vote for one of them instead if it is the same.',
   'cm.err.error': 'Something went wrong – please try again.', 'cm.err.network': 'No connection.', 'cm.err.auth': 'Your profile could not be verified.', 'cm.err.noProfile': 'Create a profile first.', 'cm.err.newProfile': 'Play at least one season (submitted to the rankings) before you can vote – it keeps the polls fair.', 'cm.err.budget': 'You have used all 10 votes. Remove a vote to vote for something new.', 'cm.err.closed': 'The suggestion is closed for votes.', 'cm.err.limit': 'You have been very active – please wait a moment.', 'cm.err.short': 'Please write a bit more.', 'cm.err.language': 'Please keep it friendly.', 'cm.err.nopoll': 'There is no poll right now.',
-  'nav.support': 'Support the game', 'sup.title': 'Support CM Reborn', 'sup.intro': 'The game is free and ad-free. Contributions pay for servers, AI texts and development time – and everyone who supports it is thanked in the game.', 'sup.soon': 'Donations open soon. Thanks for stopping by!', 'sup.needProfile': 'Create a manager profile (under Rankings) to support – so your rewards can be linked to you.', 'sup.once': 'One-off', 'sup.monthly': 'Monthly', 'sup.month': 'mo', 'sup.give': 'Support with {amount}', 'sup.secure': 'Payment is handled securely by Stripe. Monthly support can be stopped at any time.',
-  'sup.thanks': 'Thank you so much!', 'sup.thanksText': 'Your contribution has been received – your rewards will appear in a moment.', 'sup.where': 'Where does the money go?', 'sup.goalText': "of this month's running costs covered ({raised} of {goal}).", 'sup.cost.ai': 'AI texts', 'sup.cost.aiText': 'articles, press conferences and conversations', 'sup.cost.db': 'Database', 'sup.cost.dbText': 'rankings, online games and the community', 'sup.cost.host': 'Servers and hosting', 'sup.cost.hostText': 'so the game is always up', 'sup.cost.dev': 'Development', 'sup.cost.devText': "new features from the community's suggestions",
-  'sup.rewards': 'Rewards', 'sup.from.bronze': 'from {amount} in total', 'sup.from.silver': 'from {amount} in total', 'sup.from.gold': 'from {amount} in total',
-  'sup.perks.bronze': 'Bronze badge next to your name everywhere|Your name on the supporters list|The "Patron of the game" achievement|Early access to new features|Gold and retro CM themes',
-  'sup.perks.silver': 'Everything in Bronze|Silver badge|Name a youth player who can appear in everyone\'s game',
-  'sup.perks.gold': 'Everything in Silver|Gold badge and highlighted on the list|An extra big thank you from the developer 💛',
-  'sup.fair': 'Rewards are cosmetic and recognition only – never an advantage in the game itself, and no extra weight in polls.', 'sup.yourStatus': 'Your supporter status', 'sup.monthlyOn': 'Monthly supporter ♥', 'sup.beta': 'Early access to new features', 'sup.betaHint': 'Features behind early access can be tried up to a week before everyone else.',
-  'sup.regenTitle': 'Name a youth player', 'sup.regenHint': "Your name can appear as a talent on youth intake day in everyone's game – with a ⭐ on the player page.", 'sup.regenLocked': 'Requires Silver or Gold.', 'sup.regenNow': 'Your youth player: {name}', 'sup.first': 'First name', 'sup.last': 'Last name', 'sup.regenNamed': 'Named the youth player {name}', 'sup.namedBy': 'Named by the supporter {name}',
-  'sup.wall': 'Supporters ({n})', 'sup.wallEmpty': 'Be the first on the list!', 'sup.badgeHint': 'Supports the development of the game', 'sup.tier.bronze': 'Bronze', 'sup.tier.silver': 'Silver', 'sup.tier.gold': 'Gold', 'sup.supportersOnly': 'supporters only',
-  'sup.err.disabled': 'Donations are not open yet.', 'sup.err.amount': 'Choose an amount.', 'sup.err.stripe': 'The payment could not be started – please try again.', 'sup.err.tier': 'Requires a higher supporter tier.', 'sup.err.name': 'Enter a valid name.', 'sup.err.language': 'Please keep it friendly.', 'sup.err.noProfile': 'Create a profile first.', 'sup.err.network': 'No connection.', 'sup.err.auth': 'Your profile could not be verified.',
-  'opt.theme.gold': 'Gold (supporters)', 'opt.theme.retro': 'Classic', 'ach.patron': 'Patron of the game', 'ach.patron.desc': 'Support the development of the game.', 'land.supportLine': 'The game is free and built together with the community.', 'land.community': 'See suggestions and vote →',
+
+
+
+
+
+
+
+
+
+  'opt.theme.gold': 'Gold', 'opt.theme.retro': 'Classic','land.supportLine': 'The game is free and built together with the community.', 'land.community': 'See suggestions and vote →',
   'navg.team': 'Team', 'navg.matches': 'Matches', 'navg.market': 'Transfer market', 'navg.club': 'Club', 'navg.manager': 'Manager', 'navg.community': 'Community',
   'trial.invite': 'Invite on trial', 'trial.invited': 'He is coming on a two-week trial – you can follow him under Scouting.', 'trial.onTrial': 'On trial until {date}', 'trial.until': 'The trial ends {date}', 'trial.title': 'Trialists ({n}/{max})', 'trial.empty': 'No trialists. Invite free agents from their player page – the coaches get to know them over two weeks.', 'trial.known': 'known {pct}%', 'trial.ends': 'ends {date}', 'trial.send': 'Send home',
   'trial.err.notFree': 'Only free agents can come on trial.', 'trial.err.full': 'There are already three trialists.', 'trial.err.already': 'He is already on trial.', 'trial.err.error': 'That was not possible.',
@@ -248,7 +243,6 @@ export const en: Record<string, string> = {
   'award.monthPlayer': '{comp} player of the month: {player} ({club})', 'award.monthManager': '{comp} manager of the month: {manager} ({club})',
   'award.monthManagerMe': 'You are {comp} manager of the month! ({pts} points)', "award.ballonDor": "Ballon d'Or: {player} ({club}) is the world player of the year",
   'award.managerOfYearMe': 'You are manager of the year! 🏆', 'award.gala': 'Awards night for the {season} season', 'award.gala.body': "See every award – Ballon d'Or, team of the year, manager of the year and the season's surprises – under Awards.",
-
   'mp.title': 'Online multiplayer', 'mp.useVercel': 'Online multiplayer needs the game server and is only available at the main address:', 'mp.explain': 'Play against your friends in the same world – each managing their own club. Everyone makes their changes (tactics, transfers, training …) and presses "Ready". When everyone is ready, the game plays on until after the next match day.',
   'mp.create': 'Create online game', 'mp.createBtn': 'Create and get invite link', 'mp.creating': 'Creating online game…', 'mp.join': 'Join', 'mp.joinBtn': 'Join the game',
   'mp.codePlaceholder': 'Code', 'mp.myGames': 'My online games', 'mp.connecting': 'Connecting…', 'mp.players': 'Players', 'mp.taken': 'Taken',
@@ -261,7 +255,6 @@ export const en: Record<string, string> = {
   'inbox.settings': 'News', 'inbox.categories': 'Categories in the inbox', 'inbox.mutedHint': 'Unticked categories are marked as read and only shown when you filter on them – you miss nothing, but the inbox gets calmer. Board, jobs, contracts and transfers cannot be turned off because they often need a reply.', 'opt.newsMoved': 'Which and how much news you get is now chosen under ⚙ News in the inbox.', 'inbox.markRead': 'Mark all read', 'inbox.keys': '↑↓ change message · → next unread · Enter open', 'inbox.messages': 'Messages', 'inbox.empty': 'No messages', 'inbox.open': 'Open', 'inbox.select': 'Select a message',
   'cat.all': 'All', 'cat.match': 'Matches', 'cat.transfer': 'Transfers', 'cat.contract': 'Contracts', 'cat.injury': 'Injuries',
   'cat.board': 'Board', 'cat.scout': 'Scouting', 'cat.award': 'Awards', 'cat.youth': 'Youth', 'cat.job': 'Jobs', 'cat.general': 'General', 'cat.finance': 'Finance',
-
   'col.pos': 'Pos', 'col.name': 'Name', 'col.age': 'Age', 'col.nat': 'Nat', 'col.club': 'Club', 'col.value': 'Value',
   'col.wage': 'Wage', 'col.expires': 'Expires', 'col.joined': 'Joined', 'col.cond': 'Cond', 'col.morale': 'Morale', 'col.apps': 'Apps',
   'col.goals': 'Gls', 'col.assists': 'Ast', 'col.avr': 'Av R', 'col.form': 'Form', 'col.season': 'Season', 'col.date': 'Date', 'col.comp': 'Competition',
@@ -271,7 +264,6 @@ export const en: Record<string, string> = {
   'short.cro': 'Cro', 'short.dri': 'Dri', 'short.fin': 'Fin', 'short.hea': 'Hea', 'short.mar': 'Mar', 'short.otb': 'OtB', 'short.pas': 'Pas',
   'short.tck': 'Tck', 'short.tec': 'Tec', 'short.cre': 'Cre', 'short.dec': 'Dec', 'short.pos': 'Pos', 'short.pac': 'Pac', 'short.sta': 'Sta',
   'short.str': 'Str', 'short.han': 'Han', 'short.ref': 'Ref',
-
   'attr.crossing': 'Crossing', 'attr.dribbling': 'Dribbling', 'attr.finishing': 'Finishing', 'attr.heading': 'Heading', 'attr.longShots': 'Long Shots',
   'attr.marking': 'Marking', 'attr.offTheBall': 'Off The Ball', 'attr.passing': 'Passing', 'attr.penalties': 'Penalties', 'attr.tackling': 'Tackling',
   'attr.freeKicks': 'Free Kicks', 'attr.corners': 'Corners', 'attr.technique': 'Technique', 'attr.throwIns': 'Throw Ins',
@@ -284,7 +276,6 @@ export const en: Record<string, string> = {
   'attr.professionalism': 'Professionalism', 'attr.sportsmanship': 'Sportsmanship', 'attr.temperament': 'Temperament',
   'group.technical': 'Technical', 'group.mental': 'Mental', 'group.physical': 'Physical', 'group.goalkeeping': 'Goalkeeping',
   'foot.R': 'Right', 'foot.L': 'Left', 'foot.B': 'Either', 'side.L': 'Left', 'side.C': 'Centre', 'side.R': 'Right',
-
   'player.gone': 'Player no longer exists', 'player.compare': 'Compare', 'player.showCompare': 'Show comparison',
   'player.info': 'Information', 'player.foot': 'Foot', 'player.height': 'Height', 'player.nextClub': 'Next club', 'player.caps': 'Caps / goals',
   'player.asking': 'Asking price', 'player.unknown': 'Unknown – scout him', 'player.status': 'Status', 'player.injury': 'Injury',
@@ -700,13 +691,11 @@ export const en: Record<string, string> = {
   "press.a.followPlayer.harder": "He knows exactly what I expect.",
   'press.eff.squadDown': "Squad down",
   'bid.title': 'Offer for {player}', 'bid.loan': 'Loan deal (rest of season)', 'bid.fee': 'Fee', 'bid.submit': 'Submit offer',
-
   'neg.title': 'Contract talks – {player}', 'neg.currentWage': 'Current wage', 'neg.agentHint': "Agent's expectation",
   'neg.wageBill': 'Wage bill / budget', 'neg.fee': 'Transfer fee', 'neg.type': 'Type', 'neg.bosman': 'Bosman (free in summer)',
   'neg.wage': 'Weekly wage', 'neg.years': 'Length (years)', 'neg.offer': 'Offer contract', 'neg.cancel': 'Cancel the deal', 'neg.cancelConfirm': 'Withdraw the offer and cancel the deal?', 'myoffer.title': 'Your offer:', 'myoffer.theyWant': 'they want {fee}', 'neg.accepted': 'Deal agreed! 🎉',
   'neg.counter': 'The agent wants {wage} a week over {years} years.', 'neg.refused': 'The player has walked away from talks.',
   'neg.overWageBudget': 'The board says no – the wage budget ({budget}) would be exceeded (now {bill}).',
-
   'tac.assistantPick': 'Assistant picks team', 'tac.save': 'Save tactic', 'tac.load': 'Load tactic…', 'tac.hint': 'Select a slot and click a player – or drag and drop',
   'tac.empty': '(empty)', 'tac.setPieces': 'Set pieces & captain', 'tac.captain': 'Captain', 'tac.penalties': 'Penalties', 'tac.freeKicks': 'Free kicks', 'tac.corners': 'Corners',
   'tac.team': 'Team instructions', 'tac.individual': 'Individual instructions', 'tac.bestFor': 'Best players for {slot}', 'tac.players': 'Players',
@@ -718,13 +707,11 @@ export const en: Record<string, string> = {
   'ment.0': 'Very defensive', 'ment.1': 'Defensive', 'ment.2': 'Normal', 'ment.3': 'Attacking', 'ment.4': 'Very attacking',
   'pi.runs': 'Forward runs', 'pi.longShots': 'Long shots', 'pi.crossing': 'Crossing', 'pi.runWithBall': 'Run with ball', 'pi.throughBalls': 'Through balls',
   'pi.tightMarking': 'Tight marking', 'pi.freeRole': 'Free role',
-
   'train.setAll': 'Set for whole squad…', 'train.quality': 'Training quality', 'train.effect': 'Effect on development', 'train.effectVs': 'compared to an average club', 'train.disciplineHint': 'gets more out of lazy players', 'train.motivatingHint': 'lifts morale', 'train.coaches': 'Coaches', 'train.avgCoaching': 'Avg coaching',
   'train.f.all': 'All', 'train.f.gk': 'Goalkeepers', 'train.f.def': 'Defence', 'train.f.mid': 'Midfield', 'train.f.att': 'Attack', 'train.f.anyAge': 'All ages', 'train.f.u21': '21 and under', 'train.f.a2229': '22–29', 'train.f.o30': '30 and over', 'train.f.anySched': 'All training', 'train.f.advice': 'Only where the assistant suggests otherwise', 'train.f.sortPos': 'Sort: position', 'train.f.sortName': 'Sort: name', 'train.f.sortAge': 'Sort: youngest first', 'train.f.sortDev': 'Sort: development', 'train.f.sortCond': 'Sort: lowest condition', 'train.explain': 'Young players grow towards their potential. Good coaches, facilities, playing time and determination/professionalism make a big difference. The training focus decides which attributes grow the most. Players over 30 decline physically.',
   'train.schedules': 'Schedules', 'train.restDesc': 'Rest – rebuilds condition',
   'train.general': 'General', 'train.goalkeeping': 'Goalkeeping', 'train.defending': 'Defending', 'train.ballcontrol': 'Ball control', 'train.attacking': 'Attacking',
   'train.shooting': 'Shooting', 'train.fitness': 'Fitness', 'train.setpieces': 'Set pieces', 'train.rest': 'Rest',
-
   'fix.round': 'Round', 'fix.group': 'Group', 'fix.champ': 'Championship round', 'fix.releg': 'Relegation round', 'fix.leg1': '1st leg', 'fix.leg2': '2nd leg',
   'fix.pens': 'pens', 'fix.aet': 'aet', 'fix.stage': 'Round', 'fix.venue': 'Venue', 'fix.opponent': 'Opponent', 'fix.result': 'Result',
   'fix.neutral': 'Neutral', 'fix.home': 'Home', 'fix.away': 'Away', 'fix.report': 'Report',
@@ -736,7 +723,6 @@ export const en: Record<string, string> = {
   'comp.winner': 'Winner', 'comp.runnerUp': 'Runner-up', 'comp.topScorer': 'Top scorer', 'comp.best': 'Player of the year', 'comp.young': 'Young player', 'comp.noHistory': 'No history yet',
   'tbl.p': 'P', 'tbl.w': 'W', 'tbl.d': 'D', 'tbl.l': 'L', 'tbl.gf': 'F', 'tbl.ga': 'A', 'tbl.gd': 'GD', 'tbl.pts': 'Pts',
   'tbl.europe': 'Europe', 'tbl.promotion': 'Promotion', 'tbl.playoff': 'Play-off', 'tbl.relegation': 'Relegation',
-
   'tr.search': 'Player search',
   'real.col': 'Realism', 'real.hint': 'Would he come, would the club sell, and can you afford it? Hover the tag to see why.',
   'real.all': 'All players', 'real.only': 'Realistic targets only', 'real.maybe': 'Realistic + maybe',
@@ -765,11 +751,9 @@ export const en: Record<string, string> = {
   'transfer.refuseRep': "{player} isn't interested in joining a club of {club}'s stature", 'transfer.refuseHappy': '{player} is happy where he is and turns down {club}',
   'transfer.talksCollapsed': 'Talks with {player} have collapsed', 'transfer.preContract': '{player} has signed a pre-contract with {club} for the summer',
   'transfer.released': '{player} has been released',
-
   'contract.expiring': "{player}'s contract expires this summer", 'contract.expiring.body': 'Renew it from his profile, or let him leave for free.',
   'contract.leavingBosman': '{player} has agreed to join {club} in the summer', 'contract.left': '{player} has left the club (contract expired)',
   'contract.renewed': '{player} has signed a {years}-year extension',
-
   'scout.maskingOff': 'Attribute masking is off – you can see every attribute.', 'scout.overview': 'Overview', 'rec.title': '{scout} says:', 'rec.col': 'Advice', 'rec.unknown': 'We do not know him well enough yet – send a scout for an assessment.',
   'rec.l0': 'Sign him! He would improve us straight away.', 'rec.l1': 'I recommend him.', 'rec.l2': 'He would be useful, but is not a must.', 'rec.l3': 'He is no better than what we have.', 'rec.l4': 'I advise against him.',
   'rec.short.unknown': 'Unknown', 'rec.short.l0': 'Sign!', 'rec.short.l1': 'Recommended', 'rec.short.l2': 'Useful', 'rec.short.l3': 'No better', 'rec.short.l4': 'Avoid',
@@ -783,7 +767,6 @@ export const en: Record<string, string> = {
   'scout.assignments': 'Assignments', 'scout.assignment': 'Assignment', 'scout.watching': 'Watching', 'scout.ownLeague': 'Own league (default)', 'scout.leagues': 'Leagues',
   'scout.nations': 'Nations', 'scout.none': 'You have no scouts – hire some under Staff.',
   'news.scoutDone': '{scout} has completed his report on {player}',
-
   'staff.mine': 'My staff', 'staff.otherClubs': 'Staff at other clubs', 'staff.sourceFree': 'Unemployed (free)', 'staff.sourceClubs': 'Buy out from other clubs',
   'staff.onlyWilling': 'Only those willing to move', 'staff.fee': 'Compensation', 'staff.buyOut': 'Buy out', 'staff.fired': '{name} has been sacked.',
   'staff.poachConfirm': 'Buy {name} out from {club} for {fee}?', 'staff.poached': '{name} bought out from {club} for {fee}',
@@ -797,7 +780,6 @@ export const en: Record<string, string> = {
   'staff.motivating': 'Motivating', 'staff.discipline': 'Discipline', 'staff.tactics': 'Tactics',
   'staff.short.coaching': 'Coa', 'staff.short.judgingAbility': 'JA', 'staff.short.judgingPotential': 'JP', 'staff.short.physio': 'Phy',
   'staff.short.motivating': 'Mot', 'staff.short.discipline': 'Dis', 'staff.short.tactics': 'Tac',
-
   'fin.overview': 'Overview',
   'ticket.title': 'Ticket price', 'ticket.fair': 'Market price (what fans find reasonable)', 'ticket.expected': 'Expected attendance', 'ticket.incomeMatch': 'Income per home match',
   'ticket.incomeSeason': 'Approx. per season (league games)', 'ticket.att': 'Attendance', 'ticket.fill': 'Full', 'ticket.best': 'Highest income',
@@ -816,7 +798,6 @@ export const en: Record<string, string> = {
   'fin.other': 'Other', 'fin.expense': 'Total expenditure', 'fin.board': 'The board',
   'fin.requestHint': 'The board only releases more money if confidence is high and finances are healthy. One request per month.',
   'fin.askTransfer': 'Ask for a bigger transfer budget', 'fin.askWage': 'Ask for a bigger wage budget',
-
   'club.info': 'Club info', 'club.manager': 'Manager', 'club.vacant': 'Vacant', 'club.stadium': 'Stadium', 'club.rep': 'Reputation', 'club.strength': 'Squad strength',
   'club.youth': 'Youth set-up', 'club.facilities': 'Training facilities', 'club.board': 'The board', 'club.expectation': 'Expectation',
   'club.confidence': 'Confidence', 'club.warnings': 'Warnings', 'club.managerRep': 'Manager reputation', 'club.history': 'History',
@@ -834,15 +815,12 @@ export const en: Record<string, string> = {
   'board.disappointed': 'The board are disappointed with the season', 'board.requestOk': 'The board have raised the {kind} by {pct}%',
   'board.requestNo': 'The board have turned down your request ({kind})', 'board.requestTooSoon': 'You have already asked the board this month',
   'board.kind.transfer': 'transfer budget', 'board.kind.wage': 'wage budget',
-
   'jobs.offers': 'Job offers', 'jobs.vacancies': 'Vacancies', 'jobs.accept': 'Accept', 'jobs.decline': 'Decline', 'jobs.apply': 'Apply',
   'jobs.acceptConfirm': 'Take the job at {club}?', 'jobs.explain': 'Your manager reputation is {rep}. Clubs with a higher reputation than yours rarely hire you.',
   'news.jobOffer': '{club} offer you the manager job', 'news.applyRejected': '{club} have rejected your application', 'news.newJob': 'You are the new manager of {club}',
   'news.managerSacked': '{club} have sacked {manager}', 'news.managerHired': '{club} have appointed {manager} as manager',
-
   'hist.manager': 'Manager', 'hist.trophies': 'Trophies', 'hist.sacked': 'Sackings', 'hist.challenge': 'Challenge', 'hist.deadline': 'deadline',
   'hist.trophyCabinet': 'Trophy cabinet', 'hist.noTrophies': 'No trophies yet', 'hist.career': 'Career', 'hist.firstSeason': 'First season under way',
-
   'opt.general': 'General', 'opt.currency': 'Currency', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danish kroner (kr.)', 'cur.GBP': 'Pound sterling (£)', 'opt.language': 'Language', 'opt.autosave': 'Autosave',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'AI text (press conferences, talks, articles)', 'opt.ai.hint': 'Journalists, players, agents and fans reply with text written by a language model. The game rules still decide every outcome. Needs internet and only works on the Vercel-hosted version.',
@@ -1286,7 +1264,6 @@ export const en: Record<string, string> = {
   'opt.saves': 'Save / export', 'opt.export': 'Export save file', 'opt.exportHint': 'Save the file and load it on another device from the start screen.',
   'opt.about': 'About', 'opt.aboutText': 'CM Reborn is inspired by the classic Championship Manager games – built from scratch as a web app with many new features. The match engine is zone-based like the CM3 engine, but calibrated against modern statistics.',
   'opt.dataCredit': 'Player data: transfermarkt-datasets by David Cariboo (CC0). Attributes are derived, not official.',
-
   'news.welcome': 'Welcome to {club}, {manager}!', 'news.welcome.body': 'The board have handed you the keys. Check the squad, set your tactics and press Continue. Good luck!',
   'news.champions': '{club} are {comp} champions!', 'news.cupWin': '{club} win the {comp}!', 'news.playoffWin': '{club} win the {comp}',
   'news.split': '{comp} has split into championship and relegation groups', 'news.promoted': '{club} are promoted to {comp}', 'news.relegated': '{club} are relegated to {comp}',
@@ -1297,10 +1274,8 @@ export const en: Record<string, string> = {
   'match.won': 'Won {score} v {opp} ({comp})', 'match.drew': 'Drew {score} v {opp} ({comp})', 'match.lost': 'Lost {score} v {opp} ({comp})',
   'award.playerOfYear': '{player} is named {comp} player of the year', 'award.topScorer': '{player} finished {comp} top scorer with {goals} goals',
   'challenge.won': 'Challenge complete: {id} 🏆', 'challenge.lost': 'Challenge failed: {id}',
-
   'injury.bruise': 'Bruised thigh', 'injury.twisted-ankle': 'Twisted ankle', 'injury.hamstring': 'Hamstring strain', 'injury.groin': 'Groin strain', 'injury.calf': 'Calf strain',
   'injury.knee': 'Knee injury', 'injury.back': 'Back problems', 'injury.concussion': 'Concussion', 'injury.broken-foot': 'Broken foot', 'injury.cruciate': 'Cruciate ligament', 'injury.broken-leg': 'Broken leg',
-
   'match.played': 'Match already played', 'match.preview': 'Preview', 'match.yourXI': 'Your starting XI', 'match.quick': 'Simulate result',
   'match.kickoff': 'Kick off ▶', 'match.notToday': 'This match is not today.', 'match.ft': 'Full time', 'match.resume': 'Resume', 'match.pause': 'Pause',
   'match.toEnd': 'Skip to end', 'match.continue': 'Continue ›', 'match.commentary': 'Commentary', 'match.stats': 'Statistics', 'match.myTeam': 'My team',
@@ -1308,7 +1283,6 @@ export const en: Record<string, string> = {
   'match.subOff': 'Substitute…', 'match.paused': 'PAUSED', 'match.keys': 'Keyboard: space/P = play/pause · 1-4 = speed · T = tactics · U = substitutions · S = stats · K = commentary · E = skip to end', 'match.keysDone': 'Press Space or Enter to continue', 'match.subFailed': 'That substitution was not possible.',
   'stat.possession': 'Possession', 'stat.xg': 'xG (expected goals)', 'stat.shots': 'Shots', 'stat.onTarget': 'On target', 'stat.corners': 'Corners',
   'stat.fouls': 'Fouls', 'stat.yellows': 'Yellow cards', 'stat.reds': 'Red cards', 'stat.offsides': 'Offsides', 'stat.passPct': 'Pass completion %',
-
   'report.shootout': 'Penalty shoot-out', 'report.soSaved': 'saved', 'report.soWide': 'missed', 'report.missing': 'Report not found', 'report.title': 'Match report', 'report.analysis': 'Analysis', 'report.players': 'Players',
   'report.verdict': "Assistant's verdict", 'report.mom': 'Man of the match', 'report.momentum': 'Momentum (threat per 5 min)', 'report.heatmap': 'Heatmap (possession by zone)',
   'report.heatHint': 'Shows where each team had the ball. The arrow shows the attacking direction.', 'report.shotmap': 'Shot map (size = xG)', 'report.min': 'Min',
@@ -1324,7 +1298,6 @@ export const en: Record<string, string> = {
   'v.tired': 'The team was clearly tired at the end (avg {cond}% condition). Consider earlier subs or a lower tempo.',
   'v.red': 'The red card cost us dearly.',
   'lane.left': 'left', 'lane.centre': 'central', 'lane.right': 'right',
-
   'as.opponent': 'Opponent report', 'as.suggest': 'Team suggestion', 'as.compare': 'Compare', 'as.bench': 'Tactics benchmark',
   'as.noMatch': 'No upcoming matches.', 'as.current': 'Your line-up', 'as.suggested': "Assistant's suggestion", 'as.use': 'Use suggestion',
   'as.agrees': 'Your assistant agrees with your line-up.', 'as.suggestHint': 'The suggestion considers position, ability and condition.',
@@ -1339,7 +1312,6 @@ export const en: Record<string, string> = {
   'an.threatLane': 'Their most dangerous attacks come down our {lane} side.', 'an.topScorer': 'Watch out for {player} – {goals} goals this season.',
   'an.aerial': 'They have {n} strong headers of the ball – avoid needless corners.', 'an.slowDefence': 'Their defence is slow – through balls and pace can hurt them.',
   'radar.attack': 'Attack', 'radar.creativity': 'Creativity', 'radar.defence': 'Defence', 'radar.physical': 'Physical', 'radar.mental': 'Mental', 'radar.goalkeeping': 'Goalkeeping',
-
   'challenge.wrexham-dream.title': 'The Hollywood dream', 'challenge.wrexham-dream.desc': 'Take Wrexham up to the Premier League within three seasons.',
   'challenge.united-broke.title': 'Skint United', 'challenge.united-broke.desc': 'Finish top 4 in the Premier League with Manchester United – without a transfer budget.',
   'challenge.spurs-title.title': 'At last, Spurs', 'challenge.spurs-title.desc': 'Win the Premier League with Tottenham within three seasons.',
@@ -1349,7 +1321,6 @@ export const en: Record<string, string> = {
   'challenge.schalke-title.title': 'Meister der Herzen', 'challenge.schalke-title.desc': 'Finally win the Bundesliga with Schalke 04 within four seasons.',
   'challenge.lautern-return.title': 'Betzenberg is burning', 'challenge.lautern-return.desc': 'Take Kaiserslautern back to the Bundesliga within two seasons.',
   'challenge.sampdoria-return.title': 'Back to the Marassi', 'challenge.sampdoria-return.desc': 'Take Sampdoria back to Serie A within two seasons.',
-
   'c.kickoff': '{team} kick off!',
   'c.halftime': 'Half time. {score}',
   'c.fulltime': 'Full time! {score}',

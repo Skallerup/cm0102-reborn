@@ -5,13 +5,14 @@
 // sess:{sid} → uid (180 dage), saves:{uid} (gemte spil: id → metadata + Blob-URL).
 // Selve spillene (≈4-5 MB gzip) uploades direkte fra browseren til Vercel Blob (op=upload).
 // Mails sendes med Resend (RESEND_API_KEY; afsender MAIL_FROM, standard login@cm0102reborn.com).
-import { Redis } from '@upstash/redis';
+import type { Redis } from '@upstash/redis';
 import { del } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { SITE } from './_lib/discord.js';
+import { makeRedis } from './_lib/redis.js';
 
-const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
+const redis = makeRedis();
 const LOGIN_TTL = 15 * 60;
 const SESSION_TTL = 60 * 60 * 24 * 180;
 const MAX_SAVES = 5;

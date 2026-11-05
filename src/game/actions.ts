@@ -4,7 +4,6 @@
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
-import { unlock } from './achievements';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
 import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
@@ -58,7 +57,6 @@ export type Action =
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
-  | { t: 'patron' }
   | { t: 'draftReplace'; out: number; inn: number }
   | { t: 'trial'; pid: number; end?: boolean }
   | { t: 'friendly'; opp: number; date: string; kind: FriendlyKind }
@@ -155,7 +153,6 @@ export function applyAction(a: Action): unknown {
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
-    case 'patron': unlock('patron'); return 'ok';
     case 'draftReplace': return replacePlayer(gs().userClub, a.out, a.inn);
     case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);
     case 'friendly': return arrangeFriendly(a.opp, a.date, a.kind);

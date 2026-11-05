@@ -5,9 +5,10 @@
 // spilreglerne gør, så spillet forbliver retfærdigt og deterministisk (også i multiplayer).
 //
 // Beskyttelse: et dagligt loft for hele spillet og et minutloft pr. IP (Upstash Redis, hvis sat op).
-import { Redis } from '@upstash/redis';
+import type { Redis } from '@upstash/redis';
 import { generateText, Output } from 'ai';
 import { z } from 'zod';
+import { makeRedis } from './_lib/redis.js';
 
 // Foretrukken model først; gratisniveauet på AI Gateway har ikke adgang til alle modeller,
 // så ved adgangsfejl skiftes (og huskes pr. instans) til næste model i listen.
@@ -19,7 +20,7 @@ const IP_PER_MIN = 40;
 const MAX_CTX = 6000;
 
 const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-  ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+  ? makeRedis()
   : null;
 
 const enabled = () => !!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL);

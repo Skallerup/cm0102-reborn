@@ -3,8 +3,6 @@ import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
 import { draftRoundLabel } from './Draft';
 import { DraftLeagueScreen } from './Draft';
-import { refreshSupport, syncSupporterRegens } from '../online/support';
-import { SupportPage } from './Support';
 import { Head } from './screens/common';
 import { ProfileScreen } from './screens/Profile';
 import { BugReportButton } from './Community';
@@ -68,7 +66,7 @@ const MENU: [ScreenName, string][] = [
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
-const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
@@ -76,14 +74,14 @@ const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'market', items: ['transfers', 'scouting'] },
   { key: 'club', items: ['club', 'board', 'finance', 'staff'] },
   { key: 'manager', items: ['profile', 'ranking', 'awards', 'history', 'jobs'] },
-  { key: 'community', items: ['community', 'support'] },
+  { key: 'community', items: ['community'] },
 ];
 const ALL_ITEMS = { ...Object.fromEntries([...MENU, ...MENU2]), draft: 'nav.draft' } as Record<ScreenName, string>;
-const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'support', 'help', 'options', 'managers'];
+const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'help', 'options', 'managers'];
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
+const UNEMPLOYED: ScreenName[] = ['find', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
 
 export function Shell() {
   const g = useGame()!;
@@ -123,11 +121,6 @@ export function Shell() {
   // AI-artikler (kamprapporter m.m.) skrives i baggrunden, så de er klar når beskeden åbnes
   const newestNews = g.news[0]?.id;
   useEffect(() => { if (newestNews !== undefined) prefetchArticles(); }, [newestNews, g.userClub]);
-  // supportere: status, præstationen "Patron of the game" og supporternes regen-navne
-  useEffect(() => {
-    refreshSupport().then((m) => { if (m?.tier && !gs().manager.ach?.patron) { act({ t: 'patron' }); } });
-    void syncSupporterRegens();
-  }, [g.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // browser-notifikationer om vigtige nyheder, når fanen ikke er i fokus
   const notifiedUpTo = useRef(g.news[0]?.id ?? 0);
   useEffect(() => {
@@ -453,7 +446,6 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'board': return <BoardScreen />;
     case 'profile': return <ProfileScreen />;
     case 'draft': return <DraftLeagueScreen />;
-    case 'support': return <div><Head title={t('sup.title')} /><SupportPage /></div>;
     case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
       <CommunityHub defaultName={gs().manager.name} initialTab={route.tab as HubTab | undefined}
         onLegend={cmDatabase(gs()) === 'original' ? (id) => { if (gs().players[id]) nav({ name: 'player', id }); } : undefined} /></div>;

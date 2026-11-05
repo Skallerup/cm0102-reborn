@@ -3,7 +3,6 @@ export const it: Record<string, string> = {
   'common.ok': 'OK', 'common.back': 'Indietro', 'common.cancel': 'Annulla', 'common.close': 'Chiudi', 'common.days': 'giorni', 'common.delete': 'Elimina',
   'common.free': 'Svincolato', 'common.from': 'da', 'common.no': 'No', 'common.yes': 'Sì', 'common.none': 'Nessuno', 'common.stop': 'Ferma',
   'common.week': 'settimana', 'common.and': 'e', 'common.years': 'anni',
-
   'start.pill': 'Nuova stagione · oltre 40.000 giocatori reali', 'start.loadDesc': 'Continua una carriera salvata', 'start.onlineDesc': 'Gioca contro i tuoi amici nello stesso mondo', 'start.challengesDesc': 'Obiettivi chiari con una scadenza', 'start.subtitle': 'Il manageriale di calcio classico – con 22.700 giocatori reali del 2026/27 e 18.700 dal database originale del 2001/02',
   'start.new': 'Nuova partita', 'start.load': 'Carica partita', 'start.challenges': 'Sfide', 'start.import': 'Importa salvataggio',
   'start.importFailed': 'Impossibile caricare il file.', 'start.loading': 'Caricamento…', 'start.resuming': 'Ripresa della partita…', 'start.loadingDb': 'Caricamento database giocatori…',
@@ -20,7 +19,6 @@ export const it: Record<string, string> = {
   'start.look': 'Aspetto', 'start.lookModernHint': 'Tema chiaro o scuro con i colori del tuo club e menu laterale – pensato per telefono, tablet e desktop.', 'start.lookClassicHint': 'Come Championship Manager 01/02: schede, Indietro/Avanti, menu verdi e le vecchie foto di sfondo.',
   'start.lookNote': "L'aspetto vale all'interno del gioco e si può cambiare in qualsiasi momento in Opzioni.",
   'start.footer': 'Progetto amatoriale non ufficiale ispirato ai classici Championship Manager. Nessun codice dei giochi originali; i database sono dati di CM 01/02 e aggiornamenti della community.',
-
   'top.unemployed': 'Disoccupato', 'top.balance': 'Saldo', 'top.budget': 'Budget mercato', 'top.next': 'Avanti',
   'top.continue': 'Continua', 'top.toTheMatch': 'Alla partita ›', 'top.toMatch': 'Prossima partita »', 'top.toMatchHint': 'Vai alla prossima partita (si ferma per le notizie importanti)',
   'top.fullscreen': 'Schermo intero', 'top.exitFullscreen': 'Esci da schermo intero', 'top.running': 'Simulazione…', 'top.saved': 'Partita salvata', 'top.quitConfirm': 'Salvare e tornare al menu principale?',
@@ -28,7 +26,6 @@ export const it: Record<string, string> = {
   'nav.competitions': 'Competizioni', 'nav.transfers': 'Trasferimenti', 'nav.scouting': 'Osservatori', 'nav.assistant': 'Vice',
   'nav.staff': 'Staff', 'nav.finance': 'Finanze', 'nav.club': 'Club', 'nav.history': 'Storia', 'nav.jobs': 'Ufficio di collocamento',
   'nav.options': 'Opzioni', 'nav.save': 'Salva partita', 'nav.quit': 'Esci',
-
 
 
   'talk.title': 'Parla con {player}', 'talk.form': 'Forma recente', 'talk.noGames': 'Nessuna partita finora', 'talk.discipline': 'Disciplina',
@@ -52,7 +49,6 @@ export const it: Record<string, string> = {
   'team.r.praiseOk': 'La rosa apprezza il sostegno.', 'team.r.critUnfair': "I giocatori non capiscono la critica dopo i buoni risultati. L'umore cala.",
   'team.r.critReaction': 'I più determinati si caricano – le teste calde tengono il broncio.', 'team.r.demand': 'I giocatori sicuri raccolgono la sfida, quelli nervosi vanno in ansia.',
   'team.r.calmHelps': 'La pressione cala e i giocatori ritrovano la calma.', 'team.r.calmFine': 'I giocatori annuiscono – non erano sotto troppa pressione.',
-
   'nav.awards': 'Premi', 'tag.wantsAway': 'Vuole partire',
   'pers.title': 'Personalità', 'pers.promise': 'Promessa', 'pers.promiseUntil': 'Hai promesso successi entro il {date}',
   'trait.leader': 'Leader', 'trait.professional': 'Professionista', 'trait.troublemaker': 'Piantagrane', 'trait.temperamental': 'Testa calda', 'trait.ambitious': 'Ambizioso',
@@ -150,17 +146,16 @@ export const it: Record<string, string> = {
   'cm.notFound': 'Proposta non trovata', 'cm.comments': 'Commenti ({n})', 'cm.noComments': 'Ancora nessun commento.', 'cm.writeComment': 'Scrivi un commento…', 'cm.send': 'Invia', 'cm.share': 'Condividi proposta', 'cm.report': 'Segnala come inappropriato', 'cm.reported': 'Grazie – verrà esaminato.',
   'cm.writeHint': 'Descrivi brevemente cosa vorresti e perché renderebbe il gioco migliore. Una proposta per idea.', 'cm.bugHint': 'Descrivi cosa hai fatto, cosa è successo e cosa ti aspettavi. Versione, schermata e browser vengono inviati automaticamente.', 'cm.titlePh': 'Es. «Fammi allenare i calci piazzati»', 'cm.bugTitlePh': 'Es. «La partita si blocca durante i rigori»', 'cm.category': 'Categoria', 'cm.description': 'Descrizione', 'cm.bodyPh': 'Cosa e perché…', 'cm.bugBodyPh': 'Cosa hai fatto? Cosa è successo? Cosa ti aspettavi?', 'cm.screenshot': 'Screenshot (facoltativo)', 'cm.autoMeta': 'Inviato insieme', 'cm.submit': 'Invia', 'cm.similar': 'Esistono proposte simili:', 'cm.similarHint': 'Vota una di queste se è la stessa cosa.',
   'cm.err.error': 'Qualcosa è andato storto – riprova.', 'cm.err.network': 'Nessuna connessione.', 'cm.err.auth': 'Impossibile verificare il tuo profilo.', 'cm.err.noProfile': 'Crea prima un profilo.', 'cm.err.newProfile': 'Gioca almeno una stagione (inviata alle classifiche) prima di poter votare – così i sondaggi restano equi.', 'cm.err.budget': 'Hai usato tutti i 10 voti. Rimuovi un voto per votare qualcosa di nuovo.', 'cm.err.closed': 'La proposta è chiusa alle votazioni.', 'cm.err.limit': 'Sei stato molto attivo – aspetta un momento.', 'cm.err.short': "Scrivi un po' di più.", 'cm.err.language': 'Mantieni un tono cordiale.', 'cm.err.nopoll': 'Al momento non c’è nessun sondaggio.',
-  'nav.support': 'Sostieni il gioco', 'sup.title': 'Sostieni CM Reborn', 'sup.intro': 'Il gioco è gratuito e senza pubblicità. I contributi pagano server, testi AI e tempo di sviluppo – e chi lo sostiene viene ringraziato nel gioco.', 'sup.soon': 'Le donazioni apriranno presto. Grazie per essere passato!', 'sup.needProfile': 'Crea un profilo da allenatore (in Classifiche) per sostenerci – così le ricompense possono essere collegate a te.', 'sup.once': 'Una tantum', 'sup.monthly': 'Mensile', 'sup.month': 'mese', 'sup.give': 'Sostieni con {amount}', 'sup.secure': 'Il pagamento è gestito in sicurezza da Stripe. Il sostegno mensile si può interrompere in qualsiasi momento.',
-  'sup.thanks': 'Grazie di cuore!', 'sup.thanksText': 'Il tuo contributo è stato ricevuto – le ricompense appariranno tra un attimo.', 'sup.where': 'Dove vanno i soldi?', 'sup.goalText': 'dei costi di gestione di questo mese coperti ({raised} di {goal}).', 'sup.cost.ai': 'Testi AI', 'sup.cost.aiText': 'articoli, conferenze stampa e conversazioni', 'sup.cost.db': 'Database', 'sup.cost.dbText': 'classifiche, partite online e la community', 'sup.cost.host': 'Server e hosting', 'sup.cost.hostText': 'così il gioco è sempre online', 'sup.cost.dev': 'Sviluppo', 'sup.cost.devText': 'nuove funzioni dalle proposte della community',
-  'sup.rewards': 'Ricompense', 'sup.from.bronze': 'da {amount} in totale', 'sup.from.silver': 'da {amount} in totale', 'sup.from.gold': 'da {amount} in totale',
-  'sup.perks.bronze': 'Badge di bronzo accanto al tuo nome ovunque|Il tuo nome nella lista dei sostenitori|L’obiettivo «Mecenate del gioco»|Accesso anticipato alle nuove funzioni|Temi oro e retro CM',
-  'sup.perks.silver': "Tutto ciò che c'è in Bronzo|Badge d'argento|Dai il nome a un giovane che può apparire nella partita di tutti",
-  'sup.perks.gold': "Tutto ciò che c'è in Argento|Badge d'oro ed evidenziato nella lista|Un grazie extra grande dallo sviluppatore 💛",
-  'sup.fair': 'Le ricompense sono solo estetiche e di riconoscimento – mai un vantaggio nel gioco vero e proprio, e nessun peso extra nei sondaggi.', 'sup.yourStatus': 'Il tuo stato di sostenitore', 'sup.monthlyOn': 'Sostenitore mensile ♥', 'sup.beta': 'Accesso anticipato alle nuove funzioni', 'sup.betaHint': 'Le funzioni in accesso anticipato si possono provare fino a una settimana prima di tutti gli altri.',
-  'sup.regenTitle': 'Dai il nome a un giovane', 'sup.regenHint': 'Il tuo nome può comparire come talento nel giorno dei nuovi giovani nella partita di tutti – con una ⭐ nella scheda del giocatore.', 'sup.regenLocked': 'Richiede Argento od Oro.', 'sup.regenNow': 'Il tuo giovane: {name}', 'sup.first': 'Nome', 'sup.last': 'Cognome', 'sup.regenNamed': 'Hai dato al giovane il nome {name}', 'sup.namedBy': 'Nome scelto dal sostenitore {name}',
-  'sup.wall': 'Sostenitori ({n})', 'sup.wallEmpty': 'Sii il primo nella lista!', 'sup.badgeHint': 'Sostiene lo sviluppo del gioco', 'sup.tier.bronze': 'Bronzo', 'sup.tier.silver': 'Argento', 'sup.tier.gold': 'Oro', 'sup.supportersOnly': 'solo sostenitori',
-  'sup.err.disabled': 'Le donazioni non sono ancora aperte.', 'sup.err.amount': "Scegli un importo.", 'sup.err.stripe': 'Impossibile avviare il pagamento – riprova.', 'sup.err.tier': 'Richiede un livello di sostenitore più alto.', 'sup.err.name': 'Inserisci un nome valido.', 'sup.err.language': 'Mantieni un tono cordiale.', 'sup.err.noProfile': 'Crea prima un profilo.', 'sup.err.network': 'Nessuna connessione.', 'sup.err.auth': 'Impossibile verificare il tuo profilo.',
-  'opt.theme.gold': 'Oro (sostenitori)', 'opt.theme.retro': 'Classico', 'ach.patron': 'Mecenate del gioco', 'ach.patron.desc': 'Sostieni lo sviluppo del gioco.', 'land.supportLine': 'Il gioco è gratuito e costruito insieme alla community.', 'land.community': 'Guarda le proposte e vota →',
+
+
+
+
+
+
+
+
+
+  'opt.theme.gold': 'Oro', 'opt.theme.retro': 'Classico','land.supportLine': 'Il gioco è gratuito e costruito insieme alla community.', 'land.community': 'Guarda le proposte e vota →',
   'navg.team': 'Squadra', 'navg.matches': 'Partite', 'navg.market': 'Calciomercato', 'navg.club': 'Club', 'navg.manager': 'Allenatore', 'navg.community': 'Community',
   'trial.invite': 'Invita in prova', 'trial.invited': 'Arriva per un provino di due settimane – puoi seguirlo in Osservatori.', 'trial.onTrial': 'In prova fino al {date}', 'trial.until': 'Il provino termina il {date}', 'trial.title': 'Giocatori in prova ({n}/{max})', 'trial.empty': 'Nessun giocatore in prova. Invita gli svincolati dalla loro scheda – gli allenatori li conosceranno in due settimane.', 'trial.known': 'conosciuto al {pct}%', 'trial.ends': 'termina il {date}', 'trial.send': 'Rimanda a casa',
   'trial.err.notFree': 'Solo gli svincolati possono venire in prova.', 'trial.err.full': 'Ci sono già tre giocatori in prova.', 'trial.err.already': 'È già in prova.', 'trial.err.error': 'Non è stato possibile.',
@@ -248,7 +243,6 @@ export const it: Record<string, string> = {
   'award.monthPlayer': '{comp} giocatore del mese: {player} ({club})', 'award.monthManager': '{comp} allenatore del mese: {manager} ({club})',
   'award.monthManagerMe': 'Sei l’allenatore del mese della {comp}! ({pts} punti)', "award.ballonDor": "Pallone d'Oro: {player} ({club}) è il miglior giocatore del mondo dell'anno",
   'award.managerOfYearMe': "Sei l'allenatore dell'anno! 🏆", 'award.gala': 'Serata dei premi della stagione {season}', 'award.gala.body': "Guarda tutti i premi – Pallone d'Oro, squadra dell'anno, allenatore dell'anno e le sorprese della stagione – in Premi.",
-
   'mp.title': 'Multigiocatore online', 'mp.useVercel': "Il multigiocatore online richiede il server di gioco ed è disponibile solo all'indirizzo principale:", 'mp.explain': 'Gioca contro i tuoi amici nello stesso mondo – ognuno guida il proprio club. Ognuno fa le sue modifiche (tattica, trasferimenti, allenamento …) e preme «Pronto». Quando tutti sono pronti, il gioco prosegue fino a dopo la giornata successiva.',
   'mp.create': 'Crea partita online', 'mp.createBtn': 'Crea e ottieni il link di invito', 'mp.creating': 'Creazione della partita online…', 'mp.join': 'Entra', 'mp.joinBtn': 'Entra nella partita',
   'mp.codePlaceholder': 'Codice', 'mp.myGames': 'Le mie partite online', 'mp.connecting': 'Connessione…', 'mp.players': 'Giocatori', 'mp.taken': 'Occupato',
@@ -261,7 +255,6 @@ export const it: Record<string, string> = {
   'inbox.settings': 'Notizie', 'inbox.categories': 'Categorie nella posta', 'inbox.mutedHint': 'Le categorie non spuntate vengono segnate come lette e mostrate solo quando le filtri – non perdi nulla, ma la posta è più tranquilla. Dirigenza, offerte di lavoro, contratti e trasferimenti non si possono disattivare perché spesso richiedono una risposta.', 'opt.newsMoved': 'Quali e quante notizie ricevi ora si sceglie in ⚙ Notizie nella posta.', 'inbox.markRead': 'Segna tutto come letto', 'inbox.keys': '↑↓ cambia messaggio · → prossimo non letto · Invio apri', 'inbox.messages': 'Messaggi', 'inbox.empty': 'Nessun messaggio', 'inbox.open': 'Apri', 'inbox.select': 'Seleziona un messaggio',
   'cat.all': 'Tutte', 'cat.match': 'Partite', 'cat.transfer': 'Trasferimenti', 'cat.contract': 'Contratti', 'cat.injury': 'Infortuni',
   'cat.board': 'Dirigenza', 'cat.scout': 'Osservatori', 'cat.award': 'Premi', 'cat.youth': 'Giovanili', 'cat.job': 'Lavoro', 'cat.general': 'Generale', 'cat.finance': 'Finanze',
-
   'col.pos': 'Ruolo', 'col.name': 'Nome', 'col.age': 'Età', 'col.nat': 'Naz', 'col.club': 'Club', 'col.value': 'Valore',
   'col.wage': 'Stipendio', 'col.expires': 'Scadenza', 'col.joined': 'Arrivato', 'col.cond': 'Cond', 'col.morale': 'Morale', 'col.apps': 'Pres',
   'col.goals': 'Gol', 'col.assists': 'Ass', 'col.avr': 'Med', 'col.form': 'Forma', 'col.season': 'Stagione', 'col.date': 'Data', 'col.comp': 'Competizione',
@@ -271,7 +264,6 @@ export const it: Record<string, string> = {
   'short.cro': 'Cro', 'short.dri': 'Dri', 'short.fin': 'Fin', 'short.hea': 'Tes', 'short.mar': 'Mar', 'short.otb': 'Mov', 'short.pas': 'Pas',
   'short.tck': 'Con', 'short.tec': 'Tec', 'short.cre': 'Cre', 'short.dec': 'Dec', 'short.pos': 'Pos', 'short.pac': 'Vel', 'short.sta': 'Res',
   'short.str': 'For', 'short.han': 'Pre', 'short.ref': 'Rif',
-
   'attr.crossing': 'Cross', 'attr.dribbling': 'Dribbling', 'attr.finishing': 'Finalizzazione', 'attr.heading': 'Colpo di testa', 'attr.longShots': 'Tiri da lontano',
   'attr.marking': 'Marcatura', 'attr.offTheBall': 'Movimento senza palla', 'attr.passing': 'Passaggi', 'attr.penalties': 'Rigori', 'attr.tackling': 'Contrasti',
   'attr.freeKicks': 'Calci di punizione', 'attr.corners': "Calci d'angolo", 'attr.technique': 'Tecnica', 'attr.throwIns': 'Rimesse laterali',
@@ -284,7 +276,6 @@ export const it: Record<string, string> = {
   'attr.professionalism': 'Professionalità', 'attr.sportsmanship': 'Sportività', 'attr.temperament': 'Temperamento',
   'group.technical': 'Tecnici', 'group.mental': 'Mentali', 'group.physical': 'Fisici', 'group.goalkeeping': 'Portiere',
   'foot.R': 'Destro', 'foot.L': 'Sinistro', 'foot.B': 'Ambidestro', 'side.L': 'Sinistra', 'side.C': 'Centro', 'side.R': 'Destra',
-
   'player.gone': 'Il giocatore non esiste più', 'player.compare': 'Confronta', 'player.showCompare': 'Mostra confronto',
   'player.info': 'Informazioni', 'player.foot': 'Piede', 'player.height': 'Altezza', 'player.nextClub': 'Prossimo club', 'player.caps': 'Presenze / gol in nazionale',
   'player.asking': 'Prezzo richiesto', 'player.unknown': 'Sconosciuto – fallo osservare', 'player.status': 'Stato', 'player.injury': 'Infortunio',
@@ -700,13 +691,11 @@ export const it: Record<string, string> = {
   "press.a.followPlayer.harder": "Sa esattamente cosa mi aspetto.",
   'press.eff.squadDown': "Morale rosa giù",
   'bid.title': 'Offerta per {player}', 'bid.loan': 'Prestito (resto della stagione)', 'bid.fee': 'Cifra', 'bid.submit': 'Invia offerta',
-
   'neg.title': 'Trattativa contrattuale – {player}', 'neg.currentWage': 'Stipendio attuale', 'neg.agentHint': "Richiesta del procuratore",
   'neg.wageBill': 'Monte ingaggi / budget', 'neg.fee': 'Cifra del trasferimento', 'neg.type': 'Tipo', 'neg.bosman': 'Bosman (a parametro zero in estate)',
   'neg.wage': 'Stipendio settimanale', 'neg.years': 'Durata (anni)', 'neg.offer': 'Offri contratto', 'neg.cancel': 'Annulla la trattativa', 'neg.cancelConfirm': "Ritirare l'offerta e annullare la trattativa?", 'myoffer.title': 'La tua offerta:', 'myoffer.theyWant': 'vogliono {fee}', 'neg.accepted': 'Accordo raggiunto! 🎉',
   'neg.counter': 'Il procuratore vuole {wage} a settimana per {years} anni.', 'neg.refused': 'Il giocatore ha abbandonato la trattativa.',
   'neg.overWageBudget': 'La dirigenza dice no: il budget stipendi ({budget}) verrebbe superato (ora {bill}).',
-
   'tac.assistantPick': 'Il vice sceglie la squadra', 'tac.save': 'Salva tattica', 'tac.load': 'Carica tattica…', 'tac.hint': 'Seleziona una posizione e clicca un giocatore, o trascina e rilascia',
   'tac.empty': '(vuoto)', 'tac.setPieces': 'Calci piazzati e capitano', 'tac.captain': 'Capitano', 'tac.penalties': 'Rigori', 'tac.freeKicks': 'Punizioni', 'tac.corners': "Calci d'angolo",
   'tac.team': 'Istruzioni di squadra', 'tac.individual': 'Istruzioni individuali', 'tac.bestFor': 'Migliori giocatori per {slot}', 'tac.players': 'Giocatori',
@@ -718,13 +707,11 @@ export const it: Record<string, string> = {
   'ment.0': 'Molto difensiva', 'ment.1': 'Difensiva', 'ment.2': 'Normale', 'ment.3': 'Offensiva', 'ment.4': 'Molto offensiva',
   'pi.runs': 'Inserimenti', 'pi.longShots': 'Tiri da fuori', 'pi.crossing': 'Cross', 'pi.runWithBall': 'Palla al piede', 'pi.throughBalls': 'Filtranti',
   'pi.tightMarking': 'Marcatura stretta', 'pi.freeRole': 'Libero di svariare',
-
   'train.setAll': 'Imposta per tutta la rosa…', 'train.quality': "Qualità dell'allenamento", 'train.effect': 'Effetto sulla crescita', 'train.effectVs': 'rispetto a un club medio', 'train.disciplineHint': 'ottiene di più dai giocatori pigri', 'train.motivatingHint': 'alza il morale', 'train.coaches': 'Preparatori', 'train.avgCoaching': 'Allenamento medio',
   'train.f.all': 'Tutti', 'train.f.gk': 'Portieri', 'train.f.def': 'Difesa', 'train.f.mid': 'Centrocampo', 'train.f.att': 'Attacco', 'train.f.anyAge': 'Tutte le età', 'train.f.u21': '21 anni o meno', 'train.f.a2229': '22–29', 'train.f.o30': '30 anni o più', 'train.f.anySched': 'Tutti gli allenamenti', 'train.f.advice': 'Solo dove il vice suggerisce altro', 'train.f.sortPos': 'Ordina: ruolo', 'train.f.sortName': 'Ordina: nome', 'train.f.sortAge': 'Ordina: più giovani prima', 'train.f.sortDev': 'Ordina: crescita', 'train.f.sortCond': 'Ordina: condizione più bassa', 'train.explain': "I giovani crescono verso il loro potenziale. Buoni preparatori, strutture, minuti giocati e determinazione/professionalità fanno una grande differenza. Il tipo di allenamento decide quali attributi crescono di più. I giocatori sopra i 30 anni calano fisicamente.",
   'train.schedules': 'Programmi', 'train.restDesc': 'Riposo – recupera la condizione',
   'train.general': 'Generale', 'train.goalkeeping': 'Portieri', 'train.defending': 'Difesa', 'train.ballcontrol': 'Controllo palla', 'train.attacking': 'Attacco',
   'train.shooting': 'Tiro', 'train.fitness': 'Preparazione atletica', 'train.setpieces': 'Calci piazzati', 'train.rest': 'Riposo',
-
   'fix.round': 'Giornata', 'fix.group': 'Girone', 'fix.champ': 'Poule scudetto', 'fix.releg': 'Poule retrocessione', 'fix.leg1': 'Andata', 'fix.leg2': 'Ritorno',
   'fix.pens': 'rig', 'fix.aet': 'dts', 'fix.stage': 'Turno', 'fix.venue': 'Campo', 'fix.opponent': 'Avversario', 'fix.result': 'Risultato',
   'fix.neutral': 'Neutro', 'fix.home': 'Casa', 'fix.away': 'Trasferta', 'fix.report': 'Cronaca',
@@ -736,7 +723,6 @@ export const it: Record<string, string> = {
   'comp.winner': 'Vincitore', 'comp.runnerUp': 'Secondo', 'comp.topScorer': 'Capocannoniere', 'comp.best': "Giocatore dell'anno", 'comp.young': 'Miglior giovane', 'comp.noHistory': 'Ancora nessun albo',
   'tbl.p': 'G', 'tbl.w': 'V', 'tbl.d': 'N', 'tbl.l': 'P', 'tbl.gf': 'GF', 'tbl.ga': 'GS', 'tbl.gd': 'DR', 'tbl.pts': 'Pt',
   'tbl.europe': 'Europa', 'tbl.promotion': 'Promozione', 'tbl.playoff': 'Play-off', 'tbl.relegation': 'Retrocessione',
-
   'tr.search': 'Ricerca giocatori',
   'real.col': 'Realismo', 'real.hint': "Verrebbe? Il club lo venderebbe? Puoi permettertelo? Passa sopra l'etichetta per vedere il motivo.",
   'real.all': 'Tutti i giocatori', 'real.only': 'Solo obiettivi realistici', 'real.maybe': 'Realistici + forse',
@@ -765,11 +751,9 @@ export const it: Record<string, string> = {
   'transfer.refuseRep': "{player} non è interessato a un club della statura del {club}", 'transfer.refuseHappy': '{player} sta bene dove si trova e rifiuta il {club}',
   'transfer.talksCollapsed': 'La trattativa con {player} è saltata', 'transfer.preContract': "{player} ha firmato un precontratto con il {club} per l'estate",
   'transfer.released': '{player} è stato svincolato',
-
   'contract.expiring': "Il contratto di {player} scade quest'estate", 'contract.expiring.body': 'Rinnovalo dal suo profilo, o lascialo partire a parametro zero.',
   'contract.leavingBosman': "{player} ha accettato di trasferirsi al {club} in estate", 'contract.left': '{player} ha lasciato il club (contratto scaduto)',
   'contract.renewed': '{player} ha firmato un rinnovo di {years} anni',
-
   'scout.maskingOff': 'Il mascheramento degli attributi è disattivato: vedi tutti gli attributi.', 'scout.overview': 'Panoramica', 'rec.title': '{scout} dice:', 'rec.col': 'Consiglio', 'rec.unknown': "Non lo conosciamo ancora abbastanza: manda un osservatore per una valutazione.",
   'rec.l0': 'Prendilo! Ci migliorerebbe subito.', 'rec.l1': 'Lo consiglio.', 'rec.l2': 'Sarebbe utile, ma non è indispensabile.', 'rec.l3': 'Non è meglio di quello che abbiamo.', 'rec.l4': 'Lo sconsiglio.',
   'rec.short.unknown': 'Sconosciuto', 'rec.short.l0': 'Prendilo!', 'rec.short.l1': 'Consigliato', 'rec.short.l2': 'Utile', 'rec.short.l3': 'Non migliore', 'rec.short.l4': 'Da evitare',
@@ -783,7 +767,6 @@ export const it: Record<string, string> = {
   'scout.assignments': 'Incarichi', 'scout.assignment': 'Incarico', 'scout.watching': 'Osserva', 'scout.ownLeague': 'Proprio campionato (predefinito)', 'scout.leagues': 'Campionati',
   'scout.nations': 'Nazioni', 'scout.none': 'Non hai osservatori: ingaggiane qualcuno in Staff.',
   'news.scoutDone': '{scout} ha completato la relazione su {player}',
-
   'staff.mine': 'Il mio staff', 'staff.otherClubs': 'Staff di altri club', 'staff.sourceFree': 'Disoccupati (liberi)', 'staff.sourceClubs': 'Strappa ad altri club',
   'staff.onlyWilling': 'Solo chi è disposto a trasferirsi', 'staff.fee': 'Indennizzo', 'staff.buyOut': 'Liberalo', 'staff.fired': '{name} è stato licenziato.',
   'staff.poachConfirm': 'Liberare {name} dal {club} per {fee}?', 'staff.poached': '{name} liberato dal {club} per {fee}',
@@ -797,7 +780,6 @@ export const it: Record<string, string> = {
   'staff.motivating': 'Motivazione', 'staff.discipline': 'Disciplina', 'staff.tactics': 'Tattica',
   'staff.short.coaching': 'All', 'staff.short.judgingAbility': 'VA', 'staff.short.judgingPotential': 'VP', 'staff.short.physio': 'Fis',
   'staff.short.motivating': 'Mot', 'staff.short.discipline': 'Dis', 'staff.short.tactics': 'Tat',
-
   'fin.overview': 'Panoramica',
   'ticket.title': 'Prezzo dei biglietti', 'ticket.fair': 'Prezzo di mercato (quello che i tifosi ritengono giusto)', 'ticket.expected': 'Affluenza prevista', 'ticket.incomeMatch': 'Incasso per partita in casa',
   'ticket.incomeSeason': 'Circa a stagione (partite di campionato)', 'ticket.att': 'Affluenza', 'ticket.fill': 'Tutto esaurito', 'ticket.best': 'Incasso massimo',
@@ -816,7 +798,6 @@ export const it: Record<string, string> = {
   'fin.other': 'Altro', 'fin.expense': 'Uscite totali', 'fin.board': 'La dirigenza',
   'fin.requestHint': 'La dirigenza sblocca altri fondi solo se la fiducia è alta e le finanze sono sane. Una richiesta al mese.',
   'fin.askTransfer': 'Chiedi un budget trasferimenti più alto', 'fin.askWage': 'Chiedi un budget stipendi più alto',
-
   'club.info': 'Info club', 'club.manager': 'Allenatore', 'club.vacant': 'Vacante', 'club.stadium': 'Stadio', 'club.rep': 'Reputazione', 'club.strength': 'Forza della rosa',
   'club.youth': 'Settore giovanile', 'club.facilities': 'Strutture di allenamento', 'club.board': 'La dirigenza', 'club.expectation': 'Aspettative',
   'club.confidence': 'Fiducia', 'club.warnings': 'Richiami', 'club.managerRep': "Reputazione dell'allenatore", 'club.history': 'Storia',
@@ -834,15 +815,12 @@ export const it: Record<string, string> = {
   'board.disappointed': 'La dirigenza è delusa dalla stagione', 'board.requestOk': 'La dirigenza ha aumentato il {kind} del {pct}%',
   'board.requestNo': 'La dirigenza ha respinto la tua richiesta ({kind})', 'board.requestTooSoon': 'Hai già fatto una richiesta alla dirigenza questo mese',
   'board.kind.transfer': 'budget trasferimenti', 'board.kind.wage': 'budget stipendi',
-
   'jobs.offers': 'Offerte di lavoro', 'jobs.vacancies': 'Panchine libere', 'jobs.accept': 'Accetta', 'jobs.decline': 'Rifiuta', 'jobs.apply': 'Candidati',
   'jobs.acceptConfirm': "Accettare l'incarico al {club}?", 'jobs.explain': "La tua reputazione da allenatore è {rep}. I club con una reputazione superiore alla tua raramente ti assumono.",
   'news.jobOffer': 'Il {club} ti offre la panchina', 'news.applyRejected': 'Il {club} ha respinto la tua candidatura', 'news.newJob': 'Sei il nuovo allenatore del {club}',
   'news.managerSacked': 'Il {club} ha esonerato {manager}', 'news.managerHired': 'Il {club} ha scelto {manager} come allenatore',
-
   'hist.manager': 'Allenatore', 'hist.trophies': 'Trofei', 'hist.sacked': 'Esoneri', 'hist.challenge': 'Sfida', 'hist.deadline': 'scadenza',
   'hist.trophyCabinet': 'Bacheca', 'hist.noTrophies': 'Ancora nessun trofeo', 'hist.career': 'Carriera', 'hist.firstSeason': 'Prima stagione in corso',
-
   'opt.general': 'Generale', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Corona danese (kr.)', 'cur.GBP': 'Sterlina (£)', 'opt.language': 'Lingua', 'opt.autosave': 'Salvataggio automatico',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'Testi AI (conferenze stampa, colloqui, articoli)', 'opt.ai.hint': "Giornalisti, giocatori, procuratori e tifosi rispondono con testi scritti da un modello linguistico. Le regole del gioco decidono comunque ogni esito. Richiede internet e funziona solo nella versione ospitata su Vercel.",
@@ -1286,7 +1264,6 @@ export const it: Record<string, string> = {
   'opt.saves': 'Salva / esporta', 'opt.export': 'Esporta file di salvataggio', 'opt.exportHint': 'Salva il file e caricalo su un altro dispositivo dalla schermata iniziale.',
   'opt.about': 'Informazioni', 'opt.aboutText': 'CM Reborn è ispirato ai classici Championship Manager, costruito da zero come web app con tante novità. Il motore partita è basato su zone come quello di CM3, ma calibrato sulle statistiche moderne.',
   'opt.dataCredit': 'Dati dei giocatori: transfermarkt-datasets di David Cariboo (CC0). Gli attributi sono derivati, non ufficiali.',
-
   'news.welcome': 'Benvenuto al {club}, {manager}!', 'news.welcome.body': 'La dirigenza ti ha consegnato le chiavi. Controlla la rosa, imposta la tattica e premi Continua. In bocca al lupo!',
   'news.champions': 'Il {club} è campione di {comp}!', 'news.cupWin': 'Il {club} vince la {comp}!', 'news.playoffWin': 'Il {club} vince i {comp}',
   'news.split': 'La {comp} si è divisa in gruppo per il titolo e gruppo salvezza', 'news.promoted': 'Il {club} è promosso in {comp}', 'news.relegated': 'Il {club} retrocede in {comp}',
@@ -1297,10 +1274,8 @@ export const it: Record<string, string> = {
   'match.won': 'Vinto {score} contro {opp} ({comp})', 'match.drew': 'Pareggiato {score} contro {opp} ({comp})', 'match.lost': 'Perso {score} contro {opp} ({comp})',
   'award.playerOfYear': '{player} è il giocatore dell\'anno di {comp}', 'award.topScorer': '{player} chiude da capocannoniere di {comp} con {goals} gol',
   'challenge.won': 'Sfida completata: {id} 🏆', 'challenge.lost': 'Sfida fallita: {id}',
-
   'injury.bruise': 'Contusione alla coscia', 'injury.twisted-ankle': 'Distorsione alla caviglia', 'injury.hamstring': 'Stiramento al bicipite femorale', 'injury.groin': "Stiramento all'inguine", 'injury.calf': 'Stiramento al polpaccio',
   'injury.knee': 'Infortunio al ginocchio', 'injury.back': 'Problemi alla schiena', 'injury.concussion': 'Commozione cerebrale', 'injury.broken-foot': 'Frattura del piede', 'injury.cruciate': 'Legamento crociato', 'injury.broken-leg': 'Frattura della gamba',
-
   'match.played': 'Partita già giocata', 'match.preview': 'Presentazione', 'match.yourXI': 'Il tuo undici titolare', 'match.quick': 'Simula risultato',
   'match.kickoff': "Calcio d'inizio ▶", 'match.notToday': 'Questa partita non è oggi.', 'match.ft': 'Fine partita', 'match.resume': 'Riprendi', 'match.pause': 'Pausa',
   'match.toEnd': 'Salta alla fine', 'match.continue': 'Continua ›', 'match.commentary': 'Telecronaca', 'match.stats': 'Statistiche', 'match.myTeam': 'La mia squadra',
@@ -1308,7 +1283,6 @@ export const it: Record<string, string> = {
   'match.subOff': 'Sostituisci…', 'match.paused': 'IN PAUSA', 'match.keys': 'Tastiera: spazio/P = play/pausa · 1-4 = velocità · T = tattica · U = sostituzioni · S = statistiche · K = telecronaca · E = salta alla fine', 'match.keysDone': 'Premi Spazio o Invio per continuare', 'match.subFailed': 'Quella sostituzione non era possibile.',
   'stat.possession': 'Possesso palla', 'stat.xg': 'xG (gol attesi)', 'stat.shots': 'Tiri', 'stat.onTarget': 'In porta', 'stat.corners': "Calci d'angolo",
   'stat.fouls': 'Falli', 'stat.yellows': 'Ammonizioni', 'stat.reds': 'Espulsioni', 'stat.offsides': 'Fuorigioco', 'stat.passPct': 'Passaggi riusciti %',
-
   'report.shootout': 'Calci di rigore', 'report.soSaved': 'parato', 'report.soWide': 'sbagliato', 'report.missing': 'Resoconto non trovato', 'report.title': 'Resoconto partita', 'report.analysis': 'Analisi', 'report.players': 'Giocatori',
   'report.verdict': 'Il verdetto del vice', 'report.mom': 'Migliore in campo', 'report.momentum': 'Momentum (pericolosità ogni 5 min)', 'report.heatmap': 'Heatmap (possesso per zona)',
   'report.heatHint': "Mostra dove ciascuna squadra ha avuto il pallone. La freccia indica la direzione d'attacco.", 'report.shotmap': 'Mappa dei tiri (dimensione = xG)', 'report.min': 'Min',
@@ -1324,7 +1298,6 @@ export const it: Record<string, string> = {
   'v.tired': 'La squadra era chiaramente stanca nel finale (condizione media {cond}%). Valuta cambi anticipati o un ritmo più basso.',
   'v.red': "L'espulsione ci è costata cara.",
   'lane.left': 'sinistra', 'lane.centre': 'centrale', 'lane.right': 'destra',
-
   'as.opponent': 'Rapporto sugli avversari', 'as.suggest': 'Formazione consigliata', 'as.compare': 'Confronta', 'as.bench': 'Test tattico',
   'as.noMatch': 'Nessuna partita in programma.', 'as.current': 'La tua formazione', 'as.suggested': 'Il consiglio del vice', 'as.use': 'Usa il consiglio',
   'as.agrees': 'Il tuo vice è d\'accordo con la tua formazione.', 'as.suggestHint': 'Il consiglio tiene conto di ruolo, abilità e condizione.',
@@ -1339,7 +1312,6 @@ export const it: Record<string, string> = {
   'an.threatLane': 'I loro attacchi più pericolosi arrivano sulla nostra fascia {lane}.', 'an.topScorer': 'Attenzione a {player}: {goals} gol in questa stagione.',
   'an.aerial': "Hanno {n} giocatori forti di testa: evitiamo calci d'angolo inutili.", 'an.slowDefence': 'La loro difesa è lenta: filtranti e velocità possono metterli in difficoltà.',
   'radar.attack': 'Attacco', 'radar.creativity': 'Creatività', 'radar.defence': 'Difesa', 'radar.physical': 'Fisico', 'radar.mental': 'Mentale', 'radar.goalkeeping': 'Porta',
-
   'challenge.wrexham-dream.title': 'Il sogno di Hollywood', 'challenge.wrexham-dream.desc': 'Porta il Wrexham in Premier League entro tre stagioni.',
   'challenge.united-broke.title': 'United al verde', 'challenge.united-broke.desc': 'Chiudi tra le prime 4 in Premier League con il Manchester United, senza budget per il mercato.',
   'challenge.spurs-title.title': 'Finalmente Spurs', 'challenge.spurs-title.desc': 'Vinci la Premier League con il Tottenham entro tre stagioni.',
@@ -1349,7 +1321,6 @@ export const it: Record<string, string> = {
   'challenge.schalke-title.title': 'Meister der Herzen', 'challenge.schalke-title.desc': 'Vinci finalmente la Bundesliga con lo Schalke 04 entro quattro stagioni.',
   'challenge.lautern-return.title': 'Il Betzenberg brucia', 'challenge.lautern-return.desc': 'Riporta il Kaiserslautern in Bundesliga entro due stagioni.',
   'challenge.sampdoria-return.title': 'Ritorno al Marassi', 'challenge.sampdoria-return.desc': 'Riporta la Sampdoria in Serie A entro due stagioni.',
-
   'c.kickoff': "Calcio d'inizio per {team}!",
   'c.halftime': 'Fine primo tempo. {score}',
   'c.fulltime': 'Finisce qui! {score}',

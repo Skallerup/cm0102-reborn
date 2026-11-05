@@ -6,7 +6,7 @@ import { isMultiplayer } from '../game/humans';
 import { profileCreated } from './account';
 
 export interface RankProfile { pid: string; token: string; name: string }
-export interface RankRow { id: string; pid?: string; supporter?: string; points: number; name: string; club: string; league: string; season?: number; seasons?: number }
+export interface RankRow { id: string; pid?: string; points: number; name: string; club: string; league: string; season?: number; seasons?: number }
 export type Board = 'career' | 'season' | 'month' | 'league';
 
 const KEY = 'cm0102.rankProfile';
@@ -83,7 +83,7 @@ export async function syncProfile(): Promise<boolean> {
 }
 
 export interface PublicProfile {
-  name: string; created: string; ach: string[]; avatar: string | null; motto: string; supporter?: string | null; regen?: string | null;
+  name: string; created: string; ach: string[]; avatar: string | null; motto: string;
   summary: { club: string; league: string; nation: string; seasons: number; wins: number; trophies: number; titles: number; rep: number; trophyList: string[] } | null;
   careers: { id: string; club: string; league: string; total: number; seasons: number; rank: number | null }[];
 }

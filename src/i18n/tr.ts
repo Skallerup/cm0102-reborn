@@ -3,7 +3,6 @@ export const tr: Record<string, string> = {
   'common.ok': 'Tamam', 'common.back': 'Geri', 'common.cancel': 'İptal', 'common.close': 'Kapat', 'common.days': 'gün', 'common.delete': 'Sil',
   'common.free': 'Serbest oyuncu', 'common.from': 'itibaren', 'common.no': 'Hayır', 'common.yes': 'Evet', 'common.none': 'Yok', 'common.stop': 'Durdur',
   'common.week': 'hafta', 'common.and': 've', 'common.years': 'yaş',
-
   'start.pill': 'Yeni sezon · 40.000+ gerçek oyuncu', 'start.loadDesc': 'Kayıtlı bir kariyere devam et', 'start.onlineDesc': 'Aynı dünyada arkadaşlarına karşı oyna', 'start.challengesDesc': 'Süreli net hedefler', 'start.subtitle': "Klasik futbol menajerliği – 2026/27'den 22.700 ve orijinal 2001/02 veritabanından 18.700 gerçek oyuncuyla",
   'start.new': 'Yeni oyun', 'start.load': 'Oyun yükle', 'start.challenges': 'Meydan okumalar', 'start.import': 'Kayıt dosyası içe aktar',
   'start.importFailed': 'Bu dosya yüklenemedi.', 'start.loading': 'Yükleniyor…', 'start.resuming': 'Oyunun devam ettiriliyor…', 'start.loadingDb': 'Oyuncu veritabanı yükleniyor…',
@@ -20,7 +19,6 @@ export const tr: Record<string, string> = {
   'start.look': 'Görünüm', 'start.lookModernHint': 'Kulüp renklerinde açık veya koyu tema, yan menüyle – telefon, tablet ve masaüstü için.', 'start.lookClassicHint': 'Championship Manager 01/02 gibi: sekmeler, Geri/İleri, yeşil menüler ve eski arka plan fotoğrafları.',
   'start.lookNote': 'Görünüm oyun içinde geçerlidir ve Seçenekler’den istediğin zaman değiştirilebilir.',
   'start.footer': 'Klasik Championship Manager oyunlarından ilham alan resmi olmayan bir hayran projesi. Orijinal oyunlardan kod içermez; veritabanları CM 01/02 verisi ve topluluk güncellemeleridir.',
-
   'top.unemployed': 'İşsiz', 'top.balance': 'Bakiye', 'top.budget': 'Transfer bütçesi', 'top.next': 'İleri',
   'top.continue': 'Devam', 'top.toTheMatch': 'Maça git ›', 'top.toMatch': 'Sonraki maç »', 'top.toMatchHint': 'Sonraki maça atla (önemli haberlerde durur)',
   'top.fullscreen': 'Tam ekran', 'top.exitFullscreen': 'Tam ekrandan çık', 'top.running': 'Simüle ediliyor…', 'top.saved': 'Oyun kaydedildi', 'top.quitConfirm': 'Kaydedip ana menüye dönülsün mü?',
@@ -28,7 +26,6 @@ export const tr: Record<string, string> = {
   'nav.competitions': 'Turnuvalar', 'nav.transfers': 'Transferler', 'nav.scouting': 'Gözlem', 'nav.assistant': 'Yardımcı',
   'nav.staff': 'Teknik ekip', 'nav.finance': 'Finans', 'nav.club': 'Kulüp', 'nav.history': 'Tarihçe', 'nav.jobs': 'İş merkezi',
   'nav.options': 'Seçenekler', 'nav.save': 'Oyunu kaydet', 'nav.quit': 'Çık',
-
 
 
   'talk.title': '{player} ile konuş', 'talk.form': 'Son form', 'talk.noGames': 'Henüz maç yok', 'talk.discipline': 'Disiplin',
@@ -52,7 +49,6 @@ export const tr: Record<string, string> = {
   'team.r.praiseOk': 'Kadro desteğinden memnun.', 'team.r.critUnfair': 'Oyuncular iyi sonuçlardan sonra eleştiriyi anlamıyor. Moral düşüyor.',
   'team.r.critReaction': 'Kararlı oyuncular ateşleniyor – sinirliler küsüyor.', 'team.r.demand': 'Özgüvenli oyuncular meydan okumaya karşılık veriyor, gerginler endişeleniyor.',
   'team.r.calmHelps': 'Baskı hafifliyor ve oyuncular sakinliklerini yeniden buluyor.', 'team.r.calmFine': 'Oyuncular başını sallıyor – zaten pek baskı altında değillerdi.',
-
   'nav.awards': 'Ödüller', 'tag.wantsAway': 'Ayrılmak istiyor',
   'pers.title': 'Kişilik', 'pers.promise': 'Söz', 'pers.promiseUntil': '{date} tarihine kadar başarı sözü verdin',
   'trait.leader': 'Lider', 'trait.professional': 'Profesyonel', 'trait.troublemaker': 'Huzursuz', 'trait.temperamental': 'Asabi', 'trait.ambitious': 'Hırslı',
@@ -150,17 +146,16 @@ export const tr: Record<string, string> = {
   'cm.notFound': 'Öneri bulunamadı', 'cm.comments': 'Yorumlar ({n})', 'cm.noComments': 'Henüz yorum yok.', 'cm.writeComment': 'Bir yorum yaz…', 'cm.send': 'Gönder', 'cm.share': 'Öneriyi paylaş', 'cm.report': 'Uygunsuz olarak bildir', 'cm.reported': 'Teşekkürler – incelenecek.',
   'cm.writeHint': 'Ne istediğini ve bunun oyunu neden daha iyi yapacağını kısaca anlat. Her fikir için bir öneri.', 'cm.bugHint': 'Ne yaptığını, ne olduğunu ve ne beklediğini anlat. Sürüm, ekran ve tarayıcı otomatik gönderilir.', 'cm.titlePh': 'Örn. “Duran topları çalıştırabileyim”', 'cm.bugTitlePh': 'Örn. “Penaltılar sırasında maç donuyor”', 'cm.category': 'Kategori', 'cm.description': 'Açıklama', 'cm.bodyPh': 'Ne ve neden…', 'cm.bugBodyPh': 'Ne yaptın? Ne oldu? Ne bekliyordun?', 'cm.screenshot': 'Ekran görüntüsü (isteğe bağlı)', 'cm.autoMeta': 'Birlikte gönderilir', 'cm.submit': 'Gönder', 'cm.similar': 'Benzer öneriler var:', 'cm.similarHint': 'Aynısıysa onun yerine bunlardan birine oy ver.',
   'cm.err.error': 'Bir şeyler ters gitti – lütfen tekrar dene.', 'cm.err.network': 'Bağlantı yok.', 'cm.err.auth': 'Profilin doğrulanamadı.', 'cm.err.noProfile': 'Önce bir profil oluştur.', 'cm.err.newProfile': 'Oy verebilmek için en az bir sezon oyna (sıralamalara gönderilmiş) – bu anketleri adil tutar.', 'cm.err.budget': '10 oy hakkının hepsini kullandın. Yeni bir şeye oy vermek için bir oyu kaldır.', 'cm.err.closed': 'Bu öneri oylamaya kapalı.', 'cm.err.limit': 'Çok aktiftin – lütfen biraz bekle.', 'cm.err.short': 'Lütfen biraz daha fazla yaz.', 'cm.err.language': 'Lütfen nazik ol.', 'cm.err.nopoll': 'Şu an anket yok.',
-  'nav.support': 'Oyuna destek ol', 'sup.title': "CM Reborn'a destek ol", 'sup.intro': 'Oyun ücretsiz ve reklamsız. Katkılar sunucuları, AI metinlerini ve geliştirme zamanını karşılar – destek olan herkese oyunda teşekkür edilir.', 'sup.soon': 'Bağışlar yakında açılıyor. Uğradığın için teşekkürler!', 'sup.needProfile': 'Destek olmak için bir menajer profili oluştur (Sıralamalar altında) – böylece ödüllerin sana bağlanabilir.', 'sup.once': 'Tek seferlik', 'sup.monthly': 'Aylık', 'sup.month': 'ay', 'sup.give': '{amount} ile destek ol', 'sup.secure': 'Ödeme Stripe tarafından güvenle işlenir. Aylık destek istediğin zaman durdurulabilir.',
-  'sup.thanks': 'Çok teşekkürler!', 'sup.thanksText': 'Katkın alındı – ödüllerin birazdan görünecek.', 'sup.where': 'Para nereye gidiyor?', 'sup.goalText': 'bu ayın işletme maliyetlerinin karşılanan kısmı ({goal} içinden {raised}).', 'sup.cost.ai': 'AI metinleri', 'sup.cost.aiText': 'haberler, basın toplantıları ve sohbetler', 'sup.cost.db': 'Veritabanı', 'sup.cost.dbText': 'sıralamalar, çevrimiçi oyunlar ve topluluk', 'sup.cost.host': 'Sunucular ve barındırma', 'sup.cost.hostText': 'oyun her zaman açık kalsın diye', 'sup.cost.dev': 'Geliştirme', 'sup.cost.devText': 'topluluğun önerilerinden yeni özellikler',
-  'sup.rewards': 'Ödüller', 'sup.from.bronze': 'toplam {amount} ve üzeri', 'sup.from.silver': 'toplam {amount} ve üzeri', 'sup.from.gold': 'toplam {amount} ve üzeri',
-  'sup.perks.bronze': 'Her yerde adının yanında bronz rozet|Adın destekçiler listesinde|“Oyunun hamisi” başarımı|Yeni özelliklere erken erişim|Altın ve retro CM temaları',
-  'sup.perks.silver': 'Bronz’daki her şey|Gümüş rozet|Herkesin oyununda çıkabilecek bir altyapı oyuncusuna isim ver',
-  'sup.perks.gold': 'Gümüş’teki her şey|Altın rozet ve listede öne çıkarılma|Geliştiriciden ekstra büyük bir teşekkür 💛',
-  'sup.fair': 'Ödüller sadece kozmetik ve takdir amaçlıdır – oyunun kendisinde asla avantaj sağlamaz ve anketlerde ekstra ağırlık vermez.', 'sup.yourStatus': 'Destekçi durumun', 'sup.monthlyOn': 'Aylık destekçi ♥', 'sup.beta': 'Yeni özelliklere erken erişim', 'sup.betaHint': 'Erken erişimdeki özellikler herkesten bir hafta öncesine kadar denenebilir.',
-  'sup.regenTitle': 'Bir altyapı oyuncusuna isim ver', 'sup.regenHint': 'Adın, herkesin oyununda altyapı alımı gününde bir yetenek olarak çıkabilir – oyuncu sayfasında ⭐ ile.', 'sup.regenLocked': 'Gümüş veya Altın gerektirir.', 'sup.regenNow': 'Altyapı oyuncun: {name}', 'sup.first': 'Ad', 'sup.last': 'Soyad', 'sup.regenNamed': 'Altyapı oyuncusuna {name} adı verildi', 'sup.namedBy': 'Destekçi {name} tarafından adlandırıldı',
-  'sup.wall': 'Destekçiler ({n})', 'sup.wallEmpty': 'Listede ilk sen ol!', 'sup.badgeHint': 'Oyunun gelişimine destek oluyor', 'sup.tier.bronze': 'Bronz', 'sup.tier.silver': 'Gümüş', 'sup.tier.gold': 'Altın', 'sup.supportersOnly': 'sadece destekçiler',
-  'sup.err.disabled': 'Bağışlar henüz açık değil.', 'sup.err.amount': 'Bir miktar seç.', 'sup.err.stripe': 'Ödeme başlatılamadı – lütfen tekrar dene.', 'sup.err.tier': 'Daha yüksek bir destekçi seviyesi gerektirir.', 'sup.err.name': 'Geçerli bir ad gir.', 'sup.err.language': 'Lütfen nazik ol.', 'sup.err.noProfile': 'Önce bir profil oluştur.', 'sup.err.network': 'Bağlantı yok.', 'sup.err.auth': 'Profilin doğrulanamadı.',
-  'opt.theme.gold': 'Altın (destekçiler)', 'opt.theme.retro': 'Klasik', 'ach.patron': 'Oyunun hamisi', 'ach.patron.desc': 'Oyunun gelişimine destek ol.', 'land.supportLine': 'Oyun ücretsiz ve toplulukla birlikte geliştiriliyor.', 'land.community': 'Önerileri gör ve oy ver →',
+
+
+
+
+
+
+
+
+
+  'opt.theme.gold': 'Altın', 'opt.theme.retro': 'Klasik','land.supportLine': 'Oyun ücretsiz ve toplulukla birlikte geliştiriliyor.', 'land.community': 'Önerileri gör ve oy ver →',
   'navg.team': 'Takım', 'navg.matches': 'Maçlar', 'navg.market': 'Transfer piyasası', 'navg.club': 'Kulüp', 'navg.manager': 'Menajer', 'navg.community': 'Topluluk',
   'trial.invite': 'Denemeye davet et', 'trial.invited': 'İki haftalık denemeye geliyor – onu Gözlem altında takip edebilirsin.', 'trial.onTrial': '{date} tarihine kadar denemede', 'trial.until': 'Deneme {date} tarihinde bitiyor', 'trial.title': 'Denemedeki oyuncular ({n}/{max})', 'trial.empty': 'Denemede oyuncu yok. Serbest oyuncuları oyuncu sayfalarından davet et – antrenörler onları iki haftada tanır.', 'trial.known': 'bilinen %{pct}', 'trial.ends': '{date} bitiyor', 'trial.send': 'Eve gönder',
   'trial.err.notFree': 'Sadece serbest oyuncular denemeye gelebilir.', 'trial.err.full': 'Zaten üç deneme oyuncusu var.', 'trial.err.already': 'Zaten denemede.', 'trial.err.error': 'Bu mümkün olmadı.',
@@ -248,7 +243,6 @@ export const tr: Record<string, string> = {
   'award.monthPlayer': '{comp} ayın oyuncusu: {player} ({club})', 'award.monthManager': '{comp} ayın teknik direktörü: {manager} ({club})',
   'award.monthManagerMe': '{comp} ayın teknik direktörü sensin! ({pts} puan)', "award.ballonDor": "Ballon d'Or: {player} ({club}) yılın dünya oyuncusu",
   'award.managerOfYearMe': 'Yılın teknik direktörü sensin! 🏆', 'award.gala': '{season} sezonu ödül gecesi', 'award.gala.body': "Tüm ödülleri – Ballon d'Or, yılın takımı, yılın teknik direktörü ve sezonun sürprizleri – Ödüller altında gör.",
-
   'mp.title': 'Çevrimiçi çok oyunculu', 'mp.useVercel': 'Çevrimiçi çok oyunculu mod oyun sunucusu gerektirir ve sadece ana adreste kullanılabilir:', 'mp.explain': 'Aynı dünyada arkadaşlarına karşı oyna – herkes kendi kulübünü yönetir. Herkes değişikliklerini yapar (taktik, transfer, antrenman …) ve “Hazır”a basar. Herkes hazır olduğunda oyun bir sonraki maç gününün sonrasına kadar ilerler.',
   'mp.create': 'Çevrimiçi oyun oluştur', 'mp.createBtn': 'Oluştur ve davet bağlantısı al', 'mp.creating': 'Çevrimiçi oyun oluşturuluyor…', 'mp.join': 'Katıl', 'mp.joinBtn': 'Oyuna katıl',
   'mp.codePlaceholder': 'Kod', 'mp.myGames': 'Çevrimiçi oyunlarım', 'mp.connecting': 'Bağlanıyor…', 'mp.players': 'Oyuncular', 'mp.taken': 'Alındı',
@@ -261,7 +255,6 @@ export const tr: Record<string, string> = {
   'inbox.settings': 'Haberler', 'inbox.categories': 'Gelen kutusundaki kategoriler', 'inbox.mutedHint': 'İşaretlenmemiş kategoriler okundu olarak işaretlenir ve sadece onlara göre filtrelediğinde gösterilir – hiçbir şey kaçırmazsın ama gelen kutusu sakinleşir. Yönetim, iş, sözleşme ve transferler kapatılamaz çünkü genellikle yanıt gerektirir.', 'opt.newsMoved': 'Hangi ve ne kadar haber alacağın artık gelen kutusundaki ⚙ Haberler altında seçilir.', 'inbox.markRead': 'Tümünü okundu işaretle', 'inbox.keys': '↑↓ mesaj değiştir · → sonraki okunmamış · Enter aç', 'inbox.messages': 'Mesajlar', 'inbox.empty': 'Mesaj yok', 'inbox.open': 'Aç', 'inbox.select': 'Bir mesaj seç',
   'cat.all': 'Tümü', 'cat.match': 'Maçlar', 'cat.transfer': 'Transferler', 'cat.contract': 'Sözleşmeler', 'cat.injury': 'Sakatlıklar',
   'cat.board': 'Yönetim', 'cat.scout': 'Gözlem', 'cat.award': 'Ödüller', 'cat.youth': 'Altyapı', 'cat.job': 'İşler', 'cat.general': 'Genel', 'cat.finance': 'Finans',
-
   'col.pos': 'Mvk', 'col.name': 'Ad', 'col.age': 'Yaş', 'col.nat': 'Uyr', 'col.club': 'Kulüp', 'col.value': 'Değer',
   'col.wage': 'Maaş', 'col.expires': 'Bitiş', 'col.joined': 'Geliş', 'col.cond': 'Kond', 'col.morale': 'Moral', 'col.apps': 'Maç',
   'col.goals': 'Gol', 'col.assists': 'Ast', 'col.avr': 'Ort', 'col.form': 'Form', 'col.season': 'Sezon', 'col.date': 'Tarih', 'col.comp': 'Turnuva',
@@ -271,7 +264,6 @@ export const tr: Record<string, string> = {
   'short.cro': 'Orta', 'short.dri': 'TSü', 'short.fin': 'Bit', 'short.hea': 'Kaf', 'short.mar': 'Mar', 'short.otb': 'Tps', 'short.pas': 'Pas',
   'short.tck': 'TKa', 'short.tec': 'Tek', 'short.cre': 'Yar', 'short.dec': 'Kar', 'short.pos': 'Poz', 'short.pac': 'Hız', 'short.sta': 'Day',
   'short.str': 'Güç', 'short.han': 'TTu', 'short.ref': 'Ref',
-
   'attr.crossing': 'Orta', 'attr.dribbling': 'Top Sürme', 'attr.finishing': 'Bitiricilik', 'attr.heading': 'Kafa Vuruşu', 'attr.longShots': 'Uzaktan Şut',
   'attr.marking': 'Markaj', 'attr.offTheBall': 'Topsuz Oyun', 'attr.passing': 'Pas', 'attr.penalties': 'Penaltı', 'attr.tackling': 'Top Kapma',
   'attr.freeKicks': 'Serbest Vuruş', 'attr.corners': 'Korner', 'attr.technique': 'Teknik', 'attr.throwIns': 'Taç Atışı',
@@ -284,7 +276,6 @@ export const tr: Record<string, string> = {
   'attr.professionalism': 'Profesyonellik', 'attr.sportsmanship': 'Sportmenlik', 'attr.temperament': 'Mizaç',
   'group.technical': 'Teknik', 'group.mental': 'Zihinsel', 'group.physical': 'Fiziksel', 'group.goalkeeping': 'Kalecilik',
   'foot.R': 'Sağ', 'foot.L': 'Sol', 'foot.B': 'Her ikisi', 'side.L': 'Sol', 'side.C': 'Merkez', 'side.R': 'Sağ',
-
   'player.gone': 'Oyuncu artık mevcut değil', 'player.compare': 'Karşılaştır', 'player.showCompare': 'Karşılaştırmayı göster',
   'player.info': 'Bilgi', 'player.foot': 'Ayak', 'player.height': 'Boy', 'player.nextClub': 'Sonraki kulüp', 'player.caps': 'Milli maç / gol',
   'player.asking': 'İstenen bedel', 'player.unknown': 'Bilinmiyor – gözlemle', 'player.status': 'Durum', 'player.injury': 'Sakatlık',
@@ -700,13 +691,11 @@ export const tr: Record<string, string> = {
   "press.a.followPlayer.harder": "Ondan ne beklediğimi çok iyi biliyor.",
   'press.eff.squadDown': "Kadronun morali düştü",
   'bid.title': '{player} için teklif', 'bid.loan': 'Kiralık anlaşma (sezon sonuna kadar)', 'bid.fee': 'Bedel', 'bid.submit': 'Teklifi gönder',
-
   'neg.title': 'Sözleşme görüşmesi – {player}', 'neg.currentWage': 'Mevcut maaş', 'neg.agentHint': "Menajerin beklentisi",
   'neg.wageBill': 'Maaş yükü / bütçe', 'neg.fee': 'Bonservis bedeli', 'neg.type': 'Tür', 'neg.bosman': 'Bosman (yazın bedelsiz)',
   'neg.wage': 'Haftalık maaş', 'neg.years': 'Süre (yıl)', 'neg.offer': 'Sözleşme teklif et', 'neg.cancel': 'Anlaşmayı iptal et', 'neg.cancelConfirm': 'Teklif geri çekilip anlaşma iptal edilsin mi?', 'myoffer.title': 'Teklifin:', 'myoffer.theyWant': '{fee} istiyorlar', 'neg.accepted': 'Anlaşma sağlandı! 🎉',
   'neg.counter': 'Menajer {years} yıllığına haftalık {wage} istiyor.', 'neg.refused': 'Oyuncu görüşmelerden çekildi.',
   'neg.overWageBudget': 'Yönetim hayır diyor – maaş bütçesi ({budget}) aşılır (şu an {bill}).',
-
   'tac.assistantPick': 'Takımı yardımcı seçsin', 'tac.save': 'Taktiği kaydet', 'tac.load': 'Taktik yükle…', 'tac.hint': 'Bir mevki seç ve bir oyuncuya tıkla – ya da sürükle bırak',
   'tac.empty': '(boş)', 'tac.setPieces': 'Duran toplar ve kaptan', 'tac.captain': 'Kaptan', 'tac.penalties': 'Penaltılar', 'tac.freeKicks': 'Serbest vuruşlar', 'tac.corners': 'Kornerler',
   'tac.team': 'Takım talimatları', 'tac.individual': 'Bireysel talimatlar', 'tac.bestFor': '{slot} için en iyi oyuncular', 'tac.players': 'Oyuncular',
@@ -718,13 +707,11 @@ export const tr: Record<string, string> = {
   'ment.0': 'Çok defansif', 'ment.1': 'Defansif', 'ment.2': 'Normal', 'ment.3': 'Hücumcu', 'ment.4': 'Çok hücumcu',
   'pi.runs': 'İleri koşular', 'pi.longShots': 'Uzaktan şutlar', 'pi.crossing': 'Orta', 'pi.runWithBall': 'Topla ilerleme', 'pi.throughBalls': 'Ara paslar',
   'pi.tightMarking': 'Sıkı markaj', 'pi.freeRole': 'Serbest rol',
-
   'train.setAll': 'Tüm kadro için ayarla…', 'train.quality': 'Antrenman kalitesi', 'train.effect': 'Gelişime etkisi', 'train.effectVs': 'ortalama bir kulübe kıyasla', 'train.disciplineHint': 'tembel oyunculardan daha fazlasını çıkarır', 'train.motivatingHint': 'morali yükseltir', 'train.coaches': 'Antrenörler', 'train.avgCoaching': 'Ort. antrenörlük',
   'train.f.all': 'Tümü', 'train.f.gk': 'Kaleciler', 'train.f.def': 'Defans', 'train.f.mid': 'Orta saha', 'train.f.att': 'Hücum', 'train.f.anyAge': 'Tüm yaşlar', 'train.f.u21': '21 yaş ve altı', 'train.f.a2229': '22–29', 'train.f.o30': '30 yaş ve üstü', 'train.f.anySched': 'Tüm antrenmanlar', 'train.f.advice': 'Sadece yardımcının farklı önerdiği yerler', 'train.f.sortPos': 'Sırala: mevki', 'train.f.sortName': 'Sırala: isim', 'train.f.sortAge': 'Sırala: önce en genç', 'train.f.sortDev': 'Sırala: gelişim', 'train.f.sortCond': 'Sırala: en düşük kondisyon', 'train.explain': 'Genç oyuncular potansiyellerine doğru gelişir. İyi antrenörler, tesisler, oynama süresi ve kararlılık/profesyonellik büyük fark yaratır. Antrenman odağı hangi özelliklerin en çok gelişeceğini belirler. 30 yaş üstü oyuncular fiziksel olarak geriler.',
   'train.schedules': 'Programlar', 'train.restDesc': 'Dinlenme – kondisyonu yeniler',
   'train.general': 'Genel', 'train.goalkeeping': 'Kalecilik', 'train.defending': 'Savunma', 'train.ballcontrol': 'Top kontrolü', 'train.attacking': 'Hücum',
   'train.shooting': 'Şut', 'train.fitness': 'Kondisyon', 'train.setpieces': 'Duran toplar', 'train.rest': 'Dinlenme',
-
   'fix.round': 'Tur', 'fix.group': 'Grup', 'fix.champ': 'Şampiyonluk grubu', 'fix.releg': 'Düşme grubu', 'fix.leg1': '1. maç', 'fix.leg2': 'Rövanş',
   'fix.pens': 'pen', 'fix.aet': 'uz', 'fix.stage': 'Tur', 'fix.venue': 'Saha', 'fix.opponent': 'Rakip', 'fix.result': 'Sonuç',
   'fix.neutral': 'Tarafsız', 'fix.home': 'İç saha', 'fix.away': 'Deplasman', 'fix.report': 'Rapor',
@@ -736,7 +723,6 @@ export const tr: Record<string, string> = {
   'comp.winner': 'Şampiyon', 'comp.runnerUp': 'İkinci', 'comp.topScorer': 'Gol kralı', 'comp.best': 'Yılın oyuncusu', 'comp.young': 'Genç oyuncu', 'comp.noHistory': 'Henüz geçmiş yok',
   'tbl.p': 'O', 'tbl.w': 'G', 'tbl.d': 'B', 'tbl.l': 'M', 'tbl.gf': 'A', 'tbl.ga': 'Y', 'tbl.gd': 'AV', 'tbl.pts': 'P',
   'tbl.europe': 'Avrupa', 'tbl.promotion': 'Üst lig', 'tbl.playoff': 'Play-off', 'tbl.relegation': 'Küme düşme',
-
   'tr.search': 'Oyuncu arama',
   'real.col': 'Gerçekçilik', 'real.hint': 'Gelir mi, kulübü satar mı, gücün yeter mi? Nedenini görmek için etiketin üzerine gel.',
   'real.all': 'Tüm oyuncular', 'real.only': 'Sadece gerçekçi hedefler', 'real.maybe': 'Gerçekçi + belki',
@@ -765,11 +751,9 @@ export const tr: Record<string, string> = {
   'transfer.refuseRep': "{player}, {club} çapında bir kulübe gitmekle ilgilenmiyor", 'transfer.refuseHappy': "{player} bulunduğu yerde mutlu ve {club}'ı reddediyor",
   'transfer.talksCollapsed': '{player} ile görüşmeler suya düştü', 'transfer.preContract': "{player}, yaz için {club} ile ön sözleşme imzaladı",
   'transfer.released': '{player} serbest bırakıldı',
-
   'contract.expiring': "{player}'in sözleşmesi bu yaz bitiyor", 'contract.expiring.body': 'Profilinden sözleşmesini yenile ya da bedelsiz gitmesine izin ver.',
   'contract.leavingBosman': "{player} yazın {club}'a gitmek için anlaştı", 'contract.left': '{player} kulüpten ayrıldı (sözleşmesi bitti)',
   'contract.renewed': '{player} {years} yıllık sözleşme uzattı',
-
   'scout.maskingOff': 'Özellik gizleme kapalı – tüm özellikleri görebilirsin.', 'scout.overview': 'Genel bakış', 'rec.title': '{scout} diyor ki:', 'rec.col': 'Tavsiye', 'rec.unknown': 'Onu henüz yeterince tanımıyoruz – değerlendirme için bir gözlemci gönder.',
   'rec.l0': 'Onu al! Bizi hemen güçlendirir.', 'rec.l1': 'Onu tavsiye ederim.', 'rec.l2': 'İşe yarar ama şart değil.', 'rec.l3': 'Elimizdekilerden daha iyi değil.', 'rec.l4': 'Ona karşı tavsiyede bulunurum.',
   'rec.short.unknown': 'Bilinmiyor', 'rec.short.l0': 'Al!', 'rec.short.l1': 'Tavsiye', 'rec.short.l2': 'Faydalı', 'rec.short.l3': 'Daha iyi değil', 'rec.short.l4': 'Uzak dur',
@@ -783,7 +767,6 @@ export const tr: Record<string, string> = {
   'scout.assignments': 'Görevler', 'scout.assignment': 'Görev', 'scout.watching': 'İzlenen', 'scout.ownLeague': 'Kendi ligi (varsayılan)', 'scout.leagues': 'Ligler',
   'scout.nations': 'Ülkeler', 'scout.none': 'Hiç gözlemcin yok – Personel bölümünden işe al.',
   'news.scoutDone': '{scout}, {player} hakkındaki raporunu tamamladı',
-
   'staff.mine': 'Personelim', 'staff.otherClubs': 'Diğer kulüplerdeki personel', 'staff.sourceFree': 'İşsiz (bedelsiz)', 'staff.sourceClubs': 'Diğer kulüplerden tazminatla al',
   'staff.onlyWilling': 'Sadece gelmeye istekli olanlar', 'staff.fee': 'Tazminat', 'staff.buyOut': 'Tazminatla al', 'staff.fired': '{name} kovuldu.',
   'staff.poachConfirm': "{name}, {fee} tazminatla {club}'dan alınsın mı?", 'staff.poached': "{name}, {fee} tazminatla {club}'dan alındı",
@@ -797,7 +780,6 @@ export const tr: Record<string, string> = {
   'staff.motivating': 'Motivasyon', 'staff.discipline': 'Disiplin', 'staff.tactics': 'Taktik',
   'staff.short.coaching': 'Ant', 'staff.short.judgingAbility': 'YD', 'staff.short.judgingPotential': 'PD', 'staff.short.physio': 'Fiz',
   'staff.short.motivating': 'Mot', 'staff.short.discipline': 'Dis', 'staff.short.tactics': 'Tak',
-
   'fin.overview': 'Genel bakış',
   'ticket.title': 'Bilet fiyatı', 'ticket.fair': 'Piyasa fiyatı (taraftarların makul bulduğu)', 'ticket.expected': 'Beklenen seyirci', 'ticket.incomeMatch': 'İç saha maçı başına gelir',
   'ticket.incomeSeason': 'Sezon başına yaklaşık (lig maçları)', 'ticket.att': 'Seyirci', 'ticket.fill': 'Doluluk', 'ticket.best': 'En yüksek gelir',
@@ -816,7 +798,6 @@ export const tr: Record<string, string> = {
   'fin.other': 'Diğer', 'fin.expense': 'Toplam gider', 'fin.board': 'Yönetim',
   'fin.requestHint': 'Yönetim yalnızca güven yüksekse ve mali durum sağlıklıysa daha fazla para ayırır. Ayda bir talep.',
   'fin.askTransfer': 'Daha büyük transfer bütçesi iste', 'fin.askWage': 'Daha büyük maaş bütçesi iste',
-
   'club.info': 'Kulüp bilgisi', 'club.manager': 'Teknik direktör', 'club.vacant': 'Boş', 'club.stadium': 'Stadyum', 'club.rep': 'İtibar', 'club.strength': 'Kadro gücü',
   'club.youth': 'Altyapı', 'club.facilities': 'Antrenman tesisleri', 'club.board': 'Yönetim', 'club.expectation': 'Beklenti',
   'club.confidence': 'Güven', 'club.warnings': 'Uyarılar', 'club.managerRep': 'Teknik direktör itibarı', 'club.history': 'Geçmiş',
@@ -834,15 +815,12 @@ export const tr: Record<string, string> = {
   'board.disappointed': 'Yönetim sezondan hayal kırıklığına uğradı', 'board.requestOk': 'Yönetim {kind} miktarını %{pct} artırdı',
   'board.requestNo': 'Yönetim talebini reddetti ({kind})', 'board.requestTooSoon': 'Bu ay yönetimden zaten talepte bulundun',
   'board.kind.transfer': 'transfer bütçesi', 'board.kind.wage': 'maaş bütçesi',
-
   'jobs.offers': 'İş teklifleri', 'jobs.vacancies': 'Boş kadrolar', 'jobs.accept': 'Kabul et', 'jobs.decline': 'Reddet', 'jobs.apply': 'Başvur',
   'jobs.acceptConfirm': "{club}'daki işi kabul ediyor musun?", 'jobs.explain': 'Teknik direktör itibarın: {rep}. Senden yüksek itibara sahip kulüpler seni nadiren işe alır.',
   'news.jobOffer': '{club} sana teknik direktörlük teklif ediyor', 'news.applyRejected': '{club} başvurunu reddetti', 'news.newJob': "Artık {club}'ın yeni teknik direktörüsün",
   'news.managerSacked': '{club}, {manager} ile yollarını ayırdı', 'news.managerHired': "{club}, {manager}'ı teknik direktör olarak atadı",
-
   'hist.manager': 'Teknik direktör', 'hist.trophies': 'Kupalar', 'hist.sacked': 'Kovulmalar', 'hist.challenge': 'Meydan okuma', 'hist.deadline': 'son tarih',
   'hist.trophyCabinet': 'Kupa müzesi', 'hist.noTrophies': 'Henüz kupa yok', 'hist.career': 'Kariyer', 'hist.firstSeason': 'İlk sezon devam ediyor',
-
   'opt.general': 'Genel', 'opt.currency': 'Para birimi', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danimarka kronu (kr.)', 'cur.GBP': 'İngiliz sterlini (£)', 'opt.language': 'Dil', 'opt.autosave': 'Otomatik kayıt',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'AI metni (basın toplantıları, görüşmeler, makaleler)', 'opt.ai.hint': 'Gazeteciler, oyuncular, menajerler ve taraftarlar bir dil modelinin yazdığı metinlerle cevap verir. Her sonucu yine oyun kuralları belirler. İnternet gerektirir ve sadece Vercel üzerinde barındırılan sürümde çalışır.',
@@ -1286,7 +1264,6 @@ export const tr: Record<string, string> = {
   'opt.saves': "Kaydet / dışa aktar", 'opt.export': "Kayıt dosyasını dışa aktar", 'opt.exportHint': "Dosyayı kaydet ve başka bir cihazda başlangıç ekranından yükle.",
   'opt.about': "Hakkında", 'opt.aboutText': "CM Reborn klasik Championship Manager oyunlarından ilham alır – birçok yeni özellikle sıfırdan bir web uygulaması olarak geliştirildi. Maç motoru CM3 motoru gibi bölge tabanlıdır ama modern istatistiklere göre kalibre edilmiştir.",
   'opt.dataCredit': "Oyuncu verisi: David Cariboo'nun transfermarkt-datasets projesi (CC0). Özellikler türetilmiştir, resmi değildir.",
-
   'news.welcome': "{club}'a hoş geldin, {manager}!", 'news.welcome.body': "Yönetim anahtarları sana teslim etti. Kadroyu incele, taktiğini belirle ve Devam'a bas. Bol şans!",
   'news.champions': "{club} {comp} şampiyonu!", 'news.cupWin': "{club} {comp} kupasını kazandı!", 'news.playoffWin': "{club} {comp} kazandı",
   'news.split': "{comp} şampiyonluk ve düşme gruplarına ayrıldı", 'news.promoted': "{club} {comp} ligine yükseldi", 'news.relegated': "{club} {comp} ligine düştü",
@@ -1297,10 +1274,8 @@ export const tr: Record<string, string> = {
   'match.won': "{opp} karşısında {score} kazandık ({comp})", 'match.drew': "{opp} ile {score} berabere ({comp})", 'match.lost': "{opp} karşısında {score} kaybettik ({comp})",
   'award.playerOfYear': "{player} {comp} yılın oyuncusu seçildi", 'award.topScorer': "{player} {comp} gol kralı oldu: {goals} gol",
   'challenge.won': "Görev tamamlandı: {id} 🏆", 'challenge.lost': "Görev başarısız: {id}",
-
   'injury.bruise': "Uyluk zedelenmesi", 'injury.twisted-ankle': "Ayak bileği burkulması", 'injury.hamstring': "Arka adale zorlanması", 'injury.groin': "Kasık zorlanması", 'injury.calf': "Baldır zorlanması",
   'injury.knee': "Diz sakatlığı", 'injury.back': "Bel problemi", 'injury.concussion': "Beyin sarsıntısı", 'injury.broken-foot': "Ayak kırığı", 'injury.cruciate': "Çapraz bağ", 'injury.broken-leg': "Bacak kırığı",
-
   'match.played': "Maç zaten oynandı", 'match.preview': "Önizleme", 'match.yourXI': "İlk 11'in", 'match.quick': "Sonucu simüle et",
   'match.kickoff': "Başlama vuruşu ▶", 'match.notToday': "Bu maç bugün değil.", 'match.ft': "Maç sonu", 'match.resume': "Devam et", 'match.pause': "Duraklat",
   'match.toEnd': "Sona atla", 'match.continue': "Devam ›", 'match.commentary': "Anlatım", 'match.stats': "İstatistikler", 'match.myTeam': "Takımım",
@@ -1308,7 +1283,6 @@ export const tr: Record<string, string> = {
   'match.subOff': "Oyuncu değiştir…", 'match.paused': "DURAKLATILDI", 'match.keys': "Klavye: boşluk/P = oynat/duraklat · 1-4 = hız · T = taktik · U = oyuncu değişiklikleri · S = istatistik · K = anlatım · E = sona atla", 'match.keysDone': "Devam etmek için Boşluk veya Enter'a bas", 'match.subFailed': "Bu oyuncu değişikliği yapılamadı.",
   'stat.possession': "Topla oynama", 'stat.xg': "xG (gol beklentisi)", 'stat.shots': "Şut", 'stat.onTarget': "İsabetli", 'stat.corners': "Korner",
   'stat.fouls': "Faul", 'stat.yellows': "Sarı kart", 'stat.reds': "Kırmızı kart", 'stat.offsides': "Ofsayt", 'stat.passPct': "Pas isabeti %",
-
   'report.shootout': "Penaltı atışları", 'report.soSaved': "kurtarıldı", 'report.soWide': "kaçtı", 'report.missing': "Rapor bulunamadı", 'report.title': "Maç raporu", 'report.analysis': "Analiz", 'report.players': "Oyuncular",
   'report.verdict': "Yardımcının değerlendirmesi", 'report.mom': "Maçın oyuncusu", 'report.momentum': "Momentum (5 dk başına tehlike)", 'report.heatmap': "Isı haritası (bölgelere göre topla oynama)",
   'report.heatHint': "Her takımın topu nerede tuttuğunu gösterir. Ok hücum yönünü gösterir.", 'report.shotmap': "Şut haritası (boyut = xG)", 'report.min': "Dk",
@@ -1324,7 +1298,6 @@ export const tr: Record<string, string> = {
   'v.tired': "Takım sonlara doğru belirgin şekilde yorgundu (ort. kondisyon %{cond}). Daha erken değişiklik ya da daha düşük tempo düşün.",
   'v.red': "Kırmızı kart bize pahalıya patladı.",
   'lane.left': "sol", 'lane.centre': "orta", 'lane.right': "sağ",
-
   'as.opponent': "Rakip raporu", 'as.suggest': "Takım önerisi", 'as.compare': "Karşılaştır", 'as.bench': "Taktik testi",
   'as.noMatch': "Yaklaşan maç yok.", 'as.current': "Senin ilk 11'in", 'as.suggested': "Yardımcının önerisi", 'as.use': "Öneriyi kullan",
   'as.agrees': "Yardımcın ilk 11'ine katılıyor.", 'as.suggestHint': "Öneri mevki, yetenek ve kondisyonu dikkate alır.",
@@ -1339,7 +1312,6 @@ export const tr: Record<string, string> = {
   'an.threatLane': "En tehlikeli atakları bizim {lane} tarafımızdan geliyor.", 'an.topScorer': "{player} oyuncusuna dikkat – bu sezon {goals} gol.",
   'an.aerial': "{n} güçlü hava topu oyuncuları var – gereksiz kornerlerden kaçının.", 'an.slowDefence': "Savunmaları yavaş – ara paslar ve hız onlara zarar verebilir.",
   'radar.attack': "Hücum", 'radar.creativity': "Yaratıcılık", 'radar.defence': "Savunma", 'radar.physical': "Fiziksel", 'radar.mental': "Zihinsel", 'radar.goalkeeping': "Kalecilik",
-
   'challenge.wrexham-dream.title': "Hollywood rüyası", 'challenge.wrexham-dream.desc': "Wrexham'ı üç sezon içinde Premier League'e çıkar.",
   'challenge.united-broke.title': "Meteliksiz United", 'challenge.united-broke.desc': "Manchester United ile Premier League'i ilk 4'te bitir – transfer bütçesi olmadan.",
   'challenge.spurs-title.title': "Sonunda Spurs", 'challenge.spurs-title.desc': "Tottenham ile üç sezon içinde Premier League'i kazan.",
@@ -1349,7 +1321,6 @@ export const tr: Record<string, string> = {
   'challenge.schalke-title.title': "Meister der Herzen", 'challenge.schalke-title.desc': "Schalke 04 ile dört sezon içinde nihayet Bundesliga'yı kazan.",
   'challenge.lautern-return.title': "Betzenberg yanıyor", 'challenge.lautern-return.desc': "Kaiserslautern'i iki sezon içinde Bundesliga'ya geri taşı.",
   'challenge.sampdoria-return.title': "Marassi'ye dönüş", 'challenge.sampdoria-return.desc': "Sampdoria'yı iki sezon içinde Serie A'ya geri taşı.",
-
   'c.kickoff': "{team} başlama vuruşunu yapıyor!",
   'c.halftime': "İlk yarı sonu. {score}",
   'c.fulltime': "Maç sona erdi! {score}",

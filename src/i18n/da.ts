@@ -33,7 +33,6 @@ export const da: Record<string, string> = {
   'nav.options': 'Indstillinger', 'nav.save': 'Gem spil', 'nav.quit': 'Afslut',
 
 
-
   'talk.title': 'Tal med {player}', 'talk.form': 'Seneste form', 'talk.noGames': 'Ingen kampe endnu', 'talk.discipline': 'Disciplin',
   'talk.reasonRed': 'Rødt kort {date} – grund til straf', 'talk.reasonIncident': 'Ballade {date} – grund til straf', 'talk.noReason': 'Ingen grund til straf lige nu',
   'talk.praise': 'Ros', 'talk.encourage': 'Opmuntr', 'talk.criticise': 'Kritisér', 'talk.fine': 'Bøde: 1 uges løn ({fee})', 'talk.fineHeavy': 'Stor bøde: 2 ugers løn ({fee})', 'talk.drop': 'Sæt af holdet',
@@ -154,17 +153,16 @@ export const da: Record<string, string> = {
   'cm.notFound': 'Forslaget findes ikke', 'cm.comments': 'Kommentarer ({n})', 'cm.noComments': 'Ingen kommentarer endnu.', 'cm.writeComment': 'Skriv en kommentar…', 'cm.send': 'Send', 'cm.share': 'Del forslaget', 'cm.report': 'Rapportér som upassende', 'cm.reported': 'Tak – det bliver kigget på.',
   'cm.writeHint': 'Beskriv kort, hvad du gerne vil have, og hvorfor det ville gøre spillet bedre. Ét forslag pr. idé.', 'cm.bugHint': 'Beskriv hvad du gjorde, hvad der skete, og hvad du havde forventet. Version, skærm og browser sendes med automatisk.', 'cm.titlePh': 'Fx "Lad mig træne dødbolde"', 'cm.bugTitlePh': 'Fx "Kampen fryser ved straffespark"', 'cm.category': 'Kategori', 'cm.description': 'Beskrivelse', 'cm.bodyPh': 'Hvad og hvorfor…', 'cm.bugBodyPh': 'Hvad gjorde du? Hvad skete der? Hvad havde du forventet?', 'cm.screenshot': 'Skærmbillede (valgfrit)', 'cm.autoMeta': 'Sendes med', 'cm.submit': 'Send', 'cm.similar': 'Der findes lignende forslag:', 'cm.similarHint': 'Stem hellere på et af dem, hvis det er det samme.',
   'cm.err.error': 'Noget gik galt – prøv igen.', 'cm.err.network': 'Ingen forbindelse.', 'cm.err.auth': 'Din profil kunne ikke bekræftes.', 'cm.err.noProfile': 'Opret en profil først.', 'cm.err.newProfile': 'Spil mindst én sæson (indsendt til ranglisterne), før du kan stemme – det holder afstemningerne fair.', 'cm.err.budget': 'Du har brugt alle 10 stemmer. Fjern en stemme for at stemme på noget nyt.', 'cm.err.closed': 'Forslaget er lukket for stemmer.', 'cm.err.limit': 'Du har været meget aktiv – vent lidt, og prøv igen.', 'cm.err.short': 'Skriv lidt mere.', 'cm.err.language': 'Hold en pæn tone, tak.', 'cm.err.nopoll': 'Der er ingen afstemning lige nu.',
-  'nav.support': 'Støt spillet', 'sup.title': 'Støt CM Reborn', 'sup.intro': 'Spillet er gratis og uden reklamer. Bidrag betaler for servere, AI-tekster og udviklingstid – og alle, der støtter, bliver takket i spillet.', 'sup.soon': 'Donationer åbner snart. Tak fordi du kigger forbi!', 'sup.needProfile': 'Opret en managerprofil (under Ranglister) for at kunne støtte – så kan dine belønninger knyttes til dig.', 'sup.once': 'Én gang', 'sup.monthly': 'Hver måned', 'sup.month': 'md.', 'sup.give': 'Støt med {amount}', 'sup.secure': 'Betalingen sker sikkert hos Stripe. Månedlige bidrag kan stoppes når som helst.',
-  'sup.thanks': 'Tusind tak!', 'sup.thanksText': 'Dit bidrag er modtaget – dine belønninger dukker op inden for et øjeblik.', 'sup.where': 'Hvad går pengene til?', 'sup.goalText': 'af månedens driftsudgifter er dækket ({raised} af {goal}).', 'sup.cost.ai': 'AI-tekster', 'sup.cost.aiText': 'artikler, pressemøder og samtaler', 'sup.cost.db': 'Database', 'sup.cost.dbText': 'ranglister, online-spil og fællesskab', 'sup.cost.host': 'Server og hosting', 'sup.cost.hostText': 'så spillet altid er oppe', 'sup.cost.dev': 'Udvikling', 'sup.cost.devText': 'nye funktioner fra fællesskabets forslag',
-  'sup.rewards': 'Belønninger', 'sup.from.bronze': 'fra {amount} i alt', 'sup.from.silver': 'fra {amount} i alt', 'sup.from.gold': 'fra {amount} i alt',
-  'sup.perks.bronze': 'Bronze-mærke ved dit navn overalt|Dit navn på listen over supportere|Præstationen "Patron of the game"|Tidlig adgang til nye funktioner|Guld- og retro-CM-tema',
-  'sup.perks.silver': 'Alt fra Bronze|Sølv-mærke|Navngiv en ungdomsspiller, der kan dukke op i alles spil',
-  'sup.perks.gold': 'Alt fra Sølv|Guld-mærke og fremhævet på listen|Et ekstra stort tak fra udvikleren 💛',
-  'sup.fair': 'Belønningerne er kun pynt og anerkendelse – aldrig fordele i selve spillet, og ingen ekstra vægt i afstemningerne.', 'sup.yourStatus': 'Din supporterstatus', 'sup.monthlyOn': 'Månedlig supporter ♥', 'sup.beta': 'Tidlig adgang til nye funktioner', 'sup.betaHint': 'Nye funktioner, der er bag tidlig adgang, kan du prøve op til en uge før alle andre.',
-  'sup.regenTitle': 'Navngiv en ungdomsspiller', 'sup.regenHint': 'Dit navn kan dukke op som et talent ved ungdomsdagen i alles spil – med en ⭐ på spillersiden.', 'sup.regenLocked': 'Kræver Sølv eller Guld.', 'sup.regenNow': 'Din ungdomsspiller: {name}', 'sup.first': 'Fornavn', 'sup.last': 'Efternavn', 'sup.regenNamed': 'Har navngivet ungdomsspilleren {name}', 'sup.namedBy': 'Navngivet af supporteren {name}',
-  'sup.wall': 'Supportere ({n})', 'sup.wallEmpty': 'Bliv den første på listen!', 'sup.badgeHint': 'Støtter udviklingen af spillet', 'sup.tier.bronze': 'Bronze', 'sup.tier.silver': 'Sølv', 'sup.tier.gold': 'Guld', 'sup.supportersOnly': 'kun supportere',
-  'sup.err.disabled': 'Donationer er ikke åbnet endnu.', 'sup.err.amount': 'Vælg et beløb.', 'sup.err.stripe': 'Betalingen kunne ikke startes – prøv igen.', 'sup.err.tier': 'Kræver et højere supporterniveau.', 'sup.err.name': 'Skriv et gyldigt navn.', 'sup.err.language': 'Hold en pæn tone, tak.', 'sup.err.noProfile': 'Opret en profil først.', 'sup.err.network': 'Ingen forbindelse.', 'sup.err.auth': 'Din profil kunne ikke bekræftes.',
-  'opt.theme.gold': 'Guld (supportere)', 'opt.theme.retro': 'Klassisk', 'ach.patron': 'Patron of the game', 'ach.patron.desc': 'Støt udviklingen af spillet.', 'land.supportLine': 'Spillet er gratis og bygges sammen med fællesskabet.', 'land.community': 'Se forslag og stem →',
+
+
+
+
+
+
+
+
+
+  'opt.theme.gold': 'Guld', 'opt.theme.retro': 'Klassisk','land.supportLine': 'Spillet er gratis og bygges sammen med fællesskabet.', 'land.community': 'Se forslag og stem →',
   'navg.team': 'Holdet', 'navg.matches': 'Kampe', 'navg.market': 'Transfermarked', 'navg.club': 'Klubben', 'navg.manager': 'Manager', 'navg.community': 'Fællesskab',
   'trial.invite': 'Invitér til prøvetræning', 'trial.invited': 'Han kommer til prøvetræning i to uger – du kan følge ham under Scouting.', 'trial.onTrial': 'På prøve til {date}', 'trial.until': 'Prøvetræningen slutter {date}', 'trial.title': 'Prøvespillere ({n}/{max})', 'trial.empty': 'Ingen prøvespillere. Invitér klubløse spillere fra deres spillerside – trænerne lærer dem at kende over to uger.', 'trial.known': 'kendt {pct}%', 'trial.ends': 'slutter {date}', 'trial.send': 'Send hjem',
   'trial.err.notFree': 'Kun klubløse spillere kan komme på prøve.', 'trial.err.full': 'Der er allerede tre prøvespillere.', 'trial.err.already': 'Han er allerede på prøve.', 'trial.err.error': 'Det kunne ikke lade sig gøre.',
