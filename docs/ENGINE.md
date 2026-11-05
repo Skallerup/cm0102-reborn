@@ -32,7 +32,9 @@
 
 Vi har studeret den originale installation (`events_eng.cfg` med 677 kampsituationer, taktikfilerne `*.pct` og tekster i `cm0102.exe`). Ud fra det har motoren fået:
 
-- **Positioner efter boldens placering.** I originalen er en spillers position en tabel efter, hvor bolden er. Hos os glider forsvaret mod boldsiden (`defL`, én opstilling pr. boldbane). Det sker mest for spillere med godt holdspil og god placering. Derfor kan det betale sig at skifte spillet til den anden side.
+- **Positioner efter boldens placering.** I originalen er en spillers position en tabel efter, hvor bolden er. Hos os glider forsvaret mod boldsiden (`defL`, én opstilling pr. boldbane). Det sker mest for spillere med godt holdspil og god placering. I angreb trækker de centrale spillere mod boldsiden, mens kantspillerne holder bredden (`attL`). Derfor kan det betale sig at skifte spillet til den anden side.
+- **Banens tilstand** (`pitchFor` i `weather.ts`) følger vejr, årstid og land: fugtig, mudret, vandmættet, frossen, snedækket eller hård. Den påvirker afleveringer, driblinger, førsteberøring og træthed. **Dagens dommer** (`refereeFor`) er en navngiven dommer fra landets faste dommergruppe, hver med sin egen strenghed. Begge vises i optakten og rapporten.
+- **Afgjorte kampe:** et hold der fører med 3 eller flere, slapper af, og holdet bagud giver op. Det giver færre urealistiske kæmpesejre.
 - **Dommeren** er tilfældigt streng eller mild (`ref`). Det påvirker kort, filmning og protester. Der er også fordel, professionelle frispark (sidste mand ⇒ rødt), filmning (snyder dommeren eller får gult) og afviste straffesparksappeller.
 - **Målmanden** griber eller slår bolden ud efter grebssikkerhed og vejr. Slår han den ud, kommer der returbolde.
 - **Afslutninger** kan komme på det svage ben (tobenede spillere har ingen svaghed). Mod indgår i hovedstød og blokeringer.
@@ -51,13 +53,13 @@ Vi har studeret den originale installation (`events_eng.cfg` med 677 kampsituati
 |---|---|---|
 | Frispark | ~22 | ~21 |
 | Gule kort | ~3,6 | ~3,6 |
-| Røde kort | ~0,18 | ~0,13 |
+| Røde kort | ~0,16 | ~0,13 |
 | Straffespark | ~0,33 | ~0,28 |
 | Selvmål | ~2,5 % af målene | ~2,5 % |
 | Hovedstødsmål | ~16 % af målene | ~17 % |
 | Mål efter hjørnespark | ~8 % af målene | ~10 % |
 | Tillægstid | ~4,7 minutter | 4–5 minutter |
-| Offside | ~2,7 | ~4 |
+| Offside | ~4 | ~4 |
 
 ## Kalibrering
 

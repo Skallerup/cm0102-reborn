@@ -10,7 +10,7 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
-import { weatherFx, type Weather, type WeatherFx } from '../weather';
+import { pitchFx, weatherFx, type Pitch, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
   OppInstructions, ShootoutKick, TacticChange, ShotRecord, Tactic, TeamInstructions,
@@ -48,6 +48,10 @@ export interface EngineOptions {
   refStrict?: number;
   /** Afslutningsskala for databasen (2001/02-databasen har bedre afsluttere end den moderne) */
   finish?: number;
+  /** Banens tilstand */
+  pitch?: Pitch;
+  /** Dagens dommer (navn vises i rapporten; strengheden styrer kort) */
+  referee?: { name: string; strict: number };
 }
 
 interface SP {
@@ -91,6 +95,8 @@ interface TeamRT {
   aAir: number[];
   /** Forsvaret pr. boldbane (venstre/midt/højre): kæden glider mod boldsiden */
   defL: { zDef: ZoneEntry[][]; wDef: number[]; qDef: number[]; qPace: number[]; qAir: number[] }[];
+  /** Angrebet pr. boldbane: spillerne på boldsiden trækker ind mod bolden, den fjerne kant holder bredden */
+  attL: { zAtt: ZoneEntry[][]; wAtt: number[]; aPace: number[]; aAir: number[] }[];
   stats: MatchStatsSide;
   homeMult: number;
   moraleMult: number;
@@ -112,7 +118,7 @@ const ZB = 5;
 const ZL = 3;
 const NZ = ZB * ZL;
 /** Global afslutningsskala (kalibreret mod ~2,7 mål/kamp, se scripts/calibrate.ts) */
-const FINISH_SCALE = 1.16;
+const FINISH_SCALE = 1.14;
 const zoneX = (b: number) => 10 + b * 20;
 const zoneY = (l: number) => 16.67 + l * 33.33;
 
@@ -124,7 +130,7 @@ const SQUASH = 0.76;
 /** Fordel pr. ekstra mand på banen i hver duel (røde kort) – kalibreret mod rigtige kampe, se scripts/redcard.ts */
 const MAN_EDGE = 0.45;
 /** Chance for direkte rødt kort pr. frispark (plus spillerens 'beskidthed') */
-const RED_BASE = 0.0016;
+const RED_BASE = 0.0011;
 /** Ekstra chancekvalitet pr. manglende forsvarsspiller */
 const SPACE_XG = 0.17;
 /** Holdets dagsform (spredning): giver overraskelser – uden den vinder favoritten altid ligaen */
@@ -182,7 +188,7 @@ export class MatchSim {
   shootout?: { takers: [SP[], SP[]]; score: [number, number]; kicks: ShootoutKick[] };
   /** Instruktioner mod modstanderen pr. hold (gives af hold i og rammer hold 1-i) */
   private oi: [OppInstructions | undefined, OppInstructions | undefined] = [undefined, undefined];
-  private wx: WeatherFx;
+  private wx: WeatherFx & { drib: number; touch: number };
   private momentumBucket = 0;
   /** Dommerens strenghed (kort, straffespark, filmning) */
   readonly ref: number;
@@ -196,8 +202,9 @@ export class MatchSim {
   constructor(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng) {
     this.r = r;
     this.opts = opts;
-    this.wx = weatherFx(opts.weather);
-    this.ref = opts.refStrict ?? clamp(r.normal(1, 0.14), 0.7, 1.35);
+    const w = weatherFx(opts.weather), pf = pitchFx(opts.pitch);
+    this.wx = { pass: w.pass + pf.pass, air: w.air + pf.air, fatigue: w.fatigue * pf.fatigue, finish: w.finish * pf.finish, drib: pf.drib, touch: pf.touch };
+    this.ref = opts.refStrict ?? opts.referee?.strict ?? clamp(r.normal(1, 0.14), 0.7, 1.35);
     const oiFor = (t: EngineTeam) => (t.tactic.opp && t.tactic.opp.fixture === opts.fixtureId ? t.tactic.opp : undefined);
     this.oi = [oiFor(home), oiFor(away)];
     this.teams = [this.makeTeam(home, 0), this.makeTeam(away, 1)];
@@ -207,6 +214,7 @@ export class MatchSim {
     this.poss = r.chance(0.5) ? 0 : 1;
     if (opts.weather && opts.weather !== 'clear' && opts.weather !== 'cloudy') this.line(`weather-${opts.weather}`);
     this.line('kickoff', this.teams[this.poss].on[10]);
+    if (opts.pitch && opts.pitch !== 'normal' && opts.commentary) this.commentary.push({ m: 0, k: `pitch-${opts.pitch}`, hi: false });
     if (this.ref > 1.17) this.line('ref-strict');
     else if (this.ref < 0.83) this.line('ref-lenient');
   }
@@ -214,7 +222,7 @@ export class MatchSim {
   // ---------- opsætning ----------
 
   private makeTeam(t: EngineTeam, idx: number): TeamRT {
-    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.02 : 0.993;
+    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.017 : 0.994;
     const rt: TeamRT = {
       idx,
       club: t.club,
@@ -224,7 +232,7 @@ export class MatchSim {
       benchIds: t.tactic.bench.slice(),
       subsLeft: this.opts.subs ?? 5,
       players: t.players,
-      zAtt: [], zDef: [], wAtt: [], wDef: [], qDef: [], qPace: [], qAir: [], aPace: [], aAir: [], defL: [],
+      zAtt: [], zDef: [], wAtt: [], wDef: [], qDef: [], qPace: [], qAir: [], aPace: [], aAir: [], defL: [], attL: [],
       stats: emptyStats(),
       homeMult,
       moraleMult: (1 + (t.morale ?? 0) * 0.03) * clamp(this.r.normal(1, DAY_FORM), 0.9, 1.1),
@@ -291,8 +299,7 @@ export class MatchSim {
   buildZones(rt: TeamRT) {
     rt.men = rt.on.filter((s) => !s.off).length;
     const ti = rt.ti;
-    rt.zAtt = Array.from({ length: NZ }, () => []);
-    rt.wAtt = new Array(NZ).fill(0);
+    const asets = [0, 1, 2].map(() => ({ zAtt: Array.from({ length: NZ }, (): ZoneEntry[] => []), wAtt: new Array(NZ).fill(0) as number[], aPace: [] as number[], aAir: [] as number[] }));
     // forsvaret bygges for hver af de tre boldbaner: kæden glider mod boldsiden (som positionstabellen i CM 01/02)
     const sets = [0, 1, 2].map(() => ({ zDef: Array.from({ length: NZ }, (): ZoneEntry[] => []), wDef: new Array(NZ).fill(0) as number[], qDef: [] as number[], qPace: [] as number[], qAir: [] as number[] }));
     for (const sp of rt.on) {
@@ -332,15 +339,20 @@ export class MatchSim {
       const sxD = role === 'GK' ? 8 : 15, syD = role === 'GK' ? 14 : 19;
       // hver spiller har lige meget dækning i alt: en central spiller spreder den over flere zoner,
       // en kantspiller samler den på kanten (ellers får smalle formationer reelt flere spillere)
-      const wa = new Array(NZ).fill(0);
-      let sa = 0;
-      for (let z = 0; z < NZ; z++) {
-        const b = Math.floor(z / ZL), l = z % ZL;
-        const a = Math.exp(-(((zoneX(b) - axr) ** 2) / (2 * sxA * sxA) + ((zoneY(l) - ayr) ** 2) / (2 * syA * syA)));
-        if (a > 0.06) { wa[z] = a; sa += a; }
+      // i angreb søger de centrale spillere mod boldsiden; kantspillere holder deres kant (fri rolle: mere)
+      const pull = role === 'GK' ? 0 : (s.side === 'C' ? 0.22 : 0.07) * (sp.instr.freeRole ? 1.5 : 1);
+      for (let L = 0; L < ZL; L++) {
+        const ay = ayr + (zoneY(L) - ayr) * pull;
+        const wa = new Array(NZ).fill(0);
+        let sa = 0;
+        for (let z = 0; z < NZ; z++) {
+          const b = Math.floor(z / ZL), l = z % ZL;
+          const a = Math.exp(-(((zoneX(b) - axr) ** 2) / (2 * sxA * sxA) + ((zoneY(l) - ay) ** 2) / (2 * syA * syA)));
+          if (a > 0.06) { wa[z] = a; sa += a; }
+        }
+        const na = sa ? (ATT_COVER * free) / sa : 0;
+        for (let z = 0; z < NZ; z++) if (wa[z] && role !== 'GK') { const w = wa[z] * na; asets[L].zAtt[z].push({ sp, w }); asets[L].wAtt[z] += w; }
       }
-      const na = sa ? (ATT_COVER * free) / sa : 0;
-      for (let z = 0; z < NZ; z++) if (wa[z] && role !== 'GK') { const w = wa[z] * na; rt.zAtt[z].push({ sp, w }); rt.wAtt[z] += w; }
       // glidning mod boldsiden: disciplinerede spillere (holdspil, placering) lukker bedre af
       const comp = role === 'GK' ? 0 : clamp(0.12 + 0.16 * (sp.p.attrs[A.teamwork] + sp.p.attrs[A.positioning]) / 40, 0.12, 0.3);
       for (let L = 0; L < ZL; L++) {
@@ -376,21 +388,32 @@ export class MatchSim {
     }
     rt.defL = sets;
     this.useDef(rt, 1);
-    for (let z = 0; z < NZ; z++) {
-      let ap = 0, aa = 0, aw = 0;
-      for (const e of rt.zAtt[z]) {
-        const x = e.sp.eff;
-        ap += e.w * (x[A.pace] + x[A.acceleration]) / 2;
-        aa += e.w * (0.42 * x[A.heading] + 0.32 * x[A.jumping] + 0.14 * x[A.strength] + 0.12 * x[A.bravery]);
-        aw += e.w;
-      }
-      rt.aPace[z] = aw ? ap / aw : 6; rt.aAir[z] = aw ? aa / aw : 6;
-      // Hvis ingen er i en zone (fx efter røde kort) – nærmeste fallback
-      if (rt.zAtt[z].length === 0) {
-        const near = rt.on.filter((s) => !s.off && slotRole(rt.tactic.slots[s.slot]) !== 'GK').sort((a, b) => dist(a.ax, a.ay, z) - dist(b.ax, b.ay, z))[0];
-        if (near) rt.zAtt[z].push({ sp: near, w: 0.05 });
+    for (const set of asets) {
+      for (let z = 0; z < NZ; z++) {
+        let ap = 0, aa = 0, aw = 0;
+        for (const e of set.zAtt[z]) {
+          const x = e.sp.eff;
+          ap += e.w * (x[A.pace] + x[A.acceleration]) / 2;
+          aa += e.w * (0.42 * x[A.heading] + 0.32 * x[A.jumping] + 0.14 * x[A.strength] + 0.12 * x[A.bravery]);
+          aw += e.w;
+        }
+        set.aPace[z] = aw ? ap / aw : 6; set.aAir[z] = aw ? aa / aw : 6;
+        // Hvis ingen er i en zone (fx efter røde kort) – nærmeste fallback
+        if (set.zAtt[z].length === 0) {
+          const near = rt.on.filter((s) => !s.off && slotRole(rt.tactic.slots[s.slot]) !== 'GK').sort((a, b) => dist(a.ax, a.ay, z) - dist(b.ax, b.ay, z))[0];
+          if (near) set.zAtt[z].push({ sp: near, w: 0.05 });
+        }
       }
     }
+    rt.attL = asets;
+    this.useAtt(rt, 1);
+  }
+
+  /** Angrebet står efter boldens bane */
+  private useAtt(rt: TeamRT, lane: number) {
+    const a = rt.attL[lane];
+    if (!a) return;
+    rt.zAtt = a.zAtt; rt.wAtt = a.wAtt; rt.aPace = a.aPace; rt.aAir = a.aAir;
   }
 
   /** Forsvaret står efter boldens bane (absolut 0 venstre .. 2 højre) */
@@ -589,6 +612,8 @@ export class MatchSim {
     const z = this.zone;
     this.useDef(O, z % ZL);
     this.useDef(T, z % ZL);
+    this.useAtt(T, z % ZL);
+    this.useAtt(O, z % ZL);
     T.stats.possession++;
     this.heat[T.idx][z]++;
     this.zoneTotal[z]++;
@@ -774,7 +799,7 @@ export class MatchSim {
         const recv = this.pick(T.zAtt[tz], undefined, s);
         if (recv) {
           const touch = 0.55 * this.a(recv, A.technique) + 0.25 * this.a(recv, A.agility) + 0.2 * this.a(recv, A.decisions);
-          if (this.r.chance(clamp(0.05 + (11 - touch) / 45 + (O.ti.closingDown - 1) * 0.015 - this.wx.pass, 0.005, 0.16))) {
+          if (this.r.chance(clamp(0.05 + (11 - touch) / 45 + (O.ti.closingDown - 1) * 0.015 - this.wx.pass + this.wx.touch, 0.005, 0.18))) {
             this.zone = tz;
             if (this.r.chance(0.2)) this.line('poor-touch', recv);
             this.turnover(def);
@@ -816,7 +841,7 @@ export class MatchSim {
     if (!recv) { this.zone = tz; this.turnover(def); return; }
     const pq = this.a(s, A.passing) * 0.6 + this.a(s, A.technique) * 0.4;
     // bolde bag en høj kæde: fart mod fart; et hold der presser højt, efterlader plads bag sig
-    if (trb >= 3 && recv && this.r.chance(O.ti.offside ? 0.16 : 0.09)) {
+    if (trb >= 3 && recv && this.r.chance(O.ti.offside ? 0.2 : 0.13)) {
       T.stats.offsides++;
       this.line('offside', recv);
       this.zone = tz;
@@ -849,7 +874,7 @@ export class MatchSim {
     // på kanten er der plads at løbe i: en hurtig kantspiller mod en langsom back er en fordel i sig selv
     const wide = this.laneOf(T.idx) !== 1;
     const speedDuel = wide && def ? (this.speed(s) - this.speed(def)) / 16 : 0;
-    const p = logistic(logit(0.5) + (this.dribQ(s) - dq) / 4 + this.overload(this.zone, T, O) * 0.6 + speedDuel);
+    const p = logistic(logit(0.5) + (this.dribQ(s) - dq) / 4 + this.overload(this.zone, T, O) * 0.6 + speedDuel + this.wx.drib);
     if (this.r.chance(p)) {
       this.rate(s, 0.07);
       if (rb < 4) {
@@ -892,7 +917,7 @@ export class MatchSim {
     T.stats.passes++;
     s.line.passes++;
     // Offside-fælde
-    if (this.r.chance(clamp((O.ti.offside ? 0.26 : 0.15) - (this.a(runner, A.anticipation) + this.a(runner, A.offTheBall) - 20) / 180, 0.04, 0.35))) {
+    if (this.r.chance(clamp((O.ti.offside ? 0.3 : 0.2) - (this.a(runner, A.anticipation) + this.a(runner, A.offTheBall) - 20) / 180, 0.04, 0.35))) {
       T.stats.offsides++;
       this.rate(runner, -0.05);
       this.line('offside', runner);
@@ -1432,7 +1457,10 @@ export class MatchSim {
     void o;
     const base = (t.baseMentality ??= t.ti.mentality);
     let want = base;
-    if (diff < 0 && this.minute >= 55) want = Math.min(4, base + (this.minute >= 75 || diff <= -2 ? 2 : 1));
+    // afgjort kamp: holdet der fører stort, slapper af – og holdet bagud stort, giver op
+    if (diff >= 3 && this.minute >= 50) want = Math.max(0, base - 1);
+    else if (diff <= -3 && this.minute >= 60) want = base;
+    else if (diff < 0 && this.minute >= 55) want = Math.min(4, base + (this.minute >= 75 || diff <= -2 ? 2 : 1));
     else if (diff > 0 && this.minute >= 70) want = Math.max(0, base - (diff === 1 && this.minute >= 82 ? 2 : 1));
     // uafgjort sent i kampen: et hold der ikke er favorit, tager gerne det ene point
     else if (diff === 0 && this.minute >= 72 && base <= 2) want = Math.max(0, base - 1);
@@ -1541,6 +1569,8 @@ export class MatchSim {
       pens: this.pens,
       shootout: this.shootout?.kicks,
       weather: this.opts.weather,
+      pitch: this.opts.pitch,
+      referee: this.opts.referee,
       changes: this.changes,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
     };

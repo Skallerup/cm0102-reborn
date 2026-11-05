@@ -1429,4 +1429,8 @@ export const da: Record<string, string> = {
   'c.hold-up.1': "{a} holder bolden og venter på hjælp.", 'c.lay-off.1': "{a} lægger den af til {b}…", 'c.poor-touch.1': "Dårligt førstetouch af {a} – bolden løber fra ham.", 'c.great-touch.1': "Lækkert førstetouch af {a}.", 'c.knock-down.1': "{a} nikker den ned.",
   'c.low-cross.1': "{a} slår et hårdt, lavt indlæg mod {b}…", 'c.short-corner.1': "{a} tager det kort.", 'c.corner-edge.1': "{a} spiller hjørnesparket til kanten af feltet – {b} venter!", 'c.long-throw.1': "{a} kaster et langt indkast ind i feltet!",
   'cl.tac.pm': "bf", 'cl.tac.tm': "ta",
+  'pitch.normal': "Normal bane", 'pitch.damp': "Fugtig bane", 'pitch.muddy': "Mudret bane", 'pitch.waterlogged': "Vandmættet bane", 'pitch.frozen': "Frossen bane", 'pitch.snowy': "Snedækket bane", 'pitch.hard': "Hård bane",
+  'pitch.d.damp': "bolden glider hurtigt", 'pitch.d.muddy': "tungt underlag – driblinger er svære og benene trætte", 'pitch.d.waterlogged': "bolden stopper i vandpytterne – afleveringer er et lotteri", 'pitch.d.frozen': "hård og glat – førsteberøringen er svær", 'pitch.d.snowy': "bolden bremses i sneen", 'pitch.d.hard': "bolden hopper højt",
+  'c.pitch-damp.1': "Banen er fugtig – bolden kommer til at løbe hurtigt i dag.", 'c.pitch-muddy.1': "Banen er mudret – det bliver en kamp.", 'c.pitch-waterlogged.1': "Banen er vandmættet – der er pytter overalt!", 'c.pitch-frozen.1': "Banen er stenhård og frossen.", 'c.pitch-snowy.1': "Sneen dækker banen – der spilles med orange bold.", 'c.pitch-hard.1': "Banen er knastør og hård – bolden kommer til at hoppe.",
+  'ref.label': "Dommer", 'ref.strict': "streng", 'ref.lenient': "mild", 'ref.normal': "normal",
 };

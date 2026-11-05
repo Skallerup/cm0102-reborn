@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { opponentReport } from '../../game/analysis';
 import type { MatchSim } from '../../game/engine/match';
 import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
-import { WEATHER_ICON, weatherFor } from '../../game/weather';
+import { PITCH_ICON, WEATHER_ICON, pitchFor, refereeFor, weatherFor } from '../../game/weather';
 import { act } from '../../game/actions';
 import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
@@ -101,7 +101,9 @@ function PreMatch({ id, onPlay, onQuick }: { id: number; onPlay: () => void; onQ
     <div>
       <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`} />
       <Scoreboard home={f.home} away={f.away} hg={null} ag={null} minute={t('match.preview')} />
-      <div className="insight weather-note">{WEATHER_ICON[weatherFor(f)]} <b>{t(`wx.${weatherFor(f)}`)}</b> – {t(`wx.d.${weatherFor(f)}`)}</div>
+      <div className="insight weather-note">{WEATHER_ICON[weatherFor(f)]} <b>{t(`wx.${weatherFor(f)}`)}</b> – {t(`wx.d.${weatherFor(f)}`)}
+        {pitchFor(f) !== 'normal' && <> · {PITCH_ICON[pitchFor(f)]} <b>{t(`pitch.${pitchFor(f)}`)}</b> – {t(`pitch.d.${pitchFor(f)}`)}</>}
+        {' · '}{t('ref.label')}: <b>{refereeFor(f).name}</b> ({t(refereeFor(f).strict > 1.15 ? 'ref.strict' : refereeFor(f).strict < 0.85 ? 'ref.lenient' : 'ref.normal')})</div>
       <div className="cols">
         <Panel title={t('match.yourXI')}>
           <ol style={{ margin: 0, paddingLeft: 18 }}>
@@ -768,7 +770,7 @@ function LiveMatch({ id }: { id: number }) {
       {tab === 'table' && g.comps[f.comp]?.type === 'league' && (g.comps[f.comp].splitDone ? <LeagueTables comp={g.comps[f.comp]} /> : <Panel className="flush"><LeagueTable rows={leagueRows(g.comps[f.comp])} comp={g.comps[f.comp]} /></Panel>)}
       {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
       {!report && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
-      <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}</div>
+      <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>
       {tab === 'tactics' && !report && (
         <SubsPanel sim={sim} me={me} live={myLive} onDone={(ok) => { setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}

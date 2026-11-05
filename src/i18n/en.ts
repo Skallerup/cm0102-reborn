@@ -1396,4 +1396,8 @@ export const en: Record<string, string> = {
   'c.hold-up.1': "{a} holds the ball up and waits for support.", 'c.lay-off.1': "{a} lays it off for {b}…", 'c.poor-touch.1': "Poor first touch from {a} – the ball runs away from him.", 'c.great-touch.1': "Lovely first touch from {a}.", 'c.knock-down.1': "{a} knocks it down.",
   'c.low-cross.1': "{a} drives a low cross towards {b}…", 'c.short-corner.1': "{a} takes it short.", 'c.corner-edge.1': "{a} plays the corner to the edge of the box – {b} is waiting!", 'c.long-throw.1': "{a} launches a long throw into the box!",
   'cl.tac.pm': "pm", 'cl.tac.tm': "tm",
+  'pitch.normal': "Normal pitch", 'pitch.damp': "Damp pitch", 'pitch.muddy': "Muddy pitch", 'pitch.waterlogged': "Waterlogged pitch", 'pitch.frozen': "Frozen pitch", 'pitch.snowy': "Snow-covered pitch", 'pitch.hard': "Hard pitch",
+  'pitch.d.damp': "the ball zips across the surface", 'pitch.d.muddy': "heavy going – dribbling is hard and legs tire", 'pitch.d.waterlogged': "the ball holds up in puddles – passing is a lottery", 'pitch.d.frozen': "hard and slippery – first touches are difficult", 'pitch.d.snowy': "the ball slows down in the snow", 'pitch.d.hard': "the ball bounces high",
+  'c.pitch-damp.1': "The pitch is damp – the ball will move quickly today.", 'c.pitch-muddy.1': "It's a muddy pitch – this will be a battle.", 'c.pitch-waterlogged.1': "The pitch is waterlogged – there are puddles everywhere!", 'c.pitch-frozen.1': "The pitch is rock hard and frozen.", 'c.pitch-snowy.1': "Snow covers the pitch – an orange ball is in use.", 'c.pitch-hard.1': "The pitch is bone dry and hard – the ball will bounce.",
+  'ref.label': "Referee", 'ref.strict': "strict", 'ref.lenient': "lenient", 'ref.normal': "normal",
 };

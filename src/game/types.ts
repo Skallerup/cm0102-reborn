@@ -728,6 +728,9 @@ export interface MatchReport {
   shootout?: ShootoutKick[];
   /** vejret under kampen (se weather.ts) */
   weather?: string;
+  /** Banens tilstand og dagens dommer */
+  pitch?: string;
+  referee?: { name: string; strict: number };
   /** taktiske ændringer undervejs */
   changes?: TacticChange[];
   formations: [string, string];
