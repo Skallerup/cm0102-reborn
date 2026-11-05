@@ -23,6 +23,7 @@ const PAGE = 16;
 
 export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   const g = useGame()!;
+  const { nav } = useNav();
   const [tab, setTab] = useRouteState('tab', initial ?? 'search');
   const pending = g.offers.filter((o) => o.status === 'pending' && o.seller === g.userClub).length;
   const club = g.clubs[g.userClub];
@@ -33,7 +34,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   // (tilbud og handler, som originalen ikke har her, ligger yderst i den nederste række)
   return (
     <div>
-      <Head title={t('cl.tr.title')} action={club ? <span className="cx-funds">{t('cl.tr.funds', { fee: money(club.transferBudget) })}</span> : undefined} />
+      <Head title={t('cl.tr.title')} action={club ? <button className="cx-funds" title={t('nav.finance')} onClick={() => nav({ name: 'finance' })}>{t('cl.tr.funds', { fee: money(club.transferBudget) })}</button> : undefined} />
       <Tabs tabs={[
         ['shortlist', t('cl.tr.shortlist')], ['search', t('tr.search')], ['staff', t('cl.tr.staffSearch')],
         [scoutKey(1), t('cl.tr.scoutN', { n: 1 })], [scoutKey(2), t('cl.tr.scoutN', { n: 2 })],
@@ -235,7 +236,7 @@ function StaffSearch() {
   const cols: CxCol<Staff>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (s) => (!s.club ? <span className="cx-inf" title={t('common.free')}>{t('cl.st.free')}</span> : null), sort: (s) => (s.club ? 1 : 0) },
     { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
-      render: (s) => <span onClick={() => nav({ name: 'staff', tab: 'hire', state: { role: s.role === 'manager' ? 'coach' : s.role, source: s.club ? 'clubs' : 'free', onlyWilling: false } })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
+      render: (s) => <span onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
     { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where },
     { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: based, sort: based },
     { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: (s) => t(`role.staff.${s.role}`), sort: (s) => t(`role.staff.${s.role}`) },

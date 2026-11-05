@@ -6,7 +6,8 @@ import { poachFee, staffCount, staffDemand, STAFF_LIMITS, willJoin } from '../..
 import { isMultiplayer } from '../../game/humans';
 import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
-import { money, t } from '../../i18n';
+import { dateFmt, money, natName, t } from '../../i18n';
+import { repWord } from './NationClassic';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -16,6 +17,12 @@ const ROLES: StaffRole[] = ['assistant', 'coach', 'physio', 'scout'];
 const KEY_ATTR: Record<StaffRole, keyof Staff['attrs']> = { manager: 'tactics', assistant: 'coaching', coach: 'coaching', physio: 'physio', scout: 'judgingAbility' };
 
 export function StaffScreen() {
+  const { route } = useNav();
+  if (route.id !== undefined && gs().staff[Number(route.id)]) return <StaffProfile id={Number(route.id)} />;
+  return <StaffList />;
+}
+
+function StaffList() {
   const g = useGame()!;
   const [tab, setTab] = useRouteState('tab', useNav().route.tab ?? 'mine');
   const [role, setRole] = useRouteState<StaffRole>('role', 'coach');
@@ -100,6 +107,61 @@ export function StaffScreen() {
       )}
       {offerFor && <StaffOfferModal s={offerFor} onClose={() => setOfferFor(null)} onSend={(w) => sendOffer(offerFor, w)} />}
       <p className="muted">{t('staff.explain')} {t('staff.explain2')}</p>
+    </div>
+  );
+}
+
+/** En stabspersons profil (som i CM 01/02): job, klub, alder, omdømme, kontrakt og egenskaber – ansæt eller fyr herfra */
+function StaffProfile({ id }: { id: number }) {
+  const g = useGame()!;
+  const s = g.staff[id];
+  const [offer, setOffer] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  const mine = s.club === g.userClub && !!g.userClub;
+  const name = `${s.first} ${s.last}`.trim();
+  const role = s.role === 'manager' ? null : s.role;
+  const full = role ? staffCount(role) >= STAFF_LIMITS[role] : true;
+  const send = async (wage: number) => {
+    if (s.club && !(await askConfirm(t('staff.poachConfirm', { name, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) })))) return;
+    const r = act<string>({ t: 'hireStaff', id: s.id, wage });
+    setOffer(false);
+    setMsg({ text: t(`staff.result.${r}`, { name, wage: money(staffDemand(s)) }), tone: r === 'ok' ? 'good' : r === 'pending' ? 'warn' : 'bad' });
+  };
+  const fire = async () => {
+    if (!(await askConfirm(t('staff.fireConfirm', { name, pay: money(s.wage * 12) })))) return;
+    act({ t: 'fireStaff', id: s.id });
+    setMsg({ text: t('staff.fired', { name }), tone: 'neutral' });
+  };
+  const action = mine
+    ? <button className="small danger" onClick={fire}>{t('staff.fire')}</button>
+    : !g.userClub || !role ? null
+    : <button className="small primary" disabled={full || (s.club > 0 && (g.clubs[g.userClub]?.balance ?? 0) < poachFee(s))} title={full ? t('staff.limit') : undefined} onClick={() => setOffer(true)}>{s.club ? t('staff.buyOut') : t('staff.hireBtn')}</button>;
+  return (
+    <div>
+      <Head title={`${name}${s.club ? ` (${g.clubs[s.club]?.short ?? ''})` : ''}`} action={action} />
+      {msg && <div className={`insight ${msg.tone}`}>{msg.text}</div>}
+      <div className="cols2">
+        <Panel title={t(`role.staff.${s.role}`)}>
+          <div className="kv">
+            <span>{t('col.club')}</span><span>{s.club ? <ClubLink id={s.club} /> : t('common.free')}</span>
+            <span>{t('col.age')}</span><span>{ageOn(s.dob, g.date)}</span>
+            <span>{t('cl.fd.nation')}</span><span>{natName(g.nations[s.nation]?.name)}</span>
+            <span>{t('cl.st.rep')}</span><span>{repWord(s.rep)}</span>
+            {s.club > 0 && <><span>{t('col.wage')}</span><span>{money(s.wage)} / {t('common.week')}</span></>}
+            {s.club > 0 && s.expires && <><span>{t('col.expires')}</span><span>{dateFmt(s.expires)}</span></>}
+            {!mine && s.club > 0 && <><span>{t('staff.fee')}</span><span>{money(poachFee(s))}</span></>}
+            {!mine && <><span>{t('staff.demand')}</span><span>{money(staffDemand(s))} / {t('common.week')}</span></>}
+          </div>
+        </Panel>
+        <Panel title={t('staff.attrs')} className="flush">
+          <table className="grid">
+            <tbody>
+              {ATTRS.map((a) => <tr key={a}><td>{t(`staff.${a}`)}</td><td className="num"><span className={`attr ${s.attrs[a] >= 16 ? 'a-top' : s.attrs[a] >= 13 ? 'a-good' : s.attrs[a] >= 9 ? 'a-mid' : 'a-low'}`}>{s.attrs[a]}</span></td></tr>)}
+            </tbody>
+          </table>
+        </Panel>
+      </div>
+      {offer && <StaffOfferModal s={s} onClose={() => setOffer(false)} onSend={send} />}
     </div>
   );
 }

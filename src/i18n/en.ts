@@ -802,7 +802,7 @@ export const en: Record<string, string> = {
   'staff.fireConfirm': 'Fire {name}? Compensation: {pay}', 'staff.limit': 'You have reached the limit for this role.',
   'staff.hired': '{name} has joined as {role}', 'staff.explain': 'Coaches drive player development, physios shorten injuries and scouts uncover players.',
   'role.staff.manager': 'Manager', 'role.staff.assistant': 'Assistant', 'role.staff.coach': 'Coach', 'role.staff.physio': 'Physio', 'role.staff.scout': 'Scout',
-  'staff.coaching': 'Coaching', 'staff.judgingAbility': 'Judging ability', 'staff.judgingPotential': 'Judging potential', 'staff.physio': 'Physiotherapy',
+  'staff.attrs': 'Attributes', 'staff.coaching': 'Coaching', 'staff.judgingAbility': 'Judging ability', 'staff.judgingPotential': 'Judging potential', 'staff.physio': 'Physiotherapy',
   'staff.motivating': 'Motivating', 'staff.discipline': 'Discipline', 'staff.tactics': 'Tactics',
   'staff.short.coaching': 'Coa', 'staff.short.judgingAbility': 'JA', 'staff.short.judgingPotential': 'JP', 'staff.short.physio': 'Phy',
   'staff.short.motivating': 'Mot', 'staff.short.discipline': 'Dis', 'staff.short.tactics': 'Tac',

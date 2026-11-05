@@ -36,7 +36,7 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
       return Object.values(g.staff).filter((s) => s.club !== g.userClub).map((s) => ({
         key: `s${s.id}`, name: `${s.last}${s.first ? `, ${s.first}` : ''}`, sort: `${s.last} ${s.first}`,
         a: s.club ? g.clubs[s.club]?.short ?? noClub : noClub, b: t(`role.staff.${s.role}`),
-        go: { name: 'staff', tab: 'hire', state: { role: s.role === 'manager' ? 'coach' : s.role, source: s.club ? 'clubs' : 'free', onlyWilling: false } },
+        go: { name: 'staff', id: s.id },
       }));
     }
     return Object.values(g.players).map((p) => ({ key: `p${p.id}`, name: `${p.last}${p.first ? `, ${p.first}` : ''}`, sort: `${p.last} ${p.first}`,

@@ -43,6 +43,8 @@ interface Hub {
   club?: (g: GameState, route: Route) => number | undefined;
   tabs?: ScreenName[];
   sub?: (ScreenName | 'lastMatch' | 'division')[];
+  /** ingen hub-faner på denne rute (fx én stabspersons profil) */
+  plain?: (route: Route) => boolean;
 }
 
 const clubName = (g: GameState) => g.clubs[g.userClub]?.name ?? '';
@@ -59,8 +61,7 @@ export function nationRoute(nation: number): Route {
 }
 /** Ruten til en stabsperson: ens eget staff eller ansættelsen (ledig eller i en anden klub) */
 export function staffRoute(s: Staff): Route {
-  if (s.club === gs().userClub) return { name: 'staff' };
-  return { name: 'staff', tab: 'hire', state: { role: s.role === 'manager' ? 'coach' : s.role, source: s.club ? 'clubs' : 'free', onlyWilling: false } };
+  return { name: 'staff', id: s.id };
 }
 
 /** Et navn man kan klikke på i klassisk stil (beholder tekstens farve, lyser op ved hover) */
@@ -105,7 +106,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   report: { club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   finance: { title: (g) => `${clubName(g)} ${t('nav.finance')}`, club: own, tabs: OFFICE_TABS, sub: OFFICE_SUB },
   board: { title: clubName, club: own },
-  staff: { title: (g) => `${clubName(g)} ${t('nav.staff')}`, club: own, tabs: OFFICE_TABS, sub: OFFICE_SUB },
+  // en enkelt stabsperson (route.id): hans navn i hans klubs farver, uden kontorets faner
+  staff: { title: (g, r, st) => (r.id !== undefined ? st : `${clubName(g)} ${t('nav.staff')}`), club: (g, r) => (r.id !== undefined ? g.staff[Number(r.id)]?.club || undefined : own(g)), tabs: OFFICE_TABS, sub: OFFICE_SUB, plain: (r) => r.id !== undefined },
   scouting: { title: (g) => `${clubName(g)} ${t('nav.scouting')}`, club: own, tabs: OFFICE_TABS, sub: OFFICE_SUB },
   profile: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
@@ -293,8 +295,9 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const text = hub?.title ? hub.title(g, route, title) : title;
   // klubbens farvetema: skærme uden egen klub (nyheder, manager, hjælp …) bruger ens egen klubs farver
   const col = titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
-  const tabs = itemsFor(hub?.tabs, g, route, allowedFn);
-  const sub = itemsFor(hub?.sub, g, route, allowedFn);
+  const plain = hub?.plain?.(route);
+  const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);
+  const sub = plain ? [] : itemsFor(hub?.sub, g, route, allowedFn);
   const promote = !tabs.length;
   // stil hovedfanerækken til rådighed for skærmens egne faner (kun når hubben ikke har sine egne)
   const setTabs = slots?.setTabs;

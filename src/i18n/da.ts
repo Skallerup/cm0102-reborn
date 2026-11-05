@@ -823,7 +823,7 @@ export const da: Record<string, string> = {
   'staff.fireConfirm': 'Fyr {name}? Kompensation: {pay}', 'staff.limit': 'Du har nået grænsen for denne rolle.',
   'staff.hired': '{name} er ansat som {role}', 'staff.explain': 'Trænere styrer spillernes udvikling, fysioterapeuter forkorter skader, og scouts afdækker spillere.',
   'role.staff.manager': 'Manager', 'role.staff.assistant': 'Assistent', 'role.staff.coach': 'Træner', 'role.staff.physio': 'Fysioterapeut', 'role.staff.scout': 'Scout',
-  'staff.coaching': 'Træning', 'staff.judgingAbility': 'Vurdering af evne', 'staff.judgingPotential': 'Vurdering af potentiale', 'staff.physio': 'Fysioterapi',
+  'staff.attrs': 'Egenskaber', 'staff.coaching': 'Træning', 'staff.judgingAbility': 'Vurdering af evne', 'staff.judgingPotential': 'Vurdering af potentiale', 'staff.physio': 'Fysioterapi',
   'staff.motivating': 'Motivation', 'staff.discipline': 'Disciplin', 'staff.tactics': 'Taktik',
   'staff.short.coaching': 'Træ', 'staff.short.judgingAbility': 'VEv', 'staff.short.judgingPotential': 'VPo', 'staff.short.physio': 'Fys',
   'staff.short.motivating': 'Mot', 'staff.short.discipline': 'Dis', 'staff.short.tactics': 'Tak',
