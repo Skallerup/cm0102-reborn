@@ -22,7 +22,7 @@ import { getTheme, setTheme, type Theme } from './theme';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
 
-const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic' } as const;
+const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo' } as const;
 const read = (k: string, def: boolean) => { try { const v = localStorage.getItem(k); return v === null ? def : v === 'on'; } catch { return def; } };
 const write = (k: string, on: boolean) => { try { localStorage.setItem(k, on ? 'on' : 'off'); } catch { /* ignorér */ } };
 /** Skifter baggrunden hver dag? (ellers samme billede hele karrieren) */
@@ -31,18 +31,33 @@ export const flashingText = () => read(PREF.flash, true);
 /** Pixeleret udseende (tekst uden udglatning, baggrunde med synlige pixels) og den "futuristiske" skrift */
 export type PixelLevel = 'off' | 'light' | 'strong';
 export const pixelLook = (): PixelLevel => { try { const v = localStorage.getItem(PREF.pixel); return v === 'off' || v === 'strong' ? v : 'light'; } catch { return 'light'; } };
-export const futuristicFont = () => read(PREF.font, true);
+/** Skrifttypen i det klassiske tema (fællesskabets ønske: flere skrifter fra æraen) */
+export const CX_FONTS = ['futuristic', 'standard', 'verdana', 'exo'] as const;
+export type CxFont = (typeof CX_FONTS)[number];
+const FONT_URL: Partial<Record<CxFont, string>> = {
+  futuristic: 'https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&display=swap',
+  exo: 'https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&display=swap',
+};
+export const classicFont = (): CxFont => {
+  try { const v = localStorage.getItem(PREF.fontKind); if ((CX_FONTS as readonly string[]).includes(v ?? '')) return v as CxFont; } catch { /* ignorér */ }
+  return read(PREF.font, true) ? 'futuristic' : 'standard';
+};
+export const futuristicFont = () => classicFont() === 'futuristic';
+/** Klubbens logo i titelbjælken */
+export const titleLogo = () => read(PREF.logo, true);
 function applyFlash() {
   try {
     const el = document.documentElement;
     el.dataset.flash = flashingText() ? 'on' : 'off';
     el.dataset.pixel = pixelLook();
-    el.dataset.cxfont = futuristicFont() ? 'futuristic' : 'standard';
+    const f = classicFont();
+    el.dataset.cxfont = f;
+    el.dataset.cxlogo = titleLogo() ? 'on' : 'off';
     // skriften hentes først, når den bruges
-    if (futuristicFont() && !document.getElementById('cx-font')) {
+    const url = FONT_URL[f];
+    if (url && !document.getElementById(`cx-font-${f}`)) {
       const l = document.createElement('link');
-      l.id = 'cx-font'; l.rel = 'stylesheet';
-      l.href = 'https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&display=swap';
+      l.id = `cx-font-${f}`; l.rel = 'stylesheet'; l.href = url;
       document.head.appendChild(l);
     }
   } catch { /* ignorér */ }
@@ -86,7 +101,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: boolean; save: string; notif: boolean };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: CxFont; logo: boolean; save: string; notif: boolean };
 
 export function Seg<T extends string | boolean>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
@@ -97,7 +112,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const { nav } = useNav();
   const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
-    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: futuristicFont(),
+    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
   };
   const [d, setD] = useState<Draft>(initial);
@@ -107,7 +122,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     if (d.lang !== initial.lang) { setLang(d.lang); g.lang = d.lang; }
     if (d.cur !== initial.cur) setCurrency(d.cur);
     if (d.save !== initial.save) { g.options.autosaveMode = d.save as 'changes'; g.options.autosave = d.save !== 'off'; }
-    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } write(PREF.font, d.font); applyFlash();
+    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); applyFlash();
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
     if (d.theme !== initial.theme) setTheme(d.theme);
@@ -122,13 +137,14 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <AccountBar />
           <div className="cx-set-top">
             <span>{t('cl.set.version', { v: APP_VERSION })}</span>
-            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: true })}>{t('cl.set.reset')}</button>
+            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: 'futuristic', logo: true })}>{t('cl.set.reset')}</button>
           </div>
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
             {row(t('opt.currency'), <Seg value={d.cur} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`)] as [Currency, string])} onChange={(v) => up({ cur: v })} />)}
             {row(t('cl.set.skin'), <Seg value={d.theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]]} onChange={(v) => up({ theme: v })} />)}
-            {row(t('cl.set.fonts'), <Seg value={d.font} opts={[[true, t('cl.set.futuristic')], [false, t('cl.set.standard')]]} onChange={(v) => up({ font: v })} />)}
+            {row(t('cl.set.fonts'), <Seg value={d.font} opts={CX_FONTS.map((f) => [f, t(`cl.set.font.${f}`)] as [CxFont, string])} onChange={(v) => up({ font: v })} />)}
+            {row(t('cl.set.logo'), onOff(d.logo, (v) => up({ logo: v })))}
             {row(t('cl.set.pixel'), <Seg value={d.pixel} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]]} onChange={(v) => up({ pixel: v })} />)}
             {row(t('cl.set.bg'), onOff(d.bg, (v) => up({ bg: v })))}
             {row(t('hub.skins.setting'), <div className="cx-set-seg">

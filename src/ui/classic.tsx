@@ -11,6 +11,7 @@ import { gs } from '../game/state';
 import type { GameState, Staff } from '../game/types';
 import { compName, natName, t } from '../i18n';
 import { useNav, type Route, type ScreenName } from './core';
+import { Crest } from './components';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
 
@@ -295,6 +296,8 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const text = hub?.title ? hub.title(g, route, title) : title;
   // klubbens farvetema: skærme uden egen klub (nyheder, manager, hjælp …) bruger ens egen klubs farver
   const col = titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
+  // klubbens logo i titelbjælken (kun på klubbens egne skærme)
+  const logoClub = hub?.club ? hub.club(g, route) : undefined;
   const plain = hub?.plain?.(route);
   const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);
   const sub = plain ? [] : itemsFor(hub?.sub, g, route, allowedFn);
@@ -307,6 +310,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg }}>
         <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} />
+        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : null}
         <h2>{text}</h2>
         {action && <div className="cx-action">{action}</div>}
       </div>
