@@ -1,9 +1,10 @@
 // Taktisk modspil (AI-trænere): analysér modstanderens opstilling og vælg et modtræk.
 // Bedre taktikere (staff.attrs.tactics) tilpasser sig oftere og mere præcist.
 import { hash01 } from './rng';
-import { gs } from './state';
+import { gs, squad } from './state';
+import { A } from './attributes';
 import { ownerOf, withHuman } from './humans';
-import type { Tactic, TeamInstructions } from './types';
+import type { Player, Tactic, TeamInstructions } from './types';
 
 export interface Shape {
   forwards: number; // angribere og offensive kantspillere
@@ -31,6 +32,30 @@ export function scoutedTactic(oppId: number): Tactic | null {
   return null;
 }
 
+/** Snit af de bedste spillere på en plads (efter CA) for en egenskab */
+function unitAvg(ps: Player[], posIdx: number[], n: number, f: (p: Player) => number): number {
+  const xs = ps.filter((p) => !p.injury && posIdx.some((i) => p.pos[i] >= 15)).sort((a, b) => b.ca - a.ca).slice(0, n);
+  return xs.length ? xs.reduce((s, p) => s + f(p), 0) / xs.length : 10;
+}
+const speed = (p: Player) => (p.attrs[A.pace] + p.attrs[A.acceleration]) / 2;
+const air = (p: Player) => 0.45 * p.attrs[A.heading] + 0.35 * p.attrs[A.jumping] + 0.2 * p.attrs[A.strength];
+
+/** Læs modstanderens svagheder ud fra spillerne: langsom bagkæde, svage i luften, meget offensiv stil */
+export function weaknessPlan(clubId: number, oppId: number): CounterPlan {
+  const g = gs();
+  const mine = squad(clubId), theirs = squad(oppId);
+  const fwd = [5, 6]; // AM, ST
+  const pace = unitAvg(mine, fwd, 3, speed) - unitAvg(theirs, [2, 7], 4, speed);
+  const aerial = unitAvg(mine, [6], 2, air) - unitAvg(theirs.filter((p) => p.side[1] >= 15), [2, 1], 2, air);
+  const oppStyle = g.staff[g.clubs[oppId]?.manager]?.style?.mentality ?? 2;
+  const team: Partial<TeamInstructions> = {};
+  let reason: string | undefined;
+  if (pace >= 2.5) { team.counter = true; team.tempo = 2; reason = 'vsSlowDefence'; }
+  if (aerial >= 2.5) { team.width = 2; reason ??= 'vsWeakInAir'; }
+  if (oppStyle >= 3 && team.counter === undefined) { team.counter = true; reason ??= 'vsAttacking'; }
+  return { team, reason };
+}
+
 export interface CounterPlan {
   formation?: string;
   team: Partial<TeamInstructions>;
@@ -49,6 +74,13 @@ export function counterPlan(clubId: number, oppId: number, diff: number, formati
   const skill = mgr?.attrs.tactics ?? 10;
   // ikke alle trænere tilpasser sig – de taktisk dygtige gør det oftest
   if (hash01(clubId, oppId, Number(g.date.replace(/-/g, ''))) > 0.25 + skill / 30) return { team: {} };
+  const shape = shapePlan(clubId, oppId, diff, formation, mentality, skill);
+  // læs også spillerne: formens modtræk først, svaghederne udfylder resten
+  const weak = weaknessPlan(clubId, oppId);
+  return { ...shape, team: { ...weak.team, ...shape.team }, reason: shape.reason ?? weak.reason };
+}
+
+function shapePlan(_clubId: number, oppId: number, diff: number, formation: string, mentality: number, skill: number): CounterPlan {
   const opp = scoutedTactic(oppId);
   if (!opp) {
     // AI mod AI: klar underdog parkerer bussen, klar favorit presser

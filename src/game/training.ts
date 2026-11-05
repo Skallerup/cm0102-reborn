@@ -96,9 +96,14 @@ function develop(p: Player, ci: CoachingInfo) {
   } else if (age <= 28) {
     // de fleste topper midt i 20'erne – kun en langsom vækst herfra (ellers vokser antallet af stjerner hvert år)
     delta = (p.pa - p.ca) * PRIME_RATE * coachF * (0.6 + prof * 0.6) * minutesBoost;
-  } else if (age >= 30) {
-    // gode trænere og fysioterapi bremser tilbagegangen en smule
-    delta = -(0.03 + (age - 29) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
+  } else {
+    // tilbagegangen begynder senere for målmænd og midtstoppere, og den er individuel: nogle holder til
+    // midt i 30'erne, andre falder brat. Gode trænere, fysioterapi og professionalisme bremser den.
+    const start = p.pos[0] >= 15 ? 32 : p.pos[2] >= 15 && p.side[1] >= 15 ? 31 : 30;
+    if (age >= start) {
+      const curve = 0.65 + 0.7 * ((((p.id * 2654435761) >>> 0) % 1000) / 1000);
+      delta = -(0.02 + (age - start) * 0.025) * curve * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
+    }
   }
   delta += rng.normal(0, 0.05);
   if (Math.abs(delta) < 0.01) return;

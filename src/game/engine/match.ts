@@ -74,6 +74,15 @@ interface TeamRT {
   zDef: ZoneEntry[][];
   wAtt: number[];
   wDef: number[];
+  /** Forsvarskvalitet pr. zone (tackling, placering, fart) – her leder modstanderen efter svagheder */
+  qDef: number[];
+  /** Fart i forsvaret pr. zone (til stikninger og bolde bag kæden) */
+  qPace: number[];
+  /** Luftstyrke pr. zone (indlæg og lange bolde) */
+  qAir: number[];
+  /** Angrebets fart og luftstyrke pr. zone */
+  aPace: number[];
+  aAir: number[];
   stats: MatchStatsSide;
   homeMult: number;
   moraleMult: number;
@@ -90,18 +99,25 @@ const ZB = 5;
 const ZL = 3;
 const NZ = ZB * ZL;
 /** Global afslutningsskala (kalibreret mod ~2,7 mål/kamp, se scripts/calibrate.ts) */
-const FINISH_SCALE = 1.5;
+const FINISH_SCALE = 1.18;
 const zoneX = (b: number) => 10 + b * 20;
 const zoneY = (l: number) => 16.67 + l * 33.33;
 
+/** Samlet zonedækning pr. spiller i angreb og forsvar (normaliseret, så alle pladser tæller lige meget) */
+const ATT_COVER = 2.45;
+const DEF_COVER = 2.2;
 /** Dæmper niveauforskelle en smule: uden den bliver topholdene urealistisk dominerende (150 mål, 60-målsscorere) */
-const SQUASH = 0.84;
+const SQUASH = 0.76;
 /** Fordel pr. ekstra mand på banen i hver duel (røde kort) – kalibreret mod rigtige kampe, se scripts/redcard.ts */
 const MAN_EDGE = 0.45;
 /** Chance for direkte rødt kort pr. frispark (plus spillerens 'beskidthed') */
 const RED_BASE = 0.0029;
 /** Ekstra chancekvalitet pr. manglende forsvarsspiller */
 const SPACE_XG = 0.17;
+/** Holdets dagsform (spredning): giver overraskelser – uden den vinder favoritten altid ligaen */
+const DAY_FORM = 0.05;
+/** Hvor meget boldholderen søger mod modstanderens svage zoner (ganges med overblik) */
+const SEEK = 1.6;
 const squash = (v: number) => 11 + (v - 11) * SQUASH;
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 const logistic = (x: number) => 1 / (1 + Math.exp(-x));
@@ -174,7 +190,7 @@ export class MatchSim {
   // ---------- opsætning ----------
 
   private makeTeam(t: EngineTeam, idx: number): TeamRT {
-    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.025 : 0.99;
+    const homeMult = this.opts.neutral ? 1 : idx === 0 ? 1.02 : 0.993;
     const rt: TeamRT = {
       idx,
       club: t.club,
@@ -184,10 +200,10 @@ export class MatchSim {
       benchIds: t.tactic.bench.slice(),
       subsLeft: this.opts.subs ?? 5,
       players: t.players,
-      zAtt: [], zDef: [], wAtt: [], wDef: [],
+      zAtt: [], zDef: [], wAtt: [], wDef: [], qDef: [], qPace: [], qAir: [], aPace: [], aAir: [],
       stats: emptyStats(),
       homeMult,
-      moraleMult: 1 + (t.morale ?? 0) * 0.03,
+      moraleMult: (1 + (t.morale ?? 0) * 0.03) * clamp(this.r.normal(1, DAY_FORM), 0.9, 1.1),
       talk: new Map(Object.entries(t.talk ?? {}).map(([k, v]) => [Number(k), v])),
       men: 11,
       all: [],
@@ -264,25 +280,58 @@ export class MatchSim {
         case 'ST': adv = 6 + sp.instr.runs * 3; break;
       }
       if (role !== 'GK') adv += (ti.mentality - 2) * 3.5;
+      if (ti.counter && role !== 'GK' && role !== 'ST') adv -= 4;
       const widthShift = s.side === 'C' ? 0 : (ti.width - 1) * 6 * (s.side === 'L' ? -1 : 1);
       let axr = clamp(s.x + adv, 2, 94);
       let ayr = clamp(s.y + widthShift, 3, 97);
       let dxr = role === 'GK' ? s.x : clamp(s.x - 6 - (2 - ti.mentality) * 3 + (ti.closingDown - 1) * 4, 3, 85);
+      // backs og wingbacks der går med frem, når ikke altid hjem: plads bag dem på kanten
+      if (role === 'FB') dxr = clamp(dxr + (s.x - 24) * 0.35 + sp.instr.runs * 3, 3, 85);
+      // kantspillere på midtbanen følger med hjem og dækker kanten sammen med backen (to firekæder)
+      if (role === 'WM') dxr = clamp(dxr - 9 + sp.instr.runs * 2, 3, 85);
       let dyr = clamp(s.y + (50 - s.y) * 0.15, 3, 97);
       if (rt.idx === 1) { axr = 100 - axr; ayr = 100 - ayr; dxr = 100 - dxr; dyr = 100 - dyr; }
       sp.ax = axr; sp.ay = ayr; sp.dx = dxr; sp.dy = dyr;
       const free = sp.instr.freeRole ? 1.4 : 1;
       const sxA = 16 * free, syA = 20 * free;
       const sxD = role === 'GK' ? 8 : 15, syD = role === 'GK' ? 14 : 19;
+      // hver spiller har lige meget dækning i alt: en central spiller spreder den over flere zoner,
+      // en kantspiller samler den på kanten (ellers får smalle formationer reelt flere spillere)
+      const wa = new Array(NZ).fill(0), wd = new Array(NZ).fill(0);
+      let sa = 0, sd = 0;
       for (let b = 0; b < ZB; b++) {
         for (let l = 0; l < ZL; l++) {
           const z = b * ZL + l;
-          const wa = Math.exp(-(((zoneX(b) - axr) ** 2) / (2 * sxA * sxA) + ((zoneY(l) - ayr) ** 2) / (2 * syA * syA)));
-          if (wa > 0.06 && role !== 'GK') { rt.zAtt[z].push({ sp, w: wa }); rt.wAtt[z] += wa; }
-          const wd = Math.exp(-(((zoneX(b) - dxr) ** 2) / (2 * sxD * sxD) + ((zoneY(l) - dyr) ** 2) / (2 * syD * syD)));
-          if (wd > 0.06) { rt.zDef[z].push({ sp, w: wd * (sp.instr.tightMarking ? 1.1 : 1) }); rt.wDef[z] += wd; }
+          const a = Math.exp(-(((zoneX(b) - axr) ** 2) / (2 * sxA * sxA) + ((zoneY(l) - ayr) ** 2) / (2 * syA * syA)));
+          const d = Math.exp(-(((zoneX(b) - dxr) ** 2) / (2 * sxD * sxD) + ((zoneY(l) - dyr) ** 2) / (2 * syD * syD)));
+          if (a > 0.06) { wa[z] = a; sa += a; }
+          if (d > 0.06) { wd[z] = d; sd += d; }
         }
       }
+      const na = sa ? (ATT_COVER * free) / sa : 0, nd = sd ? (role === 'GK' ? DEF_COVER * 0.6 : DEF_COVER) / sd : 0;
+      for (let z = 0; z < NZ; z++) {
+        if (wa[z] && role !== 'GK') { const w = wa[z] * na; rt.zAtt[z].push({ sp, w }); rt.wAtt[z] += w; }
+        if (wd[z]) { const w = wd[z] * nd; rt.zDef[z].push({ sp, w: w * (sp.instr.tightMarking ? 1.1 : 1) }); rt.wDef[z] += w; }
+      }
+    }
+    for (let z = 0; z < NZ; z++) {
+      let q = 0, pc = 0, air = 0, w = 0;
+      for (const e of rt.zDef[z]) {
+        const x = e.sp.eff;
+        q += e.w * (0.35 * x[A.tackling] + 0.25 * x[A.positioning] + 0.2 * x[A.marking] + 0.2 * x[A.anticipation]);
+        pc += e.w * (x[A.pace] + x[A.acceleration]) / 2;
+        air += e.w * (0.45 * x[A.heading] + 0.35 * x[A.jumping] + 0.2 * x[A.strength]);
+        w += e.w;
+      }
+      rt.qDef[z] = w ? q / w : 6; rt.qPace[z] = w ? pc / w : 6; rt.qAir[z] = w ? air / w : 6;
+      let ap = 0, aa = 0, aw = 0;
+      for (const e of rt.zAtt[z]) {
+        const x = e.sp.eff;
+        ap += e.w * (x[A.pace] + x[A.acceleration]) / 2;
+        aa += e.w * (0.45 * x[A.heading] + 0.35 * x[A.jumping] + 0.2 * x[A.strength]);
+        aw += e.w;
+      }
+      rt.aPace[z] = aw ? ap / aw : 6; rt.aAir[z] = aw ? aa / aw : 6;
     }
     // Hvis ingen er i en zone (fx efter røde kort) – nærmeste fallback
     for (let z = 0; z < NZ; z++) {
@@ -333,6 +382,12 @@ export class MatchSim {
   private overload(z: number, att: TeamRT, def: TeamRT): number {
     // undertal mærkes over hele banen: modstanderen har altid en fri mand
     return 0.5 * Math.log((att.wAtt[z] + 0.45) / (def.wDef[z] + 0.45)) + MAN_EDGE * (att.men - def.men);
+  }
+  /** Boldholderens overblik (0..1): hvor godt han ser, hvor modstanderen er svag */
+  private vision(s: SP) { return clamp((this.a(s, A.decisions) + this.a(s, A.creativity) + this.a(s, A.teamwork)) / 45, 0.2, 1.1); }
+  /** Hvor attraktiv en zone er at spille ind i: overtal, svage forsvarere og fartfordel */
+  private zoneEdge(z: number, T: TeamRT, O: TeamRT) {
+    return 0.5 * this.overload(z, T, O) + (11 - O.qDef[z]) / 5 + (T.aPace[z] - O.qPace[z]) / 9;
   }
   private rate(sp: SP | null, d: number) {
     if (sp) sp.rating += d;
@@ -513,12 +568,15 @@ export class MatchSim {
       if (r < throughP + longP) return this.longBall(T, O, carrier);
       if (r < throughP + longP + dribP) return this.dribble(T, O, carrier);
       if (r < throughP + longP + dribP + lsP) return this.shoot(T, O, carrier, 'long');
-      return this.pass(T, O, carrier, 0.62 + 0.06 * (ti.tempo - 1) + 0.04 * (ti.mentality - 2));
+      return this.pass(T, O, carrier, 0.62 + 0.06 * (ti.tempo - 1) + 0.04 * (ti.mentality - 2) - (ti.passing === 0 ? 0.05 : 0));
     }
     if (rb === 3) {
-      const crossP = wide ? 0.18 + 0.12 * ins.crossing + 0.05 * (ti.width - 1) : 0;
+      const boxZ = this.zoneFor(T.idx, 4, 1);
+      const airEdge = clamp((T.aAir[boxZ] - O.qAir[boxZ]) / 18, -0.1, 0.14) * this.vision(carrier);
+      const crossP = wide ? Math.max(0.04, 0.16 + 0.12 * ins.crossing + 0.05 * (ti.width - 1) + airEdge) : 0;
       const lsP = 0.13 + 0.05 * ins.longShots + (this.a(carrier, A.longShots) - 10) / 200;
-      const throughP = (ins.throughBalls ? 0.16 : 0.08) + (this.a(carrier, A.creativity) - 10) / 250;
+      const paceEdge = clamp((T.aPace[this.zoneFor(T.idx, 4, 1)] - O.qPace[this.zoneFor(T.idx, 4, 1)]) / 40, -0.04, 0.08) * this.vision(carrier);
+      const throughP = Math.max(0.03, (ins.throughBalls ? 0.16 : 0.08) + (this.a(carrier, A.creativity) - 10) / 250 + paceEdge);
       const dribP = 0.1 + (ins.runWithBall ? 0.08 : 0) + this.a(carrier, A.flair) / 300;
       let acc = crossP;
       if (r < acc) return this.cross(T, O, carrier);
@@ -529,14 +587,15 @@ export class MatchSim {
     }
     // rb 4: feltet
     if (wide) {
-      if (r < 0.4) return this.cross(T, O, carrier);
-      if (r < 0.62) return this.shoot(T, O, carrier, 'boxWide');
-      if (r < 0.78) return this.dribble(T, O, carrier);
+      const cb = clamp(this.overload(z, T, O) * 0.15, 0, 0.15);
+      if (r < 0.4 - cb / 2) return this.cross(T, O, carrier);
+      if (r < 0.62 - cb) return this.shoot(T, O, carrier, 'boxWide');
+      if (r < 0.78 - cb) return this.dribble(T, O, carrier);
       return this.pass(T, O, carrier, 0.0, true);
     }
     if (r < 0.6) {
       // midtbanespillere der løber med ind i feltet afslutter også – ellers scorer angriberen næsten alt
-      if (this.r.chance(0.3)) {
+      if (this.r.chance(0.42)) {
         const late = this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => Math.sqrt(this.finQ(x)) * (x.instr.runs + 1), carrier);
         if (late) { this.lastPasser = carrier; this.lastPasserMoment = this.moment; return this.shoot(T, O, late, 'box'); }
       }
@@ -550,14 +609,21 @@ export class MatchSim {
     const rb = this.rb(T.idx);
     const lane = this.laneOf(T.idx);
     let trb = rb, tl = lane, base: number;
+    let pulled = 0;
     if (cutback) {
-      trb = 4; tl = 1; base = 0.62;
+      pulled = lane !== 1 ? Math.max(0, this.overload(this.zone, T, O)) : 0;
+      trb = 4; tl = 1; base = 0.62 + pulled * 0.12;
     } else if (this.r.chance(forwardP) && rb < 4) {
       trb = rb + 1;
       base = rb <= 1 ? 0.86 : rb === 2 ? 0.77 : 0.7;
-      // banevalg: bred taktik søger kanterne
-      const wideP = 0.25 + 0.15 * T.ti.width;
-      tl = this.r.chance(0.55) ? lane : lane === 1 ? (this.r.chance(wideP) ? (this.r.chance(0.5) ? 0 : 2) : 1) : 1;
+      // banevalg: bred taktik søger kanterne, og en spiller med overblik søger modstanderens svage zoner
+      const wideW = 0.35 + 0.3 * T.ti.width;
+      const vis = this.vision(s) * SEEK;
+      const opts = lane === 1 ? [0, 1, 2] : [lane, 1];
+      const ws = opts.map((l) => (l === lane ? 1.1 : l === 1 ? 0.7 : wideW) * Math.exp(vis * this.zoneEdge(this.zoneFor(T.idx, trb, l), T, O)));
+      let x = this.r.next() * ws.reduce((a, b) => a + b, 0);
+      tl = opts[opts.length - 1];
+      for (let i = 0; i < opts.length; i++) { x -= ws[i]; if (x <= 0) { tl = opts[i]; break; } }
       // angrib især en bestemt side
       const fl = this.oi[T.idx]?.focusLane;
       if (fl !== undefined && fl !== tl && this.r.chance(0.3)) tl = fl;
@@ -568,7 +634,8 @@ export class MatchSim {
       base = 0.92;
     }
     base += this.wx.pass;
-    if (T.ti.passing === 0) base += 0.035;
+    // kortpasningsspil kræver teknik – og er risikabelt i egen ende mod et hold, der presser højt
+    if (T.ti.passing === 0) base += (this.a(s, A.technique) + this.a(s, A.passing) - 26.5) / 110 - (O.ti.closingDown - 1) * 0.03 - (rb <= 1 && O.ti.closingDown === 2 ? 0.04 : 0);
     if (T.ti.passing === 2) base -= 0.03;
     const tz = this.zoneFor(T.idx, trb, tl);
     const def = this.pick(O.zDef[tz]);
@@ -583,9 +650,11 @@ export class MatchSim {
       this.zone = tz;
       this.lastPasser = s;
       this.lastPasserMoment = this.moment;
+      // presset spillet igennem: et hold der presser højt, har ikke folk bag bolden
+      if (trb > rb && trb <= 2 && O.ti.closingDown === 2 && this.r.chance(0.12 + (this.passQ(s) - 11) / 60)) this.zone = this.zoneFor(T.idx, trb + 1, tl);
       if (cutback) {
         const shooter = this.pick(T.zAtt[tz], (x) => Math.sqrt(this.finQ(x)), s);
-        if (shooter) { this.lastPasser = s; this.shoot(T, O, shooter, 'cutback'); }
+        if (shooter) { this.lastPasser = s; this.shoot(T, O, shooter, 'cutback', pulled * 0.06); }
       }
       if (trb >= 3 && this.r.chance(0.04)) this.line('pass-forward', s);
     } else {
@@ -603,12 +672,14 @@ export class MatchSim {
     const lane = this.r.chance(0.5) ? 1 : this.r.chance(0.5) ? 0 : 2;
     const tz = this.zoneFor(T.idx, Math.min(3, trb), lane);
     const recv = this.pick(T.zAtt[tz], (x) => this.aerial(x) ** 2, s);
-    const def = this.pick(O.zDef[tz], (x) => this.aerial(x) ** 2);
+    const def = this.pick(O.zDef[tz], (x) => Math.sqrt(this.aerial(x)));
     T.stats.passes++;
     s.line.passes++;
     if (!recv) { this.zone = tz; this.turnover(def); return; }
     const pq = this.a(s, A.passing) * 0.6 + this.a(s, A.technique) * 0.4;
-    const p = logistic(logit(0.42) + (this.aerial(recv) - (def ? this.aerial(def) : 5)) / 4 + (pq - 10) / 12 + this.overload(tz, T, O) * 0.6 + this.wx.air);
+    // bolde bag en høj kæde: fart mod fart; et hold der presser højt, efterlader plads bag sig
+    const behind = trb >= 3 ? (O.ti.mentality - 2) * 0.12 + (O.ti.closingDown - 1) * 0.15 + (O.ti.offside ? 0.1 : 0) + (recv && def ? (this.speed(recv) - this.speed(def)) / 30 : 0) : 0;
+    const p = logistic(logit(0.42) + (this.aerial(recv) - (def ? this.aerial(def) : 5)) / 3.5 + (pq - 10) / 12 + this.overload(tz, T, O) * 0.6 + this.wx.air + behind);
     this.zone = tz;
     if (this.r.chance(p)) {
       T.stats.passesCompleted++;
@@ -625,11 +696,11 @@ export class MatchSim {
 
   private dribble(T: TeamRT, O: TeamRT, s: SP) {
     const rb = this.rb(T.idx);
-    const def = this.pick(O.zDef[this.zone], (x) => this.tackQ(x, O));
+    const def = this.pick(O.zDef[this.zone], (x) => Math.sqrt(this.tackQ(x, O)));
     const dq = def ? this.tackQ(def, O) : 5;
     // på kanten er der plads at løbe i: en hurtig kantspiller mod en langsom back er en fordel i sig selv
     const wide = this.laneOf(T.idx) !== 1;
-    const speedDuel = wide && def ? (this.speed(s) - this.speed(def)) / 22 : 0;
+    const speedDuel = wide && def ? (this.speed(s) - this.speed(def)) / 16 : 0;
     const p = logistic(logit(0.5) + (this.dribQ(s) - dq) / 4 + this.overload(this.zone, T, O) * 0.6 + speedDuel);
     if (this.r.chance(p)) {
       this.rate(s, 0.07);
@@ -671,7 +742,7 @@ export class MatchSim {
     const tq = 0.5 * this.a(s, A.creativity) + 0.3 * this.a(s, A.passing) + 0.2 * this.a(s, A.decisions);
     const dq = def ? 0.35 * this.a(def, A.positioning) + 0.35 * this.a(def, A.anticipation) + 0.3 * this.a(def, A.pace) : 5;
     // stikningen bag kæden: løberens fart mod forsvarerens (en hurtig angriber mod langsomme forsvarere er en fordel)
-    const speedDuel = def ? (this.speed(runner) - this.speed(def)) / 22 : 0;
+    const speedDuel = def ? (this.speed(runner) - this.speed(def)) / 16 : 0;
     const p = logistic(logit(0.36) + (0.5 * tq + 0.5 * this.runQ(runner) - dq) / 4 + (O.ti.offside ? 0.35 : 0) + this.overload(tz, T, O) * 0.4 + speedDuel);
     if (this.r.chance(p)) {
       T.stats.passesCompleted++;
@@ -697,7 +768,11 @@ export class MatchSim {
     const boxZ = this.zoneFor(T.idx, 4, 1);
     const blocker = this.pick(O.zDef[this.zone]);
     const cq = 0.7 * this.a(s, setPiece ? A.corners : A.crossing) + 0.3 * this.a(s, A.technique);
-    const deliver = logistic(logit(setPiece ? 0.72 : 0.62) + (cq - (blocker ? this.a(blocker, A.positioning) : 5)) / 5 + bonus + this.wx.air);
+    // overtal på kanten giver tid og plads til at slå indlægget (kantspil mod en smal formation)
+    const room = setPiece ? 0 : this.overload(this.zone, T, O) * 0.7;
+    // overtal på kanten trækker forsvaret ud: indlægget kommer ind mod en forsvarskæde i bevægelse
+    const pulled = setPiece ? 0 : Math.max(0, this.overload(this.zone, T, O));
+    const deliver = logistic(logit(setPiece ? 0.72 : 0.62) + (cq - (blocker ? this.a(blocker, A.positioning) : 5)) / 5 + bonus + this.wx.air + room);
     if (!this.r.chance(deliver)) {
       this.rate(s, -0.03);
       if (!setPiece && this.r.chance(0.5)) return this.corner(T, O);
@@ -706,7 +781,7 @@ export class MatchSim {
       return;
     }
     const target = this.pick(T.zAtt[boxZ], (x) => this.aerial(x) ** 1.3 * (x.instr.runs + 1), s);
-    const marker = this.pick(O.zDef[boxZ], (x) => this.aerial(x) ** 2);
+    const marker = this.pick(O.zDef[boxZ], (x) => Math.sqrt(this.aerial(x)));
     if (!target) { this.zone = boxZ; this.turnover(marker); return; }
     const gk = this.gk(O);
     const claim = setPiece ? 0.12 : 0.08;
@@ -717,7 +792,7 @@ export class MatchSim {
       this.turnover(gk);
       return;
     }
-    const p = logistic(logit(setPiece ? 0.42 : 0.5) + (this.aerial(target) - (marker ? this.aerial(marker) : 5)) / 3.5 + this.overload(boxZ, T, O) * 0.5);
+    const p = logistic(logit(setPiece ? 0.42 : 0.5) + (this.aerial(target) - (marker ? this.aerial(marker) : 5)) / 3.5 + this.overload(boxZ, T, O) * 0.5 + pulled * 0.6);
     if (this.r.chance(p)) {
       this.rate(s, 0.05);
       this.lastPasser = s;
@@ -725,7 +800,8 @@ export class MatchSim {
       this.zone = boxZ;
       if (this.opts.commentary && this.r.chance(0.5)) this.line(setPiece ? 'corner-in' : 'cross', s, target);
       if (!setPiece) this.originNext = 'cross';
-      this.shoot(T, O, target, 'header');
+      // vundet klart i luften: friere hovedstød
+      this.shoot(T, O, target, 'header', clamp((this.aerial(target) - (marker ? this.aerial(marker) : 8)) / 70, -0.03, 0.06) + pulled * 0.035);
     } else {
       this.rate(marker, 0.05);
       this.zone = boxZ;
@@ -832,7 +908,9 @@ export class MatchSim {
     const base: Record<string, number> = { box: 0.145, boxWide: 0.055, long: 0.035, header: 0.095, oneOnOne: 0.33, cutback: 0.21, pen: 0.76, fk: 0.055, rebound: 0.24 };
     let xg = (base[kind] ?? 0.08) + bonus;
     if (kind === 'box' || kind === 'boxWide' || kind === 'header' || kind === 'long' || kind === 'cutback') {
-      xg *= clamp(1.28 - 0.16 * O.wDef[z], 0.55, 1.3);
+      // chancekvaliteten afhænger af forholdet mellem angribere og forsvarere i zonen: en ekstra
+      // midtstopper hjælper mod to angribere, men er spildt mod én (aftagende værdi)
+      xg *= clamp(1.24 - 0.15 * O.wDef[z], 0.55, 1.3);
       // mere plads når forsvaret er i undertal
       if (O.men < T.men) xg *= 1 + SPACE_XG * (T.men - O.men);
     }
@@ -969,8 +1047,10 @@ export class MatchSim {
     // Kontra
     if (O.ti.counter) {
       const rb = this.rb(O.idx);
-      if (rb <= 2 && this.r.chance(0.32)) {
-        const T2 = this.teams[1 - O.idx];
+      const T2 = this.teams[1 - O.idx];
+      // et offensivt hold med mange folk frem efterlader plads; mod en lav blok er der intet at kontre på
+      const exposed = clamp(0.03 + 0.1 * T2.ti.mentality + 0.05 * (T2.ti.closingDown - 1) + (T2.ti.counter ? -0.06 : 0), 0.02, 0.6);
+      if (rb <= 2 && this.r.chance(exposed)) {
         const runner = this.pick(O.zAtt[this.zoneFor(O.idx, Math.min(4, rb + 2), 1)], (x) => this.a(x, A.pace) ** 2);
         const chaser = this.pick(T2.zDef[this.zoneFor(O.idx, Math.min(4, rb + 2), 1)], (x) => this.a(x, A.pace));
         if (runner) {
@@ -1074,6 +1154,8 @@ export class MatchSim {
     let want = base;
     if (diff < 0 && this.minute >= 55) want = Math.min(4, base + (this.minute >= 75 || diff <= -2 ? 2 : 1));
     else if (diff > 0 && this.minute >= 70) want = Math.max(0, base - (diff === 1 && this.minute >= 82 ? 2 : 1));
+    // uafgjort sent i kampen: et hold der ikke er favorit, tager gerne det ene point
+    else if (diff === 0 && this.minute >= 72 && base <= 2) want = Math.max(0, base - 1);
     if (want === t.ti.mentality) return;
     const chasing = want > base;
     const ti: TeamInstructions = { ...t.ti, mentality: want, counter: chasing ? false : want < base || t.ti.counter, tempo: chasing ? 2 : t.ti.tempo };

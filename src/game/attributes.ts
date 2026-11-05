@@ -104,8 +104,10 @@ const SIDE_IDX = Object.fromEntries(SIDES.map((s, i) => [s, i])) as Record<Side,
 
 /** Hvor godt passer spilleren til pladsen (0-1). Kombinerer position og side som i CM. */
 export function slotFit(p: Player, slot: Slot): number {
-  const pr = p.pos[POS_IDX[slot.pos]] ?? 1;
+  let pr = p.pos[POS_IDX[slot.pos]] ?? 1;
   if (slot.pos === 'GK') return pr / 20;
+  // libero: en midtstopper kan spille den (moderne data har næsten ingen rene liberoer)
+  if (slot.pos === 'SW') pr = Math.max(pr, (p.pos[POS_IDX.D] ?? 1) * 0.92);
   const sr = p.side[SIDE_IDX[slot.side]] ?? 1;
   return (Math.min(pr, sr) * 0.7 + pr * 0.3) / 20;
 }
