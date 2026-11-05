@@ -9,7 +9,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { MAX_BID_ROUNDS, askingPrice, canPreContract, counterPackages, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
+import { MAX_BID_ROUNDS, askingPrice, canPreContract, counterPackages, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, releaseCost, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -129,7 +129,7 @@ function ModernPlayer({ id }: { id: number }) {
                     : <button onClick={() => setListOpen(true)}>{t('player.list')}</button>}
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
                   <button onClick={() => setLoanOut(true)} disabled={!!p.loan || !windowOpen()}>{t('player.loanOut')}</button>
-                  <button className="danger" onClick={async () => { if (await askConfirm(t('player.releaseConfirm'), { danger: true })) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
+                  <button className="danger" onClick={async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } }}>{t('player.release')}</button>
                 </div>
               </>
             )}

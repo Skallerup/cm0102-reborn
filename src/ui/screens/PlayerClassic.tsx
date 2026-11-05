@@ -11,7 +11,7 @@ import { GOOD_TRAITS, traits } from '../../game/personality';
 import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
-import { askingPrice, canPreContract, interestedClubs, nextWindow, windowOpen } from '../../game/transfers';
+import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
@@ -371,7 +371,7 @@ export function ClassicPlayer({ id }: { id: number }) {
     if (p.listed) items.push({ key: 'unlist', label: t('player.unlist'), onClick: () => dispatch({ t: 'listed', pid: p.id, price: null }) });
     items.push(
       { key: 'loan', label: t('player.loanOut'), disabled: !!p.loan || !open, title: closedTip, onClick: () => setLoanOut(true) },
-      { key: 'release', label: t('player.release'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm'), { danger: true })) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } } },
+      { key: 'release', label: t('player.release'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
     );
   }
   if (!g.draft && !mine && g.userClub > 0) {

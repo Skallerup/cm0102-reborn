@@ -303,7 +303,7 @@ export const da: Record<string, string> = {
   'player.asking': 'Udbudspris', 'player.unknown': 'Ukendt – scout ham', 'player.status': 'Status', 'player.injury': 'Skade',
   'player.ability': 'Evne', 'player.potential': 'Potentiale', 'player.knowledge': 'Kendskab', 'player.actions': 'Handlinger',
   'player.list': 'Sæt til salg', 'player.unlist': 'Fjern fra salgslisten', 'player.renew': 'Forlæng kontrakt', 'player.loanOut': 'Udlej',
-  'player.release': 'Ophæv kontrakt', 'player.releaseConfirm': 'Ophæv kontrakten? Du skal betale halvdelen af restlønnen.',
+  'player.release': 'Ophæv kontrakt', 'player.releaseConfirm': 'Vil du virkelig fritstille {player}? {club} skal betale {pay} i kompensation.', 'transfer.releaseBlocked': 'Bestyrelsen blokerer salg af {player}', 'transfer.releaseBlocked.body': 'Bestyrelsen i {club} har blokeret fritstillingen af {player}. Han anses for at være for værdifuld til at blive sluppet fri.',
   'player.bid': 'Byd', 'player.offerContract': 'Tilbyd kontrakt', 'player.preContract': 'Bosman: tilbyd fri kontrakt',
   'player.shortlist': 'Tilføj til shortlist', 'player.unshortlist': 'Fjern fra shortlist', 'player.sendScout': 'Send en scout…',
   'player.scoutSent': '{scout} er sendt for at se spilleren.', 'player.notes': 'Noter', 'player.attributes': 'Attributter',

@@ -135,7 +135,7 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     }
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
-    case 'release': releasePlayer(a.pid); return 'ok';
+    case 'release': return releasePlayer(a.pid);
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });

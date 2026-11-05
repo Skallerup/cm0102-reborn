@@ -619,23 +619,39 @@ export function setListPrice(pid: number, price: number | null) {
   p.listPrice = roundValue(Math.max(10_000, price));
 }
 
-export function releasePlayer(pid: number) {
+/** Kompensationen ved fritstilling: halvdelen af den resterende løn */
+export function releaseCost(p: Player): number {
+  if (!p.contract) return 0;
+  const weeks = Math.max(0, Math.round((new Date(p.contract.expires).getTime() - new Date(gs().date).getTime()) / (7 * 86400000)));
+  return Math.round(weeks * p.contract.wage * 0.5);
+}
+
+/** Bestyrelsen blokerer fritstilling af en af truppens mest værdifulde spillere (som i CM 01/02) */
+export function releaseBlocked(p: Player): boolean {
+  if (!p.club || p.value < 500_000) return false;
+  const vals = squad(p.club).map((x) => x.value).sort((a, b) => b - a);
+  return p.value >= (vals[4] ?? 0);
+}
+
+export function releasePlayer(pid: number): 'ok' | 'blocked' | 'error' {
   const g = gs();
   const p = g.players[pid];
-  if (!p || p.club !== g.userClub) return;
+  if (!p || p.club !== g.userClub) return 'error';
   const club = g.clubs[p.club];
-  if (p.contract) {
-    const weeks = Math.max(0, Math.round((new Date(p.contract.expires).getTime() - new Date(g.date).getTime()) / (7 * 86400000)));
-    const pay = Math.round(weeks * p.contract.wage * 0.5);
-    club.balance -= pay;
-    club.finance.other += pay;
+  if (releaseBlocked(p)) {
+    addNews({ cat: 'board', key: 'transfer.releaseBlocked', params: { player: pname(p), club: club.name }, link: { kind: 'player', id: p.id } });
+    return 'blocked';
   }
+  const pay = releaseCost(p);
+  club.balance -= pay;
+  club.finance.other += pay;
   fansOnDeparture(p, club, 'released');
   setClub(p, 0);
   p.contract = null;
   p.listed = false;
   if (g.tactic) g.tactic = { ...g.tactic, lineup: g.tactic.lineup.map((id) => (id === pid ? 0 : id)), bench: g.tactic.bench.filter((id) => id !== pid) };
   addNews({ cat: 'contract', key: 'transfer.released', params: { player: pname(p) } });
+  return 'ok';
 }
 
 /** Lønkrav ved forlængelse: en spiller, der har tøvet, vil have mere */

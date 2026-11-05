@@ -290,7 +290,7 @@ export const en: Record<string, string> = {
   'player.asking': 'Asking price', 'player.unknown': 'Unknown – scout him', 'player.status': 'Status', 'player.injury': 'Injury',
   'player.ability': 'Ability', 'player.potential': 'Potential', 'player.knowledge': 'Knowledge', 'player.actions': 'Actions',
   'player.list': 'Transfer list', 'player.unlist': 'Remove from list', 'player.renew': 'Renew contract', 'player.loanOut': 'Loan out',
-  'player.release': 'Release', 'player.releaseConfirm': 'Release him? You pay half of his remaining wages.',
+  'player.release': 'Release', 'player.releaseConfirm': 'Are you sure you want to release {player} on a free transfer? {club} will have to pay {pay} in compensation.', 'transfer.releaseBlocked': 'Board block {player} departure', 'transfer.releaseBlocked.body': 'The {club} board have blocked the free transfer of {player}. He is considered to be too valuable a player to release.',
   'player.bid': 'Make offer', 'player.offerContract': 'Offer contract', 'player.preContract': 'Bosman: offer free contract',
   'player.shortlist': 'Add to shortlist', 'player.unshortlist': 'Remove from shortlist', 'player.sendScout': 'Send a scout…',
   'player.scoutSent': '{scout} has been sent to watch him.', 'player.notes': 'Notes', 'player.attributes': 'Attributes',
