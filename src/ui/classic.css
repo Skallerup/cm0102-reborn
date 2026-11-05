@@ -599,3 +599,6 @@
 :root[data-skin='retro'] .draft-page .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
 :root[data-skin='retro'] .draft-page b, :root[data-skin='retro'] .draft-page strong { color: var(--cx-gold); }
 :root[data-skin='retro'] .draft-page .tag, :root[data-skin='retro'] .draft-page .chip, :root[data-skin='retro'] .draft-page .badge { border-radius: 0; }
+
+/* valgt spiller: klik på en tom plet på banen for at flytte hans plads */
+.cx-tac-pitch.moving { cursor: crosshair; }

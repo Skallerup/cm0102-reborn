@@ -38,14 +38,14 @@ export function Tactics() {
 }
 
 /** Pladsens betegnelse ud fra hvor den står på banen (x: 0 eget mål → 100 modstanderens, y: 0 venstre → 100 højre) */
-function slotAt(x: number, y: number): { pos: PosKey; side: Side } {
+export function slotAt(x: number, y: number): { pos: PosKey; side: Side } {
   const side: Side = y < 30 ? 'L' : y > 70 ? 'R' : 'C';
   const pos: PosKey = x < 15 && side === 'C' ? 'SW' : x < 27 ? 'D' : x < 36 ? (side === 'C' ? 'DM' : 'WB') : x < 56 ? 'M' : x < 70 ? 'AM' : 'ST';
   return { pos, side };
 }
 
 /** Navn til en egen formation ud fra pladserne, fx "4-1-2-3*" */
-function shapeName(slots: Slot[]): string {
+export function shapeName(slots: Slot[]): string {
   const n = { d: 0, dm: 0, m: 0, am: 0, st: 0 };
   for (const s of slots) {
     if (s.pos === 'GK') continue;

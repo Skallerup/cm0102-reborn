@@ -2,7 +2,7 @@
 // navn og fanerne Overview · With Ball · Without Ball. Til venstre de 11 (1-11), bænken (SB1 …) og resten af truppen
 // (grå); til højre banen med spillerne som cirkler. Klik en spiller i listen og derefter en plads (eller træk og
 // slip) for at sætte ham ind. Under "With Ball"/"Without Ball" vises holdets – og den valgte spillers – instruktioner.
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { roleScore, slotFit, slotRole } from '../../game/attributes';
 import { benchSize } from '../../game/rules';
@@ -14,6 +14,7 @@ import { CxDrop, titleColors, type DropItem } from '../classic';
 import { posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { shapeName, slotAt } from './Tactics';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
@@ -52,6 +53,14 @@ export function ClassicTactics() {
     change({ ...tac, lineup, bench });
     setPick(null); setSlotSel(null);
   };
+  /** Flyt en spillers plads på banen (egen formation, som i originalen): træk ham til en tom plet */
+  const moveSlot = (i: number, x: number, y: number) => {
+    if (i < 0 || tac.slots[i].pos === 'GK' || gs().draft) return;
+    const slots = tac.slots.slice();
+    slots[i] = { ...slotAt(x, y), x: Math.round(x), y: Math.round(y) };
+    change({ ...tac, slots, formation: shapeName(slots) });
+    setPick(null); setSlotSel(null);
+  };
   const toggleBench = (pid: number) => {
     if (tac.lineup.includes(pid)) return;
     if (tac.bench.includes(pid)) change({ ...tac, bench: tac.bench.filter((x) => x !== pid) });
@@ -80,7 +89,7 @@ export function ClassicTactics() {
   const tags = (p: Player) => [tac.captain === p.id && t('cl.tac.capt'), tac.penalties === p.id && t('cl.tac.pen'), tac.freeKicks === p.id && t('cl.tac.fk'), tac.corners === p.id && t('cl.tac.cor')].filter(Boolean).join(' ');
   const row = (p: Player, label: string, kind: 'xi' | 'bench' | 'rest', slot?: Slot) => (
     <div key={p.id} className={`cx-tac-row ${kind} ${pick === p.id ? 'on' : ''} ${!available(p) ? 'unavail' : ''}`} draggable
-      onDragStart={() => setDrag(p.id)} onDragEnd={() => setDrag(null)} onClick={() => clickRow(p)}>
+      onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(p.id)); setTimeout(() => setDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => setDrag(null), 0)} onClick={() => clickRow(p)}>
       <button className="cx-tac-num" title={kind === 'xi' ? undefined : t(kind === 'bench' ? 'cl.tac.fromBench' : 'cl.tac.toBench')}
         onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{label}</button>
       <span className="cx-tac-name" onDoubleClick={(e) => { e.stopPropagation(); nav({ name: 'player', id: p.id }); }}>{p.first ? `${p.first} ` : ''}{p.last}</span>
@@ -139,20 +148,35 @@ export function ClassicTactics() {
             </div>
           ) : <Instructions tac={tac} pane={pane} slot={slotSel ?? (pick !== null && tac.lineup.includes(pick) ? tac.lineup.indexOf(pick) : null)} byId={byId} change={change} />}
         </div>
-        <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag} />
+        <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
+          onMove={(x, y) => {
+            // sluppet (eller klikket) på en tom plet: en spiller på holdet flytter sin plads dertil
+            const i = drag !== null ? tac.lineup.indexOf(drag) : slotSel;
+            setDrag(null);
+            if (i !== null && i >= 0) moveSlot(i, x, y);
+          }} />
       </div>
       <div className="cx-tac-hint">{t(pick !== null ? 'cl.tac.hintPlace' : slotSel !== null ? 'cl.tac.hintPlayer' : 'cl.tac.hint')}</div>
     </div>
   );
 }
 
-function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag }: {
+function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove }: {
   tac: Tactic; byId: Map<number, Player>; sel: number | null; drag: number | null;
-  onSlot: (i: number) => void; onDrop: (i: number) => void; onDrag: (pid: number | null) => void;
+  onSlot: (i: number) => void; onDrop: (i: number) => void; onDrag: (pid: number | null) => void; onMove: (x: number, y: number) => void;
 }) {
   const col = titleColors(gs().userClub);
+  const ref = useRef<HTMLDivElement>(null);
+  const toPitch = (cx: number, cy: number) => {
+    const r = ref.current!.getBoundingClientRect();
+    const l = ((cx - r.left) / r.width) * 100, tp = ((cy - r.top) / r.height) * 100;
+    return { x: Math.max(10, Math.min(90, (97 - tp) / 0.92)), y: Math.max(4, Math.min(96, l)) };
+  };
   return (
-    <div className="cx-tac-pitch">
+    <div className={`cx-tac-pitch ${sel !== null ? 'moving' : ''}`} ref={ref}
+      onDragOver={(e) => { if (drag !== null && tac.lineup.includes(drag)) e.preventDefault(); }}
+      onDrop={(e) => { e.preventDefault(); const { x, y } = toPitch(e.clientX, e.clientY); onMove(x, y); }}
+      onClick={(e) => { if (sel === null || e.target !== e.currentTarget && !(e.target as Element).closest('svg')) return; const { x, y } = toPitch(e.clientX, e.clientY); onMove(x, y); }}>
       <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
         <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
           <rect x="1" y="1" width="66" height="98" /><line x1="1" y1="50" x2="67" y2="50" /><circle cx="34" cy="50" r="9" />
@@ -170,8 +194,8 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag }: {
         const gk = s.pos === 'GK';
         return (
           <div key={i} className={`cx-tac-slot ${sel === i ? 'on' : ''} ${drag !== null ? 'drop' : ''} ${p ? '' : 'empty'}`} style={{ left: `${left(s)}%`, top: `${top(s)}%` }}
-            onClick={() => onSlot(i)} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onDrop(i); }}
-            draggable={!!p} onDragStart={() => p && onDrag(p.id)} onDragEnd={() => onDrag(null)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
+            onClick={(e) => { e.stopPropagation(); onSlot(i); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(i); }}
+            draggable={!!p} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
             <span className="cx-tac-dot" style={gk ? { background: '#fff21f', color: '#10164e' } : col.neutral ? undefined : { background: col.bg, color: col.fg }}>{i + 1}</span>
             <span className="cx-tac-nm">{p ? p.last : slotName(s)}</span>
           </div>
