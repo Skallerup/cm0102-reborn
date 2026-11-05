@@ -33,6 +33,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-05 – Admin "New careers": kolonnen Progress (sæson nr., spildato, ny klub, ligaplacering). Pulsen sender
+  `prog` (gid, dato, klub, placering) → Redis-hash `prog`; karrieren gemmer `gid`/`start` ved start. Kun nye karrierer.
 - 2026-11-05 – Admin "New careers": land (flag) pr. karriere fra Vercels `x-vercel-ip-country` (kun landekoden gemmes,
   ikke IP'en) og en landeoversigt. Gælder karrierer startet herfra.
 - 2026-11-05 – Squad Numbers: `Player.number`, læst fra CM-databaserne (byte 4 i spillerposten, felt `number` i

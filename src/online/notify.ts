@@ -3,6 +3,8 @@
 // fanen er synlig, viser i admin, om spilleren er online. Fire-and-forget: fejl og manglende server ignoreres.
 import { rankingAvailable } from './rank';
 import { getTheme } from '../ui/theme';
+import { gs, hasGame } from '../game/state';
+import { sortTable } from '../game/competitions';
 
 const VID = 'cm0102.visitor';
 /** Anonymt id for denne browser (ingen personoplysninger) */
@@ -19,7 +21,22 @@ const post = (body: unknown) => fetch('/api/notify', { method: 'POST', headers: 
 
 export function notifyNewCareer(info: { manager: string; club: string; league?: string; nation?: string; challenge?: string; bots: number; db: string; lang: string }): void {
   if (!rankingAvailable()) return;
-  void post({ ...info, vid: visitorId(), theme: theme() });
+  // spillets id og startdato, så admin kan følge, hvor langt karrieren er nået (pulsen nedenfor)
+  const g = hasGame() ? gs() : null;
+  void post({ ...info, vid: visitorId(), theme: theme(), gid: g?.id, start: g?.date });
+}
+
+/** Hvor langt det åbne singleplayer-spil er: spildato, klub og placering i ligaen (vises i admin under New careers) */
+function progress(): { gid: string; date: string; club: string; pos: number } | undefined {
+  try {
+    if (!hasGame()) return undefined;
+    const g = gs();
+    if (g.humans?.length || g.draft || !g.id) return undefined;
+    const c = g.clubs[g.userClub];
+    const comp = c ? g.comps[c.league] : undefined;
+    const pos = comp?.table?.length ? sortTable(comp.table).findIndex((r) => r.club === c!.id) + 1 : 0;
+    return { gid: g.id, date: g.date, club: c?.short ?? '', pos };
+  } catch { return undefined; }
 }
 
 let last = 0;
@@ -27,7 +44,7 @@ function ping() {
   if (document.visibilityState !== 'visible' || Date.now() - last < 100_000) return;
   last = Date.now();
   const vid = visitorId();
-  if (vid) void post({ op: 'ping', vid, theme: theme() });
+  if (vid) void post({ op: 'ping', vid, theme: theme(), prog: progress() });
 }
 
 /** Start pulsen (kaldes én gang fra main.tsx) */

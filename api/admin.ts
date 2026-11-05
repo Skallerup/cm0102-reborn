@@ -128,6 +128,13 @@ export async function GET(request: Request) {
     const seen = vids.length ? ((await redis.zmscore('seen', vids)) ?? []) : [];
     const seenBy = new Map(vids.map((v, i) => [v, Number(seen[i] ?? 0)]));
     for (const r of rows) if (r.vid) r.seen = seenBy.get(r.vid) || undefined;
+    // hvor langt hver karriere er nået (sidste puls fra spillet)
+    const gids = [...new Set(rows.map((r) => (r as { gid?: string }).gid).filter((v): v is string => !!v))];
+    const progs = gids.length ? ((await redis.hmget<Record<string, unknown>>('prog', ...gids)) ?? {}) : {};
+    for (const r of rows as { gid?: string; prog?: unknown }[]) {
+      const v = r.gid ? (progs as Record<string, unknown>)[r.gid] : null;
+      if (v) r.prog = typeof v === 'string' ? JSON.parse(v) : v;
+    }
     const days: Record<string, number> = {};
     for (let i = 0; i < 14; i++) days[new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)] = 0;
     const counts = await Promise.all(Object.keys(days).map((d) => redis.get<number>(`nc:d:${d}`)));

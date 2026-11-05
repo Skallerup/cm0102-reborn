@@ -53,7 +53,7 @@ interface Overview {
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
-interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string }
+interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string; start?: string; prog?: { date: string; club: string; pos: number; at: number } }
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
@@ -289,6 +289,17 @@ function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
 const flag = (cc: string) => cc.length === 2 ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) : '';
 const countryName = (cc?: string) => { try { return cc ? new Intl.DisplayNames(['en'], { type: 'region' }).of(cc) ?? cc : ''; } catch { return cc ?? ''; } };
 
+/** Hvor langt karrieren er nået: sæson nr., spildato, klub (hvis skiftet) og placering */
+function progress(r: NewCareer) {
+  const p = r.prog;
+  if (!p) return <span className="muted">–</span>;
+  // sæsonerne starter 1. juli
+  const seasonOf = (d: string) => Number(d.slice(0, 4)) - (Number(d.slice(5, 7)) < 7 ? 1 : 0);
+  const n = r.start ? seasonOf(p.date) - seasonOf(r.start) + 1 : 0;
+  const d = new Date(`${p.date}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  return <>{n > 0 && <b>Season {n}</b>} <span className="muted">{d}{p.club && p.club !== r.club ? ` · ${p.club}` : ''}{p.pos ? ` · ${p.pos}.` : ''}</span></>;
+}
+
 function NewCareersTab() {
   type Data = { rows: NewCareer[]; days: Record<string, number>; online?: number; now?: number };
   const [data, setData] = useState<Data | null>(null);
@@ -331,13 +342,14 @@ function NewCareersTab() {
       <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now</span>} className="flush">
         {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
-            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Status</th></tr></thead>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th></tr></thead>
               <tbody>{data.rows.map((r, i) => (
                 <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
                   <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.challenge || ''}</td>
                   <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td>
                   <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}</td><td className="muted">{r.lang}</td>
                   <td className="nowrap" title={countryName(r.country)}>{r.country ? <>{flag(r.country)} {r.country}</> : <span className="muted">–</span>}</td>
+                  <td className="nowrap" title={r.prog ? `Game date ${r.prog.date} · updated ${ago(new Date(r.prog.at).toISOString())}` : ''}>{progress(r)}</td>
                   <td className="nowrap">{!r.vid ? <span className="muted">–</span> : r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000
                     ? <span style={{ color: '#16a34a', fontWeight: 600 }}>● Online</span>
                     : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td></tr>

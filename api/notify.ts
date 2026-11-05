@@ -1,6 +1,6 @@
 // Logger, når en ny singleplayer-karriere startes, så udvikleren kan se det i admin (fanen "New careers").
 // Der sendes ingen mail. Gemmes i Upstash Redis: nc:list (seneste 1000), nc:total og nc:d:{dag}.
-// { op: 'ping', vid } er browserens puls (hvert 2. minut, mens fanen er synlig): sorteret sæt "seen" (vid → tid).
+// { op: 'ping', vid, prog? } er browserens puls (prog = spildato/klub/placering for det åbne spil → hash "prog") (hvert 2. minut, mens fanen er synlig): sorteret sæt "seen" (vid → tid).
 // Begrænset pr. IP, så ingen kan fylde listen op. Landet (x-vercel-ip-country) gemmes – selve IP-adressen gemmes ikke.
 import { Redis } from '@upstash/redis';
 
@@ -26,6 +26,13 @@ export async function POST(request: Request) {
     if (hits > 150) return json({ error: 'limit' }, 429);
     const now = Date.now();
     await redis.zadd('seen', { score: now, member: vid });
+    // fremskridt i det åbne spil (singleplayer): spildato, klub og ligaplacering pr. spil-id
+    const pr = body.prog as Record<string, unknown> | undefined;
+    const gid = clip(pr?.gid, 40).replace(/[^\w-]/g, '');
+    const date = clip(pr?.date, 10);
+    if (gid && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      await redis.hset('prog', { [gid]: JSON.stringify({ date, club: clip(pr?.club, 30), pos: Math.max(0, Math.min(99, Number(pr?.pos) || 0)), at: now }) });
+    }
     if (Math.random() < 0.01) await redis.zremrangebyscore('seen', 0, now - 30 * 86_400_000);
     return json({ ok: true });
   }
@@ -45,6 +52,7 @@ export async function POST(request: Request) {
     bots: Math.max(0, Math.min(99, Number(body.bots) || 0)), db: clip(body.db, 20) || 'standard', lang: clip(body.lang, 5),
     theme: body.theme === 'classic' ? 'classic' : body.theme === 'modern' ? 'modern' : '',
     vid: clip(body.vid, 24).replace(/[^a-z0-9]/gi, ''),
+    gid: clip(body.gid, 40).replace(/[^\w-]/g, ''), start: /^\d{4}-\d{2}-\d{2}$/.test(String(body.start)) ? String(body.start) : '',
     // kun landet (fra Vercels geo-header) – IP-adressen gemmes ikke
     country: (request.headers.get('x-vercel-ip-country') ?? '').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 2),
   };
