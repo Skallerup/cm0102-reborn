@@ -6,7 +6,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { A, ATTRS, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
 import { act as dispatch } from '../../game/actions';
 import { agentOf } from '../../game/agents';
-import { ageOn } from '../../game/dates';
+import { ageOn, daysBetween } from '../../game/dates';
 import { GOOD_TRAITS, traits } from '../../game/personality';
 import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import { avgRating } from '../../game/season';
@@ -32,7 +32,7 @@ import {
   ReformPanel, ScoutReport, TalkPanel, WantsAway, clauseText,
 } from './PlayerScreen';
 import { IncomingOffersFor } from './Transfers';
-import { TransferStatusPanel } from './TransferStatusClassic';
+import { DisciplinePanel, TransferStatusPanel } from './TransferStatusClassic';
 
 type Tab = 'profile' | 'injuries' | 'contract' | 'transfer' | 'history';
 type ActionItem = DropItem;
@@ -338,6 +338,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [editOpen, setEditOpen] = useState(false);
   const [trainOpen, setTrainOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
+  const [discOpen, setDiscOpen] = useState(false);
   useEffect(() => setMsg(''), [id]);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
@@ -364,6 +365,7 @@ export function ClassicPlayer({ id }: { id: number }) {
       { key: 'train', label: `${t('nav.training')}…`, onClick: () => setTrainOpen(true) },
       { key: 'renew', label: t('player.renew'), onClick: () => setNeg({ renew: p.id }) },
       { key: 'status', label: t('cl.ts.menu'), onClick: () => setStatusOpen(true) },
+      { key: 'disc', label: t('cl.dp.menu'), disabled: !!p.lastTalk && daysBetween(p.lastTalk, g.date) < 10, title: t('talk.r.tooSoon'), onClick: () => setDiscOpen(true) },
       p.listed
         ? { key: 'list', label: t('list.changePrice'), onClick: () => setListOpen(true) }
         : { key: 'list', label: t('player.list'), onClick: () => setListOpen(true) },
@@ -404,6 +406,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
 
+  if (discOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
   if (statusOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><TransferStatusPanel p={p} onClose={() => setStatusOpen(false)} /></div>;
 
   return (

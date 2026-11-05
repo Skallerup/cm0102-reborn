@@ -13,7 +13,7 @@ import { takeOverClub } from './newgame';
 import { activateNation, playPendingAsAi, submitMatchResult } from './sim';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff, raiseStaff } from './staff';
-import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
+import { interact, talkToPlayer, teamTalk, type DisciplineReason, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
 import { applyPress } from './press';
 import { answerComplaint } from './will';
@@ -68,7 +68,7 @@ export type Action =
   | { t: 'onboard'; step: 'weak' | 'style' | 'needs' | 'brief' | 'skip'; style?: StyleKey; needs?: string[] }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
-  | { t: 'interact'; pid: number; kind: TalkKind }
+  | { t: 'interact'; pid: number; kind: TalkKind; reason?: DisciplineReason }
   | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
   | { t: 'matchTalk'; fixture: number; stage: TalkStage; tone: TalkTone; pids: number[]; diff: number; ratings: Record<number, number>; individual?: Record<number, TalkTone> }
   | { t: 'sponsor'; kind: 'safe' | 'bonus' | 'ambitious' }
@@ -190,7 +190,7 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     }
     case 'talk': return talkToPlayer(a.pid, a.choice);
-    case 'interact': return interact(a.pid, a.kind);
+    case 'interact': return interact(a.pid, a.kind, a.reason);
     case 'teamTalk': return teamTalk(a.kind);
     case 'matchTalk': { const ex = matchExpectation(a.fixture); return giveTalk({ stage: a.stage, fixture: a.fixture, e: ex.e, big: ex.big, diff: a.diff, ratings: a.ratings }, a.tone, a.pids, a.individual); }
     case 'sponsor': return chooseSponsor(a.kind);

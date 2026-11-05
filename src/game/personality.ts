@@ -220,7 +220,9 @@ export { finalOrder };
 
 // ---------- samtaler med spillerne ----------
 
-export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'fine' | 'fineHeavy' | 'drop' | 'demand' | 'chat' | 'future';
+export type TalkKind = 'praise' | 'criticise' | 'encourage' | 'warning' | 'fine' | 'fineHeavy' | 'drop' | 'demand' | 'chat' | 'future';
+/** Begrundelsen for en disciplinær straf (Discipline Player i CM 01/02) */
+export type DisciplineReason = 'none' | 'unprofessional' | 'dismissal' | 'violent' | 'poor';
 
 function recentForm(p: Player): number {
   const f = p.form.slice(-3);
@@ -228,7 +230,7 @@ function recentForm(p: Player): number {
 }
 
 /** Ros, kritik, opmuntring eller straf. Reaktionen afhænger af form, personlighed og om det er fortjent. */
-export function interact(pid: number, kind: TalkKind): { key: string; mood: 'good' | 'bad' | 'neutral' } {
+export function interact(pid: number, kind: TalkKind, reason?: DisciplineReason): { key: string; mood: 'good' | 'bad' | 'neutral' } {
   const g = gs();
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
@@ -242,7 +244,13 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
   const hot = t.includes('troublemaker') || t.includes('temperamental');
   const bump = (d: number) => { p.morale = Math.max(1, Math.min(20, p.morale + d)); };
   const fire = (days: number) => { p.fired = addDays(g.date, days); };
-  const misbehaved = (p.lastIncident && daysBetween(p.lastIncident, g.date) <= 45) || (p.lastRed && daysBetween(p.lastRed, g.date) <= 30);
+  const incident = !!p.lastIncident && daysBetween(p.lastIncident, g.date) <= 45;
+  const red = !!p.lastRed && daysBetween(p.lastRed, g.date) <= 30;
+  // en angivet begrundelse skal passe; uden begrundelse vurderer spilleren selv, om han har fortjent det
+  const misbehaved = !reason || reason === 'none' ? incident || red
+    : reason === 'dismissal' ? red
+    : reason === 'poor' ? played && form < 6.4
+    : incident;
 
   switch (kind) {
     case 'praise':
@@ -265,6 +273,17 @@ export function interact(pid: number, kind: TalkKind): { key: string; mood: 'goo
       reformNudge(p, 2);
       bump(0.5);
       return { key: 'talk.r.encourageFine', mood: 'neutral' };
+    case 'warning':
+      if (misbehaved) {
+        bump(-0.5);
+        p.lastIncident = undefined;
+        p.lastRed = undefined;
+        reformNudge(p, 6);
+        return { key: 'talk.r.warnAccepted', mood: 'neutral' };
+      }
+      bump(-2);
+      p.unhappy = Math.min(100, (p.unhappy ?? 0) + 15);
+      return { key: 'talk.r.warnUnjust', mood: 'bad' };
     case 'fine':
     case 'fineHeavy': {
       const weeks = kind === 'fine' ? 1 : 2;

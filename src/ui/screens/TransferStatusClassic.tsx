@@ -1,6 +1,7 @@
 // "Set Staff Transfer Status" (som i CM 01/02): udbudspris (− / + / Auto), status i truppen og transferstatus.
 import { useState } from 'react';
 import { act } from '../../game/actions';
+import type { DisciplineReason } from '../../game/personality';
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { askingPrice } from '../../game/transfers';
 import type { Player } from '../../game/types';
@@ -54,6 +55,42 @@ export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => 
       <div className="cx-ts-buttons">
         <button onClick={onClose}>{t('common.back')}</button>
         <button className="primary" onClick={save}>{t('cl.ts.set')}</button>
+      </div>
+    </div>
+  );
+}
+
+const DISCIPLINE = ['warning', 'fine', 'fineHeavy'] as const;
+const REASONS: DisciplineReason[] = ['none', 'unprofessional', 'dismissal', 'violent', 'poor'];
+
+/** "Discipline Player" (som i CM 01/02): straf med − / + og en begrundelse */
+export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: () => void; onDone: (msg: string) => void }) {
+  const [i, setI] = useState(0);
+  const [reason, setReason] = useState<DisciplineReason>('none');
+  const kind = DISCIPLINE[i];
+  const wage = p.contract?.wage ?? 0;
+  const name = `${p.first} ${p.last}`.trim();
+  const confirm = () => {
+    const r = act<{ key: string }>({ t: 'interact', pid: p.id, kind, reason });
+    onDone(t(r.key, { player: name }));
+  };
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.dp.title')}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.dp.intro', { player: name })}</p>
+        <div className="cx-ts-price">
+          <span className="cx-ts-label">{t('cl.dp.action')}</span>
+          <button className="cx-pm" onClick={() => setI((i + DISCIPLINE.length - 1) % DISCIPLINE.length)} aria-label="-">−</button>
+          <span className="cx-ts-val wide">{t(`cl.dp.k.${kind}`, { fee: money(kind === 'fine' ? wage : wage * 2) })}</span>
+          <button className="cx-pm" onClick={() => setI((i + 1) % DISCIPLINE.length)} aria-label="+">+</button>
+        </div>
+        <div className="cx-ts-head">{t('cl.dp.reason')}</div>
+        {REASONS.map((r) => <button key={r} className={`cx-ts-opt ${reason === r ? 'on' : ''}`} onClick={() => setReason(r)}>{t(`cl.dp.r.${r}`)}</button>)}
+      </div>
+      <div className="cx-ts-buttons">
+        <button onClick={onClose}>{t('common.cancel')}</button>
+        <button className="primary" onClick={confirm}>{t('cl.dp.confirm')}</button>
       </div>
     </div>
   );

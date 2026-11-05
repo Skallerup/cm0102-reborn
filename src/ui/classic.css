@@ -677,3 +677,4 @@
 .cx-ts-buttons button { min-height: 40px; font-size: 17px; font-weight: 800; }
 @media (max-width: 760px) { .cx-ts-body { margin: 0 6px; padding: 8px; } .cx-ts-label { min-width: 0; } .cx-ts-price { margin-left: 0; flex-wrap: wrap; } .cx-ts-opt { margin-left: 12px; font-size: 14px; } .cx-ts-head { margin-left: 0; } }
 :root[data-skin='retro'] .cx-ts-buttons button { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; box-shadow: none; }
+.cx-ts-val.wide { min-width: 300px; }
