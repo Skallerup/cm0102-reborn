@@ -561,7 +561,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       fansOnDeparture(x, buyer, 'sold', swapWorth(x.id, seller.id));
       recordMove(x, seller.id, swapWorth(x.id, seller.id), false, true);
       x.contract = { wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` };
-      x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.renewal = undefined; x.complaint = undefined;
+      x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.squadStatus = undefined; x.loanListed = undefined; x.renewal = undefined; x.complaint = undefined;
       setClub(x, seller.id);
       x.joined = g.date;
       asOwner(buyer.id, () => {
@@ -575,6 +575,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   rankCacheDate = '';
   p.listed = false;
   p.listPrice = undefined;
+  p.squadStatus = undefined;
+  p.loanListed = undefined;
   p.wantsAway = false;
   p.promiseUntil = undefined;
   p.renewal = undefined;
@@ -1290,13 +1292,16 @@ export function aiBidsForListed() {
   const m = month(g.date);
   const chance = m === 7 || m === 8 || m === 1 ? 0.2 : 0.1;
   for (const p of squad(g.userClub)) {
-    if (!p.listed || p.loan || p.contract?.futureClub) continue;
+    // transferlistet, på udlejningslisten eller "ikke nødvendig" i truppen (det rygtes – færre bud)
+    const surplus = p.squadStatus === 'surplus';
+    if (!(p.listed || p.loanListed || surplus) || p.loan || p.contract?.futureClub) continue;
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
+    const loanOnly = !p.listed && !!p.loanListed;
     if (g.offers.filter((o) => o.seller === g.userClub && o.status === 'pending' && !isHumanClub(o.buyer)).length >= 3) break;
     const ask = askingPrice(p);
     // lav udbudspris i forhold til værdien gør spilleren ekstra attraktiv
     const attract = Math.max(0.25, Math.min(3, Math.pow(p.value / Math.max(1, ask), 1.6)));
-    if (!rng.chance(Math.min(0.75, chance * attract))) continue;
+    if (!rng.chance(Math.min(0.75, chance * attract * (p.listed || loanOnly ? 1 : 0.4)))) continue;
     const role = GROUP[naturalRole(p)];
     const cands = Object.values(g.clubs).filter((c) => {
       if (c.id === g.userClub || isHumanClub(c.id)) return false;
@@ -1310,10 +1315,12 @@ export function aiBidsForListed() {
     const cheap = ask < p.value * 0.9;
     const fee = Math.max(10_000, roundValue(Math.min(club.transferBudget, ask) * (cheap ? rng.range(0.92, 1.02) : rng.range(0.72, 0.98))));
     const maxFee = roundValue(Math.min(club.transferBudget, Math.max(fee, ask * rng.range(0.95, 1.12), p.value * rng.range(0.9, 1.2))));
-    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
+    const o: TransferOffer = loanOnly
+      ? { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee: 0, loan: true, status: 'pending', created: g.date, respondBy: addDays(g.date, 5) }
+      : { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee };
     g.offers.push(o);
     noteInterest(o.buyer, o.player);
-    addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
+    addNews({ cat: 'transfer', key: loanOnly ? 'transfer.incomingLoan' : 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
   }
 }
 

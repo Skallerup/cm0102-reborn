@@ -28,6 +28,7 @@ import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
 import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
+import type { SquadStatus } from './squadStatus';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -35,6 +36,7 @@ export type Action =
   | { t: 'training'; pid: number; key: string }
   | { t: 'trainingAll'; key: string }
   | { t: 'listed'; pid: number; price?: number | null }
+  | { t: 'squadStatus'; pid: number; status: SquadStatus | null; loanListed: boolean }
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
@@ -125,6 +127,13 @@ export function applyAction(a: Action): unknown {
       if (a.price === undefined) toggleListed(a.pid);
       else setListPrice(a.pid, a.price);
       return 'ok';
+    case 'squadStatus': {
+      const p = g.players[a.pid];
+      if (p?.club !== g.userClub) return 'error';
+      p.squadStatus = a.status ?? undefined;
+      p.loanListed = a.loanListed || undefined;
+      return 'ok';
+    }
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
     case 'release': releasePlayer(a.pid); return 'ok';
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);

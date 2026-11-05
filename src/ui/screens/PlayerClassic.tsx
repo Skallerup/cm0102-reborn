@@ -32,6 +32,7 @@ import {
   ReformPanel, ScoutReport, TalkPanel, WantsAway, clauseText,
 } from './PlayerScreen';
 import { IncomingOffersFor } from './Transfers';
+import { TransferStatusPanel } from './TransferStatusClassic';
 
 type Tab = 'profile' | 'injuries' | 'contract' | 'transfer' | 'history';
 type ActionItem = DropItem;
@@ -336,6 +337,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [listOpen, setListOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [trainOpen, setTrainOpen] = useState(false);
+  const [statusOpen, setStatusOpen] = useState(false);
   useEffect(() => setMsg(''), [id]);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
@@ -361,6 +363,7 @@ export function ClassicPlayer({ id }: { id: number }) {
       { key: 'h-own', head: t('cl.pl.actSquad') },
       { key: 'train', label: `${t('nav.training')}…`, onClick: () => setTrainOpen(true) },
       { key: 'renew', label: t('player.renew'), onClick: () => setNeg({ renew: p.id }) },
+      { key: 'status', label: t('cl.ts.menu'), onClick: () => setStatusOpen(true) },
       p.listed
         ? { key: 'list', label: t('list.changePrice'), onClick: () => setListOpen(true) }
         : { key: 'list', label: t('player.list'), onClick: () => setListOpen(true) },
@@ -400,6 +403,8 @@ export function ClassicPlayer({ id }: { id: number }) {
   const tabs: [Tab, string][] = [['profile', t('cl.pl.profile')], ['injuries', t('cl.pl.injuries')]];
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
+
+  if (statusOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><TransferStatusPanel p={p} onClose={() => setStatusOpen(false)} /></div>;
 
   return (
     <div>

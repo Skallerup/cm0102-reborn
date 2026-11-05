@@ -40,6 +40,7 @@ import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
 import { resolveStaffBids } from './staff';
 import { rivalryAfterMatch } from './rivalry';
+import { unhappyMult } from './squadStatus';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -230,7 +231,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {
       if (!played.has(p.id) && p.banned > 0) p.banned--;
-      if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1));
+      if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1) * unhappyMult(p));
       else if (played.has(p.id)) p.unhappy = Math.max(0, (p.unhappy ?? 0) - 5);
     }
   }

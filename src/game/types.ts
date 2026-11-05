@@ -1,3 +1,4 @@
+import type { SquadStatus } from './squadStatus';
 // Central datamodel for hele spillet. Alt i GameState skal kunne serialiseres (gemmes i IndexedDB).
 import type { PressConf } from './press';
 import type { SeasonScore } from './rating';
@@ -115,6 +116,9 @@ export interface Player {
   dev?: { d: string; a: number[] }[];
   /** Udbudspris sat af manageren når spilleren er til salg */
   listPrice?: number;
+  /** Status i truppen sat af manageren (Squad Status) og udlejningsliste */
+  squadStatus?: SquadStatus;
+  loanListed?: boolean;
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
   loan: { from: number; until: string; share?: number; fee?: number; option?: number } | null;
   stats: SeasonStats;
