@@ -9,6 +9,52 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.14.0',
+    date: '2026-11-05',
+    title: { da: 'Ny matchmotor, flere CM 01/02-skærme og klassiske indstillinger', en: 'New match engine, more CM 01/02 screens and classic settings' },
+    items: [
+      { da: 'Matchmotoren er bygget om: taktikken betyder noget – svage zoner bliver søgt, spillerne mødes mand mod mand, instruktioner har en pris, og AI-managerne læser modstanderens spillere', en: "The match engine has been rebuilt: tactics matter – weak zones are targeted, players duel man to man, instructions come at a price and AI managers read the opposition's players" },
+      { da: 'Nyt i kampene fra CM 01/02: navngivne dommere, selvmål, tillægstid, målmandsreturer, det svage ben, lave indlæg, dødboldsvarianter, banens tilstand, boldfordeler og target-angriber samt spillerordrer pr. spiller', en: 'New in matches from CM 01/02: named referees, own goals, stoppage time, goalkeeper rebounds, the weaker foot, low crosses, set-piece variations, pitch condition, playmaker and target man, and individual player instructions' },
+      { da: 'Flere uafgjorte: holdet bagud kæmper til det sidste, og et hold med en klar føring slapper af', en: 'More draws: the team behind fights to the end, and a team with a clear lead eases off' },
+      { da: 'Den originale 2001/02-database spiller nu som det originale CM 01/02 (målt på en hel sæson i originalen): flere mål, stærkere hjemmebane, færre kort og hjørnespark, og gode forsvar lukker chancer', en: 'The original 2001/02 database now plays like the original CM 01/02 (measured on a full season in the original): more goals, a stronger home advantage, fewer cards and corners, and good defences shut chances down' },
+      { da: 'Klassisk live-kamp: Match Overview som i CM 01/02 med kommentarbjælke i holdets farver, boldbesiddelse de sidste 5 minutter, dommer og vejr', en: "Classic live match: Match Overview as in CM 01/02 with a commentary bar in the team's colours, possession over the last 5 minutes, referee and weather" },
+      { da: 'Klassisk taktik: flyt spillernes pladser på banen ved at trække eller klikke', en: "Classic tactics: move players' positions on the pitch by dragging or clicking" },
+      { da: 'Klassisk: cup- og Europa-turneringer med Rounds, Results, Fixtures, Schedule, Seedings, Team Stats, Player Stats og History', en: 'Classic: cup and European competitions with Rounds, Results, Fixtures, Schedule, Seedings, Team Stats, Player Stats and History' },
+      { da: 'Klassisk: landets skærme – Manager Stats (omdømme i landet), Job Information og Transfers pr. måned – også fra managermenuen', en: "Classic: the nation's screens – Manager Stats (reputation in the country), Job Information and Transfers by month – also from the manager menu" },
+      { da: 'Set Transfer Status: udbudspris, status i truppen og udlejningsliste. Status styrer, hvor hurtigt spilleren bliver utilfreds på bænken, og giver bud (også lejebud)', en: 'Set Transfer Status: asking price, squad status and loan list. The status controls how quickly a player gets unhappy on the bench and brings in bids (loan bids too)' },
+      { da: 'Discipline Player: officiel advarsel eller bøde med begrundelse – en forkert begrundelse gør straffen uretfærdig', en: 'Discipline Player: official warning or fine with a reason – the wrong reason makes the punishment unfair' },
+      { da: 'Fritstilling viser kompensationen, og bestyrelsen blokerer fritstilling af truppens mest værdifulde spillere', en: "Releasing a player shows the compensation, and the board blocks releasing the squad's most valuable players" },
+      { da: 'Stabsprofil med Action-menu (ansæt, køb fri, fyr, se klubben) – et klik på en stabsperson viser nu hans egen profil. Funds åbner økonomien', en: 'Staff profile with an Action menu (hire, buy out, sack, view club) – clicking a staff member now shows their own profile. Funds opens the finances' },
+      { da: 'Klassisk tema (fællesskabets ønske): klubbens logo i titelbjælken og fire skrifttyper under Game Options → Settings', en: 'Classic theme (community request): the club crest in the title bar and four fonts under Game Options → Settings' },
+    ],
+  },
+  {
+    version: '0.13.0',
+    date: '2026-11-04',
+    title: { da: 'Klassisk CM 01/02-tema, konti og flere sprog', en: 'Classic CM 01/02 theme, accounts and more languages' },
+    items: [
+      { da: 'Klassisk tema med CM 01/02-skærme og -baggrunde: managermenu, Player & Staff Search, Find, taktik, andre klubbers trup og spilindstillinger – også på startmenuen og som arbejdsløs', en: "Classic theme with CM 01/02 screens and backgrounds: manager menu, Player & Staff Search, Find, tactics, other clubs' squads and game settings – also on the start menu and while unemployed" },
+      { da: 'Vælg udseende (moderne eller klassisk) når du starter et nyt spil', en: 'Choose the look (modern or classic) when you start a new game' },
+      { da: 'Konti med login via e-mail (link eller kode) og gemte spil i skyen på tværs af enheder', en: 'Accounts with e-mail login (link or code) and cloud saves across devices' },
+      { da: 'Spansk, fransk, tysk, italiensk, brasiliansk portugisisk og tyrkisk', en: 'Spanish, French, German, Italian, Brazilian Portuguese and Turkish' },
+      { da: 'Fællesskabets hub: Hall of Fame, legender, databaserettelser, feed, baggrundspakker, credits og Discord', en: 'Community hub: Hall of Fame, legends, database fixes, feed, background packs, credits and Discord' },
+      { da: 'Spillernes karriere fra CM 01/02-databaserne, danske liga- og klubnavne og økonomi for andre klubber', en: 'Player careers from the CM 01/02 databases, Danish league and club names, and finances for other clubs' },
+      { da: 'Udfordringer med de store ligaer og klassiske klubber', en: 'Challenges with the big leagues and classic clubs' },
+      { da: 'Nyt domæne: cm0102reborn.com', en: 'New domain: cm0102reborn.com' },
+      { da: 'Rettet: alle stadioner havde 120.000 pladser', en: 'Fixed: every stadium had 120,000 seats' },
+    ],
+  },
+  {
+    version: '0.12.0',
+    date: '2026-11-02',
+    title: { da: 'Nye databaser: 2026/27 og den originale CM 01/02', en: 'New databases: 2026/27 and the original CM 01/02' },
+    items: [
+      { da: 'Ny standarddatabase (sæson 2026/27) med UEFA-ligafasen', en: 'New default database (season 2026/27) with the UEFA league phase' },
+      { da: 'Den originale CM 01/02-database (3.9.68) kan vælges, når du starter et nyt spil', en: 'The original CM 01/02 database (3.9.68) can be chosen when you start a new game' },
+      { da: 'Flere klublogoer, og stjerne ved truppens tre bedste spillere', en: "More club crests, and a star next to the squad's three best players" },
+    ],
+  },
+  {
     version: '0.11.0',
     date: '2026-10-22',
     title: { da: 'Draft-liga: auktion, ekspertens karakterer og draftkort', en: 'Draft League: auctions, expert grades and draft cards' },
