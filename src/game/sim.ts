@@ -1,7 +1,9 @@
 // Spillets dag-for-dag-løkke.
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
-import { needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
+import { A } from './attributes';
+import { cmDatabase } from './newgame';
+import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
 import { addDays, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
@@ -18,7 +20,7 @@ import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
-import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
+import type { Fixture, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews } from './transfers';
 import { afterAppearance } from './clauses';
@@ -65,7 +67,16 @@ export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
   const base = newTactic(plan.formation ?? formation, mentality);
   if (mentality <= 1) base.team.counter = true;
   base.team = { ...base.team, ...plan.team };
-  return autoSelect(base, squad(clubId));
+  const t = autoSelect(base, squad(clubId));
+  // roller: en kreativ midtbanespiller styrer spillet, og en stærk angriber i luften bliver target-angriber
+  const xi = t.lineup.map((id) => g.players[id]).filter(Boolean);
+  const slotOf = (id: number) => t.slots[t.lineup.indexOf(id)];
+  const pm = xi.filter((p) => ['M', 'AM', 'DM'].includes(slotOf(p.id).pos) && slotOf(p.id).side === 'C').sort((a, b) => b.attrs[A.creativity] + b.attrs[A.passing] - a.attrs[A.creativity] - a.attrs[A.passing])[0];
+  if (pm && pm.attrs[A.creativity] + pm.attrs[A.passing] >= 29) t.team.playmaker = pm.id;
+  const air = (p: Player) => p.attrs[A.heading] + p.attrs[A.jumping] + p.attrs[A.strength];
+  const tm = xi.filter((p) => slotOf(p.id).pos === 'ST').sort((a, b) => air(b) - air(a))[0];
+  if (tm && air(tm) >= 46) { t.team.targetMan = tm.id; t.individual[t.lineup.indexOf(tm.id)] = { ...t.individual[t.lineup.indexOf(tm.id)], holdUp: true }; }
+  return t;
 }
 
 export function userTactic(auto = false): Tactic {
@@ -121,7 +132,7 @@ function usesVar(f: Fixture): boolean {
   return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
 }
 
-export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather } {
+export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number } {
   const ht = tacticFor(f.home, f.away, true, userAuto);
   const at = tacticFor(f.away, f.home, false, userAuto);
   return {
@@ -132,8 +143,13 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     weather: weatherFor(f),
     importance: importance(f),
     var: usesVar(f),
+    aggregate: aggregateFor(f),
+    finish: cmDatabase(gs()) === 'original' ? ORIGINAL_FINISH : 1,
   };
 }
+
+/** Kalibrering af den originale 2001/02-database (scripts/benchmark.ts … world-original.json) */
+export const ORIGINAL_FINISH = 0.87;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
 function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean): Tactic {
@@ -151,14 +167,14 @@ export function createLiveMatch(f: Fixture): MatchSim {
   const g = gs();
   return new MatchSim(m.home, m.away, {
     // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
-    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, date: g.date,
+    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, subs: maxSubs(), fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, date: gs().date };
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, subs: maxSubs(), fixtureId: f.id, date: gs().date };
   const rep = commentary
     ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : quickMatch(m.home, m.away, opts, rng);
@@ -171,7 +187,7 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
 export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const g = gs();
   const [hs, as] = rep.stats;
-  const scorers: [number, number, number][] = rep.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.p!]);
+  const scorers: MatchResultShort['scorers'] = rep.events.filter((e) => e.k === 'goal').map((e) => (e.og ? [e.m, e.t, e.p!, 1] : [e.m, e.t, e.p!]));
   const gate = gateReceipts(f);
   recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
   recordsAfterMatch(f, rep, gate.att);
@@ -505,7 +521,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
 }
@@ -645,7 +661,7 @@ export function quickReport(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
 }
 
 /** Mandag: ugens overblik – resultater, placering, økonomi, skader og de næste kampe */

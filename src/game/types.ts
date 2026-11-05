@@ -359,6 +359,12 @@ export interface TeamInstructions {
   marking: 'zonal' | 'man';
   offside: boolean;
   counter: boolean;
+  /** Fast boldfordeler: bolden søger ham på midtbanen (spiller-id, 0 = ingen) */
+  playmaker?: number;
+  /** Target-angriber: lange bolde og indlæg søger ham (spiller-id, 0 = ingen) */
+  targetMan?: number;
+  /** Mænd bag bolden: midtbane og backer bliver hjemme, når holdet angriber */
+  menBehind?: boolean;
 }
 
 export interface PlayerInstructions {
@@ -369,6 +375,14 @@ export interface PlayerInstructions {
   crossing: number; // 0-2
   tightMarking: boolean;
   freeRole: boolean;
+  /** Hold bolden: venter på medspillere i stedet for at spille hurtigt videre */
+  holdUp?: boolean;
+  /** Spillerens egne indstillinger (udeladt = holdets) */
+  passing?: number;
+  tackling?: number;
+  closingDown?: number;
+  /** Dødbolde: 0 bliver hjemme, 1 normal, 2 går med frem i feltet */
+  setPieces?: number;
 }
 
 export interface Slot {
@@ -420,7 +434,7 @@ export interface MatchResultShort {
   ag: number;
   et?: boolean;
   pens?: [number, number];
-  scorers: [number, number, number][]; // [minut, team(0/1), spiller-id]
+  scorers: ([number, number, number] | [number, number, number, 1])[]; // [minut, team(0/1), spiller-id, 1 = selvmål]
   att?: number;
   /** Hjemmeholdets billetindtægt (efter deling i pokalkampe) */
   gate?: number;
@@ -666,6 +680,8 @@ export interface MatchEvent {
   k: string; // 'goal' | 'yellow' | 'red' | 'sub' | 'injury' | 'pen-miss' | ...
   p?: number;
   p2?: number;
+  /** selvmål: p er forsvareren, t er holdet der fik målet */
+  og?: boolean;
 }
 
 export interface ShotRecord {

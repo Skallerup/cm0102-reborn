@@ -158,17 +158,22 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
   });
   const ind = sel !== null ? tactic.individual[sel] : null;
   const tm = tactic.team;
-  const iopt = (k: keyof NonNullable<typeof ind>, vals: [number | boolean, string][]) => ind && (
-    <div className="ti-row">
-      <div className="ti-label"><b>{t(`pi.${k}`)}</b><span className="muted">{t(`pih.${k}`)}</span></div>
-      <div className="seg" role="radiogroup">
-        {vals.map(([v, l]) => (
-          <button key={String(v)} type="button" role="radio" aria-checked={ind[k] === v} className={ind[k] === v ? 'on' : ''}
-            onClick={() => setInd({ [k]: v } as Partial<NonNullable<typeof ind>>)}>{l}</button>
-        ))}
+  // -1 = "holdets" / "auto" (feltet udelades); ja/nej-felter uden værdi tæller som nej
+  const iopt = (k: keyof NonNullable<typeof ind>, vals: [number | boolean, string][]) => {
+    if (!ind) return null;
+    const cur = ind[k] ?? (typeof vals[0][0] === 'boolean' ? false : -1);
+    return (
+      <div className="ti-row">
+        <div className="ti-label"><b>{t(`pi.${k}`)}</b><span className="muted">{t(`pih.${k}`)}</span></div>
+        <div className="seg" role="radiogroup">
+          {vals.map(([v, l]) => (
+            <button key={String(v)} type="button" role="radio" aria-checked={cur === v} className={cur === v ? 'on' : ''}
+              onClick={() => setInd({ [k]: v === -1 ? undefined : v } as Partial<NonNullable<typeof ind>>)}>{l}</button>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
   const opt = (k: keyof TeamInstructions, vals: [number | string | boolean, string][]) => (
     <div className="ti-row">
       <div className="ti-label"><b>{t(`ti.${k}`)}</b><span className="muted">{t(`tih.${k}`)}</span></div>
@@ -314,6 +319,14 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                 </select>
               </label>
             ))}
+            {(['playmaker', 'targetMan'] as const).map((k) => (
+              <label key={k} className="row setpiece-row"><span>{t(`tac.${k}`)}</span>
+                <select value={tactic.team[k] ?? 0} onChange={(e) => change({ ...tactic, team: { ...tactic.team, [k]: Number(e.target.value) || undefined } })}>
+                  <option value={0}>—</option>
+                  {tactic.lineup.map((id) => byId.get(id)).filter(Boolean).map((p) => <option key={p!.id} value={p!.id}>{p!.last}</option>)}
+                </select>
+              </label>
+            ))}
           </div>
         </Panel>
       </div>
@@ -334,6 +347,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
               {opt('tackling', [[0, t('ti.easy')], [1, t('ti.normal')], [2, t('ti.hard')]])}
               {opt('marking', [['zonal', t('ti.zonal')], ['man', t('ti.man')]])}
               {opt('offside', [[false, t('common.no')], [true, t('common.yes')]])}
+              {opt('menBehind', [[false, t('common.no')], [true, t('common.yes')]])}
             </div>
           </div>
         </Panel>
@@ -347,10 +361,15 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                 {iopt('crossing', [[0, t('ti.rarely')], [1, t('ti.mixed')], [2, t('ti.often')]])}
                 {iopt('runWithBall', [[false, t('common.no')], [true, t('common.yes')]])}
                 {iopt('throughBalls', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('holdUp', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('passing', [[-1, t('ti.teamSetting')], [0, t('ti.short')], [1, t('ti.mixed')], [2, t('ti.long')]])}
+                {iopt('setPieces', [[-1, t('ti.auto')], [0, t('sp.back')], [1, t('sp.normal')], [2, t('sp.forward')]])}
               </div>
               <div className="ti-group">
                 <div className="ti-head">🛡 {t('tac.withoutBall')}</div>
                 {iopt('tightMarking', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('closingDown', [[-1, t('ti.teamSetting')], [0, t('ti.rarely')], [1, t('ti.sometimes')], [2, t('ti.often')]])}
+                {iopt('tackling', [[-1, t('ti.teamSetting')], [0, t('ti.easy')], [1, t('ti.normal')], [2, t('ti.hard')]])}
                 <div className="ti-head" style={{ marginTop: 6 }}>✦ {t('tac.roleHead')}</div>
                 {iopt('freeRole', [[false, t('common.no')], [true, t('common.yes')]])}
               </div>

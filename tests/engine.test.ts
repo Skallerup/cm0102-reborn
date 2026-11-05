@@ -211,3 +211,40 @@ describe('taktik', () => {
     expect(Math.max(sw.pos[1], sw.pos[2])).toBeGreaterThanOrEqual(15);
   });
 });
+
+describe('nye kampsituationer (som i CM 01/02)', () => {
+  const [h, a] = [clubs[8], clubs[9]];
+  const N = 250;
+  const play = (opts: Parameters<typeof quickMatch>[2] = {}, seed = 51) => {
+    const r = new Rng(seed);
+    return Array.from({ length: N }, () => new MatchSim(team(h), team(a), { commentary: true, aiSubs: [true, true], ...opts }, r).runToEnd());
+  };
+  const reps = play();
+  const has = (k: string) => reps.reduce((s, x) => s + x.commentary.filter((l) => l.k === k).length, 0);
+
+  it('har selvmål, tillægstid, dommere, målmandsreturer og dødboldsvarianter', () => {
+    expect(reps.some((x) => x.events.some((e) => e.k === 'goal' && e.og))).toBe(true);
+    expect(has('added-time')).toBe(N);
+    expect(has('gk-parry')).toBeGreaterThan(0);
+    expect(has('short-corner') + has('corner-edge')).toBeGreaterThan(0);
+    expect(has('long-throw') + has('fk-wall')).toBeGreaterThan(0);
+  });
+
+  it('et selvmål tælles for det rigtige hold og ikke som spillerens mål', () => {
+    for (const x of reps) for (const e of x.events.filter((ev) => ev.og)) {
+      const line = x.players.find((p) => p.id === e.p)!;
+      expect(line.team).not.toBe(e.t);
+    }
+  });
+
+  it('i en dobbeltkamp går holdet, der er bagud samlet, frem – også når kampen står lige', () => {
+    const pushes = (prior: [number, number]) => play({ aggregate: { prior, awayGoals: true } }, 61)
+      .reduce((s, x) => s + x.changes.filter((c) => c.t === 0 && c.kind === 'mentality' && Number(c.to) > Number(c.from)).length, 0);
+    expect(pushes([0, 2])).toBeGreaterThan(pushes([2, 0]) * 2);
+  });
+
+  it('en streng dommer giver flere kort end en mild', () => {
+    const cards = (refStrict: number) => play({ refStrict }, 71).reduce((s, x) => s + x.stats[0].yellows + x.stats[1].yellows, 0);
+    expect(cards(1.3)).toBeGreaterThan(cards(0.75) * 1.3);
+  });
+});

@@ -210,7 +210,7 @@ function CompFixtures({ comp }: { comp: Competition }) {
               <td className="right"><ClubLink id={f.home} /></td>
               <td className="center"><b>{resultStr(f)}</b></td>
               <td><ClubLink id={f.away} /></td>
-              <td className="muted">{f.result?.scorers.slice(0, 4).map(([m, , pid]) => `${g.players[pid]?.last ?? '?'} ${m}'`).join(', ')}</td>
+              <td className="muted">{f.result?.scorers.slice(0, 4).map(([m, , pid, og]) => `${g.players[pid]?.last ?? '?'}${og ? ` (${t('match.og')})` : ''} ${m}'`).join(', ')}</td>
             </tr>
           ))}
         </tbody>
@@ -228,7 +228,7 @@ function Scorers({ comp }: { comp: Competition }) {
     rows = clubs.flatMap((c) => squad(c)).filter((p) => p.stats.lgGoals > 0).map((p) => ({ pid: p.id, goals: p.stats.lgGoals }));
   } else {
     const m = new Map<number, number>();
-    for (const f of Object.values(g.fixtures)) if (f.comp === comp.id && f.result) for (const [, , pid] of f.result.scorers) m.set(pid, (m.get(pid) ?? 0) + 1);
+    for (const f of Object.values(g.fixtures)) if (f.comp === comp.id && f.result) for (const [, , pid, og] of f.result.scorers) if (!og) m.set(pid, (m.get(pid) ?? 0) + 1);
     rows = [...m.entries()].map(([pid, goals]) => ({ pid, goals }));
   }
   rows.sort((a, b) => b.goals - a.goals);

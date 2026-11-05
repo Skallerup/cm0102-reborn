@@ -571,6 +571,17 @@ function checkGroupsDone(comp: Competition) {
 }
 
 /** Afgør om en kamp (på resultatet hg-ag) skal have en vinder fundet i forlænget/straffe */
+/** Anden kamp i en dobbeltkamp: mål fra første kamp set fra denne kamps hjemme- og udehold (til motorens taktik) */
+export function aggregateFor(f: Fixture): { prior: [number, number]; awayGoals: boolean } | undefined {
+  const g = gs();
+  if (!f.tieId || f.leg !== 2) return undefined;
+  const tie = g.comps[f.comp]?.ties.find((t) => t.id === f.tieId);
+  const first = tie?.fx.map((id) => g.fixtures[id]).find((x) => x?.leg === 1);
+  if (!first?.result) return undefined;
+  // første kamp: hjemme = tie.a (= denne kamps udehold)
+  return { prior: [first.result.ag, first.result.hg], awayGoals: true };
+}
+
 export function needsWinnerFn(f: Fixture): ((hg: number, ag: number) => boolean) | undefined {
   const g = gs();
   if (!f.tieId) return undefined;

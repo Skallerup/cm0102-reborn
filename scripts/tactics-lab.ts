@@ -75,7 +75,7 @@ const ti = (patch: Partial<Tactic['team']>) => (id: number) => side(id, '4-4-2',
 for (const [l, p] of [['Mentalitet meget defensiv (0)', { mentality: 0 }], ['Mentalitet defensiv (1)', { mentality: 1 }], ['Mentalitet offensiv (3)', { mentality: 3 }], ['Mentalitet meget offensiv (4)', { mentality: 4 }],
   ['Pres højt (closingDown 2)', { closingDown: 2 }], ['Pres lavt (closingDown 0)', { closingDown: 0 }], ['Korte afleveringer', { passing: 0 }], ['Lange afleveringer', { passing: 2 }],
   ['Højt tempo', { tempo: 2 }], ['Lavt tempo', { tempo: 0 }], ['Bredt', { width: 2 }], ['Smalt', { width: 0 }], ['Offsidefælde', { offside: true }], ['Kontra', { counter: true }],
-  ['Mandsopdækning', { marking: 'man' }], ['Hårde tacklinger', { tackling: 2 }]] as [string, Partial<Tactic['team']>][]) if (on('instr')) show(l, run(ti(p), (id) => side(id)));
+  ['Mandsopdækning', { marking: 'man' }], ['Hårde tacklinger', { tackling: 2 }], ['Mænd bag bolden', { menBehind: true }]] as [string, Partial<Tactic['team']>][]) if (on('instr')) show(l, run(ti(p), (id) => side(id)));
 
 if (on('players')) {
 console.log('\n— Spillervalg —');

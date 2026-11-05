@@ -32,7 +32,7 @@ function facts(n: NewsItem): Record<string, unknown> | null {
     const f = n.link?.kind === 'fixture' ? g.fixtures[Number(n.link.id)] : undefined;
     if (!rep || !f) return null;
     const team = (i: number) => g.clubs[i === 0 ? rep.home : rep.away]?.name;
-    const goals = rep.events.filter((e) => e.k === 'goal').map((e) => ({ minute: e.m, team: team(e.t), scorer: pname(g.players[e.p!]) }));
+    const goals = rep.events.filter((e) => e.k === 'goal').map((e) => ({ minute: e.m, team: team(e.t), scorer: pname(g.players[e.p!]) + (e.og ? ' (own goal)' : '') }));
     const reds = rep.events.filter((e) => e.k === 'red').map((e) => ({ minute: e.m, team: team(e.t), player: pname(g.players[e.p!]) }));
     const best = rep.players.slice().sort((a, b) => b.rating - a.rating).slice(0, 3).map((l) => ({ player: pname(g.players[l.id]), team: team(l.team), rating: l.rating }));
     return {

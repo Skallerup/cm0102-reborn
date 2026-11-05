@@ -133,7 +133,7 @@ function Goals({ rep }: { rep: MatchReport }) {
         <div key={tm} className={tm === 0 ? 'g-home' : 'g-away'}>
           {ev.filter((e) => e.t === tm).map((e, i) => (
             <div key={i}>
-              {e.k === 'goal' ? '⚽' : '🟥'} <PlayerLink p={g.players[e.p!]} short /> <span className="muted">{e.m}'</span>
+              {e.k === 'goal' ? '⚽' : '🟥'} <PlayerLink p={g.players[e.p!]} short />{e.og ? <span className="muted"> ({t('match.og')})</span> : null} <span className="muted">{e.m}'</span>
               {e.k === 'goal' && e.p2 && g.players[e.p2] ? <span className="muted"> ({g.players[e.p2].last})</span> : null}
             </div>
           ))}

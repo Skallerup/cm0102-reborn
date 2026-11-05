@@ -86,7 +86,7 @@ export function ClassicTactics() {
     if (view === 'value') return money(p.value);
     return `${Math.round(p.condition)}%`;
   };
-  const tags = (p: Player) => [tac.captain === p.id && t('cl.tac.capt'), tac.penalties === p.id && t('cl.tac.pen'), tac.freeKicks === p.id && t('cl.tac.fk'), tac.corners === p.id && t('cl.tac.cor')].filter(Boolean).join(' ');
+  const tags = (p: Player) => [tac.captain === p.id && t('cl.tac.capt'), tac.penalties === p.id && t('cl.tac.pen'), tac.freeKicks === p.id && t('cl.tac.fk'), tac.corners === p.id && t('cl.tac.cor'), tac.team.playmaker === p.id && t('cl.tac.pm'), tac.team.targetMan === p.id && t('cl.tac.tm')].filter(Boolean).join(' ');
   const row = (p: Player, label: string, kind: 'xi' | 'bench' | 'rest', slot?: Slot) => (
     <div key={p.id} className={`cx-tac-row ${kind} ${pick === p.id ? 'on' : ''} ${!available(p) ? 'unavail' : ''}`} draggable
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(p.id)); setTimeout(() => setDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => setDrag(null), 0)} onClick={() => clickRow(p)}>
@@ -118,6 +118,10 @@ export function ClassicTactics() {
     { key: 'clear', label: t('cl.sq.clear'), onClick: () => change({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
     { key: 'hp', head: pickP ? t('cl.tac.setFor', { name: pickP.last }) : t('cl.tac.pickFirst') },
     setPiece('captain'), setPiece('penalties'), setPiece('freeKicks'), setPiece('corners'),
+    ...(['playmaker', 'targetMan'] as const).map((k) => {
+      const on = !!pickP && tac.team[k] === pickP.id;
+      return { key: k, label: pickP ? `${t(`tac.${k}`)}: ${pickP.last}` : t(`tac.${k}`), disabled: !pickP || !tac.lineup.includes(pickP.id), checked: on, onClick: () => pickP && change({ ...tac, team: { ...tac.team, [k]: on ? undefined : pickP.id } }) };
+    }),
   ];
   const views: DropItem[] = (['cond', 'fit', 'pos', 'value'] as View[]).map((v) => ({ key: v, label: t(`cl.tac.v.${v}`), checked: view === v, onClick: () => setView(v) }));
 
@@ -235,6 +239,7 @@ function Instructions({ tac, pane, slot, byId, change }: { tac: Tactic; pane: Pa
           {optRow(t('ti.tackling'), tm.tackling, lvl('ti.easy', 'ti.normal', 'ti.hard'), (v) => setTeam({ tackling: v }))}
           {optRow(t('ti.marking'), tm.marking, [['zonal', t('ti.zonal')], ['man', t('ti.man')]], (v) => setTeam({ marking: v }))}
           {optRow(t('ti.offside'), tm.offside, yn, (v) => setTeam({ offside: v }))}
+          {optRow(t('ti.menBehind'), !!tm.menBehind, yn, (v) => setTeam({ menBehind: v }))}
         </>}
       </div>
       <div className="cx-ti-title">{p && ind ? `${t('tac.individual')}: ${p.last}` : t('tac.individual')}</div>
@@ -247,7 +252,14 @@ function Instructions({ tac, pane, slot, byId, change }: { tac: Tactic; pane: Pa
             {optRow(t('pi.runWithBall'), ind.runWithBall, yn, (v) => setInd({ runWithBall: v }))}
             {optRow(t('pi.throughBalls'), ind.throughBalls, yn, (v) => setInd({ throughBalls: v }))}
             {optRow(t('pi.freeRole'), ind.freeRole, yn, (v) => setInd({ freeRole: v }))}
-          </> : optRow(t('pi.tightMarking'), ind.tightMarking, yn, (v) => setInd({ tightMarking: v }))}
+            {optRow(t('pi.holdUp'), !!ind.holdUp, yn, (v) => setInd({ holdUp: v }))}
+            {optRow(t('pi.passing'), ind.passing ?? -1, [[-1, t('ti.teamSetting')], ...lvl('ti.short', 'ti.mixed', 'ti.long')], (v) => setInd({ passing: v < 0 ? undefined : v }))}
+            {optRow(t('pi.setPieces'), ind.setPieces ?? -1, [[-1, t('ti.auto')], ...lvl('sp.back', 'sp.normal', 'sp.forward')], (v) => setInd({ setPieces: v < 0 ? undefined : v }))}
+          </> : <>
+            {optRow(t('pi.tightMarking'), ind.tightMarking, yn, (v) => setInd({ tightMarking: v }))}
+            {optRow(t('pi.closingDown'), ind.closingDown ?? -1, [[-1, t('ti.teamSetting')], ...lvl('ti.rarely', 'ti.sometimes', 'ti.often')], (v) => setInd({ closingDown: v < 0 ? undefined : v }))}
+            {optRow(t('pi.tackling'), ind.tackling ?? -1, [[-1, t('ti.teamSetting')], ...lvl('ti.easy', 'ti.normal', 'ti.hard')], (v) => setInd({ tackling: v < 0 ? undefined : v }))}
+          </>}
         </div>
       ) : <div className="cx-ti-empty">{t('cl.tac.pickSlot')}</div>}
     </div>
