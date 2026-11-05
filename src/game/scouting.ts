@@ -50,7 +50,9 @@ export function attrRange(p: Player, idx: number, k = knowledgeOf(p)): [number, 
   return [Math.max(1, lo), hi];
 }
 
-/** Scoutens vurdering af evne/potentiale (0-5 stjerner i halve), relativt til brugerens klub */
+/** Scoutens vurdering af evne/potentiale (0-5 stjerner i halve) på en fast skala for alle spillere */
+export const starsOf = (ca: number) => (ca - 40) / 30;
+export const caOfStars = (stars: number) => 40 + stars * 30;
 /**
  * Realistisk potentiale: hvad spilleren kan nå i sin alder. Unge kan nå hele deres loft; fra midten af
  * 20'erne vokser man kun lidt (se udviklingsmodellen), og fra 29 år er potentialet = evnen.
@@ -63,16 +65,10 @@ export function effectivePA(p: Player): number {
 }
 
 export function scoutStars(p: Player): { ability: [number, number]; potential: [number, number] } {
-  const g = gs();
   const k = knowledgeOf(p);
-  const ref = g.userClub ? clubLevel(g.userClub) : 120;
-  // 2,5 stjerner = holdets niveau, 20 CA pr. stjerne. Over niveauet presses skalaen sammen, så 5 stjerner
-  // altid kan nås (verdens bedste ligger omkring 190-200) – ellers har storklubber ingen 5-stjernede spillere
-  const top = Math.min(ref + 50, 195);
-  const toStars = (ca: number) => {
-    const raw = ca <= ref ? (ca - ref + 50) / 20 : 2.5 + (2.5 * (ca - ref)) / Math.max(15, top - ref);
-    return Math.max(0.5, Math.min(5, Math.round(raw * 2) / 2));
-  };
+  // absolut skala for alle spillere, uanset hvilken klub man styrer: 5 ★ = CA/PA 190+ (verdens bedste),
+  // 4 ★ = 160, 3 ★ = 130, 2 ★ = 100, 1 ★ = 70 (30 pr. stjerne)
+  const toStars = (ca: number) => Math.max(0.5, Math.min(5, Math.round(starsOf(ca) * 2) / 2));
   const a = toStars(p.ca);
   const eff = effectivePA(p);
   const pot = toStars(eff);
@@ -226,9 +222,8 @@ export function scoutRecommendation(p: Player): ScoutRecommendation {
   const level = clubLevel(club.id);
   // scouten ser ikke den præcise evne – vurderingen bygger på stjernerne (med usikkerhed)
   const st = scoutStars(p);
-  const ref = level;
-  const estCA = ref - 50 + ((st.ability[0] + st.ability[1]) / 2) * 20;
-  const estPA = ref - 50 + ((st.potential[0] + st.potential[1]) / 2) * 20;
+  const estCA = caOfStars((st.ability[0] + st.ability[1]) / 2);
+  const estPA = caOfStars((st.potential[0] + st.potential[1]) / 2);
   const reasons: ScoutRecommendation['reasons'] = [];
   let score = 0;
   if (estCA >= best + 5) { score += 3; reasons.push({ key: 'rec.r.betterThanBest' }); }

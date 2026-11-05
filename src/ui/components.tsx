@@ -5,7 +5,7 @@ import { crestSvg } from '../game/draft';
 import { positionString } from '../game/attributes';
 import { flagUrl } from './flags';
 import { ageOn } from '../game/dates';
-import { gs, hasGame } from '../game/state';
+import { gs } from '../game/state';
 import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
 import { LOCALE, currencySymbol, fromCurExact, getLang, natName, t, toCur } from '../i18n';
@@ -94,11 +94,9 @@ export function Stars({ range }: { range: [number, number] }) {
     const cls = lo >= i ? 's-full' : lo >= i - 0.5 ? 's-half' : hi >= i - 0.5 ? 's-maybe' : 's-empty';
     out.push(<i key={i} className={`star ${cls}`} />);
   }
-  // stjernerne er relative til ens eget hold – forklar det, så de ikke forveksles med attributternes absolutte tal
-  const g = hasGame() ? gs() : null;
-  const club = g ? g.clubs[g.userClub]?.name : undefined;
+  // samme skala for alle spillere i verden (scouting.ts starsOf) – forklar den i værktøjstippet
   const value = lo === hi ? `${lo} ★` : `${lo}–${hi} ★`;
-  const tip = `${value}\n${club ? t('stars.tip', { club }) : t('stars.tipNoClub')}${lo !== hi ? `\n${t('stars.tipUnsure')}` : ''}`;
+  const tip = `${value}\n${t('stars.tip')}${lo !== hi ? `\n${t('stars.tipUnsure')}` : ''}`;
   return <span className="stars" title={tip}>{out}</span>;
 }
 
