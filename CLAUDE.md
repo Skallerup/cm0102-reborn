@@ -39,6 +39,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Tilfældigt PA som i originalen: `paRaw` -2 = 150-200, -1 = 100-150, rullet i newgame.ts pr. spil
+  (tests/potential.test.ts). Værdierne i 2001-priser bygger på databasefeltet (byte 82), som IKKE er det, originalen
+  viser (Totti 54 mio. i feltet, £18 mio. i spillet) – kurven skal tilpasses originalens viste værdier (Prints).
 - 2026-11-05 – SEO/AI-søgning: 7 statiske guides med data fra databaserne, llms.txt, sitemap med lastmod, crawlbar
   forside. `paRaw` (originalens -1/-2 = tilfældigt PA) gemmes i ratings, bruges kun af guiden indtil videre.
 - 2026-11-05 – Admin "New careers": kolonnen Progress (sæson nr., spildato, ny klub, ligaplacering). Pulsen sender

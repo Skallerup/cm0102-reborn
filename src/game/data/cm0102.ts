@@ -9,7 +9,7 @@ import type { WorldData } from '../newgame';
 export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 'club_comp.dat', 'first_names.dat', 'second_names.dat', 'common_names.dat'];
 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
-export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** originalens rå PA, når den er negativ (-1/-2 = tilfældigt potentiale i CM 01/02) */ paRaw?: number }
+export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** originalens rå PA, når den er negativ: -2 = tilfældigt 150-200, -1 = 100-150 (rulles i newgame.ts) */ paRaw?: number }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';

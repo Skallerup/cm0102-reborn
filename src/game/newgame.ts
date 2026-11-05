@@ -147,7 +147,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const rt = cm?.ratings[p.id];
     if (rt) {
       // evner originalen ikke har sat (0) beholder rolleprofilen fra position og CA
-      p.ca = rt.ca; p.pa = Math.max(rt.ca, rt.pa); p.attrs = rt.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
+      // tilfældigt potentiale som i CM 01/02: PA -2 = 150-200, -1 = 100-150 – trukket på ny i hvert nyt spil
+      // (Cherno Samba, Quaresma, Cassano …); ellers databasens PA
+      const rolled = rt.paRaw === -2 ? 150 + (hash(seed, p.id, 77) % 51) : rt.paRaw === -1 ? 100 + (hash(seed, p.id, 77) % 51) : rt.pa;
+      p.ca = rt.ca; p.pa = Math.max(rt.ca, rolled); p.attrs = rt.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
     }
     if (!value) p.value = valueFromCA(p.ca, p.pa, age);
     // CM 01/02: trøjenummeret fra databasen (dubletter og manglende numre ordnes efter, at trupperne er fyldt op)
