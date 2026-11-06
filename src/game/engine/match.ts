@@ -10,7 +10,9 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
-import { RATING, yellowRatingDelta } from './cm0102-original-rules';
+import { RATING, cardFor, cardSeverity, yellowRatingDelta, type Rand } from './cm0102-original-rules';
+/** Andel almindelige frispark, der er sene/hårde (type 44) i originalens kortregel – *estimeret* (docs/ENGINE.md, trin 4) */
+const HARD_SHARE = 0.03;
 import { pitchFx, weatherFx, type Pitch, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
@@ -85,7 +87,7 @@ export interface EngineOptions {
   /** Banens tilstand */
   pitch?: Pitch;
   /** Dagens dommer (navn vises i rapporten; strengheden styrer kort) */
-  referee?: { name: string; strict: number };
+  referee?: { name: string; strict: number; discipline?: number; limit?: number };
 }
 
 interface SP {
@@ -98,6 +100,8 @@ interface SP {
   ax: number; ay: number; dx: number; dy: number;
   off: boolean;
   yellow: number;
+  /** frispark begået i kampen (originalens kortregel bruger dem) */
+  fouls?: number;
   line: PlayerMatchLine;
   rating: number;
   enteredAt: number;
@@ -1154,6 +1158,8 @@ export class MatchSim {
     this.foulBy = def;
     this.injuryCheck(victim);
     // Kort
+    if (this.opts.rules === 'original') this.originalCard(O, def, tk, dirt);
+    else {
     // kalibreret (scripts/cards.ts): ~2 røde kort pr. hold pr. sæson, heraf ~40% andet gule kort
     const yp = (0.13 + 0.1 * (def.p.attrs[A.dirtiness] / 20) + (O.ti.tackling === 2 ? 0.03 : 0) - (def.p.attrs[A.temperament] - 10) / 200) * (def.yellow > 0 ? 0.2 : 1);
     if (this.r.chance((RED_BASE + def.p.attrs[A.dirtiness] / 8000) * this.ref)) this.sendOff(O, def, false);
@@ -1161,6 +1167,7 @@ export class MatchSim {
       this.book(O, def);
       // protester: en hidsig spiller kan få et kort mere for at brokke sig
       if (!def.off && this.r.chance(0.012 * this.ref * (1.4 - def.p.attrs[A.temperament] / 20))) { this.line('dissent', def); this.book(O, def); }
+    }
     }
     const rb = this.rb(T.idx);
     const lane = this.laneOf(T.idx);
@@ -1185,9 +1192,30 @@ export class MatchSim {
     return true; // bolden forbliver hos angriberne
   }
 
-  private book(t: TeamRT, sp: SP) {
-    // færre advarsler (original database): dommeren nøjes med en irettesættelse
-    if (this.opts.cards !== undefined && !this.r.chance(this.opts.cards)) return;
+  /**
+   * CM 01/02's kortregel (sub_6e9820/sub_6ea4e0, motorplanens regel 4): alvorlighed = rand(spillerens frispark + a) + b
+   * + dommerens skævhed (Discipline), mildere for en advaret spiller og i de første minutter; rødt hvis alvorlighed >
+   * rand(15) + 7, gult hvis > rand(6). Tacklingstyperne er *estimeret* fra vores tacklinger (normal 42, hård/sen 44,
+   * vild 48); andelen af frispark af korttyper (`opts.cards`) er ukendt i originalen og kalibreret (docs/ENGINE.md).
+   */
+  private originalCard(O: TeamRT, def: SP, tackling: number, dirt: number) {
+    const rand: Rand = (n) => (n <= 0 ? 0 : Math.floor(this.r.next() * n));
+    def.fouls = (def.fouls ?? 0) + 1;
+    if (!this.r.chance(this.opts.cards ?? 1)) return; // frispark af en type, der aldrig giver kort (fx 12/43)
+    // hård tackling (instruks 2) giver af og til en sen/hård type 44, sjældent en vild 48; ellers en almindelig 42.
+    // Aggression/Dirtiness påvirker kun, hvor ofte der begås frispark (som i originalen) – ikke kortet
+    void dirt;
+    const type = this.r.chance(tackling >= 2 ? 0.3 : HARD_SHARE) ? (this.r.chance(0.08) ? 48 : 44) : 42;
+    const d = this.opts.referee?.discipline ?? 10, limit = this.opts.referee?.limit ?? 0;
+    const sev = cardSeverity(rand, type, def.fouls - 1, d, def.yellow > 0, this.minute, O.stats.fouls > limit + 5);
+    const card = cardFor(rand, sev);
+    if (card === 'red') this.sendOff(O, def, false);
+    else if (card === 'yellow') this.book(O, def, true);
+  }
+
+  private book(t: TeamRT, sp: SP, ruled = false) {
+    // færre advarsler (original database): dommeren nøjes med en irettesættelse (ikke når originalens regel har afgjort det)
+    if (!ruled && this.opts.cards !== undefined && !this.r.chance(this.opts.cards)) return;
     this.stoppage += 0.25;
     sp.yellow++;
     t.stats.yellows++;

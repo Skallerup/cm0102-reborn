@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Motorplanens trin 4: `MatchSim.originalCard` (rules 'original'), ORIGINAL = { …, cards: 0,11 (andel af
+  korttyper), rules: 'original' }, `HARD_SHARE` 0,03. match-stats.ts: REF=1/RULES/CARDS som miljøvariabler.
 - 2026-11-06 – Regens: `g.regenQueue` (RegenSeed) fyldes ved pension, `spawnRegen` i youthIntake (marts) arver positioner,
   egenskabsprofil og skjulte egenskaber, nyhed `youth.regen`. Stjerner: `attrAbility` (CA ≈ 27 + 6,7 × roleScore) løfter
   evnen, når egenskaberne er bedre end CA (potentiale +½ løft). PA -1 = 100-150, -2 = 150-200 bekræftet (champman0102.net t=5715).

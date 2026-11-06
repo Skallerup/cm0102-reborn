@@ -216,3 +216,21 @@ Kilde: sub_6e9820 og officials.dat (43 bytes pr. post: navne-id 4/8, nation byte
 | Original: gule / røde pr. kamp | 1,69 / 0,11 | 1,80 / 0,11 | 1,71 / 0,11 (orig 1,70 / 0,14) |
 | Original: dommernes strenghed i snit | ~1,0 (tilfældig) | 1,08 | 1,08 |
 | Moderne: gule / røde pr. kamp | 3,43 / 0,18 | 3,51 / 0,19 | – (mål ~3,6) |
+
+### Trin 4 – frispark og kort (regel 3-4; kun den originale database, 2026-11-06)
+
+Kilde: sub_6e9820 (alvorlighed) og sub_6ea4e0 (kort), `cardSeverity`/`cardFor` i cm0102-original-rules.ts.
+
+- ORIGINAL-profilen kører nu med `rules: 'original'`: kortet afgøres af originalens formel (alvorlighed = rand(spillerens
+  frispark + a) + b + dommerens skævhed fra Discipline, mildere for en advaret spiller og før 10'; rødt hvis > rand(15) + 7,
+  gult hvis > rand(6)). Aggression/Dirtiness påvirker kun, hvor ofte der begås frispark – ikke kortet.
+- *Estimeret* oversættelse af tacklingstyper: almindelig = 42; 3 % af frisparkene (30 % ved instruksen "hårde tacklinger")
+  er type 44, heraf 8 % type 48. *Estimeret/kalibreret*: kun 11 % af frisparkene er af en type, der kan give kort
+  (`ORIGINAL.cards` = 0,11 – betyder nu andelen, ikke en reduktion).
+- Den moderne database bruger stadig den nuværende kortregel.
+
+| `scripts/match-stats.ts`, 2000 kampe, original DB | Før (trin 3) | Efter |
+|---|---|---|
+| Gule / røde pr. kamp | 1,71 / 0,11 | 1,72 / 0,15 (orig 1,70 / 0,14) |
+| Frispark pr. kamp | 21,7 | 21,7 |
+
