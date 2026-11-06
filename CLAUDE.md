@@ -45,6 +45,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – `Crest` uden logo returnerer intet (ejerens ønske: ingen farvet firkant/"kit" som reserve).
 - 2026-11-06 – v0.15.0. Forbedringer efter 5-sæsoners testen: udbytte ved sæsonstart (`lastDividend`, buffer 60 % af
   omsætningen, halvdelen af overskydende saldo), AI-fornyelser efter spilletid, `freeAgentDrift` (2/9 og 2/2, kun det
   puljen er over 6 %), regens (`spawnRegen` ved pension af PA≥120), ung målmand i `aiFillSquads`, nyhedsloft 700.

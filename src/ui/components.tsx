@@ -22,7 +22,7 @@ export function PlayerLink({ p, short }: { p: Player | undefined; short?: boolea
   );
 }
 
-/** Klublogo – falder tilbage til et "trøje"-felt i klubfarverne */
+/** Klublogo – uden logo vises intet (ingen farvet firkant) */
 export function Crest({ id, size = 14 }: { id: number; size?: number }) {
   const [failed, setFailed] = useState(false);
   const c = gs().clubs[id];
@@ -32,8 +32,7 @@ export function Crest({ id, size = 14 }: { id: number; size?: number }) {
   if (url && !failed) {
     return <img className="crest" src={url} alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)} style={{ width: size, height: size }} />;
   }
-  if (!c) return null;
-  return <i className="kit" style={{ background: c.colors[0], borderColor: c.colors[1], width: size * 0.8, height: size * 0.8 }} />;
+  return null;
 }
 
 export function ClubLink({ id, long, noCrest }: { id: number; long?: boolean; noCrest?: boolean }) {
