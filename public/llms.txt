@@ -1,11 +1,11 @@
 # CM Reborn
 
-> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database (patch 3.9.68, season 2001/02, 18,691 players) and a 2026/27 database (22,673 players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in eight languages.
+> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database (patch 3.9.68, season 2001/02, 34,960 players) and a 2026/27 database (22,673 players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in eight languages.
 
 Key facts:
 - Price: free. No ads, no in-game purchases.
 - Play: open https://cm0102reborn.com, choose New game, pick a database and a look.
-- Databases: original CM 01/02 3.9.68 (2001/02, 33 leagues) and 2026/27 (38 leagues); real squad numbers, clubs and stadiums.
+- Databases: original CM 01/02 3.9.68 (2001/02, 161 leagues) and 2026/27 (38 leagues); real squad numbers, clubs and stadiums.
 - Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, Staff Search, Find, stadium backgrounds on matchdays.
 - Match engine calibrated against a full season of the original CM 01/02 (2.87 goals per game in the Premier League).
 - Saves are stored in the browser (export/import, optional cloud saves). Installable as an app (PWA), works offline.

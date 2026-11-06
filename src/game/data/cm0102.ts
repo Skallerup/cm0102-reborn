@@ -21,7 +21,7 @@ export interface CMWorld extends WorldData {
 
 const dec = new TextDecoder('windows-1252');
 /** Antal rækker pr. land der importeres (flere gør simulationen langsom) */
-const MAX_TIERS = 2;
+const DEFAULT_TIERS = 2;
 
 class Reader {
   v: DataView;
@@ -97,7 +97,10 @@ function readIndex(buf: ArrayBuffer): IndexRec[] {
 function hashStr(s: string) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
 
 /** Konverter CM 01/02's Data-mappe til spillets verdensformat */
-export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
+/** `maxTiers`: rækker pr. land. `allClubs`: alle klubber og spillere kommer med – klubber uden for de importerede
+ *  ligaer får liga-id `CMX<division>` (uden liga-post); byggescriptet afgør, hvad der beholdes. */
+export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean } = {}): CMWorld {
+  const MAX_TIERS = opts.maxTiers ?? DEFAULT_TIERS;
   const missing = CM_REQUIRED.filter((f) => !files[f]);
   if (missing.length) throw new Error(`missing:${missing.join(',')}`);
   const index = readIndex(files['index.dat']);
@@ -243,9 +246,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   const clubRep: Record<number, number> = {};
   const clubColors: Record<number, [string, string]> = {};
   for (const c of rawClubs) {
-    if (!leagueSet.has(c.division)) continue;
+    if (!leagueSet.has(c.division) && !(opts.allClubs && nationIdx.has(c.nation))) continue;
     const seats = seatsOf.get(c.stadium) || (c.maxAtt > 0 && c.maxAtt <= 150_000 ? c.maxAtt : 0);
-    clubs.push([c.id, c.name, c.short || c.name, nationIdx.get(c.nation)!, lid(c.division), stadiumName.get(c.stadium) ?? '', Math.min(120_000, seats), '']);
+    clubs.push([c.id, c.name, c.short || c.name, nationIdx.get(c.nation)!, leagueSet.has(c.division) ? lid(c.division) : `CMX${c.division}`, stadiumName.get(c.stadium) ?? '', Math.min(120_000, seats), '']);
     clubRep[c.id] = Math.max(3, Math.min(98, Math.round(Math.pow(c.rep / maxClubRep, 0.7) * 98)));
     const fg = colours.get(c.fg), bg = colours.get(c.bg);
     if (fg && bg) clubColors[c.id] = [bg, fg];

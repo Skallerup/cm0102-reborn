@@ -428,7 +428,7 @@ export function fillVacancies() {
     if (cur) g.jobOffers = g.jobOffers.filter((id) => { const c = g.clubs[id]; return !!c && (!!g.manager.jobTalks?.[id] || c.rep >= cur.rep + 4 || (g.leagues[c.league]?.tier ?? 9) < (g.leagues[cur.league]?.tier ?? 9)); });
     for (const cid of g.vacancies) {
       const club = g.clubs[cid];
-      if (!club || club.manager !== 0) continue;
+      if (!club || club.manager !== 0 || g.leagues[club.league]?.hidden) continue;
       // arbejdsløs: klubber op til lidt over ens omdømme. I job: klubber på samme niveau eller lidt over –
       // jo mere tilfreds ens nuværende bestyrelse er, jo mere attraktiv er man
       const my = g.clubs[g.userClub];
@@ -501,7 +501,7 @@ export function jobTerms(cid: number): JobTalk {
 export function applyForJob(cid: number): 'sent' | 'offer' | 'error' {
   const g = gs();
   const club = g.clubs[cid];
-  if (!club || club.manager !== 0) return 'error';
+  if (!club || club.manager !== 0 || g.leagues[club.league]?.hidden) return 'error';
   if (g.jobOffers.includes(cid)) return 'offer';
   if (g.manager.jobTalks?.[cid]) return 'sent';
   const ok = g.manager.rep + 10 >= club.rep || rng.chance(Math.max(0.05, 0.5 - (club.rep - g.manager.rep) / 40));

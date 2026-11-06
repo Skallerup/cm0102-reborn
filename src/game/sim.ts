@@ -449,7 +449,7 @@ export function activateNation(nation: number) {
   const ids: string[] = [];
   for (const [id, clubs] of byLeague) {
     const m = g.leagues[id];
-    if (!m || g.comps[id] || clubs.length < 4) continue;
+    if (!m || m.hidden || g.comps[id] || clubs.length < 4) continue;
     setupLeague(id, m.name, m.nation, m.tier, clubs, g.season);
     ids.push(id);
   }

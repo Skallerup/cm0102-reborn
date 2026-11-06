@@ -39,6 +39,13 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Original database udvidet (18.7k → 35k spillere): parseren har `allClubs`/`maxTiers` (kun i
+  build-cm-data.mts; browserens egen import er uændret). Klubber uden for de spilbare ligaer kommer med, hvis de har en
+  spiller med PA -2/≥150, CA ≥120, PA -1 og ≤21 år, eller står i `scripts/cult-players.json` (133 kultspillere fra
+  fansenes lister, research 6/11). De ligger i skjulte ligaer (`hidden: true`, tier 9, id `H…`): spilles aldrig, kan
+  ikke vælges ved start, ingen jobs, ingen AI-indkøb/opfyldning, højst 16 spillere pr. klub. England/Skotland 4 rækker,
+  Holland/Portugal/Argentina/Mexico/Norge 2. Tó Madeira m.fl. findes kun i 3.9.60, ikke i 3.9.68. Ydelse: `ageOn` på
+  strenge, `loanedOutWages`, stab pr. klub i `weeklyDevelopment` (sæson 15 s med original DB, 8 s moderne).
 - 2026-11-06 – Tilfældigt PA som i originalen: `paRaw` -2 = 150-200, -1 = 100-150, rullet i newgame.ts pr. spil
   (tests/potential.test.ts). Værdierne i 2001-priser bygger på databasefeltet (byte 82), som IKKE er det, originalen
   viser (Totti 54 mio. i feltet, £18 mio. i spillet) – kurven skal tilpasses originalens viste værdier (Prints).

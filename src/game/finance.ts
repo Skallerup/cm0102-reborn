@@ -32,12 +32,20 @@ export function weeklyWages() {
   }
 }
 
-export function currentWageBill(clubId: number): number {
-  const g = gs();
+export function currentWageBill(clubId: number, loanedOut?: Map<number, number>): number {
   let bill = squad(clubId).reduce((s, p) => s + (p.contract?.wage ?? 0) * (p.loan ? p.loan.share ?? 1 : 1), 0);
   // udlejede spillere hvor vi stadig betaler en del
-  for (const p of Object.values(g.players)) if (p.loan?.from === clubId) bill += (p.contract?.wage ?? 0) * (1 - (p.loan.share ?? 1));
+  bill += (loanedOut ?? loanedOutWages()).get(clubId) ?? 0;
   return bill;
+}
+
+/** Den del af lønnen, de udlejende klubber stadig betaler for udlejede spillere (klub → beløb pr. uge) */
+export function loanedOutWages(): Map<number, number> {
+  const out = new Map<number, number>();
+  for (const p of Object.values(gs().players)) {
+    if (p.loan?.from) out.set(p.loan.from, (out.get(p.loan.from) ?? 0) + (p.contract?.wage ?? 0) * (1 - (p.loan.share ?? 1)));
+  }
+  return out;
 }
 
 /** Tilskuere og billetindtægt for en hjemmekamp */
@@ -139,12 +147,13 @@ export function addPrize(c: Club, amount: number) {
 /** Nyt budget ved sæsonstart */
 export function newSeasonBudgets() {
   const g = gs();
+  const loanedOut = loanedOutWages();
   for (const c of Object.values(g.clubs)) {
     const wealth = rulesFor(c.league, 20).wealth;
     const sv = squad(c.id).reduce((s, p) => s + p.value, 0);
     c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
     if (c.ffp?.sanction) c.transferBudget = Math.round(c.transferBudget * 0.4 / 50_000) * 50_000;
-    const bill = currentWageBill(c.id);
+    const bill = currentWageBill(c.id, loanedOut);
     // menneskestyrede klubber får lidt luft, så der er plads til en ny spiller uden først at sælge
     const room = c.manager === -1 ? 1.1 : 1.05;
     c.wageBudget = Math.round(Math.max(bill * room, bill + 2000) / 500) * 500;

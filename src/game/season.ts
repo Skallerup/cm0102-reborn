@@ -521,7 +521,7 @@ export function seasonRollover() {
       }
       continue;
     }
-    if (sq.length < 18) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
+    if (sq.length < 18 && !g.leagues[c.league]?.hidden) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
   }
   newSeasonBudgets();
   setupSeasonComps(g.season, prevTables, cupWinners);

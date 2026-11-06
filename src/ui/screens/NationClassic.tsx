@@ -79,7 +79,7 @@ function ManagerStats({ nation, name }: { nation: number; name: string }) {
 function JobInfo({ nation, name }: { nation: number; name: string }) {
   const g = useGame()!;
   const [scope, setScope] = useRouteState<'nation' | 'all'>('nscope', 'nation');
-  const vac = g.vacancies.map((cid) => g.clubs[cid]).filter((c) => c && c.manager === 0 && (scope === 'all' || c.nation === nation))
+  const vac = g.vacancies.map((cid) => g.clubs[cid]).filter((c) => c && c.manager === 0 && !g.leagues[c.league]?.hidden && (scope === 'all' || c.nation === nation))
     .sort((a, b) => (g.leagues[a.league]?.tier ?? 9) - (g.leagues[b.league]?.tier ?? 9) || b.rep - a.rep);
   return (
     <>

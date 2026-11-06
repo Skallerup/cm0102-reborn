@@ -955,7 +955,8 @@ export function aiTransferTick() {
   if (!windowOpen()) return;
   const m = month(g.date);
   const rate = m === 7 || m === 8 ? 1 / 5 : m === 1 ? 1 / 9 : m === 6 ? 1 / 12 : 1 / 60;
-  const clubs = Object.values(g.clubs);
+  // skjulte klubber (uden for de spilbare ligaer) handler ikke selv – de sælger kun, når andre byder
+  const clubs = Object.values(g.clubs).filter((c) => !g.leagues[c.league]?.hidden);
   const n = Math.max(1, Math.round(clubs.length * rate));
   for (let i = 0; i < n; i++) {
     const club = rng.pick(clubs);
@@ -1175,7 +1176,7 @@ export function aiFillSquads(minSize = 22) {
   const free = Object.values(g.players).filter((p) => !p.club && p.ca >= 30).sort((a, b) => b.ca - a.ca);
   const taken = new Set<number>();
   for (const c of Object.values(g.clubs)) {
-    if (isHumanClub(c.id)) continue;
+    if (isHumanClub(c.id) || g.leagues[c.league]?.hidden) continue;
     // mindst to målmænd – ellers står en markspiller i mål
     const gks = squad(c.id).filter((p) => naturalRole(p) === 'GK').length;
     for (let i = gks; i < 2; i++) {

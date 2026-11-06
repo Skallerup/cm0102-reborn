@@ -26,7 +26,8 @@ export interface WorldData {
   source: string;
   season: number;
   nations: { name: string; code: string }[];
-  leagues: { id: string; name: string; nation: number; tier: number }[];
+  /** `hidden`: klubber uden for de spilbare ligaer (originalens ikke-spilbare lande) – ligaen spilles aldrig */
+  leagues: { id: string; name: string; nation: number; tier: number; hidden?: boolean }[];
   clubs: [number, string, string, number, string, string, number, string][];
   playerFields: string[];
   players: (string | number)[][];
@@ -80,7 +81,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     activeNations: o.activeNations.slice(),
     nations: world.nations,
     leagueOrder: world.leagues.map((l) => l.id),
-    leagues: Object.fromEntries(world.leagues.map((l) => [l.id, { name: l.name, nation: l.nation, tier: l.tier }])),
+    leagues: Object.fromEntries(world.leagues.map((l) => [l.id, { name: l.name, nation: l.nation, tier: l.tier, ...(l.hidden ? { hidden: true } : {}) }])),
     players: {},
     clubs: {},
     staff: {},
@@ -170,6 +171,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     leagueLevel.set(l.id, cas.length ? median(cas) : l.tier === 2 ? 85 : 95);
   }
   for (const c of Object.values(g.clubs)) {
+    // skjulte klubber (spiller ingen kampe) beholder databasens trup
+    if (g.leagues[c.league]?.hidden) continue;
     const sq = squad(c.id);
     const lvl = sq.length >= 12 ? median(sq.map((p) => p.ca)) : (leagueLevel.get(c.league) ?? 90) - 4;
     fillSquad(c, sq, lvl, date, seed);
@@ -267,11 +270,11 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
   }
   const leaguesMeta = new Map(Object.entries(g.leagues).filter(([id]) => byLeague.has(id)));
   for (const [id, m] of leaguesMeta) {
-    if (!active.has(m.nation)) continue;
+    if (!active.has(m.nation) || m.hidden) continue;
     setupLeague(id, m.name, m.nation, m.tier, byLeague.get(id)!, season);
   }
   for (const nation of active) {
-    const leagues = [...leaguesMeta.entries()].filter(([, m]) => m.nation === nation).map(([id]) => id);
+    const leagues = [...leaguesMeta.entries()].filter(([, m]) => m.nation === nation && !m.hidden).map(([id]) => id);
     const cupName = leagues.map((l) => LEAGUE_RULES[l]?.cup).find(Boolean);
     const clubs = leagues.flatMap((l) => byLeague.get(l) ?? []);
     if (clubs.length >= 8) setupCup(nation, cupName ?? `${g.nations[nation].name} Cup`, clubs, season);

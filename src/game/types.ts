@@ -834,7 +834,7 @@ export interface GameState {
   activeNations: number[];
   nations: { name: string; code: string }[];
   leagueOrder: string[];
-  leagues: Record<string, { name: string; nation: number; tier: number }>;
+  leagues: Record<string, { name: string; nation: number; tier: number; hidden?: boolean }>;
   players: Record<number, Player>;
   clubs: Record<number, Club>;
   staff: Record<number, Staff>;

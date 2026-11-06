@@ -39,12 +39,9 @@ export function nthWeekday(y: number, m: number, wd: number, n: number): string 
 }
 
 export function ageOn(dob: string, date: string): number {
-  const b = toDate(dob);
-  const d = toDate(date);
-  let age = d.getUTCFullYear() - b.getUTCFullYear();
-  const m = d.getUTCMonth() - b.getUTCMonth();
-  if (m < 0 || (m === 0 && d.getUTCDate() < b.getUTCDate())) age--;
-  return age;
+  // direkte på ISO-strengene (kaldes for alle spillere hver dag – Date-objekter er for dyre)
+  const age = Number(date.slice(0, 4)) - Number(dob.slice(0, 4));
+  return date.slice(5, 10) < dob.slice(5, 10) ? age - 1 : age;
 }
 
 export function month(isoDate: string): number {

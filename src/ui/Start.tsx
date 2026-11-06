@@ -185,10 +185,10 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
       if (!w) return;
       setWorld(w);
       const own = LANG_NATION[getLang()];
-      const names = ch ? ch.nations : [w.leagues.some((l) => w.nations[l.nation]?.name === own) ? own : 'England'];
+      const names = ch ? ch.nations : [w.leagues.some((l) => !l.hidden && w.nations[l.nation]?.name === own) ? own : 'England'];
       const ids = names.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
       setActive(new Set(ids));
-      const first = w.leagues.filter((l) => l.nation === ids[0]).sort((a, b) => a.tier - b.tier)[0];
+      const first = w.leagues.filter((l) => l.nation === ids[0] && !l.hidden).sort((a, b) => a.tier - b.tier)[0];
       if (first) setLeague(first.id);
       // udfordringens klub findes ud fra navnet i databasen
       if (ch) { const cid = challengeClub(ch, w); setClub(cid); const lg = w.clubs.find((c) => c[0] === cid)?.[4]; if (lg) setLeague(lg); }
@@ -197,7 +197,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
 
   const leagueNations = useMemo(() => {
     if (!world) return [];
-    const ns = [...new Set(world.leagues.map((l) => l.nation))];
+    const ns = [...new Set(world.leagues.filter((l) => !l.hidden).map((l) => l.nation))];
     return ns.sort((a, b) => natName(world.nations[a].name).localeCompare(natName(world.nations[b].name)));
   }, [world]);
 
@@ -222,7 +222,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
   if (!world) return <div>{dbPicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
-  const leagues = world.leagues.filter((l) => active.has(l.nation));
+  const leagues = world.leagues.filter((l) => active.has(l.nation) && !l.hidden);
   const clubs = world.clubs.filter((c) => c[4] === league).sort((a, b) => a[2].localeCompare(b[2]));
   const clubNation = world.clubs.find((c) => c[0] === club)?.[3];
   const canStart = name.trim().length > 0 && club > 0 && clubNation !== undefined && active.has(clubNation);
@@ -280,7 +280,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
                   setActive(s);
                 }} />
                 <Flag name={world.nations[n].name} />{natName(world.nations[n].name)}
-                <span className="muted" style={{ marginLeft: 'auto' }}>{world.leagues.filter((l) => l.nation === n).length}</span>
+                <span className="muted" style={{ marginLeft: 'auto' }}>{world.leagues.filter((l) => l.nation === n && !l.hidden).length}</span>
               </label>
             ))}
           </div>

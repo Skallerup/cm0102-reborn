@@ -3,7 +3,7 @@ import { A, ATTRS, type AttrKey } from './attributes';
 import { ageOn } from './dates';
 import { rng } from './rng';
 import { gs } from './state';
-import type { Player, Role } from './types';
+import type { Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
@@ -42,9 +42,9 @@ export interface CoachingInfo {
 }
 
 /** Trænerholdets kvalitet: de bedste trænere vejer tungest, antallet og faciliteterne tæller med */
-export function coachingInfo(clubId: number): CoachingInfo {
+export function coachingInfo(clubId: number, clubStaff?: Staff[]): CoachingInfo {
   const g = gs();
-  const staff = Object.values(g.staff).filter((s) => s.club === clubId && (s.role === 'coach' || s.role === 'assistant'));
+  const staff = (clubStaff ?? Object.values(g.staff).filter((s) => s.club === clubId)).filter((s) => s.role === 'coach' || s.role === 'assistant');
   const sorted = staff.map((s) => s.attrs.coaching).sort((a, b) => b - a);
   // de tre bedste trænere tæller dobbelt
   const weights = sorted.map((_, i) => (i < 3 ? 2 : 1));
@@ -58,8 +58,8 @@ export function coachingInfo(clubId: number): CoachingInfo {
   return { quality, factor: (0.3 + 1.2 * quality) / (0.3 + 1.2 * 0.5), discipline: avgOf('discipline'), motivating: avgOf('motivating'), coaches: staff.length };
 }
 
-function coachQuality(clubId: number): CoachingInfo {
-  return coachingInfo(clubId);
+function coachQuality(clubId: number, clubStaff?: Staff[]): CoachingInfo {
+  return coachingInfo(clubId, clubStaff);
 }
 
 /** Kører hver mandag for alle spillere */
@@ -67,8 +67,11 @@ export function weeklyDevelopment() {
   const g = gs();
   const cq = new Map<number, CoachingInfo>();
   const none: CoachingInfo = { quality: 0.25, factor: 0.6, discipline: 0.3, motivating: 0.3, coaches: 0 };
+  // stab pr. klub én gang (ellers gennemløbes hele stabslisten for hver klub)
+  const byClub = new Map<number, Staff[]>();
+  for (const s of Object.values(g.staff)) if (s.club) (byClub.get(s.club) ?? byClub.set(s.club, []).get(s.club)!).push(s);
   for (const p of Object.values(g.players)) {
-    if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club) : none);
+    if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club, byClub.get(p.club) ?? []) : none);
     const ci = cq.get(p.club)!;
     develop(p, ci);
     // motiverende trænere løfter moralen en smule hver uge
