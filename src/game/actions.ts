@@ -1,7 +1,6 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
-import { startScoutAssignment } from './scouting';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
@@ -30,6 +29,7 @@ import type { RejectReason } from './will';
 import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
+import { startScoutAssignment } from './scouting';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }

@@ -1,10 +1,15 @@
 // Regler fra 2001/02, der kun gælder den originale database (ejerens ønske: den moderne database berøres ikke).
-import { cmDatabase } from './newgame';
 import { gs } from './state';
 import type { Club, Player } from './types';
 
 /** Spilles der med den originale 2001/02-database? */
-export const isOriginal2001 = () => cmDatabase(gs()) === 'original';
+// (samme regel som cmDatabase i newgame.ts – ikke importeret derfra, så filen ikke trækker hele newgame med og skaber
+// cirkulære imports via scouting/transfers)
+export const isOriginal2001 = () => {
+  const g = gs();
+  if (g.dbKind !== 'cm0102') return false;
+  return (g.dbYear ?? g.seasonHistory?.[0]?.season ?? g.season) < 2020;
+};
 
 /** EU (15 lande i 2001) + EØS – spillere herfra behøver ingen arbejdstilladelse i Storbritannien */
 const EU_EEA = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic of Ireland', 'France', 'Germany', 'Italy', 'Spain',
