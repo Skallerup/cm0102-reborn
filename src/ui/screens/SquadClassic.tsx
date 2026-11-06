@@ -140,6 +140,13 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   return null;
 }
 
+/** Landsholdstruppen: kun skader og karantæner (ingen "Fgn") */
+function nationalTag(p: Player): { k: string; title: string } | null {
+  if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
+  if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
+  return null;
+}
+
 /** Hvilken fane på spillerprofilen der forklarer mærket */
 const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
 
@@ -156,13 +163,13 @@ function starIds(players: Player[]): Set<number> {
 }
 const shortName = (p: Player | undefined, star = false) => (p ? `${p.last}${p.first ? `, ${p.first[0]}` : ''}${star ? '*' : ''}` : '');
 
-/** En anden klubs trup i klassisk stil: to kolonner med View og Sort By – uden udtagelse */
-export function ClassicClubSquad({ cid }: { cid: number }) {
+/** En anden klubs trup (eller et landshold: players) i klassisk stil: to kolonner med View og Sort By – uden udtagelse */
+export function ClassicClubSquad({ cid, players: given }: { cid: number; players?: Player[] }) {
   const g = useGame()!;
   const { nav } = useNav();
   const [view, setView] = useRouteState('csqview', 'pos');
   const [sortKey, setSort] = useRouteState('csort', 'pos');
-  const players = squad(cid);
+  const players = given ?? squad(cid);
   const stars = starIds(players);
   const INFO = infos(g);
   const SORTS = sorts(g, newTactic('4-4-2')).filter((x) => x.key !== 'sel');
@@ -171,7 +178,7 @@ export function ClassicClubSquad({ cid }: { cid: number }) {
   const list = players.slice().sort(sort.cmp);
   const half = Math.ceil(list.length / 2);
   const row = (p: Player) => {
-    const tag = tagOf(p, g, cid);
+    const tag = given ? nationalTag(p) : tagOf(p, g, cid);
     return (
       <div key={p.id} className="cx-sq-row">
         <span className="cx-selbtn cx-selbtn-static" />

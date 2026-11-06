@@ -68,6 +68,31 @@ interface Hub {
   sub?: (ScreenName | 'lastMatch' | 'division')[];
   /** ingen hub-faner på denne rute (fx én stabspersons profil) */
   plain?: (route: Route) => boolean;
+  /** egne farver i titelbjælken (fx et landshold) – går forud for klubbens */
+  colors?: (g: GameState, route: Route) => { bg: string; fg: string } | undefined;
+}
+
+/** Landsholdenes farver (trøje, tekst) til titelbjælken – som klubberne; øvrige lande får en neutral bjælke */
+const NATION_COLORS: Record<string, [string, string]> = {
+  England: ['#ffffff', '#c8102e'], Scotland: ['#0b2a6f', '#ffffff'], Wales: ['#c8102e', '#ffffff'], 'Northern Ireland': ['#007a3d', '#ffffff'],
+  'Republic of Ireland': ['#169b62', '#ffffff'], Denmark: ['#c8102e', '#ffffff'], Sweden: ['#fecc00', '#005293'], Norway: ['#ba0c2f', '#ffffff'],
+  Finland: ['#ffffff', '#002f6c'], Iceland: ['#02529c', '#ffffff'], Germany: ['#ffffff', '#000000'], France: ['#0055a4', '#ffffff'],
+  Italy: ['#0066b3', '#ffffff'], Spain: ['#c60b1e', '#ffc400'], Portugal: ['#a6192e', '#ffffff'], Holland: ['#ff6600', '#ffffff'],
+  Netherlands: ['#ff6600', '#ffffff'], Belgium: ['#e30613', '#ffffff'], Switzerland: ['#d52b1e', '#ffffff'], Austria: ['#ed2939', '#ffffff'],
+  Poland: ['#ffffff', '#dc143c'], 'Czech Republic': ['#d7141a', '#ffffff'], Croatia: ['#ff0000', '#ffffff'], Serbia: ['#c6363c', '#ffffff'],
+  Yugoslavia: ['#0c4076', '#ffffff'], Russia: ['#ffffff', '#0039a6'], Ukraine: ['#ffd700', '#0057b7'], Turkey: ['#e30a17', '#ffffff'],
+  Greece: ['#0d5eaf', '#ffffff'], Romania: ['#fcd116', '#002b7f'], Bulgaria: ['#ffffff', '#00966e'], Hungary: ['#ce2939', '#ffffff'],
+  Brazil: ['#ffdf00', '#009c3b'], Argentina: ['#75aadb', '#ffffff'], Uruguay: ['#5cbfeb', '#000000'], Colombia: ['#fcd116', '#003893'],
+  Chile: ['#d52b1e', '#ffffff'], Paraguay: ['#d52b1e', '#ffffff'], Peru: ['#ffffff', '#d91023'], Mexico: ['#006847', '#ffffff'],
+  USA: ['#ffffff', '#002868'], 'United States': ['#ffffff', '#002868'], Canada: ['#d80621', '#ffffff'], Japan: ['#000555', '#ffffff'],
+  'South Korea': ['#c60c30', '#ffffff'], 'Korea Republic': ['#c60c30', '#ffffff'], China: ['#de2910', '#ffde00'], Australia: ['#ffcd00', '#00843d'],
+  Nigeria: ['#008751', '#ffffff'], Cameroon: ['#007a5e', '#fcd116'], Senegal: ['#ffffff', '#00853f'], Ghana: ['#ffffff', '#000000'],
+  'Ivory Coast': ['#f77f00', '#ffffff'], "Côte d'Ivoire": ['#f77f00', '#ffffff'], Morocco: ['#c1272d', '#ffffff'], Tunisia: ['#e70013', '#ffffff'],
+  Egypt: ['#ce1126', '#ffffff'], 'South Africa': ['#ffb612', '#007a4d'], 'Saudi Arabia': ['#ffffff', '#006c35'], Iran: ['#ffffff', '#da0000'],
+};
+export function nationColors(name: string | undefined): { bg: string; fg: string } | undefined {
+  const c = name ? NATION_COLORS[name] : undefined;
+  return c ? { bg: c[0], fg: c[1] } : undefined;
 }
 
 const clubName = (g: GameState) => g.clubs[g.userClub]?.name ?? '';
@@ -131,6 +156,12 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   staff: { title: (g, r, st) => (r.id !== undefined ? st : `${clubName(g)} ${t('nav.staff')}`), club: (g, r) => (r.id !== undefined ? g.staff[Number(r.id)]?.club || undefined : own(g)), tabs: OFFICE_TABS, sub: OFFICE_SUB, plain: (r) => r.id !== undefined },
   scouting: { title: (g) => `${clubName(g)} ${t('nav.scouting')}`, club: own, tabs: OFFICE_TABS, sub: OFFICE_SUB },
   profile: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
+  // et landshold (route.id = nationen): landets navn i landsholdets farver – fanerne er skærmens egne
+  international: {
+    title: (g, r, st) => (r.id !== undefined ? natName(g.nations[Number(r.id)]?.name) : st),
+    club: () => undefined,
+    colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : undefined),
+  },
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   awards: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   jobs: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
@@ -316,7 +347,8 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const hub = HUBS[route.name];
   const text = hub?.title ? hub.title(g, route, title) : title;
   // klubbens farvetema: skærme uden egen klub (nyheder, manager, hjælp …) bruger ens egen klubs farver
-  const col = titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
+  const own2 = hub?.colors?.(g, route);
+  const col = own2 ? { ...own2, neutral: false } : titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
   // klubbens logo i titelbjælken (kun på klubbens egne skærme)
   const logoClub = hub?.club ? hub.club(g, route) : undefined;
   const plain = hub?.plain?.(route);

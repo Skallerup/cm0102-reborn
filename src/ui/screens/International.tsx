@@ -14,6 +14,10 @@ import { ageOn } from '../../game/dates';
 import type { Player } from '../../game/types';
 import { gs } from '../../game/state';
 import type { JSX } from 'react';
+import { isRetro } from '../theme';
+import { Head } from './common';
+import { ClassicSub, CxLink, clubRoute, type Item } from '../classic';
+import { ClassicClubSquad } from './SquadClassic';
 
 export function International({ nation }: { nation?: number }) {
   const g = useGame()!;
@@ -103,6 +107,7 @@ function Tournament({ t: tour, N }: { t: IntlTournament; N: (n: number) => JSX.E
 
 /** Et lands landshold: de udtagne spillere, landets resultater og vej til landets liga */
 function NationTeam({ n }: { n: number }) {
+  if (isRetro()) return <ClassicNationTeam n={n} />;
   const g = useGame()!;
   const { nav } = useNav();
   const squad = nationSquad(n);
@@ -168,5 +173,69 @@ function SquadPicker({ n }: { n: number }) {
         ))}
       </div>
     </Panel>
+  );
+}
+
+/** Landsholdet i klassisk stil – som en klubs trup i CM 01/02: titelbjælke i landets farver, faner og truppen i to kolonner */
+function ClassicNationTeam({ n }: { n: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const [tab, setTab] = useRouteState<'squad' | 'results' | 'fifa' | 'info'>(`ntt:${n}`, 'squad');
+  const squad = nationSquad(n);
+  const coach = g.manager.national?.nation === n ? g.manager.name : '';
+  const info = g.intl?.info?.[n];
+  const results = (g.intl?.results ?? []).filter((r) => r.home === n || r.away === n).slice(0, 30);
+  const ranking = fifaRanking();
+  const rank = ranking.findIndex((r) => r.n === n) + 1;
+  const top = g.leagueOrder.find((l) => g.leagues[l]?.nation === n && g.comps[l]);
+  const sub: Item[] = [
+    { key: 'info', label: t('intl.nationInfo'), onClick: () => nav({ name: 'nation', id: n, tab: 'managers' }) },
+    { key: 'league', label: top ? compName(g.leagues[top]?.name) : t('nav.competitions'), disabled: !top, onClick: () => top && nav({ name: 'competitions', id: top }) },
+    { key: 'intl', label: t('intl.title'), onClick: () => nav({ name: 'international' }) },
+  ];
+  const Nn = ({ id }: { id: number }) => <span className={id === n ? 'cx-cup-team me' : ''}><CxLink to={{ name: 'international', id }}>{natName(g.nations[id]?.name)}</CxLink></span>;
+  return (
+    <div>
+      <Head title={natName(g.nations[n]?.name)} />
+      <Tabs tabs={[['squad', t('cl.nt.squad')], ['results', t('intl.tab.results')], ['fifa', t('intl.tab.fifa')], ['info', t('cl.nt.info')]]} value={tab} onChange={(v) => setTab(v as typeof tab)} />
+      {tab === 'squad' && (
+        <>
+          <div className="cx-subtitle">{t('cl.nt.squadTitle', { n: squad.length })}</div>
+          {coach && <SquadPicker n={n} />}
+          {!squad.length ? <div className="cx-empty">{t('intl.noSquad')}</div> : <ClassicClubSquad cid={0} players={squad} />}
+        </>
+      )}
+      {tab === 'results' && (
+        <>
+          <div className="cx-subtitle">{t('intl.tab.results')}</div>
+          {!results.length ? <div className="cx-empty">{t('intl.noResults')}</div> : (
+            <table className="grid"><tbody>{results.map((r, i) => (
+              <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td><Nn id={r.home} /></td><td className="num"><b>{r.hg} - {r.ag}</b></td><td><Nn id={r.away} /></td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
+            ))}</tbody></table>
+          )}
+        </>
+      )}
+      {tab === 'fifa' && (
+        <>
+          <div className="cx-subtitle">{t('intl.tab.fifa')}</div>
+          <table className="grid"><thead><tr><th className="num">#</th><th>{t('col.nat')}</th><th className="num">{t('intl.points')}</th></tr></thead>
+            <tbody>{ranking.slice(0, 100).map((r, i) => <tr key={r.n}><td className="num">{i + 1}</td><td><Nn id={r.n} /></td><td className="num">{r.pts}</td></tr>)}</tbody></table>
+        </>
+      )}
+      {tab === 'info' && (
+        <>
+          <div className="cx-subtitle">{t('cl.nt.info')}</div>
+          <table className="grid"><tbody>
+            <tr><td>{t('intl.coach')}</td><td><b>{coach || info?.coach || t('intl.unknownCoach')}</b></td></tr>
+            {info?.stadium ? <tr><td>{t('intl.stadium')}</td><td>{info.stadium}{info.cap ? ` (${info.cap.toLocaleString()})` : ''}</td></tr> : null}
+            <tr><td>{t('intl.tab.fifa')}</td><td>{rank ? `#${rank} (${ranking[rank - 1].pts})` : '–'}</td></tr>
+            {Object.entries(info?.titles ?? {}).map(([k, v]) => <tr key={k}><td>{k}</td><td>{v}</td></tr>)}
+            <tr><td>{t('cl.nt.mostCaps')}</td><td>{(() => { const p = [...squad].sort((a, b) => b.caps - a.caps)[0]; return p ? <><CxLink to={{ name: 'player', id: p.id }}>{p.first} {p.last}</CxLink> ({p.caps})</> : '–'; })()}</td></tr>
+            <tr><td>{t('cl.nt.clubs')}</td><td>{[...new Set(squad.map((p) => p.club).filter(Boolean))].slice(0, 12).map((c, i) => <span key={c}>{i ? ', ' : ''}<CxLink to={clubRoute(c)}>{g.clubs[c]?.short}</CxLink></span>)}</td></tr>
+          </tbody></table>
+        </>
+      )}
+      <ClassicSub items={sub} />
+    </div>
   );
 }

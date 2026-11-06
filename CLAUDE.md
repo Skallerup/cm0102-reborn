@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk landshold (`ClassicNationTeam` i International.tsx): hub `international` med `colors` (NATION_COLORS i
+  classic.tsx), truppen via `ClassicClubSquad cid={0} players={…}`.
 - 2026-11-06 – Landshold efter ejerens `…/bosman-edition/app/national_teams/NATIONAL_TEAMS.md`: `scripts/build-national.py` →
   `scripts/national-original.json` → `world-original.json.nationalTeams` (stadion, FIFA-koefficient, landstræner, titler,
   slutrunder ≤ 2001). `IntlState.info/past/fifa`, `fifaRanking` (Elo, *estimeret*), landstræner: `national.picks`
