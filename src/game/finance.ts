@@ -154,6 +154,19 @@ export function newSeasonBudgets() {
   for (const c of Object.values(g.clubs)) {
     const wealth = rulesFor(c.league, 20).wealth;
     const sv = squad(c.id).reduce((s, p) => s + p.value, 0);
+    // udbytte (CM 01/02: "Dividends"): ejerne tager halvdelen af det, der står i kassen ud over en buffer på 60 % af
+    // sæsonens omsætning – ellers hober pengene sig op hos en klub, der ikke handler
+    const turnover = c.finance.gate + c.finance.tv + c.finance.prize + c.finance.sponsor + c.finance.merch;
+    const buffer = Math.max(turnover * 0.6, c.finance.wages * 0.5, 2_000_000 * econ());
+    c.lastDividend = undefined;
+    if (turnover > 0 && c.balance > buffer) {
+      const div = Math.round(((c.balance - buffer) * 0.5) / 100_000) * 100_000;
+      if (div > 0) {
+        c.balance -= div;
+        c.lastDividend = div;
+        asOwnerFinance(c.id, () => addNews({ cat: 'finance', key: 'board.dividend', params: { club: c.name, amount: div, balance: c.balance }, link: { kind: 'club', id: c.id } }));
+      }
+    }
     c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
     if (c.ffp?.sanction) c.transferBudget = Math.round(c.transferBudget * 0.4 / 50_000) * 50_000;
     const bill = currentWageBill(c.id, loanedOut);

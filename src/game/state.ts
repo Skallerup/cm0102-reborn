@@ -176,7 +176,7 @@ export function addNews(n: Omit<NewsItem, 'id' | 'date' | 'read'> & { date?: str
   const muted = !!g.options.mutedNews?.includes(n.cat);
   const item = { id: g.nextId.news++, date: n.date ?? g.date, read: muted, ...n, ...(muted ? { muted: true } : {}) };
   g.news.unshift(item);
-  if (g.news.length > 400) g.news.length = 400;
+  if (g.news.length > 700) g.news.length = 700;
   if (opts?.all && g.humans) {
     for (const h of g.humans) {
       if (h.pid === g.active) continue;

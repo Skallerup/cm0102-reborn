@@ -1,12 +1,12 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
-import { roundValue, wageFor } from './data/generate';
+import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
-import { hash01, rng } from './rng';
+import { Rng, hash, hash01, rng } from './rng';
 import { recordDevelopment } from './training';
 import { merchStarSigning } from './finance';
-import { addNews, gs, newsRelevant, setClub, squad } from './state';
+import { addNews, addPlayer, gs, newsRelevant, setClub, squad } from './state';
 import { clubLevel, registerAskingPrice } from './scouting';
 import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
@@ -1178,13 +1178,14 @@ export function aiRenewals() {
     .filter((p) => p.club && !isHumanClub(p.club) && p.contract && !p.loan && p.contract.expires <= seasonEnd && !p.contract.futureClub)
     .sort((a, b) => b.ca - a.ca);
   for (const p of expiring) {
-    if (!rng.chance(0.35)) continue;
     const level = clubLevel(p.club);
     const age = ageOn(p.dob, g.date);
     const left = staying.get(p.club) ?? 0;
     const lv = level - roleOffset(naturalRole(p));
-    const wanted = (depthRank(p) < (REQUIRED[naturalRole(p)] ?? 2) && age <= 34) || (p.ca >= lv - 15 && age <= 32) || (p.ca >= lv - 3 && age <= 38) || (age <= 23 && p.pa >= lv - 5) || (left < 22 && age <= 34 && p.ca >= lv - 30);
-    if (!wanted) continue;
+    // spillere, der faktisk bruges (spilletid denne sæson), fornyes næsten altid; resten efter behov
+    const used = p.stats.apps + p.stats.subs >= 10 && age <= 34;
+    const wanted = used || (depthRank(p) < (REQUIRED[naturalRole(p)] ?? 2) && age <= 34) || (p.ca >= lv - 15 && age <= 32) || (p.ca >= lv - 3 && age <= 38) || (age <= 23 && p.pa >= lv - 5) || (left < 22 && age <= 34 && p.ca >= lv - 30);
+    if (!wanted || !rng.chance(used ? 0.6 : 0.35)) continue;
     const club = g.clubs[p.club];
     const rel = defaultRelease(p, club);
     p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30`, ...(rel ? { release: rel } : {}) };
@@ -1207,7 +1208,16 @@ export function aiFillSquads(minSize = 22) {
     for (let i = gks; i < 2; i++) {
       const lv = clubLevel(c.id) - GK_OFFSET;
       const gk = free.find((p) => !taken.has(p.id) && naturalRole(p) === 'GK' && p.ca <= lv + 15 && p.ca >= lv - 50 && playerInterest(p, c) === 'yes');
-      if (!gk) break;
+      if (!gk) {
+        // ingen ledig målmand: en ung målmand rykkes op fra reserverne, så klubben ikke står med én
+        const r = new Rng(hash(g.seed, c.id, Number(g.date.replace(/-/g, "")), i, 17));
+        const [first, last] = randomName(g.names, c.nation, r);
+        const ca = Math.max(35, Math.min(150, Math.round(lv - 12 + r.normal(0, 5))));
+        const y = makePlayer({ id: g.nextId.player++, first, last, dob: randomDob(r.int(18, 21), g.date, r), nation: c.nation, club: c.id, sub: 'GK', foot: 'R', height: 0,
+          ca, pa: ca + r.int(5, 25), date: g.date, seed: g.seed, regen: true, contractEnd: `${year(g.date) + 2}-06-30`, wealth: rulesFor(c.league, 20).wealth });
+        addPlayer(y);
+        break;
+      }
       taken.add(gk.id);
       gk.contract = { wage: Math.round(wageDemand(gk, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(gk) - 1)}-06-30` };
       setClub(gk, c.id);

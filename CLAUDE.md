@@ -12,7 +12,8 @@ og læg ændringen i samme push.
 - Ejeren spiller originalen lokalt ("CM 01-02 Bosman Edition.app"). Claude kan selv tage billeder af vinduet med
   `screencapture -x -o -l <vindues-id>` (id via Swift `CGWindowListCopyWindowInfo`), også når det ligger bagved.
 - Spillernes ændringslog: `src/ui/changelogData.ts` (da+en, nyeste først) – tilføj punkter ved hver udgivelse, der kan
-  mærkes i spillet, og hæv versionen i `package.json`/`package-lock.json` ved en ny version (testet i tests/changelog.test.ts).
+  mærkes i spillet, og hæv versionen i `package.json`/`package-lock.json` ved en ny version (ny version pr. udgivelsesdag – ellers ses
+  ændringerne ikke som nye i spillet) (testet i tests/changelog.test.ts).
 - Langtidstest: `npx tsx scripts/soak.ts <sæsoner> <world-fil> [klub]` (motorens invarianter pr. sæson),
   `npx tsx scripts/features.ts <world-fil> [klub]` (20 funktioner gennem actions) og `node scripts/e2e-soak.mjs <modern|original>
   <moderne|klassisk> [sæsoner] [klub]` (5 sæsoner i browseren, alle skærme). Ret IKKE i `src/` mens e2e-soak kører (Vite
@@ -44,6 +45,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – v0.15.0. Forbedringer efter 5-sæsoners testen: udbytte ved sæsonstart (`lastDividend`, buffer 60 % af
+  omsætningen, halvdelen af overskydende saldo), AI-fornyelser efter spilletid, `freeAgentDrift` (2/9 og 2/2, kun det
+  puljen er over 6 %), regens (`spawnRegen` ved pension af PA≥120), ung målmand i `aiFillSquads`, nyhedsloft 700.
+  `scripts/compat.mts` indlæser gamle saves (testet med gårsdagens kode: OK). Trupperne falder fra ~36 (databasens
+  reserver) til ~28 i snit – det er tilsigtet.
 - 2026-11-06 – 5-sæsoners test af alle fire kombinationer (2026/27 + 01/02 × moderne/klassisk): fyring gav blank skærm
   (FirstDay.tsx uden klub) – rettet; "Min klub" uden klub → `NoClub`. Skjulte klubber: ingen ungdomsårgang, ingen
   lejeaftaler (loanSuitors/aiBidsForListed). Frie agenter, ingen vil have, går på pension (retirements). Nu 0 problemer.

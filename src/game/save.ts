@@ -105,7 +105,7 @@ function ensureAllNumbers() {
 }
 
 /** Opgradér gemte spil fra ældre versioner (nye turneringer m.m.) */
-function upgradeLoaded() {
+export function upgradeLoaded() {
   const g = gs();
   if (addMissingConference()) {
     const club = g.clubs[g.userClub];

@@ -21,6 +21,7 @@ import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { initKnowledge } from './scouting';
 import type { Club, Player, SeasonFinance, SeasonSummary } from './types';
+import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
 
@@ -197,6 +198,7 @@ function contractsAndLoans() {
 
 function retirements() {
   const g = gs();
+  const reborn: Player[] = [];
   for (const p of Object.values(g.players)) {
     const age = ageOn(p.dob, g.date);
     let prob = 0;
@@ -206,17 +208,40 @@ function retirements() {
     else if (age === 34) prob = p.ca < 90 ? 0.15 : 0.05;
     else if (!p.club && age >= 32) prob = 0.4;
     else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
-    // frie agenter, ingen vil have: de forsvinder til amatørfodbolden (ellers vokser puljen med tusinder om året)
-    else if (!p.club && age >= 24 && p.ca < 85) prob = 0.35;
-    else if (!p.club && age < 24 && p.ca < 70 && p.pa < 120) prob = 0.35;
     if (prob > 0 && rng.chance(prob)) {
       const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
       if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
       else if (isHumanClub(p.club)) asOwner(p.club, () => addNews(msg));
       retireIntoStaff(p);
+      // CM 01/02: gode spillere "genopstår" som et ungt talent med et fiktivt navn (en regen)
+      if (p.pa >= 120 && !g.draft) reborn.push(p);
       removePlayer(p);
     }
   }
+  for (const p of reborn) spawnRegen(p);
+}
+
+/**
+ * En regen: et 15-16-årigt talent fra samme land, på samme position og med potentiale omkring den pensionerede
+ * spillers niveau – så verdens spillerbestand og kvalitet holdes oppe, som i CM 01/02. Han kommer til en klub i
+ * landet (gode ungdomsafdelinger oftere); findes ingen, bliver han fri agent.
+ */
+function spawnRegen(old: Player) {
+  const g = gs();
+  const r = new Rng(hash(g.seed, old.id, g.season, 91));
+  const clubs = Object.values(g.clubs).filter((c) => c.nation === old.nation && !g.leagues[c.league]?.hidden && squad(c.id).length < 40);
+  const club = clubs.length ? r.weighted(clubs, (c) => 1 + c.youth * c.youth / 20) ?? clubs[0] : undefined;
+  const pa = Math.max(90, Math.min(195, Math.round(old.pa + r.normal(0, 10))));
+  const ca = Math.max(30, Math.min(80, Math.round(pa * 0.3 + r.normal(0, 6))));
+  const [first, last] = randomName(g.names, old.nation, r);
+  const sub = subPos(old.pos, old.side) as SubPos;
+  const p = makePlayer({
+    id: g.nextId.player++, first, last, dob: randomDob(r.int(15, 16), g.date, r), nation: old.nation, club: club?.id ?? 0, sub,
+    foot: old.foot === 'L' ? 'L' : 'R', height: 0, ca, pa, date: g.date, seed: g.seed, regen: true, contractEnd: club ? `${g.season + 3}-06-30` : undefined,
+  });
+  p.value = Math.max(10_000, p.value);
+  if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+  addPlayer(p);
 }
 
 const PA_BASE = 30, PA_Q = 55, PA_SD = 22;
@@ -442,6 +467,25 @@ function updateClubReps() {
       for (const c of [t.a, t.b]) reached.set(c, Math.max(reached.get(c) ?? 0, lvl));
     }
     for (const [cid, lvl] of reached) bump(cid, cid === comp.winner ? win : id === 'UECL' ? Math.max(0, lvl - 1) : lvl);
+  }
+}
+
+/**
+ * Når transfervinduet lukker (2/9 og 2/2): frie agenter, ingen har skrevet kontrakt med, finder klubber i lavere
+ * rækker eller i udlandet og forlader spillet. Stjerner og store talenter bliver i puljen, så de kan hentes.
+ */
+export function freeAgentDrift() {
+  const g = gs();
+  const all = Object.values(g.players);
+  const free = all.filter((p) => !p.club && p.ca < 130 && p.pa < 150 && p.rep < 70);
+  // selvregulerende: kun det, puljen er over ~6 % af alle spillere, forsvinder (ellers skrumper verden)
+  const excess = free.length - all.length * 0.06;
+  if (excess <= 0) return;
+  const base = Math.min(0.6, excess / free.length);
+  for (const p of free) {
+    const age = ageOn(p.dob, g.date);
+    const prob = age >= 21 ? base : p.pa < 130 ? base * 0.7 : 0;
+    if (prob && rng.chance(prob)) removePlayer(p);
   }
 }
 

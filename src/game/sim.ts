@@ -25,7 +25,7 @@ import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelop
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
-import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
+import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
 import { monthlyWill, weeklyPlayerContact } from './will';
@@ -350,6 +350,8 @@ function newDay() {
   // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson
   if (g.draft) { draftDay(); return; }
   if (month(d) === 7 && day(d) === 1) seasonRollover();
+  // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
+  if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting
   for (const p of Object.values(g.players)) {
     if (p.injury) {

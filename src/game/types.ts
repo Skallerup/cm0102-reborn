@@ -330,6 +330,8 @@ export interface Club {
   history: ClubSeasonHistory[];
   /** måneder i træk med negativ saldo (nyheden "financial mess") */
   negMonths?: number;
+  /** udbytte betalt til ejerne ved sidste sæsonstart */
+  lastDividend?: number;
   ticketPrice: number;
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */
