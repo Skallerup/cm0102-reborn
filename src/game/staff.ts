@@ -5,7 +5,7 @@ import { isMultiplayer, ownerOf, withHuman } from './humans';
 import { hash01 } from './rng';
 import type { Staff, StaffRole } from './types';
 
-export const STAFF_LIMITS: Record<StaffRole, number> = { manager: 0, assistant: 1, coach: 7, physio: 3, scout: 6 };
+export const STAFF_LIMITS: Record<StaffRole, number> = { manager: 0, assistant: 1, coach: 7, physio: 3, scout: 7 }; // CM 01/02: op til 7 scouts (club.dat)
 
 export function staffCount(role: StaffRole): number {
   const g = gs();

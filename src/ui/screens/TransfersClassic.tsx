@@ -180,6 +180,7 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
                 onChange={(v) => set('side', v === 'any' ? '' : v as Filters['side'])} />)}
               {row(t('cl.fl.injuries'), <Seg value={f.noInjured} opts={[[false, any], [true, t('cl.fl.none')]]} onChange={(v) => set('noInjured', v)} />)}
               {g.userClub > 0 && row(t('cl.fl.interested'), yesNo(f.interested, (v) => set('interested', v)))}
+              {g.userClub > 0 && row(t('tr.f.scouted'), yesNo(!!f.scouted, (v) => set('scouted', v)))}
               {g.options.masking && row(t('cl.fl.scouted'), yesNo(f.onlyKnown, (v) => set('onlyKnown', v), t('cl.fl.no')))}
               {g.userClub > 0 && row(t('cl.fl.squad'), yesNo(f.includeSquad, (v) => set('includeSquad', v), t('cl.fl.no')))}
             </div>
@@ -322,7 +323,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const based = (p: Player) => { const c = g.clubs[p.club]; return c ? natName(g.nations[c.nation]?.name) ?? '' : t('common.free'); };
   const base: CxCol<Player>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{t(`cl.tag.${x[0]}`)}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}{p.club !== g.userClub && (g.knowledge[p.id] ?? 0) >= 60 && <span className="cx-sct" title={t('tr.sctTip')}> Sct</span>}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : '-'), sort: (p) => g.clubs[p.club]?.name ?? '' };
   const pos: CxCol<Player> = { key: 'pos', label: t('col.pos'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };

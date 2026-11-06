@@ -189,11 +189,14 @@ export interface StaffAttrs {
 export type StaffRole = 'manager' | 'assistant' | 'coach' | 'physio' | 'scout';
 
 export interface ScoutAssignment {
-  kind: 'player' | 'nation' | 'league';
+  /** CM 01/02: spiller, klub (alle dens kampe), næste modstander, turnering/liga, land, region og ungdomsspillere */
+  kind: 'player' | 'nation' | 'league' | 'club' | 'nextOpp' | 'region' | 'youth';
   target: number | string;
   /** Opgaven slutter (scouten vender hjem med en rapport); udeladt = indtil kaldt hjem */
   until?: string;
   since?: string;
+  /** næste modstander: rapporten om denne klub er afleveret */
+  reported?: number;
   /** Fokus: kun unge eller etablerede spillere */
   focus?: 'any' | 'young' | 'prime';
   /** Søgekriterier: position, attributkrav (index i ATTRS + minimum) og maks. værdi */

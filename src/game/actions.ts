@@ -1,6 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { startScoutAssignment } from './scouting';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
@@ -155,7 +156,7 @@ export function applyAction(a: Action): unknown {
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
       if (a.on) g.shortlist.push(a.pid);
       return 'ok';
-    case 'scout': { const s = g.staff[a.staffId]; if (s && s.club === g.userClub) s.assignment = a.assignment; return 'ok'; }
+    case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {

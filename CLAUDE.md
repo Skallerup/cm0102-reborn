@@ -45,6 +45,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Spejdere efter ejerens `…/bosman-edition/app/scouts/SCOUTS.md` (alle databaser): ScoutAssignment-typerne club,
+  nextOpp, region, youth; `startScoutAssignment` (nyhed scout.started), scout.update/doneNone/doneOne/clubDone/oppReport,
+  `scoutReport` (originalens 12 domme `scout.v.1-12`, ctx, styrke/evne/svaghed, arbejdstilladelse kun original DB – sættes
+  sammen i newsParams), scout.spotted, kontraktpåmindelser, STAFF_LIMITS.scout 7, filter `scouted` + Sct. Test: tests/scouts.test.ts.
 - 2026-11-06 – 2001-regler kun for original DB i `src/game/rules2001.ts` (`isOriginal2001`). Arbejdstilladelse: britisk klub +
   spiller uden for EU/EØS → `playerInterest` = 'permit' medmindre 15+ landskampe, omdømme 70+ eller 5+ kampe og CA 140+ (*estimeret*).
 - 2026-11-06 – Motorplanens trin 8-9: `knockCheck` (`KNOCK_K` 1,4) og `aiManageOriginal` (5/15-minutters spærrer, "knackered"),

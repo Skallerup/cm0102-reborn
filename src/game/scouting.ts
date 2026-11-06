@@ -1,13 +1,15 @@
 // Scouting med usikkerhedsintervaller (forbedring #5).
 // Kendskab 0-100 pr. spiller. Attributter vises som interval (fx 12–15), der indsnævres
 // jo bedre spilleren er scoutet. Ved 100 vises den præcise værdi som i CM 01/02.
+import { needsWorkPermit, workPermitGranted } from './rules2001';
+import { regionOf } from './leagues';
 import { natName } from '../i18n';
 import { hash01 } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
 import { rng } from './rng';
 import { A, naturalRole, roleScore } from './attributes';
-import { ageOn } from './dates';
+import { ageOn, daysBetween } from './dates';
 
 export function initKnowledge() {
   const g = gs();
@@ -111,6 +113,12 @@ export function scoutDaily() {
   const g = gs();
   if (!g.userClub) return;
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout');
+  // CM 01/02: påmindelser om scoutens kontrakt 12, 6, 3 og 2 måneder, 1 måned og 1 uge før udløb
+  for (const s of scouts) {
+    if (!s.expires) continue;
+    const left = daysBetween(g.date, s.expires);
+    if ([365, 182, 91, 61, 30, 7].includes(left)) addNews({ cat: 'contract', key: 'scout.contractReminder', params: { scout: `${s.first} ${s.last}`, date: s.expires, days: left } });
+  }
   for (const s of scouts) {
     const a = s.assignment;
     const skill = (s.attrs.judgingAbility + s.attrs.judgingPotential) / 40;
@@ -130,7 +138,7 @@ export function scoutDaily() {
       if ((g.knowledge[pid] ?? 0) >= 100) {
         s.assignment = null;
         const p = g.players[pid];
-        if (p) addNews({ cat: 'scout', key: 'news.scoutDone', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, link: { kind: 'player', id: pid } });
+        if (p) scoutReport(`${s.first} ${s.last}`, p);
       }
     } else {
       // turen er slut: scouten vender hjem med en rapport
@@ -139,12 +147,35 @@ export function scoutDaily() {
         s.assignment = null;
         continue;
       }
-      const clubs = Object.values(g.clubs).filter((c) => (a.kind === 'nation' ? c.nation === a.target : c.league === a.target));
+      // næste modstander: følg den kommende modstanders trup; efter kampen afleveres rapporten
+      if (a.kind === 'nextOpp') {
+        const nx = nextOpponent();
+        if (!nx) { s.assignment = null; continue; }
+        a.target = nx.opp;
+        for (const p of squad(nx.opp).sort((x, y) => y.ca - x.ca).slice(0, 16)) scoutKnowledge(p.id, 10 * skill + 4, s.id);
+        // rapporten kommer to dage før kampen (én pr. modstander)
+        if (a.reported !== nx.opp && daysBetween(g.date, nx.date) <= 2) { scoutOppReport(s, nx.opp); a.reported = nx.opp; }
+        continue;
+      }
+      const clubs = Object.values(g.clubs).filter((c) => (a.kind === 'nation' ? c.nation === a.target
+        : a.kind === 'club' ? c.id === a.target
+        : a.kind === 'region' ? regionOf(g.nations[c.nation]?.name) === a.target
+        : a.kind === 'youth' ? c.id !== g.userClub && !g.leagues[c.league]?.hidden
+        : c.league === a.target));
+      // hele klubben afdækket: "[klub] scouting completed"
+      if (a.kind === 'club' && clubs[0] && squad(clubs[0].id).every((p) => (g.knowledge[p.id] ?? 0) >= 60)) {
+        addNews({ cat: 'scout', key: 'scout.clubDone', params: { scout: `${s.first} ${s.last}`, club: clubs[0].name, n: squad(clubs[0].id).length }, link: { kind: 'club', id: clubs[0].id } });
+        s.assignment = null;
+        continue;
+      }
+      // en gang om måneden: status ("has found [n] suitable players so far")
+      if (g.date.endsWith('-01') && a.since && a.since < g.date && a.kind !== 'club') addNews({ cat: 'scout', key: 'scout.update', params: { scout: `${s.first} ${s.last}`, ...scoutTarget(a), n: a.found?.length ?? 0 } });
       // scoutens skøn af en evne: dårlige scouts tager mere fejl (deterministisk pr. spiller og scout)
       const judged = (p: Player, idx: number) => p.attrs[idx] + (hash01(p.id, idx, s.id) - 0.5) * (20 - s.attrs.judgingAbility) / 3;
       const fits = (p: Player) => {
         const age = ageOn(p.dob, g.date);
         if (a.focus === 'young' && age > 21) return false;
+        if (a.kind === 'youth' && (age > 19 || p.pa < 120)) return false;
         if (a.focus === 'prime' && (age < 22 || age > 29)) return false;
         if (a.role && naturalRole(p) !== a.role) return false;
         if (a.maxValue && p.value > a.maxValue) return false;
@@ -154,7 +185,7 @@ export function scoutDaily() {
       // scouten følger to spillere ad gangen, til de er afdækket, og finder så nye blandt dem der passer
       const queue = (a.queue ??= []).filter((id) => g.players[id] && (g.knowledge[id] ?? 0) < 60);
       if (queue.length < 2) {
-        const strict = a.role || (a.attr !== undefined && a.attr >= 0) || a.maxValue;
+        const strict = a.role || (a.attr !== undefined && a.attr >= 0) || a.maxValue || a.kind === 'youth';
         const pool = strict
           ? clubs.flatMap((c) => squad(c.id)).filter((x) => x.club !== g.userClub && (g.knowledge[x.id] ?? 0) < 60 && !queue.includes(x.id) && fits(x))
           : [];
@@ -173,13 +204,84 @@ export function scoutDaily() {
   }
 }
 
+/** Opgavens mål som tekst-parametre til nyhederne (land/liga/klub/region – oversættes i newsParams via targetKey) */
+export function scoutTarget(a: ScoutAssignment): { target: string; targetKey?: string } {
+  const g = gs();
+  if (a.kind === 'nation') return { target: natName(g.nations[a.target as number]?.name) || '?' };
+  if (a.kind === 'league') return { target: g.leagues[a.target as string]?.name ?? String(a.target) };
+  if (a.kind === 'club') return { target: g.clubs[a.target as number]?.name ?? '?' };
+  if (a.kind === 'region') return { target: String(a.target), targetKey: `region.${a.target}` };
+  if (a.kind === 'nextOpp') return { target: '', targetKey: 'scout.t.nextOpp' };
+  if (a.kind === 'youth') return { target: '', targetKey: 'scout.t.youth' };
+  return { target: '' };
+}
+
+/** En opgave begynder (CM 01/02: "Scout [navn] has started his … search, and will report back with his findings") */
+export function startScoutAssignment(staffId: number, a: ScoutAssignment | null) {
+  const g = gs();
+  const s = g.staff[staffId];
+  if (!s || s.club !== g.userClub) return;
+  s.assignment = a;
+  if (a && a.kind !== 'player') addNews({ cat: 'scout', key: 'scout.started', params: { scout: `${s.first} ${s.last}`, ...scoutTarget(a) } });
+}
+
+/** Næste modstander for brugerens klub */
+function nextOpponent(): { opp: number; date: string } | undefined {
+  const g = gs();
+  const f = Object.values(g.fixtures).filter((x) => !x.result && x.date >= g.date && (x.home === g.userClub || x.away === g.userClub)).sort((x, y) => x.date.localeCompare(y.date))[0];
+  return f ? { opp: f.home === g.userClub ? f.away : f.home, date: f.date } : undefined;
+}
+
 /** En scout vender hjem: rapport med antal fund og det bedste talent */
 function scoutReturns(name: string, a: ScoutAssignment) {
   const g = gs();
   const found = (a.found ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p && realistic(p));
   const best = found.sort((x, y) => { const sx = scoutStars(x), sy = scoutStars(y); return sy.potential[0] + sy.ability[0] - (sx.potential[0] + sx.ability[0]); })[0];
-  const target = a.kind === 'nation' ? natName(g.nations[a.target as number]?.name) || '?' : g.leagues[a.target as string]?.name ?? String(a.target);
-  addNews({ cat: 'scout', key: 'news.scoutReturned', params: { scout: name, target, n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
+  const key = found.length === 0 ? 'scout.doneNone' : found.length === 1 ? 'scout.doneOne' : 'news.scoutReturned';
+  addNews({ cat: 'scout', key, params: { scout: name, ...scoutTarget(a), n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
+}
+
+/**
+ * CM 01/02's scoutrapport: hvor scouten så ham (en bestemt kamp eller "during recent weeks"), dommen på originalens skala
+ * (fra "an excellent prospect who could make an immediate impact" til "not good enough to play for [klub]"), en styrke,
+ * en særlig evne, en svaghed – og en advarsel om arbejdstilladelse (kun den originale database).
+ */
+export function scoutReport(scout: string, p: Player) {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  if (!club) return;
+  const rec = scoutRecommendation(p);
+  const age = ageOn(p.dob, g.date);
+  const st = scoutStars(p);
+  const young = age <= 21;
+  const growth = (st.potential[0] + st.potential[1]) / 2 - (st.ability[0] + st.ability[1]) / 2 >= 1;
+  const estCA = caOfStars((st.ability[0] + st.ability[1]) / 2);
+  const level = clubLevel(club.id);
+  const v = rec.level === 0 ? (young ? 1 : 2) : rec.level === 1 ? (young && growth ? 3 : 4) : rec.level === 2 ? (young ? 5 : 6)
+    : rec.level === 3 ? (young && growth ? 7 : 8) : estCA >= level - 15 ? 9 : estCA >= level - 30 ? 11 : 12;
+  // hvor: hans klubs seneste kamp, ellers "i de seneste uger"
+  const last = p.club ? Object.values(g.fixtures).filter((f) => f.result && (f.home === p.club || f.away === p.club)).sort((a, b) => b.date.localeCompare(a.date))[0] : undefined;
+  const ctx: Record<string, string | number> = {};
+  if (last?.result) {
+    const home = last.home === p.club;
+    const gf = home ? last.result.hg : last.result.ag, ga = home ? last.result.ag : last.result.hg;
+    Object.assign(ctx, { ctx: gf > ga ? 'win' : gf === ga ? 'draw' : 'loss', score: `${gf}-${ga}`, opp: g.clubs[home ? last.away : last.home]?.name ?? '', club: g.clubs[p.club]?.name ?? '' });
+  } else Object.assign(ctx, { ctx: 'weeks', age, pos: naturalRole(p) });
+  const pick = (cands: [string, boolean][]) => cands.find(([, ok]) => ok)?.[0] ?? '';
+  const strength = pick([['loyalty', p.attrs[A.loyalty] >= 16], ['professionalism', p.attrs[A.professionalism] >= 16], ['bigGames', p.attrs[A.importantMatches] >= 16], ['consistency', p.attrs[A.consistency] >= 16], ['determination', p.attrs[A.determination] >= 17]]);
+  const skill = pick([['corners', p.attrs[A.corners] >= 16], ['freeKicks', p.attrs[A.freeKicks] >= 16], ['penalties', p.attrs[A.penalties] >= 16], ['longThrows', p.attrs[A.throwIns] >= 16], ['heading', p.attrs[A.heading] >= 17]]);
+  const weakness = pick([['lazy', p.attrs[A.professionalism] <= 5], ['temper', p.attrs[A.temperament] <= 5], ['injuries', p.attrs[A.injuryProneness] >= 15], ['inconsistent', p.attrs[A.consistency] <= 5], ['dirty', p.attrs[A.dirtiness] >= 16]]);
+  const permit = needsWorkPermit(p, club) && !workPermitGranted(p) ? 1 : 0;
+  addNews({ cat: 'scout', key: 'scout.report', params: { scout, player: `${p.first} ${p.last}`.trim(), myClub: club.name, verdict: v, strength, skill, weakness, permit, ...ctx }, link: { kind: 'player', id: p.id } });
+}
+
+/** Rapport om modstanderen efter kampen er sat i gang: hans farligste spillere */
+function scoutOppReport(s: { first: string; last: string }, opp: number) {
+  const g = gs();
+  const c = g.clubs[opp];
+  if (!c) return;
+  const top = squad(opp).filter((p) => !p.injury && !p.banned).sort((x, y) => y.ca - x.ca).slice(0, 3).map((p) => `${p.first} ${p.last}`.trim());
+  addNews({ cat: 'scout', key: 'scout.oppReport', params: { scout: `${s.first} ${s.last}`, club: c.name, players: top.join(', ') }, link: { kind: 'club', id: opp } });
 }
 
 /** Kendskab fra en scout: når en spiller er godt afdækket, kommer han på listen over fund */
