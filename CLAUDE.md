@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk kamptaktik: `OppTactics` i Match.tsx (begge hold; `editable` = eget hold, træk udskifter ↔ spiller →
+  `sim.substitute`). Scoreboard skjules på taktikfanerne. Mangler: View-kolonner, højreklik-løb, Penalty Takers, Load/Save.
 - 2026-11-06 – Klassisk kampdag: Shell viser "Hjem v Ude" i datoboksen ved `pendingFixture`, Continue → askConfirm(head) →
   match (ingen PreMatch i klassisk, undtagen online). LiveMatch `classic`/`waiting` (`live.kicked`), sidebjælken via
   `useClassicMatchSide` (classic.tsx) → Shell. Faner: Overview, Stats, Ratings, Scores, Commentary, Table + `oppTactics`.

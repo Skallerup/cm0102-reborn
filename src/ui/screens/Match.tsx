@@ -15,7 +15,7 @@ import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { isRetro } from '../theme';
-import { useClassicNext, useClassicMatchSide } from '../classic';
+import { useClassicNext, useClassicMatchSide, titleColors } from '../classic';
 import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
 import { stadiumBackgrounds } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
@@ -778,10 +778,11 @@ function LiveMatch({ id }: { id: number }) {
         )}
         {report && <button className="primary continue" onClick={done}>{t('match.continue')}</button>}
       </Head>
-      <div className={photo ? 'cm-stage' : undefined} style={photo ? ({ '--stadium': `url("${photo}")` } as CSSProperties) : undefined}>
+      {/* klassisk: taktikskærmen fylder hele siden (som i CM 01/02) */}
+      {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <div className={photo ? 'cm-stage' : undefined} style={photo ? ({ '--stadium': `url("${photo}")` } as CSSProperties) : undefined}>
         <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
         {photo && <div className="cm-stage-venue">{g.clubs[f.home]?.stadium}</div>}
-      </div>
+      </div>}
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
       <Tabs tabs={classic
         ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ['commentary', t('match.commentary')], ['table', t('comp.table')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
@@ -863,12 +864,16 @@ function LiveMatch({ id }: { id: number }) {
       {tab === 'table' && g.comps[f.comp]?.type === 'league' && (g.comps[f.comp].splitDone ? <LeagueTables comp={g.comps[f.comp]} /> : <Panel className="flush"><LeagueTable rows={leagueRows(g.comps[f.comp])} comp={g.comps[f.comp]} /></Panel>)}
       {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
       {!report && !classic && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
-      <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>
-      {tab === 'tactics' && !report && (
+      {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>}
+      {classic && tab === 'tactics' && !report && (
+        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} editable
+          onSub={(out, inn) => { const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
+      )}
+      {tab === 'tactics' && !report && !classic && (
         <SubsPanel sim={sim} me={me} live={myLive} onDone={(ok) => { setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}
       {tab === 'tactics' && !report && (
-        <TacticEditor tactic={myLive.tactic} players={squad(g.userClub).filter((p) => myLive.on.some((s) => s.id === p.id && !s.off) || myLive.bench.includes(p.id))} matchMode
+        <TacticEditor key={classic ? 'cx' : 'm'} tactic={myLive.tactic} players={squad(g.userClub).filter((p) => myLive.on.some((s) => s.id === p.id && !s.off) || myLive.bench.includes(p.id))} matchMode
           cond={Object.fromEntries(myLive.on.map((s) => [s.id, s.cond]))}
           onChange={(tac) => { sim.setTactic(me, tac); pull(); force((x) => x + 1); }}
           onSub={(out, inn) => { const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
@@ -1072,18 +1077,95 @@ export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport[
   );
 }
 
-/** Modstanderens taktik under kampen (klassisk: "{klub} Tactics" i sidebjælken) – formation, mentalitet og de 11 på banen */
-function OppTactics({ sim, side, club }: { sim: MatchSim; side: 0 | 1; club: string }) {
+/**
+ * Et holds taktik under kampen som i CM 01/02: titel i holdets farver, listen (nr., navn, "on"/"sub" med minut, capt,
+ * position, kondition, karakter, mål) og banen. Eget hold: træk en udskifter ind på en spiller på banen (eller omvendt).
+ */
+function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void }) {
   const g = useGame()!;
   const lv = sim.live(side);
+  const cid = sim.teams[side].club;
+  const col = titleColors(cid);
+  const [drag, setDrag] = useState<number | null>(null);
+  const [ti, setTi] = useState(false);
+  const tac = lv.tactic;
+  const on = lv.on.filter((s) => !s.off);
+  const pl = (id: number) => g.players[id];
+  const drop = (target: number) => {
+    if (!editable || drag === null || drag === target) return;
+    const a = on.some((s) => s.id === drag), b = on.some((s) => s.id === target);
+    if (a && !b && lv.bench.includes(target)) onSub?.(drag, target);
+    else if (!a && b && lv.bench.includes(drag)) onSub?.(target, drag);
+    setDrag(null);
+  };
+  type Row = { id: number; num?: number; note?: string; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean };
+  const rows: Row[] = [
+    ...on.map((s) => ({ id: s.id, num: s.num, note: s.enteredAt ? `on ${s.enteredAt}` : undefined, cond: s.cond, rating: s.rating, goals: s.goals, dim: false, live: true })),
+    ...lv.gone.map((s) => ({ id: s.id, num: s.num, note: 'sub', rating: s.rating, goals: s.goals, dim: true, live: false })),
+    ...lv.bench.map((id) => ({ id, num: pl(id)?.number, dim: true, live: false })),
+  ];
+  const dnd = (id: number, canDrag: boolean) => ({
+    draggable: editable && canDrag,
+    onDragStart: (e: React.DragEvent) => { e.dataTransfer.setData('text/plain', String(id)); setTimeout(() => setDrag(id), 0); },
+    onDragEnd: () => setTimeout(() => setDrag(null), 0),
+    onDragOver: (e: React.DragEvent) => { if (editable) e.preventDefault(); },
+    onDrop: (e: React.DragEvent) => { e.preventDefault(); drop(id); },
+  });
+  const TI = tac.team;
   return (
-    <>
-      <div className="cx-subtitle">{t('cl.mt.oppTitle', { club })}</div>
-      <div className="cx-kv"><span>{t('cl.tac.formation')}</span><span>{lv.tactic.formation}</span></div>
-      <table className="cx-tbl"><tbody>{lv.on.filter((s) => !s.off).map((s) => {
-        const p = g.players[s.id];
-        return <tr key={s.id}><td className="c-pos">{p ? posStr(p) : ''}</td><td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td></tr>;
-      })}</tbody></table>
-    </>
+    <div className="cx-mt">
+      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
+      <div className="cx-tools cx-tools-inline"><button className="cx-greybtn wide" onClick={() => setTi(!ti)}>{t('cl.mt.teamInstr')}</button>
+        {editable && <span className="cx-mt-hint">{t('cl.mt.dragHint', { n: lv.subsLeft })}</span>}</div>
+      {ti && (
+        <div className="cx-kv cx-mt-ti">
+          <span>{t('cl.mt.ti.mentality')}</span><span>{t(`cl.mt.ti.m${TI.mentality}`)}</span>
+          <span>{t('cl.mt.ti.passing')}</span><span>{t(`cl.mt.ti.p${TI.passing}`)}</span>
+          <span>{t('cl.mt.ti.tackling')}</span><span>{t(`cl.mt.ti.t${TI.tackling}`)}</span>
+          <span>{t('cl.mt.ti.pressing')}</span><span>{t(TI.closingDown >= 2 ? 'common.yes' : 'common.no')}</span>
+          <span>{t('cl.mt.ti.offside')}</span><span>{t(TI.offside ? 'common.yes' : 'common.no')}</span>
+          <span>{t('cl.mt.ti.counter')}</span><span>{t(TI.counter ? 'common.yes' : 'common.no')}</span>
+        </div>
+      )}
+      <div className="cx-mt-cols">
+        <div className="cx-mt-list">
+          <div className="cx-mt-form">{tac.formation}</div>
+          <table className="cx-tbl"><tbody>{rows.map((r) => {
+            const p = pl(r.id);
+            return (
+              <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${drag !== null && r.id !== drag ? 'drop' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
+                <td className="btn-col"><span className="cx-rowbtn narrow">{r.num ?? ''}</span></td>
+                <td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td>
+                <td className="c-pos">{r.note ?? (tac.captain === r.id && r.live ? 'capt' : '')}</td>
+                <td className="c-yel">{p ? posStr(p) : ''}</td>
+                <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
+                <td className="c-num c-cyan">{r.rating !== undefined ? Math.round(r.rating) : ''}</td>
+                <td className="c-num">{r.goals ? r.goals : ''}</td>
+              </tr>
+            );
+          })}</tbody></table>
+        </div>
+        <div className="cx-tac-pitch">
+          <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
+            <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
+              <rect x="1" y="1" width="66" height="98" /><line x1="1" y1="50" x2="67" y2="50" /><circle cx="34" cy="50" r="9" />
+              <rect x="14" y="1" width="40" height="16" /><rect x="14" y="83" width="40" height="16" /><rect x="25" y="1" width="18" height="6" /><rect x="25" y="93" width="18" height="6" />
+            </g>
+          </svg>
+          {on.map((s) => {
+            const sl = tac.slots[s.slot];
+            const p = pl(s.id);
+            if (!sl) return null;
+            const gk = sl.pos === 'GK';
+            return (
+              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}>
+                <span className="cx-tac-dot" style={gk ? { background: '#2fae4c', color: '#fff' } : { background: col.bg, color: col.fg }}>{s.num ?? ''}</span>
+                <span className="cx-tac-nm">{p?.last ?? ''}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
   );
 }

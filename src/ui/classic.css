@@ -794,3 +794,17 @@
 .cx-date.cx-matchday span, .cx-date.cx-minute b { color: var(--cx-gold); font-weight: 800; }
 .cx-date.cx-minute b { font-size: 30px; }
 .cx-date.cx-matchday span { font-size: 13px; line-height: 1.25; text-align: center; }
+/* taktik under kampen (CM 01/02) */
+.cx-mt .cx-title { margin-bottom: 6px; }
+.cx-mt-hint { color: #c6cbe0; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-mt-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.cx-mt-list { background: rgba(0, 0, 0, 0.35); }
+.cx-mt-form { text-align: center; color: #fff21f; font-size: 22px; font-weight: 900; padding: 6px; background: rgba(0, 0, 0, 0.35); text-shadow: 2px 2px 0 #000; }
+.cx-mt .cx-tbl tr.dim td:not(.btn-col) { color: #8d92a6 !important; }
+.cx-mt .cx-tbl tr[draggable='true'] { cursor: grab; }
+.cx-mt .cx-tbl tr.drop td:not(.btn-col) { background: rgba(255, 242, 31, 0.08); }
+.cx-mt .c-good { color: #5ee08f; }
+.cx-mt-ti { max-width: 520px; margin-bottom: 8px; }
+@media (max-width: 760px) { .cx-mt-cols { grid-template-columns: 1fr; } }
+.cx-mt .cx-tac-pitch { width: auto; height: calc(100vh - 290px); min-height: 360px; max-height: none; margin: 0 auto; }
+@media (max-width: 760px) { .cx-mt .cx-tac-pitch { width: 100%; height: auto; } }

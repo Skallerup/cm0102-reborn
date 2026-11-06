@@ -206,7 +206,7 @@ async function run(look) {
     await page.waitForTimeout(800);
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });
     for (let i = 0; i < 60 && !(await page.getByRole('button', { name: await t('match.continue') }).first().isVisible().catch(() => false)); i++) {
-      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); await page.keyboard.press('e'); }
+      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { const btns = page.locator('.cx-side > button.cx-sbtn'); for (const k of [1, 2]) { await btns.nth(k).click(); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); } } await page.keyboard.press('e'); }
       if (await toEnd.isVisible().catch(() => false)) await toEnd.click().catch(() => {});
       // pause med holdsnak/udskiftning: fortsæt
       const resume = page.getByRole('button', { name: await t('match.resume') }).first();
