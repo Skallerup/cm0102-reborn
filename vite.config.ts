@@ -49,7 +49,13 @@ export default defineConfig({
           handler: 'CacheFirst',
           options: { cacheName: 'backgrounds', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {
-          urlPattern: /\/data\/(careers[\w-]*|world-original|world-modern)\.json$/,
+          // den originale database: altid den nyeste ved nyt spil (cachen bruges kun offline) – med
+          // StaleWhileRevalidate fik det første spil efter en opdatering den gamle database (fx uden Tsigalko)
+          urlPattern: /\/data\/(world-original|world-modern)\.json$/,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'big-data', networkTimeoutSeconds: 15, expiration: { maxEntries: 6 } },
+        }, {
+          urlPattern: /\/data\/careers[\w-]*\.json$/,
           handler: 'StaleWhileRevalidate',
           options: { cacheName: 'big-data', expiration: { maxEntries: 6 } },
         }, {

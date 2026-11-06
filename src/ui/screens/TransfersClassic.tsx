@@ -1,6 +1,7 @@
 // Transfers i klassisk tema ("Player & Staff Search"): budget øverst til højre, fanerne Short List · Player Search ·
 // Staff Search · Scout #1 · Scout #2 (og Scout #3-#5, tilbud og handler nederst), værktøjslinjen Search ▾ · View ▾ ·
 // Filters, en sidevisning (Pg 1/112), den klassiske tabel og filterdialogen "Filters for Player Search".
+import { nameQuery } from '../search';
 import { useEffect, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
@@ -229,7 +230,7 @@ function StaffSearch() {
   const [pages, setPages] = useState(1);
   const list = Object.values(g.staff).filter((s) => s.club !== g.userClub
     && (preset === 'all' || (preset === 'free' ? !s.club : s.role === preset))
-    && (!q || `${s.first} ${s.last}`.toLowerCase().includes(q.toLowerCase())));
+    && (!q || !!nameQuery(q)?.(s.first, s.last)));
   useEffect(() => setPg(0), [list.length]);
   const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : natName(g.nations[s.nation]?.name);
   const based = (s: Staff) => { const c = g.clubs[s.club]; return c ? compName(g.leagues[c.league]?.name) ?? natName(g.nations[c.nation]?.name) : natName(g.nations[s.nation]?.name); };

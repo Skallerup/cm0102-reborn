@@ -40,6 +40,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Navnesøgning `src/ui/search.ts` (`nameQuery`: alle ord, ingen accenter, h ignoreres) i Find, Transfers, editor,
+  draft. SW: world-original.json er nu NetworkFirst (StaleWhileRevalidate gav første nye spil efter en opdatering den gamle DB).
 - 2026-11-06 – Originalens økonomi fra databasen (ejerens Bosman-projekt, `…/cm-01-02-bosman-edition/app/finances/README.md`):
   parseren læser ugeløn (staff.dat 78, playerField `wage`, £) og `clubFinance` [saldo club.dat 101, gns. tilskuere 115,
   træningsanlæg 127]. Nye spil med original DB: løn/saldo/anlæg direkte fra databasen (£→€ /0,86), lønkurve

@@ -1,5 +1,6 @@
 // Draft-liga: oprettelse, tilmelding, lobby, keepers og selve draften (live, 60 sekunder pr. valg).
 // Når draften er færdig, bygges sæsonen, og spillet fortsætter i den almindelige brugerflade (med færre menupunkter).
+import { nameQuery } from './search';
 import { LookPicker } from './LookPicker';
 import { drawDraftCard, shareDraftCard } from './draftCard';
 import { stopVoice } from '../online/voice';
@@ -650,7 +651,7 @@ function PoolPanel({ pool, byId, taken, mine, picks, sel, onSel, year, title }: 
   const [wishOnly, setWishOnly] = useState(false);
   const list = pool.filter((p) => !taken.has(p.id))
     .filter((p) => !role || canPlayRole(p, role))
-    .filter((p) => !q || `${p.first} ${p.last}`.toLowerCase().includes(q.toLowerCase()))
+    .filter((p) => !q || !!nameQuery(q)?.(p.first, p.last))
     .filter((p) => !wishOnly || !!mine?.wish.includes(p.id))
     .filter((p) => !fitOnly || !mine || placesFor(mine, picks, p, byId, room?.settings.draft?.injuries ?? true).length > 0)
     .slice(0, 200);

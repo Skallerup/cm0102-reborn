@@ -1,6 +1,7 @@
 // "Find" i klassisk tema (som i CM 01/02): fanerne Nation · Klub · Stab · Spiller, et søgefelt og en lang,
 // alfabetisk liste med sider. Et klik åbner nationens liga, klubbens side, stabspersonens ansættelse eller
 // spillerens profil.
+import { nameQuery } from '../search';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { compName, natName, t } from '../../i18n';
 import { Tabs } from '../components';
@@ -43,9 +44,9 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
       a: p.club ? g.clubs[p.club]?.short ?? noClub : noClub, b: p.club ? league(p.club) : noDiv, go: { name: 'player', id: p.id } }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [g, tab]);
-  const needle = q.trim().toLocaleLowerCase(t('cl.locale'));
-  const list = useMemo(() => all.filter((r) => !needle || r.name.toLocaleLowerCase(t('cl.locale')).includes(needle))
-    .sort((a, b) => a.sort.localeCompare(b.sort, t('cl.locale'))), [all, needle]);
+  const needle = q.trim();
+  const list = useMemo(() => { const m = nameQuery(needle); return all.filter((r) => !m || m(r.name))
+    .sort((a, b) => a.sort.localeCompare(b.sort, t('cl.locale'))); }, [all, needle]);
   useEffect(() => setPg(0), [tab, needle]);
   const pages = Math.max(1, Math.ceil(list.length / PAGE));
   const shown = list.slice(pg * PAGE, (pg + 1) * PAGE);

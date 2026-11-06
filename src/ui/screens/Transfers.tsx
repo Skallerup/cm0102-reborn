@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { nameQuery } from '../search';
 import { Select } from '../select';
 import { Info } from '../help';
 import { ATTRS, naturalRole } from '../../game/attributes';
@@ -122,12 +123,12 @@ export function Search({ classic }: { classic?: boolean } = {}) {
   const [prevFilters, setPrevFilters] = useState(lastCareerFilters);
   const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
   const results = useMemo(() => {
-    const q = f.name.trim().toLowerCase();
+    const q = nameQuery(f.name);
     const attrs = ([[f.attr1, f.attr1Min], [f.attr2, f.attr2Min], [f.attr3, f.attr3Min]] as [number, number][]).filter(([a]) => a >= 0);
     const out: Player[] = [];
     for (const p of Object.values(g.players)) {
       if (p.club === g.userClub && !f.includeSquad) continue;
-      if (q && !`${p.first} ${p.last}`.toLowerCase().includes(q)) continue;
+      if (q && !q(p.first, p.last)) continue;
       const a = ageOn(p.dob, g.date);
       if (a < f.minAge || a > f.maxAge) continue;
       if (f.maxValue && p.value > f.maxValue) continue;

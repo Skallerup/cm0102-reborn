@@ -9,6 +9,7 @@ import { natName, t } from '../i18n';
 import { askConfirm } from './confirm';
 import { Panel, Tabs } from './components';
 import { Select } from './select';
+import { nameQuery } from './search';
 import { baseWorld, deleteDb, exportDb, importDb, listDbs, saveDb } from './customDb';
 
 export function Editor({ onBack, onPlay }: { onBack: () => void; onPlay: (id: string) => void }) {
@@ -143,13 +144,14 @@ function DbEditor({ db: initial, onClose, onPlay }: { db: CustomDb; onClose: () 
     const nq = norm(q.trim());
     if (tab === 'players') {
       if (nq.length < 2 && !clubFilter) return [];
+      const match = nameQuery(q);
       const ids = [...db.added.map((a) => a.id), ...rows.keys()];
       const out: number[] = [];
       for (const id of ids) {
         const e = eff(id);
         if (!e) continue;
         if (clubFilter && e.club !== clubFilter) continue;
-        if (nq.length >= 2 && !norm(`${e.first} ${e.last}`).includes(nq)) continue;
+        if (nq.length >= 2 && !match?.(e.first, e.last)) continue;
         out.push(id);
         if (out.length >= 150) break;
       }
