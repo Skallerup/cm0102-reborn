@@ -32,6 +32,9 @@ import { startScoutAssignment } from './scouting';
 import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
 import { appealBan } from './rules2001';
 import { authentic } from './rules';
+import { A } from './attributes';
+import { rng } from './rng';
+import { ageOn } from './dates';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -58,6 +61,8 @@ export type Action =
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'nickname'; pid: number; nick: string | null }
+  | { t: 'staffReport'; pid: number; staffId: number }
   | { t: 'renewLater'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
   | { t: 'acceptCounter'; pid: number }
@@ -183,6 +188,8 @@ export function applyAction(a: Action): unknown {
     case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
+    case 'nickname': return setNickname(a.pid, a.nick);
+    case 'staffReport': return staffReport(a.pid, a.staffId);
     case 'renewLater': return offerRenewalLater(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {
       const o = g.offers.slice().reverse().find((x) => x.player === a.pid && x.buyer === a.buyer && x.seller === g.userClub && x.status === 'pending');
@@ -321,4 +328,40 @@ export function act<T = unknown>(a: Action): T {
   sink?.(a);
   notify();
   return r;
+}
+
+/** CM 01/02 "Set Nickname": spilleren hedder kælenavnet overalt (Remove giver det rigtige navn tilbage) */
+function setNickname(pid: number, nick: string | null): string {
+  const p = gs().players[pid];
+  if (!p || p.club !== gs().userClub) return 'error';
+  const name = (nick ?? '').trim().slice(0, 30);
+  if (!name) { if (p.realName) { p.first = p.realName.first; p.last = p.realName.last; p.realName = undefined; } return 'ok'; }
+  p.realName ??= { first: p.first, last: p.last };
+  p.first = ''; p.last = name;
+  return 'ok';
+}
+
+/** "Request Physio Report" / "Request Coach Report": rapporten kommer med det samme i nyhederne (vurderingen følger stabens evner) */
+function staffReport(pid: number, staffId: number): string {
+  const g = gs();
+  const p = g.players[pid], s = g.staff[staffId];
+  if (!p || !s || s.club !== g.userClub) return 'error';
+  const name = `${p.first} ${p.last}`.trim();
+  const by = `${s.first} ${s.last}`.trim();
+  if (s.role === 'physio') {
+    const ip = p.attrs[A.injuryProneness];
+    // en dårlig fysioterapeut tager fejl med op til et par point (*estimeret*)
+    const seen = Math.max(1, Math.min(20, ip + Math.round((rng.next() - 0.5) * (20 - s.attrs.physio) / 4)));
+    const prone = seen >= 14 ? 'high' : seen >= 9 ? 'normal' : 'low';
+    const cond = p.condition >= 90 ? 'top' : p.condition >= 75 ? 'ok' : 'tired';
+    addNews({ cat: 'injury', key: 'staffrep.physio', params: { player: name, by, prone: `staffrep.prone.${prone}`, cond: `staffrep.cond.${cond}`, inj: p.injury ? `injury.${p.injury.key}` : '', days: p.injury?.days ?? 0 }, link: { kind: 'player', id: p.id } });
+  } else {
+    const k = s.attrs.judgingAbility, kp = s.attrs.judgingPotential;
+    const noise = (j: number) => Math.round((rng.next() - 0.5) * (20 - j) * 3);
+    const ca = p.ca + noise(k), pa = Math.max(ca, p.pa + noise(kp));
+    const word = (v: number) => (v >= 170 ? 'world' : v >= 150 ? 'top' : v >= 130 ? 'good' : v >= 110 ? 'decent' : v >= 90 ? 'average' : 'poor');
+    const age = ageOn(p.dob, g.date);
+    addNews({ cat: 'general', key: 'staffrep.coach', params: { player: name, by, now: `staffrep.lvl.${word(ca)}`, future: age <= 23 ? `staffrep.lvl.${word(pa)}` : `staffrep.lvl.${word(ca)}`, young: age <= 23 ? 1 : 0 }, link: { kind: 'player', id: p.id } });
+  }
+  return 'ok';
 }

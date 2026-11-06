@@ -132,6 +132,8 @@ export interface Player {
   caps: number;
   intGoals: number;
   regen?: boolean;
+  /** CM 01/02 "Set Nickname": det rigtige navn, mens et kælenavn bruges i stedet */
+  realName?: { first: string; last: string };
   notes?: string;
   joined?: string; // dato for ankomst til klub
   /** ikke-tilfredshed pga. spilletid (0-100) */

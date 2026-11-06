@@ -833,3 +833,7 @@
 .cx-md-res { color: #6fe3ff; font-weight: 800; text-align: center; text-shadow: 1px 1px 0 #000; }
 .cx-md-mark { color: #fff21f; font-size: 12px; font-weight: 800; margin: 0 4px; }
 .cx-md-row:has(.cx-md-res) { grid-template-columns: 46px minmax(0, 1fr) 90px minmax(0, 1fr) 46px; }
+.cx-opt.sel, .cx-opt.sel:hover { color: #fff21f; }
+.cx-ts-body.center { align-items: center; justify-content: center; min-height: 50vh; background: transparent; }
+:root[data-skin='retro'] input.cx-nick { width: min(90%, 900px); height: 64px; background: rgba(0, 0, 0, 0.45); border: 2px solid #1d2a8c; color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
+.cx-ts-buttons.cx-three { grid-template-columns: 2fr 1fr 1fr; }

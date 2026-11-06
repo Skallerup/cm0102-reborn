@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk Action: actions `nickname` (Player.realName gemmer det rigtige navn) og `staffReport` (nyheder staffrep.*,
+  oversat i newsParams), `setCompareSlot` i ui/compare.ts, NicknamePanel/StaffReportPanel i PlayerClassic.tsx.
 - 2026-11-06 – Klassisk kontraktforlængelse: action `renewLater` → `g.pendingRenewals`, besvares i `answerPendingRenewals` (sim.ts
   dagligt; nyheder contract.offerRejected/offerBudget). Admin New careers: kolonnen Mode (notify sender `mode`) i stedet for Challenge.
 - 2026-11-06 – Klassisk kampskærm: Cx*-komponenter sidst i Match.tsx (cxRows, CxMatchStats, CxZones via `live.zones`, CxReport,

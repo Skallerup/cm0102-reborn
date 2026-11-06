@@ -19,8 +19,8 @@ import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
 import { dateFmt, money, natName, t } from '../../i18n';
 import { askConfirm } from '../confirm';
-import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem } from '../classic';
-import { compareIds, toggleCompare } from '../compare';
+import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem, useClassicDialog } from '../classic';
+import { compareIds, setCompareSlot } from '../compare';
 import { Bar, ClubLink, FormList, Modal, Panel, Rating, Tabs, posStr } from '../components';
 import { gs } from '../../game/state';
 import { useGame, useNav, useRouteState } from '../core';
@@ -333,6 +333,8 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [trainOpen, setTrainOpen] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const [discOpen, setDiscOpen] = useState(false);
+  const [nickOpen, setNickOpen] = useState(false);
+  const [repRole, setRepRole] = useState<'physio' | 'coach' | null>(null);
   useEffect(() => setMsg(''), [id]);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
@@ -361,7 +363,11 @@ export function ClassicPlayer({ id }: { id: number }) {
       { key: 'disc', label: t('cl.dp.menu'), disabled: !!p.lastTalk && daysBetween(p.lastTalk, g.date) < 10, title: t('talk.r.tooSoon'), onClick: () => setDiscOpen(true) },
     );
     items.push(
-      { key: 'release', label: t('cl.pl.releaseFree'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
+      { key: 'release', label: t('cl.pl.releaseFree'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true, head: t('cl.pl.releaseQ', { player: `${p.first} ${p.last}`.trim() }) })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
+      { key: 'nick', label: t(p.realName ? 'cl.pl.editNick' : 'cl.pl.setNick'), onClick: () => setNickOpen(true) },
+      { key: 'sep-rep', sep: true },
+      { key: 'physio', label: t('cl.pl.physioRep'), disabled: !Object.values(g.staff).some((s) => s.club === g.userClub && s.role === 'physio'), onClick: () => setRepRole('physio') },
+      { key: 'coachrep', label: t('cl.pl.coachRep'), disabled: !Object.values(g.staff).some((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant')), onClick: () => setRepRole('coach') },
     );
   }
   // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
@@ -386,9 +392,12 @@ export function ClassicPlayer({ id }: { id: number }) {
   }
   items.push(
     { key: 'h-cmp', head: t('cl.pl.actOther') },
-    { key: 'cmp', label: `${compareIds.includes(p.id) ? '✓ ' : ''}${t('player.compare')} (${compareIds.length})`, onClick: () => toggleCompare(p.id) },
+    { key: 'cmp', label: t('cl.pl.compare'), sub: [
+      { key: 'c1', label: `${t('cl.pl.cmp1')}${compareIds[0] !== undefined ? ` ( ${g.players[compareIds[0]]?.first ?? ''} ${g.players[compareIds[0]]?.last ?? ''} )`.replace('(  ', '( ') : ''}`, onClick: async () => { if (await askConfirm(t('cl.pl.cmp1Q', { player: `${p.first} ${p.last}`.trim() }), { head: `${t('cl.pl.cmp1')}?` })) setCompareSlot(0, p.id); } },
+      { key: 'c2', label: `${t('cl.pl.cmp2')}${compareIds[1] !== undefined ? ` ( ${g.players[compareIds[1]]?.first ?? ''} ${g.players[compareIds[1]]?.last ?? ''} )` : ''}`, onClick: async () => { if (await askConfirm(t('cl.pl.cmp2Q', { player: `${p.first} ${p.last}`.trim() }), { head: `${t('cl.pl.cmp2')}?` })) setCompareSlot(1, p.id); } },
+      { key: 'c3', label: t('cl.pl.cmpGo'), disabled: compareIds.length < 2, onClick: () => nav({ name: 'compare' }) },
+    ] },
   );
-  if (compareIds.length >= 2) items.push({ key: 'cmp2', label: t('player.showCompare'), onClick: () => nav({ name: 'compare' }) });
   // fællesskabet: foreslå en rettelse til CM-databasen (navn eller egenskaber)
   if (dbOf(g) && !p.regen) items.push({ key: 'edit', label: t('hub.edit.action'), onClick: () => setEditOpen(true) });
 
@@ -396,6 +405,8 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
 
+  if (nickOpen && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
+  if (repRole && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
   if (discOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
   if (statusOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><TransferStatusPanel p={p} onClose={() => setStatusOpen(false)} /></div>;
 
@@ -430,6 +441,46 @@ export function ClassicPlayer({ id }: { id: number }) {
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
       {neg && <NegotiationModal offer={neg.offer} renewPid={neg.renew} onClose={() => setNeg(null)} />}
+    </div>
+  );
+}
+
+/** CM 01/02 "Player Nickname": skriv kælenavnet – Ok, Remove (rigtigt navn tilbage) eller Cancel */
+function NicknamePanel({ p, onClose }: { p: Player; onClose: () => void }) {
+  useClassicDialog();
+  const [v, setV] = useState(p.realName ? p.last : '');
+  const save = (nick: string | null) => { dispatch({ t: 'nickname', pid: p.id, nick }); onClose(); };
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.pl.nickTitle')}</div>
+      <div className="cx-ts-body center"><input className="cx-nick" autoFocus value={v} maxLength={30} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && v.trim()) save(v); }} /></div>
+      <div className="cx-ts-buttons cx-three">
+        <button onClick={onClose}>{t('common.cancel')}</button>
+        <button disabled={!p.realName} onClick={() => save(null)}>{t('cl.pl.nickRemove')}</button>
+        <button className="primary" disabled={!v.trim()} onClick={() => save(v)}>{t('common.ok')}</button>
+      </div>
+    </div>
+  );
+}
+
+/** "Request Physio Report" / "Request Coach Report": vælg en fra staben (gul), Confirm – rapporten står i nyhederne */
+function StaffReportPanel({ p, role, onClose, onDone }: { p: Player; role: 'physio' | 'coach'; onClose: () => void; onDone: () => void }) {
+  useClassicDialog();
+  const g = useGame()!;
+  const staff = Object.values(g.staff).filter((s) => s.club === g.userClub && (role === 'physio' ? s.role === 'physio' : s.role === 'coach' || s.role === 'assistant'));
+  const [sel, setSel] = useState(staff[0]?.id);
+  const name = `${p.first} ${p.last}`.trim();
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t(role === 'physio' ? 'cl.pl.physioRep' : 'cl.pl.coachRep')}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t(role === 'physio' ? 'cl.pl.physioWho' : 'cl.pl.coachWho', { player: name })}</p>
+        {staff.map((s) => <button key={s.id} className={`cx-opt ${sel === s.id ? 'sel' : ''}`} onClick={() => setSel(s.id)}>{s.first} {s.last}</button>)}
+      </div>
+      <div className="cx-ts-buttons">
+        <button onClick={onClose}>{t('common.cancel')}</button>
+        <button className="primary" disabled={sel === undefined} onClick={() => { if (sel !== undefined) dispatch({ t: 'staffReport', pid: p.id, staffId: sel }); onDone(); }}>{t('cl.dp.confirm')}</button>
+      </div>
     </div>
   );
 }
