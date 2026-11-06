@@ -39,6 +39,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Kontraktforlængelse (fejlrapport #1, De Bruyne): `renewalExpiry` i transfers.ts – sep-jun regnes årene fra
+  næste sæson, jul-aug tæller den startende sæson, aldrig kortere end nu (tests/renewal.test.ts).
 - 2026-11-06 – Database-editor (trin 1): startmenuen → Editor (`src/ui/Editor.tsx`). "Min database" = diff oven på
   original/moderne (`game/dbEdit.ts`: `CustomDb` med `players`/`clubs`/`added`, `applyDb`, `sanitizeDb` for importerede
   filer), gemt i IndexedDB (`ui/customDb.ts`, nøgle `cm-dbs`) og som `.cmdb.json`. Vælges ved nyt spil som

@@ -664,6 +664,18 @@ export function renewalDemand(p: Player, club: Club): number {
 }
 
 /** Forlæng kontrakt for egen spiller – brugeren tilbyder løn/år */
+/**
+ * Udløbsdato for en forlængelse på `years` år. I sommerpausen (juli-august) tæller den sæson, der starter; senere
+ * på sæsonen regnes årene fra næste sæson (en forlængelse på 1 år den 25/12-2026 løber til 30/6-2028, ikke 2027).
+ * En forlængelse giver aldrig en kortere kontrakt end den nuværende.
+ */
+export function renewalExpiry(current: string | undefined, years: number, date: string): string {
+  const m = month(date);
+  const seasonEnd = year(date) + (m >= 7 ? 1 : 0);
+  const end = `${seasonEnd + years - (m === 7 || m === 8 ? 1 : 0)}-06-30`;
+  return current && current > end ? current : end;
+}
+
 export function renewContract(pid: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' {
   const g = gs();
   const p = g.players[pid];
@@ -677,8 +689,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   if (currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget) return 'budget';
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
-    const startYear = year(g.date) + (month(g.date) >= 7 ? 1 : 0);
-    p.contract = { wage, expires: `${startYear + years - 1}-06-30`, ...cl };
+    p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
     const hadDemand = !!p.demand;
     p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
