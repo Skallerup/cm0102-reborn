@@ -40,6 +40,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Legender fjernet i 3.9.68 hentes fra 3.9.65 (`scripts/legacy-players.json`, efternavn+fødselsdato; kræver
+  `.orig-db/Original-3.9.65-Database-Swedish_fixed` lokalt): Tó Madeira (Gouveia), id 8.000.000 + 3.9.65-id. Kultlisten
+  matcher nu også hele navnet (kælenavne står som efternavn uden fornavn, fx "João Paiva"). Marajó, Tallan Martin,
+  Georcelin m.fl. findes kun i 3.9.60, som vi ikke har.
 - 2026-11-06 – Nyheder fra CM 01/02: `docs/NEWS.md` (+ `docs/news-map.json`) kortlægger originalens 523 overskrifter mod vores
   `addNews`-nøgler (188 dækket, 175 lette, 81 kræver mekanik, 79 irrelevante). Bygget: `ban.*`, `comp.*` (tieNews,
   createFinal, gruppespil, playoff, kvalificeret, op/ned-marginer), `media.preview.*`, `fans.mood*`, transferliste,

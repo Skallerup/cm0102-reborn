@@ -15,6 +15,7 @@ describe('kultspillere i den originale database', () => {
     ['Maxim', 'Tsigalko', 'Dinamo Minsk'], ['Julius', 'Agahowa', 'Shakhtar Donetsk'], ['Mark', 'Kerr', 'Falkirk'],
     ['Cherno', 'Samba', 'Millwall'], ['Kennedy', 'Bakircioglü', 'Hammarby IF'], ['Michael', 'Dunwell', 'Bishop Auckland'],
     ['Bobby', 'Zamora', 'Brighton & Hove Albion'],
+    ['', 'Tó Madeira', 'Clube Desportivo de Gouveia'], ['', 'João Paiva', 'Sporting Clube de Portugal B'], ['Sergey', 'Nikiforenko', 'Shakhter Soligorsk'],
   ])('%s %s spiller for %s', (first, last, club) => {
     const p = find(first, last);
     expect(p).toBeDefined();

@@ -56,6 +56,38 @@ const ONE_TIER = new Set(['Holland', 'Portugal', 'Belgium', 'Scotland', 'Turkey'
   'Switzerland', 'Greece', 'Norway', 'Sweden', 'Poland', 'Czech Republic', 'Croatia', 'Romania',
   'Serbia', 'Ukraine', 'Russia', 'Brazil', 'Argentina', 'Mexico', 'United States', 'Japan',
   'Saudi Arabia', 'Colombia', 'South Korea', 'Australia']);
+// Originalen: legender, der blev fjernet i 3.9.68-opdateringen (fx Tó Madeira), hentes fra 3.9.65-databasen, hvis den
+// ligger lokalt (.orig-db/Original-3.9.65-…, fra data-sources-release'n). De får id 8.000.000 + deres 3.9.65-id og
+// kommer på deres klub fra dengang, hvis den findes i 3.9.68 (ellers fri agent). Listen: scripts/legacy-players.json.
+const LEGACY_DIR = '.orig-db/Original-3.9.65-Database-Swedish_fixed';
+if (ORIGINAL && existsSync(LEGACY_DIR)) {
+  const want = JSON.parse(readFileSync(new URL('./legacy-players.json', import.meta.url), 'utf8')) as { first?: string; last: string; dob: string }[];
+  const lf: Record<string, ArrayBuffer> = {};
+  for (const f of readdirSync(LEGACY_DIR)) {
+    if (!f.toLowerCase().endsWith('.dat')) continue;
+    const b = readFileSync(join(LEGACY_DIR, f));
+    lf[f.toLowerCase()] = b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength);
+  }
+  const old = parseCM0102(lf, { maxTiers: 4, allClubs: true });
+  const OF = Object.fromEntries(old.playerFields.map((f, i) => [f, i]));
+  const oldClub = new Map(old.clubs.map((c) => [c[0] as number, c[1] as string]));
+  const byName = new Map(w.clubs.map((c) => [c[1] as string, c[0] as number]));
+  for (const l of want) {
+    if (w.players.some((p) => p[F.last] === l.last && p[F.dob] === l.dob)) continue;
+    const row = old.players.find((p) => p[OF.last] === l.last && p[OF.dob] === l.dob && (!l.first || p[OF.first] === l.first));
+    if (!row) { console.error(`legende ikke fundet i 3.9.65: ${l.last}`); continue; }
+    const id = 8_000_000 + (row[OF.id] as number);
+    const copy = w.playerFields.map((f) => (OF[f] !== undefined ? row[OF[f]] : f === 'wage' ? 0 : 0));
+    copy[F.id] = id;
+    // klubben fra dengang; et B-hold, der ikke findes i 3.9.68, erstattes af førsteholdet (Sporting B → Sporting)
+    const oc = oldClub.get(row[OF.club] as number) ?? '';
+    copy[F.club] = byName.get(oc) ?? byName.get(oc.replace(/ B$/, '')) ?? 0;
+    w.players.push(copy);
+    w.ratings[id] = old.ratings[row[OF.id] as number];
+    console.error(`legende fra 3.9.65: ${l.last} → ${oc} (${copy[F.club] ? `i 3.9.68: ${w.clubs.find((c) => c[0] === copy[F.club])?.[1]}` : 'fri agent'})`);
+  }
+}
+
 // Originalen: flere rækker i de lande, hvor de lavere rækker rummer kendte køb (Zamora, Earnshaw, Mexicos 2. række …)
 const EXTRA_TIERS: Record<string, number> = ORIGINAL ? { England: 4, Scotland: 4, Holland: 2, Portugal: 2, Argentina: 2, Mexico: 2, Norway: 2 } : {};
 const nationName = (idx: number) => w.nations[idx]?.name ?? '';
@@ -74,6 +106,8 @@ if (ORIGINAL) {
   const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
   const clubNm = new Map(w.clubs.map((c) => [c[0] as number, c[1] as string]));
   const cultKey = new Set(cult.map((c) => `${norm(c.first)}|${norm(c.last)}`));
+  // hele navnet samlet: kælenavne står i databasen som efternavn uden fornavn ("João Paiva", "Tó Madeira")
+  const cultFull = new Set(cult.map((c) => norm(c.first + c.last)));
   const cultLast = new Map<string, string>(cult.map((c) => [norm(c.last), norm(c.club)]));
   const notable = (p: (string | number)[]) => {
     const r = w.ratings[p[F.id] as number];
@@ -81,7 +115,7 @@ if (ORIGINAL) {
     const age = ageAt(p[F.dob] as string);
     if (r.paRaw === -2 || r.pa >= 150 || r.ca >= 120 || (r.paRaw === -1 && age <= 21)) return true;
     const first = norm(p[F.first] as string), last = norm(p[F.last] as string);
-    if (cultKey.has(`${first}|${last}`)) return true;
+    if (cultKey.has(`${first}|${last}`) || cultFull.has(first + last)) return true;
     // kun efternavn (kælenavne i databasen): kræv at klubben også passer
     const club = cultLast.get(last);
     return !!club && norm(clubNm.get(p[F.club] as number) ?? '').includes(club.slice(0, 6));
