@@ -234,3 +234,19 @@ Kilde: sub_6e9820 (alvorlighed) og sub_6ea4e0 (kort), `cardSeverity`/`cardFor` i
 | Gule / røde pr. kamp | 1,71 / 0,11 | 1,72 / 0,15 (orig 1,70 / 0,14) |
 | Frispark pr. kamp | 21,7 | 21,7 |
 
+
+### Trin 5 – tillægstid (regel 5; kun den originale database, 2026-11-06)
+
+Kilde: _f_006b98c0 ved 0x6b9f5f (`deadBall`/`addedMinutes`).
+
+- Hver død bold i 2. halvleg giver rand(trunc(0,8 × rand(10))) tik; tillægstiden = ceil(tik / 11) minutter.
+- Vores døde bolde: frispark, hjørnespark, offside, afslutninger forbi/over, mål (×2), kort (rødt ×2) og udskiftninger.
+  Originalen har flere afbrydelser (indkast, målspark efter redninger …), så antallet ganges med `DEAD_BALL_K` = 1,55
+  (*estimeret*, kalibreret).
+- Den moderne database beholder den nuværende tillægstid.
+
+| `scripts/match-stats.ts`, 3000 kampe, original DB | Før | Efter |
+|---|---|---|
+| Tillægstid efter 90' | ~4,7 (faste tillæg) | 4,65 (originalens regel) |
+| Mål / gule / røde pr. kamp | 2,98 / 1,72 / 0,15 | 3,04 / 1,74 / 0,14 |
+

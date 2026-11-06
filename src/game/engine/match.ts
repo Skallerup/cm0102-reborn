@@ -10,9 +10,11 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
-import { RATING, cardFor, cardSeverity, yellowRatingDelta, type Rand } from './cm0102-original-rules';
+import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, yellowRatingDelta, type Rand } from './cm0102-original-rules';
 /** Andel almindelige frispark, der er sene/hårde (type 44) i originalens kortregel – *estimeret* (docs/ENGINE.md, trin 4) */
 const HARD_SHARE = 0.03;
+/** Originalens døde bolde pr. registreret afbrydelse hos os (indkast, målspark efter redninger m.m. tælles ikke) – *estimeret* (trin 5) */
+const DEAD_BALL_K = 1.55;
 import { pitchFx, weatherFx, type Pitch, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
@@ -243,6 +245,9 @@ export class MatchSim {
   readonly ref: number;
   /** Tillægstid: afbrydelser (mål, kort, skader, udskiftninger, tidsspild) i minutter */
   private stoppage = 0;
+  /** afbrydelser ved pausen (originalens tillægstid tæller de døde bolde i 2. halvleg) */
+  private h2: { stops: number } | null = null;
+  private h2Stops() { return this.teams.reduce((s, t) => s + t.stats.fouls + t.stats.corners + t.stats.offsides + (t.stats.shots - t.stats.onTarget) + t.stats.goals * 2 + t.stats.yellows + t.stats.reds * 2 + ((this.opts.subs ?? 5) - t.subsLeft), 0); }
   private regularEnd = 0;
   /** Spilleren der holder bolden op (target-angriber): næste aflevering fra ham får medspillere med */
   private held: SP | null = null;
@@ -549,7 +554,15 @@ export class MatchSim {
     const etMoments = Math.round(regular / 3);
     // tillægstid efter 90 minutter: ud fra afbrydelserne i kampen (mål, kort, skader, udskiftninger, tidsspild)
     if (!this.extraTime && this.moment >= regular && this.regularEnd === regular) {
-      const added = clamp(Math.round(0.8 + this.stoppage), 1, 8);
+      // originalens regel (_f_006b98c0): hver død bold giver rand(trunc(0,8 × rand(10))) tik; minutter = ceil(tik / 11)
+      let added = clamp(Math.round(0.8 + this.stoppage), 1, 8);
+      if (this.opts.rules === 'original' && this.h2) {
+        const rand: Rand = (n) => (n <= 0 ? 0 : Math.floor(this.r.next() * n));
+        const n = Math.round((this.h2Stops() - this.h2.stops) * DEAD_BALL_K);
+        let ticks = 0;
+        for (let k = 0; k < n; k++) ticks += deadBall(rand).stoppageTicks;
+        added = clamp(addedMinutes(ticks), 1, 8);
+      }
       this.regularEnd = regular + Math.round((added * regular) / 90);
       if (this.opts.commentary) this.commentary.push({ m: 90, k: 'added-time', a: String(added), hi: false });
     }
@@ -581,6 +594,7 @@ export class MatchSim {
       this.half = 2;
       this.kickoff(1);
       this.recoverHalftime();
+      this.h2 = { stops: this.h2Stops() };
     }
     this.minute = minute;
     this.tickFatigue();
