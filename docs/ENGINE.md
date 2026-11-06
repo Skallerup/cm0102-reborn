@@ -296,3 +296,17 @@ ud under 50 % eller 71 % + 0,25 % × skadesudsathed (AI-hold skifter ud). Efter 
 | Udskiftninger pr. hold | 2,70 | 2,92 |
 | Mål pr. kamp | 3,02 | 2,95 |
 
+
+### Trin 9 – computerens udskiftninger (regel 9; kun den originale database, 2026-11-06)
+
+Kilde: sub_6c54a0/sub_6e0fe0. AI-holdet overvejer et skift, når minuttet > 10 + rand(50) (nyt slag hver gang) og mere end
+5 minutter efter sidste skift; kandidaterne sorteres stigende efter int(karakter × 1000 + kondition). Det endelige valg
+(sub_6e2000) kendes ikke, så motorens egen regel (kondition < 72 % eller karakter < 6,0) afgør det. Taktikskift har en
+15-minutters spærre. Ny kommentar "knackered" (event 655), når en markspiller er under 67,5 % efter 60' – kun en linje.
+
+| `scripts/match-stats.ts`, 2000 kampe, original DB, 3 udskiftninger (2001-regler) | Efter |
+|---|---|
+| Udskiftninger pr. hold | 2,58 |
+| Kondition ved slutfløjt / skader pr. kamp | 77,8 % / 0,32 |
+| Mål pr. kamp | 2,86 |
+

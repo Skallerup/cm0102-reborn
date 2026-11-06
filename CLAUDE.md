@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Motorplanens trin 8-9: `knockCheck` (`KNOCK_K` 1,4) og `aiManageOriginal` (5/15-minutters spærrer, "knackered"),
+  kun med rules 'original'. match-stats.ts: SUBS=3 for 2001-reglerne. Trin 10 (skudresultat m.m.) er valgfrit og ikke lavet.
 - 2026-11-06 – Motorplanens trin 5-7 (tillægstid `DEAD_BALL_K` 1,55, træthed med alder, pause efter Natural Fitness) kun
   med rules 'original'; ORIGINAL.finish 1,4 → 1,33 (mål 2,84-2,88). original-lab måler ikke længere kort (rapporter gemmes
   ikke for AI-kampe) – brug match-stats.ts med REF=1.

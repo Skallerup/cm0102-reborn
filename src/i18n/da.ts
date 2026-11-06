@@ -1447,4 +1447,5 @@ export const da: Record<string, string> = {
   'club.noClub': "Du har ingen klub lige nu. Find et nyt job i jobcentret.",
   'board.dividend': "Ejerne tager et udbytte på {amount}", 'board.dividend.body': "Efter en sæson med overskud tager ejerne af {club} {amount} ud af klubben. Saldo nu: {balance}.",
   'youth.regen': "{player} – den nye {legend}?", 'youth.regen.body': "Ungdomstrænerne er begejstrede: {player} minder alle om {legend} – samme position, samme spillestil.",
+  'c.knackered.1': "{a} ser helt færdig ud.", 'c.knackered.2': "{a} er ved at løbe tør for kræfter.", 'c.knackered.3': "{a} har ikke mere at give.",
 };

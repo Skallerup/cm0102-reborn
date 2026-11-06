@@ -106,6 +106,8 @@ interface SP {
   yellow: number;
   /** frispark begået i kampen (originalens kortregel bruger dem) */
   fouls?: number;
+  /** kommentaren "knackered" er givet */
+  knackered?: boolean;
   /** alder på kampdagen (originalens træthed afhænger af den) */
   age?: number;
   line: PlayerMatchLine;
@@ -122,6 +124,9 @@ interface TeamRT {
   ti: TeamInstructions;
   on: SP[];
   benchIds: number[];
+  /** minuttet for holdets seneste udskiftning og taktikskift (originalens spærrer: 5 og 15 minutter) */
+  lastSub?: number;
+  lastShift?: number;
   /** spillere tvunget ud af knocks (originalen stopper knocks efter 6) */
   forcedOff?: number;
   subsLeft: number;
@@ -1620,6 +1625,7 @@ export class MatchSim {
     if (!cands.length) return;
     const best = cands.sort((a, b) => fitFactor(slotFit(b, slot)) * b.ca - fitFactor(slotFit(a, slot)) * a.ca)[0];
     this.substitute(t.idx, out.p.id, best.id);
+    t.lastSub = this.minute;
   }
 
   /** Sent i kampen: holdet der er bagud med ét mål, kæmper med alt (beslutsomhed), og føreren trækker sig nervøst */
@@ -1637,6 +1643,7 @@ export class MatchSim {
 
   private aiManage() {
     this.urgency();
+    if (this.opts.rules === 'original') { this.aiManageOriginal(); return; }
     if (this.minute < 46) return;
     for (const t of this.teams) if (this.opts.aiSubs?.[t.idx]) this.aiShift(t);
     if (this.minute < 55) return;
@@ -1647,6 +1654,26 @@ export class MatchSim {
       if (!this.r.chance(chance)) continue;
       const cands = t.on.filter((s) => !s.off && t.tactic.slots[s.slot].pos !== 'GK');
       const worst = cands.sort((a, b) => a.cond * 10 + a.rating - (b.cond * 10 + b.rating))[0];
+      if (worst && (worst.cond < 0.72 || worst.rating < RATING.start - 0.1)) this.autoSub(t, worst);
+    }
+  }
+
+  /**
+   * CM 01/02's computermanager (sub_6c54a0/sub_6e0fe0, regel 9): overvejer en udskiftning, når minuttet > 10 + rand(50)
+   * (nyt slag hver gang) og mere end 5 minutter efter sidste skift; kandidaterne sorteres stigende efter
+   * int(karakter × 1000 + kondition). Selve valget kendes ikke – motorens egen regel (træt eller under 6,0) bruges.
+   * Taktikskift har sin egen 15-minutters spærre. "Knackered" (kondition < 67,5 % efter 60') er kun en kommentar.
+   */
+  private aiManageOriginal() {
+    if (this.minute >= 60) for (const t of this.teams) for (const s of t.on) {
+      if (!s.off && !s.knackered && s.cond < 0.675 && t.tactic.slots[s.slot].pos !== 'GK') { s.knackered = true; this.line('knackered', s); }
+    }
+    for (const t of this.teams) {
+      if (!this.opts.aiSubs?.[t.idx]) continue;
+      if (this.minute >= 46 && this.minute - (t.lastShift ?? -99) >= 15) { const before = t.ti.mentality; this.aiShift(t); if (t.ti.mentality !== before) t.lastShift = this.minute; }
+      if (t.subsLeft <= 0 || this.minute <= 10 + this.r.int(0, 49) || this.minute - (t.lastSub ?? -99) <= 5) continue;
+      const cands = t.on.filter((s) => !s.off && t.tactic.slots[s.slot].pos !== 'GK');
+      const worst = cands.sort((a, b) => Math.trunc(a.rating * 1000 + a.cond * 10000) - Math.trunc(b.rating * 1000 + b.cond * 10000))[0];
       if (worst && (worst.cond < 0.72 || worst.rating < RATING.start - 0.1)) this.autoSub(t, worst);
     }
   }

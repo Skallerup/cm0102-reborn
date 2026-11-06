@@ -1414,4 +1414,5 @@ export const en: Record<string, string> = {
   'club.noClub': "You don't have a club right now. Find a new job in the job centre.",
   'board.dividend': "Owners take a dividend of {amount}", 'board.dividend.body': "The {club} owners take {amount} out of the club after a profitable season. Balance now: {balance}.",
   'youth.regen': "{player} – the new {legend}?", 'youth.regen.body': "The youth coaches are excited: {player} reminds everyone of {legend} – same position, same style of play.",
+  'c.knackered.1': "{a} looks knackered.", 'c.knackered.2': "{a} is out on his feet.", 'c.knackered.3': "{a} is running on empty.",
 };
