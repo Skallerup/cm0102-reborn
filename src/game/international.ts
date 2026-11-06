@@ -14,12 +14,22 @@ import type { Player } from './types';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
 export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?: number; pens?: boolean; winner?: number }
-export interface IntlTournament { name: 'wc' | 'euro'; year: number; groups: number[][]; table: Record<number, IntlRow>; ko: IntlTie[]; stage: string; winner?: number; runnerUp?: number }
-export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro'; stage?: string }
+export type IntlName = 'wc' | 'euro' | 'copa' | 'afcon' | 'asian';
+export interface IntlTournament {
+  name: IntlName; year: number; groups: number[][]; table: Record<number, IntlRow>; ko: IntlTie[]; stage: string; winner?: number; runnerUp?: number;
+  /** spilledage (MM-DD): gruppespillets runder og knockoutrunderne – udeladt = VM/EM i juni/juli */
+  days?: { g: string[]; ko: Record<string, string> };
+}
+/** Kvalifikationen til næste VM/EM: grupper af fire i hver verdensdel, spillet i landsholdsvinduerne (*estimeret* format) */
+export interface IntlQual { name: 'wc' | 'euro'; year: number; groups: number[][]; region: string[]; table: Record<number, IntlRow>; round: number; qualified?: number[] }
+export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro' | 'copa' | 'afcon' | 'asian' | 'wcq' | 'euroq' | 'u21'; stage?: string }
 export interface NatInfo { stadium: string; cap: number; fifa: number; coach: string; rep: number; titles: Record<string, number> }
 export interface PastFinal { c: string; y: number; w: string; r: string; t?: string; h: string }
 export interface IntlState {
-  results: IntlResult[]; tournament?: IntlTournament; history: { year: number; name: 'wc' | 'euro'; winner: number; runnerUp: number }[];
+  results: IntlResult[]; tournament?: IntlTournament; history: { year: number; name: IntlName; winner: number; runnerUp: number }[];
+  /** kontinentale slutrunder (Copa América, Afrikamesterskabet, Asian Cup) */
+  cont?: IntlTournament[];
+  qual?: IntlQual;
   /** originalens data (kun den originale database): stadion, FIFA-koefficient, landstræner, titler og slutrunder før 2001 */
   info?: Record<number, NatInfo>; past?: PastFinal[];
   /** FIFA-point pr. nation (start: originalens koefficient eller styrken; opdateres efter hver landskamp – *estimeret* Elo) */
@@ -68,6 +78,8 @@ export function nationSquad(n: number): Player[] {
 /** Landets styrke: snit af de 16 bedste (bruges til udvælgelse af deltagere og seedning) */
 export function nationStrength(n: number): number {
   const sq = nationSquad(n).slice(0, 16);
+  // uden målmand kan landet ikke spille (kampmotoren kræver en)
+  if (!sq.some((p) => naturalRole(p) === 'GK')) return 0;
   return sq.length >= 14 ? sq.reduce((s, p) => s + p.ca, 0) / sq.length : 0;
 }
 
@@ -79,9 +91,10 @@ function ranked(filter?: (n: number) => boolean): number[] {
 /** Spil en landskamp i kampmotoren og bogfør landskampe, mål og skader */
 function play(home: number, away: number, kind: IntlResult['kind'], stage?: string, needsWinner = false): IntlResult & { pens?: [number, number] } {
   const g = gs();
-  const r = new Rng(hash(g.seed, home, away, Number(g.date.replace(/-/g, ''))));
+  const u21 = kind === 'u21';
+  const r = new Rng(hash(g.seed, home, away, Number(g.date.replace(/-/g, '')), u21 ? 21 : 0));
   const team = (n: number) => {
-    const sq = nationSquad(n).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: Math.max(80, p.condition) }) as Player);
+    const sq = (u21 ? u21Squad(n) : nationSquad(n)).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: Math.max(80, p.condition) }) as Player);
     return { club: -1 - n, tactic: autoSelect(newTactic('4-4-2'), sq), players: new Map(sq.map((p) => [p.id, p])) };
   };
   const sim = new MatchSim(team(home), team(away), { commentary: false, aiSubs: [true, true], importance: kind === 'friendly' ? 0.3 : 1, neutral: kind !== 'friendly', ...(needsWinner ? { needsWinner: () => true } : {}), date: g.date }, r);
@@ -89,7 +102,7 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
   const [hs, as] = rep.stats;
   for (const line of rep.players) {
     const p = g.players[line.id];
-    if (!p || line.minutes <= 0) continue;
+    if (!p || line.minutes <= 0 || u21) continue;
     p.caps = (p.caps ?? 0) + 1;
     p.intGoals = (p.intGoals ?? 0) + line.goals;
     // kampreferat til spillerens klub (CM 01/02: "scored", "hat-trick", "sent off", "man of the match")
@@ -105,6 +118,7 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
   const res: IntlResult & { pens?: [number, number] } = { date: g.date, home, away, hg: hs.goals, ag: as.goals, kind, stage, ...(rep.pens ? { pens: rep.pens } : {}) };
   const st = state();
   st.results = [res, ...st.results].slice(0, 150);
+  if (u21) return res;
   updateFifa(home, away, res.hg, res.ag, kind);
   // brugerens landshold: resultat og statistik
   forEachHuman(() => {
@@ -135,10 +149,10 @@ function callUpNews(nations: number[]) {
   });
 }
 
-function friendlies() {
-  // de 64 stærkeste lande spiller én kamp hver, mod et land fra samme verdensdel
+function friendlies(busy: Set<number> = new Set()) {
+  // de 64 stærkeste lande spiller én kamp hver, mod et land fra samme verdensdel (lande i kvalifikation spiller den)
   const g = gs();
-  const pool = ranked().slice(0, 64);
+  const pool = ranked().slice(0, 64).filter((n) => !busy.has(n));
   const byRegion = new Map<string, number[]>();
   for (const n of pool) { const r = regionOf(g.nations[n]?.name); (byRegion.get(r) ?? byRegion.set(r, []).get(r)!).push(n); }
   for (const list of byRegion.values()) {
@@ -156,25 +170,124 @@ function startTournament(name: 'wc' | 'euro', year: number) {
   const g = gs();
   const real = name === 'wc' && year === 2002 ? WC2002.map((grp) => grp.map((nm) => g.nations.findIndex((x) => x.name === nm))) : null;
   const realOk = real && real.flat().every((n) => n >= 0 && nationSquad(n).length >= 11);
-  const field = realOk ? real!.flat() : name === 'wc' ? ranked().slice(0, 32) : ranked((n) => regionOf(g.nations[n]?.name) === 'europe').slice(0, 16);
+  // feltet: VM 2002 = de rigtige 32; ellers kvalifikationens vindere, fyldt op efter styrke
+  const q = state().qual?.name === name && state().qual?.year === year ? state().qual!.qualified ?? [] : [];
+  const size = name === 'wc' ? 32 : 16;
+  const pool = name === 'wc' ? ranked() : ranked((n) => regionOf(g.nations[n]?.name) === 'europe');
+  const qualified = [...q, ...pool.filter((n) => !q.includes(n))].slice(0, size).sort((a, b) => nationStrength(b) - nationStrength(a));
+  const field = realOk ? real!.flat() : qualified;
   if (field.length < 16) return;
   const pots = [0, 1, 2, 3].map((k) => rng.shuffle(field.slice(k * field.length / 4, (k + 1) * field.length / 4)));
   const groups = realOk ? real! : pots[0].map((_, i) => pots.map((pot) => pot[i]));
   const t: IntlTournament = { name, year, groups, table: {}, ko: [], stage: 'G1' };
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   state().tournament = t;
+  state().qual = undefined;
   callUpNews(field);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
 
+/** Kontinentale slutrunder: Afrikamesterskabet (januar, lige år), Copa América og Asian Cup (juli hvert 3. år fra 2004) */
+const CONT: Record<'copa' | 'afcon' | 'asian', { regions: string[]; days: { g: string[]; ko: Record<string, string> } }> = {
+  afcon: { regions: ['africa'], days: { g: ['01-20', '01-24', '01-28'], ko: { QF: '02-01', SF: '02-05', F: '02-09' } } },
+  copa: { regions: ['southAmerica', 'northAmerica'], days: { g: ['07-08', '07-11', '07-14'], ko: { QF: '07-18', SF: '07-21', F: '07-25' } } },
+  asian: { regions: ['asia'], days: { g: ['07-09', '07-12', '07-15'], ko: { QF: '07-19', SF: '07-22', F: '07-26' } } },
+};
+function startContinental(name: 'copa' | 'afcon' | 'asian', year: number) {
+  const g = gs();
+  const c = CONT[name];
+  // Copa: Sydamerika først, gæster fra Nord- og Mellemamerika fylder op
+  const pool = c.regions.flatMap((r) => ranked((n) => regionOf(g.nations[n]?.name) === r));
+  // få lande med spillere nok i databasen: 8 (to grupper) eller 4 (én gruppe, nr. 1 og 2 spiller finalen)
+  const size = pool.length >= 16 ? 16 : pool.length >= 8 ? 8 : pool.length >= 4 ? 4 : 0;
+  if (!size) return;
+  const field = pool.slice(0, size).sort((a, b) => nationStrength(b) - nationStrength(a));
+  const pots = [0, 1, 2, 3].map((k) => rng.shuffle(field.slice(k * size / 4, (k + 1) * size / 4)));
+  const groups = pots[0].map((_, i) => pots.map((pot) => pot[i]));
+  const t: IntlTournament = { name, year, groups, table: {}, ko: [], stage: 'G1', days: c.days };
+  for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  const st = state();
+  st.cont = [...(st.cont ?? []).filter((x) => x.name !== name), t];
+  callUpNews(field);
+  forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
+}
+
+/** Kvalifikationen begynder i august året før slutrunden: grupper af fire pr. verdensdel (EM: kun Europa) */
+function startQualification(name: 'wc' | 'euro', year: number) {
+  const g = gs();
+  const regions = name === 'wc' ? ['europe', 'southAmerica', 'africa', 'asia', 'northAmerica'] : ['europe'];
+  const groups: number[][] = [], region: string[] = [];
+  for (const r of regions) {
+    const pool = ranked((n) => regionOf(g.nations[n]?.name) === r).slice(0, r === 'europe' ? 52 : 24);
+    const n4 = Math.floor(pool.length / 4);
+    if (!n4) continue;
+    const use = pool.slice(0, n4 * 4);
+    const pots = [0, 1, 2, 3].map((k) => rng.shuffle(use.slice(k * n4, (k + 1) * n4)));
+    for (let i = 0; i < n4; i++) { groups.push(pots.map((pot) => pot[i])); region.push(r); }
+  }
+  if (!groups.length) return;
+  const table: Record<number, IntlRow> = {};
+  for (const n of groups.flat()) table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
+  state().qual = { name, year, groups, region, table, round: 0 };
+  forEachHuman(() => addNews({ cat: 'general', key: `intl.qual.start.${name}`, params: { year } }));
+}
+
+/** En kvalifikationsrunde (i hvert landsholdsvindue); efter fjerde runde er de kvalificerede fundet */
+function qualRound() {
+  const g = gs();
+  const q = state().qual;
+  if (!q || q.round >= 4) return new Set<number>();
+  const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]], [[1, 0], [3, 2]]][q.round];
+  for (const grp of q.groups) for (const [i, j] of pairs) {
+    const r = play(grp[i], grp[j], q.name === 'wc' ? 'wcq' : 'euroq');
+    const a = q.table[grp[i]], b = q.table[grp[j]];
+    a.p++; b.p++; a.gf += r.hg; a.ga += r.ag; b.gf += r.ag; b.ga += r.hg;
+    if (r.hg > r.ag) { a.w++; a.pts += 3; b.l++; } else if (r.hg < r.ag) { b.w++; b.pts += 3; a.l++; } else { a.d++; b.d++; a.pts++; b.pts++; }
+  }
+  q.round++;
+  if (q.round === 4) {
+    // pladser pr. verdensdel (VM: Europa 14, Sydamerika 5, Afrika 5, Asien 4, Nord- og Mellemamerika 3 · EM: 16)
+    const slots: Record<string, number> = q.name === 'wc' ? { europe: 14, southAmerica: 5, africa: 5, asia: 4, northAmerica: 3 } : { europe: 16 };
+    const qualified: number[] = [];
+    for (const [r, n] of Object.entries(slots)) {
+      const gs2 = q.groups.filter((_, i) => q.region[i] === r).map((grp) => rowsOf2(q.table, grp));
+      const firsts = gs2.map((x) => x[0]), seconds = gs2.map((x) => x[1]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga));
+      qualified.push(...[...firsts, ...seconds].slice(0, n).map((x) => x.n));
+    }
+    q.qualified = qualified;
+    forEachHuman(() => {
+      const mine = g.clubs[g.userClub]?.nation;
+      for (const n of qualified.filter((x) => x === mine || x === g.manager.national?.nation)) addNews({ cat: 'general', key: `intl.qual.done.${q.name}`, params: { nation: g.nations[n]?.name ?? '', year: q.year } });
+    });
+  }
+  return new Set(q.groups.flat());
+}
+const rowsOf2 = (table: Record<number, IntlRow>, grp: number[]) => grp.map((n) => table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
+
+/** U21-landsholdet: de 20 bedste spillere på 21 år eller yngre */
+export function u21Squad(n: number): Player[] {
+  const g = gs();
+  const all = (byNation().get(n) ?? []).filter((p) => ageOn(p.dob, g.date) <= 21);
+  // to målmænd og 18 markspillere (uden målmand kan kampen ikke spilles)
+  const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 2);
+  return gk.length ? [...gk, ...all.filter((p) => naturalRole(p) !== 'GK').slice(0, 18)] : [];
+}
+/** U21-landskampe i vinduerne for de 32 stærkeste europæiske lande (tæller ikke som landskampe) */
+function u21Friendlies() {
+  const g = gs();
+  const pool = ranked((n) => regionOf(g.nations[n]?.name) === 'europe').filter((n) => u21Squad(n).length >= 14).slice(0, 32);
+  const sh = rng.shuffle(pool.slice());
+  for (let i = 0; i + 1 < sh.length; i += 2) play(sh[i], sh[i + 1], 'u21');
+}
+
 const rowsOf = (t: IntlTournament, grp: number[]) => grp.map((n) => t.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
 
-function tournamentDay() {
+function tournamentDay(t: IntlTournament | undefined) {
   const g = gs();
-  const t = state().tournament;
   if (!t || t.stage === 'done') return;
   const md = g.date.slice(5);
-  const round = GROUP_DAYS.indexOf(md);
+  const gdays = t.days?.g ?? GROUP_DAYS, kdays = t.days?.ko ?? KO_DAYS;
+  const round = gdays.indexOf(md);
   if (round >= 0 && t.stage === `G${round + 1}`) {
     // runde 1: 1-2, 3-4 · runde 2: 1-3, 2-4 · runde 3: 1-4, 2-3
     const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]][round];
@@ -184,7 +297,8 @@ function tournamentDay() {
       a.p++; b.p++; a.gf += r.hg; a.ga += r.ag; b.gf += r.ag; b.ga += r.hg;
       if (r.hg > r.ag) { a.w++; a.pts += 3; b.l++; } else if (r.hg < r.ag) { b.w++; b.pts += 3; a.l++; } else { a.d++; b.d++; a.pts++; b.pts++; }
     }
-    t.stage = round < 2 ? `G${round + 2}` : t.groups.length >= 8 ? 'R16' : 'QF';
+    t.stage = round < 2 ? `G${round + 2}` : t.groups.length >= 8 ? 'R16' : t.groups.length >= 4 ? 'QF' : t.groups.length >= 2 ? 'SF' : 'F';
+    if (round === 2 && t.groups.length === 1) { const r = rowsOf(t, t.groups[0]); t.ko.push({ stage: 'F', a: r[0].n, b: r[1].n }); return; }
     if (round === 2) {
       // knockout: vinder gruppe A mod toer gruppe B osv.
       const firsts = t.groups.map((grp) => rowsOf(t, grp)[0].n), seconds = t.groups.map((grp) => rowsOf(t, grp)[1].n);
@@ -195,7 +309,7 @@ function tournamentDay() {
     return;
   }
   const ko = t.ko.filter((x) => x.stage === t.stage && x.winner === undefined);
-  if (!ko.length || KO_DAYS[t.stage] !== md) return;
+  if (!ko.length || kdays[t.stage] !== md) return;
   for (const tie of ko) {
     const r = play(tie.a, tie.b, t.name, tie.stage, true);
     tie.hg = r.hg; tie.ag = r.ag; tie.pens = !!r.pens;
@@ -220,10 +334,15 @@ export function intlDaily() {
   const md = g.date.slice(5);
   const year = Number(g.date.slice(0, 4));
   if (WINDOWS.some((w) => addDays(g.date, 2).slice(5) === w)) callUpNews(ranked().slice(0, 64));
-  if (WINDOWS.includes(md)) friendlies();
+  if (WINDOWS.includes(md)) { const busy = qualRound(); friendlies(busy); u21Friendlies(); }
+  // kvalifikation i august året før (VM i år ≡ 2, EM i år ≡ 0 mod 4)
+  if (md === '08-20' && year % 2 === 1) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
   // slutrunder: VM i år ≡ 2 (mod 4), EM i år ≡ 0 (mod 4) – lodtrækning 1. juni
   if (md === '06-01' && (year % 4 === 2 || year % 4 === 0)) startTournament(year % 4 === 2 ? 'wc' : 'euro', year);
-  tournamentDay();
+  if (md === '01-10' && year % 2 === 0) startContinental('afcon', year);
+  if (md === '07-06' && year % 3 === 0 && year >= 2004) { startContinental('copa', year); startContinental('asian', year); }
+  tournamentDay(state().tournament);
+  for (const c of state().cont ?? []) tournamentDay(c);
   if (md === '07-10' || md === '01-02') nationalOffers();
 }
 
@@ -299,3 +418,16 @@ export function selectNationalSquad(pids: number[]): string {
 
 /** Kandidaterne til landsholdet (de 45 bedste af nationaliteten, skadede udeladt) */
 export const nationPool = (n: number): Player[] => (byNation().get(n) ?? []).slice(0, 45);
+
+/** Er spilleren udtaget til sit landshold? (mærket "Int" i trupoversigterne som i CM 01/02) – gemt pr. spildag */
+let intCache: { date: string; g: unknown; ids: Set<number> } | null = null;
+export function isInternational(p: Player): boolean {
+  const g = gs();
+  if (!intCache || intCache.date !== g.date || intCache.g !== g) {
+    const ids = new Set<number>();
+    const nations = new Set(Object.values(g.players).filter((x) => x.club === g.userClub || x.caps > 0).map((x) => x.nation));
+    for (const n of nations) for (const x of nationSquad(n)) ids.add(x.id);
+    intCache = { date: g.date, g, ids };
+  }
+  return intCache.ids.has(p.id);
+}

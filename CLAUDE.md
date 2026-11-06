@@ -45,6 +45,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Landshold: `IntlState.qual` (startQualification 20/8 i ulige år, qualRound i vinduerne, pladser pr. verdensdel
+  *estimeret*), `cont` (afcon jan. lige år, copa/asian juli år ≡ 0 mod 3 fra 2004; 16/8/4 hold), U21 (`u21Squad`, kind 'u21').
+  NB: et hold uden målmand får MatchSim til at hænge/crashe – nationStrength og u21Squad kræver en GK; 10-mands-reglen i
+  `injure` gælder kun hold med aiSubs=false og aldrig GK. `isInternational` → Int. `jobRole` → stab ved pension.
 - 2026-11-06 – Klassisk spillerside: TitleMenu `playerId` (holdkammerater), Set Role At Club i NegotiationClassic (`expectedStatus`,
   `Player.jobRole` – bruges ikke af motoren endnu), `ContractClauses.signOn` (signOnDemand *estimeret*, betales ved underskrift,
   kræves i renewContract), `Player.reserves` (available() = false, action reserves, mærke Res), NotePanel.

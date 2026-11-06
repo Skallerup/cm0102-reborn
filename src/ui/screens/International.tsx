@@ -3,7 +3,7 @@ import { useGame } from '../core';
 import { dateFmt, natName, t } from '../../i18n';
 import { Flag, Panel, Tabs } from '../components';
 import { useRouteState } from '../core';
-import { fifaRanking, nationPool, nationSquad, type IntlTournament, type PastFinal } from '../../game/international';
+import { fifaRanking, nationPool, nationSquad, u21Squad, type IntlTournament, type PastFinal } from '../../game/international';
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { ClubLink, PlayerLink } from '../components';
@@ -181,7 +181,7 @@ function SquadPicker({ n }: { n: number }) {
 function ClassicNationTeam({ n }: { n: number }) {
   const g = useGame()!;
   const { nav } = useNav();
-  const [tab, setTab] = useRouteState<'squad' | 'results' | 'fifa' | 'info'>(`ntt:${n}`, 'squad');
+  const [tab, setTab] = useRouteState<'squad' | 'u21' | 'results' | 'fifa' | 'info'>(`ntt:${n}`, 'squad');
   const squad = nationSquad(n);
   const coach = g.manager.national?.nation === n ? g.manager.name : '';
   const info = g.intl?.info?.[n];
@@ -198,7 +198,8 @@ function ClassicNationTeam({ n }: { n: number }) {
   return (
     <div>
       <Head title={natName(g.nations[n]?.name)} />
-      <Tabs tabs={[['squad', t('cl.nt.squad')], ['results', t('intl.tab.results')], ['fifa', t('intl.tab.fifa')], ['info', t('cl.nt.info')]]} value={tab} onChange={(v) => setTab(v as typeof tab)} />
+      <Tabs tabs={[['squad', t('cl.nt.squad')], ['u21', t('cl.nt.u21')], ['results', t('intl.tab.results')], ['fifa', t('intl.tab.fifa')], ['info', t('cl.nt.info')]]} value={tab} onChange={(v) => setTab(v as typeof tab)} />
+      {tab === 'u21' && (u21Squad(n).length ? <ClassicClubSquad cid={0} players={u21Squad(n)} /> : <div className="cx-empty">{t('intl.noSquad')}</div>)}
       {tab === 'squad' && (
         <>
           <div className="cx-subtitle">{t('cl.nt.squadTitle', { n: squad.length })}</div>
@@ -243,7 +244,7 @@ function ClassicNationTeam({ n }: { n: number }) {
 
 // ---------- klassisk (CM 01/02): titelbjælke, faner og tabeller med grå kolonneknapper og blå rækkeknapper ----------
 
-const INTL_TABS = ['tournament', 'results', 'fifa', 'history'] as const;
+const INTL_TABS = ['tournament', 'qual', 'results', 'fifa', 'history'] as const;
 
 /** Et land i en klassisk tabel: klikbart, ens eget landshold i gult */
 function CxNat({ n, cls = 'c-name' }: { n: number | undefined; cls?: string }) {
@@ -281,7 +282,12 @@ function ClassicInternational({ tab, setTab }: { tab: string; setTab: (v: string
           <button onClick={() => act({ t: 'resignNational' })}>{t('intl.resign')}</button>
         </div>
       )}
-      {cur === 'tournament' && (!tour ? <div className="cx-empty">{t('intl.none')}</div> : <CxTournament tour={tour} />)}
+      {cur === 'tournament' && (() => {
+        // VM/EM og de kontinentale slutrunder (Copa América, Afrikamesterskabet, Asian Cup) – den nyeste først
+        const all = [tour, ...(st?.cont ?? [])].filter((x): x is IntlTournament => !!x).sort((a, b) => Number(a.stage === 'done') - Number(b.stage === 'done') || b.year - a.year);
+        return all.length ? all.map((x) => <CxTournament key={`${x.name}${x.year}`} tour={x} />) : <div className="cx-empty">{t('intl.none')}</div>;
+      })()}
+      {cur === 'qual' && <CxQual />}
       {cur === 'results' && <CxResults results={st?.results ?? []} />}
       {cur === 'fifa' && <CxFifa />}
       {cur === 'history' && <CxHistory />}
@@ -364,6 +370,26 @@ function CxHistory() {
             <td>{h.t ? <CxNatName name={h.t} /> : null}</td><td>{h.h ? <CxNatName name={h.h} cls="c-pos" /> : null}</td></tr>
         ))}</tbody>
       </table></div>
+    </>
+  );
+}
+
+/** Kvalifikationen: grupperne med stilling (vindere og de bedste toere går videre) */
+function CxQual() {
+  const g = useGame()!;
+  const q = g.intl?.qual;
+  if (!q) return <div className="cx-empty">{t('intl.noQual')}</div>;
+  const rows = (grp: number[]) => grp.map((n) => q.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
+  return (
+    <>
+      <div className="cx-subtitle">{t(`intl.qual.start.${q.name}`, { year: q.year })}</div>
+      <div className="cx-tbl-wrap">
+        <table className="cx-tbl"><thead><tr><th className="btn-col" /><th>{t('col.nat')}</th><th className="c-num">{t('cl.nt.pl')}</th><th className="c-num">{t('cl.nt.w')}</th><th className="c-num">{t('cl.nt.d')}</th><th className="c-num">{t('cl.nt.l')}</th><th className="c-num">{t('cl.nt.gf')}</th><th className="c-num">{t('cl.nt.ga')}</th><th className="c-num">{t('cl.nt.pts')}</th></tr></thead>
+          <tbody>{q.groups.map((grp, i) => rows(grp).map((r, j) => (
+            <tr key={`${i}-${r.n}`} className={q.qualified?.includes(r.n) ? '' : q.qualified ? 'dim' : ''}><td className="btn-col">{j === 0 ? <span className="cx-rowbtn narrow">{i + 1}</span> : null}</td><td><CxNat n={r.n} /></td>
+              <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td><td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td></tr>
+          )))}</tbody></table>
+      </div>
     </>
   );
 }

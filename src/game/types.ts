@@ -141,7 +141,7 @@ export interface Player {
   regen?: boolean;
   /** CM 01/02 "Set Nickname": det rigtige navn, mens et kælenavn bruges i stedet */
   realName?: { first: string; last: string };
-  /** CM 01/02 Set Role At Club: spiller/assistent/træner (gemmes, bruges endnu ikke af motoren) */
+  /** CM 01/02 Set Role At Club: spiller/assistent/træner – fortsætter i klubbens stab, når han stopper */
   jobRole?: 'player' | 'assistant' | 'coach';
   notes?: string;
   /** CM 01/02 "Relegate To Reserves": står uden for førsteholdet (kan ikke udtages, før han kaldes op) */

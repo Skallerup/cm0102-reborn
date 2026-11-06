@@ -80,19 +80,20 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   const items: DropItem[] = [];
   if (!online) items.push({ key: 'save', label: t('cl.go.save'), onClick: onSave });
   const add = (k: string, label: string) => { if (allowed(k)) items.push({ key: k, label, onClick: go(k) }); };
+  // CM 01/02: Save Game · Manager Status · Game Settings · (Edition) Options · Hall of Fame · Game Credits · Web Sites · Restart · Exit
   add('profile', t('cl.go.status'));
   items.push({ key: 'settings', label: t('cl.go.settings'), onClick: () => setSettings(true) });
+  add('options', t('cl.go.all'));
   add('ranking', t('cl.go.hall'));
   add('awards', t('nav.awards'));
-  add('help', t('nav.help'));
-  add('community', t('nav.community'));
+  add('community', t('cl.go.credits'));
   add('support', t('cl.go.web'));
-  add('options', t('cl.go.all'));
+  add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
   const fresh = seenVersion() !== APP_VERSION;
   items.push({ key: 'sep0', sep: true }, { key: 'news', label: `${t('cl.go.whatsNew', { v: APP_VERSION })}${fresh ? ' ★' : ''}`, onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
   if (communityAvailable()) items.push({ key: 'bug', label: `🐞 ${t('cm.reportBug')}`, onClick: () => setShow('bug') }, { key: 'idea', label: `💡 ${t('cl.go.feedback')}`, onClick: () => setShow('suggest') });
-  items.push({ key: 'sep', sep: true }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
+  items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
       <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
@@ -184,6 +185,7 @@ export function ManagerMenu({ onRetire, allowed, onHoliday }: { onRetire: () => 
   const add = (k: string, label: string, tab?: string) => { if (allowed(k)) items.push({ key: `${k}${tab ?? ''}`, label, onClick: () => nav({ name: k as never, tab }) }); };
   if (club) {
     add('squad', t('cl.mm.squad', { club: club.short }));
+    add('squad', t('cl.res.title', { club: club.short }), 'reserves');
     add('board', t('cl.mm.board'));
     items.push({ key: 'resign', label: t('cl.mm.resign'), onClick: async () => {
       if (await askConfirm(t('jobs.resignConfirm', { club: club.name }))) act({ t: 'resign' });

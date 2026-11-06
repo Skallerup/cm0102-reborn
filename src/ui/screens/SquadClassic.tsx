@@ -3,6 +3,7 @@
 // (GK DL … FC SB1 … SB5) og spillerne i to kolonner. Knappen foran hver spiller viser hans plads (grøn = på
 // holdet, gulgrøn = bænken). Træk knappen hen på en plads i strimlen eller på en anden spiller for at bytte –
 // eller klik på den og vælg pladsen i menuen (virker også på mobil).
+import { isInternational } from '../../game/international';
 import { useState, type DragEvent, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { squad } from '../../game/state';
@@ -132,6 +133,7 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.reserves) return { k: 'Res', title: t('cl.pl.inReserves') };
+  if (isInternational(p)) return { k: 'Int', title: t('cl.tag.intTitle', { nation: natName(g.nations[p.nation]?.name) ?? '' }) };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };
@@ -208,6 +210,25 @@ export function ClassicClubSquad({ cid, players: given }: { cid: number; players
 // ---------- skærmen ----------
 
 export function ClassicSquad() {
+  const { route } = useNav();
+  // "{klub} Reserves" (CM 01/02): spillerne, der er rykket ned på reserveholdet
+  if (route.tab === 'reserves') return <ClassicReserves />;
+  return <ClassicFirstSquad />;
+}
+
+function ClassicReserves() {
+  const g = useGame()!;
+  const res = squad(g.userClub).filter((p) => p.reserves);
+  return (
+    <div>
+      <Head title={g.clubs[g.userClub]?.name ?? ''} />
+      <div className="cx-subtitle">{t('cl.res.title', { club: g.clubs[g.userClub]?.short ?? '' })}</div>
+      {res.length ? <ClassicClubSquad cid={g.userClub} players={res} /> : <div className="cx-empty">{t('cl.res.none')}</div>}
+    </div>
+  );
+}
+
+function ClassicFirstSquad() {
   const g = useGame()!;
   const { nav } = useNav();
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));

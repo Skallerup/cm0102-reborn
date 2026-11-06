@@ -128,7 +128,9 @@ export function retireIntoStaff(p: Player): Staff | null {
   const age = ageOn(p.dob, g.date);
   const legendOf = Object.values(g.clubs).find((c) => c.records?.players[p.id]?.legend);
   const notable = p.rep >= 55 || p.ca >= 120;
-  if (!legendOf && (!notable || age < 31 || hash01(g.seed, p.id, 91) > 0.35)) return null;
+  // CM 01/02 Set Role At Club: en spiller/træner eller spiller/assistent fortsætter i klubbens stab, når han stopper
+  const staffRole = p.jobRole && p.jobRole !== 'player' ? p.jobRole : undefined;
+  if (!staffRole && !legendOf && (!notable || age < 31 || hash01(g.seed, p.id, 91) > 0.35)) return null;
   const a = p.attrs;
   const clamp = (v: number) => Math.max(1, Math.min(20, Math.round(v)));
   const brains = (a[A.decisions] + a[A.anticipation] + a[A.positioning]) / 3;
@@ -141,7 +143,7 @@ export function retireIntoStaff(p: Player): Staff | null {
     discipline: clamp((a[A.professionalism] + a[A.temperament]) / 2),
     tactics: clamp(brains),
   };
-  const role: StaffRole = attrs.motivating >= 15 && attrs.tactics >= 13 ? 'assistant' : attrs.judgingAbility + attrs.judgingPotential > attrs.coaching * 2 + 2 ? 'scout' : 'coach';
+  const role: StaffRole = staffRole ?? (attrs.motivating >= 15 && attrs.tactics >= 13 ? 'assistant' : attrs.judgingAbility + attrs.judgingPotential > attrs.coaching * 2 + 2 ? 'scout' : 'coach');
   const id = g.nextId.staff++;
   const s: Staff = {
     id, first: p.first, last: p.last, nation: p.nation, dob: p.dob, club: 0, role, attrs,
@@ -151,6 +153,11 @@ export function retireIntoStaff(p: Player): Staff | null {
     exPlayer: { pid: p.id, ...(legendOf ? { legendOf: legendOf.id } : {}) },
   };
   g.staff[id] = s;
+  if (staffRole && p.club) {
+    s.club = p.club;
+    asOwner(p.club, () => addNews({ cat: 'general', key: 'recb.news.roleStaff', params: { player: pname(p), role: staffRole }, link: { kind: 'club', id: p.club } }));
+    return s;
+  }
   if (legendOf) asOwner(legendOf.id, () => addNews({ cat: 'general', key: 'recb.news.legendStaff', params: { player: pname(p), role: role } }));
   return s;
 }

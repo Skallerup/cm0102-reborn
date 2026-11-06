@@ -22,6 +22,9 @@ describe('landshold', () => {
     expect(t.name).toBe('wc');
     expect(t.stage).toBe('done');
     expect(g.intl!.history[0].winner).toBeGreaterThanOrEqual(0);
+    // kvalifikation (VM-kvalifikationskampe i vinduerne), Afrikamesterskabet i januar 2002 og U21-landskampe
+    expect(g.intl!.results.some((r) => r.kind === 'wcq') || g.intl!.history.some((h) => h.name === 'afcon')).toBe(true);
+    expect(g.intl!.cont?.some((c) => c.name === 'afcon' && c.stage === 'done')).toBe(true);
     for (const k of new Set(g.news.map((n) => n.key))) expect(k in en, k).toBe(true);
     // landstrænerjobbet: tilbud → takker ja → kampe tæller
     g.manager.rep = 90;
