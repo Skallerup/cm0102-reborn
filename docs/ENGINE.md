@@ -281,3 +281,18 @@ Trin 3-7 løftede tilsammen målene i den originale database (sæson: 3,01-3,11)
 
 `scripts/match-stats.ts` (2000 kampe): kondition ved slutfløjt 77,9 %, 2,73 udskiftninger pr. hold.
 
+
+### Trin 8 – knocks (regel 8; kun den originale database, 2026-11-06)
+
+Kilde: sub_6cfe10/sub_6d0980 (`knock`, `knockSeverity`, `knockAllowed`). I stedet for en fast skadeschance pr. frispark
+tjekkes knocks for alle spillere hvert moment (originalen: hvert bevægelsestrin – vores moment svarer til `KNOCK_K` = 1,4
+tjek, *estimeret*/kalibreret til samme skadesniveau som før) og efter frispark. Risiko = 4 (6 med skade) × 10000 /
+(0,5 × kondition + 5000) × skadesudsathed/10. Alvorlighed > 50 = skade; ellers koster knocken kondition, og spilleren må
+ud under 50 % eller 71 % + 0,25 % × skadesudsathed (AI-hold skifter ud). Efter 6 tvungne udskiftninger ingen flere knocks.
+
+| `scripts/match-stats.ts`, 2000 kampe, original DB | Før | Efter |
+|---|---|---|
+| Skader pr. kamp | 0,31 | 0,30 |
+| Udskiftninger pr. hold | 2,70 | 2,92 |
+| Mål pr. kamp | 3,02 | 2,95 |
+

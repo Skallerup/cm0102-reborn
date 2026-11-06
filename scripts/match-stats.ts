@@ -38,7 +38,7 @@ for (let i = 0; i < N; i++) {
   const r = sim.runToEnd();
   for (const st of r.stats) { add('goals', st.goals); add('shots', st.shots); add('onT', st.onTarget); add('fouls', st.fouls); add('yel', st.yellows); add('red', st.reds); add('corners', st.corners); add('offs', st.offsides); }
   for (const e of r.events) { if (e.k === 'goal' && e.og) add('og'); }
-  for (const l of r.players) { if (!l.sub && l.minutes >= 90) { add('endCond', l.cond); add('nEnd'); } if (l.sub) add('subs'); }
+  for (const l of r.players) { if (!l.sub && l.minutes >= 90) { add('endCond', l.cond); add('nEnd'); } if (l.sub) add('subs'); if (l.injured) add('inj'); }
   for (const s of r.shots) if (s.outcome === 'goal') { add(`g:${s.kind}`); if (s.corner) add('g:fromCorner'); if (s.origin === 'cross') add('g:cross'); }
   for (const l of r.commentary) {
     if (['penalty', 'dive-pen', 'professional-foul', 'dive-booked', 'pen-appeal', 'advantage', 'dissent', 'time-wasting', 'long-throw', 'short-corner', 'corner-edge', 'fk-wall', 'gk-parry', 'gk-spills', 'low-cross', 'hold-up', 'poor-touch', 'red-professional'].includes(l.k)) add(`c:${l.k}`);
@@ -52,6 +52,6 @@ console.log(`mål ${pm('goals')} (2,7) · skud ${pm('shots')} (~25) · på mål 
 console.log(`frispark begået ${pm('fouls')} (~21) · gule ${pm('yel')} (~3,6) · røde ${pm('red')} (~0,13) · straffespark ${((c['c:penalty'] ?? 0) / N).toFixed(2)} (~0,28)`);
 console.log(`selvmål ${pg('og')} af målene (~2,5 %) · hovedstødsmål ${pg('g:header')} (~17 %) · efter hjørnespark ${pg('g:fromCorner')} (~10 %) · straffe ${pg('g:pen')} (~9 %) · frispark direkte ${pg('g:fk')} (~2,5 %)`);
 if (c.refStrict) console.log(`dommernes strenghed i snit ${pm('refStrict')}`);
-console.log(`kondition ved slutfløjt (spillet hele kampen) ${((c.endCond ?? 0) / Math.max(1, c.nEnd ?? 1)).toFixed(1)} % · udskiftninger pr. hold ${((c.subs ?? 0) / N / 2).toFixed(2)}`);
+console.log(`kondition ved slutfløjt (spillet hele kampen) ${((c.endCond ?? 0) / Math.max(1, c.nEnd ?? 1)).toFixed(1)} % · udskiftninger pr. hold ${((c.subs ?? 0) / N / 2).toFixed(2)} · skader pr. kamp ${pm('inj')}`);
 console.log(`tillægstid efter 90 min: ${pm('added')} min (~4-5)`);
 console.log('nye situationer pr. kamp:', Object.keys(c).filter((k) => k.startsWith('c:')).map((k) => `${k.slice(2)} ${pm(k)}`).join(' · '));

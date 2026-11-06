@@ -10,11 +10,13 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
-import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, fatigueDrain, halfTimeRecovery, yellowRatingDelta, type Rand } from './cm0102-original-rules';
+import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, fatigueDrain, halfTimeRecovery, knock, knockAllowed, knockSeverity, yellowRatingDelta, type Rand } from './cm0102-original-rules';
 /** Andel almindelige frispark, der er sene/hårde (type 44) i originalens kortregel – *estimeret* (docs/ENGINE.md, trin 4) */
 const HARD_SHARE = 0.03;
 /** Originalens døde bolde pr. registreret afbrydelse hos os (indkast, målspark efter redninger m.m. tælles ikke) – *estimeret* (trin 5) */
 const DEAD_BALL_K = 1.55;
+/** Originalens knock-tjek pr. spiller pr. moment i forhold til dens bevægelsestrin – *estimeret*, kalibreret (trin 8) */
+const KNOCK_K = 1.4;
 import { pitchFx, weatherFx, type Pitch, type Weather, type WeatherFx } from '../weather';
 import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
@@ -120,6 +122,8 @@ interface TeamRT {
   ti: TeamInstructions;
   on: SP[];
   benchIds: number[];
+  /** spillere tvunget ud af knocks (originalen stopper knocks efter 6) */
+  forcedOff?: number;
   subsLeft: number;
   players: Map<number, Player>;
   zAtt: ZoneEntry[][];
@@ -601,6 +605,11 @@ export class MatchSim {
     }
     this.minute = minute;
     this.tickFatigue();
+    // originalen tjekker knocks ved hvert bevægelsestrin for spillerne uden bold (her: pr. moment, skaleret)
+    if (this.opts.rules === 'original') for (const t of this.teams) for (const s of t.on) {
+      const n = Math.floor(KNOCK_K) + (this.r.chance(KNOCK_K % 1) ? 1 : 0);
+      for (let k = 0; k < n && !s.off; k++) this.knockCheck(s);
+    }
     if (i % 12 === 0) this.aiManage();
     if (!this.timeWaste()) this.play();
     this.moment++;
@@ -1270,9 +1279,36 @@ export class MatchSim {
     this.buildZones(t);
   }
 
+  /**
+   * CM 01/02's knocks (sub_6cfe10/sub_6d0980, regel 8): risikoen stiger med træthed og skadesudsathed; en knock bliver en
+   * skade, hvis alvorligheden > 50, og koster ellers kondition. Spilleren må ud, hvis konditionen falder under 50 % eller
+   * under 71 % + 0,25 % × skadesudsathed (AI-hold skifter ud; menneskets hold spiller videre med en træt spiller).
+   */
+  private knockCheck(sp: SP) {
+    if (sp.off || sp.line.injured) return;
+    const t = this.teams[sp.team];
+    const rand: Rand = (n) => (n <= 0 ? 0 : Math.floor(this.r.next() * n));
+    if (!knockAllowed(rand, t.forcedOff ?? 0)) return;
+    const prone = sp.p.attrs[A.injuryProneness];
+    if (!knock(rand, sp.cond * 10000, prone, !!sp.p.injury, 1)) return;
+    const k = knockSeverity(rand, sp.cond * 10000, prone, !!sp.p.injury);
+    sp.cond = clamp(k.condition / 10000, 0.2, 1);
+    if (k.injured) { this.injure(sp); return; }
+    if (k.forcedOff && t.subsLeft > 0 && t.benchIds.length && this.opts.aiSubs?.[t.idx] !== false) {
+      t.forcedOff = (t.forcedOff ?? 0) + 1;
+      this.line('injury', sp, null, false);
+      this.autoSub(t, sp);
+    }
+  }
+
   private injuryCheck(sp: SP) {
+    if (this.opts.rules === 'original') { this.knockCheck(sp); return; }
     const p = 0.013 * (0.35 + sp.p.attrs[A.injuryProneness] / 12) * (sp.cond < 0.55 ? 1.6 : 1);
     if (!this.r.chance(p)) return;
+    this.injure(sp);
+  }
+
+  private injure(sp: SP) {
     sp.line.injured = true;
     this.stoppage += 0.8;
     const t = this.teams[sp.team];
