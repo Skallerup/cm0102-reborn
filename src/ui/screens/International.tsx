@@ -5,12 +5,18 @@ import { Flag, Panel, Tabs } from '../components';
 import { useRouteState } from '../core';
 import { nationSquad, type IntlTournament } from '../../game/international';
 import { act } from '../../game/actions';
-import { PlayerLink } from '../components';
+import { ClubLink, PlayerLink } from '../components';
+import { useNav } from '../core';
+import { compName } from '../../i18n';
+import { naturalRole } from '../../game/attributes';
+import { ageOn } from '../../game/dates';
+import type { Player } from '../../game/types';
 import { gs } from '../../game/state';
 import type { JSX } from 'react';
 
-export function International() {
+export function International({ nation }: { nation?: number }) {
   const g = useGame()!;
+  if (nation !== undefined && g.nations[nation]) return <NationTeam n={nation} />;
   const [tab, setTab] = useRouteState('itab', 'tournament');
   const st = g.intl;
   const N = (n: number) => <span className="row" style={{ gap: 6, display: 'inline-flex' }}><Flag name={g.nations[n]?.name} />{natName(g.nations[n]?.name)}</span>;
@@ -81,3 +87,41 @@ function Tournament({ t: tour, N }: { t: IntlTournament; N: (n: number) => JSX.E
   );
 }
 
+
+/** Et lands landshold: de udtagne spillere, landets resultater og vej til landets liga */
+function NationTeam({ n }: { n: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const squad = nationSquad(n);
+  const results = (g.intl?.results ?? []).filter((r) => r.home === n || r.away === n).slice(0, 12);
+  const top = g.leagueOrder.find((l) => g.leagues[l]?.nation === n && g.comps[l]);
+  const coach = g.manager.national?.nation === n ? g.manager.name : '';
+  const pos = ['GK', 'DEF', 'MID', 'ATT'];
+  const grp = (p: Player) => { const r = naturalRole(p); return r === 'GK' ? 0 : ['CB', 'FB'].includes(r) ? 1 : ['DM', 'CM', 'WM', 'AM'].includes(r) ? 2 : 3; };
+  return (
+    <div>
+      <h2 className="row" style={{ gap: 10 }}><Flag name={g.nations[n]?.name} />{natName(g.nations[n]?.name)}</h2>
+      <div className="row" style={{ marginBottom: 8, gap: 8 }}>
+        {top && <button className="small" onClick={() => nav({ name: 'competitions', id: top })}>{compName(g.leagues[top]?.name)}</button>}
+        <button className="small" onClick={() => nav({ name: 'nation', id: n, tab: 'managers' })}>{t('intl.nationInfo')}</button>
+        <button className="small" onClick={() => nav({ name: 'international' })}>{t('intl.title')}</button>
+        {coach && <span className="tag">{t('intl.yourTeam')}</span>}
+      </div>
+      <Panel title={t('intl.squad', { n: squad.length })} className="flush">
+        {!squad.length ? <div className="muted" style={{ padding: 12 }}>{t('intl.noSquad')}</div> : (
+          <table className="grid"><thead><tr><th>{t('col.pos')}</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('col.age')}</th><th className="num">{t('intl.caps')}</th><th className="num">{t('intl.goals')}</th></tr></thead>
+            <tbody>{squad.slice().sort((a, b) => grp(a) - grp(b) || b.ca - a.ca).map((p) => (
+              <tr key={p.id}><td className="muted">{pos[grp(p)]}</td><td><PlayerLink p={p} /></td><td>{p.club ? <ClubLink id={p.club} /> : '–'}</td><td className="num">{ageOn(p.dob, g.date)}</td><td className="num">{p.caps}</td><td className="num">{p.intGoals}</td></tr>
+            ))}</tbody></table>
+        )}
+      </Panel>
+      {results.length > 0 && (
+        <Panel title={t('intl.tab.results')} className="flush">
+          <table className="grid"><tbody>{results.map((r, i) => (
+            <tr key={i}><td className="muted">{dateFmt(r.date)}</td><td>{natName(g.nations[r.home]?.name)}</td><td className="num"><b>{r.hg}-{r.ag}</b></td><td>{natName(g.nations[r.away]?.name)}</td><td className="muted">{t(`intl.kind.${r.kind}`)}</td></tr>
+          ))}</tbody></table>
+        </Panel>
+      )}
+    </div>
+  );
+}

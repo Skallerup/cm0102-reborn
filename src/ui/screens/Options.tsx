@@ -72,6 +72,13 @@ export function Options() {
               </select>
             </label>
             <div className="muted">{t('opt.rules.hint')}</div>
+            <label className="row">{t('mode.title')}
+              <select value={g.options.mode ?? 'extended'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
+                onChange={(e) => act({ t: 'setMode', mode: e.target.value as 'authentic' | 'extended' })}>
+                {(['authentic', 'extended'] as const).map((m) => <option key={m} value={m}>{t(`mode.${m}`)}</option>)}
+              </select>
+            </label>
+            <div className="muted">{t(g.options.mode === 'authentic' ? 'mode.authenticHint' : 'mode.extendedHint')}</div>
             <label className="row">{t('opt.windows')}
               <select value={g.options.transferWindows ?? 'real'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
                 onChange={(e) => { act({ t: 'setWindows', mode: e.target.value as 'real' | 'classic' }); }}>

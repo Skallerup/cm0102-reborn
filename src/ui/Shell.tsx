@@ -479,7 +479,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return <History />;
     case 'awards': return <Awards />;
-    case 'international': return <International />;
+    case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
     case 'press': return <PressScreen />;

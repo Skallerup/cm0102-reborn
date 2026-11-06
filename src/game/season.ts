@@ -25,6 +25,7 @@ import type { Club, Player, RegenSeed, SeasonFinance, SeasonSummary } from './ty
 import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
+import { extended } from './rules';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
@@ -530,7 +531,7 @@ export function seasonRollover() {
   g.seasonHistory.push(summary);
   // Udfordringer og bestyrelsens dom – pr. menneskelig manager
   const challengeResults = new Map<string | undefined, 'won' | 'lost'>();
-  ffpReview();
+  if (extended()) ffpReview(); // FFP kom først i 2011
   forEachHuman(() => {
     const club = g.clubs[g.userClub];
     if (club) {

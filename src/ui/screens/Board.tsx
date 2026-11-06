@@ -11,6 +11,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { isRetro } from '../theme';
 import { Info } from '../help';
 import { Head } from './common';
+import { authentic } from '../../game/rules';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
 
@@ -57,6 +58,7 @@ function MoneyPanel() {
 
 /** Ønsker til bestyrelsen (lavere forventninger, tillidsafstemning, ungdomssatsning) */
 function BoardAsks() {
+  if (authentic()) return null; // ægte CM 01/02: ikke i originalen
   const [answer, setAnswer] = useState<Partial<Record<BoardAsk, string>>>({});
   return (
       <div className="ba-grid">
@@ -127,6 +129,7 @@ const DESTS: CampDest[] = ['sun', 'alps', 'home', 'tour'];
 
 /** Træningslejr: vælg en periode uden kampe og en destination – rapporten kommer, når holdet er hjemme */
 function CampPanel() {
+  if (authentic()) return null; // ægte CM 01/02: ikke i originalen
   const g = useGame()!;
   const c = g.clubs[g.userClub];
   const windows = campWindows();

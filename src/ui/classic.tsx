@@ -76,11 +76,9 @@ const clubName = (g: GameState) => g.clubs[g.userClub]?.name ?? '';
 
 /** Ruten til en klub: ens egen klub åbner truppen, andre klubber deres side */
 export const clubRoute = (id: number): Route => (id === gs().userClub ? { name: 'squad' } : { name: 'club', id });
-/** Ruten til en nation: dens øverste liga (ellers Find → Nation) */
+/** Ruten til en nation: landsholdets side (truppen, resultater og landets liga – som i CM 01/02) */
 export function nationRoute(nation: number): Route {
-  const g = gs();
-  const top = g.leagueOrder.find((l) => g.leagues[l]?.nation === nation && g.comps[l]);
-  return top ? { name: 'competitions', id: top } : { name: 'find', tab: 'nation', state: { ftab: 'nation' } };
+  return { name: 'international', id: nation };
 }
 /** Ruten til en stabsperson: ens eget staff eller ansættelsen (ledig eller i en anden klub) */
 export function staffRoute(s: Staff): Route {

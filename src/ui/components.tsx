@@ -70,7 +70,9 @@ export function MgrChip({ clubId }: { clubId: number }) {
 /** Nationalitet: flag + landekode (koden alene, hvis flaget ikke kan hentes) */
 export function Nat({ n, noCode }: { n: number; noCode?: boolean }) {
   const nat = gs().nations[n];
-  return <span className="nat" title={natName(nat?.name)}><Flag name={nat?.name} />{noCode ? null : nat?.code ?? '?'}</span>;
+  const { nav } = useNav();
+  // et klik på landet åbner landsholdets side (truppen, resultater og landets liga)
+  return <span className="nat link" title={natName(nat?.name)} onClick={(e) => { e.stopPropagation(); nav({ name: 'international', id: n }); }}><Flag name={nat?.name} />{noCode ? null : nat?.code ?? '?'}</span>;
 }
 
 export function Flag({ name }: { name: string | undefined }) {

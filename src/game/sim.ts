@@ -10,7 +10,7 @@ import { t } from '../i18n';
 import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
-import { maxSubs } from './rules';
+import { maxSubs, extended, authentic } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
@@ -132,6 +132,7 @@ function importance(f: Fixture): number {
 /** Turneringer med VAR (videodommer): de største ligaer og de europæiske turneringer */
 const VAR_LEAGUES = new Set(['GB1', 'ES1', 'IT1', 'L1', 'FR1', 'NL1', 'PO1', 'BE1', 'DK1', 'TR1', 'SC1', 'A1', 'C1', 'GR1', 'SE1', 'NO1', 'PL1', 'MLS1', 'BRA1', 'SA1', 'JAP1', 'MEX1', 'ARG1']);
 function usesVar(f: Fixture): boolean {
+  if (authentic()) return false; // VAR fandtes ikke i 2001
   const c = gs().comps[f.comp];
   return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
 }
@@ -304,8 +305,8 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
       if (watcher) { const pid = watcher.shortlist!.find((id) => mine.has(id))!; addNews({ cat: 'scout', key: 'scout.spotted', params: { club: watcher.name, player: pname(g.players[pid]) }, link: { kind: 'player', id: pid } }); }
       recordRivalry(opp, scored, conceded);
       resolvePressPromise(f.id, scored, conceded);
-      invitePress(f, 'post');
-      fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
+      if (extended()) invitePress(f, 'post');
+      if (extended()) fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
     }
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
@@ -384,24 +385,22 @@ function newDay() {
     // pressemøde dagen før kampen
     for (const id of fixturesOn(addDays(d, 1))) {
       const f = g.fixtures[id];
-      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub)) invitePress(f, 'pre');
+      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub) && extended()) invitePress(f, 'pre');
     }
   });
   completeProjects();
-  campDaily();
-  trialsDaily();
+  // udvidet spil: træningslejre og prøvespillere (ikke i CM 01/02)
+  if (extended()) { campDaily(); trialsDaily(); }
   friendliesDaily();
   forEachHuman(aiBidsForListed);
   aiPursuits();
-  if (weekday(d) === 4) forEachHuman(aiLoanOptions);
+  if (weekday(d) === 4 && extended()) forEachHuman(aiLoanOptions);
   aiTransferTick();
   forEachHuman(scoutDaily);
   if (day(d) % 3 === 0) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
-    forEachHuman(weeklyTransferDigest);
-    forEachHuman(weeklySummary);
-    weeklyPlayerContact();
+    if (extended()) { forEachHuman(weeklyTransferDigest); forEachHuman(weeklySummary); weeklyPlayerContact(); }
     aiReleaseClauses();
     weeklyDevelopment();
     weeklyWages();
@@ -410,11 +409,9 @@ function newDay() {
     monthlyIncome();
     monthlyValues();
     monthlyDevelopment();
-    monthlyPersonality();
-    monthlyWill();
-    fansMonthly();
+    if (extended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
     if (month(d) !== 7) monthlyColumn();
-    forEachHuman(boardMeeting);
+    if (extended()) forEachHuman(boardMeeting);
     if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
     monthlyClubReps();
     refreshShortlists();

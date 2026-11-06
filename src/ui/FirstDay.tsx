@@ -6,8 +6,10 @@ import { money, t } from '../i18n';
 import { askingPrice } from '../game/transfers';
 import { Panel, PlayerLink } from './components';
 import { useGame } from './core';
+import { authentic } from '../game/rules';
 
 export function FirstDay() {
+  if (authentic()) return null; // ægte CM 01/02: ikke i originalen
   const g = useGame()!;
   const ob = g.manager.onboard;
   const needs = squadNeeds(g.userClub);

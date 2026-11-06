@@ -45,6 +45,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Spiltilstand `options.mode` ('authentic' | 'extended', NewGameOptions.mode, action setMode; authentic sætter
+  rules 'classic'). `authentic()`/`extended()` i rules.ts. Gates: sim.ts newDay/userMatchResult, actions.ts `EXTENDED_ONLY` +
+  interact kun warning/fine/fineHeavy/drop, VAR, FFP, startAuction, UI (TeamTalk, FirstDay, AiArticle, BoardAsks, CampPanel,
+  Report-analyse/xG, Match-xG, billetpanel). Nye ekstra funktioner: spørg `extended()`. Test: tests/authentic.test.ts.
+  `nationRoute` → `{ name: 'international', id: nation }` (landsholdets side `NationTeam`), `Nat` er klikbar.
 - 2026-11-06 – Landshold (`src/game/international.ts`, begge databaser): vinduer 5/9, 9/10, 13/11, 26/3 (venskabskampe for de
   64 stærkeste), VM (år ≡ 2 mod 4; 2002 = de rigtige grupper) og EM (år ≡ 0 mod 4) fra 1. juni, kampene i MatchSim med de
   23 bedste; caps/intGoals/skader. `GameState.intl`, skærm `international`. Landstrænerjob: `manager.national`/`nationalOffer`, `nationalOffers` (10/7 og 2/1, omdømme 55+), actions nationalOffer/resignNational.

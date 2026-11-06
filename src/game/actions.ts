@@ -31,6 +31,7 @@ import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
 import { answerNationalOffer, resignNational } from './international';
 import { appealBan } from './rules2001';
+import { authentic } from './rules';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -67,6 +68,7 @@ export type Action =
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
+  | { t: 'setMode'; mode: 'authentic' | 'extended' }
   | { t: 'patron' }
   | { t: 'draftReplace'; out: number; inn: number }
   | { t: 'trial'; pid: number; end?: boolean }
@@ -121,7 +123,13 @@ function myOffer(pid: number): TransferOffer | undefined {
 }
 
 /** Anvend en handling for den aktive manager. Returnerer et resultat til UI'et. */
+/** Handlinger, der kun findes i det udvidede spil (ægte CM 01/02 havde dem ikke) */
+const EXTENDED_ONLY = new Set<Action['t']>(['matchTalk', 'teamTalk', 'talk', 'trial', 'camp', 'campCancel', 'sponsor', 'ticket', 'project', 'boardAsk', 'budgetShift', 'raiseBid', 'bidNow', 'rebid', 'press', 'onboard']);
+/** Discipline Player er det eneste spillersamtaler, originalen havde */
+const AUTHENTIC_TALKS = new Set(['warning', 'fine', 'fineHeavy', 'drop']);
+
 export function applyAction(a: Action): unknown {
+  if (authentic() && (EXTENDED_ONLY.has(a.t) || (a.t === 'interact' && !AUTHENTIC_TALKS.has(a.kind)))) return 'authentic';
   const g = gs();
   const club = g.clubs[g.userClub];
   switch (a.t) {
@@ -185,6 +193,8 @@ export function applyAction(a: Action): unknown {
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
+    // ægte CM 01/02 følger også originalens kampregler (3 udskiftninger, 5 på bænken)
+    case 'setMode': g.options.mode = a.mode; if (a.mode === 'authentic') g.options.rules = 'classic'; return 'ok';
     case 'patron': unlock('patron'); return 'ok';
     case 'draftReplace': return replacePlayer(gs().userClub, a.out, a.inn);
     case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);

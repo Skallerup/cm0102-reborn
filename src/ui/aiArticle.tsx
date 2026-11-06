@@ -9,6 +9,7 @@ import { gs, squad } from '../game/state';
 import type { NewsItem, Player } from '../game/types';
 import { money, t } from '../i18n';
 import { useAiAvailable } from './ai';
+import { authentic } from '../game/rules';
 
 const pname = (p?: Player) => (p ? `${p.first} ${p.last}`.trim() : '?');
 const avg = (p: Player) => (p.stats.ratingCount ? Math.round((p.stats.ratingSum / p.stats.ratingCount) * 100) / 100 : undefined);
@@ -88,6 +89,7 @@ export function prefetchArticles() {
 }
 
 export function AiArticle({ item }: { item: NewsItem }) {
+  if (authentic()) return null; // ægte CM 01/02: ikke i originalen
   const ai = useAiAvailable();
   const key = `news:${item.id}`;
   const [text, setText] = useState<string | undefined>(() => aiText(key));

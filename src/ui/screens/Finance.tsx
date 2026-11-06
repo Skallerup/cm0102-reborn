@@ -8,6 +8,7 @@ import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
 import { Head } from './common';
+import { extended } from '../../game/rules';
 
 export function Finance() {
   const g = useGame()!;
@@ -26,7 +27,7 @@ export function Finance() {
       <Head title={t('nav.finance')}>
         <Tabs tabs={[['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />
       </Head>
-      {tab === 'stadium' && <AttendanceTab ticketPanel={<TicketPanel />} />}
+      {tab === 'stadium' && <AttendanceTab ticketPanel={extended() ? <TicketPanel /> : null} />}
       {tab === 'facilities' && <FacilitiesTab />}
       {tab === 'history' && <FinanceHistoryTab />}
       {tab === 'overview' && <>

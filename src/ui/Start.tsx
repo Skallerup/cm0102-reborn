@@ -191,6 +191,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   });
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
   const [mine, setMine] = useState<CustomDb[]>([]);
+  const [mode, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'authentic' ? 'authentic' : 'extended'; } catch { return 'extended'; } });
+  const setModeState = (m: 'authentic' | 'extended') => { setModeRaw(m); try { localStorage.setItem('cm0102.mode', m); } catch { /* ignorer */ } };
   useEffect(() => { if (!ch) void listDbs().then(setMine); }, [ch]);
   const customId = db.startsWith('custom:') ? db.slice(7) : '';
   const dbKind = customId ? 'custom' : db;
@@ -245,8 +247,21 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
     </Panel>
   );
   const lookPicker = <LookPicker />;
+  // spiltilstand: ægte CM 01/02 (kun originalens funktioner) eller udvidet (alt det ekstra) – uafhængigt af databasen
+  const modePicker = !ch && (
+    <Panel title={t('mode.title')}>
+      <div className="db-choice">
+        <button className={`db-opt ${mode === 'authentic' ? 'on' : ''}`} onClick={() => setModeState('authentic')}>
+          <b>{t('mode.authentic')}</b><span>{t('mode.authenticHint')}</span>
+        </button>
+        <button className={`db-opt ${mode === 'extended' ? 'on' : ''}`} onClick={() => setModeState('extended')}>
+          <b>{t('mode.extended')}</b><span>{t('mode.extendedHint')}</span>
+        </button>
+      </div>
+    </Panel>
+  );
   if (err) return <Panel title={t('start.new')}><div className="bad">{err}</div></Panel>;
-  if (!world) return <div>{dbPicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
+  if (!world) return <div>{dbPicker}{modePicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
   const leagues = world.leagues.filter((l) => active.has(l.nation) && !l.hidden);
   // den valgte liga skal høre til et valgt land – ellers vises det første valgte lands liga
@@ -259,7 +274,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
     setBusy(online ? t('mp.creating') : t('start.creating'));
     const opts = {
       managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
-      lang: getLang(), masking, seed, challenge,
+      lang: getLang(), masking, seed, challenge, mode,
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
@@ -288,7 +303,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
 
   return (
     <div>
-      {dbPicker}{lookPicker}
+      {dbPicker}{modePicker}{lookPicker}
       <Panel title={ch ? t(`challenge.${ch.id}.title`) : online ? t('mp.create') : t('start.new')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
         <div className="col">
           {ch && <div className="insight good">{t(`challenge.${ch.id}.desc`)}</div>}

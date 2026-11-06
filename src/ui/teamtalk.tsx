@@ -7,6 +7,7 @@ import { t } from '../i18n';
 import { Panel, PlayerLink } from './components';
 import { useGame } from './core';
 import { Select } from './select';
+import { authentic } from '../game/rules';
 
 const REACTION_TONE: Record<string, string> = { fired: 'good', focused: 'good', neutral: '', complacent: 'warn', nervous: 'warn', angry: 'bad', deflated: 'bad' };
 
@@ -18,6 +19,7 @@ export function TeamTalk({ fixture, stage, pids, diff, ratings, onGiven }: {
   ratings: Record<number, number>;
   onGiven?: (boosts: Record<number, number>) => void;
 }) {
+  if (authentic()) return null; // ægte CM 01/02: ingen holdsnakke
   const g = useGame()!;
   const [tone, setTone] = useState<TalkTone | null>(null);
   const [ind, setInd] = useState<Record<number, TalkTone>>({});

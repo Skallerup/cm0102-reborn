@@ -48,6 +48,8 @@ export interface NewGameOptions {
   masking: boolean;
   seed: number;
   challenge?: string;
+  /** spiltilstand (se GameState.options.mode) */
+  mode?: 'authentic' | 'extended';
   /** Online: frist pr. træk i timer (0 = ingen) */
   deadlineHours?: number;
 }
@@ -89,7 +91,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     userClub: o.clubId,
     manager: { name: o.managerName, nation: o.managerNation, rep: 40, history: [], trophies: [], sacked: 0 },
     board: { confidence: 60, expectation: 'mid', expectedPos: 10, warnings: 0 },
-    options: { masking: o.masking, autosave: true, matchSpeed: 650, fullCommentary: true, rules: world.source.startsWith('Championship Manager 01/02') ? 'classic' : 'modern' },
+    options: { masking: o.masking, autosave: true, matchSpeed: 650, fullCommentary: true, rules: o.mode === 'authentic' || world.source.startsWith('Championship Manager 01/02') ? 'classic' : 'modern', mode: o.mode ?? 'extended' },
     activeNations: o.activeNations.slice(),
     nations: world.nations,
     leagueOrder: world.leagues.map((l) => l.id),

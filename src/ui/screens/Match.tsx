@@ -26,6 +26,7 @@ import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
 import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
+import { extended } from '../../game/rules';
 
 // Den igangværende kamp overlever navigation mellem skærme
 /** Holdfarver (scoreboard, 2D, kommentar): begge hold i deres egne klubfarver – ligner de hinanden, spiller
@@ -1031,7 +1032,7 @@ export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport[
   const rows: [string, number, number, boolean?][] = [
     // besiddelse i procent (under kampen tælles der i øjeblikke) – altid 100 % i alt
     ['possession', pct0, 100 - pct0],
-    ['xg', stats[0].xg, stats[1].xg, true],
+    ...(extended() ? [['xg', stats[0].xg, stats[1].xg, true] as [string, number, number, boolean]] : []),
     ['shots', stats[0].shots, stats[1].shots],
     ['onTarget', stats[0].onTarget, stats[1].onTarget],
     ['corners', stats[0].corners, stats[1].corners],

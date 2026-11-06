@@ -19,6 +19,7 @@ import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, 
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
+import { extended } from './rules';
 
 export function windowOpen(date = gs().date): boolean {
   const m = month(date);
@@ -299,7 +300,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
     status: p.club ? 'pending' : 'negotiating', created: g.date, respondBy: addDays(g.date, !p.club ? 7 : humanSeller ? 5 : rng.int(1, 3)),
   };
   // byder en anden manager også på spilleren hos en AI-klub: lukket budrunde med fælles frist
-  if (p.club && !loan && !humanSeller) startAuction(o, p);
+  if (p.club && !loan && !humanSeller && extended()) startAuction(o, p); // budkrige: ikke i CM 01/02
   if (p.club && !loan && extra?.sellOn) o.sellOn = Math.max(0, Math.min(50, Math.round(extra.sellOn)));
   if (p.club && !loan && extra?.addOn) o.addOn = roundValue(Math.max(0, extra.addOn));
   if (p.club && !loan && extra?.swap?.length) {

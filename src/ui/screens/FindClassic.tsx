@@ -27,7 +27,7 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
       const top = new Map<number, string>();
       for (const id of g.leagueOrder) { const l = g.leagues[id]; if (l && !top.has(l.nation)) top.set(l.nation, id); }
       return g.nations.map((n, i) => ({ key: `n${i}`, name: natName(n.name), sort: natName(n.name), a: n.code, b: top.has(i) ? compName(g.leagues[top.get(i)!].name) : noDiv,
-        go: top.has(i) ? { name: 'competitions', id: top.get(i) } : undefined }));
+        go: { name: 'international', id: i } }));
     }
     if (tab === 'club') {
       return Object.values(g.clubs).map((c) => ({ key: `c${c.id}`, name: c.name, sort: c.name, a: natName(g.nations[c.nation]?.name), b: league(c.id),
