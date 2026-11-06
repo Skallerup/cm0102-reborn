@@ -75,7 +75,7 @@ export async function loadCMWorld(): Promise<CMWorld | null> {
 /** Læs Data-mappen fra en CM 01/02-installation og konverter den lokalt (intet sendes nogen steder hen) */
 export async function importCMFiles(list: FileList | File[]): Promise<CMWorld> {
   const files: Record<string, ArrayBuffer> = {};
-  const wanted = new Set([...CM_REQUIRED, 'colour.dat', 'stadium.dat']);
+  const wanted = new Set([...CM_REQUIRED, 'colour.dat', 'stadium.dat', 'officials.dat']);
   for (const f of Array.from(list)) {
     const name = f.name.toLowerCase();
     if (wanted.has(name) && !files[name]) files[name] = await f.arrayBuffer();

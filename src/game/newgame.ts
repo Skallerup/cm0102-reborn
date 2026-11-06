@@ -115,7 +115,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     jobOffers: [],
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
-  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; g.customRules = cm.rules as GameState['customRules']; }
+  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; g.customRules = cm.rules as GameState['customRules']; if (cm.officials?.length) g.officials = cm.officials; }
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
   setGame(g);

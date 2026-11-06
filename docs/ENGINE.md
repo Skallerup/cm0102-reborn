@@ -199,3 +199,20 @@ Original-lab med 9 sæsoner:
 | 11 | 2,90 → 2,75 | 34,0 → 29,7 |
 
 Topscorerens udsving er støj (±3), og der er ingen systematisk retning. Moderne benchmark: 2,68 mål, 43,5 / 24,2 / 32,3 %, topscorer 27 (før 28,8).
+
+### Trin 3 – dommeren (regel 2; begge databaser, 2026-11-06)
+
+Kilde: sub_6e9820 og officials.dat (43 bytes pr. post: navne-id 4/8, nation byte 22, omdømme 26, Discipline 0x25, 0x27).
+
+- Kampene dømmes af hjemmelandets rigtige dommere fra databasen (fx Paul Alcock, Graham Barber i 2001/02). Topligaerne får
+  de 20 mest anerkendte (omdømme, byte 26 – *estimeret* tolkning), de lavere rækker hele landets liste.
+- Strenghed F = Discipline > 10 ? D × 0,1 : 1 + (D − 10) × 0,05; D = 0 (ikke vurderet, 80 % af posterne) behandles som 10
+  (`refereeFactor` i cm0102-original-rules.ts). Byte 0x27 gemmes i `referee.limit` til trin 4.
+- Ingen dommere i databasen (ældre gemte spil, draft): motorens tilfældige strenghed som før.
+- ORIGINAL-profilens `cards` 0,47 → 0,44, så de gule kort holder originalens niveau med de nye dommere.
+
+| `scripts/match-stats.ts`, 3000 kampe | Før | Rigtige dommere | + cards 0,44 |
+|---|---|---|---|
+| Original: gule / røde pr. kamp | 1,69 / 0,11 | 1,80 / 0,11 | 1,71 / 0,11 (orig 1,70 / 0,14) |
+| Original: dommernes strenghed i snit | ~1,0 (tilfældig) | 1,08 | 1,08 |
+| Moderne: gule / røde pr. kamp | 3,43 / 0,18 | 3,51 / 0,19 | – (mål ~3,6) |

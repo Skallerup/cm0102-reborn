@@ -195,6 +195,8 @@ const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
+// dommere: kun fra lande med spilbare ligaer (kampene dømmes af hjemmelandets dommere)
+if (w.officials) { const playable = new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation)); w.officials = w.officials.filter((o) => playable.has(o[2])); }
 // originalens økonomi (saldo, tilskuere, træningsanlæg) bruges kun af den originale database
 if (!ORIGINAL) delete w.clubFinance;
 else for (const k of Object.keys(w.clubFinance ?? {})) if (!keptClubs.has(Number(k))) delete w.clubFinance![Number(k)];

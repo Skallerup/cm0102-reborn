@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Motorplanens trin 3 (dommeren): `officials` i world-JSON (parser + build), `GameState.officials`,
+  `refereeFor` vælger hjemmelandets dommere og strenghed via `refereeFactor(Discipline)`. ORIGINAL.cards 0,44. Se docs/ENGINE.md.
 - 2026-11-06 – Stjerner for ukendte spillere: `scoutStars` lægger usikkerheden symmetrisk om den sande værdi, og `Stars`
   fylder op til midten (spejderens bud). Før var de fyldte stjerner intervallets bund → ukendte spillere så for dårlige ud.
 - 2026-11-06 – `Crest` uden logo returnerer intet (ejerens ønske: ingen farvet firkant/"kit" som reserve).

@@ -153,7 +153,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
 }
 
 /** Kalibrering af den originale 2001/02-database mod det originale CM 01/02 (scripts/original-lab.ts) */
-export const ORIGINAL = { finish: 1.4, homeAdv: 2, finSlope: 20, squash: 0.58, squashAtt: 0.45, squashDef: 0.58, ease: 0.12, cards: 0.47, corners: 0.7, countBlocked: false, close: 0.2, closeSlope: 2, onTarget: 0.25 };
+export const ORIGINAL = { finish: 1.4, homeAdv: 2, finSlope: 20, squash: 0.58, squashAtt: 0.45, squashDef: 0.58, ease: 0.12, cards: 0.44, corners: 0.7, countBlocked: false, close: 0.2, closeSlope: 2, onTarget: 0.25 };
 export const ORIGINAL_FINISH = ORIGINAL.finish;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */

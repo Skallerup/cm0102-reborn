@@ -899,6 +899,8 @@ export interface GameState {
   dbKind?: 'cm0102';
   /** Sæsonen databasen startede i (2001 = den originale 01/02, 2026 = October 2026-opdateringen) */
   dbYear?: number;
+  /** dommere fra databasen (officials.dat): [fornavn, efternavn, nation, Discipline 0-20 (0 = ikke vurderet), 0x27, omdømme] */
+  officials?: [string, string, number, number, number, number][];
   customRules?: Record<string, import('./leagues').LeagueRules>;
   /** Kosmetiske AI-tekster (artikler, fanindlæg …) – påvirker ikke spillets regler */
   aiText?: Record<string, string>;

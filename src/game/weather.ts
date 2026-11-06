@@ -2,7 +2,8 @@
 import { hash01, Rng } from './rng';
 import { randomName } from './data/generate';
 import { gs } from './state';
-import type { Fixture } from './types';
+import type { Fixture, GameState } from './types';
+import { refereeFactor } from './engine/cm0102-original-rules';
 
 export type Weather = 'clear' | 'cloudy' | 'rain' | 'heavyRain' | 'wind' | 'snow' | 'hot';
 
@@ -86,9 +87,33 @@ export function pitchFx(p: Pitch | undefined): WeatherFx & { drib: number; touch
 export const PITCH_ICON: Record<Pitch, string> = { normal: '', damp: '💧', muddy: '🟫', waterlogged: '🌊', frozen: '🧊', snowy: '❄️', hard: '🏜️' };
 
 /** Dagens dommer: en fast gruppe dommere pr. land, hver med sin strenghed (deterministisk pr. kamp) */
-export function refereeFor(f: Fixture): { name: string; strict: number } {
+/** Dommerne pr. land (fra databasen), de mest anerkendte først – cache pr. spil */
+let refCache: { g: unknown; by: Map<number, NonNullable<GameState['officials']>> } | null = null;
+function officialsOf(nation: number) {
+  const g = gs();
+  if (!g.officials?.length) return [];
+  if (refCache?.g !== g) {
+    const by = new Map<number, NonNullable<GameState['officials']>>();
+    for (const o of g.officials) (by.get(o[2]) ?? by.set(o[2], []).get(o[2])!).push(o);
+    for (const list of by.values()) list.sort((a, b) => b[5] - a[5]);
+    refCache = { g, by };
+  }
+  return refCache.by.get(nation) ?? [];
+}
+
+export function refereeFor(f: Fixture): { name: string; strict: number; discipline?: number; limit?: number } {
   const g = gs();
   const nation = g.clubs[f.home]?.nation ?? 0;
+  // CM 01/02: landets egne dommere fra officials.dat. Strenghed fra Discipline (byte 0x25; 0 = ikke vurderet = 10):
+  // D > 10 → D × 0,1, ellers 1 + (D − 10) × 0,05 (sub_6e9820). Topligaerne får de mest anerkendte dommere.
+  const refs = officialsOf(nation);
+  if (refs.length) {
+    const tier = g.comps[f.comp]?.type === 'league' ? g.comps[f.comp].tier : 1;
+    const pool = refs.slice(0, Math.max(8, Math.min(refs.length, tier <= 1 ? 20 : refs.length)));
+    const o = pool[Math.floor(hash01(g.seed, f.id, 13) * pool.length)];
+    const d = o[3] || 10;
+    return { name: `${o[0]} ${o[1]}`.trim(), strict: Math.round(refereeFactor(d) * 100) / 100, discipline: d, limit: o[4] };
+  }
   const idx = Math.floor(hash01(g.seed, f.id, 13) * 18);
   const r = new Rng(Math.floor(hash01(g.seed, nation, idx, 29) * 4294967296));
   let first = '', last = `Ref ${idx + 1}`;

@@ -18,6 +18,8 @@ export interface CMWorld extends WorldData {
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
+  /** dommere fra officials.dat: [fornavn, efternavn, nation, Discipline (byte 0x25, 0 = ikke vurderet), 0x27, omdømme] */
+  officials?: [string, string, number, number, number, number][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -317,6 +319,18 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     ratings[id] = paRaw ? { ca, pa, attrs, pos, side, paRaw } : { ca, pa, attrs, pos, side };
   }
 
+  // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27
+  const officials: NonNullable<CMWorld['officials']> = [];
+  if (files['officials.dat']) {
+    const O = new DataView(files['officials.dat']);
+    for (let o = 0; o + 43 <= files['officials.dat'].byteLength; o += 43) {
+      const nat = nationIdx.get(O.getInt16(o + 22, true));
+      const last = second[O.getInt32(o + 8, true)] ?? '';
+      if (nat === undefined || !last) continue;
+      officials.push([first[O.getInt32(o + 4, true)] ?? '', last, nat, O.getUint8(o + 0x25), O.getUint8(o + 0x27), O.getInt32(o + 26, true)]);
+    }
+  }
+
   // navnepuljer til regens (pr. nation)
   const pool: Record<string, [string[], string[]]> = {};
   const fi = fields.indexOf('first'), la = fields.indexOf('last'), na = fields.indexOf('nation');
@@ -336,7 +350,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   return {
     kind: 'cm0102', version: 1, source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
-    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, rules,
+    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, ...(officials.length ? { officials } : {}), rules,
   };
 }
 
