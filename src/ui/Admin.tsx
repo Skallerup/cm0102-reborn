@@ -53,7 +53,7 @@ interface Overview {
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
-interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string; start?: string; prog?: { date: string; club: string; pos: number; at: number } }
+interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; mode?: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string; start?: string; prog?: { date: string; club: string; pos: number; at: number } }
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
@@ -342,10 +342,10 @@ function NewCareersTab() {
       <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now</span>} className="flush">
         {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
-            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Challenge</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th></tr></thead>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th></tr></thead>
               <tbody>{data.rows.map((r, i) => (
                 <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
-                  <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.challenge || ''}</td>
+                  <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.mode === 'authentic' ? 'Original' : r.mode === 'extended' ? 'Extended' : ''}</td>
                   <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td>
                   <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}</td><td className="muted">{r.lang}</td>
                   <td className="nowrap" title={countryName(r.country)}>{r.country ? <>{flag(r.country)} {r.country}</> : <span className="muted">–</span>}</td>

@@ -1481,4 +1481,6 @@ export const da: Record<string, string> = {
   'cl.mt.zones': "Aktionszoner", 'cl.mt.report': "Kamprapport", 'cl.mt.teamStats': "{club} statistik", 'cl.mt.latest': "{comp} – seneste", 'cl.mt.injured': "{name} skadet", 'cl.ms.shots': "Afslutninger", 'cl.ms.on': "På mål", 'cl.ms.off': "Forbi mål", 'cl.ms.corners': "Hjørnespark", 'cl.ms.fouls': "Frispark begået", 'cl.ms.offsides': "Offside", 'cl.ms.passes': "Afleveringer der lykkedes", 'cl.ms.poss': "Boldbesiddelse", 'cl.ms.yellow': "Gule kort", 'cl.ms.red': "Røde kort",
   'cl.mt.shootout': "Straffesparkskonkurrence", 'cl.mt.soScored': "{name} scorede", 'cl.mt.soMissed': "{name} brændte", 'cl.md.results': "Aftenens resultater",
   'cl.mt.subDone': "{inn} er kommet ind i stedet for {out}. Tilbage til kampen?",
+  'cl.pl.offerNew': "Tilbyd ny kontrakt", 'cl.pl.releaseFree': "Giv fri transfer",
+  'contract.offerRejected': "{player} afviser kontrakttilbuddet", 'contract.offerRejected.body': "{player} har sagt nej til dit kontrakttilbud. Han vil have {wage} om ugen i {years} år.", 'contract.offerBudget': "Bestyrelsen stopper kontrakttilbuddet til {player}", 'contract.offerBudget.body': "Bestyrelsen tillader ikke den løn, du tilbød {player}.",
 };

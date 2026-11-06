@@ -1448,4 +1448,6 @@ export const en: Record<string, string> = {
   'cl.mt.zones': "Action Zones", 'cl.mt.report': "Match Report", 'cl.mt.teamStats': "{club} Stats", 'cl.mt.latest': "{comp} Latest", 'cl.mt.injured': "{name} injured", 'cl.ms.shots': "Shots On Goal", 'cl.ms.on': "On Target", 'cl.ms.off': "Off Target", 'cl.ms.corners': "Corners", 'cl.ms.fouls': "Fouls", 'cl.ms.offsides': "Offsides", 'cl.ms.passes': "Passes Completed", 'cl.ms.poss': "Possession", 'cl.ms.yellow': "Yellow Cards", 'cl.ms.red': "Red Cards",
   'cl.mt.shootout': "Penalty Shoot-out", 'cl.mt.soScored': "{name} scored", 'cl.mt.soMissed': "{name} missed", 'cl.md.results': "Evening Results",
   'cl.mt.subDone': "{inn} has been brought on to replace {out}. Return to the match ?",
+  'cl.pl.offerNew': "Offer New Contract", 'cl.pl.releaseFree': "Release On A Free",
+  'contract.offerRejected': "{player} rejects contract offer", 'contract.offerRejected.body': "{player} has turned down your contract offer. He wants {wage} p/w for {years} years.", 'contract.offerBudget': "Board block contract offer to {player}", 'contract.offerBudget.body': "The board will not allow the wages you offered {player}.",
 };

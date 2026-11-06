@@ -51,6 +51,8 @@ export async function POST(request: Request) {
     league: clip(body.league), nation: clip(body.nation, 40), challenge: clip(body.challenge, 40),
     bots: Math.max(0, Math.min(99, Number(body.bots) || 0)), db: clip(body.db, 20) || 'standard', lang: clip(body.lang, 5),
     theme: body.theme === 'classic' ? 'classic' : body.theme === 'modern' ? 'modern' : '',
+    // spiltilstand: Ægte CM 01/02 (kun originalens funktioner) eller Udvidet (alle de nye)
+    mode: body.mode === 'authentic' ? 'authentic' : body.mode === 'extended' ? 'extended' : '',
     vid: clip(body.vid, 24).replace(/[^a-z0-9]/gi, ''),
     gid: clip(body.gid, 40).replace(/[^\w-]/g, ''), start: /^\d{4}-\d{2}-\d{2}$/.test(String(body.start)) ? String(body.start) : '',
     // kun landet (fra Vercels geo-header) – IP-adressen gemmes ikke

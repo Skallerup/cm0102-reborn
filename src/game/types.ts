@@ -882,6 +882,8 @@ export interface GameState {
   intl?: import('./international').IntlState;
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
+  /** CM 01/02: kontrakttilbud til egne spillere – svaret kommer som nyhed næste dag */
+  pendingRenewals?: { pid: number; club: number; wage: number; years: number; clauses?: ContractClauses; date: string }[];
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */

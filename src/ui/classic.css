@@ -764,7 +764,7 @@
 :root[data-skin='retro'] .cx-continue:disabled { color: #3a46b8; opacity: 1; cursor: default; }
 
 /* Offer Contract og andre bokse som egne skærme (sidebjælken er fri, Continue Game grå) */
-.cx-dlg { position: fixed; inset: 0 0 0 112px; z-index: 70; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; background: rgba(4, 6, 30, 0.93); overflow-y: auto; }
+.cx-dlg { position: fixed; inset: 0 0 0 112px; z-index: 70; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; background: linear-gradient(rgba(4, 6, 30, 0.55), rgba(4, 6, 30, 0.55)), var(--cx-photo, none) center / cover, #04061e; overflow-y: auto; }
 @media (max-width: 760px) { .cx-dlg { inset: 0; } }
 .cx-dlg .cx-title { padding: 4px 30px; }
 .cx-dlg-body { flex: 1; margin: 0 8px; padding: 12px 18px; background: rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }

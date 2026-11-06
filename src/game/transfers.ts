@@ -1739,3 +1739,28 @@ export function initialTransferList() {
     for (const p of rng.shuffle(cands).slice(0, n)) p.listed = true;
   }
 }
+
+/** CM 01/02: læg et kontrakttilbud til en egen spiller frem – han svarer i morgen (nyhed) */
+export function offerRenewalLater(pid: number, wage: number, years: number, clauses?: ContractClauses): 'pending' {
+  const g = gs();
+  (g.pendingRenewals ??= []).push({ pid, club: g.userClub, wage, years, clauses, date: g.date });
+  return 'pending';
+}
+
+/** Dagligt: svar på gårsdagens kontrakttilbud (ja kommer som "has signed …", ellers et afslag med hans krav) */
+export function answerPendingRenewals() {
+  const g = gs();
+  const due = (g.pendingRenewals ?? []).filter((r) => r.date < g.date);
+  if (!due.length) return;
+  g.pendingRenewals = (g.pendingRenewals ?? []).filter((r) => r.date >= g.date);
+  for (const r of due) {
+    const p = g.players[r.pid];
+    if (!p || p.club !== r.club) continue;
+    asOwner(r.club, () => {
+      const res = renewContract(r.pid, r.wage, r.years, r.clauses);
+      if (res === 'accepted') return; // renewContract skriver selv nyheden
+      const club = g.clubs[r.club];
+      addNews({ cat: 'contract', key: res === 'budget' ? 'contract.offerBudget' : 'contract.offerRejected', params: { player: pname(p), wage: renewalDemand(p, club), years: preferredYears(p) }, link: { kind: 'player', id: p.id } });
+    });
+  }
+}

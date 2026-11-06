@@ -60,6 +60,8 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const relOpts = [...new Set([0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10].map((f) => Math.round(relBase * f / 100_000) * 100_000))];
   const submit = () => {
     setAsk(false);
+    // egen spiller (CM 01/02): tilbuddet sendes, man er straks tilbage på profilen, og svaret kommer som nyhed i morgen
+    if (!offer) { act({ t: 'renewLater', pid, wage, years, clauses: cl }); onClose(); return; }
     const res = offer ? act<string>({ t: 'negotiate', pid, wage, years, clauses: cl }) : act<string>({ t: 'renew', pid, wage, years, clauses: cl });
     if (res === 'accepted') { setMsg(t('cl.neg.accepted', { player: name })); setTimeout(onClose, 2200); }
     else if (res === 'pending') { setMsg(t('neg.pendingMp')); setTimeout(onClose, 3200); }

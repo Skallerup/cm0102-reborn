@@ -21,7 +21,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { removeHuman } from './humans';
 import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
-  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
+  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
@@ -58,6 +58,7 @@ export type Action =
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'renewLater'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
@@ -182,6 +183,7 @@ export function applyAction(a: Action): unknown {
     case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
+    case 'renewLater': return offerRenewalLater(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {
       const o = g.offers.slice().reverse().find((x) => x.player === a.pid && x.buyer === a.buyer && x.seller === g.userClub && x.status === 'pending');
       const reply = o ? respondToOffer(o.id, a.action, a.counter, a.sellOn, a.reason) : null;

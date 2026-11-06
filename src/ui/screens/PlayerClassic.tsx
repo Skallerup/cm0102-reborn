@@ -10,6 +10,7 @@ import { agentOf } from '../../game/agents';
 import { ageOn, daysBetween } from '../../game/dates';
 import { GOOD_TRAITS, traits } from '../../game/personality';
 import { attrRange, knowledgeOf } from '../../game/scouting';
+import { authentic } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
@@ -353,26 +354,20 @@ export function ClassicPlayer({ id }: { id: number }) {
   // Action-menuen: alle handlinger, grupperet
   const items: ActionItem[] = [];
   if (!g.draft && mine) {
+    // CM 01/02: Set Transfer Status · Offer New Contract · Discipline Player · Release On A Free (listen og leje ligger i Set Transfer Status)
     items.push(
-      { key: 'h-own', head: t('cl.pl.actSquad') },
-      { key: 'train', label: `${t('nav.training')}…`, onClick: () => setTrainOpen(true) },
-      { key: 'renew', label: t('player.renew'), onClick: () => setNeg({ renew: p.id }) },
       { key: 'status', label: t('cl.ts.menu'), onClick: () => setStatusOpen(true) },
+      { key: 'renew', label: t('cl.pl.offerNew'), onClick: () => setNeg({ renew: p.id }) },
       { key: 'disc', label: t('cl.dp.menu'), disabled: !!p.lastTalk && daysBetween(p.lastTalk, g.date) < 10, title: t('talk.r.tooSoon'), onClick: () => setDiscOpen(true) },
-      p.listed
-        ? { key: 'list', label: t('list.changePrice'), onClick: () => setListOpen(true) }
-        : { key: 'list', label: t('player.list'), onClick: () => setListOpen(true) },
     );
-    if (p.listed) items.push({ key: 'unlist', label: t('player.unlist'), onClick: () => dispatch({ t: 'listed', pid: p.id, price: null }) });
     items.push(
-      { key: 'loan', label: t('player.loanOut'), disabled: !!p.loan || !open, title: closedTip, onClick: () => setLoanOut(true) },
-      { key: 'release', label: t('player.release'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
+      { key: 'release', label: t('cl.pl.releaseFree'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
     );
   }
   // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
   if (p.loan?.from === g.userClub && isOriginal2001()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))) });
   if (!g.draft && !mine && g.userClub > 0) {
-    items.push({ key: 'h-tr', head: t('cl.pl.actTransfer') });
+    items.push({ key: 'sep-tr', sep: true });
     if (p.club > 0) {
       items.push(
         { key: 'bid', label: t('player.bid'), disabled: !open, title: closedTip, onClick: () => setBid(true) },
@@ -380,7 +375,7 @@ export function ClassicPlayer({ id }: { id: number }) {
       );
     } else {
       items.push({ key: 'offer', label: t('player.offerContract'), disabled: !open, title: closedTip, onClick: () => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false })) });
-      if (!trialOf(p.id)) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });
+      if (!trialOf(p.id) && !authentic()) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });
     }
     if (canPreContract(p)) items.push({ key: 'pre', label: t('player.preContract'), onClick: () => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id })) });
     items.push({ key: 'short', label: shortlisted ? t('player.unshortlist') : t('player.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });

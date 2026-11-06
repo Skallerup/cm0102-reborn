@@ -23,7 +23,7 @@ export function notifyNewCareer(info: { manager: string; club: string; league?: 
   if (!rankingAvailable()) return;
   // spillets id og startdato, så admin kan følge, hvor langt karrieren er nået (pulsen nedenfor)
   const g = hasGame() ? gs() : null;
-  void post({ ...info, vid: visitorId(), theme: theme(), gid: g?.id, start: g?.date });
+  void post({ ...info, vid: visitorId(), theme: theme(), gid: g?.id, start: g?.date, mode: g?.options.mode ?? 'extended' });
 }
 
 /** Hvor langt det åbne singleplayer-spil er: spildato, klub og placering i ligaen (vises i admin under New careers) */
