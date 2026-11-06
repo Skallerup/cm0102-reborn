@@ -29,6 +29,7 @@ import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment,
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
+import { answerNationalOffer, resignNational } from './international';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -42,6 +43,8 @@ export type Action =
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
   | { t: 'recallLoan'; pid: number }
+  | { t: 'nationalOffer'; accept: boolean }
+  | { t: 'resignNational' }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
@@ -150,6 +153,8 @@ export function applyAction(a: Action): unknown {
     case 'release': return releasePlayer(a.pid);
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
     case 'recallLoan': return recallLoan(a.pid);
+    case 'nationalOffer': return answerNationalOffer(a.accept);
+    case 'resignNational': return resignNational();
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });
     case 'preContract': return startPreContract(a.pid);

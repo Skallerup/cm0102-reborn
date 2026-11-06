@@ -3,7 +3,9 @@ import { useGame } from '../core';
 import { dateFmt, natName, t } from '../../i18n';
 import { Flag, Panel, Tabs } from '../components';
 import { useRouteState } from '../core';
-import type { IntlTournament } from '../../game/international';
+import { nationSquad, type IntlTournament } from '../../game/international';
+import { act } from '../../game/actions';
+import { PlayerLink } from '../components';
 import { gs } from '../../game/state';
 import type { JSX } from 'react';
 
@@ -16,6 +18,19 @@ export function International() {
   return (
     <div>
       <h2>{t('intl.title')}</h2>
+      {g.manager.nationalOffer !== undefined && (
+        <div className="insight good row">
+          <span className="grow">{t('intl.offerText', { nation: natName(g.nations[g.manager.nationalOffer]?.name) })}</span>
+          <button className="primary" onClick={() => act({ t: 'nationalOffer', accept: true })}>{t('intl.accept')}</button>
+          <button onClick={() => act({ t: 'nationalOffer', accept: false })}>{t('intl.decline')}</button>
+        </div>
+      )}
+      {g.manager.national && (
+        <Panel title={t('intl.myTeam', { nation: natName(g.nations[g.manager.national.nation]?.name) })} right={<button className="small danger" onClick={() => act({ t: 'resignNational' })}>{t('intl.resign')}</button>}>
+          <div className="muted" style={{ marginBottom: 6 }}>{t('intl.myRecord', { since: dateFmt(g.manager.national.since), played: g.manager.national.played, won: g.manager.national.won })}</div>
+          <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{nationSquad(g.manager.national.nation).map((p) => <PlayerLink key={p.id} p={p} />)}</div>
+        </Panel>
+      )}
       <Tabs tabs={[['tournament', t('intl.tab.tournament')], ['results', t('intl.tab.results')], ['history', t('intl.tab.history')]]} value={tab} onChange={setTab} />
       {tab === 'tournament' && (!tour ? <Panel><div className="muted">{t('intl.none')}</div></Panel> : <Tournament t={tour} N={N} />)}
       {tab === 'results' && (

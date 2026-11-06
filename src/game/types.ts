@@ -606,6 +606,9 @@ export interface ManagerProfile {
   declinedJobs?: Record<number, string>;
   /** Jobsamtaler: søgte stillinger (venter på svar) og tilbud med vilkår, man kan forhandle om */
   jobTalks?: Record<number, JobTalk>;
+  /** landstrænerjob (CM 01/02: man kan træne et landshold ved siden af klubben) og et åbent tilbud */
+  national?: { nation: number; since: string; played: number; won: number };
+  nationalOffer?: number;
   /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
   enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;
   /** Forholdet til pressen (0-100, start 50) og et løfte om sejr givet på et pressemøde */

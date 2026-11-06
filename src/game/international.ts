@@ -86,6 +86,15 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
   const res: IntlResult & { pens?: [number, number] } = { date: g.date, home, away, hg: hs.goals, ag: as.goals, kind, stage, ...(rep.pens ? { pens: rep.pens } : {}) };
   const st = state();
   st.results = [res, ...st.results].slice(0, 150);
+  // brugerens landshold: resultat og statistik
+  forEachHuman(() => {
+    const nj = g.manager.national;
+    if (!nj || (nj.nation !== home && nj.nation !== away)) return;
+    const mine = nj.nation === home ? res.hg : res.ag, theirs = nj.nation === home ? res.ag : res.hg;
+    nj.played++; if (mine > theirs) nj.won++;
+    g.manager.rep = Math.max(0, Math.min(100, g.manager.rep + (mine > theirs ? 0.4 : mine < theirs ? -0.3 : 0)));
+    addNews({ cat: 'match', key: mine > theirs ? 'intl.my.won' : mine < theirs ? 'intl.my.lost' : 'intl.my.drew', params: { nation: g.nations[nj.nation]?.name ?? '', opp: g.nations[nj.nation === home ? away : home]?.name ?? '', score: `${mine}-${theirs}` } });
+  });
   return res;
 }
 
@@ -188,4 +197,42 @@ export function intlDaily() {
   // slutrunder: VM i år ≡ 2 (mod 4), EM i år ≡ 0 (mod 4) – lodtrækning 1. juni
   if (md === '06-01' && (year % 4 === 2 || year % 4 === 0)) startTournament(year % 4 === 2 ? 'wc' : 'euro', year);
   tournamentDay();
+  if (md === '07-10' || md === '01-02') nationalOffers();
+}
+
+/**
+ * Landstrænerjobbet (CM 01/02: man kan tage et landshold ved siden af klubben). Efter hver slutrunde og hver 1. januar
+ * kan en manager med højt nok omdømme få et tilbud fra et land, hvis styrke passer til hans omdømme (*estimeret*).
+ */
+export function nationalOffers() {
+  const g = gs();
+  forEachHuman(() => {
+    if (g.manager.national || g.manager.nationalOffer !== undefined || g.manager.rep < 55 || !rng.chance(0.35)) return;
+    const own = g.manager.nation;
+    const cands = ranked().slice(0, 60).filter((n) => Math.abs(nationStrength(n) - (60 + g.manager.rep)) < 25);
+    const pick = cands.includes(own) && rng.chance(0.5) ? own : rng.pick(cands);
+    if (pick === undefined) return;
+    g.manager.nationalOffer = pick;
+    addNews({ cat: 'job', key: 'intl.jobOffer', params: { nation: g.nations[pick]?.name ?? '' } });
+  });
+}
+
+export function answerNationalOffer(accept: boolean): string {
+  const g = gs();
+  const n = g.manager.nationalOffer;
+  if (n === undefined) return 'error';
+  g.manager.nationalOffer = undefined;
+  if (!accept) return 'ok';
+  g.manager.national = { nation: n, since: g.date, played: 0, won: 0 };
+  addNews({ cat: 'job', key: 'intl.jobTaken', params: { nation: g.nations[n]?.name ?? '' } });
+  return 'ok';
+}
+
+export function resignNational(): string {
+  const g = gs();
+  const nj = g.manager.national;
+  if (!nj) return 'error';
+  g.manager.national = undefined;
+  addNews({ cat: 'job', key: 'intl.jobLeft', params: { nation: g.nations[nj.nation]?.name ?? '', played: nj.played, won: nj.won } });
+  return 'ok';
 }

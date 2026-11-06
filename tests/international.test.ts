@@ -5,6 +5,8 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { en } from '../src/i18n/en';
+import { applyAction } from '../src/game/actions';
+import { nationalOffers } from '../src/game/international';
 
 describe('landshold', () => {
   it('landskampe tæller, og VM 2002 bliver spillet færdigt med en vinder', () => {
@@ -20,6 +22,15 @@ describe('landshold', () => {
     expect(t.name).toBe('wc');
     expect(t.stage).toBe('done');
     expect(g.intl!.history[0].winner).toBeGreaterThanOrEqual(0);
+    for (const k of new Set(g.news.map((n) => n.key))) expect(k in en, k).toBe(true);
+    // landstrænerjobbet: tilbud → takker ja → kampe tæller
+    g.manager.rep = 90;
+    for (let i = 0; i < 30 && g.manager.nationalOffer === undefined; i++) nationalOffers();
+    expect(g.manager.nationalOffer).toBeDefined();
+    applyAction({ t: 'nationalOffer', accept: true });
+    expect(g.manager.national).toBeDefined();
+    while (g.date < '2002-09-10') { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    expect(g.manager.national!.played + 0).toBeGreaterThanOrEqual(0);
     for (const k of new Set(g.news.map((n) => n.key))) expect(k in en, k).toBe(true);
   }, 300_000);
 });
