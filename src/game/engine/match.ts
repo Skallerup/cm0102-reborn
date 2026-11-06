@@ -1322,6 +1322,11 @@ export class MatchSim {
     // menneskets hold skifter selv ud (kampen pauses i UI'et) – kun AI-hold skifter automatisk
     if (t.subsLeft > 0 && t.benchIds.length && this.opts.aiSubs?.[t.idx] !== false) {
       this.autoSub(t, sp);
+    } else if (t.subsLeft <= 0 || !t.benchIds.length) {
+      // ingen udskiftninger tilbage: han må ud, og holdet spiller videre med en mand mindre (som i CM 01/02)
+      sp.off = true;
+      sp.line.minutes = this.minute - sp.enteredAt;
+      this.buildZones(t);
     } else {
       sp.cond = Math.min(sp.cond, 0.35);
     }

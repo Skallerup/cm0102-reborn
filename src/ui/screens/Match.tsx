@@ -572,7 +572,8 @@ function LiveMatch({ id }: { id: number }) {
     // skade eller rødt kort på mit hold: pause og over på taktik, så man selv kan justere
     const newEv = sim.events.slice(L.evSeen ?? 0);
     L.evSeen = sim.events.length;
-    const hit = newEv.filter((e) => e.t === me && (e.k === 'injury' || e.k === 'red')).at(-1);
+    // (ingen pause, hvis der ikke er flere udskiftninger – så spiller holdet bare videre med 10 mand)
+    const hit = newEv.filter((e) => e.t === me && (e.k === 'injury' || e.k === 'red') && (e.k === 'red' || sim.live(me).subsLeft > 0)).at(-1);
     if (hit && !sim.finished) {
       const name = hit.p ? g.players[hit.p]?.last ?? '' : '';
       if (!h2h) setPaused(true);
@@ -1195,6 +1196,8 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
   const rows: Row[] = [
     // skadede spillere står grå med "inj 88" (som i CM 01/02)
     ...on.map((s) => { const inj = s.injured ? sim.events.find((e) => e.k === 'injury' && e.p === s.id)?.m : undefined; return { id: s.id, num: s.num, note: s.injured ? `inj ${inj ?? ''}`.trim() : s.enteredAt ? `on ${s.enteredAt}` : undefined, cond: s.cond, rating: s.rating, goals: s.goals, dim: !!s.injured, live: true, slot: s.slot }; }),
+    // ude af kampen uden udskiftning (rødt kort eller skadet uden flere udskiftninger)
+    ...lv.on.filter((s) => s.off).map((s) => ({ id: s.id, num: s.num, note: s.red ? 'off' : `inj ${sim.events.find((e) => e.k === 'injury' && e.p === s.id)?.m ?? ''}`.trim(), rating: s.rating, goals: s.goals, dim: true, live: false })),
     ...lv.gone.map((s) => ({ id: s.id, num: s.num, note: `sub ${sim.events.find((e) => e.k === 'sub' && e.p2 === s.id)?.m ?? ''}`.trim(), rating: s.rating, goals: s.goals, dim: true, live: false })),
     ...lv.bench.map((id) => ({ id, num: pl(id)?.number, dim: true, live: false })),
   ];

@@ -853,3 +853,8 @@
 :root[data-skin='retro'] textarea.cx-note { height: 220px; text-align: left; padding: 10px; font-size: 18px; resize: vertical; }
 .cx-capt { cursor: grab; padding: 0 4px; border: 1px dashed transparent; } .cx-capt:hover { border-color: #ff9a2a; }
 .cx-mt .cx-tac-slot[draggable='true'] { cursor: grab; }
+/* sidebjælken må aldrig skubbes ud af skærmen af bredt indhold */
+:root[data-skin='retro'] body { overflow-x: hidden; }
+.shell.cx .main { overflow-x: auto; }
+.cx-mt, .cx-mt-cols > * { min-width: 0; }
+.cx-mt-list { overflow-x: auto; }
