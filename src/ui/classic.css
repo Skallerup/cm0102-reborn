@@ -712,3 +712,8 @@
 .cx-numbers-hint { margin: 4px 0 8px; color: #fff; text-shadow: 1px 1px 0 #000; }
 .cx-numbers .sqn-num { color: #fff21f; }
 .shell.cx .cx-sct { color: #f2c94c; font-size: 10px; font-weight: 700; }
+
+/* undermenuer (▸) som Competitions-menuen i CM 01/02 */
+.cx-drop-arrow { margin-left: auto; padding-left: 14px; font-size: 11px; }
+:root[data-skin='retro'] .cx-drop-pop button.cx-drop-subbtn.on { background: #fff36a; }
+.cx-drop-sub { z-index: 41; max-height: 80vh; }

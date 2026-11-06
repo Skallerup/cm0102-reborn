@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { act } from '../game/actions';
 import { notify } from '../game/state';
 import type { GameState, Lang } from '../game/types';
-import { LANGS, CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../i18n';
+import { LANGS, CURRENCIES, compName, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
 import { ChangelogModal, seenVersion } from './Changelog';
 import { ProfileGate, WriteModal } from './Community';
@@ -210,4 +210,53 @@ export function FindMenu() {
   const { nav } = useNav();
   const items: DropItem[] = (['nation', 'club', 'staff', 'player'] as const).map((k) => ({ key: k, label: t(`cl.fd.${k}`), onClick: () => nav({ name: 'find', tab: k, state: { ftab: k } }) }));
   return <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.find')} items={items} btn={{ className: 'cx-sbtn cx-findbtn' }} />;
+}
+
+// ---------- Competitions (sidebaren) ----------
+
+/** Rækkefølgen i en nations undermenu: ligaerne efter række, så pokaler og playoff */
+const compOrder = (c: { type: string; tier: number }) => (c.type === 'league' ? c.tier : c.type === 'cup' ? 50 + c.tier : 80);
+
+/**
+ * "Competitions" i sidebaren som i CM 01/02: World Cup ▸ · International ▸ · European ▸ og hver nation med spillede
+ * turneringer ▸ (ligaer, pokaler og landsholdet).
+ */
+export function CompetitionsMenu() {
+  const g = useGame()! as GameState;
+  const { nav } = useNav();
+  const intl = (state: Record<string, string>) => () => nav({ name: 'international', state });
+  const past = new Set((g.intl?.past ?? []).map((p) => p.c));
+  const items: DropItem[] = [];
+  items.push({ key: 'wc', label: t('cl.cm.worldCup'), sub: [
+    { key: 'wcT', label: t('intl.name.wc'), onClick: intl({ itab: 'tournament' }) },
+    { key: 'wcH', label: t('intl.tab.history'), onClick: intl({ itab: 'history', ihist: 'wc' }) },
+    { key: 'fifa', label: t('intl.tab.fifa'), onClick: intl({ itab: 'fifa' }) },
+  ] });
+  const other = ['euro', 'copa', 'afcon', 'asian', 'confed', 'olympic', 'ofc', 'asiangames'].filter((c) => c === 'euro' || past.has(c));
+  items.push({ key: 'intl', label: t('cl.cm.international'), sub: [
+    ...other.map((c) => ({ key: c, label: t(`intl.name.${c}`), onClick: intl({ itab: 'history', ihist: c }) })),
+    { key: 'sep', sep: true as const },
+    { key: 'res', label: t('intl.tab.results'), onClick: intl({ itab: 'results' }) },
+    { key: 'fifa2', label: t('intl.tab.fifa'), onClick: intl({ itab: 'fifa' }) },
+  ] });
+  const euro = Object.values(g.comps).filter((c) => c.nation < 0);
+  if (euro.length) items.push({ key: 'eu', label: t('cl.cm.european'), sub: [
+    ...euro.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
+    { key: 'sep', sep: true as const },
+    { key: 'awards', label: t('nav.awards'), onClick: () => nav({ name: 'awards' }) },
+  ] });
+  // nationerne: ens egen først, så i ligaernes rækkefølge
+  const own = g.clubs[g.userClub]?.nation;
+  const nations: number[] = [];
+  for (const id of g.leagueOrder) { const l = g.leagues[id]; if (l && !l.hidden && g.comps[id] && !nations.includes(l.nation)) nations.push(l.nation); }
+  nations.sort((a, b) => (a === own ? -1 : b === own ? 1 : 0));
+  for (const n of nations) {
+    const comps = Object.values(g.comps).filter((c) => c.nation === n && !g.leagues[c.id]?.hidden).sort((a, b) => compOrder(a) - compOrder(b));
+    items.push({ key: `n${n}`, label: natName(g.nations[n]?.name), sub: [
+      ...comps.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
+      { key: 'sep', sep: true as const },
+      { key: 'nt', label: t('cl.cm.nationalTeam'), onClick: () => nav({ name: 'international', id: n }) },
+    ] });
+  }
+  return <CxDrop className="cx-gameopt" fixed caret={false} label={t('nav.competitions')} items={items} btn={{ className: 'cx-sbtn' }} />;
 }

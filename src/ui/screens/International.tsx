@@ -3,7 +3,7 @@ import { useGame } from '../core';
 import { dateFmt, natName, t } from '../../i18n';
 import { Flag, Panel, Tabs } from '../components';
 import { useRouteState } from '../core';
-import { fifaRanking, nationPool, nationSquad, type IntlTournament } from '../../game/international';
+import { fifaRanking, nationPool, nationSquad, type IntlTournament, type PastFinal } from '../../game/international';
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { ClubLink, PlayerLink } from '../components';
@@ -16,7 +16,7 @@ import { gs } from '../../game/state';
 import type { JSX } from 'react';
 import { isRetro } from '../theme';
 import { Head } from './common';
-import { ClassicSub, CxLink, clubRoute, type Item } from '../classic';
+import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
 import { ClassicClubSquad } from './SquadClassic';
 
 export function International({ nation }: { nation?: number }) {
@@ -25,6 +25,7 @@ export function International({ nation }: { nation?: number }) {
   const [tab, setTab] = useRouteState('itab', 'tournament');
   // et bestemt land: landsholdets side (efter alle hooks, så hook-rækkefølgen er den samme)
   if (nation !== undefined && g.nations[nation]) return <NationTeam key={nation} n={nation} />;
+  if (isRetro()) return <ClassicInternational tab={tab} setTab={setTab} />;
   const st = g.intl;
   const N = (n: number) => <span className="row" style={{ gap: 6, display: 'inline-flex' }}><Flag name={g.nations[n]?.name} />{natName(g.nations[n]?.name)}</span>;
   const tour = st?.tournament;
@@ -237,5 +238,132 @@ function ClassicNationTeam({ n }: { n: number }) {
       )}
       <ClassicSub items={sub} />
     </div>
+  );
+}
+
+// ---------- klassisk (CM 01/02): titelbjælke, faner og tabeller med grå kolonneknapper og blå rækkeknapper ----------
+
+const INTL_TABS = ['tournament', 'results', 'fifa', 'history'] as const;
+
+/** Et land i en klassisk tabel: klikbart, ens eget landshold i gult */
+function CxNat({ n, cls = 'c-name' }: { n: number | undefined; cls?: string }) {
+  const g = useGame()!;
+  if (n === undefined || !g.nations[n]) return <span>–</span>;
+  const mine = g.manager.national?.nation === n || g.clubs[g.userClub]?.nation === n;
+  return <span className={`${cls} ${mine && cls === 'c-name' ? 'c-yel' : ''}`}><CxLink to={{ name: 'international', id: n }}>{natName(g.nations[n].name)}</CxLink></span>;
+}
+/** Et landenavn fra historikken (originalens tekst) – klikbart, hvis landet findes */
+function CxNatName({ name, cls = 'c-name' }: { name: string; cls?: string }) {
+  const g = useGame()!;
+  const i = g.nations.findIndex((x) => x.name === name);
+  return i >= 0 ? <CxNat n={i} cls={cls} /> : <span className={cls}>{natName(name)}</span>;
+}
+
+function ClassicInternational({ tab, setTab }: { tab: string; setTab: (v: string) => void }) {
+  const g = useGame()!;
+  const st = g.intl;
+  const tour = st?.tournament;
+  const cur = (INTL_TABS as readonly string[]).includes(tab) ? tab : 'tournament';
+  return (
+    <div>
+      <Head title={t('intl.title')} />
+      <Tabs tabs={INTL_TABS.map((k) => [k, t(`intl.tab.${k}`)] as [string, string])} value={cur} onChange={setTab} />
+      {g.manager.nationalOffer !== undefined && (
+        <div className="cx-tools cx-tools-inline">
+          <span className="c-yel">{t('intl.offerText', { nation: natName(g.nations[g.manager.nationalOffer]?.name) })}</span>
+          <button onClick={() => act({ t: 'nationalOffer', accept: true })}>{t('intl.accept')}</button>
+          <button onClick={() => act({ t: 'nationalOffer', accept: false })}>{t('intl.decline')}</button>
+        </div>
+      )}
+      {g.manager.national && (
+        <div className="cx-tools cx-tools-inline">
+          <span>{t('intl.myTeam', { nation: natName(g.nations[g.manager.national.nation]?.name) })} – {t('intl.myRecord', { since: dateFmt(g.manager.national.since), played: g.manager.national.played, won: g.manager.national.won })}</span>
+          <button onClick={() => act({ t: 'resignNational' })}>{t('intl.resign')}</button>
+        </div>
+      )}
+      {cur === 'tournament' && (!tour ? <div className="cx-empty">{t('intl.none')}</div> : <CxTournament tour={tour} />)}
+      {cur === 'results' && <CxResults results={st?.results ?? []} />}
+      {cur === 'fifa' && <CxFifa />}
+      {cur === 'history' && <CxHistory />}
+    </div>
+  );
+}
+
+function CxTournament({ tour }: { tour: IntlTournament }) {
+  const rows = (grp: number[]) => grp.map((n) => tour.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
+  return (
+    <>
+      <div className="cx-subtitle">{t(`intl.name.${tour.name}`)} {tour.year}{tour.winner !== undefined ? ` – ${natName(gs().nations[tour.winner]?.name)}` : ''}</div>
+      <div className="cx-tbl-wrap">
+        <table className="cx-tbl"><thead><tr><th className="btn-col" /><th>{t('col.nat')}</th><th className="c-num">{t('cl.nt.pl')}</th><th className="c-num">{t('cl.nt.w')}</th><th className="c-num">{t('cl.nt.d')}</th><th className="c-num">{t('cl.nt.l')}</th><th className="c-num">{t('cl.nt.gf')}</th><th className="c-num">{t('cl.nt.ga')}</th><th className="c-num">{t('cl.nt.pts')}</th></tr></thead>
+          <tbody>{tour.groups.map((grp, i) => rows(grp).map((r, j) => (
+            <tr key={`${i}-${r.n}`}><td className="btn-col">{j === 0 ? <span className="cx-rowbtn narrow">{String.fromCharCode(65 + i)}</span> : null}</td><td><CxNat n={r.n} /></td>
+              <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td><td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td></tr>
+          )))}</tbody></table>
+      </div>
+      {tour.ko.length > 0 && (
+        <>
+          <div className="cx-subtitle">{t('intl.knockout')}</div>
+          <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{tour.ko.map((k, i) => (
+            <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{t(`stage.${k.stage}`)}</span></td><td style={{ textAlign: 'right' }}><CxNat n={k.a} /></td>
+              <td className="c-val">{k.hg !== undefined ? `${k.hg} - ${k.ag}${k.pens ? ` (${t('intl.pens')})` : ''}` : 'v'}</td><td><CxNat n={k.b} /></td></tr>
+          ))}</tbody></table></div>
+        </>
+      )}
+    </>
+  );
+}
+
+function CxResults({ results }: { results: import('../../game/international').IntlResult[] }) {
+  if (!results.length) return <div className="cx-empty">{t('intl.noResults')}</div>;
+  return (
+    <div className="cx-tbl-wrap"><table className="cx-tbl">
+      <thead><tr><th className="btn-col" /><th style={{ textAlign: 'right' }}>{t('cl.nt.home')}</th><th className="c-num">{t('cl.nt.score')}</th><th>{t('cl.nt.away')}</th><th>{t('cl.nt.comp')}</th></tr></thead>
+      <tbody>{results.slice(0, 60).map((r, i) => (
+        <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{dateFmt(r.date)}</span></td><td style={{ textAlign: 'right' }}><CxNat n={r.home} /></td>
+          <td className="c-val">{r.hg} - {r.ag}</td><td><CxNat n={r.away} /></td><td className="c-cyan">{t(`intl.kind.${r.kind}`)}{r.stage ? ` · ${t(`stage.${r.stage}`)}` : ''}</td></tr>
+      ))}</tbody>
+    </table></div>
+  );
+}
+
+function CxFifa() {
+  const ranking = fifaRanking().slice(0, 100);
+  return (
+    <div className="cx-tbl-wrap"><table className="cx-tbl">
+      <thead><tr><th className="btn-col" /><th>{t('col.nat')}</th><th className="c-num">{t('intl.points')}</th></tr></thead>
+      <tbody>{ranking.map((r, i) => (
+        <tr key={r.n}><td className="btn-col"><span className="cx-rowbtn narrow">{i + 1}</span></td><td><CxNat n={r.n} /></td><td className="c-val">{r.pts}</td></tr>
+      ))}</tbody>
+    </table></div>
+  );
+}
+
+/** Tidligere vindere som originalens "FIFA World Cup History": år som blå knapper, vinder, nr. 2, nr. 3 og værter i orange */
+function CxHistory() {
+  const g = useGame()!;
+  const st = g.intl;
+  const rows: PastFinal[] = [
+    ...(st?.history ?? []).map((h) => ({ c: h.name, y: h.year, w: g.nations[h.winner]?.name ?? '', r: g.nations[h.runnerUp]?.name ?? '', h: '' })),
+    ...(st?.past ?? []),
+  ];
+  const comps = [...new Set(rows.map((r) => r.c))];
+  const [comp, setComp] = useRouteState('ihist', comps.includes('wc') ? 'wc' : comps[0] ?? 'wc');
+  if (!rows.length) return <div className="cx-empty">{t('intl.noHistory')}</div>;
+  const list = rows.filter((r) => r.c === comp).sort((a, b) => b.y - a.y);
+  return (
+    <>
+      <div className="cx-tools cx-tools-inline">
+        <CxDrop label={t(`intl.name.${comp}`)} items={comps.map((c) => ({ key: c, label: t(`intl.name.${c}`), checked: c === comp, onClick: () => setComp(c) }))} />
+      </div>
+      <div className="cx-subtitle">{t('cl.nt.history', { comp: t(`intl.name.${comp}`) })}</div>
+      <div className="cx-tbl-wrap"><table className="cx-tbl">
+        <thead><tr><th className="btn-col" /><th>{t('cl.nt.winners')}</th><th>{t('intl.runnerUp')}</th><th>{t('cl.nt.third')}</th><th>{t('cl.nt.hosts')}</th></tr></thead>
+        <tbody>{list.map((h, i) => (
+          <tr key={`${h.y}-${i}`}><td className="btn-col"><span className="cx-rowbtn">{h.y}</span></td><td><CxNatName name={h.w} /></td><td><CxNatName name={h.r} /></td>
+            <td>{h.t ? <CxNatName name={h.t} /> : null}</td><td>{h.h ? <CxNatName name={h.h} cls="c-pos" /> : null}</td></tr>
+        ))}</tbody>
+      </table></div>
+    </>
   );
 }

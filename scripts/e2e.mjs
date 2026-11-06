@@ -76,6 +76,18 @@ async function run(look) {
     { name: 'find' }, { name: 'staff', id: Number(await gs(() => Object.keys(window.__cm.gs().staff)[0])) }, { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
   ];
   for (const r of screens) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); });
+  if (look === 'klassisk') await step('competitions-menu', async () => {
+    await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
+    await page.locator('.cx-drop-subbtn', { hasText: 'World Cup' }).hover();
+    await page.locator('.cx-drop-sub button', { hasText: 'Past winners' }).click();
+    await page.waitForSelector('.cx-tbl, .cx-empty');
+    await page.screenshot({ path: `${OUT}/klassisk-vm-historie.png` });
+    await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
+    await page.locator('.cx-drop-subbtn').nth(3).hover();
+    await page.screenshot({ path: `${OUT}/klassisk-competitions-menu.png` });
+    await page.locator('.cx-drop-sub button').first().click();
+    await checkScreen('competitions');
+  });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
   await step('trøjenumre: skift nummer', async () => {

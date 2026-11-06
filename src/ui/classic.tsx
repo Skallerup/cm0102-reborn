@@ -160,7 +160,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   international: {
     title: (g, r, st) => (r.id !== undefined ? natName(g.nations[Number(r.id)]?.name) : st),
     club: () => undefined,
-    colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : undefined),
+    // uden land: turneringernes gyldne bjælke (som "FIFA World Cup History" i originalen)
+    colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : { bg: '#d6b24c', fg: '#ffffff' }),
   },
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   awards: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
@@ -389,7 +390,9 @@ export function classicDate(iso: string): [string, string] {
 export type DropItem =
   | { key: string; label: ReactNode; onClick: () => void; checked?: boolean; disabled?: boolean; title?: string; danger?: boolean }
   | { key: string; head: string }
-  | { key: string; sep: true };
+  | { key: string; sep: true }
+  /** undermenu (▸) – åbnes ved siden af, når man peger på den (som Competitions-menuen i CM 01/02) */
+  | { key: string; label: ReactNode; sub: DropItem[] };
 
 /** Knap med ▾ og en pop op-liste; lukker ved klik udenfor eller Escape */
 export function CxDrop({ label, items, align = 'left', className = '', btn, caret = true, fixed = false }: {
@@ -403,6 +406,8 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
   const [open, setOpen] = useState(false);
   const [up, setUp] = useState(false);
   const [pos, setPos] = useState<CSSProperties | undefined>();
+  // åbne undermenuer: nøgle og placering pr. niveau
+  const [path, setPath] = useState<{ key: string; style: CSSProperties }[]>([]);
   const ref = useRef<HTMLDivElement>(null);
   const toggle = () => {
     // åbn opad, når knappen sidder langt nede på skærmen
@@ -414,8 +419,29 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
         ? { position: 'fixed', top: r.bottom + 2, left: Math.max(4, Math.min(r.left, window.innerWidth - 220)) }
         : r.bottom > window.innerHeight * 0.58 ? { position: 'fixed', left: r.right + 4, bottom: window.innerHeight - r.bottom, top: 'auto' } : { position: 'fixed', left: r.right + 4, top: r.top });
     }
+    setPath([]);
     setOpen(!open);
   };
+  const openSub = (depth: number, key: string, el: HTMLElement) => {
+    const r = el.getBoundingClientRect();
+    const low = r.top > window.innerHeight * 0.55;
+    const style: CSSProperties = { position: 'fixed', left: Math.min(r.right, window.innerWidth - 220), ...(low ? { bottom: window.innerHeight - r.bottom, top: 'auto' } : { top: r.top }) };
+    setPath((p) => [...p.slice(0, depth), { key, style }]);
+  };
+  const list = (its: DropItem[], depth: number): ReactNode => its.map((it) => 'head' in it ? <div key={it.key} className="cx-menu-head">{it.head}</div>
+    : 'sep' in it ? <div key={it.key} className="cx-drop-sep" />
+    : 'sub' in it ? (
+      <div key={it.key} className="cx-drop-subwrap">
+        <button role="menuitem" aria-haspopup="menu" className={`cx-drop-subbtn ${path[depth]?.key === it.key ? 'on' : ''}`}
+          onMouseEnter={(e) => openSub(depth, it.key, e.currentTarget)} onClick={(e) => openSub(depth, it.key, e.currentTarget)}>
+          <span className="cx-drop-check" />{it.label}<span className="cx-drop-arrow">▸</span>
+        </button>
+        {path[depth]?.key === it.key && <div className="cx-drop-pop cx-drop-sub" role="menu" style={path[depth].style}>{list(it.sub, depth + 1)}</div>}
+      </div>
+    )
+    : <button key={it.key} role="menuitemcheckbox" aria-checked={!!it.checked} className={`${it.checked ? 'on' : ''} ${it.danger ? 'danger' : ''}`} disabled={it.disabled} title={it.title}
+        onMouseEnter={() => setPath((p) => p.slice(0, depth))}
+        onClick={() => { setOpen(false); it.onClick(); }}><span className="cx-drop-check">{it.checked ? '✓' : ''}</span>{it.label}</button>);
   useEffect(() => {
     if (!open) return;
     const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
@@ -431,10 +457,7 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
       </button>
       {open && (
         <div className={`cx-drop-pop ${align} ${up && !fixed ? 'up' : ''}`} role="menu" style={fixed ? pos : undefined}>
-          {items.map((it) => 'head' in it ? <div key={it.key} className="cx-menu-head">{it.head}</div>
-            : 'sep' in it ? <div key={it.key} className="cx-drop-sep" />
-            : <button key={it.key} role="menuitemcheckbox" aria-checked={!!it.checked} className={`${it.checked ? 'on' : ''} ${it.danger ? 'danger' : ''}`} disabled={it.disabled} title={it.title}
-                onClick={() => { setOpen(false); it.onClick(); }}><span className="cx-drop-check">{it.checked ? '✓' : ''}</span>{it.label}</button>)}
+          {list(items, 0)}
         </div>
       )}
     </div>

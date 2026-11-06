@@ -17,7 +17,7 @@ export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?
 export interface IntlTournament { name: 'wc' | 'euro'; year: number; groups: number[][]; table: Record<number, IntlRow>; ko: IntlTie[]; stage: string; winner?: number; runnerUp?: number }
 export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro'; stage?: string }
 export interface NatInfo { stadium: string; cap: number; fifa: number; coach: string; rep: number; titles: Record<string, number> }
-export interface PastFinal { c: string; y: number; w: string; r: string; h: string }
+export interface PastFinal { c: string; y: number; w: string; r: string; t?: string; h: string }
 export interface IntlState {
   results: IntlResult[]; tournament?: IntlTournament; history: { year: number; name: 'wc' | 'euro'; winner: number; runnerUp: number }[];
   /** originalens data (kun den originale database): stadion, FIFA-koefficient, landstræner, titler og slutrunder før 2001 */

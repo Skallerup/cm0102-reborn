@@ -54,7 +54,7 @@ import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl, loadStadiumBgs, stadiumBgUrl } from './backgrounds';
-import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
+import { CompetitionsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
@@ -330,7 +330,7 @@ export function Shell() {
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
             <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />
-            {side('competitions', t('nav.competitions'))}
+            <CompetitionsMenu />
             {club ? side('club', t('cl.nations')) : side('find', t('cl.nations'), '', () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }))}
             <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}

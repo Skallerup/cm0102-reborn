@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – v0.16.0. Klassisk: `CompetitionsMenu` (classicOptions.tsx) i sidebjælken med undermenuer – `DropItem` har nu
+  `{ sub: DropItem[] }` (▸, åbnes ved hover, fast placeret). International fodbold klassisk (`ClassicInternational`): cx-tbl
+  med blå rækkeknapper, Past winners pr. turnering (`ihist`, PastFinal.t = nr. 3), gylden titelbjælke.
 - 2026-11-06 – Klassisk landshold (`ClassicNationTeam` i International.tsx): hub `international` med `colors` (NATION_COLORS i
   classic.tsx), truppen via `ClassicClubSquad cid={0} players={…}`.
 - 2026-11-06 – Landshold efter ejerens `…/bosman-edition/app/national_teams/NATIONAL_TEAMS.md`: `scripts/build-national.py` →
