@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk spillerside: TitleMenu `playerId` (holdkammerater), Set Role At Club i NegotiationClassic (`expectedStatus`,
+  `Player.jobRole` – bruges ikke af motoren endnu), `ContractClauses.signOn` (signOnDemand *estimeret*, betales ved underskrift,
+  kræves i renewContract), `Player.reserves` (available() = false, action reserves, mærke Res), NotePanel.
 - 2026-11-06 – Klassisk kamptaktik: `OppTactics` med draft/setDraft/base (LiveMatch `draft`, `live.baseTactic`), sidebjælken
   `editing` → Ok (sim.setTactic)/Cancel. `aggText`, tilskuere via estimateGate, hastigheder 8/4/2/1/0,6/0,35. `authentic()` kræver
   nu data-skin='retro' (Node: altid sand). NB: klassen `.cx-opt` er tekstvalg – Game Options-knappen hedder `.cx-gopt`.

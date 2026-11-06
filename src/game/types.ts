@@ -39,6 +39,8 @@ export interface HolidaySettings { rejectAll?: boolean; rejectBelow?: boolean; n
 export interface ContractClauses {
   /** CM 01/02 Contract Type: deltid (klik på "Full Time") */
   partTime?: boolean;
+  /** CM 01/02 Signing On Fee: engangsbeløb ved underskrift (betales med det samme, tæller som løn fordelt over kontrakten) */
+  signOn?: number;
   release?: number;
   wageRise?: number;
   appBonus?: number;
@@ -139,7 +141,11 @@ export interface Player {
   regen?: boolean;
   /** CM 01/02 "Set Nickname": det rigtige navn, mens et kælenavn bruges i stedet */
   realName?: { first: string; last: string };
+  /** CM 01/02 Set Role At Club: spiller/assistent/træner (gemmes, bruges endnu ikke af motoren) */
+  jobRole?: 'player' | 'assistant' | 'coach';
   notes?: string;
+  /** CM 01/02 "Relegate To Reserves": står uden for førsteholdet (kan ikke udtages, før han kaldes op) */
+  reserves?: boolean;
   joined?: string; // dato for ankomst til klub
   /** ikke-tilfredshed pga. spilletid (0-100) */
   unhappy?: number;

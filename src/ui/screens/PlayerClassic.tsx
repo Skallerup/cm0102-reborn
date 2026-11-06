@@ -338,6 +338,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [statusOpen, setStatusOpen] = useState(false);
   const [discOpen, setDiscOpen] = useState(false);
   const [nickOpen, setNickOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
   const [repRole, setRepRole] = useState<'physio' | 'coach' | null>(null);
   useEffect(() => setMsg(''), [id]);
   if (!p) return <div><Head title={t('player.gone')} /></div>;
@@ -362,6 +363,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft && mine) {
     // CM 01/02: Set Transfer Status · Offer New Contract · Discipline Player · Release On A Free (listen og leje ligger i Set Transfer Status)
     items.push(
+      { key: 'res', label: t(p.reserves ? 'cl.pl.callUp' : 'cl.pl.relegate'), onClick: () => dispatch({ t: 'reserves', pid: p.id, on: !p.reserves }) },
       { key: 'status', label: t('cl.ts.menu'), onClick: () => setStatusOpen(true) },
       { key: 'renew', label: t('cl.pl.offerNew'), onClick: () => setNeg({ renew: p.id }) },
       { key: 'disc', label: t('cl.dp.menu'), disabled: !!p.lastTalk && daysBetween(p.lastTalk, g.date) < 10, title: t('talk.r.tooSoon'), onClick: () => setDiscOpen(true) },
@@ -395,7 +397,8 @@ export function ClassicPlayer({ id }: { id: number }) {
     }
   }
   items.push(
-    { key: 'h-cmp', head: t('cl.pl.actOther') },
+    { key: 'sep-cmp', sep: true },
+    ...(mine ? [{ key: 'note', label: t('cl.pl.note'), onClick: () => setNoteOpen(true) }] : []),
     { key: 'cmp', label: t('cl.pl.compare'), sub: [
       { key: 'c1', label: `${t('cl.pl.cmp1')}${compareIds[0] !== undefined ? ` ( ${g.players[compareIds[0]]?.first ?? ''} ${g.players[compareIds[0]]?.last ?? ''} )`.replace('(  ', '( ') : ''}`, onClick: async () => { if (await askConfirm(t('cl.pl.cmp1Q', { player: `${p.first} ${p.last}`.trim() }), { head: `${t('cl.pl.cmp1')}?` })) setCompareSlot(0, p.id); } },
       { key: 'c2', label: `${t('cl.pl.cmp2')}${compareIds[1] !== undefined ? ` ( ${g.players[compareIds[1]]?.first ?? ''} ${g.players[compareIds[1]]?.last ?? ''} )` : ''}`, onClick: async () => { if (await askConfirm(t('cl.pl.cmp2Q', { player: `${p.first} ${p.last}`.trim() }), { head: `${t('cl.pl.cmp2')}?` })) setCompareSlot(1, p.id); } },
@@ -409,6 +412,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
 
+  if (noteOpen && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
   if (nickOpen && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
   if (repRole && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
   if (discOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
@@ -485,6 +489,19 @@ function StaffReportPanel({ p, role, onClose, onDone }: { p: Player; role: 'phys
         <button onClick={onClose}>{t('common.cancel')}</button>
         <button className="primary" disabled={sel === undefined} onClick={() => { if (sel !== undefined) dispatch({ t: 'staffReport', pid: p.id, staffId: sel }); onDone(); }}>{t('cl.dp.confirm')}</button>
       </div>
+    </div>
+  );
+}
+
+/** "Create Manager Note": en note om spilleren (vises under History) */
+function NotePanel({ p, onClose }: { p: Player; onClose: () => void }) {
+  useClassicDialog();
+  const [v, setV] = useState(p.notes ?? '');
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.pl.note')}</div>
+      <div className="cx-ts-body center"><textarea className="cx-nick cx-note" autoFocus value={v} maxLength={500} onChange={(e) => setV(e.target.value)} /></div>
+      <div className="cx-ts-buttons"><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" onClick={() => { dispatch({ t: 'notes', pid: p.id, text: v }); onClose(); }}>{t('common.ok')}</button></div>
     </div>
   );
 }

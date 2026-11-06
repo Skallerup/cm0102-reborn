@@ -325,7 +325,7 @@ const MENU: [string, ScreenName[]][] = [
 ];
 
 /** ▸-menuen: på klubskærme klubberne i klubbens liga (som i CM 01/02) og landet; ellers – eller via "Alle skærme" – alle skærme */
-function TitleMenu({ clubId }: { clubId?: number }) {
+function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number }) {
   const [open, setOpen] = useState(false);
   const [all, setAll] = useState(false);
   const { nav } = useNav();
@@ -343,7 +343,17 @@ function TitleMenu({ clubId }: { clubId?: number }) {
   return (
     <div className="cx-menu" ref={ref}>
       <button className="cx-menu-btn" aria-label={t('cl.menu')} title={t('cl.menu')} onClick={() => { setAll(false); setOpen(!open); }}>▸</button>
-      {open && (rivals.length && !all ? (
+      {open && (playerId !== undefined && club && !all ? (
+        // på en spillerside (CM 01/02): holdkammeraterne i nummerrækkefølge
+        <div className="cx-menu-pop cx-menu-clubs" role="menu">
+          {Object.values(g.players).filter((p) => p.club === club.id).sort((a, b) => (a.number ?? 99) - (b.number ?? 99) || a.last.localeCompare(b.last)).map((p) => (
+            <button key={p.id} role="menuitem" className={p.id === playerId ? 'on' : ''} onClick={() => go({ name: 'player', id: p.id })}>{p.number ? `${p.number}. ` : ''}{`${p.first} ${p.last}`.trim()}</button>
+          ))}
+          <div className="cx-drop-sep" />
+          <button role="menuitem" onClick={() => go(club.id === g.userClub ? { name: 'squad' } : { name: 'club', id: club.id })}>{club.name}</button>
+          <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>
+        </div>
+      ) : rivals.length && !all ? (
         <div className="cx-menu-pop cx-menu-clubs" role="menu">
           {rivals.map((c) => (
             <button key={c.id} role="menuitem" className={c.id === clubId ? 'on' : ''} onClick={() => go(c.id === g.userClub ? { name: 'squad' } : { name: 'club', id: c.id })}>{c.short}</button>
@@ -398,7 +408,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   return (
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg }}>
-        <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} />
+        <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />
         {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : null}
         <h2>{text}</h2>
         {action && <div className="cx-action">{action}</div>}

@@ -66,7 +66,7 @@ export function changeFormation(t: Tactic, formation: string): Tactic {
 
 /** Kan spilleren spille i dag? */
 export function available(p: Player): boolean {
-  return !p.injury && p.banned <= 0;
+  return !p.injury && p.banned <= 0 && !p.reserves;
 }
 
 /** Spillerens værdi på en plads, inkl. kondition. Bruges af AI og assistenten. */

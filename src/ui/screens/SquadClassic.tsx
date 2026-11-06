@@ -131,6 +131,7 @@ const FILTERS: [string, (p: Player, tac: Tactic) => boolean][] = [
 function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title: string } | null {
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
+  if (p.reserves) return { k: 'Res', title: t('cl.pl.inReserves') };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };

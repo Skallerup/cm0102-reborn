@@ -1,4 +1,5 @@
 
+import { authentic } from '../../game/rules';
 import { isOriginal2001 } from '../../game/rules2001';
 import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
@@ -99,8 +100,9 @@ export function Inbox() {
           ))}
         </div>
         <div className="cx-nbar">
-          <button className="cx-grey small" onClick={() => setSettings(true)}>{t('inbox.settings')}</button>
-          <button className="cx-grey small" onClick={() => act({ t: 'read', ids: 'all' })}>{t('inbox.markRead')}</button>
+          {/* ikke i CM 01/02: kun i den udvidede udgave */}
+          {!authentic() && <button className="cx-grey small" onClick={() => setSettings(true)}>{t('inbox.settings')}</button>}
+          {!authentic() && <button className="cx-grey small" onClick={() => act({ t: 'read', ids: 'all' })}>{t('inbox.markRead')}</button>}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :
             <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>

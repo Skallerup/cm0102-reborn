@@ -62,6 +62,7 @@ export type Action =
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'nickname'; pid: number; nick: string | null }
+  | { t: 'reserves'; pid: number; on: boolean }
   | { t: 'staffReport'; pid: number; staffId: number }
   | { t: 'renewLater'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
@@ -189,6 +190,14 @@ export function applyAction(a: Action): unknown {
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'nickname': return setNickname(a.pid, a.nick);
+    case 'reserves': {
+      const p = g.players[a.pid];
+      if (!p || p.club !== g.userClub) return 'error';
+      p.reserves = a.on || undefined;
+      // ud af startopstillingen og bænken, når han rykkes ned
+      if (a.on && g.tactic) { g.tactic.lineup = g.tactic.lineup.map((id) => (id === p.id ? 0 : id)); g.tactic.bench = g.tactic.bench.filter((id) => id !== p.id); }
+      return 'ok';
+    }
     case 'staffReport': return staffReport(a.pid, a.staffId);
     case 'renewLater': return offerRenewalLater(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {

@@ -548,6 +548,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     const rel = isHumanClub(buyer.id) ? undefined : defaultRelease(p, buyer);
     p.contract = { wage, expires: exp, ...(clauses ?? {}), ...(rel ? { release: rel } : {}) };
+    if (clauses?.signOn) { buyer.balance -= clauses.signOn; buyer.finance.other += clauses.signOn; }
     p.addOn = undefined;
     if (seller && o.sellOn) p.sellOn = { club: seller.id, pct: o.sellOn, base: o.fee };
     if (seller && o.addOn) p.addOn = { club: seller.id, payer: buyer.id, fee: o.addOn, left: ADDON_APPS };
@@ -705,11 +706,14 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   // en spiller, der har sagt fra, forhandler ikke, før han er overtalt – og en tøvende vil have mere
   const r = p.renewal;
   if (r && !r.convinced && r.stance === 'refuses') return 'refused';
-  const demand = renewalDemand(p, club);
+  const base = renewalDemand(p, club);
+  // ældre spillere vil også have en underskriftsbonus – uden den skal lønnen være højere
+  const demand = base + signOnDemand(p, base, false) / (52 * Math.max(1, years));
   if (currentBill(club.id) - (p.contract?.wage ?? 0) + wage > club.wageBudget) return 'budget';
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
+    if (cl.signOn) { club.balance -= cl.signOn; club.finance.other += cl.signOn; }
     const hadDemand = !!p.demand;
     p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
@@ -1763,4 +1767,11 @@ export function answerPendingRenewals() {
       addNews({ cat: 'contract', key: res === 'budget' ? 'contract.offerBudget' : 'contract.offerRejected', params: { player: pname(p), wage: renewalDemand(p, club), years: preferredYears(p) }, link: { kind: 'player', id: p.id } });
     });
   }
+}
+
+/** CM 01/02: underskriftsbonussen spilleren beder om – ældre spillere og frie transfers vil have mere (*estimeret*) */
+export function signOnDemand(p: Player, wage: number, free: boolean): number {
+  const age = ageOn(p.dob, gs().date);
+  const weeks = free ? 14 : age >= 30 ? 10 : 0;
+  return Math.round(wage * weeks / 5_000) * 5_000;
 }

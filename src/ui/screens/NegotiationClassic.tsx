@@ -3,10 +3,12 @@
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { gs } from '../../game/state';
-import { preferredYears, renewalDemand, wageDemand } from '../../game/transfers';
+import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
 import type { ContractClauses, TransferOffer } from '../../game/types';
 import { money, t } from '../../i18n';
 import { CxDrop, titleColors, useClassicDialog } from '../classic';
+import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
+import { ageOn } from '../../game/dates';
 
 type Tab = 'basic' | 'bonuses' | 'clauses';
 const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
@@ -42,9 +44,14 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const demand = r50(offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
   const wantYears = offer?.demand?.years ?? preferredYears(p);
   const [tab, setTab] = useState<Tab>('basic');
+  // egen spiller (CM 01/02): først "Set Role At Club" – status i truppen og jobbeskrivelse
+  const [roleStep, setRoleStep] = useState(!offer);
+  const [status, setStatus] = useState<SquadStatus | undefined>(p.squadStatus);
+  const [job, setJob] = useState<'player' | 'assistant' | 'coach'>(p.jobRole ?? 'player');
   const [wage, setWage] = useState(demand);
   const [years, setYears] = useState(wantYears);
-  const [cl, setCl] = useState<ContractClauses>({});
+  const signReq = signOnDemand(p, demand, !!offer && (!offer.fee || !!offer.preContract));
+  const [cl, setCl] = useState<ContractClauses>(signReq ? { signOn: signReq } : {});
   const [ask, setAsk] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const name = `${p.first} ${p.last}`.trim();
@@ -76,6 +83,30 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
     <Row key={k} label={t(`cl.neg.${k}`)} value={cl[k] ?? Math.max(10, Math.round(base / 10) * 10)} show={money} options={bonusOpts(base)}
       on={!!cl[k]} onToggle={() => toggle(k, Math.max(10, Math.round(base / 10) * 10))} onSet={(v) => set(k, v)} reset={Math.max(10, Math.round(base / 10) * 10)} />
   );
+  if (roleStep) {
+    const exp = expectedStatus(p, Object.values(g.players).filter((x) => x.club === p.club), g.date);
+    const age = ageOn(p.dob, g.date);
+    const careerOk = age >= 33; // *estimeret*: yngre spillere vil ikke stoppe karrieren
+    return (
+      <div className="cx-dlg">
+        <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{name}</h2></div>
+        <div className="cx-subtitle">{t('cl.role.title')}</div>
+        <div className="cx-dlg-body">
+          <p className="cx-ts-intro">{t('cl.ts.squad')}</p>
+          {SQUAD_STATUSES.filter((x) => x !== 'surplus').map((x) => {
+            const ok = statusAllowed(p, x, g.date);
+            return <button key={x} className={`cx-opt ${status === x ? 'sel' : ok ? 'on' : ''}`} disabled={!ok} onClick={() => setStatus(x)}>{x === exp ? '* ' : ok ? '' : '+ '}{t(`cl.ts.s.${x}`)}</button>;
+          })}
+          <p className="cx-ts-intro">{t('cl.role.job')}</p>
+          {(['player', 'assistant', 'coach'] as const).map((j) => <button key={j} className={`cx-opt ${job === j ? 'sel' : 'on'}`} disabled={j !== 'player' && !careerOk} onClick={() => setJob(j)}>{j !== 'player' && !careerOk ? '+ ' : ''}{t(`cl.role.${j}`)}</button>)}
+          <p className="cx-ts-intro">* {t('cl.role.expected')}</p>
+          {!careerOk && <p className="cx-ts-intro">+ {t('cl.role.notEnding')}</p>}
+        </div>
+        <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.back')}</button>
+          <button className="primary" onClick={() => { act({ t: 'squadStatus', pid, status: status ?? null, loanListed: !!p.loanListed }); p.jobRole = job; setRoleStep(false); }}>{t('cl.ts.set')}</button></div>
+      </div>
+    );
+  }
   return (
     <div className="cx-dlg">
       <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{name}{p.club ? ` (${g.clubs[p.club]?.short})` : ''}</h2></div>
@@ -91,9 +122,10 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
             {msg && <p className="cx-ts-intro cx-neg-msg">{msg}</p>}
             {tab === 'basic' && (
               <>
-                <p className="cx-ts-intro">{t('cl.neg.wants', { player: name, wage: money(demand), until: end(wantYears) })}</p>
+                <p className="cx-ts-intro">{t(signReq ? 'cl.neg.wantsSign' : 'cl.neg.wants', { player: name, wage: money(demand), until: end(wantYears), fee: money(signReq) })}</p>
                 <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
                 <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
+                <Row label={t('cl.neg.signOn')} value={cl.signOn ?? 0} show={money} options={[...new Set([0, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2].map((f) => Math.round(Math.max(signReq, demand * 10) * f / 5000) * 5000))]} onSet={(v) => set('signOn', v)} reset={signReq} />
                 <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={wantYears} />
                 <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span />
                   <button className="cx-neg-static cx-neg-type" onClick={() => setCl((c) => ({ ...c, partTime: !c.partTime || undefined }))}>{t(cl.partTime ? 'cl.neg.partTime' : 'cl.neg.fullTime')}</button></div>

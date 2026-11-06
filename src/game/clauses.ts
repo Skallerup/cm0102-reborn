@@ -39,6 +39,8 @@ function expectedGoals(p: Player): number {
  */
 export function clauseWorth(p: Player, wage: number, years: number, c: ContractClauses, rank: number): number {
   let w = 0;
+  // underskriftsbonus: værd som løn fordelt over kontraktens uger
+  if (c.signOn) w += c.signOn / (52 * Math.max(1, years));
   const v = Math.max(50_000 * econ(), p.value);
   if (c.release) {
     // spillere kan lide en frikøbsklausul – jo lavere, jo mere frihed
@@ -67,6 +69,7 @@ export function cleanClauses(c?: ContractClauses): ContractClauses {
   const out: ContractClauses = {};
   if (!c) return out;
   if (c.partTime) out.partTime = true;
+  if (c.signOn && c.signOn > 0) out.signOn = roundFee(c.signOn);
   if (c.release && c.release > 0) out.release = roundFee(c.release);
   if (c.wageRise && c.wageRise > 0) out.wageRise = Math.min(20, Math.round(c.wageRise));
   if (c.appBonus && c.appBonus > 0) out.appBonus = round(c.appBonus, 50);

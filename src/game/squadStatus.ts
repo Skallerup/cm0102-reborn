@@ -14,3 +14,14 @@ export function statusAllowed(p: Player, s: SquadStatus, date: string): boolean 
   if (s === 'prospect' || s === 'young') return ageOn(p.dob, date) <= 21;
   return true;
 }
+
+/** Hvad spilleren selv forventer (CM 01/02: "* Expected by the player") – efter hans plads i truppen målt på evne */
+export function expectedStatus(p: Player, squadPlayers: Player[], date: string): SquadStatus {
+  const age = ageOn(p.dob, date);
+  const rank = squadPlayers.filter((x) => x.id !== p.id && x.ca > p.ca).length;
+  if (rank < 3) return 'key';
+  if (rank < 11) return 'first';
+  if (age <= 21) return p.pa >= 150 ? 'prospect' : 'young';
+  if (rank < 16) return 'rotation';
+  return 'backup';
+}

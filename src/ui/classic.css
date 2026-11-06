@@ -849,3 +849,5 @@
 .cx-mt-tibox .cx-opt { margin-left: 40px; }
 @media (max-width: 760px) { .cx-ti-row2 { grid-template-columns: 1fr 40px 1fr 40px; margin-left: 0; } }
 .cm-agg { position: absolute; right: 110px; bottom: 4px; font-size: 13px; font-weight: 800; color: inherit; opacity: 0.9; } .cm-team.away { position: relative; }
+.cx-menu-pop.cx-menu-clubs { max-height: 80vh; overflow-y: auto; }
+:root[data-skin='retro'] textarea.cx-note { height: 220px; text-align: left; padding: 10px; font-size: 18px; resize: vertical; }
