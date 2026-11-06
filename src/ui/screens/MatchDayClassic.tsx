@@ -22,7 +22,9 @@ export function MatchDay({ id }: { id: number }) {
   function isMine(f: Fixture) { return f.home === g.userClub || f.away === g.userClub; }
   const stages = [...new Set(list.map((f) => stageLabel(f)))];
   // efter kampene (CM 01/02 "Evening Results"): ligaens forkortelse ved hver klub i en ligakamp, ellers landet
-  const played = list.length > 0 && list.every((f) => f.result);
+  // alle kampe spilles på samme tid: før ens egen kamp er spillet, vises de andre resultater ikke
+  const before = !!g.pendingFixture && mine?.id === g.pendingFixture && !mine.result;
+  const played = !before && list.length > 0 && list.every((f) => f.result);
   const abbr = (lg?: string) => (lg ? (compName(g.comps[lg]?.name) ?? '').split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w[0] ?? '')).join('').toUpperCase().slice(0, 3) : '');
   const code = (club: number) => (played && comp?.type !== 'league' && comp?.nation !== -1 ? abbr(g.clubs[club]?.league) : g.nations[g.clubs[club]?.nation]?.code ?? '');
   /** a = videre på udebanemål, p = videre efter straffespark (står ved vinderen) */
@@ -63,7 +65,7 @@ export function MatchDay({ id }: { id: number }) {
             <div key={f.id} className={`cx-md-row ${isMine(f) ? 'mine' : ''}`}>
               <span className="cx-md-code">{code(f.home)}</span>
               <span className="cx-md-home">{name(f.home)}</span>
-              {f.result ? <span className="cx-md-res"><span className="cx-md-mark">{mark(f, 0)}</span>{f.result.hg}:{f.result.ag}<span className="cx-md-mark">{mark(f, 1)}</span></span> : <span className="cx-md-v">v</span>}
+              {f.result && !before ? <span className="cx-md-res"><span className="cx-md-mark">{mark(f, 0)}</span>{f.result.hg}:{f.result.ag}<span className="cx-md-mark">{mark(f, 1)}</span></span> : <span className="cx-md-v">v</span>}
               <span className="cx-md-away">{name(f.away)}</span>
               <span className="cx-md-code">{code(f.away)}</span>
             </div>

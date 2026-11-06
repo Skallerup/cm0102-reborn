@@ -1,4 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { estimateGate } from '../../game/finance';
+import { FORMATIONS, changeFormation } from '../../game/tactics';
+import type { DropItem } from '../classic';
 import { askConfirm } from '../confirm';
 import { ZONES } from '../../game/engine/match';
 import { opponentReport } from '../../game/analysis';
@@ -10,14 +13,14 @@ import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
-import type { Fixture, MatchReport, MatchStatsSide, OppInstructions, OppKind, PlayerMatchLine } from '../../game/types';
+import type { Fixture, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine } from '../../game/types';
 import { compName, dateFmt, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { isRetro } from '../theme';
-import { useClassicNext, useClassicMatchSide, titleColors, ClassicSub } from '../classic';
+import { useClassicNext, useClassicMatchSide, titleColors, ClassicSub, CxDrop } from '../classic';
 import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
 import { stadiumBackgrounds } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
@@ -74,7 +77,7 @@ export function statColors(home: number, away: number, me: number): [string, str
   return me === 0 ? [own, pick] : [pick, own];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number] } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -220,7 +223,7 @@ function lastLines<T>(lines: T[], n: number): [T, number][] {
 }
 
 /** CM-stil: holdbjælker i holdfarverne med stor score og minuttet til venstre */
-function CmScoreboard({ home, away, hg, ag, minute, colors }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string] }) {
+function CmScoreboard({ home, away, hg, ag, minute, colors, agg }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string }) {
   const g = gs();
   return (
     <div className="cm-board">
@@ -232,6 +235,7 @@ function CmScoreboard({ home, away, hg, ag, minute, colors }: { home: number; aw
       <div className="cm-team away" style={{ background: colors[2], color: colors[3] }}>
         <span className="cm-score">{ag}</span>
         <span className="cm-name"><span className="name-long">{g.clubs[away]?.name}</span><span className="name-short">{g.clubs[away]?.short}</span><Crest id={away} size={30} /></span>
+        {agg && <span className="cm-agg">{agg}</span>}
       </div>
     </div>
   );
@@ -277,7 +281,7 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootou
           <span style={{ width: `${100 - home}%`, background: colors[2], color: colors[3] }}>{100 - home}%</span>
         </div>
       </div>
-      <div className="cx-mo-foot"><span>{t('ref.label')} – {refereeFor(f).name}</span><span>{t('match.weather')} – {t(`wx.${w}`)}</span></div>
+      <div className="cx-mo-foot"><span>{t('ref.label')} – {refereeFor(f).name}</span><span className="c-cyan">{t('cl.mt.att')} – {(f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance).toLocaleString()}</span><span>{t('match.weather')} – {t(`wx.${w}`)}</span></div>
     </div>
   );
 }
@@ -448,6 +452,9 @@ function LiveMatch({ id }: { id: number }) {
   // klassisk (CM 01/02): kampen venter på Kick Off Match, knapperne sidder i sidebjælken
   const classic = isRetro() && !h2h;
   const waiting = classic && !L.kicked && sim.minute === 0 && !sim.finished;
+  // klassisk taktik: ændringer samles i en kladde og gælder ved Ok (Cancel = glem dem)
+  const [draft, setDraft] = useState<Tactic | null>(null);
+  if (!L.baseTactic) L.baseTactic = structuredClone(sim.live(me).tactic);
   // klassisk tema: Match Overview (tekstkommentar som i CM 01/02) som standard
   const [tab, setTabState] = useState(() => {
     try { const v = localStorage.getItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view'); return v === 'commentary' || v === '2d' || (v === 'overview' && isRetro()) ? v : isRetro() ? 'overview' : '2d'; } catch { return isRetro() ? 'overview' : '2d'; }
@@ -658,8 +665,9 @@ function LiveMatch({ id }: { id: number }) {
   useEffect(() => {
     if (h2h) return; // fast tempo – styres ovenfor
     if (paused || report || hl || waiting) return;
-    const ms = Math.max(30, g.options.matchSpeed / speed);
-    const h = setInterval(() => advance(speed >= 8 ? 40 : 12), ms);
+    // klassisk: straffesparkskonkurrencen vises langsomt, spark for spark
+    const ms = classic && sim.shootout ? Math.max(900, 2200 / Math.sqrt(speed)) : Math.max(30, g.options.matchSpeed / speed);
+    const h = setInterval(() => advance(speed >= 8 && !(classic && sim.shootout) ? 40 : 12), ms);
     return () => clearInterval(h);
   });
 
@@ -764,12 +772,15 @@ function LiveMatch({ id }: { id: number }) {
   const photo = useStadiumPhoto(f);
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report && !classic ? t('match.continue') : null, done);
-  useClassicMatchSide(classic ? { minute: waiting ? '0' : String(minute), kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+  const editing = classic && tab === 'tactics' && !report;
+  useClassicMatchSide(classic ? { minute: editing || (paused && !waiting) ? t('cl.mt.paused') : waiting ? '0' : String(minute), editing, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
     kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
     pause: () => setPaused(!paused),
-    tactics: (side) => { if (!report) setPaused(true); setTab(side === me ? 'tactics' : 'oppTactics'); },
+    tactics: (side) => { if (!report) setPaused(true); if (tab !== 'tactics' && tab !== 'oppTactics') L.prevTab = tab; setDraft(null); setTab(side === me ? 'tactics' : 'oppTactics'); },
     speed: setSpeed,
     cont: () => done(),
+    ok: () => { if (draft) sim.setTactic(me, draft); setDraft(null); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
+    cancel: () => { setDraft(null); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); },
   });
   // advar mod at genindlæse/lukke midt i kampen
   useEffect(() => {
@@ -798,7 +809,8 @@ function LiveMatch({ id }: { id: number }) {
       </Head>}
       {/* klassisk: taktikskærmen fylder hele siden (som i CM 01/02) */}
       {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <div className={photo ? 'cm-stage' : undefined} style={photo ? ({ '--stadium': `url("${photo}")` } as CSSProperties) : undefined}>
-        <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
+        <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')}
+          agg={aggText(f, st[0].goals, st[1].goals)} />
         {photo && <div className="cm-stage-venue">{g.clubs[f.home]?.stadium}</div>}
       </div>}
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
@@ -899,7 +911,7 @@ function LiveMatch({ id }: { id: number }) {
       {!report && !classic && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       {!classic && <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>}
       {classic && tab === 'tactics' && !report && (
-        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} editable
+        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} editable draft={draft} setDraft={setDraft} base={L.baseTactic}
           onSub={(out, inn) => {
             const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1);
             // CM 01/02: "19 Yorke has been brought on to replace 10 van Nistelrooy. Return to the match ?"
@@ -912,8 +924,8 @@ function LiveMatch({ id }: { id: number }) {
       {tab === 'tactics' && !report && !classic && (
         <SubsPanel sim={sim} me={me} live={myLive} onDone={(ok) => { setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
       )}
-      {tab === 'tactics' && !report && (
-        <TacticEditor key={classic ? 'cx' : 'm'} tactic={myLive.tactic} players={squad(g.userClub).filter((p) => myLive.on.some((s) => s.id === p.id && !s.off) || myLive.bench.includes(p.id))} matchMode
+      {tab === 'tactics' && !report && !classic && (
+        <TacticEditor key="m" tactic={myLive.tactic} players={squad(g.userClub).filter((p) => myLive.on.some((s) => s.id === p.id && !s.off) || myLive.bench.includes(p.id))} matchMode
           cond={Object.fromEntries(myLive.on.map((s) => [s.id, s.cond]))}
           onChange={(tac) => { sim.setTactic(me, tac); pull(); force((x) => x + 1); }}
           onSub={(out, inn) => { const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
@@ -1117,18 +1129,40 @@ export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport[
   );
 }
 
+type InstrKey = 'runs' | 'longShots' | 'crossing' | 'passing' | 'tackling' | 'closingDown' | 'runWithBall' | 'throughBalls' | 'tightMarking' | 'freeRole' | 'holdUp' | 'setPieces';
+/** View-menuens kolonner (CM 01/02): Condition/Rating eller én spillerinstruktion – klik på værdien skifter den */
+const VIEW_COLS: { k: InstrKey; n: number }[] = [
+  { k: 'passing', n: 3 }, { k: 'tackling', n: 3 }, { k: 'closingDown', n: 3 }, { k: 'runs', n: 3 }, { k: 'runWithBall', n: 2 }, { k: 'longShots', n: 3 },
+  { k: 'throughBalls', n: 2 }, { k: 'crossing', n: 3 }, { k: 'tightMarking', n: 2 }, { k: 'freeRole', n: 2 }, { k: 'holdUp', n: 2 }, { k: 'setPieces', n: 3 },
+];
+const instrVal = (tac: Tactic, slot: number, k: InstrKey): number => {
+  const v = (tac.individual[slot] as unknown as Record<string, number | boolean | undefined>)?.[k];
+  if (typeof v === 'boolean') return v ? 1 : 0;
+  if (v === undefined) return k === 'passing' ? tac.team.passing : k === 'tackling' ? tac.team.tackling : k === 'closingDown' ? tac.team.closingDown : 1;
+  return v;
+};
+const instrLabel = (k: InstrKey, v: number, n: number) => (n === 2 ? t(v ? 'common.yes' : 'common.no') : t(`cl.mt.lvl.${k === 'passing' ? 'p' : k === 'tackling' ? 't' : 'g'}${v}`));
+
 /**
- * Et holds taktik under kampen som i CM 01/02: titel i holdets farver, listen (nr., navn, "on"/"sub" med minut, capt,
- * position, kondition, karakter, mål) og banen. Eget hold: træk en udskifter ind på en spiller på banen (eller omvendt).
+ * Et holds taktik under kampen som i CM 01/02: titel i holdets farver, View (kolonner), Tactics-menuen (holdinstruktioner,
+ * straffesparksskytter, formationer, gem/hent/slet, Set To Default), listen og banen. Eget hold: ændringer samles i en kladde
+ * (draft) og gælder først ved Ok i sidebjælken; træk en udskifter ind på en spiller for at skifte (sker med det samme).
+ * Højreklik på en spiller på banen: løb frem (ofte/blandet/sjældent).
  */
-function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void }) {
+function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }: {
+  sim: MatchSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void;
+  draft?: Tactic | null; setDraft?: (t: Tactic) => void; base?: Tactic;
+}) {
   const g = useGame()!;
   const lv = sim.live(side);
   const cid = sim.teams[side].club;
   const col = titleColors(cid);
   const [drag, setDrag] = useState<number | null>(null);
-  const [ti, setTi] = useState(false);
-  const tac = lv.tactic;
+  const [pane, setPane] = useState<'list' | 'ti' | 'pens'>('list');
+  const [view, setView] = useState<'cond' | InstrKey>('cond');
+  const [ctx, setCtx] = useState<{ slot: number; x: number; y: number } | null>(null);
+  const tac = (editable && draft) || lv.tactic;
+  const edit = (f: (t: Tactic) => Tactic) => { if (editable && setDraft) setDraft(f(structuredClone(tac))); };
   const on = lv.on.filter((s) => !s.off);
   const pl = (id: number) => g.players[id];
   const drop = (target: number) => {
@@ -1138,10 +1172,11 @@ function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side:
     else if (!a && b && lv.bench.includes(drag)) onSub?.(target, drag);
     setDrag(null);
   };
-  type Row = { id: number; num?: number; note?: string; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean };
+  type Row = { id: number; num?: number; note?: string; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
   const rows: Row[] = [
-    ...on.map((s) => ({ id: s.id, num: s.num, note: s.enteredAt ? `on ${s.enteredAt}` : undefined, cond: s.cond, rating: s.rating, goals: s.goals, dim: false, live: true })),
-    ...lv.gone.map((s) => ({ id: s.id, num: s.num, note: 'sub', rating: s.rating, goals: s.goals, dim: true, live: false })),
+    // skadede spillere står grå med "inj 88" (som i CM 01/02)
+    ...on.map((s) => { const inj = s.injured ? sim.events.find((e) => e.k === 'injury' && e.p === s.id)?.m : undefined; return { id: s.id, num: s.num, note: s.injured ? `inj ${inj ?? ''}`.trim() : s.enteredAt ? `on ${s.enteredAt}` : undefined, cond: s.cond, rating: s.rating, goals: s.goals, dim: !!s.injured, live: true, slot: s.slot }; }),
+    ...lv.gone.map((s) => ({ id: s.id, num: s.num, note: `sub ${sim.events.find((e) => e.k === 'sub' && e.p2 === s.id)?.m ?? ''}`.trim(), rating: s.rating, goals: s.goals, dim: true, live: false })),
     ...lv.bench.map((id) => ({ id, num: pl(id)?.number, dim: true, live: false })),
   ];
   const dnd = (id: number, canDrag: boolean) => ({
@@ -1151,20 +1186,67 @@ function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side:
     onDragOver: (e: React.DragEvent) => { if (editable) e.preventDefault(); },
     onDrop: (e: React.DragEvent) => { e.preventDefault(); drop(id); },
   });
+  const vc = VIEW_COLS.find((c) => c.k === view);
+  const cycle = (slot: number) => vc && edit((t2) => {
+    const cur = instrVal(t2, slot, vc.k);
+    const next = (cur + 1) % vc.n;
+    (t2.individual[slot] as unknown as Record<string, number | boolean>)[vc.k] = vc.n === 2 ? next === 1 : next;
+    return t2;
+  });
   const TI = tac.team;
+  const saved = g.savedTactics;
+  const tacticsMenu: DropItem[] = [
+    { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setPane(pane === 'ti' ? 'list' : 'ti') },
+    { key: 'pens', label: t('cl.mt.penTakers'), onClick: () => setPane(pane === 'pens' ? 'list' : 'pens') },
+    ...(editable ? [
+      { key: 'sep1', sep: true as const },
+      { key: 'form', label: t('cl.mt.formation'), sub: FORMATIONS.map((fm) => ({ key: fm, label: fm, checked: tac.formation === fm, onClick: () => edit((t2) => ({ ...changeFormation(t2, fm), lineup: t2.lineup, bench: t2.bench })) })) },
+      { key: 'load', label: t('cl.mt.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => edit((t2) => ({ ...structuredClone(s2), lineup: t2.lineup, bench: t2.bench, captain: t2.captain })) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
+      { key: 'save', label: t('cl.mt.save'), onClick: () => act({ t: 'savedTactics', list: [...saved.filter((x) => x.formation !== tac.formation || x.team.mentality !== tac.team.mentality), structuredClone(tac)].slice(-8) }) },
+      { key: 'del', label: t('cl.mt.delete'), sub: saved.length ? saved.map((s2, i2) => ({ key: `d${i2}`, label: `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => act({ t: 'savedTactics', list: saved.filter((_, k) => k !== i2) }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
+      { key: 'sep2', sep: true as const },
+      { key: 'def', label: t('cl.mt.default'), disabled: !base, onClick: () => base && setDraft?.(structuredClone({ ...base, lineup: tac.lineup, bench: tac.bench })) },
+    ] : []),
+  ];
+  const takers: ('penalties' | 'freeKicks' | 'corners' | 'captain')[] = ['captain', 'penalties', 'freeKicks', 'corners'];
   return (
-    <div className="cx-mt">
+    <div className="cx-mt" onClick={() => setCtx(null)}>
       <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
-      <div className="cx-tools cx-tools-inline"><button className="cx-greybtn wide" onClick={() => setTi(!ti)}>{t('cl.mt.teamInstr')}</button>
-        {editable && <span className="cx-mt-hint">{t('cl.mt.dragHint', { n: lv.subsLeft })}</span>}</div>
-      {ti && (
-        <div className="cx-kv cx-mt-ti">
-          <span>{t('cl.mt.ti.mentality')}</span><span>{t(`cl.mt.ti.m${TI.mentality}`)}</span>
-          <span>{t('cl.mt.ti.passing')}</span><span>{t(`cl.mt.ti.p${TI.passing}`)}</span>
-          <span>{t('cl.mt.ti.tackling')}</span><span>{t(`cl.mt.ti.t${TI.tackling}`)}</span>
-          <span>{t('cl.mt.ti.pressing')}</span><span>{t(TI.closingDown >= 2 ? 'common.yes' : 'common.no')}</span>
-          <span>{t('cl.mt.ti.offside')}</span><span>{t(TI.offside ? 'common.yes' : 'common.no')}</span>
-          <span>{t('cl.mt.ti.counter')}</span><span>{t(TI.counter ? 'common.yes' : 'common.no')}</span>
+      <div className="cx-tools cx-tools-inline">
+        <CxDrop className="cx-green" label={`${t('cl.sq.view')}: ${view === 'cond' ? t('cl.mt.condRating') : t(`pi.${view}`)}`} fixed
+          items={[{ key: 'cond', label: t('cl.mt.condRating'), checked: view === 'cond', onClick: () => setView('cond') }, ...VIEW_COLS.map((c) => ({ key: c.k, label: t(`pi.${c.k}`), checked: view === c.k, onClick: () => setView(c.k) }))]} />
+        <CxDrop className="cx-green" label={t('cl.mt.tacMenu')} fixed items={tacticsMenu} />
+        {editable && <span className="cx-mt-hint">{t('cl.mt.dragHint', { n: lv.subsLeft })}</span>}
+      </div>
+      {pane === 'ti' && (
+        <div className="cx-ts-body cx-mt-tibox">
+          <div className="cx-subtitle small">{t('cl.mt.teamInstr')}</div>
+          {([
+            [t('cl.mt.ti.mentality'), t(`cl.mt.ti.m${TI.mentality}`), 'mentality', 5],
+            [t('cl.mt.ti.passing'), t(`cl.mt.ti.p${TI.passing}`), 'passing', 3],
+            [t('cl.mt.ti.tempo'), t(`cl.mt.lvl.g${TI.tempo}`), 'tempo', 3],
+            [t('cl.mt.ti.width'), t(`cl.mt.lvl.w${TI.width}`), 'width', 3],
+            [t('cl.mt.ti.tackling'), t(`cl.mt.ti.t${TI.tackling}`), 'tackling', 3],
+            [t('cl.mt.ti.pressing'), t(`cl.mt.lvl.g${TI.closingDown}`), 'closingDown', 3],
+          ] as [string, string, 'mentality' | 'passing' | 'tempo' | 'width' | 'tackling' | 'closingDown', number][]).map(([l, v, k, n]) => (
+            <div key={k} className="cx-ti-row2"><span className="cx-ts-label">{l}</span>
+              <button className="cx-pm" disabled={!editable || TI[k] <= 0} onClick={() => edit((t2) => { t2.team[k] = Math.max(0, t2.team[k] - 1); return t2; })}>−</button>
+              <span className="cx-ts-val wide2">{v}</span>
+              <button className="cx-pm" disabled={!editable || TI[k] >= n - 1} onClick={() => edit((t2) => { t2.team[k] = Math.min(n - 1, t2.team[k] + 1); return t2; })}>+</button></div>
+          ))}
+          {(['offside', 'counter'] as const).map((k) => (
+            <button key={k} className={`cx-opt ${TI[k] ? 'on' : ''}`} disabled={!editable} onClick={() => edit((t2) => { t2.team[k] = !t2.team[k]; return t2; })}>{t(`cl.mt.ti.${k}`)}</button>
+          ))}
+        </div>
+      )}
+      {pane === 'pens' && (
+        <div className="cx-mt-pens">
+          <div className="cx-subtitle small">{t('cl.mt.penTakers')}</div>
+          <table className="cx-tbl"><thead><tr><th>{t('col.name')}</th>{takers.map((k) => <th key={k} className="c-num">{t(`tac.${k}`)}</th>)}</tr></thead>
+            <tbody>{on.map((s) => (
+              <tr key={s.id}><td className="c-name">{pl(s.id) ? `${pl(s.id).first} ${pl(s.id).last}`.trim() : '?'}</td>
+                {takers.map((k) => <td key={k} className="c-num">{editable ? <button className={`cx-opt ${tac[k] === s.id ? 'sel' : ''} cx-ti-btn`} onClick={() => edit((t2) => ({ ...t2, [k]: s.id }))}>{tac[k] === s.id ? '●' : '○'}</button> : tac[k] === s.id ? '●' : ''}</td>)}</tr>
+            ))}</tbody></table>
         </div>
       )}
       <div className="cx-mt-cols">
@@ -1172,15 +1254,17 @@ function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side:
           <div className="cx-mt-form">{tac.formation}</div>
           <table className="cx-tbl"><tbody>{rows.map((r) => {
             const p = pl(r.id);
+            const iv = vc && r.slot !== undefined ? instrVal(tac, r.slot, vc.k) : undefined;
             return (
               <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${drag !== null && r.id !== drag ? 'drop' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
                 <td className="btn-col"><span className="cx-rowbtn narrow">{r.num ?? ''}</span></td>
                 <td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td>
                 <td className="c-pos">{r.note ?? (tac.captain === r.id && r.live ? 'capt' : '')}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
-                <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
-                <td className="c-num c-cyan">{r.rating !== undefined ? Math.round(r.rating) : ''}</td>
-                <td className="c-num">{r.goals ? r.goals : ''}</td>
+                {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={() => r.slot !== undefined && cycle(r.slot)}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
+                  <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
+                  <td className="c-num c-cyan">{r.rating !== undefined ? Math.round(r.rating) : ''}</td>
+                  <td className="c-num">{r.goals ? r.goals : ''}</td></>}
               </tr>
             );
           })}</tbody></table>
@@ -1193,12 +1277,16 @@ function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side:
             </g>
           </svg>
           {on.map((s) => {
-            const sl = tac.slots[s.slot];
+            const sl = tac.slots[tac.lineup.indexOf(s.id)] ?? tac.slots[s.slot];
+            const slot = tac.lineup.indexOf(s.id) >= 0 ? tac.lineup.indexOf(s.id) : s.slot;
             const p = pl(s.id);
             if (!sl) return null;
             const gk = sl.pos === 'GK';
+            const runs = instrVal(tac, slot, 'runs');
             return (
-              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}>
+              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
+                onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); setCtx({ slot, x: e.clientX, y: e.clientY }); }}>
+                {!gk && runs === 2 && <span className="cx-run-arrow">▲</span>}
                 <span className="cx-tac-dot" style={gk ? { background: '#2fae4c', color: '#fff' } : { background: col.bg, color: col.fg }}>{s.num ?? ''}</span>
                 <span className="cx-tac-nm">{p?.last ?? ''}</span>
               </div>
@@ -1206,6 +1294,12 @@ function OppTactics({ sim, side, club, editable, onSub }: { sim: MatchSim; side:
           })}
         </div>
       </div>
+      {ctx && (
+        <div className="cx-drop-pop cx-ctx" style={{ position: 'fixed', left: ctx.x, top: ctx.y }} onClick={(e) => e.stopPropagation()}>
+          <div className="cx-menu-head">{t('pi.runs')}</div>
+          {[2, 1, 0].map((v) => <button key={v} className={instrVal(tac, ctx.slot, 'runs') === v ? 'on' : ''} onClick={() => { edit((t2) => { t2.individual[ctx.slot].runs = v; return t2; }); setCtx(null); }}><span className="cx-drop-check">{instrVal(tac, ctx.slot, 'runs') === v ? '✓' : ''}</span>{t(`cl.mt.lvl.g${v}`)}</button>)}
+        </div>
+      )}
     </div>
   );
 }
@@ -1331,4 +1425,16 @@ function CxScores({ others, minute, finished, title }: { others: Fixture[]; minu
       })}</div>
     </>
   );
+}
+
+/** Samlet stilling i 2. kamp af en dobbeltkamp ("Agg 1-1" under udeholdet, som i CM 01/02) */
+function aggText(f: Fixture, hg: number, ag: number): string | undefined {
+  const g = gs();
+  if (f.leg !== 2 || f.tieId === undefined) return undefined;
+  const tie = g.comps[f.comp]?.ties.find((x) => x.id === f.tieId);
+  const first = tie?.fx.map((id) => g.fixtures[id]).find((x) => x && x.id !== f.id && x.result);
+  if (!first?.result) return undefined;
+  const h = hg + (first.home === f.home ? first.result.hg : first.result.ag);
+  const a = ag + (first.home === f.away ? first.result.hg : first.result.ag);
+  return `${t('cl.mt.agg')} ${h}-${a}`;
 }

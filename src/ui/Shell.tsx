@@ -341,12 +341,13 @@ export function Shell() {
                 <button disabled={!canBack || (ms.kicked && !ms.finished)} onClick={back} aria-label={t('cm.back')}>←</button>
                 <button disabled={!canForward || (ms.kicked && !ms.finished)} onClick={forward} aria-label={t('cm.next')}>→</button>
               </div>
-              {ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
+              {ms.editing ? <><button className="cx-sbtn cx-continue" onClick={ma.ok}>{t('common.ok')}</button><button className="cx-sbtn" onClick={ma.cancel}>{t('common.cancel')}</button></>
+                : ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
                 : <button className="cx-sbtn cx-continue" onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.resume') : t('cl.mt.pause')}</button>}
-              <button className="cx-sbtn" onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
-              <button className="cx-sbtn" onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
-              {!ms.finished && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn' }}
-                items={[1, 2, 4, 8].map((n) => ({ key: String(n), label: t(`cl.mt.speed.${n}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
+              {!ms.editing && <button className="cx-sbtn" onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>}
+              {!ms.editing && <button className="cx-sbtn" onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>}
+              {!ms.finished && !ms.editing && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn' }}
+                items={[8, 4, 2, 1, 0.6, 0.35].map((n) => ({ key: String(n), label: t(`cl.mt.sp.${String(n).replace('.', '')}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
               <div className="cx-side-grow" />
             </aside>
           );

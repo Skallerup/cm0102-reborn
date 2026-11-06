@@ -1,4 +1,5 @@
 import { LookPicker } from './LookPicker';
+import { isRetro } from './theme';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
 import { useEffect, useMemo, useState } from 'react';
@@ -248,7 +249,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   );
   const lookPicker = <LookPicker />;
   // spiltilstand: ægte CM 01/02 (kun originalens funktioner) eller udvidet (alt det ekstra) – uafhængigt af databasen
-  const modePicker = !ch && (
+  // Ægte CM 01/02 findes kun i det klassiske tema
+  const modePicker = !ch && isRetro() && (
     <Panel title={t('mode.title')}>
       <div className="db-choice">
         <button className={`db-opt ${mode === 'authentic' ? 'on' : ''}`} onClick={() => setModeState('authentic')}>
@@ -274,7 +276,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
     setBusy(online ? t('mp.creating') : t('start.creating'));
     const opts = {
       managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
-      lang: getLang(), masking, seed, challenge, mode,
+      lang: getLang(), masking, seed, challenge, mode: isRetro() ? mode : 'extended',
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }

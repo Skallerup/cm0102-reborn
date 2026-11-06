@@ -95,7 +95,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   items.push({ key: 'sep', sep: true }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
-      <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-opt' }} />
+      <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.options')} items={items} btn={{ className: 'cx-sbtn cx-gopt' }} />
       {settings && <GameSettings onClose={() => setSettings(false)} />}
       {show === 'changelog' && createPortal(<ChangelogModal onClose={() => setShow(null)} />, document.body)}
       {(show === 'bug' || show === 'suggest') && createPortal(getProfile()

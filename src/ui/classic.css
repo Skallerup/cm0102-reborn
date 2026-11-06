@@ -56,7 +56,7 @@
 .cx-sbtn:hover, .cx-arrows button:hover:not(:disabled) { background: #1c27a2; }
 .cx-sbtn.on { background: #222eae; }
 .cx-mgr { color: var(--cx-cyan); }
-.cx-opt { color: var(--cx-gold); }
+.cx-gopt { color: var(--cx-gold); }
 .cx-continue { min-height: 48px; }
 .cx-online { font-size: 11px; color: #fff; }
 .cx-side-grow { flex: 1; min-height: 8px; }
@@ -839,3 +839,13 @@
 .cx-ts-buttons.cx-three { grid-template-columns: 2fr 1fr 1fr; }
 .cx-pl-pager { text-align: right; white-space: nowrap; } .cx-pl-pager .cx-pm { min-width: 32px; height: 22px; margin-left: 2px; }
 .cx-neg-type { background: none; border: 0; cursor: pointer; padding: 0; } .cx-neg-type:hover { color: #6fe3ff; }
+.cx-ti-btn { margin: 0 !important; padding: 0 !important; font-size: inherit !important; }
+.cx-mt-pens { max-width: 760px; margin-bottom: 8px; }
+.cx-run-arrow { position: absolute; top: -16px; color: #fff; font-size: 13px; text-shadow: 1px 1px 0 #000; }
+.cx-ctx { z-index: 95; min-width: 160px; }
+.cx-mt-tibox { margin: 0 0 8px; }
+.cx-ti-row2 { display: grid; grid-template-columns: minmax(160px, 260px) 60px minmax(160px, 240px) 60px; align-items: center; gap: 6px; margin-left: 40px; }
+.cx-ts-val.wide2 { text-align: center; color: #fff; font-size: 17px; }
+.cx-mt-tibox .cx-opt { margin-left: 40px; }
+@media (max-width: 760px) { .cx-ti-row2 { grid-template-columns: 1fr 40px 1fr 40px; margin-left: 0; } }
+.cm-agg { position: absolute; right: 110px; bottom: 4px; font-size: 13px; font-weight: 800; color: inherit; opacity: 0.9; } .cm-team.away { position: relative; }
