@@ -50,6 +50,13 @@ export interface NewGameOptions {
   deadlineHours?: number;
 }
 
+/** Indtægtsniveau i den originale database (kalibreret med scripts/econ-run.ts: løn ≈ 60 % af omsætningen) */
+export let ORIGINAL_INCOME = 0.55;
+export const setOriginalIncome = (v: number) => { ORIGINAL_INCOME = v; };
+
+/** pund → spillets interne euro (samme kurs som valutavisningen i i18n) */
+const GBP = 0.86;
+
 const PALETTE = ['#c8102e', '#003399', '#ffffff', '#111111', '#ffd200', '#00843d', '#6cabdd', '#7a263a', '#f68b1f', '#5c2d91', '#0057b8', '#e30613'];
 
 export const START_DATE = (season: number) => `${season}-07-01`;
@@ -132,6 +139,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // Spillere (trøjenumrene uddeles samlet, når trupperne er fyldt op)
   setAutoNumbers(false);
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
+  // originalens ugentlige lønninger (£, staff.dat 78) – kun den originale database bruger dem (2001-økonomien)
+  const dbWage = new Map<number, number>();
+  if (g.econ && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP));
   for (const r of world.players) {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;
@@ -192,6 +202,18 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     for (const c of Object.values(g.clubs)) {
       const sq = squad(c.id);
       if (sq.length < 11) continue;
+      const wealth = rulesFor(c.league, 20).wealth;
+      // med originalens lønninger: forholdet mellem klubbens rigtige lønsum i 2001 og den lønsum, nutidens
+      // formel ville give – så indtægterne passer til de lønninger, originalen faktisk betaler
+      const paid = sq.filter((p) => dbWage.has(p.id));
+      if (paid.length >= 11) {
+        const real = paid.reduce((x, p) => x + dbWage.get(p.id)!, 0);
+        setEconomy(null);
+        const now = paid.reduce((x, p) => x + wageFor(valueFromCA(p.ca, p.pa, ageOn(p.dob, date)), wealth), 0);
+        setEconomy(g.econ);
+        (per[c.league] ??= []).push(real / Math.max(1, now));
+        continue;
+      }
       const old = top(sq.map((p) => p.value));
       setEconomy(null);
       const now = top(sq.map((p) => valueFromCA(p.ca, p.pa, ageOn(p.dob, date))));
@@ -202,6 +224,42 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     for (const [l, xs] of Object.entries(per)) g.econ.leagues[l] = Math.round(med(xs) * 1000) / 1000;
     const tops = world.leagues.filter((l) => l.tier === 1 && g.econ!.leagues[l.id]).map((l) => g.econ!.leagues[l.id]);
     if (tops.length) g.econ.k = Math.round(med(tops) * 1000) / 1000;
+    // indtægterne i forhold til lønningerne (originalens lønninger er sat ud fra databasen, se econ.ts)
+    g.econ.income = ORIGINAL_INCOME;
+    // nye kontrakter: lønformlen kalibreret til originalens egne lønninger (median af rigtig løn / formel)
+    if (dbWage.size) {
+      setEconomy(g.econ);
+      // log(løn) = a[liga] + b·log(værdi): fælles hældning b (inden for ligaerne), niveau a pr. liga
+      // [log værdi, klubomdømme, log løn] pr. liga; hældningerne b og c findes inden for ligaerne (mindste kvadrater)
+      const pts: Record<string, [number, number, number][]> = {};
+      for (const c of Object.values(g.clubs)) for (const p of squad(c.id)) {
+        if (dbWage.has(p.id) && p.ca >= 80 && p.value > 0) (pts[c.league] ??= []).push([Math.log(Math.max(20_000, p.value)), cm?.clubRep[c.id] ?? c.rep, Math.log(dbWage.get(p.id)!)]);
+      }
+      let s11 = 0, s12 = 0, s22 = 0, s1y = 0, s2y = 0;
+      const ok = Object.keys(pts).filter((l) => pts[l].length >= 15);
+      for (const l of ok) {
+        const xs = pts[l], n = xs.length;
+        const m = [0, 1, 2].map((k) => xs.reduce((a, v) => a + v[k], 0) / n);
+        for (const v of xs) {
+          const x1 = v[0] - m[0], x2 = v[1] - m[1], y = v[2] - m[2];
+          s11 += x1 * x1; s12 += x1 * x2; s22 += x2 * x2; s1y += x1 * y; s2y += x2 * y;
+        }
+      }
+      const det = s11 * s22 - s12 * s12;
+      if (ok.length && det > 0) {
+        const b = Math.round(((s1y * s22 - s2y * s12) / det) * 1000) / 1000;
+        const cr = Math.round(((s2y * s11 - s1y * s12) / det) * 10000) / 10000;
+        const a: Record<string, number> = {}, rep: Record<string, number> = {};
+        // niveauet rammer ligaens samlede lønsum (ikke snittet af logaritmerne, der ville ramme stjernerne for lavt)
+        for (const l of ok) {
+          const xs = pts[l];
+          a[l] = Math.round(Math.log(xs.reduce((s2, v) => s2 + Math.exp(v[2]), 0) / xs.reduce((s2, v) => s2 + Math.exp(b * v[0] + cr * v[1]), 0)) * 1000) / 1000;
+          rep[l] = Math.round(xs.reduce((s2, v) => s2 + v[1], 0) / xs.length);
+        }
+        const firsts = world.leagues.filter((l) => l.tier === 1 && a[l.id] !== undefined).map((l) => a[l.id]);
+        g.econ.wageFit = { b, c: cr, a, rep, a0: firsts.length ? med(firsts) : med(Object.values(a)) };
+      }
+    }
     setEconomy(g.econ);
   }
 
@@ -215,7 +273,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (lg?.tier === 2 && !world.clubRepEdited?.includes(c.id)) c.rep = Math.min(c.rep, 62);
     if (cm?.clubColors[c.id]) c.colors = cm.clubColors[c.id];
     const wealth = rulesFor(c.league, 20).wealth;
-    for (const p of sq) if (p.contract) p.contract.wage = wageFor(p.value, wealth);
+    for (const p of sq) if (p.contract) p.contract.wage = dbWage.get(p.id) ?? wageFor(p.value, wealth, c.league, c.rep);
     const wages = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
     c.wageBudget = Math.round((wages * 1.08) / 1000) * 1000;
     c.balance = Math.round((sv * 0.12 + wages * 30) / 100_000) * 100_000;
@@ -225,6 +283,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
     c.youth = clampInt(4 + c.rep / 7 + (hash(c.id, 3) % 5) - 2, 1, 20);
     c.facilities = clampInt(3 + c.rep / 6 + (hash(c.id, 4) % 5) - 2, 1, 20);
+    // originalens saldo og træningsanlæg (club.dat 101/127)
+    const fin = cm?.clubFinance?.[c.id];
+    if (fin && g.econ) {
+      if (world.clubBalance?.[c.id] === undefined) c.balance = Math.round(fin[0] / GBP / 10_000) * 10_000;
+      if (fin[2] > 0) c.facilities = clampInt(fin[2], 1, 20);
+      c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
+    }
     c.ticketPrice = fairTicketPrice(c.rep, c.league);
     if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
   }

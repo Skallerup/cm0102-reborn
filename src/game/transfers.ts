@@ -205,7 +205,7 @@ const maxWage = () => MAX_WAGE_NOW * econ();
 export function wageDemand(p: Player, club: Club): number {
   const g = gs();
   const wealth = rulesFor(club.league, 20).wealth;
-  const market = wageFor(p.value, wealth);
+  const market = wageFor(p.value, wealth, club.league, club.rep);
   const current = p.contract?.wage ?? 0;
   const amb = 1 + (p.attrs[42 /* ambition */] - 10) / 60;
   const repGap = Math.max(0, p.rep - club.rep) / 100;

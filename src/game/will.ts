@@ -51,7 +51,7 @@ export function monthlyWill() {
       if (p.loan || !p.contract) continue;
       // 1) kontraktkrav: underbetalt spiller i topform
       if (!p.demand) {
-        const market = wageFor(p.value, wealth);
+        const market = wageFor(p.value, wealth, c.league, c.rep);
         const games = p.stats.apps + p.stats.subs;
         const settled = !p.joined || daysBetween(p.joined, g.date) > 180;
         const longDeal = p.contract.expires > `${Number(g.date.slice(0, 4)) + 1}-06-30`;
@@ -166,7 +166,7 @@ function renewalCheck(p: Player, clubId: number) {
   const rank = sq.filter((x) => x.ca > p.ca).length + 1;
   // større klubber, der holder øje med ham
   const bigger = Object.values(g.clubs).some((c) => c.id !== clubId && c.shortlist?.includes(p.id) && c.rep >= club.rep + 5);
-  const market = wageFor(p.value, rulesFor(club.league, 20).wealth);
+  const market = wageFor(p.value, rulesFor(club.league, 20).wealth, club.league, club.rep);
   const reasons: [RenewalReason, number][] = [
     ['ambition', (bigger ? 0.5 : 0) + Math.max(0, amb - 12) * 0.08 + Math.max(0, p.rep - club.rep) / 40],
     ['time', ((p.unhappy ?? 0) >= 30 || rank > 16 ? 0.45 : 0) + Math.max(0, amb - 10) * 0.04 - (age >= 32 ? 0.2 : 0)],
@@ -304,7 +304,7 @@ export function blockedMoveReaction(p: Player, buyerId: number, fee: number, rea
       : 2;
     if (reason === 'contract') {
       // et løfte om ny kontrakt: han forventer et tilbud (ignoreres det, lækker han og vil til sidst væk)
-      const market = wageFor(p.value, rulesFor(mine.league, 20).wealth);
+      const market = wageFor(p.value, rulesFor(mine.league, 20).wealth, mine.league, mine.rep);
       p.demand = { since: g.date, wage: Math.round(Math.max(market, (p.contract?.wage ?? 0) * 1.2) / 50) * 50 };
     }
     if (fit === 2) { chance = 0; p.morale = Math.min(20, p.morale + (tempting ? 1.5 : 1)); p.unhappy = Math.max(0, (p.unhappy ?? 0) - 15); }
@@ -347,7 +347,7 @@ function answerBlocked(p: Player, choice: 'promise' | 'fight' | 'list' | 'listen
     case 'promise': {
       // lov ham en bedre kontrakt – han forventer et tilbud (ignoreres det, lækker han og vil til sidst væk)
       const club = g.clubs[p.club];
-      const market = club ? wageFor(p.value, rulesFor(club.league, 20).wealth) : p.contract?.wage ?? 0;
+      const market = club ? wageFor(p.value, rulesFor(club.league, 20).wealth, club.league, club.rep) : p.contract?.wage ?? 0;
       p.demand = { since: g.date, wage: Math.round(Math.max(market, (p.contract?.wage ?? 0) * 1.2) / 50) * 50 };
       p.morale = Math.min(20, p.morale + 2);
       p.unhappy = Math.max(0, (p.unhappy ?? 0) - 25);

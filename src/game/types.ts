@@ -820,7 +820,7 @@ export interface HumanSlot {
 export interface GameState {
   version: number;
   /** Prisniveau (2001-priser i den originale database, se econ.ts) – mangler = nutidens priser */
-  econ?: { k: number; leagues: Record<string, number> };
+  econ?: import("./econ").Economy;
   id: string; // save-id
   seed: number;
   rng: number;

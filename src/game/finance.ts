@@ -80,10 +80,10 @@ export function monthlyFigures(c: Club) {
   const g = gs();
   const wealth = rulesFor(c.league, 20).wealth;
   const tier = g.leagues[c.league]?.tier ?? 2;
-  const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * econ(c.league) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
+  const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * econIncome(c.league) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
   const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
   const boost = c.merchBoost && c.merchBoost.until >= g.date ? 1 + c.merchBoost.factor : 1;
-  const merch = Math.round(c.rep * c.rep * 25 * econ(c.league) * wealth * boost);
+  const merch = Math.round(c.rep * c.rep * 25 * econIncome(c.league) * wealth * boost);
   // driftsomkostninger: stadion, administration, scouting-netværk m.m.
   const upkeep = Math.round(c.seats * 0.8 * econ(c.league) * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
   return { wealth, tv, sponsor, merch, upkeep };
@@ -121,7 +121,7 @@ export function seasonPrizeMoney() {
     const wealth = rulesFor(lg, clubs.length).wealth;
     const tier = g.leagues[lg]?.tier ?? 1;
     clubs.sort((a, b) => b.rep - a.rep).forEach((c, i) => {
-      const prize = Math.round((clubs.length - i) * 400_000 * econ(lg) * wealth * wealth * (tier === 1 ? 1 : 0.3));
+      const prize = Math.round((clubs.length - i) * 400_000 * econIncome(lg) * wealth * wealth * (tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
     });
@@ -132,7 +132,7 @@ export function seasonPrizeMoney() {
     const wealth = rulesFor(comp.id, order.length).wealth;
     order.forEach((cid, i) => {
       const c = g.clubs[cid];
-      const prize = Math.round((order.length - i) * 400_000 * econ(comp.id) * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
+      const prize = Math.round((order.length - i) * 400_000 * econIncome(comp.id) * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
     });
@@ -163,7 +163,7 @@ export function newSeasonBudgets() {
 }
 
 export function fairTicketPrice(rep: number, league: string): number {
-  return Math.max(1, Math.round((10 + rep * 0.35 * Math.sqrt(Math.max(0.25, rulesFor(league, 20).wealth))) * econ(league)));
+  return Math.max(1, Math.round((10 + rep * 0.35 * Math.sqrt(Math.max(0.25, rulesFor(league, 20).wealth))) * econIncome(league)));
 }
 
 /** Hvad budgettet ville blive, hvis det blev sat i dag */
@@ -233,11 +233,11 @@ import type { SponsorDeal, SponsorKind } from './types';
 import { addNews, newsRelevant } from './state';
 import { fanAttendance } from './fans';
 import { asOwner as asOwnerFinance, forEachHuman } from './humans';
-import { econ } from './econ';
+import { econ, econIncome } from './econ';
 
 /** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */
 export function sponsorBase(c: Club): number {
-  return Math.round(Math.pow(c.rep, 2.5) * 25 * econ(c.league) * rulesFor(c.league, 20).wealth);
+  return Math.round(Math.pow(c.rep, 2.5) * 25 * econIncome(c.league) * rulesFor(c.league, 20).wealth);
 }
 
 /** Tre tilbud: sikker, bonus eller ambitiøs */

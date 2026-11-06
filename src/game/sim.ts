@@ -41,7 +41,7 @@ import { recordH2H } from './h2h';
 import { resolveStaffBids } from './staff';
 import { rivalryAfterMatch } from './rivalry';
 import { unhappyMult } from './squadStatus';
-import { econ } from './econ';
+import { econIncome } from './econ';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -250,8 +250,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   }
   // præmiepenge i Europa
   if (comp?.type === 'continental') {
-    const win = (comp.id === 'CL' ? 2_800_000 : 800_000) * econ();
-    const draw = (comp.id === 'CL' ? 900_000 : 300_000) * econ();
+    const win = (comp.id === 'CL' ? 2_800_000 : 800_000) * econIncome();
+    const draw = (comp.id === 'CL' ? 900_000 : 300_000) * econIncome();
     for (const [cid, gf, ga] of [[f.home, hs.goals, as.goals], [f.away, as.goals, hs.goals]] as const) {
       const c = g.clubs[cid];
       const amount = gf > ga ? win : gf === ga ? draw : 0;

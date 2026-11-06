@@ -7,7 +7,7 @@ import { addNews, gs, indexFixture, newsRelevant } from './state';
 import { forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
-import { econ } from './econ';
+import { econIncome } from './econ';
 
 // ---------- kalender ----------
 
@@ -684,9 +684,9 @@ function advance(comp: Competition, stage: string) {
 }
 
 export function compPrize(compId: string, stage: string): number {
-  if (compId === 'CL') return econ() * (({ LP: 2_100_000, G: 2_500_000, KPO: 1_000_000, R16: 11_000_000, QF: 12_500_000, SF: 15_000_000, F: 18_000_000 } as Record<string, number>)[stage] ?? 0);
-  if (compId === 'UEFA') return econ() * (({ LP: 630_000, R32: 1_000_000, KPO: 300_000, R16: 1_500_000, QF: 2_500_000, SF: 4_000_000, F: 6_000_000 } as Record<string, number>)[stage] ?? 0);
-  if (compId === 'UECL') return econ() * (({ LP: 400_000, R32: 500_000, KPO: 200_000, R16: 800_000, QF: 1_200_000, SF: 2_000_000, F: 3_000_000 } as Record<string, number>)[stage] ?? 0);
+  if (compId === 'CL') return econIncome() * (({ LP: 2_100_000, G: 2_500_000, KPO: 1_000_000, R16: 11_000_000, QF: 12_500_000, SF: 15_000_000, F: 18_000_000 } as Record<string, number>)[stage] ?? 0);
+  if (compId === 'UEFA') return econIncome() * (({ LP: 630_000, R32: 1_000_000, KPO: 300_000, R16: 1_500_000, QF: 2_500_000, SF: 4_000_000, F: 6_000_000 } as Record<string, number>)[stage] ?? 0);
+  if (compId === 'UECL') return econIncome() * (({ LP: 400_000, R32: 500_000, KPO: 200_000, R16: 800_000, QF: 1_200_000, SF: 2_000_000, F: 3_000_000 } as Record<string, number>)[stage] ?? 0);
   return 0;
 }
 

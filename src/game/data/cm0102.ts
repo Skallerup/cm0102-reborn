@@ -16,6 +16,8 @@ export interface CMWorld extends WorldData {
   ratings: Record<number, CMRatings>;
   clubRep: Record<number, number>;
   clubColors: Record<number, [string, string]>;
+  /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
+  clubFinance?: Record<number, [number, number, number]>;
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -195,12 +197,13 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   // klubber
   const CL = new Reader(files['club.dat']);
-  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; stadium: number; maxAtt: number; fg: number; bg: number };
+  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; training: number };
   const rawClubs: RawClub[] = [];
   for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
     rawClubs.push({
       id: CL.i32(o), name: CL.str(o + 4, 51), short: CL.str(o + 56, 26), nation: CL.i32(o + 83), division: CL.i32(o + 87),
       stadium: CL.i32(o + 105), maxAtt: CL.i32(o + 123), rep: CL.i16(o + 128), fg: CL.i32(o + 131), bg: CL.i32(o + 135),
+      balance: CL.i32(o + 101), avgAtt: CL.i32(o + 115), training: CL.u8(o + 127),
     });
   }
   // ligaer: divisioner med mindst 8 klubber; niveau efter omdømme inden for landet
@@ -245,6 +248,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const clubs: WorldData['clubs'] = [];
   const clubRep: Record<number, number> = {};
   const clubColors: Record<number, [string, string]> = {};
+  const clubFinance: Record<number, [number, number, number]> = {};
   for (const c of rawClubs) {
     if (!leagueSet.has(c.division) && !(opts.allClubs && nationIdx.has(c.nation))) continue;
     const seats = seatsOf.get(c.stadium) || (c.maxAtt > 0 && c.maxAtt <= 150_000 ? c.maxAtt : 0);
@@ -252,11 +256,12 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     clubRep[c.id] = Math.max(3, Math.min(98, Math.round(Math.pow(c.rep / maxClubRep, 0.7) * 98)));
     const fg = colours.get(c.fg), bg = colours.get(c.bg);
     if (fg && bg) clubColors[c.id] = [bg, fg];
+    clubFinance[c.id] = [c.balance, Math.max(0, c.avgAtt), Math.min(20, c.training)];
   }
   const inGame = new Set(clubs.map((c) => c[0]));
 
   // spillere
-  const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number'];
+  const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number', 'wage'];
   const players: WorldData['players'] = [];
   const ratings: Record<number, CMRatings> = {};
   const pName = names; void pName;
@@ -306,6 +311,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       Math.round(value), Math.round(value), S.u8(o + 34), S.u8(o + 35), contract ? `${contract.slice(0, 4)}-06-30` : '', 0, 0, 0, 0, 0, 0,
       // trøjenummeret (byte 4 i spillerposten, 0 = intet)
       Math.max(0, Math.min(99, S.i8(po + 4))),
+      // ugentlig løn i pund (staff.dat 78)
+      Math.max(0, S.i32(o + 78)),
     ]);
     ratings[id] = paRaw ? { ca, pa, attrs, pos, side, paRaw } : { ca, pa, attrs, pos, side };
   }
@@ -329,7 +336,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   return {
     kind: 'cm0102', version: 1, source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
-    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, rules,
+    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, rules,
   };
 }
 

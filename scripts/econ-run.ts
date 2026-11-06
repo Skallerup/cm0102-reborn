@@ -6,6 +6,8 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs, squad } from '../src/game/state';
 import { econ } from '../src/game/econ';
+import { setOriginalIncome } from '../src/game/newgame';
+if (process.env.INCOME) setOriginalIncome(Number(process.env.INCOME));
 import { monthlyFigures } from '../src/game/finance';
 
 const seasons = Number(process.argv[2] ?? 3);
@@ -25,6 +27,9 @@ function report(label: string) {
   const fees = Object.values(g.players).flatMap((p) => (p.moves ?? []).filter((mv) => mv.date.slice(0, 4) >= String(g.season - 1) && (mv.fee ?? 0) > 0).map((mv) => mv.fee!));
   const best = Object.values(g.players).filter((p) => p.club && pl().clubs.includes(p.club)).sort((a, b) => b.value - a.value)[0];
   console.log(`${label} econ ${econ()} · PL median: trupværdi ${m(med(sv))} · saldo ${m(med(clubs.map((c) => c.balance)))} (saldo/trup ${(med(clubs.map((c) => c.balance)) / med(sv)).toFixed(2)}) · løn/år ${m(med(wages))} · faste indtægter/år ${m(med(income))} (løn/indtægt ${(med(wages) / med(income)).toFixed(2)}) · transferbudget ${m(med(clubs.map((c) => c.transferBudget)))}`);
+  const fin = clubs.map((c) => c.finance);
+  const inc = fin.map((f) => f.gate + f.tv + f.prize + f.sponsor + f.merch);
+  if (med(inc) > 0) console.log(`   sæsonens omsætning (median) ${m(med(inc))} · løn ${m(med(fin.map((f) => f.wages)))} · løn/omsætning ${(fin.map((f, i) => f.wages / Math.max(1, inc[i])).sort((a, b) => a - b)[Math.floor(fin.length / 2)]).toFixed(2)} · entré ${m(med(fin.map((f) => f.gate)))} · TV ${m(med(fin.map((f) => f.tv)))}`);
   console.log(`   dyreste spiller ${best?.last} ${m(best?.value ?? 0)} · transfers seneste år: ${fees.length}, median ${m(med(fees))}, max ${m(Math.max(0, ...fees))} (max/trupmedian ${(Math.max(0, ...fees) / med(sv)).toFixed(2)}) · klubber i minus ${clubs.filter((c) => c.balance < 0).length}`);
 }
 report('start');

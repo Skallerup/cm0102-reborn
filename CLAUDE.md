@@ -16,6 +16,7 @@ og læg ændringen i samme push.
 - SEO: `scripts/build-seo.ts` (kører i `prebuild`) laver statiske guides i `public/<slug>/index.html` (wonderkids, bedste
   spillere, taktik, 2026/27, Mac/iPad, FAQ, spil online) fra world-JSON'erne + `sitemap.xml` og `llms.txt`. Forsiden har
   læsbar tekst i `#root` til crawlere uden JS. Nye guides: tilføj i `pages` og i SW-`navigateFallbackDenylist`.
+- Den originale database og den moderne må ikke dele økonomi: alt 2001-specifikt ligger bag `g.econ` (kun original).
 - Prisniveau: `src/game/econ.ts`. Nye spil med den originale database får `GameState.econ` (faktor pr. liga, målt i
   newgame.ts) – faste beløb ganges med `econ(liga)`, og `valueFromCA` bruger originalens værdikurve. Nye faste beløb
   i økonomien skal ganges med `econ(...)`. Mål med `scripts/econ-run.ts`.
@@ -39,6 +40,12 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Originalens økonomi fra databasen (ejerens Bosman-projekt, `…/cm-01-02-bosman-edition/app/finances/README.md`):
+  parseren læser ugeløn (staff.dat 78, playerField `wage`, £) og `clubFinance` [saldo club.dat 101, gns. tilskuere 115,
+  træningsanlæg 127]. Nye spil med original DB: løn/saldo/anlæg direkte fra databasen (£→€ /0,86), lønkurve
+  `econ.wageFit` (log løn = a[liga] + b·log værdi + c·klubomdømme, tilpasset ved spilstart) til nye kontrakter,
+  indtægtsfaktor `econ.income` (`ORIGINAL_INCOME` 0,55 → løn ≈ 60 % af omsætningen som PL 2001/02) via `econIncome()`.
+  Moderne database: ingen `econ` (tests/originalEconomy.test.ts). Spillerværdierne venter stadig på Player Search-prints.
 - 2026-11-06 – Kontraktforlængelse (fejlrapport #1, De Bruyne): `renewalExpiry` i transfers.ts – sep-jun regnes årene fra
   næste sæson, jul-aug tæller den startende sæson, aldrig kortere end nu (tests/renewal.test.ts).
 - 2026-11-06 – Database-editor (trin 1): startmenuen → Editor (`src/ui/Editor.tsx`). "Min database" = diff oven på

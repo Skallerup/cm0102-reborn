@@ -161,6 +161,9 @@ const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
+// originalens økonomi (saldo, tilskuere, træningsanlæg) bruges kun af den originale database
+if (!ORIGINAL) delete w.clubFinance;
+else for (const k of Object.keys(w.clubFinance ?? {})) if (!keptClubs.has(Number(k))) delete w.clubFinance![Number(k)];
 
 // Datoer skubbes +25 år (så 2026/27 giver de rigtige aldre). Markedsværdierne i denne opdatering er
 // mangelfulde/uensartede (de fleste er 0, og de få der er sat, bliver overinflateret af parserens
