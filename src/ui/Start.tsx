@@ -249,7 +249,9 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   if (!world) return <div>{dbPicker}{lookPicker}<Panel title={t('start.new')}><div className="muted">{t('start.loadingDb')}</div></Panel></div>;
 
   const leagues = world.leagues.filter((l) => active.has(l.nation) && !l.hidden);
-  const clubs = world.clubs.filter((c) => c[4] === league).sort((a, b) => a[2].localeCompare(b[2]));
+  // den valgte liga skal høre til et valgt land – ellers vises det første valgte lands liga
+  const shownLeague = leagues.some((l) => l.id === league) ? league : leagues.slice().sort((a, b) => a.tier - b.tier)[0]?.id ?? '';
+  const clubs = world.clubs.filter((c) => c[4] === shownLeague).sort((a, b) => a[2].localeCompare(b[2]));
   const clubNation = world.clubs.find((c) => c[0] === club)?.[3];
   const canStart = name.trim().length > 0 && club > 0 && clubNation !== undefined && active.has(clubNation);
 
@@ -302,8 +304,14 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
               <label key={n} className={`choice ${active.has(n) ? 'on' : ''}`}>
                 <input type="checkbox" checked={active.has(n)} onChange={() => {
                   const s = new Set(active);
-                  if (s.has(n)) s.delete(n); else s.add(n);
+                  const adding = !s.has(n);
+                  if (adding) s.add(n); else s.delete(n);
                   setActive(s);
+                  // klubvalget følger med: et nyt land viser dets bedste liga; fjernes landet for den valgte liga, skiftes der
+                  const top = (nat: number) => world.leagues.filter((l) => l.nation === nat && !l.hidden).sort((a, b) => a.tier - b.tier)[0];
+                  const curNation = world.leagues.find((l) => l.id === league)?.nation;
+                  const next = adding ? top(n) : curNation === n ? [...s].map(top).find(Boolean) : undefined;
+                  if (next) { setLeague(next.id); setClub(0); } else if (!adding && curNation === n) { setLeague(''); setClub(0); }
                 }} />
                 <Flag name={world.nations[n].name} />{natName(world.nations[n].name)}
                 <span className="muted" style={{ marginLeft: 'auto' }}>{world.leagues.filter((l) => l.nation === n && !l.hidden).length}</span>
@@ -316,7 +324,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
       {!ch && (
         <Panel title={t('start.pickClub')}>
           <div className="row" style={{ marginBottom: 8 }}>
-            <Select value={league} onChange={(v) => { setLeague(v); setClub(0); }} width={300}
+            <Select value={shownLeague} onChange={(v) => { setLeague(v); setClub(0); }} width={300}
               options={leagues.map((l) => ({ value: l.id, label: compName(l.name), group: natName(world.nations[l.nation].name) }))} />
           </div>
           <div className="grid-choices">
