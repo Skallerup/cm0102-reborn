@@ -100,16 +100,20 @@ function StatsBlock({ p }: { p: Player }) {
     [t('cl.pl.intl'), [p.caps, p.intGoals, dash, dash, dash]],
     [t('cl.pl.senior'), [carApps, car.goals + s.goals, car.assists + s.assists, dash, carApps && (car.rn + s.ratingCount) ? <Rating r={carAvg} digits={2} /> : dash]],
   ];
+  // CM 01/02: de blå pile skifter til side 2 (kort, minutter, indskiftninger – de tal spillet fører)
+  const [page, setPage] = useState(0);
+  const heads = page === 0 ? [t('col.apps'), t('col.goals'), t('cl.pl.asts'), t('cl.pl.mom'), t('col.avr')] : [t('cl.pl.yel'), t('cl.pl.red'), t('cl.pl.mins'), t('cl.pl.subsOn'), t('col.avr')];
+  const rows2: [string, ReactNode[]][] = statRows.map(([l, v], i) => [l, i === 2 ? [s.yellows, s.reds, s.minutes, s.subs, v[4]] : [dash, dash, dash, dash, v[4]]]);
   const posTip = `${posStr(p)} · ${POSITIONS_LABEL.map(([l, i]) => `${l} ${p.pos[i]}`).join(' · ')} · ${SIDES.map((x, i) => `${t(`side.${x}`)} ${p.side[i]}`).join(' · ')}`;
   return (
     <>
       <div className="cx-pl-stats-wrap">
         <table className="cx-pl-stats">
           <thead>
-            <tr><th />{[t('col.apps'), t('col.goals'), t('cl.pl.asts'), t('cl.pl.mom'), t('col.avr')].map((h) => <th key={h}>{h}</th>)}</tr>
+            <tr><th className="cx-pl-pager"><button className="cx-pm" disabled={page === 0} onClick={() => setPage(0)}>◂</button><button className="cx-pm" disabled={page === 1} onClick={() => setPage(1)}>▸</button></th>{heads.map((h) => <th key={h}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {statRows.map(([l, vals]) => (
+            {(page === 0 ? statRows : rows2).map(([l, vals]) => (
               <tr key={l}><td>{l}</td>{vals.map((v, i) => <td key={i} className={i === 4 ? 'avr' : ''}>{v}</td>)}</tr>
             ))}
           </tbody>

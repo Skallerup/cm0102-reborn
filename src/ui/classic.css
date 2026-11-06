@@ -837,3 +837,4 @@
 .cx-ts-body.center { align-items: center; justify-content: center; min-height: 50vh; background: transparent; }
 :root[data-skin='retro'] input.cx-nick { width: min(90%, 900px); height: 64px; background: rgba(0, 0, 0, 0.45); border: 2px solid #1d2a8c; color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
 .cx-ts-buttons.cx-three { grid-template-columns: 2fr 1fr 1fr; }
+.cx-pl-pager { text-align: right; white-space: nowrap; } .cx-pl-pager .cx-pm { min-width: 32px; height: 22px; margin-left: 2px; }
