@@ -332,7 +332,7 @@ function injure(p: Player) {
   const best = Math.max(5, ...physios.map((s) => s.attrs.physio));
   days = Math.max(1, Math.round(days * (1.15 - best / 40)));
   if (g.draft) { days = draftInjuryDays(days); if (!days) return; }
-  p.injury = { key, days };
+  p.injury = { key, days, total: days };
 }
 
 // ---------- dagsløkke ----------
@@ -356,6 +356,8 @@ function newDay() {
   for (const p of Object.values(g.players)) {
     if (p.injury) {
       p.injury.days--;
+      // CM 01/02: "[spiller] resumes light training" – en uge før comeback fra en længere skade
+      if (p.injury.days === 7 && (p.injury.total ?? 0) >= 21 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.lightTraining', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       if (p.injury.days <= 0) {
         p.injury = null;
         p.condition = Math.min(p.condition, 75);

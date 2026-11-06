@@ -85,6 +85,8 @@ export interface CareerLine {
 export interface Injury {
   key: string;
   days: number;
+  /** skadens oprindelige længde (dage) */
+  total?: number;
 }
 
 export interface Player {
@@ -330,6 +332,8 @@ export interface Club {
   history: ClubSeasonHistory[];
   /** måneder i træk med negativ saldo (nyheden "financial mess") */
   negMonths?: number;
+  /** placering ved sidste månedsklumme ("climbing to safety" m.m.) */
+  columnPos?: number;
   /** udbytte betalt til ejerne ved sidste sæsonstart */
   lastDividend?: number;
   ticketPrice: number;

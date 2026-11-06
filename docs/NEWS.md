@@ -25,6 +25,13 @@ databaser. Originalens brødtekster bruges som spec – teksterne i `src/i18n` e
 | `board.financialMess` | [klub] financial mess | finance.ts:monthlyIncome |
 | `media.questionPurchase`, `board.surprisedDeparture` | Media question purchase of …, Board surprised at [person] departure | transfers.ts:completeTransfer |
 
+| `react.*` (9) | Board back/defend [person], [formand] concerned/pleased by your handling of the media, Board fury at [manager] silence, Media question [spiller]'s attitude … | press.ts:applyPress (én pr. pressemøde) |
+| `react.firmHandling`, `react.fineProtest`, `react.fineFallout` | Fans pleased by firm handling of [spiller], Players protest over [person]'s fine | personality.ts:interact |
+| `column.climbing/slipping/titleCredentials` | [klub] climbing to safety, slip nearer relegation, Press discuss [klub] title credentials | media.ts:monthlyColumn |
+| `column.signingImpresses/ratedHighly/underFire` | [spiller] impresses at [klub], rated highly, under fire | media.ts:monthlyColumn |
+| `injury.lightTraining` | [spiller] resumes light training | sim.ts:newDay |
+| `youth.regen` | (regens – egen tilføjelse) | season.ts:youthIntake |
+
 Rettet samtidig (fletning, afsnit 4): spejdernes tre nyheder går nu gennem `addNews` (dæmpning og multiplayer virker),
 og ungdomsårgangen giver én samlet nyhed (`youth.intakeDay`) i stedet for én pr. spiller. Test: tests/newsTypes.test.ts.
 

@@ -7,6 +7,7 @@ import { rng } from './rng';
 import { clubLevel } from './scouting';
 import { addNews, gs, squad } from './state';
 import { leagueRows } from './competitions';
+import { LEAGUE_RULES } from './leagues';
 import type { Player, Club } from './types';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -61,5 +62,24 @@ export function monthlyColumn() {
     const leader = rows[0], second = rows[1];
     const myPos = rows.findIndex((r) => r.club === me!.id) + 1;
     addNews({ cat: 'general', key: 'column.month', params: { comp: comp.name, leader: g.clubs[leader.club]?.name ?? '', gap: leader.pts - (second?.pts ?? 0), pos: myPos, club: me!.name } });
+    // CM 01/02's klummer om holdet: "climbing to safety", "slip nearer relegation", "title credentials"
+    const drop = rows.length - (LEAGUE_RULES[comp.id]?.relegated ?? 0);
+    const prev = me!.columnPos;
+    me!.columnPos = myPos;
+    const mine = rows[myPos - 1];
+    const month = Number(g.date.slice(5, 7));
+    let team: string | undefined;
+    if (prev && prev > drop && myPos <= drop) team = 'column.climbing';
+    else if (myPos > drop && (!prev || prev <= drop || myPos > prev)) team = 'column.slipping';
+    else if (myPos <= 2 && mine && leader.pts - mine.pts <= 3 && month >= 1 && month <= 5) team = 'column.titleCredentials';
+    if (team) addNews({ cat: 'general', key: team, params: { club: me!.name, comp: comp.name, pos: myPos } });
+    // og om spillerne: den bedste, den der er i modvind, og en ny spiller, der har slået igennem
+    const avg = (p: Player) => (p.stats.ratingCount ? p.stats.ratingSum / p.stats.ratingCount : 0);
+    const regulars = squad(me!.id).filter((p) => p.stats.ratingCount >= 4);
+    const fresh = regulars.filter((p) => p.joined && daysBetween(p.joined, g.date) <= 150 && avg(p) >= 7.2).sort((a, b) => avg(b) - avg(a))[0];
+    const star = regulars.filter((p) => avg(p) >= 7.3).sort((a, b) => avg(b) - avg(a))[0];
+    const poor = regulars.filter((p) => p.stats.ratingCount >= 5 && avg(p) <= 6.0).sort((a, b) => avg(a) - avg(b))[0];
+    const pick = fresh ? ['column.signingImpresses', fresh] as const : rng.chance(0.5) && poor ? ['column.underFire', poor] as const : star ? ['column.ratedHighly', star] as const : poor ? ['column.underFire', poor] as const : undefined;
+    if (pick) addNews({ cat: 'general', key: pick[0], params: { player: `${pick[1].first} ${pick[1].last}`.trim(), club: me!.name, rating: avg(pick[1]).toFixed(2) }, link: { kind: 'player', id: pick[1].id } });
   });
 }

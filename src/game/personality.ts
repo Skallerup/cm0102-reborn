@@ -230,7 +230,20 @@ function recentForm(p: Player): number {
 }
 
 /** Ros, kritik, opmuntring eller straf. Reaktionen afhænger af form, personlighed og om det er fortjent. */
+/** CM 01/02: omverdenens reaktion på en straf – "Fans pleased by firm handling of [spiller]", "Players protest over [person]'s fine" */
+const DISCIPLINE_REACT: Record<string, string> = { 'talk.r.fineAccepted': 'react.firmHandling', 'talk.r.warnAccepted': 'react.firmHandling', 'talk.r.fineUnjust': 'react.fineProtest', 'talk.r.fineWantsAway': 'react.fineFallout' };
+
 export function interact(pid: number, kind: TalkKind, reason?: DisciplineReason): { key: string; mood: 'good' | 'bad' | 'neutral' } {
+  const r = interactInner(pid, kind, reason);
+  const react = DISCIPLINE_REACT[r.key];
+  const p = gs().players[pid];
+  if (react && p && (kind !== 'warning' || r.key !== 'talk.r.warnAccepted' || rng.chance(0.4))) {
+    addNews({ cat: 'general', key: react, params: { player: `${p.first} ${p.last}`.trim(), manager: gs().manager.name }, link: { kind: 'player', id: p.id } });
+  }
+  return r;
+}
+
+function interactInner(pid: number, kind: TalkKind, reason?: DisciplineReason): { key: string; mood: 'good' | 'bad' | 'neutral' } {
   const g = gs();
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
