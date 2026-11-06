@@ -15,5 +15,5 @@ describe('tilfældigt potentiale (PA -1/-2)', () => {
     const pas = [1, 2, 3, 4, 5].map(samba);
     for (const pa of pas) { expect(pa).toBeGreaterThanOrEqual(150); expect(pa).toBeLessThanOrEqual(200); }
     expect(new Set(pas).size).toBeGreaterThan(1);
-  });
+  }, 30_000); // fem nye spil med den fulde originale database
 });

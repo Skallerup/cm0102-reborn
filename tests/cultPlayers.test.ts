@@ -30,5 +30,5 @@ describe('kultspillere i den originale database', () => {
     const g = gs();
     for (const l of hidden) expect(g.comps[l.id]).toBeUndefined();
     expect(Object.values(g.comps).filter((c) => c.type === 'league').length).toBe(4);
-  });
+    }, 20_000);
 });

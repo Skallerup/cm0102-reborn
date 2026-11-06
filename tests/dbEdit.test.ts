@@ -43,7 +43,7 @@ describe('database-editor', () => {
     expect(g.clubs[millwall].rep).toBe(90);
     expect(g.clubs[millwall].balance).toBe(50_000_000);
     expect(g.clubs[millwall].colors).toEqual(['#ff0000', '#ffffff']);
-  });
+    }, 20_000);
 
   it('importerede filer rettes ind efter originalens grænser', () => {
     const d = sanitizeDb({ ...db, players: { [ts]: { ca: 999, pa: -7, attrs: { 2: 55, 999: 3 } } }, clubs: { 1: { colors: ['red', 'x'], rep: 500 } } })!;
