@@ -87,3 +87,20 @@ export function boardEventsSeason() {
     }
   }
 }
+
+/**
+ * Anke af et rødt kort (CM 01/02: knappen "Appeal" på nyheden om karantænen – kun den originale database). Forbundet
+ * frafalder karantænen, stadfæster den eller forlænger den med én kamp for en grundløs anke. Fordelingen er *estimeret*.
+ */
+export function appealBan(pid: number): 'won' | 'lost' | 'extended' | 'error' {
+  const g = gs();
+  const p = g.players[pid];
+  if (!isOriginal2001() || !p || p.banned <= 0 || p.appealed || !isHumanClub(p.club)) return 'error';
+  p.appealed = true;
+  const r = rng.next();
+  const out = r < 0.3 ? 'won' : r < 0.8 ? 'lost' : 'extended';
+  if (out === 'won') p.banned = 0;
+  if (out === 'extended') p.banned += 1;
+  asOwner(p.club, () => addNews({ cat: 'injury', key: `ban.appeal.${out}`, params: { player: `${p.first} ${p.last}`.trim(), n: p.banned }, link: { kind: 'player', id: p.id } }));
+  return out;
+}

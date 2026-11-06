@@ -138,6 +138,8 @@ export interface Player {
   unhappy?: number;
   /** Stjerne der vil sælges (ambitiøs spiller i en klub uden succes) */
   wantsAway?: boolean;
+  /** har anket sin nuværende karantæne (CM 01/02) */
+  appealed?: boolean;
   /** Manageren har lovet titler – frist */
   promiseUntil?: string;
   /** Sæsonstatistik allerede bogført på en tidligere klub (ved skifte midt i sæsonen) */

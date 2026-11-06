@@ -5,7 +5,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs, squad, setClub } from '../src/game/state';
 import { recallLoan } from '../src/game/transfers';
-import { awolMonthly } from '../src/game/rules2001';
+import { appealBan, awolMonthly } from '../src/game/rules2001';
 import { addDays } from '../src/game/dates';
 
 const start = (f: string, club: string) => {
@@ -33,6 +33,9 @@ describe('2001-regler', () => {
     for (const x of squad(g.userClub)) x.unhappy = 100;
     for (let i = 0; i < 6; i++) awolMonthly();
     expect(squad(g.userClub).some((x) => x.injury?.key === 'awol')).toBe(true);
+    const banned = squad(g.userClub)[2]; banned.banned = 2; banned.appealed = false;
+    expect(['won', 'lost', 'extended']).toContain(appealBan(banned.id));
+    expect(appealBan(banned.id)).toBe('error'); // kun én anke pr. karantæne
   }, 60_000);
   it('den moderne database har ingen af reglerne', () => {
     const g = start('world.json', 'Brentford FC');
@@ -42,5 +45,7 @@ describe('2001-regler', () => {
     for (const x of squad(g.userClub)) x.unhappy = 100;
     for (let i = 0; i < 6; i++) awolMonthly();
     expect(squad(g.userClub).some((x) => x.injury?.key === 'awol')).toBe(false);
+    const banned = squad(g.userClub)[2]; banned.banned = 2;
+    expect(appealBan(banned.id)).toBe('error');
   }, 60_000);
 });

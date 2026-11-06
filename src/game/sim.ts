@@ -228,11 +228,11 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
       if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; }
       else if (p.yellowCount === 4 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'ban.oneAway', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; }
+    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; }
     // karantæne (CM 01/02: "[spiller] banned for [n] matches") – til spillerens egen manager
     if (p.banned > bannedBefore && isHumanClub(p.club)) {
       const n = p.banned;
-      asOwner(p.club, () => addNews({ cat: 'injury', key: line.red ? 'ban.red' : 'ban.yellows', params: { player: pname(p), n }, link: { kind: 'player', id: p.id } }));
+      asOwner(p.club, () => addNews({ cat: 'injury', key: line.red ? 'ban.red' : 'ban.yellows', params: { player: pname(p), n, pid: p.id }, link: { kind: 'player', id: p.id } }));
       // "[spiller] indiscipline costs [klub] dear": rødt kort i et tabt opgør
       const lost = line.team === 0 ? hs.goals < as.goals : as.goals < hs.goals;
       if (line.red && lost) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.redCostly', params: { player: pname(p), club: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } }));

@@ -1,4 +1,5 @@
 
+import { isOriginal2001 } from '../../game/rules2001';
 import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
 import { onFocusNews, takeFocus } from '../inboxFocus';
@@ -114,6 +115,7 @@ export function Inbox() {
             {newsBody(item) && <p className="cx-nbody"><NewsBody n={item} /></p>}
             <NewsDeals n={item} />
             <WarRaise item={item} />
+            <AppealBox item={item} />
             <AiArticle item={item} />
             {item.link && <div><button className="cx-grey" onClick={() => open(item)}>{t('inbox.open')}</button></div>}
           </div>
@@ -155,6 +157,7 @@ export function Inbox() {
               {newsBody(item) && <p style={{ lineHeight: 1.5, whiteSpace: 'pre-line' }}><NewsBody n={item} /></p>}
               <NewsDeals n={item} />
               <WarRaise item={item} />
+              <AppealBox item={item} />
               <AiArticle item={item} />
               {item.link && <div><button onClick={() => open(item)}>{t('inbox.open')}</button></div>}
             </div>
@@ -248,4 +251,16 @@ function NewsSettings({ onClose }: { onClose: () => void }) {
       </div>
     </Modal>
   );
+}
+
+/** CM 01/02 (kun den originale database): anke et rødt kort fra nyheden om karantænen */
+function AppealBox({ item }: { item: NewsItem }) {
+  const g = useGame()!;
+  const [res, setRes] = useState('');
+  if (item.key !== 'ban.red' || !isOriginal2001()) return null;
+  const p = g.players[Number(item.params.pid)];
+  if (!p || p.club !== g.userClub) return null;
+  if (res) return <div className="insight">{t(`ban.appeal.${res}.short`)}</div>;
+  if (p.appealed || p.banned <= 0) return null;
+  return <div className="row" style={{ marginTop: 8 }}><button className="small" onClick={() => setRes(act<string>({ t: 'appealBan', pid: p.id }))}>{t('ban.appeal')}</button><span className="muted">{t('ban.appealHint')}</span></div>;
 }
