@@ -1,4 +1,5 @@
 import { BoardScreen } from './screens/Board';
+import { International } from './screens/International';
 import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
 import { draftRoundLabel } from './Draft';
@@ -66,14 +67,14 @@ const NOTIFY_KEYS = ['window.opened', 'window.deadlineDay', 'window.closingTomor
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
-  ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
+  ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['international', 'nav.international'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
 const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
-  { key: 'matches', items: ['draft', 'fixtures', 'competitions'] },
+  { key: 'matches', items: ['draft', 'fixtures', 'competitions', 'international'] },
   { key: 'market', items: ['transfers', 'scouting'] },
   { key: 'club', items: ['club', 'board', 'finance', 'staff'] },
   { key: 'manager', items: ['profile', 'ranking', 'awards', 'history', 'jobs'] },
@@ -84,7 +85,7 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation'];
+const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international'];
 
 export function Shell() {
   const g = useGame()!;
@@ -478,6 +479,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return <History />;
     case 'awards': return <Awards />;
+    case 'international': return <International />;
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
     case 'press': return <PressScreen />;

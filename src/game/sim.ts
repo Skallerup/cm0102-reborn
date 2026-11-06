@@ -1,4 +1,5 @@
 // Spillets dag-for-dag-løkke.
+import { intlDaily } from './international';
 import { awolMonthly } from './rules2001';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
@@ -355,6 +356,7 @@ function newDay() {
   // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson
   if (g.draft) { draftDay(); return; }
   if (month(d) === 7 && day(d) === 1) seasonRollover();
+  intlDaily();
   // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting

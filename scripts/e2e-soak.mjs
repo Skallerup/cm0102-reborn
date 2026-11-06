@@ -66,7 +66,7 @@ const screens = async () => {
   const list = [
     { name: 'inbox' }, { name: 'squad' }, { name: 'player', id: g.star }, { name: 'tactics' }, { name: 'training' }, { name: 'fixtures' },
     { name: 'competitions' }, ...(g.cup ? [{ name: 'competitions', id: g.cup }] : []), ...(g.euro ? [{ name: 'competitions', id: g.euro }] : []),
-    { name: 'transfers' }, { name: 'scouting' }, { name: 'staff' }, { name: 'finance' }, { name: 'club', id: g.other }, { name: 'club' }, { name: 'board' },
+    { name: 'international' }, { name: 'transfers' }, { name: 'scouting' }, { name: 'staff' }, { name: 'finance' }, { name: 'club', id: g.other }, { name: 'club' }, { name: 'board' },
     { name: 'assistant' }, { name: 'history' }, { name: 'awards' }, { name: 'jobs' }, { name: 'managers' }, { name: 'find' }, { name: 'staff', id: g.staff },
     { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
     ...(g.report ? [{ name: 'report', id: Number(g.report) }] : []),

@@ -251,7 +251,7 @@ export function titleColors(clubId: number | undefined): { bg: string; fg: strin
 const MENU: [string, ScreenName[]][] = [
   ['nav.inbox', ['inbox']],
   ['navg.team', ['squad', 'tactics', 'training', 'assistant']],
-  ['navg.matches', ['fixtures', 'competitions']],
+  ['navg.matches', ['fixtures', 'competitions', 'international']],
   ['navg.market', ['transfers', 'scouting']],
   ['navg.club', ['club', 'board', 'finance', 'staff']],
   ['navg.manager', ['profile', 'ranking', 'awards', 'history', 'jobs']],

@@ -869,6 +869,8 @@ export interface GameState {
   supporterRegens?: { first: string; last: string; by: string; used?: boolean }[];
   /** pensionerede stjerner, der "genopstår" som regens ved næste ungdomsårgang (CM 01/02) */
   regenQueue?: RegenSeed[];
+  /** landsholdsfodbold: resultater, slutrunde og historik (international.ts) */
+  intl?: import('./international').IntlState;
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */

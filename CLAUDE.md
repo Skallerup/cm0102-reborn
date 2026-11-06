@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Landshold (`src/game/international.ts`, begge databaser): vinduer 5/9, 9/10, 13/11, 26/3 (venskabskampe for de
+  64 stærkeste), VM (år ≡ 2 mod 4; 2002 = de rigtige grupper) og EM (år ≡ 0 mod 4) fra 1. juni, kampene i MatchSim med de
+  23 bedste; caps/intGoals/skader. `GameState.intl`, skærm `international`. Landstrænerjob er ikke lavet endnu.
 - 2026-11-06 – rules2001.ts (kun original DB): `recallLoan` (28 dage, *estimeret*), `awolMonthly` (skade-key 'awol'),
   `boardEventsSeason` (cash injection/PLC/overtagelse). Test: tests/rules2001.test.ts. Bemærk: rules2001 må IKKE importere
   newgame (cirkulær import via scouting/transfers gav TDZ-fejl).
