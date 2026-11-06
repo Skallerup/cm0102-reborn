@@ -88,9 +88,11 @@ export function AttrVal({ lo, hi }: { lo: number; hi: number }) {
 
 export function Stars({ range }: { range: [number, number] }) {
   const [lo, hi] = range;
+  // fyldte stjerner = spejderens bedste bud (midten af intervallet); svage stjerner = op til intervallets top
+  const est = Math.round(((lo + hi) / 2) * 2) / 2;
   const out: ReactNode[] = [];
   for (let i = 1; i <= 5; i++) {
-    const cls = lo >= i ? 's-full' : lo >= i - 0.5 ? 's-half' : hi >= i - 0.5 ? 's-maybe' : 's-empty';
+    const cls = est >= i ? 's-full' : est >= i - 0.5 ? 's-half' : hi >= i - 0.5 ? 's-maybe' : 's-empty';
     out.push(<i key={i} className={`star ${cls}`} />);
   }
   // samme skala for alle spillere i verden (scouting.ts starsOf) – forklar den i værktøjstippet

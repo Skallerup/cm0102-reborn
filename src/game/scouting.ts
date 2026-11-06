@@ -75,11 +75,14 @@ export function scoutStars(p: Player): { ability: [number, number]; potential: [
   // ekstra usikkerhed om potentialet kun når der er plads til at udvikle sig
   const growUnc = k < 60 && eff > p.ca + 3 ? 0.5 : 0;
   const unc = k >= 90 ? 0 : k >= 60 ? 0.5 : k >= 25 ? 1 : 1.5;
-  const off = Math.round(hash01(p.id, 3) * unc * 2) / 2;
-  return {
-    ability: [Math.max(0.5, a - off), Math.min(5, a - off + unc)],
-    potential: [Math.max(0.5, pot - off), Math.min(5, pot - off + unc + growUnc)],
+  // spejderens bud ligger omkring den sande værdi (lige så tit for højt som for lavt); intervallet er buddet ± halv
+  // usikkerhed. Før lå den sande værdi i toppen af intervallet, så ukendte spillere altid så for dårlige ud.
+  const noise = Math.round((hash01(p.id, 3) - 0.5) * unc * 2) / 2;
+  const range = (v: number, extra = 0): [number, number] => {
+    const est = Math.max(0.5, Math.min(5, v + noise));
+    return [Math.max(0.5, Math.floor((est - unc / 2) * 2) / 2), Math.min(5, Math.ceil((est + unc / 2 + extra) * 2) / 2)];
   };
+  return { ability: range(a), potential: range(pot, growUnc) };
 }
 
 const levelCache = new Map<string, number>();
