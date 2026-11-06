@@ -63,6 +63,8 @@ export function setBoardExpectation() {
   g.board.expectation = exp;
   g.board.expectedPos = pos;
   addNews({ cat: 'board', key: `board.exp.${exp}`, params: { club: club.name } });
+  // pressens sæsonoptakt (CM 01/02: "[klub] tipped for glory", "Press write off [klub] chances" …)
+  addNews({ cat: 'general', key: `media.preview.${exp}`, params: { club: club.name, comp: g.leagues[club.league]?.name ?? '' }, link: { kind: 'club', id: club.id } });
 }
 
 /** Efter hver kamp for brugerens hold */

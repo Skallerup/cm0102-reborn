@@ -328,6 +328,8 @@ export interface Club {
   tactic: Tactic | null;
   finance: ClubFinance;
   history: ClubSeasonHistory[];
+  /** måneder i træk med negativ saldo (nyheden "financial mess") */
+  negMonths?: number;
   ticketPrice: number;
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */

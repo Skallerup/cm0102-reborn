@@ -4,7 +4,7 @@ import { addDays, nthWeekday, weekday } from './dates';
 import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_NATIONS, UEFA_SPOTS, inBreak, rulesFor } from './leagues';
 import { rng } from './rng';
 import { addNews, gs, indexFixture, newsRelevant } from './state';
-import { forEachHuman } from './humans';
+import { asOwner, forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
@@ -361,6 +361,8 @@ function createFinal(comp: Competition, a: number, b: number, date: string) {
   comp.ties.push(tie);
   comp.stage = 'F';
   newFixture(comp.id, date, a, b, 1, { stage: 'F', tieId: tie.id, leg: 1 });
+  // "[klub] through to final"
+  for (const [me, opp] of [[a, b], [b, a]]) asOwner(me, () => addNews({ cat: 'match', key: 'comp.final', params: { club: g.clubs[me]?.name ?? '', comp: comp.name, opp: g.clubs[opp]?.name ?? '', date }, link: { kind: 'comp', id: comp.id } }));
 }
 
 // ---------- playoffs ----------
@@ -377,6 +379,7 @@ export function setupPlayoff(id: string, spec: { seeds: [string, number][]; form
     if (club) clubs.push(club);
   }
   if (clubs.length < 2) return;
+  for (const c of clubs) asOwner(c, () => addNews({ cat: 'match', key: 'comp.playoffReached', params: { club: g.clubs[c]?.name ?? '', comp: g.comps[spec.seeds[0][0]].name }, link: { kind: 'comp', id } }));
   const comp: Competition = { id, name: `Playoff ${g.comps[spec.seeds[0][0]].name}`, type: 'playoff', nation: g.comps[spec.seeds[0][0]].nation, tier: 0, clubs, table: [], ties: [], stage: '', finished: false, playoffFor: spec.winnerTo, meta: { spec }, pending: 0 };
   g.comps[id] = comp;
   if (spec.format === 'final2') {
@@ -520,6 +523,8 @@ function checkLeaguePhaseDone(comp: Competition) {
   if (comp.pending > 0 || comp.stage !== 'league') return;
   const order = sortTable(comp.table.slice()).map((r) => r.club);
   comp.meta = { ...(comp.meta ?? {}), directR16: order.slice(0, 8) };
+  // ligafasen slut: nr. 1-8 videre direkte, 9-24 i playoff, resten ude
+  order.forEach((club, i) => asOwner(club, () => addNews({ cat: 'match', key: i < 24 ? 'comp.groupThrough' : 'comp.groupOut', params: { club: g.clubs[club]?.name ?? '', comp: comp.name, pos: i + 1 }, link: { kind: 'comp', id: comp.id } })));
   comp.winner = undefined;
   const cal = calendar(g.season);
   const poDates = comp.id === 'CL' ? cal.cl.po : cal.uefa.po;
@@ -556,6 +561,7 @@ function checkGroupsDone(comp: Competition) {
     const s = sortTable(rows.slice());
     winners.push(s[0].club);
     runners.push(s[1].club);
+    s.forEach((r, i) => asOwner(r.club, () => addNews({ cat: 'match', key: i < 2 ? 'comp.groupThrough' : 'comp.groupOut', params: { club: g.clubs[r.club]?.name ?? '', comp: comp.name, pos: i + 1 }, link: { kind: 'comp', id: comp.id } })));
     groupOf.set(s[0].club, key);
     groupOf.set(s[1].club, key);
   }
@@ -623,7 +629,19 @@ function resolveTie(comp: Competition, f: Fixture) {
     else if (res.pens) tie.winner = res.pens[0] > res.pens[1] ? f.home : f.away;
     else tie.winner = rng.chance(0.5) ? tie.a : tie.b;
   }
+  tieNews(comp, tie);
   advance(comp, tie.stage);
+}
+
+/** CM 01/02: "[klub] through to next round in …", "[klub] knocked out of …", "[klub] lose … final" – til de to klubbers managere */
+function tieNews(comp: Competition, tie: Tie) {
+  const g = gs();
+  if (!tie.winner) return;
+  const loser = tie.winner === tie.a ? tie.b : tie.a;
+  const euro = comp.type === 'continental';
+  const final = tie.stage === 'F' || tie.stage === 'F2';
+  if (!final) asOwner(tie.winner, () => addNews({ cat: 'match', key: comp.type === 'playoff' ? 'comp.playoffThrough' : euro ? 'comp.throughEurope' : 'comp.through', params: { club: g.clubs[tie.winner!].name, comp: comp.name, opp: g.clubs[loser]?.name ?? '', round: tie.stage }, link: { kind: 'comp', id: comp.id } }));
+  asOwner(loser, () => addNews({ cat: 'match', key: final ? (comp.type === 'playoff' ? 'comp.playoffLost' : 'comp.lostFinal') : 'comp.out', params: { club: g.clubs[loser]?.name ?? '', comp: comp.name, opp: g.clubs[tie.winner!]?.name ?? '', round: tie.stage }, link: { kind: 'comp', id: comp.id } }));
 }
 
 function advance(comp: Competition, stage: string) {

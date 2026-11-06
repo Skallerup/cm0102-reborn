@@ -5,7 +5,7 @@ import { A } from './attributes';
 import { cmDatabase } from './newgame';
 import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
-import { addDays, day, month, weekday, daysBetween } from './dates';
+import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
 import { maxSubs } from './rules';
@@ -219,12 +219,28 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag
     p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
+    const bannedBefore = p.banned;
     if (line.yellow) {
       s.yellows++;
       p.yellowCount++;
       if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; }
+      else if (p.yellowCount === 4 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'ban.oneAway', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
     }
     if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; }
+    // karantæne (CM 01/02: "[spiller] banned for [n] matches") – til spillerens egen manager
+    if (p.banned > bannedBefore && isHumanClub(p.club)) {
+      const n = p.banned;
+      asOwner(p.club, () => addNews({ cat: 'injury', key: line.red ? 'ban.red' : 'ban.yellows', params: { player: pname(p), n }, link: { kind: 'player', id: p.id } }));
+      // "[spiller] indiscipline costs [klub] dear": rødt kort i et tabt opgør
+      const lost = line.team === 0 ? hs.goals < as.goals : as.goals < hs.goals;
+      if (line.red && lost) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.redCostly', params: { player: pname(p), club: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+    }
+    // unge spillere: debut og en stor kamp ("Talented [spiller] given boost", "Youngster [spiller] praised")
+    if (isHumanClub(p.club) && !g.draft) {
+      const age = ageOn(p.dob, g.date);
+      if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0) asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
+      else if (age <= 20 && line.rating >= 8.5) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.youngsterPraised', params: { player: pname(p), age, rating: line.rating.toFixed(1) }, link: { kind: 'player', id: p.id } }));
+    }
     if (line.injured) injure(p);
     const res = line.team === 0 ? Math.sign(hs.goals - as.goals) : Math.sign(as.goals - hs.goals);
     if (!g.draft) p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));

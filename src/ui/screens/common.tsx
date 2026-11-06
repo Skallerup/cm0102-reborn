@@ -37,6 +37,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (n.key === 'camp.report' && typeof p.mood === 'string') p.mood = t(`camp.mood.${p.mood}`);
   if ((n.key === 'staff.hired' || n.key === 'recb.news.legendStaff') && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);
+  if (typeof p.round === 'string' && n.key.startsWith('comp.')) p.round = t(`stage.${p.round}`).toLowerCase();
   return p;
 }
 

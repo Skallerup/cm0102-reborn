@@ -129,6 +129,10 @@ function promotionRelegation() {
     for (const c of lOrder) { if (down.length <= up.length) break; if (!up.includes(c)) up.push(c); }
     for (const c of down) moves.set(c, rules.below);
     for (const c of up) moves.set(c, upper);
+    // CM 01/02: "[klub] avoid relegation" (lige over stregen) og "[klub] fail to win promotion" (lige under)
+    const safe = uOrder.slice(Math.max(0, uOrder.length - down.length - 2), uOrder.length - down.length);
+    for (const c of safe) if (!down.includes(c)) asOwner(c, () => addNews({ cat: 'general', key: 'comp.avoidRelegation', params: { club: g.clubs[c].name, comp: U.name }, link: { kind: 'comp', id: U.id } }));
+    for (const c of lOrder.slice(up.length, up.length + 3)) if (!up.includes(c)) asOwner(c, () => addNews({ cat: 'general', key: 'comp.missedPromotion', params: { club: g.clubs[c].name, comp: L.name }, link: { kind: 'comp', id: L.id } }));
   }
   for (const [cid, league] of moves) {
     const club = g.clubs[cid];
@@ -160,6 +164,9 @@ function contractsAndLoans() {
   const today = g.date; // 1. juli
   for (const p of Object.values(g.players)) {
     if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
+      // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
+      const loanClub = p.club, from = p.loan.from;
+      for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
       setClub(p, p.loan.from);
       p.loan = null;
     }
@@ -308,10 +315,8 @@ export function youthIntake() {
       if (sr) p.supporterNamed = sr.by;
       addPlayer(p);
       added.push([p, sp.sub]);
-      if (human) asOwner(c.id, () => {
-        g.knowledge[p.id] = 100;
-        addNews({ cat: 'youth', key: 'news.youth', params: { player: pname(p), pos: sp.sub }, link: { kind: 'player', id: p.id } });
-      });
+      // årgangen samles i én nyhed ("youth.intakeDay") – ikke én pr. spiller
+      if (human) asOwner(c.id, () => { g.knowledge[p.id] = 100; });
     }
     if (human && added.length) {
       const [best, pos] = added.slice().sort((a, b) => b[0].pa - a[0].pa)[0];

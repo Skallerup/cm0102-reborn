@@ -105,6 +105,9 @@ export function monthlyIncome() {
     c.finance.tv += tv;
     c.finance.sponsor += sponsor;
     c.finance.merch += merch;
+    // CM 01/02: "[klub] financial mess" – efter to måneder i minus (til klubbens manager)
+    c.negMonths = c.balance < 0 ? (c.negMonths ?? 0) + 1 : 0;
+    if (c.negMonths === 2) asOwnerFinance(c.id, () => addNews({ cat: 'finance', key: 'board.financialMess', params: { club: c.name, balance: c.balance }, link: { kind: 'club', id: c.id } }));
   }
 }
 

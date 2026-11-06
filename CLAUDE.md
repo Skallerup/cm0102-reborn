@@ -40,6 +40,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Nyheder fra CM 01/02: `docs/NEWS.md` (+ `docs/news-map.json`) kortlægger originalens 523 overskrifter mod vores
+  `addNews`-nøgler (188 dækket, 175 lette, 81 kræver mekanik, 79 irrelevante). Bygget: `ban.*`, `comp.*` (tieNews,
+  createFinal, gruppespil, playoff, kvalificeret, op/ned-marginer), `media.preview.*`, `fans.mood*`, transferliste,
+  lejeslut, `board.financialMess` (`Club.negMonths`), dyre køb/stjernesalg, debut. Parametret `round` (stage-kode)
+  oversættes i newsParams for `comp.*`. Nye nyheder til en klub: `asOwner(club, () => addNews(...))`.
 - 2026-11-06 – Navnesøgning `src/ui/search.ts` (`nameQuery`: alle ord, ingen accenter, h ignoreres) i Find, Transfers, editor,
   draft. SW: world-original.json er nu NetworkFirst (StaleWhileRevalidate gav første nye spil efter en opdatering den gamle DB).
 - 2026-11-06 – Originalens økonomi fra databasen (ejerens Bosman-projekt, `…/cm-01-02-bosman-edition/app/finances/README.md`):

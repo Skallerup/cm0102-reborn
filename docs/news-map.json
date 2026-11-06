@@ -1,0 +1,5890 @@
+[
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[beløb] Cash Injection",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Owner/benefactor investment (cash injections into the club)"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[klub] become a PLC",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club ownership model (PLC flotation / shares)"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[klub] board consider [person]'s position",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.warning"
+  ],
+  "trigger": "board.ts:boardMonthly",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[klub] board give [person] vote of confidence",
+  "class": "COVERED",
+  "ourKeys": [
+   "ba.yes.confidenceVote"
+  ],
+  "trigger": "board.ts:boardAsk",
+  "params": [],
+  "missing": "",
+  "note": "Only on request; unsolicited vote is EASY in board.ts:boardMonthly"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[klub] manager given ultimatum by board",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [
+   "board.warning"
+  ],
+  "trigger": "",
+  "params": [],
+  "missing": "Board ultimatum (concrete target over next N matches)"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[klub] match pleases board",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.goodWin",
+   "board.c.upsetWin",
+   "board.c.thrashing"
+  ],
+  "trigger": "board.ts:boardMatchComment",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[spiller] attempts to tear up his contract",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Contract disputes / tribunal (dispute.cpp)"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[spiller] free to leave [klub]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Contract disputes / tribunal outcome"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[spiller] told to remain at [klub]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Contract disputes / tribunal outcome"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "[spiller] withdraws complaint about [klub]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "will.ts:answerComplaint",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board back [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer, fx.brd>0)",
+  "params": [
+   "player",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board block [person] departure",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.releaseBlocked"
+  ],
+  "trigger": "transfers.ts:releasePlayer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board concern over [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone pressurePlayer / fx.brd<0)",
+  "params": [
+   "player",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board concerned by [person] revelations",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.brd<0)",
+  "params": [
+   "player",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board confident of [person]'s loyalty",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (topic jobLinked, loyal answer)",
+  "params": [
+   "manager",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board defend [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board delighted after [klub] game",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.upsetWin",
+   "board.c.thrashing"
+  ],
+  "trigger": "board.ts:boardMatchComment",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board delighted by [turnering] success",
+  "class": "COVERED",
+  "ourKeys": [
+   "trophy.board.cup",
+   "trophy.board.europe",
+   "trophy.board.league"
+  ],
+  "trigger": "fans.ts:celebrateTrophy",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board delighted with [person] backing",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer, fx.brd>0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board fine with [person] backing",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board fury at [klub] performance",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.humiliation",
+   "board.c.cupShock"
+  ],
+  "trigger": "board.ts:boardMatchComment",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board fury at [manager] silence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone deflect, fx.brd<0)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board happy at [person] verdict",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.brd>0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board happy with [manager] silence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone deflect, fx.brd>=0)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board leap to [person]'s defence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board pleased by [turnering] success",
+  "class": "COVERED",
+  "ourKeys": [
+   "trophy.board.cup",
+   "trophy.board.europe",
+   "trophy.board.league"
+  ],
+  "trigger": "fans.ts:celebrateTrophy",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board pleased by media recognition of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "awards.ts:monthlyAwards (award.monthManagerMe) / awards.ts:seasonGala (managerOfYearMe)",
+  "params": [
+   "manager",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board pleased by your handling of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (fine/warning, misbehaved=true)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board reaction to [klub] game",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.goodWin",
+   "board.c.badLoss",
+   "board.c.dropped"
+  ],
+  "trigger": "board.ts:boardMatchComment",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board shocked by release of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:releasePlayer (player among top-5 value / high CA)",
+  "params": [
+   "player",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board slam [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone pressurePlayer, fx.brd<0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board surprised at [person] departure",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:completeTransfer (user sells a top-3 player)",
+  "params": [
+   "player",
+   "club",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board surprised by [manager]'s silence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone deflect)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board surprised by comments about [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone pressurePlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board unhappy after [klub] defeat",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.badLoss"
+  ],
+  "trigger": "board.ts:boardMatchComment",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board unhappy with [person]",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.warning"
+  ],
+  "trigger": "board.ts:boardMonthly",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "Board upset by release of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:releasePlayer (compensation > threshold)",
+  "params": [
+   "player",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "New Board take control of [klub]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club takeovers / ownership changes"
+ },
+ {
+  "group": "Fra bestyrelsen og om klubbens økonomi",
+  "headline": "The [klub] board of directors",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Sender/source label, not a headline"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[antal] days",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (duration)"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] backs manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "ba.yes.confidenceVote",
+   "board.meeting"
+  ],
+  "trigger": "board.ts:boardAsk / fans.ts:boardMeeting",
+  "params": [],
+  "missing": "",
+  "note": "We have no named chairman – board speaks"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] disappointed by [manager] reaction",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.brd<0)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] fury at [manager] silence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone deflect, topic board)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] fury at [manager] verdict",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.brd<0)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] mystified by [manager] reaction",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone fiery, fx.brd<0)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] slams manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.warning",
+   "board.c.humiliation"
+  ],
+  "trigger": "board.ts:boardMonthly / board.ts:boardMatchComment",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] stands by manager over [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer, fx.brd>=0)",
+  "params": [
+   "manager",
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] surprised by [manager]'s silence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone deflect)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] surprised by [manager]'s verdict",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[formand] unhappy with [manager]",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.warning"
+  ],
+  "trigger": "board.ts:boardMonthly",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] acknowledge your job application",
+  "class": "COVERED",
+  "ourKeys": [
+   "job.applied"
+  ],
+  "trigger": "board.ts:applyForJob",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] appoint [person] as manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.managerHired",
+   "mgr.poached"
+  ],
+  "trigger": "board.ts:fillVacancies / careers.ts:pickManager",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] dismiss your job application",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.applyRejected",
+   "job.filled"
+  ],
+  "trigger": "board.ts:processJobTalks",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] fans respond to speculation",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "board.ts:processJobTalks (job.invite for user while employed)",
+  "params": [
+   "club",
+   "other"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] manager [person] retires",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "AI manager ageing / retirement"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] manager [person] sacked",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.managerSacked"
+  ],
+  "trigger": "board.ts:aiSackings / board.ts:summerManagerChanges",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] manager [person] told to stop the rot",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "board.ts:aiSackings (AI club in danger zone but not sacked)",
+  "params": [
+   "club",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] offer [person] the position of manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "mgr.poached"
+  ],
+  "trigger": "careers.ts:pickManager",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] offer you the position of manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.jobOffer",
+   "job.invite"
+  ],
+  "trigger": "board.ts:fillVacancies / board.ts:processJobTalks",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] squad numbers to be decided",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (players without Player.number after ensureNumbers / new signings)",
+  "params": [
+   "club"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] to register players for later stages",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Competition squad registration"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] to register players for next phase",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Competition squad registration"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub] to register players for qualifying phase",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Competition squad registration"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub]'s [person] is sacked as manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.managerSacked"
+  ],
+  "trigger": "board.ts:aiSackings",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub]'s [person] is sacked as player-manager",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Player-manager role"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub]'s [person] resigns as manager",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "AI manager resignations (AI only leave via sack/poach)"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[klub]'s [person] resigns as player-manager",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Player-manager role"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[land] FA consider [person]'s position",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team management"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[land] FA give [person] vote of confidence",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team management"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[land] FA performance assessment",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team management"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[manager] attacks referee conspiracy",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (topic referee, tone fiery)",
+  "params": [
+   "manager",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[manager] clutches at straws",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (post-match after loss, tone deflect)",
+  "params": [
+   "manager",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[manager] criticises poor refereeing standards",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (topic referee)",
+  "params": [
+   "manager",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[manager] defends [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "press.report"
+  ],
+  "trigger": "press.ts:applyPress",
+  "params": [],
+  "missing": "",
+  "note": "Headline built from answers"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[manager] grants [spiller] transfer request",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:toggleListed (p.wantsAway or after will.targetRequest)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[manager] puts [spiller] on transfer list",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:toggleListed",
+  "params": [
+   "player",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] is an invaluable member of the team",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (praise)",
+  "params": [
+   "player",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] linked with [klub] job",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "board.ts:fillVacancies / board.ts:openVacancy (user on candidate list)",
+  "params": [
+   "manager",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] resigned as manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "job.resigned"
+  ],
+  "trigger": "board.ts:resignJob",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] resigns as manager of [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "job.resigned",
+   "job.resignedMid"
+  ],
+  "trigger": "board.ts:resignJob",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] shouldn't be a member of our squad",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (criticise)",
+  "params": [
+   "player",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] will achieve great things at the club",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (future)",
+  "params": [
+   "player",
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[person] would be a useful addition to the squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Manager media comments about other clubs' players"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[rival manager name] questions purchase of [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:completeTransfer (fee >= 1.5x value, user buyer)",
+  "params": [
+   "manager",
+   "player",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] acknowledges his manager's contribution",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.praise.form",
+   "trophy.captain.league"
+  ],
+  "trigger": "will.ts:playerPraises / fans.ts:celebrateTrophy",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] blast at manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.press",
+   "pers.incident.media"
+  ],
+  "trigger": "will.ts:playerComplains / personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] interview",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Generic container headline"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] reacts to manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.press",
+   "will.praise.press"
+  ],
+  "trigger": "will.ts:playerComplains / will.ts:playerPraises",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] thanks his manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.praise.form",
+   "will.praise.contract"
+  ],
+  "trigger": "will.ts:playerPraises",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] thanks manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.praise.press"
+  ],
+  "trigger": "will.ts:playerPraises",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "[spiller] unconvinced by his manager",
+  "class": "COVERED",
+  "ourKeys": [
+   "reject.r.future.0",
+   "reject.r.key.0"
+  ],
+  "trigger": "will.ts:blockedMoveReaction",
+  "params": [],
+  "missing": "",
+  "note": "Also talk.r.futureDoubt (dialog)"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "FA fine [klub] over [manager]'s outburst",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "FA discipline of managers (charges for comments)"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "FA reduce [person]'s ban",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Ban appeals"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "FA revoke [person]'s ban",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Ban appeals"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "FA rumoured to be losing patience with [manager]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team management"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Fans surprised by manager's comments on [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone pressurePlayer, fx.fan<0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Fans surprised by manager's defence of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer, fx.fan<0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Hired [person] as manager",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Staff history line (staff_records.cpp)"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Hired [spiller] as [job]",
+  "class": "COVERED",
+  "ourKeys": [
+   "staff.hired",
+   "recb.news.legendStaff"
+  ],
+  "trigger": "staff.ts:doHire / records.ts:retireIntoStaff",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Hired as [klub] manager",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Manager history line"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Manager optimism delights [formand]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone confident, topic board)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Resigned as manager of [klub]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Manager history line"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Sacked [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "staff.ts:fireStaff",
+  "params": [
+   "name",
+   "role"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Sacked [person] as manager",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Staff history line"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Sacked as manager of [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.sacked",
+   "board.sackedSeason"
+  ],
+  "trigger": "board.ts:sackUser",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "Signed by [klub] as [job]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Staff history line"
+ },
+ {
+  "group": "Om dig som manager og managerjob",
+  "headline": "The [land] Football Association",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Sender/source label"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[formand] concerned by your handling of the media",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (g.manager.media falls below threshold)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[formand] defends [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[formand] leaps to [person]'s defence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[formand] pleased by your handling of the media",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (g.manager.media rises above threshold)",
+  "params": [
+   "manager"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[formand] surprised by attack on [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone pressurePlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] beaten",
+  "class": "COVERED",
+  "ourKeys": [
+   "match.lost"
+  ],
+  "trigger": "sim.ts:userMatchResult",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] climbing to safety",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (user club leaves drop zone)",
+  "params": [
+   "club",
+   "pos",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] expected to challenge",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (after setBoardExpectation; new preview item in media.ts)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] expected to last pace",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, expectation mid)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] financial mess",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "finance.ts:monthlyFigures (balance < 0 two months)",
+  "params": [
+   "club",
+   "balance"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] fly the flag",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (continental tie won by user club)",
+  "params": [
+   "club",
+   "comp",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] halt slide",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:userMatchResult (win after 3+ games without a win)",
+  "params": [
+   "club",
+   "opp",
+   "score"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] in the spotlight",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] make their mark on [verdensdel]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:checkGroupsDone / competitions.ts:checkLeaguePhaseDone (user club qualifies)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] march on",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (user club wins cup tie)",
+  "params": [
+   "club",
+   "comp",
+   "stage",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] slump continues",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.lossStreak"
+  ],
+  "trigger": "board.ts:boardMatchComment",
+  "params": [],
+  "missing": "",
+  "note": "Media version EASY in sim.ts:userMatchResult"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] struggling",
+  "class": "COVERED",
+  "ourKeys": [
+   "board.c.noWins",
+   "column.month"
+  ],
+  "trigger": "board.ts:boardMatchComment / media.ts:monthlyColumn",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] supporters fury",
+  "class": "COVERED",
+  "ourKeys": [
+   "fans.leave.sold3",
+   "fans.leave.released3"
+  ],
+  "trigger": "fans.ts:fansOnDeparture",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] tipped as outsiders",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, expectation top3/tophalf for weaker club)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] tipped for glory",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, expectation title)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] tipped for promotion",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, expectation promotion)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[klub] title challenge in spotlight",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (user club within 3 pts of top)",
+  "params": [
+   "club",
+   "comp",
+   "gap"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] local newspaper",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name (we use rumour.interest {outlet})"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] local radio station",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] magazine",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] national newspaper",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] radio station",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] sports paper",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[land] website",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Media outlet name"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] banned for gesture",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Post-match FA misconduct charges"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] caught on camera",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Retrospective video bans"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] desperate to play",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.time"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] lashes out",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.media",
+   "will.complain.press"
+  ],
+  "trigger": "personality.ts:monthlyPersonality / will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] should be put on a leash",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "AI managers commenting on your players in the media"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] tips [klub] for glory",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, pundit quote)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] verdict gets boardroom support",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.brd>0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] verdict gets fans' backing",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.fan>0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] wants first team football",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.time"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[person] writes off [klub] chances",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, expectation survive)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[sold player name] sale causes unrest",
+  "class": "COVERED",
+  "ourKeys": [
+   "fans.leave.sold2",
+   "fans.leave.sold3"
+  ],
+  "trigger": "fans.ts:fansOnDeparture",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] a 'future international'",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "training.ts:monthlyDevelopment (age<=21, CA jump, pa high)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] accepts your decision",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.dropDeserved",
+   "complaint.r.renewal.listen"
+  ],
+  "trigger": "personality.ts:interact / will.ts:answerComplaint",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply, not inbox"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] accused of complacency",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (star with avg form < 6.3)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] acknowledges support",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.praise.press"
+  ],
+  "trigger": "will.ts:playerPraises",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] admits his mistake",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.critAccepts",
+   "talk.r.warnAccepted"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] agent request",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.contractDemand"
+  ],
+  "trigger": "will.ts:monthlyWill",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] agent responds to criticism",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (criticise, critUnfair/critExplodes)",
+  "params": [
+   "player",
+   "agent"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] apologises",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.critAccepts",
+   "talk.r.warnAccepted"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] attitude praised",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.praiseDeserved"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] blasts lack of service",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "will.ts:monthlyWill (striker, no goals in 5+ starts)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] concerned by transfer rumour",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:weeklyRumours (rumour about user's own player)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] demands support",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.press"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] disheartened",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.morale"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] eyes [klub] move",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.unsettled",
+   "will.leak"
+  ],
+  "trigger": "transfers.ts:aiPursuits / will.ts:monthlyWill",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] fuels transfer talk",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.unsettled"
+  ],
+  "trigger": "transfers.ts:aiPursuits",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] impresses at [klub]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (new signing, avg rating >= 7.2)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] indicates he will fight for his place in the team",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.critFiredUp",
+   "talk.r.dropDeserved"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] indiscipline costs [klub] dear",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (line.red && team lost)",
+  "params": [
+   "player",
+   "club",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] lights up [comp name eg world cup]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] on the rise",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "training.ts:monthlyDevelopment (CA +5 in a month, age<=23)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] out of favour",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.time"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] praised",
+  "class": "COVERED",
+  "ourKeys": [
+   "press.report",
+   "talk.r.praiseDeserved"
+  ],
+  "trigger": "press.ts:applyPress / personality.ts:interact",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] questions boss",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.time",
+   "talk.r.critUnfair"
+  ],
+  "trigger": "will.ts:playerComplains / personality.ts:interact",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] quoted in media",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.media"
+  ],
+  "trigger": "personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] rated highly",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (player with best avg rating in league)",
+  "params": [
+   "player",
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] receives criticism",
+  "class": "COVERED",
+  "ourKeys": [
+   "press.report"
+  ],
+  "trigger": "press.ts:applyPress",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] requests backing",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "will.ts:monthlyWill (poor form + low morale, star)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] responds to criticism",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.critAccepts",
+   "talk.r.critUnfair"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] rumour",
+  "class": "COVERED",
+  "ourKeys": [
+   "rumour.interest"
+  ],
+  "trigger": "media.ts:weeklyRumours",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] rumours",
+  "class": "COVERED",
+  "ourKeys": [
+   "rumour.interest"
+  ],
+  "trigger": "media.ts:weeklyRumours",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] shows promise",
+  "class": "COVERED",
+  "ourKeys": [
+   "trial.verdict.prospect",
+   "news.scoutTalent"
+  ],
+  "trigger": "trials.ts:trialsDaily / scouting.ts:scoutKnowledge",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] stars in [comp name eg world cup]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] tipped to shine on world stage",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] touted",
+  "class": "COVERED",
+  "ourKeys": [
+   "rumour.interest"
+  ],
+  "trigger": "media.ts:weeklyRumours",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] transfer speculation",
+  "class": "COVERED",
+  "ourKeys": [
+   "rumour.interest"
+  ],
+  "trigger": "media.ts:weeklyRumours",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] under fire",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (regular with avg rating < 6.0)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] unsettled",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.unsettled"
+  ],
+  "trigger": "transfers.ts:aiPursuits",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] world class talent",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "training.ts:monthlyDevelopment (age<=21, CA>=150)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller] worried by sale of [sold player name]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:completeTransfer (seller=user, same clique/nation as sold player, see will.ts:cliques)",
+  "params": [
+   "player",
+   "sold"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spiller]'s blast at club",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.media",
+   "will.complain.blocked"
+  ],
+  "trigger": "personality.ts:monthlyPersonality / will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "[spokesman short name] celebrates signing of [person]",
+  "class": "COVERED",
+  "ourKeys": [
+   "fans.signing2",
+   "fans.signing3"
+  ],
+  "trigger": "fans.ts:fansOnSigning",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Agent demands support for [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (criticise of player with agent, agents.ts:agentOf)",
+  "params": [
+   "player",
+   "agent"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Boring [klub]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (fewest goals in league)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Criticism of [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "press.report"
+  ],
+  "trigger": "press.ts:applyPress",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Discontent at [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.cliqueUnrest.nation",
+   "will.cliqueUnrest.veterans",
+   "will.cliqueUnrest.youngsters"
+  ],
+  "trigger": "will.ts:monthlyWill",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans celebrate signing of [person]",
+  "class": "COVERED",
+  "ourKeys": [
+   "fans.signing2",
+   "fans.signing3"
+  ],
+  "trigger": "fans.ts:fansOnSigning",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans celebrate winning the [turnering]",
+  "class": "COVERED",
+  "ourKeys": [
+   "trophy.fans.league",
+   "trophy.fans.cup",
+   "trophy.fans.europe"
+  ],
+  "trigger": "fans.ts:celebrateTrophy",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans defend [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone pressurePlayer on popular player)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans delighted by [person] criticism",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (fx.fan>0 on pressurePlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans disgusted by [person]'s behaviour",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:monthlyPersonality (pers.incident.*)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans leap to [person]'s defence",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans pay tribute to [person]",
+  "class": "COVERED",
+  "ourKeys": [
+   "recb.news.legend",
+   "fans.leave.free3"
+  ],
+  "trigger": "records.ts:recordsAfterMatch / fans.ts:fansOnDeparture",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans pleased by [person] praise",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer, fx.fan>0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans pleased by firm handling of [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (fine/warning deserved)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans pleased by your praise of [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (praise, praiseDeserved)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans pleased your defence of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "press.ts:applyPress (tone backPlayer)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans slam [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "fans.ts:fansAfterMatch (heavy home defeat) / fans.ts:bumpFans large negative",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans unhappy with [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "fans.ts:fansMonthly (fanMood drop >= 10, already detected for story)",
+  "params": [
+   "manager",
+   "mood"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans worried by your praise of [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (praise, praiseUndeserved)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans' concern over [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "fans.ts:fansMonthly (fanMood < 35)",
+  "params": [
+   "manager",
+   "mood"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Fans' happy with [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "fans.ts:fansMonthly (fanMood rise >= 10)",
+  "params": [
+   "manager",
+   "mood"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Financial trouble at [klub]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "finance.ts:monthlyFigures (AI/other club balance deeply negative)",
+  "params": [
+   "club",
+   "balance"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Media attack [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (regular with avg rating < 6.0)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Media disappointed in [spiller] this season",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonAwards (big signing/star with poor season avg)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Media question [spiller]'s ability",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Media question [spiller]'s attitude",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:monthlyPersonality (incident)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Media question [spiller]'s contribution",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Media question purchase of [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:completeTransfer (fee >= 1.5x value)",
+  "params": [
+   "player",
+   "fee",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Players celebrate signing of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "fans.ts:fansOnSigning (hype 3)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Press discuss [klub] title credentials",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (user top-2 after Jan)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Press tip [klub] as contenders",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Press tip [klub] for glory",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Press write off [klub] chances",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview, expectation survive)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Pressure gets to [spiller]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (rating < 5.5 in big match/final, low composure)",
+  "params": [
+   "player",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Pundit tips [klub] for glory",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonRollover (preview)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Speculation over [spiller] future",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.expiring",
+   "will.leak"
+  ],
+  "trigger": "transfers.ts:contractReminders / will.ts:monthlyWill",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Speculation over [spiller]'s commitment",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.leak",
+   "pers.wantsAway"
+  ],
+  "trigger": "will.ts:monthlyWill / personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Talented [spiller] given boost",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (first senior appearance, age<=19)",
+  "params": [
+   "player",
+   "club"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Unrest reported at [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.cliqueUnrest.nation",
+   "will.cliqueUnrest.veterans",
+   "will.cliqueUnrest.youngsters"
+  ],
+  "trigger": "will.ts:monthlyWill",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra medierne og fansene",
+  "headline": "Youngster [spiller] praised",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (age<=20, rating>=8)",
+  "params": [
+   "player",
+   "club",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: skader og kondition",
+  "headline": "[spiller] fitness worry",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:newDay (injured regular, injury.days<=3 before next fixture)",
+  "params": [
+   "player",
+   "days"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: skader og kondition",
+  "headline": "[spiller] lacking fitness",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:newDay (regular with condition < 80 the day before a match)",
+  "params": [
+   "player",
+   "condition"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: skader og kondition",
+  "headline": "[spiller] misses training",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.late"
+  ],
+  "trigger": "personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: skader og kondition",
+  "headline": "[spiller] resumes full training",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.recovered"
+  ],
+  "trigger": "sim.ts:newDay",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: skader og kondition",
+  "headline": "[spiller] resumes light training",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:newDay (injury.days === 7 for injuries >= 21 days)",
+  "params": [
+   "player",
+   "days"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: skader og kondition",
+  "headline": "[spiller] training report",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.trainingAdvice"
+  ],
+  "trigger": "sim.ts:newDay",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[grund] and [grund]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (list of reasons)"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[grund], [grund] and [grund]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[klub] tie up [person] contract",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.renewed"
+  ],
+  "trigger": "transfers.ts:renewContract",
+  "params": [],
+  "missing": "",
+  "note": "AI side EASY in transfers.ts:aiRenewals"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] accepts [klub] offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "signing.won",
+   "transfer.done"
+  ],
+  "trigger": "transfers.ts:resolveSignings / transfers.ts:completeTransfer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] accepts contract offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.renewed",
+   "signing.won"
+  ],
+  "trigger": "transfers.ts:renewContract / transfers.ts:resolveSignings",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] accepts trial offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "trial.started"
+  ],
+  "trigger": "trials.ts:inviteTrial",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] leaves [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.left",
+   "transfer.released"
+  ],
+  "trigger": "season.ts:contractsAndLoans / transfers.ts:releasePlayer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] leaves club",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.left"
+  ],
+  "trigger": "season.ts:contractsAndLoans",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] rejects [klub] offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.refuseRep",
+   "transfer.refuseAbroad",
+   "transfer.refuseHappy"
+  ],
+  "trigger": "transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] rejects contract offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.talksCollapsed",
+   "will.complain.renewal"
+  ],
+  "trigger": "transfers.ts:negotiate / will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] rejects new [no of years eg 4] year [klub] deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.renewal"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": "",
+  "note": "renewContract refusal only shown in dialog"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] rejects trial offer",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Players able to refuse a trial"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] signs new [klub] deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.renewed"
+  ],
+  "trigger": "transfers.ts:renewContract",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] signs new [no of years eg 4] year [klub] deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.renewed"
+  ],
+  "trigger": "transfers.ts:renewContract",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] snubs new deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.renewal"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person] turns down latest [klub] deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.renewal",
+   "transfer.talksCollapsed"
+  ],
+  "trigger": "will.ts:playerComplains / transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person]'s contract expires",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.expiring",
+   "contract.left"
+  ],
+  "trigger": "transfers.ts:contractReminders / season.ts:contractsAndLoans",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person]'s loan finishes",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:contractsAndLoans (p.loan.until < today, setClub back)",
+  "params": [
+   "player",
+   "from",
+   "to"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[person]'s trial finishes",
+  "class": "COVERED",
+  "ourKeys": [
+   "trial.verdict.star",
+   "trial.verdict.good",
+   "trial.verdict.prospect",
+   "trial.verdict.notGood"
+  ],
+  "trigger": "trials.ts:trialsDaily",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] contract offer cancelled",
+  "class": "COVERED",
+  "ourKeys": [
+   "signing.gone"
+  ],
+  "trigger": "transfers.ts:resolveSignings",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] happy to stay",
+  "class": "COVERED",
+  "ourKeys": [
+   "reject.r.key.2",
+   "reject.r.future.2",
+   "reject.r.contract.2"
+  ],
+  "trigger": "will.ts:blockedMoveReaction",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] loan terminated",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Early loan termination / recall"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] on the move",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.done",
+   "transfer.digest"
+  ],
+  "trigger": "transfers.ts:completeTransfer / transfers.ts:weeklyTransferDigest",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] put up for sale",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:toggleListed (user) / AI listing in transfers.ts:aiClubTurn",
+  "params": [
+   "player",
+   "club",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] recalled from loan",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Loan recall"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] requests move",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.targetRequest",
+   "pers.wantsAway"
+  ],
+  "trigger": "will.ts:targetReaction / personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] seeks assurances",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.renewal",
+   "will.complain.time"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] set to leave [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.leavingBosman"
+  ],
+  "trigger": "transfers.ts:contractReminders / transfers.ts:aiBosman",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] to join [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.preContract",
+   "contract.leavingBosman"
+  ],
+  "trigger": "transfers.ts:completePreContract / transfers.ts:aiBosman",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] to leave club",
+  "class": "COVERED",
+  "ourKeys": [
+   "contract.expiring"
+  ],
+  "trigger": "transfers.ts:contractReminders",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] trial cancelled",
+  "class": "COVERED",
+  "ourKeys": [
+   "trial.signedElsewhere"
+  ],
+  "trigger": "trials.ts:trialsDaily",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller] wants new contract",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.contractDemand"
+  ],
+  "trigger": "will.ts:monthlyWill",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "[spiller]'s contract",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Sub-heading fragment"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Apr [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Aug [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Contract rebel [person] turns down latest offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.demandWantsAway",
+   "will.complain.renewal"
+  ],
+  "trigger": "will.ts:monthlyWill / will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Dec [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Feb [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Jan [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Jul [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Jun [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Mar [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "May [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Nov [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Oct [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Sep [år]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Month label"
+ },
+ {
+  "group": "Om spillere: kontrakter og løn",
+  "headline": "Unhappy [spiller] transfer listed",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "transfers.ts:toggleListed (p.wantsAway) / will.ts:answerComplaint (choice list)",
+  "params": [
+   "player",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[antal] players",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] get [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.done"
+  ],
+  "trigger": "transfers.ts:completeTransfer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] get cut of [spiller] transfer fee",
+  "class": "COVERED",
+  "ourKeys": [
+   "clause.sellOnPaid"
+  ],
+  "trigger": "clauses.ts:settleSellOn",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] give up on [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.aiWithdrew",
+   "transfer.talksOver"
+  ],
+  "trigger": "transfers.ts:respondToOffer / transfers.ts:rebid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] loan offer for [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.incomingLoan",
+   "transfer.loanOptionBid"
+  ],
+  "trigger": "transfers.ts:aiBidsForListed / transfers.ts:aiLoanOptions",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] negotiation over [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidCountered",
+   "transfer.aiRaised"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid / transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] seal [spiller] deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.done"
+  ],
+  "trigger": "transfers.ts:completeTransfer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] set to buy [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidAccepted"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] set to sign [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidAccepted",
+   "signing.pending"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid / transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] sign [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.done",
+   "transfer.digest"
+  ],
+  "trigger": "transfers.ts:completeTransfer / transfers.ts:weeklyTransferDigest",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] to sign [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.preContract"
+  ],
+  "trigger": "transfers.ts:completePreContract",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[klub] transfer bid for [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.incomingBid"
+  ],
+  "trigger": "transfers.ts:makeBid / transfers.ts:aiClubTurn / transfers.ts:aiBidsForListed",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] accepts [klub] offer",
+  "class": "COVERED",
+  "ourKeys": [
+   "signing.won"
+  ],
+  "trigger": "transfers.ts:resolveSignings",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] accepts loan contract",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.loanDone"
+  ],
+  "trigger": "transfers.ts:completeTransfer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] agrees to contract discussion",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidAccepted",
+   "transfer.releaseMet"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] deal falls through",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.talksCollapsed"
+  ],
+  "trigger": "transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] deal vetoed",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Board veto of transfers (we block in UI only)"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] fails to get work permit",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Work permits"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] given free transfer",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.released"
+  ],
+  "trigger": "transfers.ts:releasePlayer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] going nowhere",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.notForSale",
+   "enquiry.nfs"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid / transfers.ts:enquire",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] granted work permit",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Work permits"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] loan bid rejected",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.loanRejected"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] loan bid withdrawn",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.aiWithdrew"
+  ],
+  "trigger": "transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] loan cancelled",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Loan cancellation / termination"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] loan offer accepted",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.loanAccepted"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] loan offer negotiation",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidCountered"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] loan to [klub] cancelled",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Loan cancellation / termination"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] move to [klub] cancelled",
+  "class": "COVERED",
+  "ourKeys": [
+   "signing.gone"
+  ],
+  "trigger": "transfers.ts:resolveSignings",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] moves to [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.done",
+   "transfer.bosmanDone"
+  ],
+  "trigger": "transfers.ts:completeTransfer / season.ts:contractsAndLoans",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] rejects [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.refuseHappy",
+   "transfer.refuseRep"
+  ],
+  "trigger": "transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] rejects loan offer from [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.playerRefusedMove"
+  ],
+  "trigger": "transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] rejects move to [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.playerRefusedMove"
+  ],
+  "trigger": "transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] release clause activated",
+  "class": "COVERED",
+  "ourKeys": [
+   "clause.releaseTriggered",
+   "transfer.releaseMet"
+  ],
+  "trigger": "transfers.ts:aiReleaseClauses / transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] removed from transfer deal",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Part-exchange player withdrawal"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] set for [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidAccepted"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] set for [klub] loan deal",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.loanAccepted"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] set for [klub] role",
+  "class": "COVERED",
+  "ourKeys": [
+   "recb.news.legendStaff",
+   "staff.hired"
+  ],
+  "trigger": "records.ts:retireIntoStaff / staff.ts:doHire",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] snubs [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.refuseRep"
+  ],
+  "trigger": "transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer bid rejected",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidRejected"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid / transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer bid withdrawn",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.aiWithdrew"
+  ],
+  "trigger": "transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer cancelled",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.talksOver"
+  ],
+  "trigger": "transfers.ts:rebid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer delayed",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Deferred transfer completion (medicals / paperwork)"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer delayed due to work permit",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Work permits"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer offer accepted",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidAccepted"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer to [klub] falls through",
+  "class": "COVERED",
+  "ourKeys": [
+   "signing.lost",
+   "transfer.talksCollapsed"
+  ],
+  "trigger": "transfers.ts:resolveSignings / transfers.ts:negotiate",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller] transfer to [klub] put on hold",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Deferred transfer completion"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller]'s work permit expires",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Work permits"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "[spiller]'s work permit renewed",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Work permits"
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "A new offer was made by [klub]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.pursuitReturn",
+   "transfer.aiRaised"
+  ],
+  "trigger": "transfers.ts:aiPursuits / transfers.ts:respondToOffer",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "Negotiate [klub] bid for [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.incomingBid"
+  ],
+  "trigger": "transfers.ts:aiClubTurn",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: transfers, lån og bud fra andre klubber",
+  "headline": "Offer contract to [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.bidAccepted",
+   "transfer.releaseMet"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "1 match [scope] ban",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (p.banned set from 0 to 1)",
+  "params": [
+   "player",
+   "n",
+   "reason"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "1 match [scope] ban ( starts [dato] )",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult",
+  "params": [
+   "player",
+   "n",
+   "date"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[antal] match [scope] ban",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (red card: banned = rng.int(1,3))",
+  "params": [
+   "player",
+   "n",
+   "reason"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[antal] match [scope] ban ( starts [dato] )",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult",
+  "params": [
+   "player",
+   "n",
+   "date"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[antal] points",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (disciplinary points)"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[antal] red cards",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (ban reason)"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[antal] successive yellow cards",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (ban reason)"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[antal] yellow cards",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (ban reason)"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[fine period] Week Fine",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment (fine size)"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[person] accepts his fine",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.fineAccepted"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply, not inbox"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[person] accepts his warning",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.warnAccepted"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[person] feels fine was unfair",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.fineUnjust",
+   "talk.r.fineWantsAway"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[person] feels warning was harsh",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.warnUnjust"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog reply"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[spiller] banned for [antal] matches",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (line.red)",
+  "params": [
+   "player",
+   "n"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[spiller] banned for [length]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Time-based bans"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[spiller] banned for one match",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (yellowCount reaches 5)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[spiller] pleased by [spiller]'s reaction",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (fine accepted; captain/leader comments)",
+  "params": [
+   "player",
+   "captain"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[spiller] thinks [spiller] can't handle the pressure",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (fine, fineWantsAway; teammate comment)",
+  "params": [
+   "player",
+   "mate"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[time length] [scope] ban",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Time-based bans"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "[time length] [scope] ban ( starts [dato] )",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Time-based bans"
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "Players protest over [person]'s fine",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (fine/fineHeavy with fineUnjust)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: disciplin, karantæner og bøder",
+  "headline": "Players protest over [person]'s warning",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "personality.ts:interact (warning with warnUnjust)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[person] absent from training",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.late"
+  ],
+  "trigger": "personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[person] disciplined by club",
+  "class": "COVERED",
+  "ourKeys": [
+   "talk.r.fineAccepted"
+  ],
+  "trigger": "personality.ts:interact",
+  "params": [],
+  "missing": "",
+  "note": "Dialog only; inbox item EASY in same function"
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[person] rumoured to have missed training",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.late"
+  ],
+  "trigger": "personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[spiller] fails to return from leave",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Player leave / AWOL"
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[spiller] goes AWOL",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Player AWOL"
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[spiller] in transfer row",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.targetUpset",
+   "will.complain.blocked"
+  ],
+  "trigger": "will.ts:targetReaction / will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: udeblivelser og opførsel",
+  "headline": "[spiller] returns to [klub]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Return after AWOL"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] and [spiller]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] brought in to [land] squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads / call-ups"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] removed from [land] squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads / call-ups"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] selected for [land] match",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads / call-ups"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] selected in [land] 'B' squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads / call-ups"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] selected in [land] squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads / call-ups"
+ },
+ {
+  "group": "Om spillere: landsholdet",
+  "headline": "[spiller] selected in [land] Under 21 squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads / call-ups"
+ },
+ {
+  "group": "Om spillere: unge talenter og karrierestop",
+  "headline": "[person] announces decision to retire",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:retirements (pre-decide in spring via sim.ts:newDay monthly hook, store flag on Player)",
+  "params": [
+   "player",
+   "age"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Om spillere: unge talenter og karrierestop",
+  "headline": "[person] promoted from youth academy",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.youth",
+   "youth.intakeDay"
+  ],
+  "trigger": "season.ts:youthIntake",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: unge talenter og karrierestop",
+  "headline": "[person] promoted to reserve squad",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.reservesPromoted"
+  ],
+  "trigger": "season.ts:seasonRollover",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: unge talenter og karrierestop",
+  "headline": "[person] retires",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.retired"
+  ],
+  "trigger": "season.ts:retirements",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: unge talenter og karrierestop",
+  "headline": "[person] retires due to injury",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Career-ending injuries"
+ },
+ {
+  "group": "Om spillere: unge talenter og karrierestop",
+  "headline": "Shock retirement of [person]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:retirements (age <= 32)",
+  "params": [
+   "player",
+   "age"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[pris] award decided",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.gala"
+  ],
+  "trigger": "awards.ts:seasonGala",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[pris] decided",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.gala",
+   "award.playerOfYear"
+  ],
+  "trigger": "awards.ts:seasonGala / season.ts:seasonAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[pris] shortlist decided",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "awards.ts:seasonGala (pre-announce shortlist in May via sim.ts:newDay)",
+  "params": [
+   "award",
+   "players"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] named as [pris]",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.playerOfYear",
+   "award.ballonDor"
+  ],
+  "trigger": "season.ts:seasonAwards / awards.ts:seasonGala",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] scoops big prize",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.ballonDor"
+  ],
+  "trigger": "awards.ts:seasonGala",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] scoops prize",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.playerOfYear"
+  ],
+  "trigger": "season.ts:seasonAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] takes award",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.playerOfYear",
+   "award.topScorer"
+  ],
+  "trigger": "season.ts:seasonAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] takes top award",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.ballonDor"
+  ],
+  "trigger": "awards.ts:seasonGala",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] wins [dato] award",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.monthPlayer"
+  ],
+  "trigger": "awards.ts:monthlyAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "[spiller] wins [month name] award",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.monthPlayer"
+  ],
+  "trigger": "awards.ts:monthlyAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "Award for [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.playerOfYear",
+   "award.monthPlayer"
+  ],
+  "trigger": "season.ts:seasonAwards / awards.ts:monthlyAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Om spillere: priser og kåringer",
+  "headline": "Major award for [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.ballonDor"
+  ],
+  "trigger": "awards.ts:seasonGala",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "[klub] drop into playoffs",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:weeklySummary (user club moves into play-off/relegation-playoff zone)",
+  "params": [
+   "club",
+   "pos",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "[klub] reach playoffs",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:setupPlayoff (user club among seeds)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "[klub] Training",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.trainingAdvice"
+  ],
+  "trigger": "sim.ts:newDay",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "[scout name1] and [scout name2]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "[spiller] impresses scout",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.scoutTalent",
+   "news.scoutDone"
+  ],
+  "trigger": "scouting.ts:scoutKnowledge / scouting.ts:scoutDaily",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "Scout #[antal]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Label"
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "Scouts impressed by [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.scoutTalent"
+  ],
+  "trigger": "scouting.ts:scoutKnowledge",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra trænerstaben og scouts",
+  "headline": "Scouts watch [spiller]",
+  "class": "COVERED",
+  "ourKeys": [
+   "rumour.interest"
+  ],
+  "trigger": "media.ts:weeklyRumours",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Fra forbundet: regler og transfervinduer",
+  "headline": "1 match [scope] ban  ([grund])",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult",
+  "params": [
+   "player",
+   "n",
+   "reason"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra forbundet: regler og transfervinduer",
+  "headline": "[antal] match [scope] ban  ([grund])",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult",
+  "params": [
+   "player",
+   "n",
+   "reason"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra forbundet: regler og transfervinduer",
+  "headline": "[time length] [scope] ban  ([grund])",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Time-based bans"
+ },
+ {
+  "group": "Fra forbundet: regler og transfervinduer",
+  "headline": "One yellow card away from [scope] 1 match ban",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (p.yellowCount === 4)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Fra forbundet: regler og transfervinduer",
+  "headline": "One yellow card away from [scope] [antal] day ban",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Time-based bans"
+ },
+ {
+  "group": "Fra forbundet: regler og transfervinduer",
+  "headline": "One yellow card away from [scope] [antal] match ban",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (p.yellowCount === 4)",
+  "params": [
+   "player",
+   "n"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[antal] countries qualify for [år]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] and [klub]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] finish fourth place in [turnering]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments (3rd/4th place games)"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] finish runners-up in [turnering]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance (final decided, comp.meta.runnerUp === user club)",
+  "params": [
+   "club",
+   "comp",
+   "winner"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] finish third place in [turnering]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments (3rd place games)"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] knocked out of [turnering]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (tie.winner !== user club)",
+  "params": [
+   "club",
+   "comp",
+   "opp",
+   "stage"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] out of [turnering]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie / competitions.ts:checkGroupsDone (user club eliminated)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] players selected in [land] 'B' squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] players selected in [land] match",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] players selected in [land] squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] players selected in [land] Under 21 squad",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] qualify for [turnering]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "newgame.ts:setupSeasonComps (europeanQualifiers result includes user club)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] qualify for quarter finals",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance (stage QF created, user club in pool)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] qualify for semi-finals",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] through to next round in [turnering]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (tie.winner === user club)",
+  "params": [
+   "club",
+   "comp",
+   "opp",
+   "stage"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub] win [turnering]",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.cupWin",
+   "news.playoffWin"
+  ],
+  "trigger": "competitions.ts:advance",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[klub], [klub] and [klub]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] and [land] qualify for finals",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] head for [host country eg australia] [år]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] lead qualifiers for [år]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] qualify for [år] finals",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] ready for [år]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] squad chosen for [turnering]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[land] squad to be decided",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "National team squads"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "[turnering] [år] qualifiers",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "Add Player To [squad name] Squad",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "UI action label"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "Move Player To [squad name] Squad",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "UI action label"
+ },
+ {
+  "group": "Landshold og landsholdsturneringer",
+  "headline": "Remove Player From [squad name] Squad",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "UI action label"
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] compensated for loss of [spiller]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Training/development compensation for young players"
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] dismiss [spiller] transfer",
+  "class": "COVERED",
+  "ourKeys": [
+   "transfer.notForSale",
+   "enquiry.nfs"
+  ],
+  "trigger": "transfers.ts:aiAnswerBid / transfers.ts:enquire",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] finish third placed in [turnering]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:checkLeagueProgress (league finished, user club 3rd)",
+  "params": [
+   "club",
+   "pos",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] qualify for semi final",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] through to quarter finals",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] through to second round",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[klub] through to semi finals",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[land] FA impose fine on [klub]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [
+   "ffp.sanction"
+  ],
+  "trigger": "",
+  "params": [],
+  "missing": "FA club fines for misconduct (ffp.sanction is related)"
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] and [person] settle differences",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Player feuds / relationships"
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] in training ground bust-up",
+  "class": "COVERED",
+  "ourKeys": [
+   "pers.incident.fight"
+  ],
+  "trigger": "personality.ts:monthlyPersonality",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] speaks out on feud",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Player feuds / relationships"
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] unhappy with role",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Staff morale / role complaints"
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] unhappy with training",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "will.ts:playerComplains (new kind; training.ts:trainingAdvice mismatch)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] voices concern",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.time",
+   "will.complain.morale"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[person] voices his concern",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.complain.morale"
+  ],
+  "trigger": "will.ts:playerComplains",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[spiller] ecstatic at turn of fortune",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (first start after 6+ games unused)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[spiller] pleased to have his chance",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "sim.ts:applyMatchResult (first start for club / debut)",
+  "params": [
+   "player"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[spiller] thanks boss",
+  "class": "COVERED",
+  "ourKeys": [
+   "will.praise.form"
+  ],
+  "trigger": "will.ts:playerPraises",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "[spiller] watched",
+  "class": "COVERED",
+  "ourKeys": [
+   "rumour.interest"
+  ],
+  "trigger": "media.ts:weeklyRumours",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Klubturneringer i Europa og verden",
+  "headline": "Training report from [coach name]",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.trainingAdvice"
+  ],
+  "trigger": "sim.ts:newDay",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] avoid relegation",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:promotionRelegation (user club finished just above drop zone)",
+  "params": [
+   "club",
+   "comp",
+   "pos"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] awarded [beløb]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "finance.ts:addPrize (caller: competitions.ts:compPrize / finance.ts:seasonPrizeMoney)",
+  "params": [
+   "club",
+   "fee",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] defeat in [turnering]",
+  "class": "COVERED",
+  "ourKeys": [
+   "match.lost"
+  ],
+  "trigger": "sim.ts:userMatchResult",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] fail to qualify from [turnering] group",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:checkGroupsDone / competitions.ts:checkLeaguePhaseDone",
+  "params": [
+   "club",
+   "comp",
+   "pos"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] fail to win promotion",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:promotionRelegation / competitions.ts:advance (playoff loser)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] given [beløb]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "finance.ts:addPrize",
+  "params": [
+   "club",
+   "fee"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] knocked out in 1st round qualifier",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (qualifying stage)",
+  "params": [
+   "club",
+   "comp",
+   "opp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] knocked out in World Cup playoff",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] knocked out of World Cup qualifying",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] lose [turnering] final",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance (comp.meta.runnerUp)",
+  "params": [
+   "club",
+   "comp",
+   "winner"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] miss out on promotion",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:promotionRelegation (finished just outside promotion places)",
+  "params": [
+   "club",
+   "comp",
+   "pos"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] not promoted",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:promotionRelegation",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for 2nd round in qualifiers",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for Final",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance (createFinal with user club)",
+  "params": [
+   "club",
+   "comp",
+   "opp",
+   "date"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for Oceania playoff",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "World Cup qualifying format (national teams only)"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for playoff",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:setupPlayoff",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for Second Promotion",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Country-specific league format"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for second round",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for semi finals",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for Third Promotion",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Country-specific league format"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for third round",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify for World Cup",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International tournaments"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] qualify from [turnering] group",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:checkGroupsDone / competitions.ts:checkLeaguePhaseDone",
+  "params": [
+   "club",
+   "comp",
+   "pos"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] relegated",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.relegated"
+  ],
+  "trigger": "season.ts:promotionRelegation",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] relegated from [turnering]",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.relegated"
+  ],
+  "trigger": "season.ts:promotionRelegation",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] slip nearer relegation",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "media.ts:monthlyColumn (user club in drop zone)",
+  "params": [
+   "club",
+   "pos",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] through to final",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance (createFinal)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 1
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] through to first round",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (qualifier won)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 3
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] through to group phase",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:resolveTie (qualifier won into group stage)",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] through to playoff phase",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:checkLeaguePhaseDone",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] through to semi final",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "competitions.ts:advance",
+  "params": [
+   "club",
+   "comp"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] win first stage",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Country-specific league format (apertura/clausura)"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] win in [turnering]",
+  "class": "COVERED",
+  "ourKeys": [
+   "match.won"
+  ],
+  "trigger": "sim.ts:userMatchResult",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] win promotion",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.promoted"
+  ],
+  "trigger": "season.ts:promotionRelegation",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[klub] win second stage",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Country-specific league format"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "[start year]/[end year] European qualifiers decided",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "newgame.ts:setupSeasonComps (after europeanQualifiers)",
+  "params": [
+   "season",
+   "cl",
+   "uefa"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "Debug Info: [file debug info]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Debug text"
+ },
+ {
+  "group": "Ligaer, pokaler, lodtrækninger og kampprogram",
+  "headline": "Unkown event token \"[token]\" in match event config",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Debug text"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[antal] months",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[antal] weeks",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Text fragment"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[beløb] p/x - [spiller] from [klub] - [dato]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Record table line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[klub] [fans player of the year award name)] decided",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonAwards (per human club, best avg rating / most mom)",
+  "params": [
+   "club",
+   "player"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[klub] draw",
+  "class": "COVERED",
+  "ourKeys": [
+   "match.drew"
+  ],
+  "trigger": "sim.ts:userMatchResult",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[klub] lose",
+  "class": "COVERED",
+  "ourKeys": [
+   "match.lost"
+  ],
+  "trigger": "sim.ts:userMatchResult",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[klub] win",
+  "class": "COVERED",
+  "ourKeys": [
+   "match.won"
+  ],
+  "trigger": "sim.ts:userMatchResult",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[person] resigned",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "History line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[pris] for [month name]",
+  "class": "COVERED",
+  "ourKeys": [
+   "award.monthPlayer",
+   "award.monthManager"
+  ],
+  "trigger": "awards.ts:monthlyAwards",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[turnering] champions",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.champions"
+  ],
+  "trigger": "competitions.ts:checkLeagueProgress",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[turnering] runners up",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "History table line (EASY news via competitions.ts:advance runnerUp)"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[turnering] third placed",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "History table line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[turnering] winners",
+  "class": "COVERED",
+  "ourKeys": [
+   "news.cupWin"
+  ],
+  "trigger": "competitions.ts:advance",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[år] [pris] runner up",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Award history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "[år] [pris] third placed",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Award history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Bought [spiller] from [klub] (part exchange)",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line (Player.moves)"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Bought by [klub] for [money value]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Bought by [klub] for [money value] (part exchange)",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Bought by [klub] in part exchange",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Failed to qualify from [turnering]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Finished [placering] in [turnering]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "First international cap against [land] aged [age]",
+  "class": "NEEDS-MECHANIC",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "International matches"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Hired [person]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Staff history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Knocked out in [turnering]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Loaned [spiller] from [klub]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Loaned from [klub]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Named in [år] [pris]",
+  "class": "EASY",
+  "ourKeys": [],
+  "trigger": "season.ts:seasonAwards (teamOfYear computed in season.ts, no news)",
+  "params": [
+   "player",
+   "comp",
+   "season"
+  ],
+  "missing": "",
+  "priority": 2
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "New [klub] club record",
+  "class": "COVERED",
+  "ourKeys": [
+   "recb.news.apps",
+   "recb.news.goals",
+   "recb.news.bigWin",
+   "recb.news.att",
+   "recb.news.sale",
+   "recb.news.buy"
+  ],
+  "trigger": "records.ts:recordsAfterMatch / records.ts:recordsAfterMove",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "New [klub] record",
+  "class": "COVERED",
+  "ourKeys": [
+   "recb.news.bigWin",
+   "recb.news.att"
+  ],
+  "trigger": "records.ts:recordsAfterMatch",
+  "params": [],
+  "missing": ""
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Promotion from [turnering]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Qualified for [turnering]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Released [spiller] on free transfer",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Released [spiller] to [klub] in free transfer",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Relegation from [turnering]",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Club history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Signed [spiller] from [klub] in free transfer",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Signed [spiller] in free transfer",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Signed by [klub] on free transfer",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ },
+ {
+  "group": "Rekorder og historie",
+  "headline": "Sold [spiller] to [klub] (part exchange)",
+  "class": "SKIP",
+  "ourKeys": [],
+  "trigger": "",
+  "params": [],
+  "missing": "Transfer history line"
+ }
+]

@@ -10,6 +10,7 @@ import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { setEconomy } from './econ';
 import { addNews, addPlayer, ensureNumbers, gs, rebuildIndexes, setAutoNumbers, setGame, squad } from './state';
+import { asOwner } from './humans';
 import { initReleaseClauses } from './clauses';
 import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
 import { autoSelect, newTactic, FORMATIONS } from './tactics';
@@ -351,6 +352,10 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
     if (clubs.length >= 8) setupCup(nation, cupName ?? `${g.nations[nation].name} Cup`, clubs, season);
   }
   const { cl, uefa, conf } = europeanQualifiers(prevTables, cupWinners);
+  // "[klub] qualify for [turnering]"
+  for (const [ids, name] of [[cl, 'Champions League'], [uefa, season >= 2009 ? 'Europa League' : 'UEFA Cup'], [conf, 'Conference League']] as const) {
+    for (const c of ids) asOwner(c, () => addNews({ cat: 'match', key: 'comp.qualified', params: { club: g.clubs[c]?.name ?? '', comp: name }, link: { kind: 'club', id: c } }));
+  }
   setupChampionsLeague(cl, season);
   setupUefaCup(uefa, season);
   // Conference League: ligafase med kun 6 runder

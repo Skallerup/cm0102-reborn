@@ -546,6 +546,11 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     if (seller && o.sellOn) p.sellOn = { club: seller.id, pct: o.sellOn, base: o.fee };
     if (seller && o.addOn) p.addOn = { club: seller.id, payer: buyer.id, fee: o.addOn, left: ADDON_APPS };
   }
+  // CM 01/02: "Media question purchase of [spiller]" (dyrt køb) og "Board surprised at [person] departure" (salg af en af de bedste)
+  if (!o.loan && o.fee > 0) {
+    if (o.fee >= p.value * 1.5 && o.fee >= 1_000_000 * econ()) asOwner(buyer.id, () => addNews({ cat: 'general', key: 'media.questionPurchase', params: { player: pname(p), club: buyer.name, fee: o.fee }, link: { kind: 'player', id: p.id } }));
+    if (seller && keyPlayerRank(p) <= 3) asOwner(seller.id, () => addNews({ cat: 'board', key: 'board.surprisedDeparture', params: { player: pname(p), club: buyer.name, fee: o.fee }, link: { kind: 'player', id: p.id } }));
+  }
   // skifte midt i sæsonen: bogfør tallene hos den gamle klub
   if (p.club && p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
   recordMove(p, buyer.id, o.fee, o.loan);
@@ -609,7 +614,14 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
 
 export function toggleListed(pid: number) {
   const p = gs().players[pid];
-  if (p) { p.listed = !p.listed; if (!p.listed) p.listPrice = undefined; }
+  if (p) { p.listed = !p.listed; if (!p.listed) p.listPrice = undefined; else listedNews(p); }
+}
+
+/** CM 01/02: "[manager] puts [spiller] on transfer list" / "[manager] grants [spiller] transfer request" */
+function listedNews(p: Player) {
+  const g = gs();
+  if (!isHumanClub(p.club)) return;
+  asOwner(p.club, () => addNews({ cat: 'transfer', key: p.wantsAway ? 'transfer.requestGranted' : 'transfer.listedByYou', params: { player: pname(p), manager: g.manager.name, fee: p.listPrice ?? askingPrice(p) }, link: { kind: 'player', id: p.id } }));
 }
 
 /** Sæt spilleren til salg med en udbudspris (null = fjern fra salgslisten) */
@@ -617,8 +629,10 @@ export function setListPrice(pid: number, price: number | null) {
   const p = gs().players[pid];
   if (!p) return;
   if (price === null) { p.listed = false; p.listPrice = undefined; return; }
+  const was = p.listed;
   p.listed = true;
   p.listPrice = roundValue(Math.max(10_000 * econ(), price));
+  if (!was) listedNews(p);
 }
 
 /** Kompensationen ved fritstilling: halvdelen af den resterende løn */

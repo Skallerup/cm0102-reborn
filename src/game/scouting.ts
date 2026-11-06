@@ -3,7 +3,7 @@
 // jo bedre spilleren er scoutet. Ved 100 vises den præcise værdi som i CM 01/02.
 import { natName } from '../i18n';
 import { hash01 } from './rng';
-import { gs, squad } from './state';
+import { addNews, gs, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
 import { rng } from './rng';
 import { A, naturalRole } from './attributes';
@@ -118,7 +118,7 @@ export function scoutDaily() {
       if ((g.knowledge[pid] ?? 0) >= 100) {
         s.assignment = null;
         const p = g.players[pid];
-        if (p) g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutDone', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, read: false, link: { kind: 'player', id: pid } });
+        if (p) addNews({ cat: 'scout', key: 'news.scoutDone', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, link: { kind: 'player', id: pid } });
       }
     } else {
       // turen er slut: scouten vender hjem med en rapport
@@ -167,7 +167,7 @@ function scoutReturns(name: string, a: ScoutAssignment) {
   const found = (a.found ?? []).map((id) => g.players[id]).filter((p): p is Player => !!p && realistic(p));
   const best = found.sort((x, y) => { const sx = scoutStars(x), sy = scoutStars(y); return sy.potential[0] + sy.ability[0] - (sx.potential[0] + sx.ability[0]); })[0];
   const target = a.kind === 'nation' ? natName(g.nations[a.target as number]?.name) || '?' : g.leagues[a.target as string]?.name ?? String(a.target);
-  g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutReturned', params: { scout: name, target, n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, read: false, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
+  addNews({ cat: 'scout', key: 'news.scoutReturned', params: { scout: name, target, n: found.length, best: best ? `${best.first} ${best.last}`.trim() : '–' }, ...(best ? { link: { kind: 'player' as const, id: best.id } } : {}) });
 }
 
 /** Kendskab fra en scout: når en spiller er godt afdækket, kommer han på listen over fund */
@@ -184,7 +184,7 @@ function scoutKnowledge(pid: number, amount: number, scoutId: number) {
     const s = g.staff[scoutId];
     // Gode fund meldes i indbakken
     if (p && s && p.club !== g.userClub && scoutStars(p).potential[0] >= 4 && realistic(p)) {
-      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'scout', key: 'news.scoutTalent', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, read: false, link: { kind: 'player', id: pid } });
+      addNews({ cat: 'scout', key: 'news.scoutTalent', params: { scout: `${s.first} ${s.last}`, player: `${p.first} ${p.last}` }, link: { kind: 'player', id: pid } });
     }
   }
 }
