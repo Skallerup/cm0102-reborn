@@ -6,7 +6,7 @@ import { hash01 } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Club, Player, ScoutAssignment } from './types';
 import { rng } from './rng';
-import { A, naturalRole } from './attributes';
+import { A, naturalRole, roleScore } from './attributes';
 import { ageOn } from './dates';
 
 export function initKnowledge() {
@@ -64,13 +64,22 @@ export function effectivePA(p: Player): number {
   return p.ca + Math.max(0, p.pa - p.ca) * share;
 }
 
+/** CA-ækvivalent af egenskaberne på spillerens naturlige plads (målt mod databaserne: CA ≈ 27 + 6,7 × rollescore, r ≈ 0,85) */
+export function attrAbility(p: Player): number {
+  return Math.round(27 + 6.7 * roleScore(p, naturalRole(p)));
+}
+
 export function scoutStars(p: Player): { ability: [number, number]; potential: [number, number] } {
   const k = knowledgeOf(p);
   // absolut skala for alle spillere, uanset hvilken klub man styrer: 5 ★ = CA/PA 190+ (verdens bedste),
   // 4 ★ = 160, 3 ★ = 130, 2 ★ = 100, 1 ★ = 70 (30 pr. stjerne)
   const toStars = (ca: number) => Math.max(0.5, Math.min(5, Math.round(starsOf(ca) * 2) / 2));
-  const a = toStars(p.ca);
-  const eff = effectivePA(p);
+  // kampmotoren spiller med egenskaberne: en spiller, hvis egenskaber på hans bedste plads er bedre end CA'en siger
+  // (fx Tsigalko), vurderes efter dem – aldrig lavere end CA. Potentialet får halvdelen af løftet (forspringet mindskes, når CA vokser).
+  const attrCA = attrAbility(p);
+  const lift = Math.max(0, attrCA - p.ca);
+  const a = toStars(p.ca + lift);
+  const eff = effectivePA(p) + lift * 0.5;
   const pot = toStars(eff);
   // ekstra usikkerhed om potentialet kun når der er plads til at udvikle sig
   const growUnc = k < 60 && eff > p.ca + 3 ? 0.5 : 0;

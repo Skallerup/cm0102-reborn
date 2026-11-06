@@ -20,7 +20,7 @@ import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { initKnowledge } from './scouting';
-import type { Club, Player, SeasonFinance, SeasonSummary } from './types';
+import type { Club, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
 import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { econ } from './econ';
@@ -213,12 +213,12 @@ function retirements() {
       if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
       else if (isHumanClub(p.club)) asOwner(p.club, () => addNews(msg));
       retireIntoStaff(p);
-      // CM 01/02: gode spillere "genopstår" som et ungt talent med et fiktivt navn (en regen)
+      // CM 01/02: gode spillere "genopstår" som et ungt talent med et fiktivt navn (en regen) ved næste ungdomsårgang
       if (p.pa >= 120 && !g.draft) reborn.push(p);
       removePlayer(p);
     }
   }
-  for (const p of reborn) spawnRegen(p);
+  for (const p of reborn) (g.regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)) });
 }
 
 /**
@@ -226,9 +226,9 @@ function retirements() {
  * spillers niveau – så verdens spillerbestand og kvalitet holdes oppe, som i CM 01/02. Han kommer til en klub i
  * landet (gode ungdomsafdelinger oftere); findes ingen, bliver han fri agent.
  */
-function spawnRegen(old: Player) {
+function spawnRegen(old: RegenSeed, n: number) {
   const g = gs();
-  const r = new Rng(hash(g.seed, old.id, g.season, 91));
+  const r = new Rng(hash(g.seed, n, g.season, old.pa, 91));
   const clubs = Object.values(g.clubs).filter((c) => c.nation === old.nation && !g.leagues[c.league]?.hidden && squad(c.id).length < 40);
   const club = clubs.length ? r.weighted(clubs, (c) => 1 + c.youth * c.youth / 20) ?? clubs[0] : undefined;
   const pa = Math.max(90, Math.min(195, Math.round(old.pa + r.normal(0, 10))));
@@ -239,9 +239,17 @@ function spawnRegen(old: Player) {
     id: g.nextId.player++, first, last, dob: randomDob(r.int(15, 16), g.date, r), nation: old.nation, club: club?.id ?? 0, sub,
     foot: old.foot === 'L' ? 'L' : 'R', height: 0, ca, pa, date: g.date, seed: g.seed, regen: true, contractEnd: club ? `${g.season + 3}-06-30` : undefined,
   });
+  // samme profil som forbilledet: hans relative styrker og svagheder (teknik, mentalt, fysik) går igen på regen'ens
+  // eget niveau, positionerne er de samme, og personligheden (skjulte egenskaber) ligner hans med lidt støj
+  const mean = (xs: number[]) => xs.reduce((s2, v) => s2 + v, 0) / Math.max(1, xs.length);
+  const mOld = mean(old.attrs.slice(0, 33)), mNew = mean(p.attrs.slice(0, 33));
+  for (let i = 0; i < 33; i++) p.attrs[i] = Math.max(1, Math.min(20, mNew + 0.4 * (p.attrs[i] - mNew) + 0.6 * (old.attrs[i] - mOld)));
+  for (let i = 36; i < p.attrs.length && i < old.attrs.length; i++) p.attrs[i] = Math.max(1, Math.min(20, Math.round(old.attrs[i] + r.normal(0, 2))));
+  p.pos = old.pos.slice(); p.side = old.side.slice();
   p.value = Math.max(10_000, p.value);
   if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
   addPlayer(p);
+  return p;
 }
 
 const PA_BASE = 30, PA_Q = 55, PA_SD = 22;
@@ -323,6 +331,13 @@ export function youthPreview() {
 /** Ungdomsårgang – kaldes i marts */
 export function youthIntake() {
   const g = gs();
+  // regens fra sidste sommers pensioneringer dukker op sammen med årgangene
+  const queue = g.regenQueue ?? [];
+  g.regenQueue = [];
+  queue.forEach((seed, n) => {
+    const p = spawnRegen(seed, n);
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+  });
   const active = new Set(g.activeNations);
   for (const c of Object.values(g.clubs)) {
     if (!active.has(c.nation) && rng.chance(0.3)) continue; // inaktive nationer får lidt færre

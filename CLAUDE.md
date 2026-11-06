@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Regens: `g.regenQueue` (RegenSeed) fyldes ved pension, `spawnRegen` i youthIntake (marts) arver positioner,
+  egenskabsprofil og skjulte egenskaber, nyhed `youth.regen`. Stjerner: `attrAbility` (CA ≈ 27 + 6,7 × roleScore) løfter
+  evnen, når egenskaberne er bedre end CA (potentiale +½ løft). PA -1 = 100-150, -2 = 150-200 bekræftet (champman0102.net t=5715).
 - 2026-11-06 – Motorplanens trin 3 (dommeren): `officials` i world-JSON (parser + build), `GameState.officials`,
   `refereeFor` vælger hjemmelandets dommere og strenghed via `refereeFactor(Discipline)`. ORIGINAL.cards 0,44. Se docs/ENGINE.md.
 - 2026-11-06 – Stjerner for ukendte spillere: `scoutStars` lægger usikkerheden symmetrisk om den sande værdi, og `Stars`

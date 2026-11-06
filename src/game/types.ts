@@ -858,6 +858,8 @@ export interface GameState {
   names: Record<number, [string[], string[]]>;
   /** Supporternes regen-navne (hentet fra serveren) og hvilke der allerede er brugt i dette spil */
   supporterRegens?: { first: string; last: string; by: string; used?: boolean }[];
+  /** pensionerede stjerner, der "genopstår" som regens ved næste ungdomsårgang (CM 01/02) */
+  regenQueue?: RegenSeed[];
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
@@ -1001,3 +1003,6 @@ export interface H2HRecord {
   bestB?: [number, number, string];
   last?: { date: string; fixture: number; gf: number; ga: number; comp: string };
 }
+
+/** Det en regen arver fra den pensionerede spiller: land, positioner, ben, potentiale og egenskabsprofil */
+export interface RegenSeed { from: string; nation: number; pos: number[]; side: number[]; foot: 'L' | 'R' | 'B'; pa: number; attrs: number[] }
