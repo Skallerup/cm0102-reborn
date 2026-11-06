@@ -16,7 +16,15 @@ export interface IntlRow { n: number; p: number; w: number; d: number; l: number
 export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?: number; pens?: boolean; winner?: number }
 export interface IntlTournament { name: 'wc' | 'euro'; year: number; groups: number[][]; table: Record<number, IntlRow>; ko: IntlTie[]; stage: string; winner?: number; runnerUp?: number }
 export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro'; stage?: string }
-export interface IntlState { results: IntlResult[]; tournament?: IntlTournament; history: { year: number; name: 'wc' | 'euro'; winner: number; runnerUp: number }[] }
+export interface NatInfo { stadium: string; cap: number; fifa: number; coach: string; rep: number; titles: Record<string, number> }
+export interface PastFinal { c: string; y: number; w: string; r: string; h: string }
+export interface IntlState {
+  results: IntlResult[]; tournament?: IntlTournament; history: { year: number; name: 'wc' | 'euro'; winner: number; runnerUp: number }[];
+  /** originalens data (kun den originale database): stadion, FIFA-koefficient, landstræner, titler og slutrunder før 2001 */
+  info?: Record<number, NatInfo>; past?: PastFinal[];
+  /** FIFA-point pr. nation (start: originalens koefficient eller styrken; opdateres efter hver landskamp – *estimeret* Elo) */
+  fifa?: Record<number, number>;
+}
 
 const WINDOWS = ['09-05', '10-09', '11-13', '03-26'];
 const GROUP_DAYS = ['06-10', '06-14', '06-18'];
@@ -41,8 +49,16 @@ function byNation(): Map<number, Player[]> {
   return by;
 }
 
-/** Landsholdstruppen: de 23 bedste, mindst 3 målmænd */
+/** Landsholdstruppen: de 23 bedste, mindst 3 målmænd – eller landstrænerens egen udtagelse (skadede melder afbud) */
 export function nationSquad(n: number): Player[] {
+  const g = gs();
+  const nj = g.manager?.national;
+  if (nj?.nation === n && nj.picks?.length) {
+    const picked = nj.picks.map((id) => g.players[id]).filter((p): p is Player => !!p && !p.injury && p.nation === n);
+    // afbud: fyld op med de bedste, der ikke er udtaget
+    const extra = (byNation().get(n) ?? []).filter((p) => !picked.includes(p)).slice(0, Math.max(0, 20 - picked.length));
+    return [...picked, ...extra];
+  }
   const all = byNation().get(n) ?? [];
   const gk = all.filter((p) => naturalRole(p) === 'GK').slice(0, 3);
   const out = all.filter((p) => naturalRole(p) !== 'GK').slice(0, 23 - gk.length);
@@ -76,6 +92,9 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
     if (!p || line.minutes <= 0) continue;
     p.caps = (p.caps ?? 0) + 1;
     p.intGoals = (p.intGoals ?? 0) + line.goals;
+    // kampreferat til spillerens klub (CM 01/02: "scored", "hat-trick", "sent off", "man of the match")
+    const pk = line.goals >= 3 ? 'intl.p.hattrick' : line.red ? 'intl.p.red' : line.goals > 0 ? 'intl.p.scored' : rep.mom === p.id ? 'intl.p.mom' : '';
+    if (pk && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'general', key: pk, params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', opp: g.nations[p.nation === home ? away : home]?.name ?? '', n: line.goals }, link: { kind: 'player', id: p.id } }));
     p.condition = Math.max(50, p.condition - 8);
     if (line.injured && !p.injury) {
       const days = rng.int(4, 21);
@@ -86,12 +105,20 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
   const res: IntlResult & { pens?: [number, number] } = { date: g.date, home, away, hg: hs.goals, ag: as.goals, kind, stage, ...(rep.pens ? { pens: rep.pens } : {}) };
   const st = state();
   st.results = [res, ...st.results].slice(0, 150);
+  updateFifa(home, away, res.hg, res.ag, kind);
   // brugerens landshold: resultat og statistik
   forEachHuman(() => {
     const nj = g.manager.national;
     if (!nj || (nj.nation !== home && nj.nation !== away)) return;
     const mine = nj.nation === home ? res.hg : res.ag, theirs = nj.nation === home ? res.ag : res.hg;
     nj.played++; if (mine > theirs) nj.won++;
+    nj.form = [...(nj.form ?? []), mine > theirs ? 3 : mine === theirs ? 1 : 0].slice(-6);
+    // CM 01/02: forbundet fyrer landstræneren "following a run of poor results" (grænsen er *estimeret*)
+    if (nj.played >= 6 && nj.form.length >= 5 && nj.form.reduce((s2, v) => s2 + v, 0) <= 3) {
+      g.manager.national = undefined;
+      addNews({ cat: 'job', key: 'intl.sacked', params: { nation: g.nations[nj.nation]?.name ?? '', played: nj.played, won: nj.won } });
+      return;
+    }
     g.manager.rep = Math.max(0, Math.min(100, g.manager.rep + (mine > theirs ? 0.4 : mine < theirs ? -0.3 : 0)));
     addNews({ cat: 'match', key: mine > theirs ? 'intl.my.won' : mine < theirs ? 'intl.my.lost' : 'intl.my.drew', params: { nation: g.nations[nj.nation]?.name ?? '', opp: g.nations[nj.nation === home ? away : home]?.name ?? '', score: `${mine}-${theirs}` } });
   });
@@ -236,3 +263,39 @@ export function resignNational(): string {
   addNews({ cat: 'job', key: 'intl.jobLeft', params: { nation: g.nations[nj.nation]?.name ?? '', played: nj.played, won: nj.won } });
   return 'ok';
 }
+
+/** FIFA-point: start fra originalens koefficient (eller landets styrke), opdateret efter hver landskamp som Elo */
+export function fifaPoints(n: number): number {
+  const st = state();
+  st.fifa ??= {};
+  if (st.fifa[n] === undefined) st.fifa[n] = Math.round(st.info?.[n]?.fifa || nationStrength(n) * 5);
+  return st.fifa[n];
+}
+function updateFifa(home: number, away: number, hg: number, ag: number, kind: IntlResult['kind']) {
+  const a = fifaPoints(home), b = fifaPoints(away);
+  const exp = 1 / (1 + Math.pow(10, (b - a) / 200));
+  const score = hg > ag ? 1 : hg === ag ? 0.5 : 0;
+  const k = kind === 'friendly' ? 10 : 25;
+  const st = state();
+  st.fifa![home] = Math.round(a + k * (score - exp));
+  st.fifa![away] = Math.round(b - k * (score - exp));
+}
+/** FIFA-ranglisten: alle nationer med en trup, flest point først */
+export function fifaRanking(): { n: number; pts: number }[] {
+  const g = gs();
+  return g.nations.map((_, n) => n).filter((n) => nationSquad(n).length >= 11 || state().info?.[n]).map((n) => ({ n, pts: fifaPoints(n) })).sort((x, y) => y.pts - x.pts);
+}
+
+/** Landstrænerens udtagelse: 20-24 spillere af nationaliteten (CM 01/02: "must have between 20 and 24 players") */
+export function selectNationalSquad(pids: number[]): string {
+  const g = gs();
+  const nj = g.manager.national;
+  if (!nj) return 'error';
+  const ok = [...new Set(pids)].filter((id) => g.players[id]?.nation === nj.nation);
+  if (ok.length < 20 || ok.length > 24) return 'intl.squadSize';
+  nj.picks = ok;
+  return 'intl.squadSaved';
+}
+
+/** Kandidaterne til landsholdet (de 45 bedste af nationaliteten, skadede udeladt) */
+export const nationPool = (n: number): Player[] => (byNation().get(n) ?? []).slice(0, 45);

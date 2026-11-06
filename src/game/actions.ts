@@ -29,7 +29,7 @@ import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment,
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
-import { answerNationalOffer, resignNational } from './international';
+import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
 import { appealBan } from './rules2001';
 import { authentic } from './rules';
 
@@ -47,6 +47,7 @@ export type Action =
   | { t: 'recallLoan'; pid: number }
   | { t: 'nationalOffer'; accept: boolean }
   | { t: 'resignNational' }
+  | { t: 'nationalSquad'; pids: number[] }
   | { t: 'appealBan'; pid: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
   | { t: 'enquire'; pid: number }
@@ -165,6 +166,7 @@ export function applyAction(a: Action): unknown {
     case 'recallLoan': return recallLoan(a.pid);
     case 'nationalOffer': return answerNationalOffer(a.accept);
     case 'resignNational': return resignNational();
+    case 'nationalSquad': return selectNationalSquad(a.pids);
     case 'appealBan': return appealBan(a.pid);
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });

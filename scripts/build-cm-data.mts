@@ -197,6 +197,13 @@ for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
 // dommere: kun fra lande med spilbare ligaer (kampene dømmes af hjemmelandets dommere)
 if (w.officials) { const playable = new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation)); w.officials = w.officials.filter((o) => playable.has(o[2])); }
+// landsholdene (originalen): nationalstadion, FIFA-koefficient, landstræner og tidligere slutrunder (scripts/build-national.py)
+if (ORIGINAL && existsSync(new URL('./national-original.json', import.meta.url))) {
+  const nt = JSON.parse(readFileSync(new URL('./national-original.json', import.meta.url), 'utf8')) as { nations: Record<string, unknown>; history: { y: number }[] };
+  const byIdx: Record<number, unknown> = {};
+  w.nations.forEach((n, i) => { if (nt.nations[n.name]) byIdx[i] = nt.nations[n.name]; });
+  (w as unknown as { nationalTeams: unknown }).nationalTeams = { nations: byIdx, history: nt.history.filter((h) => h.y <= 2001) };
+}
 // originalens økonomi (saldo, tilskuere, træningsanlæg) bruges kun af den originale database
 if (!ORIGINAL) delete w.clubFinance;
 else for (const k of Object.keys(w.clubFinance ?? {})) if (!keptClubs.has(Number(k))) delete w.clubFinance![Number(k)];

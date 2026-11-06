@@ -45,6 +45,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Landshold efter ejerens `…/bosman-edition/app/national_teams/NATIONAL_TEAMS.md`: `scripts/build-national.py` →
+  `scripts/national-original.json` → `world-original.json.nationalTeams` (stadion, FIFA-koefficient, landstræner, titler,
+  slutrunder ≤ 2001). `IntlState.info/past/fifa`, `fifaRanking` (Elo, *estimeret*), landstræner: `national.picks`
+  (selectNationalSquad 20-24), fyring ved form ≤ 3 point i 5 kampe (*estimeret*), nyheder intl.p.*. B/U21-hold ikke lavet.
 - 2026-11-06 – Spiltilstand `options.mode` ('authentic' | 'extended', NewGameOptions.mode, action setMode; authentic sætter
   rules 'classic'). `authentic()`/`extended()` i rules.ts. Gates: sim.ts newDay/userMatchResult, actions.ts `EXTENDED_ONLY` +
   interact kun warning/fine/fineHeavy/drop, VAR, FFP, startAuction, UI (TeamTalk, FirstDay, AiArticle, BoardAsks, CampPanel,

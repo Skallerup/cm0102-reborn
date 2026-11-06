@@ -3,7 +3,8 @@ import { useGame } from '../core';
 import { dateFmt, natName, t } from '../../i18n';
 import { Flag, Panel, Tabs } from '../components';
 import { useRouteState } from '../core';
-import { nationSquad, type IntlTournament } from '../../game/international';
+import { fifaRanking, nationPool, nationSquad, type IntlTournament } from '../../game/international';
+import { useState } from 'react';
 import { act } from '../../game/actions';
 import { ClubLink, PlayerLink } from '../components';
 import { useNav } from '../core';
@@ -16,8 +17,10 @@ import type { JSX } from 'react';
 
 export function International({ nation }: { nation?: number }) {
   const g = useGame()!;
-  if (nation !== undefined && g.nations[nation]) return <NationTeam n={nation} />;
+  const { nav } = useNav();
   const [tab, setTab] = useRouteState('itab', 'tournament');
+  // et bestemt land: landsholdets side (efter alle hooks, så hook-rækkefølgen er den samme)
+  if (nation !== undefined && g.nations[nation]) return <NationTeam key={nation} n={nation} />;
   const st = g.intl;
   const N = (n: number) => <span className="row" style={{ gap: 6, display: 'inline-flex' }}><Flag name={g.nations[n]?.name} />{natName(g.nations[n]?.name)}</span>;
   const tour = st?.tournament;
@@ -37,7 +40,11 @@ export function International({ nation }: { nation?: number }) {
           <div className="row" style={{ flexWrap: 'wrap', gap: 6 }}>{nationSquad(g.manager.national.nation).map((p) => <PlayerLink key={p.id} p={p} />)}</div>
         </Panel>
       )}
-      <Tabs tabs={[['tournament', t('intl.tab.tournament')], ['results', t('intl.tab.results')], ['history', t('intl.tab.history')]]} value={tab} onChange={setTab} />
+      <Tabs tabs={[['tournament', t('intl.tab.tournament')], ['results', t('intl.tab.results')], ['fifa', t('intl.tab.fifa')], ['history', t('intl.tab.history')]]} value={tab} onChange={setTab} />
+      {tab === 'fifa' && (
+        <Panel className="flush"><table className="grid"><thead><tr><th className="num">#</th><th>{t('col.nat')}</th><th className="num">{t('intl.points')}</th></tr></thead>
+          <tbody>{fifaRanking().slice(0, 100).map((r, i) => <tr key={r.n} className="clickable" onClick={() => nav({ name: 'international', id: r.n })}><td className="num">{i + 1}</td><td>{N(r.n)}</td><td className="num">{r.pts}</td></tr>)}</tbody></table></Panel>
+      )}
       {tab === 'tournament' && (!tour ? <Panel><div className="muted">{t('intl.none')}</div></Panel> : <Tournament t={tour} N={N} />)}
       {tab === 'results' && (
         <Panel className="flush">
@@ -50,10 +57,16 @@ export function International({ nation }: { nation?: number }) {
       )}
       {tab === 'history' && (
         <Panel className="flush">
-          {!st?.history.length ? <div className="muted" style={{ padding: 12 }}>{t('intl.noHistory')}</div> : (
-            <table className="grid"><tbody>{st.history.map((h, i) => (
-              <tr key={i}><td>{h.year}</td><td>{t(`intl.name.${h.name}`)}</td><td>🏆 {N(h.winner)}</td><td className="muted">{t('intl.runnerUp')}: {N(h.runnerUp)}</td></tr>
-            ))}</tbody></table>
+          {!st?.history.length && !st?.past?.length ? <div className="muted" style={{ padding: 12 }}>{t('intl.noHistory')}</div> : (
+            <table className="grid"><tbody>
+              {st!.history.map((h, i) => (
+                <tr key={`h${i}`}><td>{h.year}</td><td>{t(`intl.name.${h.name}`)}</td><td>🏆 {N(h.winner)}</td><td className="muted">{t('intl.runnerUp')}: {N(h.runnerUp)}</td></tr>
+              ))}
+              {/* slutrunder før spillets start (originalens database) */}
+              {(st!.past ?? []).map((h, i) => (
+                <tr key={`p${i}`}><td>{h.y}</td><td>{t(`intl.name.${h.c}`)}</td><td>🏆 {natName(h.w)}</td><td className="muted">{h.r ? `${t('intl.runnerUp')}: ${natName(h.r)}` : ''}{h.h ? ` · ${natName(h.h)}` : ''}</td></tr>
+              ))}
+            </tbody></table>
           )}
         </Panel>
       )}
@@ -96,6 +109,9 @@ function NationTeam({ n }: { n: number }) {
   const results = (g.intl?.results ?? []).filter((r) => r.home === n || r.away === n).slice(0, 12);
   const top = g.leagueOrder.find((l) => g.leagues[l]?.nation === n && g.comps[l]);
   const coach = g.manager.national?.nation === n ? g.manager.name : '';
+  const info = g.intl?.info?.[n];
+  const rank = fifaRanking().findIndex((r) => r.n === n) + 1 || '–';
+  const titles = Object.entries(info?.titles ?? {}).map(([k, v]) => `${v}× ${k}`).join(', ');
   const pos = ['GK', 'DEF', 'MID', 'ATT'];
   const grp = (p: Player) => { const r = naturalRole(p); return r === 'GK' ? 0 : ['CB', 'FB'].includes(r) ? 1 : ['DM', 'CM', 'WM', 'AM'].includes(r) ? 2 : 3; };
   return (
@@ -107,6 +123,13 @@ function NationTeam({ n }: { n: number }) {
         <button className="small" onClick={() => nav({ name: 'international' })}>{t('intl.title')}</button>
         {coach && <span className="tag">{t('intl.yourTeam')}</span>}
       </div>
+      <div className="muted" style={{ marginBottom: 8 }}>
+        {t('intl.coach')}: <b>{coach || info?.coach || t('intl.unknownCoach')}</b>
+        {info?.stadium ? ` · ${t('intl.stadium')}: ${info.stadium}${info.cap ? ` (${info.cap.toLocaleString()})` : ''}` : ''}
+        {` · FIFA #${rank}`}
+        {titles ? ` · ${titles}` : ''}
+      </div>
+      {coach && <SquadPicker n={n} />}
       <Panel title={t('intl.squad', { n: squad.length })} className="flush">
         {!squad.length ? <div className="muted" style={{ padding: 12 }}>{t('intl.noSquad')}</div> : (
           <table className="grid"><thead><tr><th>{t('col.pos')}</th><th>{t('col.name')}</th><th>{t('col.club')}</th><th className="num">{t('col.age')}</th><th className="num">{t('intl.caps')}</th><th className="num">{t('intl.goals')}</th></tr></thead>
@@ -123,5 +146,27 @@ function NationTeam({ n }: { n: number }) {
         </Panel>
       )}
     </div>
+  );
+}
+
+/** Landstræneren udtager selv truppen: 20-24 spillere (CM 01/02) */
+function SquadPicker({ n }: { n: number }) {
+  const g = useGame()!;
+  const cur = new Set(g.manager.national?.picks ?? nationSquad(n).map((p) => p.id));
+  const [sel, setSel] = useState<Set<number>>(cur);
+  const [msg, setMsg] = useState('');
+  const toggle = (id: number) => setSel((s) => { const x = new Set(s); if (x.has(id)) x.delete(id); else x.add(id); return x; });
+  return (
+    <Panel title={t('intl.pickTitle', { n: sel.size })} right={<button className="small primary" disabled={sel.size < 20 || sel.size > 24} onClick={() => setMsg(t(act<string>({ t: 'nationalSquad', pids: [...sel] })))}>{t('intl.pickSave')}</button>}>
+      <div className="muted" style={{ marginBottom: 6 }}>{msg || t('intl.pickHint')}</div>
+      <div className="grid-choices" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(230px, 1fr))' }}>
+        {nationPool(n).map((p) => (
+          <label key={p.id} className={`choice ${sel.has(p.id) ? 'on' : ''}`}>
+            <input type="checkbox" checked={sel.has(p.id)} onChange={() => toggle(p.id)} />
+            {p.first} {p.last} <span className="muted" style={{ marginLeft: 'auto' }}>{naturalRole(p)} · {g.clubs[p.club]?.short ?? '–'}</span>
+          </label>
+        ))}
+      </div>
+    </Panel>
   );
 }

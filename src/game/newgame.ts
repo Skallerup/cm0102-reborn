@@ -34,6 +34,8 @@ export interface WorldData {
   playerFields: string[];
   players: (string | number)[][];
   names: Record<string, [string[], string[]]>;
+  /** landsholdsdata fra originalen (build-national.py): pr. nation-indeks og tidligere slutrunder */
+  nationalTeams?: { nations: Record<number, import('./international').NatInfo>; history: import('./international').PastFinal[] };
   /** databaseeditoren: saldo ved start og klubber med selvvalgt omdømme (intet loft for 2. række) */
   clubBalance?: Record<number, number>;
   clubRepEdited?: number[];
@@ -119,6 +121,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
   if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; g.customRules = cm.rules as GameState['customRules']; if (cm.officials?.length) g.officials = cm.officials; }
+  if (world.nationalTeams) g.intl = { results: [], history: [], info: world.nationalTeams.nations, past: world.nationalTeams.history };
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
   setGame(g);

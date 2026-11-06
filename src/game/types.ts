@@ -609,7 +609,7 @@ export interface ManagerProfile {
   /** Jobsamtaler: søgte stillinger (venter på svar) og tilbud med vilkår, man kan forhandle om */
   jobTalks?: Record<number, JobTalk>;
   /** landstrænerjob (CM 01/02: man kan træne et landshold ved siden af klubben) og et åbent tilbud */
-  national?: { nation: number; since: string; played: number; won: number };
+  national?: { nation: number; since: string; played: number; won: number; picks?: number[]; form?: number[] };
   nationalOffer?: number;
   /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
   enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;
