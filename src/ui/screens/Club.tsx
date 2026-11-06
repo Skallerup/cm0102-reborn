@@ -37,7 +37,7 @@ function ClassicClub({ id }: { id?: number }) {
   // en anden klub åbner på truppen (som i originalen); ens egen klub på "Økonomi & info"
   const [view, setView] = useRouteState('cview', cid === g.userClub ? 'info' : 'squad');
   const [editOpen, setEditOpen] = useState(false);
-  if (!c) return <Head title="?" />;
+  if (!c) return <NoClub />;
   const mine = cid === g.userClub;
   const showMoney = mine || !g.options.masking;
   const views = ['info', 'stats', ...(showMoney ? ['finances', 'income', 'expenditure'] : [])];
@@ -176,7 +176,7 @@ function ModernClub({ id }: { id?: number }) {
   const { nav } = useNav();
   const cid = id ?? g.userClub;
   const c = g.clubs[cid];
-  if (!c) return <Head title="?" />;
+  if (!c) return <NoClub />;
   const mine = cid === g.userClub;
   const manager = g.staff[c.manager];
   const players = squad(cid);
@@ -384,5 +384,19 @@ function IntakePanel() {
         </table>
       )}
     </Panel>
+  );
+}
+
+/** "Min klub" uden klub (fyret eller sagt op): henvis til jobcentret i stedet for en tom side */
+function NoClub() {
+  const { nav } = useNav();
+  return (
+    <div>
+      <Head title={t('top.unemployed')} />
+      <div className="panel" style={{ padding: 16 }}>
+        <p>{t('club.noClub')}</p>
+        <button className="primary" onClick={() => nav({ name: 'jobs' })}>{t('nav.jobs')}</button>
+      </div>
+    </div>
   );
 }

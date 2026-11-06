@@ -14,6 +14,8 @@ export function FirstDay() {
   const [picked, setPicked] = useState<string[]>(() => ob?.needs ?? needs.slice(0, 2).map((n) => n.key));
   if (!ob) return null;
   const c = g.clubs[g.userClub];
+  // fyret (eller endnu uden klub): ingen førstedagsguide
+  if (!c) return null;
   if (ob.briefed && ob.plan) return <Briefing />;
   if (ob.briefed) return null;
   const done = [!!ob.weak, !!ob.style, !!ob.needs];

@@ -206,6 +206,9 @@ function retirements() {
     else if (age === 34) prob = p.ca < 90 ? 0.15 : 0.05;
     else if (!p.club && age >= 32) prob = 0.4;
     else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
+    // frie agenter, ingen vil have: de forsvinder til amatørfodbolden (ellers vokser puljen med tusinder om året)
+    else if (!p.club && age >= 24 && p.ca < 85) prob = 0.35;
+    else if (!p.club && age < 24 && p.ca < 70 && p.pa < 120) prob = 0.35;
     if (prob > 0 && rng.chance(prob)) {
       const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
       if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
@@ -298,6 +301,7 @@ export function youthIntake() {
   const active = new Set(g.activeNations);
   for (const c of Object.values(g.clubs)) {
     if (!active.has(c.nation) && rng.chance(0.3)) continue; // inaktive nationer får lidt færre
+    if (g.leagues[c.league]?.hidden) continue; // skjulte klubber (spiller ingen kampe) beholder databasens trup
     const specs = planIntake(c);
     const human = isHumanClub(c.id);
     const added: [Player, SubPos][] = [];

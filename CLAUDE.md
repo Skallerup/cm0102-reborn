@@ -13,6 +13,10 @@ og læg ændringen i samme push.
   `screencapture -x -o -l <vindues-id>` (id via Swift `CGWindowListCopyWindowInfo`), også når det ligger bagved.
 - Spillernes ændringslog: `src/ui/changelogData.ts` (da+en, nyeste først) – tilføj punkter ved hver udgivelse, der kan
   mærkes i spillet, og hæv versionen i `package.json`/`package-lock.json` ved en ny version (testet i tests/changelog.test.ts).
+- Langtidstest: `npx tsx scripts/soak.ts <sæsoner> <world-fil> [klub]` (motorens invarianter pr. sæson),
+  `npx tsx scripts/features.ts <world-fil> [klub]` (20 funktioner gennem actions) og `node scripts/e2e-soak.mjs <modern|original>
+  <moderne|klassisk> [sæsoner] [klub]` (5 sæsoner i browseren, alle skærme). Ret IKKE i `src/` mens e2e-soak kører (Vite
+  genindlæser siden). Kør dem før større udgivelser.
 - SEO: `scripts/build-seo.ts` (kører i `prebuild`) laver statiske guides i `public/<slug>/index.html` (wonderkids, bedste
   spillere, taktik, 2026/27, Mac/iPad, FAQ, spil online) fra world-JSON'erne + `sitemap.xml` og `llms.txt`. Forsiden har
   læsbar tekst i `#root` til crawlere uden JS. Nye guides: tilføj i `pages` og i SW-`navigateFallbackDenylist`.
@@ -40,6 +44,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – 5-sæsoners test af alle fire kombinationer (2026/27 + 01/02 × moderne/klassisk): fyring gav blank skærm
+  (FirstDay.tsx uden klub) – rettet; "Min klub" uden klub → `NoClub`. Skjulte klubber: ingen ungdomsårgang, ingen
+  lejeaftaler (loanSuitors/aiBidsForListed). Frie agenter, ingen vil have, går på pension (retirements). Nu 0 problemer.
 - 2026-11-06 – Legender fjernet i 3.9.68 hentes fra 3.9.65 (`scripts/legacy-players.json`, efternavn+fødselsdato; kræver
   `.orig-db/Original-3.9.65-Database-Swedish_fixed` lokalt): Tó Madeira (Gouveia), id 8.000.000 + 3.9.65-id. Kultlisten
   matcher nu også hele navnet (kælenavne står som efternavn uden fornavn, fx "João Paiva"). Marajó, Tallan Martin,

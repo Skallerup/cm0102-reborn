@@ -1284,7 +1284,8 @@ export function loanSuitors(pid: number): LoanSuitor[] {
   const role = naturalRole(p);
   const out: LoanSuitor[] = [];
   for (const c of Object.values(g.clubs)) {
-    if (c.id === me.id || isHumanClub(c.id)) continue;
+    // skjulte klubber spiller ingen kampe – et lejeophold dér giver ingen spilletid
+    if (c.id === me.id || isHumanClub(c.id) || g.leagues[c.league]?.hidden) continue;
     const level = clubLevel(c.id);
     // spilleren skal kunne spille på holdet, og klubben må ikke være meget større
     if (p.ca < level - 8 || p.ca > level + 35 || c.rep > me.rep + 10) continue;
@@ -1349,6 +1350,8 @@ export function aiBidsForListed() {
     const role = GROUP[naturalRole(p)];
     const cands = Object.values(g.clubs).filter((c) => {
       if (c.id === g.userClub || isHumanClub(c.id)) return false;
+      // skjulte klubber lejer ikke (de spiller ingen kampe)
+      if (loanOnly && g.leagues[c.league]?.hidden) return false;
       const level = clubLevel(c.id);
       if (p.ca < level - 15 || p.ca > level + 25) return false;
       if (c.transferBudget < ask * 0.55) return false;
