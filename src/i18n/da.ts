@@ -1487,4 +1487,5 @@ export const da: Record<string, string> = {
   'cl.pl.compare': "Sammenlign spillere", 'cl.pl.cmp1': "Sæt som 1. spiller i sammenligningen", 'cl.pl.cmp2': "Sæt som 2. spiller i sammenligningen", 'cl.pl.cmpGo': "Sammenlign de to valgte spillere", 'cl.pl.cmp1Q': "Sæt {player} som 1. spiller i sammenligningen?", 'cl.pl.cmp2Q': "Sæt {player} som 2. spiller i sammenligningen?",
   'cl.pl.yel': "Gule", 'cl.pl.red': "Røde", 'cl.pl.mins': "Min.", 'cl.pl.subsOn': "Indsk.",
   'cl.hol.go': "Tag på ferie", 'cl.hol.match': "Ferie til næste kamp", 'cl.hol.q': "Tage på ferie?", 'cl.hol.qMatch': "Tage på ferie til næste kamp?", 'cl.hol.settings': "Indstillinger", 'cl.hol.rejectAll': "Afvis alle bud på spillere", 'cl.hol.rejectBelow': "Afvis alle bud under udbudsprisen", 'cl.hol.noBuy': "Køb ingen spillere", 'cl.hol.applyJobs': "Søg managerjob i klubber med større omdømme",
+  'cl.neg.partTime': "Deltid",
 };

@@ -1454,4 +1454,5 @@ export const en: Record<string, string> = {
   'cl.pl.compare': "Compare Players", 'cl.pl.cmp1': "Set as 1st player in comparison", 'cl.pl.cmp2': "Set as 2nd player in comparison", 'cl.pl.cmpGo': "Compare two chosen players", 'cl.pl.cmp1Q': "Set {player} as 1st player in comparison?", 'cl.pl.cmp2Q': "Set {player} as 2nd player in comparison?",
   'cl.pl.yel': "Yel", 'cl.pl.red': "Red", 'cl.pl.mins': "Mins", 'cl.pl.subsOn': "Sub",
   'cl.hol.go': "Go on Holiday", 'cl.hol.match': "Holiday until next match", 'cl.hol.q': "Go on holiday ?", 'cl.hol.qMatch': "Go on holiday until the next match ?", 'cl.hol.settings': "Settings", 'cl.hol.rejectAll': "Reject all offers for players", 'cl.hol.rejectBelow': "Reject all offers below asking price", 'cl.hol.noBuy': "Do not buy any players", 'cl.hol.applyJobs': "Apply for manager position at higher reputation clubs",
+  'cl.neg.partTime': "Part Time",
 };

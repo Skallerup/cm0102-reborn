@@ -37,6 +37,8 @@ export interface Contract {
 export interface HolidaySettings { rejectAll?: boolean; rejectBelow?: boolean; noBuy?: boolean; applyJobs?: boolean }
 
 export interface ContractClauses {
+  /** CM 01/02 Contract Type: deltid (klik på "Full Time") */
+  partTime?: boolean;
   release?: number;
   wageRise?: number;
   appBonus?: number;

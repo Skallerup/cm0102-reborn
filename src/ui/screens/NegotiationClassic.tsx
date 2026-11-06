@@ -95,7 +95,8 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
                 <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
                 <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
                 <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={wantYears} />
-                <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span /><span className="cx-neg-static">{t('cl.neg.fullTime')}</span></div>
+                <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span />
+                  <button className="cx-neg-static cx-neg-type" onClick={() => setCl((c) => ({ ...c, partTime: !c.partTime || undefined }))}>{t(cl.partTime ? 'cl.neg.partTime' : 'cl.neg.fullTime')}</button></div>
               </>
             )}
             {tab === 'bonuses' && (

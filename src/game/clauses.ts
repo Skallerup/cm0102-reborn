@@ -66,6 +66,7 @@ export function clauseCost(p: Player, wage: number, years: number, c: ContractCl
 export function cleanClauses(c?: ContractClauses): ContractClauses {
   const out: ContractClauses = {};
   if (!c) return out;
+  if (c.partTime) out.partTime = true;
   if (c.release && c.release > 0) out.release = roundFee(c.release);
   if (c.wageRise && c.wageRise > 0) out.wageRise = Math.min(20, Math.round(c.wageRise));
   if (c.appBonus && c.appBonus > 0) out.appBonus = round(c.appBonus, 50);
