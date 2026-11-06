@@ -13,7 +13,7 @@ og læg ændringen i samme push.
   `screencapture -x -o -l <vindues-id>` (id via Swift `CGWindowListCopyWindowInfo`), også når det ligger bagved.
 - Spillernes ændringslog: `src/ui/changelogData.ts` (da+en, nyeste først) – tilføj punkter ved hver udgivelse, der kan
   mærkes i spillet, og hæv versionen i `package.json`/`package-lock.json` ved en ny version (ny version pr. udgivelsesdag – ellers ses
-  ændringerne ikke som nye i spillet) (testet i tests/changelog.test.ts).
+  ændringerne ikke som nye i spillet). Kræver noget et nyt spil, så skriv det i en "⚠ Kræver et nyt spil"-linje øverst i versionen (testet i tests/changelog.test.ts).
 - Langtidstest: `npx tsx scripts/soak.ts <sæsoner> <world-fil> [klub]` (motorens invarianter pr. sæson),
   `npx tsx scripts/features.ts <world-fil> [klub]` (20 funktioner gennem actions) og `node scripts/e2e-soak.mjs <modern|original>
   <moderne|klassisk> [sæsoner] [klub]` (5 sæsoner i browseren, alle skærme). Ret IKKE i `src/` mens e2e-soak kører (Vite
@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – 2001-regler kun for original DB i `src/game/rules2001.ts` (`isOriginal2001`). Arbejdstilladelse: britisk klub +
+  spiller uden for EU/EØS → `playerInterest` = 'permit' medmindre 15+ landskampe, omdømme 70+ eller 5+ kampe og CA 140+ (*estimeret*).
 - 2026-11-06 – Motorplanens trin 8-9: `knockCheck` (`KNOCK_K` 1,4) og `aiManageOriginal` (5/15-minutters spærrer, "knackered"),
   kun med rules 'original'. match-stats.ts: SUBS=3 for 2001-reglerne. Trin 10 (skudresultat m.m.) er valgfrit og ikke lavet.
 - 2026-11-06 – Motorplanens trin 5-7 (tillægstid `DEAD_BALL_K` 1,55, træthed med alder, pause efter Natural Fitness) kun

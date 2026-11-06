@@ -1,4 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
+import { permitOk } from './rules2001';
 import { naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -95,6 +96,7 @@ export function transferRealism(p: Player): Realism {
   if (interest === 'reputation') bump(2, 'real.reputation', 50);
   else if (interest === 'happy') bump(2, 'real.happy', 40);
   else if (interest === 'abroad') bump(2, 'real.abroad', 40);
+  else if (interest === 'permit') bump(2, 'real.permit', 60);
   else if (p.rep - club.rep > 15) bump(1, 'real.repGap', 10);
   if (p.loan || p.contract?.futureClub) bump(2, 'real.unavailable', 50);
   const bosman = !!p.club && canPreContract(p);
@@ -231,9 +233,11 @@ export function preferredYears(p: Player): number {
 }
 
 /** Vil spilleren overhovedet tale med klubben? */
-export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'happy' | 'abroad' {
+export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'happy' | 'abroad' | 'permit' {
   const g = gs();
   if (p.club === club.id) return 'yes';
+  // 2001/02 (kun den originale database): britiske klubber kan ikke hente spillere uden arbejdstilladelse
+  if (!permitOk(p, club)) return 'permit';
   const cur = p.club ? g.clubs[p.club] : undefined;
   const gap = p.rep - club.rep;
   if (gap > 28 + (p.attrs[41] - 10)) return 'reputation';
@@ -287,6 +291,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (!windowOpen()) return 'transfer.windowClosed';
   if (p.club === buyer.id) return 'error';
   if (!loan && fee > buyer.transferBudget) return 'transfer.overBudget';
+  if (!permitOk(p, buyer)) return 'transfer.noWorkPermit';
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
   const humanSeller = isHumanClub(p.club);
   const o: TransferOffer = {
@@ -427,7 +432,7 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
   const interest = playerInterest(p, club);
   if (interest !== 'yes') {
     o.status = 'collapsed';
-    addNews({ cat: 'transfer', key: interest === 'reputation' ? 'transfer.refuseRep' : interest === 'abroad' ? 'transfer.refuseAbroad' : 'transfer.refuseHappy', params: { player: pname(p), club: club.name } });
+    addNews({ cat: 'transfer', key: interest === 'reputation' ? 'transfer.refuseRep' : interest === 'abroad' ? 'transfer.refuseAbroad' : interest === 'permit' ? 'transfer.permitRefused' : 'transfer.refuseHappy', params: { player: pname(p), club: club.name } });
     return 'refused';
   }
   const demand = wageDemand(p, club);
