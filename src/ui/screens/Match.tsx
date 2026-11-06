@@ -15,7 +15,7 @@ import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { isRetro } from '../theme';
-import { useClassicNext } from '../classic';
+import { useClassicNext, useClassicMatchSide } from '../classic';
 import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
 import { stadiumBackgrounds } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
@@ -72,13 +72,14 @@ export function statColors(home: number, away: number, me: number): [string, str
   return me === 0 ? [own, pick] : [pick, own];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const f = g.fixtures[id];
-  const [phase, setPhase] = useState<'pre' | 'live'>(live?.fixture === id ? 'live' : 'pre');
+  // klassisk (CM 01/02): ingen optaktsside – man står på kampskærmen og trykker Kick Off Match
+  const [phase, setPhase] = useState<'pre' | 'live'>(live?.fixture === id || (isRetro() && g.pendingFixture === id && !g.humans) ? 'live' : 'pre');
   if (!f) return <Head title="?" />;
   // en kamp for en klub, man ikke (længere) styrer – fx lige efter et jobskifte
   if (!f.result && f.home !== g.userClub && f.away !== g.userClub && live?.fixture !== id) {
@@ -432,6 +433,9 @@ function LiveMatch({ id }: { id: number }) {
   if (h2h && !L.h2hInit) { L.h2hInit = true; sim.opts.aiSubs = [false, false]; }
   const [paused, setPaused] = useState(false);
   const [speed, setSpeed] = useState(1);
+  // klassisk (CM 01/02): kampen venter på Kick Off Match, knapperne sidder i sidebjælken
+  const classic = isRetro() && !h2h;
+  const waiting = classic && !L.kicked && sim.minute === 0 && !sim.finished;
   // klassisk tema: Match Overview (tekstkommentar som i CM 01/02) som standard
   const [tab, setTabState] = useState(() => {
     try { const v = localStorage.getItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view'); return v === 'commentary' || v === '2d' || (v === 'overview' && isRetro()) ? v : isRetro() ? 'overview' : '2d'; } catch { return isRetro() ? 'overview' : '2d'; }
@@ -638,7 +642,7 @@ function LiveMatch({ id }: { id: number }) {
 
   useEffect(() => {
     if (h2h) return; // fast tempo – styres ovenfor
-    if (paused || report || hl) return;
+    if (paused || report || hl || waiting) return;
     const ms = Math.max(30, g.options.matchSpeed / speed);
     const h = setInterval(() => advance(speed >= 8 ? 40 : 12), ms);
     return () => clearInterval(h);
@@ -744,6 +748,12 @@ function LiveMatch({ id }: { id: number }) {
   const photo = useStadiumPhoto(f);
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report ? t('match.continue') : null, done);
+  useClassicMatchSide(classic ? { minute: waiting ? '0' : String(minute), kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+    kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
+    pause: () => setPaused(!paused),
+    tactics: (side) => { if (!report) setPaused(true); setTab(side === me ? 'tactics' : 'oppTactics'); },
+    speed: setSpeed,
+  });
   // advar mod at genindlæse/lukke midt i kampen
   useEffect(() => {
     if (report) return;
@@ -756,12 +766,12 @@ function LiveMatch({ id }: { id: number }) {
     <div className="match-screen">
       <Head title={`${compName(g.comps[f.comp]?.name)} – ${stageLabel(f)}`}>
         {!report && h2h && <H2hSpeed mine={hs.homeSpeed} theirs={hs.awaySpeed} name={humanManager(f.away)?.name ?? ''} onPick={(v) => { hs.homeSpeed = v; force((x) => x + 1); }} />}
-        {!report && !h2h && <>
+        {!report && !h2h && !classic && <>
           <button data-space onClick={() => setPaused(!paused)}>{paused ? `▶ ${t('match.resume')}` : `❚❚ ${t('match.pause')}`}</button>
           {[1, 2, 4, 8].map((s) => <button key={s} className={speed === s ? 'primary small' : 'small'} onClick={() => setSpeed(s)}>{s}×</button>)}
           <button onClick={finishNow}>{t('match.toEnd')}</button>
         </>}
-        {!report && (
+        {!report && !classic && (
           <select className="hl-level" value={g.options.highlights ?? 'big'} title={t('hl.level')} onChange={(e) => { g.options.highlights = e.target.value as 'big'; notify(); }}>
             {(['goals', 'big', 'all'] as const).map((k) => <option key={k} value={k}>{t('hl.level')}: {t(`hl.level.${k}`)}</option>)}
           </select>
@@ -772,8 +782,10 @@ function LiveMatch({ id }: { id: number }) {
         <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')} />
         {photo && <div className="cm-stage-venue">{g.clubs[f.home]?.stadium}</div>}
       </div>
-      <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>
-      <Tabs tabs={[...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+      {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
+      <Tabs tabs={classic
+        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ['commentary', t('match.commentary')], ['table', t('comp.table')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
+        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
@@ -793,11 +805,12 @@ function LiveMatch({ id }: { id: number }) {
           </>}
         </div></div>
       )}
-      {tab === 'overview' && (
-        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={sim.finished ? t('match.ft') : sim.half === 2 ? t('match.half2') : t('match.half1')}
+      {(tab === 'overview' || (classic && tab === '2d')) && (
+        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={waiting ? t('cl.mt.koLabel') : sim.finished ? t('match.ft') : sim.half === 2 ? t('match.half2') : t('match.half1')}
           goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og }))} />
       )}
-      {tab === '2d' && (
+      {tab === 'oppTactics' && <OppTactics sim={sim} side={(1 - me) as 0 | 1} club={g.clubs[me === 0 ? f.away : f.home]?.name ?? ''} />}
+      {tab === '2d' && !classic && (
         <div className="cols match2d">
           <div style={{ position: 'relative' }}>
             {hl ? (
@@ -849,7 +862,7 @@ function LiveMatch({ id }: { id: number }) {
       )}
       {tab === 'table' && g.comps[f.comp]?.type === 'league' && (g.comps[f.comp].splitDone ? <LeagueTables comp={g.comps[f.comp]} /> : <Panel className="flush"><LeagueTable rows={leagueRows(g.comps[f.comp])} comp={g.comps[f.comp]} /></Panel>)}
       {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
-      {!report && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
+      {!report && !classic && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>
       {tab === 'tactics' && !report && (
         <SubsPanel sim={sim} me={me} live={myLive} onDone={(ok) => { setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1); }} />
@@ -1056,5 +1069,21 @@ export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport[
         );
       })}
     </Panel>
+  );
+}
+
+/** Modstanderens taktik under kampen (klassisk: "{klub} Tactics" i sidebjælken) – formation, mentalitet og de 11 på banen */
+function OppTactics({ sim, side, club }: { sim: MatchSim; side: 0 | 1; club: string }) {
+  const g = useGame()!;
+  const lv = sim.live(side);
+  return (
+    <>
+      <div className="cx-subtitle">{t('cl.mt.oppTitle', { club })}</div>
+      <div className="cx-kv"><span>{t('cl.tac.formation')}</span><span>{lv.tactic.formation}</span></div>
+      <table className="cx-tbl"><tbody>{lv.on.filter((s) => !s.off).map((s) => {
+        const p = g.players[s.id];
+        return <tr key={s.id}><td className="c-pos">{p ? posStr(p) : ''}</td><td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td></tr>;
+      })}</tbody></table>
+    </>
   );
 }

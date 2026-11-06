@@ -791,3 +791,6 @@
 .cx-staff-cols .cx-kv { font-size: 17px; align-content: start; }
 .cx-staff-attrs { font-size: 15px; }
 @media (max-width: 760px) { .cx-staff-cols { grid-template-columns: 1fr; } }
+.cx-date.cx-matchday span, .cx-date.cx-minute b { color: var(--cx-gold); font-weight: 800; }
+.cx-date.cx-minute b { font-size: 30px; }
+.cx-date.cx-matchday span { font-size: 13px; line-height: 1.25; text-align: center; }

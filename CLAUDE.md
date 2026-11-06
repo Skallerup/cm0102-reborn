@@ -45,6 +45,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk kampdag: Shell viser "Hjem v Ude" i datoboksen ved `pendingFixture`, Continue → askConfirm(head) →
+  match (ingen PreMatch i klassisk, undtagen online). LiveMatch `classic`/`waiting` (`live.kicked`), sidebjælken via
+  `useClassicMatchSide` (classic.tsx) → Shell. Faner: Overview, Stats, Ratings, Scores, Commentary, Table + `oppTactics`.
+  e2e: klassisk kamp = bekræft (.cx-confirm) → Kick Off Match → tasten E.
 - 2026-11-06 – Klassisk = originalens skærme: board.ts `meetBoard`/`faRequest` (MEET_BOARD, FA_REQUESTS, actions meetBoard/
   faRequest, også i authentic), `ClassicBoard`+`MeetPanel`, `NegotiationClassic.tsx` (Offer Contract), confirm.tsx klassisk
   helskærm, `useClassicDialog()` gør Continue Game grå (brug den i alle bokse), `.cx-opt` (grå/hvid tekstvalg), `.cx-dlg`.

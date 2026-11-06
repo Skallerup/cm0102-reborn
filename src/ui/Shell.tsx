@@ -58,7 +58,7 @@ import { CompetitionsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, mo
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicNextAction } from './classic';
+import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -120,6 +120,7 @@ export function Shell() {
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   const dialogOpen = useClassicDialogOpen();
+  const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
     ? stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? (modernBackgrounds() ? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub) : null)
@@ -255,7 +256,12 @@ export function Shell() {
       const pf = g.fixtures[g.pendingFixture];
       // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk
       if (!pf || pf.result || (pf.home !== g.userClub && pf.away !== g.userClub)) act({ t: 'fixPending' });
-      else { nav({ name: 'match', id: g.pendingFixture }); return; }
+      else {
+        const go = g.pendingFixture;
+        // klassisk (CM 01/02): "Please Confirm – Proceed to the match ?"
+        if (cmNav) { void askConfirm(t('cl.mt.proceed'), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) nav({ name: 'match', id: go }); }); return; }
+        nav({ name: 'match', id: go }); return;
+      }
     }
     if (showOldestUnread(g.news)) return;
     // ingen ulæste: kør dage frem, indtil der sker noget (kamp, bud, ny besked …) – højst 60 dage
@@ -319,9 +325,31 @@ export function Shell() {
         const side = (k: ScreenName | null, label: string, cls = '', onClick?: () => void) => (
           <button className={`cx-sbtn ${cls} ${k && route.name === k ? 'on' : ''}`} onClick={onClick ?? (() => k && nav({ name: k }))}>{label}</button>
         );
+        // kampskærmen (CM 01/02): minuttet øverst og kampens knapper i stedet for de almindelige
+        if (matchSide && route.name === 'match') {
+          const ms = matchSide.s, ma = matchSide.a;
+          return (
+            <aside className="cx-side">
+              <div className="cx-date cx-minute"><b>{ms.minute}</b></div>
+              <div className="cx-arrows">
+                <button disabled={!canBack || (ms.kicked && !ms.finished)} onClick={back} aria-label={t('cm.back')}>←</button>
+                <button disabled={!canForward || (ms.kicked && !ms.finished)} onClick={forward} aria-label={t('cm.next')}>→</button>
+              </div>
+              {!ms.finished && <button className="cx-sbtn cx-continue" onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.resume') : t('cl.mt.pause')}</button>}
+              <button className="cx-sbtn" onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
+              <button className="cx-sbtn" onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
+              {!ms.finished && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn' }}
+                items={[1, 2, 4, 8].map((n) => ({ key: String(n), label: t(`cl.mt.speed.${n}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
+              <div className="cx-side-grow" />
+            </aside>
+          );
+        }
+        // på kampdagen står kampens to hold i datoboksen (som i originalen)
+        const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
         return (
           <aside className="cx-side">
-            <div className="cx-date" title={dateFmt(g.date, true)}><b>{day}</b><span>{date}</span></div>
+            {pf && !pf.result ? <div className="cx-date cx-matchday" title={dateFmt(g.date, true)}><span>{g.clubs[pf.home]?.short} v {g.clubs[pf.away]?.short}</span></div>
+              : <div className="cx-date" title={dateFmt(g.date, true)}><b>{day}</b><span>{date}</span></div>}
             <div className="cx-arrows">
               <button disabled={!canBack} onClick={back} aria-label={t('cm.back')}>←</button>
               <button disabled={!canForward} onClick={forward} aria-label={t('cm.next')}>→</button>

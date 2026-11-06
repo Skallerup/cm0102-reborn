@@ -187,11 +187,14 @@ async function run(look) {
 
   // ---------- kamp ----------
   await step('spil en hel kamp', async () => {
-    const kick = await t('match.kickoff');
+    // klassisk (CM 01/02): Continue Game → "Proceed to the match ?" (Yes) → Kick Off Match i sidebjælken
+    const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');
     const labels = [await t('top.toTheMatch'), await t('top.toMatch'), await t('cl.continue'), await t('top.continue')].filter(Boolean);
     for (let i = 0; i < 120; i++) {
       if (await page.getByRole('button', { name: kick }).first().isVisible().catch(() => false)) break;
       let clicked = false;
+      const yes = page.locator('.cx-confirm button.primary');
+      if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(400); continue; }
       for (const l of labels) {
         const b = page.getByRole('button', { name: l, exact: false }).first();
         if (await b.isVisible().catch(() => false)) { await b.click().catch(() => {}); clicked = true; break; }
@@ -203,6 +206,7 @@ async function run(look) {
     await page.waitForTimeout(800);
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });
     for (let i = 0; i < 60 && !(await page.getByRole('button', { name: await t('match.continue') }).first().isVisible().catch(() => false)); i++) {
+      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); await page.keyboard.press('e'); }
       if (await toEnd.isVisible().catch(() => false)) await toEnd.click().catch(() => {});
       // pause med holdsnak/udskiftning: fortsæt
       const resume = page.getByRole('button', { name: await t('match.resume') }).first();

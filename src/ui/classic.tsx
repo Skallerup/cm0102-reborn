@@ -37,6 +37,28 @@ export function useClassicNext(label: string | null, run: () => void) {
     return () => { if (nextAction === a) { nextAction = null; emitNext(); } };
   }, [label]);
 }
+/** Klassisk kampskærm: sidebjælken viser minuttet og kampknapperne (Kick Off Match, holdenes taktik, Commentary Speed) */
+export interface MatchSide { minute: string; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
+export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void }
+let matchSide: { s: MatchSide; a: MatchSideActions } | null = null;
+let matchSideKey = '';
+const matchSubs = new Set<() => void>();
+export function useClassicMatchSide(s: MatchSide | null, a: MatchSideActions) {
+  const ref = useRef(a);
+  ref.current = a;
+  const key = s ? JSON.stringify(s) : '';
+  useEffect(() => {
+    if (!s) return;
+    const acts: MatchSideActions = { kick: () => ref.current.kick(), pause: () => ref.current.pause(), tactics: (x) => ref.current.tactics(x), speed: (n) => ref.current.speed(n) };
+    matchSide = { s, a: acts };
+    if (key !== matchSideKey) { matchSideKey = key; matchSubs.forEach((f) => f()); }
+  }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => { matchSide = null; matchSideKey = ''; matchSubs.forEach((f) => f()); }, []);
+}
+export function useClassicMatchSideState() {
+  return useSyncExternalStore((f) => { matchSubs.add(f); return () => { matchSubs.delete(f); }; }, () => matchSide);
+}
+
 /** Åbne bokse (Set Transfer Status, Offer Contract, Meet with Board …): Continue Game er grå imens, som i originalen */
 let dialogs = 0;
 const dialogSubs = new Set<() => void>();
