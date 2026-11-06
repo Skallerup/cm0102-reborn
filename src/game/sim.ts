@@ -2,7 +2,7 @@
 import { intlDaily } from './international';
 import { awolMonthly } from './rules2001';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
-import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
+import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
 import { A } from './attributes';
 import { cmDatabase } from './newgame';
 import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
@@ -24,7 +24,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
@@ -380,6 +380,7 @@ function newDay() {
   forEachHuman(windowNews);
   forEachHuman(processOffers);
   answerPendingRenewals();
+  holidayDaily();
   forEachHuman(processJobTalks);
   forEachHuman(() => {
     expirePress();
@@ -722,4 +723,22 @@ function weeklySummary() {
   g.manager.week = { pos, balance: c.balance };
   if (!prev || !played.length) return; // første mandag (kun udgangspunktet) og uger uden kampe: ingen besked
   addNews({ cat: 'general', key: 'week.summary', params: { results: results || t('week.noGames'), pos, move, balance, injured, next: next || '–' } });
+}
+
+/** CM 01/02 "Go on holiday": assistenten svarer på bud og søger job efter managerens indstillinger */
+function holidayDaily() {
+  const g = gs();
+  const h = g.manager?.holiday;
+  if (!h || !g.userClub) return;
+  for (const o of g.offers.filter((x) => x.status === 'pending' && x.seller === g.userClub)) {
+    const p = g.players[o.player];
+    if (h.rejectAll) respondToOffer(o.id, 'reject');
+    else if (h.rejectBelow && p) respondToOffer(o.id, o.fee >= askingPrice(p) ? 'accept' : 'reject');
+  }
+  // søg en ledig stilling i en klub med større omdømme (højst én om ugen)
+  const myRep = g.clubs[g.userClub]?.rep ?? 0;
+  if (h.applyJobs && g.date.endsWith('1') ) {
+    const cid = (g.vacancies ?? []).filter((c) => (g.clubs[c]?.rep ?? 0) > myRep + 5 && !g.manager.jobTalks?.[c]).sort((a, b) => g.clubs[b].rep - g.clubs[a].rep)[0];
+    if (cid) applyForJob(cid);
+  }
 }

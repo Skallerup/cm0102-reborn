@@ -1,4 +1,6 @@
 import { BoardScreen } from './screens/Board';
+import type { HolidaySettings } from '../game/types';
+import { addDays } from '../game/dates';
 import { International } from './screens/International';
 import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
@@ -58,7 +60,7 @@ import { CompetitionsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, mo
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction } from './classic';
+import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -120,6 +122,10 @@ export function Shell() {
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   const dialogOpen = useClassicDialogOpen();
+  const [holiday, setHoliday] = useState<boolean | null>(null);
+  // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
+  const cxPhoto = cmNav ? stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub) : null;
+  useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
@@ -359,7 +365,7 @@ export function Shell() {
               <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
-            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />
+            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} onHoliday={(untilMatch) => setHoliday(untilMatch)} />
             <CompetitionsMenu />
             {club ? side('club', t('cl.nations')) : side('find', t('cl.nations'), '', () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }))}
             <FindMenu />
@@ -466,6 +472,13 @@ export function Shell() {
           <button onClick={() => { stopRef.current = true; }}>{t('common.stop')}</button>
         </div>
       )}
+      {holiday !== null && <HolidayPanel untilMatch={holiday} onClose={() => setHoliday(null)} onGo={(set) => {
+        setHoliday(null);
+        const g2 = gs();
+        g2.manager.holiday = set;
+        // ferie: 14 dage (*estimeret*) med kampene spillet automatisk, eller indtil næste kamp
+        void run(holiday ? { untilMatch: true, maxDays: 120 } : { untilDate: addDays(g2.date, 14), autoPlay: true }).finally(() => { gs().manager.holiday = undefined; notify(); });
+      }} />}
       {toast && <div className="toast">{toast}</div>}
       {g.draft && online && <RoomChat />}
     </div>
@@ -551,5 +564,32 @@ function FullscreenButton() {
       onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen(); }}>
       {on ? '⤡' : '⛶'}
     </button>
+  );
+}
+
+/** CM 01/02 "Go on holiday ?": indstillingerne slås til med et klik (hvid), No/Yes */
+function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onClose: () => void; onGo: (s: HolidaySettings) => void }) {
+  useClassicDialog();
+  const g = gs();
+  const col = titleColors(g.userClub || undefined);
+  const [set, setSet] = useState<HolidaySettings>({ rejectAll: true, applyJobs: true });
+  const keys: (keyof HolidaySettings)[] = ['rejectAll', 'rejectBelow', 'noBuy', 'applyJobs'];
+  const toggle = (k: keyof HolidaySettings) => setSet((s) => {
+    const x = { ...s, [k]: !s[k] };
+    if (k === 'rejectAll' && x.rejectAll) x.rejectBelow = false;
+    if (k === 'rejectBelow' && x.rejectBelow) x.rejectAll = false;
+    return x;
+  });
+  return (
+    <div className="cx-dlg cx-confirm" role="dialog">
+      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{g.manager.name}</h2></div>
+      <div className="cx-subtitle">{t('cl.mt.confirm')}</div>
+      <div className="cx-dlg-body">
+        <p className="cx-ts-intro" style={{ alignSelf: 'center' }}>{t(untilMatch ? 'cl.hol.qMatch' : 'cl.hol.q')}</p>
+        <p className="cx-ts-intro">{t('cl.hol.settings')}</p>
+        {keys.map((k) => <button key={k} className={`cx-opt ${set[k] ? 'on' : ''}`} onClick={() => toggle(k)}>{t(`cl.hol.${k}`)}</button>)}
+      </div>
+      <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.no')}</button><button className="primary" onClick={() => onGo(set)}>{t('common.yes')}</button></div>
+    </div>
   );
 }

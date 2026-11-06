@@ -176,7 +176,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
 // ---------- managerens menu (klik på navnet i sidebaren) ----------
 
 /** Pop op-menuen bag managerens navn: klubbens skærme øverst, managerens egne nedenunder (som i CM 01/02) */
-export function ManagerMenu({ onRetire, allowed }: { onRetire: () => void; allowed: (k: string) => boolean }) {
+export function ManagerMenu({ onRetire, allowed, onHoliday }: { onRetire: () => void; allowed: (k: string) => boolean; onHoliday?: (untilMatch: boolean) => void }) {
   const g = useGame()! as GameState;
   const { nav } = useNav();
   const club = g.clubs[g.userClub];
@@ -199,6 +199,7 @@ export function ManagerMenu({ onRetire, allowed }: { onRetire: () => void; allow
   nat('jobs', t('cl.mm.jobs'));
   nat('transfers', t('nav.transfers'));
   add('history', t('nav.history'));
+  if (club && onHoliday) items.push({ key: 'hol', label: t('cl.hol.go'), onClick: () => onHoliday(false) }, { key: 'hol2', label: t('cl.hol.match'), onClick: () => onHoliday(true) });
   items.push({ key: 'sep2', sep: true }, { key: 'retire', label: t('cl.mm.retire'), onClick: onRetire });
   return <CxDrop className="cx-gameopt" fixed caret={false} label={g.manager.name} items={items} btn={{ className: 'cx-sbtn cx-mgr' }} />;
 }

@@ -45,6 +45,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Ferie (klassisk managermenu): `HolidayPanel` i Shell.tsx, `manager.holiday` (HolidaySettings), `holidayDaily` i sim.ts
+  (afvis/accepter bud, søg job i større klubber). 14 dage *estimeret*. `--cx-photo` sættes på :root, så `.cx-dlg` har baggrund.
 - 2026-11-06 – Klassisk Action: actions `nickname` (Player.realName gemmer det rigtige navn) og `staffReport` (nyheder staffrep.*,
   oversat i newsParams), `setCompareSlot` i ui/compare.ts, NicknamePanel/StaffReportPanel i PlayerClassic.tsx.
 - 2026-11-06 – Klassisk kontraktforlængelse: action `renewLater` → `g.pendingRenewals`, besvares i `answerPendingRenewals` (sim.ts

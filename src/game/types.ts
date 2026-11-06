@@ -33,6 +33,9 @@ export interface Contract {
 }
 
 /** Klausuler i et kontrakttilbud */
+/** CM 01/02 "Go on holiday": hvad assistenten gør imens */
+export interface HolidaySettings { rejectAll?: boolean; rejectBelow?: boolean; noBuy?: boolean; applyJobs?: boolean }
+
 export interface ContractClauses {
   release?: number;
   wageRise?: number;
@@ -612,6 +615,8 @@ export interface ManagerProfile {
   jobTalks?: Record<number, JobTalk>;
   /** landstrænerjob (CM 01/02: man kan træne et landshold ved siden af klubben) og et åbent tilbud */
   national?: { nation: number; since: string; played: number; won: number; picks?: number[]; form?: number[] };
+  /** på ferie (CM 01/02) – assistenten svarer på bud efter indstillingerne */
+  holiday?: HolidaySettings;
   nationalOffer?: number;
   /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
   enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;
