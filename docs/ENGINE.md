@@ -264,3 +264,20 @@ til samme niveau som før for en typisk professionel (Stamina 14, 26 år – *es
 | Udskiftninger pr. hold | 2,20 | 2,48 |
 | Mål pr. kamp | 3,06 | 3,02 |
 
+
+### Trin 7 – pausen (regel 7; kun den originale database, 2026-11-06) + genkalibrering
+
+Kilde: sub_6f5810 (`halfTimeRecovery`): kondition += (Natural Fitness + 15) × 10 af 10000 (1,6-3,5 %) i stedet for faste 4 %.
+Aldersfaktoren er ikke kendt og udelades.
+
+Trin 3-7 løftede tilsammen målene i den originale database (sæson: 3,01-3,11). `ORIGINAL.finish` 1,4 → 1,33 bringer dem tilbage.
+
+| `scripts/original-lab.ts`, 2 sæsoner | Frø 2001 | Frø 77 | Originalen |
+|---|---|---|---|
+| Mål pr. kamp før / efter genkalibrering | 3,11 / 2,88 | 3,01 / 2,84 | 2,87 |
+| H/U/B efter | 55,4 / 19,3 / 25,3 | 51,2 / 22,2 / 26,6 | 51,1 / 22,6 / 26,3 |
+| Mester / sidst (point) efter | 86,0 / 27,5 | 79,5 / 24,0 | 84 / 25 |
+| Topscorer efter | 33,5 | 30,0 | 23 |
+
+`scripts/match-stats.ts` (2000 kampe): kondition ved slutfløjt 77,9 %, 2,73 udskiftninger pr. hold.
+

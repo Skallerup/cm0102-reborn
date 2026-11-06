@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Motorplanens trin 5-7 (tillægstid `DEAD_BALL_K` 1,55, træthed med alder, pause efter Natural Fitness) kun
+  med rules 'original'; ORIGINAL.finish 1,4 → 1,33 (mål 2,84-2,88). original-lab måler ikke længere kort (rapporter gemmes
+  ikke for AI-kampe) – brug match-stats.ts med REF=1.
 - 2026-11-06 – Motorplanens trin 4: `MatchSim.originalCard` (rules 'original'), ORIGINAL = { …, cards: 0,11 (andel af
   korttyper), rules: 'original' }, `HARD_SHARE` 0,03. match-stats.ts: REF=1/RULES/CARDS som miljøvariabler.
 - 2026-11-06 – Regens: `g.regenQueue` (RegenSeed) fyldes ved pension, `spawnRegen` i youthIntake (marts) arver positioner,

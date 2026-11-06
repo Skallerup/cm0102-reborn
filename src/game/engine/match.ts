@@ -10,7 +10,7 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
-import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, fatigueDrain, yellowRatingDelta, type Rand } from './cm0102-original-rules';
+import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, fatigueDrain, halfTimeRecovery, yellowRatingDelta, type Rand } from './cm0102-original-rules';
 /** Andel almindelige frispark, der er sene/hårde (type 44) i originalens kortregel – *estimeret* (docs/ENGINE.md, trin 4) */
 const HARD_SHARE = 0.03;
 /** Originalens døde bolde pr. registreret afbrydelse hos os (indkast, målspark efter redninger m.m. tælles ikke) – *estimeret* (trin 5) */
@@ -658,7 +658,9 @@ export class MatchSim {
   }
 
   private recoverHalftime() {
-    for (const t of this.teams) for (const s of t.on) s.cond = Math.min(1, s.cond + 0.04);
+    // originalen (sub_6f5810): condition += (Natural Fitness + 15) × 10 af 10000 (1,6-3,5 %); aldersfaktoren kendes ikke
+    const orig = this.opts.rules === 'original';
+    for (const t of this.teams) for (const s of t.on) s.cond = Math.min(1, s.cond + (orig ? halfTimeRecovery(s.p.attrs[A.naturalFitness]) / 10000 : 0.04));
   }
 
   private tickFatigue() {
