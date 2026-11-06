@@ -324,7 +324,8 @@ export interface ScoutRecommendation {
 export function scoutRecommendation(p: Player): ScoutRecommendation {
   const g = gs();
   const k = knowledgeOf(p);
-  if (k < 35) return { level: -1, key: 'rec.unknown', reasons: [] };
+  // kun spejdede spillere (samme grænse som mærket Sct) – ellers har scouten ingen mening om ham
+  if (k < 60) return { level: -1, key: 'rec.unknown', reasons: [] };
   const club = g.clubs[g.userClub];
   if (!club) return { level: -1, key: 'rec.unknown', reasons: [] };
   const age = ageOn(p.dob, g.date);
@@ -362,7 +363,11 @@ export function scoutRecommendation(p: Player): ScoutRecommendation {
   const real = realismFn(p);
   // god nok, men urealistisk: "uden for rækkevidde" – ikke "ikke bedre end det, vi har"
   let out = false;
-  if (real >= 2) { out = lvl < 3; lvl = Math.max(lvl, 3); if (!reasons.some((r) => r.key === 'rec.r.wontCome' || r.key === 'rec.r.tooExpensive')) reasons.unshift({ key: 'rec.r.unrealistic' }); }
+  // god nok til holdet, men for dyr eller urealistisk: "uden for rækkevidde" (fx Zidane for Vejle) – aldrig "ikke bedre"
+  const good = reasons.some((r) => r.key === 'rec.r.betterThanBest' || r.key === 'rec.r.firstTeam' || r.key === 'rec.r.talent');
+  const priced = reasons.some((r) => r.key === 'rec.r.tooExpensive' || r.key === 'rec.r.wontCome');
+  if (good && (real >= 2 || priced) && lvl >= 3) { out = true; lvl = 3; }
+  else if (real >= 2) { out = lvl < 3; lvl = Math.max(lvl, 3); if (!reasons.some((r) => r.key === 'rec.r.wontCome' || r.key === 'rec.r.tooExpensive')) reasons.unshift({ key: 'rec.r.unrealistic' }); }
   else if (real === 1 && lvl === 0) { lvl = 1; reasons.push({ key: 'rec.r.hard' }); }
   return { level: lvl, key: out ? 'rec.lOut' : `rec.l${lvl}`, reasons: reasons.slice(0, 3), out };
 }
