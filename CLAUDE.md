@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – rules2001.ts (kun original DB): `recallLoan` (28 dage, *estimeret*), `awolMonthly` (skade-key 'awol'),
+  `boardEventsSeason` (cash injection/PLC/overtagelse). Test: tests/rules2001.test.ts. Bemærk: rules2001 må IKKE importere
+  newgame (cirkulær import via scouting/transfers gav TDZ-fejl).
 - 2026-11-06 – Spejdere efter ejerens `…/bosman-edition/app/scouts/SCOUTS.md` (alle databaser): ScoutAssignment-typerne club,
   nextOpp, region, youth; `startScoutAssignment` (nyhed scout.started), scout.update/doneNone/doneOne/clubDone/oppReport,
   `scoutReport` (originalens 12 domme `scout.v.1-12`, ctx, styrke/evne/svaghed, arbejdstilladelse kun original DB – sættes

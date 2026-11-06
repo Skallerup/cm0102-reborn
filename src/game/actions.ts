@@ -21,8 +21,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { removeHuman } from './humans';
 import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
-  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
-} from './transfers';
+  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
@@ -42,6 +41,7 @@ export type Action =
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
+  | { t: 'recallLoan'; pid: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
@@ -149,6 +149,7 @@ export function applyAction(a: Action): unknown {
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
     case 'release': return releasePlayer(a.pid);
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
+    case 'recallLoan': return recallLoan(a.pid);
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });
     case 'preContract': return startPreContract(a.pid);

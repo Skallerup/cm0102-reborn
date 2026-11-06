@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { permitOk } from './rules2001';
+import { isOriginal2001, permitOk } from './rules2001';
 import { naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -1694,4 +1694,21 @@ export function counterPackages(o: TransferOffer): { kind: 'cash' | 'addOn' | 's
     if (worth >= target) { out.push({ kind: 'sellOn', fee: feeS, sellOn, worth, maxCost: feeS }); break; }
   }
   return out;
+}
+
+/**
+ * Kald en udlejet spiller hjem (CM 01/02: "Recall from loan" – kun den originale database). Tidligst 28 dage efter
+ * lejeaftalen (*estimeret*: originalens frist er ikke fundet). Lejeklubben får besked.
+ */
+export function recallLoan(pid: number): string {
+  const g = gs();
+  const p = g.players[pid];
+  if (!p || !p.loan || p.loan.from !== g.userClub || !isOriginal2001()) return 'error';
+  if (p.joined && daysBetween(p.joined, g.date) < 28) return 'loan.recallTooSoon';
+  const at = g.clubs[p.club];
+  setClub(p, g.userClub);
+  p.loan = null;
+  p.joined = g.date;
+  addNews({ cat: 'transfer', key: 'loan.recalledNews', params: { player: pname(p), club: at?.name ?? '' }, link: { kind: 'player', id: p.id } });
+  return 'loan.recalled';
 }

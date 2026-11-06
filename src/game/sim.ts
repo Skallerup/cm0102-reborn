@@ -1,4 +1,5 @@
 // Spillets dag-for-dag-løkke.
+import { awolMonthly } from './rules2001';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
 import { A } from './attributes';
@@ -363,9 +364,10 @@ function newDay() {
       // CM 01/02: "[spiller] resumes light training" – en uge før comeback fra en længere skade
       if (p.injury.days === 7 && (p.injury.total ?? 0) >= 21 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.lightTraining', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       if (p.injury.days <= 0) {
+        const wasAwol = p.injury.key === 'awol';
         p.injury = null;
-        p.condition = Math.min(p.condition, 75);
-        asOwner(p.club, () => addNews({ cat: 'injury', key: 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
+        if (!wasAwol) p.condition = Math.min(p.condition, 75);
+        asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       }
     }
     if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
@@ -422,6 +424,7 @@ function newDay() {
     forEachHuman(boardMonthly);
     if (month(d) >= 9 || month(d) <= 4) aiSackings();
     if (month(d) === 6) summerManagerChanges();
+    awolMonthly();
     if (month(d) >= 1 && month(d) <= 5) aiRenewals();
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }

@@ -335,6 +335,8 @@ export interface Club {
   history: ClubSeasonHistory[];
   /** måneder i træk med negativ saldo (nyheden "financial mess") */
   negMonths?: number;
+  /** børsnoteret (CM 01/02: "[klub] become a PLC") */
+  plc?: boolean;
   /** placering ved sidste månedsklumme ("climbing to safety" m.m.) */
   columnPos?: number;
   /** udbytte betalt til ejerne ved sidste sæsonstart */

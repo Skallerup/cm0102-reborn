@@ -2,6 +2,7 @@
 // Titelbjælke med "Navn (Klub)" og en Action-menu, fanerne Profil · Skader & karantæner · Kontrakt · Transfer · Historik.
 // Profil-fanen viser alle synlige egenskaber i fire alfabetiske kolonner, statistik pr. turnering og positionen nederst.
 // Alle handlinger (bud, forespørgsel, liste, forlængelse, udlejning, scout, sammenligning …) ligger i Action-menuen.
+import { isOriginal2001 } from '../../game/rules2001';
 import { useEffect, useState, type ReactNode } from 'react';
 import { A, ATTRS, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
 import { act as dispatch } from '../../game/actions';
@@ -377,6 +378,8 @@ export function ClassicPlayer({ id }: { id: number }) {
       { key: 'release', label: t('player.release'), danger: true, onClick: async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } } },
     );
   }
+  // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
+  if (p.loan?.from === g.userClub && isOriginal2001()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))) });
   if (!g.draft && !mine && g.userClub > 0) {
     items.push({ key: 'h-tr', head: t('cl.pl.actTransfer') });
     if (p.club > 0) {

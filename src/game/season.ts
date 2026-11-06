@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { boardEventsSeason } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
 import { storyAdd, storySeasonEnd } from './story';
@@ -592,6 +593,7 @@ export function seasonRollover() {
     if (sq.length < 18 && !g.leagues[c.league]?.hidden) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
   }
   newSeasonBudgets();
+  boardEventsSeason();
   setupSeasonComps(g.season, prevTables, cupWinners);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
   forEachHuman(() => {
