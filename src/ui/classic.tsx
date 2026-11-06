@@ -237,12 +237,13 @@ function hexRgb(h: string): [number, number, number] {
 const luma = ([r, g, b]: [number, number, number]) => (0.299 * r + 0.587 * g + 0.114 * b) / 255;
 const dist = (a: [number, number, number], b: [number, number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
-/** Titelbjælkens farver: klubbens 1. farve som flade, 2. farve som tekst (hvis den kan læses) */
+/** Titelbjælkens farver: klubbens 1. farve som flade, 2. farve som tekst (som i originalen) */
 export function titleColors(clubId: number | undefined): { bg: string; fg: string; neutral: boolean } {
   const c = clubId ? gs().clubs[clubId] : undefined;
   if (!c) return { bg: '#f4f6fb', fg: '#0b1a5c', neutral: true };
   const a = hexRgb(c.colors[0]), b = hexRgb(c.colors[1] ?? '#ffffff');
-  const readable = dist(a, b) > 120 && Math.abs(luma(a) - luma(b)) > 0.22;
+  // som i CM 01/02: klubbens 2. farve er altid teksten (Barcelona: rød på blå) – kun næsten ens farver giver hvid/mørk
+  const readable = dist(a, b) > 60;
   const fg = readable ? c.colors[1] : luma(a) > 0.6 ? '#0b1a5c' : '#ffffff';
   return { bg: c.colors[0], fg, neutral: false };
 }
