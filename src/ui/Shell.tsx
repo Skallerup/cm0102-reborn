@@ -335,7 +335,8 @@ export function Shell() {
                 <button disabled={!canBack || (ms.kicked && !ms.finished)} onClick={back} aria-label={t('cm.back')}>←</button>
                 <button disabled={!canForward || (ms.kicked && !ms.finished)} onClick={forward} aria-label={t('cm.next')}>→</button>
               </div>
-              {!ms.finished && <button className="cx-sbtn cx-continue" onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.resume') : t('cl.mt.pause')}</button>}
+              {ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
+                : <button className="cx-sbtn cx-continue" onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.resume') : t('cl.mt.pause')}</button>}
               <button className="cx-sbtn" onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
               <button className="cx-sbtn" onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
               {!ms.finished && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn' }}

@@ -205,8 +205,9 @@ async function run(look) {
     await page.getByRole('button', { name: kick }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });
-    for (let i = 0; i < 60 && !(await page.getByRole('button', { name: await t('match.continue') }).first().isVisible().catch(() => false)); i++) {
-      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { const btns = page.locator('.cx-side > button.cx-sbtn'); for (const k of [1, 2]) { await btns.nth(k).click(); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); } } await page.keyboard.press('e'); }
+    const doneSel = look === 'klassisk' ? page.locator('.cx-side .cx-continue.continue') : page.getByRole('button', { name: await t('match.continue') }).first();
+    for (let i = 0; i < 60 && !(await doneSel.isVisible().catch(() => false)); i++) {
+      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { const btns = page.locator('.cx-side > button.cx-sbtn'); for (const k of [1, 2]) { await btns.nth(k).click(); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); } } if (i === 0) { for (const n of ['Match Stats', 'Action Zones', 'Match Report', 'Player Ratings', 'Latest Scores']) { const b = page.getByRole('button', { name: n, exact: true }).first(); if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(200); await checkScreen(n); await page.screenshot({ path: `${OUT}/klassisk-kamp-${n.replace(/ /g, '')}.png` }); } } } await page.keyboard.press('e'); }
       if (await toEnd.isVisible().catch(() => false)) await toEnd.click().catch(() => {});
       // pause med holdsnak/udskiftning: fortsæt
       const resume = page.getByRole('button', { name: await t('match.resume') }).first();
@@ -216,7 +217,7 @@ async function run(look) {
     if (look === 'klassisk') {
       // som i CM 01/02: ved slutfløjt bliver Next-knappen nederst til Continue
       await page.screenshot({ path: `${OUT}/klassisk-slutfloejt.png` });
-      await page.locator('.cx-next-go').click({ timeout: 10000 });
+      await page.locator('.cx-side .cx-continue').click({ timeout: 10000 });
     } else await page.getByRole('button', { name: await t('match.continue') }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
     const played = await gs(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).some((f) => f.result && (f.home === g.userClub || f.away === g.userClub)); });

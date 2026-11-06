@@ -808,3 +808,28 @@
 @media (max-width: 760px) { .cx-mt-cols { grid-template-columns: 1fr; } }
 .cx-mt .cx-tac-pitch { width: auto; height: calc(100vh - 290px); min-height: 360px; max-height: none; margin: 0 auto; }
 @media (max-width: 760px) { .cx-mt .cx-tac-pitch { width: 100%; height: auto; } }
+/* kampskærmens faner (CM 01/02) */
+.cx-ms { display: flex; flex-direction: column; gap: 3px; padding: 6px 0; }
+.cx-ms-row { display: grid; grid-template-columns: 180px 1fr 180px; align-items: center; }
+.cx-ms-v { background: linear-gradient(180deg, #1d2a8c, #121a66); color: #6fe3ff; text-align: center; font-size: 20px; font-weight: 800; padding: 3px 0; text-shadow: 1px 1px 0 #000; }
+.cx-ms-l { text-align: center; color: #fff; font-size: 20px; font-weight: 800; text-shadow: 2px 2px 0 #000; }
+.cx-ms-l.y { color: #fff21f; } .cx-ms-l.r { color: #ff3b3b; }
+.cx-az-pitch { display: grid; grid-template-columns: repeat(3, 1fr); height: 260px; background: repeating-linear-gradient(90deg, #1f5a1f 0 8%, #1b511b 8% 16%); border: 2px solid #9fd49a; margin-bottom: 10px; }
+.cx-az-third { display: grid; place-items: center; border-right: 2px dashed #fff21f; } .cx-az-third:last-child { border-right: 0; }
+.cx-az-third b { color: #fff21f; font-size: 30px; text-shadow: 2px 2px 0 #000; }
+.cx-mr { max-height: calc(100vh - 330px); overflow-y: auto; background: rgba(0, 0, 0, 0.35); }
+.cx-mr-m { width: 90px; text-align: right; }
+.cx-rt { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cx-tbl tr.dim td:not(.btn-col) { color: #8d92a6 !important; }
+.cx-tbl .c-good { color: #5ee08f; } .cx-tbl .c-bad { color: #ff6b5a; }
+.cx-card { display: inline-block; width: 12px; height: 16px; margin-right: 6px; vertical-align: -2px; background: #fff21f; } .cx-card.red { background: #ff2020; }
+.cx-ls { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px; background: rgba(0, 0, 0, 0.35); }
+.cx-ls-row { display: grid; grid-template-columns: 1fr 80px 1fr; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 #000; }
+.cx-ls-team { font-size: 19px; } .cx-ls-score { text-align: center; font-size: 19px; }
+.cx-mo-inj { color: #5ee08f; }
+.cx-venue { margin-top: 6px; padding: 8px; text-align: center; background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; font-size: 18px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
+@media (max-width: 760px) { .cx-rt { grid-template-columns: 1fr; } .cx-ms-row { grid-template-columns: 70px 1fr 70px; } .cx-ms-l { font-size: 14px; } }
+.cx-mo-so { padding: 6px 10px; } .cx-mo-so-h { color: #fff21f; font-size: 20px; font-weight: 800; text-shadow: 1px 1px 0 #000; border-bottom: 2px solid #fff21f; display: inline-block; margin-bottom: 8px; }
+.cx-md-res { color: #6fe3ff; font-weight: 800; text-align: center; text-shadow: 1px 1px 0 #000; }
+.cx-md-mark { color: #fff21f; font-size: 12px; font-weight: 800; margin: 0 4px; }
+.cx-md-row:has(.cx-md-res) { grid-template-columns: 46px minmax(0, 1fr) 90px minmax(0, 1fr) 46px; }

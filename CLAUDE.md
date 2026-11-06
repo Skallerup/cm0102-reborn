@@ -45,6 +45,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk kampskærm: Cx*-komponenter sidst i Match.tsx (cxRows, CxMatchStats, CxZones via `live.zones`, CxReport,
+  CxTeamStats, CxRatings, CxScores); ingen Head i klassisk; sidebjælkens `cont` → done → `matchday` (Evening Results, a/p i
+  MatchDayClassic). e2e klikker `.cx-side .cx-continue` ved slutfløjt.
 - 2026-11-06 – Klassisk kamptaktik: `OppTactics` i Match.tsx (begge hold; `editable` = eget hold, træk udskifter ↔ spiller →
   `sim.substitute`). Scoreboard skjules på taktikfanerne. Mangler: View-kolonner, højreklik-løb, Penalty Takers, Load/Save.
 - 2026-11-06 – Klassisk kampdag: Shell viser "Hjem v Ude" i datoboksen ved `pendingFixture`, Continue → askConfirm(head) →

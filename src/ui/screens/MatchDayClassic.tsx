@@ -21,7 +21,28 @@ export function MatchDay({ id }: { id: number }) {
   const list = today.filter((f) => f.comp === cid).sort((a, b) => Number(isMine(b)) - Number(isMine(a)) || (g.clubs[a.home]?.name ?? '').localeCompare(g.clubs[b.home]?.name ?? ''));
   function isMine(f: Fixture) { return f.home === g.userClub || f.away === g.userClub; }
   const stages = [...new Set(list.map((f) => stageLabel(f)))];
-  const code = (club: number) => g.nations[g.clubs[club]?.nation]?.code ?? '';
+  // efter kampene (CM 01/02 "Evening Results"): ligaens forkortelse ved hver klub i en ligakamp, ellers landet
+  const played = list.length > 0 && list.every((f) => f.result);
+  const abbr = (lg?: string) => (lg ? (compName(g.comps[lg]?.name) ?? '').split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w[0] ?? '')).join('').toUpperCase().slice(0, 3) : '');
+  const code = (club: number) => (played && comp?.type !== 'league' && comp?.nation !== -1 ? abbr(g.clubs[club]?.league) : g.nations[g.clubs[club]?.nation]?.code ?? '');
+  /** a = videre på udebanemål, p = videre efter straffespark (står ved vinderen) */
+  const mark = (f: Fixture, side: 0 | 1) => {
+    const r = f.result;
+    if (!r) return '';
+    if (r.pens) return (r.pens[side] > r.pens[1 - side]) ? 'p' : '';
+    if (f.leg === 2 && f.tieId !== undefined) {
+      const tie = comp?.ties.find((x) => x.id === f.tieId);
+      const first = tie ? g.fixtures[tie.fx[0]] : undefined;
+      if (first?.result && first.id !== f.id) {
+        const club = side === 0 ? f.home : f.away;
+        const tot = (c: number) => [first, f].reduce((s, x) => s + (x.home === c ? x.result!.hg : x.result!.ag), 0);
+        const away = (c: number) => [first, f].reduce((s, x) => s + (x.away === c ? x.result!.ag : 0), 0);
+        const other = side === 0 ? f.away : f.home;
+        if (tot(club) === tot(other) && away(club) > away(other)) return 'a';
+      }
+    }
+    return '';
+  };
   const name = (club: number) => <span className={club === g.userClub ? 'me' : ''}>{g.clubs[club] ? <CxLink to={clubRoute(club)}>{g.clubs[club].name}</CxLink> : '?'}</span>;
   const d = new Date(`${date}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long' });
   return (
@@ -33,7 +54,7 @@ export function MatchDay({ id }: { id: number }) {
         <span className="grow" />
         {comp && <button className="cx-greybtn" onClick={() => nav({ name: 'competitions', id: cid })}>{t('cl.md.competition')}</button>}
       </Head>
-      <div className="cx-subtitle">{t('cl.md.title')}</div>
+      <div className="cx-subtitle">{t(played ? 'cl.md.results' : 'cl.md.title')}</div>
       <div className="cx-md-date">{d}</div>
       {stages.map((st) => (
         <div key={st} className="cx-md">
@@ -42,14 +63,14 @@ export function MatchDay({ id }: { id: number }) {
             <div key={f.id} className={`cx-md-row ${isMine(f) ? 'mine' : ''}`}>
               <span className="cx-md-code">{code(f.home)}</span>
               <span className="cx-md-home">{name(f.home)}</span>
-              <span className="cx-md-v">v</span>
+              {f.result ? <span className="cx-md-res"><span className="cx-md-mark">{mark(f, 0)}</span>{f.result.hg}:{f.result.ag}<span className="cx-md-mark">{mark(f, 1)}</span></span> : <span className="cx-md-v">v</span>}
               <span className="cx-md-away">{name(f.away)}</span>
               <span className="cx-md-code">{code(f.away)}</span>
             </div>
           ))}
         </div>
       ))}
-      {g.pendingFixture && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
+      {g.pendingFixture && !played && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
     </div>
   );
 }

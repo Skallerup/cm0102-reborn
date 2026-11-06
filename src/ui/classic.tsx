@@ -39,7 +39,7 @@ export function useClassicNext(label: string | null, run: () => void) {
 }
 /** Klassisk kampskærm: sidebjælken viser minuttet og kampknapperne (Kick Off Match, holdenes taktik, Commentary Speed) */
 export interface MatchSide { minute: string; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
-export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void }
+export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void; cont: () => void }
 let matchSide: { s: MatchSide; a: MatchSideActions } | null = null;
 let matchSideKey = '';
 const matchSubs = new Set<() => void>();
@@ -49,7 +49,7 @@ export function useClassicMatchSide(s: MatchSide | null, a: MatchSideActions) {
   const key = s ? JSON.stringify(s) : '';
   useEffect(() => {
     if (!s) return;
-    const acts: MatchSideActions = { kick: () => ref.current.kick(), pause: () => ref.current.pause(), tactics: (x) => ref.current.tactics(x), speed: (n) => ref.current.speed(n) };
+    const acts: MatchSideActions = { kick: () => ref.current.kick(), pause: () => ref.current.pause(), tactics: (x) => ref.current.tactics(x), speed: (n) => ref.current.speed(n), cont: () => ref.current.cont() };
     matchSide = { s, a: acts };
     if (key !== matchSideKey) { matchSideKey = key; matchSubs.forEach((f) => f()); }
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
