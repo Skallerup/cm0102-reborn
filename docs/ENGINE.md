@@ -250,3 +250,17 @@ Kilde: _f_006b98c0 ved 0x6b9f5f (`deadBall`/`addedMinutes`).
 | Tillægstid efter 90' | ~4,7 (faste tillæg) | 4,65 (originalens regel) |
 | Mål / gule / røde pr. kamp | 2,98 / 1,72 / 0,15 | 3,04 / 1,74 / 0,14 |
 
+
+### Trin 6 – træthed (regel 6; kun den originale database, 2026-11-06)
+
+Kilde: sub_6f56c0 (`staminaFactor`/`fatigueDrain`). Stamina-leddet i motorens træthed følger originalens form
+200 − 8,5 × (0,65 × Stamina + aldersled) (under 20: 6,75 · 20-23: 7,25 · 24-29: 7,5 · 30-33: 7,0 · 34+: 5,75), normeret
+til samme niveau som før for en typisk professionel (Stamina 14, 26 år – *estimeret* reference). Motorens øvrige led
+(tempo, pres, arbejdsrate, vejr) er uændrede.
+
+| `scripts/match-stats.ts`, 2000 kampe, original DB | Før | Efter |
+|---|---|---|
+| Kondition ved slutfløjt (spillet hele kampen) | 74,1 % | 78,7 % |
+| Udskiftninger pr. hold | 2,20 | 2,48 |
+| Mål pr. kamp | 3,06 | 3,02 |
+

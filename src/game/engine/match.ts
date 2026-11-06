@@ -10,7 +10,7 @@
 
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
-import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, yellowRatingDelta, type Rand } from './cm0102-original-rules';
+import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, fatigueDrain, yellowRatingDelta, type Rand } from './cm0102-original-rules';
 /** Andel almindelige frispark, der er sene/hårde (type 44) i originalens kortregel – *estimeret* (docs/ENGINE.md, trin 4) */
 const HARD_SHARE = 0.03;
 /** Originalens døde bolde pr. registreret afbrydelse hos os (indkast, målspark efter redninger m.m. tælles ikke) – *estimeret* (trin 5) */
@@ -104,6 +104,8 @@ interface SP {
   yellow: number;
   /** frispark begået i kampen (originalens kortregel bruger dem) */
   fouls?: number;
+  /** alder på kampdagen (originalens træthed afhænger af den) */
+  age?: number;
   line: PlayerMatchLine;
   rating: number;
   enteredAt: number;
@@ -341,6 +343,7 @@ export class MatchSim {
     const sp: SP = {
       p, team: rt.idx, slot, eff,
       cond: clamp(p.condition / 100, 0.3, 1),
+      age: this.opts.date && p.dob ? Number(this.opts.date.slice(0, 4)) - Number(p.dob.slice(0, 4)) - (this.opts.date.slice(5) < p.dob.slice(5) ? 1 : 0) : 25,
       instr: rt.tactic.individual[slot],
       ax: 0, ay: 0, dx: 0, dy: 0,
       off: false, yellow: 0,
@@ -667,7 +670,12 @@ export class MatchSim {
         if (s.off) continue;
         const tf = tf0 * (1 + 0.12 * ((s.instr.closingDown ?? t.ti.closingDown) - 1));
         const isGK = t.tactic.slots[s.slot].pos === 'GK';
-        const drain = 0.00143 * (1.3 - s.p.attrs[A.stamina] / 36) * (isGK ? 0.25 : tf * (1 + 0.12 * Math.max(0, 11 - t.men))) * (1 + 0.06 * (s.p.attrs[A.workRate] - 10) / 10) * (1.1 - s.p.attrs[A.naturalFitness] / 100);
+        // originalen (sub_6f56c0): (200 − 8,5 × (0,65 × Stamina + aldersled)) – samme samlede skala som vores formel for en
+        // typisk professionel (Stamina 14, 26 år), men alder og stamina betyder mere
+        const staminaTerm = this.opts.rules === 'original'
+          ? (1.3 - 14 / 36) * fatigueDrain(s.p.attrs[A.stamina], s.age ?? 26, 'medium') / fatigueDrain(14, 26, 'medium')
+          : 1.3 - s.p.attrs[A.stamina] / 36;
+        const drain = 0.00143 * staminaTerm * (isGK ? 0.25 : tf * (1 + 0.12 * Math.max(0, 11 - t.men))) * (1 + 0.06 * (s.p.attrs[A.workRate] - 10) / 10) * (1.1 - s.p.attrs[A.naturalFitness] / 100);
         s.cond = Math.max(0.2, s.cond - drain);
       }
     }
