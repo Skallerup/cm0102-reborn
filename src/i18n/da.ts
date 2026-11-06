@@ -1493,4 +1493,5 @@ export const da: Record<string, string> = {
   'cl.role.title': "Rolle i klubben", 'cl.role.job': "Jobbeskrivelse", 'cl.role.player': "Spiller", 'cl.role.assistant': "Spiller/assistenttræner", 'cl.role.coach': "Spiller/træner", 'cl.role.expected': "Det forventer spilleren", 'cl.role.notEnding': "Spilleren vil ikke stoppe karrieren lige nu", 'cl.role.young': "Ikke muligt for unge spillere",
   'cl.neg.wantsSign': "{player} beder om {wage} om ugen til {until} og en underskriftsbonus på {fee}.", 'cl.neg.signOn': "Underskriftsbonus",
   'cl.pl.relegate': "Ryk ned på reserveholdet", 'cl.pl.callUp': "Kald op på førsteholdet", 'cl.pl.inReserves': "På reserveholdet", 'cl.pl.note': "Skriv en note", 'cl.tag.Res': "Res",
+  'cl.mt.saved': "Formationen \"{name}\" er gemt",
 };

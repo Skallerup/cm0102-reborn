@@ -428,6 +428,8 @@ export interface Slot {
 
 export interface Tactic {
   formation: string;
+  /** navn på en gemt formation (Save Formation) */
+  name?: string;
   slots: Slot[]; // 11
   lineup: number[]; // spiller-id pr. slot (0 = tom)
   bench: number[];

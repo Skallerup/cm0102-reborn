@@ -1158,7 +1158,11 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
   const cid = sim.teams[side].club;
   const col = titleColors(cid);
   const [drag, setDrag] = useState<number | null>(null);
-  const [pane, setPane] = useState<'list' | 'ti' | 'pens'>('list');
+  const [pane, setPane] = useState<'list' | 'ti' | 'save'>('list');
+  const [saveName, setSaveName] = useState('');
+  const [note, setNote] = useState('');
+  const [dragCapt, setDragCapt] = useState(false);
+  const pitchRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'cond' | InstrKey>('cond');
   const [ctx, setCtx] = useState<{ slot: number; x: number; y: number } | null>(null);
   const tac = (editable && draft) || lv.tactic;
@@ -1166,10 +1170,25 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
   const on = lv.on.filter((s) => !s.off);
   const pl = (id: number) => g.players[id];
   const drop = (target: number) => {
-    if (!editable || drag === null || drag === target) return;
+    if (!editable) return;
+    // "capt" trukket over på en anden spiller på banen
+    if (dragCapt) { if (on.some((x) => x.id === target)) edit((t2) => ({ ...t2, captain: target })); setDragCapt(false); return; }
+    if (drag === null || drag === target) return;
     const a = on.some((s) => s.id === drag), b = on.some((s) => s.id === target);
     if (a && !b && lv.bench.includes(target)) onSub?.(drag, target);
     else if (!a && b && lv.bench.includes(drag)) onSub?.(target, drag);
+    // to spillere på banen: byt pladser
+    else if (a && b) edit((t2) => { const i1 = t2.lineup.indexOf(drag), i2 = t2.lineup.indexOf(target); if (i1 >= 0 && i2 >= 0) { t2.lineup[i1] = target; t2.lineup[i2] = drag; } return t2; });
+    setDrag(null);
+  };
+  /** en spiller trukket ud på en tom plet på banen: hans plads flyttes dertil */
+  const dropOnPitch = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (!editable || drag === null || !pitchRef.current) return;
+    const r = pitchRef.current.getBoundingClientRect();
+    const y = Math.max(4, Math.min(96, ((e.clientX - r.left) / r.width) * 100));
+    const x = Math.max(10, Math.min(95, (97 - ((e.clientY - r.top) / r.height) * 100) / 0.92));
+    edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK') t2.slots[i] = { ...t2.slots[i], x, y }; return t2; });
     setDrag(null);
   };
   type Row = { id: number; num?: number; note?: string; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
@@ -1184,7 +1203,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
     onDragStart: (e: React.DragEvent) => { e.dataTransfer.setData('text/plain', String(id)); setTimeout(() => setDrag(id), 0); },
     onDragEnd: () => setTimeout(() => setDrag(null), 0),
     onDragOver: (e: React.DragEvent) => { if (editable) e.preventDefault(); },
-    onDrop: (e: React.DragEvent) => { e.preventDefault(); drop(id); },
+    onDrop: (e: React.DragEvent) => { e.preventDefault(); e.stopPropagation(); drop(id); },
   });
   const vc = VIEW_COLS.find((c) => c.k === view);
   const cycle = (slot: number) => vc && edit((t2) => {
@@ -1197,18 +1216,18 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
   const saved = g.savedTactics;
   const tacticsMenu: DropItem[] = [
     { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setPane(pane === 'ti' ? 'list' : 'ti') },
-    { key: 'pens', label: t('cl.mt.penTakers'), onClick: () => setPane(pane === 'pens' ? 'list' : 'pens') },
+    // dødboldsskytter som grønne undermenuer (CM 01/02)
+    ...(['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: on.map((x) => ({ key: `${k}${x.id}`, label: `${x.num ?? ''} ${pl(x.id) ? `${pl(x.id).first} ${pl(x.id).last}`.trim() : ''}`.trim(), checked: tac[k] === x.id, disabled: !editable, onClick: () => edit((t2) => ({ ...t2, [k]: x.id })) })) })),
     ...(editable ? [
       { key: 'sep1', sep: true as const },
       { key: 'form', label: t('cl.mt.formation'), sub: FORMATIONS.map((fm) => ({ key: fm, label: fm, checked: tac.formation === fm, onClick: () => edit((t2) => ({ ...changeFormation(t2, fm), lineup: t2.lineup, bench: t2.bench })) })) },
-      { key: 'load', label: t('cl.mt.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => edit((t2) => ({ ...structuredClone(s2), lineup: t2.lineup, bench: t2.bench, captain: t2.captain })) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
-      { key: 'save', label: t('cl.mt.save'), onClick: () => act({ t: 'savedTactics', list: [...saved.filter((x) => x.formation !== tac.formation || x.team.mentality !== tac.team.mentality), structuredClone(tac)].slice(-8) }) },
-      { key: 'del', label: t('cl.mt.delete'), sub: saved.length ? saved.map((s2, i2) => ({ key: `d${i2}`, label: `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => act({ t: 'savedTactics', list: saved.filter((_, k) => k !== i2) }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
+      { key: 'load', label: t('cl.mt.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: s2.name ?? `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => edit((t2) => ({ ...structuredClone(s2), lineup: t2.lineup, bench: t2.bench, captain: t2.captain })) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
+      { key: 'save', label: t('cl.mt.save'), onClick: () => { setSaveName(tac.name ?? tac.formation); setPane('save'); } },
+      { key: 'del', label: t('cl.mt.delete'), sub: saved.length ? saved.map((s2, i2) => ({ key: `d${i2}`, label: s2.name ?? `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => act({ t: 'savedTactics', list: saved.filter((_, k) => k !== i2) }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
       { key: 'sep2', sep: true as const },
       { key: 'def', label: t('cl.mt.default'), disabled: !base, onClick: () => base && setDraft?.(structuredClone({ ...base, lineup: tac.lineup, bench: tac.bench })) },
     ] : []),
   ];
-  const takers: ('penalties' | 'freeKicks' | 'corners' | 'captain')[] = ['captain', 'penalties', 'freeKicks', 'corners'];
   return (
     <div className="cx-mt" onClick={() => setCtx(null)}>
       <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
@@ -1239,16 +1258,15 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
           ))}
         </div>
       )}
-      {pane === 'pens' && (
-        <div className="cx-mt-pens">
-          <div className="cx-subtitle small">{t('cl.mt.penTakers')}</div>
-          <table className="cx-tbl"><thead><tr><th>{t('col.name')}</th>{takers.map((k) => <th key={k} className="c-num">{t(`tac.${k}`)}</th>)}</tr></thead>
-            <tbody>{on.map((s) => (
-              <tr key={s.id}><td className="c-name">{pl(s.id) ? `${pl(s.id).first} ${pl(s.id).last}`.trim() : '?'}</td>
-                {takers.map((k) => <td key={k} className="c-num">{editable ? <button className={`cx-opt ${tac[k] === s.id ? 'sel' : ''} cx-ti-btn`} onClick={() => edit((t2) => ({ ...t2, [k]: s.id }))}>{tac[k] === s.id ? '●' : '○'}</button> : tac[k] === s.id ? '●' : ''}</td>)}</tr>
-            ))}</tbody></table>
+      {pane === 'save' && (
+        <div className="cx-ts-body cx-mt-tibox">
+          <div className="cx-subtitle small">{t('cl.mt.save')}</div>
+          <input className="cx-nick" autoFocus value={saveName} maxLength={30} onChange={(e) => setSaveName(e.target.value)} />
+          <div className="cx-ts-buttons" style={{ width: '100%' }}><button onClick={() => setPane('list')}>{t('common.cancel')}</button>
+            <button className="primary" disabled={!saveName.trim()} onClick={() => { const nm = saveName.trim(); act({ t: 'savedTactics', list: [...saved.filter((x) => (x.name ?? '') !== nm), { ...structuredClone(tac), name: nm }].slice(-10) }); setPane('list'); setNote(t('cl.mt.saved', { name: nm })); }}>{t('common.ok')}</button></div>
         </div>
       )}
+      {note && <div className="cx-mt-hint" style={{ margin: '0 0 6px' }}>{note}</div>}
       <div className="cx-mt-cols">
         <div className="cx-mt-list">
           <div className="cx-mt-form">{tac.formation}</div>
@@ -1259,7 +1277,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
               <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${drag !== null && r.id !== drag ? 'drop' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
                 <td className="btn-col"><span className="cx-rowbtn narrow">{r.num ?? ''}</span></td>
                 <td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td>
-                <td className="c-pos">{r.note ?? (tac.captain === r.id && r.live ? 'capt' : '')}</td>
+                <td className="c-pos">{r.note ?? (tac.captain === r.id && r.live ? <span className="cx-capt" draggable={editable} onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>capt</span> : '')}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
                 {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={() => r.slot !== undefined && cycle(r.slot)}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
                   <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
@@ -1269,7 +1287,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
             );
           })}</tbody></table>
         </div>
-        <div className="cx-tac-pitch">
+        <div className="cx-tac-pitch" ref={pitchRef} onDragOver={(e) => { if (editable && drag !== null) e.preventDefault(); }} onDrop={dropOnPitch}>
           <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
             <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
               <rect x="1" y="1" width="66" height="98" /><line x1="1" y1="50" x2="67" y2="50" /><circle cx="34" cy="50" r="9" />

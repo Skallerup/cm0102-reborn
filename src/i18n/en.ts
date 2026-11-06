@@ -1460,4 +1460,5 @@ export const en: Record<string, string> = {
   'cl.role.title': "Set Role At Club", 'cl.role.job': "Job Description", 'cl.role.player': "Player", 'cl.role.assistant': "Player/Assistant Manager", 'cl.role.coach': "Player/Coach", 'cl.role.expected': "Expected by the player", 'cl.role.notEnding': "Player not interested in ending his playing career at this time", 'cl.role.young': "Not available for young players",
   'cl.neg.wantsSign': "{player} is requesting {wage} p/w until {until} in addition to a signing on fee of {fee}.", 'cl.neg.signOn': "Signing On Fee",
   'cl.pl.relegate': "Relegate To Reserves", 'cl.pl.callUp': "Call Up To First Team", 'cl.pl.inReserves': "In the reserves", 'cl.pl.note': "Create Manager Note", 'cl.tag.Res': "Res",
+  'cl.mt.saved': "Formation \"{name}\" saved",
 };
