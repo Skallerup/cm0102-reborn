@@ -1712,3 +1712,29 @@ export function recallLoan(pid: number): string {
   addNews({ cat: 'transfer', key: 'loan.recalledNews', params: { player: pname(p), club: at?.name ?? '' }, link: { kind: 'player', id: p.id } });
   return 'loan.recalled';
 }
+
+/**
+ * Transferlisten ved spilstart (som i CM 01/02, hvor listen ikke er tom på dag 1): hver AI-klub sætter 0-3 spillere til
+ * salg – overtallige i store trupper, spillere langt under holdets niveau og ældre spillere uden for de 14 bedste.
+ * Antallet er *estimeret*.
+ */
+export function initialTransferList() {
+  const g = gs();
+  // egen generator: spillets fælles rng må ikke forskydes af åbningslisten
+  const rng = new Rng(hash(g.seed, 4242));
+  for (const c of Object.values(g.clubs)) {
+    if (isHumanClub(c.id) || g.leagues[c.league]?.hidden) continue;
+    const sq = squad(c.id).filter((p) => p.contract && !p.loan);
+    if (sq.length < 16) continue;
+    const level = clubLevel(c.id);
+    const byCa = sq.slice().sort((a, b) => b.ca - a.ca);
+    const top14 = new Set(byCa.slice(0, 14).map((p) => p.id));
+    const cands = byCa.filter((p) => {
+      const age = ageOn(p.dob, g.date);
+      if (top14.has(p.id) || age < 21 || (age <= 23 && p.pa >= p.ca + 15)) return false;
+      return p.ca < level - 25 || (age >= 31 && rng.chance(0.4)) || (sq.length > 28 && rng.chance(0.5));
+    });
+    const n = Math.min(3, cands.length, rng.chance(0.45) ? 0 : 1 + (sq.length > 30 && rng.chance(0.5) ? 1 : 0));
+    for (const p of rng.shuffle(cands).slice(0, n)) p.listed = true;
+  }
+}

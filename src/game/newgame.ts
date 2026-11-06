@@ -1,4 +1,5 @@
 // Opret et nyt spil ud fra world.json
+import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
 import { europeanQualifiers, setupChampionsLeague, setupCup, setupLeague, setupUefaCup } from './competitions';
@@ -329,6 +330,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
   addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   rebuildIndexes();
+  initialTransferList();
   return g;
 }
 
