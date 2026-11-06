@@ -37,6 +37,19 @@ export function useClassicNext(label: string | null, run: () => void) {
     return () => { if (nextAction === a) { nextAction = null; emitNext(); } };
   }, [label]);
 }
+/** Åbne bokse (Set Transfer Status, Offer Contract, Meet with Board …): Continue Game er grå imens, som i originalen */
+let dialogs = 0;
+const dialogSubs = new Set<() => void>();
+export function useClassicDialog(open = true) {
+  useEffect(() => {
+    if (!open) return;
+    dialogs++; dialogSubs.forEach((f) => f());
+    return () => { dialogs--; dialogSubs.forEach((f) => f()); };
+  }, [open]);
+}
+export function useClassicDialogOpen(): boolean {
+  return useSyncExternalStore((f) => { dialogSubs.add(f); return () => { dialogSubs.delete(f); }; }, () => dialogs > 0);
+}
 /** Shell: den aktuelle overtagelse af Next-knappen (null = almindelig Frem) */
 export function useClassicNextAction() {
   return useSyncExternalStore((f) => { nextSubs.add(f); return () => { nextSubs.delete(f); }; }, () => nextAction);

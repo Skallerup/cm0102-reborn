@@ -1,7 +1,7 @@
 // Bestyrelsen: tillid og forventning samlet ét sted – plus ønsker man kan stille (budget, byggeri og fire andre).
 import { useState } from 'react';
 import { act } from '../../game/actions';
-import { boardAskInfo } from '../../game/board';
+import { FA_REQUESTS, MEET_BOARD, boardAskInfo, faAvailable, meetBoardAvailable } from '../../game/board';
 import { CAMP_DESTS, campCost, campWindows, type CampDest } from '../../game/camp';
 import type { BoardAsk } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
@@ -12,6 +12,7 @@ import { isRetro } from '../theme';
 import { Info } from '../help';
 import { Head } from './common';
 import { authentic } from '../../game/rules';
+import { useClassicDialog } from '../classic';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
 
@@ -104,23 +105,57 @@ function boardStatement(): string[] {
   return out;
 }
 
-/** Klassisk tema: klubbens navn i titlen, "Board Confidence" som overskrift og udtalelsen i stor tekst */
+/** Klassisk tema (som CM 01/02): Board Confidence med knapperne Board Request og FA Request */
 function ClassicBoard() {
-  const [view, setView] = useRouteState<'confidence' | 'request' | 'camp'>('bview', 'confidence');
-  const views: ['confidence' | 'request' | 'camp', string][] = [['confidence', t('cl.ba.confidence')], ['request', t('cl.ba.request')], ['camp', t('camp.title')]];
+  const [view, setView] = useRouteState<'confidence' | 'request' | 'fa'>('bview', 'confidence');
   return (
     <div>
-      <Head title={t('nav.board')}>
-        {views.filter(([k]) => k !== view).map(([k, l]) => <button key={k} className="cx-greybtn" onClick={() => setView(k)}>{l}</button>)}
-      </Head>
-      <div className="cx-subtitle">{views.find(([k]) => k === view)?.[1]}</div>
+      <Head title={gs().clubs[gs().userClub]?.name ?? t('nav.board')} />
       {view === 'confidence' && (
-        <div className="cx-statement">
-          {boardStatement().map((x) => <p key={x}>{x}</p>)}
-        </div>
+        <>
+          <div className="cx-subtitle">{t('cl.ba.confidence')}</div>
+          <div className="cx-tools cx-tools-inline">
+            <button className="cx-greybtn wide" onClick={() => setView('request')}>{t('cl.ba.request')}</button>
+            <button className="cx-greybtn wide" onClick={() => setView('fa')}>{t('cl.ba.fa')}</button>
+          </div>
+          <div className="cx-statement">{boardStatement().map((x) => <p key={x}>{x}</p>)}</div>
+        </>
       )}
-      {view === 'request' && <><BoardAsks /><MoneyPanel /></>}
-      {view === 'camp' && <CampPanel />}
+      {view === 'request' && <MeetPanel key="b" title={t('cl.mb.title')} intro={t('cl.mb.intro')} kinds={MEET_BOARD} avail={meetBoardAvailable} label={(k) => t(`cl.mb.${k}`)}
+        send={(k) => act<string>({ t: 'meetBoard', kind: k })} onClose={() => setView('confidence')} />}
+      {view === 'fa' && <MeetPanel key="f" title={t('cl.fa.title')} intro={t('cl.fa.intro')} kinds={FA_REQUESTS} avail={faAvailable} label={(k) => t(`cl.fa.${k}`)}
+        send={(k) => act<string>({ t: 'faRequest', kind: k })} onClose={() => setView('confidence')} />}
+    </div>
+  );
+}
+
+/** "Meet with Board" / "Meet with the Football Association": klik på et ønske for at vælge det (hvid tekst), Confirm sender */
+function MeetPanel<K extends string>({ title, intro, kinds, avail, label, send, onClose }: {
+  title: string; intro: string; kinds: K[]; avail: (k: K) => boolean; label: (k: K) => string; send: (k: K) => string; onClose: () => void;
+}) {
+  useClassicDialog();
+  const [sel, setSel] = useState<Set<K>>(new Set());
+  const [answers, setAnswers] = useState<string[] | null>(null);
+  const confirm = () => setAnswers([...sel].map((k) => t(send(k))));
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{title}</div>
+      <div className="cx-ts-body">
+        {answers ? answers.map((a, i) => <p key={i} className="cx-ts-intro">{a}</p>) : (
+          <>
+            <p className="cx-ts-intro">{intro}</p>
+            {kinds.map((k) => {
+              const ok = avail(k);
+              return <button key={k} className={`cx-opt ${sel.has(k) ? 'on' : ''}`} disabled={!ok}
+                onClick={() => setSel((s) => { const x = new Set(s); if (x.has(k)) x.delete(k); else x.add(k); return x; })}>{label(k)}</button>;
+            })}
+          </>
+        )}
+      </div>
+      <div className="cx-ts-buttons">
+        <button onClick={onClose}>{answers ? t('common.back') : t('common.cancel')}</button>
+        {!answers && <button className="primary" disabled={!sel.size} onClick={confirm}>{t('cl.mb.confirm')}</button>}
+      </div>
     </div>
   );
 }

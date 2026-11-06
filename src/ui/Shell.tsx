@@ -58,7 +58,7 @@ import { CompetitionsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, mo
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, classicDate, setClassicAllowed, useClassicNextAction } from './classic';
+import { ClassicSlotCtx, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicNextAction } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -119,6 +119,7 @@ export function Shell() {
   // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
+  const dialogOpen = useClassicDialogOpen();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
     ? stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? (modernBackgrounds() ? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub) : null)
@@ -326,7 +327,7 @@ export function Shell() {
               <button disabled={!canForward} onClick={forward} aria-label={t('cm.next')}>→</button>
             </div>
             {online ? <div className="cx-online"><OnlineControls /></div> : !inMatch && (
-              <button className="cx-sbtn cx-continue continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
+              <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
             <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />

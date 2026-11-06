@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { CxLink, clubRoute } from '../classic';
+import { isRetro } from '../theme';
 import { askConfirm } from '../confirm';
 import { gs } from '../../game/state';
 import { ageOn } from '../../game/dates';
@@ -149,6 +151,25 @@ function StaffProfile({ id }: { id: number }) {
     <div>
       <Head title={`${name}${s.club ? ` (${g.clubs[s.club]?.short ?? ''})` : ''}`} action={action} />
       {msg && <div className={`insight ${msg.tone}`}>{msg.text}</div>}
+      {isRetro() ? (
+        // klassisk (CM 01/02): fødselsdag og land som overskrift, oplysninger og egenskaber i to kolonner uden kort
+        <>
+          <div className="cx-subtitle cx-born">{t('cl.sf.born', { date: dateFmt(s.dob), age: ageOn(s.dob, g.date), nation: natName(g.nations[s.nation]?.name) })}</div>
+          <div className="cx-staff-cols">
+            <div className="cx-kv">
+              <span>{t('cl.sf.job')}</span><span>{t(`role.staff.${s.role}`)}</span>
+              <span>{t('col.club')}</span><span>{s.club ? <CxLink to={clubRoute(s.club)}>{g.clubs[s.club]?.name}</CxLink> : t('common.free')}</span>
+              <span>{t('cl.st.rep')}</span><span>{repWord(s.rep)}</span>
+              {s.club > 0 && <><span>{t('col.wage')}</span><span>{money(s.wage)} {t('cl.sf.pw')}</span></>}
+              {s.club > 0 && s.expires && <><span>{t('col.expires')}</span><span>{dateFmt(s.expires)}</span></>}
+              {!mine && s.club > 0 && <><span>{t('staff.fee')}</span><span>{money(poachFee(s))}</span></>}
+              {!mine && <><span>{t('staff.demand')}</span><span>{money(staffDemand(s))} {t('cl.sf.pw')}</span></>}
+            </div>
+            <table className="cx-tbl cx-staff-attrs"><thead><tr><th>{t('staff.attrs')}</th><th /></tr></thead>
+              <tbody>{ATTRS.map((a) => <tr key={a}><td>{t(`staff.${a}`)}</td><td className={`c-num ${s.attrs[a] >= 15 ? 'c-yel' : s.attrs[a] >= 10 ? 'c-cyan' : 'c-pos'}`}>{s.attrs[a]}</td></tr>)}</tbody></table>
+          </div>
+        </>
+      ) : (
       <div className="cols2">
         <Panel title={t(`role.staff.${s.role}`)}>
           <div className="kv">
@@ -170,6 +191,7 @@ function StaffProfile({ id }: { id: number }) {
           </table>
         </Panel>
       </div>
+      )}
       {offer && <StaffOfferModal s={s} onClose={() => setOffer(false)} onSend={send} />}
     </div>
   );

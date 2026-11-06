@@ -11,10 +11,17 @@ import type { ContractClauses, TransferOffer } from '../../game/types';
 import { MoneyInput, AiSpinner } from '../components';
 import { money, t } from '../../i18n';
 import { Modal } from '../components';
+import { isRetro } from '../theme';
+import { ClassicNegotiation } from './NegotiationClassic';
 
 
 /** Kontraktforhandling – både nye spillere (via tilbud) og forlængelser */
-export function NegotiationModal({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
+export function NegotiationModal(props: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
+  // klassisk tema: originalens "Offer Contract"-skærm
+  return isRetro() ? <ClassicNegotiation {...props} /> : <ModernNegotiation {...props} />;
+}
+
+function ModernNegotiation({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
   const g = gs();
   const pid = offer?.player ?? renewPid!;
   const p = g.players[pid];

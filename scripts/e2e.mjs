@@ -75,7 +75,7 @@ async function run(look) {
     { name: 'club' }, { name: 'board' }, { name: 'assistant' }, { name: 'history' }, { name: 'awards' }, { name: 'jobs' }, { name: 'managers' },
     { name: 'find' }, { name: 'staff', id: Number(await gs(() => Object.keys(window.__cm.gs().staff)[0])) }, { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
   ];
-  for (const r of screens) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); });
+  for (const [i, r] of screens.entries()) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/${look}-s${String(i).padStart(2, '0')}-${r.name}.png` }); });
   if (look === 'klassisk') await step('competitions-menu', async () => {
     await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
     await page.locator('.cx-drop-subbtn', { hasText: 'World Cup' }).hover();

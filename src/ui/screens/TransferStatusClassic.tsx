@@ -7,11 +7,13 @@ import { askingPrice } from '../../game/transfers';
 import type { Player } from '../../game/types';
 import { money, t } from '../../i18n';
 import { useGame } from '../core';
+import { useClassicDialog } from '../classic';
 
 const round = (v: number) => Math.max(10_000, Math.round(v / 10_000) * 10_000);
 
 export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
   const g = useGame()!;
+  useClassicDialog();
   const [status, setStatus] = useState<SquadStatus | undefined>(p.squadStatus);
   const [listed, setListed] = useState(p.listed);
   const [loan, setLoan] = useState(!!p.loanListed);
@@ -65,6 +67,7 @@ const REASONS: DisciplineReason[] = ['none', 'unprofessional', 'dismissal', 'vio
 
 /** "Discipline Player" (som i CM 01/02): straf med − / + og en begrundelse */
 export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: () => void; onDone: (msg: string) => void }) {
+  useClassicDialog();
   const [i, setI] = useState(0);
   const [reason, setReason] = useState<DisciplineReason>('none');
   const kind = DISCIPLINE[i];

@@ -7,7 +7,7 @@ import { rulesFor, regionOf, type Region } from './leagues';
 function rulesForLeague(league: string) {
   return rulesFor(league, 20).wealth;
 }
-import { addNews, gs, newsRelevant, squad } from './state';
+import { addNews, gs, indexFixture, newsRelevant, squad, unindexFixture } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
 import type { BoardAsk, Club, JobTalk } from './types';
 import { takeOverClub } from './newgame';
@@ -784,4 +784,91 @@ export function boardAsk(kind: BoardAsk): 'yes' | 'no' | 'blocked' {
       break;
   }
   return 'yes';
+}
+
+// ---------- CM 01/02: "Meet with Board" og "Meet with the Football Association" ----------
+
+export type MeetBoardKind = 'stadium' | 'youth' | 'transfer' | 'wage' | 'time';
+export type FaKind = 'referee' | 'postpone';
+export const MEET_BOARD: MeetBoardKind[] = ['stadium', 'youth', 'transfer', 'wage', 'time'];
+export const FA_REQUESTS: FaKind[] = ['referee', 'postpone'];
+
+/** Kan ønsket stilles nu? (originalen viser de andre grå) */
+export function meetBoardAvailable(kind: MeetBoardKind): boolean {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (!c) return false;
+  const month = g.date.slice(0, 7);
+  switch (kind) {
+    case 'stadium': return !(c.projects ?? []).some((p) => p.kind === 'stadium');
+    case 'youth': return !!projectOffer('youth') && !(c.projects ?? []).some((p) => p.kind === 'youth');
+    case 'transfer': case 'wage': return g.board.budgetAsked?.[kind] !== month;
+    case 'time': return !boardAskInfo('lowerExp').blocked;
+  }
+}
+
+/**
+ * Ønsket til bestyrelsen: byggeri (stadion, ungdom), flere penge til transfers eller løn – bestyrelsen giver det, den mener,
+ * klubben kan bære (samme regler som budgetLimits) – eller mere tid til at bygge truppen op (lavere forventning).
+ */
+export function meetBoard(kind: MeetBoardKind): string {
+  if (!meetBoardAvailable(kind)) return 'blocked';
+  if (kind === 'stadium' || kind === 'youth') return `mb.project.${requestProject(kind)}`;
+  if (kind === 'time') return `mb.time.${boardAsk('lowerExp')}`;
+  const { max } = budgetLimits(kind);
+  const pct = max >= 0.02 ? Math.min(max, kind === 'wage' ? 0.1 : 0.25) : 0.1;
+  const r = requestBudget(kind, pct);
+  return r.result === 'ok' ? 'mb.money.ok' : 'mb.money.no';
+}
+
+/** Den næste uspillede ligakamp for ens klub (kandidat til udsættelse) */
+function nextLeagueFixture() {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  return Object.values(g.fixtures).filter((f) => !f.result && f.comp === c?.league && (f.home === c.id || f.away === c.id) && f.date > g.date)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+}
+const injuredFirstTeam = () => {
+  const g = gs();
+  return squad(g.userClub).sort((a, b) => b.ca - a.ca).slice(0, 16).filter((p) => p.injury || p.banned > 0).length;
+};
+
+export function faAvailable(kind: FaKind): boolean {
+  const g = gs();
+  if (!g.clubs[g.userClub]) return false;
+  if (kind === 'referee') {
+    // efter en kamp inden for den sidste uge, og kun én klage pr. kamp
+    const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub) && daysBetween(f.date, g.date) <= 7)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    return !!last && g.board.faComplained !== last.id;
+  }
+  const f = nextLeagueFixture();
+  return !!f && daysBetween(g.date, f.date) <= 14 && injuredFirstTeam() >= 5;
+}
+
+/**
+ * Forbundet: en klage over dommeren noteres (dommerens strenghed falder lidt for ens kampe – *estimeret*); en udsættelse
+ * gives kun ved mange skader/karantæner (6+ af de 16 bedste) og flytter ligakampen en uge, hvis begge hold er ledige.
+ */
+export function faRequest(kind: FaKind): string {
+  const g = gs();
+  if (!faAvailable(kind)) return 'blocked';
+  if (kind === 'referee') {
+    const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => b.date.localeCompare(a.date))[0];
+    g.board.faComplained = last?.id;
+    addNews({ cat: 'board', key: 'fa.referee', params: {} });
+    return 'fa.referee';
+  }
+  const f = nextLeagueFixture()!;
+  const to = addDays(f.date, 7);
+  const busy = (club: number) => Object.values(g.fixtures).some((x) => x.id !== f.id && (x.home === club || x.away === club) && Math.abs(daysBetween(x.date, to)) <= 2);
+  if (injuredFirstTeam() < 6 || busy(f.home) || busy(f.away)) {
+    addNews({ cat: 'board', key: 'fa.postpone.no', params: {} });
+    return 'fa.postpone.no';
+  }
+  unindexFixture(f.id, f.date);
+  f.date = to;
+  indexFixture(f.id, to);
+  addNews({ cat: 'board', key: 'fa.postpone.ok', params: { opp: g.clubs[f.home === g.userClub ? f.away : f.home]?.name ?? '', date: to } });
+  return 'fa.postpone.ok';
 }

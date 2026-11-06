@@ -9,7 +9,7 @@ import { act as dispatch } from '../../game/actions';
 import { agentOf } from '../../game/agents';
 import { ageOn, daysBetween } from '../../game/dates';
 import { GOOD_TRAITS, traits } from '../../game/personality';
-import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
+import { attrRange, knowledgeOf } from '../../game/scouting';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
@@ -20,17 +20,16 @@ import { dateFmt, money, natName, t } from '../../i18n';
 import { askConfirm } from '../confirm';
 import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem } from '../classic';
 import { compareIds, toggleCompare } from '../compare';
-import { Bar, ClubLink, FormList, Modal, Panel, Rating, Stars, Tabs, posStr } from '../components';
+import { Bar, ClubLink, FormList, Modal, Panel, Rating, Tabs, posStr } from '../components';
 import { gs } from '../../game/state';
 import { useGame, useNav, useRouteState } from '../core';
 import { realCareer, type RealSeason } from '../careers';
-import { DevelopmentPanel } from '../dev';
 import { ProposeEditModal, dbOf } from '../communityActions';
 import { Head } from './common';
 import { NegotiationModal } from './Negotiation';
 import {
   AdviceLine, BidModal, Complaint, EnquiryLine, ListModal, LoanOutModal, MyOffer,
-  ReformPanel, ScoutReport, TalkPanel, WantsAway, clauseText,
+  ReformPanel, ScoutReport, WantsAway, clauseText,
 } from './PlayerScreen';
 import { IncomingOffersFor } from './Transfers';
 import { DisciplinePanel, TransferStatusPanel } from './TransferStatusClassic';
@@ -185,7 +184,7 @@ function InjuriesTab({ p, mine }: { p: Player; mine: boolean }) {
   return (
     <Frame p={p} rows={rows}>
       {mine && (traits(p).includes('troublemaker') || traits(p).includes('temperamental')) && <ReformPanel pid={p.id} />}
-      {mine && !g.draft && <TalkPanel pid={p.id} />}
+      {/* CM 01/02 har ingen samtaler med spilleren – kun Discipline Player i Action-menuen */}
     </Frame>
   );
 }
@@ -232,7 +231,6 @@ function futureLines(p: Player, mine: boolean, k: number): string[] {
 function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
-  const stars = scoutStars(p);
   const availability = mine
     ? p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}` : p.loan ? t('tag.loan') : t('cl.pl.av.notForSale')
     : !p.club ? t('cl.pl.av.free')
@@ -249,9 +247,8 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
     [t('cl.pl.offers'), offerText],
     [t('cl.pl.interested'), <ClubList ids={interestIds} empty={t('common.none')} />],
     [t('cl.pl.future'), <>{fut.map((x) => <div key={x}>{x}</div>)}</>],
-    [t('player.ability'), <Stars range={stars.ability} />],
-    [t('player.potential'), <Stars range={stars.potential} />],
   ];
+  // stjerner for evne og potentiale findes ikke i CM 01/02 – kun i det moderne udseende
   if (g.options.masking && !mine) rows.push([t('player.knowledge'), <><Bar value={k} /> {Math.round(k)}%</>]);
   rows.push([t('cl.pl.window'), windowOpen() ? t('cl.pl.windowOpen') : t('transfer.windowOpens', { date: dateFmt(nextWindow()) })]);
   return (
@@ -308,15 +305,9 @@ function ClassicCareer({ p }: { p: Player }) {
 }
 
 function HistoryTab({ p }: { p: Player }) {
-  const g = useGame()!;
   return (
     <>
       <ClassicCareer p={p} />
-      {p.dev && p.dev.length > 0 && (
-        <Panel title={t('dev.title')} right={<span className="muted">{t('dev.since', { date: dateFmt(p.dev[0].d) })}</span>}>
-          <DevelopmentPanel p={p} date={g.date} />
-        </Panel>
-      )}
       <Panel title={t('player.notes')}>
         <textarea rows={3} style={{ width: '100%' }} defaultValue={p.notes ?? ''} onBlur={(e) => { if (e.target.value !== (p.notes ?? '')) dispatch({ t: 'notes', pid: p.id, text: e.target.value }); }} />
       </Panel>

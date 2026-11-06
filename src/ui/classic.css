@@ -717,3 +717,77 @@
 .cx-drop-arrow { margin-left: auto; padding-left: 14px; font-size: 11px; }
 :root[data-skin='retro'] .cx-drop-pop button.cx-drop-subbtn.on { background: #fff36a; }
 .cx-drop-sub { z-index: 41; max-height: 80vh; }
+
+/* tekstvalg som i CM 01/02: grå = ikke valgt, hvid = valgt, mørkegrå = ikke muligt */
+.cx-opt { margin-left: 140px; background: none; border: 0; padding: 3px 0; color: #a9adb8; font-size: 18px; font-weight: 700; text-shadow: 1px 1px 0 #000; cursor: pointer; text-align: left; }
+.cx-opt:hover:not(:disabled) { color: #d8dbe2; }
+.cx-opt.on, .cx-opt.on:hover { color: #fff; }
+.cx-opt:disabled { color: #6c6f78; cursor: default; }
+@media (max-width: 760px) { .cx-opt { margin-left: 12px; font-size: 15px; } }
+:root[data-skin='retro'] .cx-greybtn.wide { min-width: 220px; }
+
+/* ---------- CM 01/02: fælles byggeklodser (moderne komponenter i klassisk tema) ---------- */
+/* rullemenuer: grøn liste med mørk tekst, gul markering (som originalens) */
+:root[data-skin='retro'] .sel { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); font-weight: 700; box-shadow: none; }
+:root[data-skin='retro'] .sel:hover, :root[data-skin='retro'] .sel.open { background: #1c27a2; }
+:root[data-skin='retro'] .sel-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border: 1px solid; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; border-radius: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); padding: 2px 0; backdrop-filter: none; }
+:root[data-skin='retro'] .sel-search { margin: 3px 4px; width: calc(100% - 8px); background: #e8f4e0; color: #08200a; border: 1px solid; border-color: #0c3a0c #8ee07a #8ee07a #0c3a0c; border-radius: 0; font-weight: 700; }
+:root[data-skin='retro'] .sel-group { color: #fff21f; padding: 5px 10px 2px; font-size: 11px; text-shadow: 1px 1px 0 #000; border-top: 1px solid rgba(0, 0, 0, 0.3); }
+:root[data-skin='retro'] .sel-opt { color: #08200a; border-radius: 0; font-weight: 700; padding: 3px 10px; text-shadow: none; }
+:root[data-skin='retro'] .sel-opt.hi, :root[data-skin='retro'] .sel-opt:hover { background: #ffd21f; color: #10164e; }
+:root[data-skin='retro'] .sel-opt.on { color: #fff; }
+:root[data-skin='retro'] .sel-check { color: #fff; }
+:root[data-skin='retro'] .sel-empty { color: #08200a; }
+:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #08200a; }
+:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button.cx-drop-subbtn.on { background: #ffd21f; color: #10164e; }
+:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:disabled { color: #5d9a55; }
+.cx-gameopt .cx-drop-pop .cx-drop-sub, .cx-drop-sub { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+/* paneler: ingen kort – mørk flade med gul overskrift */
+.shell.cx .main .panel { background: rgba(0, 0, 0, 0.32); border: 0; border-radius: 0; }
+.shell.cx .main .panel > header { background: rgba(0, 0, 0, 0.45); border: 0; padding: 6px 10px; }
+.shell.cx .main .panel > header h3 { color: #fff21f; font-size: clamp(15px, 1.6vw, 19px); font-weight: 900; text-shadow: 2px 2px 0 #000; }
+/* tabeller: grå kolonneknapper, fed hvid tekst med skygge, tynde linjer – ingen zebra */
+.shell.cx .main table.grid thead th { background: linear-gradient(180deg, #a9adb8, #7c818e); border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 12.5px; }
+.shell.cx .main table.grid tbody td { color: #fff; font-weight: 700; font-size: 13.5px; text-shadow: 1px 1px 0 #000; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.shell.cx .main table.grid tbody tr:nth-child(even) td { background: transparent; }
+.shell.cx .main table.grid tbody td.muted, .shell.cx .main table.grid .muted { color: #6fe3ff; }
+.shell.cx .main table.grid tbody tr:hover td { background: rgba(255, 255, 255, 0.06); }
+/* nøgle/værdi-felter: hvid etiket, gul værdi */
+.shell.cx .main .kv > span:nth-child(odd) { color: #fff; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.shell.cx .main .kv > span:nth-child(even) { color: #fff21f; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.shell.cx .main .muted { color: #c6cbe0; }
+/* mærker og segmentknapper */
+.shell.cx .main .tag { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); text-shadow: 1px 1px 0 #000; }
+.shell.cx .main .seg button { border-radius: 0; }
+.shell.cx .main .seg button.on { background: linear-gradient(180deg, #2fae4c, #1b7a32); color: #fff; }
+/* Continue Game er grå, mens en boks (dialog) er åben – som i originalen */
+:root[data-skin='retro'] .cx-continue:disabled { color: #3a46b8; opacity: 1; cursor: default; }
+
+/* Offer Contract og andre bokse som egne skærme (sidebjælken er fri, Continue Game grå) */
+.cx-dlg { position: fixed; inset: 0 0 0 112px; z-index: 70; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; background: rgba(4, 6, 30, 0.93); overflow-y: auto; }
+@media (max-width: 760px) { .cx-dlg { inset: 0; } }
+.cx-dlg .cx-title { padding: 4px 30px; }
+.cx-dlg-body { flex: 1; margin: 0 8px; padding: 12px 18px; background: rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.cx-dlg-body.center { align-items: center; justify-content: center; }
+.cx-dlg-foot { margin: 0 8px; }
+.cx-neg-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 0 8px; }
+.cx-neg-row { display: grid; grid-template-columns: minmax(180px, 1fr) 70px minmax(150px, 220px) 60px 60px; align-items: center; gap: 4px; width: min(100%, 900px); margin-left: 60px; }
+.cx-neg-row.off .cx-neg-val .cx-drop-btn, .cx-neg-row.off .cx-pm { opacity: 0.45; }
+.cx-neg-label { background: none; border: 0; padding: 2px 0; text-align: left; color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; cursor: default; }
+.cx-neg-label:disabled { opacity: 1; color: #fff; }
+.cx-neg-label.toggle { cursor: pointer; }
+.cx-neg-row.off .cx-neg-label { color: #a9adb8; }
+.cx-neg-star { color: #ff9a2a; }
+.cx-neg-static { color: #fff; font-size: 17px; font-weight: 700; text-align: right; text-shadow: 1px 1px 0 #000; }
+:root[data-skin='retro'] .cx-neg-val .cx-drop-btn { width: 100%; background: transparent; border-color: transparent; justify-content: flex-end; font-size: 17px; }
+.cx-neg-msg { color: #fff21f !important; }
+.cx-green .cx-drop-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+:root[data-skin='retro'] .cx-green .cx-drop-pop button { color: #08200a; }
+:root[data-skin='retro'] .cx-green .cx-drop-pop button:hover:not(:disabled) { background: #ffd21f; color: #10164e; }
+@media (max-width: 760px) { .cx-neg-row { grid-template-columns: 1fr 40px 1fr 40px 40px; margin-left: 0; } .cx-neg-label { font-size: 14px; } }
+.cx-confirm { z-index: 90; }
+.cx-confirm .cx-ts-intro { text-align: center; max-width: 760px; }
+.cx-staff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 10px; }
+.cx-staff-cols .cx-kv { font-size: 17px; align-content: start; }
+.cx-staff-attrs { font-size: 15px; }
+@media (max-width: 760px) { .cx-staff-cols { grid-template-columns: 1fr; } }

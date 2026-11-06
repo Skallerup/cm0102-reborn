@@ -45,6 +45,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Klassisk = originalens skærme: board.ts `meetBoard`/`faRequest` (MEET_BOARD, FA_REQUESTS, actions meetBoard/
+  faRequest, også i authentic), `ClassicBoard`+`MeetPanel`, `NegotiationClassic.tsx` (Offer Contract), confirm.tsx klassisk
+  helskærm, `useClassicDialog()` gør Continue Game grå (brug den i alle bokse), `.cx-opt` (grå/hvid tekstvalg), `.cx-dlg`.
+  Fælles CSS sidst i classic.css giver Select/panel/grid/kv originalens stil. Moderne funktioner skjules i klassisk med
+  `isRetro() || authentic()` (Finance, Scouting-prøvespillere, PlayerClassic-samtale/stjerner/udvikling).
 - 2026-11-06 – v0.16.0. Klassisk: `CompetitionsMenu` (classicOptions.tsx) i sidebjælken med undermenuer – `DropItem` har nu
   `{ sub: DropItem[] }` (▸, åbnes ved hover, fast placeret). International fodbold klassisk (`ClassicInternational`): cx-tbl
   med blå rækkeknapper, Past winners pr. turnering (`ihist`, PastFinal.t = nr. 3), gylden titelbjælke.

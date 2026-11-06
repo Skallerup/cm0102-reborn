@@ -8,7 +8,8 @@ import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
 import { Head } from './common';
-import { extended } from '../../game/rules';
+import { authentic, extended } from '../../game/rules';
+import { isRetro } from '../theme';
 
 export function Finance() {
   const g = useGame()!;
@@ -20,14 +21,18 @@ export function Finance() {
   const expense = f.wages + f.transfersOut + f.other;
   const [talk, setTalk] = useState(false);
   const { route } = useNav();
-  const [tab, setTab] = useRouteState('tab', route.tab ?? 'overview');
+  const [tab0, setTab] = useRouteState('tab', route.tab ?? 'overview');
+  // klassisk (CM 01/02): kun økonomien – ingen sponsorvalg, billetpriser, byggeprojekter, FFP, prognose eller budgetforhandling
+  const orig = isRetro() || authentic();
+  const tab = orig && tab0 === 'facilities' ? 'overview' : tab0;
   return (
     <div>
       {talk && <BudgetModal onClose={() => setTalk(false)} />}
       <Head title={t('nav.finance')}>
-        <Tabs tabs={[['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />
+        <Tabs tabs={orig ? [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.attendance')], ['history', t('fin.tab.history')]]
+          : [['overview', t('fin.tab.overview')], ['stadium', t('fin.tab.stadium')], ['facilities', t('fin.tab.facilities')], ['history', t('fin.tab.history')]]} value={tab} onChange={setTab} />
       </Head>
-      {tab === 'stadium' && <AttendanceTab ticketPanel={extended() ? <TicketPanel /> : null} />}
+      {tab === 'stadium' && <AttendanceTab ticketPanel={extended() && !orig ? <TicketPanel /> : null} />}
       {tab === 'facilities' && <FacilitiesTab />}
       {tab === 'history' && <FinanceHistoryTab />}
       {tab === 'overview' && <>
@@ -57,7 +62,7 @@ export function Finance() {
             <span><b>{t('fin.expense')}</b></span><span><b className="bad">{money(expense)}</b></span>
           </div>
         </Panel>
-        <Panel title={<>{t('fin.board')}<Info topic="board" /></>}>
+        {!orig && <Panel title={<>{t('fin.board')}<Info topic="board" /></>}>
           <div className="col">
             <div className="muted">{t('budget.hint')}</div>
             <div className="kv">
@@ -66,8 +71,9 @@ export function Finance() {
             </div>
             <button className="primary" onClick={() => setTalk(true)}>{t('budget.open')}</button>
           </div>
-        </Panel>
+        </Panel>}
       </div>
+      {!orig && <>
       <div className="cols">
         <SponsorPanel />
         <ForecastPanel />
@@ -78,6 +84,7 @@ export function Finance() {
         <button onClick={() => setTab('facilities')}>{t('fin.goFacilities')}</button>
         <button onClick={() => setTab('history')}>{t('fin.goHistory')}</button>
       </div>
+      </>}
       </>}
     </div>
   );

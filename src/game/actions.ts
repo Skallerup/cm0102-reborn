@@ -7,7 +7,7 @@ import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies
 import { unlock } from './achievements';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
-import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
+import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, faRequest, meetBoard, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
 import { activateNation, playPendingAsAi, submitMatchResult } from './sim';
@@ -48,6 +48,8 @@ export type Action =
   | { t: 'nationalOffer'; accept: boolean }
   | { t: 'resignNational' }
   | { t: 'nationalSquad'; pids: number[] }
+  | { t: 'meetBoard'; kind: import('./board').MeetBoardKind }
+  | { t: 'faRequest'; kind: import('./board').FaKind }
   | { t: 'appealBan'; pid: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
   | { t: 'enquire'; pid: number }
@@ -167,6 +169,8 @@ export function applyAction(a: Action): unknown {
     case 'nationalOffer': return answerNationalOffer(a.accept);
     case 'resignNational': return resignNational();
     case 'nationalSquad': return selectNationalSquad(a.pids);
+    case 'meetBoard': return meetBoard(a.kind);
+    case 'faRequest': return faRequest(a.kind);
     case 'appealBan': return appealBan(a.pid);
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });

@@ -656,6 +656,8 @@ export interface BoardState {
   confidence: number; // 0-100
   /** Seneste svar på budgetanmodninger (måned pr. type) og et åbent modbud */
   budgetAsked?: { transfer?: string; wage?: string };
+  /** CM 01/02: kampen, man sidst har klaget over dommeren i (én klage pr. kamp) */
+  faComplained?: number;
   budgetCounter?: { kind: 'transfer' | 'wage'; pct: number; until: string };
   /** Seneste svar på de øvrige ønsker til bestyrelsen (dato pr. ønske) */
   asked?: Partial<Record<BoardAsk, string>>;
