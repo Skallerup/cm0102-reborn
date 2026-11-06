@@ -858,7 +858,7 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .start-cta:hover:not(:disabled) { background: linear-gradient(180deg, #ffe78f, #ffc72e); transform: translateY(-2px); box-shadow: 0 0 0 1px rgba(255, 207, 63, 0.7), 0 18px 44px -12px rgba(255, 196, 30, 0.95); }
 .start-cta span { transition: transform 0.2s; }
 .start-cta:hover span { transform: translateX(4px); }
-.start-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 8px; }
+.start-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 8px; }
 .start-card, .start-card:hover:not(:disabled) { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; text-align: left; padding: 18px; border-radius: 18px; background: rgba(148, 170, 255, 0.06); border: 1px solid rgba(148, 170, 255, 0.16); backdrop-filter: blur(10px); color: var(--text); transition: transform 0.15s, border-color 0.15s, background 0.15s; }
 .start-card:hover:not(:disabled) { transform: translateY(-3px); border-color: rgba(255, 207, 63, 0.45); background: rgba(148, 170, 255, 0.1); }
 .start-card b { font-size: 15px; font-weight: 800; }
@@ -1359,3 +1359,16 @@ button.hub-card:hover, .hub-card.on { border-color: var(--accent); }
 .squad-numbers .table th:first-child, .squad-numbers .table td:first-child { width: 48px; text-align: right; padding-right: 14px; }
 .squad-numbers select { min-width: 200px; }
 .sqn-num { font-family: var(--mono); font-size: 15px; }
+
+/* Database-editoren (Editor.tsx) */
+.ed-form h4 { margin: 6px 0 2px; font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.ed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 12px; }
+.ed-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); min-width: 0; }
+.ed-grid label > input, .ed-grid label > select { width: 100%; }
+.ed-grid.ed-pos, .ed-grid.ed-attrs { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.ed-attr { flex-direction: row !important; align-items: center; justify-content: space-between; }
+.ed-attr input { width: 58px !important; text-align: center; }
+.ed-pos label { flex-direction: row; align-items: center; justify-content: space-between; }
+.ed-pos input { width: 58px !important; text-align: center; }
+input[type='color'] { width: 44px; height: 30px; padding: 2px; }
+.ed-scroll { overflow-x: auto; }

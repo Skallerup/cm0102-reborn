@@ -333,7 +333,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   };
 }
 
-function subPos(pos: number[], side: number[]): string {
+export function subPos(pos: number[], side: number[]): string {
   if (pos[0] >= 15) return 'GK';
   const [L, C, R] = side;
   const wide = Math.max(L, R) >= 15 && C < 15 ? (L >= R ? 'L' : 'R') : '';

@@ -21,14 +21,18 @@ import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
 import { loadOriginalWorld, loadWorld, withCommunityEdits } from './world';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
+import { Editor } from './Editor';
+import { listDbs, loadCustomWorld } from './customDb';
+import { changeCount, type CustomDb } from '../game/dbEdit';
 
-type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft';
+type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft' | 'editor';
 
 export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
   const [view, setView] = useState<View>(roomParam ? 'online' : new URLSearchParams(location.search).get('newdraft') ? 'newDraft' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
   const [draftFrom, setDraftFrom] = useState<View>('menu'); // hvor man kom fra til draft-opret (tilbage-knap)
+  const [playDb, setPlayDb] = useState<string | undefined>(); // "Spil" fra editoren: start med den database
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const lang = getLang();
@@ -58,6 +62,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
               <button className="start-card" onClick={() => setView('load')}><b>💾 {t('start.load')}</b><span>{t('start.loadDesc')}</span></button>
               <button className="start-card" onClick={() => setView('online')}><b>🌐 {t('mp.title')}</b><span>{t('start.onlineDesc')}</span></button>
               <button className="start-card" onClick={() => setView('challenges')}><b>🏆 {t('start.challenges')}</b><span>{t('start.challengesDesc')}</span></button>
+              <button className="start-card" onClick={() => setView('editor')}><b>🛠 {t('ed.title')}</b><span>{t('ed.menuDesc')}</span></button>
             </div>
             <AccountBar />
             <div className="start-foot">
@@ -87,7 +92,8 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
             </div>
           </Panel>
         )}
-        {view === 'new' && <NewGame challenge={challenge} onBack={() => setView('menu')} setBusy={setBusy} onDraft={() => { setDraftFrom('new'); setView('newDraft'); }} />}
+        {view === 'editor' && <Editor onBack={() => setView('menu')} onPlay={(id) => { setChallenge(undefined); setPlayDb(id); setView('new'); }} />}
+        {view === 'new' && <NewGame challenge={challenge} initialDb={playDb} onBack={() => { setPlayDb(undefined); setView('menu'); }} setBusy={setBusy} onDraft={() => { setDraftFrom('new'); setView('newDraft'); }} />}
         {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} onCreateDraft={() => { setDraftFrom('online'); setView('newDraft'); }} setBusy={setBusy} initialCode={roomParam} />}
         {view === 'newDraft' && <DraftCreate onBack={() => setView(draftFrom)} setBusy={setBusy} />}
         {view === 'newOnline' && <NewGame online onBack={() => setView('online')} setBusy={setBusy} />}
@@ -160,7 +166,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 // sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
 const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey' };
 
-function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void }) {
+function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
   const [world, setWorld] = useState<WorldData | null>(null);
   const [err, setErr] = useState('');
   const ch = CHALLENGES.find((c) => c.id === challenge);
@@ -169,6 +175,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   const [league, setLeague] = useState('');
   const [club, setClub] = useState<number>(0);
   // kun i udvikling: skærmbillede-scriptet vælger klub direkte (uden at klikke sig gennem ligalisten)
+  useEffect(() => { if (import.meta.env.DEV && world) (window as unknown as { __cmClubId?: unknown }).__cmClubId = (n: string) => world.clubs.find((c) => c[1] === n)?.[0] ?? 0; }, [world]);
   useEffect(() => { if (import.meta.env.DEV && world) (window as unknown as { __cmPick?: unknown }).__cmPick = (id: number) => { const c = world.clubs.find((x) => x[0] === id); if (c) { setActive((a) => new Set([...a, c[3]])); setLeague(c[4]); setClub(id); } return !!c; }; }, [world]);
   const [masking, setMasking] = useState(true);
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 1e9));
@@ -176,12 +183,26 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
   const [deadline, setDeadline] = useState(24);
   const [botScope, setBotScope] = useState<BotScope>('league');
   // database: standard (CM 2026/27) eller den originale 01/02 (3.9.68)
-  type Db = 'modern' | 'original';
-  const [db, setDbState] = useState<Db>(() => { try { return !challenge && localStorage.getItem('cm0102.db') === 'original' ? 'original' : 'modern'; } catch { return 'modern'; } });
+  // 'custom:<id>' = en database fra editoren (ændringer oven på den originale eller den moderne)
+  type Db = 'modern' | 'original' | `custom:${string}`;
+  const [db, setDbState] = useState<Db>(() => {
+    if (initialDb) return `custom:${initialDb}`;
+    try { const v = localStorage.getItem('cm0102.db'); return !challenge && (v === 'original' || v?.startsWith('custom:')) ? v as Db : 'modern'; } catch { return 'modern'; }
+  });
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
+  const [mine, setMine] = useState<CustomDb[]>([]);
+  useEffect(() => { if (!ch) void listDbs().then(setMine); }, [ch]);
+  const customId = db.startsWith('custom:') ? db.slice(7) : '';
+  const dbKind = customId ? 'custom' : db;
 
   useEffect(() => {
-    (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => withCommunityEdits(w, db === 'original' ? 'original' : 'cm')).then((w) => {
+    const load = customId ? listDbs().then((all) => {
+      const d = all.find((x) => x.id === customId);
+      // databasen findes ikke længere (slettet): tilbage til standard
+      if (!d) { setDb('modern'); return null; }
+      return loadCustomWorld(customId).then((w) => withCommunityEdits(w, d.base === 'original' ? 'original' : 'cm'));
+    }) : (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => withCommunityEdits(w, db === 'original' ? 'original' : 'cm'));
+    load.then((w) => {
       if (!w) return;
       setWorld(w);
       const own = LANG_NATION[getLang()];
@@ -210,6 +231,11 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
         <button className={`db-opt ${db === 'original' ? 'on' : ''}`} onClick={() => setDb('original')}>
           <b>{t('db.original')}</b><span>{t('db.originalHint')}</span>
         </button>
+        {mine.map((d) => (
+          <button key={d.id} className={`db-opt ${db === `custom:${d.id}` ? 'on' : ''}`} onClick={() => setDb(`custom:${d.id}`)}>
+            <b>🛠 {d.name}</b><span>{t('db.customHint', { base: d.base === 'original' ? t('db.original') : t('db.modern'), n: changeCount(d) })}</span>
+          </button>
+        ))}
         {onDraft && !online && (
           <button className="db-opt db-draft" onClick={onDraft}>
             <b>{t('db.draft')}</b><span>{t('db.draftHint')}</span>
@@ -235,7 +261,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
-    track('start_game', { mode: online ? 'online' : bots > 0 ? 'local_ai' : 'single', db, challenge: !!challenge, lang: opts.lang });
+    track('start_game', { mode: online ? 'online' : bots > 0 ? 'local_ai' : 'single', db: dbKind, challenge: !!challenge, lang: opts.lang });
     setTimeout(async () => {
       if (online) {
         try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
@@ -251,7 +277,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft }: { challenge?: 
         const c = world.clubs.find((x) => x[0] === club), lg = world.leagues.find((l) => l.id === c?.[4]);
         notifyNewCareer({
           manager: opts.managerName, club: c?.[2] ?? String(club), league: lg?.name, nation: natName(world.nations[clubNation ?? -1]?.name),
-          challenge, bots, db, lang: opts.lang,
+          challenge, bots, db: dbKind, lang: opts.lang,
         });
       }
       setBusy('');

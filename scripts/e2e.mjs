@@ -217,7 +217,56 @@ async function run(look) {
   await ctx.close();
 }
 
+/** Database-editoren: opret en database, ret Tsigalko, start et nyt spil med den og se ændringen i spillet */
+async function editor() {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); sessionStorage.setItem('cm0102.play', '1'); });
+  const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
+  const step = async (name, fn) => {
+    const before = errors.length;
+    try {
+      await fn();
+      if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`);
+      console.log(`  ✓ editor: ${name}`);
+    } catch (e) {
+      failures.push(`editor: ${name}: ${e.message.split('\n')[0]}`);
+      console.log(`  ✗ editor: ${name}: ${e.message.split('\n')[0]}`);
+      await page.screenshot({ path: `${OUT}/editor-fejl.png` }).catch(() => {});
+    }
+  };
+  await step('opret database og ret en spiller', async () => {
+    await page.goto(URL);
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
+    await page.getByRole('button', { name: new RegExp(await t('ed.title')) }).first().click();
+    await page.getByPlaceholder(await t('ed.newName')).fill('E2E Legends');
+    await page.getByRole('button', { name: await t('ed.create'), exact: true }).click();
+    await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Tsigalko', { timeout: 60000 });
+    await page.getByRole('row', { name: /Maxim Tsigalko/ }).click();
+    await page.getByRole('textbox', { name: await t('ed.first') }).fill('Maksim');
+    await page.locator('label', { hasText: await t('ed.pa') }).locator('select').selectOption('-2');
+    await page.getByRole('button', { name: await t('ed.save'), exact: true }).first().click();
+    await page.getByText(await t('ed.saved'), { exact: true }).waitFor();
+  });
+  await step('nyt spil med databasen', async () => {
+    await page.getByRole('button', { name: await t('ed.play'), exact: true }).first().click();
+    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 60000 });
+    await page.getByText('E2E Legends').first().waitFor();
+    await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Editor');
+    if (!(await page.evaluate(() => window.__cmPick(window.__cmClubId('Millwall'))))) throw new Error('Millwall findes ikke');
+    await page.getByRole('button', { name: await t('start.begin') }).click();
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
+    const p = await page.evaluate(() => Object.values(window.__cm.gs().players).find((x) => x.last === 'Tsigalko' && x.dob.startsWith('1983') && x.pos[0] < 15));
+    if (p?.first !== 'Maksim') throw new Error(`navnet slog ikke igennem: ${p?.first}`);
+    if (!(p.pa >= 150)) throw new Error(`PA -2 slog ikke igennem: ${p.pa}`);
+  });
+  await ctx.close();
+}
+
 for (const look of ['klassisk', 'moderne']) if (!only || only === look) await run(look);
+if (!only || only === 'editor') await editor();
 await browser.close();
 stop();
 if (failures.length) {

@@ -39,6 +39,12 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-06 – Database-editor (trin 1): startmenuen → Editor (`src/ui/Editor.tsx`). "Min database" = diff oven på
+  original/moderne (`game/dbEdit.ts`: `CustomDb` med `players`/`clubs`/`added`, `applyDb`, `sanitizeDb` for importerede
+  filer), gemt i IndexedDB (`ui/customDb.ts`, nøgle `cm-dbs`) og som `.cmdb.json`. Vælges ved nyt spil som
+  `custom:<id>`. Nye spillere har id fra `NEW_ID0` (9.000.000). Klubsaldo/omdømme via `WorldData.clubBalance`/
+  `clubRepEdited` i newgame.ts. Test: tests/dbEdit.test.ts + editor-flow i e2e. Næste trin: deling i hubben, editor i
+  kørende spil.
 - 2026-11-06 – Original database udvidet (18.7k → 35k spillere): parseren har `allClubs`/`maxTiers` (kun i
   build-cm-data.mts; browserens egen import er uændret). Klubber uden for de spilbare ligaer kommer med, hvis de har en
   spiller med PA -2/≥150, CA ≥120, PA -1 og ≤21 år, eller står i `scripts/cult-players.json` (133 kultspillere fra

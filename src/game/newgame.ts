@@ -32,6 +32,9 @@ export interface WorldData {
   playerFields: string[];
   players: (string | number)[][];
   names: Record<string, [string[], string[]]>;
+  /** databaseeditoren: saldo ved start og klubber med selvvalgt omdømme (intet loft for 2. række) */
+  clubBalance?: Record<number, number>;
+  clubRepEdited?: number[];
 }
 
 export interface NewGameOptions {
@@ -209,13 +212,16 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const sv = values.reduce((s, v) => s + v, 0);
     c.rep = cm?.clubRep[c.id] ?? Math.round(Math.max(5, Math.min(98, (Math.log10(Math.max(sv, 1e6)) - 6) * 30)));
     const lg = leagueById.get(c.league);
-    if (lg?.tier === 2) c.rep = Math.min(c.rep, 62);
+    if (lg?.tier === 2 && !world.clubRepEdited?.includes(c.id)) c.rep = Math.min(c.rep, 62);
     if (cm?.clubColors[c.id]) c.colors = cm.clubColors[c.id];
     const wealth = rulesFor(c.league, 20).wealth;
     for (const p of sq) if (p.contract) p.contract.wage = wageFor(p.value, wealth);
     const wages = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
     c.wageBudget = Math.round((wages * 1.08) / 1000) * 1000;
     c.balance = Math.round((sv * 0.12 + wages * 30) / 100_000) * 100_000;
+    // databaseeditoren kan sætte klubbens saldo ved start
+    const bal = world.clubBalance?.[c.id];
+    if (bal !== undefined) c.balance = bal;
     c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
     c.youth = clampInt(4 + c.rep / 7 + (hash(c.id, 3) % 5) - 2, 1, 20);
     c.facilities = clampInt(3 + c.rep / 6 + (hash(c.id, 4) % 5) - 2, 1, 20);
