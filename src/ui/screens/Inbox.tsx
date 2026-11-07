@@ -126,7 +126,6 @@ export function Inbox() {
             <AiArticle item={item} />
           </div>
         ) : <div className="cx-nmsg"><div className="cx-nempty">{t('inbox.select')}</div></div>}
-        <FirstDay />
       </div>
     );
   }
