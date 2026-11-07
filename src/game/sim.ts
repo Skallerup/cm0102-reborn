@@ -1,5 +1,6 @@
 // Spillets dag-for-dag-løkke.
 import { intlDayResults, intlDaily } from './international';
+import { reservesDaily } from './reserves';
 import { awolMonthly } from './rules2001';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
@@ -379,6 +380,7 @@ function newDay() {
   if (g.draft) { draftDay(); return; }
   if (month(d) === 7 && day(d) === 1) seasonRollover();
   intlDaily();
+  reservesDaily();
   // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting
@@ -588,7 +590,7 @@ export function quickPlayUserMatch(): MatchReport | null {
 
 /** Spring frem til næste kamp. Kører i bidder så UI'et forbliver responsivt. */
 /** Rene informationsnyheder (andre klubbers handler, trænerskifter, klummer, kåringer …) stopper ikke Fortsæt */
-const INFO_KEYS = new Set([
+const INFO_KEYS = new Set(['res.win', 'res.draw', 'res.loss', 
   'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',
   'award.monthPlayer', 'award.monthManager', 'award.ballonDor', 'news.champions', 'news.cupWin', 'news.playoffWin', 'rumour.interest',
   'news.retired', 'news.youth', 'war.headline', 'war.result', 'war.staffHeadline', 'war.staffResult', 'transfer.digest', 'transfer.digestOne', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',

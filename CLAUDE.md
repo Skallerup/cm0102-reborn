@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – `game/reserves.ts` (reservesDaily fra newDay, onsdage i sæsonen, eget frø via hash01 – rører ikke `rng`), nyheder
+  res.win/draw/loss (INFO_KEYS). `MatchResultShort.cards` ([gule, røde]) → `RefereeStats` i Competitions.tsx (karakter *estimeret*).
+  Edit → Copy/Copy All/Paste i TacticsClassic (modul-variablen `clip`). Landsholdslogoer: 228 lande.
 - 2026-11-07 – Baggrunde pr. skærm: `scripts/build-screen-bg.py` (Naydav's pakke, kun naydav/-mappen; klubber matches på navn/kortnavn
   med `loose`) → public/screens/*.jpg (44 MB) + public/data/screen-bg.json. `screenBackground`/`specificBackground` sidst i Shell.tsx
   (club/player → `clubBgUrl` = stadion udefra eller klubbillede; competitions/fixtures → `compBgUrl` med pakkens CM-navne;
