@@ -139,6 +139,13 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-straffeskytter.png` });
     await page.locator('.cx-pens .cx-pen-done').click();
     await page.waitForSelector('.cx-tac-pitch', { timeout: 5000 });
+    // Save As: spillets egen navneboks (ikke browserens prompt)
+    await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Save As' }).first().click();
+    await page.locator('.cx-dlg-input').fill('E2E taktik');
+    await page.locator('.cx-confirm button.primary').click();
+    const saved = await gs(() => window.__cm.gs().savedTactics.map((x) => x.name));
+    if (!saved.includes('E2E taktik')) throw new Error(`taktikken blev ikke gemt: ${saved}`);
   });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });

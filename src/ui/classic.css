@@ -1186,3 +1186,4 @@
 .cx-pen-slots span.on { background: #6a1fb0; color: #fff21f; }
 .cx-pens .cx-sq-cols { margin: 0 16px; max-height: calc(100vh - 430px); }
 .cx-pens .cx-ts-buttons { grid-template-columns: 1fr; }
+.cx-dlg-input { display: block; margin: 14px auto 0; width: 360px; max-width: 90%; padding: 6px 10px; background: #00005e; color: #fff; border: 1px solid; border-color: #00003e #000085 #000085 #00003e; font: inherit; font-size: 17px; }

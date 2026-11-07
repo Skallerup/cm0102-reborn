@@ -12,6 +12,7 @@ import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstruction
 import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
 import { CxDrop, titleColors, type DropItem } from '../classic';
+import { askText } from '../confirm';
 import { posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -122,7 +123,7 @@ export function ClassicTactics() {
     { key: 'sep', sep: true },
     { key: 'load', label: t('cl.tac.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: savedLabel(s2), onClick: () => change({ ...structuredClone(s2), lineup: tac.lineup.length === s2.lineup.length ? tac.lineup : s2.lineup }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
     { key: 'save', label: t('cl.tac.save'), disabled: !tac.name || !saved.some((x) => x.name === tac.name), onClick: () => act({ t: 'savedTactics', list: saved.map((x) => (x.name === tac.name ? structuredClone(tac) : x)) }) },
-    { key: 'saveas', label: t('cl.tac.saveAs'), onClick: () => { const name = window.prompt(t('cl.tac.saveAs'), tac.name ?? tac.formation)?.trim(); if (name) { act({ t: 'savedTactics', list: [...saved.filter((x) => x.name !== name), { ...structuredClone(tac), name }].slice(-10) }); change({ ...tac, name }); } } },
+    { key: 'saveas', label: t('cl.tac.saveAs'), onClick: () => void askText(t('cl.tac.saveAsQ'), tac.name ?? tac.formation, { head: t('cl.tac.saveAs') }).then((name) => { if (name) { act({ t: 'savedTactics', list: [...saved.filter((x) => x.name !== name), { ...structuredClone(tac), name }].slice(-10) }); change({ ...tac, name }); } }) },
     { key: 'del', label: t('cl.tac.delete'), sub: saved.length ? saved.map((s2, i2) => ({ key: `d${i2}`, label: savedLabel(s2), onClick: () => act({ t: 'savedTactics', list: saved.filter((_, k) => k !== i2) }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
   ];
   /** spejlvend formationen (venstre ↔ højre) – CM 01/02 Edit → Reflect */
