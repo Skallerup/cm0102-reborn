@@ -174,6 +174,8 @@ const MGR_TABS: ScreenName[] = ['profile', 'history', 'awards', 'jobs', 'ranking
 const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
 
 const HUBS: Partial<Record<ScreenName, Hub>> = {
+  // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
+  competitions: { colors: () => ({ bg: '#ffffff', fg: '#1a2a8c' }) },
   squad: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   transfers: { title: () => t('cl.tr.title'), club: own },
   assistant: { title: (g) => `${clubName(g)} – ${t('cl.nextMatch')}`, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },

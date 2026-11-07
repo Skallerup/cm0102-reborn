@@ -1046,3 +1046,9 @@
   .cx-fx-comp.cup { color: #ffb347; }
   .cx-fx-date { height: 26px; font-size: 13px; font-weight: 500; }
 }
+@media (min-width: 761px) {
+  /* ligatabellen (CM 01/02): klubnavne 19 px i normal vægt, bred placeringsknap, tynde stiplede zonelinjer */
+  .cx-league .cx-lg-club { font-size: 19px; font-weight: 500; cursor: pointer; }
+  .cx-league .cx-lg-pos { min-width: 80px; font-weight: 500; }
+  .cx-league tr.zone-start td { border-top: 1px dashed #fff21f; }
+}

@@ -12,9 +12,11 @@ import { Head } from './common';
 import { isRetro } from '../theme';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
+import { ClassicSub, cxShortDate } from '../classic';
 
 export function Competitions({ id }: { id?: string }) {
   const g = useGame()!;
+  const { nav } = useNav();
   const userComp = g.clubs[g.userClub]?.league;
   const comps = Object.values(g.comps);
   const [cid, setCid] = useRouteState<string>('cid', id ?? userComp ?? comps[0]?.id ?? '');
@@ -31,7 +33,27 @@ export function Competitions({ id }: { id?: string }) {
           options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
       </Head>
       {comp && isRetro() && comp.type !== 'league' && <ClassicCup comp={comp} />}
-      {comp && !(isRetro() && comp.type !== 'league') && (
+      {/* klassisk liga (CM 01/02): Table · Results · Fixtures · Schedule øverst; Team Stats · Player Stats · Referee Stats · Awards ▸ · History ▸ nederst */}
+      {comp && isRetro() && comp.type === 'league' && (
+        <>
+          <Tabs tabs={[['table', t('comp.table')], ['results', t('cl.lg.results')], ['fixtures', t('comp.fixtures')], ['schedule', t('cl.lg.schedule')]]} value={['table', 'results', 'fixtures', 'schedule'].includes(tab) ? tab : ''} onChange={setTab} />
+          {tab === 'table' && <><div className="cx-subtitle">{t('cl.lg.table')}</div><LeagueTables comp={comp} /></>}
+          {tab === 'results' && <CompFixtures comp={comp} mode="results" />}
+          {tab === 'fixtures' && <CompFixtures comp={comp} mode="fixtures" />}
+          {tab === 'schedule' && <CompSchedule comp={comp} onPick={() => setTab('fixtures')} />}
+          {tab === 'stats' && <LeagueStats comp={comp} />}
+          {tab === 'scorers' && <Scorers comp={comp} />}
+          {tab === 'history' && <CompHistory comp={comp} />}
+          <ClassicSub items={[
+            { key: 'stats', label: t('cl.lg.teamStats'), on: tab === 'stats', onClick: () => setTab('stats') },
+            { key: 'scorers', label: t('cl.lg.playerStats'), on: tab === 'scorers', onClick: () => setTab('scorers') },
+            { key: 'ref', label: t('cl.lg.refStats'), disabled: true },
+            { key: 'awards', label: t('cl.cm.awards'), arrow: true, onClick: () => nav({ name: 'awards' }) },
+            { key: 'history', label: t('comp.history'), arrow: true, on: tab === 'history', onClick: () => setTab('history') },
+          ]} />
+        </>
+      )}
+      {comp && !isRetro() && (
         <>
           <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ...(comp.type === 'league' ? [['stats', t('comp.stats')] as [string, string]] : []), ['history', t('comp.history')]]} value={tab} onChange={setTab} />
           {tab === 'table' && (comp.type === 'league' ? <LeagueTables comp={comp} /> : <CupView comp={comp} />)}
@@ -193,13 +215,31 @@ function CupView({ comp }: { comp: Competition }) {
   );
 }
 
-function CompFixtures({ comp }: { comp: Competition }) {
+/** Schedule (CM 01/02): alle spilledage med antal kampe – et klik viser dagens kampe */
+function CompSchedule({ comp, onPick }: { comp: Competition; onPick: () => void }) {
+  const g = useGame()!;
+  const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id);
+  const days = [...new Set(list.map((f) => f.date))].sort();
+  const [, setDate] = useRouteState(`date:${comp.id}`, days[0]);
+  return (
+    <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{days.map((d) => {
+      const n = list.filter((f) => f.date === d).length, played = list.filter((f) => f.date === d && f.result).length;
+      return <tr key={d} className="clickable" onClick={() => { setDate(d); onPick(); }}><td className="btn-col"><span className="cx-rowbtn">{cxShortDate(d)}</span></td><td className="c-name">{t('cl.lg.games', { n })}</td><td className="c-yel">{played === n ? t('cl.lg.played') : played ? `${played}/${n}` : ''}</td></tr>;
+    })}</tbody></table></div>
+  );
+}
+
+function CompFixtures({ comp, mode }: { comp: Competition; mode?: 'results' | 'fixtures' }) {
   const g = useGame()!;
   const { nav } = useNav();
-  const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date));
+  const all = Object.values(g.fixtures).filter((f) => f.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date));
+  // Results: kun spillede dage, Fixtures: kun kommende (klassisk)
+  const list = mode === 'results' ? all.filter((f) => f.result) : mode === 'fixtures' ? all.filter((f) => !f.result) : all;
   const dates = [...new Set(list.map((f) => f.date))];
-  const next = dates.find((d) => d >= g.date) ?? dates[dates.length - 1];
-  const [date, setDate] = useRouteState(`date:${comp.id}`, next);
+  const next = mode === 'results' ? dates[dates.length - 1] : dates.find((d) => d >= g.date) ?? dates[dates.length - 1];
+  const [date0, setDate] = useRouteState(`date:${comp.id}`, next);
+  const date = dates.includes(date0) ? date0 : next;
+  if (!dates.length) return <div className="cx-empty">{t(mode === 'results' ? 'cl.lg.noResults' : 'cl.lg.noFixtures')}</div>;
   const shown = list.filter((f) => f.date === date);
   const idx = dates.indexOf(date);
   return (
