@@ -17,6 +17,7 @@ import { posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { shapeName } from './Tactics';
+import { TeamInstrDialog } from './Match';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
@@ -37,6 +38,7 @@ export function ClassicTactics() {
   const [pane, setPane] = useRouteState<Pane>('tpane', 'overview');
   const [view, setView] = useRouteState<View>('tview', 'cond');
   const [penScreen, setPenScreen] = useRouteState('tpens', false);
+  const [tiOpen, setTiOpen] = useState(false);
   const [pick, setPick] = useState<number | null>(null); // valgt spiller (i listen)
   const [slotSel, setSlotSel] = useState<number | null>(null); // valgt plads (på banen)
   const [drag, setDrag] = useState<number | null>(null);
@@ -118,7 +120,8 @@ export function ClassicTactics() {
   const savedLabel = (s2: Tactic) => s2.name ?? `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`;
   // CM 01/02: Team Instructions · Penalty Takers · Set To Default ▸ · — · Load · Save · Save As · Delete
   const tacticItems: DropItem[] = [
-    { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setPane('with') },
+    // CM 01/02: den samme grønne Team Instructions-boks som under kampen
+    { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setTiOpen(true) },
     { key: 'pens', label: t('cl.tac.penTakers'), onClick: () => setPenScreen(true) },
     // vores ekstra: anfører, frispark og hjørnespark (i originalen trækkes "capt" m.fl. hen på spilleren)
     { key: 'setp', label: t('cl.tac.setPieceTakers'), sub: (['captain', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac[k] === id, onClick: () => change({ ...tac, [k]: id }) })) })) },
@@ -161,6 +164,7 @@ export function ClassicTactics() {
   ];
   const views: DropItem[] = (['cond', 'fit', 'pos', 'value'] as View[]).map((v) => ({ key: v, label: t(`cl.tac.v.${v}`), checked: view === v, onClick: () => setView(v) }));
 
+  if (tiOpen) return <div className="cx-tac"><Head title={t('nav.tactics')} /><TeamInstrDialog tac={tac} on={tac.lineup.filter(Boolean)} editable onClose={() => setTiOpen(false)} onOk={(f) => { change(f(tac)); setTiOpen(false); }} /></div>;
   if (penScreen) return <PenaltyTakers tac={tac} players={players} change={change} onClose={() => setPenScreen(false)} />;
   return (
     <div className="cx-tac">

@@ -126,6 +126,17 @@ async function run(look) {
     await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
   });
+  if (look === 'klassisk') await step('Team Instructions før kampen (samme boks som i kampen)', async () => {
+    await go({ name: 'tactics' });
+    await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Team Instructions' }).first().click();
+    await page.waitForSelector('.cx-tidlg', { timeout: 5000 });
+    const before = await gs(() => window.__cm.gs().tactic.team.mentality);
+    await page.locator('.cx-tidlg .cx-tich', { hasText: before >= 3 ? 'Defensive' : 'Attacking' }).first().click();
+    await page.locator('.cx-tidlg-foot button', { hasText: 'Ok' }).click();
+    const after = await gs(() => window.__cm.gs().tactic.team.mentality);
+    if (after === before) throw new Error('holdinstruktionen blev ikke gemt');
+  });
   if (look === 'klassisk') await step('Penalty Takers', async () => {
     await go({ name: 'tactics' });
     await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();

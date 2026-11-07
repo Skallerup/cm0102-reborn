@@ -275,7 +275,7 @@ function cxLineStyle(line: { cls: string; t?: number } | undefined, colors: [str
   return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
 }
 
-function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootout, ht, flash }: { flash?: boolean; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
+function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash }: { flash?: boolean; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
@@ -291,6 +291,8 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootou
           <div key={side} className={side ? 'away' : ''}>
             {goals.filter((e) => e.t === side).map((e, i) => <div key={i} className="cx-mo-goal"><span><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span>{e.og ? ` (${t('match.og')})` : ''}</span><b>{e.m}</b></div>)}
             {injuries.filter((e) => e.t === side).map((e, i) => <div key={`i${i}`} className="cx-mo-inj cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{t('cl.mt.injured', { name: g.players[e.p]?.last ?? '' })} {e.m}</div>)}
+            {/* udvisninger (rødt kort) under holdet, som målscorerne */}
+            {reds.filter((e) => e.t === side).map((e, i) => <div key={`r${i}`} className="cx-mo-goal cx-mo-red"><span><span className="cx-card red" /><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span></span><b>{e.m}</b></div>)}
           </div>
         ))}
       </div>
@@ -865,7 +867,14 @@ function LiveMatch({ id }: { id: number }) {
       if (!report) setPaused(true); if (tab !== 'tactics' && tab !== 'oppTactics') L.prevTab = tab; setDraft(null); setTab(side === me ? 'tactics' : 'oppTactics'); },
     speed: setSpeed,
     cont: () => done(),
-    ok: () => { if (draft) sim.setTactic(me, draft); setDraft(null); setLastView(false); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
+    ok: () => {
+      if (draft) {
+        sim.setTactic(me, draft);
+        // CM 01/02: ændringerne gælder også efter kampen – holdinstruktioner, formation, dødboldsskytter og anfører (ikke udskiftningerne)
+        const base = gs().tactic;
+        if (base && !gs().draft) act({ t: 'tactic', tactic: { ...base, team: { ...draft.team }, formation: draft.formation, slots: draft.slots.map((x) => ({ ...x })), individual: draft.individual.map((x) => ({ ...x })), captain: base.lineup.includes(draft.captain) ? draft.captain : base.captain, penalties: draft.penalties, freeKicks: draft.freeKicks, freeKicksR: draft.freeKicksR, corners: draft.corners, cornersR: draft.cornersR } });
+      }
+      setDraft(null); setLastView(false); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
     back: () => setLastView(false),
     cancel: () => {
       const leave = () => { setLastView(false); setDraft(null); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); };
@@ -933,6 +942,7 @@ function LiveMatch({ id }: { id: number }) {
       {(tab === 'overview' || (classic && tab === '2d')) && (
         <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={waiting ? t('cl.mt.koLabel') : sim.finished ? t('match.ft') : L.atHalf ? t('cl.mt.halfTime') : sim.half === 2 ? t('match.half2') : t('match.half1')} ht={L.ht}
           injuries={sim.events.filter((e) => e.k === 'injury' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
+          reds={sim.events.filter((e) => e.k === 'red' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
           shootout={classic ? sim.shootout?.kicks : undefined} flash={classic && (L.goalUntil ?? 0) > Date.now()}
           goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og }))} />
       )}
@@ -1257,7 +1267,7 @@ const TAKERS: TakerKey[] = ['freeKicks', 'freeKicksR', 'corners', 'cornersR', 'p
 
 /** Den grønne Team Instructions-boks fra CM 01/02: valg i kolonner (det valgte i en gul ramme), dødboldsskytter og
  *  playmaker via ◂-knappen (grøn liste), Cancel/Ok nederst. Ændringerne gælder først ved Ok. */
-function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tactic; on: number[]; editable: boolean; onClose: () => void; onOk: (f: (t: Tactic) => Tactic) => void }) {
+export function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tactic; on: number[]; editable: boolean; onClose: () => void; onOk: (f: (t: Tactic) => Tactic) => void }) {
   const g = useGame()!;
   const [ti, setTi] = useState(() => ({ ...tac.team }));
   const [tk, setTk] = useState<Record<TakerKey, number>>(() => ({ freeKicks: tac.freeKicks, freeKicksR: tac.freeKicksR ?? tac.freeKicks, corners: tac.corners, cornersR: tac.cornersR ?? tac.corners, playmaker: tac.team.playmaker ?? 0 }));

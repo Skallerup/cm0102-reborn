@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Spillerfejl: kamptaktikkens Ok skriver nu holdinstruktioner/formation/skytter/anfører tilbage til `g.tactic` (ikke
+  udskiftninger). `TeamInstrDialog` eksporteres fra Match.tsx og bruges også af Tactics → Team Instructions i TacticsClassic.
+  CxOverview `reds` (røde kort under holdet).
 - 2026-11-07 – `game/reserves.ts` (reservesDaily fra newDay, onsdage i sæsonen, eget frø via hash01 – rører ikke `rng`), nyheder
   res.win/draw/loss (INFO_KEYS). `MatchResultShort.cards` ([gule, røde]) → `RefereeStats` i Competitions.tsx (karakter *estimeret*).
   Edit → Copy/Copy All/Paste i TacticsClassic (modul-variablen `clip`). Landsholdslogoer: 228 lande.
