@@ -1,4 +1,5 @@
 // Spillets dag-for-dag-løkke.
+import { promoteIfShort } from './reserves';
 import { intlDayResults, intlDaily } from './international';
 import { reservesDaily } from './reserves';
 import { awolMonthly } from './rules2001';
@@ -168,6 +169,7 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean):
     const o = ownerOf(club);
     if (o) return withHuman(o, () => userTactic(userAuto));
   }
+  promoteIfShort(club);
   return aiTactic(club, opp, home);
 }
 

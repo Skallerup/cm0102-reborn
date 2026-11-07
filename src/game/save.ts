@@ -4,6 +4,7 @@ import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify, ensureNumbers } from './state';
+import { splitReserves } from './reserves';
 import { deserializeState, serializeState } from './snapshot';
 import type { GameState, Player } from './types';
 
@@ -107,6 +108,7 @@ function ensureAllNumbers() {
 /** Opgradér gemte spil fra ældre versioner (nye turneringer m.m.) */
 export function upgradeLoaded() {
   repairInjuryWave();
+  splitReservesOnce();
   const g = gs();
   if (addMissingConference()) {
     const club = g.clubs[g.userClub];
@@ -137,6 +139,24 @@ function repairInjuryWave() {
     list.forEach((p, i) => { if (i >= 3) p.injury = null; else p.injury!.days = Math.min(p.injury!.days, 30); });
   }
   (g.fixes ??= []).push('injuryWave');
+}
+
+/**
+ * Engangsrettelse (2026-11-07): gemte spil fra før førstehold/reservehold havde alle spillere på førsteholdet. Klubber, hvor
+ * ingen er sat i reserverne, deles op (de 25 bedste på førsteholdet) – også ens egen; har man selv valgt reserver, røres de ikke.
+ */
+function splitReservesOnce() {
+  const g = gs();
+  if (g.fixes?.includes('reserveSplit')) return;
+  const withRes = new Set(Object.values(g.players).filter((p) => p.reserves && p.club).map((p) => p.club));
+  for (const c of Object.values(g.clubs)) if (!withRes.has(c.id) && !g.leagues[c.league]?.hidden) splitReserves(c.id);
+  // ens taktik må ikke pege på spillere, der nu er reserver
+  if (g.tactic) {
+    const res = (id: number) => !!g.players[id]?.reserves;
+    g.tactic.lineup = g.tactic.lineup.map((id) => (id && res(id) ? 0 : id));
+    g.tactic.bench = g.tactic.bench.filter((id) => !res(id));
+  }
+  (g.fixes ??= []).push('reserveSplit');
 }
 
 function repairClubNames() {

@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
 import { boardEventsSeason } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
@@ -609,6 +610,8 @@ export function seasonRollover() {
       addNews({ cat: 'general', key: result === 'won' ? 'challenge.won' : 'challenge.lost', params: { id: g.challenge.id } });
     }
   });
+  // AI-klubberne deler truppen igen (førstehold/reserver) efter sommerens handler og ungdomsspillere
+  for (const c of Object.values(g.clubs)) if (!isHumanClub(c.id) && !g.leagues[c.league]?.hidden) splitReserves(c.id);
   addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } }, { all: true });
 }
 

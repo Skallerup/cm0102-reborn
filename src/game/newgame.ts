@@ -1,4 +1,5 @@
 // Opret et nyt spil ud fra world.json
+import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
@@ -199,6 +200,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   }
   // trøjenumre: alle i hver trup får et unikt nummer
   for (const c of Object.values(g.clubs)) ensureNumbers(c.id);
+  // førstehold og reservehold (CM 01/02): de 25 bedste på førsteholdet, resten i reserverne
+  for (const c of Object.values(g.clubs)) if (!g.leagues[c.league]?.hidden) splitReserves(c.id);
   setAutoNumbers(true);
 
   // 2001-priser: pengeniveauet pr. liga = forholdet mellem klubbernes trupværdier (top 20) i 2001-priser og i

@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Reservehold: `splitReserves(cid)` (reserves.ts; `FIRST_TEAM` 25, mindst 2 GK) i newgame (alle synlige klubber), seasonRollover (AI-klubber) og engangsrettelsen `reserveSplit` i save.ts (springer klubber med egne reserver over; renser g.tactic). `promoteIfShort` i tacticFor (AI) holder 18 ledige på førsteholdet. match-stats: mål 2,79.
 - 2026-11-07 – Opdateringsmails: `api/_lib/mail.ts` (news:subs/unsubs/prompt/sent/secret, afmeldingslink med HMAC, Resend-batch med
   List-Unsubscribe), account.ts ops `news` (login krævet), `prompt` (tællere), `unsub` (GET-side + POST one-click). Admin: fanen
   E-mail (`MailTab`; op `mail`, `mail-preview`, `mail-send` med test = NOTIFY_EMAIL). Spillet: `useNewsPrompt`/`NewsPrompt` i Login.tsx

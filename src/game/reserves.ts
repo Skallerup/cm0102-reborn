@@ -1,7 +1,9 @@
 // Reserveholdets kampe (CM 01/02: "Man Utd Reserves win" – "Man Utd Reserves have beaten Leeds Reserves 4-2 at Old Trafford").
 // Én kamp om ugen (onsdag) i sæsonen mod en klub fra samme liga, afgjort af styrken blandt spillerne uden for de 16
 // (*estimeret*: Poisson med 1,4 mål i snit, forskudt efter styrken). Eget frø, så den øvrige simulering ikke ændres.
+import { naturalRole } from './attributes';
 import { addDays } from './dates';
+import type { Player } from './types';
 import { hash01 } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { forEachHuman } from './humans';
@@ -39,4 +41,38 @@ export function reservesDaily() {
     const key = mine > theirs ? 'res.win' : mine === theirs ? 'res.draw' : 'res.loss';
     addNews({ cat: 'match', key, params: { team: me.short, opp: opp.short, a: mine, b: theirs, venue: (home ? me : opp).stadium ?? '' } });
   });
+}
+
+// ---------- førsteholdet og reserveholdet (CM 01/02: "<klub> Reserves") ----------
+
+/** Førsteholdstruppens størrelse og mindste antal målmænd (*estimeret* efter originalens trupper) */
+export const FIRST_TEAM = 25;
+const isGK = (p: Player) => naturalRole(p) === 'GK';
+
+/**
+ * Del en klubs spillere: de 25 bedste (efter evne, mindst to målmænd) på førsteholdet, resten på reserveholdet.
+ * Kun ved nyt spil, sæsonstart for AI-klubber og én gang i gemte spil – managerens egne valg røres ellers ikke.
+ */
+export function splitReserves(cid: number) {
+  const sq = squad(cid).slice().sort((a, b) => b.ca - a.ca);
+  if (sq.length <= FIRST_TEAM) { for (const p of sq) p.reserves = undefined; return; }
+  const first = new Set(sq.slice(0, FIRST_TEAM).map((p) => p.id));
+  const gks = sq.filter(isGK);
+  for (const gk of gks.slice(0, 2)) {
+    if (first.has(gk.id)) continue;
+    const drop = [...sq].reverse().find((p) => first.has(p.id) && !isGK(p));
+    if (drop) { first.delete(drop.id); first.add(gk.id); }
+  }
+  for (const p of sq) p.reserves = first.has(p.id) ? undefined : true;
+}
+
+/** AI-klubber: mangler førsteholdet folk (skader, karantæner, salg), rykker de bedste reserver op før kampen */
+export function promoteIfShort(cid: number, need = 18) {
+  const sq = squad(cid);
+  let ok = sq.filter((p) => !p.reserves && !p.injury && p.banned <= 0).length;
+  if (ok >= need) return;
+  for (const p of sq.filter((x) => x.reserves && !x.injury && x.banned <= 0).sort((a, b) => b.ca - a.ca)) {
+    p.reserves = undefined;
+    if (++ok >= need) break;
+  }
 }
