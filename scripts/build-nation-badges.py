@@ -8,7 +8,7 @@ ROOT = os.path.join(os.path.dirname(__file__), '..')
 OUT = os.path.join(ROOT, 'public', 'data', 'logos.json')
 # databasens navne → TheSportsDB's
 ALIAS = {'The Congo': 'Congo', 'The Gambia': 'Gambia', 'The Philippines': 'Philippines', 'FYR of Macedonia': 'North Macedonia', 'Democratic Republic of Congo': 'DR Congo', 'Cape Verde Islands': 'Cape Verde', 'Brunei Darussalam': 'Brunei', 'Surinam': 'Suriname', 'Swaziland': 'Eswatini', 'eSwatini': 'Eswatini', 'Timor': 'East Timor', 'São Tomé & Principe': 'Sao Tome and Principe', 'Trinidad & Tobago': 'Trinidad and Tobago', 'Antigua & Barbuda': 'Antigua and Barbuda', 'St Kitts & Nevis': 'Saint Kitts and Nevis', 'St Vincent & The Grenadines': 'Saint Vincent and the Grenadines', 'Holland': 'Netherlands', 'Republic of Ireland': 'Ireland', 'Korea Republic': 'South Korea', 'Korea DPR': 'North Korea',
-         'China PR': 'China', 'USA': 'United States', 'U.S.A.': 'United States', 'C.I.S.': 'Russia', 'Czech Republic': 'Czechia',
+         'China PR': 'China', 'United States': 'USA', 'U.S.A.': 'USA', 'Korea, South': 'South Korea', 'Korea, North': 'North Korea', 'Hongkong': 'Hong Kong', 'Curacao': 'Curaçao', 'Timor-Leste': 'East Timor', 'St. Lucia': 'Saint Lucia', 'St. Kitts & Nevis': 'Saint Kitts and Nevis', 'C.I.S.': 'Russia', 'Czech Republic': 'Czechia',
          "Côte d'Ivoire": 'Ivory Coast', 'Cote d\'Ivoire': 'Ivory Coast', 'Bosnia-Herzegovina': 'Bosnia and Herzegovina', 'FYR Macedonia': 'North Macedonia',
          'Macedonia': 'North Macedonia', 'Serbia and Montenegro': 'Serbia', 'Yugoslavia': 'Serbia', 'Congo DR': 'DR Congo', 'Türkiye': 'Turkey'}
 
