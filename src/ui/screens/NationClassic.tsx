@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { GameState } from '../../game/types';
 import { compName, money, natName, t } from '../../i18n';
-import { Tabs } from '../components';
 import { useGame, useRouteState } from '../core';
 import { CxDrop, CxLink, clubRoute } from '../classic';
 import { Head } from './common';
@@ -30,13 +29,12 @@ const inNation = (g: GameState, club: number, nation: number) => g.clubs[club]?.
 export function ClassicNation({ id, tab: initial }: { id?: number; tab?: string }) {
   const g = useGame()!;
   const nation = id ?? g.clubs[g.userClub]?.nation ?? 0;
-  const [tab, setTab] = useRouteState<NationTab>('ntab', (NATION_TABS as readonly string[]).includes(initial ?? '') ? initial as NationTab : 'managers');
+  const [tab] = useRouteState<NationTab>('ntab', (NATION_TABS as readonly string[]).includes(initial ?? '') ? initial as NationTab : 'managers');
   const name = natName(g.nations[nation]?.name);
   return (
     <div>
-      <Head title={t(`cl.na.title.${tab}`)}>
-        <Tabs tabs={NATION_TABS.map((k) => [k, t(`cl.na.${k}`)] as [string, string])} value={tab} onChange={(v) => setTab(v as NationTab)} />
-      </Head>
+      {/* CM 01/02: ingen faner – skærmene åbnes fra managermenuen (Manager Stats, Job Information, Transfers) */}
+      <Head title={t(`cl.na.title.${tab}`)} />
       {tab === 'managers' && <ManagerStats nation={nation} name={name} />}
       {tab === 'jobs' && <JobInfo nation={nation} name={name} />}
       {tab === 'transfers' && <MonthTransfers nation={nation} name={name} />}

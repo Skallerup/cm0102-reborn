@@ -1057,3 +1057,4 @@
   .cx-statement { background: rgba(0, 0, 0, 0.32); padding: 4px 16px 14px; min-height: 420px; }
   .cx-statement p { font-weight: 500; font-size: 19px; }
 }
+.cx-panel { background: rgba(0, 0, 0, 0.32); min-height: 380px; }

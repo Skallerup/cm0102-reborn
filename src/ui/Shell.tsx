@@ -15,6 +15,7 @@ import { CommunityHub, type HubTab } from './CommunityHub';
 import { cmDatabase } from '../game/newgame';
 import { APP_VERSION } from './changelogData';
 import { askConfirm, askNotice } from './confirm';
+import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil } from '../game/sim';
@@ -556,7 +557,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'matchday': return <MatchDay id={Number(route.id)} />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
-    case 'history': return <History />;
+    case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
     case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;
     case 'jobs': return <Jobs />;
