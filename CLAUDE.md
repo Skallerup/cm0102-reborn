@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Fejllog: `src/online/errors.ts` (window error/unhandledrejection + `ErrorBoundary` i main.tsx; kun på det rigtige site, højst 3 pr. besked/20 pr. side) → api/notify.ts op `error` (err:list + err:{sha1(besked|første kodelinje)} med count/first/last/ver) → admin-fanen Errors (op `errors`, `error-delete`).
 - 2026-11-07 – Svensk (`sv`) og norsk bokmål (`nb`): `src/i18n/sv.ts`/`nb.ts` (6.109 nøgler, oversat af Claude fra dansk, lazy), `scripts/match-texts-i18n/sv.json`/`nb.json` (kommentaren), Lang-typen, LANGS, LOCALE, UNITS, LangMenu-flag, LANG_NATION, nations.ts UK-navne, cup-navne i comps.ts, login-/opdateringsmails. Valuta SEK (11,1) og NOK (11,6) *estimeret*, sprogets standard. Nye nøgler: læg dem også i sv/nb (ellers engelsk).
 - 2026-11-07 – Reservehold: `splitReserves(cid)` (reserves.ts; `FIRST_TEAM` 25, mindst 2 GK) i newgame (alle synlige klubber), seasonRollover (AI-klubber) og engangsrettelsen `reserveSplit` i save.ts (springer klubber med egne reserver over; renser g.tactic). `promoteIfShort` i tacticFor (AI) holder 18 ledige på førsteholdet. match-stats: mål 2,79.
 - 2026-11-07 – Opdateringsmails: `api/_lib/mail.ts` (news:subs/unsubs/prompt/sent/secret, afmeldingslink med HMAC, Resend-batch med

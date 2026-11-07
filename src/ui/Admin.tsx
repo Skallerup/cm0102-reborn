@@ -57,8 +57,8 @@ interface NewCareer { at: string; manager: string; club: string; league: string;
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'starts' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters' | 'mail';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters'], ['mail', 'E-mail']];
+type Tab = 'overview' | 'starts' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters' | 'mail' | 'errors';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters'], ['mail', 'E-mail'], ['errors', 'Errors']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -117,6 +117,7 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       {tab === 'credits' && <CreditsAdmin setMsg={setMsg} />}
       {tab === 'supporters' && <SupportersTab />}
       {tab === 'mail' && <MailTab setMsg={setMsg} />}
+      {tab === 'errors' && <ErrorsTab setMsg={setMsg} />}
     </div></div>
   );
 }
@@ -651,5 +652,33 @@ function MailTab({ setMsg }: { setMsg: (s: string) => void }) {
         </Panel>
       </div>
     </>
+  );
+}
+
+// ---------- fejl fra spillernes browsere ----------
+
+interface ErrRow { id: string; msg: string; stack: string; count: number; first: string; last: string; ver: string; url: string; theme: string; lang: string; ua: string }
+
+function ErrorsTab({ setMsg }: { setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<ErrRow[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const load = async () => setRows((await adminGet<{ rows: ErrRow[] }>('op=errors'))?.rows ?? []);
+  useEffect(() => { void load(); }, []);
+  const del = async (data: Record<string, unknown>, ok: string) => { const r = await adminPost('error-delete', data); setMsg(r.error ? `Error: ${String(r.error)}` : ok); void load(); };
+  if (!rows) return <div className="muted">Loading…</div>;
+  return (
+    <Panel title={`Errors in players' browsers (${rows.length})`} right={rows.length ? <button className="small danger" onClick={() => { if (confirm('Delete all errors?')) void del({ all: true }, 'All errors deleted ✓'); }}>Clear all</button> : undefined} className="flush">
+      <p className="muted" style={{ margin: '8px 12px' }}>Grouped by message and code line, newest first. Sent automatically when the game crashes or an error is thrown (max 20 per page load). Mark one as fixed with ✓ once a fix is live.</p>
+      {rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No errors reported. 🎉</div> : (
+        <div className="table-wrap"><table className="grid"><thead><tr><th className="num">Count</th><th>Error</th><th>Version</th><th>Look</th><th>Last</th><th /></tr></thead>
+          <tbody>{rows.map((r) => (<>
+            <tr key={r.id} className="clickable" onClick={() => setOpen(open === r.id ? null : r.id)}>
+              <td className="num"><b>{r.count}</b></td><td style={{ maxWidth: 560, wordBreak: 'break-word' }}>{r.msg}</td><td>{r.ver}</td><td className="muted">{r.theme} · {r.lang}</td><td>{when(r.last)}</td>
+              <td><button className="small" title="Fixed – remove" onClick={(e) => { e.stopPropagation(); void del({ id: r.id }, 'Removed ✓'); }}>✓</button></td>
+            </tr>
+            {open === r.id && <tr key={`${r.id}-s`}><td colSpan={6}><div className="muted" style={{ fontSize: 12 }}>First {when(r.first)} · {r.url} · {r.ua}</div><pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, maxHeight: 320, overflow: 'auto', margin: '6px 0' }}>{r.stack}</pre></td></tr>}
+          </>))}</tbody></table></div>
+      )}
+    </Panel>
   );
 }

@@ -1,5 +1,8 @@
 // Norsk (bokmål) (oversat af Claude fra dansk/engelsk, 2026-11-07)
 export const nb: Record<string, string> = {
+  "crash.title": "Noe gikk galt",
+  "crash.text": "Spillet fikk en feil. Den er rapportert automatisk – det lagrede spillet ditt er trygt. Last inn på nytt for å fortsette.",
+  "crash.reload": "Last inn på nytt",
   "common.ok": "OK",
   "common.back": "Tilbake",
   "common.cancel": "Avbryt",

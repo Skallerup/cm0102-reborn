@@ -1,5 +1,8 @@
 // Svenska (oversat af Claude fra dansk/engelsk, 2026-11-07)
 export const sv: Record<string, string> = {
+  "crash.title": "Något gick fel",
+  "crash.text": "Spelet stötte på ett fel. Det har rapporterats automatiskt – ditt sparade spel är säkert. Ladda om för att fortsätta.",
+  "crash.reload": "Ladda om",
   "common.ok": "OK",
   "common.back": "Tillbaka",
   "common.cancel": "Avbryt",

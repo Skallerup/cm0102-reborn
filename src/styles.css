@@ -1377,3 +1377,5 @@ input[type='color'] { width: 44px; height: 30px; padding: 2px; }
 .news-consent { display: flex !important; flex-wrap: nowrap !important; flex-direction: row !important; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.4; }
 .news-consent input { margin-top: 3px; flex: none; }
 .acc-news { gap: 6px; font-size: 13px; }
+.crash-box { max-width: 520px; margin: 12vh auto; padding: 24px; text-align: center; background: var(--surface, #111a33); border: 1px solid var(--line, #334); }
+.crash-box h2 { margin: 0 0 10px; }

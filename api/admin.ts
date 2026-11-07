@@ -119,6 +119,12 @@ export async function GET(request: Request) {
   }
 
   if (op === 'applications') return json({ rows: await listApplications() });
+  // fejl fra spillernes browsere (api/notify.ts op=error)
+  if (op === 'errors') {
+    const ids = (await redis.zrange<string[]>('err:list', 0, 199, { rev: true })) ?? [];
+    const rows = (await Promise.all(ids.map((id) => redis.hgetall<Record<string, string | number>>(`err:${id}`)))).map((h, i) => (h ? { id: ids[i], ...h } : null)).filter(Boolean);
+    return json({ rows });
+  }
   // opdateringsmails: tilmeldte, frameldinger, svar på spørgsmålet i spillet og tidligere udsendelser
   if (op === 'mail') {
     const [subs, unsubs, prompt, sent] = await Promise.all([
@@ -234,6 +240,11 @@ export async function POST(request: Request) {
     const res = await sendNews(redis, to, subject, text);
     if (!body.test) { await redis.lpush('news:sent', JSON.stringify({ at: new Date().toISOString(), subject, lang: lang || 'all', ...res })); await redis.ltrim('news:sent', 0, 49); }
     return json({ ok: true, ...res });
+  }
+  if (body.op === 'error-delete') {
+    const ids: string[] = body.all ? ((await redis.zrange<string[]>('err:list', 0, -1)) ?? []) : [clip(body.id, 20)].filter(Boolean);
+    if (ids.length) { await redis.zrem('err:list', ...(ids as [string, ...string[]])); await redis.del(...ids.map((x) => `err:${x}`)); }
+    return json({ ok: true, deleted: ids.length });
   }
   if (body.op === 'nc-delete') {
     const vids = new Set((Array.isArray(body.vids) ? body.vids : []).map((v) => clip(v, 24)).filter(Boolean));

@@ -1,7 +1,7 @@
 // Dansk
 export const da: Record<string, string> = {
   // fælles
-  'common.ok': 'OK', 'common.back': 'Tilbage', 'common.cancel': 'Annullér', 'common.close': 'Luk', 'common.days': 'dage', 'common.delete': 'Slet',
+  'crash.title': "Noget gik galt", 'crash.text': "Spillet ramte en fejl. Den er sendt automatisk til os – dit gemte spil er i sikkerhed. Genindlæs for at fortsætte.", 'crash.reload': "Genindlæs", 'common.ok': 'OK', 'common.back': 'Tilbage', 'common.cancel': 'Annullér', 'common.close': 'Luk', 'common.days': 'dage', 'common.delete': 'Slet',
   'common.free': 'Klubløs', 'common.from': 'fra', 'common.no': 'Nej', 'common.yes': 'Ja', 'common.none': 'Ingen', 'common.stop': 'Stop',
   'common.week': 'uge', 'common.and': 'og', 'common.years': 'år',
 

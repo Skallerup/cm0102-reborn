@@ -1,8 +1,10 @@
 // Logger, når en ny singleplayer-karriere startes, så udvikleren kan se det i admin (fanen "New careers").
 // Der sendes ingen mail. Gemmes i Upstash Redis: nc:list (seneste 1000), nc:total og nc:d:{dag}.
 // { op: 'ping', vid, prog? } er browserens puls (prog = spildato/klub/placering for det åbne spil → hash "prog") (hvert 2. minut, mens fanen er synlig): sorteret sæt "seen" (vid → tid).
+// { op: 'error' } = fejl fra browseren (fanen Errors i admin: err:list + err:{id}).
 // Begrænset pr. IP, så ingen kan fylde listen op. Landet (x-vercel-ip-country) gemmes – selve IP-adressen gemmes ikke.
 import { Redis } from '@upstash/redis';
+import { createHash } from 'node:crypto';
 
 const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
   ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
@@ -15,6 +17,28 @@ export async function POST(request: Request) {
   if (!redis) return json({ ok: false, disabled: true });
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'json' }, 400); }
+
+  // fejl fra spillernes browsere (src/online/errors.ts): grupperet pr. besked + første kodelinje, med antal og seneste tidspunkt
+  if (body.op === 'error') {
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+    const hk = `er:ip:${ip}:${Math.floor(Date.now() / 3_600_000)}`;
+    const hits = await redis.incr(hk);
+    if (hits === 1) await redis.expire(hk, 7200);
+    if (hits > 30) return json({ error: 'limit' }, 429);
+    const msg = String(body.msg ?? '').slice(0, 300).trim();
+    if (!msg) return json({ error: 'msg' }, 400);
+    const stack = String(body.stack ?? '').slice(0, 3000);
+    const frame = stack.split('\n').find((l) => /\bat\b|@/.test(l))?.replace(/\?[^)\s]*/g, '').replace(/:\d+:\d+/g, '') ?? '';
+    const id = createHash('sha1').update(`${msg}|${frame}`).digest('hex').slice(0, 16);
+    const now = new Date().toISOString();
+    const k = `err:${id}`;
+    if (!(await redis.exists(k))) await redis.hset(k, { msg, stack, first: now });
+    await redis.hset(k, { last: now, ver: clip(body.ver, 12), url: clip(body.url, 100), theme: clip(body.theme, 10), lang: clip(body.lang, 5), ua: clip(body.ua, 160) });
+    await redis.hincrby(k, 'count', 1);
+    await redis.zadd('err:list', { score: Date.now(), member: id });
+    if (Math.random() < 0.05) { const old = await redis.zrange<string[]>('err:list', 0, -301); if (old?.length) { await redis.zrem('err:list', ...(old as [string, ...string[]])); await redis.del(...old.map((x) => `err:${x}`)); } }
+    return json({ ok: true });
+  }
 
   if (body.op === 'ping') {
     const vid = clip(body.vid, 24).replace(/[^a-z0-9]/gi, '');
