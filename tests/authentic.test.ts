@@ -19,6 +19,9 @@ describe('ægte CM 01/02', () => {
     const keys = g.news.map((n) => n.key);
     expect(keys.some((k) => k.startsWith('press.invite'))).toBe(false);
     expect(keys.some((k) => k.startsWith('fans.mood'))).toBe(false);
+    // andre klubbers handler som enkeltnyheder (CM 01/02: "Liverpool seal Perry deal") – ikke ugens overblik
+    expect(keys.some((k) => k.startsWith('transfer.o'))).toBe(true);
+    expect(keys.some((k) => k.startsWith('transfer.digest'))).toBe(false);
     expect(applyAction({ t: 'teamTalk', kind: 'praise' })).toBe('authentic');
     expect(applyAction({ t: 'camp', dest: 'home', start: g.date })).toBe('authentic');
     const p = squad(g.userClub)[3];

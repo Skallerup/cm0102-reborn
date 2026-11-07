@@ -28,6 +28,13 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
   if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
+  // "Four players from Man Utd …" (uden navneliste)
+  if ((n.key === 'intl.selN' || n.key === 'intl.tourSel') && !n.params?.names && typeof p.n === 'number' && has(`num.${p.n}`)) p.n = t(`num.${p.n}`);
+  // andre klubbers handler (CM 01/02): "The fee may be increased to £6,750,000 depending on appearances." og "… from Tottenham"
+  if (n.key.startsWith('transfer.o')) {
+    p.more = typeof p.fee2 === 'number' ? `\n\n${t('transfer.o.more', { fee2: money(p.fee2) })}` : '';
+    p.fromFree = p.from ? ` ${t('transfer.o.fromClub', { from: String(p.from) })}` : '';
+  }
   // navnelister ("A & B & C") som i originalen: "A, B and C"
   if (typeof p.names === 'string' && p.names.includes(' & ')) { const x = p.names.split(' & '); p.names = `${x.slice(0, -1).join(', ')} ${t('common.and')} ${x.at(-1)}`; }
   // placering som ordenstal ("1st", "1.")
@@ -69,25 +76,24 @@ export function newsTitle(n: NewsItem) {
   return t(n.key, newsParams(n));
 }
 
-export function newsBody(n: NewsItem) {
+/** Hvilken skabelon brødteksten bruger (nogle nyheder har varianter efter indholdet) */
+function bodyKey(n: NewsItem): string {
   // landsholdsudtagelse: navnene (højst tre) eller "Four players from Man Utd", med eller uden modstanderen
   if (n.key === 'intl.sel1' || n.key === 'intl.selN') {
     const many = n.key === 'intl.selN' && !n.params?.names, noOpp = !!n.params?.noOpp;
-    const k = n.key === 'intl.sel1' ? (noOpp ? 'intl.sel1.noOpp' : 'intl.sel1.body') : many ? (noOpp ? 'intl.selN.manyNoOpp' : 'intl.selN.many') : noOpp ? 'intl.selN.noOpp' : 'intl.selN.body';
-    const params = newsParams(n);
-    if (many && typeof params.n === 'number') params.n = has(`num.${params.n}`) ? t(`num.${params.n}`) : params.n;
-    return t(k, params);
+    return n.key === 'intl.sel1' ? (noOpp ? 'intl.sel1.noOpp' : 'intl.sel1.body') : many ? (noOpp ? 'intl.selN.manyNoOpp' : 'intl.selN.many') : noOpp ? 'intl.selN.noOpp' : 'intl.selN.body';
   }
-  // "Board Confidence Update": bestyrelsens udtalelse, som den stod på dagen
-  if (n.key === 'board.update' && n.params?.lvl) return [t(`cl.ba.conf.${n.params.lvl}`, { club: String(n.params.club ?? '') }), t(`cl.ba.fin.${n.params.fin}`), t(`cl.ba.fans.${n.params.fans}`)].join('\n\n');
   // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
-  if (n.key === 'intl.tourSel') {
-    const params = newsParams(n);
-    const k = !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
-    if (typeof params.n === 'number') params.n = has(`num.${params.n}`) ? t(`num.${params.n}`) : params.n;
-    return t(k, params);
-  }
-  const k = `${n.key}.body`;
+  if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
+  return `${n.key}.body`;
+}
+
+/** "Board Confidence Update": bestyrelsens udtalelse, som den stod på dagen */
+const boardUpdate = (n: NewsItem) => [t(`cl.ba.conf.${n.params.lvl}`, { club: String(n.params.club ?? '') }), t(`cl.ba.fin.${n.params.fin}`), t(`cl.ba.fans.${n.params.fans}`)].join('\n\n');
+
+export function newsBody(n: NewsItem) {
+  if (n.key === 'board.update' && n.params?.lvl) return boardUpdate(n);
+  const k = bodyKey(n);
   if (!has(k)) return '';
   const body = t(k, newsParams(n));
   // ældre nyheder uden de felter, brødteksten bruger: ingen brødtekst frem for {pladsholdere}
@@ -113,7 +119,7 @@ export function useOpenLink() {
 // ---------- nyheder med links til spillere og klubber ----------
 
 const CLUB_PARAMS = new Set(['club', 'from', 'to', 'opp', 'leader', 'buyer', 'seller']);
-const MONEY_PARAMS = new Set(['fee', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
+const MONEY_PARAMS = new Set(['fee', 'fee2', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
 
 let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number> } | null = null;
 
@@ -214,7 +220,8 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 }
 
 export function NewsBody({ n }: { n: NewsItem }) {
-  const k = `${n.key}.body`;
+  if (n.key === 'board.update' && n.params?.lvl) return <>{boardUpdate(n)}</>;
+  const k = bodyKey(n);
   return has(k) ? <>{linked(n, k)}</> : null;
 }
 

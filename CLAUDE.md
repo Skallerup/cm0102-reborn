@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Nyhedsbrødtekst: `bodyKey(n)` i common.tsx vælger skabelonen for både `newsBody` og `NewsBody` (før brugte
+  NewsBody altid `<key>.body`, så varianter som intl.sel1.noOpp aldrig blev vist). Nye varianter: læg dem i bodyKey.
+  Ægte tilstand: `originalTransferNews` (transfers.ts) → `transfer.o.<0-3>`/`transfer.oFree.<0-3>` i stedet for transferDigest.
 - 2026-11-07 – Bestyrelsen: `boardStatementCodes()` (board.ts → lvl/fin/fans, grænser *estimeret*) bruges af ClassicBoard og af
   nyheden `board.update` (boardSeasonEnd, brødtekst sat sammen i newsBody). board.satisfied/disappointed sendes ikke længere.
 - 2026-11-07 – Nyheder: `callUpNews(…, tour)` → `intl.tourSel` (slutrunder; brødtekst i newsBody), `names` med " & " vises som
