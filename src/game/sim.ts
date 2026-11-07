@@ -389,9 +389,11 @@ function newDay() {
       if (p.injury.days === 7 && (p.injury.total ?? 0) >= 21 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.lightTraining', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       if (p.injury.days <= 0) {
         const wasAwol = p.injury.key === 'awol';
+        const injKey = p.injury.key;
         p.injury = null;
         if (!wasAwol) p.condition = Math.min(p.condition, 75);
-        asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
+        // CM 01/02: "Irwin resumes full training" – "Denis Irwin has begun full training following his foot injury."
+        asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: wasAwol ? { player: pname(p) } : { player: pname(p), last: p.last, injury: injKey }, link: { kind: 'player', id: p.id } }));
       }
     }
     // restitution: en spiller med Natural Fitness 10 er klar igen 2-3 dage efter en kamp (som i CM 01/02, *estimeret*).

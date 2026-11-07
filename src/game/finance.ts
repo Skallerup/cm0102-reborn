@@ -138,6 +138,8 @@ export function seasonPrizeMoney() {
       const prize = Math.round((order.length - i) * 400_000 * econIncome(comp.id) * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
+      // CM 01/02: "Man Utd awarded £5,000,000" – "… for finishing 1st in the FA Premier League."
+      asOwnerFinance(cid, () => addNews({ cat: 'finance', key: 'fin.awarded', params: { club: c.short, amount: prize, place: i + 1, comp: comp.name }, link: { kind: 'comp', id: comp.id } }));
     });
   }
 }

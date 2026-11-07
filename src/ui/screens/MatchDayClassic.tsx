@@ -1,6 +1,6 @@
 // Kampdag i klassisk tema: dagens kampe pr. turnering (som originalens "Evening Fixtures"), én turnering ad gangen.
 // Continue Game i venstre kolonne fører videre til ens egen kamp.
-import type { Fixture } from '../../game/types';
+import type { Fixture, GameState } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { useGame, useNav, useRouteState } from '../core';
 import { CxLink, clubRoute, useClassicContinue } from '../classic';
@@ -9,16 +9,21 @@ import { stageLabel } from './Fixtures';
 import { ordinal } from './Competitions';
 import { leagueRows } from '../../game/competitions';
 
+/** Dagens turneringer på kampdagsskærmen: kun ens eget lands, de europæiske og dem, klubben er med i (ens egen først) */
+export function matchDayComps(g: GameState, id: number): { comps: string[]; today: Fixture[]; mine?: Fixture } {
+  const mine = g.fixtures[id];
+  const date = mine?.date ?? g.date;
+  const myNation = g.clubs[g.userClub]?.nation;
+  const today = Object.values(g.fixtures).filter((f) => f.date === date && (f.home === g.userClub || f.away === g.userClub || g.comps[f.comp]?.nation === myNation || g.comps[f.comp]?.nation === -1 || g.comps[f.comp]?.clubs.includes(g.userClub)));
+  const comps = [...new Set(today.map((f) => f.comp))].sort((a, b) => Number(b === mine?.comp) - Number(a === mine?.comp) || (compName(g.comps[a]?.name) ?? '').localeCompare(compName(g.comps[b]?.name) ?? ''));
+  return { comps, today, mine };
+}
+
 export function MatchDay({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
-  const mine = g.fixtures[id];
+  const { comps, today, mine } = matchDayComps(g, id);
   const date = mine?.date ?? g.date;
-  // CM 01/02: kun turneringerne i ens eget land, de europæiske og dem, klubben er med i (ikke hele verdens kampe)
-  const myNation = g.clubs[g.userClub]?.nation;
-  const today = Object.values(g.fixtures).filter((f) => f.date === date && (f.home === g.userClub || f.away === g.userClub || g.comps[f.comp]?.nation === myNation || g.comps[f.comp]?.nation === -1 || g.comps[f.comp]?.clubs.includes(g.userClub)));
-  // ens egen turnering først, derefter de øvrige
-  const comps = [...new Set(today.map((f) => f.comp))].sort((a, b) => Number(b === mine?.comp) - Number(a === mine?.comp) || (compName(g.comps[a]?.name) ?? '').localeCompare(compName(g.comps[b]?.name) ?? ''));
   const [i, setI] = useRouteState('mdi', 0);
   const cid = comps[Math.min(i, comps.length - 1)];
   // Continue Game bladrer videre til næste turnering, når dagens kampe er spillet (CM 01/02); den sidste går videre i spillet

@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { dateFmt, has, money, natName, t } from '../../i18n';
+import { compName, dateFmt, has, money, natName, t } from '../../i18n';
 import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
@@ -26,6 +26,11 @@ export function Head({ title, children, action }: { title: ReactNode; children?:
 export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
+  if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
+  // placering som ordenstal ("1st", "1.")
+  if (typeof p.place === 'number') { const n = p.place; p.place = t('cl.locale').startsWith('en') ? `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}` : `${n}.`; }
+  // ældre nyheder uden efternavn (fx "Irwin resumes full training"): det sidste ord i navnet
+  if (p.last === undefined && typeof p.player === 'string') p.last = p.player.split(' ').at(-1) ?? p.player;
   // brødtekster (CM 01/02-stil): varighed og resultat som ord
   if (typeof p.days === 'number') p.dur = p.days <= 10 ? t('news.dur.days', { n: p.days }) : t('news.dur.weeks', { n: Math.max(2, Math.round(p.days / 7)) });
   if (typeof p.res === 'string') p.resWord = t(`news.res.${p.res}`);

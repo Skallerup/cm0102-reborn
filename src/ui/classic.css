@@ -1068,8 +1068,8 @@
 /* kampskærmens faner målt i CM 01/02 (7/11): gennemsigtigt panel 16 px inde, normal skrift */
 @media (min-width: 761px) {
   .cx-mo { margin: 0 16px; padding: 4px 0 10px; }
-  .cx-mo-meta { margin: 2px 0; padding: 7px 16px; background: rgba(0, 0, 0, 0.25); }
-  .cx-mo-meta span { background: none; padding: 0 16px; font-size: 13px; font-weight: 400; }
+  .cx-mo-meta { margin: 4px 0; }
+  .cx-mo-meta span { background: rgba(0, 0, 0, 0.45); padding: 6px 36px; font-size: 13px; font-weight: 400; }
   .cx-mo-scorers { font-weight: 400; }
   .cx-mo-goal b { color: #fff21f; font-weight: 400; }
   .cx-ms { margin: 0 16px; padding: 4px 0; gap: 2px; background: rgba(0, 0, 0, 0.3); }
@@ -1148,3 +1148,5 @@
 }
 :root[data-skin='retro'] button.cx-sq-tag.yel { background: #c8c24a; border-color: #e8e27a #7a7420 #7a7420 #e8e27a; color: #10164e; }
 @media (min-width: 761px) { .cx-mo-line { font-weight: 500; font-size: 22px; } }
+.cx-live-mv { display: inline-block; width: 14px; font-size: 10px; vertical-align: 3px; }
+.cx-live-mv.up::before { content: '▲'; color: #fff21f; } .cx-live-mv.down::before { content: '▼'; color: #ff3b3b; }

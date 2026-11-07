@@ -1637,10 +1637,11 @@ function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: Fixture
   };
   const play = (home: number, away: number, hg: number, ag: number, sign: 1 | -1) => { apply(home, hg, ag, sign); apply(away, ag, hg, sign); };
   // de andre kampe er allerede spillet færdig i motoren – træk dem ud og læg stillingen i minuttet ind igen
+  for (const o of others) if (o.result) play(o.home, o.away, o.result.hg, o.result.ag, -1);
+  // placeringen før dagens kampe (pilene ▲/▼ ved klubberne, som i CM 01/02)
+  const before = new Map(sortTable([...rows.values()].map((r) => ({ ...r }))).map((r, i) => [r.club, i]));
   for (const o of others) {
-    if (!o.result) continue;
-    play(o.home, o.away, o.result.hg, o.result.ag, -1);
-    if (!kicked) continue;
+    if (!o.result || !kicked) continue;
     const goals = o.result.scorers.filter(([m]) => m <= (finished ? 200 : minute));
     play(o.home, o.away, goals.filter(([, x]) => x === 0).length, goals.filter(([, x]) => x === 1).length, 1);
   }
@@ -1650,7 +1651,8 @@ function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: Fixture
   const row = (r: TableRow, i: number) => (
     <tr key={r.club}>
       <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
-      <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.short}</td>
+      <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>
+        <span className={`cx-live-mv ${(before.get(r.club) ?? i) > i ? 'up' : (before.get(r.club) ?? i) < i ? 'down' : ''}`} />{g.clubs[r.club]?.short}</td>
       <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td>
       <td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td>
     </tr>

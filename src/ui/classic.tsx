@@ -13,6 +13,7 @@ import { compName, natName, t } from '../i18n';
 import { leagueRows } from '../game/competitions';
 import { useNav, type Route, type ScreenName } from './core';
 import { Crest } from './components';
+import { matchDayComps } from './screens/MatchDayClassic';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
 
@@ -177,6 +178,8 @@ export function ClubList({ ids, empty, suffix }: { ids: number[]; empty: ReactNo
 }
 const mgrName = (g: GameState) => g.manager?.name ?? '';
 const own = (g: GameState) => g.userClub || undefined;
+/** Turneringernes titelbjælke i CM 01/02 */
+const compColors = (id?: string) => (id === 'CL' ? { bg: '#000000', fg: '#e3262a' } : id === 'UEFA' ? { bg: '#2f5bd6', fg: '#ffffff' } : { bg: '#ffffff', fg: '#1a2a8c' });
 
 const CLUB_TABS: ScreenName[] = ['squad', 'transfers', 'assistant', 'fixtures', 'club'];
 // CM 01/02: Tactics ▸ · Training ▸ · Last Match ▸ · "1st in PL" ▸ (placering i ligaen) · History ▸
@@ -188,7 +191,9 @@ const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
 
 const HUBS: Partial<Record<ScreenName, Hub>> = {
   // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
-  competitions: { colors: () => ({ bg: '#ffffff', fg: '#1a2a8c' }) },
+  competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
+  // kampdagen: turneringens farver (CM 01/02 – Champions League sort/rød, UEFA Cup blå, resten hvid)
+  matchday: { colors: (g, r) => { const { comps } = matchDayComps(g, Number(r.id)); return compColors(comps[Math.min(Number(r.state?.mdi ?? 0), comps.length - 1)]); } },
   // Manager Stats / Job Information / Transfers (CM 01/02): mørkeblå titelbjælke
   nation: { colors: () => ({ bg: '#0a0a8e', fg: '#ffffff' }) },
   squad: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
