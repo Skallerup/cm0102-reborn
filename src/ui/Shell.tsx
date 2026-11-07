@@ -39,7 +39,7 @@ import { Tactics } from './screens/Tactics';
 import { ClubTacticsView } from './screens/TacticsClassic';
 import { Training } from './screens/Training';
 import { Fixtures } from './screens/Fixtures';
-import { Competitions } from './screens/Competitions';
+import { Competitions, UefaCoefficients } from './screens/Competitions';
 import { Transfers } from './screens/Transfers';
 import { Scouting } from './screens/Scouting';
 import { StaffScreen } from './screens/Staff';
@@ -92,7 +92,7 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international'];
+const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients'];
 
 /** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
 function selectionProblems(): string | null {
@@ -586,6 +586,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'matchday': return <MatchDay id={Number(route.id)} />;
     case 'intlday': return <IntlDay />;
+    case 'coefficients': return <UefaCoefficients />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;

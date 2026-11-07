@@ -126,6 +126,12 @@ async function run(look) {
     await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
   });
+  if (look === 'klassisk') await step('UEFA Coefficients', async () => {
+    await go({ name: 'coefficients' });
+    await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });
+    if ((await page.locator('.cx-coef tbody tr').count()) < 10) throw new Error('for få lande i UEFA Coefficients');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-koefficienter.png` });
+  });
   if (look === 'klassisk') await step('slutrundens kampdag (VM)', async () => {
     await gs(() => { const g = window.__cm.gs(); g.intl ??= { results: [], history: [] }; g.intl.results.unshift({ date: g.date, home: g.clubs[g.userClub].nation, away: (g.clubs[g.userClub].nation + 1) % g.nations.length, hg: 1, ag: 0, kind: 'wc', stage: 'F' }); });
     await go({ name: 'intlday' });

@@ -2,7 +2,8 @@ import { useEffect, useRef } from 'react';
 
 import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
-import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
+import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
+import { isOriginal2001 } from '../../game/rules2001';
 import { gs, squad } from '../../game/state';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
 import { compName, dateFmt, t, natName } from '../../i18n';
@@ -366,5 +367,53 @@ export function CompHistory({ comp }: { comp: Competition }) {
         </tbody>
       </table>
     </Panel>
+  );
+}
+
+/**
+ * UEFA Coefficients (CM 01/02): landene i rækkefølge med pladser i Champions League (ECC), UEFA Cup og den tredje turnering
+ * (INTER = Intertoto i 2001, ellers Conference League) og koefficienten. Koefficienten er *estimeret*: et grundtal ud fra de
+ * fem bedste klubbers omdømme (de foregående sæsoner) plus sæsonens europæiske point (sejr 2, uafgjort 1) pr. deltagende klub.
+ */
+export function UefaCoefficients() {
+  const g = gs();
+  const { nav } = useNav();
+  const ranking = nationRanking();
+  const reps = new Map<number, number[]>();
+  for (const c of Object.values(g.clubs)) if (g.leagues[c.league]?.tier === 1) reps.set(c.nation, [...(reps.get(c.nation) ?? []), c.rep]);
+  const pts = new Map<number, number>(), clubs = new Map<number, Set<number>>();
+  for (const f of Object.values(g.fixtures)) {
+    if (!f.result || g.comps[f.comp]?.nation !== -1) continue;
+    for (const [club, gf, ga] of [[f.home, f.result.hg, f.result.ag], [f.away, f.result.ag, f.result.hg]] as const) {
+      const n = g.clubs[club]?.nation;
+      if (n === undefined) continue;
+      pts.set(n, (pts.get(n) ?? 0) + (gf > ga ? 2 : gf === ga ? 1 : 0));
+      clubs.set(n, (clubs.get(n) ?? new Set()).add(club));
+    }
+  }
+  const coef = (n: number) => {
+    const top = (reps.get(n) ?? []).sort((a, b) => b - a).slice(0, 5);
+    const base = Math.max(0, (top.reduce((s, v) => s + v, 0) / Math.max(1, top.length) - 40) * 1.4);
+    return base + (pts.get(n) ?? 0) / Math.max(1, clubs.get(n)?.size ?? 1);
+  };
+  const old = isOriginal2001();
+  return (
+    <div>
+      <Head title={t('cl.cm.coeff')} />
+      <div className="cx-subtitle">{g.season}/{old ? String(g.season + 1).slice(3) : String(g.season + 1).slice(2)}</div>
+      <div className="cx-tbl-wrap cx-coef">
+        <table className="cx-tbl cx-league">
+          <thead><tr><th className="btn-col" /><th className="btn-col" /><th className="c-num">ECC</th><th className="c-num">UEFA</th><th className="c-num">{old ? 'INTER' : 'UECL'}</th><th className="c-num">{t('cl.coef.coef')}</th></tr></thead>
+          <tbody>{ranking.map((n, i) => (
+            <tr key={n}>
+              <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
+              <td className="cx-lg-club" onClick={() => nav({ name: 'international', id: n })}>{natName(g.nations[n]?.name)}</td>
+              <td className="c-num c-yel">{CL_SPOTS[i] ?? 0}</td><td className="c-num c-yel">{UEFA_SPOTS[i] ?? 0}</td><td className="c-num c-yel">{CONF_SPOTS[i] ?? 0}</td>
+              <td className="c-val">{coef(n).toFixed(2)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
   );
 }

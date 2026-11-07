@@ -4,7 +4,7 @@ import type { Fixture, GameState } from '../../game/types';
 import { compName, natName, t } from '../../i18n';
 import { intlDayResults } from '../../game/international';
 import { useGame, useNav, useRouteState } from '../core';
-import { CxLink, clubRoute, useClassicContinue } from '../classic';
+import { CxLink, clubRoute, compAbbr, useClassicContinue } from '../classic';
 import { Head } from './common';
 import { stageLabel } from './Fixtures';
 import { ordinal } from './Competitions';
@@ -42,7 +42,7 @@ export function MatchDay({ id }: { id: number }) {
   // alle kampe spilles på samme tid: før ens egen kamp er spillet, vises de andre resultater ikke
   const before = !!g.pendingFixture && mine?.id === g.pendingFixture && !mine.result;
   const played = !before && list.length > 0 && list.every((f) => f.result);
-  const abbr = (lg?: string) => (lg ? (compName(g.comps[lg]?.name) ?? '').split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w[0] ?? '')).join('').toUpperCase().slice(0, 3) : '');
+  const abbr = (lg?: string) => (lg ? compAbbr(compName(g.comps[lg]?.name) ?? '').slice(0, 3) : '');
   // ligakampe: placeringen i tabellen (CM 01/02: "4th" · "1st"); pokalkampe: ligaens forkortelse, internationale: landet
   const pos = comp?.type === 'league' ? new Map(leagueRows(comp).map((r, k) => [r.club, k + 1])) : null;
   // europæisk gruppespil/ligafase (CM 01/02 "Phase 1 Group G"): placeringen i gruppen/tabellen

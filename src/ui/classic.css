@@ -1176,3 +1176,5 @@
 .cx-mom-line { margin: 4px 16px 0; padding: 8px 12px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-size: 18px; }
 .cx-mom-line .cx-link { color: #fff; }
 .cx-board .cm-name { display: inline-flex; align-items: center; gap: 12px; }
+@media (min-width: 761px) { .cx-coef { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 300px); overflow-y: auto; } }
+.cx-coef .cx-league .c-num { color: #fff21f; }

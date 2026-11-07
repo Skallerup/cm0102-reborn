@@ -269,7 +269,7 @@ export function CompetitionsMenu() {
   if (euro.length) items.push({ key: 'eu', label: t('cl.cm.european'), sub: [
     ...euro.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
     sep('s3'), awards,
-    { key: 'coef', label: t('cl.cm.coeff'), disabled: true, onClick: () => {} },
+    { key: 'coef', label: t('cl.cm.coeff'), onClick: () => nav({ name: 'coefficients' }) },
   ] });
   // nationerne: ens egen først, så i ligaernes rækkefølge
   const own = g.clubs[g.userClub]?.nation;

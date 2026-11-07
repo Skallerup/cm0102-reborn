@@ -180,6 +180,14 @@ export function ClubList({ ids, empty, suffix }: { ids: number[]; empty: ReactNo
 }
 const mgrName = (g: GameState) => g.manager?.name ?? '';
 const own = (g: GameState) => g.userClub || undefined;
+/** Ligaens forkortelse ("Premier League" → PL, "English Premier Division" → EPD, "LaLiga" → LL, "Superligaen" → SUP) */
+export function compAbbr(name: string): string {
+  const words = name.split(/\s+/).filter((w) => /^[A-ZÆØÅ0-9]/.test(w));
+  if (words.length >= 2) return words.map((w) => (/^\d/.test(w) ? w : w[0])).join('').slice(0, 4);
+  const w = words[0] ?? name;
+  const caps = w.replace(/[^A-ZÆØÅ0-9]/g, '');
+  return caps.length >= 2 ? caps.slice(0, 4) : w.slice(0, 3).toUpperCase();
+}
 /** Turneringernes titelbjælke i CM 01/02 */
 const compColors = (id?: string) => (id === 'CL' ? { bg: '#000000', fg: '#e3262a' } : id === 'UEFA' ? { bg: '#2f5bd6', fg: '#ffffff' } : { bg: '#ffffff', fg: '#1a2a8c' });
 
@@ -194,6 +202,8 @@ const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
 const HUBS: Partial<Record<ScreenName, Hub>> = {
   // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
   competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
+  // UEFA Coefficients (CM 01/02): sort med røde bogstaver som Champions League
+  coefficients: { colors: () => compColors('CL') },
   // slutrundens kampdag (CM 01/02: guldfarvet titel for FIFA World Cup)
   intlday: { colors: () => ({ bg: '#d2aa4a', fg: '#ffffff' }) },
   // kampdagen: turneringens farver (CM 01/02 – Champions League sort/rød, UEFA Cup blå, resten hvid)
@@ -307,7 +317,7 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
       const comp = lg ? g.comps[lg] : undefined;
       const rows = comp?.type === 'league' ? leagueRows(comp) : [];
       const pos = rows.findIndex((r) => r.club === cid) + 1;
-      const abbr = (compName(g.leagues[lg ?? '']?.name) ?? '').split(/\s+/).filter((w) => /^[A-ZÆØÅ0-9]/.test(w)).map((w) => (/^\d/.test(w) ? w : w[0])).join('').slice(0, 4);
+      const abbr = compAbbr(compName(g.leagues[lg ?? '']?.name) ?? '');
       out.push({ key: k, label: pos > 0 && abbr ? t('cl.posIn', { pos: ordinal(pos), lg: abbr }) : label(k), route: { name: 'competitions', id: lg }, disabled: !lg, arrow: true });
     } else if (k === 'clubHistory') {
       const cid = viewed || g.userClub;
