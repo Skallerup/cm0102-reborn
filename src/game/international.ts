@@ -144,7 +144,8 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
 
 /** CM 01/02: én nyhed pr. landshold med brugerens spillere – "Giggs selected in Wales squad" / "Man Utd players selected in
  *  England squad" – "… have been called up to the England squad for the match against Holland." (to dage før vinduet) */
-function callUpNews(nations: number[], opp: Map<number, number> = new Map()) {
+/** Udtagelsesnyhed pr. landshold; `tour` = slutrunde (CM 01/02: "France squad chosen for FIFA World Cup") */
+function callUpNews(nations: number[], opp: Map<number, number> = new Map(), tour?: string) {
   const g = gs();
   const squads = new Map(nations.map((n) => [n, new Set(nationSquad(n).map((p) => p.id))]));
   forEachHuman(() => {
@@ -154,9 +155,9 @@ function callUpNews(nations: number[], opp: Map<number, number> = new Map()) {
       const mine = Object.values(g.players).filter((p) => p.club === g.userClub && ids.has(p.id));
       if (!mine.length) continue;
       const o = opp.get(n);
-      addNews({ cat: 'general', key: mine.length === 1 ? 'intl.sel1' : 'intl.selN', params: {
+      addNews({ cat: 'general', key: tour ? 'intl.tourSel' : mine.length === 1 ? 'intl.sel1' : 'intl.selN', params: {
         player: mine[0].last, club: club.short, nation: g.nations[n]?.name ?? '', opp: o !== undefined ? g.nations[o]?.name ?? '' : '',
-        names: mine.length <= 3 ? mine.map((p) => `${p.first} ${p.last}`.trim()).join(' & ') : '', n: mine.length, ...(o === undefined ? { noOpp: 1 } : {}),
+        names: mine.length <= 3 ? mine.map((p) => `${p.first} ${p.last}`.trim()).join(' & ') : '', n: mine.length, ...(o === undefined ? { noOpp: 1 } : {}), ...(tour ? { tour } : {}),
       }, link: mine.length === 1 ? { kind: 'player', id: mine[0].id } : { kind: 'club', id: club.id } });
     }
   });
@@ -221,7 +222,7 @@ function startTournament(name: 'wc' | 'euro', year: number) {
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   state().tournament = t;
   state().qual = undefined;
-  callUpNews(field);
+  callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
 
@@ -246,7 +247,7 @@ function startContinental(name: 'copa' | 'afcon' | 'asian', year: number) {
   for (const n of field) t.table[n] = { n, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0 };
   const st = state();
   st.cont = [...(st.cont ?? []).filter((x) => x.name !== name), t];
-  callUpNews(field);
+  callUpNews(field, new Map(), name);
   forEachHuman(() => addNews({ cat: 'general', key: `intl.start.${name}`, params: { year, n: field.length } }));
 }
 

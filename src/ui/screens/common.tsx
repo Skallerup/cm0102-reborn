@@ -27,6 +27,9 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
+  if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
+  // navnelister ("A & B & C") som i originalen: "A, B and C"
+  if (typeof p.names === 'string' && p.names.includes(' & ')) { const x = p.names.split(' & '); p.names = `${x.slice(0, -1).join(', ')} ${t('common.and')} ${x.at(-1)}`; }
   // placering som ordenstal ("1st", "1.")
   if (typeof p.place === 'number') { const n = p.place; p.place = t('cl.locale').startsWith('en') ? `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}` : `${n}.`; }
   // ældre nyheder uden efternavn (fx "Irwin resumes full training"): det sidste ord i navnet
@@ -73,6 +76,13 @@ export function newsBody(n: NewsItem) {
     const k = n.key === 'intl.sel1' ? (noOpp ? 'intl.sel1.noOpp' : 'intl.sel1.body') : many ? (noOpp ? 'intl.selN.manyNoOpp' : 'intl.selN.many') : noOpp ? 'intl.selN.noOpp' : 'intl.selN.body';
     const params = newsParams(n);
     if (many && typeof params.n === 'number') params.n = has(`num.${params.n}`) ? t(`num.${params.n}`) : params.n;
+    return t(k, params);
+  }
+  // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
+  if (n.key === 'intl.tourSel') {
+    const params = newsParams(n);
+    const k = !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
+    if (typeof params.n === 'number') params.n = has(`num.${params.n}`) ? t(`num.${params.n}`) : params.n;
     return t(k, params);
   }
   const k = `${n.key}.body`;

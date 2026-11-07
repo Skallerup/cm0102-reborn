@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Nyheder: `callUpNews(…, tour)` → `intl.tourSel` (slutrunder; brødtekst i newsBody), `names` med " & " vises som
+  "A, B and C" (newsParams), `leagueManagerOfYear` (awards.ts, *estimeret*: placering mod omdømme + mesterbonus) → `award.lgManagerMe`/
+  `award.lgManager` for brugerens liga ved gallaen.
 - 2026-11-07 – Sæsonslut efter originalen: `fin.awarded` (finance.ts, ligapræmien som nyhed via asOwner; `place` → ordenstal og
   `comp` → compName i newsParams), `news.recovered` = "{last} resumes full training" (params last/injury; ældre nyheder får `last`
   fra navnet). `compColors` (classic.tsx): CL sort/rød, UEFA blå, resten hvid – hubs `competitions` og `matchday`
