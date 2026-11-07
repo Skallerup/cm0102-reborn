@@ -58,3 +58,9 @@ Go on Holiday · Holiday until next match · — · Retire. (Grøn menu ved side
   Save As; Edit = Undo/Copy/Copy All/Paste/Reflect/Show Runs; View har mange flere instruktionskolonner.
 - Penalty Takers som egen skærm med rækkefølge 1-50. Træningsskærmen med program-faner og tabel (se ovenfor).
 - Undermenuer (Set To Default ▸) åbner ikke ved museflyt i cmctl – kræver nok flere move-events.
+
+## Mål og farver (målt 7/11 i 30-news.png, logiske px i et 1280×804-vindue)
+Sidebjælke 144 px (bg #00006e→#00000f), knapper 127×57 px med 3 px imellem, fyld #00005e, kant #000085 (op/venstre) / #00003e;
+dato/pile #000076. Indhold starter 16 px fra sidebjælken. Titel 81 px (#a52116, kant #ea3323 / #520b06), faner 48 px #1c025e,
+valgt fane gul tekst + 1 px gul kant (#fffe54), 12 px mellem titel og faner. Back/Next 48 px #838183, bredde 3:1.
+Skrift: normal vægt overalt (kun titlen kraftig). Fotoet ligger bag hele højre side (også titel og fod).

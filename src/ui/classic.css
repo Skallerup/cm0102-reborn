@@ -948,3 +948,44 @@
 .cx-sub-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; }
 /* taktikbanen (CM 01/02): spillerne i holdets trøjefarve, efternavnet i gult under */
 .cx-tac-pitch .cx-tac-nm { color: #fff21f; }
+
+/* ===== CM 01/02 1:1 – mål og farver målt i originalen (1280×804-vindue, logiske px) =====
+   sidebjælke 144 px (knapper 127×57, 3 px imellem), titel 81 px, faner 48 px (12 px under titlen), Back/Next 48 px,
+   16 px fra sidebjælken til indholdet. Normal skriftvægt (ikke fed). Fotoet ligger bag hele højre side inkl. titel og fod. */
+@media (min-width: 761px) {
+  .shell.cx { grid-template-columns: 144px minmax(0, 1fr); background-color: #0b0f33; background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.45), rgba(6, 9, 34, 0.7)), var(--cx-photo, none); background-size: cover; background-position: center; }
+  .shell.cx .main.cx-main { padding: 16px 16px 8px; background: transparent; }
+  .shell.cx .main.cx-main.cx-stadium { background: transparent; }
+  .cx-head { background: transparent; margin: -16px -16px 10px; padding: 16px 16px 0; gap: 12px; position: static; }
+  .cx-foot { background: transparent; border-top: 0; padding: 0 16px 10px; gap: 12px; }
+
+  .cx-side { padding: 8px 8px; gap: 3px; background: linear-gradient(180deg, #00006e 0%, #000060 45%, #00000f 100%); border-right: 0; }
+  .cx-date { min-height: 57px; background: #000076; border: 1px solid; border-color: #0000a5 #00003e #00003e #0000a5; }
+  .cx-date b, .cx-date span { font-size: 14px; font-weight: 500; }
+  .cx-arrows { gap: 3px; }
+  .cx-arrows button { height: 57px; background: #000076; border: 1px solid; border-color: #0000a5 #00003e #00003e #0000a5; color: #fffe54; }
+  :root[data-skin='retro'] .cx-sbtn, :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { min-height: 57px; background: #00005e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; font-size: 14px; font-weight: 500; text-shadow: none; }
+  .cx-sbtn:hover, .cx-arrows button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: #00007a; }
+
+  .cx-title { min-height: 81px; border-width: 3px; }
+  .cx-title h2 { font-weight: 600; font-size: clamp(22px, 2.6vw, 38px); }
+  .cx-tabrow button, .cx-subrow button, .shell.cx .main .tabs button { min-height: 48px; background: #1c025e; font-size: 14px; font-weight: 500; text-shadow: none; border: 1px solid #1c025e; }
+  .cx-tabrow button:hover:not(:disabled), .cx-subrow button:hover:not(:disabled), .shell.cx .main .tabs button:hover { background: #26087a; }
+  .cx-tabrow button.on, .cx-subrow button.on, .shell.cx .main .tabs button.on { background: #1c025e; color: #fffe54; border-color: #fffe54; box-shadow: none; }
+  .cx-backnext button { min-height: 48px; background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; font-size: 24px; font-weight: 500; color: #e8e8e8; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45); }
+  .cx-backnext button:hover:not(:disabled) { background: #939193; }
+  .cx-backnext button:disabled { color: #a9a7a9; }
+}
+@media (min-width: 761px) {
+  /* sidebjælkens tekst: hvid; Game Options gul, managerens navn cyan (som originalen) */
+  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { color: #fff; }
+  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-gopt { color: #fffe54; }
+  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: #6fe3ff; }
+  /* mørke mellemrum mellem knapperne */
+  .cx-side { background: linear-gradient(180deg, #000038 0%, #00002a 50%, #00000a 100%); }
+  .cx-backnext { grid-template-columns: 3fr 1fr; }
+  /* nyhedslisten: normal skrift, lavere rækker */
+  .cx-inbox .cx-ndate, .cx-inbox .cx-ntitle { padding-top: 4px; padding-bottom: 4px; font-weight: 500; }
+  .cx-inbox .cx-nrow.unread .cx-ntitle { font-weight: 600; }
+  .cx-inbox .cx-nbody { font-weight: 500; }
+}
