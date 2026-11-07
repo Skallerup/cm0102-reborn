@@ -63,7 +63,7 @@ import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerM
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { IntlDay, MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue } from './classic';
+import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -485,8 +485,8 @@ export function Shell() {
           {running ? (
             // simulering: én grå bjælke med datoen, der behandles (klik = stop)
             <button className="cx-running" onClick={() => { stopRef.current = true; }} title={t('common.stop')}>
-              <span className="cx-ball" aria-hidden>⚽</span>
-              {new Date(`${running}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke */}
+              {cxLongDate(running)}
             </button>
           ) : (
             matchSide?.s.editing && route.name === 'match' && matchSide.s.lastView ? (
