@@ -5,11 +5,13 @@
 // sess:{sid} → uid (180 dage), saves:{uid} (gemte spil: id → metadata + Blob-URL).
 // Selve spillene (≈4-5 MB gzip) uploades direkte fra browseren til Vercel Blob (op=upload).
 // Mails sendes med Resend (RESEND_API_KEY; afsender MAIL_FROM, standard login@cm0102reborn.com).
+// Opdateringsmails (samtykke, afmelding, spørgsmålet i spillet): op=news / unsub / prompt – se _lib/mail.ts.
 import { Redis } from '@upstash/redis';
 import { del } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { createHash, randomBytes, randomInt } from 'node:crypto';
 import { SITE } from './_lib/discord.js';
+import { isSubscribed, subscribe, unsubscribe, validUnsub } from './_lib/mail.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 const LOGIN_TTL = 15 * 60;
@@ -135,12 +137,14 @@ export async function GET(request: Request) {
   const op = new URL(request.url).searchParams.get('op') ?? 'me';
   // er login slået til? (kræver en mail-nøgle)
   if (op === 'config') return json({ mail: !!process.env.RESEND_API_KEY });
+  // afmeldingslinket i opdateringsmails (virker uden login)
+  if (op === 'unsub') return unsubPage(request);
   const uid = await uidOf(request);
   if (!uid) return json({ error: 'auth' }, 401);
   if (op === 'me') {
     const a = await accountOf(uid);
     if (!a) return json({ error: 'auth' }, 401);
-    return json({ uid, email: a.email, profile: a.profile, saves: await listSaves(uid) });
+    return json({ uid, email: a.email, profile: a.profile, saves: await listSaves(uid), news: await isSubscribed(redis, a.email) });
   }
   if (op === 'saves') return json({ saves: await listSaves(uid) });
   return json({ error: 'op' }, 400);
@@ -149,11 +153,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const op = new URL(request.url).searchParams.get('op') ?? '';
   if (op === 'upload') return upload(request);
+  // mailprogrammers "afmeld med ét klik" (List-Unsubscribe-Post) poster til samme link
+  if (op === 'unsub') return unsubPage(request);
   let body: Record<string, unknown>;
   try { body = await request.json(); } catch { return json({ error: 'bad-json' }, 400); }
   const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'x';
 
   switch (op) {
+    // spørgsmålet i spillet efter første sæson: kun tællere (ingen personlige data)
+    case 'prompt': {
+      const a = String(body.answer ?? '');
+      if (!['asked', 'yes', 'later', 'no'].includes(a)) return json({ error: 'answer' }, 400);
+      if (await limited(`rl:prompt:${ip}`, 20, 3600)) return json({ ok: true });
+      await redis.hincrby('news:prompt', a, 1);
+      return json({ ok: true });
+    }
     case 'request': {
       const email = normEmail(body.email);
       if (!validEmail(email)) return json({ error: 'email' }, 400);
@@ -194,6 +208,14 @@ export async function POST(request: Request) {
   const uid = await uidOf(request);
   if (!uid) return json({ error: 'auth' }, 401);
   switch (op) {
+    // opdateringsmails til og fra (kræver login, så e-mailen er bekræftet)
+    case 'news': {
+      const email = await redis.get<string>(`acct:uid:${uid}`);
+      if (!email) return json({ error: 'auth' }, 401);
+      if (body.on === true) await subscribe(redis, email, String(body.lang ?? 'en').slice(0, 2));
+      else await unsubscribe(redis, email);
+      return json({ ok: true, news: body.on === true });
+    }
     case 'logout': {
       const sid = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
       await redis.del(`sess:${sha(sid)}`);
@@ -238,6 +260,7 @@ export async function POST(request: Request) {
       const saves = await listSaves(uid);
       if (saves.length) await del(saves.map((s) => s.url)).catch(() => {});
       await redis.del(`saves:${uid}`, `acct:uid:${uid}`, ...(email ? [`acct:${email}`] : []));
+      if (email) await redis.hdel('news:subs', email);
       await redis.srem('acct:all', uid);
       const sid = (request.headers.get('authorization') ?? '').replace(/^Bearer\s+/i, '').trim();
       await redis.del(`sess:${sha(sid)}`);
@@ -245,4 +268,20 @@ export async function POST(request: Request) {
     }
   }
   return json({ error: 'op' }, 400);
+}
+
+/** Afmelding fra opdateringsmails (linket i hver mail) – en lille side på dansk eller engelsk */
+async function unsubPage(request: Request): Promise<Response> {
+  const u = new URL(request.url);
+  const email = normEmail(u.searchParams.get('e'));
+  const ok = !!email && await validUnsub(redis, email, String(u.searchParams.get('t') ?? ''));
+  if (ok) await unsubscribe(redis, email);
+  const da = (request.headers.get('accept-language') ?? '').toLowerCase().startsWith('da');
+  const msg = ok ? (da ? 'Du er nu afmeldt opdateringsmails fra CM Reborn.' : "You've been unsubscribed from CM Reborn updates.")
+    : (da ? 'Linket er ugyldigt.' : 'The link is not valid.');
+  const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CM Reborn</title></head>
+<body style="margin:0;background:#070b16;font-family:Inter,Segoe UI,Arial,sans-serif;color:#e6ebf5"><div style="max-width:480px;margin:0 auto;padding:48px 24px">
+<div style="font-size:22px;font-weight:800;margin-bottom:20px">CM <span style="color:#facc15">Reborn</span></div><p style="font-size:16px">${msg}</p>
+<p><a href="${SITE}" style="color:#facc15">${da ? 'Til spillet' : 'Back to the game'}</a></p></div></body></html>`;
+  return new Response(html, { status: ok ? 200 : 400, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }

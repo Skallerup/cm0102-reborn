@@ -1,4 +1,5 @@
 import { BoardScreen } from './screens/Board';
+import { NewsPrompt, useNewsPrompt } from './Login';
 import type { GameState, HolidaySettings } from '../game/types';
 import type { Route } from './core';
 import { addDays } from '../game/dates';
@@ -156,6 +157,8 @@ export function Shell() {
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
+  // efter første afsluttede sæson: tilbyd en konto (skygemte spil) og opdateringsmails – én gang, aldrig i fællesspil
+  const [newsAsk, closeNewsAsk] = useNewsPrompt(g.manager.history?.length ?? 0, !!g.humans?.length);
   // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
   useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs(), loadClubPacks()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
   const bgDay = bgChanges() ? g.date : '2001-07-01';
@@ -546,6 +549,7 @@ export function Shell() {
           <button onClick={() => { stopRef.current = true; }}>{t('common.stop')}</button>
         </div>
       )}
+      {newsAsk && !['match', 'matchday', 'report'].includes(route.name) && <NewsPrompt seasons={g.manager.history?.length ?? 0} onClose={closeNewsAsk} />}
       {holiday !== null && <HolidayPanel untilMatch={holiday} onClose={() => setHoliday(null)} onGo={(set) => {
         setHoliday(null);
         const g2 = gs();

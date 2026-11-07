@@ -7,6 +7,7 @@
 //          GET ?op=overview | new-careers | managers | manager&pid= | applications | rooms | rankings&board=
 //          POST { op: 'app-status' | 'app-delete' | 'unrank' }
 import { Redis } from '@upstash/redis';
+import { renderNews, sendNews, unsubLink, type Sub } from './_lib/mail.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
@@ -118,6 +119,16 @@ export async function GET(request: Request) {
   }
 
   if (op === 'applications') return json({ rows: await listApplications() });
+  // opdateringsmails: tilmeldte, frameldinger, svar på spørgsmålet i spillet og tidligere udsendelser
+  if (op === 'mail') {
+    const [subs, unsubs, prompt, sent] = await Promise.all([
+      redis.hgetall<Record<string, Sub | string>>('news:subs'), redis.hgetall<Record<string, string>>('news:unsubs'),
+      redis.hgetall<Record<string, number>>('news:prompt'), redis.lrange<string | Record<string, unknown>>('news:sent', 0, 19),
+    ]);
+    const rows = Object.entries(subs ?? {}).map(([email, v]) => ({ email, ...(typeof v === 'string' ? JSON.parse(v) as Sub : v) })).sort((a, b) => b.at.localeCompare(a.at));
+    const un = Object.entries(unsubs ?? {}).map(([email, at]) => ({ email, at: String(at) })).sort((a, b) => b.at.localeCompare(a.at));
+    return json({ subs: rows, unsubs: un, prompt: prompt ?? {}, sent: (sent ?? []).map((x) => (typeof x === 'string' ? JSON.parse(x) : x)), mail: !!process.env.RESEND_API_KEY, testTo: process.env.NOTIFY_EMAIL ?? '' });
+  }
 
   // nye singleplayer-karrierer (logges af api/notify.ts)
   if (op === 'new-careers') {
@@ -201,6 +212,29 @@ export async function POST(request: Request) {
   if (!isAdmin(request)) return json({ error: 'auth' }, 401);
 
   // fjern karrierer fra "New careers" (fx ejerens egne): alle med et af besøgs-id'erne, eller én række (tidspunkt + manager)
+  // send en opdateringsmail: test = kun til NOTIFY_EMAIL (ejeren); ellers alle tilmeldte (evt. kun ét sprog)
+  if (body.op === 'mail-preview') {
+    const subject = clip(body.subject, 120), text = String(body.text ?? '').slice(0, 20000);
+    return json(renderNews(subject, text, clip(body.lang, 2) || 'en', await unsubLink(redis, 'preview@example.com')));
+  }
+  if (body.op === 'mail-send') {
+    const subject = clip(body.subject, 120), text = String(body.text ?? '').slice(0, 20000);
+    if (!subject || !text.trim()) return json({ error: 'empty' }, 400);
+    const lang = clip(body.lang, 2);
+    let to: { email: string; lang: string }[];
+    if (body.test) {
+      const me = process.env.NOTIFY_EMAIL;
+      if (!me) return json({ error: 'NOTIFY_EMAIL not set' }, 400);
+      to = [{ email: me, lang: lang || 'en' }];
+    } else {
+      const subs = await redis.hgetall<Record<string, Sub | string>>('news:subs') ?? {};
+      to = Object.entries(subs).map(([email, v]) => ({ email, lang: (typeof v === 'string' ? JSON.parse(v) as Sub : v).lang }))
+        .filter((r) => !lang || r.lang === lang);
+    }
+    const res = await sendNews(redis, to, subject, text);
+    if (!body.test) { await redis.lpush('news:sent', JSON.stringify({ at: new Date().toISOString(), subject, lang: lang || 'all', ...res })); await redis.ltrim('news:sent', 0, 49); }
+    return json({ ok: true, ...res });
+  }
   if (body.op === 'nc-delete') {
     const vids = new Set((Array.isArray(body.vids) ? body.vids : []).map((v) => clip(v, 24)).filter(Boolean));
     const one = body.at ? { at: clip(body.at, 40), manager: clip(body.manager, 30) } : null;

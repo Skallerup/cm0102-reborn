@@ -28,9 +28,15 @@ const RAW_KEY = /\b(?:c|cl|pi|pih|ti|tih|tac|acc|pitch|ref|sp|match|nav|opt|wx|t
 async function run(look) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
   const page = await ctx.newPage();
+  // kontoens API findes ikke lokalt: lad som om login kan bruges (spørgsmålet om konto/opdateringsmails efter første sæson)
+  const prompts = [];
+  await page.route(/\/api\/account\?op=(config|prompt)/, async (r) => {
+    if (r.request().url().includes('op=prompt')) { prompts.push(JSON.parse(r.request().postData() ?? '{}').answer); return r.fulfill({ json: { ok: true } }); }
+    return r.fulfill({ json: { mail: true } });
+  });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript((theme) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', theme); sessionStorage.setItem('cm0102.play', '1'); }, look === 'klassisk' ? 'retro' : 'club');
+  await page.addInitScript((theme) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); sessionStorage.setItem('cm0102.play', '1'); }, look === 'klassisk' ? 'retro' : 'club');
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
   const gs = (fn, arg) => page.evaluate(fn, arg);
@@ -182,6 +188,19 @@ async function run(look) {
     await page.locator('.cx-tac-row.xi .cx-tac-name').nth(9).click();
     const after = await gs(() => { const t = window.__cm.gs().tactic; return { a: t.lineup[9], b: t.bench[0] }; });
     if (after.a !== before.b || after.b !== before.a) throw new Error(`byttet mislykkedes ${JSON.stringify(before)} → ${JSON.stringify(after)}`);
+  });
+  await step('konto og opdateringsmails efter første sæson', async () => {
+    const title = await t('news.title');
+    await page.evaluate(() => { const g = window.__cm.gs(); g.manager.history = [...(g.manager.history ?? []), { season: 2025, club: g.userClub, league: '', pos: 5 }]; window.__cm.notify?.(); });
+    await go({ name: 'inbox' });
+    await page.waitForSelector(`.modal-head:has-text("${title}")`, { timeout: 10000 });
+    await page.waitForTimeout(500); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/${look}-konto-spoergsmaal.png` });
+    await page.locator('.modal .link-btn', { hasText: await t('news.later') }).click();
+    await page.waitForSelector('.modal-head', { state: 'detached', timeout: 5000 });
+    if (!prompts.includes('asked') || !prompts.includes('later')) throw new Error(`svarene blev ikke talt: ${prompts}`);
+    const st = await page.evaluate(() => localStorage.getItem('cm0102.newsPrompt'));
+    if (!st?.startsWith('later:')) throw new Error(`"Ikke nu" blev ikke husket: ${st}`);
+    await page.evaluate(() => { const g = window.__cm.gs(); g.manager.history = g.manager.history.slice(0, -1); });
   });
   if (look === 'klassisk') await step('Penalty Takers', async () => {
     await go({ name: 'tactics' });

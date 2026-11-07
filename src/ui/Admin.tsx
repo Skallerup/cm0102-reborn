@@ -57,8 +57,8 @@ interface NewCareer { at: string; manager: string; club: string; league: string;
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'starts' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters']];
+type Tab = 'overview' | 'starts' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters' | 'mail';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters'], ['mail', 'E-mail']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -116,6 +116,7 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       {tab === 'skins' && <SkinsAdmin setMsg={setMsg} />}
       {tab === 'credits' && <CreditsAdmin setMsg={setMsg} />}
       {tab === 'supporters' && <SupportersTab />}
+      {tab === 'mail' && <MailTab setMsg={setMsg} />}
     </div></div>
   );
 }
@@ -572,5 +573,83 @@ function CreditsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
           <td><button className="small danger" onClick={async () => { await hubPost('admin:credit', { key: c.id, remove: true }); void load(); }}>Remove</button></td></tr>)}</tbody></table>
       )}
     </Panel>
+  );
+}
+
+// ---------- opdateringsmails ----------
+
+interface MailInfo { subs: { email: string; lang: string; at: string }[]; unsubs: { email: string; at: string }[]; prompt: Record<string, number>; sent: { at: string; subject: string; lang: string; sent: number; failed: number }[]; mail: boolean; testTo: string }
+
+function MailTab({ setMsg }: { setMsg: (s: string) => void }) {
+  const [info, setInfo] = useState<MailInfo | null>(null);
+  const [subject, setSubject] = useState('');
+  const [text, setText] = useState('');
+  const [lang, setLang] = useState('');
+  const [preview, setPreview] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = async () => setInfo(await adminGet<MailInfo>('op=mail'));
+  useEffect(() => { void load(); }, []);
+  if (!info) return <div className="muted">Loading…</div>;
+  const n = (k: string) => Number(info.prompt[k] ?? 0);
+  const asked = n('asked');
+  const pct = (k: string) => (asked ? ` (${Math.round((n(k) / asked) * 100)}%)` : '');
+  const target = lang ? info.subs.filter((r) => r.lang === lang).length : info.subs.length;
+  const langs = [...new Set(info.subs.map((r) => r.lang))].sort();
+  const send = async (test: boolean) => {
+    if (!test && !confirm(`Send "${subject}" to ${target} subscriber${target === 1 ? '' : 's'}${lang ? ` (${lang})` : ''}? This cannot be undone.`)) return;
+    setBusy(true);
+    const r = await adminPost('mail-send', { subject, text, lang, test }) as { sent?: number; failed?: number; error?: unknown };
+    setBusy(false);
+    setMsg(r.error ? `Error: ${String(r.error)}` : test ? `Test sent to ${info.testTo} ✓` : `Sent to ${r.sent} ✓${r.failed ? ` · ${r.failed} failed` : ''}`);
+    void load();
+  };
+  const showPreview = async () => {
+    const r = await adminPost('mail-preview', { subject, text, lang: lang || 'en' }) as { html?: string };
+    setPreview(r.html ?? '');
+  };
+  return (
+    <>
+      <div className="adm-stats">
+        <Stat label="Subscribers" value={info.subs.length} sub={langs.map((l) => `${l} ${info.subs.filter((r) => r.lang === l).length}`).join(' · ') || 'none yet'} />
+        <Stat label="Asked in the game" value={asked} sub="after the first finished season" />
+        <Stat label="Said yes" value={n('yes')} sub={`signed in${pct('yes')}`} />
+        <Stat label="Not now / No" value={`${n('later')} / ${n('no')}`} sub={`${pct('later')} / ${pct('no')}`.replace(/^ \/ $/, '')} />
+        <Stat label="Unsubscribed" value={info.unsubs.length} />
+      </div>
+      <div className="cols">
+        <Panel title="Write an update">
+          {!info.mail && <div className="insight bad">RESEND_API_KEY is not set – mails can't be sent.</div>}
+          <div className="col">
+            <input placeholder="Subject" maxLength={120} value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <textarea rows={12} placeholder={'Text. A blank line starts a new paragraph, lines starting with "- " become a list.'} value={text} onChange={(e) => setText(e.target.value)} />
+            <label className="row">To <select value={lang} onChange={(e) => setLang(e.target.value)}><option value="">all languages</option>{langs.map((l) => <option key={l} value={l}>{l}</option>)}</select>
+              <span className="muted">{target} recipient{target === 1 ? '' : 's'}</span></label>
+            <div className="row">
+              <button className="small" disabled={!subject.trim() || !text.trim()} onClick={() => void showPreview()}>Preview</button>
+              <button className="small" disabled={busy || !subject.trim() || !text.trim() || !info.testTo} title={info.testTo ? `Sends only to ${info.testTo}` : 'Set NOTIFY_EMAIL'} onClick={() => void send(true)}>Send test to me</button>
+              <button className="small primary" disabled={busy || !subject.trim() || !text.trim() || !target} onClick={() => void send(false)}>Send to {target}</button>
+            </div>
+            {preview && <iframe title="preview" srcDoc={preview} style={{ width: '100%', height: 480, border: '1px solid var(--line)', background: '#070b16' }} />}
+          </div>
+        </Panel>
+        <Panel title={`Sent (${info.sent.length})`}>
+          {info.sent.length === 0 ? <div className="muted">Nothing sent yet.</div> : (
+            <table className="grid"><thead><tr><th>When</th><th>Subject</th><th>To</th><th className="num">Sent</th></tr></thead>
+              <tbody>{info.sent.map((r, i) => <tr key={i}><td>{when(r.at)}</td><td>{r.subject}</td><td>{r.lang}</td><td className="num">{r.sent}{r.failed ? ` (${r.failed} failed)` : ''}</td></tr>)}</tbody></table>)}
+        </Panel>
+      </div>
+      <div className="cols">
+        <Panel title={`Subscribers (${info.subs.length})`}>
+          {info.subs.length === 0 ? <div className="muted">Nobody yet.</div> : (
+            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}><table className="grid"><thead><tr><th>E-mail</th><th>Lang</th><th>Since</th></tr></thead>
+              <tbody>{info.subs.map((r) => <tr key={r.email}><td>{r.email}</td><td>{r.lang}</td><td>{when(r.at)}</td></tr>)}</tbody></table></div>)}
+        </Panel>
+        <Panel title={`Unsubscribed (${info.unsubs.length})`}>
+          {info.unsubs.length === 0 ? <div className="muted">Nobody.</div> : (
+            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}><table className="grid"><thead><tr><th>E-mail</th><th>When</th></tr></thead>
+              <tbody>{info.unsubs.map((r) => <tr key={r.email}><td>{r.email}</td><td>{when(r.at)}</td></tr>)}</tbody></table></div>)}
+        </Panel>
+      </div>
+    </>
   );
 }

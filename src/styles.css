@@ -1372,3 +1372,8 @@ button.hub-card:hover, .hub-card.on { border-color: var(--accent); }
 .ed-pos input { width: 58px !important; text-align: center; }
 input[type='color'] { width: 44px; height: 30px; padding: 2px; }
 .ed-scroll { overflow-x: auto; }
+/* spørgsmålet efter første sæson (konto + opdateringsmails) */
+.news-perks { margin: 0; padding-left: 20px; display: grid; gap: 4px; line-height: 1.4; }
+.news-consent { display: flex !important; flex-wrap: nowrap !important; flex-direction: row !important; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.4; }
+.news-consent input { margin-top: 3px; flex: none; }
+.acc-news { gap: 6px; font-size: 13px; }
