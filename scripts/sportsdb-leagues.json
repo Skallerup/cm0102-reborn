@@ -176,5 +176,406 @@
 "4387": null,
 "4388": null,
 "4389": null,
-"4390": null
+"4390": null,
+"4391": null,
+"4392": null,
+"4393": null,
+"4394": {
+"name": "Italian Serie B",
+"alt": "Serie BKT",
+"country": "Italy",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/uf5kph1598011132.png"
+},
+"4395": {
+"name": "Scottish Championship",
+"alt": "William Hill Championship",
+"country": "Scotland",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/i57nok1721301867.png"
+},
+"4396": {
+"name": "English League 1",
+"alt": "EFL League One, Sky Bet League One, English Football League One",
+"country": "England",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/afedb31688770443.png"
+},
+"4397": {
+"name": "English League 2",
+"alt": "EFL League Two, Sky Bet League Two, English Football League Two",
+"country": "England",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/jmb3ms1688770451.png"
+},
+"4398": {
+"name": "Italian Serie C Girone C",
+"alt": "Serie C",
+"country": "Italy",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/m450je1753593640.png"
+},
+"4399": {
+"name": "German 2. Bundesliga",
+"alt": "2. Bundesliga",
+"country": "Germany",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/hl40981534764789.png"
+},
+"4400": {
+"name": "Spanish La Liga 2",
+"alt": "Segunda División, LaLiga SmartBank, LaLiga 123",
+"country": "Spain",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/r7u6821688425700.png"
+},
+"4401": {
+"name": "French Ligue 2",
+"alt": "Domino’s Ligue 2, Ligue 2 BKT",
+"country": "France",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/aofb771742983333.png"
+},
+"4402": null,
+"4403": {
+"name": "Swedish Superettan",
+"alt": "Superettan",
+"country": "Sweden",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/uvzmu21707459258.png"
+},
+"4404": {
+"name": "Brazilian Serie B",
+"alt": "Brazilian Brasileirao B Brasileiro",
+"country": "Brazil",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/iiz0gf1778446845.png"
+},
+"4405": null,
+"4406": {
+"name": "Argentinian Primera Division",
+"alt": "Liga Profesional de Fútbol",
+"country": "Argentina",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/rk9xhx1768238251.png"
+},
+"4407": null,
+"4408": null,
+"4409": null,
+"4410": null,
+"4411": null,
+"4412": null,
+"4413": null,
+"4414": null,
+"4415": null,
+"4416": null,
+"4417": null,
+"4418": null,
+"4419": null,
+"4420": null,
+"4421": null,
+"4422": {
+"name": "Polish Ekstraklasa",
+"alt": "Ekstraklasa, PKO Bank Polski Ekstraklasa",
+"country": "Poland",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/l3jovw1516960585.png"
+},
+"4423": null,
+"4424": null,
+"4425": null,
+"4426": null,
+"4427": null,
+"4428": null,
+"4429": {
+"name": "FIFA World Cup",
+"alt": "World Cup, World Cup Qualifiers",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/e7er5g1696521789.png"
+},
+"4430": null,
+"4431": null,
+"4432": {
+"name": "Uruguayan Primera Division",
+"alt": "Liga AUF Uruguaya",
+"country": "Uruguay",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/3p98xv1740672448.png"
+},
+"4433": null,
+"4434": null,
+"4435": {
+"name": "American NASL",
+"alt": "",
+"country": "United States",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/0un3ta1549878279.png"
+},
+"4436": null,
+"4437": null,
+"4438": null,
+"4439": null,
+"4440": null,
+"4441": null,
+"4442": null,
+"4443": null,
+"4444": null,
+"4445": null,
+"4446": null,
+"4447": null,
+"4448": null,
+"4449": null,
+"4450": null,
+"4451": null,
+"4452": null,
+"4453": null,
+"4454": null,
+"4455": null,
+"4456": null,
+"4457": {
+"name": "Norwegian 1. Divisjon",
+"alt": "OBOS-ligaen",
+"country": "Norway",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/cgyfwu1512823098.png"
+},
+"4458": null,
+"4459": null,
+"4460": null,
+"4461": null,
+"4462": null,
+"4463": null,
+"4464": null,
+"4465": null,
+"4466": null,
+"4467": null,
+"4468": null,
+"4469": null,
+"4470": null,
+"4471": null,
+"4472": {
+"name": "Welsh Cymru Premier",
+"alt": "Welsh Premier League",
+"country": "Wales",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/lblj6h1783142395.png"
+},
+"4473": null,
+"4474": null,
+"4475": null,
+"4476": null,
+"4477": null,
+"4478": null,
+"4479": null,
+"4480": {
+"name": "UEFA Champions League",
+"alt": "Champions League, UCL, Ligue des Champions",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/facv1u1742998896.png"
+},
+"4481": {
+"name": "UEFA Europa League",
+"alt": "Europa League, UEL",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/mlsr7d1718774547.png"
+},
+"4482": {
+"name": "FA Cup",
+"alt": "Football Association Cup, The Emirates FA Cup",
+"country": "United Kingdom",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/vk7isd1598802862.png"
+},
+"4483": {
+"name": "Copa del Rey",
+"alt": "Spanish Cup",
+"country": "Spain",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/2ikh3a1671782958.png"
+},
+"4484": {
+"name": "Coupe de France",
+"alt": "French Cup",
+"country": "France",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/l6fitb1546469041.png"
+},
+"4485": {
+"name": "DFB-Pokal",
+"alt": "German Pokal, DFB Cup",
+"country": "Germany",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/tlczpm1780941454.png"
+},
+"4486": null,
+"4487": null,
+"4488": null,
+"4489": null,
+"4490": {
+"name": "UEFA Nations League",
+"alt": "nations league, Ligue des Nations",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/cwsp321698386224.png"
+},
+"4491": null,
+"4492": null,
+"4493": null,
+"4494": null,
+"4495": null,
+"4496": {
+"name": "African Cup of Nations",
+"alt": "AFCON",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/rhu61x1738628727.png"
+},
+"4497": {
+"name": "Colombian Liga DIMAYOR",
+"alt": "Colombia Categoría Primera A",
+"country": "Colombia",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/sdz1351580833297.png"
+},
+"4498": {
+"name": "Confederations Cup",
+"alt": "",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/a731vj1549452752.png"
+},
+"4499": {
+"name": "Copa America",
+"alt": "",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/n78hen1718080720.png"
+},
+"4500": {
+"name": "Copa Argentina",
+"alt": "Argentina Copa AXION energy",
+"country": "Argentina",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/welbig1655924428.png"
+},
+"4501": {
+"name": "Copa Libertadores",
+"alt": "Libertadores, CONMEBOL Libertadores, Taça Libertadores da América",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/9shr931685425181.png"
+},
+"4502": {
+"name": "UEFA European Championships",
+"alt": "EURO2020, EURO2024, UEFA Euro",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/bivzlu1635869135.png"
+},
+"4503": {
+"name": "FIFA Club World Cup",
+"alt": "Intercontinental Cup",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/yesbil1731546197.png"
+},
+"4504": {
+"name": "Coupe de la Ligue",
+"alt": "French League Cup",
+"country": "France",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/rae4sv1596208538.png"
+},
+"4505": {
+"name": "International Champions Cup",
+"alt": "",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/4qff241553414228.png"
+},
+"4506": {
+"name": "Coppa Italia",
+"alt": "",
+"country": "Italy",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/hrm1vo1692679408.png"
+},
+"4507": {
+"name": "Supercoppa Italiana",
+"alt": "Italian Super Cup",
+"country": "Italy",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/12hc5x1730129564.png"
+},
+"4508": null,
+"4509": {
+"name": "Taca de Liga",
+"alt": "Portuguese League Cup, Allianz Cup",
+"country": "Portugal",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/crq7hz1593012623.png"
+},
+"4510": {
+"name": "Taca de Portugal",
+"alt": "Taça de Portugal Generali Tranquilidade",
+"country": "Portugal",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/hyy7lq1593011553.png"
+},
+"4511": {
+"name": "Supercopa de Espana",
+"alt": "Spanish Super Cup",
+"country": "Spain",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/sp4q7d1641378531.png"
+},
+"4512": {
+"name": "UEFA Super Cup",
+"alt": "",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/1eimvx1551123834.png"
+},
+"4513": {
+"name": "Venezuela Primera Division",
+"alt": "Liga Venezolana, Liga FUTVE",
+"country": "Venezuela",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/z07l5a1639062253.png"
+},
+"4514": null,
+"4515": null,
+"4516": null,
+"4517": null,
+"4518": null,
+"4519": {
+"name": "_Defunct Soccer Teams",
+"alt": "",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/bcvsib1550155063.png"
+},
+"4520": {
+"name": "Moroccan Championship",
+"alt": "Botola Pro Inwi, Botola Pro",
+"country": "Morocco",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/bhuork1638558615.png"
+},
+"4521": {
+"name": "American NWSL",
+"alt": "NWSL, National Womens Soccer League",
+"country": "United States",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/ucoihf1770674182.png"
+},
+"4522": null,
+"4523": {
+"name": "European Cup",
+"alt": "",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/yo0w811613146700.png"
+},
+"4524": {
+"name": "UEFA Cup",
+"alt": "",
+"country": "Europe",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/4e8atk1554029260.png"
+},
+"4525": {
+"name": "Football League First Division",
+"alt": "English Old 1st Division",
+"country": "England",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/vgooiu1738244272.png"
+},
+"4526": {
+"name": "Football League Super Cup",
+"alt": "ScreenSport Super Cup",
+"country": "England",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/h8vf321639596284.png"
+},
+"4527": null,
+"4528": null,
+"4529": null,
+"4530": null,
+"4531": null,
+"4532": null,
+"4533": null,
+"4534": null,
+"4535": null,
+"4536": null,
+"4537": null,
+"4538": null,
+"4539": null,
+"4540": null,
+"4541": null,
+"4542": null,
+"4543": null,
+"4544": null,
+"4545": null,
+"4546": null,
+"4547": null,
+"4548": null,
+"4549": null,
+"4550": null,
+"4551": null
 }

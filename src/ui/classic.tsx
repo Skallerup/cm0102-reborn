@@ -13,6 +13,9 @@ import { compName, natName, t } from '../i18n';
 import { leagueRows } from '../game/competitions';
 import { useNav, type Route, type ScreenName } from './core';
 import { Crest, NationCrest } from './components';
+import { compLogoUrl } from './logos';
+import { realCompName } from '../i18n/comps';
+import { titleLogo } from './classicOptions';
 import { matchDayComps } from './screens/MatchDayClassic';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
@@ -475,6 +478,9 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   // klubbens logo i titelbjælken (kun på klubbens egne skærme)
   const logoClub = hub?.club ? hub.club(g, route) : undefined;
   const logoNation = hub?.nation?.(g, route);
+  // turneringens logo (spillerønske – ikke i originalen): ligaskærmen og kampdagen
+  const compId = route.name === 'competitions' ? (route.id !== undefined ? String(route.id) : g.clubs[g.userClub]?.league) : undefined;
+  const compUrl = compId && g.comps[compId] && titleLogo() ? compLogoUrl(compId, realCompName(g.comps[compId].name)) : null;
   const plain = hub?.plain?.(route);
   const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);
   // klubbens nederste knapper har ▸ som i CM 01/02
@@ -488,7 +494,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg }}>
         <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />
-        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : null}
+        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : compUrl ? <span className="cx-title-logo"><img src={compUrl} alt="" width={44} height={44} style={{ objectFit: 'contain' }} /></span> : null}
         <h2>{text}</h2>
         {action && <div className="cx-action">{action}</div>}
       </div>
