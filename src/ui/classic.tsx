@@ -204,6 +204,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
   // "Championship Manager" (Nations & Clubs, CM 01/02): rød titel
   nations: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
+  ranking: { title: () => t('cl.go.hall'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   mgrstatus: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   leagues: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   // "Man Utd History" (CM 01/02): klubbens farver, skærmens egen titel og faner
@@ -247,7 +248,6 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   awards: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   jobs: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
-  ranking: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   community: { tabs: MGR_TABS, sub: MGR_SUB },
   support: { tabs: MGR_TABS, sub: MGR_SUB },
   managers: { tabs: MGR_TABS, sub: MGR_SUB },

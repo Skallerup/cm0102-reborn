@@ -69,7 +69,7 @@ import { ClassicNation } from './screens/NationClassic';
 import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicClubHistory } from './screens/ClubHistoryClassic';
 import { ClassicNations } from './screens/NationsClassic';
-import { ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
+import { ClassicHallOfFame, ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
 import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
@@ -607,7 +607,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
     case 'press': return <PressScreen />;
-    case 'ranking': return <RankingScreen />;
+    case 'ranking': return isRetro() ? <ClassicHallOfFame fallback={<RankingScreen />} /> : <RankingScreen />;
     case 'managers': return <ManagersScreen />;
     case 'help': return <HelpScreen id={route.id as string | undefined} />;
   }

@@ -1229,3 +1229,6 @@
 .cx-sl-row { display: grid; grid-template-columns: 1fr 200px 1fr; align-items: center; min-height: 26px; color: #9a9ca6; font-size: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding: 0 8px; }
 .cx-sl-row.lg-sel { color: #fff; } .cx-sl-row.lg-own { color: #fff21f; } .cx-sl-row .st { font-size: 11px; text-align: center; } .cx-sl-row .lw { font-size: 12px; color: #9a9ca6; }
 .cx-sl-row.lg-sel .st { color: #fff21f; }
+@media (min-width: 761px) { .cx-hof { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-hof .cx-tbl td { font-weight: 400; } }
+.cx-hof tr.me td { color: #fff21f; } .cx-hof-me { margin: 6px 12px; color: #fff21f; }
+.cx-hof-fb .cx-head > .cx-title { display: none; }

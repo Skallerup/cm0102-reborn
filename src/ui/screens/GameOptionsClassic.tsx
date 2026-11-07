@@ -1,8 +1,11 @@
 // Game Options-skærmene fra CM 01/02: Manager Status (managerne i spillet, klub og status) og Selected League(s) (landene,
 // spillet simulerer – "Selected" – og resten i baggrunden), med Use Real Players og Attribute Masking øverst.
+import { useEffect, useState, type ReactNode } from 'react';
 import type { GameState } from '../../game/types';
+import { fetchBoard, type Board, type RankRow } from '../../online/rank';
+import { ordinal } from './Competitions';
 import { compName, natName, t } from '../../i18n';
-import { CxLink, clubRoute } from '../classic';
+import { CxDrop, CxLink, clubRoute } from '../classic';
 import { useGame } from '../core';
 import { Head } from './common';
 
@@ -44,6 +47,37 @@ export function ClassicSelectedLeagues() {
           </div>
         );
       })}</div>
+    </div>
+  );
+}
+
+/** Hall of Fame (CM 01/02): managerne i rækkefølge med klub og point (lilla). Vores udgave er fællesskabets rangliste; uden net
+ *  vises din egen karriere. "Min karriere" (pointene sæson for sæson) ligger under View. */
+export function ClassicHallOfFame({ fallback }: { fallback: ReactNode }) {
+  const [board, setBoard] = useState<Board | 'mine'>('career');
+  const [data, setData] = useState<{ rows: RankRow[]; me: { rank: number; points: number } | null } | null | 'none'>(null);
+  useEffect(() => { if (board === 'mine') return; let ok = true; setData(null); void fetchBoard(board).then((d) => { if (ok) setData(d ?? 'none'); }); return () => { ok = false; }; }, [board]);
+  const BOARDS: Board[] = ['career', 'season', 'month'];
+  const titles: Record<string, string> = { career: t('cl.hof.career'), season: t('cl.hof.season'), month: t('cl.hof.month'), mine: t('cl.hof.mine') };
+  return (
+    <div>
+      <Head title={t('cl.go.hall')} />
+      <div className="cx-subtitle">{titles[board]}</div>
+      <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={[...BOARDS, 'mine' as const].map((b) => ({ key: b, label: titles[b], checked: board === b, onClick: () => setBoard(b) }))} /></div>
+      {board === 'mine' || data === 'none' ? <div className="cx-hof-fb">{fallback}</div> : (
+        <div className="cx-tbl-wrap cx-hof">
+          <table className="cx-tbl">
+            <tbody>{(data?.rows ?? []).map((r, i) => (
+              <tr key={r.id} className={data && typeof data === 'object' && data.me?.rank === i + 1 ? 'me' : ''}>
+                <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
+                <td>{r.name}</td><td className="c-yel">{r.club}</td><td className="c-val">{r.points.toLocaleString(t('cl.locale'))}</td>
+              </tr>
+            ))}</tbody>
+          </table>
+          {data === null && <div className="cx-empty">{t('common.loading')}</div>}
+          {data && typeof data === 'object' && data.me && data.me.rank > data.rows.length && <div className="cx-hof-me">{t('cl.hof.you', { rank: ordinal(data.me.rank), pts: data.me.points.toLocaleString(t('cl.locale')) })}</div>}
+        </div>
+      )}
     </div>
   );
 }

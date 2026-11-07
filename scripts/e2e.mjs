@@ -187,6 +187,9 @@ async function run(look) {
     await go({ name: 'mgrstatus' }); await page.waitForSelector('.cx-mstat .cx-chist-row', { timeout: 5000 });
     await go({ name: 'leagues' }); await page.waitForSelector('.cx-sl .cx-sl-row.lg-sel', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-ligaer.png` });
+    await go({ name: 'ranking' }); await page.waitForSelector('.cx-subtitle', { timeout: 5000 }); await page.waitForTimeout(800);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-halloffame.png` });
+    await checkScreen('hall of fame');
   });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
