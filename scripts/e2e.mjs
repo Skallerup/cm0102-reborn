@@ -364,6 +364,13 @@ async function run(look) {
     }
     await checkScreen('næste kamp');
   });
+  if (look === 'klassisk') await step('Next Match → Progress', async () => {
+    await go({ name: 'assistant' });
+    const b = page.locator('.cx-greybtn', { hasText: 'Progress' });
+    await b.click({ timeout: 5000 });
+    await page.waitForSelector('.cx-prog svg circle.me', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-progress.png` });
+  });
   await page.screenshot({ path: `${OUT}/${look}-slut.png` });
   await ctx.close();
 }
