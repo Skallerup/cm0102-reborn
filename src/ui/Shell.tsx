@@ -62,7 +62,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl, clubBgUrl, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
+import { backgroundUrl, bgPack, clubBgUrl, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -681,7 +681,8 @@ function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onCl
  * hverdagen (træningsbanen, bestyrelseslokalet). null = intet billede (så bruges den gamle Sunday League-pakke).
  */
 function screenBackground(g: GameState, route: Route, iso: string): string | null {
-  if (sundayLeague()) return null;
+  // Sunday League eller en valgt baggrundspakke fra fællesskabet (Community → Backgrounds): pakkens billeder overalt
+  if (sundayLeague() || bgPack()) return null;
   const own = g.clubs[g.userClub];
   // ugens øvrige skærme (nyheder m.m.): skiftevis klubben, træningsbanen, transfermarkedet og bestyrelseslokalet
   const k = Math.floor(Date.parse(`${iso}T12:00:00Z`) / 86400000) % 4;
