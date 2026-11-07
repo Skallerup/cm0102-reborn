@@ -843,7 +843,7 @@ export const it: Record<string, string> = {
   'hist.manager': 'Allenatore', 'hist.trophies': 'Trofei', 'hist.sacked': 'Esoneri', 'hist.challenge': 'Sfida', 'hist.deadline': 'scadenza',
   'hist.trophyCabinet': 'Bacheca', 'hist.noTrophies': 'Ancora nessun trofeo', 'hist.career': 'Carriera', 'hist.firstSeason': 'Prima stagione in corso',
 
-  'opt.general': 'Generale', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Corona danese (kr.)', 'cur.GBP': 'Sterlina (£)', 'opt.language': 'Lingua', 'opt.autosave': 'Salvataggio automatico',
+  'opt.general': 'Generale', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Corona danese (kr.)', 'cur.BRL': "Real brasiliano (R$)", 'cur.TRY': "Lira turca (₺)", 'cur.GBP': 'Sterlina (£)', 'opt.language': 'Lingua', 'opt.autosave': 'Salvataggio automatico',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'Testi AI (conferenze stampa, colloqui, articoli)', 'opt.ai.hint': "Giornalisti, giocatori, procuratori e tifosi rispondono con testi scritti da un modello linguistico. Le regole del gioco decidono comunque ogni esito. Richiede internet e funziona solo nella versione ospitata su Vercel.",
   'ai.writing': "Scrittura dell'articolo…",

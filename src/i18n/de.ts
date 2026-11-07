@@ -843,7 +843,7 @@ export const de: Record<string, string> = {
   'hist.manager': 'Trainer', 'hist.trophies': 'Titel', 'hist.sacked': 'Entlassungen', 'hist.challenge': 'Herausforderung', 'hist.deadline': 'Frist',
   'hist.trophyCabinet': 'Trophäenschrank', 'hist.noTrophies': 'Noch keine Titel', 'hist.career': 'Karriere', 'hist.firstSeason': 'Erste Saison läuft',
 
-  'opt.general': 'Allgemein', 'opt.currency': 'Währung', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Dänische Krone (kr.)', 'cur.GBP': 'Pfund Sterling (£)', 'opt.language': 'Sprache', 'opt.autosave': 'Automatisch speichern',
+  'opt.general': 'Allgemein', 'opt.currency': 'Währung', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Dänische Krone (kr.)', 'cur.BRL': "Brasilianischer Real (R$)", 'cur.TRY': "Türkische Lira (₺)", 'cur.GBP': 'Pfund Sterling (£)', 'opt.language': 'Sprache', 'opt.autosave': 'Automatisch speichern',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'KI-Texte (Pressekonferenzen, Gespräche, Artikel)', 'opt.ai.hint': 'Journalisten, Spieler, Berater und Fans antworten mit Texten, die ein Sprachmodell schreibt. Über jedes Ergebnis entscheiden weiterhin die Spielregeln. Benötigt Internet und funktioniert nur in der auf Vercel gehosteten Version.',
   'ai.writing': 'Der Artikel wird geschrieben…',

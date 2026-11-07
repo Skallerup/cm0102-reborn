@@ -843,7 +843,7 @@ export const tr: Record<string, string> = {
   'hist.manager': 'Teknik direktör', 'hist.trophies': 'Kupalar', 'hist.sacked': 'Kovulmalar', 'hist.challenge': 'Meydan okuma', 'hist.deadline': 'son tarih',
   'hist.trophyCabinet': 'Kupa müzesi', 'hist.noTrophies': 'Henüz kupa yok', 'hist.career': 'Kariyer', 'hist.firstSeason': 'İlk sezon devam ediyor',
 
-  'opt.general': 'Genel', 'opt.currency': 'Para birimi', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danimarka kronu (kr.)', 'cur.GBP': 'İngiliz sterlini (£)', 'opt.language': 'Dil', 'opt.autosave': 'Otomatik kayıt',
+  'opt.general': 'Genel', 'opt.currency': 'Para birimi', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danimarka kronu (kr.)', 'cur.BRL': "Brezilya reali (R$)", 'cur.TRY': "Türk lirası (₺)", 'cur.GBP': 'İngiliz sterlini (£)', 'opt.language': 'Dil', 'opt.autosave': 'Otomatik kayıt',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'AI metni (basın toplantıları, görüşmeler, makaleler)', 'opt.ai.hint': 'Gazeteciler, oyuncular, menajerler ve taraftarlar bir dil modelinin yazdığı metinlerle cevap verir. Her sonucu yine oyun kuralları belirler. İnternet gerektirir ve sadece Vercel üzerinde barındırılan sürümde çalışır.',
   'ai.writing': 'Makale yazılıyor…',

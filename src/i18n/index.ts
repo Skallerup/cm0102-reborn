@@ -72,19 +72,21 @@ export function has(key: string): boolean {
   return key in (dicts[lang] ?? {}) || key in dicts.en!;
 }
 
-export type Currency = 'EUR' | 'DKK' | 'GBP';
-export const CURRENCIES: Currency[] = ['EUR', 'DKK', 'GBP'];
+export type Currency = 'EUR' | 'DKK' | 'GBP' | 'BRL' | 'TRY';
+// én valuta pr. sprog: euro (de/es/fr/it), kroner (da), pund (en), real (pt – oversættelsen er brasiliansk) og lira (tr)
+export const CURRENCIES: Currency[] = ['EUR', 'DKK', 'GBP', 'BRL', 'TRY'];
 // Faste kurser (spillets interne beløb er i euro)
-const RATE: Record<Currency, number> = { EUR: 1, DKK: 7.46, GBP: 0.86 };
+// (real og lira: faste kurser, *estimeret* efter niveauet i 2026)
+const RATE: Record<Currency, number> = { EUR: 1, DKK: 7.46, GBP: 0.86, BRL: 6.2, TRY: 46 };
 // valgt valuta (gemt) – ellers sprogets: dansk kroner, engelsk pund (som i CM 01/02), øvrige euro
 let chosen: Currency | null = (() => {
   try {
     const v = localStorage.getItem('cm0102.currency');
-    if (v === 'EUR' || v === 'DKK' || v === 'GBP') return v;
+    if ((CURRENCIES as string[]).includes(v ?? '')) return v as Currency;
   } catch { /* ingen storage */ }
   return null;
 })();
-const langCurrency = (): Currency => (lang === 'da' ? 'DKK' : lang === 'en' ? 'GBP' : 'EUR');
+const langCurrency = (): Currency => (lang === 'da' ? 'DKK' : lang === 'en' ? 'GBP' : lang === 'pt' ? 'BRL' : lang === 'tr' ? 'TRY' : 'EUR');
 let currency: Currency = chosen ?? langCurrency();
 
 export function getCurrency(): Currency {
@@ -113,7 +115,7 @@ export function fromCur(v: number): number {
 }
 
 export function currencySymbol(): string {
-  return currency === 'DKK' ? 'kr.' : currency === 'GBP' ? '£' : '€';
+  return currency === 'DKK' ? 'kr.' : currency === 'GBP' ? '£' : currency === 'BRL' ? 'R$' : currency === 'TRY' ? '₺' : '€';
 }
 
 export function money(eur: number): string {
@@ -131,6 +133,7 @@ export function money(eur: number): string {
   else num = dec(currency === 'EUR' ? Math.round(a) : Math.round(a / 10) * 10, 0);
   let s: string;
   if (currency === 'DKK') s = `${num}${unit} kr.`;
+  else if (currency === 'BRL') s = `R$ ${num}${unit}`;
   else s = `${currencySymbol()}${num}${unit}`;
   return (neg ? '-' : '') + s;
 }
@@ -139,7 +142,7 @@ export function money(eur: number): string {
 export function moneyFull(eur: number): string {
   const v = Math.round(eur * RATE[currency]);
   const num = Math.abs(v).toLocaleString(LOCALE[lang]);
-  return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : `${currencySymbol()}${num}`);
+  return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);
 }
 
 export function dateFmt(iso: string, long = false): string {

@@ -878,7 +878,7 @@ export const da: Record<string, string> = {
   'hist.trophyCabinet': 'Trofæskab', 'hist.noTrophies': 'Endnu ingen trofæer', 'hist.career': 'Karriere', 'hist.firstSeason': 'Første sæson er i gang',
 
   // indstillinger
-  'opt.general': 'Generelt', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danske kroner (kr.)', 'cur.GBP': 'Britiske pund (£)', 'opt.language': 'Sprog', 'opt.autosave': 'Gem automatisk',
+  'opt.general': 'Generelt', 'opt.currency': 'Valuta', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danske kroner (kr.)', 'cur.BRL': "Brasilianske real (R$)", 'cur.TRY': "Tyrkiske lira (₺)", 'cur.GBP': 'Britiske pund (£)', 'opt.language': 'Sprog', 'opt.autosave': 'Gem automatisk',
   // ---------- AI: pressemøder, samtaler, medier, fans, trænere ----------
   'opt.ai': 'AI-tekster (pressemøder, samtaler, artikler)', 'opt.ai.hint': 'Journalister, spillere, agenter og fans svarer med tekst skrevet af en sprogmodel. Spillets regler afgør stadig alle udfald. Kræver internet og virker kun på den Vercel-hostede udgave.',
   'ai.writing': 'Skriver artiklen…',

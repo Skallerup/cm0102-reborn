@@ -153,7 +153,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           </div>
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
-            {row(t('opt.currency'), <Seg value={d.cur} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`)] as [Currency, string])} onChange={(v) => up({ cur: v })} />)}
+            {row(t('opt.currency'), <Seg value={d.cur} opts={CURRENCIES.map((c) => [c, t(`cur.${c}`).match(/\(([^)]+)\)/)?.[1] ?? c] as [Currency, string])} onChange={(v) => up({ cur: v })} />)}
             {row(t('cl.set.skin'), <Seg value={d.theme} opts={[['retro', t('cl.set.classic')], ['club', t('opt.theme.club')], ['dark', t('opt.theme.dark')], ['light', t('opt.theme.light')]]} onChange={(v) => up({ theme: v })} />)}
             {row(t('cl.set.fonts'), <Seg value={d.font} opts={CX_FONTS.map((f) => [f, t(`cl.set.font.${f}`)] as [CxFont, string])} onChange={(v) => up({ font: v })} />)}
             {row(t('cl.set.logo'), onOff(d.logo, (v) => up({ logo: v })))}

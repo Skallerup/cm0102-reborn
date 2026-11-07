@@ -843,7 +843,7 @@ export const fr: Record<string, string> = {
   'hist.manager': 'Entraîneur', 'hist.trophies': 'Trophées', 'hist.sacked': 'Limogeages', 'hist.challenge': 'Défi', 'hist.deadline': 'échéance',
   'hist.trophyCabinet': 'Armoire à trophées', 'hist.noTrophies': 'Pas encore de trophées', 'hist.career': 'Carrière', 'hist.firstSeason': 'Première saison en cours',
 
-  'opt.general': 'Général', 'opt.currency': 'Devise', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Couronne danoise (kr.)', 'cur.GBP': 'Livre sterling (£)', 'opt.language': 'Langue', 'opt.autosave': 'Sauvegarde automatique',
+  'opt.general': 'Général', 'opt.currency': 'Devise', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Couronne danoise (kr.)', 'cur.BRL': "Réal brésilien (R$)", 'cur.TRY': "Livre turque (₺)", 'cur.GBP': 'Livre sterling (£)', 'opt.language': 'Langue', 'opt.autosave': 'Sauvegarde automatique',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'Texte IA (conférences de presse, discussions, articles)', 'opt.ai.hint': "Journalistes, joueurs, agents et supporters répondent avec des textes rédigés par un modèle de langage. Les règles du jeu décident toujours de chaque résultat. Nécessite Internet et ne fonctionne que sur la version hébergée sur Vercel.",
   'ai.writing': "Rédaction de l'article…",

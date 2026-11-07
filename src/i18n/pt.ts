@@ -843,7 +843,7 @@ export const pt: Record<string, string> = {
   'hist.manager': 'Técnico', 'hist.trophies': 'Títulos', 'hist.sacked': 'Demissões', 'hist.challenge': 'Desafio', 'hist.deadline': 'prazo',
   'hist.trophyCabinet': 'Sala de troféus', 'hist.noTrophies': 'Nenhum título ainda', 'hist.career': 'Carreira', 'hist.firstSeason': 'Primeira temporada em andamento',
 
-  'opt.general': 'Geral', 'opt.currency': 'Moeda', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Coroa dinamarquesa (kr.)', 'cur.GBP': 'Libra esterlina (£)', 'opt.language': 'Idioma', 'opt.autosave': 'Salvamento automático',
+  'opt.general': 'Geral', 'opt.currency': 'Moeda', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Coroa dinamarquesa (kr.)', 'cur.BRL': "Real (R$)", 'cur.TRY': "Lira turca (₺)", 'cur.GBP': 'Libra esterlina (£)', 'opt.language': 'Idioma', 'opt.autosave': 'Salvamento automático',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'Textos com AI (coletivas, conversas, matérias)', 'opt.ai.hint': 'Jornalistas, jogadores, empresários e torcedores respondem com textos escritos por um modelo de linguagem. As regras do jogo continuam decidindo cada resultado. Precisa de internet e só funciona na versão hospedada na Vercel.',
   'ai.writing': 'Escrevendo a matéria…',

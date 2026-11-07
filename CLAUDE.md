@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Valutaer: `Currency` + BRL (6,2) og TRY (46) (*estimerede* faste kurser), sprogets standard pt → BRL (oversættelsen er pt-BR), tr → TRY. Klassisk Game Settings viser kun symbolerne. tests/currency.test.ts.
 - 2026-11-07 – Klubpakker: `SkinPack.club` (skin-create `club`, admin:skin med kun `club` retter feltet), `loadClubPacks`/`clubPackUrl`/`normClub` i backgrounds.ts (pakker uden felt matches på titlen; tomt felt = almindelig pakke) – `clubBgUrl` og hjemmekampe (`homePack` i Shell) bruger dem først. tests/clubPacks.test.ts. "Om spillet" nævner ikke længere CM3 (motoren er vores egen efter CM 01/02).
 - 2026-11-07 – `screenBackground` returnerer null ved en valgt fællesskabspakke (`bgPack()`), så `backgroundUrl` viser pakken (før blev pakken altid overtrumfet af skærmbillederne). Kampdagens stadion går stadig først.
 - 2026-11-07 – Admin `unrank` fjerner nu karrieren fra ALLE lister (lb:career + sæsonens medlemmer `<career>:<sæson>` fra lb:season/lb:month:*/lb:league:*, fundet via `sub:<career>:*`) og lægger den i `lb:blocked` – rank.ts submit springer blokerede karrierer over. ✕ pr. række i Overview → Top careers.
