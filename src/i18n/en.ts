@@ -1480,4 +1480,5 @@ export const en: Record<string, string> = {
   'cl.posIn': "{pos} in {lg}", 'cl.history': "History",
   'cl.sq.assistantMenu': "Assistant",
   'cl.tac.penTakers': "Penalty Takers", 'cl.tac.load': "Load", 'cl.tac.save': "Save", 'cl.tac.saveAs': "Save As", 'cl.tac.delete': "Delete", 'cl.tac.reflect': "Reflect", 'cl.tac.showRuns': "Show Runs",
+  'cl.nm.prev': "<< Date", 'cl.nm.next': "Date >>", 'cl.nm.past': "Past Meetings", 'cl.nm.assistant': "Assistant's Report", 'cl.nm.home': "Home", 'cl.nm.away': "Away", 'cl.nm.date': "Date", 'cl.nm.today': "today", 'cl.nm.venue': "Venue", 'cl.nm.rules': "Match Rules", 'cl.nm.noRestr': "No player restrictions", 'cl.nm.subs': "{named} subs named, maximum {used} used", 'cl.nm.last': "Last Meeting", 'cl.nm.weather': "Weather", 'cl.nm.pitch': "Pitch Condition", 'cl.nm.referee': "Referee", 'cl.nm.news': "{club} News", 'cl.nm.injured': "{name} injured", 'cl.nm.suspended': "{name} suspended",
 };

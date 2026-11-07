@@ -1513,4 +1513,5 @@ export const da: Record<string, string> = {
   'cl.posIn': "{pos} i {lg}", 'cl.history': "Historik",
   'cl.sq.assistantMenu': "Assistent",
   'cl.tac.penTakers': "Dødboldsskytter", 'cl.tac.load': "Hent", 'cl.tac.save': "Gem", 'cl.tac.saveAs': "Gem som", 'cl.tac.delete': "Slet", 'cl.tac.reflect': "Spejlvend", 'cl.tac.showRuns': "Vis løb",
+  'cl.nm.prev': "<< Dato", 'cl.nm.next': "Dato >>", 'cl.nm.past': "Tidligere opgør", 'cl.nm.assistant': "Assistentens rapport", 'cl.nm.home': "Hjemme", 'cl.nm.away': "Ude", 'cl.nm.date': "Dato", 'cl.nm.today': "i dag", 'cl.nm.venue': "Stadion", 'cl.nm.rules': "Kampregler", 'cl.nm.noRestr': "Ingen begrænsninger på spillere", 'cl.nm.subs': "{named} udskiftere på bænken, højst {used} bruges", 'cl.nm.last': "Sidste opgør", 'cl.nm.weather': "Vejr", 'cl.nm.pitch': "Banens tilstand", 'cl.nm.referee': "Dommer", 'cl.nm.news': "{club}-nyt", 'cl.nm.injured': "{name} skadet", 'cl.nm.suspended': "{name} karantæneramt",
 };

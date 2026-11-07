@@ -1006,3 +1006,20 @@
   :root[data-skin='retro'] .cx-tac-name { font-weight: 500; }
   .cx-tac-form { flex: 1; text-align: center; font-weight: 600; }
 }
+@media (min-width: 761px) {
+  /* tabeller som CM 01/02: normal skriftvægt, 25 px rækker */
+  .cx-tbl { font-weight: 500; font-size: 14px; }
+  .cx-tbl td { height: 24px; }
+  .cx-tbl th { font-weight: 500; }
+}
+/* moral/kondition som farvede ord (Superb/Very Good grøn, Good orange, Okay gul, Low rød) */
+.cx-mor.m4 { color: #6ee05a; } .cx-mor.m3 { color: #ffb347; } .cx-mor.m2 { color: #fff21f; } .cx-mor.m1 { color: #ff6b5a; }
+.cx-tbl .c-good { color: #6ee05a; }
+/* Next Match (CM 01/02): orange understreget turnering og en liste label → gul værdi */
+.cx-nm { background: rgba(0, 0, 0, 0.32); padding: 14px 16px 18px; }
+.cx-nm-comp { margin-bottom: 18px; }
+.cx-nm-comp .cx-link { color: #ff9a3c; font-size: 20px; font-weight: 600; border-bottom: 1px solid #ff9a3c; padding-bottom: 3px; }
+.cx-nm-row { display: grid; grid-template-columns: minmax(160px, 30%) 1fr; align-items: baseline; min-height: 29px; }
+.cx-nm-row > span:first-child { color: #fff; font-size: 19px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+.cx-nm-row .v { color: #fff21f; font-size: 14px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+.cx-tools .cx-greybtn.on { color: #fff21f; }

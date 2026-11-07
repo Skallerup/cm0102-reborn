@@ -12,9 +12,14 @@ import { AttrVal, Panel, Pct, PlayerLink, Radar, Tabs } from '../components';
 import { compareIds, toggleCompare } from '../compare';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { ClassicNextMatch } from './NextMatchClassic';
+import { isRetro } from '../theme';
+import { authentic } from '../../game/rules';
 
 export function Assistant({ tab: initial }: { tab?: string }) {
-  const [tab, setTab] = useRouteState('tab', initial ?? 'opponent');
+  const [tab, setTab] = useRouteState('tab', initial ?? (isRetro() ? 'classic' : 'opponent'));
+  // klassisk (CM 01/02): kampens data som i originalen; assistentens rapport kun i den udvidede udgave
+  if (isRetro() && tab === 'classic') return <ClassicNextMatch onAssistant={authentic() ? undefined : () => setTab('opponent')} />;
   return (
     <div>
       <Head title={t('nav.assistant')}>

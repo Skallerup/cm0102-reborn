@@ -42,9 +42,10 @@ export function ClassicTraining() {
     { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
     { key: 'pos', label: t('col.pos'), cls: 'c-cyan', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
     { key: 'age', label: t('col.age'), cls: 'c-num c-yel', render: (p) => ageOn(p.dob, g.date), sort: (p) => ageOn(p.dob, g.date) },
-    { key: 'form', label: t('col.form'), cls: 'c-num c-yel', render: (p) => (p.form.length ? formAvg(p).toFixed(1) : '-'), sort: formAvg },
-    { key: 'mor', label: t('col.morale'), cls: 'c-num c-yel', render: (p) => moraleShort(p.morale), sort: (p) => p.morale },
-    { key: 'cond', label: t('col.cond'), cls: 'c-cond', render: (p) => `${Math.round(p.condition)}%`, sort: (p) => p.condition },
+    // CM 01/02: formen som de seneste fem karakterer ("7-7-5-8-6"), moral som farvet ord, kondition i grøn % ("Inj" ved skade)
+    { key: 'form', label: t('col.form'), cls: 'c-num c-yel', render: (p) => (p.form.length ? p.form.slice(-5).map((x) => Math.round(x)).join('-') : '-'), sort: formAvg },
+    { key: 'mor', label: t('col.morale'), cls: 'c-num', render: (p) => <span className={`cx-mor m${p.morale >= 16 ? 4 : p.morale >= 13 ? 3 : p.morale >= 9 ? 2 : 1}`}>{moraleShort(p.morale)}</span>, sort: (p) => p.morale },
+    { key: 'cond', label: t('col.cond'), cls: 'c-num', render: (p) => (p.injury ? <span className="cx-mor m1">{t('tag.inj')}</span> : <span className={p.condition >= 90 ? 'c-good' : 'cx-mor m2'}>{Math.round(p.condition)}%</span>), sort: (p) => p.condition },
     { key: 'val', label: t('col.value'), cls: 'c-val', render: (p) => money(p.value), sort: (p) => p.value },
   ];
 
