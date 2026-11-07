@@ -70,7 +70,7 @@ import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicClubHistory } from './screens/ClubHistoryClassic';
 import { ClassicNations } from './screens/NationsClassic';
 import { ClassicHallOfFame, ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
-import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate } from './classic';
+import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate, shownComp } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -697,7 +697,8 @@ function specificBackground(g: GameState, route: Route, iso: string): string | n
     case 'club': case 'clubhistory': return clubBgUrl(clubOf(Number(id ?? g.userClub)), iso);
     case 'player': { const p = g.players[Number(id)]; return clubBgUrl(p?.club ? clubOf(p.club) : undefined, iso) ?? nationBgUrl(g.nations[p?.nation ?? -1]?.name, iso); }
     case 'competitions': case 'fixtures': {
-      const c = id !== undefined ? g.comps[String(id)] : own ? g.comps[own.league] : undefined;
+      const sc = route.name === 'competitions' ? shownComp(route) : id !== undefined ? String(id) : undefined;
+      const c = sc !== undefined ? g.comps[sc] : own ? g.comps[own.league] : undefined;
       return compBgUrl(c?.name, iso) ?? (c?.nation === -1 ? compBgUrl(c.id === 'CL' ? 'UEFA Champions League' : c.name.includes('Europa') ? 'UEFA Europa League' : c.name, iso) : null);
     }
     case 'international': case 'intlday': return id !== undefined ? nationBgUrl(g.nations[Number(id)]?.name, iso) : compBgUrl('FIFA World Cup', iso);

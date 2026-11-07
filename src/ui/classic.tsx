@@ -191,6 +191,8 @@ export function compAbbr(name: string): string {
   const caps = w.replace(/[^A-ZÆØÅ0-9]/g, '');
   return caps.length >= 2 ? caps.slice(0, 4) : w.slice(0, 3).toUpperCase();
 }
+/** Turneringen, som turneringsskærmen viser lige nu */
+export const shownComp = (r: Route): string | undefined => (r.state?.cid as string | undefined) ?? (r.id !== undefined ? String(r.id) : undefined);
 /** Turneringernes titelbjælke i CM 01/02 */
 const compColors = (id?: string) => (id === 'CL' ? { bg: '#000000', fg: '#e3262a' } : id === 'UEFA' ? { bg: '#2f5bd6', fg: '#ffffff' } : { bg: '#ffffff', fg: '#1a2a8c' });
 
@@ -204,7 +206,8 @@ const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
 
 const HUBS: Partial<Record<ScreenName, Hub>> = {
   // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
-  competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
+  // den turnering, der vises (rullemenuen gemmer valget i route.state.cid – route.id er den, man kom fra)
+  competitions: { colors: (_g, r) => compColors(shownComp(r)) },
   // "Championship Manager" (Nations & Clubs, CM 01/02): rød titel
   nations: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   ranking: { title: () => t('cl.go.hall'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
@@ -479,7 +482,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const logoClub = hub?.club ? hub.club(g, route) : undefined;
   const logoNation = hub?.nation?.(g, route);
   // turneringens logo (spillerønske – ikke i originalen): ligaskærmen og kampdagen
-  const compId = route.name === 'competitions' ? (route.id !== undefined ? String(route.id) : g.clubs[g.userClub]?.league) : undefined;
+  const compId = route.name === 'competitions' ? shownComp(route) ?? g.clubs[g.userClub]?.league : undefined;
   const compUrl = compId && g.comps[compId] && titleLogo() ? compLogoUrl(compId, realCompName(g.comps[compId].name)) : null;
   const plain = hub?.plain?.(route);
   const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);

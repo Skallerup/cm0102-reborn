@@ -200,6 +200,13 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-halloffame.png` });
     await checkScreen('hall of fame');
   });
+  if (look === 'klassisk') await step('turneringsskærm: farver følger den valgte turnering', async () => {
+    const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });
+    await go({ name: 'competitions', id: 'CL', state: { cid: lg } });
+    await page.waitForTimeout(200);
+    const bg = await page.locator('.cx-title').first().evaluate((el) => getComputedStyle(el).backgroundColor);
+    if (bg === 'rgb(0, 0, 0)') throw new Error('ligaen fik Champions Leagues sorte titelbjælke');
+  });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
     await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });
