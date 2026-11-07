@@ -204,6 +204,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
   // "Championship Manager" (Nations & Clubs, CM 01/02): rød titel
   nations: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
+  mgrstatus: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
+  leagues: { title: () => t('cl.nc.title'), colors: () => ({ bg: '#e8322a', fg: '#ffffff' }) },
   // "Man Utd History" (CM 01/02): klubbens farver, skærmens egen titel og faner
   clubhistory: { title: (_g, _r, st) => st, club: (g, r) => (r.id !== undefined ? Number(r.id) : own(g)) },
   // UEFA Coefficients (CM 01/02): sort med røde bogstaver som Champions League

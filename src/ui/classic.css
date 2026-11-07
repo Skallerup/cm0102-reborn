@@ -1223,3 +1223,9 @@
 .cx-side-comp { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 18px 6px 0; padding: 10px 4px; text-align: center; color: #fff; font-size: 12px; line-height: 1.25; }
 .cx-side-comp img { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
 .cx-ts-buttons.cx-job-answer { grid-template-columns: 2fr 1fr 1fr; }
+/* Manager Status / Selected League(s) (Game Options, CM 01/02) */
+.cx-mstat .cx-chist-row { font-size: 15px; min-height: 30px; } .cx-mstat .dim { color: #9a9ca6; }
+.cx-sl-top { display: flex; align-items: center; gap: 12px; margin: 0 16px 6px; color: #fff; font-size: 13px; }
+.cx-sl-row { display: grid; grid-template-columns: 1fr 200px 1fr; align-items: center; min-height: 26px; color: #9a9ca6; font-size: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding: 0 8px; }
+.cx-sl-row.lg-sel { color: #fff; } .cx-sl-row.lg-own { color: #fff21f; } .cx-sl-row .st { font-size: 11px; text-align: center; } .cx-sl-row .lw { font-size: 12px; color: #9a9ca6; }
+.cx-sl-row.lg-sel .st { color: #fff21f; }

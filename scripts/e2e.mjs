@@ -183,6 +183,11 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-klubhistorie.png` });
     await checkScreen('klubhistorie');
   });
+  if (look === 'klassisk') await step('Manager Status og Selected League(s)', async () => {
+    await go({ name: 'mgrstatus' }); await page.waitForSelector('.cx-mstat .cx-chist-row', { timeout: 5000 });
+    await go({ name: 'leagues' }); await page.waitForSelector('.cx-sl .cx-sl-row.lg-sel', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-ligaer.png` });
+  });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
     await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });

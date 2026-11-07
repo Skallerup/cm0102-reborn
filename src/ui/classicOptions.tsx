@@ -83,9 +83,10 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   if (!online) items.push({ key: 'save', label: t('cl.go.save'), onClick: onSave });
   const add = (k: string, label: string) => { if (allowed(k)) items.push({ key: k, label, onClick: go(k) }); };
   // CM 01/02: Save Game · Manager Status · Game Settings · (Edition) Options · Hall of Fame · Game Credits · Web Sites · Restart · Exit
-  add('profile', t('cl.go.status'));
+  items.push({ key: 'mstatus', label: t('cl.go.status'), onClick: () => nav({ name: 'mgrstatus' }) });
   items.push({ key: 'settings', label: t('cl.go.settings'), onClick: () => setSettings(true) });
   add('options', t('cl.go.all'));
+  items.push({ key: 'leagues', label: t('cl.sl.title'), onClick: () => nav({ name: 'leagues' }) });
   add('ranking', t('cl.go.hall'));
   add('awards', t('nav.awards'));
   add('community', t('cl.go.credits'));
