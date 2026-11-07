@@ -490,7 +490,8 @@ export function Shell() {
                 <button className="cx-next cx-next-go cx-mt-ok" disabled={dialogOpen} onClick={matchSide.a.ok}>{t('common.ok')}</button>
               </div>
             ) : <div className="cx-backnext">
-              <button className="cx-back" disabled={!canBack} onClick={back}>{t('cm.back')}</button>
+              {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
+              <button className="cx-back" disabled={!canBack || (route.name === 'match' && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>
               {cxNext ? <button className="cx-next cx-next-go" onClick={cxNext.run}>{cxNext.label}</button>
                 : <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>}
             </div>
