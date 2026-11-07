@@ -142,6 +142,9 @@ async function run(look) {
     await page.waitForSelector('.cx-bid-answer', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-svar-bud.png` });
     await page.locator('.cx-bid-answer button', { hasText: 'Reject' }).click();
+    await page.locator('.cx-ts-opt', { hasText: 'important first team player' }).click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-afvis-bud.png` });
+    await page.locator('.cx-ts-buttons button.primary', { hasText: 'Yes' }).click();
     await page.waitForSelector('.cx-inbox', { timeout: 5000 });
     const st = await gs(() => window.__cm.gs().offers.at(-1).status);
     if (st !== 'rejected') throw new Error(`buddet blev ikke afvist (${st})`);

@@ -6,6 +6,8 @@ import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squa
 import { askingPrice, knownEnquiry, swapCandidates, swapWorth } from '../../game/transfers';
 import { ADDON_APPS } from '../../game/clauses';
 import type { Player, TransferOffer } from '../../game/types';
+import type { RejectReason } from '../../game/will';
+import { ageOn } from '../../game/dates';
 import { money, moneyFull, t } from '../../i18n';
 import { useGame } from '../core';
 import { CxDrop, useClassicDialog } from '../classic';
@@ -170,12 +172,33 @@ export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onC
   const me = g.clubs[g.userClub];
   const step = round(Math.max(p?.value ?? 0, 100_000) * 0.05);
   const [fee, setFee] = useState(offer.fee);
+  const [rejecting, setRejecting] = useState(false);
+  // CM 01/02's begrundelser → vores (klubbens egne grunde – samme division, rival – siger intet til spilleren)
+  const REASONS: [string, RejectReason][] = [['none', 'none'], ['indispensable', 'key'], ['important', 'key'], ['prospect', 'future'], ['division', 'none'], ['unacceptable', 'low'], ['rival', 'none']];
+  const young = p ? ageOn(p.dob, g.date) <= 23 : false;
+  const [why, setWhy] = useState(young ? 'prospect' : 'important');
   if (!p || !buyer) return null;
   const changed = fee !== offer.fee;
   const reply = (action: 'accept' | 'reject' | 'counter') => {
-    const r = act<string | null>({ t: 'respond', pid: p.id, buyer: buyer.id, action, ...(action === 'counter' ? { counter: fee } : {}) });
+    const reason = REASONS.find(([k]) => k === why)?.[1] ?? 'none';
+    const r = act<string | null>({ t: 'respond', pid: p.id, buyer: buyer.id, action, ...(action === 'counter' ? { counter: fee } : {}), ...(action === 'reject' ? { reason } : {}) });
     onClose(typeof r === 'string' && r !== 'ok' ? t(r) : undefined);
   };
+  const name = `${p.first} ${p.last}`.trim();
+  if (rejecting) return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.bid.offerFor', { player: name })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.rejectQ', { player: name })}</p>
+        <div className="cx-ts-head">{t('cl.bid.reason')}</div>
+        {REASONS.map(([k]) => <button key={k} className={`cx-ts-opt ${why === k ? 'on' : ''}`} disabled={k === 'prospect' && !young} onClick={() => setWhy(k)}>{t(`cl.bid.why.${k}`)}</button>)}
+      </div>
+      <div className="cx-ts-buttons">
+        <button onClick={() => setRejecting(false)}>{t('common.no')}</button>
+        <button className="primary" onClick={() => reply('reject')}>{t('common.yes')}</button>
+      </div>
+    </div>
+  );
   const row = (label: string, value: string, minus?: () => void, plus?: () => void, extra?: ReactNode) => (
     <div className={`cx-bid-row ${minus || plus ? '' : 'off'}`}>
       <span className="cx-bid-label">{label}</span>
@@ -209,7 +232,7 @@ export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onC
       </div>
       <div className="cx-ts-buttons cx-bid-answer">
         <button onClick={() => onClose()}>{t('common.back')}</button>
-        <button onClick={() => reply('reject')}>{t('cl.bid.reject')}</button>
+        <button onClick={() => setRejecting(true)}>{t('cl.bid.reject')}</button>
         <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
         <button className="primary" onClick={() => reply(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.counter' : 'cl.bid.accept')}</button>
       </div>
