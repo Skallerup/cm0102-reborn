@@ -48,6 +48,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Designerens "CM0102 Reborn Design Kit" (zip i ejerens Overførsler; nyhedsskærm + tokens): blokken "CM0102 Reborn
+  Design Kit" sidst i classic.css (farver/affasninger fra design-tokens.json, `--tb` = titlens klubfarve sat i Hub, nyhedsliste 5 × 24,4 px
+  med grå webkit-rullebjælke – NB: `scrollbar-color` slår `::-webkit-scrollbar` fra i Chrome), "Filter :" = fritekst i Inbox.tsx,
+  fotoet næsten uden slør. Fontvalget `original` (CM0102Text/CM0102Heading via `local()` – Eras Demi ITC og Handel Gothic BT er
+  kommercielle; fontfilerne er IKKE lagt i public/ uden ejerens ja). Skærmbilleder til designeren: ~/Downloads/CM0102-skaermbilleder-til-designer.zip.
 - 2026-11-07 – Løbepile som i CM 01/02 (målt i originalen): `PlayerInstructions.run` (gitterpunkt), `runTarget` i tactics.ts
   (nærmeste punkt i GRID_X×GRID_Y, også skråt; samme punkt + tydeligt træk = ét trin; < 4 = fjern). Pilen hører til pladsen (bytter
   man to spillere på banen, bliver pilen). Motoren: med bold går spilleren mod pilen, frem = runs 2 (*estimeret*). TacticsClassic:

@@ -50,7 +50,10 @@ export function Inbox() {
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
-  const shown = list.slice(0, 200);
+  // klassisk "Filter :" (CM 01/02): fritekst i overskrifterne
+  const [q, setQ] = useState('');
+  const qn = q.trim().toLowerCase();
+  const shown = (qn ? list.filter((n) => newsTitle(n).toLowerCase().includes(qn)) : list).slice(0, 200);
   // Fortsæt-knappen: vis den næste ulæste besked
   useEffect(() => {
     const show = (id: number) => {
@@ -91,7 +94,6 @@ export function Inbox() {
     if (jobOpen !== null && g.jobOffers.includes(jobOpen)) return <div><Head title={g.manager.name} /><JobOfferPanel cid={jobOpen} onClose={() => setJobOpen(null)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
-    const cats = grp === 'all' ? CATS : (['all', ...CX_CATS[grp]] as (NewsCategory | 'all')[]);
     return (
       <div className="cx-inbox">
         <Head title={t('cl.news', { name: g.manager.name })}>
@@ -114,9 +116,7 @@ export function Inbox() {
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :
-            <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>
-              {cats.map((c) => <option key={c} value={c}>{t(`cat.${c}`)}</option>)}
-            </select>
+            <input value={q} onChange={(e) => setQ(e.target.value)} spellCheck={false} />
           </label>
           <button className="cx-grey" disabled={!hasUnread} onClick={nextUnread}>{t('cl.nextUnread')}</button>
         </div>

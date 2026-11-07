@@ -34,11 +34,13 @@ export const flashingText = () => read(PREF.flash, true);
 export type PixelLevel = 'off' | 'light' | 'strong';
 export const pixelLook = (): PixelLevel => { try { const v = localStorage.getItem(PREF.pixel); return v === 'off' || v === 'strong' ? v : 'light'; } catch { return 'light'; } };
 /** Skrifttypen i det klassiske tema (fællesskabets ønske: flere skrifter fra æraen) */
-export const CX_FONTS = ['futuristic', 'standard', 'verdana', 'exo'] as const;
+export const CX_FONTS = ['futuristic', 'original', 'standard', 'verdana', 'exo'] as const;
 export type CxFont = (typeof CX_FONTS)[number];
 const FONT_URL: Partial<Record<CxFont, string>> = {
   futuristic: 'https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&display=swap',
   exo: 'https://fonts.googleapis.com/css2?family=Exo+2:wght@500;600;700;800&display=swap',
+  // originalens Eras Demi/Handel Gothic, hvis de findes på maskinen – ellers den futuristiske som reserve
+  original: 'https://fonts.googleapis.com/css2?family=Saira+Semi+Condensed:wght@500;600;700;800&display=swap',
 };
 export const classicFont = (): CxFont => {
   try { const v = localStorage.getItem(PREF.fontKind); if ((CX_FONTS as readonly string[]).includes(v ?? '')) return v as CxFont; } catch { /* ignorér */ }
