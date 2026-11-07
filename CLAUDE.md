@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – v0.18.0: dagens senere punkter (kampdag, transfers, lyd, baggrunde …) flyttet fra 0.17.0 til en ny version, så spillerne ser dem som nye.
 - 2026-11-07 – Spillerfejl: kamptaktikkens Ok skriver nu holdinstruktioner/formation/skytter/anfører tilbage til `g.tactic` (ikke
   udskiftninger). `TeamInstrDialog` eksporteres fra Match.tsx og bruges også af Tactics → Team Instructions i TacticsClassic.
   CxOverview `reds` (røde kort under holdet).
