@@ -5,6 +5,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { CSS, CTA, SITE, TODAY, esc, render, type Page } from './seo/layout';
 import { buildDb } from './seo/db';
+import { alternatesFor, langPages, toPage } from './seo/i18n';
 
 /** dato for databasesidernes indhold (sitemap lastmod) – hæv den, når siderne ændres mærkbart */
 const CONTENT_DATE = '2026-11-07';
@@ -36,6 +37,7 @@ const CULT_LIST = (JSON.parse(readFileSync('scripts/cult-players.json', 'utf8'))
 const cultSet = new Set(CULT_LIST);
 const dbO = buildDb({
   file: 'public/data/world-original.json', prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
+  cult: cultSet,
   keep: (p) => p.ca >= 120 || (p.age <= 23 && (p.pa >= 145 || p.paRaw === -2)) || (p.age <= 21 && p.paRaw === -1 && p.ca >= 60) || p.caps >= 30 || cultSet.has(p.name),
 });
 const dbM = buildDb({
@@ -214,15 +216,22 @@ ${table(young(M, 20).slice(0, 30))}`,
   },
 ];
 
+// landingssider på de andre sprog (hreflang til hinanden og til den engelske)
+const LP = langPages(nO, nM);
+const ALTS = alternatesFor(LP, 'play-cm-01-02-online/');
 for (const p of pages) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
-  writeFileSync(`public/${p.slug}index.html`, render({ ...p, faqSchema: true }));
+  writeFileSync(`public/${p.slug}index.html`, render({ ...p, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : {}) }));
+}
+for (const lp of LP) {
+  mkdirSync(`public/${lp.slug}`, { recursive: true });
+  writeFileSync(`public/${lp.slug}index.html`, render(toPage(lp, ALTS)));
 }
 writeFileSync('public/seo.css', CSS);
 
 // sitemaps: et indeks + én fil pr. slags side (Google: højst 50.000 url'er pr. fil)
 const groups: [string, string[], string, string][] = [
-  ['guides', ['', ...pages.map((p) => p.slug), '?draft=1', '?community=1'], TODAY, 'weekly'],
+  ['guides', ['', ...pages.map((p) => p.slug), ...LP.map((p) => p.slug), '?draft=1', '?community=1'], TODAY, 'weekly'],
   ...(['hub', 'lists', 'leagues', 'nations', 'clubs', 'players'] as const).flatMap((k) => [
     [`cm-01-02-${k}`, dbO.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
     [`2026-27-${k}`, dbM.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
@@ -268,6 +277,9 @@ Key facts:
 
 ## Guides
 ${pages.map((p) => `- [${p.h1}](${SITE}/${p.slug}): ${p.description}`).join('\n')}
+
+## Other languages
+${LP.map((p) => `- [${p.h1}](${SITE}/${p.slug}) (${p.lang})`).join('\n')}
 
 ## Play
 - [Start a new game](${SITE}/)

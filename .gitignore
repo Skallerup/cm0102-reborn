@@ -21,3 +21,12 @@ orig-shots/
 /public/sitemap*.xml
 /public/llms.txt
 /public/seo.css
+/public/da/
+/public/sv/
+/public/no/
+/public/de/
+/public/es/
+/public/fr/
+/public/it/
+/public/pt/
+/public/tr/

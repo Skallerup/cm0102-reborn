@@ -25,6 +25,8 @@ export interface DbConf {
   original: boolean;
   /** dato for indholdet (sitemap lastmod) – hæves, når siderne ændres */
   modified: string;
+  /** kultspillernes navne (listen legends) */
+  cult?: Set<string>;
   /** spillere, der får egen side */
   keep: (p: DP) => boolean;
 }
@@ -487,6 +489,11 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
   for (const age of [17, 18, 19]) lists.push({ group: 'Wonderkids', slug: `best-under-${age + 1}`, title: `${conf.game} Best Players Aged ${age} and Under – Wonderkids | CM Reborn`, h1: `${conf.game}: the best players aged ${age} or younger`, description: `The best ${age}-year-olds and younger in ${conf.game} ${conf.season}, sorted by potential ability – from ${conf.dbName}.`, intro: `Aged ${age} or younger on 1 July ${world.season}.`, rows: wonder(pool, age).slice(0, 60), value: true });
   const randoms = all.filter((p) => p.paRaw && p.age <= 25).sort((a, b) => a.paRaw - b.paRaw || b.ca - a.ca);
   if (randoms.length) lists.push({ group: 'Wonderkids', slug: 'random-potential', title: `${conf.game} Random Potential (PA -1 / -2) Players – Full List | CM Reborn`, h1: `${conf.game} random-potential players (PA -1 and -2)`, description: `Every young player with a random potential in ${conf.dbName}: -2 means PA 150–200, -1 means PA 100–150, rolled in each new save. The source of legends like Cherno Samba.`, intro: `Instead of a fixed potential, the database stores -1 or -2 for these players, and the game rolls a new PA at the start of every save: -2 gives 150–200, -1 gives 100–150. That is why some of them become world-beaters in one save and journeymen in the next. ${randoms.filter((p) => p.paRaw === -2).length} players have -2 and ${randoms.filter((p) => p.paRaw === -1).length} have -1 (aged 25 or younger).`, rows: randoms.slice(0, 400) });
+  if (conf.cult?.size) {
+    // i fanlistens rækkefølge; samme navn flere gange (fx Ronaldo) → den bedste
+    const legends = [...conf.cult].flatMap((n) => all.filter((p) => p.name === n).sort((a, b) => b.ca - a.ca).slice(0, 1));
+    lists.push({ group: 'Wonderkids', slug: 'legends', title: `${conf.game} Legends – The Cult Heroes Every Manager Remembers | CM Reborn`, h1: `${conf.game} legends: the cult heroes`, description: `${legends.slice(0, 5).map((p) => p.last).join(', ')} and ${Math.max(0, legends.length - 5)} more: the players CM 01/02 managers still talk about – with their real database attributes, CA and PA.`, intro: `The names the ${conf.game} community never forgot, collected from fan lists and forums – Belarusian strikers nobody had heard of, 15-year-olds who won the Ballon d'Or in your save, and free agents who carried teams. Most of them have a random potential, so how good they get changes from save to save. Click a name for every attribute.`, rows: legends, value: true });
+  }
   lists.push({ group: 'Other', slug: 'best-veterans', title: `${conf.game} Best Veterans – Top Players Aged 32+ | CM Reborn`, h1: `The best veterans in ${conf.game} (32 and older)`, description: `Experienced players aged 32 or older in ${conf.game} ${conf.season} who can still do a job – cheap, often on short contracts.`, intro: `Aged 32 or older on 1 July ${world.season}, sorted by current ability.`, rows: pool.filter((p) => p.age >= 32).sort((a, b) => b.ca - a.ca).slice(0, 50), contract: true, wage: true });
   const lowLeague = [...leagues.values()].filter((l) => l.tier >= 3).flatMap((l) => l.clubs.flatMap((c) => c.players));
   if (lowLeague.length) lists.push({ group: 'Other', slug: 'lower-league-gems', title: `${conf.game} Lower League Gems – Best Players Below the Second Tier | CM Reborn`, h1: `${conf.game} lower-league gems`, description: `The best players and biggest talents in the third and fourth tiers in ${conf.game} ${conf.season} – perfect for a lower-league save.`, intro: `Players at clubs in the third tier or below, sorted by potential.`, rows: lowLeague.sort((a, b) => expPa(b) - expPa(a) || b.ca - a.ca).slice(0, 60), value: true });
