@@ -4,6 +4,7 @@
 //   cmctl click <x> <y>         venstreklik – x/y er pixels i billedet (Retina: 2560×1664 for et 1280×832-vindue)
 //   cmctl rclick <x> <y>        højreklik
 //   cmctl dclick <x> <y>        dobbeltklik
+//   cmctl move <x> <y>          flyt musen (hover – fx undermenuer)
 //   cmctl drag <x1> <y1> <x2> <y2>
 //   cmctl key <return|escape|space|tab|up|down|left|right|tegn>
 //   cmctl type <tekst>
@@ -91,6 +92,10 @@ case "click", "rclick", "dclick":
   let p = point(args[1], args[2])
   if cmd == "rclick" { mouse(p, .rightMouseDown, .rightMouseUp, .right) }
   else { mouse(p, .leftMouseDown, .leftMouseUp, .left, clicks: cmd == "dclick" ? 2 : 1) }
+case "move":
+  guard args.count >= 3 else { fail("brug: cmctl move <x> <y>") }
+  activate()
+  CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point(args[1], args[2]), mouseButton: .left)?.post(tap: .cghidEventTap)
 case "drag":
   guard args.count >= 5 else { fail("brug: cmctl drag <x1> <y1> <x2> <y2>") }
   activate()

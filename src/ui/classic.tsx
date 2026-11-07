@@ -10,6 +10,7 @@ import { createPortal } from 'react-dom';
 import { gs } from '../game/state';
 import type { GameState, Staff } from '../game/types';
 import { compName, natName, t } from '../i18n';
+import { leagueRows } from '../game/competitions';
 import { useNav, type Route, type ScreenName } from './core';
 import { Crest } from './components';
 
@@ -93,14 +94,14 @@ export function useClaimTabSlot(id: string): HTMLElement | null {
 
 // ---------- hubs ----------
 
-export type Item = { key: string; label: string; route?: Route; on?: boolean; disabled?: boolean; onClick?: () => void };
+export type Item = { key: string; label: string; route?: Route; on?: boolean; disabled?: boolean; onClick?: () => void; arrow?: boolean };
 interface Hub {
   /** Titeltekst; undefined = skærmens egen titel */
   title?: (g: GameState, route: Route, screenTitle: ReactNode) => ReactNode;
   /** Hvilken klubs farver titelbjælken har (uden: ens egen klub; undefined fra funktionen = neutral, hvid bjælke) */
   club?: (g: GameState, route: Route) => number | undefined;
   tabs?: ScreenName[];
-  sub?: (ScreenName | 'lastMatch' | 'division')[];
+  sub?: (ScreenName | 'lastMatch' | 'division' | 'clubHistory')[];
   /** ingen hub-faner på denne rute (fx én stabspersons profil) */
   plain?: (route: Route) => boolean;
   /** egne farver i titelbjælken (fx et landshold) – går forud for klubbens */
@@ -165,7 +166,8 @@ const mgrName = (g: GameState) => g.manager?.name ?? '';
 const own = (g: GameState) => g.userClub || undefined;
 
 const CLUB_TABS: ScreenName[] = ['squad', 'transfers', 'assistant', 'fixtures', 'club'];
-const CLUB_SUB: Hub['sub'] = ['tactics', 'training', 'lastMatch', 'division', 'finance'];
+// CM 01/02: Tactics ▸ · Training ▸ · Last Match ▸ · "1st in PL" ▸ (placering i ligaen) · History ▸
+const CLUB_SUB: Hub['sub'] = ['tactics', 'training', 'lastMatch', 'division', 'clubHistory'];
 const OFFICE_TABS: ScreenName[] = ['finance', 'board', 'staff', 'scouting'];
 const OFFICE_SUB: Hub['sub'] = ['squad', 'tactics', 'training', 'division'];
 const MGR_TABS: ScreenName[] = ['profile', 'history', 'awards', 'jobs', 'ranking'];
@@ -222,6 +224,8 @@ const label = (k: string) => t(LABEL[k] ?? `nav.${k}`);
 /** Fanerne på en anden klubs side → klubsidens visninger */
 const VIEWED: Record<string, string> = { squad: 'squad', transfers: 'transfers', assistant: 'next', fixtures: 'fixtures', club: 'info', finance: 'finances' };
 
+const ordinal = (n: number) => (t('cl.locale').startsWith('da') ? `${n}.` : `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`);
+
 /** Den seneste spillede kamp for en klub (til "Sidste kamp") */
 function lastMatchId(g: GameState, club: number): number | undefined {
   let best: { id: number; date: string } | undefined;
@@ -251,10 +255,19 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
     }
     if (k === 'lastMatch') {
       const id = lastMatchId(g, viewed || g.userClub);
-      out.push({ key: k, label: label(k), route: id ? { name: 'report', id } : undefined, disabled: !id, on: route.name === 'report' });
+      out.push({ key: k, label: label(k), route: id ? { name: 'report', id } : undefined, disabled: !id, on: route.name === 'report', arrow: true });
     } else if (k === 'division') {
-      const lg = g.clubs[viewed || g.userClub]?.league;
-      out.push({ key: k, label: label(k), route: { name: 'competitions', id: lg }, disabled: !lg });
+      const cid = viewed || g.userClub;
+      const lg = g.clubs[cid]?.league;
+      // "1st in PL": placeringen og ligaens forkortelse (ellers "Division")
+      const comp = lg ? g.comps[lg] : undefined;
+      const rows = comp?.type === 'league' ? leagueRows(comp) : [];
+      const pos = rows.findIndex((r) => r.club === cid) + 1;
+      const abbr = (compName(g.leagues[lg ?? '']?.name) ?? '').split(/\s+/).filter((w) => /^[A-ZÆØÅ0-9]/.test(w)).map((w) => (/^\d/.test(w) ? w : w[0])).join('').slice(0, 4);
+      out.push({ key: k, label: pos > 0 && abbr ? t('cl.posIn', { pos: ordinal(pos), lg: abbr }) : label(k), route: { name: 'competitions', id: lg }, disabled: !lg, arrow: true });
+    } else if (k === 'clubHistory') {
+      const cid = viewed || g.userClub;
+      out.push({ key: k, label: t('cl.history'), route: { name: 'club', id: cid, state: { cview: 'stats' } }, on: route.name === 'club' && route.state?.cview === 'stats', arrow: true });
     } else {
       if (!allowed(k)) continue;
       // "Generel info" er kun aktiv for ens egen klub (andre klubber har ingen hub-fane)
@@ -278,7 +291,7 @@ export function ButtonRow({ items, className }: { items: Item[]; className: stri
     <div className={className}>
       {items.map((it) => (
         <button key={it.key} className={it.on ? 'on' : ''} disabled={it.disabled}
-          onClick={() => { if (it.onClick) it.onClick(); else if (it.route) nav(it.route); }}>{it.label}</button>
+          onClick={() => { if (it.onClick) it.onClick(); else if (it.route) nav(it.route); }}>{it.label}{it.arrow && <span className="cx-sub-arrow">▸</span>}</button>
       ))}
     </div>
   );
@@ -399,7 +412,8 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const logoClub = hub?.club ? hub.club(g, route) : undefined;
   const plain = hub?.plain?.(route);
   const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);
-  const sub = plain ? [] : itemsFor(hub?.sub, g, route, allowedFn);
+  // klubbens nederste knapper har ▸ som i CM 01/02
+  const sub = plain ? [] : itemsFor(hub?.sub, g, route, allowedFn).map((it) => (hub?.sub === CLUB_SUB ? { ...it, arrow: true } : it));
   const promote = !tabs.length;
   // stil hovedfanerækken til rådighed for skærmens egne faner (kun når hubben ikke har sine egne)
   const setTabs = slots?.setTabs;

@@ -330,8 +330,11 @@ function ClassicFirstSquad() {
         <CxDrop label={t('cl.sq.view')} items={viewItems} />
         {!table && <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => setSort(x.key) })} />}
         <span className="grow" />
-        <button className="cx-tool" onClick={() => save(autoSelect(tac, players))}>{t('cl.sq.assistant')}</button>
-        <button className="cx-tool" onClick={() => save({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] })}>{t('cl.sq.clear')}</button>
+        {/* CM 01/02: én Assistant-menu */}
+        <CxDrop label={t('cl.sq.assistantMenu')} align="right" items={[
+          { key: 'pick', label: t('cl.sq.assistant'), onClick: () => save(autoSelect(tac, players)) },
+          { key: 'clear', label: t('cl.sq.clear'), onClick: () => save({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
+        ]} />
         <CxDrop label={t('cl.sq.filter')} align="right" items={FILTERS.map(([k]) => ({ key: k, label: t(`cl.sq.f.${k}`), checked: k === fil[0], onClick: () => setFilter(k) }))} />
         {!table && (
           <div className="cx-sq-top">

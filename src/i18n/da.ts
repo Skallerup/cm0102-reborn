@@ -1510,4 +1510,6 @@ export const da: Record<string, string> = {
   'cl.pl.grp.technical': "Teknisk", 'cl.pl.grp.mental': "Mentalt", 'cl.pl.grp.physical': "Fysisk",
   'intl.sel1': "{player} udtaget til {nation}s trup", 'intl.sel1.body': "{names} er udtaget til {nation}s trup til kampen mod {opp}.", 'intl.selN': "{club}-spillere udtaget til {nation}s trup", 'intl.selN.body': "{names} er udtaget til {nation}s trup til kampen mod {opp}.", 'intl.selN.many': "{n} spillere fra {club} er udtaget til {nation}s trup til kampen mod {opp}.", 'intl.sel1.noOpp': "{names} er udtaget til {nation}s trup.", 'intl.selN.noOpp': "{names} er udtaget til {nation}s trup.", 'intl.selN.manyNoOpp': "{n} spillere fra {club} er udtaget til {nation}s trup.",
   'num.1': "En", 'num.2': "To", 'num.3': "Tre", 'num.4': "Fire", 'num.5': "Fem", 'num.6': "Seks", 'num.7': "Syv", 'num.8': "Otte", 'num.9': "Ni", 'num.10': "Ti", 'num.11': "Elleve", 'num.12': "Tolv",
+  'cl.posIn': "{pos} i {lg}", 'cl.history': "Historik",
+  'cl.sq.assistantMenu': "Assistent",
 };

@@ -944,3 +944,7 @@
 .cx-inbox .cx-nbody { font-size: 21px; font-weight: 600; line-height: 1.7; padding-top: 8px; }
 .cx-inbox .cx-nbar { justify-content: flex-end; padding: 4px 0; }
 .cx-inbox .cx-nbar .cx-grey { min-width: 240px; }
+.cx-subrow button { position: relative; }
+.cx-sub-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; }
+/* taktikbanen (CM 01/02): spillerne i holdets trøjefarve, efternavnet i gult under */
+.cx-tac-pitch .cx-tac-nm { color: #fff21f; }

@@ -1477,4 +1477,6 @@ export const en: Record<string, string> = {
   'cl.pl.grp.technical': "Technical", 'cl.pl.grp.mental': "Mental", 'cl.pl.grp.physical': "Physical",
   'intl.sel1': "{player} selected in {nation} squad", 'intl.sel1.body': "{names} has been called up to the {nation} squad for the match against {opp}.", 'intl.selN': "{club} players selected in {nation} squad", 'intl.selN.body': "{names} have been called up to the {nation} squad for the match against {opp}.", 'intl.selN.many': "{n} players from {club} have been called up to the {nation} squad for the match against {opp}.", 'intl.sel1.noOpp': "{names} has been called up to the {nation} squad.", 'intl.selN.noOpp': "{names} have been called up to the {nation} squad.", 'intl.selN.manyNoOpp': "{n} players from {club} have been called up to the {nation} squad.",
   'num.1': "One", 'num.2': "Two", 'num.3': "Three", 'num.4': "Four", 'num.5': "Five", 'num.6': "Six", 'num.7': "Seven", 'num.8': "Eight", 'num.9': "Nine", 'num.10': "Ten", 'num.11': "Eleven", 'num.12': "Twelve",
+  'cl.posIn': "{pos} in {lg}", 'cl.history': "History",
+  'cl.sq.assistantMenu': "Assistant",
 };
