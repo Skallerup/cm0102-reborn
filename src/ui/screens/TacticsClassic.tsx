@@ -306,6 +306,7 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onR
               if (!onRun || gk || !p || !(e.button === 2 || (e.button === 0 && e.ctrlKey))) return;
               e.preventDefault(); e.stopPropagation();
               const startX = e.clientX, startY = e.clientY;
+              if (e.button === 0) window.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); }, { capture: true, once: true });
               setRdrag({ slot: i, cx: startX, cy: startY, ...toPitch(startX, startY), moved: false });
               const move = (ev: PointerEvent) => {
                 const moved = (rdragRef.current?.moved ?? false) || Math.hypot(ev.clientX - startX, ev.clientY - startY) > 4;

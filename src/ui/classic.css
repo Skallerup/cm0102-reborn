@@ -1240,3 +1240,4 @@
 .cx-ctx-bg { position: fixed; inset: 0; z-index: 94; }
 .cx-ctx-bg .cx-ctx { position: fixed; display: flex; flex-direction: column; }
 .cx-mo-goal.og > span:first-child, .cx-mo-goal.og .cx-link { color: #ffa64a; }
+.cx-mt-list .cx-on-note { color: #ff9a2e; } .cx-mt-list tr.dim td.c-pos:not(.cx-on-note) { color: #fff; }

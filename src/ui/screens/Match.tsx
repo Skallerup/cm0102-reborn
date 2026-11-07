@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { RUN_DIRS, RunArrows, dirTarget, useRunDrag } from './runs';
 import { estimateGate } from '../../game/finance';
 import { FORMATIONS, changeFormation, slotTaken, snapSlot } from '../../game/tactics';
 import type { DropItem } from '../classic';
@@ -1397,6 +1398,8 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
   const [ctx, setCtx] = useState<{ slot: number; x: number; y: number } | null>(null);
   const tac = (editable && draft) || lv.tactic;
   const edit = (f: (t: Tactic) => Tactic) => { if (editable && setDraft) setDraft(f(structuredClone(tac))); };
+  // løbepile (højreklik og træk) – som på taktikskærmen
+  const rd = useRunDrag(pitchRef, (slot, run) => edit((t2) => { t2.individual[slot] = { ...t2.individual[slot], run: run ?? undefined }; return t2; }), (slot, x, y) => setCtx({ slot, x, y }));
   const on = lv.on.filter((s) => !s.off);
   const pl = (id: number) => g.players[id];
   const drop = (target: number) => {
@@ -1423,15 +1426,14 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
     edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK' && !slotTaken(t2.slots, i, s)) { t2.slots[i] = s; t2.formation = shapeName(t2.slots); } return t2; });
     setDrag(null);
   };
-  type Row = { id: number; num?: number; note?: string; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
-  const rows: Row[] = [
-    // skadede spillere står grå med "inj 88" (som i CM 01/02)
-    ...on.map((s) => { const inj = s.injured ? sim.events.find((e) => e.k === 'injury' && e.p === s.id)?.m : undefined; return { id: s.id, num: s.num, note: s.injured ? `inj ${inj ?? ''}`.trim() : s.enteredAt ? `on ${s.enteredAt}` : undefined, cond: s.cond, rating: s.rating, goals: s.goals, dim: !!s.injured, live: true, slot: s.slot }; }),
-    // ude af kampen uden udskiftning (rødt kort eller skadet uden flere udskiftninger)
-    ...lv.on.filter((s) => s.off).map((s) => ({ id: s.id, num: s.num, note: s.red ? 'off' : `inj ${sim.events.find((e) => e.k === 'injury' && e.p === s.id)?.m ?? ''}`.trim(), rating: s.rating, goals: s.goals, dim: true, live: false })),
-    ...lv.gone.map((s) => ({ id: s.id, num: s.num, note: `sub ${sim.events.find((e) => e.k === 'sub' && e.p2 === s.id)?.m ?? ''}`.trim(), rating: s.rating, goals: s.goals, dim: true, live: false })),
-    ...lv.bench.map((id) => ({ id, num: pl(id)?.number, dim: true, live: false })),
-  ];
+  type Row = { id: number; num?: number | string; note?: string; noteOn?: boolean; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
+  // CM 01/02: rækkerne bliver stående – de 11 fra start i rækkefølge (udskiftede grå med "sub 56"), så bænken
+  // (indskiftede hvide med orange "on 56" på deres bænkplads)
+  const rows: Row[] = cxRows(sim, side).map((r) => {
+    const s2 = on.find((x) => x.id === r.id);
+    const gone = lv.on.find((x) => x.id === r.id && x.off);
+    return { id: r.id, num: r.num, note: gone?.red ? 'off' : r.note, noteOn: r.noteOn, cond: s2 ? s2.cond : r.line ? r.cond : undefined, rating: r.line ? r.rating : undefined, goals: r.line?.goals, dim: !s2 || !!s2.injured, live: !!s2, slot: s2?.slot };
+  });
   const dnd = (id: number, canDrag: boolean) => ({
     draggable: editable && canDrag,
     onDragStart: (e: React.DragEvent) => { e.dataTransfer.setData('text/plain', String(id)); setTimeout(() => setDrag(id), 0); },
@@ -1491,7 +1493,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
               <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${drag !== null && r.id !== drag ? 'drop' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
                 <td className="btn-col"><span className="cx-rowbtn narrow">{r.num ?? ''}</span></td>
                 <td className="c-name">{p ? <span className="link" onClick={(e) => { e.stopPropagation(); navP({ name: 'player', id: p.id }); }}>{`${p.first} ${p.last}`.trim()}</span> : '?'}</td>
-                <td className="c-pos">{r.note ?? (tac.captain === r.id && r.live ? <span className="cx-capt" draggable={editable} onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>capt</span> : '')}</td>
+                <td className={`c-pos ${r.noteOn ? 'cx-on-note' : ''}`}>{r.note ?? (tac.captain === r.id && r.live ? <span className="cx-capt" draggable={editable} onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>capt</span> : '')}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
                 {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={() => r.slot !== undefined && cycle(r.slot)}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
                   <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
@@ -1510,6 +1512,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
               <rect x="14" y="1" width="40" height="16" /><rect x="14" y="83" width="40" height="16" /><rect x="25" y="1" width="18" height="6" /><rect x="25" y="93" width="18" height="6" />
             </g>
           </svg>
+          <RunArrows items={on.map((s) => { const i = tac.lineup.indexOf(s.id) >= 0 ? tac.lineup.indexOf(s.id) : s.slot; const sl = tac.slots[i]; return sl ? { key: s.id, s: sl, run: rd.shown(i, sl, tac.individual[i]?.run) } : { key: s.id, s: tac.slots[0], run: null }; })} />
           {on.map((s) => {
             const sl = tac.slots[tac.lineup.indexOf(s.id)] ?? tac.slots[s.slot];
             const slot = tac.lineup.indexOf(s.id) >= 0 ? tac.lineup.indexOf(s.id) : s.slot;
@@ -1519,7 +1522,8 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
             const runs = instrVal(tac, slot, 'runs');
             return (
               <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
-                onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); setCtx({ slot, x: e.clientX, y: e.clientY }); }}>
+                onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); }}
+                onPointerDown={(e) => { if (editable && !gk) rd.start(e, slot, sl); }}>
                 {pv === 'with' && !gk && runs > 0 && <span className="cx-run-arrow">{runs === 2 ? '▲' : '△'}</span>}
                 {pv === 'without' && !gk && tac.individual[slot]?.tightMarking && <span className="cx-run-arrow">M</span>}
                 <span className={`cx-tac-dot cx-mt-dot ${gk ? 'gk' : ''}`}>{s.num ?? ''}</span>
@@ -1532,6 +1536,14 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
       </div>
       {ctx && (
         <div className="cx-drop-pop cx-ctx" style={{ position: 'fixed', left: ctx.x, top: ctx.y }} onClick={(e) => e.stopPropagation()}>
+          <div className="cx-menu-head">{t('cl.tac.run')}</div>
+          {RUN_DIRS.map(([k, fx, fy]) => {
+            const target = dirTarget(tac.slots[ctx.slot], fx, fy);
+            const cur = tac.individual[ctx.slot]?.run;
+            const sel = !!target && !!cur && cur.x === target.x && cur.y === target.y;
+            return target && <button key={k} className={sel ? 'on' : ''} onClick={() => { edit((t2) => { t2.individual[ctx.slot] = { ...t2.individual[ctx.slot], run: target }; return t2; }); setCtx(null); }}><span className="cx-drop-check">{sel ? '✓' : ''}</span>{t(`cl.tac.run.${k}`)}</button>;
+          })}
+          <button onClick={() => { edit((t2) => { t2.individual[ctx.slot] = { ...t2.individual[ctx.slot], run: undefined }; return t2; }); setCtx(null); }}><span className="cx-drop-check">{!tac.individual[ctx.slot]?.run ? '✓' : ''}</span>{t('cl.tac.run.none')}</button>
           <div className="cx-menu-head">{t('pi.runs')}</div>
           {[2, 1, 0].map((v) => <button key={v} className={instrVal(tac, ctx.slot, 'runs') === v ? 'on' : ''} onClick={() => { edit((t2) => { t2.individual[ctx.slot].runs = v; return t2; }); setCtx(null); }}><span className="cx-drop-check">{instrVal(tac, ctx.slot, 'runs') === v ? '✓' : ''}</span>{t(`cl.mt.lvl.g${v}`)}</button>)}
         </div>

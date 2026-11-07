@@ -52,6 +52,8 @@ og læg ændringen i samme push.
   (nærmeste punkt i GRID_X×GRID_Y, også skråt; samme punkt + tydeligt træk = ét trin; < 4 = fjern). Pilen hører til pladsen (bytter
   man to spillere på banen, bliver pilen). Motoren: med bold går spilleren mod pilen, frem = runs 2 (*estimeret*). TacticsClassic:
   højre-træk via pointer-events, højreklik uden træk = menu (touchpad). Listen: `swapPlayers` (klik/træk bænk ↔ de 11).
+  Kampens taktik (OppTactics): samme pile via `ui/screens/runs.tsx` (useRunDrag/RunArrows), listen i `cxRows`-rækkefølge (originalen:
+  udskiftede grå "sub N", indskiftede hvide med orange "on N" på bænkpladsen). I originalen kræver træk fra listen at knappen holdes.
   cmctl: `rdrag`, `down/to/up`, browservinduer udelukkes (en Chrome-fane hed også "Championship Manager 01/02").
 - 2026-11-07 – Træthed med rules 'original': `ORIG_FATIGUE` 0,7 i tickFatigue (målt i originalen: Man Utd-Blackburn 18/9-2002,
   markspillere 97 → 91 % ved pausen → ~80 % ved slutfløjt). match-stats.ts: kondition ved slutfløjt 78 → 84 %, AI-udskiftninger
