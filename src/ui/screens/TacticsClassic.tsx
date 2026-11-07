@@ -106,25 +106,35 @@ export function ClassicTactics() {
     for (const f of Object.values(g.fixtures)) if (f.result && g.reports[f.id] && (f.home === g.userClub || f.away === g.userClub) && (!best || f.date > best.date)) best = { id: f.id, date: f.date };
     return best?.id;
   })();
-  const pickP = pick !== null ? byId.get(pick) : undefined;
+  const nm = (id: number) => { const p = byId.get(id); return p ? `${p.number ?? ''} ${p.first} ${p.last}`.trim() : ''; };
+  const starters = tac.lineup.filter(Boolean);
+  const saved = g.savedTactics;
+  const savedLabel = (s2: Tactic) => s2.name ?? `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`;
+  // CM 01/02: Team Instructions · Penalty Takers · Set To Default ▸ · — · Load · Save · Save As · Delete
   const tacticItems: DropItem[] = [
-    { key: 'hf', head: t('cl.tac.formation') },
-    ...FORMATIONS.map((f) => ({ key: `f${f}`, label: f, checked: tac.formation === f, onClick: () => change(changeFormation(tac, f)) })),
-    ...(g.savedTactics.length ? [{ key: 'hs', head: t('tac.load') }, ...g.savedTactics.map((s, i) => ({ key: `s${i}`, label: `${s.formation} (${t(`ment.${s.team.mentality}`)})`, onClick: () => change({ ...structuredClone(s), lineup: tac.lineup.length === s.lineup.length ? tac.lineup : s.lineup }) }))] : []),
+    { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setPane('with') },
+    { key: 'pens', label: t('cl.tac.penTakers'), sub: (['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac[k] === id, onClick: () => change({ ...tac, [k]: id }) })) })) },
+    { key: 'def', label: t('cl.mt.default'), sub: FORMATIONS.map((f) => ({ key: `f${f}`, label: f, checked: tac.formation === f, onClick: () => change(changeFormation(tac, f)) })) },
     { key: 'sep', sep: true },
-    { key: 'save', label: t('tac.save'), onClick: () => act({ t: 'savedTactics', list: [...g.savedTactics.filter((x) => x.formation !== tac.formation), structuredClone(tac)].slice(-6) }) },
-    { key: 'auto', label: t('tac.assistantPick'), onClick: () => change(autoSelect(tac, players)) },
+    { key: 'load', label: t('cl.tac.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: savedLabel(s2), onClick: () => change({ ...structuredClone(s2), lineup: tac.lineup.length === s2.lineup.length ? tac.lineup : s2.lineup }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
+    { key: 'save', label: t('cl.tac.save'), disabled: !tac.name || !saved.some((x) => x.name === tac.name), onClick: () => act({ t: 'savedTactics', list: saved.map((x) => (x.name === tac.name ? structuredClone(tac) : x)) }) },
+    { key: 'saveas', label: t('cl.tac.saveAs'), onClick: () => { const name = window.prompt(t('cl.tac.saveAs'), tac.name ?? tac.formation)?.trim(); if (name) { act({ t: 'savedTactics', list: [...saved.filter((x) => x.name !== name), { ...structuredClone(tac), name }].slice(-10) }); change({ ...tac, name }); } } },
+    { key: 'del', label: t('cl.tac.delete'), sub: saved.length ? saved.map((s2, i2) => ({ key: `d${i2}`, label: savedLabel(s2), onClick: () => act({ t: 'savedTactics', list: saved.filter((_, k) => k !== i2) }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
   ];
-  const setPiece = (k: 'captain' | 'penalties' | 'freeKicks' | 'corners') => ({ key: k, label: pickP ? `${t(`tac.${k}`)}: ${pickP.last}` : t(`tac.${k}`), disabled: !pickP || !tac.lineup.includes(pickP.id), checked: !!pickP && tac[k] === pickP.id, onClick: () => pickP && change({ ...tac, [k]: pickP.id }) });
+  /** spejlvend formationen (venstre ↔ højre) – CM 01/02 Edit → Reflect */
+  const reflect = () => {
+    const flip = (sd: Slot['side']): Slot['side'] => (sd === 'L' ? 'R' : sd === 'R' ? 'L' : sd);
+    change({ ...tac, slots: tac.slots.map((sl) => ({ ...sl, y: 100 - sl.y, side: flip(sl.side) })) });
+  };
+  // CM 01/02: Undo · Copy · Copy All · Paste · Reflect · Show Runs (+ vores egne: assistenten, ryd holdet, playmaker/target)
   const editItems: DropItem[] = [
     { key: 'undo', label: `${t('tac.undo')}${hist.length ? ` (${hist.length})` : ''}`, disabled: !hist.length, onClick: undo },
+    { key: 'reflect', label: t('cl.tac.reflect'), onClick: reflect },
+    { key: 'runs', label: t('cl.tac.showRuns'), checked: pane === 'with', onClick: () => setPane(pane === 'with' ? 'overview' : 'with') },
+    { key: 'sep', sep: true },
+    { key: 'auto', label: t('tac.assistantPick'), onClick: () => change(autoSelect(tac, players)) },
     { key: 'clear', label: t('cl.sq.clear'), onClick: () => change({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
-    { key: 'hp', head: pickP ? t('cl.tac.setFor', { name: pickP.last }) : t('cl.tac.pickFirst') },
-    setPiece('captain'), setPiece('penalties'), setPiece('freeKicks'), setPiece('corners'),
-    ...(['playmaker', 'targetMan'] as const).map((k) => {
-      const on = !!pickP && tac.team[k] === pickP.id;
-      return { key: k, label: pickP ? `${t(`tac.${k}`)}: ${pickP.last}` : t(`tac.${k}`), disabled: !pickP || !tac.lineup.includes(pickP.id), checked: on, onClick: () => pickP && change({ ...tac, team: { ...tac.team, [k]: on ? undefined : pickP.id } }) };
-    }),
+    ...(['playmaker', 'targetMan'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: [{ key: `${k}0`, label: t('common.none'), checked: !tac.team[k], onClick: () => change({ ...tac, team: { ...tac.team, [k]: undefined } }) }, ...starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac.team[k] === id, onClick: () => change({ ...tac, team: { ...tac.team, [k]: id } }) }))] })),
   ];
   const views: DropItem[] = (['cond', 'fit', 'pos', 'value'] as View[]).map((v) => ({ key: v, label: t(`cl.tac.v.${v}`), checked: view === v, onClick: () => setView(v) }));
 

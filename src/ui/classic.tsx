@@ -183,7 +183,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
     club: (g, r) => Number(r.id ?? g.userClub) || undefined,
     tabs: CLUB_TABS, sub: CLUB_SUB,
   },
-  tactics: { title: (g) => `${clubName(g)} ${t('nav.tactics')}`, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
+  // CM 01/02: taktikskærmen har hverken klubfaner eller under-knapper
+  tactics: { title: (g) => `${clubName(g)} ${t('nav.tactics')}`, club: own },
   // træning og transfersøgning har deres egne faner og under-knapper (som i originalen)
   training: { title: (g) => `${g.clubs[g.userClub]?.short ?? clubName(g)} ${t('nav.training')}`, club: own },
   report: { club: own, tabs: CLUB_TABS, sub: CLUB_SUB },

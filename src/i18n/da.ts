@@ -1512,4 +1512,5 @@ export const da: Record<string, string> = {
   'num.1': "En", 'num.2': "To", 'num.3': "Tre", 'num.4': "Fire", 'num.5': "Fem", 'num.6': "Seks", 'num.7': "Syv", 'num.8': "Otte", 'num.9': "Ni", 'num.10': "Ti", 'num.11': "Elleve", 'num.12': "Tolv",
   'cl.posIn': "{pos} i {lg}", 'cl.history': "Historik",
   'cl.sq.assistantMenu': "Assistent",
+  'cl.tac.penTakers': "Dødboldsskytter", 'cl.tac.load': "Hent", 'cl.tac.save': "Gem", 'cl.tac.saveAs': "Gem som", 'cl.tac.delete': "Slet", 'cl.tac.reflect': "Spejlvend", 'cl.tac.showRuns': "Vis løb",
 };

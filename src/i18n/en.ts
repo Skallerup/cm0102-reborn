@@ -1479,4 +1479,5 @@ export const en: Record<string, string> = {
   'num.1': "One", 'num.2': "Two", 'num.3': "Three", 'num.4': "Four", 'num.5': "Five", 'num.6': "Six", 'num.7': "Seven", 'num.8': "Eight", 'num.9': "Nine", 'num.10': "Ten", 'num.11': "Eleven", 'num.12': "Twelve",
   'cl.posIn': "{pos} in {lg}", 'cl.history': "History",
   'cl.sq.assistantMenu': "Assistant",
+  'cl.tac.penTakers': "Penalty Takers", 'cl.tac.load': "Load", 'cl.tac.save': "Save", 'cl.tac.saveAs': "Save As", 'cl.tac.delete': "Delete", 'cl.tac.reflect': "Reflect", 'cl.tac.showRuns': "Show Runs",
 };

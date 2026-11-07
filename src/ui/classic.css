@@ -989,3 +989,20 @@
   .cx-inbox .cx-nrow.unread .cx-ntitle { font-weight: 600; }
   .cx-inbox .cx-nbody { font-weight: 500; }
 }
+@media (min-width: 761px) {
+  /* værktøjsrækken (View/Sort By/Assistant/Filter …): 200×25 px, 16 px inde i indholdet (målt i originalen) */
+  .cx-tools, .cx-tools-inline, .cx-mt-tools { padding: 0 16px; gap: 2px; }
+  :root[data-skin='retro'] .cx-tools .cx-drop-btn, :root[data-skin='retro'] .cx-tools-inline .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tools .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tbtn {
+    width: 200px; min-width: 200px; height: 26px; justify-content: center; position: relative; font-size: 13px; font-weight: 500; }
+  :root[data-skin='retro'] :is(.cx-tools, .cx-tools-inline, .cx-mt-tools) .cx-drop-caret { position: absolute; right: 4px; }
+  :root[data-skin='retro'] .cx-tools > button:not(.cx-drop-btn) { min-height: 26px; min-width: 200px; font-weight: 500; }
+  /* truppen: 31 px rækker, navne i normal vægt */
+  .cx-sq-row { min-height: 31px; }
+  :root[data-skin='retro'] .cx-sq-name { font-size: 17px; font-weight: 500; }
+  .cx-sq-info { font-weight: 500; }
+}
+@media (min-width: 761px) {
+  /* taktiklisten (CM 01/02): normal vægt, formationen centreret i gult */
+  :root[data-skin='retro'] .cx-tac-name { font-weight: 500; }
+  .cx-tac-form { flex: 1; text-align: center; font-weight: 600; }
+}
