@@ -45,6 +45,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – v0.17.0. Klassisk kamptaktik efter originalen: `TeamInstrDialog` (grøn boks, TI_CHOICES, ◂-lister), `Tactic.freeKicksR/
+  cornersR` (motoren bruger dem fra højre side), faste pladser `snapSlot`/`slotTaken` i game/tactics.ts, Cancel/Ok i Shells fod ved
+  `matchSide.s.editing`, `L.wantTactics` (taktikken åbner ved DEAD_BALL-linjer, højst 3 min.), askConfirm `title`, `askNotice` +
+  `selectionProblems` (Team Selection i Shell). Start.tsx: spiltilstanden under udseendet (LookPicker `onPick`). Last Match = taktikken
+  ved kampstart og Edit-menuens indhold er *estimeret*.
 - 2026-11-06 – Landshold: `IntlState.qual` (startQualification 20/8 i ulige år, qualRound i vinduerne, pladser pr. verdensdel
   *estimeret*), `cont` (afcon jan. lige år, copa/asian juli år ≡ 0 mod 3 fra 2004; 16/8/4 hold), U21 (`u21Squad`, kind 'u21').
   NB: et hold uden målmand får MatchSim til at hænge/crashe – nationStrength og u21Squad kræver en GK; 10-mands-reglen i

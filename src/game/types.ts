@@ -438,7 +438,11 @@ export interface Tactic {
   captain: number;
   penalties: number;
   freeKicks: number;
+  /** frispark fra højre (CM 01/02 Free Kicks (R)); ellers freeKicks */
+  freeKicksR?: number;
   corners: number;
+  /** hjørnespark fra højre; ellers corners */
+  cornersR?: number;
   /** Instruktioner mod modstanderen – gælder kun kampen med dette id */
   opp?: OppInstructions;
 }

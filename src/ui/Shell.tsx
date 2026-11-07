@@ -14,7 +14,7 @@ import { BugReportButton } from './Community';
 import { CommunityHub, type HubTab } from './CommunityHub';
 import { cmDatabase } from '../game/newgame';
 import { APP_VERSION } from './changelogData';
-import { askConfirm } from './confirm';
+import { askConfirm, askNotice } from './confirm';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil } from '../game/sim';
@@ -88,6 +88,24 @@ export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
 const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international'];
+
+/** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
+function selectionProblems(): string | null {
+  const g = gs();
+  const tac = g.tactic;
+  if (!tac) return null;
+  const ids = [...tac.lineup, ...tac.bench].filter(Boolean);
+  const groups: [string, string[]][] = [['inj', []], ['ban', []], ['res', []]];
+  for (const id of ids) {
+    const p = g.players[id];
+    if (!p || p.club !== g.userClub) continue;
+    const nm = `${p.first} ${p.last}`.trim();
+    if (p.injury) groups[0][1].push(nm); else if (p.banned > 0) groups[1][1].push(nm); else if (p.reserves) groups[2][1].push(nm);
+  }
+  const join = (n: string[]) => (n.length > 1 ? `${n.slice(0, -1).join(', ')} ${t('common.and')} ${n.at(-1)}` : n[0]);
+  const lines = groups.filter(([, n]) => n.length).map(([k, n]) => t(`cl.mt.sel.${k}${n.length > 1 ? 'N' : '1'}`, { names: join(n) }));
+  return lines.length ? lines.join(' ') : null;
+}
 
 export function Shell() {
   const g = useGame()!;
@@ -265,6 +283,11 @@ export function Shell() {
       else {
         const go = g.pendingFixture;
         // klassisk (CM 01/02): "Please Confirm – Proceed to the match ?"
+        // klassisk: en skadet/udelukket spiller på holdet stopper kampen (Team Selection, som i CM 01/02)
+        if (cmNav) {
+          const sel = selectionProblems();
+          if (sel) { void askNotice(sel, { head: t('cl.mt.teamSel') }).then(() => nav({ name: 'tactics' })); return; }
+        }
         if (cmNav) { void askConfirm(t('cl.mt.proceed'), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) nav({ name: 'match', id: go }); }); return; }
         nav({ name: 'match', id: go }); return;
       }
@@ -341,12 +364,12 @@ export function Shell() {
                 <button disabled={!canBack || (ms.kicked && !ms.finished)} onClick={back} aria-label={t('cm.back')}>←</button>
                 <button disabled={!canForward || (ms.kicked && !ms.finished)} onClick={forward} aria-label={t('cm.next')}>→</button>
               </div>
-              {ms.editing ? <><button className="cx-sbtn cx-continue" onClick={ma.ok}>{t('common.ok')}</button><button className="cx-sbtn" onClick={ma.cancel}>{t('common.cancel')}</button></>
-                : ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
-                : <button className="cx-sbtn cx-continue" onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.resume') : t('cl.mt.pause')}</button>}
-              {!ms.editing && <button className="cx-sbtn" onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>}
-              {!ms.editing && <button className="cx-sbtn" onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>}
-              {!ms.finished && !ms.editing && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn' }}
+              {/* CM 01/02: under taktikken står Paused hvid og resten gråt; Cancel/Ok står nederst */}
+              {ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
+                : <button className={`cx-sbtn cx-continue ${ms.editing ? 'cx-keep' : ''}`} disabled={ms.editing} title={ms.kicked && ms.paused ? t('cl.mt.resume') : undefined} onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.paused') : t('cl.mt.pause')}</button>}
+              <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
+              <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
+              {!ms.finished && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn', disabled: ms.editing }}
                 items={[8, 4, 2, 1, 0.6, 0.35].map((n) => ({ key: String(n), label: t(`cl.mt.sp.${String(n).replace('.', '')}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
               <div className="cx-side-grow" />
             </aside>
@@ -455,7 +478,12 @@ export function Shell() {
               {new Date(`${running}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </button>
           ) : (
-            <div className="cx-backnext">
+            matchSide?.s.editing && route.name === 'match' ? (
+              <div className="cx-backnext">
+                <button className="cx-back cx-mt-cancel" disabled={dialogOpen} onClick={matchSide.a.cancel}>{t('common.cancel')}</button>
+                <button className="cx-next cx-next-go cx-mt-ok" disabled={dialogOpen} onClick={matchSide.a.ok}>{t('common.ok')}</button>
+              </div>
+            ) : <div className="cx-backnext">
               <button className="cx-back" disabled={!canBack} onClick={back}>{t('cm.back')}</button>
               {cxNext ? <button className="cx-next cx-next-go" onClick={cxNext.run}>{cxNext.label}</button>
                 : <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>}

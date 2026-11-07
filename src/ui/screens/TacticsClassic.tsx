@@ -7,14 +7,14 @@ import { act } from '../../game/actions';
 import { roleScore, slotFit, slotRole } from '../../game/attributes';
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
-import { autoSelect, available, changeFormation, FORMATIONS, newTactic } from '../../game/tactics';
+import { autoSelect, available, changeFormation, FORMATIONS, newTactic, slotTaken, snapSlot } from '../../game/tactics';
 import type { Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { money, t } from '../../i18n';
 import { CxDrop, titleColors, type DropItem } from '../classic';
 import { posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
-import { shapeName, slotAt } from './Tactics';
+import { shapeName } from './Tactics';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
@@ -57,7 +57,10 @@ export function ClassicTactics() {
   const moveSlot = (i: number, x: number, y: number) => {
     if (i < 0 || tac.slots[i].pos === 'GK' || gs().draft) return;
     const slots = tac.slots.slice();
-    slots[i] = { ...slotAt(x, y), x: Math.round(x), y: Math.round(y) };
+    // CM 01/02: spilleren lander på den nærmeste faste plads (ikke frit); optaget plads = ingen flytning
+    const s = snapSlot(x, y);
+    if (slotTaken(slots, i, s)) { setPick(null); setSlotSel(null); return; }
+    slots[i] = s;
     change({ ...tac, slots, formation: shapeName(slots) });
     setPick(null); setSlotSel(null);
   };

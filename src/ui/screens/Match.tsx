@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { estimateGate } from '../../game/finance';
-import { FORMATIONS, changeFormation } from '../../game/tactics';
+import { FORMATIONS, changeFormation, slotTaken, snapSlot } from '../../game/tactics';
 import type { DropItem } from '../classic';
 import { askConfirm } from '../confirm';
 import { ZONES } from '../../game/engine/match';
@@ -20,13 +20,13 @@ import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
 import { Head } from './common';
 import { isRetro } from '../theme';
-import { useClassicNext, useClassicMatchSide, titleColors, ClassicSub, CxDrop } from '../classic';
+import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop } from '../classic';
 import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
 import { stadiumBackgrounds } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables } from './Competitions';
 import { leagueRows } from '../../game/competitions';
-import { TacticEditor } from './Tactics';
+import { TacticEditor, shapeName } from './Tactics';
 import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
 import { TeamTalk } from '../teamtalk';
@@ -77,7 +77,7 @@ export function statColors(home: number, away: number, me: number): [string, str
   return me === 0 ? [own, pick] : [pick, own];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number } } | null = null;
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -569,6 +569,18 @@ function LiveMatch({ id }: { id: number }) {
       } else setHl({ frames, i: 0, outcome: big.post ? 'post' : big.outcome, texts, hideFrom: linesBefore, team: big.t, label: big.corner ? undefined : tag ? `hl.k.${big.post && !big.origin ? 'post' : tag}` : big.post ? 'hl.k.post' : undefined });
       started = true;
     }
+    // klassisk (CM 01/02): taktikken åbner først, når bolden er ude af spil (frispark, indkast, mål, skift …)
+    const wt = L.wantTactics;
+    if (wt && (sim.finished || sim.minute >= wt.m + 3 || sim.commentary.slice(wt.from).some((l) => DEAD_BALL.has(l.k) || l.k.startsWith('goal')))) {
+      L.wantTactics = undefined;
+      setMsg('');
+      if (!sim.finished) {
+        if (!h2h) setPaused(true);
+        if (tab !== 'tactics' && tab !== 'oppTactics') L.prevTab = tab;
+        setDraft(null);
+        setTab(wt.side === me ? 'tactics' : 'oppTactics');
+      }
+    }
     // skade eller rødt kort på mit hold: pause og over på taktik, så man selv kan justere
     const newEv = sim.events.slice(L.evSeen ?? 0);
     L.evSeen = sim.events.length;
@@ -774,14 +786,22 @@ function LiveMatch({ id }: { id: number }) {
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report && !classic ? t('match.continue') : null, done);
   const editing = classic && tab === 'tactics' && !report;
-  useClassicMatchSide(classic ? { minute: editing || (paused && !waiting) ? t('cl.mt.paused') : waiting ? '0' : String(minute), editing, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+  useClassicMatchSide(classic ? { minute: waiting ? '0' : sim.finished ? minute : String(sim.minute), editing, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
     kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
     pause: () => setPaused(!paused),
-    tactics: (side) => { if (!report) setPaused(true); if (tab !== 'tactics' && tab !== 'oppTactics') L.prevTab = tab; setDraft(null); setTab(side === me ? 'tactics' : 'oppTactics'); },
+    tactics: (side) => {
+      // bolden i spil: kampen kører videre, og taktikken åbner ved næste stop i spillet
+      if (!report && !waiting && !paused && !sim.finished) { L.wantTactics = { side, from: sim.commentary.length, m: sim.minute }; setMsg(t('cl.mt.waitBall')); return; }
+      if (!report) setPaused(true); if (tab !== 'tactics' && tab !== 'oppTactics') L.prevTab = tab; setDraft(null); setTab(side === me ? 'tactics' : 'oppTactics'); },
     speed: setSpeed,
     cont: () => done(),
     ok: () => { if (draft) sim.setTactic(me, draft); setDraft(null); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
-    cancel: () => { setDraft(null); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); },
+    cancel: () => {
+      const leave = () => { setDraft(null); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); };
+      // CM 01/02: "Changes have been made to the current tactics. Cancel all changes ?"
+      if (draft && JSON.stringify(draft) !== JSON.stringify(sim.live(me as 0 | 1).tactic)) void askConfirm(t('cl.mt.cancelAll'), { head: t('cl.mt.changesMade'), title: t('nav.tactics') }).then((yes) => { if (yes) leave(); });
+      else leave();
+    },
   });
   // advar mod at genindlæse/lukke midt i kampen
   useEffect(() => {
@@ -815,9 +835,9 @@ function LiveMatch({ id }: { id: number }) {
         {photo && <div className="cm-stage-venue">{g.clubs[f.home]?.stadium}</div>}
       </div>}
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
-      <Tabs tabs={classic
+      {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <Tabs tabs={classic
         ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
-        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />
+        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />}
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
@@ -1130,6 +1150,9 @@ export function StatsPanel({ stats, home, away, colors }: { stats: [MatchReport[
   );
 }
 
+/** Kommentarlinjer, hvor bolden er ude af spil (taktikken kan åbnes) */
+const DEAD_BALL = new Set(['foul', 'freekick', 'corner', 'corner-edge', 'short-corner', 'offside', 'yellow', 'red', 'injury', 'sub', 'halftime', 'kickoff', 'penalty', 'gk-holds', 'gk-claims', 'long-throw', 'second-yellow', 'professional-foul', 'dive-booked', 'own-goal', 'score', 'time-waste', 'fk-wall']);
+
 type InstrKey = 'runs' | 'longShots' | 'crossing' | 'passing' | 'tackling' | 'closingDown' | 'runWithBall' | 'throughBalls' | 'tightMarking' | 'freeRole' | 'holdUp' | 'setPieces';
 /** View-menuens kolonner (CM 01/02): Condition/Rating eller én spillerinstruktion – klik på værdien skifter den */
 const VIEW_COLS: { k: InstrKey; n: number }[] = [
@@ -1144,6 +1167,73 @@ const instrVal = (tac: Tactic, slot: number, k: InstrKey): number => {
 };
 const instrLabel = (k: InstrKey, v: number, n: number) => (n === 2 ? t(v ? 'common.yes' : 'common.no') : t(`cl.mt.lvl.${k === 'passing' ? 'p' : k === 'tackling' ? 't' : 'g'}${v}`));
 
+type TiKey = 'mentality' | 'passing' | 'tackling' | 'closingDown' | 'offside' | 'counter' | 'menBehind';
+/** Valgmulighederne i Team Instructions (CM 01/02): [tekst, værdi]; markeret = værdien passer (ekstremerne tæller med) */
+const TI_CHOICES: { k: TiKey; opts: [string, number][]; is: (v: number, o: number) => boolean }[] = [
+  { k: 'mentality', opts: [['cl.mt.ti.m2', 2], ['cl.mt.ti.m1', 1], ['cl.mt.ti.m3', 3]], is: (v, o) => (o === 2 ? v === 2 : o === 1 ? v <= 1 : v >= 3) },
+  { k: 'passing', opts: [['cl.mt.ti.p1', 1], ['cl.mt.ti.p0', 0], ['cl.mt.ti.p2', 2]], is: (v, o) => v === o },
+  { k: 'tackling', opts: [['cl.mt.ti.t1', 1], ['cl.mt.ti.t0', 0], ['cl.mt.ti.t2', 2]], is: (v, o) => v === o },
+  { k: 'closingDown', opts: [['common.no', 1], ['common.yes', 2]], is: (v, o) => (o === 2 ? v >= 2 : v <= 1) },
+  { k: 'offside', opts: [['common.no', 0], ['common.yes', 1]], is: (v, o) => v === o },
+  { k: 'counter', opts: [['common.no', 0], ['common.yes', 1]], is: (v, o) => v === o },
+  { k: 'menBehind', opts: [['common.no', 0], ['common.yes', 1]], is: (v, o) => v === o },
+];
+const TI_LABEL: Record<TiKey, string> = { mentality: 'cl.mt.ti.mentality', passing: 'cl.mt.ti.passing', tackling: 'cl.mt.ti.tackling', closingDown: 'cl.mt.ti.pressing', offside: 'cl.mt.ti.offside', counter: 'cl.mt.ti.counter', menBehind: 'cl.mt.ti.menBehind' };
+type TakerKey = 'freeKicks' | 'freeKicksR' | 'corners' | 'cornersR' | 'playmaker';
+const TAKERS: TakerKey[] = ['freeKicks', 'freeKicksR', 'corners', 'cornersR', 'playmaker'];
+
+/** Den grønne Team Instructions-boks fra CM 01/02: valg i kolonner (det valgte i en gul ramme), dødboldsskytter og
+ *  playmaker via ◂-knappen (grøn liste), Cancel/Ok nederst. Ændringerne gælder først ved Ok. */
+function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tactic; on: number[]; editable: boolean; onClose: () => void; onOk: (f: (t: Tactic) => Tactic) => void }) {
+  const g = useGame()!;
+  const [ti, setTi] = useState(() => ({ ...tac.team }));
+  const [tk, setTk] = useState<Record<TakerKey, number>>(() => ({ freeKicks: tac.freeKicks, freeKicksR: tac.freeKicksR ?? tac.freeKicks, corners: tac.corners, cornersR: tac.cornersR ?? tac.corners, playmaker: tac.team.playmaker ?? 0 }));
+  const [pick, setPick] = useState<TakerKey | null>(null);
+  useClassicDialog(true);
+  const short = (id: number) => { const p = g.players[id]; return p ? `${p.first ? `${p.first[0]}.` : ''}${p.last}` : ''; };
+  const val = (k: TiKey) => { const v = ti[k]; return typeof v === 'boolean' ? (v ? 1 : 0) : (v ?? 0); };
+  const set = (k: TiKey, o: number) => {
+    if (!editable) return;
+    setTi((x) => {
+      const n = { ...x };
+      if (k === 'offside' || k === 'counter' || k === 'menBehind') n[k] = o === 1;
+      else if (k === 'closingDown') n.closingDown = o === 2 ? 2 : Math.min(x.closingDown, 1);
+      else n[k] = o;
+      return n;
+    });
+  };
+  return (
+    <div className="cx-tidlg" role="dialog" onClick={() => setPick(null)}>
+      <div className="cx-tidlg-head">{t('cl.mt.teamInstr')}</div>
+      <div className="cx-tidlg-grid">
+        {TI_CHOICES.map((c) => (
+          <div key={c.k} className="cx-tidlg-row"><span className="cx-tidlg-lbl">{t(TI_LABEL[c.k])}</span>
+            {c.opts.map(([l, o]) => <button key={l} className={`cx-tich ${c.is(val(c.k), o) ? 'on' : ''}`} disabled={!editable} onClick={() => set(c.k, o)}>{t(l)}</button>)}
+          </div>
+        ))}
+        {TAKERS.map((k) => (
+          <div key={k} className="cx-tidlg-row"><span className="cx-tidlg-lbl">{t(`cl.mt.ti.${k}`)}</span>
+            <span className="cx-tidlg-pick">
+              <button className="cx-tidlg-arrow" disabled={!editable} onClick={(e) => { e.stopPropagation(); setPick(pick === k ? null : k); }}>◂</button>
+              {pick === k && (
+                <div className="cx-tidlg-menu" onClick={(e) => e.stopPropagation()}>
+                  {k === 'playmaker' && <button className={!tk.playmaker ? 'on' : ''} onClick={() => { setTk({ ...tk, playmaker: 0 }); setPick(null); }}>{t('common.none')}</button>}
+                  {on.map((id) => <button key={id} className={tk[k] === id ? 'on' : ''} onClick={() => { setTk({ ...tk, [k]: id }); setPick(null); }}>{g.players[id]?.number ?? ''} {short(id)}</button>)}
+                </div>
+              )}
+            </span>
+            <span className="cx-tidlg-name">{tk[k] ? short(tk[k]) : ''}</span>
+          </div>
+        ))}
+      </div>
+      <div className="cx-ts-buttons cx-tidlg-foot">
+        <button onClick={onClose}>{t('common.cancel')}</button>
+        <button className="primary" disabled={!editable} onClick={() => onOk((t2) => ({ ...t2, team: { ...ti, playmaker: tk.playmaker || undefined }, freeKicks: tk.freeKicks, freeKicksR: tk.freeKicksR, corners: tk.corners, cornersR: tk.cornersR }))}>{t('common.ok')}</button>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Et holds taktik under kampen som i CM 01/02: titel i holdets farver, View (kolonner), Tactics-menuen (holdinstruktioner,
  * straffesparksskytter, formationer, gem/hent/slet, Set To Default), listen og banen. Eget hold: ændringer samles i en kladde
@@ -1156,8 +1246,6 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
 }) {
   const g = useGame()!;
   const lv = sim.live(side);
-  const cid = sim.teams[side].club;
-  const col = titleColors(cid);
   const [drag, setDrag] = useState<number | null>(null);
   const [pane, setPane] = useState<'list' | 'ti' | 'save'>('list');
   const [saveName, setSaveName] = useState('');
@@ -1165,6 +1253,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
   const [dragCapt, setDragCapt] = useState(false);
   const pitchRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'cond' | InstrKey>('cond');
+  const [pv, setPv] = useState<'ov' | 'with' | 'without'>('ov');
   const [ctx, setCtx] = useState<{ slot: number; x: number; y: number } | null>(null);
   const tac = (editable && draft) || lv.tactic;
   const edit = (f: (t: Tactic) => Tactic) => { if (editable && setDraft) setDraft(f(structuredClone(tac))); };
@@ -1187,9 +1276,11 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
     e.preventDefault();
     if (!editable || drag === null || !pitchRef.current) return;
     const r = pitchRef.current.getBoundingClientRect();
-    const y = Math.max(4, Math.min(96, ((e.clientX - r.left) / r.width) * 100));
-    const x = Math.max(10, Math.min(95, (97 - ((e.clientY - r.top) / r.height) * 100) / 0.92));
-    edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK') t2.slots[i] = { ...t2.slots[i], x, y }; return t2; });
+    const y = ((e.clientX - r.left) / r.width) * 100;
+    const x = (97 - ((e.clientY - r.top) / r.height) * 100) / 0.92;
+    // CM 01/02: spilleren lander på den nærmeste faste plads
+    const s = snapSlot(x, y);
+    edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK' && !slotTaken(t2.slots, i, s)) { t2.slots[i] = s; t2.formation = shapeName(t2.slots); } return t2; });
     setDrag(null);
   };
   type Row = { id: number; num?: number; note?: string; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
@@ -1215,52 +1306,31 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
     (t2.individual[slot] as unknown as Record<string, number | boolean>)[vc.k] = vc.n === 2 ? next === 1 : next;
     return t2;
   });
-  const TI = tac.team;
   const saved = g.savedTactics;
   const tacticsMenu: DropItem[] = [
     { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setPane(pane === 'ti' ? 'list' : 'ti') },
     // dødboldsskytter som grønne undermenuer (CM 01/02)
-    ...(['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: on.map((x) => ({ key: `${k}${x.id}`, label: `${x.num ?? ''} ${pl(x.id) ? `${pl(x.id).first} ${pl(x.id).last}`.trim() : ''}`.trim(), checked: tac[k] === x.id, disabled: !editable, onClick: () => edit((t2) => ({ ...t2, [k]: x.id })) })) })),
     ...(editable ? [
-      { key: 'sep1', sep: true as const },
       { key: 'form', label: t('cl.mt.formation'), sub: FORMATIONS.map((fm) => ({ key: fm, label: fm, checked: tac.formation === fm, onClick: () => edit((t2) => ({ ...changeFormation(t2, fm), lineup: t2.lineup, bench: t2.bench })) })) },
       { key: 'load', label: t('cl.mt.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: s2.name ?? `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => edit((t2) => ({ ...structuredClone(s2), lineup: t2.lineup, bench: t2.bench, captain: t2.captain })) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
       { key: 'save', label: t('cl.mt.save'), onClick: () => { setSaveName(tac.name ?? tac.formation); setPane('save'); } },
       { key: 'del', label: t('cl.mt.delete'), sub: saved.length ? saved.map((s2, i2) => ({ key: `d${i2}`, label: s2.name ?? `${s2.formation} (${t(`ment.${s2.team.mentality}`)})`, onClick: () => act({ t: 'savedTactics', list: saved.filter((_, k) => k !== i2) }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
-      { key: 'sep2', sep: true as const },
-      { key: 'def', label: t('cl.mt.default'), disabled: !base, onClick: () => base && setDraft?.(structuredClone({ ...base, lineup: tac.lineup, bench: tac.bench })) },
     ] : []),
   ];
+  // Edit (CM 01/02): anfører og straffesparksskytte (*estimeret* indhold)
+  const editMenu: DropItem[] = (['captain', 'penalties'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: on.map((x) => ({ key: `${k}${x.id}`, label: `${x.num ?? ''} ${pl(x.id) ? `${pl(x.id).first} ${pl(x.id).last}`.trim() : ''}`.trim(), checked: tac[k] === x.id, disabled: !editable, onClick: () => edit((t2) => ({ ...t2, [k]: x.id })) })) }));
   return (
     <div className="cx-mt" onClick={() => setCtx(null)}>
-      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
-      <div className="cx-tools cx-tools-inline">
-        <CxDrop className="cx-green" label={`${t('cl.sq.view')}: ${view === 'cond' ? t('cl.mt.condRating') : t(`pi.${view}`)}`} fixed
-          items={[{ key: 'cond', label: t('cl.mt.condRating'), checked: view === 'cond', onClick: () => setView('cond') }, ...VIEW_COLS.map((c) => ({ key: c.k, label: t(`pi.${c.k}`), checked: view === c.k, onClick: () => setView(c.k) }))]} />
+      <div className="cx-title cx-title-plain"><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
+      <div className="cx-mt-tools">
         <CxDrop className="cx-green" label={t('cl.mt.tacMenu')} fixed items={tacticsMenu} />
-        {editable && <span className="cx-mt-hint">{t('cl.mt.dragHint', { n: lv.subsLeft })}</span>}
+        <CxDrop className="cx-green" label={t('cl.sq.view')} fixed
+          items={[{ key: 'cond', label: t('cl.mt.condRating'), checked: view === 'cond', onClick: () => setView('cond') }, ...VIEW_COLS.map((c) => ({ key: c.k, label: t(`pi.${c.k}`), checked: view === c.k, onClick: () => setView(c.k) }))]} />
+        <span className="cx-mt-gap" />
+        <button className="cx-mt-tbtn" disabled={!editable || !base} title={t('cl.mt.lastHint')} onClick={() => base && setDraft?.(structuredClone({ ...base, lineup: tac.lineup, bench: tac.bench }))}>{t('cl.mt.lastMatch')}</button>
+        <CxDrop className="cx-green" label={t('cl.mt.edit')} fixed align="right" items={editMenu} />
       </div>
-      {pane === 'ti' && (
-        <div className="cx-ts-body cx-mt-tibox">
-          <div className="cx-subtitle small">{t('cl.mt.teamInstr')}</div>
-          {([
-            [t('cl.mt.ti.mentality'), t(`cl.mt.ti.m${TI.mentality}`), 'mentality', 5],
-            [t('cl.mt.ti.passing'), t(`cl.mt.ti.p${TI.passing}`), 'passing', 3],
-            [t('cl.mt.ti.tempo'), t(`cl.mt.lvl.g${TI.tempo}`), 'tempo', 3],
-            [t('cl.mt.ti.width'), t(`cl.mt.lvl.w${TI.width}`), 'width', 3],
-            [t('cl.mt.ti.tackling'), t(`cl.mt.ti.t${TI.tackling}`), 'tackling', 3],
-            [t('cl.mt.ti.pressing'), t(`cl.mt.lvl.g${TI.closingDown}`), 'closingDown', 3],
-          ] as [string, string, 'mentality' | 'passing' | 'tempo' | 'width' | 'tackling' | 'closingDown', number][]).map(([l, v, k, n]) => (
-            <div key={k} className="cx-ti-row2"><span className="cx-ts-label">{l}</span>
-              <button className="cx-pm" disabled={!editable || TI[k] <= 0} onClick={() => edit((t2) => { t2.team[k] = Math.max(0, t2.team[k] - 1); return t2; })}>−</button>
-              <span className="cx-ts-val wide2">{v}</span>
-              <button className="cx-pm" disabled={!editable || TI[k] >= n - 1} onClick={() => edit((t2) => { t2.team[k] = Math.min(n - 1, t2.team[k] + 1); return t2; })}>+</button></div>
-          ))}
-          {(['offside', 'counter'] as const).map((k) => (
-            <button key={k} className={`cx-opt ${TI[k] ? 'on' : ''}`} disabled={!editable} onClick={() => edit((t2) => { t2.team[k] = !t2.team[k]; return t2; })}>{t(`cl.mt.ti.${k}`)}</button>
-          ))}
-        </div>
-      )}
+      {pane === 'ti' && <TeamInstrDialog tac={tac} on={on.map((x) => x.id)} editable={!!editable} onClose={() => setPane('list')} onOk={(f) => { edit(f); setPane('list'); }} />}
       {pane === 'save' && (
         <div className="cx-ts-body cx-mt-tibox">
           <div className="cx-subtitle small">{t('cl.mt.save')}</div>
@@ -1290,6 +1360,8 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
             );
           })}</tbody></table>
         </div>
+        <div className="cx-mt-pcol">
+        <div className="cx-mt-ptabs">{(['ov', 'with', 'without'] as const).map((k) => <button key={k} className={pv === k ? 'on' : ''} onClick={() => setPv(k)}>{t(`cl.mt.pv.${k}`)}</button>)}</div>
         <div className="cx-tac-pitch" ref={pitchRef} onDragOver={(e) => { if (editable && drag !== null) e.preventDefault(); }} onDrop={dropOnPitch}>
           <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
             <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
@@ -1307,12 +1379,14 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
             return (
               <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
                 onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); setCtx({ slot, x: e.clientX, y: e.clientY }); }}>
-                {!gk && runs === 2 && <span className="cx-run-arrow">▲</span>}
-                <span className="cx-tac-dot" style={gk ? { background: '#2fae4c', color: '#fff' } : { background: col.bg, color: col.fg }}>{s.num ?? ''}</span>
+                {pv === 'with' && !gk && runs > 0 && <span className="cx-run-arrow">{runs === 2 ? '▲' : '△'}</span>}
+                {pv === 'without' && !gk && tac.individual[slot]?.tightMarking && <span className="cx-run-arrow">M</span>}
+                <span className={`cx-tac-dot cx-mt-dot ${gk ? 'gk' : ''}`}>{s.num ?? ''}</span>
                 <span className="cx-tac-nm">{p?.last ?? ''}</span>
               </div>
             );
           })}
+        </div>
         </div>
       </div>
       {ctx && (

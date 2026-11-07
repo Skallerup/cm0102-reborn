@@ -1137,8 +1137,10 @@ export class MatchSim {
     if (this.opts.corners !== undefined && !this.r.chance(this.opts.corners)) { this.turnover(null); return; }
     T.stats.corners++;
     const takerId = T.tactic.corners;
-    const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? this.pick(T.zAtt[this.zoneFor(T.idx, 3, 1)]) ?? T.on[0];
+    let taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? this.pick(T.zAtt[this.zoneFor(T.idx, 3, 1)]) ?? T.on[0];
     const lane = this.r.chance(0.5) ? 0 : 2;
+    // hjørnespark fra højre: højre-skytten (CM 01/02 Corners (R))
+    if (lane === 2 && T.tactic.cornersR) taker = T.on.find((x) => x.p.id === T.tactic.cornersR && !x.off) ?? taker;
     this.zone = this.zoneFor(T.idx, 4, lane);
     this.corners.push({ m: this.minute, t: T.idx, taker: taker.p.id, lane, moment: this.moment });
     if (this.r.chance(0.3)) this.line('corner', taker);
@@ -1220,8 +1222,8 @@ export class MatchSim {
     }
     if (rb >= 3) {
       this.line('freekick', victim, def);
-      const takerId = T.tactic.freeKicks;
-      const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? victim;
+      const takerId = lane === 2 && T.tactic.freeKicksR ? T.tactic.freeKicksR : T.tactic.freeKicks;
+      const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? T.on.find((x) => x.p.id === T.tactic.freeKicks && !x.off) ?? victim;
       if (lane === 1 && this.r.chance(0.55)) this.shoot(T, O, taker, 'fk');
       else this.cross(T, O, taker, true, 0.2);
       return true;

@@ -844,10 +844,25 @@
 .cx-run-arrow { position: absolute; top: -16px; color: #fff; font-size: 13px; text-shadow: 1px 1px 0 #000; }
 .cx-ctx { z-index: 95; min-width: 160px; }
 .cx-mt-tibox { margin: 0 0 8px; }
-.cx-ti-row2 { display: grid; grid-template-columns: minmax(160px, 260px) 60px minmax(160px, 240px) 60px; align-items: center; gap: 6px; margin-left: 40px; }
-.cx-ts-val.wide2 { text-align: center; color: #fff; font-size: 17px; }
-.cx-mt-tibox .cx-opt { margin-left: 40px; }
-@media (max-width: 760px) { .cx-ti-row2 { grid-template-columns: 1fr 40px 1fr 40px; margin-left: 0; } }
+/* Team Instructions: grøn boks over taktikskærmen (CM 01/02) */
+.cx-mt { position: relative; }
+.cx-tidlg { position: absolute; z-index: 60; top: 56px; left: 6%; right: 6%; background: #1d4a12; border: 2px solid #0f2a08; box-shadow: 0 6px 30px #000c; padding: 14px 16px 12px; }
+.cx-tidlg-head { background: #000; color: #fff; text-align: center; font-size: 22px; font-weight: 700; padding: 14px; border-top: 2px solid #1a1aa0; margin-bottom: 18px; }
+.cx-tidlg-grid { background: #255a17; border: 2px solid #3d7a2a; padding: 4px 10px; }
+.cx-tidlg-row { display: grid; grid-template-columns: minmax(150px, 2fr) repeat(4, minmax(70px, 1fr)); align-items: center; min-height: 40px; }
+.cx-tidlg-row + .cx-tidlg-row { border-top: 1px solid #2f6a20; }
+.cx-tidlg-lbl { color: #e8f0e0; font-size: 19px; font-weight: 600; text-shadow: 1px 1px 0 #000; }
+.cx-tich { background: none; border: 1px solid transparent; color: #8fe04a; font-size: 14px; font-weight: 600; min-height: 32px; margin: 2px 6px; cursor: pointer; }
+.cx-tich.on { color: #fff21f; border-color: #fff21f; }
+.cx-tich:not(:disabled):hover { color: #fff; }
+.cx-tidlg-pick { grid-column: 2 / span 2; position: relative; display: flex; justify-content: flex-end; margin-right: 6px; }
+.cx-tidlg-arrow { width: 46px; height: 34px; background: #000; color: #fff; border: 1px solid #1a1aa0; cursor: pointer; }
+.cx-tidlg-name { grid-column: 4 / span 2; color: #fff21f; font-weight: 600; }
+.cx-tidlg-menu { position: absolute; right: 52px; top: 0; z-index: 70; min-width: 200px; background: #3f8f2a; border: 2px solid #2a6a1a; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 4px 16px #000a; }
+.cx-tidlg-menu button { background: none; border: 0; border-bottom: 1px solid #4fa034; color: #fff; text-align: left; padding: 5px 14px; font-size: 14px; cursor: pointer; }
+.cx-tidlg-menu button:hover, .cx-tidlg-menu button.on { background: #57b03c; color: #fff21f; }
+.cx-tidlg-foot { margin-top: 18px; }
+@media (max-width: 760px) { .cx-tidlg { left: 0; right: 0; } .cx-tidlg-row { grid-template-columns: 1fr repeat(4, auto); } .cx-tidlg-lbl { font-size: 15px; } }
 .cm-agg { position: absolute; right: 110px; bottom: 4px; font-size: 13px; font-weight: 800; color: inherit; opacity: 0.9; } .cm-team.away { position: relative; }
 .cx-menu-pop.cx-menu-clubs { max-height: 80vh; overflow-y: auto; }
 :root[data-skin='retro'] textarea.cx-note { height: 220px; text-align: left; padding: 10px; font-size: 18px; resize: vertical; }
@@ -858,3 +873,22 @@
 .shell.cx .main { overflow-x: auto; }
 .cx-mt, .cx-mt-cols > * { min-width: 0; }
 .cx-mt-list { overflow-x: auto; }
+.cx-ts-buttons.single { grid-template-columns: 1fr; }
+/* klassisk kamptaktik som CM 01/02: hvid titel, Tactics/View til venstre, Last Match/Edit til højre, faner over banen */
+.cx-title.cx-title-plain { background: linear-gradient(180deg, #ffffff, #d8d8dc); color: #111; }
+.cx-title.cx-title-plain h2 { color: #111; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25); }
+.cx-mt-tools { display: flex; gap: 4px; align-items: center; margin: 0 0 8px; flex-wrap: wrap; }
+.cx-mt-tools .cx-drop { min-width: 180px; }
+.cx-mt-tools .cx-drop-btn, .cx-mt-tbtn { width: 100%; min-height: 32px; justify-content: center; }
+:root[data-skin='retro'] .cx-mt-tools .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tbtn { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; font-weight: 700; }
+.cx-mt-tbtn { width: auto; min-width: 180px; }
+.cx-mt-gap { flex: 1; }
+.cx-mt-pcol { display: flex; flex-direction: column; gap: 6px; }
+.cx-mt-ptabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.cx-mt-ptabs button { min-height: 40px; background: #0a0a6e; color: #fff; border: 1px solid #1a1aa0; font-weight: 700; cursor: pointer; }
+.cx-mt-ptabs button.on { border-color: #fff21f; }
+.cx-tac-dot.cx-mt-dot { background: #fff; color: #111; border-color: #222; }
+.cx-tac-dot.cx-mt-dot.gk { background: #2f8f2a; color: #fff; }
+:root[data-skin='retro'] .cx-sbtn.cx-keep:disabled { color: #fff; opacity: 1; }
+:root[data-skin='retro'] .cx-tidlg .cx-tich { transition: none; border: 1px solid transparent; background: none; box-shadow: none; }
+:root[data-skin='retro'] .cx-tidlg .cx-tich.on { border-color: #fff21f; color: #fff21f; }

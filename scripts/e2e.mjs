@@ -190,9 +190,19 @@ async function run(look) {
     // klassisk (CM 01/02): Continue Game → "Proceed to the match ?" (Yes) → Kick Off Match i sidebjælken
     const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');
     const labels = [await t('top.toTheMatch'), await t('top.toMatch'), await t('cl.continue'), await t('top.continue')].filter(Boolean);
+    // klassisk: en skadet spiller på holdet stopper kampen (Team Selection), indtil holdet er rettet
+    let injured = look === 'klassisk' ? await page.evaluate(() => { const g = window.__cm.gs(); const id = g.tactic?.lineup[3]; if (!id) return 0; g.players[id].injury = { key: 'hamstring', days: 60 }; return id; }) : 0;
+    let selSeen = false;
     for (let i = 0; i < 120; i++) {
       if (await page.getByRole('button', { name: kick }).first().isVisible().catch(() => false)) break;
       let clicked = false;
+      const selHead = await t('cl.mt.teamSel');
+      if (injured && await page.locator('.cx-confirm .cx-subtitle', { hasText: selHead }).isVisible().catch(() => false)) {
+        if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-teamselection.png` });
+        await page.locator('.cx-confirm button.primary').click();
+        await page.evaluate((id) => { window.__cm.gs().players[id].injury = null; }, injured);
+        injured = 0; selSeen = true; await page.waitForTimeout(400); continue;
+      }
       const yes = page.locator('.cx-confirm button.primary');
       if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(400); continue; }
       for (const l of labels) {
@@ -202,12 +212,13 @@ async function run(look) {
       if (!clicked) await go({ name: 'match' });
       await page.waitForTimeout(400);
     }
+    if (look === 'klassisk' && !selSeen) throw new Error('Team Selection blev ikke vist for en skadet spiller');
     await page.getByRole('button', { name: kick }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });
     const doneSel = look === 'klassisk' ? page.locator('.cx-side .cx-continue.continue') : page.getByRole('button', { name: await t('match.continue') }).first();
     for (let i = 0; i < 60 && !(await doneSel.isVisible().catch(() => false)); i++) {
-      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { for (const k of [1, 2]) { await page.locator('.cx-side > button.cx-sbtn', { hasText: 'Tactics' }).nth(k - 1).click(); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); const cancel = page.locator('.cx-side > button.cx-sbtn', { hasText: /^Cancel$/ }); if (await cancel.isVisible().catch(() => false)) await cancel.click(); } } if (i === 0) { for (const n of ['Match Stats', 'Action Zones', 'Match Report', 'Player Ratings', 'Latest Scores']) { const b = page.getByRole('button', { name: n, exact: true }).first(); if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(200); await checkScreen(n); await page.screenshot({ path: `${OUT}/klassisk-kamp-${n.replace(/ /g, '')}.png` }); } } } await page.keyboard.press('e'); }
+      if (look === 'klassisk') { if (i === 0) await page.screenshot({ path: `${OUT}/klassisk-kamp.png` }); if (i === 0) { for (const k of [1, 2]) { await page.locator('.cx-side > button.cx-sbtn', { hasText: 'Tactics' }).nth(k - 1).click(); await page.waitForSelector('.cx-mt-tools', { timeout: 60000 }); await page.waitForTimeout(300); await page.screenshot({ path: `${OUT}/klassisk-kamptaktik-${k}.png` }); if (await page.locator('.cx-foot .cx-mt-cancel').isVisible().catch(() => false)) { await page.locator('.cx-mt-tools .cx-drop-btn', { hasText: 'Tactics' }).click(); await page.locator('.cx-drop-pop [role=menuitem], .cx-drop-pop button', { hasText: 'Team Instructions' }).first().click(); await page.waitForSelector('.cx-tidlg', { timeout: 5000 }); await page.locator('.cx-tidlg .cx-tich', { hasText: 'Attacking' }).click(); { const on = await page.locator('.cx-tidlg .cx-tich.on').allTextContents(); if (!on.includes('Attacking')) throw new Error(`Attacking ikke valgt: ${on}`); } await page.waitForTimeout(400); await page.screenshot({ path: `${OUT}/klassisk-teaminstr-0.png` }); await page.locator('.cx-tidlg-arrow').first().click(); await page.waitForSelector('.cx-tidlg-menu'); await page.screenshot({ path: `${OUT}/klassisk-teaminstr.png` }); await page.locator('.cx-tidlg-menu button').first().click(); await page.locator('.cx-tidlg-foot button', { hasText: 'Ok' }).click(); await page.waitForSelector('.cx-tidlg', { state: 'detached', timeout: 5000 }); } const cancel = page.locator('.cx-foot .cx-mt-cancel'); if (await cancel.isVisible().catch(() => false)) await cancel.click(); } } if (i === 0) { for (const n of ['Match Stats', 'Action Zones', 'Match Report', 'Player Ratings', 'Latest Scores']) { const b = page.getByRole('button', { name: n, exact: true }).first(); if (await b.isVisible().catch(() => false)) { await b.click(); await page.waitForTimeout(200); await checkScreen(n); await page.screenshot({ path: `${OUT}/klassisk-kamp-${n.replace(/ /g, '')}.png` }); } } } await page.keyboard.press('e'); }
       if (await toEnd.isVisible().catch(() => false)) await toEnd.click().catch(() => {});
       // pause med holdsnak/udskiftning: fortsæt
       const resume = page.getByRole('button', { name: await t('match.resume') }).first();

@@ -22,6 +22,23 @@ const F: Record<string, S[]> = {
 
 export const FORMATIONS = Object.keys(F);
 
+/** CM 01/02's faste pladser på banen: rækkerne SW, D, DM, M, AM, ST × venstre, venstre-centralt, centralt, højre-centralt, højre */
+const GRID_X = [12, 22, 35, 50, 66, 82];
+const GRID_Y = [12, 37, 50, 63, 88];
+/** Den nærmeste faste plads (klassisk: en spiller trukket rundt lander altid på én af dem) */
+export function snapSlot(x: number, y: number): Slot {
+  const near = (a: number[], v: number) => a.reduce((b, c) => (Math.abs(c - v) < Math.abs(b - v) ? c : b));
+  const gx = near(GRID_X, x), gy = near(GRID_Y, y);
+  const side: Side = gy < 30 ? 'L' : gy > 70 ? 'R' : 'C';
+  const row = GRID_X.indexOf(gx);
+  const pos: PosKey = row === 0 ? (side === 'C' ? 'SW' : 'D') : row === 1 ? 'D' : row === 2 ? (side === 'C' ? 'DM' : 'WB') : row === 3 ? 'M' : row === 4 ? 'AM' : 'ST';
+  return { pos, side, x: gx, y: gy };
+}
+/** Står en anden spiller allerede på den faste plads? */
+export function slotTaken(slots: Slot[], i: number, s: Slot): boolean {
+  return slots.some((o, j) => j !== i && o.pos !== 'GK' && Math.abs(o.x - s.x) < 5 && Math.abs(o.y - s.y) < 6);
+}
+
 export function formationSlots(name: string): Slot[] {
   return (F[name] ?? F['4-4-2']).map(([pos, side, x, y]) => ({ pos, side, x, y }));
 }

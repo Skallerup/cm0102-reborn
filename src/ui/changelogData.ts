@@ -9,6 +9,19 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.17.0',
+    date: '2026-11-07',
+    title: { da: 'Kamptaktikken som i CM 01/02', en: 'Match tactics as in CM 01/02' },
+    items: [
+      { da: "Klassisk kamptaktik som i CM 01/02: hvid titelbjælke, Tactics og View til venstre, Last Match og Edit til højre, fanerne Overview / With Ball / Without Ball over banen, hvide spillerprikker og Cancel/Ok nederst. Under taktikken står Paused hvid i sidebjælken og resten gråt", en: "Classic match tactics as in CM 01/02: white title bar, Tactics and View on the left, Last Match and Edit on the right, the Overview / With Ball / Without Ball tabs above the pitch, white player dots and Cancel/Ok at the bottom. While in tactics, Paused stays white in the sidebar and the rest is greyed out" },
+      { da: "Team Instructions er nu originalens grønne boks: valgene står i kolonner med det valgte i en gul ramme (Mentality, Passing, Tackling, Pressing, Offside Trap, Counter Attack, Men Behind Ball), og frispark og hjørnespark fra venstre og højre samt playmaker vælges med ◂ i en grøn liste", en: "Team Instructions is now the original's green box: the choices sit in columns with the selected one in a yellow frame (Mentality, Passing, Tackling, Pressing, Offside Trap, Counter Attack, Men Behind Ball), and left and right free kicks and corners plus the playmaker are picked with ◂ from a green list" },
+      { da: "Klassisk: spillere, der trækkes rundt på banen, lander på originalens faste pladser (SW, D, DM, M, AM, ST i fem baner) – ikke frit", en: "Classic: players dragged around the pitch land on the original's fixed positions (SW, D, DM, M, AM, ST in five lanes) – not freely" },
+      { da: "Klassisk: når du trykker på taktikken, mens bolden er i spil, kører kampen videre, og taktikken åbner først, når bolden er ude af spil. Cancel efter ændringer spørger \"Changes have been made to the current tactics. Cancel all changes ?\"", en: "Classic: pressing tactics while the ball is in play lets the match run on, and the tactics open when the ball goes out of play. Cancel after changes asks \"Changes have been made to the current tactics. Cancel all changes ?\"" },
+      { da: "Klassisk: en skadet, karantæneramt eller reservespiller på holdet stopper kampen med originalens Team Selection-skærm, indtil holdet er rettet", en: "Classic: an injured, suspended or reserve player in the team stops the match with the original's Team Selection screen until the team is fixed" },
+      { da: "Valget mellem Ægte CM 01/02 og Udvidet ved nyt spil står nu under udseendet og vises altid (før dukkede det ikke op, når man skiftede til det klassiske udseende)", en: "The choice between Authentic CM 01/02 and Extended for a new game now sits below the look and is always shown (before, it did not appear when you switched to the classic look)" },
+    ],
+  },
+  {
     version: '0.16.0',
     date: '2026-11-06',
     title: { da: 'Landshold, spiltilstanden Ægte CM 01/02 og spejdere som i originalen', en: 'National teams, the Authentic CM 01/02 game mode and scouts as in the original' },

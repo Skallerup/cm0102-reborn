@@ -5,9 +5,9 @@ import { shot } from './shots';
 import { getTheme, setTheme } from './theme';
 
 /** Valg af udseende (moderne/klassisk) med et billede af hvert – ved nyt spil og ny draft-liga */
-export function LookPicker() {
+export function LookPicker({ onPick }: { onPick?: (l: 'modern' | 'classic') => void } = {}) {
   const [look, setLook] = useState<'modern' | 'classic'>(() => (getTheme() === 'retro' ? 'classic' : 'modern'));
-  const pick = (l: 'modern' | 'classic') => { setLook(l); setTheme(l === 'classic' ? 'retro' : getTheme() === 'retro' ? 'club' : getTheme()); };
+  const pick = (l: 'modern' | 'classic') => { setLook(l); setTheme(l === 'classic' ? 'retro' : getTheme() === 'retro' ? 'club' : getTheme()); onPick?.(l); };
   return (
     <Panel title={t('start.look')}>
       <div className="db-choice">
