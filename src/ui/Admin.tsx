@@ -104,7 +104,7 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
         {TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMsg(''); }}>{l}{badge(k)}</button>)}
       </div>
       {msg && <div className="insight">{msg}</div>}
-      {tab === 'overview' && <OverviewTab o={overview} go={setTab} />}
+      {tab === 'overview' && <OverviewTab o={overview} go={setTab} onChange={() => void refresh()} setMsg={setMsg} />}
       {tab === 'starts' && <NewCareersTab />}
       {tab === 'applications' && <ApplicationsTab onChange={refresh} setMsg={setMsg} />}
       {tab === 'managers' && <ManagersTab />}
@@ -124,7 +124,7 @@ function Stat({ label, value, sub, onClick }: { label: string; value: ReactNode;
   return <div className={`adm-stat ${onClick ? 'clickable' : ''}`} onClick={onClick}><span>{label}</span><b>{value}</b>{sub && <small>{sub}</small>}</div>;
 }
 
-function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
+function OverviewTab({ o, go, onChange, setMsg }: { o: Overview | null; go: (t: Tab) => void; onChange?: () => void; setMsg?: (s: string) => void }) {
   if (!o) return <div className="muted">Loading…</div>;
   const pct = o.ai.cap ? Math.round((o.ai.today / o.ai.cap) * 100) : 0;
   return (
@@ -144,8 +144,12 @@ function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
       </div>
       <Panel title="Top careers">
         {o.top.length === 0 ? <div className="muted">No careers yet.</div> : (
-          <table className="grid"><thead><tr><th>#</th><th>Manager</th><th>Club</th><th>League</th><th className="num">Points</th></tr></thead>
-            <tbody>{o.top.map((r, i) => <tr key={r.career}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td><td className="num">{r.points}</td></tr>)}</tbody></table>
+          <table className="grid"><thead><tr><th>#</th><th>Manager</th><th>Club</th><th>League</th><th className="num">Points</th><th /></tr></thead>
+            <tbody>{o.top.map((r, i) => <tr key={r.career}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td><td className="num">{r.points}</td>
+              <td><button className="small danger" title="Remove from all rankings (career, season, month, league) – later seasons won't count" onClick={async () => {
+                if (!confirm(`Remove ${r.name}'s career (${r.club}, ${r.points} points) from all rankings?`)) return;
+                const res = await adminPost('unrank', { career: r.career }); setMsg?.(res.error ? `Error: ${String(res.error)}` : 'Removed from the rankings ✓'); onChange?.();
+              }}>✕</button></td></tr>)}</tbody></table>
         )}
       </Panel>
     </>
@@ -274,7 +278,7 @@ function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
             <tbody>{rows.map((r, i) => (
               <tr key={r.member}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td>{board === 'season' && <td>{r.season}</td>}<td className="num">{r.points}</td>
                 {board === 'career' && <td><button className="small danger" title="Remove from the career board (e.g. a manipulated score)" onClick={async () => {
-                  if (!confirm(`Remove ${r.name}'s career (${r.points} points) from the career board?`)) return;
+                  if (!confirm(`Remove ${r.name}'s career (${r.points} points) from all rankings?`)) return;
                   const res = await adminPost('unrank', { career: r.member }); setMsg(res.error ? `Error: ${String(res.error)}` : 'Removed from the board ✓'); void load();
                 }}>Remove</button></td>}
               </tr>

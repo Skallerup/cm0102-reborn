@@ -239,10 +239,24 @@ export async function POST(request: Request) {
   }
 
   // take a career off the career board (e.g. an obviously manipulated score); its seasons stay on record
+  // – fjernes fra alle lister (karriere, sæson, måned, liga) og blokeres, så næste indsendte sæson ikke sætter den på igen
   if (body.op === 'unrank') {
     const career = clip(body.career, 64);
+    if (!career) return json({ error: 'career' }, 400);
+    const scanAll = async (match: string) => {
+      const out: string[] = [];
+      let cursor: string | number = 0;
+      do { const res: [string | number, string[]] = await redis.scan(cursor, { match, count: 500 }); out.push(...res[1]); cursor = res[0]; } while (String(cursor) !== '0');
+      return out;
+    };
+    const seasons = (await scanAll(`sub:${career}:*`)).map((k) => k.slice(`sub:${career}:`.length));
+    const members = seasons.map((x) => `${career}:${x}`);
+    const boards = ['lb:season', ...(await scanAll('lb:month:*')), ...(await scanAll('lb:league:*'))];
     await redis.zrem('lb:career', career);
-    return json({ ok: true });
+    if (members.length) await Promise.all(boards.map((b) => redis.zrem(b, ...(members as [string, ...string[]]))));
+    await redis.sadd('lb:blocked', career);
+    if ((await redis.get<string>('lb:leader')) === career) await redis.del('lb:leader');
+    return json({ ok: true, seasons: members.length });
   }
 
   return json({ error: 'op' }, 400);

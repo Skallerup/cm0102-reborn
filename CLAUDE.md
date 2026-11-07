@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Admin `unrank` fjerner nu karrieren fra ALLE lister (lb:career + sæsonens medlemmer `<career>:<sæson>` fra lb:season/lb:month:*/lb:league:*, fundet via `sub:<career>:*`) og lægger den i `lb:blocked` – rank.ts submit springer blokerede karrierer over. ✕ pr. række i Overview → Top careers.
 - 2026-11-07 – Team Selection (selectionProblems i Shell): OK → `{ name: 'squad' }` (før taktikken). `.cx-dlg` starter ved 144 px på skrivebordet (sidebjælkens bredde; før 112 px, så menuen blev skåret af). e2e tjekker begge.
 - 2026-11-07 – Designerens "CM0102 Reborn Design Kit" (zip i ejerens Overførsler; nyhedsskærm + tokens): blokken "CM0102 Reborn
   Design Kit" sidst i classic.css (farver/affasninger fra design-tokens.json, `--tb` = titlens klubfarve sat i Hub, nyhedsliste 5 × 24,4 px
