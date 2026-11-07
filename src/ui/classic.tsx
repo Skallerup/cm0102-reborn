@@ -217,7 +217,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   matchday: { colors: (g, r) => { const { comps } = matchDayComps(g, Number(r.id)); return compColors(comps[Math.min(Number(r.state?.mdi ?? 0), comps.length - 1)]); } },
   // Manager Stats / Job Information / Transfers (CM 01/02): mørkeblå titelbjælke
   nation: { colors: () => ({ bg: '#0a0a8e', fg: '#ffffff' }) },
-  squad: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
+  // reserveholdet (CM 01/02 "Manchester United Reserves"): samme trupskærm med "Reserves" i titlen
+  squad: { title: (g, r) => (r.tab === 'reserves' ? t('cl.res.full', { club: g.clubs[g.userClub]?.name ?? '' }) : clubName(g)), club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   transfers: { title: () => t('cl.tr.title'), club: own },
   assistant: { title: (g) => `${clubName(g)} – ${t('cl.nextMatch')}`, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   fixtures: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },

@@ -224,7 +224,6 @@ function ClassicReserves() {
   return (
     <div>
       <Head title={g.clubs[g.userClub]?.name ?? ''} />
-      <div className="cx-subtitle">{t('cl.res.title', { club: g.clubs[g.userClub]?.short ?? '' })}</div>
       {res.length ? <ClassicClubSquad cid={g.userClub} players={res} /> : <div className="cx-empty">{t('cl.res.none')}</div>}
     </div>
   );
