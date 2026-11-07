@@ -1284,7 +1284,7 @@ export const es: Record<string, string> = {
   'opt.save.monthly.hint': 'Guarda una vez por mes de juego. Si recargas, puedes perder hasta un mes de partida.',
   'opt.save.off.hint': 'La partida solo se guarda cuando pulsas Guardar partida. Si recargas, pierdes todo desde el último guardado.', 'opt.speed': 'Velocidad de los partidos',
   'opt.saves': 'Guardar / exportar', 'opt.export': 'Exportar archivo de partida', 'opt.exportHint': 'Guarda el archivo y cárgalo en otro dispositivo desde la pantalla de inicio.',
-  'opt.about': 'Acerca de', 'opt.aboutText': 'CM Reborn está inspirado en los clásicos Championship Manager, creado desde cero como aplicación web con muchas funciones nuevas. El motor de partidos se basa en zonas, como el motor de CM3, pero está calibrado con estadísticas modernas.',
+  'opt.about': 'Acerca de', 'opt.aboutText': 'CM Reborn está inspirado en los clásicos Championship Manager, creado desde cero como aplicación web con muchas funciones nuevas. El motor de partidos es propio y se basa en zonas, inspirado en CM 01/02: con la base de datos original está calibrado con partidos del juego original y con la moderna, con estadísticas reales.',
   'opt.dataCredit': 'Datos de jugadores: transfermarkt-datasets de David Cariboo (CC0). Los atributos son derivados, no oficiales.',
 
   'news.welcome': '¡Bienvenido a {club}, {manager}!', 'news.welcome.body': 'La directiva te ha dado las llaves. Revisa la plantilla, prepara tu táctica y pulsa Continuar. ¡Suerte!',

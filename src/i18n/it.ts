@@ -1284,7 +1284,7 @@ export const it: Record<string, string> = {
   'opt.save.monthly.hint': 'Salva una volta al mese di gioco. Se ricarichi, potresti perdere fino a un mese di gioco.',
   'opt.save.off.hint': "La partita viene salvata solo quando premi Salva partita. Ricaricando perdi tutto dall'ultimo salvataggio.", 'opt.speed': 'Velocità partita',
   'opt.saves': 'Salva / esporta', 'opt.export': 'Esporta file di salvataggio', 'opt.exportHint': 'Salva il file e caricalo su un altro dispositivo dalla schermata iniziale.',
-  'opt.about': 'Informazioni', 'opt.aboutText': 'CM Reborn è ispirato ai classici Championship Manager, costruito da zero come web app con tante novità. Il motore partita è basato su zone come quello di CM3, ma calibrato sulle statistiche moderne.',
+  'opt.about': 'Informazioni', 'opt.aboutText': 'CM Reborn è ispirato ai classici Championship Manager, costruito da zero come web app con tante novità. Il motore partita è nostro, basato su zone e ispirato a CM 01/02: con il database originale è calibrato sulle partite del gioco originale, con quello moderno sulle statistiche reali.',
   'opt.dataCredit': 'Dati dei giocatori: transfermarkt-datasets di David Cariboo (CC0). Gli attributi sono derivati, non ufficiali.',
 
   'news.welcome': 'Benvenuto al {club}, {manager}!', 'news.welcome.body': 'La dirigenza ti ha consegnato le chiavi. Controlla la rosa, imposta la tattica e premi Continua. In bocca al lupo!',

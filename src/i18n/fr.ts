@@ -1284,7 +1284,7 @@ export const fr: Record<string, string> = {
   'opt.save.monthly.hint': "Sauvegarde une fois par mois de jeu. Vous pouvez perdre jusqu'à un mois de jeu si vous rechargez.",
   'opt.save.off.hint': "La partie n'est sauvegardée que lorsque vous appuyez sur Sauvegarder la partie. Recharger fait perdre tout ce qui s'est passé depuis la dernière sauvegarde.", 'opt.speed': 'Vitesse des matchs',
   'opt.saves': 'Sauvegarde / export', 'opt.export': 'Exporter la sauvegarde', 'opt.exportHint': "Enregistrez le fichier et chargez-le sur un autre appareil depuis l'écran d'accueil.",
-  'opt.about': 'À propos', 'opt.aboutText': "CM Reborn s'inspire des jeux Championship Manager classiques – développé de zéro comme application web avec de nombreuses nouveautés. Le moteur de match fonctionne par zones comme le moteur de CM3, mais il est calibré sur des statistiques modernes.",
+  'opt.about': 'À propos', 'opt.aboutText': "CM Reborn s'inspire des jeux Championship Manager classiques – développé de zéro comme application web avec de nombreuses nouveautés. Le moteur de match est le nôtre, basé sur des zones et inspiré de CM 01/02 – calibré sur des matchs du jeu original avec la base originale, et sur des statistiques réelles avec la base moderne.",
   'opt.dataCredit': 'Données des joueurs : transfermarkt-datasets par David Cariboo (CC0). Les attributs sont dérivés, non officiels.',
 
   'news.welcome': 'Bienvenue à {club}, {manager} !', 'news.welcome.body': "Le conseil vous a confié les clés. Examinez l'effectif, définissez votre tactique et appuyez sur Continuer. Bonne chance !",

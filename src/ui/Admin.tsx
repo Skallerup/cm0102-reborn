@@ -534,6 +534,9 @@ function SkinsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
       <div className="adm-skin-imgs">{(s.images as string[]).map((u) => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" /></a>)}</div>
       <b>{String(s.title)}</b> <span className="muted">by {String(s.author)} · {(s.images as string[]).length} images · {when(String(s.created))}</span>
       {s.desc ? <p className="muted" style={{ margin: '4px 0' }}>{String(s.desc)}</p> : null}
+      <div className="row" style={{ gap: 6, alignItems: 'center' }}><span className="muted">Club pack for:</span>
+        <input defaultValue={String(s.club ?? '')} placeholder={`(none – e.g. "${String(s.title)}")`} style={{ width: 220 }} onBlur={async (e) => { if (e.target.value === String(s.club ?? '')) return; const r = await hubPost('admin:skin', { id: s.id, club: e.target.value }); setMsg(r.error ? `Error: ${String(r.error)}` : 'Club saved ✓'); void load(); }} />
+        <span className="muted">shown on that club's screens and home matches for everyone</span></div>
       <div className="row">{actions}</div>
     </div>
   );

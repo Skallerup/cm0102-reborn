@@ -113,8 +113,30 @@ export function matchdayBgUrl(stadium: string | undefined, iso: string): string 
   return n ? stadiumUrl(n) : null;
 }
 /** En klub: stadion udefra eller klubbens eget billede (skifter fra dag til dag) */
-export function clubBgUrl(club: { name: string; stadium?: string } | undefined, iso: string): string | null {
+// ---------- klubpakker fra fællesskabet: en godkendt pakke med en klub vises på klubbens skærme og hjemmekampe for alle ----------
+
+let clubPacks: { key: string; images: string[] }[] | null = null;
+let clubPacksLoading: Promise<void> | null = null;
+const CLUB_WORDS = new Set(['fc', 'afc', 'cf', 'sc', 'ac', 'the', 'club', 'de', 'football']);
+/** "Chelsea FC" = "chelsea", "Atlético Madrid" = "atletico madrid" */
+export const normClub = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\./g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && !CLUB_WORDS.has(w)).join(' ');
+export function loadClubPacks(): Promise<void> {
+  clubPacksLoading ??= import('../online/hub').then(({ listSkins }) => listSkins()).then((r) => {
+    // ældre pakker uden klubfelt matches på navnet ("Chelsea"); et tomt felt betyder en almindelig pakke
+    clubPacks = (r?.rows ?? []).map((p) => ({ key: normClub(p.club ?? p.title), images: p.images })).filter((x) => x.key && x.images.length);
+  }).catch(() => { clubPacks = []; });
+  return clubPacksLoading;
+}
+export function clubPackUrl(club: { name: string; short?: string } | undefined, iso: string): string | null {
+  if (!club || !clubPacks?.length) return null;
+  const keys = [normClub(club.name), club.short ? normClub(club.short) : ''].filter(Boolean);
+  return pick(clubPacks.find((p) => keys.includes(p.key))?.images, iso) ?? null;
+}
+
+export function clubBgUrl(club: { name: string; short?: string; stadium?: string } | undefined, iso: string): string | null {
   if (!club) return null;
+  const pack = clubPackUrl(club, iso);
+  if (pack) return pack;
   const opts = [...stadiumImgs(club.stadium, true).map(stadiumUrl), ...(screens?.clubs[club.name] ?? []).map(screenUrl)];
   return pick(opts, iso) ?? null;
 }

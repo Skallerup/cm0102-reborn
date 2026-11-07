@@ -1284,7 +1284,7 @@ export const tr: Record<string, string> = {
   'opt.save.monthly.hint': "Her oyun ayında bir kez kaydeder. Yeniden yüklersen bir aya kadar oyun kaybedebilirsin.",
   'opt.save.off.hint': "Oyun yalnızca Oyunu kaydet'e bastığında kaydedilir. Yeniden yüklemek son kayıttan beri her şeyi kaybettirir.", 'opt.speed': "Maç hızı",
   'opt.saves': "Kaydet / dışa aktar", 'opt.export': "Kayıt dosyasını dışa aktar", 'opt.exportHint': "Dosyayı kaydet ve başka bir cihazda başlangıç ekranından yükle.",
-  'opt.about': "Hakkında", 'opt.aboutText': "CM Reborn klasik Championship Manager oyunlarından ilham alır – birçok yeni özellikle sıfırdan bir web uygulaması olarak geliştirildi. Maç motoru CM3 motoru gibi bölge tabanlıdır ama modern istatistiklere göre kalibre edilmiştir.",
+  'opt.about': "Hakkında", 'opt.aboutText': "CM Reborn klasik Championship Manager oyunlarından ilham alır – birçok yeni özellikle sıfırdan bir web uygulaması olarak geliştirildi. Maç motoru bize ait, bölge tabanlıdır ve CM 01/02 örnek alınarak yapılmıştır – orijinal veritabanında orijinal oyundaki maçlara, modern veritabanında gerçek istatistiklere göre kalibre edilmiştir.",
   'opt.dataCredit': "Oyuncu verisi: David Cariboo'nun transfermarkt-datasets projesi (CC0). Özellikler türetilmiştir, resmi değildir.",
 
   'news.welcome': "{club}'a hoş geldin, {manager}!", 'news.welcome.body': "Yönetim anahtarları sana teslim etti. Kadroyu incele, taktiğini belirle ve Devam'a bas. Bol şans!",

@@ -1,4 +1,4 @@
-// Zonebaseret matchmotor i CM3-stil.
+// Zonebaseret matchmotor (vores egen) med elementer fra CM 01/02 – se docs/ENGINE.md.
 //
 // Banen er delt i 5 bånd (længde) × 3 baner (bredde) = 15 zoner i absolutte koordinater
 // (hjemmeholdet angriber mod x=100). Hver spiller har en angrebs- og en forsvarsposition,

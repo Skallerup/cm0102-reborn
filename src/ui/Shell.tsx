@@ -62,7 +62,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl, bgPack, clubBgUrl, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
+import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -157,14 +157,16 @@ export function Shell() {
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
   // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
-  useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
+  useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs(), loadClubPacks()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
   const bgDay = bgChanges() ? g.date : '2001-07-01';
-  const cxPhoto = cmNav ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
+  // hjemmeholdets klubpakke fra fællesskabet går forud for stadionbilledet
+  const homePack = venue && venueFix ? clubPackUrl(g.clubs[venueFix.home], venueFix.date ?? g.date) : null;
+  const cxPhoto = cmNav ? homePack ?? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
   useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
-    ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
+    ? homePack ?? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
     : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);

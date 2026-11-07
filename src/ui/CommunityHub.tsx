@@ -249,6 +249,7 @@ function SkinsTab() {
 
 function SkinMaker({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
+  const [club, setClub] = useState('');
   const [desc, setDesc] = useState('');
   const [license, setLicense] = useState(false);
   const [id, setId] = useState<number | null>(null);
@@ -273,10 +274,11 @@ function SkinMaker({ onClose }: { onClose: () => void }) {
       {done ? <div className="insight good">{t('hub.skins.sent')}</div> : id === null ? (
         <div className="col">
           <label className="col">{t('hub.skins.name')}<input maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+          <label className="col">{t('hub.skins.club')}<input maxLength={60} value={club} placeholder={t('hub.skins.clubPh')} onChange={(e) => setClub(e.target.value)} /></label>
           <label className="col">{t('hub.skins.desc')}<textarea rows={2} maxLength={400} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
           <label className="row"><input type="checkbox" checked={license} onChange={(e) => setLicense(e.target.checked)} />{t('hub.skins.license')}</label>
           {msg && <div className="bad">{msg}</div>}
-          <button className="primary" disabled={!title.trim() || !license} onClick={async () => { const r = await createSkin(title, desc); if ('error' in r) setMsg(errText(r.error)); else setId(r.id); }}>{t('hub.skins.next')}</button>
+          <button className="primary" disabled={!title.trim() || !license} onClick={async () => { const r = await createSkin(title, desc, club.trim()); if ('error' in r) setMsg(errText(r.error)); else setId(r.id); }}>{t('hub.skins.next')}</button>
         </div>
       ) : (
         <div className="col">
