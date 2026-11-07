@@ -48,6 +48,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Baggrunde pr. skærm: `scripts/build-screen-bg.py` (Naydav's pakke, kun naydav/-mappen; klubber matches på navn/kortnavn
+  med `loose`) → public/screens/*.jpg (44 MB) + public/data/screen-bg.json. `screenBackground`/`specificBackground` sidst i Shell.tsx
+  (club/player → `clubBgUrl` = stadion udefra eller klubbillede; competitions/fixtures → `compBgUrl` med pakkens CM-navne;
+  training/board/transfers → `miscBgUrl`; øvrige → ugens rotation). Kampdage: `matchdayBgUrl` (indefra). Sunday League kun med
+  pref `cm-bg-set`=sunday. SW cacher /screens/ ved kørsel.
 - 2026-11-07 – `Tactic.penOrder` (Penalty Takers, `PenaltyTakers` i TacticsClassic.tsx, route-state `tpens`): motoren `penTaker(T)` og
   startShootout sorterer efter rækkefølgen (uden penOrder: som før – ingen ekstra tilfældige tal). UEFA Coefficients: rute
   `coefficients` (`UefaCoefficients` i Competitions.tsx, koefficient *estimeret*). `compAbbr` i classic.tsx.

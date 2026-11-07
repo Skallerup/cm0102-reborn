@@ -301,7 +301,7 @@ const DATA_CREDITS: [string, string, string?][] = [
   ['transfermarkt-datasets', 'dcaribou – open player data (CC0)', 'https://github.com/dcaribou/transfermarkt-datasets'],
   ['football-logos', 'luukhopman – club logos', 'https://github.com/luukhopman/football-logos'],
   ['TheSportsDB', 'club logos for English clubs missing from the pack', 'https://www.thesportsdb.com'],
-  ['CM0102 Background Image Pack', 'Naydav – stadium backgrounds on matchdays (1280x800)', 'https://github.com/naydav/CM0102-Pictures'],
+  ['CM0102 Background Image Pack', 'Naydav – stadium, club, competition, nation, training and boardroom backgrounds (1280x800)', 'https://github.com/naydav/CM0102-Pictures'],
 ];
 
 function CreditsTab() {

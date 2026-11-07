@@ -23,7 +23,7 @@ import { goalRoar, ooh, startCrowd, stopCrowd, whistle } from '../matchSound';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop, cxLongDate } from '../classic';
-import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
+import { loadStadiumBgs, matchdayBgUrl } from '../backgrounds';
 import { stadiumBackgrounds, titleLogo } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables, ordinal } from './Competitions';
@@ -361,7 +361,7 @@ function useStadiumPhoto(f: Fixture): string | null {
   const g = gs();
   const stadium = !isRetro() && f.stage !== 'F' && stadiumBackgrounds() ? g.clubs[f.home]?.stadium : undefined;
   useEffect(() => { if (stadium) void loadStadiumBgs().then(() => ready((x) => x + 1)); }, [stadium]);
-  return stadiumBgUrl(stadium, f.date);
+  return matchdayBgUrl(stadium, f.date);
 }
 
 function Scoreboard({ home, away, hg, ag, minute, photo, venue }: { home: number; away: number; hg: number | null; ag: number | null; minute: string; photo?: string | null; venue?: string }) {

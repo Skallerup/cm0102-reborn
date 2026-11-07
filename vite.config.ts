@@ -45,7 +45,7 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|faq)\//, /^\/api\//, /^\/llms\.txt$/],
         runtimeCaching: [{
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
-          urlPattern: /\/(bg|stadiums)\/[\w.-]+\.jpg$/,
+          urlPattern: /\/(bg|stadiums|screens)\/[\w.-]+\.jpg$/,
           handler: 'CacheFirst',
           options: { cacheName: 'backgrounds', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {

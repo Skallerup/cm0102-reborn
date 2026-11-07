@@ -1,5 +1,6 @@
 import { BoardScreen } from './screens/Board';
-import type { HolidaySettings } from '../game/types';
+import type { GameState, HolidaySettings } from '../game/types';
+import type { Route } from './core';
 import { addDays } from '../game/dates';
 import { International } from './screens/International';
 import { stopVoice } from '../online/voice';
@@ -60,7 +61,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl, loadStadiumBgs, stadiumBgUrl } from './backgrounds';
+import { backgroundUrl, clubBgUrl, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -152,12 +153,14 @@ export function Shell() {
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
   // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
-  const cxPhoto = cmNav ? stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub) : null;
+  useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
+  const bgDay = bgChanges() ? g.date : '2001-07-01';
+  const cxPhoto = cmNav ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
   useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
-    ? stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? (modernBackgrounds() ? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub) : null)
+    ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
     : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
@@ -480,7 +483,7 @@ export function Shell() {
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
         <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : modernPhoto ? `mbg${stadiumBgUrl(venue, venueFix?.date ?? g.date) ? ' mbg-stadium' : ''}` : ''}`} ref={mainRef}
-          style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav ? ({ '--cx-photo': `url("${stadiumBgUrl(venue, venueFix?.date ?? g.date) ?? backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
+          style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
         </main>
@@ -660,4 +663,39 @@ function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onCl
       <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.no')}</button><button className="primary" onClick={() => onGo(set)}>{t('common.yes')}</button></div>
     </div>
   );
+}
+
+/**
+ * Baggrunden til en skærm (som CM 01/02's pics.cfg): klubbens skærme = stadion udefra eller klubbens billede, turneringer =
+ * turneringens billede, landshold = landets, træning/bestyrelse/transfer = deres egne og resten af ugen ens egen klub og
+ * hverdagen (træningsbanen, bestyrelseslokalet). null = intet billede (så bruges den gamle Sunday League-pakke).
+ */
+function screenBackground(g: GameState, route: Route, iso: string): string | null {
+  if (sundayLeague()) return null;
+  const own = g.clubs[g.userClub];
+  // ugens øvrige skærme (nyheder m.m.): skiftevis klubben, træningsbanen, transfermarkedet og bestyrelseslokalet
+  const k = Math.floor(Date.parse(`${iso}T12:00:00Z`) / 86400000) % 4;
+  const week = () => (k === 0 ? clubBgUrl(own, iso) : k === 1 ? miscBgUrl('training', iso, 3) : k === 2 ? miscBgUrl('transfer', iso, 1) : miscBgUrl('boardroom', iso)) ?? clubBgUrl(own, iso) ?? miscBgUrl('training', iso);
+  return specificBackground(g, route, iso) ?? week();
+}
+
+function specificBackground(g: GameState, route: Route, iso: string): string | null {
+  const id = (route as { id?: string | number }).id;
+  const own = g.clubs[g.userClub];
+  const clubOf = (n: number) => g.clubs[n];
+  switch (route.name) {
+    case 'club': return clubBgUrl(clubOf(Number(id ?? g.userClub)), iso);
+    case 'player': { const p = g.players[Number(id)]; return clubBgUrl(p?.club ? clubOf(p.club) : undefined, iso) ?? nationBgUrl(g.nations[p?.nation ?? -1]?.name, iso); }
+    case 'competitions': case 'fixtures': {
+      const c = id !== undefined ? g.comps[String(id)] : own ? g.comps[own.league] : undefined;
+      return compBgUrl(c?.name, iso) ?? (c?.nation === -1 ? compBgUrl(c.id === 'CL' ? 'UEFA Champions League' : c.name.includes('Europa') ? 'UEFA Europa League' : c.name, iso) : null);
+    }
+    case 'international': case 'intlday': return id !== undefined ? nationBgUrl(g.nations[Number(id)]?.name, iso) : compBgUrl('FIFA World Cup', iso);
+    case 'coefficients': return compBgUrl('UEFA Champions League', iso);
+    case 'training': return miscBgUrl('training', iso);
+    case 'board': case 'finance': return miscBgUrl('boardroom', iso) ?? clubBgUrl(own, iso);
+    case 'transfers': case 'scouting': case 'find': return miscBgUrl('transfer', iso);
+    case 'squad': case 'tactics': case 'assistant': return clubBgUrl(own, iso) ?? miscBgUrl('training', iso);
+    default: return null;
+  }
 }
