@@ -231,23 +231,38 @@ export function CompetitionsMenu() {
   const intl = (state: Record<string, string>) => () => nav({ name: 'international', state });
   const past = new Set((g.intl?.past ?? []).map((p) => p.c));
   const items: DropItem[] = [];
+  const awards = { key: 'awards', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards' }) };
+  const fifa = { key: 'fifa', label: t('cl.cm.fifa'), onClick: intl({ itab: 'fifa' }) };
+  const sep = (k: string) => ({ key: k, sep: true as const });
+  const hist = (c: string) => intl({ itab: 'history', ihist: c });
+  // CM 01/02: World Cup ▸ · International ▸ · Worldwide Club ▸ · European ▸ · nationerne ▸
   items.push({ key: 'wc', label: t('cl.cm.worldCup'), sub: [
-    { key: 'wcT', label: t('intl.name.wc'), onClick: intl({ itab: 'tournament' }) },
-    { key: 'wcH', label: t('intl.tab.history'), onClick: intl({ itab: 'history', ihist: 'wc' }) },
-    { key: 'fifa', label: t('intl.tab.fifa'), onClick: intl({ itab: 'fifa' }) },
+    { key: 'wcT', label: t('cl.cm.fifaWc'), onClick: intl({ itab: 'tournament' }) },
+    ...(['CAF', 'AFC', 'CONCACAF', 'UEFA', 'OFC', 'CONMEBOL'].map((r) => ({ key: `q${r}`, label: t('cl.cm.wcq', { r }), onClick: intl({ itab: 'qual' }) }))),
+    sep('s1'), awards, fifa,
   ] });
-  const other = ['euro', 'copa', 'afcon', 'asian', 'confed', 'olympic', 'ofc', 'asiangames'].filter((c) => c === 'euro' || past.has(c));
   items.push({ key: 'intl', label: t('cl.cm.international'), sub: [
-    ...other.map((c) => ({ key: c, label: t(`intl.name.${c}`), onClick: intl({ itab: 'history', ihist: c }) })),
-    { key: 'sep', sep: true as const },
-    { key: 'res', label: t('intl.tab.results'), onClick: intl({ itab: 'results' }) },
-    { key: 'fifa2', label: t('intl.tab.fifa'), onClick: intl({ itab: 'fifa' }) },
+    { key: 'olympic', label: t('cl.cm.olympic'), disabled: !past.has('olympic'), onClick: hist('olympic') },
+    { key: 'euro', label: t('cl.cm.euro'), onClick: hist('euro') },
+    { key: 'euroq', label: t('cl.cm.euroq'), onClick: intl({ itab: 'qual' }) },
+    { key: 'afcon', label: t('cl.cm.afcon'), onClick: hist('afcon') },
+    { key: 'copa', label: t('intl.name.copa'), onClick: hist('copa') },
+    { key: 'ofc', label: t('cl.cm.ofc'), disabled: !past.has('ofc'), onClick: hist('ofc') },
+    { key: 'asian', label: t('cl.cm.asian'), onClick: hist('asian') },
+    { key: 'confed', label: t('cl.cm.confed'), disabled: !past.has('confed'), onClick: hist('confed') },
+    sep('s2'), awards, fifa,
+  ] });
+  // klubturneringer på verdensplan findes ikke i spillet (grå som i en database uden dem)
+  items.push({ key: 'ww', label: t('cl.cm.worldwide'), sub: [
+    { key: 'cwc', label: t('cl.cm.cwc'), disabled: true, onClick: () => {} },
+    { key: 'ic', label: t('cl.cm.intercont'), disabled: true, onClick: () => {} },
+    { key: 'ci', label: t('cl.cm.interam'), disabled: true, onClick: () => {} },
   ] });
   const euro = Object.values(g.comps).filter((c) => c.nation < 0);
   if (euro.length) items.push({ key: 'eu', label: t('cl.cm.european'), sub: [
     ...euro.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
-    { key: 'sep', sep: true as const },
-    { key: 'awards', label: t('nav.awards'), onClick: () => nav({ name: 'awards' }) },
+    sep('s3'), awards,
+    { key: 'coef', label: t('cl.cm.coeff'), disabled: true, onClick: () => {} },
   ] });
   // nationerne: ens egen først, så i ligaernes rækkefølge
   const own = g.clubs[g.userClub]?.nation;
@@ -259,6 +274,7 @@ export function CompetitionsMenu() {
     items.push({ key: `n${n}`, label: natName(g.nations[n]?.name), sub: [
       ...comps.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
       { key: 'sep', sep: true as const },
+      { key: 'aw', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards' }) },
       { key: 'nt', label: t('cl.cm.nationalTeam'), onClick: () => nav({ name: 'international', id: n }) },
     ] });
   }

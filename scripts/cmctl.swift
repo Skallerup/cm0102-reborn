@@ -95,7 +95,14 @@ case "click", "rclick", "dclick":
 case "move":
   guard args.count >= 3 else { fail("brug: cmctl move <x> <y>") }
   activate()
-  CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point(args[1], args[2]), mouseButton: .left)?.post(tap: .cghidEventTap)
+  // glidende bevægelse (spillets menuer reagerer på flere mouseMoved-hændelser, ikke ét spring)
+  let to = point(args[1], args[2])
+  let from = CGEvent(source: nil)?.location ?? to
+  for i in 1...15 {
+    let t = Double(i) / 15
+    CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t), mouseButton: .left)?.post(tap: .cghidEventTap)
+    usleep(20_000)
+  }
 case "drag":
   guard args.count >= 5 else { fail("brug: cmctl drag <x1> <y1> <x2> <y2>") }
   activate()

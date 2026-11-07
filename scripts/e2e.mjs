@@ -79,7 +79,7 @@ async function run(look) {
   if (look === 'klassisk') await step('competitions-menu', async () => {
     await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
     await page.locator('.cx-drop-subbtn', { hasText: 'World Cup' }).hover();
-    await page.locator('.cx-drop-sub button', { hasText: 'Past winners' }).click();
+    await page.locator('.cx-drop-sub button', { hasText: 'FIFA World Cup' }).click();
     await page.waitForSelector('.cx-tbl, .cx-empty');
     await page.screenshot({ path: `${OUT}/klassisk-vm-historie.png` });
     await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
