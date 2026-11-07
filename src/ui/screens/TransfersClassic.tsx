@@ -238,7 +238,7 @@ function StaffSearch() {
   const cols: CxCol<Staff>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (s) => (!s.club ? <span className="cx-inf" title={t('common.free')}>{t('cl.st.free')}</span> : null), sort: (s) => (s.club ? 1 : 0) },
     { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
-      render: (s) => <span onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
+      render: (s) => <span className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
     { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where },
     // Based: ligaen kan klikkes (gul understregning under musen, som i CM 01/02)
     { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => { const c = g.clubs[s.club]; return c && g.leagues[c.league] ? <span className="link" onClick={() => nav({ name: 'competitions', id: c.league })}>{based(s)}</span> : <span className="link" onClick={() => nav(nationRoute(c?.nation ?? s.nation))}>{based(s)}</span>; }, sort: based },
@@ -324,7 +324,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const based = (p: Player) => { const c = g.clubs[p.club]; return c ? natName(g.nations[c.nation]?.name) ?? '' : t('common.free'); };
   const base: CxCol<Player>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{t(`cl.tag.${x[0]}`)}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}{p.club !== g.userClub && (g.knowledge[p.id] ?? 0) >= 60 && <span className="cx-sct" title={t('tr.sctTip')}> Sct</span>}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}{p.club !== g.userClub && (g.knowledge[p.id] ?? 0) >= 60 && <span className="cx-sct" title={t('tr.sctTip')}> Sct</span>}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : '-'), sort: (p) => g.clubs[p.club]?.name ?? '' };
   const pos: CxCol<Player> = { key: 'pos', label: t('col.pos'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };

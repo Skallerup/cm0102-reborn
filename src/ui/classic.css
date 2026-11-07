@@ -930,3 +930,5 @@
 /* den blå rækkeknap yderst til venstre er bred som i originalen */
 .cx-tbl td.btn-col { min-width: 56px; }
 :root[data-skin='retro'] span.cx-rowbtn { display: inline-flex; }
+/* klikbare navne, klubber, lande og ligaer: hånd-ikonet under musen (ikke tekstmarkøren) */
+:root[data-skin='retro'] :is(.cx-link, .link, .club-link, [role='link']), :root[data-skin='retro'] .cx-tbl :is(td.c-name, td.c-club) > span { cursor: pointer; }

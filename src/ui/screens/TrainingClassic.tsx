@@ -39,7 +39,7 @@ export function ClassicTraining() {
       const why = t(a.reason, { attrs: a.attrs.map((x) => t(`attr.${x}`)).join(` ${t('common.and')} `) });
       return <button className="cx-inf" title={`${t('adv.col')}: ${t(`train.${a.key}`)} – ${why}`} onClick={() => act({ t: 'training', pid: p.id, key: a.key })}>{t('cl.tn.adv')}</button>;
     }, sort: (p) => (trainingAdvice(p).key === p.training ? 0 : 1) },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
     { key: 'pos', label: t('col.pos'), cls: 'c-cyan', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
     { key: 'age', label: t('col.age'), cls: 'c-num c-yel', render: (p) => ageOn(p.dob, g.date), sort: (p) => ageOn(p.dob, g.date) },
     { key: 'form', label: t('col.form'), cls: 'c-num c-yel', render: (p) => (p.form.length ? formAvg(p).toFixed(1) : '-'), sort: formAvg },
