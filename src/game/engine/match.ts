@@ -406,6 +406,14 @@ export class MatchSim {
       const press = sp.instr.closingDown ?? ti.closingDown;
       let axr = clamp(s.x + adv, 2, 94);
       let ayr = clamp(s.y + widthShift, 3, 97);
+      // løbepilen (CM 01/02: højreklik og træk): med bold går spilleren mod pilens punkt; et løb fremad gør ham også til en
+      // hyppigere løber ind i feltet (*estimeret* – originalens vægte kendes ikke)
+      const run = role !== 'GK' ? sp.instr.run : undefined;
+      if (run) {
+        axr = clamp(run.x + Math.max(0, adv) * 0.4, 2, 94);
+        ayr = clamp(run.y + (run.y === 50 ? 0 : (ti.width - 1) * 6 * (run.y < 50 ? -1 : 1)), 3, 97);
+        if (run.x > s.x + 5 && sp.instr.runs < 2) sp.instr = { ...sp.instr, runs: 2 };
+      }
       let dxr = role === 'GK' ? s.x : clamp(s.x - 6 - (2 - ti.mentality) * 3 + (press - 1) * 4, 3, 85);
       // backs og wingbacks der går med frem, når ikke altid hjem: plads bag dem på kanten
       if (role === 'FB') dxr = clamp(dxr + (s.x - 24) * 0.35 + sp.instr.runs * 3, 3, 85);

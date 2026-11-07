@@ -151,10 +151,37 @@ async function run(look) {
   });
   if (look === 'klassisk') await step('løb fremad med højreklik på taktikbanen', async () => {
     await go({ name: 'tactics' });
+    // højreklik uden træk (touchpad): menuen med retninger → Frem
     await page.locator('.cx-tac-slot:not(.empty)').nth(9).click({ button: 'right' });
     await page.locator('.cx-ctx button').first().click();
-    const runs = await gs(() => window.__cm.gs().tactic.individual[9]?.runs);
-    if (runs !== 2) throw new Error(`løbet blev ikke sat (${runs})`);
+    const run = await gs(() => window.__cm.gs().tactic.individual[9]?.run);
+    if (!run) throw new Error('løbet blev ikke sat fra menuen');
+    // CM 01/02: højreklik og træk skråt (venstre-frem) → pil til nærmeste punkt i gitteret
+    const slot = page.locator('.cx-tac-slot:not(.empty)').nth(6);
+    const b = await slot.boundingBox();
+    const pitch = await page.locator('.cx-tac-pitch').boundingBox();
+    const s0 = await gs(() => window.__cm.gs().tactic.slots[6]);
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(b.x + b.width / 2 - pitch.width * 0.2, b.y + b.height / 2 - pitch.height * 0.15, { steps: 8 });
+    await page.mouse.up({ button: 'right' });
+    const r6 = await gs(() => window.__cm.gs().tactic.individual[6]?.run);
+    if (!r6 || !(r6.x > s0.x) || !(r6.y !== s0.y)) throw new Error(`skråt løb blev ikke sat (${JSON.stringify(r6)} fra ${JSON.stringify(s0)})`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-loeb.png` });
+    // et meget kort træk fjerner pilen
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+    await page.mouse.down({ button: 'right' });
+    await page.mouse.move(b.x + b.width / 2 + 6, b.y + b.height / 2, { steps: 3 });
+    await page.mouse.up({ button: 'right' });
+    if (await gs(() => window.__cm.gs().tactic.individual[6]?.run)) throw new Error('kort træk fjernede ikke løbet');
+  });
+  if (look === 'klassisk') await step('byt bænk ↔ startopstilling i listen', async () => {
+    await go({ name: 'tactics' });
+    const before = await gs(() => { const t = window.__cm.gs().tactic; return { a: t.lineup[9], b: t.bench[0] }; });
+    await page.locator('.cx-tac-row.bench .cx-tac-name').first().click();
+    await page.locator('.cx-tac-row.xi .cx-tac-name').nth(9).click();
+    const after = await gs(() => { const t = window.__cm.gs().tactic; return { a: t.lineup[9], b: t.bench[0] }; });
+    if (after.a !== before.b || after.b !== before.a) throw new Error(`byttet mislykkedes ${JSON.stringify(before)} → ${JSON.stringify(after)}`);
   });
   if (look === 'klassisk') await step('Penalty Takers', async () => {
     await go({ name: 'tactics' });

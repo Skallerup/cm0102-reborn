@@ -34,6 +34,24 @@ export function snapSlot(x: number, y: number): Slot {
   const pos: PosKey = row === 0 ? (side === 'C' ? 'SW' : 'D') : row === 1 ? 'D' : row === 2 ? (side === 'C' ? 'DM' : 'WB') : row === 3 ? 'M' : row === 4 ? 'AM' : 'ST';
   return { pos, side, x: gx, y: gy };
 }
+/**
+ * Løbepilen som i CM 01/02: slippet snappes til det nærmeste punkt i pladsgitteret (også skråt). Lander det på spillerens egen
+ * plads, men trækket var tydeligt, går pilen ét trin i trækkets hovedretning; et meget kort træk fjerner pilen (null).
+ */
+export function runTarget(s: Slot, x: number, y: number): { x: number; y: number } | null {
+  const dx = x - s.x, dy = y - s.y;
+  if (Math.hypot(dx, dy * 0.68) < 4) return null;
+  const near = (a: number[], v: number) => a.reduce((b, c) => (Math.abs(c - v) < Math.abs(b - v) ? c : b));
+  let gx = near(GRID_X, x), gy = near(GRID_Y, y);
+  const sx = near(GRID_X, s.x), sy = near(GRID_Y, s.y);
+  if (gx === sx && gy === sy) {
+    const step = (a: number[], v: number, d: number) => a[Math.max(0, Math.min(a.length - 1, a.indexOf(v) + d))];
+    if (Math.abs(dx) >= Math.abs(dy * 0.68)) gx = step(GRID_X, sx, Math.sign(dx)); else gy = step(GRID_Y, sy, Math.sign(dy));
+    if (gx === sx && gy === sy) return null;
+  }
+  return { x: gx, y: gy };
+}
+
 /** Står en anden spiller allerede på den faste plads? */
 export function slotTaken(slots: Slot[], i: number, s: Slot): boolean {
   return slots.some((o, j) => j !== i && o.pos !== 'GK' && Math.abs(o.x - s.x) < 5 && Math.abs(o.y - s.y) < 6);

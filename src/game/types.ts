@@ -414,6 +414,8 @@ export interface TeamInstructions {
 
 export interface PlayerInstructions {
   runs: number; // 0 sjældent, 1 blandet, 2 ofte
+  /** CM 01/02's løbepil (højreklik og træk på taktikbanen): pladsen i gitteret, spilleren løber til, når holdet har bolden */
+  run?: { x: number; y: number };
   runWithBall: boolean;
   longShots: number; // 0-2
   throughBalls: boolean;

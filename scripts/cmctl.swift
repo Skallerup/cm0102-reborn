@@ -17,7 +17,9 @@ let TITLE = "Championship Manager 01/02"
 
 func window() -> (id: CGWindowID, frame: CGRect, pid: pid_t)? {
   let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as! [[String: Any]]
-  for w in list where (w[kCGWindowName as String] as? String) == TITLE {
+  // en browserfane kan hedde det samme (fx en webudgave af spillet) – den må aldrig blive styret
+  let browsers = ["Google Chrome", "Safari", "Firefox", "Arc", "Microsoft Edge", "Brave Browser", "Opera", "Chromium"]
+  for w in list where (w[kCGWindowName as String] as? String) == TITLE && !browsers.contains(w[kCGWindowOwnerName as String] as? String ?? "") {
     let b = w[kCGWindowBounds as String] as! [String: CGFloat]
     return (w[kCGWindowNumber as String] as! CGWindowID, CGRect(x: b["X"]!, y: b["Y"]!, width: b["Width"]!, height: b["Height"]!), w[kCGWindowOwnerPID as String] as! pid_t)
   }
@@ -103,17 +105,31 @@ case "move":
     CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: CGPoint(x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t), mouseButton: .left)?.post(tap: .cghidEventTap)
     usleep(20_000)
   }
-case "drag":
-  guard args.count >= 5 else { fail("brug: cmctl drag <x1> <y1> <x2> <y2>") }
+case "down", "up", "to":
+  // trin for trin: down x y → to x y (flyt med knappen nede) → up x y – så man kan tage billeder midt i et træk
+  guard args.count >= 3 else { fail("brug: cmctl \(cmd) <x> <y>") }
   activate()
+  let pt = point(args[1], args[2])
+  let type: CGEventType = cmd == "down" ? .leftMouseDown : cmd == "up" ? .leftMouseUp : .leftMouseDragged
+  CGEvent(mouseEventSource: nil, mouseType: type, mouseCursorPosition: pt, mouseButton: .left)?.post(tap: .cghidEventTap)
+case "drag", "rdrag":
+  // rdrag: træk med højre knap (CM 01/02: spillerens løb på taktikbanen)
+  guard args.count >= 5 else { fail("brug: cmctl \(cmd) <x1> <y1> <x2> <y2>") }
+  activate()
+  let right = cmd == "rdrag"
   let a = point(args[1], args[2]), b = point(args[3], args[4])
-  CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: a, mouseButton: .left)?.post(tap: .cghidEventTap)
-  for i in 1...12 {
-    let t = Double(i) / 12
-    CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t), mouseButton: .left)?.post(tap: .cghidEventTap)
-    usleep(25_000)
+  let btn: CGMouseButton = right ? .right : .left
+  CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: a, mouseButton: btn)?.post(tap: .cghidEventTap)
+  usleep(60_000)
+  CGEvent(mouseEventSource: nil, mouseType: right ? .rightMouseDown : .leftMouseDown, mouseCursorPosition: a, mouseButton: btn)?.post(tap: .cghidEventTap)
+  usleep(80_000)
+  for i in 1...16 {
+    let t = Double(i) / 16
+    CGEvent(mouseEventSource: nil, mouseType: right ? .rightMouseDragged : .leftMouseDragged, mouseCursorPosition: CGPoint(x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t), mouseButton: btn)?.post(tap: .cghidEventTap)
+    usleep(30_000)
   }
-  CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: b, mouseButton: .left)?.post(tap: .cghidEventTap)
+  usleep(80_000)
+  CGEvent(mouseEventSource: nil, mouseType: right ? .rightMouseUp : .leftMouseUp, mouseCursorPosition: b, mouseButton: btn)?.post(tap: .cghidEventTap)
 case "key":
   guard args.count >= 2 else { fail("brug: cmctl key <navn>") }
   activate()
