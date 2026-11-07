@@ -1178,3 +1178,11 @@
 .cx-board .cm-name { display: inline-flex; align-items: center; gap: 12px; }
 @media (min-width: 761px) { .cx-coef { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 300px); overflow-y: auto; } }
 .cx-coef .cx-league .c-num { color: #fff21f; }
+/* Penalty Takers (CM 01/02): lilla nummerknapper og pladserne 1-25 / 26-50 */
+.cx-pen-num { min-width: 46px; height: 27px; background: #3a1a6e; color: #fff; border: 1px solid; border-color: #6a4aa0 #1e0a40 #1e0a40 #6a4aa0; font-size: 13px; cursor: pointer; }
+.cx-pen-num.on { background: #6a1fb0; color: #fff21f; }
+.cx-pen-slots { display: grid; grid-template-columns: repeat(25, 1fr); gap: 2px; margin: 4px 16px; }
+.cx-pen-slots span { display: grid; place-items: center; height: 22px; background: #2a0f55; color: #9c8cc0; font-size: 11px; }
+.cx-pen-slots span.on { background: #6a1fb0; color: #fff21f; }
+.cx-pens .cx-sq-cols { margin: 0 16px; max-height: calc(100vh - 430px); }
+.cx-pens .cx-ts-buttons { grid-template-columns: 1fr; }

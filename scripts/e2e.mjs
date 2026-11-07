@@ -126,6 +126,20 @@ async function run(look) {
     await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
   });
+  if (look === 'klassisk') await step('Penalty Takers', async () => {
+    await go({ name: 'tactics' });
+    await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Penalty Takers' }).first().click();
+    await page.waitForSelector('.cx-pens .cx-pen-num', { timeout: 5000 });
+    await page.locator('.cx-pens .cx-greybtn', { hasText: 'Clear Squad' }).click();
+    const nums = page.locator('.cx-pens .cx-pen-num');
+    await nums.nth(3).click(); await page.locator('.cx-pens .cx-pen-num:not(.on)').first().click();
+    const order = await gs(() => window.__cm.gs().tactic.penOrder);
+    if (order?.length !== 2) throw new Error(`rækkefølgen blev ikke sat: ${JSON.stringify(order)}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-straffeskytter.png` });
+    await page.locator('.cx-pens .cx-pen-done').click();
+    await page.waitForSelector('.cx-tac-pitch', { timeout: 5000 });
+  });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
     await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });

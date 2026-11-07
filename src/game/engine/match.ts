@@ -763,7 +763,7 @@ export class MatchSim {
           this.sendOff(O, cover, false, 'red-professional');
           this.injuryCheck(s);
           if (this.rb(T.idx) === 4) {
-            const taker = T.on.find((x) => x.p.id === T.tactic.penalties && !x.off) ?? s;
+            const taker = this.penTaker(T) ?? s;
             this.line('penalty', s, cover, true);
             return this.shoot(T, O, taker, 'pen');
           }
@@ -1017,7 +1017,7 @@ export class MatchSim {
       if (dive && this.r.chance(0.18 / this.ref)) {
         // dommeren bliver snydt
         this.line('dive-pen', s, def, true);
-        const taker = T.on.find((x) => x.p.id === T.tactic.penalties && !x.off) ?? s;
+        const taker = this.penTaker(T) ?? s;
         return this.shoot(T, O, taker, 'pen');
       }
       if (dive && this.r.chance(0.35 * this.ref)) { this.line('dive-booked', s, def, true); this.book(T, s); }
@@ -1254,8 +1254,7 @@ export class MatchSim {
     // kun en del af frisparkene i feltet er straffespark (~0,3 pr. kamp); resten er frispark lige uden for
     if (rb === 4 && this.r.chance(0.3)) {
       this.line('penalty', victim, def, true);
-      const takerId = T.tactic.penalties;
-      const taker = T.on.find((x) => x.p.id === takerId && !x.off) ?? victim;
+      const taker = this.penTaker(T) ?? victim;
       this.shoot(T, O, taker, 'pen');
       return true;
     }
@@ -1764,9 +1763,17 @@ export class MatchSim {
 
   // ---------- straffe ----------
 
+  /** Straffesparkskytten: den første i Penalty Takers-rækkefølgen, der er på banen, ellers den udpegede skytte */
+  private penTaker(T: TeamRT): SP | undefined {
+    const order = T.tactic.penOrder?.length ? T.tactic.penOrder : [T.tactic.penalties];
+    for (const id of order) { const x = T.on.find((s) => s.p.id === id && !s.off); if (x) return x; }
+    return undefined;
+  }
+
   private startShootout() {
-    // lige mange skytter på hver side (holdet med flest spillere må undvære sine dårligste)
-    const on = this.teams.map((t) => t.on.filter((s) => !s.off).sort((a, b) => this.a(b, A.penalties) - this.a(a, A.penalties)));
+    // lige mange skytter på hver side (holdet med flest spillere må undvære sine dårligste) – Penalty Takers-rækkefølgen først
+    const rank = (t: TeamRT, s: SP) => { const i = t.tactic.penOrder?.indexOf(s.p.id) ?? -1; return i >= 0 ? i : 1000 - this.a(s, A.penalties); };
+    const on = this.teams.map((t) => t.on.filter((s) => !s.off).sort((a, b) => rank(t, a) - rank(t, b)));
     const n = Math.min(on[0].length, on[1].length);
     this.shootout = { takers: [on[0].slice(0, n), on[1].slice(0, n)], score: [0, 0], kicks: [] };
     this.line('shootout', null, null, true);

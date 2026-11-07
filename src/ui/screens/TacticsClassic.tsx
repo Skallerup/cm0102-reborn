@@ -4,7 +4,7 @@
 // slip) for at sætte ham ind. Under "With Ball"/"Without Ball" vises holdets – og den valgte spillers – instruktioner.
 import { useRef, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
-import { roleScore, slotFit, slotRole } from '../../game/attributes';
+import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attributes';
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic, slotTaken, snapSlot } from '../../game/tactics';
@@ -32,6 +32,7 @@ export function ClassicTactics() {
   const byId = new Map(players.map((p) => [p.id, p]));
   const [pane, setPane] = useRouteState<Pane>('tpane', 'overview');
   const [view, setView] = useRouteState<View>('tview', 'cond');
+  const [penScreen, setPenScreen] = useRouteState('tpens', false);
   const [pick, setPick] = useState<number | null>(null); // valgt spiller (i listen)
   const [slotSel, setSlotSel] = useState<number | null>(null); // valgt plads (på banen)
   const [drag, setDrag] = useState<number | null>(null);
@@ -114,7 +115,9 @@ export function ClassicTactics() {
   // CM 01/02: Team Instructions · Penalty Takers · Set To Default ▸ · — · Load · Save · Save As · Delete
   const tacticItems: DropItem[] = [
     { key: 'ti', label: t('cl.mt.teamInstr'), onClick: () => setPane('with') },
-    { key: 'pens', label: t('cl.tac.penTakers'), sub: (['captain', 'penalties', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac[k] === id, onClick: () => change({ ...tac, [k]: id }) })) })) },
+    { key: 'pens', label: t('cl.tac.penTakers'), onClick: () => setPenScreen(true) },
+    // vores ekstra: anfører, frispark og hjørnespark (i originalen trækkes "capt" m.fl. hen på spilleren)
+    { key: 'setp', label: t('cl.tac.setPieceTakers'), sub: (['captain', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac[k] === id, onClick: () => change({ ...tac, [k]: id }) })) })) },
     { key: 'def', label: t('cl.mt.default'), sub: FORMATIONS.map((f) => ({ key: `f${f}`, label: f, checked: tac.formation === f, onClick: () => change(changeFormation(tac, f)) })) },
     { key: 'sep', sep: true },
     { key: 'load', label: t('cl.tac.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: savedLabel(s2), onClick: () => change({ ...structuredClone(s2), lineup: tac.lineup.length === s2.lineup.length ? tac.lineup : s2.lineup }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
@@ -139,6 +142,7 @@ export function ClassicTactics() {
   ];
   const views: DropItem[] = (['cond', 'fit', 'pos', 'value'] as View[]).map((v) => ({ key: v, label: t(`cl.tac.v.${v}`), checked: view === v, onClick: () => setView(v) }));
 
+  if (penScreen) return <PenaltyTakers tac={tac} players={players} change={change} onClose={() => setPenScreen(false)} />;
   return (
     <div className="cx-tac">
       <Head title={t('nav.tactics')}>
@@ -322,3 +326,45 @@ export function ClubTacticsView({ club }: { club: number }) {
     </div>
   );
 }
+
+/** "Man Utd Penalty Takers" (CM 01/02): klik på spillerne i den rækkefølge, de skal sparke – nummeret står i den lilla knap */
+function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players: Player[]; change: (t: Tactic) => void; onClose: () => void }) {
+  const order = tac.penOrder !== undefined ? tac.penOrder.filter((id) => players.some((p) => p.id === id)) : tac.penalties ? [tac.penalties] : [];
+  const set = (next: number[]) => change({ ...tac, penOrder: next, penalties: next[0] ?? tac.penalties });
+  const toggle = (id: number) => set(order.includes(id) ? order.filter((x) => x !== id) : [...order, id].slice(0, 50));
+  const list = players.slice().sort((a, b) => {
+    const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
+    return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || roleRank(a) - roleRank(b);
+  });
+  const half = Math.ceil(list.length / 2);
+  const row = (p: Player) => {
+    const i = order.indexOf(p.id);
+    return (
+      <div key={p.id} className="cx-sq-row">
+        <button className={`cx-pen-num ${i >= 0 ? 'on' : ''}`} onClick={() => toggle(p.id)}>{i >= 0 ? i + 1 : ''}</button>
+        <span className="cx-sq-tag" />
+        <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''}`} onClick={() => toggle(p.id)}>{p.last}{p.first ? `, ${p.first[0]}` : ''}</button>
+        <span className="cx-sq-info">{posStr(p)}</span>
+      </div>
+    );
+  };
+  // CM 01/02: de nummererede pladser øverst (1-25) og nederst (26-50)
+  const slots = (from: number) => <div className="cx-pen-slots">{Array.from({ length: 25 }, (_, k) => <span key={k} className={order[from + k] ? 'on' : ''}>{from + k + 1}</span>)}</div>;
+  return (
+    <div className="cx-pens">
+      <Head title={t('cl.tac.penTitle')}>
+        <button className="cx-greybtn" onClick={() => set([...players].filter(available).sort((a, b) => b.attrs[A.penalties] + b.attrs[A.pressure] - a.attrs[A.penalties] - a.attrs[A.pressure]).slice(0, 11).map((p) => p.id))}>{t('tac.assistantPick')}</button>
+        <span className="grow" />
+        <button className="cx-greybtn" onClick={() => set([])}>{t('cl.tac.clearSquad')}</button>
+      </Head>
+      {slots(0)}
+      <div className="cx-sq-cols">
+        <div className="cx-sq-col">{list.slice(0, half).map(row)}</div>
+        <div className="cx-sq-col">{list.slice(half).map(row)}</div>
+      </div>
+      {slots(25)}
+      <div className="cx-ts-buttons"><button className="primary cx-pen-done" onClick={onClose}>{t('common.ok')}</button></div>
+    </div>
+  );
+}
+const roleRank = (p: Player) => ['GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'].indexOf(naturalRole(p));

@@ -442,6 +442,8 @@ export interface Tactic {
   individual: PlayerInstructions[]; // pr. slot
   captain: number;
   penalties: number;
+  /** CM 01/02 Penalty Takers: skytternes rækkefølge (den første på banen tager straffespark, og den bruges i straffesparkskonkurrencen) */
+  penOrder?: number[];
   freeKicks: number;
   /** frispark fra højre (CM 01/02 Free Kicks (R)); ellers freeKicks */
   freeKicksR?: number;
