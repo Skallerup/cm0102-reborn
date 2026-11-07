@@ -48,6 +48,12 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – `ui/matchSound.ts` (Web Audio, ingen filer; pref `cm-match-sound`): SOUND_OF i Match.tsx (kommentar → lyd i pull,
+  ikke ved Instant), tilskuerbrus via `crowdOn`. Klassisk mål: `L.goalUntil` (5,5 s blink `.cx-goal-flash`, kampen står stille).
+  `classicRules()` kræver nu 2001-DB (dbKind cm0102 og år < 2020) – world.json er CM-format 2026/27 og fik før 5/3. Engelske
+  turneringsnavne: `setCompEra(isOriginal2001())` i Shell; ellers LEAGUES_DA's rigtige navne (comps.ts). Valuta uden eget valg
+  følger sproget (en → GBP). `.cx-sq-cols` ruller (max-height). Landsholdslogoer: `scripts/build-nation-badges.py` →
+  logos.json `nations`, `NationCrest`/`nationLogoUrl`, Hub `nation` (international).
 - 2026-11-07 – Slutrundedage: `intlDayResults(date)` (international.ts) – slutrundekampe spilles i newDay, så runUntil(watchDays)
   stopper med 'dayStart' (kun resultater; 'dayEnd' gælder kun klubdage) → rute `intlday` (`IntlDay` i MatchDayClassic.tsx, hub
   guldfarvet). Venues for VM-kampe har vi ikke (originalen viser stadion under hjemmeholdet).

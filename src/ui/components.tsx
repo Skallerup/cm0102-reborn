@@ -10,7 +10,7 @@ import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
 import { LOCALE, currencySymbol, fromCurExact, getLang, natName, t, toCur } from '../i18n';
 import { useNav, useRouteState } from './core';
-import { logoUrl } from './logos';
+import { logoUrl, nationLogoUrl } from './logos';
 
 export function PlayerLink({ p, short }: { p: Player | undefined; short?: boolean }) {
   const { nav } = useNav();
@@ -33,6 +33,13 @@ export function Crest({ id, size = 14 }: { id: number; size?: number }) {
     return <img className="crest" src={url} alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)} style={{ width: size, height: size }} />;
   }
   return null;
+}
+
+/** Landsholdets logo (intet, når vi ikke har et) */
+export function NationCrest({ nation, size = 14 }: { nation: number; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const url = nationLogoUrl(gs().nations[nation]?.name);
+  return url && !failed ? <img className="crest" src={url} alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)} style={{ width: size, height: size, objectFit: 'contain' }} /> : null;
 }
 
 export function ClubLink({ id, long, noCrest }: { id: number; long?: boolean; noCrest?: boolean }) {

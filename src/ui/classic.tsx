@@ -12,7 +12,7 @@ import type { GameState, Staff } from '../game/types';
 import { compName, natName, t } from '../i18n';
 import { leagueRows } from '../game/competitions';
 import { useNav, type Route, type ScreenName } from './core';
-import { Crest } from './components';
+import { Crest, NationCrest } from './components';
 import { matchDayComps } from './screens/MatchDayClassic';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
@@ -53,7 +53,7 @@ export function useClassicNext(label: string | null, run: () => void) {
   }, [label]);
 }
 /** Klassisk kampskærm: sidebjælken viser minuttet og kampknapperne (Kick Off Match, holdenes taktik, Commentary Speed) */
-export interface MatchSide { minute: string; half?: boolean; editing?: boolean; lastView?: boolean; venue?: string; line?: { text: string; background: string; color: string }; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
+export interface MatchSide { minute: string; half?: boolean; editing?: boolean; lastView?: boolean; venue?: string; line?: { text: string; background: string; color: string; flash?: boolean }; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
 export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void; cont: () => void; ok: () => void; cancel: () => void; back?: () => void }
 let matchSide: { s: MatchSide; a: MatchSideActions } | null = null;
 let matchSideKey = '';
@@ -118,6 +118,8 @@ interface Hub {
   sub?: (ScreenName | 'lastMatch' | 'division' | 'clubHistory')[];
   /** ingen hub-faner på denne rute (fx én stabspersons profil) */
   plain?: (route: Route) => boolean;
+  /** landsholdets logo i titelbjælken */
+  nation?: (g: GameState, route: Route) => number | undefined;
   /** egne farver i titelbjælken (fx et landshold) – går forud for klubbens */
   colors?: (g: GameState, route: Route) => { bg: string; fg: string } | undefined;
 }
@@ -222,6 +224,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   international: {
     title: (g, r, st) => (r.id !== undefined ? natName(g.nations[Number(r.id)]?.name) : st),
     club: () => undefined,
+    nation: (_g, r) => (r.id !== undefined ? Number(r.id) : undefined),
     // uden land: turneringernes gyldne bjælke (som "FIFA World Cup History" i originalen)
     colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : { bg: '#d6b24c', fg: '#ffffff' }),
   },
@@ -454,6 +457,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const col = own2 ? { ...own2, neutral: false } : titleColors(hub?.club ? hub.club(g, route) : g.userClub || undefined);
   // klubbens logo i titelbjælken (kun på klubbens egne skærme)
   const logoClub = hub?.club ? hub.club(g, route) : undefined;
+  const logoNation = hub?.nation?.(g, route);
   const plain = hub?.plain?.(route);
   const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);
   // klubbens nederste knapper har ▸ som i CM 01/02
@@ -467,7 +471,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg }}>
         <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />
-        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : null}
+        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : null}
         <h2>{text}</h2>
         {action && <div className="cx-action">{action}</div>}
       </div>

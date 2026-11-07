@@ -14,7 +14,8 @@ describe('ægte CM 01/02', () => {
     createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Brentford FC')![0], activeNations: [eng], lang: 'en', masking: true, seed: 5, mode: 'authentic' });
     const g = gs();
     expect(g.options.mode).toBe('authentic');
-    expect(maxSubs()).toBe(3);
+    // 2026/27-databasen: nutidens regler (5 udskiftninger) – også i ægte tilstand
+    expect(maxSubs()).toBe(5);
     for (let i = 0; i < 70; i++) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
     const keys = g.news.map((n) => n.key);
     expect(keys.some((k) => k.startsWith('press.invite'))).toBe(false);

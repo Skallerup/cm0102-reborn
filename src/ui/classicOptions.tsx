@@ -20,6 +20,7 @@ import { askConfirm } from './confirm';
 import { useGame, useNav } from './core';
 import { notifyEnabled, notifySupported, setNotify } from './notify';
 import { getTheme, setTheme, type Theme } from './theme';
+import { matchSound, setMatchSound } from './matchSound';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
 
@@ -109,7 +110,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; save: string; notif: boolean };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; save: string; notif: boolean };
 
 export function Seg<T extends string | boolean>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
@@ -120,7 +121,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const { nav } = useNav();
   const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
-    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(),
+    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
   };
   const [d, setD] = useState<Draft>(initial);
@@ -130,7 +131,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     if (d.lang !== initial.lang) { setLang(d.lang); g.lang = d.lang; }
     if (d.cur !== initial.cur) setCurrency(d.cur);
     if (d.save !== initial.save) { g.options.autosaveMode = d.save as 'changes'; g.options.autosave = d.save !== 'off'; }
-    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); applyFlash();
+    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); setMatchSound(d.sound); applyFlash();
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
     if (d.theme !== initial.theme) setTheme(d.theme);
@@ -145,7 +146,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <AccountBar />
           <div className="cx-set-top">
             <span>{t('cl.set.version', { v: APP_VERSION })}</span>
-            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: 'futuristic', logo: true, stadium: true })}>{t('cl.set.reset')}</button>
+            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true })}>{t('cl.set.reset')}</button>
           </div>
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
@@ -154,6 +155,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
             {row(t('cl.set.fonts'), <Seg value={d.font} opts={CX_FONTS.map((f) => [f, t(`cl.set.font.${f}`)] as [CxFont, string])} onChange={(v) => up({ font: v })} />)}
             {row(t('cl.set.logo'), onOff(d.logo, (v) => up({ logo: v })))}
             {row(t('cl.set.stadium'), onOff(d.stadium, (v) => up({ stadium: v })))}
+            {row(t('cl.set.sound'), onOff(d.sound, (v) => up({ sound: v })))}
             {row(t('cl.set.pixel'), <Seg value={d.pixel} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]]} onChange={(v) => up({ pixel: v })} />)}
             {row(t('cl.set.bg'), onOff(d.bg, (v) => up({ bg: v })))}
             {row(t('hub.skins.setting'), <div className="cx-set-seg">

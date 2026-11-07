@@ -4,19 +4,24 @@ let base = '';
 let map: Record<string, string> = {};
 // klubnavn → fuld url (TheSportsDB) for klubber, logopakken ikke har (fx Blackburn og de engelske 1. divisionsklubber)
 let named: Record<string, string> = {};
+// landsholdenes logoer (nationsnavn → url, scripts/build-nation-badges.py)
+let nations: Record<string, string> = {};
 let loaded: Promise<void> | null = null;
 
 export function loadLogos(): Promise<void> {
   if (!loaded) {
     loaded = fetch(`${import.meta.env.BASE_URL}data/logos.json`)
       .then((r) => (r.ok ? r.json() : { base: '', logos: {} }))
-      .then((d: { base: string; logos: Record<string, string>; named?: Record<string, string> }) => { base = d.base; map = d.logos; named = d.named ?? {}; })
+      .then((d: { base: string; logos: Record<string, string>; named?: Record<string, string>; nations?: Record<string, string> }) => { base = d.base; map = d.logos; named = d.named ?? {}; nations = d.nations ?? {}; })
       .catch(() => { /* uden logoer */ });
   }
   return loaded;
 }
 
 const url = (p: string) => (p.startsWith('https://') ? p : base + p.split('/').map(encodeURIComponent).join('/'));
+
+/** Landsholdets logo (databasens engelske nationsnavn) */
+export const nationLogoUrl = (name: string | undefined): string | null => (name && nations[name]) || null;
 
 export function logoUrl(clubId: number): string | null {
   // CM 01/02-klubber har ikke Transfermarkt-id'er – match logoet på klubbens navn i stedet

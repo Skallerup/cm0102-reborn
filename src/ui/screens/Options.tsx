@@ -13,6 +13,7 @@ import { Head } from './common';
 import { getTheme, setTheme, type Theme } from '../theme';
 import { notifyEnabled, notifySupported, setNotify } from '../notify';
 import { modernBackgrounds, setModernBackgrounds, setStadiumBackgrounds, stadiumBackgrounds } from '../classicOptions';
+import { matchSound, setMatchSound } from '../matchSound';
 
 export function Options() {
   const g = useGame()!;
@@ -20,6 +21,7 @@ export function Options() {
   const [theme, setThemeState] = useState<Theme>(getTheme());
   const [notif, setNotif] = useState(notifyEnabled());
   const [mbg, setMbg] = useState(modernBackgrounds());
+  const [snd, setSnd] = useState(matchSound());
   const [sbg, setSbg] = useState(stadiumBackgrounds());
   return (
     <div>
@@ -53,6 +55,7 @@ export function Options() {
             {theme === 'retro' && <div className="muted">{t('opt.theme.retroHint')}</div>}
             {theme !== 'retro' && <label className="row"><input type="checkbox" checked={mbg} onChange={(e) => { setModernBackgrounds(e.target.checked); setMbg(e.target.checked); notify(); }} />{t('opt.bgPhotos')}</label>}
             <label className="row"><input type="checkbox" checked={sbg} onChange={(e) => { setStadiumBackgrounds(e.target.checked); setSbg(e.target.checked); notify(); }} />{t('cl.set.stadium')}</label>
+            <label className="row"><input type="checkbox" checked={snd} onChange={(e) => { setMatchSound(e.target.checked); setSnd(e.target.checked); }} />{t('cl.set.sound')}</label>
             {notifySupported() && <label className="row"><input type="checkbox" checked={notif} onChange={async (e) => setNotif(await setNotify(e.target.checked))} />{t('opt.notify')}</label>}
             {notifySupported() && <div className="muted">{t('opt.notify.hint')}</div>}
             <div className="muted">{t('opt.newsMoved')}</div>

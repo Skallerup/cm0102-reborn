@@ -48,6 +48,8 @@ export function getLang(): Lang {
 
 export function setLang(l: Lang) {
   lang = l;
+  // uden et eget valg følger valutaen sproget
+  if (!chosen) currency = langCurrency();
   try { document.documentElement.lang = l; } catch { /* ingen DOM */ }
   try { localStorage.setItem('cm0102.lang', l); } catch { /* ignore */ }
   // et sprog, der hentes: tegn siden igen, når teksterne er kommet (indtil da vises engelsk)
@@ -74,13 +76,16 @@ export type Currency = 'EUR' | 'DKK' | 'GBP';
 export const CURRENCIES: Currency[] = ['EUR', 'DKK', 'GBP'];
 // Faste kurser (spillets interne beløb er i euro)
 const RATE: Record<Currency, number> = { EUR: 1, DKK: 7.46, GBP: 0.86 };
-let currency: Currency = (() => {
+// valgt valuta (gemt) – ellers sprogets: dansk kroner, engelsk pund (som i CM 01/02), øvrige euro
+let chosen: Currency | null = (() => {
   try {
     const v = localStorage.getItem('cm0102.currency');
     if (v === 'EUR' || v === 'DKK' || v === 'GBP') return v;
   } catch { /* ingen storage */ }
-  return lang === 'da' ? 'DKK' : 'EUR';
+  return null;
 })();
+const langCurrency = (): Currency => (lang === 'da' ? 'DKK' : lang === 'en' ? 'GBP' : 'EUR');
+let currency: Currency = chosen ?? langCurrency();
 
 export function getCurrency(): Currency {
   return currency;
@@ -88,6 +93,7 @@ export function getCurrency(): Currency {
 
 export function setCurrency(c: Currency) {
   currency = c;
+  chosen = c;
   try { localStorage.setItem('cm0102.currency', c); } catch { /* ignore */ }
 }
 

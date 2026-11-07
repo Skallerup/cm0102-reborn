@@ -51,9 +51,18 @@ const CUPS: Record<string, string> = {
 
 const DANISH_WORDS = /pokal\b|^Pokalturneringen$|^Kejserens|^Kongens|^Japans/;
 
+/** Spilles der med 2001/02-databasen? Så bruger engelsk CM's egne navne fra dengang (sættes af Shell) */
+let cmEra = false;
+export const setCompEra = (original2001: boolean) => { cmEra = original2001; };
+
 export function compLabel<T extends string | undefined>(name: T, lang: Lang): T {
-  // engelsk: CM-databasernes egne navne; de øvrige sprog: ligaernes og pokalernes rigtige navne
-  if (!name || lang === 'en') return name;
+  // engelsk med 2001-databasen: CM's egne navne; ellers (og på de øvrige sprog) ligaernes og pokalernes rigtige navne
+  if (!name) return name;
+  if (lang === 'en') {
+    if (cmEra) return name;
+    const real = LEAGUES_DA[name] ?? CM_CUPS_DA[name];
+    return (real && !DANISH_WORDS.test(real) ? real : name) as T;
+  }
   // danske fællesbetegnelser ("Tyrkiets pokal") bruges kun på dansk – de rigtige egennavne på alle sprog
   const own = (v: string | undefined) => (v && (lang === 'da' || !DANISH_WORDS.test(v)) ? v : undefined);
   const league = own(LEAGUES_DA[name]) ?? own(CM_CUPS_DA[name]);

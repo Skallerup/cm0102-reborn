@@ -19,6 +19,8 @@ import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
+import { setCompEra } from '../i18n/comps';
+import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
@@ -112,6 +114,8 @@ function selectionProblems(): string | null {
 
 export function Shell() {
   const g = useGame()!;
+  // 2001-databasen: CM's egne turneringsnavne på engelsk, ellers de rigtige ("Premier League")
+  setCompEra(isOriginal2001());
   const { route, nav, back, canBack, forward, canForward } = useNav();
   const cxNext = useClassicNextAction();
   // kampdage (optakt, kamp, rapport): hjemmeholdets stadion som baggrund, som i CM 01/02 – ikke ved finaler på neutral bane
@@ -510,7 +514,7 @@ export function Shell() {
             ) : matchSide && route.name === 'match' && matchSide.s.venue ? (
               // kampskærmen (CM 01/02): stadion og by nederst i stedet for Back/Next
               // … og under kampen den seneste kommentar, når man står på en anden fane end Match Overview
-              matchSide.s.line ? <div className="cx-venue cx-foot-venue cx-foot-line" style={{ background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
+              matchSide.s.line ? <div className={`cx-venue cx-foot-venue cx-foot-line ${matchSide.s.line.flash ? 'cx-goal-flash' : ''}`} style={matchSide.s.line.flash ? undefined : { background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
                 : <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
             ) : <div className="cx-backnext">
               {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}

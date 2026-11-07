@@ -1161,3 +1161,18 @@
 .cx-md-tools { display: flex; align-items: center; gap: 4px; margin: -4px 16px 6px; }
 .cx-md-tools .cx-greybtn { min-width: 200px; }
 .cx-md-tools .grow { flex: 1; }
+/* mål (CM 01/02): bjælken blinker GOAL! i 5-6 sekunder */
+.cx-goal-flash { background: #fff21f; color: #0b1a5c; font-size: clamp(28px, 4vw, 46px) !important; font-weight: 900 !important; letter-spacing: 0.08em; animation: cx-goal-blink 0.55s steps(1) infinite; }
+@keyframes cx-goal-blink { 50% { background: #0b1a5c; color: #fff21f; } }
+/* lange trupper (40+ spillere): listen ruller i sin egen boks med en synlig bjælke som i CM 01/02 (resten lå før skjult bag bundknapperne) */
+@media (min-width: 761px) {
+  .cx-sq-cols { max-height: calc(100vh - 410px); overflow-y: auto; padding-right: 4px; }
+  .cx-sq-cols, .cx-tac-list, .cx-mr, .cx-live-tbl { scrollbar-width: auto; scrollbar-color: #838183 rgba(0, 0, 0, 0.35); }
+  .cx-sq-cols::-webkit-scrollbar, .cx-tac-list::-webkit-scrollbar { width: 18px; }
+  .cx-sq-cols::-webkit-scrollbar-track, .cx-tac-list::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.35); }
+  .cx-sq-cols::-webkit-scrollbar-thumb, .cx-tac-list::-webkit-scrollbar-thumb { background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; }
+}
+.cx-rt tr.cx-mom td:not(.btn-col) { background: rgba(255, 242, 31, 0.16); }
+.cx-mom-line { margin: 4px 16px 0; padding: 8px 12px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-size: 18px; }
+.cx-mom-line .cx-link { color: #fff; }
+.cx-board .cm-name { display: inline-flex; align-items: center; gap: 12px; }
