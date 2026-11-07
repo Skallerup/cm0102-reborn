@@ -88,6 +88,13 @@ async function run(look) {
     await page.locator('.cx-drop-sub button').first().click();
     await checkScreen('competitions');
   });
+  if (look === 'klassisk') await step('staff search (klassisk)', async () => {
+    await go({ name: 'transfers' });
+    await page.getByRole('button', { name: 'Staff Search', exact: true }).first().click();
+    await page.waitForTimeout(300);
+    await checkScreen('staff search');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-staffsearch.png` });
+  });
   if (look === 'klassisk') await step('spillerens faner (klassisk)', async () => {
     await go({ name: 'player', id: star });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-Profile.png` });

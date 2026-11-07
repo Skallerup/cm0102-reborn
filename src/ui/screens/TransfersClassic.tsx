@@ -11,7 +11,7 @@ import type { Trait } from '../../game/personality';
 import { transferRealism } from '../../game/transfers';
 import type { Player, Staff } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
-import { ClassicSub, CxDrop, type DropItem } from '../classic';
+import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
 import { Seg } from '../classicOptions';
 import { Select } from '../select';
 import { Stars, Tabs, posStr } from '../components';
@@ -240,7 +240,8 @@ function StaffSearch() {
     { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
       render: (s) => <span onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
     { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where },
-    { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: based, sort: based },
+    // Based: ligaen kan klikkes (gul understregning under musen, som i CM 01/02)
+    { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => { const c = g.clubs[s.club]; return c && g.leagues[c.league] ? <span className="link" onClick={() => nav({ name: 'competitions', id: c.league })}>{based(s)}</span> : <span className="link" onClick={() => nav(nationRoute(c?.nation ?? s.nation))}>{based(s)}</span>; }, sort: based },
     { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: (s) => t(`role.staff.${s.role}`), sort: (s) => t(`role.staff.${s.role}`) },
     { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => repLabel(s.rep), sort: (s) => s.rep },
   ];
@@ -255,7 +256,7 @@ function StaffSearch() {
       <div className="cx-subtitle small">{t('cl.tr.staffSearch')}</div>
       <CxTable rows={list} cols={cols} rowKey={(s) => s.id} initialSort="rep" page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
-        btn={() => <span className="cx-rowbtn narrow" />} />
+        btn={() => <span className="cx-rowbtn" />} />
       <div className="cx-found">{t('cl.st.found', { n: list.length.toLocaleString(t('cl.locale')) })}</div>
     </div>
   );
@@ -356,7 +357,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     ? [...base, pos, ...SHOW_ATTRS.map(attrCol)]
     : view === 'notes'
     ? [...base, club, pos, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: (p) => p.notes || '-', sort: (p) => (p.notes ? 0 : 1) }]
-    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: based, sort: based }, pos, val, ...real];
+    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: (p) => (p.club && g.clubs[p.club] ? <span className="link" onClick={() => nav(nationRoute(g.clubs[p.club].nation))}>{based(p)}</span> : based(p)), sort: based }, pos, val, ...real];
   return (
     <>
       {viewMenu && <div className="cx-tools cx-tools-inline"><ViewMenu view={view} setView={setOwnView} /></div>}
@@ -366,7 +367,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
         btn={(p) => {
           const on = g.shortlist.includes(p.id);
-          return <button className={`cx-rowbtn narrow ${on ? 'on' : ''}`} title={on ? t('player.unshortlist') : t('player.shortlist')} onClick={() => act({ t: 'shortlist', pid: p.id, on: !on })}>{on ? '★' : ''}</button>;
+          return <button className={`cx-rowbtn ${on ? 'on' : ''}`} title={on ? t('player.unshortlist') : t('player.shortlist')} onClick={() => act({ t: 'shortlist', pid: p.id, on: !on })}>{on ? '★' : ''}</button>;
         }} />
       <div className="cx-found">{t('cl.tr.found', { n: players.length.toLocaleString(t('cl.locale')) })}</div>
     </>

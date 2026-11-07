@@ -926,4 +926,7 @@
 /* CM 01/02: navne, klubber og lande får en gul understregning under musen (farven bliver den samme) */
 :root[data-skin='retro'] :is(.cx-link, .link, .club-link):hover, :root[data-skin='retro'] .cx-link:focus-visible { color: inherit; text-decoration: underline; text-decoration-color: #fff21f; text-decoration-thickness: 2px; text-underline-offset: 3px; }
 /* Rep./værdi-felterne: adskilte lilla kasser som i originalen */
-:root[data-skin='retro'] .cx-tbl .c-val { background: #3a1670; color: #fff; text-align: center; font-weight: 600; min-width: 120px; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; padding: 4px 8px; }
+:root[data-skin='retro'] .cx-tbl .c-val { background: #3a1670; color: #fff; text-align: center; font-weight: 600; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; }
+/* den blå rækkeknap yderst til venstre er bred som i originalen */
+.cx-tbl td.btn-col { min-width: 56px; }
+:root[data-skin='retro'] span.cx-rowbtn { display: inline-flex; }
