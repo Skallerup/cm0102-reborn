@@ -146,6 +146,11 @@ async function run(look) {
     await page.locator('.cx-confirm button.primary').click();
     const saved = await gs(() => window.__cm.gs().savedTactics.map((x) => x.name));
     if (!saved.includes('E2E taktik')) throw new Error(`taktikken blev ikke gemt: ${saved}`);
+    // Edit → Copy All, Reflect, Paste: formationen er som før
+    const before = await gs(() => JSON.stringify(window.__cm.gs().tactic.slots));
+    const edit = async (label) => { await page.locator('.cx-drop-btn', { hasText: 'Edit' }).first().click(); await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: label }).first().click(); };
+    await edit('Copy All'); await edit('Reflect'); await edit('Paste');
+    if (before !== await gs(() => JSON.stringify(window.__cm.gs().tactic.slots))) throw new Error('Paste gav ikke den kopierede formation tilbage');
   });
   if (look === 'klassisk') await step('Referee Stats', async () => {
     const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });

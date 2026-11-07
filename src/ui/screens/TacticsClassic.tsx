@@ -24,6 +24,9 @@ const slotName = (s: Slot) => `${s.pos === 'ST' ? 'F' : s.pos}${s.pos === 'GK' |
 type View = 'cond' | 'fit' | 'pos' | 'value';
 type Pane = 'overview' | 'with' | 'without';
 
+/** Edit → Copy/Copy All: udklipsholderen (gælder, så længe siden er åben) */
+let clip: { one?: { slot: Slot; instr: PlayerInstructions }; all?: { slots: Slot[]; individual: PlayerInstructions[]; formation: string } } | null = null;
+
 export function ClassicTactics() {
   const g = useGame()!;
   const { nav } = useNav();
@@ -132,8 +135,23 @@ export function ClassicTactics() {
     change({ ...tac, slots: tac.slots.map((sl) => ({ ...sl, y: 100 - sl.y, side: flip(sl.side) })) });
   };
   // CM 01/02: Undo · Copy · Copy All · Paste · Reflect · Show Runs (+ vores egne: assistenten, ryd holdet, playmaker/target)
+  // den valgte plads (klikket på banen eller en spiller på holdet i listen)
+  const curSlot = slotSel ?? (pick !== null && tac.lineup.includes(pick) ? tac.lineup.indexOf(pick) : null);
   const editItems: DropItem[] = [
     { key: 'undo', label: `${t('tac.undo')}${hist.length ? ` (${hist.length})` : ''}`, disabled: !hist.length, onClick: undo },
+    // CM 01/02: Copy (den valgte spillers plads og instruktioner) · Copy All (hele formationen) · Paste
+    { key: 'copy', label: t('cl.tac.copy'), disabled: curSlot === null, onClick: () => { if (curSlot !== null) clip = { one: { slot: { ...tac.slots[curSlot] }, instr: { ...tac.individual[curSlot] } } }; } },
+    { key: 'copyall', label: t('cl.tac.copyAll'), onClick: () => { clip = { all: { slots: structuredClone(tac.slots), individual: structuredClone(tac.individual), formation: tac.formation } }; } },
+    { key: 'paste', label: t('cl.tac.paste'), disabled: !clip || (!!clip.one && curSlot === null), onClick: () => {
+      if (clip?.all) change({ ...tac, slots: structuredClone(clip.all.slots), individual: structuredClone(clip.all.individual), formation: clip.all.formation });
+      else if (clip?.one && curSlot !== null && tac.slots[curSlot].pos !== 'GK') {
+        const slots = tac.slots.slice(), individual = tac.individual.slice();
+        if (!slotTaken(slots, curSlot, clip.one.slot)) slots[curSlot] = { ...clip.one.slot };
+        individual[curSlot] = { ...clip.one.instr };
+        change({ ...tac, slots, individual });
+      }
+    } },
+    { key: 'sep0', sep: true },
     { key: 'reflect', label: t('cl.tac.reflect'), onClick: reflect },
     { key: 'runs', label: t('cl.tac.showRuns'), checked: pane === 'with', onClick: () => setPane(pane === 'with' ? 'overview' : 'with') },
     { key: 'sep', sep: true },
