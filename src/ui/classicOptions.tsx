@@ -269,7 +269,8 @@ export function CompetitionsMenu() {
   ] });
   const euro = Object.values(g.comps).filter((c) => c.nation < 0);
   if (euro.length) items.push({ key: 'eu', label: t('cl.cm.european'), sub: [
-    ...euro.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
+    // CM 01/02: "UEFA Champions League", "UEFA Cup" – UEFA foran de europæiske turneringer
+    ...euro.map((c) => { const n = compName(c.name) ?? c.name; return { key: c.id, label: /^UEFA\b/i.test(n) ? n : `UEFA ${n}`, onClick: () => nav({ name: 'competitions', id: c.id }) }; }),
     sep('s3'), awards,
     { key: 'coef', label: t('cl.cm.coeff'), onClick: () => nav({ name: 'coefficients' }) },
   ] });

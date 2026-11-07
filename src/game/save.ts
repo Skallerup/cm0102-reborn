@@ -5,7 +5,7 @@ import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify, ensureNumbers } from './state';
 import { deserializeState, serializeState } from './snapshot';
-import type { GameState } from './types';
+import type { GameState, Player } from './types';
 
 export interface SaveMeta {
   id: string;
@@ -106,6 +106,7 @@ function ensureAllNumbers() {
 
 /** Opgradér gemte spil fra ældre versioner (nye turneringer m.m.) */
 export function upgradeLoaded() {
+  repairInjuryWave();
   const g = gs();
   if (addMissingConference()) {
     const club = g.clubs[g.userClub];
@@ -120,6 +121,24 @@ export function upgradeLoaded() {
  * Samme tur: stadionnavne ("<klub> Stadium" → det rigtige navn fra stadium.dat).
  */
 /** Ret forkert stavede klubnavne i gemte spil fra CM-databaserne (fx "Bröndby IF", "FC Copenhagen") */
+/**
+ * Engangsrettelse (2026-11-07): før restitutionen blev rettet (+9 + NF/2 pr. dag) gav originalens knock-regel op til 10 skader
+ * i én kamp, så mange klubber i gamle gem har en halv trup på skadeslisten. Klubber med mere end 5 skadede beholder kun de 3
+ * længste skader (højst 30 dage); resten er klar igen.
+ */
+function repairInjuryWave() {
+  const g = gs();
+  if (g.fixes?.includes('injuryWave')) return;
+  const byClub = new Map<number, Player[]>();
+  for (const p of Object.values(g.players)) if (p.club && p.injury && p.injury.key !== 'awol') byClub.set(p.club, [...(byClub.get(p.club) ?? []), p]);
+  for (const list of byClub.values()) {
+    if (list.length <= 5) continue;
+    list.sort((a, b) => b.injury!.days - a.injury!.days);
+    list.forEach((p, i) => { if (i >= 3) p.injury = null; else p.injury!.days = Math.min(p.injury!.days, 30); });
+  }
+  (g.fixes ??= []).push('injuryWave');
+}
+
 function repairClubNames() {
   const g = gs();
   if (g.dbKind !== 'cm0102') return;

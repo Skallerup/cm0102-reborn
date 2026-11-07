@@ -48,6 +48,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – `repairInjuryWave` i upgradeLoaded (save.ts, `g.fixes` = kørte engangsrettelser). Reserver (`p.reserves`) filtreres fra
+  ClassicFirstSquad og ClassicTactics. UEFA-præfiks i Competitions-menuen. Hall of Fame: `ClassicHallOfFame` (rute ranking i retro).
 - 2026-11-07 – Turneringslogoer: `scripts/build-comp-badges.py` (TheSportsDB-id'er → logos.json `comps`, nøgle = rigtigt navn fra
   `realCompName` eller CL/UEFA/UECL/wc/euro), `compLogoUrl`, `CompBadge` i kampens sidebjælke (MatchSide.comp). Jobtilbud: `JobOfferPanel`
   (TransferStatusClassic) via Respond i indbakken; Job Information bruger `g.manager.nation` og 'all' uden klub.

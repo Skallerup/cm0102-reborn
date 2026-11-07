@@ -33,7 +33,7 @@ export function ClassicTactics() {
   const { nav } = useNav();
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
   const tac = g.tactic;
-  const players = squad(g.userClub);
+  const players = squad(g.userClub).filter((p) => !p.reserves);
   const byId = new Map(players.map((p) => [p.id, p]));
   const [pane, setPane] = useRouteState<Pane>('tpane', 'overview');
   const [view, setView] = useRouteState<View>('tview', 'cond');

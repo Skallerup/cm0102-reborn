@@ -240,7 +240,8 @@ function ClassicFirstSquad() {
   const [filter, setFilter] = useRouteState('cfilter', 'all');
   const [drag, setDrag] = useState<number | null>(null);
   const [over, setOver] = useState<string | null>(null);
-  const players = squad(g.userClub);
+  // CM 01/02: spillere på reserveholdet står kun på "{klub} Reserves" (managermenuen), ikke i førsteholdstruppen
+  const players = squad(g.userClub).filter((p) => !p.reserves);
   const byId = new Map(players.map((p) => [p.id, p]));
   const save = (next: Tactic | null) => { if (next) act({ t: 'tactic', tactic: next }); };
 

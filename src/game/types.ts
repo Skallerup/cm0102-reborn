@@ -953,6 +953,8 @@ export interface GameState {
   jobOffers: number[];
   lastMonthAward?: string;
   /** Online multiplayer: menneskelige managere og hvem der er "aktiv" lige nu */
+  /** engangsrettelser, der er kørt på dette gem (save.ts) */
+  fixes?: string[];
   humans?: HumanSlot[];
   active?: string;
   /** Månedens priser i indeværende sæson */
