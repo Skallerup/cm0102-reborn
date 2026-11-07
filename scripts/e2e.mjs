@@ -140,6 +140,15 @@ async function run(look) {
     const after = await gs(() => window.__cm.gs().tactic.team.mentality);
     if (after === before) throw new Error('holdinstruktionen blev ikke gemt');
   });
+  if (look === 'klassisk') await step('træning → Coaches', async () => {
+    await go({ name: 'training' });
+    await page.locator('.cx-greybtn', { hasText: 'Coaches' }).click();
+    await page.waitForSelector('.cx-coaches .cx-coach-row', { timeout: 5000 });
+    await page.locator('.cx-coaches .cx-coach-row .cx-tich').first().click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-coaches.png` });
+    await page.locator('.cx-coaches .cx-tidlg-foot button', { hasText: 'Ok' }).click();
+    if (!(await gs(() => Object.values(window.__cm.gs().staff).some((s) => s.coachAreas)))) throw new Error('trænerområdet blev ikke gemt');
+  });
   if (look === 'klassisk') await step('Penalty Takers', async () => {
     await go({ name: 'tactics' });
     await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();

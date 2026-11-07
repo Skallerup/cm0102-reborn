@@ -1,5 +1,6 @@
 // Træning i klassisk tema: faner pr. træningsskema med antal spillere (Overview · Rest · General · Fitness · Shooting,
 // resten nederst), en værktøjslinje og spillertabellen med skemaet som blå knap forrest (klik = skift skema).
+import { CoachesPanel } from './TransferStatusClassic';
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
@@ -8,11 +9,11 @@ import { SCHEDULES, trainingAdvice } from '../../game/training';
 import type { Player } from '../../game/types';
 import { money, t } from '../../i18n';
 import { ClassicSub, CxDrop, type DropItem } from '../classic';
-import { Modal, Tabs, posStr } from '../components';
+import { Tabs, posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxTable, type CxCol } from './CxTable';
-import { CoachingPanel, posGroup } from './Training';
+import { posGroup } from './Training';
 
 const TOP = ['rest', 'general', 'fitness', 'shooting'];
 const BOTTOM = ['ballcontrol', 'attacking', 'defending', 'setpieces', 'goalkeeping'];
@@ -62,7 +63,7 @@ export function ClassicTraining() {
       <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => setTab(k) }))} />
       <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort="pos"
         btn={(p) => <CxDrop className="cx-sel" caret={false} label={t(`train.${p.training}`)} items={schedMenu(p)} btn={{ className: 'cx-rowbtn' }} />} />
-      {coaches && <Modal title={t('cl.tn.coaches')} onClose={() => setCoaches(false)} wide><CoachingPanel /></Modal>}
+      {coaches && <CoachesPanel onClose={() => setCoaches(false)} />}
     </div>
   );
 }

@@ -206,6 +206,8 @@ export interface StaffAttrs {
   tactics: number;
 }
 
+export type CoachArea = 'fitness' | 'tactics' | 'shooting' | 'skills' | 'goalkeeping';
+
 export type StaffRole = 'manager' | 'assistant' | 'coach' | 'physio' | 'scout';
 
 export interface ScoutAssignment {
@@ -269,6 +271,8 @@ export interface Staff {
   wage: number;
   expires: string;
   assignment?: ScoutAssignment | null;
+  /** CM 01/02 Coaches: de træningsområder, træneren står for (udeladt = alle) */
+  coachAreas?: CoachArea[];
   /** AI-managerens foretrukne formation */
   style?: { formation: string; mentality: number };
   /** Trænerkarriere: klubber, trofæer og seneste sæsons form (placering mod forventning) */

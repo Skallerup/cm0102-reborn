@@ -25,7 +25,7 @@ import {
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
-import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
+import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer, CoachArea } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
@@ -70,6 +70,7 @@ export type Action =
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number; wage?: number }
   | { t: 'fireStaff'; id: number }
+  | { t: 'coachAreas'; id: number; areas: CoachArea[] | null }
   | { t: 'budget'; kind: 'transfer' | 'wage'; pct?: number }
   | { t: 'budgetCounter'; accept: boolean }
   | { t: 'budgetShift'; toWage: boolean; amount: number }
@@ -209,6 +210,7 @@ export function applyAction(a: Action): unknown {
     case 'withdraw': { const o = myOffer(a.pid); if (o) o.status = 'withdrawn'; return 'ok'; }
     case 'hireStaff': return hireStaff(a.id, a.wage);
     case 'fireStaff': return fireStaff(a.id);
+    case 'coachAreas': { const st = g.staff[a.id]; if (!st || st.club !== g.userClub) return 'error'; st.coachAreas = a.areas ?? undefined; return 'ok'; }
     case 'budget': return requestBudget(a.kind, a.pct);
     case 'budgetCounter': return answerBudgetCounter(a.accept);
     case 'budgetShift': return shiftBudget(a.toWage, a.amount);

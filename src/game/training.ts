@@ -3,7 +3,7 @@ import { A, ATTRS, type AttrKey } from './attributes';
 import { ageOn } from './dates';
 import { rng } from './rng';
 import { gs } from './state';
-import type { Player, Role, Staff } from './types';
+import type { CoachArea, Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
@@ -28,6 +28,8 @@ export const SCHEDULES: Schedule[] = [
 ];
 
 const SCHEDULE_MAP = new Map(SCHEDULES.map((s) => [s.key, s]));
+/** Træningsprogram → trænerområde (CM 01/02 Coaches); general bruger alle trænere */
+const AREA_OF: Record<string, CoachArea | undefined> = { goalkeeping: 'goalkeeping', fitness: 'fitness', shooting: 'shooting', attacking: 'shooting', ballcontrol: 'skills', setpieces: 'skills', defending: 'tactics' };
 
 export interface CoachingInfo {
   /** samlet træningskvalitet 0-1 */
@@ -70,9 +72,18 @@ export function weeklyDevelopment() {
   // stab pr. klub én gang (ellers gennemløbes hele stabslisten for hver klub)
   const byClub = new Map<number, Staff[]>();
   for (const s of Object.values(g.staff)) if (s.club) (byClub.get(s.club) ?? byClub.set(s.club, []).get(s.club)!).push(s);
+  // CM 01/02 Coaches: har klubben fordelt trænerne på områder, tæller kun dem, der står for spillerens program
+  const areaCache = new Map<string, CoachingInfo>();
   for (const p of Object.values(g.players)) {
     if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club, byClub.get(p.club) ?? []) : none);
-    const ci = cq.get(p.club)!;
+    let ci = cq.get(p.club)!;
+    const area = AREA_OF[p.training ?? 'general'];
+    const st = p.club ? byClub.get(p.club) ?? [] : [];
+    if (area && st.some((x) => x.coachAreas)) {
+      const k = `${p.club}:${area}`;
+      if (!areaCache.has(k)) areaCache.set(k, coachQuality(p.club, st.filter((x) => !x.coachAreas || x.coachAreas.includes(area))));
+      ci = areaCache.get(k)!;
+    }
     develop(p, ci);
     // motiverende trænere løfter moralen en smule hver uge
     if (p.club && ci.motivating > 0.55) p.morale = Math.min(20, p.morale + (ci.motivating - 0.55) * 0.6);

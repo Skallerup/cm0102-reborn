@@ -1232,3 +1232,7 @@
 @media (min-width: 761px) { .cx-hof { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-hof .cx-tbl td { font-weight: 400; } }
 .cx-hof tr.me td { color: #fff21f; } .cx-hof-me { margin: 6px 12px; color: #fff21f; }
 .cx-hof-fb .cx-head > .cx-title { display: none; }
+/* Coaches (CM 01/02 træning) */
+.cx-coach-grid { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; }
+.cx-coach-row { display: grid; grid-template-columns: 1.6fr repeat(5, 1fr); gap: 4px; align-items: center; }
+.cx-coach-name { color: #fff; font-size: 14px; } .cx-coach-name em { color: #fff21f; font-style: normal; font-size: 12px; margin-left: 6px; }

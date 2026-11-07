@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – `Staff.coachAreas` (action coachAreas, `CoachesPanel`): weeklyDevelopment bruger kun trænerne for programmets område (`AREA_OF`), når klubben har fordelt dem – ellers som før.
 - 2026-11-07 – `repairInjuryWave` i upgradeLoaded (save.ts, `g.fixes` = kørte engangsrettelser). Reserver (`p.reserves`) filtreres fra
   ClassicFirstSquad og ClassicTactics. UEFA-præfiks i Competitions-menuen. Hall of Fame: `ClassicHallOfFame` (rute ranking i retro).
 - 2026-11-07 – Turneringslogoer: `scripts/build-comp-badges.py` (TheSportsDB-id'er → logos.json `comps`, nøgle = rigtigt navn fra

@@ -5,7 +5,7 @@ import type { DisciplineReason } from '../../game/personality';
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { askingPrice, knownEnquiry, swapCandidates, swapWorth } from '../../game/transfers';
 import { ADDON_APPS } from '../../game/clauses';
-import type { Player, TransferOffer } from '../../game/types';
+import type { CoachArea, Player, TransferOffer } from '../../game/types';
 import type { RejectReason } from '../../game/will';
 import { ageOn } from '../../game/dates';
 import { compName, money, moneyFull, t } from '../../i18n';
@@ -267,6 +267,32 @@ export function JobOfferPanel({ cid, onClose }: { cid: number; onClose: () => vo
         <button onClick={decline}>{t('cl.bid.reject')}</button>
         <button className="primary" onClick={accept}>{t('cl.bid.accept')}</button>
       </div>
+    </div>
+  );
+}
+
+const AREAS: CoachArea[] = ['fitness', 'tactics', 'shooting', 'skills', 'goalkeeping'];
+/** "Coaches" (CM 01/02 træning): grøn boks med trænerne og deres områder – et gult felt = træneren står for området */
+export function CoachesPanel({ onClose }: { onClose: () => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const coaches = Object.values(g.staff).filter((s) => s.club === g.userClub && (s.role === 'coach' || s.role === 'assistant')).sort((a, b) => b.attrs.coaching - a.attrs.coaching);
+  const [sel, setSel] = useState<Record<number, CoachArea[]>>(() => Object.fromEntries(coaches.map((c) => [c.id, c.coachAreas ?? AREAS])));
+  const toggle = (id: number, a: CoachArea) => setSel((x) => ({ ...x, [id]: x[id].includes(a) ? x[id].filter((y) => y !== a) : [...x[id], a] }));
+  const ok = () => { for (const c of coaches) act({ t: 'coachAreas', id: c.id, areas: sel[c.id].length === AREAS.length ? null : sel[c.id] }); onClose(); };
+  return (
+    <div className="cx-tidlg cx-coaches" role="dialog">
+      <div className="cx-tidlg-head">{t('cl.tn.coaches')}</div>
+      <div className="cx-coach-grid">
+        {coaches.map((c) => (
+          <div key={c.id} className="cx-coach-row">
+            <span className="cx-coach-name">{c.first} {c.last} <em>{c.attrs.coaching}</em></span>
+            {AREAS.map((a) => <button key={a} className={`cx-tich ${sel[c.id].includes(a) ? 'on' : ''}`} onClick={() => toggle(c.id, a)}>{t(`cl.coach.${a}`)}</button>)}
+          </div>
+        ))}
+        {!coaches.length && <div className="cx-empty">{t('common.none')}</div>}
+      </div>
+      <div className="cx-ts-buttons cx-tidlg-foot"><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" onClick={ok}>{t('common.ok')}</button></div>
     </div>
   );
 }
