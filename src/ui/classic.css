@@ -1028,3 +1028,11 @@
   :root[data-skin='retro'] .cx-drop-pop button { font-size: 14px; font-weight: 500; min-height: 30px; }
   .cx-drop-pop { max-height: calc(100vh - 40px); overflow-y: auto; }
 }
+@media (min-width: 761px) {
+  /* nøgle/værdi-lister (General Info m.fl.) som CM 01/02: gennemsigtigt panel, hvide labels 19 px, gule værdier 14 px, normal vægt */
+  .cx-kv.big { background: rgba(0, 0, 0, 0.32); padding: 12px 16px; row-gap: 2px; }
+  .cx-kv.big > span { font-weight: 500; }
+  .cx-kv.big > span:nth-child(odd) { font-size: 19px; color: #fff; }
+  .cx-kv.big > span:nth-child(even) { font-size: 14px; color: #fff21f; align-self: center; }
+  .cx-section { font-weight: 600; }
+}

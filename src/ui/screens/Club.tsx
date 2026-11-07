@@ -45,7 +45,6 @@ function ClassicClub({ id }: { id?: number }) {
   const tabViews = mine ? [] : ['squad', 'transfers', 'next', 'fixtures'];
   const v = views.includes(view) || tabViews.includes(view) ? view : 'info';
   const f = c.finance;
-  const level = (x: number) => t(`cl.ci.lvl.${x >= 17 ? 5 : x >= 13 ? 4 : x >= 9 ? 3 : x >= 5 ? 2 : 1}`);
   const manager = c.manager === -1 ? (mine ? g.manager.name : humanManager(c.id)?.name ?? '?') : g.staff[c.manager] ? `${g.staff[c.manager].first} ${g.staff[c.manager].last}` : t('club.vacant');
   const staff = Object.values(g.staff).filter((x) => x.club === cid && x.id !== c.manager).sort((a, b) => ['assistant', 'coach', 'physio', 'scout'].indexOf(a.role) - ['assistant', 'coach', 'physio', 'scout'].indexOf(b.role));
   const kv = (rows: [string, React.ReactNode, string?][]) => (
@@ -64,15 +63,14 @@ function ClassicClub({ id }: { id?: number }) {
       {editOpen && <ProposeEditModal kind="club" id={cid} onClose={() => setEditOpen(false)} />}
       <div className="cx-subtitle">{t(`cl.ci.v.${v}`)}</div>
       {v === 'info' && <>
+        {/* CM 01/02: Nation · Status · Finances · Stadium · Facilities · Training Ground (status og ordene er *estimeret*) */}
         {kv([
-          [t('col.nat'), <CxLink to={nationRoute(c.nation)}>{natName(g.nations[c.nation]?.name)}</CxLink>],
-          [t('col.comp'), g.comps[c.league] ? <CxLink to={{ name: 'competitions', id: c.league }}>{compName(g.leagues[c.league]?.name) ?? c.league}</CxLink> : compName(g.leagues[c.league]?.name) ?? c.league],
-          [t('club.rep'), level(c.rep / 5)],
+          [t('cl.ci.nation'), <CxLink to={nationRoute(c.nation)}>{natName(g.nations[c.nation]?.name)}</CxLink>],
+          [t('cl.ci.status'), t((g.leagues[c.league]?.tier ?? 9) <= 2 || c.rep >= 50 ? 'cl.ci.pro' : 'cl.ci.semipro')],
           ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? 'cl.ci.fin.secure' : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
-          [t('club.stadium'), c.stadium],
-          [t('cl.ci.capacity'), c.seats.toLocaleString()],
-          [t('club.facilities'), level(c.facilities)],
-          [t('club.youth'), level(c.youth)],
+          [t('club.stadium'), `${c.stadium}, ${c.short}`],
+          [t('cl.ci.facilitiesRow'), t('cl.ci.seats', { n: c.seats })],
+          [t('cl.ci.trainingGround'), `${t(`cl.ci.tg.${c.facilities >= 16 ? 4 : c.facilities >= 12 ? 3 : c.facilities >= 8 ? 2 : c.facilities >= 4 ? 1 : 0}`)}${c.youth >= 14 ? t('cl.ci.tgYouth') : ''}`],
         ])}
         <div className="cx-section">{t('cl.ci.staff')}</div>
         <div className="cx-kv big">
