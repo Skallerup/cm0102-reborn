@@ -1275,6 +1275,7 @@ function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tactic; on
 /** Last Match (CM 01/02): startopstillingen fra sidste kamp – kun til at se på; Back nederst fører tilbage */
 function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
   const g = useGame()!;
+  const { nav: navP } = useNav();
   const ids = tac.lineup.filter(Boolean);
   return (
     <div className="cx-mt cx-mt-last">
@@ -1288,7 +1289,7 @@ function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
             return (
               <tr key={id}>
                 <td className="btn-col"><span className="cx-rowbtn narrow">{p?.number ?? ''}</span></td>
-                <td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td>
+                <td className="c-name">{p ? <span className="link" onClick={(e) => { e.stopPropagation(); navP({ name: 'player', id: p.id }); }}>{`${p.first} ${p.last}`.trim()}</span> : '?'}</td>
                 <td className="c-pos">{tac.captain === id ? <span className="cx-capt">capt</span> : ''}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
               </tr>
@@ -1331,6 +1332,8 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
   draft?: Tactic | null; setDraft?: (t: Tactic) => void; base?: Tactic; lastView?: boolean; onLastMatch?: () => void;
 }) {
   const g = useGame()!;
+  // navnene åbner spillerens profil (Back fører tilbage til kampen)
+  const { nav: navP } = useNav();
   const lv = sim.live(side);
   const [drag, setDrag] = useState<number | null>(null);
   const [pane, setPane] = useState<'list' | 'ti' | 'save'>('list');
@@ -1436,7 +1439,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
             return (
               <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${drag !== null && r.id !== drag ? 'drop' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
                 <td className="btn-col"><span className="cx-rowbtn narrow">{r.num ?? ''}</span></td>
-                <td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td>
+                <td className="c-name">{p ? <span className="link" onClick={(e) => { e.stopPropagation(); navP({ name: 'player', id: p.id }); }}>{`${p.first} ${p.last}`.trim()}</span> : '?'}</td>
                 <td className="c-pos">{r.note ?? (tac.captain === r.id && r.live ? <span className="cx-capt" draggable={editable} onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>capt</span> : '')}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
                 {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={() => r.slot !== undefined && cycle(r.slot)}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
@@ -1519,7 +1522,8 @@ function cxRows(sim: MatchSim, side: 0 | 1): CxRow[] {
 
 function CxName({ r }: { r: CxRow }) {
   const p = gs().players[r.id];
-  return <>{r.card ? <i className={`cx-card ${r.card}`} /> : null}{p ? `${p.first} ${p.last}`.trim() : '?'}{r.capt ? ' (c)' : ''}</>;
+  const { nav } = useNav();
+  return <>{r.card ? <i className={`cx-card ${r.card}`} /> : null}{p ? <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{`${p.first} ${p.last}`.trim()}</span> : '?'}{r.capt ? ' (c)' : ''}</>;
 }
 
 function CxMatchStats({ st }: { st: [MatchStatsSide, MatchStatsSide] }) {
