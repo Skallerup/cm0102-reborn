@@ -1307,3 +1307,5 @@
   /* fotoet næsten i fuld styrke som i originalen og kittet (panelerne er mørke og gennemsigtige, ikke fotoet) */
   :root[data-skin='retro'] .shell.cx { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.22)), var(--cx-photo, none); }
 }
+/* bokse (Please Confirm, Team Selection …) starter ved sidebjælkens kant (144 px på skrivebordet), så menuen ikke skæres af */
+@media (min-width: 761px) { .cx-dlg { left: 144px; } }

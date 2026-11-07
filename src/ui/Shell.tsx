@@ -305,7 +305,7 @@ export function Shell() {
         // klassisk: en skadet/udelukket spiller på holdet stopper kampen (Team Selection, som i CM 01/02)
         if (cmNav) {
           const sel = selectionProblems();
-          if (sel) { void askNotice(sel, { head: t('cl.mt.teamSel') }).then(() => nav({ name: 'tactics' })); return; }
+          if (sel) { void askNotice(sel, { head: t('cl.mt.teamSel') }).then(() => nav({ name: 'squad' })); return; }
         }
         if (cmNav) { void askConfirm(t('cl.mt.proceed'), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) nav({ name: 'match', id: go }); }); return; }
         nav({ name: 'match', id: go }); return;

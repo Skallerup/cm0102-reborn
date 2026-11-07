@@ -416,7 +416,11 @@ async function run(look) {
       const selHead = await t('cl.mt.teamSel');
       if (injured && await page.locator('.cx-confirm .cx-subtitle', { hasText: selHead }).isVisible().catch(() => false)) {
         if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-teamselection.png` });
+        // sidebjælken må ikke dækkes af boksen
+        { const sb = await page.locator('.cx-side').boundingBox(); const db = await page.locator('.cx-confirm').boundingBox(); if (sb && db && db.x < sb.x + sb.width - 1) throw new Error(`Team Selection dækker sidebjælken (${db.x} < ${sb.x + sb.width})`); }
         await page.locator('.cx-confirm button.primary').click();
+        // OK fører til truppen, hvor holdet kan rettes (CM 01/02)
+        await page.waitForSelector('.cx-sq-row', { timeout: 10000 });
         await page.evaluate((id) => { window.__cm.gs().players[id].injury = null; }, injured);
         injured = 0; selSeen = true; await page.waitForTimeout(400); continue;
       }
