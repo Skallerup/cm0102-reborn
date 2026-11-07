@@ -1521,4 +1521,5 @@ export const da: Record<string, string> = {
   'cl.cm.awards': "Priser", 'cl.cm.fifa': "FIFA-rangliste", 'cl.cm.fifaWc': "VM", 'cl.cm.wcq': "VM-kvalifikation ({r})", 'cl.cm.olympic': "OL", 'cl.cm.euro': "EM", 'cl.cm.euroq': "EM-kvalifikation", 'cl.cm.afcon': "Afrikamesterskabet", 'cl.cm.ofc': "OFC Nations Cup", 'cl.cm.asian': "Asian Cup", 'cl.cm.confed': "Confederations Cup", 'cl.cm.worldwide': "Klubturneringer (verden)", 'cl.cm.cwc': "VM for klubhold", 'cl.cm.intercont': "Intercontinental Cup", 'cl.cm.interam': "Copa Interamericana", 'cl.cm.coeff': "UEFA-koefficienter",
   'cl.lg.results': "Resultater", 'cl.lg.schedule': "Program", 'cl.lg.table': "Ligatabel", 'cl.lg.teamStats': "Holdstatistik", 'cl.lg.playerStats': "Spillerstatistik", 'cl.lg.refStats': "Dommerstatistik", 'cl.lg.games': "{n} kampe", 'cl.lg.played': "Spillet", 'cl.lg.noResults': "Der er ikke spillet nogen kampe endnu.", 'cl.lg.noFixtures': "Der er ikke flere kampe.",
   'cl.mh.won': "Vandt {comp}", 'cl.mh.month': "Månedens manager i {comp} – {month}", 'cl.mh.ach': "Præstationer", 'cl.mh.career': "Managerkarriere", 'cl.mh.manager': "Manager",
+  'cl.fd.written': "Historien",
 };
