@@ -8,7 +8,8 @@ import { roleScore, slotFit, slotRole } from '../../game/attributes';
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic, slotTaken, snapSlot } from '../../game/tactics';
-import type { Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
+import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
+import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
 import { CxDrop, titleColors, type DropItem } from '../classic';
 import { posStr } from '../components';
@@ -178,11 +179,11 @@ export function ClassicTactics() {
   );
 }
 
-function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove }: {
+function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club }: {
   tac: Tactic; byId: Map<number, Player>; sel: number | null; drag: number | null;
-  onSlot: (i: number) => void; onDrop: (i: number) => void; onDrag: (pid: number | null) => void; onMove: (x: number, y: number) => void;
+  onSlot: (i: number) => void; onDrop: (i: number) => void; onDrag: (pid: number | null) => void; onMove: (x: number, y: number) => void; club?: number;
 }) {
-  const col = titleColors(gs().userClub);
+  const col = titleColors(club ?? gs().userClub);
   const ref = useRef<HTMLDivElement>(null);
   const toPitch = (cx: number, cy: number) => {
     const r = ref.current!.getBoundingClientRect();
@@ -212,8 +213,8 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove }: {
         return (
           <div key={i} className={`cx-tac-slot ${sel === i ? 'on' : ''} ${drag !== null ? 'drop' : ''} ${p ? '' : 'empty'}`} style={{ left: `${left(s)}%`, top: `${top(s)}%` }}
             onClick={(e) => { e.stopPropagation(); onSlot(i); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(i); }}
-            draggable={!!p} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
-            <span className="cx-tac-dot" style={gk ? { background: '#fff21f', color: '#10164e' } : col.neutral ? undefined : { background: col.bg, color: col.fg }}>{i + 1}</span>
+            draggable={!!p && club === undefined} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
+            <span className="cx-tac-dot" style={gk ? { background: '#fff21f', color: '#10164e' } : col.neutral ? undefined : { background: col.bg, color: col.fg }}>{club !== undefined ? p?.number ?? i + 1 : i + 1}</span>
             <span className="cx-tac-nm">{p ? p.last : slotName(s)}</span>
           </div>
         );
@@ -275,6 +276,49 @@ function Instructions({ tac, pane, slot, byId, change }: { tac: Tactic; pane: Pa
           </>}
         </div>
       ) : <div className="cx-ti-empty">{t('cl.tac.pickSlot')}</div>}
+    </div>
+  );
+}
+
+/** En anden klubs taktik (CM 01/02 "Arsenal Tactics"): opstillingen fra deres seneste kamp, skrivebeskyttet */
+export function ClubTacticsView({ club }: { club: number }) {
+  const g = useGame()!;
+  const { nav } = useNav();
+  let last: { f: Fixture; date: string } | undefined;
+  for (const f of Object.values(g.fixtures)) if (f.result && (f.home === club || f.away === club) && (!last || f.date > last.date)) last = { f, date: f.date };
+  const opp = last ? (last.f.home === club ? last.f.away : last.f.home) : undefined;
+  // samme opstilling som motoren vælger for klubben mod den modstander (aiTactic trækker ingen tilfældige tal)
+  const tac = aiTactic(club, opp, last ? last.f.home === club : true);
+  const players = squad(club);
+  const byId = new Map(players.map((p) => [p.id, p]));
+  const row = (p: Player, label: string, dim: boolean) => (
+    <div key={p.id} className={`cx-tac-row ${dim ? 'rest' : 'xi'}`}>
+      <span className="cx-tac-num">{label}</span>
+      <span className="cx-tac-name cx-link" role="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.first ? `${p.first} ` : ''}{p.last}</span>
+      <span className="cx-tac-tag">{tac.captain === p.id ? t('cl.tac.capt') : ''}</span>
+      <span className="cx-tac-val c-pos">{posStr(p)}</span>
+    </div>
+  );
+  const xi = tac.lineup.map((id) => byId.get(id)).filter((p): p is Player => !!p);
+  const bench = tac.bench.map((id) => byId.get(id)).filter((p): p is Player => !!p);
+  return (
+    <div className="cx-tac cx-tac-view">
+      <Head title={t('nav.tactics')}>
+        <button className="cx-greybtn" disabled>{t('cl.mt.teamInstr')}</button>
+      </Head>
+      <div className="cx-tac-bar">
+        <span className="cx-tac-form">{opp !== undefined ? t('cl.tac.formationVs', { club: g.clubs[opp]?.short ?? '' }) : tac.formation}</span>
+        <div className="cx-tac-panes">
+          {(['overview', 'with', 'without'] as Pane[]).map((k) => <button key={k} className={k === 'overview' ? 'on' : ''} disabled={k !== 'overview'}>{t(`cl.tac.${k}`)}</button>)}
+        </div>
+      </div>
+      <div className="cx-tac-body">
+        <div className="cx-tac-left"><div className="cx-tac-list">
+          {xi.map((p) => row(p, String(p.number ?? tac.lineup.indexOf(p.id) + 1), false))}
+          {bench.map((p) => row(p, String(p.number ?? ''), true))}
+        </div></div>
+        <Pitch tac={tac} byId={byId} sel={null} drag={null} club={club} onSlot={() => {}} onDrop={() => {}} onDrag={() => {}} onMove={() => {}} />
+      </div>
     </div>
   );
 }

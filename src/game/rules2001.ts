@@ -36,6 +36,9 @@ export function workPermitGranted(p: Player): boolean {
   return p.caps >= 15 || p.rep >= 70 || (p.caps >= 5 && p.ca >= 140);
 }
 
+/** CM 01/02: "Man Utd are not allowed to loan non-EU players." – britiske klubber må ikke leje spillere uden for EU/EØS */
+export const loanBlocked = (p: Player, club: Club) => needsWorkPermit(p, club);
+
 /** Kan klubben hente ham (ingen tilladelse nødvendig, eller den gives)? */
 export const permitOk = (p: Player, club: Club) => !needsWorkPermit(p, club) || workPermitGranted(p);
 

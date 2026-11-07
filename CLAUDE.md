@@ -48,6 +48,11 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Klassisk transfer: `BidPanel` (TransferStatusClassic.tsx) = originalens budskærm; svaret kommer som nyhed (udvidet:
+  `bidNow` + BidModal i svar-tilstand). `loanBlocked` (rules2001.ts, britisk klub + spiller uden for EU/EØS) → makeBid
+  'transfer.loanNonEu'. Kælenavn/managernote til enhver spiller (ikke andre menneskers i fællesspil). `ClubTacticsView`
+  (TacticsClassic.tsx, rute `tactics` med id ≠ egen klub) bruger `aiTactic` mod seneste modstander. `moneyFull` i i18n.
+  NB: `tsc --noEmit -p .` tjekker intet (rod-tsconfig har `files: []`) – brug `-p tsconfig.app.json`.
 - 2026-11-07 – Klassisk kamp mod originalen (Leeds-Man Utd spillet i ejerens karriere): `CxLiveTable` (trækker dagens andre
   resultater ud af tabellen og lægger stillingen i minuttet ind), `MatchStatsSide.throwIns/tackles/tacklesWon/headers/headersWon` og
   `PlayerMatchLine.tckA/hea/heaW/on` (motoren tæller uden at trække tilfældige tal; indkast/tacklinger *estimeret*), Free Kicks =

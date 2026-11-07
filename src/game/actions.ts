@@ -18,7 +18,7 @@ import { chooseSponsor } from './finance';
 import { applyPress } from './press';
 import { answerComplaint } from './will';
 import { answerBet, proposeBet, sendJab } from './rivalry';
-import { removeHuman } from './humans';
+import { isHumanClub, removeHuman } from './humans';
 import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
   acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
@@ -342,7 +342,8 @@ export function act<T = unknown>(a: Action): T {
 /** CM 01/02 "Set Nickname": spilleren hedder kælenavnet overalt (Remove giver det rigtige navn tilbage) */
 function setNickname(pid: number, nick: string | null): string {
   const p = gs().players[pid];
-  if (!p || p.club !== gs().userClub) return 'error';
+  // CM 01/02: kælenavn til enhver spiller – men ikke en anden managers spillere i et fællesspil
+  if (!p || (p.club !== gs().userClub && isHumanClub(p.club))) return 'error';
   const name = (nick ?? '').trim().slice(0, 30);
   if (!name) { if (p.realName) { p.first = p.realName.first; p.last = p.realName.last; p.realName = undefined; } return 'ok'; }
   p.realName ??= { first: p.first, last: p.last };

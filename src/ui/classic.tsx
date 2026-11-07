@@ -201,7 +201,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
     tabs: CLUB_TABS, sub: CLUB_SUB,
   },
   // CM 01/02: taktikskærmen har hverken klubfaner eller under-knapper
-  tactics: { title: (g) => `${clubName(g)} ${t('nav.tactics')}`, club: own },
+  tactics: { title: (g, r) => `${r.id !== undefined ? g.clubs[Number(r.id)]?.name ?? clubName(g) : clubName(g)} ${t('nav.tactics')}`, club: (g, r) => (r.id !== undefined ? Number(r.id) : own(g)) },
   // træning og transfersøgning har deres egne faner og under-knapper (som i originalen)
   training: { title: (g) => `${g.clubs[g.userClub]?.short ?? clubName(g)} ${t('nav.training')}`, club: own },
   report: { club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
@@ -275,7 +275,9 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
   const viewed = route.name === 'club' && route.id && Number(route.id) !== g.userClub ? Number(route.id) : 0;
   const out: Item[] = [];
   for (const k of keys) {
-    if (viewed && (k === 'tactics' || k === 'training')) continue;
+    // en anden klub (CM 01/02): Tactics ▸ viser deres opstilling (skrivebeskyttet), Training er grå
+    if (viewed && k === 'tactics') { out.push({ key: k, label: label(k), route: { name: 'tactics', id: viewed }, arrow: true }); continue; }
+    if (viewed && k === 'training') { out.push({ key: k, label: label(k), disabled: true }); continue; }
     if (viewed && k in VIEWED) {
       const cview = VIEWED[k];
       const cur = (route.state?.cview as string | undefined) ?? 'squad';

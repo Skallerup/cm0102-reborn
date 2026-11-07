@@ -253,13 +253,13 @@ function feeStep(max: number) {
   return Math.max(5_000, (n <= 1 ? 1 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag);
 }
 
-export function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number }) {
+export function BidModal({ pid, onClose, onDone, offerId: initialOffer, loan: loanInit }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number; loan?: boolean }) {
   const g = useGame()!;
   const p = g.players[pid];
   const budget = g.clubs[g.userClub].transferBudget;
   const known = knownEnquiry(pid);
   const [fee, setFee] = useState(Math.min(budget, known?.fee ?? Math.round(p.value / 50_000) * 50_000));
-  const [loan, setLoan] = useState(false);
+  const [loan, setLoan] = useState(!!loanInit);
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);
   const [swap, setSwap] = useState<number[]>([]);

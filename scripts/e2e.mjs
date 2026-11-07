@@ -119,6 +119,23 @@ async function run(look) {
       await page.waitForTimeout(150);
     }
   });
+  if (look === 'klassisk') await step('anden klubs taktik (Tactics ▸)', async () => {
+    const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league).id; });
+    await go({ name: 'club', id: other });
+    await page.locator('.cx-subrow button', { hasText: 'Tactics' }).first().click();
+    await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
+  });
+  if (look === 'klassisk') await step('bud på en spiller (Approach To Buy)', async () => {
+    const pid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).find((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league).id; });
+    await go({ name: 'player', id: pid });
+    await page.locator('.cx-act .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Approach To Buy' }).first().click();
+    await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 10000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud.png` });
+    await page.locator('.cx-bid .cx-ts-buttons button', { hasText: 'Back' }).click();
+    await page.waitForSelector('.cx-bid', { state: 'detached', timeout: 5000 });
+  });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
   await step('trøjenumre: skift nummer', async () => {

@@ -1,13 +1,14 @@
 // "Set Staff Transfer Status" (som i CM 01/02): udbudspris (− / + / Auto), status i truppen og transferstatus.
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import type { DisciplineReason } from '../../game/personality';
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
-import { askingPrice } from '../../game/transfers';
-import type { Player } from '../../game/types';
-import { money, t } from '../../i18n';
+import { askingPrice, knownEnquiry, swapCandidates, swapWorth } from '../../game/transfers';
+import { ADDON_APPS } from '../../game/clauses';
+import type { Player, TransferOffer } from '../../game/types';
+import { money, moneyFull, t } from '../../i18n';
 import { useGame } from '../core';
-import { useClassicDialog } from '../classic';
+import { CxDrop, useClassicDialog } from '../classic';
 
 const round = (v: number) => Math.max(10_000, Math.round(v / 10_000) * 10_000);
 
@@ -94,6 +95,67 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
       <div className="cx-ts-buttons">
         <button onClick={onClose}>{t('common.cancel')}</button>
         <button className="primary" onClick={confirm}>{t('cl.dp.confirm')}</button>
+      </div>
+    </div>
+  );
+}
+
+/** "Approach To Buy/Loan" (CM 01/02 "Man Utd transfer bid for Inamoto"): beløb med − / + / =, klausuler, bytte og samlet værdi */
+export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const me = g.clubs[g.userClub];
+  const budget = me?.transferBudget ?? 0;
+  const known = knownEnquiry(p.id);
+  const step = round(Math.max(p.value, 100_000) * 0.05);
+  const [fee, setFee] = useState(round(Math.min(budget, known?.fee ?? p.value)));
+  const [sellOn, setSellOn] = useState(0);
+  const [addOn, setAddOn] = useState(0);
+  const [swap, setSwap] = useState<number[]>([]);
+  const [err, setErr] = useState('');
+  const cands = p.club ? swapCandidates(p.club, p.id).filter((x) => !swap.includes(x.id)) : [];
+  const total = fee + swap.reduce((s, id) => s + swapWorth(id, p.club), 0);
+  const seller = g.clubs[p.club]?.name ?? '';
+  const name = `${p.first} ${p.last}`.trim();
+  const submit = () => {
+    setErr('');
+    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: loan ? 0 : fee, loan, sellOn: loan ? 0 : sellOn, addOn: loan ? 0 : addOn, swap: loan ? [] : swap });
+    if (typeof r === 'string') setErr(t(r)); else onSent(r);
+  };
+  const row = (label: string, value: string, minus?: () => void, plus?: () => void, extra?: ReactNode) => (
+    <div className={`cx-bid-row ${minus || plus ? '' : 'off'}`}>
+      <span className="cx-bid-label">{label}</span>
+      <button className="cx-pm" disabled={!minus} onClick={minus} aria-label="-">−</button>
+      <span className="cx-bid-val">{value}</span>
+      <button className="cx-pm" disabled={!plus} onClick={plus} aria-label="+">+</button>
+      {extra}
+    </div>
+  );
+  return (
+    <div className="cx-tstatus cx-bid">
+      <div className="cx-subtitle">{t(loan ? 'cl.bid.loanTitle' : 'cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{!loan && t('cl.bid.board', { fee: moneyFull(budget) })}</p>
+        {!loan && <>
+          {row(t('cl.bid.fee'), money(fee), () => setFee(round(Math.max(0, fee - step))), () => setFee(round(fee + step)),
+            <button className="cx-pm" onClick={() => setFee(round(known?.fee ?? p.value))} title={t('cl.bid.feeEq')}>=</button>)}
+          {row(t('cl.bid.install'), '-')}
+          {row(t('cl.bid.sellOn'), sellOn ? `${sellOn}%` : '-', sellOn > 0 ? () => setSellOn(sellOn - 5) : undefined, sellOn < 50 ? () => setSellOn(sellOn + 5) : undefined)}
+          {row(t('cl.bid.addOn', { n: ADDON_APPS }), addOn ? money(addOn) : '-', addOn > 0 ? () => setAddOn(round(Math.max(0, addOn - step))) : undefined, () => setAddOn(round(addOn + step)))}
+          {row(t('cl.bid.intl'), '-')}
+          <div className="cx-bid-row off"><span className="cx-bid-label">{t('cl.bid.public')}</span><span className="cx-bid-val wide">{t('common.no')}</span></div>
+          <div className="cx-bid-tools">
+            <CxDrop label={t('cl.bid.exchange')} items={cands.length ? cands.slice(0, 20).map((x) => ({ key: String(x.id), label: `${x.first} ${x.last} (${money(swapWorth(x.id, p.club))})`, onClick: () => setSwap([...swap, x.id]) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }]} />
+            <button className="cx-greybtn" disabled={!swap.length} onClick={() => setSwap(swap.slice(0, -1))}>{t('cl.bid.remove')}</button>
+          </div>
+          {swap.map((id) => <div key={id} className="cx-bid-swap">{g.players[id]?.first} {g.players[id]?.last}<span>{money(swapWorth(id, p.club))}</span></div>)}
+          <div className="cx-bid-total"><span>{t('cl.bid.total')}</span><b>{moneyFull(total)}</b></div>
+        </>}
+        {err && <div className="cx-bid-err">{err}</div>}
+      </div>
+      <div className="cx-ts-buttons">
+        <button onClick={onClose}>{t('common.back')}</button>
+        <button className="primary" onClick={submit}>{t('cl.bid.offer')}</button>
       </div>
     </div>
   );

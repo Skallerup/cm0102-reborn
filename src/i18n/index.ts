@@ -129,6 +129,13 @@ export function money(eur: number): string {
   return (neg ? '-' : '') + s;
 }
 
+/** Hele beløbet uden forkortelse (CM 01/02: "£22,000,000") */
+export function moneyFull(eur: number): string {
+  const v = Math.round(eur * RATE[currency]);
+  const num = Math.abs(v).toLocaleString(LOCALE[lang]);
+  return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : `${currencySymbol()}${num}`);
+}
+
 export function dateFmt(iso: string, long = false): string {
   const d = new Date(iso + 'T00:00:00Z');
   return d.toLocaleDateString(LOCALE[lang], { day: 'numeric', month: long ? 'long' : 'short', year: 'numeric', weekday: long ? 'short' : undefined, timeZone: 'UTC' });

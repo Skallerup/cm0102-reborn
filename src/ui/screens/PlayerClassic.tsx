@@ -2,7 +2,7 @@
 // Titelbjælke med "Navn (Klub)" og en Action-menu, fanerne Profil · Skader & karantæner · Kontrakt · Transfer · Historik.
 // Profil-fanen viser alle synlige egenskaber i fire alfabetiske kolonner, statistik pr. turnering og positionen nederst.
 // Alle handlinger (bud, forespørgsel, liste, forlængelse, udlejning, scout, sammenligning …) ligger i Action-menuen.
-import { isOriginal2001 } from '../../game/rules2001';
+import { isOriginal2001, loanBlocked } from '../../game/rules2001';
 import { useEffect, useState, type ReactNode } from 'react';
 import { A, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
 import { act as dispatch } from '../../game/actions';
@@ -11,7 +11,7 @@ import { traits } from '../../game/personality';
 import { playerLanguages } from '../../game/languages';
 import { expectedStatus } from '../../game/squadStatus';
 import { attrRange, knowledgeOf } from '../../game/scouting';
-import { authentic } from '../../game/rules';
+import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
@@ -19,7 +19,7 @@ import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
-import { askConfirm } from '../confirm';
+import { askConfirm, askNotice } from '../confirm';
 import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem, useClassicDialog } from '../classic';
 import { compareIds, setCompareSlot } from '../compare';
 import { ClubLink, Modal, Rating, Tabs, posStr } from '../components';
@@ -34,7 +34,7 @@ import {
   ReformPanel, ScoutReport, WantsAway, clauseText,
 } from './PlayerScreen';
 import { IncomingOffersFor } from './Transfers';
-import { DisciplinePanel, TransferStatusPanel } from './TransferStatusClassic';
+import { BidPanel, DisciplinePanel, TransferStatusPanel } from './TransferStatusClassic';
 
 type Tab = 'profile' | 'injuries' | 'contract' | 'transfer' | 'history';
 type ActionItem = DropItem;
@@ -391,6 +391,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   // fanen kan vælges udefra (fx et klik på Inj/Wnt/Fgn i truppen) og huskes på ruten
   const [tab, setTab] = useRouteState<Tab>('ptab', (useNav().route.tab as Tab | undefined) ?? 'profile');
   const [bid, setBid] = useState<boolean | number>(false);
+  const [bidPanel, setBidPanel] = useState<'buy' | 'loan' | null>(null);
   const [neg, setNeg] = useState<{ offer?: TransferOffer; renew?: number } | null>(null);
   const [msg, setMsg] = useState('');
   const [loanOutOpen, setLoanOut] = useState(false);
@@ -441,10 +442,16 @@ export function ClassicPlayer({ id }: { id: number }) {
   // CM 01/02 (kun den originale database): kald en udlejet spiller hjem
   if (p.loan?.from === g.userClub && isOriginal2001()) items.push({ key: 'recall', label: t('loan.recall'), onClick: () => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id }))) });
   if (!g.draft && !mine && g.userClub > 0) {
-    items.push({ key: 'sep-tr', sep: true });
+    // CM 01/02: Add To Shortlist · Approach To Buy · Approach To Loan · Scout Player · Set Nickname · — · Create Manager Note · Compare Players
+    items.push({ key: 'short', label: shortlisted ? t('cl.pl.unshortlist') : t('cl.pl.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });
     if (p.club > 0) {
+      const me = g.clubs[g.userClub];
       items.push(
-        { key: 'bid', label: t('player.bid'), disabled: !open, title: closedTip, onClick: () => setBid(true) },
+        { key: 'bid', label: t('cl.pl.approachBuy'), disabled: !open, title: closedTip, onClick: () => setBidPanel('buy') },
+        { key: 'loan', label: t('cl.pl.approachLoan'), disabled: !open, title: closedTip, onClick: () => {
+          if (me && loanBlocked(p, me)) void askNotice(t('cl.pl.loanNonEu', { club: me.short }), { head: t('cl.pl.cannotLoan', { player: `${p.first} ${p.last}`.trim() }) });
+          else setBidPanel('loan');
+        } },
         { key: 'enq', label: t('player.enquire'), onClick: () => act(dispatch<string>({ t: 'enquire', pid: p.id })) },
       );
     } else {
@@ -452,15 +459,14 @@ export function ClassicPlayer({ id }: { id: number }) {
       if (!trialOf(p.id) && !authentic()) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });
     }
     if (canPreContract(p)) items.push({ key: 'pre', label: t('player.preContract'), onClick: () => act(dispatch<TransferOffer | string>({ t: 'preContract', pid: p.id })) });
-    items.push({ key: 'short', label: shortlisted ? t('player.unshortlist') : t('player.shortlist'), onClick: () => dispatch({ t: 'shortlist', pid: p.id, on: !shortlisted }) });
     if (scouts.length > 0 && g.options.masking && k < 100) {
-      items.push({ key: 'h-sc', head: t('player.sendScout') });
-      for (const s of scouts) items.push({ key: `sc${s.id}`, label: `${s.first} ${s.last}`, onClick: () => { dispatch({ t: 'scout', staffId: s.id, assignment: { kind: 'player', target: p.id } }); setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); } });
+      items.push({ key: 'scout', label: t('cl.pl.scoutPlayer'), sub: scouts.map((s) => ({ key: `sc${s.id}`, label: `${s.first} ${s.last}`, onClick: () => { dispatch({ t: 'scout', staffId: s.id, assignment: { kind: 'player', target: p.id } }); setMsg(t('player.scoutSent', { scout: `${s.first} ${s.last}` })); } })) });
     }
+    items.push({ key: 'nick', label: t(p.realName ? 'cl.pl.editNick' : 'cl.pl.setNick'), onClick: () => setNickOpen(true) });
   }
   items.push(
     { key: 'sep-cmp', sep: true },
-    ...(mine ? [{ key: 'note', label: t('cl.pl.note'), onClick: () => setNoteOpen(true) }] : []),
+    ...(!g.draft && g.userClub > 0 ? [{ key: 'note', label: t('cl.pl.note'), onClick: () => setNoteOpen(true) }] : []),
     { key: 'cmp', label: t('cl.pl.compare'), sub: [
       { key: 'c1', label: `${t('cl.pl.cmp1')}${compareIds[0] !== undefined ? ` ( ${g.players[compareIds[0]]?.first ?? ''} ${g.players[compareIds[0]]?.last ?? ''} )`.replace('(  ', '( ') : ''}`, onClick: async () => { if (await askConfirm(t('cl.pl.cmp1Q', { player: `${p.first} ${p.last}`.trim() }), { head: `${t('cl.pl.cmp1')}?` })) setCompareSlot(0, p.id); } },
       { key: 'c2', label: `${t('cl.pl.cmp2')}${compareIds[1] !== undefined ? ` ( ${g.players[compareIds[1]]?.first ?? ''} ${g.players[compareIds[1]]?.last ?? ''} )` : ''}`, onClick: async () => { if (await askConfirm(t('cl.pl.cmp2Q', { player: `${p.first} ${p.last}`.trim() }), { head: `${t('cl.pl.cmp2')}?` })) setCompareSlot(1, p.id); } },
@@ -474,10 +480,17 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
 
-  if (noteOpen && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
-  if (nickOpen && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
+  if (noteOpen) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
+  if (nickOpen) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
   if (repRole && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
   if (discOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
+  // CM 01/02: buddet på sin egen side; svaret kommer som en nyhed (udvidet tilstand: klubbens svar med det samme)
+  if (bidPanel && !mine) return <div><Head title={`${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} onClose={() => setBidPanel(null)} onSent={(o) => {
+    setBidPanel(null);
+    if (o.status === 'negotiating') setNeg({ offer: o });
+    else if (extended()) { dispatch({ t: 'bidNow', offer: o.id }); setBid(o.id); }
+    else setMsg(t('player.bidSent'));
+  }} /></div>;
   if (statusOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><TransferStatusPanel p={p} onClose={() => setStatusOpen(false)} /></div>;
 
   return (

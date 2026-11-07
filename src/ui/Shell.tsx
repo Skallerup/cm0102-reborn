@@ -33,6 +33,7 @@ import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
 import { PlayerScreen } from './screens/PlayerScreen';
 import { Tactics } from './screens/Tactics';
+import { ClubTacticsView } from './screens/TacticsClassic';
 import { Training } from './screens/Training';
 import { Fixtures } from './screens/Fixtures';
 import { Competitions } from './screens/Competitions';
@@ -536,7 +537,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'inbox': return <Inbox />;
     case 'squad': return <Squad />;
     case 'player': return <PlayerScreen id={Number(route.id)} />;
-    case 'tactics': return <Tactics />;
+    case 'tactics': return route.id !== undefined && Number(route.id) !== g.userClub && isRetro() ? <ClubTacticsView club={Number(route.id)} /> : <Tactics />;
     case 'training': return <Training />;
     case 'fixtures': return <Fixtures />;
     case 'competitions': return <Competitions id={route.id as string | undefined} />;

@@ -1126,3 +1126,23 @@
   .cx-md-stage { font-weight: 400; font-size: 18px; margin-left: 6px; }
 }
 @media (min-width: 761px) { .cx-live-tbl { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } }
+/* budskærmen (CM 01/02 "Man Utd transfer bid for Inamoto") */
+.cx-bid .cx-ts-body { align-items: stretch; }
+.cx-bid-row { display: grid; grid-template-columns: minmax(0, 1fr) 52px 220px 52px 52px; align-items: center; gap: 4px; margin-left: 40px; min-height: 27px; }
+.cx-bid-label { color: #fff; font-size: 17px; text-shadow: 1px 1px 0 #000; }
+.cx-bid-row.off .cx-bid-label, .cx-bid-row.off .cx-bid-val { color: #9a9ca6; }
+.cx-bid-val { text-align: center; color: #fff; font-size: 16px; text-shadow: 1px 1px 0 #000; }
+.cx-bid-val.wide { grid-column: 2 / span 3; }
+.cx-bid-row .cx-pm { height: 24px; min-width: 0; }
+.cx-bid-tools { display: flex; gap: 2px; margin: 60px 0 6px; } .cx-bid-tools > * { width: 200px; }
+.cx-bid-swap { display: flex; justify-content: space-between; margin: 0 270px 0 66px; color: #fff; font-size: 16px; }
+.cx-bid-total { display: flex; justify-content: space-between; margin: 6px 270px 0 66px; color: #fff; font-size: 17px; text-shadow: 1px 1px 0 #000; }
+.cx-bid-total b { color: #fff21f; font-weight: 400; }
+.cx-bid-err { margin: 12px 40px 0; color: #ff8a7a; font-size: 15px; }
+@media (max-width: 760px) { .cx-bid-row { grid-template-columns: minmax(0, 1fr) 34px 90px 34px 34px; margin-left: 0; } .cx-bid-label { font-size: 13px; } .cx-bid-swap, .cx-bid-total { margin: 4px 0; } }
+@media (min-width: 761px) {
+  .cx-bid .cx-ts-body { margin: 0 16px; background: rgba(0, 0, 0, 0.3); }
+  .cx-bid .cx-ts-intro { font-weight: 400; }
+  .cx-bid-row .cx-pm { background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 18px; font-weight: 400; }
+  .cx-bid-row .cx-pm:disabled { opacity: 0.6; cursor: default; }
+}

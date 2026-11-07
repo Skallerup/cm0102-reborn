@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { isOriginal2001, permitOk } from './rules2001';
+import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
 import { naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -292,6 +292,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   if (!windowOpen()) return 'transfer.windowClosed';
   if (p.club === buyer.id) return 'error';
   if (!loan && fee > buyer.transferBudget) return 'transfer.overBudget';
+  if (loan && loanBlocked(p, buyer)) return 'transfer.loanNonEu';
   if (!permitOk(p, buyer)) return 'transfer.noWorkPermit';
   if (g.offers.some((o) => o.player === pid && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) return 'transfer.alreadyBidding';
   const humanSeller = isHumanClub(p.club);
