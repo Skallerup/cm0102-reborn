@@ -1,6 +1,6 @@
 import type { CommentaryLine } from '../game/types';
 import { getLang, has, t } from '../i18n';
-import { originalReport, originalText } from './matchTexts';
+import { originalReport, originalSounds, originalText } from './matchTexts';
 
 /** Oversæt en kommentarlinje. Der findes flere varianter pr. nøgle (c.goal.1, c.goal.2 ...). */
 export function commentaryText(l: CommentaryLine, ctx: { home: string; away: string; score?: string; ref?: string }, idx: number): string {
@@ -20,4 +20,9 @@ export function commentaryText(l: CommentaryLine, ctx: { home: string; away: str
 /** Kampreferatet efter slutfløjt (klassisk Match Report): originalens rapportlinjer i datid, ellers kommentaren */
 export function reportLines(l: CommentaryLine, ctx: { home: string; away: string; score?: string; ref?: string }, idx: number): string[] {
   return originalReport(l, { ...ctx, lang: getLang() }, idx) ?? [commentaryText(l, ctx, idx)];
+}
+
+/** Originalens lyde til en kommentarlinje (tom for linjer uden original tekst) */
+export function lineSounds(l: CommentaryLine, ctx: { home: string; away: string; score?: string; ref?: string }, idx: number): string[] {
+  return originalSounds(l, { ...ctx, lang: getLang() }, idx);
 }

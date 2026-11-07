@@ -3,7 +3,7 @@
 // Engelsk og dansk er originalens egne; de øvrige sprog er oversat (scripts/match-texts-i18n/).
 import type { CommentaryLine } from '../game/types';
 
-type Row = [number, string, string, Record<string, string>?, [string, string]?];
+type Row = [number, string, string, Record<string, string>?, ([string, string] | 0)?, string?];
 let data: Record<string, Row[]> | null = null;
 let loading: Promise<void> | null = null;
 
@@ -129,26 +129,32 @@ export interface OrigCtx { home: string; away: string; score?: string; ref?: str
 
 /** Linjen med originalens ord (en/da), eller null når der ikke findes en passende (så bruges vores egen tekst) */
 export function originalText(l: CommentaryLine, ctx: OrigCtx, idx: number): string | null {
-  const parts = originalParts(l, ctx, idx, false);
+  const parts = originalParts(l, ctx, idx, false)?.parts;
   return parts ? parts.map((part) => (part === ctx.score || /[.!?…:]$/.test(part) ? part : `${part}.`)).join(' ') : null;
 }
 
 /** Kampreferatet efter slutfløjt (CM 01/02's Match Report): samme varianter som kommentaren, men rapportlinjen i datid – én række pr. del */
 export function originalReport(l: CommentaryLine, ctx: OrigCtx, idx: number): string[] | null {
-  return originalParts(l, ctx, idx, true);
+  return originalParts(l, ctx, idx, true)?.parts ?? null;
 }
 
-function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boolean): string[] | null {
+/** Originalens lyde til linjen (CM 01/02: hver kommentarvariant har sin lyd) – samme varianter, som teksten viser */
+export function originalSounds(l: CommentaryLine, ctx: OrigCtx, idx: number): string[] {
+  return originalParts(l, ctx, idx, false)?.sounds ?? [];
+}
+
+function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boolean): { parts: string[]; sounds: string[] } | null {
   if (!data) return null;
   const lang = ctx.lang;
   const game = (r: Row) => (lang === 'en' ? r[1] : lang === 'da' ? r[2] : r[3]?.[lang]);
   // rapportlinjen findes kun på engelsk og dansk – de øvrige sprog bruger kamplinjen
-  const pick = (r: Row) => (report && r[4] && (lang === 'en' || lang === 'da') ? r[4][lang === 'en' ? 0 : 1] : game(r));
+  const pick = (r: Row) => { const rep = r[4]; return report && rep && (lang === 'en' || lang === 'da') ? rep[lang === 'en' ? 0 : 1] : game(r); };
   const steps = MAP[l.k];
   if (!steps) return null;
   const da = ctx.lang === 'da';
   const team = (other?: boolean) => { const t = l.t === undefined ? undefined : other ? 1 - l.t : l.t; return t === 0 ? ctx.home : t === 1 ? ctx.away : undefined; };
   const out: string[] = [];
+  const sounds: string[] = [];
   steps.forEach((st, si) => {
     if (st.raw === 'score') { if (ctx.score) out.push(ctx.score); return; }
     const p1 = st.p1 ? l[st.p1] : undefined, p2 = st.p2 ? l[st.p2] : undefined;
@@ -163,6 +169,7 @@ function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boo
     let row = rows[0];
     for (const r of rows) { x -= r[0]; if (x < 0) { row = r; break; } }
     const poss = (name: string) => (da ? (/[sxz]$/i.test(name) ? "'" : 's') : /s$/i.test(name) ? "'" : "'s");
+    if (row[5]) sounds.push(row[5]);
     let txt = pick(row)!;
     txt = txt.replace(/<p1>\{s\}/g, p1 ? p1 + poss(p1) : '').replace(/<p2>\{s\}/g, p2 ? p2 + poss(p2) : '').replace(/<t2>\{s\}/g, t2 ? t2 + poss(t2) : '').replace(/<t1?>\{s\}/g, t1 ? t1 + poss(t1) : '')
       .replace(/<p1>/g, p1 ?? '').replace(/<p2>/g, p2 ?? '').replace(/<tc>/g, (t1 ?? '').toUpperCase()).replace(/<t1?>/g, t1 ?? '').replace(/<t2>/g, t2 ?? '')
@@ -174,5 +181,5 @@ function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boo
     const parts = txt.split('|').map((x) => x.trim()).filter(Boolean);
     out.push(...(report ? parts.slice(0, 1) : parts));
   });
-  return out.length ? out : null;
+  return out.length ? { parts: out, sounds } : null;
 }

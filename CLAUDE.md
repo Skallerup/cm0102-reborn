@@ -48,6 +48,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Originalens kamplyde: `scripts/build-match-sounds.py` (ejerens …/match_sounds/lyde → public/sounds/*.m4a, AAC 40 kbit/s,
+  5,4 MB; ikke de 10 ubrugte eller intro), build-match-texts.py lægger variantens lyd i række[5] (række[4] = rapport eller 0).
+  `originalSounds`/`lineSounds` vælger samme variant som teksten; matchSound.ts afspiller samples (prio: mål 3 > fløjt/kort 2 >
+  normal 1 > spark 0; lange lyde afløser hinanden, `chant` i eget lag). SW cacher /sounds/ ved kørsel.
 - 2026-11-07 – Nations & Clubs: rute `nations` (`ClassicNations`, route-state nctab/ncreg/ncnat); menuens verdensdele og League → land åbner den. REGIONS/regionOfNation eksporteres fra classicOptions.
 - 2026-11-07 – Klubhistorik: `game/clubHistory.ts` (`seasonRec(cid)` af kampprogrammet; `storeSeasonRecords` i prune() før
   g.fixtures ryddes → `Club.seasonRecs[sæson]`, kun menneskeklubber). Skærm `ClassicClubHistory` (rute `clubhistory`, knappen History ▸).

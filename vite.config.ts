@@ -44,6 +44,11 @@ export default defineConfig({
         // guiderne (statiske SEO-sider, scripts/build-seo.ts) er rigtige sider – ikke appen
         navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|faq)\//, /^\/api\//, /^\/llms\.txt$/],
         runtimeCaching: [{
+          // originalens kamplyde: hentes første gang de spilles, derefter fra cachen
+          urlPattern: /\/sounds\/[\w.-]+\.m4a$/,
+          handler: 'CacheFirst',
+          options: { cacheName: 'match-sounds', expiration: { maxEntries: 160, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+        }, {
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
           urlPattern: /\/(bg|stadiums|screens)\/[\w.-]+\.jpg$/,
           handler: 'CacheFirst',

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/ui/data/matchTexts.json', () => ({ default: JSON.parse(readFileSync('src/ui/data/matchTexts.json', 'utf8')) }));
-import { loadMatchTexts, originalReport, originalText } from '../src/ui/matchTexts';
+import { loadMatchTexts, originalReport, originalSounds, originalText } from '../src/ui/matchTexts';
 
 const ctx = (lang: string) => ({ home: 'Vejle', away: 'Brøndby', score: 'Vejle 1-0 Brøndby', ref: 'Hansen', lang });
 
@@ -42,5 +42,11 @@ describe('originalens kommentarlinjer (CM 01/02)', () => {
     expect(all.some((x) => /^Vejle went /.test(x))).toBe(true);
     expect(originalText({ m: 1, k: 'ai-push', t: 0 }, ctx('en'), 0)).not.toMatch(/went/);
   });
+  it('hver linje har originalens lyd fra den samme variant (CM 01/02 events_eng.cfg)', async () => {
+    await loadMatchTexts();
+    expect(originalSounds({ m: 1, k: 'yellow', a: 'Lauth', t: 0 }, ctx('en'), 0)).toEqual(['whist3']);
+    expect(originalSounds({ m: 1, k: 'kickoff', t: 0 }, ctx('da'), 0)).toContain('startgam');
+    const { existsSync } = await import('node:fs');
+    for (const k of ['save', 'corner', 'pl-fwd', 'offside', 'post']) for (const s of originalSounds({ m: 3, k, a: 'A', b: 'B', t: 0 }, ctx('en'), 4)) expect(existsSync(`public/sounds/${s}.m4a`), s).toBe(true);
+  });
 });
-

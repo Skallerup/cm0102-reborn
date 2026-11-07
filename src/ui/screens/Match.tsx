@@ -17,9 +17,10 @@ import type { Fixture, TableRow, MatchReport, MatchStatsSide, Tactic, OppInstruc
 import { compName, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
-import { commentaryText, reportLines } from '../commentary';
+import { commentaryText, lineSounds, reportLines } from '../commentary';
 import { loadMatchTexts } from '../matchTexts';
-import { goalRoar, ooh, startCrowd, stopCrowd, whistle } from '../matchSound';
+import { chant, playSample, preloadMatchSounds, startCrowd, stopCrowd } from '../matchSound';
+import { regionOf } from '../../game/leagues';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop, cxLongDate } from '../classic';
@@ -82,11 +83,8 @@ export function statColors(home: number, away: number, me: number): [string, str
 // originalens kommentarlinjer hentes, så snart kampskærmen er indlæst (de er klar, før bolden sparkes i gang)
 void loadMatchTexts();
 
-/** Kommentarlinjer → lyde (se ui/matchSound.ts) */
-const SOUND_OF: Record<string, string> = {
-  kickoff: 'ko', halftime: 'ht', fulltime: 'ft', freekick: 'ref', penalty: 'ref', foul: 'ref', yellow: 'ref', red: 'ref', 'second-yellow': 'ref', offside: 'ref',
-  bigsave: 'ooh', post: 'ooh', 'miss-1v1': 'ooh', 'header-saved': 'ooh', 'pen-saved': 'ooh', 'pen-miss': 'ooh',
-};
+/** Linjer, hvis lyd går forud for alt andet i samme opdatering (mål, fløjt, kort, straffespark) */
+const BIG_SOUND = new Set(['kickoff', 'halftime', 'fulltime', 'extratime', 'yellow', 'red', 'second-yellow', 'red-professional', 'penalty', 'goal-pen', 'pen-saved', 'pen-miss', 'goal-offside']);
 
 let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number } | null = null;
 
@@ -512,24 +510,25 @@ function LiveMatch({ id }: { id: number }) {
 
   const pull = () => {
     const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}`, ref: refereeFor(f).name };
-    const sounds = new Set<string>();
+    // originalens lyde: hver linjes variant har sin lyd – i en opdatering spilles den vigtigste (den seneste ved lige)
+    let snd: { name: string; prio: number } | null = null;
+    const want = (name: string, prio: number) => { if (!snd || prio >= snd.prio) snd = { name, prio }; };
     while (L.consumed < sim.commentary.length) {
       const l = sim.commentary[L.consumed];
-      if (!l.k.startsWith('pl-')) sounds.add(SOUND_OF[l.k] ?? (l.k.startsWith('goal') && l.k !== 'goal-cheer' && l.k !== 'goal-offside' ? (l.t === 0 ? 'goalH' : 'goalA') : ''));
       // spil-for-spil kun i det klassiske udseende (Match Overview som i CM 01/02)
       if (l.k.startsWith('pl-') && !classic) { L.consumed++; continue; }
       const cls = (l.k.startsWith('goal') && l.k !== 'goal-offside') || l.k === 'own-goal' ? 'goal' : l.hi ? 'hi' : '';
       L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k, t: l.t, ci: L.consumed });
+      if (cls === 'goal' && l.k !== 'goal-cheer') want('goalmono', 3);
+      else { const ls = lineSounds(l, ctx, L.consumed); if (ls.length) want(ls[ls.length - 1], BIG_SOUND.has(l.k) ? 2 : l.k.startsWith('pl-') ? 0 : 1); }
       // klassisk: bjælken blinker "GOAL!" i 5-6 sekunder, og kampen står stille imens (ved alle hastigheder)
       if (classic && cls === 'goal' && l.k !== 'goal-cheer') { L.goalUntil = Date.now() + 5500; L.goalTeam = l.k === 'own-goal' && l.t !== undefined ? 1 - l.t : l.t; }
       L.consumed++;
     }
-    // lyd: højst én af hver slags pr. opdatering (ved Fastest ingen fløjt for hvert frispark)
-    if (!report) {
-      if (sounds.has('goalH') || sounds.has('goalA')) goalRoar(sounds.has('goalH'));
-      else if (sounds.has('ooh')) ooh();
-      if (sounds.has('ft')) { whistle(3); stopCrowd(); } else if (sounds.has('ht')) whistle(2); else if (sounds.has('ko')) { whistle(1, true); startCrowd(); } else if (sounds.has('ref') && speed < 8) whistle(1);
-    }
+    // ved Fastest kun de vigtige lyde (mål, fløjt, kort); i de stille perioder synger tilskuerne en gang imellem
+    const chosen = snd as { name: string; prio: number } | null;
+    if (!report && chosen && (speed < 8 || chosen.prio >= 2)) playSample(chosen.name, chosen.prio);
+    else if (!report && !chosen && speed < 4 && L.kicked && Math.random() < 0.006) chant(g.clubs[f.home]?.name ?? '', regionOf(g.nations[g.clubs[f.home]?.nation ?? -1]?.name) === 'southAmerica');
     // boldbesiddelse de seneste 5 minutter (Match Overview i klassisk tema)
     const z = (L.zones ??= [0, 0, 0]);
     const band = Math.floor(sim.pitch().zone / ZONES.lanes);
@@ -756,7 +755,7 @@ function LiveMatch({ id }: { id: number }) {
   // tilskuerbrus, mens kampen kører (stille ved pause, slutfløjt og Instant – og når man forlader kampen)
   const crowdOn = !waiting && !paused && !report && !sim.finished;
   useEffect(() => { if (crowdOn) startCrowd(); else stopCrowd(); }, [crowdOn]);
-  useEffect(() => () => stopCrowd(), []);
+  useEffect(() => { preloadMatchSounds(); return () => stopCrowd(); }, []);
 
   // afspil højdepunktet billede for billede – det sidste billede (udfaldet) bliver stående lidt længere
   const frameMs = Math.round(950 / Math.sqrt(speed));
