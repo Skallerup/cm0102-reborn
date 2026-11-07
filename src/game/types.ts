@@ -755,6 +755,8 @@ export interface MatchEvent {
   p2?: number;
   /** selvmål: p er forsvareren, t er holdet der fik målet */
   og?: boolean;
+  /** mål på straffespark */
+  pen?: boolean;
 }
 
 export interface ShotRecord {

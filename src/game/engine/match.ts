@@ -1568,7 +1568,7 @@ export class MatchSim {
     const gk = this.gk(O);
     this.rate(gk, -0.25);
     for (const e of O.zDef[this.zone]) if (e.w > 0.35) this.rate(e.sp, -0.08);
-    this.events.push({ m: this.minute, t: T.idx, k: 'goal', p: s.p.id, p2: assister && kind !== 'pen' ? assister.p.id : undefined });
+    this.events.push({ m: this.minute, t: T.idx, k: 'goal', p: s.p.id, p2: assister && kind !== 'pen' ? assister.p.id : undefined, ...(kind === 'pen' ? { pen: true } : {}) });
     const key = kind === 'pen' ? 'goal-pen' : kind === 'header' ? 'goal-header' : kind === 'fk' ? 'goal-fk' : kind === 'long' ? 'goal-long' : kind === 'oneOnOne' ? 'goal-1v1' : 'goal';
     this.line(key, s, assister, true);
     this.line('score', null, null, true);

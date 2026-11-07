@@ -279,7 +279,7 @@ function cxLineStyle(line: { cls: string; t?: number } | undefined, colors: [str
   return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
 }
 
-function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash }: { flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
+function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
@@ -293,7 +293,7 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = 
       <div className="cx-mo-scorers">
         {[0, 1].map((side) => (
           <div key={side} className={side ? 'away' : ''}>
-            {goals.filter((e) => e.t === side).map((e, i) => <div key={i} className="cx-mo-goal"><span><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span>{e.og ? ` (${t('match.og')})` : ''}</span><b>{e.m}</b></div>)}
+            {goals.filter((e) => e.t === side).map((e, i) => <div key={i} className={`cx-mo-goal ${e.og ? 'og' : ''}`}><span><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span>{e.og ? ` ${t('cl.mt.og')}` : ''}</span><b>{e.pen ? `${t('cl.mt.pen')} ` : ''}{e.m}</b></div>)}
             {injuries.filter((e) => e.t === side).map((e, i) => <div key={`i${i}`} className="cx-mo-inj cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{t('cl.mt.injured', { name: g.players[e.p]?.last ?? '' })} {e.m}</div>)}
             {/* udvisninger (rødt kort) under holdet, som målscorerne */}
             {reds.filter((e) => e.t === side).map((e, i) => <div key={`r${i}`} className="cx-mo-goal cx-mo-red"><span><span className="cx-card red" /><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span></span><b>{e.m}</b></div>)}
@@ -309,7 +309,8 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = 
             ))}</div>
           ))}</div>
         </div>
-      ) : flash ? <div className="cx-mo-line cx-goal-flash" style={goalColors(flash, colors)}>{t('hl.goal')}</div>
+      ) : quiet ? <div className="cx-mo-line empty" />
+        : flash ? <div className="cx-mo-line cx-goal-flash" style={goalColors(flash, colors)}>{t('hl.goal')}</div>
         : <div className={`cx-mo-line ${line ? '' : 'empty'}`} style={line ? bar : undefined}>{line?.text ?? ''}</div>}
       <div className="cx-mo-poss">
         <span className="lbl">{t('match.last5')}</span>
@@ -948,8 +949,8 @@ function LiveMatch({ id }: { id: number }) {
         <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={waiting ? t('cl.mt.koLabel') : sim.finished ? t('match.ft') : L.atHalf ? t('cl.mt.halfTime') : sim.half === 2 ? t('match.half2') : t('match.half1')} ht={L.ht}
           injuries={sim.events.filter((e) => e.k === 'injury' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
           reds={sim.events.filter((e) => e.k === 'red' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
-          shootout={classic ? sim.shootout?.kicks : undefined} flash={classic && (L.goalUntil ?? 0) > Date.now() ? (L.goalTeam ?? 0) + 1 : false}
-          goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og }))} />
+          shootout={classic ? sim.shootout?.kicks : undefined} flash={classic && (L.goalUntil ?? 0) > Date.now() ? (L.goalTeam ?? 0) + 1 : false} quiet={classic && (!!L.atHalf || sim.finished)}
+          goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og, pen: e.pen }))} />
       )}
       {classic && tab === 'stats' && <CxMatchStats st={[st[0], st[1]]} />}
       {classic && tab === 'zones' && <CxZones z={L.zones ?? [1, 1, 1]} zp={L.zposs} st={[st[0], st[1]]} colors={colors} />}
