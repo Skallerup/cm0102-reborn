@@ -90,6 +90,7 @@ async function run(look) {
   });
   if (look === 'klassisk') await step('spillerens faner (klassisk)', async () => {
     await go({ name: 'player', id: star });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-Profile.png` });
     for (const tab of ['Injuries & Bans', 'Contract', 'Transfer', 'History']) {
       await page.getByRole('button', { name: tab, exact: true }).first().click();
       await page.waitForTimeout(200);

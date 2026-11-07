@@ -4,7 +4,7 @@
 // Alle handlinger (bud, forespørgsel, liste, forlængelse, udlejning, scout, sammenligning …) ligger i Action-menuen.
 import { isOriginal2001 } from '../../game/rules2001';
 import { useEffect, useState, type ReactNode } from 'react';
-import { A, ATTRS, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
+import { A, GROUPS, POSITIONS_LABEL, type AttrKey } from '../../game/attributes';
 import { act as dispatch } from '../../game/actions';
 import { ageOn, daysBetween } from '../../game/dates';
 import { traits } from '../../game/personality';
@@ -51,7 +51,6 @@ export function ActionMenu({ items, clubId }: { items: ActionItem[]; clubId?: nu
 /** Værdifarver som i originalen: hvid → gul → orange → rød */
 const tone = (v: number) => v >= 19 ? 'v20' : v >= 17 ? 'v17' : v >= 14 ? 'v14' : v >= 11 ? 'v11' : v >= 6 ? 'v6' : 'v1';
 
-const VISIBLE: AttrKey[] = ATTRS.filter((k) => !GROUPS.hidden.includes(k));
 
 const moraleKey = (m: number) => `morale.${m >= 16 ? 'superb' : m >= 13 ? 'good' : m >= 9 ? 'okay' : 'poor'}`;
 
@@ -144,31 +143,37 @@ function Frame({ p, rows, children, statsTitle }: { p: Player; rows: [string, Re
   );
 }
 
+/** Profile (CM 01/02): tre gennemsigtige kolonner Technical · Mental · Physical med linjer; fod, form, moral og kondition
+ *  nederst i Physical. Målmænd har målmandsegenskaberne under Technical. */
 function ProfileTab({ p }: { p: Player }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
+  const gk = posStr(p).startsWith('GK');
+  const val = (a: AttrKey) => {
+    const [lo, hi] = attrRange(p, A[a], k);
+    return <span className={`cx-v ${tone(Math.round((lo + hi) / 2))}`}>{lo === hi ? lo : `${lo}-${hi}`}</span>;
+  };
+  const sorted = (keys: AttrKey[]) => keys.slice().sort((a, b) => t(`attr.${a}`).localeCompare(t(`attr.${b}`), t('cl.locale'))).map((a): [string, ReactNode] => [t(`attr.${a}`), val(a)]);
+  const tech = sorted([...GROUPS.technical.filter((a) => a !== 'offTheBall'), ...(gk ? GROUPS.goalkeeping : [])]);
+  const ment = sorted([...GROUPS.mental, 'offTheBall']);
   const form = p.form.slice(-5);
-  const cells: [string, ReactNode][] = [...VISIBLE]
-    .sort((a, b) => t(`attr.${a}`).localeCompare(t(`attr.${b}`), t('cl.locale')))
-    .map((a) => {
-      const [lo, hi] = attrRange(p, A[a], k);
-      return [t(`attr.${a}`), <span className={`cx-v ${tone(Math.round((lo + hi) / 2))}`}>{lo === hi ? lo : `${lo}-${hi}`}</span>];
-    });
-  cells.push(
-    ...(p.number ? [[t('cl.sq.number'), <span className="cx-v v17">{p.number}</span>] as [string, ReactNode]] : []),
-    [t('cl.pl.foot'), <span className="cx-v v17">{t(`foot.${p.foot || 'R'}`)}</span>],
-    [t('col.form'), <span className="cx-v v11">{form.length ? (form.reduce((x, y) => x + y, 0) / form.length).toFixed(1) : ''}</span>],
-    [t('col.morale'), <span className="cx-v v17">{g.draft ? '-' : t(moraleKey(p.morale))}</span>],
-    [t('cl.pl.condition'), <span className={`cx-v ${p.condition >= 90 ? 'v17' : p.condition >= 75 ? 'v11' : 'v20'}`}>{Math.round(p.condition)}%</span>],
-  );
-  const rows = Math.ceil(cells.length / 4);
+  const phys: [string, ReactNode][] = [
+    ...sorted(GROUPS.physical.filter((a) => a !== 'naturalFitness')),
+    [t('cl.pl.foot'), <span className="cx-v v-gold">{t(`foot.${p.foot || 'R'}`)}</span>],
+    [t('col.form'), <span className="cx-v v-gold">{form.length ? form.map((x) => Math.round(x)).join('-') : '-'}</span>],
+    [t('col.morale'), <span className="cx-v v-gold">{g.draft ? '-' : t(moraleKey(p.morale))}</span>],
+    [t('cl.pl.condition'), <span className="cx-v v-gold">{Math.round(p.condition)}%</span>],
+  ];
+  const cols: [string, [string, ReactNode][]][] = [[t('cl.pl.grp.technical'), tech], [t('cl.pl.grp.mental'), ment], [t('cl.pl.grp.physical'), phys]];
+  const n = Math.max(tech.length, ment.length, phys.length);
   return (
     <div className="cx-pl">
       <BornLine p={p} />
       {g.options.masking && k < 100 && <div className="cx-pl-hint">{t('player.rangeHint')}</div>}
-      <div className="cx-pl-attrs" style={{ ['--rows' as string]: rows, ['--rows2' as string]: Math.ceil(cells.length / 2) }}>
-        {cells.map(([l, v]) => <div key={l} className="cx-pl-cell"><span>{l}</span>{v}</div>)}
-      </div>
+      <table className="cx-pl-grid">
+        <thead><tr>{cols.map(([h]) => <th key={h} colSpan={2}>{h}</th>)}</tr></thead>
+        <tbody>{Array.from({ length: n }, (_, r) => <tr key={r}>{cols.map(([h, list]) => [<td key={`${h}l`}>{list[r]?.[0] ?? ''}</td>, <td key={`${h}v`} className="v">{list[r]?.[1] ?? ''}</td>])}</tr>)}</tbody>
+      </table>
       <StatsBlock p={p} />
     </div>
   );
