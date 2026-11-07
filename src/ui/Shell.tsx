@@ -56,7 +56,7 @@ import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
 import { backgroundUrl, loadStadiumBgs, stadiumBgUrl } from './backgrounds';
-import { CompetitionsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
+import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
@@ -351,9 +351,6 @@ export function Shell() {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
           if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
         };
-        const side = (k: ScreenName | null, label: string, cls = '', onClick?: () => void) => (
-          <button className={`cx-sbtn ${cls} ${k && route.name === k ? 'on' : ''}`} onClick={onClick ?? (() => k && nav({ name: k }))}>{label}</button>
-        );
         // kampskærmen (CM 01/02): minuttet øverst og kampens knapper i stedet for de almindelige
         if (matchSide && route.name === 'match') {
           const ms = matchSide.s, ma = matchSide.a;
@@ -391,7 +388,7 @@ export function Shell() {
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
             <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} onHoliday={(untilMatch) => setHoliday(untilMatch)} />
             <CompetitionsMenu />
-            {club ? side('club', t('cl.nations')) : side('find', t('cl.nations'), '', () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }))}
+            <NationsClubsMenu />
             <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }} />

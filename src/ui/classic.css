@@ -1023,3 +1023,8 @@
 .cx-nm-row > span:first-child { color: #fff; font-size: 19px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
 .cx-nm-row .v { color: #fff21f; font-size: 14px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
 .cx-tools .cx-greybtn.on { color: #fff21f; }
+@media (min-width: 761px) {
+  /* de grønne menuer (CM 01/02): større tekst i normal vægt, lange lister kan rulles */
+  :root[data-skin='retro'] .cx-drop-pop button { font-size: 14px; font-weight: 500; min-height: 30px; }
+  .cx-drop-pop { max-height: calc(100vh - 40px); overflow-y: auto; }
+}

@@ -88,6 +88,15 @@ async function run(look) {
     await page.locator('.cx-drop-sub button').first().click();
     await checkScreen('competitions');
   });
+  if (look === 'klassisk') await step('nations & clubs-menuen (klassisk)', async () => {
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Nations' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Major Clubs' }).first().hover();
+    await page.locator('.cx-drop-sub button', { hasText: 'Europe' }).first().hover();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-nationsclubs.png` });
+    await page.locator('.cx-drop-sub .cx-drop-sub button').first().click();
+    await page.waitForTimeout(300);
+    await checkScreen('major club');
+  });
   if (look === 'klassisk') await step('staff search (klassisk)', async () => {
     await go({ name: 'transfers' });
     await page.getByRole('button', { name: 'Staff Search', exact: true }).first().click();

@@ -2,6 +2,7 @@
 import { AccountBar } from './Login';
 import { useState } from 'react';
 import { act } from '../game/actions';
+import { regionOf } from '../game/leagues';
 import { notify } from '../game/state';
 import type { GameState, Lang } from '../game/types';
 import { LANGS, CURRENCIES, compName, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../i18n';
@@ -262,4 +263,50 @@ export function CompetitionsMenu() {
     ] });
   }
   return <CxDrop className="cx-gameopt" fixed caret={false} label={t('nav.competitions')} items={items} btn={{ className: 'cx-sbtn' }} />;
+}
+
+// ---------- Nations & Clubs (sidebaren) ----------
+
+const OCEANIA = new Set(['Australia', 'New Zealand', 'Fiji', 'Papua New Guinea', 'Solomon Islands', 'Tahiti', 'Vanuatu', 'New Caledonia', 'Samoa', 'Tonga', 'American Samoa', 'Cook Islands']);
+const REGIONS = ['africa', 'asia', 'europe', 'northAmerica', 'oceania', 'southAmerica'] as const;
+type UiRegion = (typeof REGIONS)[number];
+const regionOfNation = (name: string | undefined): UiRegion => (name && OCEANIA.has(name) ? 'oceania' : regionOf(name));
+
+/**
+ * "Nations & Clubs" i sidebaren som i CM 01/02: Nations ▸ · Under-21s ▸ · Major Clubs ▸ · League ▸ · Non-League ▸ · Other ▸,
+ * hver med verdensdelene ▸ (Africa, Asia, Europe, North America, Oceania, South America) og derunder lande eller klubber.
+ */
+export function NationsClubsMenu() {
+  const g = useGame()! as GameState;
+  const { nav } = useNav();
+  const clubs = Object.values(g.clubs);
+  const nationsWithClubs = new Set(clubs.map((c) => c.nation));
+  const byRegion = <T,>(list: T[], region: (x: T) => UiRegion, item: (x: T) => DropItem): DropItem[] =>
+    REGIONS.map((r) => ({ r, xs: list.filter((x) => region(x) === r) })).filter((x) => x.xs.length).map(({ r, xs }) => ({ key: r, label: t(`cl.region.${r}`), sub: xs.map(item) }));
+  const natSort = (a: number, b: number) => natName(g.nations[a]?.name).localeCompare(natName(g.nations[b]?.name), t('cl.locale'));
+  const nations = [...nationsWithClubs].filter((n) => g.nations[n]).sort(natSort);
+  const natRegion = (n: number) => regionOfNation(g.nations[n]?.name);
+  const visibleLeague = (id: string) => g.leagues[id] && !g.leagues[id].hidden && g.comps[id];
+  const leagueNations = nations.filter((n) => Object.keys(g.leagues).some((id) => g.leagues[id].nation === n && visibleLeague(id)));
+  const hiddenClubs = clubs.filter((c) => g.leagues[c.league]?.hidden);
+  const major = clubs.filter((c) => c.rep >= 75 && !g.leagues[c.league]?.hidden).sort((a, b) => b.rep - a.rep);
+  const clubItem = (c: (typeof clubs)[number]): DropItem => ({ key: `c${c.id}`, label: c.name, onClick: () => nav({ name: 'club', id: c.id }) });
+  const byNatThenClubs = (list: typeof clubs) => byRegion([...new Set(list.map((c) => c.nation))].sort(natSort), natRegion, (n) => ({
+    key: `n${n}`, label: natName(g.nations[n]?.name), sub: list.filter((c) => c.nation === n).sort((a, b) => b.rep - a.rep).slice(0, 30).map(clubItem),
+  }));
+  const items: DropItem[] = [
+    { key: 'nat', label: t('cl.nc.nations'), sub: byRegion(nations, natRegion, (n) => ({ key: `n${n}`, label: natName(g.nations[n]?.name), onClick: () => nav({ name: 'international', id: n }) })) },
+    { key: 'u21', label: t('cl.nc.u21'), sub: byRegion(nations, natRegion, (n) => ({ key: `u${n}`, label: natName(g.nations[n]?.name), onClick: () => nav({ name: 'international', id: n, state: { [`ntt:${n}`]: 'u21' } }) })) },
+    { key: 'major', label: t('cl.nc.major'), sub: byRegion(major, (c) => natRegion(c.nation), clubItem) },
+    { key: 'league', label: t('cl.nc.league'), sub: byRegion(leagueNations, natRegion, (n) => ({
+      key: `l${n}`, label: natName(g.nations[n]?.name),
+      sub: Object.keys(g.leagues).filter((id) => g.leagues[id].nation === n && visibleLeague(id)).sort((a, b) => g.leagues[a].tier - g.leagues[b].tier).map((id) => ({ key: id, label: compName(g.leagues[id].name), onClick: () => nav({ name: 'competitions', id }) })),
+    })) },
+    { key: 'nonleague', label: t('cl.nc.nonLeague'), sub: hiddenClubs.length ? byNatThenClubs(hiddenClubs) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
+    { key: 'other', label: t('cl.nc.other'), sub: [
+      { key: 'find', label: t('cl.find'), onClick: () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }) },
+      { key: 'own', label: g.clubs[g.userClub]?.name ?? '', disabled: !g.userClub, onClick: () => nav({ name: 'club', id: g.userClub }) },
+    ] },
+  ];
+  return <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.nations')} items={items} btn={{ className: 'cx-sbtn' }} />;
 }
