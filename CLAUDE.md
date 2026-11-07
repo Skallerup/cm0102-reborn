@@ -48,6 +48,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Bestyrelsen: `boardStatementCodes()` (board.ts → lvl/fin/fans, grænser *estimeret*) bruges af ClassicBoard og af
+  nyheden `board.update` (boardSeasonEnd, brødtekst sat sammen i newsBody). board.satisfied/disappointed sendes ikke længere.
 - 2026-11-07 – Nyheder: `callUpNews(…, tour)` → `intl.tourSel` (slutrunder; brødtekst i newsBody), `names` med " & " vises som
   "A, B and C" (newsParams), `leagueManagerOfYear` (awards.ts, *estimeret*: placering mod omdømme + mesterbonus) → `award.lgManagerMe`/
   `award.lgManager` for brugerens liga ved gallaen.

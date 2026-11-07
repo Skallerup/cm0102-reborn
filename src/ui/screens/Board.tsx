@@ -1,7 +1,7 @@
 // Bestyrelsen: tillid og forventning samlet ét sted – plus ønsker man kan stille (budget, byggeri og fire andre).
 import { useState } from 'react';
 import { act } from '../../game/actions';
-import { FA_REQUESTS, MEET_BOARD, boardAskInfo, faAvailable, meetBoardAvailable } from '../../game/board';
+import { FA_REQUESTS, MEET_BOARD, boardAskInfo, boardStatementCodes, faAvailable, meetBoardAvailable } from '../../game/board';
 import { CAMP_DESTS, campCost, campWindows, type CampDest } from '../../game/camp';
 import type { BoardAsk } from '../../game/types';
 import { dateFmt, money, t } from '../../i18n';
@@ -91,17 +91,15 @@ function BoardAsks() {
   );
 }
 
-/** Bestyrelsens udtalelse i klassisk stil: tillid, forventning, advarsler og økonomi i hele sætninger */
+/** Bestyrelsens udtalelse i klassisk stil (CM 01/02): præstation, forventning, advarsler, økonomi og fansene */
 function boardStatement(): string[] {
   const g = gs();
   const club = g.clubs[g.userClub];
-  const conf = g.board.confidence;
-  const lvl = conf >= 75 ? 'delighted' : conf >= 58 ? 'positive' : conf >= 45 ? 'satisfied' : conf >= 30 ? 'concerned' : 'angry';
-  const out = [t(`cl.ba.conf.${lvl}`, { club: club?.name ?? '' })];
+  const c = boardStatementCodes();
+  const out = [t(`cl.ba.conf.${c.lvl}`, { club: club?.name ?? '' })];
   out.push(t('cl.ba.expect', { exp: t(`exp.${g.board.expectation}`), pos: g.board.expectedPos }));
   if (g.board.warnings) out.push(t('cl.ba.warnings', { n: g.board.warnings }));
-  const bal = club?.balance ?? 0;
-  out.push(t(bal >= 0 ? 'cl.ba.fin.secure' : bal > -5_000_000 ? 'cl.ba.fin.stretched' : 'cl.ba.fin.debt'));
+  out.push(t(`cl.ba.fin.${c.fin}`), t(`cl.ba.fans.${c.fans}`));
   return out;
 }
 

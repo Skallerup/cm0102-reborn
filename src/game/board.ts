@@ -10,6 +10,7 @@ function rulesForLeague(league: string) {
 import { addNews, gs, indexFixture, newsRelevant, squad, unindexFixture } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
 import type { BoardAsk, Club, JobTalk } from './types';
+import { fanMood } from './fans';
 import { takeOverClub } from './newgame';
 import { forEachHuman, removeHooks } from './humans';
 
@@ -206,6 +207,22 @@ export function resignJob(): string {
 }
 
 /** Sæsonafslutning: bestyrelsens dom */
+/**
+ * Bestyrelsens udtalelse (CM 01/02 "Board Confidence"): præstation, økonomi og fansene som koder til teksterne
+ * `cl.ba.conf.<lvl>`, `cl.ba.fin.<fin>` og `cl.ba.fans.<fans>`. Grænserne er *estimeret*.
+ */
+export function boardStatementCodes(): { lvl: string; fin: string; fans: string } {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  const conf = g.board.confidence;
+  const lvl = conf >= 75 ? 'delighted' : conf >= 58 ? 'positive' : conf >= 45 ? 'satisfied' : conf >= 30 ? 'concerned' : 'angry';
+  const bal = (club?.balance ?? 0) / econ(club?.league);
+  const fin = bal >= 25_000_000 ? 'extreme' : bal >= 5_000_000 ? 'healthy' : bal >= 0 ? 'secure' : bal > -5_000_000 ? 'stretched' : 'debt';
+  const mood = fanMood(club);
+  const fans = mood >= 70 ? 'rapport' : mood >= 45 ? 'ok' : 'unhappy';
+  return { lvl, fin, fans };
+}
+
 export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   const g = gs();
   const club = g.clubs[g.userClub];
@@ -222,12 +239,13 @@ export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   }
   g.board.warnings = 0;
   g.board.confidence = clamp(55 + diff * 4, 20, 95);
+  // CM 01/02: "Board Confidence Update" – samme udtalelse som skærmen Board Confidence
+  addNews({ cat: 'board', key: 'board.update', params: { club: club.name, ...boardStatementCodes() } });
   if (diff >= 3) {
     club.transferBudget = Math.round(club.transferBudget * 1.25);
     addNews({ cat: 'board', key: 'board.delighted', params: { club: club.name } });
     return 'great';
   }
-  addNews({ cat: 'board', key: diff >= 0 ? 'board.satisfied' : 'board.disappointed', params: { club: club.name } });
   return 'ok';
 }
 

@@ -78,6 +78,8 @@ export function newsBody(n: NewsItem) {
     if (many && typeof params.n === 'number') params.n = has(`num.${params.n}`) ? t(`num.${params.n}`) : params.n;
     return t(k, params);
   }
+  // "Board Confidence Update": bestyrelsens udtalelse, som den stod på dagen
+  if (n.key === 'board.update' && n.params?.lvl) return [t(`cl.ba.conf.${n.params.lvl}`, { club: String(n.params.club ?? '') }), t(`cl.ba.fin.${n.params.fin}`), t(`cl.ba.fans.${n.params.fans}`)].join('\n\n');
   // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
   if (n.key === 'intl.tourSel') {
     const params = newsParams(n);
