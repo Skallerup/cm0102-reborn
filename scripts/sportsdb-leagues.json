@@ -1124,5 +1124,57 @@
 "alt": "Azerbaijan Premier League, Azərbaycan Premyer Liqası",
 "country": "Azerbaijan",
 "badge": "https://r2.thesportsdb.com/images/media/league/badge/urt6hw1614346226.png"
+},
+"4694": {
+"name": "Luxembourg National Division",
+"alt": "Nationaldivisioun, Division Nationale, Nationaldivision, BGL Ligue",
+"country": "Luxembourg",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/raduqp1589303531.png"
+},
+"4695": {
+"name": "German Regionalliga Nord",
+"alt": "",
+"country": "Germany",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/vs2x381582561207.png"
+},
+"4696": null,
+"4697": null,
+"4698": null,
+"4699": null,
+"4700": null,
+"4701": null,
+"4702": null,
+"4703": null,
+"4704": null,
+"4705": null,
+"4706": null,
+"4707": null,
+"4708": null,
+"4709": null,
+"4710": null,
+"4711": null,
+"4712": null,
+"4713": {
+"name": "Swiss Challenge League",
+"alt": "Brack.ch Challenge League, Dieci Challenge League",
+"country": "Switzerland",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/5816yi1635867610.png"
+},
+"4714": null,
+"4715": null,
+"4716": null,
+"4717": null,
+"4718": null,
+"4719": {
+"name": "AFC Champions League Elite",
+"alt": "ACL",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/gsbq4k1719686780.png"
+},
+"4720": {
+"name": "CAF Champions League",
+"alt": "CAF Champions League",
+"country": "Worldwide",
+"badge": "https://r2.thesportsdb.com/images/media/league/badge/nxb5g41762186344.png"
 }
 }

@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Admin New careers: POST op `nc-delete` (vids eller at+manager; omskriver nc:list og trækker fra nc:total/nc:d:*), knappen "Remove my careers" (denne browsers `cm0102.visitor`) og ✕ pr. række. Taktik: højreklik-menu for løb (`Pitch onRuns`).
 - 2026-11-07 – `Staff.coachAreas` (action coachAreas, `CoachesPanel`): weeklyDevelopment bruger kun trænerne for programmets område (`AREA_OF`), når klubben har fordelt dem – ellers som før.
 - 2026-11-07 – `repairInjuryWave` i upgradeLoaded (save.ts, `g.fixes` = kørte engangsrettelser). Reserver (`p.reserves`) filtreres fra
   ClassicFirstSquad og ClassicTactics. UEFA-præfiks i Competitions-menuen. Hall of Fame: `ClassicHallOfFame` (rute ranking i retro).

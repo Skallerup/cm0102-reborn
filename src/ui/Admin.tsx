@@ -300,6 +300,9 @@ function progress(r: NewCareer) {
   return <>{n > 0 && <b>Season {n}</b>} <span className="muted">{d}{p.club && p.club !== r.club ? ` · ${p.club}` : ''}{p.pos ? ` · ${p.pos}.` : ''}</span></>;
 }
 
+/** Denne browsers anonyme besøgs-id (samme som spillet sender med en ny karriere, online/notify.ts) */
+const myVid = () => { try { return localStorage.getItem('cm0102.visitor') ?? ''; } catch { return ''; } };
+
 function NewCareersTab() {
   type Data = { rows: NewCareer[]; days: Record<string, number>; online?: number; now?: number };
   const [data, setData] = useState<Data | null>(null);
@@ -310,6 +313,12 @@ function NewCareersTab() {
     const id = setInterval(load, 60_000);
     return () => clearInterval(id);
   }, []);
+  const removeCareers = async (what: { vids?: string[]; at?: string; manager?: string }, label: string) => {
+    if (!window.confirm(`Remove ${label} from New careers?`)) return;
+    const r = await adminPost('nc-delete', what);
+    if (r.error) window.alert(`Error: ${String(r.error)}`);
+    else void adminGet<Data>('op=new-careers').then((x) => setData(x ?? { rows: [], days: {} }));
+  };
   if (!data) return <div className="muted">Loading new careers…</div>;
   const days = Object.entries(data.days).reverse();
   const max = Math.max(1, ...days.map(([, n]) => n));
@@ -339,10 +348,11 @@ function NewCareersTab() {
           </Panel>
         ) : null;
       })()}
-      <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now</span>} className="flush">
+      <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now{' '}
+        <button className="small" title="Removes every career started in this browser (same visitor id)" onClick={() => void removeCareers({ vids: [myVid()] }, 'all careers started in this browser')}>Remove my careers</button></span>} className="flush">
         {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
-            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th></tr></thead>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th><th /></tr></thead>
               <tbody>{data.rows.map((r, i) => (
                 <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
                   <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.mode === 'authentic' ? 'Original' : r.mode === 'extended' ? 'Extended' : ''}</td>
@@ -352,7 +362,9 @@ function NewCareersTab() {
                   <td className="nowrap" title={r.prog ? `Game date ${r.prog.date} · updated ${ago(new Date(r.prog.at).toISOString())}` : ''}>{progress(r)}</td>
                   <td className="nowrap">{!r.vid ? <span className="muted">–</span> : r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000
                     ? <span style={{ color: '#16a34a', fontWeight: 600 }}>● Online</span>
-                    : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td></tr>
+                    : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td>
+                  <td>{/* fjern: alle karrierer fra samme besøgende (eller kun rækken uden besøgs-id) */}
+                    <button className="small" title={r.vid ? 'Remove every career from this visitor' : 'Remove this career'} onClick={() => void removeCareers(r.vid ? { vids: [r.vid] } : { at: r.at, manager: r.manager }, r.vid ? `all ${data.rows.filter((x) => x.vid === r.vid).length} career(s) from this visitor${r.vid === myVid() ? ' (this browser)' : ''}` : `${r.manager}'s career`)}>✕</button></td></tr>
               ))}</tbody></table>
           </div>
         )}

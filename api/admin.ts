@@ -200,6 +200,28 @@ export async function POST(request: Request) {
   // ---------- admin ----------
   if (!isAdmin(request)) return json({ error: 'auth' }, 401);
 
+  // fjern karrierer fra "New careers" (fx ejerens egne): alle med et af besøgs-id'erne, eller én række (tidspunkt + manager)
+  if (body.op === 'nc-delete') {
+    const vids = new Set((Array.isArray(body.vids) ? body.vids : []).map((v) => clip(v, 24)).filter(Boolean));
+    const one = body.at ? { at: clip(body.at, 40), manager: clip(body.manager, 30) } : null;
+    if (!vids.size && !one) return json({ error: 'missing' }, 400);
+    const raw = (await redis.lrange<unknown>('nc:list', 0, 999)) ?? [];
+    const parsed = raw.map((x) => { try { return typeof x === 'string' ? JSON.parse(x) : x; } catch { return null; } }) as ({ vid?: string; at?: string; manager?: string } | null)[];
+    const keep: unknown[] = [], removed: { at?: string }[] = [];
+    parsed.forEach((r, i) => {
+      const hit = r && ((r.vid && vids.has(r.vid)) || (one && r.at === one.at && r.manager === one.manager));
+      if (hit) removed.push(r!); else keep.push(raw[i]);
+    });
+    if (removed.length) {
+      await redis.del('nc:list');
+      if (keep.length) await redis.rpush('nc:list', ...keep.map((x) => (typeof x === 'string' ? x : JSON.stringify(x))));
+      const byDay = new Map<string, number>();
+      for (const r of removed) if (r.at) byDay.set(r.at.slice(0, 10), (byDay.get(r.at.slice(0, 10)) ?? 0) + 1);
+      await Promise.all([redis.decrby('nc:total', removed.length), ...[...byDay].map(([d, n]) => redis.decrby(`nc:d:${d}`, n))]);
+    }
+    return json({ ok: true, removed: removed.length });
+  }
+
   if (body.op === 'app-status') {
     const id = Number(body.id);
     if (!id || !(await redis.exists(`ap:${id}`))) return json({ error: 'missing' }, 404);

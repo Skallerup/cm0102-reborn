@@ -39,6 +39,7 @@ export function ClassicTactics() {
   const [view, setView] = useRouteState<View>('tview', 'cond');
   const [penScreen, setPenScreen] = useRouteState('tpens', false);
   const [tiOpen, setTiOpen] = useState(false);
+  const [runMenu, setRunMenu] = useState<{ slot: number; x: number; y: number } | null>(null);
   const [pick, setPick] = useState<number | null>(null); // valgt spiller (i listen)
   const [slotSel, setSlotSel] = useState<number | null>(null); // valgt plads (på banen)
   const [drag, setDrag] = useState<number | null>(null);
@@ -193,7 +194,7 @@ export function ClassicTactics() {
             </div>
           ) : <Instructions tac={tac} pane={pane} slot={slotSel ?? (pick !== null && tac.lineup.includes(pick) ? tac.lineup.indexOf(pick) : null)} byId={byId} change={change} />}
         </div>
-        <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
+        <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
           onMove={(x, y) => {
             // sluppet (eller klikket) på en tom plet: en spiller på holdet flytter sin plads dertil
             const i = drag !== null ? tac.lineup.indexOf(drag) : slotSel;
@@ -201,14 +202,27 @@ export function ClassicTactics() {
             if (i !== null && i >= 0) moveSlot(i, x, y);
           }} />
       </div>
+      {runMenu && (
+        <div className="cx-ctx-bg" onClick={() => setRunMenu(null)} onContextMenu={(e) => { e.preventDefault(); setRunMenu(null); }}>
+          <div className="cx-ctx cx-drop-pop" style={{ left: runMenu.x, top: runMenu.y }} onClick={(e) => e.stopPropagation()}>
+            <div className="cx-menu-head">{t('pi.runs')}</div>
+            {[2, 1, 0].map((v) => {
+              const cur = tac.individual[runMenu.slot]?.runs ?? 1;
+              return <button key={v} className={cur === v ? 'on' : ''} onClick={() => { const individual = tac.individual.slice(); individual[runMenu.slot] = { ...individual[runMenu.slot], runs: v }; change({ ...tac, individual }); setRunMenu(null); }}><span className="cx-drop-check">{cur === v ? '✓' : ''}</span>{t(`cl.mt.lvl.g${v}`)}</button>;
+            })}
+          </div>
+        </div>
+      )}
       <div className="cx-tac-hint">{t(pick !== null ? 'cl.tac.hintPlace' : slotSel !== null ? 'cl.tac.hintPlayer' : 'cl.tac.hint')}</div>
     </div>
   );
 }
 
-function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club }: {
+function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onRuns }: {
   tac: Tactic; byId: Map<number, Player>; sel: number | null; drag: number | null;
   onSlot: (i: number) => void; onDrop: (i: number) => void; onDrag: (pid: number | null) => void; onMove: (x: number, y: number) => void; club?: number;
+  /** højreklik (touchpad: klik med to fingre eller ctrl + klik) på en spiller: menuen med løb fremad */
+  onRuns?: (slot: number, x: number, y: number) => void;
 }) {
   const col = titleColors(club ?? gs().userClub);
   const ref = useRef<HTMLDivElement>(null);
@@ -239,7 +253,7 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club }: {
         const gk = s.pos === 'GK';
         return (
           <div key={i} className={`cx-tac-slot ${sel === i ? 'on' : ''} ${drag !== null ? 'drop' : ''} ${p ? '' : 'empty'}`} style={{ left: `${left(s)}%`, top: `${top(s)}%` }}
-            onClick={(e) => { e.stopPropagation(); onSlot(i); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(i); }}
+            onClick={(e) => { e.stopPropagation(); onSlot(i); }} onContextMenu={(e) => { if (!onRuns || gk || !p) return; e.preventDefault(); e.stopPropagation(); onRuns(i, e.clientX, e.clientY); }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(i); }}
             draggable={!!p && club === undefined} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
             <span className="cx-tac-dot" style={gk ? { background: '#fff21f', color: '#10164e' } : col.neutral ? undefined : { background: col.bg, color: col.fg }}>{club !== undefined ? p?.number ?? i + 1 : i + 1}</span>
             <span className="cx-tac-nm">{p ? p.last : slotName(s)}</span>

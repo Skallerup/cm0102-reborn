@@ -149,6 +149,13 @@ async function run(look) {
     await page.locator('.cx-coaches .cx-tidlg-foot button', { hasText: 'Ok' }).click();
     if (!(await gs(() => Object.values(window.__cm.gs().staff).some((s) => s.coachAreas)))) throw new Error('trænerområdet blev ikke gemt');
   });
+  if (look === 'klassisk') await step('løb fremad med højreklik på taktikbanen', async () => {
+    await go({ name: 'tactics' });
+    await page.locator('.cx-tac-slot:not(.empty)').nth(9).click({ button: 'right' });
+    await page.locator('.cx-ctx button').first().click();
+    const runs = await gs(() => window.__cm.gs().tactic.individual[9]?.runs);
+    if (runs !== 2) throw new Error(`løbet blev ikke sat (${runs})`);
+  });
   if (look === 'klassisk') await step('Penalty Takers', async () => {
     await go({ name: 'tactics' });
     await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();
