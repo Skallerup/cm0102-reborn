@@ -1052,3 +1052,8 @@
   .cx-league .cx-lg-pos { min-width: 80px; font-weight: 500; }
   .cx-league tr.zone-start td { border-top: 1px dashed #fff21f; }
 }
+@media (min-width: 761px) {
+  /* løbende tekst (bestyrelse, beskeder) som CM 01/02: normal vægt i et gennemsigtigt panel */
+  .cx-statement { background: rgba(0, 0, 0, 0.32); padding: 4px 16px 14px; min-height: 420px; }
+  .cx-statement p { font-weight: 500; font-size: 19px; }
+}
