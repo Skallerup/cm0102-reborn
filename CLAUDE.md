@@ -11,6 +11,9 @@ og læg ændringen i samme push.
   (byt, flyt pladser, instruktioner, skift udseende) og en hel kamp. Kører også i CI. Nye skærme/knapper: udvid testen.
 - Ejeren spiller originalen lokalt ("CM 01-02 Bosman Edition.app"). Claude kan selv tage billeder af vinduet med
   `screencapture -x -o -l <vindues-id>` (id via Swift `CGWindowListCopyWindowInfo`), også når det ligger bagved.
+  Og styre det: `swiftc -O scripts/cmctl.swift -o <scratchpad>/cmctl`, så `cmctl shot f.png`, `cmctl click x y` (pixels i
+  billedet, 2560×1664), `rclick`, `dclick`, `drag`, `key return|escape|…`, `type tekst`. Cursor har Tilgængelighed (7/11).
+  Klik flytter ejerens mus og lægger spillet forrest – spørg før lange rundture, og spil ikke videre i hans karriere uden lov.
 - Spillernes ændringslog: `src/ui/changelogData.ts` (da+en, nyeste først) – tilføj punkter ved hver udgivelse, der kan
   mærkes i spillet, og hæv versionen i `package.json`/`package-lock.json` ved en ny version (ny version pr. udgivelsesdag – ellers ses
   ændringerne ikke som nye i spillet). Kræver noget et nyt spil, så skriv det i en "⚠ Kræver et nyt spil"-linje øverst i versionen (testet i tests/changelog.test.ts).
