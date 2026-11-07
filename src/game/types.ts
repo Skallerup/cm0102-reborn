@@ -485,6 +485,8 @@ export interface MatchResultShort {
   att?: number;
   /** Hjemmeholdets billetindtægt (efter deling i pokalkampe) */
   gate?: number;
+  /** kort i kampen [gule, røde] (CM 01/02 Referee Stats; ikke i ældre gem) */
+  cards?: [number, number];
 }
 
 export interface TableRow {

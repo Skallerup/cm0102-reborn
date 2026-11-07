@@ -147,6 +147,13 @@ async function run(look) {
     const saved = await gs(() => window.__cm.gs().savedTactics.map((x) => x.name));
     if (!saved.includes('E2E taktik')) throw new Error(`taktikken blev ikke gemt: ${saved}`);
   });
+  if (look === 'klassisk') await step('Referee Stats', async () => {
+    const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });
+    await go({ name: 'competitions', id: lg });
+    await page.locator('.cx-subrow button, .cx-sub button', { hasText: 'Referee Stats' }).first().click();
+    await page.waitForSelector('.cx-refs', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-dommere.png` });
+  });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
     await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });

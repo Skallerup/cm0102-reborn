@@ -1203,3 +1203,4 @@
 .cx-prog-row .cx-lg-pos { min-width: 0; font-size: 12px; } .cx-prog-row .me { color: #ff3b2f; } .cx-prog-row .opp { color: #fff21f; }
 @media (max-width: 760px) { .cx-prog { grid-template-columns: 1fr; } }
 .cx-prog-chart circle.me { fill: #ff3b2f; } .cx-prog-chart circle.opp { fill: #fff21f; }
+@media (min-width: 761px) { .cx-refs { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-refs .cx-tbl td { font-weight: 400; } }

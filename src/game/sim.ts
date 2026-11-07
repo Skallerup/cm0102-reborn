@@ -198,7 +198,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const [hs, as] = rep.stats;
   const scorers: MatchResultShort['scorers'] = rep.events.filter((e) => e.k === 'goal').map((e) => (e.og ? [e.m, e.t, e.p!, 1] : [e.m, e.t, e.p!]));
   const gate = gateReceipts(f);
-  recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
+  recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income), cards: [hs.yellows + as.yellows, hs.reds + as.reds] });
   recordsAfterMatch(f, rep, gate.att);
   achievementsAfterMatch(f, rep, gate.att);
   storyAfterMatch(f, rep, isBigMatch(f.home, f.away));

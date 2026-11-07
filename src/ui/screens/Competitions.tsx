@@ -4,6 +4,7 @@ import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
 import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
 import { isOriginal2001 } from '../../game/rules2001';
+import { refereeFor } from '../../game/weather';
 import { gs, squad } from '../../game/state';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
 import { compName, dateFmt, t, natName } from '../../i18n';
@@ -45,10 +46,11 @@ export function Competitions({ id }: { id?: string }) {
           {tab === 'stats' && <LeagueStats comp={comp} />}
           {tab === 'scorers' && <Scorers comp={comp} />}
           {tab === 'history' && <CompHistory comp={comp} />}
+          {tab === 'refs' && <RefereeStats comp={comp} />}
           <ClassicSub items={[
             { key: 'stats', label: t('cl.lg.teamStats'), on: tab === 'stats', onClick: () => setTab('stats') },
             { key: 'scorers', label: t('cl.lg.playerStats'), on: tab === 'scorers', onClick: () => setTab('scorers') },
-            { key: 'ref', label: t('cl.lg.refStats'), disabled: true },
+            { key: 'ref', label: t('cl.lg.refStats'), on: tab === 'refs', onClick: () => setTab('refs') },
             { key: 'awards', label: t('cl.cm.awards'), arrow: true, onClick: () => nav({ name: 'awards' }) },
             { key: 'history', label: t('comp.history'), arrow: true, on: tab === 'history', onClick: () => setTab('history') },
           ]} />
@@ -415,5 +417,39 @@ export function UefaCoefficients() {
         </table>
       </div>
     </div>
+  );
+}
+
+/**
+ * Referee Stats (CM 01/02 "Official Stats"): ligaens dommere med kampe, røde og gule kort, strenghed (Strict/Fair/Lenient fra
+ * dommerens Discipline) og en karakter (*estimeret*: 7 minus afvigelsen fra et normalt antal kort pr. kamp).
+ */
+function RefereeStats({ comp }: { comp: Competition }) {
+  const g = gs();
+  const by = new Map<string, { name: string; games: number; y: number; r: number; strict: number; known: number }>();
+  for (const f of Object.values(g.fixtures)) {
+    if (f.comp !== comp.id || !f.result) continue;
+    const ref = refereeFor(f);
+    const e = by.get(ref.name) ?? { name: ref.name, games: 0, y: 0, r: 0, strict: ref.strict, known: 0 };
+    e.games++;
+    if (f.result.cards) { e.y += f.result.cards[0]; e.r += f.result.cards[1]; e.known++; }
+    by.set(ref.name, e);
+  }
+  const rows = [...by.values()].sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+  const harsh = (s: number) => t(s >= 1.08 ? 'cl.ref.strict' : s <= 0.92 ? 'cl.ref.lenient' : 'cl.ref.fair');
+  const rating = (e: (typeof rows)[number]) => (e.known ? Math.max(4, Math.min(8, 7 - Math.abs(e.y / e.known - 3.4) * 0.35 - (e.r / e.known) * 0.8)) : 0);
+  return (
+    <>
+      <div className="cx-subtitle">{t('cl.ref.title')}</div>
+      <div className="cx-tbl-wrap cx-refs">
+        <table className="cx-tbl">
+          <thead><tr><th className="btn-col" /><th>{t('cl.ref.name')}</th><th className="c-num">{t('cl.ref.games')}</th><th className="c-num">{t('cl.ref.red')}</th><th className="c-num">{t('cl.ref.yellow')}</th><th>{t('cl.ref.harsh')}</th><th className="c-num">{t('cl.ref.rating')}</th></tr></thead>
+          <tbody>{rows.map((e, i) => (
+            <tr key={e.name}><td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td><td>{e.name}</td><td className="c-num">{e.games}</td><td className="c-num">{e.known ? e.r : '-'}</td><td className="c-num">{e.known ? e.y : '-'}</td><td>{harsh(e.strict)}</td><td className="c-val">{e.known ? rating(e).toFixed(2) : '-'}</td></tr>
+          ))}</tbody>
+        </table>
+        {!rows.length && <div className="cx-empty">{t('common.none')}</div>}
+      </div>
+    </>
   );
 }
