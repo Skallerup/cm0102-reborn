@@ -48,6 +48,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Klassisk dagsrytme: `watchedDay(date)` (sim.ts; egen liga, turneringer med klubben, finaler i landet/Europa, ikke dage
+  med egen kamp), `continueGame(pauseBefore)` → `{ stop: 'dayStart' }` efter newDay (dayDone=false), `runUntil({ watchDays })` →
+  `'dayEnd'` når den fulgte dag er spillet. Shell (kun cmNav) viser `matchday` for begge og spiller dagen ved Continue, når
+  `!g.dayDone`. Test: tests/watchedDays.test.ts + e2e "Continue Game til næste kamp". Mærket `Yel` = `yellowCount === 4`.
 - 2026-11-07 – Klassisk transfer: `BidPanel` (TransferStatusClassic.tsx) = originalens budskærm; svaret kommer som nyhed (udvidet:
   `bidNow` + BidModal i svar-tilstand). `loanBlocked` (rules2001.ts, britisk klub + spiller uden for EU/EØS) → makeBid
   'transfer.loanNonEu'. Kælenavn/managernote til enhver spiller (ikke andre menneskers i fællesspil). `ClubTacticsView`

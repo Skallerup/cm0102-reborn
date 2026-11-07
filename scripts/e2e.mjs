@@ -290,6 +290,21 @@ async function run(look) {
     await checkScreen('rapport');
   });
 
+  // CM 01/02: Continue Game går gennem kampdagene (Evening Fixtures → resultater) frem til næste egne kamp uden at sætte sig fast
+  if (look === 'klassisk') await step('Continue Game til næste kamp', async () => {
+    let watched = 0;
+    for (let i = 0; i < 80; i++) {
+      const st = await gs(() => { const g = window.__cm.gs(); return { pf: g.pendingFixture, done: g.dayDone, date: g.date }; });
+      if (st.pf) break;
+      const yes = page.locator('.cx-confirm button.primary');
+      if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(200); continue; }
+      if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
+      await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      await page.waitForTimeout(250);
+      if (i === 79) throw new Error(`Continue Game nåede ikke næste kamp (dato ${st.date})`);
+    }
+    await checkScreen('næste kamp');
+  });
   await page.screenshot({ path: `${OUT}/${look}-slut.png` });
   await ctx.close();
 }

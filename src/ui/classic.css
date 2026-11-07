@@ -1146,3 +1146,5 @@
   .cx-bid-row .cx-pm { background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 18px; font-weight: 400; }
   .cx-bid-row .cx-pm:disabled { opacity: 0.6; cursor: default; }
 }
+:root[data-skin='retro'] button.cx-sq-tag.yel { background: #c8c24a; border-color: #e8e27a #7a7420 #7a7420 #e8e27a; color: #10164e; }
+@media (min-width: 761px) { .cx-mo-line { font-weight: 500; font-size: 22px; } }

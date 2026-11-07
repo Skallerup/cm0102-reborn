@@ -18,7 +18,7 @@ import { askConfirm, askNotice } from './confirm';
 import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
-import { runUntil } from '../game/sim';
+import { runUntil, watchedDay } from '../game/sim';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest } from './components';
@@ -260,6 +260,7 @@ export function Shell() {
     notify();
     // klassisk tema: først dagens kampe (som i originalen) – Continue Game fører derefter til kampen
     if (r.match !== undefined) nav(cmNav ? { name: 'matchday', id: r.match } : { name: 'match', id: r.match });
+    else if (r.stop === 'dayStart' || r.stop === 'dayEnd') { const id = watchedDay(gs().date); if (id !== undefined) nav({ name: 'matchday', id }); }
     else if (r.stop) {
       nav({ name: 'inbox' });
       // vis den ældste uåbnede besked
@@ -295,10 +296,12 @@ export function Shell() {
         nav({ name: 'match', id: go }); return;
       }
     }
+    // klassisk: en fulgt kampdag står på "Evening Fixtures" – Continue spiller dagen og viser resultaterne
+    if (cmNav && !g.dayDone && !g.pendingFixture) { void run({ untilMatch: true, untilNews: true, maxDays: 60, watchDays: true }); return; }
     if (showOldestUnread(g.news)) return;
     // ingen ulæste: kør dage frem, indtil der sker noget (kamp, bud, ny besked …) – højst 60 dage
-    void run({ untilMatch: true, untilNews: true, maxDays: 60 }).then((r) => {
-      if (r.match === undefined) showOldestUnread(gs().news);
+    void run({ untilMatch: true, untilNews: true, maxDays: 60, watchDays: cmNav }).then((r) => {
+      if (r.match === undefined && r.stop !== 'dayStart' && r.stop !== 'dayEnd') showOldestUnread(gs().news);
     });
   };
 

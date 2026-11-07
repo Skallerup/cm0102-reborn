@@ -14,7 +14,9 @@ export function MatchDay({ id }: { id: number }) {
   const { nav } = useNav();
   const mine = g.fixtures[id];
   const date = mine?.date ?? g.date;
-  const today = Object.values(g.fixtures).filter((f) => f.date === date);
+  // CM 01/02: kun turneringerne i ens eget land, de europæiske og dem, klubben er med i (ikke hele verdens kampe)
+  const myNation = g.clubs[g.userClub]?.nation;
+  const today = Object.values(g.fixtures).filter((f) => f.date === date && (f.home === g.userClub || f.away === g.userClub || g.comps[f.comp]?.nation === myNation || g.comps[f.comp]?.nation === -1 || g.comps[f.comp]?.clubs.includes(g.userClub)));
   // ens egen turnering først, derefter de øvrige
   const comps = [...new Set(today.map((f) => f.comp))].sort((a, b) => Number(b === mine?.comp) - Number(a === mine?.comp) || (compName(g.comps[a]?.name) ?? '').localeCompare(compName(g.comps[b]?.name) ?? ''));
   const [i, setI] = useRouteState('mdi', 0);

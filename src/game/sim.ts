@@ -349,7 +349,25 @@ function injure(p: Player) {
 
 export interface DayResult {
   match?: number; // brugerens kamp skal spilles
-  stop?: string; // vigtig begivenhed
+  stop?: string; // vigtig begivenhed ('dayStart'/'dayEnd': en kampdag, man følger – se `watchedDay`)
+}
+
+/**
+ * CM 01/02: på dage, hvor ens liga, ens turneringer eller en europæisk finale spiller, stopper spillet ved
+ * "Evening Fixtures" før kampene og ved resultaterne bagefter – også uden egen kamp. Dage med egen kamp går
+ * den sædvanlige vej (kampdagen før kampen). Returnerer en af dagens kampe (til kampdagsskærmen) eller undefined.
+ */
+export function watchedDay(date: string): number | undefined {
+  const g = gs();
+  if (!g.userClub || g.draft) return undefined;
+  const me = g.clubs[g.userClub];
+  const fx = fixturesOn(date).map((id) => g.fixtures[id]).filter((f): f is Fixture => !!f);
+  if (fx.some((f) => f.home === g.userClub || f.away === g.userClub)) return undefined; // egen kamp i dag
+  const hit = fx.find((f) => {
+    const c = g.comps[f.comp];
+    return f.comp === me?.league || c?.clubs.includes(g.userClub) || (f.stage === 'F' && (c?.nation === -1 || c?.nation === me?.nation));
+  });
+  return hit?.id;
 }
 
 function newDay() {
@@ -524,7 +542,7 @@ export function playPendingAsAi() {
 }
 
 /** "Fortsæt" – én dag frem */
-export function continueGame(): DayResult {
+export function continueGame(pauseBefore?: (date: string) => boolean): DayResult {
   const g = gs();
   ensureHumanLeagues();
   // gamle saves: en ventende kamp, der ikke er ens egen klubs (efter et jobskifte)
@@ -536,6 +554,8 @@ export function continueGame(): DayResult {
   if (!g.dayDone) return playDay();
   const lastNews = g.nextId.news;
   newDay();
+  // klassisk: stop før dagens kampe (dayDone er stadig false – næste kald spiller dagen)
+  if (pauseBefore?.(g.date)) return { stop: 'dayStart' };
   const r = playDay();
   if (r.match) return r;
   const fresh = g.news.filter((n) => n.id >= lastNews);
@@ -578,7 +598,7 @@ export function needsAttention(n: NewsItem): boolean {
   return !!me && (n.params.to === me || n.params.from === me || n.params.club === me);
 }
 
-export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean; untilNews?: boolean; maxDays?: number; autoPlay?: boolean; onProgress?: (date: string) => void; shouldStop?: () => boolean }): Promise<DayResult> {
+export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean; untilNews?: boolean; maxDays?: number; autoPlay?: boolean; onProgress?: (date: string) => void; shouldStop?: () => boolean; watchDays?: boolean }): Promise<DayResult> {
   const g = gs();
   let steps = 0;
   const firstNews = g.nextId.news;
@@ -589,7 +609,11 @@ export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean;
     if (opts.maxDays && g.dayDone && daysBetween(startDate, g.date) >= opts.maxDays) return {};
     if (opts.shouldStop?.()) return {};
     if (opts.untilDate && g.date >= opts.untilDate && g.dayDone && !g.pendingFixture) return {};
-    const r = continueGame();
+    const paused = !g.dayDone && !g.pendingFixture;
+    const watch = opts.watchDays && !opts.autoPlay ? (d: string) => watchedDay(d) !== undefined : undefined;
+    const r = continueGame(watch);
+    // en fulgt kampdag er spillet færdig: vis resultaterne
+    if (paused && watch && g.dayDone && watch(g.date)) return { stop: 'dayEnd' };
     if (r.match !== undefined) {
       if (opts.autoPlay) {
         quickPlayUserMatch();

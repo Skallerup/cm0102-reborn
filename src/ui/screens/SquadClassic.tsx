@@ -133,6 +133,8 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.reserves) return { k: 'Res', title: t('cl.pl.inReserves') };
+  // CM 01/02 "Yel": ét gult kort fra karantæne
+  if (p.yellowCount === 4) return { k: 'Yel', title: t('cl.tag.yelTitle') };
   if (isInternational(p)) return { k: 'Int', title: t('cl.tag.intTitle', { nation: natName(g.nations[p.nation]?.name) ?? '' }) };
   if (p.contract?.futureClub) return { k: 'Fut', title: t('tag.leaving') };
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
@@ -151,7 +153,7 @@ function nationalTag(p: Player): { k: string; title: string } | null {
 }
 
 /** Hvilken fane på spillerprofilen der forklarer mærket */
-const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
+const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Yel: 'injuries', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
 
 /** Mærket foran navnet – et klik åbner den del af spillerprofilen, der handler om det */
 function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }) {
