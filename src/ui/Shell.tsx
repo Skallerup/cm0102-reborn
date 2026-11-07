@@ -123,6 +123,7 @@ export function Shell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [winNote, setWinNote] = useState<{ head: string; text: string } | null>(null);
   const stopRef = useRef(false);
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => { setScrollElement(mainRef.current); return () => setScrollElement(null); }, []);
@@ -392,7 +393,13 @@ export function Shell() {
               <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
-            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} onHoliday={(untilMatch) => setHoliday(untilMatch)} />
+            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} onHoliday={(untilMatch) => {
+              // CM 01/02: "Your club has no match in the next 60 days." (lille vindue med Ok)
+              const g2 = gs();
+              const limit = addDays(g2.date, 60);
+              if (untilMatch && !Object.values(g2.fixtures).some((f) => !f.result && f.date <= limit && (f.home === g2.userClub || f.away === g2.userClub))) { setWinNote({ head: t('cl.hol.untilNext'), text: t('cl.hol.noMatch') }); return; }
+              setHoliday(untilMatch);
+            }} />
             <CompetitionsMenu />
             <NationsClubsMenu />
             <FindMenu />
@@ -524,6 +531,7 @@ export function Shell() {
         void run(holiday ? { untilMatch: true, maxDays: 120 } : { untilDate: addDays(g2.date, 14), autoPlay: true }).finally(() => { gs().manager.holiday = undefined; notify(); });
       }} />}
       {toast && <div className="toast">{toast}</div>}
+      {winNote && <div className="cx-winbox-bg"><div className="cx-winbox" role="dialog"><div className="cx-winbox-head">{winNote.head}</div><p>{winNote.text}</p><button onClick={() => setWinNote(null)}>{t('common.ok')}</button></div></div>}
       {g.draft && online && <RoomChat />}
     </div>
   );

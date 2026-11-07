@@ -1152,3 +1152,9 @@
 .cx-live-mv.up::before { content: '▲'; color: #fff21f; } .cx-live-mv.down::before { content: '▼'; color: #ff3b3b; }
 .cx-ts-buttons.cx-bid-answer { grid-template-columns: 3fr 1fr 1fr 1fr; }
 .cx-nbar .cx-respond { min-width: 200px; }
+/* lille Windows-vindue (CM 01/02: "Holiday until next match – Your club has no match in the next 60 days.") */
+.cx-winbox-bg { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; }
+.cx-winbox { width: 260px; background: #8c8a8c; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; text-align: center; padding-bottom: 12px; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+.cx-winbox-head { background: #00006e; color: #fff; text-align: left; padding: 4px 8px; font-size: 13px; }
+.cx-winbox p { margin: 14px 10px; color: #fff; font-size: 12.5px; }
+:root[data-skin='retro'] .cx-winbox button { min-width: 74px; padding: 3px 0; background: #8c8a8c; color: #fff; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; font-size: 13px; box-shadow: none; }
