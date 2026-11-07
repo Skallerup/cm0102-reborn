@@ -170,6 +170,16 @@ async function run(look) {
     await page.waitForSelector('.cx-refs', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-dommere.png` });
   });
+  if (look === 'klassisk') await step('klubbens History (Man Utd History)', async () => {
+    await go({ name: 'squad' });
+    await page.locator('.cx-subrow button', { hasText: 'History' }).last().click();
+    await page.waitForSelector('.cx-chist .cx-chist-row', { timeout: 5000 });
+    for (const tab of ['Competitions', 'Landmarks', 'Positions', 'Attendances']) { await page.getByRole('button', { name: tab, exact: true }).first().click(); await page.waitForTimeout(100); }
+    for (const tab of ['Results', 'Sequences', 'Players', 'Transfers']) { await page.locator('.cx-subrow button', { hasText: tab }).first().click(); await page.waitForTimeout(100); }
+    await page.getByRole('button', { name: 'Records', exact: true }).first().click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-klubhistorie.png` });
+    await checkScreen('klubhistorie');
+  });
   if (look === 'klassisk') await step('UEFA Coefficients', async () => {
     await go({ name: 'coefficients' });
     await page.waitForSelector('.cx-coef tbody tr', { timeout: 5000 });

@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { storeSeasonRecords } from './clubHistory';
 import { boardEventsSeason } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
@@ -515,7 +516,8 @@ function prune() {
     // klubløse der ikke er gode nok, eller er for gamle til at få kontrakt, forsvinder ud af fodbolden
     if ((p.ca < 85 && age >= 25) || (age >= 33 && p.ca < 100) || age >= 38 || (p.ca < 45 && age >= 21)) removePlayer(p);
   }
-  // gamle kampe og rapporter
+  // gamle kampe og rapporter (klubhistorikken gemmes først)
+  storeSeasonRecords(isHumanClub);
   g.fixtures = {};
   const reportIds = Object.keys(g.reports).map(Number).sort((a, b) => b - a);
   for (const id of reportIds.slice(40)) delete g.reports[id];

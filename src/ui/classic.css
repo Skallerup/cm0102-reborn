@@ -1162,8 +1162,8 @@
 .cx-md-tools .cx-greybtn { min-width: 200px; }
 .cx-md-tools .grow { flex: 1; }
 /* mål (CM 01/02): bjælken blinker GOAL! i 5-6 sekunder */
-.cx-goal-flash { background: #fff21f; color: #0b1a5c; font-size: clamp(28px, 4vw, 46px) !important; font-weight: 900 !important; letter-spacing: 0.08em; animation: cx-goal-blink 0.55s steps(1) infinite; }
-@keyframes cx-goal-blink { 50% { background: #0b1a5c; color: #fff21f; } }
+.cx-goal-flash { background: var(--g1, #fff21f); color: var(--g2, #0b1a5c); font-size: clamp(28px, 4vw, 46px) !important; font-weight: 900 !important; letter-spacing: 0.08em; animation: cx-goal-blink 0.55s steps(1) infinite; }
+@keyframes cx-goal-blink { 50% { background: var(--g2, #0b1a5c); color: var(--g1, #fff21f); } }
 /* lange trupper (40+ spillere): listen ruller i sin egen boks med en synlig bjælke som i CM 01/02 (resten lå før skjult bag bundknapperne) */
 @media (min-width: 761px) {
   .cx-sq-cols { max-height: calc(100vh - 410px); overflow-y: auto; padding-right: 4px; }
@@ -1205,3 +1205,12 @@
 .cx-prog-chart circle.me { fill: #ff3b2f; } .cx-prog-chart circle.opp { fill: #fff21f; }
 @media (min-width: 761px) { .cx-refs { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-refs .cx-tbl td { font-weight: 400; } }
 .cx-mo-red { color: #ff6b5a; } .cx-mo-red .cx-card { vertical-align: -2px; }
+/* "Man Utd History" (CM 01/02): to kolonner med tynde linjer, værdierne i gult, sæsonen i en blå knap */
+.cx-chist-tbl { margin: 0 16px; padding: 2px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 360px); overflow-y: auto; }
+.cx-chist-row { display: grid; grid-template-columns: 340px 1fr; align-items: center; min-height: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); color: #fff; font-size: 13px; }
+.cx-chist-row > span { padding: 2px 8px; } .cx-chist-row > span:first-child { border-right: 1px solid rgba(255, 255, 255, 0.15); }
+.cx-chist-row.three { grid-template-columns: 280px 100px 1fr; }
+.cx-chist-row.date { grid-template-columns: 120px 1fr; } .cx-chist-row.date > span:first-child { border-right: 0; }
+.cx-chist-row .v { color: #fff21f; }
+.cx-chist-btn { display: grid; place-items: center; height: 20px; margin: 2px 6px; background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 12px; }
+@media (max-width: 760px) { .cx-chist-row, .cx-chist-row.three { grid-template-columns: 1fr; } }

@@ -202,6 +202,8 @@ const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
 const HUBS: Partial<Record<ScreenName, Hub>> = {
   // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
   competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
+  // "Man Utd History" (CM 01/02): klubbens farver, skærmens egen titel og faner
+  clubhistory: { title: (_g, _r, st) => st, club: (g, r) => (r.id !== undefined ? Number(r.id) : own(g)) },
   // UEFA Coefficients (CM 01/02): sort med røde bogstaver som Champions League
   coefficients: { colors: () => compColors('CL') },
   // slutrundens kampdag (CM 01/02: guldfarvet titel for FIFA World Cup)
@@ -321,7 +323,7 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
       out.push({ key: k, label: pos > 0 && abbr ? t('cl.posIn', { pos: ordinal(pos), lg: abbr }) : label(k), route: { name: 'competitions', id: lg }, disabled: !lg, arrow: true });
     } else if (k === 'clubHistory') {
       const cid = viewed || g.userClub;
-      out.push({ key: k, label: t('cl.history'), route: { name: 'club', id: cid, state: { cview: 'stats' } }, on: route.name === 'club' && route.state?.cview === 'stats', arrow: true });
+      out.push({ key: k, label: t('cl.history'), route: { name: 'clubhistory', id: cid }, on: route.name === 'clubhistory', arrow: true });
     } else if (k === 'transfers' && keys === CLUB_TABS) {
       // CM 01/02: klubbens Transfers-fane viser køb og salg (søgningen ligger i managermenuen)
       out.push({ key: k, label: label(k), route: { name: 'club', id: g.userClub, state: { cview: 'transfers' } }, on: route.name === 'club' && route.state?.cview === 'transfers' });

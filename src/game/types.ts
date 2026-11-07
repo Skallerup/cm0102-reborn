@@ -367,6 +367,8 @@ export interface Club {
   projects?: ClubProject[];
   /** Klubrekorder (kun menneskestyrede klubber, siden spillets start) */
   records?: ClubRecords;
+  /** CM 01/02 klubhistorik: afsluttede sæsoners tal (game/clubHistory.ts; kun menneskeklubber) */
+  seasonRecs?: Record<number, import('./clubHistory').SeasonRec>;
   /** Sæson, hvor bestyrelsen har betalt for ekstra ungdomsrekruttering (større og bedre årgang i marts) */
   youthDrive?: number;
   /** Træningslejr (planlagt, i gang eller afsluttet med rapport) og dens løft til holdkemien resten af sæsonen */

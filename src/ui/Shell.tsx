@@ -66,6 +66,7 @@ import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerM
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { IntlDay, MatchDay } from './screens/MatchDayClassic';
+import { ClassicClubHistory } from './screens/ClubHistoryClassic';
 import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
@@ -93,7 +94,7 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients'];
+const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory'];
 
 /** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
 function selectionProblems(): string | null {
@@ -517,7 +518,7 @@ export function Shell() {
             ) : matchSide && route.name === 'match' && matchSide.s.venue ? (
               // kampskærmen (CM 01/02): stadion og by nederst i stedet for Back/Next
               // … og under kampen den seneste kommentar, når man står på en anden fane end Match Overview
-              matchSide.s.line ? <div className={`cx-venue cx-foot-venue cx-foot-line ${matchSide.s.line.flash ? 'cx-goal-flash' : ''}`} style={matchSide.s.line.flash ? undefined : { background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
+              matchSide.s.line ? <div className={`cx-venue cx-foot-venue cx-foot-line ${matchSide.s.line.flash ? 'cx-goal-flash' : ''}`} style={matchSide.s.line.flash ? ({ '--g1': matchSide.s.line.background, '--g2': matchSide.s.line.color } as CSSProperties) : { background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
                 : <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
             ) : <div className="cx-backnext">
               {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
@@ -590,6 +591,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'matchday': return <MatchDay id={Number(route.id)} />;
     case 'intlday': return <IntlDay />;
     case 'coefficients': return <UefaCoefficients />;
+    case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
@@ -684,7 +686,7 @@ function specificBackground(g: GameState, route: Route, iso: string): string | n
   const own = g.clubs[g.userClub];
   const clubOf = (n: number) => g.clubs[n];
   switch (route.name) {
-    case 'club': return clubBgUrl(clubOf(Number(id ?? g.userClub)), iso);
+    case 'club': case 'clubhistory': return clubBgUrl(clubOf(Number(id ?? g.userClub)), iso);
     case 'player': { const p = g.players[Number(id)]; return clubBgUrl(p?.club ? clubOf(p.club) : undefined, iso) ?? nationBgUrl(g.nations[p?.nation ?? -1]?.name, iso); }
     case 'competitions': case 'fixtures': {
       const c = id !== undefined ? g.comps[String(id)] : own ? g.comps[own.league] : undefined;
