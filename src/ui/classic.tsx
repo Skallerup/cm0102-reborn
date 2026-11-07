@@ -177,7 +177,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   squad: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   transfers: { title: () => t('cl.tr.title'), club: own },
   assistant: { title: (g) => `${clubName(g)} – ${t('cl.nextMatch')}`, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
-  fixtures: { title: (g) => `${clubName(g)} ${t('nav.fixtures')}`, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
+  fixtures: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   club: {
     title: (g, r) => g.clubs[Number(r.id ?? g.userClub)]?.name ?? '',
     club: (g, r) => Number(r.id ?? g.userClub) || undefined,
@@ -225,6 +225,13 @@ const label = (k: string) => t(LABEL[k] ?? `nav.${k}`);
 /** Fanerne på en anden klubs side → klubsidens visninger */
 const VIEWED: Record<string, string> = { squad: 'squad', transfers: 'transfers', assistant: 'next', fixtures: 'fixtures', club: 'info', finance: 'finances' };
 
+/** CM 01/02: "Sun 31st Mar" (engelsk med ordenstal, øvrige sprog som landets korte dato) */
+export function cxShortDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  const loc = t('cl.locale');
+  if (!loc.startsWith('en')) return d.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' });
+  return `${d.toLocaleDateString(loc, { weekday: 'short' })} ${ordinal(d.getDate())} ${d.toLocaleDateString(loc, { month: 'short' })}`;
+}
 const ordinal = (n: number) => (t('cl.locale').startsWith('da') ? `${n}.` : `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`);
 
 /** Den seneste spillede kamp for en klub (til "Sidste kamp") */

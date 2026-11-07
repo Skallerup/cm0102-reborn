@@ -1039,3 +1039,10 @@
 .cx-ct { background: rgba(0, 0, 0, 0.32); padding: 10px 16px; min-height: 200px; }
 .cx-ct-total { display: flex; justify-content: flex-end; margin-bottom: 8px; }
 .cx-ct-total .c-val { display: inline-block; min-width: 160px; padding: 4px 8px; text-align: center; background: #3a1670; color: #fff; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; }
+@media (min-width: 761px) {
+  /* kampprogrammet som CM 01/02: holdnavne i normal vægt, ligaen gul, pokaler/Europa orange */
+  .cx-fx-opp { font-size: 19px; font-weight: 500; }
+  .cx-fx-comp { font-weight: 500; font-size: 14px; }
+  .cx-fx-comp.cup { color: #ffb347; }
+  .cx-fx-date { height: 26px; font-size: 13px; font-weight: 500; }
+}

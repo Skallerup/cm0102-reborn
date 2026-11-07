@@ -15,7 +15,7 @@ import { NewsIcon } from '../icons';
 import type { NewsCategory, NewsItem } from '../../game/types';
 import { isRetro } from '../theme';
 import { Tabs } from '../components';
-import { ClassicSub } from '../classic';
+import { ClassicSub, cxShortDate } from '../classic';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -25,14 +25,7 @@ const CX_CATS: Record<Exclude<CxGroup, 'all'>, NewsCategory[]> = {
   messages: ['board', 'scout', 'youth', 'general'], competitions: ['match'], injuries: ['injury'],
   contracts: ['contract'], transfers: ['transfer'], jobs: ['job'], records: ['award'],
 };
-/** CM 01/02: "Sun 7th Apr" (engelsk med ordenstal, øvrige sprog som landets korte dato) */
-const ORD = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
-const cxDate = (iso: string) => {
-  const d = new Date(`${iso}T12:00:00`);
-  const loc = t('cl.locale');
-  if (!loc.startsWith('en')) return d.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' });
-  return `${d.toLocaleDateString(loc, { weekday: 'short' })} ${ORD(d.getDate())} ${d.toLocaleDateString(loc, { month: 'short' })}`;
-};
+const cxDate = cxShortDate;
 
 /** Kategorier, der kan dæmpes (bestyrelse, job, kontrakter og transfers kræver ofte svar – transfers styres af transferfilteret) */
 const MUTABLE: NewsCategory[] = ['match', 'injury', 'scout', 'award', 'youth', 'finance', 'general'];
