@@ -91,11 +91,22 @@ function bodyKey(n: NewsItem): string {
 /** "Board Confidence Update": bestyrelsens udtalelse, som den stod på dagen */
 const boardUpdate = (n: NewsItem) => [t(`cl.ba.conf.${n.params.lvl}`, { club: String(n.params.club ?? '') }), t(`cl.ba.fin.${n.params.fin}`), t(`cl.ba.fans.${n.params.fans}`)].join('\n\n');
 
+/** Bud på egen spiller (CM 01/02): når man har svaret, står svaret under nyheden – "Man Utd have rejected the offer." */
+function offerAnswer(n: NewsItem): string {
+  if (n.link?.kind !== 'offer') return '';
+  const g = gs();
+  const o = g.offers.find((x) => x.id === Number(n.link!.id));
+  if (!o || o.seller !== g.userClub || o.status === 'pending') return '';
+  const club = g.clubs[g.userClub]?.short ?? '';
+  const k = o.status === 'rejected' ? 'transfer.ans.rejected' : o.status === 'countered' ? 'transfer.ans.countered' : o.status === 'negotiating' || o.status === 'accepted' || o.status === 'completed' ? 'transfer.ans.accepted' : '';
+  return k ? `\n\n${t(k, { club, fee: money(o.counter ?? o.fee) })}` : '';
+}
+
 export function newsBody(n: NewsItem) {
   if (n.key === 'board.update' && n.params?.lvl) return boardUpdate(n);
   const k = bodyKey(n);
   if (!has(k)) return '';
-  const body = t(k, newsParams(n));
+  const body = t(k, newsParams(n)) + offerAnswer(n);
   // ældre nyheder uden de felter, brødteksten bruger: ingen brødtekst frem for {pladsholdere}
   return /\{[a-zA-Z]+\}/.test(body) ? '' : body;
 }
@@ -222,7 +233,7 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 export function NewsBody({ n }: { n: NewsItem }) {
   if (n.key === 'board.update' && n.params?.lvl) return <>{boardUpdate(n)}</>;
   const k = bodyKey(n);
-  return has(k) ? <>{linked(n, k)}</> : null;
+  return has(k) ? <>{linked(n, k)}{offerAnswer(n)}</> : null;
 }
 
 /** Ugens transferoverblik: alle handlerne i en lille tabel (vises under brødteksten) */

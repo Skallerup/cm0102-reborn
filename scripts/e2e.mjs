@@ -148,6 +148,8 @@ async function run(look) {
     await page.waitForSelector('.cx-inbox', { timeout: 5000 });
     const st = await gs(() => window.__cm.gs().offers.at(-1).status);
     if (st !== 'rejected') throw new Error(`buddet blev ikke afvist (${st})`);
+    await page.locator('.cx-nrow', { hasText: 'transfer bid' }).first().click();
+    if (!(await page.locator('.cx-nbody').textContent({ timeout: 5000 })).includes('rejected the offer')) throw new Error('svaret står ikke under nyheden');
   });
   if (look === 'klassisk') await step('bud på en spiller (Approach To Buy)', async () => {
     const pid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).find((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league).id; });
