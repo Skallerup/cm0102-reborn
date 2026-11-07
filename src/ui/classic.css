@@ -932,3 +932,15 @@
 :root[data-skin='retro'] span.cx-rowbtn { display: inline-flex; }
 /* klikbare navne, klubber, lande og ligaer: hånd-ikonet under musen (ikke tekstmarkøren) */
 :root[data-skin='retro'] :is(.cx-link, .link, .club-link, [role='link']), :root[data-skin='retro'] .cx-tbl :is(td.c-name, td.c-club) > span { cursor: pointer; }
+/* nyhederne som CM 01/02: datoknap til venstre (ca. en fjerdedel), overskriften i hele resten af rækken med en linje under;
+   den valgte række er rød i hele bredden. (.cx-nrow bruges også af nationsskærmene – derfor .cx-inbox foran) */
+.cx-inbox .cx-nlist { background: rgba(0, 0, 0, 0.35); max-height: calc(5 * 38px + 4px); }
+.cx-inbox .cx-nrow { grid-template-columns: minmax(150px, 19%) minmax(0, 1fr); gap: 0; min-height: 0; margin: 0; align-items: stretch; }
+.cx-inbox .cx-ndate { display: flex; align-items: center; justify-content: center; padding: 7px 6px; font-size: 14px; background: linear-gradient(180deg, #1018b8, #0a1090); }
+.cx-inbox .cx-ntitle { display: flex; align-items: center; padding: 7px 16px; font-size: 15px; font-weight: 600; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+.cx-inbox .cx-nrow.unread .cx-ntitle { font-weight: 800; }
+.cx-inbox .cx-nmsg { background: rgba(0, 0, 0, 0.35); min-height: 380px; }
+.cx-inbox .cx-nhead { background: rgba(70, 70, 80, 0.55); font-size: 21px; }
+.cx-inbox .cx-nbody { font-size: 21px; font-weight: 600; line-height: 1.7; padding-top: 8px; }
+.cx-inbox .cx-nbar { justify-content: flex-end; padding: 4px 0; }
+.cx-inbox .cx-nbar .cx-grey { min-width: 240px; }

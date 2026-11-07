@@ -45,6 +45,10 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Landsholdsudtagelser: `planWindow` (international.ts) trækker vinduets venskabskampe 2 dage før og gemmer dem i
+  `IntlState.plan`, så `callUpNews` kan sende én nyhed pr. landshold (`intl.sel1`/`intl.selN`, brødteksten vælges i `newsBody`:
+  navne ≤ 3, ellers `num.N`, med/uden modstander). Klassisk indbakke: `.cx-inbox .cx-nrow` (NB: `.cx-nrow` bruges også af
+  nationsskærmene med et andet grid), datoen med ordenstal på engelsk, ingen knapper (overskriften er link).
 - 2026-11-07 – Kommentaren på alle 8 sprog: `scripts/match-texts-i18n/<sprog>.json` (de/es/fr/it/pt/tr, oversat af Claude, kun de 121
   begivenheder i `scripts/match-text-events.json`) flettes ind af build-match-texts.py (række = [vægt, en, da, {sprog}]). Nye
   begivenheder i MAP skal oversættes dertil. Skader: originalens knock (< 40 % = sikkert knock) eksploderede, fordi restitutionen

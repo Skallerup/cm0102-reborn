@@ -40,7 +40,9 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.round === 'string' && n.key.startsWith('comp.')) p.round = t(`stage.${p.round}`).toLowerCase();
   if (typeof p.targetKey === 'string') p.target = t(p.targetKey);
   if (n.key.startsWith('staffrep.')) for (const k of ['prone', 'cond', 'inj', 'now', 'future']) if (typeof p[k] === 'string' && p[k]) p[k] = t(String(p[k]));
-  if (n.key.startsWith('intl.')) { if (typeof p.nation === 'string') p.nation = natName(p.nation); if (typeof p.runnerUp === 'string') p.runnerUp = natName(p.runnerUp); }
+  if (n.key.startsWith('intl.')) { if (typeof p.nation === 'string') p.nation = natName(p.nation); if (typeof p.runnerUp === 'string') p.runnerUp = natName(p.runnerUp); if (typeof p.opp === 'string' && p.opp) p.opp = natName(p.opp); }
+  // "Ryan Giggs and Matthew Williams" (navnene gemmes med & imellem)
+  if (typeof p.names === 'string' && p.names.includes(' & ')) { const ns = p.names.split(' & '); p.names = `${ns.slice(0, -1).join(', ')} ${t('common.and')} ${ns.at(-1)}`; }
   // scoutrapporten (CM 01/02): hvor han blev set, dommen og bemærkningerne sættes sammen af nøglerne
   if (n.key === 'scout.report') {
     p.where = p.ctx === 'weeks' ? t('scout.ctx.weeks', { age: p.age, pos: t(`role.${p.pos}`).toLowerCase() }) : t(`scout.ctx.${p.ctx}`, { club: p.club, score: p.score, opp: p.opp });
@@ -56,6 +58,14 @@ export function newsTitle(n: NewsItem) {
 }
 
 export function newsBody(n: NewsItem) {
+  // landsholdsudtagelse: navnene (højst tre) eller "Four players from Man Utd", med eller uden modstanderen
+  if (n.key === 'intl.sel1' || n.key === 'intl.selN') {
+    const many = n.key === 'intl.selN' && !n.params?.names, noOpp = !!n.params?.noOpp;
+    const k = n.key === 'intl.sel1' ? (noOpp ? 'intl.sel1.noOpp' : 'intl.sel1.body') : many ? (noOpp ? 'intl.selN.manyNoOpp' : 'intl.selN.many') : noOpp ? 'intl.selN.noOpp' : 'intl.selN.body';
+    const params = newsParams(n);
+    if (many && typeof params.n === 'number') params.n = has(`num.${params.n}`) ? t(`num.${params.n}`) : params.n;
+    return t(k, params);
+  }
   const k = `${n.key}.body`;
   return has(k) ? t(k, newsParams(n)) : '';
 }

@@ -16,6 +16,11 @@ describe('landshold', () => {
     const g = gs();
     const beckham = Object.values(g.players).find((p) => p.first === 'David' && p.last === 'Beckham')!;
     const caps0 = beckham.caps;
+    // CM 01/02: "Leeds players selected in England squad" – én nyhed pr. landshold, med modstanderen i vinduet
+    while (g.date < '2001-09-04') { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+    const sel = g.news.filter((n) => n.key === 'intl.sel1' || n.key === 'intl.selN');
+    expect(sel.length).toBeGreaterThan(0);
+    expect(sel.some((n) => n.params?.opp)).toBe(true);
     while (g.date < '2002-07-08') { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
     expect(beckham.caps).toBeGreaterThan(caps0);
     const t = g.intl!.tournament!;

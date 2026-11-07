@@ -1,5 +1,4 @@
 
-import { authentic } from '../../game/rules';
 import { isOriginal2001 } from '../../game/rules2001';
 import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
@@ -26,7 +25,14 @@ const CX_CATS: Record<Exclude<CxGroup, 'all'>, NewsCategory[]> = {
   messages: ['board', 'scout', 'youth', 'general'], competitions: ['match'], injuries: ['injury'],
   contracts: ['contract'], transfers: ['transfer'], jobs: ['job'], records: ['award'],
 };
-const cxDate = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'short', day: 'numeric', month: 'short' });
+/** CM 01/02: "Sun 7th Apr" (engelsk med ordenstal, øvrige sprog som landets korte dato) */
+const ORD = (n: number) => `${n}${n % 10 === 1 && n !== 11 ? 'st' : n % 10 === 2 && n !== 12 ? 'nd' : n % 10 === 3 && n !== 13 ? 'rd' : 'th'}`;
+const cxDate = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00`);
+  const loc = t('cl.locale');
+  if (!loc.startsWith('en')) return d.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' });
+  return `${d.toLocaleDateString(loc, { weekday: 'short' })} ${ORD(d.getDate())} ${d.toLocaleDateString(loc, { month: 'short' })}`;
+};
 
 /** Kategorier, der kan dæmpes (bestyrelse, job, kontrakter og transfers kræver ofte svar – transfers styres af transferfilteret) */
 const MUTABLE: NewsCategory[] = ['match', 'injury', 'scout', 'award', 'youth', 'finance', 'general'];
@@ -100,9 +106,7 @@ export function Inbox() {
           ))}
         </div>
         <div className="cx-nbar">
-          {/* ikke i CM 01/02: kun i den udvidede udgave */}
-          {!authentic() && <button className="cx-grey small" onClick={() => setSettings(true)}>{t('inbox.settings')}</button>}
-          {!authentic() && <button className="cx-grey small" onClick={() => act({ t: 'read', ids: 'all' })}>{t('inbox.markRead')}</button>}
+          {/* CM 01/02: kun "Filter :" og Next Unread */}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :
             <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>
@@ -113,13 +117,13 @@ export function Inbox() {
         </div>
         {item ? (
           <div className="cx-nmsg">
-            <h3 className="cx-nhead"><NewsTitle n={item} /></h3>
+            {/* overskriften åbner det, nyheden handler om (originalen har ingen knap her) */}
+            <h3 className="cx-nhead">{item.link ? <span className="cx-link" role="link" onClick={() => open(item)}><NewsTitle n={item} /></span> : <NewsTitle n={item} />}</h3>
             {newsBody(item) && <p className="cx-nbody"><NewsBody n={item} /></p>}
             <NewsDeals n={item} />
             <WarRaise item={item} />
             <AppealBox item={item} />
             <AiArticle item={item} />
-            {item.link && <div><button className="cx-grey" onClick={() => open(item)}>{t('inbox.open')}</button></div>}
           </div>
         ) : <div className="cx-nmsg"><div className="cx-nempty">{t('inbox.select')}</div></div>}
         <FirstDay />

@@ -34,6 +34,8 @@ export interface IntlState {
   info?: Record<number, NatInfo>; past?: PastFinal[];
   /** FIFA-point pr. nation (start: originalens koefficient eller styrken; opdateres efter hver landskamp – *estimeret* Elo) */
   fifa?: Record<number, number>;
+  /** næste vindues venskabskampe, lagt fast ved udtagelsen (så nyheden kan nævne modstanderen) */
+  plan?: { date: string; friendlies: [number, number][] };
 }
 
 const WINDOWS = ['09-05', '10-09', '11-13', '03-26'];
@@ -140,26 +142,61 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
   return res;
 }
 
-/** Brugerens spillere, der er udtaget til landsholdet (nyhed to dage før vinduet) */
-function callUpNews(nations: number[]) {
+/** CM 01/02: én nyhed pr. landshold med brugerens spillere – "Giggs selected in Wales squad" / "Man Utd players selected in
+ *  England squad" – "… have been called up to the England squad for the match against Holland." (to dage før vinduet) */
+function callUpNews(nations: number[], opp: Map<number, number> = new Map()) {
   const g = gs();
-  const picked = new Set(nations.flatMap((n) => nationSquad(n).map((p) => p.id)));
+  const squads = new Map(nations.map((n) => [n, new Set(nationSquad(n).map((p) => p.id))]));
   forEachHuman(() => {
-    const mine = Object.values(g.players).filter((p) => p.club === g.userClub && picked.has(p.id));
-    if (mine.length) addNews({ cat: 'general', key: 'intl.callup', params: { n: mine.length, players: mine.slice(0, 6).map((p) => `${p.first} ${p.last}`.trim()).join(', ') } });
+    const club = g.clubs[g.userClub];
+    if (!club) return;
+    for (const [n, ids] of squads) {
+      const mine = Object.values(g.players).filter((p) => p.club === g.userClub && ids.has(p.id));
+      if (!mine.length) continue;
+      const o = opp.get(n);
+      addNews({ cat: 'general', key: mine.length === 1 ? 'intl.sel1' : 'intl.selN', params: {
+        player: mine[0].last, club: club.short, nation: g.nations[n]?.name ?? '', opp: o !== undefined ? g.nations[o]?.name ?? '' : '',
+        names: mine.length <= 3 ? mine.map((p) => `${p.first} ${p.last}`.trim()).join(' & ') : '', n: mine.length, ...(o === undefined ? { noOpp: 1 } : {}),
+      }, link: mine.length === 1 ? { kind: 'player', id: mine[0].id } : { kind: 'club', id: club.id } });
+    }
   });
 }
 
-function friendlies(busy: Set<number> = new Set()) {
+/** Næste vindues kampe: kvalifikationsrunden (fast rækkefølge) og venskabskampene (trukket nu og gemt i state().plan) */
+function planWindow(date: string): Map<number, number> {
+  const opp = new Map<number, number>();
+  const q = state().qual;
+  const busy = new Set<number>();
+  if (q && q.round < 4) {
+    const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]], [[1, 0], [3, 2]]][q.round];
+    for (const grp of q.groups) for (const [i, j] of pairs) { opp.set(grp[i], grp[j]); opp.set(grp[j], grp[i]); busy.add(grp[i]); busy.add(grp[j]); }
+  }
+  const pairs = friendlyPairs(busy);
+  state().plan = { date, friendlies: pairs };
+  for (const [a, b] of pairs) { opp.set(a, b); opp.set(b, a); }
+  return opp;
+}
+
+function friendlyPairs(busy: Set<number>): [number, number][] {
   // de 64 stærkeste lande spiller én kamp hver, mod et land fra samme verdensdel (lande i kvalifikation spiller den)
   const g = gs();
   const pool = ranked().slice(0, 64).filter((n) => !busy.has(n));
   const byRegion = new Map<string, number[]>();
   for (const n of pool) { const r = regionOf(g.nations[n]?.name); (byRegion.get(r) ?? byRegion.set(r, []).get(r)!).push(n); }
+  const out: [number, number][] = [];
   for (const list of byRegion.values()) {
     const sh = rng.shuffle(list.slice());
-    for (let i = 0; i + 1 < sh.length; i += 2) play(sh[i], sh[i + 1], 'friendly');
+    for (let i = 0; i + 1 < sh.length; i += 2) out.push([sh[i], sh[i + 1]]);
   }
+  return out;
+}
+
+function friendlies(busy: Set<number> = new Set()) {
+  // kampene, der blev trukket ved udtagelsen (ellers trækkes de nu)
+  const plan = state().plan;
+  const pairs = plan?.date === gs().date ? plan.friendlies.filter(([a, b]) => !busy.has(a) && !busy.has(b)) : friendlyPairs(busy);
+  state().plan = undefined;
+  for (const [a, b] of pairs) play(a, b, 'friendly');
 }
 
 /** VM 2002 i Sydkorea og Japan: de rigtige 32 deltagere og grupper A-H */
@@ -334,7 +371,7 @@ export function intlDaily() {
   if (g.draft) return;
   const md = g.date.slice(5);
   const year = Number(g.date.slice(0, 4));
-  if (WINDOWS.some((w) => addDays(g.date, 2).slice(5) === w)) callUpNews(ranked().slice(0, 64));
+  if (WINDOWS.some((w) => addDays(g.date, 2).slice(5) === w)) { const opp = planWindow(addDays(g.date, 2)); callUpNews([...opp.keys()], opp); }
   if (WINDOWS.includes(md)) { const busy = qualRound(); friendlies(busy); u21Friendlies(); }
   // kvalifikation i august året før (VM i år ≡ 2, EM i år ≡ 0 mod 4)
   if (md === '08-20' && year % 2 === 1) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
