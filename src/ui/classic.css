@@ -1214,3 +1214,8 @@
 .cx-chist-row .v { color: #fff21f; }
 .cx-chist-btn { display: grid; place-items: center; height: 20px; margin: 2px 6px; background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 12px; }
 @media (max-width: 760px) { .cx-chist-row, .cx-chist-row.three { grid-template-columns: 1fr; } }
+/* "Championship Manager" (Nations & Clubs): to kolonner med navn, landekode (gul) og liga (orange) */
+.cx-nc-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; margin: 0 16px; padding: 6px 12px; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 360px); overflow-y: auto; }
+.cx-nc-row { display: grid; grid-template-columns: 1fr 70px 50px; align-items: center; min-height: 28px; font-size: 18px; color: #fff; }
+.cx-nc-row .code { color: #fff21f; font-size: 12px; text-align: center; } .cx-nc-row .extra { color: #ffa64a; font-size: 12px; text-align: center; }
+@media (max-width: 760px) { .cx-nc-list { grid-template-columns: 1fr; } .cx-nc-row { font-size: 15px; } }

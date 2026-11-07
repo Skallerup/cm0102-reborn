@@ -67,6 +67,7 @@ import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicClubHistory } from './screens/ClubHistoryClassic';
+import { ClassicNations } from './screens/NationsClassic';
 import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
@@ -94,7 +95,7 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory'];
+const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory', 'nations'];
 
 /** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
 function selectionProblems(): string | null {
@@ -591,6 +592,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'matchday': return <MatchDay id={Number(route.id)} />;
     case 'intlday': return <IntlDay />;
     case 'coefficients': return <UefaCoefficients />;
+    case 'nations': return <ClassicNations />;
     case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;

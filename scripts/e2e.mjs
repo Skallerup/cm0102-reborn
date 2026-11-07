@@ -91,11 +91,14 @@ async function run(look) {
   if (look === 'klassisk') await step('nations & clubs-menuen (klassisk)', async () => {
     await page.locator('.cx-side .cx-drop-btn', { hasText: 'Nations' }).first().click();
     await page.locator('.cx-drop-pop button', { hasText: 'Major Clubs' }).first().hover();
-    await page.locator('.cx-drop-sub button', { hasText: 'Europe' }).first().hover();
+    await page.locator('.cx-drop-sub button', { hasText: 'Europe' }).first().click();
+    await page.waitForSelector('.cx-nc .cx-nc-row', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-nationsclubs.png` });
-    await page.locator('.cx-drop-sub .cx-drop-sub button').first().click();
+    for (const tab of ['Nations', 'Under-21s']) { await page.getByRole('button', { name: tab, exact: true }).first().click(); await page.waitForTimeout(100); }
+    for (const tab of ['League', 'Non-League', 'Other']) { await page.locator('.cx-subrow button', { hasText: tab }).first().click(); await page.waitForTimeout(100); }
+    await page.locator('.cx-nc .cx-nc-row .cx-link').first().click();
     await page.waitForTimeout(300);
-    await checkScreen('major club');
+    await checkScreen('club fra Nations & Clubs');
   });
   if (look === 'klassisk') await step('staff search (klassisk)', async () => {
     await go({ name: 'transfers' });

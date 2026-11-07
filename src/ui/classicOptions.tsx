@@ -292,9 +292,9 @@ export function CompetitionsMenu() {
 // ---------- Nations & Clubs (sidebaren) ----------
 
 const OCEANIA = new Set(['Australia', 'New Zealand', 'Fiji', 'Papua New Guinea', 'Solomon Islands', 'Tahiti', 'Vanuatu', 'New Caledonia', 'Samoa', 'Tonga', 'American Samoa', 'Cook Islands']);
-const REGIONS = ['africa', 'asia', 'europe', 'northAmerica', 'oceania', 'southAmerica'] as const;
-type UiRegion = (typeof REGIONS)[number];
-const regionOfNation = (name: string | undefined): UiRegion => (name && OCEANIA.has(name) ? 'oceania' : regionOf(name));
+export const REGIONS = ['africa', 'asia', 'europe', 'northAmerica', 'oceania', 'southAmerica'] as const;
+export type UiRegion = (typeof REGIONS)[number];
+export const regionOfNation = (name: string | undefined): UiRegion => (name && OCEANIA.has(name) ? 'oceania' : regionOf(name));
 
 /**
  * "Nations & Clubs" i sidebaren som i CM 01/02: Nations ▸ · Under-21s ▸ · Major Clubs ▸ · League ▸ · Non-League ▸ · Other ▸,
@@ -318,16 +318,21 @@ export function NationsClubsMenu() {
   const byNatThenClubs = (list: typeof clubs) => byRegion([...new Set(list.map((c) => c.nation))].sort(natSort), natRegion, (n) => ({
     key: `n${n}`, label: natName(g.nations[n]?.name), sub: list.filter((c) => c.nation === n).sort((a, b) => b.rep - a.rep).slice(0, 30).map(clubItem),
   }));
+  // CM 01/02: verdensdelen åbner en hel skærm ("European Nations", "Major European Clubs" …)
+  const regionItems = (tab: string, has: (r: UiRegion) => boolean): DropItem[] => REGIONS.filter(has).map((r) => ({ key: `${tab}${r}`, label: t(`cl.region.${r}`), onClick: () => nav({ name: 'nations', state: { nctab: tab, ncreg: r } }) }));
+  const natHas = (r: UiRegion) => nations.some((n) => natRegion(n) === r);
   const items: DropItem[] = [
-    { key: 'nat', label: t('cl.nc.nations'), sub: byRegion(nations, natRegion, (n) => ({ key: `n${n}`, label: natName(g.nations[n]?.name), onClick: () => nav({ name: 'international', id: n }) })) },
-    { key: 'u21', label: t('cl.nc.u21'), sub: byRegion(nations, natRegion, (n) => ({ key: `u${n}`, label: natName(g.nations[n]?.name), onClick: () => nav({ name: 'international', id: n, state: { [`ntt:${n}`]: 'u21' } }) })) },
-    { key: 'major', label: t('cl.nc.major'), sub: byRegion(major, (c) => natRegion(c.nation), clubItem) },
+    { key: 'nat', label: t('cl.nc.nations'), sub: regionItems('nations', natHas) },
+    { key: 'u21', label: t('cl.nc.u21'), sub: regionItems('u21', natHas) },
+    { key: 'major', label: t('cl.nc.major'), sub: regionItems('major', (r) => major.some((c) => natRegion(c.nation) === r)) },
     { key: 'league', label: t('cl.nc.league'), sub: byRegion(leagueNations, natRegion, (n) => ({
       key: `l${n}`, label: natName(g.nations[n]?.name),
-      sub: Object.keys(g.leagues).filter((id) => g.leagues[id].nation === n && visibleLeague(id)).sort((a, b) => g.leagues[a].tier - g.leagues[b].tier).map((id) => ({ key: id, label: compName(g.leagues[id].name), onClick: () => nav({ name: 'competitions', id }) })),
+      onClick: () => nav({ name: 'nations', state: { nctab: 'league', ncnat: n } }),
     })) },
     { key: 'nonleague', label: t('cl.nc.nonLeague'), sub: hiddenClubs.length ? byNatThenClubs(hiddenClubs) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
     { key: 'other', label: t('cl.nc.other'), sub: [
+      ...regionItems('other', (r) => clubs.some((c) => natRegion(c.nation) === r && c.rep < 75 && !g.leagues[c.league]?.hidden)),
+      { key: 'sepo', sep: true },
       { key: 'find', label: t('cl.find'), onClick: () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }) },
       { key: 'own', label: g.clubs[g.userClub]?.name ?? '', disabled: !g.userClub, onClick: () => nav({ name: 'club', id: g.userClub }) },
     ] },

@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Nations & Clubs: rute `nations` (`ClassicNations`, route-state nctab/ncreg/ncnat); menuens verdensdele og League → land åbner den. REGIONS/regionOfNation eksporteres fra classicOptions.
 - 2026-11-07 – Klubhistorik: `game/clubHistory.ts` (`seasonRec(cid)` af kampprogrammet; `storeSeasonRecords` i prune() før
   g.fixtures ryddes → `Club.seasonRecs[sæson]`, kun menneskeklubber). Skærm `ClassicClubHistory` (rute `clubhistory`, knappen History ▸).
   GOAL!-blink: `L.goalTeam` → CSS-variablerne --g1/--g2 (klubbens farver); 'own-goal' tæller nu som mål (cls 'goal').
