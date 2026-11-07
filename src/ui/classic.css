@@ -1150,3 +1150,5 @@
 @media (min-width: 761px) { .cx-mo-line { font-weight: 500; font-size: 22px; } }
 .cx-live-mv { display: inline-block; width: 14px; font-size: 10px; vertical-align: 3px; }
 .cx-live-mv.up::before { content: '▲'; color: #fff21f; } .cx-live-mv.down::before { content: '▼'; color: #ff3b3b; }
+.cx-ts-buttons.cx-bid-answer { grid-template-columns: 3fr 1fr 1fr 1fr; }
+.cx-nbar .cx-respond { min-width: 200px; }

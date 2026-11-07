@@ -48,6 +48,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Klassisk indbakke: knappen Respond (`.cx-respond`) ved en nyhed med link til et ventende bud på egen spiller →
+  `IncomingBidPanel` (TransferStatusClassic.tsx, action `respond` accept/reject/counter). e2e "svar på et bud (Respond)".
 - 2026-11-07 – Nyhedsbrødtekst: `bodyKey(n)` i common.tsx vælger skabelonen for både `newsBody` og `NewsBody` (før brugte
   NewsBody altid `<key>.body`, så varianter som intl.sel1.noOpp aldrig blev vist). Nye varianter: læg dem i bodyKey.
   Ægte tilstand: `originalTransferNews` (transfers.ts) → `transfer.o.<0-3>`/`transfer.oFree.<0-3>` i stedet for transferDigest.

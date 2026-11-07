@@ -16,6 +16,7 @@ import type { NewsCategory, NewsItem } from '../../game/types';
 import { isRetro } from '../theme';
 import { Tabs } from '../components';
 import { ClassicSub, cxShortDate } from '../classic';
+import { IncomingBidPanel } from './TransferStatusClassic';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -44,6 +45,7 @@ export function Inbox() {
   const list = g.news.filter((n) => (classic && grp !== 'all' ? CX_CATS[grp].includes(n.cat) && (cat === 'all' || n.cat === cat)
     : cat === 'all' ? !n.muted : n.cat === cat));
   const [settings, setSettings] = useState(false);
+  const [respond, setRespond] = useState<number | null>(null);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
@@ -78,8 +80,12 @@ export function Inbox() {
     if (next) { setSel(next.id); requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${next.id}"]`)?.scrollIntoView({ block: 'nearest' })); }
   }
   const hasUnread = shown.some((n) => !n.read && n.id !== sel);
+  // et bud på egen spiller, der stadig venter på svar (CM 01/02: knappen Respond)
+  const pendingBid = item?.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(item.link!.id) && o.status === 'pending' && o.seller === g.userClub) : undefined;
+  const respondOffer = respond !== null ? g.offers.find((o) => o.id === respond && o.status === 'pending') : undefined;
 
   if (classic) {
+    if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
     const cats = grp === 'all' ? CATS : (['all', ...CX_CATS[grp]] as (NewsCategory | 'all')[]);
     return (
@@ -99,7 +105,8 @@ export function Inbox() {
           ))}
         </div>
         <div className="cx-nbar">
-          {/* CM 01/02: kun "Filter :" og Next Unread */}
+          {/* CM 01/02: "Respond" på et bud, der venter på svar – ellers kun "Filter :" og Next Unread */}
+          {pendingBid && <button className="cx-grey cx-respond" onClick={() => setRespond(pendingBid.id)}>{t('cl.bid.respond')}</button>}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :
             <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>

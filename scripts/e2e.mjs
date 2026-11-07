@@ -126,6 +126,26 @@ async function run(look) {
     await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
   });
+  if (look === 'klassisk') await step('svar på et bud (Respond)', async () => {
+    await gs(() => {
+      const g = window.__cm.gs();
+      const p = Object.values(g.players).find((x) => x.club === g.userClub && !x.injury);
+      const buyer = Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league);
+      const id = g.nextId.offer++;
+      g.offers.push({ id, player: p.id, buyer: buyer.id, seller: g.userClub, fee: p.value, loan: false, status: 'pending', created: g.date, respondBy: g.date });
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'transfer', key: 'transfer.incomingBid', params: { club: buyer.name, player: `${p.first} ${p.last}`.trim(), fee: p.value }, read: false, link: { kind: 'offer', id } });
+      window.__cm.notify();
+    });
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow').first().click();
+    await page.locator('.cx-nbar .cx-respond').click({ timeout: 5000 });
+    await page.waitForSelector('.cx-bid-answer', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-svar-bud.png` });
+    await page.locator('.cx-bid-answer button', { hasText: 'Reject' }).click();
+    await page.waitForSelector('.cx-inbox', { timeout: 5000 });
+    const st = await gs(() => window.__cm.gs().offers.at(-1).status);
+    if (st !== 'rejected') throw new Error(`buddet blev ikke afvist (${st})`);
+  });
   if (look === 'klassisk') await step('bud på en spiller (Approach To Buy)', async () => {
     const pid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).find((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league).id; });
     await go({ name: 'player', id: pid });

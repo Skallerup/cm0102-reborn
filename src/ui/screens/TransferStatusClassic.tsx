@@ -160,3 +160,59 @@ export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolea
     </div>
   );
 }
+
+/** Svar på et bud på egen spiller (CM 01/02 "Negotiate Arsenal bid for Butt"): Back · Reject · Delay · Accept – et ændret beløb er et modbud */
+export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose: (msg?: string) => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const p = g.players[offer.player];
+  const buyer = g.clubs[offer.buyer];
+  const me = g.clubs[g.userClub];
+  const step = round(Math.max(p?.value ?? 0, 100_000) * 0.05);
+  const [fee, setFee] = useState(offer.fee);
+  if (!p || !buyer) return null;
+  const changed = fee !== offer.fee;
+  const reply = (action: 'accept' | 'reject' | 'counter') => {
+    const r = act<string | null>({ t: 'respond', pid: p.id, buyer: buyer.id, action, ...(action === 'counter' ? { counter: fee } : {}) });
+    onClose(typeof r === 'string' && r !== 'ok' ? t(r) : undefined);
+  };
+  const row = (label: string, value: string, minus?: () => void, plus?: () => void, extra?: ReactNode) => (
+    <div className={`cx-bid-row ${minus || plus ? '' : 'off'}`}>
+      <span className="cx-bid-label">{label}</span>
+      <button className="cx-pm" disabled={!minus} onClick={minus} aria-label="-">−</button>
+      <span className="cx-bid-val">{value}</span>
+      <button className="cx-pm" disabled={!plus} onClick={plus} aria-label="+">+</button>
+      {extra}
+    </div>
+  );
+  return (
+    <div className="cx-tstatus cx-bid">
+      <div className="cx-subtitle">{t('cl.bid.negotiate', { club: buyer.short, player: p.last })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.valued', { club: me?.short ?? '', player: `${p.first} ${p.last}`.trim(), value: moneyFull(p.value) })}</p>
+        {offer.loan ? <p className="cx-ts-intro">{t('cl.bid.loanAsk')}</p> : <>
+          {row(t('cl.bid.fee'), money(fee), () => setFee(round(Math.max(0, fee - step))), () => setFee(round(fee + step)),
+            <button className="cx-pm" onClick={() => setFee(round(p.value))} title={t('cl.bid.feeEq')}>=</button>)}
+          {row(t('cl.bid.install'), '-')}
+          {row(t('cl.bid.sellOn'), offer.sellOn ? `${offer.sellOn}%` : '-')}
+          {row(t('cl.bid.addOn', { n: ADDON_APPS }), offer.addOn ? money(offer.addOn) : '-')}
+          {row(t('cl.bid.intl'), '-')}
+          <div className="cx-bid-row off"><span className="cx-bid-label">{t('cl.bid.public')}</span><span className="cx-bid-val wide">{t('common.no')}</span></div>
+          <div className="cx-bid-tools">
+            <button className="cx-greybtn" disabled>{t('cl.bid.exchange')}</button>
+            <button className="cx-greybtn" disabled>{t('cl.bid.remove')}</button>
+            <span className="cx-grow" />
+            <button className="cx-greybtn" disabled={!changed} onClick={() => setFee(offer.fee)}>{t('cl.bid.reset')}</button>
+          </div>
+          <div className="cx-bid-total"><span>{t('cl.bid.total')}</span><b>{moneyFull(fee)}</b></div>
+        </>}
+      </div>
+      <div className="cx-ts-buttons cx-bid-answer">
+        <button onClick={() => onClose()}>{t('common.back')}</button>
+        <button onClick={() => reply('reject')}>{t('cl.bid.reject')}</button>
+        <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
+        <button className="primary" onClick={() => reply(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.counter' : 'cl.bid.accept')}</button>
+      </div>
+    </div>
+  );
+}
