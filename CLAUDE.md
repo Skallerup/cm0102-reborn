@@ -21,9 +21,11 @@ og læg ændringen i samme push.
   `npx tsx scripts/features.ts <world-fil> [klub]` (20 funktioner gennem actions) og `node scripts/e2e-soak.mjs <modern|original>
   <moderne|klassisk> [sæsoner] [klub]` (5 sæsoner i browseren, alle skærme). Ret IKKE i `src/` mens e2e-soak kører (Vite
   genindlæser siden). Kør dem før større udgivelser.
-- SEO: `scripts/build-seo.ts` (kører i `prebuild`) laver statiske guides i `public/<slug>/index.html` (wonderkids, bedste
-  spillere, taktik, 2026/27, Mac/iPad, FAQ, spil online) fra world-JSON'erne + `sitemap.xml` og `llms.txt`. Forsiden har
-  læsbar tekst i `#root` til crawlere uden JS. Nye guides: tilføj i `pages` og i SW-`navigateFallbackDenylist`.
+- SEO: `scripts/build-seo.ts` (kører i `prebuild` – også på Vercel; outputtet er i .gitignore) laver guiderne (`pages`) og
+  via `scripts/seo/db.ts` databasesiderne `/cm-01-02/` og `/2026-27/` (spillere/klubber/ligaer/lande/lister/A-Z + search.json),
+  fælles skabelon `scripts/seo/layout.ts` (+ public/seo.css), sitemap-indeks `sitemap.xml` → `sitemap-<gruppe>.xml`, `llms.txt`.
+  Hvem der får en spillerside: `keep` i build-seo.ts (~13k sider, ~190 MB HTML). `CONTENT_DATE` = lastmod – hæv ved mærkbare
+  ændringer. Url'erne skal være stabile (navn → slug; dubletter + klub). Nye stier: SW `globIgnores` + `navigateFallbackDenylist`.
 - Den originale database og den moderne må ikke dele økonomi: alt 2001-specifikt ligger bag `g.econ` (kun original).
 - Prisniveau: `src/game/econ.ts`. Nye spil med den originale database får `GameState.econ` (faktor pr. liga, målt i
   newgame.ts) – faste beløb ganges med `econ(liga)`, og `valueFromCA` bruger originalens værdikurve. Nye faste beløb
@@ -48,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – SEO-databasesider: `scripts/seo/db.ts` (`buildDb` pr. database: createGame for værdier, egenskaber fra world.ratings – 0 = genereret, vises i kursiv med *), 2001/02-ligaer med datidens navne (`ERA_2001`), stadionfoto kun når billedet er af det stadion (pakken bruger Emirates for Highbury), arbejdstilladelse via `EU_EEA` (eksporteret fra rules2001). `setLogoData` i logos.ts. De gamle guider er fjernet fra git (bygges i prebuild). tests/seo.test.ts.
 - 2026-11-07 – `playerInterest` (transfers.ts): omdømmegrænsen brugte attrs[41] (tilpasningsevne) – nu `24 − (ambition − 10) × 1,2 (+4 ved 30+, +10 ved 32+)` (*estimeret*); 'happy' bruger `A.loyalty`. Herfølge (rep 60) kan nu hente 2 af verdens 40 bedste (før 8), Man Utd/Real 32-38. multiplayer-testens turgrænse 200 → 300 (simuleringen tager en anden vej).
 - 2026-11-07 – Fejllog: `src/online/errors.ts` (window error/unhandledrejection + `ErrorBoundary` i main.tsx; kun på det rigtige site, højst 3 pr. besked/20 pr. side) → api/notify.ts op `error` (err:list + err:{sha1(besked|første kodelinje)} med count/first/last/ver) → admin-fanen Errors (op `errors`, `error-delete`).
 - 2026-11-07 – Svensk (`sv`) og norsk bokmål (`nb`): `src/i18n/sv.ts`/`nb.ts` (6.109 nøgler, oversat af Claude fra dansk, lazy), `scripts/match-texts-i18n/sv.json`/`nb.json` (kommentaren), Lang-typen, LANGS, LOCALE, UNITS, LangMenu-flag, LANG_NATION, nations.ts UK-navne, cup-navne i comps.ts, login-/opdateringsmails. Valuta SEK (11,1) og NOK (11,6) *estimeret*, sprogets standard. Nye nøgler: læg dem også i sv/nb (ellers engelsk).

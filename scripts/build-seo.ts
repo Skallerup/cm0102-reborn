@@ -3,9 +3,11 @@
 // spil på Mac/iPad/Chromebook, spil online). Skriver public/<side>/index.html, public/sitemap.xml og public/llms.txt.
 // Kør: npx tsx scripts/build-seo.ts  (køres også før build: "prebuild" i package.json)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { CSS, CTA, SITE, TODAY, esc, render, type Page } from './seo/layout';
+import { buildDb } from './seo/db';
 
-const SITE = 'https://cm0102reborn.com';
-const TODAY = new Date().toISOString().slice(0, 10);
+/** dato for databasesidernes indhold (sitemap lastmod) – hæv den, når siderne ændres mærkbart */
+const CONTENT_DATE = '2026-11-07';
 
 type Row = (string | number)[];
 interface World { season: number; playerFields: string[]; players: Row[]; clubs: Row[]; nations: { name: string }[]; leagues: { id: string; name: string; nation: number; tier?: number }[]; ratings: Record<string, { ca: number; pa: number; paRaw?: number }> }
@@ -29,79 +31,22 @@ function players(w: World): P[] {
 }
 const O = players(orig), M = players(modern);
 
-const esc = (s: string | number) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// databasesiderne først (spillernavnene i guiderne linker til profilerne)
+const CULT_LIST = (JSON.parse(readFileSync('scripts/cult-players.json', 'utf8')) as { first: string; last: string }[]).map((c) => `${c.first} ${c.last}`.trim());
+const cultSet = new Set(CULT_LIST);
+const dbO = buildDb({
+  file: 'public/data/world-original.json', prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
+  keep: (p) => p.ca >= 120 || (p.age <= 23 && (p.pa >= 145 || p.paRaw === -2)) || (p.age <= 21 && p.paRaw === -1 && p.ca >= 60) || p.caps >= 30 || cultSet.has(p.name),
+});
+const dbM = buildDb({
+  file: 'public/data/world.json', prefix: '2026-27', game: 'CM 01/02 2026/27', season: '2026/27', dbName: 'the CM 01/02 2026/27 database (October 2026 data update)', original: false, modified: CONTENT_DATE,
+  keep: (p) => p.ca >= 132 || (p.age <= 21 && p.pa >= 150) || p.caps >= 50,
+});
+const urlO = dbO.playerUrl, urlM = dbM.playerUrl;
 
-interface Page { slug: string; title: string; h1: string; description: string; body: string; faq?: [string, string][]; list?: { name: string; items: string[] } }
-
-const NAV: [string, string][] = [
-  ['/play-cm-01-02-online/', 'Play CM 01/02 online'],
-  ['/cm-01-02-wonderkids/', 'Wonderkids'],
-  ['/cm-01-02-best-players/', 'Best players'],
-  ['/cm-01-02-tactics/', 'Tactics'],
-  ['/cm-01-02-2026-update/', '2026/27 database'],
-  ['/cm-01-02-mac-ipad-chromebook/', 'Mac, iPad & Chromebook'],
-  ['/faq/', 'FAQ'],
-];
-
-const CTA = `<p class="cta"><a class="btn" href="/">▶ Play free in your browser</a> <span>No download · no ads · works on any device</span></p>`;
-
+const link = (p: P) => { const u = urlO.get(`${p.name}|${p.club}`) ?? urlM.get(`${p.name}|${p.club}`); return u ? `<a href="${u}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`; };
 function table(rows: P[], opts: { pa?: boolean } = {}) {
-  return `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Age</th><th>Pos</th><th>Club</th><th>Nation</th><th class="n">CA</th>${opts.pa === false ? '' : '<th class="n">PA</th>'}</tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}</td><td><b>${esc(p.name)}</b></td><td>${p.age}</td><td>${esc(p.pos)}</td><td>${esc(p.club)}</td><td>${esc(p.nation)}</td><td class="n">${p.ca}</td>${opts.pa === false ? '' : `<td class="n">${p.random ? '<abbr title="Random potential in the original database – rolled for every new game">random</abbr>' : p.pa}</td>`}</tr>`).join('')}</tbody></table></div>`;
-}
-
-function render(p: Page): string {
-  const url = `${SITE}/${p.slug}`;
-  const ld: unknown[] = [
-    { '@type': 'BreadcrumbList', itemListElement: [{ '@type': 'ListItem', position: 1, name: 'CM Reborn', item: `${SITE}/` }, { '@type': 'ListItem', position: 2, name: p.h1, item: url }] },
-    { '@type': 'Article', headline: p.h1, description: p.description, dateModified: TODAY, mainEntityOfPage: url, image: `${SITE}/og.jpg`, author: { '@type': 'Organization', name: 'CM Reborn', url: `${SITE}/` }, publisher: { '@type': 'Organization', name: 'CM Reborn', logo: { '@type': 'ImageObject', url: `${SITE}/icon-512.png` } } },
-  ];
-  if (p.faq) ld.push({ '@type': 'FAQPage', mainEntity: p.faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) });
-  if (p.list) ld.push({ '@type': 'ItemList', name: p.list.name, itemListElement: p.list.items.map((n, i) => ({ '@type': 'ListItem', position: i + 1, name: n })) });
-  return `<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${esc(p.title)}</title>
-<meta name="description" content="${esc(p.description)}" />
-<link rel="canonical" href="${url}" />
-<meta name="robots" content="index,follow,max-image-preview:large" />
-<meta property="og:type" content="article" />
-<meta property="og:site_name" content="CM Reborn" />
-<meta property="og:title" content="${esc(p.title)}" />
-<meta property="og:description" content="${esc(p.description)}" />
-<meta property="og:url" content="${url}" />
-<meta property="og:image" content="${SITE}/og.jpg" />
-<meta name="twitter:card" content="summary_large_image" />
-<link rel="icon" type="image/svg+xml" href="/icon.svg" />
-<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': ld })}</script>
-<style>
-:root{--bg:#070b16;--s:#0f1730;--l:#22305a;--t:#e8ecf6;--m:#9aa6c4;--a:#ffd23f;--b:#3b82f6}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font:16px/1.6 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-a{color:#8fb8ff}header,main,footer{max-width:980px;margin:0 auto;padding:0 16px}
-header{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-top:16px;padding-bottom:10px;border-bottom:1px solid var(--l)}
-header .logo{font-weight:900;color:var(--t);text-decoration:none;font-size:20px;margin-right:auto}header nav a{font-size:14px;color:var(--m);text-decoration:none;margin-right:12px}
-h1{font-size:clamp(26px,4vw,38px);line-height:1.2;margin:28px 0 10px}h2{margin-top:34px;font-size:23px}h3{font-size:18px;margin-top:22px}
-.lead{font-size:18px;color:#cdd5ea}.cta{margin:22px 0;display:flex;flex-wrap:wrap;gap:10px;align-items:center}.cta span{color:var(--m);font-size:14px}
-.btn{background:var(--a);color:#1b1400;font-weight:800;text-decoration:none;padding:12px 20px;border-radius:10px}
-.tw{overflow-x:auto;border:1px solid var(--l);border-radius:10px;background:var(--s)}table{border-collapse:collapse;width:100%;font-size:14.5px}
-th,td{padding:7px 10px;border-bottom:1px solid var(--l);text-align:left;white-space:nowrap}th{color:var(--m);font-weight:600}td.n,th.n{text-align:right}
-.note{color:var(--m);font-size:14px}ul{padding-left:20px}li{margin:4px 0}abbr{text-decoration:underline dotted;cursor:help}
-footer{margin-top:50px;padding-top:18px;padding-bottom:40px;border-top:1px solid var(--l);color:var(--m);font-size:14px}
-</style>
-</head>
-<body>
-<header><a class="logo" href="/">CM Reborn</a><nav>${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join('')}</nav></header>
-<main>
-<h1>${esc(p.h1)}</h1>
-${p.body}
-${p.faq ? `<h2>Frequently asked questions</h2>${p.faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}` : ''}
-${CTA}
-</main>
-<footer><p>CM Reborn is an independent, free fan project inspired by Championship Manager 01/02. It is not affiliated with Sports Interactive, SEGA or Eidos. Updated ${TODAY}.</p><p>${NAV.map(([h, l]) => `<a href="${h}">${l}</a>`).join(' · ')}</p></footer>
-</body>
-</html>
-`;
+  return `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Age</th><th>Pos</th><th>Club</th><th>Nation</th><th class="n">CA</th>${opts.pa === false ? '' : '<th class="n">PA</th>'}</tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}</td><td>${link(p)}</td><td>${p.age}</td><td>${esc(p.pos)}</td><td>${esc(p.club)}</td><td>${esc(p.nation)}</td><td class="n">${p.ca}</td>${opts.pa === false ? '' : `<td class="n">${p.random ? '<abbr title="Random potential in the original database – rolled for every new game">random</abbr>' : p.pa}</td>`}</tr>`).join('')}</tbody></table></div>`;
 }
 
 // ---------- data til siderne ----------
@@ -132,7 +77,7 @@ ${CTA}
 <li><b>Real squad numbers</b> from the database, wonderkids with random potential, transfers, loans, press conferences, board confidence and the sack.</li>
 <li><b>Online multiplayer</b> with friends, a fantasy draft league and global rankings.</li>
 <li><b>Saves in your browser</b> (and optional cloud saves) – close the tab and continue later. It installs as an app and works offline.</li>
-<li>Eight languages: English, Dansk, Español, Français, Deutsch, Italiano, Português and Türkçe.</li>
+<li>Ten languages: English, Dansk, Svenska, Norsk, Español, Français, Deutsch, Italiano, Português and Türkçe.</li>
 </ul>
 <h2>Do I need the original game?</h2>
 <p>No. CM Reborn is built from scratch and runs on its own. If you still play the original CM 01/02 (it has been free since 2008), you will feel at home: the screens, the database and the way the match plays out are modelled on it.</p>
@@ -166,7 +111,7 @@ ${table(young(O, 21))}
       ['Why is Cherno Samba so good in CM 01/02?', 'In the original 3.9.68 database Cherno Samba (Millwall, born 1985) has a random potential code. The game rolls his potential at the start of each save, and it is often very high – which made him a legend.'],
       ['Can I sign these wonderkids in CM Reborn?', 'Yes. Choose the original 2001/02 database when you start a new game – all of these players are in it with their real clubs.'],
     ],
-    list: { name: 'CM 01/02 wonderkids', items: young(O, 21).slice(0, 20).map((p) => p.name) },
+    list: { name: 'CM 01/02 wonderkids', items: young(O, 21).slice(0, 20).map((p) => ({ name: p.name })) },
   },
   {
     slug: 'cm-01-02-best-players/',
@@ -185,7 +130,7 @@ ${table(best(O))}
       ['Who is the best player in CM 01/02?', `By current ability in 3.9.68 the top players are ${best(O).slice(0, 4).map((p) => `${p.name} (${p.ca})`).join(', ')}.`],
       ['What do CA and PA mean?', 'CA (current ability) is how good a player is now and PA (potential ability) is the highest level he can reach, both on a scale from 1 to 200.'],
     ],
-    list: { name: 'CM 01/02 best players', items: best(O).slice(0, 20).map((p) => p.name) },
+    list: { name: 'CM 01/02 best players', items: best(O).slice(0, 20).map((p) => ({ name: p.name })) },
   },
   {
     slug: 'cm-01-02-2026-update/',
@@ -202,7 +147,7 @@ ${table(young(M, 20).slice(0, 30))}`,
       ['Is there a CM 01/02 update for 2026?', `Yes. CM Reborn ships with a 2026/27 database (${nM} players, ${leaguesM} leagues) and runs in the browser, so you do not have to patch the original game.`],
       ['Who are the best wonderkids in the 2026/27 database?', young(M, 20).slice(0, 4).map((p) => `${p.name} (${p.club})`).join(', ') + '.'],
     ],
-    list: { name: 'CM 01/02 2026/27 wonderkids', items: young(M, 20).slice(0, 20).map((p) => p.name) },
+    list: { name: 'CM 01/02 2026/27 wonderkids', items: young(M, 20).slice(0, 20).map((p) => ({ name: p.name })) },
   },
   {
     slug: 'cm-01-02-tactics/',
@@ -264,37 +209,62 @@ ${table(young(M, 20).slice(0, 30))}`,
       ['Are the players real?', `Yes: ${nO} players in the original CM 01/02 database (2001/02) and ${nM} in the 2026/27 database.`],
       ['Can I play with friends?', 'Yes. Create an online game, share the code and run your own clubs in the same world. There is also a fantasy draft league.'],
       ['Is this the original Championship Manager?', 'No. It is an independent fan project, not affiliated with Sports Interactive, SEGA or Eidos.'],
-      ['Which languages are supported?', 'English, Danish, Spanish, French, German, Italian, Brazilian Portuguese and Turkish.'],
+      ['Which languages are supported?', 'English, Danish, Swedish, Norwegian, Spanish, French, German, Italian, Brazilian Portuguese and Turkish.'],
     ],
   },
 ];
 
 for (const p of pages) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
-  writeFileSync(`public/${p.slug}index.html`, render(p));
+  writeFileSync(`public/${p.slug}index.html`, render({ ...p, faqSchema: true }));
 }
+writeFileSync('public/seo.css', CSS);
 
-// sitemap (forsiden, guiderne, fællesskabet)
-const urls: [string, string, number][] = [['', 'weekly', 1.0], ...pages.map((p) => [p.slug, 'monthly', 0.8] as [string, string, number]), ['?draft=1', 'monthly', 0.6], ['?community=1', 'daily', 0.5]];
-writeFileSync('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
+// sitemaps: et indeks + én fil pr. slags side (Google: højst 50.000 url'er pr. fil)
+const groups: [string, string[], string, string][] = [
+  ['guides', ['', ...pages.map((p) => p.slug), '?draft=1', '?community=1'], TODAY, 'weekly'],
+  ...(['hub', 'lists', 'leagues', 'nations', 'clubs', 'players'] as const).flatMap((k) => [
+    [`cm-01-02-${k}`, dbO.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
+    [`2026-27-${k}`, dbM.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
+  ]),
+];
+const xml = (u: string) => `${SITE}/${u}`.replace(/&/g, '&amp;');
+for (const [name, us, mod, freq] of groups) {
+  writeFileSync(`public/sitemap-${name}.xml`, `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${urls.map(([u, f, pr]) => `  <url><loc>${SITE}/${u.replace(/&/g, '&amp;')}</loc><lastmod>${TODAY}</lastmod><changefreq>${f}</changefreq><priority>${pr.toFixed(1)}</priority></url>`).join('\n')}
+${us.map((u) => `  <url><loc>${xml(u)}</loc><lastmod>${mod}</lastmod><changefreq>${freq}</changefreq></url>`).join('\n')}
 </urlset>
+`);
+}
+writeFileSync('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${groups.map(([name, , mod]) => `  <sitemap><loc>${SITE}/sitemap-${name}.xml</loc><lastmod>${mod}</lastmod></sitemap>`).join('\n')}
+</sitemapindex>
 `);
 
 // llms.txt: kort, faktuel beskrivelse til AI-tjenester (https://llmstxt.org)
 writeFileSync('public/llms.txt', `# CM Reborn
 
-> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database (patch 3.9.68, season 2001/02, ${nO} players) and a 2026/27 database (${nM} players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in eight languages.
+> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database (patch 3.9.68, season 2001/02, ${nO} players) and a 2026/27 database (${nM} players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in ten languages.
 
 Key facts:
 - Price: free. No ads, no in-game purchases.
 - Play: open https://cm0102reborn.com, choose New game, pick a database and a look.
 - Databases: original CM 01/02 3.9.68 (2001/02, ${leaguesO} leagues) and 2026/27 (${leaguesM} leagues); real squad numbers, clubs and stadiums.
-- Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, Staff Search, Find, stadium backgrounds on matchdays.
-- Match engine calibrated against a full season of the original CM 01/02 (2.87 goals per game in the Premier League).
+- Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, tactics with player runs, Staff Search, Find, stadium backgrounds on matchdays.
+- Match engine calibrated against a full season of the original CM 01/02.
 - Saves are stored in the browser (export/import, optional cloud saves). Installable as an app (PWA), works offline.
 - Independent fan project, not affiliated with Sports Interactive, SEGA or Eidos.
+
+## CM 01/02 database (2001/02, patch 3.9.68)
+- [Database home and search](${SITE}/cm-01-02/): ${dbO.players.toLocaleString('en')} player profiles with every attribute (1–20), hidden attributes, CA and PA; ${dbO.clubs} clubs, ${dbO.leagues} leagues, ${dbO.nations} nations.
+- [All lists](${SITE}/cm-01-02/lists/): best players by position, wonderkids, Bosman free transfers, bargains, random-potential (PA -1/-2) players, attribute leaders.
+- Player profile URL pattern: ${SITE}/cm-01-02/players/<first-last>/ (e.g. ${SITE}/cm-01-02/players/thierry-henry/)
+- Club URL pattern: ${SITE}/cm-01-02/clubs/<club>/ (e.g. ${SITE}/cm-01-02/clubs/arsenal/)
+
+## 2026/27 database
+- [Database home and search](${SITE}/2026-27/): ${dbM.players.toLocaleString('en')} player profiles, ${dbM.clubs} clubs, ${dbM.leagues} leagues.
+- [All lists](${SITE}/2026-27/lists/)
 
 ## Guides
 ${pages.map((p) => `- [${p.h1}](${SITE}/${p.slug}): ${p.description}`).join('\n')}
@@ -304,4 +274,4 @@ ${pages.map((p) => `- [${p.h1}](${SITE}/${p.slug}): ${p.description}`).join('\n'
 - [Fantasy draft league](${SITE}/?draft=1)
 - [Community hub](${SITE}/?community=1)
 `);
-console.log(`${pages.length} sider, sitemap og llms.txt skrevet`);
+console.log(`${pages.length} guider · CM 01/02: ${dbO.summary} · 2026/27: ${dbM.summary}`);

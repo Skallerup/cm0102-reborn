@@ -14,11 +14,15 @@ export function loadLogos(): Promise<void> {
   if (!loaded) {
     loaded = fetch(`${import.meta.env.BASE_URL}data/logos.json`)
       .then((r) => (r.ok ? r.json() : { base: '', logos: {} }))
-      .then((d: { base: string; logos: Record<string, string>; named?: Record<string, string>; nations?: Record<string, string>; comps?: Record<string, string> }) => { base = d.base; map = d.logos; named = d.named ?? {}; nations = d.nations ?? {}; comps = d.comps ?? {}; })
+      .then(setLogoData)
       .catch(() => { /* uden logoer */ });
   }
   return loaded;
 }
+
+type LogoData = { base: string; logos: Record<string, string>; named?: Record<string, string>; nations?: Record<string, string>; comps?: Record<string, string> };
+/** Sæt logolisten direkte (scripts/seo/db.ts læser logos.json fra disken) */
+export function setLogoData(d: LogoData) { base = d.base; map = d.logos; named = d.named ?? {}; nations = d.nations ?? {}; comps = d.comps ?? {}; cmIndex = null; }
 
 const url = (p: string) => (p.startsWith('https://') ? p : base + p.split('/').map(encodeURIComponent).join('/'));
 
