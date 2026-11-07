@@ -196,6 +196,22 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-vm-kampdag.png` });
     await gs(() => { window.__cm.gs().intl.results.shift(); });
   });
+  if (look === 'klassisk') await step('jobtilbud (Respond i nyhederne)', async () => {
+    const cid = await gs(() => {
+      const g = window.__cm.gs();
+      const c = Object.values(g.clubs).find((x) => x.id !== g.userClub && x.league === g.clubs[g.userClub].league);
+      g.jobOffers.push(c.id);
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'job', key: 'news.jobOffer', params: { club: c.name }, read: false, link: { kind: 'club', id: c.id } });
+      window.__cm.notify(); return c.id;
+    });
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow').first().click();
+    await page.locator('.cx-nbar .cx-respond').click({ timeout: 5000 });
+    await page.waitForSelector('.cx-job-answer', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-jobtilbud.png` });
+    await page.locator('.cx-job-answer button', { hasText: 'Reject' }).click();
+    if (await gs((id) => window.__cm.gs().jobOffers.includes(id), cid)) throw new Error('jobtilbuddet blev ikke afvist');
+  });
   if (look === 'klassisk') await step('svar på et bud (Respond)', async () => {
     await gs(() => {
       const g = window.__cm.gs();

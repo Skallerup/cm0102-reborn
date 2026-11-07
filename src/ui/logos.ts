@@ -6,19 +6,24 @@ let map: Record<string, string> = {};
 let named: Record<string, string> = {};
 // landsholdenes logoer (nationsnavn → url, scripts/build-nation-badges.py)
 let nations: Record<string, string> = {};
+// turneringernes logoer (rigtigt navn eller CL/UEFA/UECL/wc/euro → url, scripts/build-comp-badges.py)
+let comps: Record<string, string> = {};
 let loaded: Promise<void> | null = null;
 
 export function loadLogos(): Promise<void> {
   if (!loaded) {
     loaded = fetch(`${import.meta.env.BASE_URL}data/logos.json`)
       .then((r) => (r.ok ? r.json() : { base: '', logos: {} }))
-      .then((d: { base: string; logos: Record<string, string>; named?: Record<string, string>; nations?: Record<string, string> }) => { base = d.base; map = d.logos; named = d.named ?? {}; nations = d.nations ?? {}; })
+      .then((d: { base: string; logos: Record<string, string>; named?: Record<string, string>; nations?: Record<string, string>; comps?: Record<string, string> }) => { base = d.base; map = d.logos; named = d.named ?? {}; nations = d.nations ?? {}; comps = d.comps ?? {}; })
       .catch(() => { /* uden logoer */ });
   }
   return loaded;
 }
 
 const url = (p: string) => (p.startsWith('https://') ? p : base + p.split('/').map(encodeURIComponent).join('/'));
+
+/** Turneringens logo: de europæiske på id, ellers på det rigtige navn (comps.ts realCompName) */
+export const compLogoUrl = (id: string | undefined, realName: string | undefined): string | null => (id && comps[id]) || (realName && comps[realName]) || null;
 
 /** Landsholdets logo (databasens engelske nationsnavn) */
 export const nationLogoUrl = (name: string | undefined): string | null => (name && nations[name]) || null;

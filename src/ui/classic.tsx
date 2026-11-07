@@ -53,7 +53,7 @@ export function useClassicNext(label: string | null, run: () => void) {
   }, [label]);
 }
 /** Klassisk kampskærm: sidebjælken viser minuttet og kampknapperne (Kick Off Match, holdenes taktik, Commentary Speed) */
-export interface MatchSide { minute: string; half?: boolean; editing?: boolean; lastView?: boolean; venue?: string; line?: { text: string; background: string; color: string; flash?: boolean }; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
+export interface MatchSide { minute: string; half?: boolean; editing?: boolean; lastView?: boolean; venue?: string; comp?: string; line?: { text: string; background: string; color: string; flash?: boolean }; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
 export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void; cont: () => void; ok: () => void; cancel: () => void; back?: () => void }
 let matchSide: { s: MatchSide; a: MatchSideActions } | null = null;
 let matchSideKey = '';

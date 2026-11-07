@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { GameState } from '../../game/types';
 import { compName, money, natName, t } from '../../i18n';
 import { useGame, useRouteState } from '../core';
+import { act } from '../../game/actions';
 import { CxDrop, CxLink, clubRoute } from '../classic';
 import { Head } from './common';
 import { Pager } from './TransfersClassic';
@@ -28,7 +29,8 @@ const inNation = (g: GameState, club: number, nation: number) => g.clubs[club]?.
 
 export function ClassicNation({ id, tab: initial }: { id?: number; tab?: string }) {
   const g = useGame()!;
-  const nation = id ?? g.clubs[g.userClub]?.nation ?? 0;
+  // arbejdsløs: managerens eget land (før land nr. 0 = Afghanistan)
+  const nation = id ?? g.clubs[g.userClub]?.nation ?? g.manager.nation ?? 0;
   const [tab] = useRouteState<NationTab>('ntab', (NATION_TABS as readonly string[]).includes(initial ?? '') ? initial as NationTab : 'managers');
   const name = natName(g.nations[nation]?.name);
   return (
@@ -76,7 +78,8 @@ function ManagerStats({ nation, name }: { nation: number; name: string }) {
 
 function JobInfo({ nation, name }: { nation: number; name: string }) {
   const g = useGame()!;
-  const [scope, setScope] = useRouteState<'nation' | 'all'>('nscope', 'nation');
+  // arbejdsløs: alle lande, så de ledige job kan ses med det samme
+  const [scope, setScope] = useRouteState<'nation' | 'all'>('nscope', g.userClub ? 'nation' : 'all');
   const vac = g.vacancies.map((cid) => g.clubs[cid]).filter((c) => c && c.manager === 0 && !g.leagues[c.league]?.hidden && (scope === 'all' || c.nation === nation))
     .sort((a, b) => (g.leagues[a.league]?.tier ?? 9) - (g.leagues[b.league]?.tier ?? 9) || b.rep - a.rep);
   return (
@@ -95,7 +98,7 @@ function JobInfo({ nation, name }: { nation: number; name: string }) {
             <span className="cx-nclub"><CxLink to={clubRoute(c.id)}>{c.short}</CxLink></span>
             <span className="cx-nnat">{natName(g.nations[c.nation]?.name)}</span>
             <span className="cx-ndiv">{compName(g.leagues[c.league]?.name)}</span>
-            <span className="cx-nval">{t('cl.na.available')}</span>
+            <span className="cx-nval">{g.jobOffers.includes(c.id) ? t('cl.na.offered') : g.manager.jobTalks?.[c.id] ? t('cl.na.applied') : <span className="cx-link" role="link" onClick={() => act({ t: 'applyJob', club: c.id })}>{t('cl.na.apply')}</span>}</span>
           </div>
         ))}
         {!vac.length && <div className="cx-empty">{t('cl.na.noJobs')}</div>}

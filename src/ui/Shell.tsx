@@ -20,11 +20,12 @@ import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
-import { setCompEra } from '../i18n/comps';
+import { realCompName, setCompEra } from '../i18n/comps';
+import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
-import { dateFmt, money, t } from '../i18n';
+import { compName, dateFmt, money, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
@@ -387,6 +388,8 @@ export function Shell() {
               <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
               {<CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn', disabled: ms.editing }}
                 items={[8, 4, 2, 1, 0.6, 0.35].map((n) => ({ key: String(n), label: t(`cl.mt.sp.${String(n).replace('.', '')}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
+              {/* turneringens logo og navn i den tomme del af sidebjælken (spillerønske – ikke i originalen) */}
+              {ms.comp && g.comps[ms.comp] && <CompBadge id={ms.comp} />}
               <div className="cx-side-grow" />
             </aside>
           );
@@ -702,4 +705,18 @@ function specificBackground(g: GameState, route: Route, iso: string): string | n
     case 'squad': case 'tactics': case 'assistant': return clubBgUrl(own, iso) ?? miscBgUrl('training', iso);
     default: return null;
   }
+}
+
+/** Turneringens logo og navn (kampens sidebjælke) */
+function CompBadge({ id }: { id: string }) {
+  const g = gs();
+  const c = g.comps[id];
+  const [failed, setFailed] = useState(false);
+  const url = compLogoUrl(id, realCompName(c.name)) ?? (c.nation === -1 && /europa|uefa cup/i.test(c.name) ? compLogoUrl('UEFA', undefined) : null);
+  return (
+    <div className="cx-side-comp">
+      {url && !failed && <img src={url} alt="" onError={() => setFailed(true)} />}
+      <span>{compName(c.name)}</span>
+    </div>
+  );
 }

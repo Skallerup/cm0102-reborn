@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Turneringslogoer: `scripts/build-comp-badges.py` (TheSportsDB-id'er → logos.json `comps`, nøgle = rigtigt navn fra
+  `realCompName` eller CL/UEFA/UECL/wc/euro), `compLogoUrl`, `CompBadge` i kampens sidebjælke (MatchSide.comp). Jobtilbud: `JobOfferPanel`
+  (TransferStatusClassic) via Respond i indbakken; Job Information bruger `g.manager.nation` og 'all' uden klub.
 - 2026-11-07 – Originalens kamplyde: `scripts/build-match-sounds.py` (ejerens …/match_sounds/lyde → public/sounds/*.m4a, AAC 40 kbit/s,
   5,4 MB; ikke de 10 ubrugte eller intro), build-match-texts.py lægger variantens lyd i række[5] (række[4] = rapport eller 0).
   `originalSounds`/`lineSounds` vælger samme variant som teksten; matchSound.ts afspiller samples (prio: mål 3 > fløjt/kort 2 >

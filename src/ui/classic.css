@@ -1219,3 +1219,7 @@
 .cx-nc-row { display: grid; grid-template-columns: 1fr 70px 50px; align-items: center; min-height: 28px; font-size: 18px; color: #fff; }
 .cx-nc-row .code { color: #fff21f; font-size: 12px; text-align: center; } .cx-nc-row .extra { color: #ffa64a; font-size: 12px; text-align: center; }
 @media (max-width: 760px) { .cx-nc-list { grid-template-columns: 1fr; } .cx-nc-row { font-size: 15px; } }
+/* turneringens logo i kampens sidebjælke */
+.cx-side-comp { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 18px 6px 0; padding: 10px 4px; text-align: center; color: #fff; font-size: 12px; line-height: 1.25; }
+.cx-side-comp img { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
+.cx-ts-buttons.cx-job-answer { grid-template-columns: 2fr 1fr 1fr; }

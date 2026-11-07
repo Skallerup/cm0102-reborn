@@ -55,6 +55,9 @@ const DANISH_WORDS = /pokal\b|^Pokalturneringen$|^Kejserens|^Kongens|^Japans/;
 let cmEra = false;
 export const setCompEra = (original2001: boolean) => { cmEra = original2001; };
 
+/** Turneringens rigtige navn (uanset sprog og database) – fx til logoer */
+export const realCompName = (name: string): string => LEAGUES_DA[name] ?? (CM_CUPS_DA[name] && !DANISH_WORDS.test(CM_CUPS_DA[name]) ? CM_CUPS_DA[name] : name);
+
 export function compLabel<T extends string | undefined>(name: T, lang: Lang): T {
   // engelsk med 2001-databasen: CM's egne navne; ellers (og på de øvrige sprog) ligaernes og pokalernes rigtige navne
   if (!name) return name;

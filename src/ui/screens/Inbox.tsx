@@ -16,7 +16,7 @@ import type { NewsCategory, NewsItem } from '../../game/types';
 import { isRetro } from '../theme';
 import { Tabs } from '../components';
 import { ClassicSub, cxShortDate } from '../classic';
-import { IncomingBidPanel } from './TransferStatusClassic';
+import { IncomingBidPanel, JobOfferPanel } from './TransferStatusClassic';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -46,6 +46,7 @@ export function Inbox() {
     : cat === 'all' ? !n.muted : n.cat === cat));
   const [settings, setSettings] = useState(false);
   const [respond, setRespond] = useState<number | null>(null);
+  const [jobOpen, setJobOpen] = useState<number | null>(null);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
@@ -83,8 +84,11 @@ export function Inbox() {
   // et bud på egen spiller, der stadig venter på svar (CM 01/02: knappen Respond)
   const pendingBid = item?.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(item.link!.id) && o.status === 'pending' && o.seller === g.userClub) : undefined;
   const respondOffer = respond !== null ? g.offers.find((o) => o.id === respond && o.status === 'pending') : undefined;
+  // et jobtilbud, der venter på svar (CM 01/02: Respond i nyheden)
+  const jobOffer = item?.link?.kind === 'club' && g.jobOffers.includes(Number(item.link.id)) ? Number(item.link.id) : undefined;
 
   if (classic) {
+    if (jobOpen !== null && g.jobOffers.includes(jobOpen)) return <div><Head title={g.manager.name} /><JobOfferPanel cid={jobOpen} onClose={() => setJobOpen(null)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
     const cats = grp === 'all' ? CATS : (['all', ...CX_CATS[grp]] as (NewsCategory | 'all')[]);
@@ -107,6 +111,7 @@ export function Inbox() {
         <div className="cx-nbar">
           {/* CM 01/02: "Respond" på et bud, der venter på svar – ellers kun "Filter :" og Next Unread */}
           {pendingBid && <button className="cx-grey cx-respond" onClick={() => setRespond(pendingBid.id)}>{t('cl.bid.respond')}</button>}
+          {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :
             <select value={cat} onChange={(e) => setCat(e.target.value as NewsCategory | 'all')}>

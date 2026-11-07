@@ -8,7 +8,8 @@ import { ADDON_APPS } from '../../game/clauses';
 import type { Player, TransferOffer } from '../../game/types';
 import type { RejectReason } from '../../game/will';
 import { ageOn } from '../../game/dates';
-import { money, moneyFull, t } from '../../i18n';
+import { compName, money, moneyFull, t } from '../../i18n';
+import { jobTerms } from '../../game/board';
 import { useGame } from '../core';
 import { CxDrop, useClassicDialog } from '../classic';
 
@@ -235,6 +236,36 @@ export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onC
         <button onClick={() => setRejecting(true)}>{t('cl.bid.reject')}</button>
         <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
         <button className="primary" onClick={() => reply(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.counter' : 'cl.bid.accept')}</button>
+      </div>
+    </div>
+  );
+}
+
+/** Jobtilbud (CM 01/02: nyheden har Respond → "Accept job at Leeds ?" med vilkårene og No/Yes) */
+export function JobOfferPanel({ cid, onClose }: { cid: number; onClose: () => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const c = g.clubs[cid];
+  if (!c) return null;
+  const terms = jobTerms(cid);
+  const accept = () => { act({ t: 'acceptJob', club: cid }); onClose(); };
+  const decline = () => { act({ t: 'declineJob', club: cid }); onClose(); };
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.job.title', { club: c.name })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.job.intro', { club: c.name, league: compName(g.leagues[c.league]?.name) ?? '' })}</p>
+        <div className="cx-kv big">
+          <span>{t('club.expectation')}</span><span>{t(`exp.${terms.exp}`)}</span>
+          <span>{t('top.budget')}</span><span>{moneyFull(terms.budget)}</span>
+          <span>{t('jobs.wageBudget')}</span><span>{moneyFull(terms.wageBudget)} / {t('common.week')}</span>
+        </div>
+        <p className="cx-ts-intro">{t(g.userClub ? 'cl.job.qLeave' : 'cl.job.q', { club: c.short, own: g.clubs[g.userClub]?.short ?? '' })}</p>
+      </div>
+      <div className="cx-ts-buttons cx-bid-answer cx-job-answer">
+        <button onClick={onClose}>{t('common.back')}</button>
+        <button onClick={decline}>{t('cl.bid.reject')}</button>
+        <button className="primary" onClick={accept}>{t('cl.bid.accept')}</button>
       </div>
     </div>
   );
