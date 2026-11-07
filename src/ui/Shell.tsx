@@ -126,6 +126,8 @@ export function Shell() {
   const [toast, setToast] = useState('');
   const [winNote, setWinNote] = useState<{ head: string; text: string } | null>(null);
   const stopRef = useRef(false);
+  const onHolidayRef = useRef(false);
+  const holidaySetRef = useRef<HolidaySettings>({ rejectAll: true });
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => { setScrollElement(mainRef.current); return () => setScrollElement(null); }, []);
   useLayoutEffect(() => {
@@ -484,7 +486,12 @@ export function Shell() {
           <div className="cx-sub" ref={setSubSlot} />
           {running ? (
             // simulering: én grå bjælke med datoen, der behandles (klik = stop)
-            <button className="cx-running" onClick={() => { stopRef.current = true; }} title={t('common.stop')}>
+            <button className="cx-running" onClick={() => {
+              if (!onHolidayRef.current) { stopRef.current = true; return; }
+              // på ferie: spørg først (kørslen fortsætter imens, som i originalen stopper den ved svaret)
+              stopRef.current = true;
+              void askConfirm(t('cl.hol.return'), { head: t('cl.mt.confirm') }).then((ok) => { if (!ok) { gs().manager.holiday = holidaySetRef.current; onHolidayRef.current = true; void run({ maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); }); } });
+            }} title={t('common.stop')}>
               {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke */}
               {cxLongDate(running)}
             </button>
@@ -528,8 +535,10 @@ export function Shell() {
         setHoliday(null);
         const g2 = gs();
         g2.manager.holiday = set;
-        // ferie: 14 dage (*estimeret*) med kampene spillet automatisk, eller indtil næste kamp
-        void run(holiday ? { untilMatch: true, maxDays: 120 } : { untilDate: addDays(g2.date, 14), autoPlay: true }).finally(() => { gs().manager.holiday = undefined; notify(); });
+        // CM 01/02: ferien varer, til man klikker på bjælken ("Return from holiday ?") – kampene spilles automatisk (højst et år)
+        onHolidayRef.current = !holiday;
+        holidaySetRef.current = set;
+        void run(holiday ? { untilMatch: true, maxDays: 120 } : { maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); });
       }} />}
       {toast && <div className="toast">{toast}</div>}
       {winNote && <div className="cx-winbox-bg"><div className="cx-winbox" role="dialog"><div className="cx-winbox-head">{winNote.head}</div><p>{winNote.text}</p><button onClick={() => setWinNote(null)}>{t('common.ok')}</button></div></div>}

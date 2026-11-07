@@ -8,7 +8,7 @@ import { CxLink, clubRoute, useClassicContinue } from '../classic';
 import { Head } from './common';
 import { stageLabel } from './Fixtures';
 import { ordinal } from './Competitions';
-import { leagueRows } from '../../game/competitions';
+import { leagueRows, sortTable } from '../../game/competitions';
 
 /** Dagens turneringer på kampdagsskærmen: kun ens eget lands, de europæiske og dem, klubben er med i (ens egen først) */
 export function matchDayComps(g: GameState, id: number): { comps: string[]; today: Fixture[]; mine?: Fixture } {
@@ -45,7 +45,14 @@ export function MatchDay({ id }: { id: number }) {
   const abbr = (lg?: string) => (lg ? (compName(g.comps[lg]?.name) ?? '').split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w[0] ?? '')).join('').toUpperCase().slice(0, 3) : '');
   // ligakampe: placeringen i tabellen (CM 01/02: "4th" · "1st"); pokalkampe: ligaens forkortelse, internationale: landet
   const pos = comp?.type === 'league' ? new Map(leagueRows(comp).map((r, k) => [r.club, k + 1])) : null;
-  const code = (club: number) => (pos ? (pos.has(club) ? ordinal(pos.get(club)!) : '') : comp?.nation !== -1 ? abbr(g.clubs[club]?.league) : g.nations[g.clubs[club]?.nation]?.code ?? '');
+  // europæisk gruppespil/ligafase (CM 01/02 "Phase 1 Group G"): placeringen i gruppen/tabellen
+  const groupPos = (f: Fixture, club: number) => {
+    const rows = f.stage === 'LP' ? comp?.table : f.stage?.startsWith('G') ? comp?.groups?.[f.stage.slice(1)] : undefined;
+    if (!rows?.length) return undefined;
+    const k = sortTable(rows.slice()).findIndex((r) => r.club === club);
+    return k >= 0 ? ordinal(k + 1) : undefined;
+  };
+  const code = (club: number, f?: Fixture) => (pos ? (pos.has(club) ? ordinal(pos.get(club)!) : '') : (f && groupPos(f, club)) ?? (comp?.nation !== -1 ? abbr(g.clubs[club]?.league) : g.nations[g.clubs[club]?.nation]?.code ?? ''));
   /** a = videre på udebanemål, p = videre efter straffespark (står ved vinderen) */
   const mark = (f: Fixture, side: 0 | 1) => {
     const r = f.result;
@@ -87,11 +94,11 @@ export function MatchDay({ id }: { id: number }) {
           {comp?.type !== 'league' && <div className="cx-md-stage">{st}</div>}
           {list.filter((f) => stageLabel(f) === st).map((f) => (
             <div key={f.id} className={`cx-md-row ${isMine(f) ? 'mine' : ''}`}>
-              <span className="cx-md-code">{code(f.home)}</span>
+              <span className="cx-md-code">{code(f.home, f)}</span>
               <span className="cx-md-home">{name(f.home)}</span>
               {f.result && !before ? <span className="cx-md-res"><span className="cx-md-mark">{mark(f, 0)}</span>{f.result.hg}:{f.result.ag}<span className="cx-md-mark">{mark(f, 1)}</span></span> : <span className="cx-md-v">v</span>}
               <span className="cx-md-away">{name(f.away)}</span>
-              <span className="cx-md-code">{code(f.away)}</span>
+              <span className="cx-md-code">{code(f.away, f)}</span>
             </div>
           ))}
         </div>
