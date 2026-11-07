@@ -10,7 +10,7 @@ describe('originalens kommentarlinjer (CM 01/02)', () => {
   it('erstatter pladsholderne og vælger dansk/engelsk', async () => {
     await loadMatchTexts();
     for (let i = 0; i < 60; i++) {
-      for (const lang of ['en', 'da']) {
+      for (const lang of ['en', 'da', 'de', 'es', 'fr', 'it', 'pt']) {
         for (const k of ['save', 'foul', 'penalty', 'sub', 'yellow', 'goal', 'pl-fwd', 'pl-goalkick', 'pen-appeal', 'added-time', 'halftime', 'goal-offside']) {
           const txt = originalText({ m: 10 + i, k, a: k === 'added-time' ? '3' : 'Lauth', b: 'Schram', t: 0 }, ctx(lang), i);
           expect(txt, k).toBeTruthy();
@@ -20,8 +20,13 @@ describe('originalens kommentarlinjer (CM 01/02)', () => {
     }
     expect(originalText({ m: 1, k: 'sub', a: 'Lauth', b: 'Schram', t: 0 }, ctx('da'), 0)).toMatch(/Lauth|Schram/);
     expect(originalText({ m: 1, k: 'halftime' }, ctx('da'), 0)).toBe('Pause. Vejle 1-0 Brøndby');
-    // andre sprog bruger vores egne tekster
-    expect(originalText({ m: 1, k: 'save', a: 'A', b: 'B', t: 0 }, ctx('de'), 0)).toBeNull();
+    // oversatte sprog: samme linjer uden pladsholdere; ukendt sprog → vores egne tekster
+    for (const lang of ['de', 'es', 'fr', 'it', 'pt', 'tr']) for (let i = 0; i < 20; i++) for (const k of ['save', 'foul', 'pen-appeal', 'pl-fwd', 'yellow']) {
+      const txt = originalText({ m: i, k, a: 'Lauth', b: 'Schram', t: 0 }, ctx(lang), i);
+      expect(txt, `${lang} ${k}`).toBeTruthy();
+      expect(txt, `${lang} ${k}: ${txt}`).not.toMatch(/<|>|\{s\}|\|/);
+    }
+    expect(originalText({ m: 1, k: 'save', a: 'A', b: 'B', t: 0 }, ctx('xx'), 0)).toBeNull();
     // ingen modspiller: kun varianter uden <p2>
     for (let i = 0; i < 30; i++) expect(originalText({ m: i, k: 'pl-fwd', a: 'Lauth', t: 1 }, ctx('en'), i)).not.toMatch(/undefined|  /);
   });

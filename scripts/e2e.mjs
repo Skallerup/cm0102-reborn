@@ -88,6 +88,20 @@ async function run(look) {
     await page.locator('.cx-drop-sub button').first().click();
     await checkScreen('competitions');
   });
+  if (look === 'klassisk') await step('spillerens faner (klassisk)', async () => {
+    await go({ name: 'player', id: star });
+    for (const tab of ['Injuries & Bans', 'Contract', 'Transfer', 'History']) {
+      await page.getByRole('button', { name: tab, exact: true }).first().click();
+      await page.waitForTimeout(200);
+      await checkScreen(`spiller ${tab}`);
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-${tab.replace(/[^a-z]/gi, '')}.png` });
+    }
+    for (const v of ['Achievements', 'Injuries', 'Bans', 'Playing Career']) {
+      await page.locator('.cx-pl .cx-drop-btn', { hasText: 'View' }).first().click();
+      await page.locator('.cx-drop-pop button', { hasText: v }).first().click();
+      await page.waitForTimeout(150);
+    }
+  });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
   await step('trøjenumre: skift nummer', async () => {

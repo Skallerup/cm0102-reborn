@@ -45,6 +45,14 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Kommentaren på alle 8 sprog: `scripts/match-texts-i18n/<sprog>.json` (de/es/fr/it/pt/tr, oversat af Claude, kun de 121
+  begivenheder i `scripts/match-text-events.json`) flettes ind af build-match-texts.py (række = [vægt, en, da, {sprog}]). Nye
+  begivenheder i MAP skal oversættes dertil. Skader: originalens knock (< 40 % = sikkert knock) eksploderede, fordi restitutionen
+  (+4 + NF/4 pr. dag) var for lav → nu +9 + NF/2 (*estimeret*); mål med `scripts/injury-stats.ts` (COND=65 giver 11 skader/kamp).
+  Klassisk kamp: resultattavle `classic` (kort navn, ingen minut/logo), stadion i foden (`MatchSide.venue`), halvleg uden holdsnak
+  (`L.atHalf`, Re-start Match, "/ HT 0-1"). Spillersiden: `Frame` = `.cx-ruled` (12 rækker), Injuries/Contract/Transfer/History
+  som originalen, `game/languages.ts` (Fluent Languages via Intl.DisplayNames), `Player.injuryLog/banLog`, `Contract.partTime`.
+  AI-managere ved nyt spil skjult (`BOTS_ENABLED` i Start.tsx). tests/ai-systems: vinduestesten venter nu på et helt vindue.
 - 2026-11-07 – Originalens kommentar: `scripts/build-match-texts.py` (ejerens `…/bosman-edition/app/match_texts/match_texts.json`
   → `src/ui/data/matchTexts.json`, eget bundt ~66 KB gzip), `ui/matchTexts.ts` (MAP: motorens linjetype → originalens begivenheder,
   p1/p2/other, pladsholdere; kun en/da), `commentaryText` prøver den først. Motoren: `opts.playByPlay` (kun live-kampen i klassisk)

@@ -892,3 +892,21 @@
 :root[data-skin='retro'] .cx-sbtn.cx-keep:disabled { color: #fff; opacity: 1; }
 :root[data-skin='retro'] .cx-tidlg .cx-tich { transition: none; border: 1px solid transparent; background: none; box-shadow: none; }
 :root[data-skin='retro'] .cx-tidlg .cx-tich.on { border-color: #fff21f; color: #fff21f; }
+.cx-mo-line.empty { visibility: hidden; }
+/* klassisk resultattavle (CM 01/02): navn til venstre, stillingen i en lys boks yderst til højre, "Agg 0-3" foran den */
+.cm-board.cx-board { grid-template-columns: 1fr 1fr; }
+.cm-board.cx-board .cm-team { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-left: 28px; }
+.cm-board.cx-board .cm-name { flex: 1; text-align: left; }
+.cm-board.cx-board .cm-agg { position: static; font-size: 15px; align-self: flex-end; margin-bottom: 6px; }
+.cx-foot-venue { margin: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.cx-mo-goal { display: flex; gap: 24px; justify-content: space-between; min-width: 160px; font-size: 18px; }
+.cx-mo-goal b { color: #fff21f; }
+/* spillersidens gennemsigtige boks med linjer (CM 01/02): label | værdi, mindst 12 rækker */
+.cx-kv.cx-ruled { display: grid; grid-template-columns: minmax(140px, 22%) 1fr; gap: 0; background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0; margin: 6px 0 10px; }
+.cx-kv.cx-ruled > span { min-height: 31px; display: flex; align-items: center; padding: 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.22); }
+.cx-kv.cx-ruled > span:nth-child(odd) { border-right: 1px solid rgba(255, 140, 90, 0.35); color: #fff; }
+.cx-kv.cx-ruled > span:nth-child(even) { color: #fff21f; }
+.cx-pl-stitle { text-align: left !important; white-space: nowrap; }
+.cx-career-total td { border-top: 1px solid rgba(255, 255, 255, 0.3); font-weight: 800; }
+.cx-pl-stats th.cx-pl-pager { background: none; border: none; }
+.cx-pl-stats th.cx-pl-stitle, .cx-pl-stats th.cx-pl-stitle .c-cyan { color: #6fe3ff; font-size: 14px; text-shadow: 1px 1px 0 #000; }

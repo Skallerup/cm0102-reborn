@@ -211,13 +211,15 @@ describe('transfervinduet', () => {
     const g = gs();
     const keys = new Set<string>();
     const start = g.news.length;
-    for (let i = 0; i < 200; i++) {
+    // et helt vindue (nedtælling → deadline day → lukket) – starter testen midt i et vindue, venter den på det næste
+    const want = ['window.closing', 'window.closingTomorrow', 'window.deadlineDay', 'window.closed'];
+    for (let i = 0; i < 600; i++) {
       const r = continueGame();
       if (r.match !== undefined) quickPlayUserMatch();
       for (const n of g.news.slice(0, Math.max(0, g.news.length - start))) if (n.key.startsWith('window.')) keys.add(n.key);
-      if (keys.has('window.closed') && keys.has('window.deadlineDay')) break;
+      if (want.every((k) => keys.has(k))) break;
     }
-    for (const k of ['window.closing', 'window.closingTomorrow', 'window.deadlineDay', 'window.closed']) expect(keys.has(k)).toBe(true);
+    for (const k of want) expect(keys.has(k)).toBe(true);
   });
 });
 

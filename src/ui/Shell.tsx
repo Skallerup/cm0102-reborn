@@ -366,7 +366,7 @@ export function Shell() {
               </div>
               {/* CM 01/02: under taktikken står Paused hvid og resten gråt; Cancel/Ok står nederst */}
               {ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
-                : <button className={`cx-sbtn cx-continue ${ms.editing ? 'cx-keep' : ''}`} disabled={ms.editing} title={ms.kicked && ms.paused ? t('cl.mt.resume') : undefined} onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.paused ? t('cl.mt.paused') : t('cl.mt.pause')}</button>}
+                : <button className={`cx-sbtn cx-continue ${ms.editing ? 'cx-keep' : ''}`} disabled={ms.editing} title={ms.kicked && ms.paused ? t('cl.mt.resume') : undefined} onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.half ? t('cl.mt.restart') : ms.paused ? t('cl.mt.paused') : t('cl.mt.pause')}</button>}
               <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
               <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
               {!ms.finished && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn', disabled: ms.editing }}
@@ -489,6 +489,9 @@ export function Shell() {
                 <button className="cx-back cx-mt-cancel" disabled={dialogOpen} onClick={matchSide.a.cancel}>{t('common.cancel')}</button>
                 <button className="cx-next cx-next-go cx-mt-ok" disabled={dialogOpen} onClick={matchSide.a.ok}>{t('common.ok')}</button>
               </div>
+            ) : matchSide && route.name === 'match' && matchSide.s.venue ? (
+              // kampskærmen (CM 01/02): stadion og by nederst i stedet for Back/Next
+              <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
             ) : <div className="cx-backnext">
               {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
               <button className="cx-back" disabled={!canBack || (route.name === 'match' && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>

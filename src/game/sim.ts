@@ -227,10 +227,10 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (line.yellow) {
       s.yellows++;
       p.yellowCount++;
-      if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; }
+      if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; (p.banLog ??= []).push({ d: g.date, n: 1, red: false }); }
       else if (p.yellowCount === 4 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'ban.oneAway', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; }
+    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; (p.banLog ??= []).push({ d: g.date, n: p.banned, red: true }); if (p.banLog.length > 30) p.banLog.shift(); }
     // karantæne (CM 01/02: "[spiller] banned for [n] matches") – til spillerens egen manager
     if (p.banned > bannedBefore && isHumanClub(p.club)) {
       const n = p.banned;
@@ -341,6 +341,8 @@ function injure(p: Player) {
   days = Math.max(1, Math.round(days * (1.15 - best / 40)));
   if (g.draft) { days = draftInjuryDays(days); if (!days) return; }
   p.injury = { key, days, total: days };
+  (p.injuryLog ??= []).push({ d: g.date, k: key, days });
+  if (p.injuryLog.length > 30) p.injuryLog.shift();
 }
 
 // ---------- dagsløkke ----------
@@ -374,7 +376,9 @@ function newDay() {
         asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       }
     }
-    if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
+    // restitution: en spiller med Natural Fitness 10 er klar igen 2-3 dage efter en kamp (som i CM 01/02, *estimeret*).
+    // Før +4 + NF/4: med to kampe om ugen startede holdene trætte, og originalens knock-regel (< 40 % = sikkert knock) gav op til 10 skader i én kamp
+    if (p.condition < 100) p.condition = Math.min(100, p.condition + 9 + p.attrs[29] / 2);
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }

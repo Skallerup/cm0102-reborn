@@ -28,6 +28,9 @@ import { changeCount, type CustomDb } from '../game/dbEdit';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft' | 'editor';
 
+/** AI-managere (bots) i almindelige spil er midlertidigt slået fra (ejerens ønske 2026-11-07) – draft-ligaen har sine egne */
+const BOTS_ENABLED = false;
+
 export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
   const [view, setView] = useState<View>(roomParam ? 'online' : new URLSearchParams(location.search).get('newdraft') ? 'newDraft' : 'menu');
@@ -352,7 +355,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
           </div>
         </Panel>
       )}
-      {!ch && (
+      {BOTS_ENABLED && !ch && (
         <Panel title={t('bots.title')}>
           <div className="col">
             <div className="muted">{t(online ? 'bots.hintOnline' : 'bots.hint')}</div>

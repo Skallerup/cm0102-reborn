@@ -112,6 +112,7 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
     if (line.injured && !p.injury) {
       const days = rng.int(4, 21);
       p.injury = { key: INJ[rng.int(0, INJ.length - 1)], days, total: days };
+      (p.injuryLog ??= []).push({ d: g.date, k: p.injury.key, days });
       if (isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'intl.injured', params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', days }, link: { kind: 'player', id: p.id } }));
     }
   }

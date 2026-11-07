@@ -30,6 +30,8 @@ export interface Contract {
   /** lønstigning ved oprykning (%) og bonus pr. kamp uden indkasserede mål (kun når spilleren spiller) */
   promotionRise?: number;
   cleanSheetBonus?: number;
+  /** deltidskontrakt (CM 01/02 Part Time) */
+  partTime?: boolean;
 }
 
 /** Klausuler i et kontrakttilbud */
@@ -118,6 +120,9 @@ export interface Player {
   form: number[]; // seneste kampkarakterer
   injury: Injury | null;
   banned: number; // karantæne (kampe)
+  /** skader og karantæner i karrieren (klassisk History → Injuries/Bans), nyeste sidst, højst 30 */
+  injuryLog?: { d: string; k: string; days: number }[];
+  banLog?: { d: string; n: number; red: boolean }[];
   yellowCount: number; // gule kort mod karantæne
   training: string; // træningsskema-nøgle
   listed: boolean; // transferlistet

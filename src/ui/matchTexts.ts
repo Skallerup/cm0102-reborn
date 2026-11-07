@@ -1,9 +1,9 @@
 // Originalens kommentarlinjer fra CM 01/02 (events_eng.cfg / events_dan.cfg, se scripts/build-match-texts.py).
 // Hver af motorens linjetyper oversættes til en eller flere af originalens begivenheder, fx et skud + redningen.
-// Kun engelsk og dansk – de øvrige sprog bruger stadig vores egne tekster.
+// Engelsk og dansk er originalens egne; de øvrige sprog er oversat (scripts/match-texts-i18n/).
 import type { CommentaryLine } from '../game/types';
 
-type Row = [number, string, string];
+type Row = [number, string, string, Record<string, string>?];
 let data: Record<string, Row[]> | null = null;
 let loading: Promise<void> | null = null;
 
@@ -117,11 +117,21 @@ export function hasOriginal(k: string): boolean { return k in MAP; }
 
 const hash = (n: number) => { let x = (n ^ 0x9e3779b9) >>> 0; x = Math.imul(x ^ (x >>> 16), 0x85ebca6b) >>> 0; x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0; return (x ^ (x >>> 16)) >>> 0; };
 
+/** Dommeren i teksten: [<Rf> med navn, <rf> med navn, <Rf> uden navn, <rf> uden navn] */
+const REF: Record<string, [string, string, string, string]> = {
+  en: ['Referee', 'referee', 'The referee', 'the referee'], da: ['Dommer', 'dommer', 'Dommeren', 'dommeren'],
+  de: ['Schiedsrichter', 'Schiedsrichter', 'Der Schiedsrichter', 'der Schiedsrichter'], es: ['El árbitro', 'el árbitro', 'El árbitro', 'el árbitro'],
+  fr: ["L'arbitre", "l'arbitre", "L'arbitre", "l'arbitre"], it: ["L'arbitro", "l'arbitro", "L'arbitro", "l'arbitro"],
+  pt: ['O árbitro', 'árbitro', 'O árbitro', 'árbitro'], tr: ['Hakem', 'hakem', 'Hakem', 'hakem'],
+};
+
 export interface OrigCtx { home: string; away: string; score?: string; ref?: string; lang: string }
 
 /** Linjen med originalens ord (en/da), eller null når der ikke findes en passende (så bruges vores egen tekst) */
 export function originalText(l: CommentaryLine, ctx: OrigCtx, idx: number): string | null {
-  if (!data || (ctx.lang !== 'en' && ctx.lang !== 'da')) return null;
+  if (!data) return null;
+  const lang = ctx.lang;
+  const pick = (r: Row) => (lang === 'en' ? r[1] : lang === 'da' ? r[2] : r[3]?.[lang]);
   const steps = MAP[l.k];
   if (!steps) return null;
   const da = ctx.lang === 'da';
@@ -133,18 +143,18 @@ export function originalText(l: CommentaryLine, ctx: OrigCtx, idx: number): stri
     const t1 = team(st.other), t2 = team(!st.other);
     const ok = (txt: string, en: boolean) => (!txt.includes('<p1>') || !!p1) && (!txt.includes('<p2>') || !!p2) && (!/<t1?>|<tc>/.test(txt) || !!t1) && (!txt.includes('<t2>') || !!t2)
       && (!txt.includes('<N>') || !!l.a) && !/<n>|<c>|<f>/.test(txt) && (!en || !st.only || st.only.test(txt));
-    const rows = st.ev.flatMap((e) => data![e] ?? []).filter((r) => ok(r[1], true) && ok(r[2], false));
+    const rows = st.ev.flatMap((e) => data![e] ?? []).filter((r) => { const x = pick(r); return !!x && ok(r[1], true) && ok(x, false); });
     if (!rows.length) return;
     const tot = rows.reduce((a, r) => a + r[0], 0);
     let x = hash(idx * 31 + l.m * 7 + si) % tot;
     let row = rows[0];
     for (const r of rows) { x -= r[0]; if (x < 0) { row = r; break; } }
     const poss = (name: string) => (da ? (/[sxz]$/i.test(name) ? "'" : 's') : /s$/i.test(name) ? "'" : "'s");
-    let txt = da ? row[2] : row[1];
+    let txt = pick(row)!;
     txt = txt.replace(/<p1>\{s\}/g, p1 ? p1 + poss(p1) : '').replace(/<p2>\{s\}/g, p2 ? p2 + poss(p2) : '').replace(/<t2>\{s\}/g, t2 ? t2 + poss(t2) : '').replace(/<t1?>\{s\}/g, t1 ? t1 + poss(t1) : '')
       .replace(/<p1>/g, p1 ?? '').replace(/<p2>/g, p2 ?? '').replace(/<tc>/g, (t1 ?? '').toUpperCase()).replace(/<t1?>/g, t1 ?? '').replace(/<t2>/g, t2 ?? '')
-      .replace(/<Rf>/g, ctx.ref ? `${da ? 'Dommer' : 'Referee'} ${ctx.ref}` : da ? 'Dommeren' : 'The referee')
-      .replace(/<rf>/g, ctx.ref ? `${da ? 'dommer' : 'referee'} ${ctx.ref}` : da ? 'dommeren' : 'the referee')
+      .replace(/<Rf>/g, ctx.ref ? `${REF[lang]?.[0] ?? 'Referee'} ${ctx.ref}` : REF[lang]?.[2] ?? 'The referee')
+      .replace(/<rf>/g, ctx.ref ? `${REF[lang]?.[1] ?? 'referee'} ${ctx.ref}` : REF[lang]?.[3] ?? 'the referee')
       .replace(/<d>/g, String(15 + (hash(idx + 7) % 30))).replace(/<N>/g, l.a ?? '')
       .replace(/<[YRO]>/g, '').replace(/\{s\}/g, '').replace(/\s+/g, ' ');
     // "|" = flere linjer efter hinanden i originalen: her én linje med punktum imellem

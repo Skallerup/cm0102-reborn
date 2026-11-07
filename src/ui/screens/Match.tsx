@@ -14,7 +14,7 @@ import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
 import type { Fixture, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine } from '../../game/types';
-import { compName, dateFmt, t } from '../../i18n';
+import { compName, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
@@ -81,7 +81,7 @@ export function statColors(home: number, away: number, me: number): [string, str
 // originalens kommentarlinjer hentes, så snart kampskærmen er indlæst (de er klar, før bolden sparkes i gang)
 void loadMatchTexts();
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number } } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; ht?: [number, number] } | null = null;
 
 /** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
 const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
@@ -232,8 +232,15 @@ function lastLines<T>(lines: T[], n: number): [T, number][] {
 }
 
 /** CM-stil: holdbjælker i holdfarverne med stor score og minuttet til venstre */
-function CmScoreboard({ home, away, hg, ag, minute, colors, agg }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string }) {
+function CmScoreboard({ home, away, hg, ag, minute, colors, agg, classic }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string; classic?: boolean }) {
   const g = gs();
+  // klassisk (CM 01/02): kun klubbernes korte navn og stillingen yderst til højre i hver boks – minuttet står i sidebjælken
+  if (classic) return (
+    <div className="cm-board cx-board">
+      <div className="cm-team" style={{ background: colors[0], color: colors[1] }}><span className="cm-name">{g.clubs[home]?.short}</span><span className="cm-score">{hg}</span></div>
+      <div className="cm-team" style={{ background: colors[2], color: colors[3] }}><span className="cm-name">{g.clubs[away]?.short}</span>{agg && <span className="cm-agg">{agg}</span>}<span className="cm-score">{ag}</span></div>
+    </div>
+  );
   return (
     <div className="cm-board">
       <div className="cm-minute">{minute}</div>
@@ -254,8 +261,9 @@ type LiveTeam = ReturnType<MatchSim['live']>;
 
 /** Match Overview (CM 01/02): halvleg, dato og turnering, den seneste kommentar i farverne på holdet med bolden,
  *  boldbesiddelsen de seneste 5 minutter, dommer og vejr */
-function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootout }: { shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
+function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootout, ht }: { ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
+  const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
   const team = line?.t;
   const bar = line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
@@ -263,13 +271,13 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootou
   return (
     <div className="cx-mo">
       <div className="cx-subtitle small">{half}</div>
-      <div className="cx-mo-meta"><span>{dateFmt(f.date, true)}</span><span>{compName(g.comps[f.comp]?.name)}</span></div>
+      <div className="cx-mo-meta"><span>{new Date(`${f.date}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span><span>{compName(g.comps[f.comp]?.name)}{ht ? ` / ${t('cl.mt.ht')} ${ht[0]}-${ht[1]}` : ''}</span></div>
       {/* målscorerne under hvert hold, som i CM 01/02 (selvmål står hos holdet, der fik målet) */}
       <div className="cx-mo-scorers">
         {[0, 1].map((side) => (
           <div key={side} className={side ? 'away' : ''}>
-            {goals.filter((e) => e.t === side).map((e, i) => <div key={i}>{g.players[e.p]?.last ?? ''} {e.m}{e.og ? ` (${t('match.og')})` : ''}</div>)}
-            {injuries.filter((e) => e.t === side).map((e, i) => <div key={`i${i}`} className="cx-mo-inj">{t('cl.mt.injured', { name: g.players[e.p]?.last ?? '' })} {e.m}</div>)}
+            {goals.filter((e) => e.t === side).map((e, i) => <div key={i} className="cx-mo-goal"><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span><span>{e.og ? ` (${t('match.og')})` : ''}</span><b>{e.m}</b></div>)}
+            {injuries.filter((e) => e.t === side).map((e, i) => <div key={`i${i}`} className="cx-mo-inj cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{t('cl.mt.injured', { name: g.players[e.p]?.last ?? '' })} {e.m}</div>)}
           </div>
         ))}
       </div>
@@ -282,7 +290,7 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootou
             ))}</div>
           ))}</div>
         </div>
-      ) : <div className="cx-mo-line" style={bar}>{line?.text ?? ''}</div>}
+      ) : <div className={`cx-mo-line ${line ? '' : 'empty'}`} style={line ? bar : undefined}>{line?.text ?? ''}</div>}
       <div className="cx-mo-poss">
         <span className="lbl">{t('match.last5')}</span>
         <div className="cx-mo-bar">
@@ -661,6 +669,9 @@ function LiveMatch({ id }: { id: number }) {
   const maybeHalftime = () => {
     if (sim.half === 2 && !L.halfShown && !talkDone(id, 'half') && !sim.finished) {
       L.halfShown = true;
+      L.ht = [sim.teams[0].stats.goals, sim.teams[1].stats.goals];
+      // klassisk (CM 01/02): ingen holdsnak – kampen står stille på Match Overview med "Half Time" og Re-start Match
+      if (classic) { L.atHalf = true; setPaused(true); setTab('overview'); return; }
       L.prevTab = tab === 'talk' ? '2d' : tab;
       if (h2h) { H.current.phase = 'half'; H.current.halfEnd = Date.now() + 60_000; }
       else setPaused(true);
@@ -720,7 +731,7 @@ function LiveMatch({ id }: { id: number }) {
   });
 
   // klassisk: bolden i spil → kampen pauser ved næste stop i spillet (som i CM 01/02); genoptag sker med det samme
-  const cxPause = () => { if (paused) { setPaused(false); return; } if (L.wantPause) return; L.wantPause = { from: sim.commentary.length, m: sim.minute }; setMsg(t('cl.mt.waitPause')); };
+  const cxPause = () => { if (paused) { L.atHalf = false; setPaused(false); return; } if (L.wantPause) return; L.wantPause = { from: sim.commentary.length, m: sim.minute }; setMsg(t('cl.mt.waitPause')); };
   useHotkeys((e) => {
     const k = e.key.toLowerCase();
     if (report) {
@@ -756,7 +767,7 @@ function LiveMatch({ id }: { id: number }) {
 
   const st = sim.teams.map((tm) => tm.stats);
   const myLive = sim.live(me);
-  const halfTalk = !gs().draft && sim.half === 2 && !report && (tab === 'talk' || (!talkDone(id, 'half') && sim.minute <= 50));
+  const halfTalk = !classic && !gs().draft && sim.half === 2 && !report && (tab === 'talk' || (!talkDone(id, 'half') && sim.minute <= 50));
   const myGoals = sim.teams[me].stats.goals - sim.teams[1 - me].stats.goals;
   const liveRatings = Object.fromEntries(myLive.on.filter((s) => !s.off).map((s) => [s.id, Math.round(s.rating * 10) / 10]));
 
@@ -811,7 +822,7 @@ function LiveMatch({ id }: { id: number }) {
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report && !classic ? t('match.continue') : null, done);
   const editing = classic && tab === 'tactics' && !report;
-  useClassicMatchSide(classic ? { minute: waiting ? '0' : sim.finished ? minute : String(sim.minute), editing, lastView: editing && lastView, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+  useClassicMatchSide(classic ? { minute: waiting ? '0' : sim.finished ? minute : L.atHalf ? '45' : String(sim.minute), half: !!L.atHalf, editing, lastView: editing && lastView, venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
     kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
     pause: cxPause,
     tactics: (side) => {
@@ -856,7 +867,7 @@ function LiveMatch({ id }: { id: number }) {
       </Head>}
       {/* klassisk: taktikskærmen fylder hele siden (som i CM 01/02) */}
       {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <div className={photo ? 'cm-stage' : undefined} style={photo ? ({ '--stadium': `url("${photo}")` } as CSSProperties) : undefined}>
-        <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')}
+        <CmScoreboard home={f.home} away={f.away} hg={st[0].goals - (spoil === 0 ? 1 : 0) + (fake === 0 ? 1 : 0)} ag={st[1].goals - (spoil === 1 ? 1 : 0) + (fake === 1 ? 1 : 0)} colors={colors} classic={classic} minute={minuteLabel + (paused && !report ? ' ❚❚' : '')}
           agg={aggText(f, st[0].goals, st[1].goals)} />
         {photo && <div className="cm-stage-venue">{g.clubs[f.home]?.stadium}</div>}
       </div>}
@@ -886,7 +897,7 @@ function LiveMatch({ id }: { id: number }) {
         </div></div>
       )}
       {(tab === 'overview' || (classic && tab === '2d')) && (
-        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={waiting ? t('cl.mt.koLabel') : sim.finished ? t('match.ft') : sim.half === 2 ? t('match.half2') : t('match.half1')}
+        <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={waiting ? t('cl.mt.koLabel') : sim.finished ? t('match.ft') : L.atHalf ? t('cl.mt.halfTime') : sim.half === 2 ? t('match.half2') : t('match.half1')} ht={L.ht}
           injuries={sim.events.filter((e) => e.k === 'injury' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
           shootout={classic ? sim.shootout?.kicks : undefined}
           goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og }))} />
@@ -901,7 +912,6 @@ function LiveMatch({ id }: { id: number }) {
       {classic && !(tab === 'tactics' || tab === 'oppTactics') && (
         <>
           <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: g.clubs[f.home].short })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ['astats', t('cl.mt.teamStats', { club: g.clubs[f.away].short })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
-          <div className="cx-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home].short}` : ''}</div>
         </>
       )}
       {tab === 'oppTactics' && <OppTactics sim={sim} side={(1 - me) as 0 | 1} club={g.clubs[me === 0 ? f.away : f.home]?.name ?? ''} />}
