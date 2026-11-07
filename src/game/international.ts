@@ -470,3 +470,20 @@ export function isInternational(p: Player): boolean {
   }
   return intCache.ids.has(p.id);
 }
+
+const TOUR_KINDS = new Set<IntlResult['kind']>(['wc', 'euro', 'copa', 'afcon', 'asian']);
+
+/**
+ * Dagens slutrundekampe (CM 01/02: "FIFA World Cup – Afternoon Result"): resultaterne med gruppe/runde og placering i gruppen.
+ * Slutrunderne spilles i newDay, så dagens resultater findes, når spillet stopper på dagen.
+ */
+export function intlDayResults(date: string): { r: IntlResult; t?: IntlTournament; group?: number; pos?: [number, number] }[] {
+  const st = state();
+  const tours = [st.tournament, ...(st.cont ?? [])].filter((x): x is IntlTournament => !!x);
+  return st.results.filter((r) => r.date === date && TOUR_KINDS.has(r.kind)).reverse().map((r) => {
+    const t = tours.find((x) => x.name === r.kind);
+    const group = r.stage ? undefined : t?.groups.findIndex((grp) => grp.includes(r.home));
+    const rows = t && group !== undefined && group >= 0 ? rowsOf(t, t.groups[group]).map((x) => x.n) : undefined;
+    return { r, t, group: group !== undefined && group >= 0 ? group : undefined, pos: rows ? [rows.indexOf(r.home) + 1, rows.indexOf(r.away) + 1] : undefined };
+  });
+}

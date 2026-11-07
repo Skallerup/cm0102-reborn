@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Slutrundedage: `intlDayResults(date)` (international.ts) – slutrundekampe spilles i newDay, så runUntil(watchDays)
+  stopper med 'dayStart' (kun resultater; 'dayEnd' gælder kun klubdage) → rute `intlday` (`IntlDay` i MatchDayClassic.tsx, hub
+  guldfarvet). Venues for VM-kampe har vi ikke (originalen viser stadion under hjemmeholdet).
 - 2026-11-07 – Klassisk indbakke: knappen Respond (`.cx-respond`) ved en nyhed med link til et ventende bud på egen spiller →
   `IncomingBidPanel` (TransferStatusClassic.tsx, action `respond` accept/reject/counter). e2e "svar på et bud (Respond)".
 - 2026-11-07 – Nyhedsbrødtekst: `bodyKey(n)` i common.tsx vælger skabelonen for både `newsBody` og `NewsBody` (før brugte

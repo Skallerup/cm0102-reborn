@@ -126,6 +126,13 @@ async function run(look) {
     await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
   });
+  if (look === 'klassisk') await step('slutrundens kampdag (VM)', async () => {
+    await gs(() => { const g = window.__cm.gs(); g.intl ??= { results: [], history: [] }; g.intl.results.unshift({ date: g.date, home: g.clubs[g.userClub].nation, away: (g.clubs[g.userClub].nation + 1) % g.nations.length, hg: 1, ag: 0, kind: 'wc', stage: 'F' }); });
+    await go({ name: 'intlday' });
+    await page.waitForSelector('.cx-md-panel .cx-md-res', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-vm-kampdag.png` });
+    await gs(() => { window.__cm.gs().intl.results.shift(); });
+  });
   if (look === 'klassisk') await step('svar på et bud (Respond)', async () => {
     await gs(() => {
       const g = window.__cm.gs();

@@ -1,7 +1,8 @@
 // Kampdag i klassisk tema: dagens kampe pr. turnering (som originalens "Evening Fixtures"), én turnering ad gangen.
 // Continue Game i venstre kolonne fører videre til ens egen kamp.
 import type { Fixture, GameState } from '../../game/types';
-import { compName, t } from '../../i18n';
+import { compName, natName, t } from '../../i18n';
+import { intlDayResults } from '../../game/international';
 import { useGame, useNav, useRouteState } from '../core';
 import { CxLink, clubRoute, useClassicContinue } from '../classic';
 import { Head } from './common';
@@ -69,14 +70,18 @@ export function MatchDay({ id }: { id: number }) {
   const title = t(`cl.md.${played ? 'res' : 'fix'}${list.length === 1 ? '1' : 'N'}`, { when: t(wd === 0 || wd === 6 ? 'cl.md.afternoon' : 'cl.md.evening') });
   return (
     <div>
-      <Head title={compName(comp?.name) ?? t('nav.fixtures')}>
-        <button className="cx-greybtn" disabled={i <= 0} onClick={() => setI(i - 1)}>‹‹</button>
-        <span className="cx-md-count">{t('cl.md.count', { n: Math.min(i, comps.length - 1) + 1, of: comps.length })}</span>
-        <button className="cx-greybtn" disabled={i >= comps.length - 1} onClick={() => setI(i + 1)}>››</button>
+      <Head title={compName(comp?.name) ?? t('nav.fixtures')} />
+      <div className="cx-subtitle">{title}</div>
+      {/* CM 01/02: Competition under overskriften til højre (vores ‹‹ ›› bladrer mellem dagens turneringer) */}
+      <div className="cx-md-tools">
+        {comps.length > 1 && <>
+          <button className="cx-greybtn" disabled={i <= 0} onClick={() => setI(i - 1)}>‹‹</button>
+          <span className="cx-md-count">{t('cl.md.count', { n: Math.min(i, comps.length - 1) + 1, of: comps.length })}</span>
+          <button className="cx-greybtn" disabled={i >= comps.length - 1} onClick={() => setI(i + 1)}>››</button>
+        </>}
         <span className="grow" />
         {comp && <button className="cx-greybtn" onClick={() => nav({ name: 'competitions', id: cid })}>{t('cl.md.competition')}</button>}
-      </Head>
-      <div className="cx-subtitle">{title}</div>
+      </div>
       <div className="cx-md-panel">{stages.map((st) => (
         <div key={st} className="cx-md">
           {comp?.type !== 'league' && <div className="cx-md-stage">{st}</div>}
@@ -92,6 +97,45 @@ export function MatchDay({ id }: { id: number }) {
         </div>
       ))}</div>
       {g.pendingFixture && !played && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
+    </div>
+  );
+}
+
+/** Slutrundens kampdag (CM 01/02 "FIFA World Cup – Afternoon Result"): dagens resultater pr. gruppe/runde med placeringen i gruppen */
+export function IntlDay() {
+  const g = useGame()!;
+  const { nav } = useNav();
+  const all = intlDayResults(g.date);
+  const kinds = [...new Set(all.map((x) => x.r.kind))];
+  const [i, setI] = useRouteState('idi', 0);
+  const kind = kinds[Math.min(i, kinds.length - 1)];
+  const list = all.filter((x) => x.r.kind === kind);
+  // Continue Game bladrer videre til næste slutrunde, den sidste går videre i spillet
+  useClassicContinue(() => { if (i >= kinds.length - 1) return false; setI(i + 1); return true; });
+  const wd = new Date(`${g.date}T12:00:00`).getDay();
+  const title = t(`cl.md.res${list.length === 1 ? '1' : 'N'}`, { when: t(wd === 0 || wd === 6 ? 'cl.md.afternoon' : 'cl.md.evening') });
+  const label = (x: (typeof list)[number]) => (x.group !== undefined ? t('cl.md.group', { g: String.fromCharCode(65 + x.group) }) : t(`stage.${x.r.stage}`));
+  const stages = [...new Set(list.map(label))];
+  const nat = (n: number) => <span className="cx-link" role="link" onClick={() => nav({ name: 'international', id: n })}>{natName(g.nations[n]?.name) ?? '?'}</span>;
+  return (
+    <div>
+      <Head title={kind ? t(`intl.name.${kind}`) : ''} />
+      <div className="cx-subtitle">{title}</div>
+      <div className="cx-md-tools"><span className="grow" /><button className="cx-greybtn" onClick={() => nav({ name: 'international' })}>{t('cl.md.competition')}</button></div>
+      <div className="cx-md-panel">{stages.map((st) => (
+        <div key={st} className="cx-md">
+          <div className="cx-md-stage">{st}</div>
+          {list.filter((x) => label(x) === st).map((x, k) => (
+            <div key={k} className="cx-md-row">
+              <span className="cx-md-code">{x.pos ? ordinal(x.pos[0]) : g.nations[x.r.home]?.code ?? ''}</span>
+              <span className="cx-md-home">{nat(x.r.home)}</span>
+              <span className="cx-md-res">{x.r.hg}:{x.r.ag}</span>
+              <span className="cx-md-away">{nat(x.r.away)}</span>
+              <span className="cx-md-code">{x.pos ? ordinal(x.pos[1]) : g.nations[x.r.away]?.code ?? ''}</span>
+            </div>
+          ))}
+        </div>
+      ))}</div>
     </div>
   );
 }

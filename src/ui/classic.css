@@ -1158,3 +1158,6 @@
 .cx-winbox-head { background: #00006e; color: #fff; text-align: left; padding: 4px 8px; font-size: 13px; }
 .cx-winbox p { margin: 14px 10px; color: #fff; font-size: 12.5px; }
 :root[data-skin='retro'] .cx-winbox button { min-width: 74px; padding: 3px 0; background: #8c8a8c; color: #fff; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; font-size: 13px; box-shadow: none; }
+.cx-md-tools { display: flex; align-items: center; gap: 4px; margin: -4px 16px 6px; }
+.cx-md-tools .cx-greybtn { min-width: 200px; }
+.cx-md-tools .grow { flex: 1; }

@@ -19,6 +19,7 @@ import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
+import { intlDayResults } from '../game/international';
 import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
 import { dateFmt, money, t } from '../i18n';
 import { Crest } from './components';
@@ -61,7 +62,7 @@ import { backgroundUrl, loadStadiumBgs, stadiumBgUrl } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
-import { MatchDay } from './screens/MatchDayClassic';
+import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
@@ -261,7 +262,7 @@ export function Shell() {
     notify();
     // klassisk tema: først dagens kampe (som i originalen) – Continue Game fører derefter til kampen
     if (r.match !== undefined) nav(cmNav ? { name: 'matchday', id: r.match } : { name: 'match', id: r.match });
-    else if (r.stop === 'dayStart' || r.stop === 'dayEnd') { const id = watchedDay(gs().date); if (id !== undefined) nav({ name: 'matchday', id }); }
+    else if (r.stop === 'dayStart' || r.stop === 'dayEnd') { const id = watchedDay(gs().date); if (id !== undefined) nav({ name: 'matchday', id }); else if (intlDayResults(gs().date).length) nav({ name: 'intlday' }); }
     else if (r.stop) {
       nav({ name: 'inbox' });
       // vis den ældste uåbnede besked
@@ -541,7 +542,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
   const { route, nav } = useNav();
   // en skærm man ikke længere har adgang til (fx bestyrelsen lige efter en opsigelse): videre til jobcentret/indbakken
   const g = useGame()!;
-  const blocked = !g.draft && !g.userClub && !allowed(route.name) && route.name !== 'compare' && route.name !== 'player' && route.name !== 'club' && route.name !== 'match' && route.name !== 'report' && route.name !== 'matchday';
+  const blocked = !g.draft && !g.userClub && !allowed(route.name) && route.name !== 'compare' && route.name !== 'player' && route.name !== 'club' && route.name !== 'match' && route.name !== 'report' && route.name !== 'matchday' && route.name !== 'intlday';
   useEffect(() => { if (blocked) nav({ name: allowed('jobs') ? 'jobs' : 'inbox' }); }, [blocked]); // eslint-disable-line react-hooks/exhaustive-deps
   if (blocked) return null;
   switch (route.name) {
@@ -571,6 +572,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'benchmark': return <Assistant tab="bench" />;
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'matchday': return <MatchDay id={Number(route.id)} />;
+    case 'intlday': return <IntlDay />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;

@@ -1,5 +1,5 @@
 // Spillets dag-for-dag-løkke.
-import { intlDaily } from './international';
+import { intlDayResults, intlDaily } from './international';
 import { awolMonthly } from './rules2001';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
@@ -612,10 +612,12 @@ export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean;
     if (opts.shouldStop?.()) return {};
     if (opts.untilDate && g.date >= opts.untilDate && g.dayDone && !g.pendingFixture) return {};
     const paused = !g.dayDone && !g.pendingFixture;
-    const watch = opts.watchDays && !opts.autoPlay ? (d: string) => watchedDay(d) !== undefined : undefined;
+    const clubWatch = opts.watchDays && !opts.autoPlay ? (d: string) => watchedDay(d) !== undefined : undefined;
+    // slutrundedage (VM/EM …) stopper også – på resultaterne, da landskampene spilles i newDay
+    const watch = clubWatch ? (d: string) => clubWatch(d) || intlDayResults(d).length > 0 : undefined;
     const r = continueGame(watch);
     // en fulgt kampdag er spillet færdig: vis resultaterne
-    if (paused && watch && g.dayDone && watch(g.date)) return { stop: 'dayEnd' };
+    if (paused && clubWatch && g.dayDone && clubWatch(g.date)) return { stop: 'dayEnd' };
     if (r.match !== undefined) {
       if (opts.autoPlay) {
         quickPlayUserMatch();

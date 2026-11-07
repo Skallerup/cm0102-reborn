@@ -192,6 +192,8 @@ const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
 const HUBS: Partial<Record<ScreenName, Hub>> = {
   // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
   competitions: { colors: (_g, r) => compColors(r.id !== undefined ? String(r.id) : undefined) },
+  // slutrundens kampdag (CM 01/02: guldfarvet titel for FIFA World Cup)
+  intlday: { colors: () => ({ bg: '#d2aa4a', fg: '#ffffff' }) },
   // kampdagen: turneringens farver (CM 01/02 – Champions League sort/rød, UEFA Cup blå, resten hvid)
   matchday: { colors: (g, r) => { const { comps } = matchDayComps(g, Number(r.id)); return compColors(comps[Math.min(Number(r.state?.mdi ?? 0), comps.length - 1)]); } },
   // Manager Stats / Job Information / Transfers (CM 01/02): mørkeblå titelbjælke
