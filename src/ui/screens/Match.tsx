@@ -514,15 +514,15 @@ function LiveMatch({ id }: { id: number }) {
       if (l.k.startsWith('pl-') && !classic) { L.consumed++; continue; }
       const cls = l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '';
       L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k, t: l.t, ci: L.consumed });
-      // klassisk: bjælken blinker "GOAL!" i 5-6 sekunder, og kampen står stille imens (ikke ved Instant)
-      if (classic && cls === 'goal' && l.k !== 'goal-cheer' && speed < 8) L.goalUntil = Date.now() + 5500;
+      // klassisk: bjælken blinker "GOAL!" i 5-6 sekunder, og kampen står stille imens (ved alle hastigheder)
+      if (classic && cls === 'goal' && l.k !== 'goal-cheer') L.goalUntil = Date.now() + 5500;
       L.consumed++;
     }
-    // lyd: højst én af hver slags pr. opdatering, og ikke når kampen spoles frem (Instant)
-    if (speed < 8 && !report) {
+    // lyd: højst én af hver slags pr. opdatering (ved Fastest ingen fløjt for hvert frispark)
+    if (!report) {
       if (sounds.has('goalH') || sounds.has('goalA')) goalRoar(sounds.has('goalH'));
       else if (sounds.has('ooh')) ooh();
-      if (sounds.has('ft')) { whistle(3); stopCrowd(); } else if (sounds.has('ht')) whistle(2); else if (sounds.has('ko')) { whistle(1, true); startCrowd(); } else if (sounds.has('ref')) whistle(1);
+      if (sounds.has('ft')) { whistle(3); stopCrowd(); } else if (sounds.has('ht')) whistle(2); else if (sounds.has('ko')) { whistle(1, true); startCrowd(); } else if (sounds.has('ref') && speed < 8) whistle(1);
     }
     // boldbesiddelse de seneste 5 minutter (Match Overview i klassisk tema)
     const z = (L.zones ??= [0, 0, 0]);
@@ -748,7 +748,7 @@ function LiveMatch({ id }: { id: number }) {
   });
 
   // tilskuerbrus, mens kampen kører (stille ved pause, slutfløjt og Instant – og når man forlader kampen)
-  const crowdOn = !waiting && !paused && !report && !sim.finished && speed < 8;
+  const crowdOn = !waiting && !paused && !report && !sim.finished;
   useEffect(() => { if (crowdOn) startCrowd(); else stopCrowd(); }, [crowdOn]);
   useEffect(() => () => stopCrowd(), []);
 

@@ -2,9 +2,17 @@
 // Alt syntetiseres med Web Audio (ingen lydfiler – originalens lyde må vi ikke bruge). Slås til/fra i indstillingerne.
 const KEY = 'cm-match-sound';
 export const matchSound = () => { try { return localStorage.getItem(KEY) !== 'off'; } catch { return true; } };
-export const setMatchSound = (on: boolean) => { try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* ignorér */ } if (!on) stopCrowd(); };
+// slås lyden til, fløjter dommeren én gang som prøve
+export const setMatchSound = (on: boolean) => { const was = matchSound(); try { localStorage.setItem(KEY, on ? 'on' : 'off'); } catch { /* ignorér */ } if (!on) stopCrowd(); else if (!was) whistle(1); };
 
 let ctx: AudioContext | null = null;
+let out: AudioNode | null = null;
+// browsere (især Safari) starter først lyd efter et klik: lås op ved første tryk på siden
+if (typeof window !== 'undefined') {
+  const unlock = () => { if (matchSound()) { const c = ac(); if (c?.state === 'running') { window.removeEventListener('pointerdown', unlock, true); window.removeEventListener('keydown', unlock, true); } } };
+  window.addEventListener('pointerdown', unlock, true);
+  window.addEventListener('keydown', unlock, true);
+}
 let noise: AudioBuffer | null = null;
 let crowd: { src: AudioBufferSourceNode; gain: GainNode } | null = null;
 
@@ -13,6 +21,12 @@ function ac(): AudioContext | null {
   try {
     ctx ??= new (window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     if (ctx.state === 'suspended') void ctx.resume();
+    if (!out) {
+      // fælles udgang med en kompressor, så jubel og brus kan være kraftige uden at skurre
+      const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 6;
+      const master = ctx.createGain(); master.gain.value = 1.6;
+      master.connect(comp).connect(ctx.destination); out = master;
+    }
     if (!noise) {
       // lyserød støj (blødere end hvid) – grundlaget for brus og jubel
       noise = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate);
@@ -35,7 +49,7 @@ function noiseBurst(c: AudioContext, opts: { dur: number; peak: number; freq: nu
   g.gain.setValueAtTime(0.0001, now);
   g.gain.exponentialRampToValueAtTime(opts.peak, now + (opts.attack ?? 0.25));
   g.gain.exponentialRampToValueAtTime(0.0001, now + opts.dur);
-  src.connect(f).connect(g).connect(c.destination);
+  src.connect(f).connect(g).connect(out!);
   src.start(now, Math.random() * 3); src.stop(now + opts.dur + 0.1);
 }
 
@@ -46,8 +60,8 @@ export function startCrowd() {
   const src = c.createBufferSource(); src.buffer = noise; src.loop = true;
   const f = c.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
   const gain = c.createGain(); gain.gain.value = 0.0001;
-  gain.gain.exponentialRampToValueAtTime(0.05, c.currentTime + 1.5);
-  src.connect(f).connect(gain).connect(c.destination);
+  gain.gain.exponentialRampToValueAtTime(0.22, c.currentTime + 1.5);
+  src.connect(f).connect(gain).connect(out!);
   src.start();
   crowd = { src, gain };
 }
@@ -73,7 +87,7 @@ export function whistle(blasts = 1, long = false) {
     const g = c.createGain();
     g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(0.09, t0 + 0.02);
     g.gain.setValueAtTime(0.09, t0 + dur - 0.05); g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    o.connect(g).connect(c.destination);
+    o.connect(g).connect(out!);
     o.start(t0); lfo.start(t0); o.stop(t0 + dur + 0.05); lfo.stop(t0 + dur + 0.05);
   }
 }
@@ -82,13 +96,13 @@ export function whistle(blasts = 1, long = false) {
 export function goalRoar(home = true) {
   const c = ac();
   if (!c) return;
-  noiseBurst(c, { dur: 5.5, peak: home ? 0.55 : 0.22, freq: 700, q: 0.5, attack: 0.35 });
-  noiseBurst(c, { dur: 4.5, peak: home ? 0.3 : 0.12, freq: 1800, q: 0.8, attack: 0.3 });
+  noiseBurst(c, { dur: 5.5, peak: home ? 1.6 : 0.7, freq: 700, q: 0.5, attack: 0.35 });
+  noiseBurst(c, { dur: 4.5, peak: home ? 0.9 : 0.4, freq: 1800, q: 0.8, attack: 0.3 });
 }
 
 /** Stor chance (redning, stolpe, forbi): et kort "uhh" fra tribunen */
 export function ooh() {
   const c = ac();
   if (!c) return;
-  noiseBurst(c, { dur: 1.6, peak: 0.18, freq: 420, q: 1.4, attack: 0.18 });
+  noiseBurst(c, { dur: 1.6, peak: 0.7, freq: 420, q: 1.4, attack: 0.18 });
 }
