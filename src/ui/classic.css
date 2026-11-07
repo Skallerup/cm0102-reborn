@@ -45,7 +45,7 @@
 }
 
 /* ---------- venstre-kolonnen ---------- */
-.cx-side { display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2) 70%); border-right: 2px solid #3d50cc; overflow-y: auto; }
+.cx-side { display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2) 45%, #000 100%); border-right: 2px solid #3d50cc; overflow-y: auto; }
 .cx-date { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 54px; padding: 6px 2px; background: #0a1150; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); color: var(--cx-gold); text-align: center; line-height: 1.25; }
 .cx-date b { font-size: 12.5px; font-weight: 700; }
 .cx-date span { font-size: 12.5px; }
