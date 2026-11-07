@@ -37,6 +37,6 @@ export function reservesDaily() {
     const mine = poisson(Math.max(0.3, 1.4 + diff + (home ? 0.2 : 0)), hash01(g.seed, me.id, day, 73));
     const theirs = poisson(Math.max(0.3, 1.4 - diff + (home ? 0 : 0.2)), hash01(g.seed, opp.id, day, 74));
     const key = mine > theirs ? 'res.win' : mine === theirs ? 'res.draw' : 'res.loss';
-    addNews({ cat: 'match', key, params: { club: me.short, opp: opp.short, a: mine, b: theirs, venue: (home ? me : opp).stadium ?? '' } });
+    addNews({ cat: 'match', key, params: { team: me.short, opp: opp.short, a: mine, b: theirs, venue: (home ? me : opp).stadium ?? '' } });
   });
 }
