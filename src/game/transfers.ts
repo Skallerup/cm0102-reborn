@@ -1,6 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
-import { naturalRole } from './attributes';
+import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
 import { rulesFor } from './leagues';
@@ -256,8 +256,12 @@ export function playerInterest(p: Player, club: Club): 'yes' | 'reputation' | 'h
   if (!permitOk(p, club)) return 'permit';
   const cur = p.club ? g.clubs[p.club] : undefined;
   const gap = p.rep - club.rep;
-  if (gap > 28 + (p.attrs[41] - 10)) return 'reputation';
-  if (cur && cur.rep > club.rep + 25 && keyPlayerRank(p) <= 11 && p.attrs[43] > 13) return 'happy';
+  // omdømmeforskel: ambitiøse spillere vil ikke ned til mindre klubber (før brugte reglen ved en fejl tilpasningsevnen, så
+  // ambitiøse verdensstjerner gik med til små ligaer – også på Bosman); ældre spillere (30+) tager gerne et skridt ned
+  const age = ageOn(p.dob, g.date);
+  const tol = 24 - (p.attrs[A.ambition] - 10) * 1.2 + (age >= 32 ? 10 : age >= 30 ? 4 : 0);
+  if (gap > tol) return 'reputation';
+  if (cur && cur.rep > club.rep + 25 && keyPlayerRank(p) <= 11 && p.attrs[A.loyalty] > 13) return 'happy';
   // agent der vil have spilleren til en større liga: ikke et skifte i samme land eller til en fattigere liga – medmindre klubben er markant større
   if (cur && agentOf(p).style === 'abroad' && club.rep < cur.rep + 10
     && (club.nation === cur.nation || rulesFor(club.league, 20).wealth < rulesFor(cur.league, 20).wealth)) return 'abroad';
