@@ -25,7 +25,11 @@ export function Head({ title, children, action }: { title: ReactNode; children?:
 
 export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
-  if (typeof p.injury === 'string') p.injury = t(`injury.${p.injury}`);
+  if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
+  // brødtekster (CM 01/02-stil): varighed og resultat som ord
+  if (typeof p.days === 'number') p.dur = p.days <= 10 ? t('news.dur.days', { n: p.days }) : t('news.dur.weeks', { n: Math.max(2, Math.round(p.days / 7)) });
+  if (typeof p.res === 'string') p.resWord = t(`news.res.${p.res}`);
+  if (typeof p.ha === 'string') p.haWord = t(p.ha === 'h' ? 'news.ha.h' : 'news.ha.a');
   if (typeof p.lane === 'string') p.lane = t(`lane.${p.lane}`);
   if (p.kind === 'transfer' || p.kind === 'wage') p.kind = t(`board.kind.${p.kind}`);
   if (p.kind === 'stadium' || p.kind === 'training' || p.kind === 'youth') p.kind = t(`proj.kind.${p.kind}`);
@@ -67,7 +71,10 @@ export function newsBody(n: NewsItem) {
     return t(k, params);
   }
   const k = `${n.key}.body`;
-  return has(k) ? t(k, newsParams(n)) : '';
+  if (!has(k)) return '';
+  const body = t(k, newsParams(n));
+  // ældre nyheder uden de felter, brødteksten bruger: ingen brødtekst frem for {pladsholdere}
+  return /\{[a-zA-Z]+\}/.test(body) ? '' : body;
 }
 
 export function useOpenLink() {

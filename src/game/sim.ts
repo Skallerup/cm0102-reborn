@@ -312,11 +312,11 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
-    addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '' }, link: { kind: 'fixture', id: f.id } });
+    addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
     for (const line of rep.players) {
       if (line.injured && g.players[line.id]?.club === g.userClub) {
         const p = g.players[line.id];
-        addNews({ cat: 'injury', key: 'news.injury', params: { player: pname(p), injury: p.injury?.key ?? 'bruise', days: p.injury?.days ?? 0 }, link: { kind: 'player', id: p.id } });
+        addNews({ cat: 'injury', key: 'news.injury', params: { player: pname(p), injury: p.injury?.key ?? 'bruise', days: p.injury?.days ?? 0, club: g.clubs[g.userClub]?.short ?? '', opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', res: key.slice(6) }, link: { kind: 'player', id: p.id } });
       }
     }
   }

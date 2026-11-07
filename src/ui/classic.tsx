@@ -269,6 +269,9 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
     } else if (k === 'clubHistory') {
       const cid = viewed || g.userClub;
       out.push({ key: k, label: t('cl.history'), route: { name: 'club', id: cid, state: { cview: 'stats' } }, on: route.name === 'club' && route.state?.cview === 'stats', arrow: true });
+    } else if (k === 'transfers' && keys === CLUB_TABS) {
+      // CM 01/02: klubbens Transfers-fane viser køb og salg (søgningen ligger i managermenuen)
+      out.push({ key: k, label: label(k), route: { name: 'club', id: g.userClub, state: { cview: 'transfers' } }, on: route.name === 'club' && route.state?.cview === 'transfers' });
     } else {
       if (!allowed(k)) continue;
       // "Generel info" er kun aktiv for ens egen klub (andre klubber har ingen hub-fane)
