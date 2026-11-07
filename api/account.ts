@@ -36,6 +36,8 @@ const MAIL: Record<string, { subject: string; intro: string; button: string; cod
   de: { subject: 'Bei CM Reborn anmelden', intro: 'Klicke auf den Button, um dich anzumelden. Der Link ist 15 Minuten gültig.', button: 'Anmelden', code: 'Oder gib diesen Code im Spiel ein:', ignore: 'Wenn du keine Anmeldung angefordert hast, kannst du diese E-Mail ignorieren.' },
   it: { subject: 'Accedi a CM Reborn', intro: 'Premi il pulsante per accedere. Il link è valido per 15 minuti.', button: 'Accedi', code: 'Oppure inserisci questo codice nel gioco:', ignore: "Se non hai chiesto di accedere, ignora questa email." },
   pt: { subject: 'Entrar no CM Reborn', intro: 'Toque no botão para entrar. O link funciona por 15 minutos.', button: 'Entrar', code: 'Ou digite este código no jogo:', ignore: 'Se você não pediu para entrar, ignore este e-mail.' },
+  sv: { subject: 'Logga in på CM Reborn', intro: 'Tryck på knappen för att logga in. Länken gäller i 15 minuter.', button: 'Logga in', code: 'Eller skriv koden i spelet:', ignore: 'Har du inte bett om att logga in kan du bortse från det här mejlet.' },
+  nb: { subject: 'Logg inn på CM Reborn', intro: 'Trykk på knappen for å logge inn. Lenken virker i 15 minutter.', button: 'Logg inn', code: 'Eller skriv koden i spillet:', ignore: 'Har du ikke bedt om å logge inn, kan du se bort fra denne e-posten.' },
   tr: { subject: "CM Reborn'a giriş yap", intro: 'Giriş yapmak için düğmeye bas. Bağlantı 15 dakika geçerlidir.', button: 'Giriş yap', code: 'Ya da bu kodu oyuna gir:', ignore: 'Giriş yapmak istemediysen bu e-postayı yok sayabilirsin.' },
 };
 

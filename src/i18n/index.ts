@@ -9,6 +9,7 @@ const dicts: Partial<Record<Lang, Record<string, string>>> = { da, en };
 const LAZY: Partial<Record<Lang, () => Promise<Record<string, string>>>> = {
   es: () => import('./es').then((m) => m.es), fr: () => import('./fr').then((m) => m.fr), de: () => import('./de').then((m) => m.de),
   it: () => import('./it').then((m) => m.it), pt: () => import('./pt').then((m) => m.pt), tr: () => import('./tr').then((m) => m.tr),
+  sv: () => import('./sv').then((m) => m.sv), nb: () => import('./nb').then((m) => m.nb),
 };
 /** Sørg for, at sprogets tekster er hentet (kaldes ved opstart og ved sprogskift) */
 export async function ensureLang(l: Lang): Promise<void> {
@@ -16,12 +17,12 @@ export async function ensureLang(l: Lang): Promise<void> {
   try { dicts[l] = await LAZY[l]!(); } catch { /* offline uden cache: engelsk bruges i stedet */ }
 }
 /** Sprogene i spillet og på hjemmesiden (kort kode og navn på sproget selv) */
-export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['de', 'DE', 'Deutsch'], ['it', 'IT', 'Italiano'], ['pt', 'PT', 'Português'], ['tr', 'TR', 'Türkçe']];
+export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['de', 'DE', 'Deutsch'], ['it', 'IT', 'Italiano'], ['pt', 'PT', 'Português'], ['tr', 'TR', 'Türkçe'], ['sv', 'SV', 'Svenska'], ['nb', 'NO', 'Norsk']];
 export const isLang = (v: unknown): v is Lang => LANGS.some(([k]) => k === v);
 /** Sprogets locale til tal og datoer */
-export const LOCALE: Record<Lang, string> = { da: 'da-DK', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', tr: 'tr-TR' };
+export const LOCALE: Record<Lang, string> = { da: 'da-DK', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', tr: 'tr-TR', sv: 'sv-SE', nb: 'nb-NO' };
 // enheder for store beløb pr. sprog (mia./mio./t.)
-const UNITS: Record<Lang, [string, string, string]> = { da: [' mia.', ' mio.', ' t.'], en: ['bn', 'M', 'K'], es: [' mil M', ' M', ' mil'], fr: [' Md', ' M', ' k'], de: [' Mrd.', ' Mio.', ' Tsd.'], it: [' mld', ' mln', ' mila'], pt: [' bi', ' mi', ' mil'], tr: [' Mr', ' Mn', ' B'] };
+const UNITS: Record<Lang, [string, string, string]> = { da: [' mia.', ' mio.', ' t.'], en: ['bn', 'M', 'K'], es: [' mil M', ' M', ' mil'], fr: [' Md', ' M', ' k'], de: [' Mrd.', ' Mio.', ' Tsd.'], it: [' mld', ' mln', ' mila'], pt: [' bi', ' mi', ' mil'], tr: [' Mr', ' Mn', ' B'], sv: [' mdr', ' milj.', ' tn'], nb: [' mrd.', ' mill.', ' k'] };
 let lang: Lang = (() => {
   try {
     const v = localStorage.getItem('cm0102.lang');
@@ -72,12 +73,12 @@ export function has(key: string): boolean {
   return key in (dicts[lang] ?? {}) || key in dicts.en!;
 }
 
-export type Currency = 'EUR' | 'DKK' | 'GBP' | 'BRL' | 'TRY';
-// én valuta pr. sprog: euro (de/es/fr/it), kroner (da), pund (en), real (pt – oversættelsen er brasiliansk) og lira (tr)
-export const CURRENCIES: Currency[] = ['EUR', 'DKK', 'GBP', 'BRL', 'TRY'];
+export type Currency = 'EUR' | 'DKK' | 'GBP' | 'BRL' | 'TRY' | 'SEK' | 'NOK';
+// én valuta pr. sprog: euro (de/es/fr/it), kroner (da/sv/nb), pund (en), real (pt – oversættelsen er brasiliansk) og lira (tr)
+export const CURRENCIES: Currency[] = ['EUR', 'DKK', 'GBP', 'SEK', 'NOK', 'BRL', 'TRY'];
 // Faste kurser (spillets interne beløb er i euro)
 // (real og lira: faste kurser, *estimeret* efter niveauet i 2026)
-const RATE: Record<Currency, number> = { EUR: 1, DKK: 7.46, GBP: 0.86, BRL: 6.2, TRY: 46 };
+const RATE: Record<Currency, number> = { EUR: 1, DKK: 7.46, GBP: 0.86, SEK: 11.1, NOK: 11.6, BRL: 6.2, TRY: 46 };
 // valgt valuta (gemt) – ellers sprogets: dansk kroner, engelsk pund (som i CM 01/02), øvrige euro
 let chosen: Currency | null = (() => {
   try {
@@ -86,7 +87,7 @@ let chosen: Currency | null = (() => {
   } catch { /* ingen storage */ }
   return null;
 })();
-const langCurrency = (): Currency => (lang === 'da' ? 'DKK' : lang === 'en' ? 'GBP' : lang === 'pt' ? 'BRL' : lang === 'tr' ? 'TRY' : 'EUR');
+const langCurrency = (): Currency => (lang === 'da' ? 'DKK' : lang === 'en' ? 'GBP' : lang === 'sv' ? 'SEK' : lang === 'nb' ? 'NOK' : lang === 'pt' ? 'BRL' : lang === 'tr' ? 'TRY' : 'EUR');
 let currency: Currency = chosen ?? langCurrency();
 
 export function getCurrency(): Currency {
@@ -115,7 +116,7 @@ export function fromCur(v: number): number {
 }
 
 export function currencySymbol(): string {
-  return currency === 'DKK' ? 'kr.' : currency === 'GBP' ? '£' : currency === 'BRL' ? 'R$' : currency === 'TRY' ? '₺' : '€';
+  return currency === 'DKK' ? 'kr.' : currency === 'SEK' || currency === 'NOK' ? 'kr' : currency === 'GBP' ? '£' : currency === 'BRL' ? 'R$' : currency === 'TRY' ? '₺' : '€';
 }
 
 export function money(eur: number): string {
@@ -133,6 +134,7 @@ export function money(eur: number): string {
   else num = dec(currency === 'EUR' ? Math.round(a) : Math.round(a / 10) * 10, 0);
   let s: string;
   if (currency === 'DKK') s = `${num}${unit} kr.`;
+  else if (currency === 'SEK' || currency === 'NOK') s = `${num}${unit} kr`;
   else if (currency === 'BRL') s = `R$ ${num}${unit}`;
   else s = `${currencySymbol()}${num}${unit}`;
   return (neg ? '-' : '') + s;
@@ -142,7 +144,7 @@ export function money(eur: number): string {
 export function moneyFull(eur: number): string {
   const v = Math.round(eur * RATE[currency]);
   const num = Math.abs(v).toLocaleString(LOCALE[lang]);
-  return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);
+  return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'SEK' || currency === 'NOK' ? `${num} kr` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);
 }
 
 export function dateFmt(iso: string, long = false): string {

@@ -75,7 +75,7 @@ export function compLabel<T extends string | undefined>(name: T, lang: Lang): T 
   if (own(CUPS[nation])) return CUPS[nation] as T;
   if (nation && isNationName(nation)) {
     const n = nationLabel(nation, lang);
-    if (lang !== 'da') return ({ es: `Copa de ${n}`, fr: `Coupe de ${n}`, de: `${n} Pokal`, it: `Coppa di ${n}`, pt: `Copa ${n}`, tr: `${n} Kupası` } as Record<string, string>)[lang] as T ?? name;
+    if (lang !== 'da') return ({ es: `Copa de ${n}`, fr: `Coupe de ${n}`, de: `${n} Pokal`, it: `Coppa di ${n}`, pt: `Copa ${n}`, tr: `${n} Kupası`, sv: `${n}s cup`, nb: `${n}s cup` } as Record<string, string>)[lang] as T ?? name;
     return `${n}${/[sxz]$/.test(n) ? '' : 's'} pokal` as T;
   }
   return name;

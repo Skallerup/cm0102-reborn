@@ -1,0 +1,980 @@
+{
+ "ANNOUNCE_PENALTIES": [
+  "Kampen går til straffesparkkonkurranse!"
+ ],
+ "ATTEMPT_PASS_CROSS": [
+  "<p1> slår et innlegg",
+  "<p1> prøver å slå ballen på tvers",
+  "<p1> gjør sitt beste for å få ballen inn i boksen",
+  "<p1> prøver seg på et innlegg",
+  "<p1> løfter ballen inn i boksen",
+  "<p1> sender ballen over",
+  "<p1> slår et innlegg inn i boksen",
+  "<p1> slår et vakkert innlegg",
+  "<p1> slår ballen inn mot midten",
+  "<p1> sender ballen på tvers"
+ ],
+ "BLOCK_SHOT": [
+  "<p1> løper ut for å blokkere skuddet",
+  "Skuddet blokkeres av <p1>, som løper ut",
+  "Ballen spretter bort fra <p1>",
+  "<p1> kommer mellom ballen og målet",
+  "Skuddet blokkeres av <p1>",
+  "<p1> klarer å blokkere skuddet",
+  "<p1> kaster seg foran skuddet",
+  "Ballen farer bort fra <p1>",
+  "<p1> blokkerer skuddet"
+ ],
+ "BRINGS_BALL_INTO_AREA": [
+  "<p1> spiller ballen inn i boksen",
+  "<p1> har gjort det bra|Han er inne i sekstenmeteren",
+  "<p1> kommer seg inn i boksen",
+  "<p1> fortsetter inn i sekstenmeteren",
+  "<p1> fører ballen inn i boksen",
+  "<p1> fortsetter inn i boksen",
+  "<p1> er inne i boksen...",
+  "<p1> kommer seg inn i boksen",
+  "<p1> kommer seg inn i boksen",
+  "<p1> tar ballen inn i boksen",
+  "<p1> beveger seg inn i sekstenmeteren",
+  "<p1>{s} løp fortsetter inn i boksen..."
+ ],
+ "CHANGE_FORMATION": [
+  "<t> endrer formasjon"
+ ],
+ "CLEAN_THROUGH": [
+  "<p1> er helt fri foran mål",
+  "<p1> er trukket fri av den siste forsvareren",
+  "<p1> har bare keeperen igjen",
+  "<p1> er helt fri..|Det er bare keeperen igjen...",
+  "<p1> er fri foran mål",
+  "<p1> er helt fri...",
+  "<p1> er alene med keeperen...",
+  "<p1> er fri bak forsvaret...|Det er bare keeperen igjen...",
+  "<p1> er helt fri bak forsvaret..."
+ ],
+ "CROSSES_HALFWAY_LINE": [
+  "<p1> tar ballen over midtlinjen",
+  "<p1> krysser midtlinjen med ballen",
+  "<p1> fører ballen ut av egen banehalvdel",
+  "<p1> tar ballen over midtlinjen",
+  "<p1> fører spillet over midtlinjen",
+  "<p1> bringer spillet over midtlinjen",
+  "<p1> fører ballen over på motstandernes banehalvdel"
+ ],
+ "CROSS_IT": [
+  "<p1> slår ballen inn i målfeltet",
+  "<p1> slår ballen inn"
+ ],
+ "END_OF_NINETY_MINUTES": [
+  "Slutt på de 90 minuttene"
+ ],
+ "FINAL_WHISTLE": [
+  "Sluttsignalet"
+ ],
+ "FOUL": [
+  "<p1> gjør frispark på <p2>!",
+  "Frispark på <O><p2> av <p1>!",
+  "Frispark av <p1> på <p2>!",
+  "Det blir frispark av <p1> på <p2>!",
+  "<O>Frispark til <p2>!"
+ ],
+ "FOUL_BLOCK_TACKLE": [
+  "<p1> velter <p2>",
+  "<p1> går inn i en takling...|Og sender <p2> i bakken",
+  "<O><p2> sendes i bakken...|Han ble veltet av <p1>",
+  "<p1> dytter <p2> i ryggen",
+  "<p1> sender <p2> i bakken...|Det var en hard takling"
+ ],
+ "FOUL_PUSH_OPPONENT": [
+  "<p1> dytter <p2>",
+  "<O><p2> dyttes av <p1>",
+  "<O><p2> dyttes av <p1>",
+  "<O><p2> går i gresset...|Han ble dyttet av <p1>"
+ ],
+ "FOUL_SHIRT_TUG": [
+  "<p1> holder fast i <p2>!",
+  "Frispark!|<p1> holder i <p2>{s} drakt!",
+  "Det ble frispark på <O><p2>...|<p1> holdt ham tilbake!",
+  "<p1> straffes for å ha holdt <p2>",
+  "<O><p2> blir dratt i drakta av <p1>!"
+ ],
+ "FOUL_SLIDE_TACKLE": [
+  "<p1> glir inn på <p2>|Det blir frispark",
+  "Glidetakling av <p1>...|Men han treffer <p2> i stedet for ballen!",
+  "<p1> går hardt inn på <p2>!|Men treffer mannen i stedet for ballen!!",
+  "<p1> sparker beina bort under <p2>!"
+ ],
+ "FOUL_TRIP": [
+  "<p1> setter ut foten på <p2>!",
+  "Det settes ut foten på <O><p2> av <p1>!",
+  "<p1> stikker ut foten...|Han feller <p2>!",
+  "<p1> stikker ut foten...|Og tar <p2>!",
+  "<p1> strekker seg etter ballen...|Men feller <p2>!",
+  "<p1> straffes for å ha felt <p2>",
+  "<O><p2> går i gresset...|Han ble felt av <p1>!"
+ ],
+ "GOALIE_CATCH_BALL": [
+  "<p1> fanger ballen",
+  "Og det er enkelt for <p1> å få hendene på den",
+  "<p1> plukker lett opp ballen",
+  "<p1> går opp og fanger ballen",
+  "<p1> går opp og fanger ballen sikkert",
+  "<p1> går opp for å fange ballen|Og holder den inn mot brystet"
+ ],
+ "GOALIE_SPILLS_BALL": [
+  "<p1> går ut for å fange ballen|Men han mister den",
+  "Og det er enkelt for <p1> å få tak i den|Men han mister den!",
+  "<p1> går ut for å plukke opp ballen|Men han rekker ikke fram..."
+ ],
+ "GOALKEEPER_PARRY": [
+  "<p1> kaster seg til venstre...|Og skyver den bort...",
+  "<p1> kaster seg til høyre...|Og skyver den bort...",
+  "<p1> skyver den bort...",
+  "<p1> kan bare parere den...",
+  "Reddet av <p1>...|Men han klarer ikke å holde den...",
+  "Reddet av <p1>...|Men <p1> lar den løpe...",
+  "<p1> får ikke helt tak på den...",
+  "<p1> redder...|Og sender ballen utenfor mål",
+  "<p1> slår ballen bort..."
+ ],
+ "GOAL_DISALLOWED": [
+  "Men det teller ikke!|Linjedommeren har flagget oppe!",
+  "Men det teller ikke!|<Rf> hadde fløyta i munnen!",
+  "Men det teller ikke!|Fløyta hadde allerede gått!",
+  "Men det er annullert!|Linjedommeren har flagget oppe!",
+  "Men det er annullert!|<Rf> hadde fløyta i munnen!",
+  "Men det er annullert!|Fløyta hadde allerede gått!",
+  "Men målet står ikke!|Linjedommeren har flagget oppe!",
+  "Men målet står ikke!|<Rf> hadde fløyta i munnen!",
+  "Men målet står ikke!|Fløyta hadde allerede gått!"
+ ],
+ "GOAL_ONE": [
+  "<p1> scorer!!!",
+  "<p1> finner nettet!",
+  "Mål av <p1>!",
+  "<p1> er målscorer!",
+  "<p1> scorer!!!",
+  "Den er i nettet, <p1> scorer!",
+  "Den er inne, <p1> scorer!",
+  "Den er i nettet|<p1> er målscorer!"
+ ],
+ "GOAL_TWO": [
+  "<p1> scorer selvmål!",
+  "<p1> sender ballen i eget mål!",
+  "Han spiller ballen forbi sin egen keeper!",
+  "Stor feil av <p1>!|Han sparker den i eget mål!",
+  "Et selvmål!|Katastrofe for <p1>!"
+ ],
+ "GONE_ATTACKING_STYLE": [
+  "<t> går over til en offensiv taktikk",
+  "<t> bytter til en mer offensiv spillestil",
+  "<t> endrer spillet sitt...|De prøver å skape flere sjanser",
+  "<t> endrer taktikk...|De vil ha flere sjanser mot slutten",
+  "<t> bytter spillestil...|De går over til en mer offensiv taktikk"
+ ],
+ "GONE_DEFENSIVE_STYLE": [
+  "<t> går over til en mer defensiv taktikk",
+  "<t> bytter til en defensiv taktikk",
+  "<t> trekker seg litt tilbake|De spiller nå mer defensivt"
+ ],
+ "GOOD_INTERCEPT": [
+  "<p1> snapper opp pasningen",
+  "<p1> bryter pasningen",
+  "<p1> så pasningen og snapper den opp",
+  "Godt snappet opp av <p1>| Det var godt lest av ham",
+  "<p1> snapper kaldblodig opp pasningen",
+  "<p1> bryter godt inn i spillet",
+  "Godt snappet opp av <p1>",
+  "<p1> leser spillet godt|Han snapper opp pasningen",
+  "Godt snappet opp av <p1>|Han beholdt roen der",
+  "Det var ikke noe problem for <p1> å snappe opp den ballen",
+  "<p1> bryter inn og tar ballen",
+  "<p1> kommer først til ballen og snapper den opp"
+ ],
+ "GOOD_SAVE_HELD": [
+  "<p1> redder godt og holder på ballen",
+  "<p1> kaster seg til venstre...|Og får tak i ballen|Bra redning!",
+  "<p1> kaster seg til høyre...|Og får tak i ballen|Bra redning!",
+  "<p1> gjør en god redning...|Og får tak i ballen",
+  "Godt holdt av <p1>",
+  "Bra redning av <p1>|Han holdt godt fast i ballen",
+  "<p1> plukker opp ballen|Han er sikkerheten selv"
+ ],
+ "GOOD_SAVE_NOT_HELD": [
+  "<p1> kaster seg til venstre...|Og skyver den bort...|Bra redning",
+  "<p1> kaster seg til høyre...|Og skyver den bort...|Bra redning",
+  "<p1> parerer fornuftig...",
+  "<p1> vrir ballen pent bort...",
+  "<p1> får fingertuppene på den...|Fin redning!"
+ ],
+ "GREAT_FIRST_TOUCH": [
+  "<p1> kan godt...",
+  "Fin første touch av <p1>",
+  "<p1> temmer ballen fint",
+  "Fin kontroll der av <p1>",
+  "<p1> viser at han har kontroll på spillet",
+  "Godt kontrollert av <p1>...|Han temmet ballen perfekt",
+  "<p1> tar imot ballen godt",
+  "<p1> har perfekt kontroll på ballen",
+  "<p1> får elegant kontroll på ballen",
+  "Førsteklasses kontroll av <p1>"
+ ],
+ "GREAT_SAVE_HELD": [
+  "<p1> redder ballen vakkert og holder den",
+  "<p1> kaster seg til venstre...|Og får tak i ballen|Vakker redning!",
+  "<p1> kaster seg til høyre...|Og får tak i ballen|Vakker redning!",
+  "<p1> gjør en kjemperedning...|Og får tak i ballen",
+  "Elegant holdt av <p1>",
+  "Reddet med stil av <p1>!",
+  "Fantastisk redning av <p1>!|Og han holdt fast i ballen!"
+ ],
+ "GREAT_SAVE_NOT_HELD": [
+  "<p1> kaster seg til venstre...|Og skyver den bort...|Fantastisk redning",
+  "<p1> kaster seg til høyre...|Og skyver den bort...|Fantastisk redning",
+  "<p1> parerer elegant...",
+  "<p1> vrir ballen bort...|Elegant redning av <p1> !",
+  "Fantastisk redning av <p1>|På en eller annen måte fikk han fingertuppene på den!"
+ ],
+ "HALF_TIME_WHISTLE": [
+  "Pause"
+ ],
+ "KNOCKDOWN_HEADER": [
+  "<p1> nikker den ned til <p2>",
+  "<p1> nikker den videre til <p2>",
+  "<p1> slår den ned til <p2>"
+ ],
+ "LAYS_BALL_OFF": [
+  "<p1> forlenger den ..."
+ ],
+ "LONG_BALL_FORWARD": [
+  "<p1> slår en lang ball fremover",
+  "<p1> løfter en pasning på <d> meter|Han leter etter hodet til <p2>",
+  "<p1> prøver å treffe <p2>|Han sender den ut på <d> meter",
+  "Lang ball fremover fra <p1>",
+  "<p1> spiller en lang ball|Han leter etter hodet til <p2>",
+  "<p1> spiller den langt...|Han sikter på hodet til <p2>",
+  "<p1> spiller den <d> meter frem|Han håper <p2> får tak i den",
+  "<p1> leverer en lang ball mot <p2>",
+  "<p1> sikter på <p2> med en høy ball",
+  "<p1> sender en lang ball fremover|<p2> løper mot den...",
+  "<p1> spiller den langt til <p2>",
+  "<p1> leter etter <p2>|Han har løftet den <d> meter frem"
+ ],
+ "LOOKED_LIKE_A_DIVE": [
+  "Det så ut som om <p1> lot seg falle!",
+  "<p1> gikk ned som om han var blitt skutt!",
+  "Helt klart filming av <p1>!",
+  "<p1> lot seg definitivt falle der!"
+ ],
+ "LOOSE_BALL_IN_AREA": [
+  "<p1> får tak i en løs ball",
+  "<p1> får tak i returen",
+  "<p1> følger opp den!",
+  "<p1> får tak i den løse ballen",
+  "<p1> snapper opp ballen",
+  "<p1> tar den løse ballen",
+  "Den faller ned til <p1>...",
+  "Returen faller ned til <p1>!",
+  "<p1> er først på returen..."
+ ],
+ "LOSE_CONTROL_OF_BALL": [
+  "<p1> mister kontrollen over ballen",
+  "<p1> mister ballen",
+  "<p1> klarer ikke å holde på ballen",
+  "<p1> lar ballen slippe unna",
+  "<p1> mister kontrollen over ballen",
+  "<p1> ser bort fra ballen|Han har mistet den",
+  "Dårlig mottak av <p1>|Han har mistet ballen",
+  "<p1> mister kontrollen over ballen",
+  "<p1> mister ballen",
+  "<p1> gir bort ballen"
+ ],
+ "MISSED_EASY_CHANCE_CLOSE": [
+  "Han burde ha scoret",
+  "Det så ut som et sikkert mål|Han burde ha satt den i nettet",
+  "Han kunne fått mye mer ut av den sjansen",
+  "Han er irritert over å ha brent den sjansen",
+  "Hvordan kunne han bomme på den?",
+  "Det skulle ha vært mål",
+  "En bortkastet sjanse for <t>",
+  "Det var en stor sjanse for <t>"
+ ],
+ "PASS_IT": [
+  "<p1> passer",
+  "Pasning av <p1>",
+  "<p1> spiller ballen fremover",
+  "<p1> stikker ballen fremover",
+  "<p1> passer ballen"
+ ],
+ "PASS_MEDIUM_FORWARD": [
+  "<p1> finner <p2>",
+  "<p1> slår ballen <d> meter frem",
+  "<p1> spiller ballen frem og prøver å finne <p2>",
+  "<p1> sender ballen frem til <p2>",
+  "<p1> slår den frem til <p2>",
+  "<p1> spiller den opp mot <p2>"
+ ],
+ "PASS_MEDIUM_INTO_AREA": [
+  "<p1> slår ballen inn i boksen",
+  "<p1> passer ballen inn i boksen|<p2> prøver å få tak i den",
+  "<p1> sender ballen inn i boksen til <p2>"
+ ],
+ "PASS_MEDIUM_LEFT": [
+  "<p1> finner <p2> til venstre",
+  "<p1> slår ballen <d> meter til venstre",
+  "<p1> spiller en rett ball og prøver å finne <p2>",
+  "<p1> sender ballen til venstre til <p2>",
+  "<p1> slår den til venstre til <p2>",
+  "<p1> ser opp|Han svinger ballen til venstre mot <p2>",
+  "<p1> spiller den til venstre mot <p2>"
+ ],
+ "PASS_MEDIUM_LEFT_WING": [
+  "<p1> spre ballen ut på venstrekanten",
+  "<p1> sprer ballen ut til venstre for <p2>",
+  "<p1> vinkler en pasning på <d> meter ut til venstre",
+  "<p1> finner <p2> på venstrekanten"
+ ],
+ "PASS_MEDIUM_RIGHT": [
+  "<p1> finner <p2> til høyre",
+  "<p1> slår ballen <d> meter til høyre",
+  "<p1> spiller en rett ball og prøver å finne <p2>",
+  "<p1> sender ballen til høyre til <p2>",
+  "<p1> slår den til høyre til <p2>",
+  "<p1> ser opp|Han svinger ballen til høyre mot <p2>",
+  "<p1> spiller den til høyre mot <p2>"
+ ],
+ "PASS_MEDIUM_RIGHT_WING": [
+  "<p1> sprer ballen ut på høyrekanten",
+  "<p1> sprer ballen ut til høyre for <p2>",
+  "<p1> vinkler en pasning på <d> meter ut til høyre",
+  "<p1> finner <p2> på høyrekanten"
+ ],
+ "PASS_SHORT_BACK": [
+  "<p1> med en flat pasning mot eget mål",
+  "Med en pasning i føttene...|<p1> flytter ballen bakover til <p2>",
+  "<p1> passer tilbake til <p2>",
+  "<p1> spiller ballen tilbake til <p2>",
+  "<p1> legger den tilbake til <p2>",
+  "<p1> sender ballen tilbake til <p2>",
+  "<p1> passer den tilbake til <p2>"
+ ],
+ "PASS_SHORT_FORWARD": [
+  "<p1> til <p2> med en flat pasning fremover",
+  "Med en pasning i føttene...|<p1> flytter ballen frem til <p2>",
+  "<p1> leter etter <p2> foran seg",
+  "Med en flat pasning fremover...|<p1> spiller ballen til <p2>",
+  "<p1> sender ballen frem til <p2>",
+  "<p1> spiller ballen fremover|En flat pasning mot føttene til <p2>",
+  "<p1> passer langs bakken|<p2> tar imot pasningen",
+  "<p1> legger den frem til <p2>",
+  "<p1> flytter ballen frem til <p2>",
+  "<p1> passer den frem til <p2>"
+ ],
+ "PASS_SHORT_INTO_AREA": [
+  "<p1> med en flat pasning inn i boksen",
+  "Med en pasning i føttene...|<p1> flytter ballen inn i boksen",
+  "<p1> leter etter <p2> i boksen!",
+  "Med en flat pasning inn i boksen...|<p1> spiller ballen til <p2>",
+  "<p1> sender ballen inn foran mål",
+  "<p1> spiller ballen mot <p2> i boksen",
+  "<p1> passer langs bakken|<p2> er inne i boksen"
+ ],
+ "PASS_SHORT_LEFT": [
+  "<p1> med en flat pasning til venstre",
+  "Med en pasning i føttene...|<p1> flytter ballen til venstre til <p2>",
+  "<p1> leter etter <p2> til venstre",
+  "Med en flat pasning til venstre...|<p1> spiller ballen til <p2>",
+  "<p1> sender ballen til venstre til <p2>",
+  "<p1> spiller ballen til venstre|En flat pasning mot føttene til <p2>",
+  "<p1> passer langs bakken|<p2> tar imot pasningen til venstre",
+  "<p1> legger den til venstre for <p2>",
+  "<p1> sender ballen til venstre til <p2>",
+  "<p1> passer den til venstre til <p2>"
+ ],
+ "PASS_SHORT_LEFT_WING": [
+  "<p1> med en flat pasning nedover venstrekanten",
+  "Med en pasning i føttene...|<p1> flytter ballen ned til venstre mot <p2>",
+  "<p1> leter etter <p2> på venstrekanten",
+  "Med en flat pasning langs venstreflanken...|<p1> spiller ballen til <p2>",
+  "<p1> fører ballen ut til venstre til <p2>",
+  "<p1> spiller ballen ned til venstre|En flat pasning mot føttene til <p2>",
+  "<p1> ser nedover venstreflanken|Han slår en flat pasning til <p2>",
+  "<p1> legger den helt ut til venstre til <p2>",
+  "<p1> sender ballen helt ut til venstre til <p2>",
+  "<p1> passer den ned på venstre side til <p2>"
+ ],
+ "PASS_SHORT_RIGHT": [
+  "<p1> med en flat pasning til høyre",
+  "Med en pasning i føttene...|<p1> flytter ballen til høyre til <p2>",
+  "<p1> leter etter <p2> til høyre",
+  "Med en flat pasning til høyre...|<p1> spiller ballen til <p2>",
+  "<p1> legger ballen til høyre til <p2>",
+  "<p1> spiller ballen til høyre|En flat pasning mot føttene til <p2>",
+  "<p1> passer langs bakken|<p2> tar imot pasningen til høyre",
+  "<p1> legger den til høyre til <p2>",
+  "<p1> flytter ballen til høyre til <p2>",
+  "<p1> passer den til høyre til <p2>"
+ ],
+ "PASS_SHORT_RIGHT_WING": [
+  "<p1> med en flat pasning nedover høyrekanten",
+  "Med en pasning i føttene...|<p1> flytter ballen ned til høyre mot <p2>",
+  "<p1> leter etter <p2> på høyrekanten",
+  "Med en flat pasning langs høyreflanken...|<p1> spiller ballen til <p2>",
+  "<p1> fører ballen ut til høyre til <p2>",
+  "<p1> spiller ballen ned til høyre|En flat pasning mot føttene til <p2>",
+  "<p1> ser nedover høyreflanken|Han spiller en flat pasning til <p2>",
+  "<p1> legger den helt ut til høyre til <p2>",
+  "<p1> flytter ballen helt ut til høyre til <p2>",
+  "<p1> passer den ned på høyre side til <p2>"
+ ],
+ "PASS_TO_RUN_ONTO_HIGH": [
+  "<p1> løfter ballen foran <p2>",
+  "<p1> prøver å treffe <p2> med en lang pasning han kan løpe på",
+  "<p1> passer ballen til <p2>",
+  "<p1> passer ballen fremover|<p2> jager den",
+  "<p1> løfter ballen frem til <p2>",
+  "<p1> slår en pasning på <d> meter|<p2> ser ut til å få tak i den",
+  "<p1> sender ballen <d> meter frem|Han vil sende <p2> avgårde",
+  "En førstegangspasning|<p1> spiller en høy ball og prøver å finne <p2>",
+  "<p1> spiller ballen høyt|<p2> prøver å løpe på den",
+  "<p1> spiller den langt|<p2> går etter den...",
+  "<p1> passer langt|<p2> ser ut til å få tak i den...",
+  "<p1> spiller en lang ball fremover...|<p2> prøver å løpe på den",
+  "<p1> passer over <d> meter|<p2> prøver å få tak i den",
+  "<p1> slår en lang pasning langs bakken|<p2> ser ut til å ville løpe på den"
+ ],
+ "PASS_TO_RUN_ONTO_LOW": [
+  "<p1> spiller ballen foran <p2>",
+  "<p1> prøver å få <p2> til å løpe på pasningen sin",
+  "<p1> prøver å sende <p2> avgårde",
+  "<p1> ser muligheten|Han spiller ballen gjennom til <p2>",
+  "<p1> spiller ballen gjennom til <p2>",
+  "<p1> søker den skarpe pasningen|<p2> vil gjerne løpe på den",
+  "<p1> spiller den flatt gjennom|<p2> prøver å få tak i den...",
+  "<p1> spiller en flat pasning gjennom|<p2> prøver å løpe på den...",
+  "<p1> passer flatt|<p2> ser ut til å få tak i den...",
+  "<p1> spiller ballen fremover|<p2> prøver å løpe på den",
+  "<p1> spiller gjennom til <p2>"
+ ],
+ "PENALTY_APPEAL_TURNED_DOWN": [
+  "<t> appellerer om straffe!|<Rf> vinker avvisende",
+  "Appeller om straffe!|<Rf> vinker avvisende",
+  "<t> appellerer om straffe!|De får den ikke!",
+  "Det roper på straffe!|<Rf> sier nei!|Han avviser protestene",
+  "<t> vil ha straffe!|<Rf> mener noe annet!|Han avviser protestene"
+ ],
+ "PENALTY_HITS_BAR": [
+  "Men <p1> treffer tverrliggeren!",
+  "I tverrliggeren!",
+  "Den kanoneres tilbake fra tverrliggeren!"
+ ],
+ "PENALTY_HITS_POST": [
+  "Men <p1> treffer stolpen!",
+  "Den treffer stolpen!!!",
+  "Den treffer rammen...|Og går utenfor!"
+ ],
+ "PENALTY_HIT_OVER": [
+  "Men han hamrer den over!!!",
+  "Over tverrliggeren!",
+  "Han bommer!|Over tverrliggeren!"
+ ],
+ "PENALTY_HIT_WIDE": [
+  "Men han sender den langt utenfor!!!",
+  "Langt utenfor!",
+  "Han bommer!|Langt utenfor stolpen!"
+ ],
+ "PLAYER_ARGUES_WITH_REFEREE": [
+  "<p1> er rasende på <rf> !"
+ ],
+ "PLAYER_DONE_FOR_DIVING": [
+  "<p1> får problemer fordi han lot seg falle!",
+  "<Rf> sier at han filmet!",
+  "<p1> filmet ifølge <rf> !"
+ ],
+ "PLAYER_INJURED_GOES_ON": [
+  "<p1> har fått en skade",
+  "<p1> har slått seg...|Men det ser ut til at han kan fortsette",
+  "<p1> har fått en skade!|Men det ser ut til at han kan løpe det av seg",
+  "Enda en skade for <p1>|Det ser likevel ikke så alvorlig ut",
+  "<p1> prøver å løpe en skade av seg",
+  "Enda en skade for <p1>!|Det ser likevel ikke så alvorlig ut|Han ser ut til å være i orden igjen"
+ ],
+ "PLAYER_KNACKERED": [
+  "<p1> ser ut til å ha problemer med å henge med",
+  "<p1> har problemer med å henge med"
+ ],
+ "PLAYER_TAKES_HIS_TIME": [
+  "<p1> holder igjen...",
+  "<p1> tar seg god tid...",
+  "<p1> ser opp...",
+  "<p1> går i posisjon for å skyte...",
+  "<p1> holder igjen...",
+  "<p1> tar seg god tid...",
+  "<p1> tar seg god tid..."
+ ],
+ "RESTART_CORNER": [
+  "Det blir corner",
+  "Det blir corner",
+  "Corner",
+  "Den går ut til corner",
+  "<t> får corner"
+ ],
+ "RESTART_FREEKICK": [
+  "Det blåses for frispark",
+  "Han får frispark",
+  "Det er frispark",
+  "Det blir frispark til <t>",
+  "Frispark til <t>",
+  "Det dømmes frispark til <t>",
+  "<Rf> gir frispark til <t>",
+  "Frispark"
+ ],
+ "RESTART_GOAL_KICK": [
+  "Det blir målspark",
+  "Det blir målspark",
+  "Målspark til <t>",
+  "Det blir målspark til <t>",
+  "Det er målspark til <t>"
+ ],
+ "RESTART_OFFSIDE": [
+  "<p1> blir tatt i offside",
+  "<p1> løper i offsideposisjon",
+  "<p1> er offside med en hårsbredd",
+  "<p1> løper i offsideposisjon",
+  "<p1> kommer i offsideposisjon",
+  "Offside!|<p1> løper for tidlig",
+  "<p1> løper et sekund for tidlig...|Offside!",
+  "Linjedommeren har løftet flagget...|<p1> er offside!",
+  "Linjedommeren har løftet flagget...|<p1> er offside!",
+  "Flagget er oppe på den andre siden...|<p1> var offside!"
+ ],
+ "RESTART_PENALTY": [
+  "Det blir straffe!!!",
+  "Det dømmes straffe!!!",
+  "<Rf> har dømt straffe!!!",
+  "Straffespark!!!",
+  "<Rf> peker på pletten!!!",
+  "<Rf> ser bort på linjedommeren...|Og dømmer straffe!!!",
+  "Straffe!!!",
+  "Dommeren har dømt straffe!!!"
+ ],
+ "RUN_PAST_OPPONENT": [
+  "<p1> går forbi <p2>",
+  "<p1> fører ballen forbi <p2>",
+  "<p1> er smart nok til å gå forbi <p2>",
+  "<p2> kan ikke stoppe <p1> fra å gå forbi ham",
+  "<p1> utfordrer <p2> og går forbi ham",
+  "<p1> løper forbi <p2>",
+  "<p1> går forbi <p2>",
+  "<p1> spiller forbi <p2>",
+  "<p1> lurer <p2> fullstendig",
+  "<p1> tuneller <p2>",
+  "<p1> dribler forbi <p2>",
+  "<p1> vigner unna <p2>"
+ ],
+ "RUN_PAST_OPPONENT_WITH_PACE": [
+  "<p1> flyr forbi <p2>!",
+  "<p1> løper fra <p2>",
+  "<p1> er for rask for <p2>",
+  "<p1> er rask nok til å gå forbi <p2>",
+  "<p1> sprinter rundt <p2>",
+  "<p1> lar <p2> stå igjen",
+  "<p1> pila forbi <p2>"
+ ],
+ "RUN_WITH_BALL": [
+  "<p1> går fremover",
+  "<p1> flytter seg fremover med ballen",
+  "<p1> fører ballen fremover",
+  "<p1> drar fremover med ballen",
+  "<p1> har nå ballen for <t>",
+  "<p1> lar ballen gjøre jobben",
+  "<p1> løper med ballen",
+  "<p1> bringer ballen fremover"
+ ],
+ "SAVES_PENALTY": [
+  "Men <p1> redder straffen!",
+  "Reddet!",
+  "Reddet av <p1>!",
+  "<p1> redder straffen!"
+ ],
+ "SAVING_TACKLE": [
+  "Men <p1> kommer inn i rett øyeblikk!",
+  "Men <p1> gjør en viktig takling!",
+  "God takling i siste øyeblikk av <p1>!",
+  "God takling av <p1> !|Han måtte inn akkurat der!",
+  "Fantastisk takling av <p1> redder situasjonen!",
+  "Elegant takling av <p1>!",
+  "<O><p2> skal score!|Men <p1> gjør en viktig takling!",
+  "<O><p2> får en stor sjanse!|Men <p1> takler i siste øyeblikk!",
+  "<O><p2> virker sikker på å score!|Solid takling av <p1> !|Han måtte inn akkurat der!"
+ ],
+ "SCATTER_INTERCEPT": [
+  "Ballen treffer <p1>",
+  "<p1> kommer i veien for ballen",
+  "Ballen spretter tilbake fra <p1>",
+  "Ballen spretter tilbake fra <p1>",
+  "<p1> kommer i veien for ballen",
+  "Den kommer tilbake fra <p1>...",
+  "Ballen kommer tilbake fra <p1>...",
+  "Ballen hopper bort fra <p1>..."
+ ],
+ "SCORED_PENALTY": [
+  "<p1> scorer!!!",
+  "<p1> gjør ingen feil!",
+  "<p1> sender den rett i nettmaskene!",
+  "<p1> lurer keeperen og scorer!!"
+ ],
+ "SECOND_YELLOW_CARD": [
+  "<Y><p1> får sitt andre gule kort!|<R><p1> utvises!",
+  "<Y>Det er <p1>{s} andre gule kort!|<R>Han er utvist!",
+  "<Y><p1> får sitt andre gule kort!|<R>Han må gå tidlig i dusjen!",
+  "<Y><p1> får visst sitt andre gule kort!|<R>Rødt kort til <p1>",
+  "<Y>Det er <p1>{s} andre gule kort!|<R>Han utvises!",
+  "<Y><Rf> viser <p1> hans andre gule kort!|<R><p1> må forlate banen!",
+  "<Y>Og viser ham hans andre gule kort!|<R>Det er en utvisning!",
+  "<Rf> strekker seg etter lommen|<Y>Og viser ham det andre gule kortet!|<R>En tidlig dusj for <p1> !!",
+  "<Rf> strekker seg ned i lommen|<Y>Og viser <p1> det andre gule kortet!|<R>Han er ute!",
+  "<Y>Gult kort!|<R>Og rødt kort!|Han var allerede notert!",
+  "<p1> har problemer her...|Han var allerede notert!|<R>Rødt kort til <p1>!"
+ ],
+ "SENT_OFF": [
+  "<R><p1> sendes ut!",
+  "<R><p1> får det røde kortet|<R>Han er ute!",
+  "<Rf> strekker seg ned i lommen|<R><p1> får det røde kortet!",
+  "<Rf> fisker fram et kort her|<R>Det er det røde!|<R><p1> får en tidlig dusj!",
+  "<R><Rf> viser <p1> det røde kortet!",
+  "<R>Det er det røde kortet!"
+ ],
+ "SENT_OFF_FOR_PROFESSIONAL_FOUL": [
+  "<R><p1> ble sendt ut for et profesjonelt frispark!",
+  "<R><p1> får det røde kortet for et profesjonelt frispark!",
+  "<R><p1> må gå av for dette!|<R>Det var et profesjonelt frispark!",
+  "<p1> var siste mann!|<R>Det blir rødt kort!",
+  "<p1> gjør et kynisk frispark!|<R>Dommeren viser ham det røde kortet!",
+  "<Rf> strekker seg etter lommen|<R><p1> får det røde kortet!|<R>Det var et profesjonelt frispark!",
+  "<R><Rf> svinger det røde kortet!|<R><p1> utvises for et profesjonelt frispark!"
+ ],
+ "SHOOTING_PLAYER_WAS_UNDER_PRESSURE_FROM_ONE_PLAYER": [
+  "<p2> stengte for <p1>",
+  "Det var en vanskelig sjanse|<O><p2> ga ingen plass i det hele tatt",
+  "<p1> fikk ikke mye plass av <p2>",
+  "<p1> kunne ikke slippe unna <p2>{s} markering",
+  "<O><p2> gjorde nok til å stoppe ham",
+  "<p1> ble satt under press av <p2>"
+ ],
+ "SHOT_BANANA": [
+  "<p1> med et banan-skudd",
+  "<p1> har skrudd ballen skikkelig!",
+  "<p1> slår den hardt med utsiden!",
+  "<p1> avfyrer et dykkende skudd mot mål!",
+  "Et skrudd skudd fra <p1> mot mål!",
+  "<p1> dreier skuddet mot mål!",
+  "<p1> skyter, og det skrus!",
+  "<p1> prøver et banan-skudd!"
+ ],
+ "SHOT_CLIPS_BAR": [
+  "Den treffer tverrliggeren og går over!",
+  "Men ballen treffer tverrliggeren!|Og går ut av spill",
+  "Men den tar akkurat i tverrliggeren før den går over!",
+  "Men den snurrer langs tverrliggeren!",
+  "Den treffer rammen...|Og går over!"
+ ],
+ "SHOT_CLIPS_POST": [
+  "Den treffer stolpen og går ut!",
+  "Surt| Ballen treffer utsiden av stolpen og går ut!",
+  "Men den snurrer langs nederste del av stolpen|Og den går ut!",
+  "Den snurrer langs nederste del av stolpen og går ut!",
+  "Den treffer stolpen og går ut!"
+ ],
+ "SHOT_DIVING_HEADER": [
+  "<p1> med en dykkende heading!",
+  "<p1> treffer ballen med en dykkende heading!",
+  "<p1> kaster seg fram med en dykkende heading!",
+  "Dykkende heading av <p1>!",
+  "Heading med full kraft av <p1>!",
+  "<p1> kaster seg inn i den!"
+ ],
+ "SHOT_FREE_KICK": [
+  "<p1> treffer frisparket...",
+  "<p1> sender frisparket mot målet...",
+  "<p1> avfyrer frisparket inn mot mål",
+  "<p1> skyter frisparket inn mot mål..."
+ ],
+ "SHOT_FROM_DISTANCE_BANANA": [
+  "<p1> skrur den langt utenfra!",
+  "Fra lang avstand skrur <p1> ballen mot mål!",
+  "<p1> slår et banan-skudd utenfor boksen!",
+  "<p1> prøver å skru den inn fra lang avstand!"
+ ],
+ "SHOT_FROM_DISTANCE_HALF_VOLLEY": [
+  "<p1> med en fantastisk halvvolley!",
+  "<p1> lar ballen falle|Han slår en fantastisk halvvolley!",
+  "<p1> sender den avgårde med en halvvolley!",
+  "En halvvolley av <p1>!"
+ ],
+ "SHOT_FROM_DISTANCE_HIGH_DRIVE": [
+  "<p1> med et strålende langskudd!",
+  "<p1> sender en flyvende ball mot mål!",
+  "Forsøk fra lang avstand av <p1>!",
+  "<p1> skyter fra distanse...",
+  "<p1> sikter på krysset!",
+  "<p1> velger en hard ball!",
+  "<p1> prøvde seg på et imponerende langskudd!"
+ ],
+ "SHOT_FROM_DISTANCE_LOW_DRIVE": [
+  "<p1> slår den flatt fra distanse",
+  "<p1> treffer den flatt mot målet!",
+  "Truffet flatt fra lang avstand av <p1>!",
+  "<p1> prøver seg langt utenfra!"
+ ],
+ "SHOT_FROM_DISTANCE_VOLLEY": [
+  "En volley fra lang avstand av <p1>!",
+  "<p1> kunne latt den treffe bakken|Men han volleyer utenfor boksen!",
+  "<p1> volleyer den langt utenfra!",
+  "<p1> volleyer fra distanse!"
+ ],
+ "SHOT_HALF_VOLLEY": [
+  "<p1> halvvolleyer!",
+  "<p1> treffer ballen med en halvvolley!",
+  "<p1> treffer ballen med en halvvolley!",
+  "<p1> tar den på sprett og skyter!",
+  "<p1> kanonerer inn en halvvolley!"
+ ],
+ "SHOT_HEADER": [
+  "<p1> med en heading",
+  "<p1> nikker mot målet!",
+  "Heading av <p1>",
+  "<p1> treffer den med hodet!",
+  "<p1> går opp og nikker mot målet!",
+  "<p1> nikker med full kraft mot mål!"
+ ],
+ "SHOT_HIGH_DRIVE": [
+  "<p1> med et kanonskudd",
+  "<p1> gir alt han har!",
+  "Den treffes høyt og hardt mot målet av <p1>!",
+  "Hamret mot krysset av <p1>!"
+ ],
+ "SHOT_HITS_BAR": [
+  "<p1> treffer tverrliggeren!",
+  "En kanon i tverrliggeren!",
+  "Den treffer tverrliggeren!",
+  "Den kanoneres tilbake fra tverrliggeren!"
+ ],
+ "SHOT_HITS_POST": [
+  "<p1> treffer stolpen!",
+  "Stolpen avviser <p1>!",
+  "Den treffer stolpen!",
+  "Den treffer rammen...|Og spretter bort!"
+ ],
+ "SHOT_JUST_OVER": [
+  "Men <p1> sender den like over!",
+  "<p1> var nær der|Ballen strøk tverrliggeren!",
+  "Men <p1> sender den over med en hårsbredd!",
+  "Det var nær for <p1>!|Den gikk så vidt over tverrliggeren!",
+  "Fryktelig nær for <p1>!|Den tar øverste del av tverrliggeren!",
+  "Den går så vidt over for <p1>"
+ ],
+ "SHOT_JUST_WIDE": [
+  "Like utenfor av <p1>!",
+  "<p1> sender ballen centimeter utenfor mål!",
+  "Det var nær for <p1>!",
+  "<p1> treffer sidenettet!",
+  "Men <p1> treffer rett ved siden av!",
+  "Bare noen få centimeter utenfor|Det var nær for <p1>!"
+ ],
+ "SHOT_LOW_DRIVE": [
+  "<p1> med et lavt skudd",
+  "<p1> skyter hardt og lavt!",
+  "<p1> skyter lavt mot målet!",
+  "Sendes lavt mot målet av <p1>!!",
+  "<p1> avfyrer et hardt og lavt skudd!",
+  "<p1> braker løs et skudd mot mål!",
+  "<p1> hamrer den lavt!",
+  "<p1> avfyrer den lavt!",
+  "<p1> prøver å skyte lavt!",
+  "<p1> fyrer av et lavt skudd mot mål"
+ ],
+ "SHOT_OVER": [
+  "Over tverrliggeren!",
+  "Den gikk over!",
+  "Men ballen flyr over tverrliggeren!",
+  "Men den gikk rett over tverrliggeren!"
+ ],
+ "SHOT_OVER_WIDE": [
+  "Men <p1> sender den høyt og langt utenfor!",
+  "<p1> sender ballen høyt utenfor mål!",
+  "Men <p1> sender den langt utenfor!",
+  "Men han fikk ikke styr på den|Den gikk langt utenfor",
+  "Skuddet fra <p1> gikk høyt over",
+  "Den gikk langt opp på tribunen bak målet!"
+ ],
+ "SHOT_VOLLEY": [
+  "<p1> volleyer!",
+  "<p1> treffer den i luften!",
+  "<p1> treffer den rent i luften!",
+  "<p1> volleyer mot mål!"
+ ],
+ "SHOT_WELL_OVER": [
+  "Men <p1> hamrer den over tverrliggeren!",
+  "Men <p1> klarer ikke å holde den nede!",
+  "Men <p1> sender den langt over tverrliggeren!",
+  "Men <p1> dundrer den langt over!",
+  "<p1> skjærer helt av|Den ufarlige ballen flyr langt over tverrliggeren!",
+  "<p1>{s} skudd gikk rett over tverrliggeren!"
+ ],
+ "SHOT_WELL_OVER_HEADER": [
+  "Men <p1> nikker den langt over!",
+  "Men <p1> styrer headingen langt over tverrliggeren!",
+  "Men <p1> klarte ikke å holde headingen nede!",
+  "Men <p1> klarer bare å nikke den over tverrliggeren!",
+  "Men den nikkes langt over av <p1>!",
+  "Men <p1> nikker den rett over tverrliggeren!"
+ ],
+ "SHOT_WELL_WIDE": [
+  "Men <p1> sender den langt utenfor!",
+  "Men <p1>{s} forsøk er langt fra målet!",
+  "Den er ikke i nærheten av målet",
+  "Forferdelig skudd av <p1>!|Den gikk langt ved siden av målet"
+ ],
+ "SHOT_WIDE": [
+  "Men <p1> sender den utenfor!",
+  "Den går langt utenfor!",
+  "Men <p1> treffer ikke mål!",
+  "Men <p1> sender ballen langt utenfor!"
+ ],
+ "START_MATCH": [
+  "<t> gir ballen opp",
+  "<t> starter kampen",
+  "<t> får kampen i gang"
+ ],
+ "START_SHOOTOUT_RUN_UP": [
+  "<p1> går frem med ballen...",
+  "<p1> går frem...|Han tar ballen med seg..."
+ ],
+ "SUBSTITUTION": [
+  "<p1> erstatter <p2>",
+  "<p2> tas ut og erstattes av <p1>",
+  "<p1> går inn på banen for å erstatte <p2>",
+  "Det ser ut til at <p2> går ut|Han erstattes av <p1>",
+  "<p1> kommer inn i stedet for <p2>",
+  "<p2> går ut, og <p1> kommer inn",
+  "<p2> forlater banen...|og erstattes av <p1>",
+  "<p1> kommer inn og erstatter <p2>",
+  "<p2> er på vei av banen...|<p1> erstatter ham",
+  "Det er <p1> som kommer inn i stedet for <p2>",
+  "<p2> erstattes av <p1>",
+  "<p2> tas ut...|<p1> kommer inn og erstatter ham"
+ ],
+ "TAKE_CORNER": [
+  "<p1> tar cornerne",
+  "<p1> løper over for å ta cornerne",
+  "Cornerne skal tas av <p1>",
+  "<p1> løfter cornerne inn i boksen",
+  "<p1> lar ballen sveve inn i boksen",
+  "<p1> sender ballen inn i boksen",
+  "<p1> slår inn cornerne",
+  "<p1> går bort...|Og han løfter inn cornerne",
+  "<p1> prøver å treffe bortre stolpe",
+  "<p1> prøver å treffe nærmeste stolpe",
+  "<p1> løper ut for å ta cornerne",
+  "<p1> prøver en innadskrudd corner",
+  "<p1> prøver en utadskrudd corner",
+  "<p1> ser ut til å ville sende inn en myk ball"
+ ],
+ "TAKE_CORNER_TO_EDGE_OF_BOX": [
+  "<p1> er ute for å ta cornerne...|Han slår den til kanten av boksen",
+  "Cornerne skal tas av <p1>|Han spiller den til kanten av boksen...",
+  "<p1> går frem...|Han sikter mot kanten av boksen"
+ ],
+ "TAKE_FREE_KICK": [
+  "<p1> tar frisparket",
+  "Det er <p1> som tar frisparket",
+  "<p1> går frem for å ta frisparket",
+  "<p1> sparker raskt frisparket inn",
+  "<p1> sender frisparket over mål",
+  "Frisparket tas av <p1>",
+  "<p1> vipper inn frisparket",
+  "<p1> tar raskt frisparket",
+  "<p1> skal ta frisparket",
+  "<p1> tar det"
+ ],
+ "TAKE_GOAL_KICK": [
+  "<p1> tar målsparket",
+  "<p1> sparker målsparket",
+  "Målsparket tas av <p1>",
+  "<p1> sender målsparket opp banen",
+  "<p1> tar raskt målsparket",
+  "<p1> starter spillet igjen med målsparket",
+  "<p1> tar raskt målsparket",
+  "<p1> starter spillet igjen med et spark langt opp banen"
+ ],
+ "TAKE_PENALTY": [
+  "<p1> tar straffen...",
+  "Det er <p1> som skal ta straffen...",
+  "<p1> går frem for å ta straffen...",
+  "Det er <p1> som har sjansen til å score fra pletten...",
+  "<p1> går frem...",
+  "<p1> går selvsikkert frem...",
+  "<p1> løper frem for å ta sparket",
+  "<p1> løper frem for å ta sparket",
+  "<p1> plasserer ballen på pletten...",
+  "<p1> løper frem for å utføre straffen...",
+  "<p1> begynner tilløpet..."
+ ],
+ "TAKE_SHORT_CORNER": [
+  "<p1> tar en kort corner",
+  "Cornerne skal tas av <p1>|Han spiller den kort...",
+  "<p1> velger en kort corner"
+ ],
+ "TAKE_THROW_IN": [
+  "<p1> tar innkastet",
+  "<p1> løper over for å ta innkastet",
+  "Innkastet tas av <p1>",
+  "<p1> kaster inn ballen",
+  "<p1> kaster ballen tilbake i spill"
+ ],
+ "TIME_ADDED_ON": [
+  "Fjerdedommeren viser at det er lagt til <N> minutter",
+  "Vi ser nå at det er lagt til <N> minutter",
+  "Fjerdedommeren viser nå at det er lagt til <N> minutter"
+ ],
+ "WAIT": [
+  "<p1> holder på ballen",
+  "<p1> er tvunget til å holde på ballen",
+  "<p1> drar ut tiden",
+  "<p1> drar ut tiden",
+  "<p1> venter med å spille ballen",
+  "<p1> har foten på ballen",
+  "<p1> stopper opp og venter på støtte"
+ ],
+ "WALL_BLOCKS_SHOT": [
+  "Muren blokkerer skuddet",
+  "Blokkert av muren"
+ ],
+ "WINS_JUMPFORBALL": [
+  "<p1> hopper høyere enn <p2>",
+  "<p1> kommer høyere enn <p2> og vinner ballen",
+  "<p1> vinner hodeduellen med <p2>",
+  "<p1> vinner ballen i luftduell med <p2>",
+  "<p1> kommer høyere enn <p2>",
+  "<p1> hopper opp med <p2>...",
+  "<p1> hopper høyere enn <p2> og vinner ballen",
+  "<p1> vinner luftduellen med <p2>",
+  "<p1> hopper fri fra <p2>",
+  "<p1> kommer høyere enn <p2>"
+ ],
+ "WIN_THE_SHOOTOUT": [
+  "<t> vinner straffesparkkonkurransen!"
+ ],
+ "YELLOW_CARD": [
+  "<Y><p1> får se et gult kort",
+  "<Y>Det må bli et gult kort til <p1>",
+  "<Rf> strekker seg ned i lommen|<Y>Og viser <p1> det gule kortet",
+  "<Rf> drar fram et kort her|<Y>Det er gult|<p1> må passe seg nå",
+  "<Y><Rf> viser <p1> det gule kortet",
+  "<Y>Gult kort!",
+  "Han stikker hånden i lommen|<Y>Og viser ham det gule kortet",
+  "<Y><Rf> svinger det gule kortet!"
+ ]
+}

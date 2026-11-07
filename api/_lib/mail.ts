@@ -39,9 +39,9 @@ export async function isSubscribed(redis: Redis, email: string) {
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const FOOT: Record<string, string> = {
-  da: 'Du får denne mail, fordi du har tilmeldt dig opdateringer fra CM Reborn.', en: "You're getting this email because you signed up for CM Reborn updates.",
+  da: 'Du får denne mail, fordi du har tilmeldt dig opdateringer fra CM Reborn.', sv: 'Du får det här mejlet eftersom du har anmält dig till uppdateringar från CM Reborn.', nb: 'Du får denne e-posten fordi du har meldt deg på oppdateringer fra CM Reborn.', en: "You're getting this email because you signed up for CM Reborn updates.",
 };
-const UNSUB: Record<string, string> = { da: 'Afmeld', en: 'Unsubscribe' };
+const UNSUB: Record<string, string> = { da: 'Afmeld', sv: 'Avanmäl', nb: 'Meld av', en: 'Unsubscribe' };
 
 /** Opdateringsmailen: overskrift, afsnit (tom linje = nyt afsnit, "- " = punkt), knap til spillet og afmelding */
 export function renderNews(subject: string, text: string, lang: string, unsub: string): { html: string; text: string } {

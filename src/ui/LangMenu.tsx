@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { Lang } from '../game/types';
 import { LANGS } from '../i18n';
 
-const FLAG: Record<Lang, string> = { da: 'dk', en: 'gb', es: 'es', fr: 'fr', de: 'de', it: 'it', pt: 'br', tr: 'tr' };
+const FLAG: Record<Lang, string> = { da: 'dk', en: 'gb', es: 'es', fr: 'fr', de: 'de', it: 'it', pt: 'br', tr: 'tr', sv: 'se', nb: 'no' };
 const flag = (l: Lang) => <img className="lm-flag" src={`https://flagcdn.com/${FLAG[l]}.svg`} alt="" width="20" height="14" />;
 
 /** Sprogvælger som dropdown med flag (forside, draft-side og startside) */

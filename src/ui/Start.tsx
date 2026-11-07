@@ -168,7 +168,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 }
 
 // sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
-const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey' };
+const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey', sv: 'Sweden', nb: 'Norway' };
 
 function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
   const [world, setWorld] = useState<WorldData | null>(null);

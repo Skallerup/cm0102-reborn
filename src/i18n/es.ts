@@ -843,7 +843,7 @@ export const es: Record<string, string> = {
   'hist.manager': 'Entrenador', 'hist.trophies': 'Títulos', 'hist.sacked': 'Destituciones', 'hist.challenge': 'Desafío', 'hist.deadline': 'plazo',
   'hist.trophyCabinet': 'Vitrina de trofeos', 'hist.noTrophies': 'Aún no hay títulos', 'hist.career': 'Trayectoria', 'hist.firstSeason': 'Primera temporada en curso',
 
-  'opt.general': 'General', 'opt.currency': 'Moneda', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Corona danesa (kr.)', 'cur.BRL': "Real brasileño (R$)", 'cur.TRY': "Lira turca (₺)", 'cur.GBP': 'Libra esterlina (£)', 'opt.language': 'Idioma', 'opt.autosave': 'Guardado automático',
+  'opt.general': 'General', 'opt.currency': 'Moneda', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Corona danesa (kr.)', 'cur.BRL': "Real brasileño (R$)", 'cur.TRY': "Lira turca (₺)", 'cur.SEK': "Corona sueca (kr)", 'cur.NOK': "Corona noruega (kr)", 'cur.GBP': 'Libra esterlina (£)', 'opt.language': 'Idioma', 'opt.autosave': 'Guardado automático',
   // ---------- AI: prensa, charlas, medios, afición, entrenadores ----------
   'opt.ai': 'Texto de IA (ruedas de prensa, charlas, artículos)', 'opt.ai.hint': 'Periodistas, jugadores, agentes y aficionados responden con textos escritos por un modelo de lenguaje. Las reglas del juego siguen decidiendo cada resultado. Requiere internet y solo funciona en la versión alojada en Vercel.',
   'ai.writing': 'Escribiendo el artículo…',

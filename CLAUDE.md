@@ -35,7 +35,7 @@ og læg ændringen i samme push.
   Relative imports i `api/` skal have `.js`-endelse (ESM).
 - Klassisk CM 01/02-tema (`data-skin='retro'`): `src/ui/classic.tsx` (hubs, faner, `CxDrop`, `CxLink`, `clubRoute`),
   `classic.css`, `classicOptions.tsx` (Game Options/Settings) og `src/ui/screens/*Classic.tsx`.
-- i18n: 8 sprog. `da`/`en` ligger i hovedfilen, resten hentes ved behov. Nye tekster skal i både `en.ts` og `da.ts`
+- i18n: 10 sprog (sv/nb fra 2026-11-07). `da`/`en` ligger i hovedfilen, resten hentes ved behov. Nye tekster skal i både `en.ts` og `da.ts`
   (øvrige sprog falder tilbage til engelsk).
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
@@ -48,6 +48,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Svensk (`sv`) og norsk bokmål (`nb`): `src/i18n/sv.ts`/`nb.ts` (6.109 nøgler, oversat af Claude fra dansk, lazy), `scripts/match-texts-i18n/sv.json`/`nb.json` (kommentaren), Lang-typen, LANGS, LOCALE, UNITS, LangMenu-flag, LANG_NATION, nations.ts UK-navne, cup-navne i comps.ts, login-/opdateringsmails. Valuta SEK (11,1) og NOK (11,6) *estimeret*, sprogets standard. Nye nøgler: læg dem også i sv/nb (ellers engelsk).
 - 2026-11-07 – Reservehold: `splitReserves(cid)` (reserves.ts; `FIRST_TEAM` 25, mindst 2 GK) i newgame (alle synlige klubber), seasonRollover (AI-klubber) og engangsrettelsen `reserveSplit` i save.ts (springer klubber med egne reserver over; renser g.tactic). `promoteIfShort` i tacticFor (AI) holder 18 ledige på førsteholdet. match-stats: mål 2,79.
 - 2026-11-07 – Opdateringsmails: `api/_lib/mail.ts` (news:subs/unsubs/prompt/sent/secret, afmeldingslink med HMAC, Resend-batch med
   List-Unsubscribe), account.ts ops `news` (login krævet), `prompt` (tællere), `unsub` (GET-side + POST one-click). Admin: fanen

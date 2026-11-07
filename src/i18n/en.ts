@@ -852,7 +852,7 @@ export const en: Record<string, string> = {
   'hist.manager': 'Manager', 'hist.trophies': 'Trophies', 'hist.sacked': 'Sackings', 'hist.challenge': 'Challenge', 'hist.deadline': 'deadline',
   'hist.trophyCabinet': 'Trophy cabinet', 'hist.noTrophies': 'No trophies yet', 'hist.career': 'Career', 'hist.firstSeason': 'First season under way',
 
-  'opt.general': 'General', 'opt.currency': 'Currency', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danish kroner (kr.)', 'cur.BRL': "Brazilian real (R$)", 'cur.TRY': "Turkish lira (₺)", 'cur.GBP': 'Pound sterling (£)', 'opt.language': 'Language', 'opt.autosave': 'Autosave',
+  'opt.general': 'General', 'opt.currency': 'Currency', 'cur.EUR': 'Euro (€)', 'cur.DKK': 'Danish kroner (kr.)', 'cur.BRL': "Brazilian real (R$)", 'cur.TRY': "Turkish lira (₺)", 'cur.SEK': "Swedish krona (kr)", 'cur.NOK': "Norwegian krone (kr)", 'cur.GBP': 'Pound sterling (£)', 'opt.language': 'Language', 'opt.autosave': 'Autosave',
   // ---------- AI: press, talks, media, fans, managers ----------
   'opt.ai': 'AI text (press conferences, talks, articles)', 'opt.ai.hint': 'Journalists, players, agents and fans reply with text written by a language model. The game rules still decide every outcome. Needs internet and only works on the Vercel-hosted version.',
   'ai.writing': 'Writing the article…',

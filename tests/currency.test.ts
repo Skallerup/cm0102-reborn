@@ -15,3 +15,18 @@ describe('én valuta pr. sprog', () => {
     expect(getCurrency()).toBe('GBP');
   });
 });
+
+describe('svensk og norsk', () => {
+  it('sprogene hentes, og valutaen følger sproget', async () => {
+    const { ensureLang, t } = await import('../src/i18n');
+    for (const [l, cur] of [['sv', 'SEK'], ['nb', 'NOK']] as const) {
+      await ensureLang(l);
+      setLang(l);
+      setCurrency(cur);
+      expect(t('common.yes')).not.toBe('Yes');
+      expect(money(1_000_000)).toMatch(/ kr$/);
+    }
+    setLang('en');
+    setCurrency('GBP');
+  });
+});
