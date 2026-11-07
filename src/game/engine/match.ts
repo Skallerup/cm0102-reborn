@@ -204,7 +204,7 @@ const logistic = (x: number) => 1 / (1 + Math.exp(-x));
 const logit = (p: number) => Math.log(p / (1 - p));
 
 function emptyStats(): MatchStatsSide {
-  return { goals: 0, shots: 0, onTarget: 0, xg: 0, possession: 0, corners: 0, fouls: 0, yellows: 0, reds: 0, offsides: 0, passes: 0, passesCompleted: 0 };
+  return { goals: 0, shots: 0, onTarget: 0, xg: 0, possession: 0, corners: 0, fouls: 0, yellows: 0, reds: 0, offsides: 0, passes: 0, passesCompleted: 0, throwIns: 0, tackles: 0, tacklesWon: 0, headers: 0, headersWon: 0 };
 }
 
 export class MatchSim {
@@ -362,7 +362,7 @@ export class MatchSim {
       // originalen: 6,1 for startelleveren, 6,4 for spillere fra bænken (sub_6eaea0)
       rating: minute > 0 ? RATING.startSubstitute : RATING.start,
       enteredAt: minute,
-      line: { id: p.id, team: rt.idx, rating: 6, goals: 0, assists: 0, minutes: 0, yellow: 0, red: false, injured: false, sub: minute > 0, slot, shots: 0, tackles: 0, passes: 0, passesOk: 0, cond: p.condition },
+      line: { id: p.id, team: rt.idx, rating: 6, goals: 0, assists: 0, minutes: 0, yellow: 0, red: false, injured: false, sub: minute > 0, slot, shots: 0, tackles: 0, passes: 0, passesOk: 0, cond: p.condition, tckA: 0, hea: 0, heaW: 0, on: 0 },
     };
     rt.all.push(sp);
     return sp;
@@ -748,6 +748,7 @@ export class MatchSim {
           // hårde tacklinger: risiko for frispark/straffe og kort
           if (O.ti.tackling === 2 && this.r.chance(0.35) && this.foulCheck(T, O, s, cover, true)) return;
           cover.line.tackles++;
+          O.stats.tackles!++; O.stats.tacklesWon!++; cover.line.tckA!++;
           this.rate(cover, 0.2);
           this.line('lastditch', cover, s, true);
           this.highlights.push({ m: this.minute, t: T.idx, kind: 'lastDitch', p: s.p.id, p2: cover.p.id, moment: this.moment });
@@ -928,7 +929,7 @@ export class MatchSim {
     } else {
       this.rate(s, -0.04);
       this.rate(def, 0.05);
-      if (def) def.line.tackles++;
+      if (def) { def.line.tackles++; def.line.tckA!++; O.stats.tackles!++; O.stats.tacklesWon!++; }
       this.pbp('pl-icpt', def, s);
       this.zone = tz;
       this.turnover(def);
@@ -964,7 +965,9 @@ export class MatchSim {
     const behind = trb >= 3 ? (O.ti.mentality - 2) * 0.12 + (O.ti.closingDown - 1) * 0.15 + (O.ti.offside ? 0.1 : 0) + (recv && def ? (this.speed(recv) - this.speed(def)) / 30 : 0) : 0;
     const p = logistic(logit(0.42) + (this.aerial(recv) - (def ? this.aerial(def) : 5)) / 3.5 + (pq - 10) / 12 + this.overload(tz, T, O) * 0.6 + this.wx.air + behind);
     this.zone = tz;
-    if (this.r.chance(p)) {
+    const won = this.r.chance(p);
+    if (def) this.header(T, O, won, recv, def);
+    if (won) {
       T.stats.passesCompleted++;
       s.line.passesOk++;
       this.rate(recv, 0.04);
@@ -988,6 +991,7 @@ export class MatchSim {
     const wide = this.laneOf(T.idx) !== 1;
     const speedDuel = wide && def ? (this.speed(s) - this.speed(def)) / 16 : 0;
     const p = logistic(logit(0.5) + (this.dribQ(s) - dq) / 4 + this.overload(this.zone, T, O) * 0.6 + speedDuel + this.wx.drib);
+    if (def) { O.stats.tackles!++; def.line.tckA!++; }
     if (this.r.chance(p)) {
       this.rate(s, 0.07);
       if (rb < 4) {
@@ -1000,7 +1004,9 @@ export class MatchSim {
       }
       return;
     }
-    if (def) { def.line.tackles++; this.rate(def, 0.07); }
+    if (def) { def.line.tackles++; O.stats.tacklesWon!++; this.rate(def, 0.07); }
+    // på kanten ryger bolden ud over sidelinjen: indkast (kun til statistikken, *estimeret*)
+    if (def && wide) T.stats.throwIns!++;
     this.rate(s, -0.03);
     if (def && this.foulCheck(T, O, s, def)) return;
     // på kanten tæt på feltet: forsvareren sparker bolden over baglinjen
@@ -1098,7 +1104,9 @@ export class MatchSim {
       return;
     }
     const p = logistic(logit(setPiece ? 0.52 : 0.5) + (this.aerial(target) - (marker ? this.aerial(marker) : 5)) / 3.5 + this.overload(boxZ, T, O) * 0.5 + pulled * 0.6);
-    if (this.r.chance(p)) {
+    const won = this.r.chance(p);
+    if (marker) this.header(T, O, won, target, marker);
+    if (won) {
       this.rate(s, 0.05);
       this.lastPasser = s;
       this.lastPasserMoment = this.moment;
@@ -1183,7 +1191,16 @@ export class MatchSim {
   }
 
   /** Indkast højt på banen: en spiller med langt indkast kaster ind i feltet som et indlæg */
+  /** Luftduel til kampstatistikken (Headers Won) – trækker ingen tilfældige tal */
+  private header(T: TeamRT, O: TeamRT, won: boolean, a: SP, d: SP) {
+    T.stats.headers!++; O.stats.headers!++;
+    (won ? T : O).stats.headersWon!++;
+    a.line.hea!++; d.line.hea!++;
+    (won ? a : d).line.heaW!++;
+  }
+
   private throwIn(T: TeamRT, O: TeamRT) {
+    T.stats.throwIns!++;
     const lane = this.laneOf(T.idx);
     const thrower = this.pick(T.zAtt[this.zone], (x) => this.a(x, A.throwIns) ** 3);
     if (!thrower) return false;
@@ -1380,6 +1397,7 @@ export class MatchSim {
         // kun forsvarerens kvalitet: gode forsvar lukker flere chancer, uden at de bedste angribere scorer endnu mere
         if (this.r.chance(clamp(this.opts.close * Math.exp((dq - 12) / (this.opts.closeSlope ?? 6)), 0, 0.7))) {
           d.line.tackles++;
+          O.stats.tackles!++; O.stats.tacklesWon!++; d.line.tckA!++;
           this.rate(d, 0.05);
           this.line('closed-down', d, s);
           this.setupNext = null;
@@ -1470,6 +1488,7 @@ export class MatchSim {
       }
       rec.outcome = 'goal';
       T.stats.onTarget++;
+      s.line.on!++;
       this.goal(T, O, s, assister, kind);
       // rutinetjek: målet står ved magt
       if (routineCheck) { this.line('var-check', s, null, true); this.line('var-stands', s, null, true); }
@@ -1479,6 +1498,7 @@ export class MatchSim {
     if (this.r.chance((onT - goalP) / (1 - goalP))) {
       rec.outcome = 'saved';
       T.stats.onTarget++;
+      s.line.on!++;
       this.rate(s, 0.08);
       // redning +0,35, stor redning +0,60 (originalen, sub_702050)
       this.rate(gk, xg > 0.25 || kind === 'pen' ? RATING.greatSave : RATING.goodSave);

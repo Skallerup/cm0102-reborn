@@ -3,7 +3,7 @@
 // Engelsk og dansk er originalens egne; de øvrige sprog er oversat (scripts/match-texts-i18n/).
 import type { CommentaryLine } from '../game/types';
 
-type Row = [number, string, string, Record<string, string>?];
+type Row = [number, string, string, Record<string, string>?, [string, string]?];
 let data: Record<string, Row[]> | null = null;
 let loading: Promise<void> | null = null;
 
@@ -129,9 +129,21 @@ export interface OrigCtx { home: string; away: string; score?: string; ref?: str
 
 /** Linjen med originalens ord (en/da), eller null når der ikke findes en passende (så bruges vores egen tekst) */
 export function originalText(l: CommentaryLine, ctx: OrigCtx, idx: number): string | null {
+  const parts = originalParts(l, ctx, idx, false);
+  return parts ? parts.map((part) => (part === ctx.score || /[.!?…:]$/.test(part) ? part : `${part}.`)).join(' ') : null;
+}
+
+/** Kampreferatet efter slutfløjt (CM 01/02's Match Report): samme varianter som kommentaren, men rapportlinjen i datid – én række pr. del */
+export function originalReport(l: CommentaryLine, ctx: OrigCtx, idx: number): string[] | null {
+  return originalParts(l, ctx, idx, true);
+}
+
+function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boolean): string[] | null {
   if (!data) return null;
   const lang = ctx.lang;
-  const pick = (r: Row) => (lang === 'en' ? r[1] : lang === 'da' ? r[2] : r[3]?.[lang]);
+  const game = (r: Row) => (lang === 'en' ? r[1] : lang === 'da' ? r[2] : r[3]?.[lang]);
+  // rapportlinjen findes kun på engelsk og dansk – de øvrige sprog bruger kamplinjen
+  const pick = (r: Row) => (report && r[4] && (lang === 'en' || lang === 'da') ? r[4][lang === 'en' ? 0 : 1] : game(r));
   const steps = MAP[l.k];
   if (!steps) return null;
   const da = ctx.lang === 'da';
@@ -143,7 +155,8 @@ export function originalText(l: CommentaryLine, ctx: OrigCtx, idx: number): stri
     const t1 = team(st.other), t2 = team(!st.other);
     const ok = (txt: string, en: boolean) => (!txt.includes('<p1>') || !!p1) && (!txt.includes('<p2>') || !!p2) && (!/<t1?>|<tc>/.test(txt) || !!t1) && (!txt.includes('<t2>') || !!t2)
       && (!txt.includes('<N>') || !!l.a) && !/<n>|<c>|<f>/.test(txt) && (!en || !st.only || st.only.test(txt));
-    const rows = st.ev.flatMap((e) => data![e] ?? []).filter((r) => { const x = pick(r); return !!x && ok(r[1], true) && ok(x, false); });
+    // samme udvalg som kamplinjen, så rapporten fortæller den samme variant
+    const rows = st.ev.flatMap((e) => data![e] ?? []).filter((r) => { const x = game(r); return !!x && ok(r[1], true) && ok(x, false); });
     if (!rows.length) return;
     const tot = rows.reduce((a, r) => a + r[0], 0);
     let x = hash(idx * 31 + l.m * 7 + si) % tot;
@@ -157,8 +170,9 @@ export function originalText(l: CommentaryLine, ctx: OrigCtx, idx: number): stri
       .replace(/<rf>/g, ctx.ref ? `${REF[lang]?.[1] ?? 'referee'} ${ctx.ref}` : REF[lang]?.[3] ?? 'the referee')
       .replace(/<d>/g, String(15 + (hash(idx + 7) % 30))).replace(/<N>/g, l.a ?? '')
       .replace(/<[YRO]>/g, '').replace(/\{s\}/g, '').replace(/\s+/g, ' ');
-    // "|" = flere linjer efter hinanden i originalen: her én linje med punktum imellem
-    for (const part of txt.split('|').map((x) => x.trim()).filter(Boolean)) out.push(/[.!?…:]$/.test(part) ? part : `${part}.`);
+    // "|" = flere linjer efter hinanden i originalen: her én linje med punktum imellem (rapporten: kun den første)
+    const parts = txt.split('|').map((x) => x.trim()).filter(Boolean);
+    out.push(...(report ? parts.slice(0, 1) : parts));
   });
-  return out.length ? out.join(' ') : null;
+  return out.length ? out : null;
 }

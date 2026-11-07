@@ -48,6 +48,14 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Klassisk kamp mod originalen (Leeds-Man Utd spillet i ejerens karriere): `CxLiveTable` (trækker dagens andre
+  resultater ud af tabellen og lægger stillingen i minuttet ind), `MatchStatsSide.throwIns/tackles/tacklesWon/headers/headersWon` og
+  `PlayerMatchLine.tckA/hea/heaW/on` (motoren tæller uden at trække tilfældige tal; indkast/tacklinger *estimeret*), Free Kicks =
+  modstanderens frispark + offside (passer med originalen). Match Report først efter slutfløjt med originalens rapportlinjer i datid:
+  matchTexts.json-rækken har nu `[vægt, en, da, {sprog}, [rapport en, da]?]`, `originalReport`/`reportLines` vælger samme variant som
+  kommentaren (`L.lines[].ci`). `MatchSide.line` = kommentaren i Shell-foden på andre faner. Kampdag: `useClassicContinue` (classic.tsx)
+  lader en skærm tage Continue Game (MatchDay bladrer turneringer), titler `cl.md.res1/resN/fix1/fixN` + afternoon/evening, placering
+  i ligakampe. NB: matchTexts-bundtet er nu ~150 KB gzip.
 - 2026-11-07 – Landsholdsudtagelser: `planWindow` (international.ts) trækker vinduets venskabskampe 2 dage før og gemmer dem i
   `IntlState.plan`, så `callUpNews` kan sende én nyhed pr. landshold (`intl.sel1`/`intl.selN`, brødteksten vælges i `newsBody`:
   navne ≤ 3, ellers `num.N`, med/uden modstander). Klassisk indbakke: `.cx-inbox .cx-nrow` (NB: `.cx-nrow` bruges også af

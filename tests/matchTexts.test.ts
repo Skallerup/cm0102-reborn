@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/ui/data/matchTexts.json', () => ({ default: JSON.parse(readFileSync('src/ui/data/matchTexts.json', 'utf8')) }));
-import { loadMatchTexts, originalText } from '../src/ui/matchTexts';
+import { loadMatchTexts, originalReport, originalText } from '../src/ui/matchTexts';
 
 const ctx = (lang: string) => ({ home: 'Vejle', away: 'Brøndby', score: 'Vejle 1-0 Brøndby', ref: 'Hansen', lang });
 
@@ -30,4 +30,17 @@ describe('originalens kommentarlinjer (CM 01/02)', () => {
     // ingen modspiller: kun varianter uden <p2>
     for (let i = 0; i < 30; i++) expect(originalText({ m: i, k: 'pl-fwd', a: 'Lauth', t: 1 }, ctx('en'), i)).not.toMatch(/undefined|  /);
   });
+  it('kampreferatet bruger rapportlinjen i datid (samme variant som kommentaren)', async () => {
+    await loadMatchTexts();
+    for (let i = 0; i < 40; i++) for (const lang of ['en', 'da', 'de']) for (const k of ['save', 'foul', 'goal', 'pl-fwd', 'ai-push', 'pl-icpt']) {
+      const rep = originalReport({ m: i, k, a: 'Lauth', b: 'Schram', t: 0 }, ctx(lang), i);
+      expect(rep?.length, `${lang} ${k}`).toBeGreaterThan(0);
+      for (const r of rep!) expect(r, `${lang} ${k}: ${r}`).not.toMatch(/<|>|\{s\}|\|/);
+    }
+    // CM 01/02: "<t> go to an attacking style" → "<t> went to an attacking style"
+    const all = Array.from({ length: 30 }, (_, i) => originalReport({ m: 1, k: 'ai-push', t: 0 }, ctx('en'), i)!.join(' '));
+    expect(all.some((x) => /^Vejle went /.test(x))).toBe(true);
+    expect(originalText({ m: 1, k: 'ai-push', t: 0 }, ctx('en'), 0)).not.toMatch(/went/);
+  });
 });
+

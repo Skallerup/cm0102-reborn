@@ -61,7 +61,7 @@ import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerM
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
 import { MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog } from './classic';
+import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -277,6 +277,7 @@ export function Shell() {
     return true;
   };
   const onContinue = () => {
+    if (cmNav && classicContinue()) return;
     if (g.pendingFixture) {
       const pf = g.fixtures[g.pendingFixture];
       // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk
@@ -367,7 +368,7 @@ export function Shell() {
                 : <button className={`cx-sbtn cx-continue ${ms.editing ? 'cx-keep' : ''}`} disabled={ms.editing} title={ms.kicked && ms.paused ? t('cl.mt.resume') : undefined} onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.half ? t('cl.mt.restart') : ms.paused ? t('cl.mt.paused') : t('cl.mt.pause')}</button>}
               <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
               <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
-              {!ms.finished && <CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn', disabled: ms.editing }}
+              {<CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn', disabled: ms.editing }}
                 items={[8, 4, 2, 1, 0.6, 0.35].map((n) => ({ key: String(n), label: t(`cl.mt.sp.${String(n).replace('.', '')}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
               <div className="cx-side-grow" />
             </aside>
@@ -489,7 +490,9 @@ export function Shell() {
               </div>
             ) : matchSide && route.name === 'match' && matchSide.s.venue ? (
               // kampskærmen (CM 01/02): stadion og by nederst i stedet for Back/Next
-              <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
+              // … og under kampen den seneste kommentar, når man står på en anden fane end Match Overview
+              matchSide.s.line ? <div className="cx-venue cx-foot-venue cx-foot-line" style={{ background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
+                : <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
             ) : <div className="cx-backnext">
               {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
               <button className="cx-back" disabled={!canBack || (route.name === 'match' && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>

@@ -705,6 +705,12 @@ export interface MatchStatsSide {
   offsides: number;
   passes: number;
   passesCompleted: number;
+  /** CM 01/02's kampstatistik (ikke i ældre rapporter) */
+  throwIns?: number;
+  tackles?: number;
+  tacklesWon?: number;
+  headers?: number;
+  headersWon?: number;
 }
 
 export interface PlayerMatchLine {
@@ -724,6 +730,11 @@ export interface PlayerMatchLine {
   passes: number;
   passesOk: number;
   cond: number;
+  /** CM 01/02's Team Stats (ikke i ældre rapporter): tacklingsforsøg, hovedstød (forsøg/vundne), skud på mål */
+  tckA?: number;
+  hea?: number;
+  heaW?: number;
+  on?: number;
 }
 
 export interface MatchEvent {

@@ -1058,3 +1058,71 @@
   .cx-statement p { font-weight: 500; font-size: 19px; }
 }
 .cx-panel { background: rgba(0, 0, 0, 0.32); min-height: 380px; }
+/* Live League Table under kampen: egen klub øverst, stiplet gul linje under */
+.cx-live-tbl tr.cx-live-sep td { padding: 0; height: 10px; border-bottom: 1px dashed #fff21f; }
+/* kampens fod som i CM 01/02: stadion i grå (normal skrift, lys tekst), kommentaren i holdets farver */
+@media (min-width: 761px) {
+  .cx-foot-venue { min-height: 48px; background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; color: #e8e8e8; font-weight: 400; text-shadow: none; font-size: 20px; }
+  .cx-foot-line { border-color: rgba(255,255,255,.45) rgba(0,0,0,.45) rgba(0,0,0,.45) rgba(255,255,255,.45); }
+}
+/* kampskærmens faner målt i CM 01/02 (7/11): gennemsigtigt panel 16 px inde, normal skrift */
+@media (min-width: 761px) {
+  .cx-mo { margin: 0 16px; padding: 4px 0 10px; }
+  .cx-mo-meta { margin: 2px 0; padding: 7px 16px; background: rgba(0, 0, 0, 0.25); }
+  .cx-mo-meta span { background: none; padding: 0 16px; font-size: 13px; font-weight: 400; }
+  .cx-mo-scorers { font-weight: 400; }
+  .cx-mo-goal b { color: #fff21f; font-weight: 400; }
+  .cx-ms { margin: 0 16px; padding: 4px 0; gap: 2px; background: rgba(0, 0, 0, 0.3); }
+  .cx-ms-row { grid-template-columns: 152px 1fr 152px; }
+  .cx-ms-v { background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #b8ecff; font-size: 18px; font-weight: 400; padding: 6px 0; text-shadow: none; }
+  .cx-ms-l { font-size: 19px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+  .cx-az { margin: 0 16px; padding: 12px 0; background: rgba(0, 0, 0, 0.3); }
+  .cx-az-pitch { position: relative; margin: 0 auto 12px; width: 78%; height: 380px; border: 1px solid #2f6a2a; outline: 12px solid #123d12; outline-offset: 0;
+    background: repeating-linear-gradient(180deg, #143f14 0 40px, #113811 40px 80px); }
+  .cx-az-third { position: relative; z-index: 1; align-content: center; border-right: 1px dashed #fff21f; }
+  .cx-az-third b { font-size: 20px; font-weight: 400; text-shadow: 1px 1px 0 #000; }
+  .cx-az-zbar { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 4px 6px; background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; }
+  .cx-az-zbar .cx-mo-bar { height: 12px; border-width: 1px; } .cx-az-zbar .cx-mo-bar span { font-size: 0; }
+  .cx-az-label { position: absolute; z-index: 2; top: 6px; left: 50%; transform: translateX(-50%); width: 30%; padding: 4px 0; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 13px; }
+  .cx-az-pitch > i { position: absolute; border: 1px solid rgba(140, 190, 120, 0.7); pointer-events: none; }
+  .cx-az-box { top: 20%; height: 60%; width: 14%; } .cx-az-box.l { left: 0; border-left: 0; } .cx-az-box.r { right: 0; border-right: 0; }
+  .cx-az-six { top: 35%; height: 30%; width: 5%; } .cx-az-six.l { left: 0; border-left: 0; } .cx-az-six.r { right: 0; border-right: 0; }
+  .cx-az-half { top: 0; bottom: 0; left: 50%; width: 0; border-width: 0 0 0 1px !important; }
+  .cx-az-circle { top: 50%; left: 50%; width: 106px; height: 106px; margin: -53px 0 0 -53px; border-radius: 50%; }
+  .cx-az-poss { display: block; width: 78%; margin: 0 auto; padding: 8px 40px; }
+}
+@media (min-width: 761px) {
+  .cx-rt { margin: 0 16px; padding: 8px 0; gap: 30px; background: rgba(0, 0, 0, 0.3); }
+  .cx-rt .cx-tbl td { font-weight: 400; padding-top: 1px; padding-bottom: 1px; }
+  .cx-rt .c-orange { color: #ffa64a; }
+}
+@media (min-width: 761px) {
+  .cx-ts-tbl { margin: 0 16px; padding: 8px 0; background: rgba(0, 0, 0, 0.3); }
+  .cx-ts-tbl .cx-tbl td { font-weight: 400; padding-top: 1px; padding-bottom: 1px; }
+  .cx-ts-tbl .c-orange { color: #ffa64a; font-weight: 400; } .cx-ts-tbl .c-con { color: #4f8fff; }
+}
+@media (min-width: 761px) {
+  .cx-ls { margin: 0 16px; padding: 6px 14px; background: rgba(0, 0, 0, 0.3); }
+  .cx-ls-row { grid-template-columns: 1fr 70px 1fr; font-size: 18px; font-weight: 400; color: #e4e4e4; }
+  .cx-ls-team { font-size: 18px; } .cx-ls-score { text-align: right; padding-right: 22px; font-size: 18px; }
+}
+.cx-mo-foot .cx-mo-att { color: #6fe3ff; }
+@media (min-width: 761px) { .cx-mo-foot { font-weight: 400; font-size: 13px; padding: 12px 16px; background: rgba(0, 0, 0, 0.25); margin-top: 18px; } }
+@media (min-width: 761px) {
+  .cx-mr { margin: 0 16px; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); }
+  .cx-mr .cx-tbl td { font-weight: 400; font-size: 13px; padding: 5px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+  .cx-mr .cx-mr-m { width: 176px; text-align: center; border-right: 1px solid rgba(255, 255, 255, 0.14); }
+  .cx-mr-none { display: grid; place-items: center; min-height: 480px; color: #e4e4e4; font-size: 18px; }
+}
+/* kampdagen (CM 01/02 "Afternoon Result"): gennemsigtigt panel 16 px inde, placeringen i blå bokse, normal skrift */
+@media (min-width: 761px) {
+  .cx-md-panel { margin: 0 16px; padding: 8px 0 12px; min-height: 480px; background: rgba(0, 0, 0, 0.3); }
+  .cx-md { padding: 4px 2px 10px; }
+  .cx-md-row, .cx-md-row:has(.cx-md-res) { grid-template-columns: 60px minmax(0, 1fr) 90px minmax(0, 1fr) 60px; gap: 6px; min-height: 30px; }
+  .cx-md-code { height: 27px; background: #00006e; border-color: #000085 #00003e #00003e #000085; font-size: 12px; font-weight: 400; }
+  .cx-md-home, .cx-md-away { font-size: 18px; font-weight: 400; text-shadow: 1px 1px 0 #000; }
+  .cx-md-home { padding-left: 36px; }
+  .cx-md-res, .cx-md-v { font-size: 18px; font-weight: 400; }
+  .cx-md-stage { font-weight: 400; font-size: 18px; margin-left: 6px; }
+}
+@media (min-width: 761px) { .cx-live-tbl { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } }

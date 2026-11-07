@@ -27,6 +27,19 @@ let nextAction: { label: string; run: () => void } | null = null;
 const nextSubs = new Set<() => void>();
 const emitNext = () => nextSubs.forEach((f) => f());
 /** Skærmen lægger sin egen handling på Next-knappen, så længe `label` er sat */
+/** En skærm kan tage Continue Game først (fx kampdagen, der bladrer til næste turnering som i CM 01/02) – fn svarer true, når den har gjort noget */
+let continueHook: (() => boolean) | null = null;
+export function useClassicContinue(fn: () => boolean) {
+  const ref = useRef(fn);
+  ref.current = fn;
+  useEffect(() => {
+    const h = () => ref.current();
+    continueHook = h;
+    return () => { if (continueHook === h) continueHook = null; };
+  }, []);
+}
+export const classicContinue = () => !!continueHook?.();
+
 export function useClassicNext(label: string | null, run: () => void) {
   const ref = useRef(run);
   ref.current = run;
@@ -39,7 +52,7 @@ export function useClassicNext(label: string | null, run: () => void) {
   }, [label]);
 }
 /** Klassisk kampskærm: sidebjælken viser minuttet og kampknapperne (Kick Off Match, holdenes taktik, Commentary Speed) */
-export interface MatchSide { minute: string; half?: boolean; editing?: boolean; lastView?: boolean; venue?: string; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
+export interface MatchSide { minute: string; half?: boolean; editing?: boolean; lastView?: boolean; venue?: string; line?: { text: string; background: string; color: string }; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
 export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void; cont: () => void; ok: () => void; cancel: () => void; back?: () => void }
 let matchSide: { s: MatchSide; a: MatchSideActions } | null = null;
 let matchSideKey = '';
@@ -235,6 +248,13 @@ export function cxShortDate(iso: string): string {
   const loc = t('cl.locale');
   if (!loc.startsWith('en')) return d.toLocaleDateString(loc, { weekday: 'short', day: 'numeric', month: 'short' });
   return `${d.toLocaleDateString(loc, { weekday: 'short' })} ${ordinal(d.getDate())} ${d.toLocaleDateString(loc, { month: 'short' })}`;
+}
+/** "Saturday 11th May 2002" (CM 01/02's lange dato) */
+export function cxLongDate(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`);
+  const loc = t('cl.locale');
+  if (!loc.startsWith('en')) return d.toLocaleDateString(loc, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  return `${d.toLocaleDateString(loc, { weekday: 'long' })} ${ordinal(d.getDate())} ${d.toLocaleDateString(loc, { month: 'long' })} ${d.getFullYear()}`;
 }
 const ordinal = (n: number) => (t('cl.locale').startsWith('da') ? `${n}.` : `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`);
 

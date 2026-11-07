@@ -3,9 +3,11 @@
 import type { Fixture } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { useGame, useNav, useRouteState } from '../core';
-import { CxLink, clubRoute } from '../classic';
+import { CxLink, clubRoute, useClassicContinue } from '../classic';
 import { Head } from './common';
 import { stageLabel } from './Fixtures';
+import { ordinal } from './Competitions';
+import { leagueRows } from '../../game/competitions';
 
 export function MatchDay({ id }: { id: number }) {
   const g = useGame()!;
@@ -17,6 +19,13 @@ export function MatchDay({ id }: { id: number }) {
   const comps = [...new Set(today.map((f) => f.comp))].sort((a, b) => Number(b === mine?.comp) - Number(a === mine?.comp) || (compName(g.comps[a]?.name) ?? '').localeCompare(compName(g.comps[b]?.name) ?? ''));
   const [i, setI] = useRouteState('mdi', 0);
   const cid = comps[Math.min(i, comps.length - 1)];
+  // Continue Game bladrer videre til næste turnering, når dagens kampe er spillet (CM 01/02); den sidste går videre i spillet
+  useClassicContinue(() => {
+    const done = !g.pendingFixture || g.fixtures[g.pendingFixture]?.result;
+    if (!done || i >= comps.length - 1) return false;
+    setI(i + 1);
+    return true;
+  });
   const comp = g.comps[cid];
   const list = today.filter((f) => f.comp === cid).sort((a, b) => Number(isMine(b)) - Number(isMine(a)) || (g.clubs[a.home]?.name ?? '').localeCompare(g.clubs[b.home]?.name ?? ''));
   function isMine(f: Fixture) { return f.home === g.userClub || f.away === g.userClub; }
@@ -26,7 +35,9 @@ export function MatchDay({ id }: { id: number }) {
   const before = !!g.pendingFixture && mine?.id === g.pendingFixture && !mine.result;
   const played = !before && list.length > 0 && list.every((f) => f.result);
   const abbr = (lg?: string) => (lg ? (compName(g.comps[lg]?.name) ?? '').split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w[0] ?? '')).join('').toUpperCase().slice(0, 3) : '');
-  const code = (club: number) => (played && comp?.type !== 'league' && comp?.nation !== -1 ? abbr(g.clubs[club]?.league) : g.nations[g.clubs[club]?.nation]?.code ?? '');
+  // ligakampe: placeringen i tabellen (CM 01/02: "4th" · "1st"); pokalkampe: ligaens forkortelse, internationale: landet
+  const pos = comp?.type === 'league' ? new Map(leagueRows(comp).map((r, k) => [r.club, k + 1])) : null;
+  const code = (club: number) => (pos ? (pos.has(club) ? ordinal(pos.get(club)!) : '') : comp?.nation !== -1 ? abbr(g.clubs[club]?.league) : g.nations[g.clubs[club]?.nation]?.code ?? '');
   /** a = videre på udebanemål, p = videre efter straffespark (står ved vinderen) */
   const mark = (f: Fixture, side: 0 | 1) => {
     const r = f.result;
@@ -46,7 +57,9 @@ export function MatchDay({ id }: { id: number }) {
     return '';
   };
   const name = (club: number) => <span className={club === g.userClub ? 'me' : ''}>{g.clubs[club] ? <CxLink to={clubRoute(club)}>{g.clubs[club].name}</CxLink> : '?'}</span>;
-  const d = new Date(`${date}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long' });
+  // weekendkampe spilles om eftermiddagen, resten om aftenen (CM 01/02: "Afternoon Result" / "Evening Fixtures")
+  const wd = new Date(`${date}T12:00:00`).getDay();
+  const title = t(`cl.md.${played ? 'res' : 'fix'}${list.length === 1 ? '1' : 'N'}`, { when: t(wd === 0 || wd === 6 ? 'cl.md.afternoon' : 'cl.md.evening') });
   return (
     <div>
       <Head title={compName(comp?.name) ?? t('nav.fixtures')}>
@@ -56,11 +69,10 @@ export function MatchDay({ id }: { id: number }) {
         <span className="grow" />
         {comp && <button className="cx-greybtn" onClick={() => nav({ name: 'competitions', id: cid })}>{t('cl.md.competition')}</button>}
       </Head>
-      <div className="cx-subtitle">{t(played ? 'cl.md.results' : 'cl.md.title')}</div>
-      <div className="cx-md-date">{d}</div>
-      {stages.map((st) => (
+      <div className="cx-subtitle">{title}</div>
+      <div className="cx-md-panel">{stages.map((st) => (
         <div key={st} className="cx-md">
-          <div className="cx-md-stage">{st}</div>
+          {comp?.type !== 'league' && <div className="cx-md-stage">{st}</div>}
           {list.filter((f) => stageLabel(f) === st).map((f) => (
             <div key={f.id} className={`cx-md-row ${isMine(f) ? 'mine' : ''}`}>
               <span className="cx-md-code">{code(f.home)}</span>
@@ -71,7 +83,7 @@ export function MatchDay({ id }: { id: number }) {
             </div>
           ))}
         </div>
-      ))}
+      ))}</div>
       {g.pendingFixture && !played && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
     </div>
   );

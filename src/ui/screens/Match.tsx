@@ -13,20 +13,20 @@ import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
-import type { Fixture, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine } from '../../game/types';
+import type { Fixture, TableRow, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
-import { commentaryText } from '../commentary';
+import { commentaryText, reportLines } from '../commentary';
 import { loadMatchTexts } from '../matchTexts';
 import { Head } from './common';
 import { isRetro } from '../theme';
-import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop } from '../classic';
+import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop, cxLongDate } from '../classic';
 import { loadStadiumBgs, stadiumBgUrl } from '../backgrounds';
 import { stadiumBackgrounds } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
-import { LeagueTable, LeagueTables } from './Competitions';
-import { leagueRows } from '../../game/competitions';
+import { LeagueTable, LeagueTables, ordinal } from './Competitions';
+import { leagueRows, sortTable } from '../../game/competitions';
 import { TacticEditor, shapeName } from './Tactics';
 import { stageLabel } from './Fixtures';
 import { useHotkeys } from '../hotkeys';
@@ -81,7 +81,7 @@ export function statColors(home: number, away: number, me: number): [string, str
 // originalens kommentarlinjer hentes, så snart kampskærmen er indlæst (de er klar, før bolden sparkes i gang)
 void loadMatchTexts();
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; ht?: [number, number] } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; ht?: [number, number] } | null = null;
 
 /** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
 const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
@@ -261,17 +261,22 @@ type LiveTeam = ReturnType<MatchSim['live']>;
 
 /** Match Overview (CM 01/02): halvleg, dato og turnering, den seneste kommentar i farverne på holdet med bolden,
  *  boldbesiddelsen de seneste 5 minutter, dommer og vejr */
+/** Kommentarbjælkens farver: holdet med bolden, gul ved mål, hvid ellers */
+function cxLineStyle(line: { cls: string; t?: number } | undefined, colors: [string, string, string, string]) {
+  const team = line?.t;
+  return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
+}
+
 function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootout, ht }: { ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
-  const team = line?.t;
-  const bar = line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
+  const bar = cxLineStyle(line, colors);
   const w = weatherFor(f);
   return (
     <div className="cx-mo">
       <div className="cx-subtitle small">{half}</div>
-      <div className="cx-mo-meta"><span>{new Date(`${f.date}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</span><span>{compName(g.comps[f.comp]?.name)}{ht ? ` / ${t('cl.mt.ht')} ${ht[0]}-${ht[1]}` : ''}</span></div>
+      <div className="cx-mo-meta"><span>{cxLongDate(f.date)}</span><span>{compName(g.comps[f.comp]?.name)}{ht ? ` / ${t('cl.mt.ht')} ${ht[0]}-${ht[1]}` : ''}</span></div>
       {/* målscorerne under hvert hold, som i CM 01/02 (selvmål står hos holdet, der fik målet) */}
       <div className="cx-mo-scorers">
         {[0, 1].map((side) => (
@@ -298,7 +303,7 @@ function CxOverview({ f, colors, line, poss, half, goals, injuries = [], shootou
           <span style={{ width: `${100 - home}%`, background: colors[2], color: colors[3] }}>{100 - home}%</span>
         </div>
       </div>
-      <div className="cx-mo-foot"><span>{t('ref.label')} – {refereeFor(f).name}</span><span className="c-cyan">{t('cl.mt.att')} – {(f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance).toLocaleString()}</span><span>{t('match.weather')} – {t(`wx.${w}`)}</span></div>
+      <div className="cx-mo-foot"><span>{t('ref.label')} - {refereeFor(f).name}</span>{/* tilskuertallet kommer først ved pausen (CM 01/02: "Attendance - 40200") */}{ht && <span className="cx-mo-att">{t('cl.mt.att')} - {f.result?.att ?? estimateGate(g.clubs[f.home], g.clubs[f.home].ticketPrice).attendance}</span>}<span>{t('match.weather')} - {t(`wx.${w}`)}</span></div>
     </div>
   );
 }
@@ -495,13 +500,16 @@ function LiveMatch({ id }: { id: number }) {
       // spil-for-spil kun i det klassiske udseende (Match Overview som i CM 01/02)
       if (l.k.startsWith('pl-') && !classic) { L.consumed++; continue; }
       const cls = l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '';
-      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k, t: l.t });
+      L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k, t: l.t, ci: L.consumed });
       L.consumed++;
     }
     // boldbesiddelse de seneste 5 minutter (Match Overview i klassisk tema)
     const z = (L.zones ??= [0, 0, 0]);
     const band = Math.floor(sim.pitch().zone / ZONES.lanes);
-    z[band <= 1 ? 0 : band === 2 ? 1 : 2]++;
+    const zi = band <= 1 ? 0 : band === 2 ? 1 : 2;
+    z[zi]++;
+    // hvem der har bolden i hver zone (bjælkerne i Action Zones)
+    ((L.zposs ??= [[0, 0], [0, 0], [0, 0]])[zi][sim.pitch().poss === 0 ? 0 : 1])++;
     const ps = (L.poss5 ??= []);
     ps.push([sim.minute, sim.pitch().poss]);
     while (ps.length && ps[0][0] < sim.minute - 5) ps.shift();
@@ -822,7 +830,7 @@ function LiveMatch({ id }: { id: number }) {
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report && !classic ? t('match.continue') : null, done);
   const editing = classic && tab === 'tactics' && !report;
-  useClassicMatchSide(classic ? { minute: waiting ? '0' : sim.finished ? minute : L.atHalf ? '45' : String(sim.minute), half: !!L.atHalf, editing, lastView: editing && lastView, venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+  useClassicMatchSide(classic ? { minute: waiting ? '0' : L.atHalf && !sim.finished ? '45' : String(sim.minute), half: !!L.atHalf, editing, lastView: editing && lastView, venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, line: !waiting && !report && tab !== 'overview' && tab !== '2d' && L.lines.length ? { text: L.lines.at(-1)!.text, ...cxLineStyle(L.lines.at(-1), colors) } : undefined, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
     kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
     pause: cxPause,
     tactics: (side) => {
@@ -903,15 +911,16 @@ function LiveMatch({ id }: { id: number }) {
           goals={sim.events.filter((e, i, all) => e.k === 'goal' && !(spoil === e.t && !all.slice(i + 1).some((x) => x.k === 'goal' && x.t === e.t))).map((e) => ({ t: e.t, p: e.p ?? 0, m: e.m, og: e.og }))} />
       )}
       {classic && tab === 'stats' && <CxMatchStats st={[st[0], st[1]]} />}
-      {classic && tab === 'zones' && <CxZones z={L.zones ?? [1, 1, 1]} st={[st[0], st[1]]} colors={colors} />}
-      {classic && tab === 'report' && <CxReport lines={L.lines} />}
+      {classic && tab === 'zones' && <CxZones z={L.zones ?? [1, 1, 1]} zp={L.zposs} st={[st[0], st[1]]} colors={colors} />}
+      {classic && tab === 'report' && <CxReport lines={L.lines} sim={sim} ctx={{ home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}`, ref: refereeFor(f).name }} />}
       {classic && tab === 'hstats' && <CxTeamStats sim={sim} side={0} />}
       {classic && tab === 'astats' && <CxTeamStats sim={sim} side={1} />}
       {classic && tab === 'ratings' && <CxRatings sim={sim} />}
-      {classic && tab === 'scores' && <CxScores others={others} minute={sim.minute} finished={sim.finished} title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} />}
+      {classic && tab === 'table' && <CxLiveTable f={f} live={[st[0].goals, st[1].goals]} others={others} minute={sim.minute} finished={sim.finished} kicked={!waiting} />}
+      {classic && tab === 'scores' && <CxScores own={waiting ? undefined : { f, scorers: sim.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={sim.minute} finished={sim.finished} title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} />}
       {classic && !(tab === 'tactics' || tab === 'oppTactics') && (
         <>
-          <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: g.clubs[f.home].short })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ['astats', t('cl.mt.teamStats', { club: g.clubs[f.away].short })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
+          <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: g.clubs[f.home].short })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ...(g.comps[f.comp]?.type === 'league' ? [['table', t('cl.mt.leagueTable')]] : []), ['astats', t('cl.mt.teamStats', { club: g.clubs[f.away].short })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
         </>
       )}
       {tab === 'oppTactics' && <OppTactics sim={sim} side={(1 - me) as 0 | 1} club={g.clubs[me === 0 ? f.away : f.home]?.name ?? ''} />}
@@ -965,8 +974,8 @@ function LiveMatch({ id }: { id: number }) {
           </div>
         </Panel>
       )}
-      {tab === 'table' && g.comps[f.comp]?.type === 'league' && (g.comps[f.comp].splitDone ? <LeagueTables comp={g.comps[f.comp]} /> : <Panel className="flush"><LeagueTable rows={leagueRows(g.comps[f.comp])} comp={g.comps[f.comp]} /></Panel>)}
-      {tab === 'table' && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
+      {tab === 'table' && !classic && g.comps[f.comp]?.type === 'league' && (g.comps[f.comp].splitDone ? <LeagueTables comp={g.comps[f.comp]} /> : <Panel className="flush"><LeagueTable rows={leagueRows(g.comps[f.comp])} comp={g.comps[f.comp]} /></Panel>)}
+      {tab === 'table' && !classic && g.comps[f.comp]?.type !== 'league' && <div className="muted">{t('match.noTable')}</div>}
       {!report && !classic && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       {!classic && <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>}
       {classic && tab === 'tactics' && !report && (
@@ -1530,30 +1539,56 @@ function CxMatchStats({ st }: { st: [MatchStatsSide, MatchStatsSide] }) {
   const pct = (a: number, b: number) => `${Math.round((a / Math.max(1, b)) * 100)}%`;
   const rows: [string, string | number, string | number, string?][] = [
     [t('cl.ms.shots'), st[0].shots, st[1].shots], [t('cl.ms.on'), st[0].onTarget, st[1].onTarget], [t('cl.ms.off'), st[0].shots - st[0].onTarget, st[1].shots - st[1].onTarget],
-    [t('cl.ms.corners'), st[0].corners, st[1].corners], [t('cl.ms.fouls'), st[0].fouls, st[1].fouls], [t('cl.ms.offsides'), st[0].offsides, st[1].offsides],
-    [t('cl.ms.passes'), pct(st[0].passesCompleted, st[0].passes), pct(st[1].passesCompleted, st[1].passes)], [t('cl.ms.poss'), `${st[0].possession}%`, `${st[1].possession}%`],
+    // frispark = modstanderens frispark + offside (som i CM 01/02)
+    [t('cl.ms.corners'), st[0].corners, st[1].corners], [t('cl.ms.freeKicks'), st[1].fouls + st[1].offsides, st[0].fouls + st[0].offsides],
+    ...(st[0].throwIns !== undefined ? [[t('cl.ms.throwIns'), st[0].throwIns, st[1].throwIns ?? 0] as [string, number, number]] : []),
+    [t('cl.ms.fouls'), st[0].fouls, st[1].fouls], [t('cl.ms.offsides'), st[0].offsides, st[1].offsides],
+    [t('cl.ms.passes'), pct(st[0].passesCompleted, st[0].passes), pct(st[1].passesCompleted, st[1].passes)],
+    ...(st[0].tackles !== undefined ? [[t('cl.ms.tackles'), pct(st[0].tacklesWon ?? 0, st[0].tackles), pct(st[1].tacklesWon ?? 0, st[1].tackles ?? 0)], [t('cl.ms.headers'), pct(st[0].headersWon ?? 0, st[0].headers ?? 0), pct(st[1].headersWon ?? 0, st[1].headers ?? 0)]] as [string, string, string][] : [[t('cl.ms.poss'), `${st[0].possession}%`, `${st[1].possession}%`] as [string, string, string]]),
     [t('cl.ms.yellow'), st[0].yellows, st[1].yellows, 'y'], [t('cl.ms.red'), st[0].reds, st[1].reds, 'r'],
   ];
   return <div className="cx-ms">{rows.map(([l, a, b, c]) => <div key={l} className="cx-ms-row"><span className="cx-ms-v">{a}</span><span className={`cx-ms-l ${c ?? ''}`}>{l}</span><span className="cx-ms-v">{b}</span></div>)}</div>;
 }
 
 /** Action Zones: hvor bolden har været (eget forsvar, midtbane, angreb) og boldbesiddelsen */
-function CxZones({ z, st, colors }: { z: [number, number, number]; st: [MatchStatsSide, MatchStatsSide]; colors: [string, string, string, string] }) {
+function CxZones({ z, zp, st, colors }: { z: [number, number, number]; zp?: [number, number][]; st: [MatchStatsSide, MatchStatsSide]; colors: [string, string, string, string] }) {
   const tot = Math.max(1, z[0] + z[1] + z[2]);
   const h = st[0].possession;
+  const bar = (home: number) => (
+    <div className="cx-mo-bar">
+      <span style={{ width: `${home}%`, background: colors[0], color: colors[1] }}>{home}%</span><span style={{ width: `${100 - home}%`, background: colors[2], color: colors[3] }}>{100 - home}%</span>
+    </div>
+  );
   return (
     <div className="cx-az">
-      <div className="cx-az-pitch">{z.map((v, i) => <div key={i} className="cx-az-third"><b>{Math.round((v / tot) * 100)}%</b></div>)}</div>
-      <div className="cx-mo-poss"><span className="lbl">{t('cl.ms.poss')}</span><div className="cx-mo-bar">
-        <span style={{ width: `${h}%`, background: colors[0], color: colors[1] }}>{h}%</span><span style={{ width: `${100 - h}%`, background: colors[2], color: colors[3] }}>{100 - h}%</span></div></div>
+      <div className="cx-az-pitch">
+        {/* banens streger (felter, midterlinje, midtercirkel) som i CM 01/02 */}
+        <i className="cx-az-box l" /><i className="cx-az-box r" /><i className="cx-az-six l" /><i className="cx-az-six r" /><i className="cx-az-half" /><i className="cx-az-circle" />
+        <div className="cx-az-label">{t('cl.mt.zOverall')}</div>
+        {z.map((v, i) => {
+          const [a, b] = zp?.[i] ?? [0, 0];
+          return (
+            <div key={i} className="cx-az-third"><b>{Math.round((v / tot) * 100)}%</b>
+              <div className="cx-az-zbar">{bar(a + b ? Math.round((a / (a + b)) * 100) : 50)}</div>
+            </div>
+          );
+        })}
+      </div>
+      <div className="cx-mo-poss cx-az-poss">{bar(h)}</div>
     </div>
   );
 }
 
-function CxReport({ lines }: { lines: { text: string; m: number }[] }) {
+/** Match Report: først efter slutfløjt (CM 01/02: "There is no match report available."), med originalens rapportlinjer i datid */
+function CxReport({ lines, sim, ctx }: { lines: { text: string; m: number; ci?: number }[]; sim: MatchSim; ctx: { home: string; away: string; score?: string; ref?: string } }) {
+  if (!sim.finished) return <div className="cx-mr cx-mr-none">{t('cl.mt.noReport')}</div>;
+  const rows = lines.flatMap((l) => {
+    const src = l.ci !== undefined ? sim.commentary[l.ci] : undefined;
+    return (src ? reportLines(src, ctx, l.ci!) : [l.text]).map((text) => ({ m: l.m, text }));
+  });
   return (
-    <div className="cx-mr"><table className="cx-tbl"><tbody>{lines.map((l, i) => (
-      <tr key={i}><td className="c-yel cx-mr-m">{i === 0 || lines[i - 1].m !== l.m ? `${l.m} min` : ''}</td><td>{l.text}</td></tr>
+    <div className="cx-mr"><table className="cx-tbl"><tbody>{rows.map((l, i) => (
+      <tr key={i}><td className="c-yel cx-mr-m">{i === 0 || rows[i - 1].m !== l.m ? `${l.m} min` : ''}</td><td>{l.text}</td></tr>
     ))}</tbody></table></div>
   );
 }
@@ -1561,13 +1596,14 @@ function CxReport({ lines }: { lines: { text: string; m: number }[] }) {
 /** Holdets spillerstatistik (som "{hold} Stats") */
 function CxTeamStats({ sim, side }: { sim: MatchSim; side: 0 | 1 }) {
   const rows = cxRows(sim, side);
-  const H = ['Pas', 'Cmp', 'Tck', 'Sho', 'Gls', 'Ast', 'Con', 'Rat'];
+  // CM 01/02: Pas Cmp · Tck Won · Hea Won · Ast Sho On · Con + karakteren (uden overskrift); Key-kolonnerne kender motoren ikke
+  const H: [string, string][] = [['Pas', 'c-yel'], ['Cmp', 'c-yel'], ['Tck', 'c-orange'], ['Won', 'c-orange'], ['Hea', 'c-yel'], ['Won', 'c-yel'], ['Ast', 'c-orange'], ['Sho', 'c-orange'], ['On', 'c-orange'], ['Con', 'c-con']];
+  const vals = (l: PlayerMatchLine, cond: number | undefined) => [l.passes, l.passesOk, l.tckA ?? l.tackles, l.tackles, l.hea ?? '', l.heaW ?? '', l.assists, l.shots, l.on ?? '', cond ?? ''];
   return (
-    <div className="cx-ts-tbl"><table className="cx-tbl"><thead><tr><th className="btn-col" /><th className="btn-col" /><th className="btn-col" />{H.map((h) => <th key={h} className="c-num">{h}</th>)}</tr></thead>
+    <div className="cx-ts-tbl"><table className="cx-tbl"><thead><tr><th className="btn-col" /><th className="btn-col" /><th className="btn-col" />{H.map(([h], i) => <th key={i} className="c-num">{h}</th>)}<th className="c-num cx-ts-rat" /></tr></thead>
       <tbody>{rows.map((r) => (
         <tr key={r.id} className={r.dim ? 'dim' : ''}><td className="btn-col"><span className="cx-rowbtn narrow">{r.num}</span></td><td className="c-name"><CxName r={r} /></td><td className={r.noteOn ? 'c-pos' : ''}>{r.note ?? ''}</td>
-          {r.line ? <><td className="c-num c-yel">{r.line.passes}</td><td className="c-num c-yel">{r.line.passesOk}</td><td className="c-num c-pos">{r.line.tackles}</td><td className="c-num c-pos">{r.line.shots}</td>
-            <td className="c-num">{r.line.goals}</td><td className="c-num">{r.line.assists}</td><td className="c-num c-cyan">{r.cond}</td><td className="c-num">{r.rating}</td></> : <td colSpan={8} />}
+          {r.line ? <>{vals(r.line, r.cond).map((v, i) => <td key={i} className={`c-num ${H[i][1]}`}>{v}</td>)}<td className="c-num c-cyan">{r.rating}</td></> : <td colSpan={H.length + 1} />}
         </tr>
       ))}</tbody></table></div>
   );
@@ -1579,22 +1615,73 @@ function CxRatings({ sim }: { sim: MatchSim }) {
     <div className="cx-rt">{([0, 1] as const).map((side) => (
       <table key={side} className="cx-tbl"><tbody>{cxRows(sim, side).map((r) => (
         <tr key={r.id} className={r.dim ? 'dim' : ''}><td className="btn-col"><span className="cx-rowbtn narrow">{r.num}</span></td><td className="c-name"><CxName r={r} /></td>
-          <td className={r.noteOn ? 'c-pos' : ''}>{r.note ?? ''}</td><td className={`c-num ${(r.cond ?? 0) >= 85 ? 'c-good' : (r.cond ?? 0) >= 70 ? 'c-pos' : 'c-bad'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
+          <td className={r.noteOn ? 'c-pos' : ''}>{r.note ?? ''}</td><td className={`c-num ${(r.cond ?? 0) >= 92 ? 'c-good' : (r.cond ?? 0) >= 70 ? 'c-orange' : 'c-bad'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
           <td className="c-num c-cyan">{r.line ? r.rating : ''}</td><td className="c-num c-yel">{r.line?.goals || ''}</td></tr>
       ))}</tbody></table>
     ))}</div>
   );
 }
 
-/** Latest Scores: dagens andre kampe med målscorere (til det aktuelle minut) */
-function CxScores({ others, minute, finished, title }: { others: Fixture[]; minute: number; finished: boolean; title: string }) {
+/** Live League Table (CM 01/02): stillingen med dagens kampe, som de står i det aktuelle minut – egen klub øverst over en stiplet linje */
+function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: Fixture; live: [number, number]; others: Fixture[]; minute: number; finished: boolean; kicked: boolean }) {
   const g = gs();
-  if (!others.length) return <div className="cx-empty">{t('match.noOther')}</div>;
+  const { nav } = useNav();
+  const comp = g.comps[f.comp];
+  if (comp?.type !== 'league') return <div className="cx-empty">{t('match.noTable')}</div>;
+  const rows = new Map(leagueRows(comp).map((r) => [r.club, { ...r }]));
+  const apply = (club: number, gf: number, ga: number, sign: 1 | -1) => {
+    const r = rows.get(club);
+    if (!r) return;
+    r.p += sign; r.gf += sign * gf; r.ga += sign * ga;
+    if (gf > ga) { r.w += sign; r.pts += 3 * sign; } else if (gf === ga) { r.d += sign; r.pts += sign; } else r.l += sign;
+  };
+  const play = (home: number, away: number, hg: number, ag: number, sign: 1 | -1) => { apply(home, hg, ag, sign); apply(away, ag, hg, sign); };
+  // de andre kampe er allerede spillet færdig i motoren – træk dem ud og læg stillingen i minuttet ind igen
+  for (const o of others) {
+    if (!o.result) continue;
+    play(o.home, o.away, o.result.hg, o.result.ag, -1);
+    if (!kicked) continue;
+    const goals = o.result.scorers.filter(([m]) => m <= (finished ? 200 : minute));
+    play(o.home, o.away, goals.filter(([, x]) => x === 0).length, goals.filter(([, x]) => x === 1).length, 1);
+  }
+  if (kicked) play(f.home, f.away, live[0], live[1], 1);
+  const sorted = sortTable([...rows.values()]);
+  const mine = sorted.findIndex((r) => r.club === g.userClub);
+  const row = (r: TableRow, i: number) => (
+    <tr key={r.club}>
+      <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
+      <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.short}</td>
+      <td className="c-num">{r.p}</td><td className="c-num">{r.w}</td><td className="c-num">{r.d}</td><td className="c-num">{r.l}</td>
+      <td className="c-num">{r.gf}</td><td className="c-num">{r.ga}</td><td className="c-val">{r.pts}</td>
+    </tr>
+  );
+  return (
+    <>
+      <div className="cx-subtitle small">{t('cl.mt.liveTable')}</div>
+      <div className="cx-tbl-wrap cx-live-tbl">
+        <table className="cx-tbl cx-league">
+          <thead><tr><th className="btn-col" /><th className="btn-col" />{['cl.lg.pld', 'cl.lg.won', 'cl.lg.drn', 'cl.lg.lst', 'cl.lg.for', 'cl.lg.ag', 'cl.lg.pts'].map((k) => <th key={k} className="c-num">{t(k)}</th>)}</tr></thead>
+          <tbody>
+            {mine >= 0 && <>{row(sorted[mine], mine)}<tr className="cx-live-sep"><td colSpan={9} /></tr></>}
+            {sorted.map((r, i) => (i === mine ? null : row(r, i)))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/** Latest Scores: dagens andre kampe med målscorere (til det aktuelle minut) */
+function CxScores({ own, others, minute, finished, title }: { own?: { f: Fixture; scorers: [number, number, number?][] }; others: Fixture[]; minute: number; finished: boolean; title: string }) {
+  const g = gs();
+  // egen kamp øverst (som i CM 01/02), derefter dagens andre kampe i turneringen
+  const all = [...(own ? [{ o: own.f, sc: own.scorers }] : []), ...others.map((o) => ({ o, sc: o.result!.scorers }))];
+  if (!all.length) return <div className="cx-empty">{t('match.noOther')}</div>;
   return (
     <>
       <div className="cx-subtitle small">{title}</div>
-      <div className="cx-ls">{others.map((o) => {
-        const goals = o.result!.scorers.filter(([m]) => m <= (finished ? 200 : minute));
+      <div className="cx-ls">{all.map(({ o, sc }) => {
+        const goals = sc.filter(([m]) => m <= (finished ? 200 : minute));
         const side = (tm: number) => goals.filter(([, x]) => x === tm);
         const names = (tm: number) => {
           const by = new Map<string, number[]>();
@@ -1603,9 +1690,9 @@ function CxScores({ others, minute, finished, title }: { others: Fixture[]; minu
         };
         return (
           <div key={o.id} className="cx-ls-row">
-            <div><div className="c-cyan cx-ls-team">{g.clubs[o.home]?.name}</div>{names(0)}</div>
+            <div><div className={`${o.home === g.userClub ? 'c-yel' : 'c-cyan'} cx-ls-team`}>{g.clubs[o.home]?.name}</div>{names(0)}</div>
             <div className="c-yel cx-ls-score">{side(0).length}:{side(1).length}</div>
-            <div><div className="c-cyan cx-ls-team">{g.clubs[o.away]?.name}</div>{names(1)}</div>
+            <div><div className={`${o.away === g.userClub ? 'c-yel' : 'c-cyan'} cx-ls-team`}>{g.clubs[o.away]?.name}</div>{names(1)}</div>
           </div>
         );
       })}</div>
