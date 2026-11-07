@@ -2,12 +2,13 @@
 import { leadLoss, matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
 import { gs } from '../../game/state';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
 import { ClubLink, Crest, Panel, PlayerLink, Rating, Tabs } from '../components';
 import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
+import { loadMatchTexts } from '../matchTexts';
 import { Head } from './common';
 import { StatsPanel, statColors } from './Match';
 import { WEATHER_ICON, type Weather } from '../../game/weather';
@@ -17,6 +18,9 @@ import { authentic, extended } from '../../game/rules';
 export function ReportScreen({ id }: { id: number }) {
   const g = useGame()!;
   const rep = g.reports[id];
+  // originalens kommentarlinjer (CM 01/02) – tegn igen, når de er hentet
+  const [, setTexts] = useState(0);
+  useEffect(() => { void loadMatchTexts().then(() => setTexts((x) => x + 1)); }, []);
   const [tab0, setTab] = useRouteState('tab', authentic() ? 'stats' : 'analysis');
   // ægte CM 01/02: ingen analysefane (momentum, heatmap, xG)
   const tab = authentic() && tab0 === 'analysis' ? 'stats' : tab0;
@@ -116,7 +120,7 @@ export function ReportScreen({ id }: { id: number }) {
             let h = 0, a = 0;
             return rep.commentary.map((l, i) => {
               if (l.k.startsWith('goal')) { if (l.t === 0) h++; else a++; }
-              const text = commentaryText(l, { home, away, score: `${home} ${h}-${a} ${away}` }, i);
+              const text = commentaryText(l, { home, away, score: `${home} ${h}-${a} ${away}`, ref: rep.referee?.name }, i);
               return <div key={i} className={`ln ${l.hi ? 'hi' : ''}`}><span className="m">{l.m}'</span>{text}</div>;
             });
           })()}

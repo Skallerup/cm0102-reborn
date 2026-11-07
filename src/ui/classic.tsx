@@ -38,8 +38,8 @@ export function useClassicNext(label: string | null, run: () => void) {
   }, [label]);
 }
 /** Klassisk kampskærm: sidebjælken viser minuttet og kampknapperne (Kick Off Match, holdenes taktik, Commentary Speed) */
-export interface MatchSide { minute: string; editing?: boolean; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
-export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void; cont: () => void; ok: () => void; cancel: () => void }
+export interface MatchSide { minute: string; editing?: boolean; lastView?: boolean; kicked: boolean; paused: boolean; finished: boolean; home: string; away: string; me: 0 | 1; speed: number }
+export interface MatchSideActions { kick: () => void; pause: () => void; tactics: (side: 0 | 1) => void; speed: (n: number) => void; cont: () => void; ok: () => void; cancel: () => void; back?: () => void }
 let matchSide: { s: MatchSide; a: MatchSideActions } | null = null;
 let matchSideKey = '';
 const matchSubs = new Set<() => void>();
@@ -49,7 +49,7 @@ export function useClassicMatchSide(s: MatchSide | null, a: MatchSideActions) {
   const key = s ? JSON.stringify(s) : '';
   useEffect(() => {
     if (!s) return;
-    const acts: MatchSideActions = { kick: () => ref.current.kick(), pause: () => ref.current.pause(), tactics: (x) => ref.current.tactics(x), speed: (n) => ref.current.speed(n), cont: () => ref.current.cont(), ok: () => ref.current.ok(), cancel: () => ref.current.cancel() };
+    const acts: MatchSideActions = { kick: () => ref.current.kick(), pause: () => ref.current.pause(), tactics: (x) => ref.current.tactics(x), speed: (n) => ref.current.speed(n), cont: () => ref.current.cont(), ok: () => ref.current.ok(), cancel: () => ref.current.cancel(), back: () => ref.current.back?.() };
     matchSide = { s, a: acts };
     if (key !== matchSideKey) { matchSideKey = key; matchSubs.forEach((f) => f()); }
   }, [key]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -460,8 +460,9 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
     setUp(!!r && r.bottom > window.innerHeight * 0.58);
     if (fixed && r) {
       const narrow = window.innerWidth < 760;
-      setPos(narrow
-        ? { position: 'fixed', top: r.bottom + 2, left: Math.max(4, Math.min(r.left, window.innerWidth - 220)) }
+      // ingen plads til højre (fx Edit yderst til højre): listen åbner under knappen, højrestillet
+      setPos(narrow || r.right + 230 > window.innerWidth
+        ? { position: 'fixed', top: r.bottom + 2, left: Math.max(4, Math.min(narrow ? r.left : r.right - 220, window.innerWidth - 220)) }
         : r.bottom > window.innerHeight * 0.58 ? { position: 'fixed', left: r.right + 4, bottom: window.innerHeight - r.bottom, top: 'auto' } : { position: 'fixed', left: r.right + 4, top: r.top });
     }
     setPath([]);
@@ -470,7 +471,8 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
   const openSub = (depth: number, key: string, el: HTMLElement) => {
     const r = el.getBoundingClientRect();
     const low = r.top > window.innerHeight * 0.55;
-    const style: CSSProperties = { position: 'fixed', left: Math.min(r.right, window.innerWidth - 220), ...(low ? { bottom: window.innerHeight - r.bottom, top: 'auto' } : { top: r.top }) };
+    // undermenuen åbner til venstre, når der ikke er plads til højre
+    const style: CSSProperties = { position: 'fixed', left: r.right + 220 > window.innerWidth ? Math.max(4, r.left - 220) : r.right, ...(low ? { bottom: window.innerHeight - r.bottom, top: 'auto' } : { top: r.top }) };
     setPath((p) => [...p.slice(0, depth), { key, style }]);
   };
   const list = (its: DropItem[], depth: number): ReactNode => its.map((it) => 'head' in it ? <div key={it.key} className="cx-menu-head">{it.head}</div>

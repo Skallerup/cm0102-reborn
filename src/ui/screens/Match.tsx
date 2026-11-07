@@ -18,6 +18,7 @@ import { compName, dateFmt, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
 import { commentaryText } from '../commentary';
+import { loadMatchTexts } from '../matchTexts';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop } from '../classic';
@@ -77,7 +78,15 @@ export function statColors(home: number, away: number, me: number): [string, str
   return me === 0 ? [own, pick] : [pick, own];
 }
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number } } | null = null;
+// originalens kommentarlinjer hentes, så snart kampskærmen er indlæst (de er klar, før bolden sparkes i gang)
+void loadMatchTexts();
+
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number } } | null = null;
+
+/** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
+const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
+const loadCxSpeed = () => { try { const v = Number(localStorage.getItem('cm-cx-speed')); return CX_SPEEDS.includes(v) ? v : 1; } catch { return 1; } };
+const saveCxSpeed = (v: number) => { try { localStorage.setItem('cm-cx-speed', String(v)); } catch { /* ignorer */ } };
 
 export function MatchScreen({ id }: { id: number }) {
   const g = useGame()!;
@@ -394,9 +403,10 @@ function startH2hBackground(id: number) {
     }
     if (++n % 4 !== 0 || busy || done) return;
     // kommentaren formateres som på kampskærmen
-    const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}` };
+    const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}`, ref: refereeFor(f).name };
     while (L.consumed < sim.commentary.length) {
       const l = sim.commentary[L.consumed];
+      if (l.k.startsWith('pl-')) { L.consumed++; continue; }
       L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls: l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '', m: l.m, k: l.k });
       L.consumed++;
     }
@@ -429,7 +439,7 @@ function LiveMatch({ id }: { id: number }) {
   const g = useGame()!;
   const { nav } = useNav();
   const f = g.fixtures[id];
-  if (!live || live.fixture !== id) live = { fixture: id, sim: createLiveMatch(f), lines: [], consumed: 0 };
+  if (!live || live.fixture !== id) live = { fixture: id, sim: createLiveMatch(f, { playByPlay: isRetro() }), lines: [], consumed: 0 };
   const L = live;
   const sim = L.sim;
   const me = f.home === g.userClub ? 0 : 1;
@@ -448,12 +458,14 @@ function LiveMatch({ id }: { id: number }) {
   }, [h2h, id]);
   if (h2h && !L.h2hInit) { L.h2hInit = true; sim.opts.aiSubs = [false, false]; }
   const [paused, setPaused] = useState(false);
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeedRaw] = useState(() => (isRetro() ? loadCxSpeed() : 1));
+  const setSpeed = (v: number) => { setSpeedRaw(v); if (isRetro()) saveCxSpeed(v); };
   // klassisk (CM 01/02): kampen venter på Kick Off Match, knapperne sidder i sidebjælken
   const classic = isRetro() && !h2h;
   const waiting = classic && !L.kicked && sim.minute === 0 && !sim.finished;
   // klassisk taktik: ændringer samles i en kladde og gælder ved Ok (Cancel = glem dem)
   const [draft, setDraft] = useState<Tactic | null>(null);
+  const [lastView, setLastView] = useState(false);
   if (!L.baseTactic) L.baseTactic = structuredClone(sim.live(me).tactic);
   // klassisk tema: Match Overview (tekstkommentar som i CM 01/02) som standard
   const [tab, setTabState] = useState(() => {
@@ -469,9 +481,11 @@ function LiveMatch({ id }: { id: number }) {
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
 
   const pull = () => {
-    const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}` };
+    const ctx = { home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}`, ref: refereeFor(f).name };
     while (L.consumed < sim.commentary.length) {
       const l = sim.commentary[L.consumed];
+      // spil-for-spil kun i det klassiske udseende (Match Overview som i CM 01/02)
+      if (l.k.startsWith('pl-') && !classic) { L.consumed++; continue; }
       const cls = l.k.startsWith('goal') && l.k !== 'goal-offside' ? 'goal' : l.hi ? 'hi' : '';
       L.lines.push({ text: commentaryText(l, ctx, L.consumed), cls, m: l.m, k: l.k, t: l.t });
       L.consumed++;
@@ -568,6 +582,13 @@ function LiveMatch({ id }: { id: number }) {
           bump: all.map((_, j) => (j >= gi && j < all.length - 1 ? 1 : 0)), reveal: all.map((_, j) => (j < gi ? 0 : ci + (j - gi) + 1)) });
       } else setHl({ frames, i: 0, outcome: big.post ? 'post' : big.outcome, texts, hideFrom: linesBefore, team: big.t, label: big.corner ? undefined : tag ? `hl.k.${big.post && !big.origin ? 'post' : tag}` : big.post ? 'hl.k.post' : undefined });
       started = true;
+    }
+    // klassisk: pausen kommer først, når bolden er ude af spil
+    const wp = L.wantPause;
+    if (wp && (sim.finished || sim.minute >= wp.m + 3 || sim.commentary.slice(wp.from).some((l) => DEAD_BALL.has(l.k) || l.k.startsWith('goal')))) {
+      L.wantPause = undefined;
+      setMsg('');
+      if (!sim.finished && !h2h) setPaused(true);
     }
     // klassisk (CM 01/02): taktikken åbner først, når bolden er ude af spil (frispark, indkast, mål, skift …)
     const wt = L.wantTactics;
@@ -698,13 +719,15 @@ function LiveMatch({ id }: { id: number }) {
     if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
   });
 
+  // klassisk: bolden i spil → kampen pauser ved næste stop i spillet (som i CM 01/02); genoptag sker med det samme
+  const cxPause = () => { if (paused) { setPaused(false); return; } if (L.wantPause) return; L.wantPause = { from: sim.commentary.length, m: sim.minute }; setMsg(t('cl.mt.waitPause')); };
   useHotkeys((e) => {
     const k = e.key.toLowerCase();
     if (report) {
       if (e.key === 'Enter') { done(); return true; }
       return;
     }
-    if (k === 'p') { setPaused(!paused); return true; }
+    if (k === 'p') { if (classic && L.kicked) cxPause(); else setPaused(!paused); return true; }
     if (['1', '2', '3', '4'].includes(e.key)) { setSpeed([1, 2, 4, 8][Number(e.key) - 1]); return true; }
     if (k === 't') { setPaused(true); setTab('tactics'); return true; }
     if (k === 'u' || k === 'h') { setPaused(true); setTab('tactics'); return true; }
@@ -722,6 +745,8 @@ function LiveMatch({ id }: { id: number }) {
   const done = () => {
     if (!report) return;
     // via en handling, så resultatet også når værten i online-spil
+    // startopstillingen gemmes til næste kamps "Last Match" (klassisk)
+    if (L.baseTactic) gs().lastMatchTactic = structuredClone(L.baseTactic);
     act({ t: 'matchResult', fixture: id, rep: report });
     live = null;
     notify();
@@ -786,18 +811,19 @@ function LiveMatch({ id }: { id: number }) {
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report && !classic ? t('match.continue') : null, done);
   const editing = classic && tab === 'tactics' && !report;
-  useClassicMatchSide(classic ? { minute: waiting ? '0' : sim.finished ? minute : String(sim.minute), editing, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+  useClassicMatchSide(classic ? { minute: waiting ? '0' : sim.finished ? minute : String(sim.minute), editing, lastView: editing && lastView, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
     kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
-    pause: () => setPaused(!paused),
+    pause: cxPause,
     tactics: (side) => {
       // bolden i spil: kampen kører videre, og taktikken åbner ved næste stop i spillet
       if (!report && !waiting && !paused && !sim.finished) { L.wantTactics = { side, from: sim.commentary.length, m: sim.minute }; setMsg(t('cl.mt.waitBall')); return; }
       if (!report) setPaused(true); if (tab !== 'tactics' && tab !== 'oppTactics') L.prevTab = tab; setDraft(null); setTab(side === me ? 'tactics' : 'oppTactics'); },
     speed: setSpeed,
     cont: () => done(),
-    ok: () => { if (draft) sim.setTactic(me, draft); setDraft(null); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
+    ok: () => { if (draft) sim.setTactic(me, draft); setDraft(null); setLastView(false); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
+    back: () => setLastView(false),
     cancel: () => {
-      const leave = () => { setDraft(null); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); };
+      const leave = () => { setLastView(false); setDraft(null); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); };
       // CM 01/02: "Changes have been made to the current tactics. Cancel all changes ?"
       if (draft && JSON.stringify(draft) !== JSON.stringify(sim.live(me as 0 | 1).tactic)) void askConfirm(t('cl.mt.cancelAll'), { head: t('cl.mt.changesMade'), title: t('nav.tactics') }).then((yes) => { if (yes) leave(); });
       else leave();
@@ -843,6 +869,8 @@ function LiveMatch({ id }: { id: number }) {
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
       )}
       {msg && <div className="insight">{msg}</div>}
+      {/* klassisk: mellemrum gør kommentaren et trin hurtigere (efter Fastest forfra fra Very Slow) */}
+      {classic && !report && !waiting && <button data-space hidden aria-hidden tabIndex={-1} onClick={() => setSpeed(CX_SPEEDS[(CX_SPEEDS.indexOf(speed) + 1) % CX_SPEEDS.length] ?? 1)} />}
       {h2h && hs.phase === 'half' && <div className="insight">{t('mp.h2hHalf', { s: halfLeft })}</div>}
       {h2h && (hs.phase === 'wait' || hs.phase === 'countdown') && (
         <div className="sim-overlay"><div className="sim-card">
@@ -932,7 +960,7 @@ function LiveMatch({ id }: { id: number }) {
       {!report && !classic && <div className="muted leave-note">⚠️ {t(h2h ? 'match.leaveH2h' : g.humans ? 'match.leaveMp' : 'match.leaveSp', { name: awayName })}</div>}
       {!classic && <div className="cm-venue">{g.clubs[f.home]?.stadium}{g.clubs[f.home]?.name ? `, ${g.clubs[f.home]?.name}` : ''} · {WEATHER_ICON[weatherFor(f)]} {t(`wx.${weatherFor(f)}`)}{pitchFor(f) !== 'normal' ? ` · ${t(`pitch.${pitchFor(f)}`)}` : ''} · {t('ref.label')}: {refereeFor(f).name}</div>}
       {classic && tab === 'tactics' && !report && (
-        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} editable draft={draft} setDraft={setDraft} base={L.baseTactic}
+        <OppTactics sim={sim} side={me as 0 | 1} club={g.clubs[g.userClub]?.name ?? ''} editable draft={draft} setDraft={setDraft} base={L.baseTactic} lastView={lastView} onLastMatch={() => setLastView(true)}
           onSub={(out, inn) => {
             const ok = sim.substitute(me, out, inn); setMsg(ok ? '' : t('match.subFailed')); pull(); force((x) => x + 1);
             // CM 01/02: "19 Yorke has been brought on to replace 10 van Nistelrooy. Return to the match ?"
@@ -1234,15 +1262,63 @@ function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tactic; on
   );
 }
 
+/** Last Match (CM 01/02): startopstillingen fra sidste kamp – kun til at se på; Back nederst fører tilbage */
+function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
+  const g = useGame()!;
+  const ids = tac.lineup.filter(Boolean);
+  return (
+    <div className="cx-mt cx-mt-last">
+      <div className="cx-title cx-title-plain"><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
+      <div className="cx-subtitle small">{t('cl.mt.lastMatch')}</div>
+      <div className="cx-mt-cols">
+        <div className="cx-mt-list">
+          <div className="cx-mt-form">{tac.formation}</div>
+          <table className="cx-tbl"><tbody>{ids.map((id) => {
+            const p = g.players[id];
+            return (
+              <tr key={id}>
+                <td className="btn-col"><span className="cx-rowbtn narrow">{p?.number ?? ''}</span></td>
+                <td className="c-name">{p ? `${p.first} ${p.last}`.trim() : '?'}</td>
+                <td className="c-pos">{tac.captain === id ? <span className="cx-capt">capt</span> : ''}</td>
+                <td className="c-yel">{p ? posStr(p) : ''}</td>
+              </tr>
+            );
+          })}</tbody></table>
+        </div>
+        <div className="cx-mt-pcol">
+          <div className="cx-tac-pitch">
+            <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
+              <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
+                <rect x="1" y="1" width="66" height="98" /><line x1="1" y1="50" x2="67" y2="50" /><circle cx="34" cy="50" r="9" />
+                <rect x="14" y="1" width="40" height="16" /><rect x="14" y="83" width="40" height="16" /><rect x="25" y="1" width="18" height="6" /><rect x="25" y="93" width="18" height="6" />
+              </g>
+            </svg>
+            {tac.lineup.map((id, i) => {
+              const sl = tac.slots[i];
+              if (!id || !sl) return null;
+              return (
+                <div key={id} className="cx-tac-slot" style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }}>
+                  <span className={`cx-tac-dot cx-mt-dot ${sl.pos === 'GK' ? 'gk' : ''}`}>{g.players[id]?.number ?? ''}</span>
+                  <span className="cx-tac-nm">{g.players[id]?.last ?? ''}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /**
  * Et holds taktik under kampen som i CM 01/02: titel i holdets farver, View (kolonner), Tactics-menuen (holdinstruktioner,
  * straffesparksskytter, formationer, gem/hent/slet, Set To Default), listen og banen. Eget hold: ændringer samles i en kladde
  * (draft) og gælder først ved Ok i sidebjælken; træk en udskifter ind på en spiller for at skifte (sker med det samme).
  * Højreklik på en spiller på banen: løb frem (ofte/blandet/sjældent).
  */
-function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }: {
+function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastView, onLastMatch }: {
   sim: MatchSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void;
-  draft?: Tactic | null; setDraft?: (t: Tactic) => void; base?: Tactic;
+  draft?: Tactic | null; setDraft?: (t: Tactic) => void; base?: Tactic; lastView?: boolean; onLastMatch?: () => void;
 }) {
   const g = useGame()!;
   const lv = sim.live(side);
@@ -1319,6 +1395,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
   ];
   // Edit (CM 01/02): anfører og straffesparksskytte (*estimeret* indhold)
   const editMenu: DropItem[] = (['captain', 'penalties'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: on.map((x) => ({ key: `${k}${x.id}`, label: `${x.num ?? ''} ${pl(x.id) ? `${pl(x.id).first} ${pl(x.id).last}`.trim() : ''}`.trim(), checked: tac[k] === x.id, disabled: !editable, onClick: () => edit((t2) => ({ ...t2, [k]: x.id })) })) }));
+  if (lastView && g.lastMatchTactic) return <LastMatchView tac={g.lastMatchTactic} club={club} />;
   return (
     <div className="cx-mt" onClick={() => setCtx(null)}>
       <div className="cx-title cx-title-plain"><h2>{t('cl.mt.oppTitle', { club })}</h2></div>
@@ -1327,7 +1404,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, base }:
         <CxDrop className="cx-green" label={t('cl.sq.view')} fixed
           items={[{ key: 'cond', label: t('cl.mt.condRating'), checked: view === 'cond', onClick: () => setView('cond') }, ...VIEW_COLS.map((c) => ({ key: c.k, label: t(`pi.${c.k}`), checked: view === c.k, onClick: () => setView(c.k) }))]} />
         <span className="cx-mt-gap" />
-        <button className="cx-mt-tbtn" disabled={!editable || !base} title={t('cl.mt.lastHint')} onClick={() => base && setDraft?.(structuredClone({ ...base, lineup: tac.lineup, bench: tac.bench }))}>{t('cl.mt.lastMatch')}</button>
+        <button className="cx-mt-tbtn" disabled={!editable || !g.lastMatchTactic} title={t('cl.mt.lastHint')} onClick={() => onLastMatch?.()}>{t('cl.mt.lastMatch')}</button>
         <CxDrop className="cx-green" label={t('cl.mt.edit')} fixed align="right" items={editMenu} />
       </div>
       {pane === 'ti' && <TeamInstrDialog tac={tac} on={on.map((x) => x.id)} editable={!!editable} onClose={() => setPane('list')} onOk={(f) => { edit(f); setPane('list'); }} />}

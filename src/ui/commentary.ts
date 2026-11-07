@@ -1,8 +1,12 @@
 import type { CommentaryLine } from '../game/types';
-import { has, t } from '../i18n';
+import { getLang, has, t } from '../i18n';
+import { originalText } from './matchTexts';
 
 /** Oversæt en kommentarlinje. Der findes flere varianter pr. nøgle (c.goal.1, c.goal.2 ...). */
-export function commentaryText(l: CommentaryLine, ctx: { home: string; away: string; score?: string }, idx: number): string {
+export function commentaryText(l: CommentaryLine, ctx: { home: string; away: string; score?: string; ref?: string }, idx: number): string {
+  // engelsk og dansk: originalens egne linjer fra CM 01/02 (ui/matchTexts.ts), når der findes en passende
+  const orig = originalText(l, { ...ctx, lang: getLang() }, idx);
+  if (orig) return orig;
   const variants: string[] = [];
   for (let i = 1; i <= 6; i++) {
     const k = `c.${l.k}.${i}`;

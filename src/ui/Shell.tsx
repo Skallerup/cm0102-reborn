@@ -478,7 +478,13 @@ export function Shell() {
               {new Date(`${running}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
             </button>
           ) : (
-            matchSide?.s.editing && route.name === 'match' ? (
+            matchSide?.s.editing && route.name === 'match' && matchSide.s.lastView ? (
+              // Last Match: kun Back (tilbage til taktikken), Next er grå
+              <div className="cx-backnext">
+                <button className="cx-back cx-mt-lastback" onClick={() => matchSide.a.back?.()}>{t('cm.back')}</button>
+                <button className="cx-next" disabled>{t('cm.next')}</button>
+              </div>
+            ) : matchSide?.s.editing && route.name === 'match' ? (
               <div className="cx-backnext">
                 <button className="cx-back cx-mt-cancel" disabled={dialogOpen} onClick={matchSide.a.cancel}>{t('common.cancel')}</button>
                 <button className="cx-next cx-next-go cx-mt-ok" disabled={dialogOpen} onClick={matchSide.a.ok}>{t('common.ok')}</button>

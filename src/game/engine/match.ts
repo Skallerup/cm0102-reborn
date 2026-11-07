@@ -44,6 +44,9 @@ export interface ShotSnap {
 
 export interface EngineOptions {
   commentary: boolean;
+  /** Løbende spil-for-spil som i CM 01/02 (afleveringer, opsnapninger, målspark – linjer med 'pl-'). Kun kampen, man ser;
+   *  bruger ingen tilfældige tal og gemmes ikke i rapporten */
+  playByPlay?: boolean;
   neutral?: boolean;
   importance?: number; // 0-1
   /** Afgør om der skal findes en vinder ved dette resultat (forlænget + straffe) */
@@ -543,6 +546,13 @@ export class MatchSim {
     if (!this.opts.commentary) return;
     this.commentary.push({ m: this.minute, k, a: a ? name(a.p) : undefined, b: b ? name(b.p) : undefined, t: a ? a.team : undefined, hi });
   }
+  /** spil-for-spil (kun playByPlay) – må aldrig trække tilfældige tal */
+  private pbp(k: string, a: SP | null | undefined, b?: SP | null) {
+    if (this.opts.playByPlay && a) this.line(k, a, b);
+  }
+  private keeper(t: TeamRT): SP | undefined {
+    return t.on.find((x) => !x.off && t.tactic.slots[x.slot]?.pos === 'GK');
+  }
 
   // Sammensatte evner
   private passQ(s: SP) { return 0.45 * this.a(s, A.passing) + 0.2 * this.a(s, A.decisions) + 0.15 * this.a(s, A.technique) + 0.2 * this.a(s, A.creativity); }
@@ -886,11 +896,14 @@ export class MatchSim {
       T.stats.passesCompleted++;
       s.line.passesOk++;
       // førsteberøring: en fremadrettet bold skal tages ned under pres
+      let recvP: SP | null = null;
       if (trb > rb && trb >= 2 && !cutback) {
         const recv = this.pick(T.zAtt[tz], undefined, s);
+        recvP = recv;
         if (recv) {
           const touch = 0.55 * this.a(recv, A.technique) + 0.25 * this.a(recv, A.agility) + 0.2 * this.a(recv, A.decisions);
           if (this.r.chance(clamp(0.05 + (11 - touch) / 45 + (O.ti.closingDown - 1) * 0.015 - this.wx.pass + this.wx.touch, 0.005, 0.18))) {
+            this.pbp(this.passKind(rb, lane, trb, tl), s, recv);
             this.zone = tz;
             if (this.r.chance(0.2)) this.line('poor-touch', recv);
             this.turnover(def);
@@ -901,6 +914,7 @@ export class MatchSim {
         }
       }
       this.rate(s, trb > rb ? 0.025 : 0.008);
+      if (!cutback) this.pbp(this.passKind(rb, lane, trb, tl), s, recvP);
       this.zone = tz;
       this.lastPasser = s;
       this.lastPasserMoment = this.moment;
@@ -915,9 +929,17 @@ export class MatchSim {
       this.rate(s, -0.04);
       this.rate(def, 0.05);
       if (def) def.line.tackles++;
+      this.pbp('pl-icpt', def, s);
       this.zone = tz;
       this.turnover(def);
     }
+  }
+
+  /** Afleveringens retning set fra holdet (CM 01/02: forward/left/right/back/wing) */
+  private passKind(rb: number, lane: number, trb: number, tl: number): string {
+    if (trb > rb) return tl !== lane && tl !== 1 ? `pl-wing-${tl === 0 ? 'l' : 'r'}` : trb >= 4 ? 'pl-area' : 'pl-fwd';
+    if (trb < rb) return 'pl-back';
+    return tl < lane ? 'pl-side-l' : tl > lane ? 'pl-side-r' : 'pl-fwd';
   }
 
   private longBall(T: TeamRT, O: TeamRT, s: SP) {
@@ -1497,6 +1519,7 @@ export class MatchSim {
     this.rate(s, kind === 'oneOnOne' || kind === 'pen' ? -0.35 : -0.05);
     this.line(kind === 'pen' ? 'pen-miss' : kind === 'header' ? 'header-wide' : kind === 'oneOnOne' ? 'miss-1v1' : kind === 'long' ? 'long-wide' : 'wide', s, null, kind === 'pen' || kind === 'oneOnOne');
     if (kind === 'pen') this.events.push({ m: this.minute, t: T.idx, k: 'pen-miss', p: s.p.id });
+    else this.pbp('pl-goalkick', this.keeper(O));
     this.zone = this.zoneFor(O.idx, 0, 1);
     this.poss = O.idx;
   }
@@ -1801,7 +1824,7 @@ export class MatchSim {
       heat: this.heat,
       zoneControl: this.zonePoss.map((v, i) => (this.zoneTotal[i] ? Math.round((v / this.zoneTotal[i]) * 100) / 100 : 0.5)),
       mom: mom?.p.id ?? 0,
-      commentary: this.commentary,
+      commentary: this.opts.playByPlay ? this.commentary.filter((l) => !l.k.startsWith('pl-')) : this.commentary,
       et: this.extraTime || undefined,
       pens: this.pens,
       shootout: this.shootout?.kicks,

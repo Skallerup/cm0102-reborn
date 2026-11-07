@@ -170,12 +170,13 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean):
   return aiTactic(club, opp, home);
 }
 
-export function createLiveMatch(f: Fixture): MatchSim {
+/** Kampen man ser live; playByPlay = løbende spil-for-spil som i CM 01/02 (klassisk udseende) */
+export function createLiveMatch(f: Fixture, o: { playByPlay?: boolean } = {}): MatchSim {
   const m = prepareMatch(f);
   const g = gs();
   return new MatchSim(m.home, m.away, {
     // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
-    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date,
+    commentary: true, playByPlay: !!o.playByPlay, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }

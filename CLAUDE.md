@@ -45,6 +45,12 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Originalens kommentar: `scripts/build-match-texts.py` (ejerens `…/bosman-edition/app/match_texts/match_texts.json`
+  → `src/ui/data/matchTexts.json`, eget bundt ~66 KB gzip), `ui/matchTexts.ts` (MAP: motorens linjetype → originalens begivenheder,
+  p1/p2/other, pladsholdere; kun en/da), `commentaryText` prøver den først. Motoren: `opts.playByPlay` (kun live-kampen i klassisk)
+  giver 'pl-'-linjer (afleveringer/opsnapninger/målspark) via `pbp()` – må ALDRIG trække tilfældige tal (tjek: `npx tsx
+  scripts/commentary-stats.ts`), filtreres fra i rapporten. Pause/taktik venter på DEAD_BALL; `cm-cx-speed` (localStorage);
+  mellemrum = skjult `[data-space]`-knap. `g.lastMatchTactic` (gemmes i done()) → `LastMatchView`, Shell-fod Back/Next ved `lastView`.
 - 2026-11-07 – v0.17.0. Klassisk kamptaktik efter originalen: `TeamInstrDialog` (grøn boks, TI_CHOICES, ◂-lister), `Tactic.freeKicksR/
   cornersR` (motoren bruger dem fra højre side), faste pladser `snapSlot`/`slotTaken` i game/tactics.ts, Cancel/Ok i Shells fod ved
   `matchSide.s.editing`, `L.wantTactics` (taktikken åbner ved DEAD_BALL-linjer, højst 3 min.), askConfirm `title`, `askNotice` +

@@ -890,6 +890,8 @@ export interface GameState {
   shortlist: number[];
   offers: TransferOffer[];
   tactic: Tactic | null; // brugerens taktik
+  /** startopstillingen fra brugerens seneste kamp (klassisk Last Match) */
+  lastMatchTactic?: Tactic;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   seasonHistory: SeasonSummary[];
