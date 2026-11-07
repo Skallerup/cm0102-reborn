@@ -95,7 +95,8 @@ function write(slug: string, html: string) {
   writeFileSync(`public/${slug}index.html`, html);
 }
 
-export interface DbOut { urls: Record<string, string[]>; playerUrl: Map<string, string>; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
+export interface ClubSum { name: string; url: string; league: string; leagueUrl: string; tier: number; nation: string; balance: number; rep: number; strength: number; kids: number; cap: number; stadium: string; best: string }
+export interface DbOut { urls: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
 
 export function buildDb(conf: DbConf): DbOut {
   const world = JSON.parse(readFileSync(conf.file, 'utf8')) as World;
@@ -549,5 +550,6 @@ ${CTA}
 
   const summary = `${kept.length} spillere, ${clubs.size} klubber, ${leagues.size} ligaer, ${nations.size} lande, ${urls.lists.length} lister`;
   const playerUrl = new Map(kept.map((p) => [`${p.name}|${clubName(p)}`, p.url!]));
-  return { urls, playerUrl, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
+  const clubSum: ClubSum[] = [...leagues.values()].flatMap((l) => l.clubs.map((c) => ({ name: c.name, url: c.url, league: l.real, leagueUrl: l.url, tier: l.tier, nation: nationName(c.nation), balance: c.balance, rep: c.rep, strength: c.strength, kids: wonder(c.players).length, cap: c.cap, stadium: c.stadium, best: c.players[0]?.name ?? '' })));
+  return { urls, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
 }

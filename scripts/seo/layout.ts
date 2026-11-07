@@ -17,7 +17,7 @@ export const NAV: [string, string][] = [
   ['/cm-01-02/', 'CM 01/02 database'],
   ['/cm-01-02-wonderkids/', 'Wonderkids'],
   ['/cm-01-02-best-players/', 'Best players'],
-  ['/cm-01-02-tactics/', 'Tactics'],
+  ['/cm-01-02-guides/', 'Guides'],
   ['/2026-27/', '2026/27 database'],
   ['/faq/', 'FAQ'],
 ];

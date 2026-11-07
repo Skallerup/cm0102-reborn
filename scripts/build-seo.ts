@@ -6,6 +6,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { CSS, CTA, SITE, TODAY, esc, render, type Page } from './seo/layout';
 import { buildDb } from './seo/db';
 import { alternatesFor, langPages, toPage } from './seo/i18n';
+import { guides } from './seo/guides';
 
 /** dato for databasesidernes indhold (sitemap lastmod) – hæv den, når siderne ændres mærkbart */
 const CONTENT_DATE = '2026-11-07';
@@ -215,6 +216,8 @@ ${table(young(M, 20).slice(0, 30))}`,
     ],
   },
 ];
+
+pages.push(...guides(dbO));
 
 // landingssider på de andre sprog (hreflang til hinanden og til den engelske)
 const LP = langPages(nO, nM);
