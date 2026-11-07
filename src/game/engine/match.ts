@@ -183,6 +183,13 @@ const ATT_COVER = 2.45;
 const DEF_COVER = 2.2;
 /** Dæmper niveauforskelle en smule: uden den bliver topholdene urealistisk dominerende (150 mål, 60-målsscorere) */
 const SQUASH = 0.76;
+/**
+ * Originalens træthed er langt mildere: målt i CM 01/02 (Man Utd-Blackburn, 2002) falder markspillerne fra ~97 % til ~91 % ved
+ * pausen og ~80 % ved slutfløjt (ca. 17 point på en kamp). Uden skalering tabte vores motor ~31 point, så trætte spillere kom
+ * under knock-grænsen (< 40 % = næsten sikker knock) og gav skadebølger.
+ */
+const ORIG_FATIGUE = 0.7;
+
 /** Fordel pr. ekstra mand på banen i hver duel (røde kort) – kalibreret mod rigtige kampe, se scripts/redcard.ts */
 const MAN_EDGE = 0.45;
 /** Chance for direkte rødt kort pr. frispark (plus spillerens 'beskidthed') */
@@ -702,7 +709,7 @@ export class MatchSim {
           ? (1.3 - 14 / 36) * fatigueDrain(s.p.attrs[A.stamina], s.age ?? 26, 'medium') / fatigueDrain(14, 26, 'medium')
           : 1.3 - s.p.attrs[A.stamina] / 36;
         const drain = 0.00143 * staminaTerm * (isGK ? 0.25 : tf * (1 + 0.12 * Math.max(0, 11 - t.men))) * (1 + 0.06 * (s.p.attrs[A.workRate] - 10) / 10) * (1.1 - s.p.attrs[A.naturalFitness] / 100);
-        s.cond = Math.max(0.2, s.cond - drain);
+        s.cond = Math.max(0.2, s.cond - drain * (this.opts.rules === 'original' ? ORIG_FATIGUE : 1));
       }
     }
   }

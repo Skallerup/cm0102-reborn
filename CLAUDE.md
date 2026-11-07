@@ -48,6 +48,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-07 – Træthed med rules 'original': `ORIG_FATIGUE` 0,7 i tickFatigue (målt i originalen: Man Utd-Blackburn 18/9-2002,
+  markspillere 97 → 91 % ved pausen → ~80 % ved slutfløjt). match-stats.ts: kondition ved slutfløjt 78 → 84 %, AI-udskiftninger
+  3,2 → 1,3, mål 2,84 med `ORIGINAL.finish` 1,33 → 1,27. Pause/slutfløjt: CxOverview `quiet`; MatchEvent.pen (pen foran minuttet).
 - 2026-11-07 – Admin New careers: POST op `nc-delete` (vids eller at+manager; omskriver nc:list og trækker fra nc:total/nc:d:*), knappen "Remove my careers" (denne browsers `cm0102.visitor`) og ✕ pr. række. Taktik: højreklik-menu for løb (`Pitch onRuns`).
 - 2026-11-07 – `Staff.coachAreas` (action coachAreas, `CoachesPanel`): weeklyDevelopment bruger kun trænerne for programmets område (`AREA_OF`), når klubben har fordelt dem – ellers som før.
 - 2026-11-07 – `repairInjuryWave` i upgradeLoaded (save.ts, `g.fixes` = kørte engangsrettelser). Reserver (`p.reserves`) filtreres fra
