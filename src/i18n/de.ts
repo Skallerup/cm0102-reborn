@@ -1043,6 +1043,7 @@ export const de: Record<string, string> = {
   'sendDev.sent': "Danke! Dein Spiel wurde an den Entwickler gesendet.",
   'sendDev.error': "Senden fehlgeschlagen – prüfe die Verbindung und versuche es erneut.",
   'sendDev.limit': "Du hast in der letzten Stunde mehrere Spiele gesendet – bitte später erneut versuchen.",
+  'cl.sl.hint': "SELECTED: Ligen und Pokal des Landes werden gespielt. BACKGROUND: Spieler und Vereine sind im Spiel, aber es finden keine Spiele statt. Klicke SELECTED, um ein Land während des Spiels hinzuzufügen – es kann nicht wieder entfernt werden.",
   'land.q6': 'Ist das der originale Championship Manager?', 'land.a6': 'Nein. Es ist ein unabhängiges Fanprojekt, von Grund auf neu gebaut und inspiriert von den klassischen Managerspielen – mit vielen eigenen neuen Ideen.',
   'land.finalTitle': 'Dein Verein wartet.', 'land.finalText': 'Die Saison beginnt, wenn du den Knopf drückst.',
   'land.footerData': "Spielerdaten: die Original-Datenbank von CM 01/02 (3.9.68) und das Community-Update 2026/27",

@@ -1043,6 +1043,7 @@ export const tr: Record<string, string> = {
   'sendDev.sent': "Teşekkürler! Oyunun geliştiriciye gönderildi.",
   'sendDev.error': "Gönderilemedi – bağlantını kontrol edip tekrar dene.",
   'sendDev.limit': "Son bir saatte birkaç oyun gönderdin – lütfen daha sonra tekrar dene.",
+  'cl.sl.hint': "SELECTED: ülkenin ligleri ve kupası oynanır. BACKGROUND: oyuncular ve kulüpler oyunda, ama maç oynanmaz. Oyun sırasında ülke eklemek için SELECTED'e tıkla – sonra kaldırılamaz.",
   'land.q6': "Bu orijinal Championship Manager mı?", 'land.a6': "Hayır. Sıfırdan geliştirilmiş, klasik menajerlik oyunlarından ilham alan bağımsız bir hayran projesi – kendine ait pek çok yeni fikriyle.",
   'land.finalTitle': "Kulübün seni bekliyor.", 'land.finalText': "Sezon, düğmeye bastığında başlar.",
   'land.footerData': "Oyuncu verisi: orijinal CM 01/02 veritabanı (3.9.68) ve topluluğun 2026/27 güncellemesi",

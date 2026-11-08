@@ -1043,6 +1043,7 @@ export const it: Record<string, string> = {
   'sendDev.sent': "Grazie! La tua partita è stata inviata allo sviluppatore.",
   'sendDev.error': "Invio non riuscito: controlla la connessione e riprova.",
   'sendDev.limit': "Hai inviato diverse partite nell'ultima ora: riprova più tardi.",
+  'cl.sl.hint': "SELECTED: si giocano campionati e coppa della nazione. BACKGROUND: giocatori e club sono nel gioco, ma non si gioca nessuna partita. Clicca SELECTED per aggiungere una nazione durante la partita – non si può più togliere.",
   'land.q6': "È il Championship Manager originale?", 'land.a6': "No. È un progetto indipendente di appassionati, costruito da zero e ispirato ai classici manageriali, con tante idee nuove tutte sue.",
   'land.finalTitle': 'Il tuo club ti aspetta.', 'land.finalText': 'La stagione inizia quando premi il pulsante.',
   'land.footerData': "Dati dei giocatori: il database originale di CM 01/02 (3.9.68) e l’aggiornamento 2026/27 della community",

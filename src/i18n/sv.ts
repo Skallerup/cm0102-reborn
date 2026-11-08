@@ -3985,6 +3985,7 @@ export const sv: Record<string, string> = {
   "sendDev.sent": "Tack! Ditt spel har skickats till utvecklaren.",
   "sendDev.error": "Det gick inte att skicka – kontrollera anslutningen och försök igen.",
   "sendDev.limit": "Du har skickat flera spel den senaste timmen – försök igen senare.",
+  "cl.sl.hint": "VALD: landets ligor och cup spelas. BAKGRUND: spelarna och klubbarna finns i spelet, men inga matcher spelas. Klicka VALD för att lägga till ett land medan du spelar – det kan inte väljas bort igen.",
   "land.q6": "Är det det ursprungliga Championship Manager?",
   "land.a6": "Nej. Det är ett oberoende fanprojekt, byggt från grunden och inspirerat av de klassiska managerspelen – med massor av nya idéer.",
   "land.finalTitle": "Din klubb väntar.",

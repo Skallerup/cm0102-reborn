@@ -1249,12 +1249,19 @@
 .cx-ts-buttons.cx-job-answer { grid-template-columns: 2fr 1fr 1fr; }
 /* Manager Status / Selected League(s) (Game Options, CM 01/02) */
 .cx-mstat .cx-chist-row { font-size: 15px; min-height: 30px; } .cx-mstat .dim { color: #9a9ca6; }
-.cx-sl-top { display: flex; align-items: center; gap: 12px; margin: 0 16px 6px; color: #fff; font-size: 13px; }
-.cx-sl-row { display: grid; grid-template-columns: 1fr 200px 1fr; align-items: center; min-height: 26px; color: #9a9ca6; font-size: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding: 0 8px; }
-.cx-sl-row.lg-sel { color: #fff; } .cx-sl-row.lg-own { color: #fff21f; } .cx-sl-row .st { font-size: 11px; text-align: center; } .cx-sl-row .lw { font-size: 12px; color: #9a9ca6; }
-.cx-sl-row.lg-sel .st { color: #fff21f; }
-.cx-sl-row .cx-sl-add { font: inherit; font-size: 12px; padding: 1px 10px; min-height: 22px; border-radius: 0; background: #838183; color: #000; border: 2px outset #c0c0c0; cursor: pointer; }
-@media (max-width: 760px) { .cx-sl-row { grid-template-columns: 1fr 86px auto; font-size: 13px; min-height: 36px; } .cx-sl-row .cx-sl-add { min-height: 30px; } }
+.cx-sl-top { display: flex; align-items: center; gap: 10px; margin: 0 16px 8px; padding: 6px 10px; background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 13px; }
+.cx-sl-top > span:not(.cx-sl-cell) { margin-left: 6px; }
+.cx-sl-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 150px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 30px; padding: 0 8px; }
+.cx-sl-row .nm { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-sl-row.lg-sel .nm, .cx-sl-row.lg-own .nm { color: #fff21f; }
+/* SELECTED / BACKGROUND / laveste division: grå tekst, det valgte med gul ramme og orange tekst (CM 01/02) */
+:root[data-skin='retro'] .cx-sl-cell, .cx-sl-cell { display: flex; align-items: center; justify-content: center; min-height: 26px; padding: 0 8px; border: 1px solid transparent; background: none; color: #b8bcc6; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-shadow: 1px 1px 0 #000; }
+:root[data-skin='retro'] .cx-sl-cell.on, .cx-sl-cell.on { border-color: #fff21f; color: #ff9a2a; }
+.cx-sl-cell.lw { justify-content: center; font-weight: 600; }
+.cx-sl-cell.lw:not(.on) { color: #9a9ca6; }
+button.cx-sl-cell:not(:disabled) { cursor: pointer; } button.cx-sl-cell:not(:disabled):hover { color: #fff; border-color: rgba(255, 242, 31, 0.5); }
+button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
+@media (max-width: 760px) { .cx-sl-row { grid-template-columns: minmax(0, 1fr) 84px 96px; min-height: 38px; } .cx-sl-row .nm { font-size: 14px; } .cx-sl-cell { font-size: 10.5px; padding: 0 4px; min-height: 32px; } .cx-sl-cell.lw { display: none; } .cx-sl-top { flex-wrap: wrap; } }
 @media (min-width: 761px) { .cx-hof { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-hof .cx-tbl td { font-weight: 400; } }
 .cx-hof tr.me td { color: #fff21f; } .cx-hof-me { margin: 6px 12px; color: #fff21f; }
 .cx-hof-fb .cx-head > .cx-title { display: none; }

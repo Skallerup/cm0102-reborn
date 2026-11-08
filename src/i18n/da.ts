@@ -1078,6 +1078,7 @@ export const da: Record<string, string> = {
   'sendDev.sent': "Tak! Dit spil er sendt til udvikleren.",
   'sendDev.error': "Det kunne ikke sendes – tjek forbindelsen og prøv igen.",
   'sendDev.limit': "Du har sendt flere spil inden for den sidste time – prøv igen senere.",
+  'cl.sl.hint': "VALGT: landets ligaer og pokalturnering spilles. BAGGRUND: spillerne og klubberne er med i spillet, men der spilles ingen kampe. Klik VALGT for at tilføje et land undervejs – det kan ikke fravælges igen.",
   'land.q6': 'Er det det originale Championship Manager?', 'land.a6': 'Nej. Det er et uafhængigt fanprojekt, bygget fra bunden og inspireret af de klassiske managerspil – med masser af nye idéer.',
   'land.finalTitle': 'Din klub venter.', 'land.finalText': 'Sæsonen starter, når du trykker på knappen.',
   'land.footerData': "Spillerdata: den originale CM 01/02-database (3.9.68) og fællesskabets 2026/27-opdatering",

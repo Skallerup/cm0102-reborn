@@ -1043,6 +1043,7 @@ export const fr: Record<string, string> = {
   'sendDev.sent': "Merci ! Votre partie a été envoyée au développeur.",
   'sendDev.error': "Envoi impossible – vérifiez la connexion et réessayez.",
   'sendDev.limit': "Vous avez envoyé plusieurs parties dans l'heure – réessayez plus tard.",
+  'cl.sl.hint': "SELECTED : les championnats et la coupe du pays sont joués. BACKGROUND : ses joueurs et clubs sont dans le jeu, mais aucun match n'est joué. Cliquez sur SELECTED pour ajouter un pays en cours de partie – impossible de le retirer ensuite.",
   'land.q6': "S'agit-il du Championship Manager original ?", 'land.a6': "Non. C'est un projet de fans indépendant, développé de zéro et inspiré des jeux de manager classiques – avec beaucoup d'idées nouvelles.",
   'land.finalTitle': 'Votre club vous attend.', 'land.finalText': 'La saison commence quand vous appuyez sur le bouton.',
   'land.footerData': "Données des joueurs : la base originale de CM 01/02 (3.9.68) et la mise à jour 2026/27 de la communauté",

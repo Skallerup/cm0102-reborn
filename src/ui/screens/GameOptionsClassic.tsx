@@ -37,21 +37,30 @@ export function ClassicSelectedLeagues() {
     .sort((a, b) => natName(g.nations[a]?.name).localeCompare(natName(g.nations[b]?.name)));
   const own = g.clubs[g.userClub]?.nation;
   const addable = new Set(g.humans?.length || g.draft ? [] : addableNations());
-  const yes = (on: boolean) => <span className={`cx-opt ${on ? 'on' : ''}`}>{t(on ? 'common.yes' : 'common.no')}</span>;
+  // CM 01/02: Yes/No som tekstvalg med gul ramme om det valgte
+  const yn = (on: boolean) => <><span className={`cx-sl-cell ${on ? 'on' : ''}`}>{t('common.yes')}</span><span className={`cx-sl-cell ${!on ? 'on' : ''}`}>{t('common.no')}</span></>;
   return (
     <div>
       <Head title={t('cl.nc.title')} />
       <div className="cx-subtitle">{t('cl.sl.title')}</div>
-      <div className="cx-sl-top"><span>{t('cl.sl.real')}</span>{yes(true)}<span>{t('cl.sl.masking')}</span>{yes(!!g.options.masking)}</div>
+      <div className="cx-sl-top"><span>{t('cl.sl.real')}</span>{yn(true)}<span>{t('cl.sl.masking')}</span>{yn(!!g.options.masking)}</div>
+      {/* som originalens Select League(s): SELECTED = ligaerne spilles, ellers kun spillerne i baggrunden (ingen kampe).
+          Et land kan gøres spilbart undervejs (klik SELECTED) – men ikke fravælges igen */}
       <div className="cx-chist-tbl cx-sl">{nations.map((n) => {
         const sel = Object.values(g.comps).some((c) => c.nation === n && c.type === 'league');
-        const lowest = Object.entries(g.leagues).filter(([id, l]) => l.nation === n && !l.hidden && g.comps[id]).sort((a, b) => b[1].tier - a[1].tier)[0];
+        const leagues = Object.entries(g.leagues).filter(([, l]) => l.nation === n && !l.hidden);
+        const lowest = (sel ? leagues.filter(([id]) => g.comps[id]) : leagues).sort((a, b) => b[1].tier - a[1].tier)[0];
+        const canAdd = !sel && addable.has(n);
         return (
           <div key={n} className={`cx-sl-row ${n === own ? 'lg-own' : ''} ${sel ? 'lg-sel' : ''}`}>
-            <span>{natName(g.nations[n]?.name)}</span><span className="st">{t(sel ? 'cl.sl.selected' : 'cl.sl.background')}</span><span className="lw">{sel && lowest ? compName(lowest[1].name) : addable.has(n) ? <button className="cx-sl-add" onClick={() => void addNation(n)}>{t('lg.add')}</button> : ''}</span>
+            <span className="nm">{natName(g.nations[n]?.name)}</span>
+            <button className={`cx-sl-cell ${sel ? 'on' : ''}`} disabled={!canAdd} title={canAdd ? t('lg.add') : undefined} onClick={() => canAdd && void addNation(n)}>{t('cl.sl.selected')}</button>
+            <span className={`cx-sl-cell ${!sel ? 'on' : ''}`}>{t('cl.sl.background')}</span>
+            <span className={`cx-sl-cell lw ${sel ? 'on' : ''}`}>{lowest ? compName(lowest[1].name) : ''}</span>
           </div>
         );
       })}</div>
+      <div className="cx-tac-hint">{t(g.humans?.length ? 'lg.mpOff' : 'cl.sl.hint')}</div>
     </div>
   );
 }
