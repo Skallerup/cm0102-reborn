@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { RUN_DIRS, RunArrows, dirTarget, useRunDrag } from './runs';
+import { RUN_DIRS, RunArrows, SlotGuides, dirTarget, useRunDrag } from './runs';
 import { estimateGate } from '../../game/finance';
 import { FORMATIONS, changeFormation, slotTaken, snapSlot } from '../../game/tactics';
 import type { DropItem } from '../classic';
@@ -87,7 +87,7 @@ void loadMatchTexts();
 /** Linjer, hvis lyd går forud for alt andet i samme opdatering (mål, fløjt, kort, straffespark) */
 const BIG_SOUND = new Set(['kickoff', 'halftime', 'fulltime', 'extratime', 'yellow', 'red', 'second-yellow', 'red-professional', 'penalty', 'goal-pen', 'pen-saved', 'pen-miss', 'goal-offside']);
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number } | null = null;
 
 /** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
 const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
@@ -487,7 +487,9 @@ function LiveMatch({ id }: { id: number }) {
     return () => { if (live && !live.sim.finished) startH2hBackground(id); };
   }, [h2h, id]);
   if (h2h && !L.h2hInit) { L.h2hInit = true; sim.opts.aiSubs = [false, false]; }
-  const [paused, setPaused] = useState(false);
+  // pausen hører til kampen (ikke skærmen): går man til en anden skærm og tilbage, står kampen stadig stille
+  const [paused, setPausedRaw] = useState(() => !!L.paused);
+  const setPaused = (v: boolean) => { L.paused = v; setPausedRaw(v); };
   const [speed, setSpeedRaw] = useState(() => (isRetro() ? loadCxSpeed() : 1));
   const setSpeed = (v: number) => { setSpeedRaw(v); if (isRetro()) saveCxSpeed(v); };
   // klassisk (CM 01/02): kampen venter på Kick Off Match, knapperne sidder i sidebjælken
@@ -924,7 +926,7 @@ function LiveMatch({ id }: { id: number }) {
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
       {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <Tabs tabs={classic
         ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
-        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={setTab} />}
+        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={(v) => { if (v === 'tactics' && !classic && !h2h && !report && !sim.finished) setPaused(true); setTab(v); }} />}
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
@@ -1512,6 +1514,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
               <rect x="14" y="1" width="40" height="16" /><rect x="14" y="83" width="40" height="16" /><rect x="25" y="1" width="18" height="6" /><rect x="25" y="93" width="18" height="6" />
             </g>
           </svg>
+          {(() => { const self = drag !== null ? tac.lineup.indexOf(drag) : -1; return <SlotGuides pitch={pitchRef} active={!!editable && !dragCapt && self >= 0 && tac.slots[self]?.pos !== 'GK'} slots={tac.slots} self={self} />; })()}
           <RunArrows items={on.map((s) => { const i = tac.lineup.indexOf(s.id) >= 0 ? tac.lineup.indexOf(s.id) : s.slot; const sl = tac.slots[i]; return sl ? { key: s.id, s: sl, run: rd.shown(i, sl, tac.individual[i]?.run) } : { key: s.id, s: tac.slots[0], run: null }; })} />
           {on.map((s) => {
             const sl = tac.slots[tac.lineup.indexOf(s.id)] ?? tac.slots[s.slot];

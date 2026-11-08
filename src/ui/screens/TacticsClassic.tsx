@@ -7,6 +7,7 @@ import { act } from '../../game/actions';
 import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attributes';
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
+import { SlotGuides } from './runs';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget, slotTaken, snapSlot } from '../../game/tactics';
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { aiTactic } from '../../game/sim';
@@ -295,6 +296,7 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onR
           return <line key={i} className={live !== undefined ? 'live' : ''} x1={x1 + ux * 4} y1={y1 + uy * 4} x2={x2 - ux * 1.5} y2={y2 - uy * 1.5} stroke="#fff" strokeWidth="1.1" strokeDasharray="3 2.5" vectorEffect="non-scaling-stroke" markerEnd="url(#cx-arrow)" />;
         })}
       </svg>
+      {(() => { const self = sel ?? (drag !== null ? tac.lineup.indexOf(drag) : -1); return <SlotGuides pitch={ref} active={self >= 0 && tac.slots[self]?.pos !== 'GK' && club === undefined} slots={tac.slots} self={self} />; })()}
       {tac.slots.map((s, i) => {
         const p = byId.get(tac.lineup[i]);
         const gk = s.pos === 'GK';

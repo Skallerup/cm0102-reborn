@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-08 – Reddit-feedback: pausen ligger nu på kampen (`L.paused` i Match.tsx; før useState → nulstillet når skærmen blev forladt, så kampen kørte videre), moderne Tactics-fane pauser. `SlotGuides` (runs.tsx; `GRID_X/GRID_Y` eksporteret fra tactics.ts) viser de 30 faste pladser + den fremhævede under flytning i TacticsClassic og kampens taktik. e2e tjekker begge.
 - 2026-11-08 – v0.19.0. Sprogvalget alfabetisk (`LANGS` i i18n/index.ts, efter sprogets eget navn). Forsiden: 10 sprog, tal 1.375 klubber/81 ligaer (spilbare i begge databaser), funktionskortet `authentic` i stedet for `ranking` (har egen sektion), FAQ q7/q8 (original database, databasesiderne), links i foden (`land.foot.*`) til /cm-01-02/, /2026-27/, guiderne og /faq/, `land.footerData` = CM-databaserne (ikke transfermarkt).
 - 2026-11-07 – Forsidebilleder på svensk og norsk: `public/landing/sv|nb/*.webp` (screenshots-i18n.mjs CLUBS sv = Malmö FF/Hammarby, nb = Bodø/Glimt/Rosenborg; scriptet venter nu på det lazy-hentede sprog). IndexNow: `public/<nøgle>.txt` + `scripts/indexnow.ts` (kør efter udgivelser med nye url'er).
 - 2026-11-07 – SEO-guider: `scripts/seo/guides.ts` (download, Bosman, skjulte egenskaber, CA/PA, bedste hold at styre, tips, gratis managerspil i browseren + indeks /cm-01-02-guides/) med tal fra `buildDb` (`kept`, `clubSum`). NAV: Tactics → Guides. Forsidens statiske tekst linker til guider og sprogsider.

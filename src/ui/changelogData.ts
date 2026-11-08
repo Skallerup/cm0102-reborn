@@ -13,6 +13,8 @@ export const CHANGELOG: ChangelogEntry[] = [
     date: '2026-11-08',
     title: { da: 'Opdateret forside og sprogvalg', en: 'Updated front page and language menu' },
     items: [
+      { da: "Kampen starter ikke længere af sig selv efter en pause: sætter du kampen på pause og kigger på en spiller eller en anden skærm, står den stadig stille, når du kommer tilbage. I det moderne udseende pauser fanen Taktik nu også kampen", en: "The match no longer restarts by itself after a pause: if you pause and look at a player or another screen, it is still paused when you come back. In the modern look the Tactics tab now pauses the match too" },
+      { da: "Klassisk taktik: når du flytter en spiller (klik eller træk), vises alle de faste pladser på banen, og den plads, han lander på, lyser op med navnet (fx AM eller F) – så det er let at ramme AM-rækken", en: "Classic tactics: when you move a player (click or drag), every fixed position on the pitch is shown and the one he will land on lights up with its name (e.g. AM or F) – so the AM row is easy to hit" },
       { da: "Sprogvalget står nu i alfabetisk rækkefølge (Dansk, Deutsch, English …)", en: "The language menu is now in alphabetical order (Dansk, Deutsch, English …)" },
       { da: "Forsiden er opdateret: 10 sprog, 1.375 klubber og 81 ligaer i de to databaser, et kort om den ægte CM 01/02-tilstand, to nye spørgsmål om den originale database og links til database-siderne og guiderne", en: "The front page is updated: 10 languages, 1,375 clubs and 81 leagues across the two databases, a card on the authentic CM 01/02 mode, two new questions about the original database and links to the database pages and guides" },
     ],

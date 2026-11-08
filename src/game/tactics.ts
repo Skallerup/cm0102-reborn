@@ -23,8 +23,8 @@ const F: Record<string, S[]> = {
 export const FORMATIONS = Object.keys(F);
 
 /** CM 01/02's faste pladser på banen: rækkerne SW, D, DM, M, AM, ST × venstre, venstre-centralt, centralt, højre-centralt, højre */
-const GRID_X = [12, 22, 35, 50, 66, 82];
-const GRID_Y = [12, 37, 50, 63, 88];
+export const GRID_X = [12, 22, 35, 50, 66, 82];
+export const GRID_Y = [12, 37, 50, 63, 88];
 /** Den nærmeste faste plads (klassisk: en spiller trukket rundt lander altid på én af dem) */
 export function snapSlot(x: number, y: number): Slot {
   const near = (a: number[], v: number) => a.reduce((b, c) => (Math.abs(c - v) < Math.abs(b - v) ? c : b));

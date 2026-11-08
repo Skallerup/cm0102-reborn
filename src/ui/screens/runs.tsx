@@ -1,8 +1,8 @@
 // CM 01/02's løbepile på taktikbanen: højreklik og træk en spiller → pil til nærmeste punkt i pladsgitteret (også skråt);
 // et kort træk fjerner den, og et højreklik uden træk (touchpad: to fingre / ctrl + klik) åbner en menu med retningerne.
 // Bruges af taktikskærmen og kampens taktik.
-import { useRef, useState } from 'react';
-import { runTarget } from '../../game/tactics';
+import { useEffect, useRef, useState } from 'react';
+import { GRID_X, GRID_Y, runTarget, slotTaken, snapSlot } from '../../game/tactics';
 import type { Slot } from '../../game/types';
 
 type Pt = { x: number; y: number };
@@ -61,3 +61,36 @@ export function RunArrows({ items }: { items: { key: number | string; s: Slot; r
 /** Menuens retninger (touchpad): ét trin i hver af de 8 retninger */
 export const RUN_DIRS = [['f', 1, 0], ['fl', 1, -1], ['fr', 1, 1], ['l', 0, -1], ['r', 0, 1], ['bl', -1, -1], ['br', -1, 1], ['b', -1, 0]] as const;
 export const dirTarget = (s: Slot, fx: number, fy: number) => runTarget(s, s.x + fx * 14, s.y + fy * 18);
+
+/**
+ * Pladsgitteret, mens en spiller flyttes (træk eller klik → klik): de faste pladser som ringe og den, spilleren lander på,
+ * fremhævet med navnet – så man kan se, hvor rækkerne (fx AM og F) går til. `self` = pladsen der flyttes (−1 = ukendt).
+ */
+export function SlotGuides({ pitch, active, slots, self }: { pitch: React.RefObject<HTMLDivElement | null>; active: boolean; slots: Slot[]; self: number }) {
+  const [hot, setHot] = useState<Slot | null>(null);
+  useEffect(() => {
+    const el = pitch.current;
+    setHot(null);
+    if (!active || !el) return;
+    const on = (e: MouseEvent) => {
+      const r = el.getBoundingClientRect();
+      const l = ((e.clientX - r.left) / r.width) * 100, tp = ((e.clientY - r.top) / r.height) * 100;
+      setHot(snapSlot(Math.max(10, Math.min(90, (97 - tp) / 0.92)), Math.max(4, Math.min(96, l))));
+    };
+    const off = () => setHot(null);
+    el.addEventListener('dragover', on); el.addEventListener('pointermove', on); el.addEventListener('pointerleave', off);
+    return () => { el.removeEventListener('dragover', on); el.removeEventListener('pointermove', on); el.removeEventListener('pointerleave', off); };
+  }, [active, pitch]);
+  if (!active) return null;
+  const name = (s: Slot) => `${s.pos === 'ST' ? 'F' : s.pos}${s.side === 'C' ? '' : s.side}`;
+  return (
+    <div className="cx-guides" aria-hidden="true">
+      {GRID_X.flatMap((x) => GRID_Y.map((y) => {
+        const s = snapSlot(x, y);
+        const on = hot && hot.x === x && hot.y === y;
+        const taken = slotTaken(slots, self, s);
+        return <i key={`${x}-${y}`} className={`${on ? 'hot' : ''} ${taken ? 'taken' : ''}`} style={{ left: `${left(s)}%`, top: `${top(s)}%` }}>{on && <b>{name(s)}</b>}</i>;
+      }))}
+    </div>
+  );
+}
