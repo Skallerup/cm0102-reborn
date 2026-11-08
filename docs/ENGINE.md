@@ -310,3 +310,23 @@ Kilde: sub_6c54a0/sub_6e0fe0. AI-holdet overvejer et skift, når minuttet > 10 +
 | Kondition ved slutfløjt / skader pr. kamp | 77,8 % / 0,32 |
 | Mål pr. kamp | 2,86 |
 
+
+### Trin 10 – 3.9.60, dæmpning og offside (kun den originale database, 2026-11-08)
+
+Databasen er nu 3.9.60 (den, originalen selv bruger til 2001/02). Originalens skudresultat (regel 10) kan ikke indføres 1:1
+(blandingen af egenskaber i skudscoren sub_700bd0 og målmandens w-led kendes ikke), og en højere `finSlope` (afslutteren
+betyder mindre) flyttede intet ud over støjen. I stedet er niveauforskellene dæmpet mere (`squash` 0,58 → 0,45, `squashAtt`
+0,45 → 0,35, `squashDef` 0,58 → 0,62, `finish` 1,27 → 1,62) og offside-fælden fanger oftere (`offside` 1,8, *estimeret*,
+originalen: 7,4 pr. kamp). Taktikvægtene (regel 12) er ikke indført: originalens tillæg (−1000/+1000 osv.) lægges til
+basisvægte, der ikke kendes.
+
+| `scripts/original-lab.ts`, 3 sæsoner × frø 2001/77 | Originalen | Før | Efter |
+|---|---|---|---|
+| Mål pr. kamp | 2,87 | 2,68 | 2,76 |
+| Hjemme / uafgjort / ude | 51 / 23 / 26 % | 53 / 22 / 25 | 52 / 23 / 25 |
+| Mester / sidst (point) | 84 / 25 | 87 / 20,5 | 86,7 / 22,5 |
+| Topscorer | 23 | 33,7 | 31,7 |
+| Spredning scorede mål (sd) | 9 | 13,0 | 12,2 |
+| Offside / gule / røde pr. kamp (match-stats, 2000) | 7,4 / 1,70 / 0,14 | 4,2 / 1,7 / 0,13 | 7,2 / 1,72 / 0,13 |
+
+Tilbage: topscoreren (afhænger af boldholderens valg, sub_7109f0 – ukendt) og spredningen i indladte mål (originalen 16).

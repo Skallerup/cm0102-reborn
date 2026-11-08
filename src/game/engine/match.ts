@@ -76,6 +76,8 @@ export interface EngineOptions {
   squashAtt?: number;
   /** særskilt dæmpning af de defensive egenskaber (standard = squash) */
   squashDef?: number;
+  /** hvor ofte løb bag kæden fanges offside (1 = standard; den originale profil har flere, som originalen: 7,4 pr. kamp) */
+  offside?: number;
   /** Andel af advarslerne og hjørnesparkene, der gives (1 = alle) – og om blokerede skud tælles som skud (pr. database) */
   cards?: number;
   corners?: number;
@@ -970,7 +972,7 @@ export class MatchSim {
     if (!recv) { this.zone = tz; this.turnover(def); return; }
     const pq = this.a(s, A.passing) * 0.6 + this.a(s, A.technique) * 0.4;
     // bolde bag en høj kæde: fart mod fart; et hold der presser højt, efterlader plads bag sig
-    if (trb >= 3 && recv && this.r.chance(O.ti.offside ? 0.2 : 0.13)) {
+    if (trb >= 3 && recv && this.r.chance(Math.min(0.6, (O.ti.offside ? 0.2 : 0.13) * (this.opts.offside ?? 1)))) {
       T.stats.offsides++;
       this.line('offside', recv);
       this.zone = tz;
@@ -1051,7 +1053,7 @@ export class MatchSim {
     T.stats.passes++;
     s.line.passes++;
     // Offside-fælde
-    if (this.r.chance(clamp((O.ti.offside ? 0.3 : 0.2) - (this.a(runner, A.anticipation) + this.a(runner, A.offTheBall) - 20) / 180, 0.04, 0.35))) {
+    if (this.r.chance(clamp(((O.ti.offside ? 0.3 : 0.2) - (this.a(runner, A.anticipation) + this.a(runner, A.offTheBall) - 20) / 180) * (this.opts.offside ?? 1), 0.04, 0.6))) {
       T.stats.offsides++;
       this.rate(runner, -0.05);
       this.line('offside', runner);
