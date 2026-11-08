@@ -25,13 +25,19 @@ import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 import { Editor } from './Editor';
 import { listDbs, loadCustomWorld } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
+import { StartClassic } from './StartClassic';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft' | 'editor';
 
 /** AI-managere (bots) i almindelige spil er midlertidigt slået fra (ejerens ønske 2026-11-07) – draft-ligaen har sine egne */
 const BOTS_ENABLED = false;
 
-export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
+/** Startsiden: originalens hovedmenu (StartClassic.tsx) – den gamle moderne udgave med ?start=modern */
+export function Start(props: { onLang: (l: Lang) => void; onHome?: () => void }) {
+  return new URLSearchParams(location.search).get('start') === 'modern' ? <StartModern {...props} /> : <StartClassic {...props} />;
+}
+
+function StartModern({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
   const [view, setView] = useState<View>(roomParam ? 'online' : new URLSearchParams(location.search).get('newdraft') ? 'newDraft' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
@@ -108,9 +114,10 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   );
 }
 
-type Row = { id: string; club: string; manager: string; date: string; saved: string; local?: SaveMeta; cloud?: CloudSave };
+export type Row = { id: string; club: string; manager: string; date: string; saved: string; local?: SaveMeta; cloud?: CloudSave };
 
-function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string) => void }) {
+/** Gemte spil – lokale og i skyen samlet pr. spil (den nyeste udgave åbnes) */
+export function useSaveRows(setBusy: (s: string) => void) {
   const acct = useAccount();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [err, setErr] = useState('');
@@ -144,6 +151,11 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
     if (r.cloud) await deleteCloudSave(r.id).catch(() => {});
     await refresh();
   };
+  return { acct, rows, err, open, remove };
+}
+
+function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string) => void }) {
+  const { acct, rows, err, open, remove } = useSaveRows(setBusy);
   return (
     <Panel title={t('start.load')} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}>
       <AccountBar />
@@ -168,9 +180,9 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 }
 
 // sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
-const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey', sv: 'Sweden', nb: 'Norway' };
+export const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey', sv: 'Sweden', nb: 'Norway' };
 
-function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
+export function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
   const [world, setWorld] = useState<WorldData | null>(null);
   const [err, setErr] = useState('');
   const ch = CHALLENGES.find((c) => c.id === challenge);

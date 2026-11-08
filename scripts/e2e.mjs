@@ -63,8 +63,17 @@ async function run(look) {
     if (raw) throw new Error(`${name}: rå oversættelsesnøgle "${raw[0]}"`);
   };
 
-  await step('nyt spil', async () => {
+  await step('startmenuen (CM 01/02-hovedmenu): Game Settings og tilbage', async () => {
     await page.goto(URL);
+    await page.waitForSelector('.cs-grid', { timeout: 30000 });
+    if ((await page.locator('.cs-grid > .cs-cell').count()) !== 12) throw new Error('hovedmenuen har ikke 12 felter');
+    await page.getByRole('button', { name: await t('cs.settings') }).click();
+    if ((await page.locator('.cs-grid > .cs-cell').count()) !== 6) throw new Error('Game Settings har ikke 6 felter');
+    await checkScreen('game settings');
+    await page.locator('.cs-backnext button').first().click();
+    await page.waitForSelector('.cs-grid > .cs-cell >> nth=11');
+  });
+  await step('nyt spil', async () => {
     await page.getByRole('button', { name: await t('start.new') }).first().click();
     await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
     await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Tester');
