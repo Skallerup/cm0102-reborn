@@ -482,8 +482,11 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   const logoClub = hub?.club ? hub.club(g, route) : undefined;
   const logoNation = hub?.nation?.(g, route);
   // turneringens logo (spillerønske – ikke i originalen): ligaskærmen og kampdagen
-  const compId = route.name === 'competitions' ? shownComp(route) ?? g.clubs[g.userClub]?.league : undefined;
-  const compUrl = compId && g.comps[compId] && titleLogo() ? compLogoUrl(compId, realCompName(g.comps[compId].name)) : null;
+  const compId = route.name === 'competitions' ? shownComp(route) ?? g.clubs[g.userClub]?.league
+    : route.name === 'matchday' ? (() => { const { comps } = matchDayComps(g, Number(route.id)); return comps[Math.min(Number(route.state?.mdi ?? 0), comps.length - 1)]; })()
+    : undefined;
+  const comp = compId ? g.comps[compId] : undefined;
+  const compUrl = comp && titleLogo() ? compLogoUrl(compId, realCompName(comp.name)) ?? (comp.nation === -1 && /europa|uefa cup/i.test(comp.name) ? compLogoUrl('UEFA', undefined) : null) : null;
   const plain = hub?.plain?.(route);
   const tabs = plain ? [] : itemsFor(hub?.tabs, g, route, allowedFn);
   // klubbens nederste knapper har ▸ som i CM 01/02
