@@ -7,7 +7,7 @@ import { act } from '../../game/actions';
 import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attributes';
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
-import { SlotGuides } from './runs';
+import { SlotGuides, coarse, holdDrag } from './runs';
 import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget, slotTaken, snapSlot } from '../../game/tactics';
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { aiTactic } from '../../game/sim';
@@ -127,7 +127,7 @@ export function ClassicTactics() {
   };
   const tags = (p: Player) => [tac.captain === p.id && t('cl.tac.capt'), tac.penalties === p.id && t('cl.tac.pen'), tac.freeKicks === p.id && t('cl.tac.fk'), tac.corners === p.id && t('cl.tac.cor'), tac.team.playmaker === p.id && t('cl.tac.pm'), tac.team.targetMan === p.id && t('cl.tac.tm')].filter(Boolean).join(' ');
   const row = (p: Player, label: string, kind: 'xi' | 'bench' | 'rest', slot?: Slot) => (
-    <div key={p.id} className={`cx-tac-row ${kind} ${pick === p.id ? 'on' : ''} ${!available(p) ? 'unavail' : ''}`} draggable
+    <div key={p.id} className={`cx-tac-row ${kind} ${pick === p.id ? 'on' : ''} ${!available(p) ? 'unavail' : ''}`} draggable={!coarse()}
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(p.id)); setTimeout(() => setDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => setDrag(null), 0)} onClick={() => clickRow(p)}
       onDragOver={(e) => { if (drag !== null && drag !== p.id) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); if (drag !== null) swapPlayers(drag, p.id); setDrag(null); }}>
       <button className="cx-tac-num" title={kind === 'xi' ? undefined : t(kind === 'bench' ? 'cl.tac.fromBench' : 'cl.tac.toBench')}
@@ -232,7 +232,7 @@ export function ClassicTactics() {
       </div>
       {runMenu && (
         <div className="cx-ctx-bg" onClick={() => setRunMenu(null)} onContextMenu={(e) => { e.preventDefault(); setRunMenu(null); }}>
-          <div className="cx-ctx cx-drop-pop" style={{ left: runMenu.x, top: runMenu.y }} onClick={(e) => e.stopPropagation()}>
+          <div className="cx-ctx cx-drop-pop" style={{ left: Math.max(4, Math.min(runMenu.x, window.innerWidth - 230)), top: Math.max(4, Math.min(runMenu.y, window.innerHeight - 330)) }} onClick={(e) => e.stopPropagation()}>
             <div className="cx-menu-head">{t('cl.tac.run')}</div>
             {([['f', 1, 0], ['fl', 1, -1], ['fr', 1, 1], ['l', 0, -1], ['r', 0, 1], ['bl', -1, -1], ['br', -1, 1], ['b', -1, 0]] as const).map(([k, fx, fy]) => {
               const s0 = tac.slots[runMenu.slot];
@@ -250,7 +250,12 @@ export function ClassicTactics() {
           </div>
         </div>
       )}
-      <div className="cx-tac-hint">{t(pick !== null ? 'cl.tac.hintPlace' : slotSel !== null ? 'cl.tac.hintPlayer' : 'cl.tac.hint')}</div>
+      <div className="cx-tac-hint">
+        {t(pick !== null ? 'cl.tac.hintPlace' : slotSel !== null ? 'cl.tac.hintPlayer' : coarse() ? 'cl.tac.hintTouch' : 'cl.tac.hint')}
+        {slotSel !== null && tac.slots[slotSel]?.pos !== 'GK' && tac.lineup[slotSel] > 0 && (
+          <button className="cx-greybtn cx-run-btn" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setRunMenu({ slot: slotSel, x: r.left, y: r.top - 320 }); }}>➚ {t('cl.tac.run')}</button>
+        )}
+      </div>
     </div>
   );
 }
@@ -323,8 +328,18 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onR
                 onRun(i, runTarget(s, pt.x, pt.y));
               };
               window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+            }}
+            onTouchStart={(e) => {
+              // mobil: hold fingeren på spilleren og træk = løbepil; holdt uden træk = menuen med retninger
+              if (!onRun || gk || !p) return;
+              holdDrag(e, {
+                begin: (x, y) => setRdrag({ slot: i, cx: x, cy: y, ...toPitch(x, y), moved: false }),
+                move: (x, y) => setRdrag({ slot: i, cx: x, cy: y, ...toPitch(x, y), moved: true }),
+                end: (x, y, moved) => { setRdrag(null); if (!moved) { onRuns?.(i, x, y); return; } const pt = toPitch(x, y); onRun(i, runTarget(s, pt.x, pt.y)); },
+                cancel: () => setRdrag(null),
+              });
             }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(i); }}
-            draggable={!!p && club === undefined} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
+            draggable={!!p && club === undefined && !coarse()} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
             <span className="cx-tac-dot" style={gk ? { background: '#fff21f', color: '#10164e' } : col.neutral ? undefined : { background: col.bg, color: col.fg }}>{club !== undefined ? p?.number ?? i + 1 : i + 1}</span>
             <span className="cx-tac-nm">{p ? p.last : slotName(s)}</span>
           </div>

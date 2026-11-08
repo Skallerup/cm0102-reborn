@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { RUN_DIRS, RunArrows, SlotGuides, dirTarget, useRunDrag } from './runs';
+import { RUN_DIRS, RunArrows, SlotGuides, coarse, dirTarget, useRunDrag } from './runs';
 import { estimateGate } from '../../game/finance';
 import { FORMATIONS, changeFormation, slotTaken, snapSlot } from '../../game/tactics';
 import type { DropItem } from '../classic';
@@ -1404,10 +1404,14 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
   const rd = useRunDrag(pitchRef, (slot, run) => edit((t2) => { t2.individual[slot] = { ...t2.individual[slot], run: run ?? undefined }; return t2; }), (slot, x, y) => setCtx({ slot, x, y }));
   const on = lv.on.filter((s) => !s.off);
   const pl = (id: number) => g.players[id];
-  const drop = (target: number) => {
+  // valgt spiller (tryk → tryk: mobilens udgave af træk – udskift, byt eller flyt)
+  const [pick, setPick] = useState<number | null>(null);
+  const drop = (target: number, from = drag) => {
     if (!editable) return;
     // "capt" trukket over på en anden spiller på banen
     if (dragCapt) { if (on.some((x) => x.id === target)) edit((t2) => ({ ...t2, captain: target })); setDragCapt(false); return; }
+    setPick(null);
+    const drag = from;
     if (drag === null || drag === target) return;
     const a = on.some((s) => s.id === drag), b = on.some((s) => s.id === target);
     if (a && !b && lv.bench.includes(target)) onSub?.(drag, target);
@@ -1417,8 +1421,10 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
     setDrag(null);
   };
   /** en spiller trukket ud på en tom plet på banen: hans plads flyttes dertil */
-  const dropOnPitch = (e: React.DragEvent) => {
+  const dropOnPitch = (e: React.DragEvent | React.MouseEvent, from = drag) => {
     e.preventDefault();
+    const drag = from;
+    setPick(null);
     if (!editable || drag === null || !pitchRef.current) return;
     const r = pitchRef.current.getBoundingClientRect();
     const y = ((e.clientX - r.left) / r.width) * 100;
@@ -1437,7 +1443,12 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
     return { id: r.id, num: r.num, note: gone?.red ? 'off' : r.note, noteOn: r.noteOn, cond: s2 ? s2.cond : r.line ? r.cond : undefined, rating: r.line ? r.rating : undefined, goals: r.line?.goals, dim: !s2 || !!s2.injured, live: !!s2, slot: s2?.slot };
   });
   const dnd = (id: number, canDrag: boolean) => ({
-    draggable: editable && canDrag,
+    draggable: editable && canDrag && !coarse(),
+    onClick: (e: React.MouseEvent) => {
+      if (!editable || !canDrag) return;
+      e.stopPropagation();
+      if (pick === null) setPick(id); else if (pick === id) setPick(null); else drop(id, pick);
+    },
     onDragStart: (e: React.DragEvent) => { e.dataTransfer.setData('text/plain', String(id)); setTimeout(() => setDrag(id), 0); },
     onDragEnd: () => setTimeout(() => setDrag(null), 0),
     onDragOver: (e: React.DragEvent) => { if (editable) e.preventDefault(); },
@@ -1485,6 +1496,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
         </div>
       )}
       {note && <div className="cx-mt-hint" style={{ margin: '0 0 6px' }}>{note}</div>}
+      {editable && coarse() && <div className="cx-mt-hint cx-touch-hint">{t(pick !== null ? 'cl.mt.tapPicked' : 'cl.mt.tapHint')}</div>}
       <div className="cx-mt-cols">
         <div className="cx-mt-list">
           <div className="cx-mt-form">{tac.formation}</div>
@@ -1492,12 +1504,12 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
             const p = pl(r.id);
             const iv = vc && r.slot !== undefined ? instrVal(tac, r.slot, vc.k) : undefined;
             return (
-              <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${drag !== null && r.id !== drag ? 'drop' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
+              <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${(drag ?? pick) !== null && r.id !== (drag ?? pick) ? 'drop' : ''} ${pick === r.id ? 'picked' : ''}`} {...dnd(r.id, r.live || lv.bench.includes(r.id))}>
                 <td className="btn-col"><span className="cx-rowbtn narrow">{r.num ?? ''}</span></td>
                 <td className="c-name">{p ? <span className="link" onClick={(e) => { e.stopPropagation(); navP({ name: 'player', id: p.id }); }}>{`${p.first} ${p.last}`.trim()}</span> : '?'}</td>
                 <td className={`c-pos ${r.noteOn ? 'cx-on-note' : ''}`}>{r.note ?? (tac.captain === r.id && r.live ? <span className="cx-capt" draggable={editable} onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>capt</span> : '')}</td>
                 <td className="c-yel">{p ? posStr(p) : ''}</td>
-                {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={() => r.slot !== undefined && cycle(r.slot)}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
+                {vc ? <td className="c-cyan">{iv !== undefined ? (editable ? <button className="cx-opt on cx-ti-btn" onClick={(e) => { e.stopPropagation(); if (r.slot !== undefined) cycle(r.slot); }}>{instrLabel(vc.k, iv, vc.n)}</button> : instrLabel(vc.k, iv, vc.n)) : ''}</td> : <>
                   <td className={`c-num ${(r.cond ?? 100) >= 85 ? 'c-good' : 'c-yel'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
                   <td className="c-num c-cyan">{r.rating !== undefined ? Math.round(r.rating) : ''}</td>
                   <td className="c-num">{r.goals ? r.goals : ''}</td></>}
@@ -1507,14 +1519,15 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
         </div>
         <div className="cx-mt-pcol">
         <div className="cx-mt-ptabs">{(['ov', 'with', 'without'] as const).map((k) => <button key={k} className={pv === k ? 'on' : ''} onClick={() => setPv(k)}>{t(`cl.mt.pv.${k}`)}</button>)}</div>
-        <div className="cx-tac-pitch" ref={pitchRef} onDragOver={(e) => { if (editable && drag !== null) e.preventDefault(); }} onDrop={dropOnPitch}>
+        <div className="cx-tac-pitch" ref={pitchRef} onDragOver={(e) => { if (editable && drag !== null) e.preventDefault(); }} onDrop={(e) => dropOnPitch(e)}
+          onClick={(e) => { if (pick !== null && on.some((x) => x.id === pick) && (e.target === e.currentTarget || (e.target as Element).closest('svg'))) { e.stopPropagation(); dropOnPitch(e, pick); } }}>
           <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
             <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
               <rect x="1" y="1" width="66" height="98" /><line x1="1" y1="50" x2="67" y2="50" /><circle cx="34" cy="50" r="9" />
               <rect x="14" y="1" width="40" height="16" /><rect x="14" y="83" width="40" height="16" /><rect x="25" y="1" width="18" height="6" /><rect x="25" y="93" width="18" height="6" />
             </g>
           </svg>
-          {(() => { const self = drag !== null ? tac.lineup.indexOf(drag) : -1; return <SlotGuides pitch={pitchRef} active={!!editable && !dragCapt && self >= 0 && tac.slots[self]?.pos !== 'GK'} slots={tac.slots} self={self} />; })()}
+          {(() => { const d = drag ?? pick; const self = d !== null ? tac.lineup.indexOf(d) : -1; return <SlotGuides pitch={pitchRef} active={!!editable && !dragCapt && self >= 0 && tac.slots[self]?.pos !== 'GK'} slots={tac.slots} self={self} />; })()}
           <RunArrows items={on.map((s) => { const i = tac.lineup.indexOf(s.id) >= 0 ? tac.lineup.indexOf(s.id) : s.slot; const sl = tac.slots[i]; return sl ? { key: s.id, s: sl, run: rd.shown(i, sl, tac.individual[i]?.run) } : { key: s.id, s: tac.slots[0], run: null }; })} />
           {on.map((s) => {
             const sl = tac.slots[tac.lineup.indexOf(s.id)] ?? tac.slots[s.slot];
@@ -1524,9 +1537,10 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
             const gk = sl.pos === 'GK';
             const runs = instrVal(tac, slot, 'runs');
             return (
-              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
+              <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''} ${pick === s.id ? 'on' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
                 onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); }}
-                onPointerDown={(e) => { if (editable && !gk) rd.start(e, slot, sl); }}>
+                onPointerDown={(e) => { if (editable && !gk) rd.start(e, slot, sl); }}
+                onTouchStart={(e) => { if (editable && !gk) rd.touch(e, slot, sl); }}>
                 {pv === 'with' && !gk && runs > 0 && <span className="cx-run-arrow">{runs === 2 ? '▲' : '△'}</span>}
                 {pv === 'without' && !gk && tac.individual[slot]?.tightMarking && <span className="cx-run-arrow">M</span>}
                 <span className={`cx-tac-dot cx-mt-dot ${gk ? 'gk' : ''}`}>{s.num ?? ''}</span>
@@ -1538,7 +1552,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
         </div>
       </div>
       {ctx && (
-        <div className="cx-drop-pop cx-ctx" style={{ position: 'fixed', left: ctx.x, top: ctx.y }} onClick={(e) => e.stopPropagation()}>
+        <div className="cx-drop-pop cx-ctx" style={{ position: 'fixed', left: Math.max(4, Math.min(ctx.x, window.innerWidth - 230)), top: Math.max(4, Math.min(ctx.y, window.innerHeight - 330)) }} onClick={(e) => e.stopPropagation()}>
           <div className="cx-menu-head">{t('cl.tac.run')}</div>
           {RUN_DIRS.map(([k, fx, fy]) => {
             const target = dirTarget(tac.slots[ctx.slot], fx, fy);

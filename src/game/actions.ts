@@ -10,7 +10,7 @@ import { cancelCamp, planCamp, type CampDest } from './camp';
 import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, faRequest, meetBoard, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
-import { activateNation, playPendingAsAi, submitMatchResult } from './sim';
+import { activateNation, addableNations, playPendingAsAi, submitMatchResult } from './sim';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff, raiseStaff } from './staff';
 import { interact, talkToPlayer, teamTalk, type DisciplineReason, type TalkKind } from './personality';
@@ -101,6 +101,7 @@ export type Action =
   | { t: 'resign' }
   | { t: 'fixPending' }
   | { t: 'setWindows'; mode: 'real' | 'classic' }
+  | { t: 'addNation'; nation: number }
   | { t: 'setH2hTime'; minutes: number }
   | { t: 'raiseBid'; offer: number; amount: number }
   | { t: 'bidNow'; offer: number }
@@ -266,6 +267,11 @@ export function applyAction(a: Action): unknown {
     case 'rebid': return rebid(a.offer, a.fee, a.sellOn !== undefined || a.addOn !== undefined ? { sellOn: a.sellOn, addOn: a.addOn } : undefined);
     case 'raiseStaff': return raiseStaff(a.staff, a.wage);
     case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
+    // flere spilbare ligaer undervejs (kun eget spil – i fællesspil skulle alle være enige)
+    case 'addNation':
+      if (g.humans?.length || g.draft || !addableNations().includes(a.nation)) return 'error';
+      activateNation(a.nation);
+      return 'ok';
     case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(1, Math.round(a.minutes))); return 'ok';
     case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs

@@ -706,9 +706,12 @@ button.continue.nudge { animation: nudge 0.9s ease-in-out infinite, nudgeColor 0
 .pitch .run-arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
 .pitch.editing .slot:not(.empty) .shirt, .pitch.editing .slot .shirt { cursor: grab; box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.5); }
 .pitch.editing .slot.moving { z-index: 5; }
+/* mobil: flyt positioner uden at siden ruller; langt tryk (menuen) uden tekstmarkering */
+.pitch.editing { touch-action: none; }
+.pitch .slot { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .pitch.editing .slot.moving .shirt { cursor: grabbing; transform: scale(1.12); box-shadow: 0 0 0 3px #fff, 0 6px 16px rgba(0, 0, 0, 0.4); }
 .pitch .slot { touch-action: none; }
-.ctx-menu { position: fixed; z-index: 90; width: 330px; background: var(--surface); color: var(--text); border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 18px 50px -10px rgba(0, 0, 0, 0.5); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.ctx-menu { position: fixed; z-index: 90; width: 330px; max-width: calc(100vw - 8px); max-height: calc(100vh - 8px); overflow-y: auto; background: var(--surface); color: var(--text); border: 1px solid var(--line2); border-radius: 12px; box-shadow: 0 18px 50px -10px rgba(0, 0, 0, 0.5); padding: 10px; display: flex; flex-direction: column; gap: 8px; }
 .ctx-title { font-weight: 800; font-size: 13px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
 .ctx-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; font-size: 12px; }
 .ctx-row > span { width: 64px; color: var(--muted); }
@@ -1342,6 +1345,18 @@ button.hub-card:hover, .hub-card.on { border-color: var(--accent); }
 .lm-code { font-size: 11px; font-weight: 700; opacity: .55; letter-spacing: .04em; }
 /* udseende-valget ved nyt spil: et billede af hvert tema */
 .db-opt .look-shot { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; object-position: top left; border-radius: 9px; margin-bottom: 6px; border: 1px solid var(--line2); background: var(--surface); }
+.db-opt[role=button] { cursor: pointer; }
+.shot-prev { width: 100%; margin-bottom: 6px; }
+.shot-main { position: relative; display: block; width: 100%; }
+.shot-main .look-shot { margin-bottom: 0; display: block; }
+.shot-zoom { position: absolute; right: 6px; bottom: 6px; width: 40px; height: 40px; min-height: 0; padding: 0; display: grid; place-items: center; border-radius: 10px; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 18px; border: 1px solid rgba(255, 255, 255, 0.3); box-shadow: none; cursor: zoom-in; }
+.shot-tabs { display: flex; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
+.shot-tabs button { padding: 4px 10px; min-height: 30px; font-size: 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line2); color: var(--muted); box-shadow: none; }
+.shot-tabs button.on { color: var(--text); border-color: var(--accent); }
+.shot-box { position: fixed; inset: 0; z-index: 200; background: rgba(0, 0, 0, 0.88); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; cursor: zoom-out; }
+.shot-box img { max-width: 100%; max-height: calc(100vh - 90px); object-fit: contain; border-radius: 10px; cursor: pointer; }
+.shot-box-bar { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 14px; cursor: default; }
+.shot-box-bar button { min-width: 44px; min-height: 44px; border-radius: 999px; background: rgba(255, 255, 255, 0.14); color: #fff; border: 0; font-size: 18px; box-shadow: none; }
 .look-note { margin-top: 10px; padding: 8px 12px; border-radius: 10px; font-size: 13px; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
 
 /* konto og gemte spil i skyen */

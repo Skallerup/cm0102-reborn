@@ -184,6 +184,19 @@
   .cx-nrow { grid-template-columns: 96px 1fr; }
   .cx-nbody { font-size: 15px; }
 }
+/* mobil: sidebjælken brydes over i flere linjer i stedet for at løbe ud over kanten (alle knapper kan ses og nås) */
+@media (max-width: 760px) {
+  .shell.cx .cx-side { flex-wrap: wrap; overflow: visible; align-items: stretch; }
+  .cx-side > .cx-sbtn, .cx-side > .cx-drop, .cx-side > .cx-gameopt { flex: 1 1 auto; }
+  .cx-side .cx-sbtn { min-height: 36px; font-size: 13px; }
+  .cx-continue { position: static; box-shadow: none; flex: 1 1 40% !important; }
+  .shell.cx .cx-side .cx-side-comp { display: none; }
+  .cx-side .cx-minute { min-width: 52px; }
+  .cm-board.cx-board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); position: static; background: none; }
+  .cm-board.cx-board .cm-team { grid-column: auto; grid-row: auto; padding-left: 8px; gap: 6px; min-width: 0; }
+  .cm-board.cx-board .cm-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; gap: 6px; }
+  .cm-board.cx-board .cm-name .crest { width: 24px !important; height: 24px !important; flex: none; }
+}
 
 /* ---------- popups (dialoger): titelstrimmel, dialogflade med trykt kant, grå Annullér/OK-bjælker ---------- */
 :root[data-skin='retro'] .modal-bg { background: rgba(0, 0, 0, 0.55); backdrop-filter: none; }
@@ -810,9 +823,13 @@
 .cx-mt .cx-tbl tr.dim td:not(.btn-col) { color: #8d92a6 !important; }
 .cx-mt .cx-tbl tr[draggable='true'] { cursor: grab; }
 .cx-mt .cx-tbl tr.drop td:not(.btn-col) { background: rgba(255, 242, 31, 0.08); }
+.cx-mt .cx-tbl tr.picked td:not(.btn-col) { background: #830000; }
+.cx-touch-hint { font-size: 12px; margin: 0 0 6px; }
+/* mobil: langt tryk på en spiller tegner en løbepil – ingen tekstmarkering eller iOS-menu */
+.cx-tac-slot, .tactics-pitch .slot { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .cx-mt .c-good { color: #5ee08f; }
 .cx-mt-ti { max-width: 520px; margin-bottom: 8px; }
-@media (max-width: 760px) { .cx-mt-cols { grid-template-columns: 1fr; } }
+@media (max-width: 760px) { .cx-mt-cols { grid-template-columns: 1fr; } .cx-mt-list { overflow-x: auto; } }
 .cx-mt .cx-tac-pitch { width: auto; height: calc(100vh - 290px); min-height: 360px; max-height: none; margin: 0 auto; }
 @media (max-width: 760px) { .cx-mt .cx-tac-pitch { width: 100%; height: auto; } }
 /* kampskærmens faner (CM 01/02) */
@@ -1236,6 +1253,8 @@
 .cx-sl-row { display: grid; grid-template-columns: 1fr 200px 1fr; align-items: center; min-height: 26px; color: #9a9ca6; font-size: 15px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); padding: 0 8px; }
 .cx-sl-row.lg-sel { color: #fff; } .cx-sl-row.lg-own { color: #fff21f; } .cx-sl-row .st { font-size: 11px; text-align: center; } .cx-sl-row .lw { font-size: 12px; color: #9a9ca6; }
 .cx-sl-row.lg-sel .st { color: #fff21f; }
+.cx-sl-row .cx-sl-add { font: inherit; font-size: 12px; padding: 1px 10px; min-height: 22px; border-radius: 0; background: #838183; color: #000; border: 2px outset #c0c0c0; cursor: pointer; }
+@media (max-width: 760px) { .cx-sl-row { grid-template-columns: 1fr 86px auto; font-size: 13px; min-height: 36px; } .cx-sl-row .cx-sl-add { min-height: 30px; } }
 @media (min-width: 761px) { .cx-hof { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-hof .cx-tbl td { font-weight: 400; } }
 .cx-hof tr.me td { color: #fff21f; } .cx-hof-me { margin: 6px 12px; color: #fff21f; }
 .cx-hof-fb .cx-head > .cx-title { display: none; }

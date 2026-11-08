@@ -1,12 +1,16 @@
 // Game Options-skærmene fra CM 01/02: Manager Status (managerne i spillet, klub og status) og Selected League(s) (landene,
 // spillet simulerer – "Selected" – og resten i baggrunden), med Use Real Players og Attribute Masking øverst.
 import { useEffect, useState, type ReactNode } from 'react';
+import { act } from '../../game/actions';
+import { addableNations } from '../../game/sim';
+import { askConfirm } from '../confirm';
 import type { GameState } from '../../game/types';
 import { fetchBoard, type Board, type RankRow } from '../../online/rank';
 import { ordinal } from './Competitions';
 import { compName, natName, t } from '../../i18n';
 import { CxDrop, CxLink, clubRoute } from '../classic';
 import { useGame } from '../core';
+import { gs } from '../../game/state';
 import { Head } from './common';
 
 export function ClassicManagerStatus() {
@@ -32,6 +36,7 @@ export function ClassicSelectedLeagues() {
   const nations = [...new Set(Object.values(g.leagues).filter((l) => !l.hidden).map((l) => l.nation))].filter((n) => g.nations[n])
     .sort((a, b) => natName(g.nations[a]?.name).localeCompare(natName(g.nations[b]?.name)));
   const own = g.clubs[g.userClub]?.nation;
+  const addable = new Set(g.humans?.length || g.draft ? [] : addableNations());
   const yes = (on: boolean) => <span className={`cx-opt ${on ? 'on' : ''}`}>{t(on ? 'common.yes' : 'common.no')}</span>;
   return (
     <div>
@@ -43,12 +48,22 @@ export function ClassicSelectedLeagues() {
         const lowest = Object.entries(g.leagues).filter(([id, l]) => l.nation === n && !l.hidden && g.comps[id]).sort((a, b) => b[1].tier - a[1].tier)[0];
         return (
           <div key={n} className={`cx-sl-row ${n === own ? 'lg-own' : ''} ${sel ? 'lg-sel' : ''}`}>
-            <span>{natName(g.nations[n]?.name)}</span><span className="st">{t(sel ? 'cl.sl.selected' : 'cl.sl.background')}</span><span className="lw">{sel && lowest ? compName(lowest[1].name) : ''}</span>
+            <span>{natName(g.nations[n]?.name)}</span><span className="st">{t(sel ? 'cl.sl.selected' : 'cl.sl.background')}</span><span className="lw">{sel && lowest ? compName(lowest[1].name) : addable.has(n) ? <button className="cx-sl-add" onClick={() => void addNation(n)}>{t('lg.add')}</button> : ''}</span>
           </div>
         );
       })}</div>
     </div>
   );
+}
+
+/** Gør et baggrundsland spilbart midt i et spil (bekræftes – kan ikke fortrydes) */
+export async function addNation(n: number) {
+  const g = gs();
+  const name = natName(g.nations[n]?.name);
+  if (!(await askConfirm(t('lg.addQ', { nation: name }), { ok: t('lg.add') }))) return;
+  // ligaerne startes og de kampe, der allerede skulle være spillet, simuleres – kan tage et øjeblik
+  await new Promise((r) => setTimeout(r, 30));
+  act({ t: 'addNation', nation: n });
 }
 
 /** Hall of Fame (CM 01/02): managerne i rækkefølge med klub og point (lilla). Vores udgave er fællesskabets rangliste; uden net

@@ -1,5 +1,5 @@
-import { LookPicker } from './LookPicker';
-import { isRetro } from './theme';
+import { LookPicker, ShotPreview, initialLook } from './LookPicker';
+import { setTheme } from './theme';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
 import { useEffect, useMemo, useState } from 'react';
@@ -195,7 +195,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   });
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
   const [mine, setMine] = useState<CustomDb[]>([]);
-  const [mode, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'authentic' ? 'authentic' : 'extended'; } catch { return 'extended'; } });
+  const [mode, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'extended' ? 'extended' : 'authentic'; } catch { return 'authentic'; } });
   const setModeState = (m: 'authentic' | 'extended') => { setModeRaw(m); try { localStorage.setItem('cm0102.mode', m); } catch { /* ignorer */ } };
   useEffect(() => { if (!ch) void listDbs().then(setMine); }, [ch]);
   const customId = db.startsWith('custom:') ? db.slice(7) : '';
@@ -250,19 +250,24 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
       </div>
     </Panel>
   );
-  const [retro, setRetro] = useState(isRetro());
-  const lookPicker = <LookPicker onPick={(l) => setRetro(l === 'classic')} />;
+  // standard: klassisk udseende + ægte CM 01/02 (isRetro() kræver et kørende spil – derfor temaet direkte)
+  const [look, setLook] = useState<'modern' | 'classic'>(initialLook);
+  const retro = look === 'classic';
+  const lookPicker = <LookPicker value={look} onPick={setLook} />;
   // spiltilstand: ægte CM 01/02 (kun originalens funktioner) eller udvidet (alt det ekstra) – uafhængigt af databasen
   // Ægte CM 01/02 findes kun i det klassiske tema (vises altid, men er grå med det moderne udseende)
   const modePicker = !ch && (
     <Panel title={t('mode.title')}>
       <div className="db-choice">
-        <button className={`db-opt ${retro && mode === 'authentic' ? 'on' : ''}`} disabled={!retro} onClick={() => setModeState('authentic')}>
-          <b>{t('mode.authentic')}</b><span>{t(retro ? 'mode.authenticHint' : 'mode.authenticClassicOnly')}</span>
-        </button>
-        <button className={`db-opt ${!retro || mode === 'extended' ? 'on' : ''}`} onClick={() => setModeState('extended')}>
+        {/* ægte CM 01/02 kræver det klassiske udseende – valget skifter udseendet med */}
+        <div role="button" tabIndex={0} className={`db-opt ${retro && mode === 'authentic' ? 'on' : ''}`} onClick={() => { setModeState('authentic'); if (!retro) { setTheme('retro'); setLook('classic'); } }}>
+          <ShotPreview names={['classic-player', 'classic-table', 'classic-squad']} labels={[t('start.prevPlayer'), t('start.prevTable'), t('nav.squad')]} />
+          <b>{t('mode.authentic')}</b><span>{t('mode.authenticHint')}</span>
+        </div>
+        <div role="button" tabIndex={0} className={`db-opt ${!retro || mode === 'extended' ? 'on' : ''}`} onClick={() => setModeState('extended')}>
+          <ShotPreview names={['press', 'match-stats', 'report']} labels={[t('start.prevPress'), t('start.prevXg'), t('start.prevReport')]} />
           <b>{t('mode.extended')}</b><span>{t('mode.extendedHint')}</span>
-        </button>
+        </div>
       </div>
     </Panel>
   );

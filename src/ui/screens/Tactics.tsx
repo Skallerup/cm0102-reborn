@@ -13,6 +13,7 @@ import { useGame } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { ClassicTactics } from './TacticsClassic';
+import { coarse } from './runs';
 
 export function Tactics() {
   const g = useGame()!;
@@ -196,7 +197,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
           </select>
           <button className="small" disabled={!hist.length} onClick={undo} title={t('tac.undoHint')}>↶ {t('tac.undo')}{hist.length ? ` (${hist.length})` : ''}</button>
           {!gs().draft && <button className={`small ${editPos ? 'primary' : ''}`} onClick={() => { setEditPos(!editPos); setSel(null); }} title={t('tac.movePosHint')}>✥ {t(editPos ? 'tac.movePosDone' : 'tac.movePos')}</button>}
-          <span className="muted">{t(editPos ? 'tac.movePosHint' : 'tac.hint2')}</span>
+          <span className="muted">{t(editPos ? 'tac.movePosHint' : coarse() ? 'tac.hint2Touch' : 'tac.hint2')}</span>
         </div>
         <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef}
           onDragOver={(e) => { if (drag !== null && tactic.lineup.includes(drag)) e.preventDefault(); }}
@@ -248,7 +249,12 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             return (
               <div key={i} className={`slot ${sel === i ? 'picked' : ''} ${p ? '' : 'empty'} ${drag !== null ? 'drop' : ''} ${moving?.i === i ? 'moving' : ''}`}
                 style={{ left: `${slotLeft(s)}%`, top: `${slotTop(s)}%` }}
-                onClick={() => { if (!editPos) setSel(sel === i ? null : i); }}
+                onClick={() => {
+                  if (editPos) return;
+                  // tryk på en spiller og så en anden på banen: de bytter plads (mobilens udgave af træk)
+                  if (sel !== null && sel !== i && tactic.lineup[sel] && !menu) { assign(i, tactic.lineup[sel]); setSel(null); return; }
+                  setSel(sel === i ? null : i);
+                }}
                 onContextMenu={(e) => { if (!p || s.pos === 'GK' && false) return; e.preventDefault(); setSel(i); setMenu({ i, left: e.clientX, top: e.clientY }); }}
                 onPointerDown={(e) => {
                   if (editPos && s.pos !== 'GK') { e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); setMoving({ i, x: s.x, y: s.y }); return; }
@@ -256,9 +262,10 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                   if (e.pointerType === 'touch' && p) { const { clientX, clientY } = e; press.current = setTimeout(() => { setSel(i); setMenu({ i, left: clientX, top: clientY }); }, 550); }
                 }}
                 onPointerUp={() => { if (press.current) { clearTimeout(press.current); press.current = null; } }}
+                onPointerCancel={() => { if (press.current) { clearTimeout(press.current); press.current = null; } }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.stopPropagation(); if (drag !== null) assign(i, drag); setDrag(null); }}
-                draggable={!!p && !editPos}
+                draggable={!!p && !editPos && !coarse()}
                 onDragStart={(e) => {
                   if (!p) return;
                   setDrag(p.id);
@@ -291,7 +298,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             <button className={`ctx-toggle ${ins[k] ? 'on' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { [k]: !ins[k] } as Partial<PlayerInstructions>); }}>{ins[k] ? '✓' : '○'} {label}</button>
           );
           return (
-            <div className="ctx-menu" style={{ left: Math.min(menu.left, window.innerWidth - 340), top: Math.min(menu.top, window.innerHeight - 300) }} onClick={(e) => e.stopPropagation()}>
+            <div className="ctx-menu" style={{ left: Math.max(4, Math.min(menu.left, window.innerWidth - 340)), top: Math.max(4, Math.min(menu.top, window.innerHeight - 300)) }} onClick={(e) => e.stopPropagation()}>
               <div className="ctx-title">{p.last} · {sl.pos}{sl.side !== 'C' ? ' ' + sl.side : ''}</div>
               <div className="ctx-row role">
                 {([[0, '⬇', 'tac.roleDef'], [1, '●', 'tac.roleBal'], [2, '⬆', 'tac.roleAtt']] as const).map(([v, ic, k]) => (

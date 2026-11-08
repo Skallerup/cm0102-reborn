@@ -9,6 +9,32 @@ type Pt = { x: number; y: number };
 const left = (s: Pt) => s.y;
 const top = (s: Pt) => 97 - s.x * 0.92;
 
+/** Touchskærm (ingen mus): HTML5-træk slås fra, så et langt tryk kan tegne løbepile i stedet */
+export const coarse = () => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+
+/**
+ * Mobilens højreklik-og-træk: hold fingeren på en spiller (~0,4 s), og træk så. Før tiden er gået, ruller siden som normalt
+ * (et træk over 8 px afbryder); bagefter holdes siden stille, og `end` får slutpunktet (moved = false: holdt uden at trække).
+ */
+export function holdDrag(e: React.TouchEvent, cb: { begin: (x: number, y: number) => void; move: (x: number, y: number) => void; end: (x: number, y: number, moved: boolean) => void; cancel?: () => void }) {
+  if (e.touches.length !== 1) return;
+  const sx = e.touches[0].clientX, sy = e.touches[0].clientY;
+  let lx = sx, ly = sy, active = false, moved = false;
+  const timer = setTimeout(() => { active = true; try { navigator.vibrate?.(12); } catch { /* ignorer */ } cb.begin(sx, sy); }, 380);
+  const cleanup = () => { clearTimeout(timer); window.removeEventListener('touchmove', tm); window.removeEventListener('touchend', te); window.removeEventListener('touchcancel', tc); };
+  const tm = (ev: TouchEvent) => {
+    lx = ev.touches[0].clientX; ly = ev.touches[0].clientY;
+    if (!active) { if (Math.hypot(lx - sx, ly - sy) > 8) cleanup(); return; }
+    ev.preventDefault();
+    if (Math.hypot(lx - sx, ly - sy) > 6) moved = true;
+    cb.move(lx, ly);
+  };
+  // preventDefault på touchend: intet klik bagefter (ellers vælges spilleren/lukkes menuen)
+  const te = (ev: TouchEvent) => { const was = active; cleanup(); if (was) { ev.preventDefault(); cb.end(lx, ly, moved); } };
+  const tc = () => { const was = active; cleanup(); if (was) cb.cancel?.(); };
+  window.addEventListener('touchmove', tm, { passive: false }); window.addEventListener('touchend', te, { passive: false }); window.addEventListener('touchcancel', tc);
+}
+
 export function useRunDrag(pitch: React.RefObject<HTMLDivElement | null>, onRun: (slot: number, run: Pt | null) => void, onMenu: (slot: number, x: number, y: number) => void) {
   const [live, setLive] = useState<{ slot: number; s: Slot; x: number; y: number } | null>(null);
   const moved = useRef(false);
@@ -38,9 +64,19 @@ export function useRunDrag(pitch: React.RefObject<HTMLDivElement | null>, onRun:
     };
     window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
   };
+  /** onTouchStart på en spiller: langt tryk + træk = pil, langt tryk uden træk = menuen */
+  const touch = (e: React.TouchEvent, slot: number, s: Slot) => {
+    if (!pitch.current) return;
+    holdDrag(e, {
+      begin: (x, y) => setLive({ slot, s, ...toPitch(x, y) }),
+      move: (x, y) => setLive({ slot, s, ...toPitch(x, y) }),
+      end: (x, y, mv) => { setLive(null); if (!mv) { onMenu(slot, x, y); return; } const pt = toPitch(x, y); onRun(slot, runTarget(s, pt.x, pt.y)); },
+      cancel: () => setLive(null),
+    });
+  };
   /** pilen der vises lige nu for en plads (under træk: forhåndsvisningen) */
   const shown = (slot: number, s: Slot, run: Pt | undefined): Pt | null | undefined => (live?.slot === slot ? runTarget(s, live.x, live.y) : run);
-  return { start, shown, dragging: live !== null };
+  return { start, touch, shown, dragging: live !== null };
 }
 
 /** Pilene som stiplede linjer med pilespids, fra cirklens kant til lidt før punktet (som originalen) */

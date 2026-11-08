@@ -526,6 +526,19 @@ export function activateNation(nation: number) {
   }
 }
 
+/** Lande, der kan gøres spilbare midt i et spil (Game Options → Selected Leagues): mindst én synlig liga med 4+ klubber */
+export function addableNations(): number[] {
+  const g = gs();
+  const count = new Map<string, number>();
+  for (const c of Object.values(g.clubs)) count.set(c.league, (count.get(c.league) ?? 0) + 1);
+  const out = new Set<number>();
+  for (const [id, m] of Object.entries(g.leagues)) {
+    if (m.hidden || g.activeNations.includes(m.nation) || (count.get(id) ?? 0) < 4) continue;
+    out.add(m.nation);
+  }
+  return [...out];
+}
+
 /** Ligger en menneskelig managers klub i en liga uden turnering? Så startes landets ligaer */
 function ensureHumanLeagues() {
   const g = gs();

@@ -6,7 +6,7 @@ import { notify } from '../../game/state';
 import { act } from '../../game/actions';
 import { session } from '../../online/client';
 import type { Lang } from '../../game/types';
-import { LANGS, CURRENCIES, getCurrency, getLang, setCurrency, setLang, t, type Currency } from '../../i18n';
+import { LANGS, CURRENCIES, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../../i18n';
 import { Panel } from '../components';
 import { useGame } from '../core';
 import { Head } from './common';
@@ -14,6 +14,8 @@ import { getTheme, setTheme, type Theme } from '../theme';
 import { notifyEnabled, notifySupported, setNotify } from '../notify';
 import { modernBackgrounds, setModernBackgrounds, setStadiumBackgrounds, stadiumBackgrounds } from '../classicOptions';
 import { matchSound, setMatchSound } from '../matchSound';
+import { addableNations } from '../../game/sim';
+import { addNation } from './GameOptionsClassic';
 
 export function Options() {
   const g = useGame()!;
@@ -97,6 +99,7 @@ export function Options() {
             </label>
           </div>
         </Panel>
+        {!g.draft && <PlayableNations />}
         <Panel title={t('opt.saves')}>
           <div className="col">
             <button onClick={async () => { await saveGame({ cloud: true }); setMsg(t('top.saved')); }}>{t('nav.save')}</button>
@@ -114,5 +117,32 @@ export function Options() {
         </Panel>
       </div>
     </div>
+  );
+}
+
+/** Spilbare lande – flere kan tilføjes undervejs (kun eget spil) */
+function PlayableNations() {
+  const g = useGame()!;
+  const [pick, setPick] = useState(-1);
+  const mp = !!g.humans?.length;
+  const name = (n: number) => natName(g.nations[n]?.name);
+  const addable = mp ? [] : addableNations().sort((a, b) => name(a).localeCompare(name(b)));
+  const active = g.activeNations.slice().sort((a, b) => name(a).localeCompare(name(b)));
+  return (
+    <Panel title={t('lg.title')}>
+      <div className="col">
+        <div className="tags">{active.map((n) => <span key={n} className="tag">{name(n)}</span>)}</div>
+        <div className="muted">{t(mp ? 'lg.mpOff' : 'lg.hint')}</div>
+        {!mp && addable.length > 0 && (
+          <label className="row">
+            <select value={pick} onChange={(e) => setPick(Number(e.target.value))}>
+              <option value={-1}>{t('lg.pick')}</option>
+              {addable.map((n) => <option key={n} value={n}>{name(n)}</option>)}
+            </select>
+            <button disabled={pick < 0} onClick={async () => { await addNation(pick); setPick(-1); }}>{t('lg.add')}</button>
+          </label>
+        )}
+      </div>
+    </Panel>
   );
 }
