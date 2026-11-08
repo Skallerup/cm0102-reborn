@@ -555,7 +555,7 @@ async function editor() {
     if (!(await page.evaluate(() => window.__cmPick(window.__cmClubId('Millwall'))))) throw new Error('Millwall findes ikke');
     await page.getByRole('button', { name: await t('start.begin') }).click();
     await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
-    const p = await page.evaluate(() => Object.values(window.__cm.gs().players).find((x) => x.last === 'Tsigalko' && x.dob.startsWith('1983') && x.pos[0] < 15));
+    const p = await page.evaluate(() => Object.values(window.__cm.gs().players).find((x) => x.last === 'Tsigalko' && x.pos[0] < 15));
     if (p?.first !== 'Maksim') throw new Error(`navnet slog ikke igennem: ${p?.first}`);
     if (!(p.pa >= 150)) throw new Error(`PA -2 slog ikke igennem: ${p.pa}`);
   });

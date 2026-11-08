@@ -183,17 +183,19 @@ async function repairStadiums(): Promise<void> {
     const r = await fetch(`${import.meta.env.BASE_URL}data/${file}`);
     if (!r.ok) return;
     const w = (await r.json()) as { clubs: [number, string, string, number, string, string, number, string][] };
-    const seats = new Map(w.clubs.map((c) => [c[0], c[6]]));
-    const names = new Map(w.clubs.map((c) => [c[0], c[5]]));
+    // kun klubber med samme navn (id'erne er skiftet, da den originale database blev 3.9.60 i stedet for 3.9.68)
+    const same = new Set(w.clubs.filter((c) => g.clubs[c[0]]?.name === c[1]).map((c) => c[0]));
+    const seats = new Map(w.clubs.filter((c) => same.has(c[0])).map((c) => [c[0], c[6]]));
+    const names = new Map(w.clubs.filter((c) => same.has(c[0])).map((c) => [c[0], c[5]]));
     let fixed = 0;
     if (capped.length >= clubs.length / 2) for (const c of capped) { const s = seats.get(c.id); if (s && s !== 120_000) { c.seats = s; fixed++; } }
     for (const c of generic) { const n = names.get(c.id); if (n) { c.stadium = n; fixed++; } }
     const pw = w as unknown as { playerFields: string[]; players: (string | number)[][] };
-    const ni = pw.playerFields?.indexOf('number') ?? -1, ci = pw.playerFields?.indexOf('club') ?? -1;
+    const ni = pw.playerFields?.indexOf('number') ?? -1, ci = pw.playerFields?.indexOf('club') ?? -1, li = pw.playerFields?.indexOf('last') ?? -1;
     if (noNumbers && ni >= 0) {
       for (const r of pw.players) {
         const p = g.players[r[0] as number];
-        if (p && p.club && p.club === r[ci] && (r[ni] as number) > 0) { p.number = r[ni] as number; fixed++; }
+        if (p && p.club && p.club === r[ci] && same.has(p.club) && p.last === r[li] && (r[ni] as number) > 0) { p.number = r[ni] as number; fixed++; }
       }
     }
     if (fixed) notify();

@@ -12,7 +12,7 @@ const find = (first: string, last: string) => w.players.find((p) => p[F.first] =
 
 describe('kultspillere i den originale database', () => {
   it.each([
-    ['Maxim', 'Tsigalko', 'Dinamo Minsk'], ['Julius', 'Agahowa', 'Shakhtar Donetsk'], ['Mark', 'Kerr', 'Falkirk'],
+    ['Maxim', 'Tsigalko', 'Dinamo Minsk'], ['Julius', 'Aghahowa', 'Shakhtar Donetsk'], ['Mark', 'Kerr', 'Ballymena United'],
     ['Cherno', 'Samba', 'Millwall'], ['Kennedy', 'Bakircioglü', 'Hammarby IF'], ['Michael', 'Dunwell', 'Bishop Auckland'],
     ['Bobby', 'Zamora', 'Brighton & Hove Albion'],
     ['', 'Tó Madeira', 'Clube Desportivo de Gouveia'], ['', 'João Paiva', 'Sporting Clube de Portugal B'], ['Sergey', 'Nikiforenko', 'Shakhter Soligorsk'],

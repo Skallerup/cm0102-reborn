@@ -19,7 +19,7 @@ import { trialsDaily } from './trials';
 import { friendliesDaily } from './friendlies';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
-import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
+import { gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
@@ -437,6 +437,7 @@ function newDay() {
     weeklyWages();
   }
   if (day(d) === 1) {
+    snapshotFinanceMonth();
     monthlyIncome();
     monthlyValues();
     monthlyDevelopment();
@@ -459,7 +460,8 @@ function newDay() {
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
-  if (month(d) === 1 && day(d) === 1) januaryBudgetTopUp();
+  // januar-tillægget til transferbudgettet er en moderne funktion (ikke i ægte CM 01/02)
+  if (month(d) === 1 && day(d) === 1 && extended()) januaryBudgetTopUp();
   if (month(d) === 2 && day(d) === 1) youthPreview();
   if (month(d) === 3 && day(d) === 15) youthIntake();
   // AI-trupper fyldes op i sommer- og vinterpausen

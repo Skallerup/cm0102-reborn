@@ -601,7 +601,7 @@ export function seasonRollover() {
   setupSeasonComps(g.season, prevTables, cupWinners);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
   forEachHuman(() => {
-    if (g.userClub) { setBoardExpectation(); addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
+    if (g.userClub) { setBoardExpectation(); if (extended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
     startScoreSeason();
     initKnowledgeKeep();
     const result = challengeResults.get(g.active);

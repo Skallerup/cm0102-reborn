@@ -14,12 +14,12 @@ const start = (file: string) => {
 };
 
 describe('prisniveau', () => {
-  it('original database: Zidane koster omkring £30 mio. (originalens database: £30 mio.)', () => {
+  it('original database: Zidane koster omkring £18 mio. (målt i originalens Player Search, 3.9.60)', () => {
     const g = start('world-original.json');
     const zid = Object.values(g.players).find((p) => p.last === 'Zidane')!;
     const gbp = zid.value * 0.86;
-    expect(gbp).toBeGreaterThan(20e6);
-    expect(gbp).toBeLessThan(45e6);
+    expect(gbp).toBeGreaterThan(9e6);
+    expect(gbp).toBeLessThan(30e6);
     expect(g.econ).toBeDefined();
     expect(econ()).toBeGreaterThan(0.2);
     expect(econ()).toBeLessThan(0.9);

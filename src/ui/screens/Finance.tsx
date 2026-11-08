@@ -1,9 +1,13 @@
 import { act } from '../../game/actions';
 import { Info } from '../help';
-import { currentWageBill, estimateGate, fairTicketPrice, nextBudgetInfo, seasonForecast, sponsorOffers, sponsorSeasonValue } from '../../game/finance';
+import { currentWageBill, estimateGate, fairTicketPrice, financePeriod, nextBudgetInfo, seasonForecast, sponsorOffers, sponsorSeasonValue } from '../../game/finance';
+import type { Club, ClubFinance } from '../../game/types';
+import { squad } from '../../game/state';
+import { ageOn } from '../../game/dates';
+import { CxDrop } from '../classic';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
-import { dateFmt, money, t } from '../../i18n';
+import { dateFmt, money, moneyFull, t } from '../../i18n';
 import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
@@ -35,7 +39,8 @@ export function Finance() {
       {tab === 'stadium' && <AttendanceTab ticketPanel={extended() && !orig ? <TicketPanel /> : null} />}
       {tab === 'facilities' && <FacilitiesTab />}
       {tab === 'history' && <FinanceHistoryTab />}
-      {tab === 'overview' && <>
+      {tab === 'overview' && orig && <ClassicFinances />}
+      {tab === 'overview' && !orig && <>
       <div className="cols">
         <Panel title={t('fin.overview')}>
           <div className="kv">
@@ -297,4 +302,76 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
       </div>
     </Modal>
   );
+}
+
+// ---------- CM 01/02: Finances / Income / Expenditure / Stats (View-menuen under Finances & Info) ----------
+
+type Period = 'month' | 'last' | 'year' | 'lastYear';
+const PERIODS: Period[] = ['month', 'last', 'year', 'lastYear'];
+// originalens poster; [nøgle i ClubFinance, tekst] – poster vi ikke har (fx renter) står med £0 som i originalen
+const INCOME: [keyof ClubFinance | null, string][] = [['gate', 'gate'], [null, 'seasonTickets'], ['tv', 'tv'], ['merch', 'merch'], ['transfersIn', 'sold'], ['prize', 'prize'], [null, 'investments'], [null, 'interest'], ['sponsor', 'other']];
+const EXPENSE: [keyof ClubFinance | null, string][] = [['wages', 'wages'], ['bonuses', 'bonuses'], ['signOn', 'signOn'], ['dividends', 'dividends'], ['transfersOut', 'bought'], ['maintenance', 'maintenance'], [null, 'fines'], [null, 'interest'], ['other', 'other']];
+
+function ClassicFinances() {
+  const g = useGame()!;
+  const c = g.clubs[g.userClub];
+  const [view, setView] = useRouteState<'finances' | 'income' | 'expenditure' | 'stats'>('fview', 'finances');
+  const sum = (rows: [keyof ClubFinance | null, string][], p: Period) => rows.reduce((s, [k]) => s + (k ? financePeriod(c, k, p) : 0), 0);
+  const table = (rows: [string, (p: Period) => number, string?][]) => (
+    <table className="cx-fin">
+      <thead><tr><th>{t('cl.fin.item')}</th>{PERIODS.map((p) => <th key={p}>{t(`cl.fin.p.${p}`)}</th>)}</tr></thead>
+      <tbody>{rows.map(([label, v, cls], i) => label === '' ? <tr key={i} className="gap"><td colSpan={5} /></tr> : (
+        <tr key={i} className={cls}><td>{label}</td>{PERIODS.map((p) => { const x = v(p); return <td key={p}>{cls === 'profit' && x < 0 ? `(${moneyFull(-x)})` : moneyFull(x)}</td>; })}</tr>
+      ))}</tbody>
+    </table>
+  );
+  const line = (rows: [keyof ClubFinance | null, string][], prefix: string) => [
+    ...rows.map(([k, label]) => [t(`cl.fin.${prefix}.${label}`), (p: Period) => (k ? financePeriod(c, k, p) : 0)] as [string, (p: Period) => number]),
+    ['', () => 0] as [string, (p: Period) => number],
+    [t('cl.fin.total'), (p: Period) => sum(rows, p), 'total'] as [string, (p: Period) => number, string],
+  ];
+  return (
+    <div className="cx-finv">
+      <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={(['finances', 'income', 'expenditure', 'stats'] as const).map((k) => ({ key: k, label: t(`cl.fin.v.${k}`), checked: view === k, onClick: () => setView(k) }))} /></div>
+      <div className="cx-subtitle">{t(`cl.fin.v.${view}`)}</div>
+      {view === 'finances' && <>
+        {table([[t('cl.fin.v.income'), (p) => sum(INCOME, p)], [t('cl.fin.v.expenditure'), (p) => sum(EXPENSE, p)], ['', () => 0], [t('cl.fin.profit'), (p) => sum(INCOME, p) - sum(EXPENSE, p), 'profit']])}
+        <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyFull(c.balance)}</b><span>{t('cl.fin.funds')}</span><b>{moneyFull(c.transferBudget)}</b></div>
+      </>}
+      {view === 'income' && table(line(INCOME, 'in'))}
+      {view === 'expenditure' && table(line(EXPENSE, 'out'))}
+      {view === 'stats' && <ClubStatsCx c={c} />}
+    </div>
+  );
+}
+
+/** CM 01/02's Stats under Finances & Info */
+function ClubStatsCx({ c }: { c: Club }) {
+  const g = useGame()!;
+  const sq = squad(c.id);
+  const age = (p: { dob: string }) => ageOn(p.dob, g.date);
+  const wage = (p: { contract?: { wage: number } | null }) => p.contract?.wage ?? 0;
+  const by = (f: (p: (typeof sq)[number]) => number, hi: boolean) => sq.slice().sort((a, b) => (hi ? f(b) - f(a) : f(a) - f(b)))[0];
+  const nm = (p?: (typeof sq)[number]) => (p ? `${p.first} ${p.last}`.trim() : '');
+  const bill = sq.reduce((s, p) => s + wage(p), 0);
+  const hiW = by(wage, true), loW = by(wage, false), old = by(age, true), young = by(age, false), val = by((p) => p.value, true);
+  const own = c.nation;
+  const eu = new Set(['Austria', 'Belgium', 'Denmark', 'Finland', 'France', 'Germany', 'Greece', 'Holland', 'Netherlands', 'Ireland', 'Republic of Ireland', 'Italy', 'Luxembourg', 'Portugal', 'Spain', 'Sweden', 'England', 'Scotland', 'Wales', 'Northern Ireland', 'Iceland', 'Norway', 'Liechtenstein']);
+  const rows: [string, string][] = [
+    [t('cl.fin.s.players'), String(sq.length)],
+    [t('cl.fin.s.injured'), String(sq.filter((p) => p.injury).length)],
+    [t('cl.fin.s.avgAge'), sq.length ? (sq.reduce((s, p) => s + age(p), 0) / sq.length).toFixed(2) : '-'],
+    [t('cl.fin.s.wageBill'), money(bill)],
+    [t('cl.fin.s.avgWage'), money(sq.length ? bill / sq.length : 0)],
+    [t('cl.fin.s.hiWage'), hiW ? `${money(wage(hiW))} - ${nm(hiW)}` : '-'],
+    [t('cl.fin.s.loWage'), loW ? `${money(wage(loW))} - ${nm(loW)}` : '-'],
+    [t('cl.fin.s.oldest'), old ? `${age(old)} - ${nm(old)}` : '-'],
+    [t('cl.fin.s.youngest'), young ? `${age(young)} - ${nm(young)}` : '-'],
+    [t('cl.fin.s.hiValue'), val ? `${money(val.value)} - ${nm(val)}` : '-'],
+    [t('cl.fin.s.intl'), String(sq.filter((p) => (p.caps ?? 0) > 0).length)],
+    [t('cl.fin.s.u21'), String(sq.filter((p) => age(p) < 21).length)],
+    [t('cl.fin.s.foreign'), String(sq.filter((p) => p.nation !== own).length)],
+    [t('cl.fin.s.nonEu'), String(sq.filter((p) => !eu.has(g.nations[p.nation]?.name ?? '')).length)],
+  ];
+  return <div className="cx-fin-stats">{rows.map(([k, v]) => <div key={k}><span>{k}</span><b>{v}</b></div>)}</div>;
 }

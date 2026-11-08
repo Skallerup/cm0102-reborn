@@ -594,7 +594,13 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'support': return <div><Head title={t('sup.title')} /><SupportPage /></div>;
     case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
       <CommunityHub defaultName={gs().manager.name} initialTab={route.tab as HubTab | undefined}
-        onLegend={cmDatabase(gs()) === 'original' ? (id) => { if (gs().players[id]) nav({ name: 'player', id }); } : undefined} /></div>;
+        onLegend={cmDatabase(gs()) === 'original' ? (id, name) => {
+          // id'erne er fra 3.9.68 – i 3.9.60 (og andre databaser) findes spilleren på navnet
+          const g2 = gs(), key = name.toLowerCase();
+          const p = g2.players[id]?.last && `${g2.players[id].first} ${g2.players[id].last}`.trim().toLowerCase() === key ? g2.players[id]
+            : Object.values(g2.players).find((x) => `${x.first} ${x.last}`.trim().toLowerCase() === key || x.last.toLowerCase() === key);
+          if (p) nav({ name: 'player', id: p.id });
+        } : undefined} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;
     case 'compare': return <Assistant tab="compare" />;
     case 'benchmark': return <Assistant tab="bench" />;

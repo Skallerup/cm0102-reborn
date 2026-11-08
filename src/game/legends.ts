@@ -1,4 +1,4 @@
-// CM 01/02's kultspillere: de navne, alle fans husker fra den originale database (id'erne er fra 3.9.68-databasen).
+// CM 01/02's kultspillere: de navne, alle fans husker fra den originale database (id'erne er fra 3.9.68-databasen – spillet slår op på navnet, se Shell.tsx).
 // Teksterne er fællesskabets folklore om spillet – ikke om spillernes rigtige karrierer.
 export interface Legend { key: string; id: number; name: string; da: string; en: string }
 

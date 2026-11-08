@@ -9,7 +9,9 @@ import type { WorldData } from '../newgame';
 export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 'club_comp.dat', 'first_names.dat', 'second_names.dat', 'common_names.dat'];
 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
-export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** originalens rå PA, når den er negativ: -2 = tilfældigt 150-200, -1 = 100-150 (rulles i newgame.ts) */ paRaw?: number }
+export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** originalens rå PA, når den er negativ: -2 = tilfældigt 150-200, -1 = 100-150 (rulles i newgame.ts) */ paRaw?: number;
+  /** omdømme fra spillerposten (byte 9/11/13, 0-10000): hjemme, nuværende, verden – originalens værdi følger dem */
+  rep?: [number, number, number] }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -274,7 +276,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const po = playerAt.get(pRef);
     if (pRef < 0 || po === undefined) continue;
     const id = S.i32(o);
-    const dob = S.date(o + 16);
+    // nogle spillere (fx Cherno Samba i 3.9.60) har kun fødselsåret (byte 24) – datoens år står som 1900
+    let dob = S.date(o + 16);
+    if (!dob) { const yob = S.i16(o + 24); if (yob > 1900 && yob < 2100) dob = new Date(Date.UTC(yob, 0, 1 + Math.max(0, S.i16(o + 16)))).toISOString().slice(0, 10); }
     const nation = nationIdx.get(S.i32(o + 26));
     if (!dob || nation === undefined) continue;
     let club = S.i32(o + 57);
@@ -316,7 +320,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       // ugentlig løn i pund (staff.dat 78)
       Math.max(0, S.i32(o + 78)),
     ]);
-    ratings[id] = paRaw ? { ca, pa, attrs, pos, side, paRaw } : { ca, pa, attrs, pos, side };
+    const rep: [number, number, number] = [S.i16(po + 9), S.i16(po + 11), S.i16(po + 13)];
+    ratings[id] = paRaw ? { ca, pa, attrs, pos, side, paRaw, rep } : { ca, pa, attrs, pos, side, rep };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27

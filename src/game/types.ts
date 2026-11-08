@@ -99,6 +99,8 @@ export interface Injury {
 }
 
 export interface Player {
+  /** den originale database: omdømmet fra spillerposten [hjemme, nuværende, verden] (0-200) – bruges af originalValue.ts */
+  cmRep?: [number, number, number];
   id: number;
   first: string;
   last: string;
@@ -293,6 +295,11 @@ export interface ClubFinance {
   transfersOut: number; // køb
   wages: number;
   other: number;
+  // CM 01/02's egne poster (Expenditure): spillerbonusser, signing on fees, udbytte, stadionets drift (før: wages/other)
+  bonuses?: number;
+  signOn?: number;
+  dividends?: number;
+  maintenance?: number;
 }
 
 export interface ClubSeasonHistory {
@@ -365,6 +372,10 @@ export interface Club {
   columnPos?: number;
   /** udbytte betalt til ejerne ved sidste sæsonstart */
   lastDividend?: number;
+  /** CM 01/02's økonomiskærm: tallene ved de seneste månedsskift (This Month / Last Month) – kun menneskestyrede klubber */
+  finMonths?: { m: string; f: ClubFinance }[];
+  /** sidste sæsons tal (Last Year) */
+  lastFinance?: ClubFinance;
   ticketPrice: number;
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */

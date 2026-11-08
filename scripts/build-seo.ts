@@ -13,8 +13,11 @@ const CONTENT_DATE = '2026-11-07';
 
 type Row = (string | number)[];
 interface World { season: number; playerFields: string[]; players: Row[]; clubs: Row[]; nations: { name: string }[]; leagues: { id: string; name: string; nation: number; tier?: number }[]; ratings: Record<string, { ca: number; pa: number; paRaw?: number }> }
-const load = (f: string) => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as World;
-const orig = load('world-original.json');
+const load = (f: string) => JSON.parse(readFileSync(f.includes('/') ? f : `public/data/${f}`, 'utf8')) as World;
+// SEO-siderne bygger (indtil videre) på 3.9.68 – spillet bruger 3.9.60 (public/data/world-original.json), som ejerens
+// originale CM 01/02 gør for 2001/02. Url'erne skal være stabile, så de indekserede sider ikke forsvinder.
+export const SEO_ORIGINAL = 'scripts/seo/world-original-3968.json';
+const orig = load(SEO_ORIGINAL);
 const modern = load('world.json');
 
 interface P { name: string; age: number; pos: string; club: string; nation: string; ca: number; pa: number; random: boolean; dob: string }
@@ -37,7 +40,7 @@ const O = players(orig), M = players(modern);
 const CULT_LIST = (JSON.parse(readFileSync('scripts/cult-players.json', 'utf8')) as { first: string; last: string }[]).map((c) => `${c.first} ${c.last}`.trim());
 const cultSet = new Set(CULT_LIST);
 const dbO = buildDb({
-  file: 'public/data/world-original.json', prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
+  file: SEO_ORIGINAL, prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
   cult: cultSet,
   keep: (p) => p.ca >= 120 || (p.age <= 23 && (p.pa >= 145 || p.paRaw === -2)) || (p.age <= 21 && p.paRaw === -1 && p.ca >= 60) || p.caps >= 30 || cultSet.has(p.name),
 });

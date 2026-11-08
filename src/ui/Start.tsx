@@ -186,7 +186,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   const [bots, setBots] = useState(0);
   const [deadline, setDeadline] = useState(24);
   const [botScope, setBotScope] = useState<BotScope>('league');
-  // database: standard (CM 2026/27) eller den originale 01/02 (3.9.68)
+  // database: standard (CM 2026/27) eller den originale 01/02 (3.9.60)
   // 'custom:<id>' = en database fra editoren (ændringer oven på den originale eller den moderne)
   type Db = 'modern' | 'original' | `custom:${string}`;
   const [db, setDbState] = useState<Db>(() => {

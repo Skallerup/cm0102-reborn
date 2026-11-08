@@ -3,7 +3,8 @@ import { finalOrder } from './competitions';
 import { rulesFor } from './leagues';
 import { gs, squad } from './state';
 import { rng } from './rng';
-import type { Club, Fixture } from './types';
+import { extended } from './rules';
+import type { Club, ClubFinance, Fixture } from './types';
 
 export function weeklyWages() {
   const g = gs();
@@ -89,12 +90,35 @@ export function monthlyFigures(c: Club) {
   return { wealth, tv, sponsor, merch, upkeep };
 }
 
+/** CM 01/02's This Month / Last Month: tallene ved månedsskiftet gemmes for de menneskestyrede klubber (de to seneste) */
+export function snapshotFinanceMonth() {
+  const g = gs();
+  const m = g.date.slice(0, 7);
+  for (const c of Object.values(g.clubs)) {
+    if (c.manager !== -1) continue;
+    const list = (c.finMonths ??= []).filter((s) => s.m !== m);
+    list.push({ m, f: { ...c.finance } });
+    c.finMonths = list.slice(-2);
+  }
+}
+
+/** Beløbet for en post i en periode: 'month' (siden månedsskiftet), 'last' (sidste måned), 'year' (sæsonen), 'lastYear' */
+export function financePeriod(c: Club, key: keyof ClubFinance, period: 'month' | 'last' | 'year' | 'lastYear'): number {
+  const cur = c.finance[key] ?? 0;
+  const snaps = c.finMonths ?? [];
+  const at = (s?: { f: ClubFinance }) => (s ? s.f[key] ?? 0 : 0);
+  if (period === 'year') return cur;
+  if (period === 'lastYear') return c.lastFinance?.[key] ?? 0;
+  if (period === 'month') return snaps.length ? cur - at(snaps[snaps.length - 1]) : cur;
+  return snaps.length >= 2 ? at(snaps[snaps.length - 1]) - at(snaps[snaps.length - 2]) : 0;
+}
+
 export function monthlyIncome() {
   const g = gs();
   for (const c of Object.values(g.clubs)) {
     const { tv, sponsor, merch, upkeep } = monthlyFigures(c);
     c.balance += tv + sponsor + merch - upkeep;
-    c.finance.other += upkeep;
+    c.finance.maintenance = (c.finance.maintenance ?? 0) + upkeep;
     // ligaer der ikke simuleres har ingen kampe – giv dem et skøn over billetindtægterne (≈2 hjemmekampe/md.)
     if (!g.comps[c.league] && g.date.slice(5, 7) !== '06' && g.date.slice(5, 7) !== '07') {
       const att = c.seats * Math.min(1, 0.3 + c.rep / 160 + 0.06);
@@ -161,11 +185,13 @@ export function newSeasonBudgets() {
     const turnover = c.finance.gate + c.finance.tv + c.finance.prize + c.finance.sponsor + c.finance.merch;
     const buffer = Math.max(turnover * 0.6, c.finance.wages * 0.5, 2_000_000 * econ());
     c.lastDividend = undefined;
+    let dividend = 0;
     if (turnover > 0 && c.balance > buffer) {
       const div = Math.round(((c.balance - buffer) * 0.5) / 100_000) * 100_000;
       if (div > 0) {
         c.balance -= div;
         c.lastDividend = div;
+        dividend = div;
         asOwnerFinance(c.id, () => addNews({ cat: 'finance', key: 'board.dividend', params: { club: c.name, amount: div, balance: c.balance }, link: { kind: 'club', id: c.id } }));
       }
     }
@@ -175,7 +201,11 @@ export function newSeasonBudgets() {
     // menneskestyrede klubber får lidt luft, så der er plads til en ny spiller uden først at sælge
     const room = c.manager === -1 ? 1.1 : 1.05;
     c.wageBudget = Math.round(Math.max(bill * room, bill + 2000) / 500) * 500;
-    c.finance = { gate: 0, tv: 0, prize: 0, sponsor: 0, merch: 0, transfersIn: 0, transfersOut: 0, wages: 0, other: 0 };
+    // sidste sæsons tal gemmes (Last Year), og månedens udgangspunkt flyttes med, så This Month stadig passer
+    const old = c.finance;
+    c.lastFinance = old;
+    c.finance = { gate: 0, tv: 0, prize: 0, sponsor: 0, merch: 0, transfersIn: 0, transfersOut: 0, wages: 0, other: 0, ...(dividend ? { dividends: dividend } : {}) };
+    for (const s of c.finMonths ?? []) for (const k of Object.keys(s.f) as (keyof ClubFinance)[]) s.f[k] = (s.f[k] ?? 0) - (old[k] ?? 0);
     c.lgStats = undefined;
   }
 }
@@ -307,6 +337,8 @@ export function sponsorSeasonBonus(pos: number, expectedPos: number, trophy: boo
 
 /** Et stjernekøb sælger trøjer */
 export function merchStarSigning(clubId: number, rep: number) {
+  // merchandise-løft efter et stjernekøb er en moderne funktion (ikke i ægte CM 01/02)
+  if (!extended()) return;
   const g = gs();
   const c = g.clubs[clubId];
   if (!c || rep < 72) return;

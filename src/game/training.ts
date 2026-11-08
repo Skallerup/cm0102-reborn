@@ -5,6 +5,7 @@ import { rng } from './rng';
 import { gs } from './state';
 import type { CoachArea, Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
+import { originalValueGbp, repTriple } from './originalValue';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
@@ -150,9 +151,15 @@ function bump(p: Player, i: number, d: number) {
 /** Månedlig værdiopdatering */
 export function monthlyValues() {
   const g = gs();
+  const original = !!g.econ && g.dbKind === 'cm0102';
   for (const p of Object.values(g.players)) {
     const age = ageOn(p.dob, g.date);
-    const target = valueFromCA(p.ca, p.pa, age);
+    // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
+    const c = g.clubs[p.club];
+    const lg = c ? g.leagues[c.league] : undefined;
+    const target = original
+      ? originalValueGbp(p.ca, age, c?.rep ?? 30, (p.contract?.wage ?? 0) * 0.86, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, p.cmRep ?? repTriple(p.rep)) / 0.86
+      : valueFromCA(p.ca, p.pa, age);
     // glid mod modelværdien og påvirkes af form
     const form = p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 6.5;
     const formF = 1 + (form - 6.7) * 0.06;

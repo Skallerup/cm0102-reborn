@@ -124,7 +124,7 @@ export function afterAppearance(p: Player, goals: number, cleanSheet = false) {
   const c = p.contract;
   if (club && c && !p.loan) {
     const bonus = (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
-    if (bonus > 0) { club.balance -= bonus; club.finance.wages += bonus; }
+    if (bonus > 0) { club.balance -= bonus; club.finance.bonuses = (club.finance.bonuses ?? 0) + bonus; }
   }
   const a = p.addOn;
   if (a && a.payer === p.club && !p.loan) {

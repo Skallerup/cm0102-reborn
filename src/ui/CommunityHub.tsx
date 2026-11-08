@@ -22,7 +22,7 @@ const when = (iso: string) => dateFmt(iso.slice(0, 10));
 export function CommunityHub({ initialTab = 'suggestions', hallId, suggestionId, defaultName, onLegend }: {
   initialTab?: HubTab; hallId?: number; suggestionId?: number; defaultName?: string;
   /** i spillet: åbn legenden i det aktuelle spil (kun med den originale database) */
-  onLegend?: (id: number) => void;
+  onLegend?: (id: number, name: string) => void;
 }) {
   const [tab, setTab] = useState<HubTab>(hallId ? 'hall' : initialTab);
   const [, setTick] = useState(0);
@@ -118,7 +118,7 @@ function HallModal({ id, onClose }: { id: number; onClose: () => void }) {
 
 // ---------- legender ----------
 
-function LegendsTab({ onLegend }: { onLegend?: (id: number) => void }) {
+function LegendsTab({ onLegend }: { onLegend?: (id: number, name: string) => void }) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [mine, setMine] = useState<string[]>([]);
   const load = () => void legendCounts(LEGENDS.map((l) => l.key)).then((r) => { setCounts(r?.counts ?? {}); setMine(r?.mine ?? []); });
@@ -136,7 +136,7 @@ function LegendsTab({ onLegend }: { onLegend?: (id: number) => void }) {
               <span>{lang === 'da' ? l.da : (l as unknown as Record<string, string>)[lang] ?? l.en}</span>
               <div className="row" style={{ marginTop: 'auto' }}>
                 <button className={`small ${on ? 'primary' : ''}`} disabled={!getProfile()} onClick={async () => { const r = await rememberLegend(l.key, !on); if (!('error' in r)) load(); }}>❤️ {t(on ? 'hub.legends.remembered' : 'hub.legends.remember')} · {counts[l.key] ?? 0}</button>
-                {onLegend && <button className="small" onClick={() => onLegend(l.id)}>{t('hub.legends.open')}</button>}
+                {onLegend && <button className="small" onClick={() => onLegend(l.id, l.name)}>{t('hub.legends.open')}</button>}
               </div>
             </div>
           );
@@ -297,7 +297,7 @@ function SkinMaker({ onClose }: { onClose: () => void }) {
 // ---------- credits ----------
 
 const DATA_CREDITS: [string, string, string?][] = [
-  ['Championship Manager 01/02', 'Sports Interactive / Eidos – the original game and the 3.9.68 database'],
+  ['Championship Manager 01/02', 'Sports Interactive / Eidos – the original game and its 3.9.60 database'],
   ['October 2026 Data Update', 'The CM 01/02 community – updated squads for 2026/27'],
   ['Sunday League Pack', 'The CM 01/02 community – background photos'],
   ['transfermarkt-datasets', 'dcaribou – open player data (CC0)', 'https://github.com/dcaribou/transfermarkt-datasets'],

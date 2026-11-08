@@ -568,7 +568,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     const rel = isHumanClub(buyer.id) ? undefined : defaultRelease(p, buyer);
     p.contract = { wage, expires: exp, ...(clauses ?? {}), ...(rel ? { release: rel } : {}) };
-    if (clauses?.signOn) { buyer.balance -= clauses.signOn; buyer.finance.other += clauses.signOn; }
+    if (clauses?.signOn) { buyer.balance -= clauses.signOn; buyer.finance.signOn = (buyer.finance.signOn ?? 0) + clauses.signOn; }
     p.addOn = undefined;
     if (seller && o.sellOn) p.sellOn = { club: seller.id, pct: o.sellOn, base: o.fee };
     if (seller && o.addOn) p.addOn = { club: seller.id, payer: buyer.id, fee: o.addOn, left: ADDON_APPS };
@@ -734,7 +734,7 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
   const cl = cleanClauses(clauses);
   if (wage + clausesWorthFor(p, club.id, wage, years, cl) >= demand * AGENT_RULES[agentOf(p).style].accept) {
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
-    if (cl.signOn) { club.balance -= cl.signOn; club.finance.other += cl.signOn; }
+    if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; }
     const hadDemand = !!p.demand;
     p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;

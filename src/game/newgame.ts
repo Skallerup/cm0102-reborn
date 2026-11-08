@@ -6,8 +6,9 @@ import { naturalRole } from './attributes';
 import { europeanQualifiers, setupChampionsLeague, setupCup, setupLeague, setupUefaCup } from './competitions';
 import { ageOn } from './dates';
 import {
-  caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, type SubPos,
+  caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, roundValue, type SubPos,
 } from './data/generate';
+import { originalValueGbp, repTriple } from './originalValue';
 import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { setEconomy } from './econ';
@@ -68,7 +69,7 @@ const PALETTE = ['#c8102e', '#003399', '#ffffff', '#111111', '#ffd200', '#00843d
 
 export const START_DATE = (season: number) => `${season}-07-01`;
 
-/** Hvilken CM-database et spil bruger ('original' = 3.9.68 fra 2001, 'cm' = 2026/27); null = den moderne database */
+/** Hvilken CM-database et spil bruger ('original' = 3.9.60 fra 2001 – ældre gemte spil: 3.9.68, 'cm' = 2026/27); null = den moderne database */
 export function cmDatabase(g: GameState): 'cm' | 'original' | null {
   if (g.dbKind !== 'cm0102') return null;
   const start = g.dbYear ?? g.seasonHistory?.[0]?.season ?? g.season;
@@ -172,9 +173,16 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       // tilfældigt potentiale som i CM 01/02: PA -2 = 150-200, -1 = 100-150 – trukket på ny i hvert nyt spil
       // (Cherno Samba, Quaresma, Cassano …); ellers databasens PA
       const rolled = rt.paRaw === -2 ? 150 + (hash(seed, p.id, 77) % 51) : rt.paRaw === -1 ? 100 + (hash(seed, p.id, 77) % 51) : rt.pa;
+      if (rt.rep) p.cmRep = rt.rep;
       p.ca = rt.ca; p.pa = Math.max(rt.ca, rolled); p.attrs = rt.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
     }
-    if (!value) p.value = valueFromCA(p.ca, p.pa, age);
+    // den originale database: originalens egen værdiformel (evne, alder, klubbens omdømme, løn og liga – originalValue.ts)
+    if (!value) {
+      const lg = club ? g.leagues[g.clubs[club].league] : undefined;
+      p.value = g.econ && cm
+        ? roundValue(originalValueGbp(p.ca, age, cm.clubRep[club] ?? 30, (r[F.wage] as number) || 0, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, rt?.rep ?? repTriple(p.rep)) / GBP)
+        : valueFromCA(p.ca, p.pa, age);
+    }
     // CM 01/02: trøjenummeret fra databasen (dubletter og manglende numre ordnes efter, at trupperne er fyldt op)
     if (F.number !== undefined && (r[F.number] as number) > 0) p.number = r[F.number] as number;
     addPlayer(p);
@@ -296,9 +304,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // originalens saldo og træningsanlæg (club.dat 101/127)
     const fin = cm?.clubFinance?.[c.id];
     if (fin && g.econ) {
-      if (world.clubBalance?.[c.id] === undefined) c.balance = Math.round(fin[0] / GBP / 10_000) * 10_000;
+      // målt i ejerens CM 01/02 (3.9.60, 13 engelske klubber 14/7-01): saldoen er databasens beløb ±8 % (spredningen
+      // *estimeret*); klubber uden beløb (0) får ca. 35 ugers lønsum (Bury: £829K ved £23,5K/uge)
+      const cash = fin[0] !== 0 ? fin[0] : 35 * wages * GBP;
+      const noise = 0.92 + (hash(seed, c.id, 31) % 1601) / 10_000;
+      if (world.clubBalance?.[c.id] === undefined) c.balance = Math.round((cash * noise) / GBP);
       if (fin[2] > 0) c.facilities = clampInt(fin[2], 1, 20);
-      c.transferBudget = transferBudgetFor(sv, wealth, c.balance);
+      c.transferBudget = originalTransferFunds(c.balance);
     }
     c.ticketPrice = fairTicketPrice(c.rep, c.league);
     if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
@@ -336,7 +348,17 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
   g.manager.onboard = {};
   if (windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
-  addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
+  // sponsorvalget findes ikke i ægte CM 01/02
+  if (g.options.mode !== 'authentic') addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
+  // ægte CM 01/02 starter med tre nyheder (målt i originalen): ansættelsen, bestyrelsens mål og kampprogrammet
+  if (g.options.mode === 'authentic') {
+    const board = g.news.filter((n) => n.key.startsWith('board.exp.'));
+    g.news = [];
+    addNews({ cat: 'general', key: 'news.managerHired', params: { club: club.short, manager: o.managerName }, link: { kind: 'club', id: club.id } });
+    for (const b of board) g.news.unshift(b);
+    const lg = g.leagues[club.league];
+    if (lg) addNews({ cat: 'match', key: 'comp.fixturesOut', params: { season: `${season}/${String(season + 1).slice(2)}`, comp: lg.name }, link: { kind: 'comp', id: club.league } });
+  }
   rebuildIndexes();
   initialTransferList();
   return g;
@@ -370,6 +392,18 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
   setupUefaCup(uefa, season);
   // Conference League: ligafase med kun 6 runder
   setupUefaCup(conf, season, 'UECL', 'Conference League', 6);
+}
+
+/**
+ * Transfer Funds ved start i originalen: ca. 70 % af saldoen, rundet ned til £250K (under £5M: £25K) – målt på 13 klubber
+ * (Man Utd £30,6M → £21,5M, Liverpool £19,5M → £13,75M, Crewe £2,48M → £2,4M). Enkelte afviger (Newcastle får mere end
+ * saldoen, Fulham og Middlesbrough mindre) – den del af formlen kender vi ikke (*estimeret*). Negativ saldo = 0.
+ */
+export function originalTransferFunds(balance: number): number {
+  const gbp = balance * GBP;
+  if (gbp <= 0) return 0;
+  const step = gbp >= 5_000_000 ? 250_000 : 25_000;
+  return (Math.floor((gbp * 0.7) / step) * step) / GBP;
 }
 
 export function takeOverClub(club: Club) {
