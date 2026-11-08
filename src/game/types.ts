@@ -300,6 +300,8 @@ export interface ClubFinance {
   signOn?: number;
   dividends?: number;
   maintenance?: number;
+  /** renter af saldoen (Income: Interest) */
+  interest?: number;
 }
 
 export interface ClubSeasonHistory {

@@ -309,7 +309,7 @@ function BudgetModal({ onClose }: { onClose: () => void }) {
 type Period = 'month' | 'last' | 'year' | 'lastYear';
 const PERIODS: Period[] = ['month', 'last', 'year', 'lastYear'];
 // originalens poster; [nøgle i ClubFinance, tekst] – poster vi ikke har (fx renter) står med £0 som i originalen
-const INCOME: [keyof ClubFinance | null, string][] = [['gate', 'gate'], [null, 'seasonTickets'], ['tv', 'tv'], ['merch', 'merch'], ['transfersIn', 'sold'], ['prize', 'prize'], [null, 'investments'], [null, 'interest'], ['sponsor', 'other']];
+const INCOME: [keyof ClubFinance | null, string][] = [['gate', 'gate'], [null, 'seasonTickets'], ['tv', 'tv'], ['merch', 'merch'], ['transfersIn', 'sold'], ['prize', 'prize'], [null, 'investments'], ['interest', 'interest'], ['sponsor', 'other']];
 const EXPENSE: [keyof ClubFinance | null, string][] = [['wages', 'wages'], ['bonuses', 'bonuses'], ['signOn', 'signOn'], ['dividends', 'dividends'], ['transfersOut', 'bought'], ['maintenance', 'maintenance'], [null, 'fines'], [null, 'interest'], ['other', 'other']];
 
 function ClassicFinances() {

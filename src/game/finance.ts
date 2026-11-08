@@ -87,6 +87,12 @@ export function monthlyFigures(c: Club) {
   const merch = Math.round(c.rep * c.rep * 25 * econIncome(c.league) * wealth * boost);
   // driftsomkostninger: stadion, administration, scouting-netværk m.m.
   const upkeep = Math.round(c.seats * 0.8 * econ(c.league) * Math.max(0.5, wealth) + (tv + sponsor + merch) * 0.12);
+  // den originale database: originalens fordeling (målt i ejerens CM 01/02, Man Utd august 2001: Merchandising £1,54M,
+  // TV Revenue £16K – tv-pengene kommer ikke som fast månedsbeløb –, ingen sponsorpost, Ground Maintenance £225K).
+  // Kun Man Utd er målt – de andre klubber følger vores formler skaleret med samme faktor (*estimeret*)
+  if (g.econ && g.dbKind === 'cm0102') {
+    return { wealth, tv: Math.round(tv * 0.01), sponsor: 0, merch: Math.round(merch * 19), upkeep: Math.round(upkeep * 0.7) };
+  }
   return { wealth, tv, sponsor, merch, upkeep };
 }
 
@@ -129,6 +135,12 @@ export function monthlyIncome() {
     c.finance.tv += tv;
     c.finance.sponsor += sponsor;
     c.finance.merch += merch;
+    // originalen: renter af en positiv saldo, ca. 0,25 % om måneden (Man Utd: £77K af £30,6M i august 2001)
+    if (g.econ && g.dbKind === 'cm0102' && c.balance > 0) {
+      const interest = Math.round(c.balance * 0.0025);
+      c.balance += interest;
+      c.finance.interest = (c.finance.interest ?? 0) + interest;
+    }
     // CM 01/02: "[klub] financial mess" – efter to måneder i minus (til klubbens manager)
     c.negMonths = c.balance < 0 ? (c.negMonths ?? 0) + 1 : 0;
     if (c.negMonths === 2) asOwnerFinance(c.id, () => addNews({ cat: 'finance', key: 'board.financialMess', params: { club: c.name, balance: c.balance }, link: { kind: 'club', id: c.id } }));
