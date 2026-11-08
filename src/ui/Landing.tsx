@@ -3,7 +3,8 @@ import { LangMenu } from './LangMenu';
 import { ConsentLink } from './ConsentBanner';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Lang } from '../game/types';
-import { LOCALE, getLang, setLang, t } from '../i18n';
+import { LOCALE, dateFmt, getLang, setLang, t } from '../i18n';
+import type { ChangelogEntry } from './changelogData';
 import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import { withAiManagers } from './aiManagers';
@@ -100,6 +101,72 @@ function JoinForm() {
             <small className="lp-join-privacy">{t('land.join.privacy')}</small>
           </form>
         )}
+      </div>
+    </section>
+  );
+}
+
+/** "Nyt i spillet": de seneste versioner fra ændringsloggen (hentes først, når sektionen nærmer sig – filen er stor) */
+function News() {
+  const ref = useRef<HTMLElement>(null);
+  const [log, setLog] = useState<ChangelogEntry[] | null>(null);
+  const [shown, setShown] = useState(3);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    const el = ref.current;
+    const load = () => { void import('./changelogData').then((m) => setLog(m.CHANGELOG)); };
+    if (!el || !('IntersectionObserver' in window)) { load(); return; }
+    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { io.disconnect(); load(); } }, { rootMargin: '600px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+  const lang = getLang();
+  const L = lang === 'da' ? 'da' : 'en';
+  const items = log?.reduce((n, e) => n + e.items.length, 0) ?? 0;
+  return (
+    <section id="news" ref={ref} className="lp-section lp-wrap lp-news lp-center">
+      <span className="lp-kicker reveal">{t('land.news.kicker')}</span>
+      <h2 className="reveal">{t('land.news.title')}</h2>
+      <p className="lp-sub reveal">{t('land.news.sub')}{log && <> <b>{t('land.news.count', { items: items.toLocaleString(LOCALE[lang]), versions: log.length })}</b></>}</p>
+      {lang !== 'da' && lang !== 'en' && <p className="lp-news-note">{t('land.news.enOnly')}</p>}
+      <div className="lp-news-list">
+        {(log ?? []).slice(0, shown).map((e, i) => {
+          const all = open[e.version], max = 5;
+          return (
+            <article key={e.version} className="lp-news-entry">
+              <header><span className={`lp-news-ver ${i === 0 ? 'new' : ''}`}>v{e.version}</span><time dateTime={e.date}>{dateFmt(e.date)}</time></header>
+              <h3>{e.title[L]}</h3>
+              <ul>{(all ? e.items : e.items.slice(0, max)).map((it, k) => <li key={k}>{it[L].replace(/^⚠ /, '')}</li>)}</ul>
+              {e.items.length > max && <button className="lp-news-more" onClick={() => setOpen({ ...open, [e.version]: !all })}>{all ? t('land.news.less') : t('land.news.more', { n: e.items.length - max })}</button>}
+            </article>
+          );
+        })}
+      </div>
+      {log && shown < log.length && <div className="lp-news-older"><button className="lp-ghost" onClick={() => setShown(shown + 3)}>{t('land.news.older')}</button></div>}
+    </section>
+  );
+}
+
+const DB_CARDS: [string, string, string][] = [
+  ['🗂️', 'c1', '/cm-01-02/'], ['⭐', 'c2', '/cm-01-02/lists/wonderkids/'], ['🧙', 'c3', '/cm-01-02/lists/legends/'],
+  ['🆓', 'c4', '/cm-01-02/lists/free-transfers-2002/'], ['📅', 'c5', '/2026-27/'], ['📖', 'c6', '/cm-01-02-guides/'],
+];
+
+/** Databasesiderne (statiske sider uden for appen) */
+function Database() {
+  return (
+    <section id="database" className="lp-section lp-wrap lp-center">
+      <span className="lp-kicker reveal">{t('land.db.kicker')}</span>
+      <h2 className="reveal">{t('land.db.title')}</h2>
+      <p className="lp-sub reveal">{t('land.db.sub')}</p>
+      <div className="lp-grid">
+        {DB_CARDS.map(([icon, k, href], i) => (
+          <a key={k} href={href} className="lp-card lp-dbcard reveal" style={{ transitionDelay: `${(i % 3) * 80}ms` }}>
+            <div className="lp-card-icon">{icon}</div>
+            <h3>{t(`land.db.${k}t`)} <span aria-hidden="true">→</span></h3>
+            <p>{t(`land.db.${k}x`)}</p>
+          </a>
+        ))}
       </div>
     </section>
   );
@@ -225,6 +292,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
             <a onClick={() => go('features')}>{t('land.nav.features')}</a>
             <a className="opt2" onClick={() => go('screens')}>{t('land.nav.screens')}</a>
             <a className="opt2" onClick={() => go('looks')}>{t('land.nav.looks')}</a>
+            <a className="opt2" onClick={() => go('news')}>{t('land.nav.news')}</a>
             <a className="opt1" onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
             <a href="?community=1">{t('land.nav.community')}</a>
             <a onClick={() => go('join')}>{t('land.nav.join')}</a>
@@ -324,6 +392,8 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
 
       <Looks onPlay={onPlay} onOpen={open} />
 
+      <News />
+
       <section id="ranking" className="lp-section lp-wrap lp-rank">
         <div className="lp-rank-text reveal">
           <span className="lp-kicker">{t('land.rankKicker')}</span>
@@ -341,6 +411,8 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           {top?.some((r) => r.ai) && <div className="lp-rank-note">{t('land.rankAiNote')}</div>}
         </div>
       </section>
+
+      <Database />
 
       <section className="lp-section lp-wrap">
         <h2 className="reveal">{t('land.stepsTitle')}</h2>
