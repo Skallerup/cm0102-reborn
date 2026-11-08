@@ -2,6 +2,11 @@
 // så man kan fortsætte på en anden enhed. Uden login fungerer alt som før (kun lokalt).
 import { upload } from '@vercel/blob/client';
 import { getProfile, rankingAvailable, type RankProfile } from './rank';
+import { gs } from '../game/state';
+import { serializeState } from '../game/snapshot';
+import { getTheme } from '../ui/theme';
+import { APP_VERSION } from '../ui/changelogData';
+import { visitorId } from './notify';
 
 const API = '/api/account';
 const KEY = 'cm0102.account';
@@ -119,6 +124,29 @@ async function myUid(): Promise<string> {
   const r = await call<{ uid: string }>('me', undefined, 'GET');
   uidCache = { sid: a.sid, uid: r.uid };
   return r.uid;
+}
+
+/**
+ * "Send mit spil til udvikleren" (frivilligt, virker uden konto): det åbne spil uploades til Vercel Blob (support/…)
+ * og registreres med en note, så udvikleren kan åbne det i preview og se præcis det, spilleren ser.
+ */
+export async function sendGameToDeveloper(note: string, email?: string): Promise<void> {
+  const g = gs();
+  const blob = await serializeState(g);
+  const vid = visitorId() || 'anon';
+  const res = await upload(`support/${vid.replace(/[^\w-]/g, '')}-${g.id.replace(/[^\w-]/g, '')}.json.gz`, blob, {
+    access: 'public',
+    handleUploadUrl: `${API}?op=upload`,
+    clientPayload: JSON.stringify({ support: 1 }),
+    contentType: 'application/gzip',
+    multipart: blob.size > 4 * 1024 * 1024,
+  });
+  const r = await fetch(`${API}?op=support`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: res.url, size: blob.size, vid, gid: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '', date: g.date, note,
+      email: email ?? getAccount()?.email ?? '', lang: g.lang, theme: getTheme() === 'retro' ? 'classic' : 'modern', mode: g.options.mode ?? 'extended', ver: APP_VERSION, device: deviceName() }),
+  });
+  if (!r.ok) throw new Error('support');
 }
 
 /** Hent et gemt spil fra skyen */

@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SgStatus, Suggestion } from '../online/community';
 import { supporters, type SupporterList } from '../online/support';
 import { Panel } from './components';
+import { openPreview } from '../game/save';
+import { getTheme, setTheme } from './theme';
 
 const KEY = 'cm0102.admin';
 const STATUSES: SgStatus[] = ['new', 'considering', 'planned', 'progress', 'released', 'rejected'];
@@ -53,12 +55,15 @@ interface Overview {
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; supporter: string | null; donated: number; careers: number; best: number; seasons: number }
-interface NewCareer { at: string; manager: string; club: string; league: string; nation: string; challenge: string; mode?: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string; start?: string; prog?: { date: string; club: string; pos: number; at: number } }
+interface NewCareer { save?: SaveRow; at: string; manager: string; club: string; league: string; nation: string; challenge: string; mode?: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string; start?: string; prog?: { date: string; club: string; pos: number; at: number } }
+interface SaveRow { source: 'account' | 'support'; id: string; manager: string; club: string; date: string; saved: string; url: string; size: number; device?: string; email?: string; note?: string; vid?: string; lang?: string; theme?: string; mode?: string; ver?: string }
+/** Åbn en spillers gemte spil i preview (intet gemmes eller sendes – se previewInfo i game/state.ts) */
+type OpenSave = (s: SaveRow, theme?: string) => Promise<void>;
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'starts' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters' | 'mail' | 'errors';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters'], ['mail', 'E-mail'], ['errors', 'Errors']];
+type Tab = 'overview' | 'starts' | 'saves' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'supporters' | 'mail' | 'errors';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['saves', 'Saves'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['supporters', 'Supporters'], ['mail', 'E-mail'], ['errors', 'Errors']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -66,6 +71,20 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('overview');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [msg, setMsg] = useState('');
+  const openSave: OpenSave = async (s, theme) => {
+    setMsg(`Opening ${s.manager} (${s.club}) …`);
+    try {
+      const r = await fetch(s.url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`download ${r.status}`);
+      // spillerens udseende, hvis vi kender det (så man ser det samme som spilleren)
+      const th = theme ?? s.theme;
+      if (th === 'classic') setTheme('retro');
+      else if (th === 'modern' && getTheme() === 'retro') setTheme('club');
+      await openPreview(await r.blob(), `${s.manager} · ${s.club} · ${s.date}`, th);
+      try { sessionStorage.setItem('cm0102.play', '1'); } catch { /* ignorer */ }
+      onClose();
+    } catch (e) { setMsg(`Could not open the save: ${String((e as Error).message)}`); }
+  };
   const refresh = async () => {
     const o = await adminGet<Overview>('op=overview');
     setAuthed(!!o);
@@ -105,7 +124,8 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       </div>
       {msg && <div className="insight">{msg}</div>}
       {tab === 'overview' && <OverviewTab o={overview} go={setTab} onChange={() => void refresh()} setMsg={setMsg} />}
-      {tab === 'starts' && <NewCareersTab />}
+      {tab === 'starts' && <NewCareersTab open={openSave} />}
+      {tab === 'saves' && <SavesTab open={openSave} setMsg={setMsg} />}
       {tab === 'applications' && <ApplicationsTab onChange={refresh} setMsg={setMsg} />}
       {tab === 'managers' && <ManagersTab />}
       {tab === 'rankings' && <RankingsTab setMsg={setMsg} />}
@@ -309,7 +329,7 @@ function progress(r: NewCareer) {
 /** Denne browsers anonyme besøgs-id (samme som spillet sender med en ny karriere, online/notify.ts) */
 const myVid = () => { try { return localStorage.getItem('cm0102.visitor') ?? ''; } catch { return ''; } };
 
-function NewCareersTab() {
+function NewCareersTab({ open }: { open: OpenSave }) {
   type Data = { rows: NewCareer[]; days: Record<string, number>; online?: number; now?: number };
   const [data, setData] = useState<Data | null>(null);
   useEffect(() => {
@@ -358,7 +378,7 @@ function NewCareersTab() {
         <button className="small" title="Removes every career started in this browser (same visitor id)" onClick={() => void removeCareers({ vids: [myVid()] }, 'all careers started in this browser')}>Remove my careers</button></span>} className="flush">
         {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
-            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th><th /></tr></thead>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th><th>Save</th><th /></tr></thead>
               <tbody>{data.rows.map((r, i) => (
                 <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
                   <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.mode === 'authentic' ? 'Original' : r.mode === 'extended' ? 'Extended' : ''}</td>
@@ -369,6 +389,7 @@ function NewCareersTab() {
                   <td className="nowrap">{!r.vid ? <span className="muted">–</span> : r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000
                     ? <span style={{ color: '#16a34a', fontWeight: 600 }}>● Online</span>
                     : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td>
+                  <td className="nowrap">{r.save ? <button className="small" title={`${r.save.source === 'account' ? 'Cloud save' : 'Sent by the player'} · saved ${when(r.save.saved)}`} onClick={() => void open(r.save!, r.theme)}>👁 Open</button> : <span className="muted" title="Only careers with an account (cloud save) or sent with “Send my game to the developer” can be opened">–</span>}</td>
                   <td>{/* fjern: alle karrierer fra samme besøgende (eller kun rækken uden besøgs-id) */}
                     <button className="small" title={r.vid ? 'Remove every career from this visitor' : 'Remove this career'} onClick={() => void removeCareers(r.vid ? { vids: [r.vid] } : { at: r.at, manager: r.manager }, r.vid ? `all ${data.rows.filter((x) => x.vid === r.vid).length} career(s) from this visitor${r.vid === myVid() ? ' (this browser)' : ''}` : `${r.manager}'s career`)}>✕</button></td></tr>
               ))}</tbody></table>
@@ -376,6 +397,45 @@ function NewCareersTab() {
         )}
       </Panel>
     </>
+  );
+}
+
+/** Spillernes gemte spil: skygemte (konti) og dem, der er sendt med "Send mit spil til udvikleren" – åbnes i preview */
+function SavesTab({ open, setMsg }: { open: OpenSave; setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<SaveRow[] | null>(null);
+  const [src, setSrc] = useState<'all' | 'support' | 'account'>('all');
+  const [q, setQ] = useState('');
+  const load = () => void adminGet<{ saves: SaveRow[] }>('op=saves').then((r) => setRows(r?.saves ?? []));
+  useEffect(load, []);
+  if (!rows) return <div className="muted">Loading saves…</div>;
+  const needle = q.trim().toLowerCase();
+  const shown = rows.filter((r) => (src === 'all' || r.source === src) && (!needle || `${r.manager} ${r.club} ${r.email ?? ''} ${r.note ?? ''}`.toLowerCase().includes(needle)));
+  const remove = async (r: SaveRow) => {
+    if (!window.confirm(`Delete the game ${r.manager} sent?`)) return;
+    const res = await adminPost('support-delete', { url: r.url });
+    if (res.error) setMsg(`Error: ${String(res.error)}`); else load();
+  };
+  return (
+    <Panel title={`Saves (${shown.length})`} className="flush" right={<span className="row">
+      {(['all', 'support', 'account'] as const).map((k) => <button key={k} className={`small ${src === k ? 'primary' : ''}`} onClick={() => setSrc(k)}>{k === 'all' ? 'All' : k === 'support' ? 'Sent to you' : 'Cloud saves'}</button>)}
+      <input placeholder="Search manager, club, e-mail, note" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 220 }} /></span>}>
+      <p className="muted" style={{ padding: '0 12px' }}>Opens the player's game in preview: you can click around and even play on, but nothing is saved, and no rankings, progress or errors are sent.
+        Only games from players with an account (cloud saves) or sent with “Send my game to the developer” are here – other games never leave the player's browser.</p>
+      {shown.length === 0 ? <div className="muted" style={{ padding: 12 }}>No saves.</div> : (
+        <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+          <table className="grid"><thead><tr><th>Saved</th><th>Source</th><th>Manager</th><th>Club</th><th>Game date</th><th>E-mail</th><th>Note</th><th>Look</th><th>Device</th><th className="num">MB</th><th /></tr></thead>
+            <tbody>{shown.map((r) => (
+              <tr key={r.url}><td className="muted nowrap" title={when(r.saved)}>{ago(r.saved)}</td>
+                <td>{r.source === 'support' ? <b>Sent</b> : <span className="muted">Cloud</span>}</td><td>{r.manager}</td><td>{r.club}</td><td className="nowrap">{r.date}</td>
+                <td className="muted">{r.email ?? '–'}</td><td style={{ maxWidth: 320, whiteSpace: 'pre-wrap' }}>{r.note || <span className="muted">–</span>}</td>
+                <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}{r.mode ? ` · ${r.mode === 'authentic' ? 'Original' : 'Extended'}` : ''}</td>
+                <td className="muted">{r.device ?? ''}{r.ver ? ` · v${r.ver}` : ''}</td><td className="num">{(r.size / 1e6).toFixed(1)}</td>
+                <td className="nowrap"><button className="small primary" onClick={() => void open(r)}>👁 Open</button>{' '}
+                  {r.source === 'support' && <button className="small" title="Delete" onClick={() => void remove(r)}>✕</button>}</td></tr>
+            ))}</tbody></table>
+        </div>
+      )}
+    </Panel>
   );
 }
 

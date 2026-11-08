@@ -4,8 +4,8 @@ import { DraftRoom, draftSeen } from './Draft';
 import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame, type Route } from './core';
-import { applyTheme } from './theme';
-import { hasGame, notify } from '../game/state';
+import { applyTheme, getTheme, setTheme } from './theme';
+import { hasGame, notify, previewInfo } from '../game/state';
 import { getLast, forgetLast, loadGame } from '../game/save';
 import { openSession, savedRooms, session } from '../online/client';
 import { Shell } from './Shell';
@@ -108,11 +108,26 @@ function AppPage() {
   if (!g && draftPage) return <DraftLanding key={lang} onLang={setLangState} onBack={() => { history.replaceState(null, '', location.pathname); setDraftPage(false); window.scrollTo(0, 0); }} onCreate={() => { history.replaceState(null, '', `${location.pathname}?newdraft=1`); setDraftPage(false); play(); }} />;
   if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} onDraft={() => { history.replaceState(null, '', `${location.pathname}?draft=1`); setDraftPage(true); window.scrollTo(0, 0); }} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
-  return (
+  return (<>
+    {previewInfo() && <PreviewBar />}
     <NavProvider key={`${g.id}-${g.lang}`} initial={{ name: g.pendingFixture ? 'match' : 'inbox', id: g.pendingFixture ?? undefined }}
       storageKey={`cm-nav:${g.id}`} valid={(r) => validRoute(g, r)}>
       <Shell />
     </NavProvider>
+  </>);
+}
+
+/** Admin-preview af en spillers spil: altid synlig bjælke – intet gemmes; Exit genindlæser admin (preview-spillet forsvinder) */
+function PreviewBar() {
+  const p = previewInfo()!;
+  const [, tick] = useState(0);
+  const retro = getTheme() === 'retro';
+  return (
+    <div className="preview-bar" role="status">
+      <b>👁 PREVIEW</b><span className="pv-label">{p.label}</span><span className="pv-note">not saved</span>
+      <button onClick={() => { setTheme(retro ? 'club' : 'retro'); tick((x) => x + 1); notify(); }}>{retro ? 'Modern' : 'Classic'}</button>
+      <button onClick={() => { location.href = `${location.pathname}?admin=1`; }}>✕ Exit</button>
+    </div>
   );
 }
 

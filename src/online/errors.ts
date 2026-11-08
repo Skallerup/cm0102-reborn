@@ -2,13 +2,15 @@
 // højst 3 gange pr. side, højst 20 i alt, og kun fra den rigtige side (ikke udvikling/tests). Ingen personlige data.
 import { APP_VERSION } from '../ui/changelogData';
 import { rankingAvailable } from './rank';
+import { previewInfo } from '../game/state';
 
 const sent = new Map<string, number>();
 let total = 0;
 const IGNORE = /ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|Load failed|NetworkError|Failed to fetch|AbortError|The play\(\) request/i;
 
 export function reportError(err: unknown, extra?: string) {
-  if (import.meta.env.DEV || !rankingAvailable()) return;
+  // admin-preview af en spillers spil: fejlen står i konsollen – den skal ikke tælle som en spillers fejl
+  if (import.meta.env.DEV || !rankingAvailable() || previewInfo()) return;
   const e = err instanceof Error ? err : new Error(String((err as { message?: string })?.message ?? err));
   const msg = `${e.name}: ${e.message}`.slice(0, 300);
   const stack = `${e.stack ?? ''}${extra ? `\n--- component stack ---${extra}` : ''}`;

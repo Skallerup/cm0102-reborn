@@ -4,6 +4,8 @@
 // Redis: acct:{email} (konto), acct:uid:{uid} → email, login:tok:{token} / login:code:{email} (15 min),
 // sess:{sid} → uid (180 dage), saves:{uid} (gemte spil: id → metadata + Blob-URL).
 // Selve spillene (≈4-5 MB gzip) uploades direkte fra browseren til Vercel Blob (op=upload).
+// "Send mit spil til udvikleren" (frivilligt, også uden konto): op=upload med clientPayload { support: 1 } → support/…,
+// derefter op=support → listen support:list (de seneste 200), som admin kan åbne i preview (api/admin.ts op=support).
 // Mails sendes med Resend (RESEND_API_KEY; afsender MAIL_FROM, standard login@cm0102reborn.com).
 // Opdateringsmails (samtykke, afmelding, spørgsmålet i spillet): op=news / unsub / prompt – se _lib/mail.ts.
 import { Redis } from '@upstash/redis';
@@ -116,12 +118,19 @@ async function listSaves(uid: string): Promise<SaveRec[]> {
 
 async function upload(request: Request) {
   const body = (await request.json()) as HandleUploadBody;
+  const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'x';
   try {
     const result = await handleUpload({
       body,
       request,
       onBeforeGenerateToken: async (pathname, clientPayload) => {
-        const p = JSON.parse(clientPayload ?? '{}') as { sid?: string };
+        const p = JSON.parse(clientPayload ?? '{}') as { sid?: string; support?: number };
+        // et spil sendt til udvikleren (ingen konto nødvendig): kun under support/, højst 5 i timen pr. IP
+        if (p.support) {
+          if (!/^support\/[\w-]{1,100}\.json\.gz$/.test(pathname)) throw new Error('path');
+          if (await limited(`rl:support:${ip}`, 5, 3600)) throw new Error('limit');
+          return { allowedContentTypes: ['application/gzip', 'application/octet-stream'], maximumSizeInBytes: 40 * 1024 * 1024, addRandomSuffix: true };
+        }
         const uid = p.sid ? await redis.get<string>(`sess:${sha(String(p.sid))}`) : null;
         if (!uid || !pathname.startsWith(`saves/${uid}/`)) throw new Error('auth');
         return { allowedContentTypes: ['application/gzip', 'application/octet-stream'], maximumSizeInBytes: 40 * 1024 * 1024, addRandomSuffix: true };
@@ -162,6 +171,21 @@ export async function POST(request: Request) {
   const ip = (request.headers.get('x-forwarded-for') ?? '').split(',')[0].trim() || 'x';
 
   switch (op) {
+    // et spil sendt til udvikleren (efter upload til support/): registreres, så admin kan åbne det
+    case 'support': {
+      const url = String(body.url ?? '');
+      if (!/^https:\/\/[\w.-]+\.blob\.vercel-storage\.com\/support\//.test(url)) return json({ error: 'url' }, 400);
+      if (await limited(`rl:support-commit:${ip}`, 10, 3600)) return json({ error: 'limit' }, 429);
+      const c = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
+      const rec = {
+        at: new Date().toISOString(), url, size: Number(body.size) || 0, vid: c(body.vid, 40), gid: c(body.gid, 60), manager: c(body.manager, 60),
+        club: c(body.club, 60), date: c(body.date, 10), note: c(body.note, 1000), lang: c(body.lang, 5), theme: c(body.theme, 10), mode: c(body.mode, 10),
+        ver: c(body.ver, 20), device: c(body.device, 60), email: c(body.email, 200),
+      };
+      await redis.lpush('support:list', JSON.stringify(rec));
+      await redis.ltrim('support:list', 0, 199);
+      return json({ ok: true });
+    }
     // spørgsmålet i spillet efter første sæson: kun tællere (ingen personlige data)
     case 'prompt': {
       const a = String(body.answer ?? '');

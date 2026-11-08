@@ -16,6 +16,8 @@ import { modernBackgrounds, setModernBackgrounds, setStadiumBackgrounds, stadium
 import { matchSound, setMatchSound } from '../matchSound';
 import { addableNations } from '../../game/sim';
 import { addNation } from './GameOptionsClassic';
+import { SendToDev } from '../SendToDev';
+import { rankingAvailable } from '../../online/rank';
 
 export function Options() {
   const g = useGame()!;
@@ -111,6 +113,7 @@ export function Options() {
             <AccountBar />
           </div>
         </Panel>
+        {rankingAvailable() && !g.humans?.length && <Panel title={t('sendDev.title')}><SendToDev /></Panel>}
         <Panel title={t('opt.about')}>
           <p>{t('opt.aboutText')}</p>
           <p className="muted">{t('opt.dataCredit')}</p>

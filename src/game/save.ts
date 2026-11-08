@@ -3,7 +3,7 @@ import { addMissingConference } from './competitions';
 import { fixClubName } from './data/clubNames';
 import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
-import { gs, setGame, addNews, notify, ensureNumbers } from './state';
+import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
 import { splitReserves } from './reserves';
 import { deserializeState, serializeState } from './snapshot';
 import type { GameState, Player } from './types';
@@ -30,6 +30,9 @@ export async function saveGame(opts?: { cloud?: boolean }): Promise<SaveMeta> {
   const g = gs();
   // online-spil gemmes på serveren – en lokal kopi ville blive genoptaget i stedet for det rigtige spil
   if (g.humans?.length) throw new Error('online');
+  const meta0 = { id: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '—', date: g.date, saved: new Date().toISOString() };
+  // admin-preview af en andens spil: gem aldrig (hverken lokalt eller i skyen)
+  if (previewInfo()) return meta0;
   const blob = await serialize(g);
   const meta: SaveMeta = {
     id: g.id,
@@ -210,6 +213,18 @@ export async function loadGame(id: string): Promise<boolean> {
   ensureAllNumbers();
   rememberLast({ kind: 'local', id });
   return true;
+}
+
+/** Admin: åbn en spillers gemte spil i preview (gemmes ikke, huskes ikke ved genindlæsning) */
+export async function openPreview(blob: Blob, label: string, theme?: string): Promise<void> {
+  const g = await deserializeState(blob);
+  setGame(g);
+  setPreview({ label, theme });
+  upgradeLoaded();
+  repairClubNames();
+  await repairStadiums();
+  ensureAllNumbers();
+  notify();
 }
 
 export async function deleteSave(id: string) {

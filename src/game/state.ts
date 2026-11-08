@@ -18,7 +18,16 @@ export function hasGame(): boolean {
 
 import { setEconomy } from './econ';
 
+/**
+ * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
+ * sendes videre (ranglister, puls, fejlrapporter) – se save.ts, rank.ts, notify.ts og errors.ts. Nulstilles af setGame.
+ */
+let preview: { label: string; theme?: string } | null = null;
+export const previewInfo = () => preview;
+export function setPreview(p: { label: string; theme?: string } | null) { preview = p; }
+
 export function setGame(g: GameState | null) {
+  preview = null;
   // ligaregler fra en importeret database (CM 01/02) skal kendes, før spillet simuleres
   if (g?.customRules) Object.assign(LEAGUE_RULES, g.customRules);
   G = g;

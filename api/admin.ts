@@ -4,9 +4,11 @@
 //          (honeypot field "website", max 3 per IP per hour, 40 per hour in total). If RESEND_API_KEY and
 //          NOTIFY_EMAIL are set, the developer also gets an e-mail.
 // Admin:   every other op requires the ADMIN_TOKEN (header x-admin-token).
-//          GET ?op=overview | new-careers | managers | manager&pid= | applications | rooms | rankings&board=
+//          GET ?op=overview | new-careers | managers | manager&pid= | applications | rooms | rankings&board= | saves | support
+//          (saves/support: spillernes gemte spil i skyen og dem, der er sendt til udvikleren – åbnes i preview i admin)
 //          POST { op: 'app-status' | 'app-delete' | 'unrank' }
 import { Redis } from '@upstash/redis';
+import { del } from '@vercel/blob';
 import { renderNews, sendNews, unsubLink, type Sub } from './_lib/mail.js';
 
 const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
@@ -29,6 +31,29 @@ async function scanKeys(match: string, cap = 5000): Promise<string[]> {
     cursor = next;
   } while (String(cursor) !== '0' && out.length < cap);
   return out;
+}
+
+interface SaveRow { source: 'account' | 'support'; id: string; manager: string; club: string; date: string; saved: string; url: string; size: number; device?: string; email?: string; note?: string; vid?: string; lang?: string; theme?: string; mode?: string; ver?: string }
+const parse = <T,>(v: unknown): T => (typeof v === 'string' ? JSON.parse(v) : v) as T;
+
+/** Alle gemte spil i skyen (konti) og alle spil sendt til udvikleren – nyeste først */
+async function allSaves(): Promise<SaveRow[]> {
+  const out: SaveRow[] = [];
+  const keys = await scanKeys('saves:*', 2000);
+  await Promise.all(keys.map(async (k) => {
+    const uid = k.slice(6);
+    const [h, email] = await Promise.all([redis.hgetall<Record<string, unknown>>(k), redis.get<string>(`acct:uid:${uid}`)]);
+    for (const v of Object.values(h ?? {})) {
+      const r = parse<{ id: string; manager: string; club: string; date: string; saved: string; url: string; size: number; device: string }>(v);
+      out.push({ source: 'account', ...r, email: email ?? undefined });
+    }
+  }));
+  const sup = (await redis.lrange<unknown>('support:list', 0, 199)) ?? [];
+  for (const v of sup) {
+    const r = parse<{ at: string; url: string; size: number; gid: string; manager: string; club: string; date: string; note: string; vid: string; lang: string; theme: string; mode: string; ver: string; device: string; email: string }>(v);
+    out.push({ source: 'support', id: r.gid, manager: r.manager, club: r.club, date: r.date, saved: r.at, url: r.url, size: r.size, device: r.device, email: r.email || undefined, note: r.note, vid: r.vid, lang: r.lang, theme: r.theme, mode: r.mode, ver: r.ver });
+  }
+  return out.sort((a, b) => b.saved.localeCompare(a.saved));
 }
 
 async function sendMail(subject: string, text: string) {
@@ -157,8 +182,13 @@ export async function GET(request: Request) {
     const counts = await Promise.all(Object.keys(days).map((d) => redis.get<number>(`nc:d:${d}`)));
     Object.keys(days).forEach((d, i) => { days[d] = Number(counts[i] ?? 0); });
     const online = await redis.zcount('seen', Date.now() - 5 * 60_000, '+inf');
+    // karrierer, der findes som gemt spil (konto eller sendt til udvikleren): kan åbnes i preview
+    const saves = await allSaves();
+    for (const r of rows as { gid?: string; save?: SaveRow }[]) { const s = r.gid ? saves.find((x) => x.id === r.gid) : undefined; if (s) r.save = s; }
     return json({ rows, days, online, now: Date.now() });
   }
+
+  if (op === 'saves') return json({ saves: await allSaves() });
 
   if (op === 'rooms') {
     const rooms = await scanKeys('room:?????', 1000);
@@ -216,6 +246,15 @@ export async function POST(request: Request) {
 
   // ---------- admin ----------
   if (!isAdmin(request)) return json({ error: 'auth' }, 401);
+
+  // slet et spil sendt til udvikleren (rækken og filen)
+  if (body.op === 'support-delete') {
+    const url = clip(body.url, 500);
+    const raw = (await redis.lrange<unknown>('support:list', 0, 199)) ?? [];
+    for (const v of raw) if (parse<{ url: string }>(v).url === url) await redis.lrem('support:list', 0, typeof v === 'string' ? v : JSON.stringify(v));
+    if (url.includes('.blob.vercel-storage.com/support/')) await del(url).catch(() => {});
+    return json({ ok: true });
+  }
 
   // fjern karrierer fra "New careers" (fx ejerens egne): alle med et af besøgs-id'erne, eller én række (tidspunkt + manager)
   // send en opdateringsmail: test = kun til NOTIFY_EMAIL (ejeren); ellers alle tilmeldte (evt. kun ét sprog)

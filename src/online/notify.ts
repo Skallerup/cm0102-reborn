@@ -3,12 +3,12 @@
 // fanen er synlig, viser i admin, om spilleren er online. Fire-and-forget: fejl og manglende server ignoreres.
 import { rankingAvailable } from './rank';
 import { getTheme } from '../ui/theme';
-import { gs, hasGame } from '../game/state';
+import { gs, hasGame, previewInfo } from '../game/state';
 import { sortTable } from '../game/competitions';
 
 const VID = 'cm0102.visitor';
 /** Anonymt id for denne browser (ingen personoplysninger) */
-function visitorId(): string {
+export function visitorId(): string {
   try {
     let v = localStorage.getItem(VID);
     if (!v) { v = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random()}`).replace(/-/g, '').slice(0, 20); localStorage.setItem(VID, v); }
@@ -20,7 +20,7 @@ const theme = () => (getTheme() === 'retro' ? 'classic' : 'modern');
 const post = (body: unknown) => fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), keepalive: true }).catch(() => {});
 
 export function notifyNewCareer(info: { manager: string; club: string; league?: string; nation?: string; challenge?: string; bots: number; db: string; lang: string }): void {
-  if (!rankingAvailable()) return;
+  if (!rankingAvailable() || previewInfo()) return;
   // spillets id og startdato, så admin kan følge, hvor langt karrieren er nået (pulsen nedenfor)
   const g = hasGame() ? gs() : null;
   void post({ ...info, vid: visitorId(), theme: theme(), gid: g?.id, start: g?.date, mode: g?.options.mode ?? 'extended' });
@@ -29,7 +29,7 @@ export function notifyNewCareer(info: { manager: string; club: string; league?: 
 /** Hvor langt det åbne singleplayer-spil er: spildato, klub og placering i ligaen (vises i admin under New careers) */
 function progress(): { gid: string; date: string; club: string; pos: number } | undefined {
   try {
-    if (!hasGame()) return undefined;
+    if (!hasGame() || previewInfo()) return undefined;
     const g = gs();
     if (g.humans?.length || g.draft || !g.id) return undefined;
     const c = g.clubs[g.userClub];
