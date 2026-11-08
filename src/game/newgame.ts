@@ -1,4 +1,5 @@
 // Opret et nyt spil ud fra world.json
+import { CLUB_INFO_2026 } from './data/clubInfo2026';
 import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
@@ -432,7 +433,8 @@ export function takeOverClub(club: Club) {
 function createClubStaff(c: Club, world: WorldData, seed: number, date: string) {
   const g = gs();
   const r = new Rng(hash(seed, c.id, 99));
-  const coach = world.clubs.find((x) => x[0] === c.id)?.[7] ?? '';
+  // 2026/27: datakilden har ingen trænere – de rigtige cheftrænere fra CLUB_INFO_2026 (ellers et genereret navn)
+  const coach = world.clubs.find((x) => x[0] === c.id)?.[7] || (world.season >= 2026 ? CLUB_INFO_2026[c.id]?.[0] ?? '' : '');
   const mk = (role: StaffRole, level: number) => {
     let first: string, last: string;
     if (role === 'manager' && coach) {

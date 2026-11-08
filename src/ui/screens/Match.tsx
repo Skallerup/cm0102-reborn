@@ -36,6 +36,8 @@ import { useHotkeys } from '../hotkeys';
 import { TeamTalk } from '../teamtalk';
 import { talkDone } from '../../game/teamtalk';
 import { extended } from '../../game/rules';
+import { isOriginal2001 } from '../../game/rules2001';
+import { realCompName } from '../../i18n/comps';
 
 // Den igangværende kamp overlever navigation mellem skærme
 /** Holdfarver (scoreboard, 2D, kommentar): begge hold i deres egne klubfarver – ligner de hinanden, spiller
@@ -277,17 +279,20 @@ const goalColors = (flash: number, colors: [string, string, string, string]) => 
 /** Kommentarbjælkens farver: holdet med bolden, gul ved mål, hvid ellers */
 // VAR-tjek (kun udvidet spil): mørk lilla bjælke med guldtekst, som VAR-grafikken på tv
 const VAR_STYLE = { background: 'linear-gradient(100deg, #8a3cff 0 9%, #1b0b5c 9% 91%, #8a3cff 91%)', color: '#f4e6a8' };
-function cxLineStyle(line: { cls: string; t?: number; k?: string } | undefined, colors: [string, string, string, string]) {
+// turneringens farver til linjer uden hold (spillerønske): Premier League lilla med hvid tekst – kun 2026/27 (ikke 2001)
+const COMP_LINE: Record<string, { background: string; color: string }> = { 'Premier League': { background: '#37003c', color: '#ffffff' } };
+const compLine = (comp: string | undefined) => (comp && !isOriginal2001() && gs().comps[comp] ? COMP_LINE[realCompName(gs().comps[comp].name)] : undefined);
+function cxLineStyle(line: { cls: string; t?: number; k?: string } | undefined, colors: [string, string, string, string], comp?: string) {
   const team = line?.t;
   if (line?.k?.startsWith('var-')) return VAR_STYLE;
-  return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
+  return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : compLine(comp) ?? { background: '#ffffff', color: '#000000' };
 }
 
 function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number; k?: string }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
-  const bar = cxLineStyle(line, colors);
+  const bar = cxLineStyle(line, colors, f.comp);
   const w = weatherFor(f);
   return (
     <div className="cx-mo">
@@ -873,7 +878,7 @@ function LiveMatch({ id }: { id: number }) {
   // klassisk: ved slutfløjt bliver Next-knappen nederst til "Continue" (som i CM 01/02)
   useClassicNext(report && !classic ? t('match.continue') : null, done);
   const editing = classic && tab === 'tactics' && !report;
-  useClassicMatchSide(classic ? { minute: waiting ? '0' : L.atHalf && !sim.finished ? '45' : String(sim.minute), half: !!L.atHalf, editing, lastView: editing && lastView, venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, comp: f.comp, line: !waiting && !report && tab !== 'overview' && tab !== '2d' && L.lines.length ? ((L.goalUntil ?? 0) > Date.now() ? { text: t('hl.goal'), background: colors[(L.goalTeam ?? 0) * 2], color: colors[(L.goalTeam ?? 0) * 2 + 1], flash: true } : { text: L.lines.at(-1)!.text, ...cxLineStyle(L.lines.at(-1), colors) }) : undefined, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
+  useClassicMatchSide(classic ? { minute: waiting ? '0' : L.atHalf && !sim.finished ? '45' : String(sim.minute), half: !!L.atHalf, editing, lastView: editing && lastView, venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, comp: f.comp, line: !waiting && !report && tab !== 'overview' && tab !== '2d' && L.lines.length ? ((L.goalUntil ?? 0) > Date.now() ? { text: t('hl.goal'), background: colors[(L.goalTeam ?? 0) * 2], color: colors[(L.goalTeam ?? 0) * 2 + 1], flash: true } : { text: L.lines.at(-1)!.text, ...cxLineStyle(L.lines.at(-1), colors, f.comp) }) : undefined, kicked: !waiting, paused, finished: !!report, home: g.clubs[f.home].short, away: g.clubs[f.away].short, me: me as 0 | 1, speed } : null, {
     kick: () => { L.kicked = true; setPaused(false); force((x) => x + 1); },
     pause: cxPause,
     tactics: (side) => {
@@ -885,9 +890,7 @@ function LiveMatch({ id }: { id: number }) {
     ok: () => {
       if (draft) {
         sim.setTactic(me, draft);
-        // CM 01/02: ændringerne gælder også efter kampen – holdinstruktioner, formation, dødboldsskytter og anfører (ikke udskiftningerne)
-        const base = gs().tactic;
-        if (base && !gs().draft) act({ t: 'tactic', tactic: { ...base, team: { ...draft.team }, formation: draft.formation, slots: draft.slots.map((x) => ({ ...x })), individual: draft.individual.map((x) => ({ ...x })), captain: base.lineup.includes(draft.captain) ? draft.captain : base.captain, penalties: draft.penalties, freeKicks: draft.freeKicks, freeKicksR: draft.freeKicksR, corners: draft.corners, cornersR: draft.cornersR } });
+        // ændringer i kampen gælder kun denne kamp (ejerens ønske) – g.tactic røres ikke
       }
       setDraft(null); setLastView(false); pull(); setTab(L.prevTab && L.prevTab !== 'tactics' ? L.prevTab : 'overview'); force((x) => x + 1); },
     back: () => setLastView(false),

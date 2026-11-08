@@ -14,6 +14,10 @@ export const CHANGELOG: ChangelogEntry[] = [
     title: { da: 'Mobil, flere ligaer undervejs og ny forside', en: 'Mobile, more leagues mid-game and a new front page' },
     items: [
       { da: "⚠ Kræver et nyt spil med den originale database", en: "⚠ Needs a new game with the original database" },
+      { da: "Taktikændringer i løbet af en kamp gælder nu kun den kamp – til næste kamp har du din egen taktik igen", en: "Tactical changes during a match now only apply to that match – your own tactic is back for the next game" },
+      { da: "2026/27-databasen: de rigtige cheftrænere i ti ligaer (bl.a. Premier League, Championship, LaLiga, Bundesliga, Serie A, Ligue 1 og Superligaen) – kræver et nyt spil", en: "2026/27 database: the real head coaches in ten leagues (including the Premier League, Championship, LaLiga, Bundesliga, Serie A, Ligue 1 and the Danish Superliga) – needs a new game" },
+      { da: "Klassisk: trøjeleverandørens logo (Nike, adidas, Puma …) ved klubbens logo i titelbjælken (2026/27-databasen)", en: "Classic: the kit manufacturer's logo (Nike, adidas, Puma …) next to the club badge in the title bar (2026/27 database)" },
+      { da: "Premier League-kampe (2026/27): kommentarbjælken er lilla, når linjen ikke handler om et af holdene", en: "Premier League matches (2026/27): the commentary bar turns purple when the line isn't about either team" },
       { da: "Klassisk med udvidet spil: holdsnakken efter kampen åbner af sig selv ved slutfløjt (før lå den gemt under Last Match)", en: "Classic with extended mode: the post-match team talk now opens by itself at full time (it used to be hidden under Last Match)" },
       { da: "VAR-tjek vises i en mørk lilla bjælke med guldtekst i kommentaren", en: "VAR checks now show in a dark purple bar with gold text in the commentary" },
       { da: "Rettet: på hjemmekampe kunne baggrunden være klubbens træningsanlæg i stedet for stadionet", en: "Fixed: home matches could show the club's training ground instead of the stadium as background" },

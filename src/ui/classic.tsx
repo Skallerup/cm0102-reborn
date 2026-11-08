@@ -13,6 +13,7 @@ import { compName, natName, t } from '../i18n';
 import { leagueRows } from '../game/competitions';
 import { useNav, type Route, type ScreenName } from './core';
 import { Crest, NationCrest } from './components';
+import { KitBrand } from './kitBrand';
 import { compLogoUrl } from './logos';
 import { realCompName } from '../i18n/comps';
 import { titleLogo } from './classicOptions';
@@ -500,7 +501,7 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg, ['--tb' as string]: col.bg }}>
         <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />
-        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} /></span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : compUrl ? <span className="cx-title-logo"><img src={compUrl} alt="" width={44} height={44} style={{ objectFit: 'contain' }} /></span> : null}
+        {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} />{titleLogo() && <KitBrand club={logoClub} />}</span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : compUrl ? <span className="cx-title-logo"><img src={compUrl} alt="" width={44} height={44} style={{ objectFit: 'contain' }} /></span> : null}
         <h2>{text}</h2>
         {action && <div className="cx-action">{action}</div>}
       </div>
