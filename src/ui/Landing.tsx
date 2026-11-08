@@ -166,7 +166,7 @@ export function Frame({ src, alt, className = '', onOpen }: { src: string; alt: 
 const TICKER = ['tick1', 'tick2', 'tick3', 'tick4', 'tick5', 'tick6', 'tick7', 'tick8'];
 const FEATURES: [string, string][] = [
   ['⚽', 'engine'], ['🌍', 'players'], ['🔎', 'scouting'], ['🎙️', 'press'], ['💸', 'transfers'],
-  ['🧠', 'ai'], ['🏆', 'ranking'], ['🤝', 'online'], ['📱', 'mobile'],
+  ['🧠', 'ai'], ['💾', 'authentic'], ['🤝', 'online'], ['📱', 'mobile'],
 ];
 const SHOWCASE: { key: string; imgs: string[] }[] = [
   { key: 'matchday', imgs: ['report', 'match-stats'] },
@@ -270,7 +270,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
       </div>
 
       <section className="lp-stats lp-wrap">
-        {[[40000, '+', 'players'], [641, '', 'clubs'], [38, '', 'leagues'], [240, '', 'moments']].map(([n, s, k]) => (
+        {[[40000, '+', 'players'], [1375, '', 'clubs'], [81, '', 'leagues'], [240, '', 'moments']].map(([n, s, k]) => (
           <div key={k as string} className="lp-stat reveal"><b><Counter to={n as number} suffix={s as string} /></b><span>{t(`land.stat.${k}`)}</span></div>
         ))}
       </section>
@@ -357,7 +357,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
 
       <section id="faq" className="lp-section lp-wrap lp-faq">
         <h2 className="reveal">{t('land.faqTitle')}</h2>
-        {[1, 2, 3, 4, 5, 6].map((n) => (
+        {[1, 7, 8, 2, 3, 4, 5, 6].map((n) => (
           <details key={n} className="reveal">
             <summary>{t(`land.q${n}`)}</summary>
             <p>{t(`land.a${n}`)}</p>
@@ -380,6 +380,12 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
       <footer className="lp-footer lp-wrap">
         <div>© {new Date().getFullYear()} CM Reborn · {t('land.footerData')}</div>
         <div className="lp-disclaimer">{t('land.disclaimer')}</div>
+        <nav className="lp-footer-links">
+          <a href="/cm-01-02/">{t('land.foot.db')}</a>
+          <a href="/2026-27/">{t('land.foot.db26')}</a>
+          <a href="/cm-01-02-guides/">{t('land.foot.guides')}</a>
+          <a href="/faq/">{t('land.nav.faq')}</a>
+        </nav>
         <div><ConsentLink /></div>
       </footer>
 

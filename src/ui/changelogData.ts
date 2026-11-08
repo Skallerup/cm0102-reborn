@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.19.0',
+    date: '2026-11-08',
+    title: { da: 'Opdateret forside og sprogvalg', en: 'Updated front page and language menu' },
+    items: [
+      { da: "Sprogvalget står nu i alfabetisk rækkefølge (Dansk, Deutsch, English …)", en: "The language menu is now in alphabetical order (Dansk, Deutsch, English …)" },
+      { da: "Forsiden er opdateret: 10 sprog, 1.375 klubber og 81 ligaer i de to databaser, et kort om den ægte CM 01/02-tilstand, to nye spørgsmål om den originale database og links til database-siderne og guiderne", en: "The front page is updated: 10 languages, 1,375 clubs and 81 leagues across the two databases, a card on the authentic CM 01/02 mode, two new questions about the original database and links to the database pages and guides" },
+    ],
+  },
+  {
     version: '0.18.0',
     date: '2026-11-07',
     title: { da: 'Kampdagen, transfers, lyd og nye baggrunde som i CM 01/02', en: 'Match day, transfers, sound and new backgrounds as in CM 01/02' },

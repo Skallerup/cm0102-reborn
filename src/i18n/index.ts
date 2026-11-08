@@ -17,7 +17,7 @@ export async function ensureLang(l: Lang): Promise<void> {
   try { dicts[l] = await LAZY[l]!(); } catch { /* offline uden cache: engelsk bruges i stedet */ }
 }
 /** Sprogene i spillet og på hjemmesiden (kort kode og navn på sproget selv) */
-export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['de', 'DE', 'Deutsch'], ['it', 'IT', 'Italiano'], ['pt', 'PT', 'Português'], ['tr', 'TR', 'Türkçe'], ['sv', 'SV', 'Svenska'], ['nb', 'NO', 'Norsk']];
+export const LANGS: [Lang, string, string][] = [['da', 'DA', 'Dansk'], ['de', 'DE', 'Deutsch'], ['en', 'EN', 'English'], ['es', 'ES', 'Español'], ['fr', 'FR', 'Français'], ['it', 'IT', 'Italiano'], ['nb', 'NO', 'Norsk'], ['pt', 'PT', 'Português'], ['sv', 'SV', 'Svenska'], ['tr', 'TR', 'Türkçe']];
 export const isLang = (v: unknown): v is Lang => LANGS.some(([k]) => k === v);
 /** Sprogets locale til tal og datoer */
 export const LOCALE: Record<Lang, string> = { da: 'da-DK', en: 'en-GB', es: 'es-ES', fr: 'fr-FR', de: 'de-DE', it: 'it-IT', pt: 'pt-BR', tr: 'tr-TR', sv: 'sv-SE', nb: 'nb-NO' };

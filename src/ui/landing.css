@@ -170,6 +170,9 @@
 .lp-final { margin-top: 100px; padding: 90px 0; text-align: center; background: radial-gradient(700px 300px at 50% 0%, rgba(255, 207, 63, 0.18), transparent 70%), linear-gradient(180deg, transparent, rgba(10, 16, 32, 0.8)); border-top: 1px solid var(--line); }
 .lp-final p { color: #c2cbe6; font-size: 18px; margin: 16px 0 30px; }
 .lp-footer { padding: 34px 0 50px; color: var(--faint); font-size: 13px; display: grid; gap: 8px; }
+.lp-footer-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.lp-footer-links a { color: var(--faint); }
+.lp-footer-links a:hover { color: inherit; }
 .lp-disclaimer { font-size: 12px; max-width: 860px; }
 
 /* lightbox */
