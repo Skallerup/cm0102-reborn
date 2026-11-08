@@ -11,7 +11,7 @@ import { z } from 'zod';
 
 // Foretrukken model først; gratisniveauet på AI Gateway har ikke adgang til alle modeller,
 // så ved adgangsfejl skiftes (og huskes pr. instans) til næste model i listen.
-const MODELS = [process.env.AI_MODEL ?? 'anthropic/claude-haiku-4.5', process.env.AI_FALLBACK_MODEL ?? 'google/gemini-2.5-flash-lite'];
+const MODELS = [process.env.AI_MODEL ?? 'google/gemini-2.5-flash-lite', process.env.AI_FALLBACK_MODEL ?? 'anthropic/claude-haiku-4.5'];
 let modelIdx = 0;
 const accessError = (e: unknown) => /free tier|do not have access|not found|upgrade/i.test(String((e as Error)?.message ?? e));
 const DAILY_CAP = Number(process.env.AI_DAILY_CAP ?? 4000);
@@ -22,7 +22,10 @@ const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
   ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
   : null;
 
-const enabled = () => !!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL);
+// Slået fra 2026-11-08: AI Gateway-kreditten er brugt op (ejerens beslutning) – spillet bruger sine faste tekster.
+// Slå til igen med miljøvariablen AI_ENABLED=1 (eller fjern linjen), når der er kredit.
+const AI_OFF = process.env.AI_ENABLED !== '1';
+const enabled = () => !AI_OFF && !!(process.env.AI_GATEWAY_API_KEY || process.env.VERCEL_OIDC_TOKEN || process.env.VERCEL);
 
 const BASE = `Du skriver tekst til et fodboldmanagerspil i stil med de klassiske Championship Manager-spil.
 Skriv kort, levende og troværdigt som rigtig fodboldjournalistik/omklædningsrum – med konkrete detaljer fra konteksten.

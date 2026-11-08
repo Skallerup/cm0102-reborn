@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-08 – AI-teksterne slået fra (AI Gateway-kreditten brugt op): `AI_OFF` i api/ai.ts → GET svarer enabled:false, så klienten bruger de faste skabeloner uden at kalde. Slå til med miljøvariablen `AI_ENABLED=1`. Standardmodel nu `google/gemini-2.5-flash-lite` (billigst), Haiku som reserve.
 - 2026-11-08 – Forsiden: `News` (Landing.tsx; henter changelogData med dynamisk import, når sektionen nærmer sig; 3 versioner ad gangen, 5 punkter + "+N mere"; da/en, øvrige sprog får en note) og `Database` (DB_CARDS → statiske SEO-sider). Tekster `land.news.*`/`land.db.*` på alle 10 sprog, nav-link `land.nav.news`.
 - 2026-11-08 – Reddit-feedback: pausen ligger nu på kampen (`L.paused` i Match.tsx; før useState → nulstillet når skærmen blev forladt, så kampen kørte videre), moderne Tactics-fane pauser. `SlotGuides` (runs.tsx; `GRID_X/GRID_Y` eksporteret fra tactics.ts) viser de 30 faste pladser + den fremhævede under flytning i TacticsClassic og kampens taktik. e2e tjekker begge.
 - 2026-11-08 – v0.19.0. Sprogvalget alfabetisk (`LANGS` i i18n/index.ts, efter sprogets eget navn). Forsiden: 10 sprog, tal 1.375 klubber/81 ligaer (spilbare i begge databaser), funktionskortet `authentic` i stedet for `ranking` (har egen sektion), FAQ q7/q8 (original database, databasesiderne), links i foden (`land.foot.*`) til /cm-01-02/, /2026-27/, guiderne og /faq/, `land.footerData` = CM-databaserne (ikke transfermarkt).
