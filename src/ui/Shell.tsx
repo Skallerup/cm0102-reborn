@@ -162,14 +162,14 @@ export function Shell() {
   // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
   useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs(), loadClubPacks()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
   const bgDay = bgChanges() ? g.date : '2001-07-01';
-  // hjemmeholdets klubpakke fra fællesskabet går forud for stadionbilledet
+  // kampdage: stadion indefra først – klubpakken (kan være træningsanlæg o.l.) kun når vi ikke har stadionet
   const homePack = venue && venueFix ? clubPackUrl(g.clubs[venueFix.home], venueFix.date ?? g.date) : null;
-  const cxPhoto = cmNav ? homePack ?? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
+  const cxPhoto = cmNav ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
   useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
-    ? homePack ?? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
+    ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
     : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);

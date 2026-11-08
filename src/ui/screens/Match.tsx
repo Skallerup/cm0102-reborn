@@ -87,7 +87,7 @@ void loadMatchTexts();
 /** Linjer, hvis lyd går forud for alt andet i samme opdatering (mål, fløjt, kort, straffespark) */
 const BIG_SOUND = new Set(['kickoff', 'halftime', 'fulltime', 'extratime', 'yellow', 'red', 'second-yellow', 'red-professional', 'penalty', 'goal-pen', 'pen-saved', 'pen-miss', 'goal-offside']);
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number } | null = null;
+let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number; postShown?: boolean } | null = null;
 
 /** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
 const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
@@ -275,12 +275,15 @@ const goalColors = (flash: number, colors: [string, string, string, string]) => 
 };
 
 /** Kommentarbjælkens farver: holdet med bolden, gul ved mål, hvid ellers */
-function cxLineStyle(line: { cls: string; t?: number } | undefined, colors: [string, string, string, string]) {
+// VAR-tjek (kun udvidet spil): mørk lilla bjælke med guldtekst, som VAR-grafikken på tv
+const VAR_STYLE = { background: 'linear-gradient(100deg, #8a3cff 0 9%, #1b0b5c 9% 91%, #8a3cff 91%)', color: '#f4e6a8' };
+function cxLineStyle(line: { cls: string; t?: number; k?: string } | undefined, colors: [string, string, string, string]) {
   const team = line?.t;
+  if (line?.k?.startsWith('var-')) return VAR_STYLE;
   return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : { background: '#ffffff', color: '#000000' };
 }
 
-function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
+function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number; k?: string }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
@@ -815,6 +818,9 @@ function LiveMatch({ id }: { id: number }) {
   const halfTalk = !classic && !gs().draft && sim.half === 2 && !report && (tab === 'talk' || (!talkDone(id, 'half') && sim.minute <= 50));
   const myGoals = sim.teams[me].stats.goals - sim.teams[1 - me].stats.goals;
   const liveRatings = Object.fromEntries(myLive.on.filter((s) => !s.off).map((s) => [s.id, Math.round(s.rating * 10) / 10]));
+  // klassisk udseende med udvidet spil: holdsnakken efter kampen åbner af sig selv ved slutfløjt (ellers lå den gemt i Last Match)
+  const postTalk = classic && extended() && !gs().draft && !h2h && !!report && (tab === 'talk' || !talkDone(id, 'post'));
+  useEffect(() => { if (postTalk && L && !L.postShown) { L.postShown = true; setTab('talk'); } }, [postTalk]);
 
   // kun kampe i samme turnering (samme liga eller pokal)
   const others = fixturesOn(f.date).map((fid) => g.fixtures[fid]).filter((x) => x && x.id !== id && x.result && x.comp === f.comp);
@@ -925,11 +931,14 @@ function LiveMatch({ id }: { id: number }) {
       </div>}
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
       {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <Tabs tabs={classic
-        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
+        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ...(halfTalk || postTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
         : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={(v) => { if (v === 'tactics' && !classic && !h2h && !report && !sim.finished) setPaused(true); setTab(v); }} />}
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />
+      )}
+      {tab === 'talk' && postTalk && (
+        <TeamTalk fixture={id} stage="post" pids={myLive.on.map((s) => s.id)} diff={myGoals} ratings={Object.fromEntries(myLive.on.map((s) => [s.id, Math.round(s.rating * 10) / 10]))} />
       )}
       {msg && <div className="insight">{msg}</div>}
       {/* klassisk: mellemrum gør kommentaren et trin hurtigere (efter Fastest forfra fra Very Slow) */}
