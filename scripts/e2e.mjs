@@ -56,6 +56,14 @@ async function run(look) {
       await page.waitForTimeout(300);
       return true;
     }
+    // European Squad (31/8): Respond → Auto → Submit
+    if (await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.euroDue === g.season; })) {
+      if (await page.locator('.cx-eur').isVisible().catch(() => false)) { await page.locator('.cx-eur .cx-sqn-bar .cx-grey').first().click(); await page.locator('.cx-eur .cx-ts-buttons button.primary').click(); }
+      else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
+      else return false;
+      await page.waitForTimeout(300);
+      return true;
+    }
     if (!(await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.sqnDue === g.season; }))) return false;
     if (await page.locator('.cx-sqn .cx-ts-buttons button.primary').isVisible().catch(() => false)) await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
     else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();

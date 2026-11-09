@@ -4,6 +4,7 @@ import { intlDayResults, intlDaily } from './international';
 import { reservesDaily } from './reserves';
 import { awolMonthly } from './rules2001';
 import { squadNumbersDaily } from './squadNumbers';
+import { euroRegistered, euroSquadDaily } from './euroSquad';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
 import { A } from './attributes';
@@ -86,9 +87,10 @@ export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
   return t;
 }
 
-export function userTactic(auto = false): Tactic {
+/** `only`: kun disse spillere kan spille (European Squad) – taktikken gemmes så ikke */
+export function userTactic(auto = false, only?: Set<number> | null): Tactic {
   const g = gs();
-  const players = squad(g.userClub);
+  const players = only ? squad(g.userClub).filter((p) => only.has(p.id)) : squad(g.userClub);
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), players);
   let t = validateTactic(g.tactic, players);
   if (auto) t = autoSelect(t, players);
@@ -110,7 +112,7 @@ export function userTactic(auto = false): Tactic {
     }
     t = { ...t, lineup, bench };
   }
-  g.tactic = t;
+  if (!only) g.tactic = t;
   return t;
 }
 
@@ -141,8 +143,8 @@ function usesVar(f: Fixture): boolean {
 }
 
 export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number; homeAdv?: number; finSlope?: number; squash?: number; squashAtt?: number; squashDef?: number; ease?: number; cards?: number; corners?: number; countBlocked?: boolean; close?: number; closeSlope?: number; onTarget?: number; offside?: number; shotSpread?: number; oneOnOneK?: number; rules?: 'current' | 'original'; pitch: Pitch; referee: { name: string; strict: number } } {
-  const ht = tacticFor(f.home, f.away, true, userAuto);
-  const at = tacticFor(f.away, f.home, false, userAuto);
+  const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
+  const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
   return {
     home: engineTeam(f.home, ht),
     away: engineTeam(f.away, at),
@@ -166,12 +168,16 @@ export const ORIGINAL = { finish: 2.1, homeAdv: 2.2, finSlope: 20, squash: 0.48,
 export const ORIGINAL_FINISH = ORIGINAL.finish;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
-function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean): Tactic {
+function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string): Tactic {
   const g = gs();
-  if (club === g.userClub && g.userClub) return userTactic(userAuto);
+  // europæiske kampe: kun den tilmeldte trup (European Squad)
+  const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
+  // færre end 11 spilleklare tilmeldte (fx en tom liste): så gælder tilmeldingen ikke (*estimeret* – ellers stod holdet uden spillere)
+  const only = reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+  if (club === g.userClub && g.userClub) return userTactic(userAuto, only);
   if (isHumanClub(club)) {
     const o = ownerOf(club);
-    if (o) return withHuman(o, () => userTactic(userAuto));
+    if (o) return withHuman(o, () => userTactic(userAuto, only));
   }
   promoteIfShort(club);
   return aiTactic(club, opp, home);
@@ -419,6 +425,7 @@ function newDay() {
   answerPendingRenewals();
   holidayDaily();
   squadNumbersDaily();
+  euroSquadDaily();
   forEachHuman(processJobTalks);
   forEachHuman(() => {
     expirePress();

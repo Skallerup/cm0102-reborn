@@ -34,6 +34,7 @@ import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
 import { squadNumbersDue } from '../game/squadNumbers';
+import { euroDue, euroRegistered } from '../game/euroSquad';
 import { act } from '../game/actions';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
@@ -107,12 +108,15 @@ function selectionProblems(): string | null {
   const tac = g.tactic;
   if (!tac) return null;
   const ids = [...tac.lineup, ...tac.bench].filter(Boolean);
-  const groups: [string, string[]][] = [['inj', []], ['ban', []], ['res', []]];
+  const groups: [string, string[]][] = [['inj', []], ['ban', []], ['res', []], ['unreg', []]];
+  // europæisk kamp: kun den tilmeldte trup (European Squad)
+  const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
+  const reg = pf && g.comps[pf.comp]?.type === 'continental' ? euroRegistered(g.userClub) : null;
   for (const id of ids) {
     const p = g.players[id];
     if (!p || p.club !== g.userClub) continue;
     const nm = `${p.first} ${p.last}`.trim();
-    if (p.injury) groups[0][1].push(nm); else if (p.banned > 0) groups[1][1].push(nm); else if (p.reserves) groups[2][1].push(nm);
+    if (p.injury) groups[0][1].push(nm); else if (p.banned > 0) groups[1][1].push(nm); else if (p.reserves) groups[2][1].push(nm); else if (reg && !reg.has(p.id)) groups[3][1].push(nm);
   }
   const join = (n: string[]) => (n.length > 1 ? `${n.slice(0, -1).join(', ')} ${t('common.and')} ${n.at(-1)}` : n[0]);
   const lines = groups.filter(([, n]) => n.length).map(([k, n]) => t(`cl.mt.sel.${k}${n.length > 1 ? 'N' : '1'}`, { names: join(n) }));
@@ -304,6 +308,11 @@ export function Shell() {
     // klassisk (CM 01/02): Continue Game venter, til trøjenummerlisten er sendt – vis beskeden med Respond
     if (cmNav && squadNumbersDue(g.userClub)) {
       const n = g.news.find((x) => x.key === 'sqn.request' && !x.params.done);
+      if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
+    }
+    // … og på den europæiske trup (31/8)
+    if (cmNav && euroDue(g.userClub)) {
+      const n = g.news.find((x) => x.key === 'eur.request' && x.params.done === undefined);
       if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
     }
     if (g.pendingFixture) {

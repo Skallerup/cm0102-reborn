@@ -1422,3 +1422,5 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
   .cx-sqn-strip { grid-template-columns: repeat(10, minmax(0, 1fr)); }
   .cx-sqn-list { grid-template-columns: 1fr; }
 }
+.cx-eur-count { margin: 6px 0; padding: 6px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-weight: 800; font-size: 16px; text-shadow: 1px 1px 0 #000; }
+.cx-eur .cx-sqn-box { font-size: 12px; }

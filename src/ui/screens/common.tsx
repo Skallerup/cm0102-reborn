@@ -28,6 +28,7 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
   if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
+  if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
   // "Four players from Man Utd …" (uden navneliste)
   if ((n.key === 'intl.selN' || n.key === 'intl.tourSel') && !n.params?.names && typeof p.n === 'number' && has(`num.${p.n}`)) p.n = t(`num.${p.n}`);
   // andre klubbers handler (CM 01/02): "The fee may be increased to £6,750,000 depending on appearances." og "… from Tottenham"
@@ -95,6 +96,8 @@ const boardUpdate = (n: NewsItem) => [t(`cl.ba.conf.${n.params.lvl}`, { club: St
 function offerAnswer(n: NewsItem): string {
   // Squad Numbers: "The list has been submitted."
   if (n.key === 'sqn.request') return n.params?.done ? `\n\n${t('sqn.submitted')}` : '';
+  // European Squad: "25 players were registered."
+  if (n.key === 'eur.request') return n.params?.done !== undefined ? `\n\n${t('eur.registered', { n: Number(n.params.done) })}` : '';
   if (n.link?.kind !== 'offer') return '';
   const g = gs();
   const o = g.offers.find((x) => x.id === Number(n.link!.id));

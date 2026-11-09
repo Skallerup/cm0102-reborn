@@ -355,6 +355,9 @@ export interface Club {
   /** Squad Numbers (CM 01/02): sæsonen, hvor klubben skal sende sin trøjenummerliste (beskeden 4/8), og de sendte sæsoner */
   sqnDue?: number;
   sqnDone?: number[];
+  /** European Squad (CM 01/02): sæsonen, hvor klubben skal tilmelde sin europæiske trup (31/8, 1/2), og de tilmeldte */
+  euroDue?: number;
+  euroSquad?: { season: number; ids: number[] };
   /** Opsparet omdømmeændring i løbet af sæsonen (brøkdele, før de bliver til hele point) */
   repDrift?: number;
   /** Spillere klubben holder øje med (AI-klubbernes shortliste) */
