@@ -201,7 +201,7 @@ function friendlies(busy: Set<number> = new Set()) {
 }
 
 /** VM 2002 i Sydkorea og Japan: de rigtige 32 deltagere og grupper A-H */
-const WC2002 = [['France', 'Senegal', 'Uruguay', 'Denmark'], ['Spain', 'Slovenia', 'Paraguay', 'South Africa'], ['Brazil', 'Turkey', 'China PR', 'Costa Rica'],
+export const WC2002 = [['France', 'Senegal', 'Uruguay', 'Denmark'], ['Spain', 'Slovenia', 'Paraguay', 'South Africa'], ['Brazil', 'Turkey', 'China PR', 'Costa Rica'],
   ['South Korea', 'Poland', 'United States', 'Portugal'], ['Germany', 'Saudi Arabia', 'Republic of Ireland', 'Cameroon'], ['Argentina', 'Nigeria', 'England', 'Sweden'],
   ['Italy', 'Ecuador', 'Croatia', 'Mexico'], ['Japan', 'Belgium', 'Russia', 'Tunisia']];
 

@@ -3,8 +3,10 @@
 // spil på Mac/iPad/Chromebook, spil online). Skriver public/<side>/index.html, public/sitemap.xml og public/llms.txt.
 // Kør: npx tsx scripts/build-seo.ts  (køres også før build: "prebuild" i package.json)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CSS, CTA, SITE, TODAY, esc, render, type Page } from './seo/layout';
+import { CSS, CTA, SITE, TODAY, esc, render, slugify, type Page } from './seo/layout';
 import { buildDb } from './seo/db';
+import { WC2002 } from '../src/game/international';
+import { CHANGELOG } from '../src/ui/changelogData';
 import { alternatesFor, langPages, toPage } from './seo/i18n';
 import { guides } from './seo/guides';
 
@@ -266,6 +268,76 @@ ${table(young(M, 20).slice(0, 30))}`,
   },
 ];
 
+// VM 2002 i CM 01/02: de rigtige grupper, landstrænerne og trupperne fra 3.9.60 (spillets standard)
+{
+  type NW = World & { nationalTeams?: { nations: Record<string, { coach?: string; fifa?: number }> } };
+  const w = VER['3.9.60'] as NW;
+  const nt = w.nationalTeams?.nations ?? {};
+  const byNation = new Map<string, P[]>();
+  for (const p of O60) (byNation.get(p.nation) ?? byNation.set(p.nation, []).get(p.nation)!).push(p);
+  for (const ps of byNation.values()) ps.sort((a, b) => b.ca - a.ca);
+  const strength = (n: string) => { const ps = (byNation.get(n) ?? []).slice(0, 23); return ps.length ? ps.reduce((t, p) => t + p.ca, 0) / ps.length : 0; };
+  const nUrl = (n: string) => `/cm-01-02/nations/${slugify(n)}/`;
+  const teams = WC2002.flat();
+  const ranked = teams.slice().sort((a, b) => strength(b) - strength(a));
+  const coach = (n: string) => nt[String(w.nations.findIndex((x) => x.name === n))]?.coach ?? '';
+  const best3 = (n: string) => (byNation.get(n) ?? []).slice(0, 3).map((p) => `${link(p)} (${p.ca})`).join(', ');
+  pages.push({
+    slug: 'cm-01-02-world-cup-2002/',
+    title: 'World Cup 2002 in CM 01/02 – Groups, Squads & Favourites | CM Reborn',
+    h1: 'The 2002 World Cup in CM 01/02',
+    description: `CM 01/02 plays the real 2002 World Cup in South Korea and Japan: the eight groups, every coach and the strongest squads in the original database – ${ranked.slice(0, 3).join(', ')} are the favourites.`,
+    body: `<p class="lead">If you play CM 01/02 into the summer of 2002, the World Cup in South Korea and Japan is played with the real 32 teams and the real groups. CM Reborn does the same – your players go to the tournament, come back tired (or injured), and if you manage a national team you can take them yourself. Squads here are from the 3.9.60 database the game uses for 2001/02; the coaches are those in the original game's national team data, which partly reflects the 2002 updates (France already has Jacques Santini, appointed in July 2002).</p>
+<h2>The favourites by squad strength</h2>
+<p>Average current ability (CA) of each nation's best 23 players in the database:</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Nation</th><th class="n">Squad CA</th><th>Coach (game data)</th><th>Best players</th></tr></thead><tbody>${ranked.slice(0, 12).map((n, i) => `<tr><td>${i + 1}</td><td><a href="${nUrl(n)}"><b>${esc(n)}</b></a></td><td class="n">${strength(n).toFixed(1)}</td><td>${esc(coach(n)) || '–'}</td><td>${best3(n)}</td></tr>`).join('')}</tbody></table></div>
+<h2>The groups</h2>
+${WC2002.map((grp, gi) => `<h3>Group ${'ABCDEFGH'[gi]}</h3><div class="tw"><table><thead><tr><th>Nation</th><th class="n">Squad CA</th><th>Coach</th><th>Best players</th></tr></thead><tbody>${grp.slice().sort((a, b) => strength(b) - strength(a)).map((n) => `<tr><td><a href="${nUrl(n)}"><b>${esc(n)}</b></a></td><td class="n">${strength(n).toFixed(1)}</td><td>${esc(coach(n)) || '–'}</td><td>${best3(n)}</td></tr>`).join('')}</tbody></table></div>`).join('\n')}
+<h2>How the World Cup works in CM Reborn</h2>
+<ul><li>The tournament starts on 1 June 2002 with the real groups; later World Cups and European Championships have qualifiers.</li>
+<li>Each nation takes its best 23 players – your stars miss the start of pre-season if they go deep.</li>
+<li>Managers with enough reputation are offered national team jobs, and can pick the squad themselves.</li></ul>
+<p>See also <a href="/cm-01-02/">the CM 01/02 database</a> and <a href="/cm-01-02-best-players/">the best players in CM 01/02</a>.</p>`,
+    faq: [
+      ['Is the 2002 World Cup in CM 01/02?', 'Yes. The game plays the 2002 World Cup in South Korea and Japan in June 2002 with the real 32 teams and groups – and CM Reborn does too.'],
+      ['Who wins the World Cup in CM 01/02?', `It changes from save to save, but by squad strength in the database ${ranked[0]}, ${ranked[1]} and ${ranked[2]} are the favourites.`],
+      ['Which group is England in at the 2002 World Cup in CM 01/02?', 'Group F, with Argentina, Nigeria and Sweden – as in real life.'],
+    ],
+  });
+}
+
+// "What's new": spillets egen ændringslog (src/ui/changelogData.ts) som statisk side – viser søgemaskinerne, at sitet lever
+{
+  const recent = CHANGELOG.slice(0, 12);
+  pages.push({
+    slug: 'changelog/',
+    title: "What's New in CM Reborn – Updates and Changelog",
+    h1: "What's new in CM Reborn",
+    description: `The latest updates to CM Reborn, the free CM 01/02 remake in your browser: version ${recent[0].version} (${recent[0].date}) – ${recent[0].title.en}.`,
+    modified: recent[0].date,
+    body: `<p class="lead">CM Reborn is updated almost every day. These are the latest versions – the same list you see in the game under "What's new".</p>
+${recent.map((v) => `<h2>${esc(v.version)} – ${esc(v.title.en)}</h2><p class="note">${esc(v.date)}</p><ul>${v.items.map((it) => `<li>${esc(it.en)}</li>`).join('')}</ul>`).join('\n')}
+<p><a href="/">Play the latest version →</a></p>`,
+  });
+}
+
+// 404-siden (Vercel viser public/404.html for ukendte stier) og flyttede sider (sider, der forsvandt, da databasen blev genbygget)
+writeFileSync('public/404.html', render({
+  slug: '404/', title: 'Page not found | CM Reborn', h1: 'This page is not here', noindex: true, noArticle: true, modified: CONTENT_DATE,
+  description: 'The page you were looking for does not exist. Search the CM 01/02 database, read the guides or start a new game of CM Reborn.',
+  body: `<p class="lead">The page you were looking for has moved or never existed. Try one of these instead:</p>
+<ul><li><a href="/">Play CM Reborn</a> – the free CM 01/02 remake in your browser</li><li><a href="/cm-01-02/">Search the CM 01/02 database</a> (every player, club and league)</li><li><a href="/2026-27/">The 2026/27 database</a></li><li><a href="/cm-01-02-guides/">All CM 01/02 guides</a></li><li><a href="/cm-01-02-wonderkids/">CM 01/02 wonderkids</a></li></ul>`,
+}));
+const MOVED: [string, string, string][] = [
+  // [gammel sti, ny sti, hvorfor]
+  ['cm-01-02/players/tarek-thabet/', '/cm-01-02/nations/tunisia/', 'Tarek Thabet is no longer in the CM 01/02 database pages (his club only keeps its 16 best players).'],
+];
+for (const [from, to, why] of MOVED) {
+  if ([...urlO.values()].includes(`/${from}`)) continue; // siden findes igen
+  mkdirSync(`public/${from}`, { recursive: true });
+  writeFileSync(`public/${from}index.html`, render({ slug: to.slice(1), title: 'Moved | CM Reborn', h1: 'This page has moved', noindex: true, noArticle: true, redirect: to, modified: CONTENT_DATE, description: why, body: `<p class="lead">${esc(why)} <a href="${to}">Continue →</a></p>` }));
+}
+
 // databaseudgaverne (3.9.60 / 3.9.65 / 3.9.68) sammenlignet – til guiden cm-01-02-database-versions
 function versionData() {
   const ver = { ...VER, '3.9.68': orig } as const;
@@ -285,6 +357,39 @@ function versionData() {
   };
 }
 pages.push(...guides(dbO, versionData()));
+
+// de rigeste klubber ved start (3.9.60 = spillets standard; originalen: saldo = club.dat 101 ± 8 %, Transfer Funds ≈ 70 % i hele £250K)
+{
+  type W = World & { clubFinance?: Record<string, [number, number, number]>; clubRep?: Record<string, number> };
+  const w60 = VER['3.9.60'] as W, w68 = orig as W;
+  const fin68 = new Map(w68.clubs.map((c) => [c[1] as string, (w68.clubFinance?.[String(c[0])] ?? [0])[0]]));
+  const lg = new Map(w60.leagues.map((l) => [l.id, l]));
+  const funds = (b: number) => { if (b <= 0) return 0; const st = b >= 5_000_000 ? 250_000 : 25_000; return Math.floor((b * 0.7) / st) * st; };
+  const money = (v: number) => (v >= 1e6 ? `£${(v / 1e6).toFixed(1)}m` : v > 0 ? `£${Math.round(v / 1000)}k` : v < 0 ? `−£${(Math.abs(v) / 1e6).toFixed(1)}m` : '£0');
+  const rows = w60.clubs.filter((c) => { const l = lg.get(c[4] as string); return l && !(l as { hidden?: boolean }).hidden; })
+    .map((c) => ({ name: c[1] as string, league: lg.get(c[4] as string)!.name, nation: w60.nations[c[3] as number]?.name ?? '', bal: (w60.clubFinance?.[String(c[0])] ?? [0])[0], b68: fin68.get(c[1] as string) }));
+  const top = rows.slice().sort((a, b) => b.bal - a.bal).slice(0, 50);
+  const poorest = rows.filter((r) => r.bal < 0).sort((a, b) => a.bal - b.bal).slice(0, 15);
+  const clubUrl = new Map(dbO.clubSum.map((c) => [c.name, c.url]));
+  const cl = (n: string) => (clubUrl.get(n) ? `<a href="${clubUrl.get(n)}"><b>${esc(n)}</b></a>` : `<b>${esc(n)}</b>`);
+  pages.push({
+    slug: 'cm-01-02-richest-clubs/',
+    title: 'CM 01/02 Richest Clubs – Bank Balance & Transfer Budget at the Start | CM Reborn',
+    h1: 'CM 01/02 richest clubs: bank balance and transfer budget',
+    description: `Which clubs have the most money in CM 01/02? ${top.slice(0, 3).map((r) => `${r.name} (${money(r.bal)})`).join(', ')} – the start balance and transfer budget of every club, as the original sets them.`,
+    body: `<p class="lead">How much money you start with in Championship Manager 01/02 – measured in the original game. The bank balance at the start is the club's balance in the database ± 8 %, and the board gives you about <b>70 % of it as transfer funds</b> (in whole £250,000 steps). Figures for the 3.9.60 database the game uses for 2001/02, with the 3.9.68 patch alongside – the patch changed several clubs' money a lot (Manchester United start with about £33m in 3.9.60 but £10m in 3.9.68).</p>
+<h2>The 50 richest clubs (3.9.60)</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th><th class="n">Balance</th><th class="n">Transfer funds*</th><th class="n">3.9.68</th></tr></thead><tbody>${top.map((r, i) => `<tr><td>${i + 1}</td><td>${cl(r.name)}</td><td>${esc(r.league)} <span class="note">${esc(r.nation)}</span></td><td class="n">${money(r.bal)}</td><td class="n">${money(funds(r.bal))}</td><td class="n">${r.b68 === undefined ? '–' : money(r.b68)}</td></tr>`).join('')}</tbody></table></div>
+<p class="note">* About 70 % of the balance; the actual start balance varies by up to 8 % from game to game.</p>
+${poorest.length ? `<h2>Clubs that start in debt</h2><p>These clubs start the game in the red – no transfer budget, and the board watches every wage.</p><div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th><th class="n">Balance</th></tr></thead><tbody>${poorest.map((r, i) => `<tr><td>${i + 1}</td><td>${cl(r.name)}</td><td>${esc(r.league)} <span class="note">${esc(r.nation)}</span></td><td class="n">${money(r.bal)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+<p>Want a challenge? See <a href="/cm-01-02-best-teams-to-manage/">the best teams to manage</a>, or <a href="/cm-01-02-database-versions/">how the database versions differ</a>.</p>`,
+    faq: [
+      ['Which club has the most money in CM 01/02?', `${top[0].name}, with about ${money(top[0].bal)} in the 3.9.60 database, followed by ${top[1].name} and ${top[2].name}.`],
+      ['How big is the transfer budget in CM 01/02?', 'About 70 % of the club\'s bank balance at the start, rounded down to whole £250,000 (or £25,000 for clubs with less than £5m).'],
+      ['How much money do Manchester United have in CM 01/02?', 'About £33m and £24m to spend in the 3.9.60 database; the 3.9.68 patch lowered their balance to about £10m.'],
+    ],
+  });
+}
 
 // landingssider på de andre sprog (hreflang til hinanden og til den engelske)
 const LP = langPages(nO, nM);
@@ -307,11 +412,13 @@ const groups: [string, string[], string, string][] = [
     [`2026-27-${k}`, dbM.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
   ]),
 ];
+// stadionfotos på klubsiderne (billed-sitemap)
+const IMAGES: Record<string, string[]> = { ...dbO.images, ...dbM.images };
 const xml = (u: string) => `${SITE}/${u}`.replace(/&/g, '&amp;');
 for (const [name, us, mod, freq] of groups) {
   writeFileSync(`public/sitemap-${name}.xml`, `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${us.map((u) => `  <url><loc>${xml(u)}</loc><lastmod>${mod}</lastmod><changefreq>${freq}</changefreq></url>`).join('\n')}
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+${us.map((u) => `  <url><loc>${xml(u)}</loc><lastmod>${mod}</lastmod><changefreq>${freq}</changefreq>${(IMAGES[u] ?? []).map((i) => `<image:image><image:loc>${SITE}${i}</image:loc></image:image>`).join('')}</url>`).join('\n')}
 </urlset>
 `);
 }

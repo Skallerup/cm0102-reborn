@@ -99,7 +99,7 @@ function write(slug: string, html: string) {
 }
 
 export interface ClubSum { name: string; url: string; league: string; leagueUrl: string; tier: number; nation: string; balance: number; rep: number; strength: number; kids: number; cap: number; stadium: string; best: string }
-export interface DbOut { urls: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
+export interface DbOut { urls: Record<string, string[]>; /** billeder pr. side (billed-sitemap) */ images: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
 
 export function buildDb(conf: DbConf): DbOut {
   // "CM 01/02 2026/27" har sæsonen i navnet – den skal ikke stå to gange
@@ -240,6 +240,7 @@ export function buildDb(conf: DbConf): DbOut {
   const mini = (rows: DP[], club: boolean) => `<div class="tw"><table><thead><tr><th>Player</th><th>Age</th><th>Position</th>${club ? '<th>Club</th>' : ''}<th class="n">CA</th><th class="n">PA</th></tr></thead><tbody>${rows.map((p) => `<tr><td>${pLink(p)}</td><td>${p.age}</td><td>${esc(p.posStr)}</td>${club ? `<td>${clubLink(p)}</td>` : ''}<td class="n">${p.ca}</td><td class="n">${paCell(p)}</td></tr>`).join('')}</tbody></table></div>`;
   const hubCrumb: Crumb = { name: `${conf.game} database`, url: `/${P}/` };
   const urls: Record<string, string[]> = { hub: [], players: [], clubs: [], leagues: [], nations: [], lists: [] };
+  const images: Record<string, string[]> = {};
   const emit = (kind: string, p: Page) => { write(p.slug, render({ modified: conf.modified, ...p })); urls[kind].push(p.slug); };
   const atStart = conf.original ? 'at the start of the 2001/02 season' : `at the start of the ${conf.season} season`;
   const attr = (p: DP, k: string) => { const i = A[k as keyof typeof A]; return p.attrs[i] || p.game[i]; };
@@ -409,6 +410,7 @@ ${mates.length ? `<h2>${c ? `${esc(c.name)} team-mates` : 'Team-mates'}</h2>${mi
       ...(c.colors ? [['Colours', `<span class="sw" style="background:${esc(c.colors[0])}"></span><span class="sw" style="background:${esc(c.colors[1])}"></span>`] as [string, string]] : []),
     ];
     const others = l ? l.clubs.filter((x) => x !== c) : [];
+    if (c.photo) images[c.url.slice(1)] = [c.photo];
     emit('clubs', {
       slug: c.url.slice(1),
       title: `${c.name} ${conf.game} – Squad & Wonderkids${seasonTag} | CM Reborn`,
@@ -450,7 +452,8 @@ ${c.photo ? '<p class="note">Stadium photo: Naydav\'s CM0102 Background Image Pa
       body: `<p class="lead">The ${esc(l.real)} has ${l.clubs.length} clubs and ${ps.length.toLocaleString('en')} players in ${conf.dbName}${l.tier > 1 ? ` – it is tier ${l.tier} in ${esc(nationName(l.nation))}` : ''}. ${ps[0] ? `The best player is ${pLink(ps[0])} of ${clubLink(ps[0])} (CA ${ps[0].ca})` : ''}${kids[0] ? `, and the top wonderkid is ${pLink(kids[0])} (${kids[0].age}, PA ${paText(kids[0])})` : ''}.</p>
 <h2>Clubs by squad strength</h2>
 <p class="note">Average current ability of each club's best 16 players – a guide to who should finish where, not a prediction.</p>
-<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>Stadium</th><th class="n">Capacity</th><th class="n">Rep</th><th>Best player</th><th class="n">Strength</th></tr></thead><tbody>${l.clubs.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td>${esc(c.stadium)}</td><td class="n">${c.cap ? c.cap.toLocaleString('en') : '–'}</td><td class="n">${c.rep}</td><td>${c.players[0] ? pLink(c.players[0]) : '–'}</td><td class="n">${c.strength.toFixed(1)}</td></tr>`).join('')}</tbody></table></div>
+<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>Manager</th><th>Stadium</th><th class="n">Capacity</th><th class="n">Rep</th><th>Best player</th><th class="n">Strength</th></tr></thead><tbody>${l.clubs.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td>${c.manager ? esc(c.manager) : '–'}</td><td>${esc(c.stadium)}</td><td class="n">${c.cap ? c.cap.toLocaleString('en') : '–'}</td><td class="n">${c.rep}</td><td>${c.players[0] ? pLink(c.players[0]) : '–'}</td><td class="n">${c.strength.toFixed(1)}</td></tr>`).join('')}</tbody></table></div>
+<p class="note"><a href="/${P}/managers/">Every manager in ${conf.game}</a>${conf.original ? '' : ` · <a href="/${P}/kits/">kit manufacturers</a>`}</p>
 <h2>Best players in the ${esc(l.real)}</h2>${table(ps.slice(0, 30), { nation: true })}
 ${kids.length ? `<h2>Wonderkids in the ${esc(l.real)}</h2>${table(kids.slice(0, 20))}` : ''}
 ${others.length ? `<h2>Other leagues in ${esc(nationName(l.nation))}</h2><p>${others.map((x) => `<a href="${x.url}">${esc(x.real)}</a>`).join(' · ')}</p>` : ''}`,
@@ -472,6 +475,8 @@ ${others.length ? `<h2>Other leagues in ${esc(nationName(l.nation))}</h2><p>${ot
     const hiddenClubs = [...clubs.values()].filter((c) => c.nation === n.idx && !c.league);
     const squad = ps.filter((p) => p.url).slice(0, 23);
     const titles = info?.titles ? Object.entries(info.titles).filter(([, v]) => v > 0) : [];
+    // managere med landets nationalitet (hjemme og ude)
+    const natMgrs = [...leagues.values()].flatMap((l) => l.clubs.filter((c) => c.manager && c.managerNation === n.idx).map((c) => ({ c, l }))).sort((a, b) => a.l.tier - b.l.tier || b.c.rep - a.c.rep);
     emit('nations', {
       slug: n.url.slice(1),
       title: `${n.name} in ${conf.game} – Best Players & Wonderkids${seasonTag} | CM Reborn`,
@@ -482,6 +487,7 @@ ${others.length ? `<h2>Other leagues in ${esc(nationName(l.nation))}</h2><p>${ot
 ${info && (info.coach || info.stadium) ? `<h2>${esc(n.name)} national team</h2><dl class="kv">${info.coach ? `<div><dt>Coach</dt><dd>${esc(info.coach)}</dd></div>` : ''}${info.stadium ? `<div><dt>Stadium</dt><dd>${esc(info.stadium)}</dd></div>` : ''}${info.cap ? `<div><dt>Capacity</dt><dd>${info.cap.toLocaleString('en')}</dd></div>` : ''}${titles.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
 ${squad.length ? `<h2>The best ${esc(n.name)} players</h2>${table(ps.slice(0, 40), { nation: false })}` : ''}
 ${kids.length ? `<h2>${esc(n.name)} wonderkids</h2>${table(kids.slice(0, 30), { nation: false })}` : ''}
+${natMgrs.length ? `<h2>${esc(n.name)} managers</h2><p>${natMgrs.length} club${natMgrs.length === 1 ? ' is' : 's are'} managed by a manager from ${esc(n.name)}${natMgrs.some(({ c }) => c.nation !== n.idx) ? `, ${natMgrs.filter(({ c }) => c.nation !== n.idx).length} of them abroad` : ''}.</p><ul>${natMgrs.slice(0, 25).map(({ c, l }) => `<li><b>${esc(c.manager)}</b> – <a href="${c.url}">${esc(c.name)}</a> <span class="note">${esc(l.real)}</span></li>`).join('')}</ul><p class="note"><a href="/${P}/managers/">All managers →</a></p>` : ''}
 ${ls.length ? `<h2>Leagues in ${esc(n.name)}</h2><ul>${ls.map((l) => `<li><a href="${l.url}">${esc(leagueTitle(l))}</a> – ${l.clubs.length} clubs</li>`).join('')}</ul>` : ''}
 ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2><p class="note">These leagues are not playable, but their players can be scouted and signed.</p><div class="cols">${hiddenClubs.map((c) => `<a href="${c.url}">${esc(c.name)}</a>`).join('')}</div>` : ''}`,
       faq: [
@@ -615,7 +621,7 @@ ${leaguesWith.map((l) => `<h2>${esc(l.real)}</h2><div class="tw"><table><thead><
   ];
   writeFileSync(`public/${P}/search.json`, JSON.stringify(search));
   const byTier = [...leagues.values()].sort((a, b) => nationName(a.nation).localeCompare(nationName(b.nation)) || a.tier - b.tier);
-  const script = `(()=>{let d=null;const q=document.getElementById('q'),r=document.getElementById('res');const n=s=>s.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');q.addEventListener('input',async()=>{if(!d)d=await (await fetch('/${P}/search.json')).json();const t=n(q.value.trim());if(t.length<2){r.innerHTML='';return}const w=t.split(/\\s+/);const m=[];for(const x of d){const k=n(x[0]);if(w.every(y=>k.includes(y))){m.push(x);if(m.length>=30)break}}r.innerHTML=m.map(x=>'<a href="/${P}/'+x[1]+'">'+x[0].replace(/</g,'&lt;')+' <span class=note>'+x[2].replace(/</g,'&lt;')+'</span></a>').join('')||'<p class=note>No match</p>'})})()`;
+  const script = `(()=>{let d=null;const q=document.getElementById('q'),r=document.getElementById('res');const n=s=>s.toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'');q.addEventListener('input',async()=>{if(!d)d=await (await fetch('/${P}/search.json')).json();const t=n(q.value.trim());if(t.length<2){r.innerHTML='';return}const w=t.split(/\\s+/);const m=[];for(const x of d){const k=n(x[0]);if(w.every(y=>k.includes(y))){m.push(x);if(m.length>=30)break}}r.innerHTML=m.map(x=>'<a href="/${P}/'+x[1]+'">'+x[0].replace(/</g,'&lt;')+' <span class=note>'+x[2].replace(/</g,'&lt;')+'</span></a>').join('')||'<p class=note>No match</p>'});const q0=new URLSearchParams(location.search).get('q');if(q0){q.value=q0;q.dispatchEvent(new Event('input'))}})()`;
   emit('hub', {
     slug: `${P}/`,
     title: `${conf.game} Database ${conf.season} – Every Player, Club & League | CM Reborn`,
@@ -626,6 +632,7 @@ ${leaguesWith.map((l) => `<h2>${esc(l.real)}</h2><div class="tw"><table><thead><
 <input id="q" type="search" placeholder="Search a player or club…" autocomplete="off" aria-label="Search the ${conf.game} database"><div id="res"></div>
 ${CTA}
 <h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/managers/">Managers</a>${conf.original ? '' : `<a href="/${P}/kits/">Kit manufacturers</a>`}<a href="/${P}/lists/">All lists →</a></div>
+<h2>Guides</h2><div class="tags">${[['/cm-01-02-match-engine/', 'How the match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'], ['/cm-01-02-ca-pa-explained/', 'CA and PA'], ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes'], ['/cm-01-02-guides/', 'All guides →']].map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</div>
 <h2>Leagues</h2><div class="cols">${byTier.map((l) => `<a href="${l.url}">${esc(l.real)}${l.real !== l.name ? ` <span class="note">${esc(nationName(l.nation))}</span>` : ''}</a>`).join('')}</div>
 <h2>Players by nationality</h2><div class="cols">${[...nations.values()].sort((a, b) => b.players.length - a.players.length).slice(0, 90).sort((a, b) => a.name.localeCompare(b.name)).map((n) => `<a href="${n.url}">${esc(n.name)}</a>`).join('')}</div>
 <h2>Players A–Z</h2>${azNav}`,
@@ -635,5 +642,5 @@ ${CTA}
   const summary = `${kept.length} spillere, ${clubs.size} klubber, ${leagues.size} ligaer, ${nations.size} lande, ${urls.lists.length} lister`;
   const playerUrl = new Map(kept.map((p) => [`${p.name}|${clubName(p)}`, p.url!]));
   const clubSum: ClubSum[] = [...leagues.values()].flatMap((l) => l.clubs.map((c) => ({ name: c.name, url: c.url, league: l.real, leagueUrl: l.url, tier: l.tier, nation: nationName(c.nation), balance: c.balance, rep: c.rep, strength: c.strength, kids: wonder(c.players).length, cap: c.cap, stadium: c.stadium, best: c.players[0]?.name ?? '' })));
-  return { urls, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
+  return { urls, images, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
 }

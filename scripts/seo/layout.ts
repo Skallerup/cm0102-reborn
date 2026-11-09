@@ -33,6 +33,7 @@ export const FOOT_GUIDES: [string, string][] = [
   ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.68'],
   ['/cm-01-02-tactics/', 'Tactics'],
   ['/cm-01-02/managers/', 'Managers'],
+  ['/changelog/', "What's new"],
 ];
 export const NAV: [string, string][] = [
   ['/play-cm-01-02-online/', 'Play online'],
@@ -53,6 +54,10 @@ export interface Page {
   title: string;
   h1: string;
   description: string;
+  /** ikke i søgemaskinerne (404, flyttede sider) */
+  noindex?: boolean;
+  /** flyttet: send videre hertil (meta refresh – Vercel-opsætningen røres ikke) */
+  redirect?: string;
   body: string;
   /** brødkrummer mellem forsiden og siden selv */
   crumbs?: Crumb[];
@@ -131,7 +136,7 @@ export function render(p: Page): string {
 <meta name="description" content="${esc(fitDesc(p.description))}" />
 <link rel="canonical" href="${url}" />
 ${alt}
-<meta name="robots" content="index,follow,max-image-preview:large" />
+<meta name="robots" content="${p.noindex ? 'noindex,follow' : 'index,follow,max-image-preview:large'}" />${p.redirect ? `\n<meta http-equiv="refresh" content="0; url=${p.redirect}" />` : ''}
 <meta name="theme-color" content="#070b16" />
 <meta property="og:type" content="${p.ogType ?? 'article'}" />
 <meta property="og:site_name" content="CM Reborn" />
