@@ -618,6 +618,7 @@ ${([
       ['Players', [
         ['/cm-01-02-wonderkids/', 'Wonderkids', 'The best young players, the random-potential cult heroes and the wonderkids in the 3.9.60 release.'],
         ['/cm-01-02-best-players/', 'Best players', 'The top 50 by current ability and the best in every position.'],
+        ['/cm-01-02-3960-database/', 'The 3.9.60 database (ODB)', 'The best players and wonderkids in the database CM 01/02 shipped with – and the players only found there.'],
         ['/cm-01-02/lists/legends/', 'Legends and cult heroes', 'Tsigalko, Cherno Samba, To Madeira and every other name fans remember.'],
         ['/cm-01-02-bosman-guide/', 'Bosman free transfers', 'The best players out of contract in 2002 – sign them for nothing.'],
       ]],

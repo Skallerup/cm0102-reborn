@@ -257,11 +257,12 @@ const GUIDE_LINKS: [string, string][] = [
   ['/cm-01-02-android/', 'CM 01/02 on Android'], ['/cm-01-02-iphone-ipad/', 'CM 01/02 on iPhone and iPad'], ['/cm-01-02-multiplayer/', 'Multiplayer with friends'],
   ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-guides/', 'All guides'],
 ];
-export function toPage(p: LangPage, alternates: [string, string][]): Page {
+/** `local`: sprogets egne guider (scripts/seo/i18nGuides.ts) – [url, titel] */
+export function toPage(p: LangPage, alternates: [string, string][], local: [string, string][] = []): Page {
   const cta = `<p class="cta"><a class="btn" href="/">${p.cta}</a> <span>${p.ctaNote}</span></p>`;
   return {
     slug: p.slug, title: p.title, h1: p.h1, description: p.description, lang: p.lang, alternates, faq: p.faq, faqSchema: true, cta, footer: p.footer,
     nav: [[`/${p.slug}`, p.nav], ['/cm-01-02/', 'CM 01/02 database'], ['/cm-01-02/lists/wonderkids/', 'Wonderkids'], ['/play-cm-01-02-online/', 'English']],
-    body: `<p class="lead">${p.lead}</p>${cta}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p><h2>${GUIDES_H[p.lang] ?? 'Guides'}</h2><ul>${GUIDE_LINKS.map(([h, t]) => `<li><a href="${h}" hreflang="en">${t}</a></li>`).join('')}</ul>`,
+    body: `<p class="lead">${p.lead}</p>${cta}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p>${local.length ? `<ul>${local.map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>` : ''}<h2>${GUIDES_H[p.lang] ?? 'Guides'}</h2><ul>${GUIDE_LINKS.map(([h, t]) => `<li><a href="${h}" hreflang="en">${t}</a></li>`).join('')}</ul>`,
   };
 }

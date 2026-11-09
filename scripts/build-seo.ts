@@ -7,6 +7,7 @@ import { CSS, CTA, SITE, TODAY, esc, render, slugify, type Page } from './seo/la
 import { buildDb } from './seo/db';
 import { WC2002 } from '../src/game/international';
 import { CHANGELOG } from '../src/ui/changelogData';
+import { langGuides } from './seo/i18nGuides';
 import { alternatesFor, langPages, toPage } from './seo/i18n';
 import { guides } from './seo/guides';
 
@@ -174,6 +175,40 @@ ${table(best(O))}
       ['What do CA and PA mean?', 'CA (current ability) is how good a player is now and PA (potential ability) is the highest level he can reach, both on a scale from 1 to 200.'],
     ],
     list: { name: 'CM 01/02 best players', items: best(O).slice(0, 20).map((p) => ({ name: p.name })) },
+  },
+  {
+    // 3.9.60 = udgivelsen, "the original database" (ODB) – søgningerne: "cm 01/02 best players 3.9.60", "odb best players", "60 database"
+    slug: 'cm-01-02-3960-database/',
+    title: 'CM 01/02 3.9.60 Database (ODB) – Best Players & Wonderkids | CM Reborn',
+    h1: 'The CM 01/02 3.9.60 database: best players and wonderkids',
+    description: `The original CM 01/02 database as it shipped (3.9.60, the "ODB"): the 50 best players, the best per position, the wonderkids, the random-potential youngsters and the players who only exist in 3.9.60.`,
+    body: (() => {
+      const kids = young(O60, 21).slice(0, 40);
+      const rnd = O60.filter((p) => p.random && p.age <= 21 && p.club !== 'Free agent').sort((a, b) => b.ca - a.ca).slice(0, 30);
+      // med i 3.9.68? samme navn eller samme efternavn med samme fødselsår (navnene er skrevet om mellem udgaverne)
+      const norm = (x: string) => x.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+      const keys = (p: P) => [`${norm(p.name)}|${p.dob.slice(0, 4)}`, `${norm(p.name).split(' ').pop()}|${p.dob.slice(0, 4)}`];
+      const k68 = new Set(O.flatMap(keys));
+      const only60 = O60.filter((p) => !keys(p).some((k) => k68.has(k)) && p.club !== 'Free agent').sort((a, b) => b.ca - a.ca).slice(0, 30);
+      return `<p class="lead">3.9.60 is the database CM 01/02 shipped with – the one the community calls the original database (ODB). The game uses it for the 2001/02 season, and so does CM Reborn by default. The later patches changed a lot: 3.9.68 moved the squads on to 2002/03 (Ferdinand at Man Utd) and removed some cult heroes. <a href="/cm-01-02-database-versions/">The three versions compared →</a></p>
+${CTA}
+<h2>The 50 best players in 3.9.60</h2>${table(best(O60))}
+<h2>Best players by position</h2>
+<h3>Goalkeepers</h3>${table(byPos(O60, GK, 8))}
+<h3>Defenders</h3>${table(byPos(O60, DEF))}
+<h3>Midfielders</h3>${table(byPos(O60, MID))}
+<h3>Strikers</h3>${table(byPos(O60, ATT))}
+<h2>Wonderkids in 3.9.60</h2><p>Aged 21 or younger with a fixed potential of 150 or more, sorted by potential.</p>${table(kids)}
+${rnd.length ? `<h2>Random-potential youngsters (PA −1/−2)</h2><p>Their potential is rolled again in every new game – <a href="/cm-01-02-ca-pa-explained/">the exact rules</a>. Sorted by current ability.</p>${table(rnd)}` : ''}
+${only60.length ? `<h2>Players you only find in 3.9.60</h2><p>Not found under the same name in the 3.9.68 patch – mostly players who retired or left Europe in 2002 (a few were only renamed). The best of them by current ability.</p>${table(only60)}` : ''}
+<p class="note">CA = current ability, PA = potential ability (1–200), read from the 3.9.60 database files. <a href="/cm-01-02-best-players/">The best players in 3.9.68 →</a> · <a href="/cm-01-02-wonderkids/">wonderkids</a></p>`;
+    })(),
+    faq: [
+      ['What is the ODB in CM 01/02?', 'The original database – 3.9.60, the one CM 01/02 shipped with for the 2001/02 season. The 3.9.65 and 3.9.68 patches updated it; CM Reborn lets you choose any of the three and uses 3.9.60 by default.'],
+      ['Who is the best player in the CM 01/02 3.9.60 database?', `${best(O60).slice(0, 4).map((p) => `${p.name} (${p.club}, CA ${p.ca})`).join(', ')}.`],
+      ['Who are the best wonderkids in 3.9.60?', `${young(O60, 21).slice(0, 4).map((p) => `${p.name} (${p.club}, PA ${p.pa})`).join(', ')}.`],
+    ],
+    list: { name: 'CM 01/02 3.9.60 best players', items: best(O60).slice(0, 20).map((p) => ({ name: p.name })) },
   },
   {
     slug: 'cm-01-02-2026-update/',
@@ -445,6 +480,8 @@ ${poorest.length ? `<h2>Clubs that start in debt</h2><p>These clubs start the ga
 // landingssider på de andre sprog (hreflang til hinanden og til den engelske)
 const LP = langPages(nO, nM);
 const ALTS = alternatesFor(LP, 'play-cm-01-02-online/');
+// guider på de andre sprog (bedste spillere i 3.9.60 og 2026/27-databasen) med hreflang til de engelske
+const LG = langGuides({ best60: best(O60), kids60: young(O60, 21), bestM: best(M), kidsM: young(M, 20), nM, leaguesM, link, nav: Object.fromEntries(LP.map((p) => [p.lang, [p.slug, p.nav]])) });
 for (const p of pages) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
   // guiderne hører under guideoversigten i brødkrummen (BreadcrumbList)
@@ -452,17 +489,21 @@ for (const p of pages) {
   // "Related guides" nederst på hver guide (interne links mellem guiderne)
   const RELATED: [string, string][] = [['cm-01-02-match-engine/', 'How the match engine works'], ['cm-01-02-attributes-explained/', 'What every attribute does'], ['cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['cm-01-02-wonderkids/', 'Wonderkids'], ['cm-01-02-database-versions/', '3.9.60 vs 3.9.68'], ['cm-01-02-regens/', 'Regens'], ['cm-01-02-player-values/', 'Player values'], ['cm-01-02-tactics/', 'Tactics']];
   const related = 'crumbs' in guideCrumb ? `\n<h2>Related guides</h2><ul>${RELATED.filter(([u]) => u !== p.slug).slice(0, 6).map(([u, t]) => `<li><a href="/${u}">${t}</a></li>`).join('')}</ul>` : '';
-  writeFileSync(`public/${p.slug}index.html`, render({ ...p, body: p.body + related, ...guideCrumb, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : {}) }));
+  writeFileSync(`public/${p.slug}index.html`, render({ ...p, body: p.body + related, ...guideCrumb, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : p.slug === 'cm-01-02-3960-database/' ? { alternates: LG.altBest } : p.slug === 'cm-01-02-2026-update/' ? { alternates: LG.altUpd } : {}) }));
 }
 for (const lp of LP) {
   mkdirSync(`public/${lp.slug}`, { recursive: true });
-  writeFileSync(`public/${lp.slug}index.html`, render(toPage(lp, ALTS)));
+  writeFileSync(`public/${lp.slug}index.html`, render(toPage(lp, ALTS, LG.pages.filter((x) => x.lang === lp.lang).map((x) => [`/${x.slug}`, x.h1]))));
+}
+for (const p of LG.pages) {
+  mkdirSync(`public/${p.slug}`, { recursive: true });
+  writeFileSync(`public/${p.slug}index.html`, render(p));
 }
 writeFileSync('public/seo.css', CSS);
 
 // sitemaps: et indeks + én fil pr. slags side (Google: højst 50.000 url'er pr. fil)
 const groups: [string, string[], string, string][] = [
-  ['guides', ['', ...pages.map((p) => p.slug), ...LP.map((p) => p.slug), '?draft=1', '?community=1'], TODAY, 'weekly'],
+  ['guides', ['', ...pages.map((p) => p.slug), ...LP.map((p) => p.slug), ...LG.pages.map((p) => p.slug), '?draft=1', '?community=1'], TODAY, 'weekly'],
   ...(['hub', 'lists', 'leagues', 'nations', 'clubs', 'players'] as const).flatMap((k) => [
     [`cm-01-02-${k}`, dbO.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
     [`2026-27-${k}`, dbM.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
