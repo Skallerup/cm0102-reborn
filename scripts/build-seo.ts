@@ -31,7 +31,7 @@ function players(w: World): P[] {
     const dob = r[F.dob] as string;
     const age = Number(start.slice(0, 4)) - Number(dob.slice(0, 4)) - (dob.slice(5) > start.slice(5) ? 1 : 0);
     const first = String(r[F.first] ?? '').trim(), last = String(r[F.last] ?? '').trim();
-    return [{ name: first ? `${first} ${last}` : last, age, pos: String(r[F.pos]), club: club.get(r[F.club] as number) ?? 'Free agent', nation: w.nations[r[F.nation] as number]?.name ?? '', ca: rt.ca, pa: rt.pa, random: !!rt.paRaw, dob }];
+    return [{ name: first ? `${first} ${last}` : last, age, pos: String(r[F.pos]), club: club.get(r[F.club] as number) ?? 'Free agent', nation: w.nations[r[F.nation] as number]?.name ?? '', ca: rt.ca, pa: rt.pa, random: (rt.paRaw ?? 0) < 0, dob }];
   });
 }
 const O = players(orig), M = players(modern);

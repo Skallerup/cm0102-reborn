@@ -330,3 +330,27 @@ basisvægte, der ikke kendes.
 | Offside / gule / røde pr. kamp (match-stats, 2000) | 7,4 / 1,70 / 0,14 | 4,2 / 1,7 / 0,13 | 7,2 / 1,72 / 0,13 |
 
 Tilbage: topscoreren (afhænger af boldholderens valg, sub_7109f0 – ukendt) og spredningen i indladte mål (originalen 16).
+
+## Trin 11 – rigtige egenskaber og ny kalibrering (2026-11-09)
+
+Parseren læste de 18 "intrinsiske" egenskaber (afslutning, aflevering, tackling …) forkert: databasen gemmer ALLE
+egenskaber som 1-20 (0 = mangler), og originalen omregner ved spilstart intrinsisk = (10·v − CA)/2 og viser dem med
+sub_544380 (ejerens Bosman-projekt, player_generation/). Vi lagde den gemte værdi ind som intrinsisk, så alle med høj CA
+fik 17-20 overalt (forsvarere med 19 i afslutning). Bekræftet i originalen: Beckham 3.9.60 – 10 af 13 præcist, resten ±1.
+Manglende egenskaber udfyldes nu fra en skabelonspiller og PA (−2/−1/0 og de tilfældige omslag) som originalen
+(`src/game/playerInit.ts`, sub_535a80).
+
+Dæmpningen fra trin 10 var lavet til at modvirke de oppustede egenskaber, så begge profiler er kalibreret igen:
+
+| Original (3 sæsoner, frø 2001 + 77) | Originalen | Før (trin 10) | Nu |
+|---|---|---|---|
+| Mål pr. kamp | 2,87 | 2,76 | 2,91 |
+| H/U/B | 51/23/26 | 52/23/25 | 52/23/25 |
+| Mester / sidst | 84 / 25 | 86,7 / 22,5 | 77,7 / 27 |
+| Topscorer | 23 | 31,7 | 35 |
+| sd scorede mål | 9 | 12,2 | 10,7 |
+
+`ORIGINAL` = finish 1,92, squash 0,75 / squashAtt 0,4 / squashDef 0,85. Moderne (`MODERN` i sim.ts, før `{ finish: 1 }` +
+SQUASH 0,76): finish 1,1, squash 1 → 3 sæsoner 2,69 mål, H/U/B 44/25,5/30,6, sidst 22,4, rangkorrelation 0,61.
+Topscoreren følger niveauforskellen (mere forskel = flere mål til den bedste) – den afhænger af boldholderens valg
+(sub_7109f0), som ejerens projekt nu har fundet (`ball_carrier/ball_carrier_rule.ts`): næste trin.

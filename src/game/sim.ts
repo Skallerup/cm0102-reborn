@@ -153,12 +153,15 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     aggregate: aggregateFor(f),
     pitch: pitchFor(f),
     referee: refereeFor(f),
-    ...(cmDatabase(gs()) === 'original' ? ORIGINAL : { finish: 1 }),
+    ...(cmDatabase(gs()) === 'original' ? ORIGINAL : MODERN),
   };
 }
 
+/** Kalibrering af den moderne database mod virkeligheden (scripts/benchmark.ts; MODERN_JSON='{…}' overskriver ved målinger) */
+// genkalibreret 9/11-2026, da egenskaberne blev rettet (før var de oppustede og SQUASH 0,76 dæmpede dem): 3 sæsoner 2,69 mål, H/U/B 44/25,5/30,6
+export const MODERN: { finish: number; squash?: number; squashAtt?: number; squashDef?: number; homeAdv?: number } = { finish: 1.1, squash: 1 };
 /** Kalibrering af den originale 2001/02-database mod det originale CM 01/02 (scripts/original-lab.ts) */
-export const ORIGINAL = { finish: 1.62, homeAdv: 2, finSlope: 20, squash: 0.45, squashAtt: 0.35, squashDef: 0.62, ease: 0.12, cards: 0.11, rules: 'original' as const, corners: 0.7, countBlocked: false, close: 0.2, closeSlope: 2, onTarget: 0.25, offside: 1.8 };
+export const ORIGINAL = { finish: 1.92, homeAdv: 2, finSlope: 20, squash: 0.75, squashAtt: 0.4, squashDef: 0.85, ease: 0.12, cards: 0.11, rules: 'original' as const, corners: 0.7, countBlocked: false, close: 0.2, closeSlope: 2, onTarget: 0.25, offside: 1.8 };
 export const ORIGINAL_FINISH = ORIGINAL.finish;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */

@@ -1,5 +1,6 @@
 // Opret et nyt spil ud fra world.json
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
+import { capCA, fillMissing, initialisePA, makePool, makeRand } from './playerInit';
 import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
@@ -152,6 +153,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens ugentlige lønninger (£, staff.dat 78) – kun den originale database bruger dem (2001-økonomien)
   const dbWage = new Map<number, number>();
   if (g.econ && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP));
+  const initRng = new Rng(1);
+  let initPool: ReturnType<typeof makePool> | undefined;
   for (const r of world.players) {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;
@@ -170,12 +173,17 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // CM 01/02: originalens evner, potentiale og positioner
     const rt = cm?.ratings[p.id];
     if (rt) {
-      // evner originalen ikke har sat (0) beholder rolleprofilen fra position og CA
-      // tilfældigt potentiale som i CM 01/02: PA -2 = 150-200, -1 = 100-150 – trukket på ny i hvert nyt spil
-      // (Cherno Samba, Quaresma, Cassano …); ellers databasens PA
-      const rolled = rt.paRaw === -2 ? 150 + (hash(seed, p.id, 77) % 51) : rt.paRaw === -1 ? 100 + (hash(seed, p.id, 77) % 51) : rt.pa;
+      // originalens "Player Initialisation" (playerInit.ts, sub_535a80): PA-reglerne (−2/−1, manglende PA og de tilfældige
+      // omslag i hvert nyt spil), CA over PA, og manglende egenskaber kopieret fra en lignende skabelonspiller
+      const rand = makeRand(() => initRng.next());
+      initRng.state = hash(seed, p.id, 91) || 1;
+      const pa = initialisePA(rt.paRaw ?? rt.pa, rt.ca, age, club ? rand(4) + 1 : rand(2) + 1, rand);
+      const ca = capCA(rt.ca, pa, rand);
+      const rec = { ca, pos: rt.pos, side: rt.side, attrs: rt.attrs.slice() };
+      fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings)), rand);
       if (rt.rep) p.cmRep = rt.rep;
-      p.ca = rt.ca; p.pa = Math.max(rt.ca, rolled); p.attrs = rt.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
+      // de få, originalen heller ikke udfylder her (adaptability, ambition, loyalitet …), beholder den genererede værdi
+      p.ca = ca; p.pa = pa; p.attrs = rec.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
     }
     // den originale database: originalens egen værdiformel (evne, alder, klubbens omdømme, løn og liga – originalValue.ts)
     if (!value) {
@@ -433,10 +441,11 @@ export function takeOverClub(club: Club) {
 function createClubStaff(c: Club, world: WorldData, seed: number, date: string) {
   const g = gs();
   const r = new Rng(hash(seed, c.id, 99));
-  // 2026/27: datakilden har ingen trænere – de rigtige cheftrænere fra CLUB_INFO_2026 (ellers et genereret navn)
+  // 2026/27: cheftrænerne fra CLUB_INFO_2026 (Wikipedia, nov. 2026)
   const info = world.season >= 2026 ? CLUB_INFO_2026[c.id] : undefined;
   const infoNat = info?.[2] ? world.nations.findIndex((n) => n.name === info[2]) : -1;
-  const coach = world.clubs.find((x) => x[0] === c.id)?.[7] || (info?.[0] ? `${info[0].split(' ')[0]}|${info[0].split(' ').slice(1).join(' ')}${infoNat >= 0 ? `|${infoNat}` : ''}` : '');
+  // Wikipedias liste (nyere end databasen) går forud; ellers databasens manager (club.dat 207)
+  const coach = (info?.[0] ? `${info[0].split(' ')[0]}|${info[0].split(' ').slice(1).join(' ')}${infoNat >= 0 ? `|${infoNat}` : ''}` : '') || world.clubs.find((x) => x[0] === c.id)?.[7] || '';
   const mk = (role: StaffRole, level: number) => {
     let first: string, last: string, nation = c.nation;
     if (role === 'manager' && coach) {

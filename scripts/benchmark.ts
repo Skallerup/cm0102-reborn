@@ -2,7 +2,9 @@
 // Kør: npx tsx scripts/benchmark.ts [sæsoner] [world-fil]
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
-import { continueGame, quickPlayUserMatch } from '../src/game/sim';
+import { continueGame, MODERN, quickPlayUserMatch } from '../src/game/sim';
+// MODERN_JSON='{"finish":1.1,"squash":0.9}' prøver en anden kalibrering af den moderne profil
+if (process.env.MODERN_JSON) Object.assign(MODERN, JSON.parse(process.env.MODERN_JSON));
 import { gs, squad } from '../src/game/state';
 import { squadStrength } from '../src/game/board';
 import { finalOrder } from '../src/game/competitions';

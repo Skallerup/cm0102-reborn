@@ -9,7 +9,7 @@ import type { WorldData } from '../newgame';
 export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 'club_comp.dat', 'first_names.dat', 'second_names.dat', 'common_names.dat'];
 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
-export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** originalens rå PA, når den er negativ: -2 = tilfældigt 150-200, -1 = 100-150 (rulles i newgame.ts) */ paRaw?: number;
+export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** databasens rå PA, når `pa` er et skøn (negativ: -2/-1 = tilfældig, 0 = mangler, eller under CA) – originalens regler køres i newgame.ts (playerInit.ts) */ paRaw?: number;
   /** omdømme fra spillerposten (byte 9/11/13, 0-10000): hjemme, nuværende, verden – originalens værdi følger dem */
   rep?: [number, number, number] }
 
@@ -52,10 +52,15 @@ class Reader {
 }
 
 /** Omregning af intrinsiske evner til 1-20 (som spillet selv viser dem) */
+// Databasen gemmer ALLE egenskaber som 1-20 (0 = mangler). Ved spilstart omregner originalen de 18 "intrinsiske"
+// (sub_535a80, løkke 2): intrinsisk = (10·v − CA)/2, og viser dem med sub_544380: t = (CA' + 2·intrinsisk)·0,05 + 10,
+// vist = (0,1·t² + t)/3 + 0,5 (CA' = CA, eller 0,1·CA for den forkerte rolles evner). Ejerens Bosman-projekt,
+// player_generation/PLAYER_GENERATION.md; bekræftet i originalen (Beckham 3.9.60: 10 af 13 præcist, resten ±1).
+// Før læste vi den gemte værdi som selve den intrinsiske værdi – forsvarere fik 17-20 i afslutning.
 function convert(raw: number, ca: number, high: boolean): number {
-  const t = raw / 10 + (high ? ca / 20 : ca / 200) + 10;
-  const v = Math.floor((t * t) / 30 + t / 3 + 0.5);
-  return Math.max(1, Math.min(20, v));
+  const intrinsic = Math.trunc(Math.max(-200, Math.min(200, 10 * raw - ca)) / 2);
+  const t = ((high ? ca : 0.1 * ca) + 2 * intrinsic) * 0.05 + 10;
+  return Math.max(1, Math.min(20, Math.trunc((0.1 * t * t + t) / 3 + 0.5)));
 }
 
 // Player-postens felter fra offset 15 (efter ID, trøjenummer, CA, PA og tre omdømmer)
@@ -308,21 +313,24 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     // spillere uden for de importerede ligaer kommer kun med som fri agenter, hvis de er gode nok
     if (!club && ca < 120) continue;
     let pa = S.i16(po + 7);
-    const paRaw = pa < 0 ? pa : undefined;
+    const rawPa = pa;
     const age = 2001 - Number(dob.slice(0, 4));
     // negativ PA = tilfældig potentiale i originalen: et deterministisk skøn ud fra alder
     if (pa <= 0 || pa < ca) pa = Math.min(200, ca + Math.round(((hashStr(String(id)) % 1000) / 1000) * Math.max(5, (24 - age) * 6)));
+    // databasens egen PA, når den ikke er brugbar som den står (negativ, 0 eller under CA) – newgame.ts kører originalens regler
+    const paRaw = pa !== rawPa ? rawPa : undefined;
     const isGK = get('Goalkeeper') >= 15;
     // 0 betyder "ikke sat" i originaldatabasen (spillet finder selv på en værdi) – markeres med 0,
     // så spillet ved start bruger en rolleprofil ud fra position og CA i stedet
     const attrs = MAP.map(([, src, f]) => {
       if (src === 'S') { const v = S.i8(o + STAFF_ATTR_OFS[f]); return v > 0 ? Math.min(20, v) : 0; }
       const raw = get(f as PField);
-      if (raw === 0) return 0;
+      // uden for 1-20 = mangler (originalen udfylder dem ved spilstart)
+      if (raw < 1 || raw > 20) return 0;
       if (INTRINSIC_ALWAYS_HIGH.includes(f as PField)) return convert(raw, ca, true);
       if (INTRINSIC_GK.includes(f as PField)) return convert(raw, ca, isGK);
       if (INTRINSIC_OUTFIELD.includes(f as PField)) return convert(raw, ca, !isGK);
-      return raw < 0 ? 0 : Math.min(20, raw);
+      return raw;
     });
     const pos = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfielder', 'AttackingMidfielder', 'Attacker', 'WingBack'].map((f) => Math.max(1, Math.min(20, get(f as PField))));
     const side = [get('LeftSide'), get('Central'), get('RightSide')].map((v) => Math.max(1, Math.min(20, v)));
@@ -341,7 +349,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       Math.max(0, S.i32(o + 78)),
     ]);
     const rep: [number, number, number] = [S.i16(po + 9), S.i16(po + 11), S.i16(po + 13)];
-    ratings[id] = paRaw ? { ca, pa, attrs, pos, side, paRaw, rep } : { ca, pa, attrs, pos, side, rep };
+    ratings[id] = paRaw !== undefined ? { ca, pa, attrs, pos, side, paRaw, rep } : { ca, pa, attrs, pos, side, rep };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27

@@ -1040,7 +1040,7 @@ function aiClubTurn(club: Club) {
     const bill = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
     const pricey = sq.filter((p) => p.contract && !p.loan && keyPlayerRank(p) > 3).sort((a, b) => (b.contract!.wage) - (a.contract!.wage));
     for (const p of pricey.slice(0, 3)) p.listed = true;
-    const old = pricey.find((p) => ageOn(p.dob, g.date) >= 31 && p.contract!.wage > bill / Math.max(10, sq.length) * 1.5);
+    const old = pricey.find((p) => ageOn(p.dob, g.date) >= 31 && p.contract!.wage > bill / Math.max(10, sq.length) * 1.5 && (!p.joined || p.joined <= addDays(g.date, -120)));
     if (old && sq.length > 22 && club.balance < -club.wageBudget * 20) {
       const pay = Math.round(old.contract!.wage * 10);
       club.balance -= pay;
@@ -1052,7 +1052,8 @@ function aiClubTurn(club: Club) {
   }
   // Sælg/frigiv overskud
   if (sq.length > 34) {
-    const old = sq.filter((p) => p.contract && !p.loan).sort((a, b) => a.ca - b.ca)[0];
+    // ikke nyindkøbte (ellers kunne en spiller skifte igen som fri agent i samme vindue)
+    const old = sq.filter((p) => p.contract && !p.loan && (!p.joined || p.joined <= addDays(g.date, -120))).sort((a, b) => a.ca - b.ca)[0];
     if (old) { setClub(old, 0); old.contract = null; }
     return;
   }
