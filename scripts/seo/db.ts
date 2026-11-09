@@ -387,7 +387,7 @@ ${mates.length ? `<h2>${c ? `${esc(c.name)} team-mates` : 'Team-mates'}</h2>${mi
     const kv: [string, string][] = [
       ...(l ? [['League', `<a href="${l.url}">${esc(l.real)}</a>`] as [string, string]] : []),
       ['Country', nationLink(c.nation)],
-      ...(c.manager ? [['Manager', `${esc(c.manager)}${c.managerNation !== null ? ` <span class="note">(${esc(nationName(c.managerNation))})</span>` : ''}`] as [string, string]] : []),
+      ...(c.manager ? [['Manager', `${esc(c.manager)}${c.managerNation !== null ? ` <span class="note">(${esc(nationName(c.managerNation))})</span>` : ''}${l ? ` · <a href="/${P}/managers/">all managers</a>` : ''}`] as [string, string]] : []),
       ...(c.kit ? [['Kit manufacturer', esc(c.kit)] as [string, string]] : []),
       ...(c.stadium ? [['Stadium', esc(c.stadium)] as [string, string]] : []),
       ...(c.cap ? [['Capacity', c.cap.toLocaleString('en')] as [string, string]] : []),

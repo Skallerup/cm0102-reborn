@@ -246,6 +246,8 @@ ${table(young(M, 20).slice(0, 30))}`,
       ['Are the players real?', `Yes: ${nO} players in the original CM 01/02 database (2001/02) and ${nM} in the 2026/27 database.`],
       ['Can I play with friends?', 'Yes. Create an online game, share the code and run your own clubs in the same world. There is also a fantasy draft league.'],
       ['Is this the original Championship Manager?', 'No. It is an independent fan project, not affiliated with Sports Interactive, SEGA or Eidos.'],
+      ['Which CM 01/02 database versions can I play?', 'All three official ones: 3.9.60 (the release, which CM 01/02 itself uses for 2001/02 and CM Reborn\'s default), 3.9.65 and the final patch 3.9.68 with the 2002/03 squads – plus a 2026/27 database. You choose when you start a new game.'],
+      ['Are the attributes the same as in CM 01/02?', 'Yes. CM Reborn converts the database exactly as the original does: 18 attributes are stored relative to CA, attributes the database leaves empty are filled from a similar player, and random potential (PA -1/-2) is rolled in every new game with the original\'s rules.'],
       ['Which languages are supported?', 'English, Danish, Swedish, Norwegian, Spanish, French, German, Italian, Brazilian Portuguese and Turkish.'],
     ],
   },
@@ -323,12 +325,14 @@ Key facts:
 ## CM 01/02 database (2001/02, patch 3.9.68)
 - [Database home and search](${SITE}/cm-01-02/): ${dbO.players.toLocaleString('en')} player profiles with every attribute (1–20), hidden attributes, CA and PA; ${dbO.clubs} clubs, ${dbO.leagues} leagues, ${dbO.nations} nations.
 - [All lists](${SITE}/cm-01-02/lists/): best players by position, wonderkids, Bosman free transfers, bargains, random-potential (PA -1/-2) players, attribute leaders.
+- [Managers](${SITE}/cm-01-02/managers/): every club's manager in the original database (Sir Alex Ferguson, Wenger, Lippi …) with nationality.
 - Player profile URL pattern: ${SITE}/cm-01-02/players/<first-last>/ (e.g. ${SITE}/cm-01-02/players/thierry-henry/)
 - Club URL pattern: ${SITE}/cm-01-02/clubs/<club>/ (e.g. ${SITE}/cm-01-02/clubs/arsenal/)
 
 ## 2026/27 database
 - [Database home and search](${SITE}/2026-27/): ${dbM.players.toLocaleString('en')} player profiles, ${dbM.clubs} clubs, ${dbM.leagues} leagues.
 - [All lists](${SITE}/2026-27/lists/)
+- [Managers](${SITE}/2026-27/managers/): the 2026/27 head coaches of every club, with nationality.
 
 ## Guides
 ${pages.map((p) => `- [${p.h1}](${SITE}/${p.slug}): ${p.description}`).join('\n')}
