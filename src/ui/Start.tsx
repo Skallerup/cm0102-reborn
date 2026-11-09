@@ -191,7 +191,9 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   type Db = 'modern' | 'original' | `custom:${string}`;
   const [db, setDbState] = useState<Db>(() => {
     if (initialDb) return `custom:${initialDb}`;
-    try { const v = localStorage.getItem('cm0102.db'); return !challenge && (v === 'original' || v?.startsWith('custom:')) ? v as Db : 'modern'; } catch { return 'modern'; }
+    // standard = den originale 01/02 (ejerens ønske 9/11); et tidligere valg af 2026/27 eller en egen database huskes – udfordringer bruger 2026/27
+    if (challenge) return 'modern';
+    try { const v = localStorage.getItem('cm0102.db'); return v === 'modern' || v?.startsWith('custom:') ? v as Db : 'original'; } catch { return 'original'; }
   });
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
   // den originale databases udgave (3.9.60 = standard)
@@ -237,11 +239,11 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   const dbPicker = !ch && (
     <Panel title={t('db.title')}>
       <div className="db-choice">
-        <button className={`db-opt ${db === 'modern' ? 'on' : ''}`} onClick={() => setDb('modern')}>
-          <b>{t('db.modern')}</b><span>{t('db.modernHint')}</span>
-        </button>
         <button className={`db-opt ${db === 'original' ? 'on' : ''}`} onClick={() => setDb('original')}>
           <b>{t('db.original')}</b><span>{t('db.originalHint')}</span>
+        </button>
+        <button className={`db-opt ${db === 'modern' ? 'on' : ''}`} onClick={() => setDb('modern')}>
+          <b>{t('db.modern')}</b><span>{t('db.modernHint')}</span>
         </button>
         {db === 'original' && (
           <div className="db-ver" role="radiogroup" aria-label={t('db.ver.title')}>

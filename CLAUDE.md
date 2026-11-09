@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-09 – Standarddatabasen ved nyt spil er nu den originale 01/02 (3.9.60) og står først; `cm0102.db` = 'modern'/custom huskes, udfordringer bruger stadig 2026/27. "(standard)" flyttet fra `db.modern` til `db.original` på 10 sprog. e2e sætter selv `cm0102.db` = 'modern' (klub-id'erne er 2026/27's).
 - 2026-11-09 – LookPicker: klassisk CM 01/02 først (til venstre), moderne derefter; spiltilstanden havde allerede ægte CM 01/02 først.
 - 2026-11-09 – Start.tsx: managernavnets `autoFocus` kun ved udfordringer (feltet står under database/udseende/spiltilstand, og autofokus scrollede forbi databasevalget – også ved hvert databaseskift, fordi feltet genopbygges); `window.scrollTo(0, 0)` ved åbning.
 - 2026-11-09 – SEO, 10 opgaver mere: guiderne `/cm-01-02-regens/` (originalens regen-regler fra player_generation/) og `/cm-01-02-player-values/` (sub_4d0c60 + vores måling), `/{db}/referees/` (officials: Discipline, stil, kortbias; link fra hubben), lister `youngest-players`/`oldest-players`, spillerprofilerne viser CA/PA i 3.9.60 (`DbConf.in60`), klubsiderne "<klub> in 3.9.60 vs 3.9.68" (til-/afgange, `squad60`, match på efternavn + fødselsår), ligasidernes intro (stærkeste trup, største stadion, rigeste klub), RSS `/changelog/feed.xml` (+ link i index.html, id-ankre på versionerne), "Related guides" nederst på guiderne.
