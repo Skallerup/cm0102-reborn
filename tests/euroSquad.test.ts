@@ -22,6 +22,7 @@ describe('European Squad', () => {
     const n = g.news.find((x) => x.key === 'eur.request');
     expect(n?.date).toBe('2001-08-31');
     expect(n?.params).toMatchObject({ club: 'Man Utd', n: 25, phase: 'first' });
+    expect(String(n?.params.comp)).toMatch(/Champions/);
     expect(euroDue(g.userClub)).toBe(true);
     const sq = squad(g.userClub);
     expect(applyAction({ t: 'euroSquad', ids: sq.slice(0, 26).map((p) => p.id) })).toBe('error');

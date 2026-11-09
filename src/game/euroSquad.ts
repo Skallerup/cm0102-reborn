@@ -44,7 +44,7 @@ export function euroSquadDaily() {
     const phase = WINDOWS[g.date.slice(5)];
     if (comp && phase && c.euroDue !== g.season) {
       c.euroDue = g.season;
-      addNews({ cat: 'general', key: 'eur.request', params: { club: c.short, comp: comp.id, n: EURO_MAX, phase } });
+      addNews({ cat: 'general', key: 'eur.request', params: { club: c.short, comp: comp.name, n: EURO_MAX, phase } });
     }
     if (c.euroDue === g.season && (g.manager.holiday || Object.values(g.fixtures).some((f) => f.date === g.date && g.comps[f.comp]?.type === 'continental' && (f.home === c.id || f.away === c.id)))) submitEuroSquad(c.id);
   });

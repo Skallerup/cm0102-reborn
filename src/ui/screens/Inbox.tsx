@@ -135,7 +135,7 @@ export function Inbox() {
         {item ? (
           <div className="cx-nmsg">
             {/* overskriften åbner det, nyheden handler om (originalen har ingen knap her) */}
-            <h3 className="cx-nhead">{item.link ? <span className="cx-link" role="link" onClick={() => open(item)}><NewsTitle n={item} /></span> : <NewsTitle n={item} />}</h3>
+            <h3 className="cx-nhead">{item.link ? <span className="cx-link" role="link" onClick={() => open(item)}><NewsTitle n={item} /></span> : <span><NewsTitle n={item} /></span>}</h3>
             {newsBody(item) && <p className="cx-nbody"><NewsBody n={item} /></p>}
             <NewsDeals n={item} />
             <WarRaise item={item} />
