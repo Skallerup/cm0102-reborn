@@ -6,6 +6,8 @@ export const TODAY = new Date().toISOString().slice(0, 10);
 
 /** Titler ud over ~65 tegn skæres af i Google: drop " | CM Reborn" og derefter en sæson i parentes */
 export function fitTitle(t: string): string {
+  // brandet er "CM 01/02 Reborn" ("CM Reborn" alene kolliderer med reborn-dukker i søgningerne) – når der er plads
+  if (t.endsWith(' | CM Reborn') && t.length + 6 <= 65) t = t.replace(/ \| CM Reborn$/, ' | CM 01/02 Reborn');
   if (t.length > 65) t = t.replace(/ \| CM Reborn$/, '');
   if (t.length > 65) t = t.replace(/ \(\d{4}\/\d{2}\)/, '');
   if (t.length > 65) t = t.replace(/ & Attributes$/, '');

@@ -70,3 +70,10 @@ Volumen-vurderingerne (høj/middel/lav) er *estimeret* ud fra hvor mange variant
 8. Mål effekten: Google Search Console (kræver ejerens adgang) – se hvilke af siderne der får visninger efter 2–4 uger.
 
 Gentag analysen: `python3 scripts/seo/autocomplete.py "cm 01/02|championship manager online" en` (grundord adskilt af |, sprogkode til sidst).
+
+## Status (9/11-2026)
+
+Lavet: titler på indgangssiderne (play-online, forsiden, da/de/es/pt/tr), `/cm-01-02-26-27-squads/`, `/cm-01-02-android/`,
+`/cm-01-02-iphone-ipad/`, `/cm-01-02-windows-11/` (CD, Windows 11, Steam Deck), `/cm-01-02-cheat-tactics/` (+ "cheat players"
+fra databasen), `/cm-01-02-work-permit/`, `/cm-01-02-training/`, `/cm-01-02-multiplayer/`; brandet "CM 01/02 Reborn" i titlerne,
+hvor der er plads (`fitTitle`), og i forsidens `<title>`. Mangler: staff-lister (kræver trænere i parseren), måling i Search Console.

@@ -35,7 +35,7 @@ function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-26-27-squads/', 'cm-01-02-android/', 'cm-01-02-iphone-ipad/', 'cm-01-02-windows-11/', 'cm-01-02-cheat-tactics/', 'cm-01-02-work-permit/', 'cm-01-02-training/', 'cm-01-02-multiplayer/', 'cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
 export function guides(db: DbOut, ver: VersionData): Page[] {
   const K = db.kept;
@@ -57,7 +57,156 @@ export function guides(db: DbOut, ver: VersionData): Page[] {
   const pa180 = K.filter((p) => !p.paRaw && p.pa >= 180).length, pa190 = K.filter((p) => !p.paRaw && p.pa >= 190).length;
   const neg2 = K.filter((p) => p.paRaw === -2).length, neg1 = K.filter((p) => p.paRaw === -1).length;
 
+  // "cheat players": de billigste med PA 170+ (ikke tilfældig PA)
+  const cheat = K.filter((p) => !p.paRaw && p.pa >= 170 && p.value > 0).sort((a, b) => a.value - b.value || b.pa - a.pa).slice(0, 15);
   const pages: Page[] = [
+    {
+      slug: 'cm-01-02-android/',
+      title: 'CM 01/02 on Android – Play Without a PC, APK or Emulator | CM Reborn',
+      h1: 'Play CM 01/02 on Android – no PC, no APK',
+      description: 'How to play Championship Manager 01/02 on an Android phone or tablet: no APK, no emulator and no PC – a free CM 01/02 remake that runs in Chrome, with the original 2001/02 database.',
+      body: `<p class="lead">Championship Manager 01/02 was made for Windows in 2001, so it has never run on Android. The usual workarounds – emulators, Winlator, ExaGear or a remote desktop to your PC – are fiddly and drain the battery. There is a simpler way.</p>
+<h2>The easy way: play in Chrome</h2>
+<ol><li>Open <a href="/">cm0102reborn.com</a> in Chrome on your phone or tablet.</li><li>Tap <b>New game</b>, pick the original CM 01/02 database (3.9.60, 3.9.65 or 3.9.68) and a club.</li><li>Tap <b>Install</b> (or "Add to Home screen") – it then opens like an app and works offline.</li></ol>
+<p>It is free, there is no APK to sideload and nothing to trust from a random download site. The screens are built for touch: tap a player to select, tap again to swap, hold and drag for forward runs.</p>
+<h2>What about emulators?</h2>
+<p>Running the real cm0102.exe on Android needs a Windows emulator, the game files and usually a no-CD fix. It can work on a fast phone, but the mouse-driven screens are hard to use with fingers, and saves are easy to lose. CM Reborn plays the same database with the classic look, made for touch.</p>
+<p>More devices: <a href="/cm-01-02-iphone-ipad/">iPhone and iPad</a>, <a href="/cm-01-02-mac-ipad-chromebook/">Mac and Chromebook</a>, <a href="/cm-01-02-windows-11/">Windows 11 and Steam Deck</a>.</p>`,
+      faq: [
+        ['Can I play CM 01/02 on Android?', 'The original only runs on Windows, but CM Reborn – a free CM 01/02 remake – runs in Chrome on any Android phone or tablet, with the original 2001/02 database. No APK or PC needed.'],
+        ['Is there a CM 01/02 APK?', 'There is no official Android version. CM Reborn needs no APK: open cm0102reborn.com and install it from the browser as an app.'],
+        ['Does it work offline on Android?', 'Yes. Once installed from Chrome it works offline, and your saves stay on the device.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-iphone-ipad/',
+      title: 'CM 01/02 on iPhone and iPad – Play Free in Safari | CM Reborn',
+      h1: 'Play CM 01/02 on iPhone and iPad',
+      description: 'Championship Manager 01/02 never came to iOS. Here is how to play a free CM 01/02 remake on iPhone and iPad in Safari – the original database, the classic look, saves on your device.',
+      body: `<p class="lead">There has never been a Championship Manager 01/02 for iPhone or iPad, and Apple does not allow the Windows emulators needed to run the original. A browser game is the only way – and it works well.</p>
+<h2>How to play</h2>
+<ol><li>Open <a href="/">cm0102reborn.com</a> in Safari.</li><li>Tap <b>New game</b> and pick the original CM 01/02 database and a club.</li><li>Tap the share button → <b>Add to Home Screen</b>: it opens full-screen like an app and works offline.</li></ol>
+<h2>Made for touch</h2>
+<p>Tap to select players, tap again to swap them, hold and drag on the tactics pitch to give forward runs, and use the classic CM 01/02 screens or a modern look. On an iPad the classic screens fit exactly like on a PC monitor.</p>
+<p>Also: <a href="/cm-01-02-android/">Android</a>, <a href="/cm-01-02-mac-ipad-chromebook/">Mac and Chromebook</a>, <a href="/play-cm-01-02-online/">play CM 01/02 online</a>.</p>`,
+      faq: [
+        ['Can I play CM 01/02 on an iPhone?', 'Not the original – it is a Windows game. CM Reborn, a free remake with the original 2001/02 database, runs in Safari on iPhone and iPad and can be added to the home screen.'],
+        ['Is CM 01/02 in the App Store?', 'No. CM Reborn does not need the App Store: it runs in Safari and installs from the share menu.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-windows-11/',
+      title: 'CM 01/02 on Windows 11 – "Asking for CD", Fixes and Steam Deck | CM Reborn',
+      h1: 'CM 01/02 on Windows 11: the CD error, fixes and Steam Deck',
+      description: 'Championship Manager 01/02 asking for the CD on Windows 10 or 11, crashing or the wrong resolution? The usual fixes – and how to skip them all and play in the browser, also on Steam Deck.',
+      body: `<p class="lead">CM 01/02 is freeware since 2008, but the 2001 program still expects a CD in the drive and a 2001 computer. On Windows 10 and 11 that means a few familiar problems.</p>
+<h2>"Please insert the CD" / asking for CD</h2>
+<p>The game checks for its CD at start-up. The free download from the community (champman0102.net) comes with a no-CD version of the executable and the 3.9.68 patch – use that instead of an old disc image.</p>
+<h2>Crashes, resolution and compatibility</h2>
+<ul><li>Run it in compatibility mode for Windows XP and as administrator if it will not start.</li><li>The game runs at a fixed resolution; on a large monitor the community's starter kits and resolution patches help.</li><li>Keep your saves outside "Program Files", or Windows may hide them in a VirtualStore folder.</li></ul>
+<h2>Steam Deck and Linux</h2>
+<p>CM 01/02 is not on Steam, but it can be added as a non-Steam game and run through Proton or Wine. The desktop-era mouse controls are awkward on the Deck's touchscreen.</p>
+<h2>Or skip it all</h2>
+<p><a href="/">CM Reborn</a> is a free CM 01/02 remake in the browser: no CD, no compatibility settings, no patches – the original 3.9.60, 3.9.65 or 3.9.68 database, and it works the same on Windows 11, the Steam Deck's browser, a Mac or a phone. <a href="/cm-01-02-download/">More about the download →</a></p>`,
+      faq: [
+        ['Why does CM 01/02 ask for the CD?', 'The 2001 program checks for its CD at start-up. The community download includes a no-CD executable and the 3.9.68 patch – or play CM Reborn in the browser, which needs no CD at all.'],
+        ['Does CM 01/02 work on Windows 11?', 'Usually yes, with the community download, compatibility mode and the no-CD executable. CM Reborn avoids the problems by running in the browser.'],
+        ['Can I play CM 01/02 on Steam Deck?', 'The original can run through Proton as a non-Steam game. CM Reborn runs in the Deck\'s browser with no setup.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-cheat-tactics/',
+      title: 'CM 01/02 Cheat Tactics & Cheat Players – Diablo, Wib Wob | CM Reborn',
+      h1: 'CM 01/02 cheat tactics and cheat players',
+      description: 'Why the famous CM 01/02 cheat tactics like Diablo and Wib Wob worked, what the match engine rewarded, and the cheap "cheat players" who become world-beaters – from the original database.',
+      body: `<p class="lead">Every CM 01/02 veteran remembers a tactic downloaded from a forum that won everything – Diablo, Wib Wob, the 4-1-3-2 variants, WWW2 – and the "cheat players" bought for pennies who became world-beaters. Here is why they worked, and who those players are.</p>
+<h2>Why the cheat tactics worked</h2>
+<p>The famous tactics were shared as tactic files and loaded in the tactics screen. They did not change the game – they exploited how its match engine scored options. From the original's code (see <a href="/cm-01-02-match-engine/">how the match engine works</a>):</p>
+<ul>
+<li><b>Running at defenders paid off.</b> A player through on goal adds 1500 × distance to running, and the opponent's offside trap pushes good decision-makers to run in behind (+4000) – so fast forwards with forward runs broke defences again and again.</li>
+<li><b>Defensive midfielders covered huge areas</b> in the original's positioning, so one or two DMCs made a team very hard to break down.</li>
+<li><b>Hard tackling is four times Normal's challenge weight</b> (Easy 0.5, Normal 2, Hard 4): more ball won – and the AI rarely punished the extra fouls.</li>
+<li><b>Instructions stacked:</b> Run With Ball, Long Shots and Cross Ball each add thousands of points to their option, so a tactic could force the same pattern every time.</li>
+</ul>
+<p>In CM Reborn no formation is overpowered on purpose – the shape decides where you outnumber the opponent, and every instruction has a price. <a href="/cm-01-02-tactics/">The classic formations explained →</a></p>
+<h2>Cheat players: world-beaters for pennies</h2>
+<p>The best value in CM 01/02 is potential: the value formula cuts the price of teenagers hard, so a 17-year-old with a PA of 170+ costs a fraction of a star. These are the cheapest players with a potential of 170 or more in the database:</p>
+${ptable(cheat, ['Value', (p) => pounds(p.value)])}
+<p>Plus the random-potential legends – Tsigalko, Cherno Samba, To Madeira – whose PA is rolled in every new game: <a href="/cm-01-02/lists/random-potential/">every random-potential player →</a> and <a href="/cm-01-02/lists/bargains/">the bargains list →</a>.</p>
+<h2>And the "real" cheats?</h2>
+<p>Money and work-permit cheats edited the save game or the database. CM Reborn has a database editor in the start menu for that – and <a href="/cm-01-02-work-permit/">the work permit rules</a> explain which non-EU players a British club can sign without one.</p>`,
+      faq: [
+        ['What is the best cheat tactic in CM 01/02?', 'The famous ones – Diablo, Wib Wob and the 4-1-3-2 variants – exploited forward runs, through balls, defensive midfielders and hard tackling in the original match engine. CM Reborn has no overpowered formation.'],
+        ['Who are the cheat players in CM 01/02?', `Cheap teenagers with huge potential – the cheapest with a PA of 170+ are ${cheat.slice(0, 3).map((p) => p.name).join(', ')} – plus the random-potential legends like Tsigalko and Cherno Samba.`],
+      ],
+    },
+    {
+      slug: 'cm-01-02-work-permit/',
+      title: 'CM 01/02 Work Permits – Signing Non-EU Players in England and Scotland | CM Reborn',
+      h1: 'CM 01/02 work permits: signing non-EU players',
+      description: 'How work permits work in CM 01/02: which players a British club needs a permit for in 2001/02, who gets one, the loan ban for non-EU players – and how CM Reborn handles it.',
+      body: `<p class="lead">In 2001/02 a club in England, Scotland, Wales or Northern Ireland could not simply sign any player from outside the EU. CM 01/02 copies the rule – and it is why so many Brazilian and Argentine wonderkids were "impossible" to sign for Premier League clubs.</p>
+<h2>Who needs a permit</h2>
+<p>Players from outside the EU and EEA (EU countries plus Norway, Iceland and Liechtenstein) joining a British club. Players from EU countries – France, Italy, Spain, Holland, Denmark, Sweden and the rest – need nothing.</p>
+<h2>Who gets one</h2>
+<p>The real rule of the time: the player must have played 75 % of his country's competitive internationals in the last two years, and the country must be in FIFA's top 70 – otherwise an appeal for an exceptional talent. The database only holds a player's total caps, so CM Reborn uses an estimate: an established international (15+ caps), a big name (reputation 70+) or a high-class international (5+ caps and CA 140+) gets the permit.</p>
+<h2>No loans</h2>
+<p>As in the original ("… are not allowed to loan non-EU players"), British clubs cannot take non-EU players on loan.</p>
+<h2>Ways round it</h2>
+<ul><li>Sign young non-EU talents and wait for the caps, or play them abroad first.</li><li>Manage outside Britain – the rule only applies to British clubs.</li><li>Look for players with an EU second nationality.</li></ul>
+<p>The rule applies to the original 2001/02 database only; the 2026/27 database follows today's rules. <a href="/cm-01-02-wonderkids/">The wonderkids worth waiting for →</a></p>`,
+      faq: [
+        ['How do I get a work permit in CM 01/02?', 'A non-EU player joining a British club needs one. In CM Reborn an established international (15+ caps), a big name or a high-class international with 5+ caps gets it; otherwise the move is blocked.'],
+        ['Can I loan non-EU players in CM 01/02?', 'Not to a British club – as in the original, British clubs cannot loan players from outside the EU.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-training/',
+      title: 'CM 01/02 Training Schedules – How Training Works | CM Reborn',
+      h1: 'CM 01/02 training: schedules, coaches and development',
+      description: 'How training works in CM 01/02 and CM Reborn: training schedules and what each one improves, coaches by area, workload and injuries, and how young players reach their potential.',
+      body: `<p class="lead">Training is where wonderkids become stars. In CM 01/02 you set schedules for groups of players and hire coaches; in CM Reborn it works the same way, with the schedules below.</p>
+<h2>The schedules and what they improve</h2>
+<div class="tw"><table><thead><tr><th>Schedule</th><th>Main attributes</th><th class="n">Workload</th></tr></thead><tbody>
+<tr><td>General</td><td>Passing, technique, stamina, decisions, teamwork</td><td class="n">Normal</td></tr>
+<tr><td>Goalkeeping</td><td>Handling, reflexes, one on ones, positioning</td><td class="n">Light</td></tr>
+<tr><td>Defending</td><td>Tackling, marking, positioning, heading</td><td class="n">High</td></tr>
+<tr><td>Ball control</td><td>Technique, passing, dribbling, creativity</td><td class="n">Light</td></tr>
+<tr><td>Attacking</td><td>Dribbling, crossing, off the ball, pace</td><td class="n">High</td></tr>
+<tr><td>Shooting</td><td>Finishing, long shots, off the ball, heading</td><td class="n">Normal</td></tr>
+<tr><td>Fitness</td><td>Stamina, strength, pace, acceleration, agility</td><td class="n">Very high</td></tr>
+<tr><td>Set pieces</td><td>Free kicks, corners, penalties</td><td class="n">Light</td></tr>
+<tr><td>Rest</td><td>Recovery</td><td class="n">Very light</td></tr>
+</tbody></table></div>
+<h2>Coaches</h2>
+<p>Coaches are the multiplier: assign them to areas (goalkeeping, defending, attacking, fitness …) and the schedules for that area work better. A good coaching staff matters more than any single schedule.</p>
+<h2>Workload and injuries</h2>
+<p>Heavy schedules – fitness above all – raise the risk of injuries and tire players before matches. Mix in rest around busy weeks, and remember that Natural Fitness decides how quickly a player recovers.</p>
+<h2>Development</h2>
+<p>Young players grow fastest before 24, with first-team football, good coaches and high professionalism and determination – up to their PA. As their CA rises, 18 technical and mental attributes rise with it. <a href="/cm-01-02-ca-pa-explained/">How CA and PA work →</a></p>`,
+      faq: [
+        ['What is the best training schedule in CM 01/02?', 'There is no single best one: general training for most players, the position schedules (defending, attacking, shooting) for specialists, fitness in pre-season – and good coaches assigned to each area.'],
+        ['Does training make players reach their potential?', 'Training, coaches and first-team football let young players grow towards their PA, fastest before 24. They can never pass their PA.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-multiplayer/',
+      title: 'Multiplayer Football Manager – Play CM 01/02 With Friends Online | CM Reborn',
+      h1: 'Multiplayer football manager with friends – CM 01/02 online',
+      description: 'Play a football manager with your friends online: CM Reborn lets you run your own clubs in the same CM 01/02 world, plus a fantasy draft league – free, in the browser, no download.',
+      body: `<p class="lead">CM 01/02 had hot-seat and network games – several managers in the same save. CM Reborn brings that online, free and in the browser.</p>
+<h2>Online games with friends</h2>
+<ol><li>Start an online game and pick the database – the original 2001/02 or 2026/27.</li><li>Share the game code with your friends.</li><li>Everyone takes a club in the same world: you play against each other in the league, bid for the same players – and for each other's.</li></ol>
+<h2>Fantasy draft league</h2>
+<p>A different kind of multiplayer: fictional clubs draft their squads from the best players in the 2026/27 database in a live snake draft, then play seasons and play-offs against each other.</p>
+<h2>Global rankings</h2>
+<p>Single-player careers count too: the Hall of Fame and the career rankings compare managers from all over the world.</p>
+<p><a href="/">Start a game →</a> · <a href="/play-cm-01-02-online/">Play CM 01/02 online</a> · <a href="/free-football-manager-browser-game/">A free football manager in your browser</a></p>`,
+      faq: [
+        ['Can I play CM 01/02 multiplayer online?', 'Yes. CM Reborn lets several managers run their own clubs in the same world online – share the game code with your friends. It is free and runs in the browser.'],
+        ['Is there a free multiplayer football manager?', 'Yes. CM Reborn is free, needs no download and has online games with friends, a fantasy draft league and global rankings.'],
+      ],
+    },
     {
       slug: 'cm-01-02-regens/',
       title: 'CM 01/02 Regens Explained – How New Young Players Are Created | CM Reborn',
@@ -434,11 +583,19 @@ ${([
         ['/cm-01-02-richest-clubs/', 'Richest clubs and transfer budgets', 'Every club\'s bank balance and transfer budget at the start, as the original sets them.'],
         ['/cm-01-02-world-cup-2002/', 'The 2002 World Cup', 'The real groups, the coaches and the strongest squads when the game reaches June 2002.'],
         ['/cm-01-02-tips/', 'Tips: how to win with any club', 'Squad building, tactics, training and the transfer market.'],
+        ['/cm-01-02-cheat-tactics/', 'Cheat tactics and cheat players', 'Why Diablo, Wib Wob and friends worked, and the cheap world-beaters.'],
+        ['/cm-01-02-training/', 'Training schedules', 'What each schedule improves, coaches, workload and development.'],
+        ['/cm-01-02-work-permit/', 'Work permits', 'Signing non-EU players for a British club in 2001/02.'],
       ]],
       ['Playing CM 01/02 today', [
         ['/cm-01-02-download/', 'CM 01/02 download – or play without one', 'Where the free download and the patches are, and how to play in a browser instead.'],
         ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook', 'CM 01/02 on devices the original never ran on.'],
+        ['/cm-01-02-android/', 'CM 01/02 on Android', 'No PC, no APK, no emulator.'],
+        ['/cm-01-02-iphone-ipad/', 'CM 01/02 on iPhone and iPad', 'Play in Safari and add it to the home screen.'],
+        ['/cm-01-02-windows-11/', 'Windows 11, the CD error and Steam Deck', 'The usual fixes – or skip them all.'],
+        ['/cm-01-02-multiplayer/', 'Multiplayer with friends', 'Your own clubs in the same world, and a fantasy draft league.'],
         ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database', 'Today\'s players in the classic game.'],
+        ['/cm-01-02-26-27-squads/', 'CM 01/02 with 2026/27 squads – play online', 'For everyone looking for a "Championship Manager 26/27".'],
         ['/changelog/', "What's new in CM Reborn", 'The latest updates to the remake.'],
       ]],
     ] as [string, [string, string, string][]][]).map(([h, items]) => `<h2>${h}</h2><ul>${items.map(([u, t, d]) => `<li><a href="${u}"><b>${t}</b></a> – ${d}</li>`).join('')}</ul>`).join('\n')}`,

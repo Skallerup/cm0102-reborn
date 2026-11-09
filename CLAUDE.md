@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-09 – SEO efter søgeordsanalysen (docs/SEO-KEYWORDS.md): 8 nye sider (26/27-trupper i build-seo.ts; Android, iPhone/iPad, Windows 11/CD/Steam Deck, cheat tactics + cheat players, work permit, training, multiplayer i seo/guides.ts), nye titler på indgangs- og sprogsider, `fitTitle` sætter "| CM 01/02 Reborn", når titlen kan bære det ("CM Reborn" kolliderer med reborn-dukker), forsidens `<title>`. "Championship Manager" kun beskrivende (varemærke).
 - 2026-11-09 – Standarddatabasen ved nyt spil er nu den originale 01/02 (3.9.60) og står først; `cm0102.db` = 'modern'/custom huskes, udfordringer bruger stadig 2026/27. "(standard)" flyttet fra `db.modern` til `db.original` på 10 sprog. e2e sætter selv `cm0102.db` = 'modern' (klub-id'erne er 2026/27's).
 - 2026-11-09 – LookPicker: klassisk CM 01/02 først (til venstre), moderne derefter; spiltilstanden havde allerede ægte CM 01/02 først.
 - 2026-11-09 – Start.tsx: managernavnets `autoFocus` kun ved udfordringer (feltet står under database/udseende/spiltilstand, og autofokus scrollede forbi databasevalget – også ved hvert databaseskift, fordi feltet genopbygges); `window.scrollTo(0, 0)` ved åbning.

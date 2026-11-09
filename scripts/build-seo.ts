@@ -104,7 +104,7 @@ const leaguesM = modern.leagues.length, leaguesO = orig.leagues.length;
 const pages: Page[] = [
   {
     slug: 'play-cm-01-02-online/',
-    title: 'Play CM 01/02 Online – Free in Your Browser (No Download) | CM Reborn',
+    title: 'Play Championship Manager 01/02 Online Free (CM 01/02) | CM Reborn',
     h1: 'Play CM 01/02 online – free, in your browser',
     description: `Play a Championship Manager 01/02 style football manager online for free: the original 2001/02 database and a 2026/27 update, ${nM}+ real players, the classic CM look, multiplayer – no download, works on Mac, PC, iPad and phone.`,
     body: `<p class="lead">CM Reborn is a free fan remake of Championship Manager 01/02 that runs straight in your browser. Pick the original 2001/02 database or the 2026/27 update, choose the classic CM 01/02 look or a modern one, and you are managing your club in seconds – no installer, no emulator, no patch files.</p>
@@ -309,6 +309,29 @@ ${WC2002.map((grp, gi) => `<h3>Group ${'ABCDEFGH'[gi]}</h3><div class="tw"><tabl
     ],
   });
 }
+
+// "Championship Manager 26/27" (søgeordsanalysen): CM 01/02 med 2026/27-trupperne – navnet kun beskrivende (varemærke)
+pages.push({
+  slug: 'cm-01-02-26-27-squads/',
+  title: 'Championship Manager 26/27? Play CM 01/02 With 2026/27 Squads | CM Reborn',
+  h1: 'CM 01/02 with 2026/27 squads – play online, free',
+  description: `Looking for a Championship Manager 26/27? Play the free CM 01/02 remake with ${nM} real 2026/27 players in ${leaguesM} leagues – in your browser, no download, on any device.`,
+  body: `<p class="lead">There is no official Championship Manager 26/27 – the series ended long ago. But you can play the classic CM 01/02 game with today's squads: CM Reborn is a free fan remake that runs in your browser with a 2026/27 database of ${nM} real players in ${leaguesM} leagues.</p>
+${CTA}
+<h2>How to play</h2>
+<ol><li>Open <a href="/">cm0102reborn.com</a> – on a PC, Mac, phone or tablet.</li><li>Tap <b>New game</b> and pick the <b>CM 2026/27</b> database.</li><li>Choose the classic CM 01/02 look or a modern one, pick a country and a club, and start.</li></ol>
+<h2>The best players in the 2026/27 database</h2>
+${table(best(M).slice(0, 15))}
+<h2>The best young players</h2>
+${table(young(M, 21).slice(0, 15))}
+<p>Every player, club and league: <a href="/2026-27/">the 2026/27 database</a> · managers: <a href="/2026-27/managers/">2026/27 managers</a> · <a href="/2026-27/kits/">kit manufacturers</a>.</p>
+<p>Prefer the original? The <a href="/cm-01-02/">CM 01/02 database</a> from 2001/02 is the default in CM Reborn.</p>`,
+  faq: [
+    ['Is there a Championship Manager 26/27?', `No official one. CM Reborn is a free CM 01/02 remake with a 2026/27 database (${nM} players), played in the browser.`],
+    ['How do I play CM 01/02 with 2026/27 squads?', 'Open cm0102reborn.com, start a new game and pick the CM 2026/27 database. It is free and needs no download.'],
+    ['Does it work on mobile?', 'Yes – in any browser on Android, iPhone and iPad, and it can be installed as an app.'],
+  ],
+});
 
 // "What's new": spillets egen ændringslog (src/ui/changelogData.ts) som statisk side – viser søgemaskinerne, at sitet lever
 {

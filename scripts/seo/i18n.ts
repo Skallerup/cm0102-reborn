@@ -9,7 +9,7 @@ export function langPages(n: string, m: string): LangPage[] {
   return [
     {
       lang: 'da', hreflang: 'da', slug: 'da/spil-cm-01-02-online/', nav: 'Spil online',
-      title: 'Spil CM 01/02 online gratis i browseren – ingen download | CM Reborn',
+      title: 'Spil CM 01/02 online gratis – fodbold manager spil i browseren | CM Reborn',
       h1: 'Spil Championship Manager 01/02 online – gratis i browseren',
       description: `Spil en gratis genskabelse af Championship Manager 01/02 direkte i browseren: den originale 2001/02-database (${n} spillere), en 2026/27-database, det klassiske CM-udseende og onlinespil med vennerne. Virker på Mac, PC, iPad og mobil.`,
       lead: 'CM Reborn er en gratis fan-genskabelse af Championship Manager 01/02, som kører direkte i browseren. Vælg den originale database fra 2001/02 eller 2026/27-opdateringen, det klassiske blå CM 01/02-udseende eller et moderne, og så er du i gang på få sekunder – uden installation, emulator eller patchfiler.',
@@ -87,7 +87,7 @@ export function langPages(n: string, m: string): LangPage[] {
     },
     {
       lang: 'de', hreflang: 'de', slug: 'de/cm-01-02-online-spielen/', nav: 'Online spielen',
-      title: 'CM 01/02 online spielen – kostenlos im Browser, ohne Download | CM Reborn',
+      title: 'CM 01/02 online spielen – kostenloser Fußballmanager im Browser | CM Reborn',
       h1: 'Championship Manager 01/02 online spielen – kostenlos im Browser',
       description: `Spiele ein kostenloses Remake von Championship Manager 01/02 direkt im Browser: die originale 2001/02-Datenbank (${n} Spieler), eine 2026/27-Datenbank, der klassische CM-Look und Mehrspieler mit Freunden. Läuft auf Mac, PC, iPad und Handy.`,
       lead: 'CM Reborn ist ein kostenloses Fan-Remake von Championship Manager 01/02, das direkt im Browser läuft. Wähle die originale Datenbank von 2001/02 oder das 2026/27-Update, den klassischen blauen CM-01/02-Look oder einen modernen – und du managst deinen Verein in Sekunden, ohne Installation, Emulator oder Patches.',
@@ -113,7 +113,7 @@ export function langPages(n: string, m: string): LangPage[] {
     },
     {
       lang: 'es', hreflang: 'es', slug: 'es/jugar-cm-01-02-online/', nav: 'Jugar online',
-      title: 'Jugar CM 01/02 online gratis en el navegador – sin descargas | CM Reborn',
+      title: 'Jugar CM 01/02 online gratis – Championship Manager en el navegador | CM Reborn',
       h1: 'Jugar a Championship Manager 01/02 online – gratis en el navegador',
       description: `Juega gratis a un remake de Championship Manager 01/02 en el navegador: la base de datos original de 2001/02 (${n} jugadores), una base de datos 2026/27, el aspecto clásico de CM y multijugador con amigos. Funciona en Mac, PC, iPad y móvil.`,
       lead: 'CM Reborn es un remake gratuito hecho por fans de Championship Manager 01/02 que funciona directamente en el navegador. Elige la base de datos original de 2001/02 o la actualización 2026/27, el clásico aspecto azul de CM 01/02 o uno moderno, y estarás dirigiendo a tu equipo en segundos – sin instalar nada.',
@@ -191,7 +191,7 @@ export function langPages(n: string, m: string): LangPage[] {
     },
     {
       lang: 'pt-BR', hreflang: 'pt', slug: 'pt/jogar-cm-01-02-online/', nav: 'Jogar online',
-      title: 'Jogar CM 01/02 online grátis no navegador – sem download | CM Reborn',
+      title: 'Jogar CM 01/02 online grátis – no navegador, Android e iPhone | CM Reborn',
       h1: 'Jogar Championship Manager 01/02 online – grátis no navegador',
       description: `Jogue de graça um remake de Championship Manager 01/02 no navegador: o banco de dados original de 2001/02 (${n} jogadores), um banco 2026/27, o visual clássico do CM e multijogador com amigos. Funciona em Mac, PC, iPad e celular.`,
       lead: 'CM Reborn é um remake gratuito de Championship Manager 01/02 feito por fãs, que roda direto no navegador. Escolha o banco de dados original de 2001/02 ou a atualização 2026/27, o visual azul clássico do CM 01/02 ou um moderno, e em segundos você já está comandando seu time – sem instalar nada.',
@@ -217,7 +217,7 @@ export function langPages(n: string, m: string): LangPage[] {
     },
     {
       lang: 'tr', hreflang: 'tr', slug: 'tr/cm-01-02-online-oyna/', nav: 'Online oyna',
-      title: "CM 01/02'yi tarayıcıda ücretsiz online oyna – indirme yok | CM Reborn",
+      title: "CM 01/02 online oyna – ücretsiz menajerlik oyunu, indirme yok | CM Reborn",
       h1: "Championship Manager 01/02'yi online oyna – tarayıcıda ücretsiz",
       description: `Championship Manager 01/02'nin ücretsiz yeniden yapımını tarayıcıda oyna: orijinal 2001/02 veritabanı (${n} oyuncu), 2026/27 veritabanı, klasik CM görünümü ve arkadaşlarla çok oyunculu mod. Mac, PC, iPad ve telefonda çalışır.`,
       lead: "CM Reborn, Championship Manager 01/02'nin hayranlar tarafından yapılmış ücretsiz bir yeniden yapımıdır ve doğrudan tarayıcıda çalışır. 2001/02 orijinal veritabanını ya da 2026/27 güncellemesini, klasik mavi CM 01/02 görünümünü ya da modern olanı seç – birkaç saniyede takımının başındasın, kurulum yok.",
@@ -254,6 +254,7 @@ const GUIDES_H: Record<string, string> = { da: 'Guider (på engelsk)', sv: 'Guid
 const GUIDE_LINKS: [string, string][] = [
   ['/cm-01-02-match-engine/', 'How the CM 01/02 match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'],
   ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'],
+  ['/cm-01-02-android/', 'CM 01/02 on Android'], ['/cm-01-02-iphone-ipad/', 'CM 01/02 on iPhone and iPad'], ['/cm-01-02-multiplayer/', 'Multiplayer with friends'],
   ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-guides/', 'All guides'],
 ];
 export function toPage(p: LangPage, alternates: [string, string][]): Page {
