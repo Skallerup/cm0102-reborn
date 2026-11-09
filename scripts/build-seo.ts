@@ -39,7 +39,7 @@ function players(w: World): P[] {
 const O = players(orig), M = players(modern);
 
 // de tre officielle udgaver: rækker pr. spiller (navn + fødselsår) til sammenligningen og spillerprofilerne
-type VR = { name: string; dob: string; club: string; ca: number };
+type VR = { name: string; dob: string; club: string; ca: number; pa: number; random: boolean };
 const verRows = (w: World): Map<string, VR> => {
   const F = Object.fromEntries(w.playerFields.map((f, i) => [f, i]));
   const club = new Map(w.clubs.map((c) => [c[0] as number, c[1] as string]));
@@ -50,7 +50,7 @@ const verRows = (w: World): Map<string, VR> => {
     // navn + fødselsår (datoerne er rettet med en dag hist og her mellem udgaverne, fx Lampard 21/6 → 20/6)
     const k = `${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}|${String(r[F.dob]).slice(0, 4)}`;
     if (m.has(k)) dup.add(k);
-    else m.set(k, { name, dob: r[F.dob] as string, club: club.get(r[F.club] as number) ?? 'Free agent', ca: w.ratings[String(r[F.id])]?.ca ?? 0 });
+    else { const rt = w.ratings[String(r[F.id])]; m.set(k, { name, dob: r[F.dob] as string, club: club.get(r[F.club] as number) ?? 'Free agent', ca: rt?.ca ?? 0, pa: rt?.pa ?? 0, random: (rt?.paRaw ?? 0) < 0 }); }
   }
   // navne, der ikke er entydige (to "Raúl" født samme år), sammenlignes ikke
   for (const k of dup) m.delete(k);
@@ -61,6 +61,10 @@ const VER = { '3.9.60': load('world-original.json'), '3.9.65': load('world-origi
 const O60 = players(VER['3.9.60']);
 const verA = verRows(VER['3.9.60']), verB = verRows(VER['3.9.65']);
 const verKey = (name: string, dob: string) => `${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}|${dob.slice(0, 4)}`;
+// 3.9.60-udgaven af en spiller (CA/PA på profilen) og 3.9.60-trupperne pr. klub (til- og afgange på klubsiderne)
+const in60 = (name: string, dob: string) => verA.get(verKey(name, dob));
+const squad60 = new Map<string, VR[]>();
+for (const p of verA.values()) (squad60.get(p.club) ?? squad60.set(p.club, []).get(p.club)!).push(p);
 const otherVersions = (name: string, dob: string): [string, string][] => {
   const k = verKey(name, dob);
   return ([['3.9.60', verA.get(k)?.club], ['3.9.65', verB.get(k)?.club]] as [string, string | undefined][]).filter((x): x is [string, string] => !!x[1]);
@@ -71,7 +75,7 @@ const CULT_LIST = (JSON.parse(readFileSync('scripts/cult-players.json', 'utf8'))
 const cultSet = new Set(CULT_LIST);
 const dbO = buildDb({
   file: SEO_ORIGINAL, prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
-  cult: cultSet, otherVersions,
+  cult: cultSet, otherVersions, in60, squad60: (club: string) => squad60.get(club) ?? [],
   keep: (p) => p.ca >= 120 || (p.age <= 23 && (p.pa >= 145 || p.paRaw === -2)) || (p.age <= 21 && p.paRaw === -1 && p.ca >= 60) || p.caps >= 30 || cultSet.has(p.name),
 });
 const dbM = buildDb({
@@ -316,9 +320,22 @@ ${WC2002.map((grp, gi) => `<h3>Group ${'ABCDEFGH'[gi]}</h3><div class="tw"><tabl
     description: `The latest updates to CM Reborn, the free CM 01/02 remake in your browser: version ${recent[0].version} (${recent[0].date}) – ${recent[0].title.en}.`,
     modified: recent[0].date,
     body: `<p class="lead">CM Reborn is updated almost every day. These are the latest versions – the same list you see in the game under "What's new".</p>
-${recent.map((v) => `<h2>${esc(v.version)} – ${esc(v.title.en)}</h2><p class="note">${esc(v.date)}</p><ul>${v.items.map((it) => `<li>${esc(it.en)}</li>`).join('')}</ul>`).join('\n')}
-<p><a href="/">Play the latest version →</a></p>`,
+${recent.map((v) => `<h2 id="v${esc(v.version)}">${esc(v.version)} – ${esc(v.title.en)}</h2><p class="note">${esc(v.date)}</p><ul>${v.items.map((it) => `<li>${esc(it.en)}</li>`).join('')}</ul>`).join('\n')}
+<p><a href="/">Play the latest version →</a> · <a href="/changelog/feed.xml">RSS feed</a></p>`,
   });
+}
+// RSS-feed for opdateringerne (/changelog/feed.xml)
+{
+  const rfc = (d: string) => new Date(`${d}T12:00:00Z`).toUTCString();
+  const x = (t: string) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  mkdirSync('public/changelog', { recursive: true });
+  writeFileSync('public/changelog/feed.xml', `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>
+<title>CM Reborn – what's new</title><link>${SITE}/changelog/</link><description>Updates to CM Reborn, the free CM 01/02 remake in your browser.</description><language>en</language>
+<atom:link href="${SITE}/changelog/feed.xml" rel="self" type="application/rss+xml"/>
+${CHANGELOG.slice(0, 20).map((v) => `<item><title>${x(`${v.version} – ${v.title.en}`)}</title><link>${SITE}/changelog/#v${v.version}</link><guid isPermaLink="false">cm-reborn-${v.version}</guid><pubDate>${rfc(v.date)}</pubDate><description>${x(v.items.map((it) => it.en).join(' · '))}</description></item>`).join('\n')}
+</channel></rss>
+`);
 }
 
 // 404-siden (Vercel viser public/404.html for ukendte stier) og flyttede sider (sider, der forsvandt, da databasen blev genbygget)
@@ -409,7 +426,10 @@ for (const p of pages) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
   // guiderne hører under guideoversigten i brødkrummen (BreadcrumbList)
   const guideCrumb = p.slug.startsWith('cm-01-02-') && p.slug !== 'cm-01-02-guides/' && !p.crumbs ? { crumbs: [{ name: 'Guides', url: '/cm-01-02-guides/' }] } : {};
-  writeFileSync(`public/${p.slug}index.html`, render({ ...p, ...guideCrumb, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : {}) }));
+  // "Related guides" nederst på hver guide (interne links mellem guiderne)
+  const RELATED: [string, string][] = [['cm-01-02-match-engine/', 'How the match engine works'], ['cm-01-02-attributes-explained/', 'What every attribute does'], ['cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['cm-01-02-wonderkids/', 'Wonderkids'], ['cm-01-02-database-versions/', '3.9.60 vs 3.9.68'], ['cm-01-02-regens/', 'Regens'], ['cm-01-02-player-values/', 'Player values'], ['cm-01-02-tactics/', 'Tactics']];
+  const related = 'crumbs' in guideCrumb ? `\n<h2>Related guides</h2><ul>${RELATED.filter(([u]) => u !== p.slug).slice(0, 6).map(([u, t]) => `<li><a href="/${u}">${t}</a></li>`).join('')}</ul>` : '';
+  writeFileSync(`public/${p.slug}index.html`, render({ ...p, body: p.body + related, ...guideCrumb, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : {}) }));
 }
 for (const lp of LP) {
   mkdirSync(`public/${lp.slug}`, { recursive: true });

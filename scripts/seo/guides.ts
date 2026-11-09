@@ -35,7 +35,7 @@ function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
 export function guides(db: DbOut, ver: VersionData): Page[] {
   const K = db.kept;
@@ -58,6 +58,64 @@ export function guides(db: DbOut, ver: VersionData): Page[] {
   const neg2 = K.filter((p) => p.paRaw === -2).length, neg1 = K.filter((p) => p.paRaw === -1).length;
 
   const pages: Page[] = [
+    {
+      slug: 'cm-01-02-regens/',
+      title: 'CM 01/02 Regens Explained – How New Young Players Are Created | CM Reborn',
+      h1: 'Regens in CM 01/02: how new players are born',
+      description: 'How regens work in Championship Manager 01/02, read from the original code: a retired player is reborn as a 16–20-year-old with his potential, positions and most attributes – and how to find them.',
+      body: `<p class="lead">"Regens" are the new young players that appear as the years go by in CM 01/02. They are not made up from nothing: the original game recycles retired players. This is how it works, read from the game's own code (player_regen.cpp in cm0102.exe).</p>
+<h2>A retired player is reborn</h2>
+<ul>
+<li>When a player retires and does not stay on as staff, his player card – potential ability (PA), positions and attributes – goes into a queue with his nationality. Players under 30 are reborn at once; older ones within about two months, or early the next year.</li>
+<li>The new player gets a new name from the same country. Nations with fewer than 100 players in the database are sometimes swapped for another small nation.</li>
+<li><b>He inherits the PA, the positions and most of the attributes</b> of the retired player. So when a world-class striker retires, a future world-class striker appears somewhere in his country.</li>
+</ul>
+<h2>What is rolled again</h2>
+<ul>
+<li><b>Age:</b> usually 16–20; very rarely 15 or 21–26.</li>
+<li><b>Current ability:</b> a share of the inherited PA – a forward starts at 30–90 % of it, a defender at 25–80 %, a keeper at 25–75 % – capped at 80–110 for the youngest (with a small chance of more).</li>
+<li><b>Physical attributes</b> – acceleration, pace, agility, jumping, natural fitness, work rate, stamina and strength – are rolled from scratch, with stamina and strength lower for the youngest.</li>
+<li><b>Mental attributes:</b> anticipation and decisions are lowered for teenagers, and big-match temperament and leadership are toned down.</li>
+<li><b>Reputation</b> starts low, so regens are cheap – and often unknown to scouts.</li>
+</ul>
+<h2>Where to find them</h2>
+<p>Younger regens usually go to a youth club or a small club in their country; some start without a club. Scout the countries whose great players have just retired – the potential is passed on. In CM Reborn regens work the same way: they inherit the positions, the attribute profile, the hidden attributes and the potential of the retired player. More on potential in <a href="/cm-01-02-ca-pa-explained/">CA and PA explained</a>, and the current talents in <a href="/cm-01-02-wonderkids/">the wonderkids guide</a>.</p>`,
+      faq: [
+        ['How do regens work in CM 01/02?', 'A retired player is reborn as a new young player from the same country, usually aged 16–20. He keeps the retired player\'s potential, positions and most attributes; age, current ability, reputation and the physical attributes are rolled again.'],
+        ['Do regens keep the potential of the retired player?', 'Yes. The original never changes the potential in the regen code – a retired star becomes a regen with the same PA.'],
+        ['How old are regens in CM 01/02?', 'Usually 16 to 20. About 1 in 400 is 21–26, and a very few are 15.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-player-values/',
+      title: 'CM 01/02 Player Values – How the Game Calculates a Player\'s Price | CM Reborn',
+      h1: 'How CM 01/02 calculates player values',
+      description: 'Why Zidane is worth about £18m and a 34-year-old star almost nothing: the CM 01/02 value formula read from the original code, and what really sets a player\'s price.',
+      body: `<p class="lead">The value in the database is not what you see in the game. When a new game starts, CM 01/02 calculates every player's value itself and overwrites the database's number. This is how, read from the original's code (contract_manager.cpp).</p>
+<h2>The ingredients</h2>
+<ul>
+<li><b>Position sets the base:</b> forwards start from £13m, attacking midfielders £11m, midfielders £10m, defensive midfielders £9m, keepers £6m and the rest £8m.</li>
+<li><b>Peak age:</b> 28 for forwards, 33 for keepers, 29 for everyone else. A player close to his peak is worth the most; an age table cuts the value hard for very young and old players (from 100 % at the peak to 10 % far from it).</li>
+<li><b>Ability and reputation:</b> the core of the value grows with the square of an "ability number" built from the player's reputation and the club manager's judgement of him – a world-famous player is worth far more.</li>
+<li><b>A few attributes</b> nudge it: flair, finishing, creativity, pace and leadership raise it; injury proneness lowers it.</li>
+<li><b>International caps</b> make him count as "older" in the age table.</li>
+<li><b>League and club:</b> a factor from the league's and the club's standing – the same player is worth more at a big club in a big league.</li>
+<li><b>A release clause</b> caps the value.</li>
+</ul>
+<h2>What it means in practice</h2>
+<ul>
+<li>Stars at big clubs in their late twenties are the most expensive – Zidane is about £18m, Beckham about £18–19m at the start.</li>
+<li>Teenagers with huge potential are cheap, because the age table cuts their value – which is why wonderkids are the best buys in the game.</li>
+<li>Players over 32 lose value fast, whatever their ability.</li>
+</ul>
+<h2>How CM Reborn does it</h2>
+<p>CM Reborn's values for the original database were fitted to the values the original shows for 3,134 players in its own player search (read on screen), using ability, age, club reputation, wage, the player's reputation and the league. The typical difference from the original is about a factor of 1.7, mostly individual noise the formula cannot see. Every player's value is on his profile in the <a href="/cm-01-02/">CM 01/02 database</a>; the cheapest good players are in <a href="/cm-01-02/lists/bargains/">the bargains list</a>.</p>`,
+      faq: [
+        ['How is player value calculated in CM 01/02?', 'From the player\'s position (a base of £6m–£13m), his age against a peak age (28 for forwards, 33 for keepers, 29 for others), his reputation and ability, a few attributes, his caps and the strength of his club and league.'],
+        ['Why are wonderkids so cheap in CM 01/02?', 'The value formula cuts the price of very young players hard (an age table from 10 % to 100 %), so a 17-year-old with world-class potential costs a fraction of a star.'],
+        ['Is the value in the CM 01/02 database used?', 'No. The game recalculates every player\'s value when a new game starts and overwrites the database\'s number.'],
+      ],
+    },
     {
       slug: 'cm-01-02-match-engine/',
       title: 'How the CM 01/02 Match Engine Works – Read From the Original Code | CM Reborn',
@@ -361,6 +419,8 @@ ${([
         ['/cm-01-02-ca-pa-explained/', 'CA and PA explained', 'Current and potential ability, the exact rules for random potential (-1 and -2) and how attributes move with CA.'],
         ['/cm-01-02-hidden-attributes/', 'Hidden attributes', 'Consistency, important matches, injury proneness, loyalty and temperament – the numbers the game never shows.'],
         ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68', 'The three official databases compared: which players moved, and which version the game uses.'],
+        ['/cm-01-02-regens/', 'Regens: how new players are born', 'What happens when a player retires, and why regens inherit his potential.'],
+        ['/cm-01-02-player-values/', 'How player values are calculated', 'The value formula in the original – and why the database value is ignored.'],
       ]],
       ['Players', [
         ['/cm-01-02-wonderkids/', 'Wonderkids', 'The best young players, the random-potential cult heroes and the wonderkids in the 3.9.60 release.'],
