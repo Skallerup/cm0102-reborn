@@ -201,13 +201,15 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   // klubber
   const CL = new Reader(files['club.dat']);
-  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; training: number };
+  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; training: number; manager: number };
   const rawClubs: RawClub[] = [];
   for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
     rawClubs.push({
       id: CL.i32(o), name: CL.str(o + 4, 51), short: CL.str(o + 56, 26), nation: CL.i32(o + 83), division: CL.i32(o + 87),
       stadium: CL.i32(o + 105), maxAtt: CL.i32(o + 123), rep: CL.i16(o + 128), fg: CL.i32(o + 131), bg: CL.i32(o + 135),
       balance: CL.i32(o + 101), avgAtt: CL.i32(o + 115), training: CL.u8(o + 127),
+      // klubbens manager (staff-id; ejerens Bosman-projekt, db.rs: club.dat 207)
+      manager: CL.i32(o + 207),
     });
   }
   // ligaer: divisioner med mindst 8 klubber; niveau efter omdømme inden for landet
@@ -263,6 +265,22 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     clubFinance[c.id] = [c.balance, Math.max(0, c.avgAtt), Math.min(20, c.training)];
   }
   const inGame = new Set(clubs.map((c) => c[0]));
+  // managerne (club.dat 207 → staff.dat): navnet i clubs[7], så spillet bruger databasens rigtige managere
+  {
+    const want = new Map(rawClubs.filter((c) => inGame.has(c.id) && c.manager > 0).map((c) => [c.manager, c.id]));
+    const coach = new Map<number, string>();
+    for (let i = 0; i < tStaff.count && coach.size < want.size; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const club = want.get(S.i32(o));
+      if (club === undefined) continue;
+      const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
+      // "fornavn|efternavn" (newgame deler ved |), så "Sir Alex" + "Ferguson" ikke bliver "Sir" + "Alex Ferguson"
+      const nm = cn ? `|${cn}` : `${first[S.i32(o + 4)] ?? ''}|${second[S.i32(o + 8)] ?? ''}`;
+      if (nm.replace('|', '').trim()) coach.set(club, nm);
+    }
+    for (const c of clubs) c[7] = coach.get(c[0]) ?? '';
+  }
 
   // spillere
   const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number', 'wage'];

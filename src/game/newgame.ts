@@ -123,7 +123,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     jobOffers: [],
   };
   const cm = (world as Partial<CMWorld>).kind === 'cm0102' ? (world as CMWorld) : null;
-  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; g.customRules = cm.rules as GameState['customRules']; if (cm.officials?.length) g.officials = cm.officials; }
+  if (cm) { g.dbKind = 'cm0102'; g.dbYear = season; if (season < 2020) g.dbVersion = world.source.match(/3\.9\.6\d/)?.[0] ?? '3.9.60'; g.customRules = cm.rules as GameState['customRules']; if (cm.officials?.length) g.officials = cm.officials; }
   if (world.nationalTeams) g.intl = { results: [], history: [], info: world.nationalTeams.nations, past: world.nationalTeams.history };
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
@@ -438,9 +438,10 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string) 
   const mk = (role: StaffRole, level: number) => {
     let first: string, last: string;
     if (role === 'manager' && coach) {
-      const parts = coach.split(' ');
-      first = parts.length > 1 ? parts[0] : '';
-      last = parts.length > 1 ? parts.slice(1).join(' ') : parts[0];
+      // databasen: "fornavn|efternavn" – ellers første ord som fornavn
+      const parts = coach.includes('|') ? coach.split('|') : [coach.split(' ')[0], coach.split(' ').slice(1).join(' ')];
+      first = parts[1] ? parts[0].trim() : '';
+      last = (parts[1] || parts[0]).trim();
     } else {
       [first, last] = randomName(g.names, c.nation, r);
     }

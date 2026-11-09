@@ -11,8 +11,11 @@ export const CHANGELOG: ChangelogEntry[] = [
   {
     version: '0.20.0',
     date: '2026-11-09',
-    title: { da: 'Ét klubskifte pr. transfervindue', en: 'One move per transfer window' },
+    title: { da: 'Vælg 01/02-database og rigtige managere', en: 'Choose your 01/02 database and real managers' },
     items: [
+      { da: "⚠ Kræver et nyt spil med den originale database", en: "⚠ Needs a new game with the original database" },
+      { da: "Vælg mellem de officielle CM 01/02-databaser ved nyt spil: 3.9.60 (udgivelsen, standard), 3.9.65 (opdateringen) og 3.9.68 (trupperne fra 2002/03 – Ferdinand i Man Utd – med start i juli 2001). Hver udgave er præcis som originalens: spillere, klubber, økonomi og managere", en: "Choose between the official CM 01/02 databases in a new game: 3.9.60 (the release, standard), 3.9.65 (the patch) and 3.9.68 (the 2002/03 squads – Ferdinand at Man Utd – starting in July 2001). Each one is exactly as in the original: players, clubs, finances and managers" },
+      { da: "Den originale database: klubberne har nu deres rigtige managere fra databasen (Sir Alex Ferguson, Wenger, Houllier, Lippi …) i stedet for opdigtede navne", en: "Original database: clubs now have their real managers from the database (Sir Alex Ferguson, Wenger, Houllier, Lippi …) instead of made-up names" },
       { da: "Rettet: en spiller kunne skifte klub flere gange i samme transfervindue (fx Spurs → Fulham → Bilbao → Lazio). Nu køber computerens klubber ikke en spiller, der lige har skiftet, og en nyindkøbt spiller sættes ikke til salg i samme vindue", en: "Fixed: a player could change clubs several times in the same transfer window (e.g. Spurs → Fulham → Bilbao → Lazio). Computer clubs no longer buy a player who has just moved, and a new signing isn't put up for sale in the same window" },
     ],
   },

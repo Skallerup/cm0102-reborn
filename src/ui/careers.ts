@@ -14,7 +14,8 @@ const files = new Map<string, Promise<CareersFile | null>>();
 /** Karrierefilen til spillets database: transfermarkt (moderne), CM 2026/27 eller den originale 01/02 */
 function careerFile(): string {
   if (!hasGame() || gs().dbKind !== 'cm0102') return 'careers.json';
-  return cmDatabase(gs()) === 'original' ? 'careers-original.json' : 'careers-cm.json';
+  const v = gs().dbVersion;
+  return cmDatabase(gs()) === 'original' ? (v && v !== '3.9.60' ? `careers-original-${v.replace(/\./g, '')}.json` : 'careers-original.json') : 'careers-cm.json';
 }
 
 function load(name = careerFile()): Promise<CareersFile | null> {

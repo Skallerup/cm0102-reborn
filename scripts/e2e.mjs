@@ -69,6 +69,17 @@ async function run(look) {
     await page.getByRole('button', { name: await t('start.new') }).first().click();
     await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
     await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Tester');
+    // valget af officiel 01/02-database: tre udgaver under den originale – og tilbage til standarddatabasen
+    if (look === 'moderne') {
+      await page.locator('.db-opt', { hasText: await t('db.original') }).first().click();
+      await page.locator('.db-ver-opt').nth(2).click();
+      if ((await page.locator('.db-ver-opt').count()) !== 3) throw new Error('versionsvalget mangler');
+      if ((await page.evaluate(() => localStorage.getItem('cm0102.dbver'))) !== '3.9.68') throw new Error('3.9.68 blev ikke valgt');
+      await page.locator('.db-ver-opt').first().click();
+      await page.locator('.db-opt', { hasText: await t('db.modern') }).first().click();
+      await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
+      await page.waitForTimeout(1500);
+    }
     if (!(await page.evaluate(() => window.__cmPick(1920)))) throw new Error('klubben findes ikke');
     await page.getByRole('button', { name: await t('start.begin') }).click();
     await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });

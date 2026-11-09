@@ -20,7 +20,7 @@ import { Flag, Panel } from './components';
 import { OnlineMenu } from './Online';
 import { createOnlineGame } from '../online/client';
 import { notifyNewCareer } from '../online/notify';
-import { loadOriginalWorld, loadWorld, withCommunityEdits } from './world';
+import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, withCommunityEdits, type OriginalVersion } from './world';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 import { Editor } from './Editor';
 import { listDbs, loadCustomWorld } from './customDb';
@@ -194,6 +194,9 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
     try { const v = localStorage.getItem('cm0102.db'); return !challenge && (v === 'original' || v?.startsWith('custom:')) ? v as Db : 'modern'; } catch { return 'modern'; }
   });
   const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
+  // den originale databases udgave (3.9.60 = standard)
+  const [ver, setVerState] = useState<OriginalVersion>(() => { try { const v = localStorage.getItem('cm0102.dbver'); return (ORIGINAL_VERSIONS as readonly string[]).includes(v ?? '') ? v as OriginalVersion : '3.9.60'; } catch { return '3.9.60'; } });
+  const setVer = (v: OriginalVersion) => { setVerState(v); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.dbver', v); } catch { /* ignorer */ } };
   const [mine, setMine] = useState<CustomDb[]>([]);
   const [mode, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'extended' ? 'extended' : 'authentic'; } catch { return 'authentic'; } });
   const setModeState = (m: 'authentic' | 'extended') => { setModeRaw(m); try { localStorage.setItem('cm0102.mode', m); } catch { /* ignorer */ } };
@@ -207,7 +210,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
       // databasen findes ikke længere (slettet): tilbage til standard
       if (!d) { setDb('modern'); return null; }
       return loadCustomWorld(customId).then((w) => withCommunityEdits(w, d.base === 'original' ? 'original' : 'cm'));
-    }) : (db === 'original' ? loadOriginalWorld() : loadWorld()).then((w) => withCommunityEdits(w, db === 'original' ? 'original' : 'cm'));
+    // fællesskabets rettelser gælder 3.9.60 (de andre udgaver bruges præcis som originalen)
+    }) : db === 'original' ? loadOriginalWorld(ver).then((w) => (ver === '3.9.60' ? withCommunityEdits(w, 'original') : w)) : loadWorld().then((w) => withCommunityEdits(w, 'cm'));
     load.then((w) => {
       if (!w) return;
       setWorld(w);
@@ -220,7 +224,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
       // udfordringens klub findes ud fra navnet i databasen
       if (ch) { const cid = challengeClub(ch, w); setClub(cid); const lg = w.clubs.find((c) => c[0] === cid)?.[4]; if (lg) setLeague(lg); }
     }).catch((e) => setErr(String(e)));
-  }, [ch, db]);
+  }, [ch, db, ver]);
 
   const leagueNations = useMemo(() => {
     if (!world) return [];
@@ -237,6 +241,16 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
         <button className={`db-opt ${db === 'original' ? 'on' : ''}`} onClick={() => setDb('original')}>
           <b>{t('db.original')}</b><span>{t('db.originalHint')}</span>
         </button>
+        {db === 'original' && (
+          <div className="db-ver" role="radiogroup" aria-label={t('db.ver.title')}>
+            <div className="db-ver-h">{t('db.ver.title')}</div>
+            {ORIGINAL_VERSIONS.map((v) => (
+              <button key={v} role="radio" aria-checked={ver === v} className={`db-opt db-ver-opt ${ver === v ? 'on' : ''}`} onClick={() => setVer(v)}>
+                <b>{v}{v === '3.9.60' ? ` · ${t('db.ver.default')}` : ''}</b><span>{t(`db.ver.${v.replace(/\./g, '')}`)}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {mine.map((d) => (
           <button key={d.id} className={`db-opt ${db === `custom:${d.id}` ? 'on' : ''}`} onClick={() => setDb(`custom:${d.id}`)}>
             <b>🛠 {d.name}</b><span>{t('db.customHint', { base: d.base === 'original' ? t('db.original') : t('db.modern'), n: changeCount(d) })}</span>

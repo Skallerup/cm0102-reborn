@@ -48,17 +48,24 @@ export function loadWorld(): Promise<WorldData> {
   return cache;
 }
 
-// Den originale CM 01/02-database (3.9.60 – den, originalen selv bruger til 2001/02), bundlet som en valgmulighed ved nyt spil
-let origCache: Promise<WorldData> | null = null;
-export function loadOriginalWorld(): Promise<WorldData> {
-  if (!origCache) {
-    origCache = fetch(`${import.meta.env.BASE_URL}data/world-original.json`).then((r) => {
-      if (!r.ok) throw new Error(`world-original.json: ${r.status}`);
+// De originale CM 01/02-databaser, præcis som de officielle udgaver: 3.9.60 (udgivelsen – den, originalen selv bruger
+// til 2001/02), 3.9.65 (rettelser, stadig 01/02-trupperne) og 3.9.68 (02/03-trupperne med 01/02-startdatoen)
+export const ORIGINAL_VERSIONS = ['3.9.60', '3.9.65', '3.9.68'] as const;
+export type OriginalVersion = (typeof ORIGINAL_VERSIONS)[number];
+export const originalFile = (v: OriginalVersion) => (v === '3.9.60' ? 'world-original.json' : `world-original-${v.replace(/\./g, '')}.json`);
+const origCache = new Map<OriginalVersion, Promise<WorldData>>();
+export function loadOriginalWorld(v: OriginalVersion = '3.9.60'): Promise<WorldData> {
+  let c = origCache.get(v);
+  if (!c) {
+    const file = originalFile(v);
+    c = fetch(`${import.meta.env.BASE_URL}data/${file}`).then((r) => {
+      if (!r.ok) throw new Error(`${file}: ${r.status}`);
       return r.json() as Promise<WorldData>;
     });
-    origCache.catch(() => { origCache = null; });
+    c.catch(() => { origCache.delete(v); });
+    origCache.set(v, c);
   }
-  return origCache;
+  return c;
 }
 
 // ---------- CM 01/02-databasen (brugerens egen installation, gemt lokalt i browseren) ----------

@@ -39,7 +39,7 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         // store sekundære datafiler precaches ikke (de hentes ved kørsel, når de vælges):
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
-        globIgnores: ['**/data/careers*.json', '**/data/world-original.json', '**/data/world-modern.json',
+        globIgnores: ['**/data/careers*.json', '**/data/world-original*.json', '**/data/world-modern.json',
           // SEO-siderne (scripts/build-seo.ts – titusindvis af statiske sider) hører ikke til appen
           'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
         maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
@@ -58,9 +58,9 @@ export default defineConfig({
         }, {
           // den originale database: altid den nyeste ved nyt spil (cachen bruges kun offline) – med
           // StaleWhileRevalidate fik det første spil efter en opdatering den gamle database (fx uden Tsigalko)
-          urlPattern: /\/data\/(world-original|world-modern)\.json$/,
+          urlPattern: /\/data\/(world-original[\w-]*|world-modern)\.json$/,
           handler: 'NetworkFirst',
-          options: { cacheName: 'big-data', networkTimeoutSeconds: 15, expiration: { maxEntries: 6 } },
+          options: { cacheName: 'big-data', networkTimeoutSeconds: 15, expiration: { maxEntries: 8 } },
         }, {
           urlPattern: /\/data\/careers[\w-]*\.json$/,
           handler: 'StaleWhileRevalidate',

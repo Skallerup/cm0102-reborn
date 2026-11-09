@@ -989,6 +989,8 @@ export interface GameState {
   press?: PressConf | null;
   /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
   dbKind?: 'cm0102';
+  /** den originale databases udgave ('3.9.60' | '3.9.65' | '3.9.68'); mangler = 3.9.60 (eller 3.9.68 i meget gamle spil) */
+  dbVersion?: string;
   /** Sæsonen databasen startede i (2001 = den originale 01/02, 2026 = October 2026-opdateringen) */
   dbYear?: number;
   /** dommere fra databasen (officials.dat): [fornavn, efternavn, nation, Discipline 0-20 (0 = ikke vurderet), 0x27, omdømme] */

@@ -61,7 +61,8 @@ const ONE_TIER = new Set(['Holland', 'Portugal', 'Belgium', 'Scotland', 'Turkey'
 // kommer på deres klub fra dengang, hvis den findes i 3.9.68 (ellers fri agent). Listen: scripts/legacy-players.json.
 const LEGACY_DIR = '.orig-db/Original-3.9.65-Database-Swedish_fixed';
 // 3.9.60 (originalens egen 2001/02-database) har legenderne i forvejen – kun 3.9.68 mangler dem
-if (ORIGINAL && !/3\.9\.60/.test(dir) && existsSync(LEGACY_DIR)) {
+// NO_LEGACY=1: databasen præcis som originalen (valget af 01/02-database ved nyt spil) – legenderne kun til SEO-siderne
+if (ORIGINAL && !/3\.9\.6[05]/.test(dir) && !process.env.NO_LEGACY && existsSync(LEGACY_DIR)) {
   const want = JSON.parse(readFileSync(new URL('./legacy-players.json', import.meta.url), 'utf8')) as { first?: string; last: string; dob: string }[];
   const lf: Record<string, ArrayBuffer> = {};
   for (const f of readdirSync(LEGACY_DIR)) {
@@ -219,7 +220,7 @@ for (const p of w.players) {
   p[F.maxValue] = 0;
 }
 w.season = SEASON;
-const label = SEASON === 2001 ? `original ${/3\.9\.60/.test(dir) ? '3.9.60' : '3.9.68'}-database` : 'October 2026 Data Update';
+const label = SEASON === 2001 ? `original ${dir.match(/3\.9\.6\d/)?.[0] ?? '3.9.68'}-database` : 'October 2026 Data Update';
 w.source = `Championship Manager 01/02 – ${label} (${SEASON}/${String(SEASON + 1).slice(2)})`;
 
 // gem den tidligere moderne database som backup, første gang
