@@ -19,10 +19,10 @@ describe('egenskaber som i originalen', () => {
     expect([a('crossing'), a('dribbling'), a('finishing'), a('heading'), a('longShots'), a('passing'), a('tackling'), a('anticipation'), a('decisions'), a('offTheBall'), a('marking'), a('creativity'), a('positioning')])
       .toEqual([20, 13, 15, 9, 19, 20, 12, 15, 15, 14, 12, 19, 12]);
     // målmanden Seaman mangler Crossing → originalens løkke sænker hans gyldige markspiller-egenskaber med 10:
-    // originalen viser Technique 8, Acceleration 2, Teamwork 8, Work Rate 5, Flair 1
+    // originalen viser Technique 8, Acceleration 2, Teamwork 8, Work Rate 5, Flair 1, Off The Ball 4, Creativity 4 (aflæst 9/11-2026)
     const sm = Object.values(g.players).find((p) => p.first === 'David' && p.last === 'Seaman')!;
     const sa = (k: string) => sm.attrs[ATTRS.indexOf(k as never)];
-    expect([sa('technique'), sa('acceleration'), sa('teamwork'), sa('workRate'), sa('flair')]).toEqual([8, 2, 8, 5, 1]);
+    expect([sa('technique'), sa('acceleration'), sa('teamwork'), sa('workRate'), sa('flair'), sa('offTheBall'), sa('creativity')]).toEqual([8, 2, 8, 5, 1, 4, 4]);
     // ingen huller i de egenskaber, originalen udfylder
     const holes = Object.values(g.players).filter((p) => p.attrs.slice(0, 36).some((v) => !v)).length;
     expect(holes).toBe(0);

@@ -227,3 +227,33 @@ After round 2, 57 % of our shots are still taken from D ≤ 1, and almost half o
   so we use five times as much (*estimeret*).
 - Which challenge types (`sub_6e9820`) do open-play fouls have? With only type 42 we get 1,2–1,35 yellow cards per match (the original: 1,70).
 
+
+
+---
+
+## 6. Målt i originalen 9/11-2026 (nyt spil, 3.9.60, dag ét, uden attribute masking)
+
+**Ronny Johnsen (Man Utd, CA 163):**
+- Originalen viser Crossing 12, Long Shots 11, Dribbling 9 – præcis som kæden. Tallene 13/12/9 i opgaven var fra 1.9.01, efter træning.
+- Alle 29 viste værdier rammes præcist, hvis den udfyldte One on Ones er 10 eller 13–15. Johnsen mangler Handling og One on Ones i databasen.
+- Vores tilfældige udfyldning giver ±1 på 4 egenskaber. Kæden er altså bekræftet; kun udfyldningens tilfældighed afviger.
+
+**Keepernes Off the Ball** (svar på §1a, nu indført i CM Reborn som *målt*):
+
+| Keeper | Originalen | Med `0,1·CA` (to af tre frø) | Med CA |
+|---|---|---|---|
+| Seaman | 4 | 4 – 26/26 egenskaber ens | 11–12 |
+| van der Gouw | 6 | 3–4 | 8–10 |
+| Carroll | 4 | 3–4 | 8–10 |
+
+**Spørgsmål:** står Off the Ball på listen i `sub_543540`/`sub_544410`? Er der flere?
+
+**Udfyldningen af en manglende egenskab uden for de 18** (0x537640-løkken, grenen
+`clamp_fill(rand(11) + ca/5 − 5)`, når skabelonen heller ikke har værdien):
+- van der Gouw (CA 130) og Carroll (CA 130) mangler begge Free Kicks/Set Pieces i databasen.
+- Originalen viser **15** og **13**. Med `ca/5` giver grenen 21–31, altså altid 20 (vi viser 20).
+- `ca/10` ville give 8–18. Det passer med originalen.
+
+**Spørgsmål:** er CA på dette sted en anden skala, eller deler originalen med 10? Gælder det også grenen uden skabelon
+(`rand(7) + ca/5 − 3`)? Og hvorfor får van der Gouw One on Ones 10, når skabelonvalget for keepere giver score 0 for den
+første keeper?

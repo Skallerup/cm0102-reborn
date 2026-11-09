@@ -290,7 +290,8 @@ export function shownFromStored(stored: number[], ca: number, gk: number, feet: 
   sub_538bc0(a, gk);
   for (const k of INTRINSIC_KEYS) {
     const i = AI(k);
-    a[i] = gk === 20 && (k === 'crossing' || k === 'creativity') ? displayFromX(ca * 0.1 + 2 * a[i]) : displayFromX(ca + 2 * a[i]);
+    // målmænd: Indlæg og Kreativitet (Bosman, læst) og Off the Ball (MÅLT i originalen 9/11-2026: Seaman 4, med CA i stedet 11)
+    a[i] = gk === 20 && (k === 'crossing' || k === 'creativity' || k === 'offTheBall') ? displayFromX(ca * 0.1 + 2 * a[i]) : displayFromX(ca + 2 * a[i]);
   }
   return a;
 }

@@ -362,3 +362,22 @@ fysik/mentalitet) → `sub_538bc0` (centrering på −20) → `sub_544380`. Beck
 tekniske egenskaber, Seaman på målmandens −10-regel, Johnsen 3.9.68 giver 12/11/9 som Bosmans port. Afbalanceringen
 gav flere mål (3,3-3,45), så `ORIGINAL` er kalibreret igen: finish 1,58, squash 0,55/0,3/0,72 → to frø: 2,90 mål,
 H/U/B 51/24/25, mester 88 / sidst 28, topscorer 34 (orig 23). Moderne uændret (3 sæsoner: 2,76 mål, rangkorrelation 0,80).
+
+## Trin 13 – topscorerne (2026-11-09)
+
+Premier Leagues topscorer lavede 37/29 mål (frø 2001/77, 3 sæsoner) mod originalens 23. Topscorerens andel af holdets
+mål var normal (median 30 %), men 1) de bedste hold scorede for meget (max 85-87, sd 11,5 mod originalens 68 og 9,0), og
+2) angriberne fik næsten alle friløb og returbolde (friløb scorer 42 %, returbolde 34 %): Ndlovu (afslutning 8) scorede
+36 i en sæson på 0,27 mål pr. skud mod holdets 0,16. Spredningen i afslutning (`finSlope` 30/45) ændrede intet.
+Rettelse (kun ORIGINAL; moderne uændret og uden ekstra tilfældige tal): `oneOnOneK` 0,55 på friløb/returbolde,
+`shotSpread` 0,25 (skyttens vægt finQ^0,25 i stedet for √finQ), `squash` 0,48 og `ease` 0,25 (føreren slapper mere
+af), `finish` 1,9 for at holde målene. *estimeret*.
+
+| | Mål | H/U/B | Mester/sidst | Topscorer |
+|---|---|---|---|---|
+| Originalen | 2,87 | 51/23/26 | 84/25 | 23 |
+| Før, frø 2001 / 77 | 2,88 / 2,79 | 54/22/25 · 50/25/26 | 94,7/25,7 · 91/28 | 36,7 / 29,0 |
+| Efter, frø 2001 / 77 | 2,76 / 2,83 | 50/26/24 · 50/26/24 | 84/27 · 88/28 | 28,3 / 26,3 |
+
+Uafgjorte er steget 2-3 point. Holdene scorer nu max 75-97 (sd 8,8-9,9 som originalen).
+

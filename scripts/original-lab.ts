@@ -20,6 +20,9 @@ if (squash && !squashDef) ORIGINAL.squashDef = squash;
 if (finish) ORIGINAL.finish = finish;
 if (homeAdv) ORIGINAL.homeAdv = homeAdv;
 if (finSlope) ORIGINAL.finSlope = finSlope;
+if (process.env.SPREAD) (ORIGINAL as { shotSpread?: number }).shotSpread = Number(process.env.SPREAD);
+if (process.env.ONEK) (ORIGINAL as { oneOnOneK?: number }).oneOnOneK = Number(process.env.ONEK);
+if (process.env.SQ_ATT) ORIGINAL.squashAtt = Number(process.env.SQ_ATT);
 const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');
 // brugerens klub: en lille klub uden for de fire ligaer påvirker ikke Premier League

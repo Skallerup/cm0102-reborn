@@ -71,6 +71,10 @@ export interface EngineOptions {
   /** Hjemmebanefordelen (1 = standard) og hvor meget afslutterens kvalitet betyder (deler, standard 13) – pr. database */
   homeAdv?: number;
   finSlope?: number;
+  /** Vægten af afslutningsevnen, når skytten vælges: finQ^shotSpread (uden: √finQ). Kun ORIGINAL-profilen sætter den. */
+  shotSpread?: number;
+  /** Faktor på friløbere og returbolde (ORIGINAL-profilen: de gik for ofte til den samme angriber) */
+  oneOnOneK?: number;
   /** dæmpning af niveauforskelle (standard SQUASH) – og særskilt for de offensive egenskaber (standard = squash) */
   squash?: number;
   squashAtt?: number;
@@ -577,6 +581,7 @@ export class MatchSim {
   private dribQ(s: SP) { return 0.4 * this.a(s, A.dribbling) + 0.2 * this.a(s, A.pace) + 0.15 * this.a(s, A.acceleration) + 0.15 * this.a(s, A.agility) + 0.1 * this.a(s, A.flair); }
   private tackQ(s: SP, t: TeamRT) { return (0.45 * this.a(s, A.tackling) + 0.2 * this.a(s, A.positioning) + 0.15 * this.a(s, A.pace) + 0.2 * this.a(s, A.anticipation)) * (1 + ((s.instr.tackling ?? t.ti.tackling) - 1) * 0.04); }
   private aerial(s: SP) { return 0.42 * this.a(s, A.heading) + 0.32 * this.a(s, A.jumping) + 0.14 * this.a(s, A.strength) + 0.12 * this.a(s, A.bravery); }
+  private finW(s: SP) { const e = this.opts.shotSpread; return e === undefined ? Math.sqrt(this.finQ(s)) : this.finQ(s) ** e; }
   private finQ(s: SP) { return 0.62 * this.a(s, A.finishing) + 0.13 * this.a(s, A.technique) + 0.1 * this.a(s, A.decisions) + 0.15 * this.a(s, A.anticipation); }
   private gkQ(s: SP) { return 0.35 * this.a(s, A.reflexes) + 0.25 * this.a(s, A.handling) + 0.2 * this.a(s, A.positioning) + 0.2 * this.a(s, A.agility); }
   private gk1v1(s: SP) { return 0.5 * this.a(s, A.oneOnOnes) + 0.3 * this.a(s, A.reflexes) + 0.2 * this.a(s, A.anticipation); }
@@ -802,7 +807,7 @@ export class MatchSim {
     if (holding) {
       if (this.r.chance(0.35)) this.line('hold-up', carrier);
       const lane = this.laneOf(T.idx);
-      const late = rb >= 3 ? this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => Math.sqrt(this.finQ(x)) * (x.instr.runs + 1), carrier) : null;
+      const late = rb >= 3 ? this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => this.finW(x) * (x.instr.runs + 1), carrier) : null;
       if (late && this.r.chance(0.35)) { this.lastPasser = carrier; this.lastPasserMoment = this.moment; this.line('lay-off', carrier, late); this.setup('layoff', carrier); return this.shoot(T, O, late, 'box', -0.04); }
       return this.pass(T, O, carrier, 0.55, false, 0.5);
     }
@@ -862,7 +867,7 @@ export class MatchSim {
     if (r < 0.6) {
       // midtbanespillere der løber med ind i feltet afslutter også – ellers scorer angriberen næsten alt
       if (this.r.chance(0.42)) {
-        const late = this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => Math.sqrt(this.finQ(x)) * (x.instr.runs + 1), carrier);
+        const late = this.pick(T.zAtt[this.zoneFor(T.idx, 3, lane)], (x) => this.finW(x) * (x.instr.runs + 1), carrier);
         if (late) { this.lastPasser = carrier; this.lastPasserMoment = this.moment; return this.shoot(T, O, late, 'box'); }
       }
       return this.shoot(T, O, carrier, 'box');
@@ -939,7 +944,7 @@ export class MatchSim {
       // presset spillet igennem: et hold der presser højt, har ikke folk bag bolden
       if (trb > rb && trb <= 2 && O.ti.closingDown === 2 && this.r.chance(0.12 + (this.passQ(s) - 11) / 60)) this.zone = this.zoneFor(T.idx, trb + 1, tl);
       if (cutback) {
-        const shooter = this.pick(T.zAtt[tz], (x) => Math.sqrt(this.finQ(x)), s);
+        const shooter = this.pick(T.zAtt[tz], (x) => this.finW(x), s);
         if (shooter) { this.lastPasser = s; this.shoot(T, O, shooter, 'cutback', pulled * 0.06); }
       }
       if (trb >= 3 && this.r.chance(0.04)) this.line('pass-forward', s);
@@ -1151,7 +1156,7 @@ export class MatchSim {
 
   /** Lavt indlæg/tilbagelægning langs jorden: løberen mod forsvarerens placering */
   private lowCross(T: TeamRT, O: TeamRT, s: SP, boxZ: number): void {
-    const runner = this.pick(T.zAtt[boxZ], (x) => Math.sqrt(this.finQ(x)) * (x.instr.runs + 1), s);
+    const runner = this.pick(T.zAtt[boxZ], (x) => this.finW(x) * (x.instr.runs + 1), s);
     const def = this.pick(O.zDef[boxZ]);
     if (!runner) { this.zone = boxZ; this.turnover(def); return; }
     const cq = 0.6 * this.a(s, A.crossing) + 0.4 * this.a(s, A.technique);
@@ -1440,7 +1445,8 @@ export class MatchSim {
     if (weak && this.r.chance(0.08)) this.line('weak-foot', s);
     const gq = kind === 'oneOnOne' ? this.gk1v1(gk) : this.gkQ(gk);
     const mult = (kind === 'pen' ? 1.04 : FINISH_SCALE * (this.opts.finish ?? 1)) * Math.exp((qf - gq) / (this.opts.finSlope ?? 13));
-    const goalP = clamp(xg * mult * (kind === 'pen' ? 1 : this.wx.finish), 0.004, 0.92);
+    const k1 = this.opts.oneOnOneK !== undefined && (kind === 'oneOnOne' || kind === 'rebound') ? this.opts.oneOnOneK : 1;
+    const goalP = clamp(xg * mult * k1 * (kind === 'pen' ? 1 : this.wx.finish), 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
     if (this.originNext) { rec.origin = this.originNext; this.originNext = ''; }
@@ -1534,7 +1540,7 @@ export class MatchSim {
       }
       const rr = this.r.next();
       if (rr < 0.24) {
-        const fol = this.pick(T.zAtt[z], (x) => Math.sqrt(this.finQ(x)) * (0.6 + this.a(x, A.anticipation) / 25));
+        const fol = this.pick(T.zAtt[z], (x) => this.finW(x) * (0.6 + this.a(x, A.anticipation) / 25));
         if (fol) { const spill = this.a(gk, A.handling) < 11 && this.r.chance(0.5); rec.save = spill ? 'spill' : 'parry'; this.line(spill ? 'gk-spills' : 'gk-parry', gk, fol); this.rebound = fol; return; }
       }
       if (rr < 0.75) { rec.save = 'corner'; return this.corner(T, O); }
@@ -1548,7 +1554,7 @@ export class MatchSim {
     if (kind !== 'pen' && xg >= 0.08 && this.r.chance(0.16)) {
       rec.post = true;
       this.line('post', s, null, true);
-      const fol = this.r.chance(0.3) ? this.pick(T.zAtt[z], (x) => Math.sqrt(this.finQ(x)), s) : null;
+      const fol = this.r.chance(0.3) ? this.pick(T.zAtt[z], (x) => this.finW(x), s) : null;
       if (fol) { this.rebound = fol; return; }
       this.zone = this.zoneFor(O.idx, 0, 1);
       this.poss = O.idx;
