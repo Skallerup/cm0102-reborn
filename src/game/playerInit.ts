@@ -121,6 +121,13 @@ const ok = (v: number) => v >= 1 && v <= 20;
  * indgange med 0 udfyldes (og gyldige værdier i "forkert rolle" sænkes, som originalen gør, når noget mangler).
  * Returnerer false, hvis intet manglede.
  */
+/**
+ * CA-leddet i udfyldningen: Bosman læste `ca/5`, men originalen viser Set Pieces 12/15/13/8/5/6 for Man Utds keepere
+ * (CA 180/130/130/105/90/65, alle uden værdien i databasen) – `ca/5` giver 20/20/20/16-20/13-20/8-18, `ca/10` passer
+ * (MÅLT 9/11-2026, *gættet* at det er CA's skala; spørgsmål i QUESTIONS_FOR_BOSMAN.md §6)
+ */
+const FILL_CA = 10;
+
 export function fillMissing(r: InitRec, age: number, pool: Packed[], rand: Rand): boolean {
   const me = pack(r);
   let missing = false;
@@ -151,17 +158,17 @@ export function fillMissing(r: InitRec, age: number, pool: Packed[], rand: Rand)
     let v = me.ent[NPOS + j];
     if (ok(v)) { if (wrong(j)) v = Math.max(1, v - 10); out[j] = v; continue; }
     if (!tpl) {
-      v = clampFill(rand(7) + trunc(me.ca / 5) - 3);
+      v = clampFill(rand(7) + trunc(me.ca / FILL_CA) - 3);
       if (wrong(j)) v = rand(5) + 1;
       out[j] = v;
       continue;
     }
     const t = tpl.ent[NPOS + j];
     if (ok(t)) {
-      if (j < TECH) v = t + trunc((me.ca - tpl.ca) / 5);
+      if (j < TECH) v = t + trunc((me.ca - tpl.ca) / FILL_CA);
       else { v = t; if (v <= 5) v += rand(5); else if (v >= 15) v -= rand(4); }
       v = clampFill(v + rand(6) - 3);
-    } else v = clampFill(rand(11) + trunc(me.ca / 5) - 5);
+    } else v = clampFill(rand(11) + trunc(me.ca / FILL_CA) - 5);
     const k = ARR[j][0];
     if ((k === 'workRate' || k === 'naturalFitness') && v < 12) v += rand(13 - v);
     if ((k === 'strength' || k === 'stamina' || k === 'influence') && age < 22 && v > 15) v -= rand(5);

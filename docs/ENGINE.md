@@ -381,3 +381,19 @@ af), `finish` 1,9 for at holde målene. *estimeret*.
 
 Uafgjorte er steget 2-3 point. Holdene scorer nu max 75-97 (sd 8,8-9,9 som originalen).
 
+## Trin 14 – uafgjorte og målene (2026-11-09)
+
+Efter trin 13 gav `ease` 0,25 for mange sejre med ét mål og uafgjorte: føreren slap af ved 2+ mål, og modstanderen kom
+tilbage (2-1/3-2 19 % og 8,5 %, 2-0 kun 9-10 % mod originalens 15,5 %), uafgjort 25-26 %. Rettelse (kun ORIGINAL,
+*estimeret*): `ease` 0,12, `finish` 2,1 (målene ned med ease), `homeAdv` 2,2, `oneOnOneK` 0,5. 7 målerunder à 3 sæsoner.
+
+| 3 sæsoner | Mål | H/U/B | 0-0 | 2-0 | Mester/sidst | Topscorer |
+|---|---|---|---|---|---|---|
+| Originalen | 2,87 | 51/23/26 | 5,3 | 15,5 | 84/25 | 23 |
+| Før, frø 2001 / 77 | 2,76 / 2,83 | 50/26/24 · 50/26/24 | – | 9-10 | 84/27 · 88/28 | 28,3 / 26,3 |
+| Efter, frø 2001 / 77 | 2,81 / 2,95 | 54/23/24 · 51/25/24 | 6,5 / 6,1 | 12,7 / 12,5 | 86/31 · 88/29 | 30,7 / 27,0 |
+
+Udsvinget mellem frø er ±2 point på uafgjorte og ±4 mål på topscoreren. Lav `ease` (flere 2-0) og en lav topscorer
+trækker hver sin vej: med `ease` 0,05-0,12 lå topscoreren på 27-36 i alle forsøg, og lavere `oneOnOneK`/`shotSpread`
+gav færre mål og flere uafgjorte. Sidst-placeret får 29-31 point (orig 25).
+

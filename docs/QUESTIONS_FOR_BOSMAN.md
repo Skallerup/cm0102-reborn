@@ -257,3 +257,19 @@ After round 2, 57 % of our shots are still taken from D ≤ 1, and almost half o
 **Spørgsmål:** er CA på dette sted en anden skala, eller deler originalen med 10? Gælder det også grenen uden skabelon
 (`rand(7) + ca/5 − 3`)? Og hvorfor får van der Gouw One on Ones 10, når skabelonvalget for keepere giver score 0 for den
 første keeper?
+
+**Flere målinger (samme spil, Man Utds keepere uden Set Pieces i databasen):**
+
+| Keeper | CA | Originalen | `ca/5`-grenen | `ca/10` |
+|---|---|---|---|---|
+| Barthez | 180 | 12 | 20 | 13–20 |
+| van der Gouw | 130 | 15 | 20 | 8–18 |
+| Carroll | 130 | 13 | 20 | 8–18 |
+| Culkin | 105 | 8 | 16–20 | 5–15 |
+| Rachubka | 90 | 5 | 13–20 | 4–14 |
+| Jowsey | 65 | 6 | 8–18 | 1–11 |
+
+CM Reborn bruger nu `ca/10` i alle tre CA-led i udfyldningen (`FILL_CA` i playerInit.ts, *gættet* ud fra målingerne).
+
+**Spørgsmål:** hvilken værdi ligger i registret, der deles med 5 (0x537640–0x537bb0)? Er det CA/2, eller måske PA eller
+noget andet? Barthez' 12 ligger én under `ca/10`-intervallet, så måske er det også skabelongrenen.
