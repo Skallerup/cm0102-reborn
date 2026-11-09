@@ -1126,7 +1126,7 @@ export const da: Record<string, string> = {
   'cl.fin.s.nonEu': "Antal spillere uden for EU",
   'comp.fixturesOut': "Kampprogrammet for {comp} {season} er klar",
   'comp.fixturesOut.body': "Kampene i {comp} {season} er blevet fastlagt.",
-  'db.ver.title': "Databaseudgave (præcis som de officielle udgaver)",
+  'db.ver.title': "Databaseudgave (de officielle udgaver med fællesskabets svenske rettelse)",
   'db.ver.default': "standard",
   'db.ver.3960': "Den oprindelige udgivelse – den, CM 01/02 selv bruger til 2001/02. Trupperne fra sommeren 2001 (Ferdinand i Leeds).",
   'db.ver.3965': "Den officielle 3.9.65-opdatering – de samme 2001/02-trupper med opdateringens datarettelser.",

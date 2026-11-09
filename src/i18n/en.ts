@@ -1100,7 +1100,7 @@ export const en: Record<string, string> = {
   'cl.fin.s.nonEu': "Number Of Non-EU Players",
   'comp.fixturesOut': "{season} {comp} fixture list decided",
   'comp.fixturesOut.body': "The fixtures for the {season} {comp} season have been decided.",
-  'db.ver.title': "Database version (exactly as the official releases)",
+  'db.ver.title': "Database version (the official releases, with the community's Swedish fix)",
   'db.ver.default': "standard",
   'db.ver.3960': "The original release – the one CM 01/02 itself uses for 2001/02. Squads from summer 2001 (Ferdinand at Leeds).",
   'db.ver.3965': "The official 3.9.65 patch – the same 2001/02 squads with the data corrections from the update.",

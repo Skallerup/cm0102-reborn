@@ -1091,7 +1091,7 @@ export const it: Record<string, string> = {
   'cl.fin.s.nonEu': "Number Of Non-EU Players",
   'comp.fixturesOut': "Calendario di {comp} {season} stabilito",
   'comp.fixturesOut.body': "Le partite della stagione {season} di {comp} sono state fissate.",
-  'db.ver.title': "Versione del database (esattamente come quelle ufficiali)",
+  'db.ver.title': "Versione del database (quelle ufficiali, con la correzione svedese della community)",
   'db.ver.default': "standard",
   'db.ver.3960': "La versione originale: quella che CM 01/02 usa per il 2001/02. Rose dell'estate 2001 (Ferdinand al Leeds).",
   'db.ver.3965': "La patch ufficiale 3.9.65: le stesse rose 2001/02 con le correzioni dei dati dell'aggiornamento.",

@@ -1091,7 +1091,7 @@ export const de: Record<string, string> = {
   'cl.fin.s.nonEu': "Number Of Non-EU Players",
   'comp.fixturesOut': "Spielplan der {comp} {season} steht fest",
   'comp.fixturesOut.body': "Die Spiele der Saison {season} in der {comp} wurden festgelegt.",
-  'db.ver.title': "Datenbank-Version (genau wie die offiziellen Versionen)",
+  'db.ver.title': "Datenbank-Version (die offiziellen Versionen mit dem Schweden-Fix der Community)",
   'db.ver.default': "Standard",
   'db.ver.3960': "Die Originalversion – die, die CM 01/02 selbst für 2001/02 verwendet. Kader vom Sommer 2001 (Ferdinand bei Leeds).",
   'db.ver.3965': "Das offizielle 3.9.65-Update – dieselben Kader von 2001/02 mit den Datenkorrekturen des Updates.",

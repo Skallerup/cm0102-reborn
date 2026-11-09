@@ -48,8 +48,9 @@ export function loadWorld(): Promise<WorldData> {
   return cache;
 }
 
-// De originale CM 01/02-databaser, præcis som de officielle udgaver: 3.9.60 (udgivelsen – den, originalen selv bruger
-// til 2001/02), 3.9.65 (rettelser, stadig 01/02-trupperne) og 3.9.68 (02/03-trupperne med 01/02-startdatoen)
+// De originale CM 01/02-databaser: 3.9.60 (udgivelsen – den, originalen selv bruger til 2001/02) og 3.9.65 (rettelser,
+// stadig 01/02-trupperne) med fællesskabets svenske rettelse ("Swedish_fixed"), samt 3.9.68 (02/03-trupperne med
+// 01/02-startdatoen). Den svenske rettelse ændrer kun skjulte svenske klubber – spillere, trupper og økonomi er de samme.
 export const ORIGINAL_VERSIONS = ['3.9.60', '3.9.65', '3.9.68'] as const;
 export type OriginalVersion = (typeof ORIGINAL_VERSIONS)[number];
 export const originalFile = (v: OriginalVersion) => (v === '3.9.60' ? 'world-original.json' : `world-original-${v.replace(/\./g, '')}.json`);

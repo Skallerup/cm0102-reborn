@@ -4033,7 +4033,7 @@ export const sv: Record<string, string> = {
   "cl.fin.s.nonEu": "Number Of Non-EU Players",
   "comp.fixturesOut": "Spelschemat för {comp} {season} är klart",
   "comp.fixturesOut.body": "Matcherna i {comp} {season} har fastställts.",
-  "db.ver.title": "Databasversion (exakt som de officiella versionerna)",
+  "db.ver.title": "Databasversion (de officiella versionerna med communityns svenska rättelse)",
   "db.ver.default": "standard",
   "db.ver.3960": "Originalversionen – den som CM 01/02 själv använder för 2001/02. Trupper från sommaren 2001 (Ferdinand i Leeds).",
   "db.ver.3965": "Den officiella 3.9.65-patchen – samma trupper från 2001/02 med uppdateringens datarättelser.",

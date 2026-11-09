@@ -1091,7 +1091,7 @@ export const fr: Record<string, string> = {
   'cl.fin.s.nonEu': "Number Of Non-EU Players",
   'comp.fixturesOut': "Calendrier de {comp} {season} dévoilé",
   'comp.fixturesOut.body': "Les matchs de la saison {season} de {comp} ont été fixés.",
-  'db.ver.title': "Version de la base de données (exactement comme les versions officielles)",
+  'db.ver.title': "Version de la base de données (les versions officielles, avec le correctif suédois de la communauté)",
   'db.ver.default': "standard",
   'db.ver.3960': "La version d'origine – celle que CM 01/02 utilise lui-même pour 2001/02. Effectifs de l'été 2001 (Ferdinand à Leeds).",
   'db.ver.3965': "Le patch officiel 3.9.65 – les mêmes effectifs 2001/02 avec les corrections de données de la mise à jour.",

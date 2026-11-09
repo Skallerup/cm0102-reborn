@@ -1091,7 +1091,7 @@ export const tr: Record<string, string> = {
   'cl.fin.s.nonEu': "Number Of Non-EU Players",
   'comp.fixturesOut': "{comp} {season} fikstürü belli oldu",
   'comp.fixturesOut.body': "{comp} {season} sezonunun maçları belirlendi.",
-  'db.ver.title': "Veritabanı sürümü (resmi sürümlerin birebir aynısı)",
+  'db.ver.title': "Veritabanı sürümü (resmi sürümler, topluluğun İsveç düzeltmesiyle)",
   'db.ver.default': "standart",
   'db.ver.3960': "Orijinal sürüm – CM 01/02'nin 2001/02 için kullandığı. 2001 yazı kadroları (Ferdinand Leeds'te).",
   'db.ver.3965': "Resmi 3.9.65 yaması – aynı 2001/02 kadroları, güncellemenin veri düzeltmeleriyle.",
