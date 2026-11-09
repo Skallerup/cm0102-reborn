@@ -4,7 +4,7 @@
 // Kør: npx tsx scripts/build-seo.ts  (køres også før build: "prebuild" i package.json)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { CSS, CTA, SITE, TODAY, esc, render, slugify, type Page } from './seo/layout';
-import { buildDb } from './seo/db';
+import { buildDb, pounds } from './seo/db';
 import { WC2002 } from '../src/game/international';
 import { CHANGELOG } from '../src/ui/changelogData';
 import { langGuides } from './seo/i18nGuides';
@@ -211,6 +211,33 @@ ${only60.length ? `<h2>Players you only find in 3.9.60</h2><p>Not found under th
     list: { name: 'CM 01/02 3.9.60 best players', items: best(O60).slice(0, 20).map((p) => ({ name: p.name })) },
   },
   {
+    // "cm 01/02 best signings", "must sign players", "players to buy", "best buys"
+    slug: 'cm-01-02-best-signings/',
+    title: 'CM 01/02 Best Signings – Must-Sign Players & Best Buys | CM Reborn',
+    h1: 'CM 01/02 best signings: the must-sign players',
+    description: 'The players every CM 01/02 manager should buy: cheap stars, wonderkids that cost little, the best Bosman free transfers in 2002 and the best free agents – from the original database.',
+    body: (() => {
+      const K = dbO.kept;
+      const row = (p: (typeof K)[number], i: number) => `<tr><td>${i + 1}</td><td>${p.url ? `<a href="${p.url}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`}</td><td>${p.age}</td><td>${esc(p.posStr)}</td><td>${esc(p.clubName)}</td><td class="n">${p.ca}</td><td class="n">${p.paRaw ? 'random' : p.pa}</td><td class="n">${p.value ? pounds(p.value) : '–'}</td></tr>`;
+      const tbl = (rows: typeof K) => `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Age</th><th>Position</th><th>Club</th><th class="n">CA</th><th class="n">PA</th><th class="n">Value</th></tr></thead><tbody>${rows.map(row).join('')}</tbody></table></div>`;
+      const cheapStars = K.filter((p) => p.club >= 0 && p.ca >= 130 && p.value > 0 && p.value <= 1_500_000 && p.age <= 30).sort((a, b) => b.ca - a.ca).slice(0, 25);
+      const kidsCheap = K.filter((p) => p.club >= 0 && p.age <= 19 && (p.pa >= 165 || p.paRaw === -2) && p.value > 0 && p.value <= 2_000_000).sort((a, b) => (b.paRaw === -2 ? 175 : b.pa) - (a.paRaw === -2 ? 175 : a.pa) || b.ca - a.ca).slice(0, 25);
+      const bos = K.filter((p) => p.club >= 0 && p.contract && p.contract.slice(0, 4) === '2002' && p.ca >= 140).sort((a, b) => b.ca - a.ca).slice(0, 20);
+      const free = K.filter((p) => p.club < 0).sort((a, b) => b.ca - a.ca).slice(0, 15);
+      return `<p class="lead">The signings that make a CM 01/02 save: proven players at bargain prices, teenagers who become world-beaters, and the stars you can have for nothing. Read from the original database (patch 3.9.68) with CM Reborn's values at the start of the game – clubs may still ask for more than the value.</p>
+${CTA}
+<h2>Cheap stars (value £1.5m or less)</h2><p>Current ability 130+ and aged 30 or younger.</p>${tbl(cheapStars)}
+<h2>Wonderkids that cost little</h2><p>Aged 19 or younger with a potential of 165+ (or a random potential of −2), valued at £2m or less.</p>${tbl(kidsCheap)}
+<h2>Free in 2002: the best Bosman signings</h2><p>Contracts expiring in the summer of 2002 – agree a pre-contract and sign them for free. <a href="/cm-01-02-bosman-guide/">How Bosman transfers work →</a></p>${tbl(bos)}
+${free.length ? `<h2>Free agents at the start</h2>${tbl(free)}` : ''}
+<p class="note">More: <a href="/cm-01-02/lists/bargains/">bargains</a> · <a href="/cm-01-02/lists/free-players-by-position/">free players by position</a> · cheap <a href="/cm-01-02/lists/cheap-strikers/">strikers</a>, <a href="/cm-01-02/lists/cheap-centre-backs/">centre-backs</a>, <a href="/cm-01-02/lists/cheap-goalkeepers/">goalkeepers</a> · <a href="/cm-01-02-wonderkids/">wonderkids</a></p>`;
+    })(),
+    faq: [
+      ['Who are the best signings in CM 01/02?', 'Cheap proven players (CA 130+ for £1.5m or less), teenagers with a potential of 165+ that still cost little, and the stars whose contracts run out in 2002 – all listed on this page from the original database.'],
+      ['Who should I buy first in CM 01/02?', 'A wonderkid or two while they are cheap, and a proven player for the weakest position. Check the Bosman list before you pay a fee – many good players are free a year later.'],
+    ],
+  },
+  {
     slug: 'cm-01-02-2026-update/',
     title: 'CM 01/02 2026/27 Update – Best Players & Wonderkids | CM Reborn',
     h1: 'CM 01/02 with a 2026/27 database: best players and wonderkids',
@@ -229,7 +256,7 @@ ${table(young(M, 20).slice(0, 30))}`,
   },
   {
     slug: 'cm-01-02-tactics/',
-    title: 'CM 01/02 Tactics – The Classic Formations Explained | CM Reborn',
+    title: 'CM 01/02 Best Tactics & Formations – The Classics Explained | CM Reborn',
     h1: 'CM 01/02 tactics: the classic formations, and why they worked',
     description: 'The famous CM 01/02 tactics explained: 4-4-2, the overpowered DMC, the 4-2-4 with arrows, through balls and the offside trap – and how they play in CM Reborn, where no formation is a cheat code.',
     body: `<p class="lead">CM 01/02 is remembered for tactics that broke the match engine. Here is what the classic ones did, and how the same ideas play out in CM Reborn.</p>

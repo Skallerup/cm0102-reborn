@@ -206,7 +206,7 @@ ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
     },
     {
       slug: 'cm-01-02-training/',
-      title: 'CM 01/02 Training Schedules – How Training Works | CM Reborn',
+      title: 'CM 01/02 Best Training Schedule – How Training Works | CM Reborn',
       h1: 'CM 01/02 training: schedules, coaches and development',
       description: 'How training works in CM 01/02 and CM Reborn: training schedules and what each one improves, coaches by area, workload and injuries, and how young players reach their potential.',
       body: `<p class="lead">Training is where wonderkids become stars. In CM 01/02 you set schedules for groups of players and hire coaches; in CM Reborn it works the same way, with the schedules below.</p>
@@ -621,6 +621,7 @@ ${([
         ['/cm-01-02-3960-database/', 'The 3.9.60 database (ODB)', 'The best players and wonderkids in the database CM 01/02 shipped with – and the players only found there.'],
         ['/cm-01-02/lists/legends/', 'Legends and cult heroes', 'Tsigalko, Cherno Samba, To Madeira and every other name fans remember.'],
         ['/cm-01-02-bosman-guide/', 'Bosman free transfers', 'The best players out of contract in 2002 – sign them for nothing.'],
+        ['/cm-01-02-best-signings/', 'Best signings: the must-sign players', 'Cheap stars, wonderkids that cost little, Bosman bargains and free agents.'],
       ]],
       ['Clubs and tactics', [
         ['/cm-01-02-tactics/', 'Tactics', 'The classic formations, what the team instructions do in the code, and how tactics work in CM Reborn.'],
