@@ -3,6 +3,7 @@ import { promoteIfShort } from './reserves';
 import { intlDayResults, intlDaily } from './international';
 import { reservesDaily } from './reserves';
 import { awolMonthly } from './rules2001';
+import { squadNumbersDaily } from './squadNumbers';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
 import { A } from './attributes';
@@ -417,6 +418,7 @@ function newDay() {
   forEachHuman(processOffers);
   answerPendingRenewals();
   holidayDaily();
+  squadNumbersDaily();
   forEachHuman(processJobTalks);
   forEachHuman(() => {
     expirePress();
@@ -528,7 +530,14 @@ export function activateNation(nation: number) {
     const past = Object.values(g.fixtures)
       .filter((f) => ids.includes(f.comp) && !f.result && (f.date < g.date || (f.date === g.date && g.dayDone)))
       .sort((a, b) => a.date.localeCompare(b.date));
-    for (const f of past) simulateFixture(f, true, false);
+    // kampene spilles alle på samme dag – skader, karantæner og træthed fra dem ville aldrig hele, og til sidst
+    // stillede holdene uden spillere (MatchSim uden målmand gik ned). De hører fortiden til, så de rulles tilbage.
+    const before = new Map<number, Pick<Player, 'injury' | 'banned' | 'yellowCount' | 'condition'>>();
+    for (const p of Object.values(g.players)) if (p.club && g.clubs[p.club]?.nation === nation) before.set(p.id, { injury: p.injury, banned: p.banned, yellowCount: p.yellowCount, condition: p.condition });
+    for (const f of past) {
+      simulateFixture(f, true, false);
+      for (const cid of [f.home, f.away]) for (const p of squad(cid)) { const b = before.get(p.id); if (b) Object.assign(p, b); }
+    }
   } finally {
     g.userClub = userClub;
     for (const c of humans) c.manager = -1;

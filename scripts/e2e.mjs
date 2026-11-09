@@ -41,6 +41,15 @@ async function run(look) {
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
   const gs = (fn, arg) => page.evaluate(fn, arg);
+  // klassisk (CM 01/02): Continue Game venter på trøjenummerlisten (beskeden 4/8) – Respond → Submit → Yes
+  const answerSquadNumbers = async () => {
+    if (!(await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.sqnDue === g.season; }))) return false;
+    if (await page.locator('.cx-sqn .cx-ts-buttons button.primary').isVisible().catch(() => false)) await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
+    else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
+    else return false;
+    await page.waitForTimeout(300);
+    return true;
+  };
   let n = 0;
   const step = async (name, fn) => {
     const before = errors.length;
@@ -341,11 +350,20 @@ async function run(look) {
   await step('trøjenumre: skift nummer', async () => {
     await go({ name: 'squad', state: look === 'klassisk' ? { cview: 'tbl:numbers' } : { view: 'numbers' } });
     await page.waitForTimeout(400);
-    const [a, b] = await gs(() => { const g = window.__cm.gs(); const sq = Object.values(g.players).filter((p) => p.club === g.userClub).sort((x, y) => x.number - y.number); return [sq[1].id, sq[2].number]; });
-    await page.locator('select[aria-label]').nth(1).selectOption(String(b));
+    const [a, b] = await gs(() => { const g = window.__cm.gs(); const sq = Object.values(g.players).filter((p) => p.club === g.userClub && !p.reserves).sort((x, y) => x.number - y.number); return [sq[1].id, sq[2].number]; });
+    if (look === 'klassisk') {
+      // CM 01/02: klik nummeret i talrækken (det bliver ledigt), klik spillerens blå felt, Submit → Yes
+      await page.locator('.cx-sqn-n', { hasText: new RegExp(`^${b}$`) }).first().click();
+      await page.locator(`.cx-sqn-box[data-pid="${a}"]`).click();
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-troejenumre.png` });
+      await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
+      await page.locator('.cx-confirm button.primary').click({ timeout: 5000 });
+    } else {
+      await page.locator('select[aria-label]').nth(1).selectOption(String(b));
+    }
     await page.waitForTimeout(300);
-    const ok = await gs(([id, n]) => { const g = window.__cm.gs(); const sq = Object.values(g.players).filter((p) => p.club === g.userClub); return g.players[id].number === n && new Set(sq.map((p) => p.number)).size === sq.length; }, [a, b]);
-    if (!ok) throw new Error('nummeret blev ikke byttet');
+    const ok = await gs(([id, n]) => { const g = window.__cm.gs(); const nums = Object.values(g.players).filter((p) => p.club === g.userClub && p.number).map((p) => p.number); return g.players[id].number === n && new Set(nums).size === nums.length; }, [a, b]);
+    if (!ok) throw new Error('nummeret blev ikke flyttet');
   });
   // turneringsvælgeren skal skifte turnering, også når skærmen er åbnet på en bestemt (fx Champions League)
   await step('turneringsvælger skifter turnering', async () => {
@@ -462,6 +480,7 @@ async function run(look) {
       }
       const yes = page.locator('.cx-confirm button.primary');
       if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(400); continue; }
+      if (await answerSquadNumbers()) continue;
       for (const l of labels) {
         const b = page.getByRole('button', { name: l, exact: false }).first();
         if (await b.isVisible().catch(() => false)) { await b.click().catch(() => {}); clicked = true; break; }
@@ -507,6 +526,7 @@ async function run(look) {
       if (st.pf) break;
       const yes = page.locator('.cx-confirm button.primary');
       if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(200); continue; }
+      if (await answerSquadNumbers()) continue;
       if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
       await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
       await page.waitForTimeout(250);

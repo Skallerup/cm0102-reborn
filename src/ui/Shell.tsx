@@ -33,6 +33,7 @@ import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
+import { squadNumbersDue } from '../game/squadNumbers';
 import { act } from '../game/actions';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
@@ -300,6 +301,11 @@ export function Shell() {
   };
   const onContinue = () => {
     if (cmNav && classicContinue()) return;
+    // klassisk (CM 01/02): Continue Game venter, til trøjenummerlisten er sendt – vis beskeden med Respond
+    if (cmNav && squadNumbersDue(g.userClub)) {
+      const n = g.news.find((x) => x.key === 'sqn.request' && !x.params.done);
+      if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
+    }
     if (g.pendingFixture) {
       const pf = g.fixtures[g.pendingFixture];
       // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk

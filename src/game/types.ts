@@ -352,6 +352,9 @@ export interface Club {
   rep: number; // 0-100
   /** originalens værdiformel (kun den originale database): WorldData.valueClub – [cf, landets omdømme, managerens vurdering, manager] */
   vc?: [number, number, number, number];
+  /** Squad Numbers (CM 01/02): sæsonen, hvor klubben skal sende sin trøjenummerliste (beskeden 4/8), og de sendte sæsoner */
+  sqnDue?: number;
+  sqnDone?: number[];
   /** Opsparet omdømmeændring i løbet af sæsonen (brøkdele, før de bliver til hele point) */
   repDrift?: number;
   /** Spillere klubben holder øje med (AI-klubbernes shortliste) */

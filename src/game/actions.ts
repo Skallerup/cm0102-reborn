@@ -1,6 +1,7 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { submitSquadNumbers } from './squadNumbers';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
@@ -44,6 +45,7 @@ export type Action =
   | { t: 'listed'; pid: number; price?: number | null }
   | { t: 'squadStatus'; pid: number; status: SquadStatus | null; loanListed: boolean }
   | { t: 'squadNumber'; pid: number; n: number }
+  | { t: 'squadNumbers'; nums: Record<number, number> }
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
@@ -171,6 +173,7 @@ export function applyAction(a: Action): unknown {
       if (other && !other.number) other.number = pickNumber(other, g.userClub);
       return 'ok';
     }
+    case 'squadNumbers': return submitSquadNumbers(g.userClub, a.nums);
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
     case 'release': return releasePlayer(a.pid);
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);

@@ -3,9 +3,9 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
-import { addableNations, continueGame, quickPlayUserMatch } from '../src/game/sim';
+import { activateNation, addableNations, continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { applyAction } from '../src/game/actions';
-import { gs } from '../src/game/state';
+import { gs, squad } from '../src/game/state';
 
 describe('tilføj et land undervejs', () => {
   it('England kan tilføjes til et dansk spil efter sæsonstart', () => {
@@ -32,5 +32,18 @@ describe('tilføj et land undervejs', () => {
     expect(Object.values(g.fixtures).filter((f) => ids.has(f.comp) && f.result).length).toBeGreaterThan(past.length);
     // et land kan ikke tilføjes to gange
     expect(applyAction({ t: 'addNation', nation: eng })).toBe('error');
+  }, 120_000);
+
+  it('midt i sæsonen: indhentningen efterlader ikke holdene uden spillere (soak 9/11-2026: Morton med 21 af 22 skadet)', () => {
+    const w = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+    const eng = w.nations.findIndex((n) => n.name === 'England');
+    const sco = w.nations.findIndex((n) => n.name === 'Scotland');
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 5 });
+    const g = gs();
+    g.date = '2002-02-06';
+    activateNation(sco);
+    const clubs = Object.values(g.clubs).filter((c) => c.nation === sco && Object.values(g.comps).some((k) => k.type === 'league' && k.clubs.includes(c.id)));
+    expect(clubs.length).toBeGreaterThan(20);
+    for (const c of clubs) expect(squad(c.id).filter((p) => !p.injury && !p.banned).length, c.name).toBeGreaterThanOrEqual(11);
   }, 120_000);
 });

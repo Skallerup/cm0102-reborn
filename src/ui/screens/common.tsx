@@ -93,6 +93,8 @@ const boardUpdate = (n: NewsItem) => [t(`cl.ba.conf.${n.params.lvl}`, { club: St
 
 /** Bud på egen spiller (CM 01/02): når man har svaret, står svaret under nyheden – "Man Utd have rejected the offer." */
 function offerAnswer(n: NewsItem): string {
+  // Squad Numbers: "The list has been submitted."
+  if (n.key === 'sqn.request') return n.params?.done ? `\n\n${t('sqn.submitted')}` : '';
   if (n.link?.kind !== 'offer') return '';
   const g = gs();
   const o = g.offers.find((x) => x.id === Number(n.link!.id));

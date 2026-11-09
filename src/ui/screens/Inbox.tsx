@@ -3,6 +3,8 @@ import { isOriginal2001 } from '../../game/rules2001';
 import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
 import { onFocusNews, takeFocus } from '../inboxFocus';
+import { squadNumbersDue } from '../../game/squadNumbers';
+import { ClassicSquadNumbers } from './SquadNumbers';
 import { act } from '../../game/actions';
 import { useHotkeys } from '../hotkeys';
 import { dateFmt, money, t } from '../../i18n';
@@ -47,6 +49,7 @@ export function Inbox() {
   const [settings, setSettings] = useState(false);
   const [respond, setRespond] = useState<number | null>(null);
   const [jobOpen, setJobOpen] = useState<number | null>(null);
+  const [sqnOpen, setSqnOpen] = useState(false);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
@@ -92,6 +95,8 @@ export function Inbox() {
 
   if (classic) {
     if (jobOpen !== null && g.jobOffers.includes(jobOpen)) return <div><Head title={g.manager.name} /><JobOfferPanel cid={jobOpen} onClose={() => setJobOpen(null)} /></div>;
+    // Squad Numbers (CM 01/02): Respond på "… squad numbers to be decided" åbner listen
+    if (sqnOpen && squadNumbersDue(g.userClub)) return <div><Head title={t('sqn.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicSquadNumbers onClose={() => setSqnOpen(false)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
     return (
@@ -113,6 +118,7 @@ export function Inbox() {
         <div className="cx-nbar">
           {/* CM 01/02: "Respond" på et bud, der venter på svar – ellers kun "Filter :" og Next Unread */}
           {pendingBid && <button className="cx-grey cx-respond" onClick={() => setRespond(pendingBid.id)}>{t('cl.bid.respond')}</button>}
+          {item?.key === 'sqn.request' && squadNumbersDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setSqnOpen(true)}>{t('cl.bid.respond')}</button>}
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :

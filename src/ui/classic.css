@@ -1401,3 +1401,24 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-kit img { height: 20px; max-width: 76px; object-fit: contain; }
 .cx-kit-txt { font: 700 12px/1 Arial, sans-serif; color: #111111; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
 @media (max-width: 760px) { .cx-kit { display: none; } }
+
+/* Squad Numbers som i CM 01/02 (målt 9/11-2026): grønne talrækker 1-25/26-50 (ledige numre lyse), blå nummerfelter */
+.cx-sqn { padding: 0 4px; }
+.cx-sqn-bar { display: flex; gap: 4px; margin: 0 0 6px; }
+.cx-sqn-bar .cx-grey { min-width: 140px; height: 26px; }
+.cx-sqn-strip { display: grid; grid-template-columns: repeat(25, minmax(0, 1fr)); gap: 2px; padding: 3px; background: #1a3a0e; border: 1px solid #0b1d05; }
+.cx-sqn-n { height: 24px; padding: 0; background: linear-gradient(180deg, #2c5a18, #1d4310); color: #f6ee3a; border: 1px solid; border-color: #4f8a30 #0d2306 #0d2306 #4f8a30; font: 700 12px/1 Tahoma, Verdana, sans-serif; cursor: grab; }
+.cx-sqn-n.free { background: #142f0a; color: #fff; border-color: #0d2306 #4f8a30 #4f8a30 #0d2306; }
+.cx-sqn-n.on { outline: 2px solid #fff21f; outline-offset: -2px; }
+.cx-sqn-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; max-height: 52vh; overflow-y: auto; margin: 6px 0; padding: 2px; }
+.cx-sqn-row { display: grid; grid-template-columns: 52px 40px minmax(0, 1fr) auto; align-items: center; gap: 4px; min-height: 26px; }
+.cx-sqn-box { display: flex; align-items: center; justify-content: center; height: 24px; background: #0b0b9a; border: 1px solid #2b2bd0; color: #fff; font: 700 13px/1 Tahoma, Verdana, sans-serif; cursor: pointer; }
+.cx-sqn-box.target { border-color: #fff21f; }
+.cx-sqn-tag .inj { display: inline-block; padding: 3px 6px; background: #8b1a1a; color: #fff; font: 700 11px/1 Tahoma, sans-serif; font-style: normal; }
+.cx-sqn-row a { color: #fff; font-weight: 800; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-sqn-pos { color: #fff21f; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.cx-sqn-hint { margin: 6px 2px 0; color: #d6dae4; font-size: 12px; }
+@media (max-width: 760px) {
+  .cx-sqn-strip { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .cx-sqn-list { grid-template-columns: 1fr; }
+}
