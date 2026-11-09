@@ -4,6 +4,19 @@
 export const SITE = 'https://cm0102reborn.com';
 export const TODAY = new Date().toISOString().slice(0, 10);
 
+/** Titler ud over ~65 tegn skæres af i Google: drop " | CM Reborn" og derefter en sæson i parentes */
+export function fitTitle(t: string): string {
+  if (t.length > 65) t = t.replace(/ \| CM Reborn$/, '');
+  if (t.length > 65) t = t.replace(/ \(\d{4}\/\d{2}\)/, '');
+  if (t.length > 65) t = t.replace(/ & Attributes$/, '');
+  return t;
+}
+/** Beskrivelser ud over ~160 tegn skæres af: kort ved et ordskifte */
+export function fitDesc(d: string): string {
+  if (d.length <= 160) return d;
+  const cut = d.slice(0, 157);
+  return `${cut.slice(0, cut.lastIndexOf(' ')).replace(/[,;:–-]$/, '')}…`;
+}
 export const esc = (s: string | number) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** url-venligt navn: "Thierry Henry" → "thierry-henry", "Bröndby IF" → "brondby-if" */
@@ -12,6 +25,15 @@ export function slugify(s: string): string {
     .normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/&/g, ' and ').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'x';
 }
 
+/** guiderne i sidefoden på alle sider (interne links) */
+export const FOOT_GUIDES: [string, string][] = [
+  ['/cm-01-02-match-engine/', 'How the match engine works'],
+  ['/cm-01-02-attributes-explained/', 'Attributes explained'],
+  ['/cm-01-02-ca-pa-explained/', 'CA and PA'],
+  ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.68'],
+  ['/cm-01-02-tactics/', 'Tactics'],
+  ['/cm-01-02/managers/', 'Managers'],
+];
 export const NAV: [string, string][] = [
   ['/play-cm-01-02-online/', 'Play online'],
   ['/cm-01-02/', 'CM 01/02 database'],
@@ -105,8 +127,8 @@ export function render(p: Page): string {
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>${esc(p.title)}</title>
-<meta name="description" content="${esc(p.description)}" />
+<title>${esc(fitTitle(p.title))}</title>
+<meta name="description" content="${esc(fitDesc(p.description))}" />
 <link rel="canonical" href="${url}" />
 ${alt}
 <meta name="robots" content="index,follow,max-image-preview:large" />
@@ -114,7 +136,7 @@ ${alt}
 <meta property="og:type" content="${p.ogType ?? 'article'}" />
 <meta property="og:site_name" content="CM Reborn" />
 <meta property="og:title" content="${esc(p.title)}" />
-<meta property="og:description" content="${esc(p.description)}" />
+<meta property="og:description" content="${esc(fitDesc(p.description))}" />
 <meta property="og:url" content="${url}" />
 <meta property="og:image" content="${image}" />
 <meta name="twitter:card" content="summary_large_image" />
@@ -131,7 +153,7 @@ ${p.body}
 ${p.faq ? `<h2>${p.lang && p.lang !== 'en' ? 'FAQ' : 'Frequently asked questions'}</h2>${p.faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}` : ''}
 ${p.cta ?? CTA}
 </main>
-<footer><p>${p.footer ?? `CM Reborn is an independent, free fan project inspired by Championship Manager 01/02. It is not affiliated with Sports Interactive, SEGA or Eidos. Player data from the original CM 01/02 database (patch 3.9.68).`}</p><p>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p></footer>
+<footer><p>${p.footer ?? `CM Reborn is an independent, free fan project inspired by Championship Manager 01/02. It is not affiliated with Sports Interactive, SEGA or Eidos. Player data from the original CM 01/02 database (patch 3.9.68).`}</p><p>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p><p class="note">${FOOT_GUIDES.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join(' · ')}</p></footer>
 ${p.script ? `<script>${p.script}</script>` : ''}
 </body>
 </html>
