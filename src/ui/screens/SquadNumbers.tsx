@@ -2,12 +2,12 @@
 // holdkammerat det i forvejen, bytter de to numre.
 import { useState } from 'react';
 import { act } from '../../game/actions';
-import { squad } from '../../game/state';
+import { gs, squad } from '../../game/state';
 import { POSITIONS, type Player } from '../../game/types';
 import { t } from '../../i18n';
 import { PlayerLink, posStr } from '../components';
 import { askConfirm } from '../confirm';
-import { useGame } from '../core';
+import { useGame, useNav } from '../core';
 import { coarse } from './runs';
 
 /** Primær position (GK først … angribere sidst), som truppens sortering */
@@ -53,13 +53,19 @@ export function SquadNumbers({ players, classic = false }: { players: Player[]; 
  * spillers felt for at gøre det ledigt (som i originalen). Uden mus: klik et nummer i rækken og derefter spillerens felt.
  * Auto/Clear som i originalen (Autos fordeling er *estimeret*), Back fortryder, Submit spørger og sender listen.
  */
-export function ClassicSquadNumbers({ onClose }: { onClose?: () => void }) {
+export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: () => void; missing?: boolean }) {
   const g = useGame()!;
-  const players = squad(g.userClub).filter((p) => !p.reserves).sort((a, b) => POS_ORDER(a) - POS_ORDER(b) || b.ca - a.ca);
+  const { nav } = useNav();
+  // før en kamp (CM 01/02): kun spillerne uden nummer, og kun de ledige numre kan vælges
+  const [only] = useState(() => (missing ? new Set(squad(g.userClub).filter((p) => !p.reserves && !p.number).map((p) => p.id)) : null));
+  const all = squad(g.userClub).filter((p) => !p.reserves);
+  const players = all.filter((p) => !only || only.has(p.id)).sort((a, b) => POS_ORDER(a) - POS_ORDER(b) || b.ca - a.ca);
+  const others = only ? all.filter((p) => !only.has(p.id) && p.number) : [];
   const initial = () => Object.fromEntries(players.map((p) => [p.id, p.number ?? 0])) as Record<number, number>;
   const [nums, setNums] = useState<Record<number, number>>(initial);
   const [picked, setPicked] = useState<number | null>(null);
   const holder = (n: number) => players.find((p) => nums[p.id] === n);
+  const lockedN = (n: number) => others.some((p) => p.number === n);
   const assign = (pid: number, n: number) => setNums((cur) => {
     const next = { ...cur };
     for (const [id, v] of Object.entries(next)) if (v === n) next[Number(id)] = 0;
@@ -86,14 +92,17 @@ export function ClassicSquadNumbers({ onClose }: { onClose?: () => void }) {
     return next;
   });
   const submit = async () => {
-    if (!(await askConfirm(t('sqn.confirm'), { head: t('sqn.confirmHead') }))) return;
+    if (!(await askConfirm(t(only ? 'sqn.confirmChanges' : 'sqn.confirm'), { head: t('sqn.confirmHead') }))) return;
     act({ t: 'squadNumbers', nums });
     onClose?.();
+    // før en kamp: videre til "Proceed to the match ?"
+    const go = gs().pendingFixture;
+    if (only && go && (await askConfirm(t('cl.mt.proceed'), { head: t('cl.mt.confirm') }))) nav({ name: 'match', id: go });
   };
   const strip = (from: number) => (
     <div className="cx-sqn-strip">
       {Array.from({ length: 25 }, (_, i) => from + i).map((n) => (
-        <button key={n} className={`cx-sqn-n ${holder(n) ? '' : 'free'} ${picked === n ? 'on' : ''}`} draggable={!coarse()}
+        <button key={n} className={`cx-sqn-n ${holder(n) || lockedN(n) ? '' : 'free'} ${picked === n ? 'on' : ''}`} disabled={lockedN(n)} draggable={!coarse() && !lockedN(n)}
           onDragStart={(e) => e.dataTransfer.setData('text/sqn', String(n))} onClick={() => clickStrip(n)}>{n}</button>
       ))}
     </div>

@@ -25,7 +25,7 @@ import { realCompName, setCompEra } from '../i18n/comps';
 import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
-import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
+import { gs, hasGame, notify, setGame, squad, subscribe } from '../game/state';
 import { compName, dateFmt, money, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
@@ -317,6 +317,8 @@ export function Shell() {
         if (cmNav) {
           const sel = selectionProblems();
           if (sel) { void askNotice(sel, { head: t('cl.mt.teamSel') }).then(() => nav({ name: 'squad' })); return; }
+          // CM 01/02: spillere uden trøjenummer skal have et før kampen (Squad Numbers med kun dem)
+          if (squad(g.userClub).some((p) => !p.reserves && !p.number)) { nav({ name: 'squad', state: { cview: 'tbl:numbers', sqnMissing: 1 } }); return; }
         }
         if (cmNav) { void askConfirm(t('cl.mt.proceed'), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) nav({ name: 'match', id: go }); }); return; }
         nav({ name: 'match', id: go }); return;

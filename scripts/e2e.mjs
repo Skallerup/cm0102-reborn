@@ -42,7 +42,20 @@ async function run(look) {
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
   const gs = (fn, arg) => page.evaluate(fn, arg);
   // klassisk (CM 01/02): Continue Game venter på trøjenummerlisten (beskeden 4/8) – Respond → Submit → Yes
+  let sqnMissingSeen = false;
   const answerSquadNumbers = async () => {
+    // før en kamp: spillere uden nummer (Squad Numbers med kun dem) – giv hver et ledigt nummer og Submit
+    if (await page.locator('.cx-sqn').isVisible().catch(() => false) && await page.locator('.cx-sqn-box:empty').count()) {
+      for (let k = 0; k < 5 && await page.locator('.cx-sqn-box:empty').count(); k++) {
+        await page.locator('.cx-sqn-n.free:not([disabled])').first().click();
+        await page.locator('.cx-sqn-box:empty').first().click();
+      }
+      sqnMissingSeen = true;
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-troejenumre-foer-kamp.png` });
+      await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
+      await page.waitForTimeout(300);
+      return true;
+    }
     if (!(await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.sqnDue === g.season; }))) return false;
     if (await page.locator('.cx-sqn .cx-ts-buttons button.primary').isVisible().catch(() => false)) await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
     else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
@@ -489,6 +502,8 @@ async function run(look) {
       await page.waitForTimeout(400);
     }
     if (look === 'klassisk' && !selSeen) throw new Error('Team Selection blev ikke vist for en skadet spiller');
+    // trøjenummer-trinnet tog nummeret fra en holdkammerat – originalen kræver et nummer før kampen
+    if (look === 'klassisk' && !sqnMissingSeen) throw new Error('Squad Numbers blev ikke vist før kampen for en spiller uden nummer');
     await page.getByRole('button', { name: kick }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });

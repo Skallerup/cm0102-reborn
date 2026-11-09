@@ -273,3 +273,26 @@ CM Reborn bruger nu `ca/10` i alle tre CA-led i udfyldningen (`FILL_CA` i player
 
 **Spørgsmål:** hvilken værdi ligger i registret, der deles med 5 (0x537640–0x537bb0)? Er det CA/2, eller måske PA eller
 noget andet? Barthez' 12 ligger én under `ca/10`-intervallet, så måske er det også skabelongrenen.
+
+## 7. Stabens egenskaber (målt i originalen 9/11-2026, testspil 3.9.60, Man Utd 31/8-2001)
+
+Ikke-spillerposten (68 bytes) har 21 egenskaber i alfabetisk rækkefølge fra +14 (Attacking … Working with Youngsters; +0x18 = Judging
+Player Potential som i dit `db.rs`). Bekræftet på skærmen: Meulensteen Discipline 18, JPP 19, Tactical Knowledge 20, Youngsters 20,
+Adaptability 19 = databasen. Men nogle vises anderledes:
+
+| Person (CA) | Egenskab | Database | Vist |
+|---|---|---|---|
+| Jimmy Ryan (145) | Coaching Goalkeepers | 4 | 9 |
+| Jimmy Ryan | Judging Player Ability | 11 | 13 |
+| Jimmy Ryan | Judging Player Potential | 14 | 15 |
+| Jimmy Ryan | Tactical Knowledge | 13 | 14 |
+| Meulensteen (175) | Coaching Goalkeepers | 16 | 17 |
+
+Felter med 0 (Meulensteen: Judging Player Ability, Man Management, Motivating, Determination) vises som 19/13/15/5.
+
+- Hvilken funktion udfylder og justerer ikke-spillernes egenskaber ved nyt spil (svarer til sub_535a80 for spillere)?
+- Jobkoden i personposten (+61): 1 Chairman, 2 Managing Director, 4 Director Of Football, 5 Manager, 6 Assistant Manager, 8 Coach,
+  9 Scout, 10 Physio er bekræftet på skærmen. Hvad er 3, 7, 11-15 (vi gætter spillende træner/manager)?
+- "Coaching Style" (General / Technique-based …) og "Preferred Style" ("Prefers an attacking style of play", "Likes to play the offside
+  trap"): hvilke egenskaber og grænser bestemmer teksterne?
+

@@ -6224,4 +6224,5 @@ export const sv: Record<string, string> = {
   "cl.mh.manager": "Manager",
   "cl.fd.written": "Historien",
   "sqn.request": "{club}s tröjnummer ska bestämmas", "sqn.request.body": "{club} har ombetts att skicka in sin lista över tröjnummer för den kommande säsongen.", "sqn.submitted": "Listan har skickats in.", "sqn.titleClub": "{club} – tröjnummer", "sqn.please": "Välj", "sqn.auto": "Auto", "sqn.clear": "Rensa", "sqn.submit": "Skicka in", "sqn.confirmHead": "Skicka in tröjnummer", "sqn.confirm": "Skicka in nuvarande tröjnummer för den kommande säsongen?", "sqn.dragHint": "Dra ett nummer från listerna till en spelare. Klicka på ett nummer (i listen eller vid en spelare) för att frigöra det.",
+  "sqn.confirmChanges": "Skicka in de nya ändringarna av tröjnumren?",
 };

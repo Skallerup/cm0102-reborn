@@ -6224,4 +6224,5 @@ export const nb: Record<string, string> = {
   "cl.mh.manager": "Manager",
   "cl.fd.written": "Historien",
   "sqn.request": "{club}s draktnumre skal bestemmes", "sqn.request.body": "{club} er bedt om å sende inn listen over draktnumre for den kommende sesongen.", "sqn.submitted": "Listen er sendt inn.", "sqn.titleClub": "{club} – draktnumre", "sqn.please": "Velg", "sqn.auto": "Auto", "sqn.clear": "Tøm", "sqn.submit": "Send inn", "sqn.confirmHead": "Send inn draktnumre", "sqn.confirm": "Send inn gjeldende draktnumre for den kommende sesongen?", "sqn.dragHint": "Dra et nummer fra linjene til en spiller. Klikk på et nummer (i linjen eller ved en spiller) for å frigjøre det.",
+  "sqn.confirmChanges": "Send inn de nye endringene av draktnumrene?",
 };

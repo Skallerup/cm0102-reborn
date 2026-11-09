@@ -1634,4 +1634,5 @@ export const da: Record<string, string> = {
   'cl.mh.won': "Vandt {comp}", 'cl.mh.month': "Månedens manager i {comp} – {month}", 'cl.mh.ach': "Præstationer", 'cl.mh.career': "Managerkarriere", 'cl.mh.manager': "Manager",
   'cl.fd.written': "Historien",
   "sqn.request": "{club}s trøjenumre skal fastlægges", "sqn.request.body": "{club} er blevet bedt om at indsende deres liste over trøjenumre til den kommende sæson.", "sqn.submitted": "Listen er indsendt.", "sqn.titleClub": "{club} – trøjenumre", "sqn.please": "Vælg venligst", "sqn.auto": "Auto", "sqn.clear": "Ryd", "sqn.submit": "Indsend", "sqn.confirmHead": "Indsend trøjenumre", "sqn.confirm": "Indsend det nuværende sæt trøjenumre til den kommende sæson?", "sqn.dragHint": "Træk et nummer fra bjælkerne over på en spiller. Klik på et nummer (i bjælken eller ved en spiller) for at frigøre det.",
+  "sqn.confirmChanges": "Indsend de nye ændringer af trøjenumrene?",
 };

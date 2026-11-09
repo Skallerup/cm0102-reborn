@@ -74,12 +74,12 @@ const otherVersions = (name: string, dob: string): [string, string][] => {
 const CULT_LIST = (JSON.parse(readFileSync('scripts/cult-players.json', 'utf8')) as { first: string; last: string }[]).map((c) => `${c.first} ${c.last}`.trim());
 const cultSet = new Set(CULT_LIST);
 const dbO = buildDb({
-  file: SEO_ORIGINAL, prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
+  file: SEO_ORIGINAL, prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE, staffFile: 'scripts/seo/staff-3968.json',
   cult: cultSet, otherVersions, in60, squad60: (club: string) => squad60.get(club) ?? [],
   keep: (p) => p.ca >= 120 || (p.age <= 23 && (p.pa >= 145 || p.paRaw === -2)) || (p.age <= 21 && p.paRaw === -1 && p.ca >= 60) || p.caps >= 30 || cultSet.has(p.name),
 });
 const dbM = buildDb({
-  file: 'public/data/world.json', prefix: '2026-27', game: 'CM 01/02 2026/27', season: '2026/27', dbName: 'the CM 01/02 2026/27 database (October 2026 data update)', original: false, modified: CONTENT_DATE,
+  file: 'public/data/world.json', prefix: '2026-27', game: 'CM 01/02 2026/27', season: '2026/27', dbName: 'the CM 01/02 2026/27 database (October 2026 data update)', original: false, modified: CONTENT_DATE, staffFile: 'scripts/seo/staff-2026.json',
   keep: (p) => p.ca >= 132 || (p.age <= 21 && p.pa >= 150) || p.caps >= 50,
 });
 const urlO = dbO.playerUrl, urlM = dbM.playerUrl;

@@ -235,6 +235,7 @@ function ClassicFirstSquad() {
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
   const tac = g.tactic;
   const [view, setView] = useRouteState('cview', 'pos');
+  const [sqnMissing] = useRouteState('sqnMissing', 0);
   const [sortKey, setSort] = useRouteState('csort', 'pos');
   const [filter, setFilter] = useRouteState('cfilter', 'all');
   const [drag, setDrag] = useState<number | null>(null);
@@ -359,7 +360,7 @@ function ClassicFirstSquad() {
           </div>
         )}
       </Head>
-      {view === 'tbl:numbers' && !g.draft ? <ClassicSquadNumbers /> : table ? <SquadTable players={players} view={view.slice(4)} userClub={g.userClub} /> : (
+      {view === 'tbl:numbers' && !g.draft ? <ClassicSquadNumbers missing={!!sqnMissing} /> : table ? <SquadTable players={players} view={view.slice(4)} userClub={g.userClub} /> : (
         <>
           {fil[0] !== 'all' && <div className="cx-sq-filtered">{t('cl.sq.filtered', { filter: t(`cl.sq.f.${fil[0]}`), n: list.length, total: players.length })}</div>}
           <div className="cx-sq-cols">

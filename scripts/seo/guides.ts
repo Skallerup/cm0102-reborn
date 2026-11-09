@@ -35,9 +35,12 @@ function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-26-27-squads/', 'cm-01-02-android/', 'cm-01-02-iphone-ipad/', 'cm-01-02-windows-11/', 'cm-01-02-cheat-tactics/', 'cm-01-02-work-permit/', 'cm-01-02-training/', 'cm-01-02-multiplayer/', 'cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-26-27-squads/', 'cm-01-02-android/', 'cm-01-02-iphone-ipad/', 'cm-01-02-windows-11/', 'cm-01-02-cheat-tactics/', 'cm-01-02-work-permit/', 'cm-01-02-training/', 'cm-01-02-staff-guide/', 'cm-01-02-multiplayer/', 'cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
 export function guides(db: DbOut, ver: VersionData): Page[] {
+  // stabslisternes top 5 fra den originale database (scripts/seo/staff.ts)
+  const staffTable = (slug: string, cols: string[]) => { const rows = db.staffTop?.[slug] ?? []; return rows.length ? `<div class="tw"><table><thead><tr><th>Name</th><th>Job</th><th>Club</th>${cols.map((c) => `<th class="n">${c}</th>`).join('')}</tr></thead><tbody>${rows.map((r) => `<tr><td>${r.url ? `<a href="${r.url}"><b>${esc(r.name)}</b></a>` : `<b>${esc(r.name)}</b>`}</td><td>${esc(r.role)}</td><td>${esc(r.club || 'Unattached')}</td>${r.v.map((v) => `<td class="n">${v || '–'}</td>`).join('')}</tr>`).join('')}</tbody></table></div>` : ''; };
+  const staffAnswer = (slug: string) => { const r = db.staffTop?.[slug]?.[0]; return r ? `${r.name} (${r.role}${r.club ? `, ${r.club}` : ', unattached'}) tops the list in the original database.` : ''; };
   const K = db.kept;
   const yr = 2002;
   const bosman = K.filter((p) => p.contract && p.contract.startsWith(`${yr}-`) && p.clubName !== 'Free agent').sort((a, b) => b.ca - a.ca);
@@ -158,6 +161,47 @@ ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
       faq: [
         ['How do I get a work permit in CM 01/02?', 'A non-EU player joining a British club needs one. In CM Reborn an established international (15+ caps), a big name or a high-class international with 5+ caps gets it; otherwise the move is blocked.'],
         ['Can I loan non-EU players in CM 01/02?', 'Not to a British club – as in the original, British clubs cannot loan players from outside the EU.'],
+      ],
+    },
+    {
+      slug: 'cm-01-02-staff-guide/',
+      title: 'CM 01/02 Best Staff – Coaches, Scouts, Physios & Staff Attributes | CM Reborn',
+      h1: 'CM 01/02 staff: attributes explained and the best coaches, scouts and physios',
+      description: 'What the 21 staff attributes do in CM 01/02, which ones matter for coaches, scouts, physios and assistants – and the best staff in the database, including the ones you can hire for free.',
+      body: `<p class="lead">Behind every CM 01/02 save is a backroom staff: coaches who develop your players, scouts who find the wonderkids, physios who get the injured back and an assistant who judges your squad. The database gives every one of them 21 staff attributes on the 1–20 scale – the tables below are read straight from the original database (patch 3.9.68).</p>
+<h2>The staff attributes and what they are for</h2>
+<div class="tw"><table><thead><tr><th>Attribute</th><th>Who needs it</th><th>What it is for</th></tr></thead><tbody>
+<tr><td>Coaching</td><td>Coaches, assistant</td><td>General quality of the training they run</td></tr>
+<tr><td>Coaching Technique</td><td>Coaches</td><td>Technical training (ball skills)</td></tr>
+<tr><td>Coaching Goalkeepers</td><td>Goalkeeping coach</td><td>Training the keepers</td></tr>
+<tr><td>Working with Youngsters</td><td>Youth and first-team coaches</td><td>Developing young players</td></tr>
+<tr><td>Physiotherapy</td><td>Physio</td><td>Treating injuries</td></tr>
+<tr><td>Judging Player Ability</td><td>Scouts, assistant</td><td>How good a player is now</td></tr>
+<tr><td>Judging Player Potential</td><td>Scouts, assistant</td><td>How good a player can become</td></tr>
+<tr><td>Motivating, Man Management, Discipline</td><td>Managers, assistant, coaches</td><td>Handling players and the dressing room</td></tr>
+<tr><td>Tactical Knowledge</td><td>Managers, assistant</td><td>Reading and setting up a match</td></tr>
+<tr><td>Attacking, Directness, Free Roles, Marking, Offside Trap, Pressing</td><td>Managers</td><td>The manager's preferred style of play</td></tr>
+<tr><td>Business, Interference, Patience, Resources</td><td>Chairmen and directors</td><td>How the board runs the club</td></tr>
+</tbody></table></div>
+<p>What we know from the original's code: a scout is judged on <b>Judging Player Ability</b> and <b>Judging Player Potential</b> – they decide how accurate his report is (<a href="/cm-01-02-hidden-attributes/">attribute masking</a> lifts as he watches a player). The rest of the table follows the attribute names and the game's own descriptions; the exact training formula of the original has not been read from the code.</p>
+<p class="note">Checked in the original (Man Utd's staff, 3.9.60): the attributes are in the database in alphabetical order, and the game shows Coaching as "Coaching Outfield Players". Attributes the database leaves empty are filled in when a new game starts, and a few others are shown slightly differently in the game (Jimmy Ryan's Coaching Goalkeepers 4 appears as 9).</p>
+<h2>The best coaches</h2>${staffTable('best-coaches', ['Coaching', 'Technique', 'Motivating', 'Youngsters'])}
+<p><a href="/cm-01-02/staff/best-coaches/">Top 50 coaches →</a> · <a href="/cm-01-02/staff/best-youth-coaches/">best youth coaches</a> · <a href="/cm-01-02/staff/best-goalkeeping-coaches/">best goalkeeping coaches</a></p>
+<h2>The best scouts</h2>${staffTable('best-scouts', ['Judging Ability', 'Judging Potential', 'Youngsters'])}
+<p><a href="/cm-01-02/staff/best-scouts/">Top 50 scouts →</a></p>
+<h2>The best physios</h2>${staffTable('best-physios', ['Physiotherapy', 'Motivating', 'Discipline'])}
+<p><a href="/cm-01-02/staff/best-physios/">Top 40 physios →</a></p>
+<h2>The best assistant managers</h2>${staffTable('best-assistant-managers', ['Coaching', 'Judging Ability', 'Judging Potential', 'Man Management', 'Tactics'])}
+<h2>Free at the start: staff without a club</h2>
+<p>These have no club on 1 July 2001, so they cost nothing but wages – the quickest way to strengthen a small club's backroom.</p>${staffTable('best-free-staff', ['Coaching', 'Judging Ability', 'Judging Potential', 'Physiotherapy'])}
+<p><a href="/cm-01-02/staff/best-free-staff/">All the best free staff →</a> · <a href="/cm-01-02/staff/">every staff list</a> · <a href="/2026-27/staff/">2026/27 staff</a></p>
+<h2>Staff in CM Reborn</h2>
+<p>CM Reborn keeps the staff side of CM 01/02: coaches by training area (their Coaching drives the weekly development), physios who speed up recoveries, scouts whose judging decides how precise the reports are, and AI managers whose Tactical Knowledge decides how well they adapt during a match. <a href="/cm-01-02-training/">How training works →</a></p>`,
+      faq: [
+        ['Who is the best coach in CM 01/02?', staffAnswer('best-coaches')],
+        ['Who is the best scout in CM 01/02?', staffAnswer('best-scouts')],
+        ['Who is the best physio in CM 01/02?', staffAnswer('best-physios')],
+        ['What does Judging Player Potential do in CM 01/02?', 'It decides how well a scout or assistant estimates a player\'s potential – a scout with a high rating finds the real wonderkids, one with a low rating misjudges them.'],
       ],
     },
     {
@@ -585,6 +629,7 @@ ${([
         ['/cm-01-02-tips/', 'Tips: how to win with any club', 'Squad building, tactics, training and the transfer market.'],
         ['/cm-01-02-cheat-tactics/', 'Cheat tactics and cheat players', 'Why Diablo, Wib Wob and friends worked, and the cheap world-beaters.'],
         ['/cm-01-02-training/', 'Training schedules', 'What each schedule improves, coaches, workload and development.'],
+        ['/cm-01-02-staff-guide/', 'Staff: best coaches, scouts and physios', 'What the 21 staff attributes do, and the best staff in the database – including the ones without a club.'],
         ['/cm-01-02-work-permit/', 'Work permits', 'Signing non-EU players for a British club in 2001/02.'],
       ]],
       ['Playing CM 01/02 today', [

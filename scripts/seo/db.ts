@@ -13,6 +13,8 @@ import { logoUrl, setLogoData } from '../../src/ui/logos';
 import { CLUB_INFO_2026 } from '../../src/game/data/clubInfo2026';
 import { WC2002 } from '../../src/game/international';
 import { CTA, esc, render, slugify, type Crumb, type Page } from './layout';
+import { DEMONYM } from './demonyms';
+import { buildStaffPages, clubStaffHtml, loadStaff, prepareStaff, type StaffCtx } from './staff';
 
 export interface DbConf {
   file: string;
@@ -35,6 +37,8 @@ export interface DbConf {
   otherVersions?: (name: string, dob: string) => [string, string][];
   /** spilleren i 3.9.60 (spillets standardudgave) */
   in60?: (name: string, dob: string) => { club: string; ca: number; pa: number; random: boolean } | undefined;
+  /** stab fra databasen (scripts/build-staff.mts) – stabssider og klubbernes stabsafsnit */
+  staffFile?: string;
   /** klubbens trup i 3.9.60 (navn → spillere) */
   squad60?: (club: string) => { name: string; dob: string; ca: number }[];
 }
@@ -106,7 +110,7 @@ function write(slug: string, html: string) {
 }
 
 export interface ClubSum { name: string; url: string; league: string; leagueUrl: string; tier: number; nation: string; balance: number; rep: number; strength: number; kids: number; cap: number; stadium: string; best: string }
-export interface DbOut { urls: Record<string, string[]>; /** billeder pr. side (billed-sitemap) */ images: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
+export interface DbOut { /** stabslisternes top 5 (guiden) */ staffTop?: Record<string, { name: string; url: string | null; role: string; club: string; v: number[] }[]>; urls: Record<string, string[]>; /** billeder pr. side (billed-sitemap) */ images: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
 
 export function buildDb(conf: DbConf): DbOut {
   // "CM 01/02 2026/27" har sæsonen i navnet – den skal ikke stå to gange
@@ -250,6 +254,13 @@ export function buildDb(conf: DbConf): DbOut {
   const urls: Record<string, string[]> = { hub: [], players: [], clubs: [], leagues: [], nations: [], lists: [] };
   const images: Record<string, string[]> = {};
   const emit = (kind: string, p: Page) => { write(p.slug, render({ modified: conf.modified, ...p })); urls[kind].push(p.slug); };
+  // stab (trænere, spejdere, fysioterapeuter) – url'erne sættes nu, så klubsiderne kan linke til profilerne
+  const staffCtx: StaffCtx | null = conf.staffFile ? {
+    P, game: conf.game, season: conf.season, dbName: conf.dbName, original: conf.original, modified: conf.modified, hubCrumb,
+    staff: loadStaff(conf.staffFile, P), clubUrl: (cid) => clubs.get(cid)?.url ?? null,
+    nationUrl: (name) => [...nations.values()].find((x) => x.name === name)?.url ?? null, emit,
+  } : null;
+  const staffPrep = staffCtx ? prepareStaff(staffCtx) : null;
   const atStart = conf.original ? 'at the start of the 2001/02 season' : `at the start of the ${conf.season} season`;
   const attr = (p: DP, k: string) => { const i = A[k as keyof typeof A]; return p.attrs[i] || p.game[i]; };
   const wonder = (ps: DP[], maxAge = 21) => ps.filter((p) => p.age <= maxAge && (p.paRaw || p.pa >= 130)).sort((a, b) => expPa(b) - expPa(a) || b.ca - a.ca);
@@ -451,6 +462,7 @@ ${c.photo ? `<img class="photo" src="${c.photo}" alt="${esc(c.stadium)}" loading
 <h2>${esc(c.name)} squad in ${conf.game}</h2>
 ${table(squad, { club: false, contract: true, wage: true })}
 ${moves60(c)}
+${staffCtx ? clubStaffHtml(staffCtx.staff, c.id, c.name) : ''}
 ${wonder(ps).length ? `<h2>Wonderkids at ${esc(c.name)}</h2>${table(wonder(ps).slice(0, 8), { club: false })}` : ''}
 ${bosman.length ? `<h2>Contracts expiring in ${world.season + 1} (Bosman)</h2><p>These players are out of contract at the end of the season – sign a new deal or lose them for free.</p>${table(bosman, { club: false, contract: true })}` : ''}
 ${others.length ? `<h2>Other clubs in the ${esc(l!.real)}</h2><div class="cols">${others.map((x) => `<a href="${x.url}">${esc(x.name)}</a>`).join('')}</div>` : ''}
@@ -506,7 +518,7 @@ ${others.length ? `<h2>Other leagues in ${esc(nationName(l.nation))}</h2><p>${ot
     const natMgrs = [...leagues.values()].flatMap((l) => l.clubs.filter((c) => c.manager && c.managerNation === n.idx).map((c) => ({ c, l }))).sort((a, b) => a.l.tier - b.l.tier || b.c.rep - a.c.rep);
     emit('nations', {
       slug: n.url.slice(1),
-      title: `${n.name} in ${conf.game} – Best Players & Wonderkids${seasonTag} | CM Reborn`,
+      title: DEMONYM[n.name] ? `Best ${DEMONYM[n.name]} Players & Wonderkids in ${conf.game}${seasonTag} | CM Reborn` : `${n.name} in ${conf.game} – Best Players & Wonderkids${seasonTag} | CM Reborn`,
       h1: `${n.name}: the best ${conf.game} players and wonderkids`,
       description: `The best ${n.name} players in ${gameSeason}, the top ${n.name} wonderkids${ls.length ? `, the ${ls.map((l) => l.real).slice(0, 2).join(' and ')}` : ''}${info?.coach ? ` and the national team` : ''} – from ${conf.dbName}.`,
       crumbs: [hubCrumb],
@@ -526,7 +538,7 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
   }
 
   // ---------- toplister ----------
-  interface L { slug: string; title: string; h1: string; description: string; intro: string; rows: DP[]; extra?: [string, (p: DP) => string]; value?: boolean; contract?: boolean; wage?: boolean; group: string }
+  interface L { slug: string; title: string; h1: string; description: string; intro: string; rows: DP[]; extra?: [string, (p: DP) => string]; value?: boolean; contract?: boolean; wage?: boolean; group: string; /** flere tabeller med overskrift (rows = dem alle) */ sections?: [string, DP[]][] }
   const lists: L[] = [];
   const pool = all.filter((p) => p.club >= 0 || p.ca >= 100);
   for (const grp of POS_GROUPS) {
@@ -553,6 +565,21 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
   lists.push({ group: 'Transfers', slug: `free-transfers-${yr + 1}`, title: `${conf.game} Contracts Expiring ${yr + 1} – Future Bosman Targets | CM Reborn`, h1: `${conf.game}: the best players out of contract in ${yr + 1}`, description: `Players whose contracts end in summer ${yr + 1} in ${conf.game} – cheap now, free later. From ${conf.dbName}.`, intro: `Their clubs are under pressure to sell a year before the contract ends, so prices drop – or wait and sign them for free.`, rows: bosman(yr + 1).slice(0, 100), wage: true, contract: true });
   const bargains = pool.filter((p) => p.club >= 0 && p.age <= 30 && p.ca >= 120).sort((a, b) => b.ca / Math.max(50_000, b.value) - a.ca / Math.max(50_000, a.value)).slice(0, 60);
   lists.push({ group: 'Transfers', slug: 'bargains', title: `${conf.game} Bargains – Best Cheap Players to Sign | CM Reborn`, h1: `${conf.game} bargains: good players for little money`, description: `Cheap gems in ${gameSeason}: players with high ability and a low value, aged 30 or younger – with club, CA, PA and value.`, intro: `Current ability of 120 or more, aged 30 or younger, sorted by ability per pound of value (CM Reborn's valuation at the start of the game). Clubs may still ask for more than the value.`, rows: bargains, value: true, wage: true });
+  // billige spillere pr. position ("cm 01/02 best cheap players by position", "best cheap defenders")
+  const cheapCap = conf.original ? 1_000_000 : 8_000_000;
+  for (const grp of POS_GROUPS) {
+    const rows = pool.filter((p) => p.club >= 0 && p.age <= 31 && p.value > 0 && p.value <= cheapCap && grp.test(p)).sort((a, b) => b.ca - a.ca || a.value - b.value).slice(0, 40);
+    lists.push({ group: 'Cheap players by position', slug: `cheap-${grp.slug}`, title: `${conf.game} Best Cheap ${grp.name[0].toUpperCase() + grp.name.slice(1)} – Valued ${pounds(cheapCap)} or Less | CM Reborn`, h1: `${conf.game}: the best cheap ${grp.name}`, description: `The best ${grp.name} valued at ${pounds(cheapCap)} or less in ${gameSeason} – bargains by position, with club, age, CA, PA and value from ${conf.dbName}.`, intro: `${grp.name[0].toUpperCase() + grp.name.slice(1)} aged 31 or younger with a value of ${pounds(cheapCap)} or less at the start, sorted by current ability. Clubs may still ask for more than the value – a player who is unhappy or near the end of his contract comes cheapest.`, rows, value: true, wage: true, contract: true });
+  }
+  // gratis spillere pr. position: klubløse + kontrakter, der udløber til sommer (Bosman)
+  {
+    const freeNow = all.filter((p) => p.club < 0);
+    const soon = bosman(yr);
+    const sections: [string, DP[]][] = POS_GROUPS.map((grp) => [grp.name[0].toUpperCase() + grp.name.slice(1), [...freeNow, ...soon].filter(grp.test).sort((a, b) => b.ca - a.ca).slice(0, 8)]);
+    lists.push({ group: 'Transfers', slug: 'free-players-by-position', title: `${conf.game} Best Free Players by Position – Free Agents & Bosman ${yr} | CM Reborn`, h1: `${conf.game}: the best free players by position`, description: `The best players you can sign for free in ${gameSeason}, position by position: free agents at the start and players whose contracts run out in ${yr} (Bosman).`, intro: `For every position: players without a club on 1 July ${world.season} and players whose contracts expire in the summer of ${yr} – sign the first straight away, agree a pre-contract with the second.`, rows: sections.flatMap(([, r]) => r), sections, wage: true, contract: true });
+  }
+  // gratis transfers til de lavere rækker ("best free transfers for lower league")
+  lists.push({ group: 'Transfers', slug: 'free-transfers-lower-league', title: `${conf.game} Best Free Transfers for the Lower Leagues | CM Reborn`, h1: `${conf.game}: free transfers for a lower-league club`, description: `Players a lower-league club can actually afford in ${gameSeason}: free agents and ${yr} Bosman targets with modest wages and current ability 70–125.`, intro: `Current ability between 70 and 125 – good enough for the lower divisions, modest enough to want to come. Free agents and players whose contracts run out in ${yr}, sorted by ability.`, rows: [...all.filter((p) => p.club < 0), ...bosman(yr)].filter((p) => p.ca >= 70 && p.ca <= 125 && p.age <= 32).sort((a, b) => b.ca - a.ca).slice(0, 80), wage: true, contract: true });
   const free = all.filter((p) => p.club < 0).sort((a, b) => b.ca - a.ca).slice(0, 60);
   if (free.length) lists.push({ group: 'Transfers', slug: 'free-agents', title: `${conf.game} Free Agents – Best Unattached Players at the Start | CM Reborn`, h1: `The best free agents in ${conf.game}`, description: `The best players without a club at the start of ${gameSeason} – sign them for nothing but wages.`, intro: `These players have no club on 1 July ${world.season}. Offer a contract and they can join straight away.`, rows: free });
   lists.push({ group: 'Wonderkids', slug: 'wonderkids', title: `${conf.game} Wonderkids – The 200 Best Young Players${seasonTag} | CM Reborn`, h1: `${conf.game} wonderkids: the top 200`, description: `The 200 best young players (21 or younger) in ${gameSeason} by potential ability, including random-potential players, from ${conf.dbName}.`, intro: `Players aged 21 or younger on 1 July ${world.season}, sorted by potential ability. Random potential counts as the middle of its range.`, rows: wonder(pool).slice(0, 200), value: true });
@@ -574,7 +601,7 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
     if (!L.rows.length) continue;
     emit('lists', {
       slug: `${P}/lists/${L.slug}/`, title: L.title, h1: L.h1, description: L.description, crumbs: [hubCrumb, { name: 'Lists', url: `/${P}/lists/` }],
-      body: `<p class="lead">${L.intro}</p>${table(L.rows, { extra: L.extra, value: L.value, contract: L.contract, wage: L.wage })}
+      body: `<p class="lead">${L.intro}</p>${L.sections ? L.sections.filter(([, r]) => r.length).map(([h, r]) => `<h2>${esc(h)}</h2>${table(r, { extra: L.extra, value: L.value, contract: L.contract, wage: L.wage })}`).join('') : table(L.rows, { extra: L.extra, value: L.value, contract: L.contract, wage: L.wage })}
 <p class="note">CA = current ability, PA = potential ability (1–200). R −2 / R −1 = random potential, rolled in every new game (−2 usually 120–200, −1 usually 80–160). Values are CM Reborn's at the start of the game.</p>
 <h2>More ${conf.game} lists</h2><div class="cols">${lists.filter((x) => x !== L && x.group === L.group).map((x) => `<a href="/${P}/lists/${x.slug}/">${esc(x.h1.replace(` in ${conf.game}`, '').replace(`${conf.game}: `, '').replace(`${conf.game} `, ''))}</a>`).join('')}</div>`,
       list: { name: L.h1, items: L.rows.slice(0, 20).map((p) => ({ name: p.name, url: p.url ?? undefined })) },
@@ -582,6 +609,29 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
   }
   const listGroups = [...new Set(lists.map((l) => l.group))];
   const listIndex = listGroups.map((gr) => `<h3>${gr}</h3><div class="cols">${lists.filter((l) => l.group === gr && l.rows.length).map((l) => `<a href="/${P}/lists/${l.slug}/">${esc(l.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}</div>`).join('');
+  // ---------- sovende kæmper: store klubber uden for den bedste række ("cm 01/02 sleeping giants") ----------
+  {
+    const giants = [...leagues.values()].filter((l) => l.tier >= 2).flatMap((l) => l.clubs.map((c) => ({ c, l })))
+      .sort((a, b) => b.c.rep - a.c.rep || b.c.cap - a.c.cap).slice(0, 40);
+    if (giants.length >= 5) emit('lists', {
+      slug: `${P}/lists/sleeping-giants/`,
+      title: `${conf.game} Sleeping Giants – Big Clubs Outside the Top Flight${seasonTag} | CM Reborn`,
+      h1: `${conf.game} sleeping giants`,
+      description: `The biggest clubs outside the top division in ${gameSeason}: ${listJoin(giants.slice(0, 3).map(({ c }) => c.name))} and more – reputation, stadium, budget and best player from ${conf.dbName}.`,
+      crumbs: [hubCrumb, { name: 'Lists', url: `/${P}/lists/` }],
+      body: `<p class="lead">Big name, big ground, wrong division: the clubs in ${conf.dbName} with the highest reputation outside their country's top flight. They are the classic CM challenge – the crowds and the budget are already there, you only have to get them back up.</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th><th class="n">Rep</th><th>Stadium</th><th class="n">Capacity</th>${conf.original ? '<th class="n">Balance</th>' : ''}<th>Best player</th><th class="n">Strength</th></tr></thead><tbody>${giants.map(({ c, l }, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${l.url}">${esc(l.real)}</a></td><td class="n">${c.rep}</td><td>${esc(c.stadium)}</td><td class="n">${c.cap ? c.cap.toLocaleString('en') : '–'}</td>${conf.original ? `<td class="n">${c.balance ? pounds(c.balance) : '–'}</td>` : ''}<td>${c.players[0] ? pLink(c.players[0]) : '–'}</td><td class="n">${c.strength.toFixed(1)}</td></tr>`).join('')}</tbody></table></div>
+<p class="note">Reputation is the club's own rating in the database (0–100 in CM Reborn). Strength = the average current ability of the best 16 players.</p>
+<p><a href="/cm-01-02-best-teams-to-manage/">The best teams to manage →</a>${lists.some((x) => x.slug === 'lower-league-gems' && x.rows.length) ? ` · <a href="/${P}/lists/lower-league-gems/">lower-league gems</a>` : ''} · <a href="/${P}/lists/free-transfers-lower-league/">free transfers for the lower leagues</a></p>`,
+      faq: [
+        [`What are the sleeping giants in ${conf.game}?`, `The biggest clubs outside the top flight: ${listJoin(giants.slice(0, 5).map(({ c, l }) => `${c.name} (${l.real})`))}.`],
+        [`Can I manage a sleeping giant in CM Reborn?`, `Yes – start a new game with ${conf.original ? 'the original 2001/02 database' : `the ${conf.season} database`}, choose the country and pick the club.`],
+      ],
+      list: { name: `${conf.game} sleeping giants`, items: giants.slice(0, 20).map(({ c }) => ({ name: c.name, url: c.url })) },
+    });
+  }
+  // ---------- stab ----------
+  if (staffCtx && staffPrep) buildStaffPages(staffCtx, staffPrep);
   // ---------- managere (databasens egne – 2026/27 fra Wikipedias trænerlister) ----------
   {
     const mgrs = [...leagues.values()].flatMap((l) => l.clubs.filter((c) => c.manager).map((c) => ({ c, l }))).sort((a, b) => a.l.tier - b.l.tier || b.c.rep - a.c.rep);
@@ -686,7 +736,7 @@ ${nOrder.map((nidx) => `<h2>${esc(nationName(nidx))}</h2><div class="tw"><table>
     body: `<p class="lead">Everything in ${conf.dbName}: ${all.length.toLocaleString('en')} players, ${clubs.size.toLocaleString('en')} clubs and ${leagues.size} playable leagues. Every profile shows the real attributes (1–20), the hidden ones, position ratings, CA and PA – and you can sign all of them in CM Reborn, free in your browser.</p>
 <input id="q" type="search" placeholder="Search a player or club…" autocomplete="off" aria-label="Search the ${conf.game} database"><div id="res"></div>
 ${CTA}
-<h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/managers/">Managers</a><a href="/${P}/referees/">Referees</a>${conf.original ? '' : `<a href="/${P}/kits/">Kit manufacturers</a>`}<a href="/${P}/lists/">All lists →</a></div>
+<h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/managers/">Managers</a>${conf.staffFile ? `<a href="/${P}/staff/">Coaches, scouts &amp; physios</a>` : ''}<a href="/${P}/referees/">Referees</a>${conf.original ? '' : `<a href="/${P}/kits/">Kit manufacturers</a>`}<a href="/${P}/lists/">All lists →</a></div>
 <h2>Guides</h2><div class="tags">${[['/cm-01-02-match-engine/', 'How the match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'], ['/cm-01-02-ca-pa-explained/', 'CA and PA'], ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes'], ['/cm-01-02-guides/', 'All guides →']].map(([h, t]) => `<a href="${h}">${t}</a>`).join('')}</div>
 <h2>Leagues</h2><div class="cols">${byTier.map((l) => `<a href="${l.url}">${esc(l.real)}${l.real !== l.name ? ` <span class="note">${esc(nationName(l.nation))}</span>` : ''}</a>`).join('')}</div>
 <h2>Players by nationality</h2><div class="cols">${[...nations.values()].sort((a, b) => b.players.length - a.players.length).slice(0, 90).sort((a, b) => a.name.localeCompare(b.name)).map((n) => `<a href="${n.url}">${esc(n.name)}</a>`).join('')}</div>
@@ -697,5 +747,6 @@ ${CTA}
   const summary = `${kept.length} spillere, ${clubs.size} klubber, ${leagues.size} ligaer, ${nations.size} lande, ${urls.lists.length} lister`;
   const playerUrl = new Map(kept.map((p) => [`${p.name}|${clubName(p)}`, p.url!]));
   const clubSum: ClubSum[] = [...leagues.values()].flatMap((l) => l.clubs.map((c) => ({ name: c.name, url: c.url, league: l.real, leagueUrl: l.url, tier: l.tier, nation: nationName(c.nation), balance: c.balance, rep: c.rep, strength: c.strength, kids: wonder(c.players).length, cap: c.cap, stadium: c.stadium, best: c.players[0]?.name ?? '' })));
-  return { urls, images, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
+  const staffTop = staffPrep ? Object.fromEntries(staffPrep.ranked.map(({ l, rows }) => [l.slug, rows.slice(0, 5).map((x) => ({ name: x.name, url: x.url, role: x.role, club: x.club, v: l.cols.map((k) => x.a[k]) }))])) : undefined;
+  return { staffTop, urls, images, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
 }
