@@ -11,10 +11,14 @@ export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
 export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** databasens rå PA, når `pa` er et skøn (negativ: -2/-1 = tilfældig, 0 = mangler, eller under CA) – originalens regler køres i newgame.ts (playerInit.ts) */ paRaw?: number;
   /** omdømme fra spillerposten (byte 9/11/13, 0-10000): hjemme, nuværende, verden – originalens værdi følger dem */
-  rep?: [number, number, number] }
+  rep?: [number, number, number];
+  /** fødderne fra spillerposten (venstre, højre; 1-20) – bruges i originalens afbalancering (sub_538ec0) */
+  feet?: [number, number] }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
+  /** 'stored' = egenskaberne står som i databasen (1-20); uden = ældre filer med de 18 allerede omregnet */
+  attrScale?: 'stored';
   ratings: Record<number, CMRatings>;
   clubRep: Record<number, number>;
   clubColors: Record<number, [string, string]>;
@@ -51,17 +55,8 @@ class Reader {
   }
 }
 
-/** Omregning af intrinsiske evner til 1-20 (som spillet selv viser dem) */
-// Databasen gemmer ALLE egenskaber som 1-20 (0 = mangler). Ved spilstart omregner originalen de 18 "intrinsiske"
-// (sub_535a80, løkke 2): intrinsisk = (10·v − CA)/2, og viser dem med sub_544380: t = (CA' + 2·intrinsisk)·0,05 + 10,
-// vist = (0,1·t² + t)/3 + 0,5 (CA' = CA, eller 0,1·CA for den forkerte rolles evner). Ejerens Bosman-projekt,
-// player_generation/PLAYER_GENERATION.md; bekræftet i originalen (Beckham 3.9.60: 10 af 13 præcist, resten ±1).
-// Før læste vi den gemte værdi som selve den intrinsiske værdi – forsvarere fik 17-20 i afslutning.
-function convert(raw: number, ca: number, high: boolean): number {
-  const intrinsic = Math.trunc(Math.max(-200, Math.min(200, 10 * raw - ca)) / 2);
-  const t = ((high ? ca : 0.1 * ca) + 2 * intrinsic) * 0.05 + 10;
-  return Math.max(1, Math.min(20, Math.trunc((0.1 * t * t + t) / 3 + 0.5)));
-}
+// Databasen gemmer ALLE egenskaber som 1-20 (0 = mangler); de 18 interne omregnes først ved nyt spil med originalens
+// kæde (playerInit.ts shownFromStored: intern → sub_538ec0 → sub_538bc0 → sub_544380).
 
 // Player-postens felter fra offset 15 (efter ID, trøjenummer, CA, PA og tre omdømmer)
 const PF = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfielder', 'AttackingMidfielder', 'Attacker', 'WingBack',
@@ -71,11 +66,6 @@ const PF = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfiel
   'OneOnOnes', 'Pace', 'Passing', 'Penalties', 'Positioning', 'Reflexes', 'RightFoot', 'Stamina', 'Strength', 'Tackling', 'Teamwork',
   'Technique', 'ThrowIns', 'Versatility', 'Vision', 'WorkRate'] as const;
 type PField = (typeof PF)[number];
-
-// Evner der gemmes intrinsisk (omregnes med CA); målmandsevner er "høje" for målmænd, de øvrige for markspillere
-const INTRINSIC_ALWAYS_HIGH: PField[] = ['Anticipation', 'Decisions', 'Heading', 'LongShots', 'Passing', 'Penalties', 'Positioning', 'Tackling'];
-const INTRINSIC_GK: PField[] = ['Handling', 'Reflexes', 'OneOnOnes'];
-const INTRINSIC_OUTFIELD: PField[] = ['Crossing', 'Dribbling', 'Finishing', 'Marking', 'Movement', 'ThrowIns', 'Vision'];
 
 // Vores ATTRS-rækkefølge → kilde (P = player-post, S = staff-post)
 const MAP: [string, 'P' | 'S', string][] = [
@@ -319,7 +309,6 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     if (pa <= 0 || pa < ca) pa = Math.min(200, ca + Math.round(((hashStr(String(id)) % 1000) / 1000) * Math.max(5, (24 - age) * 6)));
     // databasens egen PA, når den ikke er brugbar som den står (negativ, 0 eller under CA) – newgame.ts kører originalens regler
     const paRaw = pa !== rawPa ? rawPa : undefined;
-    const isGK = get('Goalkeeper') >= 15;
     // 0 betyder "ikke sat" i originaldatabasen (spillet finder selv på en værdi) – markeres med 0,
     // så spillet ved start bruger en rolleprofil ud fra position og CA i stedet
     const attrs = MAP.map(([, src, f]) => {
@@ -327,9 +316,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const raw = get(f as PField);
       // uden for 1-20 = mangler (originalen udfylder dem ved spilstart)
       if (raw < 1 || raw > 20) return 0;
-      if (INTRINSIC_ALWAYS_HIGH.includes(f as PField)) return convert(raw, ca, true);
-      if (INTRINSIC_GK.includes(f as PField)) return convert(raw, ca, isGK);
-      if (INTRINSIC_OUTFIELD.includes(f as PField)) return convert(raw, ca, !isGK);
+      // alle egenskaber gemmes som i databasen (1-20); de 18 interne regnes om ved nyt spil (playerInit.ts
+      // shownFromStored – originalens kæde med afbalanceringen sub_538ec0/sub_538bc0)
       return raw;
     });
     const pos = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfielder', 'AttackingMidfielder', 'Attacker', 'WingBack'].map((f) => Math.max(1, Math.min(20, get(f as PField))));
@@ -349,7 +337,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       Math.max(0, S.i32(o + 78)),
     ]);
     const rep: [number, number, number] = [S.i16(po + 9), S.i16(po + 11), S.i16(po + 13)];
-    ratings[id] = paRaw !== undefined ? { ca, pa, attrs, pos, side, paRaw, rep } : { ca, pa, attrs, pos, side, rep };
+    const feet: [number, number] = [Math.max(0, Math.min(20, lf)), Math.max(0, Math.min(20, rf))];
+    ratings[id] = paRaw !== undefined ? { ca, pa, attrs, pos, side, paRaw, rep, feet } : { ca, pa, attrs, pos, side, rep, feet };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27
@@ -382,7 +371,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   }
 
   return {
-    kind: 'cm0102', version: 1, source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
+    kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
     nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, ...(officials.length ? { officials } : {}), rules,
   };
 }

@@ -15,9 +15,14 @@ describe('egenskaber som i originalen', () => {
     const g = gs();
     const b = Object.values(g.players).find((p) => p.first === 'David' && p.last === 'Beckham')!;
     const a = (k: string) => b.attrs[ATTRS.indexOf(k as never)];
-    // originalen (1.9.01): Crossing 20, Dribbling 13, Finishing 15, Heading 9, Long Shots 19, Passing 20, Tackling 12, Anticipation 15, Decisions 15, Off The Ball 14
-    expect([a('crossing'), a('dribbling'), a('finishing'), a('heading'), a('longShots'), a('passing'), a('tackling'), a('anticipation'), a('decisions'), a('offTheBall')])
-      .toEqual([20, 13, 15, 9, 19, 20, 12, 15, 15, 14]);
+    // originalen (1.9.01) – alle 13 viste tekniske egenskaber, efter afbalanceringen sub_538ec0/sub_538bc0:
+    expect([a('crossing'), a('dribbling'), a('finishing'), a('heading'), a('longShots'), a('passing'), a('tackling'), a('anticipation'), a('decisions'), a('offTheBall'), a('marking'), a('creativity'), a('positioning')])
+      .toEqual([20, 13, 15, 9, 19, 20, 12, 15, 15, 14, 12, 19, 12]);
+    // målmanden Seaman mangler Crossing → originalens løkke sænker hans gyldige markspiller-egenskaber med 10:
+    // originalen viser Technique 8, Acceleration 2, Teamwork 8, Work Rate 5, Flair 1
+    const sm = Object.values(g.players).find((p) => p.first === 'David' && p.last === 'Seaman')!;
+    const sa = (k: string) => sm.attrs[ATTRS.indexOf(k as never)];
+    expect([sa('technique'), sa('acceleration'), sa('teamwork'), sa('workRate'), sa('flair')]).toEqual([8, 2, 8, 5, 1]);
     // ingen huller i de egenskaber, originalen udfylder
     const holes = Object.values(g.players).filter((p) => p.attrs.slice(0, 36).some((v) => !v)).length;
     expect(holes).toBe(0);
@@ -31,4 +36,13 @@ describe('egenskaber som i originalen', () => {
       expect(shownAtStart(storedFromShown(s, ca, true), ca, true)).toBe(s);
     }
   });
+  it('3.9.68: Ronny Johnsen (Aston Villa, CA 165) – kæden giver Crossing 12, Long Shots 11, Dribbling 9 (Bosman-projektet)', () => {
+    const w = JSON.parse(readFileSync('public/data/world-original-3968.json', 'utf8')) as WorldData;
+    const eng = w.nations.findIndex((x) => x.name === 'England');
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 2, mode: 'authentic' });
+    const j = Object.values(gs().players).find((p) => p.first === 'Ronny' && p.last === 'Johnsen')!;
+    const a = (k: string) => j.attrs[ATTRS.indexOf(k as never)];
+    expect(j.ca).toBe(165);
+    expect([a('crossing'), a('longShots'), a('dribbling')]).toEqual([12, 11, 9]);
+  }, 60_000);
 });

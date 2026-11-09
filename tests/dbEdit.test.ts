@@ -33,8 +33,9 @@ describe('database-editor', () => {
     const p = g.players[ts];
     expect(p.club).toBe(millwall);
     expect(p.ca).toBe(120);
-    expect(p.pa).toBeGreaterThanOrEqual(150); // -2 = 150-200
-    expect(Math.round(p.attrs[A.finishing])).toBe(20);
+    expect(p.pa).toBeGreaterThanOrEqual(Math.max(71, p.ca)); // -2: oftest 120-200 (originalens regel, playerInit.ts)
+    // editoren gemmer databasens værdi (20); spillet viser den gennem originalens afbalancering (sub_538ec0/sub_538bc0)
+    expect(Math.round(p.attrs[A.finishing])).toBeGreaterThanOrEqual(17);
     const tm = g.players[NEW_ID0 + 1];
     expect(tm.last).toBe('Madeira');
     expect(tm.club).toBe(millwall);

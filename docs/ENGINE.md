@@ -354,3 +354,11 @@ Dæmpningen fra trin 10 var lavet til at modvirke de oppustede egenskaber, så b
 SQUASH 0,76): finish 1,1, squash 1 → 3 sæsoner 2,69 mål, H/U/B 44/25,5/30,6, sidst 22,4, rangkorrelation 0,61.
 Topscoreren følger niveauforskellen (mere forskel = flere mål til den bedste) – den afhænger af boldholderens valg
 (sub_7109f0), som ejerens projekt nu har fundet (`ball_carrier/ball_carrier_rule.ts`): næste trin.
+
+## Trin 12 – egenskaberne afbalanceret som originalen (2026-11-09)
+
+Visningskæden fra Bosman-projektet (identical/5_player_generation): gemt → intern → `sub_538ec0` (afbalancering mod
+fysik/mentalitet) → `sub_538bc0` (centrering på −20) → `sub_544380`. Beckham 3.9.60 rammer nu originalens skærm på alle 13
+tekniske egenskaber, Seaman på målmandens −10-regel, Johnsen 3.9.68 giver 12/11/9 som Bosmans port. Afbalanceringen
+gav flere mål (3,3-3,45), så `ORIGINAL` er kalibreret igen: finish 1,58, squash 0,55/0,3/0,72 → to frø: 2,90 mål,
+H/U/B 51/24/25, mester 88 / sidst 28, topscorer 34 (orig 23). Moderne uændret (3 sæsoner: 2,76 mål, rangkorrelation 0,80).

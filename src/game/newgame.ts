@@ -1,6 +1,6 @@
 // Opret et nyt spil ud fra world.json
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
-import { capCA, fillMissing, initialisePA, makePool, makeRand } from './playerInit';
+import { capCA, fillMissing, initialisePA, makePool, makeRand, repairPositions, shownFromStored } from './playerInit';
 import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
@@ -179,11 +179,25 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       initRng.state = hash(seed, p.id, 91) || 1;
       const pa = initialisePA(rt.paRaw ?? rt.pa, rt.ca, age, club ? rand(4) + 1 : rand(2) + 1, rand);
       const ca = capCA(rt.ca, pa, rand);
-      const rec = { ca, pos: rt.pos, side: rt.side, attrs: rt.attrs.slice() };
-      fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings)), rand);
+      const stored = cm!.attrScale === 'stored';
+      // positioner (sub_535a80 0x536f01): reparation, tabellen rand(182) og siderne – [GK SW D DM M AM F WB R L C]
+      const pos11 = [...rt.pos, rt.side[2], rt.side[0], rt.side[1]];
+      if (stored) repairPositions(pos11, rand);
+      const rec = { ca, pos: pos11.slice(0, 8), side: [pos11[9], pos11[10], pos11[8]], attrs: rt.attrs.slice(), stored };
+      fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings).map((x) => ({ ...x, stored }))), rand);
       if (rt.rep) p.cmRep = rt.rep;
+      let attrs = rec.attrs;
+      if (stored) {
+        // fødderne: den stærke bliver 20, en manglende rand(rand(20)) + 1 (sub_535a80); bruges i afbalanceringen
+        const feet: [number, number] = rt.feet ? [rt.feet[0], rt.feet[1]] : [0, 0];
+        if (feet[0] >= feet[1]) feet[0] = 20; else feet[1] = 20;
+        for (const k of [0, 1]) if (feet[k] < 1) feet[k] = rand(rand(20)) + 1;
+        // de viste værdier ved spilstart: intern → sub_538ec0 → sub_538bc0 → sub_544380 (playerInit.ts)
+        attrs = shownFromStored(attrs, ca, pos11[0], feet);
+        p.foot = feet[0] >= 15 && feet[1] >= 15 ? 'B' : feet[0] > feet[1] ? 'L' : 'R';
+      }
       // de få, originalen heller ikke udfylder her (adaptability, ambition, loyalitet …), beholder den genererede værdi
-      p.ca = ca; p.pa = pa; p.attrs = rec.attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rt.pos.slice(); p.side = rt.side.slice();
+      p.ca = ca; p.pa = pa; p.attrs = attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rec.pos.slice(); p.side = rec.side.slice();
     }
     // den originale database: originalens egen værdiformel (evne, alder, klubbens omdømme, løn og liga – originalValue.ts)
     if (!value) {

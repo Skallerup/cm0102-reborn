@@ -155,7 +155,8 @@ export function buildDb(conf: DbConf): DbOut {
       id, name, last, slug: '', url: null, dob, age, nation: r[F.nation] as number, club: cr ? club : -1, league,
       dbPos: String(r[F.pos] ?? ''), posStr: positionString(pl), role: naturalRole(pl), foot: String(r[F.foot] ?? ''), height: Number(r[F.height] ?? 0),
       caps: Number(r[F.caps] ?? 0), intGoals: Number(r[F.intGoals] ?? 0), contract: String(r[F.contract] ?? ''), wage: Number(r[F.wage] ?? 0), number: Number(r[F.number] ?? 0),
-      ca: rt.ca, pa: rt.pa, paRaw: Math.min(0, rt.paRaw ?? 0), attrs: rt.attrs, game: gp.attrs.map((v) => Math.round(v)), pos: rt.pos, side: rt.side, value: gbp(gp.value),
+      ca: rt.ca, pa: rt.pa, paRaw: Math.min(0, rt.paRaw ?? 0), // world-filen har databasens gemte værdier – siderne viser dem, som spillet viser dem ved start (0 = ikke sat → spillets udfyldning i kursiv)
+      attrs: rt.attrs.map((v, i) => (v > 0 ? Math.round(gp.attrs[i]) : 0)), game: gp.attrs.map((v) => Math.round(v)), pos: rt.pos, side: rt.side, value: gbp(gp.value),
     });
   }
   // forventet PA (tilfældigt PA: midten af intervallet) – til sortering
