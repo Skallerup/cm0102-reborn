@@ -1510,7 +1510,9 @@ export class MatchSim {
       if (routineCheck) { this.line('var-check', s, null, true); this.line('var-stands', s, null, true); }
       return;
     }
-    const onT = clamp(0.19 + q / 70 + (kind === 'oneOnOne' ? 0.12 : 0) + (kind === 'pen' ? 0.5 : 0) + (this.opts.onTarget ?? 0), 0.2, 0.92);
+    // originalen: straffens skudpoint er rand(5·v) + 150, så alle straffe går på mål – keeperen afgør det (sub_700bd0)
+    const onT = kind === 'pen' && this.opts.rules === 'original' ? 1
+      : clamp(0.19 + q / 70 + (kind === 'oneOnOne' ? 0.12 : 0) + (kind === 'pen' ? 0.5 : 0) + (this.opts.onTarget ?? 0), 0.2, 0.92);
     if (this.r.chance((onT - goalP) / (1 - goalP))) {
       rec.outcome = 'saved';
       T.stats.onTarget++;

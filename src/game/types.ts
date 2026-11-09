@@ -350,6 +350,8 @@ export interface Club {
   stadium: string;
   seats: number;
   rep: number; // 0-100
+  /** originalens værdiformel (kun den originale database): WorldData.valueClub – [cf, landets omdømme, managerens vurdering, manager] */
+  vc?: [number, number, number, number];
   /** Opsparet omdømmeændring i løbet af sæsonen (brøkdele, før de bliver til hele point) */
   repDrift?: number;
   /** Spillere klubben holder øje med (AI-klubbernes shortliste) */

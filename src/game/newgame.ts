@@ -10,7 +10,7 @@ import { ageOn } from './dates';
 import {
   caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, roundValue, type SubPos,
 } from './data/generate';
-import { originalValueGbp, repTriple } from './originalValue';
+import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { setEconomy } from './econ';
@@ -202,7 +202,11 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // den originale database: originalens egen værdiformel (evne, alder, klubbens omdømme, løn og liga – originalValue.ts)
     if (!value) {
       const lg = club ? g.leagues[g.clubs[club].league] : undefined;
-      p.value = g.econ && cm
+      const vc = g.econ && cm ? cm.valueClub?.[club] : undefined;
+      // originalens sub_4d0c60, når databasen har klubbens felter (bygget efter 9/11-2026); ellers den tilpassede kurve
+      p.value = vc && rt?.rep
+        ? roundValue(formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: rt.rep, caps: p.caps, staffId: p.id, clubId: club, vc }) / GBP)
+        : g.econ && cm
         ? roundValue(originalValueGbp(p.ca, age, cm.clubRep[club] ?? 30, (r[F.wage] as number) || 0, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, rt?.rep ?? repTriple(p.rep)) / GBP)
         : valueFromCA(p.ca, p.pa, age);
     }
@@ -326,6 +330,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     c.facilities = clampInt(3 + c.rep / 6 + (hash(c.id, 4) % 5) - 2, 1, 20);
     // originalens saldo og træningsanlæg (club.dat 101/127)
     const fin = cm?.clubFinance?.[c.id];
+    if (g.econ && cm?.valueClub?.[c.id]) c.vc = cm.valueClub[c.id];
     if (fin && g.econ) {
       // målt i ejerens CM 01/02 (3.9.60, 13 engelske klubber 14/7-01): saldoen er databasens beløb ±8 % (spredningen
       // *estimeret*); klubber uden beløb (0) får ca. 35 ugers lønsum (Bury: £829K ved £23,5K/uge)

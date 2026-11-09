@@ -14,15 +14,16 @@ describe('landshold', () => {
     const eng = w.nations.findIndex((n) => n.name === 'England');
     createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Leeds United')![0], activeNations: [eng], lang: 'en', masking: true, seed: 2 });
     const g = gs();
-    const beckham = Object.values(g.players).find((p) => p.first === 'David' && p.last === 'Beckham')!;
-    const caps0 = beckham.caps;
+    // landskampe for Englands spillere i alt (hvem der starter, afhænger af formen – Beckham kan sidde på bænken)
+    const caps0 = new Map(Object.values(g.players).filter((p) => p.nation === eng).map((p) => [p.id, p.caps]));
+    const engCaps = () => [...caps0].reduce((s, [id, c]) => s + Math.max(0, (g.players[id]?.caps ?? c) - c), 0);
     // CM 01/02: "Leeds players selected in England squad" – én nyhed pr. landshold, med modstanderen i vinduet
     while (g.date < '2001-09-04') { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
     const sel = g.news.filter((n) => n.key === 'intl.sel1' || n.key === 'intl.selN');
     expect(sel.length).toBeGreaterThan(0);
     expect(sel.some((n) => n.params?.opp)).toBe(true);
     while (g.date < '2002-07-08') { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
-    expect(beckham.caps).toBeGreaterThan(caps0);
+    expect(engCaps()).toBeGreaterThan(30);
     const t = g.intl!.tournament!;
     expect(t.name).toBe('wc');
     expect(t.stage).toBe('done');

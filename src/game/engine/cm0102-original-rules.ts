@@ -185,17 +185,21 @@ export const quickSim = {
 
 // ---------------------------------------------------------------- shots and keepers
 
-/** On target if the shot score S beats 240 (120 for penalties) (sub_702050). confirmed */
-export const onTarget = (s: number, penalty = false) => s > (penalty ? 120 : 240);
+/** On target if the shot score S beats 240 (sub_702050). confirmed. A penalty's score is rand(5 v) + 150 (`penaltyShotScore`), so
+ *  every penalty is on target and the keeper decides; the old "120 for penalties" limit meant nothing (Bosman, 9/11-2026) */
+export const onTarget = (s: number, penalty = false) => penalty || s > 240;
+/** A penalty's shot score: rand(5 v) + 150, v = the taker's penalty value (sub_700bd0). confirmed */
+export const penaltyShotScore = (rand: Rand, v: number) => rand(5 * v) + 150;
 /** Keeper value K' from the raw K: 0.5714 K + w / 6 + 20 (sub_700420). confirmed (w = the keeper's weighted save term) */
 export const keeperValue = (k: number, w: number) => 0.5714 * k + w / 6 + 20;
 /**
  * Goal if 100 S / (S + K') > 71 (float 0x96d808; sub_702050 at 0x706cba). confirmed.
- * In competitions of type 2 or 8 the ratio gets +2 (0x9689a8) once it is above 68 (0x96d80c).
+ * In competitions of type 2 or 8 the ratio gets +2 (0x9689a8) only while it is at most 68 (0x96d80c, `je` at 0x706cfa) –
+ * so the bonus never makes a goal (corrected 9/11-2026; it was "above 68").
  */
 export function isGoal(s: number, keeper: number, compTypeBonus = false): boolean {
   let ratio = (100 * s) / (s + keeper);
-  if (compTypeBonus && ratio > 68) ratio += 2;
+  if (compTypeBonus && ratio <= 68) ratio += 2;
   return ratio > 71;
 }
 /** Distance penalty on the shot score, eased by Long Shots in the original (sub_700bd0). confirmed */
@@ -284,6 +288,16 @@ export const knockAllowed = (rand: Rand, forcedOffSoFar: number) =>
  * A fit player with proneness 10 has 40/50000 = 0.08 % per step.
  */
 export const KNOCK_CHECKS = 'every off-ball movement step, and after every challenge';
+
+// ---------------------------------------------------------------- corrections for a future 1:1 engine (Bosman 9/11-2026)
+/** AI mode 5 (match+0x1ab+side) = "slow the game down when well ahead": the ball carrier shoots LESS. confirmed */
+export const AI_MODE_EASE = 5;
+/** sub_6cb9b0 = "in a crossing position": wide, in the last 3 rows, more than 1.5 cells from the goal mouth. confirmed (not a blocked-path test) */
+export const IN_CROSSING_POSITION = 'sub_6cb9b0';
+/** sub_713e90 picks the foot: 0 left, 1 right, 2 dead ball; player +0x2c = preferred foot, +0x2d = 20 − weak-foot value. confirmed (not a line-of-sight test) */
+export const FOOT = { left: 0, right: 1, deadBall: 2 } as const;
+/** Player +0x37 in the match = position adaptation (≤ 0, smaller with Versatility), not form. confirmed */
+export const POSITION_ADAPTATION_OFFSET = 0x37;
 
 // ---------------------------------------------------------------- computer manager
 

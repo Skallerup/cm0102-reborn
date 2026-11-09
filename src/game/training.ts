@@ -5,7 +5,7 @@ import { rng } from './rng';
 import { gs } from './state';
 import type { CoachArea, Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
-import { originalValueGbp, repTriple } from './originalValue';
+import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
@@ -157,7 +157,10 @@ export function monthlyValues() {
     // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
     const c = g.clubs[p.club];
     const lg = c ? g.leagues[c.league] : undefined;
-    const target = original
+    // klubber med originalens felter: sub_4d0c60 (om originalen bruger den samme formel hver måned, vides ikke – *estimeret*)
+    const target = original && c?.vc && p.cmRep
+      ? formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps, staffId: p.id, clubId: c.id, vc: c.vc }) / 0.86
+      : original
       ? originalValueGbp(p.ca, age, c?.rep ?? 30, (p.contract?.wage ?? 0) * 0.86, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, p.cmRep ?? repTriple(p.rep)) / 0.86
       : valueFromCA(p.ca, p.pa, age);
     // glid mod modelværdien og påvirkes af form

@@ -1,0 +1,190 @@
+# Opgave: det der stadig er gættet eller ukendt (CM Reborn → Bosman-projektet)
+
+*Skrevet af Claude (CM Reborn-projektet, `~/cm0102`) 2026-11-09, efter `PROMPT_FOR_CM_REBORN.md`.*
+
+**Kort på dansk:** CM Reborn har nu bygget opgave 1 fra prompten: spillerne ved et nyt spil, med
+PA −1/−2, CA > PA, positionsreparationen med `rand(182)`, udfyldningen fra 250 skabeloner,
+`sub_538ec0`/`sub_538bc0`/visningen og værdiformlen `sub_4d0c60`. Rettelserne 1 og 2 (straffe og +2-bonussen)
+er også bygget.
+
+Resultatet mod originalen:
+- **Beckham (3.9.60):** alle 13 tekniske egenskaber er som på originalens skærm.
+- **Seaman:** som originalen, undtagen Off the Ball.
+- **Værdierne:** Beckham, Owen, Vieira, Zidane og Shearer ligger inden for 5 %. 58 % af 3.090 målte spillere ligger
+  inden for ×1,25, mod 35 % med vores gamle tilpassede kurve.
+
+Rettelserne 3–6 kan ikke bruges i vores nuværende motor, som ikke er en gitter-motor. De står som
+konstanter i `src/game/engine/cm0102-original-rules.ts` til gitter-motoren.
+
+Opgave 2–5 er ikke bygget endnu: boldholderen 1:1, skuddets udfald, hjælpefunktionerne og gitter-motoren.
+Et 1:1-skud kræver w29 og skalaen på +0x37, og en gitter-motor kræver afleveringen `sub_6fad40`, duellerne
+og de høje bolde (punkt 3 nedenfor). Uden dem ville gitter-motoren hvile på gæt, og prompten siger "bliv ved den
+nuværende motor". Punkt 1–2 er små. Punkt 3 er det, der blokerer identiske kampe.
+
+---
+
+## How to deliver (same format as `identical/`)
+
+For each item:
+
+1. An explanation (`.md`), with a Danish plain-language summary first.
+2. The listing (`sub_XXXXXX.asm.txt` + `.pseudo.c`) and the addresses of the constants.
+3. Each value marked **sikkert** / **gættet** / **ukendt**.
+4. Where possible, a number from the running game.
+
+Binary as before: `cm0102.exe` sha256 `0c78e7da…bd9bff86`.
+
+---
+
+## 1. Shown attributes at a new game (small, but visible on every player screen)
+
+### 1a. The goalkeeper variant: which attributes use `0,1·CA`?
+The prompt (correction 7) says that for GK = 20, only **Crossing and Creativity** use `0,1·CA + 2i`.
+
+- **Measured in the original (3.9.60, David Seaman, day one):** Off the Ball shows **4**.
+- **Our chain (correction 7):** shows **11**.
+- **With the 0,1·CA variant on Off the Ball as well:** about 4.
+
+His other values match exactly: Technique 8, Acceleration 2, Teamwork 8, Work Rate 5, Flair 1. Those include the −10 rule
+for valid wrong-role values when an attribute is missing.
+
+**We need:** the complete list of the attributes the UI getter `sub_543540`/`sub_544410` treats with `0,1·CA` for
+keepers. Is it something like "all attributes outside the keeper's role", or exactly Crossing, Creativity and Off the Ball?
+
+### 1b. Ronny Johnsen in 3.9.60 is ±1 off on day one
+- **3.9.68, seed 2:** the chain gives 12/11/9 for Crossing/Long Shots/Dribbling, as in the task.
+- **3.9.60:** we are ±1 against the owner's screenshot from 1.9.01. That screenshot was taken after several weeks,
+  so training and the daily `sub_538bc0` calls had already run.
+
+**We need:**
+- Which functions change the shown attributes between `sub_4c7560` and the first day.
+- In particular: `sub_82a9c0`, `sub_888260` and `sub_889c30` ("bc0 only", PLAYER_GENERATION_REST.md). When do they run?
+
+### 1c. The random fill
+The template search (best of 250) uses `rand`.
+
+- Johnsen 3.9.68 gives 12/11/9 in 2 of 3 seeds in our game.
+
+**We need:** to know whether the original's 250 candidates are drawn from the whole database or from the same nation or
+position. Is the score in the comparison only the absolute difference of the valid attributes?
+
+## 2. The value formula `sub_4d0c60` (measured against 3.090 players)
+
+**Ported, with the corrected fields:**
+- The rep the club's manager sees (`sub_5407e0`).
+- The manager's Judging Player Potential (non-player +0x18, shown via `sub_544410`).
+- Nation +0x8E as i16.
+- Nation +0x7E and club +0x64.
+- The division's rep.
+
+The code is `formulaValueGbp` in `src/game/originalValue.ts`. The club fields come from the parser as
+`WorldData.valueClub`. The test is `scripts/value-eval.ts` against `scripts/data/original-values-3960.json`: Player Search
+in 3.9.60 on 14/7-2001, 3.283 players, read with OCR.
+
+| Measure | Formula (raw DB fields) | In our game (rolled PA, shown attributes) |
+|---|---|---|
+| log-rms | 0,558 | 0,565 |
+| within ×1,25 / ×1,5 / ×2 | 58 % / 74 % / 86 % | 58 % / 74 % / 86 % |
+| median ratio original/formula | ×0,89 | ×0,87 |
+
+**Open questions:**
+
+1. **The overall bias ×0,87–0,89.** The original's shown value is about 12 % below the formula for the typical
+   player. The stars match within 5 %: Beckham £18,9M vs £18,75M, Zidane £18,06M vs £18M.
+   - Is there a final step after 0x4d12e3, such as rounding to 25K/50K/100K, a division or market drift?
+   - Or does `sub_4c7560` call the formula with other arguments for players outside the user's own region?
+2. **Per-country deviations** (median ratio original/formula, n ≥ 25):
+   - Russia ×1,73 (37 players more than ×2 above the formula).
+   - Portugal ×0,58.
+   - Czech Republic ×0,70.
+   - Scotland ×0,72.
+   - France ×0,74.
+   - South Korea: many players far below the formula. Atkinson (Chonbuk) measured £10K, formula £370K.
+   - Lower English leagues go both ways. Hednesford measured £35K, formula £1,5K.
+
+   **We need:**
+   - **[0x9cf434]:** the land of the flag rule at 0x4d12e3. Our best guess is Portugal. It moves very little.
+   - **Nation +0x85:** used when the club has no division. How is it combined into `cf`?
+   - **Nation +0x7E:** are the values 1–3 read correctly for Russia and Korea?
+3. **Not ported:**
+   - The game-wide value **[0xdd7120]** in the seed. We use 0. What is it at a new game?
+   - **sub_539490**, the non-players' re-balancing before their Judging Player Potential is shown.
+   - Whether the formula uses the **shown** attributes (after fill and balancing) or the **stored** ones. We use the
+     shown ones; the raw DB fields give the same score.
+   - The age's reference date. We use the game's start date.
+4. **Monthly updates:** does the original use `sub_4d0c60` again during the game? When, and with which drift?
+   We now use it as the target for a monthly 15 % glide; the glide itself is *estimeret*.
+5. **Random PA (−1/−2):** is the value computed after the PA has been rolled, as we do?
+
+## 3. What blocks identical matches (tasks 2–5)
+
+We have not started the grid engine. These parts are **ukendt** in `identical/` and decide the level of every match.
+The order below is our priority.
+
+### 3a. `sub_6fad40` – the pass itself (MATCH_LOOP.md §10.1)
+Interception, accuracy, first touch, and where a bad pass lands. Jump tables 0x7001ce–0x7002ee.
+Without it, a grid engine cannot reach "72 % rigtige afleveringer". Today we hit that figure with our own model.
+
+### 3b. Shot level: word +0x29 (w29) and +0x37
+`rand(w29)` is a large random part of every shot (SHOT.md), and nothing has been found that writes to +0x29.
+
+Correction 6 says +0x37 is **position adaptation** (≤ 0, smaller with Versatility). SHOT.md §4.1 still adds it as
+"form" `3f` to every shot.
+
+**We need:**
+- Where w29 is built up: search for writes to +0x29.
+- The scale of +0x37: what does a natural-position player have, and what does a player with 10 in a position have?
+
+Today our engine is calibrated to the season figures from the prompt. For the original profile: 2,90 goals,
+H/D/A 51/24/25, 17 shots, 10,6 on target. A 1:1 shot cannot replace it before these two are known.
+
+### 3c. Duels and challenges
+`sub_6f09f0` from 0x6f0e58: words +0x138/+0x13c/+0x13e. Then `sub_6c87e0`: tackling, free kicks and penalties,
+advantage (+0x475a), and `sub_70dfd0`, the blocking rule shared by passes and shots.
+This decides free kicks (~16 per match) and cards (1,70/0,14). Today those are calibrated with
+`refereeFactor`/`cardSeverity`, which come from your earlier answers.
+
+### 3d. High balls and keepers
+- `sub_6fa490` and the landing in `sub_6c9cd0`/`sub_6f6c00`.
+- Who wins the header.
+- `sub_700420` in full: the weighting `w` in `keeperValue`.
+- `sub_6c3010`: whether the keeper comes out.
+- `sub_713d90`.
+
+### 3e. Set pieces
+- `sub_6ceb90`: who takes it.
+- `sub_6bac40`: foul → free kick or penalty.
+- Positions at corners and free kicks, and the wall.
+- `sub_6be710`: the shootout, meaning the order, 5 + sudden death, and the outcome per kick.
+
+### 3f. Movement
+- `sub_6bc030`: the zone defender's choice.
+- `sub_6bce80`: the run target.
+- `sub_6cb780`: the free-run rule.
+- `sub_6f09f0`: the step itself. How many cells per tick, diagonal moves, and when a duel is triggered.
+
+### 3g. Two small ones
+- **Pass type 6 and the origin of 0x5e** (PASS_OPTIONS.md).
+- **The two own-box penalties** that grow with `mark`: −20000·dec·mark² and −(32·dec+200)·mark. Why do they punish a
+  free team-mate in his own box?
+
+---
+
+## 4. Season figures to check against (measured in the original, English Premier League, per match, both teams)
+
+| Goals | H/D/A | Shots | On target | Corners | Free kicks | Offside | Yellow/red | Passes |
+|---|---|---|---|---|---|---|---|---|
+| 2,87 | 51/23/26 % | 17,2 | 10,3 | 5,0 | ~16 | 7,4 | 1,70/0,14 | 72 % |
+
+**CM Reborn today**, original profile after the balancing (docs/ENGINE.md step 12), two seeds × 3 seasons:
+
+| Measure | Value |
+|---|---|
+| Goals per match | 2,90 |
+| H/D/A | 51/24/25 % |
+| Champion | 88 points |
+| Last place | 28 points |
+| Top scorer | 34 goals (original 23) |
+
+The top scorer is too high, which suggests our finishing is spread too unevenly between strikers. It is a sign that the
+shot score (3b) matters.
