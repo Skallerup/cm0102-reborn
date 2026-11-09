@@ -16,6 +16,9 @@ describe('trænere og trøjeleverandører 2026/27', () => {
     expect(mgr('Arsenal')).toBe('Mikel Arteta');
     expect(mgr('Manchester City')).toBe('Enzo Maresca');
     expect(mgr('Tottenham Hotspur')).toBe('Roberto De Zerbi');
+    // nationaliteten fra Wikipedia (ikke klubbens land)
+    const arsenal = Object.values(g.clubs).find((x) => x.name === 'Arsenal')!;
+    expect(g.nations[g.staff[arsenal.manager].nation]?.name).toBe('Spain');
     // alle id'er findes i databasen
     const ids = new Set(w.clubs.map((c) => c[0]));
     expect(Object.keys(CLUB_INFO_2026).every((id) => ids.has(Number(id)))).toBe(true);

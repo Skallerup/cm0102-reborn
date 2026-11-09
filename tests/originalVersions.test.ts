@@ -20,6 +20,9 @@ describe('de officielle 01/02-databaser', () => {
       const mgr = (c: number) => { const s = g.staff[g.clubs[c].manager]; return `${s.first} ${s.last}`; };
       expect(mgr(id('Manchester United'))).toMatch(/Ferguson/);
       expect(mgr(id('Liverpool'))).toMatch(/Houllier/);
+      // managerens nationalitet fra databasen
+      expect(g.nations[g.staff[g.clubs[id('Manchester United')].manager].nation]?.name).toBe('Scotland');
+      expect(g.nations[g.staff[g.clubs[id('Arsenal')].manager]?.nation]?.name ?? 'France').toBe('France');
       expect(Object.values(g.players).some((p) => p.club === id('Manchester United') && p.last === 'Ferdinand')).toBe(ferdinandAtMU);
     });
   }

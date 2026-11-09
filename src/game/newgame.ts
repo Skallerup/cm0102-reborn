@@ -434,18 +434,21 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string) 
   const g = gs();
   const r = new Rng(hash(seed, c.id, 99));
   // 2026/27: datakilden har ingen trænere – de rigtige cheftrænere fra CLUB_INFO_2026 (ellers et genereret navn)
-  const coach = world.clubs.find((x) => x[0] === c.id)?.[7] || (world.season >= 2026 ? CLUB_INFO_2026[c.id]?.[0] ?? '' : '');
+  const info = world.season >= 2026 ? CLUB_INFO_2026[c.id] : undefined;
+  const infoNat = info?.[2] ? world.nations.findIndex((n) => n.name === info[2]) : -1;
+  const coach = world.clubs.find((x) => x[0] === c.id)?.[7] || (info?.[0] ? `${info[0].split(' ')[0]}|${info[0].split(' ').slice(1).join(' ')}${infoNat >= 0 ? `|${infoNat}` : ''}` : '');
   const mk = (role: StaffRole, level: number) => {
-    let first: string, last: string;
+    let first: string, last: string, nation = c.nation;
     if (role === 'manager' && coach) {
-      // databasen: "fornavn|efternavn" – ellers første ord som fornavn
+      // databasen: "fornavn|efternavn|nation" – ellers første ord som fornavn
       const parts = coach.includes('|') ? coach.split('|') : [coach.split(' ')[0], coach.split(' ').slice(1).join(' ')];
       first = parts[1] ? parts[0].trim() : '';
       last = (parts[1] || parts[0]).trim();
+      if (parts[2] !== undefined && world.nations[Number(parts[2])]) nation = Number(parts[2]);
     } else {
       [first, last] = randomName(g.names, c.nation, r);
     }
-    const s = makeStaff({ id: g.nextId.staff++, first, last, nation: c.nation, club: c.id, role, level, date, seed });
+    const s = makeStaff({ id: g.nextId.staff++, first, last, nation, club: c.id, role, level, date, seed });
     g.staff[s.id] = s;
     return s;
   };

@@ -275,9 +275,11 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const club = want.get(S.i32(o));
       if (club === undefined) continue;
       const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
-      // "fornavn|efternavn" (newgame deler ved |), så "Sir Alex" + "Ferguson" ikke bliver "Sir" + "Alex Ferguson"
+      // "fornavn|efternavn|nation" (newgame deler ved |), så "Sir Alex" + "Ferguson" ikke bliver "Sir" + "Alex Ferguson"
       const nm = cn ? `|${cn}` : `${first[S.i32(o + 4)] ?? ''}|${second[S.i32(o + 8)] ?? ''}`;
-      if (nm.replace('|', '').trim()) coach.set(club, nm);
+      // tredje felt: managerens nationalitet (staff.dat 26 → nationens nummer i world.nations)
+      const nat = nationIdx.get(S.i32(o + 26));
+      if (nm.replace('|', '').trim()) coach.set(club, nat === undefined ? nm : `${nm}|${nat}`);
     }
     for (const c of clubs) c[7] = coach.get(c[0]) ?? '';
   }
