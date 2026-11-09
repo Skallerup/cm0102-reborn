@@ -197,6 +197,17 @@ const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
+// stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
+if (w.staff) {
+  const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
+  w.staff = w.staff.flatMap((s) => {
+    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9]]; }
+    return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9]] as typeof s];
+  });
+  // de ledige: kun de 600 bedste (world.json skal kunne ligge i appens offline-cache, højst 8 MB)
+  const free = new Set(w.staff.filter((s) => !s[0]).sort((a, b) => b[7] - a[7]).slice(0, 600));
+  w.staff = w.staff.filter((s) => s[0] || free.has(s));
+}
 // dommere: kun fra lande med spilbare ligaer (kampene dømmes af hjemmelandets dommere)
 if (w.officials) { const playable = new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation)); w.officials = w.officials.filter((o) => playable.has(o[2])); }
 // landsholdene (originalen): nationalstadion, FIFA-koefficient, landstræner og tidligere slutrunder (scripts/build-national.py)

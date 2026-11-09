@@ -344,8 +344,16 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
   }
 
-  // Staff
-  for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date);
+  // Staff – med den originale/CM-database: de rigtige trænere, spejdere og fysioterapeuter fra databasen (CMWorld.staff)
+  const dbStaff = new Map<number, NonNullable<CMWorld['staff']>>();
+  for (const row of cm?.staff ?? []) dbStaff.set(row[0], [...(dbStaff.get(row[0]) ?? []), row]);
+  for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
+  // ledige stabsfolk fra databasen (CA 100+): rollen efter deres bedste egenskab
+  for (const row of dbStaff.get(0) ?? []) {
+    const [, , , , , , a] = row;
+    const role: StaffRole = a[3] >= 12 && a[3] >= Math.max(a[0], a[1], a[2]) ? 'physio' : a[1] + a[2] > 2 * a[0] + 2 ? 'scout' : 'coach';
+    addDbStaff(row, 0, role, date, seed);
+  }
   for (let i = 0; i < 160; i++) {
     const r = new Rng(hash(seed, 5000 + i));
     const nation = rng.pick(o.activeNations.length ? o.activeNations : [0]);
@@ -457,7 +465,21 @@ export function takeOverClub(club: Club) {
   setBoardExpectation();
 }
 
-function createClubStaff(c: Club, world: WorldData, seed: number, date: string) {
+/** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
+function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, role: StaffRole, date: string, seed: number): Staff {
+  const g = gs();
+  const [, first, last, nation, dob, , a, ca, rep] = row;
+  const s = makeStaff({ id: g.nextId.staff++, first, last, nation, club, role, level: Math.round(ca / 2), date, seed });
+  const keys: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
+  // 1 står ofte for "ikke sat" (2026/27-opdateringen: Arteta Coaching 1) – så bruges den genererede værdi (*estimeret*)
+  keys.forEach((k, i) => { if (a[i] > 1) s.attrs[k] = a[i]; });
+  if (dob) s.dob = dob;
+  if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
+  g.staff[s.id] = s;
+  return s;
+}
+
+function createClubStaff(c: Club, world: WorldData, seed: number, date: string, db: NonNullable<CMWorld['staff']> = []) {
   const g = gs();
   const r = new Rng(hash(seed, c.id, 99));
   // 2026/27: cheftrænerne fra CLUB_INFO_2026 (Wikipedia, nov. 2026)
@@ -481,15 +503,27 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string) 
     return s;
   };
   const lvl = c.rep;
-  const m = mk('manager', lvl + r.int(-5, 5));
-  c.manager = m.id;
-  mk('assistant', lvl - 5);
+  // databasens folk først (højst som klubbens grænser); managerens navn kommer fra Wikipedia (2026/27) eller clubs[7]
+  const ROLE: Record<number, StaffRole> = { 5: 'manager', 6: 'assistant', 8: 'coach', 9: 'scout', 10: 'physio' };
+  const MAX: Record<StaffRole, number> = { manager: 1, assistant: 1, coach: 7, physio: 3, scout: 7 };
+  const have: Record<StaffRole, number> = { manager: 0, assistant: 0, coach: 0, physio: 0, scout: 0 };
+  for (const row of db.slice().sort((x, y) => y[7] - x[7])) {
+    const role = ROLE[row[5]];
+    if (!role || have[role] >= MAX[role]) continue;
+    // manageren: kun når det er samme person som klubbens manager (Wikipedias nyere navn går forud)
+    if (role === 'manager' && (!coach || !coach.split('|').slice(0, 2).join(' ').trim().endsWith(row[2]))) continue;
+    const s = addDbStaff(row, c.id, role, date, seed);
+    if (role === 'manager') { c.manager = s.id; if (infoNat >= 0) s.nation = infoNat; }
+    have[role]++;
+  }
+  if (!have.manager) { const m = mk('manager', lvl + r.int(-5, 5)); c.manager = m.id; }
+  if (!have.assistant) mk('assistant', lvl - 5);
   const coaches = 2 + Math.floor(c.rep / 25);
-  for (let i = 0; i < coaches; i++) mk('coach', lvl - 8 + r.int(-6, 6));
-  mk('physio', lvl - 5);
-  if (c.rep > 55) mk('physio', lvl - 10);
+  for (let i = have.coach; i < coaches; i++) mk('coach', lvl - 8 + r.int(-6, 6));
+  if (!have.physio) mk('physio', lvl - 5);
+  if (c.rep > 55 && have.physio < 2) mk('physio', lvl - 10);
   const scouts = 1 + Math.floor(c.rep / 30);
-  for (let i = 0; i < scouts; i++) mk('scout', lvl - 8 + r.int(-6, 6));
+  for (let i = have.scout; i < scouts; i++) mk('scout', lvl - 8 + r.int(-6, 6));
 }
 
 const NEED: [SubPos, number][] = [['GK', 3], ['CB', 4], ['LB', 2], ['RB', 2], ['DM', 2], ['CM', 3], ['LW', 1], ['RW', 1], ['LM', 1], ['RM', 1], ['AM', 1], ['CF', 3]];

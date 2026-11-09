@@ -29,6 +29,10 @@ export interface CMWorld extends WorldData {
   valueClub?: Record<number, [number, number, number, number]>;
   /** dommere fra officials.dat: [fornavn, efternavn, nation, Discipline (byte 0x25, 0 = ikke vurderet), 0x27, omdømme] */
   officials?: [string, string, number, number, number, number][];
+  /** stab fra databasen (ikke-spillerposten): [klub (0 = ledig), fornavn, efternavn, nation, fødselsdato, job (5 manager,
+   *  6 assistent, 8 træner, 9 spejder, 10 fysioterapeut), egenskaber [Coaching, Judging Player Ability, Judging Player Potential,
+   *  Physiotherapy, Motivating, Discipline, Tactical Knowledge] (0 = ikke sat), CA, omdømme (0-200), staff-id] */
+  staff?: [number, string, string, number, string, number, number[], number, number, number][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -315,6 +319,34 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     for (const c of clubs) c[7] = coach.get(c[0]) ?? '';
   }
 
+  // stab (ikke-spillerposten, 68 bytes): 21 egenskaber i alfabetisk rækkefølge fra +14 (bekræftet i originalens Non-Playing Staff);
+  // jobkoden i personposten +61 (5 Manager, 6 Assistant Manager, 8 Coach, 9 Scout, 10 Physio – bekræftet for Man Utd 3.9.60)
+  const staff: NonNullable<CMWorld['staff']> = [];
+  if (NON_REF >= 0) {
+    // Coaching +16, Discipline +20, Judging Ability +23, Judging Potential +24, Motivating +27, Physiotherapy +30, Tactics +33
+    const OFS = [16, 23, 24, 30, 27, 20, 33];
+    for (let i = 0; i < tStaff.count; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const np = nonAt.get(S.i32(o + NON_REF));
+      if (np === undefined) continue;
+      const club = S.i32(o + 57), job = S.u8(o + 61);
+      const ca = S.i16(np + 4);
+      const att = OFS.map((k) => { const v = S.u8(np + k); return v >= 1 && v <= 20 ? v : 0; });
+      if (!att.some(Boolean)) continue;
+      const here = inGame.has(club);
+      if (here ? ![5, 6, 8, 9, 10].includes(job) : ca < 100) continue;
+      const nation = nationIdx.get(S.i32(o + 26));
+      if (nation === undefined) continue;
+      const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
+      const fn = cn ? '' : first[S.i32(o + 4)] ?? '', ln = cn || second[S.i32(o + 8)] || '';
+      if (!ln) continue;
+      let dob = S.date(o + 16);
+      if (!dob) { const yob = S.i16(o + 24); dob = yob > 1900 && yob < 2100 ? `${yob}-01-01` : ''; }
+      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o)]);
+    }
+  }
+
   // spillere
   const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number', 'wage'];
   const players: WorldData['players'] = [];
@@ -408,7 +440,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   return {
     kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
-    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub, ...(officials.length ? { officials } : {}), rules,
+    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 
