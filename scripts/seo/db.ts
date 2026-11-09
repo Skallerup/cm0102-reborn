@@ -10,6 +10,7 @@ import { POSITIONS, SIDES, type Player, type Role } from '../../src/game/types';
 import { realCompName } from '../../src/i18n/comps';
 import { EU_EEA } from '../../src/game/rules2001';
 import { logoUrl, setLogoData } from '../../src/ui/logos';
+import { CLUB_INFO_2026 } from '../../src/game/data/clubInfo2026';
 import { CTA, esc, render, slugify, type Crumb, type Page } from './layout';
 
 export interface DbConf {
@@ -47,7 +48,7 @@ export interface DP {
   contract: string; wage: number; number: number; ca: number; pa: number; paRaw: number; attrs: number[]; game: number[];
   pos: number[]; side: number[]; value: number;
 }
-interface DC { id: number; name: string; slug: string; url: string; nation: number; league: string | null; stadium: string; cap: number; rep: number; balance: number; gate: number; facilities: number; colors: [string, string] | null; players: DP[]; strength: number; logo: string | null; photo: string | null }
+interface DC { id: number; name: string; slug: string; url: string; nation: number; league: string | null; stadium: string; cap: number; rep: number; balance: number; gate: number; facilities: number; colors: [string, string] | null; players: DP[]; strength: number; logo: string | null; photo: string | null; manager: string; managerNation: number | null; kit: string }
 interface DL { id: string; name: string; real: string; slug: string; url: string; nation: number; tier: number; clubs: DC[] }
 interface DN { idx: number; name: string; slug: string; url: string; players: DP[] }
 
@@ -113,6 +114,15 @@ export function buildDb(conf: DbConf): DbOut {
   const hiddenLeague = new Set(world.leagues.filter((l) => l.hidden).map((l) => l.id));
   const clubRow = new Map(world.clubs.map((c) => [c[0] as number, c]));
   const nationName = (i: number) => world.nations[i]?.name ?? '';
+  // manageren: 2026/27 fra Wikipedias trænerlister (CLUB_INFO_2026), ellers databasens (club.dat 207 → "fornavn|efternavn|nation")
+  const managerOf = (id: number, raw: string | undefined, clubNation: number) => {
+    const info = !conf.original ? CLUB_INFO_2026[id] : undefined;
+    if (info?.[0]) { const n = world.nations.findIndex((x) => x.name === info[2]); return { manager: info[0], managerNation: n >= 0 ? n : clubNation, kit: info[1] }; }
+    const parts = (raw ?? '').split('|');
+    const name = parts.length > 1 ? [parts[0], parts[1]].filter(Boolean).join(' ').trim() : (raw ?? '').trim();
+    const nat = parts[2] !== undefined && world.nations[Number(parts[2])] ? Number(parts[2]) : name ? clubNation : null;
+    return { manager: name, managerNation: nat, kit: info?.[1] ?? '' };
+  };
 
   // ---------- spillere ----------
   const all: DP[] = [];
@@ -184,6 +194,7 @@ export function buildDb(conf: DbConf): DbOut {
       rep: world.clubRep?.[id] ?? gc?.rep ?? 0, balance: fin ? fin[0] : gc ? gbp(gc.balance) : 0, gate: fin?.[1] ?? 0, facilities: fin?.[2] ?? gc?.facilities ?? 0,
       colors: (gc?.colors as [string, string]) ?? null, players: ps, strength: ps.slice(0, 16).reduce((s, p) => s + p.ca, 0) / Math.max(1, Math.min(16, ps.length)),
       logo: logoUrl(id), photo: photo ? `/stadiums/${photo}.jpg` : null,
+      ...managerOf(id, c[7] as string | undefined, c[3] as number),
     });
   }
   const clubOf = (p: DP) => clubs.get(p.club);
@@ -359,11 +370,14 @@ ${mates.length ? `<h2>${c ? `${esc(c.name)} team-mates` : 'Team-mates'}</h2>${mi
     const intro: string[] = [];
     intro.push(`${esc(c.name)} ${l ? `play in the <a href="${l.url}">${esc(l.real)}</a>` : `are a club from ${n ? `<a href="${n.url}">${esc(n.name)}</a>` : esc(nationName(c.nation))} (their league is not playable, but the players can be scouted and signed)`} in ${conf.dbName}.`);
     if (c.stadium) intro.push(`They play at ${esc(c.stadium)}${c.cap ? ` (capacity ${c.cap.toLocaleString('en')})` : ''}.`);
+    if (c.manager) intro.push(`The manager is ${esc(c.manager)}${c.managerNation !== null && c.managerNation !== c.nation ? ` (${esc(nationName(c.managerNation))})` : ''}.`);
     if (star) intro.push(`The best player in the squad is ${pLink(star)} (CA ${star.ca})${kid && kid !== star ? `, and the brightest young talent is ${pLink(kid)} (${kid.age}, PA ${paText(kid)})` : ''}.`);
     if (sr && l) intro.push(`By squad strength (average ability of the best 16 players) they rank ${ord(sr)} of ${l.clubs.length} in the league – ${sr <= 2 ? 'title contenders' : sr <= Math.ceil(l.clubs.length / 4) ? 'one of the top sides' : sr > l.clubs.length - 3 ? 'expect a relegation battle' : 'a mid-table squad'}.`);
     const kv: [string, string][] = [
       ...(l ? [['League', `<a href="${l.url}">${esc(l.real)}</a>`] as [string, string]] : []),
       ['Country', nationLink(c.nation)],
+      ...(c.manager ? [['Manager', `${esc(c.manager)}${c.managerNation !== null ? ` <span class="note">(${esc(nationName(c.managerNation))})</span>` : ''}`] as [string, string]] : []),
+      ...(c.kit ? [['Kit manufacturer', esc(c.kit)] as [string, string]] : []),
       ...(c.stadium ? [['Stadium', esc(c.stadium)] as [string, string]] : []),
       ...(c.cap ? [['Capacity', c.cap.toLocaleString('en')] as [string, string]] : []),
       ...(c.gate ? [['Average attendance', c.gate.toLocaleString('en')] as [string, string]] : []),
@@ -379,10 +393,10 @@ ${mates.length ? `<h2>${c ? `${esc(c.name)} team-mates` : 'Team-mates'}</h2>${mi
       slug: c.url.slice(1),
       title: `${c.name} ${conf.game} – Squad, Best Players & Wonderkids (${conf.season}) | CM Reborn`,
       h1: `${c.name} – ${conf.game} squad and players`,
-      description: `${c.name} in ${conf.game} ${conf.season}: the full squad with CA/PA, the best players${kid ? ', wonderkids' : ''}, stadium, budget and the players out of contract – from ${conf.dbName}.`,
+      description: `${c.name} in ${conf.game} ${conf.season}: the full squad with CA/PA, the best players${kid ? ', wonderkids' : ''}${c.manager ? `, manager ${c.manager}` : ''}, stadium, budget and the players out of contract – from ${conf.dbName}.`,
       crumbs: [hubCrumb, ...(l ? [{ name: l.real, url: l.url }] : n ? [{ name: n.name, url: n.url }] : [])],
       image: c.photo ? `https://cm0102reborn.com${c.photo}` : undefined,
-      ld: [{ '@type': 'SportsTeam', name: c.name, sport: 'Football', ...(c.logo ? { logo: c.logo } : {}), ...(c.stadium ? { location: { '@type': 'StadiumOrArena', name: c.stadium, ...(c.cap ? { maximumAttendeeCapacity: c.cap } : {}) } } : {}), ...(l ? { memberOf: { '@type': 'SportsOrganization', name: l.real } } : {}) }],
+      ld: [{ '@type': 'SportsTeam', name: c.name, sport: 'Football', ...(c.logo ? { logo: c.logo } : {}), ...(c.manager ? { coach: { '@type': 'Person', name: c.manager, ...(c.managerNation !== null ? { nationality: nationName(c.managerNation) } : {}) } } : {}), ...(c.stadium ? { location: { '@type': 'StadiumOrArena', name: c.stadium, ...(c.cap ? { maximumAttendeeCapacity: c.cap } : {}) } } : {}), ...(l ? { memberOf: { '@type': 'SportsOrganization', name: l.real } } : {}) }],
       body: `<div class="hero">${c.logo ? `<img class="crest" src="${esc(c.logo)}" alt="${esc(c.name)} crest" loading="lazy" width="84" height="84">` : ''}<p class="lead" style="flex:1;min-width:260px">${intro.join(' ')}</p></div>
 ${c.photo ? `<img class="photo" src="${c.photo}" alt="${esc(c.stadium)}" loading="lazy">` : ''}
 <dl class="kv">${kv.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('')}</dl>
@@ -395,6 +409,7 @@ ${c.photo ? '<p class="note">Stadium photo: Naydav\'s CM0102 Background Image Pa
       faq: [
         [`Who is the best player at ${c.name} in ${conf.game}?`, star ? `${star.name} (CA ${star.ca}, PA ${paText(star)}).${ps[1] ? ` Next are ${listJoin(ps.slice(1, 4).map((p) => `${p.name} (${p.ca})`))}.` : ''}` : 'The club has no players in the database.'],
         ...(kid ? [[`Who is the best wonderkid at ${c.name}?`, `${kid.name}, aged ${kid.age}, with a potential of ${paText(kid)}.`] as [string, string]] : []),
+        ...(c.manager ? [[`Who is the manager of ${c.name} in ${conf.game}?`, `${c.manager}${c.managerNation !== null ? ` (${nationName(c.managerNation)})` : ''}${conf.original ? ', as in the original database' : ''}.${c.kit ? ` The kit is made by ${c.kit}.` : ''}`] as [string, string]] : []),
         [`Can I manage ${c.name} in CM Reborn?`, l ? `Yes. Start a new game with ${conf.original ? 'the original 2001/02 database' : `the ${conf.season} database`}, choose ${nationName(c.nation)} and pick ${c.name}.` : `No – ${c.name}'s league is not playable in this database, but you can scout and sign their players.`],
       ],
     });

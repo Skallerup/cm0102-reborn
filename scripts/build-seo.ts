@@ -9,7 +9,7 @@ import { alternatesFor, langPages, toPage } from './seo/i18n';
 import { guides } from './seo/guides';
 
 /** dato for databasesidernes indhold (sitemap lastmod) – hæv den, når siderne ændres mærkbart */
-const CONTENT_DATE = '2026-11-07';
+const CONTENT_DATE = '2026-11-09';
 
 type Row = (string | number)[];
 interface World { season: number; playerFields: string[]; players: Row[]; clubs: Row[]; nations: { name: string }[]; leagues: { id: string; name: string; nation: number; tier?: number }[]; ratings: Record<string, { ca: number; pa: number; paRaw?: number }> }
@@ -77,7 +77,7 @@ const pages: Page[] = [
 ${CTA}
 <h2>What you get</h2>
 <ul>
-<li><b>Two databases:</b> the original CM 01/02 database (patch 3.9.68, season 2001/02, ${nO} players in ${leaguesO} leagues) and the community 2026/27 update (${nM} players in ${leaguesM} leagues).</li>
+<li><b>Two databases:</b> the original CM 01/02 database for 2001/02 – choose the official release 3.9.60 (the one CM 01/02 itself uses), patch 3.9.65 or the final patch 3.9.68 (${nO} players in ${leaguesO} leagues) – and the community 2026/27 update (${nM} players in ${leaguesM} leagues).</li>
 <li><b>The classic CM 01/02 screens:</b> the blue menus, the yellow-on-blue match commentary, Match Overview, the squad screen with selection buttons, Staff Search, Find – and stadium backgrounds on matchdays.</li>
 <li><b>A match engine calibrated against the original:</b> we played a full season of the original CM 01/02 and matched goals per game (2.87), home wins, cards, corners and shots on target.</li>
 <li><b>Real squad numbers</b> from the database, wonderkids with random potential, transfers, loans, press conferences, board confidence and the sack.</li>
@@ -260,12 +260,12 @@ ${groups.map(([name, , mod]) => `  <sitemap><loc>${SITE}/sitemap-${name}.xml</lo
 // llms.txt: kort, faktuel beskrivelse til AI-tjenester (https://llmstxt.org)
 writeFileSync('public/llms.txt', `# CM Reborn
 
-> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database (patch 3.9.68, season 2001/02, ${nO} players) and a 2026/27 database (${nM} players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in ten languages.
+> CM Reborn (cm0102reborn.com) is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. It has the original CM 01/02 database for 2001/02 in all three official versions (3.9.60, 3.9.65 and 3.9.68; ${nO} players in 3.9.68) and a 2026/27 database (${nM} players), the classic CM 01/02 look or a modern look, online multiplayer, a fantasy draft league and global rankings. It works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android, and in ten languages.
 
 Key facts:
 - Price: free. No ads, no in-game purchases.
 - Play: open https://cm0102reborn.com, choose New game, pick a database and a look.
-- Databases: original CM 01/02 3.9.68 (2001/02, ${leaguesO} leagues) and 2026/27 (${leaguesM} leagues); real squad numbers, clubs and stadiums.
+- Databases: original CM 01/02 for 2001/02 – 3.9.60 (default), 3.9.65 or 3.9.68 (${leaguesO} leagues) – and 2026/27 (${leaguesM} leagues); real squad numbers, managers, clubs and stadiums; attributes, random potential (PA -1/-2) and starting finances as in the original game.
 - Classic CM 01/02 screens: blue menus, Match Overview with commentary, squad selection, tactics with player runs, Staff Search, Find, stadium backgrounds on matchdays.
 - Match engine calibrated against a full season of the original CM 01/02.
 - Saves are stored in the browser (export/import, optional cloud saves). Installable as an app (PWA), works offline.

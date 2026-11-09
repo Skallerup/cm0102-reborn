@@ -16,7 +16,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Spil gratis i browseren', ctaNote: 'Ingen download · ingen reklamer · virker på alle enheder',
       why: 'Det får du',
       points: [
-        `<b>To databaser:</b> den originale CM 01/02-database (patch 3.9.68, ${n} spillere) og 2026/27-opdateringen (${m} spillere).`,
+        `<b>To databaser:</b> den originale CM 01/02-database (alle tre officielle udgaver: 3.9.60, 3.9.65 og 3.9.68 – ${n} spillere) og 2026/27-opdateringen (${m} spillere).`,
         '<b>De klassiske skærme:</b> blå menuer, Match Overview med den gule kommentar, holdudtagelse, taktik med løbepile, Staff Search og Find.',
         '<b>En kampmotor kalibreret mod originalen:</b> mål, hjemmesejre, kort og skud pr. kamp som i det rigtige CM 01/02.',
         '<b>Wonderkids med tilfældigt potentiale</b> (Cherno Samba, Tsigalko …), Bosman-handler, lejeaftaler, bestyrelsen og fyringer.',
@@ -41,7 +41,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Spela gratis i webbläsaren', ctaNote: 'Ingen nedladdning · ingen reklam · fungerar på alla enheter',
       why: 'Det här får du',
       points: [
-        `<b>Två databaser:</b> originaldatabasen för CM 01/02 (patch 3.9.68, ${n} spelare) och 2026/27-uppdateringen (${m} spelare).`,
+        `<b>Två databaser:</b> originaldatabasen för CM 01/02 (alla tre officiella versioner: 3.9.60, 3.9.65 och 3.9.68 – ${n} spelare) och 2026/27-uppdateringen (${m} spelare).`,
         '<b>De klassiska skärmarna:</b> blå menyer, Match Overview med kommentaren, laguttagning, taktik med löppilar och Find.',
         '<b>En matchmotor kalibrerad mot originalet</b> – mål, hemmasegrar och kort per match som i riktiga CM 01/02.',
         '<b>Wonderkids med slumpmässig potential</b>, Bosman-värvningar, lån, styrelsen och sparken.',
@@ -66,7 +66,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Spill gratis i nettleseren', ctaNote: 'Ingen nedlasting · ingen reklame · virker på alle enheter',
       why: 'Dette får du',
       points: [
-        `<b>To databaser:</b> den originale CM 01/02-databasen (patch 3.9.68, ${n} spillere) og 2026/27-oppdateringen (${m} spillere).`,
+        `<b>To databaser:</b> den originale CM 01/02-databasen (alle tre offisielle versjoner: 3.9.60, 3.9.65 og 3.9.68 – ${n} spillere) og 2026/27-oppdateringen (${m} spillere).`,
         '<b>De klassiske skjermene:</b> blå menyer, Match Overview med kommentaren, laguttak, taktikk med løpepiler og Find.',
         '<b>En kampmotor kalibrert mot originalen</b> – mål, hjemmeseire og kort per kamp som i ekte CM 01/02.',
         '<b>Wonderkids med tilfeldig potensial</b>, Bosman-overganger, lån, styret og sparken.',
@@ -91,7 +91,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Kostenlos im Browser spielen', ctaNote: 'Kein Download · keine Werbung · läuft auf jedem Gerät',
       why: 'Das bekommst du',
       points: [
-        `<b>Zwei Datenbanken:</b> die originale CM-01/02-Datenbank (Patch 3.9.68, ${n} Spieler) und das 2026/27-Update (${m} Spieler).`,
+        `<b>Zwei Datenbanken:</b> die originale CM-01/02-Datenbank (alle drei offiziellen Versionen: 3.9.60, 3.9.65 und 3.9.68 – ${n} Spieler) und das 2026/27-Update (${m} Spieler).`,
         '<b>Die klassischen Bildschirme:</b> blaue Menüs, Match Overview mit Kommentar, Aufstellung, Taktik mit Laufpfeilen, Staff Search und Find.',
         '<b>Eine Spiel-Engine, kalibriert am Original:</b> Tore, Heimsiege, Karten und Schüsse pro Spiel wie im echten CM 01/02.',
         '<b>Wonderkids mit zufälligem Potenzial</b>, Bosman-Transfers, Leihen, Vorstand und Entlassung.',
@@ -116,7 +116,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Juega gratis en el navegador', ctaNote: 'Sin descargas · sin anuncios · en cualquier dispositivo',
       why: 'Qué incluye',
       points: [
-        `<b>Dos bases de datos:</b> la original de CM 01/02 (parche 3.9.68, ${n} jugadores) y la actualización 2026/27 (${m} jugadores).`,
+        `<b>Dos bases de datos:</b> la original de CM 01/02 (las tres versiones oficiales: 3.9.60, 3.9.65 y 3.9.68 – ${n} jugadores) y la actualización 2026/27 (${m} jugadores).`,
         '<b>Las pantallas clásicas:</b> menús azules, Match Overview con comentarios, alineación, tácticas con flechas de desmarque, Staff Search y Find.',
         '<b>Un motor de partidos calibrado con el original:</b> goles, victorias locales, tarjetas y tiros como en el CM 01/02 real.',
         '<b>Wonderkids con potencial aleatorio</b>, fichajes Bosman, cesiones, la directiva y el despido.',
@@ -141,7 +141,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Jouer gratuitement', ctaNote: 'Sans téléchargement · sans publicité · sur tous les appareils',
       why: 'Au programme',
       points: [
-        `<b>Deux bases de données :</b> l'originale de CM 01/02 (patch 3.9.68, ${n} joueurs) et la mise à jour 2026/27 (${m} joueurs).`,
+        `<b>Deux bases de données :</b> l'originale de CM 01/02 (les trois versions officielles : 3.9.60, 3.9.65 et 3.9.68 – ${n} joueurs) et la mise à jour 2026/27 (${m} joueurs).`,
         '<b>Les écrans classiques :</b> menus bleus, Match Overview avec commentaires, composition, tactiques avec flèches de course, Staff Search et Find.',
         '<b>Un moteur de match calibré sur l’original :</b> buts, victoires à domicile, cartons et tirs comme dans le vrai CM 01/02.',
         '<b>Des wonderkids au potentiel aléatoire</b>, transferts Bosman, prêts, conseil d’administration et licenciement.',
@@ -166,7 +166,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Gioca gratis nel browser', ctaNote: 'Nessun download · nessuna pubblicità · su ogni dispositivo',
       why: 'Cosa trovi',
       points: [
-        `<b>Due database:</b> quello originale di CM 01/02 (patch 3.9.68, ${n} giocatori) e l’aggiornamento 2026/27 (${m} giocatori).`,
+        `<b>Due database:</b> quello originale di CM 01/02 (tutte e tre le versioni ufficiali: 3.9.60, 3.9.65 e 3.9.68 – ${n} giocatori) e l’aggiornamento 2026/27 (${m} giocatori).`,
         '<b>Le schermate classiche:</b> menu blu, Match Overview con la cronaca, formazione, tattiche con le frecce di inserimento, Staff Search e Find.',
         '<b>Un motore partita calibrato sull’originale:</b> gol, vittorie in casa, cartellini e tiri come nel vero CM 01/02.',
         '<b>Wonderkids con potenziale casuale</b>, svincolati Bosman, prestiti, la dirigenza e l’esonero.',
@@ -191,7 +191,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Jogue grátis no navegador', ctaNote: 'Sem download · sem anúncios · em qualquer aparelho',
       why: 'O que tem',
       points: [
-        `<b>Dois bancos de dados:</b> o original do CM 01/02 (patch 3.9.68, ${n} jogadores) e a atualização 2026/27 (${m} jogadores).`,
+        `<b>Dois bancos de dados:</b> o original do CM 01/02 (as três versões oficiais: 3.9.60, 3.9.65 e 3.9.68 – ${n} jogadores) e a atualização 2026/27 (${m} jogadores).`,
         '<b>As telas clássicas:</b> menus azuis, Match Overview com narração, escalação, táticas com setas de movimentação, Staff Search e Find.',
         '<b>Um motor de partidas calibrado com o original:</b> gols, vitórias em casa, cartões e chutes como no CM 01/02 de verdade.',
         '<b>Wonderkids com potencial aleatório</b>, contratações Bosman, empréstimos, a diretoria e a demissão.',
@@ -216,7 +216,7 @@ export function langPages(n: string, m: string): LangPage[] {
       cta: '▶ Tarayıcıda ücretsiz oyna', ctaNote: 'İndirme yok · reklam yok · her cihazda çalışır',
       why: 'Neler var',
       points: [
-        `<b>İki veritabanı:</b> orijinal CM 01/02 veritabanı (yama 3.9.68, ${n} oyuncu) ve 2026/27 güncellemesi (${m} oyuncu).`,
+        `<b>İki veritabanı:</b> orijinal CM 01/02 veritabanı (üç resmi sürümün tümü: 3.9.60, 3.9.65 ve 3.9.68 – ${n} oyuncu) ve 2026/27 güncellemesi (${m} oyuncu).`,
         '<b>Klasik ekranlar:</b> mavi menüler, yorumlu Match Overview, kadro seçimi, koşu oklarıyla taktik, Staff Search ve Find.',
         '<b>Orijinale göre ayarlanmış maç motoru:</b> maç başına gol, ev sahibi galibiyeti, kart ve şut gerçek CM 01/02 gibi.',
         '<b>Rastgele potansiyelli wonderkid’ler</b>, Bosman transferleri, kiralıklar, yönetim kurulu ve kovulma.',

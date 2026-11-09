@@ -45,7 +45,7 @@ export function guides(db: DbOut): Page[] {
       description: 'Championship Manager 01/02 has been free to download since Eidos released it as freeware in 2008. Here is where the official download and patch 3.9.68 live, how to run it on Windows, Mac and Linux – and how to play it in a browser with no download at all.',
       body: `<p class="lead">Yes – CM 01/02 is free. In December 2008 Eidos released Championship Manager 01/02 as freeware, and the fan community has kept it alive ever since. But if you just want to play, you no longer need to download anything.</p>
 <h2>Option 1: play in your browser (no download)</h2>
-<p><a href="/">CM Reborn</a> is a free fan remake of CM 01/02 that runs in any browser. It ships with the original 2001/02 database (patch 3.9.68), the classic blue CM screens and a match engine calibrated against the original – and it works on Mac, iPad, Chromebook and phones, where the original never ran.</p>
+<p><a href="/">CM Reborn</a> is a free fan remake of CM 01/02 that runs in any browser. It ships with the original 2001/02 database in all three official versions (3.9.60, 3.9.65 and 3.9.68), the classic blue CM screens and a match engine calibrated against the original – and it works on Mac, iPad, Chromebook and phones, where the original never ran.</p>
 <h2>Option 2: download the original</h2>
 <ul>
 <li><b>Where:</b> the community site <a href="https://champman0102.net" rel="nofollow noopener">champman0102.net</a> hosts the free download, the official 3.9.68 patch and unofficial data updates.</li>
@@ -53,8 +53,14 @@ export function guides(db: DbOut): Page[] {
 <li><b>Mac and Linux:</b> only through Wine, CrossOver or a virtual machine.</li>
 <li><b>iPad, Android, Chromebook:</b> not really – use a browser version instead.</li>
 </ul>
-<h2>Patch 3.9.68</h2>
-<p>3.9.68 was the final official patch for CM 01/02 and is the database most people mean when they talk about the game: Tsigalko at Dinamo Minsk, Cherno Samba at Millwall, To Madeira's legend. CM Reborn uses it for its <a href="/cm-01-02/">CM 01/02 database</a> – every player's attributes are on a profile page.</p>
+<h2>Which database version: 3.9.60, 3.9.65 or 3.9.68?</h2>
+<p>CM 01/02 had three official databases, and CM Reborn lets you pick any of them when you start a new game:</p>
+<ul>
+<li><b>3.9.60</b> – the original release (October 2001) and the one CM 01/02 itself uses for the 2001/02 season: squads from summer 2001, Rio Ferdinand still at Leeds, Owen on £30,000 a week.</li>
+<li><b>3.9.65</b> – the official patch with the same 2001/02 squads and the data corrections from the update (it already has the autumn 2001 moves, such as Robbie Fowler at Leeds).</li>
+<li><b>3.9.68</b> – the final patch: squads and transfers from 2002/03 (Ferdinand at Man Utd, Anelka at Man City), but the game still starts in July 2001. Tsigalko at Dinamo Minsk and Cherno Samba at Millwall are in every version.</li>
+</ul>
+<p>The <a href="/cm-01-02/">CM 01/02 database pages</a> show the 3.9.68 data – every player's attributes are on a profile page.</p>
 <h2>Original vs. CM Reborn</h2>
 <div class="tw"><table><thead><tr><th></th><th>CM 01/02 (original)</th><th>CM Reborn</th></tr></thead><tbody>
 <tr><td>Price</td><td>Free (freeware since 2008)</td><td>Free, no ads</td></tr>
@@ -65,6 +71,7 @@ export function guides(db: DbOut): Page[] {
 </tbody></table></div>`,
       faq: [
         ['Is CM 01/02 free to download?', 'Yes. Eidos made Championship Manager 01/02 freeware in 2008. The community site champman0102.net hosts the download and patch 3.9.68.'],
+        ['What is the difference between CM 01/02 3.9.60 and 3.9.68?', '3.9.60 is the original release with the summer 2001 squads, the one the game uses for 2001/02. 3.9.68 is the final patch with 2002/03 squads and transfers but the same July 2001 start date. CM Reborn has both, plus 3.9.65.'],
         ['Can I play CM 01/02 without downloading it?', 'Yes. CM Reborn is a free CM 01/02 remake that runs in the browser at cm0102reborn.com, with the original 2001/02 database.'],
         ['Does CM 01/02 work on Windows 11?', 'Usually yes, with compatibility settings and the community fixes. If it gives you trouble, the browser remake avoids the problem entirely.'],
       ],
