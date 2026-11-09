@@ -23,7 +23,7 @@ export function LookPicker({ onPick, value }: { onPick?: (l: 'modern' | 'classic
   return (
     <Panel title={t('start.look')}>
       <div className="db-choice">
-        {(['modern', 'classic'] as const).map((l) => (
+        {(['classic', 'modern'] as const).map((l) => (
           <div key={l} role="button" tabIndex={0} className={`db-opt ${look === l ? 'on' : ''}`} onClick={() => pick(l)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') pick(l); }}>
             <ShotPreview names={[`${l}-squad`, `${l}-player`, `${l}-table`]} labels={[t('nav.squad'), t('start.prevPlayer'), t('start.prevTable')]} />
             <b>{t(`land.looks.${l}`)}</b><span>{t(l === 'modern' ? 'start.lookModernHint' : 'start.lookClassicHint')}</span>
