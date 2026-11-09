@@ -271,6 +271,10 @@ ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
 <li><b>Mental attributes:</b> anticipation and decisions are lowered for teenagers, and big-match temperament and leadership are toned down.</li>
 <li><b>Reputation</b> starts low, so regens are cheap – and often unknown to scouts.</li>
 </ul>
+<h2>The regens to look out for</h2>
+<p>Because a regen inherits the potential and the nationality of the player who retired, the oldest stars in the database tell you which regens are coming – and where. These are the highest-potential players aged 33 or older at the start (original database, patch 3.9.68):</p>
+${((): string => { const old = db.kept.filter((p) => p.age >= 33 && p.pa >= 150).sort((a, b) => b.pa - a.pa || b.age - a.age).slice(0, 20); return `<div class="tw"><table><thead><tr><th>Player</th><th class="n">Age</th><th>Position</th><th>Nation</th><th class="n">PA</th></tr></thead><tbody>${old.map((p) => `<tr><td>${p.url ? `<a href="${p.url}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`}</td><td class="n">${p.age}</td><td>${esc(p.posStr)}</td><td>${esc(db.nationName?.(p.nation) ?? '')}</td><td class="n">${p.pa}</td></tr>`).join('')}</tbody></table></div>`; })()}
+<p class="note">When they retire, a teenager from the same country with the same potential appears – usually within a season or two.</p>
 <h2>Where to find them</h2>
 <p>Younger regens usually go to a youth club or a small club in their country; some start without a club. Scout the countries whose great players have just retired – the potential is passed on. In CM Reborn regens work the same way: they inherit the positions, the attribute profile, the hidden attributes and the potential of the retired player. More on potential in <a href="/cm-01-02-ca-pa-explained/">CA and PA explained</a>, and the current talents in <a href="/cm-01-02-wonderkids/">the wonderkids guide</a>.</p>`,
       faq: [

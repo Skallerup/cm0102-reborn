@@ -110,7 +110,7 @@ function write(slug: string, html: string) {
 }
 
 export interface ClubSum { name: string; url: string; league: string; leagueUrl: string; tier: number; nation: string; balance: number; rep: number; strength: number; kids: number; cap: number; stadium: string; best: string }
-export interface DbOut { /** stabslisternes top 5 (guiden) */ staffTop?: Record<string, { name: string; url: string | null; role: string; club: string; v: number[] }[]>; urls: Record<string, string[]>; /** billeder pr. side (billed-sitemap) */ images: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
+export interface DbOut { /** landets navn (index i world.nations) */ nationName?: (i: number) => string; /** stabslisternes top 5 (guiden) */ staffTop?: Record<string, { name: string; url: string | null; role: string; club: string; v: number[] }[]>; urls: Record<string, string[]>; /** billeder pr. side (billed-sitemap) */ images: Record<string, string[]>; playerUrl: Map<string, string>; kept: (DP & { clubName: string })[]; clubSum: ClubSum[]; players: number; clubs: number; leagues: number; nations: number; lists: number; hub: string; summary: string }
 
 export function buildDb(conf: DbConf): DbOut {
   // "CM 01/02 2026/27" har sæsonen i navnet – den skal ikke stå to gange
@@ -748,5 +748,5 @@ ${CTA}
   const playerUrl = new Map(kept.map((p) => [`${p.name}|${clubName(p)}`, p.url!]));
   const clubSum: ClubSum[] = [...leagues.values()].flatMap((l) => l.clubs.map((c) => ({ name: c.name, url: c.url, league: l.real, leagueUrl: l.url, tier: l.tier, nation: nationName(c.nation), balance: c.balance, rep: c.rep, strength: c.strength, kids: wonder(c.players).length, cap: c.cap, stadium: c.stadium, best: c.players[0]?.name ?? '' })));
   const staffTop = staffPrep ? Object.fromEntries(staffPrep.ranked.map(({ l, rows }) => [l.slug, rows.slice(0, 5).map((x) => ({ name: x.name, url: x.url, role: x.role, club: x.club, v: l.cols.map((k) => x.a[k]) }))])) : undefined;
-  return { staffTop, urls, images, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
+  return { nationName, staffTop, urls, images, playerUrl, kept: kept.map((p) => ({ ...p, clubName: clubName(p) })), clubSum, players: kept.length, clubs: clubs.size, leagues: leagues.size, nations: nations.size, lists: urls.lists.length, hub: `/${P}/`, summary };
 }
