@@ -36,12 +36,40 @@ function players(w: World): P[] {
 }
 const O = players(orig), M = players(modern);
 
+// de tre officielle udgaver: rækker pr. spiller (navn + fødselsår) til sammenligningen og spillerprofilerne
+type VR = { name: string; dob: string; club: string; ca: number };
+const verRows = (w: World): Map<string, VR> => {
+  const F = Object.fromEntries(w.playerFields.map((f, i) => [f, i]));
+  const club = new Map(w.clubs.map((c) => [c[0] as number, c[1] as string]));
+  const m = new Map<string, VR>();
+  const dup = new Set<string>();
+  for (const r of w.players) {
+    const name = [String(r[F.first] ?? '').trim(), String(r[F.last] ?? '').trim()].filter(Boolean).join(' ');
+    // navn + fødselsår (datoerne er rettet med en dag hist og her mellem udgaverne, fx Lampard 21/6 → 20/6)
+    const k = `${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}|${String(r[F.dob]).slice(0, 4)}`;
+    if (m.has(k)) dup.add(k);
+    else m.set(k, { name, dob: r[F.dob] as string, club: club.get(r[F.club] as number) ?? 'Free agent', ca: w.ratings[String(r[F.id])]?.ca ?? 0 });
+  }
+  // navne, der ikke er entydige (to "Raúl" født samme år), sammenlignes ikke
+  for (const k of dup) m.delete(k);
+  return m;
+};
+const VER = { '3.9.60': load('world-original.json'), '3.9.65': load('world-original-3965.json') };
+// 3.9.60-spillerne (wonderkids i spillets standardudgave)
+const O60 = players(VER['3.9.60']);
+const verA = verRows(VER['3.9.60']), verB = verRows(VER['3.9.65']);
+const verKey = (name: string, dob: string) => `${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}|${dob.slice(0, 4)}`;
+const otherVersions = (name: string, dob: string): [string, string][] => {
+  const k = verKey(name, dob);
+  return ([['3.9.60', verA.get(k)?.club], ['3.9.65', verB.get(k)?.club]] as [string, string | undefined][]).filter((x): x is [string, string] => !!x[1]);
+};
+
 // databasesiderne først (spillernavnene i guiderne linker til profilerne)
 const CULT_LIST = (JSON.parse(readFileSync('scripts/cult-players.json', 'utf8')) as { first: string; last: string }[]).map((c) => `${c.first} ${c.last}`.trim());
 const cultSet = new Set(CULT_LIST);
 const dbO = buildDb({
   file: SEO_ORIGINAL, prefix: 'cm-01-02', game: 'CM 01/02', season: '2001/02', dbName: 'the original CM 01/02 database (patch 3.9.68)', original: true, modified: CONTENT_DATE,
-  cult: cultSet,
+  cult: cultSet, otherVersions,
   keep: (p) => p.ca >= 120 || (p.age <= 23 && (p.pa >= 145 || p.paRaw === -2)) || (p.age <= 21 && p.paRaw === -1 && p.ca >= 60) || p.caps >= 30 || cultSet.has(p.name),
 });
 const dbM = buildDb({
@@ -106,6 +134,9 @@ ${CTA}
 ${table(cult)}
 <h2>Top 50 wonderkids with fixed potential (age 21 or younger)</h2>
 ${table(young(O, 21))}
+<h2>Wonderkids in 3.9.60 – the release</h2>
+<p>CM 01/02 shipped with the 3.9.60 database and uses it for the 2001/02 season; the 3.9.68 patch updated the squads to 2002/03 (<a href="/cm-01-02-database-versions/">see the differences</a>). These are the top 20 young players with fixed potential in 3.9.60, as you meet them in CM Reborn's default database:</p>
+${table(young(O60, 21).slice(0, 20))}
 <h2>Best wonderkids by position</h2>
 <h3>Goalkeepers</h3>${table(young(O, 21).filter((p) => GK(p.pos)).slice(0, 5))}
 <h3>Defenders</h3>${table(young(O, 21).filter((p) => DEF(p.pos)).slice(0, 8))}
@@ -222,26 +253,9 @@ ${table(young(M, 20).slice(0, 30))}`,
 
 // databaseudgaverne (3.9.60 / 3.9.65 / 3.9.68) sammenlignet – til guiden cm-01-02-database-versions
 function versionData() {
-  const ver = { '3.9.60': load('world-original.json'), '3.9.65': load('world-original-3965.json'), '3.9.68': orig } as const;
-  type R = { name: string; dob: string; club: string; ca: number };
-  const rows = (w: World): Map<string, R> => {
-    const F = Object.fromEntries(w.playerFields.map((f, i) => [f, i]));
-    const club = new Map(w.clubs.map((c) => [c[0] as number, c[1] as string]));
-    const m = new Map<string, R>();
-    const dup = new Set<string>();
-    for (const r of w.players) {
-      const name = [String(r[F.first] ?? '').trim(), String(r[F.last] ?? '').trim()].filter(Boolean).join(' ');
-      // navn + fødselsår (datoerne er rettet med en dag hist og her mellem udgaverne, fx Lampard 21/6 → 20/6)
-      const k = `${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}|${String(r[F.dob]).slice(0, 4)}`;
-      if (m.has(k)) dup.add(k);
-      else m.set(k, { name, dob: r[F.dob] as string, club: club.get(r[F.club] as number) ?? 'Free agent', ca: w.ratings[String(r[F.id])]?.ca ?? 0 });
-    }
-    // navne, der ikke er entydige (to "Raúl" født samme år), sammenlignes ikke
-    for (const k of dup) m.delete(k);
-    return m;
-  };
-  const a = rows(ver['3.9.60']), b = rows(ver['3.9.65']), c = rows(ver['3.9.68']);
-  const moved = (x: Map<string, R>, y: Map<string, R>) => [...x].flatMap(([k, p]) => { const q = y.get(k); return q && q.club !== p.club && p.club !== 'Free agent' ? [{ name: p.name, from: p.club, to: q.club, ca: Math.max(p.ca, q.ca) }] : []; }).sort((m, n) => n.ca - m.ca);
+  const ver = { ...VER, '3.9.68': orig } as const;
+  const a = verA, b = verB, c = verRows(orig);
+  const moved = (x: Map<string, VR>, y: Map<string, VR>) => [...x].flatMap(([k, p]) => { const q = y.get(k); return q && q.club !== p.club && p.club !== 'Free agent' ? [{ name: p.name, from: p.club, to: q.club, ca: Math.max(p.ca, q.ca) }] : []; }).sort((m, n) => n.ca - m.ca);
   const stats = Object.entries(ver).map(([v, w]) => ({ v, players: w.players.length, leagues: w.leagues.filter((l) => !(l as { hidden?: boolean }).hidden).length, clubs: w.clubs.length }));
   return {
     stats, early: moved(a, b).slice(0, 15), late: moved(a, c).slice(0, 30), movedCount: moved(a, c).length,

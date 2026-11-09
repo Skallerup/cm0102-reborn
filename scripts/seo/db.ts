@@ -30,6 +30,8 @@ export interface DbConf {
   cult?: Set<string>;
   /** spillere, der får egen side */
   keep: (p: DP) => boolean;
+  /** klubben i de andre databaseudgaver (kun den originale): navn + fødselsdato → [udgave, klub] */
+  otherVersions?: (name: string, dob: string) => [string, string][];
 }
 
 type Row = (string | number)[];
@@ -289,14 +291,23 @@ export function buildDb(conf: DbConf): DbOut {
     // tekst
     const intro: string[] = [];
     intro.push(`${esc(p.name)} is a ${p.age}-year-old ${roleWord} from ${n ? `<a href="${n.url}">${esc(n.name)}</a>` : esc(nationName(p.nation))}${c ? ` who plays for ${clubLink(p)}` : p.club < 0 ? ' without a club (free agent)' : ` at ${esc(clubName(p))}`} in ${conf.dbName}.`);
-    intro.push(`He has a current ability (CA) of <b>${p.ca}</b> and ${random ? `a <b>random potential</b> – the database stores ${p.paRaw}, so the game rolls his potential ability between ${p.paRaw === -2 ? '150 and 200' : '100 and 150'} at the start of every new save` : `a potential ability (PA) of <b>${p.pa}</b>`}${!random && p.pa - p.ca >= 25 ? `, which leaves ${p.pa - p.ca} points of room to grow` : ''}.`);
+    intro.push(`He has a current ability (CA) of <b>${p.ca}</b> and ${random ? `a <b>random potential</b> – the database stores ${p.paRaw}, so the game rolls his potential ability at the start of every new save – ${p.paRaw === -2 ? 'usually between 120 and 200 (153 on average)' : 'usually between 80 and 160 (118 on average)'}` : `a potential ability (PA) of <b>${p.pa}</b>`}${!random && p.pa - p.ca >= 25 ? `, which leaves ${p.pa - p.ca} points of room to grow` : ''}.`);
     if (pr && pr <= 100) intro.push(`That makes him the ${ord(pr)} best ${grp!.one} in the database ${atStart}.`);
     else if (nr && nr <= 50 && n) intro.push(`He is the ${ord(nr)} best ${esc(n.name)} player in the database.`);
     if (youngRank && youngRank <= 200) intro.push(`Among players aged 21 or younger he ranks ${ord(youngRank)} by potential – one of the ${youngRank <= 50 ? 'top' : 'best-known'} ${conf.game} wonderkids.`);
     intro.push(`His best attributes are ${listJoin(best.map(([k, v]) => `${ATTR_LABEL[k].toLowerCase()} (${v})`))}.`);
+    // de andre officielle udgaver (3.9.60 = den, spillet selv bruger til 2001/02)
+    const other = (conf.otherVersions?.(p.name, p.dob) ?? []).filter(([, club]) => club !== clubName(p));
+    if (other.length) {
+      const byClub = new Map<string, string[]>();
+      for (const [v, club] of other) byClub.set(club, [...(byClub.get(club) ?? []), v]);
+      const parts = [...byClub].map(([club, vs]) => `in ${listJoin(vs)} he is ${club === 'Free agent' ? 'a free agent' : `at ${esc(club)}`}`);
+      intro.push(`${parts.join('; ').replace(/^in/, 'In')} – <a href="/cm-01-02-database-versions/">see how the database versions differ</a>${other.some(([v]) => v === '3.9.60') ? ' (3.9.60 is the release the game itself uses for 2001/02)' : ''}.`);
+    }
 
     const kv: [string, string][] = [
       ['Club', c ? clubLink(p) : esc(clubName(p))],
+      ...other.map(([v, club]) => [`Club in ${v}`, esc(club)] as [string, string]),
       ...(l ? [['League', `<a href="${l.url}">${esc(l.real)}</a>`] as [string, string]] : []),
       ['Nationality', nationLink(p.nation)],
       ['Born', `${longDate(p.dob)} (age ${p.age})`],
@@ -526,6 +537,31 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
   }
   const listGroups = [...new Set(lists.map((l) => l.group))];
   const listIndex = listGroups.map((gr) => `<h3>${gr}</h3><div class="cols">${lists.filter((l) => l.group === gr && l.rows.length).map((l) => `<a href="/${P}/lists/${l.slug}/">${esc(l.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}</div>`).join('');
+  // ---------- managere (databasens egne – 2026/27 fra Wikipedias trænerlister) ----------
+  {
+    const mgrs = [...leagues.values()].flatMap((l) => l.clubs.filter((c) => c.manager).map((c) => ({ c, l }))).sort((a, b) => a.l.tier - b.l.tier || b.c.rep - a.c.rep);
+    if (mgrs.length) {
+      const natCount = new Map<string, number>();
+      for (const { c } of mgrs) if (c.managerNation !== null) natCount.set(nationName(c.managerNation), (natCount.get(nationName(c.managerNation)) ?? 0) + 1);
+      const topNat = [...natCount].sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const foreign = mgrs.filter(({ c }) => c.managerNation !== null && c.managerNation !== c.nation).length;
+      const famous = mgrs.slice(0, 6).map(({ c }) => `${c.manager} (${c.name})`);
+      emit('lists', {
+        slug: `${P}/managers/`,
+        title: `${conf.game} Managers ${conf.season} – Every Club's Manager | CM Reborn`,
+        h1: `${conf.game} managers (${conf.season})`,
+        description: `All ${mgrs.length} managers in ${conf.game} ${conf.season} – ${listJoin(famous.slice(0, 3))} and the rest – with nationality, club and league, from ${conf.dbName}.`,
+        crumbs: [hubCrumb],
+        body: `<p class="lead">The manager of every club in the playable leagues of ${conf.dbName}${conf.original ? ', exactly as in the original game' : ''}. ${foreign} of the ${mgrs.length} are managing abroad; the most common nationalities are ${listJoin(topNat.map(([n, k]) => `${esc(n)} (${k})`))}.</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Manager</th><th>Nationality</th><th>Club</th><th>League</th></tr></thead><tbody>${mgrs.map(({ c, l }, i) => `<tr><td>${i + 1}</td><td><b>${esc(c.manager)}</b></td><td>${c.managerNation !== null ? esc(nationName(c.managerNation)) : '–'}</td><td><a href="${c.url}">${esc(c.name)}</a></td><td><a href="${l.url}">${esc(l.real)}</a></td></tr>`).join('')}</tbody></table></div>
+<p>In CM Reborn you take over from one of them – or from the outside as an unknown – and the board judges you against the club's expectations.</p>`,
+        faq: [
+          [`Who are the managers in ${conf.game} ${conf.season}?`, `${listJoin(famous)} lead the biggest clubs; all ${mgrs.length} are listed on this page.`],
+          [`Can I replace ${mgrs[0].c.manager} at ${mgrs[0].c.name}?`, `Yes. Start a new game with ${conf.original ? 'the original 2001/02 database' : `the ${conf.season} database`} and pick ${mgrs[0].c.name} – the AI manager steps aside.`],
+        ],
+      });
+    }
+  }
   emit('lists', { slug: `${P}/lists/`, title: `${conf.game} Player Lists – Wonderkids, Bosmans, Best by Position | CM Reborn`, h1: `${conf.game} player lists`, description: `Every ${conf.game} ${conf.season} list in one place: best players by position, wonderkids, free transfers, bargains, the fastest players, the best free-kick takers and more.`, crumbs: [hubCrumb], body: `<p class="lead">Lists built from ${conf.dbName}. Click a player for all his attributes.</p>${listIndex}` });
 
   // ---------- A-Z ----------
@@ -556,7 +592,7 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
     body: `<p class="lead">Everything in ${conf.dbName}: ${all.length.toLocaleString('en')} players, ${clubs.size.toLocaleString('en')} clubs and ${leagues.size} playable leagues. Every profile shows the real attributes (1–20), the hidden ones, position ratings, CA and PA – and you can sign all of them in CM Reborn, free in your browser.</p>
 <input id="q" type="search" placeholder="Search a player or club…" autocomplete="off" aria-label="Search the ${conf.game} database"><div id="res"></div>
 ${CTA}
-<h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/lists/">All lists →</a></div>
+<h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/managers/">Managers</a><a href="/${P}/lists/">All lists →</a></div>
 <h2>Leagues</h2><div class="cols">${byTier.map((l) => `<a href="${l.url}">${esc(l.real)}${l.real !== l.name ? ` <span class="note">${esc(nationName(l.nation))}</span>` : ''}</a>`).join('')}</div>
 <h2>Players by nationality</h2><div class="cols">${[...nations.values()].sort((a, b) => b.players.length - a.players.length).slice(0, 90).sort((a, b) => a.name.localeCompare(b.name)).map((n) => `<a href="${n.url}">${esc(n.name)}</a>`).join('')}</div>
 <h2>Players A–Z</h2>${azNav}`,
