@@ -240,11 +240,18 @@ export function alternatesFor(pages: LangPage[], enSlug: string): [string, strin
   return [['en', `/${enSlug}`], ['x-default', `/${enSlug}`], ...pages.map((p) => [p.hreflang, `/${p.slug}`] as [string, string])];
 }
 
+/** overskrift til guiderne (de er på engelsk) pr. sprog */
+const GUIDES_H: Record<string, string> = { da: 'Guider (på engelsk)', sv: 'Guider (på engelska)', nb: 'Guider (på engelsk)', de: 'Ratgeber (auf Englisch)', es: 'Guías (en inglés)', fr: 'Guides (en anglais)', it: 'Guide (in inglese)', 'pt-BR': 'Guias (em inglês)', tr: 'Rehberler (İngilizce)' };
+const GUIDE_LINKS: [string, string][] = [
+  ['/cm-01-02-match-engine/', 'How the CM 01/02 match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'],
+  ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'],
+  ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-guides/', 'All guides'],
+];
 export function toPage(p: LangPage, alternates: [string, string][]): Page {
   const cta = `<p class="cta"><a class="btn" href="/">${p.cta}</a> <span>${p.ctaNote}</span></p>`;
   return {
     slug: p.slug, title: p.title, h1: p.h1, description: p.description, lang: p.lang, alternates, faq: p.faq, faqSchema: true, cta, footer: p.footer,
     nav: [[`/${p.slug}`, p.nav], ['/cm-01-02/', 'CM 01/02 database'], ['/cm-01-02/lists/wonderkids/', 'Wonderkids'], ['/play-cm-01-02-online/', 'English']],
-    body: `<p class="lead">${p.lead}</p>${cta}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p>`,
+    body: `<p class="lead">${p.lead}</p>${cta}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p><h2>${GUIDES_H[p.lang] ?? 'Guides'}</h2><ul>${GUIDE_LINKS.map(([h, t]) => `<li><a href="${h}" hreflang="en">${t}</a></li>`).join('')}</ul>`,
   };
 }

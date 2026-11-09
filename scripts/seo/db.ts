@@ -571,6 +571,30 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
       });
     }
   }
+  // ---------- trøjeleverandører (kun 2026/27: Wikipedias lister i CLUB_INFO_2026) ----------
+  if (!conf.original) {
+    const kc = [...leagues.values()].flatMap((l) => l.clubs.filter((c) => c.kit).map((c) => ({ c, l })));
+    if (kc.length) {
+      const byBrand = new Map<string, typeof kc>();
+      for (const x of kc) byBrand.set(x.c.kit, [...(byBrand.get(x.c.kit) ?? []), x]);
+      const brands = [...byBrand].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+      const leaguesWith = [...new Set(kc.map((x) => x.l))].sort((a, b) => a.tier - b.tier || b.clubs.length - a.clubs.length);
+      emit('lists', {
+        slug: `${P}/kits/`,
+        title: `Kit Manufacturers ${conf.season} – Every Club's Kit Supplier | CM Reborn`,
+        h1: `Kit manufacturers ${conf.season}`,
+        description: `Who makes the kits in ${conf.season}: ${brands.slice(0, 4).map(([b, xs]) => `${b} (${xs.length} clubs)`).join(', ')} and more – ${kc.length} clubs in ${leaguesWith.length} leagues, as shown in CM Reborn.`,
+        crumbs: [hubCrumb],
+        body: `<p class="lead">The kit supplier of ${kc.length} clubs in ${leaguesWith.length} leagues for ${conf.season} (from the clubs' season lists on Wikipedia, November 2026). In CM Reborn the supplier's logo sits next to the club badge in the classic look.</p>
+<h2>By brand</h2><div class="tw"><table><thead><tr><th>Brand</th><th class="n">Clubs</th><th>Biggest clubs</th></tr></thead><tbody>${brands.map(([b, xs]) => `<tr><td><b>${esc(b)}</b></td><td class="n">${xs.length}</td><td>${xs.slice().sort((a, b2) => b2.c.rep - a.c.rep).slice(0, 6).map(({ c }) => `<a href="${c.url}">${esc(c.name)}</a>`).join(', ')}</td></tr>`).join('')}</tbody></table></div>
+${leaguesWith.map((l) => `<h2>${esc(l.real)}</h2><div class="tw"><table><thead><tr><th>Club</th><th>Kit</th><th>Manager</th></tr></thead><tbody>${l.clubs.filter((c) => c.kit).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<tr><td><a href="${c.url}">${esc(c.name)}</a></td><td>${esc(c.kit)}</td><td>${esc(c.manager)}</td></tr>`).join('')}</tbody></table></div>`).join('')}`,
+        faq: [
+          [`Which kit manufacturer has the most clubs in ${conf.season}?`, `${brands[0][0]}, with ${brands[0][1].length} of the ${kc.length} clubs listed here, ahead of ${brands[1]?.[0] ?? ''} (${brands[1]?.[1].length ?? 0}).`],
+          [`Who makes ${leaguesWith[0].clubs.find((c) => c.kit)?.name ?? ''}'s kit?`, `${leaguesWith[0].clubs.find((c) => c.kit)?.kit ?? ''}.`],
+        ],
+      });
+    }
+  }
   emit('lists', { slug: `${P}/lists/`, title: `${conf.game} Player Lists – Wonderkids, Bosmans, Best by Position | CM Reborn`, h1: `${conf.game} player lists`, description: `Every ${gameSeason} list in one place: best players by position, wonderkids, free transfers, bargains, the fastest players, the best free-kick takers and more.`, crumbs: [hubCrumb], body: `<p class="lead">Lists built from ${conf.dbName}. Click a player for all his attributes.</p>${listIndex}` });
 
   // ---------- A-Z ----------
@@ -601,7 +625,7 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
     body: `<p class="lead">Everything in ${conf.dbName}: ${all.length.toLocaleString('en')} players, ${clubs.size.toLocaleString('en')} clubs and ${leagues.size} playable leagues. Every profile shows the real attributes (1–20), the hidden ones, position ratings, CA and PA – and you can sign all of them in CM Reborn, free in your browser.</p>
 <input id="q" type="search" placeholder="Search a player or club…" autocomplete="off" aria-label="Search the ${conf.game} database"><div id="res"></div>
 ${CTA}
-<h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/managers/">Managers</a><a href="/${P}/lists/">All lists →</a></div>
+<h2>Popular lists</h2><div class="tags">${['wonderkids', 'best-players', `free-transfers-${yr}`, 'bargains', 'random-potential', 'fastest-players', 'best-free-kick-takers', 'best-strikers', 'wonderkid-strikers', 'best-defensive-midfielders'].filter((s) => lists.some((l) => l.slug === s && l.rows.length)).map((s) => `<a href="/${P}/lists/${s}/">${esc(lists.find((l) => l.slug === s)!.h1.replace(`${conf.game}: `, '').replace(` in ${conf.game}`, ''))}</a>`).join('')}<a href="/${P}/managers/">Managers</a>${conf.original ? '' : `<a href="/${P}/kits/">Kit manufacturers</a>`}<a href="/${P}/lists/">All lists →</a></div>
 <h2>Leagues</h2><div class="cols">${byTier.map((l) => `<a href="${l.url}">${esc(l.real)}${l.real !== l.name ? ` <span class="note">${esc(nationName(l.nation))}</span>` : ''}</a>`).join('')}</div>
 <h2>Players by nationality</h2><div class="cols">${[...nations.values()].sort((a, b) => b.players.length - a.players.length).slice(0, 90).sort((a, b) => a.name.localeCompare(b.name)).map((n) => `<a href="${n.url}">${esc(n.name)}</a>`).join('')}</div>
 <h2>Players A–Z</h2>${azNav}`,
