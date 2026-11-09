@@ -11,6 +11,7 @@ import { realCompName } from '../../src/i18n/comps';
 import { EU_EEA } from '../../src/game/rules2001';
 import { logoUrl, setLogoData } from '../../src/ui/logos';
 import { CLUB_INFO_2026 } from '../../src/game/data/clubInfo2026';
+import { WC2002 } from '../../src/game/international';
 import { CTA, esc, render, slugify, type Crumb, type Page } from './layout';
 
 export interface DbConf {
@@ -299,7 +300,7 @@ export function buildDb(conf: DbConf): DbOut {
     // tekst
     const intro: string[] = [];
     intro.push(`${esc(p.name)} is a ${p.age}-year-old ${roleWord} from ${n ? `<a href="${n.url}">${esc(n.name)}</a>` : esc(nationName(p.nation))}${c ? ` who plays for ${clubLink(p)}` : p.club < 0 ? ' without a club (free agent)' : ` at ${esc(clubName(p))}`} in ${conf.dbName}.`);
-    intro.push(`He has a current ability (CA) of <b>${p.ca}</b> and ${random ? `a <b>random potential</b> – the database stores ${p.paRaw}, so the game rolls his potential ability at the start of every new save – ${p.paRaw === -2 ? 'usually between 120 and 200 (153 on average)' : 'usually between 80 and 160 (118 on average)'}` : `a potential ability (PA) of <b>${p.pa}</b>`}${!random && p.pa - p.ca >= 25 ? `, which leaves ${p.pa - p.ca} points of room to grow` : ''}.`);
+    intro.push(`He has a current ability (CA) of <b>${p.ca}</b> and ${random ? `a <b>random potential</b> – the database stores ${p.paRaw}, so the game rolls his potential ability at the start of every new save – ${p.paRaw === -2 ? 'usually between 120 and 200 (153 on average)' : 'usually between 80 and 160 (118 on average)'} (<a href="/cm-01-02-ca-pa-explained/">the exact rules</a>)` : `a potential ability (PA) of <b>${p.pa}</b>`}${!random && p.pa - p.ca >= 25 ? `, which leaves ${p.pa - p.ca} points of room to grow` : ''}.`);
     if (pr && pr <= 100) intro.push(`That makes him the ${ord(pr)} best ${grp!.one} in the database ${atStart}.`);
     else if (nr && nr <= 50 && n) intro.push(`He is the ${ord(nr)} best ${esc(n.name)} player in the database.`);
     if (youngRank && youngRank <= 200) intro.push(`Among players aged 21 or younger he ranks ${ord(youngRank)} by potential – one of the ${youngRank <= 50 ? 'top' : 'best-known'} ${conf.game} wonderkids.`);
@@ -391,6 +392,9 @@ ${mates.length ? `<h2>${c ? `${esc(c.name)} team-mates` : 'Team-mates'}</h2>${mi
     const intro: string[] = [];
     intro.push(`${esc(c.name)} ${l ? `play in the <a href="${l.url}">${esc(l.real)}</a>` : `are a club from ${n ? `<a href="${n.url}">${esc(n.name)}</a>` : esc(nationName(c.nation))} (their league is not playable, but the players can be scouted and signed)`} in ${conf.dbName}.`);
     if (c.stadium) intro.push(`They play at ${esc(c.stadium)}${c.cap ? ` (capacity ${c.cap.toLocaleString('en')})` : ''}.`);
+    // saldoens plads i ligaen (den originale database: originalens startsaldo)
+    const richRank = conf.original && l && c.balance ? l.clubs.filter((x) => x.balance > c.balance).length + 1 : 0;
+    if (richRank && richRank <= 3) intro.push(`With ${pounds(c.balance)} in the bank they are the ${richRank === 1 ? 'richest' : `${ord(richRank)} richest`} club in the league – <a href="/cm-01-02-richest-clubs/">see the richest clubs</a>.`);
     if (c.manager) intro.push(`The manager is ${esc(c.manager)}${c.managerNation !== null && c.managerNation !== c.nation ? ` (${esc(nationName(c.managerNation))})` : ''}.`);
     if (star) intro.push(`The best player in the squad is ${pLink(star)} (CA ${star.ca})${kid && kid !== star ? `, and the brightest young talent is ${pLink(kid)} (${kid.age}, PA ${paText(kid)})` : ''}.`);
     if (sr && l) intro.push(`By squad strength (average ability of the best 16 players) they rank ${ord(sr)} of ${l.clubs.length} in the league – ${sr <= 2 ? 'title contenders' : sr <= Math.ceil(l.clubs.length / 4) ? 'one of the top sides' : sr > l.clubs.length - 3 ? 'expect a relegation battle' : 'a mid-table squad'}.`);
@@ -487,6 +491,7 @@ ${others.length ? `<h2>Other leagues in ${esc(nationName(l.nation))}</h2><p>${ot
 ${info && (info.coach || info.stadium) ? `<h2>${esc(n.name)} national team</h2><dl class="kv">${info.coach ? `<div><dt>Coach</dt><dd>${esc(info.coach)}</dd></div>` : ''}${info.stadium ? `<div><dt>Stadium</dt><dd>${esc(info.stadium)}</dd></div>` : ''}${info.cap ? `<div><dt>Capacity</dt><dd>${info.cap.toLocaleString('en')}</dd></div>` : ''}${titles.map(([k, v]) => `<div><dt>${esc(k)}</dt><dd>${v}</dd></div>`).join('')}</dl>` : ''}
 ${squad.length ? `<h2>The best ${esc(n.name)} players</h2>${table(ps.slice(0, 40), { nation: false })}` : ''}
 ${kids.length ? `<h2>${esc(n.name)} wonderkids</h2>${table(kids.slice(0, 30), { nation: false })}` : ''}
+${conf.original && WC2002.some((g) => g.includes(n.name)) ? `<h2>${esc(n.name)} at the 2002 World Cup</h2><p>${esc(n.name)} play in <b>Group ${'ABCDEFGH'[WC2002.findIndex((g) => g.includes(n.name))]}</b> (${WC2002.find((g) => g.includes(n.name))!.filter((x) => x !== n.name).map(esc).join(', ')}) when CM 01/02 reaches the summer of 2002. <a href="/cm-01-02-world-cup-2002/">The World Cup in CM 01/02 →</a></p>` : ''}
 ${natMgrs.length ? `<h2>${esc(n.name)} managers</h2><p>${natMgrs.length} club${natMgrs.length === 1 ? ' is' : 's are'} managed by a manager from ${esc(n.name)}${natMgrs.some(({ c }) => c.nation !== n.idx) ? `, ${natMgrs.filter(({ c }) => c.nation !== n.idx).length} of them abroad` : ''}.</p><ul>${natMgrs.slice(0, 25).map(({ c, l }) => `<li><b>${esc(c.manager)}</b> – <a href="${c.url}">${esc(c.name)}</a> <span class="note">${esc(l.real)}</span></li>`).join('')}</ul><p class="note"><a href="/${P}/managers/">All managers →</a></p>` : ''}
 ${ls.length ? `<h2>Leagues in ${esc(n.name)}</h2><ul>${ls.map((l) => `<li><a href="${l.url}">${esc(leagueTitle(l))}</a> – ${l.clubs.length} clubs</li>`).join('')}</ul>` : ''}
 ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2><p class="note">These leagues are not playable, but their players can be scouted and signed.</p><div class="cols">${hiddenClubs.map((c) => `<a href="${c.url}">${esc(c.name)}</a>`).join('')}</div>` : ''}`,

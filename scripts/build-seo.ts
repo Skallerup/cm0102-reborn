@@ -346,6 +346,17 @@ function versionData() {
   const stats = Object.entries(ver).map(([v, w]) => ({ v, players: w.players.length, leagues: w.leagues.filter((l) => !(l as { hidden?: boolean }).hidden).length, clubs: w.clubs.length }));
   return {
     stats, early: moved(a, b).slice(0, 15), late: moved(a, c).slice(0, 30), movedCount: moved(a, c).length,
+    // Bosman 2002 i 3.9.60 (spillets standard): kontrakter, der udløber 30/6-2002, ved klubber i de spilbare ligaer
+    bosman60: (() => {
+      const w = VER['3.9.60']; const F = Object.fromEntries(w.playerFields.map((f, i) => [f, i]));
+      const lg = new Map(w.leagues.map((l) => [l.id, l])); const cl = new Map(w.clubs.map((x) => [x[0] as number, x]));
+      return w.players.flatMap((r) => {
+        const club = cl.get(r[F.club] as number); const l = club ? lg.get(club[4] as string) : undefined;
+        if (!club || !l || (l as { hidden?: boolean }).hidden || !String(r[F.contract] ?? '').startsWith('2002-')) return [];
+        const name = [String(r[F.first] ?? '').trim(), String(r[F.last] ?? '').trim()].filter(Boolean).join(' ');
+        return [{ name, club: club[1] as string, ca: w.ratings[String(r[F.id])]?.ca ?? 0, age: 2001 - Number(String(r[F.dob]).slice(0, 4)) }];
+      }).sort((x, y) => y.ca - x.ca).slice(0, 20);
+    })(),
     // nye i 3.9.68: ingen spiller i 3.9.60 med samme fødselsår og et fælles navneord (stavemåder skifter: "Cafú", "Makélélé")
     added: (() => {
       const tok = (n: string) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 3);
@@ -396,7 +407,9 @@ const LP = langPages(nO, nM);
 const ALTS = alternatesFor(LP, 'play-cm-01-02-online/');
 for (const p of pages) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
-  writeFileSync(`public/${p.slug}index.html`, render({ ...p, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : {}) }));
+  // guiderne hører under guideoversigten i brødkrummen (BreadcrumbList)
+  const guideCrumb = p.slug.startsWith('cm-01-02-') && p.slug !== 'cm-01-02-guides/' && !p.crumbs ? { crumbs: [{ name: 'Guides', url: '/cm-01-02-guides/' }] } : {};
+  writeFileSync(`public/${p.slug}index.html`, render({ ...p, ...guideCrumb, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : {}) }));
 }
 for (const lp of LP) {
   mkdirSync(`public/${lp.slug}`, { recursive: true });

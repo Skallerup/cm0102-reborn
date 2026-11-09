@@ -25,6 +25,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Slå spillerne op', db: 'Se alle spillernes egenskaber, CA og PA i <a href="/cm-01-02/">CM 01/02-databasen</a> – med <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">Bosman-spillere</a> og <a href="/cm-01-02/leagues/danish-premier-division/">Superligaen 2001/02</a>.',
       faq: [
+        ["Hvilken CM 01/02-database kan jeg spille med?", "Alle tre officielle: 3.9.60 (udgivelsen, som CM 01/02 selv bruger til 2001/02 – standard), 3.9.65 og den sidste opdatering 3.9.68 med trupperne fra 2002/03. Du vælger, når du starter et nyt spil. Egenskaber, tilfældigt potentiale og økonomi er som i originalen."],
         ['Kan man spille CM 01/02 online?', 'Ja. CM Reborn er en gratis genskabelse af CM 01/02, som du spiller i browseren på cm0102reborn.com – med den originale database fra 2001/02 eller 2026/27, uden download.'],
         ['Er det gratis?', 'Ja. Spillet er gratis, uden reklamer og uden køb i spillet.'],
         ['Virker det på Mac og iPad?', 'Ja. Det kører i Safari, Chrome, Firefox og Edge på Mac, Windows, Linux, Chromebook, iPad og mobil.'],
@@ -50,6 +51,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Slå upp spelarna', db: 'Se alla spelares egenskaper, CA och PA i <a href="/cm-01-02/">CM 01/02-databasen</a> – med <a href="/cm-01-02/lists/wonderkids/">wonderkids</a> och <a href="/cm-01-02/leagues/swedish-premier-division/">Allsvenskan 2001</a>.',
       faq: [
+        ["Vilken CM 01/02-databas kan jag spela med?", "Alla tre officiella: 3.9.60 (originalutgåvan som CM 01/02 själv använder för 2001/02 – standard), 3.9.65 och den sista uppdateringen 3.9.68 med trupperna från 2002/03. Du väljer när du startar ett nytt spel. Egenskaper, slumpmässig potential och ekonomi är som i originalet."],
         ['Kan man spela CM 01/02 online?', 'Ja. CM Reborn är en gratis nyversion av CM 01/02 som du spelar i webbläsaren på cm0102reborn.com – med originaldatabasen från 2001/02 eller 2026/27.'],
         ['Är det gratis?', 'Ja, helt gratis, utan reklam och utan köp i spelet.'],
         ['Fungerar det på Mac och iPad?', 'Ja, i Safari, Chrome, Firefox och Edge på Mac, Windows, Linux, Chromebook, iPad och mobil.'],
@@ -75,6 +77,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Slå opp spillerne', db: 'Se alle spillernes egenskaper, CA og PA i <a href="/cm-01-02/">CM 01/02-databasen</a> – med <a href="/cm-01-02/lists/wonderkids/">wonderkids</a> og <a href="/cm-01-02/leagues/norwegian-premier-division/">Tippeligaen 2001</a>.',
       faq: [
+        ["Hvilken CM 01/02-database kan jeg spille med?", "Alle tre offisielle: 3.9.60 (originalutgaven som CM 01/02 selv bruker for 2001/02 – standard), 3.9.65 og den siste oppdateringen 3.9.68 med troppene fra 2002/03. Du velger når du starter et nytt spill. Egenskaper, tilfeldig potensial og økonomi er som i originalen."],
         ['Kan man spille CM 01/02 online?', 'Ja. CM Reborn er en gratis nyversjon av CM 01/02 som du spiller i nettleseren på cm0102reborn.com – med originaldatabasen fra 2001/02 eller 2026/27.'],
         ['Er det gratis?', 'Ja, helt gratis, uten reklame og uten kjøp i spillet.'],
         ['Virker det på Mac og iPad?', 'Ja, i Safari, Chrome, Firefox og Edge på Mac, Windows, Linux, Chromebook, iPad og mobil.'],
@@ -100,6 +103,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Spieler nachschlagen', db: 'Alle Attribute, CA und PA in der <a href="/cm-01-02/">CM-01/02-Datenbank</a> – mit <a href="/cm-01-02/lists/wonderkids/">Wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">ablösefreien Spielern</a> und der <a href="/cm-01-02/leagues/german-first-division/">Bundesliga 2001/02</a>.',
       faq: [
+        ["Mit welcher CM-01/02-Datenbank kann ich spielen?", "Mit allen drei offiziellen: 3.9.60 (die Originalversion, die CM 01/02 selbst für 2001/02 nutzt – Standard), 3.9.65 und dem letzten Update 3.9.68 mit den Kadern von 2002/03. Du wählst beim Start eines neuen Spiels. Attribute, zufälliges Potenzial und Finanzen sind wie im Original."],
         ['Kann man CM 01/02 online spielen?', 'Ja. CM Reborn ist ein kostenloses Remake von CM 01/02, das du auf cm0102reborn.com im Browser spielst – mit der originalen 2001/02-Datenbank oder 2026/27, ohne Download.'],
         ['Ist es kostenlos?', 'Ja. Keine Werbung, keine In-Game-Käufe.'],
         ['Läuft es auf Mac und iPad?', 'Ja, in Safari, Chrome, Firefox und Edge auf Mac, Windows, Linux, Chromebook, iPad und Handy.'],
@@ -125,6 +129,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Consulta los jugadores', db: 'Todos los atributos, CA y PA en la <a href="/cm-01-02/">base de datos de CM 01/02</a> – con <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">jugadores libres</a> y <a href="/cm-01-02/leagues/spanish-first-division/">La Liga 2001/02</a>.',
       faq: [
+        ["¿Con qué base de datos de CM 01/02 puedo jugar?", "Con las tres oficiales: 3.9.60 (la versión original que el propio CM 01/02 usa para 2001/02 – por defecto), 3.9.65 y la última actualización 3.9.68 con las plantillas de 2002/03. Eliges al empezar una partida nueva. Atributos, potencial aleatorio y finanzas son como en el original."],
         ['¿Se puede jugar a CM 01/02 online?', 'Sí. CM Reborn es un remake gratuito de CM 01/02 que se juega en el navegador en cm0102reborn.com, con la base de datos original de 2001/02 o la de 2026/27, sin descargas.'],
         ['¿Es gratis?', 'Sí. Sin anuncios ni compras dentro del juego.'],
         ['¿Funciona en Mac y iPad?', 'Sí, en Safari, Chrome, Firefox y Edge en Mac, Windows, Linux, Chromebook, iPad y móvil.'],
@@ -150,6 +155,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Consulter les joueurs', db: 'Tous les attributs, CA et PA dans la <a href="/cm-01-02/">base de données CM 01/02</a> – avec les <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, les <a href="/cm-01-02/lists/free-transfers-2002/">joueurs libres</a> et la <a href="/cm-01-02/leagues/french-first-division/">Division 1 2001/02</a>.',
       faq: [
+        ["Avec quelle base de données de CM 01/02 puis-je jouer ?", "Avec les trois officielles : 3.9.60 (la version d’origine que CM 01/02 utilise lui-même pour 2001/02 – par défaut), 3.9.65 et la dernière mise à jour 3.9.68 avec les effectifs de 2002/03. Tu choisis au début d’une nouvelle partie. Attributs, potentiel aléatoire et finances sont comme dans l’original."],
         ['Peut-on jouer à CM 01/02 en ligne ?', 'Oui. CM Reborn est un remake gratuit de CM 01/02 jouable dans le navigateur sur cm0102reborn.com, avec la base originale de 2001/02 ou celle de 2026/27.'],
         ['Est-ce gratuit ?', 'Oui. Sans publicité ni achats intégrés.'],
         ['Ça marche sur Mac et iPad ?', 'Oui, dans Safari, Chrome, Firefox et Edge sur Mac, Windows, Linux, Chromebook, iPad et mobile.'],
@@ -175,6 +181,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Cerca i giocatori', db: 'Tutti gli attributi, CA e PA nel <a href="/cm-01-02/">database di CM 01/02</a> – con i <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, gli <a href="/cm-01-02/lists/free-transfers-2002/">svincolati</a> e la <a href="/cm-01-02/leagues/italian-serie-a/">Serie A 2001/02</a>.',
       faq: [
+        ["Con quale database di CM 01/02 posso giocare?", "Con tutti e tre quelli ufficiali: 3.9.60 (la versione originale che CM 01/02 usa per il 2001/02 – predefinita), 3.9.65 e l’ultimo aggiornamento 3.9.68 con le rose del 2002/03. Scegli quando inizi una nuova partita. Attributi, potenziale casuale e finanze sono come nell’originale."],
         ['Si può giocare a CM 01/02 online?', 'Sì. CM Reborn è un remake gratuito di CM 01/02 che si gioca nel browser su cm0102reborn.com, con il database originale del 2001/02 o quello 2026/27.'],
         ['È gratis?', 'Sì. Niente pubblicità e niente acquisti nel gioco.'],
         ['Funziona su Mac e iPad?', 'Sì, in Safari, Chrome, Firefox ed Edge su Mac, Windows, Linux, Chromebook, iPad e smartphone.'],
@@ -200,6 +207,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Consulte os jogadores', db: 'Todos os atributos, CA e PA no <a href="/cm-01-02/">banco de dados do CM 01/02</a> – com <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">jogadores livres</a> e o <a href="/cm-01-02/leagues/brazilian-national-first-division/">Brasileirão 2001</a>.',
       faq: [
+        ["Com qual banco de dados do CM 01/02 posso jogar?", "Com os três oficiais: 3.9.60 (a versão original que o próprio CM 01/02 usa em 2001/02 – padrão), 3.9.65 e a última atualização 3.9.68 com os elencos de 2002/03. Você escolhe ao começar um novo jogo. Atributos, potencial aleatório e finanças são como no original."],
         ['Dá para jogar CM 01/02 online?', 'Sim. CM Reborn é um remake gratuito do CM 01/02 que você joga no navegador em cm0102reborn.com, com o banco original de 2001/02 ou o de 2026/27.'],
         ['É grátis?', 'Sim. Sem anúncios e sem compras no jogo.'],
         ['Funciona no Mac e no iPad?', 'Sim, no Safari, Chrome, Firefox e Edge em Mac, Windows, Linux, Chromebook, iPad e celular.'],
@@ -225,6 +233,7 @@ export function langPages(n: string, m: string): LangPage[] {
       ],
       dbH: 'Oyunculara göz at', db: '<a href="/cm-01-02/">CM 01/02 veritabanında</a> tüm özellikler, CA ve PA – <a href="/cm-01-02/lists/wonderkids/">wonderkid’ler</a>, <a href="/cm-01-02/lists/free-transfers-2002/">bonservissiz oyuncular</a> ve <a href="/cm-01-02/leagues/turkish-premier-division/">2001/02 Süper Lig</a>.',
       faq: [
+        ["Hangi CM 01/02 veritabanıyla oynayabilirim?", "Üç resmi sürümün hepsiyle: 3.9.60 (CM 01/02’nin 2001/02 için kullandığı orijinal sürüm – varsayılan), 3.9.65 ve 2002/03 kadrolarıyla son güncelleme 3.9.68. Yeni bir oyuna başlarken seçersin. Özellikler, rastgele potansiyel ve finans orijinaldeki gibidir."],
         ["CM 01/02 online oynanabilir mi?", "Evet. CM Reborn, cm0102reborn.com adresinde tarayıcıda oynanan ücretsiz bir CM 01/02 yeniden yapımıdır; orijinal 2001/02 veya 2026/27 veritabanıyla."],
         ['Ücretsiz mi?', 'Evet. Reklam ve oyun içi satın alma yok.'],
         ["Mac ve iPad'de çalışır mı?", "Evet; Mac, Windows, Linux, Chromebook, iPad ve telefonda Safari, Chrome, Firefox ve Edge ile."],

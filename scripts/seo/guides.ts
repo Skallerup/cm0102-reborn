@@ -16,6 +16,7 @@ export interface VersionData {
   late: { name: string; from: string; to: string; ca: number }[];
   movedCount: number;
   added: { name: string; club: string; ca: number; dob: string }[];
+  bosman60: { name: string; club: string; ca: number; age: number }[];
   url: (name: string, club: string) => string | null;
 }
 function ptable(rows: KP[], extra?: [string, (p: KP) => string]) {
@@ -223,7 +224,10 @@ ${moveTable(ver.late, ver, true)}
 </ol>
 <h2>Why world-class players won't join every club</h2>
 <p>A player compares your club's reputation with his own. Ambitious players will not drop down to a much smaller club, even for free – older players (30+) are more willing to take a step down. That is how CM Reborn handles it too.</p>
-<h2>The best Bosman targets in ${yr}</h2>
+<h2>Bosman targets in the 3.9.60 database</h2>
+<p>CM Reborn's default database is 3.9.60 – the release the game itself uses for 2001/02 – and its contracts differ from the 3.9.68 patch below. These are the best players there whose contracts end on 30 June ${yr}:</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Age</th><th>Club in 3.9.60</th><th class="n">CA</th></tr></thead><tbody>${ver.bosman60.map((p, i) => { const u = ver.url(p.name, p.club); return `<tr><td>${i + 1}</td><td>${u ? `<a href="${u}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`}</td><td>${p.age}</td><td>${esc(p.club)}</td><td class="n">${p.ca}</td></tr>`; }).join('')}</tbody></table></div>
+<h2>The best Bosman targets in ${yr} (3.9.68)</h2>
 ${ptable(bosman.slice(0, 25), ['Contract', (p) => p.contract.slice(0, 7)])}
 <p><a href="/cm-01-02/lists/free-transfers-${yr}/">See all 100 players out of contract in ${yr} →</a> · <a href="/cm-01-02/lists/free-transfers-${yr + 1}/">${yr + 1} →</a> · <a href="/cm-01-02/lists/free-agents/">free agents at the start →</a></p>`,
       faq: [
@@ -349,11 +353,35 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
     title: 'CM 01/02 Guides – Tactics, Wonderkids, Bosmans, Hidden Attributes | CM Reborn',
     h1: 'CM 01/02 guides',
     description: 'All CM Reborn guides to Championship Manager 01/02: download, tactics, wonderkids, best players, Bosman free transfers, hidden attributes, CA and PA, the best teams to manage and tips.',
-    body: `<p class="lead">Guides to Championship Manager 01/02, built on the real CM 01/02 databases.</p><ul>${[
-      ['/cm-01-02-tips/', 'CM 01/02 tips: how to win with any club'], ['/cm-01-02-tactics/', 'CM 01/02 tactics'], ['/cm-01-02-wonderkids/', 'CM 01/02 wonderkids'], ['/cm-01-02-best-players/', 'CM 01/02 best players'],
-      ['/cm-01-02-bosman-guide/', 'Bosman free transfers'], ['/cm-01-02-match-engine/', 'How the match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes explained'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage'], ['/cm-01-02-richest-clubs/', 'Richest clubs and transfer budgets'], ['/cm-01-02-world-cup-2002/', 'The 2002 World Cup'],
-      ['/cm-01-02/lists/legends/', 'CM 01/02 legends and cult heroes'], ['/cm-01-02-download/', 'CM 01/02 download – or play without one'], ['/cm-01-02-database-versions/', 'Database versions: 3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook'], ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database'],
-    ].map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>`,
+    body: `<p class="lead">Guides to Championship Manager 01/02, built on the real CM 01/02 databases and on what is inside the original game's code.</p>
+${([
+      ['How CM 01/02 works', [
+        ['/cm-01-02-match-engine/', 'How the match engine works', '11 ticks a minute on a 9 × 12 grid: how the player on the ball chooses, goals, cards, fatigue and ratings.'],
+        ['/cm-01-02-attributes-explained/', 'What every attribute does', 'Finishing, flair, decisions, teamwork, pace and the rest – what each one does in the match, with the best players.'],
+        ['/cm-01-02-ca-pa-explained/', 'CA and PA explained', 'Current and potential ability, the exact rules for random potential (-1 and -2) and how attributes move with CA.'],
+        ['/cm-01-02-hidden-attributes/', 'Hidden attributes', 'Consistency, important matches, injury proneness, loyalty and temperament – the numbers the game never shows.'],
+        ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68', 'The three official databases compared: which players moved, and which version the game uses.'],
+      ]],
+      ['Players', [
+        ['/cm-01-02-wonderkids/', 'Wonderkids', 'The best young players, the random-potential cult heroes and the wonderkids in the 3.9.60 release.'],
+        ['/cm-01-02-best-players/', 'Best players', 'The top 50 by current ability and the best in every position.'],
+        ['/cm-01-02/lists/legends/', 'Legends and cult heroes', 'Tsigalko, Cherno Samba, To Madeira and every other name fans remember.'],
+        ['/cm-01-02-bosman-guide/', 'Bosman free transfers', 'The best players out of contract in 2002 – sign them for nothing.'],
+      ]],
+      ['Clubs and tactics', [
+        ['/cm-01-02-tactics/', 'Tactics', 'The classic formations, what the team instructions do in the code, and how tactics work in CM Reborn.'],
+        ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage', 'The richest clubs, the strongest squads, the best youth set-ups and the hardest challenges.'],
+        ['/cm-01-02-richest-clubs/', 'Richest clubs and transfer budgets', 'Every club\'s bank balance and transfer budget at the start, as the original sets them.'],
+        ['/cm-01-02-world-cup-2002/', 'The 2002 World Cup', 'The real groups, the coaches and the strongest squads when the game reaches June 2002.'],
+        ['/cm-01-02-tips/', 'Tips: how to win with any club', 'Squad building, tactics, training and the transfer market.'],
+      ]],
+      ['Playing CM 01/02 today', [
+        ['/cm-01-02-download/', 'CM 01/02 download – or play without one', 'Where the free download and the patches are, and how to play in a browser instead.'],
+        ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook', 'CM 01/02 on devices the original never ran on.'],
+        ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database', 'Today\'s players in the classic game.'],
+        ['/changelog/', "What's new in CM Reborn", 'The latest updates to the remake.'],
+      ]],
+    ] as [string, [string, string, string][]][]).map(([h, items]) => `<h2>${h}</h2><ul>${items.map(([u, t, d]) => `<li><a href="${u}"><b>${t}</b></a> – ${d}</li>`).join('')}</ul>`).join('\n')}`,
   };
   return [...pages, index];
 }

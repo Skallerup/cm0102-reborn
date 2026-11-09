@@ -153,7 +153,7 @@ ${alt}
 <header><a class="logo" href="/">CM Reborn</a><nav>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join('')}</nav></header>
 <main>
 ${crumbs.length > 2 ? `<nav class="crumbs" aria-label="Breadcrumb">${crumbs.slice(0, -1).map((c) => `<a href="${c.url}">${esc(c.name)}</a>`).join(' › ')}</nav>` : ''}
-<h1>${esc(p.h1)}</h1>
+<h1>${esc(p.h1)}</h1>${!p.noArticle && !p.noindex ? `<p class="note">Updated ${new Date(`${modified}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })}</p>` : ''}
 ${p.body}
 ${p.faq ? `<h2>${p.lang && p.lang !== 'en' ? 'FAQ' : 'Frequently asked questions'}</h2>${p.faq.map(([q, a]) => `<h3>${esc(q)}</h3><p>${esc(a)}</p>`).join('')}` : ''}
 ${p.cta ?? CTA}
