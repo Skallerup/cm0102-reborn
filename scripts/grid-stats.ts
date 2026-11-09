@@ -28,12 +28,13 @@ for (let i = 0; i < N; i++) {
   const [h, a] = fixtures[i % fixtures.length];
   const r = runGridMatch({ players: fresh(h), tactic: aiTactic(h, a, true) }, { players: fresh(a), tactic: aiTactic(a, h, false) }, rand);
   for (const s of [r.home, r.away]) for (const k of Object.keys(s) as (keyof GridSideStats)[]) sum[k] = (sum[k] ?? 0) + s[k];
+  sum.hg = (sum.hg ?? 0) + r.home.goals; sum.ag = (sum.ag ?? 0) + r.away.goals;
   if (r.home.goals > r.away.goals) hw++; else if (r.home.goals === r.away.goals) dr++; else aw++;
   ticks += r.ticks;
 }
 const pm = (k: string) => ((sum[k] ?? 0) / N).toFixed(2);
 const pct = (x: number) => `${Math.round((100 * x) / N)}`;
 console.log(`${N} kampe på ${((Date.now() - t0) / 1000).toFixed(0)} s, tik i snit ${(ticks / N).toFixed(0)}`);
-console.log(`mål ${pm('goals')} (2,87) · H/U/B ${pct(hw)}/${pct(dr)}/${pct(aw)} (51/23/26) · skud ${pm('shots')} (17,2) · på mål ${pm('onTarget')} (10,3)`);
+console.log(`mål ${pm('goals')} (2,87) · H/U/B ${pct(hw)}/${pct(dr)}/${pct(aw)} (51/23/26) · hjemme/ude-mål ${pm('hg')}/${pm('ag')} · skud ${pm('shots')} (17,2) · på mål ${pm('onTarget')} (10,3)`);
 console.log(`hjørner ${pm('corners')} (5,0) · frispark ${pm('fouls')} (~16) · offside ${pm('offsides')} (7,4) · gule ${pm('yellows')}/røde ${pm('reds')} (1,70/0,14) · afleveringer ${pm('passes')}, rigtige ${(100 * (sum.passesCompleted ?? 0) / Math.max(1, sum.passes ?? 1)).toFixed(0)} % (72 %)`);
 if (process.env.DEBUG) console.log(Object.entries(GRID_DEBUG).sort().map(([k, v]) => `${k} ${(v / N).toFixed(1)}`).join(' · '));

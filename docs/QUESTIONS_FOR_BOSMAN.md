@@ -213,3 +213,17 @@ We use `ceil(D/4)` ticks and a fixed 35 % chance.
 - Where does the original set match+0x8eb2 back to 0 after a restart is taken?
 - Where does it place the ball and the players for corners and free kicks?
 - Corners and offsides are far too few in our engine (2,3 and 0,8 per match).
+
+### 5e. Defensive shape and the carrier's duel (round 2 of the grid engine, 2026-11-09)
+After round 2, 57 % of our shots are still taken from D ≤ 1, and almost half of the shots on target go in (the original:
+28 %). We need the parts that decide where the shots are taken:
+- `sub_6c2be0`/`sub_715f50`: how far the formation moves with the ball, and where the back line stands when the ball is in midfield.
+  We use about a third of the ball's movement, and a line 2 rows from our own goal (*estimeret*).
+- `sub_6f09f0` from 0x6f0e58: can a defender **next to** the carrier's new cell challenge, or only one in the same cell?
+  We let a free neighbour challenge 40 % of the time (*estimeret*).
+- `sub_6cfd70`: which attackers does the offside check look at? Only those near the pass target, all attackers ahead of the ball, or
+  only the receiver? What is the attacker byte +0x107 (we use the off-the-ball roll), and what is a typical linesman +0x29?
+- Home advantage: where is it in the original? With MatchSim's form (values ×1,038/×0,986), the grid engine gave only 1,78/1,68 goals,
+  so we use five times as much (*estimeret*).
+- Which challenge types (`sub_6e9820`) do open-play fouls have? With only type 42 we get 1,2–1,35 yellow cards per match (the original: 1,70).
+

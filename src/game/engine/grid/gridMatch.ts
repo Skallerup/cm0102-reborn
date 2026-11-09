@@ -8,7 +8,7 @@ import { ACTION, decideBallCarrier, type Decision, type PassOption, type Situati
 import { passOptions, type Helpers as PassHelpers, type MatchPlayer as PassPlayer, type MatchState as PassState } from './passOptions';
 import { SHOT, keeperBase, keeperValue, shotOutcome, shotScore, type Attrs as ShotAttrs } from './shot';
 import * as H from './helpers';
-import { cardFor, cardSeverity, offsideFlag } from '../cm0102-original-rules';
+import { cardFor, cardSeverity, foulGiven, linesmanMisses, offsideFlag, refereeFactorInMatch } from '../cm0102-original-rules';
 import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
 
@@ -62,12 +62,16 @@ export interface GridMatchState extends L.Match {
 
 export const GRID_UNKNOWN = {
   /** sub_6c2be0 + sub_715f50 (taktisk felt): formationens plads forskudt mod bolden. *estimeret* */
-  shiftY: 0.45, shiftX: 0.5, possForward: 1, defBack: 1,
+  // Formationen holder formen: rykker ca. en tredjedel med bolden; forsvarerne holder en linje (defMin rækker fra eget mål,
+  // dybere kun når bolden er i feltet); angriberne går ikke forbi modstandernes sidste linje (onside)
+  shiftY: 0.33, shiftX: 0.4, possForward: 1, defBack: 1, defMin: 2,
   tacticalCell(m: GridMatchState, p: GP): [number, number] {
     if (p.pos === L.POS.keeper) return [4, p.side === 0 ? 0 : 11];
     const rel = p.side === 0 ? m.ballY : 11 - m.ballY; // boldens række set fra spillerens hold
     const fwd = Math.round((rel - 5.5) * this.shiftY) + (m.poss === p.side ? this.possForward : -this.defBack);
-    const y = Math.max(0, Math.min(10, p.baseY + fwd)); // baseY er dybden set fra eget mål
+    let y = Math.max(0, Math.min(10, p.baseY + fwd)); // baseY er dybden set fra eget mål
+    if (p.baseY <= 3) y = Math.max(y, rel <= 1 ? 1 : this.defMin);
+    y = Math.min(y, onsideRow(m, p));
 
     const x = clampX(p.baseX + Math.round((m.ballX - 4) * this.shiftX));
     return [x, p.side === 0 ? y : 11 - y];
@@ -75,10 +79,14 @@ export const GRID_UNKNOWN = {
   /** sub_6bce80 (løbemål): angribere løber 1-2 rækker frem mod mål. *estimeret* */
   runTarget(m: GridMatchState, p: GP, rand: Rand): [number, number] | null {
     if (!(p.pos & (L.POS.forward | L.POS.mid20 | L.POS.mid10))) return null;
-    const dir = p.side === 0 ? 1 : -1;
-    void m;
-    return [clampX(p.x + (p.x < 4 ? 1 : p.x > 4 ? -1 : 0) * rand(2)), clampY(p.y + dir * (1 + rand(2)))];
+    const own = p.side === 0 ? p.y : 11 - p.y;
+    const lim = onsideRow(m, p) + (rand(1000) < 1000 * this.runBeyondP ? 1 : 0); // løb bag linjen (timing) *estimeret*
+    const ty = Math.min(own + 1 + rand(2), lim);
+    if (ty <= own) return null;
+    return [clampX(p.x + (p.x < 4 ? 1 : p.x > 4 ? -1 : 0) * rand(2)), clampY(p.side === 0 ? ty : 11 - ty)];
   },
+  /** andel af løbene, der går ét felt bag modstandernes linje (giver offside). *estimeret* */
+  runBeyondP: 0.25,
   /** sub_6bc030 (zonevalg): nærmeste umarkerede modstander inden for 2 felter. *estimeret* */
   zonalPick(m: GridMatchState, p: GP): GP | null {
     let best: GP | null = null, bd = 2.01;
@@ -120,7 +128,7 @@ export const GRID_UNKNOWN = {
     return { kind: 'ok', x: tx, y: ty };
   },
   /** sub_6f09f0 fra 0x6f0e58 + sub_6c87e0 (duellen/tacklingen): *estimeret* */
-  tackleP: 0.5, foulP: 0.11,
+  tackleP: 0.5, foulP: 0.095,
   challenge(m: GridMatchState, def: GP, car: GP, rand: Rand): 'won' | 'foul' | 'kept' {
     void m;
     const d = def.f.tackling * 2 + def.f.anticipation + def.f.strength + rand(20);
@@ -130,11 +138,16 @@ export const GRID_UNKNOWN = {
   },
   /** sub_6fad40 (første berøring, modstanderen i modtagerens felt): chancen for at modstanderen vinder bolden. *estimeret* */
   contestP: 0.35,
+  /** chancen for, at en ledig forsvarer ved siden af boldholderens nye felt går ind i duellen (sub_6f09f0, ikke læst). *estimeret* */
+  runChallengeP: 0.4,
   /** sub_6c87e0 før skuddet (udfordringen fra forsvarere i/ved skytten, SHOT.md §7 "udfordrings-grenen"): pr. forsvarer. *estimeret* */
-  preShotP: 0.5, preShotReach: 1,
+  preShotP: 0.4, preShotReach: 1.5,
   /** sub_6fa490 + sub_6c9cd0 (høje bolde/hovedstød): indlæg ind i feltet, ellers langt frem. *estimeret* */
   crossWin: 0.42,
-  lofted(m: GridMatchState, p: GP, d: Extract<Decision, { kind: 'loftedBall' }>, rand: Rand): { kind: 'header'; by: GP } | { kind: 'loose'; x: number; y: number } {
+  /** Afværgede bolde over egen baglinje (giver hjørne via lastTouch): andel af de indlæg, forsvaret vinder i luften, og af de
+   *  blokerede skud. sub_6c9cd0/sub_70dfd0 er ikke læst. *estimeret* */
+  crossCornerP: 0.5, blockCornerP: 0.6,
+  lofted(m: GridMatchState, p: GP, d: Extract<Decision, { kind: 'loftedBall' }>, rand: Rand): { kind: 'header'; by: GP } | { kind: 'loose'; x: number; y: number } | { kind: 'corner' } {
     const gr = goalRow(p.side);
     const nearBox = p.side === 0 ? p.y >= 8 : p.y <= 3;
     if (!d.clearance && nearBox) {
@@ -146,6 +159,7 @@ export const GRID_UNKNOWN = {
         const sa = A.f.heading + A.f.jumping + p.f.crossing / 2 + rand(20), sd = Df ? Df.f.heading + Df.f.jumping + rand(20) : 0;
         if (sa * this.crossWin * 2 > sd) return { kind: 'header', by: A };
       }
+      if (Df && rand(1000) < 1000 * this.crossCornerP) return { kind: 'corner' };
       return { kind: 'loose', x: clampX(4 + rand(5) - 2), y: clampY(gr + (p.side === 0 ? -2 - rand(3) : 2 + rand(3))) };
     }
     const dir = p.side === 0 ? 1 : -1;
@@ -166,11 +180,26 @@ export const GRID_UNKNOWN = {
   },
   /** sub_6e9820/sub_6ea4e0: hvilken udfordringstype frisparket var, kendes ikke her – andelen, der går gennem kortreglen (type 42). *estimeret* */
   cardShare: 0.11,
+  /** dommerens Discipline (officials.dat 0x25) og +0x27 (frisparkgrænse) – vi vælger ikke en dommer her. *estimeret* */
+  refDiscipline: 10, ref27: 10,
+  /** hjemmebane: som MatchSim (homeAdv 2 i ORIGINAL): hjemmeholdets kampværdier ×(1 + 0,019·h), udeholdets ×(1 − 0,007·h). *estimeret* */
+  homeAdv: 10,
   /** match+0x8eaa (keeperens fumle-chance tæt på). *estimeret* 0 */
   b8eaa: 0,
+  /** sub_6ea760: linjevogterens officials-byte +0x29 (rand(+0x29 + 25) == 0 = overser alt) og hvor tæt på afleveringens mål en angriber
+   *  skal stå for at blive vurderet (sub_6cfd70's udvalg er ikke læst). *estimeret* */
+  official29: 10, offsideReach: 2,
   /** sub_70dfd0 (skuddets blokering/afbøjning): pr. forsvarer på linjen. *estimeret* */
   blockP: 0.2, deflectP: 0.06,
 };
+
+/** Rækken (set fra p's eget mål) med modstandernes sidste markspiller = højeste onside-række. */
+function onsideRow(m: GridMatchState, p: GP): number {
+  const opp = m.gp.filter((o) => o.active && o.side !== p.side && o.pos !== L.POS.keeper);
+  if (!opp.length) return 10;
+  const line = p.side === 0 ? Math.max(...opp.map((o) => o.y)) : 11 - Math.min(...opp.map((o) => o.y));
+  return Math.max(6, Math.min(10, line));
+}
 
 // ------------------------------------------------------------------ opbygning
 
@@ -249,6 +278,12 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
     stats: [emptyStats(), emptyStats()], goals: [0, 0], arrive: 0, pendingPass: -1, period: 0, depth: 0,
   };
+  // hjemmebanen: kampværdierne (sub_6ec010-floats) skaleres som MatchSims homeMult (*estimeret*)
+  for (const p of gp) {
+    const k = p.side === 0 ? 1 + 0.019 * GRID_UNKNOWN.homeAdv : 1 - 0.007 * GRID_UNKNOWN.homeAdv;
+    for (const key of Object.keys(p.f)) if (key !== 'workRate' && key !== 'versatility') p.f[key] *= k;
+    for (const key of Object.keys(p.a) as (keyof L.Attr)[]) if (key !== 'workRate' && key !== 'versatility') p.a[key] *= k;
+  }
   for (const p of gp) attachView(m, p);
   const st = (s: Side) => m.stats[s];
 
@@ -325,9 +360,14 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
   };
 
   const foul = (def: GP, car: GP) => {
+    // dommeren (sub_6e9820, sikre regler i cm0102-original-rules.ts): strenghed i kampen, blæser han (type 42 = "usually given"),
+    // og kortets alvor. Dommerens Discipline og +0x27 er *estimerede* (GRID_UNKNOWN.refDiscipline/ref27); udfordringstypen 42 er *estimeret*
+    const U = GRID_UNKNOWN;
+    const rf = refereeFactorInMatch(rand, U.refDiscipline, U.ref27, st(def.side).fouls);
+    if (!foulGiven(rand, rf.factor, 42)) { dbg('foul:waved'); return; }
     st(def.side).fouls++; def.fouls++;
     const minute = Math.trunc(m.clock / 11);
-    const sev = cardSeverity(rand, 42, def.fouls, 10, def.booked, minute, false); // dommerens Discipline 10 *estimeret*
+    const sev = cardSeverity(rand, 42, def.fouls, U.refDiscipline, def.booked, minute, rf.overLimit);
     const card = rand(1000) < 1000 * GRID_UNKNOWN.cardShare ? cardFor(rand, sev, false, false) : null;
     if (card === 'yellow' && def.booked) { st(def.side).reds++; def.active = false; }
     else if (card === 'yellow') { st(def.side).yellows++; def.booked = true; }
@@ -352,12 +392,19 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
 
   const doPass = (p: GP, type: number, receiver: GP | null, tx: number, ty: number) => {
     st(p.side).passes++;
-    // offside (sub_6cfd70 → sub_6ea760): modtageren bag linjen; v = angriberens +0x107 (offBallRoll)
-    if (receiver && type !== ACTION.throwIn) {
-      const beyond = L.beyondLine(m, receiver.side, receiver.y);
-      if (beyond > -3 && (receiver.side === 0 ? receiver.y >= 6 : receiver.y < 6) && offsideFlag(rand, beyond, receiver.roll.offTheBall)) {
-        st(receiver.side).offsides++;
-        restart(7, other(p.side), receiver.x, receiver.y); return;
+    // offside (sub_6cfd70 → sub_6ea760, originalens sikre regel offsideFlag/linesmanMisses): alle angribere foran bolden
+    // nær afleveringens mål (+ modtageren). Linjevogterens +0x29 = GRID_UNKNOWN.official29 og angriberens +0x107 = roll.offTheBall
+    // er *estimerede* (Bosman: "+0x107 ikke identificeret"); "nær målet" = offsideReach felter *estimeret*
+    if (type !== ACTION.throwIn && type !== ACTION.goalKick && type !== ACTION.cornerKick && !linesmanMisses(rand, GRID_UNKNOWN.official29)) {
+      for (const o of gp) {
+        if (!o.active || o.side !== p.side || o === p || o.pos === L.POS.keeper) continue;
+        if (o !== receiver && L.dist(o.x, o.y, tx, ty) > GRID_UNKNOWN.offsideReach) continue;
+        if (!(o.side === 0 ? o.y >= 6 && o.y > m.ballY : o.y < 6 && o.y < m.ballY)) continue; // egen halvdel / bag bolden: aldrig offside
+        const beyond = L.beyondLine(m, o.side, o.y);
+        if (beyond > -3 && offsideFlag(rand, beyond, o.roll.offTheBall)) {
+          st(o.side).offsides++;
+          restart(7, other(p.side), o.x, o.y); return;
+        }
       }
     }
     const r = GRID_UNKNOWN.passResult(m, p, type, tx, ty, !!receiver, rand);
@@ -402,6 +449,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     if (out.outcome === 'held' && k) { m.carrier = null; m.ballX = k.x; m.ballY = k.y; takeBall(k); return; }
     if (out.outcome === 'tippedForCorner' || out.outcome === 'deflectedWide') { st(p.side).corners++; restart(3, p.side, p.x < 4 ? 0 : 8, goalRow(p.side)); return; }
     if (out.outcome === 'parried') { m.carrier = null; m.ballX = clampX((k?.x ?? 4) + rand(3) - 1); m.ballY = clampY(goalRow(p.side) + (p.side === 0 ? -1 : 1)); m.ballH = 0; m.poss = -1; m.arrive = m.clock + 1; return; }
+    if (out.outcome === 'blocked' && blocker && rand(1000) < 1000 * GRID_UNKNOWN.blockCornerP) { st(p.side).corners++; restart(3, p.side, blocker.x < 4 ? 0 : 8, goalRow(p.side)); return; }
     if (out.outcome === 'blocked' && blocker) { m.carrier = null; m.ballX = blocker.x; m.ballY = blocker.y; m.ballH = 0; m.poss = -1; m.arrive = m.clock + 1; return; }
     restart(4, opp, 4, opp === 0 ? 1 : 10); // forbi: målspark
   };
@@ -504,7 +552,8 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
             const q = shotScore({ side: r.by.side, x: r.by.x, y: r.by.y, D: L.dist(r.by.x, r.by.y, 4, goalRow(r.by.side)), ballHeight: 4, facingGoal: true, creativityRoll: r.by.roll.creativity,
               flairRoll: r.by.roll.flair, condition: r.by.condition, w29: 100, momentum: 0, form: r.by.form, prevAction: 0, attrs: shotAttrs(r.by), keeper: null, weather: 3, matchByte1: 0 }, rand, SHOT.HEADER).score;
             shoot(r.by, { quality: q }, true);
-          } else { m.pendingPass = p.side; m.ballX = r.x; m.ballY = r.y; m.ballH = 0; m.poss = -1; m.arrive = m.clock + 2; m.lastTouch = p.side; }
+          } else if (r.kind === 'corner') { m.pendingPass = -1; st(p.side).corners++; restart(3, p.side, p.x < 4 ? 0 : 8, goalRow(p.side)); }
+          else { m.pendingPass = p.side; m.ballX = r.x; m.ballY = r.y; m.ballH = 0; m.poss = -1; m.arrive = m.clock + 2; m.lastTouch = p.side; }
           break;
         }
         case 'run': {
@@ -512,7 +561,9 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
           const nx = clampX(p.x + Math.sign(d.tx - p.x)), ny = clampY(p.y + Math.sign(d.ty - p.y));
           if (nx !== p.x || ny !== p.y) p.facing = H.cellDirection(p.x, p.y, nx, ny);
           p.x = nx; p.y = ny; m.ballX = nx; m.ballY = ny;
-          const def = gp.find((o) => o.active && o.side !== p.side && o.x === nx && o.y === ny && o.busy <= 1 && o.pos !== L.POS.keeper);
+          const def = gp.find((o) => o.active && o.side !== p.side && o.x === nx && o.y === ny && o.busy <= 1 && o.pos !== L.POS.keeper)
+            // sub_6f09f0 fra 0x6f0e58 (boldholderens skridt/duel) er ikke læst: en ledig forsvarer ved siden af kan også gå ind i duellen
+            ?? gp.find((o) => o.active && o.side !== p.side && o.busy <= 1 && o.pos !== L.POS.keeper && L.dist(o.x, o.y, nx, ny) <= 1.5 && rand(1000) < 1000 * GRID_UNKNOWN.runChallengeP);
           if (def) duel(def, p);
           break;
         }
