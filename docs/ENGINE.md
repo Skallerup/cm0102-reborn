@@ -397,3 +397,56 @@ Udsvinget mellem frø er ±2 point på uafgjorte og ±4 mål på topscoreren. La
 trækker hver sin vej: med `ease` 0,05-0,12 lå topscoreren på 27-36 i alle forsøg, og lavere `oneOnOneK`/`shotSpread`
 gav færre mål og flere uafgjorte. Sidst-placeret får 29-31 point (orig 25).
 
+
+## Trin 15 – målscorerne mod originalen (2026-11-09, ingen ændring i motoren)
+
+**Kilde.** Originalens egen sæson: ejerens ferie-sæson. Kopien `cm-data-2002-06-15` (match_stats_matches.tmp) har mål,
+skud og plads (+0x1D) pr. spiller pr. kamp. `npx tsx scripts/original-stats.ts <mappe> --db .orig-db/Original-3.9.60-Database`
+udskriver nu målscorerfordelingen for Premier League (`ORIGINAL_SCORERS=<liga>`). `scripts/original-lab.ts` udskriver det
+samme for vores motor via `labHooks.report` i sim.ts. Krogen er en ren målekrog, der ikke påvirker spillet.
+`KINDS=1` viser skudtyperne for de 10 skytter med flest skud.
+
+**Sammenligning.** Vores motor er målt over 3 sæsoner på hvert af frøene 2001 og 77 med ORIGINAL fra trin 14.
+
+| | Originalen (1 sæson) | Vores, frø 2001 | Vores, frø 77 |
+|---|---|---|---|
+| Topscorer | 23 | 30,7 | 27,0 |
+| Topscorerens skud | 93 (top 5: 93–121) | 149 | 156 |
+| Mål pr. skud, top 10 / alle | 0,214 / 0,165 | 0,210 / 0,143 | 0,198 / 0,147 |
+| Spillere med 20+/15+/10+ mål | 5 / 8 / 27 | 8,3 / 14,3 / 27,7 | 7,3 / 16,3 / 28,0 |
+| Holdets nr. 1/2/3 (mål) | 14,7 / 8,6 / 7,0 | 17,0 / 8,8 / 6,0 | 16,1 / 9,3 / 6,0 |
+| Topscorerens andel af holdets mål | 26,7 % | 32,0 % | 29,7 % |
+| Mest scorende hold / spredning | 68 / 9,0 | 83 / 12,1 | 85 / 10,6 |
+
+**Mål pr. plads.**
+- Originalen (+0x1D: 0 = keeper, 1–4 forsvar, 5–7 midtbane, 8–9 angreb, 10, 252 = indskiftet): angreb 46 %, plads 10 8 %,
+  midtbane 30 %, forsvar 12 %, indskiftere 4 %.
+- Vores (spillerens naturlige rolle): ST 40–41 %, midtbane (CM/WM/AM/DM) 35–37 %, forsvar (CB/FB) 15 %.
+- Positionsfordelingen er altså IKKE problemet; vores angribere har tværtimod en lidt mindre andel.
+
+**Hvad der afviger.**
+- De bedste hold scorer for meget: 83–85 mål mod originalens 68, og spredningen er 10,6–12,1 mod 9,0.
+- Deres angriber får for mange skud: ca. 4 pr. kamp mod originalens ca. 3. Hans afslutning er derimod som originalens
+  (0,20–0,21 mål pr. skud).
+- Hele ligaen skyder mere (19,3 skud pr. kamp mod 17,2) med lavere effektivitet (0,145 mod 0,165).
+- 24 % af topskytternes skud er langskud fra den spiller, der har bolden. Boldholderen er oftest angriberen, fordi
+  modtageren i de forreste zoner vælges efter tilstedeværelse.
+
+**Forsøg.** Ingen af dem blev indført:
+
+| Forsøg | Topscorer (frø 2001 / 77) | Resultat |
+|---|---|---|
+| Grundlinje | 30,7 / 27,0 | – |
+| `shotShare` 0,2–1,0: skyttevalg og modtager i de forreste rækker dæmpet med kampens skud | 26–34 | inden for støjen; topscorerens skud blev ved at ligge på 115–160 |
+| `squashAtt` 0,22 | 29,0 / 28,0 | mindre spredning (10,0–11,8) |
+| … + `squashDef` 0,85 | 30,0 / 23,0 | kun 2,52–2,58 mål |
+| `shotShare` 0,6–1,0 + `squashAtt` 0,22 | 29,0 / 27,0 · 31,0 / 26,0 | inden for støjen |
+| `ease` 0,18–0,25 + `finish` 2,2–2,3 | 28–32 | 3,04–3,29 mål |
+
+**Konklusion.**
+- Topscoreren er et maksimum over ca. 500 spillere og svinger ±4 mellem sæsoner, så enkeltsæsoner siger lidt.
+- Afvigelsen sidder i, hvor mange chancer de bedste angreb skaber pr. kamp: de bedste hold får mange skud, og angriberen
+  er boldholderen. Ingen af profilens knapper rammer det uden at flytte mål eller uafgjorte.
+- En rigtig rettelse kræver, at boldholderens valg i angrebszonen følger originalen (`sub_7109f0`; se GRID_ENGINE.md og
+  QUESTIONS_FOR_BOSMAN.md), ikke flere knapper.
+- ORIGINAL-profilen er uændret fra trin 14.

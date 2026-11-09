@@ -221,7 +221,7 @@ const MS = read(join(DIR, 'match_stats_matches.tmp'));
 const TAB = 17_250_000, REC = 3450, SEC = 1573, T0 = 0x11c;
 type Side = { goals: number; shots: number; onTarget: number; corners: number; freeKicks: number; f0f: number; fouls: number; offsides: number;
   yellow: number; red: number; poss: number; passes: number; passesOk: number; tackles: number; tacklesWon: number; headers: number; headersWon: number; f20: number;
-  injuries: number; subs: number; scorers: { player: number; born: number; goals: number }[] };
+  injuries: number; subs: number; scorers: { player: number; born: number; goals: number }[]; lineup: { player: number; pos: number; goals: number; shots: number }[] };
 type Match = { table: number; date: string; day: number; year: number; home: number; away: number; minutes: number; att: number; detailed: boolean; h: Side; a: Side };
 const matches: Match[] = [];
 for (let t = 0; t < 4; t++) {
@@ -233,18 +233,19 @@ for (let t = 0; t < 4; t++) {
     const day = u16(MS, o + 8);
     const side = (s: number): Side => {
       const b = o + T0 + s * SEC;
-      const sc: Side['scorers'] = []; let injuries = 0, subs = 0;
+      const sc: Side['scorers'] = []; const lineup: Side['lineup'] = []; let injuries = 0, subs = 0;
       for (let p = 0; p < 20; p++) {
         const q = o + 0x190 + s * SEC + p * 73;
         const g = u8(MS, q + 33);
         if (g && g < 20) sc.push({ player: i32(MS, q), born: u16(MS, q + 22), goals: g });
+        const ps = u8(MS, q + 0x1d); if (ps !== 0xff) lineup.push({ player: i32(MS, q), pos: ps, goals: g < 20 ? g : 0, shots: u8(MS, q + 0x25) });
         const inj = u8(MS, q + 51); if (inj !== 0xff && inj > 0 && inj <= 130) injuries++;
         const on = u8(MS, q + 50); if (on !== 0xff && on > 0 && on <= 130) subs++;
       }
       return { goals: u8(MS, b + 3), shots: u8(MS, b + 0x0b), onTarget: u8(MS, b + 0x0c), corners: u8(MS, b + 0x0d), freeKicks: u8(MS, b + 0x0e),
         f0f: u8(MS, b + 0x0f), fouls: u8(MS, b + 0x10), offsides: u8(MS, b + 0x11), yellow: u8(MS, b + 0x12), red: u8(MS, b + 0x13),
         passes: u16(MS, b + 0x14), passesOk: u16(MS, b + 0x16), tackles: u16(MS, b + 0x18), tacklesWon: u16(MS, b + 0x1a),
-        headers: u16(MS, b + 0x1c), headersWon: u16(MS, b + 0x1e), f20: u16(MS, b + 0x20), poss: u8(MS, b + 0x22), injuries, subs, scorers: sc };
+        headers: u16(MS, b + 0x1c), headersWon: u16(MS, b + 0x1e), f20: u16(MS, b + 0x20), poss: u8(MS, b + 0x22), injuries, subs, scorers: sc, lineup };
     };
     const h = side(0), a = side(1);
     const dt = new Date(Date.UTC(year, 0, 1 + day));
@@ -394,6 +395,36 @@ for (const [c, C] of order) {
   console.log(`   stilling efter ${games2.toFixed(1)} kampe i snit: nr. 1 ${fmt(tab[0])} · nr. 2 ${fmt(tab[1])} · sidst ${fmt(tab[tab.length - 1])}`);
   const sc = [...C.scorers.entries()].sort((a, b) => b[1].goals - a[1].goals).slice(0, 5);
   console.log(`   topscorere (mål – spiller-id, klub, født): ${sc.map(([p, e]) => `${e.goals} – ${p}, ${name(e.club)}, ${e.born}`).join(' · ') || '-'}`);
+}
+
+// målscorerfordelingen i ligaen (ORIGINAL_SCORERS=<liga>, standard Premier League): topscorer, andel af holdets mål,
+// mål pr. positionskode (+0x1D) og pr. spillers rang i holdets egen scorerliste
+{
+  const want = process.env.ORIGINAL_SCORERS ?? 'English Premier Division';
+  const cid = [...byComp.keys()].find((c) => compName(c) === want);
+  if (cid !== undefined) {
+    const lg = games.filter((x) => x.comp === cid);
+    const per = new Map<number, { club: number; goals: number; shots: number; apps: number; pos: Map<number, number> }>();
+    const posGoals = new Map<number, number>(), posApps = new Map<number, number>(), team = new Map<number, number>();
+    for (const x of lg) if (x.stats) for (const [sd, club] of [[x.stats.h, x.home], [x.stats.a, x.away]] as const) {
+      team.set(club, (team.get(club) ?? 0) + sd.goals);
+      for (const l of sd.lineup) {
+        if (l.player < 0 || l.pos >= 0xfb && !l.goals && !l.shots) continue;
+        const e = per.get(l.player) ?? { club, goals: 0, shots: 0, apps: 0, pos: new Map() };
+        e.goals += l.goals; e.shots += l.shots; e.apps++; e.club = club; e.pos.set(l.pos, (e.pos.get(l.pos) ?? 0) + 1); per.set(l.player, e);
+        posGoals.set(l.pos, (posGoals.get(l.pos) ?? 0) + l.goals); posApps.set(l.pos, (posApps.get(l.pos) ?? 0) + 1);
+      }
+    }
+    const all = [...per.values()].sort((a, b) => b.goals - a.goals);
+    const tot = all.reduce((s, e) => s + e.goals, 0);
+    console.log(`\n${want}: ${lg.length} kampe (${lg.filter((x) => x.stats).length} med kampstatistik), ${tot} mål af spillere (holdenes mål ${[...team.values()].reduce((s, v) => s + v, 0)})`);
+    console.log(`  top 10: ${all.slice(0, 10).map((e) => `${e.goals} (${e.shots} skud, ${e.apps} k, ${name(e.club)}, pos ${[...e.pos.entries()].sort((a, b) => b[1] - a[1])[0][0]})`).join(' · ')}`);
+    const shares = [...team.entries()].map(([c, g]) => { const best = Math.max(0, ...all.filter((e) => e.club === c).map((e) => e.goals)); return g ? best / g : 0; });
+    console.log(`  holdets topscorer = ${(100 * shares.reduce((s, v) => s + v, 0) / shares.length).toFixed(1)} % af holdets mål i snit (max ${(100 * Math.max(...shares)).toFixed(0)} %)`);
+    for (const k of [1, 2, 3]) { const v = [...team.keys()].map((c) => all.filter((e) => e.club === c)[k - 1]?.goals ?? 0); console.log(`  holdets nr. ${k}: ${(v.reduce((s, x) => s + x, 0) / v.length).toFixed(1)} mål i snit`); }
+    console.log(`  mål pr. positionskode (+0x1D): ${[...posGoals.keys()].sort((a, b) => a - b).map((p) => `${p}: ${posGoals.get(p)} mål/${posApps.get(p)} kampe`).join(' · ')}`);
+    console.log(`  spillere med 20+/15+/10+ mål: ${all.filter((e) => e.goals >= 20).length}/${all.filter((e) => e.goals >= 15).length}/${all.filter((e) => e.goals >= 10).length}; mål pr. skud for top 10: ${(all.slice(0, 10).reduce((s, e) => s + e.goals, 0) / all.slice(0, 10).reduce((s, e) => s + e.shots, 0)).toFixed(3)}, alle: ${(tot / all.reduce((s, e) => s + e.shots, 0)).toFixed(3)}`);
+  }
 }
 
 if (jsonOut) {

@@ -199,8 +199,12 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
 
 // ---------- resultatbehandling ----------
 
+/** Målekrog til scripts (original-lab.ts): kaldes med hver kamps rapport. Påvirker intet i spillet. */
+export const labHooks: { report?: (f: Fixture, rep: MatchReport) => void } = {};
+
 export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const g = gs();
+  labHooks.report?.(f, rep);
   const [hs, as] = rep.stats;
   const scorers: MatchResultShort['scorers'] = rep.events.filter((e) => e.k === 'goal').map((e) => (e.og ? [e.m, e.t, e.p!, 1] : [e.m, e.t, e.p!]));
   const gate = gateReceipts(f);
