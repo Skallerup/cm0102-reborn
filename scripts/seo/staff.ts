@@ -150,7 +150,8 @@ ${ranked.filter((x) => x.rows.length).map(({ l, rows }) => `<h2><a href="/${P}/s
     const ranks = rankOf.get(s) ?? [];
     c.emit('lists', {
       slug: s.url.slice(1),
-      title: `${s.name} ${game} – ${s.role}${s.cid ? `, ${s.club}` : ''} | CM Reborn`,
+      // højst ~65 tegn: klubben kun, når der er plads
+      title: `${[`${s.name} – ${game} ${s.role}${s.cid ? `, ${s.club}` : ''}`, `${s.name} – ${game} ${s.role}`, `${s.name} (${game})`].find((x) => x.length <= 65) ?? s.name} | CM Reborn`,
       h1: `${s.name} – ${game} ${s.role.toLowerCase()}`,
       description: `${s.name} in ${c.dbName}: ${s.role.toLowerCase()}${s.cid ? ` at ${s.club}` : ' without a club'}, ${s.age} years old, from ${s.nation}. ${best.length ? `Best at ${listJoin(best.map((k) => `${STAFF_LABEL[k]} (${s.a[k]})`))}.` : ''} Every staff attribute.`,
       crumbs: [c.hubCrumb, hub],

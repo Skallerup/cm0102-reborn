@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-09 – SEO-revision efter nattens sider: titler over 65 tegn 284 → 61 (stabsprofilerne vælger den første af tre former, der kan stå; `fit(...)` i db.ts til wonderkid-/cheap-/egenskabslisterne), 0 beskrivelser over 160, 0 brudte links.
 - 2026-11-09 – Rettet (set i browseren): klassisk nyhedsoverskrift uden link mistede mellemrummet efter et klubnavn ("Man Utdto register …" – `.cx-nhead` er flex, så tekststykkerne blev egne elementer; nu i et `<span>`), og `eur.request` sender turneringens navn (compName tager navnet, ikke id'et: "the CL" → "the Champions League").
 - 2026-11-09 – SEO: afsnittet "Attribute masking" i hidden-attributes-guiden (originalens "( - )", Sct, Scouted Only – fra Bosman-projektets SCOUTS.md) og titlen "Hidden Attributes & Attribute Masking"; taktikguiden nævner "team instructions" i beskrivelse og overskrift.
 - 2026-11-09 – SEO: `/cm-01-02-money-cheat/` ("money cheat", "unlimited money", "money editor", "dinheiro infinito"): databaseeditor/save game editor i originalen, CM Reborns indbyggede Editor (Clubs → Balance at start → New game) og lovlige veje til penge.
