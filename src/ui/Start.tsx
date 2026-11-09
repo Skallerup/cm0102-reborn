@@ -198,6 +198,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   const [ver, setVerState] = useState<OriginalVersion>(() => { try { const v = localStorage.getItem('cm0102.dbver'); return (ORIGINAL_VERSIONS as readonly string[]).includes(v ?? '') ? v as OriginalVersion : '3.9.60'; } catch { return '3.9.60'; } });
   const setVer = (v: OriginalVersion) => { setVerState(v); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.dbver', v); } catch { /* ignorer */ } };
   const [mine, setMine] = useState<CustomDb[]>([]);
+  // nyt spil starter øverst ved databasevalget (før scrollede autofokus på navnefeltet forbi det – ejerens fejl 9/11)
+  useEffect(() => { if (!ch) window.scrollTo(0, 0); }, []);
   const [mode, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'extended' ? 'extended' : 'authentic'; } catch { return 'authentic'; } });
   const setModeState = (m: 'authentic' | 'extended') => { setModeRaw(m); try { localStorage.setItem('cm0102.mode', m); } catch { /* ignorer */ } };
   useEffect(() => { if (!ch) void listDbs().then(setMine); }, [ch]);
@@ -333,7 +335,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
         <div className="col">
           {ch && <div className="insight good">{t(`challenge.${ch.id}.desc`)}</div>}
           <label>{t('start.managerName')}
-            <input style={{ marginLeft: 8, width: 220 }} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('start.managerPlaceholder')} autoFocus />
+            <input style={{ marginLeft: 8, width: 220 }} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('start.managerPlaceholder')} autoFocus={!!ch} />
           </label>
         </div>
       </Panel>
