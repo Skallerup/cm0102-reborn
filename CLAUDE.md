@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-09 – SEO: `/cm-01-02-money-cheat/` ("money cheat", "unlimited money", "money editor", "dinheiro infinito"): databaseeditor/save game editor i originalen, CM Reborns indbyggede Editor (Clubs → Balance at start → New game) og lovlige veje til penge.
 - 2026-11-09 – SEO: regens-guiden har "The regens to look out for" (de ældste stjerner med PA 150+ og deres land – regen arver PA og nationalitet; `DbOut.nationName`).
 - 2026-11-09 – SEO: `/cm-01-02-best-signings/` ("best signings", "must sign players", "players to buy": billige stjerner ≤ £1,5m, billige wonderkids, Bosman 2002, frie agenter fra `dbO.kept`), titlerne "Best Tactics & Formations" og "Best Training Schedule".
 - 2026-11-09 – SEO: guiden `/cm-01-02-3960-database/` (3.9.60 = ODB: top 50, pr. position, wonderkids, tilfældigt PA, spillere kun i 3.9.60 – matcher 3.9.68 på navn eller efternavn + fødselsår) og 18 sider på 9 sprog (`scripts/seo/i18nGuides.ts`: bedste spillere/wonderkids i 3.9.60 og 2026/27-databasen – fx /tr/cm-01-02-en-iyi-oyuncular/, /pt/cm-01-02-atualizado-2026/, /it/cm-01-02-aggiornamento-2026/) med hreflang til de engelske sider (`LG.altBest`/`altUpd`), link fra sprogets landingsside (`toPage(…, local)`). Søgeordene fra autoforslag på tr/pt/es/de/it. Linktjek: 0 brudte.

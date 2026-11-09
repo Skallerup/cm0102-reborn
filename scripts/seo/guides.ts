@@ -35,7 +35,7 @@ function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-26-27-squads/', 'cm-01-02-android/', 'cm-01-02-iphone-ipad/', 'cm-01-02-windows-11/', 'cm-01-02-cheat-tactics/', 'cm-01-02-work-permit/', 'cm-01-02-training/', 'cm-01-02-staff-guide/', 'cm-01-02-multiplayer/', 'cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-26-27-squads/', 'cm-01-02-android/', 'cm-01-02-iphone-ipad/', 'cm-01-02-windows-11/', 'cm-01-02-cheat-tactics/', 'cm-01-02-money-cheat/', 'cm-01-02-work-permit/', 'cm-01-02-training/', 'cm-01-02-staff-guide/', 'cm-01-02-multiplayer/', 'cm-01-02-regens/', 'cm-01-02-player-values/', 'cm-01-02-world-cup-2002/', 'cm-01-02-richest-clubs/', 'cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
 export function guides(db: DbOut, ver: VersionData): Page[] {
   // stabslisternes top 5 fra den originale database (scripts/seo/staff.ts)
@@ -141,6 +141,41 @@ ${ptable(cheat, ['Value', (p) => pounds(p.value)])}
       faq: [
         ['What is the best cheat tactic in CM 01/02?', 'The famous ones – Diablo, Wib Wob and the 4-1-3-2 variants – exploited forward runs, through balls, defensive midfielders and hard tackling in the original match engine. CM Reborn has no overpowered formation.'],
         ['Who are the cheat players in CM 01/02?', `Cheap teenagers with huge potential – the cheapest with a PA of 170+ are ${cheat.slice(0, 3).map((p) => p.name).join(', ')} – plus the random-potential legends like Tsigalko and Cherno Samba.`],
+      ],
+    },
+    {
+      slug: 'cm-01-02-money-cheat/',
+      title: 'CM 01/02 Money Cheat – Unlimited Money, Editors & Legit Ways | CM Reborn',
+      h1: 'CM 01/02 money cheat: unlimited money, editors and the legit ways',
+      description: 'Is there a money cheat in CM 01/02? How players give their club unlimited money with database and save game editors, how to do it in CM Reborn with the built-in editor – and how to make money without cheating.',
+      body: `<p class="lead">CM 01/02 has no cheat codes. When people talk about a "money cheat" they mean one of two things: editing the club's money with a fan-made tool, or a way of making money that the game never punished. Here are both – and how CM Reborn handles it.</p>
+<h2>Editing the money in the original</h2>
+<ul>
+<li><b>Before the game starts:</b> a database editor changes a club's bank balance in the database files (club.dat). The game reads the balance when you start a new game and sets the transfer budget from it – about 70 % of the balance.</li>
+<li><b>In a running save:</b> a save game editor changes the money in your saved game.</li>
+</ul>
+<p>Both are community tools, not part of the game. Back up your saves before you try one.</p>
+<h2>Unlimited money in CM Reborn – no tools needed</h2>
+<p>CM Reborn has a database editor built in:</p>
+<ol>
+<li>Open <a href="/">CM Reborn</a> and choose <b>Editor</b> in the start menu.</li>
+<li>Name a new database, pick the base (the original 2001/02 database or 2026/27) and press <b>Create</b>.</li>
+<li>Go to <b>Clubs</b>, find your club and set <b>Balance at start</b> (and the reputation, if you like). <b>Save</b>.</li>
+<li>Press <b>New game</b> next to your database – your club starts with the money you gave it.</li>
+</ol>
+<p>The same editor changes players too: attributes, CA and PA – also the random −1/−2 potential – and you can create new players. Your database is saved in the browser and can be exported as a file.</p>
+<h2>Making money without cheating</h2>
+<ul>
+<li><b>Sell at the peak.</b> A player's value falls quickly in his thirties – <a href="/cm-01-02-player-values/">how values are calculated</a>. Sell before the drop.</li>
+<li><b>Sign for free.</b> Players whose contracts run out can be signed on a Bosman – <a href="/cm-01-02-bosman-guide/">the best ones in 2002</a>, and <a href="/cm-01-02-best-signings/">the best cheap signings</a>.</li>
+<li><b>Buy young, sell old.</b> Wonderkids cost little and rise in value as their ability grows.</li>
+<li><b>Win things.</b> Cup runs, European football and a high league finish bring prize money and bigger crowds.</li>
+</ul>
+<p>Want the money without editing anything? Start with one of <a href="/cm-01-02-richest-clubs/">the richest clubs</a>.</p>`,
+      faq: [
+        ['Is there a money cheat in CM 01/02?', 'No cheat code. Players edit the club\'s balance with a database editor before starting, or with a save game editor in a running save. In CM Reborn the built-in Editor sets any club\'s starting balance.'],
+        ['How do I get unlimited money in CM 01/02?', 'In CM Reborn: Editor → create a database → Clubs → set "Balance at start" → New game. In the original you need a fan-made database or save game editor.'],
+        ['How is the transfer budget set in CM 01/02?', 'From the bank balance at the start: about 70 % of it, rounded to whole £250,000 (or £25,000 for small clubs).'],
       ],
     },
     {
@@ -634,6 +669,7 @@ ${([
         ['/cm-01-02-world-cup-2002/', 'The 2002 World Cup', 'The real groups, the coaches and the strongest squads when the game reaches June 2002.'],
         ['/cm-01-02-tips/', 'Tips: how to win with any club', 'Squad building, tactics, training and the transfer market.'],
         ['/cm-01-02-cheat-tactics/', 'Cheat tactics and cheat players', 'Why Diablo, Wib Wob and friends worked, and the cheap world-beaters.'],
+        ['/cm-01-02-money-cheat/', 'Money cheat and unlimited money', 'Editing the club\'s money – in the original and with CM Reborn\'s built-in editor – and the legit ways.'],
         ['/cm-01-02-training/', 'Training schedules', 'What each schedule improves, coaches, workload and development.'],
         ['/cm-01-02-staff-guide/', 'Staff: best coaches, scouts and physios', 'What the 21 staff attributes do, and the best staff in the database – including the ones without a club.'],
         ['/cm-01-02-work-permit/', 'Work permits', 'Signing non-EU players for a British club in 2001/02.'],
