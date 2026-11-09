@@ -188,3 +188,28 @@ This decides free kicks (~16 per match) and cards (1,70/0,14). Today those are c
 
 The top scorer is too high, which suggests our finishing is spread too unevenly between strikers. It is a sign that the
 shot score (3b) matters.
+
+---
+
+## 5. Found while building the grid engine (docs/GRID_ENGINE.md)
+
+### 5a. Is w29 the same word +0x29 as the carrier's "space"?
+`sub_7109f0` writes "space" (`plads`) to word +0x29 before it calls `sub_6c6a30`: 0x7110f5..0x71133f, +70.
+`sub_700bd0` uses `rand(w29)` in every shot. We now pass `space` as w29, which goes some way to solving 3b. Is that right?
+Is +0x29 then reset after the shot (0x703936)?
+
+### 5b. How far is the ball from goal when a shot is taken, in the original?
+In our grid engine, most shots are taken from D ≤ 1, and over half of the shots on target are goals; the original's rate is 28 %.
+- We need the distribution of shots by cell, or at least by D, from a season played on holiday, if the original
+  can show it.
+- Or we need the rule that keeps the carrier out of the six-yard area. Is it in `sub_6c87e0`, `sub_6bc030` or the
+  tactical cell?
+
+### 5c. Ball travel in `sub_6fad40`
+How many ticks does a pass take? While it travels, can opponents in the receiver's cell win it, and by which roll?
+We use `ceil(D/4)` ticks and a fixed 35 % chance.
+
+### 5d. Restarts
+- Where does the original set match+0x8eb2 back to 0 after a restart is taken?
+- Where does it place the ball and the players for corners and free kicks?
+- Corners and offsides are far too few in our engine (2,3 and 0,8 per match).
