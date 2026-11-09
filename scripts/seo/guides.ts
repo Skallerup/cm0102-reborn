@@ -21,6 +21,12 @@ export interface VersionData {
 function ptable(rows: KP[], extra?: [string, (p: KP) => string]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Age</th><th>Position</th><th>Club</th>${extra ? `<th class="n">${extra[0]}</th>` : ''}<th class="n">CA</th><th class="n">PA</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}</td><td>${pl(p)}</td><td>${p.age}</td><td>${esc(p.posStr)}</td><td>${esc(p.clubName)}</td>${extra ? `<td class="n">${extra[1](p)}</td>` : ''}<td class="n">${p.ca}</td><td class="n">${pa(p)}</td></tr>`).join('')}</tbody></table></div>`;
 }
+
+/** de 5 bedste i en egenskab (blandt spillere med profil, ikke udfyldt – 0 = ikke sat i databasen) */
+function topIn(K: KP[], key: keyof typeof A, n = 5, keepers = false): KP[] {
+  return K.filter((p) => p.attrs[A[key]] > 0 && (keepers ? p.pos[0] >= 15 : p.pos[0] < 15)).sort((a, b) => b.attrs[A[key]] - a.attrs[A[key]] || b.ca - a.ca).slice(0, n);
+}
+const tops = (K: KP[], key: keyof typeof A, keepers = false) => topIn(K, key, 5, keepers).map((p) => `${pl(p)} (${p.attrs[A[key]]})`).join(', ');
 function moveTable(rows: VersionData['late'], ver: VersionData, late: boolean) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>3.9.60</th><th>${late ? '3.9.68' : '3.9.65'}</th><th class="n">CA</th></tr></thead><tbody>${rows.map((p, i) => { const u = late ? ver.url(p.name, p.to) : null; return `<tr><td>${i + 1}</td><td>${u ? `<a href="${u}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`}</td><td>${esc(p.from)}</td><td>${esc(p.to)}</td><td class="n">${p.ca}</td></tr>`; }).join('')}</tbody></table></div>`;
 }
@@ -28,7 +34,7 @@ function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
 export function guides(db: DbOut, ver: VersionData): Page[] {
   const K = db.kept;
@@ -51,6 +57,52 @@ export function guides(db: DbOut, ver: VersionData): Page[] {
   const neg2 = K.filter((p) => p.paRaw === -2).length, neg1 = K.filter((p) => p.paRaw === -1).length;
 
   const pages: Page[] = [
+    {
+      slug: 'cm-01-02-attributes-explained/',
+      title: 'CM 01/02 Attributes Explained – What Every Attribute Really Does | CM Reborn',
+      h1: 'CM 01/02 attributes explained: what each one does in the match',
+      description: 'What finishing, flair, decisions, teamwork, pace, stamina and the other CM 01/02 attributes actually do in the match engine – read from the original game\'s code – with the best players in each.',
+      body: `<p class="lead">Championship Manager 01/02 shows 1–20 for every attribute, but they are not equal. Some feed directly into the player's choices on the ball, some only matter when he gets tired, and some do almost nothing for certain positions. This guide is based on the original game's own code (the ball-carrier decision, fatigue and discipline routines), with the best players in each attribute from the <a href="/cm-01-02/">CM 01/02 database</a> (3.9.68).</p>
+<p class="note">"From the code" = read in cm0102.exe. Everything else is general CM 01/02 knowledge or how CM Reborn models it.</p>
+<h2>Attacking</h2>
+<ul>
+<li><b>Finishing</b> – the heart of a close-range chance. From the code: a shot from close in scores 100 × Finishing + 3000 against passing, running or holding the ball, so a 20-finisher shoots almost every time he is near goal, while a 10 often looks for a pass. Best: ${tops(K, 'finishing')}.</li>
+<li><b>Heading</b> – with the ball at head height the header scores 75 × Heading + 2500, but only very close to goal; further out it is heavily punished, so headers from distance are rare. Best: ${tops(K, 'heading')}.</li>
+<li><b>Dribbling</b> – decides whether a player runs at defenders. From the code: one on one with the keeper, the choice to go round him is a duel of rand(10 × Dribbling) against rand(10 × Finishing), and a player who ignores instructions gets a run bonus of Dribbling³. Best: ${tops(K, 'dribbling')}.</li>
+<li><b>Long Shots</b> – only counts from 2 to 4.5 "cells" out (roughly the edge of the box to 30 yards) and mostly when the player has the Long Shots instruction or does his own thing. Best: ${tops(K, 'longShots')}.</li>
+<li><b>Flair</b> – the unpredictability attribute. From the code: it sets how far out a player will even consider shooting (3 + rand(3) + flair roll / 7 cells), gives tricks and snap shots (a chance of flair⁴ against 10000 × distance) and is the only way a wide player shoots from the flank. Best: ${tops(K, 'flair')}.</li>
+<li><b>Free Kicks</b> – a direct free kick is taken when (rand(Free Kicks + 20) + flair roll) / 3 is greater than the distance to goal and the kick is central – so great free-kick takers shoot from further out. Best: ${tops(K, 'freeKicks')}.</li>
+<li><b>Crossing, Passing, Technique</b> – drive the quality of the ball once the choice is made. Best passers: ${tops(K, 'passing')}. Best crossers: ${tops(K, 'crossing')}.</li>
+</ul>
+<h2>Mental – how a player thinks</h2>
+<ul>
+<li><b>Decisions</b> – the most underrated attribute. From the code: every option (pass, run, hold, shoot) gets random noise of up to 50 × (20 − decisions roll), where the roll is the better of two rand(Decisions + 2). A 20 makes the right choice almost every time; a 6 is a coin toss. Best: ${tops(K, 'decisions')}.</li>
+<li><b>Creativity</b> – a roll of up to 0.8 × Creativity + 5, used when he sees the keeper off his line or a gap others miss. Best: ${tops(K, 'creativity')}.</li>
+<li><b>Teamwork</b> – from the code: with a chance of 1 in Teamwork a player ignores your instructions and does his own thing (a dribble, a long shot). A 20 almost never does; a 5 does it every fifth time. Best: ${tops(K, 'teamwork')}.</li>
+<li><b>Anticipation, Positioning, Off the Ball</b> – where a player is before the ball arrives; positioning also gives a roll of its own. Best positioning: ${tops(K, 'positioning')}.</li>
+<li><b>Aggression and Bravery</b> – more challenges and more headers in traffic – and, with Dirtiness, more fouls.</li>
+<li><b>Influence</b> (leadership) – a captain's attribute; it also raises the player's value.</li>
+</ul>
+<h2>Physical</h2>
+<ul>
+<li><b>Pace and Acceleration</b> – from the code: in the match, pace and acceleration count for 2/3 of their value against 1/2 for the other physical attributes, which is why fast forwards are so dangerous. Fastest: ${tops(K, 'pace')}.</li>
+<li><b>Stamina</b> – how fast condition drops. From the code: fatigue depends on 0.65 × Stamina plus an age term (it peaks between 24 and 29 and falls after 30), and on how hard he is running. Best: ${tops(K, 'stamina')}.</li>
+<li><b>Natural Fitness</b> – recovery: at half-time a player gets (Natural Fitness + 15) × 0.1 % of his condition back, and he recovers faster between matches. Best: ${tops(K, 'naturalFitness')}.</li>
+<li><b>Strength, Jumping, Balance, Agility</b> – duels, headers and staying on your feet. Best in the air (jumping): ${tops(K, 'jumping')}.</li>
+</ul>
+<h2>Goalkeeping</h2>
+<ul><li><b>Handling, Reflexes, One on Ones</b> – the saves; one on ones decides the duel against a forward through on goal. Best reflexes: ${tops(K, 'reflexes', true)}.</li></ul>
+<h2>Hidden attributes</h2>
+<p><b>Injury Proneness</b> scales the risk of a knock with every movement and challenge, <b>Sportsmanship</b> decides whether a player wastes time in the corner when protecting a late lead (rand(Sportsmanship) < rand(10)), and <b>Consistency</b>, <b>Important Matches</b> and <b>Dirtiness</b> do what the names say. More in <a href="/cm-01-02-hidden-attributes/">the hidden attributes guide</a>.</p>
+<h2>Attributes and CA</h2>
+<p>18 of the attributes – including finishing, passing, tackling, decisions and creativity – move with the player's current ability: about +1 for every 10 CA he gains. So a 17-year-old's numbers grow on their own as he develops. <a href="/cm-01-02-ca-pa-explained/">How CA, PA and the attributes fit together →</a></p>`,
+      faq: [
+        ['What is the most important attribute in CM 01/02?', 'For attackers, finishing and decisions: finishing decides how often a player shoots and scores from close range, and decisions removes the randomness from every choice he makes. For every outfield player, pace and acceleration count extra in the match.'],
+        ['What does flair do in CM 01/02?', 'It makes a player try the unexpected: shots from further out, tricks and snap shots, and shots from wide positions that other players would never take.'],
+        ['What does teamwork do in CM 01/02?', 'With a chance of 1 in his Teamwork value a player ignores your individual instructions and does his own thing. High teamwork means your tactics are followed.'],
+        ['What does natural fitness do in CM 01/02?', 'It sets how quickly a player recovers – at half-time he gets back (Natural Fitness + 15) × 0.1 % of his condition – and how fast he is ready again between matches.'],
+      ],
+    },
     {
       slug: 'cm-01-02-database-versions/',
       title: 'CM 01/02 3.9.60 vs 3.9.65 vs 3.9.68 – Database Versions Compared | CM Reborn',
@@ -261,7 +313,7 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
     description: 'All CM Reborn guides to Championship Manager 01/02: download, tactics, wonderkids, best players, Bosman free transfers, hidden attributes, CA and PA, the best teams to manage and tips.',
     body: `<p class="lead">Guides to Championship Manager 01/02, built on the real CM 01/02 databases.</p><ul>${[
       ['/cm-01-02-tips/', 'CM 01/02 tips: how to win with any club'], ['/cm-01-02-tactics/', 'CM 01/02 tactics'], ['/cm-01-02-wonderkids/', 'CM 01/02 wonderkids'], ['/cm-01-02-best-players/', 'CM 01/02 best players'],
-      ['/cm-01-02-bosman-guide/', 'Bosman free transfers'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes explained'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage'],
+      ['/cm-01-02-bosman-guide/', 'Bosman free transfers'], ['/cm-01-02-attributes-explained/', 'What every attribute does'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes explained'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage'],
       ['/cm-01-02/lists/legends/', 'CM 01/02 legends and cult heroes'], ['/cm-01-02-download/', 'CM 01/02 download – or play without one'], ['/cm-01-02-database-versions/', 'Database versions: 3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook'], ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database'],
     ].map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>`,
   };
