@@ -258,7 +258,7 @@ ${table(young(M, 20).slice(0, 30))}`,
     slug: 'cm-01-02-tactics/',
     title: 'CM 01/02 Best Tactics & Formations – The Classics Explained | CM Reborn',
     h1: 'CM 01/02 tactics: the classic formations, and why they worked',
-    description: 'The famous CM 01/02 tactics explained: 4-4-2, the overpowered DMC, the 4-2-4 with arrows, through balls and the offside trap – and how they play in CM Reborn, where no formation is a cheat code.',
+    description: 'The best CM 01/02 tactics and formations explained: the overpowered DMC, 4-2-4 with arrows, what each team instruction really does in the original code – and how tactics play in CM Reborn.',
     body: `<p class="lead">CM 01/02 is remembered for tactics that broke the match engine. Here is what the classic ones did, and how the same ideas play out in CM Reborn.</p>
 <h2>The famous CM 01/02 exploits</h2>
 <ul>
@@ -267,7 +267,7 @@ ${table(young(M, 20).slice(0, 30))}`,
 <li><b>Through balls and pace.</b> Fast strikers against a high line were almost unstoppable, especially with "run with ball" and "through balls" on.</li>
 <li><b>Offside trap and hard tackling.</b> A popular combination that the AI rarely punished.</li>
 </ul>
-<h2>What the instructions do in the original's code</h2>
+<h2>What the team instructions do in the original's code</h2>
 <p>Read from CM 01/02's own match engine (cm0102.exe):</p>
 <ul>
 <li><b>Passing style</b> shifts the weights the passer gives long and short options: Long −1000 short / +1000 long, Direct −750 / +500, Short +250 / −250. Mixed changes nothing.</li>

@@ -527,10 +527,12 @@ ${ptable(bosman.slice(0, 25), ['Contract', (p) => p.contract.slice(0, 7)])}
     },
     {
       slug: 'cm-01-02-hidden-attributes/',
-      title: 'CM 01/02 Hidden Attributes Explained – Consistency, Important Matches & More | CM Reborn',
+      title: 'CM 01/02 Hidden Attributes & Attribute Masking Explained | CM Reborn',
       h1: 'CM 01/02 hidden attributes explained',
       description: 'What the hidden attributes in Championship Manager 01/02 do – consistency, important matches, injury proneness, dirtiness, versatility, adaptability, ambition, loyalty, pressure, professionalism, sportsmanship and temperament – with the stars who have the best and worst.',
       body: `<p class="lead">CM 01/02 never shows these numbers in the game, but they shape every player. All of them are on the 1–20 scale and stored in the database – CM Reborn shows them on every <a href="/cm-01-02/">player profile</a>.</p>
+<h2>Attribute masking</h2>
+<p>Hidden attributes are one thing; masked ones are another. With attribute masking switched on (an option when you start a game), you do not see the attributes of players your scouts have not watched. The original shows "( - )" instead – "( - ) indicates that this attribute is masked and requires further scouting" – and scouted players get the tag <b>Sct</b> in lists, where searches can be limited to "Scouted Only". Scout a player, his club or his league, and the numbers appear; a scout with high Judging Player Ability and Potential gives the most accurate picture (<a href="/cm-01-02-staff-guide/">the best scouts</a>). CM Reborn has the same option when you start a new game.</p>
 <h2>What each one does</h2>
 <dl class="kv">
 <div><dt>Consistency</dt><dd>How often he plays to his ability</dd></div>
