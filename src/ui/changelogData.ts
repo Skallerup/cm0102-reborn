@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.20.0',
+    date: '2026-11-09',
+    title: { da: 'Ét klubskifte pr. transfervindue', en: 'One move per transfer window' },
+    items: [
+      { da: "Rettet: en spiller kunne skifte klub flere gange i samme transfervindue (fx Spurs → Fulham → Bilbao → Lazio). Nu køber computerens klubber ikke en spiller, der lige har skiftet, og en nyindkøbt spiller sættes ikke til salg i samme vindue", en: "Fixed: a player could change clubs several times in the same transfer window (e.g. Spurs → Fulham → Bilbao → Lazio). Computer clubs no longer buy a player who has just moved, and a new signing isn't put up for sale in the same window" },
+    ],
+  },
+  {
     version: '0.19.0',
     date: '2026-11-08',
     title: { da: 'Mobil, flere ligaer undervejs og ny forside', en: 'Mobile, more leagues mid-game and a new front page' },

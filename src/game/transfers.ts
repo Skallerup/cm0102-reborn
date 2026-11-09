@@ -970,7 +970,7 @@ export function rankTargets(club: Club, role: Role, watch = false): Player[] {
     if (!p) continue;
     if (p.club === club.id || p.loan || p.contract?.futureClub) continue;
     // nyindkøbte spillere videresælges ikke samme sæson (medmindre de er sat til salg)
-    if (p.club && p.joined && !p.listed && p.joined > addDays(g.date, -300)) continue;
+    if (recentlyJoined(p)) continue;
     const age = ageOn(p.dob, g.date);
     if (age > 31) continue;
     const price = p.club ? askingPrice(p) : 0;
@@ -998,9 +998,20 @@ export function rankTargets(club: Club, role: Role, watch = false): Player[] {
   return cands;
 }
 
+/**
+ * Nyindkøbt: AI-klubber køber ikke en spiller, der skiftede klub inden for de sidste 120 dage (højst ét skifte pr.
+ * transfervindue – spillerfejl: Kulusevski Spurs → Fulham → Bilbao → Lazio i samme vindue), og heller ikke en
+ * ikke-transferlistet spiller, der kom til i år.
+ */
+export function recentlyJoined(p: Player): boolean {
+  if (!p.club || !p.joined) return false;
+  const g = gs();
+  return p.joined > addDays(g.date, -120) || (!p.listed && p.joined > addDays(g.date, -300));
+}
+
 export function findTarget(club: Club, role: Role): Player | null {
   // spillere klubben allerede har på sin shortliste foretrækkes
-  const listed = (club.shortlist ?? []).map((id) => gs().players[id]).filter((p): p is Player => !!p && p.club !== club.id && GROUP[naturalRole(p)] === GROUP[role] && !p.loan && !p.contract?.futureClub && (p.club ? askingPrice(p) : 0) <= club.transferBudget * 1.05);
+  const listed = (club.shortlist ?? []).map((id) => gs().players[id]).filter((p): p is Player => !!p && p.club !== club.id && GROUP[naturalRole(p)] === GROUP[role] && !p.loan && !p.contract?.futureClub && !recentlyJoined(p) && (p.club ? askingPrice(p) : 0) <= club.transferBudget * 1.05);
   if (listed.length && rng.chance(0.7)) return rng.pick(listed);
   const cands = rankTargets(club, role);
   return cands.length ? rng.pick(cands.slice(0, 8)) : null;
@@ -1046,7 +1057,8 @@ function aiClubTurn(club: Club) {
     return;
   }
   if (sq.length > 30) {
-    const surplus = sq.sort((a, b) => a.ca - b.ca).slice(0, 3);
+    // ikke nyindkøbte (de sættes ikke til salg i samme vindue)
+    const surplus = sq.filter((p) => !p.joined || p.joined <= addDays(g.date, -120)).sort((a, b) => a.ca - b.ca).slice(0, 3);
     for (const p of surplus) p.listed = true;
   }
   const needs = analyzeNeeds(club.id);
