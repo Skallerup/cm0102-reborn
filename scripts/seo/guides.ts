@@ -34,7 +34,7 @@ function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-match-engine/', 'cm-01-02-attributes-explained/', 'cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
 export function guides(db: DbOut, ver: VersionData): Page[] {
   const K = db.kept;
@@ -57,6 +57,44 @@ export function guides(db: DbOut, ver: VersionData): Page[] {
   const neg2 = K.filter((p) => p.paRaw === -2).length, neg1 = K.filter((p) => p.paRaw === -1).length;
 
   const pages: Page[] = [
+    {
+      slug: 'cm-01-02-match-engine/',
+      title: 'How the CM 01/02 Match Engine Works – Read From the Original Code | CM Reborn',
+      h1: 'How the Championship Manager 01/02 match engine works',
+      description: 'Inside the CM 01/02 match engine: 11 ticks a minute on a 9 × 12 grid, how the player on the ball chooses, how goals, cards, fatigue, injuries, ratings and substitutions are decided – read from cm0102.exe.',
+      body: `<p class="lead">Championship Manager 01/02 never showed its match engine – just the commentary bar. Fans have since taken the original program apart, and this is what is inside, with the numbers from the code. (Sources: the reverse-engineering behind <a href="/">CM Reborn</a>; addresses refer to cm0102.exe.)</p>
+<h2>A match is 990 ticks on a 9 × 12 grid</h2>
+<p>The engine runs <b>11 ticks per minute</b> – 495 a half – and moves the 22 players over a pitch of 9 columns by 12 rows. Each tick the players get fresh "rolls" for decisions, creativity, flair and positioning, and the player on the ball decides what to do. Stoppage time builds up at every dead ball: rand(10) ticks go on the clock and up to 80 % of that is added at the end of the half.</p>
+<h2>The player on the ball: pass, run, hold or shoot</h2>
+<p>Every time a player has the ball, the game scores four options and picks the highest:</p>
+<ul>
+<li><b>Shoot</b> – close to goal 100 × Finishing + 3000 (headers 75 × Heading + 2500); further out only if the distance is within his flair-based range.</li>
+<li><b>Pass</b> – the best pass option's weight × (pressure + defenders in the way + 4) / 5 – the more he is pressed, the more he wants to release it.</li>
+<li><b>Run</b> – space in front of him, dribbling, an open run at goal, instructions like Run With Ball.</li>
+<li><b>Hold</b> – shield the ball and wait for support (or waste time in the corner late on).</li>
+</ul>
+<p>Then each score gets random noise of up to <b>50 × (20 − decisions roll)</b>. That one line is why Decisions matters so much: a player with poor decisions picks almost at random, a top player picks the right option. The score line counts too – a side 3+ goals up shoots less and passes twice as willingly, a side chasing the game shoots more. <a href="/cm-01-02-attributes-explained/">What every attribute does →</a></p>
+<h2>Goals</h2>
+<p>A shot is on target when its shot score passes 240 (120 for penalties), and it is a goal when 100 × S / (S + K) is above 71 – the shooter's score against the keeper's. Across a full Premier League season the original averages <b>2.87 goals</b>, <b>17.2 shots</b> (10.3 on target), <b>5.0 corners</b> and <b>7.4 offsides</b> a match, with home / draw / away at 51 / 23 / 26 %.</p>
+<h2>Referees and cards</h2>
+<p>Every referee has a Discipline rating. It sets how readily he blows for a foul: a factor of Discipline × 0.1 above 10, and 1 + (Discipline − 10) × 0.05 below. Strict referees also add to the severity of each card decision (Discipline 20: +2, 18–19: +1, 10–17: 0, 5–9: −1, 3–4: −2, 2 or less: −3), and a team that keeps fouling goes over the referee's limit and gets carded sooner. A professional foul is a red card 87.5 % of the time. The season average: <b>1.70 yellow</b> and <b>0.14 red</b> cards a match.</p>
+<h2>Fatigue and recovery</h2>
+<p>Condition falls with every action and with how hard the player is running, scaled by Stamina and age: the age term peaks between 24 and 29 and drops after 30 and again after 34. At half-time a player gets back (Natural Fitness + 15) × 0.1 % of his condition. After 60 minutes the commentary calls the first player under 67.5 % "knackered".</p>
+<h2>Knocks and injuries</h2>
+<p>The risk of a knock is checked with every movement step and every challenge, scaled by Injury Proneness. The severity is rand(rand(102)) (re-rolled smaller two times in three when over 50); over 50 is an injury, and a player with too little condition left comes off.</p>
+<h2>Ratings</h2>
+<p>Every player starts on <b>6.1</b> (substitutes on 6.4). A goal is worth +0.65 (penalty +0.7), an assist +0.275, a good save +0.35 and a great save +0.6; a foul without a card −0.025, a yellow −0.225 and a straight red −1.0. The shown rating is rounded at full time.</p>
+<h2>Substitutions by the computer</h2>
+<p>The AI considers a change when the minute passes 10 + rand(50) and at least five minutes after its last one. It takes off the lowest by rating and condition – when his rating is under 6 after half-time, or his condition under 67.5 % after an hour.</p>
+<h2>How CM Reborn uses this</h2>
+<p>CM Reborn's own engine plays a match as a chain of passages over pitch zones and is calibrated against a full season played in the original CM 01/02. The rules above that it already uses: the referees and their Discipline, the card rules, stoppage time, fatigue by stamina and age, half-time recovery, knocks and the computer's substitutions. The rest of the ball-carrier rule is the next step.</p>`,
+      faq: [
+        ['How does the CM 01/02 match engine work?', 'It runs 11 ticks a minute with the 22 players on a 9 × 12 grid. Each time a player has the ball it scores four options – pass, run, hold and shoot – adds random noise that shrinks with his Decisions, and takes the highest.'],
+        ['How many goals per game in CM 01/02?', 'About 2.87 a match in a Premier League season, with 17.2 shots (10.3 on target), 5 corners and 1.7 yellow cards.'],
+        ['What rating does a player start on in CM 01/02?', '6.1 for starters and 6.4 for substitutes; a goal adds 0.65 and a yellow card costs 0.225.'],
+        ['Do referees matter in CM 01/02?', 'Yes. Each referee has a Discipline rating that changes how many fouls are given and how quickly cards come out.'],
+      ],
+    },
     {
       slug: 'cm-01-02-attributes-explained/',
       title: 'CM 01/02 Attributes Explained – What Every Attribute Really Does | CM Reborn',
@@ -313,7 +351,7 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
     description: 'All CM Reborn guides to Championship Manager 01/02: download, tactics, wonderkids, best players, Bosman free transfers, hidden attributes, CA and PA, the best teams to manage and tips.',
     body: `<p class="lead">Guides to Championship Manager 01/02, built on the real CM 01/02 databases.</p><ul>${[
       ['/cm-01-02-tips/', 'CM 01/02 tips: how to win with any club'], ['/cm-01-02-tactics/', 'CM 01/02 tactics'], ['/cm-01-02-wonderkids/', 'CM 01/02 wonderkids'], ['/cm-01-02-best-players/', 'CM 01/02 best players'],
-      ['/cm-01-02-bosman-guide/', 'Bosman free transfers'], ['/cm-01-02-attributes-explained/', 'What every attribute does'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes explained'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage'],
+      ['/cm-01-02-bosman-guide/', 'Bosman free transfers'], ['/cm-01-02-match-engine/', 'How the match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes explained'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage'],
       ['/cm-01-02/lists/legends/', 'CM 01/02 legends and cult heroes'], ['/cm-01-02-download/', 'CM 01/02 download – or play without one'], ['/cm-01-02-database-versions/', 'Database versions: 3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook'], ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database'],
     ].map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>`,
   };

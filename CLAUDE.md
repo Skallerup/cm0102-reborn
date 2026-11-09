@@ -50,6 +50,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-09 – SEO: guiden `/cm-01-02-match-engine/` (originalens kampmotor fra Bosman-projektets MECHANICS.md: tik, gitter, boldholderens valg, mål, dommer/kort, træthed, knocks, karakterer, AI-udskiftninger + hvad CM Reborn bruger) og taktikguidens afsnit "What the instructions do in the original's code".
 - 2026-11-09 – SEO: guiden `/cm-01-02-attributes-explained/` (hvad hver egenskab gør i originalens kampmotor – fra Bosman-projektets BALL_CARRIER.md/MECHANICS.md, markeret "from the code" – med top 5 pr. egenskab via `topIn`/`tops` i seo/guides.ts). IndexNow sendt for database-versions og managersiderne.
 - 2026-11-09 – SEO: FAQ-siden (databaseudgaverne, egenskaberne som i originalen), `llms.txt` (managersiderne), klubsidernes Manager-felt linker til managerlisten.
 - 2026-11-09 – SEO udvidet: spillerprofilerne (01/02) viser klubben i 3.9.60/3.9.65, når den afviger fra 3.9.68 (`DbConf.otherVersions`, `verRows`/`otherVersions` i build-seo.ts; 2.539 profiler), managersider `/cm-01-02/managers/` og `/2026-27/managers/` (link fra hubben), afsnittet "Wonderkids in 3.9.60" i wonderkids-guiden (`O60`), PA-teksterne på spillersiderne følger originalens regler.

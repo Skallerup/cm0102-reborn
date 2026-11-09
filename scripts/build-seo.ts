@@ -199,6 +199,19 @@ ${table(young(M, 20).slice(0, 30))}`,
 <li><b>Through balls and pace.</b> Fast strikers against a high line were almost unstoppable, especially with "run with ball" and "through balls" on.</li>
 <li><b>Offside trap and hard tackling.</b> A popular combination that the AI rarely punished.</li>
 </ul>
+<h2>What the instructions do in the original's code</h2>
+<p>Read from CM 01/02's own match engine (cm0102.exe):</p>
+<ul>
+<li><b>Passing style</b> shifts the weights the passer gives long and short options: Long −1000 short / +1000 long, Direct −750 / +500, Short +250 / −250. Mixed changes nothing.</li>
+<li><b>Tackling</b> sets how hard the opponents are challenged: Easy 0.5, Normal 2, Hard 4 – eight times the challenges of Easy, and more fouls with them.</li>
+<li><b>Run With Ball</b> adds 10 × (space + 400) to the run option (minus the pass score), and more for a flair player – but only outside his own box, under little pressure and at least two "cells" from goal.</li>
+<li><b>Hold Up Ball</b> adds 3500 to holding when the player has his back to goal in the attacking half.</li>
+<li><b>Long Shots</b> adds 2 × (200 × rand(Long Shots) + space) to shooting from 2 to 4.5 cells out.</li>
+<li><b>Cross Ball</b> adds 2000 (6000 near goal) to running down the wing, and from the byline the winger crosses nine times out of ten.</li>
+<li><b>The opponent's offside trap</b> makes a player with good decisions run in behind (4000 to the run option) instead of passing.</li>
+<li><b>Teamwork</b> decides how often all of this is ignored: with a chance of 1 in Teamwork the player does his own thing.</li>
+</ul>
+<p>More in <a href="/cm-01-02-match-engine/">how the CM 01/02 match engine works</a> and <a href="/cm-01-02-attributes-explained/">what every attribute does</a>.</p>
 <h2>How tactics work in CM Reborn</h2>
 <p>CM Reborn has no special rules for any formation. The pitch is split into zones, and the shape of your formation decides where you have more players than the opponent. Four strikers leave the midfield empty, so the other team wins more duels and more of the ball. A player out of position gets worse. The result is that classic ideas still work in the right situation, but nothing wins every match.</p>
 <ul>
