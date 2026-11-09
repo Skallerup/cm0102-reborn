@@ -7,17 +7,30 @@ import { pounds, type ClubSum, type DbOut } from './db';
 type KP = DbOut['kept'][number];
 
 const pl = (p: KP) => (p.url ? `<a href="${p.url}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`);
-const pa = (p: KP) => (p.paRaw === -2 ? 'R 150+' : p.paRaw === -1 ? 'R 100+' : String(p.pa));
+const pa = (p: KP) => (p.paRaw === -2 ? 'R −2' : p.paRaw === -1 ? 'R −1' : String(p.pa));
+
+/** sammenligningen af databaseudgaverne (build-seo.ts versionData) */
+export interface VersionData {
+  stats: { v: string; players: number; leagues: number; clubs: number }[];
+  early: { name: string; from: string; to: string; ca: number }[];
+  late: { name: string; from: string; to: string; ca: number }[];
+  movedCount: number;
+  added: { name: string; club: string; ca: number; dob: string }[];
+  url: (name: string, club: string) => string | null;
+}
 function ptable(rows: KP[], extra?: [string, (p: KP) => string]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Age</th><th>Position</th><th>Club</th>${extra ? `<th class="n">${extra[0]}</th>` : ''}<th class="n">CA</th><th class="n">PA</th></tr></thead><tbody>${rows.map((p, i) => `<tr><td>${i + 1}</td><td>${pl(p)}</td><td>${p.age}</td><td>${esc(p.posStr)}</td><td>${esc(p.clubName)}</td>${extra ? `<td class="n">${extra[1](p)}</td>` : ''}<td class="n">${p.ca}</td><td class="n">${pa(p)}</td></tr>`).join('')}</tbody></table></div>`;
+}
+function moveTable(rows: VersionData['late'], ver: VersionData, late: boolean) {
+  return `<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>3.9.60</th><th>${late ? '3.9.68' : '3.9.65'}</th><th class="n">CA</th></tr></thead><tbody>${rows.map((p, i) => { const u = late ? ver.url(p.name, p.to) : null; return `<tr><td>${i + 1}</td><td>${u ? `<a href="${u}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`}</td><td>${esc(p.from)}</td><td>${esc(p.to)}</td><td class="n">${p.ca}</td></tr>`; }).join('')}</tbody></table></div>`;
 }
 function ctable(rows: ClubSum[], cols: [string, (c: ClubSum) => string][]) {
   return `<div class="tw"><table><thead><tr><th>#</th><th>Club</th><th>League</th>${cols.map(([h]) => `<th class="n">${h}</th>`).join('')}</tr></thead><tbody>${rows.map((c, i) => `<tr><td>${i + 1}</td><td><a href="${c.url}"><b>${esc(c.name)}</b></a></td><td><a href="${c.leagueUrl}">${esc(c.league)}</a> <span class="note">${esc(c.nation)}</span></td>${cols.map(([, f]) => `<td class="n">${f(c)}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 
-export const GUIDE_SLUGS = ['cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
+export const GUIDE_SLUGS = ['cm-01-02-database-versions/', 'cm-01-02-download/', 'cm-01-02-bosman-guide/', 'cm-01-02-hidden-attributes/', 'cm-01-02-ca-pa-explained/', 'cm-01-02-best-teams-to-manage/', 'cm-01-02-tips/', 'free-football-manager-browser-game/', 'cm-01-02-guides/'];
 
-export function guides(db: DbOut): Page[] {
+export function guides(db: DbOut, ver: VersionData): Page[] {
   const K = db.kept;
   const yr = 2002;
   const bosman = K.filter((p) => p.contract && p.contract.startsWith(`${yr}-`) && p.clubName !== 'Free agent').sort((a, b) => b.ca - a.ca);
@@ -38,6 +51,35 @@ export function guides(db: DbOut): Page[] {
   const neg2 = K.filter((p) => p.paRaw === -2).length, neg1 = K.filter((p) => p.paRaw === -1).length;
 
   const pages: Page[] = [
+    {
+      slug: 'cm-01-02-database-versions/',
+      title: 'CM 01/02 3.9.60 vs 3.9.65 vs 3.9.68 – Database Versions Compared | CM Reborn',
+      h1: 'CM 01/02 database versions: 3.9.60, 3.9.65 and 3.9.68',
+      description: `What changed between the three official Championship Manager 01/02 databases: ${ver.movedCount.toLocaleString('en')} players at a new club in 3.9.68 (Ferdinand, Anelka, Forlán …), the autumn 2001 moves in 3.9.65, and which one the game itself uses.`,
+      body: `<p class="lead">Championship Manager 01/02 had three official databases. They all start the game in July 2001, but the squads are not the same – and the one most fans remember is not the one the game was released with. CM Reborn lets you choose any of them when you start a new game.</p>
+<div class="tw"><table><thead><tr><th>Version</th><th>Squads from</th><th class="n">Players*</th><th class="n">Clubs*</th><th class="n">Playable leagues*</th></tr></thead><tbody>${ver.stats.map((x) => `<tr><td><b>${x.v}</b></td><td>${x.v === '3.9.60' ? 'Summer 2001 (the release, October 2001)' : x.v === '3.9.65' ? 'Autumn 2001 (official patch)' : 'Summer 2002 (final patch, 02/03 data)'}</td><td class="n">${x.players.toLocaleString('en')}</td><td class="n">${x.clubs.toLocaleString('en')}</td><td class="n">${x.leagues}</td></tr>`).join('')}</tbody></table></div>
+<p class="note">* In CM Reborn: players aged 40 or under at clubs in the playable leagues, plus the notable players and cult heroes at other clubs.</p>
+<h2>3.9.60 – the release</h2>
+<p>The database CM 01/02 shipped with and still uses for the 2001/02 season: Rio Ferdinand at Leeds, Michael Owen on £30,000 a week, Juan Sebastián Verón just signed by Manchester United. If you want the game exactly as it was in October 2001, this is the one – and it is CM Reborn's default.</p>
+<h2>3.9.65 – the patch</h2>
+<p>The official 3.9.65 patch fixed bugs in the game (free kicks hitting the wall less often, harsher interest when deep in debt, fewer bankrupt non-league clubs rescued) and refreshed the data with the transfers of the autumn of 2001. The biggest moves compared with 3.9.60:</p>
+${moveTable(ver.early, ver, false)}
+<h2>3.9.68 – the final patch</h2>
+<p>3.9.67 updated every squad to the 2002/03 season – without moving the start date – and 3.9.68 fixed a few last bugs. So you start in July 2001 with the squads of a year later. ${ver.movedCount.toLocaleString('en')} players are at a different club than in 3.9.60. The biggest names:</p>
+${moveTable(ver.late, ver, true)}
+<p>And these players are in 3.9.68 but not in 3.9.60 – mostly the young players who broke through in 2002:</p>
+<div class="tw"><table><thead><tr><th>#</th><th>Player</th><th>Club in 3.9.68</th><th class="n">CA</th></tr></thead><tbody>${ver.added.map((p, i) => { const u = ver.url(p.name, p.club); return `<tr><td>${i + 1}</td><td>${u ? `<a href="${u}"><b>${esc(p.name)}</b></a>` : `<b>${esc(p.name)}</b>`}</td><td>${esc(p.club)}</td><td class="n">${p.ca}</td></tr>`; }).join('')}</tbody></table></div>
+<h2>Which one should you play?</h2>
+<ul><li><b>3.9.60</b> for the authentic 2001/02 season – the squads, wages and finances the game was built around.</li>
+<li><b>3.9.68</b> for the squads most people remember from years of playing, with Ferdinand at Old Trafford.</li>
+<li><b>3.9.65</b> if you want the release squads with the first round of corrections.</li></ul>
+<p>The legends – Tsigalko at Dinamo Minsk, Cherno Samba at Millwall, To Madeira – are in every version. Browse every player in the <a href="/cm-01-02/">CM 01/02 database</a> (3.9.68), and see <a href="/cm-01-02-ca-pa-explained/">how CA, PA and the attributes work</a>.</p>`,
+      faq: [
+        ['What is the difference between CM 01/02 3.9.60 and 3.9.68?', `3.9.60 is the original release with the summer 2001 squads. 3.9.68 is the final patch with the 2002/03 squads (${ver.movedCount.toLocaleString('en')} players at a new club) but the same July 2001 start date.`],
+        ['Which database does CM 01/02 use?', 'The game itself uses the 3.9.60 data for the 2001/02 season; the 3.9.68 patch replaces it with 2002/03 squads. CM Reborn lets you choose 3.9.60, 3.9.65 or 3.9.68.'],
+        ['Is Rio Ferdinand at Leeds or Man Utd in CM 01/02?', 'At Leeds in 3.9.60 and 3.9.65, at Manchester United in 3.9.68.'],
+      ],
+    },
     {
       slug: 'cm-01-02-download/',
       title: 'CM 01/02 Download (Free) – or Play It Without Installing | CM Reborn',
@@ -138,18 +180,26 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
       description: `What CA (current ability) and PA (potential ability) mean in Championship Manager 01/02, how they connect to the 1–20 attributes, and what a PA of -1 or -2 does (${neg2} players with -2 and ${neg1} with -1 among the profiles).`,
       body: `<p class="lead">Every player in CM 01/02 has two hidden numbers from 1 to 200: <b>CA</b>, how good he is now, and <b>PA</b>, the highest CA he can ever reach.</p>
 <h2>CA – current ability</h2>
-<p>CA is a budget. The game spreads it over the player's attributes depending on his position – a striker's CA goes into finishing and off the ball, a centre-back's into tackling and heading. Many technical and mental attributes are stored "intrinsically" in the database and shown relative to CA, so when a player's CA rises, those attributes rise with it. A world-class player has a CA of 170–190.</p>
+<p>CA is a budget. The game spreads it over the player's attributes depending on his position – a striker's CA goes into finishing and off the ball, a centre-back's into tackling and heading. A world-class player has a CA of 170–190.</p>
+<h2>How CA moves the attributes</h2>
+<p>The database stores every attribute as 1–20, but 18 of them – anticipation, crossing, decisions, dribbling, finishing, handling, heading, long shots, marking, off the ball, one on ones, passing, penalties, positioning, reflexes, tackling, throw-ins and creativity – are turned into an "intrinsic" value when a new game starts: <b>intrinsic = (10 × stored value − CA) / 2</b>. The screen then shows them through a curve, so at kick-off they look like this:</p>
+<div class="tw"><table><thead><tr><th>Stored</th><th class="n">1</th><th class="n">3</th><th class="n">5</th><th class="n">8</th><th class="n">10</th><th class="n">12</th><th class="n">15</th><th class="n">18</th><th class="n">20</th></tr></thead><tbody><tr><td>Shown</td><td class="n">7</td><td class="n">8</td><td class="n">9</td><td class="n">11</td><td class="n">13</td><td class="n">14</td><td class="n">16</td><td class="n">18</td><td class="n">20</td></tr></tbody></table></div>
+<p>After that the intrinsic value stays put and the shown number follows CA: roughly <b>+1 for every 10 CA</b> the player gains (a stored 12 shows 14 at CA 120, 15 at CA 140 and 17 at CA 160). That is why a youngster's technique "grows" as he develops, and why a veteran's slips when his CA falls. Attributes the database leaves at 0 are copied from the most similar of 250 random players when the game starts. (Read from the original game's code and checked against Beckham in CM 01/02 3.9.60.)</p>
 <h2>PA – potential ability</h2>
 <p>PA is the ceiling. A 17-year-old with CA 90 and PA 180 can become a superstar – if he plays, trains and stays fit. In the profiles, only ${pa180} players have a fixed PA of 180 or more, and ${pa190} have 190+.</p>
 <h2>PA -1 and -2: random potential</h2>
-<p>Some players have no fixed PA. The database stores a negative code and the game rolls a PA at the start of every new save:</p>
-<ul><li><b>-2</b>: PA between 150 and 200 (${neg2} players)</li><li><b>-1</b>: PA between 100 and 150 (${neg1} players)</li></ul>
+<p>Some players have no fixed PA. The database stores a negative code and the game rolls a PA at the start of every new save. The exact rules from the original game's code:</p>
+<ul><li><b>-2</b> (${neg2} players): 9 times in 10 a PA of 120–200, otherwise 160–200; then 1 time in 20 it drops by up to 49, and anything above 165 is otherwise trimmed by up to 29. On average <b>153</b>; half of all rolls land between 140 and 167, 1 in 10 reaches 180+ and about 1 in 35 reaches 190+.</li>
+<li><b>-1</b> (${neg1} players): 9 times in 10 a PA of 80–160, otherwise 120–200, with the same 1-in-20 drop and trimming above 140. On average <b>118</b>, and only 1 in 50 reaches 170.</li></ul>
+<h2>Even fixed PAs can change</h2>
+<p>Every new game, every player has a small chance of a new potential: 1 in 2000 is treated as -2, 1 in 750 as -1 and 1 in 100 gets a fresh roll from the game's PA table – and 1 in 25 players under 25 is re-rolled as well. So roughly 1 % of all players, and 5 % of the young ones, are not the player the database describes. A PA is never set below the player's CA, and a CA above the PA is cut to PA minus up to 39.</p>
 <p>That is why Cherno Samba could win the Ballon d'Or in one save and play in the Conference in the next. <a href="/cm-01-02/lists/random-potential/">See every random-potential player →</a></p>
 <h2>How players reach their PA</h2>
 <ul><li>Age: most growth happens before 24.</li><li>Playing time: first-team football beats the reserves.</li><li>Training and coaches, and the player's professionalism and determination.</li><li>Injuries cost development.</li></ul>`,
       faq: [
-        ['What is a good PA in CM 01/02?', '150+ is an international, 170+ world class and 190+ one of the best in the world. Random -2 gives 150–200.'],
-        ['What does PA -2 mean?', 'The player has a random potential, rolled between 150 and 200 at the start of each new game.'],
+        ['What is a good PA in CM 01/02?', '150+ is an international, 170+ world class and 190+ one of the best in the world. A random -2 averages 153, and 1 in 10 rolls reach 180+.'],
+        ['What does PA -2 mean?', 'The player has a random potential, rolled at the start of each new game: usually 120–200 (average 153), occasionally lower. PA -1 is usually 80–160 (average 118).'],
+        ['Do attributes change with CA in CM 01/02?', 'Yes. 18 technical and mental attributes are stored relative to CA, so they rise by about 1 for every 10 CA a player gains and fall when his CA drops.'],
       ],
     },
     {
@@ -209,10 +259,10 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
     title: 'CM 01/02 Guides – Tactics, Wonderkids, Bosmans, Hidden Attributes | CM Reborn',
     h1: 'CM 01/02 guides',
     description: 'All CM Reborn guides to Championship Manager 01/02: download, tactics, wonderkids, best players, Bosman free transfers, hidden attributes, CA and PA, the best teams to manage and tips.',
-    body: `<p class="lead">Guides to Championship Manager 01/02, built on the real 3.9.68 database.</p><ul>${[
+    body: `<p class="lead">Guides to Championship Manager 01/02, built on the real CM 01/02 databases.</p><ul>${[
       ['/cm-01-02-tips/', 'CM 01/02 tips: how to win with any club'], ['/cm-01-02-tactics/', 'CM 01/02 tactics'], ['/cm-01-02-wonderkids/', 'CM 01/02 wonderkids'], ['/cm-01-02-best-players/', 'CM 01/02 best players'],
       ['/cm-01-02-bosman-guide/', 'Bosman free transfers'], ['/cm-01-02-hidden-attributes/', 'Hidden attributes explained'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['/cm-01-02-best-teams-to-manage/', 'Best teams to manage'],
-      ['/cm-01-02/lists/legends/', 'CM 01/02 legends and cult heroes'], ['/cm-01-02-download/', 'CM 01/02 download – or play without one'], ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook'], ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database'],
+      ['/cm-01-02/lists/legends/', 'CM 01/02 legends and cult heroes'], ['/cm-01-02-download/', 'CM 01/02 download – or play without one'], ['/cm-01-02-database-versions/', 'Database versions: 3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-mac-ipad-chromebook/', 'Play on Mac, iPad and Chromebook'], ['/cm-01-02-2026-update/', 'CM 01/02 with a 2026/27 database'],
     ].map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>`,
   };
   return [...pages, index];

@@ -220,7 +220,42 @@ ${table(young(M, 20).slice(0, 30))}`,
   },
 ];
 
-pages.push(...guides(dbO));
+// databaseudgaverne (3.9.60 / 3.9.65 / 3.9.68) sammenlignet – til guiden cm-01-02-database-versions
+function versionData() {
+  const ver = { '3.9.60': load('world-original.json'), '3.9.65': load('world-original-3965.json'), '3.9.68': orig } as const;
+  type R = { name: string; dob: string; club: string; ca: number };
+  const rows = (w: World): Map<string, R> => {
+    const F = Object.fromEntries(w.playerFields.map((f, i) => [f, i]));
+    const club = new Map(w.clubs.map((c) => [c[0] as number, c[1] as string]));
+    const m = new Map<string, R>();
+    const dup = new Set<string>();
+    for (const r of w.players) {
+      const name = [String(r[F.first] ?? '').trim(), String(r[F.last] ?? '').trim()].filter(Boolean).join(' ');
+      // navn + fødselsår (datoerne er rettet med en dag hist og her mellem udgaverne, fx Lampard 21/6 → 20/6)
+      const k = `${name.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()}|${String(r[F.dob]).slice(0, 4)}`;
+      if (m.has(k)) dup.add(k);
+      else m.set(k, { name, dob: r[F.dob] as string, club: club.get(r[F.club] as number) ?? 'Free agent', ca: w.ratings[String(r[F.id])]?.ca ?? 0 });
+    }
+    // navne, der ikke er entydige (to "Raúl" født samme år), sammenlignes ikke
+    for (const k of dup) m.delete(k);
+    return m;
+  };
+  const a = rows(ver['3.9.60']), b = rows(ver['3.9.65']), c = rows(ver['3.9.68']);
+  const moved = (x: Map<string, R>, y: Map<string, R>) => [...x].flatMap(([k, p]) => { const q = y.get(k); return q && q.club !== p.club && p.club !== 'Free agent' ? [{ name: p.name, from: p.club, to: q.club, ca: Math.max(p.ca, q.ca) }] : []; }).sort((m, n) => n.ca - m.ca);
+  const stats = Object.entries(ver).map(([v, w]) => ({ v, players: w.players.length, leagues: w.leagues.filter((l) => !(l as { hidden?: boolean }).hidden).length, clubs: w.clubs.length }));
+  return {
+    stats, early: moved(a, b).slice(0, 15), late: moved(a, c).slice(0, 30), movedCount: moved(a, c).length,
+    // nye i 3.9.68: ingen spiller i 3.9.60 med samme fødselsår og et fælles navneord (stavemåder skifter: "Cafú", "Makélélé")
+    added: (() => {
+      const tok = (n: string) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().split(/[^a-z]+/).filter((w) => w.length >= 3);
+      const byYear = new Map<string, Set<string>>();
+      for (const p of a.values()) { const y = p.dob.slice(0, 4); const t = byYear.get(y) ?? byYear.set(y, new Set()).get(y)!; for (const w of tok(p.name)) t.add(w); }
+      return [...c.values()].filter((p) => { const t = byYear.get(p.dob.slice(0, 4)); return !t || !tok(p.name).some((w) => t.has(w)); }).sort((m, n) => n.ca - m.ca).slice(0, 15);
+    })(),
+    url: (name: string, club: string) => urlO.get(`${name}|${club}`) ?? null,
+  };
+}
+pages.push(...guides(dbO, versionData()));
 
 // landingssider på de andre sprog (hreflang til hinanden og til den engelske)
 const LP = langPages(nO, nM);

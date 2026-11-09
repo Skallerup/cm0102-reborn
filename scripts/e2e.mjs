@@ -568,7 +568,8 @@ async function editor() {
     await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
     const p = await page.evaluate(() => Object.values(window.__cm.gs().players).find((x) => x.last === 'Tsigalko' && x.pos[0] < 15));
     if (p?.first !== 'Maksim') throw new Error(`navnet slog ikke igennem: ${p?.first}`);
-    if (!(p.pa >= 150)) throw new Error(`PA -2 slog ikke igennem: ${p.pa}`);
+    // PA -2 som i originalen (playerInit.ts): oftest 120-200, 1 ud af 20 op til 49 lavere – men aldrig under CA
+    if (!(p.pa >= 71 && p.pa >= p.ca)) throw new Error(`PA -2 slog ikke igennem: ${p.pa}`);
   });
   await ctx.close();
 }

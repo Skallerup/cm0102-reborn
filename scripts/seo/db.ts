@@ -148,8 +148,8 @@ export function buildDb(conf: DbConf): DbOut {
   }
   // forventet PA (tilfældigt PA: midten af intervallet) – til sortering
   const expPa = (p: DP) => (p.paRaw === -2 ? 175 : p.paRaw === -1 ? 125 : p.pa);
-  const paText = (p: DP) => (p.paRaw === -2 ? 'random 150–200' : p.paRaw === -1 ? 'random 100–150' : String(p.pa));
-  const paCell = (p: DP) => (p.paRaw ? `<abbr title="Random potential: rolled for every new game (${p.paRaw === -2 ? '150–200' : '100–150'})">${p.paRaw === -2 ? 'R 150+' : 'R 100+'}</abbr>` : String(p.pa));
+  const paText = (p: DP) => (p.paRaw === -2 ? 'random (−2: usually 120–200)' : p.paRaw === -1 ? 'random (−1: usually 80–160)' : String(p.pa));
+  const paCell = (p: DP) => (p.paRaw ? `<abbr title="Random potential: rolled for every new game (${p.paRaw === -2 ? 'usually 120–200, average 153' : 'usually 80–160, average 118'})">${p.paRaw === -2 ? 'R −2' : 'R −1'}</abbr>` : String(p.pa));
 
   // sider til de kendte spillere – entydige url'er (navn, ellers navn + klub, ellers + id)
   const kept = all.filter(conf.keep);
@@ -504,7 +504,7 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
   lists.push({ group: 'Wonderkids', slug: 'wonderkids', title: `${conf.game} Wonderkids – The 200 Best Young Players (${conf.season}) | CM Reborn`, h1: `${conf.game} wonderkids: the top 200`, description: `The 200 best young players (21 or younger) in ${conf.game} ${conf.season} by potential ability, including random-potential players, from ${conf.dbName}.`, intro: `Players aged 21 or younger on 1 July ${world.season}, sorted by potential ability. Random potential counts as the middle of its range.`, rows: wonder(pool).slice(0, 200), value: true });
   for (const age of [17, 18, 19]) lists.push({ group: 'Wonderkids', slug: `best-under-${age + 1}`, title: `${conf.game} Best Players Aged ${age} and Under – Wonderkids | CM Reborn`, h1: `${conf.game}: the best players aged ${age} or younger`, description: `The best ${age}-year-olds and younger in ${conf.game} ${conf.season}, sorted by potential ability – from ${conf.dbName}.`, intro: `Aged ${age} or younger on 1 July ${world.season}.`, rows: wonder(pool, age).slice(0, 60), value: true });
   const randoms = all.filter((p) => p.paRaw && p.age <= 25).sort((a, b) => a.paRaw - b.paRaw || b.ca - a.ca);
-  if (randoms.length) lists.push({ group: 'Wonderkids', slug: 'random-potential', title: `${conf.game} Random Potential (PA -1 / -2) Players – Full List | CM Reborn`, h1: `${conf.game} random-potential players (PA -1 and -2)`, description: `Every young player with a random potential in ${conf.dbName}: -2 means PA 150–200, -1 means PA 100–150, rolled in each new save. The source of legends like Cherno Samba.`, intro: `Instead of a fixed potential, the database stores -1 or -2 for these players, and the game rolls a new PA at the start of every save: -2 gives 150–200, -1 gives 100–150. That is why some of them become world-beaters in one save and journeymen in the next. ${randoms.filter((p) => p.paRaw === -2).length} players have -2 and ${randoms.filter((p) => p.paRaw === -1).length} have -1 (aged 25 or younger).`, rows: randoms.slice(0, 400) });
+  if (randoms.length) lists.push({ group: 'Wonderkids', slug: 'random-potential', title: `${conf.game} Random Potential (PA -1 / -2) Players – Full List | CM Reborn`, h1: `${conf.game} random-potential players (PA -1 and -2)`, description: `Every young player with a random potential in ${conf.dbName}: -2 usually means PA 120–200 (average 153), -1 usually 80–160 (average 118), rolled in each new save. The source of legends like Cherno Samba.`, intro: `Instead of a fixed potential, the database stores -1 or -2 for these players, and the game rolls a new PA at the start of every save: -2 usually gives 120–200 (average 153, 1 in 10 reaches 180+), -1 usually 80–160 (average 118). <a href="/cm-01-02-ca-pa-explained/">The exact rules →</a> That is why some of them become world-beaters in one save and journeymen in the next. ${randoms.filter((p) => p.paRaw === -2).length} players have -2 and ${randoms.filter((p) => p.paRaw === -1).length} have -1 (aged 25 or younger).`, rows: randoms.slice(0, 400) });
   if (conf.cult?.size) {
     // i fanlistens rækkefølge; samme navn flere gange (fx Ronaldo) → den bedste
     const legends = [...conf.cult].flatMap((n) => all.filter((p) => p.name === n).sort((a, b) => b.ca - a.ca).slice(0, 1));
@@ -519,7 +519,7 @@ ${hiddenClubs.length ? `<h2>Other ${esc(n.name)} clubs with notable players</h2>
     emit('lists', {
       slug: `${P}/lists/${L.slug}/`, title: L.title, h1: L.h1, description: L.description, crumbs: [hubCrumb, { name: 'Lists', url: `/${P}/lists/` }],
       body: `<p class="lead">${L.intro}</p>${table(L.rows, { extra: L.extra, value: L.value, contract: L.contract, wage: L.wage })}
-<p class="note">CA = current ability, PA = potential ability (1–200). R 150+ / R 100+ = random potential (-2 / -1), rolled in every new game. Values are CM Reborn's at the start of the game.</p>
+<p class="note">CA = current ability, PA = potential ability (1–200). R −2 / R −1 = random potential, rolled in every new game (−2 usually 120–200, −1 usually 80–160). Values are CM Reborn's at the start of the game.</p>
 <h2>More ${conf.game} lists</h2><div class="cols">${lists.filter((x) => x !== L && x.group === L.group).map((x) => `<a href="/${P}/lists/${x.slug}/">${esc(x.h1.replace(` in ${conf.game}`, '').replace(`${conf.game}: `, '').replace(`${conf.game} `, ''))}</a>`).join('')}</div>`,
       list: { name: L.h1, items: L.rows.slice(0, 20).map((p) => ({ name: p.name, url: p.url ?? undefined })) },
     });
