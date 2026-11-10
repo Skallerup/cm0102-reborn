@@ -67,6 +67,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) Klassisk: en spillet kamp (rapport-ruten og "match" med resultat) vises som kampskærmen efter slutfløjt – `screens/PlayedMatchClassic.tsx` bygger Match Overview/Stats/Action Zones/Report, Team Stats, Player Ratings, Latest Scores og League Table af `MatchReport` (kommentar, events, heat, players) med samme sidebjælke (taktik-knapperne viser holdets Team Stats, Continue går tilbage). Match.tsx eksporterer fanekomponenterne; CxReport/CxTeamStats/CxRatings tager data i stedet for `sim`.
 - 2026-11-10 – (staging) Taktik: en spiller, der slippes på en optaget plads, lander på rækkens nærmeste ledige plads (`snapFreeSlot`) – så en tredje midterforsvarer kan slippes oven i de to andre (før skete der intet). Kampens spiller: navnet i lyseblå (#6fe3ff) i Player Ratings som i originalen; tekstlinjen "Man of the match – …" er fjernet.
 - 2026-11-10 – (staging) Klassisk trup/taktik: de to kolonner fyldes skiftevis (nr. 1 venstre, nr. 2 højre …), så sorteringen læses række for række.
   Spilindstillinger: "Goal flash" 2/5½/8/12 s (`goalFlashMs`, `cm-goal-flash`) – hvor længe et mål blinker på kampskærmen.
