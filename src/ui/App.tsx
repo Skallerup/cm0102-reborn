@@ -5,6 +5,7 @@ import { getLast } from '../game/last';
 import { Landing } from './Landing';
 import { ConsentBanner } from './ConsentBanner';
 import { InAppBanner } from './InAppBanner';
+import { UpdateToast } from './UpdateToast';
 import { trackPage } from '../analytics';
 
 // Forsiden for nye besøgende tegnes med det samme fra en lille bundle; selve spillet (motoren, alle skærme, draft,
@@ -37,5 +38,5 @@ export default function App() {
     window.scrollTo(0, 0);
   };
   const draft = () => { history.replaceState(null, '', `${location.pathname}?draft=1`); setFast(false); window.scrollTo(0, 0); };
-  return <><Landing key={lang} onPlay={play} onLang={setLangState} onDraft={draft} /><ConsentBanner /><InAppBanner /></>;
+  return <><Landing key={lang} onPlay={play} onLang={setLangState} onDraft={draft} /><ConsentBanner /><InAppBanner /><UpdateToast /></>;
 }

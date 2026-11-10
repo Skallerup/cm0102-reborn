@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
+import { swUpdateReady } from './ui/UpdateToast';
 import App from './ui/App';
 import './styles.css';
 import { applyTheme } from './ui/theme';
@@ -21,7 +22,8 @@ if (import.meta.env.DEV) {
 }
 
 applyTheme();
-registerSW({ immediate: true });
+// ny version: ingen automatisk genindlæsning – knappen "Ny version klar" (eller næste besøg)
+const updateSW = registerSW({ immediate: true, onNeedRefresh() { swUpdateReady(updateSW); } });
 startPresence(); // "online" i admin
 startErrorReport(); // fejl i browseren → admin (Errors)
 

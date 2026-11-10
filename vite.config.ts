@@ -25,7 +25,8 @@ export default defineConfig({
     react(),
     seoHtml,
     VitePWA({
-      registerType: 'autoUpdate',
+      // prompt: siden genindlæser aldrig af sig selv – en ny version tages i brug ved næste besøg eller via knappen (ui/UpdateToast.tsx)
+      registerType: 'prompt',
       includeAssets: ['icon.svg', 'icon-192.png', 'icon-512.png'],
       manifest: {
         name: 'CM Reborn',

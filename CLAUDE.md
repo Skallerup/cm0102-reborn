@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – PWA: service workeren er i prompt-tilstand (før autoUpdate, som genindlæste siden lige efter åbning første gang efter hver udgivelse). Ny version tages i brug ved næste besøg, eller via `ui/UpdateToast.tsx` ("En ny version af spillet er klar – Genindlæs nu"). Siden genindlæser aldrig af sig selv.
 - 2026-11-10 – Forsidens rangliste viser kun rigtige managere (de fiktive AI-managere i `ui/aiManagers.ts` er fjernet; tom liste viser `land.rankEmpty`).
 - 2026-11-10 – (staging) `ui/InAppBanner.tsx`: i en apps indbyggede browser (Android WebView "; wv)", Facebook/Instagram/Messenger/Discord/TikTok/Line/Snapchat …) vises et banner øverst: gemte spil kan forsvinde, spillet kan ikke installeres – Android får knappen "Open in Chrome" (intent-link), iOS en vejledning til del-menuen. Vises højst én gang pr. 7 dage (`cm0102.inapp.seen`). Wallet-/Firefox-fejlene får ingen besked (de rammer ikke spillet).
 - 2026-11-10 – Skudt live: IndexNow-workflow, e2e tåler PA-omslag, online-markering i admin, fejlfilter for udvidelsesstøj.

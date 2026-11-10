@@ -19,6 +19,7 @@ import type { HubTab } from './CommunityHub';
 import { loadLogos } from './logos';
 import { ConsentBanner } from './ConsentBanner';
 import { InAppBanner } from './InAppBanner';
+import { UpdateToast } from './UpdateToast';
 import { ConfirmHost } from './confirm'; // bekræftelsesdialogerne bruges kun i spillet (og confirm.tsx trækker det klassiske tema med)
 import '../online/cloudSync'; // gemte spil i skyen, når man er logget ind
 import { useLoginLink } from './Login';
@@ -31,7 +32,7 @@ export default function AppPage() {
   // login via linket i mailen (?login=…)
   const [toast, setToast] = useState('');
   useLoginLink((m) => { setToast(m); setTimeout(() => setToast(''), 6000); });
-  return <><AppInner /><ConsentBanner /><InAppBanner /><ConfirmHost />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}</>;
+  return <><AppInner /><ConsentBanner /><InAppBanner /><UpdateToast /><ConfirmHost />{toast && <div className="acc-toast" role="status" onClick={() => setToast('')}>{toast}</div>}</>;
 }
 
 function AppInner() {
