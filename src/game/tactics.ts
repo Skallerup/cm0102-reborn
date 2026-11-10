@@ -57,6 +57,17 @@ export function slotTaken(slots: Slot[], i: number, s: Slot): boolean {
   return slots.some((o, j) => j !== i && o.pos !== 'GK' && Math.abs(o.x - s.x) < 5 && Math.abs(o.y - s.y) < 6);
 }
 
+/**
+ * Som snapSlot – men er den nærmeste faste plads optaget, lander spilleren på den ledige plads i samme række, der er nærmest slippet
+ * (fx tre midterforsvarere: slippes den tredje mellem/oven i de to andre, går han på den ledige midterplads). null = rækken er fuld.
+ */
+export function snapFreeSlot(slots: Slot[], i: number, x: number, y: number): Slot | null {
+  const s = snapSlot(x, y);
+  if (!slotTaken(slots, i, s)) return s;
+  const alts = GRID_Y.filter((gy) => gy !== s.y).map((gy) => snapSlot(s.x, gy)).filter((t) => !slotTaken(slots, i, t)).sort((a, b) => Math.abs(a.y - y) - Math.abs(b.y - y));
+  return alts[0] ?? null;
+}
+
 export function formationSlots(name: string): Slot[] {
   return (F[name] ?? F['4-4-2']).map(([pos, side, x, y]) => ({ pos, side, x, y }));
 }

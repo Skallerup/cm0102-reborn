@@ -8,7 +8,7 @@ import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attribu
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { SlotGuides, coarse, holdDrag } from './runs';
-import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget, slotTaken, snapSlot } from '../../game/tactics';
+import { FORMATIONS, autoSelect, available, changeFormation, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
@@ -75,8 +75,8 @@ export function ClassicTactics() {
     if (i < 0 || tac.slots[i].pos === 'GK' || gs().draft) return;
     const slots = tac.slots.slice();
     // CM 01/02: spilleren lander på den nærmeste faste plads (ikke frit); optaget plads = ingen flytning
-    const s = snapSlot(x, y);
-    if (slotTaken(slots, i, s)) { setPick(null); setSlotSel(null); return; }
+    const s = snapFreeSlot(slots, i, x, y);
+    if (!s) { setPick(null); setSlotSel(null); return; }
     slots[i] = s;
     // løbepilen hører til den gamle plads
     const individual = tac.individual.slice();

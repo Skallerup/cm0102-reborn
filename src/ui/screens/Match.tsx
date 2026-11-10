@@ -1694,9 +1694,6 @@ function CxTeamStats({ sim, side }: { sim: MatchSim; side: 0 | 1 }) {
 
 /** Player Ratings: begge hold side om side – nummer, navn, on/sub, kondition, karakter (hele tal) og mål */
 function CxRatings({ sim, mom }: { sim: MatchSim; mom?: number }) {
-  const g = gs();
-  const { nav: navTo } = useNav();
-  const mp = mom ? g.players[mom] : undefined;
   return (
     <>
     <div className="cx-rt">{([0, 1] as const).map((side) => (
@@ -1707,7 +1704,6 @@ function CxRatings({ sim, mom }: { sim: MatchSim; mom?: number }) {
       ))}</tbody></table>
     ))}</div>
     {/* kampens spiller efter slutfløjt */}
-    {mp && <div className="cx-mom-line">{t('cl.mt.mom')} - <span className="cx-link" role="link" onClick={() => navTo({ name: 'player', id: mp.id })}>{mp.first} {mp.last}</span> ({g.clubs[mp.club]?.short ?? ''})</div>}
     </>
   );
 }

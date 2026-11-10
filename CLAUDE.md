@@ -67,6 +67,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) Taktik: en spiller, der slippes på en optaget plads, lander på rækkens nærmeste ledige plads (`snapFreeSlot`) – så en tredje midterforsvarer kan slippes oven i de to andre (før skete der intet). Kampens spiller: navnet i lyseblå (#6fe3ff) i Player Ratings som i originalen; tekstlinjen "Man of the match – …" er fjernet.
 - 2026-11-10 – (staging) Klassisk trup/taktik: de to kolonner fyldes skiftevis (nr. 1 venstre, nr. 2 højre …), så sorteringen læses række for række.
   Spilindstillinger: "Goal flash" 2/5½/8/12 s (`goalFlashMs`, `cm-goal-flash`) – hvor længe et mål blinker på kampskærmen.
 - 2026-11-10 – (staging) "You Have News" (klassisk) åbner den ældste ulæste besked og går videre til den næste ved hvert klik (`showOldestUnread`) – før åbnede den kun indbakken.
