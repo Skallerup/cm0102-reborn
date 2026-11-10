@@ -55,7 +55,8 @@ og læg ændringen i samme push.
   `scripts/seo/lastmod.json` – filen opdateres af `npm run build` lokalt og SKAL med i samme commit; `/about/`; enhedsguider på
   9 sprog (`scripts/seo/i18nDevices.ts`, hreflang til `/cm-01-02-windows-11/`); skærmbilleder fra `public/landing/<sprog>/` på
   indgangssiderne. IndexNow sendes automatisk efter hver produktionsudgivelse (`.github/workflows/indexnow.yml`, kun url'er
-  med lastmod inden for 3 dage). Google Search Console: `VITE_GSC_TOKEN` er ikke sat på Vercel (ingen meta-verifikation).
+  med lastmod inden for 3 dage). Google Search Console er sat op af ejeren (verificeret uden for repoet; `VITE_GSC_TOKEN` behøves ikke) – bed ejeren
+  om et udtræk, når effekten skal måles. Vercel Web Analytics bruges IKKE (koster penge – ejerens beslutning 2026-11-10); GA4 findes.
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
   `world-original.json` (2001/02, 3.9.68).
@@ -67,6 +68,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Skudt live: IndexNow-workflow, e2e tåler PA-omslag, online-markering i admin, fejlfilter for udvidelsesstøj.
+- 2026-11-10 – (staging) Fejlrapporten (online/errors.ts) ignorerer støj fra browserudvidelser og indlejrede browsere: `window.ethereum`/`selectedAddress` (krypto-wallets i Safari), `__firefox__` (Firefox på iOS), "Java object is gone" (Android WebView), `safari-web-extension:`. De 4 fejl i admin 10/11 var alle den slags – ingen spilfejl.
+- 2026-11-10 – (staging) Admin → New careers: grøn prik ved manageren, hvis browseren er online (puls inden for 5 min), og "● N online now" er en knap, der filtrerer listen til de online (viser også hvor mange af de online, der har en karriere i listen).
 - 2026-11-10 – Skudt live (merge staging → main): You Have News → næste besked, skiftevise kolonner, Goal flash, tredje midterforsvarer, kampens spiller i lyseblå, spillet kamp som kampskærm.
 - 2026-11-10 – (staging) Klassisk: en spillet kamp (rapport-ruten og "match" med resultat) vises som kampskærmen efter slutfløjt – `screens/PlayedMatchClassic.tsx` bygger Match Overview/Stats/Action Zones/Report, Team Stats, Player Ratings, Latest Scores og League Table af `MatchReport` (kommentar, events, heat, players) med samme sidebjælke (taktik-knapperne viser holdets Team Stats, Continue går tilbage). Match.tsx eksporterer fanekomponenterne; CxReport/CxTeamStats/CxRatings tager data i stedet for `sim`.
 - 2026-11-10 – (staging) Taktik: en spiller, der slippes på en optaget plads, lander på rækkens nærmeste ledige plads (`snapFreeSlot`) – så en tredje midterforsvarer kan slippes oven i de to andre (før skete der intet). Kampens spiller: navnet i lyseblå (#6fe3ff) i Player Ratings som i originalen; tekstlinjen "Man of the match – …" er fjernet.
