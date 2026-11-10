@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Moderne taktik: højreklik og træk fra en spiller tegner en løbepil (`individual[i].run`, snappet med `runTarget` som i klassisk); højreklik uden træk åbner menuen som før, som også kan fjerne pilen.
 - 2026-11-10 – Nyt spil: spiltilstandens kort (Ægte CM 01/02 / Udvidet) viser ikke længere skærmbilleder – de viste det klassiske og det moderne udseende og kunne forveksles med udseende-valget, som har sine egne billeder.
 - 2026-11-10 – Klubtema (moderne, lyst): en meget lys hovedfarve med en mørk anden farve bytter plads (menu = den mørke, topbjælke = den lyse). Brøndby fik olivengrøn menu, fordi gul blev mørknet; nu blå menu og gul topbjælke (`theme.ts`).
 - 2026-11-10 – Målt, ikke rettet (ejeren: "måske senere"): forsvarere scorer 16 % af målene (virkeligheden ~11 %), hovedstødsmål 24 % (~17 %) – indlæg i åbent spil, ikke hjørnespark (11 %, ok). 8 forsvarere med 10+ mål på en sæson (Materazzi 19). Rettelse: skru hovedstødsafslutninger ned til ~17 % af målene uden at ændre det samlede antal mål (`scripts/match-stats.ts` måler det).
