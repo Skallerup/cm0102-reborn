@@ -87,8 +87,7 @@ og læg ændringen i samme push.
   lastmod pr. side + sitemap uden `?draft=1`/`?community=1`, (5) enhedsguider (cd/Windows 11/Android/iPhone/Mac) på 9 sprog med
   hreflang, (6) skærmbilleder + og:image på play-online-siderne (alle sprog) og enhedsguiderne, (7) titler over 65 tegn 61 → 8 og
   forsidens titel 77 → 61, (8) `/about/` (E-E-A-T) med link i sidefoden og på forsiden, (9) IndexNow efter produktionsudgivelse i
-  GitHub Actions (workflow-filen `.github/workflows/indexnow.yml` ligger lokalt, ukommitteret: git-tokenet mangler `workflow`-scope –
-  kør `gh auth refresh -s workflow` og commit den), (10) CSS inline på alle statiske sider (ingen blokerende seo.css).
+  GitHub Actions (`.github/workflows/indexnow.yml`, committet 10/11 efter `gh auth refresh -s workflow`), (10) CSS inline på alle statiske sider (ingen blokerende seo.css).
 - 2026-11-10 – (staging) main (237 commits, bl.a. alle SEO-siderne) flettet ind i staging; betaling fjernet igen oven på main, Redis via `makeRedis` i alle serverfunktioner.
 - 2026-11-05 – (staging) Betaling fjernet helt – alt er gratis; staging-miljø på staging.cm0102reborn.com med `stg:`-præfiks i Redis.
 - 2026-11-10 – Spillerudviklingen målt i originalen: originalens gemte spil kan nu læses (`scripts/orig-save-dev.py` – indeks 268 bytes/fil, RLE: byte > 0x80 = gentag næste byte (b&0x7F) gange, ellers literal; player.dat 70 bytes +5 CA/+7 PA, staff.dat 110 bytes +18 fødselsår/+57 klub/+97 spillerreference). Testspillet gemt 31/8-01 og 25/9-02 ("CLAUDE DEV A/B" i ~/Library/Application Support/cm0102; ejerens karriere urørt). Fund: op til 31 år trækkes CA mod PA − 13 (på PA → −15/år), fra 32 år −5…−9/år, udsving ±9; CA 150+ står stille (495 → 495). `develop()` (training.ts) har nu `DEV` (ceil 13, pull 0,035, fald fra 32, decline 4,5, noise 0,8 …), mål med `scripts/dev-cal.ts` (`DEV_JSON`). 5 sæsoner: CA 150+ 495 → 683 (før 979), moderne 475 → 606 (før 1.090). docs/ENGINE.md "Udvikling".
