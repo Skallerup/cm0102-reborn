@@ -112,6 +112,28 @@ export function matchdayBgUrl(stadium: string | undefined, iso: string): string 
   const n = pick(inside.length ? inside : stadiumImgs(stadium, true), iso);
   return n ? stadiumUrl(n) : null;
 }
+/** Alle pakkens billeder af én slags (kampbilleder med fulde tribuner, eller stadioner udefra) – til klubber uden egne fotos */
+let pools: Record<string, string[]> = {};
+function pool(kind: 'game' | 'exterior'): string[] {
+  if (!stadiums) return [];
+  return (pools[kind] ??= Object.values(stadiums).flat().filter((n) => n.includes(`_${kind}_`)).sort());
+}
+/** Kampdag uden stadionfoto: et kampbillede med fulde tribuner fra pakken (fast pr. dag og hjemmehold) */
+export function genericMatchdayUrl(iso: string, seed: number): string | null {
+  const n = pick(pool('game'), iso, seed);
+  return n ? stadiumUrl(n) : null;
+}
+/** Klub uden foto udefra og uden klubbillede: et stadion udefra fra pakken (fast pr. dag og klub) */
+export function genericClubUrl(iso: string, seed: number): string | null {
+  const n = pick(pool('exterior'), iso, seed);
+  return n ? stadiumUrl(n) : null;
+}
+/** Aftenkamp (projektørlys): som i CM 01/02 spilles midtugekampe og europæiske kampe om aftenen – weekendkampe om dagen */
+export function eveningFixture(iso: string, continental: boolean): boolean {
+  if (continental) return true;
+  const d = new Date(`${iso}T12:00:00Z`).getUTCDay();
+  return d !== 0 && d !== 6;
+}
 /** En klub: stadion udefra eller klubbens eget billede (skifter fra dag til dag) */
 // ---------- klubpakker fra fællesskabet: en godkendt pakke med en klub vises på klubbens skærme og hjemmekampe for alle ----------
 
@@ -133,12 +155,13 @@ export function clubPackUrl(club: { name: string; short?: string } | undefined, 
   return pick(clubPacks.find((p) => keys.includes(p.key))?.images, iso) ?? null;
 }
 
-export function clubBgUrl(club: { name: string; short?: string; stadium?: string } | undefined, iso: string): string | null {
+export function clubBgUrl(club: { id?: number; name: string; short?: string; stadium?: string } | undefined, iso: string): string | null {
   if (!club) return null;
   const pack = clubPackUrl(club, iso);
   if (pack) return pack;
+  // stadion udefra først, ellers klubbens eget billede – og til sidst et stadion udefra fra pakken, så klubskærmen altid viser "udenfor stadionet"
   const opts = [...stadiumImgs(club.stadium, true).map(stadiumUrl), ...(screens?.clubs[club.name] ?? []).map(screenUrl)];
-  return pick(opts, iso) ?? null;
+  return pick(opts, iso) ?? genericClubUrl(iso, club.id ?? club.name.length);
 }
 export const compBgUrl = (name: string | undefined, iso: string): string | null => { const n = name ? pick(screens?.comps[name], iso) : undefined; return n ? screenUrl(n) : null; };
 export const nationBgUrl = (name: string | undefined, iso: string): string | null => { const n = name ? pick(screens?.nations[name], iso) : undefined; return n ? screenUrl(n) : null; };

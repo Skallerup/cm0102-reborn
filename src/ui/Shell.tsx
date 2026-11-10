@@ -63,7 +63,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
+import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -131,7 +131,10 @@ export function Shell() {
   const [, setStadiumsReady] = useState(0);
   const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
   const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() ? g.clubs[venueFix.home]?.stadium : undefined;
-  useEffect(() => { if (venue) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [venue]);
+  const matchDay = !!venueFix && stadiumBackgrounds();
+  useEffect(() => { if (matchDay) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [matchDay]);
+  // aftenkamp: midtuge og europæiske kampe spilles i projektørlys (billedet mørkes og køles i CSS – .cx-night/.mbg-night)
+  const night = matchDay && !!venueFix && eveningFixture(venueFix.date ?? g.date, g.comps[venueFix.comp]?.type === 'continental');
   // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -167,12 +170,14 @@ export function Shell() {
   const bgDay = bgChanges() ? g.date : '2001-07-01';
   // kampdage: stadion indefra først – klubpakken (kan være træningsanlæg o.l.) kun når vi ikke har stadionet
   const homePack = venue && venueFix ? clubPackUrl(g.clubs[venueFix.home], venueFix.date ?? g.date) : null;
-  const cxPhoto = cmNav ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
+  // kampdag: hjemmeholdets stadion indefra, ellers klubpakken, ellers et kampbillede med fulde tribuner fra pakken (også finaler på neutral bane)
+  const matchPhoto = matchDay && venueFix ? (venue ? matchdayBgUrl(venue, venueFix.date ?? g.date) : null) ?? homePack ?? genericMatchdayUrl(venueFix.date ?? g.date, venueFix.home) : null;
+  const cxPhoto = cmNav ? matchPhoto ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
   useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
-    ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
+    ? matchPhoto ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
     : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
@@ -352,7 +357,7 @@ export function Shell() {
 
 
   return (
-    <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''}`}>
+    <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''} ${cmNav && matchPhoto && night ? 'cx-night' : ''}`}>
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
@@ -503,7 +508,7 @@ export function Shell() {
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
-        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : modernPhoto ? `mbg${stadiumBgUrl(venue, venueFix?.date ?? g.date) ? ' mbg-stadium' : ''}` : ''}`} ref={mainRef}
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${matchPhoto ? ' cx-stadium' : ''}${matchPhoto && night ? ' cx-night' : ''}` : modernPhoto ? `mbg${matchPhoto ? ' mbg-stadium' : ''}${matchPhoto && night ? ' mbg-night' : ''}` : ''}`} ref={mainRef}
           style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
@@ -520,8 +525,8 @@ export function Shell() {
               stopRef.current = true;
               void askConfirm(t('cl.hol.return'), { head: t('cl.mt.confirm') }).then((ok) => { if (!ok) { gs().manager.holiday = holidaySetRef.current; onHolidayRef.current = true; void run({ maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); }); } });
             }} title={t('common.stop')}>
-              {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke */}
-              {cxLongDate(running)}
+              {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke – på ferie står der også, at et klik afbryder ferien (brugere ledte efter en stop-knap) */}
+              {cxLongDate(running)}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
           ) : (
             matchSide?.s.editing && route.name === 'match' && matchSide.s.lastView ? (

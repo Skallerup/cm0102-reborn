@@ -67,6 +67,14 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) Brugerønsker: (1) klubskærme uden foto udefra og uden klubbillede får et stadion udefra fra pakken
+  (`genericClubUrl`), kampdage uden stadionfoto får et kampbillede med tribuner (`genericMatchdayUrl`, også finaler) – `backgrounds.ts`;
+  (2) aftenkampe (midtuge og europæiske kampe, `eveningFixture`) får nat-look i CSS (`.cx-night`/`.mbg-night`: mørkt, koldt,
+  projektørfelt) – pakken har ingen nattefotos. Fejl: (3) europæiske gruppetabeller i det klassiske tema vises nu sorteret efter point
+  (`CupClassic.tsx`, rækkerne lå i lodtrækningens rækkefølge); (4) feriebjælken siger "On holiday – click here to return" (stop fandtes,
+  men ingen fandt den). Målt, ikke rettet: assists er ~2× for koncentrerede (topassister 22 % af holdets mål i snit, op til 47 i en sæson;
+  73 % af mål har assist, hvilket er fint) – årsagen er boldholderens valg (playmaker-vægten 2,6 i `engine/match.ts` linje ~802), samme
+  sted som målscorer-afvigelsen (ENGINE.md trin 15). En kortere assist-vindue (≤1 øjeblik) hjalp kun lidt og er ikke taget med.
 - 2026-11-10 – (staging) SEO, 10 opgaver: (1) forsidens hovedbundle 2,6 MB → 0,6 MB (spillet lazy, dansk og Blob-klienten
   hentes ved behov), (2) Google Fonts uden at blokere, (3) hero-billeder eager/fetchpriority + width/height (LCP/CLS), (4) ægte
   lastmod pr. side + sitemap uden `?draft=1`/`?community=1`, (5) enhedsguider (cd/Windows 11/Android/iPhone/Mac) på 9 sprog med
