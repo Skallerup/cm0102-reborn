@@ -54,8 +54,8 @@ og læg ændringen i samme push.
 - SEO-siderne (`scripts/build-seo.ts`, ≈17.500 statiske sider): CSS inline; ægte `lastmod` pr. side via indholdsfingeraftryk i
   `scripts/seo/lastmod.json` – filen opdateres af `npm run build` lokalt og SKAL med i samme commit; `/about/`; enhedsguider på
   9 sprog (`scripts/seo/i18nDevices.ts`, hreflang til `/cm-01-02-windows-11/`); skærmbilleder fra `public/landing/<sprog>/` på
-  indgangssiderne. IndexNow sendes automatisk efter hver produktionsudgivelse (`.github/workflows/indexnow.yml`, kun url'er
-  med lastmod inden for 3 dage). Google Search Console er sat op af ejeren (verificeret uden for repoet; `VITE_GSC_TOKEN` behøves ikke) – bed ejeren
+  indgangssiderne. IndexNow sendes automatisk efter hvert push til main (`.github/workflows/indexnow.yml` venter på, at `/build.json` på
+  cm0102reborn.com viser commit'en – Vercel laver ingen GitHub-deployments – og sender kun url'er med lastmod inden for 3 dage). Google Search Console er sat op af ejeren (verificeret uden for repoet; `VITE_GSC_TOKEN` behøves ikke) – bed ejeren
   om et udtræk, når effekten skal måles. Vercel Web Analytics bruges IKKE (koster penge – ejerens beslutning 2026-11-10); GA4 findes.
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) `ui/InAppBanner.tsx`: i en apps indbyggede browser (Android WebView "; wv)", Facebook/Instagram/Messenger/Discord/TikTok/Line/Snapchat …) vises et banner øverst: gemte spil kan forsvinde, spillet kan ikke installeres – Android får knappen "Open in Chrome" (intent-link), iOS en vejledning til del-menuen. Vises højst én gang pr. 7 dage (`cm0102.inapp.seen`). Wallet-/Firefox-fejlene får ingen besked (de rammer ikke spillet).
 - 2026-11-10 – Skudt live: IndexNow-workflow, e2e tåler PA-omslag, online-markering i admin, fejlfilter for udvidelsesstøj.
 - 2026-11-10 – (staging) Fejlrapporten (online/errors.ts) ignorerer støj fra browserudvidelser og indlejrede browsere: `window.ethereum`/`selectedAddress` (krypto-wallets i Safari), `__firefox__` (Firefox på iOS), "Java object is gone" (Android WebView), `safari-web-extension:`. De 4 fejl i admin 10/11 var alle den slags – ingen spilfejl.
 - 2026-11-10 – (staging) Admin → New careers: grøn prik ved manageren, hvis browseren er online (puls inden for 5 min), og "● N online now" er en knap, der filtrerer listen til de online (viser også hvor mange af de online, der har en karriere i listen).

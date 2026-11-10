@@ -635,5 +635,7 @@ ${LP.map((p) => `- [${p.h1}](${SITE}/${p.slug}) (${p.lang})`).join('\n')}
 - [Fantasy draft league](${SITE}/?draft=1)
 - [Community hub](${SITE}/?community=1)
 `);
+// hvilken commit der er live (IndexNow-workflowen venter på den): Vercel sætter VERCEL_GIT_COMMIT_SHA under bygningen
+writeFileSync('public/build.json', JSON.stringify({ sha: process.env.VERCEL_GIT_COMMIT_SHA ?? '', built: new Date().toISOString() }));
 saveLastmod();
 console.log(`${pages.length} guider · CM 01/02: ${dbO.summary} · 2026/27: ${dbM.summary}`);

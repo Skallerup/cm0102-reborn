@@ -1326,6 +1326,8 @@ button.hub-card:hover, .hub-card.on { border-color: var(--accent); }
 .consent { position: fixed; left: 16px; right: 16px; bottom: 16px; z-index: 10000; max-width: 560px; margin: 0 auto; padding: 14px 16px;
   background: #0f1626; color: #e6ebf5; border: 1px solid #2a3550; border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,.45); font: 14px/1.45 Inter, system-ui, sans-serif; }
 .consent p { margin: 0 0 10px; }
+.consent.inapp { bottom: auto; top: 16px; }
+.consent a.consent-yes { text-decoration: none; display: inline-block; font: 600 14px Inter, system-ui, sans-serif; padding: 8px 16px; border-radius: 8px; border: 1px solid #22c55e; }
 .consent-btns { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
 .consent button { font: 600 14px Inter, system-ui, sans-serif; padding: 8px 16px; border-radius: 8px; cursor: pointer; border: 1px solid #2a3550; }
 .consent .consent-no { background: transparent; color: #e6ebf5; }
