@@ -450,3 +450,28 @@ samme for vores motor via `labHooks.report` i sim.ts. Krogen er en ren målekrog
 - En rigtig rettelse kræver, at boldholderens valg i angrebszonen følger originalen (`sub_7109f0`; se GRID_ENGINE.md og
   QUESTIONS_FOR_BOSMAN.md), ikke flere knapper.
 - ORIGINAL-profilen er uændret fra trin 14.
+
+## Udvikling – målt i originalen med to gemte spil (2026-11-10)
+
+Originalens gemte spil kan læses: `scripts/orig-save-dev.py` (RLE-formatet og felterne står øverst i filen). Testspillet
+"Test Claude" (Man Utd, 3.9.60) blev gemt 31/8-01 ("CLAUDE DEV A") og efter en ferie 25/9-02 ("CLAUDE DEV B"). Ejerens
+karriere er ikke rørt. Ændring i CA på ét år, median (p10, p90), spillere med CA 100+:
+
+| Alder | Originalen | Før (vores) | Nu (vores) |
+|---|---|---|---|
+| ≤18 | +7 (−10, 25) | +12 (0, 28) | +10 (−3, 23) |
+| 19-20 | +2,5 (−10, 21) | +8,5 (0, 18) | +5 (−8, 16) |
+| 21-23 | +2 (−8, 15) | +4 (0, 10) | +1 (−8, 10) |
+| 24-28 | 0 (−7, 9) | +2 (0, 4) | −1 (−8, 7) |
+| 29-31 | −3 (−10, 5) | −1 (−2, 0) | −2 (−9, 5) |
+| 32+ | −9 (−20, −2) | −3 (−6, −2) | −7 (−17, 2) |
+| CA 150+ efter et år | 495 → 495 | 499 → 602 | 472 → 485 |
+
+Det afgørende: op til 31 år trækkes CA mod **PA − ca. 13**. Afstand til PA 0 → −15 på et år, 1-5 → −10, 6-10 → −5,
+11-20 → 0, længere under → vækst (alle aldre ens). Efter et år står spillerne 10-14 under PA (spillerne når sjældent
+deres PA, som fællesskabet siger). Fra 32 år falder alle 5-9 om året. Store udsving (±9 om året).
+Indført i `develop()` (training.ts) via `DEV` (`ceil` 13, `pull` 0,035/uge, `declineStart` +2 = fald fra 32/33/34 år,
+`decline` 4,5, `noise` 0,8/uge, `youth` 0,0125, `prime` 0,008, `late` 0,5 for 29-31). Mål: `scripts/dev-cal.ts`
+(`DEV_JSON` overstyrer). 5 sæsoner: CA 150+ 495 → 683 (original DB, før 979) og 475 → 606 (moderne, før 1.090);
+top-100-snittet står stille (175/172-173).
+Usikkert: vi har kun ét år; om udsvingene er en tilfældig vandring eller svinger om en ligevægt, vides ikke.

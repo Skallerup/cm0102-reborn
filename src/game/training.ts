@@ -91,8 +91,14 @@ export function weeklyDevelopment() {
   }
 }
 
-const YOUTH_RATE = 0.0115;
-const PRIME_RATE = 0.003;
+/**
+ * Udviklingens kalibrering mod originalen (scripts/dev-cal.ts; målt i ejerens CM 01/02 med to gemte spil 31/8-01 og
+ * 25/9-02 – docs/ENGINE.md "Udvikling"). Originalen: op til 31 år trækkes CA mod ca. PA − 13 (står spilleren på PA,
+ * mister han ~15 på et år; 11-20 under PA står han stille; længere under vokser han), og fra 32 år falder alle 5-9 om
+ * året. Spillerne når altså sjældent deres PA – og verdens antal af stjerner står stille.
+ * `ceil` = afstanden under PA, CA søger mod; `pull` = ugentlig andel af overskuddet, der trækkes ned.
+ */
+export const DEV = { youth: 0.0125, prime: 0.008, decline: 4.5, declineStart: 2, noise: 0.8, ceil: 13, pull: 0.035, late: 0.5 };
 
 function develop(p: Player, ci: CoachingInfo) {
   const coachF = 0.3 + 1.2 * ci.quality;
@@ -103,24 +109,26 @@ function develop(p: Player, ci: CoachingInfo) {
   const rawProf = (p.attrs[A.professionalism] + p.attrs[A.determination]) / 40; // 0.05-1
   const prof = rawProf + (1 - rawProf) * ci.discipline * 0.35;
   const minutesBoost = Math.min(1, p.stats.minutes / Math.max(1, 90 * 20)) * 0.4 + 0.8;
+  // tilbagegangen begynder senere for målmænd og midtstoppere, og den er individuel: nogle holder til
+  // midt i 30'erne, andre falder brat. Gode trænere, fysioterapi og professionalisme bremser den.
+  const start = (p.pos[0] >= 15 ? 32 : p.pos[2] >= 15 && p.side[1] >= 15 ? 31 : 30) + DEV.declineStart;
+  const room = Math.max(0, p.pa - DEV.ceil - p.ca);
   let delta = 0;
   if (age <= 23) {
     const ageF = age <= 18 ? 1 : age <= 20 ? 0.9 : age <= 22 ? 0.65 : 0.45;
-    // kalibreret (scripts/player-pool.ts): talenter når tæt på deres potentiale omkring 22-23 år
-    delta = (p.pa - p.ca) * YOUTH_RATE * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
+    delta = room * DEV.youth * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
   } else if (age <= 28) {
     // de fleste topper midt i 20'erne – kun en langsom vækst herfra (ellers vokser antallet af stjerner hvert år)
-    delta = (p.pa - p.ca) * PRIME_RATE * coachF * (0.6 + prof * 0.6) * minutesBoost;
+    delta = room * DEV.prime * coachF * (0.6 + prof * 0.6) * minutesBoost;
+  } else if (age < start) {
+    delta = room * DEV.prime * DEV.late * coachF * (0.6 + prof * 0.6) * minutesBoost;
   } else {
-    // tilbagegangen begynder senere for målmænd og midtstoppere, og den er individuel: nogle holder til
-    // midt i 30'erne, andre falder brat. Gode trænere, fysioterapi og professionalisme bremser den.
-    const start = p.pos[0] >= 15 ? 32 : p.pos[2] >= 15 && p.side[1] >= 15 ? 31 : 30;
-    if (age >= start) {
-      const curve = 0.65 + 0.7 * ((((p.id * 2654435761) >>> 0) % 1000) / 1000);
-      delta = -(0.02 + (age - start) * 0.025) * curve * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
-    }
+    const curve = 0.65 + 0.7 * ((((p.id * 2654435761) >>> 0) % 1000) / 1000);
+    delta = -DEV.decline * (0.02 + (age - start) * 0.025) * curve * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
   }
-  delta += rng.normal(0, 0.05);
+  // over loftet (PA − ceil): trækkes ned mod det
+  if (DEV.pull > 0 && age < start && p.ca > p.pa - DEV.ceil) delta -= (p.ca - (p.pa - DEV.ceil)) * DEV.pull;
+  delta += rng.normal(0, DEV.noise);
   if (Math.abs(delta) < 0.01) return;
   const before = p.ca;
   p.ca = Math.max(1, Math.min(p.pa + (delta < 0 ? 0 : 0), p.ca + delta, 200));
@@ -137,6 +145,9 @@ function develop(p: Player, ci: CoachingInfo) {
       if (!isGK && A[k] >= 33) continue;
       bump(p, A[k], change * 0.08 * w);
     }
+  } else if (age < 29) {
+    // de unge og spillerne i deres bedste alder: et tilbageslag rammer bredt (ikke fysikken som ved alderen)
+    for (let i = 0; i < 33; i++) bump(p, i, change * 0.045);
   } else {
     const phys: AttrKey[] = ['pace', 'acceleration', 'stamina', 'agility', 'jumping', 'strength'];
     for (const k of phys) bump(p, A[k], pts * 1.3);
