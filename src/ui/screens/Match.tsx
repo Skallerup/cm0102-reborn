@@ -1686,8 +1686,9 @@ export function CxZones({ z, zp, st, colors }: { z: [number, number, number]; zp
 }
 
 /** Match Report: først efter slutfløjt (CM 01/02: "There is no match report available."), med originalens rapportlinjer i datid */
-export function CxReport({ lines, commentary, finished, ctx }: { lines: { text: string; m: number; ci?: number }[]; commentary: CommentaryLine[]; finished: boolean; ctx: { home: string; away: string; score?: string; ref?: string } }) {
-  if (!finished) return <div className="cx-mr cx-mr-none">{t('cl.mt.noReport')}</div>;
+export function CxReport({ lines, commentary, ctx }: { lines: { text: string; m: number; ci?: number }[]; commentary: CommentaryLine[]; finished?: boolean; ctx: { home: string; away: string; score?: string; ref?: string } }) {
+  // rapporten vises løbende under kampen (ejerens ønske 2026-11-10 – før først ved slutfløjt, som i originalen)
+  if (!lines.length) return <div className="cx-mr cx-mr-none">{t('cl.mt.noReport')}</div>;
   const rows = lines.flatMap((l) => {
     const src = l.ci !== undefined ? commentary[l.ci] : undefined;
     return (src ? reportLines(src, ctx, l.ci!) : [l.text]).map((text) => ({ m: l.m, text }));
