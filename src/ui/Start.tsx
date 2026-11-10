@@ -1,4 +1,4 @@
-import { LookPicker, ShotPreview, initialLook } from './LookPicker';
+import { LookPicker, initialLook } from './LookPicker';
 import { setTheme } from './theme';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
