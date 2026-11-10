@@ -6,7 +6,9 @@ import { previewInfo } from '../game/state';
 
 const sent = new Map<string, number>();
 let total = 0;
-const IGNORE = /ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|Load failed|NetworkError|Failed to fetch|AbortError|The play\(\) request/i;
+// Støj, der ikke er spillets: browserudvidelser (krypto-wallets sætter window.ethereum, Firefox på iOS injicerer __firefox__),
+// indlejrede browsere i apps (Android WebView: "Java object is gone") og netværksfejl
+const IGNORE = /ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|safari-web-extension:|window\.ethereum|selectedAddress|__firefox__|Java object is gone|Load failed|NetworkError|Failed to fetch|AbortError|The play\(\) request/i;
 
 export function reportError(err: unknown, extra?: string) {
   // admin-preview af en spillers spil: fejlen står i konsollen – den skal ikke tælle som en spillers fejl
