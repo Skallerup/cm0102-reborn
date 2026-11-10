@@ -46,7 +46,7 @@ export default defineConfig({
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
         globIgnores: ['**/data/careers*.json', '**/data/world-original*.json', '**/data/world-modern.json',
           // SEO-siderne (scripts/build-seo.ts – titusindvis af statiske sider) hører ikke til appen
-          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', 'about/**', '404.html', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
+          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', 'about/**', '404.html', 'seo.css', 'build.json', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
         // world.json (2026/27) er ~8 MB med staben fra databasen – plads til at vokse
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // guiderne (statiske SEO-sider, scripts/build-seo.ts) er rigtige sider – ikke appen

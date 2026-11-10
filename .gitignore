@@ -19,6 +19,7 @@ orig-shots/
 /public/play-cm-01-02-online/
 /public/faq/
 /public/about/
+/public/build.json
 /public/sitemap*.xml
 /public/llms.txt
 /public/seo.css
