@@ -1,6 +1,9 @@
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
+import { readFileSync } from 'node:fs'
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as { version: string }
 
 // base: roden på Vercel, repo-navnet på GitHub Pages (sættes af workflowet)
 // søgemaskiner: Search Console-verifikation (VITE_GSC_TOKEN) og noindex på kopien på GitHub Pages,
@@ -15,6 +18,8 @@ const seoHtml = {
 }
 
 export default defineConfig({
+  // appens version til src/version.ts (uden at hente ændringsloggen på forsiden)
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   base: process.env.BASE_PATH ?? (process.env.VERCEL ? '/' : '/cm0102-reborn/'),
   plugins: [
     react(),
@@ -41,11 +46,11 @@ export default defineConfig({
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
         globIgnores: ['**/data/careers*.json', '**/data/world-original*.json', '**/data/world-modern.json',
           // SEO-siderne (scripts/build-seo.ts – titusindvis af statiske sider) hører ikke til appen
-          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', '404.html', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
+          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', 'about/**', '404.html', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
         // world.json (2026/27) er ~8 MB med staben fra databasen – plads til at vokse
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // guiderne (statiske SEO-sider, scripts/build-seo.ts) er rigtige sider – ikke appen
-        navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|cm-01-02|2026-27|faq|changelog|free-football-manager-browser-game|da|sv|no|de|es|fr|it|pt|tr)\//, /^\/api\//, /^\/llms\.txt$/, /^\/sitemap/],
+        navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|cm-01-02|2026-27|faq|changelog|about|free-football-manager-browser-game|da|sv|no|de|es|fr|it|pt|tr)\//, /^\/api\//, /^\/llms\.txt$/, /^\/sitemap/],
         runtimeCaching: [{
           // originalens kamplyde: hentes første gang de spilles, derefter fra cachen
           urlPattern: /\/sounds\/[\w.-]+\.m4a$/,

@@ -400,7 +400,7 @@ export function youthIntake() {
     const human = isHumanClub(c.id);
     const added: [Player, SubPos][] = [];
     for (const sp of specs) {
-      // supporternes navne: et af årets talenter i en spillet nation kan få et navn fra en supporter
+      // (tidligere supporternes navne – betalingen er fjernet; kaldet bevares, så tilfældighederne i gamle spil er de samme)
       const sr = active.has(c.nation) && rng.chance(0.04) ? g.supporterRegens?.find((x) => !x.used) : undefined;
       if (sr) { sr.used = true; sp.first = sr.first; sp.last = sr.last; }
       const p = makePlayer({

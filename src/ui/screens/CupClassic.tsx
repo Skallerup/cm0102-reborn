@@ -1,6 +1,7 @@
 // Cup- og Europa-turneringer i klassisk tema (som i CM 01/02): fanerne Rounds · Results · Fixtures · Schedule
 // og under-knapperne Seedings · Team Stats · Player Stats · History.
 import { useMemo } from 'react';
+import { sortTable } from '../../game/competitions';
 import type { Competition, Fixture } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
 import { Tabs } from '../components';
@@ -69,7 +70,8 @@ function Rounds({ comp }: { comp: Competition }) {
 /** Gruppespil/ligafase uden udslagsrunder endnu: tabellerne */
 function Groups({ comp }: { comp: Competition }) {
   const g = useGame()!;
-  const groups = comp.groups ? Object.entries(comp.groups) : comp.table.length ? [['', comp.table] as const] : [];
+  // rækkerne ligger i lodtrækningens rækkefølge (efter seedning/nation) – vis dem efter point, målforskel og mål
+  const groups = (comp.groups ? Object.entries(comp.groups) : comp.table.length ? [['', comp.table] as const] : []).map(([k, rows]) => [k, sortTable(rows.slice())] as const);
   if (!groups.length) return <div className="cx-empty cx-empty-mid">{t('cl.cup.notDrawn')}</div>;
   return (
     <div className="cx-cup">

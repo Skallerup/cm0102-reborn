@@ -6,9 +6,8 @@ export const SG_CATS = ['gameplay', 'match', 'transfers', 'ui', 'bug', 'other'] 
 export interface Suggestion {
   id: number; title: string; body: string; cat: string; lang: string; pid: string; name: string; created: string;
   status: SgStatus; votes: number; comments: number; reply?: string; releasedIn?: string; hidden?: boolean; hasImage?: boolean; meta?: string;
-  supporter?: string;
 }
-export interface SgComment { i: number; pid: string; name: string; text: string; at: string; dev?: boolean; supporter?: string }
+export interface SgComment { i: number; pid: string; name: string; text: string; at: string; dev?: boolean }
 
 export const communityAvailable = rankingAvailable;
 

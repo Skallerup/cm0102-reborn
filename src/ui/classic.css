@@ -71,6 +71,10 @@
 .shell.cx .main.cx-main.cx-stadium {
   background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.15) 0%, rgba(6, 9, 34, 0.3) 100%), var(--cx-photo);
 }
+/* aftenkamp (midtuge/Europa): samme stadionfoto, men mørkt og koldt med et lysere projektørfelt i midten – pakken har ingen nattefotos */
+.shell.cx .main.cx-main.cx-stadium.cx-night {
+  background-image: radial-gradient(ellipse 70% 55% at 50% 38%, rgba(255, 236, 190, 0.08), rgba(2, 4, 22, 0.42) 70%), linear-gradient(180deg, rgba(3, 7, 34, 0.5) 0%, rgba(2, 4, 22, 0.68) 100%), var(--cx-photo);
+}
 /* dagens foto (sat af Shell som --cx-photo) står fast bag indholdet og dæmpes, så teksten kan læses */
 .shell.cx .main.cx-main {
   padding: 6px 8px 14px;
@@ -452,6 +456,7 @@
 
 /* ---------- simulering: dæmpet skærm og én grå datobjælke ---------- */
 .shell.cx.cx-busy .cx-main, .shell.cx.cx-busy .cx-side > :not(.cx-date) { filter: brightness(0.62) saturate(0.7); pointer-events: none; transition: filter 0.2s; }
+:root[data-skin='retro'] .cx-running-hint { font-size: 11px; font-weight: 400; opacity: 0.85; }
 :root[data-skin='retro'] .cx-running { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; height: 42px; background: linear-gradient(180deg, #a9adb8, #7c818e); color: #fff; border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); cursor: progress; }
 .cx-ball { display: inline-block; animation: cx-spin 0.9s linear infinite; }
 @keyframes cx-spin { to { transform: rotate(360deg); } }
@@ -989,6 +994,7 @@
   .shell.cx { grid-template-columns: 144px minmax(0, 1fr); background-color: #0b0f33; background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.45), rgba(6, 9, 34, 0.7)), var(--cx-photo, none); background-size: cover; background-position: center; }
   .shell.cx .main.cx-main { padding: 16px 16px 8px; background: transparent; }
   .shell.cx .main.cx-main.cx-stadium { background: transparent; }
+  .shell.cx.cx-night { background-image: radial-gradient(ellipse 70% 55% at 55% 40%, rgba(255, 236, 190, 0.08), rgba(2, 4, 22, 0.45) 70%), linear-gradient(180deg, rgba(3, 7, 34, 0.55), rgba(2, 4, 22, 0.75)), var(--cx-photo, none); }
   .cx-head { background: transparent; margin: -16px -16px 10px; padding: 16px 16px 0; gap: 12px; position: static; }
   .cx-foot { background: transparent; border-top: 0; padding: 0 16px 10px; gap: 12px; }
 

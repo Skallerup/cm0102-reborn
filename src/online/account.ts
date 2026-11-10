@@ -1,11 +1,12 @@
 // Brugerkonto (api/account.ts): login med e-mail-link eller kode og gemte spil i skyen,
 // så man kan fortsætte på en anden enhed. Uden login fungerer alt som før (kun lokalt).
-import { upload } from '@vercel/blob/client';
+// Vercel Blob-klienten (≈90 KB med jose) hentes først, når der uploades – ikke på forsiden
+const blobUpload = async () => (await import('@vercel/blob/client')).upload;
 import { getProfile, rankingAvailable, type RankProfile } from './rank';
 import { gs } from '../game/state';
 import { serializeState } from '../game/snapshot';
 import { getTheme } from '../ui/theme';
-import { APP_VERSION } from '../ui/changelogData';
+import { APP_VERSION } from '../version';
 import { visitorId } from './notify';
 
 const API = '/api/account';
@@ -107,6 +108,7 @@ export async function uploadCloudSave(meta: { id: string; manager: string; club:
   const a = getAccount();
   if (!a) return;
   const uid = await myUid();
+  const upload = await blobUpload();
   const res = await upload(`saves/${uid}/${meta.id}.json.gz`, blob, {
     access: 'public',
     handleUploadUrl: `${API}?op=upload`,
@@ -134,6 +136,7 @@ export async function sendGameToDeveloper(note: string, email?: string): Promise
   const g = gs();
   const blob = await serializeState(g);
   const vid = visitorId() || 'anon';
+  const upload = await blobUpload();
   const res = await upload(`support/${vid.replace(/[^\w-]/g, '')}-${g.id.replace(/[^\w-]/g, '')}.json.gz`, blob, {
     access: 'public',
     handleUploadUrl: `${API}?op=upload`,

@@ -8,8 +8,6 @@ import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
 import { draftRoundLabel } from './Draft';
 import { DraftLeagueScreen } from './Draft';
-import { refreshSupport, syncSupporterRegens } from '../online/support';
-import { SupportPage } from './Support';
 import { Head } from './screens/common';
 import { ProfileScreen } from './screens/Profile';
 import { BugReportButton } from './Community';
@@ -65,7 +63,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
+import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -85,7 +83,7 @@ const MENU: [ScreenName, string][] = [
   ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['international', 'nav.international'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
-const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['support', 'nav.support'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
+const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
@@ -93,14 +91,14 @@ const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'market', items: ['transfers', 'scouting'] },
   { key: 'club', items: ['club', 'board', 'finance', 'staff'] },
   { key: 'manager', items: ['profile', 'ranking', 'awards', 'history', 'jobs'] },
-  { key: 'community', items: ['community', 'support'] },
+  { key: 'community', items: ['community'] },
 ];
 const ALL_ITEMS = { ...Object.fromEntries([...MENU, ...MENU2]), draft: 'nav.draft' } as Record<ScreenName, string>;
-const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'support', 'help', 'options', 'managers'];
+const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', 'draft', 'fixtures', 'competitions', 'community', 'help', 'options', 'managers'];
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'support', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory', 'nations', 'mgrstatus', 'leagues'];
+const UNEMPLOYED: ScreenName[] = ['find', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory', 'nations', 'mgrstatus', 'leagues'];
 
 /** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
 function selectionProblems(): string | null {
@@ -133,7 +131,10 @@ export function Shell() {
   const [, setStadiumsReady] = useState(0);
   const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
   const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() ? g.clubs[venueFix.home]?.stadium : undefined;
-  useEffect(() => { if (venue) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [venue]);
+  const matchDay = !!venueFix && stadiumBackgrounds();
+  useEffect(() => { if (matchDay) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [matchDay]);
+  // aftenkamp: midtuge og europæiske kampe spilles i projektørlys (billedet mørkes og køles i CSS – .cx-night/.mbg-night)
+  const night = matchDay && !!venueFix && eveningFixture(venueFix.date ?? g.date, g.comps[venueFix.comp]?.type === 'continental');
   // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
@@ -169,12 +170,14 @@ export function Shell() {
   const bgDay = bgChanges() ? g.date : '2001-07-01';
   // kampdage: stadion indefra først – klubpakken (kan være træningsanlæg o.l.) kun når vi ikke har stadionet
   const homePack = venue && venueFix ? clubPackUrl(g.clubs[venueFix.home], venueFix.date ?? g.date) : null;
-  const cxPhoto = cmNav ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
+  // kampdag: hjemmeholdets stadion indefra, ellers klubpakken, ellers et kampbillede med fulde tribuner fra pakken (også finaler på neutral bane)
+  const matchPhoto = matchDay && venueFix ? (venue ? matchdayBgUrl(venue, venueFix.date ?? g.date) : null) ?? homePack ?? genericMatchdayUrl(venueFix.date ?? g.date, venueFix.home) : null;
+  const cxPhoto = cmNav ? matchPhoto ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
   useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
   const modernPhoto = !cmNav && !g.draft && g.userClub
-    ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
+    ? matchPhoto ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
     : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
@@ -188,11 +191,6 @@ export function Shell() {
   // AI-artikler (kamprapporter m.m.) skrives i baggrunden, så de er klar når beskeden åbnes
   const newestNews = g.news[0]?.id;
   useEffect(() => { if (newestNews !== undefined) prefetchArticles(); }, [newestNews, g.userClub]);
-  // supportere: status, præstationen "Patron of the game" og supporternes regen-navne
-  useEffect(() => {
-    refreshSupport().then((m) => { if (m?.tier && !gs().manager.ach?.patron) { act({ t: 'patron' }); } });
-    void syncSupporterRegens();
-  }, [g.id]); // eslint-disable-line react-hooks/exhaustive-deps
   // browser-notifikationer om vigtige nyheder, når fanen ikke er i fokus
   const notifiedUpTo = useRef(g.news[0]?.id ?? 0);
   useEffect(() => {
@@ -359,7 +357,7 @@ export function Shell() {
 
 
   return (
-    <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''}`}>
+    <div className={`shell ${cmNav ? 'cx' : ''} ${cmNav && running ? 'cx-busy' : ''} ${cmNav && matchPhoto && night ? 'cx-night' : ''}`}>
       <div className="topbar">
         <button className="menu-toggle small" onClick={() => setMenuOpen(!menuOpen)}>☰</button>
         <div className="club">
@@ -510,7 +508,7 @@ export function Shell() {
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
-        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : modernPhoto ? `mbg${stadiumBgUrl(venue, venueFix?.date ?? g.date) ? ' mbg-stadium' : ''}` : ''}`} ref={mainRef}
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${matchPhoto ? ' cx-stadium' : ''}${matchPhoto && night ? ' cx-night' : ''}` : modernPhoto ? `mbg${matchPhoto ? ' mbg-stadium' : ''}${matchPhoto && night ? ' mbg-night' : ''}` : ''}`} ref={mainRef}
           style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
@@ -527,8 +525,8 @@ export function Shell() {
               stopRef.current = true;
               void askConfirm(t('cl.hol.return'), { head: t('cl.mt.confirm') }).then((ok) => { if (!ok) { gs().manager.holiday = holidaySetRef.current; onHolidayRef.current = true; void run({ maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); }); } });
             }} title={t('common.stop')}>
-              {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke */}
-              {cxLongDate(running)}
+              {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke – på ferie står der også, at et klik afbryder ferien (brugere ledte efter en stop-knap) */}
+              {cxLongDate(running)}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
           ) : (
             matchSide?.s.editing && route.name === 'match' && matchSide.s.lastView ? (
@@ -608,7 +606,6 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'board': return <BoardScreen />;
     case 'profile': return <ProfileScreen />;
     case 'draft': return <DraftLeagueScreen />;
-    case 'support': return <div><Head title={t('sup.title')} /><SupportPage /></div>;
     case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
       <CommunityHub defaultName={gs().manager.name} initialTab={route.tab as HubTab | undefined}
         onLegend={cmDatabase(gs()) === 'original' ? (id, name) => {

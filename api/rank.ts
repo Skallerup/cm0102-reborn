@@ -5,10 +5,11 @@
 // indsendelse af en sæson tæller – genindlæsning af gemte spil kan ikke forbedre en score.
 // Scoren valideres (linjenøgler, grænser, sum); selve spillet kører i browseren, så ranglisten
 // er tillidsbaseret ud over disse kontroller.
-import { Redis } from '@upstash/redis';
+import type { Redis } from '@upstash/redis';
 import { postDiscord } from './_lib/discord.js';
+import { makeRedis } from './_lib/redis.js';
 
-const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
+const redis = makeRedis();
 
 // samme grænser som src/game/rating.ts (SCORE_LIMITS)
 const LIMITS: Record<string, [number, number]> = {
@@ -175,7 +176,7 @@ export async function GET(request: Request) {
       const rank = await redis.zrevrank('lb:career', id);
       return c ? { id, club: c.club, league: c.league, total: Number(c.total ?? 0), seasons: Number(c.seasons ?? 0), rank: rank === null ? null : rank + 1 } : null;
     }))).filter(Boolean).sort((a, b) => b!.total - a!.total);
-    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '', supporter: h.supporter || null, regen: h.regenName || null });
+    return json({ name: h.name, created: h.created, ach: parse(h.ach) ?? [], summary: parse(h.summary), careers, avatar: h.avatar || null, motto: h.motto || '' });
   }
   const board = url.searchParams.get('board') ?? 'career';
   const league = (url.searchParams.get('league') ?? '').replace(/[^A-Z0-9-]/g, '');
@@ -187,8 +188,7 @@ export async function GET(request: Request) {
   const isCareer = key === 'lb:career';
   const rows = await Promise.all(ids.map(async ({ member, score }) => {
     const h = isCareer ? await redis.hgetall<Record<string, string>>(`career:${member}`) : await redis.hgetall<Record<string, string>>(`entry:${member}`);
-    const tier = h?.pid ? await redis.hget<string>(`prof:${h.pid}`, 'supporter') : null;
-    return { id: member, pid: isCareer ? h?.pid : undefined, supporter: tier ?? undefined, points: score, name: h?.name ?? '?', club: h?.club ?? '', league: h?.league ?? '', season: h?.season ? Number(h.season) : undefined, seasons: h?.seasons ? Number(h.seasons) : undefined };
+    return { id: member, pid: isCareer ? h?.pid : undefined, points: score, name: h?.name ?? '?', club: h?.club ?? '', league: h?.league ?? '', season: h?.season ? Number(h.season) : undefined, seasons: h?.seasons ? Number(h.seasons) : undefined };
   }));
   // egen placering (bedste række for karrieren)
   let me: { rank: number; points: number } | null = null;

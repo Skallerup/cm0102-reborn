@@ -7,11 +7,12 @@
 //          GET ?op=overview | new-careers | managers | manager&pid= | applications | rooms | rankings&board= | saves | support
 //          (saves/support: spillernes gemte spil i skyen og dem, der er sendt til udvikleren – åbnes i preview i admin)
 //          POST { op: 'app-status' | 'app-delete' | 'unrank' }
-import { Redis } from '@upstash/redis';
+import type { Redis } from '@upstash/redis';
+import { makeRedis } from './_lib/redis.js';
 import { del } from '@vercel/blob';
 import { renderNews, sendNews, unsubLink, type Sub } from './_lib/mail.js';
 
-const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
+const redis = makeRedis();
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });
 const clip = (v: unknown, n: number) => String(v ?? '').replace(/\u0000/g, '').trim().slice(0, n);
 const isAdmin = (req: Request) => { const tok = process.env.ADMIN_TOKEN; return !!tok && req.headers.get('x-admin-token') === tok; };
@@ -81,9 +82,9 @@ export async function GET(request: Request) {
     const day = new Date().toISOString().slice(0, 10);
     const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
     const month = day.slice(0, 7);
-    const [names, rooms, careers, seasons, monthEntries, aiToday, aiYesterday, sgSeq, supporters, apps] = await Promise.all([
+    const [names, rooms, careers, seasons, monthEntries, aiToday, aiYesterday, sgSeq, apps] = await Promise.all([
       scanKeys('name:*'), scanKeys('room:?????'), redis.zcard('lb:career'), redis.zcard('lb:season'), redis.zcard(`lb:month:${month}`),
-      redis.get<number>(`ai:d:${day}`), redis.get<number>(`ai:d:${yesterday}`), redis.get<number>('sg:seq'), redis.zcard('supporters'), listApplications(),
+      redis.get<number>(`ai:d:${day}`), redis.get<number>(`ai:d:${yesterday}`), redis.get<number>('sg:seq'), listApplications(),
     ]);
     const roomInfo = await Promise.all(rooms.slice(0, 300).map((r) => redis.hmget<Record<string, string>>(r, 'status', 'lastTurn')));
     const week = Date.now() - 7 * 86_400_000;
@@ -104,10 +105,10 @@ export async function GET(request: Request) {
       managers: names.length, careers, seasons, seasonsThisMonth: monthEntries,
       rooms: rooms.length, activeRooms: roomInfo.filter((x) => x?.lastTurn && Date.parse(x.lastTurn) > week).length,
       ai: { today: Number(aiToday ?? 0), yesterday: Number(aiYesterday ?? 0), cap: Number(process.env.AI_DAILY_CAP ?? 4000) },
-      suggestions: Number(sgSeq ?? 0), supporters,
+      suggestions: Number(sgSeq ?? 0),
       applications: { total: apps.length, new: apps.filter((a) => a.status === 'new').length },
       top: topRows,
-      config: { email: !!(process.env.RESEND_API_KEY && process.env.NOTIFY_EMAIL), stripe: !!process.env.STRIPE_SECRET_KEY },
+      config: { email: !!(process.env.RESEND_API_KEY && process.env.NOTIFY_EMAIL) },
     });
   }
 
@@ -117,14 +118,14 @@ export async function GET(request: Request) {
     const rows = await Promise.all(pids.map(async (pid) => {
       if (!pid) return null;
       const [p, careers] = await Promise.all([
-        redis.hmget<Record<string, string>>(`prof:${pid}`, 'name', 'created', 'updated', 'supporter', 'donated', 'motto'),
+        redis.hmget<Record<string, string>>(`prof:${pid}`, 'name', 'created', 'updated', 'motto'),
         redis.smembers(`prof:${pid}:careers`),
       ]);
       if (!p?.name) return null;
       const scores = await Promise.all(careers.map((c) => redis.zscore('lb:career', c)));
       const seasons = await Promise.all(careers.map((c) => redis.hget<number>(`career:${c}`, 'seasons')));
       return {
-        pid, name: p.name, created: p.created ?? '', updated: p.updated ?? '', supporter: p.supporter ?? null, donated: Number(p.donated ?? 0),
+        pid, name: p.name, created: p.created ?? '', updated: p.updated ?? '',
         careers: careers.length, best: Math.max(0, ...scores.map((s) => Number(s ?? 0))), seasons: seasons.reduce<number>((a, s) => a + Number(s ?? 0), 0),
       };
     }));

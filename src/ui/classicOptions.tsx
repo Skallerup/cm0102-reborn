@@ -92,7 +92,6 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   add('ranking', t('cl.go.hall'));
   add('awards', t('nav.awards'));
   add('community', t('cl.go.credits'));
-  add('support', t('cl.go.web'));
   add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
   const fresh = seenVersion() !== APP_VERSION;

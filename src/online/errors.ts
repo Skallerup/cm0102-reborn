@@ -1,6 +1,6 @@
 // Fejl i spillernes browsere → admin (fanen "Errors"): window-fejl, afviste promises og React-nedbrud. Samme fejl sendes
 // højst 3 gange pr. side, højst 20 i alt, og kun fra den rigtige side (ikke udvikling/tests). Ingen personlige data.
-import { APP_VERSION } from '../ui/changelogData';
+import { APP_VERSION } from '../version';
 import { rankingAvailable } from './rank';
 import { previewInfo } from '../game/state';
 

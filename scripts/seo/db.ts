@@ -13,6 +13,7 @@ import { logoUrl, setLogoData } from '../../src/ui/logos';
 import { CLUB_INFO_2026 } from '../../src/game/data/clubInfo2026';
 import { WC2002 } from '../../src/game/international';
 import { CTA, esc, render, slugify, type Crumb, type Page } from './layout';
+import { contentDate } from './lastmod';
 import { DEMONYM } from './demonyms';
 import { buildStaffPages, clubStaffHtml, loadStaff, prepareStaff, type StaffCtx } from './staff';
 
@@ -253,7 +254,8 @@ export function buildDb(conf: DbConf): DbOut {
   const hubCrumb: Crumb = { name: `${conf.game} database`, url: `/${P}/` };
   const urls: Record<string, string[]> = { hub: [], players: [], clubs: [], leagues: [], nations: [], lists: [] };
   const images: Record<string, string[]> = {};
-  const emit = (kind: string, p: Page) => { write(p.slug, render({ modified: conf.modified, ...p })); urls[kind].push(p.slug); };
+  // datoen følger indholdet (scripts/seo/lastmod.ts): kun sider, der faktisk er ændret, får en ny dato
+  const emit = (kind: string, p: Page) => { write(p.slug, render({ modified: contentDate(p.slug, p.title + p.description + p.body, conf.modified), ...p })); urls[kind].push(p.slug); };
   // stab (trænere, spejdere, fysioterapeuter) – url'erne sættes nu, så klubsiderne kan linke til profilerne
   const staffCtx: StaffCtx | null = conf.staffFile ? {
     P, game: conf.game, season: conf.season, dbName: conf.dbName, original: conf.original, modified: conf.modified, hubCrumb,

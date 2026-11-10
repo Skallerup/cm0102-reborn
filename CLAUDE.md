@@ -5,7 +5,15 @@ og læg ændringen i samme push.
 
 ## Arbejdsgang
 - Svar på dansk. Ejeren sender skærmbilleder fra CM 01/02 som spec (nogle gange som filer på skrivebordet).
-- "Skyd live" = commit + push til `main`. Vercel udgiver cm0102reborn.com; GitHub Actions kører kun test og build.
+- **Staging først:** udvikl på branchen `staging` → push → https://staging.cm0102reborn.com (Vercel Preview, kræver
+  login på Vercel). Når ejeren har godkendt det på staging: merge `staging` → `main`.
+- "Skyd live" = merge/push til `main`. Vercel udgiver cm0102reborn.com; GitHub Actions kører kun test og build.
+- Redis oprettes altid med `makeRedis()` fra `api/_lib/redis.ts`. På staging (VERCEL_ENV=preview) får alle nøgler
+  præfikset `stg:`, så staging deler databasen uden at røre produktionens data. Brug aldrig `new Redis()` direkte,
+  og hverken `pipeline`/`multi`/`eval` (understøttes ikke med præfiks). Staging har sin egen `ADMIN_TOKEN` (Preview);
+  login-mails, Discord og den ugentlige mail er kun sat op i produktionen.
+- Alt er gratis: betaling/Stripe/supportere er fjernet (2026-11-05). `season.ts` kalder stadig `rng.chance(0.04)` for
+  supporter-regens, så tilfældighederne i gamle spil er uændrede – lad det stå.
 - Node: `export PATH="$HOME/.local/node/bin:$PATH"`. Tjek altid `npm run build` og `npx vitest run` før push.
 - `npm run e2e` (scripts/e2e.mjs) klikker igennem klassisk og moderne udseende i Chromium: alle hovedskærme, taktik
   (byt, flyt pladser, instruktioner, skift udseende) og en hel kamp. Kører også i CI. Nye skærme/knapper: udvid testen.
@@ -37,8 +45,17 @@ og læg ændringen i samme push.
   Relative imports i `api/` skal have `.js`-endelse (ESM).
 - Klassisk CM 01/02-tema (`data-skin='retro'`): `src/ui/classic.tsx` (hubs, faner, `CxDrop`, `CxLink`, `clubRoute`),
   `classic.css`, `classicOptions.tsx` (Game Options/Settings) og `src/ui/screens/*Classic.tsx`.
-- i18n: 10 sprog (sv/nb fra 2026-11-07). `da`/`en` ligger i hovedfilen, resten hentes ved behov. Nye tekster skal i både `en.ts` og `da.ts`
+- Forsiden og bundlen: `ui/App.tsx` tegner forsiden (Landing) fra en lille bundle (≈630 KB); spillet (`ui/AppPage.tsx`: motor, skærme,
+  draft, admin, fællesskab, ConfirmHost) hentes lazy ved Spil/url-parametre/genoptag. Moduler, forsiden bruger (theme, online/rank,
+  account, notify, errors, i18n), må ikke importere motoren (game/sim, competitions …) eller `changelogData` – brug `src/version.ts`
+  og dynamiske imports. Tjek med `npx vite build --sourcemap` + sourcemap-analyse, at hovedchunken ikke vokser.
+- i18n: 10 sprog (sv/nb fra 2026-11-07). Kun `en` ligger i hovedfilen – `da` og resten hentes ved behov (ensureLang før første tegning). Nye tekster skal i både `en.ts` og `da.ts`
   (øvrige sprog falder tilbage til engelsk).
+- SEO-siderne (`scripts/build-seo.ts`, ≈17.500 statiske sider): CSS inline; ægte `lastmod` pr. side via indholdsfingeraftryk i
+  `scripts/seo/lastmod.json` – filen opdateres af `npm run build` lokalt og SKAL med i samme commit; `/about/`; enhedsguider på
+  9 sprog (`scripts/seo/i18nDevices.ts`, hreflang til `/cm-01-02-windows-11/`); skærmbilleder fra `public/landing/<sprog>/` på
+  indgangssiderne. IndexNow sendes automatisk efter hver produktionsudgivelse (`.github/workflows/indexnow.yml`, kun url'er
+  med lastmod inden for 3 dage). Google Search Console: `VITE_GSC_TOKEN` er ikke sat på Vercel (ingen meta-verifikation).
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
   `world-original.json` (2001/02, 3.9.68).
@@ -50,6 +67,23 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) Brugerønsker: (1) klubskærme uden foto udefra og uden klubbillede får et stadion udefra fra pakken
+  (`genericClubUrl`), kampdage uden stadionfoto får et kampbillede med tribuner (`genericMatchdayUrl`, også finaler) – `backgrounds.ts`;
+  (2) aftenkampe (midtuge og europæiske kampe, `eveningFixture`) får nat-look i CSS (`.cx-night`/`.mbg-night`: mørkt, koldt,
+  projektørfelt) – pakken har ingen nattefotos. Fejl: (3) europæiske gruppetabeller i det klassiske tema vises nu sorteret efter point
+  (`CupClassic.tsx`, rækkerne lå i lodtrækningens rækkefølge); (4) feriebjælken siger "On holiday – click here to return" (stop fandtes,
+  men ingen fandt den). Målt, ikke rettet: assists er ~2× for koncentrerede (topassister 22 % af holdets mål i snit, op til 47 i en sæson;
+  73 % af mål har assist, hvilket er fint) – årsagen er boldholderens valg (playmaker-vægten 2,6 i `engine/match.ts` linje ~802), samme
+  sted som målscorer-afvigelsen (ENGINE.md trin 15). En kortere assist-vindue (≤1 øjeblik) hjalp kun lidt og er ikke taget med.
+- 2026-11-10 – (staging) SEO, 10 opgaver: (1) forsidens hovedbundle 2,6 MB → 0,6 MB (spillet lazy, dansk og Blob-klienten
+  hentes ved behov), (2) Google Fonts uden at blokere, (3) hero-billeder eager/fetchpriority + width/height (LCP/CLS), (4) ægte
+  lastmod pr. side + sitemap uden `?draft=1`/`?community=1`, (5) enhedsguider (cd/Windows 11/Android/iPhone/Mac) på 9 sprog med
+  hreflang, (6) skærmbilleder + og:image på play-online-siderne (alle sprog) og enhedsguiderne, (7) titler over 65 tegn 61 → 8 og
+  forsidens titel 77 → 61, (8) `/about/` (E-E-A-T) med link i sidefoden og på forsiden, (9) IndexNow efter produktionsudgivelse i
+  GitHub Actions (workflow-filen `.github/workflows/indexnow.yml` ligger lokalt, ukommitteret: git-tokenet mangler `workflow`-scope –
+  kør `gh auth refresh -s workflow` og commit den), (10) CSS inline på alle statiske sider (ingen blokerende seo.css).
+- 2026-11-10 – (staging) main (237 commits, bl.a. alle SEO-siderne) flettet ind i staging; betaling fjernet igen oven på main, Redis via `makeRedis` i alle serverfunktioner.
+- 2026-11-05 – (staging) Betaling fjernet helt – alt er gratis; staging-miljø på staging.cm0102reborn.com med `stg:`-præfiks i Redis.
 - 2026-11-10 – Spillerudviklingen målt i originalen: originalens gemte spil kan nu læses (`scripts/orig-save-dev.py` – indeks 268 bytes/fil, RLE: byte > 0x80 = gentag næste byte (b&0x7F) gange, ellers literal; player.dat 70 bytes +5 CA/+7 PA, staff.dat 110 bytes +18 fødselsår/+57 klub/+97 spillerreference). Testspillet gemt 31/8-01 og 25/9-02 ("CLAUDE DEV A/B" i ~/Library/Application Support/cm0102; ejerens karriere urørt). Fund: op til 31 år trækkes CA mod PA − 13 (på PA → −15/år), fra 32 år −5…−9/år, udsving ±9; CA 150+ står stille (495 → 495). `develop()` (training.ts) har nu `DEV` (ceil 13, pull 0,035, fald fra 32, decline 4,5, noise 0,8 …), mål med `scripts/dev-cal.ts` (`DEV_JSON`). 5 sæsoner: CA 150+ 495 → 683 (før 979), moderne 475 → 606 (før 1.090). docs/ENGINE.md "Udvikling".
 - 2026-11-10 – v0.21.0. Langtidstestens fund (original DB: −17 % spillere og 63 → ~450 klubber i minus på 5 sæsoner; toppen blev stærkere – CA 150+ 495 → 1.207). Årsager: (1) ungdomsårgange (3-4 pr. klub/år) OG regens af PA 120+ gav dobbelt talenttilgang, og frie agenter forsvandt uden afløser; (2) stabens løn (makeStaff) kostede i små klubber det samme som truppen. Rettet: `originalRegens()` (season.ts; original DB + ægte tilstand) = originalens model fra Bosman-projektets player_generation/PLAYER_GENERATION.md (player_regen.cpp sub_7abac0): ALLE der forlader fodbolden (`leaveFootball` – pension, prune, freeAgentDrift) genfødes med samme PA, alder/CA efter "sti 2" (`originalRegenAgeCa`), lige efter pensioneringen (`spawnRegenQueue` i rollover/drift), også i skjulte klubber under 16 spillere; ingen `youthIntake`/`youthPreview`. Udvidet spil uændret. `createClubStaff`: stabens løn højst 20 % af spillernes lønsum (*estimeret*, nye spil). Målt 5 sæsoner (ægte, original): spillere 39.863 → 39.863, skjulte 13.560 → 12.470, minus 63 → 194, CA 150+ 495 → 995 (resten er databasens unge, der vokser mod PA). `scripts/soak.ts` tager `MODE=authentic`. tests/originalRegens.test.ts.
 - 2026-11-09 – SEO-revision efter nattens sider: titler over 65 tegn 284 → 61 (stabsprofilerne vælger den første af tre former, der kan stå; `fit(...)` i db.ts til wonderkid-/cheap-/egenskabslisterne), 0 beskrivelser over 160, 0 brudte links.

@@ -4,11 +4,12 @@
 // Selve spillet (≈4-5 MB gzip) ligger som øjebliksbilleder i Vercel Blob.
 // Klienterne simulerer selv: når alle er klar, tager én af dem låsen, afspiller alle handlinger,
 // simulerer frem til næste kampdag og uploader et nyt øjebliksbillede (commit).
-import { Redis } from '@upstash/redis';
+import type { Redis } from '@upstash/redis';
 import { del } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
+import { makeRedis } from './_lib/redis.js';
 
-const redis = new Redis({ url: process.env.KV_REST_API_URL!, token: process.env.KV_REST_API_TOKEN! });
+const redis = makeRedis();
 const TTL = 60 * 60 * 24 * 60; // rum lever 60 dage efter sidste aktivitet
 const LOCK_SECONDS = 240;
 const MAX_PLAYERS = 8;

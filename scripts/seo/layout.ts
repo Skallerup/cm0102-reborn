@@ -1,5 +1,7 @@
 // Fælles skabelon for de statiske SEO-sider (rent HTML uden JavaScript – læses af søgemaskiner og AI-crawlere).
 // Bruges af scripts/build-seo.ts (guiderne) og scripts/seo/db.ts (spiller-, klub-, liga- og landesiderne).
+// CSS'en ligger inline i hver side (≈3 KB): ingen ekstra blokerende forespørgsel før første tegning – de fleste
+// besøg fra søgemaskinerne er førstegangsbesøg uden cache.
 
 export const SITE = 'https://cm0102reborn.com';
 export const TODAY = new Date().toISOString().slice(0, 10);
@@ -11,6 +13,9 @@ export function fitTitle(t: string): string {
   if (t.length > 65) t = t.replace(/ \| CM Reborn$/, '');
   if (t.length > 65) t = t.replace(/ \(\d{4}\/\d{2}\)/, '');
   if (t.length > 65) t = t.replace(/ & Attributes$/, '');
+  // "– Clubs, Best Players & Wonderkids", "– Squad & Wonderkids", "– Free Agents & Bosman 2027": det sidste led kan undværes
+  if (t.length > 65) t = t.replace(/ & [^&–|]+$/, '');
+  if (t.length > 65) t = t.replace(/, Best Players$/, '');
   return t;
 }
 /** Beskrivelser ud over ~160 tegn skæres af: kort ved et ordskifte */
@@ -36,6 +41,7 @@ export const FOOT_GUIDES: [string, string][] = [
   ['/cm-01-02-tactics/', 'Tactics'],
   ['/cm-01-02/managers/', 'Managers'],
   ['/changelog/', "What's new"],
+  ['/about/', 'About'],
 ];
 export const NAV: [string, string][] = [
   ['/play-cm-01-02-online/', 'Play online'],
@@ -46,6 +52,9 @@ export const NAV: [string, string][] = [
   ['/2026-27/', '2026/27 database'],
   ['/faq/', 'FAQ'],
 ];
+
+/** et skærmbillede fra public/landing/<sprog>/ (med mål, så siden ikke springer) – også og:image, når siden sætter `image` */
+export const shotFig = (dir: string, name: string, alt: string, w = 1600, h = 1000, cls = '') => `<figure class="shot ${cls}"><img src="/landing/${dir}/${name}.webp" width="${w}" height="${h}" alt="${esc(alt)}" loading="lazy" decoding="async" /><figcaption>${esc(alt)}</figcaption></figure>`;
 
 export const CTA = `<p class="cta"><a class="btn" href="/">▶ Play free in your browser</a> <span>No download · no ads · works on any device</span></p>`;
 
@@ -110,16 +119,15 @@ th,td{padding:7px 10px;border-bottom:1px solid var(--l);text-align:left;white-sp
 .cols{columns:3 220px;column-gap:24px}.cols a{display:block;padding:2px 0;font-size:14.5px}
 .sw{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid #fff4;vertical-align:-1px;margin-left:3px}
 #q{width:100%;max-width:520px;padding:12px 14px;font-size:16px;border-radius:10px;border:1px solid var(--l);background:var(--s);color:var(--t)}#res a{display:block;padding:4px 0}
-footer{margin-top:50px;padding-top:18px;padding-bottom:40px;border-top:1px solid var(--l);color:var(--m);font-size:14px}`;
+footer{margin-top:50px;padding-top:18px;padding-bottom:40px;border-top:1px solid var(--l);color:var(--m);font-size:14px}
+.shot{margin:18px 0}.shot img{width:100%;height:auto;border-radius:12px;border:1px solid var(--l);background:var(--s)}.shot.phone img{max-width:300px;display:block;margin:0 auto}.shot figcaption{color:var(--m);font-size:13px;margin-top:6px;text-align:center}`;
 
-/** fælles stylesheet (public/seo.css, skrevet af build-seo.ts) – versionen skifter, når CSS'en ændres */
-const CSS_VER = (() => { let h = 0; for (const ch of CSS) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h.toString(36); })();
 
 export function render(p: Page): string {
   const url = `${SITE}/${p.slug}`;
   const crumbs: Crumb[] = [{ name: 'CM Reborn', url: '/' }, ...(p.crumbs ?? []), { name: p.h1, url: `/${p.slug}` }];
   const modified = p.modified ?? TODAY;
-  const image = p.image ?? `${SITE}/og.jpg`;
+  const image = p.image ? (p.image.startsWith('http') ? p.image : SITE + p.image) : `${SITE}/og.jpg`;
   const ld: unknown[] = [
     { '@type': 'BreadcrumbList', itemListElement: crumbs.map((c, i) => ({ '@type': 'ListItem', position: i + 1, name: c.name, item: SITE + c.url })) },
     ...(p.noArticle ? [] : [{ '@type': 'Article', headline: p.h1.slice(0, 110), description: p.description, dateModified: modified, inLanguage: p.lang ?? 'en', mainEntityOfPage: url, image, author: { '@type': 'Organization', name: 'CM Reborn', url: `${SITE}/` }, publisher: { '@type': 'Organization', name: 'CM Reborn', logo: { '@type': 'ImageObject', url: `${SITE}/icon-512.png` } } }]),
@@ -149,7 +157,7 @@ ${alt}
 <meta name="twitter:card" content="summary_large_image" />
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@graph': ld }).replace(/</g, '\\u003c')}</script>
-<link rel="stylesheet" href="/seo.css?v=${CSS_VER}" />
+<style>${CSS}</style>
 </head>
 <body>
 <header><a class="logo" href="/">CM Reborn</a><nav>${nav.map(([h, l]) => `<a href="${h}">${esc(l)}</a>`).join('')}</nav></header>

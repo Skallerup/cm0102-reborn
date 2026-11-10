@@ -3,11 +3,11 @@
 // { op: 'ping', vid, prog? } er browserens puls (prog = spildato/klub/placering for det åbne spil → hash "prog") (hvert 2. minut, mens fanen er synlig): sorteret sæt "seen" (vid → tid).
 // { op: 'error' } = fejl fra browseren (fanen Errors i admin: err:list + err:{id}).
 // Begrænset pr. IP, så ingen kan fylde listen op. Landet (x-vercel-ip-country) gemmes – selve IP-adressen gemmes ikke.
-import { Redis } from '@upstash/redis';
+import { makeRedis } from './_lib/redis.js';
 import { createHash } from 'node:crypto';
 
 const redis = process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN
-  ? new Redis({ url: process.env.KV_REST_API_URL, token: process.env.KV_REST_API_TOKEN })
+  ? makeRedis()
   : null;
 
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } });

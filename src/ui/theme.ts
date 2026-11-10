@@ -221,7 +221,7 @@ export function applyTheme() {
   delete root.dataset.club;
   delete root.dataset.skin;
   for (const v of VARS) root.style.removeProperty(v);
-  // supportertemaer: guld og retro-CM
+  // særlige temaer: guld og retro-CM
   if ((theme === 'gold' || theme === 'retro') && hasGame()) {
     root.dataset.skin = theme;
     // CM-retro: klub-farvet header-bjælke som i originalen

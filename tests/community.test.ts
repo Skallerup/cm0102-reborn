@@ -91,39 +91,3 @@ describe('fællesskab', () => {
     expect((await get('list=new')).items.some((x: { id: number }) => x.id === 4)).toBe(false);
   });
 });
-
-describe('donationer', () => {
-  let sup: typeof import('../api/support');
-  const sign = async (payload: string, secret: string) => {
-    const t = Math.floor(Date.now() / 1000);
-    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-    const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${t}.${payload}`));
-    return `t=${t},v1=${[...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, '0')).join('')}`;
-  };
-  const hook = async (ev: unknown, secret = 'whsec_test') => {
-    const payload = JSON.stringify(ev);
-    const r = await sup.POST(new Request('http://x/api/support?webhook=1', { method: 'POST', body: payload, headers: { 'stripe-signature': await sign(payload, secret) } }));
-    return r.status;
-  };
-  beforeAll(async () => { process.env.STRIPE_WEBHOOK_SECRET = 'whsec_test'; sup = await import('../api/support'); });
-
-  it('krediterer kun ægte, betalte betalinger – og kun én gang', async () => {
-    const ev = { id: 'evt_1', type: 'checkout.session.completed', data: { object: { payment_status: 'paid', mode: 'payment', amount_total: 3000, metadata: { pid: me.pid } } } };
-    expect(await hook(ev, 'forkert-hemmelighed')).toBe(400);
-    expect(await hook(ev)).toBe(200);
-    expect(await hook(ev)).toBe(200); // samme hændelse igen
-    const p = store.get(`prof:${me.pid}`) as Record<string, unknown>;
-    expect(p.donated).toBe(3000);
-    expect(p.supporter).toBe('silver');
-    await hook({ ...ev, id: 'evt_2', data: { object: { ...ev.data.object, amount_total: 3500 } } });
-    expect((store.get(`prof:${me.pid}`) as Record<string, unknown>).supporter).toBe('gold');
-  });
-
-  it('kun Sølv og Guld kan navngive en regen', async () => {
-    const call = (pid: string, token: string) => sup.POST(new Request('http://x/api/support', { method: 'POST', body: JSON.stringify({ op: 'regen', pid, token, first: 'Martin', last: 'Skallerup' }) }));
-    expect((await call(other.pid, other.token)).status).toBe(403);
-    expect((await call(me.pid, me.token)).status).toBe(200);
-    const list = await (await sup.GET(new Request('http://x/api/support?regens=1'))).json();
-    expect(list.regens[0].first).toBe('Martin');
-  });
-});

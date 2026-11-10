@@ -203,7 +203,7 @@ const CLUB_SUB: Hub['sub'] = ['tactics', 'training', 'lastMatch', 'division', 'c
 const OFFICE_TABS: ScreenName[] = ['finance', 'board', 'staff', 'scouting'];
 const OFFICE_SUB: Hub['sub'] = ['squad', 'tactics', 'training', 'division'];
 const MGR_TABS: ScreenName[] = ['profile', 'history', 'awards', 'jobs', 'ranking'];
-const MGR_SUB: Hub['sub'] = ['community', 'support', 'managers'];
+const MGR_SUB: Hub['sub'] = ['community', 'managers'];
 
 const HUBS: Partial<Record<ScreenName, Hub>> = {
   // turneringer (CM 01/02): hvid titelbjælke med mørkeblå tekst
@@ -257,7 +257,6 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   awards: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   jobs: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   community: { tabs: MGR_TABS, sub: MGR_SUB },
-  support: { tabs: MGR_TABS, sub: MGR_SUB },
   managers: { tabs: MGR_TABS, sub: MGR_SUB },
   player: {
     // spillerens klub i titlen kan klikkes (som i originalen)
@@ -405,7 +404,7 @@ const MENU: [string, ScreenName[]][] = [
   ['navg.market', ['transfers', 'scouting']],
   ['navg.club', ['club', 'board', 'finance', 'staff']],
   ['navg.manager', ['profile', 'ranking', 'awards', 'history', 'jobs']],
-  ['navg.community', ['community', 'support', 'help']],
+  ['navg.community', ['community', 'help']],
 ];
 
 /** ▸-menuen: på klubskærme klubberne i klubbens liga (som i CM 01/02) og landet; ellers – eller via "Alle skærme" – alle skærme */

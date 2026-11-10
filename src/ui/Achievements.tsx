@@ -1,5 +1,4 @@
 // Præstationer (gitter) og den offentlige managerprofil, der kan deles med et link.
-import { SupporterBadge } from './Support';
 import { useEffect, useState } from 'react';
 import { ACHIEVEMENTS } from '../game/achievements';
 import { follow, followState } from '../online/hub';
@@ -63,8 +62,7 @@ export function PublicProfilePage({ pid, onClose }: { pid: string; onClose: () =
             <div className="pub-head">
               <div className="pub-avatar">{p.avatar ? <img src={p.avatar} alt="" /> : p.name.split(' ').map((x) => x[0]).join('').slice(0, 2).toUpperCase()}</div>
               <div>
-                <h1>{p.name} <SupporterBadge tier={p.supporter} /></h1>
-                {p.regen && <div className="muted">⭐ {t('sup.regenNamed', { name: p.regen })}</div>}
+                <h1>{p.name}</h1>
                 <div className="muted">{p.summary?.nation ? <><Flag name={p.summary.nation} />{natName(p.summary.nation)} · </> : ''}{t('pub.since', { date: dateFmt(p.created.slice(0, 10)) })}</div>
                 {p.motto && <div className="prof-motto">“{p.motto}”</div>}
                 <FollowButton pid={pid} />

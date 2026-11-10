@@ -1,6 +1,6 @@
 // Landingssider på spillets øvrige sprog ("spil CM 01/02 online" på dansk, tysk, spansk …) med hreflang mellem dem
 // og den engelske /play-cm-01-02-online/. Teksterne er skrevet til siden (ikke maskinoversat fra i18n-filerne).
-import type { Page } from './layout';
+import { shotFig, type Page } from './layout';
 
 export interface LangPage { lang: string; hreflang: string; slug: string; title: string; h1: string; description: string; lead: string; cta: string; ctaNote: string; why: string; points: string[]; dbH: string; db: string; faq: [string, string][]; footer: string; nav: string }
 
@@ -258,11 +258,15 @@ const GUIDE_LINKS: [string, string][] = [
   ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-guides/', 'All guides'],
 ];
 /** `local`: sprogets egne guider (scripts/seo/i18nGuides.ts) – [url, titel] */
+/** skærmbilledets tekst pr. sprog (public/landing/<dir>/classic-squad.webp findes på alle sprog med landets egne klubber) */
+const SHOT_ALT: Record<string, string> = { da: 'Truppen i det klassiske CM 01/02-udseende', sv: 'Truppen i det klassiska CM 01/02-utseendet', nb: 'Troppen i det klassiske CM 01/02-utseendet', de: 'Der Kader im klassischen CM 01/02-Look', es: 'La plantilla con el aspecto clásico de CM 01/02', fr: "L'effectif dans le look classique de CM 01/02", it: 'La rosa nel look classico di CM 01/02', 'pt-BR': 'O elenco no visual clássico do CM 01/02', tr: 'Klasik CM 01/02 görünümünde kadro' };
+const DIR: Record<string, string> = { nb: 'nb', 'pt-BR': 'pt' };
 export function toPage(p: LangPage, alternates: [string, string][], local: [string, string][] = []): Page {
   const cta = `<p class="cta"><a class="btn" href="/">${p.cta}</a> <span>${p.ctaNote}</span></p>`;
+  const dir = DIR[p.lang] ?? p.lang;
   return {
-    slug: p.slug, title: p.title, h1: p.h1, description: p.description, lang: p.lang, alternates, faq: p.faq, faqSchema: true, cta, footer: p.footer,
+    slug: p.slug, title: p.title, h1: p.h1, description: p.description, lang: p.lang, alternates, faq: p.faq, faqSchema: true, cta, footer: p.footer, image: `/landing/${dir}/classic-squad.webp`,
     nav: [[`/${p.slug}`, p.nav], ['/cm-01-02/', 'CM 01/02 database'], ['/cm-01-02/lists/wonderkids/', 'Wonderkids'], ['/play-cm-01-02-online/', 'English']],
-    body: `<p class="lead">${p.lead}</p>${cta}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p>${local.length ? `<ul>${local.map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>` : ''}<h2>${GUIDES_H[p.lang] ?? 'Guides'}</h2><ul>${GUIDE_LINKS.map(([h, t]) => `<li><a href="${h}" hreflang="en">${t}</a></li>`).join('')}</ul>`,
+    body: `<p class="lead">${p.lead}</p>${cta}${shotFig(dir, 'classic-squad', SHOT_ALT[p.lang] ?? 'CM Reborn')}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p>${local.length ? `<ul>${local.map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>` : ''}<h2>${GUIDES_H[p.lang] ?? 'Guides'}</h2><ul>${GUIDE_LINKS.map(([h, t]) => `<li><a href="${h}" hreflang="en">${t}</a></li>`).join('')}</ul>`,
   };
 }
