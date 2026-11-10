@@ -612,8 +612,9 @@ async function editor() {
     await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
     const p = await page.evaluate(() => Object.values(window.__cm.gs().players).find((x) => x.last === 'Tsigalko' && x.pos[0] < 15));
     if (p?.first !== 'Maksim') throw new Error(`navnet slog ikke igennem: ${p?.first}`);
-    // PA -2 som i originalen (playerInit.ts): oftest 120-200, 1 ud af 20 op til 49 lavere – men aldrig under CA
-    if (!(p.pa >= 71 && p.pa >= p.ca)) throw new Error(`PA -2 slog ikke igennem: ${p.pa}`);
+    // PA -2 som i originalen (playerInit.ts): oftest 120-200, 1 ud af 20 op til 49 lavere – men aldrig under CA.
+    // Alle spillere kan desuden få et tilfældigt omslag (1/100 → PA 0, 1/750 → −1), der ender på CA (70) – det er ikke en fejl i editoren
+    if (!(p.pa >= p.ca && (p.pa >= 71 || p.pa === p.ca))) throw new Error(`PA -2 slog ikke igennem: ${p.pa} (CA ${p.ca})`);
   });
   await ctx.close();
 }
