@@ -66,6 +66,11 @@ export interface SeasonStats {
   ratingCount: number;
   lgGoals: number;
   lgApps: number;
+  /** ligaens assists, kampens spiller og karakterer (snit pr. turnering på spillerprofilen – mangler i ældre gemte spil) */
+  lgAssists?: number;
+  lgMom?: number;
+  lgRatingSum?: number;
+  lgRatingCount?: number;
 }
 
 export interface PlayerMove {

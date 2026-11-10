@@ -194,7 +194,7 @@ export function buildAttributes(opts: {
 }
 
 export function emptyStats() {
-  return { apps: 0, subs: 0, minutes: 0, goals: 0, assists: 0, mom: 0, yellows: 0, reds: 0, ratingSum: 0, ratingCount: 0, lgGoals: 0, lgApps: 0 };
+  return { apps: 0, subs: 0, minutes: 0, goals: 0, assists: 0, mom: 0, yellows: 0, reds: 0, ratingSum: 0, ratingCount: 0, lgGoals: 0, lgApps: 0, lgAssists: 0, lgMom: 0, lgRatingSum: 0, lgRatingCount: 0 };
 }
 
 export function makePlayer(o: {
