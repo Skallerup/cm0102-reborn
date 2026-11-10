@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) `ui/InAppBanner.tsx`: i en apps indbyggede browser (Android WebView "; wv)", Facebook/Instagram/Messenger/Discord/TikTok/Line/Snapchat …) vises et banner øverst: gemte spil kan forsvinde, spillet kan ikke installeres – Android får knappen "Open in Chrome" (intent-link), iOS en vejledning til del-menuen. Vises højst én gang pr. 7 dage (`cm0102.inapp.seen`). Wallet-/Firefox-fejlene får ingen besked (de rammer ikke spillet).
 - 2026-11-10 – Skudt live: IndexNow-workflow, e2e tåler PA-omslag, online-markering i admin, fejlfilter for udvidelsesstøj.
 - 2026-11-10 – (staging) Fejlrapporten (online/errors.ts) ignorerer støj fra browserudvidelser og indlejrede browsere: `window.ethereum`/`selectedAddress` (krypto-wallets i Safari), `__firefox__` (Firefox på iOS), "Java object is gone" (Android WebView), `safari-web-extension:`. De 4 fejl i admin 10/11 var alle den slags – ingen spilfejl.
 - 2026-11-10 – (staging) Admin → New careers: grøn prik ved manageren, hvis browseren er online (puls inden for 5 min), og "● N online now" er en knap, der filtrerer listen til de online (viser også hvor mange af de online, der har en karriere i listen).
