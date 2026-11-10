@@ -1,0 +1,980 @@
+{
+ "ANNOUNCE_PENALTIES": [
+  "Maç penaltılara gidiyor !"
+ ],
+ "ATTEMPT_PASS_CROSS": [
+  "<p1> ortaya çeviriyor",
+  "<p1> topu içeri göndermeye çalışıyor",
+  "<p1> topu ceza sahasına sokmak için elinden geleni yapıyor",
+  "<p1> ortayı yapmaya çalışıyor",
+  "<p1> topu ceza sahasına havalandırıyor",
+  "<p1> topu içeri yolluyor",
+  "<p1> ceza sahasına ortalıyor",
+  "<p1> çok güzel ayarlanmış bir topu içeri asıyor",
+  "<p1> topu ortalıyor",
+  "<p1> topu ortaya çeviriyor"
+ ],
+ "BLOCK_SHOT": [
+  "<p1> şutu önlüyor",
+  "Şut önlendi, araya giren <p1>",
+  "Şut <p1> tarafından sertçe geri dönüyor",
+  "<p1> top ile kale arasına giriyor",
+  "Şutu bloke eden <p1>",
+  "<p1> şutu bloke etmeyi başarıyor",
+  "<p1> kendini şutun önüne atıyor",
+  "Top <p1> oyuncusuna çarpıp dönüyor",
+  "<p1> şutu blokluyor"
+ ],
+ "BRINGS_BALL_INTO_AREA": [
+  "<p1> topu ceza sahasına taşıyor",
+  "<p1> burada çok iyi iş çıkardı|Ceza sahasına girdi",
+  "<p1> ceza sahasına giriyor",
+  "<p1> ceza sahasına doğru devam ediyor",
+  "<p1> topla birlikte ceza sahasında",
+  "<p1> ceza sahasına doğru ilerliyor",
+  "<p1> ceza sahasının içinde...",
+  "<p1> ceza sahasına giriyor",
+  "<p1> kutunun içine giriyor",
+  "<p1> topu ceza sahasının içine sokuyor",
+  "<p1> ceza sahasının içine doğru hareketleniyor",
+  "<p1> koşusunu ceza sahasının içine kadar sürdürüyor..."
+ ],
+ "CHANGE_FORMATION": [
+  "<t> diziliş değiştiriyor"
+ ],
+ "CLEAN_THROUGH": [
+  "<p1> kaleyle karşı karşıya",
+  "<p1> son savunmacıdan da kurtuldu",
+  "<p1> önünde sadece kaleci var",
+  "<p1> tamamen boşta..|Önünde sadece kaleci var...",
+  "<p1> kaleye doğru gidiyor...",
+  "<p1> bomboş...",
+  "<p1> kaleciyle karşı karşıya...",
+  "<p1> savunmanın arkasında...|Önünde sadece kaleci var...",
+  "<p1> savunmanın arkasına sarktı, tamamen yalnız..."
+ ],
+ "CROSSES_HALFWAY_LINE": [
+  "<p1> topu orta sahanın ötesine taşıyor",
+  "<p1> topla birlikte orta çizgiyi geçiyor",
+  "<p1> topu kendi yarı sahasından çıkarıyor",
+  "<p1> topu orta çizginin ötesine götürüyor",
+  "<p1> oyunu orta çizginin ötesine taşıyor",
+  "<p1> oyunu rakip yarı sahaya taşıyor",
+  "<p1> topu rakip yarı sahaya sokuyor"
+ ],
+ "CROSS_IT": [
+  "<p1> topu altı pasın içine gönderiyor",
+  "<p1> topu ortalıyor"
+ ],
+ "END_OF_NINETY_MINUTES": [
+  "90 dakika sona erdi"
+ ],
+ "FINAL_WHISTLE": [
+  "Son düdük"
+ ],
+ "FOUL": [
+  "Faul: <p1>, <p2> üzerine!!",
+  "<O><p2> yerde, faulü yapan <p1>!!",
+  "<p1> faul yapıyor, yerdeki <p2>!!",
+  "Bu bir faul! <p1>, <p2> üzerine!!",
+  "<O>Faul var, mağdur <p2>!!"
+ ],
+ "FOUL_BLOCK_TACKLE": [
+  "<p1> sert giriyor, yerde <p2>",
+  "<p1> müdahale ediyor...|Ve <p2> yerde kalıyor",
+  "<O><p2> yerde...|<p1> sert bir müdahaleyle yere serdi",
+  "<p1> arkadan çarpıyor, yerde <p2>",
+  "<p1> müdahalesiyle <p2> yerde...|Çok sert bir müdahaleydi"
+ ],
+ "FOUL_PUSH_OPPONENT": [
+  "<p1> itiyor, yerde <p2>",
+  "<O><p2> itildi, iten <p1>",
+  "<O>Bu bir itme! Yerde <p2>, iten <p1>",
+  "<O><p2> yerde...|Onu iten <p1>"
+ ],
+ "FOUL_SHIRT_TUG": [
+  "<p1> tutuyor, geride kalan <p2>!!",
+  "Faul!|<p1> rakibi <p2> formasından çekiyor!",
+  "<O><p2> faule uğruyor...|<p1> onu tutuyordu!",
+  "<p1> tutma faulü yüzünden cezalandırılıyor, mağdur <p2>!",
+  "<O><p2> formasından çekiliyor, çeken <p1>!"
+ ],
+ "FOUL_SLIDE_TACKLE": [
+  "<p1> kayarak giriyor, yerde <p2>|Faul kararı",
+  "<p1> kayarak müdahale ediyor...|Ama topu değil <p2> oyuncusunu alıyor!!",
+  "<p1> sert giriyor, hedefte <p2>!|Ama topa değil adama oynadı!!",
+  "<p1> ayaklarını alıyor, yerde <p2>!!"
+ ],
+ "FOUL_TRIP": [
+  "<p1> çelme takıyor, yerde <p2> !!",
+  "<O><p2> çelmeyle düşürüldü, çelmeyi takan <p1> !!",
+  "<p1> ayağını uzatıyor...|Ve <p2> yerde !!",
+  "<p1> ayağını uzatıyor...|Ve <p2> ayağa takılıyor !!",
+  "<p1> topa uzanıyor...|Ama <p2> havalanıp yere düşüyor !!",
+  "<p1> çelme yüzünden cezalandırılıyor, yerdeki <p2> !!",
+  "<O><p2> yere düşüyor...|<p1> çelme taktı !!"
+ ],
+ "GOALIE_CATCH_BALL": [
+  "<p1> topu kontrol ediyor",
+  "Ve bu <p1> için çok kolay bir top",
+  "<p1> topu rahatça kucaklıyor",
+  "<p1> yükseliyor ve topu alıyor",
+  "<p1> yükseliyor ve topu tertemiz kontrol ediyor",
+  "<p1> topa çıkıyor|Ve göğsüne bastırıyor"
+ ],
+ "GOALIE_SPILLS_BALL": [
+  "<p1> topu tutmaya çıkıyor|Ama elinden kaçırdı",
+  "Ve bu <p1> için kolay bir top|Ama düşürdü !",
+  "<p1> topu almaya çıkıyor|Ve yetişemiyor !"
+ ],
+ "GOALKEEPER_PARRY": [
+  "<p1> soluna uzanıyor...|Ve topu çeliyor...",
+  "<p1> sağına uzanıyor...|Ve topu çeliyor...",
+  "<p1> topu uzaklaştırıyor...",
+  "<p1> ancak çelebiliyor...",
+  "<p1> kurtarıyor...|Ama topu tutamıyor...",
+  "<p1> kurtarıyor...|Ama <p1> topu önüne bırakıyor...",
+  "<p1> topu temiz alamıyor...",
+  "<p1> kurtarıyor...|Ve topu dışarı çeliyor",
+  "<p1> topu yumrukla uzaklaştırıyor..."
+ ],
+ "GOAL_DISALLOWED": [
+  "Ama geçerli olmayacak !|Yan hakem bayrağını kaldırdı !",
+  "Ama geçerli olmayacak !|<Rf> çoktan düdüğü çalmıştı !",
+  "Ama geçerli olmayacak !|Düdük çoktan çalmıştı !",
+  "Ama gol iptal edildi !|Yan hakem bayrağını kaldırdı !",
+  "Ama gol iptal edildi !|<Rf> çoktan düdüğü çalmıştı !",
+  "Ama gol iptal edildi !|Düdük çoktan çalmıştı !",
+  "Ama gol sayılmayacak !|Yan hakem bayrağını kaldırdı !",
+  "Ama gol sayılmayacak !|<Rf> çoktan düdüğü çalmıştı !",
+  "Ama gol sayılmayacak !|Düdük çoktan çalmıştı !"
+ ],
+ "GOAL_ONE": [
+  "Gooool! <p1> !!!",
+  "<p1> ağları sarsıyor !!!",
+  "Golü atan <p1> !!!",
+  "Golün sahibi <p1> !!!",
+  "<p1> golü atıyor !!!",
+  "Ve top ağlarda, gol <p1> !!!",
+  "Top içeride, gol <p1> !!!",
+  "Top ağlarla buluştu|Golün sahibi <p1> !"
+ ],
+ "GOAL_TWO": [
+  "<p1> kendi kalesine gol atıyor!!!",
+  "<p1> topu kendi ağlarına gönderiyor!!!",
+  "Topu kendi kalecisinin üzerinden ağlara yolluyor!!!",
+  "<p1> hata yapıyor!|Topu kendi kalesine attı!!!",
+  "Kendi kalesine gol !!|<p1> için tam bir felaket !!"
+ ],
+ "GONE_ATTACKING_STYLE": [
+  "<t> hücum oyununa geçiyor",
+  "<t> daha hücumcu bir oyun tarzına geçiyor",
+  "<t> oyununu değiştiriyor...|Hücumda kendine daha fazla seçenek yarattı",
+  "<t> taktik değiştiriyor...|Son üçte birlik bölgede seçenek arıyor",
+  "<t> oyunu değiştiriyor...|Daha hücumcu bir tarza geçti"
+ ],
+ "GONE_DEFENSIVE_STYLE": [
+  "<t> savunma ağırlıklı oyuna geçiyor",
+  "<t> savunmacı bir tarza dönüyor",
+  "<t> biraz geri çekiliyor|Artık daha savunmacı oynuyor"
+ ],
+ "GOOD_INTERCEPT": [
+  "<p1> pası kesiyor",
+  "<p1> pası araya girerek kesiyor",
+  "<p1> pası görüp kesmekle çok iyi yapıyor",
+  "<p1> çok iyi okudu| O pası kesmekle iyi yaptı",
+  "<p1> pası soğukkanlılıkla kesiyor",
+  "<p1> harika bir top kapıyor",
+  "Çok iyi araya giriyor, topu kapan <p1>",
+  "<p1> oyunu çok iyi okuyor|Pası kesiyor",
+  "Çok iyi araya girdi <p1>|Orada büyük soğukkanlılık gösterdi",
+  "<p1> bu topu kesmekte hiç zorlanmıyor",
+  "<p1> kapanıyor ve topu kesiyor",
+  "<p1> topa ilk ulaşan oluyor ve kesiyor"
+ ],
+ "GOOD_SAVE_HELD": [
+  "<p1> iyi kurtarıyor ve topu tutuyor",
+  "<p1> soluna uzanıyor...|Ve topu kontrol ediyor|İyi kurtarış !",
+  "<p1> sağına uzanıyor...|Ve topu kontrol ediyor|İyi kurtarış !",
+  "<p1> iyi bir kurtarış yapıyor...|Ve topu elinde tutuyor",
+  "<p1> topu sağlam tutuyor",
+  "<p1> iyi kurtardı|Topu da güzel kontrol etti",
+  "<p1> topu alıyor|Orada güven veren eller gösterdi"
+ ],
+ "GOOD_SAVE_NOT_HELD": [
+  "<p1> soluna uzanıyor...|Ve topu çeliyor...|İyi kurtarış !",
+  "<p1> sağına uzanıyor...|Ve topu çeliyor...|İyi kurtarış !",
+  "<p1> topu çelmekle iyi yapıyor...",
+  "<p1> topu uzaklaştırmakla iyi yapıyor...",
+  "<p1> parmak uçlarıyla dokunuyor...|Müthiş kurtarış !"
+ ],
+ "GREAT_FIRST_TOUCH": [
+  "<p1> topu adımına uydurarak alıyor...",
+  "Mükemmel bir ilk dokunuş, <p1>",
+  "<p1> topu çok iyi indiriyor",
+  "İyi kontrol, <p1>",
+  "<p1> iyi bir top kontrolü sergiliyor",
+  "<p1> çok iyi kontrol etti...|Topu güzel indirdi",
+  "<p1> topu güzelce önüne alıyor",
+  "Harika bir top kontrolü, <p1>",
+  "<p1> topu zarafetle kontrol ediyor",
+  "Mükemmel kontrol, <p1>"
+ ],
+ "GREAT_SAVE_HELD": [
+  "<p1> müthiş kurtarıyor ve topu tutuyor",
+  "<p1> soluna uzanıyor...|Ve topu kontrol ediyor|Muhteşem kurtarış !",
+  "<p1> sağına uzanıyor...|Ve topu kontrol ediyor|Muhteşem kurtarış !",
+  "<p1> harika bir kurtarış yapıyor...|Ve topu elinde tutuyor",
+  "<p1> topu muhteşem tutuyor",
+  "<p1> şık bir kurtarış yapıyor !",
+  "<p1> inanılmaz bir kurtarış !|Üstelik topu da tuttu !"
+ ],
+ "GREAT_SAVE_NOT_HELD": [
+  "<p1> soluna uzanıyor...|Ve topu çeliyor...|Mükemmel kurtarış !",
+  "<p1> sağına uzanıyor...|Ve topu çeliyor...|Mükemmel kurtarış !",
+  "<p1> topu çelmekle harika iş çıkarıyor...",
+  "<p1> topu uzaklaştırıyor...|Harika bir kurtarış, <p1> !",
+  "<p1> inanılmaz bir kurtarış|Bir şekilde parmak uçlarını yetiştirdi !"
+ ],
+ "HALF_TIME_WHISTLE": [
+  "Devre arası"
+ ],
+ "KNOCKDOWN_HEADER": [
+  "<p1> kafayla indiriyor, gelen <p2>",
+  "<p1> kafayla sektiriyor, hedefte <p2>",
+  "<p1> topu indiriyor, gelen <p2>"
+ ],
+ "LAYS_BALL_OFF": [
+  "<p1> topu yanındakine bırakıyor ..."
+ ],
+ "LONG_BALL_FORWARD": [
+  "<p1> ileriye uzun bir top gönderiyor",
+  "<p1> <d> metrelik havadan bir pas atıyor|Hedefinde <p2> var, kafa vuruşu için",
+  "<p1> hedefine <p2> oyuncusunu koyuyor|Tam <d> metrelik bir pas",
+  "İleriye uzun top, atan <p1>",
+  "<p1> uzun oynuyor|Hedefte <p2>, kafa vuruşu arıyor",
+  "<p1> uzun oynuyor...|Hedefte <p2>, kafa vuruşu için",
+  "<p1> topu <d> metre ileriye gönderiyor...|<p2> topa yetişsin istiyor",
+  "<p1> uzun bir top gönderiyor, hedefte <p2>",
+  "<p1> havadan bir topla <p2> oyuncusunu arıyor",
+  "<p1> ileriye uzun bir top yolluyor|<p2> topa yetişmeye çalışıyor...",
+  "<p1> uzun vuruyor, hedefte <p2>",
+  "<p1> hedefine <p2> oyuncusunu koyuyor|Topu <d> metre ileriye havalandırdı"
+ ],
+ "LOOKED_LIKE_A_DIVE": [
+  "Bu bir temaraz gibi görünüyordu, <p1> !",
+  "<p1> vurulmuş gibi yere yığıldı !",
+  "Kesinlikle bir temaraz, <p1> !",
+  "<p1> orada kesinlikle kendini attı !"
+ ],
+ "LOOSE_BALL_IN_AREA": [
+  "<p1> boştaki topu alıyor",
+  "<p1> dönen topa atlıyor",
+  "<p1> dönen topu takip ediyor...",
+  "<p1> boştaki topa ulaşıyor",
+  "<p1> topu kontrol ediyor",
+  "<p1> başıboş topu kapıyor",
+  "Top <p1> önüne düşüyor...",
+  "Dönen top <p1> önünde !",
+  "<p1> dönen topa ilk ulaşan..."
+ ],
+ "LOSE_CONTROL_OF_BALL": [
+  "<p1> topun kontrolünü kaybediyor",
+  "<p1> topu kaybediyor",
+  "<p1> topu ayağında tutamıyor",
+  "<p1> topu ayağından kaçırıyor",
+  "<p1> topu kontrol edemiyor",
+  "<p1> gözünü toptan ayırdı|Topu kaptırdı",
+  "Kötü kontrol, <p1>|Topu kaybetti",
+  "<p1> topun kontrolünü kaybediyor",
+  "<p1> topu kaptırıyor",
+  "<p1> topu rakibe hediye ediyor"
+ ],
+ "MISSED_EASY_CHANCE_CLOSE": [
+  "Bunu atması gerekiyordu",
+  "Kesin gol gibi görünüyordu|Topu mutlaka ağlara göndermeliydi",
+  "O pozisyonu çok daha iyi değerlendirmeliydi",
+  "Bunu kaçırdığı için kendine çok kızacak",
+  "Bunu nasıl kaçırdı ?",
+  "Bu gol olmalıydı",
+  "Harcanan bir fırsat, <t>",
+  "Büyük bir fırsattı, <t>"
+ ],
+ "PASS_IT": [
+  "<p1> pasını veriyor",
+  "Pas, <p1>",
+  "<p1> topu ileri oynuyor",
+  "<p1> topu ileriye dürtüyor",
+  "<p1> pası veriyor"
+ ],
+ "PASS_MEDIUM_FORWARD": [
+  "<p1> pasla <p2> oyuncusunu arıyor",
+  "<p1> topu <d> metre ileriye vuruyor",
+  "<p1> topu ileri oynuyor, hedefte <p2>",
+  "<p1> topu ileriye gönderiyor, karşılayan <p2>",
+  "<p1> ileriye vuruyor, hedefte <p2>",
+  "<p1> topu ileriye oynuyor, hedefte <p2>"
+ ],
+ "PASS_MEDIUM_INTO_AREA": [
+  "<p1> topu ceza sahasına vuruyor",
+  "<p1> topu ceza sahasına pasla gönderiyor|<p2> topu almaya çalışıyor",
+  "<p1> topu ceza sahasına gönderiyor, hedefte <p2>"
+ ],
+ "PASS_MEDIUM_LEFT": [
+  "<p1> solundaki <p2> oyuncusunu arıyor",
+  "<p1> topu <d> metre sola vuruyor",
+  "<p1> topu yana oynuyor, hedefte <p2>",
+  "<p1> topu sola gönderiyor, karşılayan <p2>",
+  "<p1> sola vuruyor, hedefte <p2>",
+  "<p1> başını kaldırıyor|Topu sola, <p2> yönüne çeviriyor",
+  "<p1> sola oynuyor, hedefte <p2>"
+ ],
+ "PASS_MEDIUM_LEFT_WING": [
+  "<p1> topu sol kanada açıyor",
+  "<p1> topu sola açıyor, hedefte <p2>",
+  "<p1> sol tarafa <d> metrelik çapraz bir pas atıyor",
+  "<p1> sol kanattaki <p2> oyuncusunu arıyor"
+ ],
+ "PASS_MEDIUM_RIGHT": [
+  "<p1> sağındaki <p2> oyuncusunu arıyor",
+  "<p1> topu <d> metre sağa vuruyor",
+  "<p1> topu yana oynuyor, hedefte <p2>",
+  "<p1> topu sağa gönderiyor, karşılayan <p2>",
+  "<p1> sağa vuruyor, hedefte <p2>",
+  "<p1> başını kaldırıyor|Topu sağa, <p2> yönüne çeviriyor",
+  "<p1> sağa oynuyor, hedefte <p2>"
+ ],
+ "PASS_MEDIUM_RIGHT_WING": [
+  "<p1> topu sağ kanada açıyor",
+  "<p1> topu sağa açıyor, hedefte <p2>",
+  "<p1> sağ tarafa <d> metrelik çapraz bir pas atıyor",
+  "<p1> sağ kanattaki <p2> oyuncusunu arıyor"
+ ],
+ "PASS_SHORT_BACK": [
+  "<p1> kendi kalesine doğru yerden bir pas veriyor",
+  "Ayağa bir pasla...|<p1> topu geriye, <p2> için bırakıyor",
+  "<p1> geriye pas veriyor, karşılayan <p2>",
+  "<p1> topu geriye oynuyor, alan <p2>",
+  "<p1> geriye bırakıyor, alan <p2>",
+  "<p1> topu geriye taşıyor, hedefte <p2>",
+  "<p1> geriye pas veriyor, alan <p2>"
+ ],
+ "PASS_SHORT_FORWARD": [
+  "<p1> yerden ileriye pas veriyor, hedefte <p2>",
+  "Ayağa bir pasla...|<p1> topu ileriye, <p2> için oynuyor",
+  "<p1> önündeki <p2> oyuncusunu arıyor",
+  "Yerden ileriye bir pasla...|<p1> topu <p2> için oynuyor",
+  "<p1> topu ileriye besliyor, alan <p2>",
+  "<p1> topu ileriye oynuyor|Yerden, <p2> ayağına bir pas",
+  "<p1> yerden pas veriyor|İleri pası alan <p2>",
+  "<p1> ileriye bırakıyor, alan <p2>",
+  "<p1> topu ileriye taşıyor, hedefte <p2>",
+  "<p1> ileriye pas veriyor, alan <p2>"
+ ],
+ "PASS_SHORT_INTO_AREA": [
+  "<p1> ceza sahasına yerden bir pas veriyor",
+  "Ayağa bir pasla...|<p1> topu ceza sahasına taşıyor",
+  "<p1> ceza sahasındaki <p2> oyuncusunu arıyor",
+  "Ceza sahasına yerden bir pasla...|<p1> topu <p2> için oynuyor",
+  "<p1> topu tehlikeli bölgeye besliyor",
+  "<p1> topu ceza sahasına oynuyor, hedefte <p2>",
+  "<p1> yerden pas veriyor|<p2> ceza sahasında"
+ ],
+ "PASS_SHORT_LEFT": [
+  "<p1> sola yerden bir pas veriyor",
+  "Ayağa bir pasla...|<p1> topu sola, <p2> için oynuyor",
+  "<p1> solundaki <p2> oyuncusunu arıyor",
+  "Sola yerden bir pasla...|<p1> topu <p2> için oynuyor",
+  "<p1> topu sola besliyor, alan <p2>",
+  "<p1> topu sola oynuyor|Yerden, <p2> ayağına bir pas",
+  "<p1> yerden pas veriyor|Solda pası alan <p2>",
+  "<p1> sola bırakıyor, alan <p2>",
+  "<p1> topu sola taşıyor, hedefte <p2>",
+  "<p1> sola pas veriyor, alan <p2>"
+ ],
+ "PASS_SHORT_LEFT_WING": [
+  "<p1> sol kanattan yerden bir pas veriyor",
+  "Ayağa bir pasla...|<p1> topu sol taraftan <p2> için oynuyor",
+  "<p1> soldaki <p2> oyuncusunu arıyor",
+  "Sol kanattan yerden bir pasla...|<p1> topu <p2> için oynuyor",
+  "<p1> topu sola besliyor, alan <p2>",
+  "<p1> topu sol taraftan oynuyor|Yerden, <p2> ayağına bir pas",
+  "<p1> sol kanada bakıyor|Yerden pasla hedefte <p2>",
+  "<p1> sol açığa bırakıyor, alan <p2>",
+  "<p1> topu sola taşıyor, hedefte <p2>",
+  "<p1> sol taraftan pas veriyor, alan <p2>"
+ ],
+ "PASS_SHORT_RIGHT": [
+  "<p1> sağa yerden bir pas veriyor",
+  "Ayağa bir pasla...|<p1> topu sağa, <p2> için oynuyor",
+  "<p1> sağındaki <p2> oyuncusunu arıyor",
+  "Sağa yerden bir pasla...|<p1> topu <p2> için oynuyor",
+  "<p1> topu sağa besliyor, alan <p2>",
+  "<p1> topu sağa oynuyor|Yerden, <p2> ayağına bir pas",
+  "<p1> yerden pas veriyor|Sağda pası alan <p2>",
+  "<p1> sağa bırakıyor, alan <p2>",
+  "<p1> topu sağa taşıyor, hedefte <p2>",
+  "<p1> sağa pas veriyor, alan <p2>"
+ ],
+ "PASS_SHORT_RIGHT_WING": [
+  "<p1> sağ kanattan yerden bir pas veriyor",
+  "Ayağa bir pasla...|<p1> topu sağ taraftan <p2> için oynuyor",
+  "<p1> sağdaki <p2> oyuncusunu arıyor",
+  "Sağ kanattan yerden bir pasla...|<p1> topu <p2> için oynuyor",
+  "<p1> topu sağa besliyor, alan <p2>",
+  "<p1> topu sağ taraftan oynuyor|Yerden, <p2> ayağına bir pas",
+  "<p1> sağ kanada bakıyor|Yerden pasla hedefte <p2>",
+  "<p1> sağ açığa bırakıyor, alan <p2>",
+  "<p1> topu sağa taşıyor, hedefte <p2>",
+  "<p1> sağ taraftan pas veriyor, alan <p2>"
+ ],
+ "PASS_TO_RUN_ONTO_HIGH": [
+  "<p1> topu havadan öne aşırıyor, koşuda <p2>",
+  "<p1> havadan bir top atıyor, koşuya çıkan <p2>",
+  "<p1> topu havalandırıyor, hedefte <p2>",
+  "<p1> topu ileriye havalandırıyor|<p2> peşine düşüyor",
+  "<p1> topu havadan ileriye gönderiyor, hedefte <p2>",
+  "<p1> <d> metrelik bir top atıyor|<p2> topa yetişmeye çalışıyor",
+  "<p1> topu <d> metre gönderiyor|<p2> koşuya çıksın istiyor",
+  "Tek vuruşta|<p1> havadan bir topla <p2> oyuncusunu arıyor",
+  "<p1> topu havadan oynuyor|<p2> topa doğru hareketleniyor",
+  "<p1> uzun vuruyor|<p2> topa koşuyor...",
+  "<p1> uzun pas veriyor|<p2> topa yetişmeye çalışıyor...",
+  "<p1> ileriye havadan bir top atıyor...|<p2> koşuyla topa gitmeye çalışıyor",
+  "<p1> <d> metrelik pas veriyor|<p2> topa ulaşmaya çalışıyor",
+  "<p1> uzun, süpürücü bir pas atıyor|<p2> topa koşuyor"
+ ],
+ "PASS_TO_RUN_ONTO_LOW": [
+  "<p1> topu öne oynuyor, koşuda <p2>",
+  "<p1> pasının üzerine koşacak <p2> oyuncusunu arıyor",
+  "<p1> topa koşacak <p2> oyuncusunu arıyor",
+  "<p1> fırsatı görüyor|Ara pası veriyor, koşuda <p2>",
+  "<p1> topu araya sokuyor, hedefte <p2>",
+  "<p1> keskin bir pas arıyor|<p2> topa koşuyor",
+  "<p1> yerden araya bırakıyor|<p2> topa ulaşmaya çalışıyor...",
+  "<p1> yerden araya vuruyor|<p2> topa koşuyor...",
+  "<p1> yerden ara pası veriyor|<p2> topa yetişmeye çalışıyor...",
+  "<p1> topu ileri oynuyor|<p2> koşuyla topa gitmeye çalışıyor",
+  "<p1> ara pası veriyor, hedefte <p2>"
+ ],
+ "PENALTY_APPEAL_TURNED_DOWN": [
+  "<t> penaltı istiyor !|<Rf> devam diyor",
+  "Penaltı itirazları !|<Rf> devam diyor",
+  "<t> penaltı bekliyor !|Verilmedi !!",
+  "Penaltı istekleri !|<Rf> hayır diyor !!|İtirazları elinin tersiyle geçiştiriyor",
+  "<t> penaltı istiyor !|<Rf> hiç oralı değil !|İtirazları elinin tersiyle geçiştiriyor"
+ ],
+ "PENALTY_HITS_BAR": [
+  "Ama <p1> üst direğe nişanlıyor !!",
+  "Üst direk !!!!",
+  "Top üst direkten geri dönüyor !!"
+ ],
+ "PENALTY_HITS_POST": [
+  "Ama <p1> direğe nişanlıyor !!",
+  "Direk !!!!",
+  "Top direğe çarpıyor...|Ve uzaklaşıyor !!"
+ ],
+ "PENALTY_HIT_OVER": [
+  "Ama topu tribünlere gönderiyor !!!",
+  "Üstten auta !!",
+  "Kaçırdı !!|Üstten dışarı !!"
+ ],
+ "PENALTY_HIT_WIDE": [
+  "Ama topu dışarı gönderiyor !!!",
+  "Dışarıda !!",
+  "Kaçırdı !!|Direğin yanından dışarı !!"
+ ],
+ "PLAYER_ARGUES_WITH_REFEREE": [
+  "<p1> çok öfkeli, karşısında <rf> !"
+ ],
+ "PLAYER_DONE_FOR_DIVING": [
+  "<p1> temaraz yüzünden başı belada !",
+  "<Rf> kendini attığını söylüyor !",
+  "<p1> kendini attı, karar veren <rf> !"
+ ],
+ "PLAYER_INJURED_GOES_ON": [
+  "<p1> sakatlandı",
+  "<p1> canı yandı...|Ama devam edebilecek gibi görünüyor",
+  "<p1> sakatlık geçirdi!|Ama koşarak üzerinden atabilecek gibi görünüyor",
+  "Sakatlık var: <p1>|Ama çok ciddi görünmüyor",
+  "<p1> sakatlığını koşarak geçirmeye çalışıyor",
+  "Sakatlık var: <p1>!|Yine de çok ciddi görünmüyor|Bir şeyi kalmaz"
+ ],
+ "PLAYER_KNACKERED": [
+  "<p1> oyunun temposuna ayak uydurmakta zorlanıyor gibi",
+  "<p1> oyunun temposuna ayak uydurmakta zorlanıyor"
+ ],
+ "PLAYER_TAKES_HIS_TIME": [
+  "<p1> kendini toparlıyor...",
+  "<p1> acele etmiyor...",
+  "<p1> başını kaldırıp bakıyor...",
+  "<p1> şut için pozisyon alıyor...",
+  "<p1> kendini toparlıyor...",
+  "<p1> acele etmiyor...",
+  "<p1> zamanını kullanıyor..."
+ ],
+ "RESTART_CORNER": [
+  "Korner",
+  "Bu bir korner vuruşu",
+  "Korner vuruşu",
+  "Korner olacak",
+  "<t> korner kazanıyor"
+ ],
+ "RESTART_FREEKICK": [
+  "Serbest vuruş kararı",
+  "Serbest vuruş verildi",
+  "Bu bir serbest vuruş",
+  "Serbest vuruş olacak, kullanacak taraf <t>",
+  "Serbest vuruş, <t> lehine",
+  "Serbest vuruş kararı, <t> lehine",
+  "<Rf> serbest vuruş veriyor, lehine olan <t>",
+  "Serbest vuruş"
+ ],
+ "RESTART_GOAL_KICK": [
+  "Kale vuruşu",
+  "Bu bir kale vuruşu",
+  "Kale vuruşu, <t> lehine",
+  "Kale vuruşu olacak, <t> lehine",
+  "Bu bir kale vuruşu, <t> lehine"
+ ],
+ "RESTART_OFFSIDE": [
+  "<p1> ofsayta yakalandı",
+  "<p1> ofsayt pozisyonuna düşüyor",
+  "<p1> kıl payı ofsaytta kalıyor",
+  "<p1> ofsayt pozisyonuna giriyor",
+  "<p1> ofsayt pozisyonunda kalıyor",
+  "Ofsayt !|<p1> çok erken çıktı",
+  "<p1> bir an erken hareketlendi..|Ofsayt!",
+  "Yardımcı hakem bayrağını kaldırdı...|<p1> ofsaytta!",
+  "Yardımcı hakem bayrağını kaldırdı...|<p1> ofsaytta!",
+  "Uzak taraftaki bayrak havada...|<p1> ofsayta düştü!"
+ ],
+ "RESTART_PENALTY": [
+  "Penaltı !!!",
+  "Penaltı kararı verildi !!!",
+  "<Rf> penaltı noktasını gösterdi !!!",
+  "Penaltı vuruşu !!!",
+  "<Rf> beyaz noktayı gösteriyor !!!",
+  "<Rf> yardımcısına bakıyor...|Ve penaltıyı veriyor !!!",
+  "Penaltı !!!",
+  "Hakem penaltı verdi !!!"
+ ],
+ "RUN_PAST_OPPONENT": [
+  "<p1> geçiyor, geride kalan <p2>",
+  "<p1> topla geçiyor, geride kalan <p2>",
+  "<p1> tekniğini konuşturuyor, geride kalan <p2>",
+  "<p2> engel olamıyor, <p1> geçip gidiyor",
+  "<p1> müdahaleden sıyrılıyor, geride kalan <p2>",
+  "<p1> sıyrılıp geçiyor, geride kalan <p2>",
+  "<p1> geçiyor, çaresiz kalan <p2>",
+  "<p1> topu geçiriyor, aşılan <p2>",
+  "<p1> topukları gösteriyor, arkada kalan <p2>",
+  "<p1> bacak arası yapıyor, kurban <p2>",
+  "<p1> çalımla geçiyor, geride kalan <p2>",
+  "<p1> çalımı atıyor, geride kalan <p2>"
+ ],
+ "RUN_PAST_OPPONENT_WITH_PACE": [
+  "<p1> hızla geçiyor, geride kalan <p2> !",
+  "<p1> hızla geçiyor, yetişemeyen <p2>",
+  "<p1> çok hızlı, yetişemeyen <p2>",
+  "<p1> hızıyla geçiyor, aşılan <p2>",
+  "<p1> depar atıp geçiyor, geride kalan <p2>",
+  "<p1> geçip gidiyor, olduğu yerde kalan <p2>",
+  "<p1> şimşek gibi geçiyor, geride kalan <p2>"
+ ],
+ "RUN_WITH_BALL": [
+  "<p1> ileri çıkıyor",
+  "<p1> topla ilerliyor",
+  "<p1> topu ileriye taşıyor",
+  "<p1> topla birlikte ileri gidiyor",
+  "<p1> şimdi topla, <t> için",
+  "<p1> topu hareket halinde tutuyor",
+  "<p1> topla koşuyor",
+  "<p1> topu ileri sürüyor"
+ ],
+ "SAVES_PENALTY": [
+  "Ama <p1> penaltıyı kurtarıyor !!",
+  "Kurtardı !!",
+  "Kurtaran <p1> !!",
+  "<p1> penaltıyı kurtarıyor !!"
+ ],
+ "SAVING_TACKLE": [
+  "Ama <p1> çok kritik bir müdahale yapıyor !",
+  "Ama <p1> çok önemli bir müdahale yapıyor !",
+  "Son anda harika bir müdahale, <p1> !",
+  "Harika müdahale, <p1> !|O müdahaleyi yapmak zorundaydı !",
+  "Müthiş, kurtarıcı bir müdahale, <p1> !",
+  "Muhteşem müdahale, <p1> !",
+  "<O><p2> bunu atmalı !|Ama <p1> çok önemli bir müdahale yapıyor !",
+  "<O><p2> büyük bir fırsat yakaladı !|Son anda harika bir müdahale, <p1> !",
+  "<O><p2> golü atacak gibi !|Harika müdahale, <p1> !|O müdahaleyi yapmak zorundaydı !"
+ ],
+ "SCATTER_INTERCEPT": [
+  "Top <p1> oyuncusuna çarpıyor",
+  "<p1> kendini topun önünde buluyor",
+  "Top <p1> oyuncusuna çarpıp sekiyor",
+  "Top <p1> oyuncusundan sekiyor",
+  "<p1> topun yoluna giriyor",
+  "Top sekiyor, çarptığı oyuncu <p1>...",
+  "Top sekiyor, son dokunan <p1>...",
+  "Top sekiyor, değdiği oyuncu <p1>..."
+ ],
+ "SCORED_PENALTY": [
+  "<p1> golü atıyor !!!",
+  "<p1> hata yapmıyor!!!",
+  "<p1> topu ağların köşesine yerleştiriyor!!!",
+  "<p1> kaleciyi ters köşeye yatırıyor ve gol !!!"
+ ],
+ "SECOND_YELLOW_CARD": [
+  "<Y><p1> ikinci sarı kartı görüyor !!|<R><p1> oyundan atıldı !!",
+  "<Y>İkinci sarı kart, <p1>!!|<R>Oyun dışı!!",
+  "<Y><p1> ikinci sarı kartını görüyor!!|<R>Erken duş zamanı!!",
+  "<Y><p1> ikinci sarı kartı görüyor!!|<R>Kırmızı kart, <p1>",
+  "<Y>Bu ikinci sarı kart, <p1>!!|<R>Oyun dışı!!",
+  "<Y><Rf> ikinci sarı kartı gösteriyor, <p1>!!|<R><p1> oyun dışı !!",
+  "<Y>Ve ikinci sarı kartını gösteriyor !|<R>Bu bir ihraç !!",
+  "<Rf> cebine uzanıyor|<Y>Ve ikinci sarı kartını gösteriyor !!|<R>Erken duş, <p1> !!",
+  "<Rf> cebine davranıyor|<Y>Ve ikinci sarı kart, <p1>!!!|<R>Oyun dışı !!",
+  "<Y>Sarı Kart !|<R>Kırmızı kart !!|Daha önce kart görmüştü !",
+  "<p1> zor durumda...|Daha önce kart görmüştü !|<R>Kırmızı kart, <p1> !!"
+ ],
+ "SENT_OFF": [
+  "<R><p1> oyundan atıldı!!!",
+  "<R><p1> kırmızı kart görüyor|<R>Oyun dışı!!!",
+  "<Rf> cebine uzanıyor|<R><p1> kırmızı kart görüyor!!!",
+  "<Rf> kartına davranıyor|<R>Bu kırmızı !!|<R><p1> erken duşa gidiyor !!",
+  "<R><Rf> kırmızı kartı gösteriyor, <p1>!!!",
+  "<R>Kırmızı kart !!"
+ ],
+ "SENT_OFF_FOR_PROFESSIONAL_FOUL": [
+  "<R><p1> taktik faul yüzünden oyundan atıldı!!",
+  "<R><p1> taktik faulü nedeniyle kırmızı kart görüyor!!",
+  "<R><p1> bunun için oyundan atılacak!!|<R>Bu bilerek yapılmış bir fauldü!!",
+  "<p1> son adamdı!!|<R>Bu kırmızı kart!!",
+  "<p1> kasıtlı bir faul yapıyor!!!|<R>Hakem kırmızı kartı gösteriyor!!",
+  "<Rf> cebine uzanıyor|<R><p1> kırmızı kart görüyor !!|<R>Taktik bir fauldü !",
+  "<R><Rf> kırmızı kartı havaya kaldırıyor !|<R><p1> taktik faul yüzünden oyundan atıldı !"
+ ],
+ "SHOOTING_PLAYER_WAS_UNDER_PRESSURE_FROM_ONE_PLAYER": [
+  "<p1> çok iyi kapatıldı, baskıyı yapan <p2>",
+  "Zor bir pozisyondu|<O><p2> ona hiç alan bırakmadı",
+  "<p1> alan bulamadı, engelleyen <p2>",
+  "<p1> yakın markajdan kurtulamadı, peşindeki <p2>",
+  "<O><p2> onu rahatsız etmeye yetecek kadarını yaptı",
+  "<p1> baskı altındaydı, baskıyı yapan <p2>"
+ ],
+ "SHOT_BANANA": [
+  "<p1> falsolu bir şut!",
+  "<p1> o şuta falso verdi!",
+  "<p1> dış ayakla sert vuruyor!",
+  "<p1> kaleye düşen sert bir şut çekiyor!",
+  "<p1> kaleye falsolu gönderiyor!",
+  "<p1> kaleye kavisli bir şut!",
+  "<p1> kıvrılan bir şut çekiyor!",
+  "<p1> muz gibi bir falso deniyor!"
+ ],
+ "SHOT_CLIPS_BAR": [
+  "Top üst direği yalayıp dışarı çıkıyor!",
+  "Ama top üst direğe çarpıyor!!|Ve oyun alanını terk ediyor",
+  "Ama üst direği hafifçe yalayıp dışarı çıkıyor !",
+  "Ama üst direği sıyırıyor !",
+  "Top direğe çarpıyor...|Ve üstten dışarı !!"
+ ],
+ "SHOT_CLIPS_POST": [
+  "Top direği yalayıp dışarı çıkıyor!",
+  "Şanssızlık| Top direğin dış tarafına çarpıp auta gidiyor!!",
+  "Ama top direğin dibine çarpıyor|Ve dışarı gidiyor!",
+  "Direğin dibine çarpıp auta çıkıyor!",
+  "Direğe çarpıp kale arkasına gidiyor !"
+ ],
+ "SHOT_DIVING_HEADER": [
+  "<p1> balıklama kafa!",
+  "<p1> topu balıklama kafayla karşılıyor!",
+  "<p1> balıklama kafayı vuruyor!",
+  "Balıklama kafa, <p1>!",
+  "Sert bir kafa vuruşu, <p1>!",
+  "<p1> topa uçuyor!"
+ ],
+ "SHOT_FREE_KICK": [
+  "<p1> serbest vuruşu kullanıyor...",
+  "<p1> serbest vuruşu kaleye gönderiyor...",
+  "<p1> serbest vuruşu sert vuruyor...",
+  "<p1> serbest vuruşu havalandırıyor..."
+ ],
+ "SHOT_FROM_DISTANCE_BANANA": [
+  "<p1> uzaktan falsolu vuruyor!",
+  "Uzak mesafeden, <p1> topu falsoyla kaleye gönderiyor!",
+  "<p1> ceza sahası dışından muz gibi bir şut patlatıyor!",
+  "<p1> uzaktan falsolu bir şut deniyor!"
+ ],
+ "SHOT_FROM_DISTANCE_HALF_VOLLEY": [
+  "<p1> muhteşem bir yarım vole!",
+  "<p1> topu yere düşürüyor|Muhteşem bir yarım voleyle vuruyor!",
+  "<p1> yarım voleyi patlatıyor!",
+  "Yarım vole, <p1>!"
+ ],
+ "SHOT_FROM_DISTANCE_HIGH_DRIVE": [
+  "<p1> uzaktan bomba gibi bir şut !",
+  "<p1> topu kaleye doğru uçuruyor !",
+  "Uzaktan deneme, <p1> !!!",
+  "<p1> uzaktan şansını deniyor...",
+  "<p1> doksana nişan alıyor !",
+  "<p1> füzeyi ateşliyor !!",
+  "<p1> muhteşem bir şut deniyor !!"
+ ],
+ "SHOT_FROM_DISTANCE_LOW_DRIVE": [
+  "<p1> uzaktan yerden vuruyor",
+  "<p1> kaleye yerden vuruyor !!",
+  "Uzak mesafeden yerden şut, <p1>!",
+  "<p1> uzaktan şansını deniyor!"
+ ],
+ "SHOT_FROM_DISTANCE_VOLLEY": [
+  "Uzaktan vole, <p1>!",
+  "<p1> topun yere düşmesini bekleyebilirdi|Ama ceza sahası dışından voleyi vuruyor !",
+  "<p1> çok uzaktan voleyle vuruyor !",
+  "<p1> uzaktan bir vole patlatıyor !"
+ ],
+ "SHOT_HALF_VOLLEY": [
+  "<p1> yarım vole!",
+  "<p1> topa yarım voleyle vuruyor!",
+  "<p1> topu yarım voleyle karşılıyor!",
+  "<p1> topu yerden sekerken alıyor ve vuruyor!",
+  "<p1> yarım voleyi gönderiyor!"
+ ],
+ "SHOT_HEADER": [
+  "<p1> kafayla!",
+  "<p1> kafayla kaleye gönderiyor!",
+  "Kafa vuruşu, <p1>!!",
+  "Kafayı vuran <p1>!!",
+  "<p1> yükselip kaleye kafayı vuruyor!",
+  "<p1> kaleye sert bir kafa vuruşu!"
+ ],
+ "SHOT_HIGH_DRIVE": [
+  "<p1> çok sert bir şut!",
+  "<p1> öfkeyle vuruyor!",
+  "Yukarıdan ve sert, şutu çeken <p1>!",
+  "Doksana doğru bomba, <p1>!!"
+ ],
+ "SHOT_HITS_BAR": [
+  "<p1> üst direğe nişanlıyor!",
+  "Üst direkten döndü !!",
+  "Top üst direğe çarpıyor !!",
+  "Top üst direkten geri dönüyor !!"
+ ],
+ "SHOT_HITS_POST": [
+  "<p1> direğe nişanlıyor!",
+  "Direk engel oluyor, şanssız <p1>!",
+  "Direk !!",
+  "Top direğe çarpıyor...|Ve uzaklaşıyor !!"
+ ],
+ "SHOT_JUST_OVER": [
+  "Ama <p1> topu az farkla üstten auta gönderiyor!",
+  "<p1> çok yaklaştı| Top üst direği sıyırdı!!",
+  "Ama <p1> topu az farkla üstten dışarı gönderiyor!",
+  "Çok yakın, <p1>!|Üst direğin hemen üzerinden!!",
+  "Çok yakın, <p1> !|Top üst direği sıyırıyor!",
+  "Az farkla üstten, <p1>"
+ ],
+ "SHOT_JUST_WIDE": [
+  "Az farkla dışarı, <p1>!",
+  "<p1> topu kalenin santimlerce yanından gönderiyor!",
+  "Çok yaklaştı, <p1>!",
+  "<p1> yan ağlara gönderiyor!",
+  "Az farkla dışarıda, <p1>!",
+  "Santimlerle dışarıda|Çok yakın, <p1>!"
+ ],
+ "SHOT_LOW_DRIVE": [
+  "<p1> yerden sert bir şut!",
+  "<p1> sert ve yerden vuruyor!",
+  "<p1> kaleye yerden vuruyor!",
+  "Yerden sert şut, <p1>!!",
+  "<p1> yerden ve sert ateşliyor!!",
+  "<p1> sert vuruyor!!",
+  "<p1> yerden patlatıyor!!",
+  "<p1> yerden gönderiyor!!",
+  "<p1> yerden vurmaya çalışıyor!!",
+  "<p1> kaleye yerden sert bir şut çakıyor!!"
+ ],
+ "SHOT_OVER": [
+  "Üstten auta!",
+  "Üstten dışarı gitti!",
+  "Ama top üst direğin üzerinden uçup gidiyor!",
+  "Ama top üst direğin çok üzerinden gitti!"
+ ],
+ "SHOT_OVER_WIDE": [
+  "Ama <p1> topu yukarıdan ve dışarı gönderiyor!",
+  "<p1> topu kalenin üstünden ve yanından gönderiyor!",
+  "Ama bu çok dışarı, <p1>!",
+  "Ama yön veremedi|Top çok dışarıya gitti",
+  "Yukarıdan ve dışarı, <p1>",
+  "Top kalenin arkasındaki tribüne gitti!"
+ ],
+ "SHOT_VOLLEY": [
+  "<p1> voleyle!",
+  "<p1> voleyle vuruyor!",
+  "Voleyle, <p1> vuruyor!!",
+  "<p1> kaleye bir vole patlatıyor!!"
+ ],
+ "SHOT_WELL_OVER": [
+  "Ama <p1> topu üst direğin çok üzerinden gönderiyor!",
+  "Ama <p1> topu yerde tutamıyor!",
+  "Ancak <p1> topu üst direğin çok üzerinden yolluyor!",
+  "Ama <p1> topu kaşıklayıp çok yukarı gönderiyor!",
+  "<p1> tamamen yanlış vurdu|Top zararsız şekilde üstten auta gitti!",
+  "<p1> bunu üst direğin çok üzerinden gönderdi!"
+ ],
+ "SHOT_WELL_OVER_HEADER": [
+  "Ama <p1> topu çok yukarı gönderiyor!",
+  "Ama <p1> kafa vuruşunu üst direğin çok üzerinden yolluyor!",
+  "Ama <p1> kafa vuruşunu aşağıda tutamadı!",
+  "Ama <p1> ancak üstten auta kafa vurabiliyor!",
+  "Ama kafa vuruşu çok yukarıda, <p1>!",
+  "Ama <p1> kafayla topu üst direğin çok üzerinden gönderiyor!"
+ ],
+ "SHOT_WELL_WIDE": [
+  "Ama <p1> topu çok dışarı gönderiyor!",
+  "Ancak bu deneme hedefin çok uzağında, <p1>!",
+  "Felaket bir şekilde dışarıda",
+  "Berbat bir deneme, <p1>!|Kalenin çok uzağından dışarı gitti"
+ ],
+ "SHOT_WIDE": [
+  "Ama <p1> topu dışarı gönderiyor !",
+  "Ama top dışarı gidiyor !",
+  "Ama <p1> çerçeveyi bulamıyor !",
+  "Ama <p1> topu auta yolluyor !"
+ ],
+ "START_MATCH": [
+  "Santra: <t>",
+  "<t> maça başlıyor",
+  "<t> topa başlıyor, maç başladı"
+ ],
+ "START_SHOOTOUT_RUN_UP": [
+  "<p1> topa doğru koşuya başlıyor...",
+  "<p1> öne çıkıyor...|Topa doğru koşuya başlıyor..."
+ ],
+ "SUBSTITUTION": [
+  "<p1> oyuna giriyor, çıkan <p2>",
+  "<p2> oyundan çıkıyor, yerine giren <p1>",
+  "<p1> sahaya çıkıyor, yerine oynayacağı oyuncu <p2>",
+  "Görünüşe göre çıkan oyuncu <p2>|Yerine <p1> girecek",
+  "<p1> oyuna giriyor, çıkan <p2>",
+  "<p2> oyundan çıkıyor, giren <p1>",
+  "<p2> sahayı terk ediyor...|ve yerine <p1> giriyor",
+  "Giren <p1>, çıkan <p2>",
+  "<p2> sahadan çıkıyor...|Yerine <p1> giriyor",
+  "Değişiklik: <p1> girdi, <p2> çıktı",
+  "<p1> oyuna dahil oluyor, çıkan <p2>",
+  "<p2> oyundan alınıyor...|<p1> onun yerine oyuna giriyor"
+ ],
+ "TAKE_CORNER": [
+  "<p1> kornerde",
+  "<p1> korneri kullanmak için köşeye gidiyor",
+  "Korneri kullanacak oyuncu <p1>",
+  "<p1> korneri ceza sahasına havalandırıyor",
+  "<p1> topu ceza sahasına asıyor",
+  "<p1> korneri ceza sahasına kıvırıyor",
+  "<p1> korneri sertçe içeri çeviriyor",
+  "<p1> topun başında...|Ve korneri içeri süzüyor",
+  "<p1> korneri arka direğe gönderiyor",
+  "<p1> korneri ön direğe gönderiyor",
+  "<p1> korneri kullanmak için koşuya başlıyor",
+  "<p1> içe dönen bir korner deniyor",
+  "<p1> dışa dönen bir korner deniyor",
+  "<p1> havada asılı kalan bir top göndermek istiyor"
+ ],
+ "TAKE_CORNER_TO_EDGE_OF_BOX": [
+  "<p1> kornerde...|Topu ceza sahası yayına gönderiyor",
+  "Korneri kullanacak oyuncu <p1>|Topu ceza sahasının dışına oynuyor...",
+  "<p1> topun başında...|Ceza sahası yayına nişan alıyor"
+ ],
+ "TAKE_FREE_KICK": [
+  "<p1> serbest vuruşta",
+  "Serbest vuruşu <p1> kullanacak",
+  "<p1> serbest vuruşu kullanmak için topun başına geçiyor",
+  "<p1> serbest vuruşu çabucak içeri gönderiyor",
+  "<p1> serbest vuruşu içeri asıyor",
+  "Serbest vuruşu kullanan <p1>",
+  "<p1> serbest vuruşu sertçe içeri çeviriyor",
+  "<p1> serbest vuruşu hızlı kullanıyor",
+  "<p1> serbest vuruşu kullanacak",
+  "<p1> kullanacak"
+ ],
+ "TAKE_GOAL_KICK": [
+  "<p1> kale vuruşunda",
+  "<p1> kale vuruşunu kullanıyor",
+  "Kale vuruşunu kullanan <p1>",
+  "<p1> kale vuruşunu ileriye havalandırıyor",
+  "<p1> kale vuruşunu hızlı kullanıyor",
+  "<p1> kale vuruşuyla oyunu başlatıyor",
+  "<p1> kale vuruşunu çabucak kullanıyor",
+  "<p1> oyunu başlatıp topu ileriye vuruyor"
+ ],
+ "TAKE_PENALTY": [
+  "<p1> penaltıda...",
+  "Penaltıyı <p1> kullanacak...",
+  "Penaltı noktasına geçen <p1>...",
+  "Beyaz noktadan gol fırsatı <p1> ayağında...",
+  "<p1> öne çıkıyor...",
+  "<p1> kendinden emin bir şekilde öne çıkıyor...",
+  "<p1> vuruş için koşuya başlıyor...",
+  "<p1> vuruş için koşuya kalkıyor...",
+  "<p1> topu penaltı noktasına yerleştiriyor...",
+  "<p1> penaltıyı vurmak için koşuyor...",
+  "<p1> koşusuna başlıyor..."
+ ],
+ "TAKE_SHORT_CORNER": [
+  "<p1> korneri kısa kullanıyor",
+  "Korneri kullanacak oyuncu <p1>|Kısa oynuyor...",
+  "<p1> korneri kısa kullanmayı tercih ediyor"
+ ],
+ "TAKE_THROW_IN": [
+  "<p1> taç atışını kullanıyor",
+  "<p1> taç atışını kullanmak için çizgiye gidiyor",
+  "Taç atışını kullanan <p1>",
+  "<p1> taçı atıyor",
+  "<p1> topu yeniden oyuna sokuyor"
+ ],
+ "TIME_ADDED_ON": [
+  "Dördüncü hakem <N> dakika uzatma gösteriyor",
+  "<N> dakika uzatma gösterildi",
+  "Dördüncü hakem tarafından <N> dakika uzatma gösterildi"
+ ],
+ "WAIT": [
+  "<p1> topu saklıyor",
+  "<p1> topu tutmak zorunda kalıyor",
+  "<p1> oyunu yavaşlatıyor",
+  "<p1> oyunu bekletiyor",
+  "<p1> pas vermeyi geciktiriyor",
+  "<p1> ayağını topun üzerine koyuyor",
+  "<p1> duruyor ve destek bekliyor"
+ ],
+ "WALL_BLOCKS_SHOT": [
+  "Baraj şutu engelliyor",
+  "Baraja çarptı"
+ ],
+ "WINS_JUMPFORBALL": [
+  "<p1> yükseliyor, altında kalan <p2>",
+  "<p1> daha yükseğe çıkıp topu alıyor, aşılan <p2>",
+  "<p1> hava topunda üstün, geride kalan <p2>",
+  "<p1> hava topunu kazanıyor, kaybeden <p2>",
+  "<p1> daha yükseğe çıkıyor, altında kalan <p2>",
+  "<p1> ve <p2> topa birlikte yükseliyor...",
+  "<p1> daha yükseğe çıkıp topu kazanıyor, altta kalan <p2>",
+  "<p1> hava mücadelesini kazanıyor, rakibi <p2>",
+  "<p1> rahatça yükseliyor, aşılan <p2>",
+  "<p1> hava topunda daha yükseğe çıkıyor, geride kalan <p2>"
+ ],
+ "WIN_THE_SHOOTOUT": [
+  "Penaltı atışlarını kazanan <t> !!"
+ ],
+ "YELLOW_CARD": [
+  "<Y><p1> sarı kart görüyor",
+  "<Y>Bu sarı kart olacak, <p1>",
+  "<Rf> cebine uzanıyor|<Y>Ve sarı kart, <p1>",
+  "<Rf> kartına davranıyor|<Y>Sarı kart|<p1> artık dikkatli olmalı",
+  "<Y><Rf> sarı kartı gösteriyor, <p1>",
+  "<Y>Sarı Kart !",
+  "<Rf> cebine uzanıyor|<Y>Ve ona sarı kartı gösteriyor",
+  "<Y><Rf> sarı kartı havaya kaldırıyor !"
+ ]
+}

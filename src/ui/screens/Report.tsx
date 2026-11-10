@@ -2,21 +2,28 @@
 import { leadLoss, matchVerdict } from '../../game/analysis';
 import { hash01 } from '../../game/rng';
 import { gs } from '../../game/state';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { MatchReport } from '../../game/types';
 import { t } from '../../i18n';
 import { ClubLink, Crest, Panel, PlayerLink, Rating, Tabs } from '../components';
 import { useGame, useRouteState } from '../core';
 import { commentaryText } from '../commentary';
+import { loadMatchTexts } from '../matchTexts';
 import { Head } from './common';
 import { StatsPanel, statColors } from './Match';
 import { WEATHER_ICON, type Weather } from '../../game/weather';
 import { TeamTalk } from '../teamtalk';
+import { authentic, extended } from '../../game/rules';
 
 export function ReportScreen({ id }: { id: number }) {
   const g = useGame()!;
   const rep = g.reports[id];
-  const [tab, setTab] = useRouteState('tab', 'analysis');
+  // originalens kommentarlinjer (CM 01/02) – tegn igen, når de er hentet
+  const [, setTexts] = useState(0);
+  useEffect(() => { void loadMatchTexts().then(() => setTexts((x) => x + 1)); }, []);
+  const [tab0, setTab] = useRouteState('tab', authentic() ? 'stats' : 'analysis');
+  // ægte CM 01/02: ingen analysefane (momentum, heatmap, xG)
+  const tab = authentic() && tab0 === 'analysis' ? 'stats' : tab0;
   if (!rep) return <Head title={t('report.missing')} />;
   const side: 0 | 1 = rep.away === g.userClub ? 1 : 0;
   const home = g.clubs[rep.home]?.short ?? '?', away = g.clubs[rep.away]?.short ?? '?';
@@ -34,8 +41,9 @@ export function ReportScreen({ id }: { id: number }) {
         <div className="team"><Crest id={rep.home} size={34} /><ClubLink id={rep.home} noCrest /></div>
         <div>
           <div className="score">{rep.stats[0].goals} - {rep.stats[1].goals}</div>
-          {rep.weather && <div className="minute">{WEATHER_ICON[rep.weather as Weather]} {t(`wx.${rep.weather}`)}</div>}
-          <div className="minute">{rep.pens ? `${t('fix.pens')} ${rep.pens[0]}-${rep.pens[1]}` : rep.et ? t('fix.aet') : t('match.ft')} · xG {rep.stats[0].xg.toFixed(2)} - {rep.stats[1].xg.toFixed(2)}</div>
+          {rep.weather && <div className="minute">{WEATHER_ICON[rep.weather as Weather]} {t(`wx.${rep.weather}`)}{rep.pitch && rep.pitch !== 'normal' ? ` · ${t(`pitch.${rep.pitch}`)}` : ''}</div>}
+          {rep.referee && <div className="minute">{t('ref.label')}: {rep.referee.name}</div>}
+          <div className="minute">{rep.pens ? `${t('fix.pens')} ${rep.pens[0]}-${rep.pens[1]}` : rep.et ? t('fix.aet') : t('match.ft')}{extended() && ` · xG ${rep.stats[0].xg.toFixed(2)} - ${rep.stats[1].xg.toFixed(2)}`}</div>
         </div>
         <div className="team away"><Crest id={rep.away} size={34} /><ClubLink id={rep.away} noCrest /></div>
       </div>
@@ -55,7 +63,7 @@ export function ReportScreen({ id }: { id: number }) {
         </Panel>
       )}
       {talking && <TeamTalk fixture={id} stage="post" pids={myLines.map((l) => l.id)} diff={diff} ratings={Object.fromEntries(myLines.map((l) => [l.id, l.rating]))} />}
-      <Tabs tabs={[['analysis', t('report.analysis')], ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />
+      <Tabs tabs={[...(extended() ? [['analysis', t('report.analysis')] as [string, string]] : []), ['stats', t('match.stats')], ['players', t('report.players')], ['commentary', t('match.commentary')]]} value={tab} onChange={setTab} />
       {tab === 'analysis' && mine && <LeadLossPanel rep={rep} side={side} />}
       {tab === 'analysis' && (
         <>
@@ -112,7 +120,7 @@ export function ReportScreen({ id }: { id: number }) {
             let h = 0, a = 0;
             return rep.commentary.map((l, i) => {
               if (l.k.startsWith('goal')) { if (l.t === 0) h++; else a++; }
-              const text = commentaryText(l, { home, away, score: `${home} ${h}-${a} ${away}` }, i);
+              const text = commentaryText(l, { home, away, score: `${home} ${h}-${a} ${away}`, ref: rep.referee?.name }, i);
               return <div key={i} className={`ln ${l.hi ? 'hi' : ''}`}><span className="m">{l.m}'</span>{text}</div>;
             });
           })()}
@@ -133,7 +141,7 @@ function Goals({ rep }: { rep: MatchReport }) {
         <div key={tm} className={tm === 0 ? 'g-home' : 'g-away'}>
           {ev.filter((e) => e.t === tm).map((e, i) => (
             <div key={i}>
-              {e.k === 'goal' ? '⚽' : '🟥'} <PlayerLink p={g.players[e.p!]} short /> <span className="muted">{e.m}'</span>
+              {e.k === 'goal' ? '⚽' : '🟥'} <PlayerLink p={g.players[e.p!]} short />{e.og ? <span className="muted"> ({t('match.og')})</span> : null} <span className="muted">{e.m}'</span>
               {e.k === 'goal' && e.p2 && g.players[e.p2] ? <span className="muted"> ({g.players[e.p2].last})</span> : null}
             </div>
           ))}

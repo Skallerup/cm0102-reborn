@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { authentic } from '../../game/rules';
+import { isOriginal2001 } from '../../game/rules2001';
 import { trialOf } from '../../game/trials';
 import { bidClauseWorth } from '../../game/clauses';
 import { IncomingOffersFor } from './Transfers';
@@ -9,7 +11,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { avgRating } from '../../game/season';
 import { gs } from '../../game/state';
 import { SCHEDULES } from '../../game/training';
-import { MAX_BID_ROUNDS, askingPrice, canPreContract, counterPackages, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, windowOpen } from '../../game/transfers';
+import { MAX_BID_ROUNDS, askingPrice, canPreContract, counterPackages, interestedClubs, knownEnquiry, loanSuitors, swapCandidates, swapWorth, nextWindow, preContractBlock, releaseCost, windowOpen } from '../../game/transfers';
 import type { Contract, TransferOffer } from '../../game/types';
 import { dateFmt, money, t, natName } from '../../i18n';
 import { ageOn, daysBetween } from '../../game/dates';
@@ -81,6 +83,7 @@ function ModernPlayer({ id }: { id: number }) {
             <span>{t('col.age')}</span><span>{age(p)} ({dateFmt(p.dob)})</span>
             <span>{t('col.nat')}</span><span><Nat n={p.nation} /> {natName(g.nations[p.nation]?.name)}</span>
             <span>{t('col.pos')}</span><span>{posStr(p)}</span>
+            {p.number && <><span>{t('cl.sq.number')}</span><span>{p.number}</span></>}
             <span>{t('player.foot')}</span><span>{t(`foot.${p.foot || 'R'}`)}</span>
             <span>{t('player.height')}</span><span>{p.height} cm</span>
             {!g.draft && <><span>{t('col.value')}</span><span>{money(p.value)}</span></>}
@@ -129,7 +132,7 @@ function ModernPlayer({ id }: { id: number }) {
                     : <button onClick={() => setListOpen(true)}>{t('player.list')}</button>}
                   <button onClick={() => setNeg({ renew: p.id })}>{t('player.renew')}</button>
                   <button onClick={() => setLoanOut(true)} disabled={!!p.loan || !windowOpen()}>{t('player.loanOut')}</button>
-                  <button className="danger" onClick={async () => { if (await askConfirm(t('player.releaseConfirm'), { danger: true })) { dispatch({ t: 'release', pid: p.id }); nav({ name: 'squad' }); } }}>{t('player.release')}</button>
+                  <button className="danger" onClick={async () => { if (await askConfirm(t('player.releaseConfirm', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.short ?? '', pay: money(releaseCost(p)) }), { danger: true })) { if (dispatch<string>({ t: 'release', pid: p.id }) === 'blocked') setMsg(t('transfer.releaseBlocked.body', { player: `${p.first} ${p.last}`.trim(), club: g.clubs[p.club]?.name ?? '' })); else nav({ name: 'squad' }); } }}>{t('player.release')}</button>
                 </div>
               </>
             )}
@@ -223,6 +226,9 @@ function ModernPlayer({ id }: { id: number }) {
       <div style={{ marginTop: 14 }}><CareerPanel pid={p.id} /></div>
       {bid !== false && <BidModal pid={p.id} offerId={typeof bid === 'number' ? bid : undefined} onClose={() => setBid(false)} onDone={(r) => { setBid(false); act(r); }} />}
       {listOpen && <ListModal pid={p.id} onClose={() => setListOpen(false)} />}
+      {p.loan?.from === g.userClub && isOriginal2001() && (
+        <div className="insight" style={{ marginTop: 8 }}>{t('loan.onLoanAt', { club: g.clubs[p.club]?.name ?? '' })} <button className="small" onClick={() => setMsg(t(dispatch<string>({ t: 'recallLoan', pid: p.id })))}>{t('loan.recall')}</button></div>
+      )}
       {loanOutOpen && <LoanOutModal pid={p.id} onClose={() => setLoanOut(false)} onDone={(r) => { setLoanOut(false); act(r); }} />}
       {neg && <NegotiationModal offer={neg.offer} renewPid={neg.renew} onClose={() => setNeg(null)} />}
       {club && <div className="muted">{t('player.clubRep')}: {club.rep}</div>}
@@ -247,13 +253,13 @@ function feeStep(max: number) {
   return Math.max(5_000, (n <= 1 ? 1 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * mag);
 }
 
-export function BidModal({ pid, onClose, onDone, offerId: initialOffer }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number }) {
+export function BidModal({ pid, onClose, onDone, offerId: initialOffer, loan: loanInit }: { pid: number; onClose: () => void; onDone: (r: TransferOffer | string) => void; offerId?: number; loan?: boolean }) {
   const g = useGame()!;
   const p = g.players[pid];
   const budget = g.clubs[g.userClub].transferBudget;
   const known = knownEnquiry(pid);
   const [fee, setFee] = useState(Math.min(budget, known?.fee ?? Math.round(p.value / 50_000) * 50_000));
-  const [loan, setLoan] = useState(false);
+  const [loan, setLoan] = useState(!!loanInit);
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);
   const [swap, setSwap] = useState<number[]>([]);
@@ -509,7 +515,7 @@ export function ScoutReport({ pid }: { pid: number }) {
   const scout = scouts[0];
   return (
     <div className={`insight ${rec.level < 0 ? '' : rec.level <= 1 ? 'good' : rec.level >= 3 ? 'bad' : 'warn'}`}>
-      <div className="row"><b>{t('rec.title', { scout: scout ? `${scout.first} ${scout.last}` : t('role.staff.scout') })}</b> <RecTag level={rec.level} /></div>
+      <div className="row"><b>{t('rec.title', { scout: scout ? `${scout.first} ${scout.last}` : t('role.staff.scout') })}</b> <RecTag level={rec.level} out={rec.out} /></div>
       <div style={{ marginTop: 4 }}>{t(rec.key)}{rec.reasons.length > 0 && ' '}{rec.reasons.map((r) => t(r.key, r.params)).join(' ')}</div>
     </div>
   );
@@ -575,7 +581,8 @@ export function TalkPanel({ pid }: { pid: number }) {
     const text = msgText.trim().slice(0, 400);
     if (!text || thinking) return;
     setThinking(true);
-    const allowed: TalkKind[] = ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat', ...(ageOn(p.dob, g.date) <= 23 ? ['future' as TalkKind] : [])];
+    // ægte CM 01/02: kun Discipline Player (advarsel og bøde)
+    const allowed: TalkKind[] = authentic() ? ['warning', 'fine'] : ['praise', 'encourage', 'criticise', 'demand', 'fine', 'chat', ...(ageOn(p.dob, g.date) <= 23 ? ['future' as TalkKind] : [])];
     const r = await aiCall<{ intent: string }>('talkIntent', { message: text, allowed });
     const intent = (allowed.includes(r?.intent as TalkKind) ? r!.intent : guessIntent(text)) as TalkKind;
     const out = await doTalk(intent);

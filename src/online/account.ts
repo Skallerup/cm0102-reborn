@@ -2,6 +2,11 @@
 // så man kan fortsætte på en anden enhed. Uden login fungerer alt som før (kun lokalt).
 import { upload } from '@vercel/blob/client';
 import { getProfile, rankingAvailable, type RankProfile } from './rank';
+import { gs } from '../game/state';
+import { serializeState } from '../game/snapshot';
+import { getTheme } from '../ui/theme';
+import { APP_VERSION } from '../ui/changelogData';
+import { visitorId } from './notify';
 
 const API = '/api/account';
 const KEY = 'cm0102.account';
@@ -12,8 +17,10 @@ export interface CloudSave { id: string; manager: string; club: string; date: st
 
 let mailOn: Promise<boolean> | null = null;
 /** Kan man logge ind? (Vercel-udgaven, og serveren kan sende login-mails) */
+// kun i udviklingstilstand: ende-til-ende-testen slår login til med cm0102.forceLogin (API'et efterlignes dér)
+const devLogin = () => { try { return import.meta.env.DEV && localStorage.getItem('cm0102.forceLogin') === '1'; } catch { return false; } };
 export function loginEnabled(): Promise<boolean> {
-  if (!rankingAvailable()) return Promise.resolve(false);
+  if (!rankingAvailable() && !devLogin()) return Promise.resolve(false);
   mailOn ??= fetch(`${API}?op=config`).then((r) => r.json()).then((j) => !!j.mail).catch(() => false);
   return mailOn;
 }
@@ -119,9 +126,49 @@ async function myUid(): Promise<string> {
   return r.uid;
 }
 
+/**
+ * "Send mit spil til udvikleren" (frivilligt, virker uden konto): det åbne spil uploades til Vercel Blob (support/…)
+ * og registreres med en note, så udvikleren kan åbne det i preview og se præcis det, spilleren ser.
+ */
+export async function sendGameToDeveloper(note: string, email?: string): Promise<void> {
+  const g = gs();
+  const blob = await serializeState(g);
+  const vid = visitorId() || 'anon';
+  const res = await upload(`support/${vid.replace(/[^\w-]/g, '')}-${g.id.replace(/[^\w-]/g, '')}.json.gz`, blob, {
+    access: 'public',
+    handleUploadUrl: `${API}?op=upload`,
+    clientPayload: JSON.stringify({ support: 1 }),
+    contentType: 'application/gzip',
+    multipart: blob.size > 4 * 1024 * 1024,
+  });
+  const r = await fetch(`${API}?op=support`, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ url: res.url, size: blob.size, vid, gid: g.id, manager: g.manager.name, club: g.clubs[g.userClub]?.name ?? '', date: g.date, note,
+      email: email ?? getAccount()?.email ?? '', lang: g.lang, theme: getTheme() === 'retro' ? 'classic' : 'modern', mode: g.options.mode ?? 'extended', ver: APP_VERSION, device: deviceName() }),
+  });
+  if (!r.ok) throw new Error('support');
+}
+
 /** Hent et gemt spil fra skyen */
 export async function downloadCloudSave(s: CloudSave): Promise<Blob> {
   const r = await fetch(s.url, { cache: 'no-store' });
   if (!r.ok) throw new Error('download');
   return r.blob();
+}
+
+// ---------- opdateringsmails (samtykke) ----------
+
+/** Er kontoen tilmeldt opdateringsmails? (null = ikke logget ind eller offline) */
+export async function newsStatus(): Promise<boolean | null> {
+  if (!getAccount()) return null;
+  try { return !!(await call<{ news?: boolean }>('me', undefined, 'GET')).news; } catch { return null; }
+}
+/** Til- eller frameld opdateringsmails (kræver login – e-mailen er bekræftet med koden) */
+export async function setNews(on: boolean, lang: string): Promise<void> {
+  await call('news', { on, lang });
+}
+/** Tæl svaret på spørgsmålet i spillet (ingen personlige data) */
+export function countPrompt(answer: 'asked' | 'yes' | 'later' | 'no') {
+  if (!rankingAvailable() && !devLogin()) return;
+  void fetch(`${API}?op=prompt`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ answer }) }).catch(() => {});
 }

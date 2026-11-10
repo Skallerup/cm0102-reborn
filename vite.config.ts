@@ -39,15 +39,31 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,svg,png,json}'],
         // store sekundære datafiler precaches ikke (de hentes ved kørsel, når de vælges):
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
-        globIgnores: ['**/data/careers*.json', '**/data/world-original.json', '**/data/world-modern.json'],
-        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
+        globIgnores: ['**/data/careers*.json', '**/data/world-original*.json', '**/data/world-modern.json',
+          // SEO-siderne (scripts/build-seo.ts – titusindvis af statiske sider) hører ikke til appen
+          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', '404.html', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
+        // world.json (2026/27) er ~8 MB med staben fra databasen – plads til at vokse
+        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
+        // guiderne (statiske SEO-sider, scripts/build-seo.ts) er rigtige sider – ikke appen
+        navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|cm-01-02|2026-27|faq|changelog|free-football-manager-browser-game|da|sv|no|de|es|fr|it|pt|tr)\//, /^\/api\//, /^\/llms\.txt$/, /^\/sitemap/],
         runtimeCaching: [{
+          // originalens kamplyde: hentes første gang de spilles, derefter fra cachen
+          urlPattern: /\/sounds\/[\w.-]+\.m4a$/,
+          handler: 'CacheFirst',
+          options: { cacheName: 'match-sounds', expiration: { maxEntries: 160, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+        }, {
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
-          urlPattern: /\/bg\/[\w-]+\.jpg$/,
+          urlPattern: /\/(bg|stadiums|screens)\/[\w.-]+\.jpg$/,
           handler: 'CacheFirst',
           options: { cacheName: 'backgrounds', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {
-          urlPattern: /\/data\/(careers[\w-]*|world-original|world-modern)\.json$/,
+          // den originale database: altid den nyeste ved nyt spil (cachen bruges kun offline) – med
+          // StaleWhileRevalidate fik det første spil efter en opdatering den gamle database (fx uden Tsigalko)
+          urlPattern: /\/data\/(world-original[\w-]*|world-modern)\.json$/,
+          handler: 'NetworkFirst',
+          options: { cacheName: 'big-data', networkTimeoutSeconds: 15, expiration: { maxEntries: 8 } },
+        }, {
+          urlPattern: /\/data\/careers[\w-]*\.json$/,
           handler: 'StaleWhileRevalidate',
           options: { cacheName: 'big-data', expiration: { maxEntries: 6 } },
         }, {
@@ -55,7 +71,7 @@ export default defineConfig({
           handler: 'CacheFirst',
           options: { cacheName: 'fonts', expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 365 }, cacheableResponse: { statuses: [0, 200] } },
         }, {
-          urlPattern: /^https:\/\/cdn\.jsdelivr\.net\/gh\/luukhopman\/football-logos/,
+          urlPattern: /^https:\/\/(cdn\.jsdelivr\.net\/gh\/luukhopman\/football-logos|r2\.thesportsdb\.com\/images\/media\/team\/badge)\//,
           handler: 'CacheFirst',
           options: { cacheName: 'club-logos', expiration: { maxEntries: 600, maxAgeSeconds: 60 * 60 * 24 * 90 }, cacheableResponse: { statuses: [0, 200] } },
         }],

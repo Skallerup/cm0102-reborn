@@ -1,0 +1,980 @@
+{
+ "ANNOUNCE_PENALTIES": [
+  "¡El partido se decide en los penaltis!"
+ ],
+ "ATTEMPT_PASS_CROSS": [
+  "<p1> con el centro",
+  "<p1> intenta poner el balón al área",
+  "<p1> hace todo lo posible por meter el balón en el área",
+  "<p1> intenta sacar el centro",
+  "<p1> la cuelga al área",
+  "<p1> manda el balón al área",
+  "<p1> centra al área",
+  "<p1> levanta un balón muy bien medido",
+  "<p1> pone el centro",
+  "<p1> mete el balón cruzado"
+ ],
+ "BLOCK_SHOT": [
+  "<p1> se tira al suelo y tapa el disparo",
+  "El disparo lo tapa <p1>",
+  "El disparo se estrella en <p1>",
+  "<p1> se interpone entre el balón y la portería",
+  "El disparo lo bloquea <p1>",
+  "<p1> consigue bloquear el disparo",
+  "<p1> se lanza delante del disparo",
+  "El disparo rebota en <p1>",
+  "<p1> bloquea el disparo"
+ ],
+ "BRINGS_BALL_INTO_AREA": [
+  "<p1> se mete en el área con el balón",
+  "<p1> lo ha hecho muy bien|¡Ya está dentro del área!",
+  "<p1> entra en el área",
+  "<p1> sigue hasta el área",
+  "<p1> se mete en el área con la pelota",
+  "<p1> sigue hacia el área",
+  "<p1> está dentro del área...",
+  "<p1> entra en el área",
+  "<p1> pisa el área",
+  "<p1> conduce el balón dentro del área",
+  "<p1> se cuela en el área",
+  "La carrera de <p1> continúa hasta el área..."
+ ],
+ "CHANGE_FORMATION": [
+  "<t> cambian el sistema"
+ ],
+ "CLEAN_THROUGH": [
+  "<p1> se queda solo ante la portería",
+  "<p1> deja atrás al último defensor",
+  "<p1> solo tiene al portero por delante",
+  "<p1> se ha quedado solo...|Solo tiene que batir al portero...",
+  "<p1> se planta ante la portería...",
+  "<p1> se escapa solo...",
+  "<p1> está mano a mano con el portero...",
+  "<p1> está a la espalda de la defensa...|Solo tiene al portero por delante...",
+  "<p1> se ha escapado a la espalda de la defensa..."
+ ],
+ "CROSSES_HALFWAY_LINE": [
+  "<p1> pasa el centro del campo con el balón",
+  "<p1> cruza la línea de medio campo con la pelota",
+  "<p1> saca el balón de su propio campo",
+  "<p1> lleva el balón más allá del medio campo",
+  "<p1> lleva la jugada más allá del medio campo",
+  "<p1> traslada el juego al campo contrario",
+  "<p1> se mete con el balón en campo contrario"
+ ],
+ "CROSS_IT": [
+  "<p1> pone el balón en el área pequeña",
+  "<p1> pone el centro"
+ ],
+ "END_OF_NINETY_MINUTES": [
+  "Se cumplen los 90 minutos"
+ ],
+ "FINAL_WHISTLE": [
+  "Final del partido"
+ ],
+ "FOUL": [
+  "¡¡Falta de <p1> sobre <p2>!!",
+  "<O>¡¡<p2> ha sido derribado por <p1>!!",
+  "¡¡Falta de <p1> a <p2>!!",
+  "¡¡Eso es falta de <p1> sobre <p2>!!",
+  "<O>¡¡Falta sobre <p2>!!"
+ ],
+ "FOUL_BLOCK_TACKLE": [
+  "<p1> arrolla a <p2>",
+  "<p1> entra...|Y tira al suelo a <p2>",
+  "<O><p2> cae al suelo...|<p1> se lo ha llevado por delante",
+  "<p1> empuja a <p2> por la espalda",
+  "<p1> manda al suelo a <p2>...|Esa entrada ha sido durísima"
+ ],
+ "FOUL_PUSH_OPPONENT": [
+  "<p1> empuja a <p2>",
+  "<O><p2> recibe un empujón de <p1>",
+  "<O>Eso es un empujón de <p1> sobre <p2>",
+  "<O><p2> se va al suelo...|Le ha empujado <p1>"
+ ],
+ "FOUL_SHIRT_TUG": [
+  "¡¡<p1> agarra a <p2>!!",
+  "¡Falta!|¡<p1> le está tirando de la camiseta a <p2>!",
+  "<O>Falta sobre <p2>...|¡<p1> le estaba agarrando!",
+  "¡Pitan falta de <p1> por agarrar a <p2>!",
+  "<O>¡A <p2> le está tirando de la camiseta <p1>!"
+ ],
+ "FOUL_SLIDE_TACKLE": [
+  "<p1> entra en plancha sobre <p2>|El árbitro pita falta",
+  "Entrada a ras de suelo de <p1>...|¡¡Pero se lleva a <p2> en lugar del balón!!",
+  "¡<p1> entra con dureza sobre <p2>!|¡¡Pero va al hombre y no al balón!!",
+  "¡¡<p1> le siega las piernas a <p2>!!"
+ ],
+ "FOUL_TRIP": [
+  "¡¡<p1> zancadillea a <p2>!!",
+  "<O>¡¡<p2> cae por una zancadilla de <p1>!!",
+  "<p1> saca la pierna...|¡¡Y derriba a <p2>!!",
+  "<p1> saca la pierna...|¡¡Y engancha a <p2>!!",
+  "<p1> se estira para llegar al balón...|¡¡Pero derriba a <p2>!!",
+  "¡¡Pitan zancadilla de <p1> sobre <p2>!!",
+  "<O><p2> se va al suelo...|¡¡<p1> le ha hecho la zancadilla!!"
+ ],
+ "GOALIE_CATCH_BALL": [
+  "<p1> atrapa el balón",
+  "Y eso es fácil para <p1>",
+  "<p1> recoge el balón sin problemas",
+  "<p1> salta y se hace con el balón",
+  "<p1> se eleva y bloca el balón con seguridad",
+  "<p1> va a por el balón|Y lo abraza contra el pecho"
+ ],
+ "GOALIE_SPILLS_BALL": [
+  "<p1> va a atrapar el balón|Pero se le escapa",
+  "Y eso es fácil para <p1>|¡Pero se le ha caído!",
+  "<p1> va a por el balón|¡Y no llega!"
+ ],
+ "GOALKEEPER_PARRY": [
+  "<p1> se lanza a su izquierda...|Y la despeja...",
+  "<p1> se lanza a su derecha...|Y la despeja...",
+  "<p1> la despeja...",
+  "<p1> solo puede rechazarla...",
+  "La para <p1>...|Pero no puede retenerla...",
+  "La para <p1>...|Pero <p1> deja el balón suelto...",
+  "<p1> no consigue blocarla...",
+  "<p1> para...|Y desvía el balón lejos",
+  "<p1> saca el balón de puños..."
+ ],
+ "GOAL_DISALLOWED": [
+  "¡Pero no sube al marcador!|¡El linier tiene la bandera levantada!",
+  "¡Pero no sube al marcador!|¡<Rf> ya había pitado!",
+  "¡Pero no sube al marcador!|¡El silbato ya había sonado!",
+  "¡Pero lo han anulado!|¡El linier tiene la bandera levantada!",
+  "¡Pero lo han anulado!|¡<Rf> ya había pitado!",
+  "¡Pero lo han anulado!|¡El silbato ya había sonado!",
+  "¡Pero el gol no vale!|¡El linier tiene la bandera levantada!",
+  "¡Pero el gol no vale!|¡<Rf> ya había pitado!",
+  "¡Pero el gol no vale!|¡El silbato ya había sonado!"
+ ],
+ "GOAL_ONE": [
+  "¡¡¡Gooool de <p1>!!!",
+  "¡¡¡<p1> perfora la red!!!",
+  "¡¡¡Marca <p1>!!!",
+  "¡¡¡El goleador es <p1>!!!",
+  "¡¡¡Marca <p1>!!!",
+  "¡¡¡Ahí está, gol de <p1>!!!",
+  "¡¡¡Adentro, marca <p1>!!!",
+  "¡Al fondo de la red!|¡El goleador es <p1>!"
+ ],
+ "GOAL_TWO": [
+  "¡¡¡<p1> marca en propia puerta!!!",
+  "¡¡¡<p1> mete el balón en su propia portería!!!",
+  "¡¡¡La mete por encima de su propio portero!!!",
+  "¡Error de <p1>!|¡¡¡La ha metido en su propia portería!!!",
+  "¡¡Gol en propia puerta!!|¡¡Desastre para <p1>!!"
+ ],
+ "GONE_ATTACKING_STYLE": [
+  "<t> pasan a un estilo ofensivo",
+  "<t> cambian a un juego más ofensivo",
+  "<t> cambian su juego...|Se han dado más opciones en ataque",
+  "<t> cambian de táctica...|Buscan opciones en el último tercio",
+  "<t> cambian el planteamiento...|Han pasado a un estilo más ofensivo"
+ ],
+ "GONE_DEFENSIVE_STYLE": [
+  "<t> pasan a un estilo defensivo",
+  "<t> cambian a un estilo defensivo",
+  "<t> retroceden un poco|Ahora juegan de forma más defensiva"
+ ],
+ "GOOD_INTERCEPT": [
+  "<p1> intercepta el pase",
+  "<p1> corta el pase",
+  "<p1> lo ve venir e intercepta el pase",
+  "Muy bien leído por <p1>|Ha interceptado muy bien ese pase",
+  "<p1> intercepta el pase con mucha calma",
+  "<p1> hace una gran intercepción",
+  "Lo intercepta muy bien <p1>",
+  "<p1> lee muy bien el juego|Intercepta el pase",
+  "Muy bien interceptado por <p1>|Ha mostrado mucho aplomo",
+  "Ningún problema para <p1> al interceptar ese balón",
+  "<p1> cierra y se hace con el balón",
+  "<p1> llega primero al balón y lo intercepta"
+ ],
+ "GOOD_SAVE_HELD": [
+  "<p1> para bien y retiene el balón",
+  "<p1> se lanza a su izquierda...|Y atrapa el balón|¡Buena parada!",
+  "<p1> se lanza a su derecha...|Y atrapa el balón|¡Buena parada!",
+  "<p1> hace una buena parada...|Y retiene el balón",
+  "Bien atrapada por <p1>",
+  "Buena parada de <p1>|Ha retenido muy bien el balón",
+  "<p1> se hace con el balón|Ha mostrado unas manos seguras"
+ ],
+ "GOOD_SAVE_NOT_HELD": [
+  "<p1> se lanza a su izquierda...|Y la despeja...|¡Buena parada!",
+  "<p1> se lanza a su derecha...|Y la despeja...|¡Buena parada!",
+  "<p1> hace bien en rechazarla...",
+  "<p1> hace bien en desviar el balón...",
+  "<p1> la toca con la punta de los dedos...|¡Gran parada!"
+ ],
+ "GREAT_FIRST_TOUCH": [
+  "<p1> la controla sin frenar la carrera...",
+  "Excelente primer toque de <p1>",
+  "<p1> baja bien el balón",
+  "Buen control de <p1>",
+  "<p1> muestra un buen control",
+  "Muy bien controlado por <p1>...|Ha bajado bien el balón",
+  "<p1> amortigua el balón con mucha suavidad",
+  "Control soberbio de <p1>",
+  "<p1> controla el balón con elegancia",
+  "Excelente control de <p1>"
+ ],
+ "GREAT_SAVE_HELD": [
+  "<p1> hace una parada soberbia y retiene el balón",
+  "<p1> se lanza a su izquierda...|Y atrapa el balón|¡Paradón!",
+  "<p1> se lanza a su derecha...|Y atrapa el balón|¡Paradón!",
+  "<p1> hace una gran parada...|Y retiene el balón",
+  "Brillantemente atrapada por <p1>",
+  "¡Parada con mucho estilo de <p1>!",
+  "¡Paradón de <p1>!|¡Y encima la atrapa!"
+ ],
+ "GREAT_SAVE_NOT_HELD": [
+  "<p1> se lanza a su izquierda...|Y la despeja...|¡Parada excelente!",
+  "<p1> se lanza a su derecha...|Y la despeja...|¡Parada excelente!",
+  "<p1> la rechaza de forma brillante...",
+  "<p1> desvía el balón...|¡Parada brillante de <p1>!",
+  "Paradón de <p1>|¡No sé cómo ha llegado a tocarla con los dedos!"
+ ],
+ "HALF_TIME_WHISTLE": [
+  "Descanso"
+ ],
+ "KNOCKDOWN_HEADER": [
+  "<p1> la baja de cabeza para <p2>",
+  "<p1> la prolonga para <p2>",
+  "<p1> se la baja a <p2>"
+ ],
+ "LAYS_BALL_OFF": [
+  "<p1> la deja de cara..."
+ ],
+ "LONG_BALL_FORWARD": [
+  "<p1> pega un balonazo hacia arriba",
+  "<p1> lanza un pase de <d> metros|Busca la cabeza de <p2>",
+  "<p1> intenta encontrar a <p2>|Le ha pegado a <d> metros",
+  "Balón largo de <p1>",
+  "<p1> juega en largo|Busca la cabeza de <p2>",
+  "<p1> la juega en largo...|Apunta a la cabeza de <p2>",
+  "<p1> la manda a <d> metros...|Espera que llegue <p2>",
+  "<p1> mete un balón largo hacia <p2>",
+  "<p1> busca a <p2> con un balón por arriba",
+  "<p1> lanza un balón largo|<p2> intenta llegar...",
+  "<p1> la manda en largo a <p2>",
+  "<p1> busca a <p2>|La ha mandado <d> metros hacia delante"
+ ],
+ "LOOKED_LIKE_A_DIVE": [
+  "¡Eso ha parecido un piscinazo de <p1>!",
+  "¡<p1> ha caído como si le hubieran disparado!",
+  "¡Seguro que ha sido un piscinazo de <p1>!",
+  "¡<p1> se ha tirado, seguro!"
+ ],
+ "LOOSE_BALL_IN_AREA": [
+  "<p1> recoge el balón suelto",
+  "<p1> se lanza sobre el rechace",
+  "<p1> va a por el rechace...",
+  "<p1> llega al balón suelto",
+  "<p1> se hace con el balón",
+  "<p1> aprovecha el balón suelto",
+  "Le cae a <p1>...",
+  "¡El rechace le cae a <p1>!",
+  "<p1> es el primero en llegar al rechace..."
+ ],
+ "LOSE_CONTROL_OF_BALL": [
+  "<p1> pierde el control del balón",
+  "<p1> pierde el balón",
+  "<p1> no puede retener el balón",
+  "Se le escapa el balón a <p1>",
+  "<p1> controla mal el balón",
+  "<p1> quita la vista del balón|Ha perdido la posesión",
+  "Mal control de <p1>|Ha perdido el balón",
+  "<p1> pierde el control del balón",
+  "<p1> pierde la posesión",
+  "<p1> regala el balón"
+ ],
+ "MISSED_EASY_CHANCE_CLOSE": [
+  "Tenía que haber marcado",
+  "Parecía gol cantado|De verdad que tenía que haberla metido",
+  "Tenía que haber aprovechado mucho mejor esa ocasión",
+  "Se va a tirar de los pelos por fallar eso",
+  "¿Cómo ha podido fallar eso?",
+  "Eso tenía que haber sido gol",
+  "Una ocasión desperdiciada por <t>",
+  "Esa era una ocasión clarísima para <t>"
+ ],
+ "PASS_IT": [
+  "<p1> con un pase",
+  "Pase de <p1>",
+  "<p1> juega el balón hacia delante",
+  "<p1> toca el balón hacia delante",
+  "<p1> pasa el balón"
+ ],
+ "PASS_MEDIUM_FORWARD": [
+  "<p1> busca a <p2>",
+  "<p1> manda el balón <d> metros hacia delante",
+  "<p1> juega el balón hacia delante buscando a <p2>",
+  "<p1> envía el balón hacia delante para <p2>",
+  "<p1> la manda hacia delante para <p2>",
+  "<p1> la juega arriba hacia <p2>"
+ ],
+ "PASS_MEDIUM_INTO_AREA": [
+  "<p1> mete el balón al área",
+  "<p1> pasa el balón al área|<p2> intenta hacerse con él",
+  "<p1> manda el balón al área para <p2>"
+ ],
+ "PASS_MEDIUM_LEFT": [
+  "<p1> busca a <p2> a su izquierda",
+  "<p1> manda el balón <d> metros a la izquierda",
+  "<p1> abre el balón en horizontal buscando a <p2>",
+  "<p1> envía el balón a la izquierda para <p2>",
+  "<p1> la manda a la izquierda para <p2>",
+  "<p1> levanta la cabeza|Cambia el balón a la izquierda hacia <p2>",
+  "<p1> la juega a la izquierda hacia <p2>"
+ ],
+ "PASS_MEDIUM_LEFT_WING": [
+  "<p1> abre el balón a la banda izquierda",
+  "<p1> abre el balón a la izquierda para <p2>",
+  "<p1> mete un pase en diagonal de <d> metros a la izquierda",
+  "<p1> busca a <p2> en la banda izquierda"
+ ],
+ "PASS_MEDIUM_RIGHT": [
+  "<p1> busca a <p2> a su derecha",
+  "<p1> manda el balón <d> metros a la derecha",
+  "<p1> abre el balón en horizontal buscando a <p2>",
+  "<p1> envía el balón a la derecha para <p2>",
+  "<p1> la manda a la derecha para <p2>",
+  "<p1> levanta la cabeza|Cambia el balón a la derecha hacia <p2>",
+  "<p1> la juega a la derecha hacia <p2>"
+ ],
+ "PASS_MEDIUM_RIGHT_WING": [
+  "<p1> abre el balón a la banda derecha",
+  "<p1> abre el balón a la derecha para <p2>",
+  "<p1> mete un pase en diagonal de <d> metros a la derecha",
+  "<p1> busca a <p2> en la banda derecha"
+ ],
+ "PASS_SHORT_BACK": [
+  "<p1> con un pase raso hacia su propia portería",
+  "Con un pase al pie...|<p1> se la devuelve a <p2>",
+  "<p1> pasa hacia atrás para <p2>",
+  "<p1> juega el balón atrás a <p2>",
+  "<p1> se la deja atrás a <p2>",
+  "<p1> mueve el balón atrás para <p2>",
+  "<p1> se la pasa atrás a <p2>"
+ ],
+ "PASS_SHORT_FORWARD": [
+  "<p1> con un pase raso hacia delante para <p2>",
+  "Con un pase al pie...|<p1> adelanta el balón a <p2>",
+  "<p1> busca a <p2> por delante",
+  "Con un pase raso hacia delante...|<p1> juega el balón a <p2>",
+  "<p1> le da el balón hacia delante a <p2>",
+  "<p1> juega el balón hacia delante|Un pase raso al pie de <p2>",
+  "<p1> pasa a ras de césped|<p2> recoge el pase hacia delante",
+  "<p1> se la deja por delante a <p2>",
+  "<p1> mueve el balón hacia delante para <p2>",
+  "<p1> se la pasa hacia delante a <p2>"
+ ],
+ "PASS_SHORT_INTO_AREA": [
+  "<p1> con un pase raso al área",
+  "Con un pase al pie...|<p1> mete el balón en el área",
+  "<p1> busca a <p2> en el área",
+  "Con un pase raso al área...|<p1> juega el balón a <p2>",
+  "<p1> mete el balón en la zona de peligro",
+  "<p1> juega el balón hacia <p2> en el área",
+  "<p1> pasa a ras de césped|<p2> está en el área"
+ ],
+ "PASS_SHORT_LEFT": [
+  "<p1> con un pase raso a la izquierda",
+  "Con un pase al pie...|<p1> mueve el balón a la izquierda para <p2>",
+  "<p1> busca a <p2> a su izquierda",
+  "Con un pase raso a la izquierda...|<p1> juega el balón a <p2>",
+  "<p1> le da el balón a la izquierda a <p2>",
+  "<p1> juega el balón a la izquierda|Un pase raso al pie de <p2>",
+  "<p1> pasa a ras de césped|<p2> recoge el pase a su izquierda",
+  "<p1> se la deja a la izquierda a <p2>",
+  "<p1> mueve el balón a la izquierda para <p2>",
+  "<p1> se la pasa a la izquierda a <p2>"
+ ],
+ "PASS_SHORT_LEFT_WING": [
+  "<p1> con un pase raso por la banda izquierda",
+  "Con un pase al pie...|<p1> mueve el balón por la izquierda para <p2>",
+  "<p1> busca a <p2> en la izquierda",
+  "Con un pase raso por la banda izquierda...|<p1> juega el balón a <p2>",
+  "<p1> abre el balón a la izquierda para <p2>",
+  "<p1> juega el balón por la izquierda|Un pase raso al pie de <p2>",
+  "<p1> mira hacia la banda izquierda|Juega un pase raso a <p2>",
+  "<p1> se la abre a la izquierda a <p2>",
+  "<p1> mueve el balón a la izquierda para <p2>",
+  "<p1> se la pasa por la izquierda a <p2>"
+ ],
+ "PASS_SHORT_RIGHT": [
+  "<p1> con un pase raso a la derecha",
+  "Con un pase al pie...|<p1> mueve el balón a la derecha para <p2>",
+  "<p1> busca a <p2> a su derecha",
+  "Con un pase raso a la derecha...|<p1> juega el balón a <p2>",
+  "<p1> le da el balón a la derecha a <p2>",
+  "<p1> juega el balón a la derecha|Un pase raso al pie de <p2>",
+  "<p1> pasa a ras de césped|<p2> recoge el pase a su derecha",
+  "<p1> se la deja a la derecha a <p2>",
+  "<p1> mueve el balón a la derecha para <p2>",
+  "<p1> se la pasa a la derecha a <p2>"
+ ],
+ "PASS_SHORT_RIGHT_WING": [
+  "<p1> con un pase raso por la banda derecha",
+  "Con un pase al pie...|<p1> mueve el balón por la derecha para <p2>",
+  "<p1> busca a <p2> en la derecha",
+  "Con un pase raso por la banda derecha...|<p1> juega el balón a <p2>",
+  "<p1> abre el balón a la derecha para <p2>",
+  "<p1> juega el balón por la derecha|Un pase raso al pie de <p2>",
+  "<p1> mira hacia la banda derecha|Juega un pase raso a <p2>",
+  "<p1> se la abre a la derecha a <p2>",
+  "<p1> mueve el balón a la derecha para <p2>",
+  "<p1> se la pasa por la derecha a <p2>"
+ ],
+ "PASS_TO_RUN_ONTO_HIGH": [
+  "<p1> levanta el balón por delante de <p2>",
+  "<p1> juega un balón por arriba para que <p2> lo persiga",
+  "<p1> la pone por arriba para <p2>",
+  "<p1> la manda por arriba hacia delante|<p2> sale a por ella",
+  "<p1> levanta el balón hacia delante para <p2>",
+  "<p1> lanza un balón de <d> metros|<p2> intenta llegar",
+  "<p1> manda el balón <d> metros|Quiere que <p2> corra a por él",
+  "Golpeo de primeras|<p1> juega por arriba buscando a <p2>",
+  "<p1> juega el balón por alto|<p2> intenta llegar",
+  "<p1> la manda en largo|<p2> intenta correr a por ella...",
+  "<p1> la pasa en largo|<p2> intenta llegar...",
+  "<p1> juega un balón alto hacia delante...|<p2> intenta correr a por él",
+  "<p1> la pasa a <d> metros|<p2> intenta llegar",
+  "<p1> lanza un largo pase barriendo el campo|<p2> intenta correr a por él"
+ ],
+ "PASS_TO_RUN_ONTO_LOW": [
+  "<p1> juega el balón por delante de <p2>",
+  "<p1> busca que <p2> corra a por su pase",
+  "<p1> busca a <p2> al espacio",
+  "<p1> ve el hueco|Mete el pase al hueco para <p2>",
+  "<p1> filtra el balón para <p2>",
+  "<p1> busca el pase definitivo|<p2> intenta correr a por él",
+  "<p1> la filtra por abajo|<p2> intenta llegar...",
+  "<p1> mete el balón raso al hueco|<p2> intenta correr a por él...",
+  "<p1> filtra un pase raso|<p2> intenta llegar...",
+  "<p1> juega el balón hacia delante|<p2> intenta correr a por él",
+  "<p1> filtra el pase para <p2>"
+ ],
+ "PENALTY_APPEAL_TURNED_DOWN": [
+  "¡<t> piden penalti!|<Rf> manda seguir",
+  "¡Piden penalti!|<Rf> manda seguir",
+  "¡<t> reclaman el penalti!|¡¡No lo pita!!",
+  "¡Reclaman penalti!|¡¡<Rf> dice que no!!|No hace caso a las protestas",
+  "¡<t> quieren penalti!|¡<Rf> no quiere saber nada!|No hace caso a las protestas"
+ ],
+ "PENALTY_HITS_BAR": [
+  "¡¡Pero <p1> la estrella en el larguero!!",
+  "¡¡¡¡Al larguero!!!!",
+  "¡¡Sale rebotada del larguero!!"
+ ],
+ "PENALTY_HITS_POST": [
+  "¡¡Pero <p1> la estrella en el poste!!",
+  "¡¡¡¡Al poste!!!!",
+  "Da en la madera...|¡¡Y sale despejada!!"
+ ],
+ "PENALTY_HIT_OVER": [
+  "¡¡¡Pero la manda a las nubes!!!",
+  "¡¡Por encima del larguero!!",
+  "¡¡Falla!!|¡¡Por encima del larguero!!"
+ ],
+ "PENALTY_HIT_WIDE": [
+  "¡¡¡Pero la manda fuera!!!",
+  "¡¡Fuera!!",
+  "¡¡Falla!!|¡¡Fuera, junto al poste!!"
+ ],
+ "PLAYER_ARGUES_WITH_REFEREE": [
+  "¡<p1> está furioso con <rf>!"
+ ],
+ "PLAYER_DONE_FOR_DIVING": [
+  "¡<p1> se mete en un lío por tirarse!",
+  "¡<Rf> dice que se ha tirado!",
+  "¡Según <rf>, <p1> se ha tirado!"
+ ],
+ "PLAYER_INJURED_GOES_ON": [
+  "<p1> se ha lesionado",
+  "<p1> está dolorido...|Pero parece que podrá continuar",
+  "¡<p1> ha sufrido un golpe!|Aunque parece que puede seguir",
+  "Lesión de <p1>|Aunque no parece muy grave",
+  "<p1> intenta seguir pese al golpe",
+  "¡Lesión de <p1>!|Aunque no parece muy grave|Debería estar bien"
+ ],
+ "PLAYER_KNACKERED": [
+  "<p1> parece tener problemas para seguir el ritmo del partido",
+  "A <p1> le cuesta seguir el ritmo del partido"
+ ],
+ "PLAYER_TAKES_HIS_TIME": [
+  "<p1> se concentra...",
+  "<p1> se toma su tiempo...",
+  "<p1> levanta la vista...",
+  "<p1> se perfila para el disparo...",
+  "<p1> se concentra...",
+  "<p1> se toma su tiempo...",
+  "<p1> se toma su tiempo..."
+ ],
+ "RESTART_CORNER": [
+  "Es córner",
+  "Eso es saque de esquina",
+  "Córner",
+  "Eso será córner",
+  "<t> consiguen el córner"
+ ],
+ "RESTART_FREEKICK": [
+  "Tiro libre",
+  "Se concede un tiro libre",
+  "Eso es tiro libre",
+  "Eso será tiro libre para <t>",
+  "Tiro libre para <t>",
+  "Se concede tiro libre a <t>",
+  "<Rf> concede un tiro libre a <t>",
+  "Tiro libre"
+ ],
+ "RESTART_GOAL_KICK": [
+  "Es saque de puerta",
+  "Eso es saque de puerta",
+  "Saque de puerta para <t>",
+  "Eso será saque de puerta para <t>",
+  "Es saque de puerta para <t>"
+ ],
+ "RESTART_OFFSIDE": [
+  "<p1> en fuera de juego",
+  "<p1> cae en posición de fuera de juego",
+  "<p1> está en fuera de juego por muy poco",
+  "<p1> se queda en posición de fuera de juego",
+  "<p1> se mete en posición de fuera de juego",
+  "¡Fuera de juego!|<p1> sale demasiado pronto",
+  "<p1> sale una fracción antes de tiempo...|¡Fuera de juego!",
+  "El asistente ha levantado la bandera...|¡<p1> está en fuera de juego!",
+  "El asistente ha levantado la bandera...|¡<p1> está en fuera de juego!",
+  "La bandera se levanta en la banda contraria...|¡<p1> estaba en fuera de juego!"
+ ],
+ "RESTART_PENALTY": [
+  "¡¡¡Es penalti!!!",
+  "¡¡¡Se ha señalado penalti!!!",
+  "¡¡¡<Rf> ha señalado penalti!!!",
+  "¡¡¡Penalti!!!",
+  "¡¡¡<Rf> señala el punto de penalti!!!",
+  "<Rf> mira a su asistente...|¡¡¡Y señala penalti!!!",
+  "¡¡¡Penalti!!!",
+  "¡¡¡El árbitro ha pitado penalti!!!"
+ ],
+ "RUN_PAST_OPPONENT": [
+  "<p1> supera a <p2>",
+  "<p1> se va de <p2> con el balón",
+  "<p1> usa su habilidad para irse de <p2>",
+  "<p2> no puede evitar que <p1> se le escape",
+  "<p1> esquiva la entrada de <p2>",
+  "<p1> se zafa de <p2>",
+  "<p1> deja atrás a <p2>",
+  "<p1> se la pasa por delante a <p2>",
+  "<p1> le enseña los tacos a <p2>",
+  "<p1> le hace un caño a <p2>",
+  "<p1> regatea a <p2>",
+  "<p1> se marcha de <p2> con un quiebro"
+ ],
+ "RUN_PAST_OPPONENT_WITH_PACE": [
+  "¡<p1> pasa como una exhalación junto a <p2>!",
+  "<p1> deja atrás a <p2> en velocidad",
+  "<p1> es demasiado rápido para <p2>",
+  "<p1> tiene la velocidad para superar a <p2>",
+  "<p1> se va de <p2> en carrera",
+  "<p1> deja clavado a <p2>",
+  "<p1> se escapa como una flecha de <p2>"
+ ],
+ "RUN_WITH_BALL": [
+  "<p1> avanza",
+  "<p1> avanza con el balón",
+  "<p1> lleva el balón hacia delante",
+  "<p1> sube con el balón",
+  "<p1> tiene ahora el balón para <t>",
+  "<p1> mantiene el balón en movimiento",
+  "<p1> conduce el balón",
+  "<p1> sube el balón"
+ ],
+ "SAVES_PENALTY": [
+  "¡¡Pero <p1> para el penalti!!",
+  "¡¡Parada!!",
+  "¡¡Lo para <p1>!!",
+  "¡¡<p1> detiene el penalti!!"
+ ],
+ "SAVING_TACKLE": [
+  "¡Pero <p1> hace una intervención decisiva!",
+  "¡Pero <p1> hace una entrada importantísima!",
+  "¡Gran entrada in extremis de <p1>!",
+  "¡Gran entrada de <p1>!|¡Tenía que hacer esa entrada!",
+  "¡Fantástica entrada salvadora de <p1>!",
+  "¡Entrada brillante de <p1>!",
+  "<O>¡<p2> tiene que marcar!|¡Pero <p1> hace una entrada importantísima!",
+  "<O>¡<p2> con una gran ocasión!|¡Gran entrada in extremis de <p1>!",
+  "<O>¡<p2> parece que va a marcar!|¡Gran entrada de <p1>!|¡Tenía que hacer esa entrada!"
+ ],
+ "SCATTER_INTERCEPT": [
+  "El balón golpea a <p1>",
+  "<p1> se encuentra en la trayectoria del balón",
+  "El balón se estrella en <p1>",
+  "El balón rebota en <p1>",
+  "<p1> se cruza en el camino del balón",
+  "Toca en <p1>...",
+  "El balón toca en <p1>...",
+  "El balón rebota en <p1>..."
+ ],
+ "SCORED_PENALTY": [
+  "¡¡¡Marca <p1>!!!",
+  "¡¡¡<p1> no falla!!!",
+  "¡¡¡<p1> la acomoda al fondo de la red!!!",
+  "¡¡¡<p1> engaña al portero y marca!!!"
+ ],
+ "SECOND_YELLOW_CARD": [
+  "<Y>¡¡<p1> ve la segunda amarilla!!|<R>¡¡<p1> es expulsado!!",
+  "<Y>¡¡Es la segunda amarilla de <p1>!!|<R>¡¡A la calle!!",
+  "<Y>¡¡<p1> ve su segunda tarjeta amarilla!!|<R>¡¡A la ducha antes de tiempo!!",
+  "<Y>¡¡<p1> ve la segunda amarilla!!|<R>Roja para <p1>",
+  "<Y>¡¡Es la segunda amarilla de <p1>!!|<R>¡¡A la calle!!",
+  "<Y>¡¡<Rf> le enseña a <p1> la segunda amarilla!!|<R>¡¡<p1> se va a la calle!!",
+  "<Y>¡Y le enseña la segunda amarilla!|<R>¡¡Es expulsión!!",
+  "<Rf> se lleva la mano al bolsillo|<Y>¡¡Y le enseña la segunda amarilla!!|<R>¡¡A la ducha antes de tiempo para <p1>!!",
+  "<Rf> va al bolsillo|<Y>¡¡¡Y le enseña a <p1> la segunda amarilla!!!|<R>¡¡A la calle!!",
+  "<Y>¡Tarjeta amarilla!|<R>¡¡Tarjeta roja!!|¡Ya tenía una amarilla!",
+  "<p1> está en apuros...|¡Ya tenía una amarilla!|<R>¡¡Roja para <p1>!!"
+ ],
+ "SENT_OFF": [
+  "<R>¡¡¡<p1> es expulsado!!!",
+  "<R><p1> ve la tarjeta roja|<R>¡¡¡A la calle!!!",
+  "<Rf> se lleva la mano al bolsillo|<R>¡¡¡<p1> ve la roja!!!",
+  "<Rf> va a sacar una tarjeta|<R>¡¡Es roja!!|<R>¡¡<p1> se va a la ducha antes de tiempo!!",
+  "<R>¡¡¡<Rf> le enseña la roja a <p1>!!!",
+  "<R>¡¡Es tarjeta roja!!"
+ ],
+ "SENT_OFF_FOR_PROFESSIONAL_FOUL": [
+  "<R>¡¡<p1> expulsado por falta táctica!!",
+  "<R>¡¡<p1> ve la roja por su falta táctica!!",
+  "<R>¡¡<p1> se va a la calle por eso!!|<R>¡¡Ha sido una falta táctica!!",
+  "¡¡<p1> era el último hombre!!|<R>¡¡Es tarjeta roja!!",
+  "¡¡¡<p1> comete una falta descarada!!!|<R>¡¡El árbitro le enseña la roja!!",
+  "<Rf> se lleva la mano al bolsillo|<R>¡¡<p1> ve la roja!!|<R>¡Ha sido una falta táctica!",
+  "<R>¡<Rf> saca la tarjeta roja!|<R>¡<p1> es expulsado por falta táctica!"
+ ],
+ "SHOOTING_PLAYER_WAS_UNDER_PRESSURE_FROM_ONE_PLAYER": [
+  "<p1> estaba muy bien encimado por <p2>",
+  "Era una ocasión complicada|<O><p2> no le dejó espacio",
+  "<p2> no le dejó espacio a <p1>",
+  "<p1> no pudo librarse del marcaje de <p2>",
+  "<O><p2> hizo lo justo para incomodarle",
+  "<p1> estaba presionado por <p2>"
+ ],
+ "SHOT_BANANA": [
+  "¡<p1> con un disparo con rosca!",
+  "¡<p1> le ha dado efecto a ese disparo!",
+  "¡<p1> le pega fuerte con el exterior!",
+  "¡<p1> suelta un disparo con caída a puerta!",
+  "¡<p1> la enrosca a portería!",
+  "¡<p1> la curva hacia la portería!",
+  "¡<p1> lanza un disparo con efecto!",
+  "¡<p1> lo intenta con un disparo de rosca!"
+ ],
+ "SHOT_CLIPS_BAR": [
+  "¡Roza el larguero y se va por encima!",
+  "¡¡Pero el balón da en el larguero!!|Y se va fuera",
+  "¡Pero roza el larguero antes de irse por encima!",
+  "¡Pero acaricia el larguero!",
+  "Da en la madera...|¡¡Y se va por encima!!"
+ ],
+ "SHOT_CLIPS_POST": [
+  "¡Roza el poste y se va fuera!",
+  "Qué mala suerte|¡¡El balón da en la parte exterior del poste y se va fuera!!",
+  "Pero golpea en la base del poste|¡Y se va fuera!",
+  "¡Da en la base del poste y se va fuera!",
+  "¡Da en el poste y se va por la línea de fondo!"
+ ],
+ "SHOT_DIVING_HEADER": [
+  "¡<p1> en plancha de cabeza!",
+  "¡<p1> remata en plancha!",
+  "¡<p1> conecta un cabezazo en plancha!",
+  "¡Cabezazo en plancha de <p1>!",
+  "¡Potente cabezazo de <p1>!",
+  "¡<p1> se lanza a por ella!"
+ ],
+ "SHOT_FREE_KICK": [
+  "<p1> lanza el tiro libre...",
+  "<p1> manda el tiro libre hacia la portería...",
+  "<p1> dispara el tiro libre...",
+  "<p1> pone el tiro libre por arriba..."
+ ],
+ "SHOT_FROM_DISTANCE_BANANA": [
+  "¡<p1> la curva desde lejos!",
+  "¡Desde lejos, <p1> curva el balón hacia la portería!",
+  "¡<p1> suelta un disparo con rosca desde fuera del área!",
+  "¡<p1> intenta colarla con rosca desde lejos!"
+ ],
+ "SHOT_FROM_DISTANCE_HALF_VOLLEY": [
+  "¡<p1> con una espectacular media volea!",
+  "<p1> deja caer el balón|¡Y suelta una media volea espectacular!",
+  "¡<p1> se lo juega con una media volea!",
+  "¡Media volea de <p1>!"
+ ],
+ "SHOT_FROM_DISTANCE_HIGH_DRIVE": [
+  "¡<p1> con un trallazo desde lejos!",
+  "¡<p1> manda el balón volando hacia la portería!",
+  "¡¡¡Intento desde lejos de <p1>!!!",
+  "<p1> dispara desde lejos...",
+  "¡<p1> busca la escuadra!",
+  "¡¡<p1> suelta un cañonazo!!",
+  "¡¡<p1> lo intenta con un disparo espectacular!!"
+ ],
+ "SHOT_FROM_DISTANCE_LOW_DRIVE": [
+  "<p1> dispara raso desde lejos",
+  "¡¡<p1> le pega raso hacia la portería!!",
+  "¡Disparo raso desde lejos de <p1>!",
+  "¡<p1> lo intenta desde lejos!"
+ ],
+ "SHOT_FROM_DISTANCE_VOLLEY": [
+  "¡Volea desde lejos de <p1>!",
+  "<p1> podía haberla dejado botar|¡Pero le pega de volea desde fuera del área!",
+  "¡<p1> le pega de volea desde muy lejos!",
+  "¡<p1> suelta una volea desde lejos!"
+ ],
+ "SHOT_HALF_VOLLEY": [
+  "¡<p1> de media volea!",
+  "¡<p1> le pega de media volea!",
+  "¡<p1> golpea el balón de media volea!",
+  "¡<p1> la caza al bote y dispara!",
+  "¡<p1> suelta un zapatazo de media volea!"
+ ],
+ "SHOT_HEADER": [
+  "¡<p1> de cabeza!",
+  "¡<p1> cabecea hacia la portería!",
+  "¡¡Cabezazo de <p1>!!",
+  "¡¡Remate de cabeza de <p1>!!",
+  "¡<p1> se eleva y cabecea a puerta!",
+  "¡<p1> conecta un potente cabezazo a puerta!"
+ ],
+ "SHOT_HIGH_DRIVE": [
+  "¡<p1> con un disparo potentísimo!",
+  "¡<p1> le pega con rabia!",
+  "¡Disparo alto y fuerte de <p1> a portería!",
+  "¡¡Zapatazo de <p1> a la escuadra!!"
+ ],
+ "SHOT_HITS_BAR": [
+  "¡<p1> la estrella en el larguero!",
+  "¡¡Al larguero!!",
+  "¡¡Da en el larguero!!",
+  "¡¡Sale rebotada del larguero!!"
+ ],
+ "SHOT_HITS_POST": [
+  "¡<p1> la estrella en el poste!",
+  "¡El poste le niega el gol a <p1>!",
+  "¡¡Al palo!!",
+  "Da en la madera...|¡¡Y sale despejada!!"
+ ],
+ "SHOT_JUST_OVER": [
+  "¡Pero <p1> la manda por muy poco por encima!",
+  "<p1> estuvo cerca|¡¡El balón rozó la parte de arriba del larguero!!",
+  "¡Pero <p1> la manda justo por encima!",
+  "¡Qué cerca <p1>!|¡¡Se va justo por encima del larguero!!",
+  "¡Qué cerca, <p1>!|¡Roza la parte de arriba del larguero!",
+  "Se va justo por encima, de <p1>"
+ ],
+ "SHOT_JUST_WIDE": [
+  "¡Fuera por poco, de <p1>!",
+  "¡<p1> manda el balón fuera por centímetros!",
+  "¡Qué cerca ha estado <p1>!",
+  "¡<p1> da en la red lateral!",
+  "¡Se va fuera por poco, de <p1>!",
+  "Fuera por centímetros|¡Qué cerca ha estado <p1>!"
+ ],
+ "SHOT_LOW_DRIVE": [
+  "¡<p1> con un disparo raso!",
+  "¡<p1> dispara fuerte y raso!",
+  "¡<p1> la manda rasa a portería!",
+  "¡¡Disparo raso de <p1>!!",
+  "¡¡<p1> la mete fuerte y rasa!!",
+  "¡¡<p1> con el disparo!!",
+  "¡¡<p1> la revienta a ras de suelo!!",
+  "¡¡<p1> la manda rasa!!",
+  "¡¡<p1> intenta pegarle raso!!",
+  "¡¡<p1> suelta un disparo raso a portería!!"
+ ],
+ "SHOT_OVER": [
+  "¡Por encima del larguero!",
+  "¡Se ha ido por encima!",
+  "¡Pero el balón sale volando por encima del larguero!",
+  "¡Pero se ha ido muy por encima del larguero!"
+ ],
+ "SHOT_OVER_WIDE": [
+  "¡Pero <p1> la manda alta y desviada!",
+  "¡<p1> manda el balón alto y lejos de la portería!",
+  "¡Pero <p1> la manda muy desviada!",
+  "Pero no pudo dirigirla|Se ha ido muy desviada",
+  "Se ha ido alta y desviada, de <p1>",
+  "¡Ha acabado en la grada detrás de la portería!"
+ ],
+ "SHOT_VOLLEY": [
+  "¡<p1> de volea!",
+  "¡<p1> dispara de volea!",
+  "¡¡De volea, dispara <p1>!!",
+  "¡¡<p1> suelta una volea a portería!!"
+ ],
+ "SHOT_WELL_OVER": [
+  "¡Pero <p1> la manda a las nubes!",
+  "¡Pero <p1> no consigue bajarla!",
+  "¡Sin embargo, <p1> la manda muy por encima del larguero!",
+  "¡Pero <p1> la levanta muy por encima!",
+  "<p1> se equivoca por completo|¡Se va por encima sin peligro!",
+  "¡<p1> la ha mandado muy por encima del larguero!"
+ ],
+ "SHOT_WELL_OVER_HEADER": [
+  "¡Pero <p1> la manda muy por encima!",
+  "¡Pero <p1> cabecea muy por encima del larguero!",
+  "¡Pero <p1> no consigue bajar su cabezazo!",
+  "¡Pero <p1> solo puede cabecear por encima del larguero!",
+  "¡Pero ese cabezazo de <p1> se va muy por encima!",
+  "¡Pero <p1> cabecea muy por encima del larguero!"
+ ],
+ "SHOT_WELL_WIDE": [
+  "¡Pero <p1> la manda muy desviada!",
+  "¡Sin embargo, el intento de <p1> se va muy lejos de la portería!",
+  "Se ha ido desviadísima",
+  "¡Qué disparo tan malo de <p1>!|Se ha ido lejísimos de la portería"
+ ],
+ "SHOT_WIDE": [
+  "¡Pero <p1> la manda fuera!",
+  "¡Pero se va fuera!",
+  "¡Pero <p1> no encuentra portería!",
+  "¡Pero <p1> manda el balón fuera!"
+ ],
+ "START_MATCH": [
+  "<t> sacan de centro",
+  "<t> inician el partido",
+  "<t> ponen el partido en marcha"
+ ],
+ "START_SHOOTOUT_RUN_UP": [
+  "<p1> toma carrerilla...",
+  "<p1> se acerca al balón...|Toma carrerilla..."
+ ],
+ "SUBSTITUTION": [
+  "<p1> sustituye a <p2>",
+  "<p2> se retira y entra <p1> en su lugar",
+  "<p1> salta al campo para sustituir a <p2>",
+  "Parece que es <p2> quien se retira|Le va a sustituir <p1>",
+  "<p1> entra por <p2>",
+  "<p2> se retira y entra <p1>",
+  "<p2> abandona el terreno de juego...|y le sustituye <p1>",
+  "<p1> entra para sustituir a <p2>",
+  "<p2> se marcha del campo...|<p1> le sustituye",
+  "Entra <p1> por <p2>",
+  "<p1> sustituye a <p2>",
+  "<p2> es sustituido...|<p1> entra en su lugar"
+ ],
+ "TAKE_CORNER": [
+  "<p1> con el córner",
+  "<p1> se acerca a sacar el córner",
+  "El córner lo saca <p1>",
+  "<p1> cuelga el córner al área",
+  "<p1> pone el balón por arriba al área",
+  "<p1> manda el córner al área",
+  "<p1> mete el córner con rosca",
+  "<p1> se acerca al balón...|Y pone el córner suave",
+  "<p1> manda el córner al segundo palo",
+  "<p1> manda el córner al primer palo",
+  "<p1> toma carrerilla para sacar el córner",
+  "<p1> intenta un córner cerrado",
+  "<p1> intenta un córner abierto",
+  "<p1> busca colgar un balón bombeado"
+ ],
+ "TAKE_CORNER_TO_EDGE_OF_BOX": [
+  "<p1> con el córner...|La pone al borde del área",
+  "El córner lo saca <p1>|La juega al borde del área...",
+  "<p1> se acerca al balón...|Busca el borde del área"
+ ],
+ "TAKE_FREE_KICK": [
+  "<p1> con el tiro libre",
+  "<p1> va a lanzar el tiro libre",
+  "<p1> se dispone a lanzar el tiro libre",
+  "<p1> saca rápido el tiro libre",
+  "<p1> cuelga el tiro libre",
+  "Tiro libre lanzado por <p1>",
+  "<p1> mete el tiro libre con rosca",
+  "<p1> saca rápidamente el tiro libre",
+  "<p1> lanzará el tiro libre",
+  "<p1> va a lanzarlo"
+ ],
+ "TAKE_GOAL_KICK": [
+  "<p1> con el saque de puerta",
+  "<p1> saca de puerta",
+  "Saque de puerta de <p1>",
+  "<p1> manda el saque de puerta arriba",
+  "<p1> saca rápido de puerta",
+  "<p1> reanuda con el saque de puerta",
+  "<p1> saca rápido de puerta",
+  "<p1> reanuda y manda el balón arriba"
+ ],
+ "TAKE_PENALTY": [
+  "<p1> con el penalti...",
+  "Va a ser <p1> quien tire el penalti...",
+  "<p1> se dispone a lanzar desde los once metros...",
+  "<p1> tiene la ocasión de marcar desde el punto de penalti...",
+  "<p1> se acerca al balón...",
+  "<p1> se acerca al balón con confianza...",
+  "<p1> toma carrerilla para lanzar...",
+  "<p1> toma carrerilla para lanzar...",
+  "<p1> coloca el balón en el punto de penalti...",
+  "<p1> toma carrerilla para tirar el penalti...",
+  "<p1> inicia la carrera..."
+ ],
+ "TAKE_SHORT_CORNER": [
+  "<p1> saca el córner en corto",
+  "El córner lo saca <p1>|La juega en corto...",
+  "<p1> opta por sacar en corto"
+ ],
+ "TAKE_THROW_IN": [
+  "<p1> saca de banda",
+  "<p1> se acerca a sacar de banda",
+  "El saque de banda lo hace <p1>",
+  "<p1> pone el balón en juego con las manos",
+  "<p1> devuelve el balón al juego desde la banda"
+ ],
+ "TIME_ADDED_ON": [
+  "El cuarto árbitro indica <N> minutos de descuento",
+  "Se indican <N> minutos de descuento",
+  "El cuarto árbitro indica <N> minutos de tiempo añadido"
+ ],
+ "WAIT": [
+  "<p1> aguanta el balón",
+  "<p1> se ve obligado a aguantar el balón",
+  "<p1> frena el juego",
+  "<p1> retiene la jugada",
+  "<p1> tarda en soltar el balón",
+  "<p1> pisa el balón",
+  "<p1> espera la llegada de compañeros"
+ ],
+ "WALL_BLOCKS_SHOT": [
+  "La barrera bloquea el disparo",
+  "Lo tapa la barrera"
+ ],
+ "WINS_JUMPFORBALL": [
+  "<p1> se eleva por encima de <p2>",
+  "<p1> ha saltado más que <p2> para ganar el balón",
+  "<p1> le gana el juego aéreo a <p2>",
+  "<p1> le gana el balón por arriba a <p2>",
+  "<p1> salta por encima de <p2>",
+  "<p1> salta con <p2>...",
+  "<p1> se eleva por encima de <p2> y gana el balón",
+  "<p1> gana el duelo aéreo con <p2>",
+  "<p1> salta más que <p2>",
+  "<p1> le gana la partida por arriba a <p2>"
+ ],
+ "WIN_THE_SHOOTOUT": [
+  "¡¡<t> ganan la tanda de penaltis!!"
+ ],
+ "YELLOW_CARD": [
+  "<Y><p1> ve la tarjeta amarilla",
+  "<Y>Eso va a ser amarilla para <p1>",
+  "<Rf> se lleva la mano al bolsillo|<Y>Y le enseña la amarilla a <p1>",
+  "<Rf> va a sacar una tarjeta|<Y>Es amarilla|<p1> tendrá que tener cuidado ahora",
+  "<Y><Rf> le enseña la amarilla a <p1>",
+  "<Y>¡Tarjeta amarilla!",
+  "<Rf> se lleva la mano al bolsillo|<Y>Y le enseña la amarilla",
+  "<Y>¡<Rf> saca una tarjeta amarilla!"
+ ]
+}

@@ -7,6 +7,7 @@ import { hash01 } from './rng';
 import { addNews, gs } from './state';
 import { unlock } from './achievements';
 import type { Club, ClubRecords, Fixture, MatchReport, Player, Staff, StaffRole } from './types';
+import { econ } from './econ';
 
 /** Kampe eller mål for klubben, der gør en spiller til klublegende */
 export const LEGEND_APPS = 150, LEGEND_GOALS = 60;
@@ -83,7 +84,7 @@ export function recordsAfterMove(p: Player, to: number, fee: number, loan: boole
     if (!loan && fee > 0 && (!r.sale || fee > r.sale.fee)) {
       const old = r.sale;
       r.sale = { pid: p.id, name: pname(p), fee, club: to, date: g.date };
-      if (fee >= 20_000_000) asOwner(from.id, () => unlock('bigSale'));
+      if (fee >= 20_000_000 * econ()) asOwner(from.id, () => unlock('bigSale'));
       if (old) asOwner(from.id, () => addNews({ cat: 'transfer', key: 'recb.news.sale', params: { player: pname(p), fee }, link: { kind: 'player', id: p.id } }));
     }
   }
@@ -127,7 +128,9 @@ export function retireIntoStaff(p: Player): Staff | null {
   const age = ageOn(p.dob, g.date);
   const legendOf = Object.values(g.clubs).find((c) => c.records?.players[p.id]?.legend);
   const notable = p.rep >= 55 || p.ca >= 120;
-  if (!legendOf && (!notable || age < 31 || hash01(g.seed, p.id, 91) > 0.35)) return null;
+  // CM 01/02 Set Role At Club: en spiller/træner eller spiller/assistent fortsætter i klubbens stab, når han stopper
+  const staffRole = p.jobRole && p.jobRole !== 'player' ? p.jobRole : undefined;
+  if (!staffRole && !legendOf && (!notable || age < 31 || hash01(g.seed, p.id, 91) > 0.35)) return null;
   const a = p.attrs;
   const clamp = (v: number) => Math.max(1, Math.min(20, Math.round(v)));
   const brains = (a[A.decisions] + a[A.anticipation] + a[A.positioning]) / 3;
@@ -140,7 +143,7 @@ export function retireIntoStaff(p: Player): Staff | null {
     discipline: clamp((a[A.professionalism] + a[A.temperament]) / 2),
     tactics: clamp(brains),
   };
-  const role: StaffRole = attrs.motivating >= 15 && attrs.tactics >= 13 ? 'assistant' : attrs.judgingAbility + attrs.judgingPotential > attrs.coaching * 2 + 2 ? 'scout' : 'coach';
+  const role: StaffRole = staffRole ?? (attrs.motivating >= 15 && attrs.tactics >= 13 ? 'assistant' : attrs.judgingAbility + attrs.judgingPotential > attrs.coaching * 2 + 2 ? 'scout' : 'coach');
   const id = g.nextId.staff++;
   const s: Staff = {
     id, first: p.first, last: p.last, nation: p.nation, dob: p.dob, club: 0, role, attrs,
@@ -150,6 +153,11 @@ export function retireIntoStaff(p: Player): Staff | null {
     exPlayer: { pid: p.id, ...(legendOf ? { legendOf: legendOf.id } : {}) },
   };
   g.staff[id] = s;
+  if (staffRole && p.club) {
+    s.club = p.club;
+    asOwner(p.club, () => addNews({ cat: 'general', key: 'recb.news.roleStaff', params: { player: pname(p), role: staffRole }, link: { kind: 'club', id: p.club } }));
+    return s;
+  }
   if (legendOf) asOwner(legendOf.id, () => addNews({ cat: 'general', key: 'recb.news.legendStaff', params: { player: pname(p), role: role } }));
   return s;
 }

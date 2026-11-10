@@ -16,6 +16,8 @@ const CLUBS = {
   it: [5691, 7369],  // Juventus, Milan
   pt: [4058, 2727],  // Flamengo, Corinthians
   tr: [4274, 3979],  // Galatasaray, Fenerbahçe
+  sv: [7008, 4833],  // Malmö FF, Hammarby
+  nb: [1703, 9665],  // Bodø/Glimt, Rosenborg
 };
 const langs = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(CLUBS);
 const tmp = '/tmp/cm-shots';
@@ -40,6 +42,9 @@ async function run(lang, look) {
   };
 
   await page.goto(url);
+  // sv/nb m.fl. hentes ved behov – vent på oversættelsen, før knapperne findes på navn
+  await page.waitForFunction(() => window.__cm?.t('start.new') !== 'New game', null, { timeout: 15000 }).catch(() => {});
+  await page.waitForTimeout(800);
   await page.getByRole('button', { name: await t('start.new') }).first().click();
   if (look === 'classic') await page.locator('.db-opt').nth(1).click();
   await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });

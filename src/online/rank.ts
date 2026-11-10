@@ -1,7 +1,7 @@
 // Klient til de globale ranglister (api/rank.ts). Profilen (navn + hemmeligt token) gemmes i browseren.
 // Kun singleplayer-sæsoner indsendes, og kun når ranglisterne findes (Vercel-udgaven).
 import { getAvatar } from '../ui/avatar';
-import { gs, hasGame, notify } from '../game/state';
+import { gs, hasGame, notify, previewInfo } from '../game/state';
 import { isMultiplayer } from '../game/humans';
 import { profileCreated } from './account';
 
@@ -37,7 +37,7 @@ let submitting = false;
 
 /** Send sæsoner der ikke er indsendt endnu (kaldes efter sæsonskift og når ranglisten åbnes) */
 export async function submitPending(): Promise<number> {
-  if (submitting || !hasGame() || !rankingAvailable()) return 0;
+  if (submitting || !hasGame() || !rankingAvailable() || previewInfo()) return 0;
   const g = gs();
   const prof = getProfile();
   if (!prof || isMultiplayer(g)) return 0;
@@ -64,7 +64,7 @@ export async function submitPending(): Promise<number> {
 
 /** Præstationer og karriereoversigt til den offentlige managerprofil */
 export async function syncProfile(): Promise<boolean> {
-  if (!hasGame() || !rankingAvailable()) return false;
+  if (!hasGame() || !rankingAvailable() || previewInfo()) return false;
   const g = gs();
   const prof = getProfile();
   if (!prof || isMultiplayer(g)) return false;

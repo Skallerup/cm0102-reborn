@@ -48,17 +48,25 @@ export function loadWorld(): Promise<WorldData> {
   return cache;
 }
 
-// Den originale CM 01/02-database (3.9.68), bundlet som en valgmulighed ved nyt spil (sæson 2001/02)
-let origCache: Promise<WorldData> | null = null;
-export function loadOriginalWorld(): Promise<WorldData> {
-  if (!origCache) {
-    origCache = fetch(`${import.meta.env.BASE_URL}data/world-original.json`).then((r) => {
-      if (!r.ok) throw new Error(`world-original.json: ${r.status}`);
+// De originale CM 01/02-databaser: 3.9.60 (udgivelsen – den, originalen selv bruger til 2001/02) og 3.9.65 (rettelser,
+// stadig 01/02-trupperne) med fællesskabets svenske rettelse ("Swedish_fixed"), samt 3.9.68 (02/03-trupperne med
+// 01/02-startdatoen). Den svenske rettelse ændrer kun skjulte svenske klubber – spillere, trupper og økonomi er de samme.
+export const ORIGINAL_VERSIONS = ['3.9.60', '3.9.65', '3.9.68'] as const;
+export type OriginalVersion = (typeof ORIGINAL_VERSIONS)[number];
+export const originalFile = (v: OriginalVersion) => (v === '3.9.60' ? 'world-original.json' : `world-original-${v.replace(/\./g, '')}.json`);
+const origCache = new Map<OriginalVersion, Promise<WorldData>>();
+export function loadOriginalWorld(v: OriginalVersion = '3.9.60'): Promise<WorldData> {
+  let c = origCache.get(v);
+  if (!c) {
+    const file = originalFile(v);
+    c = fetch(`${import.meta.env.BASE_URL}data/${file}`).then((r) => {
+      if (!r.ok) throw new Error(`${file}: ${r.status}`);
       return r.json() as Promise<WorldData>;
     });
-    origCache.catch(() => { origCache = null; });
+    c.catch(() => { origCache.delete(v); });
+    origCache.set(v, c);
   }
-  return origCache;
+  return c;
 }
 
 // ---------- CM 01/02-databasen (brugerens egen installation, gemt lokalt i browseren) ----------
@@ -75,7 +83,7 @@ export async function loadCMWorld(): Promise<CMWorld | null> {
 /** Læs Data-mappen fra en CM 01/02-installation og konverter den lokalt (intet sendes nogen steder hen) */
 export async function importCMFiles(list: FileList | File[]): Promise<CMWorld> {
   const files: Record<string, ArrayBuffer> = {};
-  const wanted = new Set([...CM_REQUIRED, 'colour.dat', 'stadium.dat']);
+  const wanted = new Set([...CM_REQUIRED, 'colour.dat', 'stadium.dat', 'officials.dat']);
   for (const f of Array.from(list)) {
     const name = f.name.toLowerCase();
     if (wanted.has(name) && !files[name]) files[name] = await f.arrayBuffer();

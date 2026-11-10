@@ -13,6 +13,7 @@ import { useGame } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { ClassicTactics } from './TacticsClassic';
+import { coarse } from './runs';
 
 export function Tactics() {
   const g = useGame()!;
@@ -38,14 +39,14 @@ export function Tactics() {
 }
 
 /** Pladsens betegnelse ud fra hvor den står på banen (x: 0 eget mål → 100 modstanderens, y: 0 venstre → 100 højre) */
-function slotAt(x: number, y: number): { pos: PosKey; side: Side } {
+export function slotAt(x: number, y: number): { pos: PosKey; side: Side } {
   const side: Side = y < 30 ? 'L' : y > 70 ? 'R' : 'C';
   const pos: PosKey = x < 15 && side === 'C' ? 'SW' : x < 27 ? 'D' : x < 36 ? (side === 'C' ? 'DM' : 'WB') : x < 56 ? 'M' : x < 70 ? 'AM' : 'ST';
   return { pos, side };
 }
 
 /** Navn til en egen formation ud fra pladserne, fx "4-1-2-3*" */
-function shapeName(slots: Slot[]): string {
+export function shapeName(slots: Slot[]): string {
   const n = { d: 0, dm: 0, m: 0, am: 0, st: 0 };
   for (const s of slots) {
     if (s.pos === 'GK') continue;
@@ -158,17 +159,22 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
   });
   const ind = sel !== null ? tactic.individual[sel] : null;
   const tm = tactic.team;
-  const iopt = (k: keyof NonNullable<typeof ind>, vals: [number | boolean, string][]) => ind && (
-    <div className="ti-row">
-      <div className="ti-label"><b>{t(`pi.${k}`)}</b><span className="muted">{t(`pih.${k}`)}</span></div>
-      <div className="seg" role="radiogroup">
-        {vals.map(([v, l]) => (
-          <button key={String(v)} type="button" role="radio" aria-checked={ind[k] === v} className={ind[k] === v ? 'on' : ''}
-            onClick={() => setInd({ [k]: v } as Partial<NonNullable<typeof ind>>)}>{l}</button>
-        ))}
+  // -1 = "holdets" / "auto" (feltet udelades); ja/nej-felter uden værdi tæller som nej
+  const iopt = (k: keyof NonNullable<typeof ind>, vals: [number | boolean, string][]) => {
+    if (!ind) return null;
+    const cur = ind[k] ?? (typeof vals[0][0] === 'boolean' ? false : -1);
+    return (
+      <div className="ti-row">
+        <div className="ti-label"><b>{t(`pi.${k}`)}</b><span className="muted">{t(`pih.${k}`)}</span></div>
+        <div className="seg" role="radiogroup">
+          {vals.map(([v, l]) => (
+            <button key={String(v)} type="button" role="radio" aria-checked={cur === v} className={cur === v ? 'on' : ''}
+              onClick={() => setInd({ [k]: v === -1 ? undefined : v } as Partial<NonNullable<typeof ind>>)}>{l}</button>
+          ))}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
   const opt = (k: keyof TeamInstructions, vals: [number | string | boolean, string][]) => (
     <div className="ti-row">
       <div className="ti-label"><b>{t(`ti.${k}`)}</b><span className="muted">{t(`tih.${k}`)}</span></div>
@@ -191,7 +197,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
           </select>
           <button className="small" disabled={!hist.length} onClick={undo} title={t('tac.undoHint')}>↶ {t('tac.undo')}{hist.length ? ` (${hist.length})` : ''}</button>
           {!gs().draft && <button className={`small ${editPos ? 'primary' : ''}`} onClick={() => { setEditPos(!editPos); setSel(null); }} title={t('tac.movePosHint')}>✥ {t(editPos ? 'tac.movePosDone' : 'tac.movePos')}</button>}
-          <span className="muted">{t(editPos ? 'tac.movePosHint' : 'tac.hint2')}</span>
+          <span className="muted">{t(editPos ? 'tac.movePosHint' : coarse() ? 'tac.hint2Touch' : 'tac.hint2')}</span>
         </div>
         <div className={`pitch ${editPos ? 'editing' : ''}`} ref={pitchRef}
           onDragOver={(e) => { if (drag !== null && tactic.lineup.includes(drag)) e.preventDefault(); }}
@@ -243,7 +249,12 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             return (
               <div key={i} className={`slot ${sel === i ? 'picked' : ''} ${p ? '' : 'empty'} ${drag !== null ? 'drop' : ''} ${moving?.i === i ? 'moving' : ''}`}
                 style={{ left: `${slotLeft(s)}%`, top: `${slotTop(s)}%` }}
-                onClick={() => { if (!editPos) setSel(sel === i ? null : i); }}
+                onClick={() => {
+                  if (editPos) return;
+                  // tryk på en spiller og så en anden på banen: de bytter plads (mobilens udgave af træk)
+                  if (sel !== null && sel !== i && tactic.lineup[sel] && !menu) { assign(i, tactic.lineup[sel]); setSel(null); return; }
+                  setSel(sel === i ? null : i);
+                }}
                 onContextMenu={(e) => { if (!p || s.pos === 'GK' && false) return; e.preventDefault(); setSel(i); setMenu({ i, left: e.clientX, top: e.clientY }); }}
                 onPointerDown={(e) => {
                   if (editPos && s.pos !== 'GK') { e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); setMoving({ i, x: s.x, y: s.y }); return; }
@@ -251,9 +262,10 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                   if (e.pointerType === 'touch' && p) { const { clientX, clientY } = e; press.current = setTimeout(() => { setSel(i); setMenu({ i, left: clientX, top: clientY }); }, 550); }
                 }}
                 onPointerUp={() => { if (press.current) { clearTimeout(press.current); press.current = null; } }}
+                onPointerCancel={() => { if (press.current) { clearTimeout(press.current); press.current = null; } }}
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => { e.stopPropagation(); if (drag !== null) assign(i, drag); setDrag(null); }}
-                draggable={!!p && !editPos}
+                draggable={!!p && !editPos && !coarse()}
                 onDragStart={(e) => {
                   if (!p) return;
                   setDrag(p.id);
@@ -286,7 +298,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
             <button className={`ctx-toggle ${ins[k] ? 'on' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { [k]: !ins[k] } as Partial<PlayerInstructions>); }}>{ins[k] ? '✓' : '○'} {label}</button>
           );
           return (
-            <div className="ctx-menu" style={{ left: Math.min(menu.left, window.innerWidth - 340), top: Math.min(menu.top, window.innerHeight - 300) }} onClick={(e) => e.stopPropagation()}>
+            <div className="ctx-menu" style={{ left: Math.max(4, Math.min(menu.left, window.innerWidth - 340)), top: Math.max(4, Math.min(menu.top, window.innerHeight - 300)) }} onClick={(e) => e.stopPropagation()}>
               <div className="ctx-title">{p.last} · {sl.pos}{sl.side !== 'C' ? ' ' + sl.side : ''}</div>
               <div className="ctx-row role">
                 {([[0, '⬇', 'tac.roleDef'], [1, '●', 'tac.roleBal'], [2, '⬆', 'tac.roleAtt']] as const).map(([v, ic, k]) => (
@@ -314,6 +326,14 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                 </select>
               </label>
             ))}
+            {(['playmaker', 'targetMan'] as const).map((k) => (
+              <label key={k} className="row setpiece-row"><span>{t(`tac.${k}`)}</span>
+                <select value={tactic.team[k] ?? 0} onChange={(e) => change({ ...tactic, team: { ...tactic.team, [k]: Number(e.target.value) || undefined } })}>
+                  <option value={0}>—</option>
+                  {tactic.lineup.map((id) => byId.get(id)).filter(Boolean).map((p) => <option key={p!.id} value={p!.id}>{p!.last}</option>)}
+                </select>
+              </label>
+            ))}
           </div>
         </Panel>
       </div>
@@ -334,6 +354,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
               {opt('tackling', [[0, t('ti.easy')], [1, t('ti.normal')], [2, t('ti.hard')]])}
               {opt('marking', [['zonal', t('ti.zonal')], ['man', t('ti.man')]])}
               {opt('offside', [[false, t('common.no')], [true, t('common.yes')]])}
+              {opt('menBehind', [[false, t('common.no')], [true, t('common.yes')]])}
             </div>
           </div>
         </Panel>
@@ -347,10 +368,15 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                 {iopt('crossing', [[0, t('ti.rarely')], [1, t('ti.mixed')], [2, t('ti.often')]])}
                 {iopt('runWithBall', [[false, t('common.no')], [true, t('common.yes')]])}
                 {iopt('throughBalls', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('holdUp', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('passing', [[-1, t('ti.teamSetting')], [0, t('ti.short')], [1, t('ti.mixed')], [2, t('ti.long')]])}
+                {iopt('setPieces', [[-1, t('ti.auto')], [0, t('sp.back')], [1, t('sp.normal')], [2, t('sp.forward')]])}
               </div>
               <div className="ti-group">
                 <div className="ti-head">🛡 {t('tac.withoutBall')}</div>
                 {iopt('tightMarking', [[false, t('common.no')], [true, t('common.yes')]])}
+                {iopt('closingDown', [[-1, t('ti.teamSetting')], [0, t('ti.rarely')], [1, t('ti.sometimes')], [2, t('ti.often')]])}
+                {iopt('tackling', [[-1, t('ti.teamSetting')], [0, t('ti.easy')], [1, t('ti.normal')], [2, t('ti.hard')]])}
                 <div className="ti-head" style={{ marginTop: 6 }}>✦ {t('tac.roleHead')}</div>
                 {iopt('freeRole', [[false, t('common.no')], [true, t('common.yes')]])}
               </div>

@@ -1,6 +1,7 @@
 // Transfers i klassisk tema ("Player & Staff Search"): budget øverst til højre, fanerne Short List · Player Search ·
 // Staff Search · Scout #1 · Scout #2 (og Scout #3-#5, tilbud og handler nederst), værktøjslinjen Search ▾ · View ▾ ·
 // Filters, en sidevisning (Pg 1/112), den klassiske tabel og filterdialogen "Filters for Player Search".
+import { nameQuery } from '../search';
 import { useEffect, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
@@ -10,7 +11,7 @@ import type { Trait } from '../../game/personality';
 import { transferRealism } from '../../game/transfers';
 import type { Player, Staff } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
-import { ClassicSub, CxDrop, type DropItem } from '../classic';
+import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
 import { Seg } from '../classicOptions';
 import { Select } from '../select';
 import { Stars, Tabs, posStr } from '../components';
@@ -23,6 +24,7 @@ const PAGE = 16;
 
 export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   const g = useGame()!;
+  const { nav } = useNav();
   const [tab, setTab] = useRouteState('tab', initial ?? 'search');
   const pending = g.offers.filter((o) => o.status === 'pending' && o.seller === g.userClub).length;
   const club = g.clubs[g.userClub];
@@ -33,7 +35,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   // (tilbud og handler, som originalen ikke har her, ligger yderst i den nederste række)
   return (
     <div>
-      <Head title={t('cl.tr.title')} action={club ? <span className="cx-funds">{t('cl.tr.funds', { fee: money(club.transferBudget) })}</span> : undefined} />
+      <Head title={t('cl.tr.title')} action={club ? <button className="cx-funds" title={t('nav.finance')} onClick={() => nav({ name: 'finance' })}>{t('cl.tr.funds', { fee: money(club.transferBudget) })}</button> : undefined} />
       <Tabs tabs={[
         ['shortlist', t('cl.tr.shortlist')], ['search', t('tr.search')], ['staff', t('cl.tr.staffSearch')],
         [scoutKey(1), t('cl.tr.scoutN', { n: 1 })], [scoutKey(2), t('cl.tr.scoutN', { n: 2 })],
@@ -178,6 +180,7 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
                 onChange={(v) => set('side', v === 'any' ? '' : v as Filters['side'])} />)}
               {row(t('cl.fl.injuries'), <Seg value={f.noInjured} opts={[[false, any], [true, t('cl.fl.none')]]} onChange={(v) => set('noInjured', v)} />)}
               {g.userClub > 0 && row(t('cl.fl.interested'), yesNo(f.interested, (v) => set('interested', v)))}
+              {g.userClub > 0 && row(t('tr.f.scouted'), yesNo(!!f.scouted, (v) => set('scouted', v)))}
               {g.options.masking && row(t('cl.fl.scouted'), yesNo(f.onlyKnown, (v) => set('onlyKnown', v), t('cl.fl.no')))}
               {g.userClub > 0 && row(t('cl.fl.squad'), yesNo(f.includeSquad, (v) => set('includeSquad', v), t('cl.fl.no')))}
             </div>
@@ -228,16 +231,17 @@ function StaffSearch() {
   const [pages, setPages] = useState(1);
   const list = Object.values(g.staff).filter((s) => s.club !== g.userClub
     && (preset === 'all' || (preset === 'free' ? !s.club : s.role === preset))
-    && (!q || `${s.first} ${s.last}`.toLowerCase().includes(q.toLowerCase())));
+    && (!q || !!nameQuery(q)?.(s.first, s.last)));
   useEffect(() => setPg(0), [list.length]);
   const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : natName(g.nations[s.nation]?.name);
   const based = (s: Staff) => { const c = g.clubs[s.club]; return c ? compName(g.leagues[c.league]?.name) ?? natName(g.nations[c.nation]?.name) : natName(g.nations[s.nation]?.name); };
   const cols: CxCol<Staff>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (s) => (!s.club ? <span className="cx-inf" title={t('common.free')}>{t('cl.st.free')}</span> : null), sort: (s) => (s.club ? 1 : 0) },
     { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
-      render: (s) => <span onClick={() => nav({ name: 'staff', tab: 'hire', state: { role: s.role === 'manager' ? 'coach' : s.role, source: s.club ? 'clubs' : 'free', onlyWilling: false } })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
+      render: (s) => <span className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
     { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where },
-    { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: based, sort: based },
+    // Based: ligaen kan klikkes (gul understregning under musen, som i CM 01/02)
+    { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => { const c = g.clubs[s.club]; return c && g.leagues[c.league] ? <span className="link" onClick={() => nav({ name: 'competitions', id: c.league })}>{based(s)}</span> : <span className="link" onClick={() => nav(nationRoute(c?.nation ?? s.nation))}>{based(s)}</span>; }, sort: based },
     { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: (s) => t(`role.staff.${s.role}`), sort: (s) => t(`role.staff.${s.role}`) },
     { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => repLabel(s.rep), sort: (s) => s.rep },
   ];
@@ -252,7 +256,7 @@ function StaffSearch() {
       <div className="cx-subtitle small">{t('cl.tr.staffSearch')}</div>
       <CxTable rows={list} cols={cols} rowKey={(s) => s.id} initialSort="rep" page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
-        btn={() => <span className="cx-rowbtn narrow" />} />
+        btn={() => <span className="cx-rowbtn" />} />
       <div className="cx-found">{t('cl.st.found', { n: list.length.toLocaleString(t('cl.locale')) })}</div>
     </div>
   );
@@ -320,7 +324,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const based = (p: Player) => { const c = g.clubs[p.club]; return c ? natName(g.nations[c.nation]?.name) ?? '' : t('common.free'); };
   const base: CxCol<Player>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{t(`cl.tag.${x[0]}`)}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}{p.club !== g.userClub && (g.knowledge[p.id] ?? 0) >= 60 && <span className="cx-sct" title={t('tr.sctTip')}> Sct</span>}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : '-'), sort: (p) => g.clubs[p.club]?.name ?? '' };
   const pos: CxCol<Player> = { key: 'pos', label: t('col.pos'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };
@@ -353,7 +357,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     ? [...base, pos, ...SHOW_ATTRS.map(attrCol)]
     : view === 'notes'
     ? [...base, club, pos, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: (p) => p.notes || '-', sort: (p) => (p.notes ? 0 : 1) }]
-    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: based, sort: based }, pos, val, ...real];
+    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: (p) => (p.club && g.clubs[p.club] ? <span className="link" onClick={() => nav(nationRoute(g.clubs[p.club].nation))}>{based(p)}</span> : based(p)), sort: based }, pos, val, ...real];
   return (
     <>
       {viewMenu && <div className="cx-tools cx-tools-inline"><ViewMenu view={view} setView={setOwnView} /></div>}
@@ -363,7 +367,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
         btn={(p) => {
           const on = g.shortlist.includes(p.id);
-          return <button className={`cx-rowbtn narrow ${on ? 'on' : ''}`} title={on ? t('player.unshortlist') : t('player.shortlist')} onClick={() => act({ t: 'shortlist', pid: p.id, on: !on })}>{on ? '★' : ''}</button>;
+          return <button className={`cx-rowbtn ${on ? 'on' : ''}`} title={on ? t('player.unshortlist') : t('player.shortlist')} onClick={() => act({ t: 'shortlist', pid: p.id, on: !on })}>{on ? '★' : ''}</button>;
         }} />
       <div className="cx-found">{t('cl.tr.found', { n: players.length.toLocaleString(t('cl.locale')) })}</div>
     </>

@@ -10,3 +10,26 @@ smoke-shots
 .env*
 .sources
 /*.zip
+e2e-shots
+orig-shots/
+# SEO-sider bygges af scripts/build-seo.ts (prebuild – også på Vercel)
+/public/cm-01-02/
+/public/2026-27/
+/public/cm-01-02-*/
+/public/play-cm-01-02-online/
+/public/faq/
+/public/sitemap*.xml
+/public/llms.txt
+/public/seo.css
+/public/da/
+/public/sv/
+/public/no/
+/public/de/
+/public/es/
+/public/fr/
+/public/it/
+/public/pt/
+/public/tr/
+/public/free-football-manager-browser-game/
+/public/404.html
+/public/changelog/

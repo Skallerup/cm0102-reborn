@@ -6,9 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#070b16" />
     <meta name="description" content="The legendary football manager reborn in your browser: 40,000+ real players in two databases (2026/27 and the original 2001/02), a match engine that thinks, press conferences, online multiplayer and global rankings. Free – no download." />
+    <link rel="alternate" type="application/rss+xml" title="CM Reborn – what's new" href="/changelog/feed.xml" />
     <link rel="canonical" href="https://cm0102reborn.com/" />
     <meta name="robots" content="index,follow,max-image-preview:large" />
-    <meta name="keywords" content="Championship Manager 01/02, CM 01/02, CM0102, football manager, browser game, free football manager, soccer manager online" />
+    <meta name="keywords" content="Championship Manager 01/02, CM 01/02, CM0102, play CM 01/02 online, CM 01/02 browser, CM 01/02 Mac, CM 01/02 wonderkids, CM 01/02 2026 update, football manager browser game, free football manager" />
     <!--%SEARCH_CONSOLE%-->
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="CM Reborn" />
@@ -36,7 +37,20 @@
           "url": "https://cm0102reborn.com/",
           "name": "CM Reborn",
           "alternateName": ["CM 01/02 Reborn", "CM0102 Reborn"],
-          "inLanguage": ["en", "da", "es", "fr", "de", "it", "pt-BR", "tr"]
+          "inLanguage": ["en", "da", "sv", "nb", "es", "fr", "de", "it", "pt-BR", "tr"],
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": { "@type": "EntryPoint", "urlTemplate": "https://cm0102reborn.com/cm-01-02/?q={search_term_string}" },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "Organization",
+          "@id": "https://cm0102reborn.com/#org",
+          "name": "CM Reborn",
+          "url": "https://cm0102reborn.com/",
+          "logo": "https://cm0102reborn.com/icon-512.png",
+          "sameAs": ["https://github.com/Skallerup/cm0102-reborn"]
         },
         {
           "@type": ["VideoGame", "WebApplication"],
@@ -52,7 +66,7 @@
           "playMode": ["SinglePlayer", "MultiPlayer"],
           "isAccessibleForFree": true,
           "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
-          "inLanguage": ["en", "da", "es", "fr", "de", "it", "pt-BR", "tr"]
+          "inLanguage": ["en", "da", "sv", "nb", "es", "fr", "de", "it", "pt-BR", "tr"]
         },
         {
           "@type": "FAQPage",
@@ -60,7 +74,7 @@
             { "@type": "Question", "name": "Does it cost anything?", "acceptedAnswer": { "@type": "Answer", "text": "No. The game is free, with no ads or in-game purchases." } },
             { "@type": "Question", "name": "Do I need to install anything?", "acceptedAnswer": { "@type": "Answer", "text": "No, it runs in your browser. You can install it as an app on phone and desktop, and it works offline too." } },
             { "@type": "Question", "name": "Where is my game saved?", "acceptedAnswer": { "@type": "Answer", "text": "Locally on your device – automatically, so you can close the tab and continue later. You can also export and import saves." } },
-            { "@type": "Question", "name": "Are the players real?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, more than 40,000 real players in two databases: the community October 2026 update for CM 01/02 (22,700 players in 2026/27) and the original CM 01/02 database from 2001/02 (18,700 players)." } },
+            { "@type": "Question", "name": "Are the players real?", "acceptedAnswer": { "@type": "Answer", "text": "Yes, more than 40,000 real players in two databases: the community October 2026 update for CM 01/02 (22,700 players in 2026/27) and the original CM 01/02 database from 2001/02 (35,000 players)." } },
             { "@type": "Question", "name": "Can I play with friends?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Create an online game, share the code and run your own clubs in the same world." } },
             { "@type": "Question", "name": "Is this the original Championship Manager?", "acceptedAnswer": { "@type": "Answer", "text": "No. It is an independent fan project, built from scratch and inspired by the classic manager games – with plenty of new ideas of its own." } }
           ]
@@ -68,15 +82,52 @@
       ]
     }
     </script>
-    <title>CM Reborn – the legendary football manager, free in your browser</title>
+    <title>CM 01/02 Reborn – Play Championship Manager 01/02 Online Free in Your Browser</title>
   </head>
   <body>
-    <div id="root"></div>
-    <noscript>
-      <h1>CM Reborn – the legend is back. Now in your browser.</h1>
-      <p>A free fan remake of Championship Manager 01/02: 40,000+ real players in the 2026/27 and original 2001/02 databases, a match engine that thinks, press conferences, online multiplayer, fantasy drafts and global rankings. No download, no ads. Available in English, Dansk, Español, Français, Deutsch, Italiano, Português and Türkçe.</p>
-      <p>Please enable JavaScript to play.</p>
-    </noscript>
+    <!-- med JavaScript vises appen med det samme (ingen glimt af den statiske tekst) -->
+    <script>document.documentElement.classList.add('js')</script>
+    <style>.js #seo-static{display:none}</style>
+    <div id="root">
+      <!-- Læsbart indhold til søgemaskiner og AI-crawlere uden JavaScript – React erstatter det, når spillet starter -->
+      <main id="seo-static" style="max-width:900px;margin:0 auto;padding:24px 16px;font-family:system-ui,sans-serif;color:#e8ecf6;background:#070b16">
+        <h1>CM Reborn – play Championship Manager 01/02 free in your browser</h1>
+        <p>CM Reborn is a free fan remake of Championship Manager 01/02 that runs in any web browser – no download, no ads. Play with the original CM 01/02 database for 2001/02 – the official 3.9.60, 3.9.65 or 3.9.68, with the original's attributes, managers and finances (37,000 players) – or the 2026/27 database (22,700 players), in the classic CM 01/02 look or a modern one.</p>
+        <ul>
+          <li>The classic CM 01/02 screens: blue menus, Match Overview commentary, squad selection, Staff Search and stadium backgrounds on matchdays</li>
+          <li>A match engine calibrated against a full season of the original game</li>
+          <li>Real squad numbers, wonderkids with random potential, transfers, loans, press conferences and the board</li>
+          <li>Online multiplayer with friends, a fantasy draft league and global rankings</li>
+          <li>Works on Mac, Windows, Linux, Chromebook, iPad, iPhone and Android – installable as an app, works offline</li>
+          <li>English, Dansk, Svenska, Norsk, Español, Français, Deutsch, Italiano, Português and Türkçe</li>
+        </ul>
+        <h2>Guides</h2>
+        <ul>
+          <li><a href="/play-cm-01-02-online/">Play CM 01/02 online – free, no download</a></li>
+          <li><a href="/cm-01-02-wonderkids/">CM 01/02 wonderkids (3.9.68 database)</a></li>
+          <li><a href="/cm-01-02-best-players/">CM 01/02 best players</a></li>
+          <li><a href="/cm-01-02-tactics/">CM 01/02 tactics explained</a></li>
+          <li><a href="/cm-01-02-2026-update/">CM 01/02 with a 2026/27 database</a></li>
+          <li><a href="/cm-01-02-mac-ipad-chromebook/">Play CM 01/02 on Mac, iPad and Chromebook</a></li>
+          <li><a href="/cm-01-02-match-engine/">How the CM 01/02 match engine works</a> and <a href="/cm-01-02-attributes-explained/">what every attribute does</a></li>
+          <li><a href="/cm-01-02-database-versions/">CM 01/02 3.9.60 vs 3.9.65 vs 3.9.68</a> · <a href="/cm-01-02/managers/">every manager in CM 01/02</a></li>
+          <li><a href="/cm-01-02-guides/">All CM 01/02 guides</a>: <a href="/cm-01-02-tips/">tips</a>, <a href="/cm-01-02-bosman-guide/">Bosman guide</a>, <a href="/cm-01-02-hidden-attributes/">hidden attributes</a>, <a href="/cm-01-02-ca-pa-explained/">CA and PA</a>, <a href="/cm-01-02-best-teams-to-manage/">best teams to manage</a>, <a href="/cm-01-02-download/">download</a></li>
+          <li><a href="/free-football-manager-browser-game/">Free football manager game in your browser</a></li>
+          <li><a href="/faq/">FAQ</a></li>
+        </ul>
+        <h2>Other languages</h2>
+        <p><a href="/da/spil-cm-01-02-online/" hreflang="da">Dansk</a> · <a href="/sv/spela-cm-01-02-online/" hreflang="sv">Svenska</a> · <a href="/no/spill-cm-01-02-online/" hreflang="nb">Norsk</a> · <a href="/de/cm-01-02-online-spielen/" hreflang="de">Deutsch</a> · <a href="/es/jugar-cm-01-02-online/" hreflang="es">Español</a> · <a href="/fr/jouer-cm-01-02-en-ligne/" hreflang="fr">Français</a> · <a href="/it/giocare-cm-01-02-online/" hreflang="it">Italiano</a> · <a href="/pt/jogar-cm-01-02-online/" hreflang="pt">Português</a> · <a href="/tr/cm-01-02-online-oyna/" hreflang="tr">Türkçe</a></p>
+        <h2>Databases</h2>
+        <ul>
+          <li><a href="/cm-01-02/">The CM 01/02 database (2001/02)</a> – every player with attributes, CA and PA: search players, clubs and leagues</li>
+          <li><a href="/cm-01-02/lists/">CM 01/02 lists</a>: <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">Bosman free transfers</a>, <a href="/cm-01-02/lists/bargains/">bargains</a>, <a href="/cm-01-02/lists/random-potential/">random potential players</a>, <a href="/cm-01-02/lists/fastest-players/">fastest players</a></li>
+          <li><a href="/cm-01-02/leagues/english-premier-division/">Premier League 2001/02</a>, <a href="/cm-01-02/leagues/italian-serie-a/">Serie A</a>, <a href="/cm-01-02/leagues/spanish-first-division/">La Liga</a>, <a href="/cm-01-02/leagues/german-first-division/">Bundesliga</a>, <a href="/cm-01-02/leagues/french-first-division/">French Division 1</a></li>
+          <li><a href="/2026-27/">The 2026/27 database</a> – today's players, clubs and wonderkids</li>
+        </ul>
+        <p>Loading the game… (JavaScript is required to play.)</p>
+      </main>
+    </div>
+    <noscript><p style="text-align:center;font-family:system-ui,sans-serif">Please enable JavaScript to play.</p></noscript>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

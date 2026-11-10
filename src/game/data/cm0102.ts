@@ -9,19 +9,36 @@ import type { WorldData } from '../newgame';
 export const CM_REQUIRED = ['index.dat', 'staff.dat', 'club.dat', 'nation.dat', 'club_comp.dat', 'first_names.dat', 'second_names.dat', 'common_names.dat'];
 
 /** Spillerevner fra CM-databasen (overskriver de afledte evner ved spilstart) */
-export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[] }
+export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: number[]; side: number[]; /** databasens rå PA, når `pa` er et skøn (negativ: -2/-1 = tilfældig, 0 = mangler, eller under CA) – originalens regler køres i newgame.ts (playerInit.ts) */ paRaw?: number;
+  /** omdømme fra spillerposten (byte 9/11/13, 0-10000): hjemme, nuværende, verden – originalens værdi følger dem */
+  rep?: [number, number, number];
+  /** fødderne fra spillerposten (venstre, højre; 1-20) – bruges i originalens afbalancering (sub_538ec0) */
+  feet?: [number, number] }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
+  /** 'stored' = egenskaberne står som i databasen (1-20); uden = ældre filer med de 18 allerede omregnet */
+  attrScale?: 'stored';
   ratings: Record<number, CMRatings>;
   clubRep: Record<number, number>;
   clubColors: Record<number, [string, string]>;
+  /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
+  clubFinance?: Record<number, [number, number, number]>;
+  /** originalens værdiformel (sub_4d0c60): [klubfaktor cf, landets omdømme (nation +0x8E), managerens vurdering af
+   *  talent (Judging Player Potential vist, 0 = ingen manager), managerens staff-id] pr. klub */
+  valueClub?: Record<number, [number, number, number, number]>;
+  /** dommere fra officials.dat: [fornavn, efternavn, nation, Discipline (byte 0x25, 0 = ikke vurderet), 0x27, omdømme] */
+  officials?: [string, string, number, number, number, number][];
+  /** stab fra databasen (ikke-spillerposten): [klub (0 = ledig), fornavn, efternavn, nation, fødselsdato, job (5 manager,
+   *  6 assistent, 8 træner, 9 spejder, 10 fysioterapeut), egenskaber [Coaching, Judging Player Ability, Judging Player Potential,
+   *  Physiotherapy, Motivating, Discipline, Tactical Knowledge] (0 = ikke sat), CA, omdømme (0-200), staff-id] */
+  staff?: [number, string, string, number, string, number, number[], number, number, number][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
 const dec = new TextDecoder('windows-1252');
 /** Antal rækker pr. land der importeres (flere gør simulationen langsom) */
-const MAX_TIERS = 2;
+const DEFAULT_TIERS = 2;
 
 class Reader {
   v: DataView;
@@ -45,12 +62,8 @@ class Reader {
   }
 }
 
-/** Omregning af intrinsiske evner til 1-20 (som spillet selv viser dem) */
-function convert(raw: number, ca: number, high: boolean): number {
-  const t = raw / 10 + (high ? ca / 20 : ca / 200) + 10;
-  const v = Math.floor((t * t) / 30 + t / 3 + 0.5);
-  return Math.max(1, Math.min(20, v));
-}
+// Databasen gemmer ALLE egenskaber som 1-20 (0 = mangler); de 18 interne omregnes først ved nyt spil med originalens
+// kæde (playerInit.ts shownFromStored: intern → sub_538ec0 → sub_538bc0 → sub_544380).
 
 // Player-postens felter fra offset 15 (efter ID, trøjenummer, CA, PA og tre omdømmer)
 const PF = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfielder', 'AttackingMidfielder', 'Attacker', 'WingBack',
@@ -60,11 +73,6 @@ const PF = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfiel
   'OneOnOnes', 'Pace', 'Passing', 'Penalties', 'Positioning', 'Reflexes', 'RightFoot', 'Stamina', 'Strength', 'Tackling', 'Teamwork',
   'Technique', 'ThrowIns', 'Versatility', 'Vision', 'WorkRate'] as const;
 type PField = (typeof PF)[number];
-
-// Evner der gemmes intrinsisk (omregnes med CA); målmandsevner er "høje" for målmænd, de øvrige for markspillere
-const INTRINSIC_ALWAYS_HIGH: PField[] = ['Anticipation', 'Decisions', 'Heading', 'LongShots', 'Passing', 'Penalties', 'Positioning', 'Tackling'];
-const INTRINSIC_GK: PField[] = ['Handling', 'Reflexes', 'OneOnOnes'];
-const INTRINSIC_OUTFIELD: PField[] = ['Crossing', 'Dribbling', 'Finishing', 'Marking', 'Movement', 'ThrowIns', 'Vision'];
 
 // Vores ATTRS-rækkefølge → kilde (P = player-post, S = staff-post)
 const MAP: [string, 'P' | 'S', string][] = [
@@ -97,7 +105,10 @@ function readIndex(buf: ArrayBuffer): IndexRec[] {
 function hashStr(s: string) { let h = 2166136261; for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619); return h >>> 0; }
 
 /** Konverter CM 01/02's Data-mappe til spillets verdensformat */
-export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
+/** `maxTiers`: rækker pr. land. `allClubs`: alle klubber og spillere kommer med – klubber uden for de importerede
+ *  ligaer får liga-id `CMX<division>` (uden liga-post); byggescriptet afgør, hvad der beholdes. */
+export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean } = {}): CMWorld {
+  const MAX_TIERS = opts.maxTiers ?? DEFAULT_TIERS;
   const missing = CM_REQUIRED.filter((f) => !files[f]);
   if (missing.length) throw new Error(`missing:${missing.join(',')}`);
   const index = readIndex(files['index.dat']);
@@ -138,6 +149,21 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   }).sort((a, b) => b.distinct - a.distinct);
   if (!scored[0] || scored[0].distinct < probe * 0.05) throw new Error('index');
   const PLAYER_REF = scored[0].off;
+  // ikke-spillere (68 bytes: CA +4, Judging Player Potential +0x18) – referencen findes som spillerens (flest distinkte id'er)
+  const tNon = staffTables.find((_, i) => i > 0 && sizes[i] === 68);
+  const nonAt = new Map<number, number>();
+  if (tNon) for (let k = 0; k < tNon.count; k++) nonAt.set(S.i32(tNon.offset + k * 68), tNon.offset + k * 68);
+  let NON_REF = -1;
+  if (tNon) {
+    let bestN = 0;
+    for (const off of candidateOffsets) {
+      if (off === PLAYER_REF) continue;
+      const seen = new Set<number>();
+      for (let k = 0; k < probe; k++) { const o = tStaff.offset + k * staffSize; const v = S.i32(o + off); if (v !== S.i32(o) && nonAt.has(v)) seen.add(v); }
+      if (seen.size > bestN) { bestN = seen.size; NON_REF = off; }
+    }
+    if (bestN < probe * 0.01) NON_REF = -1;
+  }
 
   // navne
   const names = (file: string) => {
@@ -152,9 +178,11 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   const N = new Reader(files['nation.dat']);
   const nationIdx = new Map<number, number>();
   const nations: { name: string; code: string }[] = [];
+  const nationVal = new Map<number, [number, number]>(); // nation +0x7E (økonomisk niveau 1-3), +0x8E (omdømme, i16)
   for (let o = 0; o + 290 <= files['nation.dat'].byteLength; o += 290) {
     const id = N.i32(o);
     nationIdx.set(id, nations.length);
+    nationVal.set(id, [N.u8(o + 0x7e), N.i16(o + 0x8e)]);
     nations.push({ name: N.str(o + 4, 51), code: N.str(o + 83, 4) || N.str(o + 56, 3).toUpperCase() });
   }
 
@@ -177,6 +205,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
 
   // stadioner (kapacitet)
   const seatsOf = new Map<number, number>();
+  const stadiumName = new Map<number, string>();
   if (files['stadium.dat']) {
     const St = new Reader(files['stadium.dat']);
     // post: id (4) · navn (51) · by (4) · 1 byte · kapacitet (4, byte 60) · siddepladser (4, byte 64) · …
@@ -184,17 +213,22 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     for (let o = 0; o + 78 <= files['stadium.dat'].byteLength; o += 78) {
       const cap = St.i32(o + 60);
       if (cap > 0 && cap <= 150_000) seatsOf.set(St.i32(o), cap);
+      const nm = St.str(o + 4, 51).trim();
+      if (nm) stadiumName.set(St.i32(o), nm);
     }
   }
 
   // klubber
   const CL = new Reader(files['club.dat']);
-  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; stadium: number; maxAtt: number; fg: number; bg: number };
+  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; training: number; manager: number };
   const rawClubs: RawClub[] = [];
   for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
     rawClubs.push({
       id: CL.i32(o), name: CL.str(o + 4, 51), short: CL.str(o + 56, 26), nation: CL.i32(o + 83), division: CL.i32(o + 87),
       stadium: CL.i32(o + 105), maxAtt: CL.i32(o + 123), rep: CL.i16(o + 128), fg: CL.i32(o + 131), bg: CL.i32(o + 135),
+      balance: CL.i32(o + 101), status: CL.u8(o + 100), avgAtt: CL.i32(o + 115), training: CL.u8(o + 127),
+      // klubbens manager (staff-id; ejerens Bosman-projekt, db.rs: club.dat 207)
+      manager: CL.i32(o + 207),
     });
   }
   // ligaer: divisioner med mindst 8 klubber; niveau efter omdømme inden for landet
@@ -239,18 +273,82 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   const clubs: WorldData['clubs'] = [];
   const clubRep: Record<number, number> = {};
   const clubColors: Record<number, [string, string]> = {};
+  const clubFinance: Record<number, [number, number, number]> = {};
+  const valueClub: Record<number, [number, number, number, number]> = {};
   for (const c of rawClubs) {
-    if (!leagueSet.has(c.division)) continue;
+    if (!leagueSet.has(c.division) && !(opts.allClubs && nationIdx.has(c.nation))) continue;
     const seats = seatsOf.get(c.stadium) || (c.maxAtt > 0 && c.maxAtt <= 150_000 ? c.maxAtt : 0);
-    clubs.push([c.id, c.name, c.short || c.name, nationIdx.get(c.nation)!, lid(c.division), '', Math.min(120_000, seats), '']);
+    clubs.push([c.id, c.name, c.short || c.name, nationIdx.get(c.nation)!, leagueSet.has(c.division) ? lid(c.division) : `CMX${c.division}`, stadiumName.get(c.stadium) ?? '', Math.min(120_000, seats), '']);
     clubRep[c.id] = Math.max(3, Math.min(98, Math.round(Math.pow(c.rep / maxClubRep, 0.7) * 98)));
     const fg = colours.get(c.fg), bg = colours.get(c.bg);
     if (fg && bg) clubColors[c.id] = [bg, fg];
+    clubFinance[c.id] = [c.balance, Math.max(0, c.avgAtt), Math.min(20, c.training)];
+    // sub_4d0c60 0x4d110d..0x4d128a: cf = (25·divisionens omdømme² + klubbens omdømme) / (f·1000), f = (niveau+1)/2,
+    // ×2 semiprofessionel, ×7,5 amatør. Klub uden division: nation +0x85 – ikke porteret (0x4d11xx, *ukendt*), bruger 1
+    const nv = nationVal.get(c.nation);
+    let f = ((nv && nv[0] >= 1 && nv[0] <= 3 ? nv[0] : 3) + 1) * 0.5;
+    if (c.status === 2) f *= 2; else if (c.status === 3) f *= 7.5;
+    const x = comps.get(c.division)?.rep ?? 1;
+    valueClub[c.id] = [nv ? (25 * x * x + c.rep) / (f * 1000) : 0, nv?.[1] ?? 0, 0, c.manager];
   }
   const inGame = new Set(clubs.map((c) => c[0]));
+  for (const id of Object.keys(valueClub)) if (!inGame.has(+id)) delete valueClub[+id];
+  // managerne (club.dat 207 → staff.dat): navnet i clubs[7], så spillet bruger databasens rigtige managere
+  {
+    const want = new Map(rawClubs.filter((c) => inGame.has(c.id) && c.manager > 0).map((c) => [c.manager, c.id]));
+    const coach = new Map<number, string>();
+    for (let i = 0; i < tStaff.count && coach.size < want.size; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const club = want.get(S.i32(o));
+      if (club === undefined) continue;
+      // managerens Judging Player Potential (ikke-spiller +0x18) vist via sub_544410: display(CA + 2·trunc(clamp(10v−CA, ±200)/2))
+      const np = NON_REF >= 0 ? nonAt.get(S.i32(o + NON_REF)) : undefined;
+      if (np !== undefined && valueClub[club]) {
+        const nca = S.i16(np + 4), jp = S.u8(np + 0x18);
+        const t = (nca + 2 * Math.trunc(Math.max(-200, Math.min(200, 10 * jp - nca)) / 2)) * 0.05 + 10;
+        valueClub[club][2] = Math.max(1, Math.min(20, Math.trunc((t * t * 0.1 + t) / 3 + 0.5)));
+      }
+      const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
+      // "fornavn|efternavn|nation" (newgame deler ved |), så "Sir Alex" + "Ferguson" ikke bliver "Sir" + "Alex Ferguson"
+      const nm = cn ? `|${cn}` : `${first[S.i32(o + 4)] ?? ''}|${second[S.i32(o + 8)] ?? ''}`;
+      // tredje felt: managerens nationalitet (staff.dat 26 → nationens nummer i world.nations)
+      const nat = nationIdx.get(S.i32(o + 26));
+      if (nm.replace('|', '').trim()) coach.set(club, nat === undefined ? nm : `${nm}|${nat}`);
+    }
+    for (const c of clubs) c[7] = coach.get(c[0]) ?? '';
+  }
+
+  // stab (ikke-spillerposten, 68 bytes): 21 egenskaber i alfabetisk rækkefølge fra +14 (bekræftet i originalens Non-Playing Staff);
+  // jobkoden i personposten +61 (5 Manager, 6 Assistant Manager, 8 Coach, 9 Scout, 10 Physio – bekræftet for Man Utd 3.9.60)
+  const staff: NonNullable<CMWorld['staff']> = [];
+  if (NON_REF >= 0) {
+    // Coaching +16, Discipline +20, Judging Ability +23, Judging Potential +24, Motivating +27, Physiotherapy +30, Tactics +33
+    const OFS = [16, 23, 24, 30, 27, 20, 33];
+    for (let i = 0; i < tStaff.count; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const np = nonAt.get(S.i32(o + NON_REF));
+      if (np === undefined) continue;
+      const club = S.i32(o + 57), job = S.u8(o + 61);
+      const ca = S.i16(np + 4);
+      const att = OFS.map((k) => { const v = S.u8(np + k); return v >= 1 && v <= 20 ? v : 0; });
+      if (!att.some(Boolean)) continue;
+      const here = inGame.has(club);
+      if (here ? ![5, 6, 8, 9, 10].includes(job) : ca < 100) continue;
+      const nation = nationIdx.get(S.i32(o + 26));
+      if (nation === undefined) continue;
+      const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
+      const fn = cn ? '' : first[S.i32(o + 4)] ?? '', ln = cn || second[S.i32(o + 8)] || '';
+      if (!ln) continue;
+      let dob = S.date(o + 16);
+      if (!dob) { const yob = S.i16(o + 24); dob = yob > 1900 && yob < 2100 ? `${yob}-01-01` : ''; }
+      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o)]);
+    }
+  }
 
   // spillere
-  const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds'];
+  const fields = ['id', 'first', 'last', 'dob', 'nation', 'club', 'pos', 'foot', 'height', 'value', 'maxValue', 'caps', 'intGoals', 'contract', 'apps', 'minutes', 'goals', 'assists', 'yellows', 'reds', 'number', 'wage'];
   const players: WorldData['players'] = [];
   const ratings: Record<number, CMRatings> = {};
   const pName = names; void pName;
@@ -261,7 +359,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     const po = playerAt.get(pRef);
     if (pRef < 0 || po === undefined) continue;
     const id = S.i32(o);
-    const dob = S.date(o + 16);
+    // nogle spillere (fx Cherno Samba i 3.9.60) har kun fødselsåret (byte 24) – datoens år står som 1900
+    let dob = S.date(o + 16);
+    if (!dob) { const yob = S.i16(o + 24); if (yob > 1900 && yob < 2100) dob = new Date(Date.UTC(yob, 0, 1 + Math.max(0, S.i16(o + 16)))).toISOString().slice(0, 10); }
     const nation = nationIdx.get(S.i32(o + 26));
     if (!dob || nation === undefined) continue;
     let club = S.i32(o + 57);
@@ -271,20 +371,22 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     // spillere uden for de importerede ligaer kommer kun med som fri agenter, hvis de er gode nok
     if (!club && ca < 120) continue;
     let pa = S.i16(po + 7);
+    const rawPa = pa;
     const age = 2001 - Number(dob.slice(0, 4));
     // negativ PA = tilfældig potentiale i originalen: et deterministisk skøn ud fra alder
     if (pa <= 0 || pa < ca) pa = Math.min(200, ca + Math.round(((hashStr(String(id)) % 1000) / 1000) * Math.max(5, (24 - age) * 6)));
-    const isGK = get('Goalkeeper') >= 15;
+    // databasens egen PA, når den ikke er brugbar som den står (negativ, 0 eller under CA) – newgame.ts kører originalens regler
+    const paRaw = pa !== rawPa ? rawPa : undefined;
     // 0 betyder "ikke sat" i originaldatabasen (spillet finder selv på en værdi) – markeres med 0,
     // så spillet ved start bruger en rolleprofil ud fra position og CA i stedet
     const attrs = MAP.map(([, src, f]) => {
       if (src === 'S') { const v = S.i8(o + STAFF_ATTR_OFS[f]); return v > 0 ? Math.min(20, v) : 0; }
       const raw = get(f as PField);
-      if (raw === 0) return 0;
-      if (INTRINSIC_ALWAYS_HIGH.includes(f as PField)) return convert(raw, ca, true);
-      if (INTRINSIC_GK.includes(f as PField)) return convert(raw, ca, isGK);
-      if (INTRINSIC_OUTFIELD.includes(f as PField)) return convert(raw, ca, !isGK);
-      return raw < 0 ? 0 : Math.min(20, raw);
+      // uden for 1-20 = mangler (originalen udfylder dem ved spilstart)
+      if (raw < 1 || raw > 20) return 0;
+      // alle egenskaber gemmes som i databasen (1-20); de 18 interne regnes om ved nyt spil (playerInit.ts
+      // shownFromStored – originalens kæde med afbalanceringen sub_538ec0/sub_538bc0)
+      return raw;
     });
     const pos = ['Goalkeeper', 'Sweeper', 'Defender', 'DefensiveMidfielder', 'Midfielder', 'AttackingMidfielder', 'Attacker', 'WingBack'].map((f) => Math.max(1, Math.min(20, get(f as PField))));
     const side = [get('LeftSide'), get('Central'), get('RightSide')].map((v) => Math.max(1, Math.min(20, v)));
@@ -297,8 +399,26 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
     players.push([
       id, commonName ? '' : firstName, commonName || lastName || firstName, dob, nation, club, subPos(pos, side), foot, 0,
       Math.round(value), Math.round(value), S.u8(o + 34), S.u8(o + 35), contract ? `${contract.slice(0, 4)}-06-30` : '', 0, 0, 0, 0, 0, 0,
+      // trøjenummeret (byte 4 i spillerposten, 0 = intet)
+      Math.max(0, Math.min(99, S.i8(po + 4))),
+      // ugentlig løn i pund (staff.dat 78)
+      Math.max(0, S.i32(o + 78)),
     ]);
-    ratings[id] = { ca, pa, attrs, pos, side };
+    const rep: [number, number, number] = [S.i16(po + 9), S.i16(po + 11), S.i16(po + 13)];
+    const feet: [number, number] = [Math.max(0, Math.min(20, lf)), Math.max(0, Math.min(20, rf))];
+    ratings[id] = paRaw !== undefined ? { ca, pa, attrs, pos, side, paRaw, rep, feet } : { ca, pa, attrs, pos, side, rep, feet };
+  }
+
+  // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27
+  const officials: NonNullable<CMWorld['officials']> = [];
+  if (files['officials.dat']) {
+    const O = new DataView(files['officials.dat']);
+    for (let o = 0; o + 43 <= files['officials.dat'].byteLength; o += 43) {
+      const nat = nationIdx.get(O.getInt16(o + 22, true));
+      const last = second[O.getInt32(o + 8, true)] ?? '';
+      if (nat === undefined || !last) continue;
+      officials.push([first[O.getInt32(o + 4, true)] ?? '', last, nat, O.getUint8(o + 0x25), O.getUint8(o + 0x27), O.getInt32(o + 26, true)]);
+    }
   }
 
   // navnepuljer til regens (pr. nation)
@@ -319,12 +439,12 @@ export function parseCM0102(files: Record<string, ArrayBuffer>): CMWorld {
   }
 
   return {
-    kind: 'cm0102', version: 1, source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
-    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, rules,
+    kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
+    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 
-function subPos(pos: number[], side: number[]): string {
+export function subPos(pos: number[], side: number[]): string {
   if (pos[0] >= 15) return 'GK';
   const [L, C, R] = side;
   const wide = Math.max(L, R) >= 15 && C < 15 ? (L >= R ? 'L' : 'R') : '';

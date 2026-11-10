@@ -1,0 +1,268 @@
+// Landingssider på spillets øvrige sprog ("spil CM 01/02 online" på dansk, tysk, spansk …) med hreflang mellem dem
+// og den engelske /play-cm-01-02-online/. Teksterne er skrevet til siden (ikke maskinoversat fra i18n-filerne).
+import type { Page } from './layout';
+
+export interface LangPage { lang: string; hreflang: string; slug: string; title: string; h1: string; description: string; lead: string; cta: string; ctaNote: string; why: string; points: string[]; dbH: string; db: string; faq: [string, string][]; footer: string; nav: string }
+
+/** n = antal spillere i den originale database, m = i 2026/27 */
+export function langPages(n: string, m: string): LangPage[] {
+  return [
+    {
+      lang: 'da', hreflang: 'da', slug: 'da/spil-cm-01-02-online/', nav: 'Spil online',
+      title: 'Spil CM 01/02 online gratis – fodbold manager spil i browseren | CM Reborn',
+      h1: 'Spil Championship Manager 01/02 online – gratis i browseren',
+      description: `Spil en gratis genskabelse af Championship Manager 01/02 direkte i browseren: den originale 2001/02-database (${n} spillere), en 2026/27-database, det klassiske CM-udseende og onlinespil med vennerne. Virker på Mac, PC, iPad og mobil.`,
+      lead: 'CM Reborn er en gratis fan-genskabelse af Championship Manager 01/02, som kører direkte i browseren. Vælg den originale database fra 2001/02 eller 2026/27-opdateringen, det klassiske blå CM 01/02-udseende eller et moderne, og så er du i gang på få sekunder – uden installation, emulator eller patchfiler.',
+      cta: '▶ Spil gratis i browseren', ctaNote: 'Ingen download · ingen reklamer · virker på alle enheder',
+      why: 'Det får du',
+      points: [
+        `<b>To databaser:</b> den originale CM 01/02-database (alle tre officielle udgaver: 3.9.60, 3.9.65 og 3.9.68 – ${n} spillere) og 2026/27-opdateringen (${m} spillere).`,
+        '<b>De klassiske skærme:</b> blå menuer, Match Overview med den gule kommentar, holdudtagelse, taktik med løbepile, Staff Search og Find.',
+        '<b>En kampmotor kalibreret mod originalen:</b> mål, hjemmesejre, kort og skud pr. kamp som i det rigtige CM 01/02.',
+        '<b>Wonderkids med tilfældigt potentiale</b> (Cherno Samba, Tsigalko …), Bosman-handler, lejeaftaler, bestyrelsen og fyringer.',
+        '<b>Onlinespil</b> med vennerne, en fantasy-draft og globale ranglister.',
+        'Gemmes i browseren (og i skyen med en gratis konto). Kan installeres som app og virker offline. På dansk.',
+      ],
+      dbH: 'Slå spillerne op', db: 'Se alle spillernes egenskaber, CA og PA i <a href="/cm-01-02/">CM 01/02-databasen</a> – med <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">Bosman-spillere</a> og <a href="/cm-01-02/leagues/danish-premier-division/">Superligaen 2001/02</a>.',
+      faq: [
+        ["Hvilken CM 01/02-database kan jeg spille med?", "Alle tre officielle: 3.9.60 (udgivelsen, som CM 01/02 selv bruger til 2001/02 – standard), 3.9.65 og den sidste opdatering 3.9.68 med trupperne fra 2002/03. Du vælger, når du starter et nyt spil. Egenskaber, tilfældigt potentiale og økonomi er som i originalen."],
+        ['Kan man spille CM 01/02 online?', 'Ja. CM Reborn er en gratis genskabelse af CM 01/02, som du spiller i browseren på cm0102reborn.com – med den originale database fra 2001/02 eller 2026/27, uden download.'],
+        ['Er det gratis?', 'Ja. Spillet er gratis, uden reklamer og uden køb i spillet.'],
+        ['Virker det på Mac og iPad?', 'Ja. Det kører i Safari, Chrome, Firefox og Edge på Mac, Windows, Linux, Chromebook, iPad og mobil.'],
+        ['Er det det originale Championship Manager?', 'Nej. Det er et uafhængigt fanprojekt, bygget fra bunden og inspireret af CM 01/02. Det har ingen forbindelse til Sports Interactive, SEGA eller Eidos.'],
+      ],
+      footer: 'CM Reborn er et uafhængigt, gratis fanprojekt inspireret af Championship Manager 01/02 og har ingen forbindelse til Sports Interactive, SEGA eller Eidos.',
+    },
+    {
+      lang: 'sv', hreflang: 'sv', slug: 'sv/spela-cm-01-02-online/', nav: 'Spela online',
+      title: 'Spela CM 01/02 online gratis i webbläsaren – ingen nedladdning | CM Reborn',
+      h1: 'Spela Championship Manager 01/02 online – gratis i webbläsaren',
+      description: `Spela en gratis nyversion av Championship Manager 01/02 direkt i webbläsaren: originaldatabasen från 2001/02 (${n} spelare), en 2026/27-databas, det klassiska CM-utseendet och onlinespel med vänner. Fungerar på Mac, PC, iPad och mobil.`,
+      lead: 'CM Reborn är en gratis fan-nyversion av Championship Manager 01/02 som körs direkt i webbläsaren. Välj originaldatabasen från 2001/02 eller 2026/27-uppdateringen, det klassiska blå CM 01/02-utseendet eller ett modernt – och du är igång på några sekunder, utan installation.',
+      cta: '▶ Spela gratis i webbläsaren', ctaNote: 'Ingen nedladdning · ingen reklam · fungerar på alla enheter',
+      why: 'Det här får du',
+      points: [
+        `<b>Två databaser:</b> originaldatabasen för CM 01/02 (alla tre officiella versioner: 3.9.60, 3.9.65 och 3.9.68 – ${n} spelare) och 2026/27-uppdateringen (${m} spelare).`,
+        '<b>De klassiska skärmarna:</b> blå menyer, Match Overview med kommentaren, laguttagning, taktik med löppilar och Find.',
+        '<b>En matchmotor kalibrerad mot originalet</b> – mål, hemmasegrar och kort per match som i riktiga CM 01/02.',
+        '<b>Wonderkids med slumpmässig potential</b>, Bosman-värvningar, lån, styrelsen och sparken.',
+        '<b>Onlinespel</b> med vänner, fantasy-draft och globala rankingar.',
+        'Sparas i webbläsaren (och i molnet med ett gratis konto). Kan installeras som app. På svenska, med svenska kronor.',
+      ],
+      dbH: 'Slå upp spelarna', db: 'Se alla spelares egenskaper, CA och PA i <a href="/cm-01-02/">CM 01/02-databasen</a> – med <a href="/cm-01-02/lists/wonderkids/">wonderkids</a> och <a href="/cm-01-02/leagues/swedish-premier-division/">Allsvenskan 2001</a>.',
+      faq: [
+        ["Vilken CM 01/02-databas kan jag spela med?", "Alla tre officiella: 3.9.60 (originalutgåvan som CM 01/02 själv använder för 2001/02 – standard), 3.9.65 och den sista uppdateringen 3.9.68 med trupperna från 2002/03. Du väljer när du startar ett nytt spel. Egenskaper, slumpmässig potential och ekonomi är som i originalet."],
+        ['Kan man spela CM 01/02 online?', 'Ja. CM Reborn är en gratis nyversion av CM 01/02 som du spelar i webbläsaren på cm0102reborn.com – med originaldatabasen från 2001/02 eller 2026/27.'],
+        ['Är det gratis?', 'Ja, helt gratis, utan reklam och utan köp i spelet.'],
+        ['Fungerar det på Mac och iPad?', 'Ja, i Safari, Chrome, Firefox och Edge på Mac, Windows, Linux, Chromebook, iPad och mobil.'],
+        ['Är det originalet?', 'Nej. Det är ett oberoende fanprojekt och har ingen koppling till Sports Interactive, SEGA eller Eidos.'],
+      ],
+      footer: 'CM Reborn är ett oberoende, gratis fanprojekt inspirerat av Championship Manager 01/02 och har ingen koppling till Sports Interactive, SEGA eller Eidos.',
+    },
+    {
+      lang: 'nb', hreflang: 'nb', slug: 'no/spill-cm-01-02-online/', nav: 'Spill online',
+      title: 'Spill CM 01/02 online gratis i nettleseren – ingen nedlasting | CM Reborn',
+      h1: 'Spill Championship Manager 01/02 online – gratis i nettleseren',
+      description: `Spill en gratis nyversjon av Championship Manager 01/02 rett i nettleseren: originaldatabasen fra 2001/02 (${n} spillere), en 2026/27-database, det klassiske CM-utseendet og flerspiller med venner. Virker på Mac, PC, iPad og mobil.`,
+      lead: 'CM Reborn er en gratis fan-nyversjon av Championship Manager 01/02 som kjører rett i nettleseren. Velg originaldatabasen fra 2001/02 eller 2026/27-oppdateringen, det klassiske blå CM 01/02-utseendet eller et moderne – og du er i gang på sekunder, uten installasjon.',
+      cta: '▶ Spill gratis i nettleseren', ctaNote: 'Ingen nedlasting · ingen reklame · virker på alle enheter',
+      why: 'Dette får du',
+      points: [
+        `<b>To databaser:</b> den originale CM 01/02-databasen (alle tre offisielle versjoner: 3.9.60, 3.9.65 og 3.9.68 – ${n} spillere) og 2026/27-oppdateringen (${m} spillere).`,
+        '<b>De klassiske skjermene:</b> blå menyer, Match Overview med kommentaren, laguttak, taktikk med løpepiler og Find.',
+        '<b>En kampmotor kalibrert mot originalen</b> – mål, hjemmeseire og kort per kamp som i ekte CM 01/02.',
+        '<b>Wonderkids med tilfeldig potensial</b>, Bosman-overganger, lån, styret og sparken.',
+        '<b>Flerspiller</b> med venner, fantasy-draft og globale rangeringer.',
+        'Lagres i nettleseren (og i skyen med en gratis konto). Kan installeres som app. På norsk, med norske kroner.',
+      ],
+      dbH: 'Slå opp spillerne', db: 'Se alle spillernes egenskaper, CA og PA i <a href="/cm-01-02/">CM 01/02-databasen</a> – med <a href="/cm-01-02/lists/wonderkids/">wonderkids</a> og <a href="/cm-01-02/leagues/norwegian-premier-division/">Tippeligaen 2001</a>.',
+      faq: [
+        ["Hvilken CM 01/02-database kan jeg spille med?", "Alle tre offisielle: 3.9.60 (originalutgaven som CM 01/02 selv bruker for 2001/02 – standard), 3.9.65 og den siste oppdateringen 3.9.68 med troppene fra 2002/03. Du velger når du starter et nytt spill. Egenskaper, tilfeldig potensial og økonomi er som i originalen."],
+        ['Kan man spille CM 01/02 online?', 'Ja. CM Reborn er en gratis nyversjon av CM 01/02 som du spiller i nettleseren på cm0102reborn.com – med originaldatabasen fra 2001/02 eller 2026/27.'],
+        ['Er det gratis?', 'Ja, helt gratis, uten reklame og uten kjøp i spillet.'],
+        ['Virker det på Mac og iPad?', 'Ja, i Safari, Chrome, Firefox og Edge på Mac, Windows, Linux, Chromebook, iPad og mobil.'],
+        ['Er det originalen?', 'Nei. Det er et uavhengig fanprosjekt uten tilknytning til Sports Interactive, SEGA eller Eidos.'],
+      ],
+      footer: 'CM Reborn er et uavhengig, gratis fanprosjekt inspirert av Championship Manager 01/02, uten tilknytning til Sports Interactive, SEGA eller Eidos.',
+    },
+    {
+      lang: 'de', hreflang: 'de', slug: 'de/cm-01-02-online-spielen/', nav: 'Online spielen',
+      title: 'CM 01/02 online spielen – kostenloser Fußballmanager im Browser | CM Reborn',
+      h1: 'Championship Manager 01/02 online spielen – kostenlos im Browser',
+      description: `Spiele ein kostenloses Remake von Championship Manager 01/02 direkt im Browser: die originale 2001/02-Datenbank (${n} Spieler), eine 2026/27-Datenbank, der klassische CM-Look und Mehrspieler mit Freunden. Läuft auf Mac, PC, iPad und Handy.`,
+      lead: 'CM Reborn ist ein kostenloses Fan-Remake von Championship Manager 01/02, das direkt im Browser läuft. Wähle die originale Datenbank von 2001/02 oder das 2026/27-Update, den klassischen blauen CM-01/02-Look oder einen modernen – und du managst deinen Verein in Sekunden, ohne Installation, Emulator oder Patches.',
+      cta: '▶ Kostenlos im Browser spielen', ctaNote: 'Kein Download · keine Werbung · läuft auf jedem Gerät',
+      why: 'Das bekommst du',
+      points: [
+        `<b>Zwei Datenbanken:</b> die originale CM-01/02-Datenbank (alle drei offiziellen Versionen: 3.9.60, 3.9.65 und 3.9.68 – ${n} Spieler) und das 2026/27-Update (${m} Spieler).`,
+        '<b>Die klassischen Bildschirme:</b> blaue Menüs, Match Overview mit Kommentar, Aufstellung, Taktik mit Laufpfeilen, Staff Search und Find.',
+        '<b>Eine Spiel-Engine, kalibriert am Original:</b> Tore, Heimsiege, Karten und Schüsse pro Spiel wie im echten CM 01/02.',
+        '<b>Wonderkids mit zufälligem Potenzial</b>, Bosman-Transfers, Leihen, Vorstand und Entlassung.',
+        '<b>Mehrspieler</b> mit Freunden, Fantasy-Draft und weltweite Ranglisten.',
+        'Spielstände im Browser (und in der Cloud mit kostenlosem Konto). Als App installierbar, funktioniert offline. Auf Deutsch.',
+      ],
+      dbH: 'Spieler nachschlagen', db: 'Alle Attribute, CA und PA in der <a href="/cm-01-02/">CM-01/02-Datenbank</a> – mit <a href="/cm-01-02/lists/wonderkids/">Wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">ablösefreien Spielern</a> und der <a href="/cm-01-02/leagues/german-first-division/">Bundesliga 2001/02</a>.',
+      faq: [
+        ["Mit welcher CM-01/02-Datenbank kann ich spielen?", "Mit allen drei offiziellen: 3.9.60 (die Originalversion, die CM 01/02 selbst für 2001/02 nutzt – Standard), 3.9.65 und dem letzten Update 3.9.68 mit den Kadern von 2002/03. Du wählst beim Start eines neuen Spiels. Attribute, zufälliges Potenzial und Finanzen sind wie im Original."],
+        ['Kann man CM 01/02 online spielen?', 'Ja. CM Reborn ist ein kostenloses Remake von CM 01/02, das du auf cm0102reborn.com im Browser spielst – mit der originalen 2001/02-Datenbank oder 2026/27, ohne Download.'],
+        ['Ist es kostenlos?', 'Ja. Keine Werbung, keine In-Game-Käufe.'],
+        ['Läuft es auf Mac und iPad?', 'Ja, in Safari, Chrome, Firefox und Edge auf Mac, Windows, Linux, Chromebook, iPad und Handy.'],
+        ['Ist das das originale Championship Manager?', 'Nein. Es ist ein unabhängiges Fanprojekt ohne Verbindung zu Sports Interactive, SEGA oder Eidos.'],
+      ],
+      footer: 'CM Reborn ist ein unabhängiges, kostenloses Fanprojekt, inspiriert von Championship Manager 01/02, ohne Verbindung zu Sports Interactive, SEGA oder Eidos.',
+    },
+    {
+      lang: 'es', hreflang: 'es', slug: 'es/jugar-cm-01-02-online/', nav: 'Jugar online',
+      title: 'Jugar CM 01/02 online gratis – Championship Manager en el navegador | CM Reborn',
+      h1: 'Jugar a Championship Manager 01/02 online – gratis en el navegador',
+      description: `Juega gratis a un remake de Championship Manager 01/02 en el navegador: la base de datos original de 2001/02 (${n} jugadores), una base de datos 2026/27, el aspecto clásico de CM y multijugador con amigos. Funciona en Mac, PC, iPad y móvil.`,
+      lead: 'CM Reborn es un remake gratuito hecho por fans de Championship Manager 01/02 que funciona directamente en el navegador. Elige la base de datos original de 2001/02 o la actualización 2026/27, el clásico aspecto azul de CM 01/02 o uno moderno, y estarás dirigiendo a tu equipo en segundos – sin instalar nada.',
+      cta: '▶ Juega gratis en el navegador', ctaNote: 'Sin descargas · sin anuncios · en cualquier dispositivo',
+      why: 'Qué incluye',
+      points: [
+        `<b>Dos bases de datos:</b> la original de CM 01/02 (las tres versiones oficiales: 3.9.60, 3.9.65 y 3.9.68 – ${n} jugadores) y la actualización 2026/27 (${m} jugadores).`,
+        '<b>Las pantallas clásicas:</b> menús azules, Match Overview con comentarios, alineación, tácticas con flechas de desmarque, Staff Search y Find.',
+        '<b>Un motor de partidos calibrado con el original:</b> goles, victorias locales, tarjetas y tiros como en el CM 01/02 real.',
+        '<b>Wonderkids con potencial aleatorio</b>, fichajes Bosman, cesiones, la directiva y el despido.',
+        '<b>Multijugador</b> con amigos, liga fantasy y rankings mundiales.',
+        'Partidas guardadas en el navegador (y en la nube con una cuenta gratis). Se instala como app y funciona sin conexión. En español.',
+      ],
+      dbH: 'Consulta los jugadores', db: 'Todos los atributos, CA y PA en la <a href="/cm-01-02/">base de datos de CM 01/02</a> – con <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">jugadores libres</a> y <a href="/cm-01-02/leagues/spanish-first-division/">La Liga 2001/02</a>.',
+      faq: [
+        ["¿Con qué base de datos de CM 01/02 puedo jugar?", "Con las tres oficiales: 3.9.60 (la versión original que el propio CM 01/02 usa para 2001/02 – por defecto), 3.9.65 y la última actualización 3.9.68 con las plantillas de 2002/03. Eliges al empezar una partida nueva. Atributos, potencial aleatorio y finanzas son como en el original."],
+        ['¿Se puede jugar a CM 01/02 online?', 'Sí. CM Reborn es un remake gratuito de CM 01/02 que se juega en el navegador en cm0102reborn.com, con la base de datos original de 2001/02 o la de 2026/27, sin descargas.'],
+        ['¿Es gratis?', 'Sí. Sin anuncios ni compras dentro del juego.'],
+        ['¿Funciona en Mac y iPad?', 'Sí, en Safari, Chrome, Firefox y Edge en Mac, Windows, Linux, Chromebook, iPad y móvil.'],
+        ['¿Es el Championship Manager original?', 'No. Es un proyecto independiente de fans, sin relación con Sports Interactive, SEGA ni Eidos.'],
+      ],
+      footer: 'CM Reborn es un proyecto independiente y gratuito de fans inspirado en Championship Manager 01/02, sin relación con Sports Interactive, SEGA ni Eidos.',
+    },
+    {
+      lang: 'fr', hreflang: 'fr', slug: 'fr/jouer-cm-01-02-en-ligne/', nav: 'Jouer en ligne',
+      title: 'Jouer à CM 01/02 en ligne gratuitement dans le navigateur | CM Reborn',
+      h1: 'Jouer à Championship Manager 01/02 en ligne – gratuit, dans le navigateur',
+      description: `Jouez gratuitement à un remake de Championship Manager 01/02 dans votre navigateur : la base de données originale 2001/02 (${n} joueurs), une base 2026/27, le look CM classique et le multijoueur entre amis. Sur Mac, PC, iPad et mobile.`,
+      lead: 'CM Reborn est un remake gratuit de Championship Manager 01/02, créé par des fans, qui tourne directement dans le navigateur. Choisissez la base originale de 2001/02 ou la mise à jour 2026/27, le look bleu classique de CM 01/02 ou un style moderne, et vous dirigez votre club en quelques secondes – sans installation.',
+      cta: '▶ Jouer gratuitement', ctaNote: 'Sans téléchargement · sans publicité · sur tous les appareils',
+      why: 'Au programme',
+      points: [
+        `<b>Deux bases de données :</b> l'originale de CM 01/02 (les trois versions officielles : 3.9.60, 3.9.65 et 3.9.68 – ${n} joueurs) et la mise à jour 2026/27 (${m} joueurs).`,
+        '<b>Les écrans classiques :</b> menus bleus, Match Overview avec commentaires, composition, tactiques avec flèches de course, Staff Search et Find.',
+        '<b>Un moteur de match calibré sur l’original :</b> buts, victoires à domicile, cartons et tirs comme dans le vrai CM 01/02.',
+        '<b>Des wonderkids au potentiel aléatoire</b>, transferts Bosman, prêts, conseil d’administration et licenciement.',
+        '<b>Multijoueur</b> entre amis, draft fantasy et classements mondiaux.',
+        'Sauvegardes dans le navigateur (et dans le cloud avec un compte gratuit). Installable comme une application, fonctionne hors ligne. En français.',
+      ],
+      dbH: 'Consulter les joueurs', db: 'Tous les attributs, CA et PA dans la <a href="/cm-01-02/">base de données CM 01/02</a> – avec les <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, les <a href="/cm-01-02/lists/free-transfers-2002/">joueurs libres</a> et la <a href="/cm-01-02/leagues/french-first-division/">Division 1 2001/02</a>.',
+      faq: [
+        ["Avec quelle base de données de CM 01/02 puis-je jouer ?", "Avec les trois officielles : 3.9.60 (la version d’origine que CM 01/02 utilise lui-même pour 2001/02 – par défaut), 3.9.65 et la dernière mise à jour 3.9.68 avec les effectifs de 2002/03. Tu choisis au début d’une nouvelle partie. Attributs, potentiel aléatoire et finances sont comme dans l’original."],
+        ['Peut-on jouer à CM 01/02 en ligne ?', 'Oui. CM Reborn est un remake gratuit de CM 01/02 jouable dans le navigateur sur cm0102reborn.com, avec la base originale de 2001/02 ou celle de 2026/27.'],
+        ['Est-ce gratuit ?', 'Oui. Sans publicité ni achats intégrés.'],
+        ['Ça marche sur Mac et iPad ?', 'Oui, dans Safari, Chrome, Firefox et Edge sur Mac, Windows, Linux, Chromebook, iPad et mobile.'],
+        ['Est-ce le Championship Manager original ?', 'Non. C’est un projet de fans indépendant, sans lien avec Sports Interactive, SEGA ou Eidos.'],
+      ],
+      footer: 'CM Reborn est un projet de fans indépendant et gratuit inspiré de Championship Manager 01/02, sans lien avec Sports Interactive, SEGA ou Eidos.',
+    },
+    {
+      lang: 'it', hreflang: 'it', slug: 'it/giocare-cm-01-02-online/', nav: 'Gioca online',
+      title: 'Giocare a CM 01/02 online gratis nel browser – senza download | CM Reborn',
+      h1: 'Giocare a Championship Manager 01/02 online – gratis nel browser',
+      description: `Gioca gratis a un remake di Championship Manager 01/02 nel browser: il database originale 2001/02 (${n} giocatori), un database 2026/27, la grafica classica di CM e il multigiocatore con gli amici. Su Mac, PC, iPad e smartphone.`,
+      lead: 'CM Reborn è un remake gratuito di Championship Manager 01/02 fatto dai fan, che gira direttamente nel browser. Scegli il database originale del 2001/02 o l’aggiornamento 2026/27, la classica grafica blu di CM 01/02 o una moderna, e in pochi secondi guidi la tua squadra – senza installare nulla.',
+      cta: '▶ Gioca gratis nel browser', ctaNote: 'Nessun download · nessuna pubblicità · su ogni dispositivo',
+      why: 'Cosa trovi',
+      points: [
+        `<b>Due database:</b> quello originale di CM 01/02 (tutte e tre le versioni ufficiali: 3.9.60, 3.9.65 e 3.9.68 – ${n} giocatori) e l’aggiornamento 2026/27 (${m} giocatori).`,
+        '<b>Le schermate classiche:</b> menu blu, Match Overview con la cronaca, formazione, tattiche con le frecce di inserimento, Staff Search e Find.',
+        '<b>Un motore partita calibrato sull’originale:</b> gol, vittorie in casa, cartellini e tiri come nel vero CM 01/02.',
+        '<b>Wonderkids con potenziale casuale</b>, svincolati Bosman, prestiti, la dirigenza e l’esonero.',
+        '<b>Multigiocatore</b> con gli amici, fantasy draft e classifiche mondiali.',
+        'Salvataggi nel browser (e nel cloud con un account gratuito). Installabile come app, funziona offline. In italiano.',
+      ],
+      dbH: 'Cerca i giocatori', db: 'Tutti gli attributi, CA e PA nel <a href="/cm-01-02/">database di CM 01/02</a> – con i <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, gli <a href="/cm-01-02/lists/free-transfers-2002/">svincolati</a> e la <a href="/cm-01-02/leagues/italian-serie-a/">Serie A 2001/02</a>.',
+      faq: [
+        ["Con quale database di CM 01/02 posso giocare?", "Con tutti e tre quelli ufficiali: 3.9.60 (la versione originale che CM 01/02 usa per il 2001/02 – predefinita), 3.9.65 e l’ultimo aggiornamento 3.9.68 con le rose del 2002/03. Scegli quando inizi una nuova partita. Attributi, potenziale casuale e finanze sono come nell’originale."],
+        ['Si può giocare a CM 01/02 online?', 'Sì. CM Reborn è un remake gratuito di CM 01/02 che si gioca nel browser su cm0102reborn.com, con il database originale del 2001/02 o quello 2026/27.'],
+        ['È gratis?', 'Sì. Niente pubblicità e niente acquisti nel gioco.'],
+        ['Funziona su Mac e iPad?', 'Sì, in Safari, Chrome, Firefox ed Edge su Mac, Windows, Linux, Chromebook, iPad e smartphone.'],
+        ['È il Championship Manager originale?', 'No. È un progetto indipendente dei fan, senza legami con Sports Interactive, SEGA o Eidos.'],
+      ],
+      footer: 'CM Reborn è un progetto indipendente e gratuito dei fan ispirato a Championship Manager 01/02, senza legami con Sports Interactive, SEGA o Eidos.',
+    },
+    {
+      lang: 'pt-BR', hreflang: 'pt', slug: 'pt/jogar-cm-01-02-online/', nav: 'Jogar online',
+      title: 'Jogar CM 01/02 online grátis – no navegador, Android e iPhone | CM Reborn',
+      h1: 'Jogar Championship Manager 01/02 online – grátis no navegador',
+      description: `Jogue de graça um remake de Championship Manager 01/02 no navegador: o banco de dados original de 2001/02 (${n} jogadores), um banco 2026/27, o visual clássico do CM e multijogador com amigos. Funciona em Mac, PC, iPad e celular.`,
+      lead: 'CM Reborn é um remake gratuito de Championship Manager 01/02 feito por fãs, que roda direto no navegador. Escolha o banco de dados original de 2001/02 ou a atualização 2026/27, o visual azul clássico do CM 01/02 ou um moderno, e em segundos você já está comandando seu time – sem instalar nada.',
+      cta: '▶ Jogue grátis no navegador', ctaNote: 'Sem download · sem anúncios · em qualquer aparelho',
+      why: 'O que tem',
+      points: [
+        `<b>Dois bancos de dados:</b> o original do CM 01/02 (as três versões oficiais: 3.9.60, 3.9.65 e 3.9.68 – ${n} jogadores) e a atualização 2026/27 (${m} jogadores).`,
+        '<b>As telas clássicas:</b> menus azuis, Match Overview com narração, escalação, táticas com setas de movimentação, Staff Search e Find.',
+        '<b>Um motor de partidas calibrado com o original:</b> gols, vitórias em casa, cartões e chutes como no CM 01/02 de verdade.',
+        '<b>Wonderkids com potencial aleatório</b>, contratações Bosman, empréstimos, a diretoria e a demissão.',
+        '<b>Multijogador</b> com amigos, draft fantasy e rankings mundiais.',
+        'Jogos salvos no navegador (e na nuvem com uma conta grátis). Instala como app e funciona offline. Em português, com reais.',
+      ],
+      dbH: 'Consulte os jogadores', db: 'Todos os atributos, CA e PA no <a href="/cm-01-02/">banco de dados do CM 01/02</a> – com <a href="/cm-01-02/lists/wonderkids/">wonderkids</a>, <a href="/cm-01-02/lists/free-transfers-2002/">jogadores livres</a> e o <a href="/cm-01-02/leagues/brazilian-national-first-division/">Brasileirão 2001</a>.',
+      faq: [
+        ["Com qual banco de dados do CM 01/02 posso jogar?", "Com os três oficiais: 3.9.60 (a versão original que o próprio CM 01/02 usa em 2001/02 – padrão), 3.9.65 e a última atualização 3.9.68 com os elencos de 2002/03. Você escolhe ao começar um novo jogo. Atributos, potencial aleatório e finanças são como no original."],
+        ['Dá para jogar CM 01/02 online?', 'Sim. CM Reborn é um remake gratuito do CM 01/02 que você joga no navegador em cm0102reborn.com, com o banco original de 2001/02 ou o de 2026/27.'],
+        ['É grátis?', 'Sim. Sem anúncios e sem compras no jogo.'],
+        ['Funciona no Mac e no iPad?', 'Sim, no Safari, Chrome, Firefox e Edge em Mac, Windows, Linux, Chromebook, iPad e celular.'],
+        ['É o Championship Manager original?', 'Não. É um projeto independente de fãs, sem ligação com a Sports Interactive, SEGA ou Eidos.'],
+      ],
+      footer: 'CM Reborn é um projeto independente e gratuito de fãs inspirado em Championship Manager 01/02, sem ligação com a Sports Interactive, SEGA ou Eidos.',
+    },
+    {
+      lang: 'tr', hreflang: 'tr', slug: 'tr/cm-01-02-online-oyna/', nav: 'Online oyna',
+      title: "CM 01/02 online oyna – ücretsiz menajerlik oyunu, indirme yok | CM Reborn",
+      h1: "Championship Manager 01/02'yi online oyna – tarayıcıda ücretsiz",
+      description: `Championship Manager 01/02'nin ücretsiz yeniden yapımını tarayıcıda oyna: orijinal 2001/02 veritabanı (${n} oyuncu), 2026/27 veritabanı, klasik CM görünümü ve arkadaşlarla çok oyunculu mod. Mac, PC, iPad ve telefonda çalışır.`,
+      lead: "CM Reborn, Championship Manager 01/02'nin hayranlar tarafından yapılmış ücretsiz bir yeniden yapımıdır ve doğrudan tarayıcıda çalışır. 2001/02 orijinal veritabanını ya da 2026/27 güncellemesini, klasik mavi CM 01/02 görünümünü ya da modern olanı seç – birkaç saniyede takımının başındasın, kurulum yok.",
+      cta: '▶ Tarayıcıda ücretsiz oyna', ctaNote: 'İndirme yok · reklam yok · her cihazda çalışır',
+      why: 'Neler var',
+      points: [
+        `<b>İki veritabanı:</b> orijinal CM 01/02 veritabanı (üç resmi sürümün tümü: 3.9.60, 3.9.65 ve 3.9.68 – ${n} oyuncu) ve 2026/27 güncellemesi (${m} oyuncu).`,
+        '<b>Klasik ekranlar:</b> mavi menüler, yorumlu Match Overview, kadro seçimi, koşu oklarıyla taktik, Staff Search ve Find.',
+        '<b>Orijinale göre ayarlanmış maç motoru:</b> maç başına gol, ev sahibi galibiyeti, kart ve şut gerçek CM 01/02 gibi.',
+        '<b>Rastgele potansiyelli wonderkid’ler</b>, Bosman transferleri, kiralıklar, yönetim kurulu ve kovulma.',
+        '<b>Çok oyunculu</b> mod, fantezi draft ve dünya sıralamaları.',
+        'Kayıtlar tarayıcıda (ücretsiz hesapla bulutta da). Uygulama olarak kurulabilir, çevrimdışı çalışır. Türkçe ve Türk lirası ile.',
+      ],
+      dbH: 'Oyunculara göz at', db: '<a href="/cm-01-02/">CM 01/02 veritabanında</a> tüm özellikler, CA ve PA – <a href="/cm-01-02/lists/wonderkids/">wonderkid’ler</a>, <a href="/cm-01-02/lists/free-transfers-2002/">bonservissiz oyuncular</a> ve <a href="/cm-01-02/leagues/turkish-premier-division/">2001/02 Süper Lig</a>.',
+      faq: [
+        ["Hangi CM 01/02 veritabanıyla oynayabilirim?", "Üç resmi sürümün hepsiyle: 3.9.60 (CM 01/02’nin 2001/02 için kullandığı orijinal sürüm – varsayılan), 3.9.65 ve 2002/03 kadrolarıyla son güncelleme 3.9.68. Yeni bir oyuna başlarken seçersin. Özellikler, rastgele potansiyel ve finans orijinaldeki gibidir."],
+        ["CM 01/02 online oynanabilir mi?", "Evet. CM Reborn, cm0102reborn.com adresinde tarayıcıda oynanan ücretsiz bir CM 01/02 yeniden yapımıdır; orijinal 2001/02 veya 2026/27 veritabanıyla."],
+        ['Ücretsiz mi?', 'Evet. Reklam ve oyun içi satın alma yok.'],
+        ["Mac ve iPad'de çalışır mı?", "Evet; Mac, Windows, Linux, Chromebook, iPad ve telefonda Safari, Chrome, Firefox ve Edge ile."],
+        ['Orijinal Championship Manager mı?', 'Hayır. Sports Interactive, SEGA veya Eidos ile bağlantısı olmayan bağımsız bir hayran projesidir.'],
+      ],
+      footer: "CM Reborn, Championship Manager 01/02'den esinlenen bağımsız ve ücretsiz bir hayran projesidir; Sports Interactive, SEGA veya Eidos ile bağlantısı yoktur.",
+    },
+  ];
+}
+
+/** hreflang-listen for alle sprogsider + den engelske */
+export function alternatesFor(pages: LangPage[], enSlug: string): [string, string][] {
+  return [['en', `/${enSlug}`], ['x-default', `/${enSlug}`], ...pages.map((p) => [p.hreflang, `/${p.slug}`] as [string, string])];
+}
+
+/** overskrift til guiderne (de er på engelsk) pr. sprog */
+const GUIDES_H: Record<string, string> = { da: 'Guider (på engelsk)', sv: 'Guider (på engelska)', nb: 'Guider (på engelsk)', de: 'Ratgeber (auf Englisch)', es: 'Guías (en inglés)', fr: 'Guides (en anglais)', it: 'Guide (in inglese)', 'pt-BR': 'Guias (em inglês)', tr: 'Rehberler (İngilizce)' };
+const GUIDE_LINKS: [string, string][] = [
+  ['/cm-01-02-match-engine/', 'How the CM 01/02 match engine works'], ['/cm-01-02-attributes-explained/', 'What every attribute does'],
+  ['/cm-01-02-database-versions/', '3.9.60 vs 3.9.65 vs 3.9.68'], ['/cm-01-02-ca-pa-explained/', 'CA and PA explained'],
+  ['/cm-01-02-android/', 'CM 01/02 on Android'], ['/cm-01-02-iphone-ipad/', 'CM 01/02 on iPhone and iPad'], ['/cm-01-02-multiplayer/', 'Multiplayer with friends'],
+  ['/cm-01-02-wonderkids/', 'Wonderkids'], ['/cm-01-02-tactics/', 'Tactics'], ['/cm-01-02-guides/', 'All guides'],
+];
+/** `local`: sprogets egne guider (scripts/seo/i18nGuides.ts) – [url, titel] */
+export function toPage(p: LangPage, alternates: [string, string][], local: [string, string][] = []): Page {
+  const cta = `<p class="cta"><a class="btn" href="/">${p.cta}</a> <span>${p.ctaNote}</span></p>`;
+  return {
+    slug: p.slug, title: p.title, h1: p.h1, description: p.description, lang: p.lang, alternates, faq: p.faq, faqSchema: true, cta, footer: p.footer,
+    nav: [[`/${p.slug}`, p.nav], ['/cm-01-02/', 'CM 01/02 database'], ['/cm-01-02/lists/wonderkids/', 'Wonderkids'], ['/play-cm-01-02-online/', 'English']],
+    body: `<p class="lead">${p.lead}</p>${cta}<h2>${p.why}</h2><ul>${p.points.map((x) => `<li>${x}</li>`).join('')}</ul><h2>${p.dbH}</h2><p>${p.db}</p>${local.length ? `<ul>${local.map(([h, t]) => `<li><a href="${h}">${t}</a></li>`).join('')}</ul>` : ''}<h2>${GUIDES_H[p.lang] ?? 'Guides'}</h2><ul>${GUIDE_LINKS.map(([h, t]) => `<li><a href="${h}" hreflang="en">${t}</a></li>`).join('')}</ul>`,
+  };
+}

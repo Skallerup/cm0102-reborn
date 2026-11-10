@@ -112,6 +112,16 @@ export function surpriseOfSeason(comp: Competition): { club: number; expected: n
   return best;
 }
 
+/** Ligaens årets manager og nr. 2: placering mod forventningen (omdømme), mesteren får et forspring (*estimeret*) */
+export function leagueManagerOfYear(comp: Competition): [number | undefined, number | undefined] {
+  const g = gs();
+  const order = finalOrder(comp);
+  const byRep = order.slice().sort((a, b) => g.clubs[b].rep - g.clubs[a].rep);
+  const score = (cid: number, i: number) => (byRep.indexOf(cid) - i) + (i === 0 ? 6 : i === 1 ? 2 : 0) - i * 0.4;
+  const ranked = order.map((cid, i) => ({ cid, s: score(cid, i) })).sort((a, b) => b.s - a.s).map((x) => x.cid);
+  return [ranked[0], ranked[1]];
+}
+
 /** Gallaaften: Ballon d'Or, årets manager og arkivering af månedens priser */
 export function seasonGala(summary: SeasonSummary) {
   const g = gs();
@@ -144,10 +154,17 @@ export function seasonGala(summary: SeasonSummary) {
   g.monthAwards = [];
   const bd = g.players[summary.ballonDor[0]];
   if (bd) addNews({ cat: 'award', key: 'award.ballonDor', params: { player: pname(bd), club: g.clubs[bd.club]?.short ?? '' }, link: { kind: 'player', id: bd.id } }, { all: true });
+  const season = `${g.season}/${String(g.season + 1).slice(2)}`;
   forEachHuman(() => {
     if (best && best.club === g.userClub) {
       g.manager.trophies.push({ season: g.season, comp: 'Manager of the Year', club: g.userClub });
       addNews({ cat: 'award', key: 'award.managerOfYearMe', params: {} });
+    }
+    // CM 01/02: "Major award for Skallerup" – ligaens årets manager (mester og overpræstation) med andenpladsen
+    const lg = g.comps[g.clubs[g.userClub]?.league ?? ''];
+    if (lg?.type === 'league') {
+      const [w, r] = leagueManagerOfYear(lg);
+      if (w !== undefined && r !== undefined) addNews({ cat: 'award', key: w === g.userClub ? 'award.lgManagerMe' : 'award.lgManager', params: { manager: managerName(w), last: managerName(w).split(' ').at(-1) ?? '', runner: managerName(r), comp: lg.name, season } });
     }
     addNews({ cat: 'award', key: 'award.gala', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` }, link: { kind: 'awards', id: 0 } });
   });

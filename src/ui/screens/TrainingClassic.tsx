@@ -1,5 +1,6 @@
 // Træning i klassisk tema: faner pr. træningsskema med antal spillere (Overview · Rest · General · Fitness · Shooting,
 // resten nederst), en værktøjslinje og spillertabellen med skemaet som blå knap forrest (klik = skift skema).
+import { CoachesPanel } from './TransferStatusClassic';
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
@@ -8,11 +9,11 @@ import { SCHEDULES, trainingAdvice } from '../../game/training';
 import type { Player } from '../../game/types';
 import { money, t } from '../../i18n';
 import { ClassicSub, CxDrop, type DropItem } from '../classic';
-import { Modal, Tabs, posStr } from '../components';
+import { Tabs, posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxTable, type CxCol } from './CxTable';
-import { CoachingPanel, posGroup } from './Training';
+import { posGroup } from './Training';
 
 const TOP = ['rest', 'general', 'fitness', 'shooting'];
 const BOTTOM = ['ballcontrol', 'attacking', 'defending', 'setpieces', 'goalkeeping'];
@@ -39,12 +40,13 @@ export function ClassicTraining() {
       const why = t(a.reason, { attrs: a.attrs.map((x) => t(`attr.${x}`)).join(` ${t('common.and')} `) });
       return <button className="cx-inf" title={`${t('adv.col')}: ${t(`train.${a.key}`)} – ${why}`} onClick={() => act({ t: 'training', pid: p.id, key: a.key })}>{t('cl.tn.adv')}</button>;
     }, sort: (p) => (trainingAdvice(p).key === p.training ? 0 : 1) },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
     { key: 'pos', label: t('col.pos'), cls: 'c-cyan', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
     { key: 'age', label: t('col.age'), cls: 'c-num c-yel', render: (p) => ageOn(p.dob, g.date), sort: (p) => ageOn(p.dob, g.date) },
-    { key: 'form', label: t('col.form'), cls: 'c-num c-yel', render: (p) => (p.form.length ? formAvg(p).toFixed(1) : '-'), sort: formAvg },
-    { key: 'mor', label: t('col.morale'), cls: 'c-num c-yel', render: (p) => moraleShort(p.morale), sort: (p) => p.morale },
-    { key: 'cond', label: t('col.cond'), cls: 'c-cond', render: (p) => `${Math.round(p.condition)}%`, sort: (p) => p.condition },
+    // CM 01/02: formen som de seneste fem karakterer ("7-7-5-8-6"), moral som farvet ord, kondition i grøn % ("Inj" ved skade)
+    { key: 'form', label: t('col.form'), cls: 'c-num c-yel', render: (p) => (p.form.length ? p.form.slice(-5).map((x) => Math.round(x)).join('-') : '-'), sort: formAvg },
+    { key: 'mor', label: t('col.morale'), cls: 'c-num', render: (p) => <span className={`cx-mor m${p.morale >= 16 ? 4 : p.morale >= 13 ? 3 : p.morale >= 9 ? 2 : 1}`}>{moraleShort(p.morale)}</span>, sort: (p) => p.morale },
+    { key: 'cond', label: t('col.cond'), cls: 'c-num', render: (p) => (p.injury ? <span className="cx-mor m1">{t('tag.inj')}</span> : <span className={p.condition >= 90 ? 'c-good' : 'cx-mor m2'}>{Math.round(p.condition)}%</span>), sort: (p) => p.condition },
     { key: 'val', label: t('col.value'), cls: 'c-val', render: (p) => money(p.value), sort: (p) => p.value },
   ];
 
@@ -61,7 +63,7 @@ export function ClassicTraining() {
       <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => setTab(k) }))} />
       <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort="pos"
         btn={(p) => <CxDrop className="cx-sel" caret={false} label={t(`train.${p.training}`)} items={schedMenu(p)} btn={{ className: 'cx-rowbtn' }} />} />
-      {coaches && <Modal title={t('cl.tn.coaches')} onClose={() => setCoaches(false)} wide><CoachingPanel /></Modal>}
+      {coaches && <CoachesPanel onClose={() => setCoaches(false)} />}
     </div>
   );
 }

@@ -7,9 +7,10 @@ import { rulesFor, regionOf, type Region } from './leagues';
 function rulesForLeague(league: string) {
   return rulesFor(league, 20).wealth;
 }
-import { addNews, gs, newsRelevant, squad } from './state';
+import { addNews, gs, indexFixture, newsRelevant, squad, unindexFixture } from './state';
 import { careerEnd, careerStart, pickManager } from './careers';
 import type { BoardAsk, Club, JobTalk } from './types';
+import { fanMood } from './fans';
 import { takeOverClub } from './newgame';
 import { forEachHuman, removeHooks } from './humans';
 
@@ -63,6 +64,8 @@ export function setBoardExpectation() {
   g.board.expectation = exp;
   g.board.expectedPos = pos;
   addNews({ cat: 'board', key: `board.exp.${exp}`, params: { club: club.name } });
+  // pressens sæsonoptakt (CM 01/02: "[klub] tipped for glory", "Press write off [klub] chances" …)
+  addNews({ cat: 'general', key: `media.preview.${exp}`, params: { club: club.name, comp: g.leagues[club.league]?.name ?? '' }, link: { kind: 'club', id: club.id } });
 }
 
 /** Efter hver kamp for brugerens hold */
@@ -125,7 +128,7 @@ export function boardMonthly() {
   const pos = leagueRows(comp).findIndex((r) => r.club === club.id) + 1;
   const delta = (g.board.expectedPos - pos) * 0.8;
   g.board.confidence = clamp(g.board.confidence + delta, 0, 100);
-  if (club.balance < -5_000_000) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
+  if (club.balance < -5_000_000 * econ(club.league)) g.board.confidence = clamp(g.board.confidence - 3, 0, 100);
   badContracts(club, played);
   // bestyrelsen lytter til fansene
   g.board.confidence = clamp(g.board.confidence + ((club.fanMood ?? 60) - 60) / 40, 0, 100);
@@ -204,6 +207,22 @@ export function resignJob(): string {
 }
 
 /** Sæsonafslutning: bestyrelsens dom */
+/**
+ * Bestyrelsens udtalelse (CM 01/02 "Board Confidence"): præstation, økonomi og fansene som koder til teksterne
+ * `cl.ba.conf.<lvl>`, `cl.ba.fin.<fin>` og `cl.ba.fans.<fans>`. Grænserne er *estimeret*.
+ */
+export function boardStatementCodes(): { lvl: string; fin: string; fans: string } {
+  const g = gs();
+  const club = g.clubs[g.userClub];
+  const conf = g.board.confidence;
+  const lvl = conf >= 75 ? 'delighted' : conf >= 58 ? 'positive' : conf >= 45 ? 'satisfied' : conf >= 30 ? 'concerned' : 'angry';
+  const bal = (club?.balance ?? 0) / econ(club?.league);
+  const fin = bal >= 25_000_000 ? 'extreme' : bal >= 5_000_000 ? 'healthy' : bal >= 0 ? 'secure' : bal > -5_000_000 ? 'stretched' : 'debt';
+  const mood = fanMood(club);
+  const fans = mood >= 70 ? 'rapport' : mood >= 45 ? 'ok' : 'unhappy';
+  return { lvl, fin, fans };
+}
+
 export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   const g = gs();
   const club = g.clubs[g.userClub];
@@ -220,12 +239,13 @@ export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   }
   g.board.warnings = 0;
   g.board.confidence = clamp(55 + diff * 4, 20, 95);
+  // CM 01/02: "Board Confidence Update" – samme udtalelse som skærmen Board Confidence
+  addNews({ cat: 'board', key: 'board.update', params: { club: club.name, ...boardStatementCodes() } });
   if (diff >= 3) {
     club.transferBudget = Math.round(club.transferBudget * 1.25);
     addNews({ cat: 'board', key: 'board.delighted', params: { club: club.name } });
     return 'great';
   }
-  addNews({ cat: 'board', key: diff >= 0 ? 'board.satisfied' : 'board.disappointed', params: { club: club.name } });
   return 'ok';
 }
 
@@ -428,7 +448,7 @@ export function fillVacancies() {
     if (cur) g.jobOffers = g.jobOffers.filter((id) => { const c = g.clubs[id]; return !!c && (!!g.manager.jobTalks?.[id] || c.rep >= cur.rep + 4 || (g.leagues[c.league]?.tier ?? 9) < (g.leagues[cur.league]?.tier ?? 9)); });
     for (const cid of g.vacancies) {
       const club = g.clubs[cid];
-      if (!club || club.manager !== 0) continue;
+      if (!club || club.manager !== 0 || g.leagues[club.league]?.hidden) continue;
       // arbejdsløs: klubber op til lidt over ens omdømme. I job: klubber på samme niveau eller lidt over –
       // jo mere tilfreds ens nuværende bestyrelse er, jo mere attraktiv er man
       const my = g.clubs[g.userClub];
@@ -501,7 +521,7 @@ export function jobTerms(cid: number): JobTalk {
 export function applyForJob(cid: number): 'sent' | 'offer' | 'error' {
   const g = gs();
   const club = g.clubs[cid];
-  if (!club || club.manager !== 0) return 'error';
+  if (!club || club.manager !== 0 || g.leagues[club.league]?.hidden) return 'error';
   if (g.jobOffers.includes(cid)) return 'offer';
   if (g.manager.jobTalks?.[cid]) return 'sent';
   const ok = g.manager.rep + 10 >= club.rep || rng.chance(Math.max(0.05, 0.5 - (club.rep - g.manager.rep) / 40));
@@ -550,7 +570,7 @@ export function negotiateJob(cid: number, ask: 'budget' | 'exp'): 'yes' | 'no' |
   // en anerkendt manager har mere at forhandle med; at bede om lavere forventninger er sværere
   const p = clamp(0.55 + (g.manager.rep - club.rep) / 40 - (ask === 'exp' ? 0.1 : 0), 0.15, 0.9);
   if (rng.chance(p)) {
-    if (ask === 'budget') talk.budget = Math.round(Math.max(talk.budget * 1.3, talk.budget + 1_000_000) / 100_000) * 100_000;
+    if (ask === 'budget') talk.budget = Math.round(Math.max(talk.budget * 1.3, talk.budget + 1_000_000 * econ()) / 100_000) * 100_000;
     else { const e = expectationFor(club, 1); talk.exp = e.exp; talk.expectedPos = e.pos; }
     return 'yes';
   }
@@ -596,6 +616,7 @@ function clamp(v: number, lo: number, hi: number) {
 // ---------- byggeprojekter ----------
 
 import type { ProjectKind } from './types';
+import { econ } from './econ';
 
 export interface ProjectOffer {
   kind: ProjectKind;
@@ -612,12 +633,12 @@ export function projectOffer(kind: ProjectKind): ProjectOffer | null {
   const wealth = Math.max(0.3, rulesForLeague(c.league));
   if (kind === 'stadium') {
     const amount = Math.max(1000, Math.round((c.seats * 0.15) / 500) * 500);
-    return { kind, amount, months: 10, cost: Math.round((amount * 2200 * Math.sqrt(wealth)) / 100_000) * 100_000 };
+    return { kind, amount, months: 10, cost: Math.round((amount * 2200 * econ() * Math.sqrt(wealth)) / 100_000) * 100_000 };
   }
   const level = kind === 'training' ? c.facilities : c.youth;
   if (level >= 20) return null;
   const amount = level >= 17 ? 1 : 2;
-  return { kind, amount, months: kind === 'training' ? 6 : 8, cost: Math.round((Math.pow(level + 1, 2) * 45_000 * Math.sqrt(wealth)) / 50_000) * 50_000 };
+  return { kind, amount, months: kind === 'training' ? 6 : 8, cost: Math.round((Math.pow(level + 1, 2) * 45_000 * econ() * Math.sqrt(wealth)) / 50_000) * 50_000 };
 }
 
 /** Anmod bestyrelsen om et byggeprojekt */
@@ -734,7 +755,7 @@ export function boardAskInfo(kind: BoardAsk): BoardAskInfo {
       return { likely: fans >= 50 && near ? 'yes' : fans >= 50 || near ? 'maybe' : 'no', pros, cons };
     }
     case 'youthDrive': {
-      const cost = Math.max(100_000, Math.round(c.wageBudget * 6 / 10_000) * 10_000);
+      const cost = Math.max(100_000 * econ(c.league), Math.round(c.wageBudget * 6 / 10_000) * 10_000);
       if (c.youthDrive === g.season) return { blocked: 'ba.blocked.youthDone', cost, likely: 'no', pros, cons };
       const m = Number(g.date.slice(5, 7));
       if (m === 3 && Number(g.date.slice(8, 10)) >= 15 || m === 4 || m === 5) return { blocked: 'ba.blocked.afterIntake', cost, likely: 'no', pros, cons };
@@ -781,4 +802,91 @@ export function boardAsk(kind: BoardAsk): 'yes' | 'no' | 'blocked' {
       break;
   }
   return 'yes';
+}
+
+// ---------- CM 01/02: "Meet with Board" og "Meet with the Football Association" ----------
+
+export type MeetBoardKind = 'stadium' | 'youth' | 'transfer' | 'wage' | 'time';
+export type FaKind = 'referee' | 'postpone';
+export const MEET_BOARD: MeetBoardKind[] = ['stadium', 'youth', 'transfer', 'wage', 'time'];
+export const FA_REQUESTS: FaKind[] = ['referee', 'postpone'];
+
+/** Kan ønsket stilles nu? (originalen viser de andre grå) */
+export function meetBoardAvailable(kind: MeetBoardKind): boolean {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  if (!c) return false;
+  const month = g.date.slice(0, 7);
+  switch (kind) {
+    case 'stadium': return !(c.projects ?? []).some((p) => p.kind === 'stadium');
+    case 'youth': return !!projectOffer('youth') && !(c.projects ?? []).some((p) => p.kind === 'youth');
+    case 'transfer': case 'wage': return g.board.budgetAsked?.[kind] !== month;
+    case 'time': return !boardAskInfo('lowerExp').blocked;
+  }
+}
+
+/**
+ * Ønsket til bestyrelsen: byggeri (stadion, ungdom), flere penge til transfers eller løn – bestyrelsen giver det, den mener,
+ * klubben kan bære (samme regler som budgetLimits) – eller mere tid til at bygge truppen op (lavere forventning).
+ */
+export function meetBoard(kind: MeetBoardKind): string {
+  if (!meetBoardAvailable(kind)) return 'blocked';
+  if (kind === 'stadium' || kind === 'youth') return `mb.project.${requestProject(kind)}`;
+  if (kind === 'time') return `mb.time.${boardAsk('lowerExp')}`;
+  const { max } = budgetLimits(kind);
+  const pct = max >= 0.02 ? Math.min(max, kind === 'wage' ? 0.1 : 0.25) : 0.1;
+  const r = requestBudget(kind, pct);
+  return r.result === 'ok' ? 'mb.money.ok' : 'mb.money.no';
+}
+
+/** Den næste uspillede ligakamp for ens klub (kandidat til udsættelse) */
+function nextLeagueFixture() {
+  const g = gs();
+  const c = g.clubs[g.userClub];
+  return Object.values(g.fixtures).filter((f) => !f.result && f.comp === c?.league && (f.home === c.id || f.away === c.id) && f.date > g.date)
+    .sort((a, b) => a.date.localeCompare(b.date))[0];
+}
+const injuredFirstTeam = () => {
+  const g = gs();
+  return squad(g.userClub).sort((a, b) => b.ca - a.ca).slice(0, 16).filter((p) => p.injury || p.banned > 0).length;
+};
+
+export function faAvailable(kind: FaKind): boolean {
+  const g = gs();
+  if (!g.clubs[g.userClub]) return false;
+  if (kind === 'referee') {
+    // efter en kamp inden for den sidste uge, og kun én klage pr. kamp
+    const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub) && daysBetween(f.date, g.date) <= 7)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    return !!last && g.board.faComplained !== last.id;
+  }
+  const f = nextLeagueFixture();
+  return !!f && daysBetween(g.date, f.date) <= 14 && injuredFirstTeam() >= 5;
+}
+
+/**
+ * Forbundet: en klage over dommeren noteres (dommerens strenghed falder lidt for ens kampe – *estimeret*); en udsættelse
+ * gives kun ved mange skader/karantæner (6+ af de 16 bedste) og flytter ligakampen en uge, hvis begge hold er ledige.
+ */
+export function faRequest(kind: FaKind): string {
+  const g = gs();
+  if (!faAvailable(kind)) return 'blocked';
+  if (kind === 'referee') {
+    const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => b.date.localeCompare(a.date))[0];
+    g.board.faComplained = last?.id;
+    addNews({ cat: 'board', key: 'fa.referee', params: {} });
+    return 'fa.referee';
+  }
+  const f = nextLeagueFixture()!;
+  const to = addDays(f.date, 7);
+  const busy = (club: number) => Object.values(g.fixtures).some((x) => x.id !== f.id && (x.home === club || x.away === club) && Math.abs(daysBetween(x.date, to)) <= 2);
+  if (injuredFirstTeam() < 6 || busy(f.home) || busy(f.away)) {
+    addNews({ cat: 'board', key: 'fa.postpone.no', params: {} });
+    return 'fa.postpone.no';
+  }
+  unindexFixture(f.id, f.date);
+  f.date = to;
+  indexFixture(f.id, to);
+  addNews({ cat: 'board', key: 'fa.postpone.ok', params: { opp: g.clubs[f.home === g.userClub ? f.away : f.home]?.name ?? '', date: to } });
+  return 'fa.postpone.ok';
 }

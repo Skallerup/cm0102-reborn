@@ -15,7 +15,7 @@ import { scoutStars } from '../../game/scouting';
 import { ageOn } from '../../game/dates';
 import { useGame, useNav, useRouteState } from '../core';
 import { isRetro } from '../theme';
-import { CxDrop, CxLink, nationRoute, staffRoute } from '../classic';
+import { CxDrop, CxLink, classicDate, nationRoute, staffRoute } from '../classic';
 import { repTrend } from '../../game/season';
 import { Head } from './common';
 import { SquadTable } from './Squad';
@@ -37,15 +37,14 @@ function ClassicClub({ id }: { id?: number }) {
   // en anden klub åbner på truppen (som i originalen); ens egen klub på "Økonomi & info"
   const [view, setView] = useRouteState('cview', cid === g.userClub ? 'info' : 'squad');
   const [editOpen, setEditOpen] = useState(false);
-  if (!c) return <Head title="?" />;
+  if (!c) return <NoClub />;
   const mine = cid === g.userClub;
   const showMoney = mine || !g.options.masking;
   const views = ['info', 'stats', ...(showMoney ? ['finances', 'income', 'expenditure'] : [])];
   // fanerne øverst (trup, transfers, næste kamp, kampprogram) er visninger af samme klubside
-  const tabViews = mine ? [] : ['squad', 'transfers', 'next', 'fixtures'];
+  const tabViews = mine ? ['transfers'] : ['squad', 'transfers', 'next', 'fixtures'];
   const v = views.includes(view) || tabViews.includes(view) ? view : 'info';
   const f = c.finance;
-  const level = (x: number) => t(`cl.ci.lvl.${x >= 17 ? 5 : x >= 13 ? 4 : x >= 9 ? 3 : x >= 5 ? 2 : 1}`);
   const manager = c.manager === -1 ? (mine ? g.manager.name : humanManager(c.id)?.name ?? '?') : g.staff[c.manager] ? `${g.staff[c.manager].first} ${g.staff[c.manager].last}` : t('club.vacant');
   const staff = Object.values(g.staff).filter((x) => x.club === cid && x.id !== c.manager).sort((a, b) => ['assistant', 'coach', 'physio', 'scout'].indexOf(a.role) - ['assistant', 'coach', 'physio', 'scout'].indexOf(b.role));
   const kv = (rows: [string, React.ReactNode, string?][]) => (
@@ -64,15 +63,14 @@ function ClassicClub({ id }: { id?: number }) {
       {editOpen && <ProposeEditModal kind="club" id={cid} onClose={() => setEditOpen(false)} />}
       <div className="cx-subtitle">{t(`cl.ci.v.${v}`)}</div>
       {v === 'info' && <>
+        {/* CM 01/02: Nation · Status · Finances · Stadium · Facilities · Training Ground (status og ordene er *estimeret*) */}
         {kv([
-          [t('col.nat'), <CxLink to={nationRoute(c.nation)}>{natName(g.nations[c.nation]?.name)}</CxLink>],
-          [t('col.comp'), g.comps[c.league] ? <CxLink to={{ name: 'competitions', id: c.league }}>{compName(g.leagues[c.league]?.name) ?? c.league}</CxLink> : compName(g.leagues[c.league]?.name) ?? c.league],
-          [t('club.rep'), level(c.rep / 5)],
+          [t('cl.ci.nation'), <CxLink to={nationRoute(c.nation)}>{natName(g.nations[c.nation]?.name)}</CxLink>],
+          [t('cl.ci.status'), t((g.leagues[c.league]?.tier ?? 9) <= 2 || c.rep >= 50 ? 'cl.ci.pro' : 'cl.ci.semipro')],
           ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? 'cl.ci.fin.secure' : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
-          [t('club.stadium'), c.stadium],
-          [t('cl.ci.capacity'), c.seats.toLocaleString()],
-          [t('club.facilities'), level(c.facilities)],
-          [t('club.youth'), level(c.youth)],
+          [t('club.stadium'), `${c.stadium}, ${c.short}`],
+          [t('cl.ci.facilitiesRow'), t('cl.ci.seats', { n: c.seats })],
+          [t('cl.ci.trainingGround'), `${t(`cl.ci.tg.${c.facilities >= 16 ? 4 : c.facilities >= 12 ? 3 : c.facilities >= 8 ? 2 : c.facilities >= 4 ? 1 : 0}`)}${c.youth >= 14 ? t('cl.ci.tgYouth') : ''}`],
         ])}
         <div className="cx-section">{t('cl.ci.staff')}</div>
         <div className="cx-kv big">
@@ -113,39 +111,51 @@ function ClassicClub({ id }: { id?: number }) {
   );
 }
 
-/** En klubs transfers i denne sæson (ind og ud) og spillerne på transferlisten */
+/** Klubbens transfers som i CM 01/02: << Season · Season >> · View (Players In / Players Out / Transfer Listed), "Players In -
+ *  Season 2001/02" og summen i en lilla kasse øverst til højre */
 function ClubTransfers({ cid }: { cid: number }) {
   const g = useGame()!;
   const { nav } = useNav();
+  const [season, setSeason] = useState(g.season);
+  const [dir, setDir] = useState<'in' | 'out' | 'listed'>('in');
   type Row = { pid: number; date: string; from: number; to: number; fee: number; loan?: boolean };
-  const rows: Row[] = [];
+  const all: Row[] = [];
+  let first = g.season;
   for (const p of Object.values(g.players)) for (const m of p.moves ?? []) {
-    if (m.season === g.season && (m.from === cid || m.to === cid)) rows.push({ pid: p.id, date: m.date, from: m.from, to: m.to, fee: m.fee, loan: m.loan });
+    if (m.from !== cid && m.to !== cid) continue;
+    first = Math.min(first, m.season);
+    if (m.season === season) all.push({ pid: p.id, date: m.date, from: m.from, to: m.to, fee: m.fee, loan: m.loan });
   }
-  rows.sort((a, b) => b.date.localeCompare(a.date));
+  const rows = all.filter((r) => (dir === 'in' ? r.to === cid : r.from === cid)).sort((a, b) => b.date.localeCompare(a.date));
   const listed = squad(cid).filter((p) => p.listed);
+  const total = rows.reduce((a, r) => a + (r.loan ? 0 : r.fee), 0);
   const club = (id: number) => (id ? <span className="link" onClick={() => nav({ name: 'club', id })}>{g.clubs[id]?.short ?? '?'}</span> : t('common.free'));
+  const yr = `${season}/${String((season + 1) % 100).padStart(2, '0')}`;
   return (
     <div>
-      <div className="cx-section">{t('cl.ct.moves')}</div>
-      {rows.length === 0 ? <div className="cx-empty">{t('cl.ct.none')}</div> : (
-        <div className="cx-tbl-wrap"><table className="cx-tbl"><thead><tr>
-          <th>{t('col.date')}</th><th>{t('col.name')}</th><th>{t('cl.ct.inOut')}</th><th>{t('cl.ct.club')}</th><th>{t('cl.ct.fee')}</th>
-        </tr></thead><tbody>{rows.map((r, i) => {
-          const p = g.players[r.pid], inn = r.to === cid;
-          return (
-            <tr key={i}>
-              <td className="c-yel">{dateFmt(r.date)}</td>
-              <td className="c-name"><span onClick={() => nav({ name: 'player', id: r.pid })}>{p ? `${p.last}${p.first ? `, ${p.first}` : ''}` : '?'}</span></td>
-              <td className={inn ? 'good' : 'bad'}>{t(inn ? 'cl.ct.in' : 'cl.ct.out')}</td>
-              <td className="c-club">{club(inn ? r.from : r.to)}</td>
-              <td className="c-val">{r.loan ? t('cl.ct.loan') : r.fee > 0 ? money(r.fee) : t('common.free')}</td>
-            </tr>
-          );
-        })}</tbody></table></div>
+      <div className="cx-tools">
+        <button className="cx-greybtn" disabled={season <= first || dir === 'listed'} onClick={() => setSeason(season - 1)}>{t('cl.ct.prev')}</button>
+        <button className="cx-greybtn" disabled={season >= g.season || dir === 'listed'} onClick={() => setSeason(season + 1)}>{t('cl.ct.next')}</button>
+        <span className="grow" />
+        <CxDrop label={t('cl.sq.view')} align="right" items={(['in', 'out', 'listed'] as const).map((k) => ({ key: k, label: t(`cl.ct.v.${k}`), checked: dir === k, onClick: () => setDir(k) }))} />
+      </div>
+      <div className="cx-subtitle">{dir === 'listed' ? t('cl.ct.v.listed') : t(`cl.ct.title.${dir}`, { season: yr })}</div>
+      {dir === 'listed' ? (listed.length === 0 ? <div className="cx-empty">{t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />) : (
+        <div className="cx-ct">
+          <div className="cx-ct-total"><span className="c-val">{money(total)}</span></div>
+          {rows.length > 0 && <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{rows.map((r, i) => {
+            const p = g.players[r.pid];
+            return (
+              <tr key={i}>
+                <td className="btn-col"><span className="cx-rowbtn">{classicDate(r.date)[1]}</span></td>
+                <td className="c-name"><span className="link" onClick={() => nav({ name: 'player', id: r.pid })}>{p ? `${p.last}${p.first ? `, ${p.first}` : ''}` : '?'}</span></td>
+                <td className="c-club">{club(dir === 'in' ? r.from : r.to)}</td>
+                <td className="c-val">{r.loan ? t('cl.ct.loan') : r.fee > 0 ? money(r.fee) : t('common.free')}</td>
+              </tr>
+            );
+          })}</tbody></table></div>}
+        </div>
       )}
-      <div className="cx-section">{t('cl.ct.listed')}</div>
-      {listed.length === 0 ? <div className="cx-empty">{t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />}
     </div>
   );
 }
@@ -176,7 +186,7 @@ function ModernClub({ id }: { id?: number }) {
   const { nav } = useNav();
   const cid = id ?? g.userClub;
   const c = g.clubs[cid];
-  if (!c) return <Head title="?" />;
+  if (!c) return <NoClub />;
   const mine = cid === g.userClub;
   const manager = g.staff[c.manager];
   const players = squad(cid);
@@ -384,5 +394,19 @@ function IntakePanel() {
         </table>
       )}
     </Panel>
+  );
+}
+
+/** "Min klub" uden klub (fyret eller sagt op): henvis til jobcentret i stedet for en tom side */
+function NoClub() {
+  const { nav } = useNav();
+  return (
+    <div>
+      <Head title={t('top.unemployed')} />
+      <div className="panel" style={{ padding: 16 }}>
+        <p>{t('club.noClub')}</p>
+        <button className="primary" onClick={() => nav({ name: 'jobs' })}>{t('nav.jobs')}</button>
+      </div>
+    </div>
   );
 }

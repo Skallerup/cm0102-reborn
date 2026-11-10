@@ -22,7 +22,7 @@ const when = (iso: string) => dateFmt(iso.slice(0, 10));
 export function CommunityHub({ initialTab = 'suggestions', hallId, suggestionId, defaultName, onLegend }: {
   initialTab?: HubTab; hallId?: number; suggestionId?: number; defaultName?: string;
   /** i spillet: åbn legenden i det aktuelle spil (kun med den originale database) */
-  onLegend?: (id: number) => void;
+  onLegend?: (id: number, name: string) => void;
 }) {
   const [tab, setTab] = useState<HubTab>(hallId ? 'hall' : initialTab);
   const [, setTick] = useState(0);
@@ -118,7 +118,7 @@ function HallModal({ id, onClose }: { id: number; onClose: () => void }) {
 
 // ---------- legender ----------
 
-function LegendsTab({ onLegend }: { onLegend?: (id: number) => void }) {
+function LegendsTab({ onLegend }: { onLegend?: (id: number, name: string) => void }) {
   const [counts, setCounts] = useState<Record<string, number>>({});
   const [mine, setMine] = useState<string[]>([]);
   const load = () => void legendCounts(LEGENDS.map((l) => l.key)).then((r) => { setCounts(r?.counts ?? {}); setMine(r?.mine ?? []); });
@@ -136,7 +136,7 @@ function LegendsTab({ onLegend }: { onLegend?: (id: number) => void }) {
               <span>{lang === 'da' ? l.da : (l as unknown as Record<string, string>)[lang] ?? l.en}</span>
               <div className="row" style={{ marginTop: 'auto' }}>
                 <button className={`small ${on ? 'primary' : ''}`} disabled={!getProfile()} onClick={async () => { const r = await rememberLegend(l.key, !on); if (!('error' in r)) load(); }}>❤️ {t(on ? 'hub.legends.remembered' : 'hub.legends.remember')} · {counts[l.key] ?? 0}</button>
-                {onLegend && <button className="small" onClick={() => onLegend(l.id)}>{t('hub.legends.open')}</button>}
+                {onLegend && <button className="small" onClick={() => onLegend(l.id, l.name)}>{t('hub.legends.open')}</button>}
               </div>
             </div>
           );
@@ -249,6 +249,7 @@ function SkinsTab() {
 
 function SkinMaker({ onClose }: { onClose: () => void }) {
   const [title, setTitle] = useState('');
+  const [club, setClub] = useState('');
   const [desc, setDesc] = useState('');
   const [license, setLicense] = useState(false);
   const [id, setId] = useState<number | null>(null);
@@ -273,10 +274,11 @@ function SkinMaker({ onClose }: { onClose: () => void }) {
       {done ? <div className="insight good">{t('hub.skins.sent')}</div> : id === null ? (
         <div className="col">
           <label className="col">{t('hub.skins.name')}<input maxLength={60} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+          <label className="col">{t('hub.skins.club')}<input maxLength={60} value={club} placeholder={t('hub.skins.clubPh')} onChange={(e) => setClub(e.target.value)} /></label>
           <label className="col">{t('hub.skins.desc')}<textarea rows={2} maxLength={400} value={desc} onChange={(e) => setDesc(e.target.value)} /></label>
           <label className="row"><input type="checkbox" checked={license} onChange={(e) => setLicense(e.target.checked)} />{t('hub.skins.license')}</label>
           {msg && <div className="bad">{msg}</div>}
-          <button className="primary" disabled={!title.trim() || !license} onClick={async () => { const r = await createSkin(title, desc); if ('error' in r) setMsg(errText(r.error)); else setId(r.id); }}>{t('hub.skins.next')}</button>
+          <button className="primary" disabled={!title.trim() || !license} onClick={async () => { const r = await createSkin(title, desc, club.trim()); if ('error' in r) setMsg(errText(r.error)); else setId(r.id); }}>{t('hub.skins.next')}</button>
         </div>
       ) : (
         <div className="col">
@@ -295,11 +297,13 @@ function SkinMaker({ onClose }: { onClose: () => void }) {
 // ---------- credits ----------
 
 const DATA_CREDITS: [string, string, string?][] = [
-  ['Championship Manager 01/02', 'Sports Interactive / Eidos – the original game and the 3.9.68 database'],
+  ['Championship Manager 01/02', 'Sports Interactive / Eidos – the original game and its 3.9.60 database'],
   ['October 2026 Data Update', 'The CM 01/02 community – updated squads for 2026/27'],
   ['Sunday League Pack', 'The CM 01/02 community – background photos'],
   ['transfermarkt-datasets', 'dcaribou – open player data (CC0)', 'https://github.com/dcaribou/transfermarkt-datasets'],
   ['football-logos', 'luukhopman – club logos', 'https://github.com/luukhopman/football-logos'],
+  ['TheSportsDB', 'club logos for English clubs missing from the pack', 'https://www.thesportsdb.com'],
+  ['CM0102 Background Image Pack', 'Naydav – stadium, club, competition, nation, training and boardroom backgrounds (1280x800)', 'https://github.com/naydav/CM0102-Pictures'],
 ];
 
 function CreditsTab() {

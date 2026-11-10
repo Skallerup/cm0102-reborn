@@ -178,6 +178,8 @@ export async function POST(request: Request) {
     if (op === 'admin:skin') {
       const s = await redis.hgetall<Record<string, string>>(`sk:${id}`);
       if (!s) return json({ error: 'missing' }, 404);
+      // klubpakke: admin kan sætte/rette klubben (tom = almindelig pakke)
+      if (typeof body.club === 'string' && body.status === undefined) { await redis.hset(`sk:${id}`, { club: clean(body.club, 60) ?? '' }); return json({ ok: true }); }
       const status = body.status === 'approved' ? 'approved' : body.status === 'rejected' ? 'rejected' : 'pending';
       await redis.hset(`sk:${id}`, { status });
       await Promise.all([redis.zrem('sk:pending', id), redis.zrem('sk:approved', id)]);
@@ -295,7 +297,7 @@ export async function POST(request: Request) {
     const title = clean(body.title, 60);
     if (!title || BAD.test(title)) return json({ error: 'title' }, 400);
     const id = await redis.incr('sk:seq');
-    await redis.hset(`sk:${id}`, { pid: me.pid, author: me.name, title, desc: cleanBody(body.desc, 400), created: new Date().toISOString(), status: 'draft', images: '[]' });
+    await redis.hset(`sk:${id}`, { pid: me.pid, author: me.name, title, desc: cleanBody(body.desc, 400), club: clean(body.club, 60) ?? '', created: new Date().toISOString(), status: 'draft', images: '[]' });
     return json({ ok: true, id });
   }
   if (op === 'skin-image') {

@@ -1,32 +1,41 @@
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
+import { submitSquadNumbers } from './squadNumbers';
+import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
-import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
+import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, faRequest, meetBoard, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
-import { activateNation, playPendingAsAi, submitMatchResult } from './sim';
+import { activateNation, addableNations, playPendingAsAi, submitMatchResult } from './sim';
 import { initKnowledge } from './scouting';
 import { fireStaff, hireStaff, raiseStaff } from './staff';
-import { interact, talkToPlayer, teamTalk, type TalkKind } from './personality';
+import { interact, talkToPlayer, teamTalk, type DisciplineReason, type TalkKind } from './personality';
 import { chooseSponsor } from './finance';
 import { applyPress } from './press';
 import { answerComplaint } from './will';
 import { answerBet, proposeBet, sendJab } from './rivalry';
-import { removeHuman } from './humans';
-import { addNews, gs, notify } from './state';
+import { isHumanClub, removeHuman } from './humans';
+import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
-  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, respondToOffer, setListPrice, startPreContract, toggleListed,
-} from './transfers';
+  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
-import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer } from './types';
+import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer, CoachArea } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
+import type { SquadStatus } from './squadStatus';
+import { startScoutAssignment } from './scouting';
+import { answerNationalOffer, resignNational, selectNationalSquad } from './international';
+import { appealBan } from './rules2001';
+import { authentic } from './rules';
+import { A } from './attributes';
+import { rng } from './rng';
+import { ageOn } from './dates';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
@@ -34,9 +43,20 @@ export type Action =
   | { t: 'training'; pid: number; key: string }
   | { t: 'trainingAll'; key: string }
   | { t: 'listed'; pid: number; price?: number | null }
+  | { t: 'squadStatus'; pid: number; status: SquadStatus | null; loanListed: boolean }
+  | { t: 'squadNumber'; pid: number; n: number }
+  | { t: 'squadNumbers'; nums: Record<number, number> }
+  | { t: 'euroSquad'; ids: number[] }
   | { t: 'notes'; pid: number; text: string }
   | { t: 'release'; pid: number }
   | { t: 'loanOut'; pid: number; club: number; share: number; fee: number }
+  | { t: 'recallLoan'; pid: number }
+  | { t: 'nationalOffer'; accept: boolean }
+  | { t: 'resignNational' }
+  | { t: 'nationalSquad'; pids: number[] }
+  | { t: 'meetBoard'; kind: import('./board').MeetBoardKind }
+  | { t: 'faRequest'; kind: import('./board').FaKind }
+  | { t: 'appealBan'; pid: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
@@ -44,11 +64,16 @@ export type Action =
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'nickname'; pid: number; nick: string | null }
+  | { t: 'reserves'; pid: number; on: boolean }
+  | { t: 'staffReport'; pid: number; staffId: number }
+  | { t: 'renewLater'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number; wage?: number }
   | { t: 'fireStaff'; id: number }
+  | { t: 'coachAreas'; id: number; areas: CoachArea[] | null }
   | { t: 'budget'; kind: 'transfer' | 'wage'; pct?: number }
   | { t: 'budgetCounter'; accept: boolean }
   | { t: 'budgetShift'; toWage: boolean; amount: number }
@@ -57,6 +82,7 @@ export type Action =
   | { t: 'camp'; dest: CampDest; start: string }
   | { t: 'campCancel' }
   | { t: 'setRules'; rules: 'modern' | 'classic' }
+  | { t: 'setMode'; mode: 'authentic' | 'extended' }
   | { t: 'draftReplace'; out: number; inn: number }
   | { t: 'trial'; pid: number; end?: boolean }
   | { t: 'friendly'; opp: number; date: string; kind: FriendlyKind }
@@ -64,7 +90,7 @@ export type Action =
   | { t: 'onboard'; step: 'weak' | 'style' | 'needs' | 'brief' | 'skip'; style?: StyleKey; needs?: string[] }
   | { t: 'managerProfile'; name?: string; nation?: number; motto?: string }
   | { t: 'talk'; pid: number; choice: 'promise' | 'list' | 'refuse' }
-  | { t: 'interact'; pid: number; kind: TalkKind }
+  | { t: 'interact'; pid: number; kind: TalkKind; reason?: DisciplineReason }
   | { t: 'teamTalk'; kind: 'praise' | 'criticise' | 'demand' | 'calm' }
   | { t: 'matchTalk'; fixture: number; stage: TalkStage; tone: TalkTone; pids: number[]; diff: number; ratings: Record<number, number>; individual?: Record<number, TalkTone> }
   | { t: 'sponsor'; kind: 'safe' | 'bonus' | 'ambitious' }
@@ -77,6 +103,7 @@ export type Action =
   | { t: 'resign' }
   | { t: 'fixPending' }
   | { t: 'setWindows'; mode: 'real' | 'classic' }
+  | { t: 'addNation'; nation: number }
   | { t: 'setH2hTime'; minutes: number }
   | { t: 'raiseBid'; offer: number; amount: number }
   | { t: 'bidNow'; offer: number }
@@ -110,7 +137,13 @@ function myOffer(pid: number): TransferOffer | undefined {
 }
 
 /** Anvend en handling for den aktive manager. Returnerer et resultat til UI'et. */
+/** Handlinger, der kun findes i det udvidede spil (ægte CM 01/02 havde dem ikke) */
+const EXTENDED_ONLY = new Set<Action['t']>(['matchTalk', 'teamTalk', 'talk', 'trial', 'camp', 'campCancel', 'sponsor', 'ticket', 'project', 'boardAsk', 'budgetShift', 'raiseBid', 'bidNow', 'rebid', 'press', 'onboard']);
+/** Discipline Player er det eneste spillersamtaler, originalen havde */
+const AUTHENTIC_TALKS = new Set(['warning', 'fine', 'fineHeavy', 'drop']);
+
 export function applyAction(a: Action): unknown {
+  if (authentic() && (EXTENDED_ONLY.has(a.t) || (a.t === 'interact' && !AUTHENTIC_TALKS.has(a.kind)))) return 'authentic';
   const g = gs();
   const club = g.clubs[g.userClub];
   switch (a.t) {
@@ -123,9 +156,35 @@ export function applyAction(a: Action): unknown {
       if (a.price === undefined) toggleListed(a.pid);
       else setListPrice(a.pid, a.price);
       return 'ok';
+    case 'squadStatus': {
+      const p = g.players[a.pid];
+      if (p?.club !== g.userClub) return 'error';
+      p.squadStatus = a.status ?? undefined;
+      p.loanListed = a.loanListed || undefined;
+      return 'ok';
+    }
+    case 'squadNumber': {
+      // Squad Numbers: nyt nummer – har en holdkammerat det, bytter de
+      const p = g.players[a.pid];
+      if (p?.club !== g.userClub || !Number.isInteger(a.n) || a.n < 1 || a.n > 99) return 'error';
+      const other = squad(g.userClub).find((x) => x.id !== p.id && x.number === a.n);
+      if (other) other.number = p.number;
+      p.number = a.n;
+      if (other && !other.number) other.number = pickNumber(other, g.userClub);
+      return 'ok';
+    }
+    case 'squadNumbers': return submitSquadNumbers(g.userClub, a.nums);
+    case 'euroSquad': return submitEuroSquad(g.userClub, a.ids);
     case 'notes': { const p = g.players[a.pid]; if (p) p.notes = a.text; return 'ok'; }
-    case 'release': releasePlayer(a.pid); return 'ok';
+    case 'release': return releasePlayer(a.pid);
     case 'loanOut': return loanOut(a.pid, a.club, a.share, a.fee);
+    case 'recallLoan': return recallLoan(a.pid);
+    case 'nationalOffer': return answerNationalOffer(a.accept);
+    case 'resignNational': return resignNational();
+    case 'nationalSquad': return selectNationalSquad(a.pids);
+    case 'meetBoard': return meetBoard(a.kind);
+    case 'faRequest': return faRequest(a.kind);
+    case 'appealBan': return appealBan(a.pid);
     case 'enquire': return enquire(a.pid);
     case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });
     case 'preContract': return startPreContract(a.pid);
@@ -133,9 +192,20 @@ export function applyAction(a: Action): unknown {
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
       if (a.on) g.shortlist.push(a.pid);
       return 'ok';
-    case 'scout': { const s = g.staff[a.staffId]; if (s && s.club === g.userClub) s.assignment = a.assignment; return 'ok'; }
+    case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
+    case 'nickname': return setNickname(a.pid, a.nick);
+    case 'reserves': {
+      const p = g.players[a.pid];
+      if (!p || p.club !== g.userClub) return 'error';
+      p.reserves = a.on || undefined;
+      // ud af startopstillingen og bænken, når han rykkes ned
+      if (a.on && g.tactic) { g.tactic.lineup = g.tactic.lineup.map((id) => (id === p.id ? 0 : id)); g.tactic.bench = g.tactic.bench.filter((id) => id !== p.id); }
+      return 'ok';
+    }
+    case 'staffReport': return staffReport(a.pid, a.staffId);
+    case 'renewLater': return offerRenewalLater(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {
       const o = g.offers.slice().reverse().find((x) => x.player === a.pid && x.buyer === a.buyer && x.seller === g.userClub && x.status === 'pending');
       const reply = o ? respondToOffer(o.id, a.action, a.counter, a.sellOn, a.reason) : null;
@@ -145,6 +215,7 @@ export function applyAction(a: Action): unknown {
     case 'withdraw': { const o = myOffer(a.pid); if (o) o.status = 'withdrawn'; return 'ok'; }
     case 'hireStaff': return hireStaff(a.id, a.wage);
     case 'fireStaff': return fireStaff(a.id);
+    case 'coachAreas': { const st = g.staff[a.id]; if (!st || st.club !== g.userClub) return 'error'; st.coachAreas = a.areas ?? undefined; return 'ok'; }
     case 'budget': return requestBudget(a.kind, a.pct);
     case 'budgetCounter': return answerBudgetCounter(a.accept);
     case 'budgetShift': return shiftBudget(a.toWage, a.amount);
@@ -153,6 +224,8 @@ export function applyAction(a: Action): unknown {
     case 'camp': return planCamp(a.dest, a.start);
     case 'campCancel': return cancelCamp() ? 'ok' : 'error';
     case 'setRules': g.options.rules = a.rules; return 'ok';
+    // ægte CM 01/02 følger også originalens kampregler (3 udskiftninger, 5 på bænken)
+    case 'setMode': g.options.mode = a.mode; if (a.mode === 'authentic') g.options.rules = 'classic'; return 'ok';
     case 'draftReplace': return replacePlayer(gs().userClub, a.out, a.inn);
     case 'trial': if (a.end) { endTrial(a.pid); return 'ok'; } return inviteTrial(a.pid);
     case 'friendly': return arrangeFriendly(a.opp, a.date, a.kind);
@@ -178,7 +251,7 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     }
     case 'talk': return talkToPlayer(a.pid, a.choice);
-    case 'interact': return interact(a.pid, a.kind);
+    case 'interact': return interact(a.pid, a.kind, a.reason);
     case 'teamTalk': return teamTalk(a.kind);
     case 'matchTalk': { const ex = matchExpectation(a.fixture); return giveTalk({ stage: a.stage, fixture: a.fixture, e: ex.e, big: ex.big, diff: a.diff, ratings: a.ratings }, a.tone, a.pids, a.individual); }
     case 'sponsor': return chooseSponsor(a.kind);
@@ -197,6 +270,11 @@ export function applyAction(a: Action): unknown {
     case 'rebid': return rebid(a.offer, a.fee, a.sellOn !== undefined || a.addOn !== undefined ? { sellOn: a.sellOn, addOn: a.addOn } : undefined);
     case 'raiseStaff': return raiseStaff(a.staff, a.wage);
     case 'setWindows': gs().options.transferWindows = a.mode; return 'ok';
+    // flere spilbare ligaer undervejs (kun eget spil – i fællesspil skulle alle være enige)
+    case 'addNation':
+      if (g.humans?.length || g.draft || !addableNations().includes(a.nation)) return 'error';
+      activateNation(a.nation);
+      return 'ok';
     case 'setH2hTime': gs().options.h2hHalfMinutes = Math.min(15, Math.max(1, Math.round(a.minutes))); return 'ok';
     case 'matchResult': submitMatchResult(a.fixture, a.rep); return 'ok';
     case 'join': return 'ok'; // håndteres af applyActionAs
@@ -270,4 +348,41 @@ export function act<T = unknown>(a: Action): T {
   sink?.(a);
   notify();
   return r;
+}
+
+/** CM 01/02 "Set Nickname": spilleren hedder kælenavnet overalt (Remove giver det rigtige navn tilbage) */
+function setNickname(pid: number, nick: string | null): string {
+  const p = gs().players[pid];
+  // CM 01/02: kælenavn til enhver spiller – men ikke en anden managers spillere i et fællesspil
+  if (!p || (p.club !== gs().userClub && isHumanClub(p.club))) return 'error';
+  const name = (nick ?? '').trim().slice(0, 30);
+  if (!name) { if (p.realName) { p.first = p.realName.first; p.last = p.realName.last; p.realName = undefined; } return 'ok'; }
+  p.realName ??= { first: p.first, last: p.last };
+  p.first = ''; p.last = name;
+  return 'ok';
+}
+
+/** "Request Physio Report" / "Request Coach Report": rapporten kommer med det samme i nyhederne (vurderingen følger stabens evner) */
+function staffReport(pid: number, staffId: number): string {
+  const g = gs();
+  const p = g.players[pid], s = g.staff[staffId];
+  if (!p || !s || s.club !== g.userClub) return 'error';
+  const name = `${p.first} ${p.last}`.trim();
+  const by = `${s.first} ${s.last}`.trim();
+  if (s.role === 'physio') {
+    const ip = p.attrs[A.injuryProneness];
+    // en dårlig fysioterapeut tager fejl med op til et par point (*estimeret*)
+    const seen = Math.max(1, Math.min(20, ip + Math.round((rng.next() - 0.5) * (20 - s.attrs.physio) / 4)));
+    const prone = seen >= 14 ? 'high' : seen >= 9 ? 'normal' : 'low';
+    const cond = p.condition >= 90 ? 'top' : p.condition >= 75 ? 'ok' : 'tired';
+    addNews({ cat: 'injury', key: 'staffrep.physio', params: { player: name, by, prone: `staffrep.prone.${prone}`, cond: `staffrep.cond.${cond}`, inj: p.injury ? `injury.${p.injury.key}` : '', days: p.injury?.days ?? 0 }, link: { kind: 'player', id: p.id } });
+  } else {
+    const k = s.attrs.judgingAbility, kp = s.attrs.judgingPotential;
+    const noise = (j: number) => Math.round((rng.next() - 0.5) * (20 - j) * 3);
+    const ca = p.ca + noise(k), pa = Math.max(ca, p.pa + noise(kp));
+    const word = (v: number) => (v >= 170 ? 'world' : v >= 150 ? 'top' : v >= 130 ? 'good' : v >= 110 ? 'decent' : v >= 90 ? 'average' : 'poor');
+    const age = ageOn(p.dob, g.date);
+    addNews({ cat: 'general', key: 'staffrep.coach', params: { player: name, by, now: `staffrep.lvl.${word(ca)}`, future: age <= 23 ? `staffrep.lvl.${word(pa)}` : `staffrep.lvl.${word(ca)}`, young: age <= 23 ? 1 : 0 }, link: { kind: 'player', id: p.id } });
+  }
+  return 'ok';
 }

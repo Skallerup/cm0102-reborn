@@ -12,3 +12,12 @@ export function toggleCompare(id: number) {
   }
   notify();
 }
+
+/** CM 01/02 "Compare Players": sæt spilleren som 1. eller 2. i sammenligningen */
+export function setCompareSlot(slot: 0 | 1, id: number) {
+  const other = compareIds[1 - slot];
+  compareIds.length = 0;
+  if (slot === 0) { compareIds.push(id); if (other !== undefined && other !== id) compareIds.push(other); }
+  else { if (other !== undefined && other !== id) compareIds.push(other); compareIds.push(id); }
+  notify();
+}

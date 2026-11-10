@@ -14,7 +14,7 @@ export interface HallSummary {
 export interface HallComment { pid: string; name: string; text: string; at: string }
 export interface DbEdit { id: number; pid: string; name: string; db: 'cm' | 'original'; kind: 'player' | 'club'; target: number; targetName: string; field: string; old: string; value: string; reason: string; created: string; status: string; votes: number }
 export interface FeedRow { kind: 'season' | 'hall' | 'edit'; text: string; id?: number; at: string; pid: string; name: string }
-export interface SkinPack { id: number; pid: string; author: string; title: string; desc: string; created: string; status: string; images: string[] }
+export interface SkinPack { id: number; pid: string; author: string; title: string; desc: string; created: string; status: string; images: string[]; club?: string }
 export interface Credit { id: string; name: string; role: string; link?: string; since?: string }
 
 async function get<T>(q: string): Promise<T | null> {
@@ -53,7 +53,7 @@ export const followState = (who: string) => get<{ following: boolean; followers:
 export const follow = (who: string, on: boolean) => post('follow', { who, on });
 
 export const listSkins = () => get<{ rows: SkinPack[] }>('op=skins');
-export const createSkin = (title: string, desc: string) => post<{ ok: true; id: number }>('skin-create', { title, desc, license: true });
+export const createSkin = (title: string, desc: string, club = '') => post<{ ok: true; id: number }>('skin-create', { title, desc, club, license: true });
 export const uploadSkinImage = (id: number, data: string) => post<{ ok: true; url: string; count: number }>('skin-image', { id, data });
 export const submitSkin = (id: number) => post('skin-submit', { id });
 

@@ -95,7 +95,7 @@ export function friendliesDaily() {
     }
     fr.done = true;
     fr.result = [gf, ga];
-    const scorers = rep.events.filter((e) => e.k === 'goal' && e.t === 0).map((e) => g.players[e.p ?? 0]?.last).filter(Boolean).join(', ');
+    const scorers = rep.events.filter((e) => e.k === 'goal' && e.t === 0 && !e.og).map((e) => g.players[e.p ?? 0]?.last).filter(Boolean).join(', ');
     addNews({ cat: 'match', key: `friendly.result.${won ? 'win' : lost ? 'loss' : 'draw'}`, params: { opp: opp.name, score: `${gf}-${ga}`, fee: gate, scorers: scorers || '–', morale: morale >= 0 ? `+${morale}` : String(morale) } });
   });
 }

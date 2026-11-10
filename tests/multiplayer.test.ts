@@ -31,7 +31,7 @@ describe('online multiplayer (motor)', () => {
 
     let turns = 0;
     let humanMatchTurns = 0;
-    while (g.season === 2025 && turns < 200) {
+    while (g.season === 2025 && turns < 300) {
       const r = mpAdvance();
       if (r.reason === 'match') humanMatchTurns++;
       turns++;

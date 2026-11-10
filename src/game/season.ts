@@ -1,4 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { splitReserves } from './reserves';
+import { storeSeasonRecords } from './clubHistory';
+import { boardEventsSeason, isOriginal2001 } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
 import { storyAdd, storySeasonEnd } from './story';
@@ -20,8 +23,11 @@ import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
 import { initKnowledge } from './scouting';
-import type { Club, Player, SeasonFinance, SeasonSummary } from './types';
+import type { Club, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
+import { subPos } from './data/cm0102';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
+import { econ } from './econ';
+import { extended } from './rules';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 
@@ -128,6 +134,10 @@ function promotionRelegation() {
     for (const c of lOrder) { if (down.length <= up.length) break; if (!up.includes(c)) up.push(c); }
     for (const c of down) moves.set(c, rules.below);
     for (const c of up) moves.set(c, upper);
+    // CM 01/02: "[klub] avoid relegation" (lige over stregen) og "[klub] fail to win promotion" (lige under)
+    const safe = uOrder.slice(Math.max(0, uOrder.length - down.length - 2), uOrder.length - down.length);
+    for (const c of safe) if (!down.includes(c)) asOwner(c, () => addNews({ cat: 'general', key: 'comp.avoidRelegation', params: { club: g.clubs[c].name, comp: U.name }, link: { kind: 'comp', id: U.id } }));
+    for (const c of lOrder.slice(up.length, up.length + 3)) if (!up.includes(c)) asOwner(c, () => addNews({ cat: 'general', key: 'comp.missedPromotion', params: { club: g.clubs[c].name, comp: L.name }, link: { kind: 'comp', id: L.id } }));
   }
   for (const [cid, league] of moves) {
     const club = g.clubs[cid];
@@ -138,7 +148,7 @@ function promotionRelegation() {
     if (!wasUp && !isHumanClub(cid)) {
       for (const p of squad(cid).filter((x) => !x.loan && x.contract).sort((a, b) => b.ca - a.ca).slice(0, 8)) {
         p.listed = true;
-        p.listPrice = Math.max(10_000, Math.round(p.value * 0.65 / 50_000) * 50_000);
+        p.listPrice = Math.max(10_000 * econ(), Math.round(p.value * 0.65 / 50_000) * 50_000);
       }
     }
     forEachHuman(() => {
@@ -159,6 +169,9 @@ function contractsAndLoans() {
   const today = g.date; // 1. juli
   for (const p of Object.values(g.players)) {
     if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
+      // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
+      const loanClub = p.club, from = p.loan.from;
+      for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
       setClub(p, p.loan.from);
       p.loan = null;
     }
@@ -189,6 +202,7 @@ function contractsAndLoans() {
 
 function retirements() {
   const g = gs();
+  const reborn: Player[] = [];
   for (const p of Object.values(g.players)) {
     const age = ageOn(p.dob, g.date);
     let prob = 0;
@@ -203,9 +217,91 @@ function retirements() {
       if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
       else if (isHumanClub(p.club)) asOwner(p.club, () => addNews(msg));
       retireIntoStaff(p);
+      // CM 01/02: gode spillere "genopstår" som et ungt talent med et fiktivt navn (en regen) ved næste ungdomsårgang.
+      // Ægte CM 01/02 med den originale database: ALLE pensionerede bliver genfødt (player_regen.cpp sub_7a59e0)
+      if ((p.pa >= 120 || originalRegens()) && p.pa > 0 && !g.draft) reborn.push(p);
       removePlayer(p);
     }
   }
+  for (const p of reborn) queueRegen(p);
+}
+
+function queueRegen(p: Player) {
+  (gs().regenQueue ??= []).push({ from: pname(p), nation: p.nation, pos: p.pos.slice(), side: p.side.slice(), foot: p.foot === 'L' ? 'L' : p.foot === 'B' ? 'B' : 'R', pa: p.pa, attrs: p.attrs.map((a) => Math.round(a)) });
+}
+
+/** En spiller forlader fodbolden: i ægte CM 01/02 (original database) bliver han også til en regen */
+function leaveFootball(p: Player) {
+  if (originalRegens() && p.pa > 0 && !gs().draft) queueRegen(p);
+  removePlayer(p);
+}
+
+/**
+ * Ægte CM 01/02 med den originale database: originalens model for nye spillere (Bosman-projektets
+ * player_generation/PLAYER_GENERATION.md, player_regen.cpp). Nye unge spillere er KUN regens – hver pensioneret spiller
+ * genfødes én gang med samme PA – og der er ingen ungdomsårgange skabt af ingenting. Ellers (udvidet spil, moderne
+ * database): ungdomsårgange i marts + regens af de gode (PA 120+).
+ */
+export const originalRegens = () => isOriginal2001() && !extended();
+
+function spawnRegenQueue() {
+  const g = gs();
+  const queue = g.regenQueue ?? [];
+  g.regenQueue = [];
+  queue.forEach((seed, n) => {
+    const p = spawnRegen(seed, n);
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+  });
+}
+
+/** Originalens alder og CA for en regen (sub_7abac0, "sti 2"): PA arves uændret, CA = rand(PA·k)+PA·b med loft efter alder */
+function originalRegenAgeCa(old: RegenSeed, r: Rng): { age: number; ca: number } {
+  const pa = old.pa;
+  const rnd = (n: number) => (n > 0 ? r.int(0, Math.floor(n) - 1) : 0);
+  const [GK, SW, D, , , , F] = old.pos;
+  let ca = F >= 20 ? rnd(pa * 0.6) + pa * 0.3 : D >= 20 || SW >= 20 ? rnd(pa * 0.55) + pa * 0.25 : GK >= 20 ? rnd(pa * 0.5) + pa * 0.25 : rnd(pa * 0.6) + pa * 0.25;
+  const x = rnd(10000);
+  let age: number;
+  const cap = (lim: number, odds: number) => { if (ca > lim && rnd(odds) !== 0) ca = lim; };
+  if (x === 0) { age = 15 + rnd(4); if (age === 15) cap(80, 250); else cap(100, 150); }
+  else if (x < 5000) { age = 16 + rnd(3); if (age < 18) cap(80, 250); else cap(100, 150); }
+  else if (x > 9975) age = 21 + rnd(6);
+  else { age = 17 + rnd(4); if (age === 17) cap(90, 250); else cap(110, 150); }
+  return { age, ca: Math.max(1, Math.round(ca)) };
+}
+
+/**
+ * En regen: et 15-16-årigt talent fra samme land, på samme position og med potentiale omkring den pensionerede
+ * spillers niveau – så verdens spillerbestand og kvalitet holdes oppe, som i CM 01/02. Han kommer til en klub i
+ * landet (gode ungdomsafdelinger oftere); findes ingen, bliver han fri agent.
+ */
+function spawnRegen(old: RegenSeed, n: number) {
+  const g = gs();
+  const r = new Rng(hash(g.seed, n, g.season, old.pa, 91));
+  // ægte CM 01/02: også de skjulte klubber (højst 16 spillere) – i originalen findes alle databasens klubber, og regens går til klubber i landet
+  const orig0 = originalRegens();
+  const clubs = Object.values(g.clubs).filter((c) => c.nation === old.nation && (g.leagues[c.league]?.hidden ? orig0 && squad(c.id).length < 16 : squad(c.id).length < 40));
+  const club = clubs.length ? r.weighted(clubs, (c) => 1 + c.youth * c.youth / 20) ?? clubs[0] : undefined;
+  const orig = originalRegens() ? originalRegenAgeCa(old, r) : undefined;
+  const pa = orig ? old.pa : Math.max(90, Math.min(195, Math.round(old.pa + r.normal(0, 10))));
+  const ca = orig ? Math.min(orig.ca, pa) : Math.max(30, Math.min(80, Math.round(pa * 0.3 + r.normal(0, 6))));
+  const [first, last] = randomName(g.names, old.nation, r);
+  const sub = subPos(old.pos, old.side) as SubPos;
+  const p = makePlayer({
+    id: g.nextId.player++, first, last, dob: randomDob(orig?.age ?? r.int(15, 16), g.date, r), nation: old.nation, club: club?.id ?? 0, sub,
+    foot: old.foot === 'L' ? 'L' : 'R', height: 0, ca, pa, date: g.date, seed: g.seed, regen: true, contractEnd: club ? `${g.season + 3}-06-30` : undefined,
+  });
+  // samme profil som forbilledet: hans relative styrker og svagheder (teknik, mentalt, fysik) går igen på regen'ens
+  // eget niveau, positionerne er de samme, og personligheden (skjulte egenskaber) ligner hans med lidt støj
+  const mean = (xs: number[]) => xs.reduce((s2, v) => s2 + v, 0) / Math.max(1, xs.length);
+  const mOld = mean(old.attrs.slice(0, 33)), mNew = mean(p.attrs.slice(0, 33));
+  for (let i = 0; i < 33; i++) p.attrs[i] = Math.max(1, Math.min(20, mNew + 0.4 * (p.attrs[i] - mNew) + 0.6 * (old.attrs[i] - mOld)));
+  for (let i = 36; i < p.attrs.length && i < old.attrs.length; i++) p.attrs[i] = Math.max(1, Math.min(20, Math.round(old.attrs[i] + r.normal(0, 2))));
+  p.pos = old.pos.slice(); p.side = old.side.slice();
+  p.value = Math.max(10_000, p.value);
+  if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+  addPlayer(p);
+  return p;
 }
 
 const PA_BASE = 30, PA_Q = 55, PA_SD = 22;
@@ -261,6 +357,7 @@ const VERDICTS: IntakeVerdict[] = ['poor', 'average', 'good', 'golden'];
 /** 1. februar: ungdomschefens rapport om den kommende årgang (kun menneskestyrede klubber) */
 export function youthPreview() {
   const g = gs();
+  if (originalRegens()) return; // originalen har ingen ungdomsårgange
   forEachHuman(() => {
     const c = g.clubs[g.userClub];
     if (!c) return;
@@ -287,9 +384,18 @@ export function youthPreview() {
 /** Ungdomsårgang – kaldes i marts */
 export function youthIntake() {
   const g = gs();
+  // regens fra sidste sommers pensioneringer dukker op sammen med årgangene
+  const queue = g.regenQueue ?? [];
+  g.regenQueue = [];
+  queue.forEach((seed, n) => {
+    const p = spawnRegen(seed, n);
+    if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
+  });
+  if (originalRegens()) return; // originalen: kun regens (de kommer ved pensioneringen) – ingen årgange skabt af ingenting
   const active = new Set(g.activeNations);
   for (const c of Object.values(g.clubs)) {
     if (!active.has(c.nation) && rng.chance(0.3)) continue; // inaktive nationer får lidt færre
+    if (g.leagues[c.league]?.hidden) continue; // skjulte klubber (spiller ingen kampe) beholder databasens trup
     const specs = planIntake(c);
     const human = isHumanClub(c.id);
     const added: [Player, SubPos][] = [];
@@ -307,10 +413,8 @@ export function youthIntake() {
       if (sr) p.supporterNamed = sr.by;
       addPlayer(p);
       added.push([p, sp.sub]);
-      if (human) asOwner(c.id, () => {
-        g.knowledge[p.id] = 100;
-        addNews({ cat: 'youth', key: 'news.youth', params: { player: pname(p), pos: sp.sub }, link: { kind: 'player', id: p.id } });
-      });
+      // årgangen samles i én nyhed ("youth.intakeDay") – ikke én pr. spiller
+      if (human) asOwner(c.id, () => { g.knowledge[p.id] = 100; });
     }
     if (human && added.length) {
       const [best, pos] = added.slice().sort((a, b) => b[0].pa - a[0].pa)[0];
@@ -435,6 +539,26 @@ function updateClubReps() {
   }
 }
 
+/**
+ * Når transfervinduet lukker (2/9 og 2/2): frie agenter, ingen har skrevet kontrakt med, finder klubber i lavere
+ * rækker eller i udlandet og forlader spillet. Stjerner og store talenter bliver i puljen, så de kan hentes.
+ */
+export function freeAgentDrift() {
+  const g = gs();
+  const all = Object.values(g.players);
+  const free = all.filter((p) => !p.club && p.ca < 130 && p.pa < 150 && p.rep < 70);
+  // selvregulerende: kun det, puljen er over ~6 % af alle spillere, forsvinder (ellers skrumper verden)
+  const excess = free.length - all.length * 0.06;
+  if (excess <= 0) return;
+  const base = Math.min(0.6, excess / free.length);
+  for (const p of free) {
+    const age = ageOn(p.dob, g.date);
+    const prob = age >= 21 ? base : p.pa < 130 ? base * 0.7 : 0;
+    if (prob && rng.chance(prob)) leaveFootball(p);
+  }
+  if (originalRegens()) spawnRegenQueue();
+}
+
 function prune() {
   const g = gs();
   // fri agenter med lav værdi forsvinder
@@ -442,9 +566,10 @@ function prune() {
   for (const p of free) {
     const age = ageOn(p.dob, g.date);
     // klubløse der ikke er gode nok, eller er for gamle til at få kontrakt, forsvinder ud af fodbolden
-    if ((p.ca < 85 && age >= 25) || (age >= 33 && p.ca < 100) || age >= 38 || (p.ca < 45 && age >= 21)) removePlayer(p);
+    if ((p.ca < 85 && age >= 25) || (age >= 33 && p.ca < 100) || age >= 38 || (p.ca < 45 && age >= 21)) leaveFootball(p);
   }
-  // gamle kampe og rapporter
+  // gamle kampe og rapporter (klubhistorikken gemmes først)
+  storeSeasonRecords(isHumanClub);
   g.fixtures = {};
   const reportIds = Object.keys(g.reports).map(Number).sort((a, b) => b - a);
   for (const id of reportIds.slice(40)) delete g.reports[id];
@@ -460,7 +585,7 @@ export function seasonRollover() {
   g.seasonHistory.push(summary);
   // Udfordringer og bestyrelsens dom – pr. menneskelig manager
   const challengeResults = new Map<string | undefined, 'won' | 'lost'>();
-  ffpReview();
+  if (extended()) ffpReview(); // FFP kom først i 2011
   forEachHuman(() => {
     const club = g.clubs[g.userClub];
     if (club) {
@@ -504,6 +629,8 @@ export function seasonRollover() {
   contractsAndLoans();
   retirements();
   prune();
+  // originalen: regens dukker op lige efter pensioneringen (alder < 30 samme dag, ellers inden for 65 dage) – ikke i marts
+  if (originalRegens()) spawnRegenQueue();
   g.comps = {};
   g.season += 1;
   rebuildIndexes();
@@ -520,13 +647,14 @@ export function seasonRollover() {
       }
       continue;
     }
-    if (sq.length < 18) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
+    if (sq.length < 18 && !g.leagues[c.league]?.hidden) fillSquad(c, sq, clubLevel(c.id) - 6, g.date, hash(g.seed, g.season, c.id), 20);
   }
   newSeasonBudgets();
+  boardEventsSeason();
   setupSeasonComps(g.season, prevTables, cupWinners);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
   forEachHuman(() => {
-    if (g.userClub) { setBoardExpectation(); addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
+    if (g.userClub) { setBoardExpectation(); if (extended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
     startScoreSeason();
     initKnowledgeKeep();
     const result = challengeResults.get(g.active);
@@ -535,6 +663,8 @@ export function seasonRollover() {
       addNews({ cat: 'general', key: result === 'won' ? 'challenge.won' : 'challenge.lost', params: { id: g.challenge.id } });
     }
   });
+  // AI-klubberne deler truppen igen (førstehold/reserver) efter sommerens handler og ungdomsspillere
+  for (const c of Object.values(g.clubs)) if (!isHumanClub(c.id) && !g.leagues[c.league]?.hidden) splitReserves(c.id);
   addNews({ cat: 'general', key: 'news.newSeason', params: { season: `${g.season}/${String(g.season + 1).slice(2)}` } }, { all: true });
 }
 

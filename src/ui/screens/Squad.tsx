@@ -12,6 +12,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { ClassicSquad } from './SquadClassic';
+import { SquadNumbers } from './SquadNumbers';
 
 export function statusTags(p: Player, userClub: number) {
   return (
@@ -43,6 +44,7 @@ export function SquadTable({ players, view, userClub }: { players: Player[]; vie
   // de tre bedste spillere i truppen markeres med en stjerne (som i CM 01/02)
   const stars = new Set([...players].filter((p) => p.club === userClub).sort((a, b) => b.ca - a.ca).slice(0, 3).map((p) => p.id));
   const base: Col<Player>[] = [
+    { key: 'no', label: '#', render: (p) => (p.club === userClub || p.number ? p.number ?? '' : ''), sort: (p) => p.number ?? 100, className: 'num' },
     { key: 'pos', label: t('col.pos'), render: (p) => <span className="posk">{posStr(p)}</span>, sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) },
     { key: 'name', label: t('col.name'), render: (p) => <>{stars.has(p.id) && <span className="star-player" title={t('tag.star')}>★</span>}<PlayerLink p={p} />{statusTags(p, userClub)}</>, sort: (p) => p.last },
     { key: 'age', label: t('col.age'), render: (p) => age(p), sort: (p) => age(p), className: 'num' },
@@ -92,9 +94,9 @@ function ModernSquad() {
   return (
     <div>
       <Head title={`${t('nav.squad')} (${players.length})`}>
-        <Tabs tabs={[['general', t('squad.general')], ['attrs', t('squad.attrs')], ...(g.draft ? [] : [['contracts', t('squad.contracts')] as [string, string]])]} value={view} onChange={setView} />
+        <Tabs tabs={[['general', t('squad.general')], ['attrs', t('squad.attrs')], ...(g.draft ? [] : [['contracts', t('squad.contracts')], ['numbers', t('sqn.title')]] as [string, string][])]} value={view} onChange={setView} />
       </Head>
-      <SquadTable players={players} view={view} userClub={g.userClub} />
+      {view === 'numbers' && !g.draft ? <SquadNumbers players={players} /> : <SquadTable players={players} view={view} userClub={g.userClub} />}
       {!g.draft && <Cliques />}
       {loanedOut.length > 0 && (
         <>

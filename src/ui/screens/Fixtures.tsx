@@ -8,6 +8,7 @@ import { ClubLink, Crest, Modal, Panel } from '../components';
 import { isRetro } from '../theme';
 import { useGame, useNav } from '../core';
 import { Head } from './common';
+import { cxShortDate } from '../classic';
 
 export function stageLabel(f: Fixture): string {
   if (!f.stage) return `${t('fix.round')} ${f.round}`;
@@ -38,17 +39,17 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
   const mine = cid === g.userClub;
   const { nav } = useNav();
   const [arrange, setArrange] = useState(false);
-  type Row = { key: string; date: string; opp: number; home?: boolean; comp: string; friendly?: boolean; res?: string; win: number; fid?: number };
+  type Row = { key: string; date: string; opp: number; home?: boolean; comp: string; cup?: boolean; friendly?: boolean; res?: string; win: number; fid?: number };
   const rows: Row[] = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).map((f) => {
     const home = f.home === cid, r = f.result;
     const my = r ? (home ? r.hg : r.ag) : 0, their = r ? (home ? r.ag : r.hg) : 0;
     const win = !r ? 0 : my > their || (r.pens && (home ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0])) ? 1 : my === their ? 0 : -1;
-    return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, res: r ? `${my}:${their}${r.pens ? ` (${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
+    return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, cup: g.comps[f.comp]?.type !== 'league', res: r ? `${my}:${their}${r.pens ? ` (${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
   });
   if (mine) for (const fr of g.manager.friendlies ?? []) rows.push({ key: `fr${fr.date}`, date: fr.date, opp: fr.opp, comp: t('cl.fx.friendly'), friendly: true, res: fr.result ? `${fr.result[0]}:${fr.result[1]}` : undefined, win: fr.result ? Math.sign(fr.result[0] - fr.result[1]) : 0, fid: undefined });
   rows.sort((a, b) => a.date.localeCompare(b.date));
   const myNation = g.clubs[cid]?.nation;
-  const d = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'short', day: 'numeric', month: 'short' });
+  const d = cxShortDate;
   return (
     <div>
       {!embedded && <Head title={t('nav.fixtures')}>
@@ -69,7 +70,7 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
               <span className="cx-fx-opp" onClick={(e) => { e.stopPropagation(); if (c) nav({ name: 'club', id: r.opp }); }}>{c?.name ?? '?'}</span>
               <span className="cx-fx-nat">{foreign ? g.nations[c.nation]?.code : ''}</span>
               <span className="cx-fx-ha">{r.home === undefined ? '' : r.home ? t('cl.fx.h') : t('cl.fx.a')}</span>
-              <span className={`cx-fx-comp ${r.friendly ? 'friendly' : ''}`}>{r.comp}</span>
+              <span className={`cx-fx-comp ${r.friendly ? 'friendly' : r.cup ? 'cup' : ''}`}>{r.comp}</span>
               <span className={`cx-fx-res ${r.win > 0 ? 'w' : r.win < 0 ? 'l' : ''}`}>
                 {mine && r.fid === g.pendingFixture ? <button className="small primary" onClick={(e) => { e.stopPropagation(); nav({ name: 'match', id: r.fid! }); }}>{t('top.toTheMatch')}</button> : r.res ?? '---'}
               </span>

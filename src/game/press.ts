@@ -12,6 +12,7 @@ import { rng } from './rng';
 import { addNews, gs, squad } from './state';
 import type { Fixture, Player } from './types';
 import { ANSWERS, NEW_KINDS, type PressFx } from './pressAnswers';
+import { econ } from './econ';
 
 export type PressKind = 'form' | 'opponent' | 'bigMatch' | 'starPlayer' | 'slump' | 'injury' | 'board' | 'rival' | 'formerClub' | 'unsettled' | 'result' | 'heavyLoss'
   | 'redCard' | 'hero' | 'newSigning' | 'youngster' | 'oppStar' | 'titleRace' | 'relegation' | 'europe' | 'fans' | 'rumour' | 'drought'
@@ -199,7 +200,7 @@ function topicsFor(f: Fixture, phase: 'pre' | 'post'): PressTopic[] {
   const mo = Number(g.date.slice(5, 7)), dd = Number(g.date.slice(8, 10));
   const windowOpen = mo === 7 || mo === 8 || mo === 1;
   const club = g.clubs[me];
-  if (club && windowOpen && club.transferBudget >= 2_000_000 && phase === 'pre') add('transferBudget');
+  if (club && windowOpen && club.transferBudget >= 2_000_000 * econ() && phase === 'pre') add('transferBudget');
   if ((mo === 8 && dd >= 27) || (mo === 1 && dd >= 27)) add('deadlineDay');
   if (club && club.balance < 0) add('finances');
   if (g.jobOffers.length) add('jobLinked');
@@ -311,6 +312,11 @@ export function applyPress(answers: { topic: string; tone: string }[], headline?
   const bumpAll = (d: number) => { for (const p of sq) p.morale = Math.max(1, Math.min(20, p.morale + d)); };
   const media = (d: number) => { g.manager.media = Math.max(0, Math.min(100, (g.manager.media ?? 50) + d)); };
   const done = new Map<string, string>();
+  // CM 01/02's reaktioner på pressemødet ("Board back [person]", "[formand] concerned by your handling of the media" …):
+  // én nyhed – den mest markante – i stedet for en pr. svar
+  const media0 = g.manager.media ?? 50;
+  const reacts: { pri: number; key: string; params: Record<string, string | number>; pid?: number }[] = [];
+  let deflects = 0;
   for (let a of answers) {
     let topic = pc.topics.find((t) => t.id === a.topic);
     // opfølgende spørgsmål genskabes ud fra svaret på hovedspørgsmålet (deterministisk)
@@ -329,6 +335,14 @@ export function applyPress(answers: { topic: string; tone: string }[], headline?
     if (ans.fx.sq) bumpAll(ans.fx.sq);
     a = { ...a, tone: ans.tone };
     const p = topic.pid ? g.players[topic.pid] : undefined;
+    const pn = p ? `${p.first} ${p.last}`.trim() : '';
+    const mgr = g.manager.name;
+    if (a.tone === 'backPlayer' && p) reacts.push({ pri: 3, key: 'react.backPlayer', params: { manager: mgr, player: pn, club: club.name }, pid: p.id });
+    else if (a.tone === 'pressurePlayer' && p) reacts.push({ pri: 3, key: 'react.pressurePlayer', params: { manager: mgr, player: pn }, pid: p.id });
+    else if (a.tone === 'promise') reacts.push({ pri: 2, key: 'react.promise', params: { manager: mgr, opp: opp?.name ?? '' } });
+    else if (a.tone === 'fiery') reacts.push({ pri: 1, key: (ans.fx.brd ?? 0) < 0 ? 'react.fieryBoard' : 'react.fiery', params: { manager: mgr, club: club.name, opp: opp?.name ?? '' } });
+    else if (a.tone === 'confident' && (ans.fx.brd ?? 0) > 0) reacts.push({ pri: 1, key: 'react.boardBack', params: { manager: mgr, club: club.name } });
+    if (a.tone === 'deflect') deflects++;
     media({ confident: 1, calm: 1, fiery: 2, deflect: topic.kind === 'followPress' ? -4 : -3, backPlayer: 0.5, pressurePlayer: 1.5, promise: 2, backtrack: -1 }[a.tone as Tone]);
     switch (a.tone as Tone) {
       case 'promise':
@@ -378,6 +392,12 @@ export function applyPress(answers: { topic: string; tone: string }[], headline?
         break;
     }
   }
+  const media1 = g.manager.media ?? 50;
+  if (media0 >= 35 && media1 < 35) reacts.push({ pri: 4, key: 'react.chairmanConcerned', params: { manager: g.manager.name, club: club.name } });
+  else if (media0 < 70 && media1 >= 70) reacts.push({ pri: 4, key: 'react.chairmanPleased', params: { manager: g.manager.name, club: club.name } });
+  if (deflects >= 2) reacts.push({ pri: 2, key: 'react.silence', params: { manager: g.manager.name, club: club.name } });
+  const top = reacts.sort((x, y) => y.pri - x.pri)[0];
+  if (top) addNews({ cat: 'general', key: top.key, params: top.params, ...(top.pid ? { link: { kind: 'player' as const, id: top.pid } } : {}) });
   const head = (headline ?? '').slice(0, 140);
   addNews({ cat: 'general', key: head ? 'press.report' : 'press.reportPlain', params: { headline: head, body: (body ?? '').slice(0, 700), opp: opp?.name ?? '' } });
   g.press = null;

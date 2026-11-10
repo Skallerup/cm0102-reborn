@@ -1,4 +1,9 @@
 import { BoardScreen } from './screens/Board';
+import { NewsPrompt, useNewsPrompt } from './Login';
+import type { GameState, HolidaySettings } from '../game/types';
+import type { Route } from './core';
+import { addDays } from '../game/dates';
+import { International } from './screens/International';
 import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
 import { draftRoundLabel } from './Draft';
@@ -9,27 +14,35 @@ import { BugReportButton } from './Community';
 import { CommunityHub, type HubTab } from './CommunityHub';
 import { cmDatabase } from '../game/newgame';
 import { APP_VERSION } from './changelogData';
-import { askConfirm } from './confirm';
+import { askConfirm, askNotice } from './confirm';
+import { ClassicManagerHistory } from './screens/ManagerHistoryClassic';
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
-import { runUntil } from '../game/sim';
-import { gs, hasGame, notify, setGame, subscribe } from '../game/state';
-import { dateFmt, money, t } from '../i18n';
+import { runUntil, watchedDay } from '../game/sim';
+import { realCompName, setCompEra } from '../i18n/comps';
+import { compLogoUrl } from './logos';
+import { isOriginal2001 } from '../game/rules2001';
+import { intlDayResults } from '../game/international';
+import { gs, hasGame, notify, setGame, squad, subscribe } from '../game/state';
+import { compName, dateFmt, money, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
 import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
+import { squadNumbersDue } from '../game/squadNumbers';
+import { euroDue, euroRegistered } from '../game/euroSquad';
 import { act } from '../game/actions';
 import { setScrollElement, useGame, useNav, type ScreenName } from './core';
 import { Inbox } from './screens/Inbox';
 import { Squad } from './screens/Squad';
 import { PlayerScreen } from './screens/PlayerScreen';
 import { Tactics } from './screens/Tactics';
+import { ClubTacticsView } from './screens/TacticsClassic';
 import { Training } from './screens/Training';
 import { Fixtures } from './screens/Fixtures';
-import { Competitions } from './screens/Competitions';
+import { Competitions, UefaCoefficients } from './screens/Competitions';
 import { Transfers } from './screens/Transfers';
 import { Scouting } from './screens/Scouting';
 import { StaffScreen } from './screens/Staff';
@@ -50,11 +63,15 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl } from './backgrounds';
-import { FindMenu, GameOptionsMenu, ManagerMenu, bgChanges } from './classicOptions';
+import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, stadiumBgUrl, sundayLeague } from './backgrounds';
+import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
-import { MatchDay } from './screens/MatchDayClassic';
-import { ClassicSlotCtx, classicDate, setClassicAllowed } from './classic';
+import { ClassicNation } from './screens/NationClassic';
+import { IntlDay, MatchDay } from './screens/MatchDayClassic';
+import { ClassicClubHistory } from './screens/ClubHistoryClassic';
+import { ClassicNations } from './screens/NationsClassic';
+import { ClassicHallOfFame, ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
+import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate, shownComp } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -63,14 +80,14 @@ const NOTIFY_KEYS = ['window.opened', 'window.deadlineDay', 'window.closingTomor
 
 const MENU: [ScreenName, string][] = [
   ['inbox', 'nav.inbox'], ['squad', 'nav.squad'], ['tactics', 'nav.tactics'], ['training', 'nav.training'],
-  ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
+  ['fixtures', 'nav.fixtures'], ['competitions', 'nav.competitions'], ['international', 'nav.international'], ['transfers', 'nav.transfers'], ['scouting', 'nav.scouting'],
   ['assistant', 'nav.assistant'], ['staff', 'nav.staff'], ['finance', 'nav.finance'], ['club', 'nav.club'], ['board', 'nav.board'],
 ];
 const MENU2: [ScreenName, string][] = [['community', 'nav.community'], ['profile', 'nav.profile'], ['ranking', 'nav.ranking'], ['awards', 'nav.awards'], ['history', 'nav.history'], ['jobs', 'nav.jobs'], ['help', 'nav.help'], ['options', 'nav.options']];
 /** Menuen i grupper (indbakken står altid øverst, hjælp og indstillinger nederst) */
 const GROUPS: { key: string; items: ScreenName[] }[] = [
   { key: 'team', items: ['squad', 'tactics', 'training', 'assistant'] },
-  { key: 'matches', items: ['draft', 'fixtures', 'competitions'] },
+  { key: 'matches', items: ['draft', 'fixtures', 'competitions', 'international'] },
   { key: 'market', items: ['transfers', 'scouting'] },
   { key: 'club', items: ['club', 'board', 'finance', 'staff'] },
   { key: 'manager', items: ['profile', 'ranking', 'awards', 'history', 'jobs'] },
@@ -81,17 +98,49 @@ const DRAFT_SCREENS: ScreenName[] = ['inbox', 'squad', 'tactics', 'assistant', '
 export const GROUP_KEY = 'cm-nav-closed';
 // Standard: kun "Holdet" er foldet ud ved spilstart (resten huskes derefter)
 export const NAV_CLOSED_DEFAULT = ['matches', 'market', 'club', 'manager', 'community'];
-const UNEMPLOYED: ScreenName[] = ['find', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers'];
+const UNEMPLOYED: ScreenName[] = ['find', 'community', 'profile', 'inbox', 'competitions', 'jobs', 'history', 'options', 'transfers', 'awards', 'ranking', 'help', 'managers', 'nation', 'international', 'coefficients', 'clubhistory', 'nations', 'mgrstatus', 'leagues'];
+
+/** Spillere på holdet eller bænken, der ikke kan spille (CM 01/02 Team Selection) – teksten, eller null */
+function selectionProblems(): string | null {
+  const g = gs();
+  const tac = g.tactic;
+  if (!tac) return null;
+  const ids = [...tac.lineup, ...tac.bench].filter(Boolean);
+  const groups: [string, string[]][] = [['inj', []], ['ban', []], ['res', []], ['unreg', []]];
+  // europæisk kamp: kun den tilmeldte trup (European Squad)
+  const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
+  const reg = pf && g.comps[pf.comp]?.type === 'continental' ? euroRegistered(g.userClub) : null;
+  for (const id of ids) {
+    const p = g.players[id];
+    if (!p || p.club !== g.userClub) continue;
+    const nm = `${p.first} ${p.last}`.trim();
+    if (p.injury) groups[0][1].push(nm); else if (p.banned > 0) groups[1][1].push(nm); else if (p.reserves) groups[2][1].push(nm); else if (reg && !reg.has(p.id)) groups[3][1].push(nm);
+  }
+  const join = (n: string[]) => (n.length > 1 ? `${n.slice(0, -1).join(', ')} ${t('common.and')} ${n.at(-1)}` : n[0]);
+  const lines = groups.filter(([, n]) => n.length).map(([k, n]) => t(`cl.mt.sel.${k}${n.length > 1 ? 'N' : '1'}`, { names: join(n) }));
+  return lines.length ? lines.join(' ') : null;
+}
 
 export function Shell() {
   const g = useGame()!;
+  // 2001-databasen: CM's egne turneringsnavne på engelsk, ellers de rigtige ("Premier League")
+  setCompEra(isOriginal2001());
   const { route, nav, back, canBack, forward, canForward } = useNav();
+  const cxNext = useClassicNextAction();
+  // kampdage (optakt, kamp, rapport): hjemmeholdets stadion som baggrund, som i CM 01/02 – ikke ved finaler på neutral bane
+  const [, setStadiumsReady] = useState(0);
+  const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
+  const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() ? g.clubs[venueFix.home]?.stadium : undefined;
+  useEffect(() => { if (venue) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [venue]);
   // på selve kampskærmen styres kampen derinde – "Til kampen"/"Næste kamp" giver ingen mening dér
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
   const [toast, setToast] = useState('');
+  const [winNote, setWinNote] = useState<{ head: string; text: string } | null>(null);
   const stopRef = useRef(false);
+  const onHolidayRef = useRef(false);
+  const holidaySetRef = useRef<HolidaySettings>({ rejectAll: true });
   const mainRef = useRef<HTMLElement>(null);
   useEffect(() => { setScrollElement(mainRef.current); return () => setScrollElement(null); }, []);
   useLayoutEffect(() => {
@@ -109,6 +158,22 @@ export function Shell() {
   // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
+  const dialogOpen = useClassicDialogOpen();
+  const [holiday, setHoliday] = useState<boolean | null>(null);
+  // efter første afsluttede sæson: tilbyd en konto (skygemte spil) og opdateringsmails – én gang, aldrig i fællesspil
+  const [newsAsk, closeNewsAsk] = useNewsPrompt(g.manager.history?.length ?? 0, !!g.humans?.length);
+  // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
+  useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs(), loadClubPacks()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
+  const bgDay = bgChanges() ? g.date : '2001-07-01';
+  // kampdage: stadion indefra først – klubpakken (kan være træningsanlæg o.l.) kun når vi ikke har stadionet
+  const homePack = venue && venueFix ? clubPackUrl(g.clubs[venueFix.home], venueFix.date ?? g.date) : null;
+  const cxPhoto = cmNav ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
+  useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
+  const matchSide = useClassicMatchSideState();
+  // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
+  const modernPhoto = !cmNav && !g.draft && g.userClub
+    ? (venue ? matchdayBgUrl(venue, venueFix?.date ?? g.date) : null) ?? homePack ?? (modernBackgrounds() ? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null)
+    : null;
   setClassicAllowed(allowed);
   const [subSlot, setSubSlot] = useState<HTMLDivElement | null>(null);
   const [tabSlot, setTabSlot] = useState<HTMLElement | null>(null);
@@ -213,6 +278,7 @@ export function Shell() {
     notify();
     // klassisk tema: først dagens kampe (som i originalen) – Continue Game fører derefter til kampen
     if (r.match !== undefined) nav(cmNav ? { name: 'matchday', id: r.match } : { name: 'match', id: r.match });
+    else if (r.stop === 'dayStart' || r.stop === 'dayEnd') { const id = watchedDay(gs().date); if (id !== undefined) nav({ name: 'matchday', id }); else if (intlDayResults(gs().date).length) nav({ name: 'intlday' }); }
     else if (r.stop) {
       nav({ name: 'inbox' });
       // vis den ældste uåbnede besked
@@ -231,16 +297,41 @@ export function Shell() {
     return true;
   };
   const onContinue = () => {
+    if (cmNav && classicContinue()) return;
+    // klassisk (CM 01/02): Continue Game venter, til trøjenummerlisten er sendt – vis beskeden med Respond
+    if (cmNav && squadNumbersDue(g.userClub)) {
+      const n = g.news.find((x) => x.key === 'sqn.request' && !x.params.done);
+      if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
+    }
+    // … og på den europæiske trup (31/8)
+    if (cmNav && euroDue(g.userClub)) {
+      const n = g.news.find((x) => x.key === 'eur.request' && x.params.done === undefined);
+      if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
+    }
     if (g.pendingFixture) {
       const pf = g.fixtures[g.pendingFixture];
       // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk
       if (!pf || pf.result || (pf.home !== g.userClub && pf.away !== g.userClub)) act({ t: 'fixPending' });
-      else { nav({ name: 'match', id: g.pendingFixture }); return; }
+      else {
+        const go = g.pendingFixture;
+        // klassisk (CM 01/02): "Please Confirm – Proceed to the match ?"
+        // klassisk: en skadet/udelukket spiller på holdet stopper kampen (Team Selection, som i CM 01/02)
+        if (cmNav) {
+          const sel = selectionProblems();
+          if (sel) { void askNotice(sel, { head: t('cl.mt.teamSel') }).then(() => nav({ name: 'squad' })); return; }
+          // CM 01/02: spillere uden trøjenummer skal have et før kampen (Squad Numbers med kun dem)
+          if (squad(g.userClub).some((p) => !p.reserves && !p.number)) { nav({ name: 'squad', state: { cview: 'tbl:numbers', sqnMissing: 1 } }); return; }
+        }
+        if (cmNav) { void askConfirm(t('cl.mt.proceed'), { head: t('cl.mt.confirm') }).then((ok) => { if (ok) nav({ name: 'match', id: go }); }); return; }
+        nav({ name: 'match', id: go }); return;
+      }
     }
+    // klassisk: en fulgt kampdag står på "Evening Fixtures" – Continue spiller dagen og viser resultaterne
+    if (cmNav && !g.dayDone && !g.pendingFixture) { void run({ untilMatch: true, untilNews: true, maxDays: 60, watchDays: true }); return; }
     if (showOldestUnread(g.news)) return;
     // ingen ulæste: kør dage frem, indtil der sker noget (kamp, bud, ny besked …) – højst 60 dage
-    void run({ untilMatch: true, untilNews: true, maxDays: 60 }).then((r) => {
-      if (r.match === undefined) showOldestUnread(gs().news);
+    void run({ untilMatch: true, untilNews: true, maxDays: 60, watchDays: cmNav }).then((r) => {
+      if (r.match === undefined && r.stop !== 'dayStart' && r.stop !== 'dayEnd') showOldestUnread(gs().news);
     });
   };
 
@@ -296,23 +387,52 @@ export function Shell() {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
           if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
         };
-        const side = (k: ScreenName | null, label: string, cls = '', onClick?: () => void) => (
-          <button className={`cx-sbtn ${cls} ${k && route.name === k ? 'on' : ''}`} onClick={onClick ?? (() => k && nav({ name: k }))}>{label}</button>
-        );
+        // kampskærmen (CM 01/02): minuttet øverst og kampens knapper i stedet for de almindelige
+        if (matchSide && route.name === 'match') {
+          const ms = matchSide.s, ma = matchSide.a;
+          return (
+            <aside className="cx-side">
+              <div className="cx-date cx-minute"><b>{ms.minute}</b></div>
+              <div className="cx-arrows">
+                <button disabled={!canBack || (ms.kicked && !ms.finished)} onClick={back} aria-label={t('cm.back')}>←</button>
+                <button disabled={!canForward || (ms.kicked && !ms.finished)} onClick={forward} aria-label={t('cm.next')}>→</button>
+              </div>
+              {/* CM 01/02: under taktikken står Paused hvid og resten gråt; Cancel/Ok står nederst */}
+              {ms.finished ? <button className="cx-sbtn cx-continue continue" onClick={ma.cont}>{t('cl.continue')}</button>
+                : <button className={`cx-sbtn cx-continue ${ms.editing ? 'cx-keep' : ''}`} disabled={ms.editing} title={ms.kicked && ms.paused ? t('cl.mt.resume') : undefined} onClick={ms.kicked ? ma.pause : ma.kick}>{!ms.kicked ? t('cl.mt.kickoff') : ms.half ? t('cl.mt.restart') : ms.paused ? t('cl.mt.paused') : t('cl.mt.pause')}</button>}
+              <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(0)}>{t('cl.mt.tactics', { club: ms.home })}</button>
+              <button className="cx-sbtn" disabled={ms.editing} onClick={() => ma.tactics(1)}>{t('cl.mt.tactics', { club: ms.away })}</button>
+              {<CxDrop className="cx-gameopt" fixed caret={false} label={t('cl.mt.speed')} btn={{ className: 'cx-sbtn', disabled: ms.editing }}
+                items={[8, 4, 2, 1, 0.6, 0.35].map((n) => ({ key: String(n), label: t(`cl.mt.sp.${String(n).replace('.', '')}`), checked: ms.speed === n, onClick: () => ma.speed(n) }))} />}
+              {/* turneringens logo og navn i den tomme del af sidebjælken (spillerønske – ikke i originalen) */}
+              {ms.comp && g.comps[ms.comp] && <CompBadge id={ms.comp} />}
+              <div className="cx-side-grow" />
+            </aside>
+          );
+        }
+        // på kampdagen står kampens to hold i datoboksen (som i originalen)
+        const pf = g.pendingFixture ? g.fixtures[g.pendingFixture] : undefined;
         return (
           <aside className="cx-side">
-            <div className="cx-date" title={dateFmt(g.date, true)}><b>{day}</b><span>{date}</span></div>
+            {pf && !pf.result ? <div className="cx-date cx-matchday" title={dateFmt(g.date, true)}><span>{g.clubs[pf.home]?.short} v {g.clubs[pf.away]?.short}</span></div>
+              : <div className="cx-date" title={dateFmt(g.date, true)}><b>{day}</b><span>{date}</span></div>}
             <div className="cx-arrows">
               <button disabled={!canBack} onClick={back} aria-label={t('cm.back')}>←</button>
               <button disabled={!canForward} onClick={forward} aria-label={t('cm.next')}>→</button>
             </div>
             {online ? <div className="cx-online"><OnlineControls /></div> : !inMatch && (
-              <button className="cx-sbtn cx-continue continue" onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
+              <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
-            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} />
-            {side('competitions', t('nav.competitions'))}
-            {club ? side('club', t('cl.nations')) : side('find', t('cl.nations'), '', () => nav({ name: 'find', tab: 'club', state: { ftab: 'club' } }))}
+            <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} onHoliday={(untilMatch) => {
+              // CM 01/02: "Your club has no match in the next 60 days." (lille vindue med Ok)
+              const g2 = gs();
+              const limit = addDays(g2.date, 60);
+              if (untilMatch && !Object.values(g2.fixtures).some((f) => !f.result && f.date <= limit && (f.home === g2.userClub || f.away === g2.userClub))) { setWinNote({ head: t('cl.hol.untilNext'), text: t('cl.hol.noMatch') }); return; }
+              setHoliday(untilMatch);
+            }} />
+            <CompetitionsMenu />
+            <NationsClubsMenu />
             <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }} />
@@ -383,8 +503,8 @@ export function Shell() {
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
-        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}` : ''}`} ref={mainRef}
-          style={cmNav ? ({ '--cx-photo': `url("${backgroundUrl(bgChanges() ? g.date : '2001-07-01', g.userClub)}")` } as CSSProperties) : undefined}>
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${stadiumBgUrl(venue, g.date) ? ' cx-stadium' : ''}` : modernPhoto ? `mbg${stadiumBgUrl(venue, venueFix?.date ?? g.date) ? ' mbg-stadium' : ''}` : ''}`} ref={mainRef}
+          style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
         </main>
@@ -394,14 +514,37 @@ export function Shell() {
           <div className="cx-sub" ref={setSubSlot} />
           {running ? (
             // simulering: én grå bjælke med datoen, der behandles (klik = stop)
-            <button className="cx-running" onClick={() => { stopRef.current = true; }} title={t('common.stop')}>
-              <span className="cx-ball" aria-hidden>⚽</span>
-              {new Date(`${running}T12:00:00`).toLocaleDateString(t('cl.locale'), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+            <button className="cx-running" onClick={() => {
+              if (!onHolidayRef.current) { stopRef.current = true; return; }
+              // på ferie: spørg først (kørslen fortsætter imens, som i originalen stopper den ved svaret)
+              stopRef.current = true;
+              void askConfirm(t('cl.hol.return'), { head: t('cl.mt.confirm') }).then((ok) => { if (!ok) { gs().manager.holiday = holidaySetRef.current; onHolidayRef.current = true; void run({ maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); }); } });
+            }} title={t('common.stop')}>
+              {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke */}
+              {cxLongDate(running)}
             </button>
           ) : (
-            <div className="cx-backnext">
-              <button className="cx-back" disabled={!canBack} onClick={back}>{t('cm.back')}</button>
-              <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>
+            matchSide?.s.editing && route.name === 'match' && matchSide.s.lastView ? (
+              // Last Match: kun Back (tilbage til taktikken), Next er grå
+              <div className="cx-backnext">
+                <button className="cx-back cx-mt-lastback" onClick={() => matchSide.a.back?.()}>{t('cm.back')}</button>
+                <button className="cx-next" disabled>{t('cm.next')}</button>
+              </div>
+            ) : matchSide?.s.editing && route.name === 'match' ? (
+              <div className="cx-backnext">
+                <button className="cx-back cx-mt-cancel" disabled={dialogOpen} onClick={matchSide.a.cancel}>{t('common.cancel')}</button>
+                <button className="cx-next cx-next-go cx-mt-ok" disabled={dialogOpen} onClick={matchSide.a.ok}>{t('common.ok')}</button>
+              </div>
+            ) : matchSide && route.name === 'match' && matchSide.s.venue ? (
+              // kampskærmen (CM 01/02): stadion og by nederst i stedet for Back/Next
+              // … og under kampen den seneste kommentar, når man står på en anden fane end Match Overview
+              matchSide.s.line ? <div className={`cx-venue cx-foot-venue cx-foot-line ${matchSide.s.line.flash ? 'cx-goal-flash' : ''}`} style={matchSide.s.line.flash ? ({ '--g1': matchSide.s.line.background, '--g2': matchSide.s.line.color } as CSSProperties) : { background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
+                : <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
+            ) : <div className="cx-backnext">
+              {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
+              <button className="cx-back" disabled={!canBack || (route.name === 'match' && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>
+              {cxNext ? <button className="cx-next cx-next-go" onClick={cxNext.run}>{cxNext.label}</button>
+                : <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>}
             </div>
           )}
         </footer>
@@ -416,7 +559,18 @@ export function Shell() {
           <button onClick={() => { stopRef.current = true; }}>{t('common.stop')}</button>
         </div>
       )}
+      {newsAsk && !['match', 'matchday', 'report'].includes(route.name) && <NewsPrompt seasons={g.manager.history?.length ?? 0} onClose={closeNewsAsk} />}
+      {holiday !== null && <HolidayPanel untilMatch={holiday} onClose={() => setHoliday(null)} onGo={(set) => {
+        setHoliday(null);
+        const g2 = gs();
+        g2.manager.holiday = set;
+        // CM 01/02: ferien varer, til man klikker på bjælken ("Return from holiday ?") – kampene spilles automatisk (højst et år)
+        onHolidayRef.current = !holiday;
+        holidaySetRef.current = set;
+        void run(holiday ? { untilMatch: true, maxDays: 120 } : { maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); });
+      }} />}
       {toast && <div className="toast">{toast}</div>}
+      {winNote && <div className="cx-winbox-bg"><div className="cx-winbox" role="dialog"><div className="cx-winbox-head">{winNote.head}</div><p>{winNote.text}</p><button onClick={() => setWinNote(null)}>{t('common.ok')}</button></div></div>}
       {g.draft && online && <RoomChat />}
     </div>
   );
@@ -426,19 +580,20 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
   const { route, nav } = useNav();
   // en skærm man ikke længere har adgang til (fx bestyrelsen lige efter en opsigelse): videre til jobcentret/indbakken
   const g = useGame()!;
-  const blocked = !g.draft && !g.userClub && !allowed(route.name) && route.name !== 'compare' && route.name !== 'player' && route.name !== 'club' && route.name !== 'match' && route.name !== 'report' && route.name !== 'matchday';
+  const blocked = !g.draft && !g.userClub && !allowed(route.name) && route.name !== 'compare' && route.name !== 'player' && route.name !== 'club' && route.name !== 'match' && route.name !== 'report' && route.name !== 'matchday' && route.name !== 'intlday';
   useEffect(() => { if (blocked) nav({ name: allowed('jobs') ? 'jobs' : 'inbox' }); }, [blocked]); // eslint-disable-line react-hooks/exhaustive-deps
   if (blocked) return null;
   switch (route.name) {
     case 'inbox': return <Inbox />;
     case 'squad': return <Squad />;
     case 'player': return <PlayerScreen id={Number(route.id)} />;
-    case 'tactics': return <Tactics />;
+    case 'tactics': return route.id !== undefined && Number(route.id) !== g.userClub && isRetro() ? <ClubTacticsView club={Number(route.id)} /> : <Tactics />;
     case 'training': return <Training />;
     case 'fixtures': return <Fixtures />;
     case 'competitions': return <Competitions id={route.id as string | undefined} />;
     case 'transfers': return <Transfers tab={route.tab} />;
     case 'find': return <ClassicFind tab={route.tab} />;
+    case 'nation': return <ClassicNation id={route.id as number | undefined} tab={route.tab} />;
     case 'scouting': return <Scouting />;
     case 'staff': return <StaffScreen />;
     case 'finance': return <Finance />;
@@ -448,19 +603,32 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'draft': return <DraftLeagueScreen />;
     case 'community': return <div><Head title={t('cm.title')} /><p className="muted" style={{ marginTop: 0 }}>{t('cm.intro')}</p>
       <CommunityHub defaultName={gs().manager.name} initialTab={route.tab as HubTab | undefined}
-        onLegend={cmDatabase(gs()) === 'original' ? (id) => { if (gs().players[id]) nav({ name: 'player', id }); } : undefined} /></div>;
+        onLegend={cmDatabase(gs()) === 'original' ? (id, name) => {
+          // id'erne er fra 3.9.68 – i 3.9.60 (og andre databaser) findes spilleren på navnet
+          const g2 = gs(), key = name.toLowerCase();
+          const p = g2.players[id]?.last && `${g2.players[id].first} ${g2.players[id].last}`.trim().toLowerCase() === key ? g2.players[id]
+            : Object.values(g2.players).find((x) => `${x.first} ${x.last}`.trim().toLowerCase() === key || x.last.toLowerCase() === key);
+          if (p) nav({ name: 'player', id: p.id });
+        } : undefined} /></div>;
     case 'assistant': return <Assistant tab={route.tab} />;
     case 'compare': return <Assistant tab="compare" />;
     case 'benchmark': return <Assistant tab="bench" />;
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'matchday': return <MatchDay id={Number(route.id)} />;
+    case 'intlday': return <IntlDay />;
+    case 'coefficients': return <UefaCoefficients />;
+    case 'nations': return <ClassicNations />;
+    case 'mgrstatus': return <ClassicManagerStatus />;
+    case 'leagues': return <ClassicSelectedLeagues />;
+    case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     case 'report': return <ReportScreen id={Number(route.id)} />;
-    case 'history': return <History />;
+    case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
+    case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
     case 'press': return <PressScreen />;
-    case 'ranking': return <RankingScreen />;
+    case 'ranking': return isRetro() ? <ClassicHallOfFame fallback={<RankingScreen />} /> : <RankingScreen />;
     case 'managers': return <ManagersScreen />;
     case 'help': return <HelpScreen id={route.id as string | undefined} />;
   }
@@ -498,5 +666,83 @@ function FullscreenButton() {
       onClick={() => { if (document.fullscreenElement) void document.exitFullscreen(); else void document.documentElement.requestFullscreen(); }}>
       {on ? '⤡' : '⛶'}
     </button>
+  );
+}
+
+/** CM 01/02 "Go on holiday ?": indstillingerne slås til med et klik (hvid), No/Yes */
+function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onClose: () => void; onGo: (s: HolidaySettings) => void }) {
+  useClassicDialog();
+  const g = gs();
+  const col = titleColors(g.userClub || undefined);
+  const [set, setSet] = useState<HolidaySettings>({ rejectAll: true, applyJobs: true });
+  const keys: (keyof HolidaySettings)[] = ['rejectAll', 'rejectBelow', 'noBuy', 'applyJobs'];
+  const toggle = (k: keyof HolidaySettings) => setSet((s) => {
+    const x = { ...s, [k]: !s[k] };
+    if (k === 'rejectAll' && x.rejectAll) x.rejectBelow = false;
+    if (k === 'rejectBelow' && x.rejectBelow) x.rejectAll = false;
+    return x;
+  });
+  return (
+    <div className="cx-dlg cx-confirm" role="dialog">
+      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{g.manager.name}</h2></div>
+      <div className="cx-subtitle">{t('cl.mt.confirm')}</div>
+      <div className="cx-dlg-body">
+        <p className="cx-ts-intro" style={{ alignSelf: 'center' }}>{t(untilMatch ? 'cl.hol.qMatch' : 'cl.hol.q')}</p>
+        <p className="cx-ts-intro">{t('cl.hol.settings')}</p>
+        {keys.map((k) => <button key={k} className={`cx-opt ${set[k] ? 'on' : ''}`} onClick={() => toggle(k)}>{t(`cl.hol.${k}`)}</button>)}
+      </div>
+      <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.no')}</button><button className="primary" onClick={() => onGo(set)}>{t('common.yes')}</button></div>
+    </div>
+  );
+}
+
+/**
+ * Baggrunden til en skærm (som CM 01/02's pics.cfg): klubbens skærme = stadion udefra eller klubbens billede, turneringer =
+ * turneringens billede, landshold = landets, træning/bestyrelse/transfer = deres egne og resten af ugen ens egen klub og
+ * hverdagen (træningsbanen, bestyrelseslokalet). null = intet billede (så bruges den gamle Sunday League-pakke).
+ */
+function screenBackground(g: GameState, route: Route, iso: string): string | null {
+  // Sunday League eller en valgt baggrundspakke fra fællesskabet (Community → Backgrounds): pakkens billeder overalt
+  if (sundayLeague() || bgPack()) return null;
+  const own = g.clubs[g.userClub];
+  // ugens øvrige skærme (nyheder m.m.): skiftevis klubben, træningsbanen, transfermarkedet og bestyrelseslokalet
+  const k = Math.floor(Date.parse(`${iso}T12:00:00Z`) / 86400000) % 4;
+  const week = () => (k === 0 ? clubBgUrl(own, iso) : k === 1 ? miscBgUrl('training', iso, 3) : k === 2 ? miscBgUrl('transfer', iso, 1) : miscBgUrl('boardroom', iso)) ?? clubBgUrl(own, iso) ?? miscBgUrl('training', iso);
+  return specificBackground(g, route, iso) ?? week();
+}
+
+function specificBackground(g: GameState, route: Route, iso: string): string | null {
+  const id = (route as { id?: string | number }).id;
+  const own = g.clubs[g.userClub];
+  const clubOf = (n: number) => g.clubs[n];
+  switch (route.name) {
+    case 'club': case 'clubhistory': return clubBgUrl(clubOf(Number(id ?? g.userClub)), iso);
+    case 'player': { const p = g.players[Number(id)]; return clubBgUrl(p?.club ? clubOf(p.club) : undefined, iso) ?? nationBgUrl(g.nations[p?.nation ?? -1]?.name, iso); }
+    case 'competitions': case 'fixtures': {
+      const sc = route.name === 'competitions' ? shownComp(route) : id !== undefined ? String(id) : undefined;
+      const c = sc !== undefined ? g.comps[sc] : own ? g.comps[own.league] : undefined;
+      return compBgUrl(c?.name, iso) ?? (c?.nation === -1 ? compBgUrl(c.id === 'CL' ? 'UEFA Champions League' : c.name.includes('Europa') ? 'UEFA Europa League' : c.name, iso) : null);
+    }
+    case 'international': case 'intlday': return id !== undefined ? nationBgUrl(g.nations[Number(id)]?.name, iso) : compBgUrl('FIFA World Cup', iso);
+    case 'coefficients': return compBgUrl('UEFA Champions League', iso);
+    case 'training': return miscBgUrl('training', iso);
+    case 'board': case 'finance': return miscBgUrl('boardroom', iso) ?? clubBgUrl(own, iso);
+    case 'transfers': case 'scouting': case 'find': return miscBgUrl('transfer', iso);
+    case 'squad': case 'tactics': case 'assistant': return clubBgUrl(own, iso) ?? miscBgUrl('training', iso);
+    default: return null;
+  }
+}
+
+/** Turneringens logo og navn (kampens sidebjælke) */
+function CompBadge({ id }: { id: string }) {
+  const g = gs();
+  const c = g.comps[id];
+  const [failed, setFailed] = useState(false);
+  const url = compLogoUrl(id, realCompName(c.name)) ?? (c.nation === -1 && /europa|uefa cup/i.test(c.name) ? compLogoUrl('UEFA', undefined) : null);
+  return (
+    <div className="cx-side-comp">
+      {url && !failed && <img src={url} alt="" onError={() => setFailed(true)} />}
+      <span>{compName(c.name)}</span>
+    </div>
   );
 }

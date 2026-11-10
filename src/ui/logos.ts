@@ -2,19 +2,35 @@ import { gs, hasGame } from '../game/state';
 // Klublogoer hentes ved kørsel fra luukhopman/football-logos via jsDelivr (ikke bundlet i projektet)
 let base = '';
 let map: Record<string, string> = {};
+// klubnavn → fuld url (TheSportsDB) for klubber, logopakken ikke har (fx Blackburn og de engelske 1. divisionsklubber)
+let named: Record<string, string> = {};
+// landsholdenes logoer (nationsnavn → url, scripts/build-nation-badges.py)
+let nations: Record<string, string> = {};
+// turneringernes logoer (rigtigt navn eller CL/UEFA/UECL/wc/euro → url, scripts/build-comp-badges.py)
+let comps: Record<string, string> = {};
 let loaded: Promise<void> | null = null;
 
 export function loadLogos(): Promise<void> {
   if (!loaded) {
     loaded = fetch(`${import.meta.env.BASE_URL}data/logos.json`)
       .then((r) => (r.ok ? r.json() : { base: '', logos: {} }))
-      .then((d: { base: string; logos: Record<string, string> }) => { base = d.base; map = d.logos; })
+      .then(setLogoData)
       .catch(() => { /* uden logoer */ });
   }
   return loaded;
 }
 
-const url = (p: string) => base + p.split('/').map(encodeURIComponent).join('/');
+type LogoData = { base: string; logos: Record<string, string>; named?: Record<string, string>; nations?: Record<string, string>; comps?: Record<string, string> };
+/** Sæt logolisten direkte (scripts/seo/db.ts læser logos.json fra disken) */
+export function setLogoData(d: LogoData) { base = d.base; map = d.logos; named = d.named ?? {}; nations = d.nations ?? {}; comps = d.comps ?? {}; cmIndex = null; }
+
+const url = (p: string) => (p.startsWith('https://') ? p : base + p.split('/').map(encodeURIComponent).join('/'));
+
+/** Turneringens logo: de europæiske på id, ellers på det rigtige navn (comps.ts realCompName) */
+export const compLogoUrl = (id: string | undefined, realName: string | undefined): string | null => (id && comps[id]) || (realName && comps[realName]) || null;
+
+/** Landsholdets logo (databasens engelske nationsnavn) */
+export const nationLogoUrl = (name: string | undefined): string | null => (name && nations[name]) || null;
 
 export function logoUrl(clubId: number): string | null {
   // CM 01/02-klubber har ikke Transfermarkt-id'er – match logoet på klubbens navn i stedet
@@ -54,6 +70,8 @@ function cmLogo(clubId: number): string | null {
       if (!cmIndex.has(k)) cmIndex.set(k, p);
       cmKeys.push({ key: k, path: p });
     }
+    // navngivne logoer går forud for pakkens (de er lagt ind netop fordi pakken mangler eller matcher klubben forkert)
+    for (const [n, u] of Object.entries(named)) { const k = norm(n); if (k) { cmIndex.set(k, u); cmKeys.push({ key: k, path: u }); } }
   }
   const c = gs().clubs[clubId];
   if (!c) return null;

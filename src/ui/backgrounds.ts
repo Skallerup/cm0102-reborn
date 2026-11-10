@@ -61,3 +61,86 @@ export function backgroundUrl(iso: string, seed: string | number = ''): string {
   if (pack) return pack.images[(dayNo(iso) + String(seed).length) % pack.images.length];
   return `${import.meta.env.BASE_URL}bg/${NAMES[backgroundIndex(iso, seed)]}.jpg`;
 }
+
+// ---------- stadioner på kampdage (Naydav's CM0102 Background Image Pack, se scripts/build-stadium-bg.py) ----------
+
+let stadiums: Record<string, string[]> | null = null;
+let stadiumsLoading: Promise<void> | null = null;
+/** Henter oversigten stadionnavn → billeder (kun én gang; uden net = ingen stadionbilleder) */
+export function loadStadiumBgs(): Promise<void> {
+  stadiumsLoading ??= fetch(`${import.meta.env.BASE_URL}data/stadium-bg.json`)
+    .then((r) => (r.ok ? r.json() : {})).then((d: Record<string, string[]>) => { stadiums = d; }).catch(() => { stadiums = {}; });
+  return stadiumsLoading;
+}
+/** Billede af stadionet (samme hele dagen, skifter mellem stadionets billeder fra kamp til kamp) – null hvis pakken ikke har det */
+export function stadiumBgUrl(stadium: string | undefined, iso: string): string | null {
+  const imgs = stadium ? stadiums?.[stadium] : undefined;
+  if (!imgs?.length) return null;
+  return `${import.meta.env.BASE_URL}stadiums/${imgs[dayNo(iso) % imgs.length]}.jpg`;
+}
+
+// ---------- baggrunde pr. skærm (Naydav's pakke, scripts/build-screen-bg.py) ----------
+// Som CM 01/02's pics.cfg: klubbens skærme = stadion udefra eller klubbens billede, turneringer = turneringens billede,
+// træning/bestyrelse/transfer = deres egne, kampdage = stadion indefra. Ugens øvrige skærme: ens egen klub og hverdagen.
+
+interface ScreenBgs { clubs: Record<string, string[]>; comps: Record<string, string[]>; nations: Record<string, string[]>; training: string[]; boardroom: string[]; transfer: string[] }
+let screens: ScreenBgs | null = null;
+let screensLoading: Promise<void> | null = null;
+export function loadScreenBgs(): Promise<void> {
+  screensLoading ??= fetch(`${import.meta.env.BASE_URL}data/screen-bg.json`)
+    .then((r) => (r.ok ? r.json() : null)).then((d: ScreenBgs | null) => { screens = d; }).catch(() => { screens = null; });
+  return screensLoading;
+}
+/** Hvilket sæt: de nye skærmbilleder (standard) eller den gamle Sunday League-pakke */
+const SET_KEY = 'cm-bg-set';
+export const sundayLeague = () => { try { return localStorage.getItem(SET_KEY) === 'sunday'; } catch { return false; } };
+export const setSundayLeague = (on: boolean) => { try { localStorage.setItem(SET_KEY, on ? 'sunday' : 'screens'); } catch { /* ignorér */ } };
+
+const pick = (list: string[] | undefined, iso: string, salt = 0) => (list?.length ? list[(dayNo(iso) + salt) % list.length] : undefined);
+const screenUrl = (n: string) => `${import.meta.env.BASE_URL}screens/${n}.jpg`;
+const stadiumUrl = (n: string) => `${import.meta.env.BASE_URL}stadiums/${n}.jpg`;
+
+/** Stadionets billeder delt i udefra og indefra/kamp */
+function stadiumImgs(stadium: string | undefined, outside: boolean): string[] {
+  const all = stadium ? stadiums?.[stadium] ?? [] : [];
+  const ext = all.filter((n) => n.includes('exterior'));
+  return outside ? ext : all.filter((n) => !n.includes('exterior'));
+}
+/** Kampdage: stadion indefra (fuldt stadion) – udefra kun, hvis det er det eneste */
+export function matchdayBgUrl(stadium: string | undefined, iso: string): string | null {
+  const inside = stadiumImgs(stadium, false);
+  const n = pick(inside.length ? inside : stadiumImgs(stadium, true), iso);
+  return n ? stadiumUrl(n) : null;
+}
+/** En klub: stadion udefra eller klubbens eget billede (skifter fra dag til dag) */
+// ---------- klubpakker fra fællesskabet: en godkendt pakke med en klub vises på klubbens skærme og hjemmekampe for alle ----------
+
+let clubPacks: { key: string; images: string[] }[] | null = null;
+let clubPacksLoading: Promise<void> | null = null;
+const CLUB_WORDS = new Set(['fc', 'afc', 'cf', 'sc', 'ac', 'the', 'club', 'de', 'football']);
+/** "Chelsea FC" = "chelsea", "Atlético Madrid" = "atletico madrid" */
+export const normClub = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\./g, '').replace(/[^a-z0-9 ]+/g, ' ').split(/\s+/).filter((w) => w && !CLUB_WORDS.has(w)).join(' ');
+export function loadClubPacks(): Promise<void> {
+  clubPacksLoading ??= import('../online/hub').then(({ listSkins }) => listSkins()).then((r) => {
+    // ældre pakker uden klubfelt matches på navnet ("Chelsea"); et tomt felt betyder en almindelig pakke
+    clubPacks = (r?.rows ?? []).map((p) => ({ key: normClub(p.club ?? p.title), images: p.images })).filter((x) => x.key && x.images.length);
+  }).catch(() => { clubPacks = []; });
+  return clubPacksLoading;
+}
+export function clubPackUrl(club: { name: string; short?: string } | undefined, iso: string): string | null {
+  if (!club || !clubPacks?.length) return null;
+  const keys = [normClub(club.name), club.short ? normClub(club.short) : ''].filter(Boolean);
+  return pick(clubPacks.find((p) => keys.includes(p.key))?.images, iso) ?? null;
+}
+
+export function clubBgUrl(club: { name: string; short?: string; stadium?: string } | undefined, iso: string): string | null {
+  if (!club) return null;
+  const pack = clubPackUrl(club, iso);
+  if (pack) return pack;
+  const opts = [...stadiumImgs(club.stadium, true).map(stadiumUrl), ...(screens?.clubs[club.name] ?? []).map(screenUrl)];
+  return pick(opts, iso) ?? null;
+}
+export const compBgUrl = (name: string | undefined, iso: string): string | null => { const n = name ? pick(screens?.comps[name], iso) : undefined; return n ? screenUrl(n) : null; };
+export const nationBgUrl = (name: string | undefined, iso: string): string | null => { const n = name ? pick(screens?.nations[name], iso) : undefined; return n ? screenUrl(n) : null; };
+export const miscBgUrl = (kind: 'training' | 'boardroom' | 'transfer', iso: string, salt = 0): string | null => { const n = pick(screens?.[kind], iso, salt); return n ? screenUrl(n) : null; };
+export const screenBgsReady = () => !!screens;

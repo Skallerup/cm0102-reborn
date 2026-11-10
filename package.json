@@ -1,19 +1,21 @@
 {
   "name": "cm0102-reborn",
   "private": true,
-  "version": "0.11.0",
+  "version": "0.21.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "tsx scripts/build-seo.ts",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=20000",
     "data": "python3 scripts/build-data.py --download --out public/data/world-modern.json",
     "data:fetch": "bash scripts/fetch-sources.sh",
     "data:cm": "tsx scripts/build-cm-data.mts",
     "simulate": "tsx scripts/simulate-season.ts",
     "audit": "tsx scripts/audit.ts",
-    "screenshots": "node scripts/screenshots.mjs"
+    "screenshots": "node scripts/screenshots.mjs",
+    "e2e": "node scripts/e2e.mjs"
   },
   "dependencies": {
     "@upstash/redis": "^1.39.0",

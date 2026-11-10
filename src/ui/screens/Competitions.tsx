@@ -1,7 +1,10 @@
+import { useEffect, useRef } from 'react';
 
 import { Select } from '../select';
 import { nationRanking, sortTable } from '../../game/competitions';
-import { CL_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
+import { CL_SPOTS, CONF_SPOTS, LEAGUE_RULES, UEFA_SPOTS } from '../../game/leagues';
+import { isOriginal2001 } from '../../game/rules2001';
+import { refereeFor } from '../../game/weather';
 import { gs, squad } from '../../game/state';
 import type { Club, Competition, Player, TableRow } from '../../game/types';
 import { compName, dateFmt, t, natName } from '../../i18n';
@@ -10,14 +13,20 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { resultStr, stageLabel } from './Fixtures';
+import { ClassicCup } from './CupClassic';
+import { ClassicSub, cxShortDate } from '../classic';
 
 export function Competitions({ id }: { id?: string }) {
   const g = useGame()!;
+  const { nav } = useNav();
   const userComp = g.clubs[g.userClub]?.league;
   const comps = Object.values(g.comps);
   const [cid, setCid] = useRouteState<string>('cid', id ?? userComp ?? comps[0]?.id ?? '');
   const [tab, setTab] = useRouteState('tab', 'table');
-  const comp = g.comps[id && id !== cid ? id : cid] ?? g.comps[cid];
+  // åbnes skærmen med en ny turnering (link/menu), skifter den dertil – men valget i listen gælder bagefter
+  const lastId = useRef(id);
+  useEffect(() => { if (id && id !== lastId.current) { lastId.current = id; setCid(id); } }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const comp = g.comps[cid] ?? (id ? g.comps[id] : undefined);
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div>
@@ -25,7 +34,29 @@ export function Competitions({ id }: { id?: string }) {
         <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
           options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
       </Head>
-      {comp && (
+      {comp && isRetro() && comp.type !== 'league' && <ClassicCup comp={comp} />}
+      {/* klassisk liga (CM 01/02): Table · Results · Fixtures · Schedule øverst; Team Stats · Player Stats · Referee Stats · Awards ▸ · History ▸ nederst */}
+      {comp && isRetro() && comp.type === 'league' && (
+        <>
+          <Tabs tabs={[['table', t('comp.table')], ['results', t('cl.lg.results')], ['fixtures', t('comp.fixtures')], ['schedule', t('cl.lg.schedule')]]} value={['table', 'results', 'fixtures', 'schedule'].includes(tab) ? tab : ''} onChange={setTab} />
+          {tab === 'table' && <><div className="cx-subtitle">{t('cl.lg.table')}</div><LeagueTables comp={comp} /></>}
+          {tab === 'results' && <CompFixtures comp={comp} mode="results" />}
+          {tab === 'fixtures' && <CompFixtures comp={comp} mode="fixtures" />}
+          {tab === 'schedule' && <CompSchedule comp={comp} onPick={() => setTab('fixtures')} />}
+          {tab === 'stats' && <LeagueStats comp={comp} />}
+          {tab === 'scorers' && <Scorers comp={comp} />}
+          {tab === 'history' && <CompHistory comp={comp} />}
+          {tab === 'refs' && <RefereeStats comp={comp} />}
+          <ClassicSub items={[
+            { key: 'stats', label: t('cl.lg.teamStats'), on: tab === 'stats', onClick: () => setTab('stats') },
+            { key: 'scorers', label: t('cl.lg.playerStats'), on: tab === 'scorers', onClick: () => setTab('scorers') },
+            { key: 'ref', label: t('cl.lg.refStats'), on: tab === 'refs', onClick: () => setTab('refs') },
+            { key: 'awards', label: t('cl.cm.awards'), arrow: true, onClick: () => nav({ name: 'awards' }) },
+            { key: 'history', label: t('comp.history'), arrow: true, on: tab === 'history', onClick: () => setTab('history') },
+          ]} />
+        </>
+      )}
+      {comp && !isRetro() && (
         <>
           <Tabs tabs={[['table', comp.type === 'league' ? t('comp.table') : t('comp.overview')], ['fixtures', t('comp.fixtures')], ['scorers', t('comp.scorers')], ...(comp.type === 'league' ? [['stats', t('comp.stats')] as [string, string]] : []), ['history', t('comp.history')]]} value={tab} onChange={setTab} />
           {tab === 'table' && (comp.type === 'league' ? <LeagueTables comp={comp} /> : <CupView comp={comp} />)}
@@ -187,13 +218,31 @@ function CupView({ comp }: { comp: Competition }) {
   );
 }
 
-function CompFixtures({ comp }: { comp: Competition }) {
+/** Schedule (CM 01/02): alle spilledage med antal kampe – et klik viser dagens kampe */
+function CompSchedule({ comp, onPick }: { comp: Competition; onPick: () => void }) {
+  const g = useGame()!;
+  const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id);
+  const days = [...new Set(list.map((f) => f.date))].sort();
+  const [, setDate] = useRouteState(`date:${comp.id}`, days[0]);
+  return (
+    <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{days.map((d) => {
+      const n = list.filter((f) => f.date === d).length, played = list.filter((f) => f.date === d && f.result).length;
+      return <tr key={d} className="clickable" onClick={() => { setDate(d); onPick(); }}><td className="btn-col"><span className="cx-rowbtn">{cxShortDate(d)}</span></td><td className="c-name">{t('cl.lg.games', { n })}</td><td className="c-yel">{played === n ? t('cl.lg.played') : played ? `${played}/${n}` : ''}</td></tr>;
+    })}</tbody></table></div>
+  );
+}
+
+function CompFixtures({ comp, mode }: { comp: Competition; mode?: 'results' | 'fixtures' }) {
   const g = useGame()!;
   const { nav } = useNav();
-  const list = Object.values(g.fixtures).filter((f) => f.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date));
+  const all = Object.values(g.fixtures).filter((f) => f.comp === comp.id).sort((a, b) => a.date.localeCompare(b.date));
+  // Results: kun spillede dage, Fixtures: kun kommende (klassisk)
+  const list = mode === 'results' ? all.filter((f) => f.result) : mode === 'fixtures' ? all.filter((f) => !f.result) : all;
   const dates = [...new Set(list.map((f) => f.date))];
-  const next = dates.find((d) => d >= g.date) ?? dates[dates.length - 1];
-  const [date, setDate] = useRouteState(`date:${comp.id}`, next);
+  const next = mode === 'results' ? dates[dates.length - 1] : dates.find((d) => d >= g.date) ?? dates[dates.length - 1];
+  const [date0, setDate] = useRouteState(`date:${comp.id}`, next);
+  const date = dates.includes(date0) ? date0 : next;
+  if (!dates.length) return <div className="cx-empty">{t(mode === 'results' ? 'cl.lg.noResults' : 'cl.lg.noFixtures')}</div>;
   const shown = list.filter((f) => f.date === date);
   const idx = dates.indexOf(date);
   return (
@@ -210,7 +259,7 @@ function CompFixtures({ comp }: { comp: Competition }) {
               <td className="right"><ClubLink id={f.home} /></td>
               <td className="center"><b>{resultStr(f)}</b></td>
               <td><ClubLink id={f.away} /></td>
-              <td className="muted">{f.result?.scorers.slice(0, 4).map(([m, , pid]) => `${g.players[pid]?.last ?? '?'} ${m}'`).join(', ')}</td>
+              <td className="muted">{f.result?.scorers.slice(0, 4).map(([m, , pid, og]) => `${g.players[pid]?.last ?? '?'}${og ? ` (${t('match.og')})` : ''} ${m}'`).join(', ')}</td>
             </tr>
           ))}
         </tbody>
@@ -219,7 +268,7 @@ function CompFixtures({ comp }: { comp: Competition }) {
   );
 }
 
-function Scorers({ comp }: { comp: Competition }) {
+export function Scorers({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const clubs = comp.type === 'league' ? comp.clubs : comp.clubs;
   // Ligaer: ligamål. Pokaler: tæl fra kampenes målscorere
@@ -228,7 +277,7 @@ function Scorers({ comp }: { comp: Competition }) {
     rows = clubs.flatMap((c) => squad(c)).filter((p) => p.stats.lgGoals > 0).map((p) => ({ pid: p.id, goals: p.stats.lgGoals }));
   } else {
     const m = new Map<number, number>();
-    for (const f of Object.values(g.fixtures)) if (f.comp === comp.id && f.result) for (const [, , pid] of f.result.scorers) m.set(pid, (m.get(pid) ?? 0) + 1);
+    for (const f of Object.values(g.fixtures)) if (f.comp === comp.id && f.result) for (const [, , pid, og] of f.result.scorers) if (!og) m.set(pid, (m.get(pid) ?? 0) + 1);
     rows = [...m.entries()].map(([pid, goals]) => ({ pid, goals }));
   }
   rows.sort((a, b) => b.goals - a.goals);
@@ -299,7 +348,7 @@ function LeagueStats({ comp }: { comp: Competition }) {
   );
 }
 
-function CompHistory({ comp }: { comp: Competition }) {
+export function CompHistory({ comp }: { comp: Competition }) {
   const g = useGame()!;
   const rows = g.seasonHistory.flatMap((s) => s.comps.filter((c) => c.id === comp.id).map((c) => ({ season: s.season, ...c }))).reverse();
   if (!rows.length) return <div className="empty">{t('comp.noHistory')}</div>;
@@ -320,5 +369,87 @@ function CompHistory({ comp }: { comp: Competition }) {
         </tbody>
       </table>
     </Panel>
+  );
+}
+
+/**
+ * UEFA Coefficients (CM 01/02): landene i rækkefølge med pladser i Champions League (ECC), UEFA Cup og den tredje turnering
+ * (INTER = Intertoto i 2001, ellers Conference League) og koefficienten. Koefficienten er *estimeret*: et grundtal ud fra de
+ * fem bedste klubbers omdømme (de foregående sæsoner) plus sæsonens europæiske point (sejr 2, uafgjort 1) pr. deltagende klub.
+ */
+export function UefaCoefficients() {
+  const g = gs();
+  const { nav } = useNav();
+  const ranking = nationRanking();
+  const reps = new Map<number, number[]>();
+  for (const c of Object.values(g.clubs)) if (g.leagues[c.league]?.tier === 1) reps.set(c.nation, [...(reps.get(c.nation) ?? []), c.rep]);
+  const pts = new Map<number, number>(), clubs = new Map<number, Set<number>>();
+  for (const f of Object.values(g.fixtures)) {
+    if (!f.result || g.comps[f.comp]?.nation !== -1) continue;
+    for (const [club, gf, ga] of [[f.home, f.result.hg, f.result.ag], [f.away, f.result.ag, f.result.hg]] as const) {
+      const n = g.clubs[club]?.nation;
+      if (n === undefined) continue;
+      pts.set(n, (pts.get(n) ?? 0) + (gf > ga ? 2 : gf === ga ? 1 : 0));
+      clubs.set(n, (clubs.get(n) ?? new Set()).add(club));
+    }
+  }
+  const coef = (n: number) => {
+    const top = (reps.get(n) ?? []).sort((a, b) => b - a).slice(0, 5);
+    const base = Math.max(0, (top.reduce((s, v) => s + v, 0) / Math.max(1, top.length) - 40) * 1.4);
+    return base + (pts.get(n) ?? 0) / Math.max(1, clubs.get(n)?.size ?? 1);
+  };
+  const old = isOriginal2001();
+  return (
+    <div>
+      <Head title={t('cl.cm.coeff')} />
+      <div className="cx-subtitle">{g.season}/{old ? String(g.season + 1).slice(3) : String(g.season + 1).slice(2)}</div>
+      <div className="cx-tbl-wrap cx-coef">
+        <table className="cx-tbl cx-league">
+          <thead><tr><th className="btn-col" /><th className="btn-col" /><th className="c-num">ECC</th><th className="c-num">UEFA</th><th className="c-num">{old ? 'INTER' : 'UECL'}</th><th className="c-num">{t('cl.coef.coef')}</th></tr></thead>
+          <tbody>{ranking.map((n, i) => (
+            <tr key={n}>
+              <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
+              <td className="cx-lg-club" onClick={() => nav({ name: 'international', id: n })}>{natName(g.nations[n]?.name)}</td>
+              <td className="c-num c-yel">{CL_SPOTS[i] ?? 0}</td><td className="c-num c-yel">{UEFA_SPOTS[i] ?? 0}</td><td className="c-num c-yel">{CONF_SPOTS[i] ?? 0}</td>
+              <td className="c-val">{coef(n).toFixed(2)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Referee Stats (CM 01/02 "Official Stats"): ligaens dommere med kampe, røde og gule kort, strenghed (Strict/Fair/Lenient fra
+ * dommerens Discipline) og en karakter (*estimeret*: 7 minus afvigelsen fra et normalt antal kort pr. kamp).
+ */
+function RefereeStats({ comp }: { comp: Competition }) {
+  const g = gs();
+  const by = new Map<string, { name: string; games: number; y: number; r: number; strict: number; known: number }>();
+  for (const f of Object.values(g.fixtures)) {
+    if (f.comp !== comp.id || !f.result) continue;
+    const ref = refereeFor(f);
+    const e = by.get(ref.name) ?? { name: ref.name, games: 0, y: 0, r: 0, strict: ref.strict, known: 0 };
+    e.games++;
+    if (f.result.cards) { e.y += f.result.cards[0]; e.r += f.result.cards[1]; e.known++; }
+    by.set(ref.name, e);
+  }
+  const rows = [...by.values()].sort((a, b) => b.games - a.games || a.name.localeCompare(b.name));
+  const harsh = (s: number) => t(s >= 1.08 ? 'cl.ref.strict' : s <= 0.92 ? 'cl.ref.lenient' : 'cl.ref.fair');
+  const rating = (e: (typeof rows)[number]) => (e.known ? Math.max(4, Math.min(8, 7 - Math.abs(e.y / e.known - 3.4) * 0.35 - (e.r / e.known) * 0.8)) : 0);
+  return (
+    <>
+      <div className="cx-subtitle">{t('cl.ref.title')}</div>
+      <div className="cx-tbl-wrap cx-refs">
+        <table className="cx-tbl">
+          <thead><tr><th className="btn-col" /><th>{t('cl.ref.name')}</th><th className="c-num">{t('cl.ref.games')}</th><th className="c-num">{t('cl.ref.red')}</th><th className="c-num">{t('cl.ref.yellow')}</th><th>{t('cl.ref.harsh')}</th><th className="c-num">{t('cl.ref.rating')}</th></tr></thead>
+          <tbody>{rows.map((e, i) => (
+            <tr key={e.name}><td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td><td>{e.name}</td><td className="c-num">{e.games}</td><td className="c-num">{e.known ? e.r : '-'}</td><td className="c-num">{e.known ? e.y : '-'}</td><td>{harsh(e.strict)}</td><td className="c-val">{e.known ? rating(e).toFixed(2) : '-'}</td></tr>
+          ))}</tbody>
+        </table>
+        {!rows.length && <div className="cx-empty">{t('common.none')}</div>}
+      </div>
+    </>
   );
 }

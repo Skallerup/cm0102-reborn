@@ -119,6 +119,9 @@ export function fansMonthly() {
     const prev = c.fanMoodPrev ?? fanMood(c);
     const d = fanMood(c) - prev;
     if (Math.abs(d) >= 10) asOwner(c.id, () => storyAdd({ k: d > 0 ? 'fansUp' : 'fansDown', w: 2, p: { mood: Math.round(fanMood(c)) } }));
+    // CM 01/02: "Fans' happy with [person]", "Fans unhappy with [person]", "Fans' concern over [person]"
+    const mood = Math.round(fanMood(c));
+    if (Math.abs(d) >= 10 || (mood < 35 && prev >= 35)) asOwner(c.id, () => addNews({ cat: 'general', key: d >= 10 ? 'fans.moodUp' : mood < 35 ? 'fans.concern' : 'fans.moodDown', params: { club: c.name, manager: gs().manager.name, mood }, link: { kind: 'club', id: c.id } }));
     c.fanMoodPrev = fanMood(c);
   }
 }

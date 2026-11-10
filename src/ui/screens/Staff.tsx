@@ -1,4 +1,6 @@
 import { useState, type ReactNode } from 'react';
+import { CxLink, clubRoute } from '../classic';
+import { isRetro } from '../theme';
 import { askConfirm } from '../confirm';
 import { gs } from '../../game/state';
 import { ageOn } from '../../game/dates';
@@ -6,7 +8,10 @@ import { poachFee, staffCount, staffDemand, STAFF_LIMITS, willJoin } from '../..
 import { isMultiplayer } from '../../game/humans';
 import { act } from '../../game/actions';
 import type { Staff, StaffRole } from '../../game/types';
-import { money, t } from '../../i18n';
+import { dateFmt, money, natName, t } from '../../i18n';
+import { repWord } from './NationClassic';
+import { ActionMenu } from './PlayerClassic';
+import type { DropItem } from '../classic';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
@@ -16,6 +21,12 @@ const ROLES: StaffRole[] = ['assistant', 'coach', 'physio', 'scout'];
 const KEY_ATTR: Record<StaffRole, keyof Staff['attrs']> = { manager: 'tactics', assistant: 'coaching', coach: 'coaching', physio: 'physio', scout: 'judgingAbility' };
 
 export function StaffScreen() {
+  const { route } = useNav();
+  if (route.id !== undefined && gs().staff[Number(route.id)]) return <StaffProfile id={Number(route.id)} />;
+  return <StaffList />;
+}
+
+function StaffList() {
   const g = useGame()!;
   const [tab, setTab] = useRouteState('tab', useNav().route.tab ?? 'mine');
   const [role, setRole] = useRouteState<StaffRole>('role', 'coach');
@@ -100,6 +111,88 @@ export function StaffScreen() {
       )}
       {offerFor && <StaffOfferModal s={offerFor} onClose={() => setOfferFor(null)} onSend={(w) => sendOffer(offerFor, w)} />}
       <p className="muted">{t('staff.explain')} {t('staff.explain2')}</p>
+    </div>
+  );
+}
+
+/** En stabspersons profil (som i CM 01/02): job, klub, alder, omdømme, kontrakt og egenskaber – ansæt eller fyr herfra */
+function StaffProfile({ id }: { id: number }) {
+  const g = useGame()!;
+  const s = g.staff[id];
+  const { nav } = useNav();
+  const [offer, setOffer] = useState(false);
+  const [msg, setMsg] = useState<{ text: string; tone: string } | null>(null);
+  const mine = s.club === g.userClub && !!g.userClub;
+  const name = `${s.first} ${s.last}`.trim();
+  const role = s.role === 'manager' ? null : s.role;
+  const full = role ? staffCount(role) >= STAFF_LIMITS[role] : true;
+  const send = async (wage: number) => {
+    if (s.club && !(await askConfirm(t('staff.poachConfirm', { name, club: g.clubs[s.club]?.name ?? '', fee: money(poachFee(s)) })))) return;
+    const r = act<string>({ t: 'hireStaff', id: s.id, wage });
+    setOffer(false);
+    setMsg({ text: t(`staff.result.${r}`, { name, wage: money(staffDemand(s)) }), tone: r === 'ok' ? 'good' : r === 'pending' ? 'warn' : 'bad' });
+  };
+  const fire = async () => {
+    if (!(await askConfirm(t('staff.fireConfirm', { name, pay: money(s.wage * 12) })))) return;
+    act({ t: 'fireStaff', id: s.id });
+    setMsg({ text: t('staff.fired', { name }), tone: 'neutral' });
+  };
+  // Action-menuen i titelbjælken (som på spillerprofilen og i CM 01/02)
+  const items: DropItem[] = [];
+  if (mine) items.push({ key: 'fire', label: t('staff.fire'), danger: true, onClick: fire });
+  else if (g.userClub) {
+    const broke = s.club > 0 && (g.clubs[g.userClub]?.balance ?? 0) < poachFee(s);
+    items.push({ key: 'hire', label: s.club ? t('staff.buyOut') : t('staff.hireBtn'), disabled: !role || full || broke,
+      title: !role ? t('staff.noManagerHire') : full ? t('staff.limit') : broke ? t('staff.noMoney') : undefined, onClick: () => setOffer(true) });
+  }
+  if (s.club) items.push({ key: 'club', label: t('staff.viewClub', { club: g.clubs[s.club]?.short ?? '' }), onClick: () => nav(s.club === g.userClub ? { name: 'squad' } : { name: 'club', id: s.club }) });
+  const action = items.length ? <ActionMenu items={items} clubId={s.club || undefined} /> : null;
+  return (
+    <div>
+      <Head title={`${name}${s.club ? ` (${g.clubs[s.club]?.short ?? ''})` : ''}`} action={action} />
+      {msg && <div className={`insight ${msg.tone}`}>{msg.text}</div>}
+      {isRetro() ? (
+        // klassisk (CM 01/02): fødselsdag og land som overskrift, oplysninger og egenskaber i to kolonner uden kort
+        <>
+          <div className="cx-subtitle cx-born">{t('cl.sf.born', { date: dateFmt(s.dob), age: ageOn(s.dob, g.date), nation: natName(g.nations[s.nation]?.name) })}</div>
+          <div className="cx-staff-cols">
+            <div className="cx-kv">
+              <span>{t('cl.sf.job')}</span><span>{t(`role.staff.${s.role}`)}</span>
+              <span>{t('col.club')}</span><span>{s.club ? <CxLink to={clubRoute(s.club)}>{g.clubs[s.club]?.name}</CxLink> : t('common.free')}</span>
+              <span>{t('cl.st.rep')}</span><span>{repWord(s.rep)}</span>
+              {s.club > 0 && <><span>{t('col.wage')}</span><span>{money(s.wage)} {t('cl.sf.pw')}</span></>}
+              {s.club > 0 && s.expires && <><span>{t('col.expires')}</span><span>{dateFmt(s.expires)}</span></>}
+              {!mine && s.club > 0 && <><span>{t('staff.fee')}</span><span>{money(poachFee(s))}</span></>}
+              {!mine && <><span>{t('staff.demand')}</span><span>{money(staffDemand(s))} {t('cl.sf.pw')}</span></>}
+            </div>
+            <table className="cx-tbl cx-staff-attrs"><thead><tr><th>{t('staff.attrs')}</th><th /></tr></thead>
+              <tbody>{ATTRS.map((a) => <tr key={a}><td>{t(`staff.${a}`)}</td><td className={`c-num ${s.attrs[a] >= 15 ? 'c-yel' : s.attrs[a] >= 10 ? 'c-cyan' : 'c-pos'}`}>{s.attrs[a]}</td></tr>)}</tbody></table>
+          </div>
+        </>
+      ) : (
+      <div className="cols2">
+        <Panel title={t(`role.staff.${s.role}`)}>
+          <div className="kv">
+            <span>{t('col.club')}</span><span>{s.club ? <ClubLink id={s.club} /> : t('common.free')}</span>
+            <span>{t('col.age')}</span><span>{ageOn(s.dob, g.date)}</span>
+            <span>{t('cl.fd.nation')}</span><span>{natName(g.nations[s.nation]?.name)}</span>
+            <span>{t('cl.st.rep')}</span><span>{repWord(s.rep)}</span>
+            {s.club > 0 && <><span>{t('col.wage')}</span><span>{money(s.wage)} / {t('common.week')}</span></>}
+            {s.club > 0 && s.expires && <><span>{t('col.expires')}</span><span>{dateFmt(s.expires)}</span></>}
+            {!mine && s.club > 0 && <><span>{t('staff.fee')}</span><span>{money(poachFee(s))}</span></>}
+            {!mine && <><span>{t('staff.demand')}</span><span>{money(staffDemand(s))} / {t('common.week')}</span></>}
+          </div>
+        </Panel>
+        <Panel title={t('staff.attrs')} className="flush">
+          <table className="grid">
+            <tbody>
+              {ATTRS.map((a) => <tr key={a}><td>{t(`staff.${a}`)}</td><td className="num"><span className={`attr ${s.attrs[a] >= 16 ? 'a-top' : s.attrs[a] >= 13 ? 'a-good' : s.attrs[a] >= 9 ? 'a-mid' : 'a-low'}`}>{s.attrs[a]}</span></td></tr>)}
+            </tbody>
+          </table>
+        </Panel>
+      </div>
+      )}
+      {offer && <StaffOfferModal s={s} onClose={() => setOffer(false)} onSend={send} />}
     </div>
   );
 }

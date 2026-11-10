@@ -51,9 +51,21 @@ const CUPS: Record<string, string> = {
 
 const DANISH_WORDS = /pokal\b|^Pokalturneringen$|^Kejserens|^Kongens|^Japans/;
 
+/** Spilles der med 2001/02-databasen? Så bruger engelsk CM's egne navne fra dengang (sættes af Shell) */
+let cmEra = false;
+export const setCompEra = (original2001: boolean) => { cmEra = original2001; };
+
+/** Turneringens rigtige navn (uanset sprog og database) – fx til logoer */
+export const realCompName = (name: string): string => LEAGUES_DA[name] ?? (CM_CUPS_DA[name] && !DANISH_WORDS.test(CM_CUPS_DA[name]) ? CM_CUPS_DA[name] : name);
+
 export function compLabel<T extends string | undefined>(name: T, lang: Lang): T {
-  // engelsk: CM-databasernes egne navne; de øvrige sprog: ligaernes og pokalernes rigtige navne
-  if (!name || lang === 'en') return name;
+  // engelsk med 2001-databasen: CM's egne navne; ellers (og på de øvrige sprog) ligaernes og pokalernes rigtige navne
+  if (!name) return name;
+  if (lang === 'en') {
+    if (cmEra) return name;
+    const real = LEAGUES_DA[name] ?? CM_CUPS_DA[name];
+    return (real && !DANISH_WORDS.test(real) ? real : name) as T;
+  }
   // danske fællesbetegnelser ("Tyrkiets pokal") bruges kun på dansk – de rigtige egennavne på alle sprog
   const own = (v: string | undefined) => (v && (lang === 'da' || !DANISH_WORDS.test(v)) ? v : undefined);
   const league = own(LEAGUES_DA[name]) ?? own(CM_CUPS_DA[name]);
@@ -63,7 +75,7 @@ export function compLabel<T extends string | undefined>(name: T, lang: Lang): T 
   if (own(CUPS[nation])) return CUPS[nation] as T;
   if (nation && isNationName(nation)) {
     const n = nationLabel(nation, lang);
-    if (lang !== 'da') return ({ es: `Copa de ${n}`, fr: `Coupe de ${n}`, de: `${n} Pokal`, it: `Coppa di ${n}`, pt: `Copa ${n}`, tr: `${n} Kupası` } as Record<string, string>)[lang] as T ?? name;
+    if (lang !== 'da') return ({ es: `Copa de ${n}`, fr: `Coupe de ${n}`, de: `${n} Pokal`, it: `Coppa di ${n}`, pt: `Copa ${n}`, tr: `${n} Kupası`, sv: `${n}s cup`, nb: `${n}s cup` } as Record<string, string>)[lang] as T ?? name;
     return `${n}${/[sxz]$/.test(n) ? '' : 's'} pokal` as T;
   }
   return name;

@@ -3,8 +3,9 @@ import { A, ATTRS, type AttrKey } from './attributes';
 import { ageOn } from './dates';
 import { rng } from './rng';
 import { gs } from './state';
-import type { Player, Role } from './types';
+import type { CoachArea, Player, Role, Staff } from './types';
 import { valueFromCA } from './data/generate';
+import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
@@ -28,6 +29,8 @@ export const SCHEDULES: Schedule[] = [
 ];
 
 const SCHEDULE_MAP = new Map(SCHEDULES.map((s) => [s.key, s]));
+/** Træningsprogram → trænerområde (CM 01/02 Coaches); general bruger alle trænere */
+const AREA_OF: Record<string, CoachArea | undefined> = { goalkeeping: 'goalkeeping', fitness: 'fitness', shooting: 'shooting', attacking: 'shooting', ballcontrol: 'skills', setpieces: 'skills', defending: 'tactics' };
 
 export interface CoachingInfo {
   /** samlet træningskvalitet 0-1 */
@@ -42,9 +45,9 @@ export interface CoachingInfo {
 }
 
 /** Trænerholdets kvalitet: de bedste trænere vejer tungest, antallet og faciliteterne tæller med */
-export function coachingInfo(clubId: number): CoachingInfo {
+export function coachingInfo(clubId: number, clubStaff?: Staff[]): CoachingInfo {
   const g = gs();
-  const staff = Object.values(g.staff).filter((s) => s.club === clubId && (s.role === 'coach' || s.role === 'assistant'));
+  const staff = (clubStaff ?? Object.values(g.staff).filter((s) => s.club === clubId)).filter((s) => s.role === 'coach' || s.role === 'assistant');
   const sorted = staff.map((s) => s.attrs.coaching).sort((a, b) => b - a);
   // de tre bedste trænere tæller dobbelt
   const weights = sorted.map((_, i) => (i < 3 ? 2 : 1));
@@ -58,8 +61,8 @@ export function coachingInfo(clubId: number): CoachingInfo {
   return { quality, factor: (0.3 + 1.2 * quality) / (0.3 + 1.2 * 0.5), discipline: avgOf('discipline'), motivating: avgOf('motivating'), coaches: staff.length };
 }
 
-function coachQuality(clubId: number): CoachingInfo {
-  return coachingInfo(clubId);
+function coachQuality(clubId: number, clubStaff?: Staff[]): CoachingInfo {
+  return coachingInfo(clubId, clubStaff);
 }
 
 /** Kører hver mandag for alle spillere */
@@ -67,17 +70,35 @@ export function weeklyDevelopment() {
   const g = gs();
   const cq = new Map<number, CoachingInfo>();
   const none: CoachingInfo = { quality: 0.25, factor: 0.6, discipline: 0.3, motivating: 0.3, coaches: 0 };
+  // stab pr. klub én gang (ellers gennemløbes hele stabslisten for hver klub)
+  const byClub = new Map<number, Staff[]>();
+  for (const s of Object.values(g.staff)) if (s.club) (byClub.get(s.club) ?? byClub.set(s.club, []).get(s.club)!).push(s);
+  // CM 01/02 Coaches: har klubben fordelt trænerne på områder, tæller kun dem, der står for spillerens program
+  const areaCache = new Map<string, CoachingInfo>();
   for (const p of Object.values(g.players)) {
-    if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club) : none);
-    const ci = cq.get(p.club)!;
+    if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club, byClub.get(p.club) ?? []) : none);
+    let ci = cq.get(p.club)!;
+    const area = AREA_OF[p.training ?? 'general'];
+    const st = p.club ? byClub.get(p.club) ?? [] : [];
+    if (area && st.some((x) => x.coachAreas)) {
+      const k = `${p.club}:${area}`;
+      if (!areaCache.has(k)) areaCache.set(k, coachQuality(p.club, st.filter((x) => !x.coachAreas || x.coachAreas.includes(area))));
+      ci = areaCache.get(k)!;
+    }
     develop(p, ci);
     // motiverende trænere løfter moralen en smule hver uge
     if (p.club && ci.motivating > 0.55) p.morale = Math.min(20, p.morale + (ci.motivating - 0.55) * 0.6);
   }
 }
 
-const YOUTH_RATE = 0.0115;
-const PRIME_RATE = 0.003;
+/**
+ * Udviklingens kalibrering mod originalen (scripts/dev-cal.ts; målt i ejerens CM 01/02 med to gemte spil 31/8-01 og
+ * 25/9-02 – docs/ENGINE.md "Udvikling"). Originalen: op til 31 år trækkes CA mod ca. PA − 13 (står spilleren på PA,
+ * mister han ~15 på et år; 11-20 under PA står han stille; længere under vokser han), og fra 32 år falder alle 5-9 om
+ * året. Spillerne når altså sjældent deres PA – og verdens antal af stjerner står stille.
+ * `ceil` = afstanden under PA, CA søger mod; `pull` = ugentlig andel af overskuddet, der trækkes ned.
+ */
+export const DEV = { youth: 0.0125, prime: 0.008, decline: 4.5, declineStart: 2, noise: 0.8, ceil: 13, pull: 0.035, late: 0.5 };
 
 function develop(p: Player, ci: CoachingInfo) {
   const coachF = 0.3 + 1.2 * ci.quality;
@@ -88,19 +109,26 @@ function develop(p: Player, ci: CoachingInfo) {
   const rawProf = (p.attrs[A.professionalism] + p.attrs[A.determination]) / 40; // 0.05-1
   const prof = rawProf + (1 - rawProf) * ci.discipline * 0.35;
   const minutesBoost = Math.min(1, p.stats.minutes / Math.max(1, 90 * 20)) * 0.4 + 0.8;
+  // tilbagegangen begynder senere for målmænd og midtstoppere, og den er individuel: nogle holder til
+  // midt i 30'erne, andre falder brat. Gode trænere, fysioterapi og professionalisme bremser den.
+  const start = (p.pos[0] >= 15 ? 32 : p.pos[2] >= 15 && p.side[1] >= 15 ? 31 : 30) + DEV.declineStart;
+  const room = Math.max(0, p.pa - DEV.ceil - p.ca);
   let delta = 0;
   if (age <= 23) {
     const ageF = age <= 18 ? 1 : age <= 20 ? 0.9 : age <= 22 ? 0.65 : 0.45;
-    // kalibreret (scripts/player-pool.ts): talenter når tæt på deres potentiale omkring 22-23 år
-    delta = (p.pa - p.ca) * YOUTH_RATE * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
+    delta = room * DEV.youth * ageF * coachF * (0.55 + prof * 0.7) * minutesBoost * sched.load;
   } else if (age <= 28) {
     // de fleste topper midt i 20'erne – kun en langsom vækst herfra (ellers vokser antallet af stjerner hvert år)
-    delta = (p.pa - p.ca) * PRIME_RATE * coachF * (0.6 + prof * 0.6) * minutesBoost;
-  } else if (age >= 30) {
-    // gode trænere og fysioterapi bremser tilbagegangen en smule
-    delta = -(0.03 + (age - 29) * 0.03) * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
+    delta = room * DEV.prime * coachF * (0.6 + prof * 0.6) * minutesBoost;
+  } else if (age < start) {
+    delta = room * DEV.prime * DEV.late * coachF * (0.6 + prof * 0.6) * minutesBoost;
+  } else {
+    const curve = 0.65 + 0.7 * ((((p.id * 2654435761) >>> 0) % 1000) / 1000);
+    delta = -DEV.decline * (0.02 + (age - start) * 0.025) * curve * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
   }
-  delta += rng.normal(0, 0.05);
+  // over loftet (PA − ceil): trækkes ned mod det
+  if (DEV.pull > 0 && age < start && p.ca > p.pa - DEV.ceil) delta -= (p.ca - (p.pa - DEV.ceil)) * DEV.pull;
+  delta += rng.normal(0, DEV.noise);
   if (Math.abs(delta) < 0.01) return;
   const before = p.ca;
   p.ca = Math.max(1, Math.min(p.pa + (delta < 0 ? 0 : 0), p.ca + delta, 200));
@@ -117,6 +145,9 @@ function develop(p: Player, ci: CoachingInfo) {
       if (!isGK && A[k] >= 33) continue;
       bump(p, A[k], change * 0.08 * w);
     }
+  } else if (age < 29) {
+    // de unge og spillerne i deres bedste alder: et tilbageslag rammer bredt (ikke fysikken som ved alderen)
+    for (let i = 0; i < 33; i++) bump(p, i, change * 0.045);
   } else {
     const phys: AttrKey[] = ['pace', 'acceleration', 'stamina', 'agility', 'jumping', 'strength'];
     for (const k of phys) bump(p, A[k], pts * 1.3);
@@ -131,9 +162,18 @@ function bump(p: Player, i: number, d: number) {
 /** Månedlig værdiopdatering */
 export function monthlyValues() {
   const g = gs();
+  const original = !!g.econ && g.dbKind === 'cm0102';
   for (const p of Object.values(g.players)) {
     const age = ageOn(p.dob, g.date);
-    const target = valueFromCA(p.ca, p.pa, age);
+    // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
+    const c = g.clubs[p.club];
+    const lg = c ? g.leagues[c.league] : undefined;
+    // klubber med originalens felter: sub_4d0c60 (om originalen bruger den samme formel hver måned, vides ikke – *estimeret*)
+    const target = original && c?.vc && p.cmRep
+      ? formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps, staffId: p.id, clubId: c.id, vc: c.vc }) / 0.86
+      : original
+      ? originalValueGbp(p.ca, age, c?.rep ?? 30, (p.contract?.wage ?? 0) * 0.86, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, p.cmRep ?? repTriple(p.rep)) / 0.86
+      : valueFromCA(p.ca, p.pa, age);
     // glid mod modelværdien og påvirkes af form
     const form = p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 6.5;
     const formF = 1 + (form - 6.7) * 0.06;

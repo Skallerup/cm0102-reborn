@@ -6,14 +6,18 @@ import { money, t } from '../i18n';
 import { askingPrice } from '../game/transfers';
 import { Panel, PlayerLink } from './components';
 import { useGame } from './core';
+import { authentic } from '../game/rules';
 
 export function FirstDay() {
+  if (authentic()) return null; // ægte CM 01/02: ikke i originalen
   const g = useGame()!;
   const ob = g.manager.onboard;
   const needs = squadNeeds(g.userClub);
   const [picked, setPicked] = useState<string[]>(() => ob?.needs ?? needs.slice(0, 2).map((n) => n.key));
   if (!ob) return null;
   const c = g.clubs[g.userClub];
+  // fyret (eller endnu uden klub): ingen førstedagsguide
+  if (!c) return null;
   if (ob.briefed && ob.plan) return <Briefing />;
   if (ob.briefed) return null;
   const done = [!!ob.weak, !!ob.style, !!ob.needs];

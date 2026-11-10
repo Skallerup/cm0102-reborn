@@ -1,9 +1,11 @@
 // Admin interface (developer only): ?admin=1. Requires the ADMIN_TOKEN set on the server, kept in this browser.
-// English on purpose. Tabs: overview, applications ("join the project"), managers, rankings, multiplayer rooms,
-// and community moderation. Data comes from api/admin.ts and api/community.ts.
+// English on purpose. Tabs: overview, new careers, applications ("join the project"), managers, rankings, multiplayer rooms,
+// community moderation, mail and errors. Data comes from api/admin.ts and api/community.ts.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { SgStatus, Suggestion } from '../online/community';
 import { Panel } from './components';
+import { openPreview } from '../game/save';
+import { getTheme, setTheme } from './theme';
 
 const KEY = 'cm0102.admin';
 const STATUSES: SgStatus[] = ['new', 'considering', 'planned', 'progress', 'released', 'rejected'];
@@ -45,18 +47,22 @@ const ago = (iso?: string) => {
 };
 
 interface Overview {
-  accounts?: number; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
+  accounts?: number; online?: number; newCareers?: { total: number; today: number; yesterday: number }; managers: number; careers: number; seasons: number; seasonsThisMonth: number; rooms: number; activeRooms: number;
   ai: { today: number; yesterday: number; cap: number }; suggestions: number;
   applications: { total: number; new: number }; top: { career: string; points: number; name: string; club: string; league: string }[];
   config: { email: boolean };
 }
 interface Application { id: number; name: string; email: string; role: string; message: string; lang: string; created: string; status: string; note?: string }
 interface ManagerRow { pid: string; name: string; created: string; updated: string; careers: number; best: number; seasons: number }
+interface NewCareer { save?: SaveRow; at: string; manager: string; club: string; league: string; nation: string; challenge: string; mode?: string; bots: number; db: string; lang: string; theme?: string; vid?: string; seen?: number; country?: string; start?: string; prog?: { date: string; club: string; pos: number; at: number } }
+interface SaveRow { source: 'account' | 'support'; id: string; manager: string; club: string; date: string; saved: string; url: string; size: number; device?: string; email?: string; note?: string; vid?: string; lang?: string; theme?: string; mode?: string; ver?: string }
+/** Åbn en spillers gemte spil i preview (intet gemmes eller sendes – se previewInfo i game/state.ts) */
+type OpenSave = (s: SaveRow, theme?: string) => Promise<void>;
 interface RoomRow { code: string; status: string; created: string; lastTurn: string; date: string; version: number; mode: string; players: string[] }
 interface RankRow { member: string; points: number; name: string; club: string; league: string; season: string; pid: string }
 
-type Tab = 'overview' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits';
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits']];
+type Tab = 'overview' | 'starts' | 'saves' | 'applications' | 'managers' | 'rankings' | 'rooms' | 'community' | 'hall' | 'edits' | 'skins' | 'credits' | 'mail' | 'errors';
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['starts', 'New careers'], ['saves', 'Saves'], ['applications', 'Applications'], ['managers', 'Managers'], ['rankings', 'Rankings'], ['rooms', 'Multiplayer'], ['community', 'Suggestions'], ['hall', 'Hall of Fame'], ['edits', 'Database edits'], ['skins', 'Skins'], ['credits', 'Credits'], ['mail', 'E-mail'], ['errors', 'Errors']];
 
 export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tok, setTok] = useState(token);
@@ -64,6 +70,20 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('overview');
   const [overview, setOverview] = useState<Overview | null>(null);
   const [msg, setMsg] = useState('');
+  const openSave: OpenSave = async (s, theme) => {
+    setMsg(`Opening ${s.manager} (${s.club}) …`);
+    try {
+      const r = await fetch(s.url, { cache: 'no-store' });
+      if (!r.ok) throw new Error(`download ${r.status}`);
+      // spillerens udseende, hvis vi kender det (så man ser det samme som spilleren)
+      const th = theme ?? s.theme;
+      if (th === 'classic') setTheme('retro');
+      else if (th === 'modern' && getTheme() === 'retro') setTheme('club');
+      await openPreview(await r.blob(), `${s.manager} · ${s.club} · ${s.date}`, th);
+      try { sessionStorage.setItem('cm0102.play', '1'); } catch { /* ignorer */ }
+      onClose();
+    } catch (e) { setMsg(`Could not open the save: ${String((e as Error).message)}`); }
+  };
   const refresh = async () => {
     const o = await adminGet<Overview>('op=overview');
     setAuthed(!!o);
@@ -102,7 +122,9 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
         {TABS.map(([k, l]) => <button key={k} className={tab === k ? 'on' : ''} onClick={() => { setTab(k); setMsg(''); }}>{l}{badge(k)}</button>)}
       </div>
       {msg && <div className="insight">{msg}</div>}
-      {tab === 'overview' && <OverviewTab o={overview} go={setTab} />}
+      {tab === 'overview' && <OverviewTab o={overview} go={setTab} onChange={() => void refresh()} setMsg={setMsg} />}
+      {tab === 'starts' && <NewCareersTab open={openSave} />}
+      {tab === 'saves' && <SavesTab open={openSave} setMsg={setMsg} />}
       {tab === 'applications' && <ApplicationsTab onChange={refresh} setMsg={setMsg} />}
       {tab === 'managers' && <ManagersTab />}
       {tab === 'rankings' && <RankingsTab setMsg={setMsg} />}
@@ -112,6 +134,8 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
       {tab === 'edits' && <EditsAdmin setMsg={setMsg} />}
       {tab === 'skins' && <SkinsAdmin setMsg={setMsg} />}
       {tab === 'credits' && <CreditsAdmin setMsg={setMsg} />}
+      {tab === 'mail' && <MailTab setMsg={setMsg} />}
+      {tab === 'errors' && <ErrorsTab setMsg={setMsg} />}
     </div></div>
   );
 }
@@ -120,12 +144,14 @@ function Stat({ label, value, sub, onClick }: { label: string; value: ReactNode;
   return <div className={`adm-stat ${onClick ? 'clickable' : ''}`} onClick={onClick}><span>{label}</span><b>{value}</b>{sub && <small>{sub}</small>}</div>;
 }
 
-function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
+function OverviewTab({ o, go, onChange, setMsg }: { o: Overview | null; go: (t: Tab) => void; onChange?: () => void; setMsg?: (s: string) => void }) {
   if (!o) return <div className="muted">Loading…</div>;
   const pct = o.ai.cap ? Math.round((o.ai.today / o.ai.cap) * 100) : 0;
   return (
     <>
       <div className="adm-stats">
+        <Stat label="Online now" value={o.online ?? 0} sub="browsers with the game open (last 5 min)" onClick={() => go('starts')} />
+        <Stat label="New careers today" value={o.newCareers?.today ?? 0} sub={`yesterday ${o.newCareers?.yesterday ?? 0} · ${o.newCareers?.total ?? 0} in total`} onClick={() => go('starts')} />
         <Stat label="Applications" value={o.applications.total} sub={o.applications.new ? `${o.applications.new} new` : 'none new'} onClick={() => go('applications')} />
         <Stat label="Accounts (cloud saves)" value={o.accounts ?? 0} sub="signed in with email" />
         <Stat label="Manager profiles" value={o.managers} sub={`${o.careers} careers on the board`} onClick={() => go('managers')} />
@@ -137,8 +163,12 @@ function OverviewTab({ o, go }: { o: Overview | null; go: (t: Tab) => void }) {
       </div>
       <Panel title="Top careers">
         {o.top.length === 0 ? <div className="muted">No careers yet.</div> : (
-          <table className="grid"><thead><tr><th>#</th><th>Manager</th><th>Club</th><th>League</th><th className="num">Points</th></tr></thead>
-            <tbody>{o.top.map((r, i) => <tr key={r.career}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td><td className="num">{r.points}</td></tr>)}</tbody></table>
+          <table className="grid"><thead><tr><th>#</th><th>Manager</th><th>Club</th><th>League</th><th className="num">Points</th><th /></tr></thead>
+            <tbody>{o.top.map((r, i) => <tr key={r.career}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td><td className="num">{r.points}</td>
+              <td><button className="small danger" title="Remove from all rankings (career, season, month, league) – later seasons won't count" onClick={async () => {
+                if (!confirm(`Remove ${r.name}'s career (${r.club}, ${r.points} points) from all rankings?`)) return;
+                const res = await adminPost('unrank', { career: r.career }); setMsg?.(res.error ? `Error: ${String(res.error)}` : 'Removed from the rankings ✓'); onChange?.();
+              }}>✕</button></td></tr>)}</tbody></table>
         )}
       </Panel>
     </>
@@ -266,10 +296,138 @@ function RankingsTab({ setMsg }: { setMsg: (s: string) => void }) {
             <tbody>{rows.map((r, i) => (
               <tr key={r.member}><td>{i + 1}</td><td>{r.name}</td><td>{r.club}</td><td className="muted">{r.league}</td>{board === 'season' && <td>{r.season}</td>}<td className="num">{r.points}</td>
                 {board === 'career' && <td><button className="small danger" title="Remove from the career board (e.g. a manipulated score)" onClick={async () => {
-                  if (!confirm(`Remove ${r.name}'s career (${r.points} points) from the career board?`)) return;
+                  if (!confirm(`Remove ${r.name}'s career (${r.points} points) from all rankings?`)) return;
                   const res = await adminPost('unrank', { career: r.member }); setMsg(res.error ? `Error: ${String(res.error)}` : 'Removed from the board ✓'); void load();
                 }}>Remove</button></td>}
               </tr>
+            ))}</tbody></table>
+        </div>
+      )}
+    </Panel>
+  );
+}
+
+/** Flag-emoji ud fra landekoden (regional indicator symbols) og landets navn */
+const flag = (cc: string) => cc.length === 2 ? String.fromCodePoint(...[...cc].map((c) => 0x1f1a5 + c.charCodeAt(0))) : '';
+const countryName = (cc?: string) => { try { return cc ? new Intl.DisplayNames(['en'], { type: 'region' }).of(cc) ?? cc : ''; } catch { return cc ?? ''; } };
+
+/** Hvor langt karrieren er nået: sæson nr., spildato, klub (hvis skiftet) og placering */
+function progress(r: NewCareer) {
+  const p = r.prog;
+  if (!p) return <span className="muted">–</span>;
+  // sæsonerne starter 1. juli
+  const seasonOf = (d: string) => Number(d.slice(0, 4)) - (Number(d.slice(5, 7)) < 7 ? 1 : 0);
+  const n = r.start ? seasonOf(p.date) - seasonOf(r.start) + 1 : 0;
+  const d = new Date(`${p.date}T12:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric' });
+  return <>{n > 0 && <b>Season {n}</b>} <span className="muted">{d}{p.club && p.club !== r.club ? ` · ${p.club}` : ''}{p.pos ? ` · ${p.pos}.` : ''}</span></>;
+}
+
+/** Denne browsers anonyme besøgs-id (samme som spillet sender med en ny karriere, online/notify.ts) */
+const myVid = () => { try { return localStorage.getItem('cm0102.visitor') ?? ''; } catch { return ''; } };
+
+function NewCareersTab({ open }: { open: OpenSave }) {
+  type Data = { rows: NewCareer[]; days: Record<string, number>; online?: number; now?: number };
+  const [data, setData] = useState<Data | null>(null);
+  useEffect(() => {
+    const load = () => void adminGet<Data>('op=new-careers').then((r) => setData(r ?? { rows: [], days: {} }));
+    load();
+    // online-status opdateres løbende
+    const id = setInterval(load, 60_000);
+    return () => clearInterval(id);
+  }, []);
+  const removeCareers = async (what: { vids?: string[]; at?: string; manager?: string }, label: string) => {
+    if (!window.confirm(`Remove ${label} from New careers?`)) return;
+    const r = await adminPost('nc-delete', what);
+    if (r.error) window.alert(`Error: ${String(r.error)}`);
+    else void adminGet<Data>('op=new-careers').then((x) => setData(x ?? { rows: [], days: {} }));
+  };
+  if (!data) return <div className="muted">Loading new careers…</div>;
+  const days = Object.entries(data.days).reverse();
+  const max = Math.max(1, ...days.map(([, n]) => n));
+  return (
+    <>
+      <Panel title="New careers per day (last 14 days)">
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 90 }}>
+          {days.map(([d, n]) => (
+            <div key={d} title={`${d}: ${n}`} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+              <small className="muted">{n}</small>
+              <div style={{ width: '100%', height: Math.round((n / max) * 60), minHeight: 2, background: 'var(--accent, #3b82f6)', borderRadius: 2 }} />
+              <small className="muted">{d.slice(8)}</small>
+            </div>
+          ))}
+        </div>
+      </Panel>
+      {(() => {
+        // hvor kommer spillerne fra (landet ved spilstart, de seneste karrierer)
+        const by = new Map<string, number>();
+        for (const r of data.rows) if (r.country) by.set(r.country, (by.get(r.country) ?? 0) + 1);
+        const top = [...by.entries()].sort((a, b) => b[1] - a[1]);
+        return top.length ? (
+          <Panel title={`Countries (${top.length})`}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+              {top.map(([cc, n]) => <span key={cc} className="tag" title={countryName(cc)}>{flag(cc)} {cc} <b>{n}</b></span>)}
+            </div>
+          </Panel>
+        ) : null;
+      })()}
+      <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now{' '}
+        <button className="small" title="Removes every career started in this browser (same visitor id)" onClick={() => void removeCareers({ vids: [myVid()] }, 'all careers started in this browser')}>Remove my careers</button></span>} className="flush">
+        {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
+          <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+            <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th><th>Save</th><th /></tr></thead>
+              <tbody>{data.rows.map((r, i) => (
+                <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
+                  <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.mode === 'authentic' ? 'Original' : r.mode === 'extended' ? 'Extended' : ''}</td>
+                  <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td>
+                  <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}</td><td className="muted">{r.lang}</td>
+                  <td className="nowrap" title={countryName(r.country)}>{r.country ? <>{flag(r.country)} {r.country}</> : <span className="muted">–</span>}</td>
+                  <td className="nowrap" title={r.prog ? `Game date ${r.prog.date} · updated ${ago(new Date(r.prog.at).toISOString())}` : ''}>{progress(r)}</td>
+                  <td className="nowrap">{!r.vid ? <span className="muted">–</span> : r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000
+                    ? <span style={{ color: '#16a34a', fontWeight: 600 }}>● Online</span>
+                    : <span className="muted" title={r.seen ? when(new Date(r.seen).toISOString()) : ''}>{r.seen ? `seen ${ago(new Date(r.seen).toISOString())}` : 'not seen'}</span>}</td>
+                  <td className="nowrap">{r.save ? <button className="small" title={`${r.save.source === 'account' ? 'Cloud save' : 'Sent by the player'} · saved ${when(r.save.saved)}`} onClick={() => void open(r.save!, r.theme)}>👁 Open</button> : <span className="muted" title="Only careers with an account (cloud save) or sent with “Send my game to the developer” can be opened">–</span>}</td>
+                  <td>{/* fjern: alle karrierer fra samme besøgende (eller kun rækken uden besøgs-id) */}
+                    <button className="small" title={r.vid ? 'Remove every career from this visitor' : 'Remove this career'} onClick={() => void removeCareers(r.vid ? { vids: [r.vid] } : { at: r.at, manager: r.manager }, r.vid ? `all ${data.rows.filter((x) => x.vid === r.vid).length} career(s) from this visitor${r.vid === myVid() ? ' (this browser)' : ''}` : `${r.manager}'s career`)}>✕</button></td></tr>
+              ))}</tbody></table>
+          </div>
+        )}
+      </Panel>
+    </>
+  );
+}
+
+/** Spillernes gemte spil: skygemte (konti) og dem, der er sendt med "Send mit spil til udvikleren" – åbnes i preview */
+function SavesTab({ open, setMsg }: { open: OpenSave; setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<SaveRow[] | null>(null);
+  const [src, setSrc] = useState<'all' | 'support' | 'account'>('all');
+  const [q, setQ] = useState('');
+  const load = () => void adminGet<{ saves: SaveRow[] }>('op=saves').then((r) => setRows(r?.saves ?? []));
+  useEffect(load, []);
+  if (!rows) return <div className="muted">Loading saves…</div>;
+  const needle = q.trim().toLowerCase();
+  const shown = rows.filter((r) => (src === 'all' || r.source === src) && (!needle || `${r.manager} ${r.club} ${r.email ?? ''} ${r.note ?? ''}`.toLowerCase().includes(needle)));
+  const remove = async (r: SaveRow) => {
+    if (!window.confirm(`Delete the game ${r.manager} sent?`)) return;
+    const res = await adminPost('support-delete', { url: r.url });
+    if (res.error) setMsg(`Error: ${String(res.error)}`); else load();
+  };
+  return (
+    <Panel title={`Saves (${shown.length})`} className="flush" right={<span className="row">
+      {(['all', 'support', 'account'] as const).map((k) => <button key={k} className={`small ${src === k ? 'primary' : ''}`} onClick={() => setSrc(k)}>{k === 'all' ? 'All' : k === 'support' ? 'Sent to you' : 'Cloud saves'}</button>)}
+      <input placeholder="Search manager, club, e-mail, note" value={q} onChange={(e) => setQ(e.target.value)} style={{ width: 220 }} /></span>}>
+      <p className="muted" style={{ padding: '0 12px' }}>Opens the player's game in preview: you can click around and even play on, but nothing is saved, and no rankings, progress or errors are sent.
+        Only games from players with an account (cloud saves) or sent with “Send my game to the developer” are here – other games never leave the player's browser.</p>
+      {shown.length === 0 ? <div className="muted" style={{ padding: 12 }}>No saves.</div> : (
+        <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
+          <table className="grid"><thead><tr><th>Saved</th><th>Source</th><th>Manager</th><th>Club</th><th>Game date</th><th>E-mail</th><th>Note</th><th>Look</th><th>Device</th><th className="num">MB</th><th /></tr></thead>
+            <tbody>{shown.map((r) => (
+              <tr key={r.url}><td className="muted nowrap" title={when(r.saved)}>{ago(r.saved)}</td>
+                <td>{r.source === 'support' ? <b>Sent</b> : <span className="muted">Cloud</span>}</td><td>{r.manager}</td><td>{r.club}</td><td className="nowrap">{r.date}</td>
+                <td className="muted">{r.email ?? '–'}</td><td style={{ maxWidth: 320, whiteSpace: 'pre-wrap' }}>{r.note || <span className="muted">–</span>}</td>
+                <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}{r.mode ? ` · ${r.mode === 'authentic' ? 'Original' : 'Extended'}` : ''}</td>
+                <td className="muted">{r.device ?? ''}{r.ver ? ` · v${r.ver}` : ''}</td><td className="num">{(r.size / 1e6).toFixed(1)}</td>
+                <td className="nowrap"><button className="small primary" onClick={() => void open(r)}>👁 Open</button>{' '}
+                  {r.source === 'support' && <button className="small" title="Delete" onClick={() => void remove(r)}>✕</button>}</td></tr>
             ))}</tbody></table>
         </div>
       )}
@@ -421,6 +579,9 @@ function SkinsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
       <div className="adm-skin-imgs">{(s.images as string[]).map((u) => <a key={u} href={u} target="_blank" rel="noreferrer"><img src={u} alt="" /></a>)}</div>
       <b>{String(s.title)}</b> <span className="muted">by {String(s.author)} · {(s.images as string[]).length} images · {when(String(s.created))}</span>
       {s.desc ? <p className="muted" style={{ margin: '4px 0' }}>{String(s.desc)}</p> : null}
+      <div className="row" style={{ gap: 6, alignItems: 'center' }}><span className="muted">Club pack for:</span>
+        <input defaultValue={String(s.club ?? '')} placeholder={`(none – e.g. "${String(s.title)}")`} style={{ width: 220 }} onBlur={async (e) => { if (e.target.value === String(s.club ?? '')) return; const r = await hubPost('admin:skin', { id: s.id, club: e.target.value }); setMsg(r.error ? `Error: ${String(r.error)}` : 'Club saved ✓'); void load(); }} />
+        <span className="muted">shown on that club's screens and home matches for everyone</span></div>
       <div className="row">{actions}</div>
     </div>
   );
@@ -454,6 +615,112 @@ function CreditsAdmin({ setMsg }: { setMsg: (s: string) => void }) {
       {!rows ? <div className="muted">Loading…</div> : rows.length === 0 ? <div className="muted">No contributors yet.</div> : (
         <table className="grid"><tbody>{rows.map((c) => <tr key={c.id}><td><b>{c.name}</b></td><td className="muted">{c.role}</td><td className="muted">{c.link}</td><td className="muted">{c.since}</td>
           <td><button className="small danger" onClick={async () => { await hubPost('admin:credit', { key: c.id, remove: true }); void load(); }}>Remove</button></td></tr>)}</tbody></table>
+      )}
+    </Panel>
+  );
+}
+
+// ---------- opdateringsmails ----------
+
+interface MailInfo { subs: { email: string; lang: string; at: string }[]; unsubs: { email: string; at: string }[]; prompt: Record<string, number>; sent: { at: string; subject: string; lang: string; sent: number; failed: number }[]; mail: boolean; testTo: string }
+
+function MailTab({ setMsg }: { setMsg: (s: string) => void }) {
+  const [info, setInfo] = useState<MailInfo | null>(null);
+  const [subject, setSubject] = useState('');
+  const [text, setText] = useState('');
+  const [lang, setLang] = useState('');
+  const [preview, setPreview] = useState('');
+  const [busy, setBusy] = useState(false);
+  const load = async () => setInfo(await adminGet<MailInfo>('op=mail'));
+  useEffect(() => { void load(); }, []);
+  if (!info) return <div className="muted">Loading…</div>;
+  const n = (k: string) => Number(info.prompt[k] ?? 0);
+  const asked = n('asked');
+  const pct = (k: string) => (asked ? ` (${Math.round((n(k) / asked) * 100)}%)` : '');
+  const target = lang ? info.subs.filter((r) => r.lang === lang).length : info.subs.length;
+  const langs = [...new Set(info.subs.map((r) => r.lang))].sort();
+  const send = async (test: boolean) => {
+    if (!test && !confirm(`Send "${subject}" to ${target} subscriber${target === 1 ? '' : 's'}${lang ? ` (${lang})` : ''}? This cannot be undone.`)) return;
+    setBusy(true);
+    const r = await adminPost('mail-send', { subject, text, lang, test }) as { sent?: number; failed?: number; error?: unknown };
+    setBusy(false);
+    setMsg(r.error ? `Error: ${String(r.error)}` : test ? `Test sent to ${info.testTo} ✓` : `Sent to ${r.sent} ✓${r.failed ? ` · ${r.failed} failed` : ''}`);
+    void load();
+  };
+  const showPreview = async () => {
+    const r = await adminPost('mail-preview', { subject, text, lang: lang || 'en' }) as { html?: string };
+    setPreview(r.html ?? '');
+  };
+  return (
+    <>
+      <div className="adm-stats">
+        <Stat label="Subscribers" value={info.subs.length} sub={langs.map((l) => `${l} ${info.subs.filter((r) => r.lang === l).length}`).join(' · ') || 'none yet'} />
+        <Stat label="Asked in the game" value={asked} sub="after the first finished season" />
+        <Stat label="Said yes" value={n('yes')} sub={`signed in${pct('yes')}`} />
+        <Stat label="Not now / No" value={`${n('later')} / ${n('no')}`} sub={`${pct('later')} / ${pct('no')}`.replace(/^ \/ $/, '')} />
+        <Stat label="Unsubscribed" value={info.unsubs.length} />
+      </div>
+      <div className="cols">
+        <Panel title="Write an update">
+          {!info.mail && <div className="insight bad">RESEND_API_KEY is not set – mails can't be sent.</div>}
+          <div className="col">
+            <input placeholder="Subject" maxLength={120} value={subject} onChange={(e) => setSubject(e.target.value)} />
+            <textarea rows={12} placeholder={'Text. A blank line starts a new paragraph, lines starting with "- " become a list.'} value={text} onChange={(e) => setText(e.target.value)} />
+            <label className="row">To <select value={lang} onChange={(e) => setLang(e.target.value)}><option value="">all languages</option>{langs.map((l) => <option key={l} value={l}>{l}</option>)}</select>
+              <span className="muted">{target} recipient{target === 1 ? '' : 's'}</span></label>
+            <div className="row">
+              <button className="small" disabled={!subject.trim() || !text.trim()} onClick={() => void showPreview()}>Preview</button>
+              <button className="small" disabled={busy || !subject.trim() || !text.trim() || !info.testTo} title={info.testTo ? `Sends only to ${info.testTo}` : 'Set NOTIFY_EMAIL'} onClick={() => void send(true)}>Send test to me</button>
+              <button className="small primary" disabled={busy || !subject.trim() || !text.trim() || !target} onClick={() => void send(false)}>Send to {target}</button>
+            </div>
+            {preview && <iframe title="preview" srcDoc={preview} style={{ width: '100%', height: 480, border: '1px solid var(--line)', background: '#070b16' }} />}
+          </div>
+        </Panel>
+        <Panel title={`Sent (${info.sent.length})`}>
+          {info.sent.length === 0 ? <div className="muted">Nothing sent yet.</div> : (
+            <table className="grid"><thead><tr><th>When</th><th>Subject</th><th>To</th><th className="num">Sent</th></tr></thead>
+              <tbody>{info.sent.map((r, i) => <tr key={i}><td>{when(r.at)}</td><td>{r.subject}</td><td>{r.lang}</td><td className="num">{r.sent}{r.failed ? ` (${r.failed} failed)` : ''}</td></tr>)}</tbody></table>)}
+        </Panel>
+      </div>
+      <div className="cols">
+        <Panel title={`Subscribers (${info.subs.length})`}>
+          {info.subs.length === 0 ? <div className="muted">Nobody yet.</div> : (
+            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}><table className="grid"><thead><tr><th>E-mail</th><th>Lang</th><th>Since</th></tr></thead>
+              <tbody>{info.subs.map((r) => <tr key={r.email}><td>{r.email}</td><td>{r.lang}</td><td>{when(r.at)}</td></tr>)}</tbody></table></div>)}
+        </Panel>
+        <Panel title={`Unsubscribed (${info.unsubs.length})`}>
+          {info.unsubs.length === 0 ? <div className="muted">Nobody.</div> : (
+            <div className="table-wrap" style={{ maxHeight: 360, overflowY: 'auto' }}><table className="grid"><thead><tr><th>E-mail</th><th>When</th></tr></thead>
+              <tbody>{info.unsubs.map((r) => <tr key={r.email}><td>{r.email}</td><td>{when(r.at)}</td></tr>)}</tbody></table></div>)}
+        </Panel>
+      </div>
+    </>
+  );
+}
+
+// ---------- fejl fra spillernes browsere ----------
+
+interface ErrRow { id: string; msg: string; stack: string; count: number; first: string; last: string; ver: string; url: string; theme: string; lang: string; ua: string }
+
+function ErrorsTab({ setMsg }: { setMsg: (s: string) => void }) {
+  const [rows, setRows] = useState<ErrRow[] | null>(null);
+  const [open, setOpen] = useState<string | null>(null);
+  const load = async () => setRows((await adminGet<{ rows: ErrRow[] }>('op=errors'))?.rows ?? []);
+  useEffect(() => { void load(); }, []);
+  const del = async (data: Record<string, unknown>, ok: string) => { const r = await adminPost('error-delete', data); setMsg(r.error ? `Error: ${String(r.error)}` : ok); void load(); };
+  if (!rows) return <div className="muted">Loading…</div>;
+  return (
+    <Panel title={`Errors in players' browsers (${rows.length})`} right={rows.length ? <button className="small danger" onClick={() => { if (confirm('Delete all errors?')) void del({ all: true }, 'All errors deleted ✓'); }}>Clear all</button> : undefined} className="flush">
+      <p className="muted" style={{ margin: '8px 12px' }}>Grouped by message and code line, newest first. Sent automatically when the game crashes or an error is thrown (max 20 per page load). Mark one as fixed with ✓ once a fix is live.</p>
+      {rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No errors reported. 🎉</div> : (
+        <div className="table-wrap"><table className="grid"><thead><tr><th className="num">Count</th><th>Error</th><th>Version</th><th>Look</th><th>Last</th><th /></tr></thead>
+          <tbody>{rows.map((r) => (<>
+            <tr key={r.id} className="clickable" onClick={() => setOpen(open === r.id ? null : r.id)}>
+              <td className="num"><b>{r.count}</b></td><td style={{ maxWidth: 560, wordBreak: 'break-word' }}>{r.msg}</td><td>{r.ver}</td><td className="muted">{r.theme} · {r.lang}</td><td>{when(r.last)}</td>
+              <td><button className="small" title="Fixed – remove" onClick={(e) => { e.stopPropagation(); void del({ id: r.id }, 'Removed ✓'); }}>✓</button></td>
+            </tr>
+            {open === r.id && <tr key={`${r.id}-s`}><td colSpan={6}><div className="muted" style={{ fontSize: 12 }}>First {when(r.first)} · {r.url} · {r.ua}</div><pre style={{ whiteSpace: 'pre-wrap', fontSize: 11, maxHeight: 320, overflow: 'auto', margin: '6px 0' }}>{r.stack}</pre></td></tr>}
+          </>))}</tbody></table></div>
       )}
     </Panel>
   );

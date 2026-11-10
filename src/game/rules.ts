@@ -1,8 +1,21 @@
 // Turneringsregler: moderne (5 udskiftninger, 9 på bænken) eller klassiske CM 01/02-regler (3 og 5).
 import { gs, hasGame } from './state';
 
+// 2001-reglerne (3 udskiftninger, 5 på bænken) kun med den originale 2001/02-database – en nutidig sæson (fx 2026/27-
+// opdateringen i CM-format) spiller efter nutidens regler (5 og 9), også i "Ægte CM 01/02"
 export function classicRules(): boolean {
-  return hasGame() && gs().options.rules === 'classic';
+  if (!hasGame()) return false;
+  const g = gs();
+  return g.options.rules === 'classic' && (g.dbKind !== 'cm0102' || (g.dbYear ?? g.season) < 2020);
 }
 export const maxSubs = () => (classicRules() ? 3 : 5);
+
+/** Ægte CM 01/02-oplevelse: kun funktioner, originalen havde (uanset database) */
+// gælder kun i det klassiske tema (ejerens ønske) – i Node (tests) findes intet tema, og tilstanden gælder som valgt
+const classicSkin = () => typeof document === 'undefined' || document.documentElement.dataset.skin === 'retro';
+export function authentic(): boolean {
+  return hasGame() && gs().options.mode === 'authentic' && classicSkin();
+}
+/** Udvidet spil (standard): ekstra funktioner som xG, pressemøder, træningslejr … */
+export const extended = () => !authentic();
 export const benchSize = () => (classicRules() ? 5 : 9);

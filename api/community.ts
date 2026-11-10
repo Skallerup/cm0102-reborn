@@ -226,7 +226,7 @@ export async function POST(request: Request) {
     const id = await redis.incr('sg:seq');
     const image = typeof body.image === 'string' && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(body.image) && body.image.length <= 300_000 ? body.image : '';
     const s: Record<string, unknown> = {
-      id, title, body: text, cat, lang: ['da', 'es', 'fr', 'de', 'it', 'pt', 'tr'].includes(String(body.lang)) ? String(body.lang) : 'en', pid, name: prof.name, created: now(), status: 'new', votes: 0, comments: 0,
+      id, title, body: text, cat, lang: ['da', 'es', 'fr', 'de', 'it', 'pt', 'tr', 'sv', 'nb'].includes(String(body.lang)) ? String(body.lang) : 'en', pid, name: prof.name, created: now(), status: 'new', votes: 0, comments: 0,
       hasImage: !!image, ...(op === 'bug' ? { meta: clean(body.meta, 300) } : {}),
     };
     await redis.hset(`sg:${id}`, s);

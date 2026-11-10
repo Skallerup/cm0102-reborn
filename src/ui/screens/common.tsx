@@ -1,5 +1,5 @@
 import { Fragment, type ReactNode } from 'react';
-import { dateFmt, has, money, t } from '../../i18n';
+import { compName, dateFmt, has, money, natName, t } from '../../i18n';
 import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
@@ -25,7 +25,27 @@ export function Head({ title, children, action }: { title: ReactNode; children?:
 
 export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
-  if (typeof p.injury === 'string') p.injury = t(`injury.${p.injury}`);
+  if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
+  if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
+  if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
+  if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
+  // "Four players from Man Utd …" (uden navneliste)
+  if ((n.key === 'intl.selN' || n.key === 'intl.tourSel') && !n.params?.names && typeof p.n === 'number' && has(`num.${p.n}`)) p.n = t(`num.${p.n}`);
+  // andre klubbers handler (CM 01/02): "The fee may be increased to £6,750,000 depending on appearances." og "… from Tottenham"
+  if (n.key.startsWith('transfer.o')) {
+    p.more = typeof p.fee2 === 'number' ? `\n\n${t('transfer.o.more', { fee2: money(p.fee2) })}` : '';
+    p.fromFree = p.from ? ` ${t('transfer.o.fromClub', { from: String(p.from) })}` : '';
+  }
+  // navnelister ("A & B & C") som i originalen: "A, B and C"
+  if (typeof p.names === 'string' && p.names.includes(' & ')) { const x = p.names.split(' & '); p.names = `${x.slice(0, -1).join(', ')} ${t('common.and')} ${x.at(-1)}`; }
+  // placering som ordenstal ("1st", "1.")
+  if (typeof p.place === 'number') { const n = p.place; p.place = t('cl.locale').startsWith('en') ? `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}` : `${n}.`; }
+  // ældre nyheder uden efternavn (fx "Irwin resumes full training"): det sidste ord i navnet
+  if (p.last === undefined && typeof p.player === 'string') p.last = p.player.split(' ').at(-1) ?? p.player;
+  // brødtekster (CM 01/02-stil): varighed og resultat som ord
+  if (typeof p.days === 'number') p.dur = p.days <= 10 ? t('news.dur.days', { n: p.days }) : t('news.dur.weeks', { n: Math.max(2, Math.round(p.days / 7)) });
+  if (typeof p.res === 'string') p.resWord = t(`news.res.${p.res}`);
+  if (typeof p.ha === 'string') p.haWord = t(p.ha === 'h' ? 'news.ha.h' : 'news.ha.a');
   if (typeof p.lane === 'string') p.lane = t(`lane.${p.lane}`);
   if (p.kind === 'transfer' || p.kind === 'wage') p.kind = t(`board.kind.${p.kind}`);
   if (p.kind === 'stadium' || p.kind === 'training' || p.kind === 'youth') p.kind = t(`proj.kind.${p.kind}`);
@@ -35,8 +55,21 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (n.key === 'onb.briefing') { p.weak = t(`onb.need.${p.weak}`).toLowerCase(); p.style = t(`onb.style.${p.style}`).toLowerCase(); }
   if (n.key.startsWith('camp.') && typeof p.dest === 'string') p.dest = t(`camp.dest.${p.dest}`);
   if (n.key === 'camp.report' && typeof p.mood === 'string') p.mood = t(`camp.mood.${p.mood}`);
-  if ((n.key === 'staff.hired' || n.key === 'recb.news.legendStaff') && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
+  if ((n.key === 'staff.hired' || n.key === 'recb.news.legendStaff' || n.key === 'recb.news.roleStaff') && typeof p.role === 'string' && ['assistant', 'coach', 'physio', 'scout'].includes(p.role)) p.role = t(`role.staff.${p.role}`);
   if (typeof p.id === 'string' && n.key.startsWith('challenge.')) p.id = t(`challenge.${p.id}.title`);
+  if (typeof p.round === 'string' && n.key.startsWith('comp.')) p.round = t(`stage.${p.round}`).toLowerCase();
+  if (typeof p.targetKey === 'string') p.target = t(p.targetKey);
+  if (n.key.startsWith('staffrep.')) for (const k of ['prone', 'cond', 'inj', 'now', 'future']) if (typeof p[k] === 'string' && p[k]) p[k] = t(String(p[k]));
+  if (n.key.startsWith('intl.')) { if (typeof p.nation === 'string') p.nation = natName(p.nation); if (typeof p.runnerUp === 'string') p.runnerUp = natName(p.runnerUp); if (typeof p.opp === 'string' && p.opp) p.opp = natName(p.opp); }
+  // "Ryan Giggs and Matthew Williams" (navnene gemmes med & imellem)
+  if (typeof p.names === 'string' && p.names.includes(' & ')) { const ns = p.names.split(' & '); p.names = `${ns.slice(0, -1).join(', ')} ${t('common.and')} ${ns.at(-1)}`; }
+  // scoutrapporten (CM 01/02): hvor han blev set, dommen og bemærkningerne sættes sammen af nøglerne
+  if (n.key === 'scout.report') {
+    p.where = p.ctx === 'weeks' ? t('scout.ctx.weeks', { age: p.age, pos: t(`role.${p.pos}`).toLowerCase() }) : t(`scout.ctx.${p.ctx}`, { club: p.club, score: p.score, opp: p.opp });
+    p.verdict = t(`scout.v.${p.verdict}`, { club: p.myClub });
+    p.extras = [p.strength ? t('scout.x.strength', { what: t(`scout.str.${p.strength}`) }) : '', p.skill ? t('scout.x.skill', { what: t(`scout.skill.${p.skill}`) }) : '',
+      p.weakness ? t('scout.x.weakness', { what: t(`scout.weak.${p.weakness}`) }) : '', p.permit ? t('scout.x.permit') : ''].filter(Boolean).join(' ');
+  }
   return p;
 }
 
@@ -44,9 +77,43 @@ export function newsTitle(n: NewsItem) {
   return t(n.key, newsParams(n));
 }
 
+/** Hvilken skabelon brødteksten bruger (nogle nyheder har varianter efter indholdet) */
+function bodyKey(n: NewsItem): string {
+  // landsholdsudtagelse: navnene (højst tre) eller "Four players from Man Utd", med eller uden modstanderen
+  if (n.key === 'intl.sel1' || n.key === 'intl.selN') {
+    const many = n.key === 'intl.selN' && !n.params?.names, noOpp = !!n.params?.noOpp;
+    return n.key === 'intl.sel1' ? (noOpp ? 'intl.sel1.noOpp' : 'intl.sel1.body') : many ? (noOpp ? 'intl.selN.manyNoOpp' : 'intl.selN.many') : noOpp ? 'intl.selN.noOpp' : 'intl.selN.body';
+  }
+  // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
+  if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
+  return `${n.key}.body`;
+}
+
+/** "Board Confidence Update": bestyrelsens udtalelse, som den stod på dagen */
+const boardUpdate = (n: NewsItem) => [t(`cl.ba.conf.${n.params.lvl}`, { club: String(n.params.club ?? '') }), t(`cl.ba.fin.${n.params.fin}`), t(`cl.ba.fans.${n.params.fans}`)].join('\n\n');
+
+/** Bud på egen spiller (CM 01/02): når man har svaret, står svaret under nyheden – "Man Utd have rejected the offer." */
+function offerAnswer(n: NewsItem): string {
+  // Squad Numbers: "The list has been submitted."
+  if (n.key === 'sqn.request') return n.params?.done ? `\n\n${t('sqn.submitted')}` : '';
+  // European Squad: "25 players were registered."
+  if (n.key === 'eur.request') return n.params?.done !== undefined ? `\n\n${t('eur.registered', { n: Number(n.params.done) })}` : '';
+  if (n.link?.kind !== 'offer') return '';
+  const g = gs();
+  const o = g.offers.find((x) => x.id === Number(n.link!.id));
+  if (!o || o.seller !== g.userClub || o.status === 'pending') return '';
+  const club = g.clubs[g.userClub]?.short ?? '';
+  const k = o.status === 'rejected' ? 'transfer.ans.rejected' : o.status === 'countered' ? 'transfer.ans.countered' : o.status === 'negotiating' || o.status === 'accepted' || o.status === 'completed' ? 'transfer.ans.accepted' : '';
+  return k ? `\n\n${t(k, { club, fee: money(o.counter ?? o.fee) })}` : '';
+}
+
 export function newsBody(n: NewsItem) {
-  const k = `${n.key}.body`;
-  return has(k) ? t(k, newsParams(n)) : '';
+  if (n.key === 'board.update' && n.params?.lvl) return boardUpdate(n);
+  const k = bodyKey(n);
+  if (!has(k)) return '';
+  const body = t(k, newsParams(n)) + offerAnswer(n);
+  // ældre nyheder uden de felter, brødteksten bruger: ingen brødtekst frem for {pladsholdere}
+  return /\{[a-zA-Z]+\}/.test(body) ? '' : body;
 }
 
 export function useOpenLink() {
@@ -68,7 +135,7 @@ export function useOpenLink() {
 // ---------- nyheder med links til spillere og klubber ----------
 
 const CLUB_PARAMS = new Set(['club', 'from', 'to', 'opp', 'leader', 'buyer', 'seller']);
-const MONEY_PARAMS = new Set(['fee', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
+const MONEY_PARAMS = new Set(['fee', 'fee2', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
 
 let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number> } | null = null;
 
@@ -169,8 +236,9 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 }
 
 export function NewsBody({ n }: { n: NewsItem }) {
-  const k = `${n.key}.body`;
-  return has(k) ? <>{linked(n, k)}</> : null;
+  if (n.key === 'board.update' && n.params?.lvl) return <>{boardUpdate(n)}</>;
+  const k = bodyKey(n);
+  return has(k) ? <>{linked(n, k)}{offerAnswer(n)}</> : null;
 }
 
 /** Ugens transferoverblik: alle handlerne i en lille tabel (vises under brødteksten) */

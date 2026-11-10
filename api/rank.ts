@@ -136,6 +136,8 @@ export async function POST(request: Request) {
     // kun første indsendelse af en sæson tæller
     const first = await redis.set(`sub:${s.career}:${s.season}`, '1', { nx: true });
     if (!first) return json({ ok: true, duplicate: true });
+    // fjernet fra ranglisterne af admin: sæsonen tæller ikke
+    if (await redis.sismember('lb:blocked', s.career)) return json({ ok: true, blocked: true });
     const member = `${s.career}:${s.season}`;
     const total = await redis.hincrby(`career:${s.career}`, 'total', s.points);
     const seasons = await redis.hincrby(`career:${s.career}`, 'seasons', 1);

@@ -5,12 +5,12 @@ import { crestSvg } from '../game/draft';
 import { positionString } from '../game/attributes';
 import { flagUrl } from './flags';
 import { ageOn } from '../game/dates';
-import { gs, hasGame } from '../game/state';
+import { gs } from '../game/state';
 import { humanManager } from '../game/humans';
 import type { Player } from '../game/types';
 import { LOCALE, currencySymbol, fromCurExact, getLang, natName, t, toCur } from '../i18n';
 import { useNav, useRouteState } from './core';
-import { logoUrl } from './logos';
+import { logoUrl, nationLogoUrl } from './logos';
 
 export function PlayerLink({ p, short }: { p: Player | undefined; short?: boolean }) {
   const { nav } = useNav();
@@ -22,7 +22,7 @@ export function PlayerLink({ p, short }: { p: Player | undefined; short?: boolea
   );
 }
 
-/** Klublogo – falder tilbage til et "trøje"-felt i klubfarverne */
+/** Klublogo – uden logo vises intet (ingen farvet firkant) */
 export function Crest({ id, size = 14 }: { id: number; size?: number }) {
   const [failed, setFailed] = useState(false);
   const c = gs().clubs[id];
@@ -32,8 +32,14 @@ export function Crest({ id, size = 14 }: { id: number; size?: number }) {
   if (url && !failed) {
     return <img className="crest" src={url} alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)} style={{ width: size, height: size }} />;
   }
-  if (!c) return null;
-  return <i className="kit" style={{ background: c.colors[0], borderColor: c.colors[1], width: size * 0.8, height: size * 0.8 }} />;
+  return null;
+}
+
+/** Landsholdets logo (intet, når vi ikke har et) */
+export function NationCrest({ nation, size = 14 }: { nation: number; size?: number }) {
+  const [failed, setFailed] = useState(false);
+  const url = nationLogoUrl(gs().nations[nation]?.name);
+  return url && !failed ? <img className="crest" src={url} alt="" width={size} height={size} loading="lazy" onError={() => setFailed(true)} style={{ width: size, height: size, objectFit: 'contain' }} /> : null;
 }
 
 export function ClubLink({ id, long, noCrest }: { id: number; long?: boolean; noCrest?: boolean }) {
@@ -71,7 +77,9 @@ export function MgrChip({ clubId }: { clubId: number }) {
 /** Nationalitet: flag + landekode (koden alene, hvis flaget ikke kan hentes) */
 export function Nat({ n, noCode }: { n: number; noCode?: boolean }) {
   const nat = gs().nations[n];
-  return <span className="nat" title={natName(nat?.name)}><Flag name={nat?.name} />{noCode ? null : nat?.code ?? '?'}</span>;
+  const { nav } = useNav();
+  // et klik på landet åbner landsholdets side (truppen, resultater og landets liga)
+  return <span className="nat link" title={natName(nat?.name)} onClick={(e) => { e.stopPropagation(); nav({ name: 'international', id: n }); }}><Flag name={nat?.name} />{noCode ? null : nat?.code ?? '?'}</span>;
 }
 
 export function Flag({ name }: { name: string | undefined }) {
@@ -89,16 +97,16 @@ export function AttrVal({ lo, hi }: { lo: number; hi: number }) {
 
 export function Stars({ range }: { range: [number, number] }) {
   const [lo, hi] = range;
+  // fyldte stjerner = spejderens bedste bud (midten af intervallet); svage stjerner = op til intervallets top
+  const est = Math.round(((lo + hi) / 2) * 2) / 2;
   const out: ReactNode[] = [];
   for (let i = 1; i <= 5; i++) {
-    const cls = lo >= i ? 's-full' : lo >= i - 0.5 ? 's-half' : hi >= i - 0.5 ? 's-maybe' : 's-empty';
+    const cls = est >= i ? 's-full' : est >= i - 0.5 ? 's-half' : hi >= i - 0.5 ? 's-maybe' : 's-empty';
     out.push(<i key={i} className={`star ${cls}`} />);
   }
-  // stjernerne er relative til ens eget hold – forklar det, så de ikke forveksles med attributternes absolutte tal
-  const g = hasGame() ? gs() : null;
-  const club = g ? g.clubs[g.userClub]?.name : undefined;
+  // samme skala for alle spillere i verden (scouting.ts starsOf) – forklar den i værktøjstippet
   const value = lo === hi ? `${lo} ★` : `${lo}–${hi} ★`;
-  const tip = `${value}\n${club ? t('stars.tip', { club }) : t('stars.tipNoClub')}${lo !== hi ? `\n${t('stars.tipUnsure')}` : ''}`;
+  const tip = `${value}\n${t('stars.tip')}${lo !== hi ? `\n${t('stars.tipUnsure')}` : ''}`;
   return <span className="stars" title={tip}>{out}</span>;
 }
 
@@ -271,8 +279,9 @@ export function MoneyInput({ value, onChange, min = 0, width = 130 }: { value: n
   );
 }
 
-export function RecTag({ level }: { level: number }) {
+export function RecTag({ level, out }: { level: number; out?: boolean }) {
   if (level < 0) return <span className="tag">{t('rec.short.unknown')}</span>;
+  if (out) return <span className="tag warn">{t('rec.short.out')}</span>;
   const cls = level <= 1 ? 'good' : level === 2 ? '' : level === 3 ? 'warn' : 'bad';
   return <span className={`tag ${cls}`}>{t(`rec.short.l${level}`)}</span>;
 }

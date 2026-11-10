@@ -1,8 +1,9 @@
+import type { SquadStatus } from './squadStatus';
 // Central datamodel for hele spillet. Alt i GameState skal kunne serialiseres (gemmes i IndexedDB).
 import type { PressConf } from './press';
 import type { SeasonScore } from './rating';
 
-export type Lang = 'da' | 'en' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'tr';
+export type Lang = 'da' | 'en' | 'es' | 'fr' | 'de' | 'it' | 'pt' | 'tr' | 'sv' | 'nb';
 export type Foot = 'R' | 'L' | 'B' | '';
 
 /** Positioner som i CM 01/02 */
@@ -29,10 +30,19 @@ export interface Contract {
   /** lønstigning ved oprykning (%) og bonus pr. kamp uden indkasserede mål (kun når spilleren spiller) */
   promotionRise?: number;
   cleanSheetBonus?: number;
+  /** deltidskontrakt (CM 01/02 Part Time) */
+  partTime?: boolean;
 }
 
 /** Klausuler i et kontrakttilbud */
+/** CM 01/02 "Go on holiday": hvad assistenten gør imens */
+export interface HolidaySettings { rejectAll?: boolean; rejectBelow?: boolean; noBuy?: boolean; applyJobs?: boolean }
+
 export interface ContractClauses {
+  /** CM 01/02 Contract Type: deltid (klik på "Full Time") */
+  partTime?: boolean;
+  /** CM 01/02 Signing On Fee: engangsbeløb ved underskrift (betales med det samme, tæller som løn fordelt over kontrakten) */
+  signOn?: number;
   release?: number;
   wageRise?: number;
   appBonus?: number;
@@ -84,9 +94,13 @@ export interface CareerLine {
 export interface Injury {
   key: string;
   days: number;
+  /** skadens oprindelige længde (dage) */
+  total?: number;
 }
 
 export interface Player {
+  /** den originale database: omdømmet fra spillerposten [hjemme, nuværende, verden] (0-200) – bruges af originalValue.ts */
+  cmRep?: [number, number, number];
   id: number;
   first: string;
   last: string;
@@ -108,13 +122,21 @@ export interface Player {
   form: number[]; // seneste kampkarakterer
   injury: Injury | null;
   banned: number; // karantæne (kampe)
+  /** skader og karantæner i karrieren (klassisk History → Injuries/Bans), nyeste sidst, højst 30 */
+  injuryLog?: { d: string; k: string; days: number }[];
+  banLog?: { d: string; n: number; red: boolean }[];
   yellowCount: number; // gule kort mod karantæne
   training: string; // træningsskema-nøgle
   listed: boolean; // transferlistet
   /** Månedlige øjebliksbilleder af attributterne (kun menneskestyrede klubbers spillere) */
   dev?: { d: string; a: number[] }[];
+  /** Trøjenummer i klubben (Squad Numbers, som i CM 01/02) – unikt i truppen, følger spilleren til det skifter klub */
+  number?: number;
   /** Udbudspris sat af manageren når spilleren er til salg */
   listPrice?: number;
+  /** Status i truppen sat af manageren (Squad Status) og udlejningsliste */
+  squadStatus?: SquadStatus;
+  loanListed?: boolean;
   /** share = andel af lønnen lejeklubben betaler (0-1, standard 1) */
   loan: { from: number; until: string; share?: number; fee?: number; option?: number } | null;
   stats: SeasonStats;
@@ -124,12 +146,20 @@ export interface Player {
   caps: number;
   intGoals: number;
   regen?: boolean;
+  /** CM 01/02 "Set Nickname": det rigtige navn, mens et kælenavn bruges i stedet */
+  realName?: { first: string; last: string };
+  /** CM 01/02 Set Role At Club: spiller/assistent/træner – fortsætter i klubbens stab, når han stopper */
+  jobRole?: 'player' | 'assistant' | 'coach';
   notes?: string;
+  /** CM 01/02 "Relegate To Reserves": står uden for førsteholdet (kan ikke udtages, før han kaldes op) */
+  reserves?: boolean;
   joined?: string; // dato for ankomst til klub
   /** ikke-tilfredshed pga. spilletid (0-100) */
   unhappy?: number;
   /** Stjerne der vil sælges (ambitiøs spiller i en klub uden succes) */
   wantsAway?: boolean;
+  /** har anket sin nuværende karantæne (CM 01/02) */
+  appealed?: boolean;
   /** Manageren har lovet titler – frist */
   promiseUntil?: string;
   /** Sæsonstatistik allerede bogført på en tidligere klub (ved skifte midt i sæsonen) */
@@ -178,14 +208,19 @@ export interface StaffAttrs {
   tactics: number;
 }
 
+export type CoachArea = 'fitness' | 'tactics' | 'shooting' | 'skills' | 'goalkeeping';
+
 export type StaffRole = 'manager' | 'assistant' | 'coach' | 'physio' | 'scout';
 
 export interface ScoutAssignment {
-  kind: 'player' | 'nation' | 'league';
+  /** CM 01/02: spiller, klub (alle dens kampe), næste modstander, turnering/liga, land, region og ungdomsspillere */
+  kind: 'player' | 'nation' | 'league' | 'club' | 'nextOpp' | 'region' | 'youth';
   target: number | string;
   /** Opgaven slutter (scouten vender hjem med en rapport); udeladt = indtil kaldt hjem */
   until?: string;
   since?: string;
+  /** næste modstander: rapporten om denne klub er afleveret */
+  reported?: number;
   /** Fokus: kun unge eller etablerede spillere */
   focus?: 'any' | 'young' | 'prime';
   /** Søgekriterier: position, attributkrav (index i ATTRS + minimum) og maks. værdi */
@@ -238,6 +273,8 @@ export interface Staff {
   wage: number;
   expires: string;
   assignment?: ScoutAssignment | null;
+  /** CM 01/02 Coaches: de træningsområder, træneren står for (udeladt = alle) */
+  coachAreas?: CoachArea[];
   /** AI-managerens foretrukne formation */
   style?: { formation: string; mentality: number };
   /** Trænerkarriere: klubber, trofæer og seneste sæsons form (placering mod forventning) */
@@ -258,6 +295,13 @@ export interface ClubFinance {
   transfersOut: number; // køb
   wages: number;
   other: number;
+  // CM 01/02's egne poster (Expenditure): spillerbonusser, signing on fees, udbytte, stadionets drift (før: wages/other)
+  bonuses?: number;
+  signOn?: number;
+  dividends?: number;
+  maintenance?: number;
+  /** renter af saldoen (Income: Interest) */
+  interest?: number;
 }
 
 export interface ClubSeasonHistory {
@@ -306,6 +350,14 @@ export interface Club {
   stadium: string;
   seats: number;
   rep: number; // 0-100
+  /** originalens værdiformel (kun den originale database): WorldData.valueClub – [cf, landets omdømme, managerens vurdering, manager] */
+  vc?: [number, number, number, number];
+  /** Squad Numbers (CM 01/02): sæsonen, hvor klubben skal sende sin trøjenummerliste (beskeden 4/8), og de sendte sæsoner */
+  sqnDue?: number;
+  sqnDone?: number[];
+  /** European Squad (CM 01/02): sæsonen, hvor klubben skal tilmelde sin europæiske trup (31/8, 1/2), og de tilmeldte */
+  euroDue?: number;
+  euroSquad?: { season: number; ids: number[] };
   /** Opsparet omdømmeændring i løbet af sæsonen (brøkdele, før de bliver til hele point) */
   repDrift?: number;
   /** Spillere klubben holder øje med (AI-klubbernes shortliste) */
@@ -322,12 +374,26 @@ export interface Club {
   tactic: Tactic | null;
   finance: ClubFinance;
   history: ClubSeasonHistory[];
+  /** måneder i træk med negativ saldo (nyheden "financial mess") */
+  negMonths?: number;
+  /** børsnoteret (CM 01/02: "[klub] become a PLC") */
+  plc?: boolean;
+  /** placering ved sidste månedsklumme ("climbing to safety" m.m.) */
+  columnPos?: number;
+  /** udbytte betalt til ejerne ved sidste sæsonstart */
+  lastDividend?: number;
+  /** CM 01/02's økonomiskærm: tallene ved de seneste månedsskift (This Month / Last Month) – kun menneskestyrede klubber */
+  finMonths?: { m: string; f: ClubFinance }[];
+  /** sidste sæsons tal (Last Year) */
+  lastFinance?: ClubFinance;
   ticketPrice: number;
   boardTrust?: number;
   /** Igangværende byggeprojekter (stadion, træningsanlæg, ungdomsakademi) */
   projects?: ClubProject[];
   /** Klubrekorder (kun menneskestyrede klubber, siden spillets start) */
   records?: ClubRecords;
+  /** CM 01/02 klubhistorik: afsluttede sæsoners tal (game/clubHistory.ts; kun menneskeklubber) */
+  seasonRecs?: Record<number, import('./clubHistory').SeasonRec>;
   /** Sæson, hvor bestyrelsen har betalt for ekstra ungdomsrekruttering (større og bedre årgang i marts) */
   youthDrive?: number;
   /** Træningslejr (planlagt, i gang eller afsluttet med rapport) og dens løft til holdkemien resten af sæsonen */
@@ -359,16 +425,32 @@ export interface TeamInstructions {
   marking: 'zonal' | 'man';
   offside: boolean;
   counter: boolean;
+  /** Fast boldfordeler: bolden søger ham på midtbanen (spiller-id, 0 = ingen) */
+  playmaker?: number;
+  /** Target-angriber: lange bolde og indlæg søger ham (spiller-id, 0 = ingen) */
+  targetMan?: number;
+  /** Mænd bag bolden: midtbane og backer bliver hjemme, når holdet angriber */
+  menBehind?: boolean;
 }
 
 export interface PlayerInstructions {
   runs: number; // 0 sjældent, 1 blandet, 2 ofte
+  /** CM 01/02's løbepil (højreklik og træk på taktikbanen): pladsen i gitteret, spilleren løber til, når holdet har bolden */
+  run?: { x: number; y: number };
   runWithBall: boolean;
   longShots: number; // 0-2
   throughBalls: boolean;
   crossing: number; // 0-2
   tightMarking: boolean;
   freeRole: boolean;
+  /** Hold bolden: venter på medspillere i stedet for at spille hurtigt videre */
+  holdUp?: boolean;
+  /** Spillerens egne indstillinger (udeladt = holdets) */
+  passing?: number;
+  tackling?: number;
+  closingDown?: number;
+  /** Dødbolde: 0 bliver hjemme, 1 normal, 2 går med frem i feltet */
+  setPieces?: number;
 }
 
 export interface Slot {
@@ -380,6 +462,8 @@ export interface Slot {
 
 export interface Tactic {
   formation: string;
+  /** navn på en gemt formation (Save Formation) */
+  name?: string;
   slots: Slot[]; // 11
   lineup: number[]; // spiller-id pr. slot (0 = tom)
   bench: number[];
@@ -387,8 +471,14 @@ export interface Tactic {
   individual: PlayerInstructions[]; // pr. slot
   captain: number;
   penalties: number;
+  /** CM 01/02 Penalty Takers: skytternes rækkefølge (den første på banen tager straffespark, og den bruges i straffesparkskonkurrencen) */
+  penOrder?: number[];
   freeKicks: number;
+  /** frispark fra højre (CM 01/02 Free Kicks (R)); ellers freeKicks */
+  freeKicksR?: number;
   corners: number;
+  /** hjørnespark fra højre; ellers corners */
+  cornersR?: number;
   /** Instruktioner mod modstanderen – gælder kun kampen med dette id */
   opp?: OppInstructions;
 }
@@ -420,10 +510,12 @@ export interface MatchResultShort {
   ag: number;
   et?: boolean;
   pens?: [number, number];
-  scorers: [number, number, number][]; // [minut, team(0/1), spiller-id]
+  scorers: ([number, number, number] | [number, number, number, 1])[]; // [minut, team(0/1), spiller-id, 1 = selvmål]
   att?: number;
   /** Hjemmeholdets billetindtægt (efter deling i pokalkampe) */
   gate?: number;
+  /** kort i kampen [gule, røde] (CM 01/02 Referee Stats; ikke i ældre gem) */
+  cards?: [number, number];
 }
 
 export interface TableRow {
@@ -573,6 +665,11 @@ export interface ManagerProfile {
   declinedJobs?: Record<number, string>;
   /** Jobsamtaler: søgte stillinger (venter på svar) og tilbud med vilkår, man kan forhandle om */
   jobTalks?: Record<number, JobTalk>;
+  /** landstrænerjob (CM 01/02: man kan træne et landshold ved siden af klubben) og et åbent tilbud */
+  national?: { nation: number; since: string; played: number; won: number; picks?: number[]; form?: number[] };
+  /** på ferie (CM 01/02) – assistenten svarer på bud efter indstillingerne */
+  holiday?: HolidaySettings;
+  nationalOffer?: number;
   /** Svar på forespørgsler om spillere: spiller-id → klubbens pris (nfs = ikke til salg under prisen) */
   enquiries?: Record<number, { date: string; club: number; fee: number; nfs: boolean }>;
   /** Forholdet til pressen (0-100, start 50) og et løfte om sejr givet på et pressemøde */
@@ -618,6 +715,8 @@ export interface BoardState {
   confidence: number; // 0-100
   /** Seneste svar på budgetanmodninger (måned pr. type) og et åbent modbud */
   budgetAsked?: { transfer?: string; wage?: string };
+  /** CM 01/02: kampen, man sidst har klaget over dommeren i (én klage pr. kamp) */
+  faComplained?: number;
   budgetCounter?: { kind: 'transfer' | 'wage'; pct: number; until: string };
   /** Seneste svar på de øvrige ønsker til bestyrelsen (dato pr. ønske) */
   asked?: Partial<Record<BoardAsk, string>>;
@@ -639,6 +738,12 @@ export interface MatchStatsSide {
   offsides: number;
   passes: number;
   passesCompleted: number;
+  /** CM 01/02's kampstatistik (ikke i ældre rapporter) */
+  throwIns?: number;
+  tackles?: number;
+  tacklesWon?: number;
+  headers?: number;
+  headersWon?: number;
 }
 
 export interface PlayerMatchLine {
@@ -658,6 +763,11 @@ export interface PlayerMatchLine {
   passes: number;
   passesOk: number;
   cond: number;
+  /** CM 01/02's Team Stats (ikke i ældre rapporter): tacklingsforsøg, hovedstød (forsøg/vundne), skud på mål */
+  tckA?: number;
+  hea?: number;
+  heaW?: number;
+  on?: number;
 }
 
 export interface MatchEvent {
@@ -666,6 +776,10 @@ export interface MatchEvent {
   k: string; // 'goal' | 'yellow' | 'red' | 'sub' | 'injury' | 'pen-miss' | ...
   p?: number;
   p2?: number;
+  /** selvmål: p er forsvareren, t er holdet der fik målet */
+  og?: boolean;
+  /** mål på straffespark */
+  pen?: boolean;
 }
 
 export interface ShotRecord {
@@ -682,6 +796,15 @@ export interface ShotRecord {
   origin?: string;
   /** ramte stolpen/overliggeren */
   post?: boolean;
+  /** redningen: målmanden griber, slår ud (returbold), taber bolden eller tipper den til hjørnespark */
+  save?: 'hold' | 'parry' | 'spill' | 'corner';
+  /** forsvareren, der blokerede skuddet (eller lavede selvmål) */
+  blocker?: number;
+  /** selvmål: forsvareren der fik bolden i eget net (p er stadig den, der skød/slog indlægget) */
+  og?: number;
+  /** opspillet lige før afslutningen (2D): layoff, knockdown, lowcross, longthrow, shortcorner, edge, holdup – og hvem der lavede det */
+  setup?: string;
+  setupBy?: number;
 }
 
 export interface CommentaryLine {
@@ -712,6 +835,9 @@ export interface MatchReport {
   shootout?: ShootoutKick[];
   /** vejret under kampen (se weather.ts) */
   weather?: string;
+  /** Banens tilstand og dagens dommer */
+  pitch?: string;
+  referee?: { name: string; strict: number };
   /** taktiske ændringer undervejs */
   changes?: TacticChange[];
   formations: [string, string];
@@ -750,6 +876,8 @@ export interface Options {
   highlights?: 'goals' | 'big' | 'all';
   /** Kampregler: moderne (5 udskiftninger, 9 på bænken) eller klassiske CM-regler (3 og 5). Standard: moderne – klassisk med CM 01/02-databasen */
   rules?: 'modern' | 'classic';
+  /** spiltilstand: 'authentic' = så tæt på CM 01/02 som muligt (kun originalens funktioner), 'extended' (standard) = alt */
+  mode?: 'authentic' | 'extended';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
 }
@@ -785,6 +913,8 @@ export interface HumanSlot {
 
 export interface GameState {
   version: number;
+  /** Prisniveau (2001-priser i den originale database, se econ.ts) – mangler = nutidens priser */
+  econ?: import("./econ").Economy;
   id: string; // save-id
   seed: number;
   rng: number;
@@ -798,7 +928,7 @@ export interface GameState {
   activeNations: number[];
   nations: { name: string; code: string }[];
   leagueOrder: string[];
-  leagues: Record<string, { name: string; nation: number; tier: number }>;
+  leagues: Record<string, { name: string; nation: number; tier: number; hidden?: boolean }>;
   players: Record<number, Player>;
   clubs: Record<number, Club>;
   staff: Record<number, Staff>;
@@ -811,6 +941,8 @@ export interface GameState {
   shortlist: number[];
   offers: TransferOffer[];
   tactic: Tactic | null; // brugerens taktik
+  /** startopstillingen fra brugerens seneste kamp (klassisk Last Match) */
+  lastMatchTactic?: Tactic;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   seasonHistory: SeasonSummary[];
@@ -818,8 +950,14 @@ export interface GameState {
   names: Record<number, [string[], string[]]>;
   /** Supporternes regen-navne (hentet fra serveren) og hvilke der allerede er brugt i dette spil */
   supporterRegens?: { first: string; last: string; by: string; used?: boolean }[];
+  /** pensionerede stjerner, der "genopstår" som regens ved næste ungdomsårgang (CM 01/02) */
+  regenQueue?: RegenSeed[];
+  /** landsholdsfodbold: resultater, slutrunde og historik (international.ts) */
+  intl?: import('./international').IntlState;
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
+  /** CM 01/02: kontrakttilbud til egne spillere – svaret kommer som nyhed næste dag */
+  pendingRenewals?: { pid: number; club: number; wage: number; years: number; clauses?: ContractClauses; date: string }[];
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */
@@ -844,6 +982,8 @@ export interface GameState {
   jobOffers: number[];
   lastMonthAward?: string;
   /** Online multiplayer: menneskelige managere og hvem der er "aktiv" lige nu */
+  /** engangsrettelser, der er kørt på dette gem (save.ts) */
+  fixes?: string[];
   humans?: HumanSlot[];
   active?: string;
   /** Månedens priser i indeværende sæson */
@@ -857,8 +997,12 @@ export interface GameState {
   press?: PressConf | null;
   /** Databasen spillet er startet fra (udeladt = den moderne) og dens ligaregler */
   dbKind?: 'cm0102';
+  /** den originale databases udgave ('3.9.60' | '3.9.65' | '3.9.68'); mangler = 3.9.60 (eller 3.9.68 i meget gamle spil) */
+  dbVersion?: string;
   /** Sæsonen databasen startede i (2001 = den originale 01/02, 2026 = October 2026-opdateringen) */
   dbYear?: number;
+  /** dommere fra databasen (officials.dat): [fornavn, efternavn, nation, Discipline 0-20 (0 = ikke vurderet), 0x27, omdømme] */
+  officials?: [string, string, number, number, number, number][];
   customRules?: Record<string, import('./leagues').LeagueRules>;
   /** Kosmetiske AI-tekster (artikler, fanindlæg …) – påvirker ikke spillets regler */
   aiText?: Record<string, string>;
@@ -959,3 +1103,6 @@ export interface H2HRecord {
   bestB?: [number, number, string];
   last?: { date: string; fixture: number; gf: number; ga: number; comp: string };
 }
+
+/** Det en regen arver fra den pensionerede spiller: land, positioner, ben, potentiale og egenskabsprofil */
+export interface RegenSeed { from: string; nation: number; pos: number[]; side: number[]; foot: 'L' | 'R' | 'B'; pa: number; attrs: number[] }

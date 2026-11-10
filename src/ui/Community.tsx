@@ -1,5 +1,6 @@
 // Fællesskabet: forslag og fejlrapporter, stemmer (med budget), kommentarer, månedens afstemning og en roadmap.
 // Bruges både i spillet (Community-siden) og som offentlig side (?community=1 og ?suggestion=ID).
+import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
 import { SG_CATS, comment, communityAvailable, communityUrl, getPoll, getSuggestion, listSuggestions, myVotes, pollVote, reportBug, reportContent, shrinkImage, similar, suggest, suggestionUrl, vote, type SgComment, type SgStatus, type Suggestion } from '../online/community';
 import { createProfile, getProfile } from '../online/rank';
@@ -263,9 +264,10 @@ export function BugReportButton({ screen, version, date }: { screen: string; ver
   return (
     <>
       <button className="small bug-btn" onClick={() => setOpen(true)} title={t('cm.reportBug')}>🐞 {t('cm.reportBug')}</button>
-      {open && (prof ? <WriteModal kind="bug" meta={`v${version} · ${screen} · ${date} · ${window.innerWidth}×${window.innerHeight}`} onClose={() => setOpen(false)} /> : (
+      {/* tegnes på body: knappen sidder i sidemenuen, hvis knapstil (hvid tekst) ellers smitter af på vinduet */}
+      {open && createPortal(prof ? <WriteModal kind="bug" meta={`v${version} · ${screen} · ${date} · ${window.innerWidth}×${window.innerHeight}`} onClose={() => setOpen(false)} /> : (
         <Modal title={t('cm.reportBug')} onClose={() => setOpen(false)}><ProfileGate onDone={() => setOpen(false)} /></Modal>
-      ))}
+      ), document.body)}
     </>
   );
 }

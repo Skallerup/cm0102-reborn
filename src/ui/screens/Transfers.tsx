@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { nameQuery } from '../search';
 import { Select } from '../select';
 import { Info } from '../help';
 import { ATTRS, naturalRole } from '../../game/attributes';
@@ -64,7 +65,7 @@ function PlayerList({ players, initialSort = 'val' }: { players: Player[]; initi
   const { nav } = useNav();
   const cols: Col<Player>[] = [
     ...(g.userClub ? [{ key: 'real', label: t('real.col'), render: (p: Player) => <RealismTag p={p} />, sort: (p: Player) => { const r = transferRealism(p); return -r.level * 100 + r.score; }, title: t('real.hint') }] : []),
-    { key: 'name', label: t('col.name'), render: (p) => <PlayerLink p={p} />, sort: (p) => p.last },
+    { key: 'name', label: t('col.name'), render: (p) => <><PlayerLink p={p} />{p.club !== gs().userClub && (gs().knowledge[p.id] ?? 0) >= 60 && <span className="tag" title={t('tr.sctTip')} style={{ marginLeft: 6 }}>Sct</span>}</>, sort: (p) => p.last },
     { key: 'pos', label: t('col.pos'), render: (p) => posStr(p) },
     { key: 'age', label: t('col.age'), render: (p) => ageOn(p.dob, g.date), sort: (p) => ageOn(p.dob, g.date), className: 'num' },
     { key: 'nat', label: t('col.nat'), render: (p) => <Nat n={p.nation} /> },
@@ -83,7 +84,7 @@ const DEFAULTS = {
   name: '', role: '' as Role | '', minAge: 15, maxAge: 40, minValue: 0, maxValue: 0, maxWage: 0, nation: -1, league: '', tier: 0, region: '',
   onlyFree: false, onlyListed: false, expiring: false, onlyKnown: false, realism: 0, minAbility: 0, minPotential: 0,
   attr1: -1, attr1Min: 12, attr2: -1, attr2Min: 12, attr3: -1, attr3Min: 12, foot: '', minHeight: 0, contractBy: 0,
-  trait: '', noTrouble: false, rec: -1, interested: false, noInjured: false, notLoaned: false, shortlist: false,
+  trait: '', noTrouble: false, rec: -1, interested: false, scouted: false, noInjured: false, notLoaned: false, shortlist: false,
   // klassisk filterdialog: positionsgruppe, side, hvor spilleren spiller, lejet ud, egen trup med
   posGroup: '' as '' | 'GK' | 'D' | 'M' | 'A', side: '' as '' | 'L' | 'C' | 'R', based: '' as '' | 'home' | 'abroad',
   onLoan: false, includeSquad: false,
@@ -122,12 +123,12 @@ export function Search({ classic }: { classic?: boolean } = {}) {
   const [prevFilters, setPrevFilters] = useState(lastCareerFilters);
   const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
   const results = useMemo(() => {
-    const q = f.name.trim().toLowerCase();
+    const q = nameQuery(f.name);
     const attrs = ([[f.attr1, f.attr1Min], [f.attr2, f.attr2Min], [f.attr3, f.attr3Min]] as [number, number][]).filter(([a]) => a >= 0);
     const out: Player[] = [];
     for (const p of Object.values(g.players)) {
       if (p.club === g.userClub && !f.includeSquad) continue;
-      if (q && !`${p.first} ${p.last}`.toLowerCase().includes(q)) continue;
+      if (q && !q(p.first, p.last)) continue;
       const a = ageOn(p.dob, g.date);
       if (a < f.minAge || a > f.maxAge) continue;
       if (f.maxValue && p.value > f.maxValue) continue;
@@ -171,6 +172,8 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       }
       if (f.rec >= 0) { const r = scoutRecommendation(p); if (r.level < 0 || r.level > f.rec) continue; }
       if (f.interested && me && playerInterest(p, me) !== 'yes') continue;
+      // CM 01/02: "Scouted Only"
+      if (f.scouted && p.club !== g.userClub && (g.knowledge[p.id] ?? 0) < 60) continue;
       if (f.realism) {
         const r = transferRealism(p);
         if (r.level > (f.realism === 1 ? 0 : 1)) continue;
@@ -251,6 +254,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
                 {[0, 1, 2].map((d) => { const y = Number(seasonEnd.slice(0, 4)) + d; return <option key={y} value={y}>≤ {y}</option>; })}
               </select></label>
               <label className="row"><input type="checkbox" checked={f.interested} onChange={(e) => set('interested', e.target.checked)} />{t('tr.f.interested')}</label>
+              <label className="row"><input type="checkbox" checked={!!f.scouted} onChange={(e) => set('scouted', e.target.checked)} />{t('tr.f.scouted')}</label>
               <label className="row"><input type="checkbox" checked={f.notLoaned} onChange={(e) => set('notLoaned', e.target.checked)} />{t('tr.f.notLoaned')}</label>
             </div>
             <div className="filter-group">

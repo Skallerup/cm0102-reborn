@@ -45,7 +45,7 @@
 }
 
 /* ---------- venstre-kolonnen ---------- */
-.cx-side { display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2) 70%); border-right: 2px solid #3d50cc; overflow-y: auto; }
+.cx-side { display: flex; flex-direction: column; gap: 4px; padding: 6px 5px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2) 45%, #000 100%); border-right: 2px solid #3d50cc; overflow-y: auto; }
 .cx-date { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 54px; padding: 6px 2px; background: #0a1150; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); color: var(--cx-gold); text-align: center; line-height: 1.25; }
 .cx-date b { font-size: 12.5px; font-weight: 700; }
 .cx-date span { font-size: 12.5px; }
@@ -56,7 +56,7 @@
 .cx-sbtn:hover, .cx-arrows button:hover:not(:disabled) { background: #1c27a2; }
 .cx-sbtn.on { background: #222eae; }
 .cx-mgr { color: var(--cx-cyan); }
-.cx-opt { color: var(--cx-gold); }
+.cx-gopt { color: var(--cx-gold); }
 .cx-continue { min-height: 48px; }
 .cx-online { font-size: 11px; color: #fff; }
 .cx-side-grow { flex: 1; min-height: 8px; }
@@ -67,6 +67,10 @@
 .cx-side-foot button:hover { color: #fff; background: rgba(255, 255, 255, 0.06); }
 
 /* ---------- indholdsområdet og baggrunde ---------- */
+/* stadionbilleder (kampdage) er allerede dæmpet i pakken – kun et let slør ovenpå */
+.shell.cx .main.cx-main.cx-stadium {
+  background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.15) 0%, rgba(6, 9, 34, 0.3) 100%), var(--cx-photo);
+}
 /* dagens foto (sat af Shell som --cx-photo) står fast bag indholdet og dæmpes, så teksten kan læses */
 .shell.cx .main.cx-main {
   padding: 6px 8px 14px;
@@ -180,6 +184,19 @@
   .cx-nrow { grid-template-columns: 96px 1fr; }
   .cx-nbody { font-size: 15px; }
 }
+/* mobil: sidebjælken brydes over i flere linjer i stedet for at løbe ud over kanten (alle knapper kan ses og nås) */
+@media (max-width: 760px) {
+  .shell.cx .cx-side { flex-wrap: wrap; overflow: visible; align-items: stretch; }
+  .cx-side > .cx-sbtn, .cx-side > .cx-drop, .cx-side > .cx-gameopt { flex: 1 1 auto; }
+  .cx-side .cx-sbtn { min-height: 36px; font-size: 13px; }
+  .cx-continue { position: static; box-shadow: none; flex: 1 1 40% !important; }
+  .shell.cx .cx-side .cx-side-comp { display: none; }
+  .cx-side .cx-minute { min-width: 52px; }
+  .cm-board.cx-board { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); position: static; background: none; }
+  .cm-board.cx-board .cm-team { grid-column: auto; grid-row: auto; padding-left: 8px; gap: 6px; min-width: 0; }
+  .cm-board.cx-board .cm-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; gap: 6px; }
+  .cm-board.cx-board .cm-name .crest { width: 24px !important; height: 24px !important; flex: none; }
+}
 
 /* ---------- popups (dialoger): titelstrimmel, dialogflade med trykt kant, grå Annullér/OK-bjælker ---------- */
 :root[data-skin='retro'] .modal-bg { background: rgba(0, 0, 0, 0.55); backdrop-filter: none; }
@@ -226,9 +243,9 @@
 /* ---------- rullemenuer (View, Sort By, Filter, Action) ---------- */
 .cx-action { position: absolute; right: 6px; top: 6px; z-index: 6; }
 .cx-drop { position: relative; display: inline-block; }
-:root[data-skin='retro'] .cx-drop-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 132px; height: 24px; padding: 0 4px 0 10px; background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); font-size: 12.5px; font-weight: 700; }
-:root[data-skin='retro'] .cx-drop-btn:hover { background: #1c27a2; }
-.cx-drop-caret { display: inline-grid; place-items: center; width: 16px; height: 16px; background: #0b1a5c; color: #fff; font-size: 10px; }
+:root[data-skin='retro'] .cx-drop-btn { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 132px; height: 24px; padding: 0 4px 0 10px; background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; font-size: 12.5px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+:root[data-skin='retro'] .cx-drop-btn:hover { background: linear-gradient(180deg, #c8ccd6, #8e929e); }
+.cx-drop-caret { display: inline-grid; place-items: center; width: 16px; height: 16px; background: transparent; color: #15172a; font-size: 11px; text-shadow: none; }
 :root[data-skin='retro'] .cx-act .cx-drop-btn, :root[data-skin='retro'] .cx-act .cx-drop-btn:hover { background: linear-gradient(180deg, #cfe4ff, #8fb4e8); color: #0b1a5c; border-color: #fff #33416e #33416e #fff; }
 /* pop op-listen: gul liste som i originalens Sort By */
 .cx-drop-pop { position: absolute; top: 26px; z-index: 40; min-width: 210px; max-height: 70vh; overflow-y: auto; padding: 3px 0; background: #ffd21f; border: 1px solid; border-color: #fff3a8 #8a6a00 #8a6a00 #fff3a8; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); text-align: left; }
@@ -240,7 +257,7 @@
 :root[data-skin='retro'] .cx-drop-pop button:hover:not(:disabled) { background: #fff36a; }
 :root[data-skin='retro'] .cx-drop-pop button:disabled { color: #9a8a4a; }
 :root[data-skin='retro'] .cx-drop-pop button.danger { color: #a40000; }
-.cx-drop-check { display: inline-block; width: 18px; text-align: center; flex-shrink: 0; }
+.cx-drop-check { display: inline-block; width: 18px; margin-right: 4px; text-align: center; flex-shrink: 0; }
 
 /* ---------- spillerprofilen ---------- */
 .cx-pl { display: flex; flex-direction: column; gap: 10px; }
@@ -354,7 +371,8 @@
 .cx-pager-line .grow { flex: 1; }
 :root[data-skin='retro'] .cx-pager-line button { width: 24px; height: 20px; padding: 0; background: #1d2a8c; color: #fff; font-size: 11px; }
 .cx-pager-line .pg { color: #fff21f; min-width: 74px; text-align: center; }
-.cx-funds { padding: 2px 10px; background: linear-gradient(180deg, #ffe25a, #d4a90f); color: #10164e; font-size: 12px; font-weight: 800; border: 1px solid; border-color: #fff6b0 #6b5200 #6b5200 #fff6b0; white-space: nowrap; }
+.cx-funds { padding: 2px 10px; background: linear-gradient(180deg, #ffe25a, #d4a90f); color: #10164e; font-size: 12px; font-weight: 800; border: 1px solid; border-color: #fff6b0 #6b5200 #6b5200 #fff6b0; white-space: nowrap; cursor: pointer; }
+.cx-funds:hover { filter: brightness(1.08); }
 @media (max-width: 760px) { .cx-kv { grid-template-columns: minmax(110px, 40%) 1fr; font-size: 13.5px; } .cx-funds { font-size: 10.5px; padding: 2px 4px; } }
 .cx-tools-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .cx-tools-inline .grow, .cx-tools .grow { flex: 1; }
@@ -369,7 +387,7 @@
 .cx-gameopt .cx-drop-pop { z-index: 60; min-width: 170px; background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
 :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #fff; }
 :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled) { background: #fff21f; color: #10164e; }
-.cx-gameopt .cx-drop-check { width: 8px; }
+.cx-gameopt .cx-drop-check { width: 14px; margin-right: 6px; }
 :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: var(--cx-cyan); }
 .cx-gameopt .cx-drop-sep { border-top-color: rgba(0, 0, 0, 0.4); border-bottom-color: rgba(255, 255, 255, 0.25); }
 :root[data-flash='off'] .cx-news { animation: none; }
@@ -505,7 +523,7 @@
 /* spillerkarriere (History) */
 .cx-career .cx-career-club { width: 40%; color: #fff; font-size: 17px; font-weight: 800; text-shadow: 2px 2px 0 #000; }
 .cx-career .cx-career-club .link { color: #fff; cursor: pointer; }
-.cx-career .cx-career-club .link:hover { color: #6fe3ff; }
+
 .cx-career-loan { color: #6cc4ff; font-size: 13px; }
 .cx-career .cx-lg-pos.now { background: linear-gradient(180deg, #f4f6fb, #c9cdd8); color: #0b1a5c; }
 @media (max-width: 760px) { .cx-career .cx-career-club { font-size: 14px; } }
@@ -525,7 +543,7 @@
 
 /* klikbare navne i klassisk tema */
 .cx-link { cursor: pointer; }
-.cx-link:hover, .cx-link:focus-visible { color: #6fe3ff; text-decoration: underline; text-underline-offset: 3px; outline: none; }
+.cx-link:hover, .cx-link:focus-visible { text-decoration: underline; text-underline-offset: 3px; outline: none; }
 .cx-title h2 .cx-link:hover { color: inherit; opacity: 0.8; }
 
 /* ---------- taktik (klassisk) ---------- */
@@ -599,3 +617,810 @@
 :root[data-skin='retro'] .draft-page .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
 :root[data-skin='retro'] .draft-page b, :root[data-skin='retro'] .draft-page strong { color: var(--cx-gold); }
 :root[data-skin='retro'] .draft-page .tag, :root[data-skin='retro'] .draft-page .chip, :root[data-skin='retro'] .draft-page .badge { border-radius: 0; }
+
+/* valgt spiller: klik på en tom plet på banen for at flytte hans plads */
+.cx-tac-pitch.moving { cursor: crosshair; }
+/* pladsgitteret, mens en spiller flyttes (SlotGuides i runs.tsx) */
+.cx-guides { position: absolute; inset: 0; pointer-events: none; }
+.cx-guides i { position: absolute; width: 22px; height: 22px; transform: translate(-50%, -50%); border: 2px dashed #ffffff70; border-radius: 50%; }
+.cx-guides i.taken { border-color: #ffffff26; }
+.cx-guides i.hot { border: 3px solid #fff21f; background: #fff21f33; }
+.cx-guides i.taken.hot { border-color: #ff6b6b; background: #ff6b6b33; }
+.cx-guides b { position: absolute; left: 50%; top: -20px; transform: translateX(-50%); font: 700 12px/1 Tahoma, Verdana, sans-serif; color: #10164e; background: #fff21f; padding: 2px 5px; white-space: nowrap; }
+
+/* nationens skærme: Manager Stats, Job Information, Transfers */
+.cx-ntab { display: flex; flex-direction: column; gap: 3px; padding: 4px 18px; }
+.cx-nrow { display: grid; grid-template-columns: 96px minmax(0, 1.6fr) minmax(0, 1fr) 150px; gap: 14px; align-items: center; min-height: 30px; }
+.cx-nrow.job { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) 190px; }
+.cx-nrow.tr { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr) 150px; }
+.cx-nrank { align-self: stretch; display: flex; align-items: center; justify-content: center; background: #1414c8; border: 1px solid #4a4af0; color: #fff; font-size: 13px; font-weight: 700; }
+.cx-nname { color: #fff; font-size: 21px; font-weight: 700; text-shadow: 2px 2px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-nname.dim { color: #9a9aa8; }
+.cx-nrow.me .cx-nname { color: #fff21f; }
+.cx-nclub, .cx-nnat { color: #fff21f; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-ndiv { color: #ff9a2a; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-nval { align-self: stretch; display: flex; align-items: center; justify-content: center; background: #4a0a5e; border: 1px solid #7a2a90; color: #fff; font-size: 13px; font-weight: 700; }
+.cx-subtitle-nav { position: relative; }
+.cx-month-nav { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); display: flex; gap: 3px; }
+.cx-month-nav button { min-width: 34px; min-height: 28px; background: #1414c8; color: #fff; border: 1px solid #4a4af0; font-weight: 800; cursor: pointer; }
+.cx-month-nav button:disabled { opacity: 0.4; cursor: default; }
+.cx-empty-mid { padding: 160px 24px; color: #fff; font-size: 19px; }
+@media (max-width: 760px) {
+  .cx-ntab { padding: 4px 6px; }
+  .cx-nrow, .cx-nrow.tr { grid-template-columns: 44px minmax(0, 1fr) minmax(0, 0.8fr) 84px; gap: 6px; }
+  .cx-nrow.tr { grid-template-columns: minmax(0, 1fr) minmax(0, 0.8fr) minmax(0, 0.8fr) 74px; }
+  .cx-nrow.job { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 80px; }
+  .cx-nrow.job .cx-nnat, .cx-nrow.job .cx-ndiv { display: none; }
+  .cx-nname { font-size: 15px; } .cx-nclub, .cx-nnat { font-size: 13px; } .cx-nval { font-size: 11px; }
+}
+
+/* cupturneringer: Rounds, Results, Fixtures, Schedule, Seedings, Team Stats */
+.cx-tools-right { justify-content: flex-end; }
+.cx-cup { display: flex; flex-direction: column; gap: 3px; padding: 4px 18px; }
+.cx-cup-row { display: grid; grid-template-columns: 64px 26px minmax(0, 1fr) 40px minmax(0, 1fr) 26px 64px; gap: 8px; align-items: center; min-height: 30px; }
+.cx-cup-row.go { cursor: pointer; }
+.cx-cup-row.form { grid-template-columns: 64px minmax(0, 1.4fr) minmax(0, 1fr) 140px; }
+.cx-code { align-self: stretch; display: flex; align-items: center; justify-content: center; background: #1414c8; border: 1px solid #4a4af0; color: #fff; font-size: 12px; font-weight: 700; min-height: 26px; }
+.cx-code.wide { min-width: 160px; padding: 0 8px; }
+.cx-cup-team { color: #fff; font-size: 20px; font-weight: 700; text-shadow: 2px 2px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-cup-team.me, .cx-cup-team.win { color: #fff21f; }
+.cx-cup-v { color: #6fe3ff; font-weight: 800; text-align: center; text-shadow: 1px 1px 0 #000; }
+.cx-cup-score { color: #fff21f; font-size: 20px; font-weight: 800; text-align: center; text-shadow: 2px 2px 0 #000; }
+.cx-cup-stage { display: inline-block; margin: 8px 0 10px; color: #fff21f; font-size: 18px; font-weight: 800; border-bottom: 2px solid #fff21f; text-shadow: 1px 1px 0 #000; }
+.cx-cup-nat { color: #fff21f; font-size: 14px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-cup-pts { align-self: stretch; display: flex; align-items: center; justify-content: center; background: #4a0a5e; border: 1px solid #7a2a90; color: #fff; font-size: 13px; font-weight: 700; }
+.cx-cup-sched { display: flex; gap: 14px; align-items: center; color: #fff21f; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-cup-sched.past { opacity: 0.6; }
+.cx-cup-seeds { display: grid; grid-template-columns: 1fr 1fr; column-gap: 28px; }
+.cx-cup-seed { display: grid; grid-template-columns: minmax(0, 1fr) 120px; align-items: center; min-height: 26px; }
+.cx-cup-seed .cx-cup-team { font-size: 17px; }
+.cx-cup-seed .first { color: #fff21f; font-size: 13px; font-weight: 700; }
+.cx-cup-seed .second { color: #ff9a2a; font-size: 13px; font-weight: 700; }
+@media (max-width: 760px) {
+  .cx-cup { padding: 4px 6px; }
+  .cx-cup-row { grid-template-columns: 38px 16px minmax(0, 1fr) 18px minmax(0, 1fr) 16px 38px; gap: 4px; }
+  .cx-cup-row.form { grid-template-columns: 34px minmax(0, 1fr) 40px 80px; }
+  .cx-cup-team, .cx-cup-score { font-size: 14px; } .cx-code { font-size: 10px; } .cx-code.wide { min-width: 110px; }
+  .cx-cup-seeds { grid-template-columns: 1fr; }
+}
+
+/* Set Staff Transfer Status */
+.cx-ts-body { margin: 0 18px; padding: 10px 18px 14px; background: rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.cx-ts-intro { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; margin: 4px 0 12px; }
+.cx-ts-price { display: flex; align-items: center; gap: 10px; margin: 0 0 10px 20px; }
+.cx-ts-label, .cx-ts-head { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-ts-label { min-width: 260px; }
+.cx-ts-head { margin: 12px 0 4px 20px; }
+.cx-ts-val { min-width: 110px; text-align: center; color: #fff; font-weight: 800; text-shadow: 1px 1px 0 #000; }
+.cx-pm { min-width: 52px; min-height: 26px; background: #1414c8; color: #fff; border: 1px solid #4a4af0; font-weight: 800; cursor: pointer; }
+.cx-pm.auto.on { background: #2a2ae8; color: #fff21f; }
+.cx-ts-opt { margin-left: 52px; background: none; border: 0; padding: 2px 0; color: #fff; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 #000; cursor: pointer; text-align: left; }
+.cx-ts-opt:hover:not(:disabled) { color: #6fe3ff; }
+.cx-ts-opt.on { color: #fff21f; }
+.cx-ts-opt:disabled { color: #8a8a98; cursor: default; }
+.cx-ts-buttons { display: grid; grid-template-columns: 3fr 1fr; gap: 4px; margin: 12px 18px 0; }
+.cx-ts-buttons button { min-height: 40px; font-size: 17px; font-weight: 800; }
+@media (max-width: 760px) { .cx-ts-body { margin: 0 6px; padding: 8px; } .cx-ts-label { min-width: 0; } .cx-ts-price { margin-left: 0; flex-wrap: wrap; } .cx-ts-opt { margin-left: 12px; font-size: 14px; } .cx-ts-head { margin-left: 0; } }
+:root[data-skin='retro'] .cx-ts-buttons button { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; box-shadow: none; }
+.cx-ts-val.wide { min-width: 300px; }
+
+/* Match Overview (live-kampen i klassisk tema, som i CM 01/02) */
+.cx-mo { margin: 0 18px; padding: 4px 18px 10px; background: rgba(0, 0, 0, 0.35); }
+.cx-mo-meta { display: flex; justify-content: space-between; margin: 2px 0; }
+.cx-mo-meta span { background: rgba(0, 0, 0, 0.45); color: #6fe3ff; padding: 4px 30px; font-size: 13px; font-weight: 700; }
+.cx-mo-scorers { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin: 10px 40px 0; min-height: 22px; color: #fff; font-size: 15px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
+.cx-mo-scorers .away { text-align: right; }
+.cx-mo-scorers + .cx-mo-line { margin-top: 40px; }
+.cx-mo-line { margin: 70px 40px 90px; min-height: 92px; display: flex; align-items: center; justify-content: center; text-align: center; padding: 12px 24px; font-size: clamp(16px, 2vw, 24px); font-weight: 800; border: 1px solid rgba(0, 0, 0, 0.4); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5); }
+.cx-mo-poss { display: grid; grid-template-columns: 200px 1fr; align-items: center; gap: 12px; margin: 0 60px 26px; padding: 8px 12px; background: linear-gradient(180deg, #a8acb6, #7e828e); }
+.cx-mo-poss .lbl { color: #fff; text-align: center; font-size: 13px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-mo-bar { display: flex; width: 100%; border: 2px solid #4a4e58; height: 24px; }
+.cx-mo-bar span { display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; overflow: hidden; transition: width 0.6s; }
+.cx-mo-foot { display: flex; justify-content: space-between; color: #fff21f; font-weight: 800; font-size: 14px; text-shadow: 1px 1px 0 #000; padding: 4px 8px; }
+@media (max-width: 760px) { .cx-mo { margin: 0 4px; padding: 4px 6px; } .cx-mo-line { margin: 24px 4px 30px; min-height: 70px; } .cx-mo-poss { grid-template-columns: 80px 1fr; margin: 0 0 14px; } .cx-mo-meta span { padding: 3px 8px; } }
+
+/* flere skrifttyper (Game Settings → Fonts) og klubbens logo i titelbjælken */
+:root[data-skin='retro'][data-cxfont='verdana'] body { font-family: Verdana, Geneva, Tahoma, sans-serif; }
+:root[data-skin='retro'][data-cxfont='exo'] body { font-family: 'Exo 2', Tahoma, Verdana, sans-serif; }
+:root[data-skin='retro']:is([data-cxfont='verdana'], [data-cxfont='exo']) :is(button, input, select) { font-family: inherit; }
+.cx-title-logo { position: absolute; left: 36px; top: 50%; transform: translateY(-50%); display: flex; filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.45)); }
+.cx-title-logo .crest, .cx-title-logo .kit { width: 44px !important; height: 44px !important; object-fit: contain; }
+:root[data-cxlogo='off'] .cx-title-logo { display: none; }
+@media (max-width: 760px) { .cx-title-logo { left: 30px; } .cx-title-logo .crest, .cx-title-logo .kit { width: 28px !important; height: 28px !important; } }
+/* Squad Numbers (klassisk) */
+.cx-numbers { margin: 4px 8px; }
+.cx-numbers-hint { margin: 4px 0 8px; color: #fff; text-shadow: 1px 1px 0 #000; }
+.cx-numbers .sqn-num { color: #fff21f; }
+.shell.cx .cx-sct { color: #f2c94c; font-size: 10px; font-weight: 700; }
+
+/* undermenuer (▸) som Competitions-menuen i CM 01/02 */
+.cx-drop-arrow { margin-left: auto; padding-left: 14px; font-size: 11px; }
+:root[data-skin='retro'] .cx-drop-pop button.cx-drop-subbtn.on { background: #fff36a; }
+.cx-drop-sub { z-index: 41; max-height: 80vh; }
+
+/* tekstvalg som i CM 01/02: grå = ikke valgt, hvid = valgt, mørkegrå = ikke muligt */
+.cx-opt { margin-left: 140px; background: none; border: 0; padding: 3px 0; color: #a9adb8; font-size: 18px; font-weight: 700; text-shadow: 1px 1px 0 #000; cursor: pointer; text-align: left; }
+.cx-opt:hover:not(:disabled) { color: #d8dbe2; }
+.cx-opt.on, .cx-opt.on:hover { color: #fff; }
+.cx-opt:disabled { color: #6c6f78; cursor: default; }
+@media (max-width: 760px) { .cx-opt { margin-left: 12px; font-size: 15px; } }
+:root[data-skin='retro'] .cx-greybtn.wide { min-width: 220px; }
+
+/* ---------- CM 01/02: fælles byggeklodser (moderne komponenter i klassisk tema) ---------- */
+/* rullemenuer: grøn liste med mørk tekst, gul markering (som originalens) */
+:root[data-skin='retro'] .sel { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); font-weight: 700; box-shadow: none; }
+:root[data-skin='retro'] .sel:hover, :root[data-skin='retro'] .sel.open { background: #1c27a2; }
+:root[data-skin='retro'] .sel-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border: 1px solid; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; border-radius: 0; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5); padding: 2px 0; backdrop-filter: none; }
+:root[data-skin='retro'] .sel-search { margin: 3px 4px; width: calc(100% - 8px); background: #e8f4e0; color: #08200a; border: 1px solid; border-color: #0c3a0c #8ee07a #8ee07a #0c3a0c; border-radius: 0; font-weight: 700; }
+:root[data-skin='retro'] .sel-group { color: #fff21f; padding: 5px 10px 2px; font-size: 11px; text-shadow: 1px 1px 0 #000; border-top: 1px solid rgba(0, 0, 0, 0.3); }
+:root[data-skin='retro'] .sel-opt { color: #08200a; border-radius: 0; font-weight: 700; padding: 3px 10px; text-shadow: none; }
+:root[data-skin='retro'] .sel-opt.hi, :root[data-skin='retro'] .sel-opt:hover { background: #ffd21f; color: #10164e; }
+:root[data-skin='retro'] .sel-opt.on { color: #fff; }
+:root[data-skin='retro'] .sel-check { color: #fff; }
+:root[data-skin='retro'] .sel-empty { color: #08200a; }
+:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button { color: #08200a; }
+:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt .cx-drop-pop button.cx-drop-subbtn.on { background: #ffd21f; color: #10164e; }
+:root[data-skin='retro'] .cx-gameopt .cx-drop-pop button:disabled { color: #5d9a55; }
+.cx-gameopt .cx-drop-pop .cx-drop-sub, .cx-drop-sub { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+/* paneler: ingen kort – mørk flade med gul overskrift */
+.shell.cx .main .panel { background: rgba(0, 0, 0, 0.32); border: 0; border-radius: 0; }
+.shell.cx .main .panel > header { background: rgba(0, 0, 0, 0.45); border: 0; padding: 6px 10px; }
+.shell.cx .main .panel > header h3 { color: #fff21f; font-size: clamp(15px, 1.6vw, 19px); font-weight: 900; text-shadow: 2px 2px 0 #000; }
+/* tabeller: grå kolonneknapper, fed hvid tekst med skygge, tynde linjer – ingen zebra */
+.shell.cx .main table.grid thead th { background: linear-gradient(180deg, #a9adb8, #7c818e); border: 1px solid; border-color: #d8dbe2 #3c3f48 #3c3f48 #d8dbe2; font-size: 12.5px; }
+.shell.cx .main table.grid tbody td { color: #fff; font-weight: 700; font-size: 13.5px; text-shadow: 1px 1px 0 #000; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+.shell.cx .main table.grid tbody tr:nth-child(even) td { background: transparent; }
+.shell.cx .main table.grid tbody td.muted, .shell.cx .main table.grid .muted { color: #6fe3ff; }
+.shell.cx .main table.grid tbody tr:hover td { background: rgba(255, 255, 255, 0.06); }
+/* nøgle/værdi-felter: hvid etiket, gul værdi */
+.shell.cx .main .kv > span:nth-child(odd) { color: #fff; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.shell.cx .main .kv > span:nth-child(even) { color: #fff21f; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.shell.cx .main .muted { color: #c6cbe0; }
+/* mærker og segmentknapper */
+.shell.cx .main .tag { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); text-shadow: 1px 1px 0 #000; }
+.shell.cx .main .seg button { border-radius: 0; }
+.shell.cx .main .seg button.on { background: linear-gradient(180deg, #2fae4c, #1b7a32); color: #fff; }
+/* Continue Game er grå, mens en boks (dialog) er åben – som i originalen */
+:root[data-skin='retro'] .cx-continue:disabled { color: #3a46b8; opacity: 1; cursor: default; }
+
+/* Offer Contract og andre bokse som egne skærme (sidebjælken er fri, Continue Game grå) */
+.cx-dlg { position: fixed; inset: 0 0 0 112px; z-index: 70; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px 10px; background: linear-gradient(rgba(4, 6, 30, 0.55), rgba(4, 6, 30, 0.55)), var(--cx-photo, none) center / cover, #04061e; overflow-y: auto; }
+@media (max-width: 760px) { .cx-dlg { inset: 0; } }
+.cx-dlg .cx-title { padding: 4px 30px; }
+.cx-dlg-body { flex: 1; margin: 0 8px; padding: 12px 18px; background: rgba(0, 0, 0, 0.45); display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.cx-dlg-body.center { align-items: center; justify-content: center; }
+.cx-dlg-foot { margin: 0 8px; }
+.cx-neg-tabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; margin: 0 8px; }
+.cx-neg-row { display: grid; grid-template-columns: minmax(180px, 1fr) 70px minmax(150px, 220px) 60px 60px; align-items: center; gap: 4px; width: min(100%, 900px); margin-left: 60px; }
+.cx-neg-row.off .cx-neg-val .cx-drop-btn, .cx-neg-row.off .cx-pm { opacity: 0.45; }
+.cx-neg-label { background: none; border: 0; padding: 2px 0; text-align: left; color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; cursor: default; }
+.cx-neg-label:disabled { opacity: 1; color: #fff; }
+.cx-neg-label.toggle { cursor: pointer; }
+.cx-neg-row.off .cx-neg-label { color: #a9adb8; }
+.cx-neg-star { color: #ff9a2a; }
+.cx-neg-static { color: #fff; font-size: 17px; font-weight: 700; text-align: right; text-shadow: 1px 1px 0 #000; }
+:root[data-skin='retro'] .cx-neg-val .cx-drop-btn { width: 100%; background: transparent; border-color: transparent; justify-content: flex-end; font-size: 17px; }
+.cx-neg-msg { color: #fff21f !important; }
+.cx-green .cx-drop-pop { background: linear-gradient(180deg, #2d8a2a, #1f6a1e); border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+:root[data-skin='retro'] .cx-green .cx-drop-pop button { color: #08200a; }
+:root[data-skin='retro'] .cx-green .cx-drop-pop button:hover:not(:disabled) { background: #ffd21f; color: #10164e; }
+@media (max-width: 760px) { .cx-neg-row { grid-template-columns: 1fr 40px 1fr 40px 40px; margin-left: 0; } .cx-neg-label { font-size: 14px; } }
+.cx-confirm { z-index: 90; }
+.cx-confirm .cx-ts-intro { text-align: center; max-width: 760px; }
+.cx-staff-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0 10px; }
+.cx-staff-cols .cx-kv { font-size: 17px; align-content: start; }
+.cx-staff-attrs { font-size: 15px; }
+@media (max-width: 760px) { .cx-staff-cols { grid-template-columns: 1fr; } }
+.cx-date.cx-matchday span, .cx-date.cx-minute b { color: var(--cx-gold); font-weight: 800; }
+.cx-date.cx-minute b { font-size: 30px; }
+.cx-date.cx-matchday span { font-size: 13px; line-height: 1.25; text-align: center; }
+/* taktik under kampen (CM 01/02) */
+.cx-mt .cx-title { margin-bottom: 6px; }
+.cx-mt-hint { color: #c6cbe0; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-mt-cols { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px; align-items: start; }
+.cx-mt-list { background: rgba(0, 0, 0, 0.35); }
+.cx-mt-form { text-align: center; color: #fff21f; font-size: 22px; font-weight: 900; padding: 6px; background: rgba(0, 0, 0, 0.35); text-shadow: 2px 2px 0 #000; }
+.cx-mt .cx-tbl tr.dim td:not(.btn-col) { color: #8d92a6 !important; }
+.cx-mt .cx-tbl tr[draggable='true'] { cursor: grab; }
+.cx-mt .cx-tbl tr.drop td:not(.btn-col) { background: rgba(255, 242, 31, 0.08); }
+.cx-mt .cx-tbl tr.picked td:not(.btn-col) { background: #830000; }
+.cx-touch-hint { font-size: 12px; margin: 0 0 6px; }
+/* mobil: langt tryk på en spiller tegner en løbepil – ingen tekstmarkering eller iOS-menu */
+.cx-tac-slot, .tactics-pitch .slot { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.cx-mt .c-good { color: #5ee08f; }
+.cx-mt-ti { max-width: 520px; margin-bottom: 8px; }
+@media (max-width: 760px) { .cx-mt-cols { grid-template-columns: 1fr; } .cx-mt-list { overflow-x: auto; } }
+.cx-mt .cx-tac-pitch { width: auto; height: calc(100vh - 290px); min-height: 360px; max-height: none; margin: 0 auto; }
+@media (max-width: 760px) { .cx-mt .cx-tac-pitch { width: 100%; height: auto; } }
+/* kampskærmens faner (CM 01/02) */
+.cx-ms { display: flex; flex-direction: column; gap: 3px; padding: 6px 0; }
+.cx-ms-row { display: grid; grid-template-columns: 180px 1fr 180px; align-items: center; }
+.cx-ms-v { background: linear-gradient(180deg, #1d2a8c, #121a66); color: #6fe3ff; text-align: center; font-size: 20px; font-weight: 800; padding: 3px 0; text-shadow: 1px 1px 0 #000; }
+.cx-ms-l { text-align: center; color: #fff; font-size: 20px; font-weight: 800; text-shadow: 2px 2px 0 #000; }
+.cx-ms-l.y { color: #fff21f; } .cx-ms-l.r { color: #ff3b3b; }
+.cx-az-pitch { display: grid; grid-template-columns: repeat(3, 1fr); height: 260px; background: repeating-linear-gradient(90deg, #1f5a1f 0 8%, #1b511b 8% 16%); border: 2px solid #9fd49a; margin-bottom: 10px; }
+.cx-az-third { display: grid; place-items: center; border-right: 2px dashed #fff21f; } .cx-az-third:last-child { border-right: 0; }
+.cx-az-third b { color: #fff21f; font-size: 30px; text-shadow: 2px 2px 0 #000; }
+.cx-az-pitch { position: relative; }
+.cx-az-third { position: relative; z-index: 1; }
+.cx-az-pitch > i { position: absolute; border: 1px solid rgba(140, 190, 120, 0.7); pointer-events: none; }
+.cx-az-box { top: 20%; height: 60%; width: 14%; } .cx-az-box.l { left: 0; border-left: 0; } .cx-az-box.r { right: 0; border-right: 0; }
+.cx-az-six { top: 35%; height: 30%; width: 5%; } .cx-az-six.l { left: 0; border-left: 0; } .cx-az-six.r { right: 0; border-right: 0; }
+.cx-az-half { top: 0; bottom: 0; left: 50%; width: 0; border-width: 0 0 0 1px !important; }
+.cx-az-circle { top: 50%; left: 50%; width: 106px; height: 106px; margin: -53px 0 0 -53px; border-radius: 50%; }
+.cx-az-label { position: absolute; z-index: 2; top: 6px; left: 50%; transform: translateX(-50%); padding: 3px 10px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 13px; }
+.cx-az-zbar { position: absolute; left: 6px; right: 6px; bottom: 8px; }
+.cx-mr { max-height: calc(100vh - 330px); overflow-y: auto; background: rgba(0, 0, 0, 0.35); }
+.cx-mr-m { width: 90px; text-align: right; }
+.cx-rt { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cx-tbl tr.dim td:not(.btn-col) { color: #8d92a6 !important; }
+.cx-tbl .c-good { color: #5ee08f; } .cx-tbl .c-bad { color: #ff6b5a; }
+.cx-card { display: inline-block; width: 12px; height: 16px; margin-right: 6px; vertical-align: -2px; background: #fff21f; } .cx-card.red { background: #ff2020; }
+.cx-ls { display: flex; flex-direction: column; gap: 10px; padding: 6px 12px; background: rgba(0, 0, 0, 0.35); }
+.cx-ls-row { display: grid; grid-template-columns: 1fr 80px 1fr; font-size: 17px; font-weight: 700; color: #fff; text-shadow: 1px 1px 0 #000; }
+.cx-ls-team { font-size: 19px; } .cx-ls-score { text-align: center; font-size: 19px; }
+.cx-mo-inj { color: #5ee08f; }
+.cx-venue { margin-top: 6px; padding: 8px; text-align: center; background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; font-size: 18px; font-weight: 800; text-shadow: 1px 1px 0 #000; }
+@media (max-width: 760px) { .cx-rt { grid-template-columns: 1fr; } .cx-ms-row { grid-template-columns: 70px 1fr 70px; } .cx-ms-l { font-size: 14px; } }
+.cx-mo-so { padding: 6px 10px; } .cx-mo-so-h { color: #fff21f; font-size: 20px; font-weight: 800; text-shadow: 1px 1px 0 #000; border-bottom: 2px solid #fff21f; display: inline-block; margin-bottom: 8px; }
+.cx-md-res { color: #6fe3ff; font-weight: 800; text-align: center; text-shadow: 1px 1px 0 #000; }
+.cx-md-mark { color: #fff21f; font-size: 12px; font-weight: 800; margin: 0 4px; }
+.cx-md-row:has(.cx-md-res) { grid-template-columns: 46px minmax(0, 1fr) 90px minmax(0, 1fr) 46px; }
+.cx-opt.sel, .cx-opt.sel:hover { color: #fff21f; }
+.cx-ts-body.center { align-items: center; justify-content: center; min-height: 50vh; background: transparent; }
+:root[data-skin='retro'] input.cx-nick { width: min(90%, 900px); height: 64px; background: rgba(0, 0, 0, 0.45); border: 2px solid #1d2a8c; color: #fff; font-size: 24px; font-weight: 700; text-align: center; }
+.cx-ts-buttons.cx-three { grid-template-columns: 2fr 1fr 1fr; }
+.cx-pl-pager { text-align: right; white-space: nowrap; } .cx-pl-pager .cx-pm { min-width: 32px; height: 22px; margin-left: 2px; }
+.cx-neg-type { background: none; border: 0; cursor: pointer; padding: 0; } .cx-neg-type:hover { color: #6fe3ff; }
+.cx-ti-btn { margin: 0 !important; padding: 0 !important; font-size: inherit !important; }
+.cx-mt-pens { max-width: 760px; margin-bottom: 8px; }
+.cx-run-arrow { position: absolute; top: -16px; color: #fff; font-size: 13px; text-shadow: 1px 1px 0 #000; }
+.cx-ctx { z-index: 95; min-width: 160px; }
+.cx-mt-tibox { margin: 0 0 8px; }
+/* Team Instructions: grøn boks over taktikskærmen (CM 01/02) */
+.cx-mt { position: relative; }
+.cx-tidlg { position: absolute; z-index: 60; top: 56px; left: 6%; right: 6%; background: #1d4a12; border: 2px solid #0f2a08; box-shadow: 0 6px 30px #000c; padding: 14px 16px 12px; }
+.cx-tidlg-head { background: #000; color: #fff; text-align: center; font-size: 22px; font-weight: 700; padding: 14px; border-top: 2px solid #1a1aa0; margin-bottom: 18px; }
+.cx-tidlg-grid { background: #255a17; border: 2px solid #3d7a2a; padding: 4px 10px; }
+.cx-tidlg-row { display: grid; grid-template-columns: minmax(150px, 2fr) repeat(4, minmax(70px, 1fr)); align-items: center; min-height: 40px; }
+.cx-tidlg-row + .cx-tidlg-row { border-top: 1px solid #2f6a20; }
+.cx-tidlg-lbl { color: #e8f0e0; font-size: 19px; font-weight: 600; text-shadow: 1px 1px 0 #000; }
+.cx-tich { background: none; border: 1px solid transparent; color: #8fe04a; font-size: 14px; font-weight: 600; min-height: 32px; margin: 2px 6px; cursor: pointer; }
+.cx-tich.on { color: #fff21f; border-color: #fff21f; }
+.cx-tich:not(:disabled):hover { color: #fff; }
+.cx-tidlg-pick { grid-column: 2 / span 2; position: relative; display: flex; justify-content: flex-end; margin-right: 6px; }
+.cx-tidlg-arrow { width: 46px; height: 34px; background: #000; color: #fff; border: 1px solid #1a1aa0; cursor: pointer; }
+.cx-tidlg-name { grid-column: 4 / span 2; color: #fff21f; font-weight: 600; }
+.cx-tidlg-menu { position: absolute; right: 52px; top: 0; z-index: 70; min-width: 200px; background: #3f8f2a; border: 2px solid #2a6a1a; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 4px 16px #000a; }
+.cx-tidlg-menu button { background: none; border: 0; border-bottom: 1px solid #4fa034; color: #fff; text-align: left; padding: 5px 14px; font-size: 14px; cursor: pointer; }
+.cx-tidlg-menu button:hover, .cx-tidlg-menu button.on { background: #57b03c; color: #fff21f; }
+.cx-tidlg-foot { margin-top: 18px; }
+@media (max-width: 760px) { .cx-tidlg { left: 0; right: 0; } .cx-tidlg-row { grid-template-columns: 1fr repeat(4, auto); } .cx-tidlg-lbl { font-size: 15px; } }
+.cm-agg { position: absolute; right: 110px; bottom: 4px; font-size: 13px; font-weight: 800; color: inherit; opacity: 0.9; } .cm-team.away { position: relative; }
+.cx-menu-pop.cx-menu-clubs { max-height: 80vh; overflow-y: auto; }
+:root[data-skin='retro'] textarea.cx-note { height: 220px; text-align: left; padding: 10px; font-size: 18px; resize: vertical; }
+.cx-capt { cursor: grab; padding: 0 4px; border: 1px dashed transparent; } .cx-capt:hover { border-color: #ff9a2a; }
+.cx-mt .cx-tac-slot[draggable='true'] { cursor: grab; }
+/* sidebjælken må aldrig skubbes ud af skærmen af bredt indhold */
+:root[data-skin='retro'] body { overflow-x: hidden; }
+.shell.cx .main { overflow-x: auto; }
+.cx-mt, .cx-mt-cols > * { min-width: 0; }
+.cx-mt-list { overflow-x: auto; }
+.cx-ts-buttons.single { grid-template-columns: 1fr; }
+/* klassisk kamptaktik som CM 01/02: hvid titel, Tactics/View til venstre, Last Match/Edit til højre, faner over banen */
+.cx-title.cx-title-plain { background: linear-gradient(180deg, #ffffff, #d8d8dc); color: #111; }
+.cx-title.cx-title-plain h2 { color: #111; text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.25); }
+.cx-mt-tools { display: flex; gap: 4px; align-items: center; margin: 0 0 8px; flex-wrap: wrap; }
+.cx-mt-tools .cx-drop { min-width: 180px; }
+.cx-mt-tools .cx-drop-btn, .cx-mt-tbtn { width: 100%; min-height: 32px; justify-content: center; }
+:root[data-skin='retro'] .cx-mt-tools .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tbtn { background: linear-gradient(180deg, #b8bcc6, #7e828e); color: #fff; border: 1px solid; border-color: #e2e4ea #4a4e58 #4a4e58 #e2e4ea; text-shadow: 1px 1px 0 #000; font-weight: 700; }
+.cx-mt-tbtn { width: auto; min-width: 180px; }
+.cx-mt-gap { flex: 1; }
+.cx-mt-pcol { display: flex; flex-direction: column; gap: 6px; }
+.cx-mt-ptabs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+.cx-mt-ptabs button { min-height: 40px; background: #0a0a6e; color: #fff; border: 1px solid #1a1aa0; font-weight: 700; cursor: pointer; }
+.cx-mt-ptabs button.on { border-color: #fff21f; }
+.cx-tac-dot.cx-mt-dot { background: #fff; color: #111; border-color: #222; }
+.cx-tac-dot.cx-mt-dot.gk { background: #2f8f2a; color: #fff; }
+:root[data-skin='retro'] .cx-sbtn.cx-keep:disabled { color: #fff; opacity: 1; }
+:root[data-skin='retro'] .cx-tidlg .cx-tich { transition: none; border: 1px solid transparent; background: none; box-shadow: none; }
+:root[data-skin='retro'] .cx-tidlg .cx-tich.on { border-color: #fff21f; color: #fff21f; }
+.cx-mo-line.empty { visibility: hidden; }
+/* klassisk resultattavle (CM 01/02): navn til venstre, stillingen i en lys boks yderst til højre, "Agg 0-3" foran den */
+.cm-board.cx-board { grid-template-columns: 1fr 1fr; }
+.cm-board.cx-board .cm-team { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding-left: 28px; }
+.cm-board.cx-board .cm-name { flex: 1; text-align: left; }
+.cm-board.cx-board .cm-agg { position: static; font-size: 15px; align-self: flex-end; margin-bottom: 6px; }
+.cx-foot-venue { margin: 0; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.cx-mo-goal { display: flex; gap: 24px; justify-content: space-between; min-width: 160px; font-size: 18px; }
+.cx-mo-goal b { color: #fff21f; }
+/* spillersidens gennemsigtige boks med linjer (CM 01/02): label | værdi, mindst 12 rækker */
+.cx-kv.cx-ruled { display: grid; grid-template-columns: minmax(140px, 22%) 1fr; gap: 0; background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.12); padding: 0; margin: 6px 0 10px; }
+.cx-kv.cx-ruled > span { min-height: 31px; display: flex; align-items: center; padding: 2px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.22); }
+.cx-kv.cx-ruled > span:nth-child(odd) { border-right: 1px solid rgba(255, 140, 90, 0.35); color: #fff; }
+.cx-kv.cx-ruled > span:nth-child(even) { color: #fff21f; }
+.cx-pl-stitle { text-align: left !important; white-space: nowrap; }
+.cx-career-total td { border-top: 1px solid rgba(255, 255, 255, 0.3); font-weight: 800; }
+.cx-pl-stats th.cx-pl-pager { background: none; border: none; }
+.cx-pl-stats th.cx-pl-stitle, .cx-pl-stats th.cx-pl-stitle .c-cyan { color: #6fe3ff; font-size: 14px; text-shadow: 1px 1px 0 #000; }
+/* spillersiden som CM 01/02: alle blokke ligger i gennemsigtige felter med linjer over baggrundsbilledet */
+.cx-pl-born { background: rgba(60, 60, 70, 0.55); padding: 10px 8px; margin-bottom: 4px; }
+.cx-pl-grid { width: 100%; border-collapse: collapse; background: rgba(0, 0, 0, 0.32); margin-bottom: 6px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-pl-grid th { text-align: left; color: #fff21f; padding: 4px 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.22); font-size: 15px; }
+.cx-pl-grid td { padding: 3px 12px; color: #fff; border-bottom: 1px solid rgba(255, 255, 255, 0.18); font-size: 14px; white-space: nowrap; }
+.cx-pl-grid td:nth-child(odd) { border-right: 1px solid rgba(255, 255, 255, 0.14); }
+.cx-pl-grid td.v { text-align: center; width: 9%; border-right: 1px solid rgba(255, 255, 255, 0.22); }
+.cx-pl-grid .v-gold { color: #ffc93c; }
+.cx-pl-stats-wrap { background: rgba(0, 0, 0, 0.32); padding: 2px 0; }
+.cx-pl-pos { background: rgba(0, 0, 0, 0.35); padding: 10px 0; margin-top: 4px; }
+.cx-pl .cx-tbl-wrap { background: rgba(0, 0, 0, 0.32); }
+.cx-pl .cx-career td { border-bottom: 1px solid rgba(255, 255, 255, 0.14); border-right: 1px solid rgba(255, 255, 255, 0.1); }
+@media (max-width: 760px) { .cx-pl-grid td, .cx-pl-grid th { padding: 2px 5px; font-size: 12px; } }
+/* CM 01/02: navne, klubber og lande får en gul understregning under musen (farven bliver den samme) */
+:root[data-skin='retro'] :is(.cx-link, .link, .club-link):hover, :root[data-skin='retro'] .cx-link:focus-visible { color: inherit; text-decoration: underline; text-decoration-color: #fff21f; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+/* Rep./værdi-felterne: adskilte lilla kasser som i originalen */
+:root[data-skin='retro'] .cx-tbl .c-val { background: #3a1670; color: #fff; text-align: center; font-weight: 600; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; }
+/* den blå rækkeknap yderst til venstre er bred som i originalen */
+.cx-tbl td.btn-col { min-width: 56px; }
+:root[data-skin='retro'] span.cx-rowbtn { display: inline-flex; }
+/* klikbare navne, klubber, lande og ligaer: hånd-ikonet under musen (ikke tekstmarkøren) */
+:root[data-skin='retro'] :is(.cx-link, .link, .club-link, [role='link']), :root[data-skin='retro'] .cx-tbl :is(td.c-name, td.c-club) > span { cursor: pointer; }
+/* nyhederne som CM 01/02: datoknap til venstre (ca. en fjerdedel), overskriften i hele resten af rækken med en linje under;
+   den valgte række er rød i hele bredden. (.cx-nrow bruges også af nationsskærmene – derfor .cx-inbox foran) */
+.cx-inbox .cx-nlist { background: rgba(0, 0, 0, 0.35); max-height: calc(5 * 38px + 4px); }
+.cx-inbox .cx-nrow { grid-template-columns: minmax(150px, 19%) minmax(0, 1fr); gap: 0; min-height: 0; margin: 0; align-items: stretch; }
+.cx-inbox .cx-ndate { display: flex; align-items: center; justify-content: center; padding: 7px 6px; font-size: 14px; background: linear-gradient(180deg, #1018b8, #0a1090); }
+.cx-inbox .cx-ntitle { display: flex; align-items: center; padding: 7px 16px; font-size: 15px; font-weight: 600; border-bottom: 1px solid rgba(255, 255, 255, 0.16); }
+.cx-inbox .cx-nrow.unread .cx-ntitle { font-weight: 800; }
+.cx-inbox .cx-nmsg { background: rgba(0, 0, 0, 0.35); min-height: 380px; }
+.cx-inbox .cx-nhead { background: rgba(70, 70, 80, 0.55); font-size: 21px; }
+.cx-inbox .cx-nbody { font-size: 21px; font-weight: 600; line-height: 1.7; padding-top: 8px; }
+.cx-inbox .cx-nbar { justify-content: flex-end; padding: 4px 0; }
+.cx-inbox .cx-nbar .cx-grey { min-width: 240px; }
+.cx-subrow button { position: relative; }
+.cx-sub-arrow { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 11px; }
+/* taktikbanen (CM 01/02): spillerne i holdets trøjefarve, efternavnet i gult under */
+.cx-tac-pitch .cx-tac-nm { color: #fff21f; }
+
+/* ===== CM 01/02 1:1 – mål og farver målt i originalen (1280×804-vindue, logiske px) =====
+   sidebjælke 144 px (knapper 127×57, 3 px imellem), titel 81 px, faner 48 px (12 px under titlen), Back/Next 48 px,
+   16 px fra sidebjælken til indholdet. Normal skriftvægt (ikke fed). Fotoet ligger bag hele højre side inkl. titel og fod. */
+@media (min-width: 761px) {
+  .shell.cx { grid-template-columns: 144px minmax(0, 1fr); background-color: #0b0f33; background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.45), rgba(6, 9, 34, 0.7)), var(--cx-photo, none); background-size: cover; background-position: center; }
+  .shell.cx .main.cx-main { padding: 16px 16px 8px; background: transparent; }
+  .shell.cx .main.cx-main.cx-stadium { background: transparent; }
+  .cx-head { background: transparent; margin: -16px -16px 10px; padding: 16px 16px 0; gap: 12px; position: static; }
+  .cx-foot { background: transparent; border-top: 0; padding: 0 16px 10px; gap: 12px; }
+
+  .cx-side { padding: 8px 8px; gap: 3px; background: linear-gradient(180deg, #00006e 0%, #000060 45%, #00000f 100%); border-right: 0; }
+  .cx-date { min-height: 57px; background: #000076; border: 1px solid; border-color: #0000a5 #00003e #00003e #0000a5; }
+  .cx-date b, .cx-date span { font-size: 14px; font-weight: 500; }
+  .cx-arrows { gap: 3px; }
+  .cx-arrows button { height: 57px; background: #000076; border: 1px solid; border-color: #0000a5 #00003e #00003e #0000a5; color: #fffe54; }
+  :root[data-skin='retro'] .cx-sbtn, :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { min-height: 57px; background: #00005e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; font-size: 14px; font-weight: 500; text-shadow: none; }
+  .cx-sbtn:hover, .cx-arrows button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: #00007a; }
+
+  .cx-title { min-height: 81px; border-width: 3px; }
+  .cx-title h2 { font-weight: 600; font-size: clamp(22px, 2.6vw, 38px); }
+  .cx-tabrow button, .cx-subrow button, .shell.cx .main .tabs button { min-height: 48px; background: #1c025e; font-size: 14px; font-weight: 500; text-shadow: none; border: 1px solid #1c025e; }
+  .cx-tabrow button:hover:not(:disabled), .cx-subrow button:hover:not(:disabled), .shell.cx .main .tabs button:hover { background: #26087a; }
+  .cx-tabrow button.on, .cx-subrow button.on, .shell.cx .main .tabs button.on { background: #1c025e; color: #fffe54; border-color: #fffe54; box-shadow: none; }
+  .cx-backnext button { min-height: 48px; background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; font-size: 24px; font-weight: 500; color: #e8e8e8; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.45); }
+  .cx-backnext button:hover:not(:disabled) { background: #939193; }
+  .cx-backnext button:disabled { color: #a9a7a9; }
+}
+@media (min-width: 761px) {
+  /* sidebjælkens tekst: hvid; Game Options gul, managerens navn cyan (som originalen) */
+  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn { color: #fff; }
+  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-gopt { color: #fffe54; }
+  :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn.cx-mgr { color: #6fe3ff; }
+  /* mørke mellemrum mellem knapperne */
+  .cx-side { background: linear-gradient(180deg, #000038 0%, #00002a 50%, #00000a 100%); }
+  .cx-backnext { grid-template-columns: 3fr 1fr; }
+  /* nyhedslisten: normal skrift, lavere rækker */
+  .cx-inbox .cx-ndate, .cx-inbox .cx-ntitle { padding-top: 4px; padding-bottom: 4px; font-weight: 500; }
+  .cx-inbox .cx-nrow.unread .cx-ntitle { font-weight: 600; }
+  .cx-inbox .cx-nbody { font-weight: 500; }
+}
+@media (min-width: 761px) {
+  /* værktøjsrækken (View/Sort By/Assistant/Filter …): 200×25 px, 16 px inde i indholdet (målt i originalen) */
+  .cx-tools, .cx-tools-inline, .cx-mt-tools { padding: 0 16px; gap: 2px; }
+  :root[data-skin='retro'] .cx-tools .cx-drop-btn, :root[data-skin='retro'] .cx-tools-inline .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tools .cx-drop-btn, :root[data-skin='retro'] .cx-mt-tbtn {
+    width: 200px; min-width: 200px; height: 26px; justify-content: center; position: relative; font-size: 13px; font-weight: 500; }
+  :root[data-skin='retro'] :is(.cx-tools, .cx-tools-inline, .cx-mt-tools) .cx-drop-caret { position: absolute; right: 4px; }
+  :root[data-skin='retro'] .cx-tools > button:not(.cx-drop-btn) { min-height: 26px; min-width: 200px; font-weight: 500; }
+  /* truppen: 31 px rækker, navne i normal vægt */
+  .cx-sq-row { min-height: 31px; }
+  :root[data-skin='retro'] .cx-sq-name { font-size: 17px; font-weight: 500; }
+  .cx-sq-info { font-weight: 500; }
+}
+@media (min-width: 761px) {
+  /* taktiklisten (CM 01/02): normal vægt, formationen centreret i gult */
+  :root[data-skin='retro'] .cx-tac-name { font-weight: 500; }
+  .cx-tac-form { flex: 1; text-align: center; font-weight: 600; }
+}
+@media (min-width: 761px) {
+  /* tabeller som CM 01/02: normal skriftvægt, 25 px rækker */
+  .cx-tbl { font-weight: 500; font-size: 14px; }
+  .cx-tbl td { height: 24px; }
+  .cx-tbl th { font-weight: 500; }
+}
+/* moral/kondition som farvede ord (Superb/Very Good grøn, Good orange, Okay gul, Low rød) */
+.cx-mor.m4 { color: #6ee05a; } .cx-mor.m3 { color: #ffb347; } .cx-mor.m2 { color: #fff21f; } .cx-mor.m1 { color: #ff6b5a; }
+.cx-tbl .c-good { color: #6ee05a; }
+/* Next Match (CM 01/02): orange understreget turnering og en liste label → gul værdi */
+.cx-nm { background: rgba(0, 0, 0, 0.32); padding: 14px 16px 18px; }
+.cx-nm-comp { margin-bottom: 18px; }
+.cx-nm-comp .cx-link { color: #ff9a3c; font-size: 20px; font-weight: 600; border-bottom: 1px solid #ff9a3c; padding-bottom: 3px; }
+.cx-nm-row { display: grid; grid-template-columns: minmax(160px, 30%) 1fr; align-items: baseline; min-height: 29px; }
+.cx-nm-row > span:first-child { color: #fff; font-size: 19px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+.cx-nm-row .v { color: #fff21f; font-size: 14px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+.cx-tools .cx-greybtn.on { color: #fff21f; }
+@media (min-width: 761px) {
+  /* de grønne menuer (CM 01/02): større tekst i normal vægt, lange lister kan rulles */
+  :root[data-skin='retro'] .cx-drop-pop button { font-size: 14px; font-weight: 500; min-height: 30px; }
+  .cx-drop-pop { max-height: calc(100vh - 40px); overflow-y: auto; }
+}
+@media (min-width: 761px) {
+  /* nøgle/værdi-lister (General Info m.fl.) som CM 01/02: gennemsigtigt panel, hvide labels 19 px, gule værdier 14 px, normal vægt */
+  .cx-kv.big { background: rgba(0, 0, 0, 0.32); padding: 12px 16px; row-gap: 2px; }
+  .cx-kv.big > span { font-weight: 500; }
+  .cx-kv.big > span:nth-child(odd) { font-size: 19px; color: #fff; }
+  .cx-kv.big > span:nth-child(even) { font-size: 14px; color: #fff21f; align-self: center; }
+  .cx-section { font-weight: 600; }
+}
+.cx-ct { background: rgba(0, 0, 0, 0.32); padding: 10px 16px; min-height: 200px; }
+.cx-ct-total { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+.cx-ct-total .c-val { display: inline-block; min-width: 160px; padding: 4px 8px; text-align: center; background: #3a1670; color: #fff; border: 1px solid; border-color: #5a3196 #1c0838 #1c0838 #5a3196; }
+@media (min-width: 761px) {
+  /* kampprogrammet som CM 01/02: holdnavne i normal vægt, ligaen gul, pokaler/Europa orange */
+  .cx-fx-opp { font-size: 19px; font-weight: 500; }
+  .cx-fx-comp { font-weight: 500; font-size: 14px; }
+  .cx-fx-comp.cup { color: #ffb347; }
+  .cx-fx-date { height: 26px; font-size: 13px; font-weight: 500; }
+}
+@media (min-width: 761px) {
+  /* ligatabellen (CM 01/02): klubnavne 19 px i normal vægt, bred placeringsknap, tynde stiplede zonelinjer */
+  .cx-league .cx-lg-club { font-size: 19px; font-weight: 500; cursor: pointer; }
+  .cx-league .cx-lg-pos { min-width: 80px; font-weight: 500; }
+  .cx-league tr.zone-start td { border-top: 1px dashed #fff21f; }
+}
+@media (min-width: 761px) {
+  /* løbende tekst (bestyrelse, beskeder) som CM 01/02: normal vægt i et gennemsigtigt panel */
+  .cx-statement { background: rgba(0, 0, 0, 0.32); padding: 4px 16px 14px; min-height: 420px; }
+  .cx-statement p { font-weight: 500; font-size: 19px; }
+}
+.cx-panel { background: rgba(0, 0, 0, 0.32); min-height: 380px; }
+/* Live League Table under kampen: egen klub øverst, stiplet gul linje under */
+.cx-live-tbl tr.cx-live-sep td { padding: 0; height: 10px; border-bottom: 1px dashed #fff21f; }
+/* kampens fod som i CM 01/02: stadion i grå (normal skrift, lys tekst), kommentaren i holdets farver */
+@media (min-width: 761px) {
+  .cx-foot-venue { min-height: 48px; background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; color: #e8e8e8; font-weight: 400; text-shadow: none; font-size: 20px; }
+  .cx-foot-line { border-color: rgba(255,255,255,.45) rgba(0,0,0,.45) rgba(0,0,0,.45) rgba(255,255,255,.45); }
+}
+/* kampskærmens faner målt i CM 01/02 (7/11): gennemsigtigt panel 16 px inde, normal skrift */
+@media (min-width: 761px) {
+  .cx-mo { margin: 0 16px; padding: 4px 0 10px; }
+  .cx-mo-meta { margin: 4px 0; }
+  .cx-mo-meta span { background: rgba(0, 0, 0, 0.45); padding: 6px 36px; font-size: 13px; font-weight: 400; }
+  .cx-mo-scorers { font-weight: 400; }
+  .cx-mo-goal b { color: #fff21f; font-weight: 400; }
+  .cx-ms { margin: 0 16px; padding: 4px 0; gap: 2px; background: rgba(0, 0, 0, 0.3); }
+  .cx-ms-row { grid-template-columns: 152px 1fr 152px; }
+  .cx-ms-v { background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #b8ecff; font-size: 18px; font-weight: 400; padding: 6px 0; text-shadow: none; }
+  .cx-ms-l { font-size: 19px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+  .cx-az { margin: 0 16px; padding: 12px 0; background: rgba(0, 0, 0, 0.3); }
+  .cx-az-pitch { position: relative; margin: 0 auto 12px; width: 78%; height: 380px; border: 1px solid #2f6a2a; outline: 12px solid #123d12; outline-offset: 0;
+    background: repeating-linear-gradient(180deg, #143f14 0 40px, #113811 40px 80px); }
+  .cx-az-third { position: relative; z-index: 1; align-content: center; border-right: 1px dashed #fff21f; }
+  .cx-az-third b { font-size: 20px; font-weight: 400; text-shadow: 1px 1px 0 #000; }
+  .cx-az-zbar { position: absolute; left: 8px; right: 8px; bottom: 8px; padding: 4px 6px; background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; }
+  .cx-az-zbar .cx-mo-bar { height: 12px; border-width: 1px; } .cx-az-zbar .cx-mo-bar span { font-size: 0; }
+  .cx-az-label { position: absolute; z-index: 2; top: 6px; left: 50%; transform: translateX(-50%); width: 30%; padding: 4px 0; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 13px; }
+  .cx-az-pitch > i { position: absolute; border: 1px solid rgba(140, 190, 120, 0.7); pointer-events: none; }
+  .cx-az-box { top: 20%; height: 60%; width: 14%; } .cx-az-box.l { left: 0; border-left: 0; } .cx-az-box.r { right: 0; border-right: 0; }
+  .cx-az-six { top: 35%; height: 30%; width: 5%; } .cx-az-six.l { left: 0; border-left: 0; } .cx-az-six.r { right: 0; border-right: 0; }
+  .cx-az-half { top: 0; bottom: 0; left: 50%; width: 0; border-width: 0 0 0 1px !important; }
+  .cx-az-circle { top: 50%; left: 50%; width: 106px; height: 106px; margin: -53px 0 0 -53px; border-radius: 50%; }
+  .cx-az-poss { display: block; width: 78%; margin: 0 auto; padding: 8px 40px; }
+}
+@media (min-width: 761px) {
+  .cx-rt { margin: 0 16px; padding: 8px 0; gap: 30px; background: rgba(0, 0, 0, 0.3); }
+  .cx-rt .cx-tbl td { font-weight: 400; padding-top: 1px; padding-bottom: 1px; }
+  .cx-rt .c-orange { color: #ffa64a; }
+}
+@media (min-width: 761px) {
+  .cx-ts-tbl { margin: 0 16px; padding: 8px 0; background: rgba(0, 0, 0, 0.3); }
+  .cx-ts-tbl .cx-tbl td { font-weight: 400; padding-top: 1px; padding-bottom: 1px; }
+  .cx-ts-tbl .c-orange { color: #ffa64a; font-weight: 400; } .cx-ts-tbl .c-con { color: #4f8fff; }
+}
+@media (min-width: 761px) {
+  .cx-ls { margin: 0 16px; padding: 6px 14px; background: rgba(0, 0, 0, 0.3); }
+  .cx-ls-row { grid-template-columns: 1fr 70px 1fr; font-size: 18px; font-weight: 400; color: #e4e4e4; }
+  .cx-ls-team { font-size: 18px; } .cx-ls-score { text-align: right; padding-right: 22px; font-size: 18px; }
+}
+.cx-mo-foot .cx-mo-att { color: #6fe3ff; }
+@media (min-width: 761px) { .cx-mo-foot { font-weight: 400; font-size: 13px; padding: 12px 16px; background: rgba(0, 0, 0, 0.25); margin-top: 18px; } }
+@media (min-width: 761px) {
+  .cx-mr { margin: 0 16px; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); }
+  .cx-mr .cx-tbl td { font-weight: 400; font-size: 13px; padding: 5px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.14); }
+  .cx-mr .cx-mr-m { width: 176px; text-align: center; border-right: 1px solid rgba(255, 255, 255, 0.14); }
+  .cx-mr-none { display: grid; place-items: center; min-height: 480px; color: #e4e4e4; font-size: 18px; }
+}
+/* kampdagen (CM 01/02 "Afternoon Result"): gennemsigtigt panel 16 px inde, placeringen i blå bokse, normal skrift */
+@media (min-width: 761px) {
+  .cx-md-panel { margin: 0 16px; padding: 8px 0 12px; min-height: 480px; background: rgba(0, 0, 0, 0.3); }
+  .cx-md { padding: 4px 2px 10px; }
+  .cx-md-row, .cx-md-row:has(.cx-md-res) { grid-template-columns: 60px minmax(0, 1fr) 90px minmax(0, 1fr) 60px; gap: 6px; min-height: 30px; }
+  .cx-md-code { height: 27px; background: #00006e; border-color: #000085 #00003e #00003e #000085; font-size: 12px; font-weight: 400; }
+  .cx-md-home, .cx-md-away { font-size: 18px; font-weight: 400; text-shadow: 1px 1px 0 #000; }
+  .cx-md-home { padding-left: 36px; }
+  .cx-md-res, .cx-md-v { font-size: 18px; font-weight: 400; }
+  .cx-md-stage { font-weight: 400; font-size: 18px; margin-left: 6px; }
+}
+@media (min-width: 761px) { .cx-live-tbl { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } }
+/* budskærmen (CM 01/02 "Man Utd transfer bid for Inamoto") */
+.cx-bid .cx-ts-body { align-items: stretch; }
+.cx-bid-row { display: grid; grid-template-columns: minmax(0, 1fr) 52px 220px 52px 52px; align-items: center; gap: 4px; margin-left: 40px; min-height: 27px; }
+.cx-bid-label { color: #fff; font-size: 17px; text-shadow: 1px 1px 0 #000; }
+.cx-bid-row.off .cx-bid-label, .cx-bid-row.off .cx-bid-val { color: #9a9ca6; }
+.cx-bid-val { text-align: center; color: #fff; font-size: 16px; text-shadow: 1px 1px 0 #000; }
+.cx-bid-val.wide { grid-column: 2 / span 3; }
+.cx-bid-row .cx-pm { height: 24px; min-width: 0; }
+.cx-bid-tools { display: flex; gap: 2px; margin: 60px 0 6px; } .cx-bid-tools > * { width: 200px; }
+.cx-bid-swap { display: flex; justify-content: space-between; margin: 0 270px 0 66px; color: #fff; font-size: 16px; }
+.cx-bid-total { display: flex; justify-content: space-between; margin: 6px 270px 0 66px; color: #fff; font-size: 17px; text-shadow: 1px 1px 0 #000; }
+.cx-bid-total b { color: #fff21f; font-weight: 400; }
+.cx-bid-err { margin: 12px 40px 0; color: #ff8a7a; font-size: 15px; }
+@media (max-width: 760px) { .cx-bid-row { grid-template-columns: minmax(0, 1fr) 34px 90px 34px 34px; margin-left: 0; } .cx-bid-label { font-size: 13px; } .cx-bid-swap, .cx-bid-total { margin: 4px 0; } }
+@media (min-width: 761px) {
+  .cx-bid .cx-ts-body { margin: 0 16px; background: rgba(0, 0, 0, 0.3); }
+  .cx-bid .cx-ts-intro { font-weight: 400; }
+  .cx-bid-row .cx-pm { background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 18px; font-weight: 400; }
+  .cx-bid-row .cx-pm:disabled { opacity: 0.6; cursor: default; }
+}
+:root[data-skin='retro'] button.cx-sq-tag.yel { background: #c8c24a; border-color: #e8e27a #7a7420 #7a7420 #e8e27a; color: #10164e; }
+@media (min-width: 761px) { .cx-mo-line { font-weight: 500; font-size: 22px; } }
+.cx-live-mv { display: inline-block; width: 14px; font-size: 10px; vertical-align: 3px; }
+.cx-live-mv.up::before { content: '▲'; color: #fff21f; } .cx-live-mv.down::before { content: '▼'; color: #ff3b3b; }
+.cx-ts-buttons.cx-bid-answer { grid-template-columns: 3fr 1fr 1fr 1fr; }
+.cx-nbar .cx-respond { min-width: 200px; }
+/* lille Windows-vindue (CM 01/02: "Holiday until next match – Your club has no match in the next 60 days.") */
+.cx-winbox-bg { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; }
+.cx-winbox { width: 260px; background: #8c8a8c; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; text-align: center; padding-bottom: 12px; box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5); }
+.cx-winbox-head { background: #00006e; color: #fff; text-align: left; padding: 4px 8px; font-size: 13px; }
+.cx-winbox p { margin: 14px 10px; color: #fff; font-size: 12.5px; }
+:root[data-skin='retro'] .cx-winbox button { min-width: 74px; padding: 3px 0; background: #8c8a8c; color: #fff; border: 1px solid; border-color: #d6d4d6 #3a383a #3a383a #d6d4d6; font-size: 13px; box-shadow: none; }
+.cx-md-tools { display: flex; align-items: center; gap: 4px; margin: -4px 16px 6px; }
+.cx-md-tools .cx-greybtn { min-width: 200px; }
+.cx-md-tools .grow { flex: 1; }
+/* mål (CM 01/02): bjælken blinker GOAL! i 5-6 sekunder */
+.cx-goal-flash { background: var(--g1, #fff21f); color: var(--g2, #0b1a5c); font-size: clamp(28px, 4vw, 46px) !important; font-weight: 900 !important; letter-spacing: 0.08em; animation: cx-goal-blink 0.55s steps(1) infinite; }
+@keyframes cx-goal-blink { 50% { background: var(--g2, #0b1a5c); color: var(--g1, #fff21f); } }
+/* lange trupper (40+ spillere): listen ruller i sin egen boks med en synlig bjælke som i CM 01/02 (resten lå før skjult bag bundknapperne) */
+@media (min-width: 761px) {
+  .cx-sq-cols { max-height: calc(100vh - 410px); overflow-y: auto; padding-right: 4px; }
+  .cx-sq-cols, .cx-tac-list, .cx-mr, .cx-live-tbl { scrollbar-width: auto; scrollbar-color: #838183 rgba(0, 0, 0, 0.35); }
+  .cx-sq-cols::-webkit-scrollbar, .cx-tac-list::-webkit-scrollbar { width: 18px; }
+  .cx-sq-cols::-webkit-scrollbar-track, .cx-tac-list::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.35); }
+  .cx-sq-cols::-webkit-scrollbar-thumb, .cx-tac-list::-webkit-scrollbar-thumb { background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; }
+}
+.cx-rt tr.cx-mom td:not(.btn-col) { background: rgba(255, 242, 31, 0.16); }
+.cx-mom-line { margin: 4px 16px 0; padding: 8px 12px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-size: 18px; }
+.cx-mom-line .cx-link { color: #fff; }
+.cx-board .cm-name { display: inline-flex; align-items: center; gap: 12px; }
+@media (min-width: 761px) { .cx-coef { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 300px); overflow-y: auto; } }
+.cx-coef .cx-league .c-num { color: #fff21f; }
+/* Penalty Takers (CM 01/02): lilla nummerknapper og pladserne 1-25 / 26-50 */
+.cx-pen-num { min-width: 46px; height: 27px; background: #3a1a6e; color: #fff; border: 1px solid; border-color: #6a4aa0 #1e0a40 #1e0a40 #6a4aa0; font-size: 13px; cursor: pointer; }
+.cx-pen-num.on { background: #6a1fb0; color: #fff21f; }
+.cx-pen-slots { display: grid; grid-template-columns: repeat(25, 1fr); gap: 2px; margin: 4px 16px; }
+.cx-pen-slots span { display: grid; place-items: center; height: 22px; background: #2a0f55; color: #9c8cc0; font-size: 11px; }
+.cx-pen-slots span.on { background: #6a1fb0; color: #fff21f; }
+.cx-pens .cx-sq-cols { margin: 0 16px; max-height: calc(100vh - 430px); }
+.cx-pens .cx-ts-buttons { grid-template-columns: 1fr; }
+.cx-dlg-input { display: block; margin: 14px auto 0; width: 360px; max-width: 90%; padding: 6px 10px; background: #00005e; color: #fff; border: 1px solid; border-color: #00003e #000085 #000085 #00003e; font: inherit; font-size: 17px; }
+/* Progress (CM 01/02): placeringskurve og tabel */
+.cx-prog { display: grid; grid-template-columns: 1fr 260px; gap: 6px; margin: 0 16px; }
+.cx-prog-chart { position: relative; padding: 22px 8px 22px 8px; background: rgba(0, 0, 0, 0.3); }
+.cx-prog-chart svg { width: 100%; height: calc(100vh - 420px); min-height: 260px; }
+.cx-prog-chart svg text { fill: #fff; font-size: 13px; }
+.cx-prog-chart .grid { stroke: rgba(255, 255, 255, 0.45); stroke-width: 1; vector-effect: non-scaling-stroke; }
+.cx-prog-chart .frame { fill: none; stroke: #2a2ae8; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.cx-prog-chart path { fill: none; stroke-width: 3; vector-effect: non-scaling-stroke; }
+.cx-prog-chart path.me { stroke: #ff3b2f; } .cx-prog-chart path.opp { stroke: #fff21f; }
+.cx-prog-ylab, .cx-prog-xlab { position: absolute; color: #fff; font-size: 13px; }
+.cx-prog-ylab { top: 4px; left: 40px; } .cx-prog-xlab { bottom: 2px; left: 50%; }
+.cx-prog-tbl { display: flex; flex-direction: column; gap: 1px; background: rgba(0, 0, 0, 0.3); overflow-y: auto; max-height: calc(100vh - 330px); }
+.cx-prog-row { display: grid; grid-template-columns: 60px 1fr; align-items: center; gap: 10px; min-height: 24px; color: #fff; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); }
+.cx-prog-row .cx-lg-pos { min-width: 0; font-size: 12px; } .cx-prog-row .me { color: #ff3b2f; } .cx-prog-row .opp { color: #fff21f; }
+@media (max-width: 760px) { .cx-prog { grid-template-columns: 1fr; } }
+.cx-prog-chart circle.me { fill: #ff3b2f; } .cx-prog-chart circle.opp { fill: #fff21f; }
+@media (min-width: 761px) { .cx-refs { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-refs .cx-tbl td { font-weight: 400; } }
+.cx-mo-red { color: #ff6b5a; } .cx-mo-red .cx-card { vertical-align: -2px; }
+/* "Man Utd History" (CM 01/02): to kolonner med tynde linjer, værdierne i gult, sæsonen i en blå knap */
+.cx-chist-tbl { margin: 0 16px; padding: 2px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 360px); overflow-y: auto; }
+.cx-chist-row { display: grid; grid-template-columns: 340px 1fr; align-items: center; min-height: 24px; border-bottom: 1px solid rgba(255, 255, 255, 0.15); color: #fff; font-size: 13px; }
+.cx-chist-row > span { padding: 2px 8px; } .cx-chist-row > span:first-child { border-right: 1px solid rgba(255, 255, 255, 0.15); }
+.cx-chist-row.three { grid-template-columns: 280px 100px 1fr; }
+.cx-chist-row.date { grid-template-columns: 120px 1fr; } .cx-chist-row.date > span:first-child { border-right: 0; }
+.cx-chist-row .v { color: #fff21f; }
+.cx-chist-btn { display: grid; place-items: center; height: 20px; margin: 2px 6px; background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 12px; }
+@media (max-width: 760px) { .cx-chist-row, .cx-chist-row.three { grid-template-columns: 1fr; } }
+/* "Championship Manager" (Nations & Clubs): to kolonner med navn, landekode (gul) og liga (orange) */
+.cx-nc-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; margin: 0 16px; padding: 6px 12px; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 360px); overflow-y: auto; }
+.cx-nc-row { display: grid; grid-template-columns: 1fr 70px 50px; align-items: center; min-height: 28px; font-size: 18px; color: #fff; }
+.cx-nc-row .code { color: #fff21f; font-size: 12px; text-align: center; } .cx-nc-row .extra { color: #ffa64a; font-size: 12px; text-align: center; }
+@media (max-width: 760px) { .cx-nc-list { grid-template-columns: 1fr; } .cx-nc-row { font-size: 15px; } }
+/* turneringens logo i kampens sidebjælke */
+.cx-side-comp { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 18px 6px 0; padding: 10px 4px; text-align: center; color: #fff; font-size: 12px; line-height: 1.25; }
+.cx-side-comp img { width: 96px; height: 96px; object-fit: contain; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6)); }
+.cx-ts-buttons.cx-job-answer { grid-template-columns: 2fr 1fr 1fr; }
+/* Manager Status / Selected League(s) (Game Options, CM 01/02) */
+.cx-mstat .cx-chist-row { font-size: 15px; min-height: 30px; } .cx-mstat .dim { color: #9a9ca6; }
+.cx-sl-top { display: flex; align-items: center; gap: 10px; margin: 0 16px 8px; padding: 6px 10px; background: rgba(0, 0, 0, 0.45); color: #fff; font-size: 13px; }
+.cx-sl-top > span:not(.cx-sl-cell) { margin-left: 6px; }
+.cx-sl-row { display: grid; grid-template-columns: minmax(0, 1fr) 150px 150px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 30px; padding: 0 8px; }
+.cx-sl-row .nm { color: #fff; font-size: 17px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-sl-row.lg-sel .nm, .cx-sl-row.lg-own .nm { color: #fff21f; }
+/* SELECTED / BACKGROUND / laveste division: grå tekst, det valgte med gul ramme og orange tekst (CM 01/02) */
+:root[data-skin='retro'] .cx-sl-cell, .cx-sl-cell { display: flex; align-items: center; justify-content: center; min-height: 26px; padding: 0 8px; border: 1px solid transparent; background: none; color: #b8bcc6; font: inherit; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; text-shadow: 1px 1px 0 #000; }
+:root[data-skin='retro'] .cx-sl-cell.on, .cx-sl-cell.on { border-color: #fff21f; color: #ff9a2a; }
+.cx-sl-cell.lw { justify-content: center; font-weight: 600; }
+.cx-sl-cell.lw:not(.on) { color: #9a9ca6; }
+button.cx-sl-cell:not(:disabled) { cursor: pointer; } button.cx-sl-cell:not(:disabled):hover { color: #fff; border-color: rgba(255, 242, 31, 0.5); }
+button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
+@media (max-width: 760px) { .cx-sl-row { grid-template-columns: minmax(0, 1fr) 84px 96px; min-height: 38px; } .cx-sl-row .nm { font-size: 14px; } .cx-sl-cell { font-size: 10.5px; padding: 0 4px; min-height: 32px; } .cx-sl-cell.lw { display: none; } .cx-sl-top { flex-wrap: wrap; } }
+@media (min-width: 761px) { .cx-hof { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 330px); overflow-y: auto; } .cx-hof .cx-tbl td { font-weight: 400; } }
+.cx-hof tr.me td { color: #fff21f; } .cx-hof-me { margin: 6px 12px; color: #fff21f; }
+.cx-hof-fb .cx-head > .cx-title { display: none; }
+/* Coaches (CM 01/02 træning) */
+.cx-coach-grid { display: flex; flex-direction: column; gap: 6px; padding: 10px 14px; }
+.cx-coach-row { display: grid; grid-template-columns: 1.6fr repeat(5, 1fr); gap: 4px; align-items: center; }
+.cx-coach-name { color: #fff; font-size: 14px; } .cx-coach-name em { color: #fff21f; font-style: normal; font-size: 12px; margin-left: 6px; }
+.cx-title-logo img[src*='/league/'] { filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9)) drop-shadow(0 0 3px rgba(0, 0, 0, 0.6)); }
+.cx-ctx-bg { position: fixed; inset: 0; z-index: 94; }
+.cx-ctx-bg .cx-ctx { position: fixed; display: flex; flex-direction: column; }
+.cx-mo-goal.og > span:first-child, .cx-mo-goal.og .cx-link { color: #ffa64a; }
+.cx-mt-list .cx-on-note { color: #ff9a2e; } .cx-mt-list tr.dim td.c-pos:not(.cx-on-note) { color: #fff; }
+
+/* ===== CM0102 Reborn Design Kit (2026-11-07, design-tokens.json) =====
+   Farver og affasninger fra designerens kit: tekst #d5d3d5, faner #200062, datoceller #000080, valgt nyhed #830000,
+   grå knapper #838183 med lys/mørk kant, titlen med 3 px kant i en lysere/mørkere udgave af klubbens farve.
+   Skrifterne (Eras Demi / Handel Gothic) bruges, hvis de findes på maskinen – se fontvalget 'original'. */
+@font-face { font-family: CM0102Text; src: local('Eras Demi ITC'), local('ErasITC-Demi'), local('Eras Demi'); font-display: swap; }
+@font-face { font-family: CM0102Heading; src: local('HandelGothic BT'), local('Handel Gothic BT'), local('HandelGothicBT-Regular'), local('Handel Gothic'); font-display: swap; }
+:root[data-skin='retro'][data-cxfont='original'] body { font-family: CM0102Text, 'Eras Demi ITC', 'Saira Semi Condensed', Tahoma, sans-serif; }
+:root[data-skin='retro'][data-cxfont='original'] :is(button, input, select) { font-family: inherit; }
+:root[data-skin='retro'][data-cxfont='original'] .cx-title h2 { font-family: CM0102Heading, 'Handel Gothic', CM0102Text, sans-serif; font-weight: 400; letter-spacing: 0; }
+@media (min-width: 761px) {
+  :root[data-skin='retro'] .shell.cx { color: #d5d3d5; }
+  /* titlen: 3 px affasning i klubbens egen farve (originalen: #ff0000 / #600000 omkring #b40001) */
+  :root[data-skin='retro'] .cx-title { border: 3px solid; border-color: color-mix(in srgb, var(--tb, #b40001) 55%, #fff 45%) color-mix(in srgb, var(--tb, #b40001) 53%, #000) color-mix(in srgb, var(--tb, #b40001) 53%, #000) color-mix(in srgb, var(--tb, #b40001) 55%, #fff 45%); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.55); }
+  :root[data-skin='retro'] .cx-title:not(.neutral) h2 { text-shadow: 2px 3px 0 color-mix(in srgb, var(--tb, #b40001) 55%, #000), 1px 1px 0 rgba(162, 162, 162, 0.85); }
+  /* sidebjælken: blå forløb mod sort, knapper med indre affasning */
+  :root[data-skin='retro'] .shell.cx .cx-side { background: linear-gradient(180deg, #000080 0%, #000065 32%, #000024 68%, #000 100%); }
+  :root[data-skin='retro'] .cx-sbtn, :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn, :root[data-skin='retro'] .cx-date, :root[data-skin='retro'] .cx-arrows button {
+    background: linear-gradient(rgba(0, 0, 121, 0.9), rgba(0, 0, 84, 0.8)); border: 1.5px solid; border-color: #00002a #00002a #00008c #00008c;
+    box-shadow: inset 1px 1px 0 #0000a0, inset -1px -1px 0 #000021; text-shadow: 1px 1px 0 #12121d; }
+  :root[data-skin='retro'] .cx-sbtn:hover, :root[data-skin='retro'] .cx-arrows button:hover:not(:disabled), :root[data-skin='retro'] .cx-gameopt > .cx-drop-btn.cx-sbtn:hover { background: linear-gradient(#080889, #00005f); }
+  :root[data-skin='retro'] .cx-sbtn:active, :root[data-skin='retro'] .cx-arrows button:active { box-shadow: inset 1px 1px 0 #000021; }
+  /* faner */
+  :root[data-skin='retro'] :is(.cx-tabrow, .cx-subrow) button, :root[data-skin='retro'] .shell.cx .main .tabs button {
+    background: #200062; border: 1.5px solid; border-color: #3a0095 #09001b #09001b #3a0095; box-shadow: inset -1px -1px 0 #1a0041; text-shadow: 1px 1px 0 #504064; color: #d5d3d5; }
+  :root[data-skin='retro'] :is(.cx-tabrow, .cx-subrow) button:hover:not(:disabled), :root[data-skin='retro'] .shell.cx .main .tabs button:hover { background: #2b0076; }
+  :root[data-skin='retro'] :is(.cx-tabrow, .cx-subrow) button.on, :root[data-skin='retro'] .shell.cx .main .tabs button.on { border: 1px solid #ffff00; color: #ffff00; box-shadow: 0 0 0 0.3px #ffff00; position: relative; z-index: 1; }
+  /* grå knapper (Back/Next, Next Unread, værktøjslinjer) */
+  :root[data-skin='retro'] .cx-backnext button, :root[data-skin='retro'] .cx-grey {
+    background: #838183; border: 1.5px solid; border-color: #d5d5ca #333630 #333630 #d5d5ca; box-shadow: inset -1px -1px 0 #696969; text-shadow: 0.5px 0.5px 0 #acacac; color: #1d1d1d; }
+  :root[data-skin='retro'] .cx-backnext button { color: #d5d3d5; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5); }
+  :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):hover:not(:disabled) { background: #969396; }
+  :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):active:not(:disabled) { border-color: #333630 #d5d5ca #d5d5ca #333630; box-shadow: inset 1px 1px 0 #555; }
+  :root[data-skin='retro'] :is(.cx-backnext button, .cx-grey):disabled { color: #4a504a; text-shadow: 1px 1px 0 #bebebe; }
+
+  /* nyhederne: 5 rækker à 24 px med originalens grå rullebjælke, datocellen 211 px */
+  :root[data-skin='retro'] .cx-inbox .cx-nlist { height: calc(5 * 24.4px + 2px); max-height: none; padding: 0; margin: 0 16px; background: rgba(0, 0, 0, 0.4); border: 0; }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar { width: 20px; }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-track { background: rgba(119, 119, 119, 0.44); border-left: 1px solid #454545; }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-thumb { background: #838183; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button { display: block; height: 20px; background: #838183 no-repeat center / 8px 6px; border: 1.5px solid; border-color: #dadada #3f3f3f #3f3f3f #dadada; }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button:vertical:decrement { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath d='M4 0 8 6H0z'/%3E%3C/svg%3E"); }
+  :root[data-skin='retro'] .cx-inbox .cx-nlist::-webkit-scrollbar-button:single-button:vertical:increment { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 6'%3E%3Cpath d='M0 0h8L4 6z'/%3E%3C/svg%3E"); }
+  :root[data-skin='retro'] .cx-inbox .cx-nrow { grid-template-columns: 211px minmax(0, 1fr); gap: 0; margin: 0; min-height: 24.4px; font-size: 13px; line-height: 22px; }
+  :root[data-skin='retro'] .cx-inbox .cx-ndate { padding: 0 6px; background: #000080; border: 1px solid; border-color: #0000ef #000027 #9c8ec1 #0000d7; color: #d5d3d5; font-size: 12px; text-shadow: 0.5px 0.5px 0 #555067; }
+  :root[data-skin='retro'] .cx-inbox .cx-ntitle { padding: 0 0 0 12px; background: rgba(0, 0, 0, 0.13); border-bottom: 1px solid rgba(164, 160, 149, 0.4); color: #d5d3d5; text-shadow: 0.6px 0.6px 0 #3b3b3b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  :root[data-skin='retro'] .cx-inbox .cx-nrow:hover .cx-ntitle { background: rgba(35, 0, 100, 0.66); }
+  :root[data-skin='retro'] .cx-inbox .cx-nrow.on .cx-ntitle { background: #830000; border-bottom-color: #870700; color: #fff; }
+  :root[data-skin='retro'] .cx-inbox .cx-nrow.on:hover .cx-ntitle { background: #930000; }
+  /* "Filter :" med et tekstfelt i midten, Next Unread (201 px) til højre */
+  :root[data-skin='retro'] .cx-inbox .cx-nbar { position: relative; margin: 5px 16px 0; min-height: 29px; padding: 0; background: rgba(0, 0, 0, 0.2); justify-content: flex-end; }
+  :root[data-skin='retro'] .cx-inbox .cx-nfilter { position: absolute; left: 47.2%; top: 0; height: 100%; gap: 4px; color: #d5d3d5; font-size: 12px; }
+  :root[data-skin='retro'] .cx-inbox .cx-nfilter input { width: 180px; height: 23px; padding: 2px 4px; background: transparent; border: 0; color: #d5d3d5; outline: none; }
+  :root[data-skin='retro'] .cx-inbox .cx-nfilter input:focus { background: rgba(0, 0, 0, 0.4); box-shadow: inset 0 -1px 0 rgba(212, 210, 212, 0.4); }
+  :root[data-skin='retro'] .cx-inbox .cx-nbar .cx-grey { min-width: 201px; height: 29px; }
+  /* artiklen: mørke paneler over fotoet, gul overskrift 18 px, tekst 18/24 px */
+  :root[data-skin='retro'] .cx-inbox .cx-nmsg { margin: 3px 16px 0; padding: 0; background: transparent; border: 0; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  :root[data-skin='retro'] .cx-inbox .cx-nhead { margin: 0; min-height: 49px; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.44); color: #ffff00; font-size: 18px; font-weight: 400; text-shadow: 1px 1px 0 #5c5000; }
+  :root[data-skin='retro'] .cx-inbox .cx-nmsg > :not(.cx-nhead) { margin: 0; }
+  :root[data-skin='retro'] .cx-inbox .cx-nbody { min-height: 260px; padding: 11px 16px; background: rgba(0, 0, 0, 0.44); font-size: 18px; line-height: 24px; font-weight: 400; color: #d5d3d5; text-shadow: 0.6px 0.7px 0 #656565; white-space: pre-line; }
+  :root[data-skin='retro'] .cx-inbox .cx-nmsg:not(:has(.cx-nbody))::after { content: ''; display: block; min-height: 260px; background: rgba(0, 0, 0, 0.44); }
+}
+@media (min-width: 761px) {
+  /* fotoet næsten i fuld styrke som i originalen og kittet (panelerne er mørke og gennemsigtige, ikke fotoet) */
+  :root[data-skin='retro'] .shell.cx { background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.12), rgba(0, 0, 0, 0.22)), var(--cx-photo, none); }
+}
+/* bokse (Please Confirm, Team Selection …) starter ved sidebjælkens kant (144 px på skrivebordet), så menuen ikke skæres af */
+@media (min-width: 761px) { .cx-dlg { left: 144px; } }
+
+/* mobil: Action Zones, målscorere, titelbjælke og nyhedsliste (sidst, så de vinder over de almindelige regler) */
+@media (max-width: 760px) {
+  .cx-az { margin: 0 4px; }
+  .cx-az-pitch { height: 240px; }
+  .cx-az-circle { width: 64px; height: 64px; margin: -32px 0 0 -32px; }
+  .cx-az-third b { font-size: 24px; }
+  .cx-az-zbar .cx-mo-bar { height: 18px; } .cx-az-zbar .cx-mo-bar span { font-size: 10px; }
+  .cx-az-poss { grid-template-columns: 1fr; margin: 0; }
+  /* målscorere/udvisninger: navn og minut tæt sammen, så minuttet ikke skubbes ud over kanten */
+  .cx-mo-scorers { gap: 10px; margin: 8px 4px 0; font-size: 14px; }
+  .cx-mo-scorers + .cx-mo-line { margin-top: 18px; }
+  .cx-mo-goal { min-width: 0; gap: 6px; font-size: 15px; }
+  .cx-mo-goal > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cx-mo-goal b { flex: none; }
+  .cx-mo-scorers .away .cx-mo-goal { flex-direction: row-reverse; }
+  /* titelbjælken: plads til menuknappen + logoet til venstre og Action til højre */
+  .cx-title { padding: 4px 40px 4px 64px; }
+  .cx-title h2 { font-size: 19px; overflow-wrap: anywhere; }
+  .cx-action { top: 50%; right: 4px; transform: translateY(-50%); }
+  :root[data-skin='retro'] .cx-act .cx-drop-btn { width: 34px; min-width: 0; height: 30px; padding: 0; justify-content: center; }
+  .cx-act .cx-drop-caret { color: inherit; font-size: 14px; }
+  /* nyhedslisten: smal datokolonne og overskrifter over to linjer i stedet for at blive klippet */
+  .cx-inbox .cx-nrow { grid-template-columns: 82px minmax(0, 1fr); }
+  .cx-inbox .cx-ndate { font-size: 12px; padding: 4px 2px; text-align: center; }
+  /* kanter i stedet for polstring: overflow klipper ved polstringen, så en tredje linje ellers kiggede frem */
+  :root[data-skin='retro'] .cx-inbox .cx-ntitle, .cx-inbox .cx-ntitle { padding: 0 8px; border-top: 5px solid transparent; border-bottom: 5px solid transparent; box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.14); font-size: 14px; line-height: 1.25; white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; max-height: calc(2.5em + 10px); }
+}
+
+/* CM 01/02: Finances / Income / Expenditure / Stats (Finance.tsx ClassicFinances) */
+.cx-finv { margin: 0 16px; padding: 4px 0 12px; background: rgba(0, 0, 0, 0.35); }
+.cx-fin { width: 100%; border-collapse: collapse; font-size: 15px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-fin th { padding: 6px 12px; color: #ff9a2a; font-size: 13px; text-align: left; border-bottom: 1px solid #ff9a2a; }
+.cx-fin td { padding: 4px 12px; color: #fff21f; font-size: 13px; }
+.cx-fin td:first-child { color: #fff; font-size: 16px; font-weight: 600; white-space: nowrap; }
+.cx-fin tr.gap td { height: 16px; }
+.cx-fin tr.total td { color: #6fe3ff; font-size: 13px; } .cx-fin tr.total td:first-child { color: #6fe3ff; font-size: 16px; }
+.cx-fin tr.profit td { color: #7cf07c; }
+.cx-fin-bal { display: grid; grid-template-columns: max-content 1fr; gap: 6px 40px; margin: 18px 12px 0; color: #fff; font-size: 16px; font-weight: 600; text-shadow: 1px 1px 0 #000; }
+.cx-fin-bal b { color: #7cf07c; font-size: 14px; } .cx-fin-bal b.neg { color: #ff6b5a; }
+.cx-fin-stats { display: grid; grid-template-columns: 1fr 1fr; margin: 4px 12px; font-size: 13.5px; text-shadow: 1px 1px 0 #000; }
+.cx-fin-stats > div { display: contents; } .cx-fin-stats span { color: #fff; padding: 2px 0; } .cx-fin-stats b { color: #fff21f; padding: 2px 0; }
+@media (max-width: 760px) { .cx-finv { margin: 0 4px; } .cx-fin th, .cx-fin td { padding: 4px 4px; font-size: 11.5px; } .cx-fin td:first-child { font-size: 13px; white-space: normal; } .cx-fin-stats { grid-template-columns: 1fr; } .cx-fin-stats b { margin-bottom: 4px; } }
+
+/* trøjeleverandøren ved klubbens logo (kun 2026/27-databasen; skjult på mobil, hvor titlen skal have pladsen) */
+.cx-title-logo { align-items: center; gap: 10px; }
+.cx-kit { display: inline-flex; align-items: center; justify-content: center; height: 28px; min-width: 34px; padding: 3px 7px; background: #ffffff; border-radius: 4px; box-sizing: border-box; }
+.cx-kit img { height: 20px; max-width: 76px; object-fit: contain; }
+.cx-kit-txt { font: 700 12px/1 Arial, sans-serif; color: #111111; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+@media (max-width: 760px) { .cx-kit { display: none; } }
+
+/* Squad Numbers som i CM 01/02 (målt 9/11-2026): grønne talrækker 1-25/26-50 (ledige numre lyse), blå nummerfelter */
+.cx-sqn { padding: 0 4px; }
+.cx-sqn-bar { display: flex; gap: 4px; margin: 0 0 6px; }
+.cx-sqn-bar .cx-grey { min-width: 140px; height: 26px; }
+.cx-sqn-strip { display: grid; grid-template-columns: repeat(25, minmax(0, 1fr)); gap: 2px; padding: 3px; background: #1a3a0e; border: 1px solid #0b1d05; }
+.cx-sqn-n { height: 24px; padding: 0; background: linear-gradient(180deg, #2c5a18, #1d4310); color: #f6ee3a; border: 1px solid; border-color: #4f8a30 #0d2306 #0d2306 #4f8a30; font: 700 12px/1 Tahoma, Verdana, sans-serif; cursor: grab; }
+.cx-sqn-n.free { background: #142f0a; color: #fff; border-color: #0d2306 #4f8a30 #4f8a30 #0d2306; }
+.cx-sqn-n.on { outline: 2px solid #fff21f; outline-offset: -2px; }
+.cx-sqn-list { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; max-height: 52vh; overflow-y: auto; margin: 6px 0; padding: 2px; }
+.cx-sqn-row { display: grid; grid-template-columns: 52px 40px minmax(0, 1fr) auto; align-items: center; gap: 4px; min-height: 26px; }
+.cx-sqn-box { display: flex; align-items: center; justify-content: center; height: 24px; background: #0b0b9a; border: 1px solid #2b2bd0; color: #fff; font: 700 13px/1 Tahoma, Verdana, sans-serif; cursor: pointer; }
+.cx-sqn-box.target { border-color: #fff21f; }
+.cx-sqn-tag .inj { display: inline-block; padding: 3px 6px; background: #8b1a1a; color: #fff; font: 700 11px/1 Tahoma, sans-serif; font-style: normal; }
+.cx-sqn-row a { color: #fff; font-weight: 800; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cx-sqn-pos { color: #fff21f; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.cx-sqn-hint { margin: 6px 2px 0; color: #d6dae4; font-size: 12px; }
+@media (max-width: 760px) {
+  .cx-sqn-strip { grid-template-columns: repeat(10, minmax(0, 1fr)); }
+  .cx-sqn-list { grid-template-columns: 1fr; }
+}
+.cx-eur-count { margin: 6px 0; padding: 6px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-weight: 800; font-size: 16px; text-shadow: 1px 1px 0 #000; }
+.cx-eur .cx-sqn-box { font-size: 12px; }

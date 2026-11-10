@@ -1,29 +1,37 @@
 // Spillets dag-for-dag-løkke.
+import { promoteIfShort } from './reserves';
+import { intlDayResults, intlDaily } from './international';
+import { reservesDaily } from './reserves';
+import { awolMonthly } from './rules2001';
+import { squadNumbersDaily } from './squadNumbers';
+import { euroRegistered, euroSquadDaily } from './euroSquad';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
-import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges } from './board';
-import { needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
+import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
+import { A } from './attributes';
+import { cmDatabase } from './newgame';
+import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
-import { addDays, day, month, weekday, daysBetween } from './dates';
+import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
-import { weatherFor, type Weather } from './weather';
-import { maxSubs } from './rules';
+import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
+import { maxSubs, extended, authentic } from './rules';
 import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
 import { friendliesDaily } from './friendlies';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
-import { gateReceipts, januaryBudgetTopUp, monthlyIncome, sponsorWinBonus, weeklyWages } from './finance';
+import { gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
 import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
-import type { Fixture, MatchReport, NewsItem, Player, Tactic } from './types';
+import type { Fixture, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
-import { monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
+import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
 import { monthlyWill, weeklyPlayerContact } from './will';
@@ -38,6 +46,8 @@ import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
 import { resolveStaffBids } from './staff';
 import { rivalryAfterMatch } from './rivalry';
+import { unhappyMult } from './squadStatus';
+import { econIncome } from './econ';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -65,12 +75,22 @@ export function aiTactic(clubId: number, oppId?: number, home = true): Tactic {
   const base = newTactic(plan.formation ?? formation, mentality);
   if (mentality <= 1) base.team.counter = true;
   base.team = { ...base.team, ...plan.team };
-  return autoSelect(base, squad(clubId));
+  const t = autoSelect(base, squad(clubId));
+  // roller: en kreativ midtbanespiller styrer spillet, og en stærk angriber i luften bliver target-angriber
+  const xi = t.lineup.map((id) => g.players[id]).filter(Boolean);
+  const slotOf = (id: number) => t.slots[t.lineup.indexOf(id)];
+  const pm = xi.filter((p) => ['M', 'AM', 'DM'].includes(slotOf(p.id).pos) && slotOf(p.id).side === 'C').sort((a, b) => b.attrs[A.creativity] + b.attrs[A.passing] - a.attrs[A.creativity] - a.attrs[A.passing])[0];
+  if (pm && pm.attrs[A.creativity] + pm.attrs[A.passing] >= 29) t.team.playmaker = pm.id;
+  const air = (p: Player) => p.attrs[A.heading] + p.attrs[A.jumping] + p.attrs[A.strength];
+  const tm = xi.filter((p) => slotOf(p.id).pos === 'ST').sort((a, b) => air(b) - air(a))[0];
+  if (tm && air(tm) >= 46) { t.team.targetMan = tm.id; t.individual[t.lineup.indexOf(tm.id)] = { ...t.individual[t.lineup.indexOf(tm.id)], holdUp: true }; }
+  return t;
 }
 
-export function userTactic(auto = false): Tactic {
+/** `only`: kun disse spillere kan spille (European Squad) – taktikken gemmes så ikke */
+export function userTactic(auto = false, only?: Set<number> | null): Tactic {
   const g = gs();
-  const players = squad(g.userClub);
+  const players = only ? squad(g.userClub).filter((p) => only.has(p.id)) : squad(g.userClub);
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), players);
   let t = validateTactic(g.tactic, players);
   if (auto) t = autoSelect(t, players);
@@ -92,7 +112,7 @@ export function userTactic(auto = false): Tactic {
     }
     t = { ...t, lineup, bench };
   }
-  g.tactic = t;
+  if (!only) g.tactic = t;
   return t;
 }
 
@@ -117,13 +137,14 @@ function importance(f: Fixture): number {
 /** Turneringer med VAR (videodommer): de største ligaer og de europæiske turneringer */
 const VAR_LEAGUES = new Set(['GB1', 'ES1', 'IT1', 'L1', 'FR1', 'NL1', 'PO1', 'BE1', 'DK1', 'TR1', 'SC1', 'A1', 'C1', 'GR1', 'SE1', 'NO1', 'PL1', 'MLS1', 'BRA1', 'SA1', 'JAP1', 'MEX1', 'ARG1']);
 function usesVar(f: Fixture): boolean {
+  if (authentic()) return false; // VAR fandtes ikke i 2001
   const c = gs().comps[f.comp];
   return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
 }
 
-export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather } {
-  const ht = tacticFor(f.home, f.away, true, userAuto);
-  const at = tacticFor(f.away, f.home, false, userAuto);
+export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number; homeAdv?: number; finSlope?: number; squash?: number; squashAtt?: number; squashDef?: number; ease?: number; cards?: number; corners?: number; countBlocked?: boolean; close?: number; closeSlope?: number; onTarget?: number; offside?: number; shotSpread?: number; oneOnOneK?: number; rules?: 'current' | 'original'; pitch: Pitch; referee: { name: string; strict: number } } {
+  const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
+  const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
   return {
     home: engineTeam(f.home, ht),
     away: engineTeam(f.away, at),
@@ -132,33 +153,50 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     weather: weatherFor(f),
     importance: importance(f),
     var: usesVar(f),
+    aggregate: aggregateFor(f),
+    pitch: pitchFor(f),
+    referee: refereeFor(f),
+    ...(cmDatabase(gs()) === 'original' ? ORIGINAL : MODERN),
   };
 }
 
+/** Kalibrering af den moderne database mod virkeligheden (scripts/benchmark.ts; MODERN_JSON='{…}' overskriver ved målinger) */
+// genkalibreret 9/11-2026, da egenskaberne blev rettet (før var de oppustede og SQUASH 0,76 dæmpede dem): 3 sæsoner 2,69 mål, H/U/B 44/25,5/30,6
+export const MODERN: { finish: number; squash?: number; squashAtt?: number; squashDef?: number; homeAdv?: number } = { finish: 1.1, squash: 1 };
+/** Kalibrering af den originale 2001/02-database mod det originale CM 01/02 (scripts/original-lab.ts) */
+export const ORIGINAL = { finish: 2.1, homeAdv: 2.2, finSlope: 20, squash: 0.48, squashAtt: 0.3, squashDef: 0.72, ease: 0.12, shotSpread: 0.25, oneOnOneK: 0.5, cards: 0.11, rules: 'original' as const, corners: 0.7, countBlocked: false, close: 0.2, closeSlope: 2, onTarget: 0.25, offside: 1.8 };
+export const ORIGINAL_FINISH = ORIGINAL.finish;
+
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
-function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean): Tactic {
+function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string): Tactic {
   const g = gs();
-  if (club === g.userClub && g.userClub) return userTactic(userAuto);
+  // europæiske kampe: kun den tilmeldte trup (European Squad)
+  const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
+  // færre end 11 spilleklare tilmeldte (fx en tom liste): så gælder tilmeldingen ikke (*estimeret* – ellers stod holdet uden spillere)
+  const only = reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+  if (club === g.userClub && g.userClub) return userTactic(userAuto, only);
   if (isHumanClub(club)) {
     const o = ownerOf(club);
-    if (o) return withHuman(o, () => userTactic(userAuto));
+    if (o) return withHuman(o, () => userTactic(userAuto, only));
   }
+  promoteIfShort(club);
   return aiTactic(club, opp, home);
 }
 
-export function createLiveMatch(f: Fixture): MatchSim {
+/** Kampen man ser live; playByPlay = løbende spil-for-spil som i CM 01/02 (klassisk udseende) */
+export function createLiveMatch(f: Fixture, o: { playByPlay?: boolean } = {}): MatchSim {
   const m = prepareMatch(f);
   const g = gs();
   return new MatchSim(m.home, m.away, {
     // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
-    commentary: true, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, date: g.date,
+    commentary: true, playByPlay: !!o.playByPlay, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, date: gs().date };
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: gs().date };
   const rep = commentary
     ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : quickMatch(m.home, m.away, opts, rng);
@@ -168,12 +206,16 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
 
 // ---------- resultatbehandling ----------
 
+/** Målekrog til scripts (original-lab.ts): kaldes med hver kamps rapport. Påvirker intet i spillet. */
+export const labHooks: { report?: (f: Fixture, rep: MatchReport) => void } = {};
+
 export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const g = gs();
+  labHooks.report?.(f, rep);
   const [hs, as] = rep.stats;
-  const scorers: [number, number, number][] = rep.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.p!]);
+  const scorers: MatchResultShort['scorers'] = rep.events.filter((e) => e.k === 'goal').map((e) => (e.og ? [e.m, e.t, e.p!, 1] : [e.m, e.t, e.p!]));
   const gate = gateReceipts(f);
-  recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income) });
+  recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income), cards: [hs.yellows + as.yellows, hs.reds + as.reds] });
   recordsAfterMatch(f, rep, gate.att);
   achievementsAfterMatch(f, rep, gate.att);
   storyAfterMatch(f, rep, isBigMatch(f.home, f.away));
@@ -198,12 +240,28 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag
     p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
+    const bannedBefore = p.banned;
     if (line.yellow) {
       s.yellows++;
       p.yellowCount++;
-      if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; }
+      if (p.yellowCount >= 5) { p.banned = Math.max(p.banned, 1); p.yellowCount = 0; (p.banLog ??= []).push({ d: g.date, n: 1, red: false }); }
+      else if (p.yellowCount === 4 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'ban.oneAway', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; }
+    if (line.red) { s.reds++; p.banned = Math.max(p.banned, rng.int(1, 3)); p.lastRed = g.date; p.appealed = false; (p.banLog ??= []).push({ d: g.date, n: p.banned, red: true }); if (p.banLog.length > 30) p.banLog.shift(); }
+    // karantæne (CM 01/02: "[spiller] banned for [n] matches") – til spillerens egen manager
+    if (p.banned > bannedBefore && isHumanClub(p.club)) {
+      const n = p.banned;
+      asOwner(p.club, () => addNews({ cat: 'injury', key: line.red ? 'ban.red' : 'ban.yellows', params: { player: pname(p), n, pid: p.id }, link: { kind: 'player', id: p.id } }));
+      // "[spiller] indiscipline costs [klub] dear": rødt kort i et tabt opgør
+      const lost = line.team === 0 ? hs.goals < as.goals : as.goals < hs.goals;
+      if (line.red && lost) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.redCostly', params: { player: pname(p), club: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+    }
+    // unge spillere: debut og en stor kamp ("Talented [spiller] given boost", "Youngster [spiller] praised")
+    if (isHumanClub(p.club) && !g.draft) {
+      const age = ageOn(p.dob, g.date);
+      if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0) asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
+      else if (age <= 20 && line.rating >= 8.5) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.youngsterPraised', params: { player: pname(p), age, rating: line.rating.toFixed(1) }, link: { kind: 'player', id: p.id } }));
+    }
     if (line.injured) injure(p);
     const res = line.team === 0 ? Math.sign(hs.goals - as.goals) : Math.sign(as.goals - hs.goals);
     if (!g.draft) p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));
@@ -212,7 +270,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {
       if (!played.has(p.id) && p.banned > 0) p.banned--;
-      if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1));
+      if (!played.has(p.id) && isHumanClub(club)) p.unhappy = Math.min(100, (p.unhappy ?? 0) + (p.attrs[42] > 13 ? 3 : 1) * unhappyMult(p));
       else if (played.has(p.id)) p.unhappy = Math.max(0, (p.unhappy ?? 0) - 5);
     }
   }
@@ -229,8 +287,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   }
   // præmiepenge i Europa
   if (comp?.type === 'continental') {
-    const win = comp.id === 'CL' ? 2_800_000 : 800_000;
-    const draw = comp.id === 'CL' ? 900_000 : 300_000;
+    const win = (comp.id === 'CL' ? 2_800_000 : 800_000) * econIncome();
+    const draw = (comp.id === 'CL' ? 900_000 : 300_000) * econIncome();
     for (const [cid, gf, ga] of [[f.home, hs.goals, as.goals], [f.away, as.goals, hs.goals]] as const) {
       const c = g.clubs[cid];
       const amount = gf > ga ? win : gf === ga ? draw : 0;
@@ -259,19 +317,23 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     // draft-liga: ingen bestyrelse, presse eller fans
     if (!g.draft) {
       boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
+      // CM 01/02: "A scout from [klub] was spotted at your last match" – en klub med en af dine spillere på listen
+      const mine = new Set(squad(g.userClub).map((p) => p.id));
+      const watcher = rng.chance(0.3) ? Object.values(g.clubs).find((c) => c.id !== g.userClub && !isHumanClub(c.id) && (c.shortlist ?? []).some((id) => mine.has(id))) : undefined;
+      if (watcher) { const pid = watcher.shortlist!.find((id) => mine.has(id))!; addNews({ cat: 'scout', key: 'scout.spotted', params: { club: watcher.name, player: pname(g.players[pid]) }, link: { kind: 'player', id: pid } }); }
       recordRivalry(opp, scored, conceded);
       resolvePressPromise(f.id, scored, conceded);
-      invitePress(f, 'post');
-      fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
+      if (extended()) invitePress(f, 'post');
+      if (extended()) fansAfterMatch(g.userClub, scored, conceded, squadStrength(g.userClub), squadStrength(opp), isBigMatch(g.userClub, opp));
     }
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
-    addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '' }, link: { kind: 'fixture', id: f.id } });
+    addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
     for (const line of rep.players) {
       if (line.injured && g.players[line.id]?.club === g.userClub) {
         const p = g.players[line.id];
-        addNews({ cat: 'injury', key: 'news.injury', params: { player: pname(p), injury: p.injury?.key ?? 'bruise', days: p.injury?.days ?? 0 }, link: { kind: 'player', id: p.id } });
+        addNews({ cat: 'injury', key: 'news.injury', params: { player: pname(p), injury: p.injury?.key ?? 'bruise', days: p.injury?.days ?? 0, club: g.clubs[g.userClub]?.short ?? '', opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', res: key.slice(6) }, link: { kind: 'player', id: p.id } });
       }
     }
   }
@@ -295,14 +357,34 @@ function injure(p: Player) {
   const best = Math.max(5, ...physios.map((s) => s.attrs.physio));
   days = Math.max(1, Math.round(days * (1.15 - best / 40)));
   if (g.draft) { days = draftInjuryDays(days); if (!days) return; }
-  p.injury = { key, days };
+  p.injury = { key, days, total: days };
+  (p.injuryLog ??= []).push({ d: g.date, k: key, days });
+  if (p.injuryLog.length > 30) p.injuryLog.shift();
 }
 
 // ---------- dagsløkke ----------
 
 export interface DayResult {
   match?: number; // brugerens kamp skal spilles
-  stop?: string; // vigtig begivenhed
+  stop?: string; // vigtig begivenhed ('dayStart'/'dayEnd': en kampdag, man følger – se `watchedDay`)
+}
+
+/**
+ * CM 01/02: på dage, hvor ens liga, ens turneringer eller en europæisk finale spiller, stopper spillet ved
+ * "Evening Fixtures" før kampene og ved resultaterne bagefter – også uden egen kamp. Dage med egen kamp går
+ * den sædvanlige vej (kampdagen før kampen). Returnerer en af dagens kampe (til kampdagsskærmen) eller undefined.
+ */
+export function watchedDay(date: string): number | undefined {
+  const g = gs();
+  if (!g.userClub || g.draft) return undefined;
+  const me = g.clubs[g.userClub];
+  const fx = fixturesOn(date).map((id) => g.fixtures[id]).filter((f): f is Fixture => !!f);
+  if (fx.some((f) => f.home === g.userClub || f.away === g.userClub)) return undefined; // egen kamp i dag
+  const hit = fx.find((f) => {
+    const c = g.comps[f.comp];
+    return f.comp === me?.league || c?.clubs.includes(g.userClub) || (f.stage === 'F' && (c?.nation === -1 || c?.nation === me?.nation));
+  });
+  return hit?.id;
 }
 
 function newDay() {
@@ -313,59 +395,71 @@ function newDay() {
   // draft-liga: kun kondition, moral og skader – ingen økonomi, transfers, bestyrelse eller ny sæson
   if (g.draft) { draftDay(); return; }
   if (month(d) === 7 && day(d) === 1) seasonRollover();
+  intlDaily();
+  reservesDaily();
+  // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
+  if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting
   for (const p of Object.values(g.players)) {
     if (p.injury) {
       p.injury.days--;
+      // CM 01/02: "[spiller] resumes light training" – en uge før comeback fra en længere skade
+      if (p.injury.days === 7 && (p.injury.total ?? 0) >= 21 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.lightTraining', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
       if (p.injury.days <= 0) {
+        const wasAwol = p.injury.key === 'awol';
+        const injKey = p.injury.key;
         p.injury = null;
-        p.condition = Math.min(p.condition, 75);
-        asOwner(p.club, () => addNews({ cat: 'injury', key: 'news.recovered', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
+        if (!wasAwol) p.condition = Math.min(p.condition, 75);
+        // CM 01/02: "Irwin resumes full training" – "Denis Irwin has begun full training following his foot injury."
+        asOwner(p.club, () => addNews({ cat: 'injury', key: wasAwol ? 'awol.back' : 'news.recovered', params: wasAwol ? { player: pname(p) } : { player: pname(p), last: p.last, injury: injKey }, link: { kind: 'player', id: p.id } }));
       }
     }
-    if (p.condition < 100) p.condition = Math.min(100, p.condition + 4 + p.attrs[29] / 4);
+    // restitution: en spiller med Natural Fitness 10 er klar igen 2-3 dage efter en kamp (som i CM 01/02, *estimeret*).
+    // Før +4 + NF/4: med to kampe om ugen startede holdene trætte, og originalens knock-regel (< 40 % = sikkert knock) gav op til 10 skader i én kamp
+    if (p.condition < 100) p.condition = Math.min(100, p.condition + 9 + p.attrs[29] / 2);
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }
   forEachHuman(windowNews);
   forEachHuman(processOffers);
+  answerPendingRenewals();
+  holidayDaily();
+  squadNumbersDaily();
+  euroSquadDaily();
   forEachHuman(processJobTalks);
   forEachHuman(() => {
     expirePress();
     // pressemøde dagen før kampen
     for (const id of fixturesOn(addDays(d, 1))) {
       const f = g.fixtures[id];
-      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub)) invitePress(f, 'pre');
+      if (f && g.userClub && (f.home === g.userClub || f.away === g.userClub) && extended()) invitePress(f, 'pre');
     }
   });
   completeProjects();
-  campDaily();
-  trialsDaily();
+  // udvidet spil: træningslejre og prøvespillere (ikke i CM 01/02)
+  if (extended()) { campDaily(); trialsDaily(); }
   friendliesDaily();
   forEachHuman(aiBidsForListed);
   aiPursuits();
-  if (weekday(d) === 4) forEachHuman(aiLoanOptions);
+  if (weekday(d) === 4 && extended()) forEachHuman(aiLoanOptions);
   aiTransferTick();
   forEachHuman(scoutDaily);
   if (day(d) % 3 === 0) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
-    forEachHuman(weeklyTransferDigest);
-    forEachHuman(weeklySummary);
-    weeklyPlayerContact();
+    if (extended()) { forEachHuman(weeklyTransferDigest); forEachHuman(weeklySummary); weeklyPlayerContact(); }
     aiReleaseClauses();
     weeklyDevelopment();
     weeklyWages();
   }
   if (day(d) === 1) {
+    snapshotFinanceMonth();
     monthlyIncome();
     monthlyValues();
     monthlyDevelopment();
-    monthlyPersonality();
-    monthlyWill();
-    fansMonthly();
+    if (extended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
     if (month(d) !== 7) monthlyColumn();
-    forEachHuman(boardMeeting);
+    if (extended()) forEachHuman(boardMeeting);
     if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
     monthlyClubReps();
     refreshShortlists();
@@ -377,11 +471,13 @@ function newDay() {
     forEachHuman(boardMonthly);
     if (month(d) >= 9 || month(d) <= 4) aiSackings();
     if (month(d) === 6) summerManagerChanges();
+    awolMonthly();
     if (month(d) >= 1 && month(d) <= 5) aiRenewals();
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);
   }
   if (month(d) >= 1 && month(d) <= 5 && weekday(d) === 3) forEachHuman(aiBosman);
-  if (month(d) === 1 && day(d) === 1) januaryBudgetTopUp();
+  // januar-tillægget til transferbudgettet er en moderne funktion (ikke i ægte CM 01/02)
+  if (month(d) === 1 && day(d) === 1 && extended()) januaryBudgetTopUp();
   if (month(d) === 2 && day(d) === 1) youthPreview();
   if (month(d) === 3 && day(d) === 15) youthIntake();
   // AI-trupper fyldes op i sommer- og vinterpausen
@@ -428,7 +524,7 @@ export function activateNation(nation: number) {
   const ids: string[] = [];
   for (const [id, clubs] of byLeague) {
     const m = g.leagues[id];
-    if (!m || g.comps[id] || clubs.length < 4) continue;
+    if (!m || m.hidden || g.comps[id] || clubs.length < 4) continue;
     setupLeague(id, m.name, m.nation, m.tier, clubs, g.season);
     ids.push(id);
   }
@@ -441,11 +537,31 @@ export function activateNation(nation: number) {
     const past = Object.values(g.fixtures)
       .filter((f) => ids.includes(f.comp) && !f.result && (f.date < g.date || (f.date === g.date && g.dayDone)))
       .sort((a, b) => a.date.localeCompare(b.date));
-    for (const f of past) simulateFixture(f, true, false);
+    // kampene spilles alle på samme dag – skader, karantæner og træthed fra dem ville aldrig hele, og til sidst
+    // stillede holdene uden spillere (MatchSim uden målmand gik ned). De hører fortiden til, så de rulles tilbage.
+    const before = new Map<number, Pick<Player, 'injury' | 'banned' | 'yellowCount' | 'condition'>>();
+    for (const p of Object.values(g.players)) if (p.club && g.clubs[p.club]?.nation === nation) before.set(p.id, { injury: p.injury, banned: p.banned, yellowCount: p.yellowCount, condition: p.condition });
+    for (const f of past) {
+      simulateFixture(f, true, false);
+      for (const cid of [f.home, f.away]) for (const p of squad(cid)) { const b = before.get(p.id); if (b) Object.assign(p, b); }
+    }
   } finally {
     g.userClub = userClub;
     for (const c of humans) c.manager = -1;
   }
+}
+
+/** Lande, der kan gøres spilbare midt i et spil (Game Options → Selected Leagues): mindst én synlig liga med 4+ klubber */
+export function addableNations(): number[] {
+  const g = gs();
+  const count = new Map<string, number>();
+  for (const c of Object.values(g.clubs)) count.set(c.league, (count.get(c.league) ?? 0) + 1);
+  const out = new Set<number>();
+  for (const [id, m] of Object.entries(g.leagues)) {
+    if (m.hidden || g.activeNations.includes(m.nation) || (count.get(id) ?? 0) < 4) continue;
+    out.add(m.nation);
+  }
+  return [...out];
 }
 
 /** Ligger en menneskelig managers klub i en liga uden turnering? Så startes landets ligaer */
@@ -470,7 +586,7 @@ export function playPendingAsAi() {
 }
 
 /** "Fortsæt" – én dag frem */
-export function continueGame(): DayResult {
+export function continueGame(pauseBefore?: (date: string) => boolean): DayResult {
   const g = gs();
   ensureHumanLeagues();
   // gamle saves: en ventende kamp, der ikke er ens egen klubs (efter et jobskifte)
@@ -482,6 +598,8 @@ export function continueGame(): DayResult {
   if (!g.dayDone) return playDay();
   const lastNews = g.nextId.news;
   newDay();
+  // klassisk: stop før dagens kampe (dayDone er stadig false – næste kald spiller dagen)
+  if (pauseBefore?.(g.date)) return { stop: 'dayStart' };
   const r = playDay();
   if (r.match) return r;
   const fresh = g.news.filter((n) => n.id >= lastNews);
@@ -505,14 +623,14 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
 }
 
 /** Spring frem til næste kamp. Kører i bidder så UI'et forbliver responsivt. */
 /** Rene informationsnyheder (andre klubbers handler, trænerskifter, klummer, kåringer …) stopper ikke Fortsæt */
-const INFO_KEYS = new Set([
+const INFO_KEYS = new Set(['res.win', 'res.draw', 'res.loss', 
   'transfer.done', 'transfer.freeDone', 'transfer.loanDone', 'news.managerSacked', 'news.managerHired', 'mgr.poached', 'column.month',
   'award.monthPlayer', 'award.monthManager', 'award.ballonDor', 'news.champions', 'news.cupWin', 'news.playoffWin', 'rumour.interest',
   'news.retired', 'news.youth', 'war.headline', 'war.result', 'war.staffHeadline', 'war.staffResult', 'transfer.digest', 'transfer.digestOne', 'ffp.sanction', 'news.promoted', 'news.relegated', 'news.split', 'press.report', 'press.reportPlain', 'news.recovered',
@@ -524,7 +642,7 @@ export function needsAttention(n: NewsItem): boolean {
   return !!me && (n.params.to === me || n.params.from === me || n.params.club === me);
 }
 
-export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean; untilNews?: boolean; maxDays?: number; autoPlay?: boolean; onProgress?: (date: string) => void; shouldStop?: () => boolean }): Promise<DayResult> {
+export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean; untilNews?: boolean; maxDays?: number; autoPlay?: boolean; onProgress?: (date: string) => void; shouldStop?: () => boolean; watchDays?: boolean }): Promise<DayResult> {
   const g = gs();
   let steps = 0;
   const firstNews = g.nextId.news;
@@ -535,7 +653,13 @@ export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean;
     if (opts.maxDays && g.dayDone && daysBetween(startDate, g.date) >= opts.maxDays) return {};
     if (opts.shouldStop?.()) return {};
     if (opts.untilDate && g.date >= opts.untilDate && g.dayDone && !g.pendingFixture) return {};
-    const r = continueGame();
+    const paused = !g.dayDone && !g.pendingFixture;
+    const clubWatch = opts.watchDays && !opts.autoPlay ? (d: string) => watchedDay(d) !== undefined : undefined;
+    // slutrundedage (VM/EM …) stopper også – på resultaterne, da landskampene spilles i newDay
+    const watch = clubWatch ? (d: string) => clubWatch(d) || intlDayResults(d).length > 0 : undefined;
+    const r = continueGame(watch);
+    // en fulgt kampdag er spillet færdig: vis resultaterne
+    if (paused && clubWatch && g.dayDone && clubWatch(g.date)) return { stop: 'dayEnd' };
     if (r.match !== undefined) {
       if (opts.autoPlay) {
         quickPlayUserMatch();
@@ -645,7 +769,7 @@ export function quickReport(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
 }
 
 /** Mandag: ugens overblik – resultater, placering, økonomi, skader og de næste kampe */
@@ -674,4 +798,22 @@ function weeklySummary() {
   g.manager.week = { pos, balance: c.balance };
   if (!prev || !played.length) return; // første mandag (kun udgangspunktet) og uger uden kampe: ingen besked
   addNews({ cat: 'general', key: 'week.summary', params: { results: results || t('week.noGames'), pos, move, balance, injured, next: next || '–' } });
+}
+
+/** CM 01/02 "Go on holiday": assistenten svarer på bud og søger job efter managerens indstillinger */
+function holidayDaily() {
+  const g = gs();
+  const h = g.manager?.holiday;
+  if (!h || !g.userClub) return;
+  for (const o of g.offers.filter((x) => x.status === 'pending' && x.seller === g.userClub)) {
+    const p = g.players[o.player];
+    if (h.rejectAll) respondToOffer(o.id, 'reject');
+    else if (h.rejectBelow && p) respondToOffer(o.id, o.fee >= askingPrice(p) ? 'accept' : 'reject');
+  }
+  // søg en ledig stilling i en klub med større omdømme (højst én om ugen)
+  const myRep = g.clubs[g.userClub]?.rep ?? 0;
+  if (h.applyJobs && g.date.endsWith('1') ) {
+    const cid = (g.vacancies ?? []).filter((c) => (g.clubs[c]?.rep ?? 0) > myRep + 5 && !g.manager.jobTalks?.[c]).sort((a, b) => g.clubs[b].rep - g.clubs[a].rep)[0];
+    if (cid) applyForJob(cid);
+  }
 }
