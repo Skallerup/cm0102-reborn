@@ -524,6 +524,12 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
   if (c.rep > 55 && have.physio < 2) mk('physio', lvl - 10);
   const scouts = 1 + Math.floor(c.rep / 30);
   for (let i = have.scout; i < scouts; i++) mk('scout', lvl - 8 + r.int(-6, 6));
+  // stabens løn følger klubbens lønniveau: højst 20 % af spillernes lønsum (*estimeret*) – ellers kostede seks stabsfolk i en
+  // lille klub lige så meget som hele truppen, og hundredvis af små klubber gik i minus i første sæson
+  const mine = Object.values(g.staff).filter((s) => s.club === c.id);
+  const total = mine.reduce((x, s) => x + s.wage, 0);
+  const cap = squad(c.id).reduce((x, p) => x + (p.contract?.wage ?? 0), 0) * 0.2;
+  if (total > cap) for (const s of mine) s.wage = Math.max(50, Math.round((s.wage * cap) / total / 50) * 50);
 }
 
 const NEED: [SubPos, number][] = [['GK', 3], ['CB', 4], ['LB', 2], ['RB', 2], ['DM', 2], ['CM', 3], ['LW', 1], ['RW', 1], ['LM', 1], ['RM', 1], ['AM', 1], ['CF', 3]];

@@ -9,6 +9,15 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.21.0',
+    date: '2026-11-10',
+    title: { da: 'Regens som i originalen og sundere klubøkonomi', en: 'Regens as in the original and healthier club finances' },
+    items: [
+      { da: "Ægte CM 01/02 med den originale database: nye unge spillere kommer nu kun som regens, som i originalen. Hver spiller, der stopper, genfødes som én ung spiller fra samme land med samme potentiale – lige efter pensioneringen, ikke i marts – og der er ingen ungdomsårgange skabt af ingenting. Antallet af spillere i verden holder sig nu stabilt over mange sæsoner (før faldt det 17 % på fem sæsoner), og der kommer ikke længere dobbelt så mange store talenter, som der forsvinder", en: "Authentic CM 01/02 with the original database: new young players now only arrive as regens, as in the original. Every player who retires is reborn as one young player from the same country with the same potential – right after retiring, not in March – and there are no youth intakes created out of nothing. The number of players in the world now stays stable over many seasons (before, it fell 17% in five seasons), and twice as many big talents no longer appear as disappear" },
+      { da: "Nye spil: stabens løn følger klubbens lønniveau (højst en femtedel af spillernes løn). Før kostede seks stabsfolk i en lille klub lige så meget som hele truppen, og hundredvis af små klubber gik i minus i første sæson", en: "New games: staff wages follow the club's wage level (at most a fifth of the players' wages). Before, six staff at a small club cost as much as the whole squad, and hundreds of small clubs went into the red in the first season" },
+    ],
+  },
+  {
     version: '0.20.0',
     date: '2026-11-09',
     title: { da: 'Vælg 01/02-database og rigtige managere', en: 'Choose your 01/02 database and real managers' },
