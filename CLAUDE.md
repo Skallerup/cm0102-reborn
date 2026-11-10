@@ -57,6 +57,13 @@ og læg ændringen i samme push.
   indgangssiderne. IndexNow sendes automatisk efter hvert push til main (`.github/workflows/indexnow.yml` venter på, at `/build.json` på
   cm0102reborn.com viser commit'en – Vercel laver ingen GitHub-deployments – og sender kun url'er med lastmod inden for 3 dage). Google Search Console er sat op af ejeren (verificeret uden for repoet; `VITE_GSC_TOKEN` behøves ikke) – bed ejeren
   om et udtræk, når effekten skal måles. Vercel Web Analytics bruges IKKE (koster penge – ejerens beslutning 2026-11-10); GA4 findes.
+- **Originalens kampmotor (projekt fra 2026-11-10):** Ejeren har tilladelse (som Bosman Editions forfatter) til at bruge så meget af
+  originalens motor som muligt. Målet er en så præcis motor som muligt: en TypeScript-port af den rekompilerede kampmotor
+  (`CM3_MATCH_ENGINE`: `init_match` 0x6b7f20, `run_match_steps` 0x6b98c0, MATCH_MAN/MATCH_PLAYER/Match_Events/Injury, RNG-puljen
+  0xaa2454) i et nyt modul `src/game/engine/original/` bag et flag, med Bosman headless som orakel (RECOMP_SCRIPT, -seed,
+  RECOMP_FIXED_CLOCK) og reproducerbare sammenligningstests. Kræver originalens filer (`CM0102.iso` + `cm0102_3968.exe`
+  eller en ren `cm0102.exe` 3.9.68) – findes IKKE på denne maskine (søgt 10/11). Rekompileren: `python3 tools/recomp/recomp.py
+  --exe <cm0102.exe> --out <mappe> --functions <liste>` (capstone installeret). Baggrund: docs/ORIGINAL-ENGINE-RESEARCH.md.
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
   `world-original.json` (2001/02, 3.9.68).
