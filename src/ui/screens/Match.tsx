@@ -304,7 +304,12 @@ export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], 
       <div className="cx-mo-scorers">
         {[0, 1].map((side) => (
           <div key={side} className={side ? 'away' : ''}>
-            {goals.filter((e) => e.t === side).map((e, i) => <div key={i} className={`cx-mo-goal ${e.og ? 'og' : ''}`}><span><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span>{e.og ? ` ${t('cl.mt.og')}` : ''}</span><b>{e.pen ? `${t('cl.mt.pen')} ` : ''}{e.m}</b></div>)}
+            {/* som i CM 01/02: flere mål af samme spiller på én linje ("Izzet 11, 55") – ejerens ønske 2026-11-10 */}
+            {(() => {
+              const rows: { p: number; og?: boolean; items: { m: number; pen?: boolean }[] }[] = [];
+              for (const e of goals.filter((e) => e.t === side)) { const r = rows.find((x) => x.p === e.p && !!x.og === !!e.og); if (r) r.items.push({ m: e.m, pen: e.pen }); else rows.push({ p: e.p, og: e.og, items: [{ m: e.m, pen: e.pen }] }); }
+              return rows.map((r, i) => <div key={i} className={`cx-mo-goal ${r.og ? 'og' : ''}`}><span><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: r.p })}>{g.players[r.p]?.last ?? ''}</span>{r.og ? ` ${t('cl.mt.og')}` : ''}</span><b>{r.items.map((x) => `${x.pen ? `${t('cl.mt.pen')} ` : ''}${x.m}`).join(', ')}</b></div>);
+            })()}
             {injuries.filter((e) => e.t === side).map((e, i) => <div key={`i${i}`} className="cx-mo-inj cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{t('cl.mt.injured', { name: g.players[e.p]?.last ?? '' })} {e.m}</div>)}
             {/* udvisninger (rødt kort) under holdet, som målscorerne */}
             {reds.filter((e) => e.t === side).map((e, i) => <div key={`r${i}`} className="cx-mo-goal cx-mo-red"><span><span className="cx-card red" /><span className="cx-link" role="link" onClick={() => nav({ name: 'player', id: e.p })}>{g.players[e.p]?.last ?? ''}</span></span><b>{e.m}</b></div>)}

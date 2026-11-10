@@ -68,6 +68,9 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Landsholdstrup (klassisk): egne spillere står i gult (`.cx-sq-name.mine`), som i originalen.
+- 2026-11-10 – Match Overview (klassisk): flere mål af samme spiller står på én linje med minutterne adskilt af komma ("Nordstrøm 53, 64"), som i originalen.
+- 2026-11-10 – Klassisk: "Til kampen"/Continue Game på kampdagen går først til truppen; derfra giver næste tryk "Proceed to the match ?" (som i CM 01/02). `onContinue` i Shell.tsx.
 - 2026-11-10 – AI-klubber byder ikke på en menneskelig klubs nyindkøbte spiller (`recentlyJoined`: 120 dage, eller samme sæson hvis ikke sat til salg) – hverken i `aiBidsForListed` (bød også på ikke-listede med faktor 0,4) eller via `canBidOnHuman`. Sat til salg = bud tilladt.
 - 2026-11-10 – `setClub` nulstiller `p.unhappy` ved klubskift: en nyindkøbt spiller tog utilfredsheden med fra den gamle klub og stod som "utilfreds med sin spilletid" samme dag (Mark Kerr, Vejle).
 - 2026-11-10 – Klassisk: sidebjælkens menuer (`.cx-gameopt .cx-drop-pop`, z 80) ligger nu over de faste bokse (`.cx-dlg`, z 70 – Tilbyd kontrakt m.fl.); før blev menuen gemt bag boksen.
