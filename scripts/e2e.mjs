@@ -539,6 +539,7 @@ async function run(look) {
     const id = await gs(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => b.date.localeCompare(a.date))[0]?.id; });
     await go({ name: 'report', id });
     await checkScreen('rapport');
+    if (look === 'klassisk') await page.screenshot({ path: `${OUT}/klassisk-rapport.png` });
   });
 
   // CM 01/02: Continue Game går gennem kampdagene (Evening Fixtures → resultater) frem til næste egne kamp uden at sætte sig fast

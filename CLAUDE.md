@@ -67,6 +67,13 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Skudt live (merge staging → main): You Have News → næste besked, skiftevise kolonner, Goal flash, tredje midterforsvarer, kampens spiller i lyseblå, spillet kamp som kampskærm.
+- 2026-11-10 – (staging) Klassisk: en spillet kamp (rapport-ruten og "match" med resultat) vises som kampskærmen efter slutfløjt – `screens/PlayedMatchClassic.tsx` bygger Match Overview/Stats/Action Zones/Report, Team Stats, Player Ratings, Latest Scores og League Table af `MatchReport` (kommentar, events, heat, players) med samme sidebjælke (taktik-knapperne viser holdets Team Stats, Continue går tilbage). Match.tsx eksporterer fanekomponenterne; CxReport/CxTeamStats/CxRatings tager data i stedet for `sim`.
+- 2026-11-10 – (staging) Taktik: en spiller, der slippes på en optaget plads, lander på rækkens nærmeste ledige plads (`snapFreeSlot`) – så en tredje midterforsvarer kan slippes oven i de to andre (før skete der intet). Kampens spiller: navnet i lyseblå (#6fe3ff) i Player Ratings som i originalen; tekstlinjen "Man of the match – …" er fjernet.
+- 2026-11-10 – (staging) Klassisk trup/taktik: de to kolonner fyldes skiftevis (nr. 1 venstre, nr. 2 højre …), så sorteringen læses række for række.
+  Spilindstillinger: "Goal flash" 2/5½/8/12 s (`goalFlashMs`, `cm-goal-flash`) – hvor længe et mål blinker på kampskærmen.
+- 2026-11-10 – (staging) "You Have News" (klassisk) åbner den ældste ulæste besked og går videre til den næste ved hvert klik (`showOldestUnread`) – før åbnede den kun indbakken.
+- 2026-11-10 – Skudt live (merge staging → main, `15bc2fb`): alt nedenfor fra 2026-11-05 til 2026-11-10 (staging).
 - 2026-11-10 – (staging) Brugerønsker: (1) klubskærme uden foto udefra og uden klubbillede får et stadion udefra fra pakken
   (`genericClubUrl`), kampdage uden stadionfoto får et kampbillede med tribuner (`genericMatchdayUrl`, også finaler) – `backgrounds.ts`;
   (2) aftenkampe (midtuge og europæiske kampe, `eveningFixture`) får nat-look i CSS (`.cx-night`/`.mbg-night`: mørkt, koldt,

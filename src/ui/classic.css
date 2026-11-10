@@ -1211,9 +1211,8 @@
   .cx-sq-cols::-webkit-scrollbar-track, .cx-tac-list::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.35); }
   .cx-sq-cols::-webkit-scrollbar-thumb, .cx-tac-list::-webkit-scrollbar-thumb { background: #838183; border: 2px solid; border-color: #b6b4b6 #4e4c4e #4e4c4e #b6b4b6; }
 }
-.cx-rt tr.cx-mom td:not(.btn-col) { background: rgba(255, 242, 31, 0.16); }
-.cx-mom-line { margin: 4px 16px 0; padding: 8px 12px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-size: 18px; }
-.cx-mom-line .cx-link { color: #fff; }
+/* kampens spiller: navnet i originalens lyseblå (som Player Ratings i CM 01/02) – ingen tekstlinje */
+.cx-rt tr.cx-mom td.c-name, .cx-rt tr.cx-mom td.c-name .link, .cx-rt tr.cx-mom td.c-name .cx-link { color: #6fe3ff; }
 .cx-board .cm-name { display: inline-flex; align-items: center; gap: 12px; }
 @media (min-width: 761px) { .cx-coef { margin: 0 16px; padding: 4px 0; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 300px); overflow-y: auto; } }
 .cx-coef .cx-league .c-num { color: #fff21f; }

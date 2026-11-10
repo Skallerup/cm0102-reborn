@@ -51,6 +51,7 @@ import { ClubScreen } from './screens/Club';
 import { Assistant } from './screens/Assistant';
 import { MatchScreen } from './screens/Match';
 import { ReportScreen } from './screens/Report';
+import { PlayedMatchClassic } from './screens/PlayedMatchClassic';
 import { History } from './screens/History';
 import { Awards } from './screens/Awards';
 import { Jobs } from './screens/Jobs';
@@ -393,7 +394,7 @@ export function Shell() {
           if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
         };
         // kampskærmen (CM 01/02): minuttet øverst og kampens knapper i stedet for de almindelige
-        if (matchSide && route.name === 'match') {
+        if (matchSide && (route.name === 'match' || route.name === 'report')) {
           const ms = matchSide.s, ma = matchSide.a;
           return (
             <aside className="cx-side">
@@ -442,7 +443,8 @@ export function Shell() {
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }} />
             <div className="cx-side-grow" />
-            {unread > 0 && <button className="cx-news" onClick={() => nav({ name: 'inbox' })}>{t('cl.youHaveNews')}</button>}
+            {/* You Have News: åbner den ældste ulæste besked – hvert klik går videre til den næste (som Continue Game) */}
+            {unread > 0 && <button className="cx-news" onClick={() => { if (!showOldestUnread(g.news)) nav({ name: 'inbox' }); }}>{t('cl.youHaveNews')}</button>}
           </aside>
         );
       })()}
@@ -529,25 +531,25 @@ export function Shell() {
               {cxLongDate(running)}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
           ) : (
-            matchSide?.s.editing && route.name === 'match' && matchSide.s.lastView ? (
+            matchSide?.s.editing && (route.name === 'match' || route.name === 'report') && matchSide.s.lastView ? (
               // Last Match: kun Back (tilbage til taktikken), Next er grå
               <div className="cx-backnext">
                 <button className="cx-back cx-mt-lastback" onClick={() => matchSide.a.back?.()}>{t('cm.back')}</button>
                 <button className="cx-next" disabled>{t('cm.next')}</button>
               </div>
-            ) : matchSide?.s.editing && route.name === 'match' ? (
+            ) : matchSide?.s.editing && (route.name === 'match' || route.name === 'report') ? (
               <div className="cx-backnext">
                 <button className="cx-back cx-mt-cancel" disabled={dialogOpen} onClick={matchSide.a.cancel}>{t('common.cancel')}</button>
                 <button className="cx-next cx-next-go cx-mt-ok" disabled={dialogOpen} onClick={matchSide.a.ok}>{t('common.ok')}</button>
               </div>
-            ) : matchSide && route.name === 'match' && matchSide.s.venue ? (
+            ) : matchSide && (route.name === 'match' || route.name === 'report') && matchSide.s.venue ? (
               // kampskærmen (CM 01/02): stadion og by nederst i stedet for Back/Next
               // … og under kampen den seneste kommentar, når man står på en anden fane end Match Overview
               matchSide.s.line ? <div className={`cx-venue cx-foot-venue cx-foot-line ${matchSide.s.line.flash ? 'cx-goal-flash' : ''}`} style={matchSide.s.line.flash ? ({ '--g1': matchSide.s.line.background, '--g2': matchSide.s.line.color } as CSSProperties) : { background: matchSide.s.line.background, color: matchSide.s.line.color }}>{matchSide.s.line.text}</div>
                 : <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
             ) : <div className="cx-backnext">
               {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
-              <button className="cx-back" disabled={!canBack || (route.name === 'match' && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>
+              <button className="cx-back" disabled={!canBack || ((route.name === 'match' || route.name === 'report') && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>
               {cxNext ? <button className="cx-next cx-next-go" onClick={cxNext.run}>{cxNext.label}</button>
                 : <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>}
             </div>
@@ -626,7 +628,8 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'mgrstatus': return <ClassicManagerStatus />;
     case 'leagues': return <ClassicSelectedLeagues />;
     case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
-    case 'report': return <ReportScreen id={Number(route.id)} />;
+    // klassisk: en spillet kamp vises som kampskærmen efter slutfløjt (samme faner og sidebjælke)
+    case 'report': return isRetro() && !g.draft && g.reports[Number(route.id)] ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
     case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;

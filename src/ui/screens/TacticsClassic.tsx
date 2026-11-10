@@ -8,7 +8,7 @@ import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attribu
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { SlotGuides, coarse, holdDrag } from './runs';
-import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget, slotTaken, snapSlot } from '../../game/tactics';
+import { FORMATIONS, autoSelect, available, changeFormation, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
@@ -75,8 +75,8 @@ export function ClassicTactics() {
     if (i < 0 || tac.slots[i].pos === 'GK' || gs().draft) return;
     const slots = tac.slots.slice();
     // CM 01/02: spilleren lander på den nærmeste faste plads (ikke frit); optaget plads = ingen flytning
-    const s = snapSlot(x, y);
-    if (slotTaken(slots, i, s)) { setPick(null); setSlotSel(null); return; }
+    const s = snapFreeSlot(slots, i, x, y);
+    if (!s) { setPick(null); setSlotSel(null); return; }
     slots[i] = s;
     // løbepilen hører til den gamle plads
     const individual = tac.individual.slice();
@@ -458,7 +458,6 @@ function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players
     const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
     return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || roleRank(a) - roleRank(b);
   });
-  const half = Math.ceil(list.length / 2);
   const row = (p: Player) => {
     const i = order.indexOf(p.id);
     return (
@@ -481,8 +480,9 @@ function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players
       </Head>
       {slots(0)}
       <div className="cx-sq-cols">
-        <div className="cx-sq-col">{list.slice(0, half).map(row)}</div>
-        <div className="cx-sq-col">{list.slice(half).map(row)}</div>
+        {/* skiftevis venstre/højre, så sorteringen læses række for række (ejerens ønske 2026-11-10) */}
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 0).map(row)}</div>
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 1).map(row)}</div>
       </div>
       {slots(25)}
       <div className="cx-ts-buttons"><button className="primary cx-pen-done" onClick={onClose}>{t('common.ok')}</button></div>

@@ -14,7 +14,7 @@ import { humanManager, isHumanClub } from '../../game/humans';
 import { isBotClub } from '../../game/bots';
 import { session, skippedMatches, type LiveCmd } from '../../online/client';
 import { fixturesOn, gs, notify, squad } from '../../game/state';
-import type { Fixture, TableRow, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine } from '../../game/types';
+import type { Fixture, TableRow, MatchReport, MatchStatsSide, Tactic, OppInstructions, OppKind, PlayerMatchLine, CommentaryLine } from '../../game/types';
 import { compName, t } from '../../i18n';
 import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } from '../components';
 import { useGame, useNav } from '../core';
@@ -23,10 +23,11 @@ import { loadMatchTexts } from '../matchTexts';
 import { chant, playSample, preloadMatchSounds, startCrowd, stopCrowd } from '../matchSound';
 import { regionOf } from '../../game/leagues';
 import { Head } from './common';
+import { PlayedMatchClassic } from './PlayedMatchClassic';
 import { isRetro } from '../theme';
 import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop, cxLongDate } from '../classic';
 import { loadStadiumBgs, matchdayBgUrl } from '../backgrounds';
-import { stadiumBackgrounds, titleLogo } from '../classicOptions';
+import { goalFlashMs, stadiumBackgrounds, titleLogo } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables, ordinal } from './Competitions';
 import { leagueRows, sortTable } from '../../game/competitions';
@@ -42,7 +43,7 @@ import { realCompName } from '../../i18n/comps';
 // Den igangværende kamp overlever navigation mellem skærme
 /** Holdfarver (scoreboard, 2D, kommentar): begge hold i deres egne klubfarver – ligner de hinanden, spiller
  *  udeholdet i sin anden farve (som et udebanesæt), og ellers i hvidt eller mørkeblåt */
-function teamColors(home: number, away: number, _me: number): [string, string, string, string] {
+export function teamColors(home: number, away: number, _me: number): [string, string, string, string] {
   const g = gs();
   const kit = (id: number, fb: [string, string]): [string, string] => { const c = g.clubs[id]?.colors; return c?.[0] ? [c[0], c[1] ?? '#fff'] : fb; };
   const h = kit(home, ['#d7263d', '#ffffff']);
@@ -108,6 +109,7 @@ export function MatchScreen({ id }: { id: number }) {
     return <div><Head title={t('match.notYours')} /><p className="muted">{t('match.notYoursText', { club: g.clubs[g.userClub]?.name ?? '' })}</p><button className="primary" onClick={() => nav({ name: 'inbox' })}>{t('nav.inbox')}</button></div>;
   }
   if (f.result && g.reports[id] && phase !== 'live') {
+    if (isRetro()) return <PlayedMatchClassic id={id} />;
     return <div><Head title={t('match.played')} /><button onClick={() => nav({ name: 'report', id })}>{t('fix.report')}</button></div>;
   }
   // online: udeholdet i en kamp mod en anden manager følger kampen live
@@ -240,7 +242,7 @@ function lastLines<T>(lines: T[], n: number): [T, number][] {
 }
 
 /** CM-stil: holdbjælker i holdfarverne med stor score og minuttet til venstre */
-function CmScoreboard({ home, away, hg, ag, minute, colors, agg, classic }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string; classic?: boolean }) {
+export function CmScoreboard({ home, away, hg, ag, minute, colors, agg, classic }: { home: number; away: number; hg: number; ag: number; minute: string; colors: [string, string, string, string]; agg?: string; classic?: boolean }) {
   const g = gs();
   // klassisk (CM 01/02): kun klubbernes korte navn og stillingen yderst til højre i hver boks – minuttet står i sidebjælken
   if (classic) return (
@@ -288,7 +290,7 @@ function cxLineStyle(line: { cls: string; t?: number; k?: string } | undefined, 
   return line?.cls === 'goal' ? { background: '#fff21f', color: '#0b1a5c' } : team === 0 || team === 1 ? { background: colors[team * 2], color: colors[team * 2 + 1] } : compLine(comp) ?? { background: '#ffffff', color: '#000000' };
 }
 
-function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number; k?: string }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
+export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], reds = [], shootout, ht, flash, quiet }: { quiet?: boolean; flash?: number | false; reds?: { t: number; p: number; m: number }[]; ht?: [number, number]; shootout?: { t: number; p: number; outcome: string }[]; f: Fixture; colors: [string, string, string, string]; line?: { text: string; cls: string; t?: number; k?: string }; poss: [number, number][]; half: string; goals: { t: number; p: number; m: number; og?: boolean; pen?: boolean }[]; injuries?: { t: number; p: number; m: number }[] }) {
   const g = gs();
   const { nav } = useNav();
   const home = poss.length ? Math.round((poss.filter(([, p]) => p === 0).length / poss.length) * 100) : 50;
@@ -534,7 +536,7 @@ function LiveMatch({ id }: { id: number }) {
       if (cls === 'goal' && l.k !== 'goal-cheer') want('goalmono', 3);
       else { const ls = lineSounds(l, ctx, L.consumed); if (ls.length) want(ls[ls.length - 1], BIG_SOUND.has(l.k) ? 2 : l.k.startsWith('pl-') ? 0 : 1); }
       // klassisk: bjælken blinker "GOAL!" i 5-6 sekunder, og kampen står stille imens (ved alle hastigheder)
-      if (classic && cls === 'goal' && l.k !== 'goal-cheer') { L.goalUntil = Date.now() + 5500; L.goalTeam = l.k === 'own-goal' && l.t !== undefined ? 1 - l.t : l.t; }
+      if (classic && cls === 'goal' && l.k !== 'goal-cheer') { L.goalUntil = Date.now() + goalFlashMs(); L.goalTeam = l.k === 'own-goal' && l.t !== undefined ? 1 - l.t : l.t; }
       L.consumed++;
     }
     // ved Fastest kun de vigtige lyde (mål, fløjt, kort); i de stille perioder synger tilskuerne en gang imellem
@@ -969,10 +971,10 @@ function LiveMatch({ id }: { id: number }) {
       )}
       {classic && tab === 'stats' && <CxMatchStats st={[st[0], st[1]]} />}
       {classic && tab === 'zones' && <CxZones z={L.zones ?? [1, 1, 1]} zp={L.zposs} st={[st[0], st[1]]} colors={colors} />}
-      {classic && tab === 'report' && <CxReport lines={L.lines} sim={sim} ctx={{ home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}`, ref: refereeFor(f).name }} />}
-      {classic && tab === 'hstats' && <CxTeamStats sim={sim} side={0} />}
-      {classic && tab === 'astats' && <CxTeamStats sim={sim} side={1} />}
-      {classic && tab === 'ratings' && <CxRatings sim={sim} mom={report?.mom} />}
+      {classic && tab === 'report' && <CxReport lines={L.lines} commentary={sim.commentary} finished={sim.finished} ctx={{ home, away, score: `${home} ${sim.teams[0].stats.goals}-${sim.teams[1].stats.goals} ${away}`, ref: refereeFor(f).name }} />}
+      {classic && tab === 'hstats' && <CxTeamStats rows={cxRows(sim, 0)} />}
+      {classic && tab === 'astats' && <CxTeamStats rows={cxRows(sim, 1)} />}
+      {classic && tab === 'ratings' && <CxRatings rows={[cxRows(sim, 0), cxRows(sim, 1)]} mom={report?.mom} />}
       {classic && tab === 'table' && <CxLiveTable f={f} live={[st[0].goals, st[1].goals]} others={others} minute={sim.minute} finished={sim.finished} kicked={!waiting} />}
       {classic && tab === 'scores' && <CxScores own={waiting ? undefined : { f, scorers: sim.events.filter((e) => e.k === 'goal').map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={sim.minute} finished={sim.finished} title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} />}
       {classic && !(tab === 'tactics' || tab === 'oppTactics') && (
@@ -1583,7 +1585,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
 
 // ---------- klassisk kampskærm (CM 01/02): Match Stats, Action Zones, Match Report, holdstatistik, karakterer, resultater ----------
 
-type CxRow = { id: number; num: number | string; note?: string; noteOn?: boolean; dim: boolean; cond?: number; rating?: number; line?: PlayerMatchLine; capt: boolean; card?: 'yellow' | 'red' };
+export type CxRow = { id: number; num: number | string; note?: string; noteOn?: boolean; dim: boolean; cond?: number; rating?: number; line?: PlayerMatchLine; capt: boolean; card?: 'yellow' | 'red' };
 
 /** Holdets rækker som i originalen: de 11 startere i rækkefølge (udskiftede grå med "sub 49"), så bænken ("on 49" eller grå) */
 function cxRows(sim: MatchSim, side: 0 | 1): CxRow[] {
@@ -1612,13 +1614,29 @@ function cxRows(sim: MatchSim, side: 0 | 1): CxRow[] {
   return [...starters, ...bench, ...extra];
 }
 
+/** Samme rækker som cxRows, men fra en gemt kamprapport (PlayedMatchClassic): startere efter plads, derefter indskiftede – bænken, der ikke kom på, er ikke i rapporten */
+export function cxRowsReport(rep: MatchReport, side: 0 | 1): CxRow[] {
+  const g = gs();
+  const ev = rep.events.filter((e) => e.t === side);
+  const subOut = (id: number) => ev.find((e) => e.k === 'sub' && e.p2 === id)?.m;
+  const subIn = (id: number) => ev.find((e) => e.k === 'sub' && e.p === id)?.m;
+  const inj = (id: number) => ev.find((e) => e.k === 'injury' && e.p === id)?.m;
+  const card = (id: number) => (ev.some((e) => e.k === 'red' && e.p === id) ? 'red' as const : ev.some((e) => e.k === 'yellow' && e.p === id) ? 'yellow' as const : undefined);
+  const mk = (l: PlayerMatchLine): CxRow => {
+    const o = subOut(l.id), i = inj(l.id), n = l.sub ? subIn(l.id) : undefined;
+    return { id: l.id, num: g.players[l.id]?.number ?? '', note: o !== undefined ? `sub ${o}` : i !== undefined ? `inj ${i}` : n !== undefined ? `on ${n}` : undefined, noteOn: o === undefined && i === undefined && n !== undefined,
+      dim: o !== undefined || i !== undefined || l.red, cond: l.cond, rating: Math.round(Math.max(1, Math.min(10, l.rating))), line: l, capt: false, card: card(l.id) };
+  };
+  const mine = rep.players.filter((l) => l.team === side);
+  return [...mine.filter((l) => !l.sub).sort((a, b) => a.slot - b.slot).map(mk), ...mine.filter((l) => l.sub).map(mk)];
+}
 function CxName({ r }: { r: CxRow }) {
   const p = gs().players[r.id];
   const { nav } = useNav();
   return <>{r.card ? <i className={`cx-card ${r.card}`} /> : null}{p ? <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{`${p.first} ${p.last}`.trim()}</span> : '?'}{r.capt ? ' (c)' : ''}</>;
 }
 
-function CxMatchStats({ st }: { st: [MatchStatsSide, MatchStatsSide] }) {
+export function CxMatchStats({ st }: { st: [MatchStatsSide, MatchStatsSide] }) {
   const pct = (a: number, b: number) => `${Math.round((a / Math.max(1, b)) * 100)}%`;
   const rows: [string, string | number, string | number, string?][] = [
     [t('cl.ms.shots'), st[0].shots, st[1].shots], [t('cl.ms.on'), st[0].onTarget, st[1].onTarget], [t('cl.ms.off'), st[0].shots - st[0].onTarget, st[1].shots - st[1].onTarget],
@@ -1634,7 +1652,7 @@ function CxMatchStats({ st }: { st: [MatchStatsSide, MatchStatsSide] }) {
 }
 
 /** Action Zones: hvor bolden har været (eget forsvar, midtbane, angreb) og boldbesiddelsen */
-function CxZones({ z, zp, st, colors }: { z: [number, number, number]; zp?: [number, number][]; st: [MatchStatsSide, MatchStatsSide]; colors: [string, string, string, string] }) {
+export function CxZones({ z, zp, st, colors }: { z: [number, number, number]; zp?: [number, number][]; st: [MatchStatsSide, MatchStatsSide]; colors: [string, string, string, string] }) {
   const tot = Math.max(1, z[0] + z[1] + z[2]);
   const h = st[0].possession;
   const bar = (home: number) => (
@@ -1663,10 +1681,10 @@ function CxZones({ z, zp, st, colors }: { z: [number, number, number]; zp?: [num
 }
 
 /** Match Report: først efter slutfløjt (CM 01/02: "There is no match report available."), med originalens rapportlinjer i datid */
-function CxReport({ lines, sim, ctx }: { lines: { text: string; m: number; ci?: number }[]; sim: MatchSim; ctx: { home: string; away: string; score?: string; ref?: string } }) {
-  if (!sim.finished) return <div className="cx-mr cx-mr-none">{t('cl.mt.noReport')}</div>;
+export function CxReport({ lines, commentary, finished, ctx }: { lines: { text: string; m: number; ci?: number }[]; commentary: CommentaryLine[]; finished: boolean; ctx: { home: string; away: string; score?: string; ref?: string } }) {
+  if (!finished) return <div className="cx-mr cx-mr-none">{t('cl.mt.noReport')}</div>;
   const rows = lines.flatMap((l) => {
-    const src = l.ci !== undefined ? sim.commentary[l.ci] : undefined;
+    const src = l.ci !== undefined ? commentary[l.ci] : undefined;
     return (src ? reportLines(src, ctx, l.ci!) : [l.text]).map((text) => ({ m: l.m, text }));
   });
   return (
@@ -1677,8 +1695,7 @@ function CxReport({ lines, sim, ctx }: { lines: { text: string; m: number; ci?: 
 }
 
 /** Holdets spillerstatistik (som "{hold} Stats") */
-function CxTeamStats({ sim, side }: { sim: MatchSim; side: 0 | 1 }) {
-  const rows = cxRows(sim, side);
+export function CxTeamStats({ rows }: { rows: CxRow[] }) {
   // CM 01/02: Pas Cmp · Tck Won · Hea Won · Ast Sho On · Con + karakteren (uden overskrift); Key-kolonnerne kender motoren ikke
   const H: [string, string][] = [['Pas', 'c-yel'], ['Cmp', 'c-yel'], ['Tck', 'c-orange'], ['Won', 'c-orange'], ['Hea', 'c-yel'], ['Won', 'c-yel'], ['Ast', 'c-orange'], ['Sho', 'c-orange'], ['On', 'c-orange'], ['Con', 'c-con']];
   const vals = (l: PlayerMatchLine, cond: number | undefined) => [l.passes, l.passesOk, l.tckA ?? l.tackles, l.tackles, l.hea ?? '', l.heaW ?? '', l.assists, l.shots, l.on ?? '', cond ?? ''];
@@ -1693,27 +1710,23 @@ function CxTeamStats({ sim, side }: { sim: MatchSim; side: 0 | 1 }) {
 }
 
 /** Player Ratings: begge hold side om side – nummer, navn, on/sub, kondition, karakter (hele tal) og mål */
-function CxRatings({ sim, mom }: { sim: MatchSim; mom?: number }) {
-  const g = gs();
-  const { nav: navTo } = useNav();
-  const mp = mom ? g.players[mom] : undefined;
+export function CxRatings({ rows, mom }: { rows: readonly [CxRow[], CxRow[]]; mom?: number }) {
   return (
     <>
     <div className="cx-rt">{([0, 1] as const).map((side) => (
-      <table key={side} className="cx-tbl"><tbody>{cxRows(sim, side).map((r) => (
+      <table key={side} className="cx-tbl"><tbody>{rows[side].map((r) => (
         <tr key={r.id} className={`${r.dim ? 'dim' : ''} ${r.id === mom ? 'cx-mom' : ''}`}><td className="btn-col"><span className="cx-rowbtn narrow">{r.num}</span></td><td className="c-name"><CxName r={r} /></td>
           <td className={r.noteOn ? 'c-pos' : ''}>{r.note ?? ''}</td><td className={`c-num ${(r.cond ?? 0) >= 92 ? 'c-good' : (r.cond ?? 0) >= 70 ? 'c-orange' : 'c-bad'}`}>{r.cond !== undefined ? `${r.cond}%` : ''}</td>
           <td className="c-num c-cyan">{r.line ? r.rating : ''}</td><td className="c-num c-yel">{r.line?.goals || ''}</td></tr>
       ))}</tbody></table>
     ))}</div>
     {/* kampens spiller efter slutfløjt */}
-    {mp && <div className="cx-mom-line">{t('cl.mt.mom')} - <span className="cx-link" role="link" onClick={() => navTo({ name: 'player', id: mp.id })}>{mp.first} {mp.last}</span> ({g.clubs[mp.club]?.short ?? ''})</div>}
     </>
   );
 }
 
 /** Live League Table (CM 01/02): stillingen med dagens kampe, som de står i det aktuelle minut – egen klub øverst over en stiplet linje */
-function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: Fixture; live: [number, number]; others: Fixture[]; minute: number; finished: boolean; kicked: boolean }) {
+export function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: Fixture; live: [number, number]; others: Fixture[]; minute: number; finished: boolean; kicked: boolean }) {
   const g = gs();
   const { nav } = useNav();
   const comp = g.comps[f.comp];
@@ -1764,7 +1777,7 @@ function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: Fixture
 }
 
 /** Latest Scores: dagens andre kampe med målscorere (til det aktuelle minut) */
-function CxScores({ own, others, minute, finished, title }: { own?: { f: Fixture; scorers: [number, number, number?][] }; others: Fixture[]; minute: number; finished: boolean; title: string }) {
+export function CxScores({ own, others, minute, finished, title }: { own?: { f: Fixture; scorers: [number, number, number?][] }; others: Fixture[]; minute: number; finished: boolean; title: string }) {
   const g = gs();
   // egen kamp øverst (som i CM 01/02), derefter dagens andre kampe i turneringen
   const all = [...(own ? [{ o: own.f, sc: own.scorers }] : []), ...others.map((o) => ({ o, sc: o.result!.scorers }))];
@@ -1793,7 +1806,7 @@ function CxScores({ own, others, minute, finished, title }: { own?: { f: Fixture
 }
 
 /** Samlet stilling i 2. kamp af en dobbeltkamp ("Agg 1-1" under udeholdet, som i CM 01/02) */
-function aggText(f: Fixture, hg: number, ag: number): string | undefined {
+export function aggText(f: Fixture, hg: number, ag: number): string | undefined {
   const g = gs();
   if (f.leg !== 2 || f.tieId === undefined) return undefined;
   const tie = g.comps[f.comp]?.ties.find((x) => x.id === f.tieId);

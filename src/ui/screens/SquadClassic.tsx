@@ -181,7 +181,6 @@ export function ClassicClubSquad({ cid, players: given }: { cid: number; players
   const info = INFO.find((x) => x.key === view) ?? INFO[0];
   const sort = SORTS.find((x): x is Extract<Sort, { cmp: unknown }> => 'cmp' in x && x.key === sortKey) ?? (SORTS[1] as Extract<Sort, { cmp: unknown }>);
   const list = players.slice().sort(sort.cmp);
-  const half = Math.ceil(list.length / 2);
   const row = (p: Player) => {
     const tag = given ? nationalTag(p) : tagOf(p, g, cid);
     return (
@@ -202,8 +201,9 @@ export function ClassicClubSquad({ cid, players: given }: { cid: number; players
       </div>
       <div className="cx-sq-head"><span>{info.label}</span></div>
       <div className="cx-sq-cols">
-        <div className="cx-sq-col">{list.slice(0, half).map(row)}</div>
-        <div className="cx-sq-col">{list.slice(half).map(row)}</div>
+        {/* skiftevis venstre/højre, så sorteringen læses række for række (ejerens ønske 2026-11-10) */}
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 0).map(row)}</div>
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 1).map(row)}</div>
       </div>
     </div>
   );
@@ -252,7 +252,6 @@ function ClassicFirstSquad() {
   const sort = SORTS.find((x): x is Extract<Sort, { cmp: unknown }> => 'cmp' in x && x.key === sortKey) ?? (SORTS[1] as Extract<Sort, { cmp: unknown }>);
   const fil = FILTERS.find(([k]) => k === filter) ?? FILTERS[0];
   const list = players.filter((p) => fil[1](p, tac)).sort(sort.cmp);
-  const half = Math.ceil(list.length / 2);
 
   // pladserne: de 11 i formationen + bænken
   const nb = benchSize();
@@ -364,8 +363,9 @@ function ClassicFirstSquad() {
         <>
           {fil[0] !== 'all' && <div className="cx-sq-filtered">{t('cl.sq.filtered', { filter: t(`cl.sq.f.${fil[0]}`), n: list.length, total: players.length })}</div>}
           <div className="cx-sq-cols">
-            <div className="cx-sq-col">{list.slice(0, half).map(row)}</div>
-            <div className="cx-sq-col">{list.slice(half).map(row)}</div>
+            {/* skiftevis venstre/højre, så sorteringen læses række for række (ejerens ønske 2026-11-10) */}
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 0).map(row)}</div>
+            <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 1).map(row)}</div>
           </div>
           {!g.draft && <Cliques />}
           <div className="cx-sq-drop-out" {...dropOn('out', null)} hidden={drag === null || !placeOf(tac, drag)}>

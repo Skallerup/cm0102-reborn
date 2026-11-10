@@ -24,12 +24,15 @@ import { matchSound, setMatchSound } from './matchSound';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
 
-const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo', stadium: 'cm-stadium-bg', modernBg: 'cm-modern-bg' } as const;
+const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo', stadium: 'cm-stadium-bg', modernBg: 'cm-modern-bg', goalFlash: 'cm-goal-flash' } as const;
 const read = (k: string, def: boolean) => { try { const v = localStorage.getItem(k); return v === null ? def : v === 'on'; } catch { return def; } };
 const write = (k: string, on: boolean) => { try { localStorage.setItem(k, on ? 'on' : 'off'); } catch { /* ignorér */ } };
 /** Skifter baggrunden hver dag? (ellers samme billede hele karrieren) */
 export const bgChanges = () => read(PREF.bg, true);
 export const flashingText = () => read(PREF.flash, true);
+/** Hvor længe et mål blinker på kampskærmen (ms) – Spilindstillinger (brugerønske 2026-11-10) */
+export const GOAL_FLASH_MS = [2000, 5500, 8000, 12000] as const;
+export const goalFlashMs = (): number => { try { const v = Number(localStorage.getItem(PREF.goalFlash)); return (GOAL_FLASH_MS as readonly number[]).includes(v) ? v : 5500; } catch { return 5500; } };
 /** Pixeleret udseende (tekst uden udglatning, baggrunde med synlige pixels) og den "futuristiske" skrift */
 export type PixelLevel = 'off' | 'light' | 'strong';
 export const pixelLook = (): PixelLevel => { try { const v = localStorage.getItem(PREF.pixel); return v === 'off' || v === 'strong' ? v : 'light'; } catch { return 'light'; } };
@@ -112,9 +115,9 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; sunday: boolean; save: string; notif: boolean };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; sunday: boolean; save: string; notif: boolean };
 
-export function Seg<T extends string | boolean>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
+export function Seg<T extends string | boolean | number>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
 }
 
@@ -123,7 +126,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const { nav } = useNav();
   const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
-    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), sunday: sundayLeague(),
+    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), sunday: sundayLeague(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
   };
   const [d, setD] = useState<Draft>(initial);
@@ -133,7 +136,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     if (d.lang !== initial.lang) { setLang(d.lang); g.lang = d.lang; }
     if (d.cur !== initial.cur) setCurrency(d.cur);
     if (d.save !== initial.save) { g.options.autosaveMode = d.save as 'changes'; g.options.autosave = d.save !== 'off'; }
-    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); setMatchSound(d.sound); setSundayLeague(d.sunday); applyFlash();
+    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); setMatchSound(d.sound); setSundayLeague(d.sunday); applyFlash();
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
     if (d.theme !== initial.theme) setTheme(d.theme);
@@ -148,7 +151,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <AccountBar />
           <div className="cx-set-top">
             <span>{t('cl.set.version', { v: APP_VERSION })}</span>
-            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, sunday: false })}>{t('cl.set.reset')}</button>
+            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, goalFlash: 5500, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, sunday: false })}>{t('cl.set.reset')}</button>
           </div>
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
@@ -167,6 +170,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
               <button onClick={() => { onClose(); nav({ name: 'community', tab: 'skins' }); }}>{t('hub.skins.more')}</button>
             </div>)}
             {row(t('cl.set.flash'), onOff(d.flash, (v) => up({ flash: v })))}
+            {row(t('cl.set.goalFlash'), <Seg value={d.goalFlash} opts={GOAL_FLASH_MS.map((ms) => [ms, `${ms / 1000} s`.replace('.5', '½')] as [number, string])} onChange={(v) => up({ goalFlash: v })} />)}
             {row(t('opt.autosave'), <Seg value={d.save} opts={(['changes', 'daily', 'weekly', 'monthly', 'off'] as const).map((m) => [m, t(`cl.set.save.${m}`)] as [string, string])} onChange={(v) => up({ save: v })} />)}
             {notifySupported() && row(t('opt.notify'), onOff(d.notif, (v) => up({ notif: v })))}
           </div>
