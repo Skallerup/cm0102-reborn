@@ -7,7 +7,6 @@ import { LOCALE, dateFmt, getLang, setLang, t } from '../i18n';
 import type { ChangelogEntry } from './changelogData';
 import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
-import { withAiManagers } from './aiManagers';
 import './landing.css';
 import { shot } from './shots';
 
@@ -251,9 +250,9 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
   const lang = getLang();
   useEffect(() => {
     document.title = t('land.docTitle');
-    // de rigtige managere blandet med tydeligt mærkede AI-managere, så listen ikke står tom
-    if (rankingAvailable()) fetchBoard('career').then((d) => setTop(withAiManagers(d?.rows ?? [], 8)));
-    else setTop(withAiManagers([], 8));
+    // kun rigtige managere fra den globale rangliste (AI-udfyldningen er fjernet – ejerens ønske 2026-11-10)
+    if (rankingAvailable()) fetchBoard('career').then((d) => setTop((d?.rows ?? []).slice(0, 8)));
+    else setTop([]);
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
@@ -404,11 +403,10 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
         <div className="lp-rank-board reveal">
           <div className="lp-rank-head">🏆 {t('land.rankBoard')}</div>
           {top && top.length > 0 ? top.map((r, i) => (
-            <div key={r.id} className={`lp-rank-row ${r.ai ? 'ai' : ''}`}><b>{i + 1}</b><span><span className="lp-rank-name">{r.name}{r.ai && <i className="lp-ai" title={t('land.rankAiHint')}>AI</i>}</span><small>{r.club} · {r.league}</small></span><em>{r.points}</em></div>
+            <div key={r.id} className="lp-rank-row"><b>{i + 1}</b><span><span className="lp-rank-name">{r.name}</span><small>{r.club} · {r.league}</small></span><em>{r.points}</em></div>
           )) : (
             <div className="lp-rank-empty">{t('land.rankEmpty')}</div>
           )}
-          {top?.some((r) => r.ai) && <div className="lp-rank-note">{t('land.rankAiNote')}</div>}
         </div>
       </section>
 
