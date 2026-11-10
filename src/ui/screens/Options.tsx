@@ -49,7 +49,7 @@ export function Options() {
             </label>
             <div className="muted">{t(`opt.save.${g.options.autosaveMode ?? 'changes'}.hint`)}</div>
             <label className="row">{t('opt.theme')}
-              <select value={theme} onChange={(e) => { setThemeState(e.target.value as Theme); setTheme(e.target.value as Theme); }}>
+              <select value={theme} onChange={(e) => { const th = e.target.value as Theme; setThemeState(th); setTheme(th); const m = th === 'retro' ? 'authentic' : 'extended'; if ((g.options.mode ?? 'extended') !== m) act({ t: 'setMode', mode: m }); }}>
                 {(['club', 'clubDark', 'light', 'dark', 'retro'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
                 {(['gold'] as const).map((m) => <option key={m} value={m}>{t(`opt.theme.${m}`)}</option>)}
               </select>
@@ -78,12 +78,7 @@ export function Options() {
               </select>
             </label>
             <div className="muted">{t('opt.rules.hint')}</div>
-            {theme === 'retro' && <label className="row">{t('mode.title')}
-              <select value={g.options.mode ?? 'extended'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
-                onChange={(e) => act({ t: 'setMode', mode: e.target.value as 'authentic' | 'extended' })}>
-                {(['authentic', 'extended'] as const).map((m) => <option key={m} value={m}>{t(`mode.${m}`)}</option>)}
-              </select>
-            </label>}
+            {/* spiltilstanden følger udseendet: klassisk = ægte CM 01/02, moderne = udvidet */}
             <div className="muted">{t(g.options.mode === 'authentic' ? 'mode.authenticHint' : 'mode.extendedHint')}</div>
             <label className="row">{t('opt.windows')}
               <select value={g.options.transferWindows ?? 'real'} disabled={!!g.humans && !session()?.isHost} title={g.humans && !session()?.isHost ? t('opt.hostOnly') : undefined}
