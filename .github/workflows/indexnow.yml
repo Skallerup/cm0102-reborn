@@ -1,0 +1,21 @@
+name: IndexNow efter udgivelse
+
+# Når Vercel har udgivet produktionen (cm0102reborn.com), får Bing, Yandex, Naver m.fl. besked om de sider,
+# hvis <lastmod> i sitemaps er ændret de seneste par dage (scripts/indexnow.ts). Google bruger ikke IndexNow –
+# den læser sitemap.xml selv.
+on:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  indexnow:
+    if: github.event.deployment_status.state == 'success' && contains(github.event.deployment_status.environment, 'roduction')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx --yes tsx scripts/indexnow.ts --remote --days 3
