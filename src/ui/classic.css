@@ -318,6 +318,7 @@
 :root[data-skin='retro'] .cx-sq-name { min-width: 0; padding: 0 2px; background: none; border: none; color: #fff; font-size: 16px; font-weight: 800; text-align: left; text-shadow: 1px 1px 0 #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
 :root[data-skin='retro'] .cx-sq-name:hover { color: var(--cx-gold); }
 :root[data-skin='retro'] .cx-sq-name.loan { color: #6cc4ff; }
+:root[data-skin='retro'] .cx-sq-name.mine { color: var(--cx-gold); }
 :root[data-skin='retro'] .cx-sq-name.unavail { color: #ff6b5a; }
 .cx-sq-info { color: var(--cx-gold); font-size: 13px; font-weight: 800; text-shadow: 1px 1px 0 #000; white-space: nowrap; }
 .cx-sq-filtered { text-align: center; color: #b9c3ec; font-size: 12px; margin: -4px 0 6px; }

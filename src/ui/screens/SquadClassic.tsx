@@ -187,7 +187,8 @@ export function ClassicClubSquad({ cid, players: given }: { cid: number; players
       <div key={p.id} className="cx-sq-row">
         <span className="cx-selbtn cx-selbtn-static" />
         <Tag p={p} tag={tag} />
-        <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''}`} title={stars.has(p.id) ? t('tag.star') : undefined}
+        {/* landshold: egne spillere i gult (som i CM 01/02) */}
+        <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''} ${given && g.userClub && p.club === g.userClub ? 'mine' : ''}`} title={stars.has(p.id) ? t('tag.star') : undefined}
           onClick={() => nav({ name: 'player', id: p.id })}>{shortName(p, stars.has(p.id))}</button>
         <span className="cx-sq-info">{info.show(p)}</span>
       </div>
