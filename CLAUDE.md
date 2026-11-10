@@ -62,8 +62,11 @@ og læg ændringen i samme push.
   (`CM3_MATCH_ENGINE`: `init_match` 0x6b7f20, `run_match_steps` 0x6b98c0, MATCH_MAN/MATCH_PLAYER/Match_Events/Injury, RNG-puljen
   0xaa2454) i et nyt modul `src/game/engine/original/` bag et flag, med Bosman headless som orakel (RECOMP_SCRIPT, -seed,
   RECOMP_FIXED_CLOCK) og reproducerbare sammenligningstests. Kræver originalens filer (`CM0102.iso` + `cm0102_3968.exe`
-  eller en ren `cm0102.exe` 3.9.68) – findes IKKE på denne maskine (søgt 10/11). Rekompileren: `python3 tools/recomp/recomp.py
-  --exe <cm0102.exe> --out <mappe> --functions <liste>` (capstone installeret). Baggrund: docs/ORIGINAL-ENGINE-RESEARCH.md.
+  eller en ren `cm0102.exe` 3.9.68). Fundet 10/11 i `/Applications/CM 01-02 Bosman Edition.app/Contents/Resources/game/` –
+  rekompileret til `~/cm0102-engine/` (uden for repoet: `hooks/<adr>.c` pr. funktion, `notes/` med pseudokode og offsets,
+  README med kommandoen). Plan, funktionsliste og sæsontal: docs/ENGINE_PORT_PLAN.md. Vehiklet er gittermotoren
+  (docs/GRID_ENGINE.md): de *estimerede* kroge i `GRID_UNKNOWN` erstattes af præcise porte. Bosman-binæren kan køre
+  scriptet (`RECOMP_SCRIPT`, `RECOMP_FIXTURE_RECORD`, `-seed`) som orakel. Baggrund: docs/ORIGINAL-ENGINE-RESEARCH.md.
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
   `world-original.json` (2001/02, 3.9.68).
