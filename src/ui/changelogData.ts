@@ -9,6 +9,27 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.22.0',
+    date: '2026-11-10',
+    title: { da: 'Spillernes ønsker: kampskærm for spillede kampe, baggrunde og mange rettelser', en: "Players' requests: played matches as the match screen, backgrounds and many fixes" },
+    items: [
+      { da: "En spillet kamp åbner nu som kampskærmen efter slutfløjt: Match Overview, Match Stats, Action Zones, Match Report, Team Stats, Player Ratings, Latest Scores og League Table – med samme sidebjælke (klassisk)", en: "A played match now opens as the match screen after the final whistle: Match Overview, Match Stats, Action Zones, Match Report, Team Stats, Player Ratings, Latest Scores and League Table – with the same side bar (classic)" },
+      { da: "Baggrunde som i originalen: klubskærme viser stadionet udefra og kampdage stadionet indefra med fulde tribuner – også for klubber uden egne fotos. Midtuge- og europæiske kampe spilles i projektørlys", en: "Backgrounds as in the original: club screens show the ground from outside and matchdays the inside with full stands – also for clubs without their own photos. Midweek and European games are played under floodlights" },
+      { da: "Til kampen på kampdagen går først til truppen – derfra går man til kampen, som i CM 01/02", en: "To the match on matchday goes to the squad first – from there you go to the match, as in CM 01/02" },
+      { da: "Match Overview: scorer en spiller flere mål, står de på én linje (\"Nordstrøm 53, 64\"). Kampens spiller vises med lyseblåt navn i Player Ratings", en: "Match Overview: a player's goals are on one line (\"Nordstrøm 53, 64\"). The man of the match is shown with a light-blue name in Player Ratings" },
+      { da: "Spilindstillinger: vælg hvor længe et mål blinker (2, 5½, 8 eller 12 sekunder)", en: "Game settings: choose how long a goal flashes (2, 5½, 8 or 12 seconds)" },
+      { da: "Trup og taktik: de to kolonner fyldes skiftevis, så sorteringen læses række for række. Taktik: en spiller, der slippes oven i to andre, lander på den ledige plads ved siden af – nu kan man spille med tre midterforsvarere", en: "Squad and tactics: the two columns alternate, so the sort order reads row by row. Tactics: a player dropped onto two others lands on the free spot next to them – three centre-backs now work" },
+      { da: "You Have News åbner den ældste ulæste besked og går videre til den næste ved hvert klik", en: "You Have News opens the oldest unread message and moves on to the next one with each click" },
+      { da: "Europæiske gruppetabeller (Champions League, Europa League, Conference League) står nu sorteret efter point i det klassiske udseende", en: "European group tables (Champions League, Europa League, Conference League) are now sorted by points in the classic look" },
+      { da: "Ferie: den grå datobjælke siger nu, at et klik afbryder ferien", en: "Holiday: the grey date bar now says that a click ends the holiday" },
+      { da: "Landsholdstruppen viser dine egne spillere i gult. Sidebjælkens menuer ligger ikke længere gemt bag bokse som Tilbyd kontrakt", en: "National squads show your own players in yellow. The side bar's menus are no longer hidden behind boxes such as Offer Contract" },
+      { da: "Rettet: en nyindkøbt spiller stod som utilfreds med sin spilletid samme dag, han kom (utilfredsheden fulgte med fra den gamle klub), og andre klubber bød på ham efter to uger. Nu nulstilles utilfredsheden ved klubskift, og en nyindkøbt spiller, der ikke er til salg, får ingen bud", en: "Fixed: a newly signed player was unhappy with his playing time on the day he arrived (the unhappiness came with him from his old club), and other clubs bid for him after two weeks. Unhappiness now resets on a transfer, and a new signing who is not for sale gets no bids" },
+      { da: "Spillet genindlæser ikke længere siden af sig selv efter en opdatering – en ny version tages i brug ved næste besøg, eller med knappen \"Genindlæs nu\"", en: "The game no longer reloads the page by itself after an update – a new version is used on your next visit, or with the \"Reload now\" button" },
+      { da: "Åbner man spillet inde i en anden apps browser (Facebook, Instagram, Discord …), advares der om, at gemte spil kan forsvinde – med en knap til at åbne i Chrome", en: "Opening the game inside another app's browser (Facebook, Instagram, Discord …) now warns that saved games can disappear – with a button to open it in Chrome" },
+      { da: "Forsiden indlæses meget hurtigere (selve spillet hentes først, når man trykker Spil), og ranglisten på forsiden viser kun rigtige managere", en: "The front page loads much faster (the game itself is fetched when you press Play), and the front page leaderboard shows only real managers" },
+    ],
+  },
+  {
     version: '0.21.0',
     date: '2026-11-10',
     title: { da: 'Regens som i originalen og sundere klubøkonomi', en: 'Regens as in the original and healthier club finances' },
