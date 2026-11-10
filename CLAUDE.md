@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Spillerprofil (klassisk): Liga- og Pokal-rækkerne viser assists, kampens spiller og karaktersnit (`SeasonStats.lgAssists/lgMom/lgRatingSum/lgRatingCount`, valgfrie felter – ældre gemte spil viser "-" indtil næste kamp). Landshold har stadig intet snit (landskampe giver ingen karakterer).
 - 2026-11-10 – Match Report (klassisk) vises løbende under kampen (før "Der er ingen kamprapport" indtil slutfløjt – ejeren oplevede det som forsvundet).
 - 2026-11-10 – Stabssøgning (klassisk): knappen Filtre (job, status ledig/ansat, nationalitet, omdømme mindst, alder højst) som i spillersøgningen – `StaffFilterDialog` i TransfersClassic.tsx; Søg-menuens forvalg virker stadig oven i.
 - 2026-11-10 – v0.22.0: ændringsloggen i spillet samler dagens brugerønsker og rettelser (spillet kamp som kampskærm, baggrunde, Til kampen via truppen, mål på én linje, målblink, kolonner, You Have News, gruppetabeller, feriebjælke, gule landsholdsspillere, utilfredshed/bud ved klubskift, ingen auto-genindlæsning, in-app-banner, hurtigere forside).

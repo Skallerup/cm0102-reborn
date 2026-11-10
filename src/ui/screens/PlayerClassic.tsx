@@ -94,8 +94,15 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
   const carApps = car.apps + s.apps + s.subs, carAvg = (car.rs + avr * s.ratingCount) / ((car.rn + s.ratingCount) || 1);
   const dash = '-';
   const statRows: [string, ReactNode[]][] = [
-    [t('cl.pl.league'), [s.lgApps, s.lgGoals, dash, dash, dash]],
-    [t('cl.pl.cup'), [Math.max(0, s.apps - s.lgApps), Math.max(0, s.goals - s.lgGoals), dash, dash, dash]],
+    // liga og øvrige turneringer (pokal/Europa) hver for sig med assists, kampens spiller og snit – som i originalen (ejerens ønske 2026-11-10)
+    ...(() => {
+      const lgRs = s.lgRatingSum ?? 0, lgRn = s.lgRatingCount ?? 0, lgA = s.lgAssists ?? 0, lgM = s.lgMom ?? 0;
+      const cupRn = Math.max(0, s.ratingCount - lgRn), cupRs = s.ratingSum - lgRs;
+      return [
+        [t('cl.pl.league'), [s.lgApps, s.lgGoals, lgA, lgM, lgRn ? <Rating r={lgRs / lgRn} digits={2} /> : dash]],
+        [t('cl.pl.cup'), [Math.max(0, s.apps - s.lgApps), Math.max(0, s.goals - s.lgGoals), Math.max(0, s.assists - lgA), Math.max(0, s.mom - lgM), cupRn ? <Rating r={cupRs / cupRn} digits={2} /> : dash]],
+      ] as [string, ReactNode[]][];
+    })(),
     [t('cl.pl.season'), [s.subs ? `${s.apps} (${s.subs})` : s.apps, s.goals, s.assists, s.mom, avr ? <Rating r={avr} digits={2} /> : dash]],
     [t('cl.pl.intl'), [p.caps, p.intGoals, dash, dash, dash]],
     [t('cl.pl.senior'), [carApps, car.goals + s.goals, car.assists + s.assists, dash, carApps && (car.rn + s.ratingCount) ? <Rating r={carAvg} digits={2} /> : dash]],

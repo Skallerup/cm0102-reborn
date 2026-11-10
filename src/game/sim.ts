@@ -229,7 +229,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     played.add(p.id);
     const s = p.stats;
     if (line.sub) s.subs++; else s.apps++;
-    if (isLeague) { s.lgApps++; s.lgGoals += line.goals; }
+    if (isLeague) { s.lgApps++; s.lgGoals += line.goals; s.lgAssists = (s.lgAssists ?? 0) + line.assists; s.lgRatingSum = (s.lgRatingSum ?? 0) + line.rating; s.lgRatingCount = (s.lgRatingCount ?? 0) + 1; if (rep.mom === p.id) s.lgMom = (s.lgMom ?? 0) + 1; }
     s.minutes += line.minutes;
     s.goals += line.goals;
     s.assists += line.assists;
