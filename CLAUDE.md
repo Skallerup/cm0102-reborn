@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – v0.22.0: ændringsloggen i spillet samler dagens brugerønsker og rettelser (spillet kamp som kampskærm, baggrunde, Til kampen via truppen, mål på én linje, målblink, kolonner, You Have News, gruppetabeller, feriebjælke, gule landsholdsspillere, utilfredshed/bud ved klubskift, ingen auto-genindlæsning, in-app-banner, hurtigere forside).
 - 2026-11-10 – Landsholdstrup (klassisk): egne spillere står i gult (`.cx-sq-name.mine`), som i originalen.
 - 2026-11-10 – Match Overview (klassisk): flere mål af samme spiller står på én linje med minutterne adskilt af komma ("Nordstrøm 53, 64"), som i originalen.
 - 2026-11-10 – Klassisk: "Til kampen"/Continue Game på kampdagen går først til truppen; derfra giver næste tryk "Proceed to the match ?" (som i CM 01/02). `onContinue` i Shell.tsx.
