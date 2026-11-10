@@ -341,7 +341,13 @@ function NewCareersTab({ open }: { open: OpenSave }) {
     if (r.error) window.alert(`Error: ${String(r.error)}`);
     else void adminGet<Data>('op=new-careers').then((x) => setData(x ?? { rows: [], days: {} }));
   };
+  // hvem der er online lige nu: grøn prik ved navnet, og "online now" filtrerer listen (ejerens ønske 2026-11-10)
+  const [onlyOnline, setOnlyOnline] = useState(false);
   if (!data) return <div className="muted">Loading new careers…</div>;
+  const isOnline = (r: NewCareer) => !!r.vid && !!r.seen && (data.now ?? Date.now()) - r.seen < 5 * 60_000;
+  const onlineRows = data.rows.filter(isOnline);
+  const onlineVisitors = new Set(onlineRows.map((r) => r.vid)).size;
+  const shown = onlyOnline ? onlineRows : data.rows;
   const days = Object.entries(data.days).reverse();
   const max = Math.max(1, ...days.map(([, n]) => n));
   return (
@@ -370,13 +376,14 @@ function NewCareersTab({ open }: { open: OpenSave }) {
           </Panel>
         ) : null;
       })()}
-      <Panel title={`Latest new careers (${data.rows.length})`} right={<span className="muted">● {data.online ?? 0} online now{' '}
+      <Panel title={`Latest new careers (${shown.length})`} right={<span className="muted">
+        <button className={`small ${onlyOnline ? 'primary' : ''}`} title={onlyOnline ? 'Show all careers' : 'Show only the careers whose browser is online now'} onClick={() => setOnlyOnline(!onlyOnline)}>● {data.online ?? 0} online now{(data.online ?? 0) !== onlineVisitors ? ` · ${onlineVisitors} in the list` : ''}</button>{' '}
         <button className="small" title="Removes every career started in this browser (same visitor id)" onClick={() => void removeCareers({ vids: [myVid()] }, 'all careers started in this browser')}>Remove my careers</button></span>} className="flush">
-        {data.rows.length === 0 ? <div className="muted" style={{ padding: 12 }}>No careers started yet.</div> : (
+        {shown.length === 0 ? <div className="muted" style={{ padding: 12 }}>{onlyOnline ? 'Nobody with a career in the list is online right now.' : 'No careers started yet.'}</div> : (
           <div className="table-wrap" style={{ maxHeight: 640, overflowY: 'auto' }}>
             <table className="grid"><thead><tr><th>Started</th><th>Manager</th><th>Club</th><th>League</th><th>Mode</th><th className="num">AI</th><th>DB</th><th>Theme</th><th>Lang</th><th>Country</th><th>Progress</th><th>Status</th><th>Save</th><th /></tr></thead>
-              <tbody>{data.rows.map((r, i) => (
-                <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{r.manager}</td><td>{r.club}</td>
+              <tbody>{shown.map((r, i) => (
+                <tr key={i}><td className="muted nowrap" title={when(r.at)}>{ago(r.at)}</td><td>{isOnline(r) && <span style={{ color: '#16a34a' }} title="Online now">● </span>}{r.manager}</td><td>{r.club}</td>
                   <td className="muted">{r.league}{r.nation ? ` (${r.nation})` : ''}</td><td className="muted">{r.mode === 'authentic' ? 'Original' : r.mode === 'extended' ? 'Extended' : ''}</td>
                   <td className="num">{r.bots || ''}</td><td className="muted">{r.db}</td>
                   <td className="muted">{r.theme === 'classic' ? 'Classic' : r.theme === 'modern' ? 'Modern' : '–'}</td><td className="muted">{r.lang}</td>

@@ -67,6 +67,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) Admin → New careers: grøn prik ved manageren, hvis browseren er online (puls inden for 5 min), og "● N online now" er en knap, der filtrerer listen til de online (viser også hvor mange af de online, der har en karriere i listen).
 - 2026-11-10 – Skudt live (merge staging → main): You Have News → næste besked, skiftevise kolonner, Goal flash, tredje midterforsvarer, kampens spiller i lyseblå, spillet kamp som kampskærm.
 - 2026-11-10 – (staging) Klassisk: en spillet kamp (rapport-ruten og "match" med resultat) vises som kampskærmen efter slutfløjt – `screens/PlayedMatchClassic.tsx` bygger Match Overview/Stats/Action Zones/Report, Team Stats, Player Ratings, Latest Scores og League Table af `MatchReport` (kommentar, events, heat, players) med samme sidebjælke (taktik-knapperne viser holdets Team Stats, Continue går tilbage). Match.tsx eksporterer fanekomponenterne; CxReport/CxTeamStats/CxRatings tager data i stedet for `sim`.
 - 2026-11-10 – (staging) Taktik: en spiller, der slippes på en optaget plads, lander på rækkens nærmeste ledige plads (`snapFreeSlot`) – så en tredje midterforsvarer kan slippes oven i de to andre (før skete der intet). Kampens spiller: navnet i lyseblå (#6fe3ff) i Player Ratings som i originalen; tekstlinjen "Man of the match – …" er fjernet.
