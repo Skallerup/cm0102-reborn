@@ -211,7 +211,7 @@ function Looks({ onPlay, onOpen }: { onPlay: () => void; onOpen: (src: string, a
   );
 }
 
-export function Frame({ src, alt, className = '', onOpen }: { src: string; alt: string; className?: string; onOpen?: (src: string, alt: string) => void }) {
+export function Frame({ src, alt, className = '', onOpen, eager }: { src: string; alt: string; className?: string; onOpen?: (src: string, alt: string) => void; /** hero-billederne: LCP, så de hentes med det samme */ eager?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const move = (e: React.MouseEvent) => {
     const el = ref.current;
@@ -225,7 +225,7 @@ export function Frame({ src, alt, className = '', onOpen }: { src: string; alt: 
   return (
     <div ref={ref} className={`lp-frame ${className}`} onMouseMove={move} onMouseLeave={leave} onClick={() => onOpen?.(src, alt)} role={onOpen ? 'button' : undefined} tabIndex={onOpen ? 0 : undefined} onKeyDown={(e) => { if (e.key === 'Enter') onOpen?.(src, alt); }}>
       <div className="lp-frame-bar"><i /><i /><i /><span>CM Reborn</span></div>
-      <img src={src} alt={alt} loading="lazy" decoding="async" />
+      <img src={src} alt={alt} width="1600" height="1000" loading={eager ? 'eager' : 'lazy'} fetchPriority={eager ? 'high' : undefined} decoding="async" />
     </div>
   );
 }
@@ -322,9 +322,9 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           </div>
           <div className="lp-hero-visual reveal">
             {/* det klassiske CM 01/02-tema (2001/02-databasen) bag det moderne kamprapport-billede */}
-            <Frame src={img('classic-table')} alt={t('land.alt.classic')} className="lp-hero-classic" onOpen={open} />
-            <Frame src={img('report')} alt={t('land.alt.report')} className="lp-hero-main" onOpen={open} />
-            <div className="lp-phone"><img src={img('mobile')} alt={t('land.alt.mobile')} loading="lazy" /></div>
+            <Frame src={img('classic-table')} alt={t('land.alt.classic')} className="lp-hero-classic" onOpen={open} eager />
+            <Frame src={img('report')} alt={t('land.alt.report')} className="lp-hero-main" onOpen={open} eager />
+            <div className="lp-phone"><img src={img('mobile')} alt={t('land.alt.mobile')} width="585" height="1266" loading="lazy" decoding="async" /></div>
             <div className="lp-float goal">⚽ {t('land.floatGoal')}</div>
             <div className="lp-float bid">💸 {t('land.floatBid')}</div>
           </div>

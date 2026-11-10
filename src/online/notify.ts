@@ -4,7 +4,9 @@
 import { rankingAvailable } from './rank';
 import { getTheme } from '../ui/theme';
 import { gs, hasGame, previewInfo } from '../game/state';
-import { sortTable } from '../game/competitions';
+
+// tabelsorteringen hentes først, når der er et spil (competitions.ts trækker hele motoren med – forsiden skal ikke have den)
+let sortTable: typeof import('../game/competitions').sortTable | undefined;
 
 const VID = 'cm0102.visitor';
 /** Anonymt id for denne browser (ingen personoplysninger) */
@@ -34,7 +36,8 @@ function progress(): { gid: string; date: string; club: string; pos: number } | 
     if (g.humans?.length || g.draft || !g.id) return undefined;
     const c = g.clubs[g.userClub];
     const comp = c ? g.comps[c.league] : undefined;
-    const pos = comp?.table?.length ? sortTable(comp.table).findIndex((r) => r.club === c!.id) + 1 : 0;
+    if (!sortTable) { void import('../game/competitions').then((m) => { sortTable = m.sortTable; }); }
+    const pos = comp?.table?.length && sortTable ? sortTable(comp.table).findIndex((r) => r.club === c!.id) + 1 : 0;
     return { gid: g.id, date: g.date, club: c?.short ?? '', pos };
   } catch { return undefined; }
 }

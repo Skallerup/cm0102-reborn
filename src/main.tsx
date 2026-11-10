@@ -2,22 +2,19 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import App from './ui/App';
-import { ConfirmHost } from './ui/confirm';
 import './styles.css';
-import { gs, notify } from './game/state';
-import { runUntil } from './game/sim';
-import { addDays } from './game/dates';
-import { invitePress } from './game/press';
 import { applyTheme } from './ui/theme';
 import { ensureLang, getLang, t } from './i18n';
-import './online/cloudSync'; // gemte spil i skyen, når man er logget ind
 import './ui/notify'; // fanger browserens "kan installeres"-signal tidligt
 import { startPresence } from './online/notify';
 import { startErrorReport } from './online/errors';
 import { ErrorBoundary } from './ui/ErrorBoundary';
 
 // kun i udvikling: adgang til spiltilstanden fra konsollen/Playwright-tests (advance spoler dage frem)
-if (import.meta.env.DEV) (window as unknown as { __cm: unknown }).__cm = { gs, notify, advance: (days: number) => runUntil({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), t, invitePress };
+// (hentes dynamisk, så forsidens bundle ikke indeholder motoren – se ui/App.tsx)
+if (import.meta.env.DEV) void Promise.all([import('./game/state'), import('./game/sim'), import('./game/dates'), import('./game/press')]).then(([{ gs, notify }, { runUntil }, { addDays }, { invitePress }]) => {
+  (window as unknown as { __cm: unknown }).__cm = { gs, notify, advance: (days: number) => runUntil({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), t, invitePress };
+});
 
 applyTheme();
 registerSW({ immediate: true });
@@ -28,6 +25,5 @@ startErrorReport(); // fejl i browseren → admin (Errors)
 void ensureLang(getLang()).finally(() => createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary><App /></ErrorBoundary>
-    <ConfirmHost />
   </StrictMode>,
 ));

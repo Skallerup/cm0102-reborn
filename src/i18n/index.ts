@@ -1,12 +1,13 @@
-import { da } from './da';
 import { en } from './en';
 import type { Lang } from '../game/types';
 import { nationLabel } from './nations';
 import { compLabel } from './comps';
 
-// dansk og engelsk ligger i hovedfilen; de øvrige sprog hentes først, når de vælges (≈280 KB hver)
-const dicts: Partial<Record<Lang, Record<string, string>>> = { da, en };
+// kun engelsk ligger i hovedfilen (forsidens bundle – søgemaskinerne ser engelsk); de øvrige sprog, også dansk,
+// hentes først, når de vælges (≈280 KB hver) – ensureLang kaldes før første tegning (main.tsx)
+const dicts: Partial<Record<Lang, Record<string, string>>> = { en };
 const LAZY: Partial<Record<Lang, () => Promise<Record<string, string>>>> = {
+  da: () => import('./da').then((m) => m.da),
   es: () => import('./es').then((m) => m.es), fr: () => import('./fr').then((m) => m.fr), de: () => import('./de').then((m) => m.de),
   it: () => import('./it').then((m) => m.it), pt: () => import('./pt').then((m) => m.pt), tr: () => import('./tr').then((m) => m.tr),
   sv: () => import('./sv').then((m) => m.sv), nb: () => import('./nb').then((m) => m.nb),

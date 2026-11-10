@@ -60,20 +60,8 @@ export async function getSaveMeta(id: string): Promise<SaveMeta | undefined> {
 
 // ---------- seneste spil (så en genindlæsning fortsætter hvor man slap) ----------
 
-export type LastGame = { kind: 'local'; id: string } | { kind: 'online'; code: string };
-const LAST_KEY = 'cm0102.last';
-
-export function rememberLast(l: LastGame) {
-  try { localStorage.setItem(LAST_KEY, JSON.stringify(l)); } catch { /* ignore */ }
-}
-
-export function getLast(): LastGame | null {
-  try { return JSON.parse(localStorage.getItem(LAST_KEY) ?? 'null') as LastGame | null; } catch { return null; }
-}
-
-export function forgetLast() {
-  try { localStorage.removeItem(LAST_KEY); } catch { /* ignore */ }
-}
+import { rememberLast } from './last';
+export { forgetLast, getLast, rememberLast, type LastGame } from './last';
 
 // ---------- autogem ----------
 
