@@ -102,6 +102,9 @@ export function setClub(p: Player, club: number) {
     if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
   }
   const moved = p.club !== club;
+  // ny klub = ny start: utilfredsheden over spilletid hører til den gamle klub (en nyindkøbt spiller stod ellers som
+  // "utilfreds med sin spilletid" samme dag, han kom – ejerens fejlmelding 2026-11-10)
+  if (moved && club) p.unhappy = 0;
   p.club = club;
   if (club) {
     let arr = squadIndex.get(club);
