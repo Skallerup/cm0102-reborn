@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Målt, ikke rettet (ejeren: "måske senere"): forsvarere scorer 16 % af målene (virkeligheden ~11 %), hovedstødsmål 24 % (~17 %) – indlæg i åbent spil, ikke hjørnespark (11 %, ok). 8 forsvarere med 10+ mål på en sæson (Materazzi 19). Rettelse: skru hovedstødsafslutninger ned til ~17 % af målene uden at ændre det samlede antal mål (`scripts/match-stats.ts` måler det).
 - 2026-11-10 – Spillerprofil (klassisk): Liga- og Pokal-rækkerne viser assists, kampens spiller og karaktersnit (`SeasonStats.lgAssists/lgMom/lgRatingSum/lgRatingCount`, valgfrie felter – ældre gemte spil viser "-" indtil næste kamp). Landshold har stadig intet snit (landskampe giver ingen karakterer).
 - 2026-11-10 – Match Report (klassisk) vises løbende under kampen (før "Der er ingen kamprapport" indtil slutfløjt – ejeren oplevede det som forsvundet).
 - 2026-11-10 – Stabssøgning (klassisk): knappen Filtre (job, status ledig/ansat, nationalitet, omdømme mindst, alder højst) som i spillersøgningen – `StaffFilterDialog` i TransfersClassic.tsx; Søg-menuens forvalg virker stadig oven i.
