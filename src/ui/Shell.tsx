@@ -442,7 +442,8 @@ export function Shell() {
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
               onSave={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }} />
             <div className="cx-side-grow" />
-            {unread > 0 && <button className="cx-news" onClick={() => nav({ name: 'inbox' })}>{t('cl.youHaveNews')}</button>}
+            {/* You Have News: åbner den ældste ulæste besked – hvert klik går videre til den næste (som Continue Game) */}
+            {unread > 0 && <button className="cx-news" onClick={() => { if (!showOldestUnread(g.news)) nav({ name: 'inbox' }); }}>{t('cl.youHaveNews')}</button>}
           </aside>
         );
       })()}

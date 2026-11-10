@@ -67,6 +67,8 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – (staging) "You Have News" (klassisk) åbner den ældste ulæste besked og går videre til den næste ved hvert klik (`showOldestUnread`) – før åbnede den kun indbakken.
+- 2026-11-10 – Skudt live (merge staging → main, `15bc2fb`): alt nedenfor fra 2026-11-05 til 2026-11-10 (staging).
 - 2026-11-10 – (staging) Brugerønsker: (1) klubskærme uden foto udefra og uden klubbillede får et stadion udefra fra pakken
   (`genericClubUrl`), kampdage uden stadionfoto får et kampbillede med tribuner (`genericMatchdayUrl`, også finaler) – `backgrounds.ts`;
   (2) aftenkampe (midtuge og europæiske kampe, `eveningFixture`) får nat-look i CSS (`.cx-night`/`.mbg-night`: mørkt, koldt,
