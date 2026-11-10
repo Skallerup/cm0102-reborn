@@ -222,15 +222,67 @@ function repLabel(rep: number) {
   return t(`cl.st.rep.${rep >= 85 ? 6 : rep >= 70 ? 5 : rep >= 55 ? 4 : rep >= 40 ? 3 : rep >= 25 ? 2 : 1}`);
 }
 
+// ---------- "Filters for Staff Search" (ejerens ønske 2026-11-10: samme filterknap som spillersøgningen) ----------
+
+interface StaffFilters { role: string; status: 'any' | 'free' | 'employed'; nation: number; minRep: number; maxAge: number }
+const SF_DEFAULT: StaffFilters = { role: '', status: 'any', nation: -1, minRep: 0, maxAge: 0 };
+const STAFF_ROLES = ['manager', 'assistant', 'coach', 'physio', 'scout'] as const;
+/** omdømmets trin (samme grænser som repLabel) */
+const REP_MIN: [number, number][] = [[40, 3], [55, 4], [70, 5], [85, 6]];
+const sfActive = (f: StaffFilters) => (Object.keys(SF_DEFAULT) as (keyof StaffFilters)[]).filter((k) => f[k] !== SF_DEFAULT[k]).length;
+
+function StaffFilterDialog({ f: initial, nations, onOk, onClose }: { f: StaffFilters; nations: number[]; onOk: (f: StaffFilters) => void; onClose: () => void }) {
+  const g = useGame()!;
+  const [f, setF] = useState<StaffFilters>(initial);
+  const set = <K extends keyof StaffFilters>(k: K, v: StaffFilters[K]) => setF({ ...f, [k]: v });
+  const home = g.clubs[g.userClub]?.nation ?? g.manager.nation;
+  const homeCode = g.nations[home]?.code ?? '';
+  const any = t('cl.fl.any');
+  const row = (label: string, ctl: ReactNode) => <><span>{label}</span><div className="cx-fl-ctl">{ctl}</div></>;
+  const nat = f.nation < 0 ? 'any' : f.nation === home ? 'home' : 'other';
+  return (
+    <div className="modal-bg" onClick={onClose}>
+      <div className="modal cx-settings cx-filters" onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head"><span>{t('cl.sf.title')}</span><button className="x" onClick={onClose}>×</button></div>
+        <div className="modal-body">
+          <div className="cx-set-top"><span /><button className="cx-greybtn" onClick={() => setF({ ...SF_DEFAULT })}>{t('cl.fl.clear')}</button></div>
+          <div className="cx-set-grid">
+            {row(t('cl.st.job'), <Seg value={f.role} opts={[['', any], ...STAFF_ROLES.map((r) => [r, t(`role.staff.${r}`)] as [string, string])]} onChange={(v) => set('role', v)} />)}
+            {row(t('cl.sf.status'), <Seg value={f.status} opts={[['any', any], ['free', t('cl.st.p.free')], ['employed', t('cl.sf.employed')]]} onChange={(v) => set('status', v as StaffFilters['status'])} />)}
+            {row(t('cl.fl.nat'), <>
+              <Seg value={nat} opts={[['any', any], ['home', homeCode], ['other', t('cl.fl.other')]]}
+                onChange={(v) => set('nation', v === 'any' ? -1 : v === 'home' ? home : (nations.find((n) => n !== home) ?? -1))} />
+              {nat === 'other' && <Select value={f.nation} onChange={(v) => set('nation', v)} width={190}
+                options={nations.map((n) => ({ value: n, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code }))} />}
+            </>)}
+            {row(t('cl.sf.minRep'), <Seg value={f.minRep} opts={[[0, any], ...REP_MIN.map(([v, lvl]) => [v, t(`cl.st.rep.${lvl}`)] as [number, string])]} onChange={(v) => set('minRep', v)} />)}
+            {row(t('cl.sf.maxAge'), <Seg value={f.maxAge} opts={[[0, any], [35, '35'], [45, '45'], [55, '55']]} onChange={(v) => set('maxAge', v)} />)}
+          </div>
+        </div>
+        <div className="modal-foot cx-set-foot">
+          <button onClick={onClose}>{t('common.cancel')}</button>
+          <button className="primary" onClick={() => onOk(f)}>{t('common.ok')}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function StaffSearch() {
   const g = useGame()!;
   const { nav } = useNav();
   const [preset, setPreset] = useRouteState<string>('spreset', 'all');
   const [q, setQ] = useRouteState('sq', '');
+  const [sf, setSf] = useRouteState<StaffFilters>('sfilters', SF_DEFAULT);
+  const [open, setOpen] = useState(false);
   const [pg, setPg] = useState(0);
   const [pages, setPages] = useState(1);
+  const active = sfActive(sf);
+  const nations = [...new Set(Object.values(g.staff).map((s) => s.nation))].filter((n) => g.nations[n]).sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name)));
   const list = Object.values(g.staff).filter((s) => s.club !== g.userClub
     && (preset === 'all' || (preset === 'free' ? !s.club : s.role === preset))
+    && (!sf.role || s.role === sf.role) && (sf.status === 'any' || (sf.status === 'free' ? !s.club : !!s.club))
+    && (sf.nation < 0 || s.nation === sf.nation) && s.rep >= sf.minRep && (!sf.maxAge || ageOn(s.dob, g.date) <= sf.maxAge)
     && (!q || !!nameQuery(q)?.(s.first, s.last)));
   useEffect(() => setPg(0), [list.length]);
   const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : natName(g.nations[s.nation]?.name);
@@ -251,8 +303,11 @@ function StaffSearch() {
         <CxDrop label={t('cl.tr.searchBtn')} items={STAFF_PRESETS.map((k) => ({ key: k, label: t(`cl.st.p.${k}`), checked: preset === k, onClick: () => setPreset(k) }))} />
         <input className="cx-fl-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('tr.name')} />
         <span className="grow" />
+        <button className="cx-greybtn" onClick={() => setOpen(true)}>{t('cl.tr.filters')}{active ? ` (${active})` : ''}</button>
+        <button className="cx-greybtn" disabled={!active} onClick={() => setSf({ ...SF_DEFAULT })}>{t('tr.f.reset')}</button>
       </div>
-      <Pager desc={t(`cl.st.p.${preset}`)} pg={pg} pages={pages} setPg={setPg} />
+      <Pager desc={active ? t('cl.tr.custom', { n: active }) : t(`cl.st.p.${preset}`)} pg={pg} pages={pages} setPg={setPg} />
+      {open && <StaffFilterDialog f={sf} nations={nations} onOk={(v) => { setSf(v); setOpen(false); }} onClose={() => setOpen(false)} />}
       <div className="cx-subtitle small">{t('cl.tr.staffSearch')}</div>
       <CxTable rows={list} cols={cols} rowKey={(s) => s.id} initialSort="rep" page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
