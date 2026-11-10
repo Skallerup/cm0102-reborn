@@ -458,7 +458,6 @@ function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players
     const ia = order.indexOf(a.id), ib = order.indexOf(b.id);
     return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib) || roleRank(a) - roleRank(b);
   });
-  const half = Math.ceil(list.length / 2);
   const row = (p: Player) => {
     const i = order.indexOf(p.id);
     return (
@@ -481,8 +480,9 @@ function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players
       </Head>
       {slots(0)}
       <div className="cx-sq-cols">
-        <div className="cx-sq-col">{list.slice(0, half).map(row)}</div>
-        <div className="cx-sq-col">{list.slice(half).map(row)}</div>
+        {/* skiftevis venstre/højre, så sorteringen læses række for række (ejerens ønske 2026-11-10) */}
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 0).map(row)}</div>
+        <div className="cx-sq-col">{list.filter((_, i) => i % 2 === 1).map(row)}</div>
       </div>
       {slots(25)}
       <div className="cx-ts-buttons"><button className="primary cx-pen-done" onClick={onClose}>{t('common.ok')}</button></div>

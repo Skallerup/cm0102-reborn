@@ -26,7 +26,7 @@ import { Head } from './common';
 import { isRetro } from '../theme';
 import { useClassicNext, useClassicMatchSide, useClassicDialog, ClassicSub, CxDrop, cxLongDate } from '../classic';
 import { loadStadiumBgs, matchdayBgUrl } from '../backgrounds';
-import { stadiumBackgrounds, titleLogo } from '../classicOptions';
+import { goalFlashMs, stadiumBackgrounds, titleLogo } from '../classicOptions';
 import { Pitch2D, closedDownFrames, cornerFrames, highlightFrames, incidentFrames, lastDitchFrames, offsideFrames, reboundFrames, shootoutFrames, shootoutIdle, type ShootoutTally, type Snap } from '../Pitch2D';
 import { LeagueTable, LeagueTables, ordinal } from './Competitions';
 import { leagueRows, sortTable } from '../../game/competitions';
@@ -534,7 +534,7 @@ function LiveMatch({ id }: { id: number }) {
       if (cls === 'goal' && l.k !== 'goal-cheer') want('goalmono', 3);
       else { const ls = lineSounds(l, ctx, L.consumed); if (ls.length) want(ls[ls.length - 1], BIG_SOUND.has(l.k) ? 2 : l.k.startsWith('pl-') ? 0 : 1); }
       // klassisk: bjælken blinker "GOAL!" i 5-6 sekunder, og kampen står stille imens (ved alle hastigheder)
-      if (classic && cls === 'goal' && l.k !== 'goal-cheer') { L.goalUntil = Date.now() + 5500; L.goalTeam = l.k === 'own-goal' && l.t !== undefined ? 1 - l.t : l.t; }
+      if (classic && cls === 'goal' && l.k !== 'goal-cheer') { L.goalUntil = Date.now() + goalFlashMs(); L.goalTeam = l.k === 'own-goal' && l.t !== undefined ? 1 - l.t : l.t; }
       L.consumed++;
     }
     // ved Fastest kun de vigtige lyde (mål, fløjt, kort); i de stille perioder synger tilskuerne en gang imellem
