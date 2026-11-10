@@ -1,5 +1,5 @@
 import { LookPicker, initialLook } from './LookPicker';
-import { setTheme } from './theme';
+import { setTheme, getTheme } from './theme';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
 import { useEffect, useMemo, useState } from 'react';
@@ -202,7 +202,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   const [mine, setMine] = useState<CustomDb[]>([]);
   // nyt spil starter øverst ved databasevalget (før scrollede autofokus på navnefeltet forbi det – ejerens fejl 9/11)
   useEffect(() => { if (!ch) window.scrollTo(0, 0); }, []);
-  const [mode, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'extended' ? 'extended' : 'authentic'; } catch { return 'authentic'; } });
+  const [, setModeRaw] = useState<'authentic' | 'extended'>(() => { try { return localStorage.getItem('cm0102.mode') === 'extended' ? 'extended' : 'authentic'; } catch { return 'authentic'; } });
   const setModeState = (m: 'authentic' | 'extended') => { setModeRaw(m); try { localStorage.setItem('cm0102.mode', m); } catch { /* ignorer */ } };
   useEffect(() => { if (!ch) void listDbs().then(setMine); }, [ch]);
   const customId = db.startsWith('custom:') ? db.slice(7) : '';
@@ -278,12 +278,13 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
     <Panel title={t('mode.title')}>
       <div className="db-choice">
         {/* ægte CM 01/02 kræver det klassiske udseende – valget skifter udseendet med */}
-        <div role="button" tabIndex={0} className={`db-opt ${retro && mode === 'authentic' ? 'on' : ''}`} onClick={() => { setModeState('authentic'); if (!retro) { setTheme('retro'); setLook('classic'); } }}>
+        {/* spiltilstanden følger udseendet: klassisk = ægte CM 01/02, moderne = udvidet (ejerens regel 2026-11-10: ingen udvidet i klassisk) */}
+        <div role="button" tabIndex={0} className={`db-opt ${retro ? 'on' : ''}`} onClick={() => { setModeState('authentic'); if (!retro) { setTheme('retro'); setLook('classic'); } }}>
           {/* ingen skærmbilleder her: de viste udseendet (klassisk/moderne), men valget gælder kun funktionerne – ejerens fejlmelding 2026-11-10 */}
           <b>{t('mode.authentic')}</b><span>{t('mode.authenticHint')}</span>
         </div>
-        <div role="button" tabIndex={0} className={`db-opt ${!retro || mode === 'extended' ? 'on' : ''}`} onClick={() => setModeState('extended')}>
-          <b>{t('mode.extended')}</b><span>{t('mode.extendedHint')}</span>
+        <div role="button" tabIndex={0} className={`db-opt ${!retro ? 'on' : ''}`} onClick={() => { setModeState('extended'); if (retro) { setTheme(getTheme() === 'retro' ? 'club' : getTheme()); setLook('modern'); } }}>
+          <b>{t('mode.extended')}</b><span>{t('mode.extendedHint')} {t('mode.extendedModernOnly')}</span>
         </div>
       </div>
     </Panel>
@@ -302,7 +303,7 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
     setBusy(online ? t('mp.creating') : t('start.creating'));
     const opts = {
       managerName: name.trim(), managerNation: clubNation ?? 0, clubId: club, activeNations: [...active],
-      lang: getLang(), masking, seed, challenge, mode: retro ? mode : 'extended',
+      lang: getLang(), masking, seed, challenge, mode: (retro ? 'authentic' : 'extended') as 'authentic' | 'extended',
     };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }

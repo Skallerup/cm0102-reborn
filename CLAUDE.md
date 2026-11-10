@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Spiltilstanden følger udseendet: klassisk = ægte CM 01/02, moderne = udvidet (ejerens regel: ingen udvidet i klassisk). Nyt spil: kortene vælger udseendet med; i spillet skifter et skift af udseende (Options/Spilindstillinger) tilstanden via `setMode`. Options' separate tilstandsvælger er fjernet.
 - 2026-11-10 – v0.23.0: 2D-banen som tilvalg i det klassiske udseende (fanen "2D" på kampskærmen; `tab === '2d'` renderer Pitch2D uden kommentarkolonnen, `.match2d.cx-2d`), målmænd i egen farve på 2D-banen (`gkColors` i Pitch2D.tsx), e2e tager `klassisk-2d.png`. Ændringsloggen samler dagens senere rettelser.
 - 2026-11-10 – Moderne taktik: højreklik og træk fra en spiller tegner en løbepil (`individual[i].run`, snappet med `runTarget` som i klassisk); højreklik uden træk åbner menuen som før, som også kan fjerne pilen.
 - 2026-11-10 – Nyt spil: spiltilstandens kort (Ægte CM 01/02 / Udvidet) viser ikke længere skærmbilleder – de viste det klassiske og det moderne udseende og kunne forveksles med udseende-valget, som har sine egne billeder.
