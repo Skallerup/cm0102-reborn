@@ -323,6 +323,8 @@ export function Shell() {
         // klassisk (CM 01/02): "Please Confirm – Proceed to the match ?"
         // klassisk: en skadet/udelukket spiller på holdet stopper kampen (Team Selection, som i CM 01/02)
         if (cmNav) {
+          // CM 01/02: "Til kampen" fra kampdagen (og alle andre skærme) går først til truppen – derfra går man til kampen (ejerens ønske 2026-11-10)
+          if (route.name !== 'squad') { nav({ name: 'squad' }); return; }
           const sel = selectionProblems();
           if (sel) { void askNotice(sel, { head: t('cl.mt.teamSel') }).then(() => nav({ name: 'squad' })); return; }
           // CM 01/02: spillere uden trøjenummer skal have et før kampen (Squad Numbers med kun dem)
