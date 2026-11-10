@@ -39,6 +39,8 @@ export function nextWindow(date = gs().date): string {
 /** Må en AI-klub byde på en spiller hos en menneskestyret klub lige nu? (så der ikke regner bud ned) */
 function canBidOnHuman(p: Player, buyer: number): boolean {
   const g = gs();
+  // nyindkøbt og ikke til salg: ingen bud, før han har været der et stykke tid (samme regel som AI-klubberne imellem)
+  if (!p.listed && recentlyJoined(p)) return false;
   const pending = g.offers.filter((o) => o.seller === p.club && o.status === 'pending' && !isHumanClub(o.buyer)).length;
   if (pending >= 3) return false;
   const since = addDays(g.date, -21);
@@ -1396,6 +1398,8 @@ export function aiBidsForListed() {
     if (!(p.listed || p.loanListed || surplus) || p.loan || p.contract?.futureClub) continue;
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) continue;
     const loanOnly = !p.listed && !!p.loanListed;
+    // en spiller, der lige er kommet til og ikke er sat til salg, får ikke bud fra andre klubber (ejerens fejlmelding 22/8: bud to uger efter købet)
+    if (!p.listed && !loanOnly && recentlyJoined(p)) continue;
     if (g.offers.filter((o) => o.seller === g.userClub && o.status === 'pending' && !isHumanClub(o.buyer)).length >= 3) break;
     const ask = askingPrice(p);
     // lav udbudspris i forhold til værdien gør spilleren ekstra attraktiv

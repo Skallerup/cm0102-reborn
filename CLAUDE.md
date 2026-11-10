@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – AI-klubber byder ikke på en menneskelig klubs nyindkøbte spiller (`recentlyJoined`: 120 dage, eller samme sæson hvis ikke sat til salg) – hverken i `aiBidsForListed` (bød også på ikke-listede med faktor 0,4) eller via `canBidOnHuman`. Sat til salg = bud tilladt.
 - 2026-11-10 – `setClub` nulstiller `p.unhappy` ved klubskift: en nyindkøbt spiller tog utilfredsheden med fra den gamle klub og stod som "utilfreds med sin spilletid" samme dag (Mark Kerr, Vejle).
 - 2026-11-10 – Klassisk: sidebjælkens menuer (`.cx-gameopt .cx-drop-pop`, z 80) ligger nu over de faste bokse (`.cx-dlg`, z 70 – Tilbyd kontrakt m.fl.); før blev menuen gemt bag boksen.
 - 2026-11-10 – PWA: service workeren er i prompt-tilstand (før autoUpdate, som genindlæste siden lige efter åbning første gang efter hver udgivelse). Ny version tages i brug ved næste besøg, eller via `ui/UpdateToast.tsx` ("En ny version af spillet er klar – Genindlæs nu"). Siden genindlæser aldrig af sig selv.
