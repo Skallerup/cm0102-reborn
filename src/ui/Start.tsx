@@ -279,11 +279,10 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
       <div className="db-choice">
         {/* ægte CM 01/02 kræver det klassiske udseende – valget skifter udseendet med */}
         <div role="button" tabIndex={0} className={`db-opt ${retro && mode === 'authentic' ? 'on' : ''}`} onClick={() => { setModeState('authentic'); if (!retro) { setTheme('retro'); setLook('classic'); } }}>
-          <ShotPreview names={['classic-player', 'classic-table', 'classic-squad']} labels={[t('start.prevPlayer'), t('start.prevTable'), t('nav.squad')]} />
+          {/* ingen skærmbilleder her: de viste udseendet (klassisk/moderne), men valget gælder kun funktionerne – ejerens fejlmelding 2026-11-10 */}
           <b>{t('mode.authentic')}</b><span>{t('mode.authenticHint')}</span>
         </div>
         <div role="button" tabIndex={0} className={`db-opt ${!retro || mode === 'extended' ? 'on' : ''}`} onClick={() => setModeState('extended')}>
-          <ShotPreview names={['press', 'match-stats', 'report']} labels={[t('start.prevPress'), t('start.prevXg'), t('start.prevReport')]} />
           <b>{t('mode.extended')}</b><span>{t('mode.extendedHint')}</span>
         </div>
       </div>
