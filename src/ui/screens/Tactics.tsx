@@ -4,7 +4,7 @@ import { Info } from '../help';
 import { roleScore, slotFit, slotRole, roleProfile } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
-import { autoSelect, available, changeFormation, FORMATIONS, newTactic } from '../../game/tactics';
+import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget } from '../../game/tactics';
 import type { Player, PlayerInstructions, PosKey, Side, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { t } from '../../i18n';
 import { chemistry } from '../../game/personality';
@@ -88,6 +88,10 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
   const [moving, setMoving] = useState<{ i: number; x: number; y: number } | null>(null);
   const [menu, setMenu] = useState<{ i: number; left: number; top: number } | null>(null);
   const pitchRef = useRef<HTMLDivElement>(null);
+  // højreklik og træk fra en spiller = løbepil til nærmeste punkt i gitteret (som i det klassiske udseende – ejerens ønske 2026-11-10)
+  const [rdrag, setRdrag] = useState<{ slot: number; x: number; y: number; moved: boolean } | null>(null);
+  const rdragRef = useRef(rdrag);
+  rdragRef.current = rdrag;
   const press = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!menu) return;
@@ -230,6 +234,15 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
           {/* pile: hvor meget spilleren går med frem (løb) */}
           <svg className="run-arrows" viewBox="0 0 100 100" preserveAspectRatio="none">
             <defs><marker id="arrowhead" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#fff" /></marker></defs>
+            {/* løbepile sat med højreklik-træk (individual[i].run) – den, der trækkes, vises live */}
+            {tactic.slots.map((s, i) => {
+              const live = rdrag?.slot === i && rdrag.moved ? runTarget(s, rdrag.x, rdrag.y) : undefined;
+              const r = live !== undefined ? live : tactic.individual[i]?.run;
+              if (s.pos === 'GK' || !tactic.lineup[i] || !r) return null;
+              const x1 = slotLeft(s), y1 = slotTop(s), x2 = slotLeft(r as Slot), y2 = slotTop(r as Slot);
+              const len = Math.hypot(x2 - x1, y2 - y1) || 1, ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+              return <line key={`run${i}`} x1={x1 + ux * 4} y1={y1 + uy * 4} x2={x2 - ux * 1.5} y2={y2 - uy * 1.5} stroke="#fff" strokeWidth="1.6" strokeDasharray="3 2.4" vectorEffect="non-scaling-stroke" markerEnd="url(#arrowhead)" opacity={live !== undefined ? 0.6 : 0.95} />;
+            })}
             {tactic.slots.map((s0, i) => {
               const sl = moving?.i === i ? { ...s0, x: moving.x, y: moving.y } : s0;
               const runs = tactic.individual[i]?.runs ?? 1;
@@ -255,9 +268,27 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                   if (sel !== null && sel !== i && tactic.lineup[sel] && !menu) { assign(i, tactic.lineup[sel]); setSel(null); return; }
                   setSel(sel === i ? null : i);
                 }}
-                onContextMenu={(e) => { if (!p || s.pos === 'GK' && false) return; e.preventDefault(); setSel(i); setMenu({ i, left: e.clientX, top: e.clientY }); }}
+                onContextMenu={(e) => { if (!p) return; e.preventDefault(); }}
                 onPointerDown={(e) => {
                   if (editPos && s.pos !== 'GK') { e.preventDefault(); (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId); setMoving({ i, x: s.x, y: s.y }); return; }
+                  // højre knap (touchpad: to fingre / ctrl + klik): træk = løbepil; uden træk åbnes menuen
+                  if (p && !editPos && (e.button === 2 || (e.button === 0 && e.ctrlKey))) {
+                    e.preventDefault(); e.stopPropagation();
+                    const startX = e.clientX, startY = e.clientY;
+                    if (e.button === 0) window.addEventListener('click', (ev) => { ev.stopPropagation(); ev.preventDefault(); }, { capture: true, once: true });
+                    if (s.pos !== 'GK') setRdrag({ slot: i, ...toPitch(startX, startY), moved: false });
+                    const move = (ev: PointerEvent) => { if (s.pos === 'GK') return; const moved = (rdragRef.current?.moved ?? false) || Math.hypot(ev.clientX - startX, ev.clientY - startY) > 4; setRdrag({ slot: i, ...toPitch(ev.clientX, ev.clientY), moved }); };
+                    const up = (ev: PointerEvent) => {
+                      window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up);
+                      const moved = s.pos !== 'GK' && ((rdragRef.current?.moved ?? false) || Math.hypot(ev.clientX - startX, ev.clientY - startY) > 4);
+                      setRdrag(null);
+                      if (!moved) { setSel(i); setMenu({ i, left: ev.clientX, top: ev.clientY }); return; }
+                      const pt = toPitch(ev.clientX, ev.clientY);
+                      setIndFor(i, { run: runTarget(s, pt.x, pt.y) ?? undefined });
+                    };
+                    window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
+                    return;
+                  }
                   // langt tryk (mobil) åbner menuen
                   if (e.pointerType === 'touch' && p) { const { clientX, clientY } = e; press.current = setTimeout(() => { setSel(i); setMenu({ i, left: clientX, top: clientY }); }, 550); }
                 }}
@@ -305,6 +336,7 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                   <button key={v} className={`small ${ins.runs === v ? 'primary' : ''}`} onClick={(e) => { e.stopPropagation(); setIndFor(i, { runs: v }); }}>{ic} {t(k)}</button>
                 ))}
               </div>
+              {ins.run && <div className="ctx-row"><button className="small" onClick={(e) => { e.stopPropagation(); setIndFor(i, { run: undefined }); }}>{t('cl.tac.run.none')}</button></div>}
               {tri('longShots', t('pi.longShots'))}
               {tri('crossing', t('pi.crossing'))}
               <div className="ctx-toggles">
