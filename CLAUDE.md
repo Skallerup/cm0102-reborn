@@ -68,6 +68,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-10 – Skudt live: IndexNow-workflow, e2e tåler PA-omslag, online-markering i admin, fejlfilter for udvidelsesstøj.
 - 2026-11-10 – (staging) Fejlrapporten (online/errors.ts) ignorerer støj fra browserudvidelser og indlejrede browsere: `window.ethereum`/`selectedAddress` (krypto-wallets i Safari), `__firefox__` (Firefox på iOS), "Java object is gone" (Android WebView), `safari-web-extension:`. De 4 fejl i admin 10/11 var alle den slags – ingen spilfejl.
 - 2026-11-10 – (staging) Admin → New careers: grøn prik ved manageren, hvis browseren er online (puls inden for 5 min), og "● N online now" er en knap, der filtrerer listen til de online (viser også hvor mange af de online, der har en karriere i listen).
 - 2026-11-10 – Skudt live (merge staging → main): You Have News → næste besked, skiftevise kolonner, Goal flash, tredje midterforsvarer, kampens spiller i lyseblå, spillet kamp som kampskærm.
