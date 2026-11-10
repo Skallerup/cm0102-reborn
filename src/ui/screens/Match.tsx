@@ -941,7 +941,7 @@ function LiveMatch({ id }: { id: number }) {
       </div>}
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
       {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <Tabs tabs={classic
-        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ...(halfTalk || postTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
+        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ['2d', t('match.pitch2d')], ...(halfTalk || postTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
         : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={(v) => { if (v === 'tactics' && !classic && !h2h && !report && !sim.finished) setPaused(true); setTab(v); }} />}
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
@@ -967,7 +967,7 @@ function LiveMatch({ id }: { id: number }) {
           </>}
         </div></div>
       )}
-      {(tab === 'overview' || (classic && tab === '2d')) && (
+      {tab === 'overview' && (
         <CxOverview f={f} colors={colors} line={L.lines.at(-1)} poss={L.poss5 ?? []} half={waiting ? t('cl.mt.koLabel') : sim.finished ? t('match.ft') : L.atHalf ? t('cl.mt.halfTime') : sim.half === 2 ? t('match.half2') : t('match.half1')} ht={L.ht}
           injuries={sim.events.filter((e) => e.k === 'injury' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
           reds={sim.events.filter((e) => e.k === 'red' && e.p).map((e) => ({ t: e.t, p: e.p!, m: e.m }))}
@@ -988,8 +988,9 @@ function LiveMatch({ id }: { id: number }) {
         </>
       )}
       {tab === 'oppTactics' && <OppTactics sim={sim} side={(1 - me) as 0 | 1} club={g.clubs[me === 0 ? f.away : f.home]?.name ?? ''} />}
-      {tab === '2d' && !classic && (
-        <div className="cols match2d">
+      {/* 2D-banen findes også i det klassiske udseende (ejerens ønske 2026-11-10) – uden kommentarkolonnen, linjen står i sidebjælken */}
+      {tab === '2d' && (
+        <div className={classic ? 'match2d cx-2d' : 'cols match2d'}>
           <div style={{ position: 'relative' }}>
             {hl ? (
               <Pitch2D weather={weatherFor(f)} snap={hl.frames[hl.i]} me={me} colors={colors} minute={minute} stepMs={frameMs * 0.9}
@@ -1002,9 +1003,9 @@ function LiveMatch({ id }: { id: number }) {
             )}
             {hl && <div className="p2d-replay">{t(hl.label ?? ('corner' in hl.frames[0] ? 'hl.corner' : 'hl.chance'))}</div>}
           </div>
-          <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
+          {!classic && <div className="commentary" style={{ height: 'auto', maxHeight: 520 }}>
             {lastLines(hl?.reveal ? L.lines.slice(0, hl.hideFrom + hl.reveal[hl.i]) : hl && hl.i < hl.frames.length - 1 ? L.lines.slice(0, hl.hideFrom) : L.lines, 14).map(([l, k]) => <div key={k} className={`ln ${l.cls}`}><span className="m">{l.m}'</span>{l.text}</div>)}
-          </div>
+          </div>}
         </div>
       )}
       {tab === 'commentary' && (

@@ -9,6 +9,20 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.23.0',
+    date: '2026-11-10',
+    title: { da: '2D-banen i det klassiske udseende', en: 'The 2D pitch in the classic look' },
+    items: [
+      { da: "Nyt tilvalg i det klassiske udseende: fanen \"2D\" på kampskærmen viser kampen på en 2D-bane med højdepunkterne – som tilvalg ved siden af Match Overview, der stadig er standard. Valget huskes", en: "New option in the classic look: the \"2D\" tab on the match screen shows the match on a 2D pitch with the highlights – as an option next to Match Overview, which is still the default. Your choice is remembered" },
+      { da: "2D-banen: målmændene har deres egen farve (gul, eller lyseblå hvis holdet spiller i gult), så man kan se dem – også når de går med frem til et hjørnespark i slutminutterne", en: "2D pitch: goalkeepers have their own colour (yellow, or light blue if the team plays in yellow), so you can spot them – also when they go up for a late corner" },
+      { da: "Moderne taktik: højreklik på en spiller og træk for at tegne en løbepil, som i det klassiske udseende. Højreklik uden træk åbner menuen, der også kan fjerne pilen", en: "Modern tactics: right-click a player and drag to draw a run arrow, as in the classic look. Right-click without dragging opens the menu, which can also remove the arrow" },
+      { da: "Stabssøgning: knappen Filtre (job, ledig/ansat, nationalitet, omdømme, alder) som i spillersøgningen", en: "Staff search: a Filters button (job, unemployed/under contract, nationality, reputation, age) as in the player search" },
+      { da: "Spillerprofil: Liga- og Pokal-rækkerne viser assists, kampens spiller og karaktersnit hver for sig. Kamprapporten vises løbende under kampen", en: "Player profile: the League and Cup rows show assists, man of the match and average rating separately. The match report is shown as the match goes on" },
+      { da: "Klubfarver (lyst tema): klubber med en lys hovedfarve og en mørk anden farve (Brøndby) får den mørke på menuen og den lyse på topbjælken – ikke længere oliven", en: "Club colours (light theme): clubs with a bright main colour and a dark second colour (Brøndby) get the dark one on the menu and the bright one on the top bar – no more olive" },
+      { da: "Nyt spil: spiltilstandens kort viser ikke længere skærmbilleder, der kunne forveksles med valget af udseende", en: "New game: the game mode cards no longer show screenshots that could be mistaken for the look choice" },
+    ],
+  },
+  {
     version: '0.22.0',
     date: '2026-11-10',
     title: { da: 'Spillernes ønsker: kampskærm for spillede kampe, baggrunde og mange rettelser', en: "Players' requests: played matches as the match screen, backgrounds and many fixes" },

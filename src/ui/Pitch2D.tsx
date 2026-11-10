@@ -153,6 +153,14 @@ const clampP = (v: number, lo = 1, hi = 99) => Math.max(lo, Math.min(hi, v));
  * Spillernes positioner ud fra taktikken og boldens zone – og bolden ved boldholderens fødder.
  * Returnerer positionerne, boldens placering og hvem der har bolden.
  */
+/** Målmandens farver: gul med mørk tekst – lyseblå, hvis holdets egen farve er gullig */
+function gkColors(teamBg: string): [string, string] {
+  const m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(teamBg);
+  const [r, g, b] = m ? [parseInt(m[1], 16), parseInt(m[2], 16), parseInt(m[3], 16)] : [0, 0, 0];
+  const yellowish = r > 190 && g > 170 && b < 130;
+  return yellowish ? ['#7fe3ff', '#0b2a5a'] : ['#fff21f', '#10164e'];
+}
+
 function layout(s: Snap, gap = 3.2): { pos: Map<number, [number, number]>; ball: [number, number]; holder?: Snap['players'][number] } {
   if ((s as PenSnap).pen !== undefined) return penLayout(s as PenSnap);
   if ((s as CornerSnap).corner) return cornerLayout(s as CornerSnap);
@@ -319,7 +327,8 @@ export function Pitch2D({ snap, me, colors, minute, banner, bannerCls, stepMs, f
         <circle cx={W / 2} cy={H / 2} r="0.5" fill="#fff" />
         {s.players.map((p) => {
           const [x, y] = pos.get(p.id) ?? [p.dx, p.dy];
-          const [bg, fg] = p.team === 0 ? [colors[0], colors[1]] : [colors[2], colors[3]];
+          // målmanden i sin egen farve (gul – eller lyseblå, hvis holdet selv spiller i gult), så man kan se ham, også når han går med frem
+          const [bg, fg] = p.gk ? gkColors(p.team === 0 ? colors[0] : colors[2]) : p.team === 0 ? [colors[0], colors[1]] : [colors[2], colors[3]];
           const mine = p.team === me;
           return (
             <g key={p.id} className="p2d-player" style={{ transform: `translate(${X(x)}px, ${Y(y)}px)`, transitionDuration: dur }}>
