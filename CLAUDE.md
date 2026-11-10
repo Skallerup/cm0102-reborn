@@ -55,7 +55,8 @@ og læg ændringen i samme push.
   `scripts/seo/lastmod.json` – filen opdateres af `npm run build` lokalt og SKAL med i samme commit; `/about/`; enhedsguider på
   9 sprog (`scripts/seo/i18nDevices.ts`, hreflang til `/cm-01-02-windows-11/`); skærmbilleder fra `public/landing/<sprog>/` på
   indgangssiderne. IndexNow sendes automatisk efter hver produktionsudgivelse (`.github/workflows/indexnow.yml`, kun url'er
-  med lastmod inden for 3 dage). Google Search Console: `VITE_GSC_TOKEN` er ikke sat på Vercel (ingen meta-verifikation).
+  med lastmod inden for 3 dage). Google Search Console er sat op af ejeren (verificeret uden for repoet; `VITE_GSC_TOKEN` behøves ikke) – bed ejeren
+  om et udtræk, når effekten skal måles. Vercel Web Analytics bruges IKKE (koster penge – ejerens beslutning 2026-11-10); GA4 findes.
 - Data: kildezip'er i GitHub-release'n `data-sources` (`npm run data:fetch`). Byg med
   `npx tsx scripts/build-cm-data.mts <Data-mappe> <out.json> <sæson>` → `public/data/world.json` (2026/27) og
   `world-original.json` (2001/02, 3.9.68).
