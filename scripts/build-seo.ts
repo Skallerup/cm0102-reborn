@@ -3,7 +3,9 @@
 // spil på Mac/iPad/Chromebook, spil online). Skriver public/<side>/index.html, public/sitemap.xml og public/llms.txt.
 // Kør: npx tsx scripts/build-seo.ts  (køres også før build: "prebuild" i package.json)
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { CSS, CTA, SITE, TODAY, esc, render, slugify, type Page } from './seo/layout';
+import { CTA, SITE, TODAY, esc, render, shotFig, slugify, type Page } from './seo/layout';
+import { contentDate, dateOf, saveLastmod } from './seo/lastmod';
+import { langDevices } from './seo/i18nDevices';
 import { buildDb, pounds } from './seo/db';
 import { WC2002 } from '../src/game/international';
 import { CHANGELOG } from '../src/ui/changelogData';
@@ -110,6 +112,7 @@ const pages: Page[] = [
     description: `Play a Championship Manager 01/02 style football manager online for free: the original 2001/02 database and a 2026/27 update, ${nM}+ real players, the classic CM look, multiplayer – no download, works on Mac, PC, iPad and phone.`,
     body: `<p class="lead">CM Reborn is a free fan remake of Championship Manager 01/02 that runs straight in your browser. Pick the original 2001/02 database or the 2026/27 update, choose the classic CM 01/02 look or a modern one, and you are managing your club in seconds – no installer, no emulator, no patch files.</p>
 ${CTA}
+${shotFig('en', 'classic-squad', 'The squad screen in the classic CM 01/02 look – CM Reborn in the browser')}
 <h2>What you get</h2>
 <ul>
 <li><b>Two databases:</b> the original CM 01/02 database for 2001/02 – choose the official release 3.9.60 (the one CM 01/02 itself uses), patch 3.9.65 or the final patch 3.9.68 (${nO} players in ${leaguesO} leagues) – and the community 2026/27 update (${nM} players in ${leaguesM} leagues).</li>
@@ -508,6 +511,7 @@ ${poorest.length ? `<h2>Clubs that start in debt</h2><p>These clubs start the ga
 const LP = langPages(nO, nM);
 const ALTS = alternatesFor(LP, 'play-cm-01-02-online/');
 // guider på de andre sprog (bedste spillere i 3.9.60 og 2026/27-databasen) med hreflang til de engelske
+const DEV = langDevices(Object.fromEntries(LP.map((p) => [p.lang, [p.slug, p.nav]])));
 const LG = langGuides({ best60: best(O60), kids60: young(O60, 21), bestM: best(M), kidsM: young(M, 20), nM, leaguesM, link, nav: Object.fromEntries(LP.map((p) => [p.lang, [p.slug, p.nav]])) });
 for (const p of pages) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
@@ -516,21 +520,60 @@ for (const p of pages) {
   // "Related guides" nederst på hver guide (interne links mellem guiderne)
   const RELATED: [string, string][] = [['cm-01-02-match-engine/', 'How the match engine works'], ['cm-01-02-attributes-explained/', 'What every attribute does'], ['cm-01-02-ca-pa-explained/', 'CA and PA explained'], ['cm-01-02-wonderkids/', 'Wonderkids'], ['cm-01-02-database-versions/', '3.9.60 vs 3.9.68'], ['cm-01-02-regens/', 'Regens'], ['cm-01-02-player-values/', 'Player values'], ['cm-01-02-tactics/', 'Tactics']];
   const related = 'crumbs' in guideCrumb ? `\n<h2>Related guides</h2><ul>${RELATED.filter(([u]) => u !== p.slug).slice(0, 6).map(([u, t]) => `<li><a href="/${u}">${t}</a></li>`).join('')}</ul>` : '';
-  writeFileSync(`public/${p.slug}index.html`, render({ ...p, body: p.body + related, ...guideCrumb, faqSchema: true, ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : p.slug === 'cm-01-02-3960-database/' ? { alternates: LG.altBest } : p.slug === 'cm-01-02-2026-update/' ? { alternates: LG.altUpd } : {}) }));
+  // skærmbilleder (billedsøgning, og:image) på indgangssiderne: [mappe, billede, alt, bredde, højde, klasse]
+  const SHOT: Record<string, [string, string, string, number?, number?, string?]> = {
+    'cm-01-02-android/': ['en', 'mobile', 'CM Reborn on a phone – the classic CM 01/02 look', 585, 1266, 'phone'],
+    'cm-01-02-iphone-ipad/': ['en', 'mobile', 'CM Reborn on an iPhone – the classic CM 01/02 look', 585, 1266, 'phone'],
+    'cm-01-02-windows-11/': ['en', 'classic-table', 'The league table in the classic CM 01/02 look – no CD needed'],
+    'cm-01-02-mac-ipad-chromebook/': ['en', 'classic-player', 'A player profile in the classic CM 01/02 look on a Mac'],
+    'cm-01-02-tactics/': ['en', 'tactics', 'The tactics screen in CM Reborn'],
+    'cm-01-02-match-engine/': ['en', 'match', 'A match in CM Reborn'],
+    'cm-01-02-multiplayer/': ['en', 'ranking', 'The global rankings in CM Reborn'],
+  };
+  const shot = SHOT[p.slug];
+  const body = shot ? p.body.replace('</p>', `</p>${shotFig(...shot)}`) : p.body;
+  const image = shot ? `/landing/${shot[0]}/${shot[1]}.webp` : p.slug === 'play-cm-01-02-online/' ? '/landing/en/classic-squad.webp' : undefined;
+  const page: Page = { ...p, body: body + related, ...guideCrumb, faqSchema: true, ...(image ? { image } : {}), ...(p.slug === 'play-cm-01-02-online/' ? { alternates: ALTS } : p.slug === 'cm-01-02-3960-database/' ? { alternates: LG.altBest } : p.slug === 'cm-01-02-2026-update/' ? { alternates: LG.altUpd } : p.slug === 'cm-01-02-windows-11/' ? { alternates: DEV.alt } : {}) };
+  writeFileSync(`public/${p.slug}index.html`, render({ ...page, modified: page.modified ?? contentDate(page.slug, page.title + page.description + page.body, CONTENT_DATE) }));
 }
 for (const lp of LP) {
   mkdirSync(`public/${lp.slug}`, { recursive: true });
-  writeFileSync(`public/${lp.slug}index.html`, render(toPage(lp, ALTS, LG.pages.filter((x) => x.lang === lp.lang).map((x) => [`/${x.slug}`, x.h1]))));
+  const lpage = toPage(lp, ALTS, [...LG.pages, ...DEV.pages].filter((x) => x.lang === lp.lang).map((x) => [`/${x.slug}`, x.h1]));
+  writeFileSync(`public/${lp.slug}index.html`, render({ ...lpage, modified: contentDate(lpage.slug, lpage.title + lpage.description + lpage.body, CONTENT_DATE) }));
 }
-for (const p of LG.pages) {
+for (const p of [...LG.pages, ...DEV.pages]) {
   mkdirSync(`public/${p.slug}`, { recursive: true });
-  writeFileSync(`public/${p.slug}index.html`, render(p));
+  writeFileSync(`public/${p.slug}index.html`, render({ ...p, modified: contentDate(p.slug, p.title + p.description + p.body, CONTENT_DATE) }));
 }
-writeFileSync('public/seo.css', CSS);
+
+// Om-siden: hvem der laver spillet, hvordan det er bygget, og at det ikke er det officielle spil (E-E-A-T)
+const ABOUT: Page = {
+  slug: 'about/', title: 'About CM Reborn – a Free Fan Remake of CM 01/02 | CM 01/02 Reborn', h1: 'About CM Reborn',
+  description: 'Who makes CM Reborn, how the free Championship Manager 01/02 remake is built from the original databases, what it costs (nothing), how your data is handled and how to help.',
+  crumbs: [], ogType: 'website',
+  body: `<p class="lead">CM Reborn is an independent, free fan remake of Championship Manager 01/02 that runs in the browser. It is made by one developer in Denmark, with help from the CM 01/02 community, and the code is open source on <a href="https://github.com/Skallerup/cm0102-reborn" rel="noopener">GitHub</a>.</p>
+<h2>What it is – and is not</h2>
+<p>It is not the original game and it is not affiliated with Sports Interactive, SEGA or Eidos, who made and published Championship Manager 01/02 in 2001. CM Reborn is written from scratch: its own match engine, screens and online features. What it shares with the original is the data – the real CM 01/02 database (patches 3.9.60, 3.9.65 and 3.9.68, which the publisher released as freeware in 2008) and a community data update for 2026/27 – and the look of the classic screens, rebuilt as a tribute.</p>
+<h2>How it is built</h2>
+<ul><li><b>The databases</b> are read directly from the original game files, so every player has the attributes, CA and PA, contract and value from the real database (<a href="/cm-01-02/">browse them</a>).</li><li><b>The match engine</b> is calibrated against a full season of the original: goals per game, home wins, cards, corners and shots on target match the real thing (<a href="/cm-01-02-match-engine/">how it works</a>).</li><li><b>Player development, regens, finances and transfers</b> follow the rules found in the original game and documented by the community (<a href="/cm-01-02-regens/">regens</a>, <a href="/cm-01-02-player-values/">values</a>).</li><li><b>The guides</b> on this site are generated from the same databases – the numbers are read from the data, not from memory.</li></ul>
+<h2>Free, no ads, no tracking you did not agree to</h2>
+<p>CM Reborn is free, with no ads and no in-game purchases. Your saved games live in your own browser (and in the cloud only if you create an account). Anonymous usage statistics are collected only with your consent. There are no third-party trackers in the game.</p>
+<h2>Where it came from</h2>
+<p>The project started in 2026 as a way to play CM 01/02 on a Mac, an iPad and a phone – devices the 2001 Windows game never ran on. It grew into a full remake with the classic screens, two databases, online multiplayer, a fantasy draft league and global rankings, released as <a href="/changelog/">frequent updates</a>.</p>
+<h2>Help, feedback and credits</h2>
+<p>Bug reports, ideas and data corrections are welcome in the <a href="/?community=1">community hub</a>, where you can also see the credits: the CM 01/02 community behind the data updates and patches, the Bosman project's documentation of the original, and the players who test and translate the game into ten languages. Want to join the project? Use the form on the <a href="/">front page</a>.</p>`,
+  faq: [
+    ['Is CM Reborn the official Championship Manager 01/02?', 'No. It is an independent fan remake, built from scratch and not affiliated with Sports Interactive, SEGA or Eidos. It uses the original database, which has been freeware since 2008.'],
+    ['Who makes CM Reborn?', 'One developer in Denmark, with help from the CM 01/02 community. The source code is public on GitHub.'],
+    ['Does it cost anything?', 'No. CM Reborn is free, with no ads and no in-game purchases.'],
+  ], faqSchema: true,
+};
+mkdirSync('public/about', { recursive: true });
+writeFileSync('public/about/index.html', render({ ...ABOUT, modified: contentDate(ABOUT.slug, ABOUT.title + ABOUT.description + ABOUT.body, TODAY) }));
 
 // sitemaps: et indeks + én fil pr. slags side (Google: højst 50.000 url'er pr. fil)
 const groups: [string, string[], string, string][] = [
-  ['guides', ['', ...pages.map((p) => p.slug), ...LP.map((p) => p.slug), ...LG.pages.map((p) => p.slug), '?draft=1', '?community=1'], TODAY, 'weekly'],
+  ['guides', ['', ...pages.map((p) => p.slug), ...LP.map((p) => p.slug), ...LG.pages.map((p) => p.slug), ...DEV.pages.map((p) => p.slug), 'about/'], TODAY, 'weekly'],
   ...(['hub', 'lists', 'leagues', 'nations', 'clubs', 'players'] as const).flatMap((k) => [
     [`cm-01-02-${k}`, dbO.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
     [`2026-27-${k}`, dbM.urls[k], CONTENT_DATE, 'monthly'] as [string, string[], string, string],
@@ -539,16 +582,19 @@ const groups: [string, string[], string, string][] = [
 // stadionfotos på klubsiderne (billed-sitemap)
 const IMAGES: Record<string, string[]> = { ...dbO.images, ...dbM.images };
 const xml = (u: string) => `${SITE}/${u}`.replace(/&/g, '&amp;');
+// <lastmod> pr. side fra indholdet (scripts/seo/lastmod.ts); forsiden ("") får byggedagen; indekset gruppens nyeste dato
+const lastmod = (u: string, mod: string) => (u ? dateOf(u) ?? mod : mod);
+const newest = (us: string[], mod: string) => us.reduce((m, u) => (lastmod(u, mod) > m ? lastmod(u, mod) : m), '');
 for (const [name, us, mod, freq] of groups) {
   writeFileSync(`public/sitemap-${name}.xml`, `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
-${us.map((u) => `  <url><loc>${xml(u)}</loc><lastmod>${mod}</lastmod><changefreq>${freq}</changefreq>${(IMAGES[u] ?? []).map((i) => `<image:image><image:loc>${SITE}${i}</image:loc></image:image>`).join('')}</url>`).join('\n')}
+${us.map((u) => `  <url><loc>${xml(u)}</loc><lastmod>${lastmod(u, mod)}</lastmod><changefreq>${freq}</changefreq>${(IMAGES[u] ?? []).map((i) => `<image:image><image:loc>${SITE}${i}</image:loc></image:image>`).join('')}</url>`).join('\n')}
 </urlset>
 `);
 }
 writeFileSync('public/sitemap.xml', `<?xml version="1.0" encoding="UTF-8"?>
 <sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${groups.map(([name, , mod]) => `  <sitemap><loc>${SITE}/sitemap-${name}.xml</loc><lastmod>${mod}</lastmod></sitemap>`).join('\n')}
+${groups.map(([name, us, mod]) => `  <sitemap><loc>${SITE}/sitemap-${name}.xml</loc><lastmod>${newest(us, mod)}</lastmod></sitemap>`).join('\n')}
 </sitemapindex>
 `);
 
@@ -589,4 +635,5 @@ ${LP.map((p) => `- [${p.h1}](${SITE}/${p.slug}) (${p.lang})`).join('\n')}
 - [Fantasy draft league](${SITE}/?draft=1)
 - [Community hub](${SITE}/?community=1)
 `);
+saveLastmod();
 console.log(`${pages.length} guider · CM 01/02: ${dbO.summary} · 2026/27: ${dbM.summary}`);

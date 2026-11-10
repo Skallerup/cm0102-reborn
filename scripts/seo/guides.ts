@@ -501,7 +501,7 @@ ${moveTable(ver.late, ver, true)}
     },
     {
       slug: 'cm-01-02-bosman-guide/',
-      title: 'CM 01/02 Bosman Guide – Free Transfers, Pre-Contracts & the Best Targets | CM Reborn',
+      title: 'CM 01/02 Bosman Guide – Free Transfers & Pre-Contracts | CM Reborn',
       h1: 'CM 01/02 Bosman guide: how free transfers work, and who to sign',
       description: `How Bosman free transfers work in Championship Manager 01/02: contracts, pre-contracts from January, wages and signing-on fees – plus the ${Math.min(25, bosman.length)} best players out of contract in summer ${yr}.`,
       body: `<p class="lead">The Bosman ruling is the cheapest way to build a squad in CM 01/02: when a player's contract runs out he can leave for nothing, and you only pay wages and a signing-on fee.</p>
@@ -607,7 +607,7 @@ ${loyal.length ? `<h2>One-club men (loyalty 18+)</h2>${ptable(loyal, ['Loyalty',
     },
     {
       slug: 'cm-01-02-tips/',
-      title: 'CM 01/02 Tips & Tricks – A Beginner\'s Guide to Championship Manager 01/02 | CM Reborn',
+      title: 'CM 01/02 Tips & Tricks – A Beginner\'s Guide | CM Reborn',
       h1: 'CM 01/02 tips: how to win with any club',
       description: 'Practical Championship Manager 01/02 tips: picking a club, setting up tactics, finding wonderkids and Bosmans, managing money and keeping the board happy.',
       body: `<p class="lead">Twenty years on, the basics of CM 01/02 still win titles. Here is what matters most.</p>

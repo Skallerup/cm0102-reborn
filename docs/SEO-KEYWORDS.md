@@ -77,3 +77,12 @@ Lavet: titler på indgangssiderne (play-online, forsiden, da/de/es/pt/tr), `/cm-
 `/cm-01-02-iphone-ipad/`, `/cm-01-02-windows-11/` (CD, Windows 11, Steam Deck), `/cm-01-02-cheat-tactics/` (+ "cheat players"
 fra databasen), `/cm-01-02-work-permit/`, `/cm-01-02-training/`, `/cm-01-02-multiplayer/`; brandet "CM 01/02 Reborn" i titlerne,
 hvor der er plads (`fitTitle`), og i forsidens `<title>`. Mangler: staff-lister (kræver trænere i parseren), måling i Search Console.
+
+## Status (10/11-2026)
+
+Teknisk: forsidens JavaScript-bundle 2,6 MB → 0,6 MB (spillet hentes først ved Spil), skrifttyper og hero-billeder uden at blokere
+LCP, CSS inline på de statiske sider, ægte `lastmod` pr. side (`scripts/seo/lastmod.json`), sitemap uden `?draft=1`/`?community=1`.
+Indhold: enhedsguider på alle 9 sprog (`/tr/cm-01-02-cd-istiyor-android-iphone/`, `/pt/cm-01-02-android-iphone-sem-cd/`,
+`/es/cm-01-02-android-iphone-windows-11/`, `/de/cm-01-02-windows-11-android-iphone/` …) med hreflang til `/cm-01-02-windows-11/`,
+skærmbilleder på indgangssiderne, `/about/`. IndexNow kører automatisk efter hver produktionsudgivelse (kun ændrede url'er).
+Mangler stadig: Search Console (ejeren – `VITE_GSC_TOKEN` på Vercel eller DNS-verifikation), Vercel Web Analytics er ikke slået til.

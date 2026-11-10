@@ -46,11 +46,11 @@ export default defineConfig({
         // karrierehistorik, den originale 2001-database og den gamle moderne database (kun til tests)
         globIgnores: ['**/data/careers*.json', '**/data/world-original*.json', '**/data/world-modern.json',
           // SEO-siderne (scripts/build-seo.ts – titusindvis af statiske sider) hører ikke til appen
-          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', '404.html', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
+          'cm-01-02/**', '2026-27/**', 'cm-01-02-*/**', 'play-cm-01-02-online/**', 'faq/**', 'changelog/**', 'about/**', '404.html', 'seo.css', '{da,sv,no,de,es,fr,it,pt,tr}/**', 'free-football-manager-browser-game/**'],
         // world.json (2026/27) er ~8 MB med staben fra databasen – plads til at vokse
         maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
         // guiderne (statiske SEO-sider, scripts/build-seo.ts) er rigtige sider – ikke appen
-        navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|cm-01-02|2026-27|faq|changelog|free-football-manager-browser-game|da|sv|no|de|es|fr|it|pt|tr)\//, /^\/api\//, /^\/llms\.txt$/, /^\/sitemap/],
+        navigateFallbackDenylist: [/^\/(play-cm-01-02-online|cm-01-02-[\w-]+|cm-01-02|2026-27|faq|changelog|about|free-football-manager-browser-game|da|sv|no|de|es|fr|it|pt|tr)\//, /^\/api\//, /^\/llms\.txt$/, /^\/sitemap/],
         runtimeCaching: [{
           // originalens kamplyde: hentes første gang de spilles, derefter fra cachen
           urlPattern: /\/sounds\/[\w.-]+\.m4a$/,
