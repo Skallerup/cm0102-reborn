@@ -259,9 +259,12 @@ export function applyTheme() {
       const soften = (c: RGB): RGB => { const [h, sat, l] = hsl(c); return sat > 0.9 && l > 0.35 && l < 0.65 ? rgbFromHsl(h, 0.82, l) : c; };
       // meget lyse/klare farver (fx gul) gøres mørkere på menuen, så hvid tekst bliver læsbar
       // i stedet for sort på gul (bedre læsbarhed og mindre skarpt)
-      const navBg0 = soften(a);
+      // en meget lys hovedfarve (Brøndbys gule) blev mørknet til oliven på menuen – er der en mørk anden farve, bytter de plads:
+      // menuen i den mørke (blå), topbjælken i den lyse (gul) – ejerens fejlmelding 2026-11-10
+      const [na, nb] = lum(a) > 0.6 && second && lum(second) < 0.45 ? [second, a] : [a, b];
+      const navBg0 = soften(na);
       const navBg = contrast(navBg0, WHITE) < 2.6 ? onWhite(navBg0, 3.4) : navBg0;
-      const topBg: RGB = b ? soften(b) : WHITE;
+      const topBg: RGB = nb ? soften(nb) : WHITE;
       const navFg = textOn(navBg), topFg = textOn(topBg);
       root.style.setProperty('--nav-bg', css(navBg));
       root.style.setProperty('--nav-fg', css(navFg));
