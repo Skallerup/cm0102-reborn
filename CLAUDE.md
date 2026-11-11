@@ -39,6 +39,8 @@ og læg ændringen i samme push.
   newgame.ts) – faste beløb ganges med `econ(liga)`, og `valueFromCA` bruger originalens værdikurve. Nye faste beløb
   i økonomien skal ganges med `econ(...)`. Mål med `scripts/econ-run.ts`.
 - Tjek `git log` ved start – der arbejdes ofte på projektet i andre sessioner.
+- Ny computer: docs/NEW_MACHINE.md. Motor-arbejdsmappen `~/cm0102-engine` er det PRIVATE repo `Skallerup/cm0102-engine` (noter, værktøjer, orakel,
+  Claudes hukommelse i `claude-memory/`); exe, rekompileret C og gemte spil genskabes med `tools/regen.sh` og kommer aldrig i git.
 
 ## Arkitektur i korte træk
 - React/Vite PWA i `src/`, spilmotoren i `src/game/`, Vercel-funktioner i `api/` (Upstash Redis, Vercel Blob, Resend).
