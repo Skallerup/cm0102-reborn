@@ -280,4 +280,15 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   bruger forudindstillinger. Med alle på originalens 4-4-2 (`FORCE_FORMATION=4-4-2 scripts/grid-stats.ts`): offside 1,1 → 3,94, men mål 5,44 og
   skud 30 – forudindstillingernes instruktioner/flag afslører en anden afvigelse. **Næste:** spor med plads → x/y pr. tik sammen med
   tabelfeltet (TBL fra taktikken i hukommelsen, engine+0xf56e) for at se, hvor positionerne afviger; computerens taktikvalg før kampen (sub_6ddab0).
+- 2026-11-11 – **Hvorfor forudindstillingerne giver for mange mål, og hvad computeren gør før kampen.** (1) Sporets tabeller (P) er alle .pct-
+  forudindstillinger (120 af 120; mest 442_v1/442_default/532-varianter) – og *samme klub skifter forudindstilling fra kamp til kamp* → valget sker
+  pr. kamp i computerens holdudtagelse **0x6dbb80** (2.343 instr.: formationsordet af masker 0xca0ca/0x20100/0x100 ud fra klubbernes omdømme
+  +0x80 og rand(2000)/rand(−4000)/rand(3000); spilleropstillingen 0x896a90, anføreren 0x897760; så sub_6ddab0). (2) Afstanden række − tabelmål
+  for forsvarere: orig −1/0/+1..+4 = 15,7/35,6/40,1 %; porten med vores AI-taktik (mest kanonisk) 30,9/29,9/30,3; med 4-4-2-forudindstilling
+  9,2/44,2/40,6 → det kanoniske gitter holder forsvaret en række for dybt; forudindstillingerne ligner originalen. (3) Med forudindstilling: kun
+  tabellen → 3,83 mål/offside 3,01; + forudindstillingens instruktioner → 5,44 mål; holdflagene ingen forskel (`PRESET_ONLY=table|noflags`, midlertidigt).
+  (4) **Originalens instruktioner i hukommelsen ≠ .pct-filens** (`scripts/grid-trace-instr.ts` mod sporets I-linjer): lo afviger i 333/451
+  pladser, hi i 180/451, taktikbytes 0, holdflag i 41/41 – fx 4-4-2 backs 0x55984221 → 0x55584221 (0x800000 → 0x400000), hi 0xa → 0x5.
+  **sub_6ddab0 omskriver hver spillers instruktioner** (via 0x5b5290/0x5b50d0) ud fra managerens egenskaber og spillerne. **Næste:** port sub_6ddab0
+  helt (holdflag + individuelle instruktioner) og test den mod sporets I-linjer (facit pr. plads); derefter forudindstillingsvalget i 0x6dbb80.
 
