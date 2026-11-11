@@ -43,17 +43,83 @@ export function presetTable(p: PresetTactic): Table {
   return t;
 }
 
-// ---------------------------------------------------------------- spillets taktik → originalens forudindstilling
-// Spillets Tactic har kun én grundplads pr. plads (dybde/side 0..100), ikke originalens gitter. Vi vælger den forudindstilling
-// og den fordeling af pladserne, der passer bedst på rolle og side (masken), med pladsens placering som tiebreak. *estimeret*:
-// en brugerflyttet plads uden for forudindstillingerne får nærmeste forudindstillings tabel (originalen genberegner gitteret
-// ved 0x5b3560/0x5b7e60, som ikke er afkodet).
-const ROLE = [0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40];          // GK SW D DM/WB M AM ST
-const SIDES = [0x80, 0x100, 0x200, 0x400, 0x800];              // L LC C RC R
-const roleOf = (mask: number) => ROLE.findIndex((r) => (mask & r) !== 0);
-const sideOf = (mask: number) => { const i = SIDES.findIndex((s) => (mask & s) !== 0); return i < 0 ? 2 : i; };
+// ---------------------------------------------------------------- pladsernes kanoniske gitter (notes/5b3560-slot-grid.md)
+const VBITS = [0x1, 0x2, 0x4, 0x8, 0x10, 0x20, 0x40];             // GK SW D DM M AM F
+const HBITS = [0x80, 0x100, 0x200, 0x400, 0x800];                 // L LC C RC R
+/** tabellen 0x9cc368: de 31 kanoniske masker (GK + 6 rækker × 5 kolonner) */
+export const CANON_MASKS = [0x1, ...VBITS.slice(1).flatMap((v) => HBITS.map((h) => v | h))];
+/** 0x5b73a0: laveste rækkebit og første kolonnebit (GK → C) */
+function split(mask: number): [number, number] {
+  const v = VBITS.find((b) => mask & b) ?? 0;
+  const h = mask & 0x80 ? 0x80 : mask & 0x100 ? 0x100 : mask & 0x200 || mask & 1 ? 0x200 : mask & 0x400 ? 0x400 : mask & 0x800 ? 0x800 : 0;
+  return [v, h];
+}
+const YT: Record<number, [number[], number[]]> = {
+  0x1: [[0, 1, 2, 3], [0, 2, 4, 6]], 0x2: [[1, 3, 5, 9], [2, 4, 13, 15]], 0x4: [[2, 7, 9, 13], [4, 9, 17, 17]], 0x8: [[4, 9, 13, 18], [7, 11, 20, 22]],
+  0x10: [[6, 11, 16, 22], [9, 14, 23, 26]], 0x20: [[9, 13, 19, 26], [12, 19, 27, 30]], 0x40: [[13, 15, 23, 31], [15, 24, 31, 34]],
+};
+/** 0x5b7e60 (sikker): maskens kanoniske punkt (x 0..26, y 0..35) uden/med bold i boldzonen (zx 0..2, zy 0..3) */
+export function canon(mask: number, att: 0 | 1, zx: number, zy: number): [number, number] {
+  const [v, h] = split(mask), c = HBITS.indexOf(h), wide = h === 0x80 || h === 0x800;
+  let y = YT[v][att][zy];
+  if (att === 1 && wide) y += v === 0x2 || v === 0x4 ? (zy === 3 ? 4 : 1) : v !== 0x1 ? 1 : 0;
+  let x: number;
+  if (v === 0x1) x = 13;
+  else if (v === 0x2 || v === 0x4) x = (att === 0 ? (zy === 0 ? [9, 11, 13, 15, 17] : [7, 11, 13, 15, 19]) : zy === 0 ? [6, 11, 13, 15, 20] : [3, 10, 13, 16, 23])[c];
+  else if (v === 0x40) x = (att === 0 ? [7, 11, 13, 15, 19] : zy <= 1 ? [2, 8, 13, 18, 24] : zy === 2 ? [3, 10, 13, 16, 23] : [6, 11, 13, 15, 20])[c];
+  else x = (att === 0 ? (zy === 0 ? [9, 11, 13, 15, 17] : [7, 11, 13, 15, 19]) : [3, 10, 13, 16, 23])[c];
+  const small = (v === 0x1 && zy > 0) || ((v === 0x2 || v === 0x4) && zy === 0) || (v === 0x40 && (h === 0x100 || h === 0x200 || h === 0x400) && zy === 3 && att === 1);
+  if (small || v !== 0x1) {
+    const d = small ? 1 : 5;
+    if (zx === 0) x = Math.min(Math.max(x - d, 2), 17);
+    else if (zx === 2) x = Math.min(Math.max(x + d, 9), 24);
+  }
+  return [Math.min(Math.max(x, 0), 26), Math.min(Math.max(y, 0), 35)];
+}
+/** 0x5b2ba0 (sikker) for alle 11 pladser med masks2 = masks: det grove gitter (+0x164, samme layout som filerne) */
+export function canonGrid(masks: number[]): Uint8Array {
+  const g = new Uint8Array(0x420), v = new DataView(g.buffer);
+  masks.slice(0, 11).forEach((mask, slot) => {
+    for (let att = 0; att < 2; att++) for (let zx = 0; zx < 3; zx++) for (let zy = 0; zy < 4; zy++) {
+      const [x, y] = canon(mask, att as 0 | 1, zx, zy), i = ((2 * slot + att) * 3 + zx) * 4 + zy;
+      v.setInt16(4 * i, x, true); v.setInt16(4 * i + 2, y, true);
+    }
+  });
+  return g;
+}
 
-export interface SlotSpec { mask: number; col: number; row: number } // col 0..8 (venstre → højre), row 0..11 (fra eget mål), side 0
+// ---------------------------------------------------------------- spillets taktik → originalens tabel
+// Taktikskærmen (0x89f710, tilstand 1) lader en plads lande på den nærmeste af de 31 masker og kalder 0x5b2ba0, så pladsens gitter er
+// maskens kanoniske punkter. Spillets 30 faste pladser (tactics.ts GRID_X × GRID_Y) er præcis de 30 masker (række SW..F × kolonne L..R);
+// en plads uden for gitteret lægges på den nærmeste (snapSlot). Er taktikkens 11 masker præcis en forudindstillings, bruges den (filens
+// håndredigerede gitter, holdflag, instruktioner og taktikbytes); ellers det kanoniske gitter med standardtaktikkens værdier (0x5b27c0).
+const GX = [12, 22, 35, 50, 66, 82], GY = [12, 37, 50, 63, 88];                 // = tactics.ts GRID_X / GRID_Y
+const nearIdx = (a: number[], v: number) => a.reduce((b, c, i) => (Math.abs(c - v) < Math.abs(a[b] - v) ? i : b), 0);
+/** spillets plads (dybde x 0..100 fra eget mål, side y 0..100 venstre → højre) → originalens maske */
+export function slotMask(s: { pos: string; x: number; y: number }): number {
+  if (s.pos === 'GK') return 0x1;
+  return VBITS[1 + nearIdx(GX, s.x)] | HBITS[nearIdx(GY, s.y)];
+}
+
+export interface TacticMap { preset: PresetTactic | null; table: Table; slotOf: number[]; masks: number[]; masks2: number[]; flags: number; lo: number[]; hi: number[]; tb: number[] } // slotOf[spillets plads] = tabellens plads
+
+const canonCache = new Map<string, Table>();
+export function mapTactic(slots: { pos: string; x: number; y: number }[], formation?: string): TacticMap {
+  const masks = slots.slice(0, 11).map(slotMask);
+  const key = [...masks].sort((a, b) => a - b).join(',');
+  const hits = PRESET_TACTICS.filter((t) => [...t.masks].sort((a, b) => a - b).join(',') === key);   // fx 4-4-2 = 4-4-2 Attacking
+  const pr = hits.find((t) => t.name === formation) ?? hits[0];
+  if (pr) {                                                                       // præcis en forudindstilling
+    const used = new Set<number>();
+    const slotOf = masks.map((mk) => { const j = pr.masks.findIndex((pm, k) => pm === mk && !used.has(k)); used.add(j); return j; });
+    return { preset: pr, table: presetTable(pr), slotOf, masks: pr.masks, masks2: pr.masks2, flags: pr.flags, lo: pr.lo, hi: pr.hi, tb: pr.tb };
+  }
+  const k = masks.join(',');
+  let t = canonCache.get(k);
+  if (!t) { t = expandGrid(canonGrid(masks)); canonCache.set(k, t); }
+  return { preset: null, table: t, slotOf: masks.map((_, i) => i), masks, masks2: masks, flags: TEAM_DEFAULT, lo: masks.map(() => INSTR_DEFAULT.lo), hi: masks.map(() => INSTR_DEFAULT.hi),
+    tb: masks.map(() => TACTIC_BYTE_DEFAULT) };
+}
 
 /** Kuhn–Munkres (ungarsk metode) for en kvadratisk omkostningsmatrix; returnerer for hver række den valgte søjle. */
 export function assign(cost: number[][]): number[] {
@@ -77,29 +143,6 @@ export function assign(cost: number[][]): number[] {
   const res = new Array(n).fill(0);
   for (let j = 1; j <= n; j++) if (p[j]) res[p[j] - 1] = j - 1;
   return res;
-}
-
-function slotCost(a: SlotSpec, pr: PresetTactic, t: Table, ps: number): number {
-  const ra = roleOf(a.mask), rb = roleOf(pr.masks[ps]);
-  if ((ra === 0) !== (rb === 0)) return 1e6;                  // målmand ↔ målmand
-  const [cx, cy] = tableCell(t, 0, ps, 0, 4, 5);              // uden bold, bolden på midten
-  return 20 * Math.abs(ra - rb) + 6 * Math.abs(sideOf(a.mask) - sideOf(pr.masks[ps])) + Math.abs(a.col - cx) + 0.5 * Math.abs(a.row - cy);
-}
-
-export interface TacticMap { preset: PresetTactic; table: Table; slotOf: number[] } // slotOf[spillets plads] = forudindstillingens plads
-
-export function mapTactic(slots: SlotSpec[], formation?: string): TacticMap {
-  let best: TacticMap | null = null, bestCost = Infinity;
-  for (const pr of PRESET_TACTICS) {
-    const t = presetTable(pr);
-    const n = Math.min(11, slots.length);
-    const cost = slots.slice(0, n).map((s) => Array.from({ length: n }, (_, j) => slotCost(s, pr, t, j)));
-    const a = assign(cost);
-    let c = a.reduce((sum, j, i) => sum + cost[i][j], 0);
-    if (formation && pr.name === formation) c -= 0.5;          // samme navn vinder ved lige
-    if (c < bestCost) { bestCost = c; best = { preset: pr, table: t, slotOf: a }; }
-  }
-  return best!;
 }
 
 // ---------------------------------------------------------------- holdflag og individuelle instruktioner (notes/team-flags.md)

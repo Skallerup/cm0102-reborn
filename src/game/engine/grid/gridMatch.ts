@@ -392,7 +392,7 @@ const SIDE_WORD: Record<string, number> = { L: 0x80, C: 0x200, R: 0x800 };
 const TECHN = ['anticipation', 'crossing', 'decisions', 'dribbling', 'finishing', 'handling', 'heading', 'longShots', 'marking', 'offTheBall', 'oneOnOnes', 'passing', 'penalties', 'positioning', 'reflexes', 'tackling', 'throwIns', 'creativity'] as const;
 const RAWN = ['acceleration', 'pace', 'agility', 'balance', 'strength', 'flair', 'freeKicks', 'jumping', 'teamwork', 'technique', 'aggression', 'bravery', 'corners'] as const;
 
-function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number }): GP {
+function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number; pos?: number; posAttack?: number }): GP {
   const s = tactic.slots[slot];
   const gk = s.pos === 'GK';
   const sh = (k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
@@ -402,7 +402,8 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
   for (const k of RAWN) f[k] = H.rawMatchFloat(k, sh(k));
   f.workRate = sh('workRate'); f.versatility = sh('versatility');
   f.stamina = H.rawMatchFloat('stamina', sh('stamina'));                    // +0xd5 (sub_6f56c0)
-  const pos = gk ? 0x1 : POS_WORD[s.pos] | (SIDE_WORD[s.side] ?? 0x200);
+  // positionsordet sub_6c38c0 = pladsens maske i taktikken (med LC/RC 0x100/0x400); sub_6c38f0 = den sekundære maske ("?")
+  const pos = base?.pos ?? (gk ? 0x1 : POS_WORD[s.pos] | (SIDE_WORD[s.side] ?? 0x200)), posAttack = base?.posAttack ?? pos;
   // +0x37: positionstilpasningen (sub_6eecb0, rettelse 6) ud fra spillerens positionsevner [GK SW D DM M AM F WB] og sider [L C R]
   const r: H.PosRatings = { gk: p.pos[0], sw: p.pos[1], d: p.pos[2], dm: p.pos[3], m: p.pos[4], am: p.pos[5], f: p.pos[6], wb: p.pos[7], l: p.side?.[0] ?? 20, c: p.side?.[1] ?? 20, r: p.side?.[2] ?? 20, free: 1 };
   // de individuelle instruktioner (+0x188b) og taktikbyten (+0x5b4): pladsens værdi i taktikken + vores instruktioner (tacticTable.ts instrOf)
@@ -410,7 +411,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
   // med motivationen +0x100 = 0 (*estimeret* – motivationsmodellen 0x6eb55c er kun del-afkodet); +0x31 = 0 (yndling/had/derby kendes ikke her)
   const bff = Math.trunc((0 + sh('dirtiness') + 10) / 4);
   const iv = instrOf(tactic.individual?.[slot], base), instr = instrBig(iv), tacticByte = base?.tb ?? 0x12;
-  const form = Math.min(0, H.positionFit(pos, pos, r, sh('versatility'), (iv.lo & 0x200000) !== 0));
+  const form = Math.min(0, H.positionFit(pos, posAttack, r, sh('versatility'), (iv.lo & 0x200000) !== 0));
   const lf = p.foot === 'L' || p.foot === 'B' ? 20 : 8, rf = p.foot === 'R' || p.foot === 'B' ? 20 : 8;
   let bx = clampX(Math.round((s.y / 100) * 8)), by = Math.min(10, Math.round((s.x / 100) * 11));
   if (gk) { bx = 4; by = 0; }
@@ -420,7 +421,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
     side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, condition: 100 * Math.max(60, p.condition ?? 100), pendingCond: 0, busy: 0,
     matchCA: mc.K, form, morale: 10, injury: 0, agitation: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, instr, freeRoleRating: 1, a,
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
-    marks: null, markers: [], ref: p.id, src: p, f, posAttack: pos, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
+    marks: null, markers: [], ref: p.id, src: p, f, posAttack, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
     leftFoot: lf, rightFoot: rf, baseX: bx, baseY: by, gkRating: p.pos[0], tbl: null, pslot: slot, posR: r,
     // udfordringen/dommeren (challenge.ts, judgeTackle): ukendte bytes starter som 0 (noterne), evnerne sættes efter hjemmebanen
     fouls: 0, foulsSuffered: 0, yellows: 0, reasons: [0, 0], b16: 0, skill: [], momentum: 0, w29: 0, w31: 0, b1d: 0, b1c: 0, injuredBy: null, temperCount: bff, bffBase: bff, grudge: null,
@@ -465,19 +466,20 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
   teams.forEach((t, side) => {
     const ps = t.players instanceof Map ? t.players : new Map(t.players.map((p) => [p.id, p]));
     // originalens positionstabel: nærmeste forudindstilling (rolle/side, så placering) – tacticTable.ts
-    const map = maps[side] = mapTactic(t.tactic.slots.map((s) => ({ mask: s.pos === 'GK' ? 0x1 : POS_WORD[s.pos] | (SIDE_WORD[s.side] ?? 0x200),
-      col: clampX(Math.round((s.y / 100) * 8)), row: Math.min(11, Math.round((s.x / 100) * 11)) })), t.tactic.formation);
+    // originalens positionstabel (tacticTable.ts): forudindstillingen, når taktikkens masker er præcis dens, ellers det kanoniske gitter
+    const map = maps[side] = mapTactic(t.tactic.slots, t.tactic.formation);
     t.tactic.lineup.forEach((id, slot) => {
       const p = ps.get(id); if (!p) return;
-      const ps0 = map.slotOf[slot] ?? slot, pr = map.preset;
-      const g = makePlayer(p, side as Side, slot, t.tactic, { lo: pr.lo[ps0], hi: pr.hi[ps0], tb: pr.tb[ps0] }); g.tbl = map.table; g.pslot = ps0; gp.push(g);
+      const ps0 = map.slotOf[slot] ?? slot;
+      const g = makePlayer(p, side as Side, slot, t.tactic, { lo: map.lo[ps0], hi: map.hi[ps0], tb: map.tb[ps0], pos: map.masks[ps0], posAttack: map.masks2[ps0] });
+      g.tbl = map.table; g.pslot = ps0; gp.push(g);
     });
   });
   const m: GridMatchState = {
     players: gp, gp, ballX: 4, ballY: 6, ballH: -1, ballSpeed: 0, ballDir: 0, lastTouch: 0, poss: 0, state: 8, shootout: 0, clock: 0, stoppage: 0, subTick: 0,
     paused: false, carrier: null, receiver: null, chaser: [null, null], keeperOut: [false, false], lineSide1: 11, lineSide0: 0, counterFlag: [false, false],
     // holdflaget +0x584 kopieres uændret ind ved kampstart (0x6db8a2): forudindstillingens ord med vores holdinstruktioner (tacticTable.ts)
-    teamFlags: [teamFlagsOf(home.tactic.team, maps[0].preset.flags), teamFlagsOf(away.tactic.team, maps[1].preset.flags)],
+    teamFlags: [teamFlagsOf(home.tactic.team, maps[0].flags), teamFlagsOf(away.tactic.team, maps[1].flags)],
     aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
     tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
     stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null, ballEvent: 0, inc: null, knocks: 0, b8eb5: 0,
