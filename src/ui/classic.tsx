@@ -552,9 +552,11 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
     if (fixed && r) {
       const narrow = window.innerWidth < 760;
       // ingen plads til højre (fx Edit yderst til højre): listen åbner under knappen, højrestillet
+      // maxHeight: listen skal kunne rulles helt inden for skærmen (brugerønske #10 – lange udtagelseslister)
+      const H = window.innerHeight;
       setPos(narrow || r.right + 230 > window.innerWidth
-        ? { position: 'fixed', top: r.bottom + 2, left: Math.max(4, Math.min(narrow ? r.left : r.right - 220, window.innerWidth - 220)) }
-        : r.bottom > window.innerHeight * 0.58 ? { position: 'fixed', left: r.right + 4, bottom: window.innerHeight - r.bottom, top: 'auto' } : { position: 'fixed', left: r.right + 4, top: r.top });
+        ? { position: 'fixed', top: r.bottom + 2, left: Math.max(4, Math.min(narrow ? r.left : r.right - 220, window.innerWidth - 220)), maxHeight: H - r.bottom - 10 }
+        : r.bottom > H * 0.58 ? { position: 'fixed', left: r.right + 4, bottom: H - r.bottom, top: 'auto', maxHeight: r.bottom - 8 } : { position: 'fixed', left: r.right + 4, top: r.top, maxHeight: H - r.top - 8 });
     }
     setPath([]);
     setOpen(!open);
@@ -584,10 +586,13 @@ export function CxDrop({ label, items, align = 'left', className = '', btn, care
     if (!open) return;
     const close = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setOpen(false); };
     const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // en fast liste hører til knappen: ruller siden/kolonnen bag den, lukker den (ellers svæver den løsrevet)
+    const scrolled = (e: Event) => { if (fixed && !ref.current?.contains(e.target as Node)) setOpen(false); };
     document.addEventListener('mousedown', close);
     document.addEventListener('keydown', esc);
-    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); };
-  }, [open]);
+    window.addEventListener('scroll', scrolled, true);
+    return () => { document.removeEventListener('mousedown', close); document.removeEventListener('keydown', esc); window.removeEventListener('scroll', scrolled, true); };
+  }, [open, fixed]);
   return (
     <div className={`cx-drop ${className}`} ref={ref}>
       <button {...btn} className={`cx-drop-btn ${btn?.className ?? ''}`} aria-haspopup="menu" aria-expanded={open} onClick={toggle}>

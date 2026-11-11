@@ -26,7 +26,7 @@ export function Select<V extends string | number>({ value, onChange, options, pl
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');
   const [hi, setHi] = useState(0);
-  const [pos, setPos] = useState<{ top: number; left: number; width: number; up: boolean }>({ top: 0, left: 0, width: 240, up: false });
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; up: boolean; maxH: number }>({ top: 0, left: 0, width: 240, up: false, maxH: 340 });
   const btn = useRef<HTMLButtonElement>(null);
   const pop = useRef<HTMLDivElement>(null);
   const list = useRef<HTMLDivElement>(null);
@@ -43,7 +43,9 @@ export function Select<V extends string | number>({ value, onChange, options, pl
     const w = Math.max(r.width, 240);
     const below = window.innerHeight - r.bottom;
     const up = below < 280 && r.top > below;
-    setPos({ top: up ? r.top - 6 : r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), width: w, up });
+    // listen skal ligge helt inden for skærmen (ellers kan de nederste valg ikke rulles frem – brugerønske #13)
+    const maxH = Math.max(120, Math.min(340, (up ? r.top : below) - 14));
+    setPos({ top: up ? r.top - 6 : r.bottom + 6, left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), width: w, up, maxH });
   };
   const openIt = () => { place(); setQ(''); setHi(Math.max(0, options.findIndex((o) => o.value === value))); setOpen(true); };
   const choose = (o: Opt<V>) => { onChange(o.value); setOpen(false); btn.current?.focus(); };
@@ -87,7 +89,7 @@ export function Select<V extends string | number>({ value, onChange, options, pl
         <svg viewBox="0 0 20 20" className="sel-chev" aria-hidden="true"><path d="M5 7.5l5 5 5-5" /></svg>
       </button>
       {open && (
-        <div ref={pop} className={`sel-pop ${pos.up ? 'up' : ''}`} style={{ top: pos.top, left: pos.left, width: pos.width }} onKeyDown={onKey}>
+        <div ref={pop} className={`sel-pop ${pos.up ? 'up' : ''}`} style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxH }} onKeyDown={onKey}>
           {searchable && (
             <input autoFocus className="sel-search" placeholder={t('select.search')} value={q} onChange={(e) => { setQ(e.target.value); setHi(0); }} />
           )}

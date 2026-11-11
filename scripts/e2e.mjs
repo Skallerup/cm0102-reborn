@@ -282,6 +282,11 @@ async function run(look) {
     await page.locator('.cx-drop-btn', { hasText: 'Sort By' }).first().click();
     await page.locator('.cx-drop-pop button', { hasText: 'Condition' }).first().click();
     await page.waitForFunction(() => /%$/.test(document.querySelector('.cx-sq-info')?.textContent ?? ''), null, { timeout: 5000 });
+    // brugerønske #10: udtagelsesmenuen (sidste spiller) ligger helt inden for skærmen og kan rulles
+    const sel = page.locator('.cx-sel .cx-selbtn'); await sel.nth(await sel.count() - 1).click();
+    const box = await page.evaluate(() => { const r = document.querySelector('.cx-sel .cx-drop-pop').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: innerHeight }; });
+    if (box.top < 0 || box.bottom > box.h) throw new Error(`udtagelsesmenuen går uden for skærmen: ${JSON.stringify(box)}`);
+    await page.keyboard.press('Escape');
   });
   if (look === 'klassisk') await step('klubbens History (Man Utd History)', async () => {
     await go({ name: 'squad' });
@@ -489,12 +494,15 @@ async function run(look) {
     const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');
     const labels = [await t('top.toTheMatch'), await t('top.toMatch'), await t('cl.continue'), await t('top.continue')].filter(Boolean);
     // klassisk: en skadet spiller på holdet stopper kampen (Team Selection), indtil holdet er rettet
-    let injured = look === 'klassisk' ? await page.evaluate(() => { const g = window.__cm.gs(); const id = g.tactic?.lineup[3]; if (!id) return 0; g.players[id].injury = { key: 'hamstring', days: 60 }; return id; }) : 0;
+    // (først heles truppen, så en tilfældig rigtig skade ikke giver en anden Team Selection end testens)
+    let injured = look === 'klassisk' ? await page.evaluate(() => { const g = window.__cm.gs(); for (const p of Object.values(g.players)) if (p.club === g.userClub) p.injury = null; const id = g.tactic?.lineup[3]; if (!id) return 0; g.players[id].injury = { key: 'hamstring', days: 60 }; return id; }) : 0;
     let selSeen = false;
     for (let i = 0; i < 120; i++) {
       if (await page.getByRole('button', { name: kick }).first().isVisible().catch(() => false)) break;
       let clicked = false;
       const selHead = await t('cl.mt.teamSel');
+      // (boksen kan være på vej frem: vent kort på den, så Yes-grenen nedenfor ikke trykker OK på Team Selection)
+      await page.locator('.cx-confirm').waitFor({ timeout: 600 }).catch(() => {});
       if (injured && await page.locator('.cx-confirm .cx-subtitle', { hasText: selHead }).isVisible().catch(() => false)) {
         if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-teamselection.png` });
         // sidebjælken må ikke dækkes af boksen
@@ -502,11 +510,19 @@ async function run(look) {
         await page.locator('.cx-confirm button.primary').click();
         // OK fører til truppen, hvor holdet kan rettes (CM 01/02)
         await page.waitForSelector('.cx-sq-row', { timeout: 10000 });
-        await page.evaluate((id) => { window.__cm.gs().players[id].injury = null; }, injured);
+        await page.evaluate(() => { const g = window.__cm.gs(); for (const p of Object.values(g.players)) if (p.club === g.userClub) p.injury = null; });
         injured = 0; selSeen = true; await page.waitForTimeout(400); continue;
       }
       const yes = page.locator('.cx-confirm button.primary');
-      if (await yes.isVisible().catch(() => false)) { await yes.click().catch(() => {}); await page.waitForTimeout(400); continue; }
+      if (await yes.isVisible().catch(() => false)) {
+        // Team Selection uden testens skade (en rigtig skade): OK → truppen, hel holdet
+        if (await page.locator('.cx-confirm .cx-subtitle', { hasText: selHead }).isVisible().catch(() => false)) {
+          await yes.click().catch(() => {}); await page.evaluate(() => { const g = window.__cm.gs(); for (const p of Object.values(g.players)) if (p.club === g.userClub) p.injury = null; });
+          if (injured) { injured = 0; selSeen = true; }
+          await page.waitForTimeout(400); continue;
+        }
+        await yes.click().catch(() => {}); await page.waitForTimeout(400); continue;
+      }
       if (await answerSquadNumbers()) continue;
       for (const l of labels) {
         const b = page.getByRole('button', { name: l, exact: false }).first();

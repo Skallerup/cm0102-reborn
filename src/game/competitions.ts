@@ -308,6 +308,12 @@ export function europeanQualifiers(prevTables: Record<string, number[]>, cupWinn
       }
     }
   };
+  // for mange: de lavest rangerede ryger et trin ned – som taberne af kvalifikationen i virkeligheden (CL → Europa League →
+  // Conference League). Før blev de bare skåret fra: Serbiens mester (Røde Stjerne) var helt ude af Europa i 2026/27, mens
+  // nr. 2 (Partizan) spillede Europa League (brugerønske #12)
+  const spill = (from: number[], to: number[]) => { if (from.length > 36) to.unshift(...from.splice(36)); };
+  spill(cl, uefa);
+  spill(uefa, conf);
   // Ny ligafase: 36 hold i hver turnering
   fill(cl, 36, new Set());
   fill(uefa, 36, new Set(cl));

@@ -96,7 +96,9 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
   const u21 = kind === 'u21';
   const r = new Rng(hash(g.seed, home, away, Number(g.date.replace(/-/g, '')), u21 ? 21 : 0));
   const team = (n: number) => {
-    const sq = (u21 ? u21Squad(n) : nationSquad(n)).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: Math.max(80, p.condition) }) as Player);
+    // klubbens reservehold og karantæner gælder ikke på landsholdet (før kunne et U21-hold af reservespillere stille med
+    // så få, at der efter skader ingen var tilbage på banen – MatchSim fandt ingen målmand)
+    const sq = (u21 ? u21Squad(n) : nationSquad(n)).map((p) => ({ ...p, reserves: false, banned: 0, attrs: p.attrs.slice(), condition: Math.max(80, p.condition) }) as Player);
     return { club: -1 - n, tactic: autoSelect(newTactic('4-4-2'), sq), players: new Map(sq.map((p) => [p.id, p])) };
   };
   const sim = new MatchSim(team(home), team(away), { commentary: false, aiSubs: [true, true], importance: kind === 'friendly' ? 0.3 : 1, neutral: kind !== 'friendly', ...(needsWinner ? { needsWinner: () => true } : {}), date: g.date }, r);

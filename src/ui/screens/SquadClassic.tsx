@@ -312,7 +312,7 @@ function ClassicFirstSquad() {
     const tag = tagOf(p, g);
     return (
       <div key={p.id} className={`cx-sq-row ${drag === p.id ? 'dragging' : ''} ${over === `p${p.id}` ? 'over' : ''}`} {...dropOn(`p${p.id}`, 'swapWith', p.id)}>
-        <CxDrop className="cx-sel" caret={false} label={lbl || ' '} items={menuFor(p)}
+        <CxDrop className="cx-sel" caret={false} fixed label={lbl || ' '} items={menuFor(p)}
           btn={{ className: `cx-selbtn ${pl?.kind ?? ''}`, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: t('cl.sq.selHint') }} />
         <Tag p={p} tag={tag} />
         <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''}`} draggable onDragStart={dragStart(p.id)} onDragEnd={dragEnd}

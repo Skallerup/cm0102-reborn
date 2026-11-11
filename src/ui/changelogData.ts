@@ -9,6 +9,16 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.24.1',
+    date: '2026-11-11',
+    title: { da: 'Lange menuer kan rulles, Korea i Asien', en: 'Long menus scroll, Korea in Asia' },
+    items: [
+      { da: "Brugerønske: lange rullemenuer i det klassiske udseende (udtagelsen i truppen, Competitions-menuen med mange spilbare lande, træningen) ligger nu helt inden for skærmen og kan rulles til bunds. Før gik de ud over skærmkanten, så fx en angriber nederst i truppen ikke kunne sættes ind på førsteholdet, og ligaerne efter Argentina ikke kunne nås", en: "Suggestion: long drop-down menus in the classic look (squad selection, the Competitions menu with many playable nations, training) now stay fully on screen and scroll to the bottom. Before, they ran off the screen, so e.g. a striker at the bottom of the squad couldn't be put in the first eleven, and the leagues after Argentina couldn't be reached" },
+      { da: "Brugerønske: Sydkorea, Nordkorea og mange andre lande (Irak, Thailand, Ghana, New Zealand …) stod under Europa – nu hører alle lande til deres fodboldforbunds verdensdel (i Nations & Clubs, jobsøgningen og landsholdenes kvalifikation)", en: "Suggestion: South Korea, North Korea and many other countries (Iraq, Thailand, Ghana, New Zealand …) were listed under Europe – now every country belongs to its football confederation's continent (in Nations & Clubs, job search and national team qualifying)" },
+      { da: "Brugerønske: klubber fra de lavest rangerede lande, der ikke får plads i en europæisk turnering, ryger et trin ned (Champions League → Europa League → Conference League) som taberne af kvalifikationen i virkeligheden. Før forsvandt de: Røde Stjerne, Serbiens bedste hold, var helt ude af Europa i 2026/27, mens Partizan spillede Europa League", en: "Suggestion: clubs from the lowest-ranked countries that don't get a place in a European competition drop one level (Champions League → Europa League → Conference League), like the qualifying losers in real life. Before, they disappeared: Red Star, Serbia's best team, was out of Europe in 2026/27 while Partizan played the Europa League" },
+    ],
+  },
+  {
     version: '0.24.0',
     date: '2026-11-11',
     title: { da: 'Truppen viser det, du sorterer efter', en: 'The squad shows what you sort by' },

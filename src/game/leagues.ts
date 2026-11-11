@@ -73,13 +73,20 @@ export const UEFA_NATIONS = new Set([
 
 export type Region = 'europe' | 'northAmerica' | 'southAmerica' | 'asia' | 'africa';
 
-const REGION_OF: Record<string, Region> = {
-  Russia: 'europe', Wales: 'europe', 'Northern Ireland': 'europe', Ireland: 'europe', Finland: 'europe', Hungary: 'europe', Bulgaria: 'europe', Slovakia: 'europe', Slovenia: 'europe', Bosnia: 'europe', Israel: 'europe', Cyprus: 'europe', Iceland: 'europe',
-  'United States': 'northAmerica', Mexico: 'northAmerica', Canada: 'northAmerica', 'Costa Rica': 'northAmerica', Honduras: 'northAmerica', Jamaica: 'northAmerica',
-  Argentina: 'southAmerica', Brazil: 'southAmerica', Colombia: 'southAmerica', Uruguay: 'southAmerica', Chile: 'southAmerica', Peru: 'southAmerica', Ecuador: 'southAmerica', Paraguay: 'southAmerica', Venezuela: 'southAmerica', Bolivia: 'southAmerica',
-  Japan: 'asia', 'Korea, South': 'asia', 'Saudi Arabia': 'asia', Australia: 'asia', China: 'asia', Qatar: 'asia', 'United Arab Emirates': 'asia', Iran: 'asia',
-  Egypt: 'africa', Morocco: 'africa', 'South Africa': 'africa', Nigeria: 'africa', Tunisia: 'africa', Algeria: 'africa',
+// Fodboldforbundets verdensdel (UEFA, CONCACAF, CONMEBOL, AFC, CAF) for alle lande i begge databaser. Brugerønske #11:
+// før kendte tabellen kun ~40 lande, og alle andre (Sydkorea, Irak, Ghana, New Zealand …) blev regnet som Europa.
+// OFC (Oceanien) regnes som Asien i spillet (landsholdsturneringerne har ingen Oceanien-pulje) – det klassiske UI viser Oceanien selv.
+const REGION_LISTS: Record<Region, string> = {
+  europe: 'Albania|Andorra|Armenia|Austria|Azerbaijan|Belarus|Belgium|Bosnia|Bosnia-Herzegovina|Bulgaria|Commonwealth of Soviet States|Croatia|Cyprus|Czech Republic|Czechoslovakia|Denmark|East Germany|England|Estonia|FYR of Macedonia|Faroe Islands|Finland|France|Georgia|Germany|Gibraltar|Great Britain|Greece|Holland|Hungary|Iceland|Ireland|Israel|Italy|Kazakhstan|Kosovo|Latvia|Liechtenstein|Lithuania|Luxembourg|Malta|Moldova|Montenegro|Netherlands|North Macedonia|Northern Ireland|Norway|Pays Basque|Poland|Portugal|Republic of Ireland|Romania|Russia|San Marino|Scotland|Serbia|Slovakia|Slovenia|Soviet Union|Spain|Sweden|Switzerland|Turkey|Türkiye|Ukraine|Wales|West Germany|Yugoslavia',
+  northAmerica: 'Anguilla|Antigua & Barbuda|Aruba|Bahamas|Barbados|Belize|Bermuda|Bonaire|British Virgin Islands|Canada|Cayman Islands|Costa Rica|Cuba|Curaçao|Dominica|Dominican Republic|El Salvador|French Guiana|Grenada|Guadeloupe|Guatemala|Guyana|Haiti|Honduras|Jamaica|Martinique|Mexico|Montserrat|Netherlands Antilles|Nicaragua|Panama|Puerto Rico|Saint Lucia|Saint-Martin|Sint Maarten|St Kitts & Nevis|St Vincent & The Grenadines|Surinam|Trinidad & Tobago|Turks and Caicos Islands|US Virgin Islands|United States',
+  southAmerica: 'Argentina|Bolivia|Brazil|Chile|Colombia|Ecuador|Paraguay|Peru|Uruguay|Venezuela',
+  asia: 'Afghanistan|Australia|Bahrain|Bangladesh|Bhutan|Brunei Darussalam|Cambodia|China|China PR|Chinese Taipei|Guam|Hong Kong|India|Indonesia|Iran|Iraq|Japan|Jordan|Korea, South|Kuwait|Kyrgyzstan|Laos|Lebanon|Macau|Malaysia|Maldives|Mongolia|Myanmar|Nepal|North Korea|Northern Mariana Islands|Oman|Pakistan|Palestine|Qatar|Saudi Arabia|Singapore|South Korea|Sri Lanka|Syria|Taiwan|Tajikistan|Thailand|The Philippines|Timor|Turkmenistan|United Arab Emirates|Uzbekistan|Vietnam|Yemen' +
+    '|American Samoa|Cook Islands|Fiji|New Caledonia|New Zealand|Papua New Guinea|Samoa|Solomon Islands|Tahiti|Tonga|Vanuatu',
+  africa: 'Algeria|Angola|Benin|Botswana|Burkina Faso|Burundi|Cameroon|Cape Verde Islands|Central African Republic|Chad|Comoros|Democratic Republic of Congo|Djibouti|Egypt|Equatorial Guinea|Eritrea|Ethiopia|Gabon|Ghana|Guinea|Guinea-Bissau|Ivory Coast|Kenya|Lesotho|Liberia|Libya|Madagascar|Malawi|Mali|Mauritania|Mauritius|Morocco|Mozambique|Namibia|Niger|Nigeria|Rwanda|Réunion|Senegal|Seychelles|Sierra Leone|Somalia|South Africa|South Sudan|Sudan|Swaziland|São Tomé & Principe|Tanzania|The Congo|The Gambia|Togo|Tunisia|Uganda|Zaire|Zambia|Zimbabwe|eSwatini',
 };
+const REGION_OF: Record<string, Region> = Object.fromEntries(
+  (Object.entries(REGION_LISTS) as [Region, string][]).flatMap(([r, list]) => list.split('|').map((n) => [n, r])),
+);
 
 /** Verdensdel for en nation (bruges til jobtilbud) – ukendte lande regnes som Europa */
 export function regionOf(nationName: string | undefined): Region {

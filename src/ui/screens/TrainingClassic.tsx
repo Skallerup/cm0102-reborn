@@ -62,7 +62,7 @@ export function ClassicTraining() {
       <Tabs tabs={[['overview', t('cl.tn.overview')], ...TOP.map((k) => [k, lbl(k)] as [string, string])]} value={tab} onChange={setTab} />
       <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => setTab(k) }))} />
       <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort="pos"
-        btn={(p) => <CxDrop className="cx-sel" caret={false} label={t(`train.${p.training}`)} items={schedMenu(p)} btn={{ className: 'cx-rowbtn' }} />} />
+        btn={(p) => <CxDrop className="cx-sel" caret={false} fixed label={t(`train.${p.training}`)} items={schedMenu(p)} btn={{ className: 'cx-rowbtn' }} />} />
       {coaches && <CoachesPanel onClose={() => setCoaches(false)} />}
     </div>
   );
