@@ -5,11 +5,21 @@ import type { CommentaryLine } from '../game/types';
 
 type Row = [number, string, string, Record<string, string>?, ([string, string] | 0)?, string?];
 let data: Record<string, Row[]> | null = null;
+/** Originalen omregner cfg-vægtene ved indlæsning (0x6daaac): eff = floor(10·max(w) / w) pr. begivenhed – cfg-tallet er "1 ud af N",
+ *  så et højere tal er en SJÆLDNERE variant (~/cm0102-engine/notes/commentary-ids.md §3). Før brugte vi tallet som almindelig vægt. */
+export function effectiveWeights(d: Record<string, Row[]>): Record<string, Row[]> {
+  const out: Record<string, Row[]> = {};
+  for (const [ev, rows] of Object.entries(d)) {
+    const max = Math.max(...rows.map((r) => r[0] || 1));
+    out[ev] = rows.map((r) => [Math.floor((10 * max) / (r[0] || 1)), ...r.slice(1)] as Row);
+  }
+  return out;
+}
 let loading: Promise<void> | null = null;
 
 /** Hent teksterne (eget bundt, ca. 300 KB) – kaldes, når kampskærmen åbnes */
 export function loadMatchTexts(): Promise<void> {
-  loading ??= import('./data/matchTexts.json').then((m) => { data = (m.default ?? m) as unknown as Record<string, Row[]>; }).catch(() => { loading = null; });
+  loading ??= import('./data/matchTexts.json').then((m) => { data = effectiveWeights((m.default ?? m) as unknown as Record<string, Row[]>); }).catch(() => { loading = null; });
   return loading;
 }
 
