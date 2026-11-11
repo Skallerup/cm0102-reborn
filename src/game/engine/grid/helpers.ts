@@ -168,6 +168,17 @@ export function isCrossingPosition(p: MatchPlayer, tx: number, ty: number): bool
 const DEAD_BALL_CODES = [0x5b, 0x5c, 0x3d, 0x36, 0x34, 0x37, 0x5a, 0x33, 0x35, 0x39, 0x3];
 /** sub_6cb6c0 → tabellen 0xb67c30 (bygget 0x6b8150 ff.): retning i hele grader, 0 = +y, 90 = +x, 180 = −y, 270 = −x; ftol, ikke afrunding
  *  (notes/vision-space-offside.md §6.1). */
+/** sub_6fa140 (sikker): vender p (facing +0x19a) mod (tx, ty)? Samme felt → nej (al = 0). Ellers ja ved samme retning eller
+ *  |forskel| < ftol(2,25·agility-rul + 45). */
+export function facingOk(p: { x: number; y: number; facing: number; roll: { agility: number } }, tx: number, ty: number): boolean {
+  const dx = tx - p.x, dy = ty - p.y;
+  if (dx === 0 && dy === 0) return false;
+  const ang = bearing(dx, dy);
+  if (p.facing === ang) return true;
+  const lim = Math.trunc(p.roll.agility * 2.25 + 45);
+  let d = Math.abs(p.facing - ang); if (d > 180) d = 360 - d;
+  return d < lim;
+}
 export function bearing(dx: number, dy: number): number {
   if (dx === 0) return dy < 0 ? 180 : 0;
   if (dy === 0) return dx > 0 ? 90 : 270;

@@ -215,7 +215,7 @@ export const GRID_UNKNOWN = {
       carrier: m.carrier as GP | null, receiver: m.receiver as GP | null, players: m.gp, teamFlags: m.teamFlags, counterFlag: m.counterFlag,
       lineSide1: m.lineSide1, lineSide0: m.lineSide0, sameClubGroup: m.nations[0] === m.nations[1],
       nation: (q) => q.src.nation, reps: (q) => q.src.cmRep ?? repTriple(q.src.rep ?? 50), jumping: (q) => q.a.jumping, longShots: (q) => q.f.longShots,
-      tacticalCell: (q) => this.tacticalCell(m, q), manMarkTarget: () => null, freeRun: (q) => this.freeRun(m, q, rand),
+      tacticalCell: (q) => this.tacticalCell(m, q), manMarkTarget: (q) => L.manMarkTarget(m, q) as GP | null, freeRun: (q) => this.freeRun(m, q, rand),
     }, p, rand);
   },
   /** sub_6f9f90 (sikker; notes/vision-space-offside.md §1): kan p se feltet (tx,ty)? useSkill = a3 (synsvinklen af Creativity-rullet,
@@ -383,7 +383,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic): GP {
     side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, condition: 100 * Math.max(60, p.condition ?? 100), pendingCond: 0, busy: 0,
     matchCA: mc.K, form, morale: 10, injury: 0, agitation: 0, pos, tacticByte: 0, instr: 0n, freeRoleRating: 1, a,
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
-    marks: null, markers: [], src: p, f, posAttack: pos, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
+    marks: null, markers: [], ref: p.id, src: p, f, posAttack: pos, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
     leftFoot: lf, rightFoot: rf, baseX: bx, baseY: by, gkRating: p.pos[0], tbl: null, pslot: slot, posR: r,
     // udfordringen/dommeren (challenge.ts, judgeTackle): ukendte bytes starter som 0 (noterne), evnerne sættes efter hjemmebanen
     fouls: 0, foulsSuffered: 0, yellows: 0, reasons: [0, 0], b16: 0, skill: [], momentum: 0, w29: 0, w31: 0, b1d: 0, temperCount: 0, grudge: null,
@@ -518,29 +518,17 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
 
   const hooks: L.Hooks = {
     ballCarrier: (p) => carrierTurn(p as GP),
-    moveTo: (p0, x, y, flags) => {
-      const p = p0 as GP;
-      const fx = clampX(x), fy = clampY(y);
-      const early = p.x === fx && p.y === fy && flags !== 0xf && flags !== 0x100;            // 0x6f0a62
-      let turned = false;
-      L.offBallStep(m, p, fx, fy, flags, rand,
-        (q, tx, ty) => Math.abs(((H.cellDirection(q.x, q.y, tx, ty) - (q as GP).facing + 540) % 360) - 180) <= 90 || (q.x === tx && q.y === ty),
-        (q, tx, ty) => { turned = true; P.turnTo(q as GP, q.x, q.y, tx, ty); }, () => {}, () => {});
-      if (p.x !== fx || p.y !== fy) p.facing = H.cellDirection(p.x, p.y, fx, fy);              // *estimeret* (limen)
-      if (!early && !turned && p !== m.carrier) pickUp(p);
-      // en spiller, der går ind i boldholderens felt, udfordrer ikke her – kun boldholderens eget skridt (sub_6f09f0) og
-      // skud/aflevering kalder sub_6c87e0 (sikker)
-    },
+    moveTo: (p0, x, y, flags) => offBallMove(p0 as GP, clampX(x), clampY(y), flags),
     place: (p, x, y) => { p.x = clampX(x); p.y = clampY(y); },
     tacticalCell: (p) => cellWithDrift(p as GP),
     formationCell: (p) => GRID_UNKNOWN.formationCell(m, p as GP),
     runTarget: (p, mode) => GRID_UNKNOWN.runTarget(m, p as GP, mode, GRID_UNKNOWN.formationCell(m, p as GP), rand),
     zonalPick: (p) => GRID_UNKNOWN.zonalPick(m, p as GP, rand),
-    manMarkTarget: () => null, // sub_7160f0: kræver mandsopdækning i taktikken (ikke i vores Tactic)
+    manMarkTarget: (p) => L.manMarkTarget(m, p),                                             // sub_7160f0 (sikker); vores Tactic sætter ikke bit 4
     backOnside: (p) => { p.y = clampY(p.y + (p.side === 0 ? -1 : 1)); },
     takeBall: (p) => takeBall(p as GP),
     turn: (p, x, y) => P.turnTo(p as GP, p.x, p.y, x, y),                                    // sub_6f4920 (sikker)
-    canFollow: (mk, x, y) => L.dist(mk.x, mk.y, x, y) <= 1.5, // sub_6bce20 *estimeret*
+    canFollow: (mk, x, y) => L.canFollow(m, mk, x, y),                                      // sub_6bce20 (sikker)
     teammatesAhead: (p) => gp.filter((o) => o.active && o.side === p.side && o !== p && (p.side === 0 ? o.y > p.y : o.y < p.y)).length,
     nearestOppDist: (side, x, y) => H.nearestOpponent(gp.filter((o) => o.side !== side).map((o) => o.view!), x, y, true),
     ownKeeper: (side) => gp.find((o) => o.active && o.side === side && o.pos === L.POS.keeper) ?? null,
@@ -555,6 +543,62 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     distToTarget: (bx, by, tx, ty) => L.dist(bx, by, tx, ty),
     landing: (x, y) => P.land(x, y),                                                         // sub_6c9cd0
     receive: (p, power, ox, oy) => P.receive(p as GP, power, ox, oy),                        // sub_6f6c00
+  };
+  /** markers_follow (sub_6f09f0 0x6f0a76/0x6f0c07/0x6f3bf9, sub_7103e0 0x710612; sikker): hver markør, der må følge (sub_6bce20), og som
+   *  den flyttede spillers off-the-ball- · fart-rul ikke overstiger rand(900) + 50, får en forsvarstur (sub_714d40). */
+  const markersFollow = (p: GP) => {
+    for (let i = 0; i < p.markers.length; i++) {
+      const mk = p.markers[i] as GP;
+      if (L.canFollow(m, mk, p.x, p.y) && p.roll.offTheBall * p.roll.pace <= rand(900) + 50) L.defendOffBall(m, mk, rand, hooks);
+    }
+  };
+  /** skridtets konditionstab (sub_6f09f0 0x6f3c88–0x6f3f78, sikker): afstand · (4,5 − Stamina/12) · bane · vejr, ×(1,25|1,15|1,2 − 0,005·Stamina)
+   *  uden for den naturlige position (sub_6c38c0 ≠ sub_6c38f0), ×(1,55 − 0,025·Stamina) med instruktion 0x8000 eller 0x2000 + holdets pres;
+   *  så sub_6f56c0(p, tab, −1): ×12/10/8/6 / 11 efter konditionen (> 9500/8750/7750), aldrig under 0. */
+  const BYTE1_DRAIN: Record<number, number> = { 1: 1.4, 2: 1.2, 4: 1.05, 8: 1.45, 16: 1.05, 32: 1.15, 64: 1.1 };
+  const stepDrain = (p: GP, ox: number, oy: number) => {
+    if (p.slot < 0 || !p.active) return;
+    let f = Math.fround(BYTE1_DRAIN[GRID_UNKNOWN.byte1] ?? 1);
+    if (GRID_UNKNOWN.weather === 3) f = Math.fround(f * 1.05); else if (GRID_UNKNOWN.weather === 4) f = Math.fround(f * 1.1);
+    const st = p.f.stamina ?? 0;
+    let drain = Math.fround(L.DIST[Math.min(11, Math.abs(p.y - oy))][Math.min(8, Math.abs(p.x - ox))] * Math.fround(5 - (0.5 * st + 15) / 6 + 2) * f);
+    if (p.pos !== p.posAttack) {
+      const role = (fl: number) => (fl & 1 ? 0 : fl & 4 ? 1 : fl & 8 ? 2 : fl & 0x10 ? 3 : fl & 0x20 ? 4 : fl & 0x40 ? 5 : 3);
+      const k = Math.abs(role(p.pos) - role(p.posAttack)) > 1 ? 1.25 : p.pos & 4 || p.posAttack & 4 ? 1.15 : 1.2;
+      drain = Math.fround(drain * (k - 0.005 * st));
+    }
+    const lo = Number(p.instr & 0xffffffffn);
+    if (lo & 0x8000 || (lo & 0x2000 && m.teamFlags[p.side] & 0x100)) drain = Math.fround(drain * (1.55 - 0.025 * st));
+    const c = p.condition;
+    p.condition = Math.max(0, c - drain * (c > 9500 ? 12 : c > 8750 ? 10 : c > 7750 ? 8 : 6) * Math.fround(1 / 11));
+  };
+  /** vendingen til sidst i sub_6f09f0 (0x6f4143, sikker): alle andre end boldholderen vender sig mod et punkt en tredjedel af vejen mellem
+   *  bolden, spilleren og et mål – eget mål når modstanderen har bolden, modstandernes når eget hold har den (eller han/en holdkammerat er
+   *  tilsigtet modtager), ellers den nærmeste ende (række < 6 → y = 0). Heltalsdivision mod nul. */
+  const finalTurn = (p: GP) => {
+    if (p === m.carrier) return;
+    const s = p.side, rv = m.receiver as GP | null;
+    let gy: number;
+    if (m.poss === other(s)) gy = s === 0 ? 0 : 11;
+    else if (m.poss === s || rv === p || (rv && rv.side === s)) gy = s === 0 ? 11 : 0;
+    else gy = p.y < 6 ? 0 : 11;
+    P.turnTo(p, p.x, p.y, Math.trunc((m.ballX + p.x + 4) / 3), Math.trunc((m.ballY + p.y + gy) / 3));
+  };
+  /** sub_6f09f0 for en spiller uden bold (sikker; 0x6f09f0–0x6f0cbd + MOVE 0x6f3a67–0x6f42b6). Knock-tjekket sub_6cfe10 er ikke med. */
+  const offBallMove = (p: GP, tx: number, ty: number, flags: number) => {
+    p.busy++;                                                                                   // 0x6f0a13
+    if (p.x === tx && p.y === ty && flags !== 0xf && flags !== 0x100) { markersFollow(p); return; }   // 0x6f0a62
+    if (!H.facingOk(p, tx, ty) && p.roll.agility === 0 && p.roll.positioning === 0 && p.roll.anticipation === 0) {
+      P.turnTo(p, p.x, p.y, tx, ty); markersFollow(p); p.action = 0x6f; return;               // 0x6f0b7e
+    }
+    const ox = p.x, oy = p.y;
+    let nx = p.x + Math.sign(tx - p.x), ny = p.y + Math.sign(ty - p.y);                          // 0x6f0c1d
+    if (p.roll.pace * p.roll.pace > rand(1000)) { nx += Math.sign(tx - nx); ny += Math.sign(ty - ny); }   // 0x6f0c6c
+    p.x = nx; p.y = ny;
+    markersFollow(p);                                                                           // 0x6f3bf9
+    stepDrain(p, ox, oy);                                                                       // 0x6f3c88
+    pickUp(p);                                                                                  // 0x6f3f7d
+    finalTurn(p);                                                                               // 0x6f4143
   };
   /** sub_6f09f0 0x6f3f7d (sikker): efter skridtet – står en spiller uden bold i den frie bolds felt (ikke i flugt, ikke den tilsigtede
    *  modtager +0xf57a og ikke afleveren), tager han den: en modstander af modtageren opsnapper (+28), uden modtager vender han sig mod målet
@@ -672,7 +716,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
   const carrierMove = (p: GP, tx: number, ty: number, action: number, stepTo = true) => {
     const arg5: number = 0;                                                                   // kalderne giver 0
     p.busy++;
-    if (stepTo && p.x === tx && p.y === ty && action !== 0xf) return;
+    if (stepTo && p.x === tx && p.y === ty && action !== 0xf) { markersFollow(p); return; }      // 0x6f0a62
     const nx = clampX(p.x + Math.sign(tx - p.x)), ny = clampY(p.y + Math.sign(ty - p.y));
     const tired = rand(Math.trunc(((10000 - Math.trunc(p.condition)) ** 2) / 50000));
     const base = p.skill[action === 0xf || action === 0x10 ? 0xf : action === 0x12 ? 0x12 : 0x11];
@@ -713,11 +757,13 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
       m.ballH = 0;
     }
     if (!stepTo) return;
-    if (nx !== p.x || ny !== p.y) p.facing = H.cellDirection(p.x, p.y, nx, ny);
+    if (nx !== p.x || ny !== p.y) p.facing = H.cellDirection(p.x, p.y, nx, ny);              // *estimeret* (boldholderens retning)
+    const ox = p.x, oy = p.y;
     p.x = nx; p.y = ny;
     m.ballX = nx; m.ballY = ny;                                                               // også den tabte bold følger skridtet (0x6f40f9)
-    // markers_follow (0x6f3bf9): markørerne følger efter, som i loop.ts' playerTurn (sub_714d40 ikke læst → defendOffBall)
-    for (const mk of p.markers) if (hooks.canFollow(mk, p.x, p.y) && p.roll.offTheBall * p.roll.pace <= rand(900) + 50) L.defendOffBall(m, mk, rand, hooks);
+    markersFollow(p);                                                                         // 0x6f3bf9
+    stepDrain(p, ox, oy);                                                                     // 0x6f3c88
+    finalTurn(p);                                                                             // 0x6f4143 (kun når bolden blev tabt)
   };
 
   let passRun: () => boolean = () => false;                                                   // sub_6fad40 for den igangværende aflevering

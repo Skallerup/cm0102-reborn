@@ -79,6 +79,12 @@ export interface Player {
   roll: Rolls;                                    // +0x104..+0x10d
   marks: Player | null;                           // +0x1aa
   markers: Player[];                              // +0x1ae[3], count +0x101
+  /** sub_5b58e0(slot): mandsopdækningens mål i taktikken (sammenlignes med modstandernes +0x69) – kun med taktikbyte bit 4 */
+  markRef?: unknown;
+  /** +0x69: spillerens reference (staff), som taktikkens mandsopdækning peger på */
+  ref?: unknown;
+  /** sub_6c38f0: positionsordet i angreb (0 = som pos) */
+  posAttack?: number;
 }
 export interface Attr { acceleration: number; anticipation: number; decisions: number; flair: number;
   jumping: number; marking: number; offTheBall: number; pace: number; positioning: number;
@@ -117,6 +123,9 @@ export interface Match {
   landX?: number; landY?: number;         // +0x1c6/+0x1c7 landingsfeltet
   fromX?: number; fromY?: number;         // +0x1c8/+0x1c9 afleverens felt
   margin?: number;                        // +0x8ed6 afleveringens kvalitet (sub_6f6c00's passPower)
+  /** taktik +0x187b (formationskoden, dword) og engine+0xaf+side ("?") – læses af mandsopdækningen sub_7160f0 */
+  formationWord?: [number, number];
+  bAf?: [number, number];
   order: Player[];                        // +0x8f7e / count +0x8eb8
   prio: Player | null;                    // +0x91de
 }
@@ -268,8 +277,17 @@ export function buildOrder(m: Match, rand: Rand): Player[] {
 
 // ------------------------------------------------------------------ marking (sikkert except zonalPick)
 
+/**
+ * Markeringsrunden i sub_6b98c0 (0x6ba140–0x6ba345, sikker – gennemgået i asm 11/11). Alle i handlingsrækkefølgen får +0x1aa = 0 og
+ * +0x101 = 0 først. Derefter, i rækkefølgen: taktikbyte bit 1 → ingen; mandsopdækningen sub_7160f0; ellers ikke målmand (sub_717410 == 1)
+ * og ikke boldholderen; med "men behind ball" (0x4000) altid zonevalget; ellers springes spilleren over, når hans hold har bolden uden for
+ * egen tredjedel, og zonevalget kaldes for forsvarere (0x4/0x2) på egen halvdel, midtbanespillere (0x8/0x10) med bolden i egen
+ * tredjedel og for alle, når BOLDEN (ikke spilleren – rettet 11/11) er i eget felt. NB: +0x1aa sættes også, når modstanderen allerede
+ * har 3 markører (0x6ba220/0x6ba314) – så står markøren uden at følge (han springer sin tur over, 0x6ba37c), sic.
+ */
 export function assignMarking(m: Match, h: Hooks): void {
   for (const p of m.order) { p.marks = null; p.markers = []; }
+  const ownThird = (s: Side) => (s === 0 ? m.ballY < 3 : m.ballY > 8);
   for (const p of m.order) {
     if (p.tacticByte & 1) continue;                            // 0x6ba1c1 (meaning ukendt)
     let t = h.manMarkTarget(p);
@@ -277,15 +295,37 @@ export function assignMarking(m: Match, h: Hooks): void {
       if (p.pos === POS.keeper || p === m.carrier) continue;
       if (m.teamFlags[p.side] & TEAM.menBehindBall) t = h.zonalPick(p);
       else {
-        if (m.poss === p.side && !inOwnThird(p.side, m.ballY)) continue;    // 0x6ba244
-        const ownThird = p.side === 0 ? m.ballY < 3 : m.ballY > 8;
-        if ((p.pos & POS.def2 && inOwnHalf(p)) || (p.pos & (POS.mid8 | POS.mid10) && ownThird) || inOwnBox(p.side, p.x, p.y))
-          t = h.zonalPick(p);
-        // NB: in the code the 0x2-branch falls through to the 0x8/0x10 test when not in own half
+        if (m.poss === p.side && !ownThird(p.side)) continue;   // 0x6ba244
+        if ((p.pos & (POS.def4 | POS.def2) && inOwnHalf(p)) || (p.pos & (POS.mid8 | POS.mid10) && ownThird(p.side)) || inOwnBox(p.side, m.ballX, m.ballY))
+          t = h.zonalPick(p);                                  // 0x6ba276 / 0x6ba297 / 0x6ba2cf
       }
     }
-    if (t && t.markers.length < 3) { p.marks = t; t.markers.push(p); }
+    if (t) { p.marks = t; if (t.markers.length < 3) t.markers.push(p); }
   }
+}
+
+/** sub_7160f0 (sikker): mandsopdækningens mål. Kun med taktikbyte bit 4: modstanderen på banen, hvis +0x69 er taktikkens mål. Med bit
+ *  0x10 ("?") opgives han, når decisions-rullet ≠ 0 og modstanderens formationsord har bit 0x10000000 eller engine+0xaf+modside > 1,
+ *  eller når målets angrebsposition afviger fra hans position uden at være angriber (0x40). */
+export function manMarkTarget(m: Match, p: Player): Player | null {
+  if (!(p.tacticByte & 4)) return null;
+  const opp = (1 - p.side) as Side;
+  const t = m.players.find((q) => q.side === opp && q.active && q.ref !== undefined && q.ref === p.markRef);
+  if (!t) return null;
+  if (!(p.tacticByte & 0x10)) return t;
+  if (((m.formationWord?.[opp] ?? 0) & 0x10000000 || (m.bAf?.[opp] ?? 0) > 1) && p.roll.decisions !== 0) return null;
+  const pa = t.posAttack ?? t.pos;
+  if (pa !== t.pos && !(pa & 0x40) && p.roll.decisions !== 0) return null;
+  return t;
+}
+
+/** sub_6bce20 (sikker): må markøren følge efter sin mand til (x, y)? Ingen afstandsgrænse – markøren må ikke stå i feltet, ikke være optaget
+ *  (busy ≥ 2), ikke være boldholder eller tilsigtet modtager, skal have et markeringsrul ≠ 0 (sub_6f4600: positioneringsrullet, hvis
+ *  taktikbyten har bit 2), og bolden skal være i spil. */
+export function canFollow(m: Match, mk: Player | null, x: number, y: number): boolean {
+  if (!mk || (mk.x === x && mk.y === y) || mk.busy >= 2 || mk === m.carrier || mk === m.receiver) return false;
+  if ((mk.tacticByte & 2 ? mk.roll.positioning : mk.roll.marking) === 0) return false;   // sub_6f4600
+  return m.state === 0;
 }
 
 /** sub_6bd6b0: counter-attack flag (only for teams with 0x1000). */
