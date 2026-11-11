@@ -341,7 +341,7 @@ export const GRID_UNKNOWN = {
     for (const q of m.gp) if (q.active && q.side === p.side && q.pos !== L.POS.keeper && L.dist(q.x, q.y, 4, gy) < t) return 2;
     return 1;
   },
-  /** sub_6cfd70 → sub_6ea760 (sikker; mens en fordel venter, sub_6bab90, flages ingen):
+  /** sub_6cfd70 (thunk) → sub_6ea760 (sikker, gennemgået i asm 11/11; mens en fordel venter, sub_6bab90, flages ingen):
    *  hvem flages ved en aflevering fra række y0 mod y1 (excl = skytten ved skud, ellers null). Linjevogterens +0x29 = official29 (?),
    *  hans karakter (+8) = m.linesmanMark. Rækkereglerne er `offsideFlag` i cm0102-original-rules.ts. */
   offsidePlayer(m: GridMatchState, side: Side, y0: number, y1: number, excl: GP | null, rand: Rand): GP | null {
@@ -362,7 +362,7 @@ export const GRID_UNKNOWN = {
         if (rand(4) + 1 < L.dist(q.x, q.y, 4, y1)) continue;
       }
       const v = q.roll.offTheBall;                                                              // +0x107
-      if (q.y === Lrow - 2 * s) { if (rand(6 * v + 500) === 0) { m.linesmanMark -= 25; return q; } }
+      if (q.y === Lrow - 2 * s) { if (rand(6 * v + 500) === 0) { m.linesmanMark -= side === 0 ? 25 : 15; return q; } }   // side 1: −15 (0x6eaa43 → 0x6eab31, sic)
       else if (q.y === Lrow - s) { if (rand(H.ftol(v ** 3 + 25)) === 0) { m.linesmanMark -= 15; return q; } }
       else if (q.y === Lrow) { if (rand(3) !== 0 && v < rand(18)) { m.linesmanMark += 15; return q; } }
       else if (side === 0 ? q.y > Lrow : q.y < Lrow) { if (v < rand(100)) return q; }
@@ -432,9 +432,10 @@ export const GRID_UNKNOWN = {
   crowd: { total: 35428, home: 32594, away: 2834 },
   /** comp+0x69: English Premier Division = 18 (club_comp.dat 3.9.60, sikker for Premier League) */
   compRep: 18,
-  /** sub_6ea760: linjevogterens officials-byte +0x29 (rand(+0x29 + 25) == 0 = overser alt) og hvor tæt på afleveringens mål en angriber
-   *  skal stå for at blive vurderet (sub_6cfd70's udvalg er ikke læst). *estimeret* */
-  official29: 10, offsideReach: 2,
+  /** sub_6ea760: dommerpostens byte +0x29 ([official+4]+0x29 – samme post som +0x24/+0x25/+0x28, ikke en separat linjevogter):
+   *  rand(+0x29 + 25) == 0 → alt overses. Medianen af de 21 engelske dommere i officials.dat 3.9.60 (byte 0x22 > 0) er 0.
+   *  NB sub_6cfd70 er kun en thunk til sub_6ea760 (ingen egen udvælgelse – det tidligere skøn offsideReach brugtes ikke). */
+  official29: 0,
 };
 
 // ------------------------------------------------------------------ opbygning
@@ -1109,7 +1110,20 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx: Gr
         else { dbg('shot:stopped'); winBall(cd, p, c, c.value - d.quality - 200, jA, false); return; }
       }
     }
-    const param = d.special ?? 1;
+    // 0x7038a2–0x703a28 (sikker): ved et normalt skud (param 1, ikke straffe/frispark) dømmer linjevogteren offside på en anden angriber –
+    // sub_6cfd70 → sub_6ea760 med skytten som excl og målrækken som mål. rand(500) = 0: overset → fordelen (kode 8), skuddet går videre
+    // som param 2; ellers frispark til modstanderne, hvor offside-spilleren står, og skuddet er væk.
+    let param = d.special ?? 1;
+    if (type !== SHOT.PENALTY && type !== SHOT.FREE_KICK && param === 1) {
+      const o = GRID_UNKNOWN.offsidePlayer(m, p.side, p.y, p.side === 0 ? 11 : 0, p, rand);
+      if (o) {
+        if (rand(500) !== 0) {
+          dbg('off:shot'); st(p.side).offsides++;
+          restart(7, opp, o.x, o.y); m.carrier = null; return;
+        }
+        queueIncident(-1, o, null, 8, o.x, o.y, -1, -1); param = 2;
+      }
+    }
     st(p.side).shots++; p.shots++;
     dbg('shotD' + Math.min(6, Math.round(L.dist(p.x, p.y, 4, goalRow(p.side)))) + ':s' + p.side + ':x' + p.x + 'y' + p.y);
     // sub_6cc540 → sub_6cd3d0 → sub_70dfd0 (sikker, pass.ts): skudlinjen; en blokering afgør selv bolden (løs, taget eller frispark).
@@ -1247,6 +1261,11 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx: Gr
   while (guard++ < 2000) {
     dbg('state' + m.state + (m.carrier ? 'C' : '') + (m.receiver ? 'R' : ''));
     if (!L.tick(m, rand, hooks)) break;
+    if (m.poss === 0 || m.poss === 1) {                                                       // fejlsøgning: angribernes afstand til linjen
+      const s = m.poss as Side, Lr = s === 0 ? m.lineSide1 : m.lineSide0;
+      let best = -9; for (const q of gp) if (q.active && q.side === s && !q.isKeeper) best = Math.max(best, s === 0 ? q.y - Lr : Lr - q.y);
+      dbg('line:L' + (s === 0 ? Lr : 11 - Lr)); dbg('line:max' + Math.max(-4, best));
+    }
     // bolden uden for banen efter et løb/en aflevering
     if (m.state === 0 && (m.ballX < 0 || m.ballX > 8 || m.ballY < 0 || m.ballY > 11)) ballOut(m.lastTouch);
   }
