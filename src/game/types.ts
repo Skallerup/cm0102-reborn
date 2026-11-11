@@ -266,6 +266,9 @@ export interface ClubRecords {
 }
 
 export interface Staff {
+  /** managerens taktiske egenskaber fra den originale database (ikke-spillerposten): [Attacking, Directness, Free Roles, Marking, Offside,
+   *  Pressing, Tactics, yndlingsformation 1..9] – originalens computer-taktik i gittermotoren (aiPrematch/aiTacticChoice) */
+  tac?: number[];
   id: number;
   first: string;
   last: string;

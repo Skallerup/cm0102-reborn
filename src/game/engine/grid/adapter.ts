@@ -11,7 +11,8 @@ import type { Rng } from '../../rng';
 import type { CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, ShootoutKick, ShotRecord, Tactic } from '../../types';
 import type { EngineOptions, EngineTeam } from '../match';
 import type { LiveSim, LiveSimPlayer, LiveSimTeam, LiveTeamView, PitchSnap } from '../liveSim';
-import { createGridMatch, randOf, type GP, type GridMatch, type GridSideStats } from './gridMatch';
+import { createGridMatch, randOf, type GP, type GridManager, type GridMatch, type GridSideStats } from './gridMatch';
+import { gs } from '../../state';
 
 const TICKS_PER_MIN = 11;
 const TOTAL_TICKS = 990;
@@ -66,6 +67,9 @@ export class GridSim implements LiveSim {
     const rand = randOf(() => r.next());
     this.g = createGridMatch({ players: home.players, tactic: home.tactic }, { players: away.players, tactic: away.tactic }, rand, {
       ownGround: !opts.neutral,
+      // klubbernes omdømme (originalens skala 0–10000; vores 0–100 ×100 – *estimeret*) og managerne fra den originale database (Staff.tac)
+      rep: [home.club, away.club].map((c) => (gs().clubs[c]?.rep ?? 50) * 100) as [number, number],
+      managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; return st?.tac ? { id: st.id, ca: st.rep * 2, tac: st.tac } : null; }) as [GridManager | null, GridManager | null],
       // computerstyret hold: sub_6c54a0 retter kun dem (menneskets taktik ændres aldrig af motoren)
       ai: opts.aiSubs ?? [true, true],
       on: {

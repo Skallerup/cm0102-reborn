@@ -1,6 +1,6 @@
 // Taktikkens positionstabel som i originalen (0x5b7160 / sub_6c2be0): udvidelse, spejling og kortlægning af spillets taktikker
 import { describe, expect, it } from 'vitest';
-import { PRESET_TACTICS } from '../src/game/engine/grid/presetTactics';
+import { DEFAULT_PRESETS, PRESET_TACTICS } from '../src/game/engine/grid/presetTactics';
 import { CANON_MASKS, assign, canon, canonGrid, mapTactic, presetTable, slotMask, tableCell } from '../src/game/engine/grid/tacticTable';
 import { GRID_X, GRID_Y, formationSlots } from '../src/game/tactics';
 
@@ -10,9 +10,11 @@ const specs = (name: string) => formationSlots(name).map((s) => ({ mask: s.pos =
   col: Math.max(0, Math.min(8, Math.round((s.y / 100) * 8))), row: Math.min(11, Math.round((s.x / 100) * 11)) }));
 
 describe('positionstabellen (originalens forudindstillinger)', () => {
-  it('17 forudindstillinger i originalens rækkefølge, målmanden står ved eget mål', () => {
+  it('45 forudindstillinger (17 Set To Default + 28 CM3_TACTICS) i originalens rækkefølge, målmanden står ved eget mål', () => {
     expect(PRESET_TACTICS.map((p) => p.name).slice(0, 3)).toEqual(['4-4-2', '4-4-2 Defensive', '4-4-2 Attacking']);
-    expect(PRESET_TACTICS).toHaveLength(17);
+    expect(PRESET_TACTICS).toHaveLength(45);
+    expect(DEFAULT_PRESETS).toBe(17);
+    expect(PRESET_TACTICS[17].file).toBe('352_v1');
     const t = presetTable(PRESET_TACTICS[0]);
     expect(tableCell(t, 0, 0, 0, 4, 1)).toEqual([4, 0]);
     expect(tableCell(t, 1, 0, 0, 4, 10)).toEqual([4, 11]);           // side 1 spejlet

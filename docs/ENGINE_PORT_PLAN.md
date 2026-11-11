@@ -333,3 +333,32 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   line:max −1/0/+1 = 50,1/14,9/2,8 %. **Næste:** målmanden med bolden i hænderne (boldhøjde −1: hvor længe venter han, sub_7109f0's GK-gren
   0x711aba/0x70ec80) og afsparket; derefter territoriet igen og så GRID_UNKNOWN.aiMode til.
 
+- 2026-11-11 – **Dødboldenes opstilling, målmandsflaget, boldholderens løb og rand (underagent; noten `notes/6c54a0-restarts.md`).**
+  Sporet `oracle/runs/tpl2.txt` (364 PL-kampe; match_trace.c udvidet bagudkompatibelt: state i A-tokenet, facing/busy/momentum pr. spiller)
+  og `scripts/grid-trace-port.ts` (porten i samme format, læst samme sted i tikket – `ctx.onTop` efter 0x6ba01e; boldholderen som
+  `pslot`). NB: de tidligere porttal (række 0 = 0,0, målmand 0,4/0,65 %) var målt efter tikket, hvor målsparkets opstilling og spark
+  allerede er sket. Målmanden holder IKKE bolden for kort (1–2 tik som originalen) – han får den for sjældent. Fund og rettelser:
+  (1) **sub_6c54a0's nulstilling og opstillingerne** var ikke porteret: boldhøjden er 0 ved genstart (porten −1 → alle blev teleporteret
+  til formationsfeltet), og 0x6c4290 indkast, 0x6c4470 hjørne, 0x6c4ec0 målspark (bolden i (4, 0)/(4, 11), alle i tabelfeltet for (4, 6),
+  målmanden tager bolden), 0x6c50d0 straffe, 0x6c4820 frispark og 0x6c51e0 afspark (tabelfeltet for (4, 2)/(4, 10), sparkeren = nærmeste,
+  retningen fra den sidst placerede spiller, sic – 364/364) er porteret; i de første 150 tik står 100 % af spillerne som originalen.
+  (2) **sub_6c3010** (målmanden er jager, +0x8eac/+0x8ead) blev aldrig sat; nu som originalen, og jagerne regnes kun igen, når bolden har
+  flyttet sig (0x6ba5a5). sub_6f5b80 (tilbage onside) i løkken er et skridt, ikke en teleport. (3) **Boldholderens løb**: uden løbemål
+  skriver sub_6bce80 −1, −1 → målet (0, 0) (0x7139f1 – side 0 løber skråt tilbage, side 1 skråt frem: sporet 17/20 % af løbene, porten
+  16/17 %; før løb porten på stedet – 101 løb pr. kamp på egen række 6, 87 % uden skridt, nu 29 og 3 %, orig 19 og 4 %); vendingen før løbet
+  (0x713a89) og "vend og løb" på eget felt (0x713941) manglede; skridtet ændrer ikke boldholderens retning; 0x7134d8's tredjedel var vendt;
+  kun PASS uden modtager sætter handling 9; skytten får 0x6d (0x70388a). (4) **rand = sub_90cfc0**: n < 0 giver n+1..0 (0x90d026), ikke 0 –
+  `randOf` rettet (rammer bl.a. 0x7110f5's plads under pres, zonevalget, tempo-rullet, skudvalget). (5) **Pausen** (sub_6bd930): ikke under
+  et ventende straffe, uret FORBI 495/990 + tillægstid, uret sættes til 495, afsparket til +0x8eb6 (init_match 0x6b974d: rand(2) ≠ 0 → side 0
+  starter), og tikket slutter. **Tal** (samme arbejdstræ uden → med mine ændringer, orig): boldens række 0–11 = 3,7/4,1/4,5/8,0/11,8/15,6/
+  19,3/11,9/8,3/4,8/4,2/3,7 → 5,6/4,4/5,3/9,3/10,7/13,0/13,7/12,2/10,4/6,1/5,3/3,8 (5,3/4,9/6,3/9,7/11,1/11,9/12,8/12,2/10,4/6,1/4,7/4,6);
+  tredjedele 20,3/58,6/21,1 → 24,7/49,6/25,7 (26,2/48,0/25,7); målmand med bolden 1,00/0,92 → 2,08/1,53 % (2,90/2,28), hans rækker 0/1/2
+  side 0 42/55/1 → 67/25/7 (64/28/7), side 1 51/47/1 → 70/22/6 (74/23/3); målmanden får bolden 13,0 → 22,5 gange pr. kamp (30,8; målspark
+  7,6 → 8,3, orig 10,2). 380 kampe frø 1: 3,14 → 2,91 mål, H/U/B 48/22/30 → 39/22/39, skud 19,8 → 19,2, på mål 9,9 → 9,0, offside 1,97 → 2,57;
+  med `aiMode`: 2,74 → 2,71 mål, 55/24/21 → 46/24/30 (orig 51/23/26; før rand-rettelsen 49/25/27), tredjedele 22,3/49,6/28,1, besiddelse
+  57,9/42,1 (orig 54,4/45,6). Hjemmebanefordelen uden tilstanden hvilede på løbene på stedet. **Mangler:** målspark 8,3 mod 10,2 – skud går
+  for sjældent forbi og blokeres for ofte (skud → målspark 2,6/5,2, → modstander 3,2/2,0; skudpositionerne passer), målmandens afleveringer
+  med modtager 3,3 mod 8,1; boldholderen HOLDER for meget på egen halvdel (række 3–5: 0x10 i 26–31 % af turene mod 7–12 %; også før) og LØBER
+  for meget på modstanderens (række 9–11: 27/20/17 løb pr. kamp mod 12/7/4) – sub_7109f0's input; pausens restitution sub_6f5810 og
+  +0x1a7-karakteren/returbolden 0x713aed er ikke porteret. Værktøjer: `~/cm0102-engine/tools/{rows,rows_own,gk_stats,gk_how,gk_next,
+  run_stall,run_dir,shot_out,shot_pos,setup_check,setpiece_check}.py`.

@@ -26,8 +26,14 @@ let dbgOn = false;
 /** Fejlsøgningstællerne (GRID_DEBUG) – kun i scripts/tests; i spillet er de slået fra (de koster tid i hvert tik) */
 export function setGridDebug(on: boolean) { dbgOn = on; }
 const dbg = (k: string) => { if (dbgOn) GRID_DEBUG[k] = (GRID_DEBUG[k] ?? 0) + 1; };
-/** Rand fra en 0..1-generator (vores Rng.next): 0..n-1, 0 ved n ≤ 0 (sub_90cfc0) */
-export const randOf = (next01: () => number): Rand => (n) => (n <= 0 ? 0 : Math.floor(next01() * Math.trunc(n)));
+/** Rand fra en 0..1-generator (vores Rng.next) som sub_90cfc0 (0x90cfc0–0x90d028): n = 0 → 0 uden at trække; n > 0 → 0..n−1;
+ *  n < 0 → n+1..0 (resten af idiv med negativ divisor negeres, 0x90d026). Før gav n < 0 altid 0 – fx 0x7110f5's rand((v + 500)/3)
+ *  under pres og ballCarrier's rand(−(…)) i skudvalget. */
+export const randOf = (next01: () => number): Rand => (n) => {
+  const k = Math.trunc(n);
+  if (k === 0) return 0;
+  return k > 0 ? Math.floor(next01() * k) : (-Math.floor(next01() * -k)) | 0;
+};
 
 export interface GridTeam { players: Player[] | Map<number, Player>; tactic: Tactic; nation?: string }
 /** Begivenheder til live-kampen og rapporten (grid/adapter.ts) – kaldes uden tilfældige tal, så tallene er de samme med og uden */
@@ -43,6 +49,8 @@ export interface GridListener {
 }
 
 /** Kampens rammer, som init_match (0x6b7f20) læser uden for holdene. Mangler et felt, bruges GRID_UNKNOWN's *estimerede* værdi. */
+export interface GridManager { id: number; ca: number; tac: number[] }
+
 export interface GridMatchCtx {
   /** begivenheder (adapteren) */
   on?: GridListener;
@@ -52,6 +60,9 @@ export interface GridMatchCtx {
   compType?: number;
   /** kampen er en ligakamp mellem to hold i samme række (aiMode: sameDivision/compLink) – standard true; derby = rivaler */
   league?: boolean;
+  /** managernes taktiske egenskaber (Staff.tac fra den originale database: [Attacking, Directness, Free Roles, Marking, Offside, Pressing,
+   *  Tactics, yndlingsformation]) og CA/id – null = ingen manager (originalens "uden mgr"-grene) */
+  managers?: [GridManager | null, GridManager | null];
   /** computerstyret hold [hjemme, ude] (sub_6c54a0 retter kun computerens taktik ved dødbold); mangler = begge */
   ai?: [boolean, boolean];
   /** sub_85cba0's tilskuertal (engine+0x91d2/+0x91d6/+0x91da): i alt, hjemmeholdets og udeholdets tilhængere */
@@ -68,6 +79,8 @@ export interface GridMatchCtx {
   derby?: boolean;
   /** dommeren (officials.dat-posten): Discipline 0x25 og bytes 0x24/0x27/0x28/0x29 */
   official?: { discipline: number; b24: number; b27: number; b28: number; b29: number };
+  /** kun spor (scripts/grid-trace-port.ts): kaldes hvert tik på det sted, hvor originalens kampspor læser (efter 0x6ba01e) */
+  onTop?: (m: GridMatchState) => void;
 }
 export interface GridSideStats { goals: number; shots: number; onTarget: number; corners: number; fouls: number; offsides: number; yellows: number; reds: number; passes: number; passesCompleted: number }
 export interface GridResult { home: GridSideStats; away: GridSideStats; ticks: number }
@@ -642,7 +655,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
         players: sideG.map((g) => ({ slot: g.pslot, recId: g.src.id, condition: g.condition, b24: 0, attr: (n: number) => at(g.src, n),
           raw: { dm: g.src.pos[3], m: g.src.pos[4], am: g.src.pos[5], f: g.src.pos[6], right: g.src.side[2], left: g.src.side[0], central: g.src.side[1], freeRole: 1,
             jumping: at(g.src, 17), technique: at(g.src, 30), stamina: at(g.src, 26), workRate: at(g.src, 31) } })),
-        manager: null, ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, b19: false, compType: ctx.compType ?? 0, homeTeam: side === 0,
+        manager: (() => { const g = ctx.managers?.[side]; if (!g) return null; const [attacking, directness, freeRoles, , offside, pressing, tactics] = g.tac;
+          return { id: g.id, ca: g.ca, attacking, directness, freeRoles, offside, pressing, tactics }; })(), ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, b19: false, compType: ctx.compType ?? 0, homeTeam: side === 0,
       }, rand);
       for (const g of sideG) { g.instr = res.instr[g.pslot]; g.pos = res.masks[g.pslot]; g.posAttack = res.masks2[g.pslot]; }
       aiFlags[side] = res.teamFlags;
@@ -689,12 +703,10 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     dbg,
   });
 
+  let secondKick: Side = 1;                                                                  // engine+0x8eb6: afsparket efter pausen
+  /** afspark (state 8) for `taking`: opstillingen sker ved næste tik i sub_6c54a0 → sub_6c51e0 (kickOffSetup) */
   const kickoffPositions = (taking: Side) => {
-    for (const p of gp) {
-      const by = Math.min(5, Math.round(p.baseY * 0.5));
-      p.x = p.baseX; p.y = p.side === 0 ? by : 11 - by; p.busy = 0; p.action = L.ACT.none;
-    }
-    m.ballX = 4; m.ballY = taking === 0 ? 5 : 6; m.ballH = -1; m.state = 8; m.poss = taking; m.carrier = null; m.receiver = null;
+    m.ballX = 4; m.ballY = taking === 0 ? 5 : 6; m.state = 8; m.poss = taking; m.carrier = null; m.receiver = null;
     m.passTo = null; m.lastPasser = null; m.loftCountdown = 0;
   };
   /** sub_6f0630 (sikker): p tager bolden. Afleveren (+0xf576) på samme hold får karakter efter, hvor bolden blev modtaget; keeperen i eget
@@ -726,13 +738,192 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const restart = (state: number, side: Side, x: number, y: number) => {
     if (m.pendingPass !== -1) { dbg('pass:dead' + state); m.pendingPass = -1; }
     m.state = state; m.poss = side; m.carrier = null; m.receiver = null; m.passTo = null; m.ballX = clampX(x); m.ballY = clampY(y); m.ballH = -1; m.ballSpeed = 0;
-    setPieceEvent();
   };
-  /** boldhændelsen ved dødboldens opstilling (sikker for værdien; selve opstillingen 0x6c4470/0x6c4820 er ikke porteret): hjørne 3,
-   *  frispark 7 dybt på modstanderens halvdel (side 0: y > 6, side 1: y < 5) ellers −1 */
-  const setPieceEvent = () => {
-    if (m.state === 3) m.ballEvent = 3;
-    else if (m.state === 6 || m.state === 7) m.ballEvent = (m.poss === 0 ? m.ballY > 6 : m.ballY < 5) ? 7 : -1;
+
+  // ---------------------------------------------------------------- dødboldens opstilling (sub_6c54a0's dispatch 0x6c68e5, tabel 0x6c6a08)
+  /** sub_6f0970 (sikker): boldholderen slipper bolden – besiddelse −1, ingen boldholder, hans +0x29 og momentum 0 */
+  const release = () => { const c = m.carrier as GP | null; m.poss = -1; m.carrier = null; if (c) { c.w29 = 0; c.momentum = 0; } };
+  /** sub_6f46b0 med cellebyten fra positionstabellen (lav nibble x, høj y): taktikken +0xf56e/+0xf572 + 216·plads + 108·att + 12·bx + by.
+   *  Side 1's tabel ligger spejlet i hukommelsen (absolutte felter) – tableCell giver det samme. */
+  const cellOf = (p: GP, att: 0 | 1, bx: number, by: number): [number, number] => (p.tbl ? tableCell(p.tbl, p.side, p.pslot, att, bx, by) : [p.x, p.y]);
+  const put = (p: GP, x: number, y: number) => { p.x = x; p.y = y; };
+  /** fælles for målspark og frispark (0x6c4f80–0x6c4fcb, 0x6c494c–0x6c4999, 0x6c4dd7–0x6c4e1c): offsidelinjerne regnes igen efter hver
+   *  placering; står en spiller fra holdet med bolden offside (eller er boldholderen), sættes han onside (sub_6f5b80(p, 1)); busy = 0 (sub_7160e0) */
+  const settle = (p: GP, att: boolean) => {
+    L.offsideLines(m);
+    if (att && (p === m.carrier || L.beyondLine(m, p.side, p.y) >= 0)) backOnside(p, true);
+    p.busy = 0;
+  };
+  /** sub_6f5b80(p, teleport) (sikker): ét felt tilbage mod eget mål – med teleport lige bag modstandernes linje (side 0: +0x8eaf − 1,
+   *  side 1: +0x8eb0 + 1), ellers et skridt med sub_6f09f0(x, y ∓ 1, −1) */
+  const backOnside = (p: GP, teleport: boolean) => {
+    if (teleport) { put(p, p.x, p.side === 1 ? m.lineSide0 + 1 : m.lineSide1 - 1); return; }
+    offBallMove(p, p.x, p.side === 1 ? (p.y < 11 ? p.y + 1 : p.y) : (p.y > 0 ? p.y - 1 : p.y), -1);
+  };
+  const r2 = () => { const a = rand(2); return 4 - a + rand(2); };                           // 4 − rand(2) + rand(2) (bl = 4; sub; add)
+  /** sub_716270 (holdet med bolden ved hjørne/farligt frispark): instruktion 0x20000 → 1 (frem), ellers markspiller med 0x40000000 → 2 (bliv) */
+  const roleAtt = (p: GP) => { const lo = Number(p.instr & 0xffffffffn); return lo & 0x20000 ? 1 : p.pos !== L.POS.keeper && lo & 0x40000000 ? 2 : 0; };
+  /** sub_716310 (forsvarerne): markspiller med 0x80000000 → 3 (bliv fremme), med 0x80000 → 4 (på stregen) */
+  const roleDef = (p: GP) => { if (p.pos === L.POS.keeper) return 0; const lo = Number(p.instr & 0xffffffffn); return lo & 0x80000000 ? 3 : lo & 0x80000 ? 4 : 0; };
+  const fatal = (x: number, y: number) => x < 0 || x >= 9 || y < 0 || y >= 12;                // fejlloggen 0x6c473b / 0x6c4e4c (spillet stopper)
+  /** sub_6c4290 (sikker): indkast – bolden klemmes ind på banen, kasteren vælges (sub_6ceb90(poss, 2)) FØR opstillingen, alle står i
+   *  positionstabellens felt for boldens felt (att = holdet med bolden), kasteren på bolden: momentum 200, retning 270 (x ≠ 0) / 90 */
+  const throwInSetup = () => {
+    const t = m.poss as Side;
+    m.ballX = clampX(m.ballX); m.ballY = clampY(m.ballY);
+    const taker = GRID_UNKNOWN.pickTaker(m, t, 2, rand);
+    for (const s of [0, 1] as Side[]) for (const p of gp) if (p.side === s && p.active) { const [x, y] = cellOf(p, t === s ? 1 : 0, m.ballX, m.ballY); put(p, x, y); p.busy = 0; }
+    if (!taker) return;
+    put(taker, m.ballX, m.ballY); takeBall(taker); taker.momentum = 200; taker.facing = m.ballX !== 0 ? 270 : 90;
+  };
+  /** sub_6c4470 (sikker): hjørnespark – boldhændelse 3, besiddelse −1; forsvarets/angrebets roller (sub_716270/sub_716310) sender spillerne
+   *  i feltet (y 0–1 / 10–11), til midten (5/6) eller i tabelfeltet for bolden i målfeltet (4, 0)/(4, 11); så sparkeren (sub_6ceb90(t, 3))
+   *  i hjørnet x = 0, når bolden røg ud til højre for 4 − rand(2), ellers 8 (sic, 0x6c4711/0x6c47d0), momentum 200; kun side 0 får
+   *  retningen 90 (x ≠ 0) / 270 (0x6c47ef). */
+  const cornerSetup = () => {
+    const t = m.poss as Side;
+    m.ballEvent = 3; m.poss = -1;
+    for (const s of [0, 1] as Side[]) {
+      const att = t === s ? 1 : 0;
+      for (const p of gp) {
+        if (p.side !== s || !p.active) continue;
+        let x: number, y: number;
+        const nearY0 = () => { x = r2(); y = rand(2); }, nearY11 = () => { x = r2(); y = 11 - rand(2); };
+        if (s === 1) {
+          if (t === 1) { const r = roleAtt(p); if (r === 1) nearY0(); else if (r === 2) { x = r2(); y = 6; } else [x, y] = cellOf(p, att, 4, 0); }
+          else { const r = roleDef(p); if (r === 3) { x = r2(); y = 6; } else if (r === 4) nearY11(); else [x, y] = cellOf(p, att, 4, 11); }
+        } else if (t === 0) { const r = roleAtt(p); if (r === 1) nearY11(); else if (r === 2) { x = r2(); y = 5; } else [x, y] = cellOf(p, att, 4, 11); }
+        else { const r = roleDef(p); if (r === 3) { x = r2(); y = 5; } else if (r === 4) nearY0(); else [x, y] = cellOf(p, att, 4, 0); }
+        if (fatal(x!, y!)) continue;
+        put(p, x!, y!); p.busy = 0;
+      }
+    }
+    const taker = GRID_UNKNOWN.pickTaker(m, t, 3, rand);
+    const r = rand(2);
+    if (!taker) return;
+    put(taker, m.ballX > 4 - r ? 0 : 8, t === 1 ? 0 : 11); takeBall(taker); taker.momentum = 200;
+    if (t === 0) taker.facing = m.ballX !== 0 ? 90 : 270;
+  };
+  /** sub_6c4ec0 (sikker): målspark – bolden i (4, 0)/(4, 11), alle (begge hold, att = 1) i tabelfeltet for bolden i (4, 6) (+0xa2), holdet
+   *  med bolden sat onside; målmanden (sub_6ce110) på bolden med boldhøjde 0 → take_ball (i eget felt: −1), momentum 200, retning 180/0 */
+  const goalKickSetup = () => {
+    const t = m.poss as Side;
+    m.ballX = 4; m.ballY = t === 1 ? 11 : 0;
+    const k = hooks.ownKeeper(t) as GP | null;
+    if (m.carrier) release();
+    for (const s of [0, 1] as Side[]) for (const p of gp) {
+      if (p.side !== s || !p.active) continue;
+      const [x, y] = cellOf(p, 1, 4, 6); put(p, x, y); settle(p, t === s);
+    }
+    if (!k) return;
+    m.ballH = 0; put(k, m.ballX, m.ballY); takeBall(k); k.momentum = 200; k.facing = m.ballY !== 0 ? 180 : 0;
+  };
+  /** sub_6c50d0 (sikker): straffe – skytten (sub_6ceb90(t, 5)) tager bolden på pletten (4, 10)/(4, 1); for hver plads side 0 så side 1:
+   *  målmanden på stregen (4, 0)/(4, 11), andre ud af feltets rækker (y < 2 → 2, y > 9 → 9); busy = 0 for alle */
+  const penaltySetup = () => {
+    const t = m.poss as Side;
+    const taker = GRID_UNKNOWN.pickTaker(m, t, 5, rand);
+    if (taker) takeBall(taker);
+    m.ballX = 4; m.ballY = t === 0 ? 10 : 1;
+    if (taker) put(taker, 4, m.ballY);
+    const ks = [hooks.ownKeeper(0), hooks.ownKeeper(1)];
+    const sideList = (s: Side) => gp.filter((q) => q.side === s);
+    const a = sideList(0), b = sideList(1);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) for (const p of [a[i], b[i]]) {
+      if (!p) continue;
+      if (p.active && p !== taker) {
+        if (p === ks[p.side]) put(p, 4, p.side === 0 ? 0 : 11);
+        else if (p.y < 2) put(p, p.x, 2);
+        else if (p.y > 9) put(p, p.x, 9);
+      }
+      p.busy = 0;
+    }
+  };
+  /** sub_6c4820 (sikker): frispark (state 6/7). Dybt på egen halvdel (side 0: y < 3, side 1: y > 8): som målsparket alle i tabelfeltet for
+   *  (4, 6) (att = 1). Ellers klemmes bolden, og hændelsen bliver 7 (side 0 y > 6 / side 1 y < 5: tabelfeltet for (4 ± rand, y ± 4)) eller −1
+   *  (y ± 3); ved 7 sender rollerne (sub_716270/sub_716310) spillerne i feltet/midten som ved hjørnet. Skytten (sub_6ceb90(t, state)) på
+   *  bolden med boldhøjde 0, take_ball, vendt mod (4, 10)/(4, 1), momentum 200. */
+  const freeKickSetup = () => {
+    const t = m.poss as Side;
+    m.poss = -1;
+    if (m.carrier) release();
+    if ((t === 0 && m.ballY < 3) || (t === 1 && m.ballY > 8)) {
+      for (const s of [0, 1] as Side[]) for (const p of gp) { if (p.side !== s || !p.active) continue; const [x, y] = cellOf(p, 1, 4, 6); put(p, x, y); settle(p, t === s); }
+    } else {
+      m.ballY = clampY(m.ballY); m.ballX = clampX(m.ballX);
+      let fy: number;
+      if (t === 0) { m.ballEvent = m.ballY > 6 ? 7 : -1; }
+      else { m.ballEvent = m.ballY < 5 ? 7 : -1; }
+      const fx = r2();
+      fy = t === 0 ? m.ballY + (m.ballEvent === 7 ? 4 : 3) : m.ballY - (m.ballEvent === 7 ? 4 : 3);
+      fy = clampY(fy);
+      for (const s of [0, 1] as Side[]) {
+        const att = t === s ? 1 : 0;
+        for (const p of gp) {
+          if (p.side !== s || !p.active) continue;
+          let x: number, y: number;
+          const tab = () => { [x, y] = cellOf(p, att, fx, fy); };
+          const nearY0 = () => { const a = rand(2); x = fx - a + rand(2); y = rand(2); }, nearY11 = () => { const a = rand(2); x = fx - a + rand(2); y = 11 - rand(2); };
+          if (m.ballEvent <= 0) tab();
+          else if (s === 1) {
+            if (t === 1) { const r = roleAtt(p); if (r === 1) nearY0(); else if (r === 2) { x = r2(); y = 6; } else tab(); }
+            else { const r = roleDef(p); if (r === 3) { x = r2(); y = 6; } else if (r === 4) nearY11(); else tab(); }
+          } else if (t === 0) { const r = roleAtt(p); if (r === 1) nearY11(); else if (r === 2) { x = r2(); y = 5; } else tab(); }
+          else { const r = roleDef(p); if (r === 3) { x = r2(); y = 5; } else if (r === 4) nearY0(); else tab(); }
+          if (fatal(x!, y!)) continue;
+          put(p, x!, y!); settle(p, att === 1);
+        }
+      }
+    }
+    const taker = GRID_UNKNOWN.pickTaker(m, t, m.state, rand);
+    if (!taker) return;
+    m.ballH = 0; put(taker, m.ballX, m.ballY); takeBall(taker);
+    P.turnTo(taker, m.ballX, m.ballY, 4, t === 0 ? 10 : 1); taker.momentum = 200;
+  };
+  /** sub_6c51e0 (sikker): afspark – besiddelse −1, bolden i (4, 5)/(4, 6); alle i tabelfeltet for bolden i (4, 2) (side 0, +0x9e) /
+   *  (4, 10) (side 1, +0xa6, sic – ikke spejlet), side 0 højst række 5, side 1 mindst 6, vendt mod (4, y + 3)/(4, y − 3) (sub_6f4920);
+   *  sparkeren = den af holdets spillere, der står nærmest bolden (først i rækkefølgen ved lighed) – han flyttes IKKE, take_ball lægger
+   *  bolden hos ham; retningen er den laveste byte af 0xb67c30-retningen mod (4, 11)/(4, 0) med fortegn (movsx dx, al – sic) regnet fra
+   *  den SIDST placerede spillers felt ([esp+0x1c]/bl fra løkken, sic – bekræftet i kampsporet: 364/364 afspark). */
+  const kickOffSetup = () => {
+    const pm = m.poss;
+    const t: Side = pm === 0 || pm === 1 ? pm : 0;
+    m.poss = -1; m.ballX = 4; m.ballY = t === 0 ? 5 : 6;
+    let lx = 0, ly = 0;
+    for (const s of [0, 1] as Side[]) for (const p of gp) {
+      if (p.side !== s || !p.active) continue;
+      let [x, y] = cellOf(p, 1, 4, s === 1 ? 10 : 2);
+      if (s === 1 && y < 6) y = 6; else if (s === 0 && y >= 6) y = 5;
+      put(p, x, y); lx = x; ly = y;
+      P.turnTo(p, x, y, 4, s === 0 ? (y < 9 ? y + 3 : 11) : y > 3 ? y - 3 : 0);
+    }
+    let best = Math.fround(10000), taker: GP | null = null;
+    for (const p of gp) {
+      if (p.side !== t || !p.active || p.slot > 10) continue;
+      const d = Math.fround(L.dist(p.x, p.y, m.ballX, m.ballY));
+      if (d < best) { best = d; taker = p; }
+    }
+    if (!taker) return;
+    takeBall(taker);
+    const dx = 4 - lx, dy = (t === 0 ? 11 : 0) - ly;
+    const dir = dx === 0 && dy === 0 ? m.ballDir : H.bearing(dx, dy);
+    taker.facing = ((dir & 0xff) << 24) >> 24;
+  };
+  /** sub_6c54a0 (ved hver dødbold, 0x6c54a0–0x6c5555 og dispatch 0x6c68d6): flyvetiden, modtagerne, boldfart og -højde (0), afleveren,
+   *  passPower, prioriteten og hændelsen nulstilles; under pause intet andet; så computerens tilstand/taktik (aiRetune) og opstillingen
+   *  efter state: 2 indkast, 3 hjørne, 4 målspark, 5 straffe, 6/7 frispark, 8 afspark (1: ingen). */
+  const restartTick = () => {
+    m.loftCountdown = 0; m.passTo = null; m.ballSpeed = 0; m.ballH = 0; m.lastPasser = null; m.receiver = null; m.margin = 0; m.prio = null; m.inc = null;
+    if (m.paused) return;
+    aiRetune();
+    switch (m.state) {
+      case 2: throwInSetup(); break;
+      case 3: cornerSetup(); break;
+      case 4: goalKickSetup(); break;
+      case 5: penaltySetup(); break;
+      case 6: case 7: freeKickSetup(); break;
+      case 8: kickOffSetup(); break;
+    }
   };
 
   // sub_6c2be0 efterfulgt af sub_715f50 (søjledrift), som alle originalens kaldere gør
@@ -750,22 +941,28 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     runTarget: (p, mode) => GRID_UNKNOWN.runTarget(m, p as GP, mode, GRID_UNKNOWN.formationCell(m, p as GP), rand),
     zonalPick: (p) => GRID_UNKNOWN.zonalPick(m, p as GP, rand),
     manMarkTarget: (p) => L.manMarkTarget(m, p),                                             // sub_7160f0 (sikker); vores Tactic sætter ikke bit 4
-    backOnside: (p) => { p.y = clampY(p.y + (p.side === 0 ? -1 : 1)); },
+    backOnside: (p) => backOnside(p as GP, false),                                            // sub_6f5b80(p, 0): et skridt (0x71496c, 0x7158e0)
     takeBall: (p) => takeBall(p as GP),
     turn: (p, x, y) => P.turnTo(p as GP, p.x, p.y, x, y),                                    // sub_6f4920 (sikker)
     canFollow: (mk, x, y) => L.canFollow(m, mk, x, y),                                      // sub_6bce20 (sikker)
     teammatesAhead: (p) => gp.filter((o) => o.active && o.side === p.side && o !== p && (p.side === 0 ? o.y > p.y : o.y < p.y)).length,
     nearestOppDist: (side, x, y) => H.nearestOpponent(gp.filter((o) => o.side !== side).map((o) => o.view!), x, y, true),
     ownKeeper: (side) => gp.find((o) => o.active && o.side === side && o.pos === L.POS.keeper) ?? null,
-    restartTick: () => { m.inc = null; aiRetune(); },                                          // sub_6c54a0: hændelsen ryddes og computerens taktik rettes
+    restartTick: () => restartTick(),                                                          // sub_6c54a0 (nulstilling, computerens taktik, opstillingen)
     incidentTick: () => incidentTick(),
     deadBallTemper: () => deadBallTemper(),
     // sub_6d0b60 (behandling/udskiftning) er ikke porteret: kun +0x1d ryddes for de skadede (noten), ingen udskiftning – *estimeret*
     treatInjured: () => { if (!m.b8eb5) return; m.b8eb5 = 0; for (const q of gp) if (q.b1d) { q.b1d = 0; dbg('treated'); } },
     pickTaker: (side, state) => GRID_UNKNOWN.pickTaker(m, side, state, rand),
     periodCheck: () => {
-      if (m.period === 0 && m.clock >= 495 + m.stoppage) { m.period = 1; m.stoppage = 0; kickoffPositions(1); on?.halftime?.(); return 0; }
-      return m.period === 1 && m.clock >= 990 + m.stoppage ? 2 : 0;
+      // sub_6bd930 (sikker for tid og afspark): intet under et ventende straffespark (state 5); pausen når uret er FORBI 495 + tillægstid:
+      // uret sættes til 495, tillægstiden 0, afspark (state 8) til +0x8eb6, som så skifter, og tikket slutter (returværdi 1 → 0x6b98c0
+      // returnerer 4). sub_6f5810(0) – pausens restitution for alle – er ikke porteret (*estimeret*: ingen). Slut når uret er forbi 990 + tillægstid.
+      if (m.state === 5) return 0;
+      if (m.period === 0 && m.clock > 495 + m.stoppage) {
+        m.period = 1; m.clock = 495; m.stoppage = 0; release(); kickoffPositions(secondKick); secondKick = other(secondKick); on?.halftime?.(); return 1;
+      }
+      return m.period === 1 && m.clock > 990 + m.stoppage ? 2 : 0;
     },
     ballOut: (last) => ballOut(last),
     comment: () => { /* sub_6d6f70 */ },
@@ -773,6 +970,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     distToTarget: (bx, by, tx, ty) => L.dist(bx, by, tx, ty),
     landing: (x, y) => P.land(x, y),                                                         // sub_6c9cd0
     receive: (p, power, ox, oy) => P.receive(p as GP, power, ox, oy),                        // sub_6f6c00
+    topOfTick: ctx.onTop ? () => ctx.onTop!(m) : undefined,
   };
   /** sub_6c54a0 §5 (notes/team-flags.md; ved hver dødbold): computerens tilstand pr. hold og, når den skifter (eller i kampens første
    *  minut), holdflagene og de individuelle instruktioner. *estimeret*: tilstanden er altid 2 (normal) – 0x6df460's beregning af r (holdenes
@@ -893,14 +1091,12 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     const bx = m.ballX, by = m.ballY;
     if (m.state !== 0 || onPitch(bx, by)) return;
     L.ballOutOfPlay(m, last, hooks);
+    // sub_6cd490 flytter ikke bolden; opstillingen (sub_6c54a0 → 0x6c4290/0x6c4470/0x6c4ec0) bruger dens felt ved næste tik. Klemmet her,
+    // så intet regner med felter uden for banen – det ændrer ingen af opstillingernes valg (hjørnet: x er 0..8; indkastet klemmer selv).
     m.ballX = clampX(bx); m.ballY = clampY(by);
-    setPieceEvent();
     m.carrier = null; m.receiver = null; m.passTo = null; m.ballH = -1; m.ballSpeed = 0;
     if (m.pendingPass !== -1) { dbg('pass:out'); m.pendingPass = -1; }
-    const state = m.state as number;
-    if (state === 3) { st(m.poss as Side).corners++; on?.corner?.(m.poss as Side); m.ballX = bx < 4 ? 0 : 8; m.ballY = goalRow(m.poss as Side); }
-    else if (state === 4) { m.ballX = 4; m.ballY = m.poss === 0 ? 1 : 10; }
-    else if (state === 2) m.ballX = bx < 0 ? 0 : bx > 8 ? 8 : bx;
+    if ((m.state as number) === 3) { st(m.poss as Side).corners++; on?.corner?.(m.poss as Side); }
   };
 
   // ---------------------------------------------------------------- udfordringen og dommeren (challenge.ts, cm0102-original-rules.ts)
@@ -1287,7 +1483,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       m.ballH = 0;
     }
     if (!stepTo) return;
-    if (nx !== p.x || ny !== p.y) p.facing = H.cellDirection(p.x, p.y, nx, ny);              // *estimeret* (boldholderens retning)
+    // boldholderens retning ændres ikke af skridtet (0x6f4150: ingen slutvending for +0xf582) – kun af sub_6f4920 før løbet
     const ox = p.x, oy = p.y;
     p.x = nx; p.y = ny;
     m.ballX = nx; m.ballY = ny;                                                               // også den tabte bold følger skridtet (0x6f40f9)
@@ -1359,6 +1555,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
         else { dbg('shot:stopped'); winBall(cd, p, c, c.value - d.quality - 200, jA, false); return; }
       }
     }
+    p.action = 0x6d;                                                                          // 0x70388a: skytten får handlingen 0x6d
     // 0x7038a2–0x703a28 (sikker): ved et normalt skud (param 1, ikke straffe/frispark) dømmer linjevogteren offside på en anden angriber –
     // sub_6cfd70 → sub_6ea760 med skytten som excl og målrækken som mål. rand(500) = 0: overset → fordelen (kode 8), skuddet går videre
     // som param 2; ellers frispark til modstanderne, hvor offside-spilleren står, og skuddet er væk.
@@ -1393,7 +1590,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     }
     if (out.outcome === 'retake') { restart(5, p.side, 4, opp === 0 ? 1 : 10); return; }
     if (out.outcome === 'held' && k) { m.carrier = null; m.ballX = k.x; m.ballY = k.y; takeBall(k); return; }
-    if (out.outcome === 'tippedForCorner' || out.outcome === 'deflectedWide') { st(p.side).corners++; on?.corner?.(p.side); restart(3, p.side, p.x < 4 ? 0 : 8, goalRow(p.side)); return; }
+    if (out.outcome === 'tippedForCorner' || out.outcome === 'deflectedWide') { st(p.side).corners++; on?.corner?.(p.side); restart(3, p.side, p.x, goalRow(p.side)); return; }   // *estimeret*: boldens x = skyttens (hjørnets side vælges i 0x6c4470)
     if (out.outcome === 'parried') { m.carrier = null; m.ballX = clampX((k?.x ?? 4) + rand(3) - 1); m.ballY = clampY(goalRow(p.side) + (p.side === 0 ? -1 : 1)); m.ballH = 0; m.poss = -1; return; } // *estimeret* (limen)
     if (out.outcome === 'blocked') return;                                                    // sub_70dfd0 har afgjort bolden
     restart(4, opp, 4, opp === 0 ? 1 : 10); // forbi: målspark
@@ -1464,7 +1661,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       oppInCell: inCell.length, committedOppInCell: 0, facingGoal: ph.facingGoal(p.view!), pastLastLine: L.beyondLine(m, p.side, p.y) >= 0,
       noDefenderGoalSide0: H.noDefenderGoalSide(p.view!, oppViews, inCell.length, false), noDefenderGoalSide1: H.noDefenderGoalSide(p.view!, oppViews, inCell.length, true),
       // boldholderen: flags 2 (bit 1 = boldholder-rutinens byte [esp+0x68], ikke afkodet, sat til 0), io = det taktiske felt
-      runTarget: (() => { const t = GRID_UNKNOWN.runTarget(m, p, 2, [tx, tacY], rand); return t ? { found: true, tx: t[0], ty: t[1] } : { found: false, tx: p.x, ty: p.y }; })(),
+      // uden felt skriver sub_6bce80 −1, −1 i ioX/ioY (0x6bd58f) – boldholderens løb klemmer det til (0, 0) (0x7139f1)
+      runTarget: (() => { const t = GRID_UNKNOWN.runTarget(m, p, 2, [tx, tacY], rand); return t ? { found: true, tx: t[0], ty: t[1] } : { found: false, tx: -1, ty: -1 }; })(),
       tacticalX: tx, beyondTactical: Math.max(0, ahead), clockTicks: m.clock, ownGoals: m.goals[p.side], oppGoals: m.goals[opp], lead: m.goals[p.side] - m.goals[opp],
       teamMode: m.aiMode[p.side], protectLead: false, oppOffsideTrap: (m.teamFlags[opp] & 0x400) !== 0,
       goalPathBlocked: H.isCrossingPosition(p.view!, 4, gr), sightCheckFails: foot.foot !== 2 && foot.foot !== p.strongFoot, possessionCounter: m.touchCount[p.side],
@@ -1488,7 +1686,9 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
         case 'passToSpace': p.action = d.action; doPass(p, d.code, null, d.tx, d.ty, false); break;
         case 'loftedBall': {
           // sub_6fa490 (sikker, pass.ts): målfelt efter retningen, sub_6fad40, linjevogteren som i sub_6fa250 (uden modtager)
-          p.action = d.action ?? 0x09;
+          // kun PASS uden modtager sætter +0x198 = 9 (0x713785); de andre veje til sub_6fa490 (0x711e3f, 0x711f2e, 0x7134ce, 0x71371d,
+          // 0x71378e) lader handlingen stå
+          if (d.action !== undefined) p.action = d.action;
           p.busy--;                                                                               // sub_6fa490 tæller selv busy op
           P.loftedPass(p, m.ballH, d.arg ?? 0, (act, ty, run) => { passRun = run; L.passWrapper(m, p, act, null, ty, false, rand, hooks, passHooks); });
           if (m.state === 7) { m.ballH = -1; m.ballSpeed = 0; m.pendingPass = -1; }
@@ -1497,6 +1697,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
         case 'run': {
           p.action = d.action;
           p.busy--; // move_to tæller busy op (0x6f0a13); limen gjorde det allerede ovenfor
+          if (d.turn) P.turnTo(p, p.x, p.y, d.turn[0], d.turn[1]);                            // sub_6f4920 før løbet (0x713941 / 0x713a89)
           carrierMove(p, d.tx, d.ty, d.action);                                               // sub_6f09f0 (sikker)
           break;
         }
@@ -1508,7 +1709,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   }
 
   preMatchMode();
-  kickoffPositions(rand(2) as Side);
+  // init_match 0x6b974d: rand(2) ≠ 0 → side 0 sparker af og +0x8eb6 = 1 (anden halvleg), ellers side 1 og +0x8eb6 = 0
+  { const r = rand(2); kickoffPositions(r ? 0 : 1); secondKick = r ? 1 : 0; }
   let guard = 0, finished = false;
   const finish = () => {
     finished = true;

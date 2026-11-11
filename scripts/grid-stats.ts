@@ -30,7 +30,10 @@ for (let i = 0; i < N; i++) {
   const [h, a] = fixtures[i % fixtures.length];
   // FORCE_FORMATION='4-4-2': alle hold med samme formation (originalens forudindstilling) – til sammenligning med oraklets spor
   const tac = (c: number, o: number, home: boolean) => (process.env.FORCE_FORMATION ? autoSelect(newTactic(process.env.FORCE_FORMATION as never), squad(c)) : aiTactic(c, o, home));
-  const r = runGridMatch({ players: fresh(h), tactic: tac(h, a, true) }, { players: fresh(a), tactic: tac(a, h, false) }, rand);
+  // managerne fra den originale database (Staff.tac) og omdømmet (×100) som i adapteren – NO_MGR=1 slår dem fra
+  const mgr = (c: number) => { const st = g.staff[g.clubs[c]?.manager ?? -1]; return !process.env.NO_MGR && st?.tac ? { id: st.id, ca: st.rep * 2, tac: st.tac } : null; };
+  const r = runGridMatch({ players: fresh(h), tactic: tac(h, a, true) }, { players: fresh(a), tactic: tac(a, h, false) }, rand,
+    { rep: [g.clubs[h].rep * 100, g.clubs[a].rep * 100], managers: [mgr(h), mgr(a)] });
   for (const s of [r.home, r.away]) for (const k of Object.keys(s) as (keyof GridSideStats)[]) sum[k] = (sum[k] ?? 0) + s[k];
   sum.hg = (sum.hg ?? 0) + r.home.goals; sum.ag = (sum.ag ?? 0) + r.away.goals;
   if (r.home.goals > r.away.goals) hw++; else if (r.home.goals === r.away.goals) dr++; else aw++;

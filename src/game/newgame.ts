@@ -468,13 +468,14 @@ export function takeOverClub(club: Club) {
 /** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
 function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, role: StaffRole, date: string, seed: number): Staff {
   const g = gs();
-  const [, first, last, nation, dob, , a, ca, rep] = row;
+  const [, first, last, nation, dob, , a, ca, rep, , tac] = row;
   const s = makeStaff({ id: g.nextId.staff++, first, last, nation, club, role, level: Math.round(ca / 2), date, seed });
   const keys: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
   // 1 står ofte for "ikke sat" (2026/27-opdateringen: Arteta Coaching 1) – så bruges den genererede værdi (*estimeret*)
   keys.forEach((k, i) => { if (a[i] > 1) s.attrs[k] = a[i]; });
   if (dob) s.dob = dob;
   if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
+  if (tac?.some((v) => v > 0)) s.tac = tac.slice();
   g.staff[s.id] = s;
   return s;
 }

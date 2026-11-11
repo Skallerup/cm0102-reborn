@@ -201,8 +201,9 @@ for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
   w.staff = w.staff.flatMap((s) => {
+    // [10] = managerens taktiske egenskaber (kun for managere i de viste klubber – computerens taktik i gittermotoren)
     if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9]]; }
-    return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9]] as typeof s];
+    return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : [])] as typeof s];
   });
   // de ledige: kun de 600 bedste (world.json skal kunne ligge i appens offline-cache, højst 8 MB)
   const free = new Set(w.staff.filter((s) => !s[0]).sort((a, b) => b[7] - a[7]).slice(0, 600));

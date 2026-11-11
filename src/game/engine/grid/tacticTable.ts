@@ -1,7 +1,7 @@
 // Taktikkens positionstabel som i originalen (notes/5b7160-tactic-table.md, notes/6c2be0-tactical-cell.md):
 // 0x5b7160 udvider filens grove gitter til TBL[plads][med bold][bx 0..8][by 0..11] (side 0; byte x | y<<4 ved taktik +0x5eb),
 // side 1 er spejlet (+0xf33). sub_6c2be0 slår spillerens taktiske felt op her.
-import { PRESET_TACTICS, type PresetTactic } from './presetTactics';
+import { DEFAULT_PRESETS, PRESET_TACTICS, type PresetTactic } from './presetTactics';
 
 export type Table = Uint8Array; // 11 · 2 · 9 · 12 = 2376 bytes, side 0
 
@@ -107,7 +107,8 @@ const canonCache = new Map<string, Table>();
 export function mapTactic(slots: { pos: string; x: number; y: number }[], formation?: string): TacticMap {
   const masks = slots.slice(0, 11).map(slotMask);
   const key = [...masks].sort((a, b) => a - b).join(',');
-  const hits = PRESET_TACTICS.filter((t) => [...t.masks].sort((a, b) => a - b).join(',') === key);   // fx 4-4-2 = 4-4-2 Attacking
+  // kun spillerens 17 standardtaktikker (computerens 28 CM3_TACTICS vælges af aiTacticChoice.ts)
+  const hits = PRESET_TACTICS.slice(0, DEFAULT_PRESETS).filter((t) => [...t.masks].sort((a, b) => a - b).join(',') === key);   // fx 4-4-2 = 4-4-2 Attacking
   const pr = hits.find((t) => t.name === formation) ?? hits[0];
   if (pr) {                                                                       // præcis en forudindstilling
     const used = new Set<number>();

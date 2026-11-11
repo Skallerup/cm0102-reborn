@@ -210,7 +210,7 @@ export type Decision =
   | { kind: 'pass'; action: number; pass: PassOption } // sub_6fa250
   | { kind: 'passToSpace'; action: number; code: number; tx: number; ty: number } // sub_6fa250 without receiver
   | { kind: 'loftedBall'; action?: number; clearance: boolean; arg?: 0 | 1 } // sub_6fa490(ballHeight, arg): cross near the box, long ball / clearance elsewhere
-  | { kind: 'run'; action: number; tx: number; ty: number } // sub_6f4920 + sub_6f09f0
+  | { kind: 'run'; action: number; tx: number; ty: number; turn?: [number, number] } // sub_6f4920(turn) + sub_6f09f0(tx, ty)
   | { kind: 'hold'; timeWasting: boolean } // sub_70ec80
   | { kind: 'shoot'; action?: number; quality: number; special?: number } // sub_702050
   | { kind: 'wouldShoot' }; // mode 4: returns 1 without shooting
@@ -575,7 +575,9 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   if (c.lastAction === ACTION.hold || h !== -1) {
     if (best < P && s.mode !== 4) {
       if (s.pass && s.pass.hasTarget) { act = PASS; skipChecks = true; }
-      else if ((s.teammatesAhead !== 0 && finalThird(c)) || h === 4) {
+      // 0x7134d8–0x713513: med medspillere foran UDEN for den sidste tredjedel (side 0: y ≤ 8, side 1: y ≥ 3) eller boldhøjde 4 →
+      // sub_6fa490 uden ny handling (0x71378e)
+      else if ((s.teammatesAhead !== 0 && !finalThird(c)) || h === 4) {
         return { kind: 'loftedBall', clearance: false, arg: 0 };
       } else {
         act = rand(c.lastAction === ACTION.hold ? 10 : 2) !== 0 ? RUN : HOLD;
@@ -648,8 +650,9 @@ function runDecision(s: Situation, rand: Rand, runToCorner: boolean): Decision {
   if (!goalMouth(c) && !s.facingGoal && (!found || s.mode === 4)) {
     // 0x7138ee: turn and go forward 3 rows (sub_6f4920 then sub_6f09f0 with action 0x0f)
     // sub_6f4920(x, y, 4, fy) turns him towards (4, fy); sub_6f09f0(x, y, 0x0f, 0, 0) then runs
+    // 0x713941/0x71395c: målet for sub_6f09f0 er hans EGET felt (x, y) med handling 0x0f – han vender sig og dribler på stedet
     const fy = c.side === 0 ? (c.y < 9 ? c.y + 3 : 11) : (c.y > 3 ? c.y - 3 : 0);
-    return { kind: 'run', action: ACTION.turnAndRun, tx: 4, ty: fy };
+    return { kind: 'run', action: ACTION.turnAndRun, tx: c.x, ty: c.y, turn: [4, fy] };
   }
   if (!found && s.mode !== 4 && c.flairRoll === 0) {
     // 0x71397f
@@ -657,12 +660,17 @@ function runDecision(s: Situation, rand: Rand, runToCorner: boolean): Decision {
       return { kind: 'loftedBall', action: ACTION.noTargetLoftedBall, clearance: false };
     return { kind: 'hold', timeWasting: false };
   }
+  // 0x7139f1: klemt til banen – uden løbemål er sub_6bce80's ud-værdier −1, −1 (0x6bd58f), så målet bliver (0, 0) (sic)
   tx = Math.min(8, Math.max(0, tx));
   ty = Math.min(11, Math.max(0, ty));
-  // (the original first turns towards ((tx+4)/2, ty/2 + 6 for side 0) when tx is on one side of him - 0x713a44)
+  // 0x713a1f–0x713a89 (sikker): først sub_6f4920 – side 0 med tx ≥ x / side 1 med tx ≤ x vender mod ((tx + 4)/2, ty/2 + 6 | ty/2),
+  // ellers mod (tx, ty); heltalsdivision mod nul
+  const turn: [number, number] = (c.side === 0 ? tx >= c.x : tx <= c.x)
+    ? [trunc((tx + 4) / 2), trunc(ty / 2) + (c.side === 0 ? 6 : 0)] : [tx, ty];
+  // 0x713ad2: handling 0x12, når den forrige var 0x11/0x12, ellers 0x11 (0x713aed–0x713b5d: returbold-karakteren er ikke porteret)
   const action = c.lastAction === ACTION.startRun || c.lastAction === ACTION.continueRun
     ? ACTION.continueRun : ACTION.startRun;
-  return { kind: 'run', action, tx, ty };
+  return { kind: 'run', action, tx, ty, turn };
 }
 
 // ------------------------------------------------------------------ helpers for your engine

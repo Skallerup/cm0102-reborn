@@ -168,6 +168,8 @@ export interface Hooks {
   distToTarget(bx: number, by: number, tx: number, ty: number): number; // sub_6cc4e0 TODO
   landing?(x: number, y: number): void;                          // sub_6c9cd0 (gridMatch: pass.ts)
   receive?(p: Player, power: number, ox: number, oy: number): void; // sub_6f6c00 (gridMatch: pass.ts)
+  /** kun fejlsøgning/spor: kaldes efter tikkets første sub_6c3aa0 (0x6ba01e), hvor originalens kampspor læser tilstanden */
+  topOfTick?(): void;
 }
 
 // ------------------------------------------------------------------ geometry helpers (sikkert)
@@ -218,6 +220,20 @@ export function nearest(m: Match, side: Side, x: number, y: number, allowBusy: b
     if (d < bd) { bd = d; best = p; }
   }
   return best;
+}
+/** sub_6c3010(k, x, y) (sikker, 0x6c3010–0x6c30d5): står målmanden k nærmest (x, y) af sit hold? Afstanden d = sub_6f09b0; en
+ *  holdkammerat (slot ≥ 0, ikke k, ikke optaget: +0x2b = 0) tættere på → nej; lige så tæt → nej for en målmand (sub_717410 == 1 – en
+ *  markspiller vinder uafgjort). En markspiller, der står på feltet (d = 0), er altid nærmest. Resultatet er engine+0x8eac/+0x8ead. */
+export function keeperNearest(m: Match, k: Player | null, x: number, y: number): boolean {
+  if (!k) return false;
+  const d = dist(k.x, k.y, x, y), gk = k.pos === POS.keeper;
+  if (d === 0 && !gk) return true;                                                  // 0x6c3038–0x6c3050
+  for (const q of m.players) {
+    if (q.side !== k.side || !q.active || q === k || q.busy !== 0) continue;        // 0x6c306f–0x6c307f
+    const dq = dist(q.x, q.y, x, y);
+    if (dq < d || (gk && dq === d)) return false;                                   // 0x6c309b / 0x6c30b7
+  }
+  return true;
 }
 /** sub_6cfda0: is p his side's chaser (keeper: keeper-out flag). */
 export const isChaser = (m: Match, p: Player) =>
@@ -742,6 +758,7 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
   if (m.subTick >= 1 || m.paused) {
     m.clock++; m.subTick = 0;
     const r = h.periodCheck();                          // sub_6bd930
+    if (r === 1) return true;                           // pausen: tikket slutter (0x6b9ef9 → 0x6baa10), kampen fortsætter
     if (r !== 0) return false;
     for (const p of m.players) if (p.active) playerTick(p, rand);   // sub_6f55c0
   }
@@ -757,11 +774,17 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
     agitationDecay(p);
   }
   offsideLines(m);                                      // sub_6c3aa0
+  h.topOfTick?.();                                      // fejlsøgning: samme sted som kampsporet (match_trace.c, kaldet 0x6ba01e)
   m.order = buildOrder(m, rand);                        // sub_6bd760
   m.prio = null;
-  m.chaser = [nearest(m, 0, m.ballX, m.ballY, !inOwnBox(0, m.ballX, m.ballY)),
-              nearest(m, 1, m.ballX, m.ballY, !inOwnBox(1, m.ballX, m.ballY))];
-  // TODO keeperOut via sub_6c3010
+  // 0x6ba05b–0x6ba0fa (sikker): jagerne sub_6c30e0 og målmandsflagene sub_6c3010(sub_6ce110(side), bold) → +0x8eac/+0x8ead
+  const chasers = () => {
+    m.chaser = [nearest(m, 0, m.ballX, m.ballY, !inOwnBox(0, m.ballX, m.ballY)),
+                nearest(m, 1, m.ballX, m.ballY, !inOwnBox(1, m.ballX, m.ballY))];
+    m.keeperOut = [keeperNearest(m, h.ownKeeper(0), m.ballX, m.ballY), keeperNearest(m, h.ownKeeper(1), m.ballX, m.ballY)];
+  };
+  chasers();
+  let lbx = m.ballX, lby = m.ballY;                                                  // 0x6ba113/0x6ba119: [esp+0x13]/[esp+0x12]
   // 0x6ba100–0x6ba133 (sikker): kun et hold med 0x1000 får flaget genberegnet (efter rækkefølgen og jagerne); ellers beholder det
   // sin gamle værdi (0 fra init_match)
   for (const s of [0, 1] as Side[])
@@ -796,9 +819,8 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
     if (m.prio) return true;
     if ((p.action === ACT.actAgain || p.action === ACT.stay) && i < 22) m.order.push(p);   // 0x6ba57b
     offsideLines(m);
-    // the original recomputes chasers and keeper flags only when the ball moved (0x6ba5a5)
-    m.chaser = [nearest(m, 0, m.ballX, m.ballY, !inOwnBox(0, m.ballX, m.ballY)),
-                nearest(m, 1, m.ballX, m.ballY, !inOwnBox(1, m.ballX, m.ballY))];
+    // 0x6ba5a5–0x6ba68e (sikker): jagerne og målmandsflagene regnes kun igen, når bolden har flyttet sig siden sidst
+    if (m.ballX !== lbx || m.ballY !== lby) { chasers(); lbx = m.ballX; lby = m.ballY; }
   }
   return true;
 }

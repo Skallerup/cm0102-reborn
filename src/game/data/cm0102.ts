@@ -32,7 +32,9 @@ export interface CMWorld extends WorldData {
   /** stab fra databasen (ikke-spillerposten): [klub (0 = ledig), fornavn, efternavn, nation, fødselsdato, job (5 manager,
    *  6 assistent, 8 træner, 9 spejder, 10 fysioterapeut), egenskaber [Coaching, Judging Player Ability, Judging Player Potential,
    *  Physiotherapy, Motivating, Discipline, Tactical Knowledge] (0 = ikke sat), CA, omdømme (0-200), staff-id] */
-  staff?: [number, string, string, number, string, number, number[], number, number, number][];
+  /** … [10] = managerens taktiske egenskaber (ikke-spillerposten): [Attacking +0x0e, Directness +0x13, Free Roles +0x15, Marking +0x1a,
+   *  Offside +0x1c, Pressing +0x1f, Tactics +0x21, yndlingsformation +0x43 (1..9)] – originalens computer-taktik (aiPrematch/aiTacticChoice) */
+  staff?: [number, string, string, number, string, number, number[], number, number, number, number[]?][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -343,7 +345,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       if (!ln) continue;
       let dob = S.date(o + 16);
       if (!dob) { const yob = S.i16(o + 24); dob = yob > 1900 && yob < 2100 ? `${yob}-01-01` : ''; }
-      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o)]);
+      const tac = [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f, 0x21, 0x43].map((k) => S.u8(np + k));
+      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac]);
     }
   }
 
