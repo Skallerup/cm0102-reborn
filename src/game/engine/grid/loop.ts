@@ -155,6 +155,8 @@ export interface Hooks {
   restartTick(): void;                                           // sub_6c54a0 TODO
   /** den ventende hændelse (fordel) pr. tik, 0x6b9cb1–0x6b9db5: true = dommeren dømte, tikket slutter (0x6ba743) */
   incidentTick?(): boolean;
+  /** run_match_steps 0x6b9aea–0x6b9cab: engine+0x8eb4 og sub_6d1210 (optøjer ved død bold). true = tikket slutter (0x6ba743) */
+  deadBallTemper?(): boolean;
   /** sub_6d0b60 ved død bold efter en tur, når engine+0x8eb5 er sat (0x6ba73e) */
   treatInjured?(): void;
   pickTaker(side: Side, state: number): Player;                  // sub_6ceb90 TODO
@@ -725,6 +727,7 @@ export function stoppage(m: Match, rand: Rand): void {
 export function tick(m: Match, rand: Rand, h: Hooks): boolean {
   // TODO: substitution pending (+0x8eb4), shoot-out (+0x8eb3 → sub_6be710), kick-off commentary,
   //       injured player lying down (+0x475a → sub_6bac40) – see MATCH_LOOP.md §3
+  if (h.deadBallTemper?.()) return true;               // 0x6b9aea–0x6b9cab: optøjer ved død bold (sub_6d1210), før hændelsen
   if (h.incidentTick?.()) return true;                  // 0x6b9cb1 (før genstarten)
   if (!m.paused && m.state !== 0) {
     h.restartTick();                                    // sub_6c54a0

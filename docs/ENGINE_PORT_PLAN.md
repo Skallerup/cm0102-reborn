@@ -63,6 +63,9 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | + agitation/+0xff og boldhændelsen +0x8eb1 (11/11) | 3,05 | 56/19/24 | 20,3 | 10,1 | 5,0 | 5,3 | 0,8 | 1,17/0,05 |
 | + holdebolden 0x70ec80, fordelsreglen, knock 0x6cfe10/0x6d0980 (11/11) | 3,30 | 58/17/25 | 20,1 | 10,3 | 4,8 | 5,1 | 1,5 | 1,22/0,03 |
 | + kanonisk gitter 0x5b7e60/0x5b2ba0 for vilkårlige pladser (11/11; frø 2: 2,62 · 53/24/23) | 2,87 | 55/18/27 | 19,1 | 9,1 | 4,5 | 5,0 | 0,9 | 1,15/0,06 |
+| + hjemmebanen: publikums-bytene 0x6b871a, nervøsiteten 0x6ec4cd, dommerens holdbyte (11/11; frø 2: 2,80 · 47/21/31) | 2,81 | 50/19/31 | 19,3 | 8,9 | 4,4 | 5,3 | 1,1 | 1,19/0,08 |
+| + offside ved skud 0x7038a2, dommerpostens +0x29 (11/11) | 2,81 | 52/20/27 | 19,3 | 8,8 | 4,2 | 5,1 | 1,1 | 1,03/0,07 |
+| + motivationen 0x6eb502, +0x31 (derby), advantage_foul 0x716c90 / sub_6eab60, dommerbytes fra officials.dat, optøjer ved død bold 0x6d1210/0x716630 (11/11, i gang; frø 2 uden optøjerne: 2,76 · 52/22/26) | 2,87 | 50/19/31 | 19,5 | 9,0 | 4,3 | 6,1 | 1,1 | 1,40/0,08 |
 | Orakel frø 1 / frø 2 / ejerens Man Utd-sæson (grid-stats-tabellen) | 2,75 / 2,98 / 2,86 | 53/25 · 53/21 · 52/22 (H/U) | 17,0 / 17,8 / 17,0 | 9,9 / 10,5 / 10,0 | 4,9 / 5,3 / 5,1 | 14,5 / 15,3 / 14,3 | 6,1 / 6,9 / 6,0 | 1,79/0,12 · 1,66/0,14 · 1,66/0,17 |
 
 ## Log
@@ -168,3 +171,24 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   bruger ét tal pr. kommentar – rækkefølgen af tilfældige tal er derfor ikke originalens). Offside: sub_6cfd70's udvalg og den løftede bolds
   offside er stadig skøn (`offsideReach`). Hjemmebanen (`homeAdv`, ganger også Stamina-floaten) er *estimeret* og forstærkes nu af
   skridtets konditionstab (hjemme 2,0 mål mod ude 1,1 i frø 1).
+- 2026-11-11 (eftermiddag, afbrudt – ejeren slukkede) – **Porteret:** hjemmebanen (`crowdBytes` = init_match 0x6b871a–0x6b882f:
+  engine+0x1ad/+0x1ae af tilskuertallet; `nervesOf` = sub_6ec010 0x6ec4cd–0x6ec647, trækkes fra kamp-CA'en; holdbyten i judge_tackle's F).
+  Skønnet `homeAdv` er væk; tilskuertallet (sub_85cba0, uden for motoren) er input i `GridMatchCtx.crowd` – standard = oraklets snit 35.428 med
+  8 % udebanefans (*estimeret*), comp+0x69 = 18 (club_comp.dat). Fyldt stadion: hjemmeholdet 0, udeholdet 5 → nervøsitet ≈ 35 CA-point.
+  Hjemme/ude-mål 1,71/1,09 (orakel 1,71/1,04). Kondition ved slutfløjt 75/75 % (før 80/76 – homeAdv gangede Stamina; målet ~80 for begge
+  er ikke nået). Offside ved skud (0x7038a2–0x703a28: skytten som excl, rand(500) = overset → fordel og param 2). `sub_6cfd70` er kun en thunk
+  til sub_6ea760 – `offsideReach` brugtes ikke og er fjernet; +0x29 læses af dommerposten ([official+4]), median 0. Offside tælles nu på den
+  rigtige side (før fik side 0 næsten alle). Motivationen +0x100 (`initMotivation`, 0x6eb502–0x6ebcda; formRoll/dårlig dag-rullene trækkes, men
+  dårlig dag-tærsklen er ikke porteret) → +0xff og kamp-CA'en; +0x31 = −10 i derby (`ctx.derby`, yndling/had findes ikke i data). `cardWithoutVictim`
+  (sub_6eab60) og `advantageFoul` (sub_716c90) i move_to's tabte bold. Dommerbytes = medianen af de 21 engelske dommere (D 11, +0x24 0, +0x27 0,
+  +0x28 19). Optøjer ved død bold (run_match_steps 0x6b9aea–0x6b9cab → sub_6d1210/sub_716630/temperCheck 0x7164b0, afgørelsen med sub_6ea4e0) er
+  porteret, men **ikke testet og ikke målt færdigt** (0,0 pr. kamp i den første måling – forventet sjældent, ag ≈ 30 giver ~0,3 % pr. modstander).
+  **Rettelse til grid-stats:** kolonnen "frisp." sammenligner vores begåede frispark med oraklets *tildelte* (`free_kicks` = modstanderens
+  frispark + offside). Oraklets begåede (`fouls`) er 8,7 (3,9 hjemme/4,8 ude); vi har 6,1 (2,9/3,2). Gule 1,40 (orakel 0,74/1,05).
+  **Hvor frisparkene mangler (instrumenteret, CH=1 i en scratch-kopi):** ~194 udfordringer/kamp går ind, ~11 vælger en frisparktype, ~5 bliver
+  udfordreren; sub_6c87e0's afstandsled (D > 5 → ×0,05, verificeret i asm) holder dem væk fra midtbanen. Alle kaldere af judge_tackle er porteret.
+  **Offside-kæden:** 395 vurderinger/kamp, kun 13 er afleveringer til rækker ≥ linjen; forsvarets bageste markspiller står på række 10–12 (målt
+  mod det angrebne mål) i 64 % af tikkene med bold, og en angriber er forbi linjen i 1,5 % af dem – positioneringen (markering/taktisk felt)
+  holder linjen for dybt. **Næste:** test af optøjerne og måling; sub_6c54a0 (genstartens AI-skift/udskiftninger, læser også +0x1ad);
+  behandlingen 0x6d0b60; kommentar-rand (sub_6d6f70 trækker rand(sum af vægte) kun ved > 1 variant, og sub_6d60b0 kan omskrive/sluge kommentarer
+  med egne rand – vægtene står i events_eng.cfg); hvorfor forsvarslinjen står så dybt; dårlig dag-tærsklen (sub_53ce90, mentalleddet bl).

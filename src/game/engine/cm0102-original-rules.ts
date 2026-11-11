@@ -328,6 +328,38 @@ export function decideFoulPunishment(rand: Rand, ctx: { minute: number; shootout
   return { code, weight };
 }
 
+/**
+ * MATCH_OFFICIAL::card_without_victim (sub_6eab60, via sub_6cfd40). confirmed (asm 11/11). A card decision without a victim – used by
+ * advantage_foul (sub_716c90, kind 6). sev = rand(fouls) + discipline step (D > 18 +2, > 12 +1, ≤ 6 −1, ≤ 2 −2) + per kind (1/6: +4 reason 5,
+ * 2: +10 reason 8, 3: +7 reason 1, 4/5: +100 reason 12). Booked and kind 1/6: rand(official+0x24) ≠ 0 → 9 (no card). kind ≠ 1:
+ * red (4, rating −1000) when sev > rand(15) + 7; otherwise yellow/second yellow (2/3, rating −225·min(1, 45/minute)) when
+ * sev > rand(3·yellows + 5) + 2, else 9. `flag` (arg4) or an offender off the pitch: no card. Returns the code (1 = untouched).
+ */
+export function cardWithoutVictim(rand: Rand, official: MatchOfficial | null, p: FoulPlayer & { active?: boolean }, kind: number,
+  minute: number, flag = false): number {
+  let sev = rand(p.fouls);
+  if (official) { const D = official.discipline; sev += D > 18 ? 2 : D > 12 ? 1 : D > 6 ? 0 : D > 2 ? -1 : -2; }
+  let reason = 0;
+  if (kind === 1 || kind === 6) { sev += 4; reason = 5; } else if (kind === 2) { sev += 10; reason = 8; }
+  else if (kind === 3) { sev += 7; reason = 1; } else if (kind === 4 || kind === 5) { sev += 100; reason = 12; }
+  if (p.yellows && (kind === 1 || kind === 6) && rand(official ? official.b24 : 0) !== 0) return 9;
+  const on = p.active !== false && !flag;
+  // +0x23 (rødt kort-tælleren, "?") + +0x24: summen 0/1 → årsagen i +0x25, ellers +0x26 (vi har ikke +0x23 → 0)
+  const setReason = (first: boolean) => { if (first) p.reasons[0] = reason; else p.reasons[1] = reason; };
+  if (kind !== 1 && sev > rand(15) + 7) {
+    if (!on) return 1;
+    p.rating -= 1000; setReason(p.yellows === 0); return 4;
+  }
+  if (sev > rand(3 * p.yellows + 5) + 2) {
+    if (!on) return 1;
+    p.rating += Math.trunc(-225 * (minute > 45 ? 45 / minute : 1));
+    const code = p.yellows ? 3 : 2;
+    p.yellows = p.yellows ? p.yellows + 1 : 1;
+    setReason(p.yellows === 1); return code;
+  }
+  return on ? 9 : 1;
+}
+
 /** The quick simulation's cards: R is the side's aggression total (sub_6beeb0). confirmed */
 export const quickSim = {
   foul: (rand: Rand, r: number) => rand(r) > rand(1600),
