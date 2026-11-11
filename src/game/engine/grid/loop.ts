@@ -161,6 +161,8 @@ export interface Hooks {
   periodCheck(): 0 | 1 | 2 | 3 | 4;                              // sub_6bd930
   ballOut(lastTouch: Side): void;                                // sub_6cd490 (ported below as ballOutOfPlay)
   comment(id: number): void;                                     // sub_6d6f70
+  /** offside dømt mod `side` (team +0xf5ca+54·side ++) */
+  offsideGiven?(side: Side): void;
   distToTarget(bx: number, by: number, tx: number, ty: number): number; // sub_6cc4e0 TODO
   landing?(x: number, y: number): void;                          // sub_6c9cd0 (gridMatch: pass.ts)
   receive?(p: Player, power: number, ox: number, oy: number): void; // sub_6f6c00 (gridMatch: pass.ts)
@@ -694,6 +696,7 @@ export function passWrapper(m: Match, p: Player, type: number, receiver: Player 
       const d = dist(o.x, o.y, 4, goalLine(o.side));
       if (rand(ftol(2 * d * d)) !== 0) {                          // 0x6fa2ec fmul + fadd st0,st0 = 2·d² → 0x6fa2f8 → 0x6fa3db offside given
         h.comment(0x1f78);                                        // 8056 EVENT_RESTART_OFFSIDE
+        h.offsideGiven?.(p.side);                                 // holdets offside +0xf5ca+54·side
         // TODO counters: team +0xf5ca+54*side ++, o.+0x13 ++, p.+0x1 --
         m.ballX = o.x; m.ballY = o.y; m.state = 7; m.poss = (p.side === 0 ? 1 : 0); m.carrier = null;
         return;

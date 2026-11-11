@@ -179,6 +179,10 @@ export function challengeValue(m: GridMatchState, q: GP, type0: number, rand: Ra
 
 // ------------------------------------------------------------------ sub_6c87e0 get_opposition_challenge
 
+/** tællere til fejlsøgning (sat af en scratch-kopi af grid-stats; null = slået fra) */
+export const CH_DEBUG: { on: boolean; c: Record<string, number> } = { on: false, c: {} };
+const cdbg = (k: string) => { if (CH_DEBUG.on) CH_DEBUG.c[k] = (CH_DEBUG.c[k] ?? 0) + 1; };
+
 export interface ChallengeOut { d: GP | null; type: number; value: number; delayCarrier: number; delayChallenger: number; clear: boolean }
 const FOUL4 = [0x2a, 0x2d, 0x2b, 0x2e];                                                     // rand(4) → 42, 45, 43, 46
 
@@ -197,6 +201,8 @@ export function getOppositionChallenge(m: GridMatchState, carrier: GP | null, si
   let D = (dx <= 8 && dy <= 11 ? L.DIST[dy][dx] : 1000) + 0.5;
   if (D > 1) { const h = D * 0.5; D = h * h + h + 1; }                                       // 0x6c88d8
   const cell = m.gp.filter((q) => q.active && q.side === opp && q.x === bx && q.y === by);
+  const A = CH_DEBUG.on ? action.toString(16) : '';
+  if (CH_DEBUG.on) { cdbg(`ch:${A}:call`); if (cell.some((q) => q.busy < 2)) cdbg(`ch:${A}:cand`); cdbg(`ch:${A}:D${Math.min(9, Math.round(D))}`); }
   let freeRunV = 0, ahead = 1, aheadDone = false;
   const carrierGK = !!carrier && isGK(carrier);
   const inAttBoxOfCarrier = (x: number, y: number) => inBoxAt(opp, x, y);
@@ -267,6 +273,7 @@ export function getOppositionChallenge(m: GridMatchState, carrier: GP | null, si
       if (roll && !(r(k) < pw - D)) continue;
       if (m.ballH < 2) { def = 0x22; foul = FOUL4[rand(4)]; hard = 0x2c; } else { def = 0xc; foul = 0x2e; hard = 0x2e; }
     } else continue;                                                                        // "Unknown attack type"
+    cdbg(`ch:${A}:in`);
     // 3) klar målchance (0x6c8ccc)
     if (carrier && !aheadDone && action !== 0x3b && action !== 0x15) {
       freeRunV = freeRun(carrier);
@@ -298,6 +305,7 @@ export function getOppositionChallenge(m: GridMatchState, carrier: GP | null, si
     else if (hard > -1 && s * s > rand(500 * (inBox * (dec + 10) + 10) + 80 * (sport + 100) * dec * clear)) type = hard;
     else if (clear && !isGK(q) && D >= 2 && m.ballH !== 4 && dec !== 0) continue;           // holder sig tilbage (ville være rødt)
     else type = def;
+    if (CH_DEBUG.on) cdbg(`ch:${A}:${type === foul ? 'foul' : type === hard ? 'hard' : type === def ? 'def' : 't' + type}`);
     // 6) værdien (0x6c978d)
     const cv = challengeValue(m, q, type, rand);
     out.delayCarrier = cv.delayCarrier; out.delayChallenger = cv.delayChallenger;             // pegerne skrives for hver kandidat (sikker)
@@ -312,6 +320,7 @@ export function getOppositionChallenge(m: GridMatchState, carrier: GP | null, si
     out.d = q; out.type = cv.type; out.value = v;
   }
   if (out.d) drainCondition(out.d, out.type);
+  if (CH_DEBUG.on && out.d) cdbg(`ch:${A}:pick:${out.type}`);
   return out;
 }
 

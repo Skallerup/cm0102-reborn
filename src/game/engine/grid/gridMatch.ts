@@ -25,6 +25,17 @@ const dbg = (k: string) => { GRID_DEBUG[k] = (GRID_DEBUG[k] ?? 0) + 1; };
 export const randOf = (next01: () => number): Rand => (n) => (n <= 0 ? 0 : Math.floor(next01() * Math.trunc(n)));
 
 export interface GridTeam { players: Player[] | Map<number, Player>; tactic: Tactic; nation?: string }
+/** Kampens rammer, som init_match (0x6b7f20) læser uden for holdene. Mangler et felt, bruges GRID_UNKNOWN's *estimerede* værdi. */
+export interface GridMatchCtx {
+  /** sub_85cba0's tilskuertal (engine+0x91d2/+0x91d6/+0x91da): i alt, hjemmeholdets og udeholdets tilhængere */
+  crowd?: { total: number; home: number; away: number };
+  /** kampen spilles på en af klubbernes eget stadion (club+0x69 = fixture+0x18) – giver side 1's byte mindst 1 */
+  ownGround?: boolean;
+  /** turneringens omdømme (comp+0x69, club_comp.dat byte 105) */
+  compRep?: number;
+  /** fixture+0x3a ∈ {8, 10} (finaler – nervøsiteten regnes uden turneringsdivisoren) */
+  final?: boolean;
+}
 export interface GridSideStats { goals: number; shots: number; onTarget: number; corners: number; fouls: number; offsides: number; yellows: number; reds: number; passes: number; passesCompleted: number }
 export interface GridResult { home: GridSideStats; away: GridSideStats; ticks: number }
 
@@ -96,6 +107,7 @@ export interface GridMatchState extends L.Match {
   ballEvent: number;                    // engine+0x8eb1 hvor angrebet stammer fra: 0 åbent spil, 3 hjørne, 7/−1 frispark, 6 skud
   penaltyFor: GP | null;                // engine+0x478a: spilleren, der vandt straffesparket (sat ved straffe, 0x6f7f12 m.fl.)
   official: MatchOfficial;              // engine+0xf5b2 (dommerens bytes er *estimerede* – GRID_UNKNOWN.ref*)
+  sideByte: [number, number];           // engine+0x1ad/+0x1ae publikums-bytene (crowdBytes)
 }
 
 /** den ventende hændelse (notes/advantage-knock.md §A): type, synder d, offer p (null ved hands/offside), dommerens kode (8 = offside),
@@ -113,6 +125,40 @@ export function advantagePending(m: GridMatchState): boolean {
   if (!c || c.side !== victimSide(i)) return true;
   if (pastSpot(m, i)) { m.inc = null; return false; }
   return true;
+}
+
+/** init_match 0x6b871a–0x6b882f (sikker): publikums-bytene engine+0x1ad/+0x1ae ("fjendtlighed" mod side 0/1, 0..10). h% = 100·hjemme/i alt:
+ *  side 0 = ftol(klem(5 + ude/10000 − h%/3, 0, 10)), side 1 = ftol(max(c, min(5 + hjemme/10000 − (100 − h%)/3, 10))) med c = 1 på en af
+ *  klubbernes stadion, ellers 0 (side 1 klemmes ikke under 0 – sic). Uden tilskuere (N = 0) bruger init_match 100/90/10. */
+export function crowdBytes(crowd: { total: number; home: number; away: number }, ownGround = true): [number, number] {
+  let { total, home, away } = crowd;
+  if (total === 0) { total = 100; home = 90; away = 10; }
+  const f32 = Math.fround;
+  const hp = f32((home * 100) / total), ap = f32(100 - hp);
+  let x = away * 0.0001 + 5 - hp / 3;
+  if (x > 10) x = 10; else if (x < 0) x = 0;
+  const y = f32(home * 0.0001 + 5 - ap / 3);
+  const c = ownGround ? 1 : 0;
+  const mn = y > 10 ? 10 : y;
+  return [Math.trunc(x), Math.trunc(c > mn ? c : mn)];
+}
+/** sub_6ec010 0x6ec4cd–0x6ec647 (sikker): nervøsiteten [esp+0x1c], som trækkes fra kamp-CA'en (og fra dårlig dag-tærsklen). b = sidens
+ *  publikumsbyte (0 → ingen), prof = staff +0x5b, im = Important Matches (spillerpost +0x2c), capt = anførerleddet [esp+0x18]
+ *  ((sub_6ebd70(anfører) − 15)·0,606 – ikke porteret, 0). Finale (fixture+0x3a 8/10): v = (b + 10)·1,3 + 3,5 − …; ellers (… + 2,5 …) / k med
+ *  k = 1,35, eller (comp+0x69 − 10)/24 + 1,35 når omdømmet > 12. nerves = 2·(trunc(b/2) + 2,5 + v); keeperen ×0,5263; mindst 1. */
+export function nervesOf(b: number, prof: number, im: number, gk: boolean, compRep: number, final = false, capt = 0): number {
+  if (b === 0) return 0;
+  const f32 = Math.fround;
+  const tail = -(prof - 10) / 6 - (im - 10) * 0.25 - capt * 0.5;
+  let v: number;
+  if (final) v = (b + 10) * f32(1.3) + 3.5 + tail;
+  else {
+    const k = compRep > 12 ? (compRep - 10) * f32(1 / 24) + f32(1.35) : f32(1.35);
+    v = ((b + 10) * f32(1.3) + 2.5 + tail) / k;
+  }
+  let n = f32(2 * (Math.trunc(b / 2) + 2.5 + v));
+  if (gk) n = f32(n * f32(0.5263158));
+  return n < 1 ? 1 : n;
 }
 
 export const GRID_UNKNOWN = {
@@ -300,7 +346,10 @@ export const GRID_UNKNOWN = {
    *  hans karakter (+8) = m.linesmanMark. Rækkereglerne er `offsideFlag` i cm0102-original-rules.ts. */
   offsidePlayer(m: GridMatchState, side: Side, y0: number, y1: number, excl: GP | null, rand: Rand): GP | null {
     const Lrow = side === 0 ? m.lineSide1 : m.lineSide0, s = side === 0 ? 1 : -1;
+    dbg('off:call' + (excl ? 'S' : ''));
     if (side === 0 ? y1 <= y0 || y1 < Lrow : y1 >= y0 || y1 > Lrow) return null;
+    dbg('off:reach' + (excl ? 'S' : ''));
+    for (const q of m.gp) if (q.active && q.side === side && q !== excl) { const b = side === 0 ? q.y - Lrow : Lrow - q.y; if (b >= -2) dbg('off:row' + b + (excl ? 'S' : '')); }
     if (advantagePending(m)) return null;                                                     // 0x6ea76e sub_6bab90
     const att = m.gp.filter((o) => o.active && o.side === side);                              // målmand med, slot-orden
     if (excl && !att.some((q) => (side === 0 ? q.y > y0 : q.y < y0))) return null;            // sub_6cb700(y0, side, 0)
@@ -378,8 +427,11 @@ export const GRID_UNKNOWN = {
   ref24: 10, ref28: 10,
   /** dommerens Discipline (officials.dat 0x25) og +0x27 (frisparkgrænse) – vi vælger ikke en dommer her. *estimeret* */
   refDiscipline: 10, ref27: 10,
-  /** hjemmebane: som MatchSim (homeAdv 2 i ORIGINAL): hjemmeholdets kampværdier ×(1 + 0,019·h), udeholdets ×(1 − 0,007·h). *estimeret* */
-  homeAdv: 10,
+  /** sub_85cba0 (tilskuertallet, uden for motoren – ikke porteret): i alt = oraklets snit for Premier League 2001/02 (35.428, frø 1);
+   *  udeholdets tilhængere 8 % *estimeret*. Bruges, når GridMatchCtx.crowd mangler. */
+  crowd: { total: 35428, home: 32594, away: 2834 },
+  /** comp+0x69: English Premier Division = 18 (club_comp.dat 3.9.60, sikker for Premier League) */
+  compRep: 18,
   /** sub_6ea760: linjevogterens officials-byte +0x29 (rand(+0x29 + 25) == 0 = overser alt) og hvor tæt på afleveringens mål en angriber
    *  skal stå for at blive vurderet (sub_6cfd70's udvalg er ikke læst). *estimeret* */
   official29: 10, offsideReach: 2,
@@ -392,11 +444,13 @@ const SIDE_WORD: Record<string, number> = { L: 0x80, C: 0x200, R: 0x800 };
 const TECHN = ['anticipation', 'crossing', 'decisions', 'dribbling', 'finishing', 'handling', 'heading', 'longShots', 'marking', 'offTheBall', 'oneOnOnes', 'passing', 'penalties', 'positioning', 'reflexes', 'tackling', 'throwIns', 'creativity'] as const;
 const RAWN = ['acceleration', 'pace', 'agility', 'balance', 'strength', 'flair', 'freeKicks', 'jumping', 'teamwork', 'technique', 'aggression', 'bravery', 'corners'] as const;
 
-function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number; pos?: number; posAttack?: number }): GP {
+function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number; pos?: number; posAttack?: number }, crowd?: { byte: number; compRep: number; final: boolean }): GP {
   const s = tactic.slots[slot];
   const gk = s.pos === 'GK';
   const sh = (k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
-  const mc = H.matchCa({ ca: p.ca, pa: Math.max(p.ca, p.pa), isKeeper: gk });
+  // sub_6ec010: kamp-CA'en med nervøsiteten fra publikums-byten (hjemmebanen – erstatter det tidligere skøn homeAdv)
+  const nerves = crowd ? nervesOf(crowd.byte, sh('professionalism'), sh('importantMatches'), gk, crowd.compRep, crowd.final) : 0;
+  const mc = H.matchCa({ ca: p.ca, pa: Math.max(p.ca, p.pa), isKeeper: gk, nerves });
   const f: Record<string, number> = {};
   for (const k of TECHN) f[k] = H.technicalMatchFloat(k, H.intrinsicFromShown(p.ca, sh(k)), mc);
   for (const k of RAWN) f[k] = H.rawMatchFloat(k, sh(k));
@@ -459,8 +513,11 @@ const emptyStats = (): GridSideStats => ({ goals: 0, shots: 0, onTarget: 0, corn
 
 // ------------------------------------------------------------------ kampen
 
-export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridResult {
+export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx: GridMatchCtx = {}): GridResult {
   const teams = [home, away];
+  // init_match: publikums-bytene engine+0x1ad/+0x1ae (hjemmebanen), læst af kampværdierne, dommeren og motivationen
+  const sideByte = crowdBytes(ctx.crowd ?? GRID_UNKNOWN.crowd, ctx.ownGround ?? true);
+  const compRep = ctx.compRep ?? GRID_UNKNOWN.compRep, final = ctx.final ?? false;
   const gp: GP[] = [];
   const maps: ReturnType<typeof mapTactic>[] = [];
   teams.forEach((t, side) => {
@@ -471,7 +528,8 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     t.tactic.lineup.forEach((id, slot) => {
       const p = ps.get(id); if (!p) return;
       const ps0 = map.slotOf[slot] ?? slot;
-      const g = makePlayer(p, side as Side, slot, t.tactic, { lo: map.lo[ps0], hi: map.hi[ps0], tb: map.tb[ps0], pos: map.masks[ps0], posAttack: map.masks2[ps0] });
+      const g = makePlayer(p, side as Side, slot, t.tactic, { lo: map.lo[ps0], hi: map.hi[ps0], tb: map.tb[ps0], pos: map.masks[ps0], posAttack: map.masks2[ps0] },
+        { byte: sideByte[side], compRep, final });
       g.tbl = map.table; g.pslot = ps0; gp.push(g);
     });
   });
@@ -485,13 +543,8 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null, ballEvent: 0, inc: null, knocks: 0, b8eb5: 0,
     passTo: null, landX: 0, landY: 0, fromX: 0, fromY: 0, margin: 0, lastPasser: null, lastPassType: 0, inFlight: [0, 0], lastToucher: null,
     official: { discipline: GRID_UNKNOWN.refDiscipline, b24: GRID_UNKNOWN.ref24, b27: GRID_UNKNOWN.ref27, b28: GRID_UNKNOWN.ref28, mood: 0 },
+    sideByte,
   };
-  // hjemmebanen: kampværdierne (sub_6ec010-floats) skaleres som MatchSims homeMult (*estimeret*)
-  for (const p of gp) {
-    const k = p.side === 0 ? 1 + 0.019 * GRID_UNKNOWN.homeAdv : 1 - 0.007 * GRID_UNKNOWN.homeAdv;
-    for (const key of Object.keys(p.f)) if (key !== 'workRate' && key !== 'versatility') p.f[key] *= k;
-    for (const key of Object.keys(p.a) as (keyof L.Attr)[]) if (key !== 'workRate' && key !== 'versatility') p.a[key] *= k;
-  }
   for (const p of gp) { p.skill = actionSkills(p); attachView(m, p); }
   const st = (s: Side) => m.stats[s];
   // afleveringen, opsnapningen, modtagelsen, landingen og blokeringen (pass.ts) – limens funktioner kaldes først, når kampen kører
@@ -595,7 +648,8 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
       return m.period === 1 && m.clock >= 990 + m.stoppage ? 2 : 0;
     },
     ballOut: (last) => ballOut(last),
-    comment: (id) => { if (id === 0x1f78) st(m.carrier ? m.carrier.side : m.poss === -1 ? 0 : (m.poss as Side)).offsides++; },
+    comment: () => { /* sub_6d6f70 */ },
+    offsideGiven: (side) => { st(side).offsides++; },
     distToTarget: (bx, by, tx, ty) => L.dist(bx, by, tx, ty),
     landing: (x, y) => P.land(x, y),                                                         // sub_6c9cd0
     receive: (p, power, ox, oy) => P.receive(p as GP, power, ox, oy),                        // sub_6f6c00
@@ -689,8 +743,11 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
   const challenge = (p: GP | null, side: Side, action: number): ChallengeOut =>
     getOppositionChallenge(m, p, side, action, 0, rand, (q) => GRID_UNKNOWN.freeRun(m, q, rand));
   const minute = () => Math.trunc(m.clock / 11);
-  const judge = (d: GP, p: GP, type: number, action: number): JudgeResult =>
-    judgeTackle(rand, { official: m.official, minute: minute(), teamFouls: st(d.side).fouls, incidentPending: advantagePending(m) }, d, p, type, action);
+  const judge = (d: GP, p: GP, type: number, action: number): JudgeResult => {
+    const j = judgeTackle(rand, { official: m.official, minute: minute(), teamFouls: st(d.side).fouls, teamByte: m.sideByte[d.side], incidentPending: advantagePending(m) }, d, p, type, action);
+    dbg(`judge:${type}:${j.ret}`);
+    return j;
+  };
   /** sub_6cd770 (sikker, pass.ts): bolden bliver løs og spredes */
   const ballLoose = (x: number, y: number, spread: number, lastTouch: Side, keep: boolean, player: GP | null) => {
     if (m.pendingPass !== -1) m.pendingPass = -1;
@@ -1052,13 +1109,14 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
         else { dbg('shot:stopped'); winBall(cd, p, c, c.value - d.quality - 200, jA, false); return; }
       }
     }
+    const param = d.special ?? 1;
     st(p.side).shots++; p.shots++;
     dbg('shotD' + Math.min(6, Math.round(L.dist(p.x, p.y, 4, goalRow(p.side)))) + ':s' + p.side + ':x' + p.x + 'y' + p.y);
     // sub_6cc540 → sub_6cd3d0 → sub_70dfd0 (sikker, pass.ts): skudlinjen; en blokering afgør selv bolden (løs, taget eller frispark).
     // soft = frisparksskuddet (0x35-grenen); ellers edi i sub_702050 ("?" → 0). Straffe går uden om (limen).
     const lineResult: 0 | 1 = type !== SHOT.PENALTY ? P.shotLine(p, Math.max(0, d.quality), type === SHOT.FREE_KICK) : 0;
     if (lineResult) dbg('shot:blocked');
-    const out = shotOutcome({ S: d.quality, type, K: kv, param: d.special ?? 1, lineResult, rand });
+    const out = shotOutcome({ S: d.quality, type, K: kv, param, lineResult, rand });
     GRID_DEBUG.sumS = (GRID_DEBUG.sumS ?? 0) + d.quality; GRID_DEBUG.sumK = (GRID_DEBUG.sumK ?? 0) + kv.K; if (out.ratio !== undefined) { GRID_DEBUG.sumR = (GRID_DEBUG.sumR ?? 0) + out.ratio; dbg('nR'); }
     dbg(`k${kv.state}${k ? '' : 'none'}:s${p.side}`); dbg(`o:${out.outcome}:s${p.side}`); if (k) dbg(`kx${k.x}y${k.y}:s${opp}`);
     const onT = out.outcome === 'goal' || out.outcome === 'goalInOffWoodwork' || out.outcome === 'parried' || out.outcome === 'tippedForCorner' || out.outcome === 'held';
@@ -1193,6 +1251,10 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     if (m.state === 0 && (m.ballX < 0 || m.ballX > 8 || m.ballY < 0 || m.ballY > 11)) ballOut(m.lastTouch);
   }
   void passHooks;
+  for (const s of [0, 1] as Side[]) {                                                        // fejlsøgning: konditionen ved slutfløjt (markspillere)
+    const q = gp.filter((o) => o.side === s && o.active && !o.isKeeper);
+    GRID_DEBUG['cond:s' + s] = (GRID_DEBUG['cond:s' + s] ?? 0) + q.reduce((a, o) => a + o.condition, 0) / Math.max(1, q.length) / 100;
+  }
   return { home: m.stats[0], away: m.stats[1], ticks: m.clock };
 }
 
