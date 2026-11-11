@@ -66,6 +66,8 @@ export class GridSim implements LiveSim {
     const rand = randOf(() => r.next());
     this.g = createGridMatch({ players: home.players, tactic: home.tactic }, { players: away.players, tactic: away.tactic }, rand, {
       ownGround: !opts.neutral,
+      // computerstyret hold: sub_6c54a0 retter kun dem (menneskets taktik ændres aldrig af motoren)
+      ai: opts.aiSubs ?? [true, true],
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;

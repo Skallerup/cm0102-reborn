@@ -291,4 +291,11 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   pladser, hi i 180/451, taktikbytes 0, holdflag i 41/41 – fx 4-4-2 backs 0x55984221 → 0x55584221 (0x800000 → 0x400000), hi 0xa → 0x5.
   **sub_6ddab0 omskriver hver spillers instruktioner** (via 0x5b5290/0x5b50d0) ud fra managerens egenskaber og spillerne. **Næste:** port sub_6ddab0
   helt (holdflag + individuelle instruktioner) og test den mod sporets I-linjer (facit pr. plads); derefter forudindstillingsvalget i 0x6dbb80.
+- 2026-11-11 – **sub_6c54a0's justering ved dødbold porteret (§5 i notes/team-flags.md):** `aiRetune` i gridMatch.ts (via `restartTick`) – kun
+  computerstyrede hold (`ctx.ai`, adapteren sender `opts.aiSubs`); ved skift eller i første minut: mentalitet normal, kontra nej, MBB nej og
+  instruktionen 0x400000 for alle spillere (fremadløbet 0x800000 slås fra – som kampsporets I-linjer viser). *estimeret*: tilstanden er altid 2
+  (0x6df460 ikke afkodet), managerens Attacking/Directness ikke med (world-filen har dem ikke endnu). 380 kampe frø 1: **2,96 mål · 52/23/26
+  (orig 51/23/26) · skud 19,9 · på mål 9,8 · hjørner 4,9 · offside 1,95** · gule 1,43/røde 0,07. Med 4-4-2-forudindstilling: 3,73 mål.
+  **Næste:** sub_6ddab0's ændringer af hi-ordet pr. spiller (0xa → 0x5/0x6/0x9 m.m.; 15 kald af 0x5b5290 ud fra spilleregenskaber 0x5431e0),
+  computerens forudindstillingsvalg 0x6e0230 (forsvaret står en række for dybt med det kanoniske gitter), 0x6df460 (tilstand 1–5), offside.
 

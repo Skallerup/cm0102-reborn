@@ -8,7 +8,7 @@ import { ACTION, decideBallCarrier, type PassOption, type Situation } from './ba
 import { passOptions, type Helpers as PassHelpers, type MatchPlayer as PassPlayer, type MatchState as PassState } from './passOptions';
 import { SHOT, keeperBase, keeperValue, shotOutcome, shotScore, type Attrs as ShotAttrs } from './shot';
 import * as H from './helpers';
-import { instrBig, instrOf, mapTactic, tableCell, teamFlagsOf, type Table } from './tacticTable';
+import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, teamFlagsOf, type Table } from './tacticTable';
 import { TEAM_FLAGS, cardWithoutVictim, decideFoulPunishment, isHardChallenge, judgeTackle, type JudgeResult, type MatchOfficial } from '../cm0102-original-rules';
 import { actionSkills, adjustMorale, getOppositionChallenge, inBoxAt, randS, type ChallengeOut } from './challenge';
 import { makePass, onPitch } from './pass';
@@ -44,6 +44,8 @@ export interface GridListener {
 export interface GridMatchCtx {
   /** begivenheder (adapteren) */
   on?: GridListener;
+  /** computerstyret hold [hjemme, ude] (sub_6c54a0 retter kun computerens taktik ved dødbold); mangler = begge */
+  ai?: [boolean, boolean];
   /** sub_85cba0's tilskuertal (engine+0x91d2/+0x91d6/+0x91da): i alt, hjemmeholdets og udeholdets tilhængere */
   crowd?: { total: number; home: number; away: number };
   /** kampen spilles på en af klubbernes eget stadion (club+0x69 = fixture+0x18) – giver side 1's byte mindst 1 */
@@ -726,7 +728,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     teammatesAhead: (p) => gp.filter((o) => o.active && o.side === p.side && o !== p && (p.side === 0 ? o.y > p.y : o.y < p.y)).length,
     nearestOppDist: (side, x, y) => H.nearestOpponent(gp.filter((o) => o.side !== side).map((o) => o.view!), x, y, true),
     ownKeeper: (side) => gp.find((o) => o.active && o.side === side && o.pos === L.POS.keeper) ?? null,
-    restartTick: () => { m.inc = null; },                                                      // sub_6c54a0 rydder bl.a. hændelsen (resten ikke porteret)
+    restartTick: () => { m.inc = null; aiRetune(); },                                          // sub_6c54a0: hændelsen ryddes og computerens taktik rettes
     incidentTick: () => incidentTick(),
     deadBallTemper: () => deadBallTemper(),
     // sub_6d0b60 (behandling/udskiftning) er ikke porteret: kun +0x1d ryddes for de skadede (noten), ingen udskiftning – *estimeret*
@@ -742,6 +744,26 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     distToTarget: (bx, by, tx, ty) => L.dist(bx, by, tx, ty),
     landing: (x, y) => P.land(x, y),                                                         // sub_6c9cd0
     receive: (p, power, ox, oy) => P.receive(p as GP, power, ox, oy),                        // sub_6f6c00
+  };
+  /** sub_6c54a0 §5 (notes/team-flags.md; ved hver dødbold): computerens tilstand pr. hold og, når den skifter (eller i kampens første
+   *  minut), holdflagene og de individuelle instruktioner. *estimeret*: tilstanden er altid 2 (normal) – 0x6df460's beregning af r (holdenes
+   *  styrke/stilling/tid, ~1.100 instr.) er ikke afkodet; uden managerens egenskaber bruges "uden mgr"-reglerne (tilstand 2 → normal,
+   *  kontra nej, MBB nej). Tilstand 2–5: alle spillere får instruktionen 0x400000 (gruppen 0xc00000 – fremadløbet 0x800000 slås fra);
+   *  bekræftet i kampsporet: originalens instruktioner i hukommelsen har 0x400000, .pct-filerne 0x800000. Tidsspild (3/4) og omlægningen
+   *  0x6e1090 er ikke med. */
+  const retuned = [false, false];
+  const aiRetune = () => {
+    for (const s of [0, 1] as Side[]) {
+      if (ctx.ai && !ctx.ai[s]) continue;
+      const mode = 2;
+      const changed = mode !== m.aiMode[s] || m.clock <= 1 || !retuned[s];
+      if (!changed) continue;
+      m.aiMode[s] = mode; retuned[s] = true;
+      let f = m.teamFlags[s];
+      f = setTeamOption(f, 0x20000); f = setTeamOption(f, 0x800); f = setTeamOption(f, 0x2000);   // normal, kontra nej, MBB nej
+      m.teamFlags[s] = f;
+      for (const q of gp) if (q.side === s) q.instr = (q.instr & ~0xc00000n) | 0x400000n;
+    }
   };
   /** markers_follow (sub_6f09f0 0x6f0a76/0x6f0c07/0x6f3bf9, sub_7103e0 0x710612; sikker): hver markør, der må følge (sub_6bce20), og som
    *  den flyttede spillers off-the-ball- · fart-rul ikke overstiger rand(900) + 50, får en forsvarstur (sub_714d40). */
