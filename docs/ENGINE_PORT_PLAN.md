@@ -22,9 +22,9 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | Krog i `GRID_UNKNOWN` | Original | Instr. | Status |
 |---|---|---|---|
 | `tacticalCell` | 0x6c2be0 + 0x715f50 + 0x6c2a40 | 359 + 136 + 112 | afkodet (notes/6c2be0-tactical-cell.md) – pladserne er et tabelopslag `TBL[side][plads][med/uden bold][bx][by]` i taktikken (+0x5eb/+0xf33, 2376 bytes), bygget af 0x5b7160 fra taktikfilens grove gitter (+0x164) – afkodes sammen med de 40 `.pct`-filer |
-| `runTarget` | 0x6bce80 | 566 | afkodet (notes/6bce80-run-target.md) |
+| `runTarget` | 0x6bce80 | 566 | ✓ porteret 11/11 |
 | `zonalPick` | 0x6bc030 | 910 | afkodet (notes/6bc030-zonal-pick.md) – kræver kampstatistik pr. spiller, rå Dribbling, mandsopdækning |
-| `canSee`/lane | 0x6f9f90 + 0x6cbc00 | 137 + 371 | afkodet (notes/vision-space-offside.md §6) – klar til port |
+| `canSee`/lane | 0x6f9f90 + 0x6cbc00 | 137 + 371 | ✓ porteret 11/11 |
 | `spaceAhead`, `freeRun` | 0x6cbad0, 0x6cb780 | 89, 135 | afkodet – `freeRun` giver aldrig 1 for markspillere (egen løkke tæller spilleren selv) |
 | offside-udvalg/linjevogter | 0x6cfd70 → 0x6ea760 | 11 + 184 | afkodet – rækkereglerne = `offsideFlag`; også ved skud (skytten som `excl`) |
 | `challenge` (duel/dribling/forseelse) | 0x6f09f0 | 4.489 | afkodes |
@@ -46,6 +46,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | Gittermotoren før porten (10/11, frø 1) | 3,74 | 50/16/34 | 14,9 | 7,0 | 4,1 | 17,6 | 4,5 | 1,19/0,05 |
 | + syn/bane/plads/frit løb/offside/retning/afstand (11/11) | 2,63 | 45/27/27 | 9,6 | 5,3 | 2,6 | 18,1 | 0,3 | 1,22/0,06 |
 | + taktisk felt fra originalens positionstabeller (11/11) | 2,68 | 49/26/24 | 8,8 | 5,1 | 2,4 | 24,8 | 0,7 | 1,74/0,12 |
+| + løbemål 0x6bce80 (11/11) | 2,79 | 46/25/29 | 8,7 | 5,3 | 2,5 | 21,3 | 0,7 | 1,45/0,08 |
 
 ## Log
 
@@ -66,3 +67,8 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   flyttede pladser (0x5b3560/0x5b7e60, ikke afkodet); boldhændelsen +0x8eb1 er ikke modelleret. tests/tacticTable.test.ts.
   Næste: runTarget (0x6bce80) – angribernes løb forbi linjen mangler (skud 8,8, offside 0,7), og udfordringen (0x6f09f0;
   frispark 24,8).
+- 2026-11-11 – **Porteret (sikker):** løbemålet `runTarget` (0x6bce80) med alle fire flag og originalens tre kaldere (uden bold
+  mode 4/12 med formationsfeltet som io, afleveringsvalget flags 0, boldholderen flags 2 med det taktiske felt; boldholder-bit 1
+  fra [esp+0x68] er ikke afkodet → 0). Måling af offside-kæden (60 kampe): 261 vurderinger/kamp, 126 er ikke fremad, 121 når ikke
+  linjen, 14 når linjen, 3,6 flages, 0,75 dømmes; kun 1,4 gange pr. kamp står en angriber forbi linjen. Linjen (0x6c3aa0) og
+  rækkereglerne er originalens – det, der mangler, er afleveringens udførelse/modtagelse (0x6fad40/0x6f6c00) og udfordringen.

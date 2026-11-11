@@ -101,17 +101,84 @@ export const GRID_UNKNOWN = {
     if (m.poss === 1) return p.side === 1 ? c(1, 4, 8) : c(0, 4, 11);
     return c(0, 4, 5);
   },
-  /** sub_6bce80 (løbemål): angribere løber 1-2 rækker frem mod mål. *estimeret* */
-  runTarget(m: GridMatchState, p: GP, rand: Rand): [number, number] | null {
-    if (!(p.pos & (L.POS.forward | L.POS.mid20 | L.POS.mid10))) return null;
-    const own = p.side === 0 ? p.y : 11 - p.y;
-    const lim = onsideRow(m, p) + (rand(1000) < 1000 * this.runBeyondP ? 1 : 0); // løb bag linjen (timing) *estimeret*
-    const ty = Math.min(own + 1 + rand(2), lim);
-    if (ty <= own) return null;
-    return [clampX(p.x + (p.x < 4 ? 1 : p.x > 4 ? -1 : 0) * rand(2)), clampY(p.side === 0 ? ty : 11 - ty)];
+  /** sub_6bce80 (sikker; notes/6bce80-run-target.md): bedste felt i 3×3 om spilleren. flags: 1 = må gå ind i midten, 2 = boldholder
+   *  (dribling-rul, fodside, hysterese mod io, facing), 4 = offside-vurdering pr. række, 8 = baglæns tilladt. io = udgangsfeltet
+   *  (taktisk felt for boldholderen, formationsfelt ellers). Tærsklen 7,5 og lighed → senest testede felt (float32). */
+  runTarget(m: GridMatchState, p: GP, flags: number, io: [number, number], rand: Rand): [number, number] | null {
+    const f32 = Math.fround, px = p.x, py = p.y, flag2 = (flags & 2) !== 0, side = p.side, opp = other(side);
+    let lineDelta = -10, bestX = -1, bestY = -1, randOff = 0, best = f32(7.5);
+    if (!flag2 && p.roll.offTheBall === 0) {
+      if (p.roll.anticipation === 0) return null;
+      const a = rand(6), b = rand(6); randOff = a - b;
+    }
+    const opps = m.gp.filter((o) => o.active && o.side === opp);                              // slot-orden
+    const facingOk = (cx: number, cy: number) => {                                            // sub_6fa140
+      const ang = H.bearing(cx - px, cy - py);
+      if (p.facing === ang) return true;
+      const lim = Math.trunc(p.roll.agility * 2.25 + 45);
+      let d = Math.abs(p.facing - ang); if (d > 180) d = 360 - d;
+      return d < lim;
+    };
+    const dribbling = p.src.attrs[ATTRS.indexOf('dribbling' as never)] || 10;                // rec+0x26, rå 1..20
+    for (let cy = py - 1; cy <= py + 1; cy++) {
+      if (cy < 0 || cy >= 12) continue;
+      if (flags & 4) {
+        let ld = side === 1 ? m.lineSide0 - cy : cy - m.lineSide1;
+        if (p.roll.offTheBall < 2) { ld -= rand(3); ld += rand(3); }
+        if (p.roll.decisions !== 0 && m.teamFlags[opp] & 0x400) ld += 1;
+        lineDelta = (ld << 24) >> 24;
+        if (lineDelta > 2) continue;
+      }
+      for (let cx = px - 1; cx <= px + 1; cx++) {
+        if (cx < 0 || cx >= 9) continue;
+        if (cx === px && cy === py && flag2) continue;
+        if (flag2 && !facingOk(cx, cy)) continue;
+        if (p.pos & 0x30 && p.pos & 0x880 && cx >= 2 && cx <= 6 && !(px >= 2 && px <= 6) && !(flags & 1)) continue;
+        const inCell = opps.filter((o) => o.x === cx && o.y === cy);
+        let score = f32(randOff), n = 0;
+        if (flag2) {
+          n = inCell.length;
+          if (n !== 0) { const a = rand(dribbling), b = rand(3); if (a > b) n = Math.max(n - 2, 0); }
+          score = f32(randOff - (n - 0.5));
+          const pen = 0.125 * p.weakFootPenalty;
+          const left = cx < px || (cx === px && cx < 4), right = cx > px || (cx === px && cx > 4);
+          if (p.strongFoot === 1) { if (side === 0 ? left : right) score = f32(score - pen); }
+          else if (side === 0 ? right : left) score = f32(score - pen);
+        } else for (const o of inCell) if (o.busy < 2) n++;
+        if (n !== 0 && !flag2) score = f32(score - 2 * n * n);
+        else {
+          let minD = 5000;
+          for (const o of opps) {
+            if (o.pos & 1) continue;
+            const d = H.cellDist(o.x - cx, o.y - cy);
+            if (d === 0) { minD = 0; break; }
+            if (d < minD) minD = d;
+          }
+          score = f32(score + minD * minD);
+        }
+        const backwards = side === 0 ? cy < py : cy > py;
+        let noBonus = false;
+        if (backwards) { if (!(flags & 8)) { score = f32(score - 4.5); noBonus = true; } }
+        else score = f32(score + (cy !== py ? 4 : 0.5));
+        if (lineDelta > 0) score = f32(score - 4 * lineDelta);
+        if (!noBonus) {
+          if ((!flag2 || flags & 1) && (cy < 3 || cy > 8) && cx >= 3 && cx <= 5) score = f32(score + 3.5);
+          if (cx === 4 || (px < 4 && cx >= 3 && cx <= px) || (px > 4 && cx >= px && cx <= 5)) score = f32(score + 3);
+          if (!flag2) {
+            if (px > 4 && cx > px) score = f32(score - 3 * (px - 4));
+            if (px < 4 && cx < px) score = f32(score - 3 * (4 - px));
+          } else {
+            if (!(px >= 2 && px <= 6) && !(cx >= 2 && cx <= 6) && !(flags & 1)) score = f32(score + 0.25 * p.a.teamwork);
+            if (px > 4 && cx > px) score = f32(score - 2.5 * (px - 4));
+            if (px < 4 && cx < px) score = f32(score - 2.5 * (4 - px));
+            if (io[0] === cx && io[1] === cy) score = f32(score + 2.5);
+          }
+        }
+        if (!(score < best)) { best = score; bestX = cx; bestY = cy; }
+      }
+    }
+    return bestX > -1 ? [bestX, bestY] : null;
   },
-  /** andel af løbene, der går ét felt bag modstandernes linje (giver offside). *estimeret* */
-  runBeyondP: 0.25,
   /** sub_6bc030 (zonevalg): nærmeste umarkerede modstander inden for 2 felter. *estimeret* */
   zonalPick(m: GridMatchState, p: GP): GP | null {
     let best: GP | null = null, bd = 2.01;
@@ -272,14 +339,6 @@ export const GRID_UNKNOWN = {
   blockP: 0.2, deflectP: 0.06,
 };
 
-/** Rækken (set fra p's eget mål) med modstandernes sidste markspiller = højeste onside-række. */
-function onsideRow(m: GridMatchState, p: GP): number {
-  const opp = m.gp.filter((o) => o.active && o.side !== p.side && o.pos !== L.POS.keeper);
-  if (!opp.length) return 10;
-  const line = p.side === 0 ? Math.max(...opp.map((o) => o.y)) : 11 - Math.min(...opp.map((o) => o.y));
-  return Math.max(6, Math.min(10, line));
-}
-
 // ------------------------------------------------------------------ opbygning
 
 const POS_WORD: Record<string, number> = { GK: 0x1, SW: 0x2, D: 0x4, DM: 0x8, M: 0x10, AM: 0x20, ST: 0x40, WB: 0x8 };
@@ -417,7 +476,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     place: (p, x, y) => { p.x = clampX(x); p.y = clampY(y); },
     tacticalCell: (p) => cellWithDrift(p as GP),
     formationCell: (p) => GRID_UNKNOWN.formationCell(m, p as GP),
-    runTarget: (p) => GRID_UNKNOWN.runTarget(m, p as GP, rand),
+    runTarget: (p, mode) => GRID_UNKNOWN.runTarget(m, p as GP, mode, GRID_UNKNOWN.formationCell(m, p as GP), rand),
     zonalPick: (p) => GRID_UNKNOWN.zonalPick(m, p as GP),
     manMarkTarget: () => null, // sub_7160f0: kræver mandsopdækning i taktikken (ikke i vores Tactic)
     backOnside: (p) => { p.y = clampY(p.y + (p.side === 0 ? -1 : 1)); },
@@ -564,7 +623,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
       freeRun: (q) => GRID_UNKNOWN.freeRun(m, ref.get(q as never)!, rand),
       facingGoal: (q) => GRID_UNKNOWN.facingGoal(m, ref.get(q as never)!, rand),
       canSee: (_c, tx, ty, oppNear, mark) => GRID_UNKNOWN.canSee(m, p, tx, ty, true, oppNear, mark, true, rand),
-      runTarget: (q) => { const t = GRID_UNKNOWN.runTarget(m, ref.get(q as never)!, rand); return t ? { x: t[0], y: t[1] } : null; },
+      runTarget: (q) => { const t = GRID_UNKNOWN.runTarget(m, ref.get(q as never)!, 0, [-1, -1], rand); return t ? { x: t[0], y: t[1] } : null; },
       lineOfSight: (x, y, tx2, ty2, d) => H.footForTarget({ ...p.view!, x, y }, 0x5d, tx2, ty2, d).foot,
       spaceAhead: (q) => GRID_UNKNOWN.spaceAhead(m, ref.get(q as never)!),
       noDefenderGoalSide: (q) => H.noDefenderGoalSide(q as unknown as H.MatchPlayer, oppViews, inCell.length, false),
@@ -600,7 +659,8 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
       oppKeeper: k ? { isRealKeeper: true, x: k.x, y: k.y, hasActed: k.busy !== 0, covers: H.keeperCovers(k.view!, p.x, p.y) } : null,
       oppInCell: inCell.length, committedOppInCell: 0, facingGoal: ph.facingGoal(p.view!), pastLastLine: L.beyondLine(m, p.side, p.y) >= 0,
       noDefenderGoalSide0: H.noDefenderGoalSide(p.view!, oppViews, inCell.length, false), noDefenderGoalSide1: H.noDefenderGoalSide(p.view!, oppViews, inCell.length, true),
-      runTarget: (() => { const t = GRID_UNKNOWN.runTarget(m, p, rand); return t ? { found: true, tx: t[0], ty: t[1] } : { found: false, tx: p.x, ty: p.y }; })(),
+      // boldholderen: flags 2 (bit 1 = boldholder-rutinens byte [esp+0x68], ikke afkodet, sat til 0), io = det taktiske felt
+      runTarget: (() => { const t = GRID_UNKNOWN.runTarget(m, p, 2, [tx, tacY], rand); return t ? { found: true, tx: t[0], ty: t[1] } : { found: false, tx: p.x, ty: p.y }; })(),
       tacticalX: tx, beyondTactical: Math.max(0, ahead), clockTicks: m.clock, ownGoals: m.goals[p.side], oppGoals: m.goals[opp], lead: m.goals[p.side] - m.goals[opp],
       teamMode: m.aiMode[p.side], protectLead: false, oppOffsideTrap: (m.teamFlags[opp] & 0x400) !== 0,
       goalPathBlocked: H.isCrossingPosition(p.view!, 4, gr), sightCheckFails: foot.foot !== 2 && foot.foot !== p.strongFoot, possessionCounter: m.touchCount[p.side],
