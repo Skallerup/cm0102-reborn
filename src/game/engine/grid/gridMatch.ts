@@ -55,7 +55,7 @@ export interface GP extends L.Player {
   w29: number;                      // +0x29 "plads" (sættes af limen ud fra situationen)
   w31: number;                      // +0x31 temperament-ord (?), start 0 – sænkes af frispark
   b1d: number;                      // +0x1d (?) ≠ 0 → boldholderen mister kontrollen; start 0
-  temperCount: number;              // +0xff ophidselses-tæller, start 0
+  temperCount: number;              // +0xff ophidselses-tæller (start og henfald i loop.ts)
   grudge: GP | null;                // +0x1a6 "nag" (den der sidst fik ham op at køre)
   sportsmanship: number; temperament: number; pressure: number; consistency: number; // staff +0x5c/+0x5d/+0x5a, post +0x21 (?) – rå 1..20
   isKeeper: boolean;
@@ -88,14 +88,16 @@ export interface GridMatchState extends L.Match {
   depth: number;
   tactics: [Tactic, Tactic];
   nations: [string, string];
+  ballEvent: number;                    // engine+0x8eb1 hvor angrebet stammer fra: 0 åbent spil, 3 hjørne, 7/−1 frispark, 6 skud
   penaltyFor: GP | null;                // engine+0x478a: spilleren, der vandt straffesparket (sat ved straffe, 0x6f7f12 m.fl.)
   official: MatchOfficial;              // engine+0xf5b2 (dommerens bytes er *estimerede* – GRID_UNKNOWN.ref*)
 }
 
 export const GRID_UNKNOWN = {
   /** sub_6c2be0 (sikker; notes/6c2be0-tactical-cell.md): opslag i taktikkens positionstabel (med/uden bold, boldens felt), så
-   *  holdinstruktionerne. Uden sub_715f50 – kalderne kører H.tacticalColumn bagefter (`cellWithDrift`). Ikke modelleret: boldhændelsen
-   *  +0x8eb1 (bold i luften efter skud/lang bold; spillere med instruktionsbit 17/30/31/19 bliver stående) – normalstien bruges altid. */
+   *  holdinstruktionerne. Uden sub_715f50 – kalderne kører H.tacticalColumn bagefter (`cellWithDrift`). Boldhændelsen +0x8eb1 > 0 (efter
+   *  hjørne, farligt frispark eller skud – til bolden tages på egen halvdel): spillere med instruktionsbit 17/30 (med bold) eller 31/19
+   *  (uden) bliver stående, de andre får tabellens felt, og mentalitet/kontra/men behind ball springes over. */
   tacticalCell(m: GridMatchState, p: GP): [number, number] {
     const side = p.side, opp = other(side);
     const bx = clampX(m.ballX), by = clampY(m.ballY);
@@ -108,6 +110,13 @@ export const GRID_UNKNOWN = {
       att = inOppBox && m.ballH !== -1 ? 1 : 0;
     }
     if (!p.tbl) return [p.x, p.y];
+    if (m.ballEvent > 0) {                                                                       // 0x6c2ca5: efter hjørne/frispark/skud
+      const lo = Number(p.instr & 0xffffffffn), gk = p.pos === L.POS.keeper;
+      const stay = att ? (lo & 0x20000) !== 0 || (!gk && (lo & 0x40000000) !== 0)                // sub_716270
+        : !gk && ((lo & 0x80000000) !== 0 || (lo & 0x80000) !== 0);                              // sub_716310
+      const [x, y] = stay ? [p.x, p.y] : tableCell(p.tbl, side, p.pslot, att, bx, by);
+      return [clampX(x), clampY(y)];
+    }
     let [x, y] = tableCell(p.tbl, side, p.pslot, att, bx, by);
     if (p.pos === L.POS.keeper) return [x, y];
     const flags = m.teamFlags[side], ctr = m.counterFlag[side], fwd = side === 0 ? 1 : -1;
@@ -374,6 +383,9 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
   // +0x37: positionstilpasningen (sub_6eecb0, rettelse 6) ud fra spillerens positionsevner [GK SW D DM M AM F WB] og sider [L C R]
   const r: H.PosRatings = { gk: p.pos[0], sw: p.pos[1], d: p.pos[2], dm: p.pos[3], m: p.pos[4], am: p.pos[5], f: p.pos[6], wb: p.pos[7], l: p.side?.[0] ?? 20, c: p.side?.[1] ?? 20, r: p.side?.[2] ?? 20, free: 1 };
   // de individuelle instruktioner (+0x188b) og taktikbyten (+0x5b4): pladsens værdi i taktikken + vores instruktioner (tacticTable.ts instrOf)
+  // MATCH_PLAYER::init 0x6eaea0 (player-state-bytes.md): agitation = gulvet 2·(25 − Temperament), +0xff = trunc((trunc(mot/2) + Dirtiness + 10)/4)
+  // med motivationen +0x100 = 0 (*estimeret* – motivationsmodellen 0x6eb55c er kun del-afkodet); +0x31 = 0 (yndling/had/derby kendes ikke her)
+  const bff = Math.trunc((0 + sh('dirtiness') + 10) / 4);
   const iv = instrOf(tactic.individual?.[slot], base), instr = instrBig(iv), tacticByte = base?.tb ?? 0x12;
   const form = Math.min(0, H.positionFit(pos, pos, r, sh('versatility'), (iv.lo & 0x200000) !== 0));
   const lf = p.foot === 'L' || p.foot === 'B' ? 20 : 8, rf = p.foot === 'R' || p.foot === 'B' ? 20 : 8;
@@ -383,12 +395,12 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
   const a: L.Attr = { acceleration: f.acceleration, anticipation: f.anticipation, decisions: f.decisions, flair: f.flair, jumping: f.jumping, marking: f.marking, offTheBall: f.offTheBall, pace: f.pace, positioning: f.positioning, tackling: f.tackling, teamwork: f.teamwork, creativity: f.creativity, workRate: f.workRate, agility: f.agility, versatility: f.versatility };
   const g: GP = {
     side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, condition: 100 * Math.max(60, p.condition ?? 100), pendingCond: 0, busy: 0,
-    matchCA: mc.K, form, morale: 10, injury: 0, agitation: 0, pos, tacticByte, instr, freeRoleRating: 1, a,
+    matchCA: mc.K, form, morale: 10, injury: 0, agitation: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, instr, freeRoleRating: 1, a,
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
     marks: null, markers: [], ref: p.id, src: p, f, posAttack: pos, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
     leftFoot: lf, rightFoot: rf, baseX: bx, baseY: by, gkRating: p.pos[0], tbl: null, pslot: slot, posR: r,
     // udfordringen/dommeren (challenge.ts, judgeTackle): ukendte bytes starter som 0 (noterne), evnerne sættes efter hjemmebanen
-    fouls: 0, foulsSuffered: 0, yellows: 0, reasons: [0, 0], b16: 0, skill: [], momentum: 0, w29: 0, w31: 0, b1d: 0, temperCount: 0, grudge: null,
+    fouls: 0, foulsSuffered: 0, yellows: 0, reasons: [0, 0], b16: 0, skill: [], momentum: 0, w29: 0, w31: 0, b1d: 0, temperCount: bff, bffBase: bff, grudge: null,
     sportsmanship: sh('sportsmanship'), temperament: sh('temperament'), pressure: sh('pressure'), consistency: sh('consistency'), isKeeper: gk,
     tacklesTried: 0, tacklesWon: 0, dribblesPast: 0, b6: 0, blocks: 0, shots: 0, shotsOnTarget: 0, penGoalsWon: 0,
   };
@@ -445,7 +457,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     teamFlags: [teamFlagsOf(home.tactic.team, maps[0].preset.flags), teamFlagsOf(away.tactic.team, maps[1].preset.flags)],
     aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
     tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
-    stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null,
+    stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null, ballEvent: 0,
     passTo: null, landX: 0, landY: 0, fromX: 0, fromY: 0, margin: 0, lastPasser: null, lastPassType: 0, inFlight: [0, 0], lastToucher: null,
     official: { discipline: GRID_UNKNOWN.refDiscipline, b24: GRID_UNKNOWN.ref24, b27: GRID_UNKNOWN.ref27, b28: GRID_UNKNOWN.ref28, mood: 0 },
   };
@@ -507,6 +519,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     m.lastPasser = null; m.receiver = null; m.passTo = null;
     if (p.pos === L.POS.keeper && inBoxAt(p.side, p.x, p.y) && m.inFlight[p.side] === 0) { p.facing = p.side === 0 ? 0 : 180; m.ballH = -1; }
     m.inFlight[p.side] = 1; m.inFlight[other(p.side)] = 0;
+    if (p.side === 1 ? p.y >= 6 : p.y < 6) m.ballEvent = 0;                                  // 0x6f086c: taget på egen halvdel
     m.ballX = p.x; m.ballY = p.y; m.poss = p.side; m.carrier = p; m.ballDir = p.facing; m.ballSpeed = 0;
     m.lastTouch = p.side; m.touchCount[p.side]++; if (m.touchCount[other(p.side)] > 0) m.touchCount[other(p.side)] -= 10;
     p.w29 = 0; p.momentum = 0;
@@ -514,6 +527,13 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
   const restart = (state: number, side: Side, x: number, y: number) => {
     if (m.pendingPass !== -1) { dbg('pass:dead' + state); m.pendingPass = -1; }
     m.state = state; m.poss = side; m.carrier = null; m.receiver = null; m.passTo = null; m.ballX = clampX(x); m.ballY = clampY(y); m.ballH = -1; m.ballSpeed = 0;
+    setPieceEvent();
+  };
+  /** boldhændelsen ved dødboldens opstilling (sikker for værdien; selve opstillingen 0x6c4470/0x6c4820 er ikke porteret): hjørne 3,
+   *  frispark 7 dybt på modstanderens halvdel (side 0: y > 6, side 1: y < 5) ellers −1 */
+  const setPieceEvent = () => {
+    if (m.state === 3) m.ballEvent = 3;
+    else if (m.state === 6 || m.state === 7) m.ballEvent = (m.poss === 0 ? m.ballY > 6 : m.ballY < 5) ? 7 : -1;
   };
 
   // sub_6c2be0 efterfulgt af sub_715f50 (søjledrift), som alle originalens kaldere gør
@@ -623,6 +643,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     if (m.state !== 0 || onPitch(bx, by)) return;
     L.ballOutOfPlay(m, last, hooks);
     m.ballX = clampX(bx); m.ballY = clampY(by);
+    setPieceEvent();
     m.carrier = null; m.receiver = null; m.passTo = null; m.ballH = -1; m.ballSpeed = 0;
     if (m.pendingPass !== -1) { dbg('pass:out'); m.pendingPass = -1; }
     const state = m.state as number;
@@ -958,7 +979,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
           break;
         }
         case 'hold': p.action = 0x10; p.busy--; carrierMove(p, p.x, p.y, 0x10, false); break; // sub_70ec80 ikke læst – *estimeret*
-        case 'shoot': p.action = d.action ?? 0x16; shoot(p, d); break;
+        case 'shoot': p.action = d.action ?? 0x16; m.ballEvent = 6; shoot(p, d); break;          // 0x710e9d: +0x8eb1 = 6 før sub_700bd0
         case 'wouldShoot': break;
       }
     } finally { m.depth--; }

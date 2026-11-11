@@ -85,6 +85,11 @@ export interface Player {
   ref?: unknown;
   /** sub_6c38f0: positionsordet i angreb (0 = som pos) */
   posAttack?: number;
+  /** agitationens gulv 2·(25 − Temperament) (0x6eb0bd) – henfaldet i sub_6f4aa0 kræver det */
+  agFloor?: number;
+  /** +0xff ophidselses-tælleren og dens grundværdi trunc((trunc(motivation/2) + Dirtiness + 10)/4) (0x6ebcb6) */
+  temperCount?: number;
+  bffBase?: number;
 }
 export interface Attr { acceleration: number; anticipation: number; decisions: number; flair: number;
   jumping: number; marking: number; offTheBall: number; pace: number; positioning: number;
@@ -248,6 +253,7 @@ export function rollTick(p: Player, rand: Rand): void {
 export function playerTick(p: Player, rand: Rand): void {
   rollTick(p, rand);
   if (rand(11) !== 0) return;                                  // 0x6f55cb
+  if (p.temperCount !== undefined && p.bffBase !== undefined && p.temperCount > p.bffBase) p.temperCount--;   // +0xff henfalder mod grundværdien
   p.condition += p.pendingCond;                                // 0x6f5613
   p.pendingCond = p.pendingCond === 1 ? 0 : p.pendingCond * 0.5;
   if (p.injury > 50) p.condition -= Math.min(0.25 * (p.injury - 50) ** 1.25, 25); // 0x6f564e
@@ -326,6 +332,11 @@ export function canFollow(m: Match, mk: Player | null, x: number, y: number): bo
   if (!mk || (mk.x === x && mk.y === y) || mk.busy >= 2 || mk === m.carrier || mk === m.receiver) return false;
   if ((mk.tacticByte & 2 ? mk.roll.positioning : mk.roll.marking) === 0) return false;   // sub_6f4600
   return m.state === 0;
+}
+
+/** sub_6f4aa0's agitationsdel (sikker): ag = max(ag·0,85, gulv), loft 100 */
+export function agitationDecay(p: Player): void {
+  if (p.agFloor !== undefined) p.agitation = Math.min(Math.max(Math.fround(p.agitation * Math.fround(0.85)), p.agFloor), 100);
 }
 
 /** sub_6bd6b0: counter-attack flag (only for teams with 0x1000). */
@@ -727,7 +738,12 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
     if (m.state !== 0) { stoppage(m, rand); return true; }
   }
   // TODO sub_6cf750 stats, sub_6f4aa0 rating upkeep (busy-- is part of it):
-  for (const p of m.players) if (p.active && p.busy > 0) p.busy--;
+  // sub_6f4aa0 (delvis): busy tælles ned; agitationen henfalder ×0,85 mod gulvet (player-state-bytes.md §1, float32 0x96d364)
+  for (const p of m.players) {
+    if (!p.active) continue;
+    if (p.busy > 0) p.busy--;
+    agitationDecay(p);
+  }
   offsideLines(m);                                      // sub_6c3aa0
   m.order = buildOrder(m, rand);                        // sub_6bd760
   m.prio = null;
