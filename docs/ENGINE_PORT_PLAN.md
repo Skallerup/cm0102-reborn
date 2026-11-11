@@ -221,3 +221,16 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   holder linjen for dybt. **Næste:** test af optøjerne og måling; sub_6c54a0 (genstartens AI-skift/udskiftninger, læser også +0x1ad);
   behandlingen 0x6d0b60; kommentar-rand (sub_6d6f70 trækker rand(sum af vægte) kun ved > 1 variant, og sub_6d60b0 kan omskrive/sluge kommentarer
   med egne rand – vægtene står i events_eng.cfg); hvorfor forsvarslinjen står så dybt; dårlig dag-tærsklen (sub_53ce90, mentalleddet bl).
+- 2026-11-11 (den første Mac – overtaget her; `~/cm0102-engine` klonet, `regen.sh` kørt: 55 funktioner i hooks/) – **Offside-sporet indkredset
+  (ingen ændring i motoren):** grundlinjen gengivet (380 kampe frø 1: 2,87 mål, offside 1,09). (1) Originalens positionstabel er *ikke* for dyb:
+  442_default uden bold med bolden på række 6–8 stiller forsvarerne (plads 1–4) på række 3, og angriberne (plads 8–9) står med bold på række 10 –
+  tabellen lægger op til offsidestillinger. (2) Tælling i `defendOffBall` (60 kampe): når modstanderen har bolden, går forsvarerne efter deres
+  mand (`p.marks` fra `zonalPick`) i 45 % og til zonen i 53 % – en følger står altid på målsiden af manden, så han kan aldrig blive offside.
+  Kun offsidefælden (holdflag 0x400) får følgeren til at holde linjen (`hold`, 0x7153f9). (3) **Med fælden tvunget til for begge hold
+  stiger offside 1,29 → 5,10 pr. kamp (120 kampe; orakel 6,1–6,9)**, mål 2,99 → 3,38, skud 19,7 → 20,7, på mål 9,1 → 10,9. (4) Vores
+  computerhold spiller aldrig med fælden (`aitactics.ts`/`tactics.ts`: `offside: false`), og kun 1 af originalens 40 .pct-forudindstillinger
+  har 0x400 (343_default). (5) Computerens skift ved genstart `sub_6c54a0` sætter via 0x5b50d0 kun 0x20000/0x8000 (mentalitet), 0x800/0x1000
+  (kontra) og 0x2000/0x4000 (mænd bag bolden) – aldrig 0x400/0x200. **Næste:** find, hvor originalens computerhold får 0x400 før kampen
+  (taktikken bygges af 0x5b5d10/0x5fb810 – managerens præferencer i staff.dat's fjerde tabel ?), og om oraklets hold spiller med fælden;
+  derefter resten af sub_6c54a0 (taktikskift og udskiftninger).
+
