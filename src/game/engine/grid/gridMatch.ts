@@ -9,6 +9,7 @@ import { passOptions, type Helpers as PassHelpers, type MatchPlayer as PassPlaye
 import { SHOT, keeperBase, keeperValue, shotOutcome, shotScore, type Attrs as ShotAttrs } from './shot';
 import * as H from './helpers';
 import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, teamFlagsOf, type Table } from './tacticTable';
+import { aiPrematch, PREMATCH_ATTR_KEYS } from './aiPrematch';
 import { TEAM_FLAGS, cardWithoutVictim, decideFoulPunishment, isHardChallenge, judgeTackle, type JudgeResult, type MatchOfficial } from '../cm0102-original-rules';
 import { actionSkills, adjustMorale, getOppositionChallenge, inBoxAt, randS, type ChallengeOut } from './challenge';
 import { makePass, onPitch } from './pass';
@@ -44,6 +45,10 @@ export interface GridListener {
 export interface GridMatchCtx {
   /** begivenheder (adapteren) */
   on?: GridListener;
+  /** klubbernes omdømme i originalens skala (club +0x80, 0–10000) [hjemme, ude] – sub_6ddab0; mangler = 5000 (*estimeret*) */
+  rep?: [number, number];
+  /** turneringens type (fixture+0x37 → +0x3a; 1 og 9 = venskabskamp) – sub_6ddab0 */
+  compType?: number;
   /** computerstyret hold [hjemme, ude] (sub_6c54a0 retter kun computerens taktik ved dødbold); mangler = begge */
   ai?: [boolean, boolean];
   /** sub_85cba0's tilskuertal (engine+0x91d2/+0x91d6/+0x91da): i alt, hjemmeholdets og udeholdets tilhængere */
@@ -600,6 +605,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const compRep = ctx.compRep ?? GRID_UNKNOWN.compRep, final = ctx.final ?? false;
   const gp: GP[] = [];
   const maps: ReturnType<typeof mapTactic>[] = [];
+  const aiFlags: (number | undefined)[] = [undefined, undefined];
   teams.forEach((t, side) => {
     const ps = t.players instanceof Map ? t.players : new Map(t.players.map((p) => [p.id, p]));
     // originalens positionstabel: nærmeste forudindstilling (rolle/side, så placering) – tacticTable.ts
@@ -618,12 +624,29 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       g.w31 = derby ? -10 : 0;
       g.tbl = map.table; g.pslot = ps0; gp.push(g);
     });
+    // computerens taktik før kampen (sub_6ddab0, aiPrematch.ts – 99 % af originalens instruktioner i kampsporet): holdflag, individuelle
+    // instruktioner og masker pr. plads ud fra spillerne og managerens egenskaber. *estimeret*: ingen manager (world-filen har ikke
+    // managerens Attacking/Directness/Offside/Pressing endnu → originalens "uden manager"-gren), omdømmet fra ctx.rep. Positionstabellen
+    // bliver forudindstillingens (0x5b2ba0 ændrer kun maskerne).
+    if (!ctx.ai || ctx.ai[side]) {
+      const sideG = gp.filter((g) => g.side === side);
+      const at = (p: Player, n: number) => p.attrs[ATTRS.indexOf(PREMATCH_ATTR_KEYS[n] as never)] || 10;
+      const res = aiPrematch({
+        flags: map.flags, lo: map.lo, hi: map.hi, masks: map.masks, masks2: map.masks2,
+        players: sideG.map((g) => ({ slot: g.pslot, recId: g.src.id, condition: g.condition, b24: 0, attr: (n: number) => at(g.src, n),
+          raw: { dm: g.src.pos[3], m: g.src.pos[4], am: g.src.pos[5], f: g.src.pos[6], right: g.src.side[2], left: g.src.side[0], central: g.src.side[1], freeRole: 1,
+            jumping: at(g.src, 17), technique: at(g.src, 30), stamina: at(g.src, 26), workRate: at(g.src, 31) } })),
+        manager: null, ownRep: ctx.rep?.[side] ?? 5000, oppRep: ctx.rep?.[1 - side] ?? 5000, b19: false, compType: ctx.compType ?? 0, homeTeam: side === 0,
+      }, rand);
+      for (const g of sideG) { g.instr = res.instr[g.pslot]; g.pos = res.masks[g.pslot]; g.posAttack = res.masks2[g.pslot]; }
+      aiFlags[side] = res.teamFlags;
+    }
   });
   const m: GridMatchState = {
     players: gp, gp, ballX: 4, ballY: 6, ballH: -1, ballSpeed: 0, ballDir: 0, lastTouch: 0, poss: 0, state: 8, shootout: 0, clock: 0, stoppage: 0, subTick: 0,
     paused: false, carrier: null, receiver: null, chaser: [null, null], keeperOut: [false, false], lineSide1: 11, lineSide0: 0, counterFlag: [false, false],
     // holdflaget +0x584 kopieres uændret ind ved kampstart (0x6db8a2): forudindstillingens ord med vores holdinstruktioner (tacticTable.ts)
-    teamFlags: [teamFlagsOf(home.tactic.team, maps[0].flags), teamFlagsOf(away.tactic.team, maps[1].flags)],
+    teamFlags: [aiFlags[0] ?? teamFlagsOf(home.tactic.team, maps[0].flags), aiFlags[1] ?? teamFlagsOf(away.tactic.team, maps[1].flags)],
     aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
     tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
     stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null, ballEvent: 0, inc: null, knocks: 0, b8eb5: 0,

@@ -298,4 +298,11 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   (orig 51/23/26) · skud 19,9 · på mål 9,8 · hjørner 4,9 · offside 1,95** · gule 1,43/røde 0,07. Med 4-4-2-forudindstilling: 3,73 mål.
   **Næste:** sub_6ddab0's ændringer af hi-ordet pr. spiller (0xa → 0x5/0x6/0x9 m.m.; 15 kald af 0x5b5290 ud fra spilleregenskaber 0x5431e0),
   computerens forudindstillingsvalg 0x6e0230 (forsvaret står en række for dybt med det kanoniske gitter), 0x6df460 (tilstand 1–5), offside.
+- 2026-11-11 – **sub_6ddab0 porteret (aiPrematch.ts, underagent):** computerens holdflag, individuelle instruktioner og masker pr. plads før
+  kampen; testet mod kampsporets I-linjer (trace4, 41 hold): lo 449/451 (99,6 %), hi 448/451 (99,3 %), holdflag 39/41 – noten
+  `~/cm0102-engine/notes/6ddab0-ai-prematch.md`. NB: oraklet kører den almindelige 3.9.60 (ikke Swedish_fixed), og spillet omnummererer klubber
+  og stab i hukommelsen. Koblet ind i `createGridMatch` for computerhold (efter hvert holds opstilling, før side 1 – originalens rand-rækkefølge):
+  *estimeret* ingen manager (world-filen mangler managerens egenskaber), omdømme fra `ctx.rep` (standard 5000), `compType` fra ctx. 380 kampe
+  frø 1: 3,22 mål · 52/21/27 · skud 19,9 · på mål 9,9 · hjørner 4,9 · offside 1,81. Mangler: taktikvalget 0x6e0230 (mange hold er stadig på det
+  kanoniske gitter), managerdata i world-filen.
 
