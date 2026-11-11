@@ -45,6 +45,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | Originalen | 2,87 | 51/23/26 | 17,2 | 10,3 | 5,0 | ~16 | 7,4 | 1,70/0,14 |
 | Gittermotoren før porten (10/11, frø 1) | 3,74 | 50/16/34 | 14,9 | 7,0 | 4,1 | 17,6 | 4,5 | 1,19/0,05 |
 | + syn/bane/plads/frit løb/offside/retning/afstand (11/11) | 2,63 | 45/27/27 | 9,6 | 5,3 | 2,6 | 18,1 | 0,3 | 1,22/0,06 |
+| + taktisk felt fra originalens positionstabeller (11/11) | 2,68 | 49/26/24 | 8,8 | 5,1 | 2,4 | 24,8 | 0,7 | 1,74/0,12 |
 
 ## Log
 
@@ -57,3 +58,11 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   stadig estimerede løbemål og taktiske felter, så angriberne står sjældent forbi linjen – tallene vurderes først, når
   tacticalCell (tabellerne er nu fundet) og runTarget er porteret. Afkodet samme dag: tabeludvidelsen 0x5b7160, indlæg/blokering/
   modtagelse, dommer og skytter.
+- 2026-11-11 – **Porteret (sikker):** det taktiske felt `tacticalCell` (0x6c2be0) og opstillingen ved død bold `formationCell`
+  (0x6c2a40) slår op i taktikkens positionstabel; søjledriften 0x715f50 køres efter hvert opslag. Tabellen bygges som 0x5b7160 af
+  de 17 forudindstillede taktikfilers grove gitre (`grid/presetTactics.ts`, genereret af `~/cm0102-engine/tools/gen_presets_ts.py`;
+  TS-udvidelsen = afkoderens Python-tabeller for alle 17 × 2 sider). *Estimeret:* spillets taktik kortlægges til nærmeste
+  forudindstilling (rolle/side, så placering; ungarsk tildeling i `grid/tacticTable.ts`) – originalen genberegner gitteret for
+  flyttede pladser (0x5b3560/0x5b7e60, ikke afkodet); boldhændelsen +0x8eb1 er ikke modelleret. tests/tacticTable.test.ts.
+  Næste: runTarget (0x6bce80) – angribernes løb forbi linjen mangler (skud 8,8, offside 0,7), og udfordringen (0x6f09f0;
+  frispark 24,8).

@@ -119,12 +119,13 @@ export function blockersOnLine(defenders: MatchPlayer[], x0: number, y0: number,
 }
 
 // ------------------------------------------------------------------ sub_715f50 tactical column drift
-export function tacticalColumn(p: MatchPlayer, x: number, r: PosRatings, rng?: () => number): number {
+export function tacticalColumn(p: MatchPlayer, x: number, r: PosRatings, rng?: () => number, rnd?: (n: number) => number): number {
+  const R = rnd ?? ((n: number) => rand(n, rng));
   if (p.pos & POS.GK) return x;
-  if (2 * p.rolls.b10a >= rand(21, rng)) return x;                                  // 0x715f7a
-  const left = !(p.pos & POS.LEFT) && rand(r.l, rng) > rand(41, rng) ? (p.side ? 7 : 1) : x;
-  const mid = !(p.pos & (POS.LEFT_CENTRE | POS.CENTRE | POS.RIGHT_CENTRE)) && rand(r.c, rng) > rand(41, rng) ? 4 : x;
-  const right = !(p.pos & POS.RIGHT) && rand(r.r, rng) > rand(41, rng) ? (p.side ? 1 : 7) : x;
+  if (2 * p.rolls.b10a >= R(21)) return x;                                          // 0x715f7a
+  const left = !(p.pos & POS.LEFT) && R(r.l) > R(41) ? (p.side ? 7 : 1) : x;
+  const mid = !(p.pos & (POS.LEFT_CENTRE | POS.CENTRE | POS.RIGHT_CENTRE)) && R(r.c) > R(41) ? 4 : x;
+  const right = !(p.pos & POS.RIGHT) && R(r.r) > R(41) ? (p.side ? 1 : 7) : x;
   return Math.trunc((left + mid + right) / 3);                                     // imul 0x55555556
 }
 

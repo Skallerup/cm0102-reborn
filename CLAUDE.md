@@ -78,6 +78,7 @@ og læg ændringen i samme push.
 - Rullemenuer i en kolonne, der kan rulle, skal bruge `CxDrop fixed`, ellers skæres de af.
 
 ## Udgivelseslog (nyeste først)
+- 2026-11-11 – (staging) Motorporten: det taktiske felt slår nu op i originalens positionstabeller (de 17 forudindstillede taktikfilers gitre i `grid/presetTactics.ts`, udvidelsen 0x5b7160 i `grid/tacticTable.ts`; spillets taktik → nærmeste forudindstilling, *estimeret*). 380 kampe: 2,68 mål, 49/26/24, kort 1,74/0,12; skud 8,8 og offside 0,7 for lavt (runTarget mangler).
 - 2026-11-11 – (staging) Motorporten, første porte i gittermotoren (ikke koblet ind i spillet): syn/bane, plads foran, frit løb, offside ved afleveringer, retning (ftol) og afstandstabel som originalen (docs/ENGINE_PORT_PLAN.md). Afkodet: positionstabellerne fra taktikfilerne (0x5b7160; `~/cm0102-engine/notes/pct-tables.json`), indlæg/blokering, dommer/skytter. NB: fuld vitest under høj maskinbelastning giver 5 s-tidsgrænser i økonomi-/databasetestene – de består alene.
 - 2026-11-11 – Skudt live (staging → main): v0.24.0 (Sort By skifter kolonnen, brugerønske #8) + motorportens plan (docs).
 - 2026-11-11 – (staging) v0.24.0. Brugerønske #8 (aaa, "Few suggestions"): klassisk trup – Sort By skifter også infokolonnen til det sorterede (`viewForSort` i SquadClassic.tsx: kondition, værdi, moral, alder, form, løn, udløb, mål …; Int Goals → Caps; Navn/Udtagelse uændret), både egen trup og andre klubbers/landshold. View kan stadig vælges bagefter. e2e: "Sort By Condition viser konditionen".
