@@ -311,4 +311,17 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   mistanke: publikumsbytene (r ×(1 − 0,07·crowd[side])) eller styrken. Næste: sammenlign inputtene med aimode-sporene, så kobles den ind
   (opskriften står i agentens rapport: begge sider ved hver dødbold, tidsspild i 3/4, tilstandsreglerne for computerhold).
   Stadig i gang ved afbrydelsen: taktikvalget 0x6e0230 (aiTacticChoice.ts) og udskiftningerne (subs.ts) – ikke committet.
+- 2026-11-11 – **0x6df460 koblet ind bag `GRID_UNKNOWN.aiMode` (fra):** begge sider ved hver dødbold, før-kamp-kaldet, tidsspild i 3/4,
+  "uden mgr"-reglerne. Publikumsbytene: adapteren sender intet tilskuertal, så standarden blev 17 % udebanetilhængere (byte 2–3 som sporene;
+  før 8 % → byte 5, og udeholdet stod i tilstand 3–4). Med tilstanden: 58/22/20 (orig 51/23/26) – porten får bolden for sjældent ind i
+  hjemmeholdets tredjedel (række ≤ 3: 18,5 % af tikkene mod originalens 27,2 %; 4–7: 59,1/50,2; ≥ 8: 22,5/22,6), og tilstanden forstærker det
+  gennem territoriet Q. Uden tilstanden (standard): 2,98 mål · 50/21/29. **Næste:** find hvorfor udeholdet sjældent når hjemmeholdets tredjedel
+  (hjemmebanens bytes, motivationen, passOptions?) med sporet.
+- 2026-11-11 – **Udskiftninger porteret (subs.ts, underagent):** 0x6c54a0's port, genvalget 0x6e1090 (MSVC-qsort), 0x6e2000, omrokeringen
+  0x6e1aa0, 0x6d0b60 (skadede), 0x6cdd50, 0x6cda20 (rødt kort) – styringen som originalen i alle sporets kald (subs2, 160 kampe); spillerens
+  øjebliksværdi 0x6e2f20 delvist (*estimeret* `estimatedQuality`, samme indskiftning i 77 %). Noten `notes/6d0b60-substitutions.md` har
+  koblingsopskriften (bænken som GP'er i createGridMatch, dødboldskrogen, treatInjured, rødt kort). **Ikke koblet ind endnu.**
+- 2026-11-11 – **0x6e0230 porteret (aiTacticChoice.ts, underagent):** 109/157 (69 %) præcist, 137/157 top 3 mod sporet. Originalen vælger
+  mellem 45 forudindstillinger (17 + 28 CM3_TACTICS); de 28 mangler i presetTactics.ts; managerens yndlingsformation (stab +0x43) m.fl. mangler i
+  world-filen. **Ikke koblet ind endnu.**
 

@@ -67,8 +67,10 @@ export interface GateInput {
   /** computeren vælger for holdet: managerposten (hold+0x1b) er ikke et menneske, eller mennesket har en assistent (+0x19) og det er
    *  ikke et landshold (0x53b900) og 0x5fd480(manager) = 0. Ellers trækkes intet. */
   aiControlled: boolean;
-  /** engine+0x8ed0 */
+  /** engine+0x8ed0 nu (efter evt. tillægstid lagt til i sub_6c54a0 0x6c5727) */
   clock: number;
+  /** engine+0x8ed0 ved indgangen til sub_6c54a0 – minuttet læses der (0x6c55b5); standard = clock */
+  entryClock?: number;
   /** engine+0x8ecc+2·side: uret ved holdets seneste genvalg (0 ved kampstart – kun init_match rører det ?) */
   lastChange: number;
 }
@@ -78,7 +80,7 @@ export interface GateInput {
 export function deadBallGate(rand: Rand, g: GateInput): boolean {
   if (!g.aiControlled) return false;
   const r = rand(50) + 10;
-  const minute = (Math.trunc(g.clock / 11) << 24) >> 24;            // bl = byte [esp+0x24]
+  const minute = (Math.trunc((g.entryClock ?? g.clock) / 11) << 24) >> 24;   // bl = byte [esp+0x24]
   return minute > r && g.clock - g.lastChange > 0x37;
 }
 
@@ -129,7 +131,7 @@ export function msvcQsort<T>(a: T[], cmp: (x: T, y: T) => number): void {
 export type PosFlagsOf = (p: SubPlayer) => number;
 
 const ftol = (x: number) => Math.trunc(x);                         // 0x945640 (_ftol, trunkering)
-const key = (p: SubPlayer) => ftol(Math.fround(p.rating + Math.fround(p.condition)));   // fild word +0x35; fadd dword +0x4d
+const key = (p: SubPlayer) => ftol(p.rating + Math.fround(p.condition));   // fild word +0x35; fadd dword +0x4d (x87, ingen afrunding)
 
 /** 0x6e0fe0 (n ≥ 11): −2-spillere først; en ikke-målmand (GK-evne < 20) på målmandspladsen først; ellers stigende
  *  int(+0x35 + +0x4d) – de svageste først. (sikker) */
@@ -303,7 +305,7 @@ export function positionFactor(r: PositionRecord, pos: number, att: number, flag
   else { e += roleValue(r, pos, nat, false); if (other) b = roleValue(r, att, nat, true); }
   if (flags & 0x200) return e + 100;
   e += sideValue(r, pos);
-  if (other) return tdiv(b + 2 * e, 3);
+  if (other) return tdiv(b + sideValue(r, att) + 2 * e, 3);           // 0x6e3604: (ebp + 2·edi)/3
   return e;
 }
 /** Slutningen af sub_6e2f20 (0x6e611d): værdien = P·s, når P ≥ 0 og s ≥ 1; s + P når s < 1; (500 − s)·P når P < 0; flag == 0x800 → P.
@@ -333,6 +335,8 @@ export interface QualityInput {
   teamFlags: number;
   /** a15 (landsholdsliste) ≠ 0: statusbonus × 0,25 – 0 i kampen */
   nationalList?: boolean;
+  /** staff+0x39 == klubben (altid i en klubkamp): s = max(s + 5, 1,05·s) før ×P. Standard sand. */
+  ownClub?: boolean;
 }
 export interface QualityContext {
   clock: number;
@@ -367,15 +371,15 @@ export function ratingTerm(p: SubPlayer, ctx: QualityContext): number {
  *  Returnerer { add } eller { final }. −2-spillere: final −1000000. (sikker) */
 export function conditionTerm(p: SubPlayer, q: QualityInput, ctx: QualityContext, P: number): { add: number } | { final: number } {
   if (p.slot === -2) return { final: -1000000 };                         // 0x6e50ca
-  let c = ftol(Math.fround(Math.fround(p.pendingCondition * 2) + p.condition));
+  let c = ftol(2 * Math.fround(p.pendingCondition) + Math.fround(p.condition));   // fld +0x59; fadd st0; fadd +0x4d (x87)
   if (ctx.periodEnd === 495) c = Math.min(c + 1500, 10000);
-  if (q.dbFitness > 1000) c += 500 - q.dbFitness;
+  if (!(q.flags & 0x200000) && q.dbFitness > 1000) c += 500 - q.dbFitness;
   if (c < 5750) {
     const v = c + 20 * (5 * P - 1250);
     return { final: c >= 3500 ? v : v - 500000 };
   }
   if (q.instrLo & 0x8000 || (q.instrLo & 0x2000 && q.teamFlags & 0x100)) c = ftol(c * 0.0001 * c);   // 0x96a5c0
-  return { add: c < 9000 ? tdiv(3 * c, 100) - 280 : -tdiv(10000 - c, 100) };
+  return { add: c < 9000 ? tdiv(3 * c, 100) - 280 : 0 - tdiv(10000 - c, 100) };
 }
 
 /** Kvaliteten s og den samlede værdi for et kald under kampen: gennemsnittet af de statiske led + ratingTerm (flag 0x1), over 150
@@ -398,6 +402,7 @@ export function selectionScore(p: SubPlayer, r: PositionRecord, pos: number, att
     if (q.nationalList) b = ftol(b * 0.25);
     s += b;
   }
+  if (q.ownClub ?? true) s = ftol(Math.max(s + 5, s * 1.05));          // 0x6e60d2: staff+0x39 == klubben (0x9689b8)
   return combineScore(P, s, q.flags);
 }
 
@@ -566,15 +571,21 @@ export function rearrange(inp: RearrangeInput): { players: SubPlayer[]; moved: S
   return { players, moved };
 }
 
-// ---------------------------------------------------------------- sub_6cdd50: keeperen forlader banen
+// ---------------------------------------------------------------- sub_6cdd50: en spiller forlader banen
 
-/** sub_6cdd50 0x6cdf3b (mode ≠ −1 og spilleren er holdets keeper, eller mode −3, og computeren vælger): den markspiller på banen med
- *  højest værdi går i mål – F 70000, AM 50000, M 15000, ellers −5000, +5000 med side R/L (0x80/0x800); efter den første springes GK/D/SW
- *  over (sic). Han får keeperens plads (hans egen bliver tom). Returnerer ham (null = ingen). (sikker) */
-export function emergencyKeeper(players: SubPlayer[], leaving: SubPlayer, posOf: PosFlagsOf): SubPlayer | null {
+/** sub_6cdd50(p, mode) fjerner p fra cellelisterne og markeringerne. Med mode ≠ −1 udfyldes hans plads af en markspiller, når
+ *  (mode == −3 – udvist – eller p er holdets keeper +0xf59e/+0xf5a2), p's plads ikke er F/AM (0x40/0x20) og computeren vælger:
+ *  den spiller på banen (ikke p) med højest værdi – F 70000, AM 50000, M 15000, ellers −5000, +5000 med side R/L (0x80/0x800); efter den
+ *  første kandidat springes GK/D/SW over (sic) – får p's plads (hans egen bliver tom); var p keeper (pos 1), bliver han holdets keeper.
+ *  Returnerer ham (null = ingen/ikke relevant). mode: −1 (genvalg følger), −2 (skadet, ingen udskiftninger), 0 (udvist og behandlet),
+ *  −3 (udvist, sub_6cda20). (sikker) */
+export function fillVacatedSlot(players: SubPlayer[], leaving: SubPlayer, mode: number, isKeeper: boolean, aiControlled: boolean, posOf: PosFlagsOf): SubPlayer | null {
+  if (mode === -1 || !(mode === -3 || isKeeper) || !aiControlled) return null;
+  const own = posOf(leaving);
+  if (own & 0x40 || own & 0x20) return null;
   let best: SubPlayer | null = null, bestV = -10000;
   for (const q of players) {
-    if (q.slot < 0 || q === leaving || q.id === leaving.id) continue;
+    if (q.slot < 0 || q.id === leaving.id) continue;
     const f = posOf(q);
     if (best && (f & 1 || f & 4 || f & 2)) continue;
     let v = f & 0x40 ? 70000 : f & 0x20 ? 50000 : f & 0x10 ? 15000 : -5000;

@@ -10,6 +10,7 @@ import { SHOT, keeperBase, keeperValue, shotOutcome, shotScore, type Attrs as Sh
 import * as H from './helpers';
 import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, teamFlagsOf, type Table } from './tacticTable';
 import { aiPrematch, PREMATCH_ATTR_KEYS } from './aiPrematch';
+import { aiMode as aiModeOf, teamStrength, type AiModeInput } from './aiMode';
 import { TEAM_FLAGS, cardWithoutVictim, decideFoulPunishment, isHardChallenge, judgeTackle, type JudgeResult, type MatchOfficial } from '../cm0102-original-rules';
 import { actionSkills, adjustMorale, getOppositionChallenge, inBoxAt, randS, type ChallengeOut } from './challenge';
 import { makePass, onPitch } from './pass';
@@ -49,6 +50,8 @@ export interface GridMatchCtx {
   rep?: [number, number];
   /** turneringens type (fixture+0x37 → +0x3a; 1 og 9 = venskabskamp) – sub_6ddab0 */
   compType?: number;
+  /** kampen er en ligakamp mellem to hold i samme række (aiMode: sameDivision/compLink) – standard true; derby = rivaler */
+  league?: boolean;
   /** computerstyret hold [hjemme, ude] (sub_6c54a0 retter kun computerens taktik ved dødbold); mangler = begge */
   ai?: [boolean, boolean];
   /** sub_85cba0's tilskuertal (engine+0x91d2/+0x91d6/+0x91da): i alt, hjemmeholdets og udeholdets tilhængere */
@@ -498,7 +501,10 @@ export const GRID_UNKNOWN = {
   capacity: 40000,
   /** sub_85cba0 (tilskuertallet, uden for motoren – ikke porteret): i alt = oraklets snit for Premier League 2001/02 (35.428, frø 1);
    *  udeholdets tilhængere 8 % *estimeret*. Bruges, når GridMatchCtx.crowd mangler. */
-  crowd: { total: 35428, home: 32594, away: 2834 },
+  /** 0x6df460 (aiMode.ts) kobles ind: computerens tilstand 1–5 pr. dødbold. Slået fra, indtil territoriet passer (porten får bolden for
+   *  sjældent ind i hjemmeholdets tredjedel: 18,5 % mod originalens 27,2 % – med tilstanden 56/25/19 i stedet for 51/23/26) */
+  aiMode: false,
+  crowd: { total: 35428, home: 29400, away: 6028 },   // *estimeret*: 17 % udebanetilhængere giver publikumsbyte 2–3 som kampsporene (aimode*.txt: oftest 1–4); sub_85cba0 ikke porteret
   /** comp+0x69: English Premier Division = 18 (club_comp.dat 3.9.60, sikker for Premier League) */
   compRep: 18,
   /** sub_6ea760: dommerpostens byte +0x29 ([official+4]+0x29 – samme post som +0x24/+0x25/+0x28, ikke en separat linjevogter):
@@ -774,18 +780,44 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
    *  kontra nej, MBB nej). Tilstand 2–5: alle spillere får instruktionen 0x400000 (gruppen 0xc00000 – fremadløbet 0x800000 slås fra);
    *  bekræftet i kampsporet: originalens instruktioner i hukommelsen har 0x400000, .pct-filerne 0x800000. Tidsspild (3/4) og omlægningen
    *  0x6e1090 er ikke med. */
-  const retuned = [false, false];
+  // computerens tilstand (0x6df460, aiMode.ts – 249.606 af 249.607 kald som originalen i kampsporene). *estimeret*: styrken = spillernes CA
+  // (originalen: managerens opfattede evne 0x6e86d0, i snit ~100 under CA summeret over 11 – begge hold), ingen ligatabel/manager i ctx,
+  // kamptypen 33 (som næsten alle ligakampe i sporet).
+  const aiR: [number, number] = [-1000, -1000];
+  const territory: [number, number, number] = [0, 0, 0];
+  const modeInput = (s: Side, inMatch: boolean): AiModeInput => {
+    const strength = (side: Side) => inMatch ? teamStrength(gp.filter((q) => q.side === side && q.active).map((q) => q.src.ca)) : (ctx.rep?.[side] ?? 5000);
+    return {
+      side: s, inMatch, strength: [strength(0), strength(1)], rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], territory: [...territory] as [number, number, number],
+      clock: m.clock, periodEnd: m.period === 0 ? 495 : 990, crowd: [sideByte[0], sideByte[1]], goals: [m.goals[0], m.goals[1]], firstLeg: null,
+      fixtureFlags: 0, fixtureKind: ctx.league === false ? 0 : 33, onPitch: [gp.filter((q) => q.side === 0 && q.active).length, gp.filter((q) => q.side === 1 && q.active).length],
+      sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: null, mgrAttacking: null, rivals: !!ctx.derby, prevMode: m.aiMode[s], prevR: aiR[s],
+    };
+  };
+  const preMatchMode = () => { if (!GRID_UNKNOWN.aiMode) return; for (const s of [0, 1] as Side[]) { const r = aiModeOf(modeInput(s, false)); aiR[s] = r.r; m.aiMode[s] = r.mode; } };
+  /** sub_6c54a0 §5 (notes/team-flags.md, 6df460-ai-mode.md; ved hver dødbold): tilstanden for BEGGE hold (løkken har ingen AI-test), tidsspild for
+   *  holdet med bolden i tilstand 3/4, og for computerhold ved skift (eller i første minut) holdflag og instruktioner. Uden manager: originalens
+   *  "uden mgr"-regler (1 → angreb hvis okAtt, 2 → normal, 3 → defensiv + kontra, 4 → defensiv + MBB, 5 → normal + kontra); tilstand 2–5: alle
+   *  0x400000. Ikke porteret: 0x6d10a0's fremadløb i tilstand 1, omlægningen 0x6e1090. */
   const aiRetune = () => {
+    if (m.state === 5 || m.paused) return;
+    const changed = [false, false];
     for (const s of [0, 1] as Side[]) {
-      if (ctx.ai && !ctx.ai[s]) continue;
-      const mode = 2;
-      const changed = mode !== m.aiMode[s] || m.clock <= 1 || !retuned[s];
-      if (!changed) continue;
-      m.aiMode[s] = mode; retuned[s] = true;
+      if (!GRID_UNKNOWN.aiMode) { changed[s] = m.clock <= 1 || m.aiMode[s] !== 2; m.aiMode[s] = 2; continue; }   // uden 0x6df460: altid normal
+      const r = aiModeOf(modeInput(s, true));
+      changed[s] = r.mode !== m.aiMode[s] || m.clock <= 1;
+      aiR[s] = r.r; m.aiMode[s] = r.mode;
+    }
+    if (GRID_UNKNOWN.aiMode && (m.poss === 0 || m.poss === 1)) { const mo = m.aiMode[m.poss]; if (mo === 3 || mo === 4) { const r = rand(10); m.clock += r; m.stoppage += rand(Math.trunc(r / 2)); } }
+    for (const s of [0, 1] as Side[]) {
+      if ((ctx.ai && !ctx.ai[s]) || !changed[s]) continue;
+      const mode = m.aiMode[s];
+      const okAtt = !['3-4-3', '3-5-2 Attacking'].includes(maps[s].preset?.name ?? '');
+      const ment = mode === 1 ? (okAtt ? 0x10000 : 0x20000) : mode === 3 || mode === 4 ? 0x8000 : 0x20000;
       let f = m.teamFlags[s];
-      f = setTeamOption(f, 0x20000); f = setTeamOption(f, 0x800); f = setTeamOption(f, 0x2000);   // normal, kontra nej, MBB nej
+      f = setTeamOption(f, ment); f = setTeamOption(f, mode === 3 || mode === 5 ? 0x1000 : 0x800); f = setTeamOption(f, mode === 4 ? 0x4000 : 0x2000);
       m.teamFlags[s] = f;
-      for (const q of gp) if (q.side === s) q.instr = (q.instr & ~0xc00000n) | 0x400000n;
+      if (mode >= 2) for (const q of gp) if (q.side === s) q.instr = (q.instr & ~0xc00000n) | 0x400000n;
     }
   };
   /** markers_follow (sub_6f09f0 0x6f0a76/0x6f0c07/0x6f3bf9, sub_7103e0 0x710612; sikker): hver markør, der må følge (sub_6bce20), og som
@@ -1475,6 +1507,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     } finally { m.depth--; }
   }
 
+  preMatchMode();
   kickoffPositions(rand(2) as Side);
   let guard = 0, finished = false;
   const finish = () => {
@@ -1490,6 +1523,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     if (guard++ >= 2000) { finish(); return false; }
     if (dbgOn) dbg('state' + m.state + (m.carrier ? 'C' : '') + (m.receiver ? 'R' : ''));
     if (!L.tick(m, rand, hooks)) { finish(); return false; }
+    // 0x6cf750 (hvert tik): territoriet – bolden i række ≤ 3 / 4..7 / ≥ 8 (side 0's mål ved række 0), kun når nogen har bolden *estimeret* placering
+    if (m.state === 0 && m.poss !== -1) territory[m.ballY <= 3 ? 0 : m.ballY < 8 ? 1 : 2]++;
     if (dbgOn && (m.poss === 0 || m.poss === 1)) {                                           // fejlsøgning: angribernes afstand til linjen
       const s = m.poss as Side, Lr = s === 0 ? m.lineSide1 : m.lineSide0;
       let best = -9; for (const q of gp) if (q.active && q.side === s && !q.isKeeper) best = Math.max(best, s === 0 ? q.y - Lr : Lr - q.y);
