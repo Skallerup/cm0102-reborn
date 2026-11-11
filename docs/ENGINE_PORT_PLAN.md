@@ -27,12 +27,12 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | `canSee`/lane | 0x6f9f90 + 0x6cbc00 | 137 + 371 | ✓ porteret 11/11 |
 | `spaceAhead`, `freeRun` | 0x6cbad0, 0x6cb780 | 89, 135 | afkodet – `freeRun` giver aldrig 1 for markspillere (egen løkke tæller spilleren selv) |
 | offside-udvalg/linjevogter | 0x6cfd70 → 0x6ea760 | 11 + 184 | afkodet – rækkereglerne = `offsideFlag`; også ved skud (skytten som `excl`) |
-| `challenge` (duel/dribling/forseelse) | 0x6f09f0 | 4.489 | afkodes |
-| `preShot` | 0x6c87e0 | 1.390 | afkodes |
+| `challenge` (duel/dribling/forseelse) | 0x6f09f0 | 4.489 | ✓ porteret 11/11 – boldholderens del (`carrierMove` i gridMatch.ts); knock-tjek, kommentarer, skridtets konditionstab og banens byte ikke med |
+| `preShot` → udfordringen | 0x6c87e0 + 0x70d690 + 0x6eecb0 (evnerne) | 1.390 + … | ✓ porteret 11/11 (`grid/challenge.ts`); kaldt fra skridtet (0xf/0x11/0x12), skuddet (0x6d) og afleveringens kilde (0x6c) |
 | `passResult`/`contestP` (afleveringen) | 0x6fad40 | 6.876 | venter |
 | indlæg: landing, blokering, loftet, modtagelse | 0x6c9cd0, 0x70dfd0, 0x6fa490, 0x6f6c00 | 1.872, 986, 678, 4.036 | afkodet (notes/crosses-blocks.md) – afbøjning findes ikke i 3.9.68 |
-| `pickTaker` | 0x6ceb90 | 832 | afkodet (notes/referee-taker.md) |
-| dommer: tackling, kort | 0x6e9820, 0x6ea4e0 | 941, 184 | afkodet – `FOUL_FK_CAP` er et gulv, `cardFor(professional)` er vendt om |
+| `pickTaker` | 0x6ceb90 | 832 | ✓ porteret 11/11 (én taktik-skytte pr. kategori; alder/omdømme "?") |
+| dommer: tackling, kort | 0x6e9820, 0x6ea4e0 | 941, 184 | ✓ porteret 11/11 (`judgeTackle`/`decideFoulPunishment` i cm0102-original-rules.ts); gulvet `FOUL_FK_FLOOR` og `cardFor(professional)` rettet |
 | taktikkens positionstabel | 0x5b5d10 (loader) + 0x5b7160 | 862 + 173 | afkodet (notes/5b7160-tactic-table.md); tabellerne for de 40 `.pct`-filer i `notes/pct-tables.json` |
 | skud (sikker, allerede porteret) | 0x702050, 0x700bd0, 0x700420 | 10.263, 1.572, 539 | ✓ |
 | boldholderens valg, afleveringsmuligheder, kampværdier, rul | 0x7109f0, 0x6c6a30, 0x6ec010, 0x6f44a0 | ✓ (GRID_ENGINE.md) |
@@ -47,6 +47,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | + syn/bane/plads/frit løb/offside/retning/afstand (11/11) | 2,63 | 45/27/27 | 9,6 | 5,3 | 2,6 | 18,1 | 0,3 | 1,22/0,06 |
 | + taktisk felt fra originalens positionstabeller (11/11) | 2,68 | 49/26/24 | 8,8 | 5,1 | 2,4 | 24,8 | 0,7 | 1,74/0,12 |
 | + løbemål 0x6bce80 (11/11) | 2,79 | 46/25/29 | 8,7 | 5,3 | 2,5 | 21,3 | 0,7 | 1,45/0,08 |
+| + udfordringen 0x6f09f0/0x6c87e0 og dommeren 0x6e9820/0x6ea4e0 (11/11) | 6,58 | 59/13/28 | 44,2 | 25,2 | 15,3 | 0,7 | 0,9 | 0,23/0,01 |
 
 ## Log
 
@@ -72,3 +73,20 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   fra [esp+0x68] er ikke afkodet → 0). Måling af offside-kæden (60 kampe): 261 vurderinger/kamp, 126 er ikke fremad, 121 når ikke
   linjen, 14 når linjen, 3,6 flages, 0,75 dømmes; kun 1,4 gange pr. kamp står en angriber forbi linjen. Linjen (0x6c3aa0) og
   rækkereglerne er originalens – det, der mangler, er afleveringens udførelse/modtagelse (0x6fad40/0x6f6c00) og udfordringen.
+- 2026-11-11 – **Porteret (sikker):** udfordringen – `grid/challenge.ts`: handlingsevnerne +0x11a (0x6eecb0), `getOppositionChallenge`
+  (0x6c87e0: kun modstandere i boldens felt, multiplikator, gå-ind-rul pr. handling, klar chance, styrkerul, typevalg), værdien og
+  ventetiderne (0x70d690), konditionstabet (0x6f56c0) og moralen (0x7172d0); boldholderens skridt `carrierMove` (0x6f09f0 fra 0x6f0ccf:
+  V_c mod V_d, KEEPS/LOST/WIN, momentum, karakterer, FOUL-grenen) og skuddets udfordring (0x702050 0x70244e–: handling 0x6d, dommeren når
+  V_d ≥ momentum, udfordreren vinder når S ≤ V_d) samt afleveringens kildeduel (0x6fad40 §5, handling 0x6c). Dommeren `judgeTackle`
+  (0x6e9820) og `decideFoulPunishment` (0x6ea4e0) helt efter noten; `foulGiven` har nu gulvet 50/100, `cardFor(professional)` er rettet
+  (MatchSim kalder den ikke professionelt – uændret), `cardSeverity` er MatchSims forenklede form og er ikke ændret. `pickTaker` (0x6ceb90).
+  Udgået: `challenge`/`tackleP`/`foulP`/`runChallengeP`/`preShotP`/`preShotReach`/`cardShare` og duellen, når en forsvarer går ind i
+  boldholderens felt (findes ikke i originalen). Rettelse til noten: boks-kommentaren ved WIN kræver hård type, hurt eller rand(w31) < −10
+  (0x6f1f39 – noten havde ≥). *Estimeret/udeladt:* holdebolden 0x10 (0x70ec80 ikke læst – afgøres som move_to uden skridt), den løse bold
+  0x6cd770 (bliver i feltet), afleveringens værdi V i kildeduellen, knock-tjekket 0x6cfe10, fordelsreglen 0x6bb9a0, kommentarernes rand,
+  ukendte bytes (+0xff, +0x1d, +0x31, agitation) = 0, dommerens bytes +0x24/+0x27/+0x28 = 10. Fundet: 0x6f55c0 lader kun +0xff falde mod
+  (b100/2 + Dirtiness + 10)/4 pr. minut – startværdien er ukendt. tests/gridChallenge.test.ts.
+  Tallene (380 kampe, frø 1) faldt langt væk fra originalen: 6,58 mål, 44 skud, 0,7 frispark. Den præcise udfordring går næsten kun ind
+  nær mål (D > 5 → ×0,05 – bekræftet i exe'en), så boldtab på midtbanen må komme fra afleveringens rejse/opsnapning og modtagelsen
+  (0x6fad40/0x6ccb60/0x6f5c30/0x6f6c00), som stadig er skøn; den estimerede nabo-duel og skud-stopperen holdt før tallene nede.
+  Frispark kræver opbygget +0xff/agitation (startværdier ukendte). Næste: afleveringen 0x6fad40 og modtagelsen 0x6f6c00.

@@ -108,14 +108,15 @@ export function refereeFactor(discipline: number): number {
  * F is the referee factor (with the modifiers in `refereeFactorInMatch`).
  */
 export const FOUL_K_USUALLY = { 42: 6, 43: 14, 44: 10, 45: 20, 46: 6, 47: 10, 48: 500, 49: 1000, 50: 1000, 95: 10, 96: 20, 97: 2 } as const;
-/** F x K is capped at 50 for type 44 and at 100 for type 47 (sub_6e9820). confirmed */
-export const FOUL_FK_CAP = { 44: 50, 47: 100 } as const;
+/** F x K has a FLOOR of 50 for type 44 and 100 for type 47 (sub_6e9820: fcom/test ah,0x41/je keeps F·K only when it is larger).
+ *  confirmed – corrected 11/11-2026 (it was read as a cap). */
+export const FOUL_FK_FLOOR = { 44: 50, 47: 100 } as const;
 export const FOUL_K_RARELY = { 1: 10000, 12: 150, 35: 150, 36: 150, 21: 150, 56: 150, 19: 75, 33: 75, 34: 75, 41: 100 } as const;
 export function foulGiven(rand: Rand, factor: number, type: number): boolean {
   const usually = (FOUL_K_USUALLY as Record<number, number>)[type];
   if (usually !== undefined) {
-    const cap = (FOUL_FK_CAP as Record<number, number>)[type] ?? Infinity;
-    return rand(Math.trunc(Math.min(cap, factor * usually))) !== 0;
+    const floor = (FOUL_FK_FLOOR as Record<number, number>)[type] ?? -Infinity;
+    return rand(Math.max(floor, Math.trunc(factor * usually))) !== 0;
   }
   const rarely = (FOUL_K_RARELY as Record<number, number>)[type];
   if (rarely !== undefined) return rand(Math.trunc(rarely / factor)) === 0;
@@ -149,7 +150,8 @@ export function refereeCardBias(discipline: number): number {
 export const SEVERITY_AB = { 42: [0, 4], 44: [20, 9], 48: [0, 20], 97: [0, 20], 49: [10, 20] } as const;
 /** Minute before which severity is replaced by rand(severity): 10, but 6 for type 45 and 15 for types 43/21/56 (sub_6e9820). confirmed */
 export const earlySeverityMinute = (type: number) => (type === 45 ? 6 : type === 43 || type === 21 || type === 56 ? 15 : 10);
-/** Severity of a foul (sub_6e9820). confirmed except the extra −1 under sub_5c6710 and the hurt-flag bonus (+1..+5). */
+/** Severity of a foul – MatchSim's simplified form (src/game/engine/match.ts; kept unchanged so that engine does not change).
+ *  NB the original adds the bias only to some types and the early-minute rule only to some (see `judgeTackle`, which is exact). */
 export function cardSeverity(rand: Rand, type: number, playerFouls: number, discipline: number, booked: boolean, minute: number, overLimit: boolean): number {
   const [a, b] = (SEVERITY_AB as Record<number, readonly [number, number]>)[type] ?? [0, 4];
   let sev = rand(playerFouls + a) + b + refereeCardBias(discipline) + (overLimit ? 1 : 0);
@@ -161,21 +163,170 @@ export function cardSeverity(rand: Rand, type: number, playerFouls: number, disc
 export const PROFESSIONAL_FOUL_RED = 2624 / 3000;
 /**
  * Card for a foul (sub_6ea4e0). confirmed.
- * Professional foul: r = rand(3000): r > 375 red; r <= 50 yellow; 51..375 yellow only if
- * sub_6f5b20 (a box check) is true. Otherwise red if severity > rand(15) + 7, yellow if
- * severity > rand(6). A second yellow is a red. No card at all while match+0x8eb3 is set.
+ * Professional foul ("serious", the clear-chance flag from sub_6c87e0): r = rand(3000): r > 375 red; 51..375 yellow;
+ * 0..50 yellow only when the offender stands in his own box (sub_6f5b20), otherwise no card – corrected 11/11-2026 (was reversed).
+ * Otherwise red if severity > rand(15) + 7, yellow if severity > rand(6). A second yellow is a red. No card while match+0x8eb3 is set.
  */
-export function cardFor(rand: Rand, severity: number, professional = false, inBox = false): 'red' | 'yellow' | null {
+export function cardFor(rand: Rand, severity: number, professional = false, inOwnBox = false): 'red' | 'yellow' | null {
   if (professional) {
     const r = rand(3000);
     if (r > 375) return 'red';
-    if (r <= 50 || inBox) return 'yellow';
-    return null;
+    if (r <= 50) return inOwnBox ? 'yellow' : null;
+    return 'yellow';
   }
   if (severity > rand(15) + 7) return 'red';
   if (severity > rand(6)) return 'yellow';
   return null;
 }
+// ---------------------------------------------------------------- the referee, exact (sub_6e9820 / sub_6ea4e0)
+
+/** sub_6cb650: the "hard"/illegal challenge types (37, 42..50, 96, 97). confirmed */
+export const isHardChallenge = (type: number) => type === 37 || (type >= 42 && type <= 50) || type === 96 || type === 97;
+/** Negative n as in utils_random (0x90cfc0): 0..n+1 (never positive); n = 0 → 0. confirmed (notes/referee-taker.md) */
+const randSigned = (rand: Rand, n: number) => (n < 0 ? -rand(-n) : rand(n));
+/** sub_6f5b20(p, side): p stands in the box at end `side` (x 2..6; y 0..1 for side 0, 10..11 for side 1). confirmed */
+const inBoxAt = (side: 0 | 1, x: number, y: number) => x >= 2 && x <= 6 && (side === 0 ? y <= 1 : y >= 10);
+/** The hurt bonus from the VICTIM's Sportsmanship (sub_6e9820): big for 47/96/19/33/34, small for 44/36. confirmed */
+export const hurtBonus = (s: number, big: boolean) => (s === 1 ? (big ? 5 : 3) : s >= 6 ? (s < 10 ? 1 : 0) : big ? 3 : 2);
+
+/** The official (engine+0xf5b2): officials.dat bytes the referee reads, and his mood word (+8). Byte names are "?" except Discipline. */
+export interface MatchOfficial { discipline: number; b24: number; b27: number; b28: number; mood: number }
+/** The MATCH_PLAYER fields the referee reads and writes (offsets from notes/referee-taker.md). */
+export interface FoulPlayer {
+  side: 0 | 1; x: number; y: number; isKeeper: boolean;
+  fouls: number;          // +0x14 fouls committed
+  foulsSuffered: number;  // +0x15
+  yellows: number;        // +0x24 (0/1, 2 after a second yellow)
+  reasons: [number, number]; // +0x25/+0x26 card reason codes
+  b16: number;            // +0x16 (?)
+  w31: number;            // +0x31 temper word (?)
+  agitation: number;      // +0x1a2
+  temperCount: number;    // +0xff
+  grudge: FoulPlayer | null; // +0x1a6
+  rating: number;         // +0x35 (x1000)
+  sportsmanship: number; temperament: number; // staff +0x5c / +0x5d (raw 1..20)
+}
+export interface JudgeContext { official: MatchOfficial | null; minute: number; teamFouls: number; teamByte?: number; competitionBias?: boolean; incidentPending?: boolean }
+export interface JudgeResult { ret: 0 | 1 | 7; kind: number; severity: number; hurt: boolean }
+
+/**
+ * MATCH_OFFICIAL::judge_tackle (sub_6e9820). confirmed (notes/referee-taker.md §1, complete). Returns 0 = no foul, 1 = foul (the card
+ * rule follows), 7 = foul that never brings a card (43, 12). `action` is the victim's action code (0x6c = passing; −1 from move_to).
+ * Side effects as in the original: official.mood, offender.w31, victim.w31/agitation/temperCount/grudge.
+ */
+export function judgeTackle(rand: Rand, ctx: JudgeContext, offender: FoulPlayer, victim: FoulPlayer, type: number, action = -1): JudgeResult {
+  let sev = 0, ret: 0 | 1 | 7 = 0, kind = 0, F = 1;
+  const out = (): JudgeResult => ({ ret, kind, severity: sev, hurt });
+  let hurt = false;
+  if (ctx.incidentPending) return out();                          // sub_6bab90
+  const ref = ctx.official;
+  if (ref && rand(ref.b28 + 15) === 0) { ref.mood -= 250; return out(); } // he does not see it
+  const minute = ctx.minute;
+  if (ref) ref.mood += 175;
+  const inBox = inBoxAt(0, offender.x, offender.y) || inBoxAt(1, offender.x, offender.y);
+  if (ref && (type === 42 || type === 12 || type === 21) && !inBox && rand(50 - ref.b24) === 0) { ref.mood += 25; return out(); }
+  if (inBox && (type === 42 || type === 12 || type === 46 || type === 21) && rand(3) !== 0) return out();
+  const inOwn = inBoxAt(offender.side, offender.x, offender.y);
+  const n = Math.trunc(((inOwn ? 5 : 20) * Math.pow(victim.sportsmanship, 1.5)) / (victim.grudge === offender ? 3 : 1));
+  hurt = rand(n) === 0;
+  if (hurt) victim.w31 -= 4;
+  let bias = 0;
+  if (ref) {
+    const D = ref.discipline;
+    F = D > 10 ? D * 0.1 : (D - 10) * 0.05 + 1;
+    F += (ctx.teamByte ?? 0) / (ref.b27 * 0.5 + 3);
+    if (offender.yellows !== 0) sev += -Math.trunc(rand(21 - D) / 5);
+    if (hurt) F *= 1.5 - 0.05 * rand(ref.b28);
+    bias = refereeCardBias(D);
+    if (ctx.teamFouls > ref.b27 + 5) { ref.mood -= 150; bias++; F *= (6 - rand(4)) * 0.1 + 1; }
+  }
+  if (ctx.competitionBias) bias--;                                // sub_5c6710 (which competition: ?)
+  F = clamp(F, 0.1, 10);
+  const fouls = offender.fouls;
+  const s = victim.sportsmanship;
+  const early = (m: number) => { if (minute < m) sev = randSigned(rand, sev); };
+  const usually = (k: number, floor = -Infinity) => rand(Math.max(floor, Math.trunc(F * k))) === 0; // true = waved on
+  const rarely = (k: number) => rand(Math.trunc(k / F)) !== 0;                                     // true = not given
+  END: {
+    switch (type) {
+      case 42: offender.w31 -= 4; if (usually(6)) break END; ret = 1; sev += rand(fouls) + 4; kind = 4; early(10); break;
+      case 43: offender.w31 -= 3; if (usually(14)) break END; ret = 7; sev += rand(fouls) + 3; kind = 4; early(15); break;
+      case 44: offender.w31 -= 12; if (usually(10, 50)) break END; ret = 1; sev += rand(fouls + 20) + bias + 9; kind = 10;
+        if (hurt) sev += hurtBonus(s, false); break;
+      case 45: offender.w31 -= 4; if (usually(20)) break END;
+        if (inOwn && rand(18) !== 0) { early(6); break END; }         // a penalty is avoided 17/18
+        ret = 1; sev += rand(fouls) + bias + 4; kind = 7; early(6); break;
+      case 46: offender.w31 -= 1;
+        if (usually(6) && !(victim.isKeeper && rand(100) !== 0)) break END;
+        ret = 1; sev += rand(fouls) + bias + 1; kind = 4; early(10); break;
+      case 47: offender.w31 -= 9; if (usually(10, 100)) break END; ret = 1; sev += rand(fouls) + bias + 9; kind = 5;
+        if (hurt) sev += hurtBonus(s, true); break;
+      case 95: offender.w31 -= 12; if (usually(10)) break END; ret = 1; sev += rand(fouls + 7) + bias + 3; kind = 5; break;
+      case 96: offender.w31 -= 25; if (usually(20)) break END; ret = 1; sev += rand(fouls + 20) + bias + 9; kind = 5;
+        if (hurt) sev += hurtBonus(s, true); break;
+      case 97: offender.w31 -= 25; if (usually(2)) break END; ret = 1; sev += rand(fouls) + bias + 20; kind = 5; break;
+      case 48: offender.w31 -= 100; if (usually(500)) break END; ret = 1; sev += rand(fouls) + bias + 20; kind = 11; break;
+      case 49: offender.w31 -= 200; if (usually(1000)) break END; ret = 1; sev += rand(fouls + 10) + bias + 20; kind = 11; break;
+      case 50: offender.w31 -= 60; if (usually(1000)) break END; ret = 1; sev += rand(fouls) + bias + 18; kind = 11; break;
+      case 19: case 33: case 34:
+        if (rarely(75)) { if (action !== 0x6c) break END; if (rand(hurt ? 2 : 6) !== 0) break END; }
+        if (inOwn && rand(Math.trunc(18 / F)) !== 0) break END;
+        ret = 1; sev += rand(fouls) + rand(5) + bias; kind = 7; if (hurt) sev += hurtBonus(s, true); break;
+      case 35: if (rarely(150)) break END; ret = 1; sev += rand(fouls) + 1; kind = 4; break;
+      case 12: if (rarely(150)) break END; ret = 7; sev += rand(fouls) + 1; kind = 4; break;
+      case 36: if (rarely(150)) break END; ret = 1; sev += rand(fouls) + 1; kind = 4; if (hurt) sev += hurtBonus(s, false); break;
+      case 21: case 56:
+        if (rarely(150) && !(victim.isKeeper && rand(5) === 0)) break END;
+        ret = 1; sev += rand(fouls) + 1; kind = 4; early(15); break;
+      case 41: if (rarely(100)) break END; ret = 1; sev += rand(fouls) + 2; kind = 7; early(10); break;
+      case 1: if (rarely(10000)) break END; ret = 1; sev += rand(fouls) + 1; kind = 4; early(10); break;
+      default: break;                                              // no foul for the other types
+    }
+  }
+  // the victim gets worked up (sub_716450 / sub_7164b0)
+  if (isHardChallenge(type)) {
+    victim.agitation = Math.min(victim.agitation * (sev * 0.2 + 1), 2 * (25 - victim.temperament), 100);
+    if (rand(110 - Math.trunc(victim.agitation)) === 0) {
+      victim.temperCount++;
+      if (rand(110 - Math.trunc(victim.agitation)) === 0) victim.grudge = offender;
+    }
+  }
+  return out();
+}
+
+/**
+ * MATCH_OFFICIAL::decide_foul_punishment (sub_6ea4e0). confirmed (§2). `code` in: 1 or 7 from judgeTackle; out: 1 no card, 7 no card
+ * (never a card), 2 yellow, 3 second yellow (off), 4 red for severity, 5 red (serious = professional foul). `serious` = the clear-chance
+ * flag from sub_6c87e0; `flag8` → offender.b16 on a red for severity. Ratings on the ×1000 scale. `addTeamFoul` = match+0xf5c9+54·side.
+ */
+export function decideFoulPunishment(rand: Rand, ctx: { minute: number; shootout?: boolean; addTeamFoul: () => void }, offender: FoulPlayer & { active?: boolean },
+  victim: FoulPlayer, code: number, kind: number, severity: number, serious: boolean, flag8 = false): { code: number; weight: number } {
+  let weight = 1.5;
+  if (offender.active === false) return { code, weight: 10 };
+  const count = () => { offender.fouls++; victim.foulsSuffered++; };
+  const setReason = (k: number) => { if (offender.yellows) offender.reasons[1] = k; else offender.reasons[0] = k; };
+  const yellow = () => {
+    const m = ctx.minute;
+    offender.rating += Math.trunc(-225 * (m > 45 ? 45 / m : 1));
+    if (offender.yellows !== 0) { offender.yellows++; code = 3; weight = 3.5; offender.reasons[1] = kind; }
+    else { offender.yellows = 1; code = 2; weight = 2; offender.reasons[0] = kind; }
+    count();
+  };
+  if (code === 7) { weight = 1.25; ctx.addTeamFoul(); count(); return { code, weight }; }
+  if (code !== 1 || ctx.shootout) return { code, weight };
+  ctx.addTeamFoul();
+  if (serious) {
+    const r = rand(3000);
+    if (r > 375) { offender.rating -= 750; code = 5; weight = 5; setReason(9); count(); return { code, weight }; }
+    if (r <= 50 && !inBoxAt(offender.side, offender.x, offender.y)) { count(); return { code, weight }; }
+    yellow(); return { code, weight };
+  }
+  if (severity > rand(15) + 7) { offender.rating -= 1000; code = 4; weight = 5; setReason(kind); if (flag8) offender.b16 = 1; count(); return { code, weight }; }
+  if (severity > rand(6)) { yellow(); return { code, weight }; }
+  offender.rating -= 25; count();
+  return { code, weight };
+}
+
 /** The quick simulation's cards: R is the side's aggression total (sub_6beeb0). confirmed */
 export const quickSim = {
   foul: (rand: Rand, r: number) => rand(r) > rand(1600),
