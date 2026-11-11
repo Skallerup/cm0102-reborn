@@ -277,6 +277,12 @@ async function run(look) {
     await page.waitForSelector('.cx-refs', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-dommere.png` });
   });
+  if (look === 'klassisk') await step('trup: Sort By Condition viser konditionen i kolonnen (brugerønske #8)', async () => {
+    await go({ name: 'squad' });
+    await page.locator('.cx-drop-btn', { hasText: 'Sort By' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Condition' }).first().click();
+    await page.waitForFunction(() => /%$/.test(document.querySelector('.cx-sq-info')?.textContent ?? ''), null, { timeout: 5000 });
+  });
   if (look === 'klassisk') await step('klubbens History (Man Utd History)', async () => {
     await go({ name: 'squad' });
     await page.locator('.cx-subrow button', { hasText: 'History' }).last().click();

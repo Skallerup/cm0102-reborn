@@ -89,6 +89,9 @@ function infos(g: GameState): Info[] {
   ];
 }
 
+/** Brugerønske (#8): sorteres der efter noget, kolonnen kan vise, viser kolonnen det (kondition, værdi, moral, alder …) */
+const viewForSort = (key: string, INFO: Info[]) => (key === 'intGoals' ? 'caps' : INFO.some((x) => x.key === key) ? key : null);
+
 /** Sorteringer som i originalens Sort By (de nederste er sæsonstatistik) */
 type Sort = { key: string; label: string; cmp: (a: Player, b: Player) => number } | { key: string; sep: true };
 function sorts(g: GameState, tac: Tactic): Sort[] {
@@ -198,7 +201,7 @@ export function ClassicClubSquad({ cid, players: given }: { cid: number; players
     <div className="cx-sq">
       <div className="cx-tools cx-tools-inline">
         <CxDrop label={t('cl.sq.view')} items={INFO.map((x) => ({ key: x.key, label: x.label, checked: x.key === info.key, onClick: () => setView(x.key) }))} />
-        <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => setSort(x.key) })} />
+        <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => { setSort(x.key); const v = viewForSort(x.key, INFO); if (v) setView(v); } })} />
       </div>
       <div className="cx-sq-head"><span>{info.label}</span></div>
       <div className="cx-sq-cols">
@@ -331,7 +334,7 @@ function ClassicFirstSquad() {
     <div className="cx-sq">
       <Head title={t('nav.squad')}>
         <CxDrop label={t('cl.sq.view')} items={viewItems} />
-        {!table && <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => setSort(x.key) })} />}
+        {!table && <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => { setSort(x.key); const v = viewForSort(x.key, INFO); if (v) setView(v); } })} />}
         <span className="grow" />
         {/* CM 01/02: én Assistant-menu */}
         <CxDrop label={t('cl.sq.assistantMenu')} align="right" items={[

@@ -9,6 +9,14 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.24.0',
+    date: '2026-11-11',
+    title: { da: 'Truppen viser det, du sorterer efter', en: 'The squad shows what you sort by' },
+    items: [
+      { da: "Brugerønske: sorterer du truppen efter kondition, værdi, moral, alder (eller noget andet, kolonnen kan vise), viser kolonnen ved siden af navnet nu netop det – fx den præcise kondition i procent – i stedet for positionen. View kan stadig skifte den bagefter", en: "Suggestion: when you sort the squad by condition, value, morale, age (or anything else the column can show), the column next to the name now shows exactly that – e.g. the exact condition in percent – instead of the position. View can still change it afterwards" },
+    ],
+  },
+  {
     version: '0.23.0',
     date: '2026-11-10',
     title: { da: '2D-banen i det klassiske udseende', en: 'The 2D pitch in the classic look' },
