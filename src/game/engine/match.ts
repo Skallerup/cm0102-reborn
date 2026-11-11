@@ -22,6 +22,7 @@ import type {
   CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, PlayerInstructions, PlayerMatchLine,
   OppInstructions, ShootoutKick, TacticChange, ShotRecord, Tactic, TeamInstructions,
 } from '../types';
+import type { LiveSim, LiveTeamView, PitchSnap } from './liveSim';
 
 export interface EngineTeam {
   club: number;
@@ -220,7 +221,9 @@ function emptyStats(): MatchStatsSide {
   return { goals: 0, shots: 0, onTarget: 0, xg: 0, possession: 0, corners: 0, fouls: 0, yellows: 0, reds: 0, offsides: 0, passes: 0, passesCompleted: 0, throwIns: 0, tackles: 0, tacklesWon: 0, headers: 0, headersWon: 0 };
 }
 
-export class MatchSim {
+export class MatchSim implements LiveSim {
+  /** zonemotoren (LiveSim; rapporten får ikke feltet – mangler = 'zone') */
+  readonly engine = 'zone' as const;
   readonly teams: [TeamRT, TeamRT];
   readonly opts: EngineOptions;
   private r: Rng;
@@ -1890,7 +1893,7 @@ export class MatchSim {
 
   /** Aktuelle on-pitch spillere (til live UI) */
   /** Øjebliksbillede til 2D-visningen: boldens zone, hvem der har den, og spillernes positioner fra taktikken */
-  pitch() {
+  pitch(): PitchSnap {
     const last = this.shots.at(-1);
     return {
       zone: this.zone,
@@ -1905,7 +1908,7 @@ export class MatchSim {
     };
   }
 
-  live(teamIdx: number) {
+  live(teamIdx: number): LiveTeamView {
     const t = this.teams[teamIdx];
     return {
       on: t.on.map((s) => ({ id: s.p.id, slot: s.slot, num: s.p.number, off: s.off, cond: Math.round(s.cond * 100), rating: Math.round(clamp(s.rating, 1, 10) * 10) / 10, yellow: s.yellow, injured: s.line.injured, goals: s.line.goals, red: !!s.line.red, enteredAt: s.enteredAt })),

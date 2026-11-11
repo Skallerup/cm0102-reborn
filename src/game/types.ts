@@ -846,6 +846,8 @@ export interface MatchReport {
   /** taktiske ændringer undervejs */
   changes?: TacticChange[];
   formations: [string, string];
+  /** kampmotoren, der spillede kampen (fejlsøgning): 'original' = gittermotoren; mangler = 'zone' (vores zonemotor) */
+  engine?: 'zone' | 'original';
 }
 
 export interface TacticChange { m: number; t: number; kind: 'formation' | 'mentality' | 'instructions'; from?: string; to?: string }
@@ -885,6 +887,9 @@ export interface Options {
   mode?: 'authentic' | 'extended';
   /** AI-skrevne tekster (pressemøder, samtaler, artikler) – standard: til */
   ai?: boolean;
+  /** Kampmotor: 'zone' (standard, vores egen) eller 'original' (porten af originalens motor – kun original database i ægte
+   * tilstand, se gridEngineOn i sim.ts). Gamle gemte spil = 'zone'. */
+  engine?: 'zone' | 'original';
 }
 
 export type BotStyle = 'ambitious' | 'developer' | 'trader' | 'pragmatic';

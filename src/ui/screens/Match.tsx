@@ -6,7 +6,7 @@ import type { DropItem } from '../classic';
 import { askConfirm } from '../confirm';
 import { ZONES } from '../../game/engine/match';
 import { opponentReport } from '../../game/analysis';
-import type { MatchSim } from '../../game/engine/match';
+import type { LiveSim } from '../../game/engine/liveSim';
 import { createLiveMatch, quickReport, userTactic } from '../../game/sim';
 import { PITCH_ICON, WEATHER_ICON, pitchFor, refereeFor, weatherFor } from '../../game/weather';
 import { act } from '../../game/actions';
@@ -90,7 +90,7 @@ void loadMatchTexts();
 /** Linjer, hvis lyd går forud for alt andet i samme opdatering (mål, fløjt, kort, straffespark) */
 const BIG_SOUND = new Set(['kickoff', 'halftime', 'fulltime', 'extratime', 'yellow', 'red', 'second-yellow', 'red-professional', 'penalty', 'goal-pen', 'pen-saved', 'pen-miss', 'goal-offside']);
 
-let live: { fixture: number; sim: MatchSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number; postShown?: boolean } | null = null;
+let live: { fixture: number; sim: LiveSim; lines: { text: string; cls: string; m: number; k?: string; t?: number; ci?: number }[]; poss5?: [number, number][]; consumed: number; halfShown?: boolean; shotsSeen?: number; cornersSeen?: number; h2hInit?: boolean; evSeen?: number; h2h?: H2hState; ldSeen?: number; prevTab?: string; kicked?: boolean; zones?: [number, number, number]; zposs?: [number, number][]; baseTactic?: Tactic; wantTactics?: { side: 0 | 1; from: number; m: number }; wantPause?: { from: number; m: number }; atHalf?: boolean; paused?: boolean; ht?: [number, number]; goalUntil?: number; goalTeam?: number; postShown?: boolean } | null = null;
 
 /** Commentary Speed i klassisk huskes fra kamp til kamp (originalens seks trin, langsom → hurtig) */
 const CX_SPEEDS = [0.35, 0.6, 1, 2, 4, 8];
@@ -268,7 +268,7 @@ export function CmScoreboard({ home, away, hg, ag, minute, colors, agg, classic 
   );
 }
 
-type LiveTeam = ReturnType<MatchSim['live']>;
+type LiveTeam = ReturnType<LiveSim['live']>;
 
 /** Match Overview (CM 01/02): halvleg, dato og turnering, den seneste kommentar i farverne på holdet med bolden,
  *  boldbesiddelsen de seneste 5 minutter, dommer og vejr */
@@ -341,7 +341,7 @@ export function CxOverview({ f, colors, line, poss, half, goals, injuries = [], 
 }
 
 /** Spillerkarakterer for begge hold side om side (som i CM): startere, indskiftede og ubrugte reserver */
-function RatingsBoard({ sim, colors }: { sim: MatchSim; colors: [string, string, string, string] }) {
+function RatingsBoard({ sim, colors }: { sim: LiveSim; colors: [string, string, string, string] }) {
   const g = gs();
   const subMinute = (team: number, id: number, field: 'p' | 'p2') => sim.events.find((e) => e.k === 'sub' && e.t === team && e[field] === id)?.m;
   const cards = (team: number, id: number) => sim.events.filter((e) => e.t === team && e.p === id && (e.k === 'yellow' || e.k === 'red')).map((e) => e.k);
@@ -404,7 +404,7 @@ function Scoreboard({ home, away, hg, ag, minute, photo, venue }: { home: number
 type H2hState = { phase: 'wait' | 'countdown' | 'play' | 'half'; homeSpeed: number; awaySpeed: number; awayReady: boolean; startAt: number; halfEnd: number; played: number; lastPing: number; awayTalked: boolean; seq: number; solo: boolean; waitSince: number };
 
 /** Udeholdets ændringer (fra live-kanalen) lægges ind i kampen */
-function applyAwayCmds(sim: MatchSim, s: H2hState, cmds: LiveCmd[]) {
+function applyAwayCmds(sim: LiveSim, s: H2hState, cmds: LiveCmd[]) {
   for (const c of cmds) {
     s.lastPing = Date.now();
     if (c.k === 'ready') s.awayReady = true;
@@ -1068,7 +1068,7 @@ function LiveMatch({ id }: { id: number }) {
 }
 
 /** Udskiftninger under kampen: bænken som tydelige kort – vælg hvem der skal ud */
-function SubsPanel({ sim, me, live, onDone }: { sim: MatchSim; me: number; live: ReturnType<MatchSim['live']>; onDone: (ok: boolean) => void }) {
+function SubsPanel({ sim, me, live, onDone }: { sim: LiveSim; me: number; live: ReturnType<LiveSim['live']>; onDone: (ok: boolean) => void }) {
   const g = useGame()!;
   const onPitch = live.on.filter((s) => !s.off);
   const slotName = (slot: number) => { const sl = live.tactic.slots[slot]; return sl ? `${sl.pos}${sl.side !== 'C' ? sl.side : ''}` : ''; };
@@ -1112,7 +1112,7 @@ function H2hSpeed({ mine, theirs, name, onPick }: { mine: number; theirs: number
 type FollowData = {
   seq: number; phase: 'wait' | 'countdown' | 'play' | 'half'; awayReady: boolean; homeSpeed: number; awaySpeed: number; countdown: number; halfLeft: number;
   minute: string; hg: number; ag: number; finished: boolean; stats: [MatchReport['stats'][0], MatchReport['stats'][1]];
-  lines: { text: string; cls: string; m: number }[]; live: [LiveTeam, LiveTeam]; events: MatchSim['events'];
+  lines: { text: string; cls: string; m: number }[]; live: [LiveTeam, LiveTeam]; events: LiveSim['events'];
   snap: Snap; banner: string; flash?: string; report?: MatchReport;
 };
 
@@ -1187,8 +1187,8 @@ function FollowMatch({ id }: { id: number }) {
     );
   }
   const mine = data.live[1];
-  const proxy = { events: data.events, live: (tm: number) => data.live[tm] } as unknown as MatchSim;
-  const subProxy = { substitute: (_t: number, out: number, inn: number) => { send({ k: 'sub', out, inn }, t('mp.followSubSent', { a: g.players[inn]?.last ?? '', b: g.players[out]?.last ?? '' })); return true; } } as unknown as MatchSim;
+  const proxy = { events: data.events, live: (tm: number) => data.live[tm] } as unknown as LiveSim;
+  const subProxy = { substitute: (_t: number, out: number, inn: number) => { send({ k: 'sub', out, inn }, t('mp.followSubSent', { a: g.players[inn]?.last ?? '', b: g.players[out]?.last ?? '' })); return true; } } as unknown as LiveSim;
   const players = squad(g.userClub).filter((p) => mine.on.some((x) => x.id === p.id && !x.off) || mine.bench.includes(p.id));
   return (
     <div>
@@ -1402,7 +1402,7 @@ function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
  * Højreklik på en spiller på banen: løb frem (ofte/blandet/sjældent).
  */
 function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastView, onLastMatch }: {
-  sim: MatchSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void;
+  sim: LiveSim; side: 0 | 1; club: string; editable?: boolean; onSub?: (out: number, inn: number) => void;
   draft?: Tactic | null; setDraft?: (t: Tactic) => void; base?: Tactic; lastView?: boolean; onLastMatch?: () => void;
 }) {
   const g = useGame()!;
@@ -1594,7 +1594,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
 export type CxRow = { id: number; num: number | string; note?: string; noteOn?: boolean; dim: boolean; cond?: number; rating?: number; line?: PlayerMatchLine; capt: boolean; card?: 'yellow' | 'red' };
 
 /** Holdets rækker som i originalen: de 11 startere i rækkefølge (udskiftede grå med "sub 49"), så bænken ("on 49" eller grå) */
-function cxRows(sim: MatchSim, side: 0 | 1): CxRow[] {
+function cxRows(sim: LiveSim, side: 0 | 1): CxRow[] {
   const g = gs();
   const tm = sim.teams[side];
   const ev = sim.events.filter((e) => e.t === side);

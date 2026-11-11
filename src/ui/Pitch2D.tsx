@@ -1,11 +1,11 @@
 // Klassisk 2D-kampvisning (inspireret af CM/FM): spillerne bevæger sig mellem deres forsvars- og
 // angrebspositioner fra taktikken, alt efter hvor bolden er – så man kan se, hvad taktikken gør.
 import { useEffect, useMemo, useState } from 'react';
-import type { MatchSim } from '../game/engine/match';
+import type { PitchSnap } from '../game/engine/liveSim';
 import type { ShotRecord } from '../game/types';
 import { hash01 } from '../game/rng';
 
-export type Snap = ReturnType<MatchSim['pitch']>;
+export type Snap = PitchSnap;
 /** Straffespark: hvilket hold skyder, og hvor langt tilløbet er nået (0 opstilling, 1 tilløb, 2 skud). so = straffesparkskonkurrence */
 type PenSnap = Snap & { pen: number; penStep: number; so?: boolean };
 

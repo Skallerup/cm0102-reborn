@@ -12,7 +12,9 @@ import { cmDatabase } from './newgame';
 import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } from './competitions';
 import { t } from '../i18n';
 import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
-import { MatchSim, quickMatch, type EngineTeam } from './engine/match';
+import { MatchSim, type EngineOptions, type EngineTeam } from './engine/match';
+import { getGridFactory, type LiveSim } from './engine/liveSim';
+import type { Rng } from './rng';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
 import { maxSubs, extended, authentic } from './rules';
 import { recordsAfterMatch } from './records';
@@ -26,7 +28,7 @@ import { rng } from './rng';
 import { addNews, fixturesOn, gs, squad } from './state';
 import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
-import type { Fixture, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
+import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice } from './transfers';
 import { afterAppearance } from './clauses';
@@ -183,11 +185,38 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, 
   return aiTactic(club, opp, home);
 }
 
+// ---------- kampmotoren ----------
+
+/** Gittermotoren (porten af originalens kampmotor) i stedet for zonemotoren? Kun den originale database i ægte tilstand,
+ * og kun når spillet har valgt den (Options.engine) eller udviklerkontakten localStorage `cm0102.engine` = 'original' er sat. */
+export function gridEngineOn(g: GameState): boolean {
+  if (cmDatabase(g) !== 'original' || !authentic()) return false;
+  if (g.options.engine === 'original') return true;
+  try {
+    return typeof localStorage !== 'undefined' && localStorage.getItem('cm0102.engine') === 'original';
+  } catch {
+    return false;
+  }
+}
+
+/** Alle klubkampe laves her: zonemotoren (MatchSim), eller gittermotoren, når den er slået til og registreret
+ * (setGridFactory i engine/liveSim.ts – sim.ts importerer den ikke, så bundlen er uændret). */
+export function makeMatch(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng): LiveSim {
+  const grid = getGridFactory();
+  if (grid && gridEngineOn(gs())) return grid(home, away, opts, r);
+  return new MatchSim(home, away, opts, r);
+}
+
+/** Hurtig kamp uden kommentar – som quickMatch i engine/match.ts, men gennem fabrikken */
+export function makeQuickMatch(home: EngineTeam, away: EngineTeam, opts: Omit<EngineOptions, 'commentary'>, r: Rng): MatchReport {
+  return makeMatch(home, away, { ...opts, commentary: false, aiSubs: opts.aiSubs ?? [true, true] }, r).runToEnd();
+}
+
 /** Kampen man ser live; playByPlay = løbende spil-for-spil som i CM 01/02 (klassisk udseende) */
-export function createLiveMatch(f: Fixture, o: { playByPlay?: boolean } = {}): MatchSim {
+export function createLiveMatch(f: Fixture, o: { playByPlay?: boolean } = {}): LiveSim {
   const m = prepareMatch(f);
   const g = gs();
-  return new MatchSim(m.home, m.away, {
+  return makeMatch(m.home, m.away, {
     // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
     commentary: true, playByPlay: !!o.playByPlay, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
@@ -198,8 +227,8 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
   const m = prepareMatch(f, userAuto);
   const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: gs().date };
   const rep = commentary
-    ? new MatchSim(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
-    : quickMatch(m.home, m.away, opts, rng);
+    ? makeMatch(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
+    : makeQuickMatch(m.home, m.away, opts, rng);
   applyMatchResult(f, rep);
   return rep;
 }
@@ -623,7 +652,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  const rep = makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
 }
@@ -769,7 +798,7 @@ export function quickReport(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  return new MatchSim(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  return makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
 }
 
 /** Mandag: ugens overblik – resultater, placering, økonomi, skader og de næste kampe */
