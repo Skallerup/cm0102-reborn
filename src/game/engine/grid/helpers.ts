@@ -11,14 +11,16 @@
 export type Side = 0 | 1;
 export const rand = (n: number, rng: () => number = Math.random): number =>
   n === 0 ? 0 : n > 0 ? Math.floor(rng() * n) : -Math.floor(rng() * -n); // sub_90cfc0 (n<0 → n+1..0)
+import { DIST } from './loop';
+
 export const ftol = (x: number) => Math.trunc(x); // sub_945640
 export const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
 
-/** float[12][9] at 0xa15e44: tbl[|dy|][|dx|] = sqrt(dx²+dy²); outside → 1000 (0x96d2dc). */
+/** float[12][9] at 0xa15e44: tbl[|dy|][|dx|] (≈ sqrt(dx²+dy²), håndafrundet i originalen – tabellen i loop.ts); outside → 1000 (0x96d2dc). */
 export function cellDist(dx: number, dy: number): number {
   dx = Math.abs(dx); dy = Math.abs(dy);
   if (dx > 8 || dy > 11) return 1000;
-  return Math.fround(Math.hypot(dx, dy));
+  return DIST[dy][dx];
 }
 
 /** Position flag bits, sub_6c38c0 (position) / sub_6c38f0 (position in attack). */
@@ -117,12 +119,13 @@ export function blockersOnLine(defenders: MatchPlayer[], x0: number, y0: number,
 }
 
 // ------------------------------------------------------------------ sub_715f50 tactical column drift
-export function tacticalColumn(p: MatchPlayer, x: number, r: PosRatings, rng?: () => number): number {
+export function tacticalColumn(p: MatchPlayer, x: number, r: PosRatings, rng?: () => number, rnd?: (n: number) => number): number {
+  const R = rnd ?? ((n: number) => rand(n, rng));
   if (p.pos & POS.GK) return x;
-  if (2 * p.rolls.b10a >= rand(21, rng)) return x;                                  // 0x715f7a
-  const left = !(p.pos & POS.LEFT) && rand(r.l, rng) > rand(41, rng) ? (p.side ? 7 : 1) : x;
-  const mid = !(p.pos & (POS.LEFT_CENTRE | POS.CENTRE | POS.RIGHT_CENTRE)) && rand(r.c, rng) > rand(41, rng) ? 4 : x;
-  const right = !(p.pos & POS.RIGHT) && rand(r.r, rng) > rand(41, rng) ? (p.side ? 1 : 7) : x;
+  if (2 * p.rolls.b10a >= R(21)) return x;                                          // 0x715f7a
+  const left = !(p.pos & POS.LEFT) && R(r.l) > R(41) ? (p.side ? 7 : 1) : x;
+  const mid = !(p.pos & (POS.LEFT_CENTRE | POS.CENTRE | POS.RIGHT_CENTRE)) && R(r.c) > R(41) ? 4 : x;
+  const right = !(p.pos & POS.RIGHT) && R(r.r) > R(41) ? (p.side ? 1 : 7) : x;
   return Math.trunc((left + mid + right) / 3);                                     // imul 0x55555556
 }
 
@@ -163,9 +166,45 @@ export function isCrossingPosition(p: MatchPlayer, tx: number, ty: number): bool
 
 // ------------------------------------------------------------------ sub_713e90 which foot
 const DEAD_BALL_CODES = [0x5b, 0x5c, 0x3d, 0x36, 0x34, 0x37, 0x5a, 0x33, 0x35, 0x39, 0x3];
-/** Direction in degrees between two cells (sub_6cb6c0; atan2-based, exact rounding not ported). gættet in rounding */
-export const cellDirection = (x0: number, y0: number, x1: number, y1: number) =>
-  ((Math.round((Math.atan2(x1 - x0, y1 - y0) * 180) / Math.PI) % 360) + 360) % 360;
+/** sub_6cb6c0 → tabellen 0xb67c30 (bygget 0x6b8150 ff.): retning i hele grader, 0 = +y, 90 = +x, 180 = −y, 270 = −x; ftol, ikke afrunding
+ *  (notes/vision-space-offside.md §6.1). */
+export function bearing(dx: number, dy: number): number {
+  if (dx === 0) return dy < 0 ? 180 : 0;
+  if (dy === 0) return dx > 0 ? 90 : 270;
+  const k = 57.29577951471995;                                   // 0x96d2b8
+  let a: number;
+  if (dx > 0 && dy > 0) a = Math.atan(Math.abs(dx / dy)) * k;
+  else if (dx > 0 && dy < 0) a = Math.atan(Math.abs(dy / dx)) * k + 90;
+  else if (dx < 0 && dy < 0) a = Math.atan(Math.abs(dx / dy)) * k + 180;
+  else a = Math.atan(Math.abs(dy / dx)) * k + 270;
+  a = Math.trunc(a);
+  return a > 359 ? 0 : a < 0 ? a + 360 : a;
+}
+/** Direction in degrees between two cells (sub_6cb6c0, sikker). */
+export const cellDirection = (x0: number, y0: number, x1: number, y1: number) => bearing(x1 - x0, y1 - y0);
+
+/** sub_6cbc00 (sikker): blokerende på linjen = holdet uden bolden (målmand med, busy ≤ 1). poss −1 → side 0 regnes som
+ *  forsvarere (sic). Lige linjer tæller [min, max) – endefeltet ikke med; skrå linjer tæller begge ender. */
+export function laneBlockers(gp: { active: boolean; side: number; busy: number; x: number; y: number }[], poss: number,
+                             x0: number, y0: number, x1: number, y1: number): number {
+  const defSide = poss === 0 ? 1 : 0;
+  const cnt = (x: number, y: number) => gp.filter((o) => o.active && o.side === defSide && o.busy <= 1 && o.x === x && o.y === y).length;
+  const inside = (x: number, y: number) => x >= 0 && x <= 8 && y >= 0 && y <= 11;
+  const adx = Math.abs(x1 - x0), ady = Math.abs(y1 - y0);
+  let n = 0;
+  if (adx === 0) { for (let y = Math.min(y0, y1); y < Math.max(y0, y1); y++) { if (!inside(x0, y)) break; n += cnt(x0, y); } return n; }
+  if (ady === 0) { for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x++) { if (!inside(x, y0)) break; n += cnt(x, y0); } return n; }
+  if (adx >= ady) {
+    if (x0 > x1) [x0, y0, x1, y1] = [x1, y1, x0, y0];
+    const step = y1 - y0 >= 0 ? 1 : -1; let err = 0, y = y0;
+    for (let x = x0; x <= x1; x++) { if (err >= adx) { err -= adx; y += step; } if (!inside(x, y)) break; n += cnt(x, y); err += ady; }
+  } else {
+    if (y0 > y1) [x0, y0, x1, y1] = [x1, y1, x0, y0];
+    const step = x1 - x0 >= 0 ? 1 : -1; let err = 0, x = x0;
+    for (let y = y0; y <= y1; y++) { if (err >= ady) { err -= ady; x += step; } if (!inside(x, y)) break; n += cnt(x, y); err += adx; }
+  }
+  return n;
+}
 /** Returns 0 = left foot, 1 = right foot, 2 = not applicable; penalty = 12·(20 − that foot). */
 export function footForTarget(p: MatchPlayer, code: number, x1: number, y1: number, f: number) {
   if (DEAD_BALL_CODES.includes(code)) return { foot: 2, penalty: 0 };
