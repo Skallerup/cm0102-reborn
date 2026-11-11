@@ -324,4 +324,12 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
 - 2026-11-11 – **0x6e0230 porteret (aiTacticChoice.ts, underagent):** 109/157 (69 %) præcist, 137/157 top 3 mod sporet. Originalen vælger
   mellem 45 forudindstillinger (17 + 28 CM3_TACTICS); de 28 mangler i presetTactics.ts; managerens yndlingsformation (stab +0x43) m.fl. mangler i
   world-filen. **Ikke koblet ind endnu.**
+- 2026-11-11 – **Premier League-spor:** `RECOMP_MATCH_TRACE_COMP=7` (fixture+0 = turneringen; 7 = Premier League) – `oracle/runs/tpl.txt`, 364
+  PL-kampe (frø 1, hele sæsonen). Boldens række (når nogen har bolden), orig → porten: 0: 5,3 → **0,0** · 1: 4,9 → 3,2 · 2: 6,3 → 4,2 ·
+  3: 9,7 → 7,8 · 4: 11,1 → 12,4 · 5: 11,9 → 15,7 · 6: 12,8 → **22,2** · 7: 12,2 → 14,0 · 8: 10,4 → 8,5 · 9: 6,1 → 4,7 · 10: 4,7 → 3,7 ·
+  11: 4,6 → 3,6 (%). Tredjedele 26,2/48,0/25,7 mod 18,5/59,1/22,5. Fund: **målmændene holder bolden for kort** (orig har hjemme-/udemålmanden
+  bolden i 2,90/2,28 % af tikkene, porten ~0,4/0,65 %), og bolden hænger ved afsparkspladsen (række 6). Målmændenes rækker: orig side 0 på
+  række 0/1/2 i 75/20/5 %, porten 57/33/10 (side 1 som originalen). Linje-statistik i PL: line:L 7–12 = 8,7/12,6/20,2/23,8/16,2/18,5 %,
+  line:max −1/0/+1 = 50,1/14,9/2,8 %. **Næste:** målmanden med bolden i hænderne (boldhøjde −1: hvor længe venter han, sub_7109f0's GK-gren
+  0x711aba/0x70ec80) og afsparket; derefter territoriet igen og så GRID_UNKNOWN.aiMode til.
 
