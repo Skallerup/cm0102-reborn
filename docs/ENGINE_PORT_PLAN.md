@@ -242,4 +242,13 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   taktiske felt) og følge-reglen (0x715499–0x71546a) med C'en; angribernes løb (runTarget) i forhold til følgernes skridt; porter
   sub_6ddab0's flag (Directness/Pressing/Attacking/Offside) til computerens taktik, når gittermotoren kobles ind (kræver managerens
   +14/+19/+28/+31 i world-filen).
+- 2026-11-11 – **Kontrolleret mod C'en (sikre):** forsvarets følgeregel og fælde-hold 0x7153cf–0x71558d (holdflag-byte +0x9767 & 4 = 0x400;
+  `[esp+0x14]`/`[esp+0x20]` = boldens række/søjle), "step up" 0x714e87, dødbold → opstillingsfeltet 0x714e43, offside-linjerne sub_6c3aa0
+  (bageste markspiller + 1, målmand og udskiftede udenfor), angribernes fremadløb/træk-tilbage/tilbage-onside 0x714643–0x71497d.
+  **Rettet:** N i fremadløbet 0x714643 er 0 (ikke 16) for pladser med 0x200 uden 0x8/0x4 – byten nulstilles ved 0x71464a lige efter
+  `push esi`. Målt (380 kampe frø 1): 2,78 mål · 49/22/29 · skud 19,5 · på mål 8,8 · offside 1,13.
+  **Linjens højde (40 kampe):** den bageste forsvarers *tabelmål* (min over forsvarerne) med bolden på egen række 3–5 / 6–8 / 9–11 er
+  1,3 / 2,35 / 3,4, og han står 0,4 dybere (0,9 / 2,1 / 3,0–3,9); 59–63 % af forsvarerne har en markering med bolden på række 3–5. Linjen
+  står altså, hvor taktiktabellen sætter den – afvigelsen fra oraklets offside skal findes i angribernes løb/afleveringer (runTarget-mål
+  er linjen selv, d = 0 → offsidestilling) eller i linjevogterens udvalg, ikke i forsvarets placering.
 

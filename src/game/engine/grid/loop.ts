@@ -471,8 +471,9 @@ export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     if (p.side === 0) { if (left && m.ballX < 6) [tx, ty] = [0, 11]; else if (right && m.ballX < 2) [tx, ty] = [8, 11]; }
     else { if (left && m.ballX < 2) [tx, ty] = [8, 0]; else if (right && m.ballX < 6) [tx, ty] = [0, 0]; }
   }
-  // TODO ukendt: N when pos&0x200 without 0x8/0x4 (uninitialised in the original); 16 used here
-  const N = p.pos & POS.grp200 ? (p.pos & POS.mid8 ? 18 : p.pos & POS.def4 ? 20 : 16) : 16;      // 0x714643
+  // 0x714643 (sikker): pos & 0x200 → 18 med 0x8, 20 med 0x4, ellers 0 – byten nulstilles ved 0x71464a (`mov [esp+0x13], 0` lige efter
+  // `push esi` = rammens [esp+0xf]); uden 0x200 → 16. rand(0) = 0, så en sådan spiller løber frem, når off-the-ball-rullet > 0
+  const N = p.pos & POS.grp200 ? (p.pos & POS.mid8 ? 18 : p.pos & POS.def4 ? 20 : 0) : 16;
   const counterOn = (m.teamFlags[p.side] & TEAM.counterAttack) !== 0;
   let forward = false;
   if ((counterOn ? m.counterFlag[p.side] : (p.instr & INSTR_FWD_RUNS_B) !== 0n) && p.roll.offTheBall > rand(N)) forward = true;
