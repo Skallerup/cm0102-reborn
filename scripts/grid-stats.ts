@@ -5,11 +5,12 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
 import { Rng } from '../src/game/rng';
 import { aiTactic } from '../src/game/sim';
-import { GRID_DEBUG, GRID_UNKNOWN, randOf, runGridMatch, type GridSideStats } from '../src/game/engine/grid/gridMatch';
+import { GRID_DEBUG, GRID_UNKNOWN, randOf, runGridMatch, setGridDebug, type GridSideStats } from '../src/game/engine/grid/gridMatch';
 import type { Player } from '../src/game/types';
 
 const N = Number(process.argv[2] ?? 380);
 const seed = Number(process.argv[3] ?? 1);
+if (process.env.DEBUG) setGridDebug(true);
 if (process.env.GRID_JSON) Object.assign(GRID_UNKNOWN, JSON.parse(process.env.GRID_JSON));
 const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
 const eng = world.nations.findIndex((x) => x.name === 'England');

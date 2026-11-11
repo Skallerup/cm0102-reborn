@@ -251,4 +251,17 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   1,3 / 2,35 / 3,4, og han står 0,4 dybere (0,9 / 2,1 / 3,0–3,9); 59–63 % af forsvarerne har en markering med bolden på række 3–5. Linjen
   står altså, hvor taktiktabellen sætter den – afvigelsen fra oraklets offside skal findes i angribernes løb/afleveringer (runTarget-mål
   er linjen selv, d = 0 → offsidestilling) eller i linjevogterens udvalg, ikke i forsvarets placering.
+- 2026-11-11 – **Integration (trin 2a–c, f) – gittermotoren spiller nu i spillet bag flaget:** (a) `createGridMatch` (tik for tik, `{ m, tick(),
+  result() }`) med `runGridMatch` som indpakning – byte-identiske sæsontal (100 kampe frø 3); fejlsøgningstællerne kun med `setGridDebug(true)`
+  (grid-stats DEBUG=1, gridAdvantage-testen). (b) `GridListener` (`ctx.on`: mål med assist/straffe, skud, kort 2–6, knock, hjørne, offside,
+  halvleg) uden rand – tallene uændrede. (c) `grid/adapter.ts` `GridSim implements LiveSim` (step = ét tik, minut = floor(tik/11)+1 og 0 før
+  kampstart, pitch() i zonemotorens 15 zoner/ax·ay 0–100, rapporten med `engine: 'original'`), registreret i sim.ts (`setGridFactory`).
+  *estimeret*: assisten = den sidste medspiller, der afleverede (+0x478a ikke afkodet); skade i rapporten = knock med +0x1c sat og kondition
+  < 50 % (0,43/kamp mod zonemotorens 0,30); straffesparkskonkurrence 75 % pr. spark, når en kamp skal have en vinder (sub_6be710 ikke porteret);
+  ingen udskiftninger (`substitute` giver false), ingen holdsnak. (f) **Ydelse:** 38–40 ms pr. kamp bundtet (zonemotoren ~4 ms) – fordelt over
+  hele motoren, intet enkelt varmt punkt; derfor `gridFixture` i sim.ts: gittermotoren spiller kun menneskets kampe og kampene i
+  menneskets egen liga, resten zonemotoren. Soak 2 sæsoner (MODE=authentic ENGINE=original): 0 fejl, ~58 s/sæson. e2e: `E2E_ENGINE=original
+  node scripts/e2e.mjs klassisk` (original DB, Arsenal, cm0102.engine = original; spoler til første kamp) – alle trin grønne.
+  **Mangler til "klar":** udskiftninger og AI-taktik i kampen (sub_6c54a0/sub_6d0b60), setTactic/holdsnak midt i kampen, forlænget
+  spilletid/straffe som originalen, kommentar fra originalens tekster (sub_6d6f70), og sæsontallene (offside 1,1, frispark 6 mod oraklets 6–7/8,7).
 

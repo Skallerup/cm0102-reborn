@@ -1,5 +1,5 @@
 // Langtidstest af motoren: spil N sæsoner og tjek, at verden hænger sammen efter hver sæson.
-// Kør: npx tsx scripts/soak.ts [sæsoner] [world-fil] [klubnavn]   (MODE=authentic = ægte CM 01/02)
+// Kør: npx tsx scripts/soak.ts [sæsoner] [world-fil] [klubnavn]   (MODE=authentic = ægte CM 01/02, ENGINE=original = gittermotoren)
 // Skriver en rapport med fejl (✗) og advarsler (⚠) – exit 1, hvis der er fejl.
 import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
@@ -19,6 +19,7 @@ const eng = world.nations.findIndex((x) => x.name === 'England');
 const user = (clubName && world.clubs.find((c) => c[1] === clubName)?.[0]) || world.clubs.find((c) => c[3] === eng)![0];
 createGame(world, { managerName: 'Soak', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 11, mode: process.env.MODE === 'authentic' ? 'authentic' : undefined });
 const g = gs();
+if (process.env.ENGINE === 'original') g.options.engine = 'original';   // gittermotoren (kræver MODE=authentic og den originale database)
 const errors: string[] = [], warns: string[] = [];
 const err = (s: string) => { if (errors.length < 400) errors.push(s); };
 const warn = (s: string) => { if (warns.length < 400) warns.push(s); };

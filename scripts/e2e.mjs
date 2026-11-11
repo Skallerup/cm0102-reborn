@@ -10,6 +10,8 @@ const PORT = 5187;
 const URL = `http://localhost:${PORT}/cm0102-reborn/`;
 const OUT = 'e2e-shots';
 const only = process.argv[2];
+// E2E_ENGINE=original: den originale database (Arsenal) med originalens kampmotor (gittermotoren) – kun klassisk
+const ENGINE_GRID = process.env.E2E_ENGINE === 'original';
 mkdirSync(OUT, { recursive: true });
 
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', env: { ...process.env, BROWSER: 'none' } });
@@ -36,7 +38,7 @@ async function run(look) {
   });
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript((theme) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.mode', 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? 'modern'); sessionStorage.setItem('cm0102.play', '1'); }, look === 'klassisk' ? 'retro' : 'club');
+  await page.addInitScript(({ theme, grid }) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.mode', 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? (grid ? 'original' : 'modern')); if (grid) localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); }, { theme: look === 'klassisk' ? 'retro' : 'club', grid: ENGINE_GRID });
   // NB: ægte CM 01/02 er standard ved nyt spil – testen kører det udvidede spil (træningskampe, pressemøder m.m.)
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
@@ -110,7 +112,7 @@ async function run(look) {
       await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
       await page.waitForTimeout(1500);
     }
-    if (!(await page.evaluate(() => window.__cmPick(1920)))) throw new Error('klubben findes ikke');
+    if (!(await page.evaluate((id) => window.__cmPick(id), ENGINE_GRID ? 676 : 1920))) throw new Error('klubben findes ikke');
     await page.getByRole('button', { name: await t('start.begin') }).click();
     await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
   });
@@ -490,6 +492,8 @@ async function run(look) {
 
   // ---------- kamp ----------
   await step('spil en hel kamp', async () => {
+    // den originale database: sæsonen starter i juli, første kamp i midten af august – spol frem til dagen før
+    if (ENGINE_GRID) await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; });
     // klassisk (CM 01/02): Continue Game → "Proceed to the match ?" (Yes) → Kick Off Match i sidebjælken
     const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');
     const labels = [await t('top.toTheMatch'), await t('top.toMatch'), await t('cl.continue'), await t('top.continue')].filter(Boolean);
@@ -529,11 +533,12 @@ async function run(look) {
         if (await b.isVisible().catch(() => false)) { await b.click().catch(() => {}); clicked = true; break; }
       }
       if (!clicked) await go({ name: 'match' });
+      if (ENGINE_GRID && process.env.E2E_TRACE) console.log('    trace', i, clicked, await page.evaluate(() => { const g = window.__cm.gs(); return `${g.date} pending=${!!g.pendingFixture} conf=${!!document.querySelector('.cx-confirm')} sub=${document.querySelector('.cx-confirm .cx-subtitle')?.textContent ?? ''} title=${document.querySelector('.cx-head h1, .cx-title')?.textContent ?? ''}`; }));
       await page.waitForTimeout(400);
     }
-    if (look === 'klassisk' && !selSeen) throw new Error('Team Selection blev ikke vist for en skadet spiller');
+    if (look === 'klassisk' && !selSeen && !ENGINE_GRID) throw new Error('Team Selection blev ikke vist for en skadet spiller');
     // trøjenummer-trinnet tog nummeret fra en holdkammerat – originalen kræver et nummer før kampen
-    if (look === 'klassisk' && !sqnMissingSeen) throw new Error('Squad Numbers blev ikke vist før kampen for en spiller uden nummer');
+    if (look === 'klassisk' && !sqnMissingSeen && !ENGINE_GRID) throw new Error('Squad Numbers blev ikke vist før kampen for en spiller uden nummer');
     await page.getByRole('button', { name: kick }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
     const toEnd = page.getByRole('button', { name: await t('match.toEnd') });

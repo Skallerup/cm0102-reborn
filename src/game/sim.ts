@@ -13,7 +13,8 @@ import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } fr
 import { t } from '../i18n';
 import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, type EngineOptions, type EngineTeam } from './engine/match';
-import { getGridFactory, type LiveSim } from './engine/liveSim';
+import { getGridFactory, setGridFactory, type LiveSim } from './engine/liveSim';
+import { gridFactory } from './engine/grid/adapter';
 import type { Rng } from './rng';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
 import { maxSubs, extended, authentic } from './rules';
@@ -189,6 +190,9 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, 
 
 /** Gittermotoren (porten af originalens kampmotor) i stedet for zonemotoren? Kun den originale database i ægte tilstand,
  * og kun når spillet har valgt den (Options.engine) eller udviklerkontakten localStorage `cm0102.engine` = 'original' er sat. */
+// gittermotoren (originalens kampmotor) – bruges kun, når gridEngineOn(g) er sand
+setGridFactory(gridFactory);
+
 export function gridEngineOn(g: GameState): boolean {
   if (cmDatabase(g) !== 'original' || !authentic()) return false;
   if (g.options.engine === 'original') return true;
@@ -199,11 +203,21 @@ export function gridEngineOn(g: GameState): boolean {
   }
 }
 
+/** Gittermotoren koster ~40 ms pr. kamp mod zonemotorens ~4 ms (målt 11/11, bundtet): den spiller menneskets kampe og kampene i
+ *  menneskets egen liga; resten (andre ligaer, pokaler uden mennesket) går stadig på zonemotoren */
+function gridFixture(home: number, away: number, fixtureId?: number): boolean {
+  const g = gs();
+  if (isHumanClub(home) || isHumanClub(away)) return true;
+  const comp = fixtureId !== undefined ? g.fixtures[fixtureId]?.comp : undefined;
+  if (!comp || g.comps[comp]?.type !== 'league') return false;
+  return Object.values(g.clubs).some((c) => c.league === comp && isHumanClub(c.id));
+}
+
 /** Alle klubkampe laves her: zonemotoren (MatchSim), eller gittermotoren, når den er slået til og registreret
  * (setGridFactory i engine/liveSim.ts – sim.ts importerer den ikke, så bundlen er uændret). */
 export function makeMatch(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng): LiveSim {
   const grid = getGridFactory();
-  if (grid && gridEngineOn(gs())) return grid(home, away, opts, r);
+  if (grid && gridEngineOn(gs()) && gridFixture(home.club, away.club, opts.fixtureId)) return grid(home, away, opts, r);
   return new MatchSim(home, away, opts, r);
 }
 

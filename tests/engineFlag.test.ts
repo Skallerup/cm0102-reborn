@@ -56,9 +56,12 @@ describe('kampmotoren bag et flag', () => {
     g.options.engine = 'original';
     setGridFactory(null);
     expect(makeMatch(h, a, { commentary: false }, new Rng(1))).toBeInstanceOf(MatchSim);
-    // slået til og registreret: gittermotoren bruges
+    // slået til og registreret: gittermotoren bruges til menneskets kampe (og menneskets liga) – andre kampe går på zonemotoren
     setGridFactory(fake);
     makeMatch(h, a, { commentary: false }, new Rng(1));
+    expect(used).toBe(0);
+    const me = engineTeam(g.userClub, aiTactic(g.userClub, a.club, true));
+    makeMatch(me, a, { commentary: false }, new Rng(1));
     expect(used).toBe(1);
   }, 60_000);
 

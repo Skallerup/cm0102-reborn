@@ -1,7 +1,7 @@
 // Fordelsreglen sub_6bab90 (notes/advantage-knock.md §A) og at holdebolden/knock-tjekket kører i en hel kamp
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GRID_DEBUG, advantagePending, randOf, runGridMatch, type GP, type GridMatchState, type Incident } from '../src/game/engine/grid/gridMatch';
+import { GRID_DEBUG, advantagePending, randOf, runGridMatch, setGridDebug, type GP, type GridMatchState, type Incident } from '../src/game/engine/grid/gridMatch';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { squad } from '../src/game/state';
 import { Rng } from '../src/game/rng';
@@ -36,6 +36,7 @@ describe('holdebolden og knock-tjekket i en kamp', () => {
     const fresh = (c: number) => squad(c).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: 100, injury: null, banned: 0 }) as Player);
     const [h, a] = [id('Arsenal'), id('Chelsea')];
     const play = (seed: number) => { const rng = new Rng(seed); return runGridMatch({ players: fresh(h), tactic: aiTactic(h, a, true) }, { players: fresh(a), tactic: aiTactic(a, h, false) }, randOf(() => rng.next())); };
+    setGridDebug(true);
     for (const k of Object.keys(GRID_DEBUG)) delete GRID_DEBUG[k];
     const r1 = play(11);
     expect(GRID_DEBUG['hold:keeps'] ?? 0).toBeGreaterThan(0);
