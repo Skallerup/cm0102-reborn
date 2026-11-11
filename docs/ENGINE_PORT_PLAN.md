@@ -3,6 +3,35 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## Næste skridt (overdragelse 2026-11-11 – start her i en ny session)
+
+**Status:** kampens kerne er porteret i gittermotoren (`src/game/engine/grid/`), ikke koblet ind i spillet. 380 kampe frø 1:
+2,87 mål · 50/19/31 · skud 19,5 · på mål 9,0 · hjørner 4,3 · begåede frispark 6,1 (orakel 8,7) · offside 1,1 (orakel ~6) ·
+gule 1,40 (orakel ~1,7). Mål: `npx tsx scripts/grid-stats.ts 380 1` (viser porten mod orakel frø 1/2 og ejerens Man Utd-sæson;
+NB kolonnen "frisp." sammenligner vores begåede med oraklets tildelte – oraklets begåede er 8,7).
+
+**Rammen i spillet er på plads (ingen adfærdsændring):** `src/game/engine/liveSim.ts` (`LiveSim`-interfacet, som `MatchSim` opfylder,
+og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, simulateFixture, quickPlayUserMatch, quickReport),
+`gridEngineOn(g)` = original database + ægte tilstand + (`g.options.engine === 'original'` eller localStorage `cm0102.engine`).
+
+**Rækkefølgen herfra:**
+1. Motoren: optøjer (test), genstarten sub_6c54a0 (AI-taktik og -udskiftninger), behandling af skadede 0x6d0b60, hvorfor
+   forsvarslinjen står så dybt (offside), tærsklen for "dårlig dag", kommentarens rand (sub_6d6f70: ét rand kun ved > 1 variant,
+   sub_6d60b0 kombinationer) – tabellen id → begivenhed: `~/cm0102-engine/notes/commentary-ids.json/.md`.
+2. Integration (plan fra kortlægningen 11/11): (a) trinvis kerne `createGridMatch` med `tick()` (runGridMatch som indpakning,
+   samme tal), dbg kun ved DEBUG; (b) hændelseskrog uden rand (mål/assist/kort/skade/skud/hjørne/offside, spillertællere);
+   (c) `GridSim` i `grid/adapter.ts` med LiveSim-fladen – step ≈ 240 øjeblikke, minute = floor(clock/11)+1, pitch() i zonemotorens
+   15 zoner og ax/ay, lister der kun vokser, `teams[i].stats`/`all[].line` = samme genstande som i report(), `opts.aiSubs` læses
+   løbende, kommentar med zonemotorens `k`-typer (+ `orig:<EVENT>`), `report().engine = 'original'`; registreres med
+   `setGridFactory`; (d) setTactic/substitute/applyTalk midt i kampen; (e) forlænget spilletid og straffe; (f) ydelse – i dag
+   ~60 ms pr. kamp mod MatchSims 3,6 ms (mål ≤ 10 ms; ellers kun menneskets kampe og liga på gittermotoren – ejerens beslutning).
+3. Udgivelseskrav: tsc, vitest, `npm run build`, `npm run e2e` (også med `cm0102.engine` = original), `scripts/soak.ts`/`features.ts`
+   med MODE=authentic, `node scripts/e2e-soak.mjs original klassisk 5`, sæsontal inden for oraklets – derefter staging til ejerens
+   godkendelse, først så main.
+
+**Oraklet:** `~/cm0102-engine/oracle/` (README). Kør det kun med ejerens viden, med sandkassen slået fra og altid med egen
+`RECOMP_USER_DIR`/`HOME` – aldrig mod `~/Library/Application Support/cm0102` (ejerens gemte spil; backup i `~/cm0102-engine/backup/`).
+
 ## Metode
 
 1. **Kilde:** ejerens egen `cm0102.exe` (3.9.68, matcher Bosmans manifest) rekompileret med Bosmans `tools/recomp/recomp.py`
