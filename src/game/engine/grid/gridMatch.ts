@@ -10,6 +10,9 @@ import { SHOT, keeperBase, keeperValue, shotOutcome, shotScore, type Attrs as Sh
 import * as H from './helpers';
 import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, teamFlagsOf, type Table } from './tacticTable';
 import { aiPrematch, PREMATCH_ATTR_KEYS } from './aiPrematch';
+import { aiTeamSetup } from './aiTeam';
+import { PRESET_TACTICS } from './presetTactics';
+import { presetTable } from './tacticTable';
 import { aiMode as aiModeOf, teamStrength, type AiModeInput } from './aiMode';
 import { TEAM_FLAGS, cardWithoutVictim, decideFoulPunishment, isHardChallenge, judgeTackle, type JudgeResult, type MatchOfficial } from '../cm0102-original-rules';
 import { actionSkills, adjustMorale, getOppositionChallenge, inBoxAt, randS, type ChallengeOut } from './challenge';
@@ -516,7 +519,9 @@ export const GRID_UNKNOWN = {
    *  udeholdets tilhængere 8 % *estimeret*. Bruges, når GridMatchCtx.crowd mangler. */
   /** 0x6df460 (aiMode.ts) kobles ind: computerens tilstand 1–5 pr. dødbold. Slået fra, indtil territoriet passer (porten får bolden for
    *  sjældent ind i hjemmeholdets tredjedel: 18,5 % mod originalens 27,2 % – med tilstanden 56/25/19 i stedet for 51/23/26) */
-  aiMode: false,
+  aiMode: true,
+  /** computerholdets taktikvalg og opstilling (0x6e0230 + 0x6e2000, aiTeam.ts) i stedet for vores AI-taktik */
+  aiTeam: true,
   crowd: { total: 35428, home: 29400, away: 6028 },   // *estimeret*: 17 % udebanetilhængere giver publikumsbyte 2–3 som kampsporene (aimode*.txt: oftest 1–4); sub_85cba0 ikke porteret
   /** comp+0x69: English Premier Division = 18 (club_comp.dat 3.9.60, sikker for Premier League) */
   compRep: 18,
@@ -532,6 +537,18 @@ const POS_WORD: Record<string, number> = { GK: 0x1, SW: 0x2, D: 0x4, DM: 0x8, M:
 const SIDE_WORD: Record<string, number> = { L: 0x80, C: 0x200, R: 0x800 };
 const TECHN = ['anticipation', 'crossing', 'decisions', 'dribbling', 'finishing', 'handling', 'heading', 'longShots', 'marking', 'offTheBall', 'oneOnOnes', 'passing', 'penalties', 'positioning', 'reflexes', 'tackling', 'throwIns', 'creativity'] as const;
 const RAWN = ['acceleration', 'pace', 'agility', 'balance', 'strength', 'flair', 'freeKicks', 'jumping', 'teamwork', 'technique', 'aggression', 'bravery', 'corners'] as const;
+
+/** en taktikplads ud fra originalens positionsmaske (GK 0x1, SW 0x2, D 0x4, DM 0x8, M 0x10, AM 0x20, F 0x40; L 0x80, LC 0x100, C 0x200, RC 0x400,
+ *  R 0x800) – kun til målmanden og grundpositionen; motoren bruger selve masken (makePlayer base.pos) */
+function maskSlot(mask: number): Tactic['slots'][number] {
+  const row = mask & 1 ? 0 : mask & 2 ? 1 : mask & 4 ? 2 : mask & 8 ? 3 : mask & 0x10 ? 4 : mask & 0x20 ? 5 : 6;
+  const y = mask & 0x80 ? 10 : mask & 0x100 ? 30 : mask & 0x400 ? 70 : mask & 0x800 ? 90 : 50;
+  const x = [2, 12, 20, 35, 50, 65, 85][row];
+  const side = y < 40 ? 'L' : y > 60 ? 'R' : 'C';
+  const pos = row === 0 ? 'GK' : row <= 2 ? (side === 'L' ? 'LB' : side === 'R' ? 'RB' : 'CB') : row === 3 ? 'DM' : row === 4 ? (side === 'L' ? 'LM' : side === 'R' ? 'RM' : 'CM')
+    : row === 5 ? (side === 'L' ? 'LW' : side === 'R' ? 'RW' : 'AM') : 'CF';
+  return { pos, side, x, y } as Tactic['slots'][number];
+}
 
 function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number; pos?: number; posAttack?: number },
   crowd?: { byte: number; compRep: number; final: boolean; mot?: ReturnType<typeof initMotivation> }): GP {
@@ -625,18 +642,37 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const gp: GP[] = [];
   const maps: ReturnType<typeof mapTactic>[] = [];
   const aiFlags: (number | undefined)[] = [undefined, undefined];
+  const aiTactics: (Tactic | undefined)[] = [undefined, undefined];
   teams.forEach((t, side) => {
     const ps = t.players instanceof Map ? t.players : new Map(t.players.map((p) => [p.id, p]));
     // originalens positionstabel: nærmeste forudindstilling (rolle/side, så placering) – tacticTable.ts
     // originalens positionstabel (tacticTable.ts): forudindstillingen, når taktikkens masker er præcis dens, ellers det kanoniske gitter
-    const map = maps[side] = mapTactic(t.tactic.slots, t.tactic.formation);
-    t.tactic.lineup.forEach((id, slot) => {
+    let map = maps[side] = mapTactic(t.tactic.slots, t.tactic.formation);
+    // computerholdet (0x6dbb80 → 0x6e0230 + 0x6e2000, aiTeam.ts): en af originalens 45 faste taktikker og spillerne fordelt på dens pladser.
+    // Tilstanden før kampen (0x6df460 med inMatch = false, styrke = omdømme) indgår i valget.
+    let tactic = t.tactic;
+    if (GRID_UNKNOWN.aiTeam && (!ctx.ai || ctx.ai[side])) {
+      const rep = (c: Side) => ctx.rep?.[c] ?? 5000;
+      const pre = aiModeOf({ side: side as Side, inMatch: false, strength: [rep(0), rep(1)], rep: [rep(0), rep(1)], territory: [0, 0, 0], clock: 0, periodEnd: 495,
+        crowd: [sideByte[0], sideByte[1]], goals: [0, 0], firstLeg: null, fixtureFlags: 0, fixtureKind: ctx.league === false ? 0 : 33, onPitch: [11, 11],
+        sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: null, mgrAttacking: ctx.managers?.[side]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: 2, prevR: -1000 });
+      const cands = [...ps.values()].filter((p) => !p.injury && !(p.banned > 0) && !p.reserves);
+      const r = aiTeamSetup({ squad: cands, tac: ctx.managers?.[side]?.tac ?? null, mode: pre.mode, rep: rep(side as Side) });
+      const pr = PRESET_TACTICS[r.presetIndex];
+      if (pr && r.lineup.every((id) => id !== null)) {
+        map = maps[side] = { preset: pr, table: presetTable(pr), slotOf: r.entry.masks.map((_, i) => i), masks: r.entry.masks, masks2: r.entry.masks2, flags: r.entry.flags,
+          lo: r.entry.lo, hi: pr.hi, tb: r.entry.tb };
+        tactic = { ...t.tactic, formation: pr.name, lineup: r.lineup as number[], slots: r.entry.masks.map(maskSlot), individual: [] };
+        aiTactics[side] = tactic;
+      }
+    }
+    tactic.lineup.forEach((id, slot) => {
       const p = ps.get(id); if (!p) return;
       const ps0 = map.slotOf[slot] ?? slot;
       const sh = (k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10, gk = t.tactic.slots[slot].pos === 'GK';
       const mot = initMotivation(rand, { prof: sh('professionalism'), im: sh('importantMatches'), ca: p.ca, cons: sh('consistency'), dirt: sh('dirtiness'), gk,
         gkRating: p.pos[0], side: side as Side, byte0: sideByte[0], compRep, derby, crowd: crowd.total, capacity });
-      const g = makePlayer(p, side as Side, slot, t.tactic, { lo: map.lo[ps0], hi: map.hi[ps0], tb: map.tb[ps0], pos: map.masks[ps0], posAttack: map.masks2[ps0] },
+      const g = makePlayer(p, side as Side, slot, tactic, { lo: map.lo[ps0], hi: map.hi[ps0], tb: map.tb[ps0], pos: map.masks[ps0], posAttack: map.masks2[ps0] },
         { byte: sideByte[side], compRep, final, mot });
       // +0x31 (0x6eb0d4): +10 hvis modstanderklubben har ham som yndling, −20 hvis den hader ham (club +0x9b..+0xaf – findes ikke i vores
       // data → 0), −10 i derby; +0x33 er ikke porteret (læses ikke af motoren)
@@ -668,7 +704,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     // holdflaget +0x584 kopieres uændret ind ved kampstart (0x6db8a2): forudindstillingens ord med vores holdinstruktioner (tacticTable.ts)
     teamFlags: [aiFlags[0] ?? teamFlagsOf(home.tactic.team, maps[0].flags), aiFlags[1] ?? teamFlagsOf(away.tactic.team, maps[1].flags)],
     aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
-    tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
+    tactics: [aiTactics[0] ?? home.tactic, aiTactics[1] ?? away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
     stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null, ballEvent: 0, inc: null, knocks: 0, b8eb5: 0,
     passTo: null, landX: 0, landY: 0, fromX: 0, fromY: 0, margin: 0, lastPasser: null, lastPassType: 0, inFlight: [0, 0], lastToucher: null,
     official: ctx.official ? { discipline: ctx.official.discipline, b24: ctx.official.b24, b27: ctx.official.b27, b28: ctx.official.b28, mood: 0 }

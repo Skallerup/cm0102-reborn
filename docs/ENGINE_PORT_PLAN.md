@@ -362,3 +362,10 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   for meget på modstanderens (række 9–11: 27/20/17 løb pr. kamp mod 12/7/4) – sub_7109f0's input; pausens restitution sub_6f5810 og
   +0x1a7-karakteren/returbolden 0x713aed er ikke porteret. Værktøjer: `~/cm0102-engine/tools/{rows,rows_own,gk_stats,gk_how,gk_next,
   run_stall,run_dir,shot_out,shot_pos,setup_check,setpiece_check}.py`.
+- 2026-11-11 – **Computerens holdopsætning koblet ind (`GRID_UNKNOWN.aiTeam`, til) og tilstanden slået til (`GRID_UNKNOWN.aiMode`, til):** computerhold
+  vælger en af de 45 faste taktikker (0x6e0230; tilstanden før kampen fra 0x6df460; managerens Staff.tac fra world-filen) og fordeler truppen
+  (uden skadede/udelukkede/reserver) på dens pladser (0x6e2000); motoren får taktikkens masker, flag, instruktioner og tabel direkte
+  (`maskSlot` laver kun målmand/grundposition). 380 kampe frø 1: **3,32 mål · 51/23/26 (= originalen) · skud 24,3 (17,2) · på mål 10,6 (10,3) ·
+  hjørner 5,5 (5,0) · frispark (begåede) 6,0 (8,7) · offside 3,9 (6–7) · gule 1,56/røde 0,08 (1,70/0,14) · afleveringer 71 % (72 %)**.
+  Næste: for mange skud/mål, frisparkene, offside; udskiftningerne; forlænget spilletid/straffe.
+
