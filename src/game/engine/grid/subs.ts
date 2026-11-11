@@ -176,6 +176,27 @@ export function assignPlayers(n: number, k: number, score: ScoreFn): (number | n
   const out: (number | null)[] = new Array(k).fill(null);
   if (n < 1 || k < 1) return out;
   const used = new Array(n).fill(0);
+  assignPhase12(n, k, score, out, used);
+  // 3) 0x6e2b58 (uden bænkpladser – med dem: pickTeam.ts assignSquad)
+  for (let pass = 0; pass < 100; pass++) {
+    let swapped = false;
+    for (let j = 0; j < k && !swapped; j++) {
+      const a = out[j];
+      if (a === null) continue;
+      const va = score(j, a);
+      for (let j2 = j + 1; j2 < k && !swapped; j2++) {
+        const b = out[j2];
+        if (b === null) continue;
+        const vjb = score(j, b), vj2a = score(j2, a), vj2b = score(j2, b);
+        if (vj2a + vjb > va + vj2b) { out[j] = b; out[j2] = a; swapped = true; }
+      }
+    }
+    if (!swapped) break;
+  }
+  return out;
+}
+/** Trin 1 og 2 af sub_6e2000 for n ≥ k (out/used fyldes; også brugt af pickTeam.ts assignSquad). */
+export function assignPhase12(n: number, k: number, score: ScoreFn, out: (number | null)[], used: number[]): void {
   let conflicts = 0;
   // 1) 0x6e264e
   for (let j = 0; j < k; j++) {
@@ -213,23 +234,6 @@ export function assignPlayers(n: number, k: number, score: ScoreFn): (number | n
       }
     }
   }
-  // 3) 0x6e2b58
-  for (let pass = 0; pass < 100; pass++) {
-    let swapped = false;
-    for (let j = 0; j < k && !swapped; j++) {
-      const a = out[j];
-      if (a === null) continue;
-      const va = score(j, a);
-      for (let j2 = j + 1; j2 < k && !swapped; j2++) {
-        const b = out[j2];
-        if (b === null) continue;
-        const vjb = score(j, b), vj2a = score(j2, a), vj2b = score(j2, b);
-        if (vj2a + vjb > va + vj2b) { out[j] = b; out[j2] = a; swapped = true; }
-      }
-    }
-    if (!swapped) break;
-  }
-  return out;
 }
 
 // ---------------------------------------------------------------- sub_6e2f20: udvælgelsesværdien

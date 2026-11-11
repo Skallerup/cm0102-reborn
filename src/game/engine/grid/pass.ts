@@ -204,6 +204,8 @@ export interface PassCtx {
   queueIncident?(type: number, d: GP, p: GP | null, res: number, x: number, y: number, jC: number, jB: number): void;
   /** tællere til fejlsøgning (GRID_DEBUG) */
   dbg?(k: string): void;
+  /** kun spor: hvert blokeringsforsøg på skudlinjen (match_trace.c's L-linje) */
+  onBlock?(q: GP, S: number, d: number, soft: boolean, r: number): void;
 }
 
 export function makePass(c: PassCtx) {
@@ -671,7 +673,9 @@ export function makePass(c: PassCtx) {
       skill = q.skill[kind];
     }
     if (soft) skill = ftol(skill * 0.85);
-    const v = int16(randS(rand, skill) - Math.trunc(S / 3) - kind);              // (sic: handlingskoden trækkes fra)
+    // 0x70e2e2: [esp+0x18] læses, mens rand-argumentet stadig ligger på stakken (add esp, 4 kommer bagefter) – altså [esp+0x14] = r,
+    // ikke handlingskoden. Bekræftet med rand-sporet (oracle/runs/tshot7: v = rand(skill) − S/3 − rand(n)/(d+1)).
+    const v = int16(randS(rand, skill) - Math.trunc(S / 3) - r);
     if (v < -100) { q.busy += rand(2); return 0; }
     if (v < 0) return 0;
     const strong = S > rand(150) + 200;
@@ -693,7 +697,12 @@ export function makePass(c: PassCtx) {
     m.lastToucher = null;
     const gy = p.side === 0 ? 11 : 0;
     const cell = (side: Side, x: number, y: number, d: number) => {
-      for (const q of playersIn(side, x, y)) if (q.busy <= 1 && block(q, S, d, soft) === 1) { q.blocks++; m.lastToucher = q; return true; }
+      for (const q of playersIn(side, x, y)) {
+        if (q.busy > 1) continue;
+        const r = block(q, S, d, soft);
+        c.onBlock?.(q, S, d, soft, r);
+        if (r === 1) { q.blocks++; m.lastToucher = q; return true; }
+      }
       return false;
     };
     return walkShotLine(p.x, p.y, gy, (x, y, d) => { const r = rand(2) as Side; return cell(r, x, y, d) || cell(other(r), x, y, d); }) ? 1 : 0;

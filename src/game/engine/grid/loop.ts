@@ -162,7 +162,8 @@ export interface Hooks {
   pickTaker(side: Side, state: number): Player;                  // sub_6ceb90 TODO
   periodCheck(): 0 | 1 | 2 | 3 | 4;                              // sub_6bd930
   ballOut(lastTouch: Side): void;                                // sub_6cd490 (ported below as ballOutOfPlay)
-  comment(id: number): void;                                     // sub_6d6f70
+  /** sub_6d6f70 Match_Events::add_event(id, eng, p1, side1, p2, side2, extra) – p1/p2 = spilleren (+0x2e) eller null (−1); side1 mangler = p1's side */
+  comment(id: number, p1?: Player | null, side1?: number, p2?: Player | null, side2?: number, extra?: number): void;
   /** offside dømt mod `side` (team +0xf5ca+54·side ++) */
   offsideGiven?(side: Side): void;
   distToTarget(bx: number, by: number, tx: number, ty: number): number; // sub_6cc4e0 TODO
@@ -394,9 +395,10 @@ export function looseBall(m: Match, rand: Rand, h: Hooks): void {
 export function ballOutOfPlay(m: Match, lastTouch: Side, h: Hooks): boolean {
   if (m.state !== 0) return true;
   m.poss = -1; m.carrier = null;
-  if (m.ballX < 0 || m.ballX >= 9) { m.poss = lastTouch === 0 ? 1 : 0; m.state = 2; h.comment(0x1f76); }
-  else if (m.ballY < 0) { if (lastTouch === 1) { m.state = 4; m.poss = 0; h.comment(0x1f77); } else { m.state = 3; m.poss = 1; h.comment(0x1f75); } }
-  else if (m.ballY >= 12) { if (lastTouch === 1) { m.state = 3; m.poss = 0; h.comment(0x1f75); } else { m.state = 4; m.poss = 1; h.comment(0x1f77); } }
+  // kommentaren (0x6cd4f8/0x6cd527/0x6cd561/0x6cd590/0x6cd5cd): p1 = −1, side1 = holdet, der får bolden
+  if (m.ballX < 0 || m.ballX >= 9) { m.poss = lastTouch === 0 ? 1 : 0; m.state = 2; h.comment(0x1f76, null, m.poss); }
+  else if (m.ballY < 0) { if (lastTouch === 1) { m.state = 4; m.poss = 0; h.comment(0x1f77, null, 0); } else { m.state = 3; m.poss = 1; h.comment(0x1f75, null, 1); } }
+  else if (m.ballY >= 12) { if (lastTouch === 1) { m.state = 3; m.poss = 0; h.comment(0x1f75, null, 0); } else { m.state = 4; m.poss = 1; h.comment(0x1f77, null, 1); } }
   else return false;
   return true;
 }
@@ -626,7 +628,7 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
         if (p.x === bx && p.y === by) {
           if (m.poss === -1 && m.ballH < 5 && m.loftCountdown === 0) {
             p.rating += 4; p.action = ACT.chaseBall; h.turn(p, 4, goalLine(p.side));
-            h.comment(0x1f46); /* 0x2113 if +0x1cd and p central in the opponents' box */ h.takeBall(p); return;
+            h.comment(0x1f46, p); /* 0x715a59 (0x2113 if +0x1cd and p central in the opponents' box) */ h.takeBall(p); return;
           }
           p.action = ACT.actAgain; return;
         }
@@ -650,7 +652,7 @@ function keeperOffBall(m: Match, p: Player, tx: number, ty: number, _rand: Rand,
   const bx = m.ballX, by = m.ballY;
   if (p.x === bx && p.y === by) {
     if (m.poss === -1 && m.ballH < 5 && m.loftCountdown === 0) {
-      h.turn(p, 4, goalLine(p.side)); h.comment(0x1f46); h.takeBall(p); p.rating += 4; p.action = ACT.keeperGathers; return;
+      h.turn(p, 4, goalLine(p.side)); h.comment(0x1f46, p); h.takeBall(p); p.rating += 4; p.action = ACT.keeperGathers; return;
     }
     return;
   }
@@ -714,7 +716,7 @@ export function passWrapper(m: Match, p: Player, type: number, receiver: Player 
     if (o) {
       const d = dist(o.x, o.y, 4, goalLine(o.side));
       if (rand(ftol(2 * d * d)) !== 0) {                          // 0x6fa2ec fmul + fadd st0,st0 = 2·d² → 0x6fa2f8 → 0x6fa3db offside given
-        h.comment(0x1f78);                                        // 8056 EVENT_RESTART_OFFSIDE
+        h.comment(0x1f78, o, p.side);                             // 0x6fa3f6: 8056 EVENT_RESTART_OFFSIDE (p1 = den offside, side = afleverens)
         h.offsideGiven?.(p.side);                                 // holdets offside +0xf5ca+54·side
         // TODO counters: team +0xf5ca+54*side ++, o.+0x13 ++, p.+0x1 --
         m.ballX = o.x; m.ballY = o.y; m.state = 7; m.poss = (p.side === 0 ? 1 : 0); m.carrier = null;
@@ -758,7 +760,7 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
   if (m.subTick >= 1 || m.paused) {
     m.clock++; m.subTick = 0;
     const r = h.periodCheck();                          // sub_6bd930
-    if (r === 1) return true;                           // pausen: tikket slutter (0x6b9ef9 → 0x6baa10), kampen fortsætter
+    if (r === 1 || r === 2 || r === 3) return true;     // pausen/forlænget/dens pause: tikket slutter (0x6b9ef9 → 0x6baa10), kampen fortsætter
     if (r !== 0) return false;
     for (const p of m.players) if (p.active) playerTick(p, rand);   // sub_6f55c0
   }

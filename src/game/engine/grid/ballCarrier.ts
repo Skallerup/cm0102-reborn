@@ -137,6 +137,8 @@ export interface OppKeeper {
 
 export interface Situation {
   carrier: Carrier;
+  /** kun spor: de fire værdier efter støjen (0x7133bd, match_trace.c's Q-linje) */
+  traceScores?(P: number, R: number, H: number, S: number, w: number, blockers: number, space: number, pressure: number): void;
   /** Argument of sub_7109f0: 0 from sub_7103e0 (normal play), 4 from sub_6be710 (query: returns true when he would shoot). */
   mode: 0 | 4;
   restart: number; // match+0x8eb2
@@ -162,8 +164,9 @@ export interface Situation {
   pass: PassOption | null;
   /** sub_6c6a30 for a restart (code = 0x34/0x36/0x5a/0x37). */
   setPiecePass: (code: number) => PassOption | null;
-  /** sub_700bd0: shot score (on target if > 240 in sub_702050). Called fresh each time. */
-  shotScore: () => number;
+  /** sub_700bd0: shot score (on target if > 240 in sub_702050). Called fresh each time. w29 = boldholderens word +0x29, som
+   *  sub_7109f0 har skrevet (0x7110f5–0x711342, kan være negativ); mangler = limens værdi. */
+  shotScore: (w29?: number) => number;
   /** sub_6cb700(y, side): own players further forward than him. */
   teammatesAhead: number;
   /** sub_6cb780: 0 = defenders between him and goal, 1 = clear and he is the most advanced, 2 = clear but a team-mate is nearer goal. */
@@ -343,7 +346,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
     if (range <= D) S = -500;
     else if (s.mode === 4 && c.flairRoll <= rand(50)) S = -500;
     else {
-      const shot = s.shotScore();
+      const shot = s.shotScore(space);
       const k = trunc(D * 75 - c.decisionsRoll * 4);
       noisyShot = shot + rand(-(rand(k) + trunc(c.decisionsRoll * 4 - D * 75)));
       shotFlag = true;
@@ -562,6 +565,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   R += rand(n);
   H += rand(n);
   S += rand(n);
+  s.traceScores?.(P, R, H, S, s.pass ? s.pass.weight : 0, s.blockers, space, s.pressure);
 
   // --- choose, 0x7133bf
   const PASS = 1, HOLD = 2, SHOOT = 3, RUN = 4;
@@ -626,7 +630,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
       return { kind: 'hold', timeWasting: false };
     case SHOOT: {
       if (s.mode === 4) return { kind: 'wouldShoot' };
-      const fresh = s.shotScore();
+      const fresh = s.shotScore(space);
       const quality = shotFlag ? trunc(fresh / 2) + trunc(noisyShot / 2) : fresh; // 0x713c55
       return { kind: 'shoot', quality };
     }

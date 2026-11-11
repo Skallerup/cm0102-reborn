@@ -195,6 +195,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         // de viste værdier ved spilstart: intern → sub_538ec0 → sub_538bc0 → sub_544380 (playerInit.ts)
         attrs = shownFromStored(attrs, ca, pos11[0], feet);
         p.foot = feet[0] >= 15 && feet[1] >= 15 ? 'B' : feet[0] > feet[1] ? 'L' : 'R';
+        p.feet = feet;
       }
       // de få, originalen heller ikke udfylder her (adaptability, ambition, loyalitet …), beholder den genererede værdi
       p.ca = ca; p.pa = pa; p.attrs = attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rec.pos.slice(); p.side = rec.side.slice();
@@ -476,6 +477,7 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   if (dob) s.dob = dob;
   if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
   if (tac?.some((v) => v > 0)) s.tac = tac.slice();
+  if (ca > 0) s.ca = ca;
   g.staff[s.id] = s;
   return s;
 }

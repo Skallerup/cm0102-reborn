@@ -113,6 +113,8 @@ export interface Player {
   nation: number;
   club: number; // 0 = klubløs
   foot: Foot;
+  /** fødderne 1-20 [venstre, højre] fra den originale database (spillerposten +0x30/+0x3b efter sub_535a80) – kampmotoren og computerens opstilling */
+  feet?: [number, number];
   height: number;
   attrs: number[]; // float 1-20, se attributes.ts
   pos: number[]; // 1-20 pr. POSITIONS
@@ -269,6 +271,8 @@ export interface Staff {
   /** managerens taktiske egenskaber fra den originale database (ikke-spillerposten): [Attacking, Directness, Free Roles, Marking, Offside,
    *  Pressing, Tactics, yndlingsformation 1..9] – originalens computer-taktik i gittermotoren (aiPrematch/aiTacticChoice) */
   tac?: number[];
+  /** den originale databases CA (ikke-spillerposten +4) – de viste stabsegenskaber regnes af den (sub_544410, aiTeam.ts) */
+  ca?: number;
   id: number;
   first: string;
   last: string;
@@ -822,6 +826,12 @@ export interface CommentaryLine {
   b?: string;
   t?: number;
   hi?: boolean;
+  /** originalens begivenhed (navnet uden EVENT_ i matchTexts.json) og varianten, som originalens kommentarkø valgte (gittermotoren, grid/matchEvents.ts) */
+  ev?: string;
+  v?: number;
+  /** side2 (holdet for <t2>; mangler = modstanderen) og extra (<d>/<N>: yards, minutter …) */
+  t2?: number;
+  x?: number;
 }
 
 export interface MatchReport {

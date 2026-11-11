@@ -159,12 +159,27 @@ function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boo
   const game = (r: Row) => (lang === 'en' ? r[1] : lang === 'da' ? r[2] : r[3]?.[lang]);
   // rapportlinjen findes kun på engelsk og dansk – de øvrige sprog bruger kamplinjen
   const pick = (r: Row) => { const rep = r[4]; return report && rep && (lang === 'en' || lang === 'da') ? rep[lang === 'en' ? 0 : 1] : game(r); };
-  const steps = MAP[l.k];
-  if (!steps) return null;
   const da = ctx.lang === 'da';
   const team = (other?: boolean) => { const t = l.t === undefined ? undefined : other ? 1 - l.t : l.t; return t === 0 ? ctx.home : t === 1 ? ctx.away : undefined; };
   const out: string[] = [];
   const sounds: string[] = [];
+  // gittermotoren (originalens kommentarkø, grid/matchEvents.ts): begivenheden og varianten er valgt af motoren som i originalen –
+  // teksten slås direkte op (ingen filtrering, intet eget valg). <t2> = side2, ellers modstanderen; <d>/<N> = extra.
+  if (l.ev) {
+    const row = data[l.ev]?.[l.v ?? 0];
+    if (!row) return null;
+    const p1 = l.a, p2 = l.b, t1 = team(false);
+    const s2 = l.t2 ?? (l.t === undefined ? undefined : 1 - l.t);
+    const t2 = s2 === 0 ? ctx.home : s2 === 1 ? ctx.away : undefined;
+    if (row[5]) sounds.push(row[5]);
+    const txt = fill(pick(row) ?? row[1], { p1, p2, t1, t2, x: l.x }, ctx, da, lang, idx);
+    const parts = txt.split('|').map((x) => x.trim()).filter(Boolean);
+    out.push(...(report ? parts.slice(0, 1) : parts));
+    if ((l.k === 'halftime' || l.k === 'fulltime') && ctx.score) out.push(ctx.score);
+    return out.length ? { parts: out, sounds } : null;
+  }
+  const steps = MAP[l.k];
+  if (!steps) return null;
   steps.forEach((st, si) => {
     if (st.raw === 'score') { if (ctx.score) out.push(ctx.score); return; }
     const p1 = st.p1 ? l[st.p1] : undefined, p2 = st.p2 ? l[st.p2] : undefined;
@@ -178,18 +193,25 @@ function originalParts(l: CommentaryLine, ctx: OrigCtx, idx: number, report: boo
     let x = hash(idx * 31 + l.m * 7 + si) % tot;
     let row = rows[0];
     for (const r of rows) { x -= r[0]; if (x < 0) { row = r; break; } }
-    const poss = (name: string) => (da ? (/[sxz]$/i.test(name) ? "'" : 's') : /s$/i.test(name) ? "'" : "'s");
     if (row[5]) sounds.push(row[5]);
-    let txt = pick(row)!;
-    txt = txt.replace(/<p1>\{s\}/g, p1 ? p1 + poss(p1) : '').replace(/<p2>\{s\}/g, p2 ? p2 + poss(p2) : '').replace(/<t2>\{s\}/g, t2 ? t2 + poss(t2) : '').replace(/<t1?>\{s\}/g, t1 ? t1 + poss(t1) : '')
-      .replace(/<p1>/g, p1 ?? '').replace(/<p2>/g, p2 ?? '').replace(/<tc>/g, (t1 ?? '').toUpperCase()).replace(/<t1?>/g, t1 ?? '').replace(/<t2>/g, t2 ?? '')
-      .replace(/<Rf>/g, ctx.ref ? `${REF[lang]?.[0] ?? 'Referee'} ${ctx.ref}` : REF[lang]?.[2] ?? 'The referee')
-      .replace(/<rf>/g, ctx.ref ? `${REF[lang]?.[1] ?? 'referee'} ${ctx.ref}` : REF[lang]?.[3] ?? 'the referee')
-      .replace(/<d>/g, String(15 + (hash(idx + 7) % 30))).replace(/<N>/g, l.a ?? '')
-      .replace(/<[YRO]>/g, '').replace(/\{s\}/g, '').replace(/\s+/g, ' ');
+    const txt = fill(pick(row)!, { p1, p2, t1, t2, n: l.a }, ctx, da, lang, idx);
     // "|" = flere linjer efter hinanden i originalen: her én linje med punktum imellem (rapporten: kun den første)
     const parts = txt.split('|').map((x) => x.trim()).filter(Boolean);
     out.push(...(report ? parts.slice(0, 1) : parts));
   });
   return out.length ? { parts: out, sounds } : null;
+}
+
+/** pladsholderne i en af originalens tekster (fælles for MAP-vejen og gittermotorens begivenheder) */
+function fill(txt: string, v: { p1?: string; p2?: string; t1?: string; t2?: string; x?: number; n?: string }, ctx: OrigCtx, da: boolean, lang: string, idx: number): string {
+  const { p1, p2, t1, t2 } = v;
+  const poss = (name: string) => (da ? (/[sxz]$/i.test(name) ? "'" : 's') : /s$/i.test(name) ? "'" : "'s");
+  const num = v.x !== undefined ? String(v.x) : String(15 + (hash(idx + 7) % 30));
+  return txt.replace(/<p1>\{s\}/g, p1 ? p1 + poss(p1) : '').replace(/<p2>\{s\}/g, p2 ? p2 + poss(p2) : '').replace(/<t2>\{s\}/g, t2 ? t2 + poss(t2) : '').replace(/<t1?>\{s\}/g, t1 ? t1 + poss(t1) : '')
+    .replace(/<p1c>/g, (p1 ?? '').toUpperCase())
+    .replace(/<p1>/g, p1 ?? '').replace(/<p2>/g, p2 ?? '').replace(/<tc>/g, (t1 ?? '').toUpperCase()).replace(/<t1?>/g, t1 ?? '').replace(/<t2>/g, t2 ?? '')
+    .replace(/<Rf>/g, ctx.ref ? `${REF[lang]?.[0] ?? 'Referee'} ${ctx.ref}` : REF[lang]?.[2] ?? 'The referee')
+    .replace(/<rf>/g, ctx.ref ? `${REF[lang]?.[1] ?? 'referee'} ${ctx.ref}` : REF[lang]?.[3] ?? 'the referee')
+    .replace(/<d>/g, num).replace(/<N>/g, v.x !== undefined ? String(v.x) : v.n ?? '').replace(/<n>/g, num).replace(/<[cf]>/g, '')
+    .replace(/<[YRO]>/g, '').replace(/\{s\}/g, '').replace(/\s+/g, ' ');
 }

@@ -147,7 +147,9 @@ export function challengeValue(m: GridMatchState, q: GP, type0: number, rand: Ra
   }
   const spd = 20 * (m.ballSpeed - 1) ** 3;                                                  // +0x8eaa
   let V: number;
-  if (isGK(q) && inOwnBox(q)) { type = m.ballH === 4 ? 0x29 : 1; V = q.skill[type] - tired - mom; }
+  // 0x70d9be–0x70d9d3: cmp boldhøjde, 4; setne; dec; and 0xd8; add 0x29 → boldhøjde 4 giver 1 (grebet), ellers 0x29 (før vendt; kampsporet
+  // tfoul2: keeperens type ved 0xd/0xc er 41, ved 0x15 er den 1)
+  if (isGK(q) && inOwnBox(q)) { type = m.ballH === 4 ? 1 : 0x29; V = q.skill[type] - tired - mom; }
   else if (type === 0xc || type === 0x15) V = q.skill[type] - spd - tired - face - mom;
   else if (type === 0x13 || type === 0x21 || type === 0x22) {
     V = q.skill[type] - tired - mom;

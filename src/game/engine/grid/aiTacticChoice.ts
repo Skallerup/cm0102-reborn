@@ -159,7 +159,9 @@ export const FAVOURITE_FORMATION = [0, 0x280e8a89, 0x280e8b81, 0x281b06c1, 0x381
 /** Spillerdata til scoren (Player-posten, 70 bytes): `ratings` = +0x0f..+0x1a [GK, SW, D, DM, M, AM, F, WB, R(+0x17), L(+0x18), C, FR]
  *  (1..20), `b30`/`b3b` = de signerede bytes +0x30/+0x3b (indre egenskaber, lægges til ved venstre/højre-centrum), `quality` = Q (se
  *  estimateQuality). */
-export interface ChoicePlayer { ratings: number[]; b30: number; b3b: number; quality: number }
+export interface ChoicePlayer { ratings: number[]; b30: number; b3b: number; quality: number;
+  /** hele 0x6e2f20 for masken (roleScore.ts) – når den er givet, bruges den i stedet for combineScore(quality, positionFit) */
+  score?: (mask: number) => number }
 
 /** formation_get_position_mask 0x5b7d20: positioner ≥ 15, ellers ≥ 14 … ≥ 10 (første tærskel med et bit); sider kun ≥ 15 (sic: sammenligner
  *  altid med 15). DM udelukker AM/M. */
@@ -243,7 +245,7 @@ export function cellTable(players: ChoicePlayer[], flags = 0xca0ca): number[] {
     const mask = POS[a] | (a === 0 ? 0 : SIDE[b]);
     let best = -10000, second = -10000, k = 0;
     for (const p of players) {
-      const v = Math.max(combineScore(p.quality, positionFit(p, mask, flags)), -10000);
+      const v = Math.max(p.score ? p.score(mask) : combineScore(p.quality, positionFit(p, mask, flags)), -10000);
       if (k === 0) best = v;
       else if (v > best) { second = best; best = v; } else if (k === 1 || v > second) second = v;
       k++;

@@ -369,3 +369,103 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   hjørner 5,5 (5,0) · frispark (begåede) 6,0 (8,7) · offside 3,9 (6–7) · gule 1,56/røde 0,08 (1,70/0,14) · afleveringer 71 % (72 %)**.
   Næste: for mange skud/mål, frisparkene, offside; udskiftningerne; forlænget spilletid/straffe.
 
+- 2026-11-11 – **Udskiftninger, forlænget spilletid, straffe og menneskets taktik midt i kampen koblet ind (underagent).**
+  (1) **Udskiftningerne** (`grid/matchSubs.ts` om subs.ts): bænken er GP'er (plads −1, MATCH_PLAYER::init for alle 20 – samme motivation/rand,
+  lige efter starterne; computerens bænk *estimeret*: taktikkens + de ubrugte startere), hold+0x17 = min(ctx.subs, bænken) (0x6dbac0; adapteren
+  giver `opts.subs`, standard 3). `restartTick`: menneskets kø/taktik → rand(6) efter minut 60 (0x6c55ce – manglede) → aiRetune → genvalget
+  0x6c581f (rand(50) pr. computerhold, 0x6e1090 + 0x6e1aa0) → opstillingen. `treatInjured` = 0x6d0b60 side for side; alle fem udvisninger
+  går gennem 0x6cda20 (plads −3, 0x6cdd50 – en markspiller i mål, genvalg med keeperOut). Pladsens masker/instruktioner/tabelplads følger
+  pladsen; den indskiftede står på (8, 6) (0x6cdd00). Menneskets hold skifter aldrig selv. 60 PL-kampe: 1,9 skift pr. hold (orig 2,3 – den
+  estimerede kvalitet s), median minut 62, båret ud 0,37/kamp. (2) **Forlænget spilletid** (0x6bd930, noten `notes/6bd930-6be710-extra-time-
+  shootout.md`): +0x8ed4 = 495/990/1155/1320 (`m.periodEnd`), uret sættes til 990/1155, afsparket skifter, retur 2/3 afslutter tikket (loop.ts);
+  `ctx.needsWinner` står for fixture+0x38 (& 2 forlænget, & 1 straffe). (3) **Straffesparkskonkurrencen** (`grid/shootout.ts`, 0x6be520 +
+  0x6be710 mode 3): siden = rand(2), skytterne (menneskets liste / 0x6ceb90 med "har sparket", ryddes efter 10), presset v = 2·(200 −
+  rand(One on Ones)·(tilbage + 4)) (+rand(2,25v) skal score / +rand(0,75v) kan vinde), S = 0x700bd0(0x33) − rand(v) → 0x702050(…, 3), sudden
+  death, slutreglen. **Kontrolleret** mod den instrumenterede original (`match_trace.c` + E-linjen ved 0x6bd930's retur; `oracle/runs/tcup1.txt`,
+  88 Liga Cup-kampe frø 1): fixture+0x38 = 0x0403/0x0203/0x0003 (forlænget + straffe), alle 14 konkurrencer med +0x8eb3 = 4 (mode 3, param 3,
+  type 0x33), første side 8/6; 21 forlængede, 14 straffe; K i snit 152 (porten 151), S 627 (porten 814 med PL-hold), mål ~69 % (porten 73 %).
+  (4) **Menneskets taktik** (`GridMatch.setTactic`, ved næste dødbold *estimeret*): mapTactic → positionstabel, masker, instruktioner,
+  taktikbyte og holdflag +0x584 som ved kampstart; 0x6eecb0 for hver. Adapteren: `substitute()` (grænser, kø), `live()` med bænk/subsLeft/gone,
+  'sub'/'injury'-begivenheder, minutter for udskiftede, `et`, `pens`, `shootout`. Holdsnak findes ikke i originalen (applyTalk gør intet).
+  380 kampe frø 1: 3,46 mål · 53/23/24 · skud 23,9 · på mål 11,0 · hjørner 5,6 · offside 4,25 · gule 1,48/røde 0,11. Soak 2 sæsoner og
+  `E2E_ENGINE=original node scripts/e2e.mjs klassisk` grønne. **Mangler:** 0x6e2f20's kvalitet s (resten), 0x6bbb60/0x6bbf60 efter et skift,
+  0x6e0230 i omrokeringen, computerens bænkvalg 0x6dbb80, mode 4 (MLS' spillede straffe), golden goal, kommentarerne.
+- **2026-11-11 – Kommentaren som originalen (Match_Events).** `grid/matchEvents.ts`: add_event 0x6d6f70, combine_with_previous_event
+  0x6d60b0, pick_weather_variant 0x6d5d80, add_event_at_front 0x6d5d00 og opfølgerne (8639/8640/8675) linje for linje – køen på 12
+  poster, loggen, tilbagerulningen, flagtabellen engine+0x21e. Tabellen `grid/eventTable.ts` (prioritet, follow-on, report count,
+  no rollback, varianternes eff-vægte og navne) genereres af `scripts/build-grid-events.py` fra events_eng.cfg. **Kommentaren er en del af
+  kampens tilfældige tal:** hvert kald trækker 0–1 tal i kombinationen, rand(3) for vejret og rand(S) for varianten (> 1 variant) –
+  oraklet kalder add_event ≈ 1.430 gange og trækker ≈ 2.850 tal pr. kamp (også i kampe, ingen ser). Verificeret: sporet `cmt2`
+  (match_trace.c's nye c/z/C-linjer) afspillet med originalens tal (`scripts/grid-comment-replay.ts`): 51.454 kald, 102.421 tal – alle
+  rand(n), indlejrede kald og køens tilstand ens; `tests/gridCommentary.test.ts` (500 kald + motoren). Kaldsteder porteret i motoren
+  (`Hooks.comment(id, p1, side1, p2, side2, extra)`): kampstart/afspark 0x6b9b64 (+0x1ca), indkast/målspark/hjørne 0x6cd490, offside
+  0x6fa3db, opsamling 0x715a59 og målmandens, "knackered" 0x6c55ce, tillægstid 0x6c587d (mellem holdenes udskiftningsporte –
+  `subs.gate(entry, between)`), pausefløjt 0x6bd9c9, 90 minutter 0x6bdc67, slutfløjt 0x6be4cd, +0x8d4c/+0x8d4e i skuddet. GridSim
+  (`adapter.ts`) læser køen efter hvert tik (`events.drain()`, passivt – skærmens get_next_event 0x6d78b0 kaldes ikke, som i kampe man
+  ikke ser) og laver linjer med `CommentaryLine.ev/v/t2/x`; `ui/matchTexts.ts` viser præcis den variant (ingen egen vælger, `<d>/<N>` =
+  extra, `<t2>` = side2/modstanderen). Spil-for-spil (`k: 'pl-o'`) kun med playByPlay (klassisk live-kamp). **Mangler (261 kaldsteder i
+  alt, liste med hyppighed: `~/cm0102-engine/notes/6d6f70-commentary-sites.txt`):** afleveringens begivenhed 0x6ffabc (36 % af kaldene) og
+  resten af pass/move_to/receive/hold/intercept, skuddet (skudtypen fra 0x700bd0, udfaldet, mål 0x70750b/0x707213 og historierne
+  0x717470 i 0x704xxx–0x70axxx, der selv trækker tal), frispark og kort, udskiftninger 0x6e170a/0x6e18be, holdstilen 0x6c5c1c–0x6c6206,
+  straffesparkskonkurrencen – de får stadig adapterens *estimerede* linjer (MAP). Vejrets dword engine+0x4756 er `GRID_UNKNOWN.weatherWord`
+  = 0 (*estimeret*; oraklets ligakampe har 0 i de to lave bytes). Noter: `~/cm0102-engine/notes/6d6f70-commentary.md`.
+- 2026-11-11 – **Skud, blokeringer, boldholderens værdier (underagent; noten `~/cm0102-engine/notes/702050-shot.md`).** match_trace.c har fået
+  linjerne H (indgangen til sub_702050), K (keeperværdien 0x700420), B (skudlinjen 0x6cc540 + blokeren +0xf5ae), L (hvert blokeringsforsøg
+  0x70dfd0; `RECOMP_MATCH_TRACE_BLOCKRAND=1` giver rand-kaldene indeni som Z-linjer), Q (boldholderens P/R/H/S efter støjen, 0x7133bd via
+  rand-krogen) og O (afleveringsmuligheden 0x6c6a30 fra 0x7109f0); `scripts/grid-trace-port.ts` skriver de samme (`ctx.onShot`) og nu også
+  facing/busy/momentum pr. spiller. Spor: `oracle/runs/tshot4.txt` (H/B/K/L), `tshot9.txt` (+Q), `tshot10.txt` (+O, 200 kampe).
+  Værktøjer: `~/cm0102-engine/tools/{shot_s,shot_line,block_l,shot_rate,carrier_q,passopt,mom_trans,carrier_changes,shot_stop,shot_facing}.py`.
+  Fejl fundet og rettet: (1) **blokeringen 0x70e2e2**: `[esp+0x18]` læses, mens rand-argumentet ligger på stakken, så der trækkes
+  `r = rand(n)/(d+1)` fra (ikke handlingskoden) – bekræftet med rand-sporet; blokeringer pr. forsøg 34 % → 17 % (orig 22 %), pr. afstand
+  0/1/2: 12/19/32 % (orig 13/22/37). (2) **momentum ved driblingen 0x6f29a9**: `fld 0,0; fcomp; je` = min(x, 0) – momentum kan kun falde
+  (porten havde max(0, …)): boldholdere med momentum 200 36 % → 13 % af tikkene (orig 16 %), Δ-fordelingen som originalen. (3) **W i
+  afleveringsmulighederne 0x6c6eb2**: (kondition + **karakteren +0x35** − 15000)·0,25 – visningens `w35` var 0, så alle vægte var ~1.600
+  for lave (median med modtager række 3–5: 333–543 → 1.633–1.952, orig 1.836–2.054; modtager fundet 75–81 % → 79–85 %, orig 83–87 %).
+  (4) **den forkerte fod 0x7021d5–0x702258** (sub_713e90, S −= rand(12·(20 − fod))) manglede, og highFlag rulles nu før keeperværdien
+  (0x7023a6). (5) **w29 i skudscoren**: sub_700bd0 bruger boldholderens +0x29, som sub_7109f0 lige har skrevet (kan være negativ:
+  rand(w29) i 0x7016fc); limen sendte max(0, skøn) – nu boldholderens `space` (q10 for 0x16 48 → −101, orig −54). Tal (380 kampe frø 1,
+  før → efter): **mål 3,32 → 2,67 · skud 24,3 → 17,3 · på mål 10,6 → 8,7 · hjørner 5,5 → 4,65 · offside 3,9 → 4,5 · gule 1,56 → 1,19 ·
+  H/U/B 51/23/26 → 56/20/23**; frø 2/3: 2,57/2,61 mål, 17,1/17,3 skud, 8,6/8,5 på mål, 56/22/22 og 52/24/23. Spor (200 kampe): skud (H)
+  29,2 → 21,5 (orig 21,8), blokeret 10,2 → 4,2 (3,9), S ved skudlinjen snit 325 → 286 (288), boldholderskift til medspiller/modstander
+  267/171 (277/186). Tilbage: på mål 8,6 mod 10,3 (porten stopper flere skud i udfordringen 0x6c87e0: 2,1 mod 1,6 pr. kamp; færre
+  hovedstød/volleys 0x3/0x18: 4,2/1,6 mod 4,8/2,1), boldholderens P i feltet (række 0 centralt median 519 mod 2.097) og R (−8.190 mod
+  −11.951), hjemmebanen (56/20/23).
+
+- 2026-11-11 – **Computerens holdudtagelse som originalen (underagent):** udvælgelsesværdien **0x6e2f20 hele** for klubkampenes flag
+  (`grid/roleScore.ts`: omdømme med ankomstfaktor, den opfattede evne/potentiale **0x6e86d0** med spillets frø [0xdd7120] = GameState.seed,
+  formen 0x7c1950, kampkaraktererne 0x7c1e30, moral, instruktionerne (første gruppe tester holdflagene, ikke taktikbyten), kondition/skade,
+  anfører, dødboldsskytter, trupstatus, genererede spillere, egen klub), **pick_team 0x6dbc50** (`grid/pickTeam.ts`: flagene og deres rand,
+  anføreren 0x6e1940/0x6e1cf0, dødboldsskytterne, bænkpladserne med rand(10) og målmanden på plads 12, **0x6e2000 med bænken** – rekursionen
+  for de ubrugte, n < k-grenen og ombytningerne med bænken) og `aiTeam.ts` (vores Player → spillerpost/opslag). createGridMatch bruger
+  computerens bænk fra udtagelsen og trækker flagenes rand også for menneskets hold (pick_team(…, 1)); adapteren giver dato/frø/managerens
+  viste Judging Ability/Potential (Staff.ca fra databasen). Udskiftningernes genvalg/omrokering (matchSubs.ts) bruger nu samme 0x6e2f20
+  (`aiTeam.ts` matchRoleScore med kampspilleren, anfører og skytter) i stedet for `estimatedQuality`. **Kontrolleret** mod den instrumenterede original (`match_trace.c`: RECOMP_PICK_TRACE;
+  `scripts/pick-trace-eval.ts`, `pick-trace-check.ts`, `tests/roleScore.test.ts`; 400 PL-udtagelser frø 1): 0x6e2f20 **1.415.898/1.415.898**
+  kald ens, 0x6e0230 **400/400** samme taktik, de 11 **400/400** og bænken 399/400 ens af originalens egne værdier. Med vores *estimerede*
+  opslag (kampstatistik pr. kategori, træningsbelastning 0x62c3d0, kontraktens +0x44/+0x45/+0x3e/+0x3f, 0x8c7260) på originalens spillerposter:
+  samme 11 kun 137/400 – de systemer findes ikke i vores spil og afgør meget. 380 kampe frø 1 (med de andre agenters samtidige ændringer):
+  2,56 mål · 57/22/21 · skud 17,1 (frø 2 før skiftet: 52/28/21 – H/U/B svinger ±4 mellem frø). **Mangler:** 0x6e1aa0's 0x6e0230 (computeren vælger taktik igen efter hvert skift med 11 på banen og kopierer
+  den – også positionstabellen – + 0x6ddab0; 0x6e0230 returnerer altid 0, så kommentaren 0x2007 vises aldrig), 0x6bbb60/0x6bbf60 efter et skift,
+  rotationen før vigtigere kampe (+0x1a ≠ 3), 0x8cf880 (udtagelsesregler), omdømmets omregning ved spilstart (*estimeret* ×50), 1:1-parring af
+  vores spillere med oraklets. Noten: `~/cm0102-engine/notes/6dbc50-pick-team.md`.
+- 2026-11-11 – **Keeperens udfordringstype, Work Rate-floaten, dommer/offside-spor (underagent, fortsat).** Nye linjer i match_trace.c:
+  J (dommeren 0x6cfc60 → 0x6e9820 med kalderen), G (straffen 0x6cfcd0), D (udfordringen 0x6c87e0: handling, modstandere i boldens felt,
+  fundet/værdi/type), N (offside 0x6cfd70 med kalderen: 0x6fa2b6 aflevering, 0x6fab89 sub_6fa490, 0x7038cd skud); porten skriver dem
+  med `ctx.onShot` (kalderen som 0/2/1). Spor `oracle/runs/tfoul1.txt` (J/G), `tfoul2.txt` (+D), `toff1.txt` (+N), `tq2.txt` (Q med
+  blokerere og +0x29). Værktøjer `~/cm0102-engine/tools/{judge_j,duel_d,offside_n}.py`. Rettet: (6) **sub_70d690 0x70d9be**: keeperen i
+  eget felt får type **1 ved boldhøjde 4, ellers 0x29** (porten og noten havde det vendt; sporet: type 41 ved 0xd/0xc, 1 ved 0x15) –
+  testen i tests/gridChallenge.test.ts rettet. (7) **Work Rate-floaten +0xf5 (sub_6ec010 0x6ee1ca–0x6ee231)** = Work Rate + motivationen
+  +0x100 − dårlig dag-fradraget/(trunc(Professionalism/2) + 10) + 0,5·X (X = anfører-/trænerleddet, `GRID_UNKNOWN.workRateX` 4,5
+  *estimeret* fra R-linjerne); porten brugte den rå værdi, så workRate-loftet +0x116 var ~10 for lavt (median 14 → 25, orig 23); rullet
+  bruges i udfordringen (pw), blokeringen og løbene. Gangene 0,9/0,95/1,1 (0x6ee065–0x6ee491) og 0,75 fra 36 år er ikke med.
+  **Tal** (380 kampe, frø 1/2/3): mål 2,52/2,63/2,66 · skud 17,1/17,0/17,1 · på mål 8,6/8,6/8,5 · hjørner 4,6/4,4/4,7 · frispark
+  (begåede) 6,7/6,8/6,6 · offside 4,5/4,6/4,7 · gule 1,36/1,35/1,32 · røde 0,11/0,10/0,08 · H/U/B 53/24/23, 53/26/21, 57/23/20;
+  hjemme/ude-mål 1,56/0,96 (orig frø 1: 1,71/1,04); **afleveringer 692/kamp (orig 688), 74 % rigtige (71 %)** – før W-rettelsen 490.
+  **Hvad der mangler:** (a) *på mål* 8,6 mod 9,9–10,5: porten tager lidt færre skud (H) og udfordringen før skuddet stopper flere
+  (2,0 mod 1,6 pr. kamp) – skytterne står i tættere felter (3+ modstandere i feltet 33 % mod 16 % ved 0x6d); (b) *frispark* 6,7 mod 8,7:
+  dommeren vurderer 100 gange pr. kamp mod 131 – næsten alt i modtagelsen (0x6f7974/0x6f7acc): ved 0xd (bold på jorden) står der en
+  modstander i modtagerens felt i 22 % af kaldene mod 33 %, og udfordreren går ind i 18 % mod 24 % (positioner uden bold; konditionen i
+  laboratoriet er 10000 mod oraklets ~8400); (c) *offside* 4,5 mod 6–7: linjevogteren dømmer som originalen pr. afleveringer forbi linjen
+  (26–27 %), men porten afleverer sjældnere forbi linjen (9,2 mod 16,2 pr. kamp ved almindelige afleveringer, sub_6fa490 15,1 mod 21,1) –
+  forsvarslinjen står 0,15–0,25 række dybere ved samme boldrække; (d) *kort* følger frisparkene (gule pr. frispark 0,20 som originalen);
+  (e) boldholderens P i feltet er stadig lavere (afleveringsvægt med modtager række 0 centralt 426 mod 1.021, modtager fundet 73 % mod 79 %).

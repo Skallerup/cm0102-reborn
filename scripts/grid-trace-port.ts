@@ -27,10 +27,13 @@ for (let i = 0; i < N; i++) {
   let t = 0;
   const line = (m: GridMatchState) => {
     const c = m.carrier as GP | null;
-    const ps = m.gp.filter((p) => p.active).map((p) => `${p.side},${p.pslot ?? p.slot},${p.x},${p.y},${p.roll.offTheBall},${p.roll.positioning},${p.form},${p.action},${p.marks ? 1 : 0}`);
+    const ps = m.gp.filter((p) => p.active).map((p) => `${p.side},${p.pslot ?? p.slot},${p.x},${p.y},${p.roll.offTheBall},${p.roll.positioning},${p.form},${p.action},${p.marks ? 1 : 0},${p.facing},${p.busy},${p.momentum}`);
     out.push(`T ${t++} ${m.ballX} ${m.ballY} ${m.ballH} ${m.poss} ${m.lineSide1} ${m.lineSide0} ${c ? (c.pslot ?? c.slot) + 100 * c.side : -1} S${m.state} ${ps.join(' ')}`);
   };
-  const gm = createGridMatch({ players: fresh(h), tactic: aiTactic(h, a, true) }, { players: fresh(a), tactic: aiTactic(a, h, false) }, rand, { onTop: line });
+  // managerne og omdømmet som i grid-stats.ts (NO_MGR=1 slår dem fra)
+  const mgr = (c: number) => { const st = g.staff[g.clubs[c]?.manager ?? -1]; return !process.env.NO_MGR && st?.tac ? { id: st.id, ca: st.rep * 2, tac: st.tac } : null; };
+  const gm = createGridMatch({ players: fresh(h), tactic: aiTactic(h, a, true) }, { players: fresh(a), tactic: aiTactic(a, h, false) }, rand,
+    { onTop: line, onShot: (k, v) => out.push(k === "L" || k === "J" || k === "N" ? `${k} ${t} ${v.slice(0, -1).join(" ")} = ${v[v.length - 1]}` : k === "D" ? `D ${t} ${v[0].toString(16)} ${v.slice(1, 4).join(" ")} = ${v.slice(4).join(" ")}` : `${k} ${t} ${v.join(" ")}`), rep: [g.clubs[h].rep * 100, g.clubs[a].rep * 100], managers: [mgr(h), mgr(a)] });
   while (gm.tick()) { /* tik */ }
   if (out.length > 20000) flush();
 }

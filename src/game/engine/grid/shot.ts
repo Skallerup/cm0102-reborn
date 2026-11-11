@@ -347,12 +347,14 @@ export function shotOutcome(opts: {
   keeperTouchedLast?: boolean;      // match+0xf5ae == keeper → K = 0 (0x703fb7)
   shooterBeyondKeeperX?: boolean;   // for the out-of-position bonus (0x703f3e)
   compType?: number;                // match+1
+  /** highFlag, rullet af kalderen i originalens rækkefølge (0x7023a6 – før keeperværdien 0x700420); mangler = rul her */
+  high?: boolean;
   rand: Rand;
 }): { outcome: Outcome; ratio?: number; R: number; goodSave: boolean; greatSave: boolean } {
   const { type, param, rand } = opts;
   let S = opts.S;
   const penalty = type === SHOT.PENALTY;
-  const high = highFlag(type, rand);
+  const high = opts.high ?? highFlag(type, rand);
   const great = !opts.K.fumble && opts.K.K > 375;                // 0x702427
   const good = !opts.K.fumble && !great && opts.K.K > 260;       // 0x702434
   if (opts.lineResult === 2) S += rand(1000) - rand(2000);       // 0x703afb

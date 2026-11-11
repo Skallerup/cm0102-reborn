@@ -69,11 +69,12 @@ describe('get_opposition_challenge (sub_6c87e0)', () => {
 });
 
 describe('udfordringsværdien (sub_70d690)', () => {
-  it('keeperen i eget felt får type 1 (greb) – 41 i hovedhøjde', () => {
+  // 0x70d9be–0x70d9d3 (cmp boldhøjde, 4; setne; dec; and 0xd8; add 0x29) – bekræftet i kampsporet tfoul2 (typerne ved 0xd/0x15)
+  it('keeperen i eget felt får type 41 – 1 (greb) i hovedhøjde', () => {
     const k = gp(1, 4, 11, { pos: 0x1, isKeeper: true, gkRating: 20 });
     const car = gp(0, 4, 11);
-    expect(challengeValue(match([k, car], { carrier: car }), k, 0x13, zero).type).toBe(1);
-    expect(challengeValue(match([k, car], { carrier: car, ballH: 4 }), k, 0x13, zero).type).toBe(0x29);
+    expect(challengeValue(match([k, car], { carrier: car }), k, 0x13, zero).type).toBe(0x29);
+    expect(challengeValue(match([k, car], { carrier: car, ballH: 4 }), k, 0x13, zero).type).toBe(1);
   });
   it('en tackling under 2 bliver til 45 ("går i gulvet") når rand(2) ≠ 0', () => {
     const q = gp(1, 4, 10);

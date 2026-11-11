@@ -492,8 +492,9 @@ async function run(look) {
 
   // ---------- kamp ----------
   await step('spil en hel kamp', async () => {
-    // den originale database: sæsonen starter i juli, første kamp i midten af august – spol frem til dagen før
-    if (ENGINE_GRID) await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; });
+    // sæsonen starter i juli, første kamp i midten af august – spol frem til dagen før
+    // (begge databaser: ellers bruger løkken op mod 120 klik på dag-for-dag-Continue før kampdagen)
+    await page.evaluate(async () => { const c = window.__cm; const g = c.gs(); const f = Object.values(g.fixtures).filter((x) => x.home === g.userClub || x.away === g.userClub).sort((a, b) => a.date.localeCompare(b.date))[0]; if (!f) return; const days = Math.round((Date.parse(f.date) - Date.parse(g.date)) / 864e5) - 1; if (days > 0) await c.advance(days); const me = g.clubs[g.userClub]; me.sqnDue = undefined; me.euroDue = undefined; for (const n of g.news) n.read = true; });
     // klassisk (CM 01/02): Continue Game → "Proceed to the match ?" (Yes) → Kick Off Match i sidebjælken
     const kick = await t(look === 'klassisk' ? 'cl.mt.kickoff' : 'match.kickoff');
     const labels = [await t('top.toTheMatch'), await t('top.toMatch'), await t('cl.continue'), await t('top.continue')].filter(Boolean);
