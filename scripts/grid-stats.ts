@@ -5,6 +5,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
 import { Rng } from '../src/game/rng';
 import { aiTactic } from '../src/game/sim';
+import { autoSelect, newTactic } from '../src/game/tactics';
 import { GRID_DEBUG, GRID_UNKNOWN, randOf, runGridMatch, setGridDebug, type GridSideStats } from '../src/game/engine/grid/gridMatch';
 import type { Player } from '../src/game/types';
 
@@ -27,7 +28,9 @@ let hw = 0, dr = 0, aw = 0, ticks = 0;
 const t0 = Date.now();
 for (let i = 0; i < N; i++) {
   const [h, a] = fixtures[i % fixtures.length];
-  const r = runGridMatch({ players: fresh(h), tactic: aiTactic(h, a, true) }, { players: fresh(a), tactic: aiTactic(a, h, false) }, rand);
+  // FORCE_FORMATION='4-4-2': alle hold med samme formation (originalens forudindstilling) – til sammenligning med oraklets spor
+  const tac = (c: number, o: number, home: boolean) => (process.env.FORCE_FORMATION ? autoSelect(newTactic(process.env.FORCE_FORMATION as never), squad(c)) : aiTactic(c, o, home));
+  const r = runGridMatch({ players: fresh(h), tactic: tac(h, a, true) }, { players: fresh(a), tactic: tac(a, h, false) }, rand);
   for (const s of [r.home, r.away]) for (const k of Object.keys(s) as (keyof GridSideStats)[]) sum[k] = (sum[k] ?? 0) + s[k];
   sum.hg = (sum.hg ?? 0) + r.home.goals; sum.ag = (sum.ag ?? 0) + r.away.goals;
   if (r.home.goals > r.away.goals) hw++; else if (r.home.goals === r.away.goals) dr++; else aw++;

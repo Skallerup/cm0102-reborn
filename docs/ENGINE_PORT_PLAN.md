@@ -264,4 +264,20 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   node scripts/e2e.mjs klassisk` (original DB, Arsenal, cm0102.engine = original; spoler til første kamp) – alle trin grønne.
   **Mangler til "klar":** udskiftninger og AI-taktik i kampen (sub_6c54a0/sub_6d0b60), setTactic/holdsnak midt i kampen, forlænget
   spilletid/straffe som originalen, kommentar fra originalens tekster (sub_6d6f70), og sæsontallene (offside 1,1, frispark 6 mod oraklets 6–7/8,7).
+- 2026-11-11 – **Facit pr. tik fra originalen.** (1) Match Stats-felterne bekræftet på originalens skærm (ejerens karriere, Ipswich–Man Utd
+  1-1: offside 9/2 = H+0x11, indkast 8/7 = H+0x0F) – oraklets offside 6–7 pr. kamp er rigtigt. (2) **Instrumenteret original:** Bosman-værktøjet
+  bygget lokalt (`~/cm0102-engine/tools/build_trace.sh`; cmake + sdl2 + venv med capstone) med `tools/match_trace.c` (RT_WRAP af offside-linjerne
+  0x6c3aa0, kun kaldet fra tikkets top 0x6ba01e/retur 0x6ba023): `RECOMP_MATCH_TRACE=<fil>` skriver pr. tik bold, besiddelse, linjer, boldholder og
+  for hver spiller side/plads/x/y/rul +0x107/+0x10a/+0x37/handling +0x198/markering +0x1aa. NB: sub_6b98c0 er HELE kampen (løkken indeni), ikke ét
+  tik. `oracle/tools/trace_stats.py` = gittermotorens `line:L`/`line:max`. Første spor (40 dage, frø 1, 60 kampe, 50.664 tik):
+  * angribernes afstand til linjen (−1/0/+1): orig 43,6/12,0/1,8 %, porten 46,7/10,0/1,6 % – ens;
+  * markering pr. boldbånd (forsvarende markspillere med +0x1aa): orig 46/24/12/10 %, porten 44/23/12/9 % – ens; "følg manden" 39/21/10/8 mod 40/22/11/7;
+  * rullet +0x107: jævnt 0..~14 (P(0) 7 %); +0x37 er 0 (71 %) eller negativ – som porten (`form = min(0, positionFit)`);
+  * **forsvarslinjen står for dybt i porten:** linjen på række 12 (bageste på mållinjen, ingen kan være offside) i 33,6 % af tikkene mod 18,5 %;
+    bageste markspiller med bolden på egen række 4/5/7/8: orig 1,46/1,71/2,75/2,90, porten 0,92/0,93/2,09/2,21 (originalen rykker også frem
+    *inden for* et tabelbånd – porten står fladt).
+  (3) Over halvdelen af vores computerholds taktikker ender på det **kanoniske** gitter (3-4-3, 4-2-3-1, 4-3-3, 3-5-2, 5-3-2); originalens hold
+  bruger forudindstillinger. Med alle på originalens 4-4-2 (`FORCE_FORMATION=4-4-2 scripts/grid-stats.ts`): offside 1,1 → 3,94, men mål 5,44 og
+  skud 30 – forudindstillingernes instruktioner/flag afslører en anden afvigelse. **Næste:** spor med plads → x/y pr. tik sammen med
+  tabelfeltet (TBL fra taktikken i hukommelsen, engine+0xf56e) for at se, hvor positionerne afviger; computerens taktikvalg før kampen (sub_6ddab0).
 
