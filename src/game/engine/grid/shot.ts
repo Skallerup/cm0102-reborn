@@ -111,7 +111,37 @@ export interface ShotContext {
   matchByte1: number;     // match+1 – TODO: unknown (2, 0x20 used here)
 }
 
-export interface ShotScore { type: number; score: number; quality: number /* w39 */; tightAngle: boolean; fromDistance: boolean }
+export interface ShotScore {
+  type: number; score: number; quality: number /* w39 */; tightAngle: boolean; fromDistance: boolean;
+  /** skudtypens begivenhed (sub_700bd0's andet ud-argument [esp+0x22c], 0x701bd7–0x701fcb) – sub_702050's a3 */
+  event: number;
+}
+
+/** sub_700bd0 0x701bb8–0x701fa2 (sikker): skudtypens begivenhed efter typen (springtabel 0x702018 → 0x701fe0), "fra vinkel" [esp+0x12]
+ *  (0x70179e) og "fra afstand" bl (0x70189b); frisparket uden vinkel/afstand trækker rand(3) (0x701f70): 0 → FREEKICK_OVER_WALL,
+ *  ellers SHOT_FREE_KICK. Andre typer → 0x1f81 (8065). */
+export function shotEvent(type: number, tightAngle: boolean, fromDistance: boolean, rand: Rand): number {
+  const pick = (tight: number, base: number, far: number) => (tight >= 0 && tightAngle ? tight : fromDistance ? base + far : base);
+  switch (type) {
+    case SHOT.MADE_SURE: return 0x1f9d;                                             // 0x701bd7 SHOT_MADE_SURE
+    case SHOT.LOW_DRIVE: return pick(0x1fb0, 0x1f86, 0x1c);                         // 0x701bf3 SHOT_LOW_DRIVE / FROM_ANGLE / FROM_DISTANCE
+    case SHOT.CHIP: return pick(0x1fb1, 0x1f89, 0x1a);                              // 0x701c3e
+    case SHOT.LOB: return pick(0x1fb3, 0x1f8b, 0x1a);                               // 0x701c89
+    case SHOT.BANANA: return pick(0x1fb5, 0x1f8d, 0x1a);                            // 0x701cd4
+    case SHOT.HOPE: return pick(0x1fb6, 0x1f8e, 0x1a);                              // 0x701d1f
+    case SHOT.BICYCLE: return pick(0x1fb7, 0x1f91, 0x18);                           // 0x701d6a
+    case SHOT.HEADER: return pick(0x1fb8, 0x1f92, 0x18);                            // 0x701db5
+    case SHOT.VOLLEY: return pick(0x1fb9, 0x1f93, 0x18);                            // 0x701e00
+    case SHOT.HALF_VOLLEY: return pick(0x1fba, 0x1f96, 0x16);                       // 0x701e4b
+    case SHOT.HIGH_DRIVE: return pick(0x1fbb, 0x1f99, 0x14);                        // 0x701e96
+    case SHOT.DIVING_HEADER: return pick(0x1fbc, 0x1f9c, 0x12);                     // 0x701ee1
+    case SHOT.FREE_KICK:                                                            // 0x701f2c
+      if (tightAngle) return 0x1fbd;
+      if (fromDistance) return 0x1faf;
+      return rand(3) !== 0 ? 0x1fbe : 0x21bd;                                       // 0x701f70
+    default: return 0x1f81;                                                         // 0x701fa2
+  }
+}
 
 const inAttackingBox = (side: 0 | 1, x: number, y: number) =>
   x >= 2 && x <= 6 && (side === 0 ? y >= 10 : y <= 1);
@@ -126,10 +156,10 @@ export function shotScore(c: ShotContext, rand: Rand, preset: number = 0xff): Sh
 
   let type = preset;
   const v = (code: number) => shotSkill(code, a, c.form);
-  const fail = (): ShotScore => ({ type: SHOT.LOW_DRIVE, score: -1000, quality: 0, tightAngle: false, fromDistance: false }); // 0x701fbe, text 8065
+  const fail = (): ShotScore => ({ type: SHOT.LOW_DRIVE, score: -1000, quality: 0, tightAngle: false, fromDistance: false, event: 0x1f81 }); // 0x701fbe, text 8065
 
   if (type === SHOT.PENALTY) // 0x700d19, text 8063
-    return { type, score: rand(5 * v(SHOT.PENALTY)) + 150, quality: 0, tightAngle: false, fromDistance: false };
+    return { type, score: rand(5 * v(SHOT.PENALTY)) + 150, quality: 0, tightAngle: false, fromDistance: false, event: 0x1f7f }; // 0x700d20 TAKE_PENALTY
 
   if (type !== SHOT.FREE_KICK) {
     if (c.prevAction === 0x3b) type = SHOT.DIVING_HEADER; // 0x700d52
@@ -239,7 +269,8 @@ export function shotScore(c: ShotContext, rand: Rand, preset: number = 0xff): Sh
     q -= idiv(p, 2);
     S -= rand(Math.min(trunc(p * g), 30000));
   }
-  return { type, score: (S << 16) >> 16, quality: (q << 16) >> 16, tightAngle, fromDistance };
+  const event = shotEvent(type, tightAngle, fromDistance, rand);                     // 0x701bb8: efter afstandens rand (0x701bae)
+  return { type, score: (S << 16) >> 16, quality: (q << 16) >> 16, tightAngle, fromDistance, event };
 }
 
 // ---------------------------------------------------------------- sub_713e90 (foot)
@@ -255,6 +286,19 @@ export function footPenalty(type: number, angleToGoalMinusFacing: number, D: num
   return 0;
 }
 // NB: the caller does S −= rand(p) and w39 −= p/2 with p = 12·(20 − foot); the rand is in sub_702050 (0x702241).
+
+/** sub_713e90 (sikker) uden rand: p = 12·(20 − foden) (0 inden for tolerancen og for de undtagne typer) og den fod, skuddet tages med –
+ *  2 for de undtagne typer (0x713ea2), den foretrukne (+0x2c) inden for tolerancen (0x713f8b), 0 = venstre (0x713f97), 1 = højre (0x713fa3).
+ *  sub_702050 trækker S −= rand(p) (0x702241) og w39 −= p/2 (0x702237); foden vælger skudkommentarens variant (0x7037ee). */
+export function footCheck(type: number, angleToGoalMinusFacing: number, D: number, a: Attrs, strongFoot: number): { p: number; foot: number } {
+  if ([0x5b, 0x5c, 0x3d, 0x36, 0x34, 0x37, 0x5a, 0x33, 0x35, 0x39, 0x03].includes(type)) return { p: 0, foot: 2 };
+  let ang = angleToGoalMinusFacing;
+  const sgn = ang >= 0 ? 1 : -1; let m = sgn * ang; if (m > 180) m = 360 - m; ang = sgn * m;
+  const t = trunc(90 - (18 * (D + 1) - a.technique));
+  if (ang > t) return { p: 12 * (20 - a.leftFoot), foot: 0 };
+  if (ang < -t) return { p: 12 * (20 - a.rightFoot), foot: 1 };
+  return { p: 0, foot: strongFoot };
+}
 
 // ---------------------------------------------------------------- sub_700420 (keeper)
 

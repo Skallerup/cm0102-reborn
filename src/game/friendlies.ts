@@ -6,6 +6,7 @@ import { forEachHuman } from './humans';
 import { rng } from './rng';
 import { aiTactic, engineTeam, userTactic } from './sim';
 import { addNews, gs, squad } from './state';
+import { cmFitMatch, cmFitOn, cmFitPreMatch } from './cmFitnessGame';
 import type { Club } from './types';
 
 export type FriendlyKind = 'easy' | 'big';
@@ -76,6 +77,7 @@ export function friendliesDaily() {
     if (!fr) return;
     const me = g.clubs[g.userClub], opp = g.clubs[fr.opp];
     if (!me || !opp) { fr.done = true; return; }
+    cmFitPreMatch(g, [me.id, opp.id]);                                        // konditionsmodulet (ægte tilstand, original DB)
     const rep = quickMatch(engineTeam(me.id, userTactic(true)), engineTeam(opp.id, aiTactic(opp.id, me.id, false)), { neutral: false, aiSubs: [true, true], subs: 9, date: g.date }, rng);
     const gf = rep.stats[0].goals, ga = rep.stats[1].goals;
     const gate = friendlyGate(opp);
@@ -85,11 +87,15 @@ export function friendliesDaily() {
     const won = gf > ga, lost = gf < ga;
     const morale = fr.kind === 'easy' ? (won ? 1.2 : lost ? -1.2 : 0.2) : won ? 2 : lost ? -0.3 : 0.8;
     const played = new Set(rep.players.filter((l) => l.team === 0 && l.minutes > 0).map((l) => l.id));
+    // 0x62c080 med fixture +0x40 = 0 (venskabskamp: halv træthed) – i stedet for spillets egen kondition og skade nedenfor
+    const cm = cmFitOn(g);
+    if (cm) cmFitMatch(g, rep, false, -1);
     for (const p of squad(me.id)) {
       if (!played.has(p.id)) continue;
       p.morale = Math.max(1, Math.min(20, p.morale + morale));
       // kampform: spillerne kommer i form, men bliver trætte (en hård test tærer mere)
       const line = rep.players.find((l) => l.id === p.id)!;
+      if (cm) continue;
       p.condition = Math.max(55, Math.min(100, line.cond + (fr.kind === 'big' ? 0 : 4)));
       if (line.injured && rng.chance(0.5)) p.injury = { key: 'bruise', days: rng.int(3, 10) };
     }

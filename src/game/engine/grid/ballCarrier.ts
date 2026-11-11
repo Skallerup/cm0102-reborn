@@ -167,6 +167,8 @@ export interface Situation {
   /** sub_700bd0: shot score (on target if > 240 in sub_702050). Called fresh each time. w29 = boldholderens word +0x29, som
    *  sub_7109f0 har skrevet (0x7110f5–0x711342, kan være negativ); mangler = limens værdi. */
   shotScore: (w29?: number) => number;
+  /** 0x713bf9: lige før det åbne spils skud (sub_700bd0) – limens kommentar (GREAT_FIRST_TOUCH) */
+  onShootStart?: () => void;
   /** sub_6cb700(y, side): own players further forward than him. */
   teammatesAhead: number;
   /** sub_6cb780: 0 = defenders between him and goal, 1 = clear and he is the most advanced, 2 = clear but a team-mate is nearer goal. */
@@ -630,6 +632,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
       return { kind: 'hold', timeWasting: false };
     case SHOOT: {
       if (s.mode === 4) return { kind: 'wouldShoot' };
+      s.onShootStart?.();                                                     // 0x713bf9–0x713c48: GREAT_FIRST_TOUCH før sub_700bd0
       const fresh = s.shotScore(space);
       const quality = shotFlag ? trunc(fresh / 2) + trunc(noisyShot / 2) : fresh; // 0x713c55
       return { kind: 'shoot', quality };

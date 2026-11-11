@@ -1,4 +1,7 @@
 // Spillets dag-for-dag-løkke.
+import { cmActive, cmAfterMatch } from './cmPlayerData';
+import { cmFitAfterMatch, cmFitDay, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
+import { recordAiTactics } from './engine/grid/aiTeam';
 import { promoteIfShort } from './reserves';
 import { intlDayResults, intlDaily } from './international';
 import { reservesDaily } from './reserves';
@@ -146,8 +149,11 @@ function usesVar(f: Fixture): boolean {
 }
 
 export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number; homeAdv?: number; finSlope?: number; squash?: number; squashAtt?: number; squashDef?: number; ease?: number; cards?: number; corners?: number; countBlocked?: boolean; close?: number; closeSlope?: number; onTarget?: number; offside?: number; shotSpread?: number; oneOnOneK?: number; rules?: 'current' | 'original'; pitch: Pitch; referee: { name: string; strict: number } } {
+  // konditionsmodulet (original database, ægte tilstand): holdenes kondition og skader læses før udtagelsen (0x62c590/0x62c400)
+  cmFitPreMatch(gs(), [f.home, f.away]);
   const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
   const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
+  if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
   return {
     home: engineTeam(f.home, ht),
     away: engineTeam(f.away, at),
@@ -266,6 +272,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const comp = g.comps[f.comp];
   const isLeague = comp?.type === 'league';
   const played = new Set<number>();
+  const cm = cmActive(g) && !g.draft;
   for (const line of rep.players) {
     const p = g.players[line.id];
     if (!p) continue;
@@ -282,7 +289,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     p.form = [...p.form, line.rating].slice(-5);
     if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag
-    p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
+    // (konditionsmodulet sætter konditionen og skaderne efter kampen i ægte tilstand med den originale database – cmFitAfterMatch nedenfor)
+    if (!cm) p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
     const bannedBefore = p.banned;
     if (line.yellow) {
       s.yellows++;
@@ -305,10 +313,17 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
       if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0) asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
       else if (age <= 20 && line.rating >= 8.5) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.youngsterPraised', params: { player: pname(p), age, rating: line.rating.toFixed(1) }, link: { kind: 'player', id: p.id } }));
     }
-    if (line.injured) injure(p);
+    if (line.injured && !cm) injure(p);
     const res = line.team === 0 ? Math.sign(hs.goals - as.goals) : Math.sign(as.goals - hs.goals);
     if (!g.draft) p.morale = Math.max(1, Math.min(20, p.morale + res * 0.8 + (line.rating >= 7.5 ? 0.6 : line.rating < 5.8 ? -0.5 : 0)));
   }
+  // originalens spillerdata efter kampen (0x7c0d70 statistikken, 0x4ca6d0 kontraktens tællere) – kun den originale database i ægte tilstand,
+  // ingen tal fra spillets rng (cmPlayerData.ts)
+  cmAfterMatch(g, f, rep, squad);
+  // 0x62c080: kampkonditionen, trætheden og kampens skader (konditionsmodulet, cmFitness.ts)
+  if (cm) cmFitAfterMatch(g, f, rep);
+  // 0x896290: taktiklistens statistik efter en kamp mellem to computerhold (gittermotorens valg fra pick_team/omrokeringen)
+  if (cmActive(g)) recordAiTactics(f.home, f.away, hs.goals, as.goals, (c) => isHumanClub(c) || c === g.userClub);
   // karantæner afsones for spillere der ikke spillede
   for (const club of [f.home, f.away]) {
     for (const p of squad(club)) {
@@ -442,9 +457,11 @@ function newDay() {
   reservesDaily();
   // vinduerne lukket: frie agenter, ingen ville have, forsvinder til lavere rækker/udlandet
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
-  // daglige ting
+  // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
+  const cmFit = cmFitOn(g);
+  cmFitDay(g);
   for (const p of Object.values(g.players)) {
-    if (p.injury) {
+    if (p.injury && (!cmFit || p.injury.key === 'awol')) {
       p.injury.days--;
       // CM 01/02: "[spiller] resumes light training" – en uge før comeback fra en længere skade
       if (p.injury.days === 7 && (p.injury.total ?? 0) >= 21 && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.lightTraining', params: { player: pname(p) }, link: { kind: 'player', id: p.id } }));
@@ -459,7 +476,7 @@ function newDay() {
     }
     // restitution: en spiller med Natural Fitness 10 er klar igen 2-3 dage efter en kamp (som i CM 01/02, *estimeret*).
     // Før +4 + NF/4: med to kampe om ugen startede holdene trætte, og originalens knock-regel (< 40 % = sikkert knock) gav op til 10 skader i én kamp
-    if (p.condition < 100) p.condition = Math.min(100, p.condition + 9 + p.attrs[29] / 2);
+    if (p.condition < 100 && !cmFit) p.condition = Math.min(100, p.condition + 9 + p.attrs[29] / 2);
     if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
   }
   if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }

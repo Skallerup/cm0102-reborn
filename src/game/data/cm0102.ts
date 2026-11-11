@@ -13,7 +13,9 @@ export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: numbe
   /** omdømme fra spillerposten (byte 9/11/13, 0-10000): hjemme, nuværende, verden – originalens værdi følger dem */
   rep?: [number, number, number];
   /** fødderne fra spillerposten (venstre, højre; 1-20) – bruges i originalens afbalancering (sub_538ec0) */
-  feet?: [number, number] }
+  feet?: [number, number];
+  /** Free Role (spillerpost +0x1a, 1-20; udeladt = 1) – originalens udvælgelse 0x6e2f20 og positionsfaktoren læser den */
+  fr?: number }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -21,6 +23,9 @@ export interface CMWorld extends WorldData {
   attrScale?: 'stored';
   ratings: Record<number, CMRatings>;
   clubRep: Record<number, number>;
+  /** databasens rå værdier, som originalens spilstart (sub_535a80) bruger til at udfylde manglende spilleromdømme: klubbens omdømme
+   *  (club.dat +128, i16) og landets (nation.dat +0x8e, i16) pr. nationsindeks */
+  cmRaw?: { clubRep: Record<number, number>; nationRep: number[] };
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
@@ -409,7 +414,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     ]);
     const rep: [number, number, number] = [S.i16(po + 9), S.i16(po + 11), S.i16(po + 13)];
     const feet: [number, number] = [Math.max(0, Math.min(20, lf)), Math.max(0, Math.min(20, rf))];
-    ratings[id] = paRaw !== undefined ? { ca, pa, attrs, pos, side, paRaw, rep, feet } : { ca, pa, attrs, pos, side, rep, feet };
+    const fr = Math.max(1, Math.min(20, get('FreeRole')));
+    ratings[id] = { ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}) };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27
@@ -443,7 +449,8 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   return {
     kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
-    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
+    nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub,
+    cmRaw: { clubRep: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined).map((c) => [c.id, c.rep])), nationRep: [...nationIdx.keys()].map((id) => nationVal.get(id)![1]) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 

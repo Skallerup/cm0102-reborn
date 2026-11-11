@@ -105,6 +105,8 @@ export function setClub(p: Player, club: number) {
   // ny klub = ny start: utilfredsheden over spilletid hører til den gamle klub (en nyindkøbt spiller stod ellers som
   // "utilfreds med sin spilletid" samme dag, han kom – ejerens fejlmelding 2026-11-10)
   if (moved && club) p.unhappy = 0;
+  // originalen: statistikken arkiveres (0x7c5fe0) og en ny kontrakt starter (0x4cf720) – cmPlayerData.ts
+  if (moved) { p.cmStats = undefined; p.cmContract = undefined; }
   p.club = club;
   if (club) {
     let arr = squadIndex.get(club);

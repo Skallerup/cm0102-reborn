@@ -469,3 +469,111 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   (26–27 %), men porten afleverer sjældnere forbi linjen (9,2 mod 16,2 pr. kamp ved almindelige afleveringer, sub_6fa490 15,1 mod 21,1) –
   forsvarslinjen står 0,15–0,25 række dybere ved samme boldrække; (d) *kort* følger frisparkene (gule pr. frispark 0,20 som originalen);
   (e) boldholderens P i feltet er stadig lavere (afleveringsvægt med modtager række 0 centralt 426 mod 1.021, modtager fundet 73 % mod 79 %).
+- 2026-11-11 – **Udtagelsens input fra spiltilstanden + omrokeringens taktikvalg (underagent; noten `~/cm0102-engine/notes/cm-player-data.md`).**
+  `src/game/cmPlayerData.ts` (kun original DB i ægte tilstand, egen deterministisk talrække – spillets rng og zonemotoren røres ikke) holder
+  originalens data, som 0x6e2f20 læser: **PlayerStats 0x7c0d70** (kategori 1–6 pr. spiller: venskab/liga/pokal/Europa/landskamp/klub i alt,
+  32-bytes posterne som `Player.cmStats`, formens fem nibbles `Player.cmForm`, spillets karaktersnit `GameState.cmRatingAvg` fra 680/100),
+  snittene **0x7c2150/0x7c1e30** (karakter trukket mod standarden under 20 kampe, point pr. kamp), arkiv/nulstilling **0x7c5fe0** ved klubskifte
+  (state.ts setClub) og sæsonslut (season.ts); **kontraktens tællere 0x4ca6d0** (+0x3d, +0x3e/+0x3f kampe i træk uden/med tilfredsstillende
+  spilletid med originalens rand(30)·2, +0x44 via 0x4cb0a0/0x4cb250 og ±3 med rand(21 − Ambition); `Player.cmContract`, ny kontrakt 0x4cf720);
+  **spilstartens omdømme sub_535a80 0x536270–0x536ec6** (manglende omdømme udfyldes, ×50 – bekræftet, `Player.cmRepMem`); Free Role fra databasen
+  (`CMRatings.fr` → `Player.cmFree`, spillerpost +0x1a; positionerne beholder 1 som i originalens spor); klubbernes/landenes rå omdømme
+  (`world.cmRaw`, alle tre world-filer genbygget, +58 KB); Loyalty/Professionalism i anførervalget; **taktiklistens statistik 0x896290**
+  (`GameState.aiTacticStats`, efter gittermotorens kampe mellem to computerhold, springes over med et menneske; listen bruges af 0x6e0230).
+  Matchsubs: **0x6e1aa0** med 11 på banen vælger computeren taktik igen (0x6e0230, flag 0x8c1, uden kampspiller), kopierer den (masker,
+  instruktioner, taktikbyte, holdflag, positionstabel) og kører 0x6ddab0 før 0x6e2000; **0x6bbb60** (samspillet engine+0x1ce med originalens
+  rand(20)/rand(7000)/rand(6)/rand(Professionalism), 0x6ebd70 = `captainBase`) og **0x6bbf60** (mandsopdækningens mål) efter genvalget, udvisningen
+  og behandlingen. **Kontrol** mod den instrumenterede original (match_trace.c: `RECOMP_PD_TRACE=1` → PW/PS/PF/PX/PR-linjer; kørsel
+  `oracle/runs/pd2-pick.txt`; `scripts/pd-trace-check.ts`): posterne efter 0x7c0d70 **103.692/103.696** ens, udvælgelsens opslag 0x7c1e30
+  **3.712.901/3.728.313** (resten: arkiveringer, sporet ikke viser), formen 0x7c1950 **1.242.771/1.242.771**, kontraktens +0x3d/+0x3e/+0x3f for
+  dem, der spillede, **145.088/152.312** (resten: venskabskampenes omdømmespring 0x4ca7bc og kamptruppen uden for de 50) og for de øvrige
+  135.341/146.522. **Udtagelsen** (pick4, 400 PL-udtagelser, `EST_KEEP` i pick-trace-check.ts): med de estimerede input 137 samme 11 →
+  med statistikken som originalen **199** → + kontraktens tællere **240**; tilbage er træningsbelastningen/skaden (med dem: 334), kontraktens
+  flag/+0x44 og arbejdstilladelsen (kun belastningen estimeret: 282; kun historikken: 382, alt ens 375). **Mangler:** fitness-modulet
+  0x62c3d0/0x62c590/0x62ed70 (31-bytes post, dagligt, 0x62c680), kontraktflagene +0x45 og +0x44's startværdi (0x5ce2d0 m.fl.), trupstatus for
+  computerens spillere, −2-kampene (reserver, kategori 2/3 med rand(9)), landskampenes statistik (international.ts går ikke gennem applyMatchResult),
+  0x8c7260; samspillet bruges endnu ikke af kamp-CA'en 0x6ec010, og init_match kalder ikke 0x6bbb60/0x6bbf60 i porten.
+- 2026-11-11 – **Kommentarkøens kaldsteder (sub_6d6f70) koblet til motoren.** Før 11 af 261 kaldsteder (≈ 800 kald/1.550 køtal pr. kamp),
+  nu ≈ 1.376 kald og 2.747 køtal pr. kamp mod originalens 1.428/2.841 (40 PL-kampe, frø 1; `npx tsx scripts/grid-comment-freq.ts 40 1
+  <udtræk.json>` med `~/cm0102-engine/tools/cmt_extract.py` på et nyt spor `oracle/runs/cmt3.txt` – identisk med cmt2, oraklet er
+  reproducerbart). Koblet med originalens argumenter og på originalens sted i kontrolflowet (og de tilfældige tal, der kun vælger kommentar):
+  afleveringen sub_6fad40 §5.7–5.9 (0x6fce73–0x6ffae3: "i venstre forsvar …" med rand(20)/rand(3)/rand(2), retningsflagene, typens begivenhed
+  for alle 16 typer i springtabellen 0x700250, rand(4) for 9/0x5b, E+0x54 = 0x211f) og buh 0x6fca63; boldholderens løb sub_6f09f0 (området
+  0x6f0e7a, TAKE_ON 0x6f1291, hele 0xf/0x11/0x12-træet 0x6f2ba2–0x6f39aa med rand(dribling)/rand(30)/rand(3)/rand(2), tabt bold 0x6f3a27,
+  opsamlingen 0x6f402e/0x6f40d9 med engine+0x1cd, buh 0x6f2912), forseelsen i løbet (0x6f145d–0x6f1e21: kortenes tabel 0x6f4354, straffeappel,
+  skytte/frisparkschance, offerets reaktion) og sub_716e10 react_to_foul_decision (temperCheck 5/4/2/2/1, kort uden offer) + sub_716c90;
+  udfordreren vinder i løbet/afleveringen/skuddet med hver sin kopi (feltappel rand(50) i tre tabeller, typens begivenhed med rand(6) i
+  afleveringen/skuddet, "flot forsvarsspil" rand(20) i løb/aflevering/modtagelse/holdebold/opsnapning, BALL_GOES_LOOSE rand(7)); modtagelsen
+  sub_6f6c00 (C vinder, hovedstødsduellen efter Jumping +0x2e, brystet, MOVE_ONTO_PASS m.fl., +0x1a7 "første gang", buh); holdebolden
+  sub_70ec80 (WAIT/HOLD_OFF/hjørneflaget, buh); opsnapningen sub_6f5c30 (SCATTER/GOOD_INTERCEPT/GOALIE_CATCH/KEEPER_PUNCHES/SEMI_INTERCEPT/
+  HEAD_IT); GREAT_FIRST_TOUCH 0x713acd; computerens udskiftninger sub_6e1090 0x6e1691–0x6e18be; holdstilen sub_6c54a0 0x6c5b71–0x6c6212 (med
+  engine+0x1d2/+0x1d4); fordelen 0x6b9da1/0x6bad01/0x6bad31. Rettet på vejen: +0x198 sættes efter løbet (0x713961), sub_6f09f0 får arg4 =
+  frit løb og arg5 (0x713b67), sub_6cb650 i pass.ts stod vendt (= {0x25, 0x2a–0x32, 0x60, 0x61}), +7/+8/+9 (hovedstødsdueller) tælles,
+  ×0,85/+300-bonussen kun i løbet, afleveringens udgave kun +6. Adapteren: kort fra de koblede steder og computerens udskiftninger har ikke
+  længere den *estimerede* linje (YELLOW_CARD/…/SUBSTITUTION står i køen). **Sæsontal** (380 kampe frø 1/2/3, før → efter): mål 2,52/2,63/2,66 →
+  2,60/2,52/2,61 · H/U/B 53/24/23, 53/26/21, 57/23/20 → 52/26/22, 50/25/24, 51/26/23 · skud 17,1 → 17,5 · på mål 8,6 → 8,7 · hjørner 4,6 → 4,8 ·
+  frispark 6,7 → 7,1 · offside 4,6 → 4,3 · gule 1,34 → 1,47. Rækkefølgen pr. tik mod originalen (SEQ=<kamp>, samme hold): kickoffens
+  START_MATCH/START_GAME_* er ens, derefter skilles kampene ved første beslutning (originalen TURN, porten et løb/en aflevering) – en
+  tilstandsforskel, ikke kommentarens. **Mangler:** skuddet sub_702050 (skudtypen 0x700bd0's begivenhed [esp+0x6a0], udfald, mål, redninger,
+  0x717470-historierne – ≈ 45 kald/kamp), straffesparkskonkurrencen, forseelserne i afleveringen/modtagelsen/skuddet/holdebolden/opsnapningen
+  og resten af sub_6bac40 (fodret som 'other' uden kommentar), hands-grenene, 0x2168-appellerne og buh/klapsalver ved udskiftning (kræver
+  engine+0x8ebb ≠ 0), dykindberetningen og "10 yards"-reglen. Ydelse: ~180 ms pr. kamp mod ~100 ms (alle ændringer i arbejdsmappen).
+- 2026-11-11 – **Originalens konditionsmodul injury.cpp porteret (underagent; noten `~/cm0102-engine/notes/cm-fitness.md`).** `src/game/cmFitness.ts`
+  (funktionerne) og `cmFitnessGame.ts` (koblingen) – kun original DB i ægte tilstand, egen deterministisk talrække (spillets rng og zonemotoren
+  uændrede). Posten pr. spiller `Player.cmFit` (31 bytes: dato, Fitness +8, kampkondition +0xa, træthed +0xc, skaden 48 bytes, tilbagevendende
+  type/niveau, seneste type, træningsbelastning), `GameState.cmFitStart`/`cmOutbreaks`. Porteret: **0x62c680** (dagens opdatering, doven: skadet/
+  genoptræning/fuld træning/sommerpause med ferie og genoptræning efter landets sæsondatoer 0x669bd0 – tabellen 0xb63d60 målt i oraklet, blødt
+  loft over 7000/9000/9850, kampkonditionen +500/dag dæmpet af trætheden), aflæsningerne **0x62c590/0x62c510/0x62c400/0x62c3d0/0x62ed70**,
+  **0x62c2f0** (trætheden −13/−rand(13) om dagen, 0x5ce2d0), **0x62bd10/0x62c080** (efter kampen: kampkonditionen = slutkonditionen, trætheden +
+  (10000 − kondition)/100 + minutter, ½ i venskabskampe, ·1,25/·2 efter alderen; de ubrugte udskiftere med), **0x62be00** (kampens knocks –
+  gittermotorens 0x6d0980 kalder `globalThis.cmKnockHook`, én linje i gridMatch.ts), **0x62d140/0x62d250/0x62e500/0x62e700/0x62e820/0x62e9e0**
+  (skadetypen af 82 typer, længden efter fysioterapeut/alder/Injury Proneness, tilbagevendende skader og deres behandling, karrierens slut,
+  sygdomsudbrud), **0x62b7b0** (dagligt: træningsskader på hverdage for max(10, spillere/150) tilfældige, med tab af Acceleration/Pace/Agility),
+  spilstarten **0x62cf70 → 0x5cc850 (fra databasens 1/1) → 0x62a920**. Spillets egen kondition (+9 + NF/2 om dagen) og skader (sim.ts injure,
+  landskampe, venskabskampe) bruges ikke længere i de spil: `Player.condition`/`Player.injury` (nøglen `cm<type>`, i18n `injury.cm0..81` på en/da)
+  sættes af posten (0x62c590/0x62c400) før kampene, efter kampene og dagligt for menneskets og de skadede. Computerens udtagelse (aiTeam.ts
+  roleDataOf) læser 0x62c590/0x62c3d0/0x62ed70 af posten. **Kontrol** (`scripts/fit-trace-check.ts` mod `oracle/runs/fit1.txt`, ny
+  `RECOMP_FIT_TRACE` i match_trace.c, frø 1, 330 dage): 0x62c680 **1.255.873/1.255.873** (+ skadede 83.002/83.002, landsholdsspillere i sæsonen
+  306.824/306.824, i sommerpausen 42.853/46.903 – landsholdsopholdet staff +0x24 er ikke porteret), 0x62c2f0 **2.230.772/2.230.772**, 0x62bd10
+  **220.372/220.372**, 0x62c080's tillæg **217.226/217.226**, 0x62be00 **23.211/23.211**, 0x62d140 6.620/6.698, skadens længde 6.886/6.890.
+  **Udtagelsen** (pick4, 400 PL-udtagelser, samme 11): de estimerede input 137 → statistikken 199 → kontraktens tællere 240 → **trætheden og skaden
+  som originalen 334** (bænken 257, alt ens 237); tilbage er kontraktens +0x44/+0x45 (med dem 382, alene estimeret: 290) og 0x8c7260 (343 med
+  historikken, 400 med begge). Langtidstest 2 sæsoner (original, ægte): ingen fejl. **Mangler:** landsholdsopholdet (+0x24 → 0x76e040), club
+  +0x1db, menneskets træningsskemaer (standard 68/48), byten 0xae2d0c +0xa; gittermotoren starter stadig med `100·max(60, Player.condition)`
+  (originalen 0x62c590 rå i MATCH_PLAYER::setup 0x6eb026 – motorens fil), adapterens slutkondition er i hele procent; zonemotorens kampe har
+  ingen knockliste (en skadet får en *estimeret* knock). Kontraktflagene +0x45/+0x44's start (0x5ce2d0), trupstatus for computerens spillere,
+  reservekampe og 0x8c7260 er ikke lavet.
+- 2026-11-11 – **Skuddet sub_702050 hele vejen (takeShot.ts + shotParts/R2–R7, story.ts), forseelserne uden for løbet, straffesparkskonkurrencen,
+  den sete kamp (engine+0x8ebb) og adapterens sidste *estimerede* linjer.** Noten `~/cm0102-engine/notes/702050-shot-commentary.md` (+ fouls-outside-run.md,
+  4782-4786-counters.md, 717470-stories-block.md, 6be710-8ebb-tenyards.md). **Skuddet** er oversat instruktion for instruktion fra 0x702050 til 0x70a5a8
+  (prologen, den forkerte fod, keeperen 0x700420, udfordringen 0x6c87e0 med flag9 = keeperens tilstand, knock-tjekket 0x6cfe10, skuddets egen
+  forseelseskopi 0x7026c2–0x702f1a, FINDS_A_GAP/IN_CENTRAL_ATTACK 0x70354d, skudtypens kommentar med fod-/keepervarianterne 0x70362d–0x703883,
+  offside på en anden angriber – **rand(500) = 0 giver straks offside, ellers venter hændelse 8 (porten havde det vendt)**, skudlinjen med
+  blokeringens kommentarer 0x70dfd0 (BLOCK_SHOT/RICHOCHET/WALL/CLEARED_OFF_LINE …), resultatkoden, karaktererne og tællerne +0xa/+0xb/+0xd,
+  langskuddets spillerture 0x7103e0, keeperen ude af position, spændingen engine+0x4786, afbrænderne med pres-/historiekæderne, målet med
+  GOAL_SCORED/GOAL_ONE/SCORED_PENALTY/WINNING/EQUALISER …, ILLEGAL_*/GOAL_DISALLOWED (mål med param 2 annulleres), stillingen +0xf5bd tælles i
+  skuddet 0x708a31, holdhistorierne 0x6d4b70, SILENT_* (klub +0x53 → land +0x77 = 8: de engelsktalende lande), redningerne PARRY/TIPPED/HELD
+  med keeperens busy og RESTART_CORNER, omspark param 5/6). sub_700bd0 giver nu skudtypens begivenhed (a3) og frisparkets rand(3). sub_717470
+  (bytetabellen 0x717c4c) og 0x6d4b70: mediehistorikken spørges med nyhedstypen −1 og er altid tom – tallene trækkes stadig. **Limen:**
+  +0x198 sættes ikke før skuddet, GREAT_FIRST_TOUCH før skudscoren (0x713bf9), param = sub_6bba80 (1/2), a5/a6 = sub_6bcbd0's to største
+  pressere; engine+0x1a7 nulstilles efter boldholderens valg (0x71065f) og i sub_6f0970 – **GREAT_FIRST_TOUCH 32 → 9,3 (orig 8,8)**;
+  engine+0x4782/+0x4786 og +0xf5aa/+0xf5a6 i alle skrivere (take_ball, løbet, opsnapningen, modtagelsen, afleveringen, sub_6c54a0, konkurrencen).
+  **Forseelserne** ('pass', 'receive', 'receiveR', 'hold', 'shot' i foul(), handsFoul for modtagelsen/opsnapningen/blokeringen, sub_6bac40
+  som originalen med *_PAST_TENSE, sub_6bb8d0 agitateTeam overalt; TICKING_OFF bruger sværheden, ikke arten), avisens udvisningshistorie
+  0x6f17c2/0x6fb8bd (ingen kommentar), **"10 yards"** 0x717144 (engelske turneringer). **Straffesparkskonkurrencen**: 0x2005/0x2006/0x2004,
+  køens +0 gemt i engine+0x8ea4, skuddet via takeShot med param 3. **Den sete kamp** (engine+0x8ebb = ctx.watched, adapteren: menneskets kamp med
+  kommentar): straffeappellen 0x2168 på seks steder, buh/klapsalver ved udskiftning (+0x33), BOO_OFF_PITCH/SILENT_WON_MATCH ved slutfløjt,
+  territoriet ved poss −1; usete kampe er bit-identiske med før. **Adapteren**: mål-, rednings-, afbrænder-, blokerings- og straffesparkslinjerne
+  kommer fra køen (SEM: goal/save/wide/shot-blocked/shootout-end), ingen *estimerede* oveni. **Kampstart**: samspillet 0x6bbb60(0/1) og
+  mandsopdækningen 0x6bbf60 (init_match 0x6b8bc5–0x6b8bd5, matchSubs.ts kickoffSetup) og konditionen fra 0x62c590 (cmFitness.ts), når spillet har
+  konditionsmodulet. Limens rand(8) i tillægstid efter mål er væk (skuddet skriver ikke +0x8eb7). **Ydelse** (samme resultater): buildOrder slår
+  pladserne op én gang, zonevalget bygger feltlisten én gang – 100 kampe 14 s → 12–13 s (tsx). **Kommentaren** (40 PL-kampe frø 1): 1.383 kald/2.763
+  tal pr. kamp (orig 1.428/2.841); skudtypens kommentarer 15,6 (20,1), GOAL_SCORED 2,7 (2,9), GOAL_ONE 1,6 (1,9), SHOT_HEADER 4,2 (4,8), RICHOCHET 2,5 (3,3),
+  FINDS_A_GAP 1,5 (2,9), GOOD_SAVE_NOT_HELD 1,9 (2,6), PARRY 1,9 (2,0), HELD 0,9 (0,9), TIPPED 0,7 (0,9), HAND_BALL 1,8 (1,7), YELLOW_CARD 1,8 (1,6),
+  RESTART_FREEKICK 6,7 (7,5), RESTART_CORNER 4,2 (5,3). **Sæsontal** (380 kampe frø 1/2/3, før → efter): mål 2,60/2,52/2,61 → 2,78/2,69/2,76 · skud
+  17,5/17,4/17,5 → 17,3/17,4/17,5 · på mål 8,7/8,6/8,7 → 9,7/9,5/9,8 · hjørner 4,9/4,8/4,7 → 4,7/4,9/4,8 · frispark 7,2/7,0/7,1 → 7,1/6,9/6,7 · offside
+  4,3/4,4/4,3 → 3,8/3,9/3,6 · gule 1,44/1,52/1,46 → 1,47/1,41/1,41 · H/U/B 52/26/22, 50/25/24, 51/26/23 → 51/25/24, 52/22/26, 52/22/27. **Mangler:**
+  målenes tællere +0x3d…+0x45/debut +0x30 fra PlayerStats (MATCH_PLAYER::init 0x6eb1b4–0x6eb41a; nu −1000/0), +0x1/+0x2, klubtype-kommentaren 0x20f5
+  i forseelserne, Comp_Stats-løbene (8619–8623), tilskuernes sange 0x6c6279 (klub-id'er/regioner), samspillets læsning i kamp-CA'en 0x6ec010
+  (0x6ec3c1 ganger kaptajnsleddet [esp+0x18] – det led findes ikke i portens matchCa), landingens tre forseelsesblokke sub_6c9cd0 (stadig 'other'),
+  straffepletten (originalen lader bolden ligge på forseelsens felt), WINS_BLOCK_TACKLE 13 (20) og PICK_UP_FREE_BALL 131 (148) er tilstandsforskelle.

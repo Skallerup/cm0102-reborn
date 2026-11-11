@@ -212,6 +212,8 @@ function retirements() {
     else if (age === 34) prob = p.ca < 90 ? 0.15 : 0.05;
     else if (!p.club && age >= 32) prob = 0.4;
     else if (!p.club && p.ca < 55 && age >= 24) prob = 0.5;
+    // 0x7a7f20 (konditionsmodulet, cmFitness.ts): skaden har sluttet karrieren – originalen sætter en dato få dage frem; her ved sæsonslut
+    if (p.cmRetire) prob = 1;
     if (prob > 0 && rng.chance(prob)) {
       const msg = { cat: 'general' as const, key: 'news.retired', params: { player: pname(p), age } };
       if (p.rep >= 75) forEachHuman(() => { if (newsRelevant(p.club)) addNews(msg); });
@@ -459,6 +461,8 @@ function archiveStats() {
     if (p.stats.apps + p.stats.subs > 0) pushCareerLine(p, p.club, !!p.loan);
     p.split = undefined;
     p.stats = emptyStats();
+    // originalens PlayerStats-poster arkiveres og nulstilles ved sæsonslut (0x7c1350 → 0x7c5fe0; formens nibbles bliver)
+    p.cmStats = undefined;
     p.yellowCount = 0;
     p.banned = 0;
     p.form = [];

@@ -18,6 +18,8 @@ import * as H from './helpers';
 import type { GP, GridMatchState } from './gridMatch';
 import { adjustMorale, drainCondition, inBoxAt, randS, type ChallengeOut } from './challenge';
 import type { JudgeResult } from '../cm0102-original-rules';
+import { isHardChallenge } from '../cm0102-original-rules';
+import { ATTRS } from '../../attributes';
 
 export type Rand = (n: number) => number;
 type Side = 0 | 1;
@@ -33,7 +35,18 @@ const attThird = (side: Side, y: number) => (side === 0 ? y > 8 : y < 3);   // s
 /** sub_6cb960(side == 0, x, y): (x, y) i straffesparksfeltet, siden angriber */
 const inAttBox = (side: Side, x: number, y: number) => inBoxAt(other(side), x, y);
 /** sub_6cb650: koder uden efterspil (0x26..0x29, 0x33..0x5f) (sikker) */
-const quietCode = (c: number) => (c >= 0x26 && c <= 0x29) || (c >= 0x33 && c <= 0x5f);
+/** forseelsens begivenhed efter udfordringens kode (springtabellerne 0x6f4324/0x6f42f4 og 0x6f43dc/0x6f43ac i sub_6f09f0 – samme i
+ *  afleveringen 0x7001f8, modtagelsen 0x6f9f30, skuddet 0x70a670 og holdebolden): FOUL_TRIP … FOUL_FOOT_TOO_HIGH, ellers FOUL */
+export const foulEventOf = (code: number): number => {
+  switch (code) {
+    case 0x2d: return 0x1fea; case 0x2a: return 0x1feb; case 0x2b: return 0x1fec; case 0x2c: return 0x1fed;
+    case 0x13: case 0x21: return 0x1fee; case 0x22: return 0x1ff2; case 0x29: return 0x1fef; case 1: return 0x1ff1;
+    case 0x15: return 0x1ff0; case 0x2e: return 0x1ff3; case 0xc: return 0x1ff4; default: return 0x1fe9;
+  }
+};
+const quietCode = isHardChallenge;   // sub_6cb650 = {0x25, 0x2a..0x32, 0x60, 0x61} (tabel 0x6cb680; før stod mængden vendt her)
+/** spillerpostens +0x2e = Jumping, rå 1..20 (postens egenskaber i alfabetisk rækkefølge fra +0x1c; +0x21 Consistency, +0x30/+0x3b fødder) */
+const rawJumping = (p: GP) => p.src.attrs[ATTRS.indexOf('jumping' as never)] || 10;
 
 /** sub_6cc4e0 (sikker): tabellen 0xa15e44[|dy|·9+|dx|] som float32, 1000 uden for banen */
 export function cdist(x1: number, y1: number, x2: number, y2: number): number {
@@ -167,14 +180,20 @@ export function passScatter(margin: number, ballH: number, weather: number, D: n
 export interface PassCtx {
   m: GridMatchState;
   rand: Rand;
+  /** sub_6d6f70 add_event (matchEvents.ts) / sub_7002f0 (= p2 −1, side2 −1): spillerne som indeks på holdet (+0x2e), siderne som i originalen */
+  comment(id: number, p1: GP | null, s1: number, p2?: GP | null, s2?: number, x?: number): void;
   /** sub_6f0630 */
   takeBall(p: GP): void;
   /** sub_6c87e0 */
   challenge(p: GP | null, side: Side, action: number): ChallengeOut;
   /** sub_6e9820 */
   judge(d: GP, p: GP, type: number, action: number): JudgeResult;
+  /** den sete kamp: straffeappellen 0x2168 efter judge (gridMatch appeal) */
+  appeal?(d: GP, boxSide: Side, type: number, hurt: boolean, w31of: GP): void;
   /** sub_6ea4e0 + genstarten (FOUL-grenen); `c.clear` = det alvorlige flag */
-  foul(d: GP, p: GP, j: JudgeResult, c: { clear: boolean }): void;
+  foul(d: GP, p: GP, j: JudgeResult, c: { clear: boolean; type?: number }, site?: 'receive' | 'receiveR' | 'other'): void;
+  /** hands-blokken (gridMatch handsFoul): modtagelsen 0x6f7353, opsnapningen 0x6f61a1, blokeringen 0x70e3fe */
+  handsFoul(q: GP, code: number, sev: number, b: number, flag: boolean, site: 'receive' | 'intercept' | 'block'): void;
   /** §5 duellen ved afleverens felt; stop = afleveringen blev ikke til noget, w40 = udfordrerens værdi (0 uden) */
   sourceDuel(p: GP, V: number): { stop: boolean; w40: number };
   /** sub_70d430 */
@@ -187,6 +206,8 @@ export interface PassCtx {
   playerTurn(p: GP): void;
   /** sub_6f9f90(p, 4, mål, 0, …) eller på mållinjens midterfelter (sub_6f4650) */
   facingGoal(p: GP): boolean;
+  /** "flot forsvarsspil" (rand(20) mod minuttet, kommentar 0x21cd/0x21ce) – samme blok som i sub_6f09f0 0x6f24d6 (modtagelsen 0x6f9303) */
+  praise(d: GP, p: GP, code: number): void;
   /** genstart (tilstand, side med bolden, felt) */
   restart(state: number, side: Side, x: number, y: number): void;
   /** kortet efter sub_6e9630/sub_6ea4e0: 2 gult, 3..6 udvist (sub_6cda20); holdets frispark (+0xf5c9) */
@@ -316,7 +337,9 @@ export function makePass(c: PassCtx) {
     if (d + 1 > 0) T = int16(ftol(((m.ballSpeed + 1) * T) / (d + 1)));
     if (m.lastTouch === q.side) {                                       // holdkammerat i linjen
       if (randS(rand, T + 100) !== 0) return false;
-      looseBall(q.x, q.y, rand(m.ballSpeed) + 1, q.side, false, true, q);   // 0x1f5e: bolden rammer ham
+      c.comment(0x1f5e, q, q.side, null, -1, 0);                          // 0x6f5e4e SCATTER_INTERCEPT: bolden rammer ham
+      m.x4782 -= 300;                                                     // 0x6f5e5d
+      looseBall(q.x, q.y, rand(m.ballSpeed) + 1, q.side, false, true, q);
       dbg('int:mate'); return true;
     }
     let code: number;
@@ -329,18 +352,24 @@ export function makePass(c: PassCtx) {
     if (I < -100) { q.busy += rand(2); return false; }
     if (I < 150) return false;
     const hj = handsJudge(q, code);
-    if (hj && rand(10) !== 0) { handsRestart(q, handsPunish(q, hj.sev, hj.b, false)); return true; }
-    if (hj) c.queueIncident?.(code, q, null, 1, q.x, q.y, hj.sev, hj.b);                       // 0x6f609e: fordel
+    if (hj && rand(10) !== 0) { c.handsFoul(q, code, hj.sev, hj.b, false, 'intercept'); return true; }   // 0x6f61a1
+    if (hj) c.queueIncident?.(code, q, null, 1, q.x, q.y, hj.b, hj.sev);                       // 0x6f609e: fordel (+0x475d = 4, +0x475e = sværheden)
     const s = m.ballSpeed;
     const cutoff = Math.max(160, int16(ftol(1500 - d * d * 100 + 100 * s)));
     if (I >= cutoff && d >= 1 && s + 1 < d) {                            // kontrolleret opsnapning
       if (flag) { q.blocks++; q.rating += 28; }
       q.busy++;
+      if (keeper && inBox) c.comment(0x1fe2, q, q.side, null, -1, 0);   // 0x6f67df GOALIE_CATCH_BALL
+      else if (m.ballH < 4) c.comment(0x1f5f, q, q.side, null, -1, 0);  // 0x6f680a GOOD_INTERCEPT
       c.takeBall(q); q.action = code;
+      c.praise(q, q, code);                                             // 0x6f6827 (p2 = han selv)
       dbg('int:cut'); return true;
     }
     dbg('int:loose');
     if (flag) { q.blocks++; q.rating += 10; }                           // kun en fod på bolden
+    if (keeper && inBox) c.comment(0x20d4, q, q.side, null, -1, 0);     // 0x6f6a69 KEEPER_PUNCHES_BALL_AWAY
+    else c.comment(rad <= 2 ? 0x213e : 0x1f71, q, q.side, null, -1, 0); // 0x6f6acc SEMI_INTERCEPT (radius ≤ 2) / HEAD_IT
+    m.x4782 -= 300;                                                     // 0x6f6a76 / 0x6f6ad7 (begge grene, før rand(10)/løs bold)
     if (keeper && inBox) {
       if (rand(10) !== 0) looseBall(q.x, q.y, rand(s) + 1, q.side, true, true, null);
       else { const pl = rand(200) !== 0 ? null : q; looseBall(q.x, q.y, rand(s) + 1, q.side, false, true, pl); }
@@ -362,6 +391,141 @@ export function makePass(c: PassCtx) {
     });
   }
 
+  /** 5 · (int8(ftol(9·d + 2,5)) / 5), mindst 1 (0x6fae75–0x6faeaa og 0x6fcf70–0x6fd00e): afstanden i "yards" til kommentaren */
+  const yards = (d: number) => { const v = 5 * Math.trunc(int8(ftol(d * 9 + 2.5)) / 5); return v < 1 ? 1 : int8(v); };
+  /** priority-rækkefølgen i afleveringens flaggrupper (0x6fe0b5–0x6fe205 m.fl.): 0x10, 0x20, 0x40, 2, 4, 1, 8 → base + 4, 5, 6, 1, 2, 0, 3 */
+  const flagIdx = (bl: number): number => (bl & 0x10 ? 4 : bl & 0x20 ? 5 : bl & 0x40 ? 6 : bl & 2 ? 1 : bl & 4 ? 2 : bl & 1 ? 0 : bl & 8 ? 3 : -1);
+
+  /** "I venstre forsvar …" (IN_LEFT_DEFENCE..IN_RIGHT_ATTACK, 0x215a–0x2162) efter p's felt, extra = afstanden til målet i yards – samme
+   *  blok i afleveringen (0x6fcf2c–0x6fd2a1) og i boldholderens løb (sub_6f09f0 0x6f0ed8–0x6f124a); 0x215e kun med rand(2) ≠ 0 */
+  function areaComment(p: GP): void {
+    const side = p.side, x = p.x, y = p.y;
+    const bl = yards(cdist(x, y, 4, side === 0 ? 11 : 0));                      // side 1: sub_6f09b0(p, 4, 0)
+    const leftW = side === 0 ? x < 2 : x > 6, rightW = side === 0 ? x > 6 : x < 2;
+    let id = -1;
+    if (side === 0 ? y > 7 : y < 4) {                                           // 0x6fd039: angrebets tredjedel
+      if (leftW) id = 0x2160; else if (rightW) id = 0x2162;
+      else if (!(x >= 2 && x <= 6 && (side === 0 ? y >= 10 && y <= 11 : y >= 0 && y <= 1))) id = 0x2161;   // 0x6fd0b5: ikke i feltet
+    } else if (side === 0 ? y < 4 : y > 7) {                                    // 0x6fd136: egen tredjedel
+      id = leftW ? 0x215a : rightW ? 0x215c : 0x215b;
+    } else {                                                                    // 0x6fd1d6/0x6fd1e3: midtbanen
+      if (leftW) id = 0x215d; else if (rightW) id = 0x215f;
+      else if (Math.abs(x - 4) < 2 && (y === 5 || y === 6) && rand(2) !== 0) id = 0x215e;   // 0x6fd24f
+    }
+    if (id >= 0) c.comment(id, p, side, null, -1, bl);
+  }
+
+  /**
+   * sub_6fad40 §5.7–5.9 (0x6fce73–0x6ffae3, sikker): afleveringens kommentar. Kører efter karakteren (§5.6) og før højde/fart (§6.1).
+   * "Spiller den frem"-linjen (5.7, med rand(20), rand(3) og evt. rand(2)), retningsflagene (5.8 – her skifter en kort aflevering ind i målet
+   * type til 0x5c/0x5d), én begivenhed efter typen (5.9, jump-tabel 0x700250/0x700294; rand(4) for type 9/0x5b) og til sidst E+0x54
+   * (0x211f PLAYER_OVERHITS_PASS). Returnerer den (evt. ændrede) type. E24 = engine+0x1a7 ved afgivelse, ellers fodrullet (0x6faf1a).
+   */
+  function passComment(p: GP, type0: number, receiver: GP | null, fromX: number, fromY: number, tx: number, ty: number, D: number, n: number,
+    dead: boolean, E24: number, io: boolean): number {
+    let type = type0;
+    const side = p.side, cm = c.comment;
+    const cross = type === 8 || type === 6 || type === 7 || type === 0x5e;
+    // 5.7 (0x6fce73): ikke efter løb (+0x198 ∈ 0xf..0x12), ikke indlæg/dødbold
+    if (!(p.action >= 0xf && p.action <= 0x12) && !cross && !dead) {
+      const r20 = rand(20);                                                     // 0x6fced5
+      if (n >= 30 - r20 && m.ballH < 3 && !isK(p) && rand(3) === 0) areaComment(p);   // 0x6fceeb, 0x6fcef9, 0x6fcf0a, 0x6fcf1a
+    }
+    // 5.8 flagene (0x6fd2a6 / 0x6fd5bf)
+    let al: number, bl: number;
+    if (cross) {
+      let wing = 0;                                                             // E+0x13 (0x6fd5bf)
+      if (side === 0 ? fromX < 3 : fromX > 5) wing = 1; else if (side === 0 ? fromX > 5 : fromX < 3) wing = 2;
+      const d = int8(Math.abs(fromX - 4) - Math.abs(fromX - tx));              // 0x6fd5fc–0x6fd61f (byte)
+      bl = wing; al = d > 0 ? wing | 8 : d < 0 ? wing | 4 : wing;
+    } else {
+      bl = receiver && isK(receiver) ? 0x80 : 0;                               // 0x6fd2cd
+      if (side === 0 ? ty > fromY : ty < fromY) bl |= 1; else if (side === 0 ? ty < fromY : ty > fromY) bl |= 8;
+      const dy = Math.abs(ty - fromY), dx = Math.abs(tx - fromX);
+      if (dy < 2) {                                                             // 0x6fd33d
+        if ((side === 0 ? tx < fromX : tx > fromX) && dy <= dx) bl |= 2;
+        else if ((side === 0 ? tx > fromX : tx < fromX) && dy <= dx) bl |= 4;
+      }
+      if (!inAttBox(side, p.x, p.y) && inAttBox(side, tx, ty)) bl |= 0x10;     // 0x6fd3a7–0x6fd407
+      if ((side === 1 && p.y < 3) || (side === 0 && (p.y > 8 || ty > fromY + 3)) || (side === 1 && ty < fromY - 3)) {   // 0x6fd413–0x6fd458
+        const wingX = !(tx >= 2 && tx <= 6);                                    // sub_6cb910
+        if (wingX && (side === 0 ? tx < p.x && tx < 2 : tx > p.x && tx > 6)) bl |= 0x20;
+        else if (wingX && (side === 0 ? tx > p.x && tx > 6 : tx < p.x && tx < 2)) bl |= 0x40;
+      }
+      al = dead ? 1 : 0;                                                        // 0x6fd643: al = E+0x13 (bruges ikke af typerne her)
+      if (tx === 4 && ty === (side === 0 ? 12 : -1) && D < 2) type = type === 0x3d ? 0x5c : 0x5d;   // 0x6fd4de–0x6fd567
+      else if (m.ballH < 4 && type !== 0x5d && type !== 0x5c && tx === 4 && (ty === -1 || ty === 12)) E54 = 0x211f;   // 0x6fd56c–0x6fd5b2
+    }
+    // 5.9 typen (0x6fd647)
+    const R = receiver, Rs = R ? R.side : -1, fi = flagIdx(bl);
+    const grp = (bases: [number, number, number, number], dflt: number) => {    // io/E24-grupperne: (0,0) (0,1) (1,0) (1,1)
+      const b = bases[(io ? 2 : 0) + (E24 ? 1 : 0)];
+      cm(fi >= 0 ? b + fi : dflt, p, side, R, Rs, n);
+    };
+    switch (type) {
+      case 6: case 8: case 0x5e: case 7: {                                     // 0x6fd97e / 0x6fdb88: x = 0
+        const t7 = type === 7;
+        let id: number;
+        if (al & 1) id = E24 ? (al & 8 ? (t7 ? 0x20cf : 0x20c3) : al & 4 ? (t7 ? 0x20cd : 0x20c1) : t7 ? 0x20cb : 0x20bf)
+          : al & 8 ? (t7 ? 0x20c9 : 0x20bd) : al & 4 ? (t7 ? 0x20c7 : 0x20bb) : t7 ? 0x20c5 : 0x20b9;
+        else if (al & 2) id = E24 ? (al & 8 ? (t7 ? 0x20d0 : 0x20c4) : al & 4 ? (t7 ? 0x20ce : 0x20c2) : t7 ? 0x20cc : 0x20c0)
+          : al & 8 ? (t7 ? 0x20ca : 0x20be) : al & 4 ? (t7 ? 0x20c8 : 0x20bc) : t7 ? 0x20c6 : 0x20ba;
+        else id = t7 ? 0x21e4 : 0x1f73;
+        cm(id, p, side, null, -1, 0);
+        break;
+      }
+      case 9:                                                                   // 0x6fd66e
+        if ((ty >= 12 && side === 1) || (ty < 0 && side === 0)) cm(tx !== 4 && rand(4) !== 0 ? 0x210e : 0x211a, p, side, null, -1, n);
+        else cm(inBoxAt(side, p.x, p.y) ? 0x1f70 : 0x2157, p, side, null, -1, n);   // sub_6f5b20(p, side): eget felt → CLEAR_BALL
+        break;
+      case 0x3e: cm(0x2134, p, side, null, -1, n); break;                      // 0x6fd74c
+      case 0x5b:                                                                // 0x6fd776
+        if (ty < 12 && ty >= 0) cm(0x1f6f, p, side, null, -1, n);
+        else cm(tx !== 4 && rand(4) !== 0 ? 0x210d : 0x2119, p, side, null, -1, n);
+        break;
+      case 0x5d: {                                                              // 0x6fd81d
+        const ids = [0x20ae, 0x20af, 0x20b0, 0x20b1, 0x20b2, 0x20b3, 0x20b4];
+        cm(fi >= 0 ? ids[fi] : 0x1f72, p, side, null, -1, n);
+        break;
+      }
+      case 0x5c: cm(0x1f71, p, side, null, -1, n); break;                      // 0x6fdd92
+      case 0x3d:                                                                // 0x6fddbc: x = 0
+        cm(bl & 0x80 && !(bl & 1) ? 0x2148 : inAttBox(side, tx, ty) ? 0x21d5 : bl & 2 ? 0x20b6 : bl & 4 ? 0x20b7 : bl & 1 ? 0x20b5 : bl & 8 ? 0x20b8 : 0x1f6d,
+          p, side, R, Rs, 0);
+        break;
+      case 0x34:                                                                // 0x6fded8: hjørnet
+        if (D < 3) cm(0x2130, p, side, null, -1, n);
+        else cm(!inAttBox(side, tx, ty) ? 0x2131 : 0x1f80, p, side, null, -1, n);
+        break;
+      case 0x5a: cm(0x1f7e, p, side, null, -1, n); break;                      // 0x6fdf88: målspark
+      case 0x37: cm(!(tx >= 2 && tx <= 6) ? 0x21bc : 0x1f7d, p, side, null, -1, n); break;   // 0x6fdfb2: frispark (sub_6cb910)
+      case 0x36:                                                                // 0x6fe015: indkast
+        if (R) cm(0x1f7b, p, side, R, Rs, n); else cm(0x1f7c, p, side, null, -1, n);
+        break;
+      case 0x1f:                                                                // 0x6fe05b: højden (sub_700340) vælger jord/luft
+        if (bl & 0x80 && !(bl & 1)) { cm(0x214a, p, side, R, Rs, 0); break; }
+        if (m.ballH === 0) grp([0x2022, 0x2029, 0x2030, 0x2037], 0x1f67); else grp([0x203e, 0x2045, 0x204c, 0x2053], 0x1f67);
+        break;
+      case 0xb:                                                                 // 0x6feb0c
+        if (bl & 0x80 && !(bl & 1)) { cm(0x214a, p, side, R, Rs, 0); break; }
+        if (R && inAttBox(side, R.x, R.y) && inAttBox(side, p.x, p.y) && D < 2) { cm(0x2021, p, side, R, Rs, n); break; }   // sub_6f5b20(·, side == 0)
+        grp([0x205a, 0x2061, 0x2068, 0x206f], 0x1f69);
+        break;
+      case 0x1e:                                                                // 0x6ff0cd
+        if (bl & 0x80 && !(bl & 1)) { cm(0x214c, p, side, R, Rs, 0); break; }
+        grp([0x2092, 0x2099, 0x20a0, 0x20a7], 0x1f6a);
+        break;
+      case 0x3c:                                                                // 0x6ff5c6
+        if (bl & 0x80 && !(bl & 1)) { cm(0x214c, p, side, R, Rs, 0); break; }
+        grp([0x2076, 0x207d, 0x2084, 0x208b], 0x1f6b);
+        break;
+      default: break;                                                           // 0x6ffff5: assert (match_pl.cpp 10813) i originalen
+    }
+    if (E54 > -1) cm(E54, p, side, null, -1, n);                                // 0x6ffabc: sub_7002f0(E+0x54)
+    return type;
+  }
+  let E54 = -1;                                                                 // E+0x54 (0x6fad52: −1 ved hvert kald af sub_6fad40)
+
   /**
    * sub_6fad40 MATCH_PLAYER::pass (sikker; notes/6fad40-pass.md). io.v = io_flag (sub_6fa250's arg3; sættes, når målfeltet ikke er
    * modtagerens felt). Returnerer true = bolden er sendt af sted (sub_6fa250 fortsætter med offside og modtageren).
@@ -374,6 +538,8 @@ export function makePass(c: PassCtx) {
     let err = rand(ftol((4 * D ** 3) / Math.max(1, p.f.passing)));                 // R2
     if (!receiver) err = rand(err);                                                // R3
     if (D < 2 && type !== 0x3d && type !== 0x5c) err += ftol(250 - 125 * D);
+    const n = yards(D);                                                            // E+0x12 (0x6fae75)
+    E54 = -1;
     const w = H.footForTarget({ x: fromX, y: fromY, facing: p.facing, technique: p.f.technique, leftFoot: p.leftFoot, rightFoot: p.rightFoot,
       strongFoot: p.strongFoot } as unknown as H.MatchPlayer, type, tx, ty, D + 1).penalty;   // sub_713e90
     const foot = rand(w);                                                          // R4
@@ -416,12 +582,14 @@ export function makePass(c: PassCtx) {
     // 5.4
     if (!inAttBox(side, p.x, p.y) && randS(rand, p.w31) < -10) {                   // dyk-grenen (kun negativt w31)
       p.agitation = Math.min(100, Math.max(p.agitation * 1.05, 2 * (25 - p.temperament)));   // 0x6fca12 (max – noten har min)
+      c.comment(0x211d, null, other(side), null, -1, 0);                             // 0x6fca63 BOO_SPECIFIC_PLAYER (p1 −1, side = modstanderne)
       if (rand(20 * p.pressure + 10) === 0) adjustMorale(p, -rand(3), rand);
     }
     m.lastPasser = p; m.lastPassType = type;
     c.passStarted(p);
     if (rand(20 * p.pressure + 10) === 0) adjustMorale(p, -rand(3), rand);         // R8, R9 (staff +0x5a)
-    if (m.carrier) { m.poss = -1; m.carrier = null; p.w29 = 0; p.momentum = 0; }
+    let E24 = foot;                                                                // E+0x24 = fodrullet (0x6faf1a) …
+    if (m.carrier) { E24 = m.firstTime; m.x4786 = 0; m.poss = -1; m.carrier = null; m.firstTime = 0; p.w29 = 0; p.momentum = 0; }   // … eller +0x1a7 (0x6fcb1f)
     m.margin = int16(V - w40);
     // 5.5 præcisionen: en upræcis aflevering flytter MÅLET
     dbg('pass:t' + type.toString(16));
@@ -443,8 +611,8 @@ export function makePass(c: PassCtx) {
         p.rating -= type === 6 || type === 7 || type === 8 ? 20 : 72;
       }
     } else p.rating -= 36;
-    // 5.8 en kort aflevering ind i målet
-    if (!(type === 6 || type === 7 || type === 8 || type === 0x5e) && tx === 4 && ty === (side === 0 ? 12 : -1) && D < 2) type = type === 0x3d ? 0x5c : 0x5d;
+    // 5.7–5.9 kommentaren (5.8: en kort aflevering ind i målet skifter type til 0x5c/0x5d)
+    type = passComment(p, type, receiver, fromX, fromY, tx, ty, D, n, dead, E24, io.v);
     // 6.1 højde og fart
     let h: number, s: number;
     if (type === 0x34 || type === 0x37) {
@@ -493,6 +661,7 @@ export function makePass(c: PassCtx) {
   /** sub_6f6c00 (sikker; crosses-blocks.md §6): modtageren R i boldens felt – første berøring mod den bedste modstander i feltet. */
   function receive(R: GP, power0: number, ox0: number, oy0: number): void {
     let power = power0, brought = false;
+    const recv0 = m.receiver;                                                      // [esp+0x48] = engine+0xf57a (0x6f6db6)
     const d = goalDist(R);
     let h = m.ballH;
     let ox = ox0, oy = oy0;
@@ -529,48 +698,92 @@ export function makePass(c: PassCtx) {
     dbg('rcv:h' + h + ':c' + code.toString(16));
     drainCondition(R, code);                                                       // sub_6f56c0(R, −1, kode)
     const hj = handsJudge(R, code);
-    if (hj && rand(ftol(d * 5 + 2)) !== 0) { handsRestart(R, handsPunish(R, hj.sev, hj.b, false)); R.rating -= 25; return; }
-    if (hj) c.queueIncident?.(code, R, null, 1, R.x, R.y, hj.sev, hj.b);                       // 0x6f72a5: fordel
+    if (hj && rand(ftol(d * 5 + 2)) !== 0) { c.handsFoul(R, code, hj.sev, hj.b, false, 'receive'); return; }   // 0x6f7353 (−25 i handsFoul)
+    if (hj) c.queueIncident?.(code, R, null, 1, R.x, R.y, hj.b, hj.sev);                       // 0x6f72a5: fordel
     m.carrier = R;
     const C = c.challenge(R, R.side, code);                                        // sub_6c87e0
     m.carrier = null;
     const Cp = C.d;
     const rWins = () => {
       c.takeBall(R); R.rating += 4; R.action = code;
+      { const a = Math.trunc(Rscore * -0.18181818181818182); m.x4782 -= a; m.x4786 -= a; }   // 0x6f97c4–0x6f97f1 (0x96d7a0 = −2/11, _ftol)
       if (Cp) Cp.busy += C.delayChallenger;
       if (h === 4) {
         if (Cp) {
-          R.action = 0x7b; Cp.rating += isK(Cp) ? -600 : -10; R.rating += 40;
-          if (nearOwnGoal(m, Cp) && c.facingGoal(R)) { R.rating += 300; if (rand(70 + 30 * Cp.morale) === 0) adjustMorale(Cp, rand(2), rand); }
+          // 0x6f9819–0x6f9934: hovedstødsduellens kommentar efter spillerpostens +0x2e (Jumping, rå 1..20) – den svagere springer vinder
+          // (rand(3)), den stærkere (rand(3)), mod keeperen (rand(5) ≠ 0), ellers WINS_JUMPFORBALL
+          const hR = rawJumping(R), hC = rawJumping(Cp), cs = Cp.side;
+          let id = -1;
+          if (rand(3) + hR + 3 < hC) id = 0x2164;                                     // WINS_JUMPFORBALL_NOT_WITH_HEIGHT
+          else if (!isK(Cp)) { if (hR > rand(3) + hC + 5) id = 0x21cb; }              // WINS_JUMPFORBALL_WITH_HEIGHT
+          if (id < 0) id = isK(Cp) && rand(5) !== 0 ? 0x214f : 0x1f5d;                // AGAINST_KEEPER / WINS_JUMPFORBALL
+          c.comment(id, R, R.side, Cp, cs, 0);
+          R.action = 0x7b; Cp.b7++; Cp.rating += isK(Cp) ? -600 : -10; R.b7++; R.b8++; R.rating += 40;
+          if (nearOwnGoal(m, Cp) && c.facingGoal(R)) { R.b9++; R.rating += 300; if (rand(70 + 30 * Cp.morale) === 0) adjustMorale(Cp, rand(2), rand); }
         }
         R.momentum = clamp(R.momentum + Rscore - (Cp ? C.value : 0) - 200, -200, 200);
-        c.playerTurn(R); return;
+        c.playerTurn(R); boo(); return;
+      }
+      if (brought) c.comment(0x216e, R, R.side, null, -1, 0);                         // 0x6f9aed CONTROL_BALL_WITH_CHEST
+      else if (recv0 === R && h < 2 && !((R.y === 0 || R.y === 11) && Math.abs(4 - R.x) > 1)) {   // 0x6f9af7: modtageren af afleveringen
+        let id: number;
+        if (power < -500) id = 0x21cc;                                                // MOVE_ONTO_POOR_PASS
+        else if ((R.side === 0 ? R.y < 3 : R.y > 8) && rand(2) !== 0) id = 0x21db;   // MOVE_ONTO_PASS_OWN_END
+        else if ((R.side === 1 ? R.y >= 6 : R.y < 6) && rand(2) !== 0) id = 0x21dc;  // MOVE_ONTO_PASS_MIDFIELD
+        else id = 0x1f47;                                                             // MOVE_ONTO_PASS
+        c.comment(id, R, R.side, null, -1, 0);
       }
       R.momentum = clamp(R.momentum + Rscore - (Cp ? C.value : 0) - 200, -200, 200);
-      if (randS(rand, R.momentum) >= rand(200)) c.playerTurn(R);                    // "spiller den første gang" (+0x1a7)
+      if (randS(rand, R.momentum) >= rand(200)) { if (h < 4) { m.firstTime = 1; m.x4782 += 100; m.x4786 += 100; } c.playerTurn(R); }   // 0x6f9c90–0x6f9cc3    // 0x6f9c9d: "spiller den første gang" (+0x1a7)
+      boo();
+    };
+    /** 0x6f9cd0–0x6f9da8: uden for angrebsfeltet og rand(+0x31) < −10 → ophidselsen stiger og publikum buher (p1 −1, modstanderne) */
+    const boo = () => {
+      if (inAttBox(R.side, R.x, R.y)) return;
+      if (randS(rand, R.w31) < -10) {
+        R.agitation = Math.min(100, Math.max(R.agitation * 1.05, 2 * (25 - R.temperament)));
+        c.comment(0x211d, null, other(R.side), null, -1, 0);
+      }
     };
     if (!Cp) { dbg('rcv:free'); return rWins(); }
     dbg(Rscore > C.value ? 'rcv:Rwins' : 'rcv:Cwins');
     let refFlag = false, checkR = true;
     if (!(C.value < Rscore && rand(5) !== 0)) {                                     // 0x6f7951: C's forseelse mod R
       const j = c.judge(Cp, R, C.type, -1); refFlag = j.hurt;
+      c.appeal?.(Cp, other(R.side), C.type, j.hurt, Cp);                            // 0x6f797e (den sete kamp)
       if (j.ret !== 0) {
-        if (rand(30) !== 0 || C.clear) { c.foul(Cp, R, j, C); return; }
+        if (rand(30) !== 0 || C.clear) { c.foul(Cp, R, j, C, 'receive'); return; }   // 0x6f7b4e
         c.queueIncident?.(C.type, Cp, R, j.ret, R.x, R.y, j.kind, j.severity);                  // 0x6f7a7e: fordel
         checkR = false;                                                             // overset → 0x6f8458 (R's forseelse tjekkes ikke)
       }
     }
     if (checkR && (Rscore > C.value || rand(5) === 0)) {                            // 0x6f7a8f: R foran → R's forseelse mod C
       const j = c.judge(R, Cp, code, -1); refFlag = j.hurt;
-      if (j.ret !== 0) { if (rand(10) !== 0) { c.foul(R, Cp, j, { clear: false }); return; } c.queueIncident?.(code, R, Cp, j.ret, R.x, R.y, j.kind, j.severity); }   // 0x6f8453
+      c.appeal?.(R, R.side, code, j.hurt, Cp);                                      // 0x6f7ad6: R i eget felt, +0x31 læses fra offeret C (sic)
+      if (j.ret !== 0) { if (rand(10) !== 0) { c.foul(R, Cp, j, { clear: false, type: code }, 'receiveR'); return; } c.queueIncident?.(code, R, Cp, j.ret, R.x, R.y, j.kind, j.severity); }   // 0x6f84d0 / 0x6f8453
     }
     Cp.action = C.type;
     if (h !== 4) { Cp.tacklesTried++; Cp.rating -= Cp.pos & 0x30 && Cp.pos & 0x880 ? 59 : 70; }
     if (Rscore > C.value) return rWins();
     // C vinder bolden
     let perType = true;
-    if ((quietCode(C.type) || refFlag || randS(rand, Cp.w31) < -10) && inBoxAt(Cp.side, Cp.x, Cp.y) && rand(2) === 0) { if (h < 4) rand(50); perType = false; }
-    if (perType && C.type === 1 && !c.gkCatch(Cp, C.value - Rscore)) return;
+    if ((quietCode(C.type) || refFlag || randS(rand, Cp.w31) < -10) && inBoxAt(Cp.side, Cp.x, Cp.y) && rand(2) === 0) {
+      c.comment(foulEventOf(C.type), Cp, Cp.side, R, R.side, 0);                  // 0x6f8e2e: forseelsens begivenhed (appellen)
+      if (h < 4) {                                                                 // 0x6f8ff7, tabel 0x6f9f60
+        const r = rand(50);
+        c.comment(r === 1 ? 0x20ea : r === 0 || r === 2 || r === 5 || r === 6 || r === 9 ? 0x20eb : 0x20e8, null, other(Cp.side), null, -1, 0);
+      }
+      perType = false;
+    }
+    if (perType) {
+      if (C.type === 1) { if (!c.gkCatch(Cp, C.value - Rscore)) return; }
+      else {                                                                       // 0x6f8dd1, tabel 0x6f9ed0
+        const t = C.type;
+        let id = t === 0x29 ? 0x1f61 : t === 0x13 || t === 0x21 || t === 0x2d ? 0x1f62 : t === 0x22 || t === 0x2c ? 0x2150 : t === 0x2a || t === 0x2b ? 0x1f64 : -1;
+        if (t === 0x15 || t === 0x2e) id = Math.fround(Math.fround(rand(6) + Cp.f.jumping) + 3) < R.f.jumping ? 0x2164 : 0x1f5d;
+        if (id >= 0) c.comment(id, Cp, Cp.side, R, R.side, 0);
+      }
+    }
     c.takeBall(Cp);
     Cp.momentum = clamp(C.value - Rscore - 200, -200, 200);
     const thr = C.type === 0x13 ? 400 : C.type === 0x21 || C.type === 0x2d ? 250 : 100;
@@ -581,16 +794,18 @@ export function makePass(c: PassCtx) {
     } else {
       if (h >= 0 && h <= 3) m.ballH = 0;
       turnTo(Cp, R.x, R.y, 4, Cp.side === 0 ? Math.min(R.y + 3, 11) : Math.max(R.y - 3, 0));
+      c.praise(Cp, R, C.type);                                                     // 0x6f9303
     }
     R.busy += C.delayCarrier;
     const bp = loose ? 120 : 200; Cp.rating += bp;
     if (h === 4) {
-      Cp.rating += 40; Cp.action = 0x7b; R.rating -= 10;
-      if (nearOwnGoal(m, Cp) && c.facingGoal(R)) { Cp.rating += 300; if (rand(70 + 30 * Cp.morale) === 0) adjustMorale(Cp, rand(2), rand); }
+      Cp.b7++; Cp.b8++; Cp.rating += 40; Cp.action = 0x7b; R.b7++; R.rating -= 10;   // 0x6f962d
+      if (nearOwnGoal(m, Cp) && c.facingGoal(R)) { Cp.b9++; Cp.rating += 300; if (rand(70 + 30 * Cp.morale) === 0) adjustMorale(Cp, rand(2), rand); }
     } else {
       Cp.tacklesWon++; Cp.rating += Cp.pos & 6 ? bp : 2 * bp;
       if (nearOwnGoal(m, Cp) && c.facingGoal(R)) { Cp.b6++; Cp.rating += 300; if (rand(70 + 30 * Cp.morale) === 0) adjustMorale(Cp, rand(3), rand); }
     }
+    if (loose && rand(7) === 0) c.comment(0x1f41, Cp, Cp.side, null, -1, 0);       // 0x6f975d BALL_GOES_LOOSE
   }
   /** sub_6bd5b0(p, 0) (sikker): ingen modstander i p's felt og ingen modstander-markspiller foran ham i samme søjle */
   function freeAhead(p: GP): boolean {
@@ -626,6 +841,7 @@ export function makePass(c: PassCtx) {
     if (Lp) {
       W.rating += 4;
       let j = c.judge(W, Lp, cW.type, -1);
+      c.appeal?.(W, W.side, cW.type, j.hurt, W);                                    // 0x6c9ead (den sete kamp): W i eget felt (sub_6f5b20(W.side))
       if (j.ret !== 0) { if (rand(ftol(goalDist(W) * 10 + 2)) !== 0 || cW.clear) { c.foul(W, Lp, j, cW); return; } }
       else { const hj = handsJudge(W, cW.type); if (hj && rand(10) !== 0) { punishHands(W, hj); return; } }
       j = c.judge(Lp, W, cL.type, -1);
@@ -648,8 +864,9 @@ export function makePass(c: PassCtx) {
     c.playerTurn(W);
   }
 
-  /** sub_70dfd0 (sikker): q på skudlinjen prøver at blokere skudscoren S i afstanden d fra skytten. 1 = blokeret (bolden er afgjort). */
-  function block(q: GP, S: number, d: number, soft: boolean): 0 | 1 {
+  /** sub_70dfd0 (sikker): q på skudlinjen prøver at blokere skudscoren S i afstanden d fra skytten. extra = skuddets kommentar-ekstra
+   *  (sub_702050 [esp+0x28]: 5 hovedstød, ellers 6 – 3. argument via sub_6cc540/sub_6cd3d0), soft = muren (frisparket). 1 = blokeret. */
+  function block(q: GP, S: number, d: number, soft: boolean, extra = 6): 0 | 1 {
     const keeper = m.gp.find((o) => o.active && o.side === q.side && isK(o));    // sub_6ce110
     if (q === keeper || q === m.carrier) return 0;
     if (m.poss !== q.side && q.roll.workRate === 0) return 0;
@@ -659,7 +876,9 @@ export function makePass(c: PassCtx) {
     if (d + 1 > 0) r = ftol(int16(r) / (d + 1));
     if (m.lastTouch === q.side) {                                                 // medspiller i vejen
       if (randS(rand, r + 100) !== 0) return 0;
-      looseBall(q.x, q.y, rand(m.ballSpeed) + 1, q.side, false, true, q);       // 0x1f5e
+      c.comment(0x1f5e, q, q.side, null, -1, 0);                                  // 0x70e0ef SCATTER_INTERCEPT
+      m.x4782 -= 300;                                                             // 0x70e105 (0xfffffed4)
+      looseBall(q.x, q.y, rand(m.ballSpeed) + 1, q.side, false, true, q);       // 0x70e125/0x70e144
       return 1;
     }
     const inBox = inBoxAt(q.side, q.x, q.y), kp = isK(q);
@@ -680,26 +899,43 @@ export function makePass(c: PassCtx) {
     if (v < 0) return 0;
     const strong = S > rand(150) + 200;
     const hj = handsJudge(q, kind);
-    if (hj && !(rand(5) === 0 && !strong)) { handsRestart(q, handsPunish(q, hj.sev, hj.b, strong)); return 1; }
-    if (hj) c.queueIncident?.(kind, q, null, 1, q.x, q.y, hj.sev, hj.b);                       // 0x70e3a5: fordel
-    if (v >= 400) {                                                               // ren blokering: han får bolden
+    if (hj && !(rand(5) === 0 && !strong)) { c.handsFoul(q, kind, hj.sev, hj.b, strong, 'block'); return 1; }   // 0x70e3fe
+    if (hj) c.queueIncident?.(kind, q, null, 1, q.x, q.y, hj.b, hj.sev);                       // 0x70e3a5: fordel (+0x475d = 4, +0x475e = sværheden)
+    if (v >= 400) {                                                               // 0x70eb0f ren blokering: han får bolden
       q.blocks++; q.rating += 30; q.busy++;
-      c.takeBall(q); q.action = kind; return 1;
+      // 0x70eb2c: på mållinjens midte BLOCKED_ON_LINE, muren WALL_BLOCKS_SHOT, ellers BLOCK_SHOT(_HEADER) med skuddets extra
+      if (q.x === 4 && (q.y === 0 || q.y === 11)) c.comment(0x1ffe, q, q.side, null, -1, 0);
+      else if (soft) c.comment(0x21d6, q, q.side, null, -1, extra);
+      else if (extra === 5) c.comment(0x1f66, q, q.side, null, -1, 5);
+      else c.comment(0x1f65, q, q.side, null, -1, extra);
+      c.takeBall(q); q.action = kind; return 1;                                   // 0x70ebca / 0x70ebcf
     }
-    if (q.x === 4 && (q.y === 0 || q.y === 11) && v > 200) looseBall(q.x, q.y, rand(3), q.side, false, true, null);   // redning på stregen
-    else looseBall(q.x, q.y, rand(3), q.side, false, true, q);
-    q.blocks++; q.rating += 20; q.busy += rand(2) + 1; q.action = kind;
+    if (q === keeper) c.comment(0x1fe7, q, q.side, null, -1, 0);                  // 0x70e3c6 GOALKEEPER_BLOCK – død gren (keeperen er sorteret fra øverst) og uden løs bold
+    else {
+      if (q.x === 4 && (q.y === 0 || q.y === 11) && v > 200) {                    // 0x70e9d1 redning på stregen
+        c.comment(0x1ffd, q, q.side, null, -1, 0);                                // 0x70ea0f CLEARED_OFF_LINE
+        m.x4782 -= 300;                                                           // 0x70ea1c
+        looseBall(q.x, q.y, rand(3), q.side, false, true, null);
+      } else {
+        if (soft) c.comment(0x21d8, q, q.side, null, -1, extra);                  // 0x70ea4b WALL_DEFLECTS_SHOT
+        else if (extra === 5) c.comment(0x1f85, q, q.side, null, -1, 5);          // 0x70ea73 RICHOCHET_SHOT_HEADER
+        else c.comment(0x1f84, q, q.side, null, -1, extra);                       // 0x70ea8b RICHOCHET_SHOT
+        m.x4782 -= 300;                                                           // 0x70eaa2
+        looseBall(q.x, q.y, rand(3), q.side, false, true, q);                    // 0x70eab6/0x70ead3
+      }
+    }
+    q.blocks++; q.rating += 20; q.busy += rand(2) + 1; q.action = kind;           // 0x70ead8–0x70eaf4
     return 1;
   }
   /** sub_6cc540 + sub_6cd3d0 (sikker): skudlinjen – i hvert felt begge sider i tilfældig rækkefølge (rand(2)). Afbøjningen (2) findes ikke
    *  i 3.9.68 (sub_70dfd0 returnerer aldrig 2). */
-  function shotLine(p: GP, S: number, soft: boolean): 0 | 1 {
+  function shotLine(p: GP, S: number, soft: boolean, extra = 6): 0 | 1 {
     m.lastToucher = null;
     const gy = p.side === 0 ? 11 : 0;
     const cell = (side: Side, x: number, y: number, d: number) => {
       for (const q of playersIn(side, x, y)) {
         if (q.busy > 1) continue;
-        const r = block(q, S, d, soft);
+        const r = block(q, S, d, soft, extra);                                    // sub_6cd3d0 giver extra/soft videre (0x6cd42e)
         c.onBlock?.(q, S, d, soft, r);
         if (r === 1) { q.blocks++; m.lastToucher = q; return true; }
       }
@@ -708,6 +944,6 @@ export function makePass(c: PassCtx) {
     return walkShotLine(p.x, p.y, gy, (x, y, d) => { const r = rand(2) as Side; return cell(r, x, y, d) || cell(other(r), x, y, d); }) ? 1 : 0;
   }
 
-  return { turnTo, looseBall, tryIntercept, interceptWalk, pass, loftedPass, receive, land, block, shotLine, handsJudge, handsPunish };
+  return { turnTo, looseBall, tryIntercept, interceptWalk, pass, loftedPass, receive, land, block, shotLine, handsJudge, handsPunish, areaComment };
 }
 export type PassEngine = ReturnType<typeof makePass>;

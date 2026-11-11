@@ -26,6 +26,8 @@ import { fairTicketPrice, transferBudgetFor } from './finance';
 import { initKnowledge } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyDevelopment, recordDevelopment } from './training';
+import { cmRand, fillReputation } from './cmPlayerData';
+import { cmFitNewGame } from './cmFitnessGame';
 
 export interface WorldData {
   version: number;
@@ -128,6 +130,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (world.nationalTeams) g.intl = { results: [], history: [], info: world.nationalTeams.nations, past: world.nationalTeams.history };
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
+  // originalens rå omdømme (club +0x80, nation +0x8e) – computerens holdudtagelse i gittermotoren (cmPlayerData.ts)
+  if (cm?.cmRaw && season < 2020) { g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice(); }
   setGame(g);
 
   const leagueById = new Map(world.leagues.map((l) => [l.id, l]));
@@ -186,6 +190,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       const rec = { ca, pos: pos11.slice(0, 8), side: [pos11[9], pos11[10], pos11[8]], attrs: rt.attrs.slice(), stored };
       fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings).map((x) => ({ ...x, stored }))), rand);
       if (rt.rep) p.cmRep = rt.rep;
+      // sub_535a80 0x536270–0x536ec6: manglende omdømme udfyldes (egen talrække – spillets rng røres ikke) og Free Role (+0x1a)
+      if (cm!.cmRaw && season < 2020) {
+        const cr = club ? cm!.cmRaw.clubRep[club] : undefined;
+        p.cmRepMem = fillReputation({ rep: rt.rep ?? [0, 0, 0], ca: rt.ca, pa: rt.paRaw ?? rt.pa, club: club ? { rep: cr ?? 0, sameNation: g.clubs[club]?.nation === p.nation } : null,
+          nationRep: cm!.cmRaw.nationRep[p.nation] ?? 0, caps: p.caps }, cmRand(seed, p.id, 535));
+        if (rt.fr) p.cmFree = rt.fr;
+      }
       let attrs = rec.attrs;
       if (stored) {
         // fødderne: den stærke bliver 20, en manglende rand(rand(20)) + 1 (sub_535a80); bruges i afbalanceringen
@@ -370,6 +381,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // Brugerens klub
   const club = g.clubs[o.clubId];
   takeOverClub(club);
+  // originalens konditionsmodul (cmFitness.ts): posterne, skaderne fra databasens dato og startens Fitness (kun original DB i ægte tilstand)
+  cmFitNewGame(g);
   initKnowledge();
   monthlyDevelopment();
   if (o.challenge) {

@@ -25,6 +25,21 @@ const SEM: Record<string, { k: string; hi?: boolean }> = {
   START_MATCH: { k: 'kickoff', hi: true }, HALF_TIME_WHISTLE: { k: 'halftime', hi: true }, FINAL_WHISTLE: { k: 'fulltime', hi: true },
   END_OF_NINETY_MINUTES: { k: 'extratime', hi: true }, TIME_ADDED_ON: { k: 'added-time' }, RESTART_OFFSIDE: { k: 'offside' },
   RESTART_CORNER: { k: 'corner' }, PLAYER_KNACKERED: { k: 'knackered' }, KICK_OFF: { k: 'kick-off' },
+  // kortene fra de forseelser, der er koblet til køen (sub_6f09f0, sub_716e10, sub_716c90) og computerens udskiftninger (sub_6e1090)
+  YELLOW_CARD: { k: 'yellow' }, SECOND_YELLOW_CARD: { k: 'red' }, SENT_OFF: { k: 'red' }, SENT_OFF_FOR_PROFESSIONAL_FOUL: { k: 'red' },
+  SUBSTITUTION: { k: 'sub' }, REPLACING_INJURED_PLAYER: { k: 'sub' },
+  // skuddet sub_702050 (takeShot.ts): målet, redningerne, afbrænderne og blokeringerne står i køen – adapterens *estimerede* linjer er væk
+  GOAL_SCORED: { k: 'goal', hi: true }, ILLEGAL_GOAL_ONE: { k: 'goal-offside', hi: true }, ILLEGAL_GOAL_TWO: { k: 'goal-offside', hi: true },
+  GOAL_DISALLOWED: { k: 'goal-offside', hi: true },
+  GOALKEEPER_PARRY: { k: 'save' }, GOALKEEPER_TIPPED: { k: 'save' }, GOALKEEPER_HELD: { k: 'save' }, GOOD_SAVE_HELD: { k: 'save' },
+  GOOD_SAVE_NOT_HELD: { k: 'save' }, GREAT_SAVE_HELD: { k: 'save' }, GREAT_SAVE_NOT_HELD: { k: 'save' }, SAVES_PENALTY: { k: 'pen-saved', hi: true },
+  MISSED_PENALTY: { k: 'pen-miss', hi: true },
+  SHOT_WIDE: { k: 'wide' }, SHOT_WELL_WIDE: { k: 'wide' }, SHOT_JUST_WIDE: { k: 'wide' }, SHOT_OVER: { k: 'wide' }, SHOT_WELL_OVER: { k: 'wide' },
+  SHOT_JUST_OVER: { k: 'wide' }, SHOT_OVER_WIDE: { k: 'wide' }, SHOT_WELL_OVER_WIDE: { k: 'wide' }, SHOT_WELL_OVER_HEADER: { k: 'wide' },
+  SHOT_HITS_POST: { k: 'wide' }, SHOT_HITS_BAR: { k: 'wide' }, SHOT_CLIPS_POST: { k: 'wide' }, SHOT_CLIPS_BAR: { k: 'wide' },
+  BLOCK_SHOT: { k: 'shot-blocked' }, BLOCK_SHOT_HEADER: { k: 'shot-blocked' }, RICHOCHET_SHOT: { k: 'shot-blocked' }, RICHOCHET_SHOT_HEADER: { k: 'shot-blocked' },
+  WIN_THE_SHOOTOUT: { k: 'shootout-end', hi: true },
+  WALL_BLOCKS_SHOT: { k: 'shot-blocked' }, WALL_DEFLECTS_SHOT: { k: 'shot-blocked' }, CLEARED_OFF_LINE: { k: 'shot-blocked' }, BLOCKED_ON_LINE: { k: 'shot-blocked' },
 };
 
 const TICKS_PER_MIN = 11;
@@ -93,31 +108,36 @@ export class GridSim implements LiveSim {
       ai: this.ai,
       subs: [subs, subs],
       needsWinner: opts.needsWinner,
+      // engine+0x8ebb: originalen sætter den kun for kampen på kampskærmen (init_match's 4. argument fra match_screens.cpp, 0x6b53ba) –
+      // her menneskets kamp med kommentar (den, der vises live); computerens kampe og laboratoriet kører som oraklet (0)
+      watched: !!opts.commentary,
+      date: gs().date,
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;
           if (s) s.line.goals++;
           if (a && !pen) a.line.assists++;
           this.events.push({ m: this.minute, t: p.side, k: 'goal', p: p.src.id, ...(a && !pen ? { p2: a.p.id } : {}), ...(pen ? { pen: true } : {}) });
-          this.line(pen ? 'goal-pen' : 'goal', p, assister, true);
+          // målets kommentar er originalens (GOAL_SCORED/GOAL_ONE/SCORED_PENALTY i køen, sub_702050) – kun stillingslinjen (UI'et) står her
           this.line('score', null, null, true);
         },
         shot: (p, outcome) => {
           const s = this.byId.get(p.src.id); if (s) { s.line.shots++; if (outcome !== 'blocked' && outcome !== 'deflectedWide' && outcome !== 'wide' && outcome !== 'overBar') s.line.on = (s.line.on ?? 0) + 1; }
           const o = SHOT_OUT[outcome] ?? 'off';
           this.shots.push({ m: this.minute, t: p.side, zone: this.zoneOf(p.x, p.y), xg: 0, outcome: o, p: p.src.id, kind: 'normal' });
-          if (o === 'saved') this.line('save', p, null); else if (o === 'off') this.line('wide', p, null); else if (o === 'blocked') this.line('shot-blocked', p, null);
+          // redningen/afbrænderen/blokeringen står i køen (sub_702050, sub_70dfd0) – ingen *estimeret* linje oveni
         },
-        card: (p, code) => {
+        card: (p, code, commented) => {
           const s = this.byId.get(p.src.id);
-          if (code === 2) { if (s) s.line.yellow++; this.events.push({ m: this.minute, t: p.side, k: 'yellow', p: p.src.id }); this.line('yellow', p, null); }
-          else { if (s) s.line.red = true; this.events.push({ m: this.minute, t: p.side, k: 'red', p: p.src.id }); this.line('red', p, null); }
+          // commented: originalens kortkommentar står i køen (originalLines) – ingen *estimeret* linje oveni
+          if (code === 2) { if (s) s.line.yellow++; this.events.push({ m: this.minute, t: p.side, k: 'yellow', p: p.src.id }); if (!commented) this.line('yellow', p, null); }
+          else { if (s) s.line.red = true; this.events.push({ m: this.minute, t: p.side, k: 'red', p: p.src.id }); if (!commented) this.line('red', p, null); }
         },
         // hjørnet, offside, pausen og forlænget spilletid: kommentaren er originalens (RESTART_CORNER/RESTART_OFFSIDE/HALF_TIME_WHISTLE/END_OF_NINETY_MINUTES)
         corner: (side) => { this.corners.push({ m: this.minute, t: side, taker: 0, lane: 0, moment: this.moment }); },
         extraTime: () => { this.extra = true; },
         // computerens udskiftninger (menneskets er registreret ved substitute())
-        sub: (inn, out, auto) => { if (auto) this.recordSub(inn.side, out.src.id, inn.src.id); },
+        sub: (inn, out, auto) => { if (auto) this.recordSub(inn.side, out.src.id, inn.src.id, false); },   // SUBSTITUTION står i køen (0x6e18b9)
         // sub_6d0b60: båret ud skadet – rapportens skade (spillet giver ham en skade ud fra linjen)
         carriedOff: (p) => {
           const sp = this.byId.get(p.src.id); if (!sp || sp.line.injured) return;
@@ -130,7 +150,7 @@ export class GridSim implements LiveSim {
           const out: ShootoutKick['outcome'] = k.goal ? 'goal' : SHOT_OUT[k.outcome] === 'saved' ? 'saved' : 'off';
           this.shootout.kicks.push({ t: k.side, p: k.taker.src.id, gk: k.keeper?.src.id ?? 0, outcome: out });
           this.shootout.score = [st.score[0], st.score[1]];
-          this.line(out === 'goal' ? 'so-score' : out === 'saved' ? 'so-miss' : 'so-wide', k.taker, k.keeper);
+          // sparkets kommentar er originalens (sub_702050 med param 3 og sub_6be710's 0x2005/0x2006) – ingen *estimeret* linje
         },
       },
     });
@@ -150,7 +170,7 @@ export class GridSim implements LiveSim {
   }
 
   /** en udskiftning i UI'ets lister (on/all/bænk/opstilling), begivenheden 'sub' og kommentaren */
-  private recordSub(team: number, outId: number, inId: number) {
+  private recordSub(team: number, outId: number, inId: number, withLine = true) {
     const t = this.teams[team];
     const out = this.byId.get(outId), q = this.gpById.get(inId);
     if (!q) return;
@@ -164,7 +184,7 @@ export class GridSim implements LiveSim {
     this.bench[team] = this.bench[team].filter((id) => id !== inId);
     t.tactic = { ...t.tactic, lineup: t.tactic.lineup.map((id) => (id === outId ? inId : id)), bench: t.tactic.bench.filter((id) => id !== inId) };
     this.events.push({ m: this.minute, t: team, k: 'sub', p: inId, p2: outId });
-    this.line('sub', q, out ? this.gpById.get(outId) ?? null : null);
+    if (withLine) this.line('sub', q, out ? this.gpById.get(outId) ?? null : null);
   }
 
   private line(k: string, a: GP | null, b: GP | null, hi = false) {
@@ -203,7 +223,9 @@ export class GridSim implements LiveSim {
     const st = this.g.subState(p);
     const end = st && !p.active ? [st.minuteOff, st.minuteRed, st.minuteInjured].filter((x) => x >= 0).sort((a, b) => a - b)[0] : undefined;
     const now = Math.min(this.extra ? 120 : 90, this.minute);
-    return Math.max(0, (end !== undefined ? Math.max(end, sp.enteredAt) : now) - sp.enteredAt);
+    // menneskets udskiftning bestilles straks, men sker først ved næste dødbold (0x6c54a0): motorens minuteOn tæller
+    const start = st && st.minuteOn >= 0 ? st.minuteOn : sp.enteredAt;
+    return Math.max(0, (end !== undefined ? Math.max(end, start) : now) - start);
   }
 
   /** gitterets tal og spillernes karakter/kondition → UI'ets genstande (de samme genstande hele kampen) */
@@ -247,9 +269,7 @@ export class GridSim implements LiveSim {
     this.sync();
     if (this.shootout) {
       this.pens = [this.shootout.score[0], this.shootout.score[1]];
-      const w = this.pens[0] > this.pens[1] ? 0 : 1, k = this.shootout.kicks.filter((x) => x.t === w).at(-1);
-      const g = k ? this.gpById.get(k.p) ?? null : null;
-      this.line('shootout-end', g, null, true);
+      // WIN_THE_SHOOTOUT (0x2004, sub_6be710 0x6bee52) står i køen – ingen *estimeret* slutlinje
     }
     this.finished = true;
   }

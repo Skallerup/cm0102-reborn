@@ -317,8 +317,9 @@ export interface CaptainInput {
   /** staff +0x59 og +0x5b (s8) */
   b59: number; b5b: number;
 }
-/** 0x6e1cf0(staff, 0, klub): anførerværdien (word). */
-export function captainValue(c: CaptainInput): number {
+/** Fællesleddet i 0x6e1cf0 og 0x6ebd70 (holdets samspil, 0x6bbb60 – der returnerer det som byte): Influence·t − (a² + 5)/10 + omdømmeled +
+ *  kontraktled + 0,5, trunkeret. */
+export function captainBase(c: CaptainInput): number {
   const a = s8(c.a);
   let wr = (W(c.rec, 0xd) - s16(c.clubRep)) * 0.002 + 1.5;
   if (wr < -4) wr = -4; else if (wr > 4) wr = 4;
@@ -326,10 +327,14 @@ export function captainValue(c: CaptainInput): number {
   if (c.contract) {
     s = s8(c.contract.b44) * 0.013333333333333334 + 0.5;
     const st = (c.contract.b4f >> 4) & 0xf;
-    s += [-10, 2.5, 2, 0, -3, -10, -15, -20, -50][st] ?? 0;            // tabellen 0x6e1fd8
+    s += [-10, 2.5, 2, 0, -3, -10, -15, -20, -50][st] ?? 0;            // tabellen 0x6e1fd8 / 0x6ebfe4
   }
   const t = c.days > 1000 ? (c.days - 1000) * 0.000125 + 1 : 1;
-  let v = s16(ftol(R(c.rec, 0x2f) * t - (a * a + 5) * 0.1 + wr + s + 0.5));
+  return ftol(R(c.rec, 0x2f) * t - (a * a + 5) * 0.1 + wr + s + 0.5);
+}
+/** 0x6e1cf0(staff, 0, klub): anførerværdien (word). */
+export function captainValue(c: CaptainInput): number {
+  let v = s16(captainBase(c));
   const age = s8(c.age);
   if (age < 18) v = s16(ftol(v * 0.5)); else if (age < 21) v = s16(ftol(v * 0.75)); else if (age < 24) v = s16(ftol(v * 0.9));
   else if (age > 25) v = s16(ftol(v * 1.05));

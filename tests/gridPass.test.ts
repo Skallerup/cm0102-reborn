@@ -101,9 +101,9 @@ describe('skudlinjen (sub_6cc540) og blokeringen (sub_70dfd0)', () => {
     for (let i = 0; i < 400; i++) {
       const sh = mk(0, 4, 8), d1 = mk(1, 4, 9), d2 = mk(1, 4, 10), k = mk(1, 4, 11, 0x1);
       const m = { gp: [sh, d1, d2, k], carrier: sh, poss: 0, ballX: 4, ballY: 8, ballH: 0, ballSpeed: 0, ballDir: 0, lastTouch: 0, state: 0, touchCount: [0, 0],
-        official: { discipline: 10, b24: 10, b27: 10, b28: 10, mood: 0 }, shootout: 0, clock: 100, inFlight: [0, 0], lastToucher: null } as unknown as GridMatchState;
+        official: { discipline: 10, b24: 10, b27: 10, b28: 10, mood: 0 }, shootout: 0, clock: 100, inFlight: [0, 0], lastToucher: null, x4782: 0, x4786: 0 } as unknown as GridMatchState;
       const ctx = { m, rand, weather: 0, byte1: 0, takeBall: (p: GP) => { m.carrier = p; m.poss = p.side; taken++; }, ballOut: () => {}, intoGoal: () => {},
-        restart: (st: number) => { m.state = st; }, card: () => {}, teamFoul: () => {} } as unknown as PassCtx;
+        restart: (st: number) => { m.state = st; }, card: () => {}, teamFoul: () => {}, comment: () => {}, handsFoul: () => {} } as unknown as PassCtx;
       const P = makePass(ctx);
       const r = P.shotLine(sh, 300 + (i % 5) * 100, false);
       seen.add(r);

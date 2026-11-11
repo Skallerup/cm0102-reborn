@@ -90,8 +90,16 @@ export class MatchEvents {
     this.add(id, p1, s1, p2, s2, extra);
   }
 
+  /** kun spor/test: hvert kald (også de indlejrede, depth > 0) med argumenterne – som match_trace.c's c-linjer */
+  onCall?: (id: number, p1: number, s1: number, p2: number, s2: number, extra: number, depth: number) => void;
+  private depth = 0;
   /** 0x6d6f70 Match_Events::add_event(id, eng, p1, side1, p2, side2, extra) */
   add(id: number, p1: number, s1: number, p2 = -1, s2 = -1, extra = 0): void {
+    this.onCall?.(s16(id), s8(p1), s8(s1), s8(p2), s8(s2), extra | 0, this.depth);
+    this.depth++;
+    try { this.add0(id, p1, s1, p2, s2, extra); } finally { this.depth--; }
+  }
+  private add0(id: number, p1: number, s1: number, p2: number, s2: number, extra: number): void {
     const E = this.eng;
     id = s16(id); p1 = s8(p1); s1 = s8(s1); p2 = s8(p2); s2 = s8(s2); extra |= 0;
     if (s1 < 0 || s1 > 1) return;                       // 0x6d6f7f/0x6d6f87

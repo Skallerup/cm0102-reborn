@@ -4,6 +4,7 @@
 // Importerer ikke sim.ts (cirkulære imports) – sim.ts kalder intlDaily().
 import { ageOn, addDays } from './dates';
 import { MatchSim } from './engine/match';
+import { cmFitMatch, cmFitOn, cmFitSync } from './cmFitnessGame';
 import { naturalRole } from './attributes';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { regionOf } from './leagues';
@@ -94,16 +95,21 @@ function ranked(filter?: (n: number) => boolean): number[] {
 function play(home: number, away: number, kind: IntlResult['kind'], stage?: string, needsWinner = false): IntlResult & { pens?: [number, number] } {
   const g = gs();
   const u21 = kind === 'u21';
+  const cm = cmFitOn(g);
   const r = new Rng(hash(g.seed, home, away, Number(g.date.replace(/-/g, '')), u21 ? 21 : 0));
   const team = (n: number) => {
     // klubbens reservehold og karantæner gælder ikke på landsholdet (før kunne et U21-hold af reservespillere stille med
     // så få, at der efter skader ingen var tilbage på banen – MatchSim fandt ingen målmand)
-    const sq = (u21 ? u21Squad(n) : nationSquad(n)).map((p) => ({ ...p, reserves: false, banned: 0, attrs: p.attrs.slice(), condition: Math.max(80, p.condition) }) as Player);
+    const real = u21 ? u21Squad(n) : nationSquad(n);
+    cmFitSync(g, real);                                                       // konditionsmodulet (ægte tilstand, original DB): 0x62c590 før kampen
+    const sq = real.map((p) => ({ ...p, reserves: false, banned: 0, attrs: p.attrs.slice(), condition: cm ? p.condition : Math.max(80, p.condition) }) as Player);
     return { club: -1 - n, tactic: autoSelect(newTactic('4-4-2'), sq), players: new Map(sq.map((p) => [p.id, p])) };
   };
   const sim = new MatchSim(team(home), team(away), { commentary: false, aiSubs: [true, true], importance: kind === 'friendly' ? 0.3 : 1, neutral: kind !== 'friendly', ...(needsWinner ? { needsWinner: () => true } : {}), date: g.date }, r);
   const rep = sim.runToEnd();
   const [hs, as] = rep.stats;
+  // 0x62c080 også for landskampe: kampkondition, træthed og skader (venskabskampe halvt) – i stedet for spillets egne nedenfor
+  if (cm) cmFitMatch(g, rep, kind !== 'friendly', -1);
   for (const line of rep.players) {
     const p = g.players[line.id];
     if (!p || line.minutes <= 0 || u21) continue;
@@ -112,6 +118,7 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
     // kampreferat til spillerens klub (CM 01/02: "scored", "hat-trick", "sent off", "man of the match")
     const pk = line.goals >= 3 ? 'intl.p.hattrick' : line.red ? 'intl.p.red' : line.goals > 0 ? 'intl.p.scored' : rep.mom === p.id ? 'intl.p.mom' : '';
     if (pk && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'general', key: pk, params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', opp: g.nations[p.nation === home ? away : home]?.name ?? '', n: line.goals }, link: { kind: 'player', id: p.id } }));
+    if (cm) continue;
     p.condition = Math.max(50, p.condition - 8);
     if (line.injured && !p.injury) {
       const days = rng.int(4, 21);

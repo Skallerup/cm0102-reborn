@@ -133,6 +133,10 @@ export interface Match {
   bAf?: [number, number];
   order: Player[];                        // +0x8f7e / count +0x8eb8
   prio: Player | null;                    // +0x91de
+  /** engine+0x4782/+0x4786 og +0xf5aa/+0xf5a6 (se GridMatchState) – valgfri her (testenes Match-literaler); tikket rydder modtageren */
+  x4782?: number; x4786?: number; passRecv?: Player | null; passGiver?: Player | null;
+  /** engine+0x1a7: modtageren spillede bolden første gang (sub_6f6c00 0x6f9c9d) */
+  firstTime?: number;
 }
 
 /** Hooks for functions not ported here. */
@@ -290,18 +294,22 @@ export function playerTick(p: Player, rand: Rand): void {
 /** sub_6bd760 + comparator sub_6bd840. NB the original uses MSVC qsort (unstable). */
 export function buildOrder(m: Match, rand: Rand): Player[] {
   const list: Player[] = [];
-  const bySlot = (s: Side, i: number) => m.players.find((q) => q.side === s && q.slot === i);
+  // ydelse: den første spiller med (side, plads) som m.players.find – slået op én gang i stedet for 40 gennemløb
+  const bySlot: (Player | undefined)[] = new Array(40);
+  for (const q of m.players) if (q.slot >= 0 && q.slot < 20 && !bySlot[q.side * 20 + q.slot]) bySlot[q.side * 20 + q.slot] = q;
   for (let i = 0; i < 20; i++) {
     const s = rand(2) as Side;                                 // 0x6bd773
-    for (const side of [s, (1 - s) as Side]) { const p = bySlot(side, i); if (p?.active) list.push(p); }
+    const p0 = bySlot[s * 20 + i]; if (p0?.active) list.push(p0);
+    const p1 = bySlot[(1 - s) * 20 + i]; if (p1?.active) list.push(p1);
   }
-  const key = (p: Player) => ftol((p.roll.pace + p.roll.anticipation) * (0.005 * p.matchCA + 0.5) * p.condition);
+  const keys = new Map<Player, number>();
+  for (const p of list) keys.set(p, ftol((p.roll.pace + p.roll.anticipation) * (0.005 * p.matchCA + 0.5) * p.condition));
   list.sort((a, b) => {
     if (m.state !== 0 && a === m.carrier) return -1;
     if (m.state !== 0 && b === m.carrier) return 1;
     if (m.prio === a) return -1;
     if (m.prio === b) return 1;
-    return key(b) - key(a);
+    return keys.get(b)! - keys.get(a)!;
   });
   return list;
 }
@@ -436,6 +444,7 @@ export function playerTurn(m: Match, p: Player, rand: Rand, h: Hooks): void {
     if (isCarrier()) {
       markersFollow();
       h.ballCarrier(p);                                                      // 0x710654
+      m.firstTime = 0;                                                       // 0x71065f: engine+0x1a7 = 0 efter boldholderens valg
       if (isCarrier() || p.action === 0x6d || p.busy || m.state !== 0 || p.roll.offTheBall === 0) return;
       if (rand(ftol(p.a.anticipation)) > rand(5)) continue;                  // 0x7106ad "pass and move"
       return;
@@ -768,6 +777,8 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
     looseBall(m, rand, h);                              // sub_6bbe40
     if (m.state !== 0) { stoppage(m, rand); return true; }
   }
+  // 0x6b9fa3–0x6b9fbd (sikker): har en anden end den sidste modtager (+0xf5aa) bolden, glemmes modtager og afleverer (+0xf5a6)
+  if (m.carrier && m.carrier !== m.passRecv) { m.passRecv = null; m.passGiver = null; }
   // TODO sub_6cf750 stats, sub_6f4aa0 rating upkeep (busy-- is part of it):
   // sub_6f4aa0 (delvis): busy tælles ned; agitationen henfalder ×0,85 mod gulvet (player-state-bytes.md §1, float32 0x96d364)
   for (const p of m.players) {

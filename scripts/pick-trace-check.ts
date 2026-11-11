@@ -45,9 +45,12 @@ export function checkPicks(file: string, max = Infinity, est = false) {
  *  +0x44/+0x45/+0x3e/+0x3f = 0, træningsbelastningen 0, ingen skade/historik, kampstatistikken = standardværdien */
 export function estScore(pk: ReturnType<typeof readPicks>[number], c: ReturnType<typeof readPicks>[number]['calls'][number]): number {
   const inp = inputOf(pk, c), d = inp.data;
-  const only = process.env.EST_ONLY, on = (k: string) => !only || only === k;
+  // EST_ONLY=x: kun x estimeret; EST_KEEP=a,b: a og b fra originalen (det, vores spil nu holder som originalen – cmPlayerData.ts: avg = kampstatistikken
+  // og formen, counters = kontraktens +0x3e/+0x3f; cmFitness.ts: load = trætheden 0x62c3d0 og skaden 0x62ed70 – konditionen 0x62c590 tages altid fra sporet)
+  const only = process.env.EST_ONLY, keep = (process.env.EST_KEEP ?? '').split(','), on = (k: string) => (!only || only === k) && !keep.includes(k);
   inp.data = { ...d,
-    contract: on('contract') ? (d.contract ? { b3e: 0, b3f: 0, b44: 0, b45: 0, b4f: d.contract.b4f } : null) : d.contract,
+    contract: on('contract') ? (d.contract ? { b3e: keep.includes('counters') ? d.contract.b3e : 0, b3f: keep.includes('counters') ? d.contract.b3f : 0, b44: 0, b45: 0, b4f: d.contract.b4f } : null) : d.contract,
+    form: on('avg') ? d.form : d.form,
     load: on('load') ? () => 0 : d.load, injury: on('load') ? () => null : d.injury, history: on('hist') ? () => null : d.history,
     avg: on('avg') ? (_cat, _kind, def) => def : d.avg };
   return roleScore(inp);

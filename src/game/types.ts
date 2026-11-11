@@ -106,6 +106,18 @@ export interface Injury {
 export interface Player {
   /** den originale database: omdømmet fra spillerposten [hjemme, nuværende, verden] (0-200) – bruges af originalValue.ts */
   cmRep?: [number, number, number];
+  /** originalens spillerdata til computerens holdudtagelse (cmPlayerData.ts; kun den originale database i ægte tilstand): omdømmet efter
+   *  spilstartens udfyldning (sub_535a80, 1-200 – ×50 i hukommelsen), Free Role (+0x1a), kampstatistikken pr. kategori 1–6 (PlayerStats-
+   *  posterne, 0x7c0d70), formens nibbles (+0x24..+0x26) og kontraktens tællere (+0x3d/+0x3e/+0x3f/+0x44/+0x45, 0x4ca6d0) */
+  cmRepMem?: [number, number, number];
+  cmFree?: number;
+  cmStats?: Record<number, number[]>;
+  cmForm?: number;
+  cmContract?: { b3d: number; b3e: number; b3f: number; b44: number; b45: number };
+  /** originalens konditionspost (Injury, 31 bytes pr. spiller – cmFitness.ts; kun den originale database i ægte tilstand) */
+  cmFit?: import('./cmFitness').CmFit;
+  /** 0x7a7f20: en skade har sluttet karrieren (pensioneres ved sæsonslut) */
+  cmRetire?: boolean;
   id: number;
   first: string;
   last: string;
@@ -935,6 +947,15 @@ export interface HumanSlot {
 }
 
 export interface GameState {
+  /** originalens tilstand til computerens holdudtagelse (cmPlayerData.ts): spillets karaktersnit [sum, antal] (PlayerStats +0x10/+0x18),
+   *  klubbernes og landenes rå omdømme fra databasen (club +0x80, nation +0x8e) og taktiklistens statistik (0x896290, 45 poster) */
+  cmRatingAvg?: [number, number];
+  cmClubRep?: Record<number, number>;
+  cmNationRep?: number[];
+  aiTacticStats?: { games: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number; perf: [number, number, number] }[];
+  /** konditionsmodulet (cmFitness.ts): spillets startdato [0xdd6ec8] og sygdomsudbruddene (Injury +0x1c, 17-bytes poster) */
+  cmFitStart?: string;
+  cmOutbreaks?: import('./cmFitness').CmOutbreak[];
   version: number;
   /** Prisniveau (2001-priser i den originale database, se econ.ts) – mangler = nutidens priser */
   econ?: import("./econ").Economy;
