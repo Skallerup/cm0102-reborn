@@ -1,6 +1,6 @@
 // Udfordringen (sub_6c87e0/sub_70d690/sub_6eecb0) og dommeren (sub_6e9820/sub_6ea4e0) i gittermotoren – deterministiske tilfælde.
 import { describe, expect, it } from 'vitest';
-import { actionSkills, challengeValue, getOppositionChallenge, lin, randS, sq } from '../src/game/engine/grid/challenge';
+import { actionSkills, challengeValue, getOppositionChallenge, lin, postSkill, randS, rawActionSkills, sq } from '../src/game/engine/grid/challenge';
 import { GRID_UNKNOWN, type GP, type GridMatchState } from '../src/game/engine/grid/gridMatch';
 import { cardFor, decideFoulPunishment, foulGiven, isHardChallenge, judgeTackle, type FoulPlayer } from '../src/game/engine/cm0102-original-rules';
 
@@ -20,15 +20,25 @@ const zero = () => 0;
 const top = (n: number) => (n > 0 ? n - 1 : 0);
 
 describe('handlingsevnerne (sub_6eecb0)', () => {
-  it('lin/sq og formlerne for 19, 33, 0x11, 0x12, keeperen', () => {
+  it('lin/sq og råværdierne for 19, 33, 0x11, 0x12, keeperen', () => {
     expect(lin(12)).toBe(120); expect(sq(12)).toBe(72); expect(sq(0)).toBe(0);
-    const s = actionSkills({ f: F, gkRating: 18 } as unknown as GP);
+    const s = rawActionSkills({ f: F, gkRating: 18 } as unknown as GP);
     expect(s[19]).toBe(Math.trunc((sq(9) + 60 + 100 + 144) / 5));          // (sq(pace)+lin(balance)+lin(anticipation)+tackling²)/5
     expect(s[33]).toBe(Math.trunc((144 + 60 + 100) / 4));
     expect(s[0x11]).toBe(Math.trunc((sq(10) + 200 + 90) * 0.22989));
     expect(s[0x12]).toBe(Math.trunc((180 + 220 + sq(11) + 100) * 0.15385));
     expect(s[1]).toBe(Math.trunc((sq(20) + 50 + 100 + 130 + 100 + 100) / 6)); // keeper-pladsevne 18 > 15 → gk 20
     expect([s[42], s[44], s[45], s[43]]).toEqual([200, 400, 400, 270]);
+  });
+  it('efterbehandlingen 0x6f0426 kører for alle koder (f = positionstilpasningen +0x37)', () => {
+    const raw = rawActionSkills({ f: F, gkRating: 18 } as unknown as GP);
+    const s = actionSkills({ f: F, gkRating: 18, form: -4 } as unknown as GP);
+    expect(s[19]).toBe(Math.trunc(5 * (-4 + 45) + raw[19] * 0.5));          // case 1
+    expect(s[0x15]).toBe(Math.trunc(raw[0x15] * 3.5));                      // case 6 (hovedstød)
+    expect(s[0xb]).toBe(Math.trunc(raw[0xb] * 2.1 - 4 * 2.5 + 75));         // case 3 (kort aflevering)
+    expect(s[0x34]).toBe(Math.trunc(raw[0x34] * 1.8 + 50));                 // case 5 (hjørne, uden f)
+    expect(s[1]).toBe(Math.trunc(10 * (-4 + 25) + raw[1] * 2.5));           // case 0 (keeper)
+    expect(postSkill(0x27, 100, 0)).toBe(Math.trunc(7 * 30 + 77.5));        // case 7
   });
   it('rand med negativt n er aldrig positivt', () => {
     expect(randS(top, -50)).toBe(-49); expect(randS(top, 0)).toBe(0); expect(randS(top, 7)).toBe(6);
@@ -66,11 +76,11 @@ describe('udfordringsværdien (sub_70d690)', () => {
     expect(challengeValue(match([k, car], { carrier: car, ballH: 4 }), k, 0x13, zero).type).toBe(0x29);
   });
   it('en tackling under 2 bliver til 45 ("går i gulvet") når rand(2) ≠ 0', () => {
-    const q = gp(1, 4, 10, { f: { ...F, tackling: 0, pace: 0, balance: 0, anticipation: 0 } });
-    q.skill = actionSkills(q);
+    const q = gp(1, 4, 10);
+    q.skill = actionSkills(q); q.skill[0x13] = 1;                            // efterbehandlet er evnen ≥ 225 – sæt den lav
     const car = gp(0, 4, 10);
     const v = challengeValue(match([q, car], { carrier: car }), q, 0x13, top);
-    expect(v.type).toBe(45); expect(v.V).toBe(400 - 0);                     // træthed 0 ved fuld kondition
+    expect(v.type).toBe(45); expect(v.V).toBe(q.skill[0x2d] - 0);           // træthed 0 ved fuld kondition
   });
   it('langt fra eget mål: holder sig tilbage (−20), når aggressionsrullet taber', () => {
     const q = gp(1, 4, 3), car = gp(0, 4, 3);

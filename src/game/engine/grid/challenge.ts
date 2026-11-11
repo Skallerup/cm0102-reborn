@@ -1,6 +1,6 @@
 // Udfordringen af boldholderen i gittermotoren – porteret fra cm0102.exe 3.9.68 (~/cm0102-engine/notes/6c87e0-preshot.md og
 // 6f09f0-challenge.md). (sikker) = læst af koden; "?" = tolkning af en offset; *estimeret* = ukendt i originalen.
-//   sub_6eecb0 (0x6ef840–0x6f041f): handlingsevnerne +0x11a+2·kode  → actionSkills
+//   sub_6eecb0 (0x6ef840–0x6f05ac): handlingsevnerne +0x11a+2·kode (råværdi + efterbehandling)  → actionSkills
 //   sub_6c87e0 get_opposition_challenge: hvem i boldens felt går ind, med hvilken type og værdi → getOppositionChallenge
 //   sub_70d690: udfordringsværdien og ventetiderne → challengeValue
 //   sub_6f56c0: konditionstabet for en udfordring → drainCondition
@@ -29,26 +29,82 @@ export const sq = (a: number) => ftol((a * a + 1) * 0.5);
  *  hovedhøjde, 42/43/45/46 frispark-typer, 44/47 hårde, 49/50 handling 0x3b; 0xf/0x11/0x12 = boldholderens løb/dribling/løb med bold. */
 export const CH = { gkCatch: 1, control: 12, runTackle: 19, header: 21, tackle: 33, tackleStand: 34, hands: 37, gkHigh: 41,
   foul42: 42, foul43: 43, hard44: 44, dive45: 45, foul46: 46, hard47: 47, t49: 49, t50: 50 } as const;
-type SkillSrc = Pick<GP, 'f' | 'gkRating'>;
-/** Word-tabellen +0x11a+2·kode (sikker; formlerne fra 0x6ef840–0x6f041f). gk = 20 hvis keeper-pladsevnen > 15, ellers ftol(0,75·evne + 5). */
-export function actionSkills(p: SkillSrc): number[] {
-  const f = p.f, s: number[] = new Array(0x33).fill(0);
+type SkillSrc = Pick<GP, 'f' | 'gkRating'> & { form?: number };
+/** Råværdierne i word-tabellen +0x11a+2·kode for alle 63 koder (sikker; 0x6ef840–0x6f041f, læst instruktion for instruktion).
+ *  gk = 20 hvis keeper-pladsevnen > 15, ellers ftol(0,75·evne + 5). Division = heltal mod nul. */
+export function rawActionSkills(p: SkillSrc): number[] {
+  const f = p.f, s: number[] = new Array(0x3f).fill(0);
   const gk = p.gkRating > 15 ? 20 : ftol(0.75 * p.gkRating + 5);
-  const tk2 = ftol(f.tackling * f.tackling + 0.5);
-  s[1] = ftol((sq(gk) + lin(f.handling) + lin(f.positioning) + lin(f.jumping) + lin(f.decisions) + lin(f.anticipation)) / 6);
-  s[12] = sq(f.technique);
-  s[19] = ftol((sq(f.pace) + lin(f.balance) + lin(f.anticipation) + tk2) / 5);
-  s[21] = sq(f.jumping);
-  s[33] = ftol((tk2 + lin(f.balance) + lin(f.anticipation)) / 4);
-  s[34] = sq(f.tackling);
-  s[37] = 200;
-  s[41] = ftol((lin(f.bravery) + sq(gk) + lin(f.handling)) / 3);
-  s[42] = 200; s[43] = ftol(10 * f.strength + 200); s[44] = 400; s[45] = 400; s[46] = ftol(10 * f.strength + 200); s[47] = 200;
-  s[49] = 200; s[50] = 200;
-  s[0xf] = ftol((lin(f.technique) + lin(f.agility) + lin(f.balance) + lin(f.strength)) / 4);
-  s[0x11] = ftol((sq(f.technique) + lin(2 * f.technique) + lin(f.acceleration)) * 0.22989);
-  s[0x12] = ftol((lin(2 * f.pace) + lin(2 * f.dribbling) + sq(f.dribbling) + lin(f.technique)) * 0.15385);
+  const d = (a: number, b: number) => Math.trunc(a / b);
+  const tk2 = ftol(f.tackling * f.tackling + 0.5);                       // ftol((2·t² + 1)·0,5)
+  const q2t = ftol((2 * f.technique * f.technique + 1) * 0.5);
+  s[0] = s[1] = d(sq(gk) + lin(f.handling) + lin(f.positioning) + lin(f.jumping) + lin(f.decisions) + lin(f.anticipation), 6);
+  s[2] = s[3] = lin(f.heading);
+  s[4] = d(lin(f.balance) + lin(f.heading), 2);
+  s[5] = d(sq(f.agility) + sq(f.flair) + sq(f.technique) + sq(f.balance) + 100, 5);
+  s[6] = s[7] = s[8] = lin(f.crossing);
+  s[9] = s[0x3e] = d(lin(f.passing) + 200, 2);
+  s[0xa] = sq(f.passing);
+  s[0xb] = d(lin(2 * f.passing) + 200, 3);
+  s[0xc] = sq(f.technique);
+  s[0xd] = lin(f.technique);
+  s[0xe] = d(sq(f.technique) + lin(f.technique), 2);
+  s[0xf] = d(lin(f.technique) + lin(f.agility) + lin(f.balance) + lin(f.strength), 4);
+  s[0x10] = d(lin(f.technique) + lin(f.balance) + lin(f.strength), 3);
+  s[0x11] = ftol((sq(f.technique) + lin(2 * f.technique) + lin(f.acceleration)) * 0.2298850574712644);   // 0x96d728
+  s[0x12] = ftol((lin(2 * f.pace) + lin(2 * f.dribbling) + sq(f.dribbling) + lin(f.technique)) * 0.15384615384615385); // 0x96d720
+  s[0x13] = d(sq(f.pace) + lin(f.balance) + lin(f.anticipation) + tk2, 5);
+  s[0x14] = d(lin(f.agility) + lin(f.balance), 2);
+  s[0x15] = sq(f.jumping);
+  s[0x16] = s[0x17] = lin(f.finishing);
+  s[0x18] = d(sq(f.technique) + lin(f.finishing), 2);
+  s[0x19] = d(lin(f.technique) + lin(f.finishing), 2);
+  s[0x1a] = s[0x1b] = d(q2t + lin(2 * f.finishing) + lin(f.passing), 5);
+  s[0x1c] = d(sq(f.flair) + lin(2 * f.finishing) + q2t + lin(f.passing), 6);
+  s[0x1d] = d(lin(f.strength) + lin(f.finishing), 2);
+  s[0x1e] = s[0x3c] = sq(f.passing);
+  s[0x1f] = s[0x20] = d(sq(f.technique) + lin(f.passing), 2);
+  s[0x21] = d(tk2 + lin(f.balance) + lin(f.anticipation), 4);
+  s[0x22] = sq(f.tackling);
+  s[0x23] = ftol(sq(f.bravery) * 0.9090909090909091);                  // 0x96d718
+  s[0x24] = ftol((lin(f.anticipation) + lin(f.agility)) * 0.4);          // 0x968e00
+  s[0x25] = 200;
+  s[0x26] = d(sq(f.strength) + lin(f.balance), 2);
+  s[0x27] = s[0x28] = d(sq(gk) + lin(f.handling) + lin(f.agility), 3);
+  s[0x29] = d(lin(f.bravery) + sq(gk) + lin(f.handling), 3);
+  s[0x2a] = s[0x2f] = s[0x30] = s[0x31] = s[0x32] = 200;
+  s[0x2c] = s[0x2d] = 400;
+  s[0x2b] = s[0x2e] = d(lin(2 * f.strength) + 400, 2);
+  s[0x33] = d(lin(f.penalties) + 200, 2);
+  s[0x34] = sq(f.corners);
+  s[0x35] = s[0x37] = sq(f.freeKicks);
+  s[0x36] = lin(f.throwIns);
+  s[0x38] = d(sq(f.balance) + sq(f.strength), 2);
+  s[0x39] = s[0x3d] = lin(f.heading);
+  s[0x3a] = d(lin(2 * f.finishing) + 300, 5);
+  s[0x3b] = d(sq(f.bravery) + sq(f.agility), 2);
   return s;
+}
+/** Efterbehandlingen 0x6f0426–0x6f05ac (sikker; jump-tabel 0x6f05c8, indeks 0x6f05e8, konstanterne læst i exe'en) med f = +0x37
+ *  (positionstilpasningen, ≤ 0). Den kører for ALLE koder 0..0x3e efter råværdierne. */
+const POST_CASE = [0, 0, 1, 2, 2, 2, 3, 3, 3, 1, 3, 3, 1, 1, 1, 4, 4, 4, 4, 1, 5, 6, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 1, 1, 1, 1, 1, 1, 7, 7, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 5, 5, 2, 5, 5, 5, 2, 1, 6, 3, 3, 1];
+export function postSkill(code: number, v: number, f: number): number {
+  switch (POST_CASE[code]) {
+    case 0: return ftol(10 * (f + 25) + v * 2.5);
+    case 1: return ftol(5 * (f + 45) + v * 0.5);
+    case 2: return ftol(3 * f + 418 + v * 0.13);
+    case 3: return ftol(v * 2.1 + f * 2.5 + 75);
+    case 4: return ftol(v * 2.25 + f * 2.5 + 75);
+    case 5: return ftol(v * 1.8 + 50);
+    case 6: return ftol(v * 3.5);
+    case 7: return ftol(7 * (f + 30) + v * 0.775);
+    default: return 2 * v;                                                // koder > 0x3e (nås ikke)
+  }
+}
+/** sub_6eecb0: handlingsevnerne +0x11a+2·kode = efterbehandlede råværdier. (sikker) */
+export function actionSkills(p: SkillSrc): number[] {
+  const f = p.form ?? 0;
+  return rawActionSkills(p).map((v, code) => postSkill(code, v, f));
 }
 
 // ------------------------------------------------------------------ sub_6f56c0 og sub_7172d0

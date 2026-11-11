@@ -112,7 +112,11 @@ export interface Match {
   teamFlags: [number, number];            // +0x9766 per side
   aiMode: [number, number];               // +0x1ab+side (5 = slow down when well ahead – rettelse 3, PROMPT_FOR_CM_REBORN.md)
   touchCount: [number, number];           // +0x8d46+side (raised by last touch, gættet)
-  loftCountdown: number;                  // +0x1c5
+  loftCountdown: number;                  // +0x1c5 boldens flyvetid i spillerture (sub_6fad40 §6.4)
+  passTo?: Player | null;                 // +0x477e spilleren, bolden er på vej til
+  landX?: number; landY?: number;         // +0x1c6/+0x1c7 landingsfeltet
+  fromX?: number; fromY?: number;         // +0x1c8/+0x1c9 afleverens felt
+  margin?: number;                        // +0x8ed6 afleveringens kvalitet (sub_6f6c00's passPower)
   order: Player[];                        // +0x8f7e / count +0x8eb8
   prio: Player | null;                    // +0x91de
 }
@@ -140,6 +144,8 @@ export interface Hooks {
   ballOut(lastTouch: Side): void;                                // sub_6cd490 (ported below as ballOutOfPlay)
   comment(id: number): void;                                     // sub_6d6f70
   distToTarget(bx: number, by: number, tx: number, ty: number): number; // sub_6cc4e0 TODO
+  landing?(x: number, y: number): void;                          // sub_6c9cd0 (gridMatch: pass.ts)
+  receive?(p: Player, power: number, ox: number, oy: number): void; // sub_6f6c00 (gridMatch: pass.ts)
 }
 
 // ------------------------------------------------------------------ geometry helpers (sikkert)
@@ -624,14 +630,14 @@ export function passErrorStart(p: Player, passing: number, d: number, type: numb
   return { tired, err, n };
 }
 export function passWrapper(m: Match, p: Player, type: number, receiver: Player | null, targetY: number,
-                            setReceiver: boolean, rand: Rand, h: Hooks, ph: PassHooks): void {
+                            setReceiver: boolean | { v: boolean }, rand: Rand, h: Hooks, ph: PassHooks): void {
   p.busy++;                                                       // 0x6fa26f
   if (!ph.pass(p, type, receiver)) return;
   if (type !== 0x36) {                                            // not a throw-in
     const o = ph.offsidePlayer(p.side, p.y, targetY);
     if (o) {
       const d = dist(o.x, o.y, 4, goalLine(o.side));
-      if (rand(ftol(d * d)) !== 0) {                              // 0x6fa2f8 → 0x6fa3db offside given
+      if (rand(ftol(2 * d * d)) !== 0) {                          // 0x6fa2ec fmul + fadd st0,st0 = 2·d² → 0x6fa2f8 → 0x6fa3db offside given
         h.comment(0x1f78);                                        // 8056 EVENT_RESTART_OFFSIDE
         // TODO counters: team +0xf5ca+54*side ++, o.+0x13 ++, p.+0x1 --
         m.ballX = o.x; m.ballY = o.y; m.state = 7; m.poss = (p.side === 0 ? 1 : 0); m.carrier = null;
@@ -640,7 +646,7 @@ export function passWrapper(m: Match, p: Player, type: number, receiver: Player 
       ph.missedOffside(o);
     }
   }
-  if (m.state === 0 && setReceiver) {
+  if (m.state === 0 && (typeof setReceiver === 'boolean' ? setReceiver : setReceiver.v)) {   // arg3 – sub_6fad40 kan sætte den (§6.2)
     m.receiver = receiver; m.lastTouch = p.side;                   // 0x6fa34e (+ touchCount via 0x6fa367)
     m.touchCount[p.side]++;
     const o = p.side === 0 ? 1 : 0; if (m.touchCount[o] > 0) m.touchCount[o] -= 10;
@@ -699,7 +705,24 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
     if (p.action === ACT.runWithBall && rand(ftol(2010 - 100 * p.a.acceleration)) === 0) burst = true; // 0x6ba3b9
     else if (p.action === ACT.runWithBall2 && rand(ftol(2010 - 100 * p.a.pace)) === 0) burst = true;  // 0x6ba3e2
     if (m.state !== 0 || m.paused) { stoppage(m, rand); return true; }
-    // TODO loft landing: +0x1c5 countdown → sub_6c9cd0 ; +0x477e → sub_6f6c00
+    // 0x6ba427–0x6ba536 (sikker): flyvetiden tælles ned efter hver spillers tur. Når den når 0 ved boldhøjde 4 uden bestemt modtager,
+    // lander bolden (sub_6c9cd0). Ellers modtager +0x477e bolden, når han står i dens felt (sub_6f6c00); er han den tilsigtede modtager
+    // (+0xf57a), ledig og med anticipation- og off-the-ball-rul, får han ét skridt (sub_713fc0 med +0x1c5 = 1) og så evt. modtagelsen.
+    let landed = false;
+    if (m.loftCountdown) {
+      m.loftCountdown--;
+      if (m.loftCountdown === 0 && m.ballH === 4 && !m.passTo && h.landing) { h.landing(m.landX ?? m.ballX, m.landY ?? m.ballY); landed = true; }
+    }
+    if (!landed && m.loftCountdown === 0 && m.passTo && h.receive) {
+      const R = m.passTo;
+      const recv = () => h.receive!(R, m.margin ?? 0, m.fromX ?? -1, m.fromY ?? -1);
+      if (R.x === m.ballX && R.y === m.ballY) recv();
+      else if (R === m.receiver && R.busy === 0 && R.roll.anticipation !== 0 && R.roll.offTheBall !== 0) {
+        m.loftCountdown = 1; attackOffBall(m, R, rand, h); m.loftCountdown = 0;
+        if (m.passTo === R && R.x === m.ballX && R.y === m.ballY) recv();
+      }
+    }
+    if (m.state !== 0 || m.paused) { stoppage(m, rand); return true; }
     if (m.prio) return true;
     if ((p.action === ACT.actAgain || p.action === ACT.stay) && i < 22) m.order.push(p);   // 0x6ba57b
     offsideLines(m);

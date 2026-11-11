@@ -29,8 +29,8 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | offside-udvalg/linjevogter | 0x6cfd70 → 0x6ea760 | 11 + 184 | afkodet – rækkereglerne = `offsideFlag`; også ved skud (skytten som `excl`) |
 | `challenge` (duel/dribling/forseelse) | 0x6f09f0 | 4.489 | ✓ porteret 11/11 – boldholderens del (`carrierMove` i gridMatch.ts); knock-tjek, kommentarer, skridtets konditionstab og banens byte ikke med |
 | `preShot` → udfordringen | 0x6c87e0 + 0x70d690 + 0x6eecb0 (evnerne) | 1.390 + … | ✓ porteret 11/11 (`grid/challenge.ts`); kaldt fra skridtet (0xf/0x11/0x12), skuddet (0x6d) og afleveringens kilde (0x6c) |
-| `passResult`/`contestP` (afleveringen) | 0x6fad40 | 6.876 | venter |
-| indlæg: landing, blokering, loftet, modtagelse | 0x6c9cd0, 0x70dfd0, 0x6fa490, 0x6f6c00 | 1.872, 986, 678, 4.036 | afkodet (notes/crosses-blocks.md) – afbøjning findes ikke i 3.9.68 |
+| `passResult`/`contestP` (afleveringen) | 0x6fad40 + 0x6ccb60/0x6cd330 + 0x6f5c30 | 6.876 + 400 + 1.197 | ✓ porteret 11/11 (`grid/pass.ts`: fejlled, grundtal S, V, præcision, højde/fart, opsnapning på vejen, rejsetid) |
+| indlæg: landing, blokering, loftet, modtagelse, løs bold | 0x6c9cd0, 0x70dfd0 (+0x6cc540/0x6cd3d0), 0x6fa490, 0x6f6c00, 0x6cd770 | 1.872, 986, 678, 4.036, 220 | ✓ porteret 11/11 (`grid/pass.ts`) – afbøjning findes ikke i 3.9.68 |
 | `pickTaker` | 0x6ceb90 | 832 | ✓ porteret 11/11 (én taktik-skytte pr. kategori; alder/omdømme "?") |
 | dommer: tackling, kort | 0x6e9820, 0x6ea4e0 | 941, 184 | ✓ porteret 11/11 (`judgeTackle`/`decideFoulPunishment` i cm0102-original-rules.ts); gulvet `FOUL_FK_FLOOR` og `cardFor(professional)` rettet |
 | taktikkens positionstabel | 0x5b5d10 (loader) + 0x5b7160 | 862 + 173 | afkodet (notes/5b7160-tactic-table.md); tabellerne for de 40 `.pct`-filer i `notes/pct-tables.json` |
@@ -48,6 +48,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | + taktisk felt fra originalens positionstabeller (11/11) | 2,68 | 49/26/24 | 8,8 | 5,1 | 2,4 | 24,8 | 0,7 | 1,74/0,12 |
 | + løbemål 0x6bce80 (11/11) | 2,79 | 46/25/29 | 8,7 | 5,3 | 2,5 | 21,3 | 0,7 | 1,45/0,08 |
 | + udfordringen 0x6f09f0/0x6c87e0 og dommeren 0x6e9820/0x6ea4e0 (11/11) | 6,58 | 59/13/28 | 44,2 | 25,2 | 15,3 | 0,7 | 0,9 | 0,23/0,01 |
+| + afleveringen 0x6fad40, opsnapning, modtagelse 0x6f6c00, landing 0x6c9cd0, blokering 0x70dfd0, løs bold 0x6cd770, evnetabellens efterbehandling (11/11) | 7,29 | 54/11/34 | 40,9 | 23,9 | 10,0 | 2,7 | 2,9 | 0,40/0,01 |
 
 ## Log
 
@@ -90,3 +91,35 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   nær mål (D > 5 → ×0,05 – bekræftet i exe'en), så boldtab på midtbanen må komme fra afleveringens rejse/opsnapning og modtagelsen
   (0x6fad40/0x6ccb60/0x6f5c30/0x6f6c00), som stadig er skøn; den estimerede nabo-duel og skud-stopperen holdt før tallene nede.
   Frispark kræver opbygget +0xff/agitation (startværdier ukendte). Næste: afleveringen 0x6fad40 og modtagelsen 0x6f6c00.
+- 2026-11-11 – **Porteret (sikker):** `grid/pass.ts` – afleveringen sub_6fad40 (fejlled R1–R4, grundtal S pr. type, V = momentum − rand(træthed)
+  + rand(S) + plads, kildeduellen med den rigtige V, dyk-grenen, moralrullet, præcisionen `passScatter` (målet flyttes), karaktererne,
+  højde/fart, retning/berøring, io_flag), banevandringen 0x6ccb60/0x6cd330 (Bresenham fra afleverens felt inkl. til målfeltet ekskl., rand(2)
+  for siden pr. felt) og `try_intercept` 0x6f5c30 (helt: arbejdsvilje-filter, T-tabellen og keeper i feltet, holdkammerat 1/(T+100), hands,
+  kontrolleret/løs med grænsen max(160, 1500 − 100d² + 100s)), rejsetiden ftol(2D / max(1, s + 0,2) + 0,5) i SPILLERTURE (tælles ned efter
+  hver tur i tik-løkken 0x6ba427 – nu i loop.ts), modtagelsen 0x6f6c00, landingen 0x6c9cd0, den løftede bold 0x6fa490, skudlinjen
+  0x6cc540/0x6cd3d0 og blokeringen 0x70dfd0, den løse bold 0x6cd770, vendingen 0x6f4920, dommerens hands 0x6e9540/0x6e9630, take_ball 0x6f0630
+  (afleverens karakter, keeperen i feltet holder bolden ved −1 uden egen aflevering i luften, boldhøjden ændres ikke), opsamlingen efter skridtet
+  (0x6f3f7d) og hjælperne 0x6bd5b0/0x6c41b0/0x70d630/0x6fa1e0. Udgået: `passK`, `interceptP`, `passResult`, `contestP`, `crossWin`,
+  `crossCornerP`, `blockCornerP`, `blockP`, `deflectP`, `lofted`, `b8eaa` og `arrive`/`ceil(D/4)`.
+  **Rettelser til noterne (kontrolleret i asm):** 0x6f6c00 vælger 0x2e (bryst) når rand(n) > rand(70 + 80·gule + 1500·felt) (vendt – med
+  noten blev næsten hver høj bold en frispark-type: 11 frispark/kamp fra modtageren), nedtagningens evne + 2·(agility-rul − 20) (ikke 10·), R's
+  forseelse tjekkes når R er FORAN (Rscore > Cscore) eller rand(5) = 0, et overset C-frispark springer R's tjek over, C's kommentargren kræver
+  også rand(w31) < −10; 0x6fad40 hjørne/frispark er høje (h = 4) når rand(40) ≠ 0 (vendt), karakterfradraget −110/−100 gælder afleveringer i
+  EGEN halvdel, dyk-grenens agitation er max(…); 0x6f5c30 giver ikke-keepere kode 0x24 (keeperen 1/0x29), og T for radius 5 er et ord
+  (rand(500000) + 200 slår om); 0x70dfd0 bruger d = afstanden fra skytten (ikke skudtypen) og hands-evnen ×2; 0x6cc540 prøver begge sider i
+  tilfældig rækkefølge (ikke forsvarerne først) og tager skyttens og målets felt med; 0x6e9540: forseelse kun ved rand(155) = 0 og boldhøjde > 1
+  (hands 0x25: medmindre rand(20) = 0); 0x6cd770 spreder over sidelinjen når keep = 0 (ikke spread = 0); 0x70d630 = afstand til EGET mål.
+  **Fejl fundet i tidligere porte:** evnetabellen sub_6eecb0 manglede efterbehandlingen 0x6f0426–0x6f05ac (alle 63 koder: fx 5(f+45) + 0,5v,
+  2,1v + 2,5f + 75, 3,5v) – nu `rawActionSkills` + `postSkill` i challenge.ts, også for udfordringen; offside i `passWrapper` er rand(2d²)
+  (0x6fa2ec), ikke rand(d²); limens `ballOut` lagde bolden ind på banen FØR sub_6cd490, så der aldrig kom indkast (nu 11,8/kamp).
+  *Estimeret/udeladt:* sub_70a910/sub_70c040 (bolden i mål fra en aflevering/løs bold) → bolden går over linjen (ingen mål ad den vej),
+  vejret 3 (som skuddet), match+1 = 0, sub_600a50 (indlæggets nationstillæg) = nej, individuel instruktion bit 4 = 0, sub_6f0970 = kun
+  boldholderen slippes, knock-tjekket 0x6cfe10, fordelsreglen 0x6bb9a0, sub_716e10/sub_6bb8d0 og alle kommentar-rand. Limen bruger nu
+  skudtypen fra sub_700bd0 (hovedstød ved boldhøjde 4) i stedet for altid lavt skud. tests/gridPass.test.ts.
+  Tallene (380 kampe, frø 1/2): 7,29/7,19 mål, 54/11/34, 40,9 skud, 23,9 på mål, 10,0 hjørner, 2,7 frispark, 2,9 offside, 0,40/0,01 kort.
+  **Hvor boldtabene mangler (instrumenteret, 60 kampe):** 355 modtagelser/kamp, men 77 % har ingen modstander i modtagerens felt og kun
+  11 % får en udfordrer (sub_6c87e0 kræver samme felt) – 23 vundne af forsvaret. Opsnapning på linjen 19/kamp (5 kontrollerede, 14 løse), 85
+  upræcise afleveringer, 25 af 31 løftede bolde lander uden nogen i feltet, 193 besiddelsesskift i alt. 69 % af skuddene tages fra D = 1.
+  Forsvarerne står altså sjældent i angribernes felter: det peger på det, der stadig er skøn i positioneringen – zonevalget 0x6bc030
+  (`zonalPick`, afkodet, ikke porteret), mandsopdækningen (`manMarkTarget` = null), markørens følg-test 0x6bce20 (`canFollow`), holdebolden
+  0x70ec80 og kortlægningen af vores taktik til forudindstillingerne. Næste: zonalPick og canFollow.

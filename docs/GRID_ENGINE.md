@@ -12,7 +12,9 @@ Motoren er **ikke** koblet ind i spillet. `sim.ts` og `engine/match.ts` er uænd
 | `src/game/engine/grid/passOptions.ts` | afleveringsmulighederne `sub_6c6a30` (modtager, vægt, type, stil, nationsfaktor K) | sikkert |
 | `src/game/engine/grid/shot.ts` | skudpoint `sub_700bd0`, keeperværdi `sub_700420`, udfald `sub_702050` | sikkert |
 | `src/game/engine/grid/helpers.ts` | pres, nære modstandere, blokerende, indlægsposition, fod, keeper dækker, positionstilpasning, `sub_6ec010` | sikkert |
-| `src/game/engine/grid/gridMatch.ts` | limen: `runGridMatch(home, away, rand)` + `GRID_UNKNOWN` | kroge *estimeret* |
+| `src/game/engine/grid/challenge.ts` | evnetabellen `sub_6eecb0`, udfordringen `sub_6c87e0`/`sub_70d690`, moral og kondition | sikkert (11/11) |
+| `src/game/engine/grid/pass.ts` | afleveringen `sub_6fad40`, opsnapning `sub_6ccb60`/`sub_6f5c30`, modtagelsen `sub_6f6c00`, landingen `sub_6c9cd0`, løftet bold `sub_6fa490`, blokeringen `sub_70dfd0`, løs bold `sub_6cd770` | sikkert (11/11) |
+| `src/game/engine/grid/gridMatch.ts` | limen: `runGridMatch(home, away, rand)` + `GRID_UNKNOWN` | resterende kroge *estimeret* |
 | `scripts/grid-stats.ts` | en sæson (380 kampe, 3.9.60-trupperne) mod originalens tal | – |
 | `tests/gridEngine.test.ts` | kampen kører færdig, deterministisk, endelige tal | – |
 
@@ -24,36 +26,23 @@ Portene er kopieret fra `cm-01-02-bosman-edition/app/` og kun ændret, hvor vore
 - `sub_713e90` = fod
 - +0x37 = positionstilpasning: `form` beregnes med `positionFit` (`sub_6eecb0`)
 
-## Krogene i `GRID_UNKNOWN` (alle *estimeret*)
+## Krogene i `GRID_UNKNOWN`
+
+Siden 11/11 er de fleste kroge erstattet af porte (se `ENGINE_PORT_PLAN.md`): det taktiske felt og opstillingen (`tacticTable.ts`), løbemålet,
+syn/plads/frit løb/offside, udfordringen og dommeren (`challenge.ts`, `cm0102-original-rules.ts`), og afleveringen, opsnapningen,
+modtagelsen, landingen, den løftede bold, blokeringen og den løse bold (`pass.ts`). Tilbage som *estimeret*:
 
 | Krog | Erstatter | Bud |
 |---|---|---|
-| `tacticalCell` (`shiftY` 0,33, `shiftX` 0,4, `possForward`, `defBack`, `defMin` 2) | `sub_6c2be0` + `sub_715f50` (+ `sub_6c2a40`) | formationens plads forskudt mod bolden med ca. en tredjedel; forsvarerne holder en linje 2 rækker fra eget mål (1, når bolden er i feltet); ingen går forbi modstandernes sidste markspiller (`onsideRow`) |
-| `runTarget` (`runBeyondP` 0,25) | `sub_6bce80` | angribere/midtbane 1–2 rækker frem, højst til modstandernes sidste linje; 25 % af løbene ét felt bag den |
-| `zonalPick` | `sub_6bc030` | nærmeste umarkerede modstander inden for 2 felter |
-| `canSee`, `spaceAhead`, `freeRun` | `sub_6f9f90`/`sub_6cbc00`, `sub_6cbad0`, `sub_6cb780` | altid synlig (lane = antal i vejen), intet i feltet foran, forsvarer i søjlen ±1 |
-| `passResult` (`passK`, `interceptP`) | `sub_6fad40` efter 0x6fae79 | fejltermerne fra `passErrorStart`, opsnapning pr. forsvarer på linjen |
-| `contestP` | første berøring i `sub_6fad40` | modstander i modtagerens felt vinder bolden |
-| `challenge` (`tackleP`, `foulP` 0,095) | `sub_6f09f0` fra 0x6f0e58 + `sub_6c87e0` | tackling mod dribling, ulovlig udfordring efter aggression (dommeren afgør, om den blæses) |
-| `runChallengeP` 0,4 | boldholderens skridt i `sub_6f09f0` | en ledig forsvarer ved siden af boldholderens nye felt går også ind i duellen (før kun i samme felt) |
-| `preShotP` 0,4, `preShotReach` 1,5 | udfordringen før skuddet (`sub_6c87e0`, SHOT.md §7) | forsvarer i eller ved siden af skyttens felt (også skråt) stopper skuddet |
-| `crossCornerP` 0,5, `blockCornerP` 0,6 | landingen `sub_6c9cd0`, blokeringen `sub_70dfd0` | andel af de indlæg, forsvaret vinder i luften, og af de blokerede skud, der går ud over baglinjen (hjørne via lastTouch) |
-| `official29` 10, `offsideReach` 2 | linjevogterens +0x29, udvalget i `sub_6cfd70` | rand(35) = 0 overser alt; angribere inden for 2 felter af afleveringens mål vurderes |
-| `refDiscipline` 10, `ref27` 10 | dommeren (officials.dat 0x25/0x27) | vi vælger ikke en dommer i laboratoriet |
-| `homeAdv` 10 | hjemmebanen (ukendt i originalen) | hjemmeholdets kampværdier ×(1 + 0,019·h), udeholdets ×(1 − 0,007·h) som MatchSims `homeMult`; h = 10 i stedet for ORIGINALs 2, fordi gittermotoren reagerer svagere |
-| `lofted` (`crossWin`) | `sub_6fa490` + `sub_6c9cd0` / `sub_6f6c00` | indlæg: hovedstødsduel i feltet; ellers 4–7 rækker frem |
-| `pickTaker` | `sub_6ceb90` | taktikkens skytter, ellers den bedste/nærmeste |
-| `cardShare` | udfordringstypen i `sub_6e9820`/`sub_6ea4e0` | 11 % af frisparkene går gennem kortreglen (type 42) |
-| `blockP`, `deflectP` | `sub_70dfd0` | pr. forsvarer på skudlinjen |
-| `b8eaa` | match+0x8eaa | 0 |
+| `zonalPick` | `sub_6bc030` (afkodet) | nærmeste umarkerede modstander inden for 2 felter |
+| `official29` 10 | linjevogterens +0x29 | rand(35) = 0 overser alt |
+| `ref24`/`ref28`/`refDiscipline`/`ref27` 10 | dommerens officials-bytes | vi vælger ikke en dommer i laboratoriet |
+| `homeAdv` 10 | hjemmebanen (ukendt i originalen) | kampværdierne ×(1 + 0,019·h) hjemme, ×(1 − 0,007·h) ude |
+| `weather` 3, `byte1` 0, `nationOk` nej | match+0x4756, match+1, sub_600a50 | ukendt i laboratoriet |
 
-**Desuden i limen (også estimeret):**
-- Bolden rejser i `ceil(D/4)` tik.
-- Offside: originalens `linesmanMisses` + `offsideFlag` (sikre, sub_6ea760) på alle angribere foran bolden nær afleveringens mål; v = +0x107 = `roll.offTheBall` (*gættet*).
-- Frispark og kort: originalens `refereeFactorInMatch` → `foulGiven` (type 42) → `cardSeverity` → `cardFor` (sikre, sub_6e9820/sub_6ea4e0).
-- Ingen udskiftninger, skader, træthed i kampen eller straffesparkskonkurrence.
-- Halvleg ved 495 tik + tillægstid.
-- Sikkerhedsloft: 2.000 tik.
+**Desuden i limen (også estimeret):** mandsopdækning (`manMarkTarget` = null), markørens følg-test (`canFollow`: afstand ≤ 1,5), holdebolden
+0x70ec80 (som move_to uden skridt), bolden i mål fra en aflevering/løs bold (sub_70a910/sub_70c040 → over linjen), retningen efter et skridt
+uden bold, ingen udskiftninger/skader/straffesparkskonkurrence, halvleg ved 495 tik + tillægstid, sikkerhedsloft 2.000 tik.
 
 ## Sæsontal (380 kampe, Premier League 3.9.60, pr. kamp for begge hold)
 
