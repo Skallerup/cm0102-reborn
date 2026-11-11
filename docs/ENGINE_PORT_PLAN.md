@@ -230,7 +230,16 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   stiger offside 1,29 → 5,10 pr. kamp (120 kampe; orakel 6,1–6,9)**, mål 2,99 → 3,38, skud 19,7 → 20,7, på mål 9,1 → 10,9. (4) Vores
   computerhold spiller aldrig med fælden (`aitactics.ts`/`tactics.ts`: `offside: false`), og kun 1 af originalens 40 .pct-forudindstillinger
   har 0x400 (343_default). (5) Computerens skift ved genstart `sub_6c54a0` sætter via 0x5b50d0 kun 0x20000/0x8000 (mentalitet), 0x800/0x1000
-  (kontra) og 0x2000/0x4000 (mænd bag bolden) – aldrig 0x400/0x200. **Næste:** find, hvor originalens computerhold får 0x400 før kampen
-  (taktikken bygges af 0x5b5d10/0x5fb810 – managerens præferencer i staff.dat's fjerde tabel ?), og om oraklets hold spiller med fælden;
-  derefter resten af sub_6c54a0 (taktikskift og udskiftninger).
+  (kontra) og 0x2000/0x4000 (mænd bag bolden) – aldrig 0x400/0x200.
+  **Computerens taktik før kampen = sub_6ddab0** (eneste sted, der sætter 0x400 via 0x5b50d0; `edi+0x2b` taktikken, `+0x2f`/`+0x33` egen/modstanderens
+  klub, `+0x1f` = **managerens ikke-spillerpost** (21 egenskaber alfabetisk fra +14, jf. staff-noten): +0x0e Attacking (faktor
+  `1 − (v − 10)·(1/30)` på mentaliteten), +0x13 Directness (≤ 8 → 0x2, ≤ 14 → 0x1, ≤ 18 → 0x4, ≤ 20 → 0x8), +0x1f Pressing (≥ 15 → 0x100,
+  ≤ 5 → 0x80), +0x1c **Offside: fælden 0x400, når Offside > 19 − 0,0003·klubbens omdømme (club.dat +0x80, 0–10000)** og taktikkens
+  +0x187b ikke har bit 8 (0x6ddc2a–0x6ddc6b; konstanterne 0x96d4f0 = 19,0, 0x96d4f8 = 0,0003 læst i exe'en). Også 0x20 ved 0x6ddb9e
+  (klubbernes omdømmeforskel mod rand(2000) + rand(−4000): ukendt flag). **Men** ingen af de 20 Premier League-managere i 3.9.60 når grænsen
+  (højeste Offside: Wenger 15 mod 16,3; Ferguson 4) – oraklets 6–7 offside pr. kamp kommer altså ikke fra fælden. (3) viser kun, at fælden
+  er én vej til offside. **Næste:** hvorfor angriberne aldrig står forbi følgerne – sammenlign `zonalPick`-kandidaterne (3×3 om markørens
+  taktiske felt) og følge-reglen (0x715499–0x71546a) med C'en; angribernes løb (runTarget) i forhold til følgernes skridt; porter
+  sub_6ddab0's flag (Directness/Pressing/Attacking/Offside) til computerens taktik, når gittermotoren kobles ind (kræver managerens
+  +14/+19/+28/+31 i world-filen).
 
