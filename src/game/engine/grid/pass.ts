@@ -12,7 +12,7 @@
 //   sub_6f4920 vend spilleren                    → turnTo
 //   sub_6e9540 / sub_6e9630 (dommeren: hands)    → handsJudge / handsPunish
 // Kommentarerne (sub_6d6f70) og de rand-kald, der kun vælger kommentar, er udeladt som i challenge.ts. Knock-tjekket sub_6cfe10,
-// fordelsreglen sub_6bab90/sub_6bb9a0 og sub_716e10/sub_6bb8d0 (agitation hos holdkammeraterne) er ikke modelleret.
+// fordelsreglen sub_6bab90/sub_6bb9a0 via PassCtx (gridMatch.ts); sub_716e10/sub_6bb8d0 (agitation hos holdkammeraterne) er ikke modelleret.
 import * as L from './loop';
 import * as H from './helpers';
 import type { GP, GridMatchState } from './gridMatch';
@@ -199,6 +199,9 @@ export interface PassCtx {
   byte1: number;
   /** sub_600a50(nation, 0, 1, 0, 0) for indlæg fra baglinjen ("?" – *estimeret*) */
   nationOk(p: GP): boolean;
+  /** fordelsreglen (notes/advantage-knock.md): sub_6bab90 (en fordel venter → dommeren dømmer intet) og sub_6bb9a0 (læg en hændelse) */
+  advantagePending?(): boolean;
+  queueIncident?(type: number, d: GP, p: GP | null, res: number, x: number, y: number, jC: number, jB: number): void;
   /** tællere til fejlsøgning (GRID_DEBUG) */
   dbg?(k: string): void;
 }
@@ -250,8 +253,9 @@ export function makePass(c: PassCtx) {
     c.ballOut(lt as Side);
   }
 
-  /** sub_6e9540 (sikker): forseelse (hands m.m.) – fordelsreglen sub_6bab90 er ikke modelleret. null = ingen. */
+  /** sub_6e9540 (sikker): forseelse (hands m.m.); null = ingen (også mens en fordel venter, sub_6bab90). */
   function handsJudge(p: GP, code: number): { sev: number; b: number } | null {
+    if (c.advantagePending?.()) return null;                             // 0x6e9549 sub_6bab90
     if (p.pos & 1 && inBoxAt(p.side, p.x, p.y)) return null;
     const ref = m.official;
     if (rand(ref.b28 + 15) === 0) { ref.mood -= 250; return null; }      // ser det ikke
@@ -323,7 +327,8 @@ export function makePass(c: PassCtx) {
     if (I < -100) { q.busy += rand(2); return false; }
     if (I < 150) return false;
     const hj = handsJudge(q, code);
-    if (hj && rand(10) !== 0) { handsRestart(q, handsPunish(q, hj.sev, hj.b, false)); return true; }   // rand(10)==0: overset
+    if (hj && rand(10) !== 0) { handsRestart(q, handsPunish(q, hj.sev, hj.b, false)); return true; }
+    if (hj) c.queueIncident?.(code, q, null, 1, q.x, q.y, hj.sev, hj.b);                       // 0x6f609e: fordel
     const s = m.ballSpeed;
     const cutoff = Math.max(160, int16(ftol(1500 - d * d * 100 + 100 * s)));
     if (I >= cutoff && d >= 1 && s + 1 < d) {                            // kontrolleret opsnapning
@@ -523,6 +528,7 @@ export function makePass(c: PassCtx) {
     drainCondition(R, code);                                                       // sub_6f56c0(R, −1, kode)
     const hj = handsJudge(R, code);
     if (hj && rand(ftol(d * 5 + 2)) !== 0) { handsRestart(R, handsPunish(R, hj.sev, hj.b, false)); R.rating -= 25; return; }
+    if (hj) c.queueIncident?.(code, R, null, 1, R.x, R.y, hj.sev, hj.b);                       // 0x6f72a5: fordel
     m.carrier = R;
     const C = c.challenge(R, R.side, code);                                        // sub_6c87e0
     m.carrier = null;
@@ -548,12 +554,13 @@ export function makePass(c: PassCtx) {
       const j = c.judge(Cp, R, C.type, -1); refFlag = j.hurt;
       if (j.ret !== 0) {
         if (rand(30) !== 0 || C.clear) { c.foul(Cp, R, j, C); return; }
+        c.queueIncident?.(C.type, Cp, R, j.ret, R.x, R.y, j.kind, j.severity);                  // 0x6f7a7e: fordel
         checkR = false;                                                             // overset → 0x6f8458 (R's forseelse tjekkes ikke)
       }
     }
     if (checkR && (Rscore > C.value || rand(5) === 0)) {                            // 0x6f7a8f: R foran → R's forseelse mod C
       const j = c.judge(R, Cp, code, -1); refFlag = j.hurt;
-      if (j.ret !== 0 && rand(10) !== 0) { c.foul(R, Cp, j, { clear: false }); return; }
+      if (j.ret !== 0) { if (rand(10) !== 0) { c.foul(R, Cp, j, { clear: false }); return; } c.queueIncident?.(code, R, Cp, j.ret, R.x, R.y, j.kind, j.severity); }   // 0x6f8453
     }
     Cp.action = C.type;
     if (h !== 4) { Cp.tacklesTried++; Cp.rating -= Cp.pos & 0x30 && Cp.pos & 0x880 ? 59 : 70; }
@@ -670,6 +677,7 @@ export function makePass(c: PassCtx) {
     const strong = S > rand(150) + 200;
     const hj = handsJudge(q, kind);
     if (hj && !(rand(5) === 0 && !strong)) { handsRestart(q, handsPunish(q, hj.sev, hj.b, strong)); return 1; }
+    if (hj) c.queueIncident?.(kind, q, null, 1, q.x, q.y, hj.sev, hj.b);                       // 0x70e3a5: fordel
     if (v >= 400) {                                                               // ren blokering: han får bolden
       q.blocks++; q.rating += 30; q.busy++;
       c.takeBall(q); q.action = kind; return 1;

@@ -153,6 +153,10 @@ export interface Hooks {
   nearestOppDist(side: Side, x: number, y: number): number;      // sub_6c3950(side,x,y,1)
   ownKeeper(side: Side): Player | null;                          // sub_6ce110
   restartTick(): void;                                           // sub_6c54a0 TODO
+  /** den ventende hændelse (fordel) pr. tik, 0x6b9cb1–0x6b9db5: true = dommeren dømte, tikket slutter (0x6ba743) */
+  incidentTick?(): boolean;
+  /** sub_6d0b60 ved død bold efter en tur, når engine+0x8eb5 er sat (0x6ba73e) */
+  treatInjured?(): void;
   pickTaker(side: Side, state: number): Player;                  // sub_6ceb90 TODO
   periodCheck(): 0 | 1 | 2 | 3 | 4;                              // sub_6bd930
   ballOut(lastTouch: Side): void;                                // sub_6cd490 (ported below as ballOutOfPlay)
@@ -718,6 +722,7 @@ export function stoppage(m: Match, rand: Rand): void {
 export function tick(m: Match, rand: Rand, h: Hooks): boolean {
   // TODO: substitution pending (+0x8eb4), shoot-out (+0x8eb3 → sub_6be710), kick-off commentary,
   //       injured player lying down (+0x475a → sub_6bac40) – see MATCH_LOOP.md §3
+  if (h.incidentTick?.()) return true;                  // 0x6b9cb1 (før genstarten)
   if (!m.paused && m.state !== 0) {
     h.restartTick();                                    // sub_6c54a0
     if (m.state !== 0 && (!m.carrier || !m.carrier.active)) {
@@ -762,7 +767,7 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
     if (!(burst && p.roll.pace <= rand(10))) playerTurn(m, p, rand, h);       // 0x6ba390
     if (p.action === ACT.runWithBall && rand(ftol(2010 - 100 * p.a.acceleration)) === 0) burst = true; // 0x6ba3b9
     else if (p.action === ACT.runWithBall2 && rand(ftol(2010 - 100 * p.a.pace)) === 0) burst = true;  // 0x6ba3e2
-    if (m.state !== 0 || m.paused) { stoppage(m, rand); return true; }
+    if (m.state !== 0 || m.paused) { stoppage(m, rand); h.treatInjured?.(); return true; }   // 0x6ba6f3 (+ 0x6d0b60)
     // 0x6ba427–0x6ba536 (sikker): flyvetiden tælles ned efter hver spillers tur. Når den når 0 ved boldhøjde 4 uden bestemt modtager,
     // lander bolden (sub_6c9cd0). Ellers modtager +0x477e bolden, når han står i dens felt (sub_6f6c00); er han den tilsigtede modtager
     // (+0xf57a), ledig og med anticipation- og off-the-ball-rul, får han ét skridt (sub_713fc0 med +0x1c5 = 1) og så evt. modtagelsen.
