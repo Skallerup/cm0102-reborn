@@ -305,4 +305,10 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   *estimeret* ingen manager (world-filen mangler managerens egenskaber), omdømme fra `ctx.rep` (standard 5000), `compType` fra ctx. 380 kampe
   frø 1: 3,22 mål · 52/21/27 · skud 19,9 · på mål 9,9 · hjørner 4,9 · offside 1,81. Mangler: taktikvalget 0x6e0230 (mange hold er stadig på det
   kanoniske gitter), managerdata i world-filen.
+- 2026-11-11 – **0x6df460 porteret (aiMode.ts, underagent):** computerens tilstand og r – 249.606 af 249.607 kald som originalen (tre spor,
+  `~/cm0102-engine/tools/aimode_trace.c`, noten `notes/6df460-ai-mode.md`). **Ikke koblet ind endnu:** et første forsøg (styrke = CA, ingen
+  ligatabel/manager, kamptype 33, publikumsbytene fra crowdBytes) gav udeholdet tilstand 4 i 45 % af tikkene (orig 15 %) og 64 % hjemmesejre –
+  mistanke: publikumsbytene (r ×(1 − 0,07·crowd[side])) eller styrken. Næste: sammenlign inputtene med aimode-sporene, så kobles den ind
+  (opskriften står i agentens rapport: begge sider ved hver dødbold, tidsspild i 3/4, tilstandsreglerne for computerhold).
+  Stadig i gang ved afbrydelsen: taktikvalget 0x6e0230 (aiTacticChoice.ts) og udskiftningerne (subs.ts) – ikke committet.
 
