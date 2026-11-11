@@ -23,17 +23,25 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 |---|---|---|---|
 | `tacticalCell` | 0x6c2be0 + 0x715f50 + 0x6c2a40 | 359 + 136 + 112 | afkodet (notes/6c2be0-tactical-cell.md) – pladserne er et tabelopslag `TBL[side][plads][med/uden bold][bx][by]` i taktikken (+0x5eb/+0xf33, 2376 bytes), bygget af 0x5b7160 fra taktikfilens grove gitter (+0x164) – afkodes sammen med de 40 `.pct`-filer |
 | `runTarget` | 0x6bce80 | 566 | ✓ porteret 11/11 |
-| `zonalPick` | 0x6bc030 | 910 | afkodet (notes/6bc030-zonal-pick.md) – kræver kampstatistik pr. spiller, rå Dribbling, mandsopdækning |
+| `zonalPick` | 0x6bc030 | 910 | ✓ porteret 11/11 (`grid/zonal.ts`) |
+| markering: runden, følg-testen, mandsopdækningen | 0x6ba140 (i 0x6b98c0), 0x6bce20 + 0x6f4600, 0x7160f0 | 130 + 23 + 70 | ✓ porteret 11/11 (`loop.ts` assignMarking/canFollow/manMarkTarget) |
+| skridtet uden bold: markers_follow, synstesten, kondition, vending | 0x6f09f0 (0x6f0a62–0x6f0cbd, 0x6f3a67–0x6f42b6), 0x6fa140, 0x6f56c0(−1) | – | ✓ porteret 11/11 (`offBallMove` i gridMatch.ts) |
+| holdflag, individuelle instruktioner, taktikbytes | 0x5b27c0, 0x5b50d0, 0x5b5290, 0x5b5d10, 0x6db8a2 | – | ✓ porteret 11/11 (`tacticTable.ts` teamFlagsOf/instrOf; forudindstillingernes værdier i presetTactics.ts) – vores trin → originalens valg er *estimeret* |
+| spillerbytes: agitation, +0xff, boldhændelsen +0x8eb1 | 0x6eaea0, 0x6f4aa0, 0x6f55c0, 0x716450, 0x6c2ca5 | – | ✓ porteret 11/11 (motivationen +0x100 og +0x31's start ikke – 0) |
+| holdebolden | 0x70ec80 | 1.792 | ✓ porteret 11/11 (`holdBall`) |
+| fordelsreglen | 0x6bb9a0, 0x6bab90, 0x6bac40, 0x6bba80, 0x6b9cb1 | – | ✓ porteret 11/11 (alle 12 kaldere; kommentarer udeladt) |
+| knock/skade | 0x6cfe10, 0x6d0980 | – | ✓ porteret 11/11 (ingen skadedatabase; behandlingen 0x6d0b60 kun som rydning af +0x1d) |
+| pladsernes gitter | 0x5b7e60, 0x5b2ba0 | – | ✓ porteret 11/11 (`canon`/`canonGrid`/`mapTactic`: forudindstilling ved præcis samme masker, ellers kanonisk) |
 | `canSee`/lane | 0x6f9f90 + 0x6cbc00 | 137 + 371 | ✓ porteret 11/11 |
 | `spaceAhead`, `freeRun` | 0x6cbad0, 0x6cb780 | 89, 135 | afkodet – `freeRun` giver aldrig 1 for markspillere (egen løkke tæller spilleren selv) |
 | offside-udvalg/linjevogter | 0x6cfd70 → 0x6ea760 | 11 + 184 | afkodet – rækkereglerne = `offsideFlag`; også ved skud (skytten som `excl`) |
-| `challenge` (duel/dribling/forseelse) | 0x6f09f0 | 4.489 | ✓ porteret 11/11 – boldholderens del (`carrierMove` i gridMatch.ts); knock-tjek, kommentarer, skridtets konditionstab og banens byte ikke med |
+| `challenge` (duel/dribling/forseelse) | 0x6f09f0 | 4.489 | ✓ porteret 11/11 – boldholderens del (`carrierMove` i gridMatch.ts); knock-tjek og skridtets konditionstab med fra 11/11, kommentarer og banens byte ikke |
 | `preShot` → udfordringen | 0x6c87e0 + 0x70d690 + 0x6eecb0 (evnerne) | 1.390 + … | ✓ porteret 11/11 (`grid/challenge.ts`); kaldt fra skridtet (0xf/0x11/0x12), skuddet (0x6d) og afleveringens kilde (0x6c) |
 | `passResult`/`contestP` (afleveringen) | 0x6fad40 + 0x6ccb60/0x6cd330 + 0x6f5c30 | 6.876 + 400 + 1.197 | ✓ porteret 11/11 (`grid/pass.ts`: fejlled, grundtal S, V, præcision, højde/fart, opsnapning på vejen, rejsetid) |
 | indlæg: landing, blokering, loftet, modtagelse, løs bold | 0x6c9cd0, 0x70dfd0 (+0x6cc540/0x6cd3d0), 0x6fa490, 0x6f6c00, 0x6cd770 | 1.872, 986, 678, 4.036, 220 | ✓ porteret 11/11 (`grid/pass.ts`) – afbøjning findes ikke i 3.9.68 |
 | `pickTaker` | 0x6ceb90 | 832 | ✓ porteret 11/11 (én taktik-skytte pr. kategori; alder/omdømme "?") |
 | dommer: tackling, kort | 0x6e9820, 0x6ea4e0 | 941, 184 | ✓ porteret 11/11 (`judgeTackle`/`decideFoulPunishment` i cm0102-original-rules.ts); gulvet `FOUL_FK_FLOOR` og `cardFor(professional)` rettet |
-| taktikkens positionstabel | 0x5b5d10 (loader) + 0x5b7160 | 862 + 173 | afkodet (notes/5b7160-tactic-table.md); tabellerne for de 40 `.pct`-filer i `notes/pct-tables.json` |
+| taktikkens positionstabel | 0x5b5d10 (loader) + 0x5b7160 | 862 + 173 | ✓ porteret 11/11 (`tacticTable.ts`); tabellerne for de 40 `.pct`-filer i `notes/pct-tables.json` |
 | skud (sikker, allerede porteret) | 0x702050, 0x700bd0, 0x700420 | 10.263, 1.572, 539 | ✓ |
 | boldholderens valg, afleveringsmuligheder, kampværdier, rul | 0x7109f0, 0x6c6a30, 0x6ec010, 0x6f44a0 | ✓ (GRID_ENGINE.md) |
 | tik-løkke, rækkefølge | 0x6b98c0, 0x6bd760 | 1.375, 61 | ✓ delvist – gennemgås mod C'en |
@@ -49,6 +57,13 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
 | + løbemål 0x6bce80 (11/11) | 2,79 | 46/25/29 | 8,7 | 5,3 | 2,5 | 21,3 | 0,7 | 1,45/0,08 |
 | + udfordringen 0x6f09f0/0x6c87e0 og dommeren 0x6e9820/0x6ea4e0 (11/11) | 6,58 | 59/13/28 | 44,2 | 25,2 | 15,3 | 0,7 | 0,9 | 0,23/0,01 |
 | + afleveringen 0x6fad40, opsnapning, modtagelse 0x6f6c00, landing 0x6c9cd0, blokering 0x70dfd0, løs bold 0x6cd770, evnetabellens efterbehandling (11/11) | 7,29 | 54/11/34 | 40,9 | 23,9 | 10,0 | 2,7 | 2,9 | 0,40/0,01 |
+| + zonevalget 0x6bc030 (11/11) | 6,70 | 54/12/35 | 40,5 | 22,3 | 10,4 | 2,9 | 2,5 | 0,49/0,02 |
+| + markeringen: markers_follow i skridtet, følg-testen 0x6bce20, runden 0x6ba140, mandsopdækning 0x7160f0, skridtets kondition/vending (11/11) | 3,55 | 63/16/22 | 21,7 | 11,1 | 5,3 | 3,0 | 1,0 | 0,44/0,02 |
+| + holdflag +0x584, instruktioner +0x188b, taktikbytes +0x5b4 (11/11) | 3,01 | 54/20/26 | 19,7 | 9,6 | 4,8 | 3,0 | 0,8 | 0,52/0,01 |
+| + agitation/+0xff og boldhændelsen +0x8eb1 (11/11) | 3,05 | 56/19/24 | 20,3 | 10,1 | 5,0 | 5,3 | 0,8 | 1,17/0,05 |
+| + holdebolden 0x70ec80, fordelsreglen, knock 0x6cfe10/0x6d0980 (11/11) | 3,30 | 58/17/25 | 20,1 | 10,3 | 4,8 | 5,1 | 1,5 | 1,22/0,03 |
+| + kanonisk gitter 0x5b7e60/0x5b2ba0 for vilkårlige pladser (11/11; frø 2: 2,62 · 53/24/23) | 2,87 | 55/18/27 | 19,1 | 9,1 | 4,5 | 5,0 | 0,9 | 1,15/0,06 |
+| Orakel frø 1 / frø 2 / ejerens Man Utd-sæson (grid-stats-tabellen) | 2,75 / 2,98 / 2,86 | 53/25 · 53/21 · 52/22 (H/U) | 17,0 / 17,8 / 17,0 | 9,9 / 10,5 / 10,0 | 4,9 / 5,3 / 5,1 | 14,5 / 15,3 / 14,3 | 6,1 / 6,9 / 6,0 | 1,79/0,12 · 1,66/0,14 · 1,66/0,17 |
 
 ## Log
 
@@ -123,3 +138,33 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   Forsvarerne står altså sjældent i angribernes felter: det peger på det, der stadig er skøn i positioneringen – zonevalget 0x6bc030
   (`zonalPick`, afkodet, ikke porteret), mandsopdækningen (`manMarkTarget` = null), markørens følg-test 0x6bce20 (`canFollow`), holdebolden
   0x70ec80 og kortlægningen af vores taktik til forudindstillingerne. Næste: zonalPick og canFollow.
+- 2026-11-11 – **Porteret (sikker): markeringen og forsvarernes bevægelse.** Instrumenteret (scratch-kopi af grid-stats): kun 12 % af
+  angriberne havde en markør, markørerne stod i snit 1,49 felter fra deres mand, og opfølgningen kom kun fra boldholderens skridt. Årsagen var
+  limen, ikke tik-løkken: `moveTo` (sub_6f09f0 for spillere uden bold) kaldte ikke markers_follow (0x6f3bf9) – markørerne springer deres egen
+  tur over (0x6ba37c), så de stod stille, når deres mand løb. Rettet sammen med følg-testen 0x6bce20 (ingen afstandsgrænse; markeringsrullet,
+  eller positioneringsrullet med taktikbyte bit 2 – sub_6f4600), markeringsrunden (zonevalget for alle, når BOLDEN er i eget felt – ikke
+  spilleren; +0x1aa sættes også, når manden har 3 markører), mandsopdækningen 0x7160f0, synstesten 0x6fa140 (samme felt → nej), skridtets
+  konditionstab 0x6f3c88 (bane/vejr/position/instruktion, sub_6f56c0 med −1: ×12/10/8/6 / 11) og vendingen 0x6f4143 (en tredjedel af vejen
+  mellem bold, spiller og mål). Efter: 20 % markeret, 1,08 felter, 30 % i samme felt; kondition ved slutfløjt 80/76 % (hjemme/ude).
+  Tik-løkkens rækkefølge (0x6ba100–0x6ba6a7) er gennemgået i asm og passer (kontraflaget kommer EFTER 0x6bd760 – team-flags.md §6 sagde før).
+  **Holdflag og instruktioner:** standardtaktikken 0x5b27c0 (0x22a91, 0x15552221/0xa, taktikbyte 0x12 – bit 2 = følg med positioneringsrul,
+  bit 0x10), forudindstillingernes værdier læst af .pct-filerne med loaderens efterbehandling (gamle filer: høj dword 0xa; 0x2000 uden 0x4000;
+  0x20000 under 0x98ec5d). Angriberne i forudindstillingerne har taktikbyte 0x11 (ingen zonemarkering). Grupperne fra 0x5b50d0/0x5b5290;
+  vores trin → bits er *estimeret* (tacticTable.ts). Situationens runWithBall/holdUp/longShots/crossBall læses nu af instruktionerne.
+  **Rettelse til team-flags.md:** mentaliteten læses i kampen – sub_6c2be0 tester 0x10000/0x8000 i samme register (0x6c2e5b/0x6c2e92).
+  **Spillerbytes:** agitation = gulvet 2·(25 − Temperament), ×0,85 pr. tik; +0xff = trunc((Dirtiness + 10)/4) (motivationen 0 – *estimeret*),
+  henfald i 0x6f55c0; dommerens ophidselse af offeret var min(…) – nu max(ag·f, gulv) som noten. Boldhændelsen +0x8eb1 (3 hjørne, 7/−1 frispark,
+  6 skud, 0 når bolden tages på egen halvdel) styrer det taktiske felts "bliv stående"-gren.
+  **Holdebolden, fordelen, knock:** sub_70ec80 helt (uden kommentarer); den ventende hændelse lægges af alle 12 kaldere af 0x6bb9a0 (også
+  overset offside, 8), dommeren/linjevogteren/hands dømmer intet, mens den venter (0x6bab90), 1/7 pr. tik i spil og 1/5 ved død bold for at
+  dømme (0x6bac40, tikket slutter), skuddet 0x6bba80 og målet rydder den. Knock 0x6cfe10/0x6d0980 i skridtet, boldholderens duel og holdebolden
+  (8,5 knocks/kamp; ingen skadedatabase – kun rand-tabellerne). Ikke porteret: behandlingen/udskiftningen 0x6d0b60 (kun rydningen af +0x1d,
+  *estimeret*), advantage_foul 0x716c90, afleveringens knock-kald.
+  **Pladsernes gitter:** spillets plads → nærmeste af de 31 masker (taktikskærmens tilstand 1), kanonisk gitter 0x5b7e60/0x5b2ba0; præcis samme
+  masker som en forudindstilling → dens fil (navnet afgør ved ens masker, fx 4-4-2/4-4-2 Attacking). Positionsordene er nu pladsens masker
+  (sub_6c38f0 = masks2 "?"). tests/gridMarking, gridTeamFlags, gridPlayerState, gridAdvantage og tacticTable.
+  **Stadig væk fra originalen:** frispark 5 (orig 14–15), offside ~1 (6–7), gule 1,15 (1,7), røde 0,06 (0,15); skud 19 (17). Frisparkene kræver
+  sandsynligvis motivationen +0x100 (→ +0xff) og +0x31's start (yndling/had/derby), som vi sætter til 0, samt kommentarernes rand (sub_6d6f70
+  bruger ét tal pr. kommentar – rækkefølgen af tilfældige tal er derfor ikke originalens). Offside: sub_6cfd70's udvalg og den løftede bolds
+  offside er stadig skøn (`offsideReach`). Hjemmebanen (`homeAdv`, ganger også Stamina-floaten) er *estimeret* og forstærkes nu af
+  skridtets konditionstab (hjemme 2,0 mål mod ude 1,1 i frø 1).
