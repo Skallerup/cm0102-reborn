@@ -12,6 +12,8 @@ import { mapTactic, tableCell, type Table } from './tacticTable';
 import { TEAM_FLAGS, decideFoulPunishment, isHardChallenge, judgeTackle, type JudgeResult, type MatchOfficial } from '../cm0102-original-rules';
 import { actionSkills, adjustMorale, getOppositionChallenge, inBoxAt, randS, type ChallengeOut } from './challenge';
 import { makePass, onPitch } from './pass';
+import { zonalPick } from './zonal';
+import { repTriple } from '../../originalValue';
 import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
 
@@ -59,6 +61,8 @@ export interface GP extends L.Player {
   isKeeper: boolean;
   tacklesTried: number; tacklesWon: number; dribblesPast: number; b6: number; // +0x4/+0x5/+0x11/+0x6
   blocks: number;                   // +0x12 opsnapninger/blokeringer (sub_6f5c30, sub_70dfd0/sub_6cd3d0)
+  shots: number; shotsOnTarget: number; // +0xa/+0xb skud og skud på mål i kampen (0x703c5b/0x703c90; "på mål" = notens tolkning)
+  penGoalsWon: number;              // +0x10 (zonevalgets "assists"): 0x706e44 tæller kun ved straffemål på den, der vandt straffen (+0x478a ≠ skytten)
   tbl: Table | null; pslot: number; // taktikkens positionstabel (forudindstillingen) og pladsen i den (tacticTable.ts)
   posR: H.PosRatings;               // positions-/sideevner til sub_715f50
   view?: PassPlayer & H.MatchPlayer;
@@ -84,6 +88,7 @@ export interface GridMatchState extends L.Match {
   depth: number;
   tactics: [Tactic, Tactic];
   nations: [string, string];
+  penaltyFor: GP | null;                // engine+0x478a: spilleren, der vandt straffesparket (sat ved straffe, 0x6f7f12 m.fl.)
   official: MatchOfficial;              // engine+0xf5b2 (dommerens bytes er *estimerede* – GRID_UNKNOWN.ref*)
 }
 
@@ -202,14 +207,16 @@ export const GRID_UNKNOWN = {
     }
     return bestX > -1 ? [bestX, bestY] : null;
   },
-  /** sub_6bc030 (zonevalg): nærmeste umarkerede modstander inden for 2 felter. *estimeret* */
-  zonalPick(m: GridMatchState, p: GP): GP | null {
-    let best: GP | null = null, bd = 2.01;
-    for (const o of m.gp) if (o.active && o.side !== p.side && o.pos !== L.POS.keeper && o.markers.length === 0) {
-      const d = L.dist(o.x, o.y, p.x, p.y);
-      if (d < bd) { bd = d; best = o; }
-    }
-    return best;
+  /** sub_6bc030 (sikker; notes/6bc030-zonal-pick.md, porten i zonal.ts). Limen: nation = spillerens nation, ry = spillerpostens
+   *  [hjemme, nuværende, verden] (cmRep; uden den repTriple(rep) – *estimeret*), klubbernes +0x53 ens = samme land ("?"), ingen
+   *  mandsopdækning (vores Tactic har den ikke), gitterlisterne i slot-orden (*estimeret*). */
+  zonalPick(m: GridMatchState, p: GP, rand: Rand): GP | null {
+    return zonalPick<GP>({
+      carrier: m.carrier as GP | null, receiver: m.receiver as GP | null, players: m.gp, teamFlags: m.teamFlags, counterFlag: m.counterFlag,
+      lineSide1: m.lineSide1, lineSide0: m.lineSide0, sameClubGroup: m.nations[0] === m.nations[1],
+      nation: (q) => q.src.nation, reps: (q) => q.src.cmRep ?? repTriple(q.src.rep ?? 50), jumping: (q) => q.a.jumping, longShots: (q) => q.f.longShots,
+      tacticalCell: (q) => this.tacticalCell(m, q), manMarkTarget: () => null, freeRun: (q) => this.freeRun(m, q, rand),
+    }, p, rand);
   },
   /** sub_6f9f90 (sikker; notes/vision-space-offside.md §1): kan p se feltet (tx,ty)? useSkill = a3 (synsvinklen af Creativity-rullet,
    *  modstandere nær og markering), oppNear = a4, mark = a5, wantLane = a6 ≠ 0 (banen tælles med sub_6cbc00 og Creativity ≥ rand(lane²)). */
@@ -381,7 +388,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic): GP {
     // udfordringen/dommeren (challenge.ts, judgeTackle): ukendte bytes starter som 0 (noterne), evnerne sættes efter hjemmebanen
     fouls: 0, foulsSuffered: 0, yellows: 0, reasons: [0, 0], b16: 0, skill: [], momentum: 0, w29: 0, w31: 0, b1d: 0, temperCount: 0, grudge: null,
     sportsmanship: sh('sportsmanship'), temperament: sh('temperament'), pressure: sh('pressure'), consistency: sh('consistency'), isKeeper: gk,
-    tacklesTried: 0, tacklesWon: 0, dribblesPast: 0, b6: 0, blocks: 0,
+    tacklesTried: 0, tacklesWon: 0, dribblesPast: 0, b6: 0, blocks: 0, shots: 0, shotsOnTarget: 0, penGoalsWon: 0,
   };
   g.cap = L.rollCaps(g);
   return g;
@@ -432,7 +439,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     paused: false, carrier: null, receiver: null, chaser: [null, null], keeperOut: [false, false], lineSide1: 11, lineSide0: 0, counterFlag: [false, false],
     teamFlags: [0, 0], aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
     tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
-    stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0,
+    stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null,
     passTo: null, landX: 0, landY: 0, fromX: 0, fromY: 0, margin: 0, lastPasser: null, lastPassType: 0, inFlight: [0, 0], lastToucher: null,
     official: { discipline: GRID_UNKNOWN.refDiscipline, b24: GRID_UNKNOWN.ref24, b27: GRID_UNKNOWN.ref27, b28: GRID_UNKNOWN.ref28, mood: 0 },
   };
@@ -528,7 +535,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     tacticalCell: (p) => cellWithDrift(p as GP),
     formationCell: (p) => GRID_UNKNOWN.formationCell(m, p as GP),
     runTarget: (p, mode) => GRID_UNKNOWN.runTarget(m, p as GP, mode, GRID_UNKNOWN.formationCell(m, p as GP), rand),
-    zonalPick: (p) => GRID_UNKNOWN.zonalPick(m, p as GP),
+    zonalPick: (p) => GRID_UNKNOWN.zonalPick(m, p as GP, rand),
     manMarkTarget: () => null, // sub_7160f0: kræver mandsopdækning i taktikken (ikke i vores Tactic)
     backOnside: (p) => { p.y = clampY(p.y + (p.side === 0 ? -1 : 1)); },
     takeBall: (p) => takeBall(p as GP),
@@ -593,7 +600,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     const r = decideFoulPunishment(rand, { minute: minute(), shootout: !!m.shootout, addTeamFoul: () => { st(d.side).fouls++; } }, d, p, j.ret, j.kind, j.severity, c.clear, j.hurt);
     if (r.code === 7) restart(7, p.side, p.x, p.y);                                         // indirekte frispark
     else if (inBoxAt(d.side, p.x, p.y)) {                                                   // straffe (0x6f16ea)
-      d.rating -= 500;
+      d.rating -= 500; m.penaltyFor = p;
       if (rand(d.pressure + 6) === 0) adjustMorale(d, -rand(8), rand);
       restart(5, p.side, 4, d.side === 0 ? 1 : 10);
     } else restart(6, p.side, p.x, p.y);
@@ -773,7 +780,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
         else { dbg('shot:stopped'); winBall(cd, p, c, c.value - d.quality - 200, jA, false); return; }
       }
     }
-    st(p.side).shots++;
+    st(p.side).shots++; p.shots++;
     dbg('shotD' + Math.min(6, Math.round(L.dist(p.x, p.y, 4, goalRow(p.side)))) + ':s' + p.side + ':x' + p.x + 'y' + p.y);
     // sub_6cc540 → sub_6cd3d0 → sub_70dfd0 (sikker, pass.ts): skudlinjen; en blokering afgør selv bolden (løs, taget eller frispark).
     // soft = frisparksskuddet (0x35-grenen); ellers edi i sub_702050 ("?" → 0). Straffe går uden om (limen).
@@ -783,9 +790,10 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
     GRID_DEBUG.sumS = (GRID_DEBUG.sumS ?? 0) + d.quality; GRID_DEBUG.sumK = (GRID_DEBUG.sumK ?? 0) + kv.K; if (out.ratio !== undefined) { GRID_DEBUG.sumR = (GRID_DEBUG.sumR ?? 0) + out.ratio; dbg('nR'); }
     dbg(`k${kv.state}${k ? '' : 'none'}:s${p.side}`); dbg(`o:${out.outcome}:s${p.side}`); if (k) dbg(`kx${k.x}y${k.y}:s${opp}`);
     const onT = out.outcome === 'goal' || out.outcome === 'goalInOffWoodwork' || out.outcome === 'parried' || out.outcome === 'tippedForCorner' || out.outcome === 'held';
-    if (onT) st(p.side).onTarget++;
+    if (onT) { st(p.side).onTarget++; p.shotsOnTarget++; }
     if (out.outcome === 'goal' || out.outcome === 'goalInOffWoodwork') {
       st(p.side).goals++; m.goals[p.side]++;
+      if (type === SHOT.PENALTY && m.penaltyFor && m.penaltyFor !== p) m.penaltyFor.penGoalsWon++;   // 0x706e26–0x706e44
       m.stoppage += rand(Math.trunc(0.8 * 10)); kickoffPositions(opp); return;
     }
     if (out.outcome === 'retake') { restart(5, p.side, 4, opp === 0 ? 1 : 10); return; }
