@@ -734,8 +734,10 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
   m.chaser = [nearest(m, 0, m.ballX, m.ballY, !inOwnBox(0, m.ballX, m.ballY)),
               nearest(m, 1, m.ballX, m.ballY, !inOwnBox(1, m.ballX, m.ballY))];
   // TODO keeperOut via sub_6c3010
+  // 0x6ba100–0x6ba133 (sikker): kun et hold med 0x1000 får flaget genberegnet (efter rækkefølgen og jagerne); ellers beholder det
+  // sin gamle værdi (0 fra init_match)
   for (const s of [0, 1] as Side[])
-    m.counterFlag[s] = (m.teamFlags[s] & TEAM.counterAttack) !== 0 && counterFlag(m, s, rand);
+    if (m.teamFlags[s] & TEAM.counterAttack) m.counterFlag[s] = counterFlag(m, s, rand);
   assignMarking(m, h);
   let burst = false;
   for (let i = 0; i < m.order.length; i++) {

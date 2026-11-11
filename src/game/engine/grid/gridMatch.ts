@@ -8,7 +8,7 @@ import { ACTION, decideBallCarrier, type PassOption, type Situation } from './ba
 import { passOptions, type Helpers as PassHelpers, type MatchPlayer as PassPlayer, type MatchState as PassState } from './passOptions';
 import { SHOT, keeperBase, keeperValue, shotOutcome, shotScore, type Attrs as ShotAttrs } from './shot';
 import * as H from './helpers';
-import { mapTactic, tableCell, type Table } from './tacticTable';
+import { instrBig, instrOf, mapTactic, tableCell, teamFlagsOf, type Table } from './tacticTable';
 import { TEAM_FLAGS, decideFoulPunishment, isHardChallenge, judgeTackle, type JudgeResult, type MatchOfficial } from '../cm0102-original-rules';
 import { actionSkills, adjustMorale, getOppositionChallenge, inBoxAt, randS, type ChallengeOut } from './challenge';
 import { makePass, onPitch } from './pass';
@@ -360,7 +360,7 @@ const SIDE_WORD: Record<string, number> = { L: 0x80, C: 0x200, R: 0x800 };
 const TECHN = ['anticipation', 'crossing', 'decisions', 'dribbling', 'finishing', 'handling', 'heading', 'longShots', 'marking', 'offTheBall', 'oneOnOnes', 'passing', 'penalties', 'positioning', 'reflexes', 'tackling', 'throwIns', 'creativity'] as const;
 const RAWN = ['acceleration', 'pace', 'agility', 'balance', 'strength', 'flair', 'freeKicks', 'jumping', 'teamwork', 'technique', 'aggression', 'bravery', 'corners'] as const;
 
-function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic): GP {
+function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: { lo: number; hi: number; tb: number }): GP {
   const s = tactic.slots[slot];
   const gk = s.pos === 'GK';
   const sh = (k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
@@ -373,7 +373,9 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic): GP {
   const pos = gk ? 0x1 : POS_WORD[s.pos] | (SIDE_WORD[s.side] ?? 0x200);
   // +0x37: positionstilpasningen (sub_6eecb0, rettelse 6) ud fra spillerens positionsevner [GK SW D DM M AM F WB] og sider [L C R]
   const r: H.PosRatings = { gk: p.pos[0], sw: p.pos[1], d: p.pos[2], dm: p.pos[3], m: p.pos[4], am: p.pos[5], f: p.pos[6], wb: p.pos[7], l: p.side?.[0] ?? 20, c: p.side?.[1] ?? 20, r: p.side?.[2] ?? 20, free: 1 };
-  const form = Math.min(0, H.positionFit(pos, pos, r, sh('versatility')));
+  // de individuelle instruktioner (+0x188b) og taktikbyten (+0x5b4): pladsens værdi i taktikken + vores instruktioner (tacticTable.ts instrOf)
+  const iv = instrOf(tactic.individual?.[slot], base), instr = instrBig(iv), tacticByte = base?.tb ?? 0x12;
+  const form = Math.min(0, H.positionFit(pos, pos, r, sh('versatility'), (iv.lo & 0x200000) !== 0));
   const lf = p.foot === 'L' || p.foot === 'B' ? 20 : 8, rf = p.foot === 'R' || p.foot === 'B' ? 20 : 8;
   let bx = clampX(Math.round((s.y / 100) * 8)), by = Math.min(10, Math.round((s.x / 100) * 11));
   if (gk) { bx = 4; by = 0; }
@@ -381,7 +383,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic): GP {
   const a: L.Attr = { acceleration: f.acceleration, anticipation: f.anticipation, decisions: f.decisions, flair: f.flair, jumping: f.jumping, marking: f.marking, offTheBall: f.offTheBall, pace: f.pace, positioning: f.positioning, tackling: f.tackling, teamwork: f.teamwork, creativity: f.creativity, workRate: f.workRate, agility: f.agility, versatility: f.versatility };
   const g: GP = {
     side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, condition: 100 * Math.max(60, p.condition ?? 100), pendingCond: 0, busy: 0,
-    matchCA: mc.K, form, morale: 10, injury: 0, agitation: 0, pos, tacticByte: 0, instr: 0n, freeRoleRating: 1, a,
+    matchCA: mc.K, form, morale: 10, injury: 0, agitation: 0, pos, tacticByte, instr, freeRoleRating: 1, a,
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
     marks: null, markers: [], ref: p.id, src: p, f, posAttack: pos, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
     leftFoot: lf, rightFoot: rf, baseX: bx, baseY: by, gkRating: p.pos[0], tbl: null, pslot: slot, posR: r,
@@ -400,7 +402,7 @@ function attachView(m: GridMatchState, p: GP): void {
     b2c: p.strongFoot, b2d: p.weakFootPenalty, busy: p.busy, facing: p.facing, momentum: 0, action: p.action, strongFoot: p.strongFoot, weakFootPenalty: p.weakFootPenalty,
     leftFoot: p.leftFoot, rightFoot: p.rightFoot, crossing: p.f.crossing, finishing: p.f.finishing, flair: p.f.flair, jumping: p.f.jumping, pace: p.f.pace, strength: p.f.strength,
     teamwork: p.f.teamwork, technique: p.f.technique, throwIns: p.f.throwIns, creativity: p.f.creativity, paceRoll: 0, anticRoll: 0, decRoll: 0, offBallRoll: 0, creatRoll: 0,
-    instr: { lo: 0, hi: 0 }, staff: { id: p.src.id, nationName: m.nations[p.side], professionalism: p.src.attrs[ATTRS.indexOf('professionalism')] || 10, favoured: [], disliked: [] },
+    instr: { lo: Number(p.instr & 0xffffffffn), hi: Number(p.instr >> 32n) }, staff: { id: p.src.id, nationName: m.nations[p.side], professionalism: p.src.attrs[ATTRS.indexOf('professionalism')] || 10, favoured: [], disliked: [] },
     rolls: { b107: 0, b108: 0, b10a: 0, b10c: 0 }, tacklingBit2: false, challengers: [] as H.MatchPlayer[],
   };
   p.view = v as PassPlayer & H.MatchPlayer;
@@ -424,20 +426,24 @@ const emptyStats = (): GridSideStats => ({ goals: 0, shots: 0, onTarget: 0, corn
 export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridResult {
   const teams = [home, away];
   const gp: GP[] = [];
+  const maps: ReturnType<typeof mapTactic>[] = [];
   teams.forEach((t, side) => {
     const ps = t.players instanceof Map ? t.players : new Map(t.players.map((p) => [p.id, p]));
     // originalens positionstabel: nærmeste forudindstilling (rolle/side, så placering) – tacticTable.ts
-    const map = mapTactic(t.tactic.slots.map((s) => ({ mask: s.pos === 'GK' ? 0x1 : POS_WORD[s.pos] | (SIDE_WORD[s.side] ?? 0x200),
+    const map = maps[side] = mapTactic(t.tactic.slots.map((s) => ({ mask: s.pos === 'GK' ? 0x1 : POS_WORD[s.pos] | (SIDE_WORD[s.side] ?? 0x200),
       col: clampX(Math.round((s.y / 100) * 8)), row: Math.min(11, Math.round((s.x / 100) * 11)) })), t.tactic.formation);
     t.tactic.lineup.forEach((id, slot) => {
       const p = ps.get(id); if (!p) return;
-      const g = makePlayer(p, side as Side, slot, t.tactic); g.tbl = map.table; g.pslot = map.slotOf[slot] ?? slot; gp.push(g);
+      const ps0 = map.slotOf[slot] ?? slot, pr = map.preset;
+      const g = makePlayer(p, side as Side, slot, t.tactic, { lo: pr.lo[ps0], hi: pr.hi[ps0], tb: pr.tb[ps0] }); g.tbl = map.table; g.pslot = ps0; gp.push(g);
     });
   });
   const m: GridMatchState = {
     players: gp, gp, ballX: 4, ballY: 6, ballH: -1, ballSpeed: 0, ballDir: 0, lastTouch: 0, poss: 0, state: 8, shootout: 0, clock: 0, stoppage: 0, subTick: 0,
     paused: false, carrier: null, receiver: null, chaser: [null, null], keeperOut: [false, false], lineSide1: 11, lineSide0: 0, counterFlag: [false, false],
-    teamFlags: [0, 0], aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
+    // holdflaget +0x584 kopieres uændret ind ved kampstart (0x6db8a2): forudindstillingens ord med vores holdinstruktioner (tacticTable.ts)
+    teamFlags: [teamFlagsOf(home.tactic.team, maps[0].preset.flags), teamFlagsOf(away.tactic.team, maps[1].preset.flags)],
+    aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
     tactics: [home.tactic, away.tactic], nations: [home.nation ?? 'England', away.nation ?? 'England'],
     stats: [emptyStats(), emptyStats()], goals: [0, 0], pendingPass: -1, period: 0, depth: 0, penaltyFor: null,
     passTo: null, landX: 0, landY: 0, fromX: 0, fromY: 0, margin: 0, lastPasser: null, lastPassType: 0, inFlight: [0, 0], lastToucher: null,
@@ -901,7 +907,7 @@ export function runGridMatch(home: GridTeam, away: GridTeam, rand: Rand): GridRe
         side: p.side, x: p.x, y: p.y, dribbling: p.f.dribbling, finishing: p.f.finishing, flair: p.f.flair, freeKicks: p.f.freeKicks, heading: p.f.heading, longShots: p.f.longShots,
         teamwork: p.f.teamwork, decisionsRoll: p.roll.decisions, creativityRoll: p.roll.creativity, flairRoll: p.roll.flair, positioningRoll: p.roll.positioning, morale: 10, b11: 0,
         b2d: p.weakFootPenalty, condition: p.condition, momentum: p.momentum, lastAction: p.action, isGoalkeeper: p.pos === L.POS.keeper, posFlags: p.pos, sideFlags: p.posAttack,
-        runWithBall: false, holdUpBall: false, longShotsInstr: false, crossBall: false,
+        runWithBall: (p.instr & 0x2000000n) !== 0n, holdUpBall: (p.instr & 0x8000000n) !== 0n, longShotsInstr: (p.instr & 0x20000000n) !== 0n, crossBall: (p.instr & (0x4n << 32n)) !== 0n,
         professionalism: p.src.attrs[ATTRS.indexOf('professionalism')] || 10, sportsmanship: p.src.attrs[ATTRS.indexOf('sportsmanship')] || 10,
       },
       mode: 0, restart: m.state === 8 ? 0 : m.state, ballHeight: m.ballH, ballX: m.ballX, ballY: m.ballY, oppLastLine: p.side === 0 ? m.lineSide1 : m.lineSide0, D,

@@ -101,3 +101,62 @@ export function mapTactic(slots: SlotSpec[], formation?: string): TacticMap {
   }
   return best!;
 }
+
+// ---------------------------------------------------------------- holdflag og individuelle instruktioner (notes/team-flags.md)
+/** Standardtaktikken 0x5b27c0 (sikker): +0x584 = 0x22a91, alle 11 pladser +0x188b = 0x15552221 / 0xa og +0x5b4 = 0x12. */
+export const TEAM_DEFAULT = 0x22a91;
+export const INSTR_DEFAULT = { lo: 0x15552221, hi: 0xa } as const;
+export const TACTIC_BYTE_DEFAULT = 0x12;
+/** sub_5b50d0 (sikker): grupperne i holdflaget – at sætte én værdi rydder gruppen */
+const TEAM_GROUPS = [0xf, 0x70, 0x180, 0x600, 0x1800, 0x6000, 0x38000];
+export function setTeamOption(flags: number, bit: number): number {
+  const g = TEAM_GROUPS.find((m) => m & bit)!;
+  return ((flags & ~g) | bit) >>> 0;
+}
+/** sub_5b5290 (sikker): grupperne i de individuelle instruktioner (lav dword; høj dword 0x3 og 0xc) */
+const INSTR_GROUPS_LO = [0x1f, 0x1e0, 0x1e00, 0xe000, 0x300000, 0xc00000, 0x3000000, 0xc000000, 0x30000000, 0x40030000, 0x800c0000];
+const INSTR_GROUPS_HI = [0x3, 0xc];
+export function setInstr(v: { lo: number; hi: number }, bit: number, high = false): { lo: number; hi: number } {
+  const g = (high ? INSTR_GROUPS_HI : INSTR_GROUPS_LO).find((m) => (m & bit) >>> 0 !== 0)!;
+  return high ? { lo: v.lo, hi: ((v.hi & ~g) | bit) >>> 0 } : { lo: ((v.lo & ~g) | bit) >>> 0, hi: v.hi };
+}
+export const instrBig = (v: { lo: number; hi: number }) => (BigInt(v.hi >>> 0) << 32n) | BigInt(v.lo >>> 0);
+
+/** Spillets holdinstruktioner → holdflaget +0x584 (originalen kopierer taktikkens ord uændret ind ved kampstart, 0x6db8a2). Alle syv
+ *  grupper sættes fra vores Tactic. *estimeret*: vores trin (0..2/0..4) mod originalens valg – afleveringer kort/blandet/lang =
+ *  0x2/0x1/0x8 (direkte 0x4 findes ikke hos os), tackling forsigtig/normal/hård = 0x20/0x10/0x40, pres = 0x100 ved closingDown 2,
+ *  mentalitet 0–1 defensiv 0x8000, 2 normal 0x20000, 3–4 angreb 0x10000. */
+export function teamFlagsOf(team: { mentality: number; passing: number; tackling: number; closingDown: number; offside: boolean; counter: boolean; menBehind?: boolean },
+  base = TEAM_DEFAULT): number {
+  let f = base;
+  f = setTeamOption(f, team.passing === 0 ? 0x2 : team.passing === 2 ? 0x8 : 0x1);
+  f = setTeamOption(f, team.tackling === 0 ? 0x20 : team.tackling === 2 ? 0x40 : 0x10);
+  f = setTeamOption(f, team.closingDown >= 2 ? 0x100 : 0x80);
+  f = setTeamOption(f, team.offside ? 0x400 : 0x200);
+  f = setTeamOption(f, team.counter ? 0x1000 : 0x800);
+  f = setTeamOption(f, team.menBehind ? 0x4000 : 0x2000);
+  f = setTeamOption(f, team.mentality <= 1 ? 0x8000 : team.mentality >= 3 ? 0x10000 : 0x20000);
+  return f;
+}
+
+/** Spillets individuelle instruktioner lagt oven på pladsens (forudindstillingens eller standardens) +0x188b. Bitbetydningerne er fra
+ *  Bosmans port (passOptions/ballCarrier: 0x4/0x8/0x10 kort/direkte/lang, 0x1 holdets; 0x2000000 løb med bold, 0x8000000 hold bolden,
+ *  0x20000000 langskud, høj 0x1 gennembrud, høj 0x4 indlæg; loop.ts: 0x200000 fri rolle, 0x800000 fremadløb, 0x8000 altid pres; challenge:
+ *  0x200 holdets tackling, 0x800/0x1000 let/hård). *estimeret*: vores mellemværdier (runs 1, longShots 1, crossing 1, false) beholder
+ *  pladsens værdi; "blandet" afleveringer 0x2, normal tackling 0x400 og pres 0 = 0x4000 er gæt ("?"). */
+export function instrOf(pi: { runs: number; runWithBall: boolean; longShots: number; throughBalls: boolean; crossing: number; freeRole: boolean; holdUp?: boolean;
+  passing?: number; tackling?: number; closingDown?: number } | undefined, base: { lo: number; hi: number } = INSTR_DEFAULT): { lo: number; hi: number } {
+  let v = { lo: base.lo >>> 0, hi: base.hi >>> 0 };
+  if (!pi) return v;
+  if (pi.passing !== undefined) v = setInstr(v, pi.passing === 0 ? 0x4 : pi.passing === 2 ? 0x10 : 0x2);
+  if (pi.tackling !== undefined) v = setInstr(v, pi.tackling === 0 ? 0x800 : pi.tackling === 2 ? 0x1000 : 0x400);
+  if (pi.closingDown !== undefined) v = setInstr(v, pi.closingDown === 0 ? 0x4000 : pi.closingDown === 2 ? 0x8000 : 0x2000);
+  if (pi.runs === 0) v = setInstr(v, 0x400000); else if (pi.runs === 2) v = setInstr(v, 0x800000);
+  if (pi.freeRole) v = setInstr(v, 0x200000);
+  if (pi.runWithBall) v = setInstr(v, 0x2000000);
+  if (pi.holdUp) v = setInstr(v, 0x8000000);
+  if (pi.longShots === 0) v = setInstr(v, 0x10000000); else if (pi.longShots === 2) v = setInstr(v, 0x20000000);
+  if (pi.throughBalls) v = setInstr(v, 0x1, true);
+  if (pi.crossing === 0) v = setInstr(v, 0x8, true); else if (pi.crossing === 2) v = setInstr(v, 0x4, true);
+  return v;
+}
