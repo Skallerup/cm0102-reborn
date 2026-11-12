@@ -75,6 +75,29 @@ describe('udskiftningerne i gittermotoren', () => {
     }
   }, 60_000);
 
+  it('en spiller båret ud skadet står i listen (ikke "off") og kan skiftes ud af mennesket', () => {
+    let done = 0;
+    for (let seed = 1; seed <= 60 && done < 1; seed++) {
+      const [h, a] = teams('Arsenal', 'Leeds United');
+      const home = { club: id('Arsenal'), ...h, players: new Map(h.players.map((p) => [p.id, p])) };
+      const away = { club: id('Leeds United'), ...a, players: new Map(a.players.map((p) => [p.id, p])) };
+      const sim = new GridSim(home, away, { commentary: false, aiSubs: [false, true], subs: 3 }, new Rng(seed));
+      while (!sim.finished) {
+        sim.step();
+        const v = sim.live(0);
+        expect(v.on.some((x) => x.injured && x.off)).toBe(false);
+        const inj = v.on.find((x) => x.injured);
+        if (inj && v.bench.length && v.subsLeft > 0) {
+          expect(sim.substitute(0, inj.id, v.bench[0])).toBe(true);
+          for (let n = 0; n < 400 && !sim.finished; n++) sim.step();
+          expect(sim.live(0).on.some((x) => x.id === v.bench[0] && !x.off)).toBe(true);
+          done++; break;
+        }
+      }
+    }
+    expect(done).toBe(1);
+  }, 300_000);
+
   it('forlænget spilletid og straffesparkskonkurrence, når kampen skal have en vinder', () => {
     let et = 0, so = 0;
     for (let seed = 1; seed <= 30 && so < 2; seed++) {

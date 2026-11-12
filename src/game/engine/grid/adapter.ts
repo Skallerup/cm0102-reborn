@@ -340,8 +340,9 @@ export class GridSim implements LiveSim {
     return {
       on: this.on[teamIdx].map((s) => {
         const p = this.gpById.get(s.p.id);
-        // ude: udvist eller båret ud (en ventende udskiftning tæller allerede som sket)
-        const out = p ? !p.active && !this.isPendingIn(s.p.id) : false;
+        // ude: udvist (en ventende udskiftning tæller allerede som sket). Båret ud skadet (plads −2) står stadig i listen (nedtonet via
+        // `injured`), så mennesket kan skifte ham ud – originalen tillader det (matchSubs.human: out.slot === −2)
+        const out = p ? !p.active && p.slot !== -2 && !this.isPendingIn(s.p.id) : false;
         return { id: s.p.id, slot: s.slot, num: s.p.number, off: out, cond: Math.round(s.cond * 100), rating: r1(s), yellow: s.line.yellow, injured: s.line.injured, goals: s.line.goals, red: !!s.line.red, enteredAt: s.enteredAt };
       }),
       gone: t.all.filter((s) => !this.on[teamIdx].includes(s)).map((s) => ({ id: s.p.id, slot: s.slot, num: s.p.number, rating: r1(s), yellow: s.line.yellow, goals: s.line.goals, enteredAt: s.enteredAt })),
