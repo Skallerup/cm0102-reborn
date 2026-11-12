@@ -79,7 +79,7 @@ export interface ShotEnv {
   /** 0x702675: udfordrerens handling, +4 og karakter */
   tried(d: GP, c: ShotChallenge): void;
   /** 0x702f35–0x70352f: udfordreren vinder bolden (gridMatch winBall 'shot'); adv = ebp (sub_716c90 ved død bold) */
-  winBall(d: GP, p: GP, c: ShotChallenge, adv: boolean): void;
+  winBall(d: GP, p: GP, c: ShotChallenge, adv: boolean, S: number): void;
   // ---- afsnit 2–7
   /** sub_6cfd70(side, y, målrække, excl): offside-spilleren (trækker selv sine tal) */
   offsidePlayer(side: Side, y: number, row: number, excl: GP): GP | null;
@@ -250,7 +250,7 @@ export function takeShot(E: ShotEnv, p: GP, a1: number, a2: number, a3: number, 
   // 0x702675 (= tried): udfordrerens handling, +4, karakter −59/−70
   E.tried(d, c);
   if (f.a2 > ((c.value << 16) >> 16)) { d.busy += c.delayChallenger; return go(E, f, 0x70362d); }   // 0x702f22 → 0x70353c
-  E.winBall(d, p, c, f.ebp !== 0);                                                        // 0x702f35–0x70352f (gridMatch winBall 'shot')
+  E.winBall(d, p, c, f.ebp !== 0, f.a2);                                                  // 0x702f35–0x70352f (gridMatch winBall 'shot'): [esp+0x69c] = S efter 0x70224d
 }
 
 /** udfordringens ud-værdier (challenge.ts ChallengeOut) */

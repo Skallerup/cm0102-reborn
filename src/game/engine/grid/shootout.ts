@@ -40,6 +40,8 @@ export interface ShootoutEnv {
   humanOrder: (s: Side) => number[];
   /** sub_6ceb90(side, 5, excluded): den bedste straffeskytte, der ikke har sparket – null når ingen (originalen: 0) */
   pickTaker: (s: Side, excluded: Set<GP>) => GP | null;
+  /** spillerpostens byte (movsx, +0x6d → post): One on Ones +0x35 til presset (0x6be9dd) */
+  recByte?: (p: GP, off: number) => number;
   /** sub_6ce110(side): holdets keeper */
   keeper: (s: Side) => GP | null;
   /** sub_6f0630: skytten tager bolden */
@@ -128,7 +130,8 @@ function kick(env: ShootoutEnv, s: ShootoutState): ShootoutState {
   env.takeBall(taker);                                                              // 0x6f0630
   m.ballH = 0;                                                                      // +0x8ea9
   // 0x6be9d7–0x6bea0a (sikker): presset v = 2·(200 − rand(One on Ones, spillerpost +0x35)·(spark tilbage + 4))
-  const oneOnOnes = taker.src.attrs[ATTRS.indexOf('oneOnOnes')] || 10;                                       // spillerpost +0x35 ("?" vist værdi som limens øvrige postfelter)
+  // 0x6be9dd: movsx eax, byte [post + 0x35] – postens interne værdi (kan være negativ → rand(n < 0) ∈ n+1..0)
+  const oneOnOnes = env.recByte ? env.recByte(taker, 0x35) : taker.src.attrs[ATTRS.indexOf('oneOnOnes')] || 10;
   let v = 2 * (200 - rand(oneOnOnes) * (s.left[k] + 4));
   const own = env.penScore(k), opp = env.penScore(o);                               // 0x6bea19/0x6bea31: +0xf5bc + 0x36·side
   if (opp > s.left[k] + own - 1) {                                                  // 0x6bea42: skal score for at holde holdet inde

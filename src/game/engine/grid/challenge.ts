@@ -290,7 +290,7 @@ export function getOppositionChallenge(m: GridMatchState, carrier: GP | null, si
       if (isGK(q)) kk = ftol(crtPow(cell.length, 5) * q.roll.decisions + (q.x === 4 && (q.y === 0 || q.y === 11) ? 10 : 3)); // pow-rækkefølgen "?"
       else if (rand(D < 2 ? 100 : 10) > D) roll = false;                                    // 0x6c8c0a–0x6c8c3f: D < 2,0 → rand(100), ellers rand(10) (før vendt)
       else kk = prevHalf || carrierGK ? 1 : 3;
-      if (roll && rand(ftol(2 * q.f.jumping)) + q.roll.positioning <= rand(kk)) continue;   // 0x6c8c70: +0xad = Jumping (før heading)
+      if (roll && rand(ftol(2 * q.f.jumping)) + q.roll.positioning <= rand((kk << 16) >> 16)) continue;   // 0x6c8c70: +0xad = Jumping; 0x6c8c8e movsx ecx, di (16 bit)
       def = 0x15; foul = 0x2e; hard = rand(5) === 0 ? 0x2f : -1;
     } else if (action === 0x3b) {
       if (!(r(carrierGK ? 3 : prevHalf ? 20 : 60) < pw - D)) continue;

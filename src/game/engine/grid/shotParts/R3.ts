@@ -84,7 +84,9 @@ function shakeMarker(E: ShotEnv, f: ShotFrame, edi: GP | null, needEdi: boolean)
   if (!(mk.rating > 0x1a5e)) return false;                                          // markøren over 6750
   const mot = p.motivation;                                                         // +0x100 (s8)
   if (mot >= 1 && E.rand(mot) !== 0) return false;
-  return edi === mk;
+  // 0x705c86 "cmp edi, ebx": edi er listens element – sub_6bcbd0 lægger KOPIER af spillerblokkene i listen (0x68d0d0(p, 0x1be) → 0x68cfc0:
+  // malloc + rep movsd), så pegeren er aldrig den rigtige spiller (sic): UNABLE_TO_SHAKE_MARKER 0x21c6 sendes aldrig herfra
+  void edi; return false;
 }
 
 /** 0x704b0f: springtabellen på edi = R − 2 */

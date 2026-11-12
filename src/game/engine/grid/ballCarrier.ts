@@ -397,7 +397,9 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
     }
     const k = s.oppKeeper;
     if (k && k.x === c.x && k.y === c.y && s.oppInCell === 1) {
-      const duel = rand(trunc(c.dribbling * 10)) - rand(trunc(c.finishing * 10));
+      // 0x711884–0x7118b4: rand(ftol(+0x99 Finishing · 10)) trækkes FØRST, så rand(ftol(+0x95 Dribbling · 10)); duellen = det andet − det første
+      const fin = rand(trunc(c.finishing * 10));
+      const duel = rand(trunc(c.dribbling * 10)) - fin;
       R += trunc(duel * (D * 50 + 150)); // 50 @0x969560, 150 @0x96d840
       oneOnOne = true;
     }

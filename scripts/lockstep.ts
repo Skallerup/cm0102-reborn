@@ -425,7 +425,7 @@ function aiModeFromTrace(f: string[], port: AiModeInput): { inp: AiModeInput; di
   return { inp, diff };
 }
 
-export interface LockResult { ticks: number; rands: number; ok: boolean; at?: string; diff?: string[]; stack?: string; finished: boolean }
+export interface LockResult { ticks: number; rands: number; ok: boolean; at?: string; diff?: string[]; stack?: string; finished: boolean; next?: string }
 
 /** kører porten i låsetrin med originalen; stopper ved første afvigelse */
 export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s: string) => void; aimode?: string[][] } = {}): LockResult {
@@ -509,6 +509,16 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       // 0x48f150(turneringen, klubben) (genvalgets ligagren 0x6e132c): sporet har den ikke – venskabskampe (fixture+0x3a = 1/9) tæller ikke
       // klubben (*antaget*; pokalsporets turnering 72 er en venskabsturnering), ligaen (turnering 7) gør
       ...(tr.FX && (tr.FX[0x3a] === 1 || tr.FX[0x3a] === 9) ? { league: false } : {}),
+      // (syvende runde) fixture-posten (DT-linjen) og klubposterne (CL): historiernes rammer og vinderkravet (+0x38 & 3 – straffe/forlænget)
+      ...(tr.FX && tr.CL[0] && tr.CL[1] ? (() => {
+        const F = new Mem(tr.FX!), C = [new Mem(tr.CL[0]), new Mem(tr.CL[1])], comp = F.u32(0x14), f38 = F.u16(0x38);
+        const fl = F.u8(0x4b) === 0xff ? null : [F.u8(0x4b), F.u8(0x4c)] as [number, number];
+        return {
+          fixtureInfo: { hasComp: comp !== 0, ownLeague: [C[0].u32(0x57) === comp, C[1].u32(0x57) === comp] as [boolean, boolean],
+            ownContinental: [C[0].u32(0x1db) === F.u32(0), C[1].u32(0x1db) === F.u32(0)] as [boolean, boolean], code30: F.u16(0x30), firstLeg: fl, flags38: f38 },
+          ...(f38 & 3 ? { needsWinner: (hg: number, ag: number) => (fl ? hg + fl[0] === ag + fl[1] : hg === ag) } : {}),
+        };
+      })() : {}),
       subs: [new Mem(tr.EN).s8(0x9032 + 0x17), new Mem(tr.EN).s8(0x9032 + 0xd0 + 0x17)],   // hold+0x17: udskiftninger tilbage (venskabskamp 9)
       rotation16: [new Mem(tr.EN).u8(0x9032 + 0x16) !== 0, new Mem(tr.EN).u8(0x9032 + 0xd0 + 0x16) !== 0],   // hold+0x16
       // DT/MG-linjerne (fjerde runde): dagens dato og managerens ikke-spillerpost (+0x9051: [Attacking +0xe, Directness +0x13, Free Roles +0x15,
@@ -648,5 +658,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
   finally { Object.assign(GRID_UNKNOWN, save); }
   if (hist && fail) console.log(hist.join('\n'));
   if (poFail) console.log('første PO-forskel: ' + poFail);
-  return { ticks: tick, rands, ok: !fail, at: fail ?? undefined, diff: (L as { diff?: string[] }).diff, stack, finished };
+  // efter slutfløjtet: originalens første ubrugte tal i sidste tik (efter kampen kommer spillets egne kald – fx 0x4ca6d0 – til næste M-linje)
+  const nx = finished && feed[fi] ? `${feed[fi][0]}@${feed[fi][1].toString(16)} (${feed.length - fi} tilbage i tikket)` : undefined;
+  return { ticks: tick, rands, ok: !fail, at: fail ?? undefined, diff: (L as { diff?: string[] }).diff, stack, finished, next: nx };
 }

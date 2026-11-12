@@ -6,7 +6,7 @@ const [file, k = '0', max] = process.argv.slice(2);
 const tr = await readMatch(file, +k, max ? +max + 1 : Infinity);
 const aimode = readAiModeCalls(file.replace(/\.txt(\.gz)?$/, '-aimode.txt'), tr.M[0], tr.M[1]);
 const r = runLockstep(tr, { maxTicks: max ? +max : undefined, aimode });
-console.log(`kamp ${k} (${tr.M.join(' ')}): ${r.ok ? 'ens' : 'afviger'} – ${r.ticks} tik, ${r.rands} tal${r.finished ? ', kampen slut' : ''}`);
+console.log(`kamp ${k} (${tr.M.join(' ')}): ${r.ok ? 'ens' : 'afviger'} – ${r.ticks} tik, ${r.rands} tal${r.finished ? ', kampen slut' : ''}${r.next ? ` – originalens næste tal ${r.next}` : ''}`);
 if (!r.ok) {
   console.log(r.at);
   if (r.diff) console.log(r.diff.slice(0, 30).join('\n'));

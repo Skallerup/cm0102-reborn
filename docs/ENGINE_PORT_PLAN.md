@@ -3,13 +3,30 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
-## Næste skridt (overdragelse 2026-11-12, efter låsetrinets sjette runde – start her i en ny session)
+## Næste skridt (overdragelse 2026-11-12, efter låsetrinets syvende runde – start her i en ny session)
 
-**Låsetrinet (sjette runde):** 14 af 20 Premier League-kampe i `~/cm0102-engine/oracle/runs/ls20.txt` kører identisk med originalen hele kampen
-(`npx tsx scripts/grid-lockstep.ts ~/cm0102-engine/oracle/runs/ls20.txt <kamp>`); de 6 andre afviger i tik 468–790, pokalkampen (`cup4.txt` kamp 42)
-i tik 582. Tag dem i rækkefølge: kamp 16 (gensidig markering 0x6f3bf9/0x6f4143), kamp 14/6 (turenes slutfelt), kamp 2 (0x717929), kamp 3
-(0x71189b), kamp 19 (0x6c8c9d), pokalen (0x6f4506), derefter forlænget spilletid/straffe (0x6bd930's 990-/1155-/1320-grene, 0x6ce460(0/1),
-0x6f5810(1)). Detaljer i loggens post 2026-11-12 (sjette runde) og `~/cm0102-engine/notes/lockstep.md`.
+**Låsetrinet (syvende runde): alle 20 Premier League-kampe i `~/cm0102-engine/oracle/runs/ls20.txt`, pokalkampen (`cup4.txt` kamp 42) og en
+kamp med forlænget spilletid OG straffesparkskonkurrence (`pen1.txt` kamp 17, turnering 352, 1311–574) kører identisk med originalen hele kampen –
+alle motorens tal er brugt; originalens næste tal er kamprapportens sub_6d26b0 efter slutfløjtet** (`npx tsx scripts/grid-lockstep.ts <spor> <kamp>`
+viser det som "originalens næste tal 3@6d30b5"). Testen `tests/gridLockstep.test.ts` kører 9 af dem som hele kampe (fixturer pl2/3/6/7/14/16/19,
+cup, pen).
+
+Herfra (i rækkefølge):
+1. **Spillets egne inddata (opgave 3, ikke begyndt i syvende runde).** Låsetrinet beviser motoren med originalens inddata; sæsontallene
+   (`npx tsx scripts/grid-stats.ts 380 <frø>`: 2,17–2,44 mål, 45–52 % hjemmesejre mod originalens 2,75–2,98 / 51–53 %) afgøres nu af inddataene:
+   (a) kampstartens kampværdier – limens egen sub_6ec010-udgave i `makeGP` (gridMatch.ts ~l. 780: workRate/versatility m.fl. er skøn) skal
+   erstattes af `matchValues6ec010` med en `MatchValuesEnv` bygget af spillets tilstand (kontrakt 0x4cf5f0 → `cmPlayerData`/`Contract`, klub,
+   anfører 0x897590, forhold RP → `Player`-data, `staffState` [0xae2d0c], manager np+0xe/0x544410) – og samme env sendes som
+   `ctx.matchValuesEnv`, så genberegningerne i kampen sker (i dag kun i låsetrinet); (b) 0x6e2f20-værdierne i genvalget (LOCKF viser forskellen);
+   (c) tabelrækkerne 0x4a4850 (`teamRuns`, aiMode's `league`) og 0x48f150 af spillets tabel/kampprogram; (d) pick_teams rotation (hold+0x16/+0x1a);
+   (e) `fixtureInfo` (ny i ctx: liga/europæisk turnering pr. side, word +0x30, første ben, +0x38) fra spillets fixture i `adapter.ts` – i dag
+   ligakamp-standarden; (f) computerens taktik (grid-stats bruger `aiTactic`, originalen 0x6e0230/0x6ddab0).
+2. **Efter slutfløjtet:** kamprapporten sub_6d26b0 (0x6d26b0–0x6d360f, første tal 0x6d30b5/0x6d317f), 0x6d0f80 (kampens spiller) og 0x6d1cc0 – de
+   bruger kampens tilfældige tal efter 0x6ce460 og bestemmer karakterer/kampens spiller i spillet.
+3. **Ikke dækket af sporene:** golden goal (+0x1a8, 0x6bdfed), MLS-straffe (mode 4, fixture+0x38 & 0x20), to-benede opgør med udebanemål i
+   0x6bd930 (`needsWinner` i låsetrinet er kun "lige ved stillingen + første ben"), 0x6ce9c0's dødboldsskytte-tal (0x897990 → rand(1000)/rand(500)).
+   Lav et spor med en to-benet pokalrunde (turnering 352's 2. runde eller Europa) og et med golden goal, hvis spillet har det.
+4. Integrationen (se den tidligere overdragelse nedenfor, punkt 2–3).
 
 ### Tidligere overdragelse (2026-11-11)
 
@@ -866,3 +883,26 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   pokalkampen tik 582 0x6f4506 (rullenes loft efter en genberegning). Uden for låsetrinet: spillets 0x6e2f20 (genvalgets værdier) er stadig et skøn
   langt fra originalens (LOCKF), forholdene/tabelrækkerne/turneringsbias findes ikke i spillets data (tomme/0), og sub_6ec010 regnes ikke i kampen
   i spillet.
+
+- 2026-11-12 – **Låsetrin, syvende runde: ALLE 20 PL-kampe (ls20) er identiske hele kampen – før 14; de seks resterende kamp 2 655→781, 3 601→768,
+  6 552→762, 14 530→790, 16 468→748, 19 790→806 (i alt 14.697 → 15.734 identiske tik); pokalkampen (cup4, 72) 582→775 (hele); ny kamp med forlænget
+  spilletid og straffesparkskonkurrence (pen1, turnering 352, 1311–574, 1-1 efter 120 min., 9 spark) identisk hele vejen (1.078 tik + konkurrencen,
+  847.438 tal).** Alle motorens tal bruges – efter slutfløjtet er originalens næste tal kamprapportens sub_6d26b0 (0x6d30b5/0x6d317f) i alle 22.
+  **Rettet (adresse):** slutvendingen 0x6f4143 sigter mod skridtets felt (lokalerne [esp+0x14]/[esp+0x12] = nx/ny), ikke den nuværende plads (gensidig
+  markering flytter spilleren igen – kamp 16); boldholderens løbemål 0x6bce80 får flag 2 + (frit løb sub_6cb780 ≠ 0) (0x7122a2 – kamp 14);
+  keeperens "nærmeste modstander" sub_6c3950 scannede eget hold (krogen filtrerede `side !==` – kamp 6); skuddets presserliste (sub_6bcbd0 →
+  0x68d0d0/0x68cfc0) er KOPIER af spillerblokkene, så 0x705c86 "cmp edi, ebx" er aldrig sand – UNABLE_TO_SHAKE_MARKER 0x21c6 sendes aldrig (kamp 2);
+  alene med keeperen trækker rand(Finishing·10) før rand(Dribbling·10) (0x711884 – kamp 3); keeperens hovedstødsdyst-grænse er 16 bit (0x6c8c8e
+  movsx ecx, di – rand(−24902), kamp 19); positionstilpasningen 0x6eecb0 bruger Free Role +0x1a (posR.free var altid 1; 0x6ef00e – pokal);
+  klubbens land til publikumshistorien 0x708e1f (ctx.clubLang, ikke spillernes navneliste – pokal); momentum klemmes som word (0x6f2333/
+  0x6fc515/0x70a890); skuddets udfordring bruger rammens S efter 0x70224d (S − r), ikke indgangens (0x7032ec); forlænget spilletid: sub_6ce460(990)
+  ved 90 min. (0x6bdc8f), HALF_TIME_EXTRA_TIME 0x20f3 ved 1155, ved 1320 sub_6ce460(1) og – med straffe – ingen FINAL_WHISTLE, uret rundet ned til
+  30 tik og PENALTY_SHOOT_OUT 0x2002 (0x6ba9af–0x6baa0b); sub_6ce460(0/1) ved enhver slutfløjt (rand(7)+3, rand(7)+3, rand(5)+mål → +0xf628/+0xf62c/
+  +0xf630, `endRolls`); straffekonkurrencens pres bruger spillerpostens One on Ones +0x35 (movsx – kan være negativ, 0x6be9dd).
+  **Værktøjet:** `match_trace.c` glemmer fixturen ved slutfløjt uden ventende konkurrence (turneringer med genbrugte fixture-poster, fx 407, fik
+  ingen M-blok); `lockstep.ts` giver `fixtureInfo` (DT/CL: fixture+0x14, club+0x57/+0x1db, +0x30, +0x4b/+0x4c, +0x38) og `needsWinner` (+0x38 & 3),
+  og rapporterer originalens første ubrugte tal efter slutfløjtet. Nyt spor `pen1.txt` (+ `pen1-aimode.txt`; RECOMP_MATCH_TRACE_COMP=352, N=18, 40 dage,
+  uden XE, 0,9 GB; fundet med en 40-dages skanning uden RAND – den første konkurrence er turnering 352's 18. kamp). **Spillet:** `GridMatchCtx.fixtureInfo`
+  (adapteren sætter den ikke endnu). **Test:** hele kampe pl2/3/6/14/16/19 (ls20), cup (775), pen (forlænget + straffe), og for hele kampe tjekkes
+  det, at originalens næste tal ligger i sub_6d26b0. **Sæsontal** (380 kampe, `grid-stats.ts`): frø 1 2,32 mål · 52/24/24 · skud 15,2 · på mål 7,9;
+  frø 2 2,17 · 45/28/27; frø 3 2,44 · 48/26/27 (før 2,27–2,33 / 44–46 %; originalen 2,75–2,98 / 51–53 %) – resten er spillets inddata (Næste skridt 1).
