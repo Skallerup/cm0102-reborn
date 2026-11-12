@@ -113,4 +113,4 @@ export function getGridFactory(): LiveSimFactory | null { return gridFactory; }
  *  test): createGame sætter Options.engine = 'original' for dem. false = som før runde 8 (kun Options.engine eller localStorage
  *  `cm0102.engine` = 'original' slår den til). Gemte spil uden feltet (fra før) beholder zonemotoren; localStorage `cm0102.engine` = 'zone'
  *  slår den fra i et spil. */
-export const GRID_ENGINE_DEFAULT = false;
+export const GRID_ENGINE_DEFAULT = true;

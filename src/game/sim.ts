@@ -20,7 +20,7 @@ import { aggregateFor, needsWinnerFn, recordResult, setupLeague, leagueRows } fr
 import { t } from '../i18n';
 import { addDays, ageOn, day, month, weekday, daysBetween } from './dates';
 import { MatchSim, type EngineOptions, type EngineTeam } from './engine/match';
-import { getGridFactory, setGridFactory, type LiveSim } from './engine/liveSim';
+import { GRID_ENGINE_DEFAULT, getGridFactory, setGridFactory, type LiveSim } from './engine/liveSim';
 import { gridFactory } from './engine/grid/adapter';
 import type { Rng } from './rng';
 import { pitchFor, refereeFor, weatherFor, type Pitch, type Weather } from './weather';
@@ -127,9 +127,10 @@ export function userTactic(auto = false, only?: Set<number> | null): Tactic {
   return t;
 }
 
-export function engineTeam(clubId: number, tactic: Tactic): EngineTeam {
+/** `only`: kun disse kan spille (European Squad) – gittermotorens egen holdudtagelse (aiTeamSetup) vælger blandt `players` */
+export function engineTeam(clubId: number, tactic: Tactic, only?: Set<number> | null): EngineTeam {
   const map = new Map<number, Player>();
-  for (const p of squad(clubId)) map.set(p.id, p);
+  for (const p of squad(clubId)) if (!only || only.has(p.id)) map.set(p.id, p);
   const g = gs();
   const talk = clubId === g.userClub && g.matchTalk && g.matchTalk.fixture === g.pendingFixture ? g.matchTalk.boosts : undefined;
   return { club: clubId, tactic, players: map, morale: chemistryMorale(tactic) + motivation(clubId, g.date), talk };
@@ -162,8 +163,8 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   // MATCH_PLAYER::setup (0x6eb045): træningen 0x8b1750 for begge kamptrupper (cmTraining.ts; kun den originale database i ægte tilstand)
   cmTrainSquads(gs(), [...ht.lineup, ...ht.bench, ...at.lineup, ...at.bench].filter(Boolean) as number[], f.id);
   return {
-    home: engineTeam(f.home, ht),
-    away: engineTeam(f.away, at),
+    home: engineTeam(f.home, ht, euroOnly(f.home, f.comp)),
+    away: engineTeam(f.away, at, euroOnly(f.away, f.comp)),
     neutral: f.stage === 'F',
     needsWinner: needsWinnerFn(f),
     weather: weatherFor(f),
@@ -184,12 +185,17 @@ export const ORIGINAL = { finish: 2.1, homeAdv: 2.2, finSlope: 20, squash: 0.48,
 export const ORIGINAL_FINISH = ORIGINAL.finish;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
+/** europæiske kampe: kun den tilmeldte trup (European Squad); færre end 11 spilleklare tilmeldte (fx en tom liste): så gælder
+ *  tilmeldingen ikke (*estimeret* – ellers stod holdet uden spillere) */
+function euroOnly(club: number, comp?: string): Set<number> | null {
+  const g = gs();
+  const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
+  return reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+}
+
 function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, comp?: string): Tactic {
   const g = gs();
-  // europæiske kampe: kun den tilmeldte trup (European Squad)
-  const reg = comp && g.comps[comp]?.type === 'continental' ? euroRegistered(club) : null;
-  // færre end 11 spilleklare tilmeldte (fx en tom liste): så gælder tilmeldingen ikke (*estimeret* – ellers stod holdet uden spillere)
-  const only = reg && squad(club).filter((p) => reg.has(p.id) && available(p)).length >= 11 ? reg : null;
+  const only = euroOnly(club, comp);
   if (club === g.userClub && g.userClub) return userTactic(userAuto, only);
   if (isHumanClub(club)) {
     const o = ownerOf(club);
@@ -214,7 +220,8 @@ export function gridEngineOn(g: GameState): boolean {
   let dev: string | null = null;
   try { dev = typeof localStorage !== 'undefined' ? localStorage.getItem('cm0102.engine') : null; } catch { dev = null; }
   if (dev === 'zone') return false;
-  return g.options.engine === 'original' || dev === 'original';
+  // GRID_ENGINE_DEFAULT (staging, 12/11 – ejerens ønske): også spil uden valg (gemt før runde 8) får gittermotoren; 'zone' fravælger den
+  return g.options.engine === 'original' || dev === 'original' || (g.options.engine === undefined && GRID_ENGINE_DEFAULT);
 }
 
 /** Gittermotoren koster ~40 ms pr. kamp mod zonemotorens ~4 ms (målt 11/11, bundtet): den spiller menneskets kampe og kampene i

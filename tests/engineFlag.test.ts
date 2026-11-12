@@ -30,7 +30,7 @@ describe('kampmotoren bag et flag', () => {
     // runde 8: nye spil i ægte tilstand med den originale database får gittermotoren som standard (GRID_ENGINE_DEFAULT)
     expect(g.options.engine).toBe(GRID_ENGINE_DEFAULT ? 'original' : undefined);
     g.options.engine = undefined;
-    expect(gridEngineOn(g)).toBe(false); // ikke valgt (gamle spil = 'zone')
+    expect(gridEngineOn(g)).toBe(GRID_ENGINE_DEFAULT); // ikke valgt (gamle spil): standarden
     g.options.engine = 'zone';
     expect(gridEngineOn(g)).toBe(false);
     g.options.engine = 'original';
@@ -55,7 +55,7 @@ describe('kampmotoren bag et flag', () => {
 
   it('fabrikken giver MatchSim, når flaget er slået fra – også med en registreret gittermotor', () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
-    g.options.engine = undefined;
+    g.options.engine = 'zone';
     const [h, a] = pair();
     let used = 0;
     const fake = (...args: ConstructorParameters<typeof MatchSim>): LiveSim => { used++; return new MatchSim(...args); };
@@ -77,7 +77,7 @@ describe('kampmotoren bag et flag', () => {
   }, 60_000);
 
   it('samme frø giver samme kamp gennem fabrikken som med quickMatch', () => {
-    start(load('world-original.json'), 'Arsenal', 'authentic').options.engine = undefined;
+    start(load('world-original.json'), 'Arsenal', 'authentic').options.engine = 'zone';
     const [h, a] = pair();
     const x = makeQuickMatch(h, a, { fixtureId: 7 }, new Rng(42));
     const y = quickMatch(h, a, { fixtureId: 7 }, new Rng(42));
