@@ -41,6 +41,13 @@ export const DIST: number[][] = ([
 ] as number[][]).map((r) => r.map((v) => Math.fround(v)));
 export const dist = (x1: number, y1: number, x2: number, y2: number) =>
   DIST[Math.abs(y1 - y2)][Math.abs(x1 - x2)];
+/** Tabellen som originalen slår den op fladt: [|dy|·9 + |dx|] (byte-forskelle). Med bolden uden for banen (x −1/9, y −1/12) kan indekset nå
+ *  forbi tabellen – originalen læser så de følgende bytes (strengen "CM3_MATCH_ENGINE::setup()\nNon Playing me…" ved 0xa16014) som float. */
+const DIST_FLAT: number[] = [...DIST.flat(), 1.2920056573274882e+19, 212.2550811767578, 827838976.0, 3300.579833984375, 7.178807161462832e+22,
+  1.334814488215992e-14, 6.376619489841903e+28, 1.0064388613965712e+27, 1.8064186345523902e+28, 6.998741088641566e+22, 4.543427629910841e+30,
+  1.951852596507689e-19, 2.661701418953837e+23];
+export const distFlat = (x1: number, y1: number, x2: number, y2: number) =>
+  DIST_FLAT[(((Math.abs(y1 - y2) << 24) >> 24) * 9 + ((Math.abs(x1 - x2) << 24) >> 24))] ?? 0;
 
 export type Side = 0 | 1; // side 0 defends y=0 and attacks (4,11)
 
@@ -444,13 +451,17 @@ export function agitationDecay(p: Player): void {
 
 /** sub_6bd6b0: counter-attack flag (only for teams with 0x1000). */
 export function counterFlag(m: Match, side: Side, rand: Rand): boolean {
+  // 0x6bd6cc–0x6bd731: modstandernes antal i gittercellernes lister (engine+0x215e + 90·(12x + y) + 0x58 + modstanderside) – kun spillere,
+  // der står i en liste (på banen), tælles
+  const cells = (m as unknown as { cells?: unknown[][] }).cells;
   let s = 0;
   for (const q of m.players) {
-    if (!q.active || q.side === side) continue;
+    if (q.side === side) continue;
+    if (cells ? !((q as unknown as { cell: number }).cell >= 0) : !q.active) continue;
     if (side === 0 && q.y <= 5) s += 6 - q.y;
     if (side === 1 && q.y >= 6) s += q.y - 5;
   }
-  return s > rand(15) + 30;                                    // 0x6bd733
+  return ((s << 16) >> 16) > rand(15) + 30;                    // 0x6bd733 (movsx edx, si)
 }
 
 // ------------------------------------------------------------------ the loose ball (sikkert)

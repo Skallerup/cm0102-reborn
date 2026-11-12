@@ -286,26 +286,28 @@ const L_703eca = (E: ShotEnv, f: F): void => {
 
 /** sub_6ce310(side, &egne, &modst., &s26, &s4e, &s4f, medMål) (sikker; ingen tal): stillingen (+ første kamp) set fra siden */
 function ce310(E: ShotEnv, f: F, side: Side, add: number) {
+  const r = score6ce310(E, side, add);
+  f.s12 = r.own; f.s13 = r.opp; f.s26 = r.away; f.s4e = r.twoLeg; f.s4f = r.k3;
+}
+/** sub_6ce310 som rene ud-værdier (bruges også af sub_70a910/sub_70c040 i intoGoal.ts) */
+export function score6ce310(E: ShotEnv, side: Side, add: number): { own: number; opp: number; away: number; twoLeg: number; k3: number } {
   const fx = X(E).fixture, m = E.m;
-  f.s12 = 0; f.s13 = 0; f.s26 = 0; f.s4e = 0; f.s4f = 0;
+  let away = 0, twoLeg = 0, k3 = 0;
   let a0 = 0, a1 = 0;                                                                     // local13 (side 0) / bl (side 1)
   if (side === 0) { if (add) a0 = 1; } else if (add) a1 = 1;
-  // esi = egne (s12 for side 0, s13 for side 1), edi = de andre
-  let own = side === 0 ? m.goals[0] : m.goals[1], opp = side === 0 ? m.goals[1] : m.goals[0];
   // NB: side 0: [esi] = s12 = +0xf5bd (side 0), [edi] = s13 = +0xf5f3; side 1: [esi] = s13 = +0xf5bd, [edi] = s12 = +0xf5f3
   let sA = m.goals[0], sB = m.goals[1];                                                   // [esi] = +0xf5bd, [edi] = +0xf5f3
   const k = fx.kind < 1000 ? fx.kind % 10 : 0;                                            // sub_4b0850(fixture word +0x30)
-  if (k === 3) f.s4f = 1;
+  if (k === 3) k3 = 1;
   if (fx.firstLeg) {                                                                      // fixture+0x4b ≠ 0xff
     sA = s8(sA + fx.firstLeg[0]); sB = s8(sB + fx.firstLeg[1]);
-    f.s4e = 1;
+    twoLeg = 1;
     if (s8(sA) + a0 === s8(sB) + a1 && !(fx.flags & 4) && !((fx.flags & 0x4000) && m.periodEnd <= 0x3de)) {
-      if (side === 0) { if ((m.goals[1] & 0xff) + a0 < s8(fx.firstLeg[0])) f.s26 = 1; } // 0x6ce406
-      else if ((m.goals[1] & 0xff) + a1 > s8(fx.firstLeg[0])) f.s26 = 1;                  // 0x6ce421
+      if (side === 0) { if ((m.goals[1] & 0xff) + a0 < s8(fx.firstLeg[0])) away = 1; }   // 0x6ce406
+      else if ((m.goals[1] & 0xff) + a1 > s8(fx.firstLeg[0])) away = 1;                   // 0x6ce421
     }
   }
-  if (side === 0) { f.s12 = sA; f.s13 = sB; } else { f.s13 = sA; f.s12 = sB; }
-  void own; void opp;
+  return side === 0 ? { own: sA, opp: sB, away, twoLeg, k3 } : { own: sB, opp: sA, away, twoLeg, k3 };
 }
 
 // ------------------------------------------------------------------ 0x7040cb–0x704b0f: afbrænderne

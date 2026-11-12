@@ -125,11 +125,19 @@ export function drainCondition(p: GP, type: number): void {
  *  ikke i handlingsevnerne, så det er en no-op her). */
 export function adjustMorale(p: GP, delta: number, rand: Rand): boolean {
   const old = p.morale;
-  if (delta > 0) { if (p.morale + delta > 10) { if (rand(21) < p.morale + delta) p.morale += rand(delta + 1); } else p.morale += delta; }
-  else if (delta < 0) { if (p.morale + delta < 10) { if (rand(11) > p.morale + delta) p.morale += randS(rand, delta - 1); } else p.morale += delta; }
-  else return false;
-  if (p.rating >= 7500) p.morale = Math.max(p.morale, ftol(0.004 * p.rating - 20.5));
-  p.morale = clamp(p.morale, 1, 20);
+  // 0x7172db–0x7172fc: delta 0 og engine+0x477a = −1 (kampens spiller – sat først af sub_6d0f80 ved slutfløjt) → nej, medmindre karakteren > 7500
+  // og moralen < 10 (så løfter gulvet nedenfor moralen)
+  if (delta === 0 && (p.rating <= 0x1d4c || p.morale >= 10)) return false;
+  let al: number;
+  const md = p.morale + delta;
+  // 0x717321 / 0x717353: over 10 (op) eller under 10 (ned) kræver rullet – ellers hele delta (0x717373: moral + delta; før gav porten 0)
+  if (delta > 0 && md > 10) al = rand(21) < md ? rand(delta + 1) + p.morale : md;
+  else if (delta < 0 && md < 10) al = rand(11) > md ? randS(rand, delta - 1) + p.morale : md;
+  else al = md;
+  al = (al << 24) >> 24;                                                                    // byte
+  if (p.rating >= 0x1d4c) al = ftol(Math.max(al, 0.004 * p.rating - 20.5));                 // 0x717386–0x7173bd (0x968d60, 0x96d868)
+  al = (al << 24) >> 24;
+  p.morale = clamp(al, 1, 20);
   return p.morale !== old;
 }
 

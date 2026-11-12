@@ -16,10 +16,11 @@ describe('gittermotoren i låsetrin med originalen', () => {
   // [fixtur, identiske tik, mindst så mange tal]
   for (const [name, ticks, rands] of [
     ['lockstep-pl1', 11, 8500],   // 299–1873, sporet ls7 (tik 0–10)
-    ['lockstep-pl0', 51, 38500],  // 299–1873, ls12 (med konditionsposter, turene og 0x6df460)
-    ['lockstep-pl2', 85, 64000],  // 794–538 (mål, landingens dom, modtagelsen ved boldhøjde 4)
-    ['lockstep-pl3', 25, 19000],  // 981–1780
-    ['lockstep-pl7', 101, 79500], // 1349–1312 (to mål, afsparket efter mål, rullene efter sub_6eecb0)
+    ['lockstep-pl0', 158, 119500],  // 299–1873, ls16 (fjerde runde: zonevalget ZP, samspillet RC/CP, sub_6ec010 MV)
+    ['lockstep-pl2', 193, 150000],  // 794–538 (mål, landingens dom, modtagelsen ved boldhøjde 4, frispark)
+    ['lockstep-pl3', 25, 19000],    // 981–1780 (ls12)
+    ['lockstep-pl7', 158, 122000],  // 1349–1312 (to mål, afsparket efter mål, sub_6ec010 efter moralændringer)
+    ['lockstep-pl16', 236, 180500], // 1738–1689 (2. spillerunde: rødt kort og omrokering, kampværdierne i kampen)
   ] as const) {
     it(`${name}: de første ${ticks} tik`, async () => {
       const r = await run(name, ticks);

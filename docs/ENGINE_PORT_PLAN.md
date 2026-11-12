@@ -756,3 +756,33 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   eget mål, ikke porteret – limens intoGoal er en stub; også sub_70a910), kamp 0 tik 51/7 tik 101/4 tik 27 (turens slutfelt – et skridt i
   0x6f09f0), kamp 5 tik 36 (sub_713fc0: porten står i sit taktiske felt, originalen ikke – 0x6c2be0/0x715f50/0x6c4180), kamp 2 tik 85/6 tik 64
   (en spillers +0x2b efter tikket), kamp 3 tik 25 (boldholder/linje efter tikket).
+- 2026-11-12 – **Låsetrin, fjerde runde: sub_70a910/sub_70c040, sub_6ec010 og 15 oversættelsesfejl; identiske tik (ls16, 20 PL-kampe – 1. og 2. spillerunde)
+  kamp 0 51→158, 1 10→186, 2 86→193, 3 26→39, 4 27→108, 5 36→116, 6 65→196, 7 101→158, 8 25→98, 9 24→155, 10 46→101, 11 13→44, 12 31→79,
+  13 14→36, 14 35→80, 15 25→164, 16 2→236, 17 30→175, 18 105→251, 19 39→119.** **Nyt:** `grid/intoGoal.ts` = sub_70a910 (bolden mod modstandernes
+  mål fra en løs bold/aflevering: skudscoren (rand(1000) − rand(2000))·(fart + 1)/afstand, keeperværdien, resultatkoden, mål med debut/jubilæum/
+  hattrick-kommentarer, annulleret mål, stillingskommentarerne, redning/parade/hjørne/grebet) og sub_70c040 (mod eget mål: selvmål – `GridListener.ownGoal`,
+  adapteren). `grid/matchValues.ts` (underagent) = hele sub_6ec010 (kamp-CA +0x3b og de 34 kampfloats; 28.905/28.905 kald bit for bit mod oraklet,
+  `scripts/mv-check.ts`, tests/matchValues.test.ts), kaldt først i limens recompute (sub_6eecb0 0x6eecb9) med spillets data fra
+  `GridMatchCtx.matchValuesEnv` og motorens dynamiske felter (publikumsbyten, samspillet engine+0x1ce, taktikkens positionsord, anføreren) –
+  *uden env (spillet i dag) regnes kampværdierne ikke igen i kampen*. **Rettet (adresse):** keeperværdien 0x700420 helt (grundværdien = handlingsevnen
+  +0x168/+0x16a, afstanden til BOLDEN 0x70045e – flad tabel med bytes efter tabellen for bolden uden for banen, mål imod = keeperens +0xf 0x700a5d,
+  ftol-overløb); vejrets skudled 0x701911–0x70195a (det store rul først); skud tæller ikke +0x2b op (0x713cc0); +0x8eb1 = 6 kun ved direkte frispark
+  (0x710e9d – før alle skud, så det taktiske felt 0x6c2ca5 lod spillere "blive stående"); sub_7172d0 (moralen: delta 0 med karakter > 7500, hele delta
+  når rullet fejler 0x717373); sub_6eecb0 trækker ALTID rullene (argumentet bruges ikke) – også i holdets samspil 0x6bbb60 og omrokeringen 0x6e1aa0
+  (hver fordelt spiller); samspillets klub/kontrakt 0x4cf5a0/0x4cf5f0 (klubposten = [0xae23b4] + 581·[r+4]) og anføreren 0x897590; genvalgets
+  ligagren 0x6e1312 (hold+0x1a = 3); sub_6c54a0 0x6c5a1c–0x6c6258 (computerens holdflag pr. tilstand 1–5 med managerens Attacking +0xe/Directness
+  +0x13, publikumsbyten, aiR og taktiknavnet; tilstand 1 → sub_6d10a0 fremadløbet 0x800000 ved > 8500, ellers 0x400000 kun for pladserne på banen;
+  stilkommentaren med sub_6ce310's svar); sub_6bd6b0 (kontraflaget fra cellelisterne); pick_taker 0x6ceb90 (indlægsfrisparket ved d < 6,1 – noten
+  havde ≥; keeperen kun med BOLDEN i eget felt 0x6cec81); boldholderens moral (+0x17, før 10), +0x11 og modstanderne med gult kort i feltet (0x713058,
+  før 0); +0x1a8 er ÉN byte (golden goal = loop.ts paused). **Sporet** (`match_trace.c`, kun nye linjer): DT (dato, fixture), MG (managerblokken
+  +0x904b/+0x904d/+0x9051/+0x905d), CP/RC (anfører, klub/kontrakt/0x6ebd70 pr. spiller), ZP/ZR (zonevalget og dets kandidater), MV/MVr/MVO
+  (sub_6ec010's indgange og udgange – underagenten). Låsetrinet sammenligner ZP og MVO (LOCKZP=1/LOCKMV=1 viser dem), injicerer samspillet
+  engine+0x1ce. **Test:** fixturerne pl0 158 tik, pl2 193, pl7 158 og ny pl16 236 (2. spillerunde: rødt kort og omrokering). **Sæsontal** (380 kampe
+  frø 1/2/3): mål 2,10/2,07/2,33 → 2,15/2,17/2,33 · skud 13,9/14,3/14,1 → 15,7/15,0/15,2 · på mål 7,4/7,6/7,5 → 8,1/7,7/7,9 · hjørner 3,9/4,0/3,8 →
+  4,2/4,0/3,9 · frispark 7,5/7,4/7,3 → 7,5/7,0/7,3 · offside 4,1/4,2/4,3 → 4,3/4,3/4,4 · gule 1,65/1,69/1,65 → 1,72/1,51/1,68 · H/U 44/27, 45/28, 49/22 →
+  46/27, 45/27, 46/26. **Pokalkamp** med forlænget spilletid (spor `oracle/runs/cup1.txt`, turnering 72, kamp 42 = 11–1873, 1.615 tik): afviger i tik 0
+  (knock-tjekket 0x6cfe10/0x6d0125 for en spiller med skadepost type −1 – 0x62ec00 læser 0x9e7ad9 − 13 = 65; låsetrinet sætter kategorien, men
+  porten tager stadig rand(25)-vejen). **Tilbage (første afvigelser):** genvalget 0x6e1090 (porten skifter ud, hvor originalen ikke gør – kamp 1/2/4/8/9/15;
+  spillerværdierne 0x6e2f20 i låsetrinet er spillets skøn), omrokeringen efter rødt kort (kamp 13: pladsen og taktikkens ord – 0x6cdd50/0x6e1aa0), det
+  taktiske felt for forsvareren (kamp 10/11 tik 101/44: porten flytter, originalen bliver – 0x6c2be0), kommentarens kombination (kamp 3/5/14: rand(370)
+  ≠ rand(270) 0x6d71be, 0x6d5d8f), zonevalget (kamp 17 tik 175), kampværdierne efter omrokering (kamp 0/18: rullenes lofter 0x6f4506).

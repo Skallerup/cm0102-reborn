@@ -61,6 +61,15 @@ export interface MatchSubsEnv {
   compType: number;
   onSub?: (on: GP, off: GP, auto: boolean) => void;
   onCarriedOff?: (p: GP) => void;
+  /** hele sub_6eecb0(q) (limens recompute: handlingsevner, lofter og rullene sub_6f44a0 – trækker tal) */
+  refresh?: (q: GP) => void;
+  /** sub_6e1090 0x6e1312–0x6e1333: hold+0x1a = 3 (fixture+0x40/+0x41 ≠ 0) og 0x48f150(turneringen fixture+0 → [0xadadfc], klubben) – klubben
+   *  spiller i turneringen (ligaen); så 0x10000 i stedet for 0x100 ^ 0x80000. *estimeret* for porten: ligakamp (GridMatchCtx.league) */
+  leagueBranch?: boolean;
+  /** kun låsetrinstesten (scripts/lockstep.ts RC/CP-linjerne): spillets data for holdets samspil sub_6bbb60 – 0x4cf5a0 (klub, +0x80 omdømme),
+   *  0x4cf5f0 (kontrakten, +0x45) og 0x6ebd70's byte – og anføreren 0x897590 (indekset i holdets blok) */
+  cohesionOf?: (q: GP) => { club: boolean; clubRep: number; contract: boolean; b45: number; x: number } | undefined;
+  captainIdx?: (s: Side) => number | undefined;
   /** computerens udtagelse pr. side (aiTeam.ts): rammerne, anføreren (hold+0x3b) og dødboldsskytterne (+6/+0xa/+0xe) – 0x6e2f20 under kampen */
   aiPick?: [{ ctx: AiPickCtx; captain: number | null; setPieces: number[] } | null, { ctx: AiPickCtx; captain: number | null; setPieces: number[] } | null];
 }
@@ -183,7 +192,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     const res = reselect(rand, {
       players: list.map(toSub), subsLeft: subsLeft[s], benchSize: benchSize[s], keeperOut, clock: m.clock, periodEnd: env.periodEnd(),
       posOf, attOf, slotSpec: specOf(s), score: scoreOf(s),
-      flags: { national: false, assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: false, b16: false, humanClubOption: false },
+      flags: { national: false, assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: env.leagueBranch ?? false, b16: false, humanClubOption: false },
     });
     subsLeft[s] = res.subsLeft;
     const before = new Map(list.map((q) => [q, q.slot]));
@@ -242,10 +251,12 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     retactic(s);
     const list = sideOf(s);
     const r = rearrange({ players: list.map(toSub), posOf, attOf, slotSpec: specOf(s), score: scoreOf(s), flags: 0x8800 });
-    for (const after of r.moved) { const q = byId(s, after.id); if (q.slot !== after.slot) applySlot(q, after.slot, slotTab[s][after.slot]); }
+    // 0x6e1c6f–0x6e1cae: hver af de fordelte får sin plads (+0x19) og sub_6eecb0 – også når pladsen er den samme
+    for (const after of r.moved) { const q = byId(s, after.id); if (q.slot !== after.slot) applySlot(q, after.slot, slotTab[s][after.slot]); env.refresh?.(q); }
   };
-  /** 0x6eecb0(p, 1): positionstilpasningen +0x37 og handlingsevnerne regnes igen (kamp-CA'en 0x6ec010 med samspillet er ikke porteret) */
-  const recompute = (q: GP) => applySlot(q, q.slot, undefined);
+  /** sub_6eecb0(p) (argumentet bruges ikke): positionstilpasningen +0x37, handlingsevnerne, lofterne og rullene sub_6f44a0 (0x6f05b9 – trækker
+   *  tal; før uden rullene) */
+  const recompute = (q: GP) => { applySlot(q, q.slot, undefined); env.refresh?.(q); };
   /** sub_6bbb60(side): holdets samspil. Hver spiller på banen: −500 hvis hans plads' formationsbit (0x5b5a60) allerede er talt (summen, ikke
    *  OR); med kontrakt og klub: rand(20) < Influence, rand(7000) < omdømmet (+0xb), rand(6) > Professionalism, omdømmet > klubbens − 750 og
    *  kontraktflag & 0x17a0b → −3x (anføreren), −2x (rand(Professionalism) = 0) eller −x; alle undtagen anføreren (0x897590): +x, x = 0x6ebd70
@@ -254,19 +265,22 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     let w = 0, acc = 0;
     if (m.bAf) m.bAf[s] = 0;                                                         // engine+0xaf+side
     const list = sideOf(s), ap = env.aiPick?.[s];
-    const capQ = (ap?.captain != null ? list.find((q) => q.src.id === ap.captain) : undefined) ?? list[0];   // 0x897590 (ikke fundet → 0)
+    const ci = env.captainIdx?.(s);
+    const capQ = ci !== undefined ? list[ci] : (ap?.captain != null ? list.find((q) => q.src.id === ap.captain) : undefined) ?? list[0];   // 0x897590 (ikke fundet → 0)
     const ctx = ap?.ctx ?? {};
     for (const q of list) {
       if (q.slot < 0) continue;
       const bit = FORM_BIT[q.pos] ?? 0;
       if (acc & bit) w = s16(w - 500);
       acc = (acc + bit) | 0;
-      const p = q.src, rec = playerRecord(p);
-      const x = () => s8(captainBase(captainInputOf(p, ctx, env.rep[s])));
-      if (p.contract && p.club) {
-        const curRep = s16(rec[0xb] | (rec[0xc] << 8));
-        if (s8(rec[0x2f]) > rand(20) && curRep > rand(7000) && s8(sh(p, 'professionalism')) < rand(6) && curRep > s16(env.rep[s] - 750)
-          && ((p.cmContract?.b45 ?? 0) & 0x17a0b)) {
+      // spillerposten: originalens bytes, når låsetrinstesten har dem (GP.recRaw), ellers bygget af spillerens data
+      const p = q.src, rec = q.recRaw ? Array.from(q.recRaw, (b) => b & 0xff) : playerRecord(p), cd = env.cohesionOf?.(q);
+      const x = () => cd ? s8(cd.x) : s8(captainBase(captainInputOf(p, ctx, env.rep[s])));
+      // 0x6bbbff–0x6bbc46: klubben (0x4cf5a0 → [0xae23b4] + 581·[r+4]) og kontrakten med den (0x4cf5f0)
+      if (cd ? cd.club && cd.contract : p.contract && p.club) {
+        const curRep = s16(rec[0xb] | (rec[0xc] << 8)), clubRep = cd ? cd.clubRep : env.rep[s];
+        if (s8(rec[0x2f]) > rand(20) && curRep > rand(7000) && s8(sh(p, 'professionalism')) < rand(6) && curRep > s16(clubRep - 750)
+          && ((cd ? cd.b45 : p.cmContract?.b45 ?? 0) & 0x17a0b)) {
           if (q === capQ) w = s16(w - 3 * x());
           else if (rand(s8(sh(p, 'professionalism'))) === 0) w = s16(w - 2 * x());
           else w = s16(w - x());
@@ -305,6 +319,8 @@ export function makeMatchSubs(env: MatchSubsEnv) {
 
   return {
     subsLeft, benchSize, lastChange, cohesion,
+    /** taktikkens positionsord pr. plads (engine+0x91e2+6371·side +0x12d/+0x14e), som pladserne er udfyldt – sub_6ec010 (0x6d5b20/0x6d5af0) */
+    slotWords: (s: Side, j: number) => slotTab[s][j] ? { pos: slotTab[s][j].pos, posAttack: slotTab[s][j].posAttack } : undefined,
     /** init_match 0x6b8bc5–0x6b8bd5: sub_6bbb60(0), sub_6bbb60(1), sub_6bbf60 ved kampstart (kaldt af gridMatch.ts) */
     kickoffSetup() { doCohesion(0); doCohesion(1); doMarking(); },
     state: (q: GP) => st.get(q),

@@ -242,9 +242,10 @@ export function shotScore(c: ShotContext, rand: Rand, preset: number = 0xff): Sh
   if (c.D > 2.2 && !inAttackingBox(c.side, c.x, c.y)) {               // 0x96d7d0
     fromDistance = true;
     if ([SHOT.HIGH_DRIVE, SHOT.CHIP, SHOT.LOB, SHOT.HOPE].includes(type as never)) {
-      if (c.weather === 2) S += rand(2) - rand(5);
-      else if (c.weather === 3) S += rand(5) - rand(10);
-      else if (c.weather === 4) S += rand(10) - rand(15);
+      // 0x701943/0x70192a/0x701911: det store rul trækkes først (ebp), så det lille (eax): S += eax − ebp
+      if (c.weather === 2) { const b = rand(5); S += rand(2) - b; }
+      else if (c.weather === 3) { const b = rand(10); S += rand(5) - b; }
+      else if (c.weather === 4) { const b = rand(15); S += rand(10) - b; }
     } else if (type === SHOT.LOW_DRIVE) {
       if (c.matchByte1 === 2) S += rand(4);
       else if (c.matchByte1 === 0x20) S += rand(5) - rand(5);
@@ -304,12 +305,12 @@ export function footCheck(type: number, angleToGoalMinusFacing: number, D: numbe
 // ---------------------------------------------------------------- sub_700420 (keeper)
 
 export interface KeeperContext {
-  base: number;           // keeperBase(...)
+  base: number;           // word +0x16a (arg3 ≠ 0, "høj") eller +0x168 = handlingsevnen 0x28/0x27 (0x700440–0x700455)
   w3b: number;            // keeper word +0x3b (match CA)
   reflexes: number;       // +0xd1
-  goalsConceded: number;  // byte +0xf (guessed meaning)
-  b8eaa: number;          // match+0x8eaa – TODO unknown
-  distToBall: number;     // d
+  goalsConceded: number;  // byte +0xf (keeperens mål imod – tælles op i 0x70ae8f/0x70c518)
+  b8eaa: number;          // match+0x8eaa (boldens fart)
+  distToBall: number;     // tabellen 0xa15e44[|ky − bold y|·9 + |kx − bold x|] (0x70045e–0x7004ab: BOLDEN engine+0x8ea7/+0x8ea8, ikke skytten)
   isKeeper: boolean; down: number; side: 0 | 1; x: number; y: number;
   covers: boolean;        // sub_713d90 – TODO not ported
 }
@@ -338,7 +339,9 @@ export function keeperValue(k: KeeperContext, shooter: { x: number; y: number },
     else K = R(e) + far();
   }
   const g = trunc(2 * k.reflexes + k.goalsConceded + 10);                     // 0x700a72
-  const hh = trunc((2 - k.distToBall) * k.b8eaa * 10);
+  // 0x700a87–0x700aa2: (2,0 − d)·fart·10 → ftol (x87: uden for int32 → 0x80000000 – afstanden kan komme fra hukommelsen efter tabellen)
+  const hv = (2 - k.distToBall) * k.b8eaa * 10;
+  const hh = hv >= 2147483648 || hv < -2147483648 || hv !== hv ? -2147483648 : trunc(hv);
   let fumble = false;
   if (!(rand(g) > rand(hh))) { fumble = true; K = R(K); }                     // 0x700adf
   return { K: trunc(0.5714285714285714 * K + idiv(k.base, 6) + 20), state, fumble }; // 0x96d698, 0x968ea8

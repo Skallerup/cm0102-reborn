@@ -58,6 +58,8 @@ export interface ShotEnv {
   highFlag(type: number): boolean;
   /** sub_700420: keeperværdien (shot.ts keeperValue) */
   keeperValue(k: GP | null, p: GP, type: number): { K: number; state: number; fumble: boolean };
+  /** sub_700420(k, x, y, høj, type) med alle argumenter (sub_70a910/sub_70c040 kalder den med type −1 og boldhøjde > 3) */
+  keeper700420(k: GP | null, x: number, y: number, high: boolean, type: number): { K: number; state: number; fumble: boolean };
   /** sub_6c87e0(p, side, action, …, flag9) – challenge.ts getOppositionChallenge */
   challenge(p: GP, side: Side, action: number, flag9: number): ShotChallenge;
   /** sub_6cfe10(A, codeA, B, codeB, offBall): knock-tjekket */
@@ -107,6 +109,8 @@ export interface ShotEnv {
   notAhead(side: Side): boolean;
   /** limens bogføring ved målet (0x7071f2): statistik og lytteren – ingen tal */
   onGoal(p: GP): void;
+  /** limens bogføring ved et selvmål (sub_70c040 – p er den, der rørte bolden sidst) */
+  onOwnGoal?(p: GP): void;
   /** 0x708e39: afspark efter målet (+0x8eae, +0xf582, +0x8eb2 = 8, engine+0x1ca = 0) */
   kickoffAfterGoal(side: Side): void;
   /** fixture+0x1c/+0x20 → klub +0x53 og +0x77 == 8 (klubtypen kendes ikke i porten) */
