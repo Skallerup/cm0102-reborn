@@ -16,7 +16,7 @@ import type { Fixture, GameState, MatchReport, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
 import { gs, hasGame } from './state';
-import { contractLanguageNibble, languageDay } from './cmLanguage';
+import { contractLanguageNibble, languageDay, languageFluency } from './cmLanguage';
 
 /** gælder kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
 export function cmActive(g: GameState): boolean {
@@ -601,8 +601,73 @@ export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[
     if (!active && doy !== a && doy !== b && doy !== e && Math.round((p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, 0])[1] * 50) < 4750) continue;
     const rand = cmRand(g.seed, p.id, day, 0x5ce2d0);
     if (!STAFF_STATE_OFF) staffStateDay(g, p, c, rand);                                // 0x5ce4b6–0x5cf481 kommer før kontraktdelen 0x5cf57c
+    if (!MORALE_OFF) moraleDay(g, p, rand);                                             // 0x5cf4c8–0x5cf578
     withFlagCtx(g, p, rand, () => contractDayPlayer(g, p, c, rand));
   }
+}
+
+// ---------------------------------------------------------------- moralen (spillerposten +0x45) – runde 10A
+
+/** MORALE_OFF: til målinger – den daglige moral (0x5cf4c8) slået fra (spillets egen glidning mod 13 bruges så heller ikke) */
+export let MORALE_OFF = false;
+export const setMoraleOff = (v: boolean) => { MORALE_OFF = v; };
+
+/** staff_adjust_morale 0x544710(staff, d, flag): m = spillerposten +0x45; d > 0 og m + d > 10: rand(21) < m + d → m + rand(d + 1), ellers m + d;
+ *  d < 0 og m + d < 10: rand(trunc((Influence +0x2f + Pressure + Determination)/3)) > m + d → m + rand(d − 1), ellers m + d; 1..20; flag og d > 0 med
+ *  kontraktklager (+0x45 ≠ 0): aldrig over m. Returnerer, om moralen ændrede sig. */
+export function cmAdjustMorale(p: Player, d: number, flag: boolean, rand: (n: number) => number): boolean {
+  d = s8(d);
+  if (!d) return false;
+  const m = s8(Math.round(p.morale ?? 10));
+  let v: number;
+  if (d > 0 && m + d > 10) v = rand(0x15) < m + d ? s8(rand(d + 1) + m) : s8(m + d);
+  else if (d < 0 && m + d < 10) {
+    const k = Math.trunc((s8(sh(p, 'influence')) + s8(sh(p, 'pressure')) + s8(sh(p, 'determination'))) / 3);
+    v = rand(k) > m + d ? s8(rand(d - 1) + m) : s8(m + d);
+  } else v = s8(m + d);
+  v = v < 1 ? 1 : v > 0x14 ? 0x14 : v;
+  if (flag && d > 0 && (p.cmContract?.b45 ?? 0) !== 0 && v >= m) v = m;
+  p.morale = v;
+  return v !== m;
+}
+
+/** game_spread_squad_morale_by_leadership 0x5ce0b0 (dagligt efter 0x5ce2d0, 0x5cd9f6): for hver klub (ikke landshold, 0x53b900) med rand(7) = 0:
+ *  over truppens pladser (+0xd7) – databasens spillere (id < [0xae2364]) i klubben med spillerpost: I = Σ Influence (+0x2f), S = Σ kontrakt
+ *  +0x44·Influence (kun med kontrakt), n = antal; n < 16 → I += 10·(16 − n). I ≠ 0: for hver (kontrakt +0x44 eller 0): r = u8(rand(trunc(2S/
+ *  (Influence + I))) + rand(trunc(+0x44/6))); r < 0 og rand(r) < rand(−5) → 0x544710(staff, −1, 1); r > 0 og rand(r) > rand(5) → (+1, 1). */
+export function cmSquadMoraleDaily(g: GameState, squadOf: (club: number) => Player[]): void {
+  if (!cmActive(g) || MORALE_OFF) return;
+  const day = dayNum(g.date);
+  for (const cl of Object.values(g.clubs)) {
+    if (!cl) continue;
+    const rand = cmRand(g.seed, cl.id, day, 0x5ce0b0);
+    if (rand(7) !== 0) continue;
+    const ps = squadOf(cl.id).filter((p) => !p.regen).slice(0, 50);
+    let I = 0, S = 0, n = 0;
+    for (const p of ps) { const c = p.contract ? p.cmContract : undefined; if (!c) continue; const inf = s8(sh(p, 'influence')); I += inf; S += s8(c.b44) * inf; n++; }
+    if (n < 16) I += 10 * (16 - n);
+    if (!I) continue;
+    for (const p of ps) {
+      const b44 = s8((p.contract ? p.cmContract?.b44 : 0) ?? 0);
+      const inf = s8(sh(p, 'influence'));
+      const r = s8(rand(Math.trunc((2 * S) / (inf + I))) + rand(Math.trunc(b44 / 6)));
+      if (r < 0) { if (rand(r) < rand(-5)) cmAdjustMorale(p, -1, true, rand); }
+      else if (r > 0) { if (rand(r) > rand(5)) cmAdjustMorale(p, 1, true, rand); }
+    }
+  }
+}
+
+/** 0x5ce2d0 0x5cf4c8–0x5cf578: rand(10) = 0 → målet bl = 10, i en liga med tabel og under 10 kampe (Comp_Stats +4) 10 + rand(10 − kampe);
+ *  +3 hvis klubben har spilleren blandt sine yndlingspersoner (club +0x9b/+0x9f/+0xa3, 0x547790), −3 blandt de uønskede (+0xa7/+0xab/+0xaf,
+ *  0x5477d0) – felterne er ikke i world-filen (= 0); moralen ≠ bl → 0x544710(staff, trunc((m + bl)/2) − m, 1) */
+function moraleDay(g: GameState, p: Player, rand: (n: number) => number): void {
+  if (rand(0xa) !== 0) return;
+  let bl = 10;
+  const lg = p.club ? g.comps[g.clubs[p.club]?.league ?? ''] : undefined;
+  const row = lg?.type === 'league' ? lg.table.find((r) => r.club === p.club) : undefined;
+  if (row && (row.p & 0xff) < bl) bl = s8(rand(10 - (row.p & 0xff)) + 10);
+  const m = s8(Math.round(p.morale ?? 10));
+  if (m !== bl) cmAdjustMorale(p, s8(Math.trunc((m + bl) / 2) - m), true, rand);
 }
 
 // ---------------------------------------------------------------- staffposten [0xae2d0c] + 79·id + 0xa ("indkøringsbyten")
@@ -613,8 +678,40 @@ export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[
 //   0x5ce2d0 (dagligt, 0x5ce4b6–0x5cf481)      klager, træthed, unge, roller → + rand(…); henfaldet 0x5cf41a
 //   0x62c680 (0x62ca1f, konditionsmodulet)     pr. feriedag rand(Professionalism/3 + 2) = 0 → +1 (< 50) – cmFitness.ts
 //   0x62d250 (0x62d705, ny skade)              pr. skadedag rand(5·Natural Fitness + 12) = 0 → +1 (< 100) – cmFitness.ts
-// Ikke porteret: klubskiftet 0x8c9720 (0x8ca549–0x8ca618: rand(20 − Adaptability) + rand(20 − post +0x2f) + rand(omdømmeforskel/(20·Pressure)),
-// ganget med 1,5 − 0,1·0x7c6830 – kræver PlayerStats' landeerfaring), 0x41a360 (+rand(10)), 0x736c00 (= 0) og disciplinen 0x5a5980.
+//   0x8c9720 (klubskiftet, 0x8ca549–0x8ca618)  rand(20 − Adaptability) + rand(20 − Influence) + rand(omdømmeforskel/(20·Pressure)), ganget med
+//                                              1,5 − 0,1·sprogets flydenhed 0x7c6830 (runde 10A – cmStaffStateMove, kaldt af setClub)
+// Ikke porteret: 0x41a360 (AWOL, +rand(10)), 0x736c00 (mediehistorier, = 0) og disciplinen 0x5a5980 (bøder).
+
+/** TRANSFER_MANAGER::move_player_to_club 0x8c9720 for en spiller med spillerpost (0x8ca23e) i et spil i gang (ikke spilstartens fordeling):
+ *  klubbernes omdømme +0x80 (0x8ca28d–0x8ca334: ny klub + trunc(verdensomdømme +0xd/100), højst 10000; den gamle − trunc(+0xd/100)), så
+ *  staffState (0x8ca3f8–0x8ca618): forskel = max(ny klubs +0x80 − gamle klubs +0x80 (uden gammel klub: postens hjemmeomdømme +0xb), 0);
+ *  bl = u8(rand(20 − Adaptability) + rand(20 − Influence +0x2f) + rand(s16(forskel)/max(20·Pressure, 1))), ftol(bl·(1,5 − 0,1·0x7c6830(spiller,
+ *  ny klub, klubbens sprog +0x77))) som byte, højst 100, lagt til byten (u8). */
+export function cmStaffStateMove(g: GameState, p: Player, from: number, to: number): void {
+  if (!cmActive(g) || p.regen || g.cmFitStart === undefined || !to) return;
+  const world = s16(Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[2] * 50));
+  const reps = g.cmClubRep;
+  if (reps) {
+    if (reps[to] !== undefined) reps[to] = Math.min(10000, s16(reps[to] + Math.trunc(world / 100)));
+    if (from && reps[from] !== undefined) reps[from] = s16(reps[from] + Math.trunc(-world / 100));
+  }
+  if (STAFF_STATE_OFF) return;
+  const home = s16(Math.round((p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2])[1] * 50));
+  const newRep = s16(reps?.[to] ?? 0);
+  let diff = newRep - (from ? s16(reps?.[from] ?? 0) : home);
+  if (diff < 0) diff = 0;
+  let ebp = 20 * shi(p, 'pressure');
+  if (ebp < 1) ebp = 1;
+  const rand = cmRand(g.seed, p.id, Math.round(Date.parse(g.date + 'T00:00:00Z') / 86400000), 0x8c9720);
+  let bl = u8b(rand(20 - shi(p, 'adaptability')));
+  bl = u8b(bl + rand(20 - s8(sh(p, 'influence'))));
+  bl = u8b(bl + rand(Math.trunc(s16(diff) / ebp)));
+  const L = g.nations[g.clubs[to]?.nation ?? -1]?.lang?.[0] ?? 0;
+  const fl = s8(languageFluency(g, p, to, L));
+  let v = Math.trunc(bl * (1.5 - fl * 0.1)) & 0xff;
+  if (v > 100) v = 100;
+  p.cmStaffState = u8b((p.cmStaffState ?? 0) + v) || undefined;
+}
 
 /** STAFF_STATE_OFF: til målinger (grid-stats før/efter) – slår spilstarten og den daglige del fra */
 export let STAFF_STATE_OFF = false;

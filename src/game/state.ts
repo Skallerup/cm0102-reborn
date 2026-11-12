@@ -18,6 +18,7 @@ export function hasGame(): boolean {
 
 import { setEconomy } from './econ';
 import { cmPermitMove } from './cmPermit';
+import { cmStaffStateMove } from './cmPlayerData';
 
 /**
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
@@ -107,7 +108,7 @@ export function setClub(p: Player, club: number) {
   // "utilfreds med sin spilletid" samme dag, han kom – ejerens fejlmelding 2026-11-10)
   if (moved && club) p.unhappy = 0;
   // originalen: statistikken arkiveres (0x7c5fe0) og en ny kontrakt starter (0x4cf720) – cmPlayerData.ts
-  if (moved) { p.cmStats = undefined; p.cmContract = undefined; if (hasGame()) cmPermitMove(gs(), p, club); }
+  if (moved) { p.cmStats = undefined; p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
   if (club) {
     let arr = squadIndex.get(club);

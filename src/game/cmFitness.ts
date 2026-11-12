@@ -106,6 +106,8 @@ const SEASON: Record<number, [number, number]> = {
   149: [237, 158], 154: [81, 313], 160: [215, 143], 170: [82, 328], 171: [244, 164], 179: [96, 298], 192: [216, 140], 196: [81, 5], 207: [229, 125],
 };
 /** landet har en række i sæsontabellen (0x669340 finder den; ellers række 4 med start = slut = dag 180) */
+/** 0xb63d60 +0x2a: landets sæsonstart (dag i året) – spilstartens dato 0x830520 (cmCalendar.ts) */
+export const seasonStartDay = (nation: number | undefined): number | undefined => (nation !== undefined ? SEASON[nation]?.[0] : undefined);
 export const hasSeasonRow = (nation: number | undefined) => nation !== undefined && !!SEASON[nation];
 /** 0x669bd0: [i sæson, start (arg2), slut (arg3)] som dagnumre */
 export function clubSeason(nation: number | undefined, today: number): [boolean, number, number] {

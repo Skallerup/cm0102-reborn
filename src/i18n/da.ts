@@ -1428,7 +1428,7 @@ export const da: Record<string, string> = {
   'opt.save.monthly.hint': 'Gemmer en gang om måneden i spillet. Du kan miste op til en måneds spil ved genindlæsning.',
   'opt.save.off.hint': 'Spillet gemmes kun, når du selv trykker Gem spil. Genindlæser du siden, mister du alt siden sidste gem.', 'opt.speed': 'Kamphastighed',
   'opt.saves': 'Gem / eksportér', 'opt.export': 'Eksportér save-fil', 'opt.exportHint': 'Gem filen og indlæs den på en anden enhed fra startskærmen.',
-  'opt.about': 'Om spillet', 'opt.aboutText': 'CM Reborn er inspireret af de klassiske Championship Manager-spil – bygget fra bunden som web-app med mange nye funktioner. Matchmotoren er vores egen og zonebaseret efter forbillede i CM 01/02 – med den originale database kalibreret mod kampe i det originale spil, med den moderne database mod virkelighedens statistik.',
+  'info.title': 'Om dette spil', 'info.copy': 'Kopiér', 'opt.about': 'Om spillet', 'opt.aboutText': 'CM Reborn er inspireret af de klassiske Championship Manager-spil – bygget fra bunden som web-app med mange nye funktioner. Matchmotoren er vores egen og zonebaseret efter forbillede i CM 01/02 – med den originale database kalibreret mod kampe i det originale spil, med den moderne database mod virkelighedens statistik.',
   'opt.dataCredit': 'Spillerdata: transfermarkt-datasets af David Cariboo (CC0). Attributterne er beregnede og ikke officielle.',
 
   // nyheder

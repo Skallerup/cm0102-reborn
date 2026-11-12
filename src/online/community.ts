@@ -31,7 +31,7 @@ export const similar = (title: string) => get<{ items: Suggestion[] }>(`similar=
 export const getPoll = () => get<{ poll: { id: string; title: string; ends: string; items: (Suggestion & { pollVotes: number })[]; mine: number | null } | null }>(`poll=1${me()}`);
 export const myVotes = () => (getProfile() ? get<{ used: number; budget: number; canVote: boolean }>(`me=1${me()}`) : Promise.resolve(null));
 
-export const suggest = (d: { title: string; body: string; cat: string; lang: string; image?: string }) => post<{ ok: true; id: number }>('suggest', d);
+export const suggest = (d: { title: string; body: string; cat: string; lang: string; meta?: string; image?: string }) => post<{ ok: true; id: number }>('suggest', d);
 export const reportBug = (d: { title: string; body: string; lang: string; meta: string; image?: string }) => post<{ ok: true; id: number }>('bug', d);
 export const vote = (id: number, on: boolean) => post<{ ok: true; used: number; budget: number }>('vote', { id, on });
 export const comment = (id: number, text: string) => post<{ ok: true }>('comment', { id, text });

@@ -2,11 +2,11 @@
 // Bruges både i spillet (Community-siden) og som offentlig side (?community=1 og ?suggestion=ID).
 import { createPortal } from 'react-dom';
 import { useEffect, useState } from 'react';
+import { gameInfoMeta } from './gameInfo';
 import { SG_CATS, comment, communityAvailable, communityUrl, getPoll, getSuggestion, listSuggestions, myVotes, pollVote, reportBug, reportContent, shrinkImage, similar, suggest, suggestionUrl, vote, type SgComment, type SgStatus, type Suggestion } from '../online/community';
 import { createProfile, getProfile } from '../online/rank';
 import { dateFmt, getLang, t } from '../i18n';
 import { Modal, Panel, Tabs } from './components';
-import { APP_VERSION } from './changelogData';
 import { CommunityHub, type HubTab } from './CommunityHub';
 
 const ROADMAP: SgStatus[] = ['considering', 'planned', 'progress', 'released'];
@@ -212,7 +212,7 @@ export function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; o
     setBusy(true); setErr('');
     const r = kind === 'bug'
       ? await reportBug({ title, body, lang: getLang(), meta: meta ?? autoMeta(), image: image || undefined })
-      : await suggest({ title, body, cat, lang: getLang(), image: image || undefined });
+      : await suggest({ title, body, cat, lang: getLang(), meta: meta ?? autoMeta(), image: image || undefined });
     setBusy(false);
     if ('error' in r) setErr(errText(r.error)); else onClose(r.id);
   };
@@ -238,7 +238,7 @@ export function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; o
           <input type="file" accept="image/*" onChange={async (e) => { const f = e.target.files?.[0]; if (f) setImage(await shrinkImage(f).catch(() => '')); }} />
         </label>
         {image && <img className="sg-img" src={image} alt="" />}
-        {kind === 'bug' && <div className="muted" style={{ fontSize: 12 }}>{t('cm.autoMeta')}: {meta ?? autoMeta()}</div>}
+        <details className="muted" style={{ fontSize: 12 }}><summary>{t('cm.autoMeta')}</summary><div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{(meta ?? autoMeta()).split(' | ').join('\n')}</div></details>
         {err && <div className="insight bad">{err}</div>}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
           <button onClick={() => onClose()}>{t('common.cancel')}</button>
@@ -250,14 +250,11 @@ export function WriteModal({ kind, onClose, meta }: { kind: 'suggest' | 'bug'; o
 }
 
 /** Fejlrapport: version, skærm og browser sendes med automatisk */
-function autoMeta(): string {
-  const v = APP_VERSION;
-  const ua = navigator.userAgent.replace(/\(([^)]*)\)/, '').slice(0, 80);
-  return [v && `v${v}`, `${window.innerWidth}×${window.innerHeight}`, location.search || '', ua].filter(Boolean).join(' · ');
-}
+// spillets oplysninger (database, udgave, tilstand, kampmotor, klub, dato, enhed) – ui/gameInfo.ts
+const autoMeta = (): string => gameInfoMeta();
 
 /** Fejlrapport med ét klik (fra menuen i spillet) – sender den aktuelle skærm med */
-export function BugReportButton({ screen, version, date }: { screen: string; version: string; date: string }) {
+export function BugReportButton({ screen }: { screen: string; version?: string; date?: string }) {
   const [open, setOpen] = useState(false);
   const prof = getProfile();
   if (!communityAvailable()) return null;
@@ -265,7 +262,7 @@ export function BugReportButton({ screen, version, date }: { screen: string; ver
     <>
       <button className="small bug-btn" onClick={() => setOpen(true)} title={t('cm.reportBug')}>🐞 {t('cm.reportBug')}</button>
       {/* tegnes på body: knappen sidder i sidemenuen, hvis knapstil (hvid tekst) ellers smitter af på vinduet */}
-      {open && createPortal(prof ? <WriteModal kind="bug" meta={`v${version} · ${screen} · ${date} · ${window.innerWidth}×${window.innerHeight}`} onClose={() => setOpen(false)} /> : (
+      {open && createPortal(prof ? <WriteModal kind="bug" meta={gameInfoMeta(screen)} onClose={() => setOpen(false)} /> : (
         <Modal title={t('cm.reportBug')} onClose={() => setOpen(false)}><ProfileGate onDone={() => setOpen(false)} /></Modal>
       ), document.body)}
     </>

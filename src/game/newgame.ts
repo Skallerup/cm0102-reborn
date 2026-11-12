@@ -29,6 +29,8 @@ import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
 import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import { initialLanguages } from './cmLanguage';
+import { cmActive } from './cmPlayerData';
+import { cmStartDate } from './cmCalendar';
 import { cmFitNewGame } from './cmFitnessGame';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
@@ -88,7 +90,10 @@ export function cmDatabase(g: GameState): 'cm' | 'original' | null {
 
 export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const season = world.season;
-  const date = START_DATE(season);
+  // (runde 10A) den originale database i ægte tilstand: originalens spilstart 0x830520 − 4 uger for det først valgte land (England 14/7-2001;
+  // cmCalendar.ts) – før 1/7 (Danmark, Polen, Kroatien og forårsligaerne) beholdes spillets 1/7, da sæsonskiftet ligger 1/7
+  const cmStart = (world as Partial<CMWorld>).kind === 'cm0102' && season < 2020 && o.mode === 'authentic' ? cmStartDate(o.activeNations[0], season) : null;
+  const date = cmStart && cmStart > START_DATE(season) ? cmStart : START_DATE(season);
   const seed = o.seed >>> 0;
   rng.state = seed || 1;
   const names: Record<number, [string[], string[]]> = {};
@@ -410,6 +415,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const club = g.clubs[o.clubId];
   takeOverClub(club);
   // originalens konditionsmodul (cmFitness.ts): posterne, skaderne fra databasens dato og startens Fitness (kun original DB i ægte tilstand)
+  // (runde 10A) sub_535a80 0x536285: spillerpostens moral +0x45 = 10 for alle databasens spillere ved spilstarten (forkørslen 0x5cc850 kører ikke
+  // 0x5ce2d0's daglige moral – først fra spillets start: cmPlayerData.ts moraleDay/cmSquadMoraleDaily)
+  if (cmActive(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
   cmFitNewGame(g);
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);

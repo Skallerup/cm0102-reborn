@@ -8,6 +8,7 @@ import { asOwner, forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
+import { cmCalendarOn, cmFaCupDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 
 // ---------- kalender ----------
 
@@ -169,6 +170,14 @@ export function setupLeague(id: string, name: string, nation: number, tier: numb
     total = rules.split.after + (per - 1) * rules.split.rounds;
     rounds.length = Math.min(rounds.length, rules.split.after);
   }
+  // (runde 10A) originalens skema (create_schedule) for ligaen i den originale database i ægte tilstand – runde i = skemaets række i, og
+  // add_fixture 0x5aa680 flytter en kamp, der støder sammen med en af holdenes andre kampe (to runder samme dag: PL 2/2-2002)
+  const sched = cmCalendarOn(g) && !rules.split ? cmLeagueSchedule(id, season) : null;
+  if (sched && sched.length === total) {
+    comp.meta = { dates: sched.map((r) => r.date), cmSched: true, cmYear: season, cmLast: sched[sched.length - 1].date };
+    rounds.forEach((r, i) => r.forEach(([h, a]) => cmPlaceFixture(g, newFixture(id, sched[i].date, h, a, i + 1, { slot: sched[i].slot }))));
+    return;
+  }
   const dates = leagueDates(leagueCalendar(cal, rules, season), total);
   comp.meta = { dates };
   rounds.forEach((r, i) => r.forEach(([h, a]) => newFixture(id, dates[i], h, a, i + 1)));
@@ -207,7 +216,7 @@ export function setupCup(nation: number, name: string, clubs: number[], season: 
   const seeded = sorted.slice(0, byes);
   const rest = rng.shuffle(sorted.slice(byes));
   const roundsTotal = Math.log2(size);
-  comp.meta = { roundsTotal, byes: seeded, round: 1 };
+  comp.meta = { roundsTotal, byes: seeded, round: 1, ...(cmCalendarOn(g) ? { cmYear: season } : {}) };
   const firstPairs: [number, number][] = [];
   for (let i = 0; i + 1 < rest.length; i += 2) firstPairs.push([rest[i], rest[i + 1]]);
   if (firstPairs.length === 0) {
@@ -229,9 +238,12 @@ function createCupRound(comp: Competition, pairs: [number, number][], round: num
   const stage = cupStageName(round, total);
   const idx = Math.max(0, cal.cupRounds.length - (total - 1) + (round - 1));
   let date = stage === 'F' ? cal.cupFinal : cal.cupRounds[Math.min(cal.cupRounds.length - 1, idx)];
+  // (runde 10A) FA Cup i den originale database i ægte tilstand: originalens rundedatoer (EngFaCup::create_round_table 0x56f320)
+  const cmDay = typeof comp.meta?.cmYear === 'number' ? cmFaCupDate(comp.nation, round, total, comp.meta.cmYear) : null;
+  if (cmDay) date = cmDay;
   // pokalrunder i vinterpausen flyttes til første onsdag efter pausen
   const brk = comp.nation >= 0 ? nationBreak(comp.nation) : undefined;
-  if (stage !== 'F' && inBreak(date, brk)) {
+  if (!cmDay && stage !== 'F' && inBreak(date, brk)) {
     while (inBreak(date, brk) || weekday(date) !== 3) date = addDays(date, 1);
     if (date >= cal.cupFinal) date = addDays(cal.cupFinal, -7);
   }
@@ -242,7 +254,8 @@ function createCupRound(comp: Competition, pairs: [number, number][], round: num
     const [h, aw] = g.clubs[a].rep < g.clubs[b].rep ? [a, b] : [b, a];
     const tie: Tie = { id: g.nextId.tie++, a: h, b: aw, legs: 1, stage, fx: [] };
     comp.ties.push(tie);
-    newFixture(comp.id, date, h, aw, round, { stage, tieId: tie.id, leg: 1 });
+    const f = newFixture(comp.id, date, h, aw, round, { stage, tieId: tie.id, leg: 1, ...(cmDay ? { slot: 1 } : {}) });
+    if (cmDay) cmPlaceFixture(g, f);
   }
 }
 

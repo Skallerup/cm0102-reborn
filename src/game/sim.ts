@@ -1,5 +1,5 @@
 // Spillets dag-for-dag-løkke.
-import { cmActive, cmAfterMatch, cmContractDaily } from './cmPlayerData';
+import { cmActive, cmAfterMatch, cmContractDaily, cmSquadMoraleDaily, MORALE_OFF } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
@@ -41,6 +41,7 @@ import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelop
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
+import { cmCalendarDay } from './cmCalendar';
 import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -468,12 +469,17 @@ function newDay() {
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
   const cmFit = cmFitOn(g);
+  const cmMorale = cmFit && !MORALE_OFF;
   // 0x5cccd0's planlægger (efter datoskiftet, før dagens konditionsmodul): computerens trupplan 0x83cb40 (cmSquadPlanGame.ts)
   cmSquadPlanDaily(g);
+  // League::update_for_date 0x6847c0: tv-flytningerne 4 uger frem (cmCalendar.ts – originalens skema for de engelske ligaer)
+  cmCalendarDay(g);
   cmFitDay(g);
   cmPermitDaily(g);
   // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
   cmContractDaily(g, squad);
+  // 0x5ce0b0 (efter 0x5ce2d0): truppens moral efter førernes indflydelse og kontrakternes +0x44 (cmPlayerData.ts, runde 10A)
+  cmSquadMoraleDaily(g, squad);
   // 0x5ce2d0's udviklingsblok (0x5d38f9–0x5d578d) og træningens ugetæller 0x8b1730 (cmDevelop.ts) – erstatter training.ts' develop()
   cmDevDaily(g);
   for (const p of Object.values(g.players)) {
@@ -493,7 +499,8 @@ function newDay() {
     // restitution: en spiller med Natural Fitness 10 er klar igen 2-3 dage efter en kamp (som i CM 01/02, *estimeret*).
     // Før +4 + NF/4: med to kampe om ugen startede holdene trætte, og originalens knock-regel (< 40 % = sikkert knock) gav op til 10 skader i én kamp
     if (p.condition < 100 && !cmFit) p.condition = Math.min(100, p.condition + 9 + p.attrs[29] / 2);
-    if (p.morale !== 13) p.morale += (13 - p.morale) * 0.02;
+    // (runde 10A) original DB i ægte tilstand: originalens daglige moral 0x5cf4c8 (cmPlayerData.ts moraleDay) i stedet for glidningen mod 13
+    if (p.morale !== 13 && !(cmMorale && p.contract && p.cmContract && p.club && !p.regen)) p.morale += (13 - p.morale) * 0.02;
   }
   if (g.humans) { resolveAuctions(); resolveSignings(); resolveStaffBids(); }
   forEachHuman(windowNews);

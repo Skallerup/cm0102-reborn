@@ -556,6 +556,8 @@ export interface Fixture {
   leg?: number;
   tieId?: number;
   result?: MatchResultShort;
+  /** (runde 10A) tidspunktet på dagen i originalens kalender: 0 formiddag, 1 eftermiddag, 2 aften (skemaets +4 / tv-pladsen) */
+  slot?: number;
 }
 
 export interface MatchResultShort {

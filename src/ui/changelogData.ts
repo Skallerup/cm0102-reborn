@@ -9,6 +9,17 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.25.0',
+    date: '2026-11-12',
+    title: { da: 'Om dette spil, originalens kalender', en: 'About this game, the original calendar' },
+    items: [
+      { da: "⚠ Kalenderen kræver et nyt spil med den originale database i ægte CM 01/02", en: "⚠ The calendar needs a new game with the original database in authentic CM 01/02" },
+      { da: "Nyt: \"Om dette spil\" i Game Options (klassisk) og Options (moderne) viser databasen og dens udgave (fx CM 01/02 original 3.9.60), spiltilstanden, kampmotoren, klub, dato og din enhed – med en knap, der kopierer det hele", en: "New: \"About this game\" in Game Options (classic) and Options (modern) shows the database and its version (e.g. CM 01/02 original 3.9.60), the game mode, the match engine, club, date and your device – with a button that copies it all" },
+      { da: "Fejlrapporter og forslag sender nu de samme oplysninger med automatisk (kun udvikleren og du selv kan se dem), så fejl kan genskabes hurtigere", en: "Bug reports and suggestions now send the same information automatically (only the developer and you can see it), so problems can be reproduced faster" },
+      { da: "Ægte CM 01/02 med den originale database: England følger originalens kalender – spillet starter 14. juli 2001, Premier League 18. august med originalens runder og tv-flytninger, og FA Cup'ens datoer som i originalen. Spillernes moral udvikler sig som i originalen", en: "Authentic CM 01/02 with the original database: England follows the original calendar – the game starts on 14 July 2001, the Premier League on 18 August with the original rounds and TV moves, and the FA Cup dates as in the original. Player morale develops as in the original" },
+    ],
+  },
+  {
     version: '0.24.1',
     date: '2026-11-11',
     title: { da: 'Lange menuer kan rulles, Korea i Asien', en: 'Long menus scroll, Korea in Asia' },

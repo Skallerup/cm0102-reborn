@@ -82,6 +82,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const me = (url.searchParams.get('pid') ?? '').replace(/[^a-f0-9]/g, '');
   const admin = isAdmin(request);
+  // spillets oplysninger (meta: database, klub, browser …) ses kun af admin og forfatteren
+  const view = (x: Suggestion): Suggestion => (admin || (me && x.pid === me) ? x : { ...x, meta: undefined });
 
   // ét forslag med kommentarer
   const one = Number(url.searchParams.get('id'));
@@ -93,7 +95,7 @@ export async function GET(request: Request) {
     const comments = parsed;
     const image = s.hasImage ? await redis.get<string>(`sg:${one}:img`) : null;
     const voted = me ? !!(await redis.sismember(`sg:${one}:voters`, me)) : false;
-    return json({ suggestion: s, comments, image, voted });
+    return json({ suggestion: view(s), comments, image, voted });
   }
 
   // lignende forslag (dubletkontrol mens man skriver)
@@ -104,7 +106,7 @@ export async function GET(request: Request) {
     const titles = (await redis.hgetall<Record<string, string>>('sg:titles')) ?? {};
     const scored = Object.entries(titles).map(([id, title]) => ({ id: Number(id), title, s: similarity(w, words(title)) })).filter((x) => x.s >= 0.5).sort((a, b) => b.s - a.s).slice(0, 5);
     const items = (await Promise.all(scored.map((x) => getSug(x.id)))).filter((x): x is Suggestion => !!x && !x.hidden);
-    return json({ items });
+    return json({ items: items.map(view) });
   }
 
   // månedens afstemning
@@ -115,7 +117,7 @@ export async function GET(request: Request) {
     const counts = (await redis.hgetall<Record<string, string>>(`poll:${poll.id}:count`)) ?? {};
     const items = (await Promise.all(ids.map((id) => getSug(id)))).filter(Boolean) as Suggestion[];
     const mine = me ? await redis.hget<string>(`poll:${poll.id}:votes`, me) : null;
-    return json({ poll: { id: poll.id, title: poll.title, ends: poll.ends, items: items.map((s) => ({ ...s, pollVotes: Number(counts[s.id] ?? 0) })), mine: mine ? Number(mine) : null } });
+    return json({ poll: { id: poll.id, title: poll.title, ends: poll.ends, items: items.map((s) => ({ ...view(s), pollVotes: Number(counts[s.id] ?? 0) })), mine: mine ? Number(mine) : null } });
   }
 
   // min status: stemmer brugt og om man må stemme
@@ -150,7 +152,7 @@ export async function GET(request: Request) {
   if (sort === 'roadmap') items = items.filter((s) => s.status !== 'new');
   let voted: string[] = [];
   if (me) voted = (await redis.smembers(`prof:${me}:sgvotes`)) as string[];
-  return json({ items: items.slice(0, 150), voted: voted.map(Number) });
+  return json({ items: items.slice(0, 150).map(view), voted: voted.map(Number) });
 }
 
 // ---------- POST ----------
@@ -227,7 +229,7 @@ export async function POST(request: Request) {
     const image = typeof body.image === 'string' && /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]+$/.test(body.image) && body.image.length <= 300_000 ? body.image : '';
     const s: Record<string, unknown> = {
       id, title, body: text, cat, lang: ['da', 'es', 'fr', 'de', 'it', 'pt', 'tr', 'sv', 'nb'].includes(String(body.lang)) ? String(body.lang) : 'en', pid, name: prof.name, created: now(), status: 'new', votes: 0, comments: 0,
-      hasImage: !!image, ...(op === 'bug' ? { meta: clean(body.meta, 300) } : {}),
+      hasImage: !!image, ...(body.meta ? { meta: clean(body.meta, 1000) } : {}),
     };
     await redis.hset(`sg:${id}`, s);
     if (image) await redis.set(`sg:${id}:img`, image);

@@ -308,6 +308,16 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-halloffame.png` });
     await checkScreen('hall of fame');
   });
+  if (look === 'klassisk') await step('Game Options → Om dette spil (database, tilstand, kampmotor)', async () => {
+    await page.click('.cx-gopt');
+    await page.locator('.cx-drop-pop >> text=About this game').click();
+    await page.waitForSelector('.game-info table', { timeout: 5000 });
+    const txt = await page.locator('.game-info').innerText();
+    for (const k of ['Database', 'Mode', 'Match engine', 'Club', 'Version']) if (!txt.includes(k)) throw new Error(`Om dette spil mangler ${k}`);
+    await page.waitForTimeout(500); await page.screenshot({ path: `${OUT}/klassisk-om-spillet.png` });
+    await page.keyboard.press('Escape'); await page.mouse.click(5, 5);
+    if (await page.locator('.modal-bg').count()) await page.locator('.modal-bg').first().click({ position: { x: 3, y: 3 } });
+  });
   if (look === 'klassisk') await step('turneringsskærm: farver følger den valgte turnering', async () => {
     const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });
     await go({ name: 'competitions', id: 'CL', state: { cid: lg } });
