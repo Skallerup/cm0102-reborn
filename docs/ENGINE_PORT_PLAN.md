@@ -786,3 +786,35 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   spillerværdierne 0x6e2f20 i låsetrinet er spillets skøn), omrokeringen efter rødt kort (kamp 13: pladsen og taktikkens ord – 0x6cdd50/0x6e1aa0), det
   taktiske felt for forsvareren (kamp 10/11 tik 101/44: porten flytter, originalen bliver – 0x6c2be0), kommentarens kombination (kamp 3/5/14: rand(370)
   ≠ rand(270) 0x6d71be, 0x6d5d8f), zonevalget (kamp 17 tik 175), kampværdierne efter omrokering (kamp 0/18: rullenes lofter 0x6f4506).
+- 2026-11-12 – **Låsetrin, femte runde: genvalget med originalens 0x6e2f20-værdier, pausen, hvile og 24 oversættelsesfejl; identiske tik (ls19, samme
+  20 PL-kampe) kamp 0 158→218, 1 145→233, 2 193→458, 3 39→195, 4 108→514, 5 116→121, 6 196→435, 7 158→232, 8 98→120, 9 155→529, 10 101→263,
+  11 44→115, 12 79→79, 13 36→59, 14 80→181, 15 164→271, 16 236→468, 17 165→175, 18 251→489, 19 119→190 (i alt 2.641 → 5.345 tik); pokalkampen
+  (cup3, venskabsturnering 72, kamp 42) 0→382.** **Sporet** (`match_trace.c`, kun tilføjelser): `TK` (klubbernes dødboldsskytter sub_897990 – alle 0
+  for computerens klubber), `SC` ([0xae2364]: id ≥ = genereret spiller), `FS`/`FT` (holdet og taktiklistens statistik ved genvalg/omrokering), `FG`/`Fh`
+  (0x6e2f20's spiller og opslag inde i genvalget/omrokeringen – som pick-sporets g/h), F-linjerne også i omrokeringen uden for genvalget, `WB`
+  (RECOMP_MATCH_TRACE_WATCH=side,idx,off[,n]: et kampspillerfelt ændret siden sidste rand), `RECOMP_MATCH_TRACE_FULL_FROM` (XE-vindue); begge nye
+  miljøvariabler står i run_season.py's liste. **Værktøjet:** F-linjernes 0x6e2f20-værdi injiceres i genvalget, omrokeringen og 0x6e1aa0's taktikvalg
+  (`GridMatchCtx.subScore`; LOCKF=1 viser portens egne afvigelser, LOCKF=port bruger portens), hold+0x16/+0x17/+0x1a fra motorens dump (rotationen
+  pick_team 0x6dbdc4–0x6dc59f er ikke porteret), klubbernes omdømme/+0x53 fra CL, managerens CA (ikke-spillerpost +4), udtagelsens anfører/skytter fra
+  FS, regens fra SC, skadeposter der er helet til i dag (0x62ed70 → 0x62c680), træthed (+0xc) fra RF, 0x6df460-kald over flere M-blokke, turen ved
+  afvigelsen i meddelelsen. **Rettet (adresse):** engine+1 er banens byte, ikke turneringstypen (0x706cfc: +2 til redningsforholdet kun ved banetype
+  2/8); float-konstanter (x87 regner med floatens værdi): indlæggets 0,1f 0x96afc4 (0x6c7b0d), 1,05f 0x96d3b8 i agitationen (0x6f2899/0x6f9d2f/
+  0x6fc9ea/0x710055) og i skridtets vejrled (0x6f3d0a, 1,1f 0x6f3cfe), −0,2f 0x7130f3; sub_716450's faktor er et float-argument (også 0x6ea3c5's
+  sev·0,2 + 1); keeperens greb 0x70d430 (GOALKEEPER_CATCHES 0x1fe2 / FUMBLES 0x1fe3 / 0x216f – kommentarerne manglede, signeret ord-sammenligning);
+  behandlingen 0x6d0b60 (0x1f56/0x1f57/0x1f58/0x20f6 pr. spiller mellem rand(4)-kaldene); afleveringens fordel 0x6fb662 → 0x6fc0e5 (udfordreren vinder
+  bolden, afleveringen fortsætter ikke) og [esp+0x2c] 0x6fc0dd; pick_taker 0x6ceb90 (skytterne fra taktiklisten k·2+j, alder staff+0x18, omdømme
+  post+0xb, post+0x29, signeret ord-score, første kandidat altid); tilstand 5's motivation 0x711721 (rand manglede); målmandsdækningen 0x71590f kræver
+  også målet i eget felt; **hvilen 0x710408: rand(10) + kondition·0,0078125 ≤ rand(65)** (siderne var byttet – trætte spillere hvilede aldrig);
+  **pausen 0x6bd930**: 0x6ce460(990) (karakterbyten +0x1b og holdblokken) og 0x6f5810(0) for alle 40 (restitution (12·NF + 325)·k / (NF + 15)·10·k,
+  k = 1,4 − 0,0004·træthed > 1000 – før ikke porteret); genvalgets flag 0x6e1312/0x6e1359 (hold+0x1a/+0x16); 0x6e0230 kalder selv 0x6df460 (0x6e025d);
+  0x6ddab0's J bruger spillerpostens id (+0) og managerens CA, egenskaberne er de viste (sub_5431e0); rand(−4000) direkte (0x6ddb7a – testen krævede
+  −rand(4000)); zonevalgets omdømme 0x6bc539 sammenligner klubbernes +0x53. Spillet (uden for motoren, minimalt): aiTeam.ts/adapter.ts giver
+  managerens CA (Staff.ca) i stedet for omdømme·2. **Test:** fixturerne pl16 468 tik, nye pl9 529, pl10 263, cup 382 (uden XE/PO/Q/FG). **Sæsontal**
+  (380 kampe frø 1/2/3): mål 2,15/2,17/2,33 → 2,41/2,31/2,38 · skud 15,7/15,0/15,2 → 15,5/15,7/15,3 · på mål 8,1/7,7/7,9 → 8,0/8,1/8,0 · hjørner
+  4,2/4,0/3,9 → 4,1/4,1/4,1 · frispark 7,5/7,0/7,3 → 7,2/7,2/7,2 · offside 4,3/4,3/4,4 → 4,3/4,3/4,3 · gule 1,72/1,51/1,68 → 1,74/1,62/1,56 · H/U
+  46/27, 45/27, 46/26 → 48/26, 47/25, 47/26. **Tilbage (første afvigelser, ls19):** 0x712ef1 (kamp 4/7/9: boldholderens trick-score, P eller +0x29
+  ±2), 0x711b8c (kamp 10/19), afleveringsmulighedens værdier efter en udskiftning (PO-forskel kamp 19 tik 122), 0x6d5d8f/0x6d5887 (kommentaren,
+  kamp 0/1/2), 0x6f49ac (kamp 3), 0x6bc838 (zonevalget, kamp 8/17), tilstanden efter tik (kamp 5/6/11/12/15), 0x6fae18 (kamp 13), 0x6ba6b9 (kamp 14),
+  0x6f4975 (kamp 16), 0x6c8262 (kamp 18), pokalkampen tik 382 0x716578. I spillet: kampværdierne sub_6ec010 regnes stadig ikke igen i kampen (env'en
+  mangler – kontrakt/klub/anfører fra cmPlayerData), pick_teams rotation (+0x16/+0x1a) og 0x48f150 er ikke porteret, og spillerpostens id kendes
+  ikke (0x6ddab0's J bruger stab-id'et).

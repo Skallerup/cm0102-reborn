@@ -507,7 +507,9 @@ function turnBody(m: Match, p: Player, rand: Rand, h: Hooks): void {
   const notKeeper = p.pos !== POS.keeper;
   for (;;) {
     if (!isCarrier() && notKeeper) {
-      if (rand(65) + p.condition * 0.0078125 <= rand(10)) { markersFollow(); p.action = ACT.rest; return; } // 0x710408
+      // 0x710408–0x710449: r65 = rand(65), r10 = rand(10); hvile når r10 + kondition·0,0078125 ≤ r65 (fcomp mod den gemte r65 – før var
+      // siderne byttet, så en træt spiller aldrig hvilede: med kondition > 8200 kan ingen af dem give hvile, derfor holdt låsetrinet længe)
+      { const r65 = rand(65), r10 = rand(10); if (r10 + p.condition * 0.0078125 <= r65) { markersFollow(); p.action = ACT.rest; return; } }
       const defending = m.poss === (p.side === 0 ? 1 : 0);
       let switchOff = defending;
       if (!defending && m.poss !== p.side) {
@@ -712,7 +714,8 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   }
   if (toBall) [tx, ty] = [bx, by]; else [tx, ty] = h.tacticalCell(p);
   if (keeper) return keeperOffBall(m, p, tx, ty, rand, h);
-  if (m.poss !== -1 && inOwnBox(p.side, p.x, p.y)) {                           // 0x71590c
+  // 0x71588d–0x71590f: han står i eget felt OG målet (tx, ty) ligger også i eget felt (sub_6cb960(side, tx, ty) – før manglede det)
+  if (m.poss !== -1 && inOwnBox(p.side, p.x, p.y) && inOwnBox(p.side, tx, ty)) {
     const gk = h.ownKeeper(p.side);
     if (gk && gk.busy > 1) { h.moveTo(p, 4, p.side === 0 ? 0 : 11, -1); p.action = ACT.coverGoalLine; return; }
   }

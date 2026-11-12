@@ -16,7 +16,7 @@ import type { Player, Tactic } from '../src/game/types';
 
 export interface Rec { side: Side; idx: number; slot: number; staff: number; rec: Uint8Array; mp: Uint8Array; sr?: Uint8Array; nat?: number; fit?: Uint8Array; injury?: Uint8Array | null }
 export interface TickRec { T: string; XE?: Uint8Array; r: [number, number, number][]; other: string[] }
-export interface MatchTrace { MVL?: string[]; CAP?: number[]; RC?: Map<string, { club: boolean; clubRep: number; contract: boolean; b45: number; x: number }>; DT?: [number, number]; MG?: { b904b: number; mgr: Uint8Array | null; np: Uint8Array | null; tactic: string | null }[]; HU?: number[]; HU1?: number[]; M: number[]; P: Uint8Array[]; I: string[]; R: Rec[]; EN: Uint8Array; OF?: Uint8Array; FX?: Uint8Array; CP?: Uint8Array; CL: Uint8Array[]; KN?: number[]; RL: (number | null)[][]; pre: string[]; ticks: TickRec[] }
+export interface MatchTrace { SC?: number; TK?: number[][]; FL?: string[]; MVL?: string[]; CAP?: number[]; RC?: Map<string, { club: boolean; clubRep: number; contract: boolean; b45: number; x: number }>; DT?: [number, number]; MG?: { b904b: number; mgr: Uint8Array | null; np: Uint8Array | null; tactic: string | null }[]; HU?: number[]; HU1?: number[]; M: number[]; P: Uint8Array[]; I: string[]; R: Rec[]; EN: Uint8Array; OF?: Uint8Array; FX?: Uint8Array; CP?: Uint8Array; CL: Uint8Array[]; KN?: number[]; RL: (number | null)[][]; pre: string[]; ticks: TickRec[] }
 
 const hex = (h: string) => Uint8Array.from(Buffer.from(h, 'hex'));
 
@@ -66,6 +66,8 @@ export async function readMatch(file: string, k: number, maxTicks = Infinity): P
     if (l.startsWith('DT ')) { const f = l.split(' '); tr.DT = [+f[1], +f[2]]; continue; }
     if (l.startsWith('MG ')) { const f = l.split(' '); (tr.MG ??= [])[+f[1]] = { b904b: +f[2], mgr: f[3] === '-' ? null : hex(f[3]), np: f[4] === '-' ? null : hex(f[4]), tactic: f[5] === '-' ? null : f[5].replace(/_/g, ' ') }; continue; }
     if (l.startsWith('KN ')) { tr.KN = l.split(' ').slice(1).map(Number); continue; }
+    if (l.startsWith('SC ')) { tr.SC = +l.split(' ')[1]; continue; }                                  // [0xae2364] (femte runde)
+    if (l.startsWith('TK ')) { const f = l.split(' ').map(Number); (tr.TK ??= [[], []])[f[1]] = f.slice(2); continue; }   // sub_897990 (femte runde)
     if (l.startsWith('OF ')) { tr.OF = hex(l.slice(3)); continue; }
     if (l.startsWith('FX ')) { tr.FX = hex(l.slice(3)); continue; }
     if (l.startsWith('CP ')) { tr.CP = hex(l.slice(3)); continue; }
@@ -125,6 +127,10 @@ function teamsOf(tr: MatchTrace) {
   return [0, 1].map((s) => {
     const rs = tr.R.filter((r) => r.side === s);
     const players = rs.map(playerOf);
+    // MV-linjernes indb ([staff] < [0xae2364]): genererede spillere er "regens" for porten (0x62ed70 giver NULL, historierne m.fl.)
+    const indb = new Map<number, boolean>();
+    for (const c of parseMv((tr.MVL ?? []).join('\n'))) { const h = c.head.split(' '); if (+h[2] === s) indb.set(+h[4], c.kv.indb === '1'); }
+    for (const p of players) if (tr.SC !== undefined ? p.id >= tr.SC : indb.get(p.id) === false) (p as { regen?: boolean }).regen = true;   // SC: [0xae2364]
     const start = rs.filter((r) => r.slot >= 0).sort((a, b) => a.slot - b.slot);
     const slots = start.map(() => ({ pos: 'CM', side: 'C', x: 50, y: 50 })) as unknown as Tactic['slots'];
     slots[0] = { pos: 'GK', side: 'C', x: 2, y: 50 } as unknown as Tactic['slots'][number];
@@ -202,7 +208,14 @@ export function inject(L: Lock, m: GridMatchState, ix: Record<string, unknown>) 
       // konditionsmodulets post (RF): skaden +0xe → typen +0 → kategorien 0x62ec00, og 0x62ece0 af +0x12/+0x13
       if (r.fit) {
         const F = new Mem(r.fit), rt = F.s8(0x12), rl = F.s8(0x13);
-        q.inj = { cat: r.injury ? INJ_TYPES[r.injury[0]]?.[0] ?? (r.injury[0] === 0xff ? 65 : -1) : -1,   /* type −1: 0x62ec00 læser 0x9e7ad9 − 13 = 65 */ s: rt > -1 ? (rl <= 1 ? 1 : rl) : 0 };
+        if (q.src.regen) r.injury = null;                                                   // 0x62edf5/0x62ecf3: id ≥ [0xae2364] → NULL / 0
+        q.fat = q.src.regen ? 0 : F.s16(0xc);                                               // 0x62c3d0: trætheden (+0xc) – pausens restitution
+        // 0x62ed70 kalder 0x62c680 (dagens opdatering) først: er skaden helet til i dag (dage siden +0x20 ≥ +0x28), slutter den, og opslaget
+        // giver NULL (pokalkampen: type −1-posterne fra dag 42 er helet på dag 206). RF-posten er dumpet før opdateringen.
+        let inj = r.injury ?? null;
+        if (inj && tr.DT) { const J = new Mem(inj), start = Date.UTC(J.s16(0x22), 0, 1) / 86400000 + J.s16(0x20), today = Date.UTC(tr.DT[1], 0, 1) / 86400000 + tr.DT[0];
+          if (today - start >= J.s16(0x28)) inj = null; }
+        q.inj = { cat: inj ? INJ_TYPES[inj[0]]?.[0] ?? (inj[0] === 0xff ? 65 : -1) : -1,   /* type −1: 0x62ec00 læser 0x9e7ad9 − 13 = 65 */ s: rt > -1 && !q.src.regen ? (rl <= 1 ? 1 : rl) : 0 };
       }
       if (r.nat !== undefined) q.src.nation = r.nat;                                       // staff+0x1a (zonevalgets omdømme: samme land → hjemme-ry)
       if (r.nat !== undefined && tr.KN) { const k = tr.KN.indexOf(r.nat); q.nationName = k < 0 ? 'Other' : k < 6 ? 'England' : 'Sweden'; }
@@ -229,7 +242,7 @@ export function inject(L: Lock, m: GridMatchState, ix: Record<string, unknown>) 
   set2(m.goals, E.u8(0xf5bd), E.u8(0xf5f3));
   m.last = [ptr(0xf58e), ptr(0xf592)]; m.fwd = [ptr(0xf596), ptr(0xf59a)];                 // sub_6cd660s pegere
   const aiR = ix.aiR as number[]; aiR[0] = E.f32(0x476a); aiR[1] = E.f32(0x476e);
-  { const co = (ix.subs as { cohesion: number[] }).cohesion; co[0] = E.s16(0x1ce); co[1] = E.s16(0x1d0); }   // engine+0x1ce+2·side: holdets samspil (sub_6bbb60)
+  { const sb = ix.subs as { cohesion: number[]; resyncSlots: () => void }; sb.cohesion[0] = E.s16(0x1ce); sb.cohesion[1] = E.s16(0x1d0); sb.resyncSlots(); }   // engine+0x1ce+2·side: holdets samspil (sub_6bbb60)
   const terr = ix.territory as number[]; terr[0] = E.s16(0x1fc); terr[1] = E.s16(0x206); terr[2] = E.s16(0x210);   // engine+0x1fc/+0x206/+0x210 (0x6df5df)
   (ix.set as (k: string, v: number) => void)('secondKick', E.s8(0x8eb6));
   (ix.set as (k: string, v: number) => void)('kickCommented', E.u8(0x1ca));
@@ -351,7 +364,8 @@ export function readAiModeCalls(file: string, home: number, away: number): strin
   if (!existsSync(file)) return [];
   const out: string[][] = []; let on = false;
   for (const l of readFileSync(file, 'utf8').split('\n')) {
-    if (l.startsWith('M ')) { if (on) break; const f = l.split(' '); on = +f[1] === home && +f[2] === away; continue; }
+    // samme par kan stå i flere M-blokke (udtagelsens kald før kampen 0x6dbc50, så kampens egne) – saml til en anden kamp følger
+    if (l.startsWith('M ')) { const f = l.split(' '), same = +f[1] === home && +f[2] === away; if (on && !same && out.length) break; on = same; continue; }
     if (on && l.startsWith('D ')) { const f = l.trim().split(/\s+/); if (f[2] === '1') out.push(f); }
   }
   return out;
@@ -394,6 +408,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
   const hist: string[] | null = process.env.LOCKHIST ? [] : null;
   let poFail = ''; const poIdx: number[] = [];
   const turnLines: string[][] = [], turnIdx: number[] = [];
+  let lastTurn = '';
   const zpLines: string[][] = [], zpIdx: number[] = [];
   let amI = 0;
   const rand: Rand = (n) => {
@@ -406,7 +421,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
     if (hist) { const st = (new Error().stack ?? '').split('\n').slice(2, 4).map((x) => x.trim().replace(/^at /, '').replace(/\(.*\/(.*?):(\d+):\d+\)/, '$1:$2')).join(' < '); hist.push(`${k}/${e[0]}@${e[1].toString(16)}=${e[2]}  ${st}`); if (hist.length > +(process.env.LOCKHIST || 60)) hist.shift(); }
     // 0x90d06e: rand(|n| > 0xffff) kalder sig selv med trunc(10n/65535) – det indre kald står først i sporet (returadresse 0x90d073)
     if ((k > 0xffff || k < -0xffff) && e[1] === 0x90d073 && e[0] === Math.trunc((10 * k) / 65535)) return rand(n);
-    if (e[0] !== k) { fail = `tik ${tick}: rand(${k}) ≠ originalens rand(${e[0]}) fra 0x${e[1].toString(16)} (nr. ${fi - 1} i tikket)\n  før: ${feed.slice(Math.max(0, fi - 9), fi - 1).map((x) => `${x[0]}@${x[1].toString(16)}=${x[2]}`).join(' ')}\n  efter: ${feed.slice(fi, fi + 6).map((x) => `${x[0]}@${x[1].toString(16)}=${x[2]}`).join(' ')}`; stack = new Error().stack ?? ''; throw new Error('lockstep'); }
+    if (e[0] !== k) { fail = `tik ${tick}: rand(${k}) ≠ originalens rand(${e[0]}) fra 0x${e[1].toString(16)} (nr. ${fi - 1} i tikket)${lastTurn ? ` – i turen ${lastTurn}` : ''}\n  før: ${feed.slice(Math.max(0, fi - 9), fi - 1).map((x) => `${x[0]}@${x[1].toString(16)}=${x[2]}`).join(' ')}\n  efter: ${feed.slice(fi, fi + 6).map((x) => `${x[0]}@${x[1].toString(16)}=${x[2]}`).join(' ')}`; stack = new Error().stack ?? ''; throw new Error('lockstep'); }
     return e[2];
   };
   let ix: Record<string, unknown> = {};
@@ -435,6 +450,31 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       ai: tr.HU ? [tr.HU[0] === 0, tr.HU[1] === 0] : undefined,                               // sub_600a50: menneskets hold (HU-linjen)
       humanClub: tr.HU1 ? [tr.HU1[0] !== 0, tr.HU1[1] !== 0] : undefined,                      // sub_600a50(klub, 0, 1, 0, 0) (HU's 3. felt)
       roles: tr.RL as never,
+      // klubbernes omdømme club +0x80 (CL-linjerne) – genvalgets flag 0x6e12ea, 0x6ddab0's holdflag/instruktioner og 0x6e0230's divisor
+      ...(tr.CL[0] && tr.CL[1] ? { rep: [new Mem(tr.CL[0]).s16(0x80), new Mem(tr.CL[1]).s16(0x80)] as [number, number],
+        clubNation: [new Mem(tr.CL[0]).u32(0x53), new Mem(tr.CL[1]).u32(0x53)] as [number, number] } : {}),
+      ...(tr.TK ? { takers: tr.TK as [number[], number[]] } : {}),
+      // FS/FT-linjerne (femte runde): holdets anfører/dødboldsskytter og taktiklistens statistik ved genvalget/omrokeringen – computerens
+      // udtagelse for 0x6e1aa0's taktikvalg (0x6e0230/0x6ddab0) og 0x6e2f20's anfører-/skytteled
+      ...(() => {
+        const fs: (string[] | null)[] = [null, null]; let ft: string[] | null = null;
+        for (const t of tr.ticks) for (const l of t.other) {
+          if (l.startsWith('FS ')) { const f = l.split(' '); if (!fs[+f[1]]) fs[+f[1]] = f; }
+          else if (!ft && l.startsWith('FT')) ft = l.split(' ').slice(1);
+        }
+        if (!fs[0] && !fs[1]) return {};
+        const stats = ft?.length === 45 ? ft.map((x) => { const [, g, a, b, c] = x.split(':').map(Number); return { games: g, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0, perf: [a, b, c] as [number, number, number] }; }) : undefined;
+        const mg = (s: number) => { const g = tr.MG?.[s]; return g?.np ? { id: new Mem(g.np).u32(0), ca: new Mem(g.np).s16(4), tac: [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f, 0x21, 0x43].map((k) => g.np![k]) } : null; };
+        const pick = fs.map((f, s) => (f ? { date: tr.DT ? dayDate(tr.DT[0], tr.DT[1]) : undefined, clubId: tr.M[s], manager: mg(s), tacticStats: stats } : null));
+        const pickTeam = fs.map((f) => (f ? { captain: +f[8] || null, setPieces: [+f[9], +f[10], +f[11]].map((x) => (x > 0 ? x : -1)) } : null));
+        return { pick: pick as never, pickTeam: pickTeam as never };
+      })(),
+      rotation: [new Mem(tr.EN).s8(0x9032 + 0x1a), new Mem(tr.EN).s8(0x9032 + 0xd0 + 0x1a)],   // hold+0x1a fra motorens dump (spillets data)
+      // 0x48f150(turneringen, klubben) (genvalgets ligagren 0x6e132c): sporet har den ikke – venskabskampe (fixture+0x3a = 1/9) tæller ikke
+      // klubben (*antaget*; pokalsporets turnering 72 er en venskabsturnering), ligaen (turnering 7) gør
+      ...(tr.FX && (tr.FX[0x3a] === 1 || tr.FX[0x3a] === 9) ? { league: false } : {}),
+      subs: [new Mem(tr.EN).s8(0x9032 + 0x17), new Mem(tr.EN).s8(0x9032 + 0xd0 + 0x17)],   // hold+0x17: udskiftninger tilbage (venskabskamp 9)
+      rotation16: [new Mem(tr.EN).u8(0x9032 + 0x16) !== 0, new Mem(tr.EN).u8(0x9032 + 0xd0 + 0x16) !== 0],   // hold+0x16
       // DT/MG-linjerne (fjerde runde): dagens dato og managerens ikke-spillerpost (+0x9051: [Attacking +0xe, Directness +0x13, Free Roles +0x15,
       // Marking +0x1a, Offside +0x1c, Pressing +0x1f, Tactics +0x21, +0x43]) og taktikkens navn (+0x905d)
       ...(tr.DT ? { date: dayDate(tr.DT[0], tr.DT[1]) } : {}),
@@ -461,8 +501,19 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       })() : {}),
       // CP/RC-linjerne: anføreren og spillets data til holdets samspil sub_6bbb60
       ...(tr.RC ? { cohesionOf: (q: GP) => tr.RC!.get(`${q.side},${L.side[q.side].indexOf(q)}`), captainIdx: (s: Side) => tr.CAP?.[s] } : {}),
-      ...(tr.MG ? { managers: tr.MG.map((g) => g.np ? { id: new Mem(g.np).u32(0), ca: 0, tac: [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f, 0x21, 0x43].map((k) => g.np![k]) } : null) as never,
+      ...(tr.MG ? { managers: tr.MG.map((g) => g.np ? { id: new Mem(g.np).u32(0), ca: new Mem(g.np).s16(4), tac: [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f, 0x21, 0x43].map((k) => g.np![k]) } : null) as never,
         tacticName: tr.MG.map((g) => g.tactic) as never } : {}),
+      // F-linjerne (0x6e2f20 inde i genvalget 0x6e1090): originalens værdi for samme (spiller, plads, flag, instruktioner, taktikbyte, holdflag,
+      // angrebsflag) i tikket injiceres (LOCKF=1 viser, hvor portens egen værdi afviger); uden F-linje portens værdi
+      subScore: (_s, q, spec, flags, tf, v) => {
+        if (!topSeen) return v;
+        const key = `F ${q.src.id} ${(spec.pos & 0xffff).toString(16).padStart(4, '0')} ${(flags >>> 0).toString(16).padStart(8, '0')} ${(spec.instrLo >>> 0).toString(16).padStart(8, '0')} ${(spec.instrHi >>> 0).toString(16).padStart(8, '0')} ${(spec.tacticByte & 0xff).toString(16).padStart(2, '0')} ${(tf >>> 0).toString(16).padStart(8, '0')} ${(spec.att & 0xffff).toString(16).padStart(4, '0')} `;
+        const l = (tr.ticks[tick]?.other ?? []).find((x) => x.startsWith(key));
+        if (!l) { if (process.env.LOCKF) console.log(`F tik ${tick}: ingen F-linje for ${key}(port ${v})`); return v; }
+        const o = +l.slice(l.indexOf('= ') + 2);
+        if (o !== v && process.env.LOCKF) console.log(`F tik ${tick}: ${key}orig ${o} port ${v}`);
+        return process.env.LOCKF === 'port' ? v : o;
+      },
       expose: (x) => { ix = x; },
       // portens spor-linjer (Q/O/H/…) i match_trace.c's format: originalens tik-tal er +1 (tælleren øges efter T-linjen)
       onShot: (k, v) => {
@@ -492,6 +543,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
         if (!ls.length) return;                                                                // spor uden TU-linjer
         const k = (turnIdx[tick] = (turnIdx[tick] ?? -1) + 1), want = ls[k];
         const got = out ? `TV ${tick + 1} ${p.side} ${p.slot} ${p.x} ${p.y} ${(p.action << 16) >> 16}` : `TU ${tick + 1} ${p.side} ${p.slot} ${p.x} ${p.y}`;
+        lastTurn = out ? '' : `${got} (nr. ${k >> 1})`;
         if (want !== got) {
           fail = `tik ${tick}: tur nr. ${k >> 1}: originalen ${want ?? '(ingen)'} – porten ${got} (tallet nr. ${fi} i tikket)\n  forrige: ${ls.slice(Math.max(0, k - 4), k).join(' | ')}`;
           stack = new Error().stack ?? ''; throw new Error('lockstep');

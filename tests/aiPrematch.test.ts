@@ -52,7 +52,7 @@ describe('sub_6ddab0 – byggesten', () => {
     const p = PRESET_TACTICS[0];
     aiPrematch({ flags: p.flags, lo: p.lo, hi: p.hi, masks: p.masks, masks2: p.masks2, players: [], manager: null, ownRep: 5000, oppRep: 5000,
       b19: false, compType: 1, homeTeam: true }, (n) => { calls.push(n); return 0; });
-    expect(calls).toEqual([2000, 4000]);   // rand(−4000) = −rand(4000)
+    expect(calls).toEqual([2000, -4000]);   // 0x6ddb7a kalder rand(−4000) direkte (pokalsporet cup3: r-linjen har n = −4000) – testen krævede før −rand(4000)
   });
 });
 

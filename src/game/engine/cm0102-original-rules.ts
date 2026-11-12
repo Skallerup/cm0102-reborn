@@ -287,7 +287,8 @@ export function judgeTackle(rand: Rand, ctx: JudgeContext, offender: FoulPlayer,
   // the victim gets worked up (sub_716450 / sub_7164b0)
   if (isHardChallenge(type)) {
     // 0x716450 (sikker, player-state-bytes.md §1): max(ag·f, gulvet 2·(25 − Temperament)), loft 100 – før stod der min(…)
-    victim.agitation = Math.min(Math.max(victim.agitation * (sev * 0.2 + 1), 2 * (25 - victim.temperament)), 100);
+    // 0x6ea3c5–0x6ea3db: faktoren sev·0,2 + 1 skubbes som float (fstp dword [esp]); produktet gemmes som float32 (fst dword +0x1a2)
+    victim.agitation = Math.min(Math.max(Math.fround(victim.agitation * Math.fround(sev * 0.2 + 1)), 2 * (25 - victim.temperament)), 100);
     if (rand(110 - Math.trunc(victim.agitation)) === 0) {
       victim.temperCount++;
       if (rand(110 - Math.trunc(victim.agitation)) === 0) victim.grudge = offender;

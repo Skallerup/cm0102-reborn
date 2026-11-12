@@ -612,24 +612,27 @@ export type TreatAction =
  *  Ellers rand(4) (altid trukket) – kommentar 0x1f58 ved 0 eller en skadevolder; 0x20f6 med skadevolderen. +0x1d = 0. Var der nogen, og
  *  vælger computeren: genvalg med udskiftninger tilbage, ellers omrokering; lastChange = clock; 6bbb60(side); 6bbf60(). Muterer spillerne
  *  (som originalen) og returnerer handlingerne i rækkefølge. (sikker) */
-export function treatInjured(rand: Rand, sides: { players: SubPlayer[]; subsLeft: number; aiControlled: boolean }[], clock: number, periodEnd: number): TreatAction[] {
+export function treatInjured(rand: Rand, sides: { players: SubPlayer[]; subsLeft: number; aiControlled: boolean }[], clock: number, periodEnd: number,
+  each?: (a: TreatAction) => void): TreatAction[] {
+  // each: handlingen udføres straks (kommentarerne 0x1f56/0x1f57/0x1f58/0x20f6 trækker tal mellem spillernes rand(4) – 0x6d0bed–0x6d0d6f)
   const acts: TreatAction[] = [];
+  const emit = (a: TreatAction) => { acts.push(a); each?.(a); };
   sides.forEach((s, side) => {
     let any = false;
     for (const p of s.players) {
       if (!(p.slot >= 0 || p.slot === -3) || !p.treat) continue;
       any = true;
       if (p.mustLeave) {
-        if (p.slot >= 0) { acts.push({ kind: 'carriedOff', id: p.id, mode: s.subsLeft ? -1 : -2 }); p.prevSlot = p.slot; p.slot = -2; }
-        else acts.push({ kind: 'carriedOff', id: p.id, mode: 0 });
+        if (p.slot >= 0) { emit({ kind: 'carriedOff', id: p.id, mode: s.subsLeft ? -1 : -2 }); p.prevSlot = p.slot; p.slot = -2; }
+        else emit({ kind: 'carriedOff', id: p.id, mode: 0 });
         p.minuteInjured = cappedMinute(clock, periodEnd);
       } else {
         const r = rand(4);
-        acts.push({ kind: 'continues', id: p.id, comment: r === 0 || p.injuredBy !== null });
+        emit({ kind: 'continues', id: p.id, comment: r === 0 || p.injuredBy !== null });
       }
       p.treat = false;
     }
-    if (any && s.aiControlled) acts.push({ kind: s.subsLeft ? 'reselect' : 'rearrange', side: side as Side });
+    if (any && s.aiControlled) emit({ kind: s.subsLeft ? 'reselect' : 'rearrange', side: side as Side });
   });
   return acts;
 }

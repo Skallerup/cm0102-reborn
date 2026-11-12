@@ -33,8 +33,8 @@ export interface ShotEnv {
   evFlag(side: number, id: number): boolean;
   /** engine+0x8ebb ≠ 0: kampen vises på skærmen (den kamp, mennesket ser) */
   watched: boolean;
-  /** engine+1: turneringstypen (fixture+0x37 → +0x3a) */
-  compType: number;
+  /** engine+1: banens tilstand (samme byte som BYTE1_DRAIN/sub_6f0d90 – ikke turneringstypen; 0x706cfc) */
+  byte1: number;
   /** fixture+0x38 (via engine+0x4792): bit 0x80 golden goal, 4/0x4000 (sub_6ce310) */
   fixtureFlags38: number;
   /** kampens rammer (fixture = engine+0x4792): første kamps mål (+0x4b/+0x4c; null = ingen første kamp), word +0x38 (flags = flags38), word +0x30

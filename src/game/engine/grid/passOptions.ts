@@ -108,6 +108,8 @@ const inOwnThird = (side: Side, y: number) => (side === 0 ? y < 3 : y > 8);     
 const inOwnHalf = (side: Side, y: number) => (side === 0 ? y < 6 : y >= 6);     // sub_70dfa0
 const wide = (x: number) => x < 2 || x > 6;                                     // sub_70df20
 const ftol = Math.trunc;                                                         // sub_945640
+/** float-konstanten 0,1 (fx 0x96afc4) – x87 regner med floatens værdi 0,100000001490116 */
+const F01 = Math.fround(0.1);
 const isGK = (p: MatchPlayer) => (p.posFlags & 0xffff) === 1;
 
 /** sub_6cb9b0: is (tx,ty) a cross from the carrier's position? */
@@ -299,8 +301,9 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
     const cross = isCross(carrier, tx, ty, h);                             // sub_6cb9b0, stored in [F+0x12]
     if (cross) {
       const d = carrier.decRoll;
-      ScrossHigh = ftol(100 * carrier.crossing + 0.1 * d * (100 * c.jumping + 500));   // 0x6c7b05 (500) 0x6c7b0d (0.1)
-      ScrossLow = ftol(100 * carrier.crossing + 0.1 * d * (3000 - 100 * c.jumping));   // 0x6c7b1a (3000)
+      // 0x6c7b05 (500) 0x6c7b0d: ((100·Jumping + 500)·d)·0,1f – konstanten 0x96afc4 er en float (0,100000001…), ikke 0,1 som double
+      ScrossHigh = ftol((100 * c.jumping + 500) * d * F01 + 100 * carrier.crossing);
+      ScrossLow = ftol((3000 - 100 * c.jumping) * d * F01 + 100 * carrier.crossing);   // 0x6c7b1a (3000)
       if (carrier.instr.hi & 0x4) {                                        // "Cross Ball: Yes"
         const t = ftol(100 * carrier.teamwork + 500);                      // 0x6c7b5b / 0x6c7b61 — TODO: +0xe1 is Teamwork per sub_6ec010; odd but read so
         ScrossHigh += t; ScrossLow += t;

@@ -20,7 +20,10 @@ describe('gittermotoren i låsetrin med originalen', () => {
     ['lockstep-pl2', 193, 150000],  // 794–538 (mål, landingens dom, modtagelsen ved boldhøjde 4, frispark)
     ['lockstep-pl3', 25, 19000],    // 981–1780 (ls12)
     ['lockstep-pl7', 158, 122000],  // 1349–1312 (to mål, afsparket efter mål, sub_6ec010 efter moralændringer)
-    ['lockstep-pl16', 236, 180500], // 1738–1689 (2. spillerunde: rødt kort og omrokering, kampværdierne i kampen)
+    ['lockstep-pl16', 468, 361000], // 1738–1689 (2. spillerunde: rødt kort og omrokering, kampværdierne i kampen; ls19: pausen, udskiftninger)
+    ['lockstep-pl9', 529, 418000],  // 1689–1231 (ls19, femte runde: pausens restitution 0x6f5810/0x6ce460, genvalg med F-linjernes 0x6e2f20, hvile 0x710408)
+    ['lockstep-pl10', 263, 204000], // 908–981 (ls19: hvile 0x710408, forsvar i eget felt 0x71590f)
+    ['lockstep-cup', 382, 314500],  // 11–1873 venskabsturnering 72 (cup3: 9 udskiftninger, genererede spillere [0xae2364], 0x6ddab0 i kampen)
   ] as const) {
     it(`${name}: de første ${ticks} tik`, async () => {
       const r = await run(name, ticks);

@@ -189,6 +189,8 @@ export interface Situation {
   /** sub_6bd5b0(carrier, 0) / (carrier, 1). TODO: probably "no outfield opponent goal-side of him". */
   noDefenderGoalSide0: boolean;
   noDefenderGoalSide1: boolean;
+  /** 0x711721: boldholderens motivation +0x100 falder med 1 (tilstand 5, bagud) */
+  dropMotivation?(): void;
   /** sub_6bce80: a cell to run to (start = his tactical cell from sub_6c2be0). */
   runTarget: { found: boolean; tx: number; ty: number };
   /** His tactical cell (sub_6c2be0 / sub_715f50) and the distance to it when he is ahead of it (else 0). */
@@ -379,7 +381,8 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
     const behind = s.oppGoals - s.ownGoals;
     S += 3000 * behind;
     P *= 2;
-    // (side effect only) if !GK and rand(2*(3*behind + Professionalism)) < 1 the byte +0x100 drops by 1
+    // 0x7116eb–0x711727: ikke keeper (sub_6c38c0 ≠ 1) → rand(2·(3·behind + Professionalism)) < 1 → motivationen +0x100 −1
+    if (!c.isGoalkeeper && rand(2 * (3 * behind + c.professionalism)) < 1) s.dropMotivation?.();
   } else if (s.ownGoals - 2 > s.oppGoals) {
     S += 3000 * (s.oppGoals - s.ownGoals + 2);
     P *= 2;
@@ -549,7 +552,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
 
   // --- cost of running, 0x7130a9
   let cost = -10 * space - 100 * c.momentum
-    - trunc((10000 - c.condition) * -0.2)
+    - trunc((10000 - c.condition) * Math.fround(-0.2))                          // 0x7130f3: fmul dword [0x96d820] (float −0,2)
     - trunc(crtPow(h, 3) * -200);   // 0x7130c4
   if (pass && pass.hasTarget && P > 0 && [0x5e, 8, 7, 6].includes(pass.type)) cost += P;
   else if (c.crossBall && (c.posFlags & 0x880) && (c.sideFlags & 0x880)) {

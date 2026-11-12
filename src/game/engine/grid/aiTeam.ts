@@ -247,7 +247,7 @@ export function aiPickCtx(clubId: number): AiPickCtx | null {
   const shownOf = (v: number) => (st?.ca ? staffShown(st.ca, staffIntrinsic(v, st.ca)) : v);
   const cm = cmActive(g);
   return {
-    date: g.date, gameSeed: g.seed, clubId, manager: st?.tac ? { id: st.id, ca: st.rep * 2, tac: st.tac } : null,
+    date: g.date, gameSeed: g.seed, clubId, manager: st?.tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac: st.tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
     judge: st ? { id: st.id, ja: shownOf(st.attrs.judgingAbility), jp: shownOf(st.attrs.judgingPotential), joined: st.career?.[st.career.length - 1]?.from } : null,
     ...(cm ? { cm, leagueAvg: leagueAverage(g), tacticStats: (g.aiTacticStats ??= newTacticStats()) } : {}),
   };

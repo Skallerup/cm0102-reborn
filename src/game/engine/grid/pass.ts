@@ -584,7 +584,7 @@ export function makePass(c: PassCtx) {
     }
     // 5.4
     if (!inAttBox(side, p.x, p.y) && randS(rand, p.w31) < -10) {                   // dyk-grenen (kun negativt w31)
-      p.agitation = Math.min(100, Math.max(p.agitation * 1.05, 2 * (25 - p.temperament)));   // 0x6fca12 (max – noten har min)
+      p.agitation = Math.min(100, Math.max(Math.fround(p.agitation * Math.fround(1.05)), 2 * (25 - p.temperament)));   // 0x6fca12 (max – noten har min)
       c.comment(0x211d, null, other(side), null, -1, 0);                             // 0x6fca63 BOO_SPECIFIC_PLAYER (p1 −1, side = modstanderne)
       if (rand(20 * p.pressure + 10) === 0 && adjustMorale(p, -rand(3), rand)) c.refresh?.(p);   // 0x6fcaa2
     }
@@ -753,7 +753,7 @@ export function makePass(c: PassCtx) {
     const boo = () => {
       if (inAttBox(R.side, R.x, R.y)) return;
       if (randS(rand, R.w31) < -10) {
-        R.agitation = Math.min(100, Math.max(R.agitation * 1.05, 2 * (25 - R.temperament)));
+        R.agitation = Math.min(100, Math.max(Math.fround(R.agitation * Math.fround(1.05)), 2 * (25 - R.temperament)));
         c.comment(0x211d, null, other(R.side), null, -1, 0);
       }
     };

@@ -193,7 +193,6 @@ export function aiPrematch(inp: PrematchInput, rand: Rand): PrematchResult {
   const marking: (number | undefined)[] = Array(11).fill(undefined);
   const Js: (number | undefined)[] = Array(11).fill(undefined);
   const done = (): PrematchResult => ({ teamFlags: flags, lo, hi, instr: lo.map((l, s) => (BigInt(hi[s]) << 32n) | BigInt(l)), masks, masks2, formation, marking, J: Js });
-  const randS = (n: number) => (n < 0 ? -rand(-n) : rand(n));
   const team = (bit: number) => { flags = setTeamOption(flags, bit); };                 // sub_5b50d0
   const set = (s: number, l: number, h = 0) => {                                          // sub_5b5290(plads, lav, høj)
     if (h) { const v = setInstr({ lo: lo[s], hi: hi[s] }, h, true); hi[s] = v.hi; }
@@ -211,7 +210,7 @@ export function aiPrematch(inp: PrematchInput, rand: Rand): PrematchResult {
   // 0x6ddb4e–0x6ddba3: let tackling (0x20)
   if (inp.b19) team(0x20);
   else if (inp.compType === 1 || inp.compType === 9) {
-    const r = rand(2000) + randS(-4000);                                                  // 0x6ddb6e, 0x6ddb7a
+    const r = rand(2000) + rand(-4000);                                                   // 0x6ddb6e, 0x6ddb7a: rand(−4000) direkte (0..−3999)
     if (inp.ownRep - inp.oppRep > r) team(0x20);
   }
   const mgr = inp.manager;

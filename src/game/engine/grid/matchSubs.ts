@@ -36,7 +36,7 @@ import { captainBase, type RoleData } from './roleScore';
 import { AI_TACTIC_LIST, chooseAiTactic, type ChoiceManager, type ChoicePlayer } from './aiTacticChoice';
 import { PRESET_TACTICS } from './presetTactics';
 import { instrBig, presetTable } from './tacticTable';
-import { aiPrematch, FORM_BIT, oppositeIndex, PREMATCH_ATTR_KEYS } from './aiPrematch';
+import { aiPrematch, FORM_BIT, oppositeIndex, PREMATCH_ATTR_KEYS, recordAttr } from './aiPrematch';
 
 type Side = 0 | 1;
 type Rand = (n: number) => number;
@@ -61,15 +61,23 @@ export interface MatchSubsEnv {
   compType: number;
   onSub?: (on: GP, off: GP, auto: boolean) => void;
   onCarriedOff?: (p: GP) => void;
+  /** sub_6df460 for siden i kampen (0x6e0230's eget kald): tilstanden; r gemmes i engine+0x476a som i originalen */
+  aiModeNow?: (s: Side) => number;
+  /** add_event 0x6d6f70 (behandlingens kommentarer 0x6d0b60) */
+  comment?: (id: number, p1: GP | null, s1: number, p2: GP | null, s2: number, extra: number) => void;
   /** hele sub_6eecb0(q) (limens recompute: handlingsevner, lofter og rullene sub_6f44a0 – trækker tal) */
   refresh?: (q: GP) => void;
   /** sub_6e1090 0x6e1312–0x6e1333: hold+0x1a = 3 (fixture+0x40/+0x41 ≠ 0) og 0x48f150(turneringen fixture+0 → [0xadadfc], klubben) – klubben
    *  spiller i turneringen (ligaen); så 0x10000 i stedet for 0x100 ^ 0x80000. *estimeret* for porten: ligakamp (GridMatchCtx.league) */
-  leagueBranch?: boolean;
+  leagueBranch?: boolean | ((s: Side) => boolean);
+  /** hold+0x16 → 0x800000 (0x6e1359) */
+  b16?: (s: Side) => boolean;
   /** kun låsetrinstesten (scripts/lockstep.ts RC/CP-linjerne): spillets data for holdets samspil sub_6bbb60 – 0x4cf5a0 (klub, +0x80 omdømme),
    *  0x4cf5f0 (kontrakten, +0x45) og 0x6ebd70's byte – og anføreren 0x897590 (indekset i holdets blok) */
   cohesionOf?: (q: GP) => { club: boolean; clubRep: number; contract: boolean; b45: number; x: number } | undefined;
   captainIdx?: (s: Side) => number | undefined;
+  /** kun låsetrinstesten: originalens 0x6e2f20-værdi i stedet for portens (GridMatchCtx.subScore) */
+  subScore?: (s: Side, q: GP, spec: SlotSpec, flags: number, tf: number, value: number) => number;
   /** computerens udtagelse pr. side (aiTeam.ts): rammerne, anføreren (hold+0x3b) og dødboldsskytterne (+6/+0xa/+0xe) – 0x6e2f20 under kampen */
   aiPick?: [{ ctx: AiPickCtx; captain: number | null; setPieces: number[] } | null, { ctx: AiPickCtx; captain: number | null; setPieces: number[] } | null];
 }
@@ -77,6 +85,8 @@ export interface MatchSubsEnv {
 const sh = (p: Player, k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
+/** spillerpostens id (+0, dword) – 0x6ddd8b læser [player+0x6d]→+0. Kun låsetrinstesten har posten (GP.recRaw); ellers *estimeret* stab-id'et */
+export const recordId = (g: GP) => (g.recRaw ? ((g.recRaw[0] & 0xff) | ((g.recRaw[1] & 0xff) << 8) | ((g.recRaw[2] & 0xff) << 16) | ((g.recRaw[3] & 0xff) << 24)) >>> 0 : g.src.id);
 /** pladsens grundposition (gridMatch maskSlot → makePlayer): kolonne og række ud fra masken */
 function baseOf(mask: number, side: Side): { baseX: number; baseY: number } {
   if (mask & 1) return { baseX: 4, baseY: 0 };
@@ -170,6 +180,10 @@ export function makeMatchSubs(env: MatchSubsEnv) {
   /** sub_6e2f20 under kampen: hele værdien (roleScore.ts via aiTeam.ts matchRoleScore) med kampspilleren, anføreren og dødboldsskytterne fra
    *  udtagelsen (pick_team); uden udtagelse (env.aiPick mangler) som før: P og konditionens tidlige retur sikre, resten *estimeret* */
   const scoreOf = (s: Side) => (p: SubPlayer, spec: SlotSpec, flags: number) => {
+    const v = scoreOf0(s)(p, spec, flags);
+    return env.subScore ? env.subScore(s, byIdAny(p.id), spec, flags, m.teamFlags[s], v) : v;
+  };
+  const scoreOf0 = (s: Side) => (p: SubPlayer, spec: SlotSpec, flags: number) => {
     const q = byIdAny(p.id);
     const qc = { clock: m.clock, periodEnd: env.periodEnd(), humanControlled: false };
     const ap = env.aiPick?.[s];
@@ -192,7 +206,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     const res = reselect(rand, {
       players: list.map(toSub), subsLeft: subsLeft[s], benchSize: benchSize[s], keeperOut, clock: m.clock, periodEnd: env.periodEnd(),
       posOf, attOf, slotSpec: specOf(s), score: scoreOf(s),
-      flags: { national: false, assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: env.leagueBranch ?? false, b16: false, humanClubOption: false },
+      flags: { national: false, assisted: false, compType: env.compType, ownRep: env.rep[s], oppRep: env.rep[1 - s], leagueBranch: typeof env.leagueBranch === 'function' ? env.leagueBranch(s) : env.leagueBranch ?? false, b16: env.b16?.(s) ?? false, humanClubOption: false },
     });
     subsLeft[s] = res.subsLeft;
     const before = new Map(list.map((q) => [q, q.slot]));
@@ -216,10 +230,15 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     const players: ChoicePlayer[] = on.map((q) => {
       const rec = playerRecord(q.src), sp = ap.setPieces.indexOf(q.src.id) + 1, cap = ap.captain === q.src.id;
       return { ratings: recordRatings(q.src), b30: rec[0x30], b3b: rec[0x3b], quality: 0,
-        score: (mask: number) => matchRoleScore(q.src, ap.ctx, { pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0 }, 0x8c1, undefined, cap, sp, roleCache) };
+        score: (mask: number) => {
+          const v = matchRoleScore(q.src, ap.ctx, { pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0 }, 0x8c1, undefined, cap, sp, roleCache);
+          return env.subScore ? env.subScore(s, q, { slot: -1, pos: mask, att: 0, instrLo: 0, instrHi: 0, tacticByte: 0 }, 0x8c1, 0, v) : v;
+        } };
     });
     const manager: ChoiceManager | null = mg ? { attacking: mg.tac[0], freeRoles: mg.tac[2], marking: mg.tac[3], offside: mg.tac[4], pressing: mg.tac[5], favourite: mg.tac[7] } : null;
-    const { index } = chooseAiTactic({ players, mode: m.aiMode[s], manager, stats: ap.ctx.tacticStats, divisor: Math.max(8 * env.rep[s], 2000), flags: 0x8c1 });
+    // 0x6e025d: 0x6e0230 kalder selv 0x6df460 (tilstanden i kampen; den skriver r til engine+0x476a) og vælger efter dens svar
+    const mode = env.aiModeNow ? env.aiModeNow(s) : m.aiMode[s];
+    const { index } = chooseAiTactic({ players, mode, manager, stats: ap.ctx.tacticStats, divisor: Math.max(8 * env.rep[s], 2000), flags: 0x8c1 });
     setChosenTactic(ap.ctx.clubId, index);                                         // 0x8967d0
     const entry = AI_TACTIC_LIST[index], pr = PRESET_TACTICS[entry.preset];
     if (!pr) return;
@@ -230,10 +249,12 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     for (const q of on) applySlot(q, q.slot, slotTab[s][q.slot]);
     // 0x6ddab0: computerens instruktioner på den nye taktik (som før kampen, gridMatch) – trækker motorens tal
     const at = (p: Player, n: number) => p.attrs[ATTRS.indexOf(PREMATCH_ATTR_KEYS[n] as never)] || 10;
+    // sub_5431e0(staff, n): den viste værdi – af spillerposten, når låsetrinstesten har den (GP.recRaw; dens 18 interne værdier er ikke viste)
+    const attrOf = (g: GP, n: number) => (g.recRaw ? recordAttr(Array.from(g.recRaw, (b) => b & 0xff), n, g.staffRaw ? g.staffRaw[0x58] : 10) : at(g.src, n));
     const mgr = mg ? (() => { const [attacking, directness, freeRoles, , offside, pressing, tactics] = mg.tac; return { id: mg.id, ca: mg.ca, attacking, directness, freeRoles, offside, pressing, tactics }; })() : null;
     const res = aiPrematch({
       flags: entry.flags, lo: entry.lo, hi: pr.hi, masks: entry.masks, masks2: entry.masks2,
-      players: on.map((g) => ({ slot: g.pslot, recId: g.src.id, condition: g.condition, b24: g.yellows, attr: (n: number) => at(g.src, n),
+      players: on.map((g) => ({ slot: g.pslot, recId: recordId(g), condition: g.condition, b24: g.yellows, attr: (n: number) => attrOf(g, n),
         raw: { dm: g.src.pos[3], m: g.src.pos[4], am: g.src.pos[5], f: g.src.pos[6], right: g.src.side[2], left: g.src.side[0], central: g.src.side[1], freeRole: g.src.cmFree ?? 1,
           jumping: at(g.src, 17), technique: at(g.src, 30), stamina: at(g.src, 26), workRate: at(g.src, 31) } })),
       manager: mgr, ownRep: env.rep[s], oppRep: env.rep[1 - s], b19: false, compType: env.compType, homeTeam: s === 0,
@@ -321,6 +342,8 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     subsLeft, benchSize, lastChange, cohesion,
     /** taktikkens positionsord pr. plads (engine+0x91e2+6371·side +0x12d/+0x14e), som pladserne er udfyldt – sub_6ec010 (0x6d5b20/0x6d5af0) */
     slotWords: (s: Side, j: number) => slotTab[s][j] ? { pos: slotTab[s][j].pos, posAttack: slotTab[s][j].posAttack } : undefined,
+    /** kun låsetrinstesten: pladstabellen igen fra spillerne på banen (efter at originalens tilstand er sprøjtet ind) */
+    resyncSlots() { refresh(0); refresh(1); },
     /** init_match 0x6b8bc5–0x6b8bd5: sub_6bbb60(0), sub_6bbb60(1), sub_6bbf60 ved kampstart (kaldt af gridMatch.ts) */
     kickoffSetup() { doCohesion(0); doCohesion(1); doMarking(); },
     state: (q: GP) => st.get(q),
@@ -339,17 +362,23 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       if (!m.b8eb5) return;
       for (const s of [0, 1] as Side[]) {
         const list = sideOf(s), sps = list.map(toSub);
-        const acts = treatInjured(rand, [{ players: sps, subsLeft: subsLeft[s], aiControlled: env.ai(s) }], m.clock, env.periodEnd());
-        sps.forEach((sp, i) => { if (!sp.treat) list[i].b1d = 0; });
-        for (const a of acts) {
+        // 0x6d0d34–0x6d0d6f: en modspiller skadede ham → 0x20f6 (offeret, skadevolderen)
+        const injurer = (q: GP) => { const by = q.injuredBy; if (by) env.comment?.(0x20f6, q, q.side, by, by.side, 0); };
+        treatInjured(rand, [{ players: sps, subsLeft: subsLeft[s], aiControlled: env.ai(s) }], m.clock, env.periodEnd(), (a) => {
           if (a.kind === 'carriedOff') {
             const q = byId(s, a.id), slot = q.slot, wasKeeper = q.pos === L.POS.keeper, x = S(q);
+            env.comment?.(slot >= 0 ? 0x1f56 : 0x1f57, q, q.side, null, -1, 0);           // 0x6d0bed / 0x6d0c4f (båret fra banen / udvist)
             x.minuteInjured = minute();
             if (slot >= 0) { x.prevSlot = slot; detach(q); q.slot = -2; env.onCarriedOff?.(q); if (a.mode !== -1) fillFor(s, q, slot, a.mode, wasKeeper); }
             // udvist og behandlet: 6cdd50(p, 0) – keepertesten gælder motorens keeper (+0xf59e), som allerede er en anden: intet
+            injurer(q); q.b1d = 0;
+          } else if (a.kind === 'continues') {
+            const q = byId(s, a.id);
+            if (a.comment) env.comment?.(0x1f58, q, q.side, null, -1, 0);                   // 0x6d0d2f: fortsætter
+            injurer(q); q.b1d = 0;
           } else if (a.kind === 'reselect') { doReselect(s, false); lastChange[s] = m.clock; afterChange(s); }
           else if (a.kind === 'rearrange') { doRearrange(s); lastChange[s] = m.clock; afterChange(s); }
-        }
+        });
       }
       m.b8eb5 = 0;
     },

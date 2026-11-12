@@ -101,7 +101,7 @@ export class GridSim implements LiveSim {
       ownGround: !opts.neutral,
       // klubbernes omdømme (originalens skala 0–10000; vores 0–100 ×100 – *estimeret*) og managerne fra den originale database (Staff.tac)
       rep: [home.club, away.club].map((c) => (gs().clubs[c]?.rep ?? 50) * 100) as [number, number],
-      managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; return st?.tac ? { id: st.id, ca: st.rep * 2, tac: st.tac } : null; }) as [GridManager | null, GridManager | null],
+      managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; return st?.tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac: st.tac } : null; }) as [GridManager | null, GridManager | null],
       // computerens holdudtagelse (aiTeam.ts): dato, spillets frø [0xdd7120] og managerens bedømmelse (viste Judging Ability/Potential)
       pick: [home.club, away.club].map((c) => aiPickCtx(c)) as [AiPickCtx | null, AiPickCtx | null],
       // computerstyret hold: sub_6c54a0 retter og skifter kun dem (menneskets hold ændres aldrig af motoren)

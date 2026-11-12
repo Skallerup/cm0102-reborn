@@ -8,7 +8,7 @@
 //   ballOut(side: Side): void          sub_6cd490(this = engine, side) – bolden er ude; argumentet = skyttens side (sidst rørt). Kaldes efter at
 //                                      0x706c6a/0x706c97 har sat boldens y til −1 (side 1) / 12 (side 0) (+0x8ea8). = loop.ts ballOut / gridMatch's
 //                                      ball_out_of_play (0x6cd490) – må IKKE flytte bolden ind først.
-//   compType: number                   engine+1 (turneringstypen, fixture+0x37 → +0x3a; 0x706cfc) – ctx.compType.
+//   byte1: number                      engine+1 (banens tilstand, 0x706cfc – ikke turneringstypen fixture+0x3a) – GRID_UNKNOWN.byte1.
 //   fixtureFlags38: number             fixture+0x38 (via engine+0x4792) – bit 0x80 = golden goal (sub_6d4250).
 //   watched: boolean                   engine+0x8ebb ≠ 0 (kampen vises på skærmen; 0x707511).
 //   notAhead(side: Side): boolean      sub_6d5950(side) (0x7072cc/0x7073a3): sub_6ce310(side, …, flag 0) på HOLDETS TÆLLERE engine+0xf5bd/+0xf5f3 (+ første
@@ -170,7 +170,7 @@ export const L_706cba = label(0x706cba, (E, f) => {
   if (ebp !== 0) {
     f.s38 = f.edi * 100;                                                                 // 0x706cd7
     let r = Math.fround((f.s38 as number) / ebp);                                                    // fild/fidiv/fstp dword [esp+0x1c]
-    if (!(r > 68) && (E.compType === 2 || E.compType === 8)) r = Math.fround(r + 2);      // 0x706ceb–0x706d13 (0x96d80c = 68, 0x9689a8 = 2)
+    if (!(r > 68) && (E.byte1 === 2 || E.byte1 === 8)) r = Math.fround(r + 2);      // 0x706ceb–0x706d13 (0x96d80c = 68, 0x9689a8 = 2)
     f.s1c = r;
     if (r > 71) return goal(E, f);                                                       // 0x706d17–0x706d26 (0x96d808 = 71)
   } else f.s1c = 0;                                                                      // 0x706d83
