@@ -53,7 +53,7 @@ async function readTrace(): Promise<TMatch[]> {
   return out;
 }
 
-const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+const world = JSON.parse(readFileSync(process.env.WORLD ?? 'public/data/world-original.json', 'utf8')) as WorldData;   // WORLD=<fil>: en anden world-fil
 const eng = world.nations.findIndex((x) => x.name === 'England');
 // samme opsætning som grid-stats.ts (frø 3); brugerens klub er en klub uden for Premier League, så alle PL-hold er computerens
 const userClub = world.clubs.find((c) => c[1] === 'Wrexham')?.[0] ?? world.clubs.find((c) => c[3] === eng && c[4] !== 'CM7')![0];
@@ -72,7 +72,7 @@ const clubName = (b: Uint8Array) => Buffer.from(b.slice(4, 4 + 51)).toString('la
 const clubOf = (b: Uint8Array) => { const n = clubName(b); return Object.values(g.clubs).find((c) => c.name === n)?.id; };
 
 const tally = new Map<string, { n: number; bad: number; ex: string[] }>();
-const note = (k: string, ok: boolean, ex?: string) => { const t = tally.get(k) ?? { n: 0, bad: 0, ex: [] }; t.n++; if (!ok) { t.bad++; if (ex && t.ex.length < 4) t.ex.push(ex); } tally.set(k, t); };
+const note = (k: string, ok: boolean, ex?: string) => { const t = tally.get(k) ?? { n: 0, bad: 0, ex: [] }; t.n++; if (!ok) { t.bad++; if (ex && t.ex.length < (Number(process.env.EX) || 4)) t.ex.push(ex); } tally.set(k, t); };   // EX=<n>: flere eksempler
 const caDiff: Record<string, number[]> = {};
 const fDiff: Record<string, number[]> = {};
 const recDiff: Record<string, number[]> = {};

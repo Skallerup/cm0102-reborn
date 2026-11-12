@@ -26,6 +26,7 @@ import { cmFitRead, setMatchSquad } from '../../cmFitnessGame';
 import { cmPermitHistory } from '../../cmPermit';
 import { newTacticStats, recordTacticResult } from './aiTacticChoice';
 import { chooseCaptain, judgeAbility, recentForm, roleScore, staffIntrinsic, staffShown, type CaptainInput, type Day, type RoleData, type RoleInput } from './roleScore';
+import { gridTacOf, npShown } from '../../cmStaffInit';
 
 /** spillerens 12 positionsevner som spillerposten +0x0f..+0x1a: GK SW D DM M AM F WB, højre (+0x17, maske 0x800), venstre (+0x18, 0x80),
  *  midt (+0x19, 0x200), fri rolle (+0x1a). Vores Player.side er [L, C, R]. */
@@ -247,11 +248,13 @@ export function aiPickCtx(clubId: number): AiPickCtx | null {
   if (!hasGame()) return null;
   const g = gs();
   const st = g.staff[g.clubs[clubId]?.manager ?? -1];
-  const shownOf = (v: number) => (st?.ca ? staffShown(st.ca, staffIntrinsic(v, st.ca)) : v);
+  // med Staff.cmNp (originalens spilstart, cmStaffInit.ts) de interne værdier i hukommelsen; ellers databasens værdi omregnet uden afbalancering
+  const shownOf = (v: number, off: number) => npShown(st, off) ?? (st?.ca ? staffShown(st.ca, staffIntrinsic(v, st.ca)) : v);
   const cm = cmActive(g);
+  const tac = gridTacOf(st);
   return {
-    date: g.date, gameSeed: g.seed, clubId, manager: st?.tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac: st.tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
-    judge: st ? { id: st.id, ja: shownOf(st.attrs.judgingAbility), jp: shownOf(st.attrs.judgingPotential), joined: st.career?.[st.career.length - 1]?.from } : null,
+    date: g.date, gameSeed: g.seed, clubId, manager: st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null,   // ikke-spillerpostens +4 (CA) – 0x6ddab0's 0x544410/0x543f30
+    judge: st ? { id: st.id, ja: shownOf(st.attrs.judgingAbility, 0x17), jp: shownOf(st.attrs.judgingPotential, 0x18), joined: st.career?.[st.career.length - 1]?.from } : null,
     ...(cm ? { cm, leagueAvg: leagueAverage(g), tacticStats: (g.aiTacticStats ??= newTacticStats()) } : {}),
   };
 }

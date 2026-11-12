@@ -19,7 +19,10 @@ export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: numbe
   /** staff +0x1e: anden nationalitet (indeks i world.nations; udeladt = ingen) – originalens EU-regel 0x53d740 og arbejdstilladelsens historik */
   n2?: number;
   /** staff +0x3e: datoen han kom til klubben (ISO; udeladt = mangler) – arbejdstilladelsens historik 0x8c6e60 og kontraktens dage i klubben */
-  j?: string }
+  j?: string;
+  /** sprogtabellens "dage" fra karrierehistorien (PlayerStats 0x7bfd50, 0x7c0b74–0x7c0c51 – cmLanguage.ts): [sprog, dage, …] for
+   *  spillere med mindst én historikpost før 2001 (tom = posterne findes, men gav ingen dage); udeladt = ingen poster */
+  lg?: number[] }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -33,7 +36,14 @@ export interface CMWorld extends WorldData {
     /** club.dat +100 status (1 professionel, 2 semiprofessionel, 3 amatør) og +119 (mindste tilskuertal) – computerens trupplan 0x83cb40/0x7bca90 */
     clubStat?: Record<number, [number, number] | [number, number, number, number]>;
     /** club_comp.dat +105 (turneringens omdømme, i hukommelsen +0x69) pr. turnerings-id (ligaen `CM<id>`, Europa 326/328/330) */
-    compRep?: Record<number, number> };
+    compRep?: Record<number, number>;
+    /** (runde 9) tilskuertallet sub_85cba0: club.dat +115/+119/+123 (gns./mindst/højst), stadionet +105 (id) med stadium.dat +56 (byen) og +60
+     *  (kapaciteten, rå), rivalerne +179/+183/+187 (klub-id'er, −1 = ingen) */
+    crowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
+    /** city.dat (56 bytes pr. by, i fil-rækkefølge = hukommelsens [0xae23ac]): +0x23 og +0x2b (doubles) fladt [c23, c2b, c23, c2b, …] */
+    cities?: number[];
+    /** nation.dat +0x7e pr. nationsindeks (udeholdets land i afstandsleddet sub_85d8a0) */
+    nation7e?: number[] };
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
@@ -47,7 +57,9 @@ export interface CMWorld extends WorldData {
    *  Physiotherapy, Motivating, Discipline, Tactical Knowledge] (0 = ikke sat), CA, omdømme (0-200), staff-id] */
   /** … [10] = managerens taktiske egenskaber (ikke-spillerposten): [Attacking +0x0e, Directness +0x13, Free Roles +0x15, Marking +0x1a,
    *  Offside +0x1c, Pressing +0x1f, Tactics +0x21, yndlingsformation +0x43 (1..9)] – originalens computer-taktik (aiPrematch/aiTacticChoice) */
-  staff?: [number, string, string, number, string, number, number[], number, number, number, number[]?][];
+  /** … [11] = ikke-spillerposten til originalens spilstart: [PA +6, de 21 egenskaber +0x0e..+0x22 (rå 1..20, 0 = ikke sat), jobkoden]
+   *  (cmStaffInit.ts – kun den originale database) */
+  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -192,13 +204,14 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   // nationer
   const N = new Reader(files['nation.dat']);
   const nationIdx = new Map<number, number>();
-  const nations: { name: string; code: string }[] = [];
+  // lang: nation +0x77 (sproget, 8 = engelsk) og +0x78/+0x79 (andre sprog) – originalens sprogtabel 0x7bfd50/0x7c6930 (cmLanguage.ts)
+  const nations: { name: string; code: string; lang: number[] }[] = [];
   const nationVal = new Map<number, [number, number]>(); // nation +0x7E (økonomisk niveau 1-3), +0x8E (omdømme, i16)
   for (let o = 0; o + 290 <= files['nation.dat'].byteLength; o += 290) {
     const id = N.i32(o);
     nationIdx.set(id, nations.length);
     nationVal.set(id, [N.u8(o + 0x7e), N.i16(o + 0x8e)]);
-    nations.push({ name: N.str(o + 4, 51), code: N.str(o + 83, 4) || N.str(o + 56, 3).toUpperCase() });
+    nations.push({ name: N.str(o + 4, 51), code: N.str(o + 83, 4) || N.str(o + 56, 3).toUpperCase(), lang: [N.u8(o + 0x77), N.u8(o + 0x78), N.u8(o + 0x79)] });
   }
 
   // turneringer (ligaer findes som de divisioner klubberne spiller i)
@@ -221,6 +234,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   // stadioner (kapacitet)
   const seatsOf = new Map<number, number>();
   const stadiumName = new Map<number, string>();
+  const stadiumRaw = new Map<number, [number, number]>();   // (runde 9) stadium.dat +56 byen, +60 kapaciteten (rå)
   if (files['stadium.dat']) {
     const St = new Reader(files['stadium.dat']);
     // post: id (4) · navn (51) · by (4) · 1 byte · kapacitet (4, byte 60) · siddepladser (4, byte 64) · …
@@ -228,14 +242,23 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     for (let o = 0; o + 78 <= files['stadium.dat'].byteLength; o += 78) {
       const cap = St.i32(o + 60);
       if (cap > 0 && cap <= 150_000) seatsOf.set(St.i32(o), cap);
+      stadiumRaw.set(St.i32(o), [St.i32(o + 56), cap]);
       const nm = St.str(o + 4, 51).trim();
       if (nm) stadiumName.set(St.i32(o), nm);
     }
   }
 
+  // (runde 9) byerne (city.dat): koordinaterne til tilskuertallets afstandsled
+  let cities: number[] | null = null;
+  if (files['city.dat']) {
+    const Ci = new DataView(files['city.dat']);
+    cities = [];
+    for (let o = 0; o + 56 <= files['city.dat'].byteLength; o += 56) cities.push(Ci.getFloat64(o + 0x23, true), Ci.getFloat64(o + 0x2b, true));
+  }
+
   // klubber
   const CL = new Reader(files['club.dat']);
-  type RawClub = { id: number; name: string; short: string; nation: number; division: number; lastDiv: number; lastPos: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; minAtt: number; training: number; manager: number };
+  type RawClub = { id: number; name: string; short: string; nation: number; division: number; lastDiv: number; lastPos: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; minAtt: number; training: number; manager: number; rivals: [number, number, number] };
   const rawClubs: RawClub[] = [];
   for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
     rawClubs.push({
@@ -246,6 +269,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       balance: CL.i32(o + 101), status: CL.u8(o + 100), avgAtt: CL.i32(o + 115), minAtt: CL.i32(o + 119), training: CL.u8(o + 127),
       // klubbens manager (staff-id; ejerens Bosman-projekt, db.rs: club.dat 207)
       manager: CL.i32(o + 207),
+      rivals: [CL.i32(o + 179), CL.i32(o + 183), CL.i32(o + 187)],
     });
   }
   // ligaer: divisioner med mindst 8 klubber; niveau efter omdømme inden for landet
@@ -361,7 +385,55 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       let dob = S.date(o + 16);
       if (!dob) { const yob = S.i16(o + 24); dob = yob > 1900 && yob < 2100 ? `${yob}-01-01` : ''; }
       const tac = [0x0e, 0x13, 0x15, 0x1a, 0x1c, 0x1f, 0x21, 0x43].map((k) => S.u8(np + k));
-      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac]);
+      // [11] = hele ikke-spillerposten til originalens spilstart (cmStaffInit.ts, sub_535a80 0x537d59–0x5388cf + 0x538a70): PA +6,
+      // de 21 egenskaber +0x0e..+0x22 (rå, 0 = ikke sat) og databasens jobkode (personpost +61, også for ledige)
+      const raw = [S.i16(np + 6)];
+      for (let k = 0x0e; k <= 0x22; k++) raw.push(S.u8(np + k));
+      raw.push(job);
+      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac, raw]);
+    }
+  }
+
+  // sprogtabellens dage af karrierehistorien (PlayerStats::PlayerStats 0x7bfd50 0x7c0748–0x7c0c7f, kørt på databasens 1/1-2001): for hver
+  // historikpost (staff_history.dat 17 bytes: +4 person, +8 sæsonens år, +10 klub, +15 kampe) før 2001 i en klub i et andet land (end
+  // personens to nationaliteter) med sproget L (nation +0x77, 1..64): dage[L] += 2·(3·(kampe + 30) + år − 2001) (16 bit); er klubben den
+  // nuværende: dage[L] = ftol(max(0,7·(365·(2001 − år ind) − dag ind), dage[L])). Resten (tærsklen af Adaptability, den nuværende klub
+  // til startdatoen) i newgame.ts (cmLanguage.ts initialLanguages).
+  const histLang = new Map<number, number[]>();
+  if (files['staff_history.dat']) {
+    const H = new DataView(files['staff_history.dat']);
+    const natLang = new Map<number, number>();
+    for (let o = 0; o + 290 <= files['nation.dat'].byteLength; o += 290) natLang.set(N.i32(o), N.u8(o + 0x77));
+    const clubNat = new Map<number, number>(rawClubs.map((c) => [c.id, c.nation]));
+    const who = new Map<number, number>();                                         // staff-id → postens offset i staff.dat
+    for (let i = 0; i < tStaff.count; i++) { const o = tStaff.offset + i * staffSize; if (o + staffSize > files['staff.dat'].byteLength) break; who.set(S.i32(o), o); }
+    const w16 = (v: number) => (v << 16) >> 16;
+    // posterne pr. person i årsrækkefølge (filen er ikke grupperet; i hukommelsen er tabellen sorteret pr. person – *antaget*: efter år,
+    // inden for et år i filens rækkefølge)
+    const rows = new Map<number, [number, number, number][]>();
+    for (let o = 0; o + 17 <= files['staff_history.dat'].byteLength; o += 17) {
+      const pid = H.getInt32(o + 4, true), year = H.getInt16(o + 8, true);
+      if (!who.has(pid) || year < 1900 || year >= 2001) continue;
+      (rows.get(pid) ?? rows.set(pid, []).get(pid)!).push([year, H.getInt32(o + 10, true), H.getUint8(o + 15)]);
+    }
+    for (const [pid, list] of rows) {
+      list.sort((a, b) => a[0] - b[0]);
+      const so = who.get(pid)!;
+      const days = new Int16Array(65);
+      for (const [year, club, apps] of list) {
+        const cn = clubNat.get(club);
+        if (club <= 0 || cn === undefined || cn === S.i32(so + 26) || cn === S.i32(so + 30)) continue;
+        const L = natLang.get(cn) ?? 0;
+        if (L < 1 || L > 64) continue;
+        days[L] = w16(days[L] + w16(2 * w16(3 * (apps + 30) - 2001 + year)));
+        if (S.i32(so + 57) === club) {
+          const D = 365 * (2001 - (S.i16(so + 64) & 0xffff)) - S.i16(so + 62);
+          days[L] = Math.trunc(Math.max(0.7 * D, days[L]));
+        }
+      }
+      const out: number[] = [];
+      for (let L = 1; L <= 64; L++) if (days[L]) out.push(L, days[L]);
+      histLang.set(pid, out);
     }
   }
 
@@ -427,7 +499,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const fr = Math.max(1, Math.min(20, get('FreeRole')));
     const n2 = nationIdx.get(S.i32(o + 30)), joined = S.date(o + 62);
     ratings[id] = { ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}),
-      ...(n2 !== undefined && n2 !== nation ? { n2 } : {}), ...(joined ? { j: joined } : {}) };
+      ...(n2 !== undefined && n2 !== nation ? { n2 } : {}), ...(joined ? { j: joined } : {}), ...(histLang.has(id) ? { lg: histLang.get(id) } : {}) };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27
@@ -464,7 +536,13 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub,
     cmRaw: { clubRep: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined).map((c) => [c.id, c.rep])), nationRep: [...nationIdx.keys()].map((id) => nationVal.get(id)![1]),
       clubStat: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id)).map((c) => [c.id, [c.status, c.minAtt, c.lastDiv, c.lastPos]])),
-      compRep: Object.fromEntries([...comps.entries()].map(([id, c]) => [id, c.rep])) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
+      compRep: Object.fromEntries([...comps.entries()].map(([id, c]) => [id, c.rep])),
+      crowd: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id)).map((c) => {
+        const st = stadiumRaw.get(c.stadium);
+        return [c.id, [c.avgAtt, c.minAtt, c.maxAtt, st ? c.stadium : -1, st ? st[0] : -1, st ? st[1] : -1, ...c.rivals.map((r) => (r >= 0 ? r : -1))] as [number, number, number, number, number, number, number, number, number]];
+      })),
+      ...(cities ? { cities } : {}),
+      nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 

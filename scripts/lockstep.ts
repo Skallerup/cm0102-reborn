@@ -6,7 +6,7 @@
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
 import { createGunzip } from 'node:zlib';
 import { createInterface } from 'node:readline';
-import { attachView, cellIx, createGridMatch, GRID_UNKNOWN, type GP, type GridMatchState, type Rand, type Side } from '../src/game/engine/grid/gridMatch';
+import { attachView, cellIx, createGridMatch, GRID_UNKNOWN, type GP, type GridMatch, type GridMatchState, type Rand, type Side } from '../src/game/engine/grid/gridMatch';
 import { ATTRS } from '../src/game/attributes';
 import type { AiModeInput, TableRow } from '../src/game/engine/grid/aiMode';
 import { INJ_TYPES } from '../src/game/cmFitness';
@@ -33,15 +33,23 @@ const NATION_LANG: number[] | null = (() => {
   return out;
 })();
 export async function readMatch(file: string, k: number, maxTicks = Infinity): Promise<MatchTrace> {
+  const [tr] = await readMatches(file, [k], maxTicks);
+  if (!tr) throw new Error(`kamp ${k} findes ikke i ${file}`);
+  return tr;
+}
+/** (runde 9) flere kampe i ét gennemløb af sporet – samme læsning som readMatch pr. kamp (maxTicks: resten af kampen springes over) */
+export async function readMatches(file: string, ks: number[], maxTicks = Infinity): Promise<MatchTrace[]> {
   const raw = createReadStream(file);
   const rl = createInterface({ input: file.endsWith('.gz') ? raw.pipe(createGunzip()) : raw, crlfDelay: Infinity });
+  const want = new Set(ks), last = Math.max(...ks), found: MatchTrace[] = [];
   let n = -1, tr: MatchTrace | null = null, cur: TickRec | null = null;
   const pre: string[] = [], preMv: string[] = [], preKeys = new Set<string>();   // preMv: kampstartens sub_6ec010-kald (tik −1) står før M-linjen (init_match)
   for await (const l of rl) {
     if (l.startsWith('M ')) {
-      if (tr) break;
+      if (tr) { found.push(tr); tr = null; cur = null; }
       n++;
-      if (n === k) tr = { M: l.split(' ').slice(1).map(Number), P: [], I: [], R: [], EN: new Uint8Array(0), CL: [], RL: [[null, null], [null, null]], pre: pre.slice(), ticks: [], MVL: preMv.slice() };
+      if (n > last) break;
+      if (want.has(n)) tr = { M: l.split(' ').slice(1).map(Number), P: [], I: [], R: [], EN: new Uint8Array(0), CL: [], RL: [[null, null], [null, null]], pre: pre.slice(), ticks: [], MVL: preMv.slice() };
       pre.length = 0; preMv.length = 0; preKeys.clear();
       continue;
     }
@@ -66,7 +74,7 @@ export async function readMatch(file: string, k: number, maxTicks = Infinity): P
       continue;
     }
     if (l.startsWith('T ')) {
-      if (tr.ticks.length >= maxTicks) break;
+      if (tr.ticks.length >= maxTicks) { found.push(tr); tr = null; cur = null; if (n >= last) break; continue; }
       cur = { T: l, r: [], other: [] }; tr.ticks.push(cur); continue;
     }
     if (l.startsWith('XE ')) { if (cur) cur.XE = hex(l.slice(l.indexOf(' ', 3) + 1)); continue; }
@@ -101,8 +109,8 @@ export async function readMatch(file: string, k: number, maxTicks = Infinity): P
     if (cur) cur.other.push(l);
   }
   rl.close();
-  if (!tr) throw new Error(`kamp ${k} findes ikke i ${file}`);
-  return tr;
+  if (tr) found.push(tr);
+  return found;
 }
 
 // ------------------------------------------------------------------ læsning af originalens bytes
@@ -425,10 +433,14 @@ function aiModeFromTrace(f: string[], port: AiModeInput): { inp: AiModeInput; di
   return { inp, diff };
 }
 
-export interface LockResult { ticks: number; rands: number; ok: boolean; at?: string; diff?: string[]; stack?: string; finished: boolean; next?: string }
+export interface LockResult { ticks: number; rands: number; ok: boolean; at?: string; diff?: string[]; stack?: string; finished: boolean; next?: string;
+  /** (runde 9c, lockstep-post.ts) kampen efter slutfløjtet: motoren, spillerne pr. side (indeks), limens lokale tilstand og originalens resterende tal */
+  end?: { g: GridMatch; side: GP[][]; ix: Record<string, unknown>; rest: [number, number, number][] } }
 
 /** kører porten i låsetrin med originalen; stopper ved første afvigelse */
-export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s: string) => void; aimode?: string[][] } = {}): LockResult {
+export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s: string) => void; aimode?: string[][]; free?: Rand; onGame?: (g: ReturnType<typeof createGridMatch>) => void } = {}): LockResult {
+  // (runde 9) free: originalens kampstart (tilstanden i toppen af tik 0), men egne tilfældige tal herfra og ingen kontrol – kampen spilles færdig
+  const free = opts.free, amSeen = [0, 0];
   const teams = teamsOf(tr);
   const base = new Mem(tr.R[0].mp).u32(0x19e);
   let mode: 'init' | 'lock' = 'init', feed: [number, number, number][] = [], fi = 0, fail: string | null = null, stack = '', rands = 0;
@@ -442,6 +454,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
   const rand: Rand = (n) => {
     const k = Math.trunc(n);
     if (mode === 'init') { if (k === 0) return 0; dummy = (dummy * 1103515245 + 12345) & 0x7fffffff; return k > 0 ? dummy % k : -(dummy % -k); }
+    if (free) return free(n);
     if (fail) return 0;
     const e = feed[fi++];
     if (!e) { fail = `tik ${tick}: porten trækker rand(${k}), men originalens tik har ikke flere tal`; stack = new Error().stack ?? ''; throw new Error('lockstep'); }
@@ -453,7 +466,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
     return e[2];
   };
   let ix: Record<string, unknown> = {};
-  const maxT = Math.min(opts.maxTicks ?? Infinity, tr.ticks.length);
+  const maxT = free ? Infinity : Math.min(opts.maxTicks ?? Infinity, tr.ticks.length);
   const L: Lock = { tr, base, side: [[], []], gpOf: () => null };
   let tick = 0, topSeen = false;
   // kampens rammer fra motoren, som porten ellers har som *estimerede* værdier: vejret engine+0x4756 (byte + næste byte) og banen engine+1
@@ -472,7 +485,18 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
         const f = opts.aimode!.find((x) => +x[1] === sd); if (!f || f[31] === '-') return null;
         const [, c19, c2d, c41, c55] = f[31].split(':').map(Number); return [c19, c2d, c41, c55] as [number, number, number, number];
       } } : {}),
-      aiModeInput: opts.aimode?.length ? (inp) => {
+      // (runde 9) frit spil: kampens faste indgange (omdømme, tabelrækkerne, fixture-felterne, managerens Attacking …) fra originalens første kald
+      // for siden, de skiftende (stilling, ur, styrke, territorium) fra porten – FREE_AIM=port: alt fra porten
+      aiModeInput: opts.aimode?.length && free ? (process.env.FREE_AIM === 'port' ? undefined : (inp) => {
+        const f = opts.aimode!.find((x) => +x[1] === inp.side && +x[3] > 0) ?? opts.aimode!.find((x) => +x[1] === inp.side);
+        if (!f) return inp;
+        const r0 = aiModeFromTrace(f, inp).inp;
+        const only = process.env.FREE_AIM_FIELDS?.split(',');
+        const r = only ? { ...inp, ...Object.fromEntries(only.map((k) => [k, r0[k as keyof AiModeInput]])) } as AiModeInput : r0;
+        if (process.env.FREE_AIM_DIFF && inp.inMatch && !(amSeen[inp.side]++)) for (const k of ['strength', 'rep', 'fixtureKind', 'firstLeg', 'fixtureFlags', 'sameDivision', 'compLink', 'league', 'mgrAttacking', 'rivals'] as const)
+          if (JSON.stringify(inp[k]) !== JSON.stringify(r0[k])) console.log(`aim side ${inp.side} ${k}: port ${JSON.stringify(inp[k])} orig ${JSON.stringify(r0[k])}`);
+        return process.env.FREE_STRENGTH === 'port' ? { ...r, strength: inp.strength } : { ...r, strength: inp.inMatch ? r.strength : inp.strength };
+      }) : opts.aimode?.length ? (inp) => {
         if (!topSeen || fail) return inp;
         // originalens kald i rækkefølge; kald fra før låsetrinet (afsparket i init) springes over på uret
         while (amI < opts.aimode!.length && +opts.aimode![amI][3] < inp.clock) amI++;
@@ -568,7 +592,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       // F-linjerne (0x6e2f20 inde i genvalget 0x6e1090): originalens værdi for samme (spiller, plads, flag, instruktioner, taktikbyte, holdflag,
       // angrebsflag) i tikket injiceres (LOCKF=1 viser, hvor portens egen værdi afviger); uden F-linje portens værdi
       subScore: (_s, q, spec, flags, tf, v) => {
-        if (!topSeen) return v;
+        if (!topSeen || free) return v;
         const key = `F ${q.src.id} ${(spec.pos & 0xffff).toString(16).padStart(4, '0')} ${(flags >>> 0).toString(16).padStart(8, '0')} ${(spec.instrLo >>> 0).toString(16).padStart(8, '0')} ${(spec.instrHi >>> 0).toString(16).padStart(8, '0')} ${(spec.tacticByte & 0xff).toString(16).padStart(2, '0')} ${(tf >>> 0).toString(16).padStart(8, '0')} ${(spec.att & 0xffff).toString(16).padStart(4, '0')} `;
         const l = (tr.ticks[tick]?.other ?? []).find((x) => x.startsWith(key));
         if (!l) { if (process.env.LOCKF) console.log(`F tik ${tick}: ingen F-linje for ${key}(port ${v})`); return v; }
@@ -579,7 +603,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       expose: (x) => { ix = x; },
       // portens spor-linjer (Q/O/H/…) i match_trace.c's format: originalens tik-tal er +1 (tælleren øges efter T-linjen)
       onShot: (k, v) => {
-        if (!topSeen) return;
+        if (!topSeen || free) return;
         if (process.env.LOCKQ) console.log(`port ${k} ${tick + 1} ${v.join(' ')}`);
         if ((k as string) === 'PO' && !poFail) {                                              // afleveringsmulighedens værdier mod originalens PO-linje
           const o = (tr.ticks[tick]?.other ?? []).filter((l) => l.startsWith('PO '))[poIdx[tick] = (poIdx[tick] ?? -1) + 1];
@@ -591,7 +615,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       },
       // zonevalget sub_6bc030 mod originalens ZP-linjer (markøren og det valgte mål, i rækkefølge)
       onZonal: (p, r) => {
-        if (!topSeen || fail) return;
+        if (!topSeen || fail || free) return;
         const ls = (zpLines[tick] ??= (tr.ticks[tick]?.other ?? []).filter((l) => l.startsWith('ZP ')));
         if (!ls.length) return;
         const k = (zpIdx[tick] = (zpIdx[tick] ?? -1) + 1), want = ls[k];
@@ -600,7 +624,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
       },
       // turene sub_7103e0 mod originalens TU/TV-linjer (rækkefølgen, spilleren og hans felt ved indgangen og udgangen)
       onTurn: (p, out) => {
-        if (!topSeen || fail) return;
+        if (!topSeen || fail || free) return;
         const ls = (turnLines[tick] ??= (tr.ticks[tick]?.other ?? []).filter((l) => l.startsWith('TU ') || l.startsWith('TV ')));
         if (!ls.length) return;                                                                // spor uden TU-linjer
         const k = (turnIdx[tick] = (turnIdx[tick] ?? -1) + 1), want = ls[k];
@@ -630,6 +654,7 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
             Object.defineProperty(q, wf, { get: () => v, set: (nv) => { if (nv !== v) console.log(`mwatch tik ${tick} tal ${fi}: ${wf} ${v} → ${nv}  ${(new Error().stack ?? '').split('\n').slice(2, 5).map((x) => x.trim().replace(/^at /, '').replace(/\(.*\/(.*?):(\d+):\d+\)/, '$1:$2')).join(' < ')}`); v = nv; }, configurable: true });
           }
           mode = 'lock'; feed = tr.ticks[0].r; fi = 0;
+        } else if (free) { tick++;
         } else {
           // forrige tik: alle originalens tal skal være brugt
           if (!fail && fi !== feed.length) { fail = `tik ${tick}: porten brugte ${fi} af originalens ${feed.length} tal (næste rand(${feed[fi][0]}) fra 0x${feed[fi][1].toString(16)})`; }
@@ -654,11 +679,13 @@ export function runLockstep(tr: MatchTrace, opts: { maxTicks?: number; log?: (s:
   let finished = false;
   try {
     while (!fail && tick < max) { if (!g.tick()) { finished = true; break; } }
+    if (finished) opts.onGame?.(g);
   } catch (e) { if ((e as Error).message !== 'lockstep' && (e as Error).message !== 'lockstep-stop') { fail = `undtagelse: ${(e as Error).message}`; stack = (e as Error).stack ?? ''; } }
   finally { Object.assign(GRID_UNKNOWN, save); }
   if (hist && fail) console.log(hist.join('\n'));
   if (poFail) console.log('første PO-forskel: ' + poFail);
   // efter slutfløjtet: originalens første ubrugte tal i sidste tik (efter kampen kommer spillets egne kald – fx 0x4ca6d0 – til næste M-linje)
   const nx = finished && feed[fi] ? `${feed[fi][0]}@${feed[fi][1].toString(16)} (${feed.length - fi} tilbage i tikket)` : undefined;
-  return { ticks: tick, rands, ok: !fail, at: fail ?? undefined, diff: (L as { diff?: string[] }).diff, stack, finished, next: nx };
+  return { ticks: tick, rands, ok: !fail, at: fail ?? undefined, diff: (L as { diff?: string[] }).diff, stack, finished, next: nx,
+    ...(finished && !fail ? { end: { g, side: L.side, ix, rest: feed.slice(fi) } } : {}) };
 }

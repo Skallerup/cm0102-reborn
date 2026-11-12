@@ -125,6 +125,8 @@ export interface Player {
   cmTrain?: { s: number; w: number; b3: number; b4: number; b5: number };
   cmStats?: Record<number, number[]>;
   cmForm?: number;
+  /** originalens sprogtabel (PlayerStats +0x3c, cmLanguage.ts): sprog (nation +0x77-koden) → flydende 0..10; kun de poster, 0x7c6830 læser */
+  cmLang?: Record<number, number>;
   cmContract?: { b3d: number; b3e: number; b3f: number; b44: number; b45: number;
     /** +0x4e (bit 1 transferlistet, bit 2 lejelistet) og +0x4f (trupstatus i høj nibble) – computerens trupplan 0x83cb40 (cmSquadPlan.ts) */
     b4e?: number; b4f?: number };
@@ -136,6 +138,9 @@ export interface Player {
   cmNation2?: number;
   /** staff +0x3e: datoen han kom til klubben ifølge den originale database – cmPermit.ts */
   cmJoined?: string;
+  /** [0xae2d0c] + 79·id + 0xa: originalens "indkøringsbyte" (0..255; spilstarten 0x828110, dagligt 0x5ce2d0, ferie-/skadedage 0x62c680/0x62d250 –
+   *  cmPlayerData.ts staffState*); sub_6ec010 trækker den fra kamp-CA'en. Kun den originale database i ægte tilstand. */
+  cmStaffState?: number;
   id: number;
   first: string;
   last: string;
@@ -303,6 +308,12 @@ export interface Staff {
   tac?: number[];
   /** den originale databases CA (ikke-spillerposten +4) – de viste stabsegenskaber regnes af den (sub_544410, aiTeam.ts) */
   ca?: number;
+  /** ikke-spillerposten i hukommelsen efter originalens spilstart (cmStaffInit.ts, sub_535a80): de 21 bytes +0x0e..+0x22 (de 8 interne
+   *  +0x10 +0x11 +0x17 +0x18 +0x19 +0x1b +0x1e +0x21 som interne værdier – vist = sub_544410(CA, intern)) og [21] = +0x43 (formationen).
+   *  Kun nye spil med den originale database (world-filen med staff[11]); ellers bruges `tac`/`attrs` som før. */
+  cmNp?: number[];
+  /** ikke-spillerpostens PA +6 efter spilstarten */
+  cmPa?: number;
   id: number;
   first: string;
   last: string;
@@ -891,6 +902,16 @@ export interface MatchReport {
   formations: [string, string];
   /** kampmotoren, der spillede kampen (fejlsøgning): 'original' = gittermotoren; mangler = 'zone' (vores zonemotor) */
   engine?: 'zone' | 'original';
+  /** gittermotorens kamprapport efter slutfløjt (originalens 0x6d1cc0/0x6d26b0, engine/grid/postMatch.ts) – cmPlayerData.ts cmApplyPost */
+  cmPost?: CmPostResult;
+}
+
+/** originalens kamprapport (postMatch.ts): moralen (MATCH_PLAYER +0x17) og omdømmet [+9, +0xb, +0xd] i hukommelsens skala pr. spiller-id,
+ *  klubbernes omdømme (engine+0x1d6, null = ikke regnet) og dommerens karakter (0x6d4a20) */
+export interface CmPostResult {
+  players: Record<number, { morale: number; rep: [number, number, number] }>;
+  clubRep: [number | null, number | null];
+  referee: number | null;
 }
 
 export interface TacticChange { m: number; t: number; kind: 'formation' | 'mentality' | 'instructions'; from?: string; to?: string }
@@ -976,6 +997,11 @@ export interface GameState {
   /** club.dat +100/+119 (status, mindste tilskuertal) og club_comp.dat +105 (turneringens omdømme) – computerens trupplan (cmSquadPlanGame.ts) */
   cmClubStat?: Record<number, [number, number] | [number, number, number, number]>;
   cmCompRep?: Record<number, number>;
+  /** (runde 9) tilskuertallet sub_85cba0 (crowd.ts): pr. klub [gns., mindst, højst, stadion-id, by-id, stadionets kapacitet +0x3c (init kan hæve den),
+   *  rival 1–3] (club.dat 115/119/123/105/179–187, stadium.dat +56/+60), byernes koordinater (city.dat +0x23/+0x2b fladt) og nation +0x7e */
+  cmCrowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
+  cmCities?: number[];
+  cmNation7e?: number[];
   /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
   cmPlan?: Record<number, { s: [number, number, number, number, number, number, number, number, number][]; st: number; fm: number; c: number }>;
   /** spillets startdato ([0xdd6ec8]) */
@@ -1003,7 +1029,8 @@ export interface GameState {
   board: BoardState;
   options: Options;
   activeNations: number[];
-  nations: { name: string; code: string }[];
+  /** lang = nation.dat +0x77/+0x78/+0x79 (den originale database – cmLanguage.ts) */
+  nations: { name: string; code: string; lang?: number[] }[];
   leagueOrder: string[];
   leagues: Record<string, { name: string; nation: number; tier: number; hidden?: boolean }>;
   players: Record<number, Player>;

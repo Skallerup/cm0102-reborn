@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
 import { Rng } from '../src/game/rng';
-import { aiTactic } from '../src/game/sim';
+import { aiTactic, continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { autoSelect, newTactic } from '../src/game/tactics';
 import { GRID_DEBUG, GRID_UNKNOWN, randOf, runGridMatch, setGridDebug, type GridSideStats } from '../src/game/engine/grid/gridMatch';
 import type { Player } from '../src/game/types';
@@ -18,8 +18,14 @@ const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')
 const eng = world.nations.findIndex((x) => x.name === 'England');
 createGame(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
 const g = gs();
+// (runde 9) ADVANCE=1: spillet køres frem til Premier Leagues første runde (2001-08-18) – staffState, kontrakter, kondition og moral som i et spil
+// (ellers spilstartens tilstand 2001-07-01); ADVANCE=<ISO-dato> til en anden dato
+if (process.env.ADVANCE) {
+  const until = process.env.ADVANCE.length === 10 ? process.env.ADVANCE : '2001-08-18';
+  while (g.date < until) { const r = continueGame(); if (r.match !== undefined) quickPlayUserMatch(); }
+}
 const epl = Object.values(g.comps).find((c) => c.type === 'league' && c.tier === 1 && world.nations[c.nation]?.name === 'England')!;
-const fresh = (id: number) => squad(id).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: 100, injury: null, banned: 0 }) as Player);
+const fresh = (id: number) => squad(id).map((p) => ({ ...p, attrs: p.attrs.slice(), condition: process.env.ADVANCE ? p.condition : 100, injury: null, banned: 0 }) as Player);
 const fixtures: [number, number][] = [];
 for (const h of epl.clubs) for (const a of epl.clubs) if (h !== a) fixtures.push([h, a]);
 const rng = new Rng(seed);

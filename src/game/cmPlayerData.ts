@@ -15,6 +15,8 @@
 import type { Fixture, GameState, MatchReport, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
+import { gs, hasGame } from './state';
+import { contractLanguageNibble, languageDay } from './cmLanguage';
 
 /** gælder kun den originale database i ægte tilstand (som cmDatabase i newgame.ts – ikke importeret: cirkulær import) */
 export function cmActive(g: GameState): boolean {
@@ -157,7 +159,12 @@ export function setStatusCode(p: Player): void {
 }
 
 export function cmContractOf(p: Player): CmContract {
-  return (p.cmContract ??= newCmContract(statusCode(p)));
+  if (p.cmContract) return p.cmContract;
+  const c = newCmContract(statusCode(p));
+  // 0x85e960/0x866ee0: +0x4f's lave nibble = hvor flydende spilleren er i klubbens sprog (cmLanguage.ts) – kun med sprogdata (den originale
+  // database); høj nibble = trupstatus som statusCode
+  if (hasGame() && p.club) { const g = gs(); if (g.nations[p.nation]?.lang) c.b4f = ((statusCode(p) & 0xf) << 4) | contractLanguageNibble(g, p, p.club); }
+  return (p.cmContract = c);
 }
 
 const sh = (p: Player, k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
@@ -332,6 +339,8 @@ export interface CmPlayerCtx {
   inSeason?: (club: number) => boolean;
   /** 0x62ed70: den nuværende skades +0x2c-tæller (null = ingen skade) */
   injuryW2c?: (p: Player) => number | null;
+  /** 0x62c3d0: trætheden (konditionspostens +0xc, uden opdatering) */
+  fatigue?: (p: Player) => number;
 }
 let pctx: CmPlayerCtx = {};
 /** konditionsmodulet sætter sine aflæsninger her (cmFitnessGame.ts – undgår en cirkulær import) */
@@ -417,9 +426,34 @@ export function clubRepMem(g: GameState, club: number): number {
 /** landets omdømme (nation +0x8e) */
 export const nationRepMem = (g: GameState, nation: number) => g.cmNationRep?.[nation] ?? 0;
 
+/** v/50 som den double, hvis ·50 trunkeret giver v igen (aiTeam.ts playerRecord skriver cmRepMem·50 med & 0xff/>> 8, dvs. mod nul) */
+export function repMemOf(v: number): number {
+  let x = v / 50;
+  const b = new DataView(new ArrayBuffer(8));
+  for (let k = 0; k < 8 && Math.trunc(x * 50) !== v; k++) {
+    b.setFloat64(0, x); b.setBigInt64(0, b.getBigInt64(0) + 1n); x = b.getFloat64(0);   // én ulp væk fra nul
+  }
+  return x;
+}
+
+/** gittermotorens kamprapport (MatchReport.cmPost, engine/grid/postMatch.ts – originalens 0x6d1cc0/0x6d26b0): moralen (MATCH_PLAYER +0x17 →
+ *  spillerposten +0x45 = Player.morale), omdømmet (+0x49/+0x47/+0x4b → +9/+0xb/+0xd = cmRepMem ·50) og klubbens omdømme (engine+0x1d6 →
+ *  club +0x80 = cmClubRep). Originalen overfører dem i 0x6b5f00 før 0x4ca6d0/0x7c0d70 (0x6b6cc0 kommer først) – derfor først her. */
+export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport): void {
+  const post = rep.cmPost;
+  if (!post) return;
+  for (const [id, v] of Object.entries(post.players)) {
+    const p = g.players[+id]; if (!p) continue;
+    p.morale = v.morale;
+    p.cmRepMem = [repMemOf(v.rep[0]), repMemOf(v.rep[1]), repMemOf(v.rep[2])];
+  }
+  if (g.cmClubRep) [f.home, f.away].forEach((c, i) => { const v = post.clubRep[i]; if (v !== null) g.cmClubRep![c] = v; });
+}
+
 /** 0x7c0d70 + 0x4ca6d0 for en klubkamp: statistik pr. kategori, formen, karaktersnittet og kontraktens tællere for begge hold. */
 export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf: (club: number) => Player[]): void {
   if (!cmActive(g)) return;
+  cmApplyPost(g, f, rep);
   const cat = statCategory(g, f);
   const goals = [rep.stats[0].goals, rep.stats[1].goals];
   const played = new Set<number>();
@@ -450,7 +484,7 @@ export const listedOrRequest = (p: Player) => !!p.listed || !!((p.cmContract?.b4
 /** Comp_Stats' +0x72 for klubben i dens liga: placeringen i sæsonens udgangsrækkefølge – klubberne fra ligaen selv efter sidste sæsons placering
  *  (club.dat +0x5b/+0x5f ved spilstart, derefter den afsluttede sæsons tabel – season.ts), så de nye (op/ned) efter deres (*estimeret*: i oraklet
  *  1..20 som en permutation, men rækkefølgen for de oprykkede og ved lige placeringer er ikke målt) */
-function lastRank(g: GameState, league: string, club: number): number {
+export function lastRank(g: GameState, league: string, club: number): number {
   const comp = g.comps[league];
   if (!comp) return 0;
   const cid = +(league.match(/(\d+)$/)?.[1] ?? NaN);
@@ -546,6 +580,8 @@ function contractDayPlayer(g: GameState, p: Player, c: CmContract, rand: (n: num
   const settled = (amb > 15 && tmp < 6 && b3f > 3) || (amb > 10 && tmp < 10 && b3f > 2) || b3f > 1;
   if (c.b45 & 0x10 && settled) cmFlagClear(c, 0x10);
   if (c.b45 & 4 && settled) cmFlagClear(c, 4);
+  // 0x5d2fb3: klubbens sprog læres (kontraktens +0x4f lave nibble og sprogtabellen – cmLanguage.ts)
+  languageDay(g, p, c, rand);
 }
 
 /** 0x5cccd0's klubtabel (ugentlig) og 0x5ce2d0 for alle spillere med kontrakt – hver dag (sim.ts newDay). Spillere i en klub i en aktiv liga
@@ -564,8 +600,142 @@ export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[
     const a = p.id % 365, b = (a + 120) % 365, e = (b + 120) % 365;
     if (!active && doy !== a && doy !== b && doy !== e && Math.round((p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, 0])[1] * 50) < 4750) continue;
     const rand = cmRand(g.seed, p.id, day, 0x5ce2d0);
+    if (!STAFF_STATE_OFF) staffStateDay(g, p, c, rand);                                // 0x5ce4b6–0x5cf481 kommer før kontraktdelen 0x5cf57c
     withFlagCtx(g, p, rand, () => contractDayPlayer(g, p, c, rand));
   }
+}
+
+// ---------------------------------------------------------------- staffposten [0xae2d0c] + 79·id + 0xa ("indkøringsbyten")
+//
+// Én byte pr. person (0..255, i hukommelsen u8), som sub_6ec010 trækker fra kamp-CA'en (og > 8 med Professionalism < 15 svækker 6 kampfloats).
+// Skrivere (afkodet 12/11-2026, runde 9 – notes/staff-state.md):
+//   0x828110 (spilstarten, 0x828548–0x8286aa)  nyankomne: 26/21 − Adaptability/2 − rand(Adaptability/2), højst CA·0,15
+//   0x5ce2d0 (dagligt, 0x5ce4b6–0x5cf481)      klager, træthed, unge, roller → + rand(…); henfaldet 0x5cf41a
+//   0x62c680 (0x62ca1f, konditionsmodulet)     pr. feriedag rand(Professionalism/3 + 2) = 0 → +1 (< 50) – cmFitness.ts
+//   0x62d250 (0x62d705, ny skade)              pr. skadedag rand(5·Natural Fitness + 12) = 0 → +1 (< 100) – cmFitness.ts
+// Ikke porteret: klubskiftet 0x8c9720 (0x8ca549–0x8ca618: rand(20 − Adaptability) + rand(20 − post +0x2f) + rand(omdømmeforskel/(20·Pressure)),
+// ganget med 1,5 − 0,1·0x7c6830 – kræver PlayerStats' landeerfaring), 0x41a360 (+rand(10)), 0x736c00 (= 0) og disciplinen 0x5a5980.
+
+/** STAFF_STATE_OFF: til målinger (grid-stats før/efter) – slår spilstarten og den daglige del fra */
+export let STAFF_STATE_OFF = false;
+export const setStaffStateOff = (v: boolean) => { STAFF_STATE_OFF = v; };
+
+const u8b = (v: number) => v & 0xff;
+/** staffpostens skjulte egenskaber +0x56..+0x5d som bytes (spillets værdier er decimaltal – som gameInputs.ts staffBytes) */
+const shi = (p: Player, k: string) => s8(Math.round(sh(p, k)));
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(b + 'T00:00:00Z') - Date.parse(a + 'T00:00:00Z')) / 86400000);
+
+/** 0x828110's løkke 0x82854b–0x8286aa for én person: ankomstdatoen staff +0x3e (efter i dag → i dag), dage siden (0x54cdb0); spiller (+0x61) med klub
+ *  (+0x39) og dage < 415 − 10·Adaptability → bl = ftol(Adaptability·0,5): (dage < 215 ? 26 : 21) − bl − rand(bl); 0x53d980(staff, staff +0x1a, 1)
+ *  giver altid 0 (samme land – sic), så +rand(5) + 5 sker aldrig; loftet ftol(CA·0,15) (u8 mod s8). Ellers 0. */
+export function staffStateInitValue(i: { player: boolean; club: boolean; days: number; adaptability: number; ca: number }, rand: (n: number) => number): number {
+  const ad = s8(i.adaptability);
+  if (!i.player || !i.club || !(i.days < 415 - 10 * ad)) return 0;
+  const bl = s8(Math.trunc(ad * 0.5));
+  let x = u8b((i.days < 215 ? 0x1a : 0x15) - bl - rand(bl));
+  const lim = s8(Math.trunc(s16(i.ca) * 0.15));
+  if (x > lim) x = u8b(lim);
+  return x;
+}
+/** spilstarten (newgame → cmFitNewGame): alle spillere i databasen på DATABASENS dato (1/1 i startåret – før dagene frem til spillets start, hvor
+ *  ferien 0x62c680 løfter byten; målt mod oraklet: nyankomne fra efteråret 2000 har formlens værdi + feriedagene, dvs. dagene regnes til 1/1) */
+export function cmStaffStateInit(g: GameState, today = g.date): void {
+  if (!cmActive(g) || STAFF_STATE_OFF) return;
+  for (const p of Object.values(g.players)) {
+    if (p.regen) continue;
+    let jd = p.joined ?? p.cmJoined ?? today;
+    if (jd > today) jd = today;                                                      // 0x828594: 0x417c10(staff +0x3e, i dag)
+    const v = staffStateInitValue({ player: true, club: !!p.club, days: daysBetween(jd, today), adaptability: shi(p, 'adaptability'), ca: p.ca },
+      cmRand(g.seed, p.id, 0x828110));
+    p.cmStaffState = v || undefined;
+  }
+}
+
+/** 0x5ce2d0 0x5ce4b6–0x5cf481 for én spiller (esi = kontrakten, [esp+0x1c] = kontraktens klub). A = 0x548da0(staff, klub) – en person i klubben,
+ *  spilleren ser op til (~15 % af spillerne i oraklet) – er ikke porteret: A = 0, så leddet 0x5ce80c–0x5ce88c (+L eller +L/4 til en løkkevariabel
+ *  [esp+0x70], der ikke nulstilles mellem personerne – sic – og rand af den) og A's land i 0x20/0x20000-grenene falder bort. Ligeledes ikke:
+ *  landets +0x85 i ungdomsleddet 0x5ce8e1 (vi har ikke feltet: intet tillæg), kontraktens begivenheder +0x40 (0x8676f0 = 0), 0x8cca10 (= 0),
+ *  trupstatussen for > 23 år med status 5/6 (0x5ce5ad – skrives ikke af denne port) og blokken 0x5cf144–0x5cf38e (ændrer ikke byten). */
+export function staffStateDaily(i: {
+  x: number; fatigue: number; contract: CmContract | null; club: boolean; listed: boolean; age: number; ca: number; worldRep: number;
+  gkRating: number; pos2: number; morale: number; form: number; id: number;
+  hid: { determination: number; loyalty: number; pressure: number; professionalism: number; adaptability: number };
+  injured: boolean; job11: boolean;
+}, rand: (n: number) => number): number {
+  let x = u8b(i.x);
+  const c = i.contract, P = s8(i.hid.professionalism), L = s8(i.hid.loyalty), D = s8(i.hid.determination), Pr = s8(i.hid.pressure);
+  const add = (n: number) => { x = u8b(x + rand(n)); };
+  main: if (x < 0x32) {
+    // 0x5ce4e7: rand(200) = 0 og trætheden under −1000 − rand(5000) → + rand(ftol(20 − træthed·0,02))
+    if (rand(200) === 0) { const lim = -1000 - rand(5000); if (s16(i.fatigue) < lim) add(Math.trunc(20 - s16(i.fatigue) * 0.02)); }
+    // 0x5ce567: klagen 0x100000 og rand(Pressure + 5) = 0 → + rand(5)
+    if (c && (c.b45 & 0x100000) && rand(Pr + 5) === 0) add(5);
+    // 0x5ce5e7: under 15, rand(20) = 0 og rand(Professionalism) = 0 → formen 0x7c1950 over rand(20) + 35 → + rand(20)
+    if (x < 0xf && rand(0x14) === 0 && rand(P) === 0) { const f = s8(i.form); if (f > rand(0x14) + 0x23) add(0x14); }
+    // 0x5ce659: loftet ftol(CA·0,15)
+    if (x >= s8(Math.trunc(s16(i.ca) * 0.15))) break main;
+    // 0x5ce68f: N [esp+0x20]
+    let N: number;
+    const d = s16(i.ca) - x, id20 = i.id % 20, id15 = i.id % 15;
+    if (c && !i.listed && (c.b45 & 0x30321)) {
+      if (d < P + 0x50) N = Math.trunc((L + 2 * P + 0xa + id20) * 2.5);
+      else if (d > P + 0x7d) N = s16(L + id15 + P + 5);
+      else N = Math.trunc((2 * P + L + id20 + 5) * 2);
+    } else {
+      if (d < P + 0x50) N = Math.trunc((D + P + id20 + Pr + 0xa) * 2.5);
+      else if (d > P + 0x8c) N = s16(Pr + D + id15 + P + 5);
+      else N = Math.trunc((D + P + id20 + Pr + 5) * 2);
+    }
+    // (0x5ce80c: A = 0 – ikke porteret)
+    if (c) {
+      // 0x5ce898: unge (verdensomdømme < 3750, under 19 år) med mange kampe i træk uden tilfredsstillende spilletid (+0x3f)
+      if (s16(i.worldRep) < 0xea6 && i.age < 0x13) {
+        let cl = s8(Math.trunc(Pr * 0.25 + 3.0));
+        if (i.age < 0x11) cl = s8(cl - 3); else if (i.age === 0x11) cl = s8(cl - 1);
+        if (cl < 0) cl = 0;
+        if (s8(c.b3f) > cl) { let al = s8(7 - cl); if (al < 2) al = 2; add(al); }
+      }
+      // 0x5ce985: klagen 0x40000 og N > 25 − Pressure → N + Pressure − 25 (mindst 1)
+      if ((c.b45 & 0x40000) && s16(N) > 0x19 - Pr) { N = N + Pr - 0x19; if (s16(N) < 1) N = 1; }
+    }
+    // 0x5ce9b9: keepere (+0xf > 14) 2N + 10, forsvarere (+0x11 > 14) ftol(1,25N + 5)
+    if (s8(i.gkRating) > 0xe) N = 2 * N + 0xa;
+    else if (s8(i.pos2) > 0xe) N = Math.trunc(s16(N) * 1.25 + 5);
+    // 0x5ce9f9: klagerne – rand(moral) = 0, så pr. flag: rand(+0x44 + 200) < rand(K) → + rand(5)
+    if (c && c.b45 && rand(s8(i.morale)) === 0) {
+      const b44 = s8(c.b44);
+      const flag = (k: number) => { if (rand(b44 + 0xc8) < rand(k)) add(5); };
+      if (!i.listed && (c.b45 & 1)) flag(0x14);
+      const F: [number, number][] = [[2, 0x4b], [8, 0x12c], [0x20, 0xc8], [0x40, 0x64], [0x80, 0x28], [0x100, 0x32], [0x200, 0x64], [0x400, 0x14], [0x800, 0x14],
+        [0x1000, 0x14], [0x2000, 0x190], [0x4000, 0x64], [0x8000, 0x32], [0x10000, 0xa], [0x20000, 0x64], [0x40000, 0x4b], [0x80000, 0x4b], [0x200000, 0x14],
+        [0x400000, 0x14]];
+      for (const [bit, k] of F) if (c.b45 & bit) flag(k);
+      // (begivenhederne +0x40 & 8 / & 0x20: 0x8676f0 = 0)
+      if (c.b45 & 0x1000000) flag(0x14);
+      if (c.b45 & 0x800000) flag(0x64);                                                 // 0x8cca10(staff, 0) = 0
+    }
+    // 0x5cf106: spillere (job 11): rand(N) = 0 → + rand(8)
+    if (i.job11 && rand(s16(N)) === 0) add(8);
+  }
+  // 0x5cf41a: henfaldet – ikke skadet (0x62c400 ≠ 2): r = rand(moral + 5) over rand(40) → − min(byten, rand(r/5 + 2))
+  if (x !== 0 && !i.injured) {
+    const r = s8(rand(s8(i.morale) + 5));
+    if (r > rand(0x28)) { let a = u8b(rand(Math.trunc(r / 5) + 2)); if (a > x) a = x; x = u8b(x - a); }
+  }
+  return x;
+}
+/** 0x5ce2d0's del for spilleren i spillet (cmContractDaily) */
+function staffStateDay(g: GameState, p: Player, c: CmContract, rand: (n: number) => number): void {
+  const rec = (p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, p.rep * 2]);
+  const fr = cmFormRatings(p);
+  let fs = 0; for (const r of fr) fs += r > 0 ? 4 * Math.min(15, r) : 27;
+  const v = staffStateDaily({
+    x: p.cmStaffState ?? 0, fatigue: pctx.fatigue?.(p) ?? 0, contract: c, club: !!p.club, listed: listedOrRequest(p), age: s8(ageOn(p.dob, g.date)),
+    ca: p.ca, worldRep: Math.round(rec[2] * 50), gkRating: p.pos[0] ?? 0, pos2: p.pos[2] ?? 0, morale: p.morale ?? 10, form: s8(Math.trunc(fs / 4)), id: p.id,
+    hid: { determination: shi(p, 'determination'), loyalty: shi(p, 'loyalty'), pressure: shi(p, 'pressure'), professionalism: shi(p, 'professionalism'), adaptability: shi(p, 'adaptability') },
+    injured: (pctx.injury?.(p) ?? 0) === 2, job11: true,
+  }, rand);
+  p.cmStaffState = v || undefined;
 }
 
 /** klubskifte (setClub): statistikken arkiveres (0x7c5fe0) og en ny kontrakt starter (0x4cf720) */

@@ -21,6 +21,9 @@ import { gs } from '../../state';
 import { aiPickCtx, type AiPickCtx } from './aiTeam';
 import { EVENT_NAMES } from './eventTable';
 import { gameInputsCtx } from './gameInputs';
+import { gridTacOf } from '../../cmStaffInit';
+import { gamePostReport } from './postMatchGame';
+import type { CmPostResult } from '../../types';
 
 /** originalens begivenheder → UI'ets linjetype (fremhævning/lyd/mål-blink); resten er spil-for-spil ('pl-o', kun klassisk + playByPlay) */
 const SEM: Record<string, { k: string; hi?: boolean }> = {
@@ -83,6 +86,10 @@ export class GridSim implements LiveSim {
   /** ctx.ai – samme array hele kampen, så UI'ets ændring af opts.aiSubs (fællesspil) når motoren */
   private ai: [boolean, boolean];
   private byIdx: [GP[], GP[]] = [[], []];
+  /** kampens tal (rand) – også kamprapporten efter slutfløjtet bruger dem */
+  private rand: ReturnType<typeof randOf>;
+  /** originalens kamprapport efter slutfløjt (postMatchGame.ts: 0x6d1cc0 og 0x6d4a20) */
+  private post?: CmPostResult | null;
 
   constructor(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng) {
     this.opts = opts;
@@ -96,7 +103,7 @@ export class GridSim implements LiveSim {
       return { club: t.club, tactic: t.tactic, stats: emptyStats(), all };
     };
     this.teams = [mk(home, 0), mk(away, 1)];
-    const rand = randOf(() => r.next());
+    const rand = this.rand = randOf(() => r.next());
     this.ai = [opts.aiSubs?.[0] ?? true, opts.aiSubs?.[1] ?? true];
     const subs = opts.subs ?? 3;
     this.g = createGridMatch({ players: home.players, tactic: home.tactic }, { players: away.players, tactic: away.tactic }, rand, {
@@ -104,7 +111,8 @@ export class GridSim implements LiveSim {
       // klubbernes lands sprog (nation.dat +0x77, 8 = engelsk) – protesten sub_716e10's kommentar 0x20f5
       clubLang: [home.club, away.club].map((c) => nationLanguage(gs().nations[gs().clubs[c]?.nation ?? -1]?.name)) as [number, number],
       // klubbernes omdømme club +0x80 kommer fra gameInputsCtx (databasens rå værdi); managerne fra den originale database (Staff.tac)
-      managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; return st?.tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac: st.tac } : null; }) as [GridManager | null, GridManager | null],
+      // (Staff.cmNp: ikke-spillerposten efter originalens spilstart, +0x21 som intern værdi – gridTacOf, cmStaffInit.ts)
+      managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; const tac = gridTacOf(st); return st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null; }) as [GridManager | null, GridManager | null],
       // computerens holdudtagelse (aiTeam.ts): dato, spillets frø [0xdd7120] og managerens bedømmelse (viste Judging Ability/Potential)
       pick: [home.club, away.club].map((c) => aiPickCtx(c)) as [AiPickCtx | null, AiPickCtx | null],
       // computerstyret hold: sub_6c54a0 retter og skifter kun dem (menneskets hold ændres aldrig af motoren)
@@ -116,7 +124,7 @@ export class GridSim implements LiveSim {
       watched: !!opts.commentary,
       // spillets egne inddata (gameInputs.ts): spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80, fixture-posten
       ...(() => { const f = opts.fixtureId !== undefined ? gs().fixtures[opts.fixtureId] : undefined;
-        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date }); })(),
+        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId }); })(),
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;
@@ -298,6 +306,8 @@ export class GridSim implements LiveSim {
       this.pens = [this.shootout.score[0], this.shootout.score[1]];
       // WIN_THE_SHOOTOUT (0x2004, sub_6be710 0x6bee52) står i køen – ingen *estimeret* slutlinje
     }
+    // 0x6b98c0 ved slutfløjtet (efter 0x6d0f80): kamprapporten 0x6d1cc0 (moral, omdømme) og dommerens karakter 0x6d4a20 med kampens tal
+    this.post = gamePostReport(this.g, { home: this.teams[0].club, away: this.teams[1].club, fixtureId: this.opts.fixtureId, neutral: this.opts.neutral }, this.rand);
     this.finished = true;
   }
 
@@ -331,6 +341,7 @@ export class GridSim implements LiveSim {
       referee: this.opts.referee,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
       engine: 'original',
+      ...(this.post ? { cmPost: this.post } : {}),
     };
   }
 

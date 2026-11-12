@@ -160,6 +160,11 @@ export interface GridMatchCtx {
   onZonal?: (p: GP, r: GP | null) => void;
   /** kun låsetrinstesten: 0x6df460's indgange fra originalens spor (styrken 0x6e86d0, tabelrækkerne, manageren – spillets data) */
   aiModeInput?: (i: AiModeInput) => AiModeInput;
+  /** (runde 9) 0x6df460's ligadel for siden: turneringens tabel (antal hold, comp +0x69) og tabelrækkerne 0x4a4850 for egen klub og modstanderen */
+  leagueTable?: (s: Side) => AiModeInput['league'];
+  /** (runde 9) tilskuertallet sub_85cba0 (init_match 0x6b86bc) med kampens tilfældige tal: i alt/hjemme/ude og stadionets kapacitet bagefter
+   *  (gameInputs.ts gameCrowd) – går forud for `crowd`/`capacity`; null = ingen data */
+  crowdFn?: (rand: Rand) => { total: number; home: number; away: number; capacity: number } | null;
   /** sub_600a50(klub, 0, 1, 0, 0) pr. side: klubben styres af et menneske (indlæggets +62/+75, 0x6fb306); mangler = !ai */
   humanClub?: [boolean, boolean];
   /** udskiftninger pr. hold (turneringens word +0x4d >> 4; Premier League 2001/02: 3 – standard). Bænken er taktikkens (& 0xf). */
@@ -816,7 +821,8 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
     // +0x4d ved kampstart: MATCH_PLAYER::setup 0x6eb026 læser konditionen rå fra 0x62c590 (cmFitness.ts condition) – uden konditionsmodul
     // (lab/moderne spil) *estimeret* 100·max(60, Player.condition)
     side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, condition: kickFit && p.cmFit ? kickFit(p) : 100 * Math.max(60, p.condition ?? 100), pendingCond: 0, busy: 0,
-    matchCA: mc.K, form, morale: 10, injury: 0, agitation: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, instr, freeRoleRating: p.cmFree ?? 1, a,   // spillerpost +0x1a (0x714286)
+    // +0x17 moralen: MATCH_PLAYER::setup 0x6eaf46–0x6eaf64 = spillerpostens +0x45 (Player.morale – playerRecord), 10 for spillere uden for databasen
+    matchCA: mc.K, form, morale: p.regen ? 10 : ((Math.trunc(p.morale ?? 10) << 24) >> 24), injury: 0, agitation: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, instr, freeRoleRating: p.cmFree ?? 1, a,   // spillerpost +0x1a (0x714286)
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
     marks: null, markers: [], ref: p.id, src: p, f, posAttack, facing: side === 0 ? 0 : 180, strongFoot: rf >= lf ? 1 : 0, weakFootPenalty: 20 - Math.min(lf, rf),
     leftFoot: lf, rightFoot: rf, baseX: bx, baseY: by, gkRating: p.pos[0], tbl: null, pslot: slot, posR: r,
@@ -935,7 +941,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const on = ctx.on;
   const onShot = ctx.onShot;                                                                  // kun spor (situation() skygger ctx)
   // init_match: publikums-bytene engine+0x1ad/+0x1ae (hjemmebanen), læst af kampværdierne, dommeren og motivationen
-  const crowd = ctx.crowd ?? GRID_UNKNOWN.crowd, capacity = ctx.capacity ?? GRID_UNKNOWN.capacity, derby = ctx.derby ?? false;
+  const cr = ctx.crowdFn?.(rand) ?? null;
+  const crowd = cr ?? ctx.crowd ?? GRID_UNKNOWN.crowd, capacity = (cr && cr.capacity > 0 ? cr.capacity : null) ?? ctx.capacity ?? GRID_UNKNOWN.capacity, derby = ctx.derby ?? false;
   const sideByte = crowdBytes(crowd, ctx.ownGround ?? true);
   const compRep = ctx.compRep ?? GRID_UNKNOWN.compRep, final = ctx.final ?? false;
   const passCompRep = ctx.compRep ?? null;
@@ -960,7 +967,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     if (GRID_UNKNOWN.aiTeam && (!ctx.ai || ctx.ai[side])) {
       const rep = (c: Side) => ctx.rep?.[c] ?? 5000;
       const pre = aiModeOf({ side: side as Side, inMatch: false, strength: [rep(0), rep(1)], rep: [rep(0), rep(1)], territory: [0, 0, 0], clock: 0, periodEnd: 495,
-        crowd: [sideByte[0], sideByte[1]], goals: [0, 0], firstLeg: null, fixtureFlags: 0, fixtureKind: ctx.league === false ? 0 : 33, onPitch: [11, 11],
+        crowd: [sideByte[0], sideByte[1]], goals: [0, 0], firstLeg: ctx.fixtureInfo?.firstLeg ?? null, fixtureFlags: ctx.fixtureInfo?.flags38 ?? 0, fixtureKind: ctx.fixtureInfo?.code30 ?? 0, onPitch: [11, 11],
         sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: null, mgrAttacking: ctx.managers?.[side]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: 2, prevR: -1000 });
       const cands = [...ps.values()].filter((p) => !p.injury && !(p.banned > 0) && !p.reserves);
       // pick_team 0x6dbc50 (aiTeam.ts): flagenes og bænkpladsernes rand trækkes her – før MATCH_PLAYER::init (initMotivation) som i originalen
@@ -1739,16 +1746,17 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
    *  0x6e1090 er ikke med. */
   // computerens tilstand (0x6df460, aiMode.ts – 249.606 af 249.607 kald som originalen i kampsporene). *estimeret*: styrken = spillernes CA
   // (originalen: managerens opfattede evne 0x6e86d0, i snit ~100 under CA summeret over 11 – begge hold), ingen ligatabel/manager i ctx,
-  // kamptypen 33 (som næsten alle ligakampe i sporet).
+  // (runde 9) fixture +0x30/+0x38/+0x4b fra ctx.fixtureInfo (ligakampe: 0 – ls20-aimode.txt: alle Premier League-kald har +0x30 = 0; før stod
+  // her 33, som tændte b14 = "anden kamp" i alle ligakampe: 2,2 mål i stedet for 2,8 – scripts/grid-free.ts), managerens Attacking i kampen.
   const aiR: [number, number] = [-1000, -1000];
   const territory: [number, number, number] = [0, 0, 0];
   const modeInput = (s: Side, inMatch: boolean): AiModeInput => {
     const strength = (side: Side) => inMatch ? teamStrength(gp.filter((q) => q.side === side && q.active).map((q) => q.src.ca)) : (ctx.rep?.[side] ?? 5000);
     const inp: AiModeInput = {
       side: s, inMatch, strength: [strength(0), strength(1)], rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], territory: [...territory] as [number, number, number],
-      clock: m.clock, periodEnd: m.periodEnd, crowd: [sideByte[0], sideByte[1]], goals: [m.goals[0], m.goals[1]], firstLeg: null,
-      fixtureFlags: 0, fixtureKind: ctx.league === false ? 0 : 33, onPitch: [gp.filter((q) => q.side === 0 && q.active).length, gp.filter((q) => q.side === 1 && q.active).length],
-      sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: null, mgrAttacking: null, rivals: !!ctx.derby, prevMode: m.aiMode[s], prevR: aiR[s],
+      clock: m.clock, periodEnd: m.periodEnd, crowd: [sideByte[0], sideByte[1]], goals: [m.goals[0], m.goals[1]], firstLeg: ctx.fixtureInfo?.firstLeg ?? null,
+      fixtureFlags: ctx.fixtureInfo?.flags38 ?? 0, fixtureKind: ctx.fixtureInfo?.code30 ?? 0, onPitch: [gp.filter((q) => q.side === 0 && q.active).length, gp.filter((q) => q.side === 1 && q.active).length],
+      sameDivision: ctx.league !== false, compLink: ctx.league !== false, league: ctx.leagueTable?.(s) ?? null, mgrAttacking: ctx.managers?.[s]?.tac[0] ?? null, rivals: !!ctx.derby, prevMode: m.aiMode[s], prevR: aiR[s],
     };
     return ctx.aiModeInput ? ctx.aiModeInput(inp) : inp;
   };

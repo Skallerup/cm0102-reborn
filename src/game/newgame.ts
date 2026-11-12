@@ -27,6 +27,8 @@ import { initKnowledge } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
+import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate } from './cmStaffInit';
+import { initialLanguages } from './cmLanguage';
 import { cmFitNewGame } from './cmFitnessGame';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
@@ -36,7 +38,8 @@ export interface WorldData {
   version: number;
   source: string;
   season: number;
-  nations: { name: string; code: string }[];
+  /** lang = nation.dat +0x77/+0x78/+0x79 (sproget og to andre sprog – den originale database, cmLanguage.ts) */
+  nations: { name: string; code: string; lang?: number[] }[];
   /** `hidden`: klubber uden for de spilbare ligaer (originalens ikke-spilbare lande) – ligaen spilles aldrig */
   leagues: { id: string; name: string; nation: number; tier: number; hidden?: boolean }[];
   clubs: [number, string, string, number, string, string, number, string][];
@@ -139,6 +142,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // club.dat +100/+119 og club_comp.dat +105 – computerens trupplan 0x83cb40/0x7bca90 (cmSquadPlanGame.ts)
     if (cm.cmRaw.clubStat) g.cmClubStat = { ...cm.cmRaw.clubStat };
     if (cm.cmRaw.compRep) g.cmCompRep = { ...cm.cmRaw.compRep };
+    // (runde 9) tilskuertallet sub_85cba0 (engine/grid/crowd.ts)
+    if (cm.cmRaw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(cm.cmRaw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
+    if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
+    if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
   }
   setGame(g);
 
@@ -238,6 +245,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     }
     // CM 01/02: trøjenummeret fra databasen (dubletter og manglende numre ordnes efter, at trupperne er fyldt op)
     if (F.number !== undefined && (r[F.number] as number) > 0) p.number = r[F.number] as number;
+    // originalens sprogtabel ved spilstarten (PlayerStats 0x7bfd50 – cmLanguage.ts): kontraktens +0x4f lave nibble regnes af den
+    if (rt && cm!.cmRaw && season < 2020) { const lang = initialLanguages(g, p, rt.lg); if (lang) p.cmLang = lang; }
     addPlayer(p);
   }
 
@@ -373,6 +382,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // Staff – med den originale/CM-database: de rigtige trænere, spejdere og fysioterapeuter fra databasen (CMWorld.staff)
   const dbStaff = new Map<number, NonNullable<CMWorld['staff']>>();
   for (const row of cm?.staff ?? []) dbStaff.set(row[0], [...(dbStaff.get(row[0]) ?? []), row]);
+  // originalens spilstart for ikke-spillerposten (cmStaffInit.ts): skabelonpuljen = world-filens stab med hele posten (staff[11])
+  npInit = cm?.cmRaw && season < 2020 && cm.staff?.some((r) => r[11])
+    ? { pool: cm.staff.filter((r) => r[11]).map((r) => npTemplate(npFromWorld(r[7], r[11]!, r[10]?.[7] ?? 0))), nations: world.nations.map((n) => n.name), seed }
+    : null;
   for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
   // ledige stabsfolk fra databasen (CA 100+): rollen efter deres bedste egenskab
   for (const row of dbStaff.get(0) ?? []) {
@@ -380,6 +393,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const role: StaffRole = a[3] >= 12 && a[3] >= Math.max(a[0], a[1], a[2]) ? 'physio' : a[1] + a[2] > 2 * a[0] + 2 ? 'scout' : 'coach';
     addDbStaff(row, 0, role, date, seed);
   }
+  npInit = null;
   for (let i = 0; i < 160; i++) {
     const r = new Rng(hash(seed, 5000 + i));
     const nation = rng.pick(o.activeNations.length ? o.activeNations : [0]);
@@ -499,6 +513,9 @@ export function takeOverClub(club: Club) {
   setBoardExpectation();
 }
 
+/** originalens spilstart for ikke-spillerposten (sat i createGame, mens databasens stab oprettes) */
+let npInit: { pool: NpTemplate[]; nations: string[]; seed: number } | null = null;
+
 /** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
 function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, role: StaffRole, date: string, seed: number): Staff {
   const g = gs();
@@ -511,6 +528,17 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
   if (tac?.some((v) => v > 0)) s.tac = tac.slice();
   if (ca > 0) s.ca = ca;
+  // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):
+  // CA/PA, de manglende egenskaber (skabelonen, egen talrække pr. staff-id), navnelisten/+0x43, de 8 interne og afbalanceringen 0x539490
+  const raw = row[11];
+  if (npInit && raw) {
+    const np = npFromWorld(ca, raw, tac?.[7] ?? 0);
+    const rand = cmRand(npInit.seed, row[9], 537);
+    const name = first ? `${first} ${last}` : last;
+    const job = staffInitRecord({ np, job: raw[22], nation: npInit.nations[nation] ?? null, clubRep: club ? (g.cmClubRep?.[club] ?? null) : null, name, hasPlayer: false }, npInit.pool, rand);
+    staffConvert(np, job);
+    s.ca = np.ca; s.cmPa = np.pa; s.cmNp = [...np.a, np.f43];
+  }
   g.staff[s.id] = s;
   return s;
 }

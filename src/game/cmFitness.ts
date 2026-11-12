@@ -18,8 +18,9 @@
 import type { Club, GameState, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn, addDays } from './dates';
-import { cmActive, cmRand } from './cmPlayerData';
+import { cmActive, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
 import { staffIntrinsic, staffShown } from './engine/grid/roleScore';
+import { npShown } from './cmStaffInit';
 
 // ---------------------------------------------------------------- posten
 
@@ -186,7 +187,12 @@ export function updateFitness(c: FitCtx, p: Player): void {
         if (E < S) {                                                              // første halvdel: ferie (d) og genoptræning (a)
           d = E < N ? E : N;
           a = N - d;
-          // 0x62ca1f: rand(Professionalism/3 + 2) pr. feriedag løfter en byte i staff-tabellen 0xae2d0c (+0xa) – læses ikke af konditionen
+          // 0x62ca1f: rand(Professionalism/3 + 2) = 0 pr. feriedag løfter staffpostens byte 0xae2d0c +0xa (Player.cmStaffState), så længe den er < 50
+          if (!STAFF_STATE_OFF) for (let k = 0; k < d; k++) {
+            const x = p.cmStaffState ?? 0;
+            if (x >= 0x32) break;
+            if (c.rand(Math.trunc(s8(Math.round(at(p, 'professionalism'))) / 3) + 2) === 0) p.cmStaffState = (x + 1) & 0xff;
+          }
         } else {
           a = E - ftol((E + S) / 2); if (a < 0) a = 0;
           if (N < a) a = N;
@@ -385,7 +391,7 @@ function physio(c: FitCtx, club: number): number {
   let best = 0;
   const slots = Object.values(c.g.staff).filter((s) => s.club === club && s.role === 'physio').sort((a, b) => a.id - b.id).slice(0, 3);
   for (const s of slots) {
-    const v = s.ca ? staffShown(s.ca, staffIntrinsic(s.attrs.physio, s.ca)) : s.attrs.physio;
+    const v = npShown(s, 0x1e) ?? (s.ca ? staffShown(s.ca, staffIntrinsic(s.attrs.physio, s.ca)) : s.attrs.physio);
     if (s8(v) > best) best = s8(v);
   }
   return s8(best);
@@ -419,7 +425,13 @@ export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fi
     if (IP(p) > 10) ebx += c.rand(IP(p) - 10);
   }
   const days = s16(T[2] + ebx);
-  // 0x62d705: rand(5·NF + 12) pr. skadedag løfter byten 0xae2d0c +0xa; 0x62d758: computerens behov ved lange skader og nyheden 0x842b00 – ikke porteret
+  // 0x62d705: rand(5·NF + 12) = 0 pr. skadedag løfter byten 0xae2d0c +0xa (Player.cmStaffState), så længe den er < 100
+  if (!STAFF_STATE_OFF) for (let k = 0; k < days; k++) {
+    const x = p.cmStaffState ?? 0;
+    if (x >= 0x64) break;
+    if (c.rand(5 * NF(p) + 0xc) === 0) p.cmStaffState = (x + 1) & 0xff;
+  }
+  // 0x62d758: computerens behov ved lange skader og nyheden 0x842b00 – ikke porteret
   let w2a = s16(ftol(T[4] * 0.01 * days));
   if (w2a + 60 < days) w2a = s16(days - 60);
   const d0 = backdate ? c.today - (c.rand(days) + 1) : c.today;                   // 0x54c8e0

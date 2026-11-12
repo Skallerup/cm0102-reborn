@@ -2,7 +2,7 @@
 // Kun den originale database i ægte tilstand (cmActive); ellers gør intet her noget, og spillets egen model (sim.ts) gælder.
 
 import type { Fixture, GameState, MatchReport, Player } from './types';
-import { cmActive, setCmPlayerCtx } from './cmPlayerData';
+import { cmActive, cmStaffStateInit, setCmPlayerCtx } from './cmPlayerData';
 import {
   applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
@@ -77,6 +77,7 @@ function linkPlayerCtx(g: GameState): void {
     injuryW2c: (p) => { const e = currentInjury(fitCtx(g, SALT.read), p); return e ? e.w2c : null; },
   });
   setCmPlayerCtx({
+    fatigue: (p) => fatigue(p),
     injury: (p) => injuryStatus(fitCtx(g, SALT.read), p),
     injuryW2c: (p) => { const e = currentInjury(fitCtx(g, SALT.read), p); return e ? e.w2c : null; },
     inSeason: (club) => {
@@ -104,6 +105,7 @@ export function cmFitNewGame(g: GameState): void {
   const db = dayNum(`${g.date.slice(0, 4)}-01-01`);
   setKnockHook(true);
   initRecords(fitCtx(g, SALT.init, db), ps);
+  cmStaffStateInit(g, `${g.date.slice(0, 4)}-01-01`);                                 // 0x828110: staffpostens +0xa (indkøringsbyten) på databasens dato
   const staff = Object.keys(g.staff).length;
   for (let d = db + 1; d < start; d++) injuryDaily(fitCtx(g, SALT.prerun, d), ps, staff);
   const c = fitCtx(g, SALT.init, start);

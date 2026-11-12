@@ -3,7 +3,35 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
-## Næste skridt (overdragelse 2026-11-12, efter runde 8 – start her i en ny session)
+## Næste skridt (overdragelse 2026-11-12, efter runde 9 – start her i en ny session)
+
+**Runde 9 (målunderskuddet, tilskuertallet, staffState):** målunderskuddet i `grid-stats.ts` (2,2 mål) skyldtes først og fremmest kamptypen
+fixture +0x30 = 33 i 0x6df460's indgange (b14 = "første ben" tændt i alle ligakampe – originalen har 0 i alle ligakampe); nu `ctx.fixtureInfo`
+(spillets fixture → `fixtureCodesOf`). Tilskuertallet sub_85cba0/0x85d8a0 er porteret (`grid/crowd.ts`, 3.689/3.689 kald ens med oraklets sæson),
+med byerne og klubbernes tilskuertal i world-filerne; Comp_Stats-rækken (stimer, placeringer, bedst/dårligst mulige 0x684ef7) af spillets tabel
+(`grid/gameTable.ts`); staffState-byten (cmPlayerData.ts). **En hel sæson i spillet med gittermotoren** (`npx tsx scripts/grid-season.ts <frø>`,
+alle kampe gennem adapteren): 2,93–3,04 mål · 49–55 % hjemmesejre (originalen 2,75–2,98 · 52–53 %). Værktøjer: `scripts/grid-free.ts` (originalens
+kampstart fra et spor, egne tal – "hvad originalen ville give for de samme kampe"), `FREE_AIM_FIELDS=a,b` (kun de felter af 0x6df460's faste
+indgange fra sporet), `scripts/grid-game20.ts` (spillets inddata for sporets kampe), `scripts/grid-kickoff-diff.ts` (kampstartens tilstand pr. side,
+ADVANCE=1), `scripts/crowd-check.ts`, `scripts/ss-trace-check.ts`; `grid-stats.ts` har ADVANCE (brug ADVANCE=2001-08-10 – spillets første runde er 11/8).
+
+Herfra (i rækkefølge):
+1. **Kalenderen og forsæsonen:** spillet starter 1/7 og Premier League 11/8 (originalen 14/7 og 18/8 = dag 229) – staffState (dag 229: orig 5,9,
+   spil 4,3), konditionen og moralen ved første runde afviger derfor (grid-kickoff-diff ADVANCE: moral orig 14,4/14,8, spil 12,8/12,6). Original-
+   databasens kampprogram (fixtures, venskabskampe – turnering 72: 454 kampe før sæsonen i crowd1.txt) er spillets eget.
+2. **Moralen +0x45** (spillerposten; MATCH_PLAYER +0x17 læser den nu – 0x6eaf64): skriverne 0x544710 m.fl. og kamprapporten 0x6d26b0/0x7172d0 (anden
+   agent, runde 9) – i dag spillets egen model (sim.ts) på p.morale.
+3. **staffState-resten:** 0x548da0 (personen spilleren ser op til, ~15 %), klubskiftet 0x8c9720, 0x41a360/0x736c00/0x5a5980, landets +0x85
+   (notes/staff-state.md); id%20/id%15 bruger hukommelsens indeks i originalen.
+4. **Styrken under kampen** i 0x6df460: managerens opfattede evne 0x6e86d0 (roleScore.ts judgeAbility) i stedet for CA (gridMatch.ts modeInput –
+   lille virkning i grid-free); tabelstimer overført mellem sæsoner (0x4aceb0) og 0x684cd0's flag +0xe6.
+5. **Fixture-koderne** for spillets egne turneringsformater (`fixtureCodesOf`: pokalernes runder, CL/UEFA/Intertoto-faserne er en afbildning af
+   spillets turneringer på originalens koder; neutral bane = hjemmeholdets stadion), og rivalerne i 0x6df460/MATCH_PLAYER::init (`ctx.derby`).
+6. Kontrakten (+0x44, løn/bonusser 0x85e960, +0x4f), forholdene staff+0x65, managerpostens omregning (anden agent, runde 9).
+7. Hastigheden (98 ms pr. kamp, bundtet – låsetrinet skal bestå bit for bit).
+8. Ikke dækket af sporene: golden goal, MLS-straffe, to-benede opgør med udebanemål.
+
+### Tidligere overdragelse (2026-11-12, efter runde 8)
 
 **Runde 8 (spillets egne inddata):** kampstarten bygges nu af SPILLETS data (`grid/gameInputs.ts`: spiller-/staffposterne, sub_6ec010's
 omgivelser, klubbernes rå omdømme club +0x80, fixture-posten), så kampværdierne sub_6ec010 kører i spillets kampe ved kampstart og i kampen
@@ -24,6 +52,16 @@ Herfra (i rækkefølge – målt med inddatakontrollen og grid-stats):
    sæsonstart, 4,7 i pen1), spillet 0 → kamp-CA +3,0 i snit. Skrives af 0x5ce2d0 0x5ce4b6–0x5cf391 (dagligt: kontraktens klageflag +0x45 bit for bit
    med rand(+0x44 + 200) < rand(N) → +rand(5), alder/omdømme/Pressure-led, loftet 0x32 og henfaldet 0x5cf41a–0x5cf481), 0x62c680 (feriedage
    rand(Prof/3 + 2)) og 0x62d250 (skadedage rand(5·NF + 12)) – ny Player-felt + port i cmPlayerData.ts/cmFitness.ts.
+3. **Managernes ikke-spillerpost – porteret i runde 9b** (`cmStaffInit.ts`, sub_535a80's stab-afsnit + 0x539490; kræver genbygget world-fil med
+   staff[11]). Rest: skabelonpuljen er world-filens stab, ikke hele databasens; Arsenal i ls20 er menneskets manager.
+4. **Forholdene staff+0x65** (RP-linjerne): ikke ved spilstarten – game_update_squad_relationships 0x5d6d10 (ugentligt fra 0x5cccd0) og ~20
+   hændelsessystemer (runde 9b-posten har listen). Ikke porteret.
+5. **Kontrakten:** +0x4f's lave nibble = sproget – porteret i runde 9b (`cmLanguage.ts`; kræver Nation.lang/CMRatings.lg i world-filen). +0x44,
+   lønnen +0xc og bonusserne +0x10/+0x14 er forkørslens (0x5cc850: originalen spiller 1/1–14/7-2001 ved spilstarten) og 0x864550's – ikke porteret.
+6. **Efter slutfløjtet:** 0x6d1cc0 (ved 0x6baa20: listen engine+0x478e – prøvespillere/spejdede, 16 rand – og for hver kampspiller med staff i
+   databasen 0x6d26b0(spiller, staff, klub, modstander, fixture, vist karakter +0x1b, engine+0, 1)) og 0x6d26b0 (1.140 instr., 4 rand, 0x7172d0
+   moralen, omdømmet: "betydning" = (klub +0x80/1000 + comp +0x69)/2 ≤ 20) – spillerens moral/omdømme efter kampen; i spillet i dag sim.ts'
+   egen efterbehandling. 0x6d0f80 (kampens spiller) er porteret.
 3. **Managernes ikke-spillerpost i hukommelsen:** databasens værdier bliver omregnet ved spilstarten (fx Wenger: Tactics +0x21 = −4 i hukommelsen
    = vist 18, CA 190 → 180; Roeder: tomme felter udfyldt) – spillet bruger databasens rå `Staff.tac`, så 0x544410-ratingen og computerens taktik/
    instruktioner (0x6ddab0, 0x6e0230, sub_6ec010) afviger for 295/396 kampspillere. Find staffens svar på sub_535a80 (database.cpp, kaldt fra
@@ -33,10 +71,10 @@ Herfra (i rækkefølge – målt med inddatakontrollen og grid-stats):
 5. **Kontrakten:** +0xc/+0x10/+0x14 (løn og bonusser fra kontraktens oprettelse 0x85e960; Teamwork-leddet 0x6eebda) og +0x4f's lave nibble
    (0x53ce90 = nibble − 10; originalen −10..0 for 15 %, spillet altid 10) – find skriverne; +0x44 udvikler sig (spillet 100 mod originalens 80 for
    de store klubbers spillere efter forsæsonen).
-6. **Efter slutfløjtet:** 0x6d1cc0 (ved 0x6baa20: listen engine+0x478e – prøvespillere/spejdede, 16 rand – og for hver kampspiller med staff i
-   databasen 0x6d26b0(spiller, staff, klub, modstander, fixture, vist karakter +0x1b, engine+0, 1)) og 0x6d26b0 (1.140 instr., 4 rand, 0x7172d0
-   moralen, omdømmet: "betydning" = (klub +0x80/1000 + comp +0x69)/2 ≤ 20) – spillerens moral/omdømme efter kampen; i spillet i dag sim.ts'
-   egen efterbehandling. 0x6d0f80 (kampens spiller) er porteret.
+6. **Efter slutfløjtet:** ✓ runde 9c – 0x6d1cc0/0x6d26b0/0x7172d0/0x6d3610/0x6d3de0/0x6d4a20 porteret (`grid/postMatch.ts`) og tal for tal
+   identiske med oraklet (se runde 9c nederst). Tilbage: spillets overførsel 0x6b5f00 (0x6b6cc0 – resultatposten 0x729ff0 → posterne, med egne
+   rand – og 0x6b74a0: [0xb67dc8]'s begivenheder → kontraktens flag 0x867700), managerens ikke-spillerpost (+8/+0xa/+0xc findes ikke i Staff) og
+   kampstartens moral (gridMatch.ts `morale: 10` – originalen MATCH_PLAYER +0x17 = spillerposten +0x45, 0x6eaf5e; regens 10).
 7. **Tabelrækken 0x4a4850** (0x6df460's league-del og historierne): navnene på +0x19/+0x2d/+0x41/+0x55 og datoerne +0x4d/+0x61 er ikke sikre
    (notes/6df460-ai-mode.md "?"), og rækkefølgen før første kamp (pos 1–20 med 0 kampe) er ikke spillets – kræver et spor med tabelposterne.
 8. **Hastigheden:** profilen er flad (offsideLines 0x6c3aa0 efter hver tur, rand, situation/sync af visningerne, runTarget, laneBlockers, passOptions);
@@ -984,3 +1022,116 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   'original' i ægte tilstand med den originale database; gamle spil uden feltet beholder zonemotoren; localStorage `cm0102.engine` = 'zone' slår
   den fra. **Test:** tests/gridGameInputs.test.ts (sub_6d0f80's regel, posterne, omgivelserne, en kamp med spillets inddata), engineFlag.test.ts
   (standarden), gridLockstep.test.ts uændret grøn.
+
+- 2026-11-12 – **Runde 9: målunderskuddet, tilskuertallet sub_85cba0, staffState.** **Målunderskuddet:** `scripts/grid-free.ts` starter hver
+  kamp i et spor med originalens præcise kampstart (som låsetrinet) og spiller den færdig med egne tal – snittet er det, originalen giver for de
+  samme kampe og inddata. ls20 (20 PL-kampe × 50): med portens egne 0x6df460-indgange 2,52 mål · 53/28/19, med sporets faste indgange 2,90 ·
+  52/22/26. Bisektion (`FREE_AIM_FIELDS`): **kamptypen fixture +0x30** alene 2,79 (de øvrige: ligatabellen/manageren/styrken ±0,1) – limen havde
+  33 i alle ligakampe (b14 tændt: 0x4b0850 v%10 = 3 = første ben), originalen 0 (ls20-aimode.txt: alle PL-kald; crowd1.txt: x3 = første ben uden
+  +0x4b, x4 = andet ben med +0x4b/+0x38 & 3). Nu `ctx.fixtureInfo` (kickoff + kampen) og managerens Attacking også i kampen (før null).
+  Originalens RNG er ensartet (rand(n) for n = 2…50000 i ls20: middel 0,50, nul/top = 1/n) – ingen skævhed at porte.
+  **Tilskuertallet sub_85cba0 + 0x85d8a0 porteret** (`src/game/engine/grid/crowd.ts`, ~1.100 instr., notes/85cba0-crowd.md): match_trace.c
+  RECOMP_CROWD_TRACE (K/Kr/KO-linjer, nyt oraklespor `oracle/runs/crowd1.txt`, 330 dage, frø 1, 123 MB) – **3.689/3.689 kald ens** (alle
+  turneringstyper, tabelrækker, tilfældige byer, kapacitetens tilbageskrivning); `tests/crowd.test.ts` (86 kald). +0x6d = 0x8298fd (0 for navne
+  "Bright…"/"Wimble…"); 0x7e6f20's turneringer efter navn (0x60f9xx); Comp_Stats-rækken afkodet (+4 kampe, stimerne med datoblokke, +0x72
+  udgangsplaceringen, +0x73 nu, +0x74/+0x75 bedst/dårligst mulige = 0x684ef7–0x6850dc, porteret i `grid/gameTable.ts`). Spillets data:
+  parseren (`src/game/data/cm0102.ts`) giver `cmRaw.crowd` (club.dat 115/119/123/105/179–187, stadium.dat +56/+60), `cmRaw.cities` (city.dat
+  +0x23/+0x2b) og `cmRaw.nation7e`; **alle tre originale world-filer genbygget** (kun de nye felter – resten identisk); `GameState.cmCrowd/cmCities/
+  cmNation7e`. `gameInputs.ts`: `fixtureCodesOf` (fixture +0x30/+0x32/+0x34/+0x3a/+0x3c, første ben, +0x38, tabelposten – originalens koder fra
+  crowd1.txt, spillets turneringer afbildet på dem), `gameCrowd` (sub_85cba0 med kampens rand ved kampstart: `ctx.crowdFn`) og `gameAiLeague`
+  (0x6df460's ligadel: +0x72 = udgangsplaceringen, som aimode-sporet viser – ikke placeringen nu). For de første PL-kampe giver spillets data
+  originalens publikum (fx Arsenal–West Ham 32.657/5.763, bytes 0/3). MATCH_PLAYER +0x17 (moralen) = spillerpostens +0x45 (0x6eaf46–0x6eaf64; før
+  altid 10). **staffState [0xae2d0c]+79·id+0xa porteret** (fork, notes/staff-state.md: 0x828110 spilstart, 0x5ce2d0 dagligt, 0x62c680 feriedage,
+  0x62d250 skadedage → `Player.cmStaffState`, læst af sub_6ec010; `tests/staffState.test.ts`, `scripts/ss-trace-check.ts`).
+  **Inddatakontrollen** (grid-input-check, ls20): ved spilstart kamp-CA −2,85 (staffState −2,74 – byten er høj ved start), efter ADVANCE=1 +1,10
+  (staffState +0,89; før runde 9 +3,0); resten som runde 8 (kontrakt/forhold/manager – andre agenter). Kampstarten (grid-kickoff-diff, ADVANCE=1):
+  kamp-CA hjemme 151,4/152,7, ude 136,1/136,0; moralen 14,4–14,8 mod 12,6–12,8; konditionen 99,4 % mod 93 % (spillet har spillet to runder 11/8 og
+  18/8). **Sæsontal:** `grid-stats.ts` (380 kampe, spilstartens tilstand for alle kampe): frø 1/2/3 2,54 · 50/21/29, 2,53 · 53/21/26, 2,56 · 52/21/27
+  (før: 2,21 · 44/25/31, 2,18 · 47/25/28, 2,26 · 46/27/27); ADVANCE=2001-08-10: 2,42 · 52/23/25, 2,54 · 54/22/24, 2,46 · 54/22/24. **En hel sæson i
+  spillet** (`scripts/grid-season.ts`, Options.engine = 'original', 370 PL-kampe til 20/5): frø 1/2/3 2,94 · 51/23/26, 3,04 · 49/26/26, 2,93 ·
+  55/21/24 (før runde 9, commit 03df874: 2,94 · 55/25/21, 3,14 · 49/25/25, 3,11 · 48/25/27; originalen 2,75 · 53/25/22, 2,98 · 53/21/26, ejerens
+  2,86 · 52/22/26). NB: grid-stats' "2,2 mål" var et mål af spilstartens tilstand – i en spillet sæson lå porten allerede omkring 3 mål.
+  **Hastighed:** 98 ms pr. kamp (bundtet, under last; 0x6df460's ligadel regnes én gang pr. side og kamp). **Test:** tests/crowd.test.ts,
+  tests/staffState.test.ts nye; gridLockstep, gridGameInputs, originalVersions, originalEconomy, dbStaff, engineFlag, gridEngine grønne.
+- 2026-11-12 – **Runde 9b: managerposten, kontraktens sprognibble, forholdene (undersøgt).** Kræver at world-filen genbygges (parseren: staff[11],
+  Nation.lang, CMRatings.lg – se nedenfor); uden de felter opfører spillet sig som før (grid-input-check med den nuværende world-original.json:
+  alle tal uændrede).
+  **(1) Ikke-spillerposten ved spilstarten – porteret (`src/game/cmStaffInit.ts`):** sub_535a80's stab-afsnit 0x537d59–0x5388cf (CA/PA uden for
+  1..200, Directness 0 for de britiske øer/Norge [0x9cf2dc…0x9cf510], managerreglerne for job 5 i klubber med omdømme > 6250 (Italien [0x9cf360]) –
+  skrevet i posten, men overskrevet af den gamle liste i 0x53a980, så de kun påvirker skabelonvalget og talrækken, skabelonen = den mest lignende af
+  250 tilfældige (ftol(|ΔCA|·2,5) + 100 pr. manglende + 16·|Δ|), udfyldningen (skabelon + (CA − CA′)/10 + rand(6) − 3, ellers rand(6)/rand(7) +
+  CA/10 − 3), jobreglerne for spejdere/trænere/fysioterapeuter (rand(100) ≠ 0), navnelisten 0x5386fd (0x84b8b0 = strcmp af 0x53dba0's
+  "fornavn efternavn"/kaldenavn: "Alex Ferguson" → +0x43 3, Directness 7, Attacking 17; Graham/Kinnear/"Arsene Wenger"/Gullit → 3; Gregory/
+  Redknapp/B. Robson/W. Smith/J. Smith → 2; Hoddle → 6; ellers +0x43 0 eller ≥ 10 → rand(26)-tabellen 0x538ba0/0x538b7c) og jobkoden for jobløse),
+  slutløkkens omregning 0x538a70 (de 8 fra 0x53a8b0's indeks 13: +0x11 +0x10 +0x17 +0x18 +0x19 +0x1b +0x1e +0x21 → trunc(clamp(10v − CA, ±200)/2))
+  og afbalanceringen **0x539490** (to gennemløb: gruppen inden for ±40 (+10 til mindst 6) flyttes til snit −5, klemt ±125, Physiotherapy uden for
+  tærsklen undtaget; første gennemløb trækker (Σpositive − 28)/antal fra de øvrige positive; fysioterapeuter: andre ≤ −80, Physiotherapy ≥ 0).
+  **Kontrol:** de to Premier League-managere med alle 21 i databasen (Ranieri, Walter Smith) er bit for bit som originalens hukommelse i ls20
+  (tests/cmStaffInit.test.ts); de øvrige har manglende egenskaber (udfyldt med spillets egen talrække – skabelonpuljen er world-filens 2.451 stab,
+  originalens er hele ikke-spillertabellen: *afvigelse i puljen*). Arsenals "manager" i oraklet er menneskets (ferie) – ikke Wenger (født 17/4-1949,
+  CA 180 = den fejl, runde 8 tolkede som en omregning). **Spillet:** `Staff.cmNp` (de 21 bytes + +0x43) og `Staff.cmPa`, sat i newgame.ts addDbStaff
+  (egen talrække cmRand(frø, staff-id, 537)); `gridTacOf` (adapter.ts' GridManager.tac og aiTeam.ts' AiPickCtx.manager.tac i hukommelsens form – som
+  låsetrinet, +0x21 intern; før fik gittermotoren databasens rå Tactics, hvor aiPrematch regner shown(CA + 2·intern)), `npShown` (0x544410 af de
+  interne: managerens Tactics i gameInputs.ts managerOf, Judging Ability/Potential i aiPickCtx, Physiotherapy i cmFitness.ts physio).
+  **(2) Kontraktens +0x4f lave nibble – porteret (`src/game/cmLanguage.ts`):** = sproget: 0x85e960/0x866ee0 sætter den til min(10, 0x7c6830(spiller,
+  klub, klubbens sprog +0x77, 0)); 0x7c6830 = 10 når klubbens land og spillerens land/anden nationalitet har samme sprog, eller sproget er hans lands,
+  ellers PlayerStats' sprogtabel. Tabellen ved spilstarten (PlayerStats::PlayerStats 0x7bfd50, create_game 0x828ebb): de indfødte point 0x7c6930
+  (+0x78 500, +0x79 300, Sverige/Norge/Danmark 500 for nabosprogene, Belgien 1000 for hollandsk; anden nationalitet 300/300/100/500) over tærsklen
+  (20 − Adaptability)·10 → min(10, (p − t)/50), og karrierehistorikken (staff_history: 2·(3·(kampe + 30) + år − 2001) dage pr. post i et land med et
+  andet sprog; den nuværende klub mindst 0,7 × dagene siden ankomsten ved 1/1 og dagene til startdatoen 14/7 [0xdd6ec8]) – lagt til eller som ny post.
+  Den daglige indlæring 0x5ce2d0 0x5d2fb3: rand(ftol(100 − 3,5·Adaptability)) = 0 → nibble + 1 (+ add/improve_language). **Forkørslen** 1/1–14/7
+  (0x5cc850 – originalen spiller hele spillet fra databasens 1/1) er undersøgt: uden indlæring i forkørslen passer bedst (se nedenfor); formentlig kører
+  0x5ce2d0 kun dagligt for klubber med en divisionstabel [0xadadfc] (0x5ce46d), og 2001/02's oprettes først ved sæsonstart (*antaget*).
+  **Spillet:** `Nation.lang` ([+0x77, +0x78, +0x79], parseren), `CMRatings.lg` (historikkens dage pr. sprog; parseren grupperer posterne pr. person i
+  årsrækkefølge – *antaget*, filen er ikke grupperet), `Player.cmLang` (newgame.ts, kun de poster 0x7c6830 kan læse), cmContractOf sætter `b4f`
+  (status << 4 | sprog) ved en ny kontrakt, contractDayPlayer lærer dagligt. 0x53ce90 i gameInputs.ts er uændret (= nibble − 10).
+  **(3) Ikke porteret – kontraktens +0x44, lønnen +0xc og bonusserne +0x10/+0x14:** +0x44 starter i 0 (0x85e960 og 0x866ee0); originalens 18/8-værdier
+  (0 ×84, 7 ×25, 10 ×39, 100 ×142 …) er forkørslens og 0x5ce2d0's/0x4cb250's ligevægt – kræver forkørslen. Lønnen: 0x85e960 bruger databasens løn
+  (+0x4e), når den er sat og ≤ 15·omdømme og funktionen får en værdi; ellers (værdi −1 → 0x4d0c60) STAFF_CONTRACT::default_staff_contract 0x864550
+  (2.294 instr.) – og forlængelser/lønkrav i forkørslen (0x5d11aa/0x5d0e47). Bonusserne +0x10/+0x14 sættes i 0x85f174–0x85f23a (rand). Ikke gjort.
+  **(4) Forholdene staff+0x65 – undersøgt, ikke porteret:** yndlings-/uvenner sættes ikke ved spilstarten, men af spillets systemer:
+  game_update_squad_relationships 0x5d6d10 (fra 0x5cccd0's ugentlige klubtabel: 10 forsøg pr. kald – rand(klubber), to tilfældige af klubbens 50
+  pladser +0xd7, rand(Professionalism) = 0 → fjern uven / rand(3) = 0 uven / rand(3) = 0 yndling / ellers fjern yndling), kampens hændelser 0x6b74a0,
+  medierne (0x72c1f0, 0x735870, 0x736c00, 0x741020, 0x744240, 0x755340, 0x75a340), skader 0x630ee0, bøder 0x5a5980, transfers (0x842320, 0x8c1290,
+  0x8c18c0, 0x8c9720), AWOL 0x419840, tvister 0x569ed0/0x56a100, kontrakter 0x4ce4e0 og regens 0x7abac0 – og forkørslen. 0x548da0 (den bedste
+  holdkammerat) i 0x5ce2d0 bruges kun i staffState-delen (0x5ce80c/0x5ceb04/0x5cee5e). Næste: port 0x5d6d10 + 0x547840/0x547a10/0x547af0/0x547c10/
+  0x547c50 og 0x547f90 (falmningen 0x5d5778) med en Player-liste af forhold.
+  **Inddatakontrollen** (ls20, 20 kampe, ADVANCE=1, scratch-world med de nye felter – `WORLD=<fil>` i grid-input-check.ts, `EX=<n>` flere eksempler):
+  manager np+0xe/0x544410 **101 → 204/396** (resten: Arsenal = menneskets manager i oraklet + udfyldningens tilfældige tal, der flytter
+  afbalanceringen; "kun manager" i kampfloats 0,051 → 0,018), 0x53ce90 **335 → 351/396** (Σ(spil − orig) +21; med indlæring i forkørslen fra 1/1
+  342/396, +180; fra ankomstdatoen 348, +58; uden historikken 325), kontrakt +0x44 54/396, løn 225/396, +0x10/+0x14 162/396, forholdene 307/396
+  (uændret – ikke porteret), staffState 179/396 (den anden agents). Spillerpostens felter flytter sig ±1 % (ADVANCE-kampene får andre managerværdier).
+  **Test:** tests/cmStaffInit.test.ts (Ranieri/W. Smith bit for bit, gridTacOf/npShown, udfyldning, 0x539490, sprogpointene, indlæringen).
+  **World-filerne skal genbygges** (parseren cm0102.ts + build-cm-data.mts: staff[11] = [PA, de 21 rå, jobkoden], Nation.lang, CMRatings.lg).
+- 2026-11-12 – **Runde 9c: kamprapporten efter slutfløjt** (0x6b98c0 ved 0x6ba94d: 0x6d0f80 → fixture +0x4b/+0x4c → 0x896290 → uden ventende
+  straffe 0x6d1cc0 (0x6baa20) → 0x896fe0 → 0x6d4a20). Porteret i `src/game/engine/grid/postMatch.ts` (originalens felter, pegere som nøgler):
+  **0x6d1cc0** (prøvespillerlisten engine+0x478e → [0xb67dc8]: type 0x82 videre, 0x1e efter resultatet og managerens 0x544410-vurdering, ellers
+  spillerens kamp – rand(moral)/to gule/rødt; for hver af de 20 med staff i databasen 0x6d26b0, begivenhed 0xa (skiftet ud, ikke skadet:
+  rand(agitation +0x1a2) > rand(100), rand(Temperament) < rand(10), rand(1500)+7500 < kondition, Professionalism < 6 og rand(Ambition) >
+  rand(Professionalism)) og 0xb (−w31 ±10/±20 for rival/klubbens yndlinge/spillerens klubber, rand(100·(Pressure·Prof·Temp + 20)) < rand(+50));
+  minutterne, holdets snit (−0,1 på hjemmebanen fixture +0x18 = club +0x69, ellers +0,2), 0x6d3610, 0x6d3de0), **0x6d26b0** (turneringens vægt
+  cr ≤ 20 – 15 for de store landsholdsturneringer –, dæmpning af karakterer ≥ 8 (float32), vægtene 22/21-grænserne for +9/+0xb/+0xd, lofterne
+  L14/L18/L1c for landshold og finaler, afvigelsen fra [0xb74350]'s snit (negativ → −d²), 250·cr·karakter/snit-gulvet, glidende snit, moralen
+  rand(klem(…, ±20)) med rand(3)/rand(Determination) – **begge grene går gennem 0x6d3119**, så en positiv start med negativ ændring også deles –,
+  T = 300·cr + 4000, CA-båndet 50·CA −3750/+2500 (verden −10000/+1250), ±(2 − v/10000)·250/300/375/500/100·cr, unge i store klubber efter
+  trupstatus (alder/19)³/2 og loftet 10000/L14..), **0x7172d0** (moral: mod 10 med rand(21)/rand(11), karakter ≥ 7500 → mindst
+  trunc(0,004·k − 20,5), 1..20), **0x6d3610** (managerens +8/+0xa/+0xc: holdets snit ·1,3, uden kvadrering, lofterne 400·cr/L24/L20 med
+  5000/3000-gulve), **0x6d3de0** (klubbens +0x80: ±5·cr·(2 − rep/10000) som float32) og **0x6d4a20** (dommerens ord engine+0xf5ba/1000 −2/−1/+1
+  efter de røde (Σ +0x23), ±1 efter de gule (Σ +0x24); < 4 → rand(500) ≠ 0 → 4, > 8 → rand(25) ≠ 0 → 8). Fund: engine+0xf5ba er portens
+  `official.mood` + `linesmanMark` (samme ord, 16 bit); holdblokkens +0xf er Σ +0x23 (sub_6ce460 0x6ce5c6 – gridMatch.ts' watchedStats nulstiller
+  den uden at summere, *afvigelse* uden betydning i kampen – postMatchInputs.ts regner den af spillerne); [0xb74350] +0x10/+0x18 =
+  GameState.cmRatingAvg (0x7c0d70 lægger kampen til EFTER rapporten). **Kontrol:** en egen orakelbinær (kopi af .bosman-repo, match_trace.c +
+  `~/cm0102-engine/tools/post_trace.c`, `RECOMP_MATCH_TRACE_WATCH=-9,0,0,1`; PM-linjerne: inddata ved 0x6d1cc0/0x6d26b0/0x6d3610/0x6d3de0/0x6d4a20,
+  kontrakterne 0x4cf5f0, resultaterne og listen 0x68d0d0) for ls20 (20 PL-kampe) og pen1 (18 kampe i turnering 352) → `tests/fixtures/
+  post-ls20.txt.gz`/`post-pen1.txt.gz`. `npx tsx scripts/lockstep-post.ts <post> [kamp]`: rapporten af oraklets inddata – **alle 38 kampe ens,
+  hvert tal (77–112 pr. kamp) og alle resultater** (moral og +0x47/+0x49/+0x4b for 24–28 spillere, managerens +0/+2/+4, klubbens +0x1d6,
+  holdenes snit, [0xb67dc8], dommerens post). `… <post> <kamp> <spor>`: HELE kampen i låsetrin og rapporten af portens slutfløjt (GP →
+  MATCH_PLAYER, `postMatchInputs.ts`, felt for felt mod oraklets dump): **alle 20 ls20-kampe og pen1-kampen 1311–574 (straffe) ens** – det næste
+  tal er spillets (30000@0x90db27). Uret: med ventende straffe runder 0x6ba9cf det ned til hele 30 (1329 → 1320). **Spillet:**
+  `postMatchGame.ts` bygger strukturerne af spillets data (adapter.ts `end()` → `MatchReport.cmPost`), `cmPlayerData.ts cmApplyPost` overfører
+  moral (Player.morale = spillerposten +0x45), omdømmet (cmRepMem = +9/+0xb/+0xd /50, `repMemOf` så playerRecord's ·50 giver værdien igen) og
+  klubbens omdømme (cmClubRep) før 0x4ca6d0/0x7c0d70 (originalens 0x6b5f00 kalder 0x6b6cc0 først). Ikke i spillet (dokumenteret i postMatchGame.ts):
+  staff +0x65's klubber, klubbens rivaler/personer, club +0xcf, landshold, rundekoderne +0x30/+0x32, prøvespillerlisten, managerens ikke-spillerpost.
+  Ikke dækket af sporene: landsholdsgrenene, finalerne (fixture +0x3a = 8), begivenhederne 0xa/0xb og prøvespillerne, der lægges i listen (0 i de
+  38 kampe – betingelserne og deres tal er kontrolleret). Test: tests/gridPostMatch.test.ts.
+
