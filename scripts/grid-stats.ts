@@ -8,6 +8,7 @@ import { aiTactic } from '../src/game/sim';
 import { autoSelect, newTactic } from '../src/game/tactics';
 import { GRID_DEBUG, GRID_UNKNOWN, randOf, runGridMatch, setGridDebug, type GridSideStats } from '../src/game/engine/grid/gridMatch';
 import type { Player } from '../src/game/types';
+import { gameInputsCtx } from '../src/game/engine/grid/gameInputs';
 
 const N = Number(process.argv[2] ?? 380);
 const seed = Number(process.argv[3] ?? 1);
@@ -33,7 +34,9 @@ for (let i = 0; i < N; i++) {
   // managerne fra den originale database (Staff.tac) og omdømmet (×100) som i adapteren – NO_MGR=1 slår dem fra
   const mgr = (c: number) => { const st = g.staff[g.clubs[c]?.manager ?? -1]; return !process.env.NO_MGR && st?.tac ? { id: st.id, ca: st.rep * 2, tac: st.tac } : null; };
   const r = runGridMatch({ players: fresh(h), tactic: tac(h, a, true) }, { players: fresh(a), tactic: tac(a, h, false) }, rand,
-    { rep: [g.clubs[h].rep * 100, g.clubs[a].rep * 100], managers: [mgr(h), mgr(a)] });
+    { rep: [g.clubs[h].rep * 100, g.clubs[a].rep * 100], managers: [mgr(h), mgr(a)],
+      // spillets egne inddata (gameInputs.ts: spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80) – OLD_INPUTS=1 = limens skøn
+      ...(process.env.OLD_INPUTS ? {} : gameInputsCtx(h, a, { compId: epl.id, human: [false, false] })) });
   for (const s of [r.home, r.away]) for (const k of Object.keys(s) as (keyof GridSideStats)[]) sum[k] = (sum[k] ?? 0) + s[k];
   sum.hg = (sum.hg ?? 0) + r.home.goals; sum.ag = (sum.ag ?? 0) + r.away.goals;
   if (r.home.goals > r.away.goals) hw++; else if (r.home.goals === r.away.goals) dr++; else aw++;

@@ -306,6 +306,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
    *  OR); med kontrakt og klub: rand(20) < Influence, rand(7000) < omdømmet (+0xb), rand(6) > Professionalism, omdømmet > klubbens − 750 og
    *  kontraktflag & 0x17a0b → −3x (anføreren), −2x (rand(Professionalism) = 0) eller −x; alle undtagen anføreren (0x897590): +x, x = 0x6ebd70
    *  (captainBase som byte). Til sidst 0x6eecb0(p, 1) for dem på banen. */
+  const capBase = new Map<GP, number>();
   const doCohesion = (s: Side) => {
     let w = 0, acc = 0;
     if (m.bAf) m.bAf[s] = 0;                                                         // engine+0xaf+side
@@ -319,7 +320,13 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       acc = (acc + bit) | 0;
       // spillerposten: originalens bytes, når låsetrinstesten har dem (GP.recRaw), ellers bygget af spillerens data
       const p = q.src, rec = q.recRaw ? Array.from(q.recRaw, (b) => b & 0xff) : playerRecord(p), cd = env.cohesionOf?.(q);
-      const x = () => cd ? s8(cd.x) : s8(captainBase(captainInputOf(p, ctx, env.rep[s])));
+      // 0x6ebd70 af spillerens data – uændret i kampen (posten, kontrakten, dagene), så værdien gemmes pr. spiller (samme tal, hurtigere)
+      const x = () => {
+        if (cd) return s8(cd.x);
+        let v = capBase.get(q);
+        if (v === undefined) { v = s8(captainBase(captainInputOf(p, ctx, env.rep[s]))); capBase.set(q, v); }
+        return v;
+      };
       // 0x6bbbff–0x6bbc46: klubben (0x4cf5a0 → [0xae23b4] + 581·[r+4]) og kontrakten med den (0x4cf5f0)
       if (cd ? cd.club && cd.contract : p.contract && p.club) {
         const curRep = s16(rec[0xb] | (rec[0xc] << 8)), clubRep = cd ? cd.clubRep : env.rep[s];

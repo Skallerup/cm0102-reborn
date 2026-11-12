@@ -21,7 +21,7 @@ import './shotParts/R7';
 import * as H from './helpers';
 import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, teamFlagsOf, type Table } from './tacticTable';
 import { aiPrematch, PREMATCH_ATTR_KEYS, recordAttr } from './aiPrematch';
-import { aiTeamSetup, captainInputOf, type AiPickCtx } from './aiTeam';
+import { aiTeamSetup, captainInputOf, joinedOf, type AiPickCtx } from './aiTeam';
 import { captainValue } from './roleScore';
 import { pickFlags } from './pickTeam';
 import { PRESET_TACTICS } from './presetTactics';
@@ -43,6 +43,7 @@ import { CM_INT_OFFSETS, INTRINSIC_KEYS } from '../../playerInit';
 import { gs, hasGame } from '../../state';
 import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
+import { recordBytes, staffBytes } from './gameInputs';
 
 export type Rand = (n: number) => number;
 /** tællere til fejlsøgning (scripts/grid-stats.ts DEBUG=1) */
@@ -192,6 +193,9 @@ export interface GridMatchCtx {
   rotation?: [number, number];
   /** hold+0x16 (pick_teams rotation 0x6dbdba–0x6dc065, ikke porteret) – genvalgets flag 0x800000 (0x6e1359). Uden: nej */
   rotation16?: [boolean, boolean];
+  /** spillets egne inddata (gameInputs.ts): dagens dato – hver kampspiller får spiller-/staffposten bygget af spillerens data (GP.recRaw/staffRaw),
+   *  så sub_6ec010 kører med ctx.matchValuesEnv ved kampstart og i kampen som i låsetrinet */
+  gameRecords?: string;
 }
 export interface GridSideStats { goals: number; shots: number; onTarget: number; corners: number; fouls: number; offsides: number; yellows: number; reds: number; passes: number; passesCompleted: number }
 export interface GridResult { home: GridSideStats; away: GridSideStats; ticks: number }
@@ -888,6 +892,25 @@ export interface GridMatch {
   subState(p: GP): { minuteOn: number; minuteOff: number; minuteRed: number; minuteInjured: number; substituted: boolean } | undefined;
   /** originalens kommentarkø (Match_Events, matchEvents.ts) – adapteren læser de nye poster efter hvert tik (drain) */
   events: MatchEvents;
+  /** sub_6d0f80 (kampens spiller, kaldt ved slutfløjtet 0x6ba94f – ingen tal): engine+0x477a */
+  manOfTheMatch(): GP | null;
+}
+
+/** sub_6d0f80 (sikker, 0x6d0f80–0x6d1097): for begge holds første (fixture+0x4d & 0xf) + 11 kampspillere (bænken med) – undtagen dem uden plads
+ *  (+0x19 < 0), der aldrig er skiftet ud (+0x20 = −1) – scoren (word) = karakteren +0x35 + 250·mål (+0xc) + 125·+0x10 + 50·assists (+3) + 35·+6
+ *  og r = ftol(karakteren · 0,001). Den første kandidat tages; en senere afløser den, når scoren er STØRRE og r mindst lige så stor (begge word,
+ *  med fortegn). Holdenes spillere i indeksrækkefølge (side 0 først). */
+export function manOfTheMatch6d0f80(sides: readonly (readonly GP[])[], minuteOff: (q: GP) => number): GP | null {
+  const w = (x: number) => (x << 16) >> 16;
+  let best: GP | null = null, bs = 0, br = 0;
+  for (const list of sides) for (const q of list) {
+    if (q.slot < 0 && minuteOff(q) === -1) continue;                                    // 0x6d0fcb–0x6d0fd6
+    const rt = w(q.rating);
+    const r = w(Math.trunc(rt * 0.001));                                                 // 0x6d0fe7 fmul 0,001 → ftol (ax)
+    const sc = w(rt + 250 * (q.goals & 0xff) + 125 * (q.penGoalsWon & 0xff) + 50 * (q.assists & 0xff) + 35 * (q.b6 & 0xff));
+    if (!best || (sc > bs && r >= br)) { best = q; bs = sc; br = r; }                   // 0x6d102b–0x6d1043
+  }
+  return best;
 }
 
 /** Hele kampen på én gang (scripts/grid-stats.ts, tests) – samme tal som tik for tik */
@@ -1004,6 +1027,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       aiFlags[side] = res.teamFlags;
     }
   });
+  // spillets egne inddata (gameInputs.ts): spiller- og staffposterne af spillerens data (låsetrinstesten indsætter originalens)
+  if (ctx.gameRecords) for (const q of gp) if (!q.recRaw) { q.recRaw = recordBytes(q.src); q.staffRaw = staffBytes(q.src, ctx.gameRecords); }
   // kun låsetrinstesten: computerens udtagelse fra originalens spor (anføreren og dødboldsskytterne hold+0x3b/+6/+0xa/+0xe og AiPickCtx'en
   // med managerens taktiske bytes og taktiklistens statistik) – genvalgets/omrokeringens 0x6e2f20 og taktikvalget 0x6e1aa0 → 0x6e0230
   for (const side of [0, 1] as Side[]) if (!aiPicks[side] && ctx.pick?.[side] && ctx.pickTeam?.[side] && (!ctx.ai || ctx.ai[side]))
@@ -1087,14 +1112,24 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     if (!isAi(s)) return (m.teamFlags[s] & 0x4000) !== 0;
     return m.aiMode[s] === 3 || m.aiMode[s] === 4;
   };
+  const capValue = new Map<GP, number>();
   const subs = makeMatchSubs({ m, gp, rand, ai: isAi, subs: ctx.subs ?? [3, 3], periodEnd: () => m.periodEnd, rep: [ctx.rep?.[0] ?? 5000, ctx.rep?.[1] ?? 5000], aiPick: aiPicks,
     compType: ctx.compType ?? 0, onSub: (a, b, auto) => { if (auto) subComment(a, b); on?.sub?.(a, b, auto); }, onCarriedOff: (p) => on?.carriedOff?.(p), comment: (id, p1, s1, p2, s2, x) => comment(id, p1, s1, p2, s2, x),
     aiModeNow: (s: Side) => { const r = aiModeOf(modeInput(s, true)); aiR[s] = r.r; return r.mode; }, refresh: (q) => recompute(q),
-    cohesionOf: ctx.cohesionOf, captainIdx: ctx.captainIdx, subScore: ctx.subScore, onRoles: (s, r) => { roles[s] = r; },
+    cohesionOf: ctx.cohesionOf,
+    // menneskets anfører (0x897590 = taktikskærmens anfører, Tactic.captain) – computerens er udtagelsens (aiPicks)
+    captainIdx: ctx.captainIdx ?? (ctx.gameRecords ? (s: Side) => {
+      if (isAi(s)) return undefined;
+      const i = gp.filter((q) => q.side === s).findIndex((q) => q.src.id === m.tactics[s].captain);
+      return i >= 0 ? i : undefined;
+    } : undefined), subScore: ctx.subScore, onRoles: (s, r) => { roles[s] = r; },
     // 0x6e1cf0 til genvalgets nye anfører: låsetrinstestens data (ctx.captainValueOf), ellers spillerens data som ved udtagelsen (aiTeam.ts)
     captainValue: ctx.captainValueOf ?? ((q: GP) => {
       const ap = aiPicks[q.side];
-      return ap ? captainValue(captainInputOf(q.src, ap.ctx, ctx.rep?.[q.side] ?? 5000)) : 0;
+      if (!ap) return 0;
+      let v = capValue.get(q);                                                               // uændret i kampen – gemt pr. spiller
+      if (v === undefined) { v = captainValue(captainInputOf(q.src, ap.ctx, ctx.rep?.[q.side] ?? 5000)); capValue.set(q, v); }
+      return v;
     }),
     // 0x6e1312: hold+0x1a = 3 (pick_teams rotation 0x6dbdc4–0x6dc59f, ikke porteret: 3 = ingen rotation) og turneringen tæller klubben
     leagueBranch: (s: Side) => (ctx.rotation?.[s] ?? 3) === 3 && ctx.league !== false, b16: (s: Side) => ctx.rotation16?.[s] ?? false });
@@ -2995,7 +3030,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       code30: ctx.fixtureInfo?.code30 ?? 0, firstLeg: ctx.fixtureInfo?.firstLeg ?? null, flags38: ctx.fixtureInfo?.flags38 ?? 0, flags: ctx.fixtureInfo?.flags38 ?? 0, kind: ctx.fixtureInfo?.code30 ?? 0 },
     setEvFlag: (s, id) => { if (s === 0 || s === 1) events.happened[s].add(id); },
     isDatabasePlayer: (q) => !q.src.regen,
-    daysAtClub: (q) => { const d = ctx.date ?? ctx.pick?.[q.side]?.date; return d && q.src.joined ? Math.round((Date.parse(d) - Date.parse(q.src.joined)) / 86400000) : 9999; },
+    daysAtClub: (q) => { const d = ctx.date ?? ctx.pick?.[q.side]?.date; const j = joinedOf(q.src); return d && j ? Math.round((Date.parse(d) - Date.parse(j)) / 86400000) : 9999; },
     hasResponseTwo: () => false,
     victimSide: () => { const i = m.inc; return i && i.res && i.d ? (i.d.side === 0 ? 1 : 0) : -1; },
     firstMarker: (q) => gp.find((o) => o.side !== q.side && o.slot >= 0 && o.active && L.manMarkTarget(m, o) === q) ?? null,
@@ -3384,7 +3419,8 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     } });
   return { m, tick, get finished() { return finished; }, result: () => ({ home: m.stats[0], away: m.stats[1], ticks: m.clock }),
     substitute: (s, o, i) => subs.human(s, o, i), setTactic: (s, t) => { pendingTactic[s] = t; },
-    subsLeft: (s) => subs.subsLeft[s] - subs.pending(s), subState: (p) => subs.state(p), events };
+    subsLeft: (s) => subs.subsLeft[s] - subs.pending(s), subState: (p) => subs.state(p), events,
+    manOfTheMatch: () => manOfTheMatch6d0f80([0, 1].map((s) => gp.filter((q) => q.side === s)), (q) => subs.state(q)?.minuteOff ?? -1) };
 }
 
 /** spillerpostens egenskaber fra +0x1b (alfabetisk; +0x1c Aggression, +0x21 Consistency, +0x25 Dirtiness, +0x2e Jumping, +0x30/+0x3b fødderne,

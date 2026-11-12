@@ -201,18 +201,19 @@ function tacticFor(club: number, opp: number, home: boolean, userAuto: boolean, 
 // ---------- kampmotoren ----------
 
 /** Gittermotoren (porten af originalens kampmotor) i stedet for zonemotoren? Kun den originale database i ægte tilstand,
- * og kun når spillet har valgt den (Options.engine) eller udviklerkontakten localStorage `cm0102.engine` = 'original' er sat. */
+ * og kun når spillet har valgt den (Options.engine – standard i nye spil, når GRID_ENGINE_DEFAULT er sand) eller udviklerkontakten
+ * localStorage `cm0102.engine` = 'original' er sat ('zone' slår den fra). */
 // gittermotoren (originalens kampmotor) – bruges kun, når gridEngineOn(g) er sand
 setGridFactory(gridFactory);
 
 export function gridEngineOn(g: GameState): boolean {
   if (cmDatabase(g) !== 'original' || !authentic()) return false;
-  if (g.options.engine === 'original') return true;
-  try {
-    return typeof localStorage !== 'undefined' && localStorage.getItem('cm0102.engine') === 'original';
-  } catch {
-    return false;
-  }
+  // udviklerkontakten localStorage `cm0102.engine`: 'original' slår gittermotoren til, 'zone' fra (også i nye spil, hvor den er standard –
+  // GRID_ENGINE_DEFAULT i engine/liveSim.ts)
+  let dev: string | null = null;
+  try { dev = typeof localStorage !== 'undefined' ? localStorage.getItem('cm0102.engine') : null; } catch { dev = null; }
+  if (dev === 'zone') return false;
+  return g.options.engine === 'original' || dev === 'original';
 }
 
 /** Gittermotoren koster ~40 ms pr. kamp mod zonemotorens ~4 ms (målt 11/11, bundtet): den spiller menneskets kampe og kampene i

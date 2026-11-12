@@ -347,7 +347,7 @@ export function squadPlacement(g: GameState, p: Player, club: number): number {
 }
 
 function unhappyStep(g: GameState, p: Player, c: CmContract, club: number, clubRep: number, age: number, today: string, nationRep: number, rand: (n: number) => number): void {
-  const days = p.cmJoined ?? p.joined;
+  const days = p.joined ?? p.cmJoined;   // staff +0x3e: skiftet i spillet går forud for databasens dato
   const rep = p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2];
   withFlagCtx(g, p, rand, () => unhappyCore({
     age, amb: sh(p, 'ambition'), loyalty: sh(p, 'loyalty'), caps: p.caps, repCur: curRep(p), repWorld: Math.round(rep[2] * 50), clubRep, nationRep,

@@ -6,7 +6,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { aiTactic, engineTeam, gridEngineOn, makeMatch, makeQuickMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { MatchSim, quickMatch } from '../src/game/engine/match';
-import { setGridFactory, type LiveSim } from '../src/game/engine/liveSim';
+import { GRID_ENGINE_DEFAULT, setGridFactory, type LiveSim } from '../src/game/engine/liveSim';
 import { Rng } from '../src/game/rng';
 
 const load = (f: string) => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as WorldData;
@@ -27,7 +27,12 @@ describe('kampmotoren bag et flag', () => {
   it('original database: kun i ægte tilstand og kun når motoren er valgt', () => {
     const w = load('world-original.json');
     const g = start(w, 'Arsenal', 'authentic');
+    // runde 8: nye spil i ægte tilstand med den originale database får gittermotoren som standard (GRID_ENGINE_DEFAULT)
+    expect(g.options.engine).toBe(GRID_ENGINE_DEFAULT ? 'original' : undefined);
+    g.options.engine = undefined;
     expect(gridEngineOn(g)).toBe(false); // ikke valgt (gamle spil = 'zone')
+    g.options.engine = 'zone';
+    expect(gridEngineOn(g)).toBe(false);
     g.options.engine = 'original';
     expect(gridEngineOn(g)).toBe(true);
     g.options.mode = 'extended';
@@ -43,8 +48,14 @@ describe('kampmotoren bag et flag', () => {
     expect(gridEngineOn(g)).toBe(false);
   }, 60_000);
 
+  it('udvidet tilstand og den moderne database får ikke gittermotoren som standard', () => {
+    expect(start(load('world-original.json'), 'Arsenal', 'extended').options.engine).toBeUndefined();
+    expect(start(load('world.json'), 'Brentford FC', 'authentic').options.engine).toBeUndefined();
+  }, 60_000);
+
   it('fabrikken giver MatchSim, når flaget er slået fra – også med en registreret gittermotor', () => {
     const g = start(load('world-original.json'), 'Arsenal', 'authentic');
+    g.options.engine = undefined;
     const [h, a] = pair();
     let used = 0;
     const fake = (...args: ConstructorParameters<typeof MatchSim>): LiveSim => { used++; return new MatchSim(...args); };
@@ -66,7 +77,7 @@ describe('kampmotoren bag et flag', () => {
   }, 60_000);
 
   it('samme frø giver samme kamp gennem fabrikken som med quickMatch', () => {
-    start(load('world-original.json'), 'Arsenal', 'authentic');
+    start(load('world-original.json'), 'Arsenal', 'authentic').options.engine = undefined;
     const [h, a] = pair();
     const x = makeQuickMatch(h, a, { fixtureId: 7 }, new Rng(42));
     const y = quickMatch(h, a, { fixtureId: 7 }, new Rng(42));

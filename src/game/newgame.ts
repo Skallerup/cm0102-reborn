@@ -30,6 +30,7 @@ import { cmRand, fillReputation } from './cmPlayerData';
 import { cmFitNewGame } from './cmFitnessGame';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
+import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
 
 export interface WorldData {
   version: number;
@@ -428,6 +429,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   }
   rebuildIndexes();
   initialTransferList();
+  // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med den originale database – én konstant (liveSim.ts)
+  if (GRID_ENGINE_DEFAULT && g.options.mode === 'authentic' && cmDatabase(g) === 'original') g.options.engine = 'original';
   return g;
 }
 

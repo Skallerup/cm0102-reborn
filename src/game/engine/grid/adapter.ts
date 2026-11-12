@@ -20,6 +20,7 @@ import { createGridMatch, randOf, type GP, type GridManager, type GridMatch, typ
 import { gs } from '../../state';
 import { aiPickCtx, type AiPickCtx } from './aiTeam';
 import { EVENT_NAMES } from './eventTable';
+import { gameInputsCtx } from './gameInputs';
 
 /** originalens begivenheder → UI'ets linjetype (fremhævning/lyd/mål-blink); resten er spil-for-spil ('pl-o', kun klassisk + playByPlay) */
 const SEM: Record<string, { k: string; hi?: boolean }> = {
@@ -102,8 +103,7 @@ export class GridSim implements LiveSim {
       ownGround: !opts.neutral,
       // klubbernes lands sprog (nation.dat +0x77, 8 = engelsk) – protesten sub_716e10's kommentar 0x20f5
       clubLang: [home.club, away.club].map((c) => nationLanguage(gs().nations[gs().clubs[c]?.nation ?? -1]?.name)) as [number, number],
-      // klubbernes omdømme (originalens skala 0–10000; vores 0–100 ×100 – *estimeret*) og managerne fra den originale database (Staff.tac)
-      rep: [home.club, away.club].map((c) => (gs().clubs[c]?.rep ?? 50) * 100) as [number, number],
+      // klubbernes omdømme club +0x80 kommer fra gameInputsCtx (databasens rå værdi); managerne fra den originale database (Staff.tac)
       managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; return st?.tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac: st.tac } : null; }) as [GridManager | null, GridManager | null],
       // computerens holdudtagelse (aiTeam.ts): dato, spillets frø [0xdd7120] og managerens bedømmelse (viste Judging Ability/Potential)
       pick: [home.club, away.club].map((c) => aiPickCtx(c)) as [AiPickCtx | null, AiPickCtx | null],
@@ -114,7 +114,9 @@ export class GridSim implements LiveSim {
       // engine+0x8ebb: originalen sætter den kun for kampen på kampskærmen (init_match's 4. argument fra match_screens.cpp, 0x6b53ba) –
       // her menneskets kamp med kommentar (den, der vises live); computerens kampe og laboratoriet kører som oraklet (0)
       watched: !!opts.commentary,
-      date: gs().date,
+      // spillets egne inddata (gameInputs.ts): spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80, fixture-posten
+      ...(() => { const f = opts.fixtureId !== undefined ? gs().fixtures[opts.fixtureId] : undefined;
+        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date }); })(),
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;
@@ -247,7 +249,8 @@ export class GridSim implements LiveSim {
     if (tot > 0) { this.teams[0].stats.possession = Math.round((100 * m.stats[0].passes) / tot); this.teams[1].stats.possession = 100 - this.teams[0].stats.possession; }
     for (const p of m.gp) {
       const sp = this.byId.get(p.src.id); if (!sp) continue;
-      sp.rating = Math.max(1, Math.min(10, p.rating / 1000));
+      // den viste karakter +0x1b (sub_6ce460: trunc((+0x35 + 500)/1000) klemt 1..10 – originalens Player Ratings og 0x6d26b0's karakter)
+      sp.rating = Math.max(1, Math.min(10, Math.trunc((((p.rating << 16) >> 16) + 500) / 1000)));
       sp.cond = Math.max(0, Math.min(1, p.condition / 10000));
       sp.line.rating = Math.round(sp.rating * 10) / 10;
       sp.line.cond = Math.round(sp.cond * 100);
@@ -289,7 +292,8 @@ export class GridSim implements LiveSim {
 
   report(): MatchReport {
     const all = [...this.teams[0].all, ...this.teams[1].all];
-    const mom = all.slice().sort((a, b) => b.line.rating - a.line.rating)[0];
+    // kampens spiller: sub_6d0f80 ved slutfløjtet (engine+0x477a); før slutfløjt (rapport midt i kampen) den samme regel på stillingen nu
+    const mom = this.byId.get(this.g.manOfTheMatch()?.src.id ?? -1) ?? all.slice().sort((a, b) => b.line.rating - a.line.rating)[0];
     return {
       fixture: this.opts.fixtureId ?? 0,
       home: this.teams[0].club,

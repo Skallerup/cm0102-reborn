@@ -54,7 +54,7 @@ function storeEntry(g: GameState, cid: number, e: PlanEntry): void {
 function planPlayer(g: GameState, p: Player, fit: ReturnType<typeof cmFitRead>, startCall: boolean): PlanPlayer {
   const c = p.contract ? cmContractOf(p) : null;
   const end = p.contract ? dayOf(p.contract.expires) : { day: 0, year: 0 };
-  const joined = dayOf(p.cmJoined ?? p.joined ?? g.date);
+  const joined = dayOf(p.joined ?? p.cmJoined ?? g.date);   // staff +0x3e: skiftet i spillet går forud for databasens dato
   const inj = fit.injury(p);
   const r = p.cmFit;
   return {

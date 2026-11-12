@@ -104,3 +104,9 @@ let gridFactory: LiveSimFactory | null = null;
 /** Registrér gittermotorens adapter (GridSim). null fjerner den igen. */
 export function setGridFactory(fn: LiveSimFactory | null) { gridFactory = fn; }
 export function getGridFactory(): LiveSimFactory | null { return gridFactory; }
+
+/** Gittermotoren (porten af originalens kampmotor) som STANDARD for nye spil med den originale database i ægte tilstand (runde 8, til ejerens
+ *  test): createGame sætter Options.engine = 'original' for dem. false = som før runde 8 (kun Options.engine eller localStorage
+ *  `cm0102.engine` = 'original' slår den til). Gemte spil uden feltet (fra før) beholder zonemotoren; localStorage `cm0102.engine` = 'zone'
+ *  slår den fra i et spil. */
+export const GRID_ENGINE_DEFAULT = false;

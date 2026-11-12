@@ -85,6 +85,9 @@ export function playerRecord(p: Player): number[] {
   return r;
 }
 
+/** staff +0x3e/+0x40: datoen han kom til klubben – skiftet i spillet (Player.joined), ellers databasens (Player.cmJoined) */
+export const joinedOf = (p: Player): string | undefined => p.joined ?? p.cmJoined;
+
 const dayOf = (iso: string): Day => {
   const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear();
   return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y };
@@ -190,13 +193,13 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   const flags = o.flags ?? pickFlags(rand, { national: !!ctx.national, compType: o.compType ?? 0, ownRep: o.rep, oppRep: o.oppRep ?? o.rep, leagueMember: ctx.leagueMember ?? true });
   // 0x6dced9: anføreren over kandidaterne
   const capIn = ps.map((p, i) => ({ id: p.id, age: ages[i], rec: recs[i], a: 0, clubRep: o.rep, contract: data[i].contract ? { b44: data[i].contract!.b44, b4f: data[i].contract!.b4f } : null,
-    days: p.joined ? Math.max(0, Math.round((Date.parse(date) - Date.parse(p.joined)) / 86400000)) : 1000, b59: shAttr(p, 'loyalty'), b5b: shAttr(p, 'professionalism') }));
+    days: joinedOf(p) ? Math.max(0, Math.round((Date.parse(date) - Date.parse(joinedOf(p)!)) / 86400000)) : 1000, b59: shAttr(p, 'loyalty'), b5b: shAttr(p, 'professionalism') }));
   const judgeJa = ctx.judge ? { ja: ctx.judge.ja, npMod20: ctx.judge.id % 20 } : null;
   let capIdx = chooseCaptain(capIn, judgeJa);
   // 0x6dcf5f: dødboldsskytterne
   const sp = flags & 0x80000 ? setPieceTakers(recs.map((r, i) => ({ worldRep: (r[0xd] | (r[0xe] << 8)), curRep: (r[0xb] | (r[0xc] << 8)), real: !ps[i].regen }))) : [];
   const input = (i: number, slot: { pos: number; att: number; lo: number; hi: number; tb: number; tf: number }, fl: number): RoleInput => ({
-    id: ps[i].id, age: ages[i], atClub: true, joined: ps[i].joined ? dayOf(ps[i].joined!) : { day: 0, year: 1990 }, realPlayer: !ps[i].regen, nationFlag11c: true,
+    id: ps[i].id, age: ages[i], atClub: true, joined: joinedOf(ps[i]) ? dayOf(joinedOf(ps[i])!) : { day: 0, year: 1990 }, realPlayer: !ps[i].regen, nationFlag11c: true,
     rec: recs[i], ...slot, flags: fl, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: sp.indexOf(i) + 1, data: data[i],
   });
   // 0x6dd057: taktikken
@@ -273,7 +276,7 @@ export function captainInputOf(p: Player, ctx: AiPickCtx, clubRep: number): Capt
   const date = ctx.date ?? '2001-08-18';
   const d = roleDataOf(p, ctx, ageOn(p.dob, date));
   return { id: p.id, age: ageOn(p.dob, date), rec: playerRecord(p), a: 0, clubRep, contract: d.contract ? { b44: d.contract.b44, b4f: d.contract.b4f } : null,
-    days: p.joined ? Math.max(0, Math.round((Date.parse(date) - Date.parse(p.joined)) / 86400000)) : 1000, b59: shAttr(p, 'loyalty'), b5b: shAttr(p, 'professionalism') };
+    days: joinedOf(p) ? Math.max(0, Math.round((Date.parse(date) - Date.parse(joinedOf(p)!)) / 86400000)) : 1000, b59: shAttr(p, 'loyalty'), b5b: shAttr(p, 'professionalism') };
 }
 
 /** 0x6e2f20 under kampen (genvalget 0x6e1090 og omrokeringen 0x6e1aa0, matchSubs.ts): samme værdi som før kampen med kampspilleren
@@ -283,7 +286,7 @@ export function matchRoleScore(p: Player, ctx: AiPickCtx, slot: { pos: number; a
   const date = ctx.date ?? '2001-08-18';
   let c = cache?.get(p.id);
   if (!c) { const age = ageOn(p.dob, date); c = { rec: playerRecord(p), data: roleDataOf(p, ctx, age), age }; cache?.set(p.id, c); }
-  return roleScore({ id: p.id, age: c.age, atClub: true, joined: p.joined ? dayOf(p.joined) : { day: 0, year: 1990 }, realPlayer: !p.regen, nationFlag11c: true,
+  return roleScore({ id: p.id, age: c.age, atClub: true, joined: joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }, realPlayer: !p.regen, nationFlag11c: true,
     rec: c.rec, ...slot, flags, mgrJoined: ctx.judge ? (ctx.judge.joined ? dayOf(ctx.judge.joined) : { day: 0, year: 1900 }) : null,
     today: dayOf(date), yearAgo: dayOf(`${+date.slice(0, 4) - 1}${date.slice(4)}`), captain, setPiece, match, data: c.data });
 }
