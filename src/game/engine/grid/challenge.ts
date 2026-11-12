@@ -244,9 +244,9 @@ export function getOppositionChallenge(m: GridMatchState, carrier: GP | null, si
     let mm: number;
     const tf = m.teamFlags[opp];
     if (m.ballH === 4) mm = 3.5;
-    else if (q.instr & 0x200n) mm = tf & 0x20 ? 0.5 : tf & 0x40 ? 4 : 2;
-    else if (q.instr & 0x800n) mm = 0.5;
-    else if (q.instr & 0x1000n) mm = 4;
+    else if (L.instrLo(q) & 0x200) mm = tf & 0x20 ? 0.5 : tf & 0x40 ? 4 : 2;
+    else if (L.instrLo(q) & 0x800) mm = 0.5;
+    else if (L.instrLo(q) & 0x1000) mm = 4;
     else mm = 2;
     if (D > 5) mm = f(mm * f(0.05));                                                         // 0x96d424 (float32 0,05)
     let x = mm;                                                                              // st0 (udvidet) – float32 i [esp+0x1c]

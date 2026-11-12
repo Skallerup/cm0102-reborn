@@ -5,7 +5,7 @@
 // kun strengt større). Originalens rand-rækkefølge pr. kandidat: rand(5·(21 − Positioning-rul)), rand(30), [rand(30)], [rand(nm + 1)].
 // Verden (gitter, ry, statistik) gives udefra (ZonalWorld), så funktionen kan testes uden en hel kamp.
 import { cellDist } from './helpers';
-import type { Rand } from './loop';
+import { instrLo, type Rand } from './loop';
 
 export type ZSide = 0 | 1;
 
@@ -90,7 +90,7 @@ export function zonalPick<P extends ZonalPlayer>(w: ZonalWorld<P>, p: P, rand: R
   // markørens zone i egen halvdel + Positioning-rul ≠ 0: lad kandidaten i egen halvdel stå (0x6bc34c / 0x6bc79a)
   const stays = (o: P) => pr !== 0 && inOwnHalf(o) && (side === 1 ? zy >= 6 : zy < 6);
   const instrFlag = (o: P) =>                                                   // sub_7163f0
-    w.teamFlags[o.side] & 0x1000 ? w.counterFlag[o.side] : (Number(o.instr & 0xffffffffn) & 0x800000) !== 0;
+    w.teamFlags[o.side] & 0x1000 ? w.counterFlag[o.side] : (instrLo(o as never) & 0x800000) !== 0;
   const consider = (o: P, score: number) => { w.onScore?.(o, score); if (!best || i16(score) > i16(bestScore)) { best = o; bestScore = score; } };
   /** sub_715f30 → sub_6c4130: hvor langt o står forbi modstandernes bageste linje (0 for boldholderen) */
   const offsideAmount = (o: P) => (o === w.carrier ? 0 : o.side === 1 ? w.lineSide0 - o.y : o.y - w.lineSide1);

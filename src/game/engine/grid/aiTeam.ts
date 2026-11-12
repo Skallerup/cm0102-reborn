@@ -50,7 +50,18 @@ const GK_LOW = new Set(['crossing', 'creativity', 'dribbling', 'finishing', 'mar
 const OUT_LOW = new Set(['handling', 'reflexes', 'oneOnOnes']);
 
 /** sub_544380's omvendte: den interne værdi (midten af dem, der vises som `shown`) for X = (CA eller 0,1·CA) + 2·intern */
+const IFS_MEMO = new Map<number, number>();
 export function intrinsicFromShown(shown: number, ca: number, low: boolean): number {
+  // (runde 10B) ren funktion af (shown, ca, low) – svaret gemmes for heltallige inddata (samme tal, uden løkken over 251 værdier hver gang)
+  if (Number.isInteger(shown) && Number.isInteger(ca) && shown >= -1000 && shown <= 1000 && ca >= -100000 && ca <= 100000) {
+    const key = ((ca + 100000) * 2001 + (shown + 1000)) * 2 + (low ? 1 : 0);
+    let v = IFS_MEMO.get(key);
+    if (v === undefined) { v = intrinsicFromShown0(shown, ca, low); IFS_MEMO.set(key, v); }
+    return v;
+  }
+  return intrinsicFromShown0(shown, ca, low);
+}
+function intrinsicFromShown0(shown: number, ca: number, low: boolean): number {
   const base = low ? 0.1 * ca : ca;
   const ok: number[] = [];
   for (let v = -125; v <= 125; v++) if (displayX(base + 2 * v) === Math.round(shown)) ok.push(v);
@@ -89,9 +100,16 @@ export function playerRecord(p: Player): number[] {
 /** staff +0x3e/+0x40: datoen han kom til klubben – skiftet i spillet (Player.joined), ellers databasens (Player.cmJoined) */
 export const joinedOf = (p: Player): string | undefined => p.joined ?? p.cmJoined;
 
+const DAY_MEMO = new Map<string, Day>();
+/** (runde 10B) gemt pr. dato (ren funktion); hvert kald får sit eget objekt som før */
 const dayOf = (iso: string): Day => {
-  const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear();
-  return { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y };
+  let r = DAY_MEMO.get(iso);
+  if (!r) {
+    const d = new Date(iso + 'T00:00:00Z'), y = d.getUTCFullYear();
+    r = { day: Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000), year: y };
+    DAY_MEMO.set(iso, r);
+  }
+  return { day: r.day, year: r.year };
 };
 
 /** Holdets kontekst ud over truppen (alt valgfrit – mangler noget, bruges originalens "uden"-grene) */
@@ -199,9 +217,11 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   let capIdx = chooseCaptain(capIn, judgeJa);
   // 0x6dcf5f: dødboldsskytterne
   const sp = flags & 0x80000 ? setPieceTakers(recs.map((r, i) => ({ worldRep: (r[0xd] | (r[0xe] << 8)), curRep: (r[0xb] | (r[0xc] << 8)), real: !ps[i].regen }))) : [];
+  // (runde 10B) ankomstdatoen pr. spiller regnes én gang (roleScore læser den kun)
+  const joinedDays = ps.map((p) => (joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }));
   const input = (i: number, slot: { pos: number; att: number; lo: number; hi: number; tb: number; tf: number }, fl: number): RoleInput => ({
-    id: ps[i].id, age: ages[i], atClub: true, joined: joinedOf(ps[i]) ? dayOf(joinedOf(ps[i])!) : { day: 0, year: 1990 }, realPlayer: !ps[i].regen, nationFlag11c: true,
-    rec: recs[i], ...slot, flags: fl, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: sp.indexOf(i) + 1, data: data[i],
+    id: ps[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !ps[i].regen, nationFlag11c: true,
+    rec: recs[i], pos: slot.pos, att: slot.att, lo: slot.lo, hi: slot.hi, tb: slot.tb, tf: slot.tf, flags: fl, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: sp.indexOf(i) + 1, data: data[i],
   });
   // 0x6dd057: taktikken
   const players: ChoicePlayer[] = ps.map((p, i) => ({
@@ -285,11 +305,18 @@ export function captainInputOf(p: Player, ctx: AiPickCtx, clubRep: number): Capt
 /** 0x6e2f20 under kampen (genvalget 0x6e1090 og omrokeringen 0x6e1aa0, matchSubs.ts): samme værdi som før kampen med kampspilleren
  *  (karakterleddet, konditionen af +0x4d/+0x59) og holdets anfører/dødboldsskytter fra udtagelsen. */
 export function matchRoleScore(p: Player, ctx: AiPickCtx, slot: { pos: number; att: number; lo: number; hi: number; tb: number; tf: number }, flags: number,
-  match: RoleInput['match'], captain: boolean, setPiece: number, cache?: Map<number, { rec: number[]; data: RoleData; age: number }>): number {
+  match: RoleInput['match'], captain: boolean, setPiece: number, cache?: Map<number, MatchRoleCache>): number {
   const date = ctx.date ?? '2001-08-18';
   let c = cache?.get(p.id);
-  if (!c) { const age = ageOn(p.dob, date); c = { rec: playerRecord(p), data: roleDataOf(p, ctx, age), age }; cache?.set(p.id, c); }
-  return roleScore({ id: p.id, age: c.age, atClub: true, joined: joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }, realPlayer: !p.regen, nationFlag11c: true,
-    rec: c.rec, ...slot, flags, mgrJoined: ctx.judge ? (ctx.judge.joined ? dayOf(ctx.judge.joined) : { day: 0, year: 1900 }) : null,
-    today: dayOf(date), yearAgo: dayOf(`${+date.slice(0, 4) - 1}${date.slice(4)}`), captain, setPiece, match, data: c.data });
+  // (runde 10B) datoerne (ankomst, i dag, et år før, managerens ankomst) gemmes med posten – roleScore læser dem kun
+  if (!c) {
+    const age = ageOn(p.dob, date);
+    c = { rec: playerRecord(p), data: roleDataOf(p, ctx, age), age, joined: joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 },
+      mgrJoined: ctx.judge ? (ctx.judge.joined ? dayOf(ctx.judge.joined) : { day: 0, year: 1900 }) : null, today: dayOf(date), yearAgo: dayOf(`${+date.slice(0, 4) - 1}${date.slice(4)}`) };
+    cache?.set(p.id, c);
+  }
+  return roleScore({ id: p.id, age: c.age, atClub: true, joined: c.joined!, realPlayer: !p.regen, nationFlag11c: true,
+    rec: c.rec, pos: slot.pos, att: slot.att, lo: slot.lo, hi: slot.hi, tb: slot.tb, tf: slot.tf, flags, mgrJoined: c.mgrJoined!,
+    today: c.today!, yearAgo: c.yearAgo!, captain, setPiece, match, data: c.data });
 }
+export interface MatchRoleCache { rec: number[]; data: RoleData; age: number; joined?: Day; mgrJoined?: Day | null; today?: Day; yearAgo?: Day }

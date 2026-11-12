@@ -31,8 +31,8 @@ import {
 } from './subs';
 import type { GP, GridMatchState } from './gridMatch';
 import { cellAdd, cellRemove } from './cells';
-import { captainInputOf, matchRoleScore, playerRecord, recordRatings, setChosenTactic, type AiPickCtx } from './aiTeam';
-import { captainBase, type RoleData } from './roleScore';
+import { captainInputOf, matchRoleScore, playerRecord, recordRatings, setChosenTactic, type AiPickCtx, type MatchRoleCache } from './aiTeam';
+import { captainBase } from './roleScore';
 import { AI_TACTIC_LIST, chooseAiTactic, type ChoiceManager, type ChoicePlayer } from './aiTacticChoice';
 import { PRESET_TACTICS } from './presetTactics';
 import { instrBig, presetTable } from './tacticTable';
@@ -149,7 +149,13 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       mustLeave: !!q.b1c, treat: !!q.b1d, substituted: x.substituted, minuteOn: x.minuteOn, minuteOff: x.minuteOff, minuteInjured: x.minuteInjured,
       injuredBy: q.injuredBy ? q.injuredBy.src.id : null };
   };
-  const byId = (s: Side, id: number) => gp.find((q) => q.side === s && q.src.id === id)!;
+  // (runde 10B) id → første spiller med id'et i gp-rækkefølge (som gp.find), bygget én gang – gp ændres ikke i kampen
+  let idFirst: Map<number, GP> | null = null;
+  const firstById = (id: number) => {
+    if (!idFirst || idFirst.size === 0) { idFirst = new Map(); for (const q of gp) if (!idFirst.has(q.src.id)) idFirst.set(q.src.id, q); }
+    return idFirst.get(id);
+  };
+  const byId = (s: Side, id: number) => { const q = firstById(id); return q && q.side === s ? q : gp.find((q) => q.side === s && q.src.id === id)!; };
   /** spilleren overtager pladsens felter; 0x6eecb0(p, 0): positionstilpasningen +0x37 og handlingsevnerne regnes igen */
   const applySlot = (q: GP, slot: number, f: SlotFields | undefined) => {
     q.slot = slot;
@@ -178,10 +184,10 @@ export function makeMatchSubs(env: MatchSubsEnv) {
 
   const posOf = (p: SubPlayer) => byIdAny(p.id).pos;
   const attOf = (p: SubPlayer) => byIdAny(p.id).posAttack;
-  const byIdAny = (id: number) => gp.find((q) => q.src.id === id)!;
+  const byIdAny = (id: number) => firstById(id)!;
   const specOf = (s: Side) => (slot: number) => { const f = slotTab[s][slot]; return { instrLo: f ? Number(f.instr & 0xffffffffn) : 0, instrHi: f ? Number(f.instr >> 32n) : 0, tacticByte: f?.tacticByte ?? 0x12 }; };
   /** sub_6e2f20 under kampen: P sikker (positionFactor), konditionens tidlige retur sikker (conditionTerm), resten *estimeret* (estimatedQuality) */
-  const roleCache = new Map<number, { rec: number[]; data: RoleData; age: number }>();
+  const roleCache = new Map<number, MatchRoleCache>();
   /** sub_6e2f20 under kampen: hele værdien (roleScore.ts via aiTeam.ts matchRoleScore) med kampspilleren, anføreren og dødboldsskytterne fra
    *  udtagelsen (pick_team); uden udtagelse (env.aiPick mangler) som før: P og konditionens tidlige retur sikre, resten *estimeret* */
   const scoreOf = (s: Side) => (p: SubPlayer, spec: SlotSpec, flags: number) => {
@@ -319,7 +325,10 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       if (acc & bit) w = s16(w - 500);
       acc = (acc + bit) | 0;
       // spillerposten: originalens bytes, når låsetrinstesten har dem (GP.recRaw), ellers bygget af spillerens data
-      const p = q.src, rec = q.recRaw ? Array.from(q.recRaw, (b) => b & 0xff) : playerRecord(p), cd = env.cohesionOf?.(q);
+      // (runde 10B) kun bytes +0xb/+0xc/+0x2f læses: direkte fra GP.recRaw (& 0xff som Array.from før), ellers playerRecord (ren) – først når de bruges
+      const p = q.src, rr = q.recRaw, cd = env.cohesionOf?.(q);
+      let recP: number[] | null = null;
+      const rec = (o: number) => (rr ? rr[o] & 0xff : (recP ??= playerRecord(p))[o]);
       // 0x6ebd70 af spillerens data – uændret i kampen (posten, kontrakten, dagene), så værdien gemmes pr. spiller (samme tal, hurtigere)
       const x = () => {
         if (cd) return s8(cd.x);
@@ -329,8 +338,8 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       };
       // 0x6bbbff–0x6bbc46: klubben (0x4cf5a0 → [0xae23b4] + 581·[r+4]) og kontrakten med den (0x4cf5f0)
       if (cd ? cd.club && cd.contract : p.contract && p.club) {
-        const curRep = s16(rec[0xb] | (rec[0xc] << 8)), clubRep = cd ? cd.clubRep : env.rep[s];
-        if (s8(rec[0x2f]) > rand(20) && curRep > rand(7000) && s8(sh(p, 'professionalism')) < rand(6) && curRep > s16(clubRep - 750)
+        const curRep = s16(rec(0xb) | (rec(0xc) << 8)), clubRep = cd ? cd.clubRep : env.rep[s];
+        if (s8(rec(0x2f)) > rand(20) && curRep > rand(7000) && s8(sh(p, 'professionalism')) < rand(6) && curRep > s16(clubRep - 750)
           && ((cd ? cd.b45 : p.cmContract?.b45 ?? 0) & 0x17a0b)) {
           if (q === capQ) w = s16(w - 3 * x());
           else if (rand(s8(sh(p, 'professionalism'))) === 0) w = s16(w - 2 * x());

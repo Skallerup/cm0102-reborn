@@ -213,6 +213,11 @@ export const inOwnThird = (side: Side, y: number) => (side === 0 ? y < 3 : y > 8
 export const inOwnHalf = (p: Player) => (p.side === 1 ? p.y >= 6 : p.y < 6);
 const goalLine = (s: Side) => (s === 0 ? 11 : 0); // line the side attacks
 
+/** (runde 10B, ydelse) instruktionernes lave/høje 32 bit som tal: gittermotorens spillere (gridMatch makePlayer) holder dem i _ilo/_ihi ved
+ *  siden af p.instr (samme værdi – sat af instr-accessoren), så de varme stier ikke laver BigInt-regning; andre spillere (testenes) regnes som før */
+export const instrLo = (p: Player): number => { const v = (p as { _ilo?: number })._ilo; return v !== undefined ? v : Number(p.instr & 0xffffffffn); };
+export const instrHi = (p: Player): number => { const v = (p as { _ihi?: number })._ihi; return v !== undefined ? v : Number(p.instr >> 32n); };
+
 /** sub_6c3aa0: offside lines. 0x6c3de3, 0x6c4118 */
 export function offsideLines(m: Match): void {
   let max1 = 6, min0 = 5;
@@ -247,8 +252,8 @@ export function isLastMan(m: Match, p: Player): boolean {
 /** sub_6c30e0(side,x,y,allowBusy): nearest outfield player; distance 0 returns at once. */
 export function nearest(m: Match, side: Side, x: number, y: number, allowBusy: boolean): Player | null {
   let best: Player | null = null, bd = 5000; // 0x968db0
-  for (const p of m.players.filter((q) => q.side === side)) { // slot order 0..19
-    if (!p.active || p.pos === POS.keeper) continue;
+  for (const p of m.players) { // slot order 0..19 (runde 10B: uden filter-kopien – samme rækkefølge)
+    if (p.side !== side || !p.active || p.pos === POS.keeper) continue;
     if (!allowBusy && p.busy > 1) continue;
     const d = dist(p.x, p.y, x, y);
     if (d === 0) return p;
@@ -498,18 +503,18 @@ export function playerTurn(m: Match, p: Player, rand: Rand, h: Hooks): void {
   if (!h.turnTrace) return turnBody(m, p, rand, h);
   h.turnTrace(p, false); turnBody(m, p, rand, h); h.turnTrace(p, true);
 }
+/** markørerne følger efter (0x710612) – (runde 10B) en funktion i stedet for en lukning pr. tur */
+function turnMarkersFollow(m: Match, p: Player, rand: Rand, h: Hooks): void {
+  for (const mk of p.markers)
+    if (h.canFollow(mk, p.x, p.y) && p.roll.offTheBall * p.roll.pace <= rand(900) + 50) defendOffBall(m, mk, rand, h); // 0x710612
+}
 function turnBody(m: Match, p: Player, rand: Rand, h: Hooks): void {
-  const markersFollow = () => {
-    for (const mk of p.markers)
-      if (h.canFollow(mk, p.x, p.y) && p.roll.offTheBall * p.roll.pace <= rand(900) + 50) defendOffBall(m, mk, rand, h); // 0x710612
-  };
-  const isCarrier = () => m.carrier === p;
   const notKeeper = p.pos !== POS.keeper;
   for (;;) {
-    if (!isCarrier() && notKeeper) {
+    if (!(m.carrier === p) && notKeeper) {
       // 0x710408–0x710449: r65 = rand(65), r10 = rand(10); hvile når r10 + kondition·0,0078125 ≤ r65 (fcomp mod den gemte r65 – før var
       // siderne byttet, så en træt spiller aldrig hvilede: med kondition > 8200 kan ingen af dem give hvile, derfor holdt låsetrinet længe)
-      { const r65 = rand(65), r10 = rand(10); if (r10 + p.condition * 0.0078125 <= r65) { markersFollow(); p.action = ACT.rest; return; } }
+      { const r65 = rand(65), r10 = rand(10); if (r10 + p.condition * 0.0078125 <= r65) { turnMarkersFollow(m, p, rand, h); p.action = ACT.rest; return; } }
       const defending = m.poss === (p.side === 0 ? 1 : 0);
       let switchOff = defending;
       if (!defending && m.poss !== p.side) {
@@ -517,22 +522,22 @@ function turnBody(m: Match, p: Player, rand: Rand, h: Hooks): void {
         switchOff = !own && !(inOwnBox((1 - p.side) as Side, m.ballX, m.ballY) && m.ballH !== -1);
       }
       if (switchOff && rand(20) === 0 && p.roll.workRate === 0) {          // 0x7104cb
-        markersFollow(); p.rating -= 15; p.action = ACT.rest; if (!p.busy) p.busy = 1;
+        turnMarkersFollow(m, p, rand, h); p.rating -= 15; p.action = ACT.rest; if (!p.busy) p.busy = 1;
         p.condition += rand(5) + 5; return;
       }
       if (m.aiMode[p.side] === 5) {                                         // 0x7104fd
         const D = dist(p.x, p.y, 4, goalLine(p.side));
         if (rand(12) > D && p.roll.workRate < rand(10)) {
-          markersFollow(); p.action = ACT.rest; if (!p.busy) p.busy = 1; p.condition += rand(5) + 5; return;
+          turnMarkersFollow(m, p, rand, h); p.action = ACT.rest; if (!p.busy) p.busy = 1; p.condition += rand(5) + 5; return;
         }
       }
     }
-    if (p.busy && !isCarrier()) { markersFollow(); p.action = ACT.rest; return; } // 0x7105a1
-    if (isCarrier()) {
-      markersFollow();
+    if (p.busy && !(m.carrier === p)) { turnMarkersFollow(m, p, rand, h); p.action = ACT.rest; return; } // 0x7105a1
+    if ((m.carrier === p)) {
+      turnMarkersFollow(m, p, rand, h);
       h.ballCarrier(p);                                                      // 0x710654
       m.firstTime = 0;                                                       // 0x71065f: engine+0x1a7 = 0 efter boldholderens valg
-      if (isCarrier() || p.action === 0x6d || p.busy || m.state !== 0 || p.roll.offTheBall === 0) return;
+      if ((m.carrier === p) || p.action === 0x6d || p.busy || m.state !== 0 || p.roll.offTheBall === 0) return;
       if (rand(ftol(p.a.anticipation)) > rand(5)) continue;                  // 0x7106ad "pass and move"
       return;
     }
@@ -548,10 +553,24 @@ function turnBody(m: Match, p: Player, rand: Rand, h: Hooks): void {
 
 // ------------------------------------------------------------------ attacking side, off the ball sub_713fc0
 
-const INSTR_FWD_RUNS_A = 0x200000n;   // 0x714278 (meaning gættet)
-const INSTR_FWD_RUNS_B = 0x800000n;   // 0x7147a4 (meaning gættet)
-const INSTR_CROSS_YES = 0x4n << 32n;  // high dword & 4 (BALL_CARRIER.md)
+const INSTR_FWD_RUNS_A = 0x200000;    // 0x714278 (meaning gættet) – lave ord
+const INSTR_FWD_RUNS_B = 0x800000;    // 0x7147a4 (meaning gættet) – lave ord
+const INSTR_CROSS_YES_HI = 0x4;       // high dword & 4 (BALL_CARRIER.md)
 
+// (runde 10B) attackOffBall's hjælpere som funktioner (før lukninger pr. tur) – samme rækkefølge af kald og tal
+function aobTryRun(p: Player, h: Hooks, mode: number, code: number): boolean {
+  const t = h.runTarget(p, mode); if (!t) return false;
+  if (code !== ACT.runIntoSpace || mode === 4) p.rating += 7;
+  p.action = code; h.moveTo(p, t[0], t[1], -1); return true;
+}
+function aobLoseMarker(p: Player, rand: Rand, h: Hooks): boolean {
+  const v = (2.5 - 0.0002 * p.rating) * (p.markers.length * p.roll.offTheBall); // 0x7141b9/0x7141c2
+  return rand(p.pos & POS.forward ? 20 : 50) < v && aobTryRun(p, h, 4, ACT.runIntoSpace);
+}
+function aobCreative(p: Player, h: Hooks): boolean {
+  return (p.roll.offTheBall && aobTryRun(p, h, 4, ACT.runIntoSpace)) ||
+    (p.markers.length > 0 && !(p.pos & 6) && p.roll.offTheBall && aobTryRun(p, h, 4, ACT.loseMarker)) || false;
+}
 export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   const mm = (p.tacticByte & 4) !== 0;
   p.action = ACT.none;
@@ -560,27 +579,18 @@ export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     if (m.receiver === p && rand(20) + p.roll.offTheBall !== 0) { h.moveTo(p, m.ballX, m.ballY, 0x100); p.action = ACT.chaseBall; return; }
     if (!m.receiver && isChaser(m, p) && m.loftCountdown === 0) { h.moveTo(p, m.ballX, m.ballY, 0x100); p.action = ACT.chaseBall; return; }
   }
-  const tryRun = (mode: number, code: number): boolean => {
-    const t = h.runTarget(p, mode); if (!t) return false;
-    if (code !== ACT.runIntoSpace || mode === 4) p.rating += 7;
-    p.action = code; h.moveTo(p, t[0], t[1], -1); return true;
-  };
-  const loseMarkerTest = () => {
-    const v = (2.5 - 0.0002 * p.rating) * (p.markers.length * p.roll.offTheBall); // 0x7141b9/0x7141c2
-    return rand(p.pos & POS.forward ? 20 : 50) < v && tryRun(4, ACT.runIntoSpace);
-  };
   const finalThird = p.side === 1 ? p.y < 3 : p.y > 8;
   if (finalThird && ((p.x >= 2 && p.x <= 6) || dist(p.x, p.y, m.ballX, m.ballY) > 2)) {
-    if (loseMarkerTest()) return;
+    if (aobLoseMarker(p, rand, h)) return;
   } else {
-    if (p.instr & INSTR_FWD_RUNS_A && rand(p.freeRoleRating) >= rand(5)) {           // 0x714283
+    if ((instrLo(p) & INSTR_FWD_RUNS_A) !== 0 && rand(p.freeRoleRating) >= rand(5)) {           // 0x714283
       const t = h.runTarget(p, 12); if (t) { p.action = ACT.runIntoSpace; h.moveTo(p, t[0], t[1], -1); return; }
     }
-    if (loseMarkerTest()) return;
+    if (aobLoseMarker(p, rand, h)) return;
   }
   let [tx, ty] = h.tacticalCell(p);                                                    // 0x7143a7
   const ballInOppBox = inOwnBox((1 - p.side) as Side, m.ballX, m.ballY);
-  if (p.instr & INSTR_CROSS_YES && p.pos & POS.wingRole && !ballInOppBox) {
+  if ((instrHi(p) & INSTR_CROSS_YES_HI) !== 0 && p.pos & POS.wingRole && !ballInOppBox) {
     const left = (p.pos & POS.left) !== 0, right = !left && (p.pos & POS.right) !== 0;
     if (p.side === 0) { if (left && m.ballX < 6) [tx, ty] = [0, 11]; else if (right && m.ballX < 2) [tx, ty] = [8, 11]; }
     else { if (left && m.ballX < 2) [tx, ty] = [8, 0]; else if (right && m.ballX < 6) [tx, ty] = [0, 0]; }
@@ -590,7 +600,7 @@ export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   const N = p.pos & POS.grp200 ? (p.pos & POS.mid8 ? 18 : p.pos & POS.def4 ? 20 : 0) : 16;
   const counterOn = (m.teamFlags[p.side] & TEAM.counterAttack) !== 0;
   let forward = false;
-  if ((counterOn ? m.counterFlag[p.side] : (p.instr & INSTR_FWD_RUNS_B) !== 0n) && p.roll.offTheBall > rand(N)) forward = true;
+  if ((counterOn ? m.counterFlag[p.side] : (instrLo(p) & INSTR_FWD_RUNS_B) !== 0) && p.roll.offTheBall > rand(N)) forward = true;
   else {
     const ahead = p.side === 0 ? m.ballY > p.y && p.y > 7 : m.ballY < p.y && p.y < 4;
     if (ahead && p.roll.flair !== 0 && h.teammatesAhead(p) < rand(3) + 1) forward = true;          // 0x714731
@@ -610,23 +620,21 @@ export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   }
   const off = offsidePos(m, p);
   if (off >= 0 && rand(5 * off) + p.roll.offTheBall > rand(3)) { p.action = ACT.backOnside; h.backOnside(p); return; } // 0x714945
-  const creative = () => (p.roll.offTheBall && tryRun(4, ACT.runIntoSpace)) ||
-    (p.markers.length > 0 && !(p.pos & 6) && p.roll.offTheBall && tryRun(4, ACT.loseMarker));
   if (p.x === tx && p.y === ty) {
     // 0x7149a1–0x7149f5: med positionsrul ≠ 0 (keeper eller ej) eller som sidste mand bliver han stående; kun uden rullet prøver han et løb
     // (før var betingelsen vendt: rul = 0 → stå)
     if (p.roll.positioning !== 0 || isLastMan(m, p)) { p.action = ACT.stay; h.moveTo(p, p.x, p.y, -1); return; }
-    if (creative()) return;
+    if (aobCreative(p, h)) return;
     p.action = ACT.stay; h.moveTo(p, p.x, p.y, -1); return;
   }
-  if (p.roll.flair > rand(ftol(p.a.teamwork + 10)) && creative()) return;              // 0x714b1e
+  if (p.roll.flair > rand(ftol(p.a.teamwork + 10)) && aobCreative(p, h)) return;              // 0x714b1e
   p.action = ACT.toPosition; h.moveTo(p, tx, ty, -1);
 }
 
 // ------------------------------------------------------------------ defending side, off the ball sub_714d40
 
-const INSTR_CLOSE_DOWN = 0x8000n;   // 0x7156e6 (gættet)
-const INSTR_CLOSE_DOWN_P = 0x2000n; // 0x715720, together with team pressing (gættet)
+const INSTR_CLOSE_DOWN = 0x8000;    // 0x7156e6 (gættet) – lave ord
+const INSTR_CLOSE_DOWN_P = 0x2000;  // 0x715720, together with team pressing (gættet) – lave ord
 
 export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   const opp = (p.side === 0 ? 1 : 0) as Side;
@@ -708,7 +716,8 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     if (dist(p.x, p.y, bx, by) < k) {
       const tf = m.teamFlags[p.side];
       // 0x715746: instruktion 0x2000 med holdflaget i ebp = 0x100 (sat 0x7151cc i jagtafsnittet, som alle veje hertil går igennem)
-      if (p.instr & INSTR_CLOSE_DOWN || (p.instr & INSTR_CLOSE_DOWN_P && tf & TEAM.pressing) || tf & TEAM.menBehindBall) toBall = true;
+      const ilo = instrLo(p);
+      if (ilo & INSTR_CLOSE_DOWN || (ilo & INSTR_CLOSE_DOWN_P && tf & TEAM.pressing) || tf & TEAM.menBehindBall) toBall = true;
       else if (!(p.pos & (POS.def2 | POS.def4)) && rand(m.touchCount[opp]) > rand(25) && !isLastMan(m, p)) toBall = true;
     }
   }

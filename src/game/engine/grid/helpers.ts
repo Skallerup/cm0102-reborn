@@ -180,7 +180,21 @@ export function facingOk(p: { x: number; y: number; facing: number; roll: { agil
   let d = Math.abs(p.facing - ang); if (d > 180) d = 360 - d;
   return d < lim;
 }
+/** (runde 10B) bearing for heltallige |dx|, |dy| ≤ 15 slås op i en tabel bygget med bearing0 selv (samme tal) */
+const BEARING_N = 15, BEARING_W = 2 * BEARING_N + 1;
+let BEARING_TAB: Int16Array | null = null;
 export function bearing(dx: number, dy: number): number {
+  if ((dx | 0) === dx && (dy | 0) === dy && dx >= -BEARING_N && dx <= BEARING_N && dy >= -BEARING_N && dy <= BEARING_N) {
+    let t = BEARING_TAB;
+    if (!t) {
+      t = BEARING_TAB = new Int16Array(BEARING_W * BEARING_W);
+      for (let a = -BEARING_N; a <= BEARING_N; a++) for (let b = -BEARING_N; b <= BEARING_N; b++) t[(a + BEARING_N) * BEARING_W + b + BEARING_N] = bearing0(a, b);
+    }
+    return t[(dx + BEARING_N) * BEARING_W + dy + BEARING_N];
+  }
+  return bearing0(dx, dy);
+}
+function bearing0(dx: number, dy: number): number {
   if (dx === 0) return dy < 0 ? 180 : 0;
   if (dy === 0) return dx > 0 ? 90 : 270;
   const k = 57.29577951471995;                                   // 0x96d2b8
@@ -200,7 +214,10 @@ export const cellDirection = (x0: number, y0: number, x1: number, y1: number) =>
 export function laneBlockers(gp: { active: boolean; side: number; busy: number; x: number; y: number }[], poss: number,
                              x0: number, y0: number, x1: number, y1: number): number {
   const defSide = poss === 0 ? 1 : 0;
-  const cnt = (x: number, y: number) => gp.filter((o) => o.active && o.side === defSide && o.busy <= 1 && o.x === x && o.y === y).length;
+  // (runde 10B) forsvarerne (aktive, busy ≤ 1) samles én gang – før et filter over alle 40 for hvert felt på linjen (samme antal)
+  const dx: number[] = [], dy: number[] = [];
+  for (let i = 0; i < gp.length; i++) { const o = gp[i]; if (o.active && o.side === defSide && o.busy <= 1) { dx.push(o.x); dy.push(o.y); } }
+  const cnt = (x: number, y: number) => { let c = 0; for (let i = 0; i < dx.length; i++) if (dx[i] === x && dy[i] === y) c++; return c; };
   const inside = (x: number, y: number) => x >= 0 && x <= 8 && y >= 0 && y <= 11;
   const adx = Math.abs(x1 - x0), ady = Math.abs(y1 - y0);
   let n = 0;

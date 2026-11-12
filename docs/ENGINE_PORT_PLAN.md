@@ -1134,3 +1134,21 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   139/395 ens (bias væk, enkeltværdier tilfældige). **Sæson** (grid-season.ts, frø 1/2/3, nu alle 380 kampe til 20/5): 2,94 · 57/24/19, 2,97 · 55/21/23,
   2,90 · 48/27/24 (før: 370 kampe 3,00 · 51/26/23, 2,95 · 54/24/22, 3,05 · 50/25/25; originalen 2,75–2,98 · 51–53 %). **Nyt spil:** 7,2–8,4 s → 9,0–9,1 s.
   **Test:** vitest 81 filer/379 grønne, e2e klassisk med E2E_ENGINE=original grøn.
+- 2026-11-12 – **Runde 10B: gittermotoren hurtigere (resultatneutralt).** ~95–105 ms → ~50–55 ms pr. kamp (bundtet; samme belastning,
+  skiftevis kørt: grid-speed 150 kampe 137–174 → 71–85 ms under belastning 5–7, ×1,9–2,0). Fundet med `node --cpu-prof` + `--log-ic` og
+  `%HasFastProperties`/`%HaveSameMap` (`--allow-natives-syntax`): **GP-objekterne stod i ordbogstilstand** – `f32Fields` lagde accessorer på hver
+  spiller med `Object.defineProperty`, og `p.f` blev bygget med `f[k] = …` (34 nøgler). Nu: kondition/ventende kondition/agitation og
+  instruktionerne er accessorer på en fælles prototype (`GP_F32`, felterne `_cond/_pcond/_agit` – rundes først til float32 fra f32Fields som før –
+  og `_instr` med `_ilo/_ihi`, så de varme stier tester bits uden BigInt: `L.instrLo/instrHi`); alle senere felter (view, recRaw, staffRaw,
+  marker0, giver, markRef, nationName …) står i literalen fra starten, så alle 40 spillere har samme skjulte klasse (et felt tilføjet efter en
+  prototype giver hver spiller sin egen klasse); `p.f` er en literal med faste felter (`matchFloatsObj`). Situationen (sub_7109f0's inddata) havde
+  getters i literalen – nu datafelter + `SIT_PROTO`. Desuden: situationens holdlister/visningskort gemt pr. kamp (`sitLists`, `VIEW_EPOCH`),
+  holdlister `sidesOf(m)` i freeRun/spaceAhead/canSee/runTarget/ownKeeper/teammatesAhead, zonevalgets verden pr. kamp, laneBlockers samler
+  forsvarerne én gang, bearing-tabel, rand med den almindelige gren først, footForTarget uden kopi af visningen, fejlsøgningens tekster kun med
+  `setGridDebug`, aiTeam: `intrinsicFromShown`/`dayOf` gemt (rene funktioner), matchRoleScore's datoer i cachen, matchSubs' id-opslag i et kort og
+  samspillet uden `Array.from(recRaw)`. Rækkefølgen af rand-kald og float32-semantikken er urørt. **Bevis:** fingeraftryk (sha1 af hele
+  GridResult + spillerne + næste rand) for 60 kampe identisk før/efter efter hvert trin; `grid-stats.ts 100 1` og `grid-season.ts` (frø 1) giver
+  samme tal; en hel sæson i spillet giver samme resultater (sha1 af alle 2.611 kampes resultater og spillernes kondition/moral/skader/cmFit);
+  tests/grid* (19 filer, 116 tests, heraf lockstep og postMatch) består. Profilen er nu flad: rand (~600.000 træk pr. kamp, 2/3 er rullene
+  sub_6f44a0) ~10 %, passOptions ~12 %, genvalget/samspillet ved dødbolde ~9 %, kampstarten ~6 %. ≤ 20 ms kræver en dybere omskrivning
+  (fx typed arrays for positionerne og færre objekter pr. tur i passOptions/situationen).

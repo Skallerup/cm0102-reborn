@@ -554,7 +554,7 @@ export function makePass(c: PassCtx) {
       const k = type === 0x5e ? 8 : type;
       const onLine = p.y === 0 || p.y === 11;
       const flA = (p.pos & 0x880) !== 0, flB = (p.posAttack & 0x880) !== 0;     // sub_6c38c0 / sub_6c38f0
-      const instr4 = ((p.instr >> 32n) & 4n) !== 0n;                               // 0x6fb260: sub_5b5270's edx (det HØJE ord) & 4 – før det lave
+      const instr4 = (L.instrHi(p) & 4) !== 0;                                    // 0x6fb260: sub_5b5270's edx (det HØJE ord) & 4 – før det lave
       const nat = c.nationOk(p);
       if (onLine && flA && flB && p.pos & 0x38 && instr4) S = sk[k] - foot + (nat ? 0x4b : 0x3e);
       else if (onLine && flA && flB) S = sk[k] - foot + (nat ? 0x3e : 0x2d);
@@ -596,7 +596,7 @@ export function makePass(c: PassCtx) {
     if (m.carrier) { E24 = m.firstTime; m.x4786 = 0; m.poss = -1; m.carrier = null; m.firstTime = 0; p.w29 = 0; p.momentum = 0; }   // … eller +0x1a7 (0x6fcb1f)
     m.margin = int16(V - w40);
     // 5.5 præcisionen: en upræcis aflevering flytter MÅLET
-    dbg('pass:t' + type.toString(16));
+    if (c.dbg) dbg('pass:t' + type.toString(16));
     const sc = passScatter(V - w40, m.ballH, c.weather, D, tx, ty, isK(p), p.w29, rand);
     if (sc.imprecise) dbg('pass:imprecise');
     if (sc.x !== tx || sc.y !== ty) {
@@ -701,7 +701,7 @@ export function makePass(c: PassCtx) {
     const skill = int16(R.skill[code] + (brought ? 10 * (R.roll.agility - 20) : 0));  // 0x6f6ff0–0x6f7014: lea eax,[eax+eax*4] + shl 1 = 10·(agility − 20)
     const a1 = randS(rand, skill), a2 = rand(tired), a3 = rand(face);
     const Rscore = int16(a1 - a2 - a3 + randS(rand, power));
-    dbg('rcv:h' + h + ':c' + code.toString(16));
+    if (c.dbg) dbg('rcv:h' + h + ':c' + code.toString(16));
     drainCondition(R, code);                                                       // sub_6f56c0(R, −1, kode)
     const hj = handsJudge(R, code);
     if (hj && rand(ftol(d * 5 + 2)) !== 0) { c.handsFoul(R, code, hj.sev, hj.b, false, 'receive'); return; }   // 0x6f7353 (−25 i handsFoul)
