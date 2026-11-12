@@ -122,6 +122,19 @@ const checkMatches = async () => {
       const goalEv = (rep.events ?? []).filter((e) => e.k === 'goal').length;
       if (goalEv !== hg + ag) bad.push(`${goalEv} mål-hændelser, resultatet ${hg}-${ag}`);
       if (hg + ag >= 11) bad.push(`urimeligt resultat ${hg}-${ag}`);
+      // gittermotoren (runde 10C): kampstatistikken er originalens tællere (MATCH_PLAYER +1/+2/+4/+5/+7/+8, holdblokken) – ikke tomme/flade
+      if (rep.engine === 'original') {
+        for (const t of [0, 1]) {
+          const s = rep.stats[t], mine = lines.filter((l) => l.team === t);
+          const sum = (k) => mine.reduce((a, l) => a + (l[k] ?? 0), 0);
+          if (!(s.passes > 50) || !(s.tackles > 0) || !(s.headers > 0) || s.throwIns === undefined) bad.push(`hold ${t}: tom statistik (afl. ${s.passes}, tackl. ${s.tackles}, hovedst. ${s.headers}, indkast ${s.throwIns})`);
+          if (sum('passes') !== s.passes || sum('passesOk') !== s.passesCompleted) bad.push(`hold ${t}: afleveringer ${sum('passes')}/${sum('passesOk')} ≠ holdets ${s.passes}/${s.passesCompleted}`);
+          if (sum('tckA') !== s.tackles || sum('tackles') !== s.tacklesWon || sum('hea') !== s.headers || sum('heaW') !== s.headersWon) bad.push(`hold ${t}: tacklinger/hovedstød stemmer ikke med holdets`);
+          if (!(rep.heat?.[t]?.reduce((a, v) => a + v, 0) > 0)) bad.push(`hold ${t}: tomt varmekort`);
+        }
+        if (!rep.momentum?.some((v) => v !== 0)) bad.push('momentum er fladt');
+        if (!(rep.stats[0].possession + rep.stats[1].possession === 100)) bad.push(`besiddelse ${rep.stats[0].possession}/${rep.stats[1].possession}`);
+      }
       out.reports.push({ id, engine: rep.engine ?? 'zone', score: `${name(rep.home)} ${hg}-${ag} ${name(rep.away)}`, date: f?.date, comp: f?.comp, goals: hg + ag, ncom: com.length, bad });
     }
     const sf = new Set(seenF);

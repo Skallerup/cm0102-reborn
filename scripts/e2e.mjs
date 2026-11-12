@@ -37,7 +37,7 @@ async function run(look) {
     return r.fulfill({ json: { mail: true } });
   });
   const errors = [];
-  page.on('pageerror', (e) => errors.push(e.message));
+  page.on('pageerror', (e) => { errors.push(e.message); if (process.env.E2E_STACK) console.error('PAGEERROR', e.stack); });
   await page.addInitScript(({ theme, grid }) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.mode', 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? (grid ? 'original' : 'modern')); if (grid) localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); }, { theme: look === 'klassisk' ? 'retro' : 'club', grid: ENGINE_GRID });
   // NB: ægte CM 01/02 er standard ved nyt spil – testen kører det udvidede spil (træningskampe, pressemøder m.m.)
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);

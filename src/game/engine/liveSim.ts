@@ -83,6 +83,10 @@ export interface LiveSim {
   corners: { m: number; t: number; taker: number; lane: number; moment: number; shot?: boolean }[];
   /** straffesparkskonkurrencen, når den er i gang */
   shootout?: { score: [number, number]; kicks: ShootoutKick[] };
+  /** gittermotoren (GridSim): tik med bolden pr. hold og zone (15 zoner, som rapportens heat) og holdet med bolden pr. tik – Action Zones og
+   *  Match Overview's besiddelse læser dem i stedet for at tage stikprøver ved hver kommentarlinje */
+  readonly heat?: readonly [readonly number[], readonly number[]];
+  readonly possLog?: readonly number[];
 
   // ---- styring ----
   /** ét tik; false når kampen er slut */

@@ -10,6 +10,11 @@
 // tal; efter hvert tik læses de nye poster (drain) og bliver til linjer med begivenheden og varianten (CommentaryLine.ev/v), som UI'et viser
 // uden eget valg (ui/matchTexts.ts). Begivenheder, hvis kaldsted endnu ikke er porteret (skud/mål, kort, frispark, udskiftninger, skader,
 // straffesparkskonkurrencen), får stadig de *estimerede* linjetyper via MAP – se ENGINE_PORT_PLAN.md.
+// Kampstatistikken (runde 10C) er originalens egne tællere: spillerens MATCH_PLAYER +0x1/+0x2 afleveringer (forsøgt/nået en medspiller),
+// +0x4/+0x5 tacklinger (forsøgt/vundet), +0x7/+0x8 hovedstødsdueller (forsøgt/vundet) – holdets tal er summen af spillernes, som originalens
+// sub_6ce460 (0x6ce4b3–0x6ce5ed: holdblokken engine+0xf5e2… = Σ spillerne) – og holdblokkens indkast +0xf5c8 (sub_6c4290). Originalen har
+// ingen tæller for besiddelse, varmekort, zonekontrol eller momentum: de er *visning* af motorens faktiske tilstand efter hvert tik (boldens
+// felt og holdet med bolden), talt her i adapteren uden at røre motoren.
 
 import { nationLanguage } from './nationLanguage';
 import type { Rng } from '../../rng';
@@ -90,6 +95,15 @@ export class GridSim implements LiveSim {
   private rand: ReturnType<typeof randOf>;
   /** originalens kamprapport efter slutfløjt (postMatchGame.ts: 0x6d1cc0 og 0x6d4a20) */
   private post?: CmPostResult | null;
+  /** *visning* (ingen tæller i originalen): tik med bolden pr. hold, boldens felt (zonemotorens 15 zoner) pr. hold med bolden, momentum pr.
+   *  5 minutter og holdet med bolden pr. tik (Match Overview's "sidste 5 minutter") – talt af motorens tilstand efter hvert tik */
+  readonly heat: [number[], number[]] = [Array(15).fill(0), Array(15).fill(0)];
+  readonly possLog: number[] = [];
+  private possTicks: [number, number] = [0, 0];
+  private zonePoss = Array(15).fill(0) as number[];
+  private zoneTotal = Array(15).fill(0) as number[];
+  private momentum: number[] = [];
+  private lastPoss: 0 | 1 = 0;
 
   constructor(home: EngineTeam, away: EngineTeam, opts: EngineOptions, r: Rng) {
     this.opts = opts;
@@ -143,6 +157,7 @@ export class GridSim implements LiveSim {
           const s = this.byId.get(p.src.id); if (s) { s.line.shots++; if (outcome !== 'blocked' && outcome !== 'deflectedWide' && outcome !== 'wide' && outcome !== 'overBar') s.line.on = (s.line.on ?? 0) + 1; }
           const o = SHOT_OUT[outcome] ?? 'off';
           this.shots.push({ m: this.minute, t: p.side, zone: this.zoneOf(p.x, p.y), xg: 0, outcome: o, p: p.src.id, kind: 'normal' });
+          this.bump(p.side, o === 'goal' ? 1.2 : o === 'saved' ? 0.6 : 0.3);                   // momentumgrafen (*visning*)
           // redningen/afbrænderen/blokeringen står i køen (sub_702050, sub_70dfd0) – ingen *estimeret* linje oveni
         },
         card: (p, code, commented) => {
@@ -267,12 +282,20 @@ export class GridSim implements LiveSim {
     const m = this.g.m;
     this.teams.forEach((t, i) => {
       const s: GridSideStats = m.stats[i];
-      Object.assign(t.stats, { goals: s.goals, shots: s.shots, onTarget: s.onTarget, corners: s.corners, fouls: s.fouls, yellows: s.yellows, reds: s.reds, offsides: s.offsides, passes: s.passes, passesCompleted: s.passesCompleted });
+      // sub_6ce460: holdets afleveringer/tacklinger/hovedstød = summen af spillernes tællere (alle 20 i kamptruppen)
+      let pa = 0, pc = 0, ta = 0, tw = 0, ha = 0, hw = 0;
+      for (const q of this.byIdx[i]) { pa += q.c01 & 0xff; pc += q.c02 & 0xff; ta += q.tacklesTried & 0xff; tw += q.tacklesWon & 0xff; ha += q.b7 & 0xff; hw += q.b8 & 0xff; }
+      Object.assign(t.stats, { goals: s.goals, shots: s.shots, onTarget: s.onTarget, corners: s.corners, fouls: s.fouls, yellows: s.yellows, reds: s.reds, offsides: s.offsides,
+        passes: pa, passesCompleted: pc, throwIns: s.throwIns, tackles: ta, tacklesWon: tw, headers: ha, headersWon: hw });
     });
-    const tot = m.stats[0].passes + m.stats[1].passes;
-    if (tot > 0) { this.teams[0].stats.possession = Math.round((100 * m.stats[0].passes) / tot); this.teams[1].stats.possession = 100 - this.teams[0].stats.possession; }
+    // besiddelsen: andelen af tikkene med bolden (*visning*)
+    const tot = this.possTicks[0] + this.possTicks[1];
+    if (tot > 0) { this.teams[0].stats.possession = Math.round((100 * this.possTicks[0]) / tot); this.teams[1].stats.possession = 100 - this.teams[0].stats.possession; }
     for (const p of m.gp) {
       const sp = this.byId.get(p.src.id); if (!sp) continue;
+      // MATCH_PLAYER-tællerne (se filens hoved); tckA/tackles = forsøgt/vundet som zonemotorens linjer (Team Stats: Tck · Won)
+      const l = sp.line;
+      l.passes = p.c01 & 0xff; l.passesOk = p.c02 & 0xff; l.tckA = p.tacklesTried & 0xff; l.tackles = p.tacklesWon & 0xff; l.hea = p.b7 & 0xff; l.heaW = p.b8 & 0xff;
       // den viste karakter +0x1b (sub_6ce460: trunc((+0x35 + 500)/1000) klemt 1..10 – originalens Player Ratings og 0x6d26b0's karakter)
       sp.rating = Math.max(1, Math.min(10, Math.trunc((((p.rating << 16) >> 16) + 500) / 1000)));
       sp.cond = Math.max(0, Math.min(1, p.condition / 10000));
@@ -293,10 +316,34 @@ export class GridSim implements LiveSim {
     const cap = m.periodEnd === 495 ? 45 : m.periodEnd === 990 || m.periodEnd === 0 ? 90 : m.periodEnd === 1155 ? 105 : 120;
     this.minute = Math.min(cap, Math.floor(m.clock / TICKS_PER_MIN) + 1);
     this.originalLines(pe0);
+    this.sample();
     if (this.extra) this.totalMoments = Math.max(this.totalMoments, this.moment + (m.shootout ? 1 : Math.max(0, 1320 - m.clock)));
     this.sync();
     if (!ok) this.end();
     return !this.finished;
+  }
+
+  /** *visning*: holdet med bolden (−1 = ingen → det sidste) og boldens felt efter tikket → besiddelse, varmekort, zonekontrol og momentum.
+   *  Ingen tilfældige tal, ingen skrivning i motoren. */
+  private sample() {
+    const m = this.g.m;
+    if (m.poss === 0 || m.poss === 1) this.lastPoss = m.poss;
+    const s = this.lastPoss;
+    this.possTicks[s]++;
+    this.possLog.push(s);
+    const z = this.zoneOf(Math.max(0, Math.min(8, m.ballX)), Math.max(0, Math.min(11, m.ballY)));
+    this.heat[s][z]++;
+    this.zoneTotal[z]++;
+    if (s === 0) this.zonePoss[z]++;
+    // som zonemotorens momentum (match.ts play()): +0,6 i det sidste bånd før mål, +0,25 i det næstsidste – skaleret til ~240 øjeblikke pr. kamp
+    const band = Math.floor(z / 3), rb = s === 0 ? band : 4 - band;
+    if (rb >= 3) this.bump(s, (rb === 4 ? 0.6 : 0.25) * (240 / TOTAL_TICKS));
+  }
+
+  private bump(side: number, v: number) {
+    const b = Math.max(0, Math.floor((Math.max(1, this.minute) - 1) / 5));
+    while (this.momentum.length <= b) this.momentum.push(0);
+    this.momentum[b] += side === 0 ? v : -v;
   }
 
   private end() {
@@ -328,9 +375,9 @@ export class GridSim implements LiveSim {
       players: all.map((s) => s.line),
       events: this.events,
       shots: this.shots,
-      momentum: Array(19).fill(0),
-      heat: [Array(15).fill(0), Array(15).fill(0)],
-      zoneControl: Array(15).fill(0.5),
+      momentum: [...this.momentum, ...Array(Math.max(0, 18 - this.momentum.length)).fill(0)].map((v) => Math.round(v * 100) / 100),
+      heat: [this.heat[0].slice(), this.heat[1].slice()],
+      zoneControl: this.zonePoss.map((v, i) => (this.zoneTotal[i] ? Math.round((v / this.zoneTotal[i]) * 100) / 100 : 0.5)),
       mom: mom?.p.id ?? 0,
       commentary: this.commentary,
       et: this.extra || undefined,
@@ -351,7 +398,7 @@ export class GridSim implements LiveSim {
     const ax = (y: number) => ((y + 0.5) / 12) * 100, ay = (x: number) => ((x + 0.5) / 9) * 100;
     return {
       zone: this.zoneOf(Math.max(0, Math.min(8, m.ballX)), Math.max(0, Math.min(11, m.ballY))),
-      poss: m.poss === 1 ? 1 : 0,
+      poss: m.poss === 0 || m.poss === 1 ? m.poss : this.lastPoss,
       holder: (m.carrier as GP | null)?.src.id ?? 0,
       moment: this.moment,
       shot: last && last.m === this.minute ? { team: last.t, outcome: last.outcome, zone: last.zone } : null,

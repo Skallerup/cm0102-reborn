@@ -1135,3 +1135,21 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   Ikke dækket af sporene: landsholdsgrenene, finalerne (fixture +0x3a = 8), begivenhederne 0xa/0xb og prøvespillerne, der lægges i listen (0 i de
   38 kampe – betingelserne og deres tal er kontrolleret). Test: tests/gridPostMatch.test.ts.
 
+- 2026-11-12 – **Runde 10C: kampstatistikken på kampskærmene og e2e-fejlen "reading 'x'".** **Statistikken** (GridSim, `grid/adapter.ts`):
+  spillerlinjerne er originalens MATCH_PLAYER-tællere – `passes`/`passesOk` = +0x1/+0x2 (c01/c02: forsøgt 0x6fcac5, nået en medspiller
+  0x6f06dc), `tckA`/`tackles` = +0x4/+0x5 (tacklesTried/tacklesWon), `hea`/`heaW` = +0x7/+0x8 (b7/b8, luftduellerne i 0x6f6c00/0x6c9cd0) – og
+  holdets tal er summen af spillernes som originalens sub_6ce460 (0x6ce4b3–0x6ce5ed: holdblokken +0xf5e2/+0xf5e4/+0xf5e6/+0xf5e8/+0xf5ea/+0xf5ec
+  = Σ +1/+2/+4/+5/+7/+8 over de 20; +0xf5ee = Σ +9, +0xf5f0 = Σ +0x12, +0xf5c0/+0xf5c1/+0xf5c2 = Σ +0xd/+0xe/+0xf). Fundet med en
+  read-modify-write-skanner over 0x6b7f00–0x720000 (alle +0x1…+0x12-skrivninger) – tællerne fandtes allerede i porten (upkeep/praise læser
+  dem), kun adapteren viste 0. Nyt i motoren: `GridSideStats.throwIns` (+0xf5c8 ++ i sub_6c4290 0x6c42c3 – en ren tæller). Originalen har ingen
+  tæller for besiddelse, varmekort, zonekontrol eller momentum: de er *visning* af motorens tilstand efter hvert tik (holdet med bolden – det
+  sidste ved −1 – og boldens felt i zonemotorens 15 zoner): `GridSim.heat`/`possLog`, rapportens `heat`/`zoneControl`/`momentum` (+0,6/+0,25
+  i de to sidste bånd ·240/990, +0,3/0,6/1,2 pr. skud/redning/mål, *estimeret* skala som zonemotoren) og besiddelsen = andelen af tik (før
+  andelen af afleveringer). Live: Match.tsx læser `sim.heat`/`possLog` for gittermotoren (Action Zones, Match Overview's sidste 5 min = 55 tik)
+  i stedet for én stikprøve pr. kommentarlinje. En kamp (Man Utd–Everton, frø 1): afleveringer 361/270, tacklinger 13 af 18, hovedstød 23 af 40,
+  indkast 12, besiddelse 63/37. **Fejlen:** skuddet (takeShot 0x702311 → `keeper(s)`) slog keeperen op som "aktiv spiller med keeperposition";
+  er menneskets keeper udvist/båret ud uden udskiftning, gav det null, keeper700420 svarede tilstand 3, og R2's 0x703f4e læste `k.x` →
+  `Cannot read properties of null (reading 'x')` (e2e 1 af 5; `scripts/grid-fuzz.ts` med tilfældige indgreb fandt den i kamp 2 med frø 3).
+  Originalens sub_6ce110 tager da den første spiller på banen (0x6ce1be–0x6ce1df) – porteret i `keeper` (pladsbyttet 0x6ce1d2–0x6ce1fa ikke).
+  Uændret, når keeperen er på banen: låsetrinstestene bit for bit ens. Test: tests/gridStats.test.ts (summer, besiddelse, varmekort, momentum,
+  kamp uden keeper), e2e-soak kontrollerer gitterrapporternes statistik.

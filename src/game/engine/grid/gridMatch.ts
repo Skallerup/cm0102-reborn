@@ -202,7 +202,9 @@ export interface GridMatchCtx {
    *  så sub_6ec010 kører med ctx.matchValuesEnv ved kampstart og i kampen som i låsetrinet */
   gameRecords?: string;
 }
-export interface GridSideStats { goals: number; shots: number; onTarget: number; corners: number; fouls: number; offsides: number; yellows: number; reds: number; passes: number; passesCompleted: number }
+export interface GridSideStats { goals: number; shots: number; onTarget: number; corners: number; fouls: number; offsides: number; yellows: number; reds: number; passes: number; passesCompleted: number;
+  /** holdblokkens +0xf5c8 indkast (sub_6c4290 0x6c42c3) – kun en tæller */
+  throwIns: number }
 export interface GridResult { home: GridSideStats; away: GridSideStats; ticks: number }
 
 export type Side = 0 | 1;
@@ -880,7 +882,7 @@ function sync(m: GridMatchState): void {
   }
 }
 
-const emptyStats = (): GridSideStats => ({ goals: 0, shots: 0, onTarget: 0, corners: 0, fouls: 0, offsides: 0, yellows: 0, reds: 0, passes: 0, passesCompleted: 0 });
+const emptyStats = (): GridSideStats => ({ goals: 0, shots: 0, onTarget: 0, corners: 0, fouls: 0, offsides: 0, yellows: 0, reds: 0, passes: 0, passesCompleted: 0, throwIns: 0 });
 
 
 // ------------------------------------------------------------------ kampen
@@ -1347,6 +1349,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
    *  positionstabellens felt for boldens felt (att = holdet med bolden), kasteren på bolden: momentum 200, retning 270 (x ≠ 0) / 90 */
   const throwInSetup = () => {
     const t = m.poss as Side;
+    if (t === 0 || t === 1) st(t).throwIns++;                                                 // 0x6c42c3 holdblokken +0xf5c8 ++ (kun statistik)
     m.ballX = clampX(m.ballX); m.ballY = clampY(m.ballY);
     const taker = GRID_UNKNOWN.pickTaker(m, t, 2, rand);
     for (const s of [0, 1] as Side[]) for (const p of gp) if (p.side === s && p.active) { const [x, y] = cellOf(p, t === s ? 1 : 0, m.ballX, m.ballY); put(p, x, y); p.busy = 0; }
@@ -3057,7 +3060,11 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       const gyS = goalRow(p.side);
       return footCheck(type, (p.x === 4 && p.y === gyS ? m.ballDir : H.cellDirection(p.x, p.y, 4, gyS)) - p.facing, D, shotAttrs(p), p.strongFoot);
     },
-    keeper: (s) => gp.find((o) => o.active && o.side === s && o.pos === L.POS.keeper) ?? null,
+    // sub_6ce110 (skuddets 0x70230c): holdets keeper – uden en spiller på keeperpladsen (keeperen udvist/båret ud, og mennesket har ikke
+    // skiftet) den første på banen i indeksrækkefølge (0x6ce1be–0x6ce1df; originalen stopper med en fejllog, hvis heller ingen findes). Før
+    // gav det null og en undtagelse i 0x703f4e (k.x) – e2e-fejlen "reading 'x'" (runde 10C). Pladsbyttet 0x6ce1d2–0x6ce1fa er ikke porteret.
+    // Ingen tilfældige tal; uændret, når keeperen er på banen.
+    keeper: (s) => gp.find((o) => o.active && o.side === s && o.pos === L.POS.keeper) ?? gp.find((o) => o.active && o.side === s && o.slot >= 0) ?? null,
     highFlag: (type) => highFlag(type, rand),
     keeperValue: (k, p, type) => keeper700420(k, p.x, p.y, false, type),
     keeper700420: (k, x, y, high, type) => keeper700420(k, x, y, high, type),

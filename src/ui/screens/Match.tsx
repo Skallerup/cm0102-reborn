@@ -548,6 +548,15 @@ function LiveMatch({ id }: { id: number }) {
     const chosen = snd as { name: string; prio: number } | null;
     if (!report && chosen && (speed < 8 || chosen.prio >= 2)) playSample(chosen.name, chosen.prio);
     else if (!report && !chosen && speed < 4 && L.kicked && Math.random() < 0.006) chant(g.clubs[f.home]?.name ?? '', regionOf(g.nations[g.clubs[f.home]?.nation ?? -1]?.name) === 'southAmerica');
+    // gittermotoren: Action Zones og besiddelsen af motorens tilstand efter hvert tik (GridSim.heat/possLog) – ikke stikprøver pr. linje
+    if (sim.engine === 'original' && sim.heat && sim.possLog) {
+      const z: [number, number, number] = [0, 0, 0], zp: [number, number][] = [[0, 0], [0, 0], [0, 0]];
+      sim.heat.forEach((h, side) => h.forEach((v, zone) => { const band = Math.floor(zone / ZONES.lanes); const zi = band <= 1 ? 0 : band === 2 ? 1 : 2; z[zi] += v; zp[zi][side] += v; }));
+      L.zones = z; L.zposs = zp;
+      // de seneste 5 minutter = 55 tik (11 pr. minut)
+      L.poss5 = sim.possLog.slice(-55).map((p) => [sim.minute, p] as [number, number]);
+      return;
+    }
     // boldbesiddelse de seneste 5 minutter (Match Overview i klassisk tema)
     const z = (L.zones ??= [0, 0, 0]);
     const band = Math.floor(sim.pitch().zone / ZONES.lanes);
