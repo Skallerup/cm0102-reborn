@@ -11,6 +11,7 @@
 // uden eget valg (ui/matchTexts.ts). Begivenheder, hvis kaldsted endnu ikke er porteret (skud/mål, kort, frispark, udskiftninger, skader,
 // straffesparkskonkurrencen), får stadig de *estimerede* linjetyper via MAP – se ENGINE_PORT_PLAN.md.
 
+import { nationLanguage } from './nationLanguage';
 import type { Rng } from '../../rng';
 import type { CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, ShootoutKick, ShotRecord, Tactic } from '../../types';
 import type { EngineOptions, EngineTeam } from '../match';
@@ -99,6 +100,8 @@ export class GridSim implements LiveSim {
     const subs = opts.subs ?? 3;
     this.g = createGridMatch({ players: home.players, tactic: home.tactic }, { players: away.players, tactic: away.tactic }, rand, {
       ownGround: !opts.neutral,
+      // klubbernes lands sprog (nation.dat +0x77, 8 = engelsk) – protesten sub_716e10's kommentar 0x20f5
+      clubLang: [home.club, away.club].map((c) => nationLanguage(gs().nations[gs().clubs[c]?.nation ?? -1]?.name)) as [number, number],
       // klubbernes omdømme (originalens skala 0–10000; vores 0–100 ×100 – *estimeret*) og managerne fra den originale database (Staff.tac)
       rep: [home.club, away.club].map((c) => (gs().clubs[c]?.rep ?? 50) * 100) as [number, number],
       managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; return st?.tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac: st.tac } : null; }) as [GridManager | null, GridManager | null],
@@ -119,6 +122,11 @@ export class GridSim implements LiveSim {
           if (a && !pen) a.line.assists++;
           this.events.push({ m: this.minute, t: p.side, k: 'goal', p: p.src.id, ...(a && !pen ? { p2: a.p.id } : {}), ...(pen ? { pen: true } : {}) });
           // målets kommentar er originalens (GOAL_SCORED/GOAL_ONE/SCORED_PENALTY i køen, sub_702050) – kun stillingslinjen (UI'et) står her
+          this.line('score', null, null, true);
+        },
+        // selvmål (sub_70c040 → onOwnGoal): målet tæller for modstanderne – som MatchSim ({ k: 'goal', og: true }, t = holdet der får målet)
+        ownGoal: (p) => {
+          this.events.push({ m: this.minute, t: (1 - p.side) as 0 | 1, k: 'goal', p: p.src.id, og: true });
           this.line('score', null, null, true);
         },
         shot: (p, outcome) => {

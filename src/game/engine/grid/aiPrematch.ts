@@ -95,6 +95,7 @@ export interface PrematchRaw {
 export interface PrematchPlayer {
   slot: number;                     // +0x19 (< 0 = ikke på banen → springes over)
   recId: number;                    // spillerpostens id (+0)
+  staffId?: number;                 // staffpostens id (+0x69 → +0) – dødboldsskytternes liste og spillemageren 0x897ee0
   condition: number;                // +0x4d (0..10000, efter MATCH_PLAYER::init)
   b24: number;                      // +0x24 (gule kort; 0 ved kampstart)
   raw: PrematchRaw;
@@ -167,6 +168,8 @@ export interface PrematchInput {
   b19: boolean;                     // team+0x19: kampens flag +0x40 (hjemme) / +0x41 (ude) er 0 → altid let tackling (0x20)
   compType: number;                 // fixture+0x37 → +0x3a (1 og 9: let tackling efter et rand-slag)
   homeTeam: boolean;                // fixture(+0x4792)+0x1c == eget hold (0x6de4fb)
+  /** holdets dødboldsskytter (team+6/+0xa/+0xe som staff-id'er) – spillemageren skal være en af dem (0x6df40f–0x6df421) */
+  setPieces?: number[];
   skipHuman?: boolean;              // 0x6ddafb–0x6ddb48: menneskemanager uden assistentens taktik → intet ændres
   /** modstanderens 20 kampspillere (til 0x6d4330 og mandsopdækningen). Udeladt = ingen mandsopdækning. NB: for hjemmeholdet (side 0) er
    *  modstanderen endnu ikke sat op, når sub_6ddab0 kører (setupTeam side 0 kaldes før side 1, 0x6b8866/0x6b89b9) ? */
@@ -180,6 +183,9 @@ export interface PrematchResult {
   marking: (number | undefined)[];
   /** J pr. plads (managerens "dømmekraft"-tærskel, [esp+0x38]) – til fejlfinding */
   J: (number | undefined)[];
+  /** klubbens roller (0x897ee0 → sub_897dc0, afleveringsmulighederne 0x6c6a30): 0x6ddc70–0x6ddc9b nulstiller spillemageren (rolle 0) og
+   *  target man (rolle 1); løkken sætter spillemageren (0x6df432 – den sidste, der opfylder kravene). undefined = uændret (tidligt ud) */
+  roles?: [number | null, number | null];
 }
 
 const C_REP = 5.882352941176471e-05;   // 0x96d500 (1/17000)
@@ -192,7 +198,8 @@ export function aiPrematch(inp: PrematchInput, rand: Rand): PrematchResult {
   let formation = inp.formation ?? formationWord(masks);
   const marking: (number | undefined)[] = Array(11).fill(undefined);
   const Js: (number | undefined)[] = Array(11).fill(undefined);
-  const done = (): PrematchResult => ({ teamFlags: flags, lo, hi, instr: lo.map((l, s) => (BigInt(hi[s]) << 32n) | BigInt(l)), masks, masks2, formation, marking, J: Js });
+  let roles: [number | null, number | null] | undefined;
+  const done = (): PrematchResult => ({ teamFlags: flags, lo, hi, instr: lo.map((l, s) => (BigInt(hi[s]) << 32n) | BigInt(l)), masks, masks2, formation, marking, J: Js, roles });
   const team = (bit: number) => { flags = setTeamOption(flags, bit); };                 // sub_5b50d0
   const set = (s: number, l: number, h = 0) => {                                          // sub_5b5290(plads, lav, høj)
     if (h) { const v = setInstr({ lo: lo[s], hi: hi[s] }, h, true); hi[s] = v.hi; }
@@ -224,7 +231,8 @@ export function aiPrematch(inp: PrematchInput, rand: Rand): PrematchResult {
   if (mgr.pressing >= 15) team(0x100); else if (mgr.pressing <= 5) team(0x80);
   // 0x6ddc24–0x6ddc6b: offsidefælde når 19 − 0,0003·omdømme < Offside og formationen ikke har en central libero (bit 8 = 0x202)
   if (19 - inp.ownRep * 0.0003 < mgr.offside && !(formation & 8)) team(0x400);
-  // 0x6ddc70–0x6ddc9b: 0x897ee0(klub, 0/1, 0, b19) – taktiklistens statistik, ingen virkning her
+  // 0x6ddc70–0x6ddc9b: 0x897ee0(klub, 0/1, 0, b19) – klubbens spillemager og target man nulstilles (sub_897dc0 giver så ingen)
+  roles = [null, null];
 
   // 0x6ddca0–0x6ddd35: "target man"-tallet b17 af de centrale angribere med Jumping > 14
   let b17 = 0;
@@ -361,7 +369,15 @@ export function aiPrematch(inp: PrematchInput, rand: Rand): PrematchResult {
       else if (20 * J > v) set(s, 0, 2);
     }
 
-    // ---- N 0x6df346–0x6df432: playmaker-kandidat → 0x897ee0 (taktiklisten, ingen virkning på kampens taktik ?)
+    // ---- N 0x6df346–0x6df432: spillemageren (rolle 0) – M/DM/AM, ikke sidemand (0x80/0x800) og ikke angriber med bold (0x40); Creativity (22)
+    // + Flair (9) + Passing (7) > 30·J + omdømme/500, og han er en af holdets dødboldsskytter → 0x897ee0(klub, 0, staff, b19)
+    {
+      const pm = pos(), pa = posA();
+      if ((pm & 0x10 || pm & 8 || pm & 0x20) && !(pm & 0x80) && !(pm & 0x800) && !(pa & 0x40)) {
+        const v = A(22) + A(9) + A(7), r = Math.trunc(((inp.ownRep << 16) >> 16) / 500);   // 0x6df3ca word, imul 0x10624dd3 >> 5
+        if (r + J * 30 < v && p.staffId !== undefined && inp.setPieces?.includes(p.staffId)) roles[0] = p.staffId;   // 0x968dd8 (30), fcompp
+      }
+    }
   }
   return done();
 

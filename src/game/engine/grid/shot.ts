@@ -256,7 +256,7 @@ export function shotScore(c: ShotContext, rand: Rand, preset: number = 0xff): Sh
   const isHeader = type === SHOT.HEADER || type === SHOT.DIVING_HEADER;
   const onByLine = (c.y === 0 || c.y === 11) && Math.abs(c.x - 4) === 1;
   if (isHeader && c.D >= 1 && !onByLine) {
-    let p = trunc(crtPow(c.D + 2, 8) / 3);                             // 0x968950, 0x968f10, 0x968a80
+    let p = trunc(crtPow(c.D + 2, 8) * 0.3333333333333333);           // 0x968950, 0x968f10, fmul 1/3 (double 0x968a80 – ikke division)
     if (p > 15000 || p < 0) p = 15000;                               // 0x7019fc
     S -= rand(p); q -= idiv(p, 2);
   } else if (c.D === 0) { S += 200; q += 200; }                      // 0x701a5c

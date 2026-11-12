@@ -343,8 +343,13 @@ export function captainBase(c: CaptainInput): number {
 }
 /** 0x6e1cf0(staff, 0, klub): anførerværdien (word). */
 export function captainValue(c: CaptainInput): number {
-  let v = s16(captainBase(c));
-  const age = s8(c.age);
+  return captainValueFromBase(captainBase(c), c.age, c.days, c.b59, c.b5b);
+}
+/** 0x6e1cf0's hale efter fællesleddet (0x6ebd70-værdien): alder, dage i klubben, staff +0x59/+0x5b */
+export function captainValueFromBase(base: number, age0: number, days: number, b59: number, b5b: number): number {
+  let v = s16(base);
+  const age = s8(age0);
+  const c = { days, b59, b5b };
   if (age < 18) v = s16(ftol(v * 0.5)); else if (age < 21) v = s16(ftol(v * 0.75)); else if (age < 24) v = s16(ftol(v * 0.9));
   else if (age > 25) v = s16(ftol(v * 1.05));
   if (c.days < (50 - s8(c.b59)) * 10) v = s16(ftol(v * 0.9));

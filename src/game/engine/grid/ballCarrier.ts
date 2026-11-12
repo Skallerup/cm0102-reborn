@@ -369,7 +369,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
       shotFlag = true;
       if (shot > 0) {
         const f = Math.max(c.flairRoll, 1);
-        S = trunc((shot * shot) / 3 - (D * D * 4000) / f - 700 * s.blockers); // 1/3 @0x968a80, 4000 @0x96d40c
+        S = trunc(shot * shot * 0.3333333333333333 - (D * D * 4000) / f - 700 * s.blockers); // fmul 1/3 (double 0x968a80 – ikke division: 182² giver 5007), 4000 @0x96d40c
       } else {
         S = (4 * (c.decisionsRoll + c.creativityRoll) + 2) * shot;
       }

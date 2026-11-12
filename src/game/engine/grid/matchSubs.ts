@@ -76,6 +76,11 @@ export interface MatchSubsEnv {
    *  0x4cf5f0 (kontrakten, +0x45) og 0x6ebd70's byte – og anføreren 0x897590 (indekset i holdets blok) */
   cohesionOf?: (q: GP) => { club: boolean; clubRep: number; contract: boolean; b45: number; x: number } | undefined;
   captainIdx?: (s: Side) => number | undefined;
+  /** sub_6e1cf0(0, p, klub): anførerværdien (word) – genvalget 0x6e1090 vælger anføreren igen efter udskiftninger (0x6e18d0–0x6e1927); mangler =
+   *  anføreren beholdes */
+  captainValue?: (q: GP) => number;
+  /** 0x6ddab0's roller efter computerens nye taktik (0x897ee0: spillemager, target man) – afleveringsmulighederne læser dem */
+  onRoles?: (s: Side, roles: [number | null, number | null]) => void;
   /** kun låsetrinstesten: originalens 0x6e2f20-værdi i stedet for portens (GridMatchCtx.subScore) */
   subScore?: (s: Side, q: GP, spec: SlotSpec, flags: number, tf: number, value: number) => number;
   /** computerens udtagelse pr. side (aiTeam.ts): rammerne, anføreren (hold+0x3b) og dødboldsskytterne (+6/+0xa/+0xe) – 0x6e2f20 under kampen */
@@ -199,6 +204,24 @@ export function makeMatchSubs(env: MatchSubsEnv) {
   };
 
   /** sub_6e1090(keeperOut) for et computerhold, efterfulgt af omrokeringen 0x6e1aa0, når nogen kom ind */
+  /** klubbens kampanfører (0x897590: indekset i holdets blok) – fra udtagelsen, sat igen af genvalget (0x897760) */
+  const captainSlot: [GP | null, GP | null] = [null, null];
+  const captainOf = (s: Side): GP => {
+    if (captainSlot[s]) return captainSlot[s]!;
+    const list = sideOf(s), ap = env.aiPick?.[s], ci = env.captainIdx?.(s);
+    return (captainSlot[s] = ci !== undefined ? list[ci] : (ap?.captain != null ? list.find((q) => q.src.id === ap.captain) : undefined) ?? list[0]);
+  };
+  /** 0x6e18d0–0x6e1927: over holdets 20 i blokken med plads ≥ 0 den første med højest 0x6e1cf0 (word, ">") → 0x897760(klub, indeks) */
+  const repickCaptain = (s: Side) => {
+    if (!env.captainValue) return;
+    let best: GP | null = null, bv = 0;
+    for (const q of sideOf(s)) {
+      if (q.slot < 0) continue;
+      const v = s16(env.captainValue(q));
+      if (!best || v > bv) { best = q; bv = v; }
+    }
+    if (best) captainSlot[s] = best;
+  };
   const doReselect = (s: Side, keeperOut: boolean) => {
     if (subsLeft[s] <= 0) return;                                                    // 0x6e10af (intet rand)
     refresh(s);
@@ -217,7 +240,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       else if (b >= 0 && after.slot >= 0 && after.slot !== b) applySlot(q, after.slot, slotTab[s][after.slot]);
     });
     res.on.forEach((on, i) => { const off = res.off[i]; if (off) env.onSub?.(byId(s, on.id), byId(s, off.id), true); });
-    if (res.changed) doRearrange(s);
+    if (res.changed) { repickCaptain(s); doRearrange(s); }                          // 0x6e16e4: ingen udskiftninger → slut (ingen ny anfører)
   };
   /** sub_6e1aa0 0x6e1ad3: med 11 på banen vælger computeren taktik igen – 0x6e0230(de 11, 11, 0x8c1, 2) uden kampspiller (arg3 = 0, så
    *  karakterleddet 0x1 og konditionen 0x800 er ude) – og kopierer den valgte (0x6e0c2e: blokken til engine+0x91e2 og team+0x2b) og kører
@@ -254,11 +277,12 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     const mgr = mg ? (() => { const [attacking, directness, freeRoles, , offside, pressing, tactics] = mg.tac; return { id: mg.id, ca: mg.ca, attacking, directness, freeRoles, offside, pressing, tactics }; })() : null;
     const res = aiPrematch({
       flags: entry.flags, lo: entry.lo, hi: pr.hi, masks: entry.masks, masks2: entry.masks2,
-      players: on.map((g) => ({ slot: g.pslot, recId: recordId(g), condition: g.condition, b24: g.yellows, attr: (n: number) => attrOf(g, n),
+      players: on.map((g) => ({ slot: g.pslot, recId: recordId(g), staffId: g.src.id, condition: g.condition, b24: g.yellows, attr: (n: number) => attrOf(g, n),
         raw: { dm: g.src.pos[3], m: g.src.pos[4], am: g.src.pos[5], f: g.src.pos[6], right: g.src.side[2], left: g.src.side[0], central: g.src.side[1], freeRole: g.src.cmFree ?? 1,
           jumping: at(g.src, 17), technique: at(g.src, 30), stamina: at(g.src, 26), workRate: at(g.src, 31) } })),
-      manager: mgr, ownRep: env.rep[s], oppRep: env.rep[1 - s], b19: false, compType: env.compType, homeTeam: s === 0,
+      manager: mgr, ownRep: env.rep[s], oppRep: env.rep[1 - s], b19: false, compType: env.compType, homeTeam: s === 0, setPieces: ap.setPieces,
     }, rand);
+    if (res.roles) env.onRoles?.(s, res.roles);                                     // 0x6ddc83/0x6df432: klubbens spillemager/target man
     for (const q of on) {
       const j = q.pslot;
       slotTab[s][q.slot] = { ...slotTab[s][q.slot], instr: res.instr[j], pos: res.masks[j], posAttack: res.masks2[j] };
@@ -286,8 +310,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     let w = 0, acc = 0;
     if (m.bAf) m.bAf[s] = 0;                                                         // engine+0xaf+side
     const list = sideOf(s), ap = env.aiPick?.[s];
-    const ci = env.captainIdx?.(s);
-    const capQ = ci !== undefined ? list[ci] : (ap?.captain != null ? list.find((q) => q.src.id === ap.captain) : undefined) ?? list[0];   // 0x897590 (ikke fundet → 0)
+    const capQ = captainOf(s);                                                       // 0x897590 (ikke fundet → 0)
     const ctx = ap?.ctx ?? {};
     for (const q of list) {
       if (q.slot < 0) continue;
@@ -310,7 +333,17 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       if (q !== capQ) w = s16(w + x());
     }
     cohesion[s] = w;
-    for (const q of list) if (q.slot >= 0) recompute(q);
+    for (const q of list) if (q.slot >= 0) { recompute(q); if (m.bAf) m.bAf[s] = s8(m.bAf[s] + attackOverlap(q)); }
+  };
+  /** sub_6eecb0(p, 1)'s tæller engine+0xaf+side (0x6ef33e–0x6ef4d4; kun med flaget – 0x6bbb60): angrebspositionen ≠ positionen og første
+   *  angrebsrække AM (0x20, når positionen hverken er F eller AM) → +1, F (0x40, når positionen ikke er F) → +2 – kun med en side (0x100/0x200/0x400).
+   *  Mandsopdækningen sub_7160f0 (0x7161f5) slipper sin mand, når modstandernes tæller er over 1. */
+  const attackOverlap = (q: GP) => {
+    const pa = q.posAttack & 0xffff, pos = q.pos & 0xffff;
+    if (pa === pos || pa & 0x1e) return 0;                                         // 0x6ef1e2 / SW, D, DM, M (0x6ef1fc–0x6ef2c4)
+    if (pa & 0x20) return !(pos & 0x40) && !(pos & 0x20) && pa & 0x700 ? 1 : 0;    // 0x6ef311–0x6ef3f5
+    if (pa & 0x40) return !(pos & 0x40) && pa & 0x700 ? 2 : 0;                     // 0x6ef40e–0x6ef4d4
+    return 0;
   };
   /** sub_6bbf60: for begge hold – spillere på banen, hvis plads har taktikbyte 0x10 og 4, får modstanderen over for sig (0x6d4330(side, indeks))
    *  som mandsopdækningens mål (0x5b5910 på pladsen). Ingen modstander (−1): hjemmeholdet får sic indeks 19 i sit eget hold, udeholdet uændret. */
@@ -335,11 +368,21 @@ export function makeMatchSubs(env: MatchSubsEnv) {
   const fillFor = (s: Side, q: GP, slot: number, mode: number, wasKeeper: boolean) => {
     const leaving = { ...toSub(q), slot };
     const f = fillVacatedSlot(sideOf(s).map(toSub), leaving, mode, wasKeeper, env.ai(s), posOf);
-    if (f) { refresh(s); const fq = byId(s, f.id); slotTab[s][slot] = slotTab[s][slot] ?? fieldsOf(q); applySlot(fq, slot, slotTab[s][slot]); }
+    if (f) {
+      refresh(s); const fq = byId(s, f.id); slotTab[s][slot] = slotTab[s][slot] ?? fieldsOf(q);
+      // 0x6ce0a5: 6cdd50 skriver kun +0x19 (pladsens taktik følger pladsen); +0x37 og handlingsevnerne regnes først af sub_6eecb0 i
+      // omrokeringen (0x6e1cae, kun for dem den fordeler) – udebliver den (optøjer i gang 0x6cdb85, eller han skiftes ud i genvalget), bliver
+      // de gamle stående
+      const form = fq.form, skill = fq.skill;
+      applySlot(fq, slot, slotTab[s][slot]);
+      fq.form = form; fq.skill = skill;
+    }
   };
 
   return {
     subsLeft, benchSize, lastChange, cohesion,
+    /** klubbens kampanfører (0x897590) – sub_6ec010's anførerled og samspillet */
+    captain: (s: Side) => captainOf(s),
     /** taktikkens positionsord pr. plads (engine+0x91e2+6371·side +0x12d/+0x14e), som pladserne er udfyldt – sub_6ec010 (0x6d5b20/0x6d5af0) */
     slotWords: (s: Side, j: number) => slotTab[s][j] ? { pos: slotTab[s][j].pos, posAttack: slotTab[s][j].posAttack } : undefined,
     /** kun låsetrinstesten: pladstabellen igen fra spillerne på banen (efter at originalens tilstand er sprøjtet ind) */
@@ -369,7 +412,8 @@ export function makeMatchSubs(env: MatchSubsEnv) {
             const q = byId(s, a.id), slot = q.slot, wasKeeper = q.pos === L.POS.keeper, x = S(q);
             env.comment?.(slot >= 0 ? 0x1f56 : 0x1f57, q, q.side, null, -1, 0);           // 0x6d0bed / 0x6d0c4f (båret fra banen / udvist)
             x.minuteInjured = minute();
-            if (slot >= 0) { x.prevSlot = slot; detach(q); q.slot = -2; env.onCarriedOff?.(q); if (a.mode !== -1) fillFor(s, q, slot, a.mode, wasKeeper); }
+            // pladsens taktik (instruktioner m.m. ligger på pladsen i originalen) gemmes, før han forlader den – 0x6c54a0 kan have ændret den
+            if (slot >= 0) { refresh(s); x.prevSlot = slot; detach(q); q.slot = -2; env.onCarriedOff?.(q); if (a.mode !== -1) fillFor(s, q, slot, a.mode, wasKeeper); }
             // udvist og behandlet: 6cdd50(p, 0) – keepertesten gælder motorens keeper (+0xf59e), som allerede er en anden: intet
             injurer(q); q.b1d = 0;
           } else if (a.kind === 'continues') {
@@ -384,13 +428,15 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     },
     /** sub_6cda20(p, 0) efter stats/kortet: +0x21 = minuttet, 6cdd50(p, −3), plads −3; computeren omrokerer/vælger igen (*estimeret*: altid straks –
      *  originalen venter, når en hændelse er i gang, +0x1a3 → 0x6d1210) */
-    sendOff(q: GP) {
+    sendOff(q: GP, fightsPending = false) {
       const x = S(q); if (!x) { q.active = false; return; }
       const slot = q.slot, wasKeeper = q.pos === L.POS.keeper;
       if (slot < 0) return;
+      refresh(q.side);                                                                // pladsens taktik gemmes, før pladsen tømmes
       x.prevSlot = slot; x.minuteRed = minute(); detach(q); q.slot = -3;
       const s = q.side;
       fillFor(s, q, slot, -3, wasKeeper);
+      if (fightsPending) return;                                                     // 0x6cdb85: engine+0x1a3 ≠ 0 (optøjer afgøres) → intet mere her (0x6d1210 tager keeperen)
       if (!env.ai(s)) { afterChange(s); return; }                                    // 0x6cdce4: samspillet og mandsopdækningen også for mennesket
       for (const a of afterSendOff(wasKeeper, subsLeft[s])) {
         if (a === 'reselectKeeper') doReselect(s, true);
@@ -399,6 +445,13 @@ export function makeMatchSubs(env: MatchSubsEnv) {
       }
       lastChange[s] = m.clock;
       afterChange(s);                                                                // 0x6cdcea/0x6cdcf1
+    },
+    /** sub_6d1210 0x6d1591–0x6d16ea: keeperen blev udvist under optøjerne (engine+0x1cb+side) – computeren 0x6e1090(1), mennesket 0x6e1aa0 +
+     *  0x6ce110 (her som omrokeringen); uret i +0x8ecc, samspillet og mandsopdækningen */
+    keeperOffAfterFights(s: Side) {
+      if (env.ai(s)) doReselect(s, true); else doRearrange(s);
+      lastChange[s] = m.clock;
+      afterChange(s);
     },
     /** menneskets udskiftning: gyldig når der er udskiftninger tilbage (også efter de ventende), `inn` sidder på bænken og `out` er på banen
      *  eller skadet ude (−2). Sker ved næste dødbold (apply). */

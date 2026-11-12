@@ -714,8 +714,9 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   }
   if (toBall) [tx, ty] = [bx, by]; else [tx, ty] = h.tacticalCell(p);
   if (keeper) return keeperOffBall(m, p, tx, ty, rand, h);
-  // 0x71588d–0x71590f: han står i eget felt OG målet (tx, ty) ligger også i eget felt (sub_6cb960(side, tx, ty) – før manglede det)
-  if (m.poss !== -1 && inOwnBox(p.side, p.x, p.y) && inOwnBox(p.side, tx, ty)) {
+  // 0x71588d–0x71590f: han står i eget felt OG bolden er i eget felt – sub_6cb960(side, [esp+0x20], [esp+0x14]) = boldens felt (sat 0x714e2a;
+  // før: målet tx, ty)
+  if (m.poss !== -1 && inOwnBox(p.side, p.x, p.y) && inOwnBox(p.side, bx, by)) {
     const gk = h.ownKeeper(p.side);
     if (gk && gk.busy > 1) { h.moveTo(p, 4, p.side === 0 ? 0 : 11, -1); p.action = ACT.coverGoalLine; return; }
   }

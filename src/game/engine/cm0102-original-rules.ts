@@ -241,7 +241,7 @@ export function judgeTackle(rand: Rand, ctx: JudgeContext, offender: FoulPlayer,
     bias = refereeCardBias(D);
     if (ctx.teamFouls > ref.b27 + 5) { ref.mood -= 150; bias++; F *= (6 - rand(4)) * 0.1 + 1; }
   }
-  if (ctx.competitionBias) bias--;                                // sub_5c6710 (which competition: ?)
+  if (ctx.competitionBias) bias--;                                // sub_5c6710: kampens turnering er objektets (+4) eller blandt de sidste 127 (0x6e9bb9)
   F = clamp(F, 0.1, 10);
   const fouls = offender.fouls;
   const s = victim.sportsmanship;

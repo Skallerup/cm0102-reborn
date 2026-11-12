@@ -3,7 +3,15 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
-## Næste skridt (overdragelse 2026-11-11 – start her i en ny session)
+## Næste skridt (overdragelse 2026-11-12, efter låsetrinets sjette runde – start her i en ny session)
+
+**Låsetrinet (sjette runde):** 14 af 20 Premier League-kampe i `~/cm0102-engine/oracle/runs/ls20.txt` kører identisk med originalen hele kampen
+(`npx tsx scripts/grid-lockstep.ts ~/cm0102-engine/oracle/runs/ls20.txt <kamp>`); de 6 andre afviger i tik 468–790, pokalkampen (`cup4.txt` kamp 42)
+i tik 582. Tag dem i rækkefølge: kamp 16 (gensidig markering 0x6f3bf9/0x6f4143), kamp 14/6 (turenes slutfelt), kamp 2 (0x717929), kamp 3
+(0x71189b), kamp 19 (0x6c8c9d), pokalen (0x6f4506), derefter forlænget spilletid/straffe (0x6bd930's 990-/1155-/1320-grene, 0x6ce460(0/1),
+0x6f5810(1)). Detaljer i loggens post 2026-11-12 (sjette runde) og `~/cm0102-engine/notes/lockstep.md`.
+
+### Tidligere overdragelse (2026-11-11)
 
 **Status:** kampens kerne er porteret i gittermotoren (`src/game/engine/grid/`), ikke koblet ind i spillet. 380 kampe frø 1:
 2,87 mål · 50/19/31 · skud 19,5 · på mål 9,0 · hjørner 4,3 · begåede frispark 6,1 (orakel 8,7) · offside 1,1 (orakel ~6) ·
@@ -818,3 +826,43 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   0x6f4975 (kamp 16), 0x6c8262 (kamp 18), pokalkampen tik 382 0x716578. I spillet: kampværdierne sub_6ec010 regnes stadig ikke igen i kampen (env'en
   mangler – kontrakt/klub/anfører fra cmPlayerData), pick_teams rotation (+0x16/+0x1a) og 0x48f150 er ikke porteret, og spillerpostens id kendes
   ikke (0x6ddab0's J bruger stab-id'et).
+- 2026-11-12 – **Låsetrin, sjette runde: 14 af 20 PL-kampe er identiske HELE kampen (tal for tal, tik for tik); identiske tik (ls19 → ls20, samme 20
+  kampe) kamp 0 218→753 (hele), 1 233→756 (hele), 2 458→655, 3 195→601, 4 514→829 (hele), 5 121→801 (hele), 6 435→552, 7 232→820 (hele),
+  8 120→777 (hele), 9 529→793 (hele), 10 263→840 (hele), 11 115→822 (hele), 12 79→795 (hele), 13 59→769 (hele), 14 181→530, 15 271→796 (hele),
+  16 468→468, 17 175→778 (hele), 18 489→772 (hele), 19 190→790 (i alt 5.345 → 14.697 tik); pokalkampen (venskabsturnering 72, 11–1873) 382→582.**
+  **Sporet** (`match_trace.c`, kun tilføjelser): `RP` (spillerens forhold staff+0x65 → +0x1c..+0x30: 3 yndlingspersoner/3 uvenner som staff-id'er),
+  `CN` (klubbernes lands sprog club+0x53 → nation +0x77), `CB` (dommerens turneringsbias sub_5c6710). Nye spor `oracle/runs/ls20.txt` (frø 1, 45 dage,
+  XE for tik 420–859, + ls20-aimode.txt) og `oracle/runs/cup4.txt` (RECOMP_MATCH_TRACE_COMP=72, N=60, kamp 42 = 11–1873, uden XE; cup3 slettet).
+  **Værktøjet:** RP → GP.favoured/disliked, CN → ctx.clubLang, CB → ctx.compBias, nationens sprog fra 3.9.60's nation.dat (indbygget id-liste uden
+  den lokale database); anføreren under kampen (sub_6ec010's anførerdata og 0x6e1cf0 for en vilkårlig spiller af RC/rec/staff); kampstartens
+  MV-blok kun den sidste før kampen (med COMP-filteret står andre kampes blokke i sporet). **Rettet (adresse):** kampfloats i visningen efter
+  sub_6ec010 (afleveringsmulighederne 0x6c70f7 læste kampstartens Creativity hele kampen – kamp 4/7/9 0x712ef1); holdhistoriernes tabelrække
+  sub_6d4b70 0x6d4c5f (0x4a4850 – stimerne +0x19/+0x2d/+0x41/+0x55, `teamRuns`); gengældelsen sub_716630: kommentaren 0x716a98 (0x20e3/0x2108/0x20e4/
+  0x20e1/0x20e5/0x20e2/0x210b, 0x210c), holdets ophidselse sub_6bb950 (×2,25/2,5/2,0/1,15f) og modstanderens ag·(4 − 0,16·T) i double (ikke
+  sub_716450's float-faktor), engelsk land → rand(1000) (nation +0x77 == 8, `nationLanguage.ts`); optøjernes afgørelse sub_6d1210 helt
+  (0x2109/0x20f5/kortlinjerne, tabellen 0x6d1724, rand(9)/0x20df/0x20e0/0x20d9, sub_6bb8d0 med F, sub_716e10(d, 0/1), udvisningen venter (0x6cdb85:
+  engine+0x1a3 ≠ 0 → ingen omrokering), udvist keeper → genvalg 0x6d1591); sub_716e10 kalder sub_6bb8d0(d, 0,75/0,85f/0,5/0,95f) (0x71704c) og
+  sender flaget til 0x6cfd40, modstanderklubbens engelske land → 0x20f5 (0x7170bd); 0x6bac40's kortlinje 0x20f5 ved rand(sværhed) > rand(20)
+  (manglede); landingens TICKING_OFF sammenligner sværheden (0x6ca333/0x6ca9de/0x6cadf8: [esp+0x24] med push 7 ventende = [esp+0x20]), og
+  ophidselsen/protesten kun ved bløde koder (tabellerne 0x6cb50c/0x6cb5b0/0x6cb60c); offsidehændelsen tæller spillerens +0x13 (0x6bad63);
+  frisparket dybt på egen halvdel flytter modstandere ud af boldens felt (0x6c4905); 6cdd50 regner ikke +0x37/handlingsevnerne for den, der
+  overtager pladsen (0x6ce0a5); pladsens taktik gemmes, før pladsen tømmes (instruktionerne ændres i kampen af 0x6c54a0); engine+0xaf+side
+  (0x6eecb0(p, 1) 0x6ef33e–0x6ef4d4: angrebsposition AM +1 / F +2 med side) – mandsopdækningen 0x7161f5 slipper manden; genvalget vælger ny anfører
+  (0x6e18d0–0x6e1927: 0x6e1cf0 over de 20, 0x897760) – både samspillet og sub_6ec010 bruger klubbens aktuelle; spillemageren 0x6df346–0x6df432
+  (0x6ddab0 nulstiller rollerne 0x6ddc83/0x6ddc9b og sætter rolle 0 = en dødboldsskytte med Creativity + Flair + Passing > 30·J + omdømme/500 –
+  afleveringsmulighederne 0x6c6a30 læser den, så computerens nye taktik flytter rollen); skudscoren ganger med 1/3 som double (0x71163c – 182²/3
+  gav 5008 mod originalens 5007; også 0x7019f1 og 0x6b8748/0x6b87d9), longRange ×1/6 (0x6c8396); afleveringens busy-fradrag før afleveringen (et
+  knock sætter busy absolut 0x7160e0); boldholderen springer knock/vending over i 0x6f09f0 (0x6f0afd/0x6f0b17); målstregsdækningen 0x71590f
+  tester BOLDENS felt ([esp+0x20]/[esp+0x14] = 0x714e2a), ikke målet; dommerens turneringsbias (−1, 0x6e9bb0). Spillet: selvmål giver nu en
+  målbegivenhed i rapporten (adapter.ts `ownGoal` – manglede; gridSim-testen fangede det). **Test:** fixturerne pl7 820 tik (HELE kampen), nye
+  pl1 300, pl12 520, pl18 700, cup 582 (cup4) – mkfix: scratchpad/mkfix.py-mønsteret (kampstartblokken + M-blokken til tik N+1 uden
+  XE/ZR/FG/Fh/WB/PO/Q/O/D/N/J/c/C/z/H/L/B/K; aimode over alle M-blokke for parret). **Sæsontal** (380 kampe frø 1/2/3): mål 2,41/2,31/2,38 →
+  2,29/2,27/2,33 · skud 15,5/15,7/15,3 → 15,3/15,6/15,7 · på mål 8,0/8,1/8,0 → 7,9/8,2/8,0 · hjørner 4,1 → 4,1/4,2/4,0 · frispark 7,2 → 7,4/7,2/7,3
+  · offside 4,3 → 4,2/4,5/4,5 · gule 1,74/1,62/1,56 → 1,67/1,57/1,65 · H/U 48/26, 47/25, 47/26 → 44/29, 46/31, 46/25 (originalen 2,75–2,98 mål,
+  52–53 % hjemmesejre – spillets egne kampe: holdene, 0x6e2f20-skønnet, forholdene og tabelrækkerne mangler stadig uden for låsetrinet). **Tilbage
+  (første afvigelser, ls20):** kamp 2 tik 655 0x717929 (rand(3)/rand(25)), kamp 3 tik 601 0x71189b, kamp 6 tik 552 (tur: keeperen 0,0 → (3,3)
+  handling 0x103 mod portens (4,1) 0x71), kamp 14 tik 530 (tur 1,9 → (3,2) mod (2,2)), kamp 16 tik 468 (gensidig markering: 0,6 ↔ 1,2 – originalens
+  tredje vending har nul-retning, rand(360) 0x6f4975; portens markersFollow-rækkefølge i 0x6f3bf9 er ikke den samme), kamp 19 tik 790 0x6c8c9d,
+  pokalkampen tik 582 0x6f4506 (rullenes loft efter en genberegning). Uden for låsetrinet: spillets 0x6e2f20 (genvalgets værdier) er stadig et skøn
+  langt fra originalens (LOCKF), forholdene/tabelrækkerne/turneringsbias findes ikke i spillets data (tomme/0), og sub_6ec010 regnes ikke i kampen
+  i spillet.

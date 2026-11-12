@@ -389,7 +389,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
     const NONE = -100000;                                                  // 0x6c8326
     let type = -1, score = NONE;
     const inB = (lo: number, hi: number) => D >= lo && D <= hi;
-    const longRange = 5 - (21 - carrier.strength) / 6;                     // 0x6c838a (21) 0x6c8396 (1/6) 0x6c839c (5)
+    const longRange = 5 - (21 - carrier.strength) * 0.16666666666666666;   // 0x6c838a (21) 0x6c8396 fmul 1/6 (double 0x96a7a8) 0x6c839c (5)
     if (code >= 0) {                                                       // forced type
       type = code;
       switch (code) {
