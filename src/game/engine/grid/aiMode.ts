@@ -8,6 +8,7 @@
 //
 // Konstanterne er læst i exe'en (VA − 0x400000) og står ved deres adresser.
 
+import { crtPow } from '../crtMath';
 export type Side = 0 | 1;
 
 /** En række i ligatabellen (0x4a4850 = bsearch i comp+8 med post 0x76 bytes, nøgle = klubben). Felterne er rå: +0x72 placering
@@ -152,7 +153,7 @@ export function aiMode(i: AiModeInput): AiModeResult {
           const r80 = i.rep[s];
           if (L.compRep >= 10 && r80 > L.compRep * 500)
             k *= ((r80 - L.compRep * 500) + (r80 - 5000)) * 0.0002 + 1;                     // 0x96a600
-          const X = ((L.opp.pos & 0xff) - (row.pos & 0xff)) * Math.pow(k, 1.5);           // 0x945ff0 = pow
+          const X = ((L.opp.pos & 0xff) - (row.pos & 0xff)) * crtPow(k, 1.5);           // 0x945ff0 = pow
           let f = X * X * X / (i.crowd[s] * i.crowd[s] * 50 + 250) + 1;                    // 0x968ff8, 0x968898
           if (f < 1) f = 1; else if (f > 10) f = 10;                                       // 0x9688b0
           m = f * R40;
@@ -190,7 +191,7 @@ export function aiMode(i: AiModeInput): AiModeResult {
   if (i.mgrAttacking !== null && E13 > -1) {
     const a = i.mgrAttacking;
     let X = ((a - 10) * 0.06666666666666667 + 1) * R;                 // 0x96d438 (1/15)
-    const a2 = Math.pow(a, 2);                                        // 0x945ff0 med 2,0 (0x968950)
+    const a2 = crtPow(a, 2);                                        // 0x945ff0 med 2,0 (0x968950)
     if (X < a2 * 0.005) X = a2 * 0.0025 + X * 0.5;                    // 0x968ef0 / 0x969028 / 0x968968
     R = X < R - 1 ? R - 1 : X;
   }

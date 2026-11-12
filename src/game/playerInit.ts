@@ -290,11 +290,13 @@ function sub_538bc0(a: number[], gk: number): void {
  * Gemte (udfyldte) egenskaber → de viste ved spilstart. `stored` i vores rækkefølge; kun de 18 interne ændres
  * (og i sjældne tilfælde fart/acceleration/teknik/arbejdsrate −1/−2 i sub_538ec0).
  */
-export function shownFromStored(stored: number[], ca: number, gk: number, feet: [number, number]): number[] {
+export function shownFromStored(stored: number[], ca: number, gk: number, feet: [number, number], internals?: number[]): number[] {
   const a = stored.slice();
   for (const k of INTRINSIC_KEYS) a[AI(k)] = toIntrinsic(a[AI(k)], ca);
   sub_538ec0(a, ca, gk, feet);
   sub_538bc0(a, gk);
+  // spillerpostens interne værdier i hukommelsen (+0x1e … +0x43, s8 – sub_53aa10 pakker dem som bytes): Player.cmInt
+  if (internals) { internals.length = 0; for (const k of INTRINSIC_KEYS) internals.push(byte(a[AI(k)])); }
   for (const k of INTRINSIC_KEYS) {
     const i = AI(k);
     // målmænd: Indlæg og Kreativitet (Bosman, læst) og Off the Ball (MÅLT i originalen 9/11-2026: Seaman 4, med CA i stedet 11)
@@ -367,3 +369,29 @@ export function repairPositions(pos: number[], rand: Rand): void {
     pos[M] = Math.max(pos[M], mFloor);
   }
 }
+
+/** Player.cmInt (de 18 interne i spillerpostens rækkefølge +0x1e … +0x43 = INTRINSIC_KEYS) → de viste: display(CA + 2·intern) (sub_544380;
+ *  målmand GK = 20: Crossing, Creativity og Off the Ball med 0,1·CA – som shownFromStored). Skriver kun de 18 i `attrs`. */
+export function shownFromInternal(attrs: number[], internals: readonly number[], ca: number, gk: number): void {
+  INTRINSIC_KEYS.forEach((k, j) => {
+    const lo = gk === 20 && (k === 'crossing' || k === 'creativity' || k === 'offTheBall');
+    attrs[AI(k)] = displayFromX((lo ? ca * 0.1 : ca) + 2 * internals[j]);
+  });
+}
+/** sub_544380's omvendte: den interne værdi midt i dem, der vises som `shown` ved basis `base` (CA, målmænds Crossing/Creativity/Off the Ball 0,1·CA) –
+ *  til spillere uden originalens interne (regens, opfyldte spillere, ældre gemte spil; *estimeret*) */
+export function intrinsicOf(shown: number, base: number): number {
+  const ok: number[] = [];
+  for (let v = -125; v <= 125; v++) if (displayFromX(base + 2 * v) === shown) ok.push(v);
+  return ok.length ? ok[ok.length >> 1] : clampN(Math.round((10 * shown - base) / 2), -125, 125);
+}
+/** sub_538bc0's re-centrering på de 18 interne i spillerpostens rækkefølge (Player.cmInt / CM_INT_OFFSETS); ændres på stedet. I sæsonen kaldes den
+ *  efter udviklingen (0x5d5772) med træningens effekter trukket fra (cmTraining.ts normaliseRec). */
+export function normaliseInternals(ints: number[], gk: number): void {
+  const a: number[] = new Array(ATTRS.length).fill(0);
+  INTRINSIC_KEYS.forEach((k, j) => { a[AI(k)] = ints[j]; });
+  sub_538bc0(a, gk);
+  INTRINSIC_KEYS.forEach((k, j) => { ints[j] = byte(a[AI(k)]); });
+}
+/** record-offsetsene for Player.cmInt (spillerposten +0x61) */
+export const CM_INT_OFFSETS = [0x1e, 0x23, 0x24, 0x26, 0x27, 0x2a, 0x2b, 0x31, 0x32, 0x33, 0x35, 0x37, 0x38, 0x39, 0x3a, 0x3e, 0x41, 0x43] as const;

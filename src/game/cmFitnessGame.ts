@@ -2,14 +2,16 @@
 // Kun den originale database i ægte tilstand (cmActive); ellers gør intet her noget, og spillets egen model (sim.ts) gælder.
 
 import type { Fixture, GameState, MatchReport, Player } from './types';
-import { cmActive } from './cmPlayerData';
+import { cmActive, setCmPlayerCtx } from './cmPlayerData';
 import {
-  applyMatchEffects, clearKnocks, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, initRecords, initSquadFitness, injuryDaily,
+  applyMatchEffects, clearKnocks, clubSeason, condition, currentInjury, dayNum, fatigue, fitIso, fitRand, hasSeasonRow, initRecords, initSquadFitness, injuryDaily, injuryStatus,
   newFit, recordKnock, recoverFatigue, setKnockHook, syncPlayer, trainingLoad, updateFitness, type CmInjury, type FitCtx, type MatchEntry,
 } from './cmFitness';
 import { addNews, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
-import { statCategory } from './cmPlayerData';
+import { cmRand, statCategory } from './cmPlayerData';
+import { cmTrainPlayer, setTrainCtx } from './cmTraining';
+import { setDevCtx } from './cmDevelop';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 /** modulet gælder: original DB i ægte tilstand, ikke draft-ligaen */
@@ -25,7 +27,32 @@ export function fitCtx(g: GameState, salt: number, today = dayNum(g.date)): FitC
     human: (club) => isHumanClub(club),
     news: (kind, p, inj) => injuryNews(g, kind, p, inj),
     retire: (p) => { p.cmRetire = true; },
+    onDuty: (p) => intlDuty?.(p) ?? false,
+    inEurope: (club) => cmClubEuro(g, club) > -1,
+    train: (p) => cmTrainPlayer(g, p, 0x62d312),
   };
+}
+
+/** landsholdsopholdet (staff +0x24 og datoen 0x76e040) – international.ts sætter den (undgår en cirkulær import) */
+let intlDuty: ((p: Player) => boolean) | null = null;
+export function setIntlDuty(f: (p: Player) => boolean): void { intlDuty = f; }
+
+/** club +0x1db: den europæiske turnering, klubben er med i lige nu (−1 = ingen). Skrives af de europæiske turneringers kode
+ *  (0x4c6430 ved tildelingen af pladserne, 0x585ab0/0x586330 videre til næste turnering eller −1 ved udslagning); oraklets værdier
+ *  326/328/330 = turneringernes id'er (Champions League, UEFA Cup og den tredje – rækkefølgen 326 → 328 ses, når et CL-hold ryger ned).
+ *  Hos os: en ufærdig kontinental turnering, klubben er med i og ikke slået ud af (seneste dobbeltkamp ikke tabt; i ligafasen alle;
+ *  efter ligafasen uden dobbeltkamp: de 8 bedste i tabellen) → CL 326, UEFA 328, andre 330. Læses af 0x62ce30 og 0x83cb40. */
+export function cmClubEuro(g: GameState, club: number): number {
+  for (const c of Object.values(g.comps)) {
+    if (c.type !== 'continental' || c.finished || !c.clubs.includes(club)) continue;
+    const mine = c.ties.filter((t) => t.a === club || t.b === club);
+    let alive: boolean;
+    if (!c.ties.length) alive = true;
+    else if (mine.length) { const last = mine[mine.length - 1]; alive = last.winner === undefined || last.winner === club; }
+    else alive = c.table.slice(0, 8).some((r) => r.club === club);
+    if (alive) return c.id === 'CL' ? 326 : c.id === 'UEFA' ? 328 : 330;
+  }
+  return -1;
 }
 
 function injuryNews(g: GameState, kind: 'injury' | 'recovered', p: Player, inj: CmInjury): void {
@@ -34,6 +61,31 @@ function injuryNews(g: GameState, kind: 'injury' | 'recovered', p: Player, inj: 
   if (kind === 'recovered') asOwner(p.club, () => addNews({ cat: 'injury', key: 'news.recovered', params: { player: pname(p), last: p.last, injury: key }, link: { kind: 'player', id: p.id } }));
   else asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.cmNew', params: { player: pname(p), injury: key, days: inj.w2a }, link: { kind: 'player', id: p.id } }));
   void g;
+}
+
+/** konditionsmodulets aflæsninger til kontraktens opdatering 0x4cb250 (cmPlayerData.ts): 0x62c400 og sæsontabellen for klubbens land
+ *  (0x669340 → 0xb63d60 +0x2a/+0x39: i dag efter starten og før slutningen – tabellens år følger clubSeason, *estimeret*) */
+function linkPlayerCtx(g: GameState): void {
+  // træningen 0x8b1750 (0x8b39f0: skadestatus 2 → skemaet "No Training") og udviklingen 0x5ce2d0 (trætheden 0x62c3d0, skadens +0x2c 0x62ed70)
+  setTrainCtx({
+    injured: (p) => injuryStatus(fitCtx(g, SALT.read), p) === 2,
+    human: (club) => isHumanClub(club),
+    rand: (p, salt) => cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x8b1750, salt),
+  });
+  setDevCtx({
+    fatigue: (p) => fatigue(p),
+    injuryW2c: (p) => { const e = currentInjury(fitCtx(g, SALT.read), p); return e ? e.w2c : null; },
+  });
+  setCmPlayerCtx({
+    injury: (p) => injuryStatus(fitCtx(g, SALT.read), p),
+    injuryW2c: (p) => { const e = currentInjury(fitCtx(g, SALT.read), p); return e ? e.w2c : null; },
+    inSeason: (club) => {
+      const n = g.clubs[club]?.nation, today = dayNum(g.date);
+      if (!hasSeasonRow(n)) return false;
+      const [inS, start, end] = clubSeason(n, today);
+      return inS && today > start && today < end;
+    },
+  });
 }
 
 /** de rigtige spillere i "staff-tabellens" rækkefølge (id – heltalsnøgler kommer i stigende orden) */
@@ -45,6 +97,7 @@ function realPlayers(g: GameState): Player[] {
  *  kampe og uden 0x5ce2d0), så 0x62a920 på startdagen. */
 export function cmFitNewGame(g: GameState): void {
   if (!cmFitOn(g)) return;
+  linkPlayerCtx(g);
   g.cmFitStart = g.date;
   const ps = realPlayers(g);
   const start = dayNum(g.date);
@@ -63,6 +116,7 @@ export function cmFitNewGame(g: GameState): void {
 export function cmFitDay(g: GameState): void {
   if (!cmFitOn(g)) { setKnockHook(false); return; }
   setKnockHook(true);
+  linkPlayerCtx(g);
   g.cmFitStart ??= g.date;
   const ps = realPlayers(g);
   const today = dayNum(g.date);
@@ -83,6 +137,7 @@ export function cmFitDay(g: GameState): void {
 export function cmFitPreMatch(g: GameState, clubs: number[]): void {
   if (!cmFitOn(g)) return;
   setKnockHook(true);
+  linkPlayerCtx(g);
   const c = fitCtx(g, SALT.read);
   for (const club of clubs) for (const p of squad(club)) syncPlayer(c, p);
 }
@@ -147,7 +202,7 @@ export function cmFitRead(g: GameState) {
   return {
     condition: (p: Player) => condition(c, p),
     fatigue: (p: Player) => fatigue(p),
-    injury: (p: Player) => { const e = currentInjury(c, p); return e ? { w28: e.w28 } : null; },
+    injury: (p: Player) => { const e = currentInjury(c, p); return e ? { w28: e.w28, w2c: e.w2c } : null; },
     update: (p: Player) => updateFitness(c, p),
   };
 }

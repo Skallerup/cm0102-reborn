@@ -8,10 +8,12 @@
 // RoleData. aiTeam.ts/pickTeam.ts fylder den af vores Player; tests/roleScore.test.ts fylder den af den instrumenterede originals spor.
 //
 // Ikke porteret (bruges ikke af klubkampene): flag 0x4/0x10/0x20/0x1000000 er porteret, men landsholdsblokken 0x2000000 (0x6e4860–0x6e4c19),
-// alders-/skadeblokken 0x4000 (0x6e4c19–0x6e50a9), managerblokken 0x1000 (0x6e52ca–0x6e5ae8), 0x200000 (0x6e526f), 0x20000 (kontrakt 2,
-// 0x6e5e17), 0x100000 (0x6e6007) og de tidlige returveje med arg9/arg15 (tærskel/menneskets liste) er det ikke – de giver 0 her.
+// alders-/skadeblokken 0x4000 (0x6e4c19–0x6e50a9), 0x200000 (0x6e526f), 0x20000 (kontrakt 2,
+// 0x6e5e17), 0x100000 (0x6e6007) og de tidlige returveje med arg9/arg15 (tærskel/menneskets liste – også 0x6e5def's b·0,25) er det ikke – de giver 0 her.
+// Managerblokken 0x1000 (0x6e52ca–0x6e5ae8) er porteret 12/11 (planScore.ts managerBlock; planlæggerens kald 379.124/379.124 ens).
 
 import { combineScore, naturalPositions, positionFactor, ratingTerm, type PositionRecord, type QualityContext, type SubPlayer } from './subs';
+import { managerBlock, type ManagerBlockIn } from './planScore';
 
 const ftol = (x: number) => Math.trunc(x);                         // 0x945640
 const tdiv = (a: number, b: number) => Math.trunc(a / b);
@@ -80,6 +82,11 @@ export interface RoleInput {
   nationRep?: number; nationOfClub?: boolean;
   /** klubbens nation +0x11c (byte) – genererede spillere (realPlayer false) trækkes ned (0x6e60b0) */
   nationFlag11c?: boolean;
+  /** flag 0x1000 (managerblokken 0x6e52ca–0x6e5ae8, planScore.ts managerBlock): dommerens ikke-spillerpost m.m. – uden den (eller uden klub,
+   *  `hasClub` false) springes blokken over som i originalen uden dommer/klub */
+  mgrBlock?: ManagerBlockIn;
+  /** arg6 (klubben) ≠ 0 – kun managerblokken læser det (standard: ja) */
+  hasClub?: boolean;
   /** kun under kampen (arg3): kampspilleren og uret – rating- og konditionsleddet tages derfra */
   match?: { p: SubPlayer; ctx: QualityContext };
   data: RoleData;
@@ -154,6 +161,8 @@ export function roleScore(i: RoleInput): number {
     const inj = d.injury();
     if (inj) Q += inj.w28 <= 10 ? -2 * inj.w28 : -20 - inj.w28;        // 0x6e5232
   }
+  // 0x6e52ca: managerblokken (flag 0x1000; dommerens ikke-spillerpost, klubben og P ≥ 100) – samme som 0x6e6340's, men uden driblebonus for 0x20
+  if (flags & 0x1000 && i.mgrBlock?.np && (i.hasClub ?? true) && P >= 100) Q = managerBlock(rec, i.pos, naturalPositions(r), Q, i.age, i.mgrBlock, false);
   // ---------------------------------------------------------------- anfører, dødbolde, trupstatus
   if (flags & 0x2000 && i.captain) Q += 100;                            // 0x6e5ae8
   if (flags & 0x1000000 && !(i.nationOfClub ?? true)) Q -= 50;         // 0x6e5b09: ingen af hans to nationer er klubbens (+0x53)

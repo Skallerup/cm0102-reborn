@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { cmActive } from './cmPlayerData';
 import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
 import { boardEventsSeason, isOriginal2001 } from './rules2001';
@@ -145,7 +146,7 @@ function promotionRelegation() {
     const oldLeague = club.league;
     club.league = league;
     // nedrykkede AI-klubber må sælge stjernerne (nedrykningsklausuler, lønninger) – ellers vinder de næste liga med 110+ point
-    if (!wasUp && !isHumanClub(cid)) {
+    if (!wasUp && !isHumanClub(cid) && !cmActive(g)) {
       for (const p of squad(cid).filter((x) => !x.loan && x.contract).sort((a, b) => b.ca - a.ca).slice(0, 8)) {
         p.listed = true;
         p.listPrice = Math.max(10_000 * econ(), Math.round(p.value * 0.65 / 50_000) * 50_000);
@@ -607,6 +608,11 @@ export function seasonRollover() {
   updateClubReps();
   const prevTables: Record<string, number[]> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'league' && comp.finished) prevTables[comp.id] = finalOrder(comp);
+  // den originale database i ægte tilstand: klubbens sidste division og placering (club +0x5b/+0x5f – Comp_Stats' udgangsrækkefølge næste sæson)
+  if (cmActive(g) && g.cmClubStat) for (const [lid, order] of Object.entries(prevTables)) {
+    const cid = +(lid.match(/(\d+)$/)?.[1] ?? NaN);
+    order.forEach((club, i) => { const s = g.cmClubStat![club]; if (s) g.cmClubStat![club] = [s[0], s[1], cid, i + 1]; });
+  }
   // pokalvindere (pr. nation) får en europæisk plads
   const cupWinners: Record<number, number> = {};
   for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0) cupWinners[comp.nation] = comp.winner;

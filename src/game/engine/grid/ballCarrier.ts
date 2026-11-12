@@ -25,6 +25,7 @@
 // ------------------------------------------------------------------ random numbers
 
 /** sub_90cfc0: rand(n) gives 0..n-1; rand(0) = 0; rand(negative n) gives n+1..0. */
+import { crtPow } from '../crtMath';
 export type Rand = (n: number) => number;
 
 export const defaultRand: Rand = (n) => {
@@ -167,6 +168,8 @@ export interface Situation {
   /** sub_700bd0: shot score (on target if > 240 in sub_702050). Called fresh each time. w29 = boldholderens word +0x29, som
    *  sub_7109f0 har skrevet (0x7110f5–0x711342, kan være negativ); mangler = limens værdi. */
   shotScore: (w29?: number) => number;
+  /** 0x711150/0x7111e9/0x7111f3/0x711339 + 0x711342: sub_7109f0 skriver boldholderens +0x29 (pladsen) her */
+  setSpace?: (v: number) => void;
   /** 0x713bf9: lige før det åbne spils skud (sub_700bd0) – limens kommentar (GREAT_FIRST_TOUCH) */
   onShootStart?: () => void;
   /** sub_6cb700(y, side): own players further forward than him. */
@@ -190,6 +193,8 @@ export interface Situation {
   runTarget: { found: boolean; tx: number; ty: number };
   /** His tactical cell (sub_6c2be0 / sub_715f50) and the distance to it when he is ahead of it (else 0). */
   tacticalX: number;
+  /** 0x710f9e: det taktiske felt slås op her (driftens rand) – i det åbne spil, før pladsen +0x29 */
+  tacticalCell?(): void;
   beyondTactical: number;
   /** Clock word match+0x8ed0 (11 ticks a minute). */
   clockTicks: number;
@@ -304,25 +309,33 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
 
   const restart = restartDecision(s, rand);
   if (restart) return restart;
+  if (s.mode !== 4) s.tacticalCell?.();                                           // 0x710f8b–0x711015 (tilstand 4: 0x710acb springer det over)
 
   // --- "space" (word +0x29), 0x7110f5..0x71133f
   let space: number;
+  let challenge = (s.challenge << 16) >> 16;                                     // sub_6bcbd0's ord [esp+0x70]
   if (s.mode === 4) space = 350; // 0x711339
   else if (h === -1) space = 200; // 0x7111f3
   else if (s.pressure === 0) {
     space = trunc(Math.min(s.nearestOpp, 3.5) * 60 + 57); // 3.5 @0x968e38, 60 @0x96d7b0, 57 @0x96d844
   } else {
-    const a = Math.max(s.challenge, 0);
+    // 0x711159–0x711164: et negativt ord [esp+0x70] SKRIVES til 0 – de senere læsninger (0x712279, 0x7129f7, 0x712d3f) ser 0
+    if (challenge < 0) challenge = 0;
+    const a = challenge;
     let v = trunc(-(s.pressure * a * a) * 0.75); // 0.75 @0x969040
     if (v < -500) v = Math.max(rand(trunc((v + 500) / 3)) - 500, -2000);
     else if (v > 32000) v = 32000;
     space = trunc(v * 0.75);
   }
-  space += 70; // 0x711342
+  s.setSpace?.(space);                                                            // 0x711150/0x7111e9/0x7111f3/0x711339: +0x29 før afleveringerne
 
-  // --- PASS score, 0x711264 / 0x7112dd: weight x (pressure + blockers + 4) / 5  (+2 in the box)
+  // --- PASS score, 0x711264 / 0x7112dd: weight x (pressure + blockers + 4) / 5  (+2 in the box). Afleveringsmulighederne 0x6c6a30 regnes HER,
+  // mens +0x29 endnu er uden de 70 (baseline 3·(+0x29 − 1000)) – og slet ikke i tilstand 4 (0x711339 springer til 0x71133f)
   let P = 0;
-  if (s.pass) P = trunc((s.pass.weight * (s.pressure + s.blockers + (inAttBox(c) ? 2 : 4))) / 5);
+  const pass = s.mode !== 4 ? s.pass : null;                                     // tilstand 4: [esp+0x58] forbliver uden modtager
+  if (pass) P = trunc((pass.weight * (s.pressure + s.blockers + (inAttBox(c) ? 2 : 4))) / 5);
+  space += 70; // 0x711342
+  s.setSpace?.(space);
   let R = 0; // RUN
   let H = 0; // HOLD
   let S = 0; // SHOOT
@@ -376,7 +389,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   let oneOnOne = false;
   if (h < 4 && D > 0) {
     if (s.clearRun === 2) {
-      const d3 = Math.pow(trunc(D), 3);
+      const d3 = crtPow(trunc(D), 3);                                        // 0x7117a7
       R += trunc((rand(4) + 1) * trunc((c.dribbling * c.dribbling + 1) * 0.5) * d3);
     }
     const k = s.oppKeeper;
@@ -430,7 +443,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   else if (c.x > 3 && c.x < 7 && onGoalLine(c)) S += 5000 - Math.abs(c.x - 4) * 2000; // only x 4..6 (sic)
 
   // --- nobody to pass to, 0x711dbb
-  if (!(s.pass && s.pass.hasTarget) && s.teammatesAhead === 0) P -= 2000;
+  if (!(pass && pass.hasTarget) && s.teammatesAhead === 0) P -= 2000;
 
   // --- clear it from the own third, 0x711dd3
   if (ownThird(c) && h !== -1 && c.decisionsRoll !== 0 && P < 4000 - s.clockTicks && s.protectLead)
@@ -452,7 +465,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   } else {
     if (inAttBox(c)) H -= 1000;
     if (inOwnBox(c)) { H -= 1000; R -= 1200; }
-    else if (ownHalf(c) && !s.facingGoal) R += 100 * (-5 - s.challenge);
+    else if (ownHalf(c) && !s.facingGoal) R += 100 * (-5 - challenge);
   }
 
   // --- space to run into, 0x71217d (keeper or in his own box: holding gets the bonus instead)
@@ -491,7 +504,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   // --- instructions or "doing his own thing" (Teamwork), 0x7126ee
   if (rand(trunc(c.teamwork)) === 0 && ((c.posFlags & 0x40) || rand(4) === 0)) {
     if (!(ownHalf(c) && (c.decisionsRoll !== 0 || c.creativityRoll !== 0)))
-      R += trunc(Math.pow(c.dribbling, 3) + 1000 - (inOwnBox(c) ? 1000 : 0));
+      R += trunc(crtPow(c.dribbling, 3) + 1000 - (inOwnBox(c) ? 1000 : 0));   // 0x712828
     if (D >= 2 && D < 4.5 && central(c.x)) {
       if (c.flairRoll !== 0) S += 2 * (200 * rand(trunc(c.longShots)) + space) + 2500;
     } else if (inAttBox(c)) {
@@ -499,7 +512,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
     }
   } else if (s.mode !== 4) {
     if (c.runWithBall && !inOwnBox(c) && s.pressure < 2 && D >= 2 &&
-        (s.challenge === 0 || attHalf(c) || rand(2 * c.decisionsRoll + 20) < D)) {
+        (challenge === 0 || attHalf(c) || rand(2 * c.decisionsRoll + 20) < D)) {
       R += trunc(10 * (30 * c.b11 + space + 400) - P + c.flairRoll * c.dribbling * c.teamwork);
       if (wide(c.x) && (c.posFlags & 0x880) && (c.sideFlags & 0x880) && !finalThird(c) && c.crossBall) {
         R += 500; P -= 250;
@@ -513,7 +526,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   if (h < 2 || (D > 1.41 && h < 4)) {
     if (s.sightCheckFails && s.clearRun === 0) S -= rand(300 * c.b2d);
   }
-  if (D < 5) S -= trunc((s.challenge * s.challenge * s.challenge) / (10 - D));
+  if (D < 5) S -= trunc((challenge * challenge * challenge) / (10 - D));
   if (h === 3) S -= 2000;
 
   // --- ahead of his tactical position, 0x712d7e
@@ -525,7 +538,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   if (D >= 1 && Math.pow(c.flairRoll, 4) > rand(trunc(D * 10000))) {
     if (!inOwnBox(c) && D >= 2 && s.pressure < 2 &&
         (attHalf(c) || (c.decisionsRoll === 0 && c.creativityRoll === 0)))
-      R += rand(trunc(Math.pow(c.dribbling, 3) + 3 * space + (10000 - P)));
+      R += rand(trunc(crtPow(c.dribbling, 3) + 3 * space + (10000 - P)));   // 0x712ebb
     if (h < 4 && s.blockers < 2 && (D < 5 || (D < 7 && rand(500) === 0)))
       S += rand(trunc(400000 / Math.max(rand(trunc(D * 10)), 10))); // 0x61a80
     H -= 10000;
@@ -537,8 +550,8 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   // --- cost of running, 0x7130a9
   let cost = -10 * space - 100 * c.momentum
     - trunc((10000 - c.condition) * -0.2)
-    - trunc(Math.pow(h, 3) * -200);
-  if (s.pass && s.pass.hasTarget && P > 0 && [0x5e, 8, 7, 6].includes(s.pass.type)) cost += P;
+    - trunc(crtPow(h, 3) * -200);   // 0x7130c4
+  if (pass && pass.hasTarget && P > 0 && [0x5e, 8, 7, 6].includes(pass.type)) cost += P;
   else if (c.crossBall && (c.posFlags & 0x880) && (c.sideFlags & 0x880)) {
     if (c.y === 0 || c.y === 11) cost += 500;
     else if (wide(c.x)) {
@@ -553,7 +566,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
 
   // --- on the byline, 0x713272
   if (wide(c.x) && h < 3 && onGoalLine(c)) {
-    if (s.pass && s.pass.hasTarget && [8, 7, 6].includes(s.pass.type)) {
+    if (pass && pass.hasTarget && [8, 7, 6].includes(pass.type)) {
       P += 1500;
       if (c.crossBall) P += 1500;
     } else if (rand(10) !== 0) {
@@ -567,7 +580,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   R += rand(n);
   H += rand(n);
   S += rand(n);
-  s.traceScores?.(P, R, H, S, s.pass ? s.pass.weight : 0, s.blockers, space, s.pressure);
+  s.traceScores?.(P, R, H, S, pass ? pass.weight : 0, s.blockers, space, s.pressure);
 
   // --- choose, 0x7133bf
   const PASS = 1, HOLD = 2, SHOOT = 3, RUN = 4;
@@ -580,7 +593,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   let skipChecks = false;
   if (c.lastAction === ACTION.hold || h !== -1) {
     if (best < P && s.mode !== 4) {
-      if (s.pass && s.pass.hasTarget) { act = PASS; skipChecks = true; }
+      if (pass && pass.hasTarget) { act = PASS; skipChecks = true; }
       // 0x7134d8–0x713513: med medspillere foran UDEN for den sidste tredjedel (side 0: y ≤ 8, side 1: y ≥ 3) eller boldhøjde 4 →
       // sub_6fa490 uden ny handling (0x71378e)
       else if ((s.teammatesAhead !== 0 && !finalThird(c)) || h === 4) {
@@ -608,7 +621,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
         if ((h === 4 && D >= 2) || h === -1) act = PASS;
         else if (attHalf(c) && (central(c.x) || c.flairRoll >= rand(120))) { /* keep the shot */ }
         else if (s.mode === 4) { /* keep */ }
-        else if (s.pass && s.pass.hasTarget) act = PASS;
+        else if (pass && pass.hasTarget) act = PASS;
         else if (h < 3 && s.nearestOpp > 1.5) {
           if (c.lastAction === 2) act = RUN; // TODO action 2 unknown
           else act = rand(trunc(c.dribbling)) + c.flairRoll >= rand(50) ? RUN : HOLD;
@@ -626,7 +639,7 @@ export function decideBallCarrier(s: Situation, rand: Rand = defaultRand): Decis
   // --- carry it out, jump table 0x713776
   switch (act) {
     case PASS:
-      if (s.pass && s.pass.hasTarget) return { kind: 'pass', action: ACTION.pass, pass: s.pass };
+      if (pass && pass.hasTarget) return { kind: 'pass', action: ACTION.pass, pass: pass };
       return { kind: 'loftedBall', action: ACTION.noTargetLoftedBall, clearance: false };
     case HOLD:
       return { kind: 'hold', timeWasting: false };
@@ -703,7 +716,7 @@ export function rollCreativity(creativity: number, form: number, rand: Rand): nu
   return Math.max(rand(cap), rand(cap));
 }
 export function rollFlair(flair: number, morale: number, rand: Rand): number {
-  const cap = trunc(Math.max(0.05 * Math.pow(morale + flair - 10, 2), 2));
+  const cap = trunc(Math.max(0.05 * crtPow(morale + flair - 10, 2), 2));   // 0x6ef6fc
   return rand(cap);
 }
 export function rollPositioning(positioning: number, form: number, rand: Rand): number {

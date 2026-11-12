@@ -72,9 +72,17 @@ for await (const line of rl) {
       const rands = s.rands.filter((r) => r[2] === '62cb1d').map((r) => +r[4]);
       updateFitness(ctx(today, rands), p);
       const want = recOf(t[t.length - 1]);
-      const good = p.cmFit!.f === want.f && p.cmFit!.mc === want.mc;
+      let good = p.cmFit!.f === want.f && p.cmFit!.mc === want.mc;
       const off = !rec.inj && club && !clubSeasonOf(nat, today);
-      const k = intl ? (off ? 'update (landshold +0x24, sommerpause)' : 'update (landshold +0x24)') : rec.inj ? 'update (skadet)' : 'update';
+      // sporet har kun +0x24 ≠ 0, ikke datoen 0x76e040: med opholdet (datoen efter i dag) springes sommerpausen over (0x62c937)
+      let duty = false;
+      if (!good && intl && off) {
+        const q = mkPlayer(id, today, age, { naturalFitness: nf, professionalism: pr }, 1, club);
+        q.cmFit = recOf(u[3]); injOf(u[12], q.cmFit);
+        updateFitness({ ...ctx(today, rands), onDuty: () => true }, q);
+        if (q.cmFit!.f === want.f && q.cmFit!.mc === want.mc) { good = true; duty = true; p.cmFit = q.cmFit; }
+      }
+      const k = intl ? (off ? (duty ? 'update (landshold +0x24, sommerpause, opholdets dato efter i dag)' : 'update (landshold +0x24, sommerpause)') : 'update (landshold +0x24)') : rec.inj ? 'update (skadet)' : 'update';
       if (!good && process.env.FIT_BYDATE) byDate.set(`${k} ${u[2]}`, (byDate.get(`${k} ${u[2]}`) ?? 0) + 1);
       if (!ok(k, good)) note(k, `${id} ${u[2]} F ${rec.f}→${want.f} (port ${p.cmFit!.f}) MC ${rec.mc}→${want.mc} (port ${p.cmFit!.mc}) fat ${rec.fat} load ${rec.load} NF ${nf} abcd ${t.slice(2, 6).join(',')} season ${t[6]} ${t[7]} ${t[8]} nat ${nat} r=${rands}`);
       fnBuf = [];

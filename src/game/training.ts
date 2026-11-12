@@ -9,6 +9,8 @@ import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { ROLE_WEIGHTS, naturalRole } from './attributes';
 import { isHumanClub } from './humans';
 import { squad } from './state';
+import { cmIntSync } from './cmTraining';
+import { cmActive } from './cmPlayerData';
 
 export interface Schedule {
   key: string;
@@ -75,6 +77,7 @@ export function weeklyDevelopment() {
   for (const s of Object.values(g.staff)) if (s.club) (byClub.get(s.club) ?? byClub.set(s.club, []).get(s.club)!).push(s);
   // CM 01/02 Coaches: har klubben fordelt trænerne på områder, tæller kun dem, der står for spillerens program
   const areaCache = new Map<string, CoachingInfo>();
+  const cmDev = cmActive(g) && !g.draft;
   for (const p of Object.values(g.players)) {
     if (!cq.has(p.club)) cq.set(p.club, p.club ? coachQuality(p.club, byClub.get(p.club) ?? []) : none);
     let ci = cq.get(p.club)!;
@@ -85,7 +88,8 @@ export function weeklyDevelopment() {
       if (!areaCache.has(k)) areaCache.set(k, coachQuality(p.club, st.filter((x) => !x.coachAreas || x.coachAreas.includes(area))));
       ci = areaCache.get(k)!;
     }
-    develop(p, ci);
+    // den originale database i ægte tilstand: originalens udvikling 0x5ce2d0 (cmDevelop.ts, tre gange om året) i stedet for vores
+    if (!cmDev) develop(p, ci);
     // motiverende trænere løfter moralen en smule hver uge
     if (p.club && ci.motivating > 0.55) p.morale = Math.min(20, p.morale + (ci.motivating - 0.55) * 0.6);
   }
@@ -153,6 +157,9 @@ function develop(p: Player, ci: CoachingInfo) {
     for (const k of phys) bump(p, A[k], pts * 1.3);
     for (const k of ['anticipation', 'decisions', 'positioning'] as AttrKey[]) bump(p, A[k], -pts * 0.3); // erfaring
   }
+  // den originale database i ægte tilstand: de 18 interne står fast mellem originalens udviklingsdage, de viste følger CA
+  // (vist = display(CA + 2·intern), cmTraining.ts – originalens udvikling 0x5ce2d0/0x5d3909 er ikke porteret)
+  cmIntSync(g, p);
 }
 
 function bump(p: Player, i: number, d: number) {

@@ -1,4 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
+import { cmActive, setRequestHooks } from './cmPlayerData';
 import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
@@ -13,7 +14,7 @@ import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
 import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine, recordMove } from './season';
-import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
+import { blockedMoveReaction, playerComplains, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
@@ -1037,7 +1038,10 @@ export function aiTransferTick() {
 function aiClubTurn(club: Club) {
   const g = gs();
   const sq = squad(club.id);
+  // den originale database i ægte tilstand: computerens trupplan 0x83cb40 sætter til salg/leje og fritstiller (cmSquadPlanGame.ts) – ikke her
+  const plan = cmActive(g) && !!g.cmPlan?.[club.id];
   // Økonomisk krise: sæt de dyreste (ikke-nøgle)spillere til salg, og frigiv ældre storlønnede
+  if (club.balance < 0 && plan) { club.transferBudget = 0; return; }
   if (club.balance < 0) {
     const bill = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
     const pricey = sq.filter((p) => p.contract && !p.loan && keyPlayerRank(p) > 3).sort((a, b) => (b.contract!.wage) - (a.contract!.wage));
@@ -1053,13 +1057,13 @@ function aiClubTurn(club: Club) {
     return;
   }
   // Sælg/frigiv overskud
-  if (sq.length > 34) {
+  if (sq.length > 34 && !plan) {
     // ikke nyindkøbte (ellers kunne en spiller skifte igen som fri agent i samme vindue)
     const old = sq.filter((p) => p.contract && !p.loan && (!p.joined || p.joined <= addDays(g.date, -120))).sort((a, b) => a.ca - b.ca)[0];
     if (old) { setClub(old, 0); old.contract = null; }
     return;
   }
-  if (sq.length > 30) {
+  if (sq.length > 30 && !plan) {
     // ikke nyindkøbte (de sættes ikke til salg i samme vindue)
     const surplus = sq.filter((p) => !p.joined || p.joined <= addDays(g.date, -120)).sort((a, b) => a.ca - b.ca).slice(0, 3);
     for (const p of surplus) p.listed = true;
@@ -1763,6 +1767,8 @@ export function recallLoan(pid: number): string {
  */
 export function initialTransferList() {
   const g = gs();
+  // den originale database i ægte tilstand: spilstartens trupplan 0x83a1b0 → 0x83cb40 lister (cmSquadPlanGame.ts)
+  if (cmActive(g)) return;
   // egen generator: spillets fælles rng må ikke forskydes af åbningslisten
   const rng = new Rng(hash(g.seed, 4242));
   for (const c of Object.values(g.clubs)) {
@@ -1813,3 +1819,11 @@ export function signOnDemand(p: Player, wage: number, free: boolean): number {
   const weeks = free ? 14 : age >= 30 ? 10 : 0;
   return Math.round(wage * weeks / 5_000) * 5_000;
 }
+
+// 0x4d8610's dele, som spillet selv har (cmPlayerData.ts handleTransferRequest): prisen (0x4d1600 er ikke porteret – vores udbudspris, *estimeret*)
+// og menneskets nyhed 0xbbf (spillerens henvendelse om spilletid eller trivsel – will.ts)
+setRequestHooks({
+  asking: (p) => askingPrice(p),
+  human: (p, c) => playerComplains(p, c.b45 & 0x14 ? 'time' : 'morale'),
+  isHuman: (club) => isHumanClub(club),
+});

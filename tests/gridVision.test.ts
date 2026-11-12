@@ -18,7 +18,7 @@ describe('syn og bane (originalens tabeller)', () => {
   });
   it('cellDist slår op i originalens tabel (ikke hypot)', () => {
     expect(cellDist(3, 3)).toBe(DIST[3][3]);
-    expect(cellDist(-5, 3)).toBe(5.56);
+    expect(cellDist(-5, 3)).toBe(Math.fround(5.56));                                       // tabellen er float32 (0xa15e44)
     expect(cellDist(9, 0)).toBe(1000);
   });
   it('laneBlockers: holdet uden bolden, lige linje uden endefelt, skrå med begge ender', () => {

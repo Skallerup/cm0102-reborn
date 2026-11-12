@@ -11,6 +11,7 @@
 export type Side = 0 | 1;
 export const rand = (n: number, rng: () => number = Math.random): number =>
   n === 0 ? 0 : n > 0 ? Math.floor(rng() * n) : -Math.floor(rng() * -n); // sub_90cfc0 (n<0 → n+1..0)
+import { crtPow } from '../crtMath';
 import { DIST } from './loop';
 
 export const ftol = (x: number) => Math.trunc(x); // sub_945640
@@ -217,9 +218,10 @@ export function laneBlockers(gp: { active: boolean; side: number; busy: number; 
   return n;
 }
 /** Returns 0 = left foot, 1 = right foot, 2 = not applicable; penalty = 12·(20 − that foot). */
-export function footForTarget(p: MatchPlayer, code: number, x1: number, y1: number, f: number) {
+export function footForTarget(p: MatchPlayer, code: number, x1: number, y1: number, f: number, ballDir?: number) {
   if (DEAD_BALL_CODES.includes(code)) return { foot: 2, penalty: 0 };
-  let d = cellDirection(p.x, p.y, x1, y1) - p.facing;
+  // sub_6cb6c0 (0x6cb6d6–0x6cb6e5): samme felt → boldens retning engine+0x8ed8 (ikke en vinkel af (0, 0))
+  let d = (p.x === x1 && p.y === y1 && ballDir !== undefined ? ballDir : cellDirection(p.x, p.y, x1, y1)) - p.facing;
   const sign = d >= 0 ? 1 : -1;
   let a = sign * d;
   if (a > 180) a = 360 - a;                                    // 0x713f4e (0xb4 / 0x168)
@@ -282,7 +284,7 @@ export function rollCaps(a: MatchAttrs, positionFit: number, morale: number) {
     c110: cap(f + a.positioning + 4),                          // 0x6ef624
     c111: cap(f + 0.9 * a.offTheBall + 5),                     // 0.9 @0x9689d8, 5 @0x9688a0
     c112: cap(f + a.marking + 4),
-    c113: cap(0.05 * (morale + a.flair - 10) ** 2),            // 0.05 @0x967888
+    c113: cap(0.05 * crtPow(morale + a.flair - 10, 2)),            // 0.05 @0x967888
     c114: cap(f + 0.8 * a.creativity + 5),                     // 0.8 @0x9689b0
     c115: cap(f + a.anticipation + 5),                         // 5 @0x968990
     c116: cap(a.workRate + 2),
@@ -381,7 +383,7 @@ export function matchCa(i: MatchCaInput) {
   const K = ftol(x * 0.5 + 80);                                 // 0.5 @0x968968, 80 @0x96d6e0
   return { K, pen, soft: K > 150 };                            // 0x96 (0x6eca87)
 }
-const soften = (v: number, t: number, e: number, on: boolean) => (on && v > t ? (v - t) ** e + t : v);
+const soften = (v: number, t: number, e: number, on: boolean) => (on && v > t ? crtPow(v - t, e) + t : v);   // 0x945ff0
 const base = (a: number, K: number, k: number, pen: number) => Math.max(0.1 * (2 * a + K - k * pen), 0); // 0.1 @0x967880
 
 /** Technical/mental attributes that use match CA (stored record value `a`). Extras ported where position-free. */
@@ -396,7 +398,7 @@ export function technicalMatchFloat(name: keyof typeof TECH, a: number, m: Retur
   if (t.soft) v = soften(v, t.soft[0], t.soft[1], m.soft);
   return v;
 }
-const pow22 = (v: number) => 0.05 * v ** 2.2 + 1;               // 2.2 @0x96d6d0, 0.05 @0x967888, 1 @0x967890
+const pow22 = (v: number) => 0.05 * crtPow(v, 2.2) + 1;               // 2.2 @0x96d6d0, 0.05 @0x967888, 1 @0x967890
 export const TECH: Record<string, { rec: number; field: number; k: number; soft?: [number, number]; post?: (v: number) => number }> = {
   anticipation: { rec: 0x1e, field: 0x7d, k: 0.8, post: (v) => 0.5 * v + 5 },   // coach term omitted (+0.225 default)
   crossing: { rec: 0x23, field: 0x8d, k: 0.6, soft: [16, 1.25] },

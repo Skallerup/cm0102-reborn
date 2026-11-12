@@ -4,7 +4,7 @@
 // Importerer ikke sim.ts (cirkulære imports) – sim.ts kalder intlDaily().
 import { ageOn, addDays } from './dates';
 import { MatchSim } from './engine/match';
-import { cmFitMatch, cmFitOn, cmFitSync } from './cmFitnessGame';
+import { cmFitMatch, cmFitOn, cmFitSync, setIntlDuty } from './cmFitnessGame';
 import { naturalRole } from './attributes';
 import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { regionOf } from './leagues';
@@ -374,6 +374,40 @@ function tournamentDay(t: IntlTournament | undefined) {
   for (let i = 0; i + 1 < winners.length; i += 2) t.ko.push({ stage: next, a: winners[i], b: winners[i + 1] });
   t.stage = next;
 }
+
+/** Landsholdsopholdet til konditionsmodulet (0x62c680 0x62c8c0 og 0x62ce30): originalens staff +0x24 = landsholdets klub, og datoen
+ *  0x76e040 ([0xb74318]+4, række nation·110 + type·20 + 0x3a – sat af 0x76bab0 ud fra landsholdets kampe) ligger efter i dag → spilleren
+ *  træner fuldt (ingen sommerpause, ingen "lukket sæson"). Hos os: udtaget til næste vindues kamp (de to dage fra udtagelsen, kampdagen =
+ *  datoen) eller i truppen til en slutrunde, landet stadig er med i, før dets næste kampdag. U21-holdene (type 2) trækkes først på kampdagen
+ *  og har ingen udtagelse før – de tæller ikke (*estimeret*: vores landsholdskalender er ikke originalens). */
+let dutyCache: { date: string; ids: Set<number> } | null = null;
+export function onIntlDuty(p: Player): boolean {
+  const g = gs();
+  if (dutyCache?.date !== g.date) dutyCache = { date: g.date, ids: dutyIds() };
+  return dutyCache.ids.has(p.id);
+}
+function dutyIds(): Set<number> {
+  const g = gs();
+  const st = g.intl, out = new Set<number>();
+  if (!st || g.draft) return out;
+  const nations = new Set<number>();
+  if (st.plan && st.plan.date > g.date) {
+    for (const [a, b] of st.plan.friendlies) { nations.add(a); nations.add(b); }
+    if (st.qual && st.qual.round < 4) for (const n of st.qual.groups.flat()) nations.add(n);
+  }
+  for (const t of [st.tournament, ...(st.cont ?? [])]) {
+    if (!t || t.stage === 'done') continue;
+    const gdays = t.days?.g ?? GROUP_DAYS, kdays = t.days?.ko ?? KO_DAYS;
+    const gi = /^G(\d)$/.exec(t.stage);
+    const md = gi ? gdays[+gi[1] - 1] : kdays[t.stage];
+    if (!md || `${t.year}-${md}` <= g.date) continue;
+    if (gi) for (const k of Object.keys(t.table)) nations.add(+k);
+    else for (const x of t.ko) if (x.stage === t.stage && x.winner === undefined) { nations.add(x.a); nations.add(x.b); }
+  }
+  for (const n of nations) for (const p of nationSquad(n)) out.add(p.id);
+  return out;
+}
+setIntlDuty(onIntlDuty);
 
 /** Hver dag (fra sim.ts): landsholdsvinduer og slutrunder */
 export function intlDaily() {

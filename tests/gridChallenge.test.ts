@@ -17,7 +17,7 @@ function gp(side: 0 | 1, x: number, y: number, o: Partial<GP> = {}): GP {
 const match = (players: GP[], o: Partial<GridMatchState> = {}) =>
   ({ gp: players, players, ballX: 4, ballY: 10, ballH: 0, ballSpeed: 0, ballDir: 0, carrier: null, teamFlags: [0, 0], aiMode: [2, 2], shootout: 0, ...o }) as unknown as GridMatchState;
 const zero = () => 0;
-const top = (n: number) => (n > 0 ? n - 1 : 0);
+const top = (n: number) => (n > 0 ? n - 1 : n < 0 ? n + 1 : 0);   // sub_90cfc0's yderpunkt (n < 0 → n + 1)
 
 describe('handlingsevnerne (sub_6eecb0)', () => {
   it('lin/sq og råværdierne for 19, 33, 0x11, 0x12, keeperen', () => {

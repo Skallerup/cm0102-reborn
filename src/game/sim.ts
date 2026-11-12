@@ -1,6 +1,10 @@
 // Spillets dag-for-dag-løkke.
-import { cmActive, cmAfterMatch } from './cmPlayerData';
+import { cmActive, cmAfterMatch, cmContractDaily } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
+import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
+import { cmSquadPlanDaily } from './cmSquadPlanGame';
+import { cmDevDaily } from './cmDevelop';
+import { cmTrainSquads } from './cmTraining';
 import { recordAiTactics } from './engine/grid/aiTeam';
 import { promoteIfShort } from './reserves';
 import { intlDayResults, intlDaily } from './international';
@@ -154,6 +158,8 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
   const at = tacticFor(f.away, f.home, false, userAuto, f.comp);
   if (cmFitOn(gs())) { setMatchSquad(f.home, [...ht.lineup, ...ht.bench].filter(Boolean)); setMatchSquad(f.away, [...at.lineup, ...at.bench].filter(Boolean)); }
+  // MATCH_PLAYER::setup (0x6eb045): træningen 0x8b1750 for begge kamptrupper (cmTraining.ts; kun den originale database i ægte tilstand)
+  cmTrainSquads(gs(), [...ht.lineup, ...ht.bench, ...at.lineup, ...at.bench].filter(Boolean) as number[], f.id);
   return {
     home: engineTeam(f.home, ht),
     away: engineTeam(f.away, at),
@@ -320,6 +326,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // originalens spillerdata efter kampen (0x7c0d70 statistikken, 0x4ca6d0 kontraktens tællere) – kun den originale database i ægte tilstand,
   // ingen tal fra spillets rng (cmPlayerData.ts)
   cmAfterMatch(g, f, rep, squad);
+  // 0x8c39f0: arbejdstilladelsens historik (kampe spillet/ikke spillet – cmPermit.ts)
+  cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   // 0x62c080: kampkonditionen, trætheden og kampens skader (konditionsmodulet, cmFitness.ts)
   if (cm) cmFitAfterMatch(g, f, rep);
   // 0x896290: taktiklistens statistik efter en kamp mellem to computerhold (gittermotorens valg fra pick_team/omrokeringen)
@@ -459,7 +467,14 @@ function newDay() {
   if (day(d) === 2 && (month(d) === 9 || month(d) === 2)) freeAgentDrift();
   // daglige ting – i ægte tilstand med den originale database styrer originalens konditionsmodul kondition og skader (cmFitness.ts; AWOL er spillets egen)
   const cmFit = cmFitOn(g);
+  // 0x5cccd0's planlægger (efter datoskiftet, før dagens konditionsmodul): computerens trupplan 0x83cb40 (cmSquadPlanGame.ts)
+  cmSquadPlanDaily(g);
   cmFitDay(g);
+  cmPermitDaily(g);
+  // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
+  cmContractDaily(g, squad);
+  // 0x5ce2d0's udviklingsblok (0x5d38f9–0x5d578d) og træningens ugetæller 0x8b1730 (cmDevelop.ts) – erstatter training.ts' develop()
+  cmDevDaily(g);
   for (const p of Object.values(g.players)) {
     if (p.injury && (!cmFit || p.injury.key === 'awol')) {
       p.injury.days--;

@@ -28,6 +28,8 @@ import { CHALLENGES } from './challenges';
 import { monthlyDevelopment, recordDevelopment } from './training';
 import { cmRand, fillReputation } from './cmPlayerData';
 import { cmFitNewGame } from './cmFitnessGame';
+import { cmPermitNewGame } from './cmPermit';
+import { cmSquadPlanStart } from './cmSquadPlanGame';
 
 export interface WorldData {
   version: number;
@@ -131,7 +133,12 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // den originale 01/02-database spilles i 2001-priser (econ.ts); ligaernes niveau måles, når trupperne er klar
   if (cm && season < 2020) g.econ = { k: 0.5, leagues: {} };
   // originalens rå omdømme (club +0x80, nation +0x8e) – computerens holdudtagelse i gittermotoren (cmPlayerData.ts)
-  if (cm?.cmRaw && season < 2020) { g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice(); }
+  if (cm?.cmRaw && season < 2020) {
+    g.cmClubRep = { ...cm.cmRaw.clubRep }; g.cmNationRep = cm.cmRaw.nationRep.slice();
+    // club.dat +100/+119 og club_comp.dat +105 – computerens trupplan 0x83cb40/0x7bca90 (cmSquadPlanGame.ts)
+    if (cm.cmRaw.clubStat) g.cmClubStat = { ...cm.cmRaw.clubStat };
+    if (cm.cmRaw.compRep) g.cmCompRep = { ...cm.cmRaw.compRep };
+  }
   setGame(g);
 
   const leagueById = new Map(world.leagues.map((l) => [l.id, l]));
@@ -196,6 +203,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         p.cmRepMem = fillReputation({ rep: rt.rep ?? [0, 0, 0], ca: rt.ca, pa: rt.paRaw ?? rt.pa, club: club ? { rep: cr ?? 0, sameNation: g.clubs[club]?.nation === p.nation } : null,
           nationRep: cm!.cmRaw.nationRep[p.nation] ?? 0, caps: p.caps }, cmRand(seed, p.id, 535));
         if (rt.fr) p.cmFree = rt.fr;
+        // staff +0x1e (anden nationalitet) og +0x3e (kom til klubben) – arbejdstilladelsens historik (cmPermit.ts)
+        if (rt.n2 !== undefined) p.cmNation2 = rt.n2;
+        if (rt.j) p.cmJoined = rt.j;
       }
       let attrs = rec.attrs;
       if (stored) {
@@ -204,7 +214,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         if (feet[0] >= feet[1]) feet[0] = 20; else feet[1] = 20;
         for (const k of [0, 1]) if (feet[k] < 1) feet[k] = rand(rand(20)) + 1;
         // de viste værdier ved spilstart: intern → sub_538ec0 → sub_538bc0 → sub_544380 (playerInit.ts)
-        attrs = shownFromStored(attrs, ca, pos11[0], feet);
+        const internals: number[] = [];
+        attrs = shownFromStored(attrs, ca, pos11[0], feet, internals);
+        // originalens interne værdier i spillerposten (Player.cmInt) – samme betingelse som cmRepMem
+        if (cm!.cmRaw && season < 2020) p.cmInt = internals;
         p.foot = feet[0] >= 15 && feet[1] >= 15 ? 'B' : feet[0] > feet[1] ? 'L' : 'R';
         p.feet = feet;
       }
@@ -383,6 +396,10 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   takeOverClub(club);
   // originalens konditionsmodul (cmFitness.ts): posterne, skaderne fra databasens dato og startens Fitness (kun original DB i ægte tilstand)
   cmFitNewGame(g);
+  // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
+  cmPermitNewGame(g);
+  // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
+  cmSquadPlanStart(g);
   initKnowledge();
   monthlyDevelopment();
   if (o.challenge) {

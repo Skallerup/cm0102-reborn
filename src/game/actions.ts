@@ -2,6 +2,7 @@
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
+import { setStatusCode } from './cmPlayerData';
 import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
@@ -160,6 +161,7 @@ export function applyAction(a: Action): unknown {
       const p = g.players[a.pid];
       if (p?.club !== g.userClub) return 'error';
       p.squadStatus = a.status ?? undefined;
+      setStatusCode(p);   // kontraktens +0x4f (computerens trupplan 0x83cb40 – cmSquadPlan.ts)
       p.loanListed = a.loanListed || undefined;
       return 'ok';
     }

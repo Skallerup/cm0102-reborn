@@ -110,14 +110,32 @@ export interface Player {
    *  spilstartens udfyldning (sub_535a80, 1-200 – ×50 i hukommelsen), Free Role (+0x1a), kampstatistikken pr. kategori 1–6 (PlayerStats-
    *  posterne, 0x7c0d70), formens nibbles (+0x24..+0x26) og kontraktens tællere (+0x3d/+0x3e/+0x3f/+0x44/+0x45, 0x4ca6d0) */
   cmRepMem?: [number, number, number];
+  /** originalens 18 INTERNE egenskaber (s8, −125..125) som i spillerposten i hukommelsen, i postens rækkefølge: +0x1e Anticipation,
+   *  +0x23 Crossing, +0x24 Decisions, +0x26 Dribbling, +0x27 Finishing, +0x2a Handling, +0x2b Heading, +0x31 Long Shots, +0x32 Marking,
+   *  +0x33 Off the Ball, +0x35 One on Ones, +0x37 Passing, +0x38 Penalties, +0x39 Positioning, +0x3a Reflexes, +0x3e Tackling,
+   *  +0x41 Throw Ins, +0x43 Creativity (= playerInit.ts INTRINSIC_KEYS / CM_INT_OFFSETS). Vist = display(CA + 2·intern) (sub_544380; målmænd
+   *  0,1·CA for Crossing/Creativity/Off the Ball). Sat ved spilstart (sub_535a80 → sub_538ec0/sub_538bc0, playerInit.ts shownFromStored) for den
+   *  originale database; opdateret af træningen (cmTraining.ts). Udeladt = ukendt (motoren skønner af de viste). */
+  cmInt?: number[];
   cmFree?: number;
+  /** staff +0x5e bit 0 (0x4cbb60): 1 reserverne, 2 førsteholdet – skrevet af computerens trupplan 0x83cb40 (0x4cc0b0/0x4cc0f0, cmSquadPlanGame.ts).
+   *  Originalens udtagelse udelukker ikke reserverne (Player.reserves er spillets egen); læses af kontraktens 0x4cb250 (cmPlayerData.ts) */
+  cmPlace?: number;
+  /** TRAINING_MANAGER-posten (6 bytes, cmTraining.ts): skemaet +0, ugen ved sidste opdatering +1, de fem træningseffekter (4 bit) +3/+4/+5 */
+  cmTrain?: { s: number; w: number; b3: number; b4: number; b5: number };
   cmStats?: Record<number, number[]>;
   cmForm?: number;
-  cmContract?: { b3d: number; b3e: number; b3f: number; b44: number; b45: number };
+  cmContract?: { b3d: number; b3e: number; b3f: number; b44: number; b45: number;
+    /** +0x4e (bit 1 transferlistet, bit 2 lejelistet) og +0x4f (trupstatus i høj nibble) – computerens trupplan 0x83cb40 (cmSquadPlan.ts) */
+    b4e?: number; b4f?: number };
   /** originalens konditionspost (Injury, 31 bytes pr. spiller – cmFitness.ts; kun den originale database i ægte tilstand) */
   cmFit?: import('./cmFitness').CmFit;
   /** 0x7a7f20: en skade har sluttet karrieren (pensioneres ved sæsonslut) */
   cmRetire?: boolean;
+  /** staff +0x1e: anden nationalitet fra den originale database (eller fået efter fem år i Storbritannien, 0x8c7330) – cmPermit.ts */
+  cmNation2?: number;
+  /** staff +0x3e: datoen han kom til klubben ifølge den originale database – cmPermit.ts */
+  cmJoined?: string;
   id: number;
   first: string;
   last: string;
@@ -950,12 +968,27 @@ export interface GameState {
   /** originalens tilstand til computerens holdudtagelse (cmPlayerData.ts): spillets karaktersnit [sum, antal] (PlayerStats +0x10/+0x18),
    *  klubbernes og landenes rå omdømme fra databasen (club +0x80, nation +0x8e) og taktiklistens statistik (0x896290, 45 poster) */
   cmRatingAvg?: [number, number];
+  /** [0xae2d14] + 6·klub + 4: klubbens stemning (0x5cd61d, ugentligt – cmPlayerData.ts clubMood) */
+  cmClubMood?: Record<number, number>;
+  /** TRAINING_MANAGER +0x688d: ugetælleren (0x8b1730 – dag-i-året % 7 = 0) */
+  cmTrainWeek?: number;
   cmClubRep?: Record<number, number>;
+  /** club.dat +100/+119 (status, mindste tilskuertal) og club_comp.dat +105 (turneringens omdømme) – computerens trupplan (cmSquadPlanGame.ts) */
+  cmClubStat?: Record<number, [number, number] | [number, number, number, number]>;
+  cmCompRep?: Record<number, number>;
+  /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
+  cmPlan?: Record<number, { s: [number, number, number, number, number, number, number, number, number][]; st: number; fm: number; c: number }>;
+  /** spillets startdato ([0xdd6ec8]) */
+  cmStart?: string;
   cmNationRep?: number[];
   aiTacticStats?: { games: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number; perf: [number, number, number] }[];
   /** konditionsmodulet (cmFitness.ts): spillets startdato [0xdd6ec8] og sygdomsudbruddene (Injury +0x1c, 17-bytes poster) */
   cmFitStart?: string;
   cmOutbreaks?: import('./cmFitness').CmOutbreak[];
+  /** originalens arbejdstilladelses-historik (TRANSFER_MANAGER +0x93a, cmPermit.ts): staff-id → [kampe spillet, ikke spillet, året, landet] */
+  cmPermit?: Record<number, import('./cmPermit').PermitEntry>;
+  /** [0xae2d14] + 6·klub +5 (cmPlayerData.ts): truppens utilfredse nøglespillere – 0x5cccd0 hver 7. dag */
+  cmClubUnhappy?: Record<number, number>;
   version: number;
   /** Prisniveau (2001-priser i den originale database, se econ.ts) – mangler = nutidens priser */
   econ?: import("./econ").Economy;

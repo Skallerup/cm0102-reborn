@@ -19,6 +19,7 @@ import type { Club, GameState, Player } from './types';
 import { ATTRS } from './attributes';
 import { ageOn, addDays } from './dates';
 import { cmActive, cmRand } from './cmPlayerData';
+import { staffIntrinsic, staffShown } from './engine/grid/roleScore';
 
 // ---------------------------------------------------------------- posten
 
@@ -103,6 +104,8 @@ const SEASON: Record<number, [number, number]> = {
   73: [208, 145], 75: [229, 140], 83: [229, 157], 92: [209, 139], 94: [237, 158], 97: [67, 331], 128: [222, 127], 138: [103, 303], 148: [194, 155],
   149: [237, 158], 154: [81, 313], 160: [215, 143], 170: [82, 328], 171: [244, 164], 179: [96, 298], 192: [216, 140], 196: [81, 5], 207: [229, 125],
 };
+/** landet har en række i sæsontabellen (0x669340 finder den; ellers række 4 med start = slut = dag 180) */
+export const hasSeasonRow = (nation: number | undefined) => nation !== undefined && !!SEASON[nation];
 /** 0x669bd0: [i sæson, start (arg2), slut (arg3)] som dagnumre */
 export function clubSeason(nation: number | undefined, today: number): [boolean, number, number] {
   const [A, B] = (nation !== undefined && SEASON[nation]) || [173, 40];
@@ -145,6 +148,12 @@ export interface FitCtx {
   news?: (kind: 'injury' | 'recovered', p: Player, inj: CmInjury) => void;
   /** 0x7a7f20: karrieren slutter pga. skaden */
   retire?: (p: Player) => void;
+  /** staff +0x24 ≠ 0 og 0x76e040's dato efter i dag (0x62c8c0–0x62c937): på landsholdsophold */
+  onDuty?: (p: Player) => boolean;
+  /** club +0x1db ≠ −1: klubben er med i en europæisk turnering (0x62ce30) */
+  inEurope?: (club: number) => boolean;
+  /** TRAINING_MANAGER::update_player_training 0x8b1750(staff, 0) – add_injury kalder den efter dagens opdatering (0x62d312; cmTraining.ts) */
+  train?: (p: Player) => void;
 }
 
 // ---------------------------------------------------------------- 0x62c680 dagens opdatering
@@ -168,8 +177,8 @@ export function updateFitness(c: FitCtx, p: Player): void {
   } else {
     b = N;
     const club = p.club ? c.g.clubs[p.club] : undefined;
-    // staff +0x24 (udtaget til landsholdet, til slutdatoen 0x76e040) er ikke porteret: ingen er "på landsholdsophold" (*estimeret*)
-    if (club) {
+    // 0x62c8c0: staff +0x24 (landsholdets klub) og dens dato 0x76e040 efter i dag → fuld træning hele vejen (ingen sommerpause)
+    if (club && !c.onDuty?.(p)) {
       const [inSeason, start, end] = clubSeason(club.nation, T);
       if (!inSeason) {                                                            // 0x62c9b1: sommerpausen
         b = 0;
@@ -369,10 +378,16 @@ export function endInjury(c: FitCtx, p: Player, post: boolean): void {
   r.inj = null;
 }
 
-/** den bedste fysioterapeut (0x544410 af de tre pladser club +0x1cf – vores klubber kan have flere: den bedste af dem alle) */
+/** 0x62d5c2–0x62d610: den bedste af klubbens tre fysioterapeutpladser club +0x1cf (ikke-spillerposten +0x1e vist med 0x544410, bl starter på 0).
+ *  Hos os klubbens fysioterapeuter (højst 3, STAFF_LIMITS – pladserne i ansættelsesrækkefølgen = id) med Physiotherapy vist af stabens CA som
+ *  aiTeam.ts' manager (staffShown/staffIntrinsic; uden CA databasens værdi). */
 function physio(c: FitCtx, club: number): number {
   let best = 0;
-  for (const s of Object.values(c.g.staff)) if (s.club === club && s.role === 'physio' && s.attrs.physio > best) best = s.attrs.physio;
+  const slots = Object.values(c.g.staff).filter((s) => s.club === club && s.role === 'physio').sort((a, b) => a.id - b.id).slice(0, 3);
+  for (const s of slots) {
+    const v = s.ca ? staffShown(s.ca, staffIntrinsic(s.attrs.physio, s.ca)) : s.attrs.physio;
+    if (s8(v) > best) best = s8(v);
+  }
   return s8(best);
 }
 
@@ -383,6 +398,7 @@ export const FIT_COUNT = { match: 0, other: 0 };
 export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fixture: number, outbreak: boolean, _news: number): CmInjury | null {
   if (!real(p) || t < 0 || t >= 0x52) return null;
   updateFitness(c, p);
+  c.train?.(p);                                                                   // 0x62d312: 0x8b1750 (før skaden sættes)
   const r = fitOf(c.g, p);
   let extra = 0;
   if (r.inj) {                                                                    // 0x62d3f1: kun behandling/ferie afløser en skade
@@ -491,11 +507,11 @@ function spreadOutbreaks(c: FitCtx): void {
 
 // ---------------------------------------------------------------- 0x62b7b0 dagligt
 
-/** 62ce30: sommerpausen inden for 40 dage efter sæsonens slut (ingen træningsskader). club +0x1db (−1 for de fleste klubber) er ikke kendt hos
- *  os – alle klubber behandles som −1 (*estimeret*). */
+/** 62ce30: sommerpausen inden for 40 dage efter sæsonens slut (ingen træningsskader) – ikke for spillere på landsholdsophold (staff +0x24 og
+ *  datoen 0x76e040 efter i dag) og ikke i klubber med en europæisk turnering (club +0x1db ≠ −1). */
 function closeSeason(c: FitCtx, p: Player): boolean {
   const club = p.club ? c.g.clubs[p.club] : undefined;
-  if (!club) return false;
+  if (!club || c.onDuty?.(p) || c.inEurope?.(club.id)) return false;
   const [inSeason, , end] = clubSeason(club.nation, c.today);
   return !inSeason && u16(c.today - end) < 40;
 }
@@ -614,10 +630,27 @@ export function syncPlayer(c: FitCtx, p: Player): void {
   p.condition = condition(c, p) / 100;
 }
 
-/** træningsbelastningen +0x1e: computerens spillere 50 (0x62cf70); et menneskes spillere efter standardskemaet (0x8b3d40: målmænd med
- *  GK ≥ 15 på målmandsskemaet 48, de andre på det generelle 68, 0x8b4f60) – vores egne træningsskemaer er ikke oversat (*estimeret*) */
+/** TRAINING_SCHEDULE::get_load 0x8b4f60: min(100, ftol(1,3·c4) + ftol(0,5·c5) + ftol(0,5·c6) + ftol(0,5·c7) + ftol(0,5·c8)) af skemaets fem
+ *  områder (+4..+8; ord-regning, sic: −ftol(−1,3·c4) …) */
+export function scheduleLoad(c: readonly number[]): number {
+  let si = s16(ftol(c[4] * 0.5) - ftol(c[0] * -1.3));
+  si = s16(si - ftol(c[3] * -0.5)); si = s16(si - ftol(c[2] * -0.5)); si = s16(si - ftol(c[1] * -0.5));
+  return si < 100 ? si : 100;
+}
+/** de faste skemaer 0x8b4e50(id, type) – 0x8b3d40 lægger 0..6 ud: 0 og 7 alt 0; 1 det generelle (25/25/25/25/0); 2–5 ét område på 50 og de
+ *  andre tre på 10; 6 målmændene (10/10/0/10/50). c4 (vægt 1,3) er konditionen, c8 målmandstræningen, c5–c7 de tre andre (samme vægt). */
+const PRESET: Record<number, number[]> = {
+  0: [0, 0, 0, 0, 0], 1: [25, 25, 25, 25, 0], 2: [50, 10, 10, 10, 0], 3: [10, 50, 10, 10, 0], 4: [10, 10, 50, 10, 0], 5: [10, 10, 10, 50, 0], 6: [10, 10, 0, 10, 50],
+};
+/** vores træningsskemaer (training.ts SCHEDULES) → originalens: generelt = 1, kondition = 2 (c4), målmænd = 6, hvile = 0, de øvrige
+ *  (forsvar, boldkontrol, angreb, afslutning, dødbolde) et af 3–5 (c5–c7 – samme belastning) */
+const SCHEDULE_PRESET: Record<string, number> = { general: 1, fitness: 2, defending: 3, ballcontrol: 4, tactics: 3, attacking: 5, shooting: 5, setpieces: 4, goalkeeping: 6, rest: 0 };
+/** træningsbelastningen +0x1e: computerens spillere 50 (0x62cf70; sat til 50, når en spiller forlader en menneskeklub); et menneskes spillere
+ *  efter deres skema (0x8b1750 → 0x62c660 med 0x8b4f60); uden skema originalens standard 0x8b3d40 (GK ≥ 15 målmandsskemaet, ellers det generelle) */
 export function trainingLoad(p: Player, human: boolean): number {
-  return human ? (gkRating(p) >= 15 ? 48 : 68) : 50;
+  if (!human) return 50;
+  const k = p.training ? SCHEDULE_PRESET[p.training] : undefined;
+  return scheduleLoad(PRESET[k ?? (gkRating(p) >= 15 ? 6 : 1)]);
 }
 
 /** at gemme/indlæse: et spil uden poster får dem ved første dag (som 0x62cf70 uden skaderne) */

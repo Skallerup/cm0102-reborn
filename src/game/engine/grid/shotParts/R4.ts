@@ -58,7 +58,7 @@ import { go, label, type ShotEnv, type ShotFrame } from '../takeShot';
 import type { GP, Side } from '../gridMatch';
 import * as L from '../loop';
 import { storyApplies } from '../story';
-import { actionSkills, adjustMorale } from '../challenge';
+import { adjustMorale } from '../challenge';
 
 const w16 = (x: number) => (x << 16) >> 16;
 const s8 = (x: number) => (x << 24) >> 24;
@@ -66,10 +66,10 @@ const u8 = (x: number) => x & 0xff;
 const b = (v: unknown) => (v as number) | 0;
 /** ebx+0x19e ≠ 0 og sub_6c38c0(ebx) == 1: en rigtig keeper på banen */
 const realKeeper = (q: GP | null): q is GP => !!q && q.pos === L.POS.keeper;
-/** sub_6eecb0(q, 0): handlingsevnerne regnes om */
-const recompute = (q: GP) => { q.skill = actionSkills(q); };
+/** sub_6eecb0(q, 0): evnerne regnes om – limens refreshSkills (handlingsevnerne, loftene og rullene sub_6f44a0) */
+const recompute = (E: ShotEnv, q: GP) => { E.refreshSkills(q); };
 /** sub_7172d0(q, d) og ved ændring sub_6eecb0(q, 0) */
-const morale = (E: ShotEnv, q: GP, d: number) => { if (adjustMorale(q, d, E.rand)) recompute(q); };
+const morale = (E: ShotEnv, q: GP, d: number) => { if (adjustMorale(q, d, E.rand)) recompute(E, q); };
 /** sub_6bba50: offerets side for den ventende hændelse, −1 uden (res +0x475a = 0 eller ingen synder +0x4761) */
 const victimSide = (E: ShotEnv): number => { const i = E.m.inc; return i && i.res && i.d ? (i.d.side === 0 ? 1 : 0) : -1; };
 /** 68d1b0: næste i a6-listen (null ved enden) */
@@ -230,7 +230,7 @@ function goal(E: ShotEnv, f: ShotFrame): void {
         let al = s8(E.rand(c * c));                                                      // 0x707053
         if (al < u8(p.b0f)) al = p.b0f;                                                  // 0x707069 (skyttens +0xf)
         k.motivation = s8(k.motivation + al);                                            // 0x707079 (+0x100)
-        recompute(k);                                                                    // 0x707081
+        recompute(E, k);                                                                 // 0x707081
       }
       if (f.a1 !== 0x33) k.rating = w16(k.rating - 500);                                 // 0x707098
       if (b(f.s14)) {                                                                    // 0x70709c: fumlede

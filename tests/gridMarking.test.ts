@@ -32,10 +32,14 @@ describe('markeringsrunden (sub_6b98c0 0x6ba140)', () => {
     expect(calls).not.toContain(st);
   });
 
-  it('forsvarere på egen halvdel og midtbanen med bolden i egen tredjedel', () => {
+  // 0x6ba28e sub_714d00: forsvarerens test er BOLDEN på hans egen halvdel (engine+0x8ea8), ikke spillerens række (rettet 12/11 – testen
+  // havde den gamle regel)
+  it('forsvarere med bolden på egen halvdel og midtbanen med bolden i egen tredjedel', () => {
     const d = P(0, 2, 3, 3, 0x4 | 0x200), mid = P(0, 6, 4, 5, 0x10 | 0x200), opp = P(1, 9, 4, 4, 0x40 | 0x200);
     const calls: L.Player[] = [];
     L.assignMarking(match([d, mid, opp], { ballX: 4, ballY: 6, poss: 1 }), hooks((p) => { calls.push(p); return null; }));
+    expect(calls).toEqual([]);
+    L.assignMarking(match([d, mid, opp], { ballX: 4, ballY: 5, poss: 1 }), hooks((p) => { calls.push(p); return null; }));
     expect(calls).toEqual([d]);
     calls.length = 0;
     L.assignMarking(match([d, mid, opp], { ballX: 0, ballY: 2, poss: 1 }), hooks((p) => { calls.push(p); return null; }));
@@ -54,7 +58,7 @@ describe('markeringsrunden (sub_6b98c0 0x6ba140)', () => {
   it('+0x1aa sættes også, når manden allerede har 3 markører (0x6ba220) – men han kommer ikke på listen', () => {
     const opp = P(1, 9, 4, 3, 0x40 | 0x200);
     const ds = [0, 1, 2, 3].map((i) => P(0, 1 + i, 4, 3, 0x4 | 0x200));
-    L.assignMarking(match([...ds, opp], { poss: 1 }), hooks(() => opp));
+    L.assignMarking(match([...ds, opp], { poss: 1, ballY: 4 }), hooks(() => opp));
     expect(ds.map((d) => d.marks)).toEqual([opp, opp, opp, opp]);
     expect(opp.markers).toEqual(ds.slice(0, 3));
   });

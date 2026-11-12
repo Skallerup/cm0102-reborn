@@ -24,6 +24,7 @@
 
 // ------------------------------------------------------------------ data model
 
+import { crtPow } from '../crtMath';
 export type Side = 0 | 1; // side 0 attacks the goal at (4, 11), side 1 the goal at (4, 0)
 
 export interface MatchPlayer {
@@ -34,7 +35,8 @@ export interface MatchPlayer {
   plads: number;           // word +0x29, "space" value written by sub_7109f0 before the call (0x711150/0x7111e9)
   condition: number;       // float +0x4d (0..10000, sandsynlig)
   w35: number;             // word +0x35 (ukendt; lowered by sub_6fad40 when passing)
-  passesInMove: number;    // byte +0x2b (incremented by sub_6fa250 for the passer)
+  passesInMove: number;    // (ubrugt)
+  busy: number;            // +0x2b
   b2c: number; b2d: number; // +0x2c / +0x2d (line-of-sight bytes, ukendt)
   // match attribute floats (sub_6ec010; record offset in brackets)
   crossing: number;        // +0x8d [rec 0x23]
@@ -69,6 +71,8 @@ export interface MatchState {
 }
 
 export interface Helpers {
+  /** kun spor/låsetrin: kandidatens værdier lige før rand(Professionalism + 1) (0x6c82c2) */
+  trace?(c: MatchPlayer, W: number, shortScore: number, longScore: number, x: Record<string, number>): void;
   rand(n: number): number;                                   // sub_90cfc0: 0..n-1 (n<=0 -> 0 / n+1..0)
   dist(dx: number, dy: number): number;                      // table float[12][9] at 0xa15e44 (|dy|, |dx|)
   freeRun(p: MatchPlayer): 0 | 1 | 2;                        // sub_6cb780
@@ -120,9 +124,10 @@ export function isCross(c: MatchPlayer, tx: number, ty: number, h: Helpers): boo
 
 /** Nation factor K, [F+0x48] (0x6c6a4c..0x6c6ab4). */
 export function nationFactor(nation: string): number {
+  // float32-værdierne 0x3f800000/0x3f19999a/0x3e4ccccd ([esp+0x40] = dword; fdiv dword) – med double 0,2 rundede −500e/K forkert
   if (["England", "Scotland", "Wales", "Northern Ireland", "Republic Of Ireland", "Norway"].includes(nation)) return 1.0; // 0x6c6ab4
-  if (["Sweden", "Denmark", "Germany"].includes(nation)) return 0.6;                                                      // 0x6c6aaa
-  return 0.2;                                                                                                             // 0x6c6a4c
+  if (["Sweden", "Denmark", "Germany"].includes(nation)) return Math.fround(0.6);                                         // 0x6c6aaa
+  return Math.fround(0.2);                                                                                                // 0x6c6a4c
 }
 
 export interface PassChoice { receiver: MatchPlayer | null; weight: number; type?: number; lead?: boolean; x?: number; y?: number; }
@@ -247,7 +252,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       if (e === 0) crowd += 3; else if (e <= 1.5) crowd += 1;              // 0x6c763e / 0x6c7643
     }
     W += 400 * (5 - crowd);                                                // 0x6c765e..0x6c767d
-    if (tInAttBox && crowd < 3 && a < 1) W += ftol(100 * Math.pow(3 - crowd, 3)); // 0x6c76a8 (3.0) 0x6c76b3 (100.0)
+    if (tInAttBox && crowd < 3 && a < 1) W += ftol(100 * crtPow(3 - crowd, 3)); // 0x6c76a8 (3.0) 0x6c76b3 (100.0)
 
     if (h.lineOfSight(ox, oy, tx, ty, D) !== carrier.b2c) W -= h.rand(400 * carrier.b2d); // 0x6c76f4 / 0x6c7708
 
@@ -280,7 +285,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       const d = carrier.decRoll;
       if (!inOwnThird(carrier.side, carrier.y)) W += ftol(-1000 * d * (mark + 0.1)); // 0x6c7928..0x6c7966
       Slofted += -1000 - 2200 * d;                                         // 0x6c7986
-      Slong += -2000 - 25000 * d;                                          // 0x6c79ab
+      Slong += -2000 - 5000 * d;                                           // 0x6c79a2–0x6c79b5: 5⁴·8·d = 5000·d (før 25000·d)
       Sground -= 1500 * d;                                                 // 0x6c79c2..0x6c79d1
     }
     if (isGK(carrier)) W -= 1000;                                          // 0x6c79fb
@@ -361,7 +366,8 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       }
     }
 
-    if (c.passesInMove > 1) W -= 10 * (cr + 4) * c.passesInMove * c.passesInMove; // 0x6c822a..0x6c824f
+    // 0x6c821f–0x6c8253: modtagerens +0x2b (busy – ikke en afleveringstæller; feltet blev aldrig sat) > 1: W −= 50·(cr + 4)·b² (før 10·)
+    if (c.busy > 1) W -= 50 * (cr + 4) * c.busy * c.busy;
 
     // interceptors in the passing lane
     const r = h.rand(lane);                                                // 0x6c825d
@@ -369,6 +375,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
     const shortScore = Sshort - 500 * r * r;                               // 0x6c8293 (ebp)
     const longScore = Slong - 25 * r * r;                                  // 0x6c82b0 (edi)
 
+    h.trace?.(c, W, shortScore, longScore, { Sground, Slofted, ScrossHigh, ScrossLow, mark, D, a, crowd, lane, S34 });
     // personal relations (only when rand(Professionalism + 1) == 0)
     if (h.rand(carrier.staff.professionalism + 1) === 0) {                 // 0x6c82c2
       if (carrier.staff.disliked.includes(c.staff.id)) continue;           // sub_547840 -> skip receiver

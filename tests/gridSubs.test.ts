@@ -20,7 +20,7 @@ beforeAll(() => {
   id = (n: string) => w.clubs.find((c) => c[1] === n)![0];
   createGame(w, { managerName: 'T', managerNation: eng, clubId: id('Arsenal'), activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
   void gs();
-});
+}, 120_000);   // createGame med originalens spillerdata/kondition/trupplan tager flere sekunder under fuld belastning
 const teams = (hn: string, an: string) => {
   const [h, a] = [id(hn), id(an)];
   return [{ players: fresh(h), tactic: aiTactic(h, a, true) }, { players: fresh(a), tactic: aiTactic(a, h, false) }] as const;

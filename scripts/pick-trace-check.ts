@@ -49,7 +49,10 @@ export function estScore(pk: ReturnType<typeof readPicks>[number], c: ReturnType
   // og formen, counters = kontraktens +0x3e/+0x3f; cmFitness.ts: load = trætheden 0x62c3d0 og skaden 0x62ed70 – konditionen 0x62c590 tages altid fra sporet)
   const only = process.env.EST_ONLY, keep = (process.env.EST_KEEP ?? '').split(','), on = (k: string) => (!only || only === k) && !keep.includes(k);
   inp.data = { ...d,
-    contract: on('contract') ? (d.contract ? { b3e: keep.includes('counters') ? d.contract.b3e : 0, b3f: keep.includes('counters') ? d.contract.b3f : 0, b44: 0, b45: 0, b4f: d.contract.b4f } : null) : d.contract,
+    // status/b44/b45: trupstatus +0x4f (computerens trupplan 0x83cb40 – cmSquadPlan.ts; estimeret = 2), tilfredsheden +0x44 og klagerne +0x45 hver for sig
+    contract: d.contract ? { b3e: !on('contract') || keep.includes('counters') ? d.contract.b3e : 0, b3f: !on('contract') || keep.includes('counters') ? d.contract.b3f : 0,
+      b44: !on('contract') || keep.includes('b44') ? d.contract.b44 : 0, b45: !on('contract') || keep.includes('b45') ? d.contract.b45 : 0,
+      b4f: !on('status') ? d.contract.b4f : (d.contract.b4f & 0xf) | 0x20 } : null,
     form: on('avg') ? d.form : d.form,
     load: on('load') ? () => 0 : d.load, injury: on('load') ? () => null : d.injury, history: on('hist') ? () => null : d.history,
     avg: on('avg') ? (_cat, _kind, def) => def : d.avg };

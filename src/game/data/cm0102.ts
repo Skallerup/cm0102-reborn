@@ -15,7 +15,11 @@ export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: numbe
   /** fødderne fra spillerposten (venstre, højre; 1-20) – bruges i originalens afbalancering (sub_538ec0) */
   feet?: [number, number];
   /** Free Role (spillerpost +0x1a, 1-20; udeladt = 1) – originalens udvælgelse 0x6e2f20 og positionsfaktoren læser den */
-  fr?: number }
+  fr?: number;
+  /** staff +0x1e: anden nationalitet (indeks i world.nations; udeladt = ingen) – originalens EU-regel 0x53d740 og arbejdstilladelsens historik */
+  n2?: number;
+  /** staff +0x3e: datoen han kom til klubben (ISO; udeladt = mangler) – arbejdstilladelsens historik 0x8c6e60 og kontraktens dage i klubben */
+  j?: string }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -25,7 +29,11 @@ export interface CMWorld extends WorldData {
   clubRep: Record<number, number>;
   /** databasens rå værdier, som originalens spilstart (sub_535a80) bruger til at udfylde manglende spilleromdømme: klubbens omdømme
    *  (club.dat +128, i16) og landets (nation.dat +0x8e, i16) pr. nationsindeks */
-  cmRaw?: { clubRep: Record<number, number>; nationRep: number[] };
+  cmRaw?: { clubRep: Record<number, number>; nationRep: number[];
+    /** club.dat +100 status (1 professionel, 2 semiprofessionel, 3 amatør) og +119 (mindste tilskuertal) – computerens trupplan 0x83cb40/0x7bca90 */
+    clubStat?: Record<number, [number, number] | [number, number, number, number]>;
+    /** club_comp.dat +105 (turneringens omdømme, i hukommelsen +0x69) pr. turnerings-id (ligaen `CM<id>`, Europa 326/328/330) */
+    compRep?: Record<number, number> };
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
@@ -227,13 +235,15 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   // klubber
   const CL = new Reader(files['club.dat']);
-  type RawClub = { id: number; name: string; short: string; nation: number; division: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; training: number; manager: number };
+  type RawClub = { id: number; name: string; short: string; nation: number; division: number; lastDiv: number; lastPos: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; minAtt: number; training: number; manager: number };
   const rawClubs: RawClub[] = [];
   for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
     rawClubs.push({
       id: CL.i32(o), name: CL.str(o + 4, 51), short: CL.str(o + 56, 26), nation: CL.i32(o + 83), division: CL.i32(o + 87),
+      // sidste sæsons division (+0x5b) og placering (+0x5f) – Comp_Stats' +0x72 ved spilstart (klubbens stemning 0x5cd61d)
+      lastDiv: CL.i32(o + 91), lastPos: CL.u8(o + 95),
       stadium: CL.i32(o + 105), maxAtt: CL.i32(o + 123), rep: CL.i16(o + 128), fg: CL.i32(o + 131), bg: CL.i32(o + 135),
-      balance: CL.i32(o + 101), status: CL.u8(o + 100), avgAtt: CL.i32(o + 115), training: CL.u8(o + 127),
+      balance: CL.i32(o + 101), status: CL.u8(o + 100), avgAtt: CL.i32(o + 115), minAtt: CL.i32(o + 119), training: CL.u8(o + 127),
       // klubbens manager (staff-id; ejerens Bosman-projekt, db.rs: club.dat 207)
       manager: CL.i32(o + 207),
     });
@@ -415,7 +425,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const rep: [number, number, number] = [S.i16(po + 9), S.i16(po + 11), S.i16(po + 13)];
     const feet: [number, number] = [Math.max(0, Math.min(20, lf)), Math.max(0, Math.min(20, rf))];
     const fr = Math.max(1, Math.min(20, get('FreeRole')));
-    ratings[id] = { ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}) };
+    const n2 = nationIdx.get(S.i32(o + 30)), joined = S.date(o + 62);
+    ratings[id] = { ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}),
+      ...(n2 !== undefined && n2 !== nation ? { n2 } : {}), ...(joined ? { j: joined } : {}) };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27
@@ -450,7 +462,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   return {
     kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
     nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub,
-    cmRaw: { clubRep: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined).map((c) => [c.id, c.rep])), nationRep: [...nationIdx.keys()].map((id) => nationVal.get(id)![1]) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
+    cmRaw: { clubRep: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined).map((c) => [c.id, c.rep])), nationRep: [...nationIdx.keys()].map((id) => nationVal.get(id)![1]),
+      clubStat: Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id)).map((c) => [c.id, [c.status, c.minAtt, c.lastDiv, c.lastPos]])),
+      compRep: Object.fromEntries([...comps.entries()].map(([id, c]) => [id, c.rep])) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 

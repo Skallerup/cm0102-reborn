@@ -1,5 +1,6 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
 import { finalOrder, leagueRows } from './competitions';
+import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
 import { addDays, daysBetween } from './dates';
 import { rulesFor, regionOf, type Region } from './leagues';
@@ -489,6 +490,8 @@ export function fillVacancies() {
         careerStart(m, cid);
         club.manager = m.id;
         club.tactic = null;
+        // 0x84abe0: den nye manager lægger trupplanen igen (0x83cb40 med arg4 = 1 – cmSquadPlanGame.ts)
+        cmSquadPlanClub(g, cid, false, true);
         if (g.vacancySince) delete g.vacancySince[cid];
         forEachHuman(() => { if (newsRelevant(cid)) addNews({ cat: 'job', key: 'news.managerHired', params: { club: club.name, manager: `${m.first} ${m.last}` } }); });
         forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });

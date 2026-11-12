@@ -19,11 +19,13 @@
 // ------------------------------------------------------------------ basics
 
 /** sub_90cfc0: 0..n-1; n <= 0 → 0 here (n < 0 behaves as n+1..0 in the original). */
+import { crtPow } from '../crtMath';
 export type Rand = (n: number) => number;
 const ftol = (x: number) => Math.trunc(x); // sub_945640
 
 /** Distance table float[12][9] at 0xa15e44, index [|dy|][|dx|] (sub_6f09b0). Hand-typed in the original. */
-export const DIST: number[][] = [
+// float32 som i originalen (fld dword [0xa15e44 + …]): 1,41 er 1,40999996662… – med double-værdierne rundede ftol/sammenligninger forkert
+export const DIST: number[][] = ([
   [0, 1, 2, 3, 4, 5, 6, 7, 8],
   [1, 1.41, 2.23, 3.16, 4.12, 5.09, 6.08, 7.07, 8.06],
   [2, 2.23, 2.82, 3.6, 4.47, 5.38, 6.32, 7.28, 8.24],
@@ -36,7 +38,7 @@ export const DIST: number[][] = [
   [9, 9.05, 9.21, 9.48, 9.84, 10.2, 10.7, 11.4, 12.1],
   [10, 10.04, 10.1, 10.4, 10.7, 11.1, 11.6, 12.2, 12.8],
   [11, 11.04, 11.1, 11.4, 11.7, 12, 12.5, 13, 13.6],
-];
+] as number[][]).map((r) => r.map((v) => Math.fround(v)));
 export const dist = (x1: number, y1: number, x2: number, y2: number) =>
   DIST[Math.abs(y1 - y2)][Math.abs(x1 - x2)];
 
@@ -79,12 +81,17 @@ export interface Player {
   roll: Rolls;                                    // +0x104..+0x10d
   marks: Player | null;                           // +0x1aa
   markers: Player[];                              // +0x1ae[3], count +0x101
+  /** +0x1ae[0] som feltet står i hukommelsen: nulstilles kun ved kampstart (0x6eadff) – tælleren +0x101 = 0 rydder ikke pegerne, og
+   *  sub_6f09f0 0x6f30e5/0x6f37eb læser feltet uden tælleren (en gammel markør fra et tidligere tik) */
+  marker0?: Player | null;
   /** sub_5b58e0(slot): mandsopdækningens mål i taktikken (sammenlignes med modstandernes +0x69) – kun med taktikbyte bit 4 */
   markRef?: unknown;
   /** +0x69: spillerens reference (staff), som taktikkens mandsopdækning peger på */
   ref?: unknown;
   /** sub_6c38f0: positionsordet i angreb (0 = som pos) */
   posAttack?: number;
+  /** +0x1 afleveringer forsøgt (sub_6fad40 0x6fcac5), +0x100 motivationen og spillerpostens Dirtiness +0x25 – sub_6f55c0 læser dem */
+  c01?: number; motivation?: number; dirtiness?: number;
   /** agitationens gulv 2·(25 − Temperament) (0x6eb0bd) – henfaldet i sub_6f4aa0 kræver det */
   agFloor?: number;
   /** +0xff ophidselses-tælleren og dens grundværdi trunc((trunc(motivation/2) + Dirtiness + 10)/4) (0x6ebcb6) */
@@ -132,6 +139,11 @@ export interface Match {
   formationWord?: [number, number];
   bAf?: [number, number];
   order: Player[];                        // +0x8f7e / count +0x8eb8
+  /** engine+0xf596 (side 0's markspiller længst fremme) og +0xf59a (side 1's): regnes om i toppen af tikket (sub_6cd660, 0x6ba025) og
+   *  opdateres kun opad, når en spiller tager et skridt (sub_6f09f0 0x6f3b8f–0x6f3bf3) – forsvarets step-up læser dem (0x714f0e/0x71509e) */
+  fwd?: [Player | null, Player | null];
+  /** engine+0xf58e/+0xf592: sidens bageste markspiller, sat af sub_6cd660 i toppen af tikket (beholdes, når ingen findes) – sub_6cd5f0 læser dem */
+  last?: [Player | null, Player | null];
   prio: Player | null;                    // +0x91de
   /** engine+0x4782/+0x4786 og +0xf5aa/+0xf5a6 (se GridMatchState) – valgfri her (testenes Match-literaler); tikket rydder modtageren */
   x4782?: number; x4786?: number; passRecv?: Player | null; passGiver?: Player | null;
@@ -142,6 +154,8 @@ export interface Match {
 /** Hooks for functions not ported here. */
 export interface Hooks {
   ballCarrier(p: Player): void;                                  // sub_7109f0(p,0) – ball_carrier/
+  /** sub_6f4aa0 hele (busy, agitation, karakterens vedligehold) – uden den kun busy-- og agitationen */
+  upkeep?(p: Player): void;
   moveTo(p: Player, x: number, y: number, flags: number): void;  // sub_6f09f0(p,x,y,flags,0,0) TODO
   place(p: Player, x: number, y: number): void;                  // sub_6f46b0
   tacticalCell(p: Player): [number, number];                     // sub_6c2be0(p,..,1) + sub_715f50(x) TODO (sect. 2)
@@ -169,12 +183,16 @@ export interface Hooks {
   /** sub_6d6f70 Match_Events::add_event(id, eng, p1, side1, p2, side2, extra) – p1/p2 = spilleren (+0x2e) eller null (−1); side1 mangler = p1's side */
   comment(id: number, p1?: Player | null, side1?: number, p2?: Player | null, side2?: number, extra?: number): void;
   /** offside dømt mod `side` (team +0xf5ca+54·side ++) */
-  offsideGiven?(side: Side): void;
+  offsideGiven?(side: Side, o?: Player): void;
   distToTarget(bx: number, by: number, tx: number, ty: number): number; // sub_6cc4e0 TODO
   landing?(x: number, y: number): void;                          // sub_6c9cd0 (gridMatch: pass.ts)
   receive?(p: Player, power: number, ox: number, oy: number): void; // sub_6f6c00 (gridMatch: pass.ts)
   /** kun fejlsøgning/spor: kaldes efter tikkets første sub_6c3aa0 (0x6ba01e), hvor originalens kampspor læser tilstanden */
   topOfTick?(): void;
+  /** kun låsetrinstesten: ved indgangen (out = false) og udgangen af hver tur sub_7103e0 (match_trace.c TU/TV) */
+  turnTrace?(p: Player, out: boolean): void;
+  /** sub_6cf750 (0x6b9fd3): boldens tredjedel tælles (engine+0x1fc/+0x206/+0x210) */
+  territory?(): void;
 }
 
 // ------------------------------------------------------------------ geometry helpers (sikkert)
@@ -207,8 +225,13 @@ export const offsidePos = (m: Match, p: Player) => (p === m.carrier ? 0 : beyond
 export const isOffside = (m: Match, side: Side, ry: number) =>
   side === 0 ? ry > m.ballY && ry >= m.lineSide1 : ry < m.ballY && ry <= m.lineSide0;
 
-/** sub_6cd660 + sub_6cd5f0: is p the deepest outfield player of his side? */
+/** sub_6cd5f0 (0x6cd5f0–0x6cd652): står p mindst så langt tilbage som sidens registrerede bageste markspiller (+0xf58e/+0xf592 fra toppen af
+ *  tikket – ikke de aktuelle positioner; ingen = 12/−1)? Uden registrering (testenes kampe): de aktuelle positioner. */
 export function isLastMan(m: Match, p: Player): boolean {
+  if (m.last) {
+    const l = m.last[p.side];
+    return p.side === 0 ? p.y <= (l ? l.y : 12) : p.y >= (l ? l.y : -1);
+  }
   const mates = m.players.filter((q) => q.active && q.side === p.side && q.pos !== POS.keeper);
   if (p.side === 0) return p.y <= Math.min(12, ...mates.map((q) => q.y));
   return p.y >= Math.max(-1, ...mates.map((q) => q.y));
@@ -255,7 +278,7 @@ export function rollCaps(p: Player): Caps {
     positioning: c(f3 + p.a.positioning + 4),               // +0x110
     offTheBall: c(f3 + 0.9 * p.a.offTheBall + 5),           // +0x111
     marking: c(f3 + p.a.marking + 4),                       // +0x112
-    flair: c(0.05 * (p.morale + p.a.flair - 10) ** 2),      // +0x113
+    flair: c(0.05 * crtPow(p.morale + p.a.flair - 10, 2)),      // +0x113
     creativity: c(f3 + 0.8 * p.a.creativity + 5),           // +0x114
     anticipation: c(f3 + p.a.anticipation + 5),             // +0x115
     workRate: c(p.a.workRate + 2),                          // +0x116
@@ -263,10 +286,11 @@ export function rollCaps(p: Player): Caps {
     decisions: c(p.a.decisions + 2),                        // +0x10f
   };
 }
+const F0025 = Math.fround(0.0025);
 /** sub_6f44a0. */
 export function rollTick(p: Player, rand: Rand): void {
   const max2 = (n: number) => Math.max(rand(n), rand(n));
-  const cp = ftol(p.condition * 0.0025) + p.cap.pace - 25;   // 0x6f44a7 (0x96d758)
+  const cp = ftol(p.condition * F0025) + p.cap.pace - 25;    // 0x6f44a7: fmul dword [0x96d758] = float32 0,0025 (6000 → 14, ikke 15)
   p.roll.pace = max2(cp);                                     // +0x104
   p.roll.positioning = max2(p.cap.positioning);               // +0x10a
   p.roll.offTheBall = rand(p.cap.offTheBall);                 // +0x107
@@ -282,36 +306,81 @@ export function rollTick(p: Player, rand: Rand): void {
 export function playerTick(p: Player, rand: Rand): void {
   rollTick(p, rand);
   if (rand(11) !== 0) return;                                  // 0x6f55cb
-  if (p.temperCount !== undefined && p.bffBase !== undefined && p.temperCount > p.bffBase) p.temperCount--;   // +0xff henfalder mod grundværdien
+  // 0x6f55db–0x6f560a: grundværdien regnes med den aktuelle motivation +0x100 og Dirtiness (spillerpost +0x25)
+  const base = p.motivation !== undefined && p.dirtiness !== undefined ? Math.trunc((Math.trunc(p.motivation / 2) + p.dirtiness + 10) / 4) : p.bffBase;
+  if (p.temperCount !== undefined && base !== undefined && p.temperCount > base) p.temperCount--;   // +0xff henfalder mod grundværdien
   p.condition += p.pendingCond;                                // 0x6f5613
   p.pendingCond = p.pendingCond === 1 ? 0 : p.pendingCond * 0.5;
-  if (p.injury > 50) p.condition -= Math.min(0.25 * (p.injury - 50) ** 1.25, 25); // 0x6f564e
+  // 0x6f5637: +0x1 = afleveringer forsøgt i kampen (0x6fcac5; −1 ved offside 0x6fa437) – ikke en skade. Over 50: −min((n − 50)^1,25·0,25, 25)
+  const passes = (p.c01 ?? 0) & 0xff;
+  if (passes > 50) p.condition -= Math.min(crtPow(passes - 50, 1.25) * 0.25, 25); // 0x6f564e
   p.condition = Math.min(10000, Math.max(1, p.condition));
 }
 
 // ------------------------------------------------------------------ order (sikkert)
 
 /** sub_6bd760 + comparator sub_6bd840. NB the original uses MSVC qsort (unstable). */
+/**
+ * sub_6bd760 (0x6bd760–0x6bd83c, sikker – asm 12/11): for hvert INDEKS i = 0..19 i holdenes spillerblokke (engine+0x4796 + side·8920 +
+ * i·0x1be – ikke pladsen) trækkes rand(2) = siden, der kommer først; spillere med plads +0x19 ≥ 0 lægges i listen engine+0x8f7e. Listen
+ * sorteres med CRT'ens qsort 0x945333 (MSVC 6: quicksort med midterelementet og shortsort ≤ 8 – IKKE stabil, så lige nøgler ordnes som
+ * i originalen) og sammenligningen 0x6bd840: ved dødbold boldholderen først, så +0x91de (m.prio), ellers den største nøgle
+ * ftol((+0x104 + +0x105)·(0,005·+0x3b + 0,5)·+0x4d) først.
+ */
 export function buildOrder(m: Match, rand: Rand): Player[] {
   const list: Player[] = [];
-  // ydelse: den første spiller med (side, plads) som m.players.find – slået op én gang i stedet for 40 gennemløb
-  const bySlot: (Player | undefined)[] = new Array(40);
-  for (const q of m.players) if (q.slot >= 0 && q.slot < 20 && !bySlot[q.side * 20 + q.slot]) bySlot[q.side * 20 + q.slot] = q;
+  const blk = (m as { blocks?: [Player[], Player[]] }).blocks ??= [m.players.filter((q) => q.side === 0), m.players.filter((q) => q.side === 1)];
   for (let i = 0; i < 20; i++) {
     const s = rand(2) as Side;                                 // 0x6bd773
-    const p0 = bySlot[s * 20 + i]; if (p0?.active) list.push(p0);
-    const p1 = bySlot[(1 - s) * 20 + i]; if (p1?.active) list.push(p1);
+    const p0 = blk[s][i]; if (p0 && p0.slot >= 0) list.push(p0);
+    const p1 = blk[1 - s][i]; if (p1 && p1.slot >= 0) list.push(p1);
   }
-  const keys = new Map<Player, number>();
-  for (const p of list) keys.set(p, ftol((p.roll.pace + p.roll.anticipation) * (0.005 * p.matchCA + 0.5) * p.condition));
-  list.sort((a, b) => {
+  const key = (p: Player) => ftol((p.roll.pace + p.roll.anticipation) * (0.005 * p.matchCA + 0.5) * p.condition);
+  const comp = (a: Player, b: Player) => {                     // 0x6bd840
     if (m.state !== 0 && a === m.carrier) return -1;
     if (m.state !== 0 && b === m.carrier) return 1;
     if (m.prio === a) return -1;
     if (m.prio === b) return 1;
-    return keys.get(b)! - keys.get(a)!;
-  });
+    return key(b) - key(a);
+  };
+  msvcQsort(list, comp);
   return list;
+}
+
+/** CRT qsort 0x945333 (MSVC 6 qsort.c) med shortsort 0x945487 – på et array af pegere (width 4); samme rækkefølge af lige elementer */
+export function msvcQsort<T>(a: T[], comp: (x: T, y: T) => number): void {
+  const n = a.length;
+  if (n < 2) return;
+  const swap = (i: number, j: number) => { if (i !== j) { const t = a[i]; a[i] = a[j]; a[j] = t; } };
+  const lostk: number[] = [], histk: number[] = [];
+  let lo = 0, hi = n - 1;
+  for (;;) {
+    const size = hi - lo + 1;
+    if (size <= 8) {                                           // shortsort: største bagerst, comp(p, max) > 0
+      let h = hi;
+      while (h > lo) { let max = lo; for (let p = lo + 1; p <= h; p++) if (comp(a[p], a[max]) > 0) max = p; swap(max, h); h--; }
+    } else {
+      const mid = lo + (size >>> 1);
+      swap(mid, lo);
+      let loguy = lo, higuy = hi + 1;
+      for (;;) {
+        do loguy++; while (loguy <= hi && comp(a[loguy], a[lo]) <= 0);
+        do higuy--; while (higuy > lo && comp(a[higuy], a[lo]) >= 0);
+        if (higuy < loguy) break;
+        swap(loguy, higuy);
+      }
+      swap(lo, higuy);
+      if (higuy - 1 - lo >= hi - loguy) {
+        if (lo + 1 < higuy) { lostk.push(lo); histk.push(higuy - 1); }
+        if (loguy < hi) { lo = loguy; continue; }
+      } else {
+        if (loguy < hi) { lostk.push(loguy); histk.push(hi); }
+        if (lo + 1 < higuy) { hi = higuy - 1; continue; }
+      }
+    }
+    if (!lostk.length) return;
+    lo = lostk.pop()!; hi = histk.pop()!;
+  }
 }
 
 // ------------------------------------------------------------------ marking (sikkert except zonalPick)
@@ -335,11 +404,12 @@ export function assignMarking(m: Match, h: Hooks): void {
       if (m.teamFlags[p.side] & TEAM.menBehindBall) t = h.zonalPick(p);
       else {
         if (m.poss === p.side && !ownThird(p.side)) continue;   // 0x6ba244
-        if ((p.pos & (POS.def4 | POS.def2) && inOwnHalf(p)) || (p.pos & (POS.mid8 | POS.mid10) && ownThird(p.side)) || inOwnBox(p.side, m.ballX, m.ballY))
+        // 0x6ba28e sub_714d00: BOLDEN (engine+0x8ea8) er på hans egen halvdel – ikke spilleren (før p.y)
+        if ((p.pos & (POS.def4 | POS.def2) && (p.side === 1 ? m.ballY >= 6 : m.ballY < 6)) || (p.pos & (POS.mid8 | POS.mid10) && ownThird(p.side)) || inOwnBox(p.side, m.ballX, m.ballY))
           t = h.zonalPick(p);                                  // 0x6ba276 / 0x6ba297 / 0x6ba2cf
       }
     }
-    if (t) { p.marks = t; if (t.markers.length < 3) t.markers.push(p); }
+    if (t) { p.marks = t; if (t.markers.length < 3) { if (t.markers.length === 0) t.marker0 = p; t.markers.push(p); } }   // 0x6ba238/0x6ba328: +0x1ae[+0x101]
   }
 }
 
@@ -414,6 +484,10 @@ export function ballOutOfPlay(m: Match, lastTouch: Side, h: Hooks): boolean {
 // ------------------------------------------------------------------ a player's turn sub_7103e0 (sikkert)
 
 export function playerTurn(m: Match, p: Player, rand: Rand, h: Hooks): void {
+  if (!h.turnTrace) return turnBody(m, p, rand, h);
+  h.turnTrace(p, false); turnBody(m, p, rand, h); h.turnTrace(p, true);
+}
+function turnBody(m: Match, p: Player, rand: Rand, h: Hooks): void {
   const markersFollow = () => {
     for (const mk of p.markers)
       if (h.canFollow(mk, p.x, p.y) && p.roll.offTheBall * p.roll.pace <= rand(900) + 50) defendOffBall(m, mk, rand, h); // 0x710612
@@ -514,7 +588,7 @@ export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     p.action = ACT.followMan;
     let mx = p.marks.x, my = p.marks.y;
     if (p.roll.positioning !== 0) {
-      if (!inOwnThird((p.side === 0 ? 1 : 0) as Side, my) && !mm && rand(21) > p.marks.a.jumping) {
+      if (!inOwnThird(p.side, my) && !mm && rand(21) > p.marks.a.jumping) {   // 0x714830 sub_6cb930(side == 0, y) = egen tredjedel
         if (p.side === 0 && my > 0) my--; else if (p.side === 1 && my < 11) my++;
         if (mx <= 2) mx++; else if (mx >= 6) mx--;
       }
@@ -526,7 +600,9 @@ export function attackOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
   const creative = () => (p.roll.offTheBall && tryRun(4, ACT.runIntoSpace)) ||
     (p.markers.length > 0 && !(p.pos & 6) && p.roll.offTheBall && tryRun(4, ACT.loseMarker));
   if (p.x === tx && p.y === ty) {
-    if ((p.pos === POS.keeper && p.roll.positioning) || p.roll.positioning === 0 || isLastMan(m, p)) { p.action = ACT.stay; h.moveTo(p, p.x, p.y, -1); return; }
+    // 0x7149a1–0x7149f5: med positionsrul ≠ 0 (keeper eller ej) eller som sidste mand bliver han stående; kun uden rullet prøver han et løb
+    // (før var betingelsen vendt: rul = 0 → stå)
+    if (p.roll.positioning !== 0 || isLastMan(m, p)) { p.action = ACT.stay; h.moveTo(p, p.x, p.y, -1); return; }
     if (creative()) return;
     p.action = ACT.stay; h.moveTo(p, p.x, p.y, -1); return;
   }
@@ -556,9 +632,10 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     const s0 = p.side === 0;
     const okBall = s0 ? by > p.y && p.y < 6 : by < p.y && p.y > 5;
     if (okBall) {
-      const att = m.players.filter((q) => q.active && q.side === opp && q.pos !== POS.keeper);
+      // 0x714f0e/0x71509e: modstandernes registrerede "længst fremme" (+0xf59a / +0xf596, null → 9 / −1) – ikke de aktuelle positioner
       const line = s0 ? m.lineSide0 : m.lineSide1;
-      const a = att.length ? (s0 ? Math.min(...att.map((q) => q.y)) : Math.max(...att.map((q) => q.y))) : (s0 ? 9 : -1);
+      const fw = m.fwd ? m.fwd[opp] : null;
+      const a = fw ? fw.y : s0 ? 9 : -1;
       if (s0 ? a <= line : a >= line) {
         const target = s0 ? line + 2 : line - 2;
         if (trap && Math.abs(p.y - line) < 2) { p.action = ACT.stepUp; h.moveTo(p, p.x, target, -1); return; }
@@ -594,7 +671,7 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
         p.action = ACT.followMan;
         if (p.roll.anticipation !== 0 && m.receiver === t) { h.moveTo(p, bx, by, -1); return; }   // 0x715499
         let mx = t.x, my = t.y;
-        if (!inOwnThird(opp, my) && !mm && rand(21) > t.a.jumping) {
+        if (!inOwnThird(p.side, my) && !mm && rand(21) > t.a.jumping) {   // 0x7154e9 sub_6cb930(side == 0, y) = egen tredjedel
           if (p.side === 0 && my > 0) my--; else if (p.side === 1 && my < 11) my++;
           if (mx <= 2) mx++; else if (mx >= 6) mx--;
         }
@@ -603,7 +680,9 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     }
   }
   // ---- zone 0x71558d
-  let [tx, ty] = h.tacticalCell(p); let toBall = false;
+  // 0x71558d–0x715873: k og "gå mod bolden" først; feltet (sub_6c2be0 + sub_715f50, med drift-rand) slås kun op, når han ikke går mod bolden
+  // (0x7157fb/0x71582e/0x71584d) – før blev det slået op først, så driftens tal kom før k's
+  let tx = 0, ty = 0, toBall = false;
   if (m.poss !== -1 && !keeper) {
     let k: number;
     if (rand(ftol(p.a.teamwork + 0.5)) === 0) k = 0;                           // 0x7155ab
@@ -615,11 +694,12 @@ export function defendOffBall(m: Match, p: Player, rand: Rand, h: Hooks): void {
     }
     if (dist(p.x, p.y, bx, by) < k) {
       const tf = m.teamFlags[p.side];
+      // 0x715746: instruktion 0x2000 med holdflaget i ebp = 0x100 (sat 0x7151cc i jagtafsnittet, som alle veje hertil går igennem)
       if (p.instr & INSTR_CLOSE_DOWN || (p.instr & INSTR_CLOSE_DOWN_P && tf & TEAM.pressing) || tf & TEAM.menBehindBall) toBall = true;
       else if (!(p.pos & (POS.def2 | POS.def4)) && rand(m.touchCount[opp]) > rand(25) && !isLastMan(m, p)) toBall = true;
     }
-    if (toBall) [tx, ty] = [bx, by];
   }
+  if (toBall) [tx, ty] = [bx, by]; else [tx, ty] = h.tacticalCell(p);
   if (keeper) return keeperOffBall(m, p, tx, ty, rand, h);
   if (m.poss !== -1 && inOwnBox(p.side, p.x, p.y)) {                           // 0x71590c
     const gk = h.ownKeeper(p.side);
@@ -726,8 +806,8 @@ export function passWrapper(m: Match, p: Player, type: number, receiver: Player 
       const d = dist(o.x, o.y, 4, goalLine(o.side));
       if (rand(ftol(2 * d * d)) !== 0) {                          // 0x6fa2ec fmul + fadd st0,st0 = 2·d² → 0x6fa2f8 → 0x6fa3db offside given
         h.comment(0x1f78, o, p.side);                             // 0x6fa3f6: 8056 EVENT_RESTART_OFFSIDE (p1 = den offside, side = afleverens)
-        h.offsideGiven?.(p.side);                                 // holdets offside +0xf5ca+54·side
-        // TODO counters: team +0xf5ca+54*side ++, o.+0x13 ++, p.+0x1 --
+        h.offsideGiven?.(p.side, o);                              // holdets offside +0xf5ca+54·side, o's +0x13 (0x6fa424)
+        if (p.c01 !== undefined) p.c01 = (p.c01 - 1) & 0xff;      // 0x6fa42c: afleverens +0x1 −1 (o's +0x13 ++ tælles af offsideGiven-krogen?)
         m.ballX = o.x; m.ballY = o.y; m.state = 7; m.poss = (p.side === 0 ? 1 : 0); m.carrier = null;
         return;
       }
@@ -749,6 +829,26 @@ export function stoppage(m: Match, rand: Rand): void {
   const r = rand(10);                                   // 0x6b9f5f
   m.clock += r;
   m.stoppage += rand(ftol(0.8 * r));                    // 0x9689b0
+}
+
+/** sub_6cd660 (sikker): side 0's markspiller med størst y (første ved lighed) og side 1's med mindst y; keepere (positionsord 1) tæller ikke */
+/** sub_6cd660 (0x6cd660–0x6cd76a): for hver side (spillerblokkens rækkefølge, plads ≥ 0, ikke målmanden) den bageste (+0xf58e/+0xf592) og
+ *  den forreste (+0xf596/+0xf59a) – første ved lighed; findes ingen, beholdes den gamle peger (feltet nulstilles ikke) */
+export function forwardMost(m: Match): void {
+  const fwd = m.fwd ?? [null, null], last = m.last ?? [null, null];
+  let lb0 = 12, fd0 = -1, lb1 = -1, fd1 = 12;
+  for (const p of m.players) {
+    if (p.slot < 0 || p.pos === POS.keeper) continue;
+    if (p.side === 0) { if (p.y < lb0) { lb0 = p.y; last[0] = p; } if (p.y > fd0) { fd0 = p.y; fwd[0] = p; } }
+    else { if (p.y > lb1) { lb1 = p.y; last[1] = p; } if (p.y < fd1) { fd1 = p.y; fwd[1] = p; } }
+  }
+  m.fwd = fwd; m.last = last;
+}
+/** sub_6f09f0 0x6f3b8f–0x6f3bf3: efter et skridt bliver den, der kom længere frem end den registrerede, ny "længst fremme" */
+export function noteForward(m: Match, p: Player): void {
+  if (!m.fwd) return;
+  if (p.side === 0) { const f = m.fwd[0]; if ((f ? f.y : -1) < p.y) m.fwd[0] = p; }
+  else { const f = m.fwd[1]; if ((f ? f.y : 9) > p.y) m.fwd[1] = p; }
 }
 
 /** One tick. Returns false when the period/match stops (sub_6bd930 result ≠ 0). */
@@ -779,15 +879,18 @@ export function tick(m: Match, rand: Rand, h: Hooks): boolean {
   }
   // 0x6b9fa3–0x6b9fbd (sikker): har en anden end den sidste modtager (+0xf5aa) bolden, glemmes modtager og afleverer (+0xf5a6)
   if (m.carrier && m.carrier !== m.passRecv) { m.passRecv = null; m.passGiver = null; }
+  h.territory?.();                                      // 0x6b9fd3 sub_6cf750(+0x8eae, +0x8ebb): territoriet – her i tikket, før vedligeholdet
   // TODO sub_6cf750 stats, sub_6f4aa0 rating upkeep (busy-- is part of it):
   // sub_6f4aa0 (delvis): busy tælles ned; agitationen henfalder ×0,85 mod gulvet (player-state-bytes.md §1, float32 0x96d364)
-  for (const p of m.players) {
+  for (const p of m.players) {                                          // 0x6b9fd8–0x6ba01a: side 0's 20, så side 1's (slot ≥ 0)
     if (!p.active) continue;
-    if (p.busy > 0) p.busy--;
+    if (h.upkeep) { h.upkeep(p); continue; }
+    if (p.busy > 0) p.busy--; else if (p.busy < 0) p.busy = 0;
     agitationDecay(p);
   }
   offsideLines(m);                                      // sub_6c3aa0
   h.topOfTick?.();                                      // fejlsøgning: samme sted som kampsporet (match_trace.c, kaldet 0x6ba01e)
+  forwardMost(m);                                       // 0x6ba025 sub_6cd660
   m.order = buildOrder(m, rand);                        // sub_6bd760
   m.prio = null;
   // 0x6ba05b–0x6ba0fa (sikker): jagerne sub_6c30e0 og målmandsflagene sub_6c3010(sub_6ce110(side), bold) → +0x8eac/+0x8ead

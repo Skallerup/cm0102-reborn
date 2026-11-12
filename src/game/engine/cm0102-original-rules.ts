@@ -11,6 +11,7 @@
  * (0 when n <= 0).
  */
 
+import { crtPow } from './crtMath';
 export type Rand = (n: number) => number;
 
 /** Wraps a 0..1 generator (e.g. the game's Rng) as the original's rand(n). */
@@ -227,7 +228,7 @@ export function judgeTackle(rand: Rand, ctx: JudgeContext, offender: FoulPlayer,
   if (ref && (type === 42 || type === 12 || type === 21) && !inBox && rand(50 - ref.b24) === 0) { ref.mood += 25; return out(); }
   if (inBox && (type === 42 || type === 12 || type === 46 || type === 21) && rand(3) !== 0) return out();
   const inOwn = inBoxAt(offender.side, offender.x, offender.y);
-  const n = Math.trunc(((inOwn ? 5 : 20) * Math.pow(victim.sportsmanship, 1.5)) / (victim.grudge === offender ? 3 : 1));
+  const n = Math.trunc(((inOwn ? 5 : 20) * crtPow(victim.sportsmanship, 1.5)) / (victim.grudge === offender ? 3 : 1));
   hurt = rand(n) === 0;
   if (hurt) victim.w31 -= 4;
   let bias = 0;
@@ -387,7 +388,7 @@ export function isGoal(s: number, keeper: number, compTypeBonus = false): boolea
   return ratio > 71;
 }
 /** Distance penalty on the shot score, eased by Long Shots in the original (sub_700bd0). confirmed */
-export const shotDistancePenalty = (d: number) => Math.min(30000, Math.pow(0.6 * d + 1.5, 7));
+export const shotDistancePenalty = (d: number) => Math.min(30000, crtPow(0.6 * d + 1.5, 7));
 /** Bonus for shots from distance band 0 / 1 (sub_700bd0). confirmed */
 export const shotCloseBonus = (d: number) => (d === 0 ? 200 : d === 1 ? 100 : 0);
 /** Fatigue term in the shot score: rand((10000 - condition)² / 50000), condition 0..10000 (sub_700bd0). confirmed */
@@ -517,7 +518,7 @@ export const subRankKey = (rating: number, condition10000: number) => Math.trunc
  */
 export function offsideFlag(rand: Rand, columnsBeyondLine: number, v: number): boolean {
   if (columnsBeyondLine <= -2) return rand(6 * v + 500) === 0;
-  if (columnsBeyondLine === -1) return rand(Math.trunc(v ** 3 + 25)) === 0;
+  if (columnsBeyondLine === -1) return rand(Math.trunc(crtPow(v, 3) + 25)) === 0;
   if (columnsBeyondLine === 0) return rand(3) !== 0 && v < rand(18);
   return v < rand(100);
 }

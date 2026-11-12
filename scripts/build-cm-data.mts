@@ -197,7 +197,7 @@ const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
-if (w.cmRaw) { if (!ORIGINAL) delete w.cmRaw; else for (const k of Object.keys(w.cmRaw.clubRep)) if (!keptClubs.has(Number(k))) delete w.cmRaw.clubRep[Number(k)]; }
+if (w.cmRaw) { if (!ORIGINAL) delete w.cmRaw; else for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
 // stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));

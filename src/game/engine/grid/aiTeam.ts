@@ -11,17 +11,19 @@
 // karaktersnit [0xb74350]+0x10/+0x18, kontraktens +0x3e/+0x3f/+0x44 (0x4ca6d0) og taktiklistens statistik (0x896290, GameState.aiTacticStats).
 // Konditionen 0x62c590, trætheden 0x62c3d0 og skaden 0x62ed70 fra originalens konditionsmodul (game/cmFitness.ts, Player.cmFit).
 // *estimeret* (findes ikke i vores spil): kontraktens flag +0x45 = 0 (sættes af systemer, der ikke er porteret), trupstatus +0x4f fra
-// Player.squadStatus (0 uden); 0x8c7260/0x8c7560 (arbejdstilladelsens landskampsprocent) = ingen; ikke-spillerpostens adresse mod 20
+// Player.squadStatus (0 uden); 0x8c7260/0x8c7560 (arbejdstilladelsens kampe spillet/ikke spillet) fra cmPermit.ts; ikke-spillerpostens adresse mod 20
 // (anføreren) = id mod 20. Uden for den originale database: kondition = Player.condition, ingen træthed/skade.
 
 import type { Player } from '../../types';
 import { ATTRS } from '../../attributes';
 import { ageOn } from '../../dates';
+import { CM_INT_OFFSETS } from '../../playerInit';
 import { AI_TACTIC_LIST, chooseAiTactic, type AiTacticEntry, type ChoiceManager, type ChoicePlayer, type TacticStat } from './aiTacticChoice';
 import { assignSquad, benchSlots, pickFlags, setPieceTakers, type Rand } from './pickTeam';
 import { gs, hasGame } from '../../state';
 import { cmActive, cmContractOf, cmFormRatings, leagueAverage, statAvg, statusCode } from '../../cmPlayerData';
 import { cmFitRead, setMatchSquad } from '../../cmFitnessGame';
+import { cmPermitHistory } from '../../cmPermit';
 import { newTacticStats, recordTacticResult } from './aiTacticChoice';
 import { chooseCaptain, judgeAbility, recentForm, roleScore, staffIntrinsic, staffShown, type CaptainInput, type Day, type RoleData, type RoleInput } from './roleScore';
 
@@ -75,6 +77,8 @@ export function playerRecord(p: Player): number[] {
     const shown = p.attrs[ATTRS.indexOf(k as never)] || 10;
     b(o, intr ? intrinsicFromShown(shown, p.ca, gk ? GK_LOW.has(k) : OUT_LOW.has(k)) : shown);
   }
+  // originalens interne værdier (Player.cmInt, sub_535a80 ved spilstarten – playerInit.ts), når vi har dem
+  if (p.cmInt) CM_INT_OFFSETS.forEach((o, k) => b(o, p.cmInt![k]));
   b(0x30, p.feet?.[0] ?? (p.foot === 'L' || p.foot === 'B' ? 18 : 8));
   b(0x3b, p.feet?.[1] ?? (p.foot === 'R' || p.foot === 'B' ? 18 : 8));
   b(0x45, p.morale ?? 10);
@@ -165,7 +169,8 @@ export function roleDataOf(p: Player, ctx: AiPickCtx, age: number): RoleData {
     },
     leagueAvg: ctx.leagueAvg ?? 6.8,
     sameNation: true,
-    history: () => null,
+    // 0x8c7260/0x8c7560: arbejdstilladelsens historik (cmPermit.ts)
+    history: ctx.cm && hasGame() ? () => cmPermitHistory(gs(), p) : () => null,
   };
 }
 const repOf = (p: Player) => p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, 0];

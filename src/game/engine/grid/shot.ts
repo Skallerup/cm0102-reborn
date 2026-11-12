@@ -8,6 +8,7 @@
  * Every constant has its instruction address. `trunc` = MSVC _ftol (sub_945640).
  */
 
+import { crtPow } from '../crtMath';
 export type Rand = (n: number) => number; // sub_90cfc0: 0..n-1; n = 0 → 0; n < 0 → n+1..0
 
 /** sub_90cfc0 semantics for a plain Math.random source (the original uses a table RNG). */
@@ -112,7 +113,7 @@ export interface ShotContext {
 }
 
 export interface ShotScore {
-  type: number; score: number; quality: number /* w39 */; tightAngle: boolean; fromDistance: boolean;
+  type: number; score: number; quality?: number /* w39 – skrives kun af scoringen 0x701311–; udeladt = +0x39 uændret */; tightAngle: boolean; fromDistance: boolean;
   /** skudtypens begivenhed (sub_700bd0's andet ud-argument [esp+0x22c], 0x701bd7–0x701fcb) – sub_702050's a3 */
   event: number;
 }
@@ -156,10 +157,10 @@ export function shotScore(c: ShotContext, rand: Rand, preset: number = 0xff): Sh
 
   let type = preset;
   const v = (code: number) => shotSkill(code, a, c.form);
-  const fail = (): ShotScore => ({ type: SHOT.LOW_DRIVE, score: -1000, quality: 0, tightAngle: false, fromDistance: false, event: 0x1f81 }); // 0x701fbe, text 8065
+  const fail = (): ShotScore => ({ type: SHOT.LOW_DRIVE, score: -1000, tightAngle: false, fromDistance: false, event: 0x1f81 }); // 0x701fbe, text 8065
 
   if (type === SHOT.PENALTY) // 0x700d19, text 8063
-    return { type, score: rand(5 * v(SHOT.PENALTY)) + 150, quality: 0, tightAngle: false, fromDistance: false, event: 0x1f7f }; // 0x700d20 TAKE_PENALTY
+    return { type, score: rand(5 * v(SHOT.PENALTY)) + 150, tightAngle: false, fromDistance: false, event: 0x1f7f }; // 0x700d20 TAKE_PENALTY
 
   if (type !== SHOT.FREE_KICK) {
     if (c.prevAction === 0x3b) type = SHOT.DIVING_HEADER; // 0x700d52
@@ -254,13 +255,13 @@ export function shotScore(c: ShotContext, rand: Rand, preset: number = 0xff): Sh
   const isHeader = type === SHOT.HEADER || type === SHOT.DIVING_HEADER;
   const onByLine = (c.y === 0 || c.y === 11) && Math.abs(c.x - 4) === 1;
   if (isHeader && c.D >= 1 && !onByLine) {
-    let p = trunc(((c.D + 2) ** 8) / 3);                             // 0x968950, 0x968f10, 0x968a80
+    let p = trunc(crtPow(c.D + 2, 8) / 3);                             // 0x968950, 0x968f10, 0x968a80
     if (p > 15000 || p < 0) p = 15000;                               // 0x7019fc
     S -= rand(p); q -= idiv(p, 2);
   } else if (c.D === 0) { S += 200; q += 200; }                      // 0x701a5c
   else if (c.D === 1) { S += 100; q += 100; }                        // 0x701a7e
   else if (c.D > 1.5) {
-    let p = Math.min(trunc((0.6 * c.D + 1.5) ** 7), 30000);          // 0x968e48, 0x968940, 0x968988
+    let p = Math.min(trunc(crtPow(0.6 * c.D + 1.5, 7)), 30000);          // 0x968e48, 0x968940, 0x968988
     let g: number;
     if (type === SHOT.MADE_SURE) { p = idiv(p, 20); g = 1 - 0.025 * (c.flairRoll + a.longShots); }
     else if (type === SHOT.FREE_KICK) { p = idiv(p, 15); g = 1 - 0.05 * a.freeKicks; }   // 0x967888

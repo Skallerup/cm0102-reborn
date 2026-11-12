@@ -29,12 +29,14 @@ function mix(...xs: number[]): number {
   for (const x of xs) { h = Math.imul(h ^ (x | 0), 0x01000193); h ^= h >>> 15; h = Math.imul(h, 0x2c1b3c6d); h ^= h >>> 12; }
   return h >>> 0;
 }
-/** rand(n) → 0..n−1 som 0x90cfc0 (n ≤ 0 → 0) af en deterministisk talrække */
+/** rand(n) som 0x90cfc0 af en deterministisk talrække: 0..n−1, n = 0 → 0, negativt n → −(0..|n|−1) (idiv med negativ divisor og `neg edx`,
+ *  0x90d020–0x90d026 – udviklingen 0x5d38f9 trækker rand(T) og rand(L) med negative grænser) */
 export function cmRand(...seed: number[]): (n: number) => number {
   let s = mix(...seed) || 1;
   return (n: number) => {
     s ^= s << 13; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
-    return n > 0 ? s % Math.trunc(n) : 0;
+    const k = Math.trunc(n);
+    return k > 0 ? s % k : k < 0 ? 0 - (s % -k) : 0;
   };
 }
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -136,7 +138,7 @@ export function archiveCmStats(p: Player): void {
 
 // ---------------------------------------------------------------- kontrakten +0x3d/+0x3e/+0x3f/+0x44/+0x45
 
-export interface CmContract { b3d: number; b3e: number; b3f: number; b44: number; b45: number }
+export interface CmContract { b3d: number; b3e: number; b3f: number; b44: number; b45: number; b4e?: number; b4f?: number }
 const s8 = (v: number) => (v << 24) >> 24;
 const clamp100 = (v: number) => (v > 100 ? 100 : v < -100 ? -100 : v);
 
@@ -147,8 +149,12 @@ export function newCmContract(status: number): CmContract {
 }
 
 const STATUS_CODE: Record<string, number> = { key: 1, first: 2, rotation: 3, backup: 4, prospect: 5, young: 6, surplus: 7 };
-/** trupstatus (kontrakt +0x4f >> 4) af vores Player.squadStatus (0 uden) */
-export const statusCode = (p: Player) => STATUS_CODE[p.squadStatus ?? ''] ?? 0;
+/** trupstatus (kontrakt +0x4f >> 4): computerens trupplan 0x83cb40 skriver den i kontrakten (cmSquadPlan.ts); ellers vores Player.squadStatus (0 uden) */
+export const statusCode = (p: Player) => (p.cmContract?.b4f !== undefined ? (p.cmContract.b4f >> 4) & 0xf : STATUS_CODE[p.squadStatus ?? ''] ?? 0);
+/** manageren sætter trupstatus (menneskets klub): kontraktens +0x4f følger med */
+export function setStatusCode(p: Player): void {
+  if (p.cmContract?.b4f !== undefined) p.cmContract.b4f = (p.cmContract.b4f & 0xf) | ((STATUS_CODE[p.squadStatus ?? ''] ?? 0) << 4);
+}
 
 export function cmContractOf(p: Player): CmContract {
   return (p.cmContract ??= newCmContract(statusCode(p)));
@@ -160,12 +166,13 @@ const daysClamp = (from: string | undefined, today: string) => {
   return d < 0 ? 0 : d > 400 ? 400 : d;
 };
 
-/** 0x4cb0a0 (tilfreds med spilletiden): +0x44 += trunc(clamp(1 + F·k, 0,01, 2)/(+0x3f + 5)) (altid 0 for +0x3f ≥ 0) og loftet efter flagene */
+/** 0x4cb0a0 (tilfreds med spilletiden): +0x44 += min(10, trunc((+0x3f + 5)/clamp(1 + F·k, 0,01, 2))) og loftet efter flagene */
 function happyStep(p: Player, c: CmContract, clubRep: number, age: number): void {
   const F = s16(curRep(p)) - s16(clubRep) + s8(age) * 417 - 11680;
   let x = 1 + (F < 0 ? F * 6.6e-5 : F * 6.666666666666667e-5);
   if (x < 0.01) x = 0.01; else if (x > 2) x = 2;
-  let y = s8(Math.trunc(x / (s8(c.b3f) + 5)));
+  // 0x4cb15b: fild (+0x3f + 5); fxch; fdivp st(1) → (+0x3f + 5)/x (ikke x/(…) – rettet 12/11 mod sporet)
+  let y = s8(Math.trunc((s8(c.b3f) + 5) / x));
   if (y > 10) y = 10;
   const fl = c.b45;
   let cap = fl & 2 ? 50 : 100;
@@ -176,26 +183,179 @@ function happyStep(p: Player, c: CmContract, clubRep: number, age: number): void
   if (!((y <= 5 || s8(c.b44) + y <= 0) && s8(c.b3d) < 75 - y)) c.b45 &= ~0x14;
 }
 
-/** 0x4cb250 (utilfreds): +0x44 −= trunc(clamp(1 − F·k, 0,1, 10)/(+0x3e + 4) + 0,5). F af omdømmet mod klubbens, dagene i klubben (A) og siden
+/** 0x867700 (STAFF_CONTRACT::apply_event_flags): +0x45 |= flag for en spiller (job 11/13/15 – alle vores), derefter transferønsket (0x8677a0–
+ *  0x86781b: ikke klubbens manager/assistent, +0x44 ≥ 0, +0x49 = 0, 0x866f60, ingen aftalt skifte, ikke listet/ønsket (+0x4e & 9), ikke på vej
+ *  til fritstilling, over 20 år eller nuværende omdømme over 4250 → 0x4d8610). I spillet kun med en spiller i sammenhængen (flagCtx – de rene
+ *  kontrolfunktioner som unhappyCore kører uden). Managerens forhold (+0x59, 0x547af0 "disliked staff", 0x549cf0) findes ikke hos os. */
+export function cmFlagSet(c: CmContract, flag: number): void {
+  c.b45 = (c.b45 | flag) >>> 0;
+  if (flagCtx && flagCtx.depth < 8) requestAfterFlag(flagCtx.g, flagCtx.p, c);
+}
+let flagCtx: { g: GameState; p: Player; rand: (n: number) => number; depth: number } | null = null;
+/** kør fn med en spiller i sammenhængen, så 0x867700's transferønske kan følge et flag */
+export function withFlagCtx<T>(g: GameState, p: Player, rand: (n: number) => number, fn: () => T): T {
+  const prev = flagCtx;
+  flagCtx = { g, p, rand, depth: prev && prev.p === p ? prev.depth : 0 };
+  try { return fn(); } finally { flagCtx = prev; }
+}
+
+/** hvad 0x866f60 læser: staff-id, +0x59 Loyalty, +0x5a Pressure, +0x5b Professionalism, +0x5d Temperament, +0x57 Ambition, spillerpostens
+ *  nuværende omdømme +0xb, kontraktens begivenheder +0x40 */
+export interface LeaveIn { id: number; loy: number; pres: number; prof: number; temp: number; amb: number; repCur: number; b40: number }
+/** 0x866f60 STAFF_CONTRACT::wants_to_leave: en score af personligheden, tilfredsheden +0x44 og omdømmet, minus antallet af klagegrupper, mod
+ *  klagerne +0x45 (og +0x4e bit 1: listet) – 1 = han beder om at blive sat til salg */
+export function wantsToLeave(i: LeaveIn, c: CmContract): boolean {
+  const fl = c.b45 >>> 0;
+  if (!fl) return false;
+  const prof = s8(i.prof), pres = s8(i.pres), loy = s8(i.loy), temp = s8(i.temp), b44 = s8(c.b44);
+  let dl = s8((i.id % 7) + loy + pres + prof);
+  if (pres === 1) dl = s8(dl - 2);
+  if (loy === 1) dl = s8(dl - 3); else if (loy < 6) dl = s8(dl - 1);
+  if (prof === 1) dl = s8(dl - 3); else if (prof < 6) dl = s8(dl - 1);
+  if (temp === 1) dl = s8(dl - 2);
+  dl = s8(dl + (b44 > 75 ? 10 : b44 > 50 ? 5 : b44 > 0 ? 2 : 0));
+  const rc = s16(i.repCur);
+  if (rc > 7250) dl = s8(dl - 5); else if (rc > 5750) dl = s8(dl - 3);
+  let n = 0;
+  for (const m of [0x20000, 0x40000, 0x1000002, 0x200600, 0x2840, 0x14]) if (fl & m) n++;
+  if (i.b40 & 8 || fl & 0x4582208) n++;
+  if (n > 1) {
+    dl = s8(dl - 3);
+    if (prof < 6) dl = s8(dl - n);
+    if (temp < 6) dl = s8(dl - n);
+    if (loy === 1) dl = s8(dl + s8(n * -2)); else if (loy < 6) dl = s8(dl - n);
+    if (pres < 6) dl = s8(dl - n);
+  }
+  if (loy < 15 && (c.b4e ?? 0) & 1) return true;
+  if (fl & 0x1000002 && loy < 10 && dl < 25) return true;
+  if (fl & 0x20020 && dl < 25) return true;
+  if (fl & 0x200 && dl < 18) return true;
+  if (fl & 4 && s8(i.amb) > 15 && prof < 10) return true;
+  if (fl & 0x2808 && loy < 10 && pres < 6 && dl < 30) return true;
+  if ((fl & 0x82200 || i.b40 & 8) && prof < 10 && dl < 20) return true;
+  if (fl & 0x111) return true;
+  return b44 < -70 - loy;
+}
+
+/** spillets egne dele af 0x4d8610: prisen (0x4d1600 er ikke porteret – transfers.ts' askingPrice, *estimeret*) og menneskets nyhed (0xbbf – will.ts) */
+export interface RequestHooks { asking: (p: Player) => number; human: (p: Player, c: CmContract) => void; isHuman: (club: number) => boolean }
+let reqHooks: RequestHooks | null = null;
+export function setRequestHooks(h: RequestHooks): void { reqHooks = h; }
+
+function requestAfterFlag(g: GameState, p: Player, c: CmContract): void {
+  if (!p.club || s8(c.b44) < 0 || p.contract?.futureClub || (c.b4e ?? 0) & 9) return;
+  const rep = curRep(p);
+  if (!wantsToLeave({ id: p.id, loy: sh(p, 'loyalty'), pres: sh(p, 'pressure'), prof: sh(p, 'professionalism'), temp: sh(p, 'temperament'), amb: sh(p, 'ambition'),
+    repCur: rep, b40: 0 }, c)) return;
+  if (!(ageOn(p.dob, g.date) > 20 || rep > 4250)) return;
+  handleTransferRequest(p, c);
+}
+/** 0x4d8610 CONTRACT_MANAGER::handle_transfer_request: computerens klub giver lov (kontrakt +0x4e: bit 2 ryddes, bit 8 sættes) medmindre han er
+ *  nøglespiller (status 1) eller prisen er over 1,5 × værdien (0x4d0c60 – hos os Player.value); ellers afslag: rand(+0x44 + 20·(Loyalty + 5)) <
+ *  rand(50) → flag 0x10000, og +0x44 += s8(5·Loyalty + 56) (sic: 8 bit). Menneskets klub: en nyhed til manageren (hvis han ikke er på vej væk). */
+function handleTransferRequest(p: Player, c: CmContract): void {
+  const ctx = flagCtx!;
+  if (reqHooks?.isHuman(p.club)) { reqHooks.human(p, c); return; }
+  const grant = statusCode(p) !== 1 && !!reqHooks && p.value * 1.5 > reqHooks.asking(p);
+  if (grant) {
+    c.b4e = (((c.b4e ?? 0) & ~2) | 8) & 0xff;
+    p.wantsAway = true;                                                        // 0x842c00: på klubbernes ønskelister (staff_adjust_morale +12 – ikke hos os)
+    return;
+  }
+  const loy = sh(p, 'loyalty');
+  const r1 = ctx.rand(s8(c.b44) + 20 * (s8(loy) + 5)), r2 = ctx.rand(50);
+  if (r1 < r2) { ctx.depth++; try { cmFlagSet(c, 0x10000); } finally { ctx.depth--; } }
+  c.b44 = clamp100(s8(c.b44) + s8(s8(loy * 5) + 0x38));
+}
+/** 0x8674e0 (clear_grievances): +0x45 &= ~flag, så 0x867240 (trækker et transferønske tilbage – kræver +0x4e & 8, som vi ikke har) */
+export function cmFlagClear(c: CmContract, flag: number): void { c.b45 = (c.b45 & ~flag) >>> 0; }
+
+/** Hvad 0x4cb250 læser ud over kontrakten (alt i originalens skala) */
+export interface UnhappyIn {
+  /** staff +0x18 alder, +0x57 Ambition, +0x59 Loyalty, +0x22 landskampe; spillerposten +0xb nuværende og +0xd verdensomdømme (0..10000) */
+  age: number; amb: number; loyalty: number; caps: number; repCur: number; repWorld: number;
+  /** club +0x80 (klubben i kaldet), nation +0x8e (spillerens land) */
+  clubRep: number; nationRep: number;
+  /** A: dage siden han kom til klubben (staff +0x3e), B: siden kontrakten (+0x2d) – begge 0..400 */
+  daysAt: number; daysContract: number;
+  status: number;
+  /** 0x62c400 (0/1/2), lejekontrakt (0x4cf6d0 ≠ 0), karrieren slutter (0x7a7eb0 ≠ 0), kontrakt +0x49, placeringen 0x4cbb60 (1 reserver, 2 førsteholdet) */
+  injury: number; onLoan: boolean; retiring: boolean; b49: number; placement: number;
+  /** kontraktklubbens land har en række i sæsontabellen 0xb63d60 (0x669340 < 0x23), og i dag ligger efter dens start og før dens slut */
+  inSeason: boolean;
+}
+/** 0x4cb250 (utilfreds): +0x44 −= x = trunc((+0x3e + 4)/clamp(1 − F·k, 0,1, 10) + 0,5). F af omdømmet mod klubbens, dagene i klubben (A) og siden
  *  kontrakten (B, begge højst 400 – B ≤ 400 gør grenen for 24–31-årige død, som i originalen), alderen, landskampe/landets omdømme og trupstatus.
- *  Flagene 4/0x10 (0x867700) sættes ikke (de systemer, der læser dem, er ikke porteret). */
-function unhappyStep(p: Player, c: CmContract, clubRep: number, age: number, today: string, nationRep: number): void {
-  const A = daysClamp(p.joined, today), B = daysClamp(p.joined, today);
-  const amb = s8(sh(p, 'ambition'));
-  let F = s16(curRep(p)) - s16(clubRep) + 50 * A + s8(age) * 417 - 31680;
-  const status = statusCode(p);
+ *  Flagene (0x4cb4c9–0x4cb90a): skadet/lejet/stopper/under 18/+0x49 → 4 og 0x10 ryddes; ellers, når x > 5 og +0x44 − x < −30 − Loyalty: op til 21 år
+ *  på førsteholdet (0x4cbb60 = 1, sic) med rand(Ambition) > 5 og omdømmet over klubbens og 1250 → 0x10; ældre med omdømmet over klubbens og 2250
+ *  → 4 i sæsonen; ellers på førsteholdet med omdømmet over 1250, over 23 år og rand(Loyalty + 5) = 0 → 0x10; ellers verdensomdømmet over klubbens
+ *  − 1500 og 500, rand(Ambition) ≠ 0 og +0x3d < 0 → 4 i sæsonen. 4 ryddes altid før det sættes. */
+export function unhappyCore(i: UnhappyIn, c: CmContract, rand: (n: number) => number): void {
+  const age = s8(i.age);
+  let F = s16(i.repCur) - s16(i.clubRep) + 50 * i.daysAt + age * 417 - 31680;
   let capped = true;
-  if (B > 400 && age > 23 && age < 32) F += 250 * amb + 5000;
-  else if (u8(p.caps) && nationRep > 3500 && age < 32) F += 250 * amb + 25 * u8(p.caps) + 2500;
-  else if (status === 1) F += 250 * amb + 5000;
-  else if (status === 2) F += 125 * amb + 2500;
-  else if (status === 3) F += 1000 * s8(c.b3e);
+  const amb = s8(i.amb);
+  if (i.daysContract > 400 && age > 23 && age < 32) F += 250 * amb + 5000;
+  else if (u8(i.caps) && i.nationRep > 3500 && age < 32) F += 250 * amb + 25 * u8(i.caps) + 2500;
+  else if (i.status === 1) F += 250 * amb + 5000;
+  else if (i.status === 2) F += 125 * amb + 2500;
+  else if (i.status === 3) F += 1000 * s8(c.b3e);
   else capped = false;
   if (capped && F >= 15000) F = 15000;
   let G = 1 - (F < 0 ? F * 0.0006666666666666666 : F * 6e-5);
   if (G < 0.1) G = 0.1; else if (G > 10) G = 10;
-  const x = s8(Math.trunc(G / (s8(c.b3e) + 4) + 0.5));
+  // 0x4cb4ab: fild (+0x3e + 4); fxch; fdivp st(1) → (+0x3e + 4)/G + 0,5 (rettet 12/11 mod sporet ct3: 0x4cb250 kald for kald)
+  const x = s8(Math.trunc((s8(c.b3e) + 4) / G + 0.5));
+  if (i.injury !== 0 || i.onLoan || i.retiring || age < 18 || i.b49 !== 0) {    // 0x4cb8f1
+    if (c.b45 & 4) cmFlagClear(c, 4);
+    if (c.b45 & 0x10) cmFlagClear(c, 0x10);
+  } else if (x > 5 && s8(c.b44) - x < -30 - s8(i.loyalty)) {
+    const rc = s16(i.repCur), cr = s16(i.clubRep);
+    if (age <= 21) {                                                         // 0x4cb8a0
+      if (i.placement === 1 && rand(amb) > 5 && rc > cr && rc > 1250) { cmFlagClear(c, 4); cmFlagSet(c, 0x10); }
+    } else if (rc > cr && rc > 2250) {                                       // 0x4cb574
+      if (i.inSeason) { cmFlagClear(c, 4); cmFlagSet(c, 4); }
+    } else if (i.placement === 1 && rc > 1250 && age > 23 && rand(s8(i.loyalty) + 5) === 0) {   // 0x4cb6df
+      cmFlagClear(c, 4); cmFlagSet(c, 0x10);
+    } else if (s16(i.repWorld) > cr - 1500 && s16(i.repWorld) > 500 && rand(amb) !== 0 && s8(c.b3d) < 0) {   // 0x4cb72b
+      if (i.inSeason) { cmFlagClear(c, 4); cmFlagSet(c, 4); }
+    }
+  }
   c.b44 = clamp100(s8(c.b44) - x);
+}
+
+/** spillets oplysninger til 0x4cb250 (de ikke porterede systemer: lejekontrakten = Player.loan, karrierens slut = Player.cmRetire, +0x49 = 0) */
+export interface CmPlayerCtx {
+  /** 0x62c400 – konditionsmodulet */
+  injury?: (p: Player) => number;
+  /** sæsontabellen (cmFitness.ts clubSeason) for klubbens land */
+  inSeason?: (club: number) => boolean;
+  /** 0x62ed70: den nuværende skades +0x2c-tæller (null = ingen skade) */
+  injuryW2c?: (p: Player) => number | null;
+}
+let pctx: CmPlayerCtx = {};
+/** konditionsmodulet sætter sine aflæsninger her (cmFitnessGame.ts – undgår en cirkulær import) */
+export function setCmPlayerCtx(c: CmPlayerCtx): void { pctx = c; }
+
+/** 0x4cbb60 CONTRACT_MANAGER::get_squad_placement: 1 reserverne, 2 førsteholdet (staff +0x5e bit 0 – sat af 0x83cb40; hos os Player.reserves),
+ *  0 for klubber uden reservehold (0x542740: B-hold, spanske, tyske og portugisiske klubber m.fl. – *estimeret*: kun landene) */
+const NO_RESERVES = new Set(['Spain', 'Germany', 'Portugal']);
+export function squadPlacement(g: GameState, p: Player, club: number): number {
+  const c = g.clubs?.[club];
+  if (!c || p.club !== club || NO_RESERVES.has(g.nations[c.nation]?.name ?? '')) return 0;
+  return p.cmPlace ?? (p.reserves ? 1 : 2);
+}
+
+function unhappyStep(g: GameState, p: Player, c: CmContract, club: number, clubRep: number, age: number, today: string, nationRep: number, rand: (n: number) => number): void {
+  const days = p.cmJoined ?? p.joined;
+  const rep = p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2];
+  withFlagCtx(g, p, rand, () => unhappyCore({
+    age, amb: sh(p, 'ambition'), loyalty: sh(p, 'loyalty'), caps: p.caps, repCur: curRep(p), repWorld: Math.round(rep[2] * 50), clubRep, nationRep,
+    daysAt: daysClamp(days, today), daysContract: daysClamp(days, today), status: statusCode(p),
+    injury: pctx.injury?.(p) ?? (p.injury ? 2 : 0), onLoan: !!p.loan, retiring: !!p.cmRetire, b49: 0, placement: squadPlacement(g, p, club),
+    // 0x4cb5d0: kontraktklubbens land (den primære kontrakt – hos os spillerens klub)
+    inSeason: p.club ? pctx.inSeason?.(p.club) ?? false : false,
+  }, c, rand));
 }
 
 /** spillerpostens nuværende omdømme +0xb (0..10000) */
@@ -206,7 +366,7 @@ export function curRep(p: Player): number {
 /** 0x4ca6d0 for en spiller, der spillede (starter eller indskiftet): +0x3d af minutterne, +0x3e/+0x3f og +0x44. `minutes` = 0x4ca6d0's bl:
  *  startere 90 eller minuttet for udvisningen/skaden (+0x30), indskiftede 90 − indskiftningsminuttet. Kun klubkampe (ikke landskampe). */
 export function contractAfterMatch(g: GameState, p: Player, o: { starter: boolean; minutes: number; injured: boolean; condition: number; won: boolean; lost: boolean;
-  clubRep: number; nationRep: number; seed: number; rand?: (n: number) => number }): void {
+  clubRep: number; nationRep: number; seed: number; rand?: (n: number) => number; club?: number }): void {
   const c = cmContractOf(p);
   const age = ageOn(p.dob, g.date);
   const rand = o.rand ?? cmRand(g.seed, p.id, dayNum(g.date), o.seed);
@@ -227,19 +387,25 @@ export function contractAfterMatch(g: GameState, p: Player, o: { starter: boolea
   } else {
     c.b3f = 0; if (c.b3e !== 100) c.b3e = u8(c.b3e + 1);
     c.b3d = clamp100(s8(c.b3d) - 4);
-    unhappyStep(p, c, o.clubRep, age, g.date, o.nationRep);
+    unhappyStep(g, p, c, o.club ?? p.club, o.clubRep, age, g.date, o.nationRep, rand);
   }
   // 0x4cac6a: sejr/nederlag – rand(21 − Ambition) < 4 → +0x44 ±3
   if (o.won || o.lost) { if (rand(21 - s8(sh(p, 'ambition'))) < 4) c.b44 = clamp100(s8(c.b44) + (o.won ? 3 : -3)); }
 }
 
+/** 0x4cb250(staff, klub, kontrakt) udefra (computerens trupplan 0x83cb40 ved første kald) */
+export function cmUnhappy(g: GameState, p: Player, club: number): void {
+  const c = cmContractOf(p);
+  unhappyStep(g, p, c, club, clubRepMem(g, club), ageOn(p.dob, g.date), g.date, nationRepMem(g, p.nation), cmRand(g.seed ?? 0, p.id, dayNum(g.date), 0x83cb40, 0x4cb250));
+}
+
 /** 0x4cae7d: truppens spillere, der ikke spillede (ikke skadede, udelukkede eller udlejede): +0x3f = 0, +0x3e += 1, +0x3d −= 8, 0x4cb250.
  *  (0x4cbd20 – transferlisten efter 8/14 kampe uden spilletid – er ikke porteret.) */
-export function contractNotPlayed(g: GameState, p: Player, clubRep: number, nationRep: number): void {
+export function contractNotPlayed(g: GameState, p: Player, clubRep: number, nationRep: number, club = p.club, seed = 0): void {
   const c = cmContractOf(p);
   c.b3f = 0; if (c.b3e !== 100) c.b3e = u8(c.b3e + 1);
   c.b3d = clamp100(s8(c.b3d) - 8);
-  unhappyStep(p, c, clubRep, ageOn(p.dob, g.date), g.date, nationRep);
+  unhappyStep(g, p, c, club, clubRep, ageOn(p.dob, g.date), g.date, nationRep, cmRand(g.seed ?? 0, p.id, dayNum(g.date), seed, 0x4cb250));
 }
 
 // ---------------------------------------------------------------- efter kampen (sim.ts applyMatchResult)
@@ -265,13 +431,140 @@ export function cmAfterMatch(g: GameState, f: Fixture, rep: MatchReport, squadOf
     const club = line.team === 0 ? f.home : f.away;
     const mins = line.sub ? Math.max(0, line.minutes) : line.red || line.injured ? line.minutes : 90;
     contractAfterMatch(g, p, { starter: !line.sub, minutes: mins, injured: line.injured, condition: line.cond ?? 100, won: gf > ga, lost: gf < ga,
-      clubRep: clubRepMem(g, club), nationRep: nationRepMem(g, p.nation), seed: f.id });
+      clubRep: clubRepMem(g, club), nationRep: nationRepMem(g, p.nation), seed: f.id, club });
   }
   for (const club of [f.home, f.away]) {
     for (const p of squadOf(club)) {
       if (played.has(p.id) || p.regen || p.injury || p.banned > 0 || p.loan) continue;
-      contractNotPlayed(g, p, clubRepMem(g, club), nationRepMem(g, p.nation));
+      contractNotPlayed(g, p, clubRepMem(g, club), nationRepMem(g, p.nation), club, f.id);
     }
+  }
+}
+
+// ---------------------------------------------------------------- dagen: 0x5ce2d0's kontraktdel og klubtabellen [0xae2d14]
+
+/** 0x544520(staff, 0): kontrakt +0x4e & 9 – transferlistet (bit 1, 0x842320 – computerens trupplan; menneskets egen listning = Player.listed)
+ *  eller transferønske (bit 8, 0x4d8610 – will.ts' anmodninger i ægte tilstand) */
+export const listedOrRequest = (p: Player) => !!p.listed || !!((p.cmContract?.b4e ?? 0) & 9);
+
+/** Comp_Stats' +0x72 for klubben i dens liga: placeringen i sæsonens udgangsrækkefølge – klubberne fra ligaen selv efter sidste sæsons placering
+ *  (club.dat +0x5b/+0x5f ved spilstart, derefter den afsluttede sæsons tabel – season.ts), så de nye (op/ned) efter deres (*estimeret*: i oraklet
+ *  1..20 som en permutation, men rækkefølgen for de oprykkede og ved lige placeringer er ikke målt) */
+function lastRank(g: GameState, league: string, club: number): number {
+  const comp = g.comps[league];
+  if (!comp) return 0;
+  const cid = +(league.match(/(\d+)$/)?.[1] ?? NaN);
+  const key = (id: number): [number, number] => {
+    const s = g.cmClubStat?.[id];
+    const lp = s && s.length > 3 ? s[3] ?? 0 : 0;
+    return [s && s.length > 3 && s[2] === cid ? 0 : 1, lp > 0 ? lp : 99];
+  };
+  const order = comp.clubs.slice().sort((a, b) => { const ka = key(a), kb = key(b); return ka[0] - kb[0] || ka[1] - kb[1]; });
+  return order.indexOf(club) + 1;
+}
+/** 0x5cd61d–0x5cd75f: klubbens stemning [0xae2d14] + 6·klub + 4 (målt mod oraklet 1.648/1.648 uge-værdier af originalens input): efter mindst 9
+ *  kampe (Comp_Stats +4) trunc((+0x72 − placeringen +0x73)·w), w = 22/antal hold (turneringens +0x3e); i en liga med omdømme ≥ 10 og klubomdømme over
+ *  500·ligaens: w = (((omd − 500·liga) + (omd − 5000))·0,0002 + 1)·w)^1,5. Nr. 1–2 (og 3–4 i ligaer, hvis virtuelle 0x98 svarer ja – i oraklet
+ *  Division 1, ikke Premier League; hos os ligaer under øverste niveau, *estimeret*) får højst −1. Ellers 0. */
+function clubMood(g: GameState, c: { id: number; league: string }): number {
+  const lg = g.leagues[c.league];
+  const comp = g.comps[c.league];
+  if (!lg || lg.hidden || !comp || comp.type !== 'league') return 0;
+  const rows = sortTable(comp.table);
+  const i = rows.findIndex((r) => r.club === c.id);
+  if (i < 0 || rows[i].p <= 8) return 0;
+  const cr = g.cmCompRep?.[+(c.league.match(/(\d+)$/)?.[1] ?? NaN)] ?? 0;
+  return moodValue(rows[i].p, lastRank(g, c.league, c.id), i + 1, comp.clubs.length, cr, clubRepMem(g, c.id), lg.tier > 1);
+}
+/** 0x5cd638–0x5cd745 som ren funktion: kampe, +0x72, placeringen +0x73, holdene (+0x3e), ligaens og klubbens omdømme, og om ligaen svarer ja i 0x98 */
+export function moodValue(played: number, x72: number, pos: number, teams: number, compRep: number, clubRep: number, floor5: boolean): number {
+  if (played <= 8) return 0;
+  const cr = s16(compRep), rep = s16(clubRep);
+  let w = teams > 0 ? 22 / teams : 1;
+  if (cr >= 10 && rep > 500 * cr) w = Math.pow(((rep - 500 * cr) + (rep - 5000)) * 0.0002 * w + w, 1.5);
+  let v = s8(Math.trunc((x72 - pos) * w));
+  if ((pos < 3 || (floor5 && pos < 5)) && v < -1) v = -1;
+  return v;
+}
+/** som competitions.ts sortTable (point, målforskel, scorede mål; ens rækker efter klub-id i stedet for navnet) – uden den cirkulære import */
+function sortTable(rows: { club: number; p: number; pts: number; gf: number; ga: number }[]) {
+  return rows.slice().sort((a, b) => b.pts - a.pts || (b.gf - b.ga) - (a.gf - a.ga) || b.gf - a.gf || a.club - b.club);
+}
+
+/** [0xae2d14] + 6·klub +5 – 0x5cccd0 (hver dag med dag-i-året % 7 = 0, 0x5cd776–0x5cd82e): truppens spillere med klager (+0x45 ≠ 0) og trupstatus
+ *  1–3, verdensomdømme over 4750 eller +0x3d over 65, hvis kontrakt er med klubben (ikke dem med begivenhed +0x40 = 4 og Professionalism ≥ 10 –
+ *  +0x40 har vi ikke). Kun klubber i et land med kontinent (+0x71), som ikke er landshold, og som enten spiller i en aktiv liga eller har omdømme
+ *  ≥ 4500 (0x5cd5bd–0x5cd602). +4 = stemningen (clubMood, g.cmClubMood). */
+function clubGrievanceCounts(g: GameState, squadOf: (club: number) => Player[]): void {
+  const tab: Record<number, number> = (g.cmClubUnhappy = {});
+  const mood: Record<number, number> = (g.cmClubMood = {});
+  for (const c of Object.values(g.clubs)) {
+    const active = !!c.league && !g.leagues[c.league]?.hidden;
+    if (!active && clubRepMem(g, c.id) < 4500) continue;
+    mood[c.id] = clubMood(g, c);
+    let n = 0;
+    for (const p of squadOf(c.id)) {
+      const k = p.cmContract;
+      if (!k || !k.b45 || p.regen || p.loan) continue;
+      const st = statusCode(p);
+      const wr = Math.round((p.cmRepMem ?? p.cmRep ?? [0, 0, p.rep * 2])[2] * 50);
+      if (st === 1 || st === 2 || st === 3 || wr > 4750 || s8(k.b3d) > 65) n = (n + 1) & 0xff;
+    }
+    tab[c.id] = n;
+  }
+}
+
+/** 0x5ce2d0 for én spiller med kontrakt (esi) i sin klub (edi) – de dele, der skriver +0x44/+0x45, og som kun læser det, vi har:
+ *  R1 0x5cf8c8 (+5 for professionelle uden klager, ikke listet, i en klub uden utilfredse nøglespillere), R3 0x5d115b (skadet med +0x2c > 14 →
+ *  0x10 ryddes), R4 0x5d1327 (trupstatus 7 over 21 år, rand(20) = 0 → −50 og 0x10), R5 0x5d23a6 (0x10/4 ryddes efter +0x3f kampe i træk med
+ *  tilfredsstillende spilletid) og R6 0x5d28f8 (+0x49/stopper/ikke-spillerjob → 0x10 og 2 ryddes). Ikke porteret (systemer, vi ikke har): de øvrige
+ *  klager (+0x45 0x1/0x2/0x8/0x20/0x40… – kontraktlængden, lønnen, forholdet til manageren, mediehistorierne 0x72c1f0, begivenhederne +0x40),
+ *  stemningens +5 (0x5cf923, kræver klubtabellens +4), transferønsket 0x4d8610. */
+function contractDayPlayer(g: GameState, p: Player, c: CmContract, rand: (n: number) => number): void {
+  const club = p.club;
+  const age = s8(ageOn(p.dob, g.date));
+  // R1 0x5cf8c8–0x5cf923
+  if (c.b45 === 0 && !listedOrRequest(p) && (g.cmClubUnhappy?.[club] ?? 0) === 0 && s8(sh(p, 'professionalism')) > 14) c.b44 = clamp100(s8(c.b44) + 5);
+  // R2 0x5cf923: ingen klager, klubbens stemning +4 over 2 og Loyalty over 10 → +5
+  if (c.b45 === 0 && club && (g.cmClubMood?.[club] ?? 0) > 2 && s8(sh(p, 'loyalty')) > 10) c.b44 = clamp100(s8(c.b44) + 5);
+  // 0x5cfa64: en skade med +0x2c > 30 springer til 0x5d2392
+  const w2c = pctx.injuryW2c?.(p) ?? null;
+  if (!(w2c !== null && s16(w2c) > 30)) {
+    // R6 0x5d1119–0x5d1155: +0x49 (0), karrieren slutter (0x7a7eb0) og ikke-spillerjob findes ikke hos os ud over cmRetire
+    if (p.cmRetire) { cmFlagClear(c, 0x10); cmFlagClear(c, 2); }
+    // R3 0x5d115b: skadet (0x62c400 = 2) med +0x2c > 14
+    else if ((pctx.injury?.(p) ?? 0) === 2 && w2c !== null && s16(w2c) > 14) cmFlagClear(c, 0x10);
+    // R4 0x5d1327 (trupstatus 0 → 0x5d11aa's kontraktforlængelse – ikke porteret)
+    else if (statusCode(p) !== 0 && !listedOrRequest(p) && statusCode(p) === 7 && !(c.b45 & 0x10) && !(c.b45 & 4) && rand(20) === 0 && age > 21
+      && (p.pos[0] !== 20 || age > 24 + ((p.id % 4) | 0))) {
+      c.b44 = clamp100(s8(c.b44) - 50);
+      cmFlagSet(c, 0x10);
+    }
+  }
+  // R5 0x5d23a6/0x5d23e6 ([esp+0x7c] – 0x540a50's B-holdsflag – er 0)
+  const amb = s8(sh(p, 'ambition')), tmp = s8(sh(p, 'temperament')), b3f = s8(c.b3f);
+  const settled = (amb > 15 && tmp < 6 && b3f > 3) || (amb > 10 && tmp < 10 && b3f > 2) || b3f > 1;
+  if (c.b45 & 0x10 && settled) cmFlagClear(c, 0x10);
+  if (c.b45 & 4 && settled) cmFlagClear(c, 4);
+}
+
+/** 0x5cccd0's klubtabel (ugentlig) og 0x5ce2d0 for alle spillere med kontrakt – hver dag (sim.ts newDay). Spillere i en klub i en aktiv liga
+ *  (eller med verdensomdømme ≥ 4750) hver dag, de øvrige på dag id % 365, +120 og +240 (0x5ce412–0x5ce496). Egen talrække pr. spiller og dag. */
+export function cmContractDaily(g: GameState, squadOf: (club: number) => Player[]): void {
+  if (!cmActive(g)) return;
+  const d = new Date(`${g.date}T00:00:00Z`), y = d.getUTCFullYear();
+  const doy = Math.round((d.getTime() - Date.UTC(y, 0, 1)) / 86400000);
+  if (doy % 7 === 0 || !g.cmClubUnhappy) clubGrievanceCounts(g, squadOf);
+  const day = dayNum(g.date);
+  for (const p of Object.values(g.players)) {
+    if (p.regen || !p.club || !p.contract) continue;
+    const c = p.cmContract; if (!c) continue;
+    const cl = g.clubs[p.club];
+    const active = !!cl?.league && !g.leagues[cl.league]?.hidden;
+    const a = p.id % 365, b = (a + 120) % 365, e = (b + 120) % 365;
+    if (!active && doy !== a && doy !== b && doy !== e && Math.round((p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, 0])[1] * 50) < 4750) continue;
+    const rand = cmRand(g.seed, p.id, day, 0x5ce2d0);
+    withFlagCtx(g, p, rand, () => contractDayPlayer(g, p, c, rand));
   }
 }
 

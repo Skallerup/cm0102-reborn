@@ -30,6 +30,7 @@ import {
   treatInjured, type PositionRecord, type SlotSpec, type SubPlayer,
 } from './subs';
 import type { GP, GridMatchState } from './gridMatch';
+import { cellAdd, cellRemove } from './cells';
 import { captainInputOf, matchRoleScore, playerRecord, recordRatings, setChosenTactic, type AiPickCtx } from './aiTeam';
 import { captainBase, type RoleData } from './roleScore';
 import { AI_TACTIC_LIST, chooseAiTactic, type ChoiceManager, type ChoicePlayer } from './aiTacticChoice';
@@ -139,6 +140,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
   };
   /** 0x6cdd50: ud af cellelisterne og markeringerne */
   const detach = (q: GP) => {
+    cellRemove(m, q);                                                                       // 0x6cdda5: ud af feltets liste
     q.active = false;
     for (const o of gp) { if (o.marks === q) o.marks = null; if (o.markers.includes(q)) o.markers = o.markers.filter((x) => x !== q); }
     q.marks = null; q.markers = [];
@@ -146,7 +148,7 @@ export function makeMatchSubs(env: MatchSubsEnv) {
   };
   /** 0x6cdd00: ind på banen ved sidelinjen (x 8, y 6) */
   const comeOn = (q: GP, slot: number, s: Side) => {
-    q.active = true; applySlot(q, slot, slotTab[s][slot]); q.x = 8; q.y = 6; q.busy = 0; S(q).minuteOn = minute();
+    q.active = true; applySlot(q, slot, slotTab[s][slot]); q.x = 8; q.y = 6; q.cell = -1; cellAdd(m, q); q.busy = 0; S(q).minuteOn = minute();   // 0x6cdd0a–0x6cdd45 (bagerst i feltets liste)
   };
   const goOff = (q: GP) => { const x = S(q); if (q.slot >= 0) x.prevSlot = q.slot; detach(q); q.slot = -4; x.substituted = true; x.minuteOff = minute(); };
 
