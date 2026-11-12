@@ -1,15 +1,24 @@
 // Langtidstest i browseren: et nyt spil spilles 5 sæsoner, og alle hovedskærme åbnes flere gange pr. sæson.
 // Fejler ved sidefejl, tomme skærme eller rå oversættelsesnøgler. Starter selv Vite (dev, så __cm-krogene findes).
 // Kør: node scripts/e2e-soak.mjs <modern|original> <moderne|klassisk> [sæsoner] [klubnavn]
+// E2E_ENGINE=original: originalens kampmotor (gittermotoren, localStorage `cm0102.engine`) – kræver den originale database og det
+// klassiske udseende (ægte tilstand, se gridEngineOn i sim.ts). Kontrollerer, at motoren bruges, og kampenes rapporter (mål, minutter,
+// karakterer, udskiftninger, kampens spiller, kommentar). E2E_ENGINE=zone tvinger zonemotoren. PORT=<n> vælger Vite-porten.
 import { spawn } from 'node:child_process';
+import { createServer } from 'node:net';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { chromium } from 'playwright';
 
 const [db = 'modern', look = 'moderne', seasonsArg = '5', clubArg] = process.argv.slice(2);
 const SEASONS = Number(seasonsArg);
-const PORT = 5190 + Math.floor(Math.random() * 200);
+const ENGINE = process.env.E2E_ENGINE ?? '';
+if (ENGINE === 'original' && (db !== 'original' || look !== 'klassisk')) { console.log('E2E_ENGINE=original kræver original + klassisk'); process.exit(2); }
+// en ledig port (andre kan køre e2e/Vite samtidig – strictPort uden ledig port ville ellers teste en anden server)
+const freePort = (p) => new Promise((res) => { const srv = createServer(); srv.once('error', () => res(false)); srv.listen(p, () => srv.close(() => res(true))); });
+let PORT = Number(process.env.PORT) || 0;
+for (let i = 0; !PORT && i < 50; i++) { const p = 5190 + Math.floor(Math.random() * 200); if (await freePort(p)) PORT = p; }
 const URL = `http://localhost:${PORT}/cm0102-reborn/`;
-const OUT = `e2e-shots/soak-${db}-${look}`;
+const OUT = `e2e-shots/soak-${db}-${look}${ENGINE ? `-${ENGINE}` : ''}`;
 mkdirSync(OUT, { recursive: true });
 const server = spawn('npx', ['vite', '--port', String(PORT), '--strictPort'], { stdio: 'ignore', env: { ...process.env, BROWSER: 'none' } });
 const stop = () => { try { server.kill(); } catch { /* ignorer */ } };
@@ -25,9 +34,11 @@ const page = await ctx.newPage();
 const errors = [];
 page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error' && !/favicon|Failed to load resource|net::ERR/.test(m.text())) errors.push(`console: ${m.text().slice(0, 200)}`); });
-await page.addInitScript(([theme, dbv]) => {
+await page.addInitScript(([theme, dbv, engine]) => {
   localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.db', dbv); sessionStorage.setItem('cm0102.play', '1');
-}, [look === 'klassisk' ? 'retro' : 'club', db]);
+  // gittermotoren kræver ægte tilstand (options.mode 'authentic' + klassisk udseende) – Start.tsx: alt andet end 'extended' = ægte
+  if (engine) { localStorage.setItem('cm0102.engine', engine); if (engine === 'original') localStorage.setItem('cm0102.mode', 'authentic'); }
+}, [look === 'klassisk' ? 'retro' : 'club', db, ENGINE]);
 const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
 const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
 const gs = (fn, arg) => page.evaluate(fn, arg);
@@ -57,6 +68,86 @@ if (!cid || !(await page.evaluate((id) => window.__cmPick(id), cid))) { console.
 await page.getByRole('button', { name: await t('start.begin') }).click();
 await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
 log(`${db} · ${look} · ${clubName} · start ${await gs(() => window.__cm.gs().date)}`);
+const engineInfo = await page.evaluate(async () => {
+  const sim = await import('/cm0102-reborn/src/game/sim.ts');
+  const g = window.__cm.gs();
+  return { on: sim.gridEngineOn(g), mode: g.options.mode, engine: g.options.engine ?? '-', dev: localStorage.getItem('cm0102.engine') };
+});
+log(`motor: gridEngineOn=${engineInfo.on} · mode ${engineInfo.mode} · options.engine ${engineInfo.engine} · cm0102.engine ${engineInfo.dev}`);
+if (ENGINE === 'original' && !engineInfo.on) { console.log('gittermotoren er IKKE slået til'); process.exit(2); }
+
+// ---------- kampenes rapporter og resultater ----------
+const seenReports = new Set();
+const seenFix = new Set();
+const leagueStats = { grid: { n: 0, goals: 0, home: 0, draw: 0, nil: 0, max: 0 }, zone: { n: 0, goals: 0, home: 0, draw: 0, nil: 0, max: 0 } };
+const repStats = { n: 0, grid: 0, zone: 0, goals: 0 };
+const checkMatches = async () => {
+  const r = await page.evaluate(async ([seenR, seenF]) => {
+    const rules = await import('/cm0102-reborn/src/game/rules.ts');
+    const g = window.__cm.gs();
+    const maxSubs = rules.maxSubs();
+    const out = { reports: [], fixtures: [] };
+    const myLeague = g.clubs[g.userClub]?.league;
+    for (const [id, rep] of Object.entries(g.reports)) {
+      if (seenR.includes(id)) continue;
+      const f = g.fixtures[Number(id)];
+      const name = (cid) => g.clubs[cid]?.short ?? g.clubs[cid]?.name ?? cid;
+      const hg = rep.stats?.[0]?.goals, ag = rep.stats?.[1]?.goals;
+      const bad = [];
+      const lines = rep.players ?? [];
+      for (const l of lines) {
+        const pn = g.players[l.id] ? `${g.players[l.id].last ?? g.players[l.id].name ?? l.id}` : `#${l.id}`;
+        if (!(l.minutes >= 0) || l.minutes > (rep.et ? 125 : 98)) bad.push(`${pn} ${l.minutes} min`);
+        if (l.minutes > 0 && !(l.rating >= 1 && l.rating <= 10)) bad.push(`${pn} karakter ${l.rating}`);
+        if (l.goals < 0 || l.goals > 6) bad.push(`${pn} ${l.goals} mål`);
+      }
+      for (const t of [0, 1]) {
+        const subs = (rep.events ?? []).filter((e) => e.k === 'sub' && e.t === t).length;
+        if (subs > maxSubs) bad.push(`hold ${t}: ${subs} udskiftninger (max ${maxSubs})`);
+        const played = lines.filter((l) => l.team === t && l.minutes > 0).length;
+        if (played < 7 || played > 11 + maxSubs) bad.push(`hold ${t}: ${played} spillere med minutter`);
+        const gl = lines.filter((l) => l.team === t).reduce((a, l) => a + l.goals, 0);
+        const og = (rep.events ?? []).filter((e) => e.k === 'goal' && e.og && e.t === t).length;
+        const goals = t ? ag : hg;
+        if (gl + og !== goals && gl !== goals) {
+          const ev = (rep.events ?? []).filter((e) => e.k === 'goal' && e.t === t).map((e) => `${e.m}' p${e.p}${e.og ? ' sm' : ''}${e.pen ? ' str' : ''}${lines.some((l) => l.id === e.p) ? (lines.find((l) => l.id === e.p).team === t ? '' : ' (modstander)') : ' (ikke i rapporten)'}`);
+          bad.push(`hold ${t}: ${goals} mål, spillerne ${gl} (+${og} selvmål) [${ev.join(', ')}]`);
+        }
+      }
+      if (!rep.mom || !lines.some((l) => l.id === rep.mom)) bad.push(`kampens spiller mangler (${rep.mom})`);
+      const com = rep.commentary ?? [];
+      let rep3 = 0;
+      for (let i = 2; i < com.length; i++) if (com[i].k === com[i - 1].k && com[i].k === com[i - 2].k && com[i].a === com[i - 1].a && com[i].a === com[i - 2].a && com[i].k !== 'pl-pass') rep3++;
+      if (com.length && rep3 > 5) bad.push(`kommentaren gentager sig (${rep3}× tre ens linjer i træk)`);
+      const goalEv = (rep.events ?? []).filter((e) => e.k === 'goal').length;
+      if (goalEv !== hg + ag) bad.push(`${goalEv} mål-hændelser, resultatet ${hg}-${ag}`);
+      if (hg + ag >= 11) bad.push(`urimeligt resultat ${hg}-${ag}`);
+      out.reports.push({ id, engine: rep.engine ?? 'zone', score: `${name(rep.home)} ${hg}-${ag} ${name(rep.away)}`, date: f?.date, comp: f?.comp, goals: hg + ag, ncom: com.length, bad });
+    }
+    const sf = new Set(seenF);
+    for (const f of Object.values(g.fixtures)) {
+      if (!f?.result || sf.has(f.id) || f.home === undefined) continue;
+      const lg = g.comps[f.comp];
+      if (!lg || lg.type !== 'league') continue;
+      const grid = f.comp === myLeague;
+      out.fixtures.push({ id: f.id, grid, hg: f.result.hg, ag: f.result.ag, d: f.date, s: `${g.clubs[f.home]?.short} ${f.result.hg}-${f.result.ag} ${g.clubs[f.away]?.short} (${f.comp} ${f.date})` });
+    }
+    return out;
+  }, [[...seenReports], [...seenFix]]);
+  for (const rep of r.reports) {
+    seenReports.add(rep.id); repStats.n++; repStats[rep.engine === 'original' ? 'grid' : 'zone']++; repStats.goals += rep.goals;
+    if (ENGINE === 'original' && rep.engine !== 'original') await problem(`kamp ${rep.id}`, `spillet med ${rep.engine}-motoren: ${rep.score} (${rep.comp} ${rep.date})`);
+    if (rep.ncom === 0) await problem(`kamp ${rep.id}`, `ingen kommentar: ${rep.score}`);
+    if (rep.bad.length) await problem(`kamp ${rep.id} (${rep.engine}, ${rep.comp} ${rep.date}) ${rep.score}`, rep.bad.join('; '));
+  }
+  for (const f of r.fixtures) {
+    seenFix.add(f.id);
+    const st = leagueStats[f.grid ? 'grid' : 'zone'];
+    st.n++; st.goals += f.hg + f.ag; if (f.hg > f.ag) st.home++; if (f.hg === f.ag) st.draw++; if (f.hg + f.ag === 0) st.nil++; st.max = Math.max(st.max, f.hg + f.ag);
+    if (f.hg + f.ag >= 11 || f.hg >= 9 || f.ag >= 9) await problem('resultat', `urimeligt: ${f.s}`);
+  }
+};
+const fmtStats = (st) => st.n ? `${st.n} kampe · ${(st.goals / st.n).toFixed(2)} mål · H/U ${Math.round(100 * st.home / st.n)}/${Math.round(100 * st.draw / st.n)} % · 0-0 ${Math.round(100 * st.nil / st.n)} % · max ${st.max}` : '-';
 
 const screens = async () => {
   const g = await gs(() => { const g = window.__cm.gs(); const mine = Object.values(g.players).filter((p) => p.club === g.userClub); return {
@@ -91,14 +182,19 @@ const screens = async () => {
 const t0 = Date.now();
 const startSeason = await gs(() => window.__cm.gs().season);
 for (let s = 1; s <= SEASONS; s++) {
+  const tS = Date.now();
   for (const chunk of [45, 60, 60, 60, 60, 80]) {
     const before = errors.length;
     const ta = Date.now();
-    try { await page.evaluate((d) => window.__cm.advance(d), chunk); }
-    catch (e) { await problem(`advance ${chunk}`, e.message.split('\n')[0]); }
+    // en hængende kamp/dag: giv op efter 20 min pr. bid
+    let timer;
+    try { await Promise.race([page.evaluate((d) => window.__cm.advance(d), chunk), new Promise((_, rej) => { timer = setTimeout(() => rej(new Error(`advance ${chunk} hænger (> 20 min)`)), 20 * 60000); })]); }
+    catch (e) { await problem(`advance ${chunk}`, e.message.split('\n')[0]); if (/hænger/.test(e.message)) { log(`  ${await gs(() => window.__cm.gs().date).catch(() => '?')}`); break; } }
+    finally { clearTimeout(timer); }
     if (errors.length > before) await problem(`advance (${await gs(() => window.__cm.gs().date)})`, `fejl: ${errors.slice(before).join(' | ').slice(0, 300)}`);
     const st = await gs(() => { const g = window.__cm.gs(); return { date: g.date, season: g.season, club: g.clubs[g.userClub]?.name ?? 'ARBEJDSLØS', conf: Math.round(g.board.confidence), bal: g.clubs[g.userClub]?.balance ?? 0, pend: g.pendingFixture }; });
     log(`  ${st.date} · ${st.club} · tillid ${st.conf} · saldo ${(st.bal / 1e6).toFixed(1)}m · ${Math.round((Date.now() - ta) / 1000)} s`);
+    await checkMatches().catch((e) => problem('kampkontrol', e.message.split('\n')[0]));
     await screens();
     // fyret: arbejdsløs-skærmene er testet – tag så det første jobtilbud (eller søg), så sæsonerne spilles med en klub
     if (st.club === 'ARBEJDSLØS') {
@@ -119,6 +215,8 @@ for (let s = 1; s <= SEASONS; s++) {
     if (st.season >= startSeason + SEASONS) break;
   }
   await page.screenshot({ path: `${OUT}/saeson-${s}.png` });
+  log(`  sæson ${s} på ${Math.round((Date.now() - tS) / 60000)} min · egen liga ${fmtStats(leagueStats.grid)}`);
+  log(`  andre ligaer ${fmtStats(leagueStats.zone)} · rapporter ${repStats.n} (gitter ${repStats.grid}, zone ${repStats.zone}, ${repStats.n ? (repStats.goals / repStats.n).toFixed(2) : '-'} mål)`);
 }
 log(`\n${SEASONS} sæsoner på ${Math.round((Date.now() - t0) / 60000)} min · ${issues.length} problemer`);
 writeFileSync(`${OUT}/rapport.txt`, issues.join('\n'));

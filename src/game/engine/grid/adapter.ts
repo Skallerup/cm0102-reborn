@@ -166,6 +166,22 @@ export class GridSim implements LiveSim {
     });
     for (const p of this.g.m.gp) this.gpById.set(p.src.id, p);
     this.bench = [0, 1].map((s) => this.g.m.gp.filter((q) => q.side === s && q.slot === -1).map((q) => q.src.id)) as [number[], number[]];
+    // computerens holdudtagelse (pick_team 0x6dbc50, aiTeam.ts) vælger sin egen opstilling og bænk – UI'ets lister og rapportens
+    // spillerlinjer skal følge motorens 11 (før stod spillets opstilling i rapporten: målscorere uden linje, spillere uden minutter)
+    [home, away].forEach((t, idx) => {
+      const tac = this.g.m.tactics[idx];
+      if (tac.lineup.length === t.tactic.lineup.length && tac.lineup.every((id, i) => id === t.tactic.lineup[i])) return;
+      const team = this.teams[idx];
+      for (const sp of team.all) this.byId.delete(sp.p.id);
+      team.all.length = 0;
+      this.on[idx] = [];
+      tac.lineup.forEach((id, slot) => {
+        const p = t.players.get(id) ?? this.gpById.get(id)?.src; if (!p) return;
+        const sp = this.makeSP(p, idx, slot, 0);
+        team.all.push(sp); this.on[idx].push(sp);
+      });
+      team.tactic = { ...tac, lineup: tac.lineup.slice(), bench: this.bench[idx].slice() };
+    });
     // spillerne efter indeks på holdet (MATCH_PLAYER+0x2e) – samme rækkefølge som gridMatch's idxOf
     this.byIdx = [0, 1].map((s) => this.g.m.gp.filter((q) => q.side === s)) as [GP[], GP[]];
   }

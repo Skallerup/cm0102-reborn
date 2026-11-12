@@ -6,7 +6,7 @@ import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
 
-const PORT = 5187;
+const PORT = Number(process.env.PORT) || 5187; // PORT=<n>: en anden port, når en anden e2e kører (strictPort ville ellers teste den andens server)
 const URL = `http://localhost:${PORT}/cm0102-reborn/`;
 const OUT = 'e2e-shots';
 const only = process.argv[2];

@@ -98,6 +98,19 @@ describe('udskiftningerne i gittermotoren', () => {
     expect(done).toBe(1);
   }, 300_000);
 
+  it('computerens egen opstilling (aiTeamSetup) står i rapporten: hver målscorer har en spillerlinje, ingen dobbelte, 11 starter', () => {
+    for (let seed = 1; seed <= 6; seed++) {
+      const [h, a] = teams('Leeds United', 'Blackburn Rovers');
+      const home = { club: id('Leeds United'), ...h, players: new Map(h.players.map((p) => [p.id, p])) };
+      const away = { club: id('Blackburn Rovers'), ...a, players: new Map(a.players.map((p) => [p.id, p])) };
+      const rep = new GridSim(home, away, { commentary: false, subs: 3 }, new Rng(seed)).runToEnd();
+      const ids = rep.players.map((p) => p.id);
+      expect(new Set(ids).size).toBe(ids.length);
+      for (const t of [0, 1]) expect(rep.players.filter((p) => p.team === t && !p.sub).length).toBe(11);
+      for (const e of rep.events.filter((x) => x.k === 'goal')) expect(ids).toContain(e.p);
+    }
+  }, 300_000);
+
   it('forlænget spilletid og straffesparkskonkurrence, når kampen skal have en vinder', () => {
     let et = 0, so = 0;
     for (let seed = 1; seed <= 30 && so < 2; seed++) {
