@@ -9,6 +9,7 @@ import { endTrial, inviteTrial } from './trials';
 import { arrangeFriendly, cancelFriendly, type FriendlyKind } from './friendlies';
 import { applyStyle, briefing, type StyleKey } from './onboarding';
 import { cancelCamp, planCamp, type CampDest } from './camp';
+import { cmBoardUltimatum, cmUltimatumReq } from './cmBoardGame';
 import { acceptJob, answerBudgetCounter, boardAsk, applyForJob, faRequest, meetBoard, declineJob, negotiateJob, resignJob, requestBudget, requestProject, shiftBudget } from './board';
 import { activate, emptySlot, withHuman } from './humans';
 import { takeOverClub } from './newgame';
@@ -56,6 +57,8 @@ export type Action =
   | { t: 'resignNational' }
   | { t: 'nationalSquad'; pids: number[] }
   | { t: 'meetBoard'; kind: import('./board').MeetBoardKind }
+  /** CM 01/02: knappen "Ultimatum" i bestyrelsens svar (nyheden 0x1786) → 0x6ad610 */
+  | { t: 'ultimatum'; news: number }
   | { t: 'faRequest'; kind: import('./board').FaKind }
   | { t: 'appealBan'; pid: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
@@ -185,6 +188,13 @@ export function applyAction(a: Action): unknown {
     case 'resignNational': return resignNational();
     case 'nationalSquad': return selectNationalSquad(a.pids);
     case 'meetBoard': return meetBoard(a.kind);
+    case 'ultimatum': {
+      const n = g.news.find((x) => x.id === a.news);
+      const req = n ? cmUltimatumReq(g, n) : null;
+      if (!n || req === null) return 'blocked';
+      n.params.ult = 1;                                                 // 0x9068f4: slot 5 = 1 – knappen forsvinder
+      return cmBoardUltimatum(g, req) ? 'ok' : 'blocked';
+    }
     case 'faRequest': return faRequest(a.kind);
     case 'appealBan': return appealBan(a.pid);
     case 'enquire': return enquire(a.pid);

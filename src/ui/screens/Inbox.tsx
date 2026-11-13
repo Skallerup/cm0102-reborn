@@ -2,7 +2,7 @@
 import { isOriginal2001 } from '../../game/rules2001';
 import { FirstDay } from '../FirstDay';
 import { useEffect, useRef, useState } from 'react';
-import { onFocusNews, takeFocus } from '../inboxFocus';
+import { onFocusNews, peekFocus, takeFocus } from '../inboxFocus';
 import { squadNumbersDue } from '../../game/squadNumbers';
 import { euroDue } from '../../game/euroSquad';
 import { ClassicEuroSquad } from './EuroSquad';
@@ -12,6 +12,9 @@ import { useHotkeys } from '../hotkeys';
 import { dateFmt, money, t } from '../../i18n';
 import { Empty, Modal, Panel } from '../components';
 import { notify } from '../../game/state';
+import { cmUltimatumReq } from '../../game/cmBoardGame';
+import { ultimatumConfirm } from '../../game/cmBoardText';
+import { askConfirm } from '../confirm';
 import { useGame, useRouteState } from '../core';
 import { Head, NewsBody, NewsDeals, NewsTitle, newsBody, newsTitle, useOpenLink } from './common';
 import { AiArticle } from '../aiArticle';
@@ -44,7 +47,10 @@ export function Inbox() {
   const [grp, setGrp] = useRouteState<CxGroup>('grp', 'all');
   // altid den ældste uåbnede besked først (listen er sorteret nyeste øverst)
   const oldestUnread = () => g.news.filter((n) => !n.read).pop()?.id;
-  const [sel, setSel] = useRouteState<number | null>('sel', () => takeFocus() ?? oldestUnread() ?? g.news[0]?.id ?? null);
+  // beskeden, Fortsæt/You Have News bad om (allerede markeret læst), læses uden at forbruge den – effekten nedenfor tager den. Effekten må
+  // ikke selv vælge "den ældste ulæste": den første er markeret læst under tegningen, så det blev den NÆSTE, og hvert tryk på Continue Game
+  // sprang en besked over (ejerens fejl 13/11)
+  const [sel, setSel] = useRouteState<number | null>('sel', () => peekFocus() ?? oldestUnread() ?? g.news[0]?.id ?? null);
   const open = useOpenLink();
   const list = g.news.filter((n) => (classic && grp !== 'all' ? CX_CATS[grp].includes(n.cat) && (cat === 'all' || n.cat === cat)
     : cat === 'all' ? !n.muted : n.cat === cat));
@@ -68,8 +74,9 @@ export function Inbox() {
       setSel(id);
       requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }));
     };
-    const f = takeFocus() ?? oldestUnread();
-    if (f !== undefined && f !== null) show(f);
+    const f = takeFocus();
+    if (f !== null) show(f);
+    else if (sel !== null) requestAnimationFrame(() => listRef.current?.querySelector(`[data-id="${sel}"]`)?.scrollIntoView({ block: 'nearest' }));
     return onFocusNews((id) => { takeFocus(); show(id); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const move = (dir: number) => {
@@ -95,6 +102,8 @@ export function Inbox() {
   const respondOffer = respond !== null ? g.offers.find((o) => o.id === respond && o.status === 'pending') : undefined;
   // et jobtilbud, der venter på svar (CM 01/02: Respond i nyheden)
   const jobOffer = item?.link?.kind === 'club' && g.jobOffers.includes(Number(item.link.id)) ? Number(item.link.id) : undefined;
+  // bestyrelsens svar på en anmodning (originalens nyhed 0x1786): knappen Ultimatum
+  const ultReq = item ? cmUltimatumReq(g, item) : null;
 
   if (classic) {
     if (jobOpen !== null && g.jobOffers.includes(jobOpen)) return <div><Head title={g.manager.name} /><JobOfferPanel cid={jobOpen} onClose={() => setJobOpen(null)} /></div>;
@@ -126,6 +135,12 @@ export function Inbox() {
           {item?.key === 'sqn.request' && squadNumbersDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setSqnOpen(true)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'eur.request' && euroDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setEurOpen(true)}>{t('cl.bid.respond')}</button>}
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
+          {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}
+          {ultReq !== null && item && <button className="cx-grey cx-respond cx-ultimatum" onClick={() => {
+            const id = item.id;
+            void askConfirm(ultimatumConfirm(g.clubs[g.userClub]?.short || g.clubs[g.userClub]?.name || '', ultReq), { head: t('cl.mt.confirm') })
+              .then((ok) => { if (ok) act({ t: 'ultimatum', news: id }); });
+          }}>{t('cl.ultimatum')}</button>}
           <span className="cx-grow" />
           <label className="cx-nfilter">{t('cl.filter')} :
             <input value={q} onChange={(e) => setQ(e.target.value)} spellCheck={false} />

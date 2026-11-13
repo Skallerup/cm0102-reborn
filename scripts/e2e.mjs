@@ -904,10 +904,76 @@ async function run(look) {
     if (look === 'klassisk') await page.screenshot({ path: `${OUT}/klassisk-rapport.png` });
   });
 
+  // CM 01/02: ulæste nyheder – Continue Game åbner den næste (ældste først) i stedet for at gå videre, og ingen springes over (ejerens fejl 13/11)
+  if (look === 'klassisk') await step('Continue Game åbner de ulæste nyheder én ad gangen', async () => {
+    // trøjenumre/European Squad venter ikke under testen (de stopper Continue Game før nyhederne)
+    const due = await gs(() => { const c = window.__cm.gs().clubs[window.__cm.gs().userClub]; const d = [c.sqnDue, c.euroDue]; c.sqnDue = undefined; c.euroDue = undefined; return d; });
+    const ids = await gs(() => {
+      const g = window.__cm.gs();
+      for (const n of g.news) n.read = true;
+      const out = [];
+      for (let i = 0; i < 3; i++) { const id = g.nextId.news++; out.push(id); g.news.unshift({ id, date: g.date, read: false, cat: 'board', key: 'board.cm', params: { club: 'E2E', title: `E2E news ${i}`, body: 'e2e' } }); }
+      window.__cm.notify();
+      return out;
+    });
+    const d0 = await gs(() => window.__cm.gs().date);
+    await go({ name: 'competitions' });
+    for (const [k, id] of ids.entries()) {
+      await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      await page.waitForSelector(`.cx-nrow.on[data-id="${id}"]`, { timeout: 5000 });
+      await page.waitForTimeout(150);
+      const unread = await gs((x) => x.filter((i) => !window.__cm.gs().news.find((n) => n.id === i)?.read), ids);
+      if (unread.join() !== ids.slice(k + 1).join()) throw new Error(`efter tryk ${k + 1}: ulæste ${unread.join()} (ventede ${ids.slice(k + 1).join()})`);
+      if (k === 0) await go({ name: 'squad' });
+    }
+    if ((await gs(() => window.__cm.gs().date)) !== d0) throw new Error('Continue Game gik videre, mens der var ulæste nyheder');
+    await gs((d) => { const c = window.__cm.gs().clubs[window.__cm.gs().userClub]; c.sqnDue = d[0] ?? undefined; c.euroDue = d[1] ?? undefined; }, due);
+  });
+
+  // klassisk: indlæsningsbjælken (grå bjælke med datoen + blå fremdrift) vises med det samme, når Continue Game simulerer, og står til
+  // simuleringen er færdig (ejeren 13/11: 3 s uden bjælke). Nyhederne dæmpes under målingen, så kørslen går til næste kamp.
+  if (look === 'klassisk') await step('Continue Game viser indlæsningsbjælken med det samme', async () => {
+    const saved = await gs(() => {
+      const g = window.__cm.gs(); const c = g.clubs[g.userClub];
+      const s = { m: g.options.mutedNews ?? null, d: [c.sqnDue ?? null, c.euroDue ?? null], pf: g.pendingFixture, done: g.dayDone, date: g.date };
+      for (const n of g.news) n.read = true;
+      g.options.mutedNews = ['match', 'transfer', 'contract', 'injury', 'board', 'scout', 'award', 'youth', 'job', 'general', 'finance'];
+      c.sqnDue = undefined; c.euroDue = undefined; window.__cm.notify();
+      return s;
+    });
+    if (saved.pf || !saved.done) { console.log(`    (springes over: kampdag ${saved.pf ?? ''} / dagen ikke spillet)`); }
+    else {
+      await go({ name: 'competitions' });
+      // målt i siden (MutationObserver – også når simuleringen holder hovedtråden): hvornår bjælken kom i DOM'en og forsvandt, og hvornår
+      // den første ramme med den blev tegnet (rAF); kørslen er færdig, når bjælken er væk
+      await gs(() => {
+        const m = { t0: performance.now(), on: -1, off: -1, paint: -1 };
+        window.__bar = m;
+        const ob = new MutationObserver(() => {
+          const el = document.querySelector('.cx-running');
+          if (el && m.on < 0) { m.on = performance.now() - m.t0; requestAnimationFrame(() => { if (m.paint < 0) m.paint = performance.now() - m.t0; }); }
+          if (!el && m.on >= 0 && m.off < 0) { m.off = performance.now() - m.t0; ob.disconnect(); }
+        });
+        ob.observe(document.body, { childList: true, subtree: true });
+      });
+      await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
+      await page.waitForFunction(() => window.__bar.off >= 0 || performance.now() - window.__bar.t0 > 120000, null, { timeout: 130000, polling: 50 });
+      const m = await gs(() => window.__bar);
+      const days = await gs((d0) => Math.round((Date.parse(window.__cm.gs().date) - Date.parse(d0)) / 86400000), saved.date);
+      console.log(`    bjælken: i DOM'en efter ${Math.round(m.on)} ms, tegnet efter ${Math.round(m.paint)} ms, væk efter ${Math.round(m.off)} ms (${days} dage simuleret)`);
+      if (m.on < 0) throw new Error('indlæsningsbjælken blev ikke vist');
+      if (m.on > 300) throw new Error(`indlæsningsbjælken kom først efter ${Math.round(m.on)} ms`);
+      if (m.paint < 0 || m.paint > m.off) throw new Error('bjælken blev ikke tegnet før simuleringen');
+      // bjælken står hele kørslen: fra senest 300 ms efter klikket til simuleringen er færdig (fjernes først af run() efter runUntil)
+      if (await page.locator('.cx-running').isVisible().catch(() => false)) throw new Error('bjælken står stadig');
+    }
+    await gs((s) => { const g = window.__cm.gs(); const c = g.clubs[g.userClub]; g.options.mutedNews = s.m ?? undefined; c.sqnDue = s.d[0] ?? undefined; c.euroDue = s.d[1] ?? undefined; window.__cm.notify(); }, saved);
+  });
+
   // CM 01/02: Continue Game går gennem kampdagene (Evening Fixtures → resultater) frem til næste egne kamp uden at sætte sig fast
   if (look === 'klassisk') await step('Continue Game til næste kamp', async () => {
     let watched = 0;
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 200; i++) {
       const st = await gs(() => { const g = window.__cm.gs(); return { pf: g.pendingFixture, done: g.dayDone, date: g.date }; });
       if (st.pf) break;
       const yes = page.locator('.cx-confirm button.primary');
@@ -916,7 +982,7 @@ async function run(look) {
       if (await page.locator('.cx-md-panel').isVisible().catch(() => false) && !st.done) { watched++; if (process.env.SHOTS && watched === 1) await page.screenshot({ path: `${OUT}/klassisk-kampdag-uden-egen.png` }); }
       await page.locator('.cx-side .cx-continue').first().click({ timeout: 10000 });
       await page.waitForTimeout(250);
-      if (i === 79) throw new Error(`Continue Game nåede ikke næste kamp (dato ${st.date})`);
+      if (i === 199) throw new Error(`Continue Game nåede ikke næste kamp (dato ${st.date})`);
     }
     await checkScreen('næste kamp');
   });

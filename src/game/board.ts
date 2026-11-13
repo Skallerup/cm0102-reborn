@@ -1,5 +1,5 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
-import { cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardRequest, cmBoardResign } from './cmBoardGame';
+import { cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardRequest, cmBoardRequestAvailable, cmBoardResign } from './cmBoardGame';
 import { finalOrder, leagueRows } from './competitions';
 import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
@@ -843,8 +843,8 @@ export function meetBoardAvailable(kind: MeetBoardKind): boolean {
   const g = gs();
   const c = g.clubs[g.userClub];
   if (!c) return false;
-  // originalens anmodninger kan altid sendes – bestyrelsen svarer (0x6a8810)
-  if (cmBoardOn(g) && (kind === 'stadium' || kind === 'youth' || kind === 'time')) return true;
+  // originalens skærm 0x4253f0: punktet er gråt, når 0x6ae180 giver 0 – kun ungdommen ved træningsanlæg 20; ellers svarer bestyrelsen (0x6a8810)
+  if (cmBoardOn(g)) return cmBoardRequestAvailable(g, MEET_BOARD.indexOf(kind) + 1);
   const month = g.date.slice(0, 7);
   switch (kind) {
     case 'stadium': return !(c.projects ?? []).some((p) => p.kind === 'stadium');

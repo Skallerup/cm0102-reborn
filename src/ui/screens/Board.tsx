@@ -13,7 +13,7 @@ import { Info } from '../help';
 import { Head } from './common';
 import { authentic } from '../../game/rules';
 import { useClassicDialog, ClassicFoot } from '../classic';
-import { cmBoardScreenText } from '../../game/cmBoardGame';
+import { cmBoardOn, cmBoardScreenText } from '../../game/cmBoardGame';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
 
@@ -123,7 +123,8 @@ function ClassicBoard() {
           <div className="cx-statement">{boardStatement().map((x) => <p key={x}>{x}</p>)}</div>
         </>
       )}
-      {view === 'request' && <MeetPanel key="b" title={t('cl.mb.title')} intro={t('cl.mb.intro')} kinds={MEET_BOARD} avail={meetBoardAvailable} label={(k) => t(`cl.mb.${k}`)}
+      {/* CM 01/02 (0x4253f0): ét punkt ad gangen; med originalens bestyrelse kommer svaret som nyhed (0x1786), og skærmen lukker */}
+      {view === 'request' && <MeetPanel key="b" single quiet={cmBoardOn(gs())} title={t('cl.mb.title')} intro={t('cl.mb.intro')} kinds={MEET_BOARD} avail={meetBoardAvailable} label={(k) => t(`cl.mb.${k}`)}
         send={(k) => act<string>({ t: 'meetBoard', kind: k })} onClose={() => setView('confidence')} />}
       {view === 'fa' && <MeetPanel key="f" title={t('cl.fa.title')} intro={t('cl.fa.intro')} kinds={FA_REQUESTS} avail={faAvailable} label={(k) => t(`cl.fa.${k}`)}
         send={(k) => act<string>({ t: 'faRequest', kind: k })} onClose={() => setView('confidence')} />}
@@ -132,13 +133,18 @@ function ClassicBoard() {
 }
 
 /** "Meet with Board" / "Meet with the Football Association": klik på et ønske for at vælge det (hvid tekst), Confirm sender */
-function MeetPanel<K extends string>({ title, intro, kinds, avail, label, send, onClose }: {
+function MeetPanel<K extends string>({ title, intro, kinds, avail, label, send, onClose, single, quiet }: {
   title: string; intro: string; kinds: K[]; avail: (k: K) => boolean; label: (k: K) => string; send: (k: K) => string; onClose: () => void;
+  /** ét valg ad gangen (originalens Meet with Board); quiet: svaret kommer som nyhed – luk efter Confirm */
+  single?: boolean; quiet?: boolean;
 }) {
   useClassicDialog();
   const [sel, setSel] = useState<Set<K>>(new Set());
   const [answers, setAnswers] = useState<string[] | null>(null);
-  const confirm = () => setAnswers([...sel].map((k) => t(send(k))));
+  const confirm = () => {
+    const out = [...sel].map((k) => t(send(k)));
+    if (quiet) onClose(); else setAnswers(out);
+  };
   return (
     <div className="cx-tstatus">
       <div className="cx-subtitle">{title}</div>
@@ -149,7 +155,7 @@ function MeetPanel<K extends string>({ title, intro, kinds, avail, label, send, 
             {kinds.map((k) => {
               const ok = avail(k);
               return <button key={k} className={`cx-opt ${sel.has(k) ? 'on' : ''}`} disabled={!ok}
-                onClick={() => setSel((s) => { const x = new Set(s); if (x.has(k)) x.delete(k); else x.add(k); return x; })}>{label(k)}</button>;
+                onClick={() => setSel((s) => { const x = new Set(single ? [] : s); if (s.has(k)) x.delete(k); else x.add(k); return x; })}>{label(k)}</button>;
             })}
           </>
         )}

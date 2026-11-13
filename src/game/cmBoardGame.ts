@@ -30,7 +30,8 @@ import {
   setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec,
 } from './cmBoard';
 import type { CMWorld } from './data/cm0102';
-import { confidenceText, expectBody, expectTitle, requestReply, requestTitle } from './cmBoardText';
+import { confidenceText, expectBody, expectTitle, requestReply, requestTitle, ultimatumBody, ultimatumTitle } from './cmBoardText';
+import { boardRequestAvailable, issueUltimatum, ultimatumOffered, type UltimatumIn } from './cmBoardUltimatum';
 import { projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
 import { msvcQsort } from './engine/grid/subs';
 import { registerPrerun } from './cmPrerun';
@@ -419,7 +420,8 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 5): string | null {
   const R = recOfG(g, c);
   const reply = (code: number) => {
     const body = requestReply(club.name, req, code);
-    addNews({ cat: 'board', key: 'board.cm', params: { club: club.name, title: requestTitle(req), body }, link: { kind: 'club', id: c } });
+    // nyheden 0x1786 (0x6a9350): slot 1 anmodningen og slot 2 svarkoden – knappen "Ultimatum" (0x782c6f) læser dem, slot 5 = givet
+    addNews({ cat: 'board', key: 'board.cm', params: { club: club.name, title: requestTitle(req), body, rq: req, rc: code, ult: 0 }, link: { kind: 'club', id: c } });
     return body;
   };
   R.b4 = (R.b4 + 1) & 0xff;
@@ -466,6 +468,50 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 5): string | null {
   R.b3 |= 1;
   R.w6 = Math.max(s16(R.w6 + 1250), 4275);
   return reply(0);
+}
+
+/** 0x6ae180: Meet with Board-skærmens punkt kan vælges (ellers gråt) – anmodning 1–5 */
+export function cmBoardRequestAvailable(g: GameState, req: number): boolean {
+  return boardRequestAvailable(req, g.clubs[g.userClub]?.facilities ?? 0);
+}
+
+/** nyheden 0x1786 har knappen "Ultimatum" (0x782c6f) – anmodningen, eller null */
+export function cmUltimatumReq(g: GameState, n: { key: string; params: Record<string, string | number> }): number | null {
+  if (!cmBoardOn(g) || !g.userClub || n.key !== 'board.cm' || n.params.rq === undefined) return null;
+  const req = Number(n.params.rq);
+  return ultimatumOffered(req, Number(n.params.rc), !!n.params.ult) ? req : null;
+}
+
+/** "Yes" i 0x9064a0's bekræftelse: 0x6ad610 issue_ultimatum (manageren, hans klub, anmodningen) – tilhængernes nyhed (0x178f type 1), bestyrelsens
+ *  svar (type 3) og følgerne. Spillets data: stemningen = g.cmClubMood, status = cmClubStat[0], nation +0x85 = cmNationBoard, formanden = cmChair
+ *  (+ Business fra cmFin), Finance = saldo/formuebånd/transferbudget som i 0x6a8810. *Afvigelse*: lønloftet Finance +0x14 (get_max_wage 0x5968d0) og
+ *  adjust_max_wage 0x598340 findes ikke i spillet (anmodning 4 når aldrig hertil – 0x6a8810's anmodning 3/4 er ikke porteret); ved svar 1 på
+ *  anmodning 1/2 ændrer originalen intet ud over nyheden. */
+export function cmBoardUltimatum(g: GameState, req: number): boolean {
+  if (!cmBoardOn(g)) return false;
+  const c = g.userClub, club = g.clubs[c];
+  const env = boardEnv(g);
+  const m = env.manager(c);
+  if (!club || !m || !m.np || !env.division(c)) return false;
+  const crowd = g.cmCrowd?.[c];
+  if (!crowd || crowd[3] < 0) return false;                               // club +0x69 (stadion) = NULL
+  const R = recOfG(g, c);
+  const ch = env.chair(c);
+  const x: UltimatumIn = {
+    req, today: env.today, gameStart: env.gameStart, mrep: m.rep[1], joined: m.joined, cmRep: m.rep[1],
+    clubRep: clubRepMem(g, c), status: g.cmClubStat?.[c]?.[0] ?? 1, facilities: club.facilities, nat85: env.nat85(club.nation),
+    cap: crowd[5], mood: g.cmClubMood?.[c] ?? 0,
+    chair: ch ? { patience: ch.b1d, amb: ch.amb, business: g.cmFin?.[c]?.chair?.[0] ?? 10 } : null,
+    fin: { balance: env.balance(c), band: env.wealthBand(c), transferBudget: env.transferBudget(c), wageCap: 0 },
+  };
+  const o = issueUltimatum(x, R, rnd(g, dayNum(g.date), 0x6ad610, req));
+  const short = club.short || club.name, name = g.manager.name;
+  const post = (type: number, sub: number) => addNews({ cat: 'board', key: 'board.cm', params: { club: club.name, title: ultimatumTitle(type, req, o.res, short),
+    body: ultimatumBody(type, req, sub, club.name, name, club.stadium ?? '', o.fansStadium, o.fansTraining) }, link: { kind: 'club', id: c } });
+  if (o.fans) post(1, o.fans);
+  post(3, o.res);
+  if (o.res === 2) stateOf(g).dep.push({ type: 1, reason: o.reason, club: c });
+  return true;
 }
 
 /** Board-skærmens tekstkoder (boardStatementCodes) af originalens tillid: bånd 0x690b70 (+6) */

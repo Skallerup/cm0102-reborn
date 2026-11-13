@@ -13,6 +13,11 @@ export function takeFocus(): number | null {
   return v;
 }
 
+/** uden at forbruge (Inbox' første tegning – StrictMode tegner to gange) */
+export function peekFocus(): number | null {
+  return pending;
+}
+
 export function onFocusNews(fn: (id: number) => void): () => void {
   listeners.add(fn);
   return () => { listeners.delete(fn); };

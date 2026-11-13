@@ -125,6 +125,14 @@ function selectionProblems(): string | null {
   return lines.length ? lines.join(' ') : null;
 }
 
+/** venter, til browseren har tegnet en ramme (rAF → næste opgave); i en skjult fane kommer rAF ikke – så højst 100 ms */
+const painted = () => new Promise<void>((res) => {
+  let done = false;
+  const fin = () => { if (!done) { done = true; res(); } };
+  requestAnimationFrame(() => setTimeout(fin, 0));
+  setTimeout(fin, 100);
+});
+
 export function Shell() {
   const g = useGame()!;
   // 2001-databasen: CM's egne turneringsnavne på engelsk, ellers de rigtige ("Premier League")
@@ -345,6 +353,9 @@ export function Shell() {
       const n = g.news.find((x) => x.key === 'eur.request' && x.params.done === undefined);
       if (n) { focusNews(n.id); nav({ name: 'inbox' }); return; }
     }
+    // CM 01/02: er der ulæste nyheder, åbner Continue Game den næste (som Next Unread) i stedet for at gå videre – også på kampdagen og
+    // før en fulgt dag spilles; først når alt er læst, går spillet videre (ejerens ønske 13/11)
+    if (cmNav && showOldestUnread(g.news)) return;
     if (g.pendingFixture) {
       const pf = g.fixtures[g.pendingFixture];
       // gammel kamp fra en klub, man ikke længere styrer (efter jobskifte): spil den automatisk
@@ -384,7 +395,10 @@ export function Shell() {
     const endBy = opts.untilDate ?? (opts.maxDays ? addDays(g0.date, opts.maxDays) : undefined);
     const end = [nextFx && opts.untilMatch !== false ? nextFx : undefined, endBy].filter(Boolean).sort()[0] ?? addDays(g0.date, 30);
     spanRef.current = { start: g0.date, end: end as string };
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (Date.now() - t0 > 60) setRunning(d); } });
+    // klassisk: bjælken vises MED DET SAMME og tegnes, før første dag simuleres (en tung første dag gav før 3 s uden noget på skærmen – ejeren
+    // 13/11); derefter opdateres den efter hver dag (runUntil giver plads med setTimeout(0) mellem dagene)
+    if (cmNav) { setRunning(g0.date); await painted(); }
+    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) setRunning(d); } });
     setRunning(null);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);
