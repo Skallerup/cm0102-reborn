@@ -447,8 +447,9 @@ export function ClassicPlayer({ id }: { id: number }) {
           if (me && loanBlocked(p, me)) void askNotice(t('cl.pl.loanNonEu', { club: me.short }), { head: t('cl.pl.cannotLoan', { player: `${p.first} ${p.last}`.trim() }) });
           else setBidPanel('loan');
         } },
-        { key: 'enq', label: t('player.enquire'), onClick: () => act(dispatch<string>({ t: 'enquire', pid: p.id })) },
       );
+      // Enquire findes ikke i CM 01/02 (ejerens billede 13/11) – kun i det udvidede spil
+      if (!authentic()) items.push({ key: 'enq', label: t('player.enquire'), onClick: () => act(dispatch<string>({ t: 'enquire', pid: p.id })) });
     } else {
       items.push({ key: 'offer', label: t('player.offerContract'), disabled: !open, title: closedTip, onClick: () => act(dispatch<TransferOffer | string>({ t: 'bid', pid: p.id, fee: 0, loan: false })) });
       if (!trialOf(p.id) && !authentic()) items.push({ key: 'trial', label: t('trial.invite'), onClick: () => { const r = dispatch<string>({ t: 'trial', pid: p.id }); setMsg(r === 'ok' ? t('trial.invited') : t(`trial.err.${r}`)); } });

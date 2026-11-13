@@ -40,7 +40,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   // (tilbud og handler, som originalen ikke har her, ligger yderst i den nederste række)
   return (
     <div>
-      <Head title={t('cl.tr.title')} action={club ? <button className="cx-funds" title={t('nav.finance')} onClick={() => nav({ name: 'finance' })}>{t('cl.tr.funds', { fee: money(club.transferBudget) })}</button> : undefined} />
+      <Head title={t('cl.tr.title')} action={club ? <button className="cx-funds" title={t('nav.finance')} onClick={() => nav(authentic() ? { name: 'club', id: g.userClub, state: { cview: 'finances' } } : { name: 'finance' })}>{t('cl.tr.funds', { fee: money(club.transferBudget) })}</button> : undefined} />
       <Tabs tabs={[
         ['shortlist', t('cl.tr.shortlist')], ['search', t('tr.search')], ['staff', t('cl.tr.staffSearch')],
         [scoutKey(1), t('cl.tr.scoutN', { n: 1 })], [scoutKey(2), t('cl.tr.scoutN', { n: 2 })],

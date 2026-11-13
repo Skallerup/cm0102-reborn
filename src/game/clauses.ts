@@ -103,7 +103,7 @@ function pay(from: Club | undefined, to: Club | undefined, amount: number) {
 }
 
 /** Ved et salg: betal videresalgsprocent til den tidligere klub. Kaldes før spilleren skifter klub. */
-export function settleSellOn(p: Player, fee: number, seller: Club | undefined) {
+export function settleSellOn(p: Player, fee: number, seller: Club | undefined, min = 0) {
   const g = gs();
   const so = p.sellOn;
   if (!so) return;
@@ -111,7 +111,8 @@ export function settleSellOn(p: Player, fee: number, seller: Club | undefined) {
   if (!seller || fee <= 0 || so.club === seller.id) return;
   const amount = Math.round(Math.max(0, fee - so.base) * so.pct / 100);
   const to = g.clubs[so.club];
-  if (!amount || !to) return;
+  // CM 01/02 0x8cb0f0: beløb under £1000 betales ikke (min)
+  if (!amount || !to || amount < min) return;
   pay(seller, to, amount);
   if (isHumanClub(to.id)) asOwner(to.id, () => addNews({ cat: 'finance', key: 'clause.sellOnPaid', params: { player: pname(p), club: seller.name, pct: so.pct, fee: amount }, link: { kind: 'player', id: p.id } }));
   if (isHumanClub(seller.id)) asOwner(seller.id, () => addNews({ cat: 'finance', key: 'clause.sellOnOwed', params: { player: pname(p), club: to.name, pct: so.pct, fee: amount }, link: { kind: 'player', id: p.id } }));

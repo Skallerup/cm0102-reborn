@@ -230,6 +230,8 @@ export interface Player {
   sellOn?: { club: number; pct: number; base: number };
   /** Ekstra transfersum når spilleren har spillet et antal kampe for køberen */
   addOn?: { club: number; payer: number; fee: number; left: number };
+  /** CM 01/02 (0x8cac40/0x8cad90): beløb efter N klub-/landskampe til den sælgende klub; `left` tæller ned (landskampe: caps ved handlen i `caps`) */
+  cmApps?: { kind: 'lg' | 'int'; club: number; payer: number; fee: number; left: number; caps?: number }[];
   /** Klausuler i en aftalt Bosman-kontrakt (træder i kraft ved skiftet) */
   futureClauses?: ContractClauses;
   /** Seneste samtale med manageren (cooldown) */
@@ -714,6 +716,17 @@ export interface TransferOffer {
   /** live-forhandling: antal bud i samme forhandling, og om klubben har sagt 'ikke til salg' */
   bidRounds?: number;
   nfs?: boolean;
+  /** CM 01/02 (cmTransferBid.ts, kun den originale database i ægte tilstand): månedlige rater (+0x40), beløb efter N ligakampe (+0x35/+0x39)
+   *  og landskampe (+0x3a/+0x3e), offentligt bud (+0x2d: 2 ja, 1 låst ja) og et modbud med klausuler */
+  months?: number;
+  lgFee?: number;
+  lgApps?: number;
+  intFee?: number;
+  intApps?: number;
+  pub?: 1 | 2;
+  cmCounter?: import('./cmTransferBid').BidTerms;
+  /** buddet er endeligt (timing-nibble 2, 0x8c0810) */
+  final?: boolean;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */
@@ -1054,6 +1067,8 @@ export interface GameState {
   /** (økonomien, cmFinance.ts) originalens Finance-post pr. klub (pund), databasens felter [division, PLC, stadion +0x4c/+0x4d],
    *  nation +0x85, "A Lower Division", tilhængernes tillid (MANAGER_MANAGER +8) og spilstartens år */
   cmFin?: Record<number, import('./cmFinance').CmFinRec>;
+  /** CM 01/02: transfersummens resterende månedlige rater (TRANSFER_MANAGER +0x872, 0x8caee0) */
+  cmInstalments?: { amount: number; buyer: number; seller: number; left: number; player: number }[];
   cmFinRaw?: Record<number, number[]>;
   cmLowerDiv?: number;
   /** viljen 0x844780 (cmBoardInterest.ts): nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id, byernes +0x33 og klubbernes

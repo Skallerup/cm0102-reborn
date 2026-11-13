@@ -61,7 +61,7 @@ export type Action =
   | { t: 'ultimatum'; news: number }
   | { t: 'faRequest'; kind: import('./board').FaKind }
   | { t: 'appealBan'; pid: number }
-  | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[] }
+  | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[]; terms?: import('./cmTransferBid').BidTerms }
   | { t: 'enquire'; pid: number }
   | { t: 'preContract'; pid: number }
   | { t: 'shortlist'; pid: number; on: boolean }
@@ -72,7 +72,9 @@ export type Action =
   | { t: 'reserves'; pid: number; on: boolean }
   | { t: 'staffReport'; pid: number; staffId: number }
   | { t: 'renewLater'; pid: number; wage: number; years: number; clauses?: ContractClauses }
-  | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason }
+  | { t: 'respond'; pid: number; buyer: number; action: 'accept' | 'reject' | 'counter'; counter?: number; sellOn?: number; reason?: RejectReason;
+      /** CM 01/02 (cmTransferBid.ts): budskærmens vilkår, originalens afvisningsbegrundelse, om buddet var ændret, Reject All */
+      terms?: import('./cmTransferBid').BidTerms; rejectKey?: import('./cmTransferBid').RejectKey; changed?: boolean; all?: boolean }
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number; wage?: number }
@@ -198,7 +200,7 @@ export function applyAction(a: Action): unknown {
     case 'faRequest': return faRequest(a.kind);
     case 'appealBan': return appealBan(a.pid);
     case 'enquire': return enquire(a.pid);
-    case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap });
+    case 'bid': return makeBid(a.pid, a.fee, a.loan, { sellOn: a.sellOn, addOn: a.addOn, swap: a.swap, terms: a.terms });
     case 'preContract': return startPreContract(a.pid);
     case 'shortlist':
       g.shortlist = g.shortlist.filter((x) => x !== a.pid);
@@ -220,7 +222,7 @@ export function applyAction(a: Action): unknown {
     case 'renewLater': return offerRenewalLater(a.pid, a.wage, a.years, a.clauses);
     case 'respond': {
       const o = g.offers.slice().reverse().find((x) => x.player === a.pid && x.buyer === a.buyer && x.seller === g.userClub && x.status === 'pending');
-      const reply = o ? respondToOffer(o.id, a.action, a.counter, a.sellOn, a.reason) : null;
+      const reply = o ? respondToOffer(o.id, a.action, a.counter, a.sellOn, a.reason, { terms: a.terms, reject: a.rejectKey, changed: a.changed, all: a.all }) : null;
       return reply ?? 'ok';
     }
     case 'acceptCounter': { const o = myOffer(a.pid); return o ? acceptCounter(o.id) : 'error'; }

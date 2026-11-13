@@ -5,7 +5,7 @@ import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame, type Route } from './core';
 import { applyTheme, getTheme, setTheme } from './theme';
-import { hasGame, notify, previewInfo } from '../game/state';
+import { hasGame, inSetup, notify, previewInfo } from '../game/state';
 import { forgetLast, loadGame } from '../game/save';
 import { getLast } from '../game/last';
 import { openSession, savedRooms, session } from '../online/client';
@@ -36,7 +36,9 @@ export default function AppPage() {
 }
 
 function AppInner() {
-  const g = useGame();
+  // nyt-spil-forløbet bygger en midlertidig verden til Select Team (ClassicStart.tsx) – for resten af siden er der stadig intet spil
+  const g0 = useGame();
+  const g = inSetup() ? null : g0;
   // temaet skifter, når et spil indlæses eller lukkes
   const inGame = !!g;
   useEffect(() => { applyTheme(); }, [inGame]);

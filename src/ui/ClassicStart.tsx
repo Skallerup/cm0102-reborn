@@ -1,27 +1,30 @@
 // Nyt spil i det klassiske udseende – originalens startmenu og forløb (CM 01/02 Bosman Edition):
 // startmenu → Select League(s) → Enter Name → Select Nationality → Select Team → klubbens trup (Take Control) → Please Confirm → indlæsning.
-// Verdenen (databasen) hentes, når man vælger Start New Game; spillet bygges først efter "Yes" (createGame kender menneskeklubben fra start –
-// den bygger hele verdenen ud fra den, så en klub kan ikke skiftes bagefter). Klubbens trup i trin 6 vises derfor af databasens egne data.
+// Skallen er spillets egen (.shell.cx: .cx-side med datoboks/pile/.cx-sbtn, .cx-title/.cx-subtitle, .cx-foot med Back/Next og .cx-running) – ikke en kopi.
+// Efter Select League(s) bygges en midlertidig verden i en Web Worker (createGameAsync med preview, ligger i game/state.ts som inSetup()): den bygges
+// mens man skriver navn og vælger nationalitet. Select Team viser så klubbens ÆGTE skærme (Shell/SquadClassic/ClassicHead – samme trup, Inj-mærker,
+// udtagelsesfelter, faner og General Info) med knappen Take Control. "Yes" bygger det rigtige spil med den valgte klub og manager (samme frø, så alt er ens).
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { CURRENCIES, LANGS, compName, dateFmt, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../i18n';
 import type { Lang } from '../game/types';
 import type { WorldData } from '../game/newgame';
-import type { CMWorld } from '../game/data/cm0102';
-import { positionString } from '../game/attributes';
+import { previewClub } from '../game/newgame';
 import { deleteSave, importSave, listSaves, loadGame, storeSave, type SaveMeta } from '../game/save';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { notifyNewCareer } from '../online/notify';
-import { notify } from '../game/state';
+import { gs, inSetup, notify, setGame } from '../game/state';
 import { track } from '../analytics';
 import { askConfirm } from './confirm';
 import { AccountBar, useAccount } from './Login';
-import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
+import { GROUP_KEY, NAV_CLOSED_DEFAULT, Shell } from './Shell';
+import { NavProvider } from './core';
+import { SetupCtx, SetupSide, type SetupApi } from './setupCtx';
 import { compAbbr } from './classic';
 import { regionOfNation, type UiRegion } from './classicOptions';
 import { DEMONYM } from './demonyms';
 import { listDbs } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
-import { setTheme, getTheme } from './theme';
+import { setTheme, getTheme, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, readDb, readVer, writeDb, writeVer, type Db } from './startGame';
 
@@ -38,19 +41,16 @@ const REGION_CODE: Record<UiRegion, string> = { europe: 'EUR', southAmerica: 'SA
 const REGION_ORDER: UiRegion[] = ['europe', 'southAmerica', 'northAmerica', 'asia', 'oceania', 'africa'];
 
 interface ClubRow { id: number; short: string; name: string; nation: number; code: string; league: string; div: string }
-interface PlayerRow { id: number; name: string; pos: string; num: number; grp: number }
 interface NatRow { i: number; label: string; region: string; regionKey: UiRegion }
-interface Prep { clubs: ClubRow[]; squads: Map<number, PlayerRow[]>; nations: NatRow[] }
+interface Prep { clubs: ClubRow[]; nations: NatRow[] }
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-// POSITIONS-rækkefølgen (GK, SW, D, DM, M, AM, ST, WB) → sorteringsgruppe i truppen
-const GROUP = [0, 1, 1, 2, 3, 3, 4, 1];
 
 /** Adjektivet ("Danish") på engelsk, ellers landets navn på spillets sprog */
 const adjective = (name: string) => (getLang() === 'en' ? DEMONYM[name] ?? name : natName(name));
 
-/** Klubberne, spillerne og nationaliteterne for de valgte lande – selve "Player Initialisation" (trin 3) */
-async function makePrep(world: WorldData, active: Set<number>, onStep: (frac: number) => void): Promise<Prep> {
+/** Klubberne (kun SELECTED-lande – BACKGROUND-lande kan ikke styres) og nationaliteterne – selve "Player Initialisation" (trin 3) */
+function makePrep(world: WorldData, playable: Set<number>): Prep {
   const lg = new Map(world.leagues.map((l) => [l.id, l]));
   const eng = world.nations.findIndex((n) => n.name === 'England');
   const divOf = (id: string) => {
@@ -60,76 +60,50 @@ async function makePrep(world: WorldData, active: Set<number>, onStep: (frac: nu
     return l.nation === eng && l.tier >= 1 && l.tier <= 4 ? ['PL', 'D1', 'D2', 'D3'][l.tier - 1] : compAbbr(compName(l.name));
   };
   const clubs: ClubRow[] = world.clubs
-    .filter((c) => active.has(c[3]) && lg.get(c[4]) && !lg.get(c[4])!.hidden)
+    .filter((c) => playable.has(c[3]) && lg.get(c[4]) && !lg.get(c[4])!.hidden)
     .map((c) => ({ id: c[0], short: c[2], name: c[1], nation: c[3], code: world.nations[c[3]]?.code ?? '', league: c[4], div: divOf(c[4]) }))
     .sort((a, b) => a.short.localeCompare(b.short));
-  onStep(0.3); await delay(140);
-  const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
-  const ratings = (world as Partial<CMWorld>).ratings;
-  const ids = new Set(clubs.map((c) => c.id));
-  const squads = new Map<number, PlayerRow[]>();
-  for (const r of world.players) {
-    const club = r[F.club] as number;
-    if (!ids.has(club)) continue;
-    const id = r[F.id] as number;
-    const rt = ratings?.[id];
-    const first = String(r[F.first] ?? ''), last = String(r[F.last] ?? '');
-    const pos = rt ? positionString({ pos: rt.pos, side: rt.side } as never) : String(r[F.pos] ?? '');
-    const grp = rt ? GROUP[rt.pos.indexOf(Math.max(...rt.pos))] ?? 3 : 3;
-    const list = squads.get(club) ?? [];
-    list.push({ id, name: first ? `${last}, ${first[0]}` : last, pos, num: Number(r[F.number] ?? 0) || 0, grp });
-    squads.set(club, list);
-  }
-  for (const l of squads.values()) l.sort((a, b) => a.grp - b.grp || a.name.localeCompare(b.name));
-  onStep(0.75); await delay(140);
   const natIds = new Set<number>([...world.clubs.map((c) => c[3]), ...world.leagues.map((l) => l.nation)]);
   const nations = [...natIds].filter((i) => world.nations[i]).map((i) => {
     const key = regionOfNation(world.nations[i].name);
     return { i, label: adjective(world.nations[i].name), region: REGION_CODE[key], regionKey: key };
   }).sort((a, b) => a.label.localeCompare(b.label));
-  onStep(1); await delay(160);
-  return { clubs, squads, nations };
+  return { clubs, nations };
 }
 
 interface Prog { label: string; frac: number; auto?: boolean; step?: string }
 
-function Frame({ step, version, title, sub, children, onBack, onNext, backLabel, nextLabel, nextDisabled, prog, side, titleExtra, hist, onHist, onRestart, onExit, className }: {
+function Frame({ step, version, title, sub, children, onBack, onNext, backLabel, nextLabel, nextDisabled, prog, hist, onHist, onRestart, onExit, className }: {
   step: Step; version: string; title: ReactNode; sub?: ReactNode; children: ReactNode;
-  onBack?: () => void; onNext?: () => void; backLabel?: string; nextLabel?: string; nextDisabled?: boolean; prog: Prog | null; side?: ReactNode; titleExtra?: ReactNode;
+  onBack?: () => void; onNext?: () => void; backLabel?: string; nextLabel?: string; nextDisabled?: boolean; prog: Prog | null;
   hist: { back: boolean; fwd: boolean }; onHist: (d: -1 | 1) => void; onRestart: () => void; onExit?: () => void; className?: string;
 }) {
-  const bg = `${import.meta.env.BASE_URL}original-bg/${BG[step]}.jpg`;
   const pct = prog ? Math.max(0, Math.min(100, Math.round(prog.frac * 100))) : 0;
-  const atMenu = step === 'menu';
+  // baggrunden som i spillet: --cx-photo på :root (Shell sætter den samme variabel), og hovedfladen .cx-orig lader fotoet stå alene
+  useEffect(() => { document.documentElement.style.setProperty('--cx-photo', `url("${import.meta.env.BASE_URL}original-bg/${BG[step]}.jpg")`); }, [step]);
   return (
-    <div className={`cxs cxs-${step} ${prog ? 'busy' : ''} ${className ?? ''}`} style={{ ['--cxs-bg' as string]: `url("${bg}")` }} data-cxs={step}>
-      <aside className="cx-side cxs-side">
-        <div className="cx-date"><b>{t('cxs.version')}</b><span>{version}</span></div>
-        <div className="cx-arrows">
-          <button aria-label={t('cxs.back')} disabled={!hist.back || !!prog} onClick={() => onHist(-1)}>◂</button>
-          <button aria-label={t('cxs.next')} disabled={!hist.fwd || !!prog} onClick={() => onHist(1)}>▸</button>
+    <div className={`shell cx cxs cxs-${step} ${prog ? 'cx-busy' : ''} ${className ?? ''}`} data-cxs={step}>
+      <SetupSide version={version} canBack={hist.back} canFwd={hist.fwd} onBack={() => onHist(-1)} onFwd={() => onHist(1)} onRestart={onRestart} onExit={onExit} atMenu={step === 'menu'} busy={!!prog} />
+      <main className="main cx-main cx-orig cxs-main">
+        <div className="cx-head">
+          <div className="cx-title cxs-red"><h2 data-step-title>{title}</h2></div>
         </div>
-        <button className="cx-sbtn cxs-dim" disabled>{t('cxs.addManager')}</button>
-        <button className={`cx-sbtn ${atMenu ? 'cxs-dim' : 'cxs-dim'}`} disabled={atMenu || !!prog} onClick={onRestart}>{t('cxs.restart')}</button>
-        <button className={`cx-sbtn ${onExit && atMenu ? '' : 'cxs-dim'}`} disabled={!onExit || !atMenu || !!prog} onClick={onExit}>{t('cxs.exit')}</button>
-        {side}
-      </aside>
-      <main className="cxs-main">
-        <div className="cxs-title" data-step-title>{title}{titleExtra}</div>
-        {sub && <div className="cxs-sub">{sub}</div>}
+        {sub && <div className="cx-subtitle">{sub}</div>}
         <div className="cxs-body">{children}</div>
+      </main>
+      <footer className="cx-foot">
         {prog ? (
-          <div className="cxs-prog" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={prog.label}>
-            <span className="cxs-prog-l">{prog.label}</span>
-            <div className="cxs-prog-bar"><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></div>
+          <div className="cx-running" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-label={prog.label}>
+            <span className="cx-run-l">{prog.label}</span>
+            <span className="cx-run-bar"><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></span>
           </div>
-        ) : (onBack || onNext) && (
-          <div className="cxs-foot">
-            <button className="cxs-btn" onClick={onBack} disabled={!onBack}>{backLabel ?? t('cxs.back')}</button>
-            <button className="cxs-btn cxs-next" onClick={onNext} disabled={!onNext || nextDisabled}>{nextLabel ?? t('cxs.next')}</button>
+        ) : (
+          <div className="cx-backnext">
+            <button className="cx-back" onClick={onBack} disabled={!onBack}>{backLabel ?? t('cxs.back')}</button>
+            <button className="cx-next" onClick={onNext} disabled={!onNext || nextDisabled}>{nextLabel ?? t('cxs.next')}</button>
           </div>
         )}
-      </main>
+      </footer>
     </div>
   );
 }
@@ -137,12 +111,14 @@ function Frame({ step, version, title, sub, children, onBack, onNext, backLabel,
 export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lang) => void; onHome?: () => void; onGo: (v: LegacyView) => void; onLook: () => void }) {
   // originalen er ægte CM 01/02 med den klassiske DOM – temaet sættes, så resten af spillet (og e2e) ser det klassiske udseende
   useEffect(() => { if (getTheme() !== 'retro') setTheme('retro'); }, []);
+  // spillets klassiske skin (:root[data-skin='retro']) gælder også før der er et spil – startskærmene bruger spillets egne knapper og lister
+  useEffect(() => { setStartSkin(true); return () => setStartSkin(false); }, []);
   const [hist, setHist] = useState<{ stack: Step[]; i: number }>({ stack: ['menu'], i: 0 });
   const step = hist.stack[hist.i];
   const go = (s: Step) => setHist((h) => ({ stack: [...h.stack.slice(0, h.i + 1), s], i: h.i + 1 }));
   const back = () => setHist((h) => (h.i > 0 ? { ...h, i: h.i - 1 } : h));
   const onHist = (d: -1 | 1) => setHist((h) => (h.i + d >= 0 && h.i + d < h.stack.length ? { ...h, i: h.i + d } : h));
-  const reset = () => setHist({ stack: ['menu'], i: 0 });
+  const reset = () => { discard(); setHist({ stack: ['menu'], i: 0 }); };
 
   const [db, setDbState] = useState<Db>(readDb);
   const [ver, setVerState] = useState<OriginalVersion>(readVer);
@@ -152,7 +128,9 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   const [wanted, setWanted] = useState(false);
   const [err, setErr] = useState('');
   const [prog, setProg] = useState<Prog | null>(null);
-  const [active, setActive] = useState<Set<number>>(new Set());
+  // Select League(s): SELECTED = spilbart (første valgte = hovedland), BACKGROUND = landet spilles i baggrunden, men kan ikke styres; ingen af dem = ikke med
+  const [sel, setSel] = useState<number[]>([]);
+  const [bgn, setBgn] = useState<number[]>([]);
   const [masking, setMasking] = useState(true);
   const [prep, setPrep] = useState<Prep | null>(null);
   const [first, setFirst] = useState('');
@@ -160,10 +138,21 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   const [nat, setNat] = useState(-1);
   const [region, setRegion] = useState('all');
   const [team, setTeam] = useState(0);
-  const [tab, setTab] = useState<'squad' | 'info'>('squad');
   const quick = useRef(false);
   const file = useRef<HTMLInputElement>(null);
   const hasHist = { back: hist.i > 0, fwd: hist.i < hist.stack.length - 1 };
+
+  // den midlertidige verden til Select Team: bygges i baggrunden, så snart ligaerne er valgt (se øverst). Samme frø bruges til det rigtige spil.
+  const seed = useRef(Math.floor(Math.random() * 1e9));
+  const build = useRef<{ sig: string; ctl: AbortController } | null>(null);
+  const [bp, setBp] = useState<{ sig: string; frac: number; done: boolean } | null>(null);
+  const [waitTeam, setWaitTeam] = useState(false);
+  const discard = () => {
+    build.current?.ctl.abort(); build.current = null; setBp(null); setWaitTeam(false);
+    if (inSetup()) setGame(null);
+  };
+  // forlader man forløbet (Exit/forsiden/spillet starter), forsvinder den midlertidige verden med
+  useEffect(() => () => { build.current?.ctl.abort(); if (inSetup()) setGame(null); }, []);
 
   // fremdriftsbjælken uden målt fremdrift (databasen hentes, et gemt spil åbnes): går mod ~90 % og springer til 100, når det er klaret
   useEffect(() => {
@@ -173,8 +162,9 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   }, [prog?.auto]);
 
   const setDb = (d: Db, v: OriginalVersion = ver) => {
+    discard();
     setDbState(d); setVerState(v); writeDb(d); writeVer(v);
-    setWorld(null); setPrep(null); setActive(new Set()); setTeam(0); setNat(-1);
+    setWorld(null); setPrep(null); setSel([]); setBgn([]); setTeam(0); setNat(-1);
   };
   const dbOpts = useMemo(() => [
     ...ORIGINAL_VERSIONS.map((v) => ({ db: 'original' as Db, ver: v, big: '2001/02', small: t('cxs.dataN', { v }), hint: t(`db.ver.${v.replace(/\./g, '')}`), tag: v === '3.9.60' ? t('db.ver.default') : '' })),
@@ -205,11 +195,10 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
     const own = (db === 'original' ? ORIG_LANG_NATION : LANG_NATION)[getLang()];
     const name = world.leagues.some((l) => !l.hidden && world.nations[l.nation]?.name === own) ? own : 'England';
     const ids = world.nations.findIndex((x) => x.name === name);
-    const act = new Set(ids >= 0 ? [ids] : []);
-    setActive(act); setPrep(null); setTeam(0); setNat(-1);
+    setSel(ids >= 0 ? [ids] : []); setBgn([]); setPrep(null); setTeam(0); setNat(-1);
     if (quick.current) {
       quick.current = false;
-      void makePrep(world, act, () => {}).then((p) => { setPrep(p); setNat(ids); go('name'); });
+      void leaguesDone(world, ids >= 0 ? [ids] : [], [], ids);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [world]);
@@ -223,41 +212,65 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
     return ns.sort((a, b) => natName(world.nations[a].name).localeCompare(natName(world.nations[b].name)));
   }, [world]);
 
-  const toggleNation = (n: number) => {
-    if (!world) return;
-    let s = new Set(active);
-    const adding = !s.has(n);
-    if (adding) s.add(n); else s.delete(n);
-    // den originale database: spillets hovedland (startdatoen) er det først valgte land; fravælges det, bliver det alfabetisk første hovedland
-    if (db === 'original' && !adding && [...active][0] === n && s.size) {
-      const main = [...s].sort((a, b) => (world.nations[a].name < world.nations[b].name ? -1 : 1))[0];
-      s = new Set([main, ...[...s].filter((x) => x !== main)]);
+  // den originale database: spillets hovedland (startdatoen) er det først valgte land; fravælges det, bliver det alfabetisk første hovedland
+  const dropFromSel = (list: number[], n: number) => {
+    const rest = list.filter((x) => x !== n);
+    if (db === 'original' && world && list[0] === n && rest.length) {
+      const main = [...rest].sort((a, b) => (world.nations[a].name < world.nations[b].name ? -1 : 1))[0];
+      return [main, ...rest.filter((x) => x !== main)];
     }
-    setActive(s); setPrep(null);
+    return rest;
   };
-  const selectAll = () => { if (!world) return; const rest = leagueNations.filter((n) => !active.has(n)); setActive(new Set([...active, ...rest])); setPrep(null); };
+  const clickSelected = (n: number) => {
+    if (sel.includes(n)) setSel(dropFromSel(sel, n)); else { setSel([...sel, n]); setBgn(bgn.filter((x) => x !== n)); }
+    setPrep(null);
+  };
+  const clickBackground = (n: number) => {
+    if (bgn.includes(n)) setBgn(bgn.filter((x) => x !== n)); else { setBgn([...bgn, n]); setSel(dropFromSel(sel, n)); }
+    setPrep(null);
+  };
+  const selectAll = () => { setSel([...sel, ...leagueNations.filter((n) => !sel.includes(n))]); setBgn([]); setPrep(null); };
 
-  const leaguesNext = async () => {
-    if (!world || !active.size) return;
-    setProg({ label: t('cxs.playerInit'), frac: 0.05 });
-    try {
-      const p = await makePrep(world, active, (f) => setProg({ label: t('cxs.playerInit'), frac: f }));
-      setPrep(p);
-      if (nat < 0 || !p.nations.some((x) => x.i === nat)) setNat([...active][0] ?? p.nations[0]?.i ?? -1);
-      setProg(null); go('name');
-    } catch (e) { setProg(null); setErr(String(e)); }
-  };
+  /** Ligaerne er valgt: nationalitets-/klublisterne og den midlertidige verden til Select Team (bygges, mens man skriver navn) */
+  async function leaguesDone(w: WorldData, selected: number[], background: number[], natDefault: number) {
+    const p = makePrep(w, new Set(selected));
+    setPrep(p);
+    if (!p.clubs.length) return;
+    setNat((cur) => (cur >= 0 && p.nations.some((x) => x.i === cur) ? cur : natDefault >= 0 && p.nations.some((x) => x.i === natDefault) ? natDefault : selected[0] ?? p.nations[0]?.i ?? -1));
+    const sig = `${db}|${ver}|${selected.join()}|${background.join()}|${masking}`;
+    if (build.current?.sig !== sig) {
+      discard();
+      const ctl = new AbortController();
+      build.current = { sig, ctl };
+      setBp({ sig, frac: 0.02, done: false });
+      const opts = { managerName: 'Manager', managerNation: selected[0], clubId: p.clubs[0].id, activeNations: [...selected, ...background], lang: getLang(), masking, seed: seed.current, mode: 'authentic' as const, preview: true };
+      createGameAsync(w, opts, (pr) => setBp((cur) => (cur && cur.sig === sig ? { ...cur, frac: pr.frac } : cur)), ctl.signal).then(() => {
+        if (build.current?.ctl !== ctl || ctl.signal.aborted) return;
+        setBp({ sig, frac: 1, done: true });
+      }).catch((e) => { if (build.current?.ctl === ctl) { setErr(String((e as Error).message ?? e)); setBp(null); build.current = null; } });
+    }
+    go('name');
+  }
+  const leaguesNext = () => { if (world && sel.length) void leaguesDone(world, sel, bgn, sel[0]); };
+
+  // Select Nationality → Select Team: venter på den midlertidige verden (fremdriftsbjælken viser "Player Initialisation")
+  const buildReady = !!bp && bp.done && inSetup();
+  const toTeam = () => { if (buildReady) go('team'); else setWaitTeam(true); };
+  useEffect(() => { if (waitTeam && buildReady) { setWaitTeam(false); go('team'); } /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [waitTeam, buildReady]);
+  const shownProg: Prog | null = prog ?? (waitTeam && bp && !bp.done ? { label: t('cxs.playerInit'), frac: bp.frac } : null);
 
   const club = prep?.clubs.find((c) => c.id === team);
   const managerName = `${first.trim()} ${second.trim()}`.trim();
   // fremad-pilen kan føre til klubbens side uden valgt klub – så tilbage
-  useEffect(() => { if ((step === 'club' || step === 'confirm') && (!club || !world)) back(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step, club, world]);
+  useEffect(() => { if ((step === 'club' || step === 'confirm') && (!club || !world || !buildReady)) back(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [step, club, world, buildReady]);
+
+  const pickClub = (id: number) => { previewClub(gs(), id); setTeam(id); notify(); go('club'); };
 
   const launch = async () => {
     if (!world || !club) return;
     setErr('');
     setProg({ label: t('cxs.initGame'), frac: 0.02 });
-    const opts = { managerName, managerNation: nat >= 0 ? nat : club.nation, clubId: club.id, activeNations: [...active], lang: getLang(), masking, seed: Math.floor(Math.random() * 1e9), mode: 'authentic' as const };
+    const opts = { managerName, managerNation: nat >= 0 ? nat : club.nation, clubId: club.id, activeNations: [...sel, ...bgn], lang: getLang(), masking, seed: seed.current, mode: 'authentic' as const };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
     track('start_game', { mode: 'single', db: db.startsWith('custom:') ? 'custom' : db, challenge: false, lang: opts.lang, flow: 'classic' });
@@ -314,7 +327,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   const F = (p: { on?: boolean; dim?: boolean; className?: string; onClick?: () => void; children: ReactNode; testid?: string }) => (
     <button type="button" className={`cxs-field ${p.className ?? ''} ${p.dim ? 'dim' : ''}`} onClick={p.onClick} disabled={p.dim} data-field={p.testid}>{p.children}</button>
   );
-  const common = { step, version: versionLabel, prog, hist: hasHist, onHist, onRestart: reset, onExit: onHome };
+  const common = { step, version: versionLabel, prog: shownProg, hist: hasHist, onHist, onRestart: reset, onExit: onHome };
   const note = err && <div className="cxs-err" role="alert">{err}</div>;
 
   // ---------- trin: startmenuen (289) ----------
@@ -323,7 +336,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
       <Frame {...common} title={t('cxs.title')}>
         <div className="cxs-grid">
           <F testid="database" className="cxs-db" onClick={() => go('db')}><b className="gold">{curOpt.big}</b><small>{curOpt.small}</small></F>
-          <div className="cxs-field static" data-field="rules" title={t('cxs.rulesHint')}><span>{t('cxs.rules')}</span><em>{t('cxs.on')}</em></div>
+          {/* originalens "Changing rules"-felt er tomt for nu: samme mørke boks, intet indhold og ingen funktion */}
+          <div className="cxs-field static" data-field="rules" aria-hidden />
           <F testid="new" onClick={startNew}>{t('cxs.startNew')}</F>
           <F testid="quick" onClick={quickStart}>{t('cxs.quick')}</F>
           <F testid="restore" onClick={() => go('restore')}>{t('cxs.restore')}</F>
@@ -365,24 +379,25 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
       </>
     );
     return (
-      <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectLeagues')} onBack={back} onNext={() => void leaguesNext()} nextDisabled={!world || !active.size}>
+      <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectLeagues')} onBack={back} onNext={leaguesNext} nextDisabled={!world || !sel.length}>
         <div className="cxs-lg-top cx-sl-top" data-cxs-lgtop>
           <span>{t('cl.sl.real')}</span>{yn(true, () => {}, true)}
           <span className="gap">{t('cl.sl.masking')}</span>{yn(masking, setMasking)}
           <span className="grow" />
           <button className="cxs-btn small" onClick={selectAll} disabled={!world}>{t('cxs.selectAll')}</button>
-          <button className="cxs-btn small" onClick={() => { setActive(new Set()); setPrep(null); }} disabled={!world}>{t('cxs.deselectAll')}</button>
+          <button className="cxs-btn small" onClick={() => { setSel([]); setBgn([]); setPrep(null); }} disabled={!world}>{t('cxs.deselectAll')}</button>
         </div>
-        <div className="cxs-list leagues">
+        <div className="cxs-list leagues cx-sl">
           {world && leagueNations.map((n) => {
-            const sel = active.has(n);
+            const isSel = sel.includes(n), isBg = bgn.includes(n);
             const ls = world.leagues.filter((l) => l.nation === n && !l.hidden).sort((a, b) => b.tier - a.tier);
             return (
-              <div key={n} className={`cx-sl-row cxs-lrow ${sel ? 'lg-sel' : ''}`} data-nation={world.nations[n].name} onClick={() => toggleNation(n)}>
-                <span className="nm">{natName(world.nations[n].name)}</span>
-                <span className={`cx-sl-cell ${sel ? 'on' : ''}`}>{t('cl.sl.selected')}</span>
-                <span className="cx-sl-cell">{t('cl.sl.background')}</span>
-                <span className="cx-sl-cell lw">{ls.length > 2 ? compName(ls[0].name) : ''}</span>
+              <div key={n} className={`cx-sl-row cxs-lrow ${isSel ? 'lg-sel' : ''}`} data-nation={world.nations[n].name} data-state={isSel ? 'selected' : isBg ? 'background' : 'off'}>
+                <span className="nm" onClick={() => clickSelected(n)}>{natName(world.nations[n].name)}</span>
+                <button className={`cx-sl-cell ${isSel ? 'on' : ''}`} data-sl="selected" onClick={() => clickSelected(n)}>{t('cl.sl.selected')}</button>
+                <button className={`cx-sl-cell ${isBg ? 'on' : ''}`} data-sl="background" onClick={() => clickBackground(n)}>{t('cl.sl.background')}</button>
+                {/* laveste spilbare division for et SELECTED land (som i originalen) */}
+                <span className={`cx-sl-cell lw ${isSel ? 'on' : ''}`}>{isSel && ls.length > 2 ? compName(ls[0].name) : ''}</span>
               </div>
             );
           })}
@@ -411,7 +426,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   if (step === 'nation') {
     const list = (prep?.nations ?? []).filter((n) => region === 'all' || n.regionKey === region);
     return (
-      <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectNat')} onBack={back} onNext={() => go('team')} nextDisabled={nat < 0}>
+      <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectNat')} onBack={back} onNext={toTeam} nextDisabled={nat < 0}>
         <div className="cxs-filter">
           <select aria-label={t('cxs.filter')} value={region} onChange={(e) => setRegion(e.target.value)} data-filter>
             <option value="all">{t('cxs.filter')}</option>
@@ -420,7 +435,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
         </div>
         <div className="cxs-list nations">
           {list.map((n) => (
-            <div key={n.i} className={`cxs-it ${nat === n.i ? 'sel' : ''}`} role="button" tabIndex={0} data-nat={n.label} onClick={() => setNat(n.i)} onDoubleClick={() => { setNat(n.i); go('team'); }}>
+            <div key={n.i} className={`cxs-it ${nat === n.i ? 'sel' : ''}`} role="button" tabIndex={0} data-nat={n.label} onClick={() => setNat(n.i)} onDoubleClick={() => { setNat(n.i); toTeam(); }}>
               <span className="n">{n.label}</span><span className="code">{n.region}</span>
             </div>
           ))}
@@ -435,7 +450,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
       <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectTeam')} onBack={back}>
         <div className="cxs-list teams" data-teams>
           {(prep?.clubs ?? []).map((c) => (
-            <div key={c.id} className={`cxs-it ${team === c.id ? 'sel' : ''}`} role="button" tabIndex={0} data-club={c.short} onClick={() => { setTeam(c.id); setTab('squad'); go('club'); }}>
+            <div key={c.id} className={`cxs-it ${team === c.id ? 'sel' : ''}`} role="button" tabIndex={0} data-club={c.short} onClick={() => pickClub(c.id)}>
               <span className="n">{c.short}</span><span className="code">{c.code}</span><span className="extra">{c.div}</span>
             </div>
           ))}
@@ -445,34 +460,16 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   }
 
   // ---------- klubbens trup med Take Control (296) ----------
-  if (step === 'club' && club && world) {
-    const squad = prep?.squads.get(club.id) ?? [];
-    const row = world.clubs.find((c) => c[0] === club.id);
-    const lgName = world.leagues.find((l) => l.id === club.league)?.name;
-    const mgr = (row?.[7] ?? '').split('|');
-    const tabs: [string, 'squad' | 'info' | null][] = [[t('cxs.tab.squad'), 'squad'], [t('cxs.tab.transfers'), null], [t('cxs.tab.nextMatch'), null], [t('cxs.tab.fixtures'), null], [t('cxs.tab.info'), 'info']];
+  // Spillets egen skal (Shell) med klubbens ægte skærme: SquadClassic, faner, Inj-mærker, udtagelsesfelter, spillerprofiler, General Info …
+  // Sidebjælken er startforløbets (Version, pile, Restart Game), og titelbjælkens Action-knap er Take Control (ClassicHead).
+  if (step === 'club' && club && world && buildReady) {
+    const api: SetupApi = { version: versionLabel, takeControl: () => go('confirm'), leave: back, restart: reset, hist: hasHist, onHist };
     return (
-      <Frame {...common} title={club.name} onBack={back} backLabel={t('cxs.back')} titleExtra={<button className="cxs-take" onClick={() => go('confirm')} data-take>{t('cxs.takeControl')}</button>}>
-        <div className="cxs-tabs">{tabs.map(([label, k]) => <button key={label} className={`cxs-tab ${k === tab ? 'on' : ''}`} disabled={!k} title={!k ? t('cxs.tabLater') : undefined} onClick={() => k && setTab(k)}>{label}</button>)}</div>
-        {tab === 'squad' ? (
-          <>
-            <div className="cxs-subbar">{t('cl.sq.positions')}</div>
-            <div className="cxs-list squad" data-squad>
-              {squad.map((p) => (
-                <div key={p.id} className="cxs-sq"><span className="num">{p.num || ''}</span><span className="n">{p.name}</span><span className="code pos">{p.pos}</span></div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className="cxs-info">
-            {([
-              [t('cxs.info.club'), club.name], [t('cxs.info.nation'), natName(world.nations[club.nation]?.name)], [t('cxs.info.division'), compName(lgName) ?? ''],
-              [t('cxs.info.stadium'), row?.[5] ?? ''], [t('cxs.info.capacity'), row?.[6] ? Number(row[6]).toLocaleString() : ''],
-              [t('cxs.info.manager'), mgr.length >= 2 ? `${mgr[0]} ${mgr[1]}` : ''], [t('cxs.info.players'), String(squad.length)],
-            ] as [string, string][]).filter(([, v]) => v).map(([k, v]) => <div key={k} className="cxs-irow"><span>{k}</span><b>{v}</b></div>)}
-          </div>
-        )}
-      </Frame>
+      <SetupCtx.Provider value={api}>
+        <NavProvider key={`club-${club.id}`} initial={{ name: 'squad' }}>
+          <Shell />
+        </NavProvider>
+      </SetupCtx.Provider>
     );
   }
 
@@ -480,7 +477,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   if (step === 'confirm' && club) {
     return (
       <Frame {...common} title={managerName} sub={t('cxs.confirm')} onBack={() => go('team')} backLabel={t('common.no')} onNext={() => void launch()} nextLabel={t('common.yes')}>
-        <div className="cxs-confirm" data-confirm>{t('cxs.takeQ', { club: club.name })}</div>
+        <div className="cxs-msg" data-confirm>{t('cxs.takeQ', { club: club.name })}</div>
         {note}
       </Frame>
     );

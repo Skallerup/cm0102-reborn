@@ -24,9 +24,15 @@ import { cmStaffStateMove } from './cmPlayerData';
  * Admin-preview: en spillers gemte spil åbnet til fejlsøgning (Admin → Saves / New careers). Intet gemmes, og intet
  * sendes videre (ranglister, puls, fejlrapporter) – se save.ts, rank.ts, notify.ts og errors.ts. Nulstilles af setGame.
  */
-let preview: { label: string; theme?: string } | null = null;
+let preview: { label: string; theme?: string; setup?: boolean } | null = null;
 export const previewInfo = () => preview;
-export function setPreview(p: { label: string; theme?: string } | null) { preview = p; }
+export function setPreview(p: { label: string; theme?: string; setup?: boolean } | null) { preview = p; }
+/**
+ * Nyt-spil-forløbet (ClassicStart.tsx): efter Select League(s) bygges en midlertidig verden, så Select Team viser klubbens ægte skærme (trup, kampe, General Info).
+ * Intet gemmes eller sendes (som en admin-preview), og forsiden/startmenuen styrer stadig skærmen. setGame(…) afslutter forløbet.
+ */
+export const inSetup = () => !!preview?.setup;
+export function setSetupGame(g: GameState) { setGame(g); preview = { label: 'setup', setup: true }; notify(); }
 
 export function setGame(g: GameState | null) {
   preview = null;

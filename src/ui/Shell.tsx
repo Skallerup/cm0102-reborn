@@ -75,6 +75,7 @@ import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicClubHistory } from './screens/ClubHistoryClassic';
 import { ClassicNations } from './screens/NationsClassic';
 import { ClassicHallOfFame, ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
+import { useSetup, SetupSide } from './setupCtx';
 import { ClassicSlotCtx, CxDrop, setFootSlot, useClassicFootActive, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate, shownComp } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
@@ -135,6 +136,8 @@ const painted = () => new Promise<void>((res) => {
 
 export function Shell() {
   const g = useGame()!;
+  // nyt-spil-forløbet (ClassicStart.tsx): klubbens ægte skærme i Select Team – startforløbets sidebjælke og Back/Next
+  const setup = useSetup();
   // 2001-databasen: CM's egne turneringsnavne på engelsk, ellers de rigtige ("Premier League")
   // ægte tilstand: Bosman Editions navne for sæsonen (FA Premier League 2001/02)
   setCompEra(isOriginal2001(), authentic() ? g.season : 0);
@@ -441,6 +444,7 @@ export function Shell() {
         )}
       </div>
       {cmNav && (() => {
+        if (setup) return <SetupSide version={setup.version} canBack canFwd={canForward} onBack={canBack ? back : setup.leave} onFwd={forward} onRestart={setup.restart} atMenu={false} busy={false} />;
         const [day, date0] = classicDate(g.date);
         // originalens kalender: "14.7.01 AM" (tidspunktet på dagen)
         const tod = cmTimeOfDay(g);
@@ -483,7 +487,7 @@ export function Shell() {
               <button disabled={!canForward} onClick={forward} aria-label={t('cm.next')}>→</button>
             </div>
             {online ? <div className="cx-online"><OnlineControls /></div> : !inMatch && (
-              <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{g.pendingFixture ? t('top.toTheMatch') : t('cl.continue')}</button>
+              <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{t('cl.continue')}</button>
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
             <ManagerMenu allowed={(k) => allowed(k as ScreenName)} onRetire={quit} onHoliday={(untilMatch) => {
@@ -612,7 +616,7 @@ export function Shell() {
                 : <div className="cx-venue cx-foot-venue">{matchSide.s.venue}</div>
             ) : <div className="cx-backnext">
               {/* under en igangværende kamp kan man ikke gå væk fra kampen (som pilene i sidebjælken) */}
-              <button className="cx-back" disabled={!canBack || ((route.name === 'match' || route.name === 'report') && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={back}>{t('cm.back')}</button>
+              <button className="cx-back" disabled={!setup && !canBack || ((route.name === 'match' || route.name === 'report') && !!matchSide?.s.kicked && !matchSide.s.finished)} onClick={setup && !canBack ? setup.leave : back}>{t('cm.back')}</button>
               {cxNext ? <button className="cx-next cx-next-go" onClick={cxNext.run}>{cxNext.label}</button>
                 : <button className="cx-next" disabled={!canForward} onClick={forward}>{t('cm.next')}</button>}
             </div>
@@ -692,7 +696,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'leagues': return <ClassicSelectedLeagues />;
     case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     // klassisk: en spillet kamp vises som kampskærmen efter slutfløjt (samme faner og sidebjælke)
-    case 'report': if (isRetro() && route.state?.none) return <NoRecentMatchesClassic />; return isRetro() && !g.draft && g.reports[Number(route.id)] ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
+    case 'report': if (isRetro() && route.state?.none) return <NoRecentMatchesClassic />; return isRetro() && !g.draft && (g.reports[Number(route.id)] || g.fixtures[Number(route.id)]?.result) ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
     case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;

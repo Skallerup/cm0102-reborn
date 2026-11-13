@@ -2,7 +2,7 @@
 // valg af database, indlæsning af verdenen og oprettelse af spillet i en Web Worker.
 import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
 import type { GameState, Lang } from '../game/types';
-import { setGame } from '../game/state';
+import { gs, setGame, setSetupGame } from '../game/state';
 import type { NewGameProgress } from './NewGameLoader';
 import { listDbs, loadCustomWorld } from './customDb';
 import { loadOriginalWorld, loadWorld, ORIGINAL_VERSIONS, withCommunityEdits, type OriginalVersion } from './world';
@@ -39,12 +39,15 @@ export async function loadStartWorld(db: Db, ver: OriginalVersion): Promise<Worl
   return withCommunityEdits(await loadWorld(), 'cm');
 }
 
-/** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden */
-export async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void): Promise<void> {
-  if (typeof Worker === 'undefined') { createGame(world, opts); return; }
+/** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden.
+ *  `opts.preview` = nyt-spil-forløbets midlertidige verden (setSetupGame); `signal` afbryder arbejderen (en ny liga-/databasevalg). */
+export async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void, signal?: AbortSignal): Promise<void> {
+  const put = (g: GameState) => (opts.preview ? setSetupGame(g) : setGame(g));
+  if (typeof Worker === 'undefined') { createGame(world, opts); if (opts.preview) setSetupGame(gs()); return; }
   try {
     const game = await new Promise<GameState>((resolve, reject) => {
       const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+      signal?.addEventListener('abort', () => { w.terminate(); reject(new DOMException('aborted', 'AbortError')); });
       w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
         const m = e.data;
         if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
@@ -54,9 +57,12 @@ export async function createGameAsync(world: WorldData, opts: NewGameOptions, on
       w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
       w.postMessage({ world, opts });
     });
-    setGame(game);
+    if (signal?.aborted) return;
+    put(game);
   } catch (e) {
+    if ((e as Error).name === 'AbortError') return;
     console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
     createGame(world, opts);
+    if (opts.preview) setSetupGame(gs());
   }
 }

@@ -43,6 +43,8 @@ async function run(look) {
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
   const gs = (fn, arg) => page.evaluate(fn, arg);
+  // klassisk taktik (CM 01/02): ændringer er en kladde, der først gemmes med Ok i bundbjælken
+  const tacOk = async () => { if (look !== 'klassisk') return; await page.locator('.cx-foot .cx-tac-ok').click(); await page.waitForTimeout(150); };
   // klassisk (CM 01/02): Continue Game venter på trøjenummerlisten (beskeden 4/8) – Respond → Submit → Yes
   let sqnMissingSeen = false;
   const answerSquadNumbers = async () => {
@@ -108,44 +110,72 @@ async function run(look) {
     if ((await page.locator('.cxs-grid.db .cxs-field').count()) < 4) throw new Error('databasevalget har for få valg');
     await page.locator(ENGINE_GRID ? '[data-field="db-3.9.60"]' : '[data-field="db-modern"]').click();
     // gemte spil og indstillinger åbner egne skærme og kan forlades igen
-    await page.locator('[data-field=settings]').click(); await page.waitForSelector('.cxs-settings'); await page.locator('.cxs-foot .cxs-btn').first().click();
-    await page.locator('[data-field=restore]').click(); await page.waitForSelector('[data-saves]'); await page.locator('.cxs-foot .cxs-btn').first().click();
+    await page.locator('[data-field=settings]').click(); await page.waitForSelector('.cxs-settings'); await page.locator('.cx-foot .cx-back').click();
+    await page.locator('[data-field=restore]').click(); await page.waitForSelector('[data-saves]'); await page.locator('.cx-foot .cx-back').click();
     await page.waitForSelector('[data-field=new]');
     await page.locator('[data-field=new]').click();
     await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-02-leagues.png` });
     const own = ENGINE_GRID ? { club: 'Arsenal', nation: 'England' } : { club: 'Brøndby', nation: 'Denmark' };
-    if (own.nation !== 'England') await page.locator(`.cxs-lrow[data-nation="${own.nation}"]`).click();
+    if (own.nation !== 'England') await page.locator(`.cxs-lrow[data-nation="${own.nation}"] [data-sl=selected]`).click();
     if ((await page.locator('.cxs-lrow.lg-sel').count()) < 1) throw new Error('intet land er valgt');
-    await page.locator('.cxs-next').click();
+    // BACKGROUND: et land kan sættes som baggrundsland (kun i baggrunden, ikke spilbart) og fjernes igen; SELECTED gør det spilbart
+    const bgRow = page.locator('.cxs-lrow[data-nation="France"]');
+    await bgRow.locator('[data-sl=background]').click();
+    if ((await bgRow.getAttribute('data-state')) !== 'background') throw new Error('BACKGROUND kan ikke vælges');
+    await bgRow.locator('[data-sl=background]').click();
+    if ((await bgRow.getAttribute('data-state')) !== 'off') throw new Error('BACKGROUND kan ikke fravælges');
+    await bgRow.locator('[data-sl=background]').click();
+    if ((await page.locator('.cxs-lrow.lg-sel [data-sl=selected].on').count()) < 1) throw new Error('SELECTED er ikke markeret');
+    // som i originalen står den laveste spilbare division kun ved et valgt land med flere end to divisioner (England)
+    if (own.nation === 'England' && !(await page.locator('.cxs-lrow.lg-sel .lw').first().innerText()).trim()) throw new Error('laveste division mangler for et valgt land');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-02b-leagues-bg.png` });
+    await page.locator('.cx-foot .cx-next').click();
     await page.waitForSelector('[data-name=first]', { timeout: 20000 });
     await page.fill('[data-name=first]', 'E2E'); await page.fill('[data-name=second]', 'Tester');
-    await page.locator('.cxs-next').click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-03-name.png` });
+    await page.locator('.cx-foot .cx-next').click();
     await page.waitForSelector('[data-nat]');
     if ((await page.locator('.cxs-it.sel').count()) !== 1) throw new Error('ingen forvalgt nationalitet');
-    await page.locator('.cxs-next').click();
-    await page.waitForSelector('[data-club]');
+    await page.locator('.cx-foot .cx-next').click();
+    // Select Team venter på den midlertidige verden (bygges, mens man skriver navn) – baggrundslandet (Frankrig) har ingen spilbare klubber
+    await page.waitForSelector('[data-club]', { timeout: 120000 });
+    if (await page.locator('[data-club="Paris Saint-Germain"]').count()) throw new Error('et BACKGROUND-lands klub kan vælges');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-06-team.png` });
     await page.locator(`[data-club="${own.club}"]`).click();
-    await page.waitForSelector('[data-squad]');
-    if ((await page.locator('.cxs-sq').count()) < 11) throw new Error('klubbens trup er tom');
+    // klubbens ÆGTE skærme: spillets egen trup (SquadClassic), faner og nederste knapper, Take Control i titelbjælken
+    await page.waitForSelector('.cx-sq-orig, .cx-sq-cols', { timeout: 20000 });
+    if ((await page.locator('.cx-sq-row, .cx-sq-name').count()) < 11) throw new Error('klubbens trup er tom');
+    if ((await page.locator('.cx-tabrow button').count()) < 5) throw new Error('klubbens faner mangler');
+    if (!(await page.locator('[data-take]').count())) throw new Error('Take Control mangler i titelbjælken');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-07-club.png` });
-    await page.locator('.cxs-tab', { hasText: await t('cxs.tab.info') }).click();
-    if (!(await page.locator('.cxs-irow').count())) throw new Error('General Info er tom');
-    // Take Control → Please Confirm → No (tilbage til holdlisten) → igen → Yes
+    await page.locator('.cx-tabrow button', { hasText: /Info/ }).last().click();
+    await page.waitForTimeout(400);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-08-info.png` });
+    // Back i bundbjælken fører til holdlisten, når der ikke er flere trin i klubbens egen historik
+    await page.locator('.cx-foot .cx-back').click();
+    if (!(await page.locator('[data-club]').count())) { await page.locator('.cx-foot .cx-back').click(); }
+    await page.waitForSelector('[data-teams]');
+    await page.locator(`[data-club="${own.club}"]`).click();
+    // Take Control → Please Confirm → No (tilbage til klubben) → igen → Yes
     await page.locator('[data-take]').click();
     await page.waitForSelector('[data-confirm]');
     if (!(await page.locator('[data-confirm]').innerText()).includes(own.club)) throw new Error('bekræftelsen nævner ikke klubben');
-    await page.locator('.cxs-foot .cxs-btn').first().click();
-    await page.waitForSelector('[data-club]');
+    if (process.env.SHOTS) { await page.waitForTimeout(700); await page.screenshot({ path: `${OUT}/klassisk-start-09-confirm.png` }); }
+    await page.locator('.cx-foot .cx-back').click();
+    await page.waitForSelector('[data-teams]');
     await page.locator(`[data-club="${own.club}"]`).click();
+    await page.waitForSelector('[data-take]');
     await page.locator('[data-take]').click();
     await page.waitForSelector('[data-confirm]');
-    await page.locator('.cxs-next').click();
+    await page.locator('.cx-foot .cx-next').click();
     // indlæsningen vises i skærmens bund med trin og procent; siden må ikke fryse
     const t0 = Date.now();
-    await page.waitForSelector('.cxs-prog-bar i', { timeout: 20000 });
+    await page.waitForSelector('.cx-running .cx-run-bar', { timeout: 20000 });
+    const barW = await page.locator('.cx-running .cx-run-bar').evaluate((el) => el.getBoundingClientRect().width);
+    if (barW < 300) throw new Error(`indlæsningsbjælken er kun ${Math.round(barW)} px bred (skal fylde bundbjælken)`);
     await page.screenshot({ path: `${OUT}/${look}-nyt-spil-loader.png` });
-    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
+    await page.waitForFunction(() => { try { return window.__cm.gs().manager.name === 'E2E Tester' && !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
     const mgr = await page.evaluate(() => window.__cm.gs().manager.name);
     if (mgr !== 'E2E Tester') throw new Error(`managerens navn blev "${mgr}"`);
     if (ENGINE_GRID) console.log(`    nyt spil: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
@@ -421,6 +451,8 @@ async function run(look) {
     const before = await gs(() => window.__cm.gs().tactic.team.mentality);
     await page.locator('.cx-tidlg .cx-tich', { hasText: before >= 3 ? 'Defensive' : 'Attacking' }).first().click();
     await page.locator('.cx-tidlg-foot button', { hasText: 'Ok' }).click();
+    if ((await gs(() => window.__cm.gs().tactic.team.mentality)) !== before) throw new Error('holdinstruktionen blev gemt før Ok');
+    await tacOk();
     const after = await gs(() => window.__cm.gs().tactic.team.mentality);
     if (after === before) throw new Error('holdinstruktionen blev ikke gemt');
   });
@@ -438,6 +470,7 @@ async function run(look) {
     // højreklik uden træk (touchpad): menuen med retninger → Frem
     await page.locator('.cx-tac-slot:not(.empty)').nth(9).click({ button: 'right' });
     await page.locator('.cx-ctx button').first().click();
+    await tacOk(); await go({ name: 'tactics' });
     const run = await gs(() => window.__cm.gs().tactic.individual[9]?.run);
     if (!run) throw new Error('løbet blev ikke sat fra menuen');
     // CM 01/02: højreklik og træk skråt (venstre-frem) → pil til nærmeste punkt i gitteret
@@ -449,14 +482,16 @@ async function run(look) {
     await page.mouse.down({ button: 'right' });
     await page.mouse.move(b.x + b.width / 2 - pitch.width * 0.2, b.y + b.height / 2 - pitch.height * 0.15, { steps: 8 });
     await page.mouse.up({ button: 'right' });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-loeb.png` });
+    await tacOk(); await go({ name: 'tactics' });
     const r6 = await gs(() => window.__cm.gs().tactic.individual[6]?.run);
     if (!r6 || !(r6.x > s0.x) || !(r6.y !== s0.y)) throw new Error(`skråt løb blev ikke sat (${JSON.stringify(r6)} fra ${JSON.stringify(s0)})`);
-    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-loeb.png` });
     // et meget kort træk fjerner pilen
     await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
     await page.mouse.down({ button: 'right' });
     await page.mouse.move(b.x + b.width / 2 + 6, b.y + b.height / 2, { steps: 3 });
     await page.mouse.up({ button: 'right' });
+    await tacOk();
     if (await gs(() => window.__cm.gs().tactic.individual[6]?.run)) throw new Error('kort træk fjernede ikke løbet');
   });
   if (look === 'klassisk') await step('byt bænk ↔ startopstilling i listen', async () => {
@@ -464,8 +499,42 @@ async function run(look) {
     const before = await gs(() => { const t = window.__cm.gs().tactic; return { a: t.lineup[9], b: t.bench[0] }; });
     await page.locator('.cx-tac-row.bench .cx-tac-name').first().click();
     await page.locator('.cx-tac-row.xi .cx-tac-name').nth(9).click();
+    await tacOk();
     const after = await gs(() => { const t = window.__cm.gs().tactic; return { a: t.lineup[9], b: t.bench[0] }; });
     if (after.a !== before.b || after.b !== before.a) throw new Error(`byttet mislykkedes ${JSON.stringify(before)} → ${JSON.stringify(after)}`);
+  });
+  if (look === 'klassisk') await step('taktik som CM 01/02: trøjenumre, positioner, SB-pladser, Cancel/Ok', async () => {
+    await go({ name: 'tactics' });
+    const want = await gs(() => { const g = window.__cm.gs(); const tc = g.tactic; return { xi: tc.lineup.filter(Boolean).map((id) => String(g.players[id].number ?? '')), bench: tc.bench.length, pitch: tc.lineup.map((id) => (id ? String(g.players[id].number ?? '') : '')) }; });
+    const nums = await page.locator('.cx-tac-row.xi .cx-tac-num').allTextContents();
+    if (JSON.stringify(nums) !== JSON.stringify(want.xi)) throw new Error(`nummerfeltet er ikke trøjenumrene: ${nums} (ventet ${want.xi})`);
+    const dots = await page.locator('.cx-tac-pitch .cx-tac-dot').allTextContents();
+    if (JSON.stringify(dots) !== JSON.stringify(want.pitch)) throw new Error(`banens cirkler er ikke trøjenumrene: ${dots} (ventet ${want.pitch})`);
+    const pos = await page.locator('.cx-tac-row.xi .cx-tac-pos').allTextContents();
+    if (pos.length !== 11 || pos.some((x) => !x.trim())) throw new Error(`positionskolonnen: ${pos}`);
+    const rows = await page.locator('.cx-tac-list > .cx-tac-row').count();
+    const sb = await page.locator('.cx-tac-row.empty .cx-tac-num').allTextContents();
+    if (rows !== 11 + Math.max(9, want.bench) || (sb.length && sb.at(-1) !== 'SB9')) throw new Error(`listen: ${rows} rækker, tomme pladser ${sb}`);
+    if (await page.locator('.cx-tac-hint').count()) throw new Error('hjælpeteksten står der stadig');
+    if (await page.locator('.cx-tac-row .cx-tac-tag', { hasText: /^(fk|cor|pen)$/ }).count()) throw new Error('fk/cor/pen vises i listen');
+    // Cancel fortryder: byt to spillere, Continue Game er grå, Cancel → taktikken er som før
+    const before = await gs(() => JSON.stringify(window.__cm.gs().tactic));
+    await page.locator('.cx-tac-row.xi .cx-tac-name').nth(1).click();
+    await page.locator('.cx-tac-row.xi .cx-tac-name').nth(2).click();
+    if (!(await page.locator('.cx-side .cx-continue').isDisabled().catch(() => true))) throw new Error('Continue Game er ikke grå med ugemte ændringer');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-taktik-kladde.png` });
+    await page.locator('.cx-foot .cx-tac-cancel').click();
+    await page.waitForTimeout(150);
+    if ((await gs(() => JSON.stringify(window.__cm.gs().tactic))) !== before) throw new Error('Cancel fortrød ikke ændringen');
+    // View → Whole Squad viser resten af truppen under bænkpladserne
+    await go({ name: 'tactics' });
+    await page.locator('.cx-drop-btn', { hasText: 'View' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Whole Squad' }).first().click();
+    const n = await page.locator('.cx-tac-row.rest').count();
+    const restN = await gs(() => { const g = window.__cm.gs(); const tc = g.tactic; return Object.values(g.players).filter((p) => p.club === g.userClub && !p.reserves && !tc.lineup.includes(p.id) && !tc.bench.includes(p.id)).length; });
+    if (n !== restN) throw new Error(`Whole Squad: ${n} rækker, ventet ${restN}`);
+    await page.locator('.cx-drop-btn', { hasText: 'View' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Whole Squad' }).first().click();
   });
   await step('konto og opdateringsmails efter første sæson', async () => {
     const title = await t('news.title');
@@ -488,11 +557,13 @@ async function run(look) {
     await page.locator('.cx-pens .cx-greybtn', { hasText: 'Clear Squad' }).click();
     const nums = page.locator('.cx-pens .cx-pen-num');
     await nums.nth(3).click(); await page.locator('.cx-pens .cx-pen-num:not(.on)').first().click();
-    const order = await gs(() => window.__cm.gs().tactic.penOrder);
-    if (order?.length !== 2) throw new Error(`rækkefølgen blev ikke sat: ${JSON.stringify(order)}`);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-straffeskytter.png` });
     await page.locator('.cx-pens .cx-pen-done').click();
     await page.waitForSelector('.cx-tac-pitch', { timeout: 5000 });
+    await tacOk();
+    const order = await gs(() => window.__cm.gs().tactic.penOrder);
+    if (order?.length !== 2) throw new Error(`rækkefølgen blev ikke sat: ${JSON.stringify(order)}`);
+    await go({ name: 'tactics' });
     // Save As: spillets egen navneboks (ikke browserens prompt)
     await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();
     await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Save As' }).first().click();
@@ -504,6 +575,7 @@ async function run(look) {
     const before = await gs(() => JSON.stringify(window.__cm.gs().tactic.slots));
     const edit = async (label) => { await page.locator('.cx-drop-btn', { hasText: 'Edit' }).first().click(); await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: label }).first().click(); };
     await edit('Copy All'); await edit('Reflect'); await edit('Paste');
+    await tacOk();
     if (before !== await gs(() => JSON.stringify(window.__cm.gs().tactic.slots))) throw new Error('Paste gav ikke den kopierede formation tilbage');
   });
   if (look === 'klassisk') await step('Referee Stats', async () => {
@@ -543,8 +615,9 @@ async function run(look) {
       const look2 = await page.evaluate(() => {
         const bg = (el) => (el ? getComputedStyle(el).backgroundColor : '');
         const sel = document.querySelector('.cx-sq-orig .cx-selbtn.xi') ?? document.querySelector('.cx-sq-orig .cx-selbtn');
-        const slot = document.querySelector('.cx-sq-orig .cx-slot');
-        return { sel: bg(sel), selFg: sel ? getComputedStyle(sel).color : '', slot: bg(slot), slotFg: slot ? getComputedStyle(slot).color : '',
+        const slot = document.querySelector('.cx-sq-orig .cx-slot:not(.filled):not(.off)') ?? document.querySelector('.cx-sq-orig .cx-slot');
+        const full = document.querySelector('.cx-sq-orig .cx-slot.filled');
+        return { sel: bg(sel), selFg: sel ? getComputedStyle(sel).color : '', slot: bg(slot), slotFg: slot ? getComputedStyle(slot).color : '', fullFg: full ? getComputedStyle(full).color : '',
           slots: [...document.querySelectorAll('.cx-sq-orig .cx-slot')].map((x) => x.textContent), off: document.querySelectorAll('.cx-sq-orig .cx-slot.off').length,
           tags: [...document.querySelectorAll('.cx-sq-orig .cx-sq-tag')].map((x) => x.textContent).filter(Boolean),
           stars: [...document.querySelectorAll('.cx-sq-orig .cx-sq-name')].some((x) => x.textContent.endsWith('*')),
@@ -552,13 +625,20 @@ async function run(look) {
           division: [...document.querySelectorAll('.cx-subrow button')].map((b) => b.textContent).find((x) => /\d+(st|nd|rd|th) in /.test(x ?? '')) ?? '' };
       });
       if (look2.sel !== 'rgb(0, 0, 125)' || look2.selFg !== 'rgb(255, 255, 255)') throw new Error(`udtagelsesfeltet skal være blåt med hvid tekst: ${look2.sel} / ${look2.selFg}`);
-      if (look2.slot !== 'rgb(24, 63, 12)' || look2.slotFg !== 'rgb(255, 255, 255)') throw new Error(`strimlen skal være mørkegrøn (#183f0c, målt i originalen) med hvid tekst: ${look2.slot} / ${look2.slotFg}`);
+      if (look2.slot !== 'rgb(24, 63, 12)' || !['rgb(255, 255, 255)', 'rgb(255, 242, 31)'].includes(look2.slotFg)) throw new Error(`strimlen skal være mørkegrøn (#183f0c, målt i originalen) med hvid tekst: ${look2.slot} / ${look2.slotFg}`);
+      if (look2.fullFg !== 'rgb(255, 242, 31)') throw new Error(`en optaget plads i strimlen skal have gul tekst (originalen): ${look2.fullFg}`);
       if (look2.slots[0] !== 'GK' || !look2.slots.includes('SB9')) throw new Error(`strimlen: ${look2.slots.join(' ')}`);
       if (look2.tags.some((x) => ['Int', 'Fgn', 'Wnt'].includes(x))) throw new Error(`ikke-originale mærker: ${look2.tags.join(' ')}`);
       if (look2.stars || look2.dressing || look2.count || look2.division) throw new Error(`ikke-originale elementer: ${JSON.stringify(look2)}`);
       // hover på et udtagelsesfelt må ikke ændre farven
       const b = page.locator('.cx-sq-orig .cx-selbtn').first(); await b.hover();
       if ((await b.evaluate((el) => getComputedStyle(el).backgroundColor)) !== 'rgb(0, 0, 125)') throw new Error('hover ændrer udtagelsesfeltets farve');
+      // træk en plads fra strimlen ned på en spiller uden plads: spilleren sættes på pladsen (originalen)
+      const free = await gs(() => { const g = window.__cm.gs(); const t = g.tactic; return Object.values(g.players).find((p) => p.club === g.userClub && !p.reserves && !t.lineup.includes(p.id) && !t.bench.includes(p.id))?.id ?? 0; });
+      if (free) {
+        await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first());
+        await page.waitForFunction((id) => window.__cm.gs().tactic.lineup[1] === id, free, { timeout: 5000 }).catch(() => { throw new Error('trækket fra strimlen ned på en spiller satte ham ikke på pladsen'); });
+      }
       // klik på en besat plads i strimlen tømmer den
       const before = await gs(() => window.__cm.gs().tactic.lineup.filter(Boolean).length);
       await page.locator('.cx-sq-orig .cx-slot.filled').first().click();
@@ -576,6 +656,16 @@ async function run(look) {
       await page.waitForSelector('.cx-finv-orig .cx-fin-stats', { timeout: 5000 });
       const n = await page.locator('.cx-finv-orig .cx-fin-stats > div').count();
       if (n !== 16) throw new Error(`Stats har ${n} rækker (originalen 16)`);
+      // et resultat uden kamprapport (computerklubbernes kampe) kan åbnes: Match Overview med målscorerne
+      const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.fixtures).find((f) => f.result && !g.reports[f.id] && f.home !== g.userClub && f.away !== g.userClub)?.id ?? 0; });
+      if (other) {
+        await go({ name: 'report', id: other });
+        await page.waitForSelector('.match-screen .cx-tabrow, .match-screen .tabs', { timeout: 5000 }).catch(() => { throw new Error('et andet holds resultat åbner ikke kampskærmen'); });
+      }
+      // Funds (Player & Staff Search) åbner originalens Finances & Info – ikke den moderne økonomiskærm
+      await go({ name: 'transfers' });
+      await page.locator('.cx-funds').first().click();
+      await page.waitForSelector('.cx-finv-orig', { timeout: 5000 }).catch(() => { throw new Error('Funds åbner ikke originalens økonomioversigt'); });
       if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-klubstats-original.png` });
     } finally {
       await gs(() => { window.__cm.gs().options.mode = 'extended'; });
@@ -697,9 +787,9 @@ async function run(look) {
     await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud.png` });
     // CM 01/02: pilen ved beløbet giver faste beløb (£0 … £20M), Exchange åbner "Add Player To … Transfer Bid"
-    await page.locator('.cx-bid-amt .cx-drop-btn').click();
+    await page.locator('.cx-bid-amt .cx-drop-btn').first().click();
     await page.locator('.cx-drop-pop button', { hasText: /^£1M$/ }).first().click();
-    if (!/£1(\.00)?M/.test(await page.locator('.cx-bid-amt .cx-drop-btn').innerText())) throw new Error('beløbslisten satte ikke £1M');
+    if (!/£1(\.00)?M/.test(await page.locator('.cx-bid-amt .cx-drop-btn').first().innerText())) throw new Error('beløbslisten satte ikke £1M');
     await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
     await page.waitForSelector('.cx-exch', { timeout: 5000 });
     if (!(await page.locator('.cx-exch .cx-sq-row').count()) && !(await page.locator('.cx-exch-none').innerText()).includes('not interested in a part-exchange deal')) throw new Error('Exchange-skærmen er tom');
@@ -707,6 +797,39 @@ async function run(look) {
     await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 5000 });
     await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
     await page.waitForSelector('.cx-bid', { state: 'detached', timeout: 5000 });
+  });
+  // CM 01/02's budskærm med den originale database (cmTransferBid.ts): alle rækker kan ændres, bytte via trupskærmen, buddet gemmer klausulerne
+  if (look === 'klassisk' && ENGINE_GRID) await step('budskærmen: rater, videresalg, klausuler, offentligt og bytte (original)', async () => {
+    const pid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).find((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league && p.value > 500000).id; });
+    await go({ name: 'player', id: pid });
+    await page.locator('.cx-act .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Approach To Buy' }).first().click();
+    await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 10000 });
+    const row = (txt) => page.locator('.cx-bid-row', { hasText: txt }).first();
+    await row('Monthly Installments').locator('.cx-bid-tog').click();
+    if (!(await row('Monthly Installments').innerText()).includes('6 months')) throw new Error('raterne blev ikke slået til (6 months)');
+    await row('Monthly Installments').locator('button[aria-label="+"]').click();
+    if (!(await row('Monthly Installments').innerText()).includes('12 months')) throw new Error('+ gav ikke 12 months');
+    await row('Percentage of Next Sale').locator('button[aria-label="+"]').click();
+    if (!(await row('Percentage of Next Sale').innerText()).includes('10%')) throw new Error('videresalget blev ikke 10%');
+    await row('League Apps').locator('.cx-bid-tog').click();
+    await row('League Apps').locator('.cx-bid-n').click();
+    if (!(await row('League Apps').innerText()).includes('Fee after 20 League Apps.')) throw new Error('N gik ikke fra 10 til 20');
+    await row('International Apps').locator('.cx-bid-amt .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button', { hasText: /^£250K$/ }).first().click();
+    await row('Make transfer bid public').locator('.cx-bid-yn').click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-budskaerm-original.png` });
+    // Exchange: trupskærmen; knappen trykkes ned, og et klik på en tilladt spiller tager ham med (ellers åbnes profilen – så vi går tilbage)
+    await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
+    await page.waitForSelector('.cx-exch .cx-sq-row', { timeout: 5000 });
+    await page.locator('.cx-exch-btn').click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bytte-original.png` });
+    await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
+    await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 5000 });
+    await page.locator('.cx-foot-btns button.primary', { hasText: 'Offer' }).click();
+    await page.waitForTimeout(300);
+    const o = await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1), pid);
+    if (o && (o.months !== 12 || o.sellOn !== 10 || o.lgApps !== 20 || !o.intFee || !o.pub)) throw new Error(`buddets vilkår blev ikke gemt (${JSON.stringify(o)})`);
   });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
@@ -753,8 +876,11 @@ async function run(look) {
     const sub = await gs(() => { const g = window.__cm.gs(); const tc = g.tactic; return tc.bench[0] ?? Object.values(g.players).find((p) => p.club === g.userClub && !tc.lineup.includes(p.id) && !p.injury && p.pos[0] < 15)?.id; });
     if (look === 'klassisk') {
       const name = await gs((id) => window.__cm.gs().players[id].last, sub);
+      // spillere uden for bænken står kun i View → Whole Squad
+      if (!(await page.locator('.cx-tac-row', { hasText: name }).count())) { await page.locator('.cx-drop-btn', { hasText: 'View' }).first().click(); await page.locator('.cx-drop-pop button', { hasText: 'Whole Squad' }).first().click(); }
       await page.locator('.cx-tac-row', { hasText: name }).first().click();
       await page.locator(slotSel).nth(9).click();
+      await tacOk(); await go({ name: 'tactics' });
     } else {
       // moderne: klik pladsen og derefter spilleren i listen
       const name = await gs((id) => window.__cm.gs().players[id].last, sub);
@@ -780,6 +906,7 @@ async function run(look) {
       if (spots !== 30 || !hot) throw new Error(`pladsgitteret: ${spots} pladser, fremhævet "${hot}"`);
       await s.click(); await page.waitForTimeout(100);
       await s.dragTo(page.locator(pitchSel), { targetPosition: { x: b.x - pitch.x - 40, y: b.y - pitch.y + 110 } });
+      await page.waitForTimeout(200); await tacOk(); await go({ name: 'tactics' });
     } else {
       await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
       await page.mouse.move(b.x + b.width / 2 - 40, b.y + b.height / 2 + 110, { steps: 8 }); await page.mouse.up();
@@ -797,6 +924,7 @@ async function run(look) {
       await page.locator('.cx-ti-row', { hasText: await t('ti.tempo') }).getByRole('button', { name: await t('ti.fast') }).click();
       await page.locator(slotSel).nth(10).click();
       await page.locator('.cx-ti-row', { hasText: await t('pi.holdUp') }).getByRole('button', { name: await t('common.yes') }).click();
+      await tacOk(); await go({ name: 'tactics' });
     } else {
       await page.locator('.ti-row', { hasText: await t('ti.tempo') }).getByRole('radio', { name: await t('ti.fast') }).click();
       await page.locator(slotSel).nth(10).click();
@@ -951,7 +1079,7 @@ async function run(look) {
         window.__bar = m;
         const ob = new MutationObserver(() => {
           const el = document.querySelector('.cx-running');
-          if (el && m.on < 0) { m.on = performance.now() - m.t0; requestAnimationFrame(() => { if (m.paint < 0) m.paint = performance.now() - m.t0; }); }
+          if (el && m.on < 0) { m.on = performance.now() - m.t0; m.w = el.querySelector('.cx-run-bar')?.getBoundingClientRect().width ?? 0; requestAnimationFrame(() => { if (m.paint < 0) m.paint = performance.now() - m.t0; }); }
           if (!el && m.on >= 0 && m.off < 0) { m.off = performance.now() - m.t0; ob.disconnect(); }
         });
         ob.observe(document.body, { childList: true, subtree: true });
@@ -964,6 +1092,7 @@ async function run(look) {
       if (m.on < 0) throw new Error('indlæsningsbjælken blev ikke vist');
       if (m.on > 300) throw new Error(`indlæsningsbjælken kom først efter ${Math.round(m.on)} ms`);
       if (m.paint < 0 || m.paint > m.off) throw new Error('bjælken blev ikke tegnet før simuleringen');
+      if (!(m.w >= 300)) throw new Error(`fremdriftsbjælken er kun ${Math.round(m.w ?? 0)} px bred (en tynd streg – skal fylde bundbjælken)`);
       // bjælken står hele kørslen: fra senest 300 ms efter klikket til simuleringen er færdig (fjernes først af run() efter runUntil)
       if (await page.locator('.cx-running').isVisible().catch(() => false)) throw new Error('bjælken står stadig');
     }

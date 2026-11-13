@@ -1356,7 +1356,7 @@ export function TeamInstrDialog({ tac, on, editable, onClose, onOk }: { tac: Tac
 }
 
 /** Last Match (CM 01/02): startopstillingen fra sidste kamp – kun til at se på; Back nederst fører tilbage */
-function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
+export function LastMatchView({ tac, club }: { tac: Tactic; club: string }) {
   const g = useGame()!;
   const { nav: navP } = useNav();
   const ids = tac.lineup.filter(Boolean);

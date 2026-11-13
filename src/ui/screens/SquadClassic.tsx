@@ -342,14 +342,19 @@ function origFilter(f: OrigFilter, p: Player, euro: Set<number> | null): boolean
   return true;
 }
 
+/** Bytte-skærmen (CM 01/02 0x47c180 "Add Player To … Transfer Bid"): trupskærmen skrivebeskyttet; når Exchange-knappen er trykket ned (`armed`),
+ *  vælger et klik på en tilladt spiller (`ok`) ham til buddet (0x4814e0 handling 2) i stedet for at åbne profilen */
+export type SquadPick = { armed: boolean; ok: (p: Player) => boolean; onPick: (pid: number) => void };
+
 /** Ægte CM 01/02: en andens klubs trup – samme skærm som egen trup, skrivebeskyttet (computerens udtagelse i de blå felter) */
-function ClassicFirstSquad({ reserves = false, cid }: { reserves?: boolean; cid?: number } = {}) {
+export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: boolean; cid?: number; pick?: SquadPick } = {}) {
   const g = useGame()!;
   const { nav } = useNav();
-  const ro = !!cid && cid !== g.userClub;
-  const clubId = ro ? cid! : g.userClub;
-  if (!ro && !g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
-  const tac = ro ? aiTactic(cid!) : g.tactic!;
+  const other = !!cid && cid !== g.userClub;
+  const ro = other || !!pick;
+  const clubId = other ? cid! : g.userClub;
+  if (!other && !g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
+  const tac = other ? aiTactic(cid!) : g.tactic!;
   const orig = authentic();
   const [view, setView] = useRouteState('cview', 'trad');
   const [sqnMissing] = useRouteState('sqnMissing', 0);
@@ -402,13 +407,26 @@ function ClassicFirstSquad({ reserves = false, cid }: { reserves?: boolean; cid?
   // DOM'en må ikke ændres i selve dragstart (så afbryder Chrome trækket) – derfor sættes tilstanden lidt efter
   const dragStart = (pid: number) => (e: DragEvent) => { e.dataTransfer.setData('text/x-cm-pid', String(pid)); e.dataTransfer.setData('text/plain', String(pid)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => setDrag(pid), 0); };
   const dragEnd = () => { setDrag(null); setOver(null); };
+  // CM 01/02: en plads i positionsbjælken kan trækkes ned på en spiller i listen – spilleren sættes på pladsen
+  const slotDragStart = (x: Target, place: NonNullable<Place>) => (e: DragEvent) => {
+    e.dataTransfer.setData('text/x-cm-slot', JSON.stringify(place));
+    if (x.pid) e.dataTransfer.setData('text/x-cm-pid', String(x.pid));
+    e.dataTransfer.setData('text/plain', x.label);
+    e.dataTransfer.effectAllowed = 'move';
+  };
   const dropOn = (id: string, place: Place | 'swapWith', withPid?: number) => ({
-    onDragOver: (e: DragEvent) => { if (!e.dataTransfer.types.includes('text/x-cm-pid')) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (over !== id) setOver(id); },
+    onDragOver: (e: DragEvent) => {
+      const types = e.dataTransfer.types;
+      if (!types.includes('text/x-cm-pid') && !(place === 'swapWith' && types.includes('text/x-cm-slot'))) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = 'move'; if (over !== id) setOver(id);
+    },
     onDragLeave: () => setOver((o) => (o === id ? null : o)),
     onDrop: (e: DragEvent) => {
       e.preventDefault();
+      const slot = e.dataTransfer.getData('text/x-cm-slot');
       const pid = Number(e.dataTransfer.getData('text/x-cm-pid')) || drag;
       dragEnd();
+      if (slot && place === 'swapWith') { if (withPid) save(moveTo(tac, withPid, JSON.parse(slot) as Place)); return; }
       if (!pid) return;
       if (place === 'swapWith') {
         if (!withPid || withPid === pid) return;
@@ -467,7 +485,7 @@ function ClassicFirstSquad({ reserves = false, cid }: { reserves?: boolean; cid?
             btn={{ className: selCls, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: orig ? undefined : t('cl.sq.selHint'), 'data-pid': p.id }} />}
         <Tag p={p} tag={tag} />
         <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves ? loanedOut : p.loan) ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
-          onClick={() => (armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro) && starIds(players).has(p.id))}</button>
+          onClick={() => (pick?.armed && pick.ok(p) ? pick.onPick(p.id) : armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro) && starIds(players).has(p.id))}</button>
         {cols.map((c) => <span key={c.key} className={`cx-sq-info ${trad && c.key === 'cond' ? 'cond' : ''}`} data-col={c.key}>{c.show(p)}</span>)}
       </div>
     );
@@ -526,7 +544,7 @@ function ClassicFirstSquad({ reserves = false, cid }: { reserves?: boolean; cid?
               return (
                 <div key={x.id} className={`cx-slot ${x.place.kind} ${p ? 'filled' : ''} ${x.off ? 'off' : ''} ${armed === x.id ? 'armed' : ''} ${over === x.id ? 'over' : ''}`}
                   title={x.off ? undefined : p ? `${p.first} ${p.last}` : t('cl.sq.empty')} onClick={() => stripClick(x)}
-                  draggable={!!p} onDragStart={p ? dragStart(p.id) : undefined} onDragEnd={dragEnd}
+                  draggable={!x.off && !ro && !reserves} onDragStart={!x.off && !ro && !reserves ? slotDragStart(x, benchPlace(x.place)) : undefined} onDragEnd={dragEnd}
                   {...(x.off ? {} : dropOn(x.id, benchPlace(x.place)))}>
                   {x.label}
                 </div>

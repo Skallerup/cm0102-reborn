@@ -202,6 +202,10 @@ export function holdDarkTheme(on: boolean) {
   applyTheme();
 }
 
+/** Det klassiske nye-spil-forløb (ClassicStart.tsx) bruger spillets klassiske skin, før der er et spil */
+let startSkin = false;
+export function setStartSkin(on: boolean) { startSkin = on; applyTheme(); }
+
 export function applyTheme() {
   const root = document.documentElement;
   const theme = getTheme();
@@ -222,11 +226,11 @@ export function applyTheme() {
   delete root.dataset.skin;
   for (const v of VARS) root.style.removeProperty(v);
   // særlige temaer: guld og retro-CM
-  if ((theme === 'gold' || theme === 'retro') && hasGame()) {
+  if ((theme === 'gold' || theme === 'retro') && (hasGame() || (startSkin && theme === 'retro'))) {
     root.dataset.skin = theme;
     // CM-retro: klub-farvet header-bjælke som i originalen
     if (theme === 'retro') {
-      const club = gs().clubs[themeClub ?? gs().userClub];
+      const club = hasGame() ? gs().clubs[themeClub ?? gs().userClub] : undefined;
       if (club) {
         const c0 = club.colors[0], c1 = club.colors[1] ?? '#ffffff';
         const r = parseInt(c0.slice(1, 3), 16), g2 = parseInt(c0.slice(3, 5), 16), b = parseInt(c0.slice(5, 7), 16);

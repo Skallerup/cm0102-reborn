@@ -4,7 +4,7 @@ import type { Fixture, GameState } from '../../game/types';
 import { compName, natName, t } from '../../i18n';
 import { intlDayResults } from '../../game/international';
 import { useGame, useNav, useRouteState } from '../core';
-import { CxLink, clubRoute, compAbbr, useClassicContinue } from '../classic';
+import { CxLink, clubRoute, compAbbr } from '../classic';
 import { Head } from './common';
 import { stageLabel } from './Fixtures';
 import { ordinal } from './Competitions';
@@ -27,13 +27,7 @@ export function MatchDay({ id }: { id: number }) {
   const date = mine?.date ?? g.date;
   const [i, setI] = useRouteState('mdi', 0);
   const cid = comps[Math.min(i, comps.length - 1)];
-  // Continue Game bladrer videre til næste turnering, når dagens kampe er spillet (CM 01/02); den sidste går videre i spillet
-  useClassicContinue(() => {
-    const done = !g.pendingFixture || g.fixtures[g.pendingFixture]?.result;
-    if (!done || i >= comps.length - 1) return false;
-    setI(i + 1);
-    return true;
-  });
+  // Continue Game fortsætter spillet (ejeren 13/11) – « » bladrer mellem turneringerne
   const comp = g.comps[cid];
   const list = today.filter((f) => f.comp === cid).sort((a, b) => Number(isMine(b)) - Number(isMine(a)) || (g.clubs[a.home]?.name ?? '').localeCompare(g.clubs[b.home]?.name ?? ''));
   function isMine(f: Fixture) { return f.home === g.userClub || f.away === g.userClub; }
@@ -96,7 +90,7 @@ export function MatchDay({ id }: { id: number }) {
             <div key={f.id} className={`cx-md-row ${isMine(f) ? 'mine' : ''}`}>
               <span className="cx-md-code">{code(f.home, f)}</span>
               <span className="cx-md-home">{name(f.home)}</span>
-              {f.result && !before ? <span className="cx-md-res"><span className="cx-md-mark">{mark(f, 0)}</span>{f.result.hg}:{f.result.ag}<span className="cx-md-mark">{mark(f, 1)}</span></span> : <span className="cx-md-v">v</span>}
+              {f.result && !before ? <span className="cx-md-res cx-link" role="link" onClick={() => nav({ name: 'report', id: f.id })}><span className="cx-md-mark">{mark(f, 0)}</span>{f.result.hg}:{f.result.ag}<span className="cx-md-mark">{mark(f, 1)}</span></span> : <span className="cx-md-v">v</span>}
               <span className="cx-md-away">{name(f.away)}</span>
               <span className="cx-md-code">{code(f.away, f)}</span>
             </div>
@@ -117,8 +111,6 @@ export function IntlDay() {
   const [i, setI] = useRouteState('idi', 0);
   const kind = kinds[Math.min(i, kinds.length - 1)];
   const list = all.filter((x) => x.r.kind === kind);
-  // Continue Game bladrer videre til næste slutrunde, den sidste går videre i spillet
-  useClassicContinue(() => { if (i >= kinds.length - 1) return false; setI(i + 1); return true; });
   const wd = new Date(`${g.date}T12:00:00`).getDay();
   const title = t(`cl.md.res${list.length === 1 ? '1' : 'N'}`, { when: t(wd === 0 || wd === 6 ? 'cl.md.afternoon' : 'cl.md.evening') });
   const label = (x: (typeof list)[number]) => (x.group !== undefined ? t('cl.md.group', { g: String.fromCharCode(65 + x.group) }) : t(`stage.${x.r.stage}`));
@@ -128,7 +120,14 @@ export function IntlDay() {
     <div>
       <Head title={kind ? t(`intl.name.${kind}`) : ''} />
       <div className="cx-subtitle">{title}</div>
-      <div className="cx-md-tools"><span className="grow" /><button className="cx-greybtn" onClick={() => nav({ name: 'international' })}>{t('cl.md.competition')}</button></div>
+      <div className="cx-md-tools">
+        {kinds.length > 1 && <>
+          <button className="cx-greybtn" disabled={i <= 0} onClick={() => setI(i - 1)}>‹‹</button>
+          <span className="cx-md-count">{t('cl.md.count', { n: Math.min(i, kinds.length - 1) + 1, of: kinds.length })}</span>
+          <button className="cx-greybtn" disabled={i >= kinds.length - 1} onClick={() => setI(i + 1)}>››</button>
+        </>}
+        <span className="grow" /><button className="cx-greybtn" onClick={() => nav({ name: 'international' })}>{t('cl.md.competition')}</button>
+      </div>
       <div className="cx-md-panel">{stages.map((st) => (
         <div key={st} className="cx-md">
           <div className="cx-md-stage">{st}</div>

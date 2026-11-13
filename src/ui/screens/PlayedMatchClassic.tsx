@@ -26,8 +26,8 @@ export function PlayedMatchClassic({ id }: { id: number }) {
   const [tab, setTab] = useRouteState('tab', 'overview');
   const me: 0 | 1 = f && f.away === g.userClub ? 1 : 0;
   const home = f ? g.clubs[f.home]?.short ?? '?' : '', away = f ? g.clubs[f.away]?.short ?? '?' : '';
-  const minute = rep?.et ? 120 : 90;
-  useClassicMatchSide(f && rep ? {
+  const minute = (rep?.et ?? f?.result?.et) ? 120 : 90;
+  useClassicMatchSide(f && (rep || f.result) ? {
     minute: String(minute), venue: `${g.clubs[f.home]?.stadium ?? ''}${g.clubs[f.home]?.short ? `, ${g.clubs[f.home].short}` : ''}`, comp: f.comp,
     kicked: true, paused: false, finished: true, home, away, me, speed: 1,
   } : null, {
@@ -35,6 +35,22 @@ export function PlayedMatchClassic({ id }: { id: number }) {
     tactics: (side) => setTab(side === 0 ? 'hstats' : 'astats'),
     cont: back,
   });
+  if (f && !rep && f.result) {
+    // en kamp uden kamprapport (computerklubbernes kampe gemmer kun resultatet): Match Overview med målscorerne – klik på resultatet
+    // i Evening Results/Latest Scores som i CM 01/02
+    const r = f.result;
+    const colors = teamColors(f.home, f.away, me);
+    const goals = r.scorers.map(([m, side, p, og]) => ({ t: side, p, m, og: og === 1 }));
+    const ht: [number, number] = [goals.filter((e) => e.t === 0 && e.m <= 45).length, goals.filter((e) => e.t === 1 && e.m <= 45).length];
+    return (
+      <div className="match-screen">
+        <CmScoreboard home={f.home} away={f.away} hg={r.hg} ag={r.ag} colors={colors} classic minute={t('match.ft')} agg={aggText(f, r.hg, r.ag)} />
+        <Tabs tabs={[['overview', t('match.overview')]]} value="overview" onChange={() => {}} />
+        <CxOverview f={f} colors={colors} line={undefined} poss={[]} half={t('match.ft')} ht={ht} quiet flash={false} injuries={[]} reds={[]}
+          shootout={undefined} goals={goals} />
+      </div>
+    );
+  }
   if (!f || !rep) return <Head title={t('report.missing')} />;
   const colors = teamColors(f.home, f.away, me);
   const st = rep.stats;

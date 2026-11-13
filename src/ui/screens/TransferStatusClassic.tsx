@@ -13,6 +13,12 @@ import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
 import { useGame } from '../core';
 import { CxDrop, useClassicDialog, ClassicFoot } from '../classic';
+import { cmActive, statusCode } from '../../game/cmPlayerData';
+import { isHumanClub } from '../../game/humans';
+import { exchangeOk } from '../../game/transfers';
+import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin, feeAtMax, feeEquals, fromGbp, newTerms, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
+  type BidAct, type BidTerms, type RejectKey } from '../../game/cmTransferBid';
+import { ClassicFirstSquad } from './SquadClassic';
 
 /** "£0", "£100K", "£2.5M" (originalens beløbsliste, i spillerens valuta) */
 const amountLabel = (a: number) => {
@@ -111,7 +117,13 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
 }
 
 /** "Approach To Buy/Loan" (CM 01/02 "Man Utd transfer bid for Inamoto"): beløb med − / + / =, klausuler, bytte og samlet værdi */
-export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+export function BidPanel(props: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+  const g = useGame()!;
+  // den originale database i ægte tilstand: originalens budskærm (cmTransferBid.ts); ellers spillets egen
+  return cmActive(g) && !props.loan ? <CmBidPanel {...props} /> : <OldBidPanel {...props} />;
+}
+
+function OldBidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
   const g = useGame()!;
   useClassicDialog();
   const me = g.clubs[g.userClub];
@@ -206,7 +218,12 @@ export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolea
 }
 
 /** Svar på et bud på egen spiller (CM 01/02 "Negotiate Arsenal bid for Butt"): Back · Reject · Delay · Accept – et ændret beløb er et modbud */
-export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose: (msg?: string) => void }) {
+export function IncomingBidPanel(props: { offer: TransferOffer; onClose: (msg?: string) => void }) {
+  const g = useGame()!;
+  return cmActive(g) && !props.offer.loan ? <CmIncomingBidPanel {...props} /> : <OldIncomingBidPanel {...props} />;
+}
+
+function OldIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose: (msg?: string) => void }) {
   const g = useGame()!;
   useClassicDialog();
   const p = g.players[offer.player];
@@ -276,7 +293,7 @@ export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onC
         <button onClick={() => onClose()}>{t('common.back')}</button>
         <button onClick={() => setRejecting(true)}>{t('cl.bid.reject')}</button>
         <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
-        <button className="primary" onClick={() => reply(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.counter' : 'cl.bid.accept')}</button>
+        <button className="primary" onClick={() => reply(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.negotiateBtn' : 'cl.bid.accept')}</button>
       </ClassicFoot>
     </div>
   );
@@ -334,6 +351,190 @@ export function CoachesPanel({ onClose }: { onClose: () => void }) {
         {!coaches.length && <div className="cx-empty">{t('common.none')}</div>}
       </div>
       <div className="cx-ts-buttons cx-tidlg-foot"><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" onClick={ok}>{t('common.ok')}</button></div>
+    </div>
+  );
+}
+
+// ================================================================ CM 01/02's budskærm (cm0102.exe 0x8e9760/0x8ec420 – cmTransferBid.ts)
+
+/** Rækkerne på originalens budskærm: Transfer Fee (− ▾ + =), Monthly Installments, Percentage of Next Sale, Fee after N League/International
+ *  Apps. (− ▾ +), Make transfer bid public, Exchange/Remove(/Reset), bytte-linjerne og Total Value. Grå etiket = slået fra (klik slår til). */
+function CmBidRows({ terms, set, value, budget, swapValue, onExchange, reset }: {
+  terms: BidTerms; set: (t: BidTerms) => void; value: number; budget?: number; swapValue: (id: number) => number;
+  onExchange: () => void; reset?: () => void;
+}) {
+  const g = useGame()!;
+  const [removing, setRemoving] = useState(false);
+  const act2 = (a: BidAct) => set(bidAct(terms, a, value));
+  const amounts = (put: (eur: number) => void) => BID_AMOUNTS_GBP.map((a) => ({ key: String(a), label: money(fromGbp(a)), checked: false, onClick: () => put(fromGbp(a)) }));
+  // "Fee after <N> …": N er et link for sig (0xe/0x13: 1 → 10 → … → 50 → 1); resten af etiketten slår klausulen til/fra (0xd/0x12)
+  const clauseLabel = (n: number, one: string, many: string, toggle: BidAct, cycle: BidAct) => {
+    const [a, b] = (n === 1 ? t(one) : t(many, { n: '\u0000' })).split('\u0000');
+    return <button className="cx-bid-label cx-bid-tog" onClick={() => act2(toggle)}>{a}{b !== undefined && <span className="cx-bid-n" role="link" onClick={(e) => { e.stopPropagation(); act2(cycle); }}>{n}</span>}{b ?? ''}</button>;
+  };
+  const row = (on: boolean, label: ReactNode, minus: BidAct, mid: ReactNode, plus: BidAct, minusOff: boolean, plusOff: boolean, extra?: ReactNode) => (
+    <div className={`cx-bid-row ${on ? '' : 'off'}`}>
+      {label}
+      <button className="cx-pm" disabled={minusOff} onClick={() => act2(minus)} aria-label="-">−</button>
+      {mid}
+      <button className="cx-pm" disabled={plusOff} onClick={() => act2(plus)} aria-label="+">+</button>
+      {extra ?? <span />}
+    </div>
+  );
+  const total = terms.fee + Math.max(0, terms.lgFee) + Math.max(0, terms.intFee) + terms.swap.reduce((x, id) => x + swapValue(id), 0);
+  const over = budget !== undefined && terms.fee > budget;
+  return <>
+    {row(true, <span className="cx-bid-label">{t('cl.bid.fee')}</span>, 'feeDown',
+      <CxDrop className={`cx-bid-amt ${over ? 'over' : ''}`} label={money(terms.fee)} fixed items={amounts((v) => set({ ...terms, fee: v }))} />,
+      'feeUp', terms.fee <= 0, feeAtMax(terms.fee),
+      <button className="cx-pm" onClick={() => set({ ...terms, fee: feeEquals(value, terms.swap.map(swapValue), budget) })} title={t('cl.bid.feeEq')}>=</button>)}
+    {row(terms.months > 0, <button className="cx-bid-label cx-bid-tog" onClick={() => act2('inst')}>{t('cl.bid.install')}</button>, 'instDown',
+      <span className="cx-bid-val">{terms.months > 0 ? t('cl.bid.months', { n: terms.months }) : '-'}</span>, 'instUp', terms.months === 6, terms.months >= 24)}
+    {row(terms.sellOn > 0, <button className="cx-bid-label cx-bid-tog" onClick={() => act2('sell')}>{t('cl.bid.sellOn')}</button>, 'sellDown',
+      <span className="cx-bid-val">{terms.sellOn > 0 ? `${terms.sellOn}%` : '-'}</span>, 'sellUp', terms.sellOn === 5, terms.sellOn >= 25)}
+    {row(terms.lgFee > 0, clauseLabel(terms.lgApps, 'cl.bid.lg1', 'cl.bid.lgN', 'lg', 'lgN'), 'lgDown',
+      <CxDrop className="cx-bid-amt" label={terms.lgFee > 0 ? money(terms.lgFee) : '-'} fixed items={amounts((v) => set({ ...terms, lgFee: v }))} />,
+      'lgUp', terms.lgFee > 0 && clauseAtMin(terms.lgFee), terms.lgFee > 0 && feeAtMax(terms.lgFee))}
+    {row(terms.intFee > 0, clauseLabel(terms.intApps, 'cl.bid.int1', 'cl.bid.intN', 'int', 'intN'), 'intDown',
+      <CxDrop className="cx-bid-amt" label={terms.intFee > 0 ? money(terms.intFee) : '-'} fixed items={amounts((v) => set({ ...terms, intFee: v }))} />,
+      'intUp', terms.intFee > 0 && clauseAtMin(terms.intFee), terms.intFee > 0 && feeAtMax(terms.intFee))}
+    <div className={`cx-bid-row ${terms.pub === 1 ? 'off' : ''}`}>
+      <button className="cx-bid-label cx-bid-tog" disabled={terms.pub === 1} onClick={() => act2('pub')}>{t('cl.bid.public')}</button>
+      <button className="cx-bid-val wide cx-bid-yn" disabled={terms.pub === 1} onClick={() => act2('pub')}>{t(terms.pub ? 'common.yes' : 'common.no')}</button>
+    </div>
+    <div className="cx-bid-tools">
+      <button className="cx-greybtn" disabled={terms.swap.length >= MAX_SWAP} onClick={onExchange}>{t('cl.bid.exchange')}</button>
+      <button className={`cx-greybtn ${removing ? 'on' : ''}`} disabled={!terms.swap.length} onClick={() => setRemoving(!removing)}>{t('cl.bid.remove')}</button>
+      <span className="cx-grow" />
+      {reset && <button className="cx-greybtn" onClick={reset}>{t('cl.bid.reset')}</button>}
+    </div>
+    {terms.swap.map((id) => (
+      <button key={id} className={`cx-bid-swap ${removing ? 'removing' : ''}`} disabled={!removing}
+        onClick={() => { set(removeSwap(terms, id, swapValue(id))); setRemoving(false); }}>
+        <span>+ {g.players[id]?.first ? `${g.players[id].first} ${g.players[id].last}` : g.players[id]?.last}</span><span>{moneyFull(swapValue(id))}</span>
+      </button>
+    ))}
+    <div className="cx-bid-total"><span>{t('cl.bid.total')}</span><b>{moneyFull(total)}</b></div>
+  </>;
+}
+
+/** "Add Player To {spiller} Transfer Bid" (0x47c180): giverens trupskærm; Exchange-knappen trykkes ned, og et klik på en tilladt spiller tager ham med */
+function CmExchange({ giver, receiver, p, onPick, onBack }: { giver: number; receiver: number; p: Player; onPick: (pid: number) => void; onBack: () => void }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <div className="cx-tstatus cx-bid cx-exch">
+      <div className="cx-exch-top">
+        <div className="cx-subtitle cx-orig-band">{t('cl.bid.addTitle', { player: p.last })}</div>
+        <button className={`cx-exch-btn ${armed ? 'on' : ''}`} onClick={() => setArmed(!armed)} title={t('cl.bid.exPick')}>{t('cl.bid.exchange')}</button>
+      </div>
+      <ClassicFirstSquad key={`ex${giver}`} cid={giver} pick={{ armed, ok: (x) => exchangeOk(x, receiver, p.id), onPick }} />
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={onBack}>{t('common.back')}</button>
+        <button className="primary" disabled>{t('top.next')}</button>
+      </ClassicFoot>
+    </div>
+  );
+}
+
+/** Eget bud (CM 01/02 "{klub} transfer bid for {spiller}") */
+function CmBidPanel({ p, onClose, onSent }: { p: Player; loan: boolean; onClose: () => void; onSent: (o: TransferOffer) => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const me = g.clubs[g.userClub];
+  const budget = me?.transferBudget ?? 0;
+  const known = knownEnquiry(p.id);
+  // et modbud fra sælgeren står i skærmen, når man byder igen (0x8f1830 "Respond" på modbuddet)
+  const live = g.offers.slice().reverse().find((o) => o.player === p.id && o.buyer === g.userClub && o.status === 'countered' && o.cmCounter);
+  const [terms, setTerms] = useState<BidTerms>(() => live?.cmCounter ? { ...live.cmCounter, swap: [...live.cmCounter.swap] } : newTerms(g, p, g.userClub, Math.min(budget, known?.fee ?? p.value)));
+  const [exch, setExch] = useState(false);
+  const [err, setErr] = useState('');
+  const seller = g.clubs[p.club]?.name ?? '';
+  const name = `${p.first} ${p.last}`.trim();
+  const swapValue = (id: number) => g.players[id]?.value ?? 0;
+  if (exch) return <CmExchange giver={g.userClub} receiver={p.club} p={p} onBack={() => setExch(false)}
+    onPick={(id) => { setTerms(addSwap(terms, id, swapValue(id))); setExch(false); }} />;
+  const submit = () => {
+    setErr('');
+    const r = act<TransferOffer | string>({ t: 'bid', pid: p.id, fee: terms.fee, loan: false, swap: terms.swap, terms });
+    if (typeof r === 'string') setErr(t(r)); else onSent(r);
+  };
+  return (
+    <div className="cx-tstatus cx-bid">
+      <div className="cx-subtitle">{t('cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{t('cl.bid.board', { fee: moneyFull(budget) })}</p>
+        <CmBidRows terms={terms} set={setTerms} value={p.value} budget={budget} swapValue={swapValue} onExchange={() => setExch(true)} />
+        {err && <div className="cx-bid-err">{err}</div>}
+      </div>
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={onClose}>{t('common.back')}</button>
+        <button className="primary" onClick={submit}>{t('cl.bid.offer')}</button>
+      </ClassicFoot>
+    </div>
+  );
+}
+
+const CM_REASONS: RejectKey[] = ['none', 'indispensable', 'important', 'prospect', 'division', 'rival'];
+
+/** Bud på egen spiller (CM 01/02 "Negotiate {klub} bid for {spiller}"): alle rækker kan ændres; Back · Reject · Delay · Accept/Negotiate */
+function CmIncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onClose: (msg?: string) => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const p = g.players[offer.player];
+  const buyer = g.clubs[offer.buyer];
+  const me = g.clubs[g.userClub];
+  // 0x8e9550: et eksisterende bud åbnes med "Make transfer bid public" = Yes
+  const orig = (): BidTerms => { const x = termsOf(offer); return { ...x, pub: x.pub || 2 }; };
+  const [terms, setTerms] = useState<BidTerms>(orig);
+  const [exch, setExch] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
+  const age = p ? ageOn(p.dob, g.date) : 30;
+  const sameLeague = !!buyer && !!me && buyer.league === me.league;
+  // rival (0x8c5560): køberen styres af et menneske, eller klubberne står som rivaler (klub +0xb3/+0xb7/+0xbb = club.dat 179–187, cmCrowd[6..8]);
+  // ligasammenstødet comp_util_get_league_clash_type 0x4b02e0 er ikke porteret
+  const rv = (a: number, b: number) => !!g.cmCrowd?.[a]?.slice(6, 9).includes(b);
+  const rivals = !!buyer && !!me && (isHumanClub(buyer.id) || rv(me.id, buyer.id) || rv(buyer.id, me.id));
+  const valid = (k: RejectKey) => rejectReasonValid(k, age, sameLeague, rivals);
+  const [why, setWhy] = useState<RejectKey>('none');
+  if (!p || !buyer) return null;
+  const swapValue = (id: number) => g.players[id]?.value ?? 0;
+  const changed = !sameTerms(terms, orig());
+  const others = g.offers.filter((o) => o.player === p.id && o.seller === g.userClub && o.status === 'pending').length;
+  const send = (action: 'accept' | 'reject' | 'counter', all = false) => {
+    const r = act<string | null>({ t: 'respond', pid: p.id, buyer: buyer.id, action, terms, rejectKey: why, changed, all });
+    onClose(typeof r === 'string' && r !== 'ok' ? t(r) : undefined);
+  };
+  const name = `${p.first} ${p.last}`.trim();
+  if (exch) return <CmExchange giver={buyer.id} receiver={g.userClub} p={p} onBack={() => setExch(false)}
+    onPick={(id) => { setTerms(addSwap(terms, id, swapValue(id))); setExch(false); }} />;
+  if (rejecting) return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.bid.offerFor', { player: name })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.rejectQ', { player: name })}</p>
+        <div className="cx-ts-head">{t('cl.bid.reason')}</div>
+        {CM_REASONS.map((k) => <button key={k} className={`cx-ts-opt ${why === k ? 'on' : ''}`} disabled={!valid(k)} onClick={() => setWhy(k)}>{t(`cl.bid.why.${k}`)}</button>)}
+      </div>
+      <ClassicFoot cols={others > 1 ? '2fr 1fr 1fr' : '3fr 1fr'}>
+        <button onClick={() => setRejecting(false)}>{t('common.no')}</button>
+        {others > 1 && <button onClick={() => send('reject', true)}>{t('cl.bid.rejectAll')}</button>}
+        <button className="primary" onClick={() => send('reject')}>{t('common.yes')}</button>
+      </ClassicFoot>
+    </div>
+  );
+  return (
+    <div className="cx-tstatus cx-bid">
+      <div className="cx-subtitle">{t('cl.bid.negotiate', { club: buyer.short, player: p.last })}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.bid.valued', { club: me?.short ?? '', player: name, value: moneyFull(p.value) })}</p>
+        <CmBidRows terms={terms} set={setTerms} value={p.value} swapValue={swapValue} onExchange={() => setExch(true)} reset={changed ? () => setTerms(orig()) : undefined} />
+      </div>
+      <ClassicFoot cols="3fr 1fr 1fr 1fr" className="cx-bid-answer">
+        <button onClick={() => onClose()}>{t('common.back')}</button>
+        <button onClick={() => { setWhy(reasonForStatus(statusCode(p))); setRejecting(true); }}>{t('cl.bid.reject')}</button>
+        <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
+        <button className="primary" onClick={() => send(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.negotiateBtn' : 'cl.bid.accept')}</button>
+      </ClassicFoot>
     </div>
   );
 }

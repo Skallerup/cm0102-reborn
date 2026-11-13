@@ -1,7 +1,8 @@
 // Taktik i klassisk tema (som i CM 01/02): værktøjslinjen Tactics ▾ · View ▾ · Last Match · Edit ▾, formationens
-// navn og fanerne Overview · With Ball · Without Ball. Til venstre de 11 (1-11), bænken (SB1 …) og resten af truppen
-// (grå); til højre banen med spillerne som cirkler. Klik en spiller i listen og derefter en plads (eller træk og
-// slip) for at sætte ham ind. Under "With Ball"/"Without Ball" vises holdets – og den valgte spillers – instruktioner.
+// navn over listen og fanerne Overview · With Ball · Without Ball over banen. Til venstre de 11 og udskifterne (grå) med
+// trøjenummeret i det blå felt, tomme bænkpladser SB6 … SB9; til højre banen med spillerne som cirkler. Klik en spiller i
+// listen og derefter en plads (eller træk og slip) for at sætte ham ind. Under "With Ball"/"Without Ball" vises holdets –
+// og den valgte spillers – instruktioner. Ændringer er en kladde, der først gemmes ved Ok i bundbjælken (Cancel fortryder).
 import { useRef, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attributes';
@@ -12,18 +13,18 @@ import { FORMATIONS, autoSelect, available, changeFormation, newTactic, runTarge
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
-import { CxDrop, titleColors, type DropItem } from '../classic';
+import { ClassicFoot, CxDrop, useClassicDialog, type DropItem } from '../classic';
 import { askText } from '../confirm';
 import { posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { shapeName } from './Tactics';
-import { TeamInstrDialog } from './Match';
+import { LastMatchView, TeamInstrDialog } from './Match';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
 const slotName = (s: Slot) => `${s.pos === 'ST' ? 'F' : s.pos}${s.pos === 'GK' || s.side === 'C' ? '' : s.side}`;
-type View = 'cond' | 'fit' | 'pos' | 'value';
+type View = 'cond' | 'fit' | 'value';
 type Pane = 'overview' | 'with' | 'without';
 
 /** Edit → Copy/Copy All: udklipsholderen (gælder, så længe siden er åben) */
@@ -31,13 +32,21 @@ let clip: { one?: { slot: Slot; instr: PlayerInstructions }; all?: { slots: Slot
 
 export function ClassicTactics() {
   const g = useGame()!;
-  const { nav } = useNav();
+  const { nav, back } = useNav();
   if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
-  const tac = g.tactic;
+  // CM 01/02: skærmen arbejder på en kladde – Ok gemmer, Cancel fortryder (kladden står på ruten, så en tur til spillerens side
+  // og tilbage ikke mister den); Continue Game er grå, mens der er ugemte ændringer
+  const [draft, setDraft] = useRouteState<Tactic | null>('tdraft', null);
+  useClassicDialog(!!draft);
+  const tac = draft ?? g.tactic;
   const players = squad(g.userClub).filter((p) => !p.reserves);
   const byId = new Map(players.map((p) => [p.id, p]));
   const [pane, setPane] = useRouteState<Pane>('tpane', 'overview');
-  const [view, setView] = useRouteState<View>('tview', 'cond');
+  const [view0, setView] = useRouteState<View>('tview', 'cond');
+  const view: View = (['cond', 'fit', 'value'] as View[]).includes(view0) ? view0 : 'cond';
+  // vores ekstra: hele truppen under bænkpladserne (originalen udtager de øvrige på trupskærmen)
+  const [all, setAll] = useRouteState('tall', false);
+  const [lastOpen, setLastOpen] = useRouteState('tlast', false);
   const [penScreen, setPenScreen] = useRouteState('tpens', false);
   const [tiOpen, setTiOpen] = useState(false);
   const [runMenu, setRunMenu] = useState<{ slot: number; x: number; y: number } | null>(null);
@@ -45,13 +54,15 @@ export function ClassicTactics() {
   const [slotSel, setSlotSel] = useState<number | null>(null); // valgt plads (på banen)
   const [drag, setDrag] = useState<number | null>(null);
   const [hist, setHist] = useState<Tactic[]>([]);
-  const change = (next: Tactic) => { setHist((h) => [...h.slice(-39), tac]); act({ t: 'tactic', tactic: next }); };
+  const change = (next: Tactic) => { setHist((h) => [...h.slice(-39), tac]); setDraft(next); };
+  const ok = () => { if (draft) act({ t: 'tactic', tactic: draft }); setDraft(null); back(); };
+  const cancel = () => { setDraft(null); back(); };
   const setRun = (slot: number, run: { x: number; y: number } | null) => {
     const individual = tac.individual.slice();
     individual[slot] = { ...individual[slot], run: run ?? undefined };
     change({ ...tac, individual });
   };
-  const undo = () => { const prev = hist.at(-1); if (!prev) return; setHist(hist.slice(0, -1)); act({ t: 'tactic', tactic: prev }); };
+  const undo = () => { const prev = hist.at(-1); if (!prev) return; setHist(hist.slice(0, -1)); setDraft(prev); };
 
   /** Sæt en spiller på en plads (byt, hvis han allerede er på holdet; den der stod der, ryger på bænken) */
   const assign = (slot: number, pid: number) => {
@@ -121,11 +132,9 @@ export function ClassicTactics() {
   const fitSlot = slotSel !== null ? tac.slots[slotSel] : null;
   const value = (p: Player, slot?: Slot): ReactNode => {
     if (view === 'fit') { const s = slot ?? fitSlot; return s ? `${(Math.round(roleScore(p, slotRole(s)) * slotFit(p, s) * 10) / 10).toFixed(1)}` : posStr(p); }
-    if (view === 'pos') return posStr(p);
     if (view === 'value') return money(p.value);
-    return `${Math.round(p.condition)}%`;
+    return <Cond p={p} />;
   };
-  const tags = (p: Player) => [tac.captain === p.id && t('cl.tac.capt'), tac.penalties === p.id && t('cl.tac.pen'), tac.freeKicks === p.id && t('cl.tac.fk'), tac.corners === p.id && t('cl.tac.cor'), tac.team.playmaker === p.id && t('cl.tac.pm'), tac.team.targetMan === p.id && t('cl.tac.tm')].filter(Boolean).join(' ');
   const row = (p: Player, label: string, kind: 'xi' | 'bench' | 'rest', slot?: Slot) => (
     <div key={p.id} className={`cx-tac-row ${kind} ${pick === p.id ? 'on' : ''} ${!available(p) ? 'unavail' : ''}`} draggable={!coarse()}
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(p.id)); setTimeout(() => setDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => setDrag(null), 0)} onClick={() => clickRow(p)}
@@ -133,16 +142,21 @@ export function ClassicTactics() {
       <button className="cx-tac-num" title={kind === 'xi' ? undefined : t(kind === 'bench' ? 'cl.tac.fromBench' : 'cl.tac.toBench')}
         onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{label}</button>
       <span className="cx-tac-name" onDoubleClick={(e) => { e.stopPropagation(); nav({ name: 'player', id: p.id }); }}>{p.first ? `${p.first} ` : ''}{p.last}</span>
-      <span className="cx-tac-tag">{tags(p)}</span>
+      {/* CM 01/02: kun "capt" i denne visning (frispark/hjørner/straffe står i deres egne menuer) */}
+      <span className="cx-tac-tag">{tac.captain === p.id ? t('cl.tac.capt') : ''}</span>
+      <span className="cx-tac-pos">{posStr(p)}</span>
       <span className="cx-tac-val">{value(p, slot)}</span>
     </div>
   );
+  /** tom bænkplads (SB6 …): en valgt/trukket spiller uden for truppen kan sættes på, hvis der er plads på bænken */
+  const toBench = (pid: number | null) => { if (pid !== null && !tac.lineup.includes(pid) && !tac.bench.includes(pid) && tac.bench.length < benchSize()) { change({ ...tac, bench: [...tac.bench, pid] }); setPick(null); } };
+  const emptyRow = (i: number) => (
+    <div key={`sb${i}`} className="cx-tac-row empty" onClick={() => toBench(pick)}
+      onDragOver={(e) => { if (drag !== null) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); toBench(drag); setDrag(null); }}>
+      <span className="cx-tac-num">SB{i + 1}</span>
+    </div>
+  );
 
-  const lastMatch = (() => {
-    let best: { id: number; date: string } | undefined;
-    for (const f of Object.values(g.fixtures)) if (f.result && g.reports[f.id] && (f.home === g.userClub || f.away === g.userClub) && (!best || f.date > best.date)) best = { id: f.id, date: f.date };
-    return best?.id;
-  })();
   const nm = (id: number) => { const p = byId.get(id); return p ? `${p.number ?? ''} ${p.first} ${p.last}`.trim() : ''; };
   const starters = tac.lineup.filter(Boolean);
   const saved = g.savedTactics;
@@ -191,9 +205,19 @@ export function ClassicTactics() {
     { key: 'clear', label: t('cl.sq.clear'), onClick: () => change({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
     ...(['playmaker', 'targetMan'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: [{ key: `${k}0`, label: t('common.none'), checked: !tac.team[k], onClick: () => change({ ...tac, team: { ...tac.team, [k]: undefined } }) }, ...starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac.team[k] === id, onClick: () => change({ ...tac, team: { ...tac.team, [k]: id } }) }))] })),
   ];
-  const views: DropItem[] = (['cond', 'fit', 'pos', 'value'] as View[]).map((v) => ({ key: v, label: t(`cl.tac.v.${v}`), checked: view === v, onClick: () => setView(v) }));
+  const views: DropItem[] = [
+    ...(['cond', 'fit', 'value'] as View[]).map((v) => ({ key: v, label: t(`cl.tac.v.${v}`), checked: view === v, onClick: () => setView(v) })),
+    { key: 'sep', sep: true },
+    { key: 'all', label: t('cl.tac.v.all'), checked: all, onClick: () => setAll(!all) },
+  ];
 
   if (tiOpen) return <div className="cx-tac"><Head title={t('nav.tactics')} /><TeamInstrDialog tac={tac} on={tac.lineup.filter(Boolean)} editable onClose={() => setTiOpen(false)} onOk={(f) => { change(f(tac)); setTiOpen(false); }} /></div>;
+  if (lastOpen && g.lastMatchTactic) return (
+    <>
+      <LastMatchView tac={g.lastMatchTactic} club={g.clubs[g.userClub]?.name ?? ''} />
+      <ClassicFoot cols="3fr 1fr"><button className="cx-tac-lastback" onClick={() => setLastOpen(false)}>{t('cm.back')}</button><button disabled>{t('cm.next')}</button></ClassicFoot>
+    </>
+  );
   if (penScreen) return <PenaltyTakers tac={tac} players={players} change={change} onClose={() => setPenScreen(false)} />;
   return (
     <div className="cx-tac">
@@ -201,34 +225,34 @@ export function ClassicTactics() {
         <CxDrop label={t('nav.tactics')} items={tacticItems} />
         <CxDrop label={t('cl.sq.view')} items={views} />
         <span className="grow" />
-        <button className="cx-greybtn" disabled={!lastMatch} onClick={() => lastMatch && nav({ name: 'report', id: lastMatch })}>{t('cl.lastMatch')}</button>
+        <button className="cx-greybtn cx-tac-last" disabled={!g.lastMatchTactic} onClick={() => setLastOpen(true)}>{t('cl.lastMatch')}</button>
         <CxDrop label={t('cl.tac.edit')} items={editItems} align="right" />
       </Head>
-      <div className="cx-tac-bar">
-        <span className="cx-tac-form">{tac.formation}</span>
-        <div className="cx-tac-panes">
-          {(['overview', 'with', 'without'] as Pane[]).map((k) => <button key={k} className={pane === k ? 'on' : ''} onClick={() => setPane(k)}>{t(`cl.tac.${k}`)}</button>)}
-        </div>
-      </div>
       <div className="cx-tac-body">
         <div className="cx-tac-left">
+          <span className="cx-tac-form">{tac.formation}</span>
           {pane === 'overview' ? (
-            <div className="cx-tac-list">
-              {xi.map((p) => row(p, String(tac.lineup.indexOf(p.id) + 1), 'xi', tac.slots[tac.lineup.indexOf(p.id)]))}
-              {Array.from({ length: benchSize() }, (_, i) => bench[i]
-                ? row(bench[i], `SB${i + 1}`, 'bench')
-                : <div key={`sb${i}`} className="cx-tac-row empty"><span className="cx-tac-num">SB{i + 1}</span><span className="cx-tac-name">–</span></div>)}
-              {rest.map((p) => row(p, '', 'rest'))}
+            <div className={`cx-tac-list ${all ? 'all' : ''}`}>
+              {/* CM 01/02: trøjenummeret i det blå felt; de 11, udskifterne (grå) og de tomme bænkpladser op til SB9 */}
+              {xi.map((p) => row(p, String(p.number ?? ''), 'xi', tac.slots[tac.lineup.indexOf(p.id)]))}
+              {bench.map((p) => row(p, String(p.number ?? ''), 'bench'))}
+              {Array.from({ length: Math.max(9, benchSize()) - bench.length }, (_, k) => emptyRow(bench.length + k))}
+              {all && rest.map((p) => row(p, String(p.number ?? ''), 'rest'))}
             </div>
           ) : <Instructions tac={tac} pane={pane} slot={slotSel ?? (pick !== null && tac.lineup.includes(pick) ? tac.lineup.indexOf(pick) : null)} byId={byId} change={change} />}
         </div>
-        <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onRun={setRun} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
+        <div className="cx-tac-right">
+          <div className="cx-tac-panes">
+            {(['overview', 'with', 'without'] as Pane[]).map((k) => <button key={k} className={pane === k ? 'on' : ''} onClick={() => setPane(k)}>{t(`cl.tac.${k}`)}</button>)}
+          </div>
+          <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onRun={setRun} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
           onMove={(x, y) => {
             // sluppet (eller klikket) på en tom plet: en spiller på holdet flytter sin plads dertil
             const i = drag !== null ? tac.lineup.indexOf(drag) : slotSel;
             setDrag(null);
             if (i !== null && i >= 0) moveSlot(i, x, y);
           }} />
+        </div>
       </div>
       {runMenu && (
         <div className="cx-ctx-bg" onClick={() => setRunMenu(null)} onContextMenu={(e) => { e.preventDefault(); setRunMenu(null); }}>
@@ -250,12 +274,16 @@ export function ClassicTactics() {
           </div>
         </div>
       )}
-      <div className="cx-tac-hint">
-        {t(pick !== null ? 'cl.tac.hintPlace' : slotSel !== null ? 'cl.tac.hintPlayer' : coarse() ? 'cl.tac.hintTouch' : 'cl.tac.hint')}
-        {slotSel !== null && tac.slots[slotSel]?.pos !== 'GK' && tac.lineup[slotSel] > 0 && (
+      {/* CM 01/02 har ingen hjælpetekst; på touch står Løb-knappen her, når en plads er valgt */}
+      {coarse() && slotSel !== null && tac.slots[slotSel]?.pos !== 'GK' && tac.lineup[slotSel] > 0 && (
+        <div className="cx-tac-hint">
           <button className="cx-greybtn cx-run-btn" onClick={(e) => { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); setRunMenu({ slot: slotSel, x: r.left, y: r.top - 320 }); }}>➚ {t('cl.tac.run')}</button>
-        )}
-      </div>
+        </div>
+      )}
+      <ClassicFoot cols="3fr 1fr">
+        <button className="cx-tac-cancel" onClick={cancel}>{t('common.cancel')}</button>
+        <button className="primary cx-tac-ok" onClick={ok}>{t('common.ok')}</button>
+      </ClassicFoot>
     </div>
   );
 }
@@ -271,7 +299,6 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onR
   const [rdrag, setRdrag] = useState<{ slot: number; cx: number; cy: number; x: number; y: number; moved: boolean } | null>(null);
   const rdragRef = useRef(rdrag);
   rdragRef.current = rdrag;
-  const col = titleColors(club ?? gs().userClub);
   const ref = useRef<HTMLDivElement>(null);
   const toPitch = (cx: number, cy: number) => {
     const r = ref.current!.getBoundingClientRect();
@@ -340,7 +367,8 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onR
               });
             }} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); e.stopPropagation(); onDrop(i); }}
             draggable={!!p && club === undefined && !coarse()} onDragStart={(e) => { if (!p) return; e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; setTimeout(() => onDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => onDrag(null), 0)} title={`${slotName(s)}${p ? ` – ${p.first} ${p.last}` : ''}`}>
-            <span className="cx-tac-dot" style={gk ? { background: '#fff21f', color: '#10164e' } : col.neutral ? undefined : { background: col.bg, color: col.fg }}>{club !== undefined ? p?.number ?? i + 1 : i + 1}</span>
+            {/* CM 01/02: trøjenummeret i en rød cirkel (målmanden grøn) */}
+            <span className={`cx-tac-dot ${gk ? 'gk' : ''}`}>{p ? p.number ?? '' : ''}</span>
             <span className="cx-tac-nm">{p ? p.last : slotName(s)}</span>
           </div>
         );
@@ -418,11 +446,12 @@ export function ClubTacticsView({ club }: { club: number }) {
   const players = squad(club);
   const byId = new Map(players.map((p) => [p.id, p]));
   const row = (p: Player, label: string, dim: boolean) => (
-    <div key={p.id} className={`cx-tac-row ${dim ? 'rest' : 'xi'}`}>
+    <div key={p.id} className={`cx-tac-row ${dim ? 'bench' : 'xi'}`}>
       <span className="cx-tac-num">{label}</span>
       <span className="cx-tac-name cx-link" role="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.first ? `${p.first} ` : ''}{p.last}</span>
       <span className="cx-tac-tag">{tac.captain === p.id ? t('cl.tac.capt') : ''}</span>
-      <span className="cx-tac-val c-pos">{posStr(p)}</span>
+      <span className="cx-tac-pos">{posStr(p)}</span>
+      <span className="cx-tac-val"><Cond p={p} /></span>
     </div>
   );
   const xi = tac.lineup.map((id) => byId.get(id)).filter((p): p is Player => !!p);
@@ -432,18 +461,20 @@ export function ClubTacticsView({ club }: { club: number }) {
       <Head title={t('nav.tactics')}>
         <button className="cx-greybtn" disabled>{t('cl.mt.teamInstr')}</button>
       </Head>
-      <div className="cx-tac-bar">
-        <span className="cx-tac-form">{opp !== undefined ? t('cl.tac.formationVs', { club: g.clubs[opp]?.short ?? '' }) : tac.formation}</span>
-        <div className="cx-tac-panes">
-          {(['overview', 'with', 'without'] as Pane[]).map((k) => <button key={k} className={k === 'overview' ? 'on' : ''} disabled={k !== 'overview'}>{t(`cl.tac.${k}`)}</button>)}
-        </div>
-      </div>
       <div className="cx-tac-body">
-        <div className="cx-tac-left"><div className="cx-tac-list">
-          {xi.map((p) => row(p, String(p.number ?? tac.lineup.indexOf(p.id) + 1), false))}
-          {bench.map((p) => row(p, String(p.number ?? ''), true))}
-        </div></div>
-        <Pitch tac={tac} byId={byId} sel={null} drag={null} club={club} onSlot={() => {}} onDrop={() => {}} onDrag={() => {}} onMove={() => {}} />
+        <div className="cx-tac-left">
+          <span className="cx-tac-form">{opp !== undefined ? t('cl.tac.formationVs', { club: g.clubs[opp]?.short ?? '' }) : tac.formation}</span>
+          <div className="cx-tac-list">
+            {xi.map((p) => row(p, String(p.number ?? tac.lineup.indexOf(p.id) + 1), false))}
+            {bench.map((p) => row(p, String(p.number ?? ''), true))}
+          </div>
+        </div>
+        <div className="cx-tac-right">
+          <div className="cx-tac-panes">
+            {(['overview', 'with', 'without'] as Pane[]).map((k) => <button key={k} className={k === 'overview' ? 'on' : ''} disabled={k !== 'overview'}>{t(`cl.tac.${k}`)}</button>)}
+          </div>
+          <Pitch tac={tac} byId={byId} sel={null} drag={null} club={club} onSlot={() => {}} onDrop={() => {}} onDrag={() => {}} onMove={() => {}} />
+        </div>
       </div>
     </div>
   );
@@ -489,4 +520,6 @@ export function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; 
     </div>
   );
 }
+/** CM 01/02: konditionen i grønt ved 100 %, ellers orange */
+const Cond = ({ p }: { p: Player }) => <span className={p.condition >= 99.5 ? 'cx-cond-full' : 'cx-cond-low'}>{Math.round(p.condition)}%</span>;
 const roleRank = (p: Player) => ['GK', 'CB', 'FB', 'DM', 'CM', 'WM', 'AM', 'W', 'ST'].indexOf(naturalRole(p));

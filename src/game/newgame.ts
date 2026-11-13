@@ -73,6 +73,8 @@ export interface NewGameOptions {
   mode?: 'authentic' | 'extended';
   /** Online: frist pr. træk i timer (0 = ingen) */
   deadlineHours?: number;
+  /** Nyt-spil-forløbets midlertidige verden (Select Team viser klubbens ægte skærme): klubben "ejes" kun til visning – ingen ansættelse, ingen bestyrelse */
+  preview?: boolean;
 }
 
 /** Indtægtsniveau i den originale database (kalibreret med scripts/econ-run.ts: løn ≈ 60 % af omsætningen) */
@@ -435,7 +437,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   progress('board', 0.62);
   // Brugerens klub
   const club = g.clubs[o.clubId];
-  takeOverClub(club);
+  if (o.preview) previewClub(g, club.id); else takeOverClub(club);
   // originalens konditionsmodul (cmFitness.ts): posterne, skaderne fra databasens dato og startens Fitness (kun original DB i ægte tilstand)
   // (runde 10A) sub_535a80 0x536285: spillerpostens moral +0x45 = 10 for alle databasens spillere ved spilstarten (forkørslen 0x5cc850 kører ikke
   // 0x5ce2d0's daglige moral – først fra spillets start: cmPlayerData.ts moraleDay/cmSquadMoraleDaily)
@@ -543,6 +545,12 @@ export function originalTransferFunds(balance: number): number {
   if (gbp <= 0) return 0;
   const step = gbp >= 5_000_000 ? 250_000 : 25_000;
   return (Math.floor((gbp * 0.7) / step) * step) / GBP;
+}
+
+/** Nyt-spil-forløbet: vis en klubs egne skærme (trup, kampe …) uden at ansætte nogen – manageren og stillingen røres ikke */
+export function previewClub(g: GameState, clubId: number) {
+  g.userClub = clubId;
+  if (!g.tactic) g.tactic = newTactic('4-4-2');
 }
 
 export function takeOverClub(club: Club, viaJob = false) {

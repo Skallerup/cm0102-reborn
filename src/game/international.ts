@@ -10,6 +10,7 @@ import { asOwner, forEachHuman, isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { Rng, hash, rng } from './rng';
 import { addNews, gs } from './state';
+import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
 import type { Player } from './types';
 
@@ -114,6 +115,8 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
     const p = g.players[line.id];
     if (!p || line.minutes <= 0 || u21) continue;
     p.caps = (p.caps ?? 0) + 1;
+    // CM 01/02 0x8c39f0: "Fee after N International Apps." tæller landskampe
+    if (p.cmApps) cmAppsAfterMatch(p, 'int');
     p.intGoals = (p.intGoals ?? 0) + line.goals;
     p.stats.intApps = (p.stats.intApps ?? 0) + 1;
     p.stats.intGoals = (p.stats.intGoals ?? 0) + line.goals;

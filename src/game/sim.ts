@@ -41,7 +41,7 @@ import { counterPlan, type CounterPlan } from './aitactics';
 import { autoSelect, available, lineupComplete, newTactic, slotValue, validateTactic } from './tactics';
 import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Player, Tactic } from './types';
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
-import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice } from './transfers';
+import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch } from './transfers';
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
@@ -322,6 +322,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     if (rep.mom === p.id) s.mom++;
     p.form = [...p.form, line.rating].slice(-5);
     if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
+    // CM 01/02 0x8c39f0: "Fee after N League Apps." tæller konkurrencekampe (ikke venskabskampe)
+    if (p.cmApps && comp) cmAppsAfterMatch(p, 'lg');
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag
     // (konditionsmodulet sætter konditionen og skaderne efter kampen i ægte tilstand med den originale database – cmFitAfterMatch nedenfor)
     if (!cm) p.condition = g.draft ? 100 : Math.max(20, Math.min(100, line.cond));
@@ -577,6 +579,8 @@ function newDay() {
     // original DB i ægte tilstand: originalens økonomi (cmFinanceDay nedenfor) i stedet for spillets løn/månedsindtægter
     snapshotFinanceMonth();
     if (!cmFinOn(g)) monthlyIncome();
+    // CM 01/02 0x8caee0: transfersummernes månedlige rater
+    if (cmActive(g)) cmMonthlyInstalments();
     monthlyValues();
     monthlyDevelopment();
     if (extended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
