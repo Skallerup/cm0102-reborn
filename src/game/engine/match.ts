@@ -76,6 +76,15 @@ export interface EngineOptions {
   shotSpread?: number;
   /** Faktor på friløbere og returbolde (ORIGINAL-profilen: de gik for ofte til den samme angriber) */
   oneOnOneK?: number;
+  /** kampens niveau: [reference, andel]. Profilen er kalibreret på Premier League, men mange af motorens led er absolutte
+   *  (forsvarets lukning, zonedækning, førsteberøring …), så svage hold i de lavere rækker scorer og lukker ind som om
+   *  forsvarsspillet var dårligt. Ligger de 22 startspilleres snit af de tekniske egenskaber under referencen, løftes alle
+   *  spilleres tekniske egenskaber i kampen med andel × forskellen (samme løft til begge hold – forskellen mellem dem er uændret). */
+  level?: [number, number];
+  /** [fra, faktor]: når kampen har `fra` mål eller flere, ganges hver afslutnings målchance med faktor^(mål − fra + 1). Originalens
+   *  lavere rækker har næsten ingen kampe med 10+ mål (orakelsæsonerne: 2 af 6.684 i Division 1–3, ingen over 10); zonemotorens åbne
+   *  kampe løb længere ud (*estimeret*). */
+  openDamp?: [number, number];
   /** dæmpning af niveauforskelle (standard SQUASH) – og særskilt for de offensive egenskaber (standard = squash) */
   squash?: number;
   squashAtt?: number;
@@ -209,6 +218,20 @@ const SETUP_KINDS: Record<string, string[]> = { layoff: ['box'], knockdown: ['bo
 const ATT_ATTRS = new Set<number>([A.crossing, A.dribbling, A.finishing, A.longShots, A.offTheBall, A.passing, A.technique, A.creativity, A.flair]);
 /** De defensive egenskaber (markering, tackling, placering, målmand) – kan dæmpes særskilt pr. database */
 const DEF_ATTRS = new Set<number>([A.marking, A.tackling, A.positioning, A.anticipation, A.handling, A.oneOnOnes, A.reflexes]);
+/** Snittet af de tekniske egenskaber (ATT_ATTRS + DEF_ATTRS) hos begge holds startspillere – ingen tilfældige tal */
+export function matchLevel(home: EngineTeam, away: EngineTeam): number {
+  let sum = 0, n = 0;
+  for (const t of [home, away]) for (const id of t.tactic.lineup) {
+    const p = t.players.get(id);
+    if (!p) continue;
+    for (const i of ATT_ATTRS) { sum += p.attrs[i]; n++; }
+    for (const i of DEF_ATTRS) { sum += p.attrs[i]; n++; }
+  }
+  return n ? sum / n : 11;
+}
+function levelLift(home: EngineTeam, away: EngineTeam, [ref, k]: [number, number]): number {
+  return Math.max(0, (ref - matchLevel(home, away)) * k);
+}
 /** Holdets dagsform (spredning): giver overraskelser – uden den vinder favoritten altid ligaen */
 const DAY_FORM = 0.05;
 /** Hvor meget boldholderen søger mod modstanderens svage zoner (ganges med overblik) */
@@ -270,6 +293,8 @@ export class MatchSim implements LiveSim {
   /** Instruktioner mod modstanderen pr. hold (gives af hold i og rammer hold 1-i) */
   private oi: [OppInstructions | undefined, OppInstructions | undefined] = [undefined, undefined];
   private wx: WeatherFx & { drib: number; touch: number };
+  /** løftet af de tekniske egenskaber i denne kamp (opts.level) */
+  private lift = 0;
   private momentumBucket = 0;
   /** Dommerens strenghed (kort, straffespark, filmning) */
   readonly ref: number;
@@ -291,6 +316,7 @@ export class MatchSim implements LiveSim {
     this.ref = opts.refStrict ?? opts.referee?.strict ?? clamp(r.normal(1, 0.14), 0.7, 1.35);
     const oiFor = (t: EngineTeam) => (t.tactic.opp && t.tactic.opp.fixture === opts.fixtureId ? t.tactic.opp : undefined);
     this.oi = [oiFor(home), oiFor(away)];
+    if (opts.level) this.lift = levelLift(home, away, opts.level);
     this.teams = [this.makeTeam(home, 0), this.makeTeam(away, 1)];
     const tempo = (this.teams[0].ti.tempo + this.teams[1].ti.tempo) / 2;
     this.totalMoments = Math.round(240 * (1 + 0.07 * (tempo - 1)));
@@ -355,7 +381,8 @@ export class MatchSim implements LiveSim {
     const eff = new Float32Array(36);
     const sq = this.opts.squash ?? SQUASH, sqA = this.opts.squashAtt ?? sq, sqD = this.opts.squashDef ?? sq;
     const squash = (v: number) => 11 + (v - 11) * sq;
-    for (let i = 0; i < 36; i++) eff[i] = (11 + (p.attrs[i] - 11) * (ATT_ATTRS.has(i) ? sqA : DEF_ATTRS.has(i) ? sqD : sq)) * mult;
+    const lift = this.lift;
+    for (let i = 0; i < 36; i++) eff[i] = (ATT_ATTRS.has(i) ? 11 + (p.attrs[i] + lift - 11) * sqA : DEF_ATTRS.has(i) ? 11 + (p.attrs[i] + lift - 11) * sqD : 11 + (p.attrs[i] - 11) * sq) * mult;
     // Mentale/fysiske påvirkes mindre af forkert position
     const physMult = form * morale * rt.homeMult * talk;
     for (const k of [A.pace, A.acceleration, A.stamina, A.strength, A.jumping, A.naturalFitness] as number[]) eff[k] = squash(p.attrs[k]) * physMult;
@@ -1345,7 +1372,7 @@ export class MatchSim implements LiveSim {
     this.foulBy = null;
     this.events.push({ m: this.minute, t: t.idx, k: 'red', p: sp.p.id });
     this.line(second ? 'second-yellow' : why ?? 'red', sp, null, true);
-    sp.line.minutes = this.minute - sp.enteredAt;
+    sp.line.minutes = this.playedMinutes(sp);
     this.buildZones(t);
   }
 
@@ -1391,7 +1418,7 @@ export class MatchSim implements LiveSim {
       && t.tactic.slots[sp.slot]?.pos !== 'GK' && t.on.filter((x) => !x.off).length > 8) {
       // ingen udskiftninger tilbage: han må ud, og holdet spiller videre med en mand mindre (som i CM 01/02)
       sp.off = true;
-      sp.line.minutes = this.minute - sp.enteredAt;
+      sp.line.minutes = this.playedMinutes(sp);
       this.buildZones(t);
     } else {
       sp.cond = Math.min(sp.cond, 0.35);
@@ -1449,7 +1476,9 @@ export class MatchSim implements LiveSim {
     const gq = kind === 'oneOnOne' ? this.gk1v1(gk) : this.gkQ(gk);
     const mult = (kind === 'pen' ? 1.04 : FINISH_SCALE * (this.opts.finish ?? 1)) * Math.exp((qf - gq) / (this.opts.finSlope ?? 13));
     const k1 = this.opts.oneOnOneK !== undefined && (kind === 'oneOnOne' || kind === 'rebound') ? this.opts.oneOnOneK : 1;
-    const goalP = clamp(xg * mult * k1 * (kind === 'pen' ? 1 : this.wx.finish), 0.004, 0.92);
+    const od = this.opts.openDamp, tot = this.teams[0].stats.goals + this.teams[1].stats.goals;
+    const damp = od && tot >= od[0] ? od[1] ** (tot - od[0] + 1) : 1;
+    const goalP = clamp(xg * mult * k1 * (kind === 'pen' ? 1 : this.wx.finish) * damp, 0.004, 0.92);
     const assister = this.lastPasser && this.lastPasser !== s && this.lastPasser.team === T.idx && this.moment - this.lastPasserMoment <= 2 ? this.lastPasser : null;
     const rec: ShotRecord = { m: this.minute, t: T.idx, zone: z, xg: Math.round(xg * 100) / 100, outcome: 'off', p: s.p.id, kind };
     if (this.originNext) { rec.origin = this.originNext; this.originNext = ''; }
@@ -1638,6 +1667,13 @@ export class MatchSim implements LiveSim {
     }
   }
 
+  /** Spillede minutter til nu (eller `at`). Tillægstiden tæller ikke: minuttallet i tillægstiden er 91+, så en
+   *  indskiftning i 2. halvlegs tillægstid gav før negative minutter (90 − 95). Altid mindst 1. */
+  playedMinutes(s: SP, at = this.minute): number {
+    const cap = this.extraTime ? 120 : 90;
+    return Math.max(1, Math.min(at, cap) - Math.min(s.enteredAt, cap - 1));
+  }
+
   // ---------- udskiftninger ----------
 
   substitute(teamIdx: number, outId: number, inId: number): boolean {
@@ -1648,7 +1684,7 @@ export class MatchSim implements LiveSim {
     if (!out || !p || !t.benchIds.includes(inId)) return false;
     const sp = this.makeSP(t, p, out.slot, this.minute);
     out.off = true;
-    out.line.minutes = this.minute - out.enteredAt;
+    out.line.minutes = this.playedMinutes(out);
     t.on[t.on.indexOf(out)] = sp;
     t.benchIds = t.benchIds.filter((id) => id !== inId);
     t.subsLeft--;
@@ -1849,8 +1885,8 @@ export class MatchSim implements LiveSim {
       const opp = this.teams[1 - t.idx];
       const res = Math.sign(t.stats.goals - opp.stats.goals);
       for (const s of t.all) {
-        if (!s.line.red && !s.off) s.line.minutes = endMin - s.enteredAt;
-        else if (s.off && s.line.minutes === 0) s.line.minutes = Math.max(1, this.minute - s.enteredAt);
+        if (!s.line.red && !s.off) s.line.minutes = this.playedMinutes(s, endMin);
+        else if (s.off && s.line.minutes === 0) s.line.minutes = this.playedMinutes(s);
         let r = s.rating + res * 0.25;
         const role = slotRole(t.tactic.slots[s.slot]);
         if (opp.stats.goals === 0 && (role === 'GK' || role === 'CB' || role === 'FB') && s.line.minutes >= 60) r += 0.35;

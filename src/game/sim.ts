@@ -164,7 +164,7 @@ function usesVar(f: Fixture): boolean {
   return !!c && (c.type === 'continental' || VAR_LEAGUES.has(c.id) || (c.type === 'cup' && (f.stage === 'F' || f.stage === 'SF')));
 }
 
-export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number; homeAdv?: number; finSlope?: number; squash?: number; squashAtt?: number; squashDef?: number; ease?: number; cards?: number; corners?: number; countBlocked?: boolean; close?: number; closeSlope?: number; onTarget?: number; offside?: number; shotSpread?: number; oneOnOneK?: number; rules?: 'current' | 'original'; pitch: Pitch; referee: { name: string; strict: number } } {
+export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number; homeAdv?: number; finSlope?: number; squash?: number; squashAtt?: number; squashDef?: number; ease?: number; cards?: number; corners?: number; countBlocked?: boolean; close?: number; closeSlope?: number; onTarget?: number; offside?: number; shotSpread?: number; oneOnOneK?: number; level?: [number, number]; openDamp?: [number, number]; rules?: 'current' | 'original'; pitch: Pitch; referee: { name: string; strict: number } } {
   // konditionsmodulet (original database, ægte tilstand): holdenes kondition og skader læses før udtagelsen (0x62c590/0x62c400)
   cmFitPreMatch(gs(), [f.home, f.away]);
   const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
@@ -184,6 +184,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
     pitch: pitchFor(f),
     referee: refereeFor(f),
     ...(cmDatabase(gs()) === 'original' ? ORIGINAL : MODERN),
+    ...(cmDatabase(gs()) === 'original' && authentic() ? ORIGINAL_LOWER : {}),
   };
 }
 
@@ -192,6 +193,10 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
 export const MODERN: { finish: number; squash?: number; squashAtt?: number; squashDef?: number; homeAdv?: number } = { finish: 1.1, squash: 1 };
 /** Kalibrering af den originale 2001/02-database mod det originale CM 01/02 (scripts/original-lab.ts) */
 export const ORIGINAL = { finish: 2.1, homeAdv: 2.2, finSlope: 20, squash: 0.48, squashAtt: 0.3, squashDef: 0.72, ease: 0.12, shotSpread: 0.25, oneOnOneK: 0.5, cards: 0.11, rules: 'original' as const, corners: 0.7, countBlocked: false, close: 0.2, closeSlope: 2, onTarget: 0.25, offside: 1.8 };
+/** (ægte tilstand) zonemotorens kampe i de lavere rækker: profilen er kalibreret på Premier League, og svage hold scorede for meget
+ *  (Division 3: 3,98 mål, 13,6 % med 7+, op til 12 – originalen 3,15/4 %/10). `level` løfter de tekniske egenskaber, når begge holds
+ *  snit ligger under Premier Leagues (11,1), `openDamp` dæmper afslutningerne fra 7. mål. Målt med scripts/lower-divs-lab.ts (*estimeret*). */
+export const ORIGINAL_LOWER: { level: [number, number]; openDamp: [number, number] } = { level: [11.1, 1], openDamp: [7, 0.6] };
 export const ORIGINAL_FINISH = ORIGINAL.finish;
 
 /** Taktik for en klub: menneskets egen (via dets slot) eller AI'ens */
@@ -234,14 +239,17 @@ export function gridEngineOn(g: GameState): boolean {
   return g.options.engine === 'original' || dev === 'original' || (g.options.engine === undefined && GRID_ENGINE_DEFAULT);
 }
 
-/** Gittermotoren koster ~40 ms pr. kamp mod zonemotorens ~4 ms (målt 11/11, bundtet): den spiller menneskets kampe og kampene i
- *  menneskets egen liga; resten (andre ligaer, pokaler uden mennesket) går stadig på zonemotoren */
-function gridFixture(home: number, away: number, fixtureId?: number): boolean {
+/** Hvilke kampe spiller gittermotoren? Menneskets egne kampe og alle hjemlige kampe (liga, pokal, play-off) mellem computerklubber i de
+ *  lande, hvor et menneske styrer en klub – i England alle fire rækker, FA Cup og Worthington Cup, som originalen spiller med den fulde motor.
+ *  Resten (de øvrige valgte lande, Europa uden mennesket, venskabskampe, landskampe) går stadig på zonemotoren: gittermotoren koster ~75 ms
+ *  pr. kamp mod zonemotorens ~5 ms, så en lørdag med flere hele lande ville tage 10+ s (målt 14/11, scripts/lower-divs-day.ts:
+ *  18/8-2001 med 45 engelske kampe 1,6 s → 3,5 s). */
+export function gridFixture(home: number, away: number, fixtureId?: number): boolean {
   const g = gs();
   if (isHumanClub(home) || isHumanClub(away)) return true;
-  const comp = fixtureId !== undefined ? g.fixtures[fixtureId]?.comp : undefined;
-  if (!comp || g.comps[comp]?.type !== 'league') return false;
-  return Object.values(g.clubs).some((c) => c.league === comp && isHumanClub(c.id));
+  const comp = fixtureId !== undefined ? g.comps[g.fixtures[fixtureId]?.comp] : undefined;
+  if (!comp || comp.type === 'continental' || comp.nation < 0) return false;
+  return Object.values(g.clubs).some((c) => c.manager === -1 && g.comps[c.league]?.nation === comp.nation);
 }
 
 /** Alle klubkampe laves her: zonemotoren (MatchSim), eller gittermotoren, når den er slået til og registreret
@@ -263,14 +271,14 @@ export function createLiveMatch(f: Fixture, o: { playByPlay?: boolean } = {}): L
   const g = gs();
   return makeMatch(m.home, m.away, {
     // udvikling: window.__cmForcePens tvinger forlænget spilletid og straffespark (til test af visningen)
-    commentary: true, playByPlay: !!o.playByPlay, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date,
+    commentary: true, playByPlay: !!o.playByPlay, neutral: m.neutral, needsWinner: import.meta.env?.DEV && (globalThis as { __cmForcePens?: boolean }).__cmForcePens ? () => true : m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: g.date,
     aiSubs: [f.home !== g.userClub, f.away !== g.userClub],
   }, rng);
 }
 
 export function simulateFixture(f: Fixture, userAuto = true, commentary = false): MatchReport {
   const m = prepareMatch(f, userAuto);
-  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: gs().date };
+  const opts = { neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, date: gs().date };
   const rep = commentary
     ? makeMatch(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : makeQuickMatch(m.home, m.away, opts, rng);
@@ -764,7 +772,7 @@ export function quickPlayUserMatch(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  const rep = makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  const rep = makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
   finishUserMatch(rep);
   return rep;
 }
@@ -911,7 +919,7 @@ export function quickReport(): MatchReport | null {
   const f = g.fixtures[g.pendingFixture!];
   if (!f) return null;
   const m = prepareMatch(f, false);
-  return makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
+  return makeMatch(m.home, m.away, { commentary: true, neutral: m.neutral, needsWinner: m.needsWinner, importance: m.importance, var: m.var, weather: m.weather, aggregate: m.aggregate, finish: m.finish, homeAdv: m.homeAdv, finSlope: m.finSlope, squash: m.squash, squashAtt: m.squashAtt, squashDef: m.squashDef, ease: m.ease, cards: m.cards, corners: m.corners, countBlocked: m.countBlocked, close: m.close, closeSlope: m.closeSlope, onTarget: m.onTarget, offside: m.offside, shotSpread: m.shotSpread, oneOnOneK: m.oneOnOneK, level: m.level, openDamp: m.openDamp, rules: m.rules, pitch: m.pitch, referee: m.referee, subs: maxSubs(), fixtureId: f.id, aiSubs: [true, true], date: g.date }, rng).runToEnd();
 }
 
 /** Mandag: ugens overblik – resultater, placering, økonomi, skader og de næste kampe */

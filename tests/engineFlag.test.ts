@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
-import { aiTactic, engineTeam, gridEngineOn, makeMatch, makeQuickMatch } from '../src/game/sim';
+import { aiTactic, engineTeam, gridEngineOn, gridFixture, makeMatch, makeQuickMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { MatchSim, quickMatch } from '../src/game/engine/match';
 import { GRID_ENGINE_DEFAULT, setGridFactory, type LiveSim } from '../src/game/engine/liveSim';
@@ -40,6 +40,21 @@ describe('kampmotoren bag et flag', () => {
     start(w, 'Arsenal', 'extended');
     gs().options.engine = 'original';
     expect(gridEngineOn(gs())).toBe(false);
+  }, 60_000);
+
+  it('gittermotoren spiller alle hjemlige kampe i menneskets land – ikke Europa eller venskabskampe uden mennesket', () => {
+    const g = start(load('world-original.json'), 'Arsenal', 'authentic');
+    const eng = g.comps[g.clubs[g.userClub].league].nation;
+    const fx = Object.values(g.fixtures).filter((f) => f.home !== g.userClub && f.away !== g.userClub);
+    const div3 = fx.find((f) => g.comps[f.comp]?.type === 'league' && g.comps[f.comp].nation === eng && g.comps[f.comp].tier === 4);
+    expect(div3).toBeDefined();
+    expect(gridFixture(div3!.home, div3!.away, div3!.id)).toBe(true);
+    const cup = fx.find((f) => g.comps[f.comp]?.type === 'cup' && g.comps[f.comp].nation === eng);
+    if (cup) expect(gridFixture(cup.home, cup.away, cup.id)).toBe(true);
+    const euro = fx.find((f) => g.comps[f.comp]?.type === 'continental');
+    if (euro) expect(gridFixture(euro.home, euro.away, euro.id)).toBe(false);
+    const friendly = fx.find((f) => !g.comps[f.comp]);
+    if (friendly) expect(gridFixture(friendly.home, friendly.away, friendly.id)).toBe(false);
   }, 60_000);
 
   it('moderne database: aldrig – heller ikke i ægte tilstand', () => {
