@@ -911,7 +911,7 @@
 .cx-mt .cx-tac-slot[draggable='true'] { cursor: grab; }
 /* sidebjælken må aldrig skubbes ud af skærmen af bredt indhold */
 :root[data-skin='retro'] body { overflow-x: hidden; }
-.shell.cx .main { overflow-x: auto; }
+.shell.cx .main { overflow-x: auto; scrollbar-gutter: stable; } /* fast plads til rullebjælken: ellers skifter knaprækkerne bredde, når en fane gør siden højere/lavere end vinduet */
 .cx-mt, .cx-mt-cols > * { min-width: 0; }
 .cx-mt-list { overflow-x: auto; }
 .cx-ts-buttons.single { grid-template-columns: 1fr; }
@@ -1706,3 +1706,6 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-running .cx-running-hint { grid-column: 1 / -1; }
 :root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.xi, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.bench,
 :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:hover, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:focus { background: #00007d; border-color: #0000bc #00003a #00003a #0000bc; }
+
+/* andre klubbers trup (ægte tilstand): udtagelsesfeltet er en <span> – samme centrerede tekst som knappen */
+:root[data-skin='retro'] .cx-sel > span.cx-selbtn { display: block; text-align: center; }

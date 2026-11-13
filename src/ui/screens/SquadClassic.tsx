@@ -17,6 +17,7 @@ import { POSITIONS, SIDES } from '../../game/types';
 import { dateFmt, money, natName, t } from '../../i18n';
 import { CxDrop, type DropItem } from '../classic';
 import { Rating, age, posStr } from '../components';
+import { aiTactic } from '../../game/sim';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { Cliques, SquadTable } from './Squad';
@@ -189,6 +190,7 @@ const shortName = (p: Player | undefined, star = false) => (p ? `${p.last}${p.fi
 /** En anden klubs trup (eller et landshold: players) i klassisk stil: to kolonner med View og Sort By – uden udtagelse */
 export function ClassicClubSquad({ cid, players: given }: { cid: number; players?: Player[] }) {
   const g = useGame()!;
+  if (authentic() && !given && cid > 0 && cid !== g.userClub) return <ClassicFirstSquad cid={cid} />;
   const { nav } = useNav();
   const [view, setView] = useRouteState('csqview', 'pos');
   const [sortKey, setSort] = useRouteState('csort', 'pos');
@@ -334,11 +336,14 @@ function origFilter(f: OrigFilter, p: Player, euro: Set<number> | null): boolean
   return true;
 }
 
-function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
+/** Ægte CM 01/02: en andens klubs trup – samme skærm som egen trup, skrivebeskyttet (computerens udtagelse i de blå felter) */
+function ClassicFirstSquad({ reserves = false, cid }: { reserves?: boolean; cid?: number } = {}) {
   const g = useGame()!;
   const { nav } = useNav();
-  if (!g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
-  const tac = g.tactic;
+  const ro = !!cid && cid !== g.userClub;
+  const clubId = ro ? cid! : g.userClub;
+  if (!ro && !g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
+  const tac = ro ? aiTactic(cid!) : g.tactic!;
   const orig = authentic();
   const [view, setView] = useRouteState('cview', 'trad');
   const [sqnMissing] = useRouteState('sqnMissing', 0);
@@ -353,10 +358,12 @@ function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
   const [armed, setArmed] = useState<string | null>(null);
   // CM 01/02: spillere på reserveholdet står kun på "{klub} Reserves" (managermenuen), ikke i førsteholdstruppen
   // "{klub} Reserves" (ejerens billede 278): reserverne og de udlejede spillere (blå navne)
-  const players = reserves ? [...squad(g.userClub).filter((p) => p.reserves), ...Object.values(g.players).filter((p) => p.loan?.from === g.userClub && p.club !== g.userClub)]
+  // andre klubber: hele truppen (reserver og udlejede – de blå navne) som i originalen
+  const players = ro ? [...squad(clubId), ...Object.values(g.players).filter((p) => p.loan?.from === clubId && p.club !== clubId)]
+    : reserves ? [...squad(g.userClub).filter((p) => p.reserves), ...Object.values(g.players).filter((p) => p.loan?.from === g.userClub && p.club !== g.userClub)]
     : squad(g.userClub).filter((p) => !p.reserves || (orig && of.res));
   const byId = new Map(players.map((p) => [p.id, p]));
-  const save = (next: Tactic | null) => { if (next) act({ t: 'tactic', tactic: next }); };
+  const save = (next: Tactic | null) => { if (next && !ro) act({ t: 'tactic', tactic: next }); };
 
   const VIEWS = sqViews(g);
   const SORTS = sorts(g, tac, orig);
@@ -379,8 +386,8 @@ function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
     ...Array.from({ length: Math.max(nb, STRIP_BENCH) }, (_, i) => ({ id: `b${i}`, label: `SB${i + 1}`, place: { kind: 'bench' as const, i }, pid: i < nb ? tac.bench[i] ?? 0 : 0, off: i >= nb })),
   ];
   // reserveholdet har ingen opstilling hos os: strimlen (SB1–SB9 aktive som i originalen) og felterne er tomme
-  if (reserves) for (const x of targets) { x.pid = 0; x.off = false; }
-  const labelOf = (pid: number) => { if (reserves) return ''; const pl = placeOf(tac, pid); return !pl ? '' : pl.kind === 'xi' ? slotLabel(tac.slots[pl.i]) : `SB${pl.i + 1}`; };
+  if (reserves && !ro) for (const x of targets) { x.pid = 0; x.off = false; }
+  const labelOf = (pid: number) => { if (reserves && !ro) return ''; const pl = placeOf(tac, pid); return !pl ? '' : pl.kind === 'xi' ? slotLabel(tac.slots[pl.i]) : `SB${pl.i + 1}`; };
   const short = (p: Player | undefined) => shortName(p);
   // bænkens pladser fyldes forfra (SB3 uden SB2 findes ikke i vores taktik)
   const benchPlace = (pl: NonNullable<Place>): NonNullable<Place> => (pl.kind === 'bench' && pl.i >= tac.bench.length ? { kind: 'bench', i: tac.bench.length } : pl);
@@ -427,7 +434,7 @@ function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
   // strimlen: en besat plads tømmes ved klik (spilleren er ikke længere udtaget); en ledig plads vælges, og den næste spiller, man klikker
   // på, sættes på den (klik igen = fortryd)
   const stripClick = (x: Target) => {
-    if (x.off || reserves) return;
+    if (x.off || reserves || ro) return;
     if (x.pid) { setArmed(null); save(moveTo(tac, x.pid, null)); return; }
     setArmed((a) => (a === x.id ? null : x.id));
   };
@@ -439,20 +446,22 @@ function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
   const row = (p: Player) => {
     const lbl = labelOf(p.id);
     const pl = placeOf(tac, p.id);
-    const loanedOut = p.loan?.from === g.userClub && p.club !== g.userClub;
-    const tag = orig ? (loanedOut ? null : originalTag(p)) : tagOf(p, g);
+    const loanedOut = p.loan?.from === clubId && p.club !== clubId;
+    // andre klubber (originalen): kun Inj og Lst
+    const tag = ro ? (p.injury ? { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` } : p.listed ? { k: 'Lst', title: t('tag.listed') } : null)
+      : orig ? (loanedOut ? null : originalTag(p)) : tagOf(p, g);
     // grå navn (originalens "Ryan, R" på reserveholdet): ikke spilleklar af en anden grund end skade/karantæne (*estimeret*)
     const dim = orig && !available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut;
     const selCls = `cx-selbtn ${pl?.kind ?? ''} ${orig ? 'cx-orig' : ''}`;
     return (
       <div key={p.id} className={`cx-sq-row ${trad ? '' : 'wide'} ${drag === p.id ? 'dragging' : ''} ${over === `p${p.id}` ? 'over' : ''}`} style={tmpl} {...dropOn(`p${p.id}`, 'swapWith', p.id)}>
-        {reserves ? <div className="cx-sel"><span className={selCls} /></div> : armedTarget
+        {reserves || ro ? <div className="cx-sel"><span className={selCls}>{ro ? lbl : ''}</span></div> : armedTarget
           ? <div className="cx-sel"><button className={selCls} data-pid={p.id} onClick={() => putArmed(p)}>{lbl || ' '}</button></div>
           : <CxDrop className="cx-sel" caret={false} fixed label={lbl || ' '} items={menuFor(p)}
             btn={{ className: selCls, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: orig ? undefined : t('cl.sq.selHint'), 'data-pid': p.id }} />}
         <Tag p={p} tag={tag} />
-        <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
-          onClick={() => (armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, !orig && starIds(players).has(p.id))}</button>
+        <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves ? loanedOut : p.loan) ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
+          onClick={() => (armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro) && starIds(players).has(p.id))}</button>
         {cols.map((c) => <span key={c.key} className={`cx-sq-info ${trad && c.key === 'cond' ? 'cond' : ''}`} data-col={c.key}>{c.show(p)}</span>)}
       </div>
     );
@@ -466,24 +475,24 @@ function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
       return [item, { key: 'attrs', label: t('cl.sq.v.attrs'), checked: !table && sv.key.startsWith('attr:'), onClick: () => setView(sv.key.startsWith('attr:') ? sv.key : 'attr:att') }];
     }),
     { key: 'sep', sep: true },
-    { key: 'pens', label: t('cl.sq.v.pens'), onClick: () => setView('pens') },
+    ...(ro ? [] : [{ key: 'pens', label: t('cl.sq.v.pens'), onClick: () => setView('pens') }]),
   ];
 
-  if (view === 'pens' && !g.draft) {
+  if (view === 'pens' && !g.draft && !ro) {
     return <PenaltyTakers tac={tac} players={players} change={(next) => act({ t: 'tactic', tactic: next })} onClose={() => setView('trad')} />;
   }
 
 
   return (
     <div className={`cx-sq ${orig ? 'cx-sq-orig' : ''}`}>
-      <Head title={t('nav.squad')}>
+      {(ro ? (props: { children: ReactNode }) => <div className="cx-tools cx-tools-inline">{props.children}</div> : (props: { children: ReactNode }) => <Head title={t('nav.squad')}>{props.children}</Head>)({ children: <>
         <CxDrop label={t('cl.sq.view')} items={viewItems} />
         {!table && <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => { setSort(x.key); const v = viewForSort(x.key, INFO); if (v) { setInfoKey(v); setView('trad'); } } })} />}
         <span className="grow" />
         {/* CM 01/02: én Assistant-menu */}
         <CxDrop label={t('cl.sq.assistantMenu')} align="right" items={[
-          { key: 'pick', label: t('cl.sq.assistant'), disabled: reserves, onClick: () => save(autoSelect(tac, players.filter((p) => !p.reserves))) },
-          { key: 'clear', label: t('cl.sq.clear'), disabled: reserves, onClick: () => save({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
+          { key: 'pick', label: t('cl.sq.assistant'), disabled: reserves || ro, onClick: () => save(autoSelect(tac, players.filter((p) => !p.reserves))) },
+          { key: 'clear', label: t('cl.sq.clear'), disabled: reserves || ro, onClick: () => save({ ...tac, lineup: tac.lineup.map(() => 0), bench: [] }) },
         ]} />
         <CxDrop label={t('cl.sq.filter')} align="right" items={orig ? [
           ...['all', 'gk', 'def', 'mid', 'att'].map((k) => ({ key: `p${k}`, label: t(k === 'all' ? 'cl.sq.fo.allPos' : `cl.sq.fo.${k}`), checked: of.pos === k, onClick: () => setOf({ ...of, pos: k }) })),
@@ -496,7 +505,7 @@ function ClassicFirstSquad({ reserves = false }: { reserves?: boolean } = {}) {
           { key: 's4', sep: true as const },
           { key: 'res', label: t('cl.sq.fo.res'), checked: of.res, disabled: reserves, onClick: () => setOf({ ...of, res: !of.res }) },
         ] : FILTERS.map(([k]) => ({ key: k, label: t(`cl.sq.f.${k}`), checked: k === fil[0], onClick: () => setFilter(k) }))} />
-      </Head>
+      </> })}
       {view === 'tbl:numbers' && !g.draft ? <ClassicSquadNumbers missing={!!sqnMissing} /> : table ? <SquadTable players={players} view={view.slice(4)} userClub={g.userClub} /> : (
         <div className="cx-sq-panel">
           <div className="cx-sq-head">

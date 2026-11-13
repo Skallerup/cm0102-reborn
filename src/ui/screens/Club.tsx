@@ -65,7 +65,7 @@ function ClassicClub({ id }: { id?: number }) {
         {!orig && dbOf(g) && <button className="cx-greybtn" onClick={() => setEditOpen(true)}>{t('hub.edit.action')}</button>}
       </Head>
       {editOpen && <ProposeEditModal kind="club" id={cid} onClose={() => setEditOpen(false)} />}
-      <div className={`cx-subtitle ${orig ? 'cx-orig-band' : ''}`}>{t(`cl.ci.v.${v}`)}</div>
+      {!(orig && v === 'squad') && <div className={`cx-subtitle ${orig ? 'cx-orig-band' : ''}`}>{t(`cl.ci.v.${v}`)}</div>}
       {orig && v !== 'info' && !tabViews.includes(v) && <div className="cx-finv cx-finv-orig"><ClassicFinanceBody view={v as 'stats'} clubId={cid} /></div>}
       {v === 'info' && <div className={orig ? 'cx-ci-orig' : undefined}>
         {/* CM 01/02: Nation · Status · Finances · Stadium · Facilities · Training Ground (status og ordene er *estimeret*) */}
