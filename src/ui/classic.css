@@ -1018,7 +1018,8 @@
 @media (min-width: 761px) {
   .shell.cx { grid-template-columns: 144px minmax(0, 1fr); background-color: #0b0f33; background-image: linear-gradient(180deg, rgba(6, 9, 34, 0.45), rgba(6, 9, 34, 0.7)), var(--cx-photo, none); background-size: cover; background-position: center; }
   .shell.cx .main.cx-main { padding: 16px 16px 8px; background: transparent; }
-  .shell.cx .main.cx-main.cx-stadium { background: transparent; }
+  /* aftenkampe: nat-lookket ligger på .shell (nedenfor) – her stod fotoet ellers i naturlig størrelse som et mørkt rektangel (ejerens billede 13/11) */
+  .shell.cx .main.cx-main.cx-stadium, .shell.cx .main.cx-main.cx-stadium.cx-night { background: transparent; }
   .shell.cx.cx-night { background-image: radial-gradient(ellipse 70% 55% at 55% 40%, rgba(255, 236, 190, 0.08), rgba(2, 4, 22, 0.45) 70%), linear-gradient(180deg, rgba(3, 7, 34, 0.55), rgba(2, 4, 22, 0.75)), var(--cx-photo, none); }
   .cx-head { background: transparent; margin: -16px -16px 10px; padding: 16px 16px 0; gap: 12px; position: static; }
   .cx-foot { background: transparent; border-top: 0; padding: 0 16px 10px; gap: 12px; }
