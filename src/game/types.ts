@@ -362,6 +362,11 @@ export interface Staff {
   cmJoined?: string;
   /** personpost +0x24/+0x28: landsholdet (nations-id i databasen, −1 = intet) og jobbet dér – viljen 0x844780 (cmBoardInterest.ts) */
   cmNat?: [number, number];
+  /** spejderens seneste liste (Scout #n), når søgningen er færdig eller han er kaldt hjem */
+  scoutList?: number[];
+  /** CM 01/02 (klassisk): Set Nickname og Create Manager Note på en stabsperson */
+  nick?: string;
+  notes?: string;
 }
 
 export interface ClubFinance {
@@ -1159,6 +1164,8 @@ export interface GameState {
   pendingFixture: number | null; // brugerens kamp i dag (ikke spillet)
   /** CM 01/02: kontrakttilbud til egne spillere – svaret kommer som nyhed næste dag */
   pendingRenewals?: { pid: number; club: number; wage: number; years: number; clauses?: ContractClauses; date: string }[];
+  /** CM 01/02 (cmStaff.ts, original DB i ægte tilstand): kontrakttilbud til stabsfolk – svaret kommer som nyhed næste dag */
+  cmStaffOffers?: import('./cmStaff').CmStaffOffer[];
   /** Lokalt spil mod AI-managere (ingen server): værten spiller sine kampe live */
   localMp?: boolean;
   /** Beskeder mellem managere, der går gennem spillet (AI-managere og lokale spil) */

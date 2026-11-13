@@ -9,13 +9,15 @@ import { ATTRS } from '../../game/attributes';
 import { interestedClubs, transferRealism } from '../../game/transfers';
 import { nationLanguage } from '../../game/languages';
 import { willJoin } from '../../game/staff';
-import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
+import { attrRange, caOfStars, clubLevel, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
 import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
+import { cmScoutRec, cmActive, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
+import { regionOf } from '../../game/leagues';
 import { askConfirm, askText } from '../confirm';
 import { FL_ATTRS, SF_ATTRS, countMins, encodeMins, parseMins, staffAttrValue } from './searchAttrs';
 import { Select } from '../select';
@@ -24,6 +26,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxTable, type CxCol } from './CxTable';
 import { Deals, Offers, Search, type Filters } from './Transfers';
+import { ClassicNations } from './NationsClassic';
 
 const PAGE = 16;
 
@@ -36,6 +39,9 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
   const scouts = Object.values(g.staff).filter((s) => s.club === g.userClub && s.role === 'scout').sort((a, b) => a.id - b.id);
   const scoutKey = (n: number) => `scout${n}`;
   const scoutTab = /^scout\d$/.test(tab) ? Number(tab.slice(5)) : 0;
+  // Assign Scout → Club (CM 01/02, original DB i ægte tilstand): Nations & Clubs som vælger i stedet for søgeskærmen
+  const [picker, setPicker] = useState<((cid: number) => void) | null>(null);
+  if (picker) return <ClassicNations pick={(cid) => { setPicker(null); picker(cid); }} onBack={() => setPicker(null)} />;
   // fanerne som i CM 01/02: Short List · Player Search · Staff Search · Scout #1 · Scout #2 – og Scout #3-#5 nederst
   // (tilbud og handler, som originalen ikke har her, ligger yderst i den nederste række)
   return (
@@ -56,7 +62,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       {tab === 'search' && <Search classic />}
       {tab === 'shortlist' && <Search classic shortlist />}
       {tab === 'staff' && <StaffSearch />}
-      {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} />}
+      {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} onPick={setPicker} />}
       {tab === 'offers' && !authentic() && <Offers />}
       {(tab === 'deals' || tab === 'listed') && !authentic() && <Deals />}
     </div>
@@ -406,7 +412,10 @@ function StaffSearch() {
   const q = nameQuery(sf.text);
   const mins = Object.entries(parseMins(sf.attrMins)).map(([i, v]) => [Number(i), v] as [number, number]);
   const AGE: Record<string, [number, number]> = { '0-30': [0, 30], '30-40': [30, 40], '40-50': [40, 50], '50-60': [50, 60], '60+': [60, 200] };
-  const base = Object.values(g.staff).filter((s) => s.club !== g.userClub);
+  // den originale database i ægte tilstand: "Famous staff and all staff in your region" (0x80af8d) – kun databasens stab (cmStaff.ts)
+  const cm = cmActive(g);
+  const myRegion = regionOf(g.nations[home]?.name);
+  const base = Object.values(g.staff).filter((s) => (cm ? cmStaffInSearch(g, s, myRegion) : s.club !== g.userClub));
   const list = base.filter((s) => {
     if (sf.role && (sf.role === 'free' ? !!s.club : s.role !== sf.role)) return false;
     if (sf.nation >= 0 && s.nation !== sf.nation) return false;
@@ -423,15 +432,22 @@ function StaffSearch() {
   useEffect(() => setPg(0), [list.length, view]);
   const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : t('cl.st.noClubNation');
   const based = (s: Staff) => basedName(g, s.club, s.nation);
-  const job = (s: Staff) => (s.club ? t(`role.staff.${s.role}`) : t('cl.st.unemployed'));
+  const job = (s: Staff) => (cm ? t(cmJobKey(s)) : s.club ? t(`role.staff.${s.role}`) : t('cl.st.unemployed'));
   const nameCol: CxCol<Staff> = { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
     render: (s) => <span className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> };
-  const infCol: CxCol<Staff> = { key: 'inf', label: t('cl.tn.inf'), render: () => null };
+  // Inf (CM 01/02): Inj/Wnt for stab, sorterbar (ejerens billede 44) – kun den originale database i ægte tilstand
+  const infCol: CxCol<Staff> = cm
+    ? { key: 'inf', label: t('cl.tn.inf'), sort: (s) => { const x = cmStaffInf(g, s); return x === 'Inj' ? 2 : x === 'Wnt' ? 1 : 0; },
+      render: (s) => { const x = cmStaffInf(g, s); return x ? <button className={`cx-inf ${x === 'Inj' ? 'bad full' : ''}`} onClick={() => nav({ name: 'staff', id: s.id, state: { sttab: 'transfer' } })}>{t(`cl.tag.${x}`)}</button> : null; } }
+    : { key: 'inf', label: t('cl.tn.inf'), render: () => null };
   const clubCol: CxCol<Staff> = { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where };
   // Based: ligaen/landet kan klikkes (gul understregning under musen, som i CM 01/02)
   const basedCol: CxCol<Staff> = { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => <span className="link" onClick={() => nav(basedRoute(g, s.club, s.nation))}>{based(s)}</span>, sort: based };
   const jobCol: CxCol<Staff> = { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: job, sort: job };
-  const repCol: CxCol<Staff> = { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => repLabel(s.rep), sort: (s) => s.rep };
+  // Rep. (0x80e787): originalens ord og grænser i den originale database
+  const repCol: CxCol<Staff> = cm
+    ? { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => t(`cm.rep.${cmStaffRepWord(s, g.date)}`), sort: (s) => cmStaffRepRank(s, g.date) * 100000 + cmStaffRep(s) }
+    : { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => repLabel(s.rep), sort: (s) => s.rep };
   const cols: CxCol<Staff>[] = view === 'attributes'
     ? [infCol, nameCol, clubCol, jobCol, ...SF_ATTRS.map((k, i): CxCol<Staff> => ({ key: `a-${k}`, label: t(`staff.short.${k}`), title: t(`staff.${k}`), cls: 'c-num c-yel', render: (s) => staffAttrValue(s, i) || '-', sort: (s) => staffAttrValue(s, i) })), repCol]
     : view === 'notes'
@@ -449,7 +465,7 @@ function StaffSearch() {
         <button className="cx-greybtn" onClick={() => setOpen(true)}>{t('cl.tr.filters')}{active ? ` (${active})` : ''}</button>
         <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
-      <Pager desc={named || (preset ? t(`cl.st.p.${preset.key}`) : t('cl.tr.custom', { n: active }))} pg={pg} pages={pages} setPg={setPg} />
+      <Pager desc={named || (preset ? (cm && preset.key === 'all' ? t('cm.ss.desc') : t(`cl.st.p.${preset.key}`)) : t('cl.tr.custom', { n: active }))} pg={pg} pages={pages} setPg={setPg} />
       {open && <StaffFilterDialog f={sf} nations={nations} onOk={(v) => { setSf(v); setOpen(false); }} onClose={() => setOpen(false)} />}
       <div className="cx-subtitle small">{t('cl.tr.staffSearch')}</div>
       <CxTable rows={list} cols={cols} rowKey={(s) => s.id} initialSort="rep" page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
@@ -465,21 +481,27 @@ function StaffSearch() {
 /** Spejderens opgave som gemt indstilling (uden fundne spillere og datoer) */
 interface ScoutCfg { a: Pick<ScoutAssignment, 'kind' | 'target' | 'focus' | 'role' | 'attr' | 'attrMin' | 'maxValue'> | null }
 
-function ScoutTab({ scout, n }: { scout?: Staff; n: number }) {
+function ScoutTab({ scout, n, onPick }: { scout?: Staff; n: number; onPick?: (f: () => (cid: number) => void) => void }) {
   const g = useGame()!;
   const [named, setNamed] = useRouteState('scname', '');
   const [view, setView] = useRouteState('tview', 'general');
   if (!scout) return <div className="cx-empty">{t('cl.sc.none', { n })}</div>;
-  const name = `${scout.first} ${scout.last}`;
+  // den originale database i ægte tilstand (search_screens.cpp 0x80b479/0x80b4bf): "Scout Les Kershaw not assigned" / "Scout L.Kershaw
+  // assigned to Bradford", Assign Scout → Club åbner Nations & Clubs, og en tildelt spejder har Recall Scout i stedet for Assign Scout
+  const cm = cmActive(g);
+  const name = `${scout.first} ${scout.last}`.trim();
+  const short = cm && scout.first ? `${scout.first.charAt(0)}.${scout.last}` : name;
   const a = scout.assignment;
   const targetName = (x: ScoutAssignment): string => x.kind === 'nation' ? natName(g.nations[x.target as number]?.name)
     : x.kind === 'league' ? compName(g.leagues[x.target as string]?.name) ?? String(x.target)
     : x.kind === 'club' ? g.clubs[x.target as number]?.name ?? '' : x.kind === 'region' ? t(`region.${x.target}`)
     : x.kind === 'nextOpp' ? t('cl.sc.nextOpp') : x.kind === 'youth' ? t('cl.sc.youth') : `${g.players[x.target as number]?.first ?? ''} ${g.players[x.target as number]?.last ?? ''}`.trim();
-  const players = !a ? [] : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
+  const players = !a ? (cm ? (scout.scoutList ?? []).map((id) => g.players[id]).filter(Boolean) : []) : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
   // "Assign scout Mick Brown to Argentina ?" (Please Confirm) – derefter går han i gang
   const assign = async (x: Omit<ScoutAssignment, 'since' | 'found'>) => {
-    if (!(await askConfirm(t('cl.sc.assignQ', { scout: name, target: targetName(x as ScoutAssignment) }), { title: t('cl.sc.assignTitle'), colored: true }))) return;
+    // 0x4830ce: "Send scout to watch all Bradford matches ?" (Assign Scout ? / Please Confirm)
+    const q = cm && x.kind === 'club' ? t('cm.sc.clubQ', { club: g.clubs[x.target as number]?.short || g.clubs[x.target as number]?.name || '' }) : t('cl.sc.assignQ', { scout: name, target: targetName(x as ScoutAssignment) });
+    if (!(await askConfirm(q, { title: cm ? t('cm.sc.assignTitle') : t('cl.sc.assignTitle'), colored: true }))) return;
     act({ t: 'scout', staffId: scout.id, assignment: { ...x, since: g.date, found: [] } });
   };
   const clubs = Object.values(g.clubs).filter((c) => !g.leagues[c.league]?.hidden && c.id !== g.userClub);
@@ -489,10 +511,10 @@ function ScoutTab({ scout, n }: { scout?: Staff; n: number }) {
       .map(({ r, xs }) => ({ key: r, label: t(`cl.region.${r}`), sub: xs.map(item) }));
   const lg = g.clubs[g.userClub]?.league;
   const assignItems: DropItem[] = [
-    ...(lg && g.leagues[lg] ? [{ key: 'comp', label: compName(g.leagues[lg].name) ?? '', onClick: () => assign({ kind: 'league', target: lg }) } as DropItem] : []),
-    { key: 's1', sep: true },
-    { key: 'club', label: t('cl.sc.club'), sub: byRegion(nationIds, (nat) => ({ key: `n${nat}`, label: natName(g.nations[nat].name),
-      sub: clubs.filter((c) => c.nation === nat).sort((x, y) => y.rep - x.rep).slice(0, 40).map((c) => ({ key: `c${c.id}`, label: c.name, onClick: () => assign({ kind: 'club', target: c.id }) })) })) },
+    ...(!cm && lg && g.leagues[lg] ? [{ key: 'comp', label: compName(g.leagues[lg].name) ?? '', onClick: () => assign({ kind: 'league', target: lg }) } as DropItem, { key: 's1', sep: true } as DropItem] : []),
+    cm ? { key: 'club', label: t('cl.sc.club'), onClick: () => onPick?.(() => (cid: number) => { void assign({ kind: 'club', target: cid }); }) }
+      : { key: 'club', label: t('cl.sc.club'), sub: byRegion(nationIds, (nat) => ({ key: `n${nat}`, label: natName(g.nations[nat].name),
+        sub: clubs.filter((c) => c.nation === nat).sort((x, y) => y.rep - x.rep).slice(0, 40).map((c) => ({ key: `c${c.id}`, label: c.name, onClick: () => assign({ kind: 'club', target: c.id }) })) })) },
     { key: 'opp', label: t('cl.sc.nextOpp'), onClick: () => assign({ kind: 'nextOpp', target: 0 }) },
     { key: 'youth', label: t('cl.sc.youth'), onClick: () => assign({ kind: 'youth', target: 0 }) },
     { key: 's2', sep: true },
@@ -503,7 +525,8 @@ function ScoutTab({ scout, n }: { scout?: Staff; n: number }) {
   const cfg: ScoutCfg = { a: a ? { kind: a.kind, target: a.target, focus: a.focus, role: a.role, attr: a.attr, attrMin: a.attrMin, maxValue: a.maxValue } : null };
   const menu = useSearchMenu<ScoutCfg>({ kind: 'scout', f: cfg, defaults: { a: null }, presets: [], named, setNamed, active: a ? 1 : 0,
     apply: (v) => act({ t: 'scout', staffId: scout.id, assignment: v.a ? { ...v.a, since: g.date, found: [] } : null }) });
-  const items: DropItem[] = [{ key: 'assign', label: t('cl.sc.assign'), sub: assignItems }, ...menu];
+  const items: DropItem[] = [cm && a ? { key: 'recall', label: t('cm.sc.recall'), onClick: () => act({ t: 'scout', staffId: scout.id, assignment: null }) }
+    : { key: 'assign', label: t('cl.sc.assign'), sub: assignItems }, ...menu];
   return (
     <div>
       <div className="cx-tools cx-tools-inline">
@@ -513,8 +536,8 @@ function ScoutTab({ scout, n }: { scout?: Staff; n: number }) {
         <button className="cx-greybtn" disabled>{t('cl.tr.filters')}</button>
         <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
-      <ClassicPlayerTable players={players} title={t('cl.tr.scoutN', { n })} view={view}
-        desc={a ? t('cl.sc.assigned', { scout: name, target: targetName(a) }) : t('cl.sc.notAssigned', { scout: name })} />
+      <ClassicPlayerTable players={players} title={t('cl.tr.scoutN', { n })} view={view} rec={cm}
+        desc={a ? t('cl.sc.assigned', { scout: short, target: targetName(a) }) : t('cl.sc.notAssigned', { scout: name })} />
     </div>
   );
 }
@@ -533,8 +556,10 @@ export function Pager({ desc, pg, pages, setPg }: { desc: string; pg: number; pa
 }
 
 /** Spillertabellen: blå knap (shortlist), Inf, navn, klub, land/liga, position, værdi – med sider */
-export function ClassicPlayerTable({ players, title, desc, view: viewProp, initialSort = 'val', viewMenu, total }: {
+export function ClassicPlayerTable({ players, title, desc, view: viewProp, initialSort = 'val', viewMenu, total, rec }: {
   players: Player[]; title: string; desc?: string; view?: string; initialSort?: string;
+  /** Scout #n (CM 01/02, original DB i ægte tilstand): kolonnen Rec med spejderens stjerner */
+  rec?: boolean;
   /** alle spillere før filtrene – giver "(N filtered out)" under listen */
   total?: number;
   /** vis selv View ▾ (når tabellen ikke ligger under søgningens værktøjslinje) */
@@ -561,6 +586,10 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <button className={`cx-inf ${x[2] ? 'bad' : ''} ${x[0] === 'Inj' && (p.injury?.days ?? 0) > 7 ? 'full' : ''}`} title={x[1]} onClick={() => nav({ name: 'player', id: p.id, tab: x[0] === 'Wnt' ? 'transfer' : 'injuries' })}>{t(`cl.tag.${x[0]}`)}</button> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
     { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
+  // Rec (0x80d164): spejderens anbefaling som stjerner – den største af evne-/potentialevurderingen (cmScoutRec, 0x7b62a0)
+  const level = rec ? clubLevel(g.userClub) : 0;
+  const recOf = (p: Player) => { const st = scoutStars(p); return cmScoutRec(g, p, level, { ca: caOfStars((st.ability[0] + st.ability[1]) / 2), pa: caOfStars((st.potential[0] + st.potential[1]) / 2) }); };
+  if (rec) base.unshift({ key: 'rec', label: t('cm.sc.rec'), render: (p) => { const n = recOf(p); return <span className="cx-rec">{n ? '*'.repeat(n) : ''}</span>; }, sort: (p) => recOf(p) });
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : t('cl.tr.noClub')), sort: (p) => g.clubs[p.club]?.name ?? '' };
   const pos: CxCol<Player> = { key: 'pos', label: t('cl.tr.position'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };
   const val: CxCol<Player> = { key: 'val', label: t('col.value'), cls: 'c-val', render: (p) => (p.club ? money(p.value) : t('cl.tr.free')), sort: (p) => p.value };
@@ -598,7 +627,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
       {viewMenu && <div className="cx-tools cx-tools-inline"><ViewMenu view={view} setView={setOwnView} /></div>}
       <Pager desc={desc ?? ''} pg={pg} pages={pages} setPg={setPg} />
       <div className="cx-subtitle small">{title}</div>
-      <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort={initialSort} page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
+      <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort={rec ? 'rec' : initialSort} page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
         btn={(p) => {
           const on = g.shortlist.includes(p.id);

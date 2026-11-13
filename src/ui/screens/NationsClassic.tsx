@@ -11,10 +11,12 @@ import { Head } from './common';
 
 type Tab = 'nations' | 'u21' | 'major' | 'league' | 'nonleague' | 'other';
 
-export function ClassicNations() {
+/** `pick`: vælgeren (CM 01/02 Assign Scout → Club, ejerens billede 40) – et klik på en klub vælger den i stedet for at åbne den,
+ *  et land åbner dets ligaklubber; Back i bunden. */
+export function ClassicNations({ pick, onBack }: { pick?: (club: number) => void; onBack?: () => void } = {}) {
   const g = useGame()! as GameState;
   const { nav } = useNav();
-  const [tab, setTab] = useRouteState<Tab>('nctab', 'nations');
+  const [tab, setTab] = useRouteState<Tab>(pick ? 'pkctab' : 'nctab', pick ? 'league' : 'nations');
   const own = g.clubs[g.userClub]?.nation;
   const [reg, setReg] = useRouteState<UiRegion>('ncreg', regionOfNation(g.nations[own ?? -1]?.name));
   const [nat, setNat] = useRouteState<number>('ncnat', own ?? 0);
@@ -25,8 +27,8 @@ export function ClassicNations() {
   const nations = [...new Set(clubs.map((c) => c.nation))].filter((n) => g.nations[n]);
   const leagueNations = nations.filter((n) => clubs.some((c) => c.nation === n && !hidden(c.league) && g.comps[c.league]));
   type Row = { key: string; name: string; code: string; extra: string; go: () => void };
-  const natRow = (n: number, u21 = false): Row => ({ key: `n${n}`, name: natName(g.nations[n]?.name), code: g.nations[n]?.code ?? '', extra: '', go: () => nav({ name: 'international', id: n, ...(u21 ? { state: { [`ntt:${n}`]: 'u21' } } : {}) }) });
-  const clubRow = (c: (typeof clubs)[number]): Row => ({ key: `c${c.id}`, name: c.short, code: g.nations[c.nation]?.code ?? '', extra: lgAbbr(c.league), go: () => nav({ name: 'club', id: c.id }) });
+  const natRow = (n: number, u21 = false): Row => ({ key: `n${n}`, name: natName(g.nations[n]?.name), code: g.nations[n]?.code ?? '', extra: '', go: () => (pick ? (setNat(n), setTab('league')) : nav({ name: 'international', id: n, ...(u21 ? { state: { [`ntt:${n}`]: 'u21' } } : {}) })) });
+  const clubRow = (c: (typeof clubs)[number]): Row => ({ key: `c${c.id}`, name: c.short, code: g.nations[c.nation]?.code ?? '', extra: lgAbbr(c.league), go: () => (pick ? pick(c.id) : nav({ name: 'club', id: c.id })) });
   const byName = (a: Row, b: Row) => a.name.localeCompare(b.name, t('cl.locale'));
   let rows: Row[] = [];
   let title = '';
@@ -44,7 +46,7 @@ export function ClassicNations() {
   const TOP: Tab[] = ['nations', 'u21', 'major'], BOTTOM: Tab[] = ['league', 'nonleague', 'other'];
   return (
     <div className="cx-nc">
-      <Head title={t('cl.nc.title')} />
+      <Head title={pick ? t('cm.sc.pick') : t('cl.nc.title')} />
       <Tabs tabs={TOP.map((x) => [x, t(`cl.nc.t.${x}`)] as [string, string])} value={TOP.includes(tab) ? tab : ''} onChange={(v) => setTab(v as Tab)} />
       <div className="cx-tools">
         {tab === 'league'
@@ -54,6 +56,7 @@ export function ClassicNations() {
       <div className="cx-subtitle small">{title}</div>
       <div className="cx-nc-list cx-listpanel">{rows.length ? <>{col(rows.slice(0, half))}{col(rows.slice(half))}</> : <div className="cx-empty">{t('common.none')}</div>}</div>
       <ClassicSub items={BOTTOM.map((x) => ({ key: x, label: t(`cl.nc.t.${x}`), on: tab === x, onClick: () => setTab(x) }))} />
+      {pick && <div className="cx-ts-buttons cx-dlg-foot cx-nc-pickfoot"><button onClick={onBack}>{t('common.back')}</button><button disabled>{t('top.next')}</button></div>}
     </div>
   );
 }

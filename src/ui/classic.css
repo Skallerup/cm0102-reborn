@@ -1724,3 +1724,16 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 
 /* CM 01/02 (ejerens billede 13/11): links i nyhederne (overskrift og brødtekst) har tekstens egen farve – kun understregede */
 :root[data-skin='retro'] .cx-inbox :is(.cx-nbody, .cx-nhead, .cx-ntitle) :is(.cx-link, .link, .club-link, [role='link'], a) { color: inherit !important; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+/* Stabsprofilen (CM 01/02, StaffClassic.tsx): egenskaberne i to kolonner (etiket · værdi · etiket · værdi), stil-rækkerne under, jobbet i bunden */
+.cx-kv.cx-ruled.cx-st-two { grid-template-columns: minmax(140px, 30%) 1fr minmax(140px, 30%) 1fr; margin-bottom: 0; }
+.cx-kv.cx-ruled.cx-st-two > span:nth-child(4n + 2) { border-right: 1px solid rgba(255, 140, 90, 0.35); }
+.cx-kv.cx-ruled.cx-st-two > span:nth-child(4n + 3) { color: #fff; border-right: 1px solid rgba(255, 140, 90, 0.35); }
+.cx-kv.cx-ruled.cx-st-two > span:nth-child(4n) { color: #fff21f; }
+.cx-kv.cx-ruled .c-center { justify-content: center; }
+.cx-kv.cx-ruled .c-orange { color: #ff9a2a; }
+.cx-kv.cx-ruled.cx-st-rest { grid-template-columns: minmax(140px, 30%) 1fr; margin-top: 4px; }
+.cx-st-job { text-align: center; color: #6fe3ff; font-size: 20px; padding: 8px 0; background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.12); }
+.cx-opt.cx-st-role { display: block; margin-left: 60px; font-size: 18px; }
+/* spejderens anbefaling (Rec) i Scout #n: stjernerne i en blå knap */
+.cx-rec { display: inline-block; min-width: 64px; text-align: center; color: #fff; background: #00007d; font-weight: 700; letter-spacing: 1px; }

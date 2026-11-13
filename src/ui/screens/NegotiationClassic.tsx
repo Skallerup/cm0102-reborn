@@ -4,7 +4,9 @@ import { useState } from 'react';
 import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { preferredYears, renewalDemand, signOnDemand, wageDemand } from '../../game/transfers';
-import type { ContractClauses, TransferOffer } from '../../game/types';
+import type { ContractClauses, StaffRole, TransferOffer } from '../../game/types';
+import { cmStaffDemand, cmStaffInterestedIn } from '../../game/cmStaff';
+import { poachFee } from '../../game/staff';
 import { money, t } from '../../i18n';
 import { CxDrop, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
@@ -31,6 +33,58 @@ function Row({ label, value, show, options, onSet, reset, on = true, onToggle, s
         items={options.map((o) => ({ key: String(o), label: show(o), checked: o === value, onClick: () => onSet(o) }))} />
       <button className="cx-pm" disabled={!on} onClick={() => step(1)}>+</button>
       <button className="cx-pm" disabled={!on || reset === undefined} onClick={() => reset !== undefined && onSet(reset)}>=</button>
+    </div>
+  );
+}
+
+/** "Offer Contract" til en stabsperson (CM 01/02, original DB i ægte tilstand – cmStaff.ts): samme skærm som spillernes uden fanerne –
+ *  "X has no interest in negotiating terms for this position." (0x9b0450) eller kravet, "Your board will allow wages up to …" (0x9b0324),
+ *  Weekly Wage · Signing On Fee · Contract Expires · Contract Type · Make offer public, og "Offer contract to X ?" med kompensationen
+ *  (0x5b0fb8). Svaret kommer som nyhed næste dag. */
+export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: number; role: StaffRole; onClose: (sent: boolean) => void }) {
+  useClassicDialog();
+  const g = gs();
+  const s = g.staff[staffId];
+  const club = g.clubs[g.userClub];
+  const demand = r50(cmStaffDemand(s));
+  const [wage, setWage] = useState(demand);
+  const [years, setYears] = useState(2);
+  const [signOn, setSignOn] = useState(0);
+  const [pub, setPub] = useState(false);
+  const [ask, setAsk] = useState(false);
+  const name = `${s.first} ${s.last}`.trim();
+  const interested = cmStaffInterestedIn(g, s, role);
+  const bill = Object.values(g.players).filter((x) => x.club === club.id).reduce((a, x) => a + (x.contract?.wage ?? 0), 0);
+  // *estimeret* (spillernes regel): lønbudgettet minus truppens lønsum
+  const allow = Math.max(0, club.wageBudget - bill);
+  const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
+  const from = s.club ? g.clubs[s.club] : undefined;
+  const col = titleColors(s.club || undefined);
+  const wageOpts = [...new Set([0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1, 1.05, 1.1, 1.2, 1.3, 1.5, 1.75, 2].map((f) => r50(demand * f)))];
+  const send = () => { act({ t: 'cmStaffOffer', id: s.id, role, wage, years, signOn }); onClose(true); };
+  return (
+    <div className="cx-dlg cx-staff-neg">
+      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{name}{from ? ` (${from.short || from.name})` : ''}</h2></div>
+      <div className="cx-subtitle">{t('cl.neg.title')}</div>
+      {ask ? (
+        <div className="cx-dlg-body"><p className="cx-ts-intro">{t('cl.neg.confirm', { player: name })}</p>
+          {from && <p className="cx-ts-intro">{t('cm.neg.comp', { club: from.short || from.name, fee: money(poachFee(s)) })}</p>}</div>
+      ) : (
+        <div className="cx-dlg-body">
+          <p className="cx-ts-intro">{interested ? t('cl.neg.wants', { player: name, wage: money(demand), until: end(2), fee: '' }) : t('cm.neg.noInterest', { name })}</p>
+          <p className="cx-ts-intro">{t('cl.neg.allow', { allow: money(allow) })}</p>
+          <Row label={t('cl.neg.wage')} value={wage} show={money} options={wageOpts.includes(wage) ? wageOpts : [...wageOpts, wage].sort((a, b) => a - b)} onSet={setWage} reset={demand} />
+          <Row label={t('cl.neg.signOn')} value={signOn} show={money} options={[0, 5000, 10000, 25000, 50000, 100000, 250000]} onSet={setSignOn} reset={0} />
+          <Row label={t('cl.neg.expires')} value={years} show={end} options={[1, 2, 3, 4, 5]} onSet={setYears} reset={2} />
+          <div className="cx-neg-row"><span className="cx-neg-label">{t('cl.neg.type')}</span><span /><span className="cx-neg-static cx-neg-type">{t('cl.neg.fullTime')}</span></div>
+          <div className="cx-neg-row"><span className="cx-neg-label">{t('cm.neg.public')}</span><span />
+            <button className="cx-neg-static cx-neg-type cx-neg-public" onClick={() => setPub(!pub)}>{t(pub ? 'common.yes' : 'common.no')}</button></div>
+        </div>
+      )}
+      <div className="cx-ts-buttons cx-dlg-foot">
+        {ask ? <><button onClick={() => setAsk(false)}>{t('common.no')}</button><button className="primary" onClick={send}>{t('common.yes')}</button></>
+          : <><button onClick={() => onClose(false)}>{t('common.cancel')}</button><button className="primary" onClick={() => setAsk(true)}>{t('cl.neg.offer')}</button></>}
+      </div>
     </div>
   );
 }

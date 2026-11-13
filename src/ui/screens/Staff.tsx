@@ -15,6 +15,8 @@ import type { DropItem } from '../classic';
 import { ClubLink, Modal, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
+import { ClassicStaffProfile } from './StaffClassic';
+import { cmActive } from '../../game/cmPlayerData';
 
 const ATTRS: (keyof Staff['attrs'])[] = ['coaching', 'judgingAbility', 'judgingPotential', 'physio', 'motivating', 'discipline', 'tactics'];
 const ROLES: StaffRole[] = ['assistant', 'coach', 'physio', 'scout'];
@@ -22,7 +24,8 @@ const KEY_ATTR: Record<StaffRole, keyof Staff['attrs']> = { manager: 'tactics', 
 
 export function StaffScreen() {
   const { route } = useNav();
-  if (route.id !== undefined && gs().staff[Number(route.id)]) return <StaffProfile id={Number(route.id)} />;
+  // klassisk udseende med den originale database i ægte tilstand: originalens stabsprofil (StaffClassic.tsx)
+  if (route.id !== undefined && gs().staff[Number(route.id)]) return isRetro() && cmActive(gs()) ? <ClassicStaffProfile id={Number(route.id)} /> : <StaffProfile id={Number(route.id)} />;
   return <StaffList />;
 }
 

@@ -3,6 +3,7 @@
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
 import { cmActive, setStatusCode } from './cmPlayerData';
+import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
 import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
@@ -29,7 +30,7 @@ import {
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
-import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer, CoachArea } from './types';
+import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer, CoachArea, StaffRole } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
@@ -83,6 +84,8 @@ export type Action =
   | { t: 'acceptCounter'; pid: number }
   | { t: 'withdraw'; pid: number }
   | { t: 'hireStaff'; id: number; wage?: number }
+  | { t: 'cmStaffOffer'; id: number; role: StaffRole; wage: number; years: number; signOn: number }
+  | { t: 'staffNote'; id: number; nick?: string | null; notes?: string }
   | { t: 'fireStaff'; id: number }
   | { t: 'coachAreas'; id: number; areas: CoachArea[] | null }
   | { t: 'budget'; kind: 'transfer' | 'wage'; pct?: number }
@@ -177,6 +180,14 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     }
     case 'cmRequest': return cmActive(g) ? cmAnswerRequest(g, a.news, a.grant) : 'error';
+    case 'cmStaffOffer': return cmActive(g) ? cmOfferStaff(g, { staff: a.id, role: a.role, wage: a.wage, years: a.years, signOn: a.signOn }) : 'error';
+    case 'staffNote': {
+      const s = g.staff[a.id];
+      if (!s) return 'error';
+      if (a.nick !== undefined) s.nick = a.nick?.trim() || undefined;
+      if (a.notes !== undefined) s.notes = a.notes || undefined;
+      return 'ok';
+    }
     case 'squadStatus': {
       const p = g.players[a.pid];
       if (p?.club !== g.userClub) return 'error';

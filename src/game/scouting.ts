@@ -144,6 +144,7 @@ export function scoutDaily() {
       // turen er slut: scouten vender hjem med en rapport
       if (a.until && g.date >= a.until) {
         scoutReturns(s.first + ' ' + s.last, a);
+        s.scoutList = a.found?.slice();   // CM 01/02: listen bliver stående på Scout #n, når søgningen er færdig
         s.assignment = null;
         continue;
       }
@@ -165,6 +166,7 @@ export function scoutDaily() {
       // hele klubben afdækket: "[klub] scouting completed"
       if (a.kind === 'club' && clubs[0] && squad(clubs[0].id).every((p) => (g.knowledge[p.id] ?? 0) >= 60)) {
         addNews({ cat: 'scout', key: 'scout.clubDone', params: { scout: `${s.first} ${s.last}`, club: clubs[0].name, n: squad(clubs[0].id).length }, link: { kind: 'club', id: clubs[0].id } });
+        s.scoutList = squad(clubs[0].id).map((p) => p.id);
         s.assignment = null;
         continue;
       }
@@ -221,6 +223,7 @@ export function startScoutAssignment(staffId: number, a: ScoutAssignment | null)
   const g = gs();
   const s = g.staff[staffId];
   if (!s || s.club !== g.userClub) return;
+  if (s.assignment && s.assignment.kind !== 'player') s.scoutList = s.assignment.found?.slice();   // Recall: listen bliver stående
   s.assignment = a;
   if (a && a.kind !== 'player') addNews({ cat: 'scout', key: 'scout.started', params: { scout: `${s.first} ${s.last}`, ...scoutTarget(a) } });
 }

@@ -323,6 +323,60 @@ async function run(look) {
     await page.waitForTimeout(300);
     const asg = await gs(() => Object.values(window.__cm.gs().staff).find((x) => x.club === window.__cm.gs().userClub && x.role === 'scout')?.assignment?.kind);
     if (asg !== 'nextOpp') throw new Error('spejderen blev ikke tildelt: ' + asg);
+    if (ENGINE_GRID) {
+      // original DB i ægte tilstand: en tildelt spejder har Recall Scout; Assign Scout → Club åbner Nations & Clubs → "Send scout to watch all … matches ?"
+      const scoutAsg = () => gs(() => Object.values(window.__cm.gs().staff).filter((x) => x.club === window.__cm.gs().userClub && x.role === 'scout').sort((a, b) => a.id - b.id)[0]?.assignment?.kind ?? null);
+      await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
+      await page.locator('.cx-drop-pop >> text=Recall Scout').first().click();
+      await page.waitForTimeout(300);
+      if ((await scoutAsg()) !== null) throw new Error('Recall Scout kaldte ikke spejderen hjem');
+      await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
+      await page.locator('.cx-drop-pop >> text=Assign Scout').first().hover();
+      await page.locator('.cx-drop-pop >> text=/^Club$/').first().click();
+      await page.waitForSelector('.cx-nc-row', { timeout: 3000 });
+      await page.locator('.cx-nc-row .cx-link').nth(1).click();
+      await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+      if (!(await page.locator('.cx-confirm').innerText()).includes('Send scout to watch all')) throw new Error('"Send scout to watch all … matches ?" mangler');
+      await page.locator('.cx-confirm button.primary').click();
+      await page.waitForTimeout(300);
+      if ((await scoutAsg()) !== 'club') throw new Error('spejderen blev ikke sendt til klubben');
+      if (!/Scout \w\.\S+ assigned to/.test(await page.locator('.cx-pager-line').innerText())) throw new Error('linjen "Scout L.Kershaw assigned to …" mangler');
+      if (!(await page.locator('.cx-tbl thead', { hasText: 'Rec' }).count())) throw new Error('kolonnen Rec mangler');
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-scout-klub.png` });
+    }
+  });
+  if (look === 'klassisk' && ENGINE_GRID) await step('stabsprofilen og Approach To Sign (klassisk, original DB)', async () => {
+    // en træner fra databasen i en anden klub, som kan blive træner hos os
+    const sid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.staff).find((s) => s.cmId !== undefined && s.club && s.club !== g.userClub && s.role === 'coach' && s.dob < '1970')?.id; });
+    if (!sid) throw new Error('ingen træner fra databasen');
+    await go({ name: 'staff', id: sid });
+    await page.waitForTimeout(300);
+    for (const l of ['Profile', 'Injuries & Bans', 'Contract', 'Transfer', 'History']) if (!(await page.locator('.tabs button, .cx-tabrow button', { hasText: l }).count())) throw new Error(`stabsprofilen mangler fanen ${l}`);
+    const prof = await page.locator('.cx-staffp').innerText();
+    for (const l of ['Born', 'Coaching Style', 'Preferred Formation', 'Preferred Style', 'Judging Player Ability']) if (!prof.includes(l)) throw new Error(`Profile mangler ${l}`);
+    await page.locator('.tabs button, .cx-tabrow button', { hasText: 'Contract' }).first().click(); await page.waitForTimeout(200);
+    if (!(await page.locator('.cx-staffp').innerText()).includes('Bonuses')) throw new Error('Contract mangler Bonuses');
+    await page.locator('.tabs button, .cx-tabrow button', { hasText: 'Transfer' }).first().click(); await page.waitForTimeout(200);
+    if (!(await page.locator('.cx-staffp').innerText()).includes('Fluent Languages')) throw new Error('Transfer mangler Fluent Languages');
+    await page.locator('.tabs button, .cx-tabrow button', { hasText: 'History' }).first().click(); await page.waitForTimeout(200);
+    if (!(await page.locator('.cx-staffp').innerText()).includes('Achievements')) throw new Error('History mangler Achievements');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-stabsprofil.png` });
+    // Action ▾ Approach To Sign → Set Role At Club → Offer Contract → "Offer contract to … ?" Yes
+    await page.locator('.cx-act .cx-drop-btn').first().click();
+    const acts = await page.locator('.cx-drop-pop').last().innerText();
+    if (!/Approach To Sign/.test(acts) || !/Create Manager Note/.test(acts)) throw new Error(`Action-menuen: ${acts}`);
+    await page.locator('.cx-drop-pop >> text=Approach To Sign').first().click();
+    await page.waitForSelector('.cx-st-role', { timeout: 3000 });
+    await page.locator('.cx-st-role', { hasText: 'Coach' }).first().click();
+    await page.locator('.cx-dlg-foot button.primary').click();
+    await page.waitForSelector('.cx-staff-neg', { timeout: 3000 });
+    if (!(await page.locator('.cx-staff-neg').innerText()).includes('Your board will allow wages up to')) throw new Error('Offer Contract mangler lønloftet');
+    await page.locator('.cx-staff-neg .cx-dlg-foot button.primary').click();
+    if (!(await page.locator('.cx-staff-neg').innerText()).includes('Offer contract to')) throw new Error('"Offer contract to … ?" mangler');
+    await page.locator('.cx-staff-neg .cx-dlg-foot button.primary').click();
+    await page.waitForTimeout(300);
+    const n = await gs((id) => (window.__cm.gs().cmStaffOffers ?? []).filter((o) => o.staff === id).length, sid);
+    if (n !== 1) throw new Error('kontrakttilbuddet blev ikke sendt');
   });
   if (look === 'klassisk') await step('træning: træk spiller til fane + klik-flyt (klassisk)', async () => {
     await go({ name: 'training' });
