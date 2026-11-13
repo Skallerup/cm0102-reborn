@@ -141,6 +141,10 @@ export interface Player {
   /** [0xae2d0c] + 79·id + 0xa: originalens "indkøringsbyte" (0..255; spilstarten 0x828110, dagligt 0x5ce2d0, ferie-/skadedage 0x62c680/0x62d250 –
    *  cmPlayerData.ts staffState*); sub_6ec010 trækker den fra kamp-CA'en. Kun den originale database i ægte tilstand. */
   cmStaffState?: number;
+  /** staff+0x65: originalens forhold (12 id'er i hukommelsens rækkefølge – cmRelations.ts): +4/+8/+0xc klubber (0x547d60), +0x10/+0x14/+0x18
+   *  klubber (0x547d30), +0x1c/+0x20/+0x24 personer (0x547810), +0x28/+0x2c/+0x30 personer (0x547840); 0 = tom plads. Personer = databasens
+   *  person-id (Player.id / Staff.cmId). Kun den originale database i ægte tilstand. */
+  cmRel?: number[];
   id: number;
   first: string;
   last: string;
@@ -314,6 +318,10 @@ export interface Staff {
   cmNp?: number[];
   /** ikke-spillerpostens PA +6 efter spilstarten */
   cmPa?: number;
+  /** databasens person-id (staff.dat +0) – forholdene (cmRelations.ts) peger på personer med det */
+  cmId?: number;
+  /** staff+0x65 som Player.cmRel */
+  cmRel?: number[];
   id: number;
   first: string;
   last: string;
@@ -336,6 +344,13 @@ export interface Staff {
   form?: number;
   /** tidligere spiller (evt. legende i en klub) */
   exPlayer?: { pid: number; legendOf?: number };
+  /** ikke-spillerpostens omdømmer [+8 hjemme, +0xa aktuel, +0xc verden] i hukommelsens skala (1..10000) – cmBoard.ts (kun den originale database) */
+  cmRep?: [number, number, number];
+  /** personpostens skjulte egenskaber +0x56..+0x5d (Adaptability, Ambition, Determination, Loyalty, Pressure, Professionalism, Sportsmanship,
+   *  Temperament) og +0x22 */
+  cmHid?: number[];
+  /** personpostens +0x3e (ankomstdatoen, ISO) */
+  cmJoined?: string;
 }
 
 export interface ClubFinance {
@@ -355,6 +370,12 @@ export interface ClubFinance {
   maintenance?: number;
   /** renter af saldoen (Income: Interest) */
   interest?: number;
+  /** (cmFinance.ts, original DB i ægte tilstand) Season Tickets, Investments, Other (indtægt), League Fines, Interest (udgift) */
+  seasonTickets?: number;
+  investments?: number;
+  otherIncome?: number;
+  fines?: number;
+  interestOut?: number;
 }
 
 export interface ClubSeasonHistory {
@@ -395,6 +416,8 @@ export interface ClubSeasonStats {
 }
 
 export interface Club {
+  /** club +0x9b/+0x9f/+0xa3 (0x547790) og +0xa7/+0xab/+0xaf (0x5477d0): klubbens personer (databasens person-id'er, 0 = tom) – cmRelations.ts */
+  cmPrefs?: number[];
   id: number;
   name: string;
   short: string;
@@ -712,6 +735,10 @@ export interface ManagerProfile {
   history: { season: number; club: number; league: string; pos: number }[];
   trophies: { season: number; comp: string; club: number }[];
   sacked: number;
+  /** originalens menneskerække (cmBoard.ts): ikke-spillerpostens omdømmer [+8, +0xa, +0xc], ankomstdato +0x3e og +0x59 */
+  cmRep?: [number, number, number];
+  cmJoined?: string;
+  cmB59?: number;
   /** Indbyrdes resultater mod AI-trænere: staff-id → [V, U, T] */
   rivals?: Record<number, [number, number, number]>;
   /** Klubber der har fyret manageren */
@@ -879,6 +906,8 @@ export interface CommentaryLine {
 
 export interface MatchReport {
   fixture: number;
+  /** gittermotoren: kampens tilskuertal sub_85cba0 (samme tal bruges af økonomien) */
+  crowd?: number;
   home: number;
   away: number;
   stats: [MatchStatsSide, MatchStatsSide];
@@ -914,6 +943,8 @@ export interface CmPostResult {
   players: Record<number, { morale: number; rep: [number, number, number] }>;
   clubRep: [number | null, number | null];
   referee: number | null;
+  /** 0x6d3610: managerens nye [+0xa, +8, +0xc] pr. side (0x6b6cc0 → cmBoardGame.ts cmManagerRepPost) */
+  managers?: [[number, number, number] | null, [number, number, number] | null];
 }
 
 export interface TacticChange { m: number; t: number; kind: 'formation' | 'mentality' | 'instructions'; from?: string; to?: string }
@@ -996,14 +1027,30 @@ export interface GameState {
   /** TRAINING_MANAGER +0x688d: ugetælleren (0x8b1730 – dag-i-året % 7 = 0) */
   cmTrainWeek?: number;
   cmClubRep?: Record<number, number>;
+  /** originalens bestyrelse og managerjob (cmBoard.ts/cmBoardGame.ts – kun den originale database i ægte tilstand): MANAGER_MANAGER's poster og lister */
+  cmBoard?: import('./cmBoard').CmBoardState;
+  /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
+  cmChair?: Record<number, [number, number, number, number]>;
+  cmNationBoard?: [number, number, number][];
+  /** [0xdd6ec8] spillets start (ISO) */
+  cmBoardStart?: string;
   /** club.dat +100/+119 (status, mindste tilskuertal) og club_comp.dat +105 (turneringens omdømme) – computerens trupplan (cmSquadPlanGame.ts) */
   cmClubStat?: Record<number, [number, number] | [number, number, number, number]>;
+  /** (økonomien, cmFinance.ts) originalens Finance-post pr. klub (pund), databasens felter [division, PLC, stadion +0x4c/+0x4d],
+   *  nation +0x85, "A Lower Division", tilhængernes tillid (MANAGER_MANAGER +8) og spilstartens år */
+  cmFin?: Record<number, import('./cmFinance').CmFinRec>;
+  cmFinRaw?: Record<number, number[]>;
+  cmLowerDiv?: number;
+  cmSup?: Record<number, number>;
+  cmFinStartYear?: number;
   cmCompRep?: Record<number, number>;
   /** (runde 9) tilskuertallet sub_85cba0 (crowd.ts): pr. klub [gns., mindst, højst, stadion-id, by-id, stadionets kapacitet +0x3c (init kan hæve den),
    *  rival 1–3] (club.dat 115/119/123/105/179–187, stadium.dat +56/+60), byernes koordinater (city.dat +0x23/+0x2b fladt) og nation +0x7e */
   cmCrowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
   cmCities?: number[];
   cmNation7e?: number[];
+  /** nation +0x85 pr. nationsindeks (staffStatens ungdomsled 0x5ce8f0 – cmPlayerData.ts) */
+  cmNation85?: number[];
   /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
   cmPlan?: Record<number, { s: [number, number, number, number, number, number, number, number, number][]; st: number; fm: number; c: number }>;
   /** spillets startdato ([0xdd6ec8]) */

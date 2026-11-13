@@ -22,6 +22,7 @@ import { autoSelect, newTactic, FORMATIONS } from './tactics';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
 import type { CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
+import { cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
 import { fairTicketPrice, transferBudgetFor } from './finance';
 import { initKnowledge } from './scouting';
 import { CHALLENGES } from './challenges';
@@ -32,6 +33,8 @@ import { initialLanguages } from './cmLanguage';
 import { cmActive } from './cmPlayerData';
 import { cmStartDate } from './cmCalendar';
 import { cmFitNewGame } from './cmFitnessGame';
+import { cmRelNewGame } from './cmRelations';
+import { cmFinanceNewGame } from './cmFinance';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
@@ -151,6 +154,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (cm.cmRaw.crowd) g.cmCrowd = Object.fromEntries(Object.entries(cm.cmRaw.crowd).map(([k, v]) => [k, v.slice()])) as GameState['cmCrowd'];
     if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
     if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
+    if (cm.cmRaw.nation85) g.cmNation85 = cm.cmRaw.nation85.slice();
   }
   setGame(g);
 
@@ -410,6 +414,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
 
   // Turneringer for aktive nationer
   setupSeasonComps(season, {});
+  // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
+  cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard);
 
   // Brugerens klub
   const club = g.clubs[o.clubId];
@@ -418,7 +424,11 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // (runde 10A) sub_535a80 0x536285: spillerpostens moral +0x45 = 10 for alle databasens spillere ved spilstarten (forkørslen 0x5cc850 kører ikke
   // 0x5ce2d0's daglige moral – først fra spillets start: cmPlayerData.ts moraleDay/cmSquadMoraleDaily)
   if (cmActive(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
+  // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
+  if (cm?.cmRaw && season < 2020) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
   cmFitNewGame(g);
+  // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
+  if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
@@ -498,7 +508,7 @@ export function originalTransferFunds(balance: number): number {
   return (Math.floor((gbp * 0.7) / step) * step) / GBP;
 }
 
-export function takeOverClub(club: Club) {
+export function takeOverClub(club: Club, viaJob = false) {
   const g = gs();
   const old = g.staff[club.manager];
   if (old) {
@@ -518,7 +528,9 @@ export function takeOverClub(club: Club) {
   g.tactic = best;
   for (const p of sq) recordDevelopment(p);
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };
-  setBoardExpectation();
+  // den originale database i ægte tilstand: 0x826f20 → 0x69ebc0 → 0x694c80 (cmBoardGame.ts); ellers spillets egne forventninger
+  if (cmBoardOn(g)) { if (!viaJob) cmBoardHumanAppoint(g, club, !!old); }
+  else setBoardExpectation();
 }
 
 /** originalens spilstart for ikke-spillerposten (sat i createGame, mens databasens stab oprettes) */
@@ -536,6 +548,8 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   if (rep > 0) s.rep = Math.max(1, Math.min(100, Math.round(rep / 2)));
   if (tac?.some((v) => v > 0)) s.tac = tac.slice();
   if (ca > 0) s.ca = ca;
+  // (forholdene) databasens person-id og de skjulte egenskaber +0x56..+0x5d (kun den originale database – cmRelations.ts)
+  if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
   // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):
   // CA/PA, de manglende egenskaber (skabelonen, egen talrække pr. staff-id), navnelisten/+0x43, de 8 interne og afbalanceringen 0x539490
   const raw = row[11];
@@ -547,6 +561,8 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
     staffConvert(np, job);
     s.ca = np.ca; s.cmPa = np.pa; s.cmNp = [...np.a, np.f43];
   }
+  // ikke-spillerpostens omdømmer, de skjulte egenskaber og ankomstdatoen (sub_535a80 0x537d59 – cmBoardGame.ts)
+  if (raw && row[12]) cmInitStaffRep(g, s, row);
   g.staff[s.id] = s;
   return s;
 }

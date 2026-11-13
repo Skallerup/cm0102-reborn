@@ -197,20 +197,28 @@ const keptPlayers = new Set(w.players.map((p) => p[F.id] as number));
 for (const k of Object.keys(w.ratings)) if (!keptPlayers.has(Number(k))) delete w.ratings[Number(k)];
 for (const k of Object.keys(w.clubRep)) if (!keptClubs.has(Number(k))) delete w.clubRep[Number(k)];
 for (const k of Object.keys(w.clubColors)) if (!keptClubs.has(Number(k))) delete w.clubColors[Number(k)];
-if (w.cmRaw) { if (!ORIGINAL) delete w.cmRaw; else for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
+if (w.cmRaw) { if (!ORIGINAL) delete w.cmRaw; else for (const t of [w.cmRaw.clubRep, w.cmRaw.clubStat ?? {}, w.cmRaw.crowd ?? {}, w.cmRaw.fin ?? {}, w.cmRaw.chair ?? {}, w.cmRaw.chairBoard ?? {}] as Record<number, unknown>[]) for (const k of Object.keys(t)) if (!keptClubs.has(Number(k))) delete t[Number(k)]; }
 // stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
   w.staff = w.staff.flatMap((s) => {
     // [10] = managerens taktiske egenskaber (kun for managere i de viste klubber – computerens taktik i gittermotoren)
     // [11] = hele ikke-spillerposten (kun den originale database: originalens spilstart cmStaffInit.ts)
-    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11]]; }
+    // [12] = omdømmerne +8/+0xc og de skjulte egenskaber (kun den originale database: bestyrelse/managerjob cmBoard.ts)
+    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13]]; }
     const np = ORIGINAL && s[11] ? [s[11]] : [];
-    return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np] as typeof s];
+    const bx = ORIGINAL && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : ''] : [];
+    return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s];
   });
   // de ledige: kun de 600 bedste (world.json skal kunne ligge i appens offline-cache, højst 8 MB)
   const free = new Set(w.staff.filter((s) => !s[0]).sort((a, b) => b[7] - a[7]).slice(0, 600));
   w.staff = w.staff.filter((s) => s[0] || free.has(s));
+}
+// (forholdene) præferencerne kun for de personer og klubber, der er med (cmRelations.ts – id'er uden for spillet bliver 0 ved nyt spil)
+if (w.cmRaw?.prefs) {
+  const keptStaff = new Set((w.staff ?? []).map((s) => s[9]));
+  for (const k of Object.keys(w.cmRaw.prefs)) if (!keptPlayers.has(Number(k)) && !keptStaff.has(Number(k))) delete w.cmRaw.prefs[Number(k)];
+  for (const k of Object.keys(w.cmRaw.clubPrefs ?? {})) if (!keptClubs.has(Number(k))) delete w.cmRaw.clubPrefs![Number(k)];
 }
 // nationernes sprog (nation +0x77/+0x78/+0x79) kun i den originale database (originalens sprogtabel, cmLanguage.ts)
 if (!ORIGINAL) for (const n of w.nations as { lang?: number[] }[]) delete n.lang;

@@ -7,7 +7,7 @@ import { gs } from '../src/game/state';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 
 const seed = Number(process.argv[2] ?? 1), until = process.argv[3] ?? '2002-05-20', clubName = process.argv[4] ?? 'Wrexham';
-const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+const world = JSON.parse(readFileSync(process.env.WORLD ?? 'public/data/world-original.json', 'utf8')) as WorldData;   // WORLD=<fil>: en anden world-fil
 const eng = world.nations.findIndex((x) => x.name === 'England');
 createGame(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === clubName)![0], activeNations: [eng], lang: 'en', masking: true, seed, mode: 'authentic' });
 const g = gs();

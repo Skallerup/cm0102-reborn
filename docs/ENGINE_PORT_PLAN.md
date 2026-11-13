@@ -3,6 +3,24 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## Økonomi (2026-11-13, kun original DB i ægte tilstand – `src/game/cmFinance.ts`, noter `~/cm0102-engine/notes/finance.md`)
+- **Porteret (identisk oversat):** Finance::init_for_club 0x5961d0 (startsaldo), get_wealth_band 0x5986b0, update_wage_bill 0x598370,
+  FinanceTable::daily_update 0x59b9c0 (søndagens løn/merchandise 0x59b7e0/sæsonkort 0x599a20 + vinduet 0x59b4c0; månedens stadion,
+  træningsanlæg, billet uden liga, renter, Other ud/ind, Investments, Ground Maintenance, blokkene), calc_gate_receipts 0x59af40,
+  process_match_income 0x59a5d0, League::pay_prize_money 0x682e10/calc_prize_fund 0x682f70, pay_tv_rights 0x683010 (create_table-beløbene),
+  end_season_for_nation 0x59cdd0 + udbyttet i 0x59cfa0 (på nøglelandets opdateringsdag, key_nation_build_table 0x667150: 20/6 i Europa),
+  tilhængernes tillid fra init_club_board_records 0x68f130 (MANAGER_MANAGER +8). Klassisk View Finances viser originalens blokke
+  (This/Last Month, This/Last Year). Hooks: sim.ts (cmFinanceDay, cmGate med crowd.ts' tilskuertal), finance.ts (præmie/udbytte/addPrize),
+  season.ts (tv), competitions.ts (compHooks.leagueDone), newgame.ts (cmFinanceNewGame). World-filerne genbygget: `cmRaw.fin`
+  (division, PLC, stadion +76/+77), `cmRaw.chair` (formandens ikke-spillerpost – udfyldt med cmStaffInit), `nation85`, `lowerDiv`.
+- **Kontrol mod oraklet** (`scripts/cm-finance.ts`, oraklet `oracle/tools/fin_runs.sh` frø 1, 12 gemte spil 15/7-01…1/6-02): Man Utd
+  sæson spillet/original – Ground Maintenance 3,03M/3,01M, Merchandising 19,4M/18,4M, Other 243k/242k og 269k/278k, Investments 140k/129k,
+  Gate 23,4M/25,5M, TV 1,40M/1,77M, startsaldo 30,50M/30,59M, Bury 735k/694k, sæsonkort 1/8 38.192/37.896. Afvigelser: Prize 5,0M/17,7M
+  (pokal/Europa ikke porteret), Wages +8–35 % (spillets kontrakter/stab), saldoen (spillets transfers, ingen bonusser/signing on her).
+- **Ikke porteret:** transferbudgettet 0x598800 (spillets `transferBudget` er stadig estimeret), process_club_finance_events 0x59ed70
+  (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
+  B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
+
 ## Næste skridt (overdragelse 2026-11-12, efter runde 10A – start her i en ny session)
 
 **Status:** motoren er tal for tal identisk med originalen i låsetrin (20 PL-kampe, pokal, straffe – runde 7) og efter slutfløjt (runde 9c); kampstarten
@@ -92,6 +110,54 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
 **Oraklet:** `~/cm0102-engine/oracle/` (README). Kør det kun med ejerens viden, med sandkassen slået fra og altid med egen
 `RECOMP_USER_DIR`/`HOME` – aldrig mod `~/Library/Application Support/cm0102` (ejerens gemte spil; backup i `~/cm0102-engine/backup/`).
 
+## Transfer/kontrakt (2026-11-12/13, første runde)
+
+**Porteret instruktion for instruktion (oven på `src/game/cmMem.ts` – originalens hukommelse på originalens adresser, kald via `c.call`):**
+- `src/game/cmContract.ts`: CONTRACT_MANAGER::daily_update **0x4c7ac0** (faste datoer ved tidspunkt 0; tidspunkt 2: forhandlingslisten +0x28,
+  personløkken – værdien staff +0x52, lejeslut, forlængelsestilbud på udløbsbåndene, udløbne kontrakter, fritstillinger, Bosman-ønskelister –
+  beslutningslisten +0xc), **0x4cda70** offer_contract, **0x4ce4e0** resolve_contract_offers, 0x4cd9c0/0x4cd230/0x4cd6d0 (beslutningsdatoer),
+  0x4cc490 (tilbudslisten +0x34), listerne 0x68cfc0/0x68d020/0x68d040/0x68d0d0/0x68d1f0, Date 0x54c5b0/0x54c8e0/0x54cdb0/0x53ab90.
+- `src/game/cmContractWant.ts`: **0x85fc50** set_to_desired_contract (spillerens krav: løn, længde, bonusser, klausuler), 0x866620, 0x866830,
+  0x4ce450, 0x85e590, 0x85e410, 0x867d30, 0x867b50, 0x85f7a0–0x85f800, 0x4ca470, 0x4cf5f0; League-vtabellens 0x684790/0x6847b0 (`vcall`).
+- `src/game/cmWage.ts`: **0x864550** default_staff_contract, **0x862720** (ikke en kopi – en ældre spillerformel, se filen), 0x8626e0,
+  0x5a0590, 0x549e50, 0x547770.
+
+**Kontrol mod oraklet** (separat sporbinær, `sn_trace.c`: øjebliksbillede af hukommelsen før/efter 0x4c7ac0 + alle rand og ~75 omsluttede kald;
+frø 1, 3.9.60; `scripts/ct-daily-check.ts <mappe> <dag> <år>` og `scripts/ct-replay.ts`): porten kører på originalens hukommelse, og ALLE tal og
+kald kommer i originalens rækkefølge med originalens argumenter:
+| dag | kald i samme rækkefølge | rand (portens egne / i alt inkl. ikke-porterede kald) | 0x85fc50 | 0x864550 | kontrakter ens | +0x52 ens |
+|---|---|---|---|---|---|---|
+| 20/7-2001 (200) | 40.991 | 1.483 / 2.952 | 798/798 | 798/798 | 0/1 ¹ | 1.357/1.357 |
+| 1/2-2002 (31) | 26.603 | 15 / 948 | 9/9 | 9/9 | 0/3 ¹ | 5.099/5.099 |
+| 30/6-2002 (180, udløbsdagen) | 18.209 | 13 / 6.416 | 10/10 | 10/10 | 67/67 | 1.239/1.273 ¹ |
+
+¹ resten skrives af ikke-porterede kald (sign_contract 0x4cf720 via 0x8c38b0 skriver +0x8; free_transfer_staff 0x8c1af0 m.fl.).
+Fejl fundet undervejs: 0x10624dd3 med `sar 5` er /500 (ikke /1000) i 0x85fc50's niveau L17; 0x540a50 tager (klub, &ud, 1).
+Test: `tests/cmContract.test.ts` (fixturerne `tests/fixtures/cm-contract-180-2002.json.gz`/`-200-2001.json.gz` fra `scripts/ct-fixture.ts`:
+de bytes porten læser, svarene på tal/kald, originalens bytes efter dagen). Unicorn på et øjebliksbillede (`snapemu.py` i noten) kører en
+enkelt originalfunktion på originalens tilstand – sådan blev /500-fejlen fundet.
+
+**Sæsontal** (14/7-2001 → 30/6-2002, engelske købere; originalen `scripts/ct-season.ts` på post-180-2002.bin, vores `scripts/ct-season-game.ts`):
+se tabellen i `~/cm0102-engine/notes/contract-manager.md`. Originalen: 583 transfers med sum (£245,2 mio., median £32.247, største £12,9 mio.),
+226 art 2, 96 art 3 (fritstillinger), 134 art 4, 143 art 5 (lån, £5,0 mio.); ugeløn i engelske klubber median £478, 90 % £7.600, 99 % £32.511. Vores spil (dets eget system): 147 transfers med sum (£170,7 mio.,
+median £172.000), ugeløn median £1.161, 90 % £7.353, 99 % £25.000.
+
+**Ikke koblet ind i spillet endnu** – spillets egne systemer (transfers.ts wageDemand/renewContract/aiRenewals/aiTransferTick …) kører stadig
+for alle databaser. Det mangler, i rækkefølge:
+1. De kaldte funktioner, porten i dag får svar på fra loggen: Shortlist_Manager 0x846920 (hvor gerne klubben vil have ham – lønkravets 3,5/r;
+   3.881 instr.), 0x844780 (ikke-spillere), 0x849f00, 0x842c00, 0x849ce0; Finance::get_max_wage 0x5968d0 (1.446) og 0x597db0, 0x598370;
+   0x540a50 (B-hold, 1.080), 0x669bd0/0x669360/0x4d45f0, 0x544520/0x5477d0/0x547840/0x544670/0x5444a0; TRANSFER_MANAGER 0x8c16b0/0x8c1af0/
+   0x8c1870/0x8c5cf0/0x8c5e40/0x8cca10/0x8c38b0→0x4cf720 sign_contract/0x8c2180/0x8c28c0/0x8cf0e0/0x8cf470/0x8d0a70/0x868210/0x866f60
+   (porteret i cmPlayerData.ts som wantsToLeave – skal sluttes til), nyhederne 0x4d6790/0x4da590/0x4d49a0/0x4d6d70, 0x4d0c60 (= originalValue.ts
+   formulaValueGbp), 0x7a7eb0, 0x600a50/0x7875e0.
+2. `cmMemGame.ts`: en CmMem over spiltilstanden (staff 0x6e, spillerpost 0x46 – `aiTeam.ts playerRecord`, klub 0x245, nation, division,
+   kontrakten 80 bytes + rækken 79, finansposten 0x167, CONTRACT_MANAGER-listerne gemt i GameState) – felterne står i filhovederne.
+3. Kroge (kun `cmActive`): wageDemand/preferredYears → 0x85fc50, negotiate/renewContract → 0x866830/0x4ce4e0, aiRenewals → 0x4c7ac0.
+4. Computerens transfermarked: 0x5cccd0's morgenløkke (0x83a730 update_club_shortlist → 0x84a020 make_club_bids), TRANSFER_MANAGER::daily_update
+   0x8c5880 (0x8c63a0 process_due_offer: 0x8c8090 ai_respond_to_bid, 0x4d1600 asking price 3.131 instr., 0x8e5d60 build_bid, 0x8c0810,
+   0x8c9390 finalise, 0x8c9720 move_player_to_club) – sammenligningen med `ct-season.ts`.
+5. 0x85e960 generate_initial_contract (spilstartens kontrakter) og 0x83a1b0's 0x862720-udfyldning af manglende lønninger.
+
 ## Metode
 
 1. **Kilde:** ejerens egen `cm0102.exe` (3.9.68, matcher Bosmans manifest) rekompileret med Bosmans `tools/recomp/recomp.py`
@@ -160,6 +226,7 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
 
 ## Log
 
+- 2026-11-13 – Transfer/kontrakt, første runde: 0x4c7ac0/0x4cda70/0x4ce4e0/0x85fc50/0x864550/0x862720 porteret og kontrolleret kald for kald på tre dage (se "Transfer/kontrakt" ovenfor); ikke koblet ind i spillet.
 - 2026-11-10 – exe'en verificeret, rekompileret (36 indgange, 1.307 funktioner fulgt, 32 MB C), funktionerne klippet ud,
   offset-ordbog samlet, fire afkodere sat på tacticalCell, runTarget/zonalPick, syn/plads/offside og challenge/preShot.
 - 2026-11-11 – **Porteret (sikker):** `canSee` (0x6f9f90 + banen 0x6cbc00 = `H.laneBlockers`), `facingGoal` (0x6f4650), `spaceAhead`
@@ -1152,3 +1219,52 @@ og `setGridFactory`), `makeMatch`/`makeQuickMatch` i sim.ts (createLiveMatch, si
   tests/grid* (19 filer, 116 tests, heraf lockstep og postMatch) består. Profilen er nu flad: rand (~600.000 træk pr. kamp, 2/3 er rullene
   sub_6f44a0) ~10 %, passOptions ~12 %, genvalget/samspillet ved dødbolde ~9 %, kampstarten ~6 %. ≤ 20 ms kræver en dybere omskrivning
   (fx typed arrays for positionerne og færre objekter pr. tur i passOptions/situationen).
+- 2026-11-12 – **Forhold, moral og forkørsel** (noten `~/cm0102-engine/notes/relations.md`). **Forholdene staff+0x65 / club +0x9b..+0xaf –
+  porteret (`src/game/cmRelations.ts`):** startværdierne er DATABASENS præferencer (staff.dat +97..+144 i originaludgavens 157-bytes post; i
+  Swedish_fixed 110 bytes + en 52-bytes tabel via +101; club.dat +155..+175) – runde 9b's "ikke databasens" var forkert (hukommelsens id'er ≠
+  databasens): RP-linjerne i ls20 er præferencerne for de indlæste personer, ikke-indlæste (ledige trænere, stab/spillere i ikke-valgte lande) = 0
+  på pladsen. Primitiverne 0x547790–0x548082 (alle), den daglige game_update_squad_relationships 0x5d6d10 + 0x5d7190 (efter 0x5ce2d0/0x5ce0b0;
+  ikke i forkørslen), falmningen 0x547f90 og Loyalty-trinet 0x5d3b43 i udviklingen (cmDevelop.ts), 0x867700's managerdel (cmFlagSet → cmRelOnFlag).
+  Læserne: sub_6ec010's forhold (gameInputs.ts matchRelOf, anføreren via GridMatchCtx.captainRel), afleveringsmulighederne (GP.favoured/disliked),
+  kamprapporten (postMatchGame.ts prefs/disStaff/favStaff), managerblokken i trupplanen (cmSquadPlanGame.ts), moralens ±3 (0x5cf52e/0x5cf541).
+  **Moralen:** transferanmodningen 0x4d8757 (+12) / 0x4d87bd (−12). **staffState:** ungdomsleddet 0x5ce8e1–0x5ce94e med landets +0x85.
+  **Forkørslen:** `src/game/cmPrerun.ts` (0x5cc850's trin i originalens rækkefølge, registerPrerun) – konditionsmodulets Injury-trin flyttet dertil
+  (samme resultater); kontrakt/økonomi/manager-trinene står tomme til de andre porteringer. **Kontrol** (ls20, ADVANCE=2001-08-17, ny world-fil):
+  inddatakontrollens "forholdene staff+0x65" 304 → 392/395 (de 3: Arsenals manager er menneskets i oraklet, 1 hændelse), "kun forholdene" |float|
+  0,060 → 0,002, "alt fra spillet" 1,092 → 1,035; rel-check.ts (RP, 181 kampspillere ved 14/7) 126 → 159 ens (16: personer, originalen ikke
+  indlæser). Kampstartens moral uændret 13,4/13,6 (orig 14,4/14,8 – medierne 0x754a30/0x741020/0x736c00 og forsæsonens venskabskampe mangler).
+  Sæsonen (grid-season.ts frø 1/2/3): før 2,94 · 57/24/19, 2,97 · 55/21/23, 2,90 · 48/27/24; efter 2,97 · 49/24/26, 2,98 · 54/25/21, 3,17 · 54/23/22.
+  Nyt spil 8,2 → 9,5 s. **Ikke porteret:** originalens indlæsningsregel (hvem der er i hukommelsen), formanden (club +0xbf), medierne, Staff_Records
+  0x868c50/0x869480/0x86a1c0/0x86a800 (moral ved mesterskab/oprykning/nedrykning/pokal), Fine 0x5a5980, AWOL 0x41a360/0x419840, skadernes nyheder
+  0x630ee0, transfers 0x842320/0x8c1290/0x8c18c0, 0x5ce2d0's kontraktgrene 0x5d1a47/0x5d1e45, 0x548da0 + M. **World-filerne skal genbygges**
+  (cmRaw.prefs, cmRaw.clubPrefs, cmRaw.nation85, staff[12] = personpostens skjulte egenskaber).
+  **Tests:** tsc, vitest 84 filer (inkl. tests/cmRelations.test.ts), e2e klassisk (E2E_ENGINE=original) grøn; soak 2 sæsoner grøn med den nye
+  world-fil, men med den GAMLE world-original.json går den ned i sæson 1 (MatchSim uden målmand i `activateNation` 0x… sim.ts:631, kaldt fra
+  soak's acceptJob i et andet land) – 850498d består samme soak; fejlen er stiafhængig (andre transfers/moral → andet jobskifte) og ligger i
+  activateNation (konditionsmodulets skader cmFit rulles ikke tilbage som Player.injury), ikke i forholdene. Ikke rettet.
+
+- 2026-11-13 – **Bestyrelse og job (MANAGER_MANAGER, kun den originale database i ægte tilstand).** Nye moduler `src/game/cmBoard.ts`
+  (originalens funktioner) og `src/game/cmBoardGame.ts` (spillets data ↔ originalens felter, krogene); afkodningen i
+  `~/cm0102-engine/notes/board/` (A daily/init, B1–B6 ugentlig, B4–B5 afgang, C efter kamp/handler, D forventninger/tekster, E1 ledige job,
+  E2 kandidatscoren, F omdømmet, G/G2 0x844780). **Porteret:** 0x68f130 init (på databasens dato 1/1), 0x694c80, 0x6a3770 forventninger
+  (flag + mål +0x2c, fyringskø for "gamle" managere), 0x695240 efter hver kamp (begge hold, efter tabellen; nyheden/pressehistorien uden
+  0x74b060), 0x69aba0 afgangsbeslutningen med 0x69b350/0x6ac470/0x6ac560/0x6a0e70, 0x697c40 ugentlig (+8/+6, form/stimer, placering mod sidste
+  sæsons, bonus, europæiske gulve, managerens omdømme 0x69a36c, formuebåndet), 0x68f9c0 dagligt (månedens tillidsnyhed, fix_missing_jobs,
+  afgangskøen 0x69b650/0x69b790 med ceil(n/2), ledighedslisten med udnævnelse/rygte/jobtilbud), 0x69ba50 (fase 1, assistent/træner, nødsøgning,
+  fase 2, datoerne), 0x69d1b0 (job 5), 0x69f810, 0x69c540, 0x69ca00 (ansøgning), 0x6a4f80 (tilbud "som om"), 0x69ebc0-delen ved acceptJob,
+  0x6b281d (afslag), 0x6b204e (opsigelse), 0x826f20 (menneskets overtagelse), spilstartens omdømme sub_535a80 0x537d59 og 0x6b6cc0/0x6d3610
+  (managerens omdømme efter kampen – postMatchGame.ts giver nu managerne; kun med gittermotoren). World-filerne (alle tre originale) har nu
+  stabens +8/+0xc, de skjulte egenskaber, +0x22 og +0x3e (`staff[12]`/`[13]`), formændene (`cmRaw.chair`) og nation +0x75/+0x85/+0x88.
+  Spillets egne fyringer/jobmarked (board.ts boardMonthly/aiSackings/summerManagerChanges/fillVacancies/processJobTalks/boardAfterMatch og
+  sæsondommen) er slået fra dér; Board-skærmen læser originalens tillid (+6/100) og forventning. **Mod oraklet** (`scripts/cm-board-oracle.py`
+  læser oraklets gemte spil – club +0xcf, staff-navne, man_conf.dat; `scripts/cm-board-season.ts` spiller vores sæson): frø 1, 330 dage,
+  England/Arsenal: originalen 33 af de 92 ligaklubber med ny manager (37 i hele England; dag 1 → dag 330, `runs/bj-d1` mod `seed1-d330-3.9.60`),
+  vi 37 klubber (56 udnævnelser), 13 fælles; men vi har 8 skifter i Premier League mod originalens 2 (Villa, Leicester). **Ikke porteret / afviger**
+  (præcist): 0x844780 viljen (8,3 KB, afkodet i notes/board/G*.md, ingen tilfældige tal) – `interestHook` giver 10 (alle vil), derfor for mange
+  managere, der skifter klub; inddata: personerne er world-filens 2.451 stab (originalen ~8.900), formandens 9 taktiske egenskaber (0x69d1b0's
+  forenelighed) og alle præference-/yndlingslister (+0x65, club +0x9b..+0xaf) mangler, ingen landshold som klubber, ingen B-hold/spillende
+  managere, Comp_Stats' +0x74/+0x75 regnet af point og resterende kampe (0x68ac40 ikke afkodet), UefaSeeding = spillets CL/UEFA-pladser, ingen
+  europæisk Comp_Stats-post (bit 0x400), 0x598800 = Club.transferBudget, mediehistorierne 0x74b060 og FA-klagen 0x6a9e60 (og deres tal), 0x690d80's
+  504 tekstblade (Board-skærmen bruger stadig de gamle tekstkoder af originalens bånd), ingen forkørsel 1/1–14/7 (cmPrerun.ts' managertrin kan
+  kalde `boardDaily`), talrækken er egen (cmRand pr. dag/kamp – originalens rækkefølge inden for hver funktion). Næste skridt: port 0x844780
+  (notes/board/G-interest.md), formændenes fulde ikke-spillerpost i world-filen, 0x690d80-teksterne, kobl cmPrerun's managertrin på.

@@ -3,6 +3,7 @@ import { Info } from '../help';
 import { currentWageBill, estimateGate, fairTicketPrice, financePeriod, nextBudgetInfo, seasonForecast, sponsorOffers, sponsorSeasonValue } from '../../game/finance';
 import type { Club, ClubFinance } from '../../game/types';
 import { squad } from '../../game/state';
+import { cmFinPeriod, GBP as CM_GBP, type FinKey } from '../../game/cmFinance';
 import { ageOn } from '../../game/dates';
 import { CxDrop } from '../classic';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
@@ -310,13 +311,22 @@ type Period = 'month' | 'last' | 'year' | 'lastYear';
 const PERIODS: Period[] = ['month', 'last', 'year', 'lastYear'];
 // originalens poster; [nøgle i ClubFinance, tekst] – poster vi ikke har (fx renter) står med £0 som i originalen
 const INCOME: [keyof ClubFinance | null, string][] = [['gate', 'gate'], [null, 'seasonTickets'], ['tv', 'tv'], ['merch', 'merch'], ['transfersIn', 'sold'], ['prize', 'prize'], [null, 'investments'], ['interest', 'interest'], ['sponsor', 'other']];
+// original DB i ægte tilstand: originalens blokke (cmFinance.ts, pund → euro); køb/salg/signing on fees er spillets egne poster
+const CM_IN: (FinKey | null)[] = ['gate', 'seasonTickets', 'tv', 'merch', null, 'prize', 'investments', 'interestIn', 'otherIn'];
+const CM_OUT: (FinKey | null)[] = ['wages', 'bonuses', null, 'dividends', null, 'maintenance', 'fines', 'interestOut', 'otherOut'];
 const EXPENSE: [keyof ClubFinance | null, string][] = [['wages', 'wages'], ['bonuses', 'bonuses'], ['signOn', 'signOn'], ['dividends', 'dividends'], ['transfersOut', 'bought'], ['maintenance', 'maintenance'], [null, 'fines'], [null, 'interest'], ['other', 'other']];
 
 function ClassicFinances() {
   const g = useGame()!;
   const c = g.clubs[g.userClub];
   const [view, setView] = useRouteState<'finances' | 'income' | 'expenditure' | 'stats'>('fview', 'finances');
-  const sum = (rows: [keyof ClubFinance | null, string][], p: Period) => rows.reduce((s, [k]) => s + (k ? financePeriod(c, k, p) : 0), 0);
+  const cmKey = (rows: [keyof ClubFinance | null, string][], i: number) => (g.cmFin?.[c.id] ? (rows === INCOME ? CM_IN : CM_OUT)[i] : null);
+  const val = (rows: [keyof ClubFinance | null, string][], i: number, p: Period) => {
+    const ck = cmKey(rows, i), k = rows[i][0];
+    if (ck) return (cmFinPeriod(g, c.id, ck, p) ?? 0) / CM_GBP;
+    return k ? financePeriod(c, k, p) : 0;
+  };
+  const sum = (rows: [keyof ClubFinance | null, string][], p: Period) => rows.reduce((s, _r, i) => s + val(rows, i, p), 0);
   const table = (rows: [string, (p: Period) => number, string?][]) => (
     <table className="cx-fin">
       <thead><tr><th>{t('cl.fin.item')}</th>{PERIODS.map((p) => <th key={p}>{t(`cl.fin.p.${p}`)}</th>)}</tr></thead>
@@ -326,7 +336,7 @@ function ClassicFinances() {
     </table>
   );
   const line = (rows: [keyof ClubFinance | null, string][], prefix: string) => [
-    ...rows.map(([k, label]) => [t(`cl.fin.${prefix}.${label}`), (p: Period) => (k ? financePeriod(c, k, p) : 0)] as [string, (p: Period) => number]),
+    ...rows.map(([, label], i) => [t(`cl.fin.${prefix}.${label}`), (p: Period) => val(rows, i, p)] as [string, (p: Period) => number]),
     ['', () => 0] as [string, (p: Period) => number],
     [t('cl.fin.total'), (p: Period) => sum(rows, p), 'total'] as [string, (p: Period) => number, string],
   ];

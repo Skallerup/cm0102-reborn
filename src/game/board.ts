@@ -1,4 +1,5 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
+import { cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardResign } from './cmBoardGame';
 import { finalOrder, leagueRows } from './competitions';
 import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
@@ -192,6 +193,14 @@ export function resignJob(): string {
   const g = gs();
   const club = g.clubs[g.userClub];
   if (!club) return 'error';
+  if (cmBoardOn(g)) {
+    // 0x6b204e: remove_club_manager(klub, 2, 0, 0) + add_job_vacancy(klub, mennesket)
+    addNews({ cat: 'job', key: 'job.resigned', params: { club: club.name } });
+    club.manager = 0; club.tactic = null;
+    cmBoardResign(g, club.id);
+    g.userClub = 0; g.tactic = null; g.pendingFixture = null; g.jobOffers = [];
+    return 'ok';
+  }
   const m = Number(g.date.slice(5, 7));
   const midSeason = m >= 8 || m <= 4;
   if (midSeason) g.manager.rep = clamp(g.manager.rep - 3, 1, 100);
@@ -233,6 +242,8 @@ export function boardSeasonEnd(): 'sacked' | 'ok' | 'great' {
   const pos = order.indexOf(club.id) + 1;
   const diff = g.board.expectedPos - pos;
   g.manager.history.push({ season: g.season, club: club.id, league: club.league, pos });
+  // den originale database i ægte tilstand: originalens bestyrelse dømmer løbende (cmBoard.ts) – ingen sæsondom her
+  if (cmBoardOn(g)) return 'ok';
   g.manager.rep = clamp(g.manager.rep + diff * 1.5 + (pos === 1 ? 8 : 0), 1, 100);
   if (!g.challenge && diff <= -6 && g.board.confidence < 40) {
     sackUser('board.sackedSeason');
@@ -505,6 +516,7 @@ export function fillVacancies() {
 
 export function declineJob(cid: number) {
   const g = gs();
+  if (cmBoardOn(g)) { g.jobOffers = g.jobOffers.filter((x) => x !== cid); cmBoardDeclineJob(g, cid); return; }
   g.jobOffers = g.jobOffers.filter((x) => x !== cid);
   if (g.manager.jobTalks) delete g.manager.jobTalks[cid];
   (g.manager.declinedJobs ??= {})[cid] = g.date;
@@ -525,6 +537,7 @@ export function applyForJob(cid: number): 'sent' | 'offer' | 'error' {
   const g = gs();
   const club = g.clubs[cid];
   if (!club || club.manager !== 0 || g.leagues[club.league]?.hidden) return 'error';
+  if (cmBoardOn(g)) return g.jobOffers.includes(cid) ? 'offer' : cmBoardApply(g, cid);
   if (g.jobOffers.includes(cid)) return 'offer';
   if (g.manager.jobTalks?.[cid]) return 'sent';
   const ok = g.manager.rep + 10 >= club.rep || rng.chance(Math.max(0.05, 0.5 - (club.rep - g.manager.rep) / 40));
@@ -589,6 +602,17 @@ export function negotiateJob(cid: number, ask: 'budget' | 'exp'): 'yes' | 'no' |
 export function acceptJob(cid: number) {
   const g = gs();
   const club = g.clubs[cid];
+  if (cmBoardOn(g)) {
+    // 0x6b287c → 0x69ebc0 appoint_manager_to_club: den gamle klub får en ledig stilling (0x69ba50), bestyrelsen nulstilles (0x694c80)
+    const old = g.userClub && g.clubs[g.userClub] ? g.userClub : 0;
+    if (old) { g.clubs[old].manager = 0; g.clubs[old].tactic = null; }
+    forEachHuman(() => { g.jobOffers = g.jobOffers.filter((x) => x !== cid); });
+    g.jobOffers = []; g.manager.jobTalks = {};
+    takeOverClub(club, true);
+    cmBoardAcceptJob(g, cid, old);
+    addNews({ cat: 'job', key: 'news.newJob', params: { club: club.name } });
+    return;
+  }
   const terms = jobTerms(cid);
   if (g.userClub && g.clubs[g.userClub]) {
     const oldClub = g.clubs[g.userClub];

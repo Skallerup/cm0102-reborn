@@ -14,7 +14,7 @@
 //   4. egenskaberne: efter toppen fysikken med rand(L)/m (m af Natural Fitness), Reflexes rand(T), Creativity/Positioning ×1,1; før toppen
 //      Consistency/Leadership/Versatility/Important Matches rand(3L)/10, Stamina/Strength (træningens fysik-effekt), Anticipation/Decisions rand(T);
 //      fra 30 år aldringen pr. aldersgruppe (30–32, 33–34, 35–37, 38+);
-//   5. re-centreringen 0x538bc0 (cmTraining.ts normaliseRec) og 0x547f90 (relationerne – findes ikke hos os).
+//   5. re-centreringen 0x538bc0 (cmTraining.ts normaliseRec) og 0x547f90 (forholdene falmer – cmRelations.ts).
 // Nyheden om træningen (0x5d499a–0x5d4ace: menneskets klub, CA-spring over rand(20), news_post_training_report) er ikke porteret – kun rand(20).
 // Tilfældighederne trækkes af en egen talrække (cmRand) pr. spiller og dag – spillets rng røres ikke.
 import type { GameState, Player, Staff } from './types';
@@ -24,6 +24,7 @@ import { cmActive, cmRand, clubRepMem, statAvg } from './cmPlayerData';
 import { isHumanClub } from './humans';
 import { displayFromX, intrinsicOf } from './playerInit';
 import { type CmRec, type CmTrainEntry, nibble, normaliseRec, recInto, recOf, cmTrainWeekTick } from './cmTraining';
+import { addFavClub, fadeRelations, removeFavClub } from './cmRelations';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const s16 = (v: number) => (v << 16) >> 16;
@@ -51,6 +52,8 @@ export interface DevClub {
   coaches: (DevCoach | null)[];
 }
 export interface DevIn {
+  /** forholdene (cmRelations.ts): 0x547d90(staff, klub, flag) og 0x547f50(staff, klub) – personlighedens Loyalty 20 / 1 */
+  rel?: { favClub: (flag: number) => void; unfavClub: () => void };
   /** staff-id (originalens nummer) og alder (staff +0x18) */
   id: number; age: number;
   club: DevClub | null;
@@ -77,8 +80,9 @@ export function developCore(i: DevIn, r: CmRec, P: DevPers, rand: (n: number) =>
     if (age < 25) { if (P.amb < 20 && rand(3) === 0) P.amb++; }
     else if (age > 25 && P.amb > 1 && rand(3) === 0) P.amb--;
     if (rand(4) === 0) {
-      if (rand(2) === 0) { if (P.loy < 20) P.loy++; else rand(2); }               // 0x547d90 staff_add_favoured_club(…, rand(2)) – relationerne
-      else if (P.loy > 1) P.loy--;                                              // ellers 0x547f50 (relationerne)
+      if (rand(2) === 0) { if (P.loy < 20) P.loy++; else { const fl = rand(2); i.rel?.favClub(fl); } }   // 0x5d3b77: 0x547d90(staff, klub, rand(2))
+      else if (P.loy > 1) P.loy--;
+      else i.rel?.unfavClub();                                                 // 0x5d3b8e: 0x547f50(staff, klub)
     }
     if (rand(4) === 0) { if (rand(2) === 0) { if (P.det < 20) P.det++; } else if (P.det > 1) P.det--; }
     if (rand(4) === 0) {
@@ -395,8 +399,10 @@ export function cmDevelopPlayer(g: GameState, p: Player, club: DevClub | null, m
     id: p.id, age: ageOn(p.dob, g.date), club,
     stats: [statAvg(p, 6, 1, 6.5), statAvg(p, 6, 0x11, 6.5), statAvg(p, 1, 0x11, 6.5), statAvg(p, 1, 1, 6.5)], mean,
     fatigue: dctx?.fatigue(p) ?? 0, injury: dctx?.injuryW2c(p) ?? null, train0: e ? nibble(e, 0) : 0,
+    rel: { favClub: (fl) => addFavClub(g, p, p.club, fl !== 0, rand), unfavClub: () => removeFavClub(p, p.club) },
   }, r, P, rand);
   normaliseRec(r, e);
+  fadeRelations(p, rand);                                                      // 0x5d5778: 0x547f90 (forholdene falmer)
   for (const [k, a] of PERS) p.attrs[AX(a)] = P[k];
   recInto(g, p, r);
 }

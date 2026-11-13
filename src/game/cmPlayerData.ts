@@ -197,7 +197,12 @@ function happyStep(p: Player, c: CmContract, clubRep: number, age: number): void
 export function cmFlagSet(c: CmContract, flag: number): void {
   c.b45 = (c.b45 | flag) >>> 0;
   if (flagCtx && flagCtx.depth < 8) requestAfterFlag(flagCtx.g, flagCtx.p, c);
+  // 0x867820–0x867915: managerens uven (forholdene – cmRelations.ts cmRelOnFlag)
+  if (flagCtx && relFlagHook) relFlagHook(flagCtx.g, flagCtx.p, flag, c.b44, flagCtx.rand);
 }
+/** 0x867700's forholdsdel (cmRelations.ts registrerer den – ingen cirkulær import) */
+let relFlagHook: ((g: GameState, p: Player, flag: number, b44: number, rand: (n: number) => number) => void) | null = null;
+export const setRelFlagHook = (h: typeof relFlagHook) => { relFlagHook = h; };
 let flagCtx: { g: GameState; p: Player; rand: (n: number) => number; depth: number } | null = null;
 /** kør fn med en spiller i sammenhængen, så 0x867700's transferønske kan følge et flag */
 export function withFlagCtx<T>(g: GameState, p: Player, rand: (n: number) => number, fn: () => T): T {
@@ -266,12 +271,14 @@ function handleTransferRequest(p: Player, c: CmContract): void {
   const grant = statusCode(p) !== 1 && !!reqHooks && p.value * 1.5 > reqHooks.asking(p);
   if (grant) {
     c.b4e = (((c.b4e ?? 0) & ~2) | 8) & 0xff;
-    p.wantsAway = true;                                                        // 0x842c00: på klubbernes ønskelister (staff_adjust_morale +12 – ikke hos os)
+    if (!MORALE_OFF) cmAdjustMorale(p, 0xc, false, ctx.rand);                 // 0x4d8757: staff_adjust_morale(staff, +12, 0)
+    p.wantsAway = true;                                                        // 0x842c00: på klubbernes ønskelister
     return;
   }
   const loy = sh(p, 'loyalty');
   const r1 = ctx.rand(s8(c.b44) + 20 * (s8(loy) + 5)), r2 = ctx.rand(50);
   if (r1 < r2) { ctx.depth++; try { cmFlagSet(c, 0x10000); } finally { ctx.depth--; } }
+  if (!MORALE_OFF) cmAdjustMorale(p, -0xc, false, ctx.rand);                  // 0x4d87bd: staff_adjust_morale(staff, −12, 0)
   c.b44 = clamp100(s8(c.b44) + s8(s8(loy * 5) + 0x38));
 }
 /** 0x8674e0 (clear_grievances): +0x45 &= ~flag, så 0x867240 (trækker et transferønske tilbage – kræver +0x4e & 8, som vi ikke har) */
@@ -439,6 +446,8 @@ export function repMemOf(v: number): number {
 /** gittermotorens kamprapport (MatchReport.cmPost, engine/grid/postMatch.ts – originalens 0x6d1cc0/0x6d26b0): moralen (MATCH_PLAYER +0x17 →
  *  spillerposten +0x45 = Player.morale), omdømmet (+0x49/+0x47/+0x4b → +9/+0xb/+0xd = cmRepMem ·50) og klubbens omdømme (engine+0x1d6 →
  *  club +0x80 = cmClubRep). Originalen overfører dem i 0x6b5f00 før 0x4ca6d0/0x7c0d70 (0x6b6cc0 kommer først) – derfor først her. */
+/** cmBoardGame.ts registrerer managerens omdømme (undgår en cirkulær import) */
+export const postHooks: { managerRep?: (g: GameState, club: number, v: [number, number, number]) => void } = {};
 export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport): void {
   const post = rep.cmPost;
   if (!post) return;
@@ -447,6 +456,8 @@ export function cmApplyPost(g: GameState, f: Fixture, rep: MatchReport): void {
     p.morale = v.morale;
     p.cmRepMem = [repMemOf(v.rep[0]), repMemOf(v.rep[1]), repMemOf(v.rep[2])];
   }
+  // 0x6b6cc0: managerens omdømme (og en fjerdedel til assistenten og trænerne) FØR klubbens omdømme
+  if (post.managers) [f.home, f.away].forEach((c, i) => { const v = post.managers![i]; if (v) postHooks.managerRep?.(g, c, v); });
   if (g.cmClubRep) [f.home, f.away].forEach((c, i) => { const v = post.clubRep[i]; if (v !== null) g.cmClubRep![c] = v; });
 }
 
@@ -659,13 +670,17 @@ export function cmSquadMoraleDaily(g: GameState, squadOf: (club: number) => Play
 
 /** 0x5ce2d0 0x5cf4c8–0x5cf578: rand(10) = 0 → målet bl = 10, i en liga med tabel og under 10 kampe (Comp_Stats +4) 10 + rand(10 − kampe);
  *  +3 hvis klubben har spilleren blandt sine yndlingspersoner (club +0x9b/+0x9f/+0xa3, 0x547790), −3 blandt de uønskede (+0xa7/+0xab/+0xaf,
- *  0x5477d0) – felterne er ikke i world-filen (= 0); moralen ≠ bl → 0x544710(staff, trunc((m + bl)/2) − m, 1) */
+ *  0x5477d0 – Club.cmPrefs, databasens club.dat +155..+175); moralen ≠ bl → 0x544710(staff, trunc((m + bl)/2) − m, 1) */
 function moraleDay(g: GameState, p: Player, rand: (n: number) => number): void {
   if (rand(0xa) !== 0) return;
   let bl = 10;
   const lg = p.club ? g.comps[g.clubs[p.club]?.league ?? ''] : undefined;
   const row = lg?.type === 'league' ? lg.table.find((r) => r.club === p.club) : undefined;
   if (row && (row.p & 0xff) < bl) bl = s8(rand(10 - (row.p & 0xff)) + 10);
+  // 0x5cf52e/0x5cf541: klubbens personer club +0x9b.. (+3) / +0xa7.. (−3) – databasens club.dat +155..+175 (cmRelations.ts)
+  const cp = p.club ? g.clubs[p.club]?.cmPrefs : undefined;
+  if (cp && (cp[0] === p.id || cp[1] === p.id || cp[2] === p.id)) bl = s8(bl + 3);
+  else if (cp && (cp[3] === p.id || cp[4] === p.id || cp[5] === p.id)) bl = s8(bl - 3);
   const m = s8(Math.round(p.morale ?? 10));
   if (m !== bl) cmAdjustMorale(p, s8(Math.trunc((m + bl) / 2) - m), true, rand);
 }
@@ -751,13 +766,15 @@ export function cmStaffStateInit(g: GameState, today = g.date): void {
 /** 0x5ce2d0 0x5ce4b6–0x5cf481 for én spiller (esi = kontrakten, [esp+0x1c] = kontraktens klub). A = 0x548da0(staff, klub) – en person i klubben,
  *  spilleren ser op til (~15 % af spillerne i oraklet) – er ikke porteret: A = 0, så leddet 0x5ce80c–0x5ce88c (+L eller +L/4 til en løkkevariabel
  *  [esp+0x70], der ikke nulstilles mellem personerne – sic – og rand af den) og A's land i 0x20/0x20000-grenene falder bort. Ligeledes ikke:
- *  landets +0x85 i ungdomsleddet 0x5ce8e1 (vi har ikke feltet: intet tillæg), kontraktens begivenheder +0x40 (0x8676f0 = 0), 0x8cca10 (= 0),
+ *  kontraktens begivenheder +0x40 (0x8676f0 = 0), 0x8cca10 (= 0),
  *  trupstatussen for > 23 år med status 5/6 (0x5ce5ad – skrives ikke af denne port) og blokken 0x5cf144–0x5cf38e (ændrer ikke byten). */
 export function staffStateDaily(i: {
   x: number; fatigue: number; contract: CmContract | null; club: boolean; listed: boolean; age: number; ca: number; worldRep: number;
   gkRating: number; pos2: number; morale: number; form: number; id: number;
   hid: { determination: number; loyalty: number; pressure: number; professionalism: number; adaptability: number };
   injured: boolean; job11: boolean;
+  /** 0x5ce8f0: (kontraktklubbens land +0x85·0,2 + 0,6)·klub +0x80 – null uden klub/land (og i spil fra world-filer uden +0x85: leddet springes over) */
+  clubYouth?: number | null;
 }, rand: (n: number) => number): number {
   let x = u8b(i.x);
   const c = i.contract, P = s8(i.hid.professionalism), L = s8(i.hid.loyalty), D = s8(i.hid.determination), Pr = s8(i.hid.pressure);
@@ -789,6 +806,11 @@ export function staffStateDaily(i: {
       if (s16(i.worldRep) < 0xea6 && i.age < 0x13) {
         let cl = s8(Math.trunc(Pr * 0.25 + 3.0));
         if (i.age < 0x11) cl = s8(cl - 3); else if (i.age === 0x11) cl = s8(cl - 1);
+        // 0x5ce8e1–0x5ce94e: kontraktklubbens land +0x85: v = (+0x85·0,2 + 0,6)·klub +0x80 → over 7750 −2, over 5750 −1, under 3750 +1
+        if (i.clubYouth !== null && i.clubYouth !== undefined) {
+          const v = i.clubYouth;
+          if (v > 7750) cl = s8(cl - 2); else if (v > 5750) cl = s8(cl - 1); else if (v < 3750) cl = s8(cl + 1);
+        }
         if (cl < 0) cl = 0;
         if (s8(c.b3f) > cl) { let al = s8(7 - cl); if (al < 2) al = 2; add(al); }
       }
@@ -831,6 +853,7 @@ function staffStateDay(g: GameState, p: Player, c: CmContract, rand: (n: number)
     ca: p.ca, worldRep: Math.round(rec[2] * 50), gkRating: p.pos[0] ?? 0, pos2: p.pos[2] ?? 0, morale: p.morale ?? 10, form: s8(Math.trunc(fs / 4)), id: p.id,
     hid: { determination: shi(p, 'determination'), loyalty: shi(p, 'loyalty'), pressure: shi(p, 'pressure'), professionalism: shi(p, 'professionalism'), adaptability: shi(p, 'adaptability') },
     injured: (pctx.injury?.(p) ?? 0) === 2, job11: true,
+    clubYouth: g.cmNation85 && p.club && g.clubs[p.club] ? (s8(g.cmNation85[g.clubs[p.club].nation] ?? 0) * 0.2 + 0.6) * s16(clubRepMem(g, p.club)) : null,
   }, rand);
   p.cmStaffState = v || undefined;
 }

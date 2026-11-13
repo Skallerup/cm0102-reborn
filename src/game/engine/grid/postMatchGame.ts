@@ -8,8 +8,8 @@
 //   kontrakten 0x4cf5f0 +0x3d/+0x4f Player.cmContract (cmPlayerData.ts), trupstatus (statusCode) uden den
 //   klub +0x80 / +0x53             cmPlayerData.ts clubRepMem / Club.nation; turneringen +0x69 / +0x5d: gameInputs.ts fixtureInfoOf / Competition.nation
 //   [0xb74350] +0x10/+0x18         GameState.cmRatingAvg (cmPlayerData.ts – 680/100 ved spilstart)
-// Findes ikke i spillet (dokumenteret i ENGINE_PORT_PLAN.md, runde 9c): spillerens yndlings-/uvenklubber (staff +0x65), klubbens rivaler og
-// yndlinge/uvenner blandt personerne (club +0x9b..+0xbb), club +0xcf, landshold (0x53b900 – landskampene spilles ikke i gittermotoren),
+// Forholdene staff+0x65 og club +0x9b..+0xaf: Player.cmRel / Club.cmPrefs (cmRelations.ts). Findes ikke i spillet (ENGINE_PORT_PLAN.md, runde 9c):
+// klubbens rivaler (club +0xb3..+0xbb), club +0xcf, landshold (0x53b900 – landskampene spilles ikke i gittermotoren),
 // de store landsholdsturneringer (0x76d940), rundekoderne fixture +0x30/+0x32 (= 0), prøvespillerlisten engine+0x478e (ingen) og managerens
 // omdømme i ikke-spillerposten (+8/+0xa/+0xc – Staff har det ikke: 0x6d3610 springes over).
 import type { CmPostResult, Player } from '../../types';
@@ -17,7 +17,7 @@ import { gs, hasGame } from '../../state';
 import { clubRepMem, newCmContract, statusCode } from '../../cmPlayerData';
 import { fixtureInfoOf } from './gameInputs';
 import type { GP, GridMatch, Rand } from './gridMatch';
-import { matchReport6d1cc0, refereeReport6d4a20, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
+import { matchReport6d1cc0, refereeReport6d4a20, type PmManager, type PmClub, type PmEnv, type PmFixture, type PmPlayer, type PmStaff } from './postMatch';
 import { pmPlayerOf, pmSides, refereeInputs } from './postMatchInputs';
 
 const s8 = (v: number) => (v << 24) >> 24;
@@ -26,7 +26,9 @@ const s16a = (a: Int8Array, o: number) => (u16(a, o) << 16) >> 16;
 
 function clubOfGame(id: number): PmClub {
   const g = gs(), c = g.clubs[id];
-  return { key: id + 1, id, rep: clubRepMem(g, id), nation: c ? c.nation + 1 : 0, ground: id + 1, disStaff: [], favStaff: [], rivals: [], cf: 0, national: false, manager: null };
+  // club +0x9b..+0xa3 / +0xa7..+0xaf (Club.cmPrefs – personnøglen er person-id + 1 som staffOfGame)
+  const cp = c?.cmPrefs, keys = (a: number) => (cp ? cp.slice(a, a + 3).filter((x) => x > 0).map((x) => x + 1) : []);
+  return { key: id + 1, id, rep: clubRepMem(g, id), nation: c ? c.nation + 1 : 0, ground: id + 1, disStaff: keys(0), favStaff: keys(3), rivals: [], cf: 0, national: false, manager: null };
 }
 
 function staffOfGame(q: GP): PmStaff | null {
@@ -34,7 +36,9 @@ function staffOfGame(q: GP): PmStaff | null {
   if (p.regen || !q.staffRaw || !q.recRaw) return null;                    // 0x6d20d6: genererede spillere (id ≥ [0xae2364]) får ingen rapport
   const S = q.staffRaw, R = q.recRaw;
   return { key: p.id + 1, id: p.id, age: s8(S[0x18]), nation: (p.nation ?? -1) + 1, ambition: S[0x57], determination: S[0x58], pressure: S[0x5a],
-    professionalism: S[0x5b], temperament: S[0x5d], rec: { ca: s16a(R, 5), r9: s16a(R, 9), rb: s16a(R, 0xb), rd: s16a(R, 0xd) }, prefs: null };
+    professionalism: S[0x5b], temperament: S[0x5d], rec: { ca: s16a(R, 5), r9: s16a(R, 9), rb: s16a(R, 0xb), rd: s16a(R, 0xd) },
+    // staff+0x65 +4..+0xc og +0x10..+0x18 (Player.cmRel – klubnøglen er klub-id + 1 som clubOfGame; postMatch.ts' navne følger låsetrinets felter)
+    prefs: p.cmRel ? { disClubs: p.cmRel.slice(0, 3).filter((x) => x > 0).map((x) => x + 1), favClubs: p.cmRel.slice(3, 6).filter((x) => x > 0).map((x) => x + 1) } : null };
 }
 
 /** kamprapporten for gittermotorens kamp (efter slutfløjtet) med kampens egne tal (rand) – null uden spil */
@@ -64,10 +68,19 @@ export function gamePostReport(gm: GridMatch, o: { home: number; away: number; f
       return { b3d: c.b3d, b4f: c.b4f ?? (statusCode(p) << 4) };
     },
   };
-  const res = matchReport6d1cc0({ fx, players, managers: [null, null] }, env, rand);
+  // managerens omdømme 0x6d3610: ikke-spillerpostens +8/+0xa/+0xc (Staff.cmRep / ManagerProfile.cmRep – cmBoard.ts); uden post: springes over
+  const mgrOf = (club: number): PmManager | null => {
+    const c = g.clubs[club];
+    if (!c) return null;
+    const rp = c.manager === -1 ? (club === g.userClub ? g.manager.cmRep : g.humans?.find((h) => h.userClub === club)?.manager.cmRep) : g.staff[c.manager]?.cmRep;
+    const nat = c.manager === -1 ? g.manager.nation : g.staff[c.manager]?.nation;
+    return rp && nat !== undefined ? { nation: nat + 1, w8: rp[0], wa: rp[1], wc: rp[2] } : null;
+  };
+  const res = matchReport6d1cc0({ fx, players, managers: [mgrOf(o.home), mgrOf(o.away)] }, env, rand);
   const refIn = refereeInputs(gm, sides);
   const ref = refereeReport6d4a20({ ref: 0, comp: fx.comp, ...refIn }, rand);
-  const out: CmPostResult = { players: {}, clubRep: [res.clubRep[0], res.clubRep[1]], referee: ref ? ref.score : null };
+  const out: CmPostResult = { players: {}, clubRep: [res.clubRep[0], res.clubRep[1]], referee: ref ? ref.score : null,
+    managers: [res.managers[0] ? [res.managers[0].w0, res.managers[0].w2, res.managers[0].w4] : null, res.managers[1] ? [res.managers[1].w0, res.managers[1].w2, res.managers[1].w4] : null] };
   for (const s of [0, 1] as const) players[s].forEach((p, i) => {
     if (!p || p.w47 === undefined || !byIdx[s][i]) return;
     // MATCH_PLAYER +0x17 og +0x49/+0x47/+0x4b = spillerpostens +0x45 og +9/+0xb/+0xd (0x6d35d5's gren uden kampspiller skriver dem dér)

@@ -15,7 +15,7 @@ import type { Player } from '../src/game/types';
 const file = process.argv[2] ?? `${process.env.HOME}/cm0102-engine/oracle/runs/ls20.txt`;
 const N = Number(process.argv[3] ?? 20);
 const trs = await readMatches(file, Array.from({ length: N }, (_, i) => i), 1);
-const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
+const world = JSON.parse(readFileSync(process.env.WORLD ?? 'public/data/world-original.json', 'utf8')) as WorldData;   // WORLD=<fil>: en anden world-fil
 const eng = world.nations.findIndex((x) => x.name === 'England');
 createGame(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Wrexham')![0], activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
 const g = gs();

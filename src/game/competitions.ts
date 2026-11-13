@@ -517,6 +517,7 @@ function checkLeagueProgress(comp: Competition) {
   comp.finished = true;
   const order = finalOrder(comp);
   comp.winner = order[0];
+  compHooks.leagueDone?.(comp, order);
   forEachHuman(() => { if (newsRelevant(...comp.clubs)) addNews({ cat: 'general', key: 'news.champions', params: { club: g.clubs[order[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }); });
   celebrateTrophy(order[0], comp.name, 'league');
   if (rules?.playoff) {

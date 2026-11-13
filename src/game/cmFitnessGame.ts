@@ -12,6 +12,7 @@ import { asOwner, isHumanClub } from './humans';
 import { cmRand, statCategory } from './cmPlayerData';
 import { cmTrainPlayer, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
+import { registerPrerun, runPrerun } from './cmPrerun';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 /** modulet gælder: original DB i ægte tilstand, ikke draft-ligaen */
@@ -106,12 +107,18 @@ export function cmFitNewGame(g: GameState): void {
   setKnockHook(true);
   initRecords(fitCtx(g, SALT.init, db), ps);
   cmStaffStateInit(g, `${g.date.slice(0, 4)}-01-01`);                                 // 0x828110: staffpostens +0xa (indkøringsbyten) på databasens dato
+  // forkørslen 0x5cc850 (cmPrerun.ts): trinet Injury 0x62b7b0 hver dag fra dagen efter databasens dato til dagen før start
   const staff = Object.keys(g.staff).length;
-  for (let d = db + 1; d < start; d++) injuryDaily(fitCtx(g, SALT.prerun, d), ps, staff);
+  prerunInjury = { ps, staff };
+  try { runPrerun(g, db + 1, start); } finally { prerunInjury = null; }
   const c = fitCtx(g, SALT.init, start);
   initSquadFitness(c, ps);
   for (const p of ps) { if (p.cmFit) p.cmFit.load = trainingLoad(p, !!p.club && isHumanClub(p.club)); syncPlayer(c, p); }
 }
+
+/** forkørslens Injury-trin (0x5cc850 → 0x62b7b0 ved tidspunkt 2) – spillerlisten og stabens antal fra cmFitNewGame */
+let prerunInjury: { ps: Player[]; staff: number } | null = null;
+registerPrerun('injury', (g, d) => { if (prerunInjury) injuryDaily(fitCtx(g, SALT.prerun, d), prerunInjury.ps, prerunInjury.staff); });
 
 /** Dagen (sim.ts newDay): 0x62b7b0, så 0x5ce2d0's del – trætheden falder for alle (0x62c2f0) – og aflæsningerne: menneskets spillere
  *  (0x5cf226) og de skadede (deres status, så spillets udtagelse og skærme ser skaden). */

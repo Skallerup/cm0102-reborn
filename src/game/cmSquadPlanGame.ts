@@ -25,6 +25,7 @@ import { roleScore, type Day } from './engine/grid/roleScore';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { SQUAD_STATUSES } from './squadStatus';
+import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
 
 const GBP = 0.86;                                                             // £ = € · 0,86 (newgame.ts)
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -119,6 +120,10 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const ctxPick = aiPickCtx(cid) ?? {};
   const np = managerNp(g, cid);
   const mgrBlock: ManagerBlockIn | undefined = np ? { np, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } } : undefined;
+  // managerblokkens forhold pr. spiller (0x6e79da/0x6e7a14: spilleren og klubben, 0x6e7a5b/0x6e7a72: manageren og spilleren – cmRelations.ts)
+  const mgrPerson = managerStaff(g, cid);
+  const mgrOf = (p: Player): ManagerBlockIn | undefined => (mgrBlock && (p.cmRel || mgrPerson?.cmRel)
+    ? { ...mgrBlock, rel: { d30: dislikesClub(p, cid), d60: favoursClub(p, cid), m840: dislikesPerson(mgrPerson, p.id), m810: favoursPerson(mgrPerson, p.id) } } : mgrBlock);
   const yearAgo = dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`);
   const clubLang = nationLanguage(g, club.nation);
   const cache = new Map<number, ReturnType<typeof roleDataOf>>();
@@ -139,7 +144,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
         langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && playerLanguages(g, p).includes(clubLang) ? 10 : 0,
         nationOfClub: p.nation === club.nation || p.cmNation2 === club.nation,
         clubRep: rep, stClubRep: clubRepMem(g, pp.clubId), listed: !!p.listed, daysNoClub: 0,
-        league69: leagueRep, mgr: mgrBlock ?? { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } },
+        league69: leagueRep, mgr: mgrOf(p) ?? { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } },
         data: { ...d, contract: c ? { b3d: c.b3d, b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null,
           injury: () => (inj ? { w28: inj.w28, w2c: inj.w2c } : null) },
       });
@@ -151,7 +156,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
         rec: pp.rec!, pos: mask, att: 0, lo: 0, hi: 0, tb: 0, tf: 0, flags,
         mgrJoined: st ? mj : null, today, yearAgo, captain: false, setPiece: 0,
         data: { ...d, contract: c ? { b3e: c.b3e, b3f: c.b3f, b44: p.cmContract?.b44 ?? 0, b45: c.b45, b4f: c.b4f } : null },
-        ...(mgrBlock ? { mgrBlock, hasClub: true } : {}),
+        ...(mgrBlock ? { mgrBlock: mgrOf(p), hasClub: true } : {}),
       });
     },
     judge: (pp, kind, hint) => dataOf(byId.get(pp.id)!).judge(kind, hint),

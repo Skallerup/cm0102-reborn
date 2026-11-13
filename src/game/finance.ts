@@ -5,6 +5,7 @@ import { gs, squad } from './state';
 import { rng } from './rng';
 import { extended } from './rules';
 import type { Club, ClubFinance, Fixture } from './types';
+import { book, cmFinOn, hasLeagueMoney, K as CMK } from './cmFinance';
 
 export function weeklyWages() {
   const g = gs();
@@ -156,7 +157,11 @@ export function seasonPrizeMoney() {
     if (!unsim.has(c.league)) unsim.set(c.league, []);
     unsim.get(c.league)!.push(c);
   }
+  // den originale database i ægte tilstand: ligaer uden tabel får ingen præmie (originalen); ligaerne med originalens præmie betales af
+  // cmFinance.ts, når ligaen er færdigspillet (League::pay_prize_money 0x682e10)
+  const cm = cmFinOn(g);
   for (const [lg, clubs] of unsim) {
+    if (cm) break;
     const wealth = rulesFor(lg, clubs.length).wealth;
     const tier = g.leagues[lg]?.tier ?? 1;
     clubs.sort((a, b) => b.rep - a.rep).forEach((c, i) => {
@@ -167,6 +172,7 @@ export function seasonPrizeMoney() {
   }
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
+    if (cm && hasLeagueMoney(comp.id)) continue;
     const order = finalOrder(comp);
     const wealth = rulesFor(comp.id, order.length).wealth;
     order.forEach((cid, i) => {
@@ -181,6 +187,8 @@ export function seasonPrizeMoney() {
 }
 
 export function addPrize(c: Club, amount: number) {
+  // original DB i ægte tilstand: præmien i originalens Prize Money-post (pokal-/Europapræmierne er stadig spillets – ikke porteret)
+  if (cmFinOn(gs())) { book(gs(), c, CMK.prize, Math.round(amount * 0.86)); return; }
   c.balance += amount;
   c.finance.prize += amount;
 }
@@ -196,9 +204,10 @@ export function newSeasonBudgets() {
     // sæsonens omsætning – ellers hober pengene sig op hos en klub, der ikke handler
     const turnover = c.finance.gate + c.finance.tv + c.finance.prize + c.finance.sponsor + c.finance.merch;
     const buffer = Math.max(turnover * 0.6, c.finance.wages * 0.5, 2_000_000 * econ());
-    c.lastDividend = undefined;
+    if (!cmFinOn(g)) c.lastDividend = undefined;
     let dividend = 0;
-    if (turnover > 0 && c.balance > buffer) {
+    // originalens udbytte betales på sæsonopdateringens dag (cmFinance.ts seasonEndClub)
+    if (turnover > 0 && c.balance > buffer && !cmFinOn(g)) {
       const div = Math.round(((c.balance - buffer) * 0.5) / 100_000) * 100_000;
       if (div > 0) {
         c.balance -= div;

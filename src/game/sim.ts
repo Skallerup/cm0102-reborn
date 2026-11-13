@@ -1,9 +1,11 @@
 // Spillets dag-for-dag-løkke.
-import { cmActive, cmAfterMatch, cmContractDaily, cmSquadMoraleDaily, MORALE_OFF } from './cmPlayerData';
+import { cmBoardAfterMatch, cmBoardDaily, cmBoardOn } from './cmBoardGame';
+import { cmActive, cmAfterMatch, cmContractDaily, cmFlagSet, cmRand, cmSquadMoraleDaily, MORALE_OFF, withFlagCtx } from './cmPlayerData';
 import { cmFitAfterMatch, cmFitDay, cmFitOn, cmFitPreMatch, setMatchSquad } from './cmFitnessGame';
 import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
+import { cmRelDaily } from './cmRelations';
 import { cmTrainSquads } from './cmTraining';
 import { recordAiTactics } from './engine/grid/aiTeam';
 import { promoteIfShort } from './reserves';
@@ -42,6 +44,8 @@ import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiR
 import { afterAppearance } from './clauses';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
+import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
+import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -273,12 +277,24 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
 /** Målekrog til scripts (original-lab.ts): kaldes med hver kamps rapport. Påvirker intet i spillet. */
 export const labHooks: { report?: (f: Fixture, rep: MatchReport) => void } = {};
 
+/** original DB i ægte tilstand: tilskuerne sub_85cba0 (crowd.ts) og kampens økonomi FinanceTable::process_match_income 0x59a5d0 (cmFinance.ts) */
+function cmGate(f: Fixture, rep?: MatchReport): { att: number; income: number } {
+  const g = gs();
+  const codes = fixtureCodesOf(g, f, f.comp, f.home);
+  // gittermotoren har regnet kampens tilskuertal ved kampstart (init_match) – samme tal går til økonomien som i originalen
+  const att = rep?.crowd ?? (gameCrowd(g, f.home, f.away, codes, cmRand(g.seed ?? 0, f.id, 0x85cba0))?.total ?? 0);
+  const comp = g.comps[f.comp];
+  const gate = cmMatchIncome(g, f, att, { b3a: codes.b3a, b3b: codes.b3b, b3c: codes.b3c, compRep: codes.compRep, friendly: !comp,
+    leagueOfHome: !!comp && comp.type === 'league' && g.clubs[f.home]?.league === f.comp });
+  return { att, income: gate / CM_GBP };
+}
+
 export function applyMatchResult(f: Fixture, rep: MatchReport) {
   const g = gs();
   labHooks.report?.(f, rep);
   const [hs, as] = rep.stats;
   const scorers: MatchResultShort['scorers'] = rep.events.filter((e) => e.k === 'goal').map((e) => (e.og ? [e.m, e.t, e.p!, 1] : [e.m, e.t, e.p!]));
-  const gate = gateReceipts(f);
+  const gate = cmFinOn(g) ? cmGate(f, rep) : gateReceipts(f);
   recordResult(f, { hg: hs.goals, ag: as.goals, et: rep.et, pens: rep.pens, scorers, att: gate.att, gate: Math.round(gate.income), cards: [hs.yellows + as.yellows, hs.reds + as.reds] });
   recordsAfterMatch(f, rep, gate.att);
   achievementsAfterMatch(f, rep, gate.att);
@@ -339,6 +355,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   // 0x62c080: kampkonditionen, trætheden og kampens skader (konditionsmodulet, cmFitness.ts)
   if (cm) cmFitAfterMatch(g, f, rep);
+  // 0x6951e0: bestyrelsen efter kampen (efter tabellen) – begge hold (cmBoardGame.ts)
+  cmBoardAfterMatch(g, f, rep);
   // 0x896290: taktiklistens statistik efter en kamp mellem to computerhold (gittermotorens valg fra pick_team/omrokeringen)
   if (cmActive(g)) recordAiTactics(f.home, f.away, hs.goals, as.goals, (c) => isHumanClub(c) || c === g.userClub);
   // karantæner afsones for spillere der ikke spillede
@@ -391,7 +409,7 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     const conceded = userHome ? as.goals : hs.goals;
     // draft-liga: ingen bestyrelse, presse eller fans
     if (!g.draft) {
-      boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
+      if (!cmBoardOn(g)) boardAfterMatch(scored, conceded, opp, comp?.type ?? 'league');
       // CM 01/02: "A scout from [klub] was spotted at your last match" – en klub med en af dine spillere på listen
       const mine = new Set(squad(g.userClub).map((p) => p.id));
       const watcher = rng.chance(0.3) ? Object.values(g.clubs).find((c) => c.id !== g.userClub && !isHumanClub(c.id) && (c.shortlist ?? []).some((id) => mine.has(id))) : undefined;
@@ -464,6 +482,8 @@ export function watchedDay(date: string): number | undefined {
 
 function newDay() {
   const g = gs();
+  // MANAGER_MANAGER::daily_update 0x68f9c0 for dagen, der lige er spillet (efter dagens kampe – cmBoardGame.ts; kun den originale database i ægte tilstand)
+  cmBoardDaily(g);
   g.date = addDays(g.date, 1);
   g.dayDone = false;
   const d = g.date;
@@ -489,6 +509,10 @@ function newDay() {
   cmSquadMoraleDaily(g, squad);
   // 0x5ce2d0's udviklingsblok (0x5d38f9–0x5d578d) og træningens ugetæller 0x8b1730 (cmDevelop.ts) – erstatter training.ts' develop()
   cmDevDaily(g);
+  // game_update_squad_relationships 0x5d6d10 (0x5cdb0a, efter 0x5ce2d0/0x5ce0b0): forholdene i trupperne (cmRelations.ts)
+  cmRelDaily(g, squad, (p, flag) => { const c = p.cmContract; if (c) withFlagCtx(g, p, cmRand(g.seed ?? 0, p.id, Math.round(Date.parse(g.date + 'T00:00:00Z') / 86400000), 0x867700), () => cmFlagSet(c, flag)); });
+  // FinanceTable::daily_update 0x59b9c0 (cmFinance.ts): søndagens løn/merchandise/sæsonkort, månedens poster, sæsonopdateringen
+  cmFinanceDay(g);
   for (const p of Object.values(g.players)) {
     if (p.injury && (!cmFit || p.injury.key === 'awol')) {
       p.injury.days--;
@@ -516,7 +540,7 @@ function newDay() {
   holidayDaily();
   squadNumbersDaily();
   euroSquadDaily();
-  forEachHuman(processJobTalks);
+  if (!cmBoardOn(g)) forEachHuman(processJobTalks);
   forEachHuman(() => {
     expirePress();
     // pressemøde dagen før kampen
@@ -534,17 +558,18 @@ function newDay() {
   if (weekday(d) === 4 && extended()) forEachHuman(aiLoanOptions);
   aiTransferTick();
   forEachHuman(scoutDaily);
-  if (day(d) % 3 === 0) fillVacancies();
+  if (day(d) % 3 === 0 && !cmBoardOn(g)) fillVacancies();
   if (weekday(d) === 1) {
     forEachHuman(weeklyRumours);
     if (extended()) { forEachHuman(weeklyTransferDigest); forEachHuman(weeklySummary); weeklyPlayerContact(); }
     aiReleaseClauses();
     weeklyDevelopment();
-    weeklyWages();
+    if (!cmFinOn(g)) weeklyWages();
   }
   if (day(d) === 1) {
+    // original DB i ægte tilstand: originalens økonomi (cmFinanceDay nedenfor) i stedet for spillets løn/månedsindtægter
     snapshotFinanceMonth();
-    monthlyIncome();
+    if (!cmFinOn(g)) monthlyIncome();
     monthlyValues();
     monthlyDevelopment();
     if (extended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
@@ -558,9 +583,12 @@ function newDay() {
       const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');
       if (mismatches >= 3 && asst && month(d) % 3 === 1) addNews({ cat: 'general', key: 'news.trainingAdvice', params: { coach: `${asst.first} ${asst.last}`, n: mismatches } });
     });
-    forEachHuman(boardMonthly);
-    if (month(d) >= 9 || month(d) <= 4) aiSackings();
-    if (month(d) === 6) summerManagerChanges();
+    // den originale database i ægte tilstand: originalens bestyrelse (cmBoardGame.ts) i stedet for spillets egne fyringer og jobmarked
+    if (!cmBoardOn(g)) {
+      forEachHuman(boardMonthly);
+      if (month(d) >= 9 || month(d) <= 4) aiSackings();
+      if (month(d) === 6) summerManagerChanges();
+    }
     awolMonthly();
     if (month(d) >= 1 && month(d) <= 5) aiRenewals();
     if (month(d) === 1 || month(d) === 3) forEachHuman(contractReminders);

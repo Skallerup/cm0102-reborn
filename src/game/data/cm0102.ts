@@ -43,7 +43,27 @@ export interface CMWorld extends WorldData {
     /** city.dat (56 bytes pr. by, i fil-rækkefølge = hukommelsens [0xae23ac]): +0x23 og +0x2b (doubles) fladt [c23, c2b, c23, c2b, …] */
     cities?: number[];
     /** nation.dat +0x7e pr. nationsindeks (udeholdets land i afstandsleddet sub_85d8a0) */
-    nation7e?: number[] };
+    nation7e?: number[];
+    /** nation.dat +0x85 (s8) pr. nationsindeks – staffStatens ungdomsled 0x5ce8f0 ((+0x85·0,2 + 0,6)·klubbens omdømme) */
+    nation85?: number[];
+    /** (forholdene, staff+0x65) personernes præferencer fra staff.dat +97..+144 (originaludgavens 157-bytes post): 12 id'er i hukommelsens
+     *  rækkefølge – +4/+8/+0xc klubber (0x547d60), +0x10/+0x14/+0x18 klubber (0x547d30), +0x1c/+0x20/+0x24 personer (0x547810), +0x28/+0x2c/+0x30
+     *  personer (0x547840); 0 = ingen (databasens −1). Kun personer i world-filen med mindst én præference. */
+    prefs?: Record<number, number[]>;
+    /** klubbens personer club.dat +155..+175 (= hukommelsens +0x9b/+0x9f/+0xa3 – 0x547790 – og +0xa7/+0xab/+0xaf – 0x5477d0); 0 = ingen */
+    clubPrefs?: Record<number, number[]>;
+    /** (økonomien) pr. klub: [division club.dat +87 (turnerings-id), PLC +130 (s8), stadionets +76/+77 (stadium.dat, s8)] */
+    fin?: Record<number, [number, number, number, number]>;
+    /** (økonomien) klubbens formand (club.dat +191): [CA (np +4), PA (+6), de 21 egenskaber +0x0e..+0x22 (rå), jobkoden (personpost +61),
+     *  yndlingsformationen +0x43, nationen (indeks), personpost +0x57 og +0x59 (s8)] – spilstarten udfylder de manglende (cmStaffInit) */
+    chair?: Record<number, number[]>;
+    /** (økonomien) turnerings-id'et for "A Lower Division" (nøgle-id'et [0x9cf764]; −1 = findes ikke) */
+    lowerDiv?: number
+    /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */
+    nationBoard?: [number, number, number][];
+    /** bestyrelse/managerjob: formanden (club.dat +0xbf → staff.dat): [ikke-spillerpost +0x16, +0x1d (Patience), personpost +0x57 (Ambition),
+     *  nationsindeks (−1)] pr. klub – kun formænd med ikke-spillerpost */
+    chairBoard?: Record<number, [number, number, number, number]> };
   clubColors: Record<number, [string, string]>;
   /** originalens økonomi ved start (£): saldo (club.dat 101), gns. tilskuere (115), træningsanlæg 0-20 (127) */
   clubFinance?: Record<number, [number, number, number]>;
@@ -59,7 +79,9 @@ export interface CMWorld extends WorldData {
    *  Offside +0x1c, Pressing +0x1f, Tactics +0x21, yndlingsformation +0x43 (1..9)] – originalens computer-taktik (aiPrematch/aiTacticChoice) */
   /** … [11] = ikke-spillerposten til originalens spilstart: [PA +6, de 21 egenskaber +0x0e..+0x22 (rå 1..20, 0 = ikke sat), jobkoden]
    *  (cmStaffInit.ts – kun den originale database) */
-  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?][];
+  /** … [12] = bestyrelse/managerjob (cmBoard.ts): [ikke-spillerpost +8, +0xc (rå), personpost +0x56..+0x5d, +0x22]; [13] = personpost +0x3e
+   *  (ankomstdatoen, ISO; '' = mangler) */
+  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?, number[]?, string?][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -206,11 +228,14 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const nationIdx = new Map<number, number>();
   // lang: nation +0x77 (sproget, 8 = engelsk) og +0x78/+0x79 (andre sprog) – originalens sprogtabel 0x7bfd50/0x7c6930 (cmLanguage.ts)
   const nations: { name: string; code: string; lang: number[] }[] = [];
-  const nationVal = new Map<number, [number, number]>(); // nation +0x7E (økonomisk niveau 1-3), +0x8E (omdømme, i16)
+  const nationVal = new Map<number, [number, number, number]>(); // nation +0x7E (økonomisk niveau 1-3), +0x8E (omdømme, i16), +0x85 (s8 – staffState 0x5ce8f0)
+  // bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks
+  const nationBoard: [number, number, number][] = [];
   for (let o = 0; o + 290 <= files['nation.dat'].byteLength; o += 290) {
     const id = N.i32(o);
     nationIdx.set(id, nations.length);
-    nationVal.set(id, [N.u8(o + 0x7e), N.i16(o + 0x8e)]);
+    nationVal.set(id, [N.u8(o + 0x7e), N.i16(o + 0x8e), N.i8(o + 0x85)]);
+    nationBoard.push([N.u8(o + 0x75), (N.u8(o + 0x85) << 24) >> 24, N.i32(o + 0x88)]);
     nations.push({ name: N.str(o + 4, 51), code: N.str(o + 83, 4) || N.str(o + 56, 3).toUpperCase(), lang: [N.u8(o + 0x77), N.u8(o + 0x78), N.u8(o + 0x79)] });
   }
 
@@ -235,6 +260,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const seatsOf = new Map<number, number>();
   const stadiumName = new Map<number, string>();
   const stadiumRaw = new Map<number, [number, number]>();   // (runde 9) stadium.dat +56 byen, +60 kapaciteten (rå)
+  const stadiumFlags = new Map<number, [number, number]>(); // (økonomien) stadium.dat +76/+77 (s8) – månedens stadionudgift 0x59c3d4
   if (files['stadium.dat']) {
     const St = new Reader(files['stadium.dat']);
     // post: id (4) · navn (51) · by (4) · 1 byte · kapacitet (4, byte 60) · siddepladser (4, byte 64) · …
@@ -243,6 +269,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const cap = St.i32(o + 60);
       if (cap > 0 && cap <= 150_000) seatsOf.set(St.i32(o), cap);
       stadiumRaw.set(St.i32(o), [St.i32(o + 56), cap]);
+      stadiumFlags.set(St.i32(o), [St.i8(o + 76), St.i8(o + 77)]);
       const nm = St.str(o + 4, 51).trim();
       if (nm) stadiumName.set(St.i32(o), nm);
     }
@@ -258,7 +285,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
 
   // klubber
   const CL = new Reader(files['club.dat']);
-  type RawClub = { id: number; name: string; short: string; nation: number; division: number; lastDiv: number; lastPos: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; minAtt: number; training: number; manager: number; rivals: [number, number, number] };
+  type RawClub = { id: number; name: string; short: string; nation: number; division: number; lastDiv: number; lastPos: number; rep: number; status: number; stadium: number; maxAtt: number; fg: number; bg: number; balance: number; avgAtt: number; minAtt: number; training: number; manager: number; rivals: [number, number, number]; prefs: number[]; plc: number; chairman: number }
   const rawClubs: RawClub[] = [];
   for (let o = 0; o + 581 <= files['club.dat'].byteLength; o += 581) {
     rawClubs.push({
@@ -270,6 +297,10 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       // klubbens manager (staff-id; ejerens Bosman-projekt, db.rs: club.dat 207)
       manager: CL.i32(o + 207),
       rivals: [CL.i32(o + 179), CL.i32(o + 183), CL.i32(o + 187)],
+      // (forholdene) klubbens yndlings- og uønskede personer +155/+159/+163 og +167/+171/+175 (staff-id'er, −1 = ingen) = hukommelsens +0x9b..+0xaf
+      prefs: [155, 159, 163, 167, 171, 175].map((k) => CL.i32(o + k)),
+      // (økonomien) PLC +130 og formanden +191 (staff-id)
+      plc: CL.i8(o + 130), chairman: CL.i32(o + 191),
     });
   }
   // ligaer: divisioner med mindst 8 klubber; niveau efter omdømme inden for landet
@@ -359,6 +390,20 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     }
     for (const c of clubs) c[7] = coach.get(c[0]) ?? '';
   }
+  // formændene (club.dat +0xbf): bestyrelsens Patience m.m. (cmBoard.ts)
+  const chairBoard: Record<number, [number, number, number, number]> = {};
+  if (NON_REF >= 0) {
+    const want = new Map(rawClubs.filter((c) => inGame.has(c.id) && c.chairman > 0).map((c) => [c.chairman, c.id]));
+    for (let i = 0; i < tStaff.count && Object.keys(chairBoard).length < want.size; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const club = want.get(S.i32(o));
+      if (club === undefined) continue;
+      const np = nonAt.get(S.i32(o + NON_REF));
+      if (np === undefined) continue;
+      chairBoard[club] = [(S.u8(np + 0x16) << 24) >> 24, (S.u8(np + 0x1d) << 24) >> 24, (S.u8(o + 0x57) << 24) >> 24, nationIdx.get(S.i32(o + 26)) ?? -1];
+    }
+  }
 
   // stab (ikke-spillerposten, 68 bytes): 21 egenskaber i alfabetisk rækkefølge fra +14 (bekræftet i originalens Non-Playing Staff);
   // jobkoden i personposten +61 (5 Manager, 6 Assistant Manager, 8 Coach, 9 Scout, 10 Physio – bekræftet for Man Utd 3.9.60)
@@ -390,7 +435,12 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const raw = [S.i16(np + 6)];
       for (let k = 0x0e; k <= 0x22; k++) raw.push(S.u8(np + k));
       raw.push(job);
-      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac, raw]);
+      // [12] = bestyrelse/managerjob (cmBoard.ts): ikke-spillerpostens omdømmer +8 (hjemme) og +0xc (verden) (rå, ×50 ved spilstart – +0xa er
+      // [8]), personpostens skjulte egenskaber +0x56..+0x5d og +0x22 (landskampe)
+      const bx = [S.i16(np + 8), S.i16(np + 12)];
+      for (let k = 0x56; k <= 0x5d; k++) bx.push(S.u8(o + k));
+      bx.push(S.u8(o + 0x22));
+      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '']);
     }
   }
 
@@ -531,6 +581,63 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     pool[String(n)] = [top(fc, 250), top(lc, 400)];
   }
 
+  // (forholdene) præferencerne +97..+144 for de personer, der kommer med (spillere og stab) – kun den originale udgaves 157-bytes post
+  // (senere udgaver og fællesskabets rettelser: 110 bytes + en præferencetabel à 52 bytes (+0 id, +4..+51 de 12) – referencen findes som spillerens)
+  const prefs: Record<number, number[]> = {};
+  const tPref = staffTables.find((_, i) => i > 0 && sizes[i] === 52);
+  const prefAt = new Map<number, number>();
+  if (tPref) for (let k = 0; k < tPref.count; k++) prefAt.set(S.i32(tPref.offset + k * 52), tPref.offset + k * 52 + 4);
+  let PREF_REF = -1;
+  if (staffSize < 145 && tPref) {
+    let bestP = 0;
+    for (const off of candidateOffsets) {
+      if (off === PLAYER_REF || off === NON_REF) continue;
+      const seen = new Set<number>();
+      for (let k = 0; k < probe; k++) { const v = S.i32(tStaff.offset + k * staffSize + off); if (prefAt.has(v)) seen.add(v); }   // (præferencepostens id = personens)
+      if (seen.size > bestP) { bestP = seen.size; PREF_REF = off; }
+    }
+    if (bestP < probe * 0.05) PREF_REF = -1;
+  }
+  if (staffSize >= 145 || PREF_REF >= 0) {
+    const keep = new Set<number>([...players.map((p) => p[0] as number), ...staff.map((x) => x[9])]);
+    for (let i = 0; i < tStaff.count; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const id = S.i32(o);
+      if (!keep.has(id)) continue;
+      const at = staffSize >= 145 ? o + 97 : prefAt.get(S.i32(o + PREF_REF));
+      if (at === undefined) continue;
+      const v = Array.from({ length: 12 }, (_, k) => { const x = S.i32(at + 4 * k); return x > 0 ? x : 0; });
+      if (v.some(Boolean)) prefs[id] = v;
+    }
+  }
+  const clubPrefs = Object.fromEntries(rawClubs.filter((c) => clubRep[c.id] !== undefined && c.prefs.some((x) => x > 0)).map((c) => [c.id, c.prefs.map((x) => (x > 0 ? x : 0))]));
+  // (økonomien, cmFinance.ts) formanden: personpost +0x57/+0x59 og ikke-spillerposten +0x0f (Business) / +0x20
+  const chairOf = new Map<number, number[]>();
+  {
+    const want = new Set(rawClubs.filter((c) => inGame.has(c.id) && c.chairman > 0).map((c) => c.chairman));
+    for (let i = 0; i < tStaff.count && want.size; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const sid = S.i32(o);
+      if (!want.has(sid)) continue;
+      want.delete(sid);
+      const np = NON_REF >= 0 ? nonAt.get(S.i32(o + NON_REF)) : undefined;
+      if (np === undefined) continue;
+      const raw = [S.i16(np + 4), S.i16(np + 6)];
+      for (let k = 0x0e; k <= 0x22; k++) raw.push(S.u8(np + k));
+      raw.push(S.u8(o + 61), S.u8(np + 0x43), nationIdx.get(S.i32(o + 26)) ?? -1, S.i8(o + 0x57), S.i8(o + 0x59));
+      chairOf.set(sid, raw);
+    }
+  }
+  const lowerDiv = [...comps.entries()].find(([, c]) => c.name === 'A Lower Division')?.[0] ?? -1;
+  const finClubs = rawClubs.filter((c) => clubRep[c.id] !== undefined && inGame.has(c.id));
+  const fin = Object.fromEntries(finClubs.map((c) => {
+    const sf = stadiumFlags.get(c.stadium) ?? [0, 0];
+    return [c.id, [c.division, c.plc, sf[0], sf[1]]];
+  })) as Record<number, [number, number, number, number]>;
+  const chair = Object.fromEntries(finClubs.filter((c) => chairOf.has(c.chairman)).map((c) => [c.id, chairOf.get(c.chairman)!])) as Record<number, number[]>;
+
   return {
     kind: 'cm0102', version: 1, attrScale: 'stored', source: 'Championship Manager 01/02 (brugerens egen installation)', season: 2001,
     nations, leagues, clubs, playerFields: fields, players, names: pool, ratings, clubRep, clubColors, clubFinance, valueClub,
@@ -542,7 +649,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
         return [c.id, [c.avgAtt, c.minAtt, c.maxAtt, st ? c.stadium : -1, st ? st[0] : -1, st ? st[1] : -1, ...c.rivals.map((r) => (r >= 0 ? r : -1))] as [number, number, number, number, number, number, number, number, number]];
       })),
       ...(cities ? { cities } : {}),
-      nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
+      nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
+      nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
+      fin, chair, chairBoard, nationBoard, lowerDiv, ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 

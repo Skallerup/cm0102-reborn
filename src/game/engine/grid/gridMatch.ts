@@ -43,6 +43,7 @@ import { CM_INT_OFFSETS, INTRINSIC_KEYS } from '../../playerInit';
 import { gs, hasGame } from '../../state';
 import { ATTRS } from '../../attributes';
 import type { Player, Tactic } from '../../types';
+import { DIS_PERSON, FAV_PERSON, relPersons } from '../../cmRelations';
 import { recordBytes, staffBytes } from './gameInputs';
 
 export type Rand = (n: number) => number;
@@ -151,6 +152,8 @@ export interface GridMatchCtx {
    *  samspillet engine+0x1ce, taktikkens positionsord, anførerens positionsord) sættes af limen ved hvert kald. Mangler = kampværdierne regnes
    *  ikke igen i kampen (*estimeret* – limens kampværdier fra kampstarten beholdes) */
   matchValuesEnv?: (q: GP) => MatchValuesEnv | undefined;
+  /** spillets kampe: forholdet mellem spilleren og holdets aktuelle anfører (staff+0x65 – cmRelations.ts captainRel) */
+  captainRel?: (p: Player, cap: Player | undefined) => { capDislikes: boolean; capFavours: boolean };
   /** kun låsetrinstesten: efter hvert sub_6ec010-kald (sammenlignes med originalens MVO-linjer) */
   onMatchValues?: (q: GP, env: MatchValuesEnv) => void;
   /** kun låsetrinstesten: spillets data til holdets samspil (matchSubs.ts MatchSubsEnv.cohesionOf / captainIdx) */
@@ -860,7 +863,8 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
     // alle felter, der sættes senere, står her fra starten (samme skjulte klasse for alle spillere – et senere tilføjet felt efter en
     // prototype giver hver spiller sin egen klasse og megamorfe opslag)
     __proto__: GP_F32, _f32: false, marker0: undefined, giver: undefined, markRef: undefined, view: undefined, recRaw: undefined, staffRaw: undefined,
-    nationName: undefined, lang: undefined, favoured: undefined, disliked: undefined,
+    // afleveringsmulighederne 0x6c82e0/0x6c82fe: staff+0x65's yndlingspersoner/uvenner (cmRelations.ts – kun den originale database)
+    nationName: undefined, lang: undefined, favoured: p.cmRel ? relPersons(p, FAV_PERSON) : undefined, disliked: p.cmRel ? relPersons(p, DIS_PERSON) : undefined,
     side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, _cond: kickFit && p.cmFit ? kickFit(p) : 100 * Math.max(60, p.condition ?? 100), _pcond: 0, busy: 0,
     // +0x17 moralen: MATCH_PLAYER::setup 0x6eaf46–0x6eaf64 = spillerpostens +0x45 (Player.morale – playerRecord), 10 for spillere uden for databasen
     matchCA: mc.K, form, morale: p.regen ? 10 : ((Math.trunc(p.morale ?? 10) << 24) >> 24), injury: 0, _agit: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, _instr: instr, _ilo: Number(instr & 0xffffffffn), _ihi: Number(instr >> 32n), freeRoleRating: p.cmFree ?? 1, a,   // spillerpost +0x1a (0x714286)
@@ -967,6 +971,8 @@ const emptyStats = (): GridSideStats => ({ goals: 0, shots: 0, onTarget: 0, corn
 /** Kampen trin for trin (til live-kampen): `tick()` spiller ét tik af originalens løkke (sub_6b98c0) og giver false, når kampen er slut */
 export interface GridMatch {
   m: GridMatchState; tick(): boolean; readonly finished: boolean; result(): GridResult;
+  /** tilskuertallet sub_85cba0 ved kampstart (ctx.crowdFn; null = ikke regnet) – økonomien bruger samme tal (0x59a5d0) */
+  readonly crowdTotal: number | null;
   /** menneskets udskiftning (sker ved næste dødbold); false = ikke tilladt */
   substitute(side: Side, outId: number, inId: number): boolean;
   /** menneskets nye taktik (sker ved næste dødbold) */
@@ -1262,8 +1268,11 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     const posOfSlot = (s: Side, j: number, att: boolean) => { const w = subs.slotWords(s, j); if (w) return att ? w.posAttack : w.pos; const o = sidesOf(m)[s].find((x) => x.slot === j); return o ? (att ? o.posAttack : o.pos) : 0; };
     const tac = (s: Side) => { const prim: number[] = [], sec: number[] = []; for (let j = 0; j < 11; j++) prim.push(posOfSlot(s, j, false)); for (let j = 0; j < 11; j++) sec.push(posOfSlot(s, j, true)); return { prim, sec }; };
     // anføreren: klubbens aktuelle (0x897590 – genvalget kan have sat en ny)
+    const cq = subs.captain(q.side);
     const env: MatchValuesEnv = { ...base, crowd: (sideByte[q.side] << 24) >> 24, cohesion: subs.cohesion[q.side], tactics: [tac(0), tac(1)],
-      ...(ctx.captainEnvOf ? { captain: ctx.captainEnvOf(subs.captain(q.side)) } : {}) };
+      ...(ctx.captainEnvOf ? { captain: ctx.captainEnvOf(cq) } : {}),
+      // 0x6eeae4/0x6eebaa: forholdet til den aktuelle anfører (cmRelations.ts – spillets kampe)
+      ...(ctx.captainRel ? { rel: { ...base.rel, ...ctx.captainRel(q.src, cq?.src) } } : {}) };
     const mv = {
       side: q.side, pos: q.slot >= 0 && q.slot <= 10 ? q.pos : 0, posAttack: q.slot >= 0 && q.slot <= 10 ? q.posAttack : 0, morale: q.morale, w31: q.w31, w33: q.w33,
       motivation: q.motivation, formRoll: q.formRoll ?? 0, badDay: q.badDay ?? 0, matchCA: q.matchCA, f: q.f,
@@ -3523,7 +3532,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       else if (k === 'b8eb4') b8eb4 = v as number; else if (k === 'lastOwner') lastOwner = v as Side; else if (k === 'lastShotType') lastShotType = v as number;
       else if (k === 'lastShotEvent') lastShotEvent = v as number;
     } });
-  return { m, tick, get finished() { return finished; }, result: () => ({ home: m.stats[0], away: m.stats[1], ticks: m.clock }),
+  return { m, tick, get finished() { return finished; }, crowdTotal: cr ? cr.total : null, result: () => ({ home: m.stats[0], away: m.stats[1], ticks: m.clock }),
     substitute: (s, o, i) => subs.human(s, o, i), setTactic: (s, t) => { pendingTactic[s] = t; },
     subsLeft: (s) => subs.subsLeft[s] - subs.pending(s), subState: (p) => subs.state(p), events,
     manOfTheMatch: () => manOfTheMatch6d0f80([0, 1].map((s) => gp.filter((q) => q.side === s)), (q) => subs.state(q)?.minuteOff ?? -1) };

@@ -16,9 +16,9 @@
 //   manageren np+0xe / 0x544410(np, np+0x21)   Staff.cmNp (ikke-spillerposten efter spilstarten, cmStaffInit.ts); ældre spil: Staff.tac[0]
 //                                     og den viste Tactics af CA og databasens værdi
 //   anføreren 0x6ebd70                captainBase (roleScore.ts) af spillets data
+//   staff+0x65 (forholdene)           Player.cmRel (cmRelations.ts: databasens præferencer + 0x5d6d10 m.fl.), anføreren via captainRel
 //   [0xae2d0c]+79·id+0xa (staffState)  Player.cmStaffState (cmPlayerData.ts – spilstarten 0x828110, dagligt 0x5ce2d0, ferie/skade 0x62c680/0x62d250)
 // Ikke i spillet (dokumenteret i ENGINE_PORT_PLAN.md, runde 8 – grid-input-check.ts måler afvigelsen):
-//   staff+0x65's forhold (yndlingspersoner/-klubber, uvenner – sat af spillets egne systemer, ikke databasens præferencer) = ingen
 //   kontraktens +0xc/+0x10/+0x14 (løn/bonusser fra kontraktens oprettelse 0x85e960) – +0x10/+0x14 = −1 (ingen), så leddet 0x6eebda springes over
 //   engine+0/+1 (oraklets ligakampe: 0 / 0 eller 2) = 0
 import type { Player } from '../../types';
@@ -36,6 +36,7 @@ import type { AiModeInput } from './aiMode';
 import type { Fixture, GameState } from '../../types';
 import { daysBetween } from '../../dates';
 import { npShown } from '../../cmStaffInit';
+import { captainRel, matchRelOf } from '../../cmRelations';
 
 const s8 = (x: number) => (x << 24) >> 24;
 const sh = (p: Player, k: string) => p.attrs[ATTRS.indexOf(k as never)] || 10;
@@ -105,7 +106,7 @@ const nationIndex = (name: string) => (hasGame() ? gs().nations.findIndex((n) =>
 export interface GameMatchSide { club: number; human: boolean; manager: { n0e: number; rating: number } | null; clubRep: number }
 
 /** sub_6ec010's omgivelser for en spiller af spillets tilstand. De dynamiske felter (publikum, samspil, taktikkens ord, anføreren) sætter limen. */
-export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixtureInfo, keys: MatchValuesEnv['keys']): MatchValuesEnv {
+export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixtureInfo, keys: MatchValuesEnv['keys'], opp = 0): MatchValuesEnv {
   const rec = playerRecord(p);
   const ownContract = p.contract && p.club === side.club && !p.loan;
   const c = p.cmContract;
@@ -116,7 +117,8 @@ export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixture
     // 0x53ce90: (+0x4f & 0xf) − 10 for en spiller i databasen med kontrakt med klubben
     contractMod: ownContract && !p.regen && c?.b4f !== undefined ? (c.b4f & 0xf) - 10 : 0,
     inDb: !p.regen, staffState: (p.cmStaffState ?? 0) & 0xff, human: side.human, manager: side.manager,
-    rel: { dislikesOpp: false, favoursOpp: false, oppMgrDislikes: false, oppMgrFavours: false, favoursOwn: false, dislikesOwn: false,
+    // staff+0x65 (cmRelations.ts – databasens præferencer og spillets skrivere; anføreren sættes af limen: GridMatchCtx.captainRel)
+    rel: hasGame() && p.cmRel ? matchRelOf(gs(), p, side.club, opp) : { dislikesOpp: false, favoursOpp: false, oppMgrDislikes: false, oppMgrFavours: false, favoursOwn: false, dislikesOwn: false,
       ownMgrDislikes: false, ownMgrFavours: false, capDislikes: false, capFavours: false },
     player61: { b44: s8(rec[0x44]), w0b: ((rec[0xb] | (rec[0xc] << 8)) << 16) >> 16, w0d: ((rec[0xd] | (rec[0xe] << 8)) << 16) >> 16 },
     nation: p.nation ?? null, keys,
@@ -166,9 +168,10 @@ export function gameInputsCtx(home: number, away: number, o: { compId?: string; 
     matchValuesEnv: (q: { side: number; src: Player }) => {
       const k = `${q.side},${q.src.id}`;
       let e = envs.get(k);
-      if (!e) { e = matchValuesEnvOf(q.src, sides[q.side], fx, keys); envs.set(k, e); }
+      if (!e) { e = matchValuesEnvOf(q.src, sides[q.side], fx, keys, sides[1 - q.side].club); envs.set(k, e); }
       return e;
     },
+    captainRel,
     // anførerdataene ændres ikke i kampen (undtagen positionsordet) – gemt pr. spiller
     captainEnvOf: (q: { side: number; src: Player; pos: number } | null | undefined) => {
       if (!q) return null;

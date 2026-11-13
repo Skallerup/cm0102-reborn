@@ -1,4 +1,5 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
+import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
 import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
@@ -16,6 +17,7 @@ import { fansOnDeparture } from './fans';
 import { boardSeasonEnd, setBoardExpectation, strengthRank } from './board';
 import { seasonCareers } from './careers';
 import { computeSeasonScore, recordSeasonScore, startScoreSeason } from './rating';
+import { cmBeforeRollover, cmFinOn, cmLeagueTv } from './cmFinance';
 import { ffpReview, newSeasonBudgets, seasonPrizeMoney, sponsorSeasonBonus } from './finance';
 import { fillSquad, setupSeasonComps } from './newgame';
 import { aiFillSquads, exerciseLoanOption } from './transfers';
@@ -583,6 +585,7 @@ function prune() {
 /** Kaldes 1. juli */
 export function seasonRollover() {
   const g = gs();
+  cmBeforeRollover(g);
   seasonPrizeMoney();
   monthlyAwards(); // juni-kåringer inden arkivering
   const summary = seasonAwards();
@@ -662,9 +665,13 @@ export function seasonRollover() {
   newSeasonBudgets();
   boardEventsSeason();
   setupSeasonComps(g.season, prevTables, cupWinners);
+  // original DB i ægte tilstand: League::pay_tv_rights 0x683010 i ligaernes create_table (cmFinance.ts)
+  if (cmFinOn(g)) for (const comp of Object.values(g.comps)) if (comp.type === 'league') cmLeagueTv(g, comp.id, comp.clubs);
   for (const c of Object.values(g.clubs)) if (c.manager !== -1) c.tactic = null;
+  // den originale database i ægte tilstand: League::set_club_season_expectations 0x68aa80 for alle ligaklubber (cmBoardGame.ts)
+  cmBoardSeasonSetup(g);
   forEachHuman(() => {
-    if (g.userClub) { setBoardExpectation(); if (extended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
+    if (g.userClub) { if (!cmBoardOn(g)) setBoardExpectation(); if (extended()) addNews({ cat: 'finance', key: 'sponsor.offers', params: {} }); }
     startScoreSeason();
     initKnowledgeKeep();
     const result = challengeResults.get(g.active);
