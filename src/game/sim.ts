@@ -62,6 +62,7 @@ import { expirePress, invitePress, motivation, resolvePressPromise } from './pre
 import { monthlyColumn, weeklyRumours } from './media';
 import { monthlyAwards, snapshotMonth } from './awards';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer, ownerOf, withHuman } from './humans';
+import { cmVirtualClear, cmVirtualHumans, cmVirtualMatch } from './cmVirtual';
 import { botsDaily, isBotClub } from './bots';
 import { botsAfterMatch } from './chat';
 import { recordH2H } from './h2h';
@@ -165,6 +166,8 @@ function usesVar(f: Fixture): boolean {
 }
 
 export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; away: EngineTeam; neutral: boolean; needsWinner?: (h: number, a: number) => boolean; importance: number; var: boolean; weather: Weather; aggregate?: { prior: [number, number]; awayGoals: boolean }; finish: number; homeAdv?: number; finSlope?: number; squash?: number; squashAtt?: number; squashDef?: number; ease?: number; cards?: number; corners?: number; countBlocked?: boolean; close?: number; closeSlope?: number; onTarget?: number; offside?: number; shotSpread?: number; oneOnOneK?: number; level?: [number, number]; openDamp?: [number, number]; rules?: 'current' | 'original'; pitch: Pitch; referee: { name: string; strict: number } } {
+  // originalens fyldspillere (0x90d2f0 før kampen – cmVirtual.ts; kun den originale database i ægte tilstand): klubber med for få spillere
+  cmVirtualMatch(gs(), f.home, f.away);
   // konditionsmodulet (original database, ægte tilstand): holdenes kondition og skader læses før udtagelsen (0x62c590/0x62c400)
   cmFitPreMatch(gs(), [f.home, f.away]);
   const ht = tacticFor(f.home, f.away, true, userAuto, f.comp);
@@ -503,6 +506,8 @@ export function watchedDay(date: string): number | undefined {
 
 function newDay() {
   const g = gs();
+  // fyldspillerne (cmVirtual.ts) findes kun omkring kampene – de daglige systemer ser dem aldrig (0x90d6b0)
+  cmVirtualClear(g);
   // MANAGER_MANAGER::daily_update 0x68f9c0 for dagen, der lige er spillet (efter dagens kampe – cmBoardGame.ts; kun den originale database i ægte tilstand)
   cmBoardDaily(g);
   g.date = addDays(g.date, 1);
@@ -632,6 +637,12 @@ function newDay() {
   if ((month(d) === 7 || month(d) === 8 || month(d) === 1) && weekday(d) === 2) aiFillSquads(22);
 }
 
+/** menneskenes klubber (fyldspillerne i egen trup – cmVirtual.ts) */
+function humanClubIds(): number[] {
+  const g = gs();
+  return [...new Set([g.userClub, ...(g.humans ?? []).map((h) => h.userClub)])].filter(Boolean);
+}
+
 /** Spil dagens kampe (undtagen brugerens) */
 function playDay(): DayResult {
   const g = gs();
@@ -747,6 +758,7 @@ export function continueGame(pauseBefore?: (date: string) => boolean): DayResult
   if (!g.dayDone) return playDay();
   const lastNews = g.nextId.news;
   newDay();
+  cmVirtualHumans(g, humanClubIds());
   // klassisk: stop før dagens kampe (dayDone er stadig false – næste kald spiller dagen)
   if (pauseBefore?.(g.date)) return { stop: 'dayStart' };
   const r = playDay();
@@ -849,6 +861,7 @@ export function mpAdvance(): { days: number; reason: string } {
   if (g.draft && draftSeasonCheck()) return { days: 0, reason: 'season' };
   for (let i = 1; i <= 14; i++) {
     newDay();
+    cmVirtualHumans(g, humanClubIds());
     const humanFixtures = fixturesOn(g.date).filter((id) => {
       const f = g.fixtures[id];
       return f && !f.result && ((isHumanClub(f.home) && !isBotClub(f.home)) || (isHumanClub(f.away) && !isBotClub(f.away)));

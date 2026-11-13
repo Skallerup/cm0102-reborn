@@ -13,7 +13,7 @@
 // Friendly::process_pending 0x5c2ae0 (dagligt): den hjemlige kamp en uge før datoen → tilbuddet 0x5c6f00 → kampen.
 // *estimeret*: tilbuddets svar (0x5c5570/0x5c5f40 – computerens og menneskets klub siger altid ja), ledigheden 0x5c75a0/0x5c6b70 (ingen anden kamp
 // for klubben dagen før, samme dag eller dagen efter), [0x9cf6f8] = Intertoto (cmClubEuro 330), bsearch-startpladsen i 0x5c4cb0 (første med
-// niveauet), og at modstanderen skal have en trup, motoren kan stille (originalen fylder ukendte trupper med genererede spillere).
+// niveauet). Modstanderens trup: originalen fylder trupper med for få spillere op med genererede spillere før kampen (cmVirtual.ts).
 import type { GameState } from './types';
 import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
 import { dayNum, seasonRow } from './cmFitness';
@@ -21,7 +21,7 @@ import { cmClubEuro } from './cmFitnessGame';
 import { CM_NATION_FR } from './data/cmPreseason';
 import { registerPrerun } from './cmPrerun';
 import { newFixture } from './competitions';
-import { fixturesOn, squad } from './state';
+import { fixturesOn } from './state';
 import { isHumanClub } from './humans';
 
 export const FRIENDLY_COMP = 'FRIENDLY';
@@ -45,8 +45,6 @@ const rivals = (g: GameState, a: number, b: number) => {
 };
 /** [0x9cf6f8]: *estimeret* som Intertoto */
 const inIntertoto = (g: GameState, club: number) => cmClubEuro(g, club) === 330;
-/** motoren kan stille holdet (*estimeret* – originalen fylder trupper uden spillere med genererede) */
-const playable = (club: number) => { const s = squad(club); return s.length >= 14 && s.some((p) => p.pos[0] >= 15); };
 const human = (g: GameState, club: number) => isHumanClub(club) || club === g.userClub;
 
 /** de aktive rækker i sæsontabellen (land, start, slut) – i tabellens rækkefølge (nøglelandene alfabetisk) */
@@ -114,7 +112,6 @@ export function cmFriendlyPlan(g: GameState, today: number): void {
   const tourOpp = (r: Rec, bl: number, T: number): Rec | null => {
     for (const o of ofNation(T)) {
       if (o.lvl > bl || (planDay && inIntertoto(g, o.club)) || o.club === r.club || o.opps.includes(r.club) || rivals(g, r.club, o.club)) continue;
-      if (!playable(o.club)) continue;
       if (neighbours(r.nation, o.nation) && rand(2) === 0) continue;
       if (o.league === r.league) continue;
       if (o.cnt > rand(3) + 3) continue;
@@ -130,7 +127,7 @@ export function cmFriendlyPlan(g: GameState, today: number): void {
       const o = byLvl[i];
       if (o.club === r.club || o.opps.includes(r.club) || (planDay && inIntertoto(g, o.club))) continue;
       if (o.e !== -1 && r.e !== -1 && (o.e > r.f || r.e > o.f)) continue;
-      if (rivals(g, r.club, o.club) || !playable(o.club)) continue;
+      if (rivals(g, r.club, o.club)) continue;
       if (neighbours(r.nation, o.nation) && rand(2) === 0) continue;
       if (o.league === r.league) continue;
       if (o.cnt > rand(3) + 3) continue;

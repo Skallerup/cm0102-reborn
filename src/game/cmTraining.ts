@@ -181,7 +181,8 @@ let tctx: TrainCtx | null = null;
 export function setTrainCtx(c: TrainCtx): void { tctx = c; }
 
 export function cmTrainOn(g: GameState, p: Player): boolean {
-  return !!p.cmInt && !p.regen && cmActive(g);
+  // fyldspillerne (cmVirtual.ts) har ingen TRAINING_MANAGER-post – de laves på ny til hver kamp (*estimeret*)
+  return !!p.cmInt && !p.regen && !p.virtual && cmActive(g);
 }
 /** 0x8b1750(staff, 0) for én spiller i spillet; salt adskiller kaldestederne i vores egen talrække */
 export function cmTrainPlayer(g: GameState, p: Player, salt: number): void {

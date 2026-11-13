@@ -199,6 +199,9 @@ export interface Player {
   caps: number;
   intGoals: number;
   regen?: boolean;
+  /** originalens genererede fyldspiller (virtual_staff.cpp 0x90dae0/0x90e0a0 – cmVirtual.ts; staff-id ≥ [0xae2364]): findes kun omkring
+   *  klubbens kampe og når truppen vises, fjernes ved dagens start. 'active' = klubbens land har spilbare ligaer (nation +0x11c) */
+  virtual?: 'active' | 'other';
   /** CM 01/02 "Set Nickname": det rigtige navn, mens et kælenavn bruges i stedet */
   realName?: { first: string; last: string };
   /** CM 01/02 Set Role At Club: spiller/assistent/træner – fortsætter i klubbens stab, når han stopper */

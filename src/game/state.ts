@@ -175,6 +175,13 @@ export function addPlayer(p: Player) {
   }
 }
 
+/** fjern en spiller helt uden klubskiftets følger (cmVirtual.ts' genererede spillere) */
+export function dropPlayer(p: Player) {
+  const arr = squadIndex.get(p.club);
+  if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
+  delete gs().players[p.id];
+}
+
 export function removePlayer(p: Player) {
   setClub(p, 0);
   delete gs().players[p.id];

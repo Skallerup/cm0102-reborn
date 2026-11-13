@@ -216,11 +216,11 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
   const judgeJa = ctx.judge ? { ja: ctx.judge.ja, npMod20: ctx.judge.id % 20 } : null;
   let capIdx = chooseCaptain(capIn, judgeJa);
   // 0x6dcf5f: dødboldsskytterne
-  const sp = flags & 0x80000 ? setPieceTakers(recs.map((r, i) => ({ worldRep: (r[0xd] | (r[0xe] << 8)), curRep: (r[0xb] | (r[0xc] << 8)), real: !ps[i].regen }))) : [];
+  const sp = flags & 0x80000 ? setPieceTakers(recs.map((r, i) => ({ worldRep: (r[0xd] | (r[0xe] << 8)), curRep: (r[0xb] | (r[0xc] << 8)), real: !ps[i].regen && !ps[i].virtual }))) : [];
   // (runde 10B) ankomstdatoen pr. spiller regnes én gang (roleScore læser den kun)
   const joinedDays = ps.map((p) => (joinedOf(p) ? dayOf(joinedOf(p)!) : { day: 0, year: 1990 }));
   const input = (i: number, slot: { pos: number; att: number; lo: number; hi: number; tb: number; tf: number }, fl: number): RoleInput => ({
-    id: ps[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !ps[i].regen, nationFlag11c: true,
+    id: ps[i].id, age: ages[i], atClub: true, joined: joinedDays[i], realPlayer: !ps[i].regen && !ps[i].virtual, nationFlag11c: ps[i].virtual ? ps[i].virtual === 'active' : true,
     rec: recs[i], pos: slot.pos, att: slot.att, lo: slot.lo, hi: slot.hi, tb: slot.tb, tf: slot.tf, flags: fl, mgrJoined, today, yearAgo, captain: i === capIdx, setPiece: sp.indexOf(i) + 1, data: data[i],
   });
   // 0x6dd057: taktikken
@@ -315,7 +315,7 @@ export function matchRoleScore(p: Player, ctx: AiPickCtx, slot: { pos: number; a
       mgrJoined: ctx.judge ? (ctx.judge.joined ? dayOf(ctx.judge.joined) : { day: 0, year: 1900 }) : null, today: dayOf(date), yearAgo: dayOf(`${+date.slice(0, 4) - 1}${date.slice(4)}`) };
     cache?.set(p.id, c);
   }
-  return roleScore({ id: p.id, age: c.age, atClub: true, joined: c.joined!, realPlayer: !p.regen, nationFlag11c: true,
+  return roleScore({ id: p.id, age: c.age, atClub: true, joined: c.joined!, realPlayer: !p.regen && !p.virtual, nationFlag11c: p.virtual ? p.virtual === 'active' : true,
     rec: c.rec, pos: slot.pos, att: slot.att, lo: slot.lo, hi: slot.hi, tb: slot.tb, tf: slot.tf, flags, mgrJoined: c.mgrJoined!,
     today: c.today!, yearAgo: c.yearAgo!, captain, setPiece, match, data: c.data });
 }

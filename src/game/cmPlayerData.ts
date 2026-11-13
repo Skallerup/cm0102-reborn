@@ -355,7 +355,7 @@ export function setCmPlayerCtx(c: CmPlayerCtx): void { pctx = c; }
 
 /** 0x4cbb60 CONTRACT_MANAGER::get_squad_placement: 1 reserverne, 2 førsteholdet (staff +0x5e bit 0 – sat af 0x83cb40; hos os Player.reserves),
  *  0 for klubber uden reservehold (0x542740: B-hold, spanske, tyske og portugisiske klubber m.fl. – *estimeret*: kun landene) */
-const NO_RESERVES = new Set(['Spain', 'Germany', 'Portugal']);
+export const NO_RESERVES = new Set(['Spain', 'Germany', 'Portugal']);
 export function squadPlacement(g: GameState, p: Player, club: number): number {
   const c = g.clubs?.[club];
   if (!c || p.club !== club || NO_RESERVES.has(g.nations[c.nation]?.name ?? '')) return 0;

@@ -4,9 +4,10 @@
 // holdet, gulgrøn = bænken). Træk knappen hen på en plads i strimlen eller på en anden spiller for at bytte –
 // eller klik på den og vælg pladsen i menuen (virker også på mobil).
 import { isInternational } from '../../game/international';
-import { useState, type DragEvent, type ReactNode } from 'react';
+import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
 import { act } from '../../game/actions';
-import { squad } from '../../game/state';
+import { gs, notify, squad } from '../../game/state';
+import { cmVirtualView } from '../../game/cmVirtual';
 import { autoSelect, available, newTactic } from '../../game/tactics';
 import { authentic, benchSize } from '../../game/rules';
 import { A, type AttrKey } from '../../game/attributes';
@@ -183,7 +184,8 @@ function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }
 
 /** Truppens tre bedste spillere (efter evne) – markeres med * efter navnet som i CM 01/02 */
 function starIds(players: Player[]): Set<number> {
-  return new Set([...players].sort((a, b) => b.ca - a.ca).slice(0, 3).map((p) => p.id));
+  // originalens genererede fyldspillere får ingen stjerne (ejerens billede 85: kun de to rigtige i Babelsberg)
+  return new Set(players.filter((p) => !p.virtual).sort((a, b) => b.ca - a.ca).slice(0, 3).map((p) => p.id));
 }
 const shortName = (p: Player | undefined, star = false) => (p ? `${p.last}${p.first ? `, ${p.first[0]}` : ''}${star ? '*' : ''}` : '');
 
@@ -355,6 +357,8 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
   const other = !!cid && cid !== g.userClub;
   const ro = other || !!pick;
   const clubId = other ? cid! : g.userClub;
+  // originalen laver klubbens fyldspillere, når truppen vises (0x90d4f0 – cmVirtual.ts; kun den originale database i ægte tilstand)
+  useEffect(() => { if (cmVirtualView(gs(), clubId)) notify(); }, [clubId]);
   if (!other && !g.tactic) g.tactic = autoSelect(newTactic('4-4-2'), squad(g.userClub));
   // reserveholdet: en egen udtagelse (CM 01/02 – man vælger holdet, men spiller ikke selv kampene)
   if (reserves && !other && !g.resTactic) g.resTactic = autoSelect(newTactic('4-4-2'), squad(g.userClub).filter((p) => p.reserves));
@@ -478,7 +482,8 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
     const tag = ro ? (p.injury ? { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` } : p.listed ? { k: 'Lst', title: t('tag.listed') } : null)
       : orig ? (loanedOut ? null : originalTag(p)) : tagOf(p, g);
     // grå navn (originalens "Ryan, R" på reserveholdet): ikke spilleklar af en anden grund end skade/karantæne (*estimeret*)
-    const dim = orig && !available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut;
+    // originalens genererede fyldspillere står også i gråt (ejerens billede 85, cmVirtual.ts)
+    const dim = orig && (!!p.virtual || (!available(p) && !p.injury && !(p.banned > 0) && !p.reserves && !loanedOut));
     const selCls = `cx-selbtn ${pl?.kind ?? ''} ${orig ? 'cx-orig' : ''}`;
     return (
       <div key={p.id} className={`cx-sq-row ${trad ? '' : 'wide'} ${drag === p.id ? 'dragging' : ''} ${over === `p${p.id}` ? 'over' : ''}`} style={tmpl} {...dropOn(`p${p.id}`, 'swapWith', p.id)}>

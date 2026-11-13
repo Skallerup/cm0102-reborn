@@ -6,7 +6,8 @@
 import { useEffect, useState } from 'react';
 import { matchViewReport } from '../../game/miniReport';
 import { ZONES } from '../../game/engine/match';
-import { fixturesOn } from '../../game/state';
+import { fixturesOn, gs, notify } from '../../game/state';
+import { cmVirtualView } from '../../game/cmVirtual';
 import { compName, t } from '../../i18n';
 import { useClassicMatchSide } from '../classic';
 import { commentaryText } from '../commentary';
@@ -26,6 +27,8 @@ export function PlayedMatchClassic({ id }: { id: number }) {
   // originalens kommentarlinjer (CM 01/02) – tegn igen, når de er hentet
   const [, setTexts] = useState(0);
   useEffect(() => { void loadMatchTexts().then(() => setTexts((x) => x + 1)); }, []);
+  // originalens genererede fyldspillere (cmVirtual.ts) er væk efter kampdagen – de samme laves igen, så rapportens navne kan vises
+  useEffect(() => { if (!f) return; const a = cmVirtualView(gs(), f.home), b = cmVirtualView(gs(), f.away); if (a || b) notify(); }, [f?.home, f?.away]);
   const [tab, setTab] = useRouteState('tab', 'overview');
   const me: 0 | 1 = f && f.away === g.userClub ? 1 : 0;
   const home = f ? g.clubs[f.home]?.short ?? '?' : '', away = f ? g.clubs[f.away]?.short ?? '?' : '';

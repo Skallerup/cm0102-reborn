@@ -158,9 +158,14 @@ const EXTENDED_ONLY = new Set<Action['t']>(['matchTalk', 'teamTalk', 'talk', 'tr
 /** Discipline Player er det eneste spillersamtaler, originalen havde */
 const AUTHENTIC_TALKS = new Set(['warning', 'fine', 'fineHeavy', 'drop']);
 
+/** originalens genererede fyldspillere (cmVirtual.ts) kan hverken købes, lejes, sælges, fritstilles eller få kontrakt */
+const VIRTUAL_BLOCK = new Set<Action['t']>(['listed', 'cmTransferStatus', 'squadStatus', 'release', 'loanOut', 'recallLoan', 'enquire', 'bid', 'preContract',
+  'shortlist', 'negotiate', 'renew', 'renewLater', 'nickname', 'reserves', 'trial', 'talk', 'interact', 'appealBan', 'staffReport']);
+
 export function applyAction(a: Action): unknown {
   if (authentic() && (EXTENDED_ONLY.has(a.t) || (a.t === 'interact' && !AUTHENTIC_TALKS.has(a.kind)))) return 'authentic';
   const g = gs();
+  if (VIRTUAL_BLOCK.has(a.t) && 'pid' in a && g.players[(a as { pid: number }).pid]?.virtual) return 'error';
   const club = g.clubs[g.userClub];
   switch (a.t) {
     case 'tactic': g.tactic = a.tactic; return 'ok';
