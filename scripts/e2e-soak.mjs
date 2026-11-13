@@ -60,12 +60,35 @@ const checkScreen = async (where) => {
 // ---------- nyt spil ----------
 const clubName = clubArg ?? (db === 'original' ? 'Leeds United' : 'Brentford');
 await page.goto(URL);
-await page.getByRole('button', { name: await t('start.new') }).first().click();
-await page.waitForFunction(() => !!window.__cmPick && !!window.__cmClubId, null, { timeout: 60000 });
-await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('Soak Tester');
-const cid = await page.evaluate((n) => window.__cmClubId(n) || window.__cmClubId(`${n} FC`), clubName);
-if (!cid || !(await page.evaluate((id) => window.__cmPick(id), cid))) { console.log(`klubben ${clubName} findes ikke`); process.exit(2); }
-await page.getByRole('button', { name: await t('start.begin') }).click();
+if (look === 'klassisk') {
+  // klassisk: originalens startforløb (ClassicStart.tsx) – klubbens land og korte navn slås op i databasen
+  const found = await page.evaluate(async ([file, n]) => {
+    const w = await (await fetch(`/cm0102-reborn/data/${file}`)).json();
+    const c = w.clubs.find((x) => x[1] === n || x[2] === n || x[1] === `${n} FC`);
+    return c ? { short: c[2], nation: w.nations[c[3]].name } : null;
+  }, [db === 'original' ? 'world-original.json' : 'world.json', clubName]);
+  if (!found) { console.log(`klubben ${clubName} findes ikke`); process.exit(2); }
+  await page.locator('[data-field=database]').click();
+  await page.locator(db === 'original' ? '[data-field="db-3.9.60"]' : '[data-field="db-modern"]').click();
+  await page.locator('[data-field=new]').click();
+  await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+  if (!(await page.locator(`.cxs-lrow.lg-sel[data-nation="${found.nation}"]`).count())) await page.locator(`.cxs-lrow[data-nation="${found.nation}"]`).click();
+  await page.locator('.cxs-next').click();
+  await page.waitForSelector('[data-name=first]', { timeout: 20000 });
+  await page.fill('[data-name=first]', 'Soak'); await page.fill('[data-name=second]', 'Tester');
+  await page.locator('.cxs-next').click(); await page.waitForSelector('[data-nat]');
+  await page.locator('.cxs-next').click(); await page.waitForSelector('[data-club]');
+  await page.locator(`[data-club="${found.short}"]`).click();
+  await page.locator('[data-take]').click();
+  await page.locator('.cxs-next').click();
+} else {
+  await page.getByRole('button', { name: await t('start.new') }).first().click();
+  await page.waitForFunction(() => !!window.__cmPick && !!window.__cmClubId, null, { timeout: 60000 });
+  await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('Soak Tester');
+  const cid = await page.evaluate((n) => window.__cmClubId(n) || window.__cmClubId(`${n} FC`), clubName);
+  if (!cid || !(await page.evaluate((id) => window.__cmPick(id), cid))) { console.log(`klubben ${clubName} findes ikke`); process.exit(2); }
+  await page.getByRole('button', { name: await t('start.begin') }).click();
+}
 await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
 log(`${db} · ${look} · ${clubName} · start ${await gs(() => window.__cm.gs().date)}`);
 const engineInfo = await page.evaluate(async () => {

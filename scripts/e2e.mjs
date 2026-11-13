@@ -96,7 +96,61 @@ async function run(look) {
     if (raw) throw new Error(`${name}: rå oversættelsesnøgle "${raw[0]}"`);
   };
 
-  await step('nyt spil', async () => {
+  // klassisk: originalens startmenu og forløb (ClassicStart.tsx): menu → Select League(s) → Enter Name → Select Nationality → Select Team →
+  // klubbens trup (Take Control) → Please Confirm → Initialising game data
+  if (look === 'klassisk') await step('nyt spil (klassisk startforløb)', async () => {
+    await page.goto(URL);
+    await page.waitForSelector('.cxs [data-field=new]');
+    for (const f of ['database', 'rules', 'new', 'quick', 'restore', 'delete', 'network', 'settings', 'opts', 'extras']) if (!(await page.locator(`[data-field="${f}"]`).count())) throw new Error(`startmenuen mangler feltet ${f}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-01-menu.png` });
+    // databasevalget (øverste venstre felt): udgaver af den originale + 2026/27; vælg den, testen skal bruge
+    await page.locator('[data-field=database]').click();
+    if ((await page.locator('.cxs-grid.db .cxs-field').count()) < 4) throw new Error('databasevalget har for få valg');
+    await page.locator(ENGINE_GRID ? '[data-field="db-3.9.60"]' : '[data-field="db-modern"]').click();
+    // gemte spil og indstillinger åbner egne skærme og kan forlades igen
+    await page.locator('[data-field=settings]').click(); await page.waitForSelector('.cxs-settings'); await page.locator('.cxs-foot .cxs-btn').first().click();
+    await page.locator('[data-field=restore]').click(); await page.waitForSelector('[data-saves]'); await page.locator('.cxs-foot .cxs-btn').first().click();
+    await page.waitForSelector('[data-field=new]');
+    await page.locator('[data-field=new]').click();
+    await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-02-leagues.png` });
+    const own = ENGINE_GRID ? { club: 'Arsenal', nation: 'England' } : { club: 'Brøndby', nation: 'Denmark' };
+    if (own.nation !== 'England') await page.locator(`.cxs-lrow[data-nation="${own.nation}"]`).click();
+    if ((await page.locator('.cxs-lrow.lg-sel').count()) < 1) throw new Error('intet land er valgt');
+    await page.locator('.cxs-next').click();
+    await page.waitForSelector('[data-name=first]', { timeout: 20000 });
+    await page.fill('[data-name=first]', 'E2E'); await page.fill('[data-name=second]', 'Tester');
+    await page.locator('.cxs-next').click();
+    await page.waitForSelector('[data-nat]');
+    if ((await page.locator('.cxs-it.sel').count()) !== 1) throw new Error('ingen forvalgt nationalitet');
+    await page.locator('.cxs-next').click();
+    await page.waitForSelector('[data-club]');
+    await page.locator(`[data-club="${own.club}"]`).click();
+    await page.waitForSelector('[data-squad]');
+    if ((await page.locator('.cxs-sq').count()) < 11) throw new Error('klubbens trup er tom');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-07-club.png` });
+    await page.locator('.cxs-tab', { hasText: await t('cxs.tab.info') }).click();
+    if (!(await page.locator('.cxs-irow').count())) throw new Error('General Info er tom');
+    // Take Control → Please Confirm → No (tilbage til holdlisten) → igen → Yes
+    await page.locator('[data-take]').click();
+    await page.waitForSelector('[data-confirm]');
+    if (!(await page.locator('[data-confirm]').innerText()).includes(own.club)) throw new Error('bekræftelsen nævner ikke klubben');
+    await page.locator('.cxs-foot .cxs-btn').first().click();
+    await page.waitForSelector('[data-club]');
+    await page.locator(`[data-club="${own.club}"]`).click();
+    await page.locator('[data-take]').click();
+    await page.waitForSelector('[data-confirm]');
+    await page.locator('.cxs-next').click();
+    // indlæsningen vises i skærmens bund med trin og procent; siden må ikke fryse
+    const t0 = Date.now();
+    await page.waitForSelector('.cxs-prog-bar i', { timeout: 20000 });
+    await page.screenshot({ path: `${OUT}/${look}-nyt-spil-loader.png` });
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
+    const mgr = await page.evaluate(() => window.__cm.gs().manager.name);
+    if (mgr !== 'E2E Tester') throw new Error(`managerens navn blev "${mgr}"`);
+    if (ENGINE_GRID) console.log(`    nyt spil: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+  });
+  else await step('nyt spil', async () => {
     await page.goto(URL);
     await page.getByRole('button', { name: await t('start.new') }).first().click();
     await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 30000 });
@@ -778,7 +832,8 @@ async function editor() {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); sessionStorage.setItem('cm0102.play', '1'); });
+  // editoren testes fra den moderne startside (klassisk har sin egen startmenu, ClassicStart – Editor ligger under CM Reborn Options)
+  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'club'); sessionStorage.setItem('cm0102.play', '1'); });
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const step = async (name, fn) => {
     const before = errors.length;

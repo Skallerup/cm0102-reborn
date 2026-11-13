@@ -1,5 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { cmActive, setRequestHooks } from './cmPlayerData';
+import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
 import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
@@ -194,15 +195,21 @@ export function sellerDecision(p: Player, fee: number, buyer: Club): { answer: S
  * Standard ('big'): kun store handler i ens egen liga – ellers drukner indbakken.
  */
 /**
- * Ægte CM 01/02: hver handel, der vedrører ens eget land (eller er stor nok til at nå verdenspressen), som sin egen nyhed –
- * "Liverpool seal Perry deal", "Wolves sign Armstrong" (overskriften vælges efter spilleren). Grænsen for udlandet er *estimeret*.
+ * Ægte CM 01/02: hver handel som sin egen nyhed – "Liverpool seal Perry deal", "Wolves sign Armstrong" (overskriften vælges efter spilleren).
+ * Med den originale database afgøres modtagerne af originalens regel (cmNewsScope.ts: 0x8dbef0/0x8d1130); ellers et skøn (eget land, udlandet
+ * over 8 mio. – *estimeret*).
  */
-function originalTransferNews(p: Player, buyer: Club, seller: Club | undefined, fee: number, loan: boolean, addOn?: number): boolean {
+function originalTransferNews(p: Player, buyer: Club, seller: Club | undefined, fee: number, loan: boolean, addOn?: number, o?: TransferOffer): boolean {
   const g = gs();
   const me = g.clubs[g.userClub];
-  if (!me || loan || (g.options.transferNews ?? 'big') === 'own') return false;
-  const home = buyer.nation === me.nation || seller?.nation === me.nation;
-  if (!home && fee < 8_000_000 * econ()) return false;
+  if (loan || (g.options.transferNews ?? 'big') === 'own') return false;
+  if (cmActive(g)) {
+    if (!transferNewsToMe(g, p, buyer, { seller, fee, addOn, swap: o?.swap, offerId: o?.id })) return false;
+  } else {
+    if (!me) return false;
+    const home = buyer.nation === me.nation || seller?.nation === me.nation;
+    if (!home && fee < 8_000_000 * econ()) return false;
+  }
   const v = p.id % 4;
   addNews({ cat: 'transfer', key: `transfer.o${seller ? '' : 'Free'}.${v}`, params: { to: buyer.short, from: seller?.short ?? '', player: pname(p), last: p.last, fee, ...(addOn ? { fee2: fee + addOn } : {}) }, link: { kind: 'player', id: p.id } });
   return true;
@@ -639,7 +646,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     const involved = buyer.id === g.userClub || seller?.id === g.userClub;
     if (involved) addNews(news);
     // andre klubbers handler samles i ugens transferoverblik
-    else if (authentic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn);
+    else if (authentic()) originalTransferNews(p, buyer, seller, o.fee, o.loan, o.addOn, o);
     else if (otherTransferNews(buyer, seller, o.fee, o.loan)) (g.transferDigest ??= []).push({ player: p.id, from: o.seller, to: buyer.id, fee: o.fee, ...(o.loan ? { loan: true } : {}) });
   });
 }

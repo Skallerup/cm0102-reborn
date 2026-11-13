@@ -7,15 +7,15 @@ import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
 import { CHALLENGES, challengeClub } from '../game/challenges';
-import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
+import type { WorldData } from '../game/newgame';
+import { createGameAsync, LANG_NATION, ORIG_LANG_NATION } from './startGame';
 import { NewGameLoader, type NewGameProgress } from './NewGameLoader';
-import type { GameState } from '../game/types';
 import { setupBots, type BotScope } from '../game/bots';
 import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, storeSave, type SaveMeta } from '../game/save';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { AccountBar, useAccount } from './Login';
-import { gs, notify, setGame } from '../game/state';
+import { gs, notify } from '../game/state';
 import type { Lang } from '../game/types';
 import { compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
 import { Flag, Panel } from './components';
@@ -27,6 +27,7 @@ import { GROUP_KEY, NAV_CLOSED_DEFAULT } from './Shell';
 import { Editor } from './Editor';
 import { listDbs, loadCustomWorld } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
+import { ClassicStart } from './ClassicStart';
 
 type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'newDraft' | 'editor';
 
@@ -42,6 +43,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   const [busy, setBusy] = useState('');
   const [prog, setProg] = useState<NewGameProgress | null>(null);
   const [err, setErr] = useState('');
+  const [, bump] = useState(0);
   const lang = getLang();
 
   const doImport = async (file: File | undefined) => {
@@ -52,6 +54,12 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
     if (!ok) setErr(t('start.importFailed'));
   };
 
+  // det klassiske udseende: originalens startmenu og nyt-spil-forløb (ClassicStart.tsx); Netværksspil, udfordringer, editor og draft åbner de
+  // eksisterende skærme (Tilbage fører til den klassiske startmenu)
+  if (view === 'menu' && !roomParam && initialLook() === 'classic') {
+    return <ClassicStart onLang={onLang} onHome={onHome} onLook={() => bump((x) => x + 1)}
+      onGo={(v) => { if (v === 'draft') { setDraftFrom('menu'); setView('newDraft'); } else setView(v); }} />;
+  }
   return (
     <div className={`start ${view === 'menu' ? 'start-menu' : ''}`}>
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
@@ -75,6 +83,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
             <div className="start-foot">
               <button className="start-ghost" onClick={() => document.getElementById('import-file')?.click()}>{t('start.import')}</button>
               <input id="import-file" type="file" accept=".cm0102,.json,.gz" style={{ display: 'none' }} onChange={(e) => doImport(e.target.files?.[0])} />
+              <button className="start-ghost" onClick={() => { setTheme('retro'); bump((x) => x + 1); }}>{t('start.classicMenu')}</button>
               <LangMenu up value={lang} onChange={(k) => { setLang(k); onLang(k); }} />
               <select className="start-cur" aria-label={t('opt.currency')} defaultValue={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>
                 {CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}
@@ -169,12 +178,6 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
     </Panel>
   );
 }
-
-// sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
-const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey', sv: 'Sweden', nb: 'Norway' };
-/** Den originale database: originalens forvalg pr. sprog (0x827d50 → 0x66f4d0: engelsk England, fransk Frankrig, tysk Tyskland, italiensk Italien,
- *  spansk Spanien, dansk Danmark, hollandsk Holland, norsk Norge, portugisisk Portugal, svensk Sverige …). Tyrkisk findes ikke i originalen → engelsk. */
-const ORIG_LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Portugal', tr: 'England', sv: 'Sweden', nb: 'Norway' };
 
 function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; setProg?: (p: NewGameProgress | null) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
   const [world, setWorld] = useState<WorldData | null>(null);
@@ -432,27 +435,4 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
       <div className="muted" style={{ marginTop: 8 }}>{t((world as { kind?: string }).kind === 'cm0102' ? 'start.dataNoteCm' : 'start.dataNote', { src: world.source })}</div>
     </div>
   );
-}
-
-
-/** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden */
-async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void): Promise<void> {
-  if (typeof Worker === 'undefined') { createGame(world, opts); return; }
-  try {
-    const game = await new Promise<GameState>((resolve, reject) => {
-      const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
-      w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
-        const m = e.data;
-        if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
-        else if (m.type === 'done') { w.terminate(); resolve(m.game as GameState); }
-        else { w.terminate(); reject(new Error(m.message)); }
-      };
-      w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
-      w.postMessage({ world, opts });
-    });
-    setGame(game);
-  } catch (e) {
-    console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
-    createGame(world, opts);
-  }
 }

@@ -169,6 +169,29 @@ export function Shell() {
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
+  // CM 01/02: på ferie spørger et klik HVOR SOM HELST "Return from holiday ?" (ikke kun den grå bjælke). Kørslen stopper, og svarer man
+  // No, fortsætter ferien. Klik i selve spørgsmålet (.cx-confirm) går igennem.
+  const askingHolidayRef = useRef(false);
+  const askReturnFromHoliday = () => {
+    if (askingHolidayRef.current) return;
+    askingHolidayRef.current = true;
+    stopRef.current = true;
+    void askConfirm(t('cl.hol.return'), { head: t('cl.mt.confirm') }).then((ok) => {
+      askingHolidayRef.current = false;
+      if (!ok) { gs().manager.holiday = holidaySetRef.current; onHolidayRef.current = true; void run({ maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); }); }
+    });
+  };
+  useEffect(() => {
+    if (!running || !onHolidayRef.current) return;
+    const onClick = (e: MouseEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!onHolidayRef.current || el?.closest('.cx-confirm, .confirm, .modal')) return;
+      e.preventDefault(); e.stopPropagation();
+      askReturnFromHoliday();
+    };
+    document.addEventListener('click', onClick, true);
+    return () => document.removeEventListener('click', onClick, true);
+  });
   // efter første afsluttede sæson: tilbyd en konto (skygemte spil) og opdateringsmails – én gang, aldrig i fællesspil
   const [newsAsk, closeNewsAsk] = useNewsPrompt(g.manager.history?.length ?? 0, !!g.humans?.length);
   // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
@@ -533,9 +556,7 @@ export function Shell() {
             // simulering: én grå bjælke med datoen, der behandles (klik = stop)
             <button className="cx-running" onClick={() => {
               if (!onHolidayRef.current) { stopRef.current = true; return; }
-              // på ferie: spørg først (kørslen fortsætter imens, som i originalen stopper den ved svaret)
-              stopRef.current = true;
-              void askConfirm(t('cl.hol.return'), { head: t('cl.mt.confirm') }).then((ok) => { if (!ok) { gs().manager.holiday = holidaySetRef.current; onHolidayRef.current = true; void run({ maxDays: 365, autoPlay: true }).finally(() => { onHolidayRef.current = false; gs().manager.holiday = undefined; notify(); }); } });
+              askReturnFromHoliday();
             }} title={t('common.stop')}>
               {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke – på ferie står der også, at et klik afbryder ferien (brugere ledte efter en stop-knap) */}
               {cxLongDate(running)}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}

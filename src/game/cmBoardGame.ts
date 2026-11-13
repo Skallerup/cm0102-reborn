@@ -36,6 +36,7 @@ import { msvcQsort } from './engine/grid/subs';
 import { registerPrerun } from './cmPrerun';
 import { personKey } from './cmRelations';
 import { cmClubEuro } from './cmFitnessGame';
+import { clubNewsToMe, cmForeign } from './cmNewsScope';
 
 const GBP = 0.86;
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -48,7 +49,6 @@ export function cmBoardOn(g: GameState): boolean {
 // ---------------------------------------------------------------- personerne
 
 const JOB: Record<string, number> = { manager: 5, assistant: 6, coach: 8, scout: 9, physio: 10 };
-const UK = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland', 'Republic Of Ireland', 'Ireland']);
 
 function staffPerson(_g: GameState, s: Staff, today: CmDate): Person {
   const hid = s.cmHid ?? [];
@@ -228,15 +228,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
       const cl = g.nations[g.clubs[c]?.nation ?? -1]?.lang?.[0], pl = g.nations[p.nation]?.lang?.[0];
       return cl !== undefined && cl === pl ? 10 : 0;
     },
-    foreign: (p, n) => {
-      if (n < 0) return true;
-      if (p.nation === n) return false;
-      if (UK.has(nationName(n)) && UK.has(nationName(p.nation))) return false;
-      const AN = new Set(['Australia', 'New Zealand']);
-      if (AN.has(nationName(n)) && AN.has(nationName(p.nation))) return false;
-      if (nationName(n) === 'Italy' && nationName(p.nation) === 'Ukraine') return false;
-      return true;
-    },
+    foreign: (p, n) => cmForeign(g, p.nation, n),
     interest: (p, c) => (interestHook.fn ? interestHook.fn(g, p, c) : staffInterest((ie ??= interestEnv(g, env)), p, c, 5)),
     retiring: () => false,
     inSeason: (c) => clubSeason(g.clubs[c]?.nation, dayNum(todayIso))[0],
@@ -375,7 +367,7 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       return;
     case 'appointed':
       // 0x6a3060: overskriften "{kort navn} appoint X as manager", brødteksten efter den forrige klub (−1 → 0xa09e18) og arten (3 → 0xa0a2f8)
-      if (newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager),
+      if (n.manager.human ? clubNewsToMe(g, n.club, true) : newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager),
         body: appointBody(clubName(n.club), mname(n.manager), n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '') }, link: { kind: 'club', id: n.club } });
       return;
     case 'pressure': case 'ultimatum': case 'protest':
@@ -384,11 +376,9 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
     default: return;
   }
 }
-/** 0x6a2e00/0x6a1b00: klubber med omdømme > 7250 til alle, ellers til managere i samme land */
+/** 0x6a2e00/0x6a1b00 (cmNewsScope.ts clubNewsToMe): kørende liga i et valgt land; omdømme > 7250 til alle, ellers landets managere */
 function newsOn(g: GameState, c: number): boolean {
-  const club = g.clubs[c], me = g.clubs[g.userClub];
-  if (!club) return false;
-  return clubRepMem(g, c) > 7250 || !me || me.nation === club.nation;
+  return clubNewsToMe(g, c);
 }
 
 const nationNameOf = (g: GameState, n: number | undefined) => (n === undefined ? '' : g.nations[n]?.name ?? '');
