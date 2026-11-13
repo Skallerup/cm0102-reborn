@@ -52,6 +52,20 @@ export function runTarget(s: Slot, x: number, y: number): { x: number; y: number
   return { x: gx, y: gy };
 }
 
+/** Navn til en egen formation ud fra pladserne, fx "4-1-2-3*" (CM 01/02: "*" = ændret) */
+export function shapeName(slots: Slot[]): string {
+  const n = { d: 0, dm: 0, m: 0, am: 0, st: 0 };
+  for (const s of slots) {
+    if (s.pos === 'GK') continue;
+    if (s.pos === 'D' || s.pos === 'SW' || (s.pos === 'WB' && s.x < 36)) n.d++;
+    else if (s.pos === 'DM') n.dm++;
+    else if (s.pos === 'M' || s.pos === 'WB') n.m++;
+    else if (s.pos === 'AM') n.am++;
+    else n.st++;
+  }
+  return `${[n.d, n.dm, n.m, n.am, n.st].filter((x) => x > 0).join('-')}*`;
+}
+
 /** Står en anden spiller allerede på den faste plads? */
 export function slotTaken(slots: Slot[], i: number, s: Slot): boolean {
   return slots.some((o, j) => j !== i && o.pos !== 'GK' && Math.abs(o.x - s.x) < 5 && Math.abs(o.y - s.y) < 6);
@@ -107,7 +121,7 @@ export function newTactic(formation: string, mentality = 2): Tactic {
 
 export function changeFormation(t: Tactic, formation: string): Tactic {
   const slots = formationSlots(formation);
-  return { ...t, formation, slots, individual: slots.map(defaultPlayerInstructions) };
+  return { ...t, formation, slots, individual: slots.map(defaultPlayerInstructions), positions: undefined };
 }
 
 /** Kan spilleren spille i dag? */

@@ -1057,9 +1057,9 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
   const aiPicks: [{ ctx: AiPickCtx; captain: number | null; setPieces: number[] } | null, { ctx: AiPickCtx; captain: number | null; setPieces: number[] } | null] = [null, null];
   teams.forEach((t, side) => {
     const ps = t.players instanceof Map ? t.players : new Map(t.players.map((p) => [p.id, p]));
-    // originalens positionstabel: nærmeste forudindstilling (rolle/side, så placering) – tacticTable.ts
-    // originalens positionstabel (tacticTable.ts): forudindstillingen, når taktikkens masker er præcis dens, ellers det kanoniske gitter
-    let map = maps[side] = mapTactic(t.tactic.slots, t.tactic.formation);
+    // originalens positionstabel (tacticTable.ts): taktikkens eget gitter, når brugeren har flyttet positioner med/uden bold (Tactic.positions,
+    // 0x5b3560 → 0x5b7160), ellers forudindstillingen, når taktikkens masker er præcis dens, ellers det kanoniske gitter (0x5b2ba0)
+    let map = maps[side] = mapTactic(t.tactic.slots, t.tactic.formation, t.tactic.positions);
     // computerholdet (0x6dbb80 → 0x6e0230 + 0x6e2000, aiTeam.ts): en af originalens 45 faste taktikker og spillerne fordelt på dens pladser.
     // Tilstanden før kampen (0x6df460 med inMatch = false, styrke = omdømme) indgår i valget.
     let tactic = t.tactic;
@@ -1307,7 +1307,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     for (const s of [0, 1] as Side[]) {
       const t = pendingTactic[s]; if (!t) continue;
       pendingTactic[s] = null;
-      const map = maps[s] = mapTactic(t.slots, t.formation);
+      const map = maps[s] = mapTactic(t.slots, t.formation, t.positions);
       m.tactics[s] = t;
       m.teamFlags[s] = teamFlagsOf(t.team, map.flags);
       const on = gp.filter((q) => q.side === s && q.active && q.slot >= 0);

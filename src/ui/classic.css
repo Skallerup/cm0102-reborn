@@ -1752,3 +1752,20 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
   .cx-bid .cx-bid-total b { grid-column: 3; text-align: left; color: #fff21f; font-weight: 400; }
   .cx-bid .cx-bid-tools { margin-top: 70px; } .cx-bid .cx-bid-tools > * { width: 300px; height: 40px; }
 }
+/* CM 01/02 With Ball / Without Ball (ZonePitch.tsx): boldzonerne, positionsnavnene i cirklerne, listen med pladsernes navne */
+.cx-zone-pitch { cursor: pointer; }
+.cx-zone-pitch svg.zones { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cx-zone-slot { min-width: 0; touch-action: none; cursor: grab; }
+.cx-zone-slot .cx-tac-dot { width: 34px; height: 34px; font-size: 12px; letter-spacing: -0.3px; border: 2px solid #f2f2f2; }
+.cx-zone-slot .cx-tac-dot.gk { border-color: #134d10; }
+.cx-zone-slot.empty .cx-tac-dot { background: rgba(179, 20, 27, 0.55); border-style: dashed; }
+.cx-zone-left { display: flex; gap: 8px; min-height: 0; flex: 1; }
+.cx-zone-list { display: flex; flex-direction: column; gap: 1px; flex: 0 0 auto; width: 210px; height: calc(100vh - 262px); min-height: 360px; overflow-y: auto; }
+.cx-zone-list > .cx-tac-row { flex: 1 0 26px; max-height: 40px; display: grid; grid-template-columns: 56px 1fr; align-items: center; cursor: pointer; }
+.cx-zone-list > .cx-tac-row .cx-tac-tag { padding-left: 8px; color: #e6e6e6; font-size: 13px; }
+.cx-zone-list > .cx-tac-row.on .cx-tac-num { outline: 2px solid #fff21f; outline-offset: -2px; }
+.cx-zone-left > .cx-ti { flex: 1; min-width: 0; overflow-y: auto; height: calc(100vh - 262px); min-height: 360px; }
+@media (max-width: 760px) {
+  .cx-zone-left { flex-direction: column; }
+  .cx-zone-list, .cx-zone-left > .cx-ti { width: auto; height: auto; min-height: 0; }
+}

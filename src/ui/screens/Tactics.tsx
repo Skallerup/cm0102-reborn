@@ -4,7 +4,7 @@ import { Info } from '../help';
 import { roleScore, slotFit, slotRole, roleProfile } from '../../game/attributes';
 import { gs, squad } from '../../game/state';
 import { act } from '../../game/actions';
-import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget } from '../../game/tactics';
+import { autoSelect, available, changeFormation, FORMATIONS, newTactic, runTarget, shapeName } from '../../game/tactics';
 import type { Player, PlayerInstructions, PosKey, Side, Slot, Tactic, TeamInstructions } from '../../game/types';
 import { t } from '../../i18n';
 import { chemistry } from '../../game/personality';
@@ -45,19 +45,7 @@ export function slotAt(x: number, y: number): { pos: PosKey; side: Side } {
   return { pos, side };
 }
 
-/** Navn til en egen formation ud fra pladserne, fx "4-1-2-3*" */
-export function shapeName(slots: Slot[]): string {
-  const n = { d: 0, dm: 0, m: 0, am: 0, st: 0 };
-  for (const s of slots) {
-    if (s.pos === 'GK') continue;
-    if (s.pos === 'D' || s.pos === 'SW' || (s.pos === 'WB' && s.x < 36)) n.d++;
-    else if (s.pos === 'DM') n.dm++;
-    else if (s.pos === 'M' || s.pos === 'WB') n.m++;
-    else if (s.pos === 'AM') n.am++;
-    else n.st++;
-  }
-  return `${[n.d, n.dm, n.m, n.am, n.st].filter((x) => x > 0).join('-')}*`;
-}
+export { shapeName };
 
 /** Banens koordinater i procent af tavlen */
 const slotLeft = (s: Slot) => s.y;

@@ -573,6 +573,22 @@ export interface Tactic {
   cornersR?: number;
   /** Instruktioner mod modstanderen – gælder kun kampen med dette id */
   opp?: OppInstructions;
+  /** CM 01/02 With Ball / Without Ball: taktikkens positionsgitter (taktikfilens blok +0x164), kun når brugeren har flyttet en position.
+   *  Gælder kun, så længe pladsernes masker er `positions.masks` (ellers bruges formationens forudindstilling som før). */
+  positions?: TacticPositions;
+}
+
+/** Taktikfilens grove positionsgitter (+0x164) og pladsernes masker (+0x12d/+0x14e) – se engine/grid/tacticPositions.ts */
+export interface TacticPositions {
+  /** pr. plads 24 punkter: indeks 12·medBold + 4·boldzoneX (0..2) + boldzoneY (0..3) → x | y << 8 (x 0..26 venstre → højre, y 0..35 fra eget mål) */
+  posts: number[][];
+  /** pladsernes masker (+0x12d) */
+  masks: number[];
+  /** de sekundære masker (+0x14e) */
+  masks2: number[];
+  /** forudindstillingen (indeks i PRESET_TACTICS), gitteret blev taget fra, og hver plads' nummer i den */
+  preset?: number;
+  presetSlot?: number[];
 }
 
 export type OppKind = 'tight' | 'press' | 'hard' | 'weakFoot';

@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { RUN_DIRS, RunArrows, SlotGuides, coarse, dirTarget, useRunDrag } from './runs';
+import { ZonePitch, type Zone } from './ZonePitch';
+import { movePost, slotMoved } from '../../game/engine/grid/tacticPositions';
 import { estimateGate } from '../../game/finance';
 import { FORMATIONS, changeFormation, slotTaken, snapSlot } from '../../game/tactics';
 import type { DropItem } from '../classic';
@@ -1428,6 +1430,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
   const pitchRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'cond' | InstrKey>('cond');
   const [pv, setPv] = useState<'ov' | 'with' | 'without'>('ov');
+  const [zone, setZone] = useState<Zone>({ zx: 0, zy: 0 });
   const [ctx, setCtx] = useState<{ slot: number; x: number; y: number } | null>(null);
   const tac = (editable && draft) || lv.tactic;
   const edit = (f: (t: Tactic) => Tactic) => { if (editable && setDraft) setDraft(f(structuredClone(tac))); };
@@ -1462,7 +1465,7 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
     const x = (97 - ((e.clientY - r.top) / r.height) * 100) / 0.92;
     // CM 01/02: spilleren lander på den nærmeste faste plads
     const s = snapSlot(x, y);
-    edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK' && !slotTaken(t2.slots, i, s)) { t2.slots[i] = s; t2.formation = shapeName(t2.slots); } return t2; });
+    edit((t2) => { const i = t2.lineup.indexOf(drag); if (i >= 0 && t2.slots[i].pos !== 'GK' && !slotTaken(t2.slots, i, s)) { t2.slots[i] = s; t2.formation = shapeName(t2.slots); return slotMoved(t2, i); } return t2; });
     setDrag(null);
   };
   type Row = { id: number; num?: number | string; note?: string; noteOn?: boolean; cond?: number; rating?: number; goals?: number; dim: boolean; live: boolean; slot?: number };
@@ -1550,7 +1553,11 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
         </div>
         <div className="cx-mt-pcol">
         <div className="cx-mt-ptabs">{(['ov', 'with', 'without'] as const).map((k) => <button key={k} className={pv === k ? 'on' : ''} onClick={() => setPv(k)}>{t(`cl.mt.pv.${k}`)}</button>)}</div>
-        <div className="cx-tac-pitch" ref={pitchRef} onDragOver={(e) => { if (editable && drag !== null) e.preventDefault(); }} onDrop={(e) => dropOnPitch(e)}
+        {pv !== 'ov' ? (
+          // CM 01/02 With Ball / Without Ball: positionerne pr. boldzone – kan ændres under kampen (gælder fra næste dødbold, applyTactic)
+          <ZonePitch tac={tac} att={pv === 'with' ? 1 : 0} zone={zone} onZone={setZone} sel={null} onSelect={() => {}} byId={(id) => g.players[id]} dotClass="cx-mt-dot"
+            onMove={editable ? (i, x, y) => { if (tac.slots[i]?.pos !== 'GK') edit((t2) => movePost(t2, i, pv === 'with' ? 1 : 0, zone.zx, zone.zy, x, y)); } : null} />
+        ) : <div className="cx-tac-pitch" ref={pitchRef} onDragOver={(e) => { if (editable && drag !== null) e.preventDefault(); }} onDrop={(e) => dropOnPitch(e)}
           onClick={(e) => { if (pick !== null && on.some((x) => x.id === pick) && (e.target === e.currentTarget || (e.target as Element).closest('svg'))) { e.stopPropagation(); dropOnPitch(e, pick); } }}>
           <svg className="lines" viewBox="0 0 68 100" preserveAspectRatio="none">
             <g stroke="#ffffff88" strokeWidth="0.35" fill="none">
@@ -1566,20 +1573,17 @@ function OppTactics({ sim, side, club, editable, onSub, draft, setDraft, lastVie
             const p = pl(s.id);
             if (!sl) return null;
             const gk = sl.pos === 'GK';
-            const runs = instrVal(tac, slot, 'runs');
             return (
               <div key={s.id} className={`cx-tac-slot ${drag !== null ? 'drop' : ''} ${pick === s.id ? 'on' : ''}`} style={{ left: `${sl.y}%`, top: `${97 - sl.x * 0.92}%` }} {...dnd(s.id, true)}
                 onContextMenu={(e) => { if (!editable || gk) return; e.preventDefault(); e.stopPropagation(); }}
                 onPointerDown={(e) => { if (editable && !gk) rd.start(e, slot, sl); }}
                 onTouchStart={(e) => { if (editable && !gk) rd.touch(e, slot, sl); }}>
-                {pv === 'with' && !gk && runs > 0 && <span className="cx-run-arrow">{runs === 2 ? '▲' : '△'}</span>}
-                {pv === 'without' && !gk && tac.individual[slot]?.tightMarking && <span className="cx-run-arrow">M</span>}
                 <span className={`cx-tac-dot cx-mt-dot ${gk ? 'gk' : ''}`}>{s.num ?? ''}</span>
                 <span className="cx-tac-nm">{p?.last ?? ''}</span>
               </div>
             );
           })}
-        </div>
+        </div>}
         </div>
       </div>
       {ctx && (

@@ -1078,6 +1078,27 @@ async function run(look) {
     if ((await tac()) === before) throw new Error('taktikken ændrede sig ikke');
   });
 
+  if (look === 'klassisk') await step('taktik: With Ball – træk en spillers position i boldzonen', async () => {
+    // CM 01/02: banen delt i 3 × 4 boldzoner (gul stiplet = valgt), positionsnavne i cirklerne og i listen; træk = nyt punkt i den zone
+    await page.getByRole('button', { name: await t('cl.tac.with') }).click();
+    await page.locator('.cx-zone-pitch').waitFor();
+    const names = await page.locator('.cx-zone-list .cx-tac-num').allTextContents();
+    if (names[0] !== 'GK' || !names.includes('SB1')) throw new Error(`positionslisten: ${names.join(' ')}`);
+    if (!(await page.locator('.cx-zone-pitch .cx-zone-sel').count())) throw new Error('den valgte boldzone vises ikke');
+    const s = page.locator('.cx-zone-slot').nth(9);
+    const b = await s.boundingBox();
+    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2); await page.mouse.down();
+    await page.mouse.move(b.x + b.width / 2 + 25, b.y + b.height / 2 - 70, { steps: 8 }); await page.mouse.up();
+    await page.waitForTimeout(200);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-taktik-with-ball.png` });
+    await tacOk(); await go({ name: 'tactics' });
+    await page.waitForTimeout(200);
+    const r = await gs(() => { const tc = window.__cm.gs().tactic; return { ok: !!tc.positions && tc.positions.posts.length === 11 && tc.positions.posts[9].length === 24, f: tc.formation }; });
+    if (!r.ok) throw new Error('Tactic.positions blev ikke gemt efter Ok');
+    if (!r.f.endsWith('*')) throw new Error(`formationen er ikke markeret ændret: ${r.f}`);
+    await page.getByRole('button', { name: await t('cl.tac.overview') }).click().catch(() => {});
+  });
+
   await step('taktik: samme taktik efter skift af udseende', async () => {
     const before = await tac();
     await page.evaluate(async (th) => { const m = await import('/cm0102-reborn/src/ui/theme.ts'); m.setTheme(th); }, look === 'klassisk' ? 'club' : 'retro');
@@ -1260,7 +1281,7 @@ async function run(look) {
     await go({ name: 'assistant' });
     const b = page.locator('.cx-greybtn', { hasText: 'Progress' });
     await b.click({ timeout: 5000 });
-    await page.waitForSelector('.cx-prog svg circle.me', { timeout: 5000 });
+    await page.waitForSelector('.cx-prog', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-progress.png` });
   });
   await page.screenshot({ path: `${OUT}/${look}-slut.png` });

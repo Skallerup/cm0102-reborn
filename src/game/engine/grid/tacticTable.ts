@@ -36,6 +36,13 @@ export function tableCell(t: Table, side: 0 | 1, slot: number, att: 0 | 1, bx: n
   return [8 - (c & 0xf), 11 - (c >> 4)];
 }
 
+const gridCache = new Map<string, Uint8Array>();
+/** forudindstillingens grove gitter (+0x164, 0x420 bytes) */
+export function presetGrid(p: PresetTactic): Uint8Array {
+  let g = gridCache.get(p.file);
+  if (!g) { g = bytesOf(p.grid); gridCache.set(p.file, g); }
+  return g;
+}
 const cache = new Map<string, Table>();
 export function presetTable(p: PresetTactic): Table {
   let t = cache.get(p.file);
@@ -104,16 +111,63 @@ export function slotMask(s: { pos: string; x: number; y: number }): number {
 export interface TacticMap { preset: PresetTactic | null; table: Table; slotOf: number[]; masks: number[]; masks2: number[]; flags: number; lo: number[]; hi: number[]; tb: number[] } // slotOf[spillets plads] = tabellens plads
 
 const canonCache = new Map<string, Table>();
-export function mapTactic(slots: { pos: string; x: number; y: number }[], formation?: string): TacticMap {
-  const masks = slots.slice(0, 11).map(slotMask);
+/** Spillets taktik → forudindstillingen med præcis de samme 11 masker (kun spillerens 17 "Set To Default"; navnet afgør mellem ens) og
+ *  hver plads' nummer i den. null = ingen. */
+export function presetFor(masks: number[], formation?: string): { index: number; slotOf: number[] } | null {
   const key = [...masks].sort((a, b) => a - b).join(',');
   // kun spillerens 17 standardtaktikker (computerens 28 CM3_TACTICS vælges af aiTacticChoice.ts)
   const hits = PRESET_TACTICS.slice(0, DEFAULT_PRESETS).filter((t) => [...t.masks].sort((a, b) => a - b).join(',') === key);   // fx 4-4-2 = 4-4-2 Attacking
   const pr = hits.find((t) => t.name === formation) ?? hits[0];
-  if (pr) {                                                                       // præcis en forudindstilling
-    const used = new Set<number>();
-    const slotOf = masks.map((mk) => { const j = pr.masks.findIndex((pm, k) => pm === mk && !used.has(k)); used.add(j); return j; });
-    return { preset: pr, table: presetTable(pr), slotOf, masks: pr.masks, masks2: pr.masks2, flags: pr.flags, lo: pr.lo, hi: pr.hi, tb: pr.tb };
+  if (!pr) return null;
+  const used = new Set<number>();
+  const slotOf = masks.map((mk) => { const j = pr.masks.findIndex((pm, k) => pm === mk && !used.has(k)); used.add(j); return j; });
+  return { index: PRESET_TACTICS.indexOf(pr), slotOf };
+}
+
+/** Taktikkens egne positioner med/uden bold (Tactic.positions = CM 01/02's With Ball / Without Ball, se tacticPositions.ts). Gælder kun,
+ *  når pladsernes masker stadig er dem, gitteret blev lavet til (en ændring af formationen andetsteds → formationens forudindstilling). */
+export interface PositionsLike { posts: number[][]; masks: number[]; masks2: number[]; preset?: number; presetSlot?: number[] }
+export function positionsValid(slots: { pos: string; x: number; y: number }[], p: PositionsLike | undefined | null): boolean {
+  if (!p || p.posts?.length !== 11 || p.masks?.length !== 11 || p.masks2?.length !== 11 || slots.length < 11) return false;
+  if (!p.posts.every((r) => r?.length === 24)) return false;
+  return slots.slice(0, 11).every((s, i) => slotMask(s) === p.masks[i]);
+}
+/** Gitteret (+0x164, 0x420 bytes, samme layout som filerne) i tabellens pladsrækkefølge `slotOf` (forudindstillingens, hvis det kom derfra) */
+export function positionsGrid(p: PositionsLike, slotOf: number[]): Uint8Array {
+  const g = new Uint8Array(0x420), v = new DataView(g.buffer);
+  for (let i = 0; i < 11; i++) {
+    const ts = slotOf[i];
+    for (let k = 0; k < 24; k++) {
+      const att = k >= 12 ? 1 : 0, zx = Math.floor((k % 12) / 4), zy = k % 4, xy = p.posts[i][k];
+      const idx = ((2 * ts + att) * 3 + zx) * 4 + zy;
+      v.setInt16(4 * idx, xy & 0xff, true); v.setInt16(4 * idx + 2, (xy >> 8) & 0xff, true);
+    }
+  }
+  return g;
+}
+const posCache = new Map<string, Table>();
+
+export function mapTactic(slots: { pos: string; x: number; y: number }[], formation?: string, positions?: PositionsLike | null): TacticMap {
+  const masks = slots.slice(0, 11).map(slotMask);
+  if (positions && positionsValid(slots, positions)) {
+    // CM 01/02: taktikkens eget gitter (brugeren har flyttet positioner med/uden bold, 0x5b3560) → udvidelsen 0x5b7160 som ved indlæsning af
+    // en taktikfil. Holdflag, instruktioner og taktikbytes fra forudindstillingen, gitteret kom fra (filen beholder dem), ellers standardens (0x5b27c0).
+    const pr = positions.preset !== undefined ? PRESET_TACTICS[positions.preset] : undefined;
+    const ps = positions.presetSlot;
+    const slotOf = pr && ps?.length === 11 && new Set(ps).size === 11 && ps.every((j) => j >= 0 && j < 11) ? ps.slice() : masks.map((_, i) => i);
+    const order = (a: number[]) => { const out = new Array<number>(11); slotOf.forEach((j, i) => { out[j] = a[i]; }); return out; };
+    const grid = positionsGrid(positions, slotOf);
+    const key = Array.from(grid).join(',');
+    let table = posCache.get(key);
+    if (!table) { table = expandGrid(grid); if (posCache.size > 200) posCache.clear(); posCache.set(key, table); }
+    if (pr) return { preset: pr, table, slotOf, masks: order(positions.masks), masks2: order(positions.masks2), flags: pr.flags, lo: pr.lo, hi: pr.hi, tb: pr.tb };
+    return { preset: null, table, slotOf, masks: positions.masks.slice(), masks2: positions.masks2.slice(), flags: TEAM_DEFAULT, lo: masks.map(() => INSTR_DEFAULT.lo),
+      hi: masks.map(() => INSTR_DEFAULT.hi), tb: masks.map(() => TACTIC_BYTE_DEFAULT) };
+  }
+  const hit = presetFor(masks, formation);
+  if (hit) {                                                                      // præcis en forudindstilling
+    const pr = PRESET_TACTICS[hit.index];
+    return { preset: pr, table: presetTable(pr), slotOf: hit.slotOf, masks: pr.masks, masks2: pr.masks2, flags: pr.flags, lo: pr.lo, hi: pr.hi, tb: pr.tb };
   }
   const k = masks.join(',');
   let t = canonCache.get(k);

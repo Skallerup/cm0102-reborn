@@ -20,6 +20,9 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { shapeName } from './Tactics';
 import { LastMatchView, TeamInstrDialog } from './Match';
+import { ZonePitch, type Zone } from './ZonePitch';
+import { maskName, mirrorPositions, movePost, slotMoved, tacticPositions } from '../../game/engine/grid/tacticPositions';
+import { positionsValid } from '../../game/engine/grid/tacticTable';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
@@ -28,7 +31,7 @@ type View = 'cond' | 'fit' | 'value';
 type Pane = 'overview' | 'with' | 'without';
 
 /** Edit → Copy/Copy All: udklipsholderen (gælder, så længe siden er åben) */
-let clip: { one?: { slot: Slot; instr: PlayerInstructions }; all?: { slots: Slot[]; individual: PlayerInstructions[]; formation: string } } | null = null;
+let clip: { one?: { slot: Slot; instr: PlayerInstructions }; all?: { slots: Slot[]; individual: PlayerInstructions[]; formation: string; positions?: Tactic['positions'] } } | null = null;
 
 export function ClassicTactics() {
   const g = useGame()!;
@@ -43,6 +46,8 @@ export function ClassicTactics() {
   const byId = new Map(players.map((p) => [p.id, p]));
   const [pane, setPane] = useRouteState<Pane>('tpane', 'overview');
   const [view0, setView] = useRouteState<View>('tview', 'cond');
+  // With Ball / Without Ball: den valgte boldzone (originalens +0x2729; *estimeret* start: venstre zone ved eget mål som på ejerens billede)
+  const [zone, setZone] = useRouteState<Zone>('tzone', { zx: 0, zy: 0 });
   const view: View = (['cond', 'fit', 'value'] as View[]).includes(view0) ? view0 : 'cond';
   // vores ekstra: hele truppen under bænkpladserne (originalen udtager de øvrige på trupskærmen)
   const [all, setAll] = useRouteState('tall', false);
@@ -92,8 +97,14 @@ export function ClassicTactics() {
     // løbepilen hører til den gamle plads
     const individual = tac.individual.slice();
     if (individual[i]?.run) individual[i] = { ...individual[i], run: undefined };
-    change({ ...tac, slots, individual, formation: shapeName(slots) });
+    // CM 01/02 (0x5b2ba0): pladsens positioner med/uden bold bliver den nye plads' kanoniske; de andres egne bevares
+    change(slotMoved({ ...tac, slots, individual, formation: shapeName(slots) }, i));
     setPick(null); setSlotSel(null);
+  };
+  /** With Ball / Without Ball: en spiller trukket til et nyt punkt i den valgte boldzone (0x5b3560) */
+  const movePos = (i: number, x: number, y: number) => {
+    if (gs().draft || tac.slots[i]?.pos === 'GK') return;
+    change(movePost(tac, i, pane === 'with' ? 1 : 0, zone.zx, zone.zy, x, y));
   };
   const toggleBench = (pid: number) => {
     if (tac.lineup.includes(pid)) return;
@@ -178,7 +189,8 @@ export function ClassicTactics() {
   /** spejlvend formationen (venstre ↔ højre) – CM 01/02 Edit → Reflect */
   const reflect = () => {
     const flip = (sd: Slot['side']): Slot['side'] => (sd === 'L' ? 'R' : sd === 'R' ? 'L' : sd);
-    change({ ...tac, slots: tac.slots.map((sl) => ({ ...sl, y: 100 - sl.y, side: flip(sl.side) })), individual: tac.individual.map((ind) => (ind?.run ? { ...ind, run: { x: ind.run.x, y: 100 - ind.run.y } } : ind)) });
+    change({ ...tac, slots: tac.slots.map((sl) => ({ ...sl, y: 100 - sl.y, side: flip(sl.side) })), individual: tac.individual.map((ind) => (ind?.run ? { ...ind, run: { x: ind.run.x, y: 100 - ind.run.y } } : ind)),
+      positions: tac.positions && positionsValid(tac.slots, tac.positions) ? mirrorPositions(tac.positions) : undefined });
   };
   // CM 01/02: Undo · Copy · Copy All · Paste · Reflect · Show Runs (+ vores egne: assistenten, ryd holdet, playmaker/target)
   // den valgte plads (klikket på banen eller en spiller på holdet i listen)
@@ -187,14 +199,14 @@ export function ClassicTactics() {
     { key: 'undo', label: `${t('tac.undo')}${hist.length ? ` (${hist.length})` : ''}`, disabled: !hist.length, onClick: undo },
     // CM 01/02: Copy (den valgte spillers plads og instruktioner) · Copy All (hele formationen) · Paste
     { key: 'copy', label: t('cl.tac.copy'), disabled: curSlot === null, onClick: () => { if (curSlot !== null) clip = { one: { slot: { ...tac.slots[curSlot] }, instr: { ...tac.individual[curSlot] } } }; } },
-    { key: 'copyall', label: t('cl.tac.copyAll'), onClick: () => { clip = { all: { slots: structuredClone(tac.slots), individual: structuredClone(tac.individual), formation: tac.formation } }; } },
+    { key: 'copyall', label: t('cl.tac.copyAll'), onClick: () => { clip = { all: { slots: structuredClone(tac.slots), individual: structuredClone(tac.individual), formation: tac.formation, positions: tac.positions && structuredClone(tac.positions) } }; } },
     { key: 'paste', label: t('cl.tac.paste'), disabled: !clip || (!!clip.one && curSlot === null), onClick: () => {
-      if (clip?.all) change({ ...tac, slots: structuredClone(clip.all.slots), individual: structuredClone(clip.all.individual), formation: clip.all.formation });
+      if (clip?.all) change({ ...tac, slots: structuredClone(clip.all.slots), individual: structuredClone(clip.all.individual), formation: clip.all.formation, positions: clip.all.positions && structuredClone(clip.all.positions) });
       else if (clip?.one && curSlot !== null && tac.slots[curSlot].pos !== 'GK') {
         const slots = tac.slots.slice(), individual = tac.individual.slice();
         if (!slotTaken(slots, curSlot, clip.one.slot)) slots[curSlot] = { ...clip.one.slot };
         individual[curSlot] = { ...clip.one.instr };
-        change({ ...tac, slots, individual });
+        change(slotMoved({ ...tac, slots, individual }, curSlot));
       }
     } },
     { key: 'sep0', sep: true },
@@ -239,19 +251,37 @@ export function ClassicTactics() {
               {Array.from({ length: Math.max(9, benchSize()) - bench.length }, (_, k) => emptyRow(bench.length + k))}
               {all && rest.map((p) => row(p, String(p.number ?? ''), 'rest'))}
             </div>
-          ) : <Instructions tac={tac} pane={pane} slot={slotSel ?? (pick !== null && tac.lineup.includes(pick) ? tac.lineup.indexOf(pick) : null)} byId={byId} change={change} />}
+          ) : (
+            <div className="cx-zone-left">
+              {/* CM 01/02: pladsernes navne i stedet for trøjenumre (GK, DR, DC …) og SB1–SB9; "capt" ved anføreren */}
+              <div className="cx-zone-list">
+                {tacticPositions(tac).masks.map((mk, i) => (
+                  <div key={i} className={`cx-tac-row xi ${curSlot === i ? 'on' : ''}`} onClick={() => { setPick(null); setSlotSel(slotSel === i ? null : i); }}>
+                    <span className="cx-tac-num">{maskName(mk)}</span>
+                    <span className="cx-tac-tag">{tac.lineup[i] && tac.captain === tac.lineup[i] ? t('cl.tac.capt') : ''}</span>
+                  </div>
+                ))}
+                {Array.from({ length: Math.max(9, benchSize()) }, (_, k) => <div key={`sb${k}`} className="cx-tac-row bench"><span className="cx-tac-num">SB{k + 1}</span><span className="cx-tac-tag" /></div>)}
+              </div>
+              {/* vores ekstra: holdets og den valgte spillers instruktioner (originalen har dem i menuerne) */}
+              <Instructions tac={tac} pane={pane} slot={curSlot} byId={byId} change={change} />
+            </div>
+          )}
         </div>
         <div className="cx-tac-right">
           <div className="cx-tac-panes">
             {(['overview', 'with', 'without'] as Pane[]).map((k) => <button key={k} className={pane === k ? 'on' : ''} onClick={() => setPane(k)}>{t(`cl.tac.${k}`)}</button>)}
           </div>
-          <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onRun={setRun} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
+          {pane !== 'overview' ? (
+            <ZonePitch tac={tac} att={pane === 'with' ? 1 : 0} zone={zone} onZone={setZone} sel={curSlot} byId={(id) => byId.get(id)}
+              onSelect={(i) => { setPick(null); setSlotSel(slotSel === i ? null : i); }} onMove={gs().draft ? null : movePos} />
+          ) : <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onRun={setRun} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
           onMove={(x, y) => {
             // sluppet (eller klikket) på en tom plet: en spiller på holdet flytter sin plads dertil
             const i = drag !== null ? tac.lineup.indexOf(drag) : slotSel;
             setDrag(null);
             if (i !== null && i >= 0) moveSlot(i, x, y);
-          }} />
+          }} />}
         </div>
       </div>
       {runMenu && (
