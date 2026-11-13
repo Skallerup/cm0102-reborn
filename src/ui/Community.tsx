@@ -8,6 +8,8 @@ import { createProfile, getProfile } from '../online/rank';
 import { dateFmt, getLang, t } from '../i18n';
 import { Modal, Panel, Tabs } from './components';
 import { CommunityHub, type HubTab } from './CommunityHub';
+import { modernOn } from './modernFlag';
+import { useLegacyBg } from './legacyBg';
 
 const ROADMAP: SgStatus[] = ['considering', 'planned', 'progress', 'released'];
 type List = 'trending' | 'top' | 'new' | 'roadmap';
@@ -271,8 +273,9 @@ export function BugReportButton({ screen }: { screen: string; version?: string; 
 
 /** Den offentlige side (uden spil): ?community=1 eller ?suggestion=ID */
 export function PublicCommunityPage({ id, hallId, tab, onClose }: { id?: number; hallId?: number; tab?: HubTab; onClose: () => void }) {
+  useLegacyBg();
   return (
-    <div className="pub">
+    <div className={`pub ${modernOn() ? '' : 'cxl'}`}>
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       <div className="pub-box" style={{ width: 'min(1100px, 100%)' }}>
         <button className="small start-ghost" onClick={onClose}>← CM Reborn</button>

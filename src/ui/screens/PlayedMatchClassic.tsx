@@ -1,8 +1,10 @@
 // En spillet kamp vist som kampskærmen efter slutfløjt (klassisk tema, brugerønske 2026-11-10): samme faner
 // (Match Overview, Match Stats, Action Zones, Match Report), samme underfaner (Team Stats, Player Ratings, Latest Scores,
-// League Table) og samme sidebjælke – bygget af kamprapporten (MatchReport), ikke af en kørende simulering.
+// League Table) og samme sidebjælke – bygget af kamprapporten (MatchReport), ikke af en kørende simulering. Computerklubbernes kampe
+// har en kompakt rapport (g.miniReports, miniReport.ts) uden kommentar – Match Report er så tom som i en kamp uden rapport.
 // Sidebjælkens taktikknapper viser holdets Team Stats (rapporten gemmer ikke taktikken), Continue går tilbage.
 import { useEffect, useState } from 'react';
+import { matchViewReport } from '../../game/miniReport';
 import { ZONES } from '../../game/engine/match';
 import { fixturesOn } from '../../game/state';
 import { compName, t } from '../../i18n';
@@ -17,9 +19,10 @@ import { CmScoreboard, CxLiveTable, CxMatchStats, CxOverview, CxRatings, CxRepor
 
 export function PlayedMatchClassic({ id }: { id: number }) {
   const g = useGame()!;
-  const { back } = useNav();
+  const { back, nav } = useNav();
   const f = g.fixtures[id];
-  const rep = g.reports[id];
+  // menneskets fulde rapport eller computerkampens kompakte (miniReport.ts); ældre gemte spil har kun resultatet
+  const rep = matchViewReport(g, id);
   // originalens kommentarlinjer (CM 01/02) – tegn igen, når de er hentet
   const [, setTexts] = useState(0);
   useEffect(() => { void loadMatchTexts().then(() => setTexts((x) => x + 1)); }, []);
@@ -83,7 +86,7 @@ export function PlayedMatchClassic({ id }: { id: number }) {
       {tab === 'astats' && <CxTeamStats rows={rows[1]} />}
       {tab === 'ratings' && <CxRatings rows={rows} mom={rep.mom} />}
       {tab === 'table' && <CxLiveTable f={f} live={[st[0].goals, st[1].goals]} others={others} minute={minute} finished kicked />}
-      {tab === 'scores' && <CxScores own={{ f, scorers: goals.map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={minute} finished title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} />}
+      {tab === 'scores' && <CxScores own={{ f, scorers: goals.map((e) => [e.m, e.t, e.og ? undefined : e.p] as [number, number, number?]) }} others={others} minute={minute} finished title={t('cl.mt.latest', { comp: compName(g.comps[f.comp]?.name) })} open={(o) => nav({ name: 'report', id: o.id })} />}
       <ClassicSub items={[['hstats', t('cl.mt.teamStats', { club: home })], ['ratings', t('match.ratings')], ['scores', t('cl.mt.scores')], ...(g.comps[f.comp]?.type === 'league' ? [['table', t('cl.mt.leagueTable')]] : []), ['astats', t('cl.mt.teamStats', { club: away })]].map(([k, l]) => ({ key: k, label: l, on: tab === k, onClick: () => setTab(k) }))} />
     </div>
   );

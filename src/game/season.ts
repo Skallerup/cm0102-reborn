@@ -579,6 +579,7 @@ function prune() {
   // gamle kampe og rapporter (klubhistorikken gemmes først)
   storeSeasonRecords(isHumanClub);
   g.fixtures = {};
+  g.miniReports = {};
   const reportIds = Object.keys(g.reports).map(Number).sort((a, b) => b - a);
   for (const id of reportIds.slice(40)) delete g.reports[id];
 }

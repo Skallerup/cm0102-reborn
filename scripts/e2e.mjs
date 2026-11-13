@@ -1,7 +1,9 @@
 // Ende-til-ende-test i en rigtig browser: klassisk og moderne udseende.
 // Starter selv Vite (dev-tilstand, så testkrogene __cm/__cmNav/__cmPick findes), klikker igennem alle hovedskærme,
 // tester taktikskærmen (byt spillere, flyt pladser, instruktioner) og spiller en hel kamp.
-// Fejler ved sidefejl, tomme skærme eller rå oversættelsesnøgler. Kør: node scripts/e2e.mjs [klassisk|moderne]
+// Fejler ved sidefejl, tomme skærme eller rå oversættelsesnøgler. Kør: node scripts/e2e.mjs [klassisk|moderne|editor]
+// Det moderne udseende er slået fra for nu (src/ui/modernFlag.ts): 'moderne' springes over i standardkørslen og kører kun med `node scripts/e2e.mjs moderne`
+// (eller E2E_MODERN=1) – testen slår det til via localStorage cm0102.modern (kun i DEV).
 import { spawn } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { chromium } from 'playwright';
@@ -38,7 +40,7 @@ async function run(look) {
   });
   const errors = [];
   page.on('pageerror', (e) => { errors.push(e.message); if (process.env.E2E_STACK) console.error('PAGEERROR', e.stack); });
-  await page.addInitScript(({ theme, grid }) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.mode', grid ? 'authentic' : 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? (grid ? 'original' : 'modern')); if (grid) localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); }, { theme: look === 'klassisk' ? 'retro' : 'club', grid: ENGINE_GRID });
+  await page.addInitScript(({ theme, grid }) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); if (theme !== 'retro') localStorage.setItem('cm0102.modern', '1'); localStorage.setItem('cm0102.mode', grid ? 'authentic' : 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? (grid ? 'original' : 'modern')); if (grid) localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); }, { theme: look === 'klassisk' ? 'retro' : 'club', grid: ENGINE_GRID });
   // NB: ægte CM 01/02 er standard ved nyt spil – testen kører det udvidede spil (træningskampe, pressemøder m.m.)
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
@@ -1087,7 +1089,7 @@ async function run(look) {
     await page.locator('.cx-zone-pitch').waitFor();
     // listen er den samme som på Overview (trøjenumre, navne, capt) – og ingen instruktionsboks
     const nums = await page.locator('.cx-tac-list .cx-tac-num').allTextContents();
-    if (!/^\d+$/.test(nums[0]) || !nums.includes('SB9') || await page.locator('.cx-zone-left, .cx-ti').count()) throw new Error(`listen: ${nums.join(' ')}`);
+    if (!/^\d+$/.test(nums[0]) || nums.length < 16 || await page.locator('.cx-zone-left, .cx-ti').count()) throw new Error(`listen: ${nums.join(' ')}`);
     const dots = await page.locator('.cx-zone-dot').allTextContents();
     if (dots.length !== 11 || !dots.every((x) => /^\d*$/.test(x))) throw new Error(`prikkerne skal have trøjenumre: ${dots.join(' ')}`);
     if (!(await page.locator('.cx-zone-pitch .cx-zone-sel').count())) throw new Error('den valgte boldzone vises ikke');
@@ -1209,6 +1211,23 @@ async function run(look) {
     await checkScreen('rapport');
     if (look === 'klassisk') await page.screenshot({ path: `${OUT}/klassisk-rapport.png` });
   });
+  // CM 01/02: også computerklubbernes kampe kan ses som kampskærmen efter slutfløjt (kompakt rapport, g.miniReports)
+  if (look === 'klassisk') await step('computerkamp som kampskærm (Player Ratings)', async () => {
+    const id = await gs(() => { const g = window.__cm.gs(); return Object.keys(g.miniReports ?? {}).map(Number).find((i) => g.fixtures[i]?.result && g.comps[g.fixtures[i].comp]?.type === 'league'); });
+    if (id === undefined) throw new Error('ingen kompakt rapport for en computerkamp');
+    await go({ name: 'report', id });
+    await page.getByRole('button', { name: 'Match Stats', exact: true }).first().click({ timeout: 5000 });
+    if ((await page.locator('.cx-ms .cx-ms-row').count()) < 8) throw new Error('Match Stats er tom');
+    await page.getByRole('button', { name: 'Action Zones', exact: true }).first().click({ timeout: 5000 });
+    await page.waitForSelector('.cx-az', { timeout: 5000 });
+    await page.getByRole('button', { name: 'Player Ratings', exact: true }).first().click({ timeout: 5000 });
+    await page.waitForSelector('.cx-rt tr', { timeout: 5000 });
+    const rows = await page.locator('.cx-rt tr').count();
+    if (rows < 22) throw new Error(`Player Ratings har kun ${rows} rækker`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-computerkamp-karakterer.png` });
+    await page.locator('.cx-subrow button').first().click({ timeout: 5000 });   // "<hjemmehold> Stats"
+    if ((await page.locator('.cx-ts-tbl tbody tr').count()) < 11) throw new Error('Team Stats har under 11 rækker');
+  });
 
   // CM 01/02: ulæste nyheder – Continue Game åbner den næste (ældste først) i stedet for at gå videre, og ingen springes over (ejerens fejl 13/11)
   if (look === 'klassisk') await step('Continue Game åbner de ulæste nyheder én ad gangen', async () => {
@@ -1310,8 +1329,8 @@ async function editor() {
   const page = await ctx.newPage();
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  // editoren testes fra den moderne startside (klassisk har sin egen startmenu, ClassicStart – Editor ligger under CM Reborn Options)
-  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'club'); sessionStorage.setItem('cm0102.play', '1'); });
+  // editoren åbnes fra den klassiske startmenu (CM Reborn Options → Editor) og har det klassiske udseende
+  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'retro'); sessionStorage.setItem('cm0102.play', '1'); });
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const step = async (name, fn) => {
     const before = errors.length;
@@ -1328,7 +1347,10 @@ async function editor() {
   await step('opret database og ret en spiller', async () => {
     await page.goto(URL);
     await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
-    await page.getByRole('button', { name: new RegExp(await t('ed.title')) }).first().click();
+    await page.waitForSelector('.cxs [data-field=opts]', { timeout: 30000 });
+    await page.locator('[data-field=opts]').click();
+    await page.locator('[data-testid=editor], [data-field=editor]').first().click();
+    await page.waitForSelector('.cxl', { timeout: 10000 });
     await page.getByPlaceholder(await t('ed.newName')).fill('E2E Legends');
     await page.getByRole('button', { name: await t('ed.create'), exact: true }).click();
     await page.getByPlaceholder(await t('ed.searchPlayer')).fill('Tsigalko', { timeout: 60000 });
@@ -1355,7 +1377,7 @@ async function editor() {
   await ctx.close();
 }
 
-for (const look of ['klassisk', 'moderne']) if (!only || only === look) await run(look);
+for (const look of ['klassisk', 'moderne']) if (only === look || (!only && (look === 'klassisk' || process.env.E2E_MODERN))) await run(look);
 if (!only || only === 'editor') await editor();
 await browser.close();
 stop();

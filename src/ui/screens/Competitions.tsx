@@ -281,7 +281,7 @@ function CompFixtures({ comp, mode }: { comp: Competition; mode?: 'results' | 'f
       <table className="grid">
         <tbody>
           {shown.map((f) => (
-            <tr key={f.id} className={g.reports[f.id] ? 'clickable' : ''} onClick={() => g.reports[f.id] && nav({ name: 'report', id: f.id })}>
+            <tr key={f.id} className={g.reports[f.id] || (isRetro() && g.miniReports?.[f.id]) ? 'clickable' : ''} onClick={() => (g.reports[f.id] || (isRetro() && g.miniReports?.[f.id])) && nav({ name: 'report', id: f.id })}>
               <td className="muted">{stageLabel(f)}</td>
               <td className="right"><ClubLink id={f.home} /></td>
               <td className="center"><b>{resultStr(f)}</b></td>

@@ -8,6 +8,7 @@ import './classic.css';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { gs, inSetup } from '../game/state';
+import { hasMatchView } from '../game/miniReport';
 import { useSetup } from './setupCtx';
 import type { GameState, Staff } from '../game/types';
 import { compName, natName, t } from '../i18n';
@@ -313,7 +314,7 @@ const ordinal = (n: number) => (t('cl.locale').startsWith('da') ? `${n}.` : `${n
 function lastMatchId(g: GameState, club: number): number | undefined {
   let best: { id: number; date: string } | undefined;
   for (const f of Object.values(g.fixtures)) {
-    if (!f.result || (f.home !== club && f.away !== club) || !g.reports[f.id]) continue;
+    if (!f.result || (f.home !== club && f.away !== club) || !hasMatchView(g, f.id)) continue;
     if (!best || f.date > best.date) best = { id: f.id, date: f.date };
   }
   return best?.id;

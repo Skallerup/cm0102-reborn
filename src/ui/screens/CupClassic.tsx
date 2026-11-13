@@ -2,6 +2,7 @@
 // og under-knapperne Seedings · Team Stats · Player Stats · History.
 import { useMemo } from 'react';
 import { sortTable } from '../../game/competitions';
+import { hasMatchView } from '../../game/miniReport';
 import type { Competition, Fixture } from '../../game/types';
 import { dateFmt, t } from '../../i18n';
 import { Tabs } from '../components';
@@ -115,7 +116,7 @@ function Days({ comp, played }: { comp: Competition; played: boolean }) {
         {stages.map((s) => (
           <div key={s}>
             <div className="cx-cup-stage">{s}</div>
-            {shown.filter((f) => stageLabel(f) === s).map((f) => <DayRow key={f.id} f={f} open={g.reports[f.id] ? () => nav({ name: 'report', id: f.id }) : undefined} />)}
+            {shown.filter((f) => stageLabel(f) === s).map((f) => <DayRow key={f.id} f={f} open={hasMatchView(g, f.id) ? () => nav({ name: 'report', id: f.id }) : undefined} />)}
           </div>
         ))}
       </div>

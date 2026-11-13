@@ -16,6 +16,7 @@ import { reservesDaily } from './reserves';
 import { awolMonthly } from './rules2001';
 import { squadNumbersDaily } from './squadNumbers';
 import { euroRegistered, euroSquadDaily } from './euroSquad';
+import { packReport } from './miniReport';
 import { draftDay, draftInjuryDays, draftSeasonCheck } from './draft';
 import { boardAfterMatch, boardMonthly, aiSackings, completeProjects, fillVacancies, processJobTalks, summerManagerChanges, applyForJob } from './board';
 import { A } from './attributes';
@@ -274,6 +275,10 @@ export function simulateFixture(f: Fixture, userAuto = true, commentary = false)
     ? makeMatch(m.home, m.away, { ...opts, commentary: true, aiSubs: [true, true] }, rng).runToEnd()
     : makeQuickMatch(m.home, m.away, opts, rng);
   applyMatchResult(f, rep);
+  // computerklubbernes kampe (CM 01/02 viser enhver spillet kamp som kampskærmen): en kompakt rapport for sæsonen – menneskets står i g.reports.
+  // Venskabskampe mellem computerklubber (ingen turnering) gemmes ikke (~¼ af kampene i august).
+  const g = gs();
+  if (!g.reports[f.id] && !g.draft && g.comps[f.comp]) (g.miniReports ??= {})[f.id] = packReport(rep, (id) => g.players[id]?.number);
   return rep;
 }
 

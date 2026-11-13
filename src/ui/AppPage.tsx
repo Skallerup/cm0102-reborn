@@ -4,7 +4,7 @@ import { DraftRoom, draftSeen } from './Draft';
 import type { GameState, Lang } from '../game/types';
 import { getLang, t } from '../i18n';
 import { NavProvider, useGame, type Route } from './core';
-import { applyTheme, getTheme, setTheme } from './theme';
+import { applyTheme, getTheme, modernOn, setTheme } from './theme';
 import { hasGame, inSetup, notify, previewInfo } from '../game/state';
 import { forgetLast, loadGame } from '../game/save';
 import { getLast } from '../game/last';
@@ -133,7 +133,7 @@ function PreviewBar() {
   return (
     <div className="preview-bar" role="status">
       <b>👁 PREVIEW</b><span className="pv-label">{p.label}</span><span className="pv-note">not saved</span>
-      <button onClick={() => { setTheme(retro ? 'club' : 'retro'); tick((x) => x + 1); notify(); }}>{retro ? 'Modern' : 'Classic'}</button>
+      {modernOn() && <button onClick={() => { setTheme(retro ? 'club' : 'retro'); tick((x) => x + 1); notify(); }}>{retro ? 'Modern' : 'Classic'}</button>}
       <button onClick={() => { location.href = `${location.pathname}?admin=1`; }}>✕ Exit</button>
     </div>
   );
@@ -144,7 +144,7 @@ function validRoute(g: GameState, r: Route): boolean {
   const id = Number(r.id);
   if (r.name === 'player') return !!g.players[id];
   if (r.name === 'club') return !!g.clubs[id];
-  if (r.name === 'report') return !!g.reports[id] || !!r.state?.none;
+  if (r.name === 'report') return !!g.reports[id] || !!g.miniReports?.[id] || !!r.state?.none;
   if (r.name === 'match') return !!g.fixtures[id];
   return true;
 }

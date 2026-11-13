@@ -1888,6 +1888,8 @@ export class MatchSim implements LiveSim {
       referee: this.opts.referee,
       changes: this.changes,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
+      bench: [this.teams[0].benchIds.slice(), this.teams[1].benchIds.slice()],
+      capt: [this.teams[0].tactic.captain, this.teams[1].tactic.captain],
     };
   }
 

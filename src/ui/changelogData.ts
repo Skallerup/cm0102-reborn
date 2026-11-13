@@ -9,10 +9,21 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.27.0',
+    date: '2026-11-14',
+    title: { da: 'Kun det klassiske CM 01/02-udseende, ny forside', en: 'The classic CM 01/02 look only, new front page' },
+    items: [
+      { da: "Spillet bruger nu det klassiske CM 01/02-udseende og den ægte CM 01/02-tilstand. Gamle gemte spil i det andet udseende åbnes i klassisk", en: "The game now uses the classic CM 01/02 look and authentic CM 01/02 mode. Old saved games in the other look open in classic" },
+      { da: "Forsiden fortæller, at det er det originale CM 01/02 som browserspil – gratis og stadig i beta – med tal for projektets størrelse og nye skærmbilleder fra den originale 2001/02-database på alle 10 sprog", en: "The front page says it is the original CM 01/02 as a browser game – free and still in beta – with numbers for the size of the project and new screenshots from the original 2001/02 database in all 10 languages" },
+      { da: "Editoren, Netværksspil, udfordringerne og fællesskabssiden har fået det klassiske udseende: rød titelbjælke, blå knapper og faner og originalens baggrundsbillede", en: "The editor, Network Play, the challenges and the community page now have the classic look: red title bar, blue buttons and tabs and the original's background picture" },
+    ],
+  },
+  {
     version: '0.26.0',
     date: '2026-11-13',
     title: { da: 'Originalens økonomi og bestyrelse, ny indlæsning', en: 'The original economy and board, new loading screen' },
     items: [
+      { da: "Klassisk udseende: alle spillede kampe i sæsonen kan ses som CM 01/02's kampskærm efter slutfløjt – også computerklubbernes. Klik på resultatet (kampdagen, Latest Scores, Fixtures, turneringernes runder) for Match Overview, Match Stats, Action Zones, begge holds Team Stats og Player Ratings med trøjenumre, kort, udskiftninger, karakterer, kampens spiller og de ubrugte udskiftere i gråt", en: "Classic look: every match played this season can be viewed as CM 01/02's match screen after the final whistle – the computer clubs' matches too. Click the result (match day, Latest Scores, Fixtures, competition rounds) for Match Overview, Match Stats, Action Zones, both teams' Team Stats and Player Ratings with squad numbers, cards, substitutions, ratings, the man of the match and the unused substitutes in grey" },
       { da: "With Ball og Without Ball: listen til venstre er den samme som på Overview (trøjenumre, navne, kondition), og spillerne på banen står som røde cirkler med trøjenummeret – instruktionsboksen er væk (instruktionerne findes i Tactics-menuen). Træk \"capt\" fra listen hen på en anden spiller (i listen eller på banen) for at gøre ham til anfører", en: "With Ball and Without Ball: the list on the left is the same as on Overview (shirt numbers, names, fitness), and the players on the pitch are red circles with their shirt number – the instruction box is gone (the instructions are in the Tactics menu). Drag \"capt\" from the list onto another player (in the list or on the pitch) to make him captain" },
       { da: "⚠ Kræver et nyt spil med den originale database i ægte CM 01/02", en: "⚠ Needs a new game with the original database in authentic CM 01/02" },
       { da: "Forsæsonen som originalen: spillere, der var skadet i sommeren 2001, er skadet fra spilstarten (originalens player_setup.cfg – fx Pires, Kanu, Ljungberg, Barthez og Gary Neville), og computerens klubber tager på turné og spiller venskabskampe i juli. De står i Fixtures som \"Friendly\" med modstanderens landekode og spilles med originalens kampmotor", en: "The pre-season as in the original: players who were injured in the summer of 2001 are injured from the start (the original's player_setup.cfg – e.g. Pires, Kanu, Ljungberg, Barthez and Gary Neville), and computer clubs go on tour and play friendlies in July. They show in Fixtures as \"Friendly\" with the opponent's country code and are played with the original match engine" },

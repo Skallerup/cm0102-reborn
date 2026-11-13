@@ -988,6 +988,25 @@ export interface MatchReport {
   engine?: 'zone' | 'original';
   /** gittermotorens kamprapport efter slutfløjt (originalens 0x6d1cc0/0x6d26b0, engine/grid/postMatch.ts) – cmPlayerData.ts cmApplyPost */
   cmPost?: CmPostResult;
+  /** udskiftere, der ikke kom på (CM 01/02 Player Ratings viser dem grå), og anføreren pr. hold – ikke i ældre rapporter */
+  bench?: [number[], number[]];
+  capt?: [number, number];
+  /** trøjenumrene ved kampen (kun rapporter pakket ud af MiniReport) */
+  nums?: Record<number, number>;
+}
+
+/** Kompakt kamprapport for computerklubbernes kampe (miniReport.ts) – nok til CM 01/02's kampskærm efter slutfløjt:
+ *  s = holdstatistik, p = spillerlinjer pr. hold [id, karakter, mål, assists, flag, skud, tacklinger, afl., afl. ok, kondition, nr, tckA, hea, heaW, on], b = ubrugte udskiftere [id, nr, …], e = begivenheder [m, t, art, p, p2, flag, …],
+ *  z = Action Zones (bolden pr. tredjedel og hold), so = straffesparkskonkurrencen [t, p, gk, udfald, …] */
+export interface MiniReport {
+  s: [number[], number[]];
+  p: [number[][], number[][]];
+  b: [number[], number[]];
+  e: number[];
+  z: number[];
+  mom: number;
+  c: [number, number];
+  so?: number[];
 }
 
 /** originalens kamprapport (postMatch.ts): moralen (MATCH_PLAYER +0x17) og omdømmet [+9, +0xb, +0xd] i hukommelsens skala pr. spiller-id,
@@ -1167,6 +1186,8 @@ export interface GameState {
   resTactic?: Tactic;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
+  /** computerklubbernes kampe i den aktuelle sæson (kompakte rapporter, miniReport.ts) – ryddes med kampprogrammet i prune() */
+  miniReports?: Record<number, MiniReport>;
   seasonHistory: SeasonSummary[];
   /** turneringernes rekorder pr. afsluttet sæson (compHistory.ts): turnering → sæson → rekorder */
   compRecs?: Record<string, Record<number, import('./compHistory').CompSeasonRec>>;

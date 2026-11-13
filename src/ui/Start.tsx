@@ -1,5 +1,6 @@
 import { LookPicker, initialLook } from './LookPicker';
-import { setTheme, getTheme } from './theme';
+import { setTheme, getTheme, modernOn } from './theme';
+import { useLegacyBg } from './legacyBg';
 import { LangMenu } from './LangMenu';
 import { track } from '../analytics';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,6 +36,7 @@ type View = 'menu' | 'new' | 'load' | 'challenges' | 'online' | 'newOnline' | 'n
 const BOTS_ENABLED = false;
 
 export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: () => void }) {
+  useLegacyBg();
   const roomParam = new URLSearchParams(location.search).get('room') ?? undefined;
   const [view, setView] = useState<View>(roomParam ? 'online' : new URLSearchParams(location.search).get('newdraft') ? 'newDraft' : 'menu');
   const [challenge, setChallenge] = useState<string | undefined>();
@@ -61,7 +63,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
       onGo={(v) => { if (v === 'draft') { setDraftFrom('menu'); setView('newDraft'); } else setView(v); }} />;
   }
   return (
-    <div className={`start ${view === 'menu' ? 'start-menu' : ''}`}>
+    <div className={`start ${view === 'menu' ? 'start-menu' : ''} ${modernOn() ? '' : 'cxl'}`}>
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>
       {onHome && view === 'menu' && <button className="small start-home" onClick={onHome}>{t('start.toLanding')}</button>}
       <div className="start-box">
@@ -280,10 +282,10 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
   // standard: klassisk udseende + ægte CM 01/02 (isRetro() kræver et kørende spil – derfor temaet direkte)
   const [look, setLook] = useState<'modern' | 'classic'>(initialLook);
   const retro = look === 'classic';
-  const lookPicker = <LookPicker value={look} onPick={setLook} />;
+  const lookPicker = modernOn() ? <LookPicker value={look} onPick={setLook} /> : null;
   // spiltilstand: ægte CM 01/02 (kun originalens funktioner) eller udvidet (alt det ekstra) – uafhængigt af databasen
   // Ægte CM 01/02 findes kun i det klassiske tema (vises altid, men er grå med det moderne udseende)
-  const modePicker = !ch && (
+  const modePicker = !ch && modernOn() && (
     <Panel title={t('mode.title')}>
       <div className="db-choice">
         {/* ægte CM 01/02 kræver det klassiske udseende – valget skifter udseendet med */}

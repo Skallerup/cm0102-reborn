@@ -1,4 +1,5 @@
 import { gs } from '../../game/state';
+import { hasMatchView } from '../../game/miniReport';
 import { useState } from 'react';
 import { MAX_FRIENDLIES, friendlyDates, friendlyGate, friendlyOpponents, type FriendlyKind } from '../../game/friendlies';
 import { act } from '../../game/actions';
@@ -72,7 +73,7 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
         {rows.map((r) => {
           const c = g.clubs[r.opp];
           const foreign = c && c.nation !== myNation;
-          const open = r.fid !== undefined && !!g.reports[r.fid];
+          const open = hasMatchView(g, r.fid);
           return (
             <div key={r.key} className={`cx-fx-row ${open ? 'clickable' : ''} ${picked === r.key ? 'picked' : ''}`} onClick={() => { if (r.friendly && !r.res) setPicked(picked === r.key ? null : r.key); else if (open) nav({ name: 'report', id: r.fid! }); }}>
               <span className="cx-fx-date">{g.draft ? '' : d(r.date)}</span>

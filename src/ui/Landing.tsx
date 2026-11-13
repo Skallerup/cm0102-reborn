@@ -5,7 +5,6 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Lang } from '../game/types';
 import { LOCALE, dateFmt, getLang, setLang, t } from '../i18n';
 import type { ChangelogEntry } from './changelogData';
-import { setTheme } from './theme';
 import { fetchBoard, rankingAvailable, type RankRow } from '../online/rank';
 import './landing.css';
 import { shot } from './shots';
@@ -171,45 +170,6 @@ function Database() {
   );
 }
 
-const LOOK_SCREENS = ['squad', 'player', 'table'] as const;
-
-/** "To udseender": de samme skærme i det moderne og det klassiske CM 01/02-tema – og start spillet i det valgte */
-function Looks({ onPlay, onOpen }: { onPlay: () => void; onOpen: (src: string, alt: string) => void }) {
-  const [look, setLook] = useState<'modern' | 'classic'>('classic');
-  const [screen, setScreen] = useState<(typeof LOOK_SCREENS)[number]>('squad');
-  const play = (l: 'modern' | 'classic') => { setTheme(l === 'classic' ? 'retro' : 'club'); onPlay(); };
-  return (
-    <section id="looks" className="lp-section lp-wrap lp-looks">
-      <span className="lp-kicker reveal">{t('land.looks.kicker')}</span>
-      <h2 className="reveal">{t('land.looks.title')}</h2>
-      <p className="lp-sub reveal">{t('land.looks.sub')}</p>
-      <div className="lp-looks-bar reveal">
-        <div className="lp-looks-toggle" role="tablist">
-          {(['modern', 'classic'] as const).map((l) => (
-            <button key={l} role="tab" aria-selected={look === l} className={look === l ? 'on' : ''} onClick={() => setLook(l)}>{t(`land.looks.${l}`)}</button>
-          ))}
-        </div>
-        <div className="lp-looks-screens">
-          {LOOK_SCREENS.map((s) => <button key={s} className={screen === s ? 'on' : ''} onClick={() => setScreen(s)}>{t(`land.looks.s.${s}`)}</button>)}
-        </div>
-      </div>
-      <div className="lp-looks-visual reveal">
-        <Frame src={img(`${look}-${screen}`)} alt={`${t(`land.looks.${look}`)} – ${t(`land.looks.s.${screen}`)}`} onOpen={onOpen} />
-      </div>
-      <div className="lp-looks-cards reveal">
-        {(['modern', 'classic'] as const).map((l) => (
-          <div key={l} className={`lp-looks-card ${look === l ? 'on' : ''}`} onMouseEnter={() => setLook(l)}>
-            <h3>{t(`land.looks.${l}`)}</h3>
-            <p>{t(`land.looks.${l}.text`)}</p>
-            <button className={l === 'classic' ? 'lp-cta' : 'lp-ghost'} onClick={() => play(l)}>{t(`land.looks.play.${l}`)} <span aria-hidden="true">→</span></button>
-          </div>
-        ))}
-      </div>
-      <p className="lp-looks-note reveal">{t('land.looks.note')}</p>
-    </section>
-  );
-}
-
 export function Frame({ src, alt, className = '', onOpen, eager }: { src: string; alt: string; className?: string; onOpen?: (src: string, alt: string) => void; /** hero-billederne: LCP, så de hentes med det samme */ eager?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const move = (e: React.MouseEvent) => {
@@ -231,15 +191,18 @@ export function Frame({ src, alt, className = '', onOpen, eager }: { src: string
 
 const TICKER = ['tick1', 'tick2', 'tick3', 'tick4', 'tick5', 'tick6', 'tick7', 'tick8'];
 const FEATURES: [string, string][] = [
-  ['⚽', 'engine'], ['🌍', 'players'], ['🔎', 'scouting'], ['🎙️', 'press'], ['💸', 'transfers'],
+  ['⚽', 'engine'], ['🌍', 'players'], ['🔎', 'scouting'], ['🗂️', 'pages'], ['💸', 'transfers'],
   ['🧠', 'ai'], ['💾', 'authentic'], ['🤝', 'online'], ['📱', 'mobile'],
 ];
 const SHOWCASE: { key: string; imgs: string[] }[] = [
-  { key: 'matchday', imgs: ['report', 'match-stats'] },
-  { key: 'tactics', imgs: ['tactics', 'match'] },
-  { key: 'people', imgs: ['player', 'press'] },
-  { key: 'career', imgs: ['table', 'club'] },
-  { key: 'classic', imgs: ['classic-squad', 'classic-player'] },
+  { key: 'matchday', imgs: ['classic-match', 'classic-report'] },
+  { key: 'tactics', imgs: ['classic-tactics', 'classic-squad'] },
+  { key: 'career', imgs: ['classic-news', 'classic-transfer'] },
+];
+/** Tallene bag projektet (målt i repoet: commits, linjer i src/**.ts(x), docs/ENGINE_PORT_PLAN.md, world-filerne, build-seo) */
+const STATS: [number, string, string][] = [
+  [36916, '', 'players'], [1373, '', 'clubs'], [81, '', 'leagues'], [10, '', 'langs'],
+  [100000, '+', 'lines'], [600, '+', 'commits'], [1300, '+', 'funcs'], [17500, '+', 'pages'],
 ];
 
 export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLang: (l: Lang) => void; onDraft?: () => void }) {
@@ -290,7 +253,6 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
           <nav className="lp-links">
             <a onClick={() => go('features')}>{t('land.nav.features')}</a>
             <a className="opt2" onClick={() => go('screens')}>{t('land.nav.screens')}</a>
-            <a className="opt2" onClick={() => go('looks')}>{t('land.nav.looks')}</a>
             <a className="opt2" onClick={() => go('news')}>{t('land.nav.news')}</a>
             <a className="opt1" onClick={() => go('ranking')}>{t('land.nav.ranking')}</a>
             <a href="?community=1">{t('land.nav.community')}</a>
@@ -316,14 +278,13 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
               <button className="lp-ghost" onClick={() => go('screens')}>{t('land.seeScreens')}</button>
             </div>
             <ul className="lp-checks reveal">
-              {['free', 'nodl', 'lang', 'save'].map((k) => <li key={k}>✓ {t(`land.check.${k}`)}</li>)}
+              {['free', 'beta', 'nodl', 'lang'].map((k) => <li key={k}>✓ {t(`land.check.${k}`)}</li>)}
             </ul>
           </div>
           <div className="lp-hero-visual reveal">
-            {/* det klassiske CM 01/02-tema (2001/02-databasen) bag det moderne kamprapport-billede */}
-            <Frame src={img('classic-table')} alt={t('land.alt.classic')} className="lp-hero-classic" onOpen={open} eager />
-            <Frame src={img('report')} alt={t('land.alt.report')} className="lp-hero-main" onOpen={open} eager />
-            <div className="lp-phone"><img src={img('mobile')} alt={t('land.alt.mobile')} width="585" height="1266" loading="lazy" decoding="async" /></div>
+            {/* det klassiske CM 01/02-udseende med den originale 2001/02-database */}
+            <Frame src={img('classic-start')} alt={t('land.alt.start')} className="lp-hero-classic" onOpen={open} eager />
+            <Frame src={img('classic-match')} alt={t('land.alt.match')} className="lp-hero-main" onOpen={open} eager />
             <div className="lp-float goal">⚽ {t('land.floatGoal')}</div>
             <div className="lp-float bid">💸 {t('land.floatBid')}</div>
           </div>
@@ -337,9 +298,18 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
       </div>
 
       <section className="lp-stats lp-wrap">
-        {[[40000, '+', 'players'], [1375, '', 'clubs'], [81, '', 'leagues'], [240, '', 'moments']].map(([n, s, k]) => (
-          <div key={k as string} className="lp-stat reveal"><b><Counter to={n as number} suffix={s as string} /></b><span>{t(`land.stat.${k}`)}</span></div>
+        {STATS.map(([n, s, k]) => (
+          <div key={k} className="lp-stat reveal"><b><Counter to={n} suffix={s} /></b><span>{t(`land.stat.${k}`)}</span></div>
         ))}
+        <p className="lp-stats-note reveal">{t('land.statsNote')}</p>
+      </section>
+
+      <section className="lp-wrap lp-beta reveal">
+        <div className="lp-beta-box">
+          <span className="lp-beta-tag">BETA</span>
+          <div><b>{t('land.beta.title')}</b><p>{t('land.beta.text')}</p></div>
+          <a className="lp-ghost" href="?community=1">{t('land.beta.cta')}</a>
+        </div>
       </section>
 
       {onDraft && (
@@ -389,8 +359,6 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
         ))}
       </section>
 
-      <Looks onPlay={onPlay} onOpen={open} />
-
       <News />
 
       <section id="ranking" className="lp-section lp-wrap lp-rank">
@@ -427,7 +395,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
 
       <section id="faq" className="lp-section lp-wrap lp-faq">
         <h2 className="reveal">{t('land.faqTitle')}</h2>
-        {[1, 7, 8, 2, 3, 4, 5, 6].map((n) => (
+        {[6, 9, 1, 7, 8, 2, 3, 4, 5].map((n) => (
           <details key={n} className="reveal">
             <summary>{t(`land.q${n}`)}</summary>
             <p>{t(`land.a${n}`)}</p>

@@ -1641,7 +1641,7 @@ function cxRows(sim: LiveSim, side: 0 | 1): CxRow[] {
   return [...starters, ...bench, ...extra];
 }
 
-/** Samme rækker som cxRows, men fra en gemt kamprapport (PlayedMatchClassic): startere efter plads, derefter indskiftede – bænken, der ikke kom på, er ikke i rapporten */
+/** Samme rækker som cxRows, men fra en gemt kamprapport (PlayedMatchClassic): startere efter plads, derefter indskiftede og bænken, der ikke kom på (`rep.bench`, ikke i ældre rapporter) */
 export function cxRowsReport(rep: MatchReport, side: 0 | 1): CxRow[] {
   const g = gs();
   const ev = rep.events.filter((e) => e.t === side);
@@ -1651,11 +1651,13 @@ export function cxRowsReport(rep: MatchReport, side: 0 | 1): CxRow[] {
   const card = (id: number) => (ev.some((e) => e.k === 'red' && e.p === id) ? 'red' as const : ev.some((e) => e.k === 'yellow' && e.p === id) ? 'yellow' as const : undefined);
   const mk = (l: PlayerMatchLine): CxRow => {
     const o = subOut(l.id), i = inj(l.id), n = l.sub ? subIn(l.id) : undefined;
-    return { id: l.id, num: g.players[l.id]?.number ?? '', note: o !== undefined ? `sub ${o}` : i !== undefined ? `inj ${i}` : n !== undefined ? `on ${n}` : undefined, noteOn: o === undefined && i === undefined && n !== undefined,
-      dim: o !== undefined || i !== undefined || l.red, cond: l.cond, rating: Math.round(Math.max(1, Math.min(10, l.rating))), line: l, capt: false, card: card(l.id) };
+    return { id: l.id, num: rep.nums?.[l.id] ?? g.players[l.id]?.number ?? '', note: o !== undefined ? `sub ${o}` : i !== undefined ? `inj ${i}` : n !== undefined ? `on ${n}` : undefined, noteOn: o === undefined && i === undefined && n !== undefined,
+      dim: o !== undefined || i !== undefined || l.red, cond: l.cond, rating: Math.round(Math.max(1, Math.min(10, l.rating))), line: l, capt: !!rep.capt && rep.capt[side] === l.id, card: card(l.id) };
   };
   const mine = rep.players.filter((l) => l.team === side);
-  return [...mine.filter((l) => !l.sub).sort((a, b) => a.slot - b.slot).map(mk), ...mine.filter((l) => l.sub).map(mk)];
+  // udskiftere, der ikke kom på (rapporter fra 13/11-2026): grå uden karakter, som i originalen
+  const unused = (rep.bench?.[side] ?? []).filter((id) => !mine.some((l) => l.id === id)).map((id): CxRow => ({ id, num: rep.nums?.[id] ?? g.players[id]?.number ?? '', dim: true, capt: false }));
+  return [...mine.filter((l) => !l.sub).sort((a, b) => a.slot - b.slot).map(mk), ...mine.filter((l) => l.sub).map(mk), ...unused];
 }
 function CxName({ r }: { r: CxRow }) {
   const p = gs().players[r.id];
@@ -1805,7 +1807,7 @@ export function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: 
 }
 
 /** Latest Scores: dagens andre kampe med målscorere (til det aktuelle minut) */
-export function CxScores({ own, others, minute, finished, title }: { own?: { f: Fixture; scorers: [number, number, number?][] }; others: Fixture[]; minute: number; finished: boolean; title: string }) {
+export function CxScores({ own, others, minute, finished, title, open }: { own?: { f: Fixture; scorers: [number, number, number?][] }; others: Fixture[]; minute: number; finished: boolean; title: string; open?: (f: Fixture) => void }) {
   const g = gs();
   // egen kamp øverst (som i CM 01/02), derefter dagens andre kampe i turneringen
   const all = [...(own ? [{ o: own.f, sc: own.scorers }] : []), ...others.map((o) => ({ o, sc: o.result!.scorers }))];
@@ -1824,7 +1826,7 @@ export function CxScores({ own, others, minute, finished, title }: { own?: { f: 
         return (
           <div key={o.id} className="cx-ls-row">
             <div><div className={`${o.home === g.userClub ? 'c-yel' : 'c-cyan'} cx-ls-team`}>{g.clubs[o.home]?.name}</div>{names(0)}</div>
-            <div className="c-yel cx-ls-score">{side(0).length}:{side(1).length}</div>
+            <div className={`c-yel cx-ls-score ${open && o !== own?.f ? 'cx-link' : ''}`} role={open && o !== own?.f ? 'link' : undefined} onClick={open && o !== own?.f ? () => open(o) : undefined}>{side(0).length}:{side(1).length}</div>
             <div><div className={`${o.away === g.userClub ? 'c-yel' : 'c-cyan'} cx-ls-team`}>{g.clubs[o.away]?.name}</div>{names(1)}</div>
           </div>
         );

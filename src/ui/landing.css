@@ -301,3 +301,11 @@
 .lp-join-done b { display: block; font-size: 20px; margin-bottom: 6px; color: var(--good, #6ee7a0); }
 .lp-join-done p { color: var(--muted); margin: 0 0 14px; }
 @media (max-width: 900px) { .lp-join { grid-template-columns: 1fr; gap: 24px; } }
+
+/* tal bag projektet + beta */
+.lp-stats-note { grid-column: 1 / -1; text-align: center; color: var(--muted); font-size: 15px; margin: 6px auto 0; max-width: 760px; }
+.lp-beta { padding-top: 26px; }
+.lp-beta-box { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 18px 24px; border-radius: 18px; border: 1px solid rgba(255, 207, 63, 0.45); background: linear-gradient(90deg, rgba(255, 207, 63, 0.12), rgba(255, 207, 63, 0.03)); }
+.lp-beta-box > div { flex: 1 1 320px; }
+.lp-beta-box p { margin: 4px 0 0; color: #b7c2e3; font-size: 15px; }
+.lp-beta-tag { font-weight: 900; letter-spacing: 0.16em; font-size: 13px; padding: 6px 12px; border-radius: 8px; background: #ffcf3f; color: #1a1400; }

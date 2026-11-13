@@ -622,29 +622,29 @@
 }
 
 /* ---------- draft-rummet i klassisk udseende ---------- */
-:root[data-skin='retro'] body:has(.draft-page) { background: radial-gradient(ellipse at 50% 0%, #142080 0%, #0a1050 45%, var(--cx-desk) 100%) fixed; }
-:root[data-skin='retro'] .draft-page { font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; gap: 8px; }
-:root[data-skin='retro'] .draft-page .draft-top { padding: 8px 12px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); align-items: center; }
-:root[data-skin='retro'] .draft-page .draft-top h1 { color: var(--cx-gold); font-size: 22px; font-weight: 700; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
-:root[data-skin='retro'] .draft-page .panel { background: var(--cx-panel); border: 1px solid var(--cx-line); box-shadow: none; backdrop-filter: none; }
-:root[data-skin='retro'] .draft-page .panel > header { padding: 5px 10px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
-:root[data-skin='retro'] .draft-page .panel > header h3 { color: #fff; font-size: 13px; text-transform: none; letter-spacing: 0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); }
-:root[data-skin='retro'] .draft-page .panel > header h3::before { display: none; }
-:root[data-skin='retro'] .draft-page .panel-body { padding: 8px 10px; }
-:root[data-skin='retro'] .draft-page button { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: none; font-weight: 700; }
-:root[data-skin='retro'] .draft-page button:hover:not(:disabled) { background: #1c27a2; color: #fff; }
-:root[data-skin='retro'] .draft-page button.primary { background: linear-gradient(180deg, #34962f, #237523); color: #000; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
-:root[data-skin='retro'] .draft-page button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #3fa83a, #2a852a); color: #000; }
-:root[data-skin='retro'] .draft-page input, :root[data-skin='retro'] .draft-page select { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); }
-:root[data-skin='retro'] .draft-page table.grid { background: transparent; }
-:root[data-skin='retro'] .draft-page table.grid thead th { background: rgba(160, 165, 180, 0.85); color: #fff; font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: 0; padding: 3px 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
-:root[data-skin='retro'] .draft-page table.grid tbody td { padding: 3px 6px; font-size: 13px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
-:root[data-skin='retro'] .draft-page table.grid tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
-:root[data-skin='retro'] .draft-page table.grid tbody tr.clickable:hover td, :root[data-skin='retro'] .draft-page table.grid tbody tr.sel td { background: rgba(140, 16, 20, 0.55); }
-:root[data-skin='retro'] .draft-page .insight { border-radius: 0; background: rgba(10, 17, 80, 0.85); border: 1px solid var(--cx-line); }
-:root[data-skin='retro'] .draft-page .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
-:root[data-skin='retro'] .draft-page b, :root[data-skin='retro'] .draft-page strong { color: var(--cx-gold); }
-:root[data-skin='retro'] .draft-page .tag, :root[data-skin='retro'] .draft-page .chip, :root[data-skin='retro'] .draft-page .badge { border-radius: 0; }
+:root[data-skin='retro'] body:has(:is(.draft-page, .cxl), .cxl) { background: radial-gradient(ellipse at 50% 0%, #142080 0%, #0a1050 45%, var(--cx-desk) 100%) fixed; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) { font-family: Tahoma, Verdana, 'Segoe UI', sans-serif; gap: 8px; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .draft-top { padding: 8px 12px; background: linear-gradient(180deg, var(--cx-side1), var(--cx-side2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); align-items: center; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .draft-top h1 { color: var(--cx-gold); font-size: 22px; font-weight: 700; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .panel { background: var(--cx-panel); border: 1px solid var(--cx-line); box-shadow: none; backdrop-filter: none; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .panel > header { padding: 5px 10px; background: linear-gradient(180deg, var(--cx-tab1), var(--cx-tab2)); border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .panel > header h3 { color: #fff; font-size: 13px; text-transform: none; letter-spacing: 0; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .panel > header h3::before { display: none; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .panel-body { padding: 8px 10px; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) button { background: var(--cx-btn); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); box-shadow: none; font-weight: 700; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) button:hover:not(:disabled) { background: #1c27a2; color: #fff; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) button.primary { background: linear-gradient(180deg, #34962f, #237523); color: #000; border-color: #8ee07a #0c3a0c #0c3a0c #8ee07a; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) button.primary:hover:not(:disabled) { background: linear-gradient(180deg, #3fa83a, #2a852a); color: #000; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) input, :root[data-skin='retro'] :is(.draft-page, .cxl) select { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid { background: transparent; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid thead th { background: rgba(160, 165, 180, 0.85); color: #fff; font-size: 11.5px; font-weight: 700; text-transform: none; letter-spacing: 0; padding: 3px 6px; text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody td { padding: 3px 6px; font-size: 13px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody tr:nth-child(even) td { background: rgba(255, 255, 255, 0.025); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody tr.clickable:hover td, :root[data-skin='retro'] :is(.draft-page, .cxl) table.grid tbody tr.sel td { background: rgba(140, 16, 20, 0.55); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .insight { border-radius: 0; background: rgba(10, 17, 80, 0.85); border: 1px solid var(--cx-line); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .insight.good { background: linear-gradient(180deg, rgba(20, 70, 24, 0.94), rgba(12, 46, 16, 0.94)); border-color: #6cc26a; }
+:root[data-skin='retro'] :is(.draft-page, .cxl) b, :root[data-skin='retro'] :is(.draft-page, .cxl) strong { color: var(--cx-gold); }
+:root[data-skin='retro'] :is(.draft-page, .cxl) .tag, :root[data-skin='retro'] :is(.draft-page, .cxl) .chip, :root[data-skin='retro'] :is(.draft-page, .cxl) .badge { border-radius: 0; }
 
 /* valgt spiller: klik på en tom plet på banen for at flytte hans plads */
 .cx-tac-pitch.moving { cursor: crosshair; }
@@ -1774,3 +1774,23 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-tac-tag.capt { cursor: grab; }
 /* egne spillere på landsholdet i gult (CM 01/02) – også i den originale trupvisning */
 :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.mine, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.mine:hover { color: var(--cx-gold); }
+
+/* ---------- Startmenuens øvrige skærme, fællesskabet og editoren i klassisk udseende (.cxl) ---------- */
+:root[data-skin='retro'] .cxl { background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.55)), var(--cx-photo) center / cover fixed; min-height: 100vh; color: #fff; }
+:root[data-skin='retro'] .cxl .start-aurora { display: none; }
+:root[data-skin='retro'] .cxl .start-box, :root[data-skin='retro'] .cxl .pub-box { background: transparent; border: 0; box-shadow: none; backdrop-filter: none; }
+:root[data-skin='retro'] .cxl .logo h1, :root[data-skin='retro'] .cxl .pub-box > h1 { margin: 0 0 8px; padding: 10px 16px; text-align: center; font-size: clamp(22px, 2.7vw, 32px); font-weight: 900; color: #fff; background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); }
+:root[data-skin='retro'] .cxl .logo h1 span { color: #fff; }
+:root[data-skin='retro'] .cxl .logo p, :root[data-skin='retro'] .cxl .pub-box > p { color: #6fe3ff; text-align: center; }
+:root[data-skin='retro'] .cxl .panel > header { background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); padding: 8px 12px; }
+:root[data-skin='retro'] .cxl .panel > header h3 { font-size: 20px; font-weight: 900; text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); }
+:root[data-skin='retro'] .cxl .panel { background: rgba(0, 0, 0, 0.35); }
+:root[data-skin='retro'] .cxl .tabs { display: flex; gap: 2px; background: transparent; border: 0; padding: 0; }
+:root[data-skin='retro'] .cxl .tabs button { flex: 1; min-height: 34px; border-radius: 0; background: linear-gradient(#1a1fa3, #0d1170); color: #fff; border: 1px solid; border-color: var(--cx-btn-hi) var(--cx-btn-lo) var(--cx-btn-lo) var(--cx-btn-hi); }
+:root[data-skin='retro'] .cxl .tabs button.on { color: #ffee33; box-shadow: inset 0 0 0 2px #ffee33; }
+:root[data-skin='retro'] .cxl .choice, :root[data-skin='retro'] .cxl .hub-card, :root[data-skin='retro'] .cxl .start-card { border-radius: 0; background: rgba(10, 17, 80, 0.7); border: 1px solid var(--cx-line); color: #fff; }
+:root[data-skin='retro'] .cxl .choice:hover, :root[data-skin='retro'] .cxl .hub-card:hover { background: rgba(140, 16, 20, 0.55); }
+:root[data-skin='retro'] .cxl .muted { color: #6fe3ff; }
+:root[data-skin='retro'] .cxl .start-ghost, :root[data-skin='retro'] .cxl .footer-note { color: #fff; }
+:root[data-skin='retro'] .cxl textarea { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); border-radius: 0; }
+:root[data-skin='retro'] .cxl .footer-note { display: none; }

@@ -388,6 +388,7 @@ export class GridSim implements LiveSim {
       referee: this.opts.referee,
       formations: [this.teams[0].tactic.formation, this.teams[1].tactic.formation],
       engine: 'original',
+      bench: [this.bench[0].slice(), this.bench[1].slice()],
       ...(this.g.crowdTotal !== null ? { crowd: this.g.crowdTotal } : {}),
       ...(this.post ? { cmPost: this.post } : {}),
     };

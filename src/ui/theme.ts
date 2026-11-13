@@ -6,9 +6,12 @@ import { gs, hasGame, notify } from '../game/state';
 
 export type Theme = 'club' | 'clubDark' | 'light' | 'dark' | 'gold' | 'retro';
 const KEY = 'cm-theme';
+export { MODERN_ENABLED, modernOn } from './modernFlag';
+import { modernOn } from './modernFlag';
 const VARS = ['--accent', '--accent-ink', '--accent2', '--tint1', '--tint2', '--nav-bg', '--nav-fg', '--nav-muted', '--nav-hover', '--nav-active', '--top-bg', '--top-fg', '--top-muted', '--top-chip', '--cm-club', '--cm-club2', '--cm-club-ink'];
 
 export function getTheme(): Theme {
+  if (!modernOn()) return 'retro';
   // standard: klubbens farver på lys baggrund
   try { const v = localStorage.getItem(KEY); return v === 'dark' || v === 'light' || v === 'clubDark' || v === 'gold' || v === 'retro' ? v : 'club'; } catch { return 'club'; }
 }

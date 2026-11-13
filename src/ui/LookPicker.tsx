@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import { t } from '../i18n';
 import { Panel } from './components';
 import { shot } from './shots';
-import { getTheme, setTheme } from './theme';
+import { getTheme, modernOn, setTheme } from './theme';
 
 /** Ingen gemt temavalg endnu? Så starter et nyt spil i det klassiske CM 01/02-udseende */
 export function initialLook(): 'modern' | 'classic' {
+  if (!modernOn()) return 'classic';
   try { if (!localStorage.getItem('cm-theme')) return 'classic'; } catch { /* privat vindue */ }
   return getTheme() === 'retro' ? 'classic' : 'modern';
 }
@@ -20,6 +21,7 @@ export function LookPicker({ onPick, value }: { onPick?: (l: 'modern' | 'classic
   const pick = (l: 'modern' | 'classic') => { setOwn(l); setTheme(l === 'classic' ? 'retro' : getTheme() === 'retro' ? 'club' : getTheme()); onPick?.(l); };
   // standardvalget skrives med det samme, så spillet starter i det udseende, der står valgt
   useEffect(() => { pick(look); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  if (!modernOn()) return null; // moderne udseende er slået fra for nu
   return (
     <Panel title={t('start.look')}>
       <div className="db-choice">

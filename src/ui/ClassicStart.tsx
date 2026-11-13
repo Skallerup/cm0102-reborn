@@ -24,7 +24,7 @@ import { regionOfNation, type UiRegion } from './classicOptions';
 import { DEMONYM } from './demonyms';
 import { listDbs } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
-import { setTheme, getTheme, setStartSkin } from './theme';
+import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, readDb, readVer, writeDb, writeVer, type Db } from './startGame';
 
@@ -514,11 +514,11 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
           <label className="cxs-field"><span>{t('opt.currency')}</span>
             <select value={getCurrency()} onChange={(e) => { setCurrency(e.target.value as Currency); onLang(getLang()); }}>{CURRENCIES.map((c) => <option key={c} value={c}>{t(`cur.${c}`)}</option>)}</select>
           </label>
-          <label className="cxs-field"><span>{t('cxs.look')}</span>
+          {modernOn() && <label className="cxs-field"><span>{t('cxs.look')}</span>
             <select value="classic" data-look onChange={(e) => { if (e.target.value === 'modern') { setTheme('club'); onLook(); } }}>
               <option value="classic">{t('land.looks.classic')}</option><option value="modern">{t('land.looks.modern')}</option>
             </select>
-          </label>
+          </label>}
         </div>
       </Frame>
     );
