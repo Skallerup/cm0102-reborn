@@ -44,7 +44,7 @@ export function CxTable<T>({ rows, cols, rowKey, btn, initialSort, page, onPage,
           <tr>
             {btn && <th className="btn-col" />}
             {cols.map((c) => (
-              <th key={c.key} className={sort?.key === c.key ? 'on' : ''} title={c.title}
+              <th key={c.key} className={`col-${c.key} ${sort?.key === c.key ? 'on' : ''}`} title={c.title}
                 onClick={() => c.sort && setSort(sort?.key === c.key ? { key: c.key, dir: sort.dir === 1 ? -1 : 1 } : { key: c.key, dir: 1 })}>
                 {c.label}{sort?.key === c.key ? (sort.dir === 1 ? ' ▾' : ' ▴') : ''}
               </th>
@@ -55,7 +55,7 @@ export function CxTable<T>({ rows, cols, rowKey, btn, initialSort, page, onPage,
           {list.map((r) => (
             <tr key={rowKey(r)} {...rowAttrs?.(r)}>
               {btn && <td className="btn-col">{btn(r)}</td>}
-              {cols.map((c) => <td key={c.key} className={c.cls}>{c.render(r)}</td>)}
+              {cols.map((c) => <td key={c.key} className={`col-${c.key} ${c.cls ?? ''}`}>{c.render(r)}</td>)}
             </tr>
           ))}
         </tbody>

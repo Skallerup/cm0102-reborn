@@ -47,15 +47,18 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       ]} value={tab === 'listed' ? 'deals' : tab} onChange={setTab} disabled={[1, 2].filter((n) => !scouts[n - 1]).map(scoutKey)} />
       <ClassicSub items={[
         ...[3, 4, 5].map((n) => ({ key: scoutKey(n), label: t('cl.tr.scoutN', { n }), disabled: !scouts[n - 1], on: tab === scoutKey(n), onClick: () => setTab(scoutKey(n)) })),
-        { key: 'offers', label: `${t('tr.offers')}${pending ? ` (${pending})` : ''}`, on: tab === 'offers', onClick: () => setTab('offers') },
-        { key: 'deals', label: t('tr.deals'), on: tab === 'deals' || tab === 'listed', onClick: () => setTab('deals') },
+        // Offers og Deals findes ikke i CM 01/02 – kun i det udvidede spil
+        ...(authentic() ? [] : [
+          { key: 'offers', label: `${t('tr.offers')}${pending ? ` (${pending})` : ''}`, on: tab === 'offers', onClick: () => setTab('offers') },
+          { key: 'deals', label: t('tr.deals'), on: tab === 'deals' || tab === 'listed', onClick: () => setTab('deals') },
+        ]),
       ]} />
       {tab === 'search' && <Search classic />}
       {tab === 'shortlist' && <Search classic shortlist />}
       {tab === 'staff' && <StaffSearch />}
       {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} />}
-      {tab === 'offers' && <Offers />}
-      {(tab === 'deals' || tab === 'listed') && <Deals />}
+      {tab === 'offers' && !authentic() && <Offers />}
+      {(tab === 'deals' || tab === 'listed') && !authentic() && <Deals />}
     </div>
   );
 }
@@ -554,7 +557,8 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const based = (p: Player) => basedName(g, p.club, p.nation);
   const realismOn = showRealism();
   const base: CxCol<Player>[] = [
-    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{t(`cl.tag.${x[0]}`)}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
+    // mærket kan klikkes og åbner spillerens side om det (Inj/Sus → Injuries & Bans, Wnt → Transfer) som i originalen
+    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <button className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]} onClick={() => nav({ name: 'player', id: p.id, tab: x[0] === 'Wnt' ? 'transfer' : 'injuries' })}>{t(`cl.tag.${x[0]}`)}</button> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
     { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : t('cl.tr.noClub')), sort: (p) => g.clubs[p.club]?.name ?? '' };
