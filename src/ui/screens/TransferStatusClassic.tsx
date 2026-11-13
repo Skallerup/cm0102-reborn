@@ -12,7 +12,7 @@ import { compName, currencySymbol, fromCurExact, getCurrency, money, moneyFull, 
 import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
 import { useGame } from '../core';
-import { CxDrop, useClassicDialog } from '../classic';
+import { CxDrop, useClassicDialog, ClassicFoot } from '../classic';
 
 /** "£0", "£100K", "£2.5M" (originalens beløbsliste, i spillerens valuta) */
 const amountLabel = (a: number) => {
@@ -65,10 +65,10 @@ export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => 
         <button className={`cx-ts-opt ${loan ? 'on' : ''}`} onClick={() => setLoan(!loan)}>{t('cl.ts.loan')}</button>
         <button className={`cx-ts-opt ${p.wantsAway ? 'on' : ''}`} disabled>{t('cl.ts.request')}</button>
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.back')}</button>
         <button className="primary" onClick={save}>{t('cl.ts.set')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }
@@ -102,10 +102,10 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
         <div className="cx-ts-head">{t('cl.dp.reason')}</div>
         {REASONS.map((r) => <button key={r} className={`cx-ts-opt ${reason === r ? 'on' : ''}`} onClick={() => setReason(r)}>{t(`cl.dp.r.${r}`)}</button>)}
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.cancel')}</button>
         <button className="primary" onClick={confirm}>{t('cl.dp.confirm')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }
@@ -162,10 +162,10 @@ export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolea
           </div>
         ) : <div className="cx-exch-none">{t('cl.bid.notInterested', { club: g.clubs[p.club]?.short ?? seller })}</div>}
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={() => setExch(false)}>{t('common.back')}</button>
         <button className="primary" disabled>{t('top.next')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
   // CM 01/02: pilen ved beløbet åbner en liste med faste beløb (i spillerens valuta)
@@ -197,10 +197,10 @@ export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolea
         </>}
         {err && <div className="cx-bid-err">{err}</div>}
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.back')}</button>
         <button className="primary" onClick={submit}>{t('cl.bid.offer')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }
@@ -235,10 +235,10 @@ export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onC
         <div className="cx-ts-head">{t('cl.bid.reason')}</div>
         {REASONS.map(([k]) => <button key={k} className={`cx-ts-opt ${why === k ? 'on' : ''}`} disabled={k === 'prospect' && !young} onClick={() => setWhy(k)}>{t(`cl.bid.why.${k}`)}</button>)}
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={() => setRejecting(false)}>{t('common.no')}</button>
         <button className="primary" onClick={() => reply('reject')}>{t('common.yes')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
   const row = (label: string, value: string, minus?: () => void, plus?: () => void, extra?: ReactNode) => (
@@ -272,12 +272,12 @@ export function IncomingBidPanel({ offer, onClose }: { offer: TransferOffer; onC
           <div className="cx-bid-total"><span>{t('cl.bid.total')}</span><b>{moneyFull(fee)}</b></div>
         </>}
       </div>
-      <div className="cx-ts-buttons cx-bid-answer">
+      <ClassicFoot cols="3fr 1fr 1fr 1fr" className="cx-bid-answer">
         <button onClick={() => onClose()}>{t('common.back')}</button>
         <button onClick={() => setRejecting(true)}>{t('cl.bid.reject')}</button>
         <button onClick={() => onClose()}>{t('cl.bid.delay')}</button>
         <button className="primary" onClick={() => reply(changed ? 'counter' : 'accept')}>{t(changed ? 'cl.bid.counter' : 'cl.bid.accept')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }
@@ -303,11 +303,11 @@ export function JobOfferPanel({ cid, onClose }: { cid: number; onClose: () => vo
         </div>
         <p className="cx-ts-intro">{t(g.userClub ? 'cl.job.qLeave' : 'cl.job.q', { club: c.short, own: g.clubs[g.userClub]?.short ?? '' })}</p>
       </div>
-      <div className="cx-ts-buttons cx-bid-answer cx-job-answer">
+      <ClassicFoot cols="2fr 1fr 1fr" className="cx-bid-answer cx-job-answer">
         <button onClick={onClose}>{t('common.back')}</button>
         <button onClick={decline}>{t('cl.bid.reject')}</button>
         <button className="primary" onClick={accept}>{t('cl.bid.accept')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }

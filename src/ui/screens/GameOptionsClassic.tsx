@@ -89,7 +89,7 @@ export function ClassicHallOfFame({ fallback }: { fallback: ReactNode }) {
       <div className="cx-subtitle">{titles[board]}</div>
       <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={[...BOARDS, 'mine' as const].map((b) => ({ key: b, label: titles[b], checked: board === b, onClick: () => setBoard(b) }))} /></div>
       {board === 'mine' || data === 'none' ? <div className="cx-hof-fb">{fallback}</div> : (
-        <div className="cx-tbl-wrap cx-hof">
+        <div className="cx-tbl-wrap cx-listpanel cx-hof">
           <table className="cx-tbl">
             <tbody>{(data?.rows ?? []).map((r, i) => (
               <tr key={r.id} className={data && typeof data === 'object' && data.me?.rank === i + 1 ? 'me' : ''}>

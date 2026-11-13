@@ -26,11 +26,20 @@ export function ClassicTraining() {
   const [tab, setTab] = useRouteState('ttab', 'overview');
   const [grp, setGrp] = useRouteState('tgrp', '');
   const [coaches, setCoaches] = useState(false);
+  // valgte spillere (klik på rækken, til berøringsskærme): næste klik på en træningsfane flytter dem dertil – ellers kan de trækkes over på fanen
+  const [sel, setSel] = useState<number[]>([]);
   const all = squad(g.userClub);
   const count = (k: string) => all.filter((p) => p.training === k).length;
   const lbl = (k: string) => `${t(`train.${k}`)} (${count(k)})`;
   const players = all.filter((p) => (tab === 'overview' || p.training === tab) && (!grp || (grp === 'advice' ? trainingAdvice(p).key !== p.training : posGroup(p) === grp)));
   const followAll = () => { for (const p of all) { const a = trainingAdvice(p); if (a.key !== p.training) act({ t: 'training', pid: p.id, key: a.key }); } };
+  const move = (key: string, ids: number[]) => {
+    if (!SCHEDULES.some((s) => s.key === key)) return;
+    for (const id of ids) if (g.players[id]?.club === g.userClub) act({ t: 'training', pid: id, key });
+    setSel([]);
+  };
+  const onTab = (k: string) => { if (sel.length && k !== 'overview') move(k, sel); else { setSel([]); setTab(k); } };
+  const onDropTab = (k: string, data: string) => { const id = Number(data); if (id) move(k, sel.includes(id) ? sel : [id]); };
   const schedMenu = (p: Player): DropItem[] => SCHEDULES.map((s) => ({ key: s.key, label: t(`train.${s.key}`), checked: p.training === s.key, onClick: () => act({ t: 'training', pid: p.id, key: s.key }) }));
 
   const cols: CxCol<Player>[] = [
@@ -59,9 +68,14 @@ export function ClassicTraining() {
         <button className="cx-greybtn" onClick={() => setCoaches(true)}>{t('cl.tn.coaches')}</button>
         <CxDrop label={t('cl.sq.filter')} align="right" items={['', 'gk', 'def', 'mid', 'att', 'advice'].map((k) => ({ key: k || 'all', label: k === 'advice' ? t('train.f.advice') : t(`train.f.${k || 'all'}`), checked: grp === k, onClick: () => setGrp(k) }))} />
       </Head>
-      <Tabs tabs={[['overview', t('cl.tn.overview')], ...TOP.map((k) => [k, lbl(k)] as [string, string])]} value={tab} onChange={setTab} />
-      <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => setTab(k) }))} />
+      <Tabs tabs={[['overview', t('cl.tn.overview')], ...TOP.map((k) => [k, lbl(k)] as [string, string])]} value={tab} onChange={onTab} onDropTab={onDropTab} />
+      <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => onTab(k), onDrop: (d: string) => onDropTab(k, d) }))} />
+      {sel.length > 0 && <div className="cx-tn-hint">{t('cl.tn.moveHint', { n: sel.length })}</div>}
       <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort="pos"
+        rowAttrs={(p) => ({ draggable: true, className: sel.includes(p.id) ? 'cx-tn-sel' : undefined,
+          // dragstart ændrer ikke DOM'en (Chrome afbryder ellers trækket) – kun dataene
+          onDragStart: (e) => { e.dataTransfer.setData('text/plain', String(p.id)); e.dataTransfer.effectAllowed = 'move'; },
+          onClick: (e) => { if ((e.target as HTMLElement).closest('button, .link, a')) return; setSel((x) => (x.includes(p.id) ? x.filter((i) => i !== p.id) : [...x, p.id])); } })}
         btn={(p) => <CxDrop className="cx-sel" caret={false} fixed label={t(`train.${p.training}`)} items={schedMenu(p)} btn={{ className: 'cx-rowbtn' }} />} />
       {coaches && <CoachesPanel onClose={() => setCoaches(false)} />}
     </div>

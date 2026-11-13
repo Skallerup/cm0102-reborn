@@ -152,7 +152,7 @@ function ClubTransfers({ cid }: { cid: number }) {
       {dir === 'listed' ? (listed.length === 0 ? <div className="cx-empty">{t('cl.ct.noListed')}</div> : <SquadTable players={listed} view="general" userClub={g.userClub} />) : (
         <div className="cx-ct">
           <div className="cx-ct-total"><span className="c-val">{money(total)}</span></div>
-          {rows.length > 0 && <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{rows.map((r, i) => {
+          {rows.length > 0 && <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{rows.map((r, i) => {
             const p = g.players[r.pid];
             return (
               <tr key={i}>

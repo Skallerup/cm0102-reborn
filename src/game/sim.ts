@@ -796,7 +796,8 @@ export async function runUntil(opts: { untilDate?: string; untilMatch?: boolean;
       // arbejdsløs: stop ved jobtilbud
       if (g.jobOffers.length) return { stop: 'news.jobOffer' };
     }
-    if (++steps % 3 === 0) {
+    // hver dag giver pladsen tilbage, så fremdriftsbjælken kan tegnes og siden ikke fryser
+    if (++steps) {
       opts.onProgress?.(g.date);
       await new Promise((res) => setTimeout(res, 0));
     }

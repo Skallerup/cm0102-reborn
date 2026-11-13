@@ -11,10 +11,10 @@ import { nationLanguage } from '../../game/languages';
 import { willJoin } from '../../game/staff';
 import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
-import type { GameState, Player, Staff, StaffRole } from '../../game/types';
+import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
 import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
-import { Seg, showRealism } from '../classicOptions';
+import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
 import { askConfirm, askText } from '../confirm';
 import { FL_ATTRS, SF_ATTRS, countMins, encodeMins, parseMins, staffAttrValue } from './searchAttrs';
@@ -51,7 +51,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
         { key: 'deals', label: t('tr.deals'), on: tab === 'deals' || tab === 'listed', onClick: () => setTab('deals') },
       ]} />
       {tab === 'search' && <Search classic />}
-      {tab === 'shortlist' && <ClassicPlayerTable players={g.shortlist.map((id) => g.players[id]).filter(Boolean)} title={t('cl.tr.shortlist')} viewMenu />}
+      {tab === 'shortlist' && <Search classic shortlist />}
       {tab === 'staff' && <StaffSearch />}
       {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} />}
       {tab === 'offers' && <Offers />}
@@ -94,7 +94,7 @@ const writeSettings = (kind: string, v: Record<string, unknown>) => {
 
 /** Menuen under Search for både spiller- og stabssøgningen. `named` = den indstilling, der er hentet/gemt (vises over listen). */
 function useSearchMenu<F extends object>({ kind, f, defaults, presets, apply, named, setNamed, active }: {
-  kind: 'player' | 'staff'; f: F; defaults: F; presets: { key: string; label: string; set: Partial<F> }[]; apply: (v: F) => void;
+  kind: 'player' | 'staff' | 'scout'; f: F; defaults: F; presets: { key: string; label: string; set: Partial<F> }[]; apply: (v: F) => void;
   named: string; setNamed: (n: string) => void; active: number;
 }): DropItem[] {
   const [, bump] = useState(0);
@@ -104,36 +104,37 @@ function useSearchMenu<F extends object>({ kind, f, defaults, presets, apply, na
   const same = (a: F, b: F) => JSON.stringify(a) === JSON.stringify(b);
   const loadedSetting = named && store[named] ? full(store[named]) : null;
   const dirty = !!loadedSetting && !same(loadedSetting, f);
+  const sc = kind === 'scout';
   const save = (name: string) => { writeSettings(kind, { ...readSettings(kind), [name]: f }); setNamed(name); bump((n) => n + 1); };
   const items: DropItem[] = [
-    { key: 'load', label: t('cl.sch.load'), sub: [
+    { key: 'load', label: sc ? t('cl.sc.load') : t('cl.sch.load'), sub: [
       ...presets.map((p) => ({ key: `p-${p.key}`, label: p.label, checked: !named && same(full(p.set), f), onClick: () => { apply(full(p.set)); setNamed(''); } })),
       ...(names.length ? [{ key: 'sep', sep: true } as DropItem] : []),
       ...names.map((n) => ({ key: `n-${n}`, label: n, checked: named === n, onClick: () => { apply(full(store[n])); setNamed(n); } })),
     ] },
-    { key: 'save', label: t('cl.sch.save'), disabled: !loadedSetting || !dirty, onClick: () => save(named) },
-    { key: 'saveAs', label: t('cl.sch.saveAs'), onClick: async () => {
+    { key: 'save', label: sc ? t('cl.sc.save') : t('cl.sch.save'), disabled: !loadedSetting || !dirty, onClick: () => save(named) },
+    { key: 'saveAs', label: sc ? t('cl.sc.saveAs') : t('cl.sch.saveAs'), onClick: async () => {
       const name = await askText(t('cl.sch.name'), named || '', { head: t('cl.sch.saveAs') });
       if (!name) return;
       if (store[name] && name !== named && !(await askConfirm(t('cl.sch.overwrite', { name })))) return;
       save(name);
     } },
     names.length
-      ? { key: 'del', label: t('cl.sch.delete'), sub: names.map((n) => ({ key: `d-${n}`, label: n, onClick: async () => {
+      ? { key: 'del', label: sc ? t('cl.sc.delete') : t('cl.sch.delete'), sub: names.map((n) => ({ key: `d-${n}`, label: n, onClick: async () => {
         if (!(await askConfirm(t('cl.sch.confirmDelete', { name: n }), { danger: true }))) return;
         const rest = { ...readSettings(kind) }; delete rest[n]; writeSettings(kind, rest);
         if (named === n) setNamed('');
         bump((x) => x + 1);
       } })) }
-      : { key: 'del', label: t('cl.sch.delete'), disabled: true, onClick: () => {} },
+      : { key: 'del', label: sc ? t('cl.sc.delete') : t('cl.sch.delete'), disabled: true, onClick: () => {} },
     { key: 'reset', label: t('cl.sch.reset'), disabled: !dirty && !(active > 0 && !named), onClick: () => { if (loadedSetting) apply(loadedSetting); else apply({ ...defaults }); } },
     { key: 'clear', label: t('cl.sch.clear'), disabled: active === 0 && !named, onClick: () => { apply({ ...defaults }); setNamed(''); } },
   ];
   return items;
 }
 
-export function ClassicSearch({ f, setF, defaults, results, total, active, nations }: {
-  f: Filters; setF: (v: Filters) => void; defaults: Filters; results: Player[]; total: number; active: number; nations: number[];
+export function ClassicSearch({ f, setF, defaults, results, total, active, nations, shortlist }: {
+  f: Filters; setF: (v: Filters) => void; defaults: Filters; results: Player[]; total: number; active: number; nations: number[]; shortlist?: boolean;
 }) {
   const g = useGame()!;
   const [open, setOpen] = useState(false);
@@ -154,8 +155,8 @@ export function ClassicSearch({ f, setF, defaults, results, total, active, natio
         <button className="cx-greybtn" onClick={() => setOpen(true)}>{t('cl.tr.filters')}{active ? ` (${active})` : ''}</button>
         <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
-      <ClassicPlayerTable players={results} title={t('tr.search')} view={view} total={total}
-        desc={named || (preset ? t(`cl.tr.p.${preset.key}`) : t('cl.tr.custom', { n: active }))} initialSort={f.realism && realism ? 'real' : 'val'} />
+      <ClassicPlayerTable players={results} title={shortlist ? t('cl.tr.shortlist') : t('tr.search')} view={view} total={total}
+        desc={named || (shortlist && !active ? t('cl.tr.shortlistDesc') : preset ? t(`cl.tr.p.${preset.key}`) : t('cl.tr.custom', { n: active }))} initialSort={f.realism && realism ? 'real' : 'val'} />
       {open && <FilterDialog f={f} defaults={defaults} nations={nations} onOk={(v) => { setF(v); setOpen(false); }} onClose={() => setOpen(false)} />}
     </div>
   );
@@ -458,23 +459,59 @@ function StaffSearch() {
 
 // ---------- Scout #n ----------
 
+/** Spejderens opgave som gemt indstilling (uden fundne spillere og datoer) */
+interface ScoutCfg { a: Pick<ScoutAssignment, 'kind' | 'target' | 'focus' | 'role' | 'attr' | 'attrMin' | 'maxValue'> | null }
+
 function ScoutTab({ scout, n }: { scout?: Staff; n: number }) {
   const g = useGame()!;
-  const { nav } = useNav();
+  const [named, setNamed] = useRouteState('scname', '');
+  const [view, setView] = useRouteState('tview', 'general');
   if (!scout) return <div className="cx-empty">{t('cl.sc.none', { n })}</div>;
+  const name = `${scout.first} ${scout.last}`;
   const a = scout.assignment;
-  const target = !a ? '' : a.kind === 'player' ? `${g.players[a.target as number]?.first ?? ''} ${g.players[a.target as number]?.last ?? ''}`.trim()
-    : a.kind === 'nation' ? natName(g.nations[a.target as number]?.name) : compName(g.leagues[a.target as string]?.name) ?? String(a.target);
+  const targetName = (x: ScoutAssignment): string => x.kind === 'nation' ? natName(g.nations[x.target as number]?.name)
+    : x.kind === 'league' ? compName(g.leagues[x.target as string]?.name) ?? String(x.target)
+    : x.kind === 'club' ? g.clubs[x.target as number]?.name ?? '' : x.kind === 'region' ? t(`region.${x.target}`)
+    : x.kind === 'nextOpp' ? t('cl.sc.nextOpp') : x.kind === 'youth' ? t('cl.sc.youth') : `${g.players[x.target as number]?.first ?? ''} ${g.players[x.target as number]?.last ?? ''}`.trim();
   const players = !a ? [] : a.kind === 'player' ? [g.players[a.target as number]].filter(Boolean) : (a.found ?? []).map((id) => g.players[id]).filter(Boolean);
+  // "Assign scout Mick Brown to Argentina ?" (Please Confirm) – derefter går han i gang
+  const assign = async (x: Omit<ScoutAssignment, 'since' | 'found'>) => {
+    if (!(await askConfirm(t('cl.sc.assignQ', { scout: name, target: targetName(x as ScoutAssignment) }), { title: t('cl.sc.assignTitle'), colored: true }))) return;
+    act({ t: 'scout', staffId: scout.id, assignment: { ...x, since: g.date, found: [] } });
+  };
+  const clubs = Object.values(g.clubs).filter((c) => !g.leagues[c.league]?.hidden && c.id !== g.userClub);
+  const nationIds = [...new Set(clubs.map((c) => c.nation))].filter((x) => g.nations[x]).sort((x, y) => natName(g.nations[x].name).localeCompare(natName(g.nations[y].name), t('cl.locale')));
+  const byRegion = (list: number[], item: (nat: number) => DropItem): DropItem[] =>
+    REGIONS.map((r) => ({ r, xs: list.filter((x) => regionOfNation(g.nations[x]?.name) === r) })).filter((x) => x.xs.length)
+      .map(({ r, xs }) => ({ key: r, label: t(`cl.region.${r}`), sub: xs.map(item) }));
+  const lg = g.clubs[g.userClub]?.league;
+  const assignItems: DropItem[] = [
+    ...(lg && g.leagues[lg] ? [{ key: 'comp', label: compName(g.leagues[lg].name) ?? '', onClick: () => assign({ kind: 'league', target: lg }) } as DropItem] : []),
+    { key: 's1', sep: true },
+    { key: 'club', label: t('cl.sc.club'), sub: byRegion(nationIds, (nat) => ({ key: `n${nat}`, label: natName(g.nations[nat].name),
+      sub: clubs.filter((c) => c.nation === nat).sort((x, y) => y.rep - x.rep).slice(0, 40).map((c) => ({ key: `c${c.id}`, label: c.name, onClick: () => assign({ kind: 'club', target: c.id }) })) })) },
+    { key: 'opp', label: t('cl.sc.nextOpp'), onClick: () => assign({ kind: 'nextOpp', target: 0 }) },
+    { key: 'youth', label: t('cl.sc.youth'), onClick: () => assign({ kind: 'youth', target: 0 }) },
+    { key: 's2', sep: true },
+    { key: 'nation', label: t('cl.sc.nation'), sub: byRegion(nationIds, (nat) => ({ key: `n${nat}`, label: natName(g.nations[nat].name), onClick: () => assign({ kind: 'nation', target: nat }) })) },
+    { key: 's3', sep: true },
+    { key: 'region', label: t('cl.sc.region'), sub: (['europe', 'northAmerica', 'southAmerica', 'asia', 'africa'] as const).map((r) => ({ key: r, label: t(`region.${r}`), onClick: () => assign({ kind: 'region', target: r }) })) },
+  ];
+  const cfg: ScoutCfg = { a: a ? { kind: a.kind, target: a.target, focus: a.focus, role: a.role, attr: a.attr, attrMin: a.attrMin, maxValue: a.maxValue } : null };
+  const menu = useSearchMenu<ScoutCfg>({ kind: 'scout', f: cfg, defaults: { a: null }, presets: [], named, setNamed, active: a ? 1 : 0,
+    apply: (v) => act({ t: 'scout', staffId: scout.id, assignment: v.a ? { ...v.a, since: g.date, found: [] } : null }) });
+  const items: DropItem[] = [{ key: 'assign', label: t('cl.sc.assign'), sub: assignItems }, ...menu];
   return (
     <div>
       <div className="cx-tools cx-tools-inline">
-        <span className="cx-scout-who">{scout.first} {scout.last}</span>
+        <CxDrop label={t('cl.tr.searchBtn')} items={items} />
+        <ViewMenu view={view} setView={setView} />
         <span className="grow" />
-        <button className="cx-greybtn" onClick={() => nav({ name: 'scouting' })}>{a ? t('cl.sc.change') : t('cl.sc.send')}</button>
+        <button className="cx-greybtn" disabled>{t('cl.tr.filters')}</button>
+        <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
-      <ClassicPlayerTable players={players} title={t('cl.tr.scoutN', { n })} viewMenu
-        desc={a ? t('cl.sc.desc', { target, since: a.since ? dateFmt(a.since) : '–' }) : t('cl.sc.idle')} />
+      <ClassicPlayerTable players={players} title={t('cl.tr.scoutN', { n })} view={view}
+        desc={a ? t('cl.sc.assigned', { scout: name, target: targetName(a) }) : t('cl.sc.notAssigned', { scout: name })} />
     </div>
   );
 }
@@ -563,7 +600,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
           const on = g.shortlist.includes(p.id);
           return <button className={`cx-rowbtn ${on ? 'on' : ''}`} title={on ? t('player.unshortlist') : t('player.shortlist')} onClick={() => act({ t: 'shortlist', pid: p.id, on: !on })}>{on ? '★' : ''}</button>;
         }} />
-      <div className="cx-found">{t('cl.tr.found', { n: players.length.toLocaleString(t('cl.locale')) })}{total !== undefined && players.length < total ? ` ${t('cl.tr.filteredOut', { n: (total - players.length).toLocaleString(t('cl.locale')) })}` : ''}</div>
+      <div className="cx-found">{players.length === 0 && total === undefined ? t('cl.tr.noneFound') : t(players.length === 1 ? 'cl.tr.found1' : 'cl.tr.found', { n: players.length.toLocaleString(t('cl.locale')) })}{total !== undefined && players.length < total ? ` ${t('cl.tr.filteredOut', { n: (total - players.length).toLocaleString(t('cl.locale')) })}` : ''}</div>
     </>
   );
 }

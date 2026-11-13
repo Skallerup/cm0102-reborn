@@ -7,7 +7,7 @@ import { dateFmt, t } from '../../i18n';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { ClassicSub, CxDrop, CxLink, clubRoute, type Item } from '../classic';
-import { CompHistory, Scorers } from './Competitions';
+import { Scorers } from './Competitions';
 import { stageLabel } from './Fixtures';
 
 const MAIN = ['rounds', 'results', 'fixtures', 'schedule'] as const;
@@ -26,8 +26,9 @@ const Club = ({ id, win }: { id: number; win?: boolean }) => {
 };
 
 export function ClassicCup({ comp }: { comp: Competition }) {
+  const { nav } = useNav();
   const [tab, setTab] = useRouteState<CupTab>(`cup:${comp.id}`, 'rounds');
-  const sub: Item[] = SUB.map((k) => ({ key: k, label: t(`cl.cup.${k}`), on: tab === k, onClick: () => setTab(k) }));
+  const sub: Item[] = SUB.map((k) => ({ key: k, label: t(`cl.cup.${k}`), on: tab === k, onClick: () => (k === 'history' ? nav({ name: 'competitions', id: comp.id, tab: 'history', state: { [`cup:${comp.id}`]: 'history' } }) : setTab(k)) }));
   return (
     <>
       <Tabs tabs={MAIN.map((k) => [k, t(`cl.cup.${k}`)] as [string, string])} value={(MAIN as readonly string[]).includes(tab) ? tab : ''} onChange={(v) => setTab(v as CupTab)} />
@@ -39,8 +40,7 @@ export function ClassicCup({ comp }: { comp: Competition }) {
       {tab === 'seedings' && <Seedings comp={comp} />}
       {tab === 'teamstats' && <Form comp={comp} />}
       {tab === 'playerstats' && <Scorers comp={comp} />}
-      {tab === 'history' && <CompHistory comp={comp} />}
-    </>
+          </>
   );
 }
 
@@ -56,7 +56,7 @@ function Rounds({ comp }: { comp: Competition }) {
         <CxDrop label={t('cl.cup.round')} align="right" items={stages.map((s) => ({ key: s, label: t(`stage.${s}`), checked: s === cur, onClick: () => setStage(s) }))} />
       </div>
       <div className="cx-subtitle small">{t(`stage.${cur}`)}</div>
-      <div className="cx-cup">
+      <div className="cx-cup cx-listpanel">
         {ties.map((x) => (
           <div key={x.id} className="cx-cup-row">
             <Code club={x.a} /><span /><Club id={x.a} win={x.winner === x.a} /><span className="cx-cup-v">v</span><Club id={x.b} win={x.winner === x.b} /><span /><Code club={x.b} />
@@ -74,7 +74,7 @@ function Groups({ comp }: { comp: Competition }) {
   const groups = (comp.groups ? Object.entries(comp.groups) : comp.table.length ? [['', comp.table] as const] : []).map(([k, rows]) => [k, sortTable(rows.slice())] as const);
   if (!groups.length) return <div className="cx-empty cx-empty-mid">{t('cl.cup.notDrawn')}</div>;
   return (
-    <div className="cx-cup">
+    <div className="cx-cup cx-listpanel">
       {groups.map(([k, rows]) => (
         <div key={k}>
           {k && <div className="cx-subtitle small">{t('fix.group')} {k}</div>}
@@ -111,7 +111,7 @@ function Days({ comp, played }: { comp: Competition; played: boolean }) {
           </span>
         )}
       </div>
-      <div className="cx-cup">
+      <div className="cx-cup cx-listpanel">
         {stages.map((s) => (
           <div key={s}>
             <div className="cx-cup-stage">{s}</div>
@@ -143,7 +143,7 @@ function Schedule({ comp }: { comp: Competition }) {
   }, [g, comp.id]);
   if (!days.length) return <div className="cx-empty cx-empty-mid">{t('cl.cup.noFixtures')}</div>;
   return (
-    <div className="cx-cup">
+    <div className="cx-cup cx-listpanel">
       {days.map(([d, s]) => (
         <div key={d} className={`cx-cup-sched ${d < g.date ? 'past' : ''}`}><span className="cx-code wide">{dateFmt(d, true)}</span><span>{s}</span></div>
       ))}
@@ -183,7 +183,7 @@ function Form({ comp }: { comp: Competition }) {
   return (
     <>
       <div className="cx-subtitle small">{t('cl.cup.form')}</div>
-      <div className="cx-cup">
+      <div className="cx-cup cx-listpanel">
         {rows.map(([id, e], i) => (
           <div key={id} className="cx-cup-row form">
             <span className="cx-code">{i + 1}.</span><Club id={id} /><span className="cx-cup-nat">{g.nations[g.clubs[id].nation]?.code}</span><span className="cx-cup-pts">{e.form.slice(-5).join(' ') || '-'}</span>

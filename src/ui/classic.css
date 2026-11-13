@@ -1254,6 +1254,12 @@
 .cx-chist-row.date { grid-template-columns: 120px 1fr; } .cx-chist-row.date > span:first-child { border-right: 0; }
 .cx-chist-row .v { color: #fff21f; }
 .cx-chist-btn { display: grid; place-items: center; height: 20px; margin: 2px 6px; background: #00006e; border: 1px solid; border-color: #000085 #00003e #00003e #000085; color: #fff; font-size: 12px; }
+/* turneringens History: Winners-tabellen (vinder / nummer to pr. år; menneskets klub i gult) */
+.cx-chist-row.win { grid-template-columns: 120px 1fr 1fr; min-height: 28px; font-size: 15px; } .cx-chist-row.win > span:first-child { border-right: 0; }
+.cx-chist-row.win .me { color: #fff21f; }
+.cx-chist-wh { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 2px; padding: 2px 0; } .cx-chist-wh > span { background: #8b8b8b; color: #e6e6e6; text-align: center; font-size: 12px; padding: 4px 0; } .cx-chist-wh > span:first-child { background: none; }
+.cx-chist-win { max-height: calc(100vh - 330px); }
+.cx-chist-comp .cx-chist-tbl { min-height: 180px; }
 @media (max-width: 760px) { .cx-chist-row, .cx-chist-row.three { grid-template-columns: 1fr; } }
 /* "Championship Manager" (Nations & Clubs): to kolonner med navn, landekode (gul) og liga (orange) */
 .cx-nc-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; margin: 0 16px; padding: 6px 12px; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 360px); overflow-y: auto; }
@@ -1450,8 +1456,8 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-sq-orig .cx-sq-head { display: block; margin: 0; padding: 6px 0 8px; background: rgba(60, 60, 60, 0.55); text-align: center; color: #fff21f; font-size: 21px; font-weight: 700; }
 /* strimlen: grøn med hvid tekst, SB6-SB9 dæmpet (bænken har kun 5 pladser), ingen forskel på besat/ledig */
 .cx-sq-orig .cx-sq-slots { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 0; margin: 4px 0 6px; padding: 0; }
-.cx-sq-orig .cx-slot, .cx-sq-orig .cx-slot.filled, .cx-sq-orig .cx-slot.bench.filled { height: 26px; background: #1d7a1a; color: #fff; border: 1px solid; border-color: #4cb045 #0b3a0a #0b3a0a #4cb045; font-size: 12px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); cursor: pointer; }
-.cx-sq-orig .cx-slot.off { color: #2f9a2a; text-shadow: none; cursor: default; }
+.cx-sq-orig .cx-slot, .cx-sq-orig .cx-slot.filled, .cx-sq-orig .cx-slot.bench.filled { height: 26px; background: #183f0c; color: #fff; border: 1px solid; border-color: #2c661a #031401 #031401 #2c661a; font-size: 12px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); cursor: pointer; }
+.cx-sq-orig .cx-slot.off { color: #2f6a20; text-shadow: none; cursor: default; }
 .cx-sq-orig .cx-slot.armed { border-color: #fff21f; box-shadow: inset 0 0 0 1px #fff21f; }
 /* rækkerne: blå udtagelsesfelt (hvid tekst), rødt Inj-mærke, hvidt navn, positionerne i gult */
 .cx-sq-orig .cx-sq-cols { gap: 0 18px; }
@@ -1529,7 +1535,8 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 .cx-finv-orig .cx-fin-bal span { font-size: 18px; font-weight: 500; }
 :root[data-skin='retro'] .cx-bid .cx-pm { display: grid; place-items: center; padding: 0; line-height: 1; font-size: 18px; font-weight: 700; }
 /* truppen (ægte tilstand): tomme pladser i strimlen lysere, Condition i grønt, udlejede spillere blå, grå = ikke spilleklar, Fut i grå boks */
-.cx-sq-orig .cx-slot:not(.filled):not(.off) { background: #3f9a39; border-color: #7cd070 #145012 #145012 #7cd070; }
+/* strimlen er mørkegrøn #183f0c (målt i originalen), også for tomme pladser */
+.cx-sq-orig .cx-slot:not(.filled):not(.off) { background: #183f0c; border-color: #2c661a #031401 #031401 #2c661a; }
 .cx-sq-orig .cx-sq-info.cond { color: #3ef03a; }
 :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan:hover { color: #4f9cff; }
 :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim:hover { color: #9a9a9a; }
@@ -1661,3 +1668,41 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 
 /* Squad Numbers: navnene altid hvide (ikke linkfarven) – som originalen */
 :root[data-skin='retro'] .cx-sqn-row :is(a, .cx-link, .link, .club-link, span[role='link']) { color: #fff !important; }
+/* Last Match uden kampe: tekst midt i en mørk flade + bred Ok */
+.cx-norecent-body { display: flex; align-items: center; justify-content: center; min-height: 52vh; margin: 8px 16px; background: rgba(0, 0, 0, 0.5); color: #fff; font-size: clamp(18px, 2vw, 26px); text-shadow: 1px 1px 0 #000; }
+.cx-backnext.cx-onlyok { grid-template-columns: 1fr; }
+
+/* Listerne står i en gennemsigtig sort flade med tynd kant (som truppen og træningen i CM 01/02) – fælles for alle listeskærme */
+:root[data-skin='retro'] .cx-listpanel { background: rgba(0, 0, 0, 0.32); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 4px; margin-bottom: 6px; }
+@media (min-width: 761px) { :root[data-skin='retro'] .cx-listpanel { margin-left: 16px; margin-right: 16px; } }
+
+/* Farverne målt i originalens skærmbilleder (r2/301, 303, 309): den blå række-/udtagelsesknap er flad #00007d (let affasning), værdifeltet mørk lilla #3b063f */
+:root[data-skin='retro'] .cx-rowbtn:not(.on), :root[data-skin='retro'] .cx-selbtn:not(.xi):not(.bench), :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:not(.xi):not(.bench),
+:root[data-skin='retro'] .cx-fx-orig .cx-fx-date, :root[data-skin='retro'] .cx-bid .cx-pm, :root[data-skin='retro'] .cx-exch .cx-selbtn {
+  background: #00007d; border: 1px solid; border-color: #0000bc #00003a #00003a #0000bc; filter: none; }
+:root[data-skin='retro'] .cx-tbl .c-val, :root[data-skin='retro'] .cx-fx-res, .cx-pl-stats td.avr, :root[data-skin='retro'] .cx-ct-total .c-val {
+  background: #3b063f; border: 1px solid; border-color: #59135d #150018 #150018 #59135d; color: #fff; }
+
+/* Træning: valgt række (klik) og hjælpelinjen */
+.cx-tn-sel td:not(.btn-col) { background: rgba(255, 242, 31, 0.18) !important; }
+.cx-tn-hint { margin: 4px 16px; padding: 4px 8px; background: rgba(0, 0, 0, 0.5); color: #fff21f; font-size: 14px; text-align: center; }
+.cx-tbl tr[draggable='true'] { cursor: grab; }
+/* originalens lister er tættere: rækkehøjde ~22 px (målt 30 px på et 2000 px bredt billede), blå knap 20 px */
+:root[data-skin='retro'] .cx-listpanel .cx-tbl { border-spacing: 2px 1px; font-size: 13px; }
+:root[data-skin='retro'] .cx-listpanel .cx-tbl td { padding: 0 6px; height: 22px; line-height: 1.1; }
+:root[data-skin='retro'] .cx-listpanel .cx-tbl .cx-rowbtn { height: 20px; }
+
+/* skærmens egne knapper i bundbjælken (ClassicFoot): de erstatter Back/Next */
+.cx-foot-slot:empty { display: none; }
+.cx-foot-custom > :not(.cx-sub):not(.cx-foot-slot) { display: none; }
+.cx-foot-btns.cx-ts-buttons, .cx-foot-btns { margin: 0; }
+
+/* Continue Game: den grå bjælke i bunden med datoen og en blå fremdriftsbjælke (som originalens Initialising game data) */
+.cx-running { display: grid; grid-template-columns: 30% minmax(0, 1fr); align-items: center; gap: 12px; padding: 0 12px 0 0; min-height: 58px; }
+.cx-run-l { text-align: center; font-size: 14px; color: #fff; }
+.cx-run-bar { display: block; height: 28px; background: #d4d4d8; border: 2px solid; border-color: #6b6b6e #f1f1f3 #f1f1f3 #6b6b6e; }
+.cx-run-bar i { display: flex; align-items: center; justify-content: flex-end; height: 100%; background: #000a8c; transition: width 0.15s linear; }
+.cx-run-bar b { padding-right: 8px; color: #fff; font-size: 12px; font-weight: 400; }
+.cx-running .cx-running-hint { grid-column: 1 / -1; }
+:root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.xi, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.bench,
+:root[data-skin='retro'] .cx-sq-orig .cx-selbtn:hover, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:focus { background: #00007d; border-color: #0000bc #00003a #00003a #0000bc; }

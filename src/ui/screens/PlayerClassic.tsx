@@ -20,7 +20,7 @@ import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
 import { askConfirm, askNotice } from '../confirm';
-import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem, useClassicDialog } from '../classic';
+import { ClubList, CxDrop, CxLink, classicDate, nationRoute, titleColors, type DropItem, useClassicDialog, ClassicFoot } from '../classic';
 import { compareIds, setCompareSlot } from '../compare';
 import { ClubLink, Modal, Rating, Tabs, posStr } from '../components';
 import { gs } from '../../game/state';
@@ -532,11 +532,11 @@ function NicknamePanel({ p, onClose }: { p: Player; onClose: () => void }) {
     <div className="cx-tstatus">
       <div className="cx-subtitle">{t('cl.pl.nickTitle')}</div>
       <div className="cx-ts-body center"><input className="cx-nick" autoFocus value={v} maxLength={30} onChange={(e) => setV(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && v.trim()) save(v); }} /></div>
-      <div className="cx-ts-buttons cx-three">
+      <ClassicFoot cols="2fr 1fr 1fr">
         <button onClick={onClose}>{t('common.cancel')}</button>
         <button disabled={!p.realName} onClick={() => save(null)}>{t('cl.pl.nickRemove')}</button>
         <button className="primary" disabled={!v.trim()} onClick={() => save(v)}>{t('common.ok')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }
@@ -555,10 +555,10 @@ function StaffReportPanel({ p, role, onClose, onDone }: { p: Player; role: 'phys
         <p className="cx-ts-intro">{t(role === 'physio' ? 'cl.pl.physioWho' : 'cl.pl.coachWho', { player: name })}</p>
         {staff.map((s) => <button key={s.id} className={`cx-opt ${sel === s.id ? 'sel' : ''}`} onClick={() => setSel(s.id)}>{s.first} {s.last}</button>)}
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.cancel')}</button>
         <button className="primary" disabled={sel === undefined} onClick={() => { if (sel !== undefined) dispatch({ t: 'staffReport', pid: p.id, staffId: sel }); onDone(); }}>{t('cl.dp.confirm')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }
@@ -571,7 +571,7 @@ function NotePanel({ p, onClose }: { p: Player; onClose: () => void }) {
     <div className="cx-tstatus">
       <div className="cx-subtitle">{t('cl.pl.note')}</div>
       <div className="cx-ts-body center"><textarea className="cx-nick cx-note" autoFocus value={v} maxLength={500} onChange={(e) => setV(e.target.value)} /></div>
-      <div className="cx-ts-buttons"><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" onClick={() => { dispatch({ t: 'notes', pid: p.id, text: v }); onClose(); }}>{t('common.ok')}</button></div>
+      <ClassicFoot cols="3fr 1fr"><button onClick={onClose}>{t('common.cancel')}</button><button className="primary" onClick={() => { dispatch({ t: 'notes', pid: p.id, text: v }); onClose(); }}>{t('common.ok')}</button></ClassicFoot>
     </div>
   );
 }

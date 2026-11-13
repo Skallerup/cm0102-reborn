@@ -54,20 +54,20 @@ async function run(look) {
       }
       sqnMissingSeen = true;
       if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-troejenumre-foer-kamp.png` });
-      await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
+      await page.locator('.cx-foot-btns button.primary').click();
       await page.waitForTimeout(300);
       return true;
     }
     // European Squad (31/8): Respond → Auto → Submit
     if (await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.euroDue === g.season; })) {
-      if (await page.locator('.cx-eur').isVisible().catch(() => false)) { await page.locator('.cx-eur .cx-sqn-bar .cx-grey').first().click(); await page.locator('.cx-eur .cx-ts-buttons button.primary').click(); }
+      if (await page.locator('.cx-eur').isVisible().catch(() => false)) { await page.locator('.cx-eur .cx-sqn-bar .cx-grey').first().click(); await page.locator('.cx-foot-btns button.primary').click(); }
       else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
       else return false;
       await page.waitForTimeout(300);
       return true;
     }
     if (!(await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub]?.sqnDue === g.season; }))) return false;
-    if (await page.locator('.cx-sqn .cx-ts-buttons button.primary').isVisible().catch(() => false)) await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
+    if (await page.locator('.cx-foot-btns button.primary').isVisible().catch(() => false)) await page.locator('.cx-foot-btns button.primary').click();
     else if (await page.locator('.cx-respond').isVisible().catch(() => false)) await page.locator('.cx-respond').first().click();
     else return false;
     await page.waitForTimeout(300);
@@ -180,6 +180,20 @@ async function run(look) {
 
   const star = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).filter((p) => p.club === g.userClub).sort((a, b) => b.ca - a.ca)[0]?.id; });
   const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league)?.id; });
+  // ægte CM 01/02 (klassisk): ingen er udtaget fra start (alle blå felter tomme) – Assistant ▸ Assistant Picks udtager holdet
+  if (look === 'klassisk') await step('ingen udtaget fra start – Assistant Picks (klassisk)', async () => {
+    await go({ name: 'squad' });
+    await page.waitForTimeout(400);
+    const n0 = await gs(() => { const g = window.__cm.gs(); return g.options.mode === 'authentic' ? g.tactic.lineup.filter(Boolean).length + g.tactic.bench.length : -1; });
+    if (n0 > 0) throw new Error(`${n0} spillere er udtaget fra start`);
+    if (n0 === 0) {
+      if (await page.locator('.cx-selbtn.xi, .cx-selbtn.bench').count()) throw new Error('udtagelsesfelter er farvet fra start');
+      await page.locator('.cx-drop-btn', { hasText: /^Assistant/ }).first().click();
+      await page.locator('.cx-drop-pop button, .cx-drop-pop .cx-drop-item', { hasText: 'Assistant Picks' }).first().click();
+      await page.waitForTimeout(300);
+      if ((await gs(() => window.__cm.gs().tactic.lineup.filter(Boolean).length)) !== 11) throw new Error('assistenten udtog ikke 11 spillere');
+    }
+  });
   const screens = [
     { name: 'inbox' }, { name: 'squad' }, { name: 'player', id: star }, { name: 'tactics' }, { name: 'training' }, { name: 'fixtures' },
     { name: 'competitions' }, { name: 'competitions', id: 'CL' }, { name: 'international' }, { name: 'international', tab: 'fifa' }, { name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }, { name: 'transfers' }, { name: 'scouting' }, { name: 'staff' }, { name: 'finance' }, { name: 'club', id: other },
@@ -227,6 +241,78 @@ async function run(look) {
     await page.waitForTimeout(300);
     await checkScreen('staff search');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-staffsearch.png` });
+  });
+  // runde 2 (ejerens billeder 300-309): Last Match uden kampe, målmandsegenskaber, Short List-filtre, spejdere, træning med træk og slip
+  if (look === 'klassisk') await step('Last Match uden kampe (klassisk)', async () => {
+    await go({ name: 'club' });
+    await page.waitForTimeout(300);
+    const lm = page.locator('.cx-subrow button', { hasText: 'Last Match' });
+    if (await lm.isDisabled()) throw new Error('Last Match er grå før første kamp');
+    await lm.click();
+    await page.waitForSelector('.cx-norecent', { timeout: 3000 });
+    const txt = await page.locator('.cx-norecent').innerText();
+    if (!/No Recent Matches/i.test(txt) || !/No recent matches have been played/i.test(txt)) throw new Error('forkert tekst: ' + txt.slice(0, 80));
+    await page.locator('.cx-onlyok button', { hasText: 'Ok' }).click();
+    await page.waitForTimeout(200);
+    if (await page.locator('.cx-norecent').count()) throw new Error('Ok lukkede ikke skærmen');
+  });
+  if (look === 'klassisk') await step('målmandsegenskab i søgningen giver kun målmænd + Short List-filtre + spejder (klassisk)', async () => {
+    await go({ name: 'transfers' });
+    await page.locator('.cx-greybtn', { hasText: 'Filters' }).first().click();
+    await page.locator('.cx-fl-tabs button', { hasText: 'Attributes' }).click();
+    for (let i = 0; i < 11; i++) await page.locator('button[aria-label="Reflexes +"]').click();
+    await page.locator('.cx-filters .primary').click();
+    await page.waitForTimeout(300);
+    const pos = await page.locator('.cx-tbl tbody td.c-pos').allInnerTexts();
+    if (!pos.length) throw new Error('ingen spillere med Reflexes 12+');
+    if (pos.some((x) => x.trim() !== 'GK')) throw new Error('markspillere med høj Reflexes: ' + pos.filter((x) => x.trim() !== 'GK').join(','));
+    // Short List kan filtreres som Player Search
+    await gs(() => { const g = window.__cm.gs(); const ids = Object.values(g.players).filter((p) => p.club !== g.userClub && p.pos[0] < 20).slice(0, 3).map((p) => p.id); g.shortlist.push(...ids); window.__cm.notify(); });
+    await go({ name: 'transfers', state: { tab: 'shortlist' } });
+    await page.waitForTimeout(300);
+    if (!(await page.locator('.cx-pager-line').innerText()).includes('Players currently on your shortlist')) throw new Error('teksten under Short List mangler');
+    const all = await page.locator('.cx-tbl tbody tr').count();
+    await page.locator('.cx-greybtn', { hasText: 'Filters' }).first().click();
+    await page.locator('.cx-fl-tabs button', { hasText: 'Attributes' }).click();
+    for (let i = 0; i < 12; i++) await page.locator('button[aria-label="Handling +"]').click();
+    await page.locator('.cx-filters .primary').click();
+    await page.waitForTimeout(300);
+    if ((await page.locator('.cx-tbl tbody tr').count()) >= all) throw new Error('filteret virker ikke på Short List');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-shortlist-filter.png` });
+    // spejder: Assign Scout ▸ Next Opposition → bekræftelsen → opgaven er sat
+    await go({ name: 'transfers', state: { tab: 'scout1' } });
+    await page.waitForTimeout(300);
+    if (!(await page.locator('.cx-pager-line').innerText()).includes('not assigned')) throw new Error('"not assigned" mangler');
+    await page.locator('.cx-tools .cx-drop-btn', { hasText: /^Search/ }).first().click();
+    await page.locator('.cx-drop-pop >> text=Assign Scout').first().hover();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-scout-menu.png` });
+    await page.locator('.cx-drop-pop >> text=Next Opposition').first().click();
+    await page.waitForSelector('.cx-confirm', { timeout: 3000 });
+    if (!(await page.locator('.cx-confirm').innerText()).includes('Assign scout')) throw new Error('bekræftelsen mangler');
+    await page.locator('.cx-confirm button.primary').click();
+    await page.waitForTimeout(300);
+    const asg = await gs(() => Object.values(window.__cm.gs().staff).find((x) => x.club === window.__cm.gs().userClub && x.role === 'scout')?.assignment?.kind);
+    if (asg !== 'nextOpp') throw new Error('spejderen blev ikke tildelt: ' + asg);
+  });
+  if (look === 'klassisk') await step('træning: træk spiller til fane + klik-flyt (klassisk)', async () => {
+    await go({ name: 'training' });
+    await page.waitForTimeout(300);
+    const rows = page.locator('.cx-tbl tbody tr');
+    const count = (k) => gs((kk) => { const g = window.__cm.gs(); return Object.values(g.players).filter((p) => p.club === g.userClub && p.training === kk).length; }, k);
+    const b = await count('fitness');
+    await rows.nth(2).dragTo(page.locator('.cx-tabrow button', { hasText: 'Fitness' }));
+    if ((await count('fitness')) === b) {
+      // spilleren stod måske allerede på Fitness: træk en anden række
+      await rows.nth(5).dragTo(page.locator('.cx-tabrow button', { hasText: 'Fitness' }));
+      if ((await count('fitness')) === b) throw new Error('træk til fanen flyttede ikke');
+    }
+    // klik-alternativet: vælg rækken, klik på en fane i nederste række
+    const sh = await count('shooting');
+    await rows.nth(7).locator('td.c-yel').first().click();
+    if (!(await page.locator('.cx-tn-hint').count())) throw new Error('hjælpelinjen for valgt spiller mangler');
+    await page.locator('.cx-tabrow button', { hasText: 'Shooting' }).click();
+    if ((await count('shooting')) === sh) throw new Error('klik-flyt virkede ikke');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-traening-traek.png` });
   });
   // Player & Staff Search som i CM 01/02: Search-menuen, egenskabsfilter, gemte indstillinger, fri spiller, Realism-kolonnen, Staff Search
   if (look === 'klassisk') await step('søgning: indstillinger, egenskabsfilter, stab (klassisk)', async () => {
@@ -465,14 +551,14 @@ async function run(look) {
           dressing: !!document.querySelector('.cx-sq-orig .panel'), count: /Team \d+\/11/.test(document.querySelector('.cx-sq-orig')?.textContent ?? ''),
           division: [...document.querySelectorAll('.cx-subrow button')].map((b) => b.textContent).find((x) => /\d+(st|nd|rd|th) in /.test(x ?? '')) ?? '' };
       });
-      if (look2.sel !== 'rgb(0, 0, 168)' || look2.selFg !== 'rgb(255, 255, 255)') throw new Error(`udtagelsesfeltet skal være blåt med hvid tekst: ${look2.sel} / ${look2.selFg}`);
-      if (look2.slot !== 'rgb(29, 122, 26)' || look2.slotFg !== 'rgb(255, 255, 255)') throw new Error(`strimlen skal være grøn med hvid tekst: ${look2.slot} / ${look2.slotFg}`);
+      if (look2.sel !== 'rgb(0, 0, 125)' || look2.selFg !== 'rgb(255, 255, 255)') throw new Error(`udtagelsesfeltet skal være blåt med hvid tekst: ${look2.sel} / ${look2.selFg}`);
+      if (look2.slot !== 'rgb(24, 63, 12)' || look2.slotFg !== 'rgb(255, 255, 255)') throw new Error(`strimlen skal være mørkegrøn (#183f0c, målt i originalen) med hvid tekst: ${look2.slot} / ${look2.slotFg}`);
       if (look2.slots[0] !== 'GK' || !look2.slots.includes('SB9')) throw new Error(`strimlen: ${look2.slots.join(' ')}`);
       if (look2.tags.some((x) => ['Int', 'Fgn', 'Wnt'].includes(x))) throw new Error(`ikke-originale mærker: ${look2.tags.join(' ')}`);
       if (look2.stars || look2.dressing || look2.count || look2.division) throw new Error(`ikke-originale elementer: ${JSON.stringify(look2)}`);
       // hover på et udtagelsesfelt må ikke ændre farven
       const b = page.locator('.cx-sq-orig .cx-selbtn').first(); await b.hover();
-      if ((await b.evaluate((el) => getComputedStyle(el).backgroundColor)) !== 'rgb(0, 0, 168)') throw new Error('hover ændrer udtagelsesfeltets farve');
+      if ((await b.evaluate((el) => getComputedStyle(el).backgroundColor)) !== 'rgb(0, 0, 125)') throw new Error('hover ændrer udtagelsesfeltets farve');
       // klik på en besat plads i strimlen tømmer den
       const before = await gs(() => window.__cm.gs().tactic.lineup.filter(Boolean).length);
       await page.locator('.cx-sq-orig .cx-slot.filled').first().click();
@@ -504,6 +590,25 @@ async function run(look) {
     await page.getByRole('button', { name: 'Records', exact: true }).first().click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-klubhistorie.png` });
     await checkScreen('klubhistorie');
+  });
+  if (look === 'klassisk') await step('turneringens History (FA Premier League History)', async () => {
+    const lg = await gs(() => { const g = window.__cm.gs(); return g.clubs[g.userClub].league; });
+    await go({ name: 'competitions', id: lg });
+    await page.waitForSelector('.cx-subrow button', { timeout: 5000 });
+    await page.locator('.cx-subrow button', { hasText: 'History' }).last().click();
+    await page.waitForSelector('.cx-chist-comp .cx-chist-wh', { timeout: 5000 });
+    for (const tab of ['Records', 'Attendances', 'Results']) {
+      await page.getByRole('button', { name: tab, exact: true }).first().click(); await page.waitForSelector('.cx-chist-comp .cx-chist-row, .cx-chist-comp .cx-empty', { timeout: 5000 });
+    }
+    for (const tab of ['Sequences', 'Teams', 'Players']) {
+      await page.locator('.cx-subrow button', { hasText: tab }).first().click(); await page.waitForSelector('.cx-chist-comp .cx-chist-row, .cx-chist-comp .cx-empty', { timeout: 5000 });
+    }
+    await page.getByRole('button', { name: 'Records', exact: true }).first().click();
+    const rows = await page.locator('.cx-chist-comp .cx-chist-row').count();
+    if (rows < 15) throw new Error(`Records har ${rows} rækker`);
+    await page.locator('.cx-tools button', { hasText: 'View' }).first().click(); await page.locator('.cx-drop-pop >> text=Current').click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-turneringshistorik.png` });
+    await checkScreen('turneringens historik');
   });
   if (look === 'klassisk') await step('Manager Status og Selected League(s)', async () => {
     await go({ name: 'mgrstatus' }); await page.waitForSelector('.cx-mstat .cx-chist-row', { timeout: 5000 });
@@ -577,7 +682,7 @@ async function run(look) {
     await page.locator('.cx-bid-answer button', { hasText: 'Reject' }).click();
     await page.locator('.cx-ts-opt', { hasText: 'important first team player' }).click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-afvis-bud.png` });
-    await page.locator('.cx-ts-buttons button.primary', { hasText: 'Yes' }).click();
+    await page.locator('.cx-ts-buttons button.primary, .cx-foot-btns button.primary', { hasText: 'Yes' }).click();
     await page.waitForSelector('.cx-inbox', { timeout: 5000 });
     const st = await gs(() => window.__cm.gs().offers.at(-1).status);
     if (st !== 'rejected') throw new Error(`buddet blev ikke afvist (${st})`);
@@ -598,9 +703,9 @@ async function run(look) {
     await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
     await page.waitForSelector('.cx-exch', { timeout: 5000 });
     if (!(await page.locator('.cx-exch .cx-sq-row').count()) && !(await page.locator('.cx-exch-none').innerText()).includes('not interested in a part-exchange deal')) throw new Error('Exchange-skærmen er tom');
-    await page.locator('.cx-exch .cx-ts-buttons button', { hasText: 'Back' }).click();
+    await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
     await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 5000 });
-    await page.locator('.cx-bid .cx-ts-buttons button', { hasText: 'Back' }).click();
+    await page.locator('.cx-foot-btns button', { hasText: 'Back' }).click();
     await page.waitForSelector('.cx-bid', { state: 'detached', timeout: 5000 });
   });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
@@ -614,7 +719,7 @@ async function run(look) {
       await page.locator('.cx-sqn-n', { hasText: new RegExp(`^${b}$`) }).first().click();
       await page.locator(`.cx-sqn-box[data-pid="${a}"]`).click();
       if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-troejenumre.png` });
-      await page.locator('.cx-sqn .cx-ts-buttons button.primary').click();
+      await page.locator('.cx-foot-btns button.primary').click();
       await page.locator('.cx-confirm button.primary').click({ timeout: 5000 });
     } else {
       await page.locator('select[aria-label]').nth(1).selectOption(String(b));

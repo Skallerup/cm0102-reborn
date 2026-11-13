@@ -61,7 +61,7 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
       </div>
       <Pager desc="" pg={Math.min(pg, pages - 1)} pages={pages} setPg={setPg} />
       <div className="cx-subtitle small">{t(`cl.fd.all.${tab}`)}</div>
-      <div className="cx-find">
+      <div className="cx-find cx-listpanel">
         {shown.map((r) => (
           <div key={r.key} className={`cx-find-row ${r.go ? 'go' : ''}`} onClick={() => r.go && nav(r.go)}>
             <span className="cx-find-name">{r.name}</span><span className="cx-find-a">{r.a}</span><span className="cx-find-b">{r.b}</span>

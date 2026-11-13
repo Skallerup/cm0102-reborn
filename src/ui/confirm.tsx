@@ -5,11 +5,11 @@ import { isRetro } from './theme';
 import { gs, hasGame } from '../game/state';
 import { titleColors, useClassicDialog } from './classic';
 
-interface Req { text: string; ok?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; input?: string; resolve: (v: boolean, value?: string) => void }
+interface Req { text: string; ok?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; colored?: boolean; input?: string; resolve: (v: boolean, value?: string) => void }
 let push: ((r: Req) => void) | null = null;
 
 /** Spørg brugeren og vent på svaret (Enter = OK, Esc = Annuller) */
-export function askConfirm(text: string, opts?: { ok?: string; danger?: boolean; head?: string; notice?: boolean; title?: string }): Promise<boolean> {
+export function askConfirm(text: string, opts?: { ok?: string; danger?: boolean; head?: string; notice?: boolean; title?: string; colored?: boolean }): Promise<boolean> {
   return new Promise((resolve) => {
     if (!push) { if (opts?.notice) { window.alert(text); resolve(true); } else resolve(window.confirm(text)); return; }
     push({ text, ...opts, resolve });
@@ -53,8 +53,8 @@ export function ConfirmHost() {
     const col = titleColors(g.userClub || undefined);
     return (
       <div className="cx-dlg cx-confirm" role="alertdialog" aria-modal="true">
-        {req.title ? <div className="cx-title cx-title-plain"><h2>{req.title}</h2></div>
-          : <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{g.clubs[g.userClub]?.name ?? g.manager?.name ?? ''}</h2></div>}
+        {req.title && !req.colored ? <div className="cx-title cx-title-plain"><h2>{req.title}</h2></div>
+          : <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{req.title ?? g.clubs[g.userClub]?.name ?? g.manager?.name ?? ''}</h2></div>}
         <div className="cx-subtitle">{req.head ?? t('cl.mt.confirm')}</div>
         <div className="cx-dlg-body center"><p className="cx-ts-intro">{req.text}</p>{req.input !== undefined && <input className="cx-dlg-input" autoFocus value={val} maxLength={40} onChange={(e) => setVal(e.target.value)} />}</div>
         {req.notice ? <div className="cx-ts-buttons cx-dlg-foot single"><button className="primary" autoFocus onClick={() => answer(true)}>{t('common.ok')}</button></div> : <div className="cx-ts-buttons cx-dlg-foot">

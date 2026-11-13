@@ -1,5 +1,6 @@
 // Squad Numbers (som i CM 01/02): hver spiller har et fast trøjenummer i klubben. Vælg et nyt nummer – har en
 // holdkammerat det i forvejen, bytter de to numre.
+import { ClassicFoot } from '../classic';
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { gs, squad } from '../../game/state';
@@ -130,10 +131,10 @@ export function ClassicSquadNumbers({ onClose, missing = false }: { onClose?: ()
       </div>
       {strip(26)}
       <p className="cx-sqn-hint">{t('sqn.dragHint')}</p>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={() => (onClose ? onClose() : (setNums(initial()), setPicked(null)))}>{t('common.back')}</button>
         <button className="primary" onClick={() => void submit()}>{t('sqn.submit')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }

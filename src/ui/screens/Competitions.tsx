@@ -14,6 +14,7 @@ import { Head } from './common';
 import { isRetro } from '../theme';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
+import { ClassicCompHistory } from './CompHistoryClassic';
 import { ClassicSub, cxShortDate } from '../classic';
 
 export function Competitions({ id }: { id?: string }) {
@@ -27,6 +28,9 @@ export function Competitions({ id }: { id?: string }) {
   const lastId = useRef(id);
   useEffect(() => { if (id && id !== lastId.current) { lastId.current = id; setCid(id); } }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   const comp = g.comps[cid] ?? (id ? g.comps[id] : undefined);
+  const [cupTab] = useRouteState(`cup:${comp?.id}`, 'rounds');
+  // klassisk History (liga og pokal) er en hel skærm for sig – "FA Premier League History"
+  if (comp && isRetro() && (comp.type === 'league' ? tab : cupTab) === 'history') return <ClassicCompHistory comp={comp} />;
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div>
@@ -52,7 +56,7 @@ export function Competitions({ id }: { id?: string }) {
             { key: 'scorers', label: t('cl.lg.playerStats'), on: tab === 'scorers', onClick: () => setTab('scorers') },
             { key: 'ref', label: t('cl.lg.refStats'), on: tab === 'refs', onClick: () => setTab('refs') },
             { key: 'awards', label: t('cl.cm.awards'), arrow: true, onClick: () => nav({ name: 'awards' }) },
-            { key: 'history', label: t('comp.history'), arrow: true, on: tab === 'history', onClick: () => setTab('history') },
+            { key: 'history', label: t('comp.history'), arrow: true, on: tab === 'history', onClick: () => nav({ name: 'competitions', id: comp.id, tab: 'history', state: { tab: 'history' } }) },
           ]} />
         </>
       )}
@@ -114,7 +118,7 @@ export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: 
     // og en stiplet gul linje hvor en zone (op-/nedrykning, Europa) slutter
     const zone = (i: number) => cls(i, -1).split(' ').filter((x) => x !== 'me' && x !== 'rival').join(' ');
     return (
-      <div className="cx-tbl-wrap">
+      <div className="cx-tbl-wrap cx-listpanel">
         <table className="cx-tbl cx-league">
           <thead><tr><th className="btn-col" /><th className="btn-col" />{['cl.lg.pld', 'cl.lg.won', 'cl.lg.drn', 'cl.lg.lst', 'cl.lg.for', 'cl.lg.ag', 'cl.lg.pts'].map((k) => <th key={k} className="c-num">{t(k)}</th>)}</tr></thead>
           <tbody>
@@ -225,7 +229,7 @@ function CompSchedule({ comp, onPick }: { comp: Competition; onPick: () => void 
   const days = [...new Set(list.map((f) => f.date))].sort();
   const [, setDate] = useRouteState(`date:${comp.id}`, days[0]);
   return (
-    <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{days.map((d) => {
+    <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{days.map((d) => {
       const n = list.filter((f) => f.date === d).length, played = list.filter((f) => f.date === d && f.result).length;
       return <tr key={d} className="clickable" onClick={() => { setDate(d); onPick(); }}><td className="btn-col"><span className="cx-rowbtn">{cxShortDate(d)}</span></td><td className="c-name">{t('cl.lg.games', { n })}</td><td className="c-yel">{played === n ? t('cl.lg.played') : played ? `${played}/${n}` : ''}</td></tr>;
     })}</tbody></table></div>
@@ -403,7 +407,7 @@ export function UefaCoefficients() {
     <div>
       <Head title={t('cl.cm.coeff')} />
       <div className="cx-subtitle">{g.season}/{old ? String(g.season + 1).slice(3) : String(g.season + 1).slice(2)}</div>
-      <div className="cx-tbl-wrap cx-coef">
+      <div className="cx-tbl-wrap cx-listpanel cx-coef">
         <table className="cx-tbl cx-league">
           <thead><tr><th className="btn-col" /><th className="btn-col" /><th className="c-num">ECC</th><th className="c-num">UEFA</th><th className="c-num">{old ? 'INTER' : 'UECL'}</th><th className="c-num">{t('cl.coef.coef')}</th></tr></thead>
           <tbody>{ranking.map((n, i) => (
@@ -441,7 +445,7 @@ function RefereeStats({ comp }: { comp: Competition }) {
   return (
     <>
       <div className="cx-subtitle">{t('cl.ref.title')}</div>
-      <div className="cx-tbl-wrap cx-refs">
+      <div className="cx-tbl-wrap cx-listpanel cx-refs">
         <table className="cx-tbl">
           <thead><tr><th className="btn-col" /><th>{t('cl.ref.name')}</th><th className="c-num">{t('cl.ref.games')}</th><th className="c-num">{t('cl.ref.red')}</th><th className="c-num">{t('cl.ref.yellow')}</th><th>{t('cl.ref.harsh')}</th><th className="c-num">{t('cl.ref.rating')}</th></tr></thead>
           <tbody>{rows.map((e, i) => (

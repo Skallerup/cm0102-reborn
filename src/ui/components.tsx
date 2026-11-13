@@ -116,7 +116,8 @@ export function Bar({ value, max = 100, tone }: { value: number; max?: number; t
   return <span className="bar"><i className={cls} style={{ width: `${pct}%` }} /></span>;
 }
 
-export function Tabs({ tabs, value, onChange, disabled }: { tabs: [string, string][]; value: string; onChange: (v: string) => void; disabled?: string[] }) {
+export function Tabs({ tabs, value, onChange, disabled, onDropTab }: { tabs: [string, string][]; value: string; onChange: (v: string) => void; disabled?: string[];
+  /** en spiller (træk og slip, tekst = id) er sluppet på fanen */ onDropTab?: (key: string, data: string) => void }) {
   const ref = useRef<HTMLDivElement>(null);
   // på mobil er fanerne én række, der kan rulles – hold den valgte fane synlig
   useEffect(() => {
@@ -128,7 +129,8 @@ export function Tabs({ tabs, value, onChange, disabled }: { tabs: [string, strin
   const row = (
     <div className={slot ? 'cx-tabrow' : 'tabs'} ref={ref}>
       {tabs.map(([k, label]) => (
-        <button key={k} className={k === value ? 'on' : ''} disabled={disabled?.includes(k)} onClick={() => onChange(k)}>{label}</button>
+        <button key={k} className={k === value ? 'on' : ''} disabled={disabled?.includes(k)} onClick={() => onChange(k)}
+          {...(onDropTab ? { onDragOver: (e: React.DragEvent) => { e.preventDefault(); }, onDrop: (e: React.DragEvent) => { e.preventDefault(); onDropTab(k, e.dataTransfer.getData('text/plain')); } } : {})}>{label}</button>
       ))}
     </div>
   );

@@ -3,6 +3,7 @@ import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
 import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
+import { storeCompRecords } from './compHistory';
 import { boardEventsSeason, isOriginal2001 } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
@@ -638,6 +639,7 @@ export function seasonRollover() {
   storySeasonEnd(tierBefore);
   // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
   for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
+  storeCompRecords(); // før statistikken nulstilles og kampprogrammet ryddes
   archiveStats();
   contractsAndLoans();
   retirements();

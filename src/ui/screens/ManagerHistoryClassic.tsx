@@ -25,7 +25,7 @@ export function ClassicManagerHistory() {
         <CxDrop label={t('cl.sq.view')} items={[{ key: 'ach', label: t('cl.mh.ach'), checked: view === 'ach', onClick: () => setView('ach') }, { key: 'career', label: t('cl.mh.career'), checked: view === 'career', onClick: () => setView('career') }]} />
       </div>
       <div className="cx-subtitle">{t(view === 'ach' ? 'cl.mh.ach' : 'cl.mh.career')}</div>
-      <div className="cx-tbl-wrap cx-panel"><table className="cx-tbl"><tbody>
+      <div className="cx-tbl-wrap cx-listpanel cx-panel"><table className="cx-tbl"><tbody>
         {view === 'ach' ? (rows.length ? rows.map((r, i) => (
           <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{classicDate(r.d)[1]}</span></td>
             <td className="c-name"><span className="link" onClick={() => nav({ name: 'club', id: r.club })}>{g.clubs[r.club]?.short ?? ''}</span></td><td className="c-yel">{r.text}</td></tr>

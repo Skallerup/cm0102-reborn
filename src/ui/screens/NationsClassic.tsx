@@ -52,7 +52,7 @@ export function ClassicNations() {
           : <CxDrop label={t('cl.nc.continent')} items={REGIONS.map((r) => ({ key: r, label: t(`cl.region.${r}`), checked: r === reg, onClick: () => setReg(r) }))} />}
       </div>
       <div className="cx-subtitle small">{title}</div>
-      <div className="cx-nc-list">{rows.length ? <>{col(rows.slice(0, half))}{col(rows.slice(half))}</> : <div className="cx-empty">{t('common.none')}</div>}</div>
+      <div className="cx-nc-list cx-listpanel">{rows.length ? <>{col(rows.slice(0, half))}{col(rows.slice(half))}</> : <div className="cx-empty">{t('common.none')}</div>}</div>
       <ClassicSub items={BOTTOM.map((x) => ({ key: x, label: t(`cl.nc.t.${x}`), on: tab === x, onClick: () => setTab(x) }))} />
     </div>
   );

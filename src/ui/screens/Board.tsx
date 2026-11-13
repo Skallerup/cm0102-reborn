@@ -12,7 +12,7 @@ import { isRetro } from '../theme';
 import { Info } from '../help';
 import { Head } from './common';
 import { authentic } from '../../game/rules';
-import { useClassicDialog } from '../classic';
+import { useClassicDialog, ClassicFoot } from '../classic';
 import { cmBoardScreenText } from '../../game/cmBoardGame';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
@@ -154,10 +154,10 @@ function MeetPanel<K extends string>({ title, intro, kinds, avail, label, send, 
           </>
         )}
       </div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{answers ? t('common.back') : t('common.cancel')}</button>
         {!answers && <button className="primary" disabled={!sel.size} onClick={confirm}>{t('cl.mb.confirm')}</button>}
-      </div>
+      </ClassicFoot>
     </div>
   );
 }

@@ -2,7 +2,7 @@ import { BoardScreen } from './screens/Board';
 import { NewsPrompt, useNewsPrompt } from './Login';
 import type { GameState, HolidaySettings } from '../game/types';
 import type { Route } from './core';
-import { addDays } from '../game/dates';
+import { addDays, daysBetween } from '../game/dates';
 import { International } from './screens/International';
 import { stopVoice } from '../online/voice';
 import { RoomChat } from './RoomChat';
@@ -54,6 +54,7 @@ import { Assistant } from './screens/Assistant';
 import { MatchScreen } from './screens/Match';
 import { ReportScreen } from './screens/Report';
 import { PlayedMatchClassic } from './screens/PlayedMatchClassic';
+import { NoRecentMatchesClassic } from './screens/NoRecentMatchesClassic';
 import { History } from './screens/History';
 import { Awards } from './screens/Awards';
 import { Jobs } from './screens/Jobs';
@@ -74,7 +75,7 @@ import { IntlDay, MatchDay } from './screens/MatchDayClassic';
 import { ClassicClubHistory } from './screens/ClubHistoryClassic';
 import { ClassicNations } from './screens/NationsClassic';
 import { ClassicHallOfFame, ClassicManagerStatus, ClassicSelectedLeagues } from './screens/GameOptionsClassic';
-import { ClassicSlotCtx, CxDrop, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate, shownComp } from './classic';
+import { ClassicSlotCtx, CxDrop, setFootSlot, useClassicFootActive, classicDate, setClassicAllowed, useClassicDialogOpen, useClassicMatchSideState, useClassicNextAction, titleColors, useClassicDialog, classicContinue, cxLongDate, shownComp } from './classic';
 import { canInstall, installApp, notifyAskable, notifyEnabled, notifyUser, onInstallChange, setNotify } from './notify';
 import { newsTitle } from './screens/common';
 
@@ -131,6 +132,7 @@ export function Shell() {
   setCompEra(isOriginal2001(), authentic() ? g.season : 0);
   const { route, nav, back, canBack, forward, canForward } = useNav();
   const cxNext = useClassicNextAction();
+  const footActive = useClassicFootActive();
   // kampdage (optakt, kamp, rapport): hjemmeholdets stadion som baggrund, som i CM 01/02 – ikke ved finaler på neutral bane
   const [, setStadiumsReady] = useState(0);
   const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
@@ -145,6 +147,7 @@ export function Shell() {
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
+  const spanRef = useRef({ start: '', end: '' });
   const [toast, setToast] = useState('');
   const [winNote, setWinNote] = useState<{ head: string; text: string } | null>(null);
   const stopRef = useRef(false);
@@ -375,7 +378,13 @@ export function Shell() {
     stopRef.current = false;
     // fremdriften vises først, hvis kørslen tager mere end et øjeblik (ingen blink ved 1-2 dage)
     const t0 = Date.now();
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (Date.now() - t0 > 300) setRunning(d); } });
+    // fremdriftsbjælken: dage fra start mod målet (angivet slutdato, næste egen kamp eller maxDays)
+    const g0 = gs();
+    const nextFx = Object.values(g0.fixtures).filter((f) => !f.result && f.date >= g0.date && (f.home === g0.userClub || f.away === g0.userClub)).map((f) => f.date).sort()[0];
+    const endBy = opts.untilDate ?? (opts.maxDays ? addDays(g0.date, opts.maxDays) : undefined);
+    const end = [nextFx && opts.untilMatch !== false ? nextFx : undefined, endBy].filter(Boolean).sort()[0] ?? addDays(g0.date, 30);
+    spanRef.current = { start: g0.date, end: end as string };
+    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (Date.now() - t0 > 60) setRunning(d); } });
     setRunning(null);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);
@@ -550,8 +559,9 @@ export function Shell() {
         </main>
       </ClassicSlotCtx.Provider>
       {cmNav && (
-        <footer className="cx-foot">
+        <footer className={`cx-foot ${footActive ? 'cx-foot-custom' : ''}`}>
           <div className="cx-sub" ref={setSubSlot} />
+          <div className="cx-foot-slot" ref={setFootSlot} />
           {running ? (
             // simulering: én grå bjælke med datoen, der behandles (klik = stop)
             <button className="cx-running" onClick={() => {
@@ -559,10 +569,18 @@ export function Shell() {
               askReturnFromHoliday();
             }} title={t('common.stop')}>
               {/* CM 01/02: "Wednesday 29th May 2002" i den grå bjælke – på ferie står der også, at et klik afbryder ferien (brugere ledte efter en stop-knap) */}
-              {cxLongDate(running)}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
+              {(() => {
+                const sp = spanRef.current;
+                const tot = Math.max(1, daysBetween(sp.start, sp.end));
+                const pct = Math.max(2, Math.min(100, Math.round((daysBetween(sp.start, running) / tot) * 100)));
+                return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></span></>;
+              })()}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
           ) : (
-            matchSide?.s.editing && (route.name === 'match' || route.name === 'report') && matchSide.s.lastView ? (
+            route.name === 'report' && route.state?.none && isRetro() ? (
+              // "No Recent Matches": én bred Ok-knap (som i CM 01/02)
+              <div className="cx-backnext cx-onlyok"><button className="cx-back" onClick={back}>{t('common.ok')}</button></div>
+            ) : matchSide?.s.editing && (route.name === 'match' || route.name === 'report') && matchSide.s.lastView ? (
               // Last Match: kun Back (tilbage til taktikken), Next er grå
               <div className="cx-backnext">
                 <button className="cx-back cx-mt-lastback" onClick={() => matchSide.a.back?.()}>{t('cm.back')}</button>
@@ -660,7 +678,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'leagues': return <ClassicSelectedLeagues />;
     case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     // klassisk: en spillet kamp vises som kampskærmen efter slutfløjt (samme faner og sidebjælke)
-    case 'report': return isRetro() && !g.draft && g.reports[Number(route.id)] ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
+    case 'report': if (isRetro() && route.state?.none) return <NoRecentMatchesClassic />; return isRetro() && !g.draft && g.reports[Number(route.id)] ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
     case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;

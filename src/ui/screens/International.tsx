@@ -300,7 +300,7 @@ function CxTournament({ tour }: { tour: IntlTournament }) {
   return (
     <>
       <div className="cx-subtitle">{t(`intl.name.${tour.name}`)} {tour.year}{tour.winner !== undefined ? ` – ${natName(gs().nations[tour.winner]?.name)}` : ''}</div>
-      <div className="cx-tbl-wrap">
+      <div className="cx-tbl-wrap cx-listpanel">
         <table className="cx-tbl"><thead><tr><th className="btn-col" /><th>{t('col.nat')}</th><th className="c-num">{t('cl.nt.pl')}</th><th className="c-num">{t('cl.nt.w')}</th><th className="c-num">{t('cl.nt.d')}</th><th className="c-num">{t('cl.nt.l')}</th><th className="c-num">{t('cl.nt.gf')}</th><th className="c-num">{t('cl.nt.ga')}</th><th className="c-num">{t('cl.nt.pts')}</th></tr></thead>
           <tbody>{tour.groups.map((grp, i) => rows(grp).map((r, j) => (
             <tr key={`${i}-${r.n}`}><td className="btn-col">{j === 0 ? <span className="cx-rowbtn narrow">{String.fromCharCode(65 + i)}</span> : null}</td><td><CxNat n={r.n} /></td>
@@ -310,7 +310,7 @@ function CxTournament({ tour }: { tour: IntlTournament }) {
       {tour.ko.length > 0 && (
         <>
           <div className="cx-subtitle">{t('intl.knockout')}</div>
-          <div className="cx-tbl-wrap"><table className="cx-tbl"><tbody>{tour.ko.map((k, i) => (
+          <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl"><tbody>{tour.ko.map((k, i) => (
             <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{t(`stage.${k.stage}`)}</span></td><td style={{ textAlign: 'right' }}><CxNat n={k.a} /></td>
               <td className="c-val">{k.hg !== undefined ? `${k.hg} - ${k.ag}${k.pens ? ` (${t('intl.pens')})` : ''}` : 'v'}</td><td><CxNat n={k.b} /></td></tr>
           ))}</tbody></table></div>
@@ -323,7 +323,7 @@ function CxTournament({ tour }: { tour: IntlTournament }) {
 function CxResults({ results }: { results: import('../../game/international').IntlResult[] }) {
   if (!results.length) return <div className="cx-empty">{t('intl.noResults')}</div>;
   return (
-    <div className="cx-tbl-wrap"><table className="cx-tbl">
+    <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl">
       <thead><tr><th className="btn-col" /><th style={{ textAlign: 'right' }}>{t('cl.nt.home')}</th><th className="c-num">{t('cl.nt.score')}</th><th>{t('cl.nt.away')}</th><th>{t('cl.nt.comp')}</th></tr></thead>
       <tbody>{results.slice(0, 60).map((r, i) => (
         <tr key={i}><td className="btn-col"><span className="cx-rowbtn">{dateFmt(r.date)}</span></td><td style={{ textAlign: 'right' }}><CxNat n={r.home} /></td>
@@ -336,7 +336,7 @@ function CxResults({ results }: { results: import('../../game/international').In
 function CxFifa() {
   const ranking = fifaRanking().slice(0, 100);
   return (
-    <div className="cx-tbl-wrap"><table className="cx-tbl">
+    <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl">
       <thead><tr><th className="btn-col" /><th>{t('col.nat')}</th><th className="c-num">{t('intl.points')}</th></tr></thead>
       <tbody>{ranking.map((r, i) => (
         <tr key={r.n}><td className="btn-col"><span className="cx-rowbtn narrow">{i + 1}</span></td><td><CxNat n={r.n} /></td><td className="c-val">{r.pts}</td></tr>
@@ -363,7 +363,7 @@ function CxHistory() {
         <CxDrop label={t(`intl.name.${comp}`)} items={comps.map((c) => ({ key: c, label: t(`intl.name.${c}`), checked: c === comp, onClick: () => setComp(c) }))} />
       </div>
       <div className="cx-subtitle">{t('cl.nt.history', { comp: t(`intl.name.${comp}`) })}</div>
-      <div className="cx-tbl-wrap"><table className="cx-tbl">
+      <div className="cx-tbl-wrap cx-listpanel"><table className="cx-tbl">
         <thead><tr><th className="btn-col" /><th>{t('cl.nt.winners')}</th><th>{t('intl.runnerUp')}</th><th>{t('cl.nt.third')}</th><th>{t('cl.nt.hosts')}</th></tr></thead>
         <tbody>{list.map((h, i) => (
           <tr key={`${h.y}-${i}`}><td className="btn-col"><span className="cx-rowbtn">{h.y}</span></td><td><CxNatName name={h.w} /></td><td><CxNatName name={h.r} /></td>
@@ -383,7 +383,7 @@ function CxQual() {
   return (
     <>
       <div className="cx-subtitle">{t(`intl.qual.start.${q.name}`, { year: q.year })}</div>
-      <div className="cx-tbl-wrap">
+      <div className="cx-tbl-wrap cx-listpanel">
         <table className="cx-tbl"><thead><tr><th className="btn-col" /><th>{t('col.nat')}</th><th className="c-num">{t('cl.nt.pl')}</th><th className="c-num">{t('cl.nt.w')}</th><th className="c-num">{t('cl.nt.d')}</th><th className="c-num">{t('cl.nt.l')}</th><th className="c-num">{t('cl.nt.gf')}</th><th className="c-num">{t('cl.nt.ga')}</th><th className="c-num">{t('cl.nt.pts')}</th></tr></thead>
           <tbody>{q.groups.map((grp, i) => rows(grp).map((r, j) => (
             <tr key={`${i}-${r.n}`} className={q.qualified?.includes(r.n) ? '' : q.qualified ? 'dim' : ''}><td className="btn-col">{j === 0 ? <span className="cx-rowbtn narrow">{i + 1}</span> : null}</td><td><CxNat n={r.n} /></td>

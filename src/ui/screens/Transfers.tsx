@@ -19,7 +19,7 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { ClassicSearch, ClassicTransfers } from './TransfersClassic';
-import { countMins, parseMins, playerAttrMid } from './searchAttrs';
+import { countMins, gkOnlyMiss, parseMins, playerAttrMid } from './searchAttrs';
 import { showRealism } from '../classicOptions';
 import type { RejectReason } from '../../game/will';
 import { NegotiationModal } from './Negotiation';
@@ -112,12 +112,13 @@ function lastCareerFilters(): (Partial<Filters> & { __more?: boolean }) | null {
   } catch { return null; }
 }
 
-export function Search({ classic }: { classic?: boolean } = {}) {
+export function Search({ classic, shortlist }: { classic?: boolean; shortlist?: boolean } = {}) {
   const g = useGame()!;
   // filtrene huskes på tværs af besøg (gemt i browseren), indtil man trykker Nulstil
-  const [f, setFRoute] = useRouteState<Filters>('filters', () => ({ ...DEFAULTS, ...loadFilters() }));
+  // Short List (CM 01/02): samme filtre, men kun på de spillere, der står på listen – egne filtre, der ikke huskes mellem besøg
+  const [f, setFRoute] = useRouteState<Filters>(shortlist ? 'slfilters' : 'filters', () => ({ ...DEFAULTS, ...(shortlist ? {} : loadFilters()) }));
   const [more, setMoreRoute] = useRouteState('more', () => loadFilters().__more === true);
-  const setF = (v: Filters) => { setFRoute(v); saveFilters({ ...v, __more: more }); };
+  const setF = (v: Filters) => { setFRoute(v); if (!shortlist) saveFilters({ ...v, __more: more }); };
   const setMore = (v: boolean) => { setMoreRoute(v); saveFilters({ ...f, __more: v }); };
   const set = <K extends keyof Filters>(k: K, v: Filters[K]) => setF({ ...f, [k]: v });
   const nations = useMemo(() => [...new Set(Object.values(g.players).map((p) => p.nation))].sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name))), [g]);
@@ -129,14 +130,14 @@ export function Search({ classic }: { classic?: boolean } = {}) {
   // klassisk: uden kolonnen Realism (slået fra i ægte CM 01/02) gælder realismefilteret heller ikke
   const useRealism = !classic || showRealism();
   // "(N filtered out)" regnes fra alle spillere i standardaldersintervallet
-  const total = useMemo(() => Object.values(g.players).filter((p) => (p.club !== g.userClub || f.includeSquad) && ageOn(p.dob, g.date) >= DEFAULTS.minAge && ageOn(p.dob, g.date) <= DEFAULTS.maxAge).length, [g, f.includeSquad]);
+  const total = useMemo(() => shortlist ? g.shortlist.length : Object.values(g.players).filter((p) => (p.club !== g.userClub || f.includeSquad) && ageOn(p.dob, g.date) >= DEFAULTS.minAge && ageOn(p.dob, g.date) <= DEFAULTS.maxAge).length, [g, f.includeSquad]);
   const results = useMemo(() => {
     const q = nameQuery(f.name);
     const mins = Object.entries(parseMins(f.attrMins ?? '')).map(([i, v]) => [Number(i), v] as [number, number]);
     const attrs = ([[f.attr1, f.attr1Min], [f.attr2, f.attr2Min], [f.attr3, f.attr3Min]] as [number, number][]).filter(([a]) => a >= 0);
     const out: Player[] = [];
-    for (const p of Object.values(g.players)) {
-      if (p.club === g.userClub && !f.includeSquad) continue;
+    for (const p of shortlist ? g.shortlist.map((id) => g.players[id]).filter(Boolean) : Object.values(g.players)) {
+      if (p.club === g.userClub && !f.includeSquad && !shortlist) continue;
       if (q && !q(p.first, p.last)) continue;
       const a = ageOn(p.dob, g.date);
       if (a < f.minAge || a > f.maxAge) continue;
@@ -172,7 +173,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
         if (f.minPotential && (st.potential[0] + st.potential[1]) / 2 < f.minPotential) continue;
       }
       // attributkrav – med skjulte evner bruges scoutens skøn (midten af intervallet)
-      if (attrs.some(([idx, min]) => { const [lo, hi] = attrRange(p, idx); return (lo + hi) / 2 < min; })) continue;
+      if (attrs.some(([idx, min]) => { if (gkOnlyMiss(p, idx)) return true; const [lo, hi] = attrRange(p, idx); return (lo + hi) / 2 < min; })) continue;
       if (f.trait || f.noTrouble) {
         if (knowledgeOf(p) < 50) continue; // personligheden kendes kun for afdækkede spillere
         const tr = traits(p);
@@ -299,7 +300,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       </Panel>
     </>
   );
-  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} total={total} active={active} nations={nations} />;
+  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} total={total} active={active} nations={nations} shortlist={shortlist} />;
   return (
     <div>
       {filterPanel}

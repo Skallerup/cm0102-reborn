@@ -1122,6 +1122,8 @@ export interface GameState {
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   seasonHistory: SeasonSummary[];
+  /** turneringernes rekorder pr. afsluttet sæson (compHistory.ts): turnering → sæson → rekorder */
+  compRecs?: Record<string, Record<number, import('./compHistory').CompSeasonRec>>;
   challenge: ChallengeState | null;
   names: Record<number, [string[], string[]]>;
   /** Supporternes regen-navne (hentet fra serveren) og hvilke der allerede er brugt i dette spil */

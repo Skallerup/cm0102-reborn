@@ -27,8 +27,13 @@ export function encodeMins(m: Record<number, number>): string {
 export const countMins = (s: string) => Object.keys(parseMins(s)).length;
 
 /** Spillerens værdi (midten af scoutens interval) i en af filterets egenskaber */
+export const GK_ATTRS = [A.handling, A.reflexes, A.oneOnOnes];
+/** Målmandsegenskaberne (Handling, Reflexes, One on Ones) findes kun for målmænd – markspillere står på 1 (CM 01/02) */
+export const gkOnlyMiss = (p: Player, idx: number) => GK_ATTRS.includes(idx) && p.pos[0] < 20;
+
 export function playerAttrMid(p: Player, i: number): number {
   const idx = FL_ATTRS[i].idx;
+  if (idx.some((k) => gkOnlyMiss(p, k))) return 1;
   return idx.reduce((sum, k) => { const [lo, hi] = attrRange(p, k); return sum + (lo + hi) / 2; }, 0) / idx.length;
 }
 

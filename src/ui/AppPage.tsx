@@ -142,7 +142,7 @@ function validRoute(g: GameState, r: Route): boolean {
   const id = Number(r.id);
   if (r.name === 'player') return !!g.players[id];
   if (r.name === 'club') return !!g.clubs[id];
-  if (r.name === 'report') return !!g.reports[id];
+  if (r.name === 'report') return !!g.reports[id] || !!r.state?.none;
   if (r.name === 'match') return !!g.fixtures[id];
   return true;
 }

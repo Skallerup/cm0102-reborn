@@ -1,5 +1,5 @@
 // Klassisk tabel: grå kolonneknapper (klik = sortér), en blå knap forrest i hver række og farvede kolonner.
-import { useState, type ReactNode } from 'react';
+import { useState, type HTMLAttributes, type ReactNode } from 'react';
 
 export interface CxCol<T> {
   key: string;
@@ -12,7 +12,9 @@ export interface CxCol<T> {
   title?: string;
 }
 
-export function CxTable<T>({ rows, cols, rowKey, btn, initialSort, page, onPage }: {
+export function CxTable<T>({ rows, cols, rowKey, btn, initialSort, page, onPage, rowAttrs }: {
+  /** ekstra egenskaber til rækken (fx draggable og klik) */
+  rowAttrs?: (r: T) => HTMLAttributes<HTMLTableRowElement>;
   rows: T[]; cols: CxCol<T>[]; rowKey: (r: T) => string | number;
   /** den blå knap forrest i rækken */
   btn?: (r: T) => ReactNode;
@@ -36,7 +38,7 @@ export function CxTable<T>({ rows, cols, rowKey, btn, initialSort, page, onPage 
   onPage?.(pages);
   if (page) list = list.slice(page.index * page.size, (page.index + 1) * page.size);
   return (
-    <div className="cx-tbl-wrap">
+    <div className="cx-tbl-wrap cx-listpanel">
       <table className="cx-tbl">
         <thead>
           <tr>
@@ -51,7 +53,7 @@ export function CxTable<T>({ rows, cols, rowKey, btn, initialSort, page, onPage 
         </thead>
         <tbody>
           {list.map((r) => (
-            <tr key={rowKey(r)}>
+            <tr key={rowKey(r)} {...rowAttrs?.(r)}>
               {btn && <td className="btn-col">{btn(r)}</td>}
               {cols.map((c) => <td key={c.key} className={c.cls}>{c.render(r)}</td>)}
             </tr>

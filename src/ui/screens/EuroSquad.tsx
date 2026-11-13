@@ -1,5 +1,6 @@
 // Klassisk: originalens "<klub> European Squad" (målt 9/11-2026). Spillerne i to kolonner; klik det blå felt for at tilmelde ("In")
 // eller fjerne en spiller, højst 25. Nederst "25 Players Selected". Auto = de 25 bedste (3 målmænd + 22), Clear, Back, Submit.
+import { ClassicFoot } from '../classic';
 import { useState } from 'react';
 import { act } from '../../game/actions';
 import { EURO_MAX, autoEuroSquad, euroRegistered } from '../../game/euroSquad';
@@ -52,10 +53,10 @@ export function ClassicEuroSquad({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       <div className="cx-eur-count">{n === 0 ? t('eur.sel0') : n === 1 ? t('eur.sel1') : t('eur.selN', { n })}</div>
-      <div className="cx-ts-buttons">
+      <ClassicFoot cols="3fr 1fr">
         <button onClick={onClose}>{t('common.back')}</button>
         <button className="primary" onClick={() => void submit()}>{t('sqn.submit')}</button>
-      </div>
+      </ClassicFoot>
     </div>
   );
 }

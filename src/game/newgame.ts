@@ -562,7 +562,8 @@ export function takeOverClub(club: Club, viaJob = false) {
     const score = t.lineup.reduce((s, id) => s + (g.players[id]?.ca ?? 0), 0);
     if (score > bestScore + 5) { bestScore = score; best = t; }
   }
-  g.tactic = best;
+  // ægte CM 01/02: ingen er udtaget fra start – manageren (eller assistenten, før kampen) udtager holdet; formationen passer til truppen
+  g.tactic = g.options.mode === 'authentic' ? newTactic(best.formation) : best;
   for (const p of sq) recordDevelopment(p);
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };
   // den originale database i ægte tilstand: 0x826f20 → 0x69ebc0 → 0x694c80 (cmBoardGame.ts); ellers spillets egne forventninger

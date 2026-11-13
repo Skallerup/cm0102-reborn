@@ -45,6 +45,21 @@ export function useClassicContinue(fn: () => boolean) {
 }
 export const classicContinue = () => !!continueHook?.();
 
+// Skærmens egne knapper (Back/Offer …) står i den brede bundbjælke i stedet for Back/Next (som i CM 01/02) – Shell har pladsen (setFootSlot)
+let footEl: HTMLElement | null = null;
+let footUsers = 0;
+const footSubs = new Set<() => void>();
+const emitFoot = () => footSubs.forEach((f) => f());
+const subFoot = (f: () => void) => { footSubs.add(f); return () => { footSubs.delete(f); }; };
+export const setFootSlot = (el: HTMLElement | null) => { if (footEl !== el) { footEl = el; emitFoot(); } };
+export function useClassicFootActive() { return useSyncExternalStore(subFoot, () => footUsers > 0); }
+/** Knapperne (children) lægges i bundbjælken; `cols` = kolonnebredder, fx "3fr 1fr" */
+export function ClassicFoot({ cols, className = '', children }: { cols?: string; className?: string; children: ReactNode }) {
+  const el = useSyncExternalStore(subFoot, () => footEl);
+  useEffect(() => { footUsers++; emitFoot(); return () => { footUsers--; emitFoot(); }; }, []);
+  return el ? createPortal(<div className={`cx-backnext cx-foot-btns ${className}`} style={cols ? { gridTemplateColumns: cols } : undefined}>{children}</div>, el) : null;
+}
+
 export function useClassicNext(label: string | null, run: () => void) {
   const ref = useRef(run);
   ref.current = run;
@@ -112,7 +127,8 @@ export function useClaimTabSlot(id: string): HTMLElement | null {
 
 // ---------- hubs ----------
 
-export type Item = { key: string; label: string; route?: Route; on?: boolean; disabled?: boolean; onClick?: () => void; arrow?: boolean };
+export type Item = { key: string; label: string; route?: Route; on?: boolean; disabled?: boolean; onClick?: () => void; arrow?: boolean;
+  /** en spiller er sluppet på knappen (træk og slip; tekst = id) */ onDrop?: (data: string) => void };
 interface Hub {
   /** Titeltekst; undefined = skærmens egen titel */
   title?: (g: GameState, route: Route, screenTitle: ReactNode) => ReactNode;
@@ -239,7 +255,7 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   tactics: { title: (g, r) => `${r.id !== undefined ? g.clubs[Number(r.id)]?.name ?? clubName(g) : clubName(g)} ${t('nav.tactics')}`, club: (g, r) => (r.id !== undefined ? Number(r.id) : own(g)) },
   // træning og transfersøgning har deres egne faner og under-knapper (som i originalen)
   training: { title: (g) => `${g.clubs[g.userClub]?.short ?? clubName(g)} ${t('nav.training')}`, club: own },
-  report: { club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
+  report: { club: own, tabs: CLUB_TABS, sub: CLUB_SUB, plain: (r) => !!r.state?.none },
   finance: { title: (g) => `${clubName(g)} ${t('nav.finance')}`, club: own, tabs: OFFICE_TABS, sub: OFFICE_SUB },
   board: { title: clubName, club: own },
   // en enkelt stabsperson (route.id): hans navn i hans klubs farver, uden kontorets faner
@@ -323,7 +339,8 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
     }
     if (k === 'lastMatch') {
       const id = lastMatchId(g, viewed || g.userClub);
-      out.push({ key: k, label: label(k), route: id ? { name: 'report', id } : undefined, disabled: !id, on: route.name === 'report', arrow: true });
+      // CM 01/02: knappen er aldrig grå – uden spillede kampe åbner den "No Recent Matches"
+      out.push({ key: k, label: label(k), route: id ? { name: 'report', id } : { name: 'report', state: { none: 1 } }, on: route.name === 'report', arrow: true });
     } else if (k === 'division') {
       const cid = viewed || g.userClub;
       const lg = g.clubs[cid]?.league;
@@ -359,6 +376,7 @@ export function ButtonRow({ items, className }: { items: Item[]; className: stri
     <div className={className}>
       {items.map((it) => (
         <button key={it.key} className={it.on ? 'on' : ''} disabled={it.disabled}
+          {...(it.onDrop ? { onDragOver: (e: React.DragEvent) => e.preventDefault(), onDrop: (e: React.DragEvent) => { e.preventDefault(); it.onDrop!(e.dataTransfer.getData('text/plain')); } } : {})}
           onClick={() => { if (it.onClick) it.onClick(); else if (it.route) nav(it.route); }}>{it.label}{it.arrow && <span className="cx-sub-arrow">▸</span>}</button>
       ))}
     </div>
