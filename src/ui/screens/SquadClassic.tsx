@@ -197,6 +197,7 @@ export function ClassicClubSquad({ cid, players: given }: { cid: number; players
 
 function ClubSquadList({ cid, players: given }: { cid: number; players?: Player[] }) {
   const g = useGame()!;
+  const orig = authentic();
   const { nav } = useNav();
   const [view, setView] = useRouteState('csqview', 'pos');
   const [sortKey, setSort] = useRouteState('csort', 'pos');
@@ -211,7 +212,8 @@ function ClubSquadList({ cid, players: given }: { cid: number; players?: Player[
     const tag = given ? nationalTag(p) : tagOf(p, g, cid);
     return (
       <div key={p.id} className="cx-sq-row">
-        <span className="cx-selbtn cx-selbtn-static" />
+        {/* samme opbygning som egen trup (ClassicFirstSquad): udtagelsesfelt, mærke, navn, info – ejerens ønske 13/11 */}
+        <div className="cx-sel"><span className={`cx-selbtn cx-selbtn-static ${orig ? 'cx-orig' : ''}`} /></div>
         <Tag p={p} tag={tag} />
         {/* landshold: egne spillere i gult (som i CM 01/02) */}
         <button className={`cx-sq-name ${!available(p) ? 'unavail' : ''} ${p.loan ? 'loan' : ''} ${given && g.userClub && p.club === g.userClub ? 'mine' : ''}`} title={stars.has(p.id) ? t('tag.star') : undefined}
@@ -221,7 +223,7 @@ function ClubSquadList({ cid, players: given }: { cid: number; players?: Player[
     );
   };
   return (
-    <div className="cx-sq">
+    <div className={`cx-sq ${orig ? 'cx-sq-orig' : ''}`}>
       <div className="cx-tools cx-tools-inline">
         <CxDrop label={t('cl.sq.view')} items={INFO.map((x) => ({ key: x.key, label: x.label, checked: x.key === info.key, onClick: () => setView(x.key) }))} />
         <CxDrop label={t('cl.sq.sortBy')} items={SORTS.map((x) => 'sep' in x ? x : { key: x.key, label: x.label, checked: x.key === sort.key, onClick: () => { setSort(x.key); const v = viewForSort(x.key, INFO); if (v) setView(v); } })} />

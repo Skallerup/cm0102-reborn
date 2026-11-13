@@ -280,7 +280,7 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   return (
     <Frame p={p} rows={rows}>
       {!mine && <EnquiryLine pid={p.id} />}
-      {mine && <IncomingOffersFor pid={p.id} />}
+      {mine && !authentic() && <IncomingOffersFor pid={p.id} />}
       {!mine && g.userClub > 0 && !authentic() && <ScoutReport pid={p.id} />}
     </Frame>
   );
