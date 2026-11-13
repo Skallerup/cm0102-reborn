@@ -38,7 +38,7 @@ async function run(look) {
   });
   const errors = [];
   page.on('pageerror', (e) => { errors.push(e.message); if (process.env.E2E_STACK) console.error('PAGEERROR', e.stack); });
-  await page.addInitScript(({ theme, grid }) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.mode', 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? (grid ? 'original' : 'modern')); if (grid) localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); }, { theme: look === 'klassisk' ? 'retro' : 'club', grid: ENGINE_GRID });
+  await page.addInitScript(({ theme, grid }) => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm0102.forceLogin', '1'); localStorage.setItem('cm-theme', theme); localStorage.setItem('cm0102.mode', grid ? 'authentic' : 'extended'); localStorage.setItem('cm0102.db', localStorage.getItem('cm0102.db') ?? (grid ? 'original' : 'modern')); if (grid) localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1'); }, { theme: look === 'klassisk' ? 'retro' : 'club', grid: ENGINE_GRID });
   // NB: ægte CM 01/02 er standard ved nyt spil – testen kører det udvidede spil (træningskampe, pressemøder m.m.)
   const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
   const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
@@ -802,7 +802,8 @@ async function run(look) {
   });
   // CM 01/02's budskærm med den originale database (cmTransferBid.ts): alle rækker kan ændres, bytte via trupskærmen, buddet gemmer klausulerne
   if (look === 'klassisk' && ENGINE_GRID) await step('budskærmen: rater, videresalg, klausuler, offentligt og bytte (original)', async () => {
-    const pid = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).find((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league && p.value > 500000).id; });
+    // originalens budskærm gælder kun i ægte tilstand (cmActive) – e2e-spillet er udvidet
+    const pid = await gs(() => { const g = window.__cm.gs(); window.__e2eBidMode = g.options.mode; g.options.mode = 'authentic'; window.__cm.notify(); return Object.values(g.players).find((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league && p.value > 500000).id; });
     await go({ name: 'player', id: pid });
     await page.locator('.cx-act .cx-drop-btn').click();
     await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Approach To Buy' }).first().click();
@@ -832,6 +833,61 @@ async function run(look) {
     await page.waitForTimeout(300);
     const o = await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1), pid);
     if (o && (o.months !== 12 || o.sellOn !== 10 || o.lgApps !== 20 || !o.intFee || !o.pub)) throw new Error(`buddets vilkår blev ikke gemt (${JSON.stringify(o)})`);
+    await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eBidMode; window.__cm.notify(); });
+  });
+  // CM 01/02's transferliste med den originale database (cmTransferList.ts): Set Staff Transfer Status (billig udbudspris = værdien +0x52,
+  // Not Needed, transferlistet) → Transfer-fanens Availability/Value/Future; transferanmodningen "X requests move" med Respond → Yes
+  if (look === 'klassisk' && ENGINE_GRID) await step('transferliste og transferanmodning (original)', async () => {
+    const pid = await gs(() => {
+      const g = window.__cm.gs();
+      // e2e sætter cm0102.mode = 'extended' (linje 41) – originalens transferliste gælder kun i ægte tilstand (cmActive)
+      window.__e2eMode = g.options.mode; g.options.mode = 'authentic';
+      const p = Object.values(g.players).filter((x) => x.club === g.userClub && !x.loan && !x.listed).sort((a, b) => b.ca - a.ca)[4];
+      if (p.cmContract) { p.cmContract.b45 = 0; p.cmContract.b4e = 0; }
+      window.__cm.notify(); return p.id;
+    });
+    await go({ name: 'player', id: pid });
+    await page.locator('.cx-act .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Set Transfer Status' }).first().click();
+    await page.waitForSelector('.cx-tstatus .cx-ts-price', { timeout: 5000 });
+    // "=" sætter originalens formelværdi (0x8f77ac); under den gælder udbudsprisen som værdien (0x8ce1e5)
+    await page.locator('.cx-ts-price button', { hasText: 'Auto' }).click();
+    for (let i = 0; i < 4; i++) await page.locator('.cx-ts-price button[aria-label="-"]').click();
+    const asking = (await page.locator('.cx-ts-price .cx-ts-val').innerText()).replace(/[^£$€\d.,MK kr]/g, '').trim();
+    await page.locator('.cx-ts-opt', { hasText: 'not needed by the club' }).click();
+    await page.locator('.cx-ts-opt', { hasText: 'This player is transfer listed' }).first().click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-transferstatus-original.png` });
+    await page.locator('.cx-foot-btns button.primary', { hasText: 'Set' }).click();
+    await page.waitForSelector('.cx-tstatus', { state: 'detached', timeout: 5000 });
+    await page.getByRole('button', { name: 'Transfer', exact: true }).first().click();
+    await page.waitForTimeout(200);
+    const kv = (await page.locator('.cx-kv.cx-ruled').first().innerText()).replace(/\s+/g, ' ');
+    if (!kv.includes('Transfer listed by club')) throw new Error(`Availability er ikke "Transfer listed by club": ${kv}`);
+    if (!kv.includes(`Value ${asking}`)) throw new Error(`Value er ikke udbudsprisen ${asking}: ${kv}`);
+    if (!/Future (Disappointed|Shocked|Angry|Surprised|Thinks he is too good|Believes he can force|Doesn't want|Feels|Wants|Unsettled|Is |Pleased|Looking)/.test(kv) || kv.includes('Happy to stay')) throw new Error(`Future er ikke originalens: ${kv}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-transfer-future-original.png` });
+    // transferanmodningen (nyheden 0xbbf) med to grunde → Respond → Transfer Request → Yes
+    const p2 = await gs(() => {
+      const g = window.__cm.gs();
+      const p = Object.values(g.players).filter((x) => x.club === g.userClub && !x.loan && !x.listed).sort((a, b) => b.ca - a.ca)[6];
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'contract', key: 'cm.req', read: false, link: { kind: 'player', id: p.id },
+        params: { player: p.last, full: `${p.first} ${p.last}`.trim(), club: g.clubs[g.userClub].name, flags: 0x210, sid: 4, agent: 0, nat: '', cnat: '', crep: 8000, old: 0, ans: 0 } });
+      window.__cm.notify(); return p.id;
+    });
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow', { hasText: 'requests move' }).first().click();
+    const body = await page.locator('.cx-nbody').textContent({ timeout: 5000 });
+    if (!body.includes('has requested to leave') || !body.includes('wants regular first team football and feels he has been treated unfairly')) throw new Error(`anmodningens tekst: ${body}`);
+    await page.locator('.cx-nbar .cx-req-respond').click({ timeout: 5000 });
+    await page.waitForSelector('.cx-treq-answer', { timeout: 5000 });
+    if (!(await page.locator('.cx-treq').innerText()).includes('on the transfer list at his own request ?')) throw new Error('Transfer Request-skærmen mangler spørgsmålet');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-transferanmodning-original.png` });
+    await page.locator('.cx-treq-answer button.primary', { hasText: 'Yes' }).click();
+    await page.waitForSelector('.cx-inbox', { timeout: 5000 });
+    if (!(await page.locator('.cx-nbody').textContent({ timeout: 5000 })).includes('The request has been granted.')) throw new Error('svaret står ikke under anmodningen');
+    const req = await gs((id) => window.__cm.gs().players[id].cmContract?.b4e ?? 0, p2);
+    if (!(req & 8)) throw new Error('spilleren er ikke listet efter eget ønske');
+    await gs((ids) => { const g = window.__cm.gs(); for (const id of ids) { const p = g.players[id]; p.listed = false; p.wantsAway = undefined; p.squadStatus = undefined; p.cmAsk = undefined; if (p.cmContract) { p.cmContract.b4e = 0; p.cmContract.b45 = 0; } } g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify(); }, [pid, p2]);
   });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter

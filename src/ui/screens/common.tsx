@@ -4,6 +4,7 @@ import { useNav } from '../core';
 import { ClubLink, PlayerLink } from '../components';
 import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
+import { requestBodyKind, requestReasons } from '../../game/cmTransferList';
 import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
 import { ClassicHead } from '../classic';
@@ -107,8 +108,23 @@ function offerAnswer(n: NewsItem): string {
   return k ? `\n\n${t(k, { club, fee: money(o.counter ?? o.fee) })}` : '';
 }
 
+/** CM 01/02's transferanmodning (0xbbf, 0x4d8990): brødteksten af grundene i nyhedens pladser, og svaret under den */
+function cmRequestBody(n: NewsItem): string {
+  const p = n.params;
+  const flags = Number(p.flags) >>> 0, sid = Number(p.sid), agent = !!p.agent;
+  const words = requestReasons(flags, agent, Number(p.crep ?? 0), true, !!p.old)
+    .map((k) => t(`cm.req.r.${k}`, { nation: natName(String(k === 'adapt' ? p.cnat ?? '' : p.nat ?? '')) }));
+  const k = requestBodyKind(words.length, sid, flags, agent);
+  const reasons = k.join === 'one' ? words[0] : k.join === 'two' ? t('cm.req.j.two', { a: words[0], b: words[1] })
+    : k.join === 'three' ? t('cm.req.j.three', { a: words[0], b: words[1], c: words[2] })
+    : k.join === 'some' ? t('cm.req.j.some', { a: words[k.pick![0]], b: words[k.pick![1]] }) : k.join === 'nightmare' ? t('cm.req.j.nightmare') : '';
+  const body = t(`cm.req.b.${k.body}`, { player: String(p.player), full: String(p.full), club: String(p.club), reasons });
+  return p.ans ? `${body}\n\n${t(p.ans === 1 ? 'cm.req.granted' : 'cm.req.turnedDown')}` : body;
+}
+
 export function newsBody(n: NewsItem) {
   if (n.key === 'board.update' && n.params?.lvl) return boardUpdate(n);
+  if (n.key === 'cm.req') return cmRequestBody(n);
   const k = bodyKey(n);
   if (!has(k)) return '';
   const body = t(k, newsParams(n)) + offerAnswer(n);
@@ -237,6 +253,7 @@ export function NewsTitle({ n }: { n: NewsItem }) {
 
 export function NewsBody({ n }: { n: NewsItem }) {
   if (n.key === 'board.update' && n.params?.lvl) return <>{boardUpdate(n)}</>;
+  if (n.key === 'cm.req') return <>{cmRequestBody(n)}</>;
   const k = bodyKey(n);
   return has(k) ? <>{linked(n, k)}{offerAnswer(n)}</> : null;
 }

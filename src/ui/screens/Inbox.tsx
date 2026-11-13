@@ -23,7 +23,8 @@ import type { NewsCategory, NewsItem } from '../../game/types';
 import { isRetro } from '../theme';
 import { Tabs } from '../components';
 import { ClassicSub, cxShortDate } from '../classic';
-import { IncomingBidPanel, JobOfferPanel } from './TransferStatusClassic';
+import { IncomingBidPanel, JobOfferPanel, TransferRequestPanel } from './TransferStatusClassic';
+import { requestOpen } from '../../game/cmTransferList';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -59,6 +60,7 @@ export function Inbox() {
   const [jobOpen, setJobOpen] = useState<number | null>(null);
   const [sqnOpen, setSqnOpen] = useState(false);
   const [eurOpen, setEurOpen] = useState(false);
+  const [reqOpen, setReqOpen] = useState(false);
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
   const listRef = useRef<HTMLDivElement>(null);
@@ -111,6 +113,8 @@ export function Inbox() {
     if (sqnOpen && squadNumbersDue(g.userClub)) return <div><Head title={t('sqn.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicSquadNumbers onClose={() => setSqnOpen(false)} /></div>;
     // European Squad (CM 01/02): Respond på "… to register players for next phase"
     if (eurOpen && euroDue(g.userClub)) return <div><Head title={t('eur.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicEuroSquad onClose={() => setEurOpen(false)} /></div>;
+    // CM 01/02: Respond på "X requests move" (0x4dca40) åbner Transfer Request
+    if (reqOpen && item && requestOpen(g, item)) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><TransferRequestPanel news={item} onClose={() => setReqOpen(false)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
     return (
@@ -134,6 +138,7 @@ export function Inbox() {
           {pendingBid && <button className="cx-grey cx-respond" onClick={() => setRespond(pendingBid.id)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'sqn.request' && squadNumbersDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setSqnOpen(true)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'eur.request' && euroDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setEurOpen(true)}>{t('cl.bid.respond')}</button>}
+          {requestOpen(g, item) && <button className="cx-grey cx-respond cx-req-respond" onClick={() => setReqOpen(true)}>{t('cl.bid.respond')}</button>}
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}
           {ultReq !== null && item && <button className="cx-grey cx-respond cx-ultimatum" onClick={() => {

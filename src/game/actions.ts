@@ -2,7 +2,8 @@
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
-import { setStatusCode } from './cmPlayerData';
+import { cmActive, setStatusCode } from './cmPlayerData';
+import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
 import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
@@ -46,6 +47,9 @@ export type Action =
   | { t: 'trainingAll'; key: string }
   | { t: 'listed'; pid: number; price?: number | null }
   | { t: 'squadStatus'; pid: number; status: SquadStatus | null; loanListed: boolean }
+  /** den originale database i ægte tilstand: Set Staff Transfer Status → OK (0x8f7f08) og svaret på en transferanmodning (0x4dcd70) */
+  | { t: 'cmTransferStatus'; pid: number; status: number; price: number | null; listed: boolean; loan: boolean; request: boolean }
+  | { t: 'cmRequest'; news: number; grant: boolean }
   | { t: 'squadNumber'; pid: number; n: number }
   | { t: 'squadNumbers'; nums: Record<number, number> }
   | { t: 'euroSquad'; ids: number[] }
@@ -159,9 +163,17 @@ export function applyAction(a: Action): unknown {
     case 'trainingAll': for (const p of Object.values(g.players)) if (p.club === g.userClub && g.userClub) p.training = a.key; return 'ok';
     case 'listed':
       if (g.players[a.pid]?.club !== g.userClub) return 'error';
-      if (a.price === undefined) toggleListed(a.pid);
+      if (a.price === undefined && cmActive(g)) cmToggleListed(g, g.players[a.pid]);   // 0x8f8450
+      else if (a.price === undefined) toggleListed(a.pid);
       else setListPrice(a.pid, a.price);
       return 'ok';
+    case 'cmTransferStatus': {
+      const p = g.players[a.pid];
+      if (p?.club !== g.userClub || !cmActive(g)) return 'error';
+      cmSetTransferStatus(g, p, a);
+      return 'ok';
+    }
+    case 'cmRequest': return cmActive(g) ? cmAnswerRequest(g, a.news, a.grant) : 'error';
     case 'squadStatus': {
       const p = g.players[a.pid];
       if (p?.club !== g.userClub) return 'error';

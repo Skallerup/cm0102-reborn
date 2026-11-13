@@ -183,6 +183,10 @@ export interface Player {
   number?: number;
   /** Udbudspris sat af manageren når spilleren er til salg */
   listPrice?: number;
+  /** den originale database i ægte tilstand: menneskets udbudspris = originalens værdi +0x52 (0x8ce0e0 – cmTransferList.ts), gælder i klubben */
+  cmAsk?: { v: number; club: number };
+  /** den originale database i ægte tilstand: transferanmodningens nyhed (0xbbf) venter på svar (id) – cmTransferList.ts */
+  cmReq?: number;
   /** Status i truppen sat af manageren (Squad Status) og udlejningsliste */
   squadStatus?: SquadStatus;
   loanListed?: boolean;

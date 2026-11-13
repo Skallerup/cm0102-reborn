@@ -15,6 +15,8 @@ import { authentic, extended } from '../../game/rules';
 import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
+import { cmActive } from '../../game/cmPlayerData';
+import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
@@ -251,7 +253,9 @@ function futureLines(p: Player, mine: boolean, k: number): string[] {
 function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
-  const availability = mine
+  // den originale database i ægte tilstand: originalens Availability og Future (0x87dd80 – cmTransferList.ts)
+  const cm = cmActive(g) && mine;
+  const availability = cm ? t(`cm.av.${cmAvailability(p)}`) : mine
     ? p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}` : p.loan ? t('tag.loan') : t('cl.pl.av.notForSale')
     : !p.club ? t('cl.pl.av.free')
     : p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}`
@@ -260,7 +264,9 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const offers = g.offers.filter((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating'));
   const offerText = <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
   const interestIds = interestedClubs(p).map((i) => i.club);
-  const fut = futureLines(p, mine, k);
+  const cmFut = cm ? cmFutureLines(g, p).map((x) => t(`cm.fut.${x.k}`, x.p)) : [];
+  // *estimeret*: blokkene, der ikke er porteret (klubbens resultater, harmoni …), gav ingen linje – så spillets egne
+  const fut = cm && cmFut.length ? cmFut : futureLines(p, mine, k);
   // CM 01/02: Availability, Value, Fluent Languages, Offers, Interested, Future (én linje pr. række)
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
   const rows: [string, ReactNode, string?][] = [

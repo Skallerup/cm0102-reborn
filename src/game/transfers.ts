@@ -1,5 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { cmActive, setRequestHooks } from './cmPlayerData';
+import { cmActive, cmRand, setRequestHooks } from './cmPlayerData';
+import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
 import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
@@ -16,7 +17,7 @@ import { clubStrategy } from './strategy';
 import { SHIFT_WEEKS } from './board';
 import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine, recordMove } from './season';
-import { blockedMoveReaction, playerComplains, playerPraises, targetReaction, type RejectReason } from './will';
+import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
@@ -1554,6 +1555,7 @@ export function loanOut(pid: number, club: number, share: number, fee: number): 
 /** AI-klubber byder på brugerens transferlistede spillere */
 export function aiBidsForListed() {
   const g = gs();
+  if (cmActive(g)) { cmBidsForListed(); return; }
   if (!g.userClub || !windowOpen()) return;
   const m = month(g.date);
   const chance = m === 7 || m === 8 || m === 1 ? 0.2 : 0.1;
@@ -1591,6 +1593,31 @@ export function aiBidsForListed() {
     g.offers.push(o);
     noteInterest(o.buyer, o.player);
     addNews({ cat: 'transfer', key: loanOnly ? 'transfer.incomingLoan' : 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
+  }
+}
+
+/** Den originale database i ægte tilstand: computerklubberne, der vurderer menneskets spiller over hans værdi +0x52 (0x842180 – cmInterested,
+ *  *estimeret*), byder værdien (Deportivo bød £100K på Scholes til £100K i originalen). Chancen pr. dag: cmBidChance (*estimeret*). Højst ét
+ *  ventende bud pr. spiller og tre i alt. Originalen har ingen transfervinduer i 2001/02 (windowOpen gælder ikke her). */
+function cmBidsForListed() {
+  const g = gs();
+  if (!g.userClub) return;
+  const rnd = new Rng(hash(g.seed ?? 0, daysBetween('2000-01-01', g.date), 0x842180));
+  for (const p of squad(g.userClub)) {
+    if (p.loan || p.contract?.futureClub) continue;
+    const ch = cmBidChance(p);
+    if (!ch || g.offers.some((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating'))) continue;
+    if (g.offers.filter((o) => o.seller === g.userClub && o.status === 'pending' && !isHumanClub(o.buyer)).length >= 3) break;
+    for (const cid of cmInterested(g, p, clubLevel)) {
+      if (!rnd.chance(ch)) continue;
+      const club = g.clubs[cid];
+      const fee = Math.max(1000, Math.min(club.transferBudget, p.value));
+      const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: cid, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: fee };
+      g.offers.push(o);
+      noteInterest(o.buyer, o.player);
+      addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
+      break;
+    }
   }
 }
 
@@ -1800,8 +1827,11 @@ export interface Interest { club: number; human?: string; bot?: boolean }
 export function interestedClubs(p: Player): Interest[] {
   const g = gs();
   const out: Interest[] = [];
+  // den originale database i ægte tilstand, menneskets spiller: computerklubberne efter 0x842180 (cmTransferList.ts, *estimeret*)
+  const cm = cmActive(g) && isHumanClub(p.club);
+  if (cm) for (const id of cmInterested(g, p, clubLevel)) out.push({ club: id });
   for (const c of Object.values(g.clubs)) {
-    if (c.id === p.club) continue;
+    if (c.id === p.club || cm) continue;
     if (c.shortlist?.includes(p.id)) out.push({ club: c.id, ...(isBotClubId(c.id) ? { bot: true } : {}) });
   }
   // menneskelige managere: deres egen shortliste (den aktive vises særskilt i UI'et)
@@ -1985,6 +2015,7 @@ export function signOnDemand(p: Player, wage: number, free: boolean): number {
 // og menneskets nyhed 0xbbf (spillerens henvendelse om spilletid eller trivsel – will.ts)
 setRequestHooks({
   asking: (p) => askingPrice(p),
-  human: (p, c) => playerComplains(p, c.b45 & 0x14 ? 'time' : 'morale'),
+  // menneskets klub: originalens nyhed 0xbbf "X requests move" med grundene og Respond (cmTransferList.ts – 0x4d87ff/0x4d8990/0x4dcd70)
+  human: (p, c) => { const g = gs(); cmRequestNews(g, p, c, cmRand(g.seed ?? 0, p.id, daysBetween('2000-01-01', g.date), 0x4d8610)); },
   isHuman: (club) => isHumanClub(club),
 });

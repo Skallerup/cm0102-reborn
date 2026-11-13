@@ -5,7 +5,9 @@ import type { DisciplineReason } from '../../game/personality';
 import { SQUAD_STATUSES, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { askingPrice, knownEnquiry, swapCandidates, swapWorth } from '../../game/transfers';
 import { ADDON_APPS } from '../../game/clauses';
-import type { CoachArea, Player, TransferOffer } from '../../game/types';
+import type { CoachArea, NewsItem, Player, TransferOffer } from '../../game/types';
+import { statusNum } from '../../game/cmTransferList';
+import { valueTarget } from '../../game/training';
 import type { RejectReason } from '../../game/will';
 import { ageOn } from '../../game/dates';
 import { compName, currencySymbol, fromCurExact, getCurrency, money, moneyFull, t } from '../../i18n';
@@ -16,7 +18,7 @@ import { CxDrop, useClassicDialog, ClassicFoot } from '../classic';
 import { cmActive, statusCode } from '../../game/cmPlayerData';
 import { isHumanClub } from '../../game/humans';
 import { exchangeOk } from '../../game/transfers';
-import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin, feeAtMax, feeEquals, fromGbp, newTerms, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
+import { BID_AMOUNTS_GBP, MAX_SWAP, addSwap, bidAct, clauseAtMin, feeAtMax, feeEquals, fromGbp, toGbp, newTerms, stepDown, stepUp, reasonForStatus, rejectReasonValid, removeSwap, sameTerms, termsOf,
   type BidAct, type BidTerms, type RejectKey } from '../../game/cmTransferBid';
 import { ClassicFirstSquad } from './SquadClassic';
 
@@ -31,6 +33,84 @@ const PRICE_LIST = [0, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_00
 const round = (v: number) => Math.max(10_000, Math.round(v / 10_000) * 10_000);
 
 export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
+  const g = useGame()!;
+  if (cmActive(g)) return <CmTransferStatusPanel p={p} onClose={onClose} />;
+  return <OwnTransferStatusPanel p={p} onClose={onClose} />;
+}
+
+/** Den originale database i ægte tilstand: Set Staff Transfer Status som originalen (0x8f6a10/0x8f7640) – udbudsprisen er værdien +0x52 (sat
+ *  uafhængigt af listen; "=" → formlen 0x4d0c60), trupstatus, transfer-/lejeliste og "listed by request"; OK → 0x8f7f08 (cmTransferList.ts) */
+function CmTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const [status, setStatus] = useState<SquadStatus | undefined>(p.squadStatus);
+  const b4e = p.cmContract?.b4e ?? (p.listed ? 1 : 0) | (p.loanListed ? 2 : 0);
+  const [listed, setListed] = useState(!!(b4e & 1));
+  const [loan, setLoan] = useState(!!(b4e & 2));
+  const [request, setRequest] = useState(!!(b4e & 8));
+  const [price, setPrice] = useState<number>(p.value);
+  // Cash::step_up 0x43f4e0 / step_down 0x43f580 (0x8f7c78 / 0x8f7aca)
+  const step = (dir: 1 | -1) => setPrice(dir > 0 ? stepUp(price) : stepDown(price));
+  const name = `${p.first} ${p.last}`.trim();
+  const save = () => {
+    act({ t: 'cmTransferStatus', pid: p.id, status: statusNum(status), price: price !== p.value ? price : null, listed, loan, request });
+    onClose();
+  };
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cl.ts.title')}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cl.ts.valued', { player: name, value: money(p.value) })}</p>
+        <div className="cx-ts-price">
+          <span className="cx-ts-label">{t('cl.ts.asking')}</span>
+          <button className="cx-pm" disabled={price <= 0} onClick={() => step(-1)} aria-label="-">−</button>
+          <CxDrop className="cx-bid-amt cx-ts-val" label={money(price)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => setPrice(Math.round(fromCurExact(a))) }))} />
+          <button className="cx-pm" onClick={() => step(1)} aria-label="+">+</button>
+          {/* originalens knap hedder Auto (ejerens billede 13/11): formelværdien 0x4d0c60 */}
+          <button className="cx-pm auto" onClick={() => setPrice(roundGbp(valueTarget(p)))}>{t('cl.ts.auto')}</button>
+        </div>
+        <div className="cx-ts-head">{t('cl.ts.squad')}</div>
+        {SQUAD_STATUSES.map((s) => {
+          const ok = statusAllowed(p, s, g.date);
+          return <button key={s} className={`cx-ts-opt ${status === s ? 'on' : ''}`} disabled={!ok} onClick={() => setStatus(status === s ? undefined : s)}>{t(`cl.ts.s.${s}`)}</button>;
+        })}
+        <div className="cx-ts-head">{t('cl.ts.transfer')}</div>
+        <button className={`cx-ts-opt ${listed ? 'on' : ''}`} onClick={() => setListed(!listed)}>{t('cl.ts.listed')}</button>
+        <button className={`cx-ts-opt ${loan ? 'on' : ''}`} onClick={() => setLoan(!loan)}>{t('cl.ts.loan')}</button>
+        <button className={`cx-ts-opt ${request ? 'on' : ''}`} onClick={() => setRequest(!request)}>{t('cl.ts.request')}</button>
+      </div>
+      <ClassicFoot cols="3fr 1fr">
+        <button onClick={onClose}>{t('common.back')}</button>
+        <button className="primary" onClick={save}>{t('cl.ts.set')}</button>
+      </ClassicFoot>
+    </div>
+  );
+}
+const roundGbp = (v: number) => fromGbp(Math.round(toGbp(v) / 1000) * 1000);
+
+/** "Transfer Request" (0x4dcb30/0x4dcd70): "Put X on the transfer list at his own request ?" – Back, No, Yes */
+export function TransferRequestPanel({ news, onClose }: { news: NewsItem; onClose: () => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const p = news.link ? g.players[Number(news.link.id)] : undefined;
+  if (!p) return null;
+  const answer = (grant: boolean) => { act({ t: 'cmRequest', news: news.id, grant }); onClose(); };
+  return (
+    <div className="cx-tstatus cx-treq">
+      <div className="cx-subtitle">{t('cm.req.title')}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cm.req.ask', { player: `${p.first} ${p.last}`.trim() })}</p>
+      </div>
+      <ClassicFoot cols="2fr 1fr 1fr" className="cx-bid-answer cx-treq-answer">
+        <button onClick={onClose}>{t('common.back')}</button>
+        <button onClick={() => answer(false)}>{t('common.no')}</button>
+        <button className="primary" onClick={() => answer(true)}>{t('common.yes')}</button>
+      </ClassicFoot>
+    </div>
+  );
+}
+
+function OwnTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
   const g = useGame()!;
   useClassicDialog();
   const [status, setStatus] = useState<SquadStatus | undefined>(p.squadStatus);

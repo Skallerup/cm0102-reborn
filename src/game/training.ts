@@ -167,20 +167,30 @@ function bump(p: Player, i: number, d: number) {
 }
 
 /** Månedlig værdiopdatering */
-export function monthlyValues() {
+/** modelværdien, som den månedlige værdi glider mod – med den originale database originalens formel sub_4d0c60 (også "="/Auto i
+ *  Set Staff Transfer Status, 0x8f77ac, og loftet for udbudsprisen i 0x8ce0e0 – cmTransferList.ts) */
+export function valueTarget(p: Player): number {
   const g = gs();
   const original = !!g.econ && g.dbKind === 'cm0102';
+  const age = ageOn(p.dob, g.date);
+  // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
+  const c = g.clubs[p.club];
+  const lg = c ? g.leagues[c.league] : undefined;
+  // klubber med originalens felter: sub_4d0c60 (om originalen bruger den samme formel hver måned, vides ikke – *estimeret*)
+  return original && c?.vc && p.cmRep
+    ? formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps, staffId: p.id, clubId: c.id, vc: c.vc }) / 0.86
+    : original
+    ? originalValueGbp(p.ca, age, c?.rep ?? 30, (p.contract?.wage ?? 0) * 0.86, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, p.cmRep ?? repTriple(p.rep)) / 0.86
+    : valueFromCA(p.ca, p.pa, age);
+}
+
+export function monthlyValues() {
+  const g = gs();
   for (const p of Object.values(g.players)) {
-    const age = ageOn(p.dob, g.date);
-    // den originale database: originalens værdiformel (klubbens omdømme, løn og liga tæller med – originalValue.ts)
-    const c = g.clubs[p.club];
-    const lg = c ? g.leagues[c.league] : undefined;
-    // klubber med originalens felter: sub_4d0c60 (om originalen bruger den samme formel hver måned, vides ikke – *estimeret*)
-    const target = original && c?.vc && p.cmRep
-      ? formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps, staffId: p.id, clubId: c.id, vc: c.vc }) / 0.86
-      : original
-      ? originalValueGbp(p.ca, age, c?.rep ?? 30, (p.contract?.wage ?? 0) * 0.86, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, p.cmRep ?? repTriple(p.rep)) / 0.86
-      : valueFromCA(p.ca, p.pa, age);
+    // menneskets udbudspris er originalens værdi +0x52 (0x8ce0e0, cmTransferList.ts) – den står, til han skifter klub (*estimeret*: om
+    // originalen regner +0x52 om hver måned, vides ikke)
+    if (p.cmAsk && p.cmAsk.club === p.club && isHumanClub(p.club)) { p.value = p.cmAsk.v; continue; }
+    const target = valueTarget(p);
     // glid mod modelværdien og påvirkes af form
     const form = p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 6.5;
     const formF = 1 + (form - 6.7) * 0.06;
