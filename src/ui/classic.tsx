@@ -7,7 +7,7 @@ import './classic.css';
 // så de enkelte skærme ikke skal kende til layoutet.
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore, type ButtonHTMLAttributes, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { gs } from '../game/state';
+import { gs, inSetup } from '../game/state';
 import { useSetup } from './setupCtx';
 import type { GameState, Staff } from '../game/types';
 import { compName, natName, t } from '../i18n';
@@ -327,8 +327,13 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
   const out: Item[] = [];
   for (const k of keys) {
     // en anden klub (CM 01/02): Tactics ▸ viser deres opstilling (skrivebeskyttet), Training er grå
-    if (viewed && k === 'tactics') { out.push({ key: k, label: label(k), route: { name: 'tactics', id: viewed }, arrow: true }); continue; }
-    if (viewed && k === 'training') { out.push({ key: k, label: label(k), disabled: true }); continue; }
+    // før klubben er overtaget (nyt spil) og for en klub uden spillede kampe: "No Recent Matches" (CM 01/02 – Tactics viser sidste kamps opstilling)
+    if ((viewed || inSetup()) && k === 'tactics') {
+      const cid = viewed || g.userClub;
+      const played = !inSetup() && Object.values(g.fixtures).some((f) => f.result && (f.home === cid || f.away === cid));
+      out.push({ key: k, label: label(k), route: played ? { name: 'tactics', id: cid } : { name: 'report', id: cid, state: { none: 1 } }, arrow: true }); continue;
+    }
+    if ((viewed || inSetup()) && k === 'training') { out.push({ key: k, label: label(k), disabled: true }); continue; }
     if (viewed && k in VIEWED) {
       const cview = VIEWED[k];
       const cur = (route.state?.cview as string | undefined) ?? 'squad';

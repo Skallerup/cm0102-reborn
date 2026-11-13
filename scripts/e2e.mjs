@@ -440,7 +440,9 @@ async function run(look) {
     const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league).id; });
     await go({ name: 'club', id: other });
     await page.locator('.cx-subrow button', { hasText: 'Tactics' }).first().click();
-    await page.waitForSelector('.cx-tac-view .cx-tac-slot', { timeout: 10000 });
+    // CM 01/02: uden spillede kampe viser Tactics ▸ "No Recent Matches", ellers sidste kamps opstilling
+    const played = await gs((cid) => Object.values(window.__cm.gs().fixtures).some((f) => f.result && (f.home === cid || f.away === cid)), other);
+    await page.waitForSelector(played ? '.cx-tac-view .cx-tac-slot' : '.cx-norecent', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-andenklub-taktik.png` });
   });
   if (look === 'klassisk') await step('Team Instructions før kampen (samme boks som i kampen)', async () => {
@@ -852,7 +854,8 @@ async function run(look) {
     if (!ok) throw new Error('nummeret blev ikke flyttet');
   });
   // turneringsvælgeren skal skifte turnering, også når skærmen er åbnet på en bestemt (fx Champions League)
-  await step('turneringsvælger skifter turnering', async () => {
+  // klassisk (CM 01/02) har ingen turneringsliste på skærmen – kun Competitions-menuen i sidebjælken
+  if (look === 'moderne') await step('turneringsvælger skifter turnering', async () => {
     await go({ name: 'competitions', id: 'CL' });
     await page.waitForTimeout(300);
     const want = await gs(() => { const g = window.__cm.gs(); return g.comps[g.clubs[g.userClub].league].id; });

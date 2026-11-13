@@ -15,7 +15,7 @@ import { isRetro } from '../theme';
 import { resultStr, stageLabel } from './Fixtures';
 import { ClassicCup } from './CupClassic';
 import { ClassicCompHistory } from './CompHistoryClassic';
-import { ClassicSub, cxShortDate } from '../classic';
+import { ClassicSub, CxDrop, cxShortDate } from '../classic';
 
 export function Competitions({ id }: { id?: string }) {
   const g = useGame()!;
@@ -29,21 +29,27 @@ export function Competitions({ id }: { id?: string }) {
   useEffect(() => { if (id && id !== lastId.current) { lastId.current = id; setCid(id); } }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
   const comp = g.comps[cid] ?? (id ? g.comps[id] : undefined);
   const [cupTab] = useRouteState(`cup:${comp?.id}`, 'rounds');
+  const [tblView, setTblView] = useRouteState('tblView', 'overall');
   // klassisk History (liga og pokal) er en hel skærm for sig – "FA Premier League History"
   if (comp && isRetro() && (comp.type === 'league' ? tab : cupTab) === 'history') return <ClassicCompHistory comp={comp} />;
   const ordered = comps.slice().sort((a, b) => order(a) - order(b) || a.name.localeCompare(b.name));
   return (
     <div>
       <Head title={compName(comp?.name) ?? t('nav.competitions')}>
-        <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
-          options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />
+        {/* CM 01/02 har ingen turneringsliste her (turneringerne vælges i sidebjælkens Competitions-menu) */}
+        {!isRetro() && <Select value={comp?.id ?? ''} onChange={(v) => { setCid(v); setTab('table'); }} width={260}
+          options={ordered.map((c) => ({ value: c.id, label: compName(c.name), group: g.draft ? t('dr.title') : c.nation >= 0 ? natName(g.nations[c.nation]?.name) : t('comp.europe') }))} />}
       </Head>
       {comp && isRetro() && comp.type !== 'league' && <ClassicCup comp={comp} />}
       {/* klassisk liga (CM 01/02): Table · Results · Fixtures · Schedule øverst; Team Stats · Player Stats · Referee Stats · Awards ▸ · History ▸ nederst */}
       {comp && isRetro() && comp.type === 'league' && (
         <>
           <Tabs tabs={[['table', t('comp.table')], ['results', t('cl.lg.results')], ['fixtures', t('comp.fixtures')], ['schedule', t('cl.lg.schedule')]]} value={['table', 'results', 'fixtures', 'schedule'].includes(tab) ? tab : ''} onChange={setTab} />
-          {tab === 'table' && <><div className="cx-subtitle">{t('cl.lg.table')}</div><LeagueTables comp={comp} /></>}
+          {tab === 'table' && <>
+            {/* CM 01/02: grå View-menu – Overall · Home Record · Away Record */}
+            <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={(['overall', 'home', 'away'] as const).map((k) => ({ key: k, label: t(`cl.lg.v.${k}`), checked: tblView === k, onClick: () => setTblView(k) }))} /></div>
+            <div className="cx-subtitle">{t('cl.lg.table')}</div><LeagueTables comp={comp} view={tblView as 'overall' | 'home' | 'away'} />
+          </>}
           {tab === 'results' && <CompFixtures comp={comp} mode="results" />}
           {tab === 'fixtures' && <CompFixtures comp={comp} mode="fixtures" />}
           {tab === 'schedule' && <CompSchedule comp={comp} onPick={() => setTab('fixtures')} />}
@@ -155,7 +161,24 @@ export function LeagueTable({ rows, comp, compact, offset = 0, zones }: { rows: 
   );
 }
 
-export function LeagueTables({ comp }: { comp: Competition }) {
+/** hjemme-/udebanetabellen (CM 01/02 View → Home Record/Away Record) af turneringens spillede kampe */
+function venueRows(comp: Competition, side: 'home' | 'away'): TableRow[] {
+  const g = gs();
+  const rows = new Map<number, TableRow>(comp.table.map((r) => [r.club, { club: r.club, p: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, pts: 0, form: '' }]));
+  for (const f of Object.values(g.fixtures)) {
+    if (f.comp !== comp.id || !f.result) continue;
+    const club = side === 'home' ? f.home : f.away;
+    const r = rows.get(club);
+    if (!r) continue;
+    const gf = side === 'home' ? f.result.hg : f.result.ag, ga = side === 'home' ? f.result.ag : f.result.hg;
+    r.p++; r.gf += gf; r.ga += ga;
+    if (gf > ga) { r.w++; r.pts += 3; } else if (gf === ga) { r.d++; r.pts++; } else r.l++;
+  }
+  return [...rows.values()];
+}
+
+export function LeagueTables({ comp, view = 'overall' }: { comp: Competition; view?: 'overall' | 'home' | 'away' }) {
+  if (isRetro() && view !== 'overall' && !(comp.groups && comp.splitDone)) return <Panel className="flush"><LeagueTable rows={venueRows(comp, view)} comp={comp} /></Panel>;
   if (comp.groups && comp.splitDone) {
     return (
       <div className="cols2">
@@ -167,7 +190,7 @@ export function LeagueTables({ comp }: { comp: Competition }) {
   return (
     <Panel className="flush">
       <LeagueTable rows={comp.table} comp={comp} />
-      {!gs().draft && <div className="legend" style={{ padding: 8 }}>
+      {!gs().draft && !isRetro() && <div className="legend" style={{ padding: 8 }}>
         <span><i style={{ background: 'var(--accent2)' }} />{t('tbl.europe')}</span>
         <span><i style={{ background: 'var(--good)' }} />{t('tbl.promotion')}</span>
         <span><i style={{ background: 'var(--mid)' }} />{t('tbl.playoff')}</span>

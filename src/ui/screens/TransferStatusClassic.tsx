@@ -26,6 +26,8 @@ const amountLabel = (a: number) => {
   const c = getCurrency();
   return c === 'DKK' || c === 'SEK' || c === 'NOK' ? `${n} kr.` : `${currencySymbol()}${n}`;
 };
+/** originalens beløbsliste ved transferbeløb og udbudspris */
+const PRICE_LIST = [0, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 15_000_000, 20_000_000];
 const round = (v: number) => Math.max(10_000, Math.round(v / 10_000) * 10_000);
 
 export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
@@ -57,7 +59,8 @@ export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => 
         <div className="cx-ts-price">
           <span className="cx-ts-label">{t('cl.ts.asking')}</span>
           <button className="cx-pm" onClick={() => setPrice(round(shown - step))} aria-label="-">−</button>
-          <span className="cx-ts-val">{money(shown)}</span>
+          {/* CM 01/02: pilen ved prisen åbner originalens beløbsliste (£0 … £20M) */}
+          <CxDrop className="cx-bid-amt cx-ts-val" label={money(shown)} fixed items={PRICE_LIST.map((a) => ({ key: String(a), label: amountLabel(a), checked: false, onClick: () => setPrice(Math.round(fromCurExact(a))) }))} />
           <button className="cx-pm" onClick={() => setPrice(round(shown + step))} aria-label="+">+</button>
           <button className={`cx-pm auto ${price === undefined ? 'on' : ''}`} onClick={() => setPrice(undefined)}>{t('cl.ts.auto')}</button>
         </div>

@@ -747,6 +747,7 @@ export const en: Record<string, string> = {
   'fix.pens': 'pens', 'fix.aet': 'aet', 'fix.stage': 'Round', 'fix.venue': 'Venue', 'fix.opponent': 'Opponent', 'fix.result': 'Result',
   'fix.neutral': 'Neutral', 'fix.home': 'Home', 'fix.away': 'Away', 'fix.report': 'Report',
   'stage.Q': 'Qualifying Round', 'stage.Q1': 'First Qualifying Round', 'stage.Q2': 'Second Qualifying Round', 'stage.Q3': 'Third Qualifying Round', 
+  'cl.lg.v.overall': 'Overall', 'cl.lg.v.home': 'Home Record', 'cl.lg.v.away': 'Away Record', 
   'stage.R1': 'Round 1', 'stage.R2': 'Round 2', 'stage.R3': 'Round 3', 'stage.R4': 'Round 4', 'stage.R5': 'Round 5', 'stage.R6': 'Round 6',
   'stage.R32': 'Round of 32', 'stage.R16': 'Round of 16', 'stage.QF': 'Quarter-final', 'stage.SF': 'Semi-final', 'stage.F': 'Final', 'stage.F2': 'Play-off final',
   'stage.LP': 'League phase, round', 'stage.KPO': 'Knockout play-off',

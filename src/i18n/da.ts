@@ -762,6 +762,7 @@ export const da: Record<string, string> = {
   'fix.pens': 'str.', 'fix.aet': 'e.f.s.', 'fix.stage': 'Runde', 'fix.venue': 'Bane', 'fix.opponent': 'Modstander', 'fix.result': 'Resultat',
   'fix.neutral': 'Neutral', 'fix.home': 'Hjemme', 'fix.away': 'Ude', 'fix.report': 'Rapport',
   'stage.Q': 'Kvalifikationsrunde', 'stage.Q1': '1. kvalifikationsrunde', 'stage.Q2': '2. kvalifikationsrunde', 'stage.Q3': '3. kvalifikationsrunde', 
+  'cl.lg.v.overall': 'Samlet', 'cl.lg.v.home': 'Hjemmebane', 'cl.lg.v.away': 'Udebane', 
   'stage.R1': '1. runde', 'stage.R2': '2. runde', 'stage.R3': '3. runde', 'stage.R4': '4. runde', 'stage.R5': '5. runde', 'stage.R6': '6. runde',
   'stage.R32': 'Sekstendedelsfinale', 'stage.R16': 'Ottendedelsfinale', 'stage.QF': 'Kvartfinale', 'stage.SF': 'Semifinale', 'stage.F': 'Finale', 'stage.F2': 'Kvalifikationsfinale',
   'stage.LP': 'Ligafase, runde', 'stage.KPO': 'Knockout-playoff',

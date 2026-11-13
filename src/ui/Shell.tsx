@@ -696,7 +696,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'leagues': return <ClassicSelectedLeagues />;
     case 'clubhistory': return <ClassicClubHistory cid={Number(route.id ?? g.userClub)} />;
     // klassisk: en spillet kamp vises som kampskærmen efter slutfløjt (samme faner og sidebjælke)
-    case 'report': if (isRetro() && route.state?.none) return <NoRecentMatchesClassic />; return isRetro() && !g.draft && (g.reports[Number(route.id)] || g.fixtures[Number(route.id)]?.result) ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
+    case 'report': if (isRetro() && route.state?.none) return <NoRecentMatchesClassic club={route.id !== undefined ? Number(route.id) : undefined} />; return isRetro() && !g.draft && (g.reports[Number(route.id)] || g.fixtures[Number(route.id)]?.result) ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
     case 'awards': return <Awards />;
     case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;
