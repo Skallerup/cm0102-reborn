@@ -1,4 +1,5 @@
 import { useState, type ReactNode } from 'react';
+import { ClubScreen } from './Club';
 import { CxLink, clubRoute } from '../classic';
 import { isRetro } from '../theme';
 import { askConfirm } from '../confirm';
@@ -26,6 +27,8 @@ export function StaffScreen() {
   const { route } = useNav();
   // klassisk udseende med den originale database i ægte tilstand: originalens stabsprofil (StaffClassic.tsx)
   if (route.id !== undefined && gs().staff[Number(route.id)]) return isRetro() && cmActive(gs()) ? <ClassicStaffProfile id={Number(route.id)} /> : <StaffProfile id={Number(route.id)} />;
+  // CM 01/02 har ingen samlet stabsliste – klubbens General Info (Non-Playing Staff) er stedet
+  if (isRetro() && cmActive(gs())) return <ClubScreen id={gs().userClub} />;
   return <StaffList />;
 }
 

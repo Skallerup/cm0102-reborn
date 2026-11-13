@@ -178,7 +178,7 @@ export function ClassicStaffProfile({ id }: { id: number }) {
   if (!mine && g.userClub) items.push({ key: 'approach', label: t('cm.st.approach'), disabled: !cmRolesFor(s, g.date).length, onClick: () => setPanel('role') });
   if (mine) items.push({ key: 'fire', label: t('staff.fire'), danger: true, onClick: async () => {
     if (!(await askConfirm(t('staff.fireConfirm', { name, pay: money(s.wage * 12) })))) return;
-    fireStaff(s.id); nav({ name: 'staff' });
+    fireStaff(s.id); nav({ name: 'club', id: g.userClub, state: { cview: 'info' } }); // CM 01/02: tilbage til klubbens General Info (Non-Playing Staff)
   } });
   items.push({ key: 'nick', label: t('cl.pl.setNick'), onClick: () => setPanel('nick') }, { key: 'sep', sep: true });
   if (g.userClub) items.push({ key: 'note', label: t('cl.pl.note'), onClick: () => setPanel('note') });
