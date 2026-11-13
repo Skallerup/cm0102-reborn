@@ -801,7 +801,7 @@ export const da: Record<string, string> = {
   'transfer.done': '{player} skifter fra {from} til {to} for {fee}', 'transfer.freeDone': '{player} skriver under med {to} på en fri transfer',
   'transfer.loanDone': '{player} lejes ud fra {from} til {to}', 'transfer.bosmanDone': '{player} skifter gratis fra {from} til {to} (Bosman)',
   'transfer.incomingLoan': '{club} vil leje {player}', 'transfer.incomingLoan.body': 'Svar under Transfers → Bud inden for fem dage.', 'transfer.incomingBid': "{club}s transferbud på {last}", 'transfer.incomingBid.body': "{club} har budt {fee} for {player}.",
-  'transfer.aiWithdrew': '{club} har trukket buddet på {player} tilbage', 'transfer.playerRefusedMove': '{player} vil ikke skifte til {club}',
+  'transfer.aiWithdrew': '{club} har trukket buddet på {player} tilbage', 'transfer.playerRefusedMove.body': "{player} har afvist skiftet til {club}.", 'transfer.playerRefusedMove': "{last} afviser skifte til {club}",
   'transfer.refuseRep': '{player} er ikke interesseret i at spille for en klub af {club}s format', 'transfer.refuseHappy': '{player} er glad i sin nuværende klub og afviser {club}',
   'transfer.talksCollapsed': 'Forhandlingerne med {player} er brudt sammen', 'transfer.preContract': '{player} har underskrevet en Bosman-aftale med {club} fra sommer',
   'transfer.released': '{player} har fået sin kontrakt ophævet',

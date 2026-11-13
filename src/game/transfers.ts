@@ -42,8 +42,16 @@ export function nextWindow(date = gs().date): string {
 }
 
 /** Må en AI-klub byde på en spiller hos en menneskestyret klub lige nu? (så der ikke regner bud ned) */
+/** CM 01/02: en spiller, der har afvist en klub, får ikke et nyt bud fra den samme klub i denne sæson (originalens køber fjerner ham fra
+ *  ønskelisten – 0x843e10 er ikke porteret, *estimeret*; ejerens fund 13/11: FC Zürich bød igen på Thompson) */
+export function refusedBy(p: Player, buyer: number): boolean {
+  const g = gs();
+  return g.offers.some((o) => o.player === p.id && o.buyer === buyer && o.status === 'collapsed' && o.created.slice(0, 4) >= String(g.season));
+}
+
 function canBidOnHuman(p: Player, buyer: number): boolean {
   const g = gs();
+  if (refusedBy(p, buyer)) return false;
   // nyindkøbt og ikke til salg: ingen bud, før han har været der et stykke tid (samme regel som AI-klubberne imellem)
   if (!p.listed && recentlyJoined(p)) return false;
   const pending = g.offers.filter((o) => o.seller === p.club && o.status === 'pending' && !isHumanClub(o.buyer)).length;
@@ -454,7 +462,7 @@ export function respondToOffer(id: number, action: 'accept' | 'reject' | 'counte
   // AI forhandler med spilleren
   if (playerInterest(p, buyer) !== 'yes' && !o.loan) {
     o.status = 'collapsed';
-    addNews({ cat: 'transfer', key: 'transfer.playerRefusedMove', params: { club: buyer.name, player: pname(p) } });
+    addNews({ cat: 'transfer', key: 'transfer.playerRefusedMove', params: { club: buyer.name, player: pname(p), last: p.last || pname(p), from: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } });
     return;
   }
   completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
@@ -510,7 +518,7 @@ function cmRespond(o: TransferOffer, p: Player, buyer: Club, action: 'accept' | 
   }
   if (playerInterest(p, buyer) !== 'yes' && !o.loan) {
     o.status = 'collapsed';
-    addNews({ cat: 'transfer', key: 'transfer.playerRefusedMove', params: { club: buyer.name, player: pname(p) } });
+    addNews({ cat: 'transfer', key: 'transfer.playerRefusedMove', params: { club: buyer.name, player: pname(p), last: p.last || pname(p), from: g.clubs[p.club]?.name ?? '' }, link: { kind: 'player', id: p.id } });
     return null;
   }
   completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
@@ -1299,7 +1307,7 @@ export function aiPursuits() {
     if (g.date < pu.next) { keep.push(pu); continue; }
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) { keep.push(pu); continue; }
     const fee = roundValue(Math.min(pu.maxFee, pu.lastFee * rng.range(1.08, 1.2)));
-    if (fee <= pu.lastFee) continue;
+    if (fee <= pu.lastFee || refusedBy(p, club.id)) continue;
     const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: club.id, seller: p.club, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: pu.maxFee };
     g.offers.push(o);
     noteInterest(o.buyer, o.player);
@@ -1611,6 +1619,7 @@ function cmBidsForListed() {
     for (const cid of cmInterested(g, p, clubLevel)) {
       if (!rnd.chance(ch)) continue;
       const club = g.clubs[cid];
+      if (refusedBy(p, cid)) continue;
       const fee = Math.max(1000, Math.min(club.transferBudget, p.value));
       const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: cid, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: fee };
       g.offers.push(o);

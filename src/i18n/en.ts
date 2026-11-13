@@ -785,7 +785,7 @@ export const en: Record<string, string> = {
   'transfer.done': '{player} moves from {from} to {to} for {fee}', 'transfer.freeDone': '{player} signs for {to} on a free transfer',
   'transfer.loanDone': '{player} joins {to} on loan from {from}', 'transfer.bosmanDone': '{player} moves from {from} to {to} on a Bosman',
   'transfer.incomingLoan': '{club} want to take {player} on loan', 'transfer.incomingLoan.body': 'Reply under Transfers → Offers within five days.', 'transfer.incomingBid': "{club} transfer bid for {last}", 'transfer.incomingBid.body': "{club} have made an offer of {fee} for {player}.",
-  'transfer.aiWithdrew': '{club} have withdrawn their offer for {player}', 'transfer.playerRefusedMove': '{player} does not want to join {club}',
+  'transfer.aiWithdrew': '{club} have withdrawn their offer for {player}', 'transfer.playerRefusedMove.body': "{player} has rejected the move to {club}.", 'transfer.playerRefusedMove': "{last} rejects move to {club}",
   'transfer.refuseRep': "{player} isn't interested in joining a club of {club}'s stature", 'transfer.refuseHappy': '{player} is happy where he is and turns down {club}',
   'transfer.talksCollapsed': 'Talks with {player} have collapsed', 'transfer.preContract': '{player} has signed a pre-contract with {club} for the summer',
   'transfer.released': '{player} has been released',
