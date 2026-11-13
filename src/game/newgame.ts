@@ -91,7 +91,13 @@ export function cmDatabase(g: GameState): 'cm' | 'original' | null {
   return start < 2020 ? 'original' : 'cm';
 }
 
+/** status under oprettelsen (trinets nøgle, 0..1) – Start.tsx viser den, når createGame kører i en Web Worker (ui/newGameWorker.ts) */
+let progressCb: ((step: string, frac: number) => void) | null = null;
+export function setNewGameProgress(cb: ((step: string, frac: number) => void) | null) { progressCb = cb; }
+const progress = (step: string, frac: number) => progressCb?.(step, frac);
+
 export function createGame(world: WorldData, o: NewGameOptions): GameState {
+  progress('clubs', 0.02);
   const season = world.season;
   // (runde 10A) den originale database i ægte tilstand: originalens spilstart 0x830520 − 4 uger for det først valgte land (England 14/7-2001;
   // cmCalendar.ts) – før 1/7 (Danmark, Polen, Kroatien og forårsligaerne) beholdes spillets 1/7, da sæsonskiftet ligger 1/7
@@ -175,6 +181,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (g.clubs[id].colors[0] === g.clubs[id].colors[1]) g.clubs[id].colors[1] = g.clubs[id].colors[0] === '#ffffff' ? '#111111' : '#ffffff';
   }
 
+  progress('players', 0.08);
   // Spillere (trøjenumrene uddeles samlet, når trupperne er fyldt op)
   setAutoNumbers(false);
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
@@ -259,6 +266,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     addPlayer(p);
   }
 
+  progress('squads', 0.3);
   // Fyld trupper op
   const leagueLevel = new Map<string, number>();
   for (const l of world.leagues) {
@@ -352,6 +360,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     setEconomy(g.econ);
   }
 
+  progress('economy', 0.4);
   // Reputation og økonomi
   for (const c of Object.values(g.clubs)) {
     const sq = squad(c.id);
@@ -388,6 +397,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
   }
 
+  progress('staff', 0.45);
   // Staff – med den originale/CM-database: de rigtige trænere, spejdere og fysioterapeuter fra databasen (CMWorld.staff)
   const dbStaff = new Map<number, NonNullable<CMWorld['staff']>>();
   for (const row of cm?.staff ?? []) dbStaff.set(row[0], [...(dbStaff.get(row[0]) ?? []), row]);
@@ -412,11 +422,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     g.staff[s.id] = s;
   }
 
+  progress('comps', 0.55);
   // Turneringer for aktive nationer
   setupSeasonComps(season, {});
   // originalens bestyrelse: init_club_board_records 0x68f130 på databasens dato (cmBoardGame.ts – kun den originale database i ægte tilstand)
   cmBoardInit(g, cm?.cmRaw?.chairBoard, cm?.cmRaw?.nationBoard);
 
+  progress('board', 0.62);
   // Brugerens klub
   const club = g.clubs[o.clubId];
   takeOverClub(club);
@@ -426,13 +438,16 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (cmActive(g)) for (const p of Object.values(g.players)) if (!p.regen) p.morale = 10;
   // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
   if (cm?.cmRaw && season < 2020) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
+  progress('fitness', 0.7);
   cmFitNewGame(g);
   // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
+  progress('plan', 0.8);
   cmSquadPlanStart(g);
+  progress('scouting', 0.9);
   initKnowledge();
   monthlyDevelopment();
   if (o.challenge) {
@@ -460,6 +475,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (lg) addNews({ cat: 'match', key: 'comp.fixturesOut', params: { season: `${season}/${String(season + 1).slice(2)}`, comp: lg.name }, link: { kind: 'comp', id: club.league } });
   }
   rebuildIndexes();
+  progress('done', 0.98);
   initialTransferList();
   // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med den originale database – én konstant (liveSim.ts)
   if (GRID_ENGINE_DEFAULT && g.options.mode === 'authentic' && cmDatabase(g) === 'original') g.options.engine = 'original';

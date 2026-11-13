@@ -1413,3 +1413,14 @@ input[type='color'] { width: 44px; height: 30px; padding: 2px; }
 .preview-bar .pv-note { opacity: 0.75; font-weight: 400; white-space: nowrap; }
 .preview-bar button { min-height: 28px; padding: 2px 10px; border-radius: 999px; border: 1px solid rgba(255, 255, 255, 0.5); background: rgba(255, 255, 255, 0.15); color: #fff; font: inherit; box-shadow: none; cursor: pointer; white-space: nowrap; }
 @media (max-width: 760px) { .preview-bar { bottom: auto; top: calc(4px + env(safe-area-inset-top, 0px)); } .preview-bar .pv-note { display: none; } }
+
+/* Nyt spil: indlæsningsskærmen i CM 01/02's stil (NewGameLoader.tsx) – samme i begge udseender */
+.ng-loader { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; justify-content: center; padding: 16px; background: radial-gradient(ellipse at center, #0b1660 0%, #020414 75%); }
+.ng-box { width: min(460px, 100%); border: 1px solid #2c4a9e; box-shadow: 0 0 0 1px #000, 0 20px 60px -10px rgba(0, 0, 0, 0.8); background: #050a2e; font-family: Tahoma, Verdana, sans-serif; }
+.ng-title { padding: 8px 12px; text-align: center; font-weight: 800; font-size: 16px; color: #fff; background: linear-gradient(180deg, #2a3fb4 0%, #15237a 100%); border-bottom: 1px solid #000; letter-spacing: 0.02em; }
+.ng-body { padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; }
+.ng-step { color: #fff200; font-size: 14px; font-weight: 700; text-align: center; min-height: 18px; }
+.ng-bar { display: grid; grid-template-columns: repeat(24, 1fr); gap: 2px; padding: 3px; background: #000; border: 1px solid #2c4a9e; }
+.ng-bar span { height: 16px; background: #0d1a48; }
+.ng-bar span.on { background: linear-gradient(180deg, #5ee08f 0%, #1f9a4c 100%); }
+.ng-pct { color: #cfd8ff; font-size: 12px; text-align: center; }

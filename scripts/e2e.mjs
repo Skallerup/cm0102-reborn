@@ -114,7 +114,14 @@ async function run(look) {
     }
     if (!(await page.evaluate((id) => window.__cmPick(id), ENGINE_GRID ? 676 : 1920))) throw new Error('klubben findes ikke');
     await page.getByRole('button', { name: await t('start.begin') }).click();
-    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
+    // nyt spil kører i en Web Worker med en indlæsningsskærm (NewGameLoader) – siden må ikke fryse
+    const t0 = Date.now();
+    if (ENGINE_GRID) {
+      await page.waitForSelector('.ng-loader .ng-bar span.on', { timeout: 20000 });
+      await page.screenshot({ path: `${OUT}/${look}-nyt-spil-loader.png` });
+    }
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 90000 });
+    if (ENGINE_GRID) console.log(`    nyt spil: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
   });
 
   const star = await gs(() => { const g = window.__cm.gs(); return Object.values(g.players).filter((p) => p.club === g.userClub).sort((a, b) => b.ca - a.ca)[0]?.id; });

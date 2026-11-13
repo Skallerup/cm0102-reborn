@@ -9,6 +9,18 @@ export interface ChangelogEntry {
 
 export const CHANGELOG: ChangelogEntry[] = [
   {
+    version: '0.26.0',
+    date: '2026-11-13',
+    title: { da: 'Originalens økonomi og bestyrelse, ny indlæsning', en: 'The original economy and board, new loading screen' },
+    items: [
+      { da: "⚠ Kræver et nyt spil med den originale database i ægte CM 01/02", en: "⚠ Needs a new game with the original database in authentic CM 01/02" },
+      { da: "Nyt spil viser en indlæsningsskærm i CM 01/02's stil med hvor langt den er nået – og siden fryser ikke længere, mens verden bliver skabt", en: "A new game shows a loading screen in the CM 01/02 style with its progress – and the page no longer freezes while the world is created" },
+      { da: "Ægte CM 01/02 med den originale database: økonomien følger originalen – billetindtægter, sæsonkort, merchandise, renter, vedligehold, tv-penge, ligapræmier og udbytte – og View Finances viser originalens poster", en: "Authentic CM 01/02 with the original database: the finances follow the original – gate receipts, season tickets, merchandise, interest, maintenance, TV money, league prize money and dividends – and View Finances shows the original's items" },
+      { da: "Bestyrelserne, fyringer, ledige job og jobtilbud følger originalens regler, og managernes omdømme ændrer sig efter kampene som i originalen", en: "The boards, sackings, vacant jobs and job offers follow the original's rules, and managers' reputations change after matches as in the original" },
+      { da: "Spillernes yndlinger og uvenner (klubber, holdkammerater og managere) kommer fra originalens database og påvirker moral og kampe", en: "Players' favourite and disliked clubs, team-mates and managers come from the original database and affect morale and matches" },
+    ],
+  },
+  {
     version: '0.25.0',
     date: '2026-11-12',
     title: { da: 'Om dette spil, originalens kalender', en: 'About this game, the original calendar' },

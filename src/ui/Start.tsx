@@ -7,13 +7,15 @@ import { DraftCreate } from './Draft';
 import { askConfirm } from './confirm';
 import { Select } from './select';
 import { CHALLENGES, challengeClub } from '../game/challenges';
-import { createGame, type WorldData } from '../game/newgame';
+import { createGame, type NewGameOptions, type WorldData } from '../game/newgame';
+import { NewGameLoader, type NewGameProgress } from './NewGameLoader';
+import type { GameState } from '../game/types';
 import { setupBots, type BotScope } from '../game/bots';
 import { enableMultiplayer } from '../game/humans';
 import { deleteSave, importSave, listSaves, loadGame, storeSave, type SaveMeta } from '../game/save';
 import { cloudSaves, deleteCloudSave, downloadCloudSave, type CloudSave } from '../online/account';
 import { AccountBar, useAccount } from './Login';
-import { gs, notify } from '../game/state';
+import { gs, notify, setGame } from '../game/state';
 import type { Lang } from '../game/types';
 import { compName, CURRENCIES, dateFmt, getCurrency, getLang, setCurrency, setLang, t, type Currency, natName } from '../i18n';
 import { Flag, Panel } from './components';
@@ -38,6 +40,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
   const [draftFrom, setDraftFrom] = useState<View>('menu'); // hvor man kom fra til draft-opret (tilbage-knap)
   const [playDb, setPlayDb] = useState<string | undefined>(); // "Spil" fra editoren: start med den database
   const [busy, setBusy] = useState('');
+  const [prog, setProg] = useState<NewGameProgress | null>(null);
   const [err, setErr] = useState('');
   const lang = getLang();
 
@@ -97,13 +100,13 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
           </Panel>
         )}
         {view === 'editor' && <Editor onBack={() => setView('menu')} onPlay={(id) => { setChallenge(undefined); setPlayDb(id); setView('new'); }} />}
-        {view === 'new' && <NewGame challenge={challenge} initialDb={playDb} onBack={() => { setPlayDb(undefined); setView('menu'); }} setBusy={setBusy} onDraft={() => { setDraftFrom('new'); setView('newDraft'); }} />}
+        {view === 'new' && <NewGame challenge={challenge} initialDb={playDb} onBack={() => { setPlayDb(undefined); setView('menu'); }} setBusy={(b) => { setBusy(b); if (!b) setProg(null); }} setProg={setProg} onDraft={() => { setDraftFrom('new'); setView('newDraft'); }} />}
         {view === 'online' && <OnlineMenu onBack={() => { history.replaceState(null, '', location.pathname); setView('menu'); }} onCreate={() => setView('newOnline')} onCreateDraft={() => { setDraftFrom('online'); setView('newDraft'); }} setBusy={setBusy} initialCode={roomParam} />}
         {view === 'newDraft' && <DraftCreate onBack={() => setView(draftFrom)} setBusy={setBusy} />}
         {view === 'newOnline' && <NewGame online onBack={() => setView('online')} setBusy={setBusy} />}
         <div className="footer-note">{t('start.footer')}</div>
       </div>
-      {busy && <div className="progress"><div>{busy}</div></div>}
+      {busy && (prog ? <NewGameLoader label={busy} progress={prog} /> : <div className="progress"><div>{busy}</div></div>)}
     </div>
   );
 }
@@ -170,7 +173,7 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 // sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
 const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey', sv: 'Sweden', nb: 'Norway' };
 
-function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
+function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; setProg?: (p: NewGameProgress | null) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
   const [world, setWorld] = useState<WorldData | null>(null);
   const [err, setErr] = useState('');
   const ch = CHALLENGES.find((c) => c.id === challenge);
@@ -312,7 +315,8 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
       if (online) {
         try { await createOnlineGame(world, { ...opts, deadlineHours: deadline }, { count: bots, scope: botScope }); } catch (e) { setErr(String((e as Error).message)); }
       } else {
-        createGame(world, opts);
+        if (setProg) setProg({ step: 'clubs', frac: 0 });
+        await createGameAsync(world, opts, (p) => setProg?.(p));
         if (bots > 0) {
           // lokalt spil mod AI-managere: samme multiplayer-regler, men du spiller dine kampe live
           enableMultiplayer('host', opts.managerName);
@@ -420,3 +424,25 @@ function NewGame({ challenge, onBack, setBusy, online, onDraft, initialDb }: { c
   );
 }
 
+
+/** nyt spil i en Web Worker (ui/newGameWorker.ts) med status undervejs – siden fryser ikke; uden Worker (eller ved fejl) i hovedtråden */
+async function createGameAsync(world: WorldData, opts: NewGameOptions, onProgress: (p: NewGameProgress) => void): Promise<void> {
+  if (typeof Worker === 'undefined') { createGame(world, opts); return; }
+  try {
+    const game = await new Promise<GameState>((resolve, reject) => {
+      const w = new Worker(new URL('./newGameWorker.ts', import.meta.url), { type: 'module' });
+      w.onmessage = (e: MessageEvent<import('./newGameWorker').NewGameMsg>) => {
+        const m = e.data;
+        if (m.type === 'progress') onProgress({ step: m.step, frac: m.frac });
+        else if (m.type === 'done') { w.terminate(); resolve(m.game as GameState); }
+        else { w.terminate(); reject(new Error(m.message)); }
+      };
+      w.onerror = (e) => { w.terminate(); reject(new Error(e.message || 'worker')); };
+      w.postMessage({ world, opts });
+    });
+    setGame(game);
+  } catch (e) {
+    console.warn('Nyt spil i en Worker fejlede – opretter i hovedtråden', e);
+    createGame(world, opts);
+  }
+}
