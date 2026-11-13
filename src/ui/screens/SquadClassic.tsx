@@ -190,7 +190,13 @@ const shortName = (p: Player | undefined, star = false) => (p ? `${p.last}${p.fi
 /** En anden klubs trup (eller et landshold: players) i klassisk stil: to kolonner med View og Sort By – uden udtagelse */
 export function ClassicClubSquad({ cid, players: given }: { cid: number; players?: Player[] }) {
   const g = useGame()!;
-  if (authentic() && !given && cid > 0 && cid !== g.userClub) return <ClassicFirstSquad cid={cid} />;
+  // eget komponent pr. gren (key = klubben): skiftet mellem skærmene må ikke ændre antallet af hooks (React-fejl #300 på staging 13/11)
+  if (authentic() && !given && cid > 0 && cid !== g.userClub) return <ClassicFirstSquad key={`ro${cid}`} cid={cid} />;
+  return <ClubSquadList key={`cs${cid}`} cid={cid} players={given} />;
+}
+
+function ClubSquadList({ cid, players: given }: { cid: number; players?: Player[] }) {
+  const g = useGame()!;
   const { nav } = useNav();
   const [view, setView] = useRouteState('csqview', 'pos');
   const [sortKey, setSort] = useRouteState('csort', 'pos');
