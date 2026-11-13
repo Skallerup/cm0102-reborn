@@ -1,5 +1,6 @@
 import { BoardScreen } from './screens/Board';
 import { NewsPrompt, useNewsPrompt } from './Login';
+import { SaveGameClassic } from './SaveGameClassic';
 import type { GameState, HolidaySettings } from '../game/types';
 import type { Route } from './core';
 import { addDays, daysBetween } from '../game/dates';
@@ -183,6 +184,7 @@ export function Shell() {
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
+  const [saveOpen, setSaveOpen] = useState(false);
   // CM 01/02: på ferie spørger et klik HVOR SOM HELST "Return from holiday ?" (ikke kun den grå bjælke). Kørslen stopper, og svarer man
   // No, fortsætter ferien. Klik i selve spørgsmålet (.cx-confirm) går igennem.
   const askingHolidayRef = useRef(false);
@@ -501,7 +503,7 @@ export function Shell() {
             <NationsClubsMenu />
             <FindMenu />
             <GameOptionsMenu online={!!online} allowed={(k) => allowed(k as ScreenName)} onQuit={quit}
-              onSave={async () => { await saveGame({ cloud: true }); setToast(t('top.saved')); }} />
+              onSave={() => setSaveOpen(true)} />
             <div className="cx-side-grow" />
             {/* You Have News: åbner den ældste ulæste besked – hvert klik går videre til den næste (som Continue Game) */}
             {unread > 0 && <button className="cx-news" onClick={() => { if (!showOldestUnread(g.news)) nav({ name: 'inbox' }); }}>{t('cl.youHaveNews')}</button>}
@@ -634,6 +636,7 @@ export function Shell() {
         </div>
       )}
       {newsAsk && !['match', 'matchday', 'report'].includes(route.name) && <NewsPrompt seasons={g.manager.history?.length ?? 0} onClose={closeNewsAsk} />}
+      {saveOpen && <SaveGameClassic onClose={() => setSaveOpen(false)} onSaved={() => { setSaveOpen(false); setToast(t('top.saved')); }} />}
       {holiday !== null && <HolidayPanel untilMatch={holiday} onClose={() => setHoliday(null)} onGo={(set) => {
         setHoliday(null);
         const g2 = gs();

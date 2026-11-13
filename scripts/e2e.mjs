@@ -436,6 +436,17 @@ async function run(look) {
       await page.waitForTimeout(150);
     }
   });
+  // Game Options → Save Game (CM 01/02 "Enter File Name"): navngivet gemt spil
+  if (look === 'klassisk') await step('Save Game med filnavn', async () => {
+    await go({ name: 'inbox' });
+    await page.locator('.cx-side .cx-drop-btn', { hasText: 'Game Options' }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Save Game' }).first().click();
+    await page.waitForSelector('.cx-savegame .cx-sv-file input', { timeout: 5000 });
+    await page.fill('.cx-savegame .cx-sv-file input', 'E2E SAVE');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-save-game.png` });
+    await page.locator('.cx-savegame .cx-sv-foot button.primary').click();
+    await page.waitForSelector('.cx-savegame', { state: 'detached', timeout: 10000 });
+  });
   if (look === 'klassisk') await step('anden klubs taktik (Tactics ▸)', async () => {
     const other = await gs(() => { const g = window.__cm.gs(); return Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league).id; });
     await go({ name: 'club', id: other });

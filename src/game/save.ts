@@ -14,7 +14,12 @@ export interface SaveMeta {
   club: string;
   date: string;
   saved: string;
+  /** CM 01/02's Save Game: filnavnet (et navngivet gemt spil er sin egen kopi – id = spillets id + navnet) */
+  name?: string;
 }
+
+/** id'et for et navngivet gemt spil */
+export const namedSaveId = (gameId: string, name: string) => `${gameId}~${name.trim().toLowerCase().replace(/[^a-z0-9æøåäöü-]+/gi, '-').slice(0, 40)}`;
 
 export async function serialize(g: GameState): Promise<Blob> {
   return serializeState(g);
@@ -26,7 +31,7 @@ let cloudHook: CloudHook | null = null;
 export function setCloudHook(h: CloudHook | null) { cloudHook = h; }
 
 /** Gem lokalt (og i skyen: altid ved cloud=true, ellers højst hvert 5. minut) */
-export async function saveGame(opts?: { cloud?: boolean }): Promise<SaveMeta> {
+export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promise<SaveMeta> {
   const g = gs();
   // online-spil gemmes på serveren – en lokal kopi ville blive genoptaget i stedet for det rigtige spil
   if (g.humans?.length) throw new Error('online');
@@ -34,16 +39,19 @@ export async function saveGame(opts?: { cloud?: boolean }): Promise<SaveMeta> {
   // admin-preview af en andens spil: gem aldrig (hverken lokalt eller i skyen)
   if (previewInfo()) return meta0;
   const blob = await serialize(g);
+  const name = opts?.name?.trim();
+  const id = name ? namedSaveId(g.id, name) : g.id;
   const meta: SaveMeta = {
-    id: g.id,
+    id,
     manager: g.manager.name,
     club: g.clubs[g.userClub]?.name ?? '—',
     date: g.date,
     saved: new Date().toISOString(),
+    ...(name ? { name } : {}),
   };
-  await set(`save:${g.id}`, blob);
-  await set(`meta:${g.id}`, meta);
-  rememberLast({ kind: 'local', id: g.id });
+  await set(`save:${id}`, blob);
+  await set(`meta:${id}`, meta);
+  rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
   return meta;
 }

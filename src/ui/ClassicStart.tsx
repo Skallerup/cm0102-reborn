@@ -493,7 +493,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
           {rows && !rows.length && <div className="cxs-wait">{t('start.noSaves')}</div>}
           {rows?.map((s) => (
             <div key={s.id} className="cxs-it save" role="button" tabIndex={0} onClick={() => void (del ? removeSave(s) : openSave(s))}>
-              <span className="n">{s.club} <em>– {s.manager}</em></span>
+              <span className="n">{s.local?.name ?? s.club} <em>– {s.local?.name ? `${s.club}, ` : ""}{s.manager}</em></span>
               <span className="extra">{dateFmt(s.date)}{s.cloud ? ' ☁' : ''}</span>
             </div>
           ))}

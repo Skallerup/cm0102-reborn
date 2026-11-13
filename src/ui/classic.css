@@ -1708,3 +1708,19 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-exch-top { position: relative; }
 .cx-exch-btn { position: absolute; right: 0; top: 0; min-width: 160px; height: 26px; background: #fff; color: #00007d; border: 1px solid #c8c8c8; font-size: 14px; cursor: pointer; }
 .cx-exch-btn.on { background: #d8d8d8; box-shadow: inset 2px 2px 0 #888; }
+
+/* CM 01/02 Save Game: filnavn, de gemte spil som brede felter med blå ramme, Cancel · Info · Ok */
+.cx-savegame .cx-dlg-body { display: flex; flex-direction: column; gap: 10px; }
+.cx-sv-dir { display: flex; align-items: center; gap: 16px; padding: 8px 14px; background: rgba(0, 0, 0, 0.35); color: #fff; }
+.cx-sv-dir b { color: #6fe3ff; font-weight: 400; }
+.cx-sv-dir .cx-greybtn { margin-left: auto; }
+.cx-sv-why { margin: 0 14px; color: #e4e4e4; font-size: 14px; }
+.cx-sv-file { display: flex; align-items: center; gap: 40px; margin: 6px 10% 0; padding: 14px 40px; background: rgba(0, 0, 0, 0.35); color: #fff; font-size: 20px; }
+.cx-sv-file input { flex: 1; background: transparent; border: 0; color: #6fe3ff; font: inherit; outline: none; }
+.cx-sv-list { display: flex; flex-direction: column; margin: 0 10%; }
+.cx-sv-list button { height: 52px; background: rgba(0, 0, 0, 0.3); border: 2px solid #0000a5; color: #e4e4e4; font-size: 20px; cursor: pointer; }
+.cx-sv-list button:hover { color: #fff21f; }
+.cx-sv-foot { grid-template-columns: 2fr 1fr 1fr; }
+
+/* CM 01/02 (ejerens billede 13/11): links i nyhederne (overskrift og brødtekst) har tekstens egen farve – kun understregede */
+:root[data-skin='retro'] .cx-inbox :is(.cx-nbody, .cx-nhead, .cx-ntitle) :is(.cx-link, .link, .club-link, [role='link'], a) { color: inherit !important; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }

@@ -300,6 +300,10 @@ function ClassicCareer({ p }: { p: Player }) {
   const s = p.stats;
   const rows: Row[] = [
     ...(p.club ? [{ season: g.season, club: p.club, apps: s.apps + s.subs, goals: s.goals, assists: s.assists, mom: s.mom, avr: s.ratingCount ? avgRating(p) : 0, loan: !!p.loan, now: true }] : []),
+    // klubberne, han har forladt i denne sæson (CM 01/02 viser en linje pr. klub – Barcelona → Roma → Sunderland samme sommer)
+    ...(g.draft ? [] : (p.moves ?? []).filter((m) => m.season === g.season && m.from > 0 && m.from !== p.club).reverse()
+      .filter((m, i, a) => a.findIndex((x) => x.from === m.from) === i && !(p.history ?? []).some((h) => h.season === g.season && h.club === m.from))
+      .map((m) => ({ season: g.season, club: m.from, apps: 0, goals: 0, loan: !!m.loan }))),
     ...(g.draft ? [] : (p.history ?? []).slice().reverse().map((h) => ({ season: h.season, club: h.club, apps: h.apps, goals: h.goals, assists: h.assists, avr: h.avg, loan: h.loan }))),
     ...(real ?? []).slice().reverse().map((r) => ({ season: r.season, club: r.club, name: r.clubName, apps: r.apps, goals: r.goals, loan: r.loan })),
   ];
