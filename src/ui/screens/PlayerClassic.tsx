@@ -512,8 +512,9 @@ export function ClassicPlayer({ id }: { id: number }) {
     <div>
       <Head title={`${p.first} ${p.last}`} action={<ActionMenu items={items} clubId={p.club || undefined} />} />
       <Tabs tabs={tabs} value={tab} onChange={(v) => setTab(v as Tab)} />
-      {msg && <div className="insight">{msg}</div>}
-      {!mine && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} onOpen={(o) => setBid(o.id)} />}
+      {msg && !(authentic() && msg === t('player.bidSent')) && <div className="insight">{msg}</div>}
+      {/* CM 01/02 viser hverken "Offer sent" eller "Your offer" på spillerens side – svaret kommer som nyhed */}
+      {!mine && !authentic() && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} onOpen={(o) => setBid(o.id)} />}
       {mine && p.complaint && <Complaint pid={p.id} onMsg={setMsg} />}
       {mine && p.playPromise && <div className="insight warn">{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
       {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}

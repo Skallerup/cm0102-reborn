@@ -1,4 +1,5 @@
 // Træning og spillerudvikling (ugentlig)
+import { cashRound } from './cmTransferBid';
 import { A, ATTRS, type AttrKey } from './attributes';
 import { ageOn } from './dates';
 import { rng } from './rng';
@@ -199,7 +200,7 @@ export function monthlyValues() {
       const yearsLeft = (Number(p.contract.expires.slice(0, 4)) - Number(g.date.slice(0, 4)));
       if (yearsLeft <= 0) v *= 0.75;
     }
-    p.value = roundV(Math.max(1000, v));
+    p.value = g.econ ? cashRound(Math.max(1000, v)) : roundV(Math.max(1000, v));
     p.rep = Math.max(1, Math.min(100, p.rep * 0.97 + ((p.ca - 40) * 0.55) * 0.03));
   }
 }

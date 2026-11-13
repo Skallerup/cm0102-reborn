@@ -56,11 +56,23 @@ export function cmClubEuro(g: GameState, club: number): number {
   return -1;
 }
 
+/** periodens ord (originalen: "a few days", "about a week", "about a month", "about a year" …) */
+function rangeKey(days: number): string {
+  if (days <= 5) return 'injury.r.few';
+  if (days <= 10) return 'injury.r.week';
+  if (days <= 24) return `injury.r.weeks${Math.round(days / 7)}`;
+  if (days <= 45) return 'injury.r.month';
+  if (days <= 300) return `injury.r.months${Math.min(9, Math.round(days / 30))}`;
+  return 'injury.r.year';
+}
+
 function injuryNews(g: GameState, kind: 'injury' | 'recovered', p: Player, inj: CmInjury): void {
   if (!p.club) return;
   const key = `cm${inj.t}`;
   if (kind === 'recovered') asOwner(p.club, () => addNews({ cat: 'injury', key: 'news.recovered', params: { player: pname(p), last: p.last, injury: key }, link: { kind: 'player', id: p.id } }));
-  else asOwner(p.club, () => addNews({ cat: 'injury', key: 'injury.cmNew', params: { player: pname(p), injury: key, days: inj.w2a }, link: { kind: 'player', id: p.id } }));
+  // CM 01/02 (strengene i cm0102.exe): overskriften "Keane injured" / "suffers injury" / "injury shocker" / "Injury blow for …" / "out for …",
+  // brødteksten "X will be out of action for <periode> after he suffered <skade>." – hvilken overskrift og periodens ord er *estimeret*
+  else asOwner(p.club, () => addNews({ cat: 'injury', key: `injury.o.h${p.id % 5}`, params: { player: pname(p), last: p.last || pname(p), injury: key, range: rangeKey(inj.w2a), days: inj.w2a }, link: { kind: 'player', id: p.id } }));
   void g;
 }
 

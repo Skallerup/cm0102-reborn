@@ -27,6 +27,9 @@ export function Head({ title, children, action, menu }: { title: ReactNode; chil
 export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
+  // originalens skadenyhed: periodens ord ("about three weeks") og skaden med lille forbogstav i brødteksten
+  if (typeof p.range === 'string' && p.range.startsWith('injury.r.')) p.range = t(p.range);
+  if (n.key.startsWith('injury.o.')) p.injury = p.injuryLc;
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
   if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
   if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);

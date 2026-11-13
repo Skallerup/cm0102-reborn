@@ -1,4 +1,5 @@
 // Opret et nyt spil ud fra world.json
+import { cashRound } from './cmTransferBid';
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
 import { capCA, fillMissing, initialisePA, makePool, makeRand, repairPositions, shownFromStored } from './playerInit';
 import { splitReserves } from './reserves';
@@ -8,7 +9,7 @@ import { naturalRole } from './attributes';
 import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupUefaCup } from './competitions';
 import { ageOn } from './dates';
 import {
-  caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, roundValue, type SubPos,
+  caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, type SubPos,
 } from './data/generate';
 import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { rulesFor, LEAGUE_RULES } from './leagues';
@@ -260,9 +261,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       const vc = g.econ && cm ? cm.valueClub?.[club] : undefined;
       // originalens sub_4d0c60, når databasen har klubbens felter (bygget efter 9/11-2026); ellers den tilpassede kurve
       p.value = vc && rt?.rep
-        ? roundValue(formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: rt.rep, caps: p.caps, staffId: p.id, clubId: club, vc }) / GBP)
+        ? cashRound(formulaValueGbp({ pa: p.pa, age, pos: p.pos, attrs: p.attrs, rep: rt.rep, caps: p.caps, staffId: p.id, clubId: club, vc }) / GBP)
         : g.econ && cm
-        ? roundValue(originalValueGbp(p.ca, age, cm.clubRep[club] ?? 30, (r[F.wage] as number) || 0, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, rt?.rep ?? repTriple(p.rep)) / GBP)
+        ? cashRound(originalValueGbp(p.ca, age, cm.clubRep[club] ?? 30, (r[F.wage] as number) || 0, lg ? g.nations[lg.nation]?.name : undefined, lg?.tier ?? 9, rt?.rep ?? repTriple(p.rep)) / GBP)
         : valueFromCA(p.ca, p.pa, age);
     }
     // CM 01/02: trøjenummeret fra databasen (dubletter og manglende numre ordnes efter, at trupperne er fyldt op)

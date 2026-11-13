@@ -430,7 +430,8 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
     addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
     for (const line of rep.players) {
-      if (line.injured && g.players[line.id]?.club === g.userClub) {
+      // den originale database i ægte tilstand: konditionsmodulet sender originalens ene skadenyhed (cmFitnessGame.ts) – ikke også denne
+      if (line.injured && g.players[line.id]?.club === g.userClub && !cmActive(g)) {
         const p = g.players[line.id];
         addNews({ cat: 'injury', key: 'news.injury', params: { player: pname(p), injury: p.injury?.key ?? 'bruise', days: p.injury?.days ?? 0, club: g.clubs[g.userClub]?.short ?? '', opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', res: key.slice(6) }, link: { kind: 'player', id: p.id } });
       }

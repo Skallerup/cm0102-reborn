@@ -74,6 +74,8 @@ export function cashStep(x: number): number {
     : x <= 5_000_000 ? 100_000 : x <= 20_000_000 ? 250_000 : x <= 50_000_000 ? 500_000 : 1_000_000;
 }
 const roundTo = (x: number, t: number) => Math.floor((x + t / 2) / t) * t;
+/** et beløb afrundet som originalens (pund, cashStep-trinnet – £5.25M, £2.7M, £150K – ikke skæve beløb efter valutaomregningen) */
+export function cashRound(eur: number): number { const x = toGbp(eur); return fromGbp(roundTo(x, cashStep(x))); }
 /** Cash::step_up 0x43f4e0(4): afrund til trinnet, læg trinnet over x + 1 til (i pund) */
 export function stepUp(eur: number): number { let x = toGbp(eur); x = roundTo(x, cashStep(x)); return fromGbp(x + cashStep(x + 1)); }
 /** Cash::step_down 0x43f580(4) */
