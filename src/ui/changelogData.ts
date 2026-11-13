@@ -51,6 +51,8 @@ export const CHANGELOG: ChangelogEntry[] = [
       { da: "Skadenyhederne som originalen: én nyhed (fx \"Keane injured\") med \"will be out of action for about three weeks after he suffered …\"", en: "Injury news as in the original: one item (e.g. \"Keane injured\") with \"will be out of action for about three weeks after he suffered …\"" },
       { da: "Spillernes værdier og beløb er rundet som i originalen (£5.25M, £2.7M – ingen skæve beløb), og budskærmen er justeret som originalen", en: "Player values and amounts are rounded as in the original (£5.25M, £2.7M – no odd amounts), and the bid screen is laid out as in the original" },
       { da: "\"Offer sent\" og \"Your offer\" er væk fra spillerens side – svaret kommer som nyhed", en: "\"Offer sent\" and \"Your offer\" are gone from the player page – the answer arrives as news" },
+      { da: "Future viser kun originalens linjer (ingen modsigende \"Is unhappy\" + \"Happy to stay\"), og nyheder, der ikke findes i originalen, er væk (transfervinduet, \"has found a big talent\")", en: "Future shows only the original's lines (no contradictory \"Is unhappy\" + \"Happy to stay\"), and news that doesn't exist in the original is gone (transfer window, \"has found a big talent\")" },
+      { da: "Spejderne anbefaler ikke spillere, der lige er skiftet klub", en: "Scouts no longer recommend players who have just changed clubs" },
       { da: "Rettet: et selvmål under et skud blev talt to gange i kampens statistik; nyheden om, at en spiller var sat til salg \"for £0\" efter et afvist bud, kom i ægte tilstand", en: "Fixed: an own goal during a shot was counted twice in the match stats; a news item said a player was listed \"for £0\" after a rejected bid in authentic mode" },
     ],
   },

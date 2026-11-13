@@ -261,7 +261,8 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
   // den originale database i ægte tilstand: originalens Availability og Future (0x87dd80 – cmTransferList.ts)
-  const cm = cmActive(g) && mine;
+  // ægte CM 01/02: originalens Future (0x87dd80) for alle spillere, man kender – aldrig spillets egne, modsigende linjer
+  const cm = cmActive(g) && (mine || k >= 45);
   // CM 01/02 kender kun "Transfer listed by club/by request", "Listed for loan" og "Unknown" – også for andre klubbers spillere (ingen "Could be bought for")
   const availability = cmActive(g) && p.club ? t(`cm.av.${cmAvailability(p)}`) : mine
     ? p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}` : p.loan ? t('tag.loan') : t('cl.pl.av.notForSale')
@@ -274,7 +275,8 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const interestIds = interestedClubs(p).map((i) => i.club);
   const cmFut = cm ? cmFutureLines(g, p).map((x) => t(`cm.fut.${x.k}`, x.p)) : [];
   // *estimeret*: blokkene, der ikke er porteret (klubbens resultater, harmoni …), gav ingen linje – så spillets egne
-  const fut = cm && cmFut.length ? cmFut : futureLines(p, mine, k);
+  // ingen klager: originalens "Happy to stay at the club" (de øvrige tilfredse varianter 0x87ee70– er ikke porteret – *estimeret*)
+  const fut = cm ? (cmFut.length ? cmFut : [p.club ? t('cl.pl.fut.happy') : '-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
   // CM 01/02: Availability, Value, Fluent Languages, Offers, Interested, Future (én linje pr. række)
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
   const rows: [string, ReactNode, string?][] = [

@@ -1858,6 +1858,8 @@ export function windowLastDay(date = gs().date): string | null {
  */
 export function windowNews() {
   const g = gs();
+  // CM 01/02 har ingen af disse nyheder (transfervinduerne kom først i 2002) – kun i det udvidede spil
+  if (cmActive(g)) return;
   const today = g.date, yesterday = addDays(today, -1);
   const open = windowOpen(today), wasOpen = windowOpen(yesterday);
   if (open && !wasOpen) {
