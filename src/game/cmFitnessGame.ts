@@ -13,13 +13,15 @@ import { cmRand, statCategory } from './cmPlayerData';
 import { cmTrainPlayer, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
+import { CM_SETUP_INJURIES } from './data/cmPreseason';
+import { addInjury } from './cmFitness';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 /** modulet gælder: original DB i ægte tilstand, ikke draft-ligaen */
 export const cmFitOn = (g: GameState) => cmActive(g) && !g.draft;
 
 /** formålene for talrækken (en pr. kaldested, så rækkefølgen inden for et formål er originalens) */
-const SALT = { daily: 1, recover: 2, match: 3, read: 4, init: 5, prerun: 6 } as const;
+const SALT = { daily: 1, recover: 2, match: 3, read: 4, init: 5, prerun: 6, setup: 7 } as const;
 
 export function fitCtx(g: GameState, salt: number, today = dayNum(g.date)): FitCtx {
   return {
@@ -123,9 +125,22 @@ export function cmFitNewGame(g: GameState): void {
   const staff = Object.keys(g.staff).length;
   prerunInjury = { ps, staff };
   try { runPrerun(g, db + 1, start); } finally { prerunInjury = null; }
+  cmSetupInjuries(g, start);
   const c = fitCtx(g, SALT.init, start);
   initSquadFitness(c, ps);
   for (const p of ps) { if (p.cmFit) p.cmFit.load = trainingLoad(p, !!p.club && isHumanClub(p.club)); syncPlayer(c, p); }
+}
+
+/** player_setup.cfg 0x7a30c0(0x203b) efter forkørslen (0x5cc850, før 0x62a920): INJURY-linjerne → add_injury(type, 0, staff, 0, 1, −1, niveau,
+ *  future) på startdagen (0x7a44c4/0x7a44fa). Linjerne er fundet i databasen af scripts/build-preseason.mts (0x7a50f0 – data/cmPreseason.ts).
+ *  Nyheden 0x62dca0 til mennesket sendes ikke (*estimeret* – spillet er ikke begyndt). LOAN/INT_RETIREMENT/MISCONDUCT er ikke porteret. */
+export function cmSetupInjuries(g: GameState, start: number): void {
+  const list = CM_SETUP_INJURIES[g.dbVersion ?? '3.9.60'] ?? [];
+  const c = { ...fitCtx(g, SALT.setup, start), news: undefined };
+  for (const [id, t, perm, future] of list) {
+    const p = g.players[id];
+    if (p) addInjury(c, t, false, p, 0, true, -1, perm, future === 1);
+  }
 }
 
 /** forkørslens Injury-trin (0x5cc850 → 0x62b7b0 ved tidspunkt 2) – spillerlisten og stabens antal fra cmFitNewGame */

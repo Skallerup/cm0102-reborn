@@ -36,6 +36,7 @@ import { cmStartDate } from './cmCalendar';
 import { cmEuroOn, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmFitNewGame } from './cmFitnessGame';
+import './cmFriendly';                                               // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';
 import { cmFinanceNewGame } from './cmFinance';
 import { cmPermitNewGame } from './cmPermit';

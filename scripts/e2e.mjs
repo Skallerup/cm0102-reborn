@@ -701,9 +701,13 @@ async function run(look) {
       const b = page.locator('.cx-sq-orig .cx-selbtn').first(); await b.hover();
       if ((await b.evaluate((el) => getComputedStyle(el).backgroundColor)) !== 'rgb(0, 0, 125)') throw new Error('hover ændrer udtagelsesfeltets farve');
       // træk en plads fra strimlen ned på en spiller uden plads: spilleren sættes på pladsen (originalen)
-      const free = await gs(() => { const g = window.__cm.gs(); const t = g.tactic; return Object.values(g.players).find((p) => p.club === g.userClub && !p.reserves && !t.lineup.includes(p.id) && !t.bench.includes(p.id))?.id ?? 0; });
+      // en spiller uden plads, der står i listen (ikke skadet – forsæsonen giver startskader)
+      const shown = await page.locator('.cx-sq-orig .cx-sq-row [data-pid]').evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-pid'))));
+      const free = await gs((ids) => { const g = window.__cm.gs(); const t = g.tactic; return ids.find((id) => { const p = g.players[id]; return p && !p.injury && !(p.banned > 0) && !t.lineup.includes(id) && !t.bench.includes(id); }) ?? 0; }, shown);
       if (free) {
-        await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first());
+        const target = page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first();
+        await target.scrollIntoViewIfNeeded();
+        await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target);
         await page.waitForFunction((id) => window.__cm.gs().tactic.lineup[1] === id, free, { timeout: 5000 }).catch(() => { throw new Error('trækket fra strimlen ned på en spiller satte ham ikke på pladsen'); });
       }
       // klik på en besat plads i strimlen tømmer den
@@ -719,6 +723,19 @@ async function run(look) {
       if (await page.locator('.cx-print').count()) throw new Error('Print-knappen skal være fjernet');
       await go({ name: 'fixtures' });
       await page.locator('.cx-drop-btn', { hasText: 'Arrange' }).first().waitFor({ timeout: 5000 });
+      // den originale database: computerens venskabskampe/turnéer i forsæsonen (cmFriendly.ts) står i Fixtures som "Friendly" før første ligakamp
+      if (ENGINE_GRID) {
+        const fc = await gs(() => {
+          const g = window.__cm.gs();
+          const firstLeague = (c) => Object.values(g.fixtures).filter((f) => g.comps[f.comp]?.type === 'league' && (f.home === c || f.away === c)).map((f) => f.date).sort()[0] ?? '9999';
+          const f = Object.values(g.fixtures).find((x) => x.comp === 'FRIENDLY' && g.clubs[x.away]?.nation === g.clubs[g.userClub]?.nation && x.date < firstLeague(x.away));
+          return f ? f.away : 0;
+        });
+        if (!fc) throw new Error('ingen venskabskamp før første ligakamp i den originale database');
+        await go({ name: 'club', id: fc, state: { cview: 'fixtures' } });
+        await page.locator('.cx-fx-comp.friendly', { hasText: 'Friendly' }).first().waitFor({ timeout: 5000 }).catch(() => { throw new Error('Fixtures viser ikke venskabskampen som "Friendly"'); });
+        if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-venskabskampe-original.png` });
+      }
       await go({ name: 'club', state: { cview: 'stats' } });
       await page.waitForSelector('.cx-finv-orig .cx-fin-stats', { timeout: 5000 });
       const n = await page.locator('.cx-finv-orig .cx-fin-stats > div').count();

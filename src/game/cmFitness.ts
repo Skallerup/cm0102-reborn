@@ -109,6 +109,8 @@ const SEASON: Record<number, [number, number]> = {
 /** 0xb63d60 +0x2a: landets sæsonstart (dag i året) – spilstartens dato 0x830520 (cmCalendar.ts) */
 export const seasonStartDay = (nation: number | undefined): number | undefined => (nation !== undefined ? SEASON[nation]?.[0] : undefined);
 export const hasSeasonRow = (nation: number | undefined) => nation !== undefined && !!SEASON[nation];
+/** rækken i 0xb63d60 for landet: [+0x2a startdag, +0x39 slutdag] (dag i året) – undefined uden række */
+export const seasonRow = (nation: number | undefined): readonly [number, number] | undefined => (nation !== undefined ? SEASON[nation] : undefined);
 /** 0x669bd0: [i sæson, start (arg2), slut (arg3)] som dagnumre */
 export function clubSeason(nation: number | undefined, today: number): [boolean, number, number] {
   const [A, B] = (nation !== undefined && SEASON[nation]) || [173, 40];
@@ -402,12 +404,20 @@ function physio(c: FitCtx, club: number): number {
 /** målinger (scripts): nye skader fra kampe og andet (træning, smitte, behandling) – påvirker intet */
 export const FIT_COUNT = { match: 0, other: 0 };
 
-/** Injury::add_injury 0x62d250(type, backdate, staff, fixture, allow_outbreak, news_arg, 0, 0) – de kald, spillet bruger (recurrence = 0) */
-export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fixture: number, outbreak: boolean, _news: number): CmInjury | null {
+/** Injury::add_injury 0x62d250(type, backdate, staff, fixture, allow_outbreak, news_arg, perm, future). `perm`/`future` (arg 7/8) bruges kun af
+ *  player_setup.cfg (0x7a3a10: "PERMANENT_<skade> n" → (n, 0), "FUTURE_PERMANENT_<skade> n" → (n, 1)); alle andre kald giver (0, 0). */
+export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fixture: number, outbreak: boolean, _news: number, perm = 0, future = false): CmInjury | null {
   if (!real(p) || t < 0 || t >= 0x52) return null;
   updateFitness(c, p);
   c.train?.(p);                                                                   // 0x62d312: 0x8b1750 (før skaden sættes)
   const r = fitOf(c.g, p);
+  perm = s8(perm);
+  if (future) {                                                                   // 0x62d317–0x62d3e0: kun den tilbagevendende skade, ingen skade nu
+    if (perm === 0 || !INJ_TYPES[t][5]) return null;
+    if (perm < 0) { if (c.rand(Math.trunc(perm / 10)) === 0) { r.rt = t; r.rl = 1; } return null; }
+    r.rt = t; r.rl = perm;
+    return null;
+  }
   let extra = 0;
   if (r.inj) {                                                                    // 0x62d3f1: kun behandling/ferie afløser en skade
     if (![0x4d, 0x4e, 0x4f, 0x51].includes(t)) return null;
@@ -443,11 +453,15 @@ export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fi
   r.inj = e;
   if (!backdate && p.club && c.human(p.club)) c.news?.('injury', p, e);          // 0x62dca0 (nyheden går også til landet m.fl. – ikke porteret)
   void fixture; void _news;
+  if (perm !== 0 && T[5]) {                                                       // 0x62d8fc–0x62d972 / 0x62dacd: PERMANENT_ fra player_setup.cfg
+    if (perm < 0) { if (c.rand(Math.trunc(perm / 10)) === 0) { r.rt = t; if (c.rand(perm) === 0) r.rl = 1; } }
+    else { r.rt = t; r.rl = perm; }
+  }
   r.b1c = 0;
   rollRecurring(c, r, e);
-  if (r.rt === t) {                                                               // 0x62d9d1: tilbagevendende → måske karrierens slut
+  if (r.rt === t && perm >= 0) {                                                  // 0x62d9d1: tilbagevendende → måske karrierens slut
     r.rl = s8(r.rl + 1);
-    if (r.rl > 1) { let m = 200 - T[2]; if (m <= 5) m = 5; if (c.rand(r.rl) > c.rand(m)) c.retire?.(p); }
+    if (r.rl > 1) { let m = 200 - T[2]; if (m <= 5) m = 5; if (perm > 0) m = Math.trunc(m / perm); if (c.rand(r.rl) > c.rand(m)) c.retire?.(p); }
   }
   const ip = IP(p);
   let retired = false;

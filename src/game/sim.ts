@@ -33,6 +33,7 @@ import { recordsAfterMatch } from './records';
 import { campDaily } from './camp';
 import { trialsDaily } from './trials';
 import { friendliesDaily } from './friendlies';
+import { cmFriendlyDay } from './cmFriendly';
 import { achievementsAfterMatch } from './achievements';
 import { storyAfterMatch } from './story';
 import { gateReceipts, januaryBudgetTopUp, monthlyIncome, snapshotFinanceMonth, sponsorWinBonus, weeklyWages } from './finance';
@@ -565,6 +566,8 @@ function newDay() {
   // udvidet spil: træningslejre og prøvespillere (ikke i CM 01/02)
   if (extended()) { campDaily(); trialsDaily(); }
   friendliesDaily();
+  // originalens venskabskampe for computerens klubber (Friendly::update 0x5c2460 – cmFriendly.ts; kun den originale database i ægte tilstand)
+  cmFriendlyDay(g);
   forEachHuman(aiBidsForListed);
   aiPursuits();
   if (weekday(d) === 4 && extended()) forEachHuman(aiLoanOptions);
