@@ -1772,3 +1772,5 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 /* beløbslisternes ▾ (Asking Price m.fl.) synlig på den mørke flade som i originalen */
 :root[data-skin='retro'] .cx-bid-amt .cx-drop-caret { color: #fff; text-shadow: 1px 1px 0 #000; }
 .cx-tac-tag.capt { cursor: grab; }
+/* egne spillere på landsholdet i gult (CM 01/02) – også i den originale trupvisning */
+:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.mine, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.mine:hover { color: var(--cx-gold); }
