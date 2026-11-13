@@ -37,6 +37,14 @@ const s8 = (v: number) => ((v & 0xff) << 24) >> 24;
 const s16 = (v: number) => ((v & 0xffff) << 16) >> 16;
 const row = (id: number) => { const e = (id & 0x7fff) - 8000; return e >= 0 && e < 677 ? EVENT_TABLE[e] : null; };
 
+// (runde 11B) vejrvarianternes tabeller (0x6d5d80) som konstanter – før bygget ved hvert opslag
+const WV1: Record<number, number> = { 0x216f: 0x2199, 0x2150: 0x2197, 0x2112: 0x2195, 0x1fee: 0x218d, 0x1f49: 0x2182, 0x205a: 0x2190, 0x205b: 0x2191, 0x2079: 0x2192 };
+const WV2: Record<number, number> = { 0x216f: 0x2199, 0x2150: 0x2197, 0x2112: 0x2195, 0x1fe6: 0x2193, 0x1fee: 0x218d, 0x1f48: 0x2181, 0x1f41: 0x2180, 0x1f44: 0x2187, 0x1f86: 0x2189, 0x1fa2: 0x218a };
+const WV8: Record<number, number> = { 0x216f: 0x2199, 0x2150: 0x2197, 0x2112: 0x2195, 0x1fe6: 0x2193, 0x1fee: 0x218d, 0x205a: 0x218e, 0x205b: 0x218f, 0x1f4b: 0x2183, 0x1f41: 0x2184, 0x1f4a: 0x2188 };
+const WV20: Record<number, number> = { 0x216f: 0x2199, 0x1fee: 0x218d, 0x1f42: 0x217c, 0x1f4b: 0x217d, 0x1f48: 0x2186 };
+const WVF: Record<number, number> = { 0x2112: 0x2196, 0x1fa6: 0x2194, 0x1f8b: 0x218b, 0x1fbf: 0x218c, 0x211f: 0x217f };
+const SET_PIECE_EVENTS = [0x1f4b, 0x1f4c, 0x1f4e, 0x1f4f, 0x1f50, 0x1f51, 0x1f52, 0x1f53];
+
 /** Match_Events (this = engine+0x8f7a) – felterne med originalens offsets */
 export class MatchEvents {
   /** +0 tilstand (konstruktøren: 1) */ b0 = 1;
@@ -128,7 +136,7 @@ export class MatchEvents {
     // varianten 0x6d71a8–0x6d720b: ét rand(S) ved > 1 variant, første k med r < eff_0 + … + eff_k
     const ev = id - 8000, vr = ev >= 0 && ev < 677 ? EVENT_TABLE[ev] : null;
     if (vr && vr[4].length > 1) {
-      const S = vr[4].reduce((a, b) => a + b, 0);
+      let S = 0; for (const w of vr[4]) S += w;
       const x = this.r(S);
       let acc = 0;
       for (let k = 0; k < vr[4].length; k++) { acc += vr[4][k]; if (x < acc) { e.variant = k; break; } }
@@ -210,18 +218,13 @@ export class MatchEvents {
     if (this.r(3) !== 0) return id;                      // 0x6d5d8a
     const { lo: bl, hi: bh, pitch: al } = this.weather;
     const flag = bl === 4 || bl === 3 || bl === 2;       // 0x6d5da7
-    const W1: Record<number, number> = { 0x216f: 0x2199, 0x2150: 0x2197, 0x2112: 0x2195, 0x1fee: 0x218d, 0x1f49: 0x2182, 0x205a: 0x2190, 0x205b: 0x2191, 0x2079: 0x2192 };
-    const W2: Record<number, number> = { 0x216f: 0x2199, 0x2150: 0x2197, 0x2112: 0x2195, 0x1fe6: 0x2193, 0x1fee: 0x218d, 0x1f48: 0x2181, 0x1f41: 0x2180, 0x1f44: 0x2187, 0x1f86: 0x2189, 0x1fa2: 0x218a };
-    const W8: Record<number, number> = { 0x216f: 0x2199, 0x2150: 0x2197, 0x2112: 0x2195, 0x1fe6: 0x2193, 0x1fee: 0x218d, 0x205a: 0x218e, 0x205b: 0x218f, 0x1f4b: 0x2183, 0x1f41: 0x2184, 0x1f4a: 0x2188 };
-    const W20: Record<number, number> = { 0x216f: 0x2199, 0x1fee: 0x218d, 0x1f42: 0x217c, 0x1f4b: 0x217d, 0x1f48: 0x2186 };
-    const WF: Record<number, number> = { 0x2112: 0x2196, 0x1fa6: 0x2194, 0x1f8b: 0x218b, 0x1fbf: 0x218c, 0x211f: 0x217f };
-    if (al === 1) { if (id in W1) return W1[id]; }
-    else if (al === 2) { if (id in W2) return W2[id]; }
-    else if (al === 8) { if (id in W8) return W8[id]; }
+    if (al === 1) { if (id in WV1) return WV1[id]; }
+    else if (al === 2) { if (id in WV2) return WV2[id]; }
+    else if (al === 8) { if (id in WV8) return WV8[id]; }
     else if (al === 0x40) { /* 0x6d5fb0 */ }
     else if (al === 0x10) { if (id === 0x1f48) return 0x2185; }
-    else if (al === 0x20) { if (this.r(3) === 0 && id in W20) return W20[id]; }   // 0x6d5fcd: et ekstra rand(3)
-    if (flag && id in WF) return WF[id];                 // 0x6d602e
+    else if (al === 0x20) { if (this.r(3) === 0 && id in WV20) return WV20[id]; }   // 0x6d5fcd: et ekstra rand(3)
+    if (flag && id in WVF) return WVF[id];                 // 0x6d602e
     if ((bh === 3 || bh === 4 || bh === 5) && id === 0x1f4b) return 0x217e;   // 0x6d6089
     return id;
   }
@@ -260,8 +263,7 @@ export class MatchEvents {
       if ((bp === 0x215b || bp === 0x215c || bp === 0x215a || bp === 0x215e || bp === 0x215f || bp === 0x215d) && bx === 0x1f70) return -0x2157;
       if (bp === 0x1f70) { if (bx !== 0x1f76 || E.s1 === N.s1) return 0; copy(); return 0x2165; }
       if (bp === 0x2150) { if (bx !== 0x1f75) return 0; copy(); return 0x2151; }
-      const SET = [0x1f4b, 0x1f4c, 0x1f4e, 0x1f4f, 0x1f50, 0x1f51, 0x1f52, 0x1f53];
-      if (SET.includes(bp) && SET.includes(bx) && this.r(2) !== 0) return -0x2169;   // 0x6d6e56
+      if (SET_PIECE_EVENTS.includes(bp) && SET_PIECE_EVENTS.includes(bx) && this.r(2) !== 0) return -0x2169;   // 0x6d6e56
       if (bp === 0x216e) { if (bx !== 0x1f44 || !same()) return 0; return bp; }       // 0x6d6e72 (ingen kopi)
       if ((bp === 0x1f80 || bp === 0x2131 || bp === 0x2130) && bx === 0x1f46) { copy(); return bp; }
       if ((bp === 0x1f73 || (bp >= 0x20b9 && bp <= 0x20c4) || bp === 0x20d0 || bp === 0x1f80) && (bx === 0x1f46 || bx === 0x1f47)) { copy(); return bp; }

@@ -22,6 +22,8 @@ import { SquadTable } from './Squad';
 import { ProposeEditModal, dbOf } from '../communityActions';
 import { ClassicClubSquad } from './SquadClassic';
 import { ClassicFixtures } from './Fixtures';
+import { ClassicFinanceBody } from './Finance';
+import { authentic } from '../../game/rules';
 import { LEGEND_APPS, LEGEND_GOALS } from '../../game/records';
 
 export function ClubScreen({ id }: { id?: number }) {
@@ -39,6 +41,8 @@ function ClassicClub({ id }: { id?: number }) {
   const [editOpen, setEditOpen] = useState(false);
   if (!c) return <NoClub />;
   const mine = cid === g.userClub;
+  // ægte CM 01/02 (ejerens skærmbilleder 270-274): originalens tabeller og ingen ekstra knapper
+  const orig = authentic();
   const showMoney = mine || !g.options.masking;
   const views = ['info', 'stats', ...(showMoney ? ['finances', 'income', 'expenditure'] : [])];
   // fanerne øverst (trup, transfers, næste kamp, kampprogram) er visninger af samme klubside
@@ -57,28 +61,33 @@ function ClassicClub({ id }: { id?: number }) {
       <Head title={c.name}>
         {!tabViews.includes(v) && <CxDrop label={t('cl.sq.view')} items={views.map((k) => ({ key: k, label: t(`cl.ci.v.${k}`), checked: v === k, onClick: () => setView(k) }))} />}
         <span className="grow" />
-        {mine && showMoney && <button className="cx-greybtn" onClick={() => nav({ name: 'finance' })}>{t('cl.ci.budgets')}</button>}
-        {dbOf(g) && <button className="cx-greybtn" onClick={() => setEditOpen(true)}>{t('hub.edit.action')}</button>}
+        {!orig && mine && showMoney && <button className="cx-greybtn" onClick={() => nav({ name: 'finance' })}>{t('cl.ci.budgets')}</button>}
+        {!orig && dbOf(g) && <button className="cx-greybtn" onClick={() => setEditOpen(true)}>{t('hub.edit.action')}</button>}
       </Head>
       {editOpen && <ProposeEditModal kind="club" id={cid} onClose={() => setEditOpen(false)} />}
-      <div className="cx-subtitle">{t(`cl.ci.v.${v}`)}</div>
-      {v === 'info' && <>
+      <div className={`cx-subtitle ${orig ? 'cx-orig-band' : ''}`}>{t(`cl.ci.v.${v}`)}</div>
+      {orig && v !== 'info' && !tabViews.includes(v) && <div className="cx-finv cx-finv-orig"><ClassicFinanceBody view={v as 'stats'} clubId={cid} /></div>}
+      {v === 'info' && <div className={orig ? 'cx-ci-orig' : undefined}>
         {/* CM 01/02: Nation · Status · Finances · Stadium · Facilities · Training Ground (status og ordene er *estimeret*) */}
         {kv([
           [t('cl.ci.nation'), <CxLink to={nationRoute(c.nation)}>{natName(g.nations[c.nation]?.name)}</CxLink>],
           [t('cl.ci.status'), t((g.leagues[c.league]?.tier ?? 9) <= 2 || c.rep >= 50 ? 'cl.ci.pro' : 'cl.ci.semipro')],
-          ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? 'cl.ci.fin.secure' : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
-          [t('club.stadium'), `${c.stadium}, ${c.short}`],
+          ...(showMoney ? [[t('cl.ci.finances'), t(c.balance >= 0 ? (orig ? 'cl.ci.fin.ok' : 'cl.ci.fin.secure') : c.balance > -5_000_000 ? 'cl.ci.fin.stretched' : 'cl.ci.fin.debt')] as [string, string]] : []),
+          // originalen: "Old Trafford, Manchester" – byen har vi ikke, så kun stadionet
+          [t('club.stadium'), orig ? c.stadium : `${c.stadium}, ${c.short}`],
           [t('cl.ci.facilitiesRow'), t('cl.ci.seats', { n: c.seats })],
           [t('cl.ci.trainingGround'), `${t(`cl.ci.tg.${c.facilities >= 16 ? 4 : c.facilities >= 12 ? 3 : c.facilities >= 8 ? 2 : c.facilities >= 4 ? 1 : 0}`)}${c.youth >= 14 ? t('cl.ci.tgYouth') : ''}`],
         ])}
+        {/* kun Non-Playing Staff ruller – resten står fast (som originalen) */}
+        <div className={orig ? 'cx-ci-staff' : undefined}>
         <div className="cx-section">{t('cl.ci.staff')}</div>
         <div className="cx-kv big">
           <span>{g.staff[c.manager] ? <CxLink to={staffRoute(g.staff[c.manager])}>{manager}</CxLink> : c.manager === -1 && !mine ? <CxLink to={{ name: 'managers' }}>{manager}</CxLink> : manager}</span><span>{t('role.staff.manager')}</span>
           {staff.map((x) => [<span key={`n${x.id}`}><CxLink to={staffRoute(x)}>{x.first} {x.last}</CxLink></span>, <span key={`r${x.id}`}>{t(`role.staff.${x.role}`)}</span>])}
         </div>
-      </>}
-      {v === 'stats' && <>
+        </div>
+      </div>}
+      {!orig && v === 'stats' && <>
         {kv([
           [t('club.strength'), squadStrength(cid).toFixed(0)],
           [t('cl.ci.players'), squad(cid).length],
@@ -87,7 +96,7 @@ function ClassicClub({ id }: { id?: number }) {
         ])}
         {c.records && <RecordsPanel club={c} />}
       </>}
-      {v === 'finances' && kv([
+      {!orig && v === 'finances' && kv([
         [t('top.balance'), money(c.balance), c.balance < 0 ? 'bad' : ''],
         [t('top.budget'), money(c.transferBudget)],
         [t('fin.wageBudget'), `${money(c.wageBudget)} / ${t('common.week')}`],
@@ -96,11 +105,11 @@ function ClassicClub({ id }: { id?: number }) {
         [t('fin.expense'), money(expense)],
         [t('cl.ci.result'), money(income - expense), income - expense < 0 ? 'bad' : ''],
       ])}
-      {v === 'income' && kv([
+      {!orig && v === 'income' && kv([
         [t('fin.gate'), money(f.gate)], [t('fin.tv'), money(f.tv)], [t('fin.prize'), money(f.prize)], [t('fin.sponsor'), money(f.sponsor)],
         [t('fin.merch'), money(f.merch)], [t('fin.sales'), money(f.transfersIn)], [t('fin.income'), money(income)],
       ])}
-      {v === 'expenditure' && kv([
+      {!orig && v === 'expenditure' && kv([
         [t('fin.wages'), money(f.wages)], [t('fin.purchases'), money(f.transfersOut)], [t('fin.other'), money(f.other)], [t('fin.expense'), money(expense)],
       ])}
       {v === 'squad' && <ClassicClubSquad cid={cid} />}

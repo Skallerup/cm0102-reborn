@@ -5,7 +5,7 @@ import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
-import { europeanQualifiers, setupChampionsLeague, setupCup, setupLeague, setupUefaCup } from './competitions';
+import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupUefaCup } from './competitions';
 import { ageOn } from './dates';
 import {
   caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, roundValue, type SubPos,
@@ -22,7 +22,7 @@ import { autoSelect, newTactic, FORMATIONS } from './tactics';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
 import type { CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
-import { cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
+import { appointBody, cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
 import { fairTicketPrice, transferBudgetFor } from './finance';
 import { initKnowledge } from './scouting';
 import { CHALLENGES } from './challenges';
@@ -32,6 +32,8 @@ import { npFromWorld, npTemplate, staffConvert, staffInitRecord, type NpTemplate
 import { initialLanguages } from './cmLanguage';
 import { cmActive } from './cmPlayerData';
 import { cmStartDate } from './cmCalendar';
+import { cmEuroOn, cmSetupEurope } from './cmEurope';
+import { compHooks } from './hooks';
 import { cmFitNewGame } from './cmFitnessGame';
 import { cmRelNewGame } from './cmRelations';
 import { cmFinanceNewGame } from './cmFinance';
@@ -161,6 +163,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
     if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
     if (cm.cmRaw.nation85) g.cmNation85 = cm.cmRaw.nation85.slice();
+    if (cm.cmRaw.nationCont) { g.cmNationCont = cm.cmRaw.nationCont.slice(); g.cmEurope = cm.cmRaw.europe ?? -1; }
+    if (cm.cmRaw.city33) g.cmCity33 = cm.cmRaw.city33.slice();
   }
   setGame(g);
 
@@ -467,9 +471,11 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   if (g.options.mode !== 'authentic') addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   // ægte CM 01/02 starter med tre nyheder (målt i originalen): ansættelsen, bestyrelsens mål og kampprogrammet
   if (g.options.mode === 'authentic') {
-    const board = g.news.filter((n) => n.key.startsWith('board.exp.'));
+    const board = g.news.filter((n) => n.key.startsWith('board.exp.') || n.key === 'board.cm');
     g.news = [];
-    addNews({ cat: 'general', key: 'news.managerHired', params: { club: club.short, manager: o.managerName }, link: { kind: 'club', id: club.id } });
+    // 0x6a3060: "Man Utd appoint m m as manager" / "Manchester United have appointed m m as manager." (ingen forrige klub)
+    if (cmBoardOn(g)) addNews({ cat: 'general', key: 'news.cmAppoint', params: { club: club.short, manager: o.managerName, body: appointBody(club.name, o.managerName, '') }, link: { kind: 'club', id: club.id } });
+    else addNews({ cat: 'general', key: 'news.managerHired', params: { club: club.short, manager: o.managerName }, link: { kind: 'club', id: club.id } });
     for (const b of board) g.news.unshift(b);
     const lg = g.leagues[club.league];
     if (lg) addNews({ cat: 'match', key: 'comp.fixturesOut', params: { season: `${season}/${String(season + 1).slice(2)}`, comp: lg.name }, link: { kind: 'comp', id: club.league } });
@@ -479,6 +485,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   initialTransferList();
   // runde 8: originalens kampmotor (gittermotoren) som standard i ægte tilstand med den originale database – én konstant (liveSim.ts)
   if (GRID_ENGINE_DEFAULT && g.options.mode === 'authentic' && cmDatabase(g) === 'original') g.options.engine = 'original';
+  // (runde 10C) forkørslen: de europæiske kampe før startdatoen (sim.ts registrerer krogen)
+  compHooks.euroCatchUp?.(g);
   return g;
 }
 
@@ -500,6 +508,19 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
     const cupName = leagues.map((l) => LEAGUE_RULES[l]?.cup).find(Boolean);
     const clubs = leagues.flatMap((l) => byLeague.get(l) ?? []);
     if (clubs.length >= 8) setupCup(nation, cupName ?? `${g.nations[nation].name} Cup`, clubs, season);
+  }
+  // (runde 10C) den originale database i ægte tilstand: Champions League, UEFA Cup og Super Cup i originalens 2001/02-format (cmEurope.ts)
+  if (cmEuroOn(g)) {
+    cmSetupEurope(season, prevTables, cupWinners);
+    // (runde 10D) England: Liga Cup og Charity Shield efter originalens rundetabeller (competitions.ts / cmCups.ts)
+    if (active.has(60) && g.comps.CM7) {
+      const inEurope = new Set([...(g.comps.CL?.clubs ?? []), ...(g.comps.UEFA?.clubs ?? [])]);
+      setupCmLeagueCup(season, inEurope);
+      const byName = (nm: string) => Object.values(g.clubs).find((c) => c.name === nm)?.id;
+      const pl = prevTables.CM7;
+      setupCmCharity(season, pl ? pl[0] : byName('Manchester United'), pl ? cupWinners[60] : byName('Liverpool'), pl?.[1]);
+    }
+    return;
   }
   const { cl, uefa, conf } = europeanQualifiers(prevTables, cupWinners);
   // "[klub] qualify for [turnering]"
@@ -565,7 +586,7 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   if (tac?.some((v) => v > 0)) s.tac = tac.slice();
   if (ca > 0) s.ca = ca;
   // (forholdene) databasens person-id og de skjulte egenskaber +0x56..+0x5d (kun den originale database – cmRelations.ts)
-  if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
+  if (npInit) { s.cmId = row[9]; if (row[12]) s.cmHid = row[12].slice(2, 11); if (row[14]) s.cmNat = [row[14][0], row[14][1]]; }   // [12] = [+8, +0xc, +0x56..+0x5d, +0x22] (cmBoard)
   // den originale database: ikke-spillerposten som i originalens hukommelse efter spilstarten (sub_535a80 – cmStaffInit.ts):
   // CA/PA, de manglende egenskaber (skabelonen, egen talrække pr. staff-id), navnelisten/+0x43, de 8 interne og afbalanceringen 0x539490
   const raw = row[11];

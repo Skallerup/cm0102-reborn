@@ -133,6 +133,16 @@ async function run(look) {
     { name: 'find' }, { name: 'staff', id: Number(await gs(() => Object.keys(window.__cm.gs().staff)[0])) }, { name: 'nation', tab: 'managers' }, { name: 'nation', tab: 'jobs' }, { name: 'nation', tab: 'transfers' }, { name: 'options' }, { name: 'help' },
   ];
   for (const [i, r] of screens.entries()) await step(`skærm ${r.name}${r.id ? ` (${r.id})` : ''}`, async () => { await go(r); await checkScreen(r.name); if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/${look}-s${String(i).padStart(2, '0')}-${r.name}.png` }); });
+  // standardbaggrunden i klassisk = originalens billeder (/original-bg/); nulstil sættet, hvis noget har gemt et andet
+  if (look === 'klassisk') await step('baggrund fra originalen', async () => {
+    for (const r of [{ name: 'inbox' }, { name: 'squad' }, { name: 'club' }, { name: 'training' }, { name: 'board' }, { name: 'transfers' }, { name: 'find' }]) {
+      await go(r);
+      await page.waitForFunction(() => document.documentElement.style.getPropertyValue('--cx-photo').includes('/original-bg/'), null, { timeout: 8000 })
+        .catch(async () => { throw new Error(`${r.name}: baggrunden er ikke fra /original-bg/ (${await page.evaluate(() => document.documentElement.style.getPropertyValue('--cx-photo'))})`); });
+      const ok = await page.evaluate(async () => { const u = document.documentElement.style.getPropertyValue('--cx-photo').match(/url\("?([^")]+)/)?.[1]; return u ? (await fetch(u)).ok : false; });
+      if (!ok) throw new Error(`${r.name}: baggrundsbilledet kan ikke hentes`);
+    }
+  });
   if (look === 'klassisk') await step('competitions-menu', async () => {
     await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
     await page.locator('.cx-drop-subbtn', { hasText: 'World Cup' }).hover();
@@ -164,8 +174,85 @@ async function run(look) {
     await checkScreen('staff search');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-staffsearch.png` });
   });
+  // Player & Staff Search som i CM 01/02: Search-menuen, egenskabsfilter, gemte indstillinger, fri spiller, Realism-kolonnen, Staff Search
+  if (look === 'klassisk') await step('søgning: indstillinger, egenskabsfilter, stab (klassisk)', async () => {
+    const ok = () => page.locator('.cx-filters .primary').click();
+    const menu = async () => { await page.locator('.cx-drop-btn', { hasText: /^Search/ }).first().click(); await page.waitForTimeout(100); };
+    const item = (l) => page.locator('.cx-drop-pop button', { hasText: l }).first();
+    await gs(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('cm0102.searchSettings') || k.startsWith('cm0102.transferFilters')) localStorage.removeItem(k); localStorage.removeItem('cm-realism'); });
+    await go({ name: 'transfers' });
+    await page.waitForTimeout(300);
+    await menu();
+    for (const l of ['Load Settings', 'Save Settings', 'Save Settings As', 'Delete Settings', 'Reset', 'Clear']) if (!(await item(l).count())) throw new Error(`Search-menuen mangler ${l}`);
+    if (!(await item('Save Settings').isDisabled())) throw new Error('Save Settings skal være grå, når intet er hentet');
+    await page.keyboard.press('Escape');
+    // Realism: findes ikke i originalen – slået fra i ægte CM 01/02 (standard i klassisk), men kan slås til (Spilindstillinger)
+    const heads = () => page.locator('.cx-tbl th').allInnerTexts();
+    const authenticMode = await gs(() => window.__cm.gs().options.mode === 'authentic');
+    if (authenticMode && (await heads()).some((h) => h.startsWith('Realism'))) throw new Error('Realism-kolonnen skal være slået fra som standard i ægte tilstand');
+    await gs(() => localStorage.setItem('cm-realism', 'on'));
+    await go({ name: 'transfers' }); await page.waitForTimeout(300);
+    if (!(await heads()).some((h) => h.startsWith('Realism'))) throw new Error('Realism-kolonnen skal kunne slås til');
+    await gs(() => localStorage.setItem('cm-realism', 'off'));
+    await go({ name: 'transfers' }); await page.waitForTimeout(300);
+    if ((await heads()).some((h) => h.startsWith('Realism'))) throw new Error('Realism-kolonnen skulle være slået fra');
+    if (!(await heads()).some((h) => h.startsWith('Position'))) throw new Error('kolonnen hedder Position');
+    // egenskabsfilter: Passing mindst 14
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    await page.locator('.cx-fl-tabs button', { hasText: 'Attributes' }).click();
+    if ((await page.locator('.cx-fl-attr').count()) !== 31) throw new Error('Attributes skal have 31 egenskaber');
+    for (let i = 0; i < 13; i++) await page.getByRole('button', { name: 'Passing +' }).click();
+    await page.getByRole('button', { name: 'Passing -' }).click();
+    if (!((await page.locator('.cx-fl-attr', { hasText: 'Passing' }).innerText()).includes('13'))) throw new Error('Passing skulle stå på 13');
+    await ok(); await page.waitForTimeout(400);
+    const found = await page.locator('.cx-found').innerText();
+    if (!/filtered out/.test(found)) throw new Error(`"(N filtered out)" mangler: ${found}`);
+    // gem, hent og slet søgeindstillinger
+    await menu(); await item('Save Settings As').click();
+    await page.locator('.cx-dlg-input, .confirm-box input').first().fill('Passers');
+    await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click();
+    if (!(await gs(() => (localStorage.getItem('cm0102.searchSettings') ?? '').includes('Passers')))) throw new Error('søgeindstillingerne blev ikke gemt');
+    await menu(); await item('Clear').click(); await page.waitForTimeout(300);
+    if (/filtered out/.test(await page.locator('.cx-found').innerText())) throw new Error('Clear skal fjerne filtrene');
+    await menu(); await item('Load Settings').hover(); await page.locator('.cx-drop-sub button', { hasText: 'Passers' }).click(); await page.waitForTimeout(300);
+    if (!/filtered out/.test(await page.locator('.cx-found').innerText())) throw new Error('Load Settings genskabte ikke filtrene');
+    await menu(); await item('Delete Settings').hover(); await page.locator('.cx-drop-sub button', { hasText: 'Passers' }).click();
+    await page.locator('.cx-confirm button.primary, .confirm-box button.primary').first().click(); await page.waitForTimeout(200);
+    if (await gs(() => (localStorage.getItem('cm0102.searchSettings') ?? '').includes('Passers'))) throw new Error('søgeindstillingerne blev ikke slettet');
+    await menu(); await item('Clear').click();
+    // fri spiller: Club = No Club, Value = Free, Based = hans land
+    await menu(); await item('Load Settings').hover(); await page.locator('.cx-drop-sub button', { hasText: 'Free transfers' }).click(); await page.waitForTimeout(300);
+    const rows = await page.locator('.cx-tbl tbody tr').first().innerText();
+    if (!/No Club/.test(rows) || !/Free/.test(rows)) throw new Error(`fri spiller skal vise No Club/Free: ${rows}`);
+    if (/Sct|Fre\b/.test(rows)) throw new Error('ingen Sct/Fre-mærker i søgningen');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spillersoegning-fri.png` });
+    // Staff Search: View-menuen, filter og ledige
+    await page.getByRole('button', { name: 'Staff Search', exact: true }).first().click(); await page.waitForTimeout(300);
+    await page.locator('.cx-drop-btn', { hasText: /^View/ }).click();
+    for (const l of ['General', 'Attributes', 'Player Notes']) if (!(await item(l).count())) throw new Error(`Staff View mangler ${l}`);
+    await item('Attributes').click(); await page.waitForTimeout(200);
+    if (!(await heads()).some((h) => h.startsWith('Coa'))) throw new Error('Attributes-visningen mangler trænerevnen');
+    await page.locator('.cx-drop-btn', { hasText: /^View/ }).click(); await item('General').click();
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    for (const l of ['Text', 'Nationality', 'Age', 'Language', 'Based', 'Job', 'Interested']) if (!(await page.locator('.cx-filters .cx-set-grid > span', { hasText: new RegExp(`^${l}$`) }).count())) throw new Error(`Staff-filteret mangler ${l}`);
+    await page.locator('.cx-filters .cx-set-grid > span', { hasText: /^Job$/ }).locator('xpath=following-sibling::div[1]').getByRole('button', { name: 'Specified' }).click();
+    await page.locator('.cx-filters .cx-set-seg button', { hasText: 'Unemployed' }).click();
+    await ok(); await page.waitForTimeout(300);
+    const srow = await page.locator('.cx-tbl tbody tr').first().innerText();
+    if (!/No Club\/Nation/.test(srow) || !/Unemployed/.test(srow)) throw new Error(`ledig stab skal vise No Club/Nation + Unemployed: ${srow}`);
+    await page.getByRole('button', { name: /^Filters/ }).click();
+    await page.locator('.cx-fl-tabs button', { hasText: 'Attributes' }).click();
+    if ((await page.locator('.cx-fl-attr').count()) !== 7) throw new Error('stabens Attributes skal have 7 egenskaber');
+    await page.locator('.cx-filters .modal-foot button', { hasText: 'Cancel' }).click();
+    await gs(() => localStorage.removeItem('cm-realism'));
+  });
   if (look === 'klassisk') await step('spillerens faner (klassisk)', async () => {
     await go({ name: 'player', id: star });
+    // al statistik er for den igangværende sæson: Senior Club = Season total (ikke karrieren)
+    await page.waitForSelector('.cx-pl-stats tbody tr', { timeout: 10000 });
+    const stat = (await page.locator('.cx-pl-stats tbody tr').allInnerTexts()).map((r) => r.replace(/\s+/g, ' ').trim());
+    const seasonRow = stat.find((r) => /^season total/i.test(r)), seniorRow = stat.find((r) => /^senior club/i.test(r));
+    if (!seasonRow || !seniorRow || seasonRow.replace(/^season total/i, '').replace(/\s*\(\d+\)/, '').split(/\s+/)[1] !== seniorRow.replace(/^senior club/i, '').split(/\s+/)[1]) throw new Error(`Senior Club skal følge sæsonen: ${seasonRow} / ${seniorRow}`);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-Profile.png` });
     for (const tab of ['Injuries & Bans', 'Contract', 'Transfer', 'History']) {
       await page.getByRole('button', { name: tab, exact: true }).first().click();
@@ -290,12 +377,69 @@ async function run(look) {
     await go({ name: 'squad' });
     await page.locator('.cx-drop-btn', { hasText: 'Sort By' }).first().click();
     await page.locator('.cx-drop-pop button', { hasText: 'Condition' }).first().click();
-    await page.waitForFunction(() => /%$/.test(document.querySelector('.cx-sq-info')?.textContent ?? ''), null, { timeout: 5000 });
+    // originalens visninger: Condition står i Selection-visningen (Selection Info: Position, Form, Morale, Cond.)
+    await page.waitForFunction(() => /%$/.test(document.querySelector('.cx-sq-info[data-col="cond"]')?.textContent ?? ''), null, { timeout: 5000 });
     // brugerønske #10: udtagelsesmenuen (sidste spiller) ligger helt inden for skærmen og kan rulles
     const sel = page.locator('.cx-sel .cx-selbtn'); await sel.nth(await sel.count() - 1).click();
     const box = await page.evaluate(() => { const r = document.querySelector('.cx-sel .cx-drop-pop').getBoundingClientRect(); return { top: r.top, bottom: r.bottom, h: innerHeight }; });
     if (box.top < 0 || box.bottom > box.h) throw new Error(`udtagelsesmenuen går uden for skærmen: ${JSON.stringify(box)}`);
     await page.keyboard.press('Escape');
+  });
+  // ægte CM 01/02 (originalens trupskærm): View-menuen, blå udtagelsesfelter, grøn strimmel, ingen omklædningsrum, ligaens navn på knappen
+  if (look === 'klassisk') await step('trup som i CM 01/02 (ægte tilstand): View-menu og farver', async () => {
+    await gs(() => { window.__cm.gs().options.mode = 'authentic'; });
+    try {
+      await go({ name: 'squad', state: { cview: 'trad' } });
+      await page.waitForSelector('.cx-sq-orig .cx-sq-row', { timeout: 5000 });
+      await page.locator('.cx-drop-btn', { hasText: 'View' }).first().click();
+      const items = (await page.locator('.cx-drop-pop button').allInnerTexts()).map((s) => s.replace(/[✓▸]/g, '').trim()).filter(Boolean);
+      const want = ['Traditional', 'Contract', 'Selection', 'Stats', 'More Stats', 'Attributes', 'Other', 'Penalty Takers'];
+      if (JSON.stringify(items) !== JSON.stringify(want)) throw new Error(`View-menuen: ${JSON.stringify(items)}`);
+      if (!(await page.locator('.cx-drop-pop .cx-drop-sep').count())) throw new Error('View-menuen mangler skillelinjen før Penalty Takers');
+      await page.locator('.cx-drop-pop button', { hasText: 'Contract' }).first().click();
+      await page.waitForFunction(() => document.querySelector('.cx-sq-head')?.textContent?.includes('Contract Info') && !!document.querySelector('.cx-sq-info[data-col="wage"]'), null, { timeout: 5000 });
+      await go({ name: 'squad', state: { cview: 'trad' } });
+      await page.waitForSelector('.cx-sq-orig .cx-sq-row', { timeout: 5000 });
+      const look2 = await page.evaluate(() => {
+        const bg = (el) => (el ? getComputedStyle(el).backgroundColor : '');
+        const sel = document.querySelector('.cx-sq-orig .cx-selbtn.xi') ?? document.querySelector('.cx-sq-orig .cx-selbtn');
+        const slot = document.querySelector('.cx-sq-orig .cx-slot');
+        return { sel: bg(sel), selFg: sel ? getComputedStyle(sel).color : '', slot: bg(slot), slotFg: slot ? getComputedStyle(slot).color : '',
+          slots: [...document.querySelectorAll('.cx-sq-orig .cx-slot')].map((x) => x.textContent), off: document.querySelectorAll('.cx-sq-orig .cx-slot.off').length,
+          tags: [...document.querySelectorAll('.cx-sq-orig .cx-sq-tag')].map((x) => x.textContent).filter(Boolean),
+          stars: [...document.querySelectorAll('.cx-sq-orig .cx-sq-name')].some((x) => x.textContent.endsWith('*')),
+          dressing: !!document.querySelector('.cx-sq-orig .panel'), count: /Team \d+\/11/.test(document.querySelector('.cx-sq-orig')?.textContent ?? ''),
+          division: [...document.querySelectorAll('.cx-subrow button')].map((b) => b.textContent).find((x) => /\d+(st|nd|rd|th) in /.test(x ?? '')) ?? '' };
+      });
+      if (look2.sel !== 'rgb(0, 0, 168)' || look2.selFg !== 'rgb(255, 255, 255)') throw new Error(`udtagelsesfeltet skal være blåt med hvid tekst: ${look2.sel} / ${look2.selFg}`);
+      if (look2.slot !== 'rgb(29, 122, 26)' || look2.slotFg !== 'rgb(255, 255, 255)') throw new Error(`strimlen skal være grøn med hvid tekst: ${look2.slot} / ${look2.slotFg}`);
+      if (look2.slots[0] !== 'GK' || !look2.slots.includes('SB9')) throw new Error(`strimlen: ${look2.slots.join(' ')}`);
+      if (look2.tags.some((x) => ['Int', 'Fgn', 'Wnt'].includes(x))) throw new Error(`ikke-originale mærker: ${look2.tags.join(' ')}`);
+      if (look2.stars || look2.dressing || look2.count || look2.division) throw new Error(`ikke-originale elementer: ${JSON.stringify(look2)}`);
+      // hover på et udtagelsesfelt må ikke ændre farven
+      const b = page.locator('.cx-sq-orig .cx-selbtn').first(); await b.hover();
+      if ((await b.evaluate((el) => getComputedStyle(el).backgroundColor)) !== 'rgb(0, 0, 168)') throw new Error('hover ændrer udtagelsesfeltets farve');
+      // klik på en besat plads i strimlen tømmer den
+      const before = await gs(() => window.__cm.gs().tactic.lineup.filter(Boolean).length);
+      await page.locator('.cx-sq-orig .cx-slot.filled').first().click();
+      await page.waitForFunction((n) => window.__cm.gs().tactic.lineup.filter(Boolean).length === n - 1, before, { timeout: 5000 });
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-trup-original.png` });
+      await page.locator('.cx-drop-btn', { hasText: 'Assistant' }).first().click();
+      await page.locator('.cx-drop-pop button').first().click();
+      // de andre klubfaner som originalen: Next Match med hub og Print, Fixtures med Cancel/Arrange, Stats med originalens 16 rækker
+      await go({ name: 'assistant' });
+      await page.waitForSelector('.cx-tabrow .cx-tabs button, .cx-tabrow button', { timeout: 5000 });
+      if (!(await page.locator('.cx-print').count())) throw new Error('Next Match mangler hubben/Print');
+      await go({ name: 'fixtures' });
+      await page.locator('.cx-drop-btn', { hasText: 'Arrange' }).first().waitFor({ timeout: 5000 });
+      await go({ name: 'club', state: { cview: 'stats' } });
+      await page.waitForSelector('.cx-finv-orig .cx-fin-stats', { timeout: 5000 });
+      const n = await page.locator('.cx-finv-orig .cx-fin-stats > div').count();
+      if (n !== 16) throw new Error(`Stats har ${n} rækker (originalen 16)`);
+      if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-klubstats-original.png` });
+    } finally {
+      await gs(() => { window.__cm.gs().options.mode = 'extended'; });
+    }
   });
   if (look === 'klassisk') await step('klubbens History (Man Utd History)', async () => {
     await go({ name: 'squad' });
@@ -393,6 +537,15 @@ async function run(look) {
     await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Approach To Buy' }).first().click();
     await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 10000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud.png` });
+    // CM 01/02: pilen ved beløbet giver faste beløb (£0 … £20M), Exchange åbner "Add Player To … Transfer Bid"
+    await page.locator('.cx-bid-amt .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button', { hasText: /^£1M$/ }).first().click();
+    if (!/£1(\.00)?M/.test(await page.locator('.cx-bid-amt .cx-drop-btn').innerText())) throw new Error('beløbslisten satte ikke £1M');
+    await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
+    await page.waitForSelector('.cx-exch', { timeout: 5000 });
+    if (!(await page.locator('.cx-exch .cx-sq-row').count()) && !(await page.locator('.cx-exch-none').innerText()).includes('not interested in a part-exchange deal')) throw new Error('Exchange-skærmen er tom');
+    await page.locator('.cx-exch .cx-ts-buttons button', { hasText: 'Back' }).click();
+    await page.waitForSelector('.cx-bid .cx-bid-row', { timeout: 5000 });
     await page.locator('.cx-bid .cx-ts-buttons button', { hasText: 'Back' }).click();
     await page.waitForSelector('.cx-bid', { state: 'detached', timeout: 5000 });
   });

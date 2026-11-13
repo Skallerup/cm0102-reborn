@@ -450,7 +450,7 @@ export function ClubTacticsView({ club }: { club: number }) {
 }
 
 /** "Man Utd Penalty Takers" (CM 01/02): klik på spillerne i den rækkefølge, de skal sparke – nummeret står i den lilla knap */
-function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players: Player[]; change: (t: Tactic) => void; onClose: () => void }) {
+export function PenaltyTakers({ tac, players, change, onClose }: { tac: Tactic; players: Player[]; change: (t: Tactic) => void; onClose: () => void }) {
   const order = tac.penOrder !== undefined ? tac.penOrder.filter((id) => players.some((p) => p.id === id)) : tac.penalties ? [tac.penalties] : [];
   const set = (next: number[]) => change({ ...tac, penOrder: next, penalties: next[0] ?? tac.penalties });
   const toggle = (id: number) => set(order.includes(id) ? order.filter((x) => x !== id) : [...order, id].slice(0, 50));

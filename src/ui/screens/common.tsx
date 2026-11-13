@@ -9,10 +9,10 @@ import { isRetro } from '../theme';
 import { ClassicHead } from '../classic';
 
 /** action: kun klassisk tema – fx en Action-menu i titelbjælkens højre hjørne */
-export function Head({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
+export function Head({ title, children, action, menu }: { title: ReactNode; children?: ReactNode; action?: ReactNode; menu?: boolean }) {
   const { back, canBack } = useNav();
   // klassisk tema: titelbjælke + hub-faner (Tilbage ligger i den brede bundbjælke)
-  if (isRetro()) return <ClassicHead title={title} action={action}>{children}</ClassicHead>;
+  if (isRetro()) return <ClassicHead title={title} action={action} menu={menu}>{children}</ClassicHead>;
   return (
     <div className="screen-head">
       {canBack && <button className="back small" onClick={back}>‹ {t('common.back')}</button>}

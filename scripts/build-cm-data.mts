@@ -205,9 +205,10 @@ if (w.staff) {
     // [10] = managerens taktiske egenskaber (kun for managere i de viste klubber – computerens taktik i gittermotoren)
     // [11] = hele ikke-spillerposten (kun den originale database: originalens spilstart cmStaffInit.ts)
     // [12] = omdømmerne +8/+0xc og de skjulte egenskaber (kun den originale database: bestyrelse/managerjob cmBoard.ts)
-    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13]]; }
+    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13], s[14]]; }
     const np = ORIGINAL && s[11] ? [s[11]] : [];
-    const bx = ORIGINAL && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : ''] : [];
+    // [14] = landsholdet +0x24/+0x28 (kun den originale database: viljen 0x844780)
+    const bx = ORIGINAL && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : '', ...(s[14] ? [s[14]] : [])] : [];
     return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s];
   });
   // de ledige: kun de 600 bedste (world.json skal kunne ligge i appens offline-cache, højst 8 MB)

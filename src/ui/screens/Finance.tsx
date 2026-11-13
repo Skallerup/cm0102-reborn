@@ -5,10 +5,11 @@ import type { Club, ClubFinance } from '../../game/types';
 import { squad } from '../../game/state';
 import { cmFinPeriod, GBP as CM_GBP, type FinKey } from '../../game/cmFinance';
 import { ageOn } from '../../game/dates';
+import { isInternational, u21Squad } from '../../game/international';
 import { CxDrop } from '../classic';
 import { SHIFT_WEEKS, boardMood, type BudgetKind } from '../../game/board';
 import { useState } from 'react';
-import { dateFmt, money, moneyFull, t } from '../../i18n';
+import { currencySymbol, dateFmt, getCurrency, money, moneyFull, t, toCur } from '../../i18n';
 import { Bar, Modal, MoneyInput, Panel, Tabs } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
 import { AttendanceTab, FacilitiesTab, FinanceHistoryTab } from './Stadium';
@@ -317,9 +318,20 @@ const CM_OUT: (FinKey | null)[] = ['wages', 'bonuses', null, 'dividends', null, 
 const EXPENSE: [keyof ClubFinance | null, string][] = [['wages', 'wages'], ['bonuses', 'bonuses'], ['signOn', 'signOn'], ['dividends', 'dividends'], ['transfersOut', 'bought'], ['maintenance', 'maintenance'], [null, 'fines'], [null, 'interest'], ['other', 'other']];
 
 function ClassicFinances() {
-  const g = useGame()!;
-  const c = g.clubs[g.userClub];
   const [view, setView] = useRouteState<'finances' | 'income' | 'expenditure' | 'stats'>('fview', 'finances');
+  return (
+    <div className="cx-finv">
+      <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={(['finances', 'income', 'expenditure', 'stats'] as const).map((k) => ({ key: k, label: t(`cl.fin.v.${k}`), checked: view === k, onClick: () => setView(k) }))} /></div>
+      <div className="cx-subtitle">{t(`cl.fin.v.${view}`)}</div>
+      <ClassicFinanceBody view={view} />
+    </div>
+  );
+}
+
+/** Tabellerne under Finances & Info (CM 01/02): Finances · Income · Expenditure · Stats – ens egen klub (og Stats for alle klubber) */
+export function ClassicFinanceBody({ view, clubId }: { view: 'finances' | 'income' | 'expenditure' | 'stats'; clubId?: number }) {
+  const g = useGame()!;
+  const c = g.clubs[clubId ?? g.userClub];
   const cmKey = (rows: [keyof ClubFinance | null, string][], i: number) => (g.cmFin?.[c.id] ? (rows === INCOME ? CM_IN : CM_OUT)[i] : null);
   const val = (rows: [keyof ClubFinance | null, string][], i: number, p: Period) => {
     const ck = cmKey(rows, i), k = rows[i][0];
@@ -341,9 +353,7 @@ function ClassicFinances() {
     [t('cl.fin.total'), (p: Period) => sum(rows, p), 'total'] as [string, (p: Period) => number, string],
   ];
   return (
-    <div className="cx-finv">
-      <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={(['finances', 'income', 'expenditure', 'stats'] as const).map((k) => ({ key: k, label: t(`cl.fin.v.${k}`), checked: view === k, onClick: () => setView(k) }))} /></div>
-      <div className="cx-subtitle">{t(`cl.fin.v.${view}`)}</div>
+    <>
       {view === 'finances' && <>
         {table([[t('cl.fin.v.income'), (p) => sum(INCOME, p)], [t('cl.fin.v.expenditure'), (p) => sum(EXPENSE, p)], ['', () => 0], [t('cl.fin.profit'), (p) => sum(INCOME, p) - sum(EXPENSE, p), 'profit']])}
         <div className="cx-fin-bal"><span>{t('cl.fin.balance')}</span><b className={c.balance < 0 ? 'neg' : ''}>{moneyFull(c.balance)}</b><span>{t('cl.fin.funds')}</span><b>{moneyFull(c.transferBudget)}</b></div>
@@ -351,7 +361,7 @@ function ClassicFinances() {
       {view === 'income' && table(line(INCOME, 'in'))}
       {view === 'expenditure' && table(line(EXPENSE, 'out'))}
       {view === 'stats' && <ClubStatsCx c={c} />}
-    </div>
+    </>
   );
 }
 
@@ -359,27 +369,37 @@ function ClassicFinances() {
 function ClubStatsCx({ c }: { c: Club }) {
   const g = useGame()!;
   const sq = squad(c.id);
+  const first = sq.filter((p) => !p.reserves);
   const age = (p: { dob: string }) => ageOn(p.dob, g.date);
   const wage = (p: { contract?: { wage: number } | null }) => p.contract?.wage ?? 0;
   const by = (f: (p: (typeof sq)[number]) => number, hi: boolean) => sq.slice().sort((a, b) => (hi ? f(b) - f(a) : f(a) - f(b)))[0];
   const nm = (p?: (typeof sq)[number]) => (p ? `${p.first} ${p.last}`.trim() : '');
+  // CM 01/02 skriver lønningerne i K ("£550K", "£16.75K", "£50")
+  const kMoney = (eur: number) => { const v = toCur(eur); const c = getCurrency(); const n = Math.abs(v) >= 1000 ? `${+(v / 1000).toFixed(2)}K` : String(Math.round(v)); return c === 'DKK' || c === 'SEK' || c === 'NOK' ? `${n} kr.` : `${currencySymbol()}${n}`; };
   const bill = sq.reduce((s, p) => s + wage(p), 0);
+  const billFirst = first.reduce((s, p) => s + wage(p), 0);
+  const avgAge = (l: typeof sq) => (l.length ? (l.reduce((s, p) => s + ageOn(p.dob, g.date), 0) / l.length).toFixed(2) : '-');
+  // landsholdsspillere i de aktuelle trupper (A-landshold og U21)
+  const u21 = new Set<number>();
+  for (const n of new Set(sq.map((p) => p.nation))) for (const p of u21Squad(n)) u21.add(p.id);
   const hiW = by(wage, true), loW = by(wage, false), old = by(age, true), young = by(age, false), val = by((p) => p.value, true);
   const own = c.nation;
   const eu = new Set(['Austria', 'Belgium', 'Denmark', 'Finland', 'France', 'Germany', 'Greece', 'Holland', 'Netherlands', 'Ireland', 'Republic of Ireland', 'Italy', 'Luxembourg', 'Portugal', 'Spain', 'Sweden', 'England', 'Scotland', 'Wales', 'Northern Ireland', 'Iceland', 'Norway', 'Liechtenstein']);
   const rows: [string, string][] = [
     [t('cl.fin.s.players'), String(sq.length)],
     [t('cl.fin.s.injured'), String(sq.filter((p) => p.injury).length)],
-    [t('cl.fin.s.avgAge'), sq.length ? (sq.reduce((s, p) => s + age(p), 0) / sq.length).toFixed(2) : '-'],
-    [t('cl.fin.s.wageBill'), money(bill)],
-    [t('cl.fin.s.avgWage'), money(sq.length ? bill / sq.length : 0)],
-    [t('cl.fin.s.hiWage'), hiW ? `${money(wage(hiW))} - ${nm(hiW)}` : '-'],
-    [t('cl.fin.s.loWage'), loW ? `${money(wage(loW))} - ${nm(loW)}` : '-'],
+    [t('cl.fin.s.avgAgeFirst'), avgAge(first)],
+    [t('cl.fin.s.avgAge'), avgAge(sq)],
+    [t('cl.fin.s.wageFirst'), kMoney(billFirst)],
+    [t('cl.fin.s.wageBill'), kMoney(bill)],
+    [t('cl.fin.s.avgWage'), kMoney(sq.length ? bill / sq.length : 0)],
+    [t('cl.fin.s.hiWage'), hiW ? `${kMoney(wage(hiW))} - ${nm(hiW)}` : '-'],
+    [t('cl.fin.s.loWage'), loW ? `${kMoney(wage(loW))} - ${nm(loW)}` : '-'],
     [t('cl.fin.s.oldest'), old ? `${age(old)} - ${nm(old)}` : '-'],
     [t('cl.fin.s.youngest'), young ? `${age(young)} - ${nm(young)}` : '-'],
-    [t('cl.fin.s.hiValue'), val ? `${money(val.value)} - ${nm(val)}` : '-'],
-    [t('cl.fin.s.intl'), String(sq.filter((p) => (p.caps ?? 0) > 0).length)],
-    [t('cl.fin.s.u21'), String(sq.filter((p) => age(p) < 21).length)],
+    [t('cl.fin.s.hiValue'), val ? `${moneyFull(val.value)} - ${nm(val)}` : '-'],
+    [t('cl.fin.s.intl'), String(sq.filter((p) => isInternational(p)).length)],
+    [t('cl.fin.s.u21'), String(sq.filter((p) => u21.has(p.id)).length)],
     [t('cl.fin.s.foreign'), String(sq.filter((p) => p.nation !== own).length)],
     [t('cl.fin.s.nonEu'), String(sq.filter((p) => !eu.has(g.nations[p.nation]?.name ?? '')).length)],
   ];

@@ -91,10 +91,41 @@ export function loadScreenBgs(): Promise<void> {
     .then((r) => (r.ok ? r.json() : null)).then((d: ScreenBgs | null) => { screens = d; }).catch(() => { screens = null; });
   return screensLoading;
 }
-/** Hvilket sæt: de nye skærmbilleder (standard) eller den gamle Sunday League-pakke */
+/**
+ * Hvilket sæt: originalens egne billeder (standard), de nye skærmbilleder (Naydav) eller den gamle Sunday League-pakke.
+ * Gemmes som 'original' | 'screens' | 'sunday'; intet gemt (eller ukendt) = originalen.
+ */
 const SET_KEY = 'cm-bg-set';
-export const sundayLeague = () => { try { return localStorage.getItem(SET_KEY) === 'sunday'; } catch { return false; } };
-export const setSundayLeague = (on: boolean) => { try { localStorage.setItem(SET_KEY, on ? 'sunday' : 'screens'); } catch { /* ignorér */ } };
+export type BgSet = 'original' | 'screens' | 'sunday';
+export const bgSet = (): BgSet => { try { const v = localStorage.getItem(SET_KEY); return v === 'sunday' || v === 'screens' ? v : 'original'; } catch { return 'original'; } };
+export const setBgSet = (v: BgSet) => { try { localStorage.setItem(SET_KEY, v); } catch { /* ignorér */ } };
+export const sundayLeague = () => bgSet() === 'sunday';
+
+// ---------- CM 01/02's egne baggrundsbilleder (scripts/build-original-bg.py: Pictures/*.RGN → public/original-bg/*.jpg) ----------
+// Som originalens pics.cfg: [NATIONS] = landets rotation (en klub/spiller/turnering uden eget billede får et tilfældigt af dem –
+// i originalens pics.cfg findes kun England), [TRAINING] [BOARDROOM] [TRANSFER] [TROPHY] [SI] = egne lister.
+// Billederne er allerede mørklagt i RGN-filerne.
+
+interface OriginalBgs { ext: string; cfg: Record<string, Record<string, string[]>> }
+let originals: OriginalBgs | null = null;
+let originalsLoading: Promise<void> | null = null;
+export function loadOriginalBgs(): Promise<void> {
+  originalsLoading ??= fetch(`${import.meta.env.BASE_URL}data/original-bg.json`)
+    .then((r) => (r.ok ? r.json() : null)).then((d: OriginalBgs | null) => { originals = d; }).catch(() => { originals = null; });
+  return originalsLoading;
+}
+export const originalBgsReady = () => !!originals;
+export type OriginalKind = 'nation' | 'training' | 'boardroom' | 'transfer' | 'trophy' | 'si';
+const SECTION: Record<OriginalKind, string> = { nation: 'NATIONS', training: 'TRAINING', boardroom: 'BOARDROOM', transfer: 'TRANSFER', trophy: 'TROPHY', si: 'SI' };
+/** Et billede fra originalens pics.cfg: landets liste (hvis pics.cfg har den), ellers en tilfældig post. Fast pr. dag og salt. */
+export function originalBgUrl(kind: OriginalKind, iso: string, salt: string | number = '', nation?: string): string | null {
+  const entries = originals?.cfg[SECTION[kind]] ?? {};
+  const keys = Object.keys(entries);
+  if (!originals || !keys.length) return null;
+  const list = (nation ? entries[nation] : undefined) ?? entries[keys[hash(`${iso}|${salt}|e`) % keys.length]];
+  if (!list?.length) return null;
+  return `${import.meta.env.BASE_URL}original-bg/${list[hash(`${iso}|${salt}`) % list.length]}.jpg`;
+}
 
 const pick = (list: string[] | undefined, iso: string, salt = 0) => (list?.length ? list[(dayNo(iso) + salt) % list.length] : undefined);
 const screenUrl = (n: string) => `${import.meta.env.BASE_URL}screens/${n}.jpg`;

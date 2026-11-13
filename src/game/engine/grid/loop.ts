@@ -347,17 +347,27 @@ export function buildOrder(m: Match, rand: Rand): Player[] {
     const p0 = blk[s][i]; if (p0 && p0.slot >= 0) list.push(p0);
     const p1 = blk[1 - s][i]; if (p1 && p1.slot >= 0) list.push(p1);
   }
-  const key = (p: Player) => ftol((p.roll.pace + p.roll.anticipation) * (0.005 * p.matchCA + 0.5) * p.condition);
-  const comp = (a: Player, b: Player) => {                     // 0x6bd840
-    if (m.state !== 0 && a === m.carrier) return -1;
-    if (m.state !== 0 && b === m.carrier) return 1;
-    if (m.prio === a) return -1;
-    if (m.prio === b) return 1;
-    return key(b) - key(a);
+  // (runde 11B, ydelse) nøglerne regnes én gang pr. spiller før sorteringen (de ændres ikke under den) – før to gange pr. sammenligning.
+  // Sorteringen flytter pladsernes indeks (samme sammenligninger i samme rækkefølge → samme rækkefølge)
+  const n = list.length;
+  const keys = ORDER_KEYS, idx = ORDER_IDX;
+  for (let i = 0; i < n; i++) { const p = list[i]; keys[i] = ftol((p.roll.pace + p.roll.anticipation) * (0.005 * p.matchCA + 0.5) * p.condition); idx[i] = i; }
+  const car = m.state !== 0 ? m.carrier : null, prio = m.prio;
+  const comp = (ia: number, ib: number) => {                   // 0x6bd840
+    const a = list[ia], b = list[ib];
+    if (car !== null && a === car) return -1;
+    if (car !== null && b === car) return 1;
+    if (prio === a) return -1;
+    if (prio === b) return 1;
+    return keys[ib] - keys[ia];
   };
-  msvcQsort(list, comp);
-  return list;
+  idx.length = n;
+  msvcQsort(idx, comp);
+  const out: Player[] = new Array(n);
+  for (let i = 0; i < n; i++) out[i] = list[idx[i]];
+  return out;
 }
+const ORDER_KEYS: number[] = [], ORDER_IDX: number[] = [];
 
 /** CRT qsort 0x945333 (MSVC 6 qsort.c) med shortsort 0x945487 – på et array af pegere (width 4); samme rækkefølge af lige elementer */
 export function msvcQsort<T>(a: T[], comp: (x: T, y: T) => number): void {

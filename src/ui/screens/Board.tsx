@@ -13,6 +13,7 @@ import { Info } from '../help';
 import { Head } from './common';
 import { authentic } from '../../game/rules';
 import { useClassicDialog } from '../classic';
+import { cmBoardScreenText } from '../../game/cmBoardGame';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
 
@@ -94,6 +95,9 @@ function BoardAsks() {
 /** Bestyrelsens udtalelse i klassisk stil (CM 01/02): præstation, forventning, advarsler, økonomi og fansene */
 function boardStatement(): string[] {
   const g = gs();
+  // den originale database i ægte tilstand: originalens Board Confidence-tekst 0x6b2080/0x690d80 (afsnittene som linjer)
+  const orig = cmBoardScreenText(g);
+  if (orig !== null) return orig.split('\n\n');
   const club = g.clubs[g.userClub];
   const c = boardStatementCodes();
   const out = [t(`cl.ba.conf.${c.lvl}`, { club: club?.name ?? '' })];

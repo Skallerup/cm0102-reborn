@@ -3,6 +3,24 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## Bestyrelsens tekster og nyheder (2026-11-13, kun original DB i ægte tilstand – `src/game/cmBoardText.ts`, `cmBoardGame.ts`)
+- **Porteret:** forventningsnyheden 0x6a4a20/0x6a4ae0 (overskrift "Board want the title" …) + brødteksten 0x694440 (ordret fra exe'en; kun
+  når spillets start ≤ i dag, så startens ekstra kopi forsvinder – én nyhed); tillidsteksten 0x690d80 med alle 504 blade
+  (`src/game/data/cmBoardTexts.json`, `scripts/build-board-texts.py` fra notes-D-expect.md bilag A) i Board Confidence-skærmen 0x6b2080 og
+  den månedlige "Board Confidence Update" 0x6a4c40/0x6a4d40; Board Request 0x6a8810 for stadion (1), træningsanlæg (2) og tid (5) med svaret
+  0x6a9470 (nyhed "Board reaction to request …"); ansættelsen 0x6a3060 ("Man Utd appoint m m as manager" / "Manchester United have appointed
+  m m as manager."); Bosman Editions turneringsnavne pr. sæson (Seasons/names.tsv → `src/i18n/data/cmCompNames.json`,
+  `scripts/build-comp-names.py`: "English Premier Division" → "FA Premier League" 2001–06); datoboksens tidspunkt "14.7.01 AM"
+  (`cmTimeOfDay`); hovedlandet [0xae2d08] = det først valgte land, forvalget efter sproget som 0x827d50, fravalg → første valgte i
+  nøglelandstabellen (Start.tsx).
+- **Målt:** Man Utd 14/7-2001 giver originalens fire nyheder. Board Confidence: koden 0x5986b0 giver med oraklets saldo (£30,59M på
+  dag 0, `oracle/out/fin/d0.json`) formuebånd 2 → "…era under your management.\n\nThe club's financial status is excellent." – ejeren så
+  kun første afsnit. Afklares (rul i tekstfeltet?) før noget ændres.
+- **Ikke porteret:** formandens trupvurdering 0x693850 (tilføjes efter tillidsteksten), Ultimatum-knappen (news 0x1786 når svaret ≠ 0/6 og
+  anmodningen ≠ tid → dialog 0x9064a0 → 0x6ad610 → 0x6aca50, 853 instruktioner), transferpenge/løn (3/4: get_transfer_budget 0x598800,
+  adjust_max_wage) og bonus (6) – bruger spillets regler; bevillingernes byggeri ved sæsonslut (0x59cfa0); FA Request; de øvrige
+  bestyrelsesnyheder (advarsler, ultimatum, fyring) har stadig spillets tekster; teksterne er engelske på alle sprog.
+
 ## Økonomi (2026-11-13, kun original DB i ægte tilstand – `src/game/cmFinance.ts`, noter `~/cm0102-engine/notes/finance.md`)
 - **Porteret (identisk oversat):** Finance::init_for_club 0x5961d0 (startsaldo), get_wealth_band 0x5986b0, update_wage_bill 0x598370,
   FinanceTable::daily_update 0x59b9c0 (søndagens løn/merchandise 0x59b7e0/sæsonkort 0x599a20 + vinduet 0x59b4c0; månedens stadion,
@@ -1201,6 +1219,20 @@ for alle databaser. Det mangler, i rækkefølge:
   139/395 ens (bias væk, enkeltværdier tilfældige). **Sæson** (grid-season.ts, frø 1/2/3, nu alle 380 kampe til 20/5): 2,94 · 57/24/19, 2,97 · 55/21/23,
   2,90 · 48/27/24 (før: 370 kampe 3,00 · 51/26/23, 2,95 · 54/24/22, 3,05 · 50/25/25; originalen 2,75–2,98 · 51–53 %). **Nyt spil:** 7,2–8,4 s → 9,0–9,1 s.
   **Test:** vitest 81 filer/379 grønne, e2e klassisk med E2E_ENGINE=original grøn.
+- 2026-11-13 – **Runde 11B: gittermotoren lidt hurtigere (resultatneutralt) – målet ≤ 25 ms er IKKE nået.** Maskinen havde belastning 9–26
+  hele runden (andre agenter), så tallene er usikre: skiftevis kørt (fingeraftrykkets 60 kampe, vægur, bedste af 4) ce7f46a 159 ms → 146 ms
+  pr. kamp (~8 %). Ændringer (samme rand-kald i samme rækkefølge, samme float32/ftol): knock-tjekket 0x6cfe10 uden arrays/lukninger i
+  skridt-grenen og Injury Proneness' indeks fast (før `ATTRS.indexOf` ×3 pr. kald); karaktervedligeholdet sub_6f4aa0 (`upkeep`) uden 5 lukninger pr.
+  spiller og tik (`upkeepRating` returnerer w); handlingsrækkefølgen sub_6bd760 regner sorteringsnøglerne én gang og sorterer indeks (samme
+  sammenligninger → samme MSVC-qsort-rækkefølge); `sidesOf`/zonevalgets verden med et sidste-opslag foran WeakMap'en; runTarget uden kopi af
+  modstanderne og uden lukning; ownKeeper/nearestOppDist uden filter/map (sitLists' visninger); passOptions uden filter/destrukturering/inB-lukning,
+  nationsfaktoren som Set; matchSubs' `sideOf` gemt (filter+sort var den samme liste hver gang), `slotWord` uden objekt pr. opslag, A_KEYS i
+  stedet for Object.keys; kommentarkøens vejrtabeller og dødboldslisten som konstanter. Prøvet og droppet: mulberry32 skrevet ind i rand
+  (`randOfRng`, samme tal) – ikke målbart hurtigere. **Bevis:** fingeraftryk (sha1 af GridResult + trupper + næste rand for 60 kampe + 10 sete
+  kampe med kommentarkøen og needsWinner) identisk efter hvert trin (`2d662fab…`); `grid-stats.ts 100 1` og `grid-season.ts` (frø 1) samme tal
+  som før; tests/grid* 19 filer/114 tests grønne (lockstep, postMatch). Profilen er stadig flad (rand ~9 %, passOptions ~11 % inkl., situationen
+  ~5 %, zonevalget ~4 %, matchValues/genvalget ~4 %). ≤ 25 ms kræver en omskrivning af datamodellen (typed arrays for positioner/rul, ingen
+  visninger/`sync` – passOptions/situationen læser GP direkte, offsideLines/jagerne inkrementelt) – og en ubelastet maskine at måle på.
 - 2026-11-12 – **Runde 10B: gittermotoren hurtigere (resultatneutralt).** ~95–105 ms → ~50–55 ms pr. kamp (bundtet; samme belastning,
   skiftevis kørt: grid-speed 150 kampe 137–174 → 71–85 ms under belastning 5–7, ×1,9–2,0). Fundet med `node --cpu-prof` + `--log-ic` og
   `%HasFastProperties`/`%HaveSameMap` (`--allow-natives-syntax`): **GP-objekterne stod i ordbogstilstand** – `f32Fields` lagde accessorer på hver
@@ -1268,3 +1300,85 @@ for alle databaser. Det mangler, i rækkefølge:
   504 tekstblade (Board-skærmen bruger stadig de gamle tekstkoder af originalens bånd), ingen forkørsel 1/1–14/7 (cmPrerun.ts' managertrin kan
   kalde `boardDaily`), talrækken er egen (cmRand pr. dag/kamp – originalens rækkefølge inden for hver funktion). Næste skridt: port 0x844780
   (notes/board/G-interest.md), formændenes fulde ikke-spillerpost i world-filen, 0x690d80-teksterne, kobl cmPrerun's managertrin på.
+- 2026-11-13 – **Kalender og turneringer: Champions League, UEFA Cup og Super Cup i originalens 2001/02-format** (`src/game/cmEurope.ts`, kun original DB
+  i ægte tilstand; noten `~/cm0102-engine/notes/calendar-prerun.md` afsnittet "Europa"). Rundetabellerne er originalens: unicorn-kørsel af
+  EuropeanCup::create_round_table 0x583c50 (stage −1 = Q1/Q2/Q3 id 250/260/270, 0–7 = 1. gruppespil, 8–11 = 2. gruppespil, 12 = QF/SF/F), UefaCup
+  0x9025c0 (kvalifikation 220, 1.–4. runde, QF, SF, finale) og EurSuperCup 0x57a3c0 for 2001–2040 (`tools/sched/euro.py`, `gen_euro.py` →
+  `data/cmEuroTables.ts`). Kampene får originalens fixture-koder (`Fixture.cm`; `fixtureCodesOf` bruger dem): +0x30 = runde-id +3/+4, +0x32 =
+  0x43d + gruppe, +0x34 = indeks/spilledag, +0x36 = +0xb, +0x38 = +0xd (andet ben | +0xf), +0x3a = +0x17, +0x3c neutral finale. **Kontrol: en hel
+  sæson i et nyt spil giver præcis oraklets kampdage og antal kampe for CL (35 datoer, 11/7-2001 … 22/5-2002) og UEFA Cup (15 datoer, 9/8 … 15/5),
+  og koderne som oraklets poster i crowd1's fixtures_2001/2002.tmp** (`tests/cmEurope.test.ts`). Lodtrækningen på datoen, udskudt dag for dag til
+  holdene kendes (Cup::draw_round 0x51c410, læst); seedet/landeadskilt/tilfældig efter +0xd/+0xb; gruppespil 1 (4 seedningslag, lande adskilt),
+  gruppespil 2 (ikke samme gruppe/land), kvartfinalen (vinder mod toer fra en anden gruppe); CL-Q3-taberne → UEFA 1. runde, 1. gruppespils treere →
+  3. runde; titelforsvarere og Super Cup (2001: Bayern–Liverpool); koefficienterne fra nation.dat +0xe0..+0x108 med roll_coefficients 0x903b50
+  (læst) og point 2/1 + 1 pr. gruppespil; euro.cfg i første sæson (`data/cmEuroData.ts`). Forkørslen: kampene før startdatoen (Q1's første ben
+  11/7) spilles i createGame (`compHooks.euroCatchUp`/`cmEuroCatchUp`). `fixtureType` i cmCalendar.ts bruger `f.cm.b3a`.
+  **Ikke 100 % (estimater/afvigelser):** pladsfordelingen pr. rang (0x903cc0/0x904210/0x904580) er efter Bosman-projektets læsning, ikke min egen;
+  collect_european_clubs bruger sidste sæsons tabel/omdømme (databasens sidste placering findes ikke i world-filen); lande uden klubber i world-filen
+  → pladserne går til de næste klubber efter rang (originalen har alle lande); seedningen bruger klubbens omdømme (ikke postens seed-byte);
+  sort_round_teams 0x51d2d0 / 0x51d9f0 / 0x51e220 / 0x51e870 og gruppelodtrækningerne 0x585290/0x585ab0/0x586330 er porteret efter reglerne, ikke
+  instruktion for instruktion; gruppernes parring er spillets (League_Stage::create_fixtures/0x68a030 ikke porteret); præmierne er spillets egne.
+  **Mangler:** Intertoto (0x633300 – tabellen kan køres; dens 3 UEFA-pladser gives til de næste klubber), alle andre landes ligaskemaer (værktøjer
+  påbegyndt: `tools/sched/allsched.py`, `gen_all.py`, `stages.py`, `vary.py` – ufærdige), de nationale pokaler (`data/cmCupTables.ts` er genereret
+  af `tools/sched/gen_cups.py` for de spilbare lande, men IKKE koblet ind), Liga Cup/Charity Shield, FA Cup-omkampe, sammenstødsreglen
+  0x5ad780/0x5adba0/0x5ae380 (stadig forenklet), tv-nyheden. Oraklet viser Super Cup 25/8 (tabellen 24/8) – sandsynligvis sammenstødsreglen.
+- 2026-11-13 – **Kalender og turneringer, del 2: pokalerne, Liga Cup, Charity Shield, ligaskemaerne for alle lande og Intertoto** (kun original DB i
+  ægte tilstand). **Pokalerne** (`src/game/cmCups.ts`, `data/cmCupTables.ts` fra `tools/sched/gen_cups.py`): 20 klasser (EngFaCup 0x56f320 … UsaOpenCup
+  0x90b170, se filhovedet) – kampdato/tidspunkt/ben/dage/omkampe og fixture-koderne (+0x30/+0x34/+0x38/+0x3a/+0x3c) fra rundeposten, runderne talt
+  fra finalen; omkampe (Cup::process_fixture 0x51a6e0–0x51a8b2, læst): uafgjort uden +0x38 & 3 → omkamp +0x22 dage efter, flyttet af
+  find_new_fixture_date 0x5ab510 (oraklets FA Cup: lørdag → onsdag 11 dage efter), koden + 1, +0x0f/+0x11's flag; to ben med +0x0f i andet ben;
+  +0x38 & 0x4 = ingen udebanemål (Intertoto 1. runde, Liga Cup'ens semifinale 0x4200/0x4003 – 0x4000-reglen "udebanemål først i forlænget" er her
+  "ingen udebanemål", *afvigelse*); neutral bane efter +0x13 (prepareMatch). **Liga Cup** (Worthington Cup, `LC-60`, EngCcCup 0x56c570: 7 runder,
+  21/8 … finalen søndag 31/3, semifinalen 2 ben/21 dage) med originalens deltagerstruktur (byes-nøglen = engelske klubber i Europa: 3. runde; 36 − 3k
+  fra 2. runde; resten i 1. runde – rækkefølgen division → omdømme er *estimeret*). **Charity Shield** (`CS-60`, EngCharity 0x56d640: søndag 12/8,
+  neutral, straffe uden forlænget; mester mod pokalvinder, 2001 Man Utd–Liverpool). **Ligaskemaerne**: 27 ligaer (`tools/sched/gen_all.py` →
+  `gen_ts.py` → `data/cmSchedules.ts`, hvert år 2001–2040 kontrolleret eksakt; variantnøgler wd1712/parity/parity+wd1712, år-grene GerFirst/FraFirst
+  2001): Tyskland 1–2, Tyrkiet, Belgien, Danmark 1. division, Brasilien, Holland 1–2, Grækenland, Skotland 1.–3. division, Portugal 1–2, England 1–4,
+  Italien A/B, Frankrig 1–2, Spanien 1–2, Argentina 1–2 (Apertura + Clausura), Kroatien. Uden skema (spillets kalender): Danmarks og Skotlands
+  split-ligaer (CM4, CM34), Australien, Sverige, Japan, Norge 1–2, Rusland, Polen, Korea, USA (forårsligaer/andre felter i klassen – ikke undersøgt),
+  og Tjekkiet/Schweiz/Østrig/Mexico (ingen klasse i originalen). Et skema bruges kun, når antallet af runder passer med spillets liga.
+  **Intertoto** (`UIC`, IntertotoCup 0x633300: 23/6 … finalen 7/8 + 21/8, 60 hold, 3 vindere til UEFA Cup'ens 1. runde; assign_intertoto_places
+  0x904e30 læst for koderne, pladserne efter Bosman-læsningen) – fra 2. sæson spilles 1.–2. runde (før 1/7) som forkørsel ved sæsonskiftet.
+  **Mangler stadig:** sammenstødsreglen 0x5ad780/0x5adba0 (læst delvis: dagene −2/−1/0/+1 for kamptype < 0x17, juledag 0x13, landespecifikke
+  lukkede datoer 0x9cf3e4/0x9cf31c/0x9cf408, 0x15 uden sammenstød – ikke porteret), 0x5ae380/0x5ae9d0, klubbens ugedag +0x72, tv-nyheden; Super Cup'en
+  ligger derfor 24/8 (oraklet 25/8). Pokalernes lodtrækningsdatoer, Coppa Italia/KNVB (ligaklasser), præmier.
+- 2026-11-13 – **Bestyrelse og job, runde 2: viljen 0x844780, fremskrivningen 0x68ac40, mål-omdømmet 0x83bf40, forkørslen.** Nyt modul
+  `src/game/cmBoardInterest.ts`. **Porteret:** 0x844780 staff_interest_in_job_at_club (check = 0, som 0x69f810 kalder den; hele vejen fra
+  afvisningerne over præferencer, rivaler/Old Firm/Italien/Kroatien–Jugoslavien, job-/målfaktorerne, bestyrelsestrykket, klubniveauerne 7a/8
+  (grund-, divisions-, Europa-, chef-, rigdoms- og mål-omdømmeled), sproget 7b/8a, fremmed nation 7c, ansættelsestiden 7d og 8b (X, R, Y,
+  verdensdelene, G2)) – noterne G/G2 kontrolleret mod disassemblyen på springtabellerne, vægtene og 8b; **rettet i noten:** gulvet 0,2 (ikke 0,25)
+  ved X < 0 (0x8463bc). 0x4b02e0 comp_util_get_league_clash_type (titel-/oprykningskamp, af Comp_Stats +0x72..+0x75 og +4). 0x83bf40
+  update_club_target_reputation (gemt i `GameState.cmTargetRep`, når computerens trupplan 0x83cb40 kører forbi indgangen). 0x68ac40
+  League::update_projected_positions med vt+0x68 (0x48e380 og de engelske 0x573260 First/Second 3–6, 0x578660 Third 4–7) → 0x4ae300's o1, som
+  0x69b350 bruger (`StatsEntry.projected`). Fundet: Comp_Stats' vedvarende +0x73/+0x74/+0x75 skrives af 0x684cd0 (League-tabellens +0x39/+0x3a,
+  ikke afkodet – stadig regnet af point og resterende kampe), 0x4ae300 skriver kun en midlertidig post. Forkørslen: `cmPrerun.ts`' trin
+  'managers' kører `boardDaily` hver dag 1/1 → start (uden nyheder). World-filerne (alle tre originale) har nu staff [14] (+0x24/+0x28 –
+  landsholdet), nation +0x71, "Europe"s id og byernes +0x33 (og runde 1's formænd/+0x3e, som manglede i c7094f6's filer).
+  **Mod oraklet** (frø 1, England/Arsenal, dag 1 → 330; `scripts/cm-board-season.ts`, `INTEREST10=1` = runde 1's "alle vil"): før 65
+  udnævnelser i 39 klubber, 14 fælles med originalens 33, Premier League 8; efter 43 udnævnelser i 43 klubber, 18 fælles, Premier League 7
+  (Blackburn, Bolton, Charlton, Fulham, Southampton, Sunderland, West Ham – originalen Villa og Leicester), samme efterfølger 1 (Norwich: Brian
+  Flynn). Dag 1 (`scripts/cm-board-start.ts` mod `runs/bj-d1`): 91/92 engelske ligaklubber har samme manager (Exeter: ledig i originalen, hos
+  os spillets genererede manager); forkørslen ændrer intet i England (som originalen). Premier League-skifterne er afgange (0x69aba0/ugentligt
+  – tilliden af vores kampe), ikke viljen. **Mangler (præcist):** 0x684cd0's +0x39/+0x3a, den europæiske Comp_Stats-post ("expect glory",
+  bit 0x400 – oraklets man_conf.dat-layout ikke afkodet), landsholdene som klubber (28 ledige personer med landsholdsjob 6/8/10 får viljen 0),
+  stabens kontrakt +0x44/+0x45 (0), 0x48aff0 (club +0x73 efter hjemmekampe), 0x846920 (søsterfunktionen, kun check = 1), FA-klagen 0x6a9e60
+  og mediehistorierne 0x74b060. Test: tests/cmBoardInterest.test.ts. Ydelse: de genbyggede world-filer (formændene m.m.) og forkørslens
+  managertrin gjorde nyt spil 35 → 43 s (England, original); `updateWageBill` slår nu udlejede spillere og stab op pr. klub ved spilstarten
+  (resultatneutralt – samme summer) → 21 s. `boardPrerun.on` (cmBoardGame.ts) slår managertrinet fra til målinger.
+
+- 2026-11-13 – **Medier og moral** (noten `~/cm0102-engine/notes/media-morale.md`, kun den originale database i ægte tilstand). **Målt først:**
+  et nyt mediespor (`~/cm0102-engine/tools/md/`: RT_WRAP af staff_adjust_morale 0x544710 med returadresse + 23 medie-/rekord-/bøde-/AWOL-funktioner,
+  i en separat kopi af Bosman-kilden; spor `oracle/runs/md1.txt` 45 dage, `md2.txt` 330 dage, frø 1). For ls20's 374 kampspillere frem til 17/8 er
+  den største manglende moralskriver **sign_contract 0x4cf720 (0x4d004e: +20 ved en ny almindelig kontrakt – 74 spillere, +1,37 pr. spiller)**;
+  medierne 0x736c00 giver kun −0,03 (−12 i alt). Kampstartens hul skyldes altså kontrakterne (computerens forlængelser 20.–24/7 i CONTRACT_MANAGER),
+  ikke medierne. **Porteret (`src/game/cmMedia.ts`):** sign_contract's +20 (setClub uden leje, renewContract – i stedet for spillets +2/+4 –,
+  aiRenewals) og Staff_Records' klub-/trupdel: mester 0x868c50 (omdømmet mod 500·ligaens højst +750, tilskuertallets maksimum +20·omdømme,
+  ligakampe > trunc((hold − 1)·runder·0,33) → moral +20/+0x44 +100, ellers +10/+50), oprykning 0x869480 (+500, +10·omdømme, moral +15, +0x44 +75),
+  nedrykning 0x86a1c0 (−500 mindst 750, moral −15, omdømmet ×0,9/×0,95 efter trupstatus), pokalvinder 0x86a800 (omdømmet) – `cmRecordsDaily`
+  dagen efter turneringens sidste kamp. **Kontrol** (ADVANCE=2001-08-17 grid-kickoff-diff.ts, ls20): moralen ved kampstart 13,44/13,62 → 13,68/13,89
+  (orig 14,39/14,81); resten (~0,7–0,9) kommer, når kontraktporteringens forlængelser i juli kobles ind og kalder `cmSignContractMorale`.
+  Mediehistorier over en sæson i originalen (md2): 1.699 forslag 0x72c1f0 (type 0: 1.086, AWOL 8: 278, 2: 164, 0xd: 78, 0x23: 33), 231 0x744240,
+  416 0x741020, 435 virkninger 0x736c00 (5.448 moralkald, −1.036), 108 0x74b060 (bestyrelsen). **Ikke porteret:** selve mediesystemet
+  (0x754a30-køen, 0x72c1f0/0x744240/0x733a60/0x735870/0x741020/0x736c00/0x73e870/0x74b060 – kortlagt i noten), Fine 0x5a5980 og AWOL
+  0x4190d0/0x41a360/0x419840 (de kalder ikke 0x544710 – kun staffState/forhold), skadernes nyheder 0x630ee0, managerens/formandens historik og
+  omdømme i Staff_Records, stadionets +0x44 og forlængelsestilbuddene 0x4cda70 ved mesterskab/op-/nedrykning. World-filerne skal ikke genbygges.

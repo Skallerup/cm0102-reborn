@@ -1,5 +1,6 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
 import { cmActive, setRequestHooks } from './cmPlayerData';
+import { cmSignContractMorale } from './cmMedia';
 import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
@@ -739,7 +740,8 @@ export function renewContract(pid: number, wage: number, years: number, clauses?
     p.contract = { wage, expires: renewalExpiry(p.contract?.expires, years, g.date), ...cl };
     if (cl.signOn) { club.balance -= cl.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + cl.signOn; }
     const hadDemand = !!p.demand;
-    p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
+    // original DB i ægte tilstand: sign_contract 0x4cf720's +20 (cmMedia.ts) i stedet for spillets +2/+4
+    if (cmActive(g)) cmSignContractMorale(g, p); else p.morale = Math.min(20, p.morale + (p.demand ? 4 : 2));
     p.demand = undefined;
     p.renewal = undefined;
     // en tilfreds spiller takker for den nye kontrakt
@@ -1239,6 +1241,7 @@ export function aiRenewals() {
     const club = g.clubs[p.club];
     const rel = defaultRelease(p, club);
     p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30`, ...(rel ? { release: rel } : {}) };
+    cmSignContractMorale(g, p);   // sign_contract 0x4cf720 (cmMedia.ts)
     staying.set(p.club, left + 1);
   }
 }

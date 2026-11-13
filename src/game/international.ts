@@ -115,6 +115,8 @@ function play(home: number, away: number, kind: IntlResult['kind'], stage?: stri
     if (!p || line.minutes <= 0 || u21) continue;
     p.caps = (p.caps ?? 0) + 1;
     p.intGoals = (p.intGoals ?? 0) + line.goals;
+    p.stats.intApps = (p.stats.intApps ?? 0) + 1;
+    p.stats.intGoals = (p.stats.intGoals ?? 0) + line.goals;
     // kampreferat til spillerens klub (CM 01/02: "scored", "hat-trick", "sent off", "man of the match")
     const pk = line.goals >= 3 ? 'intl.p.hattrick' : line.red ? 'intl.p.red' : line.goals > 0 ? 'intl.p.scored' : rep.mom === p.id ? 'intl.p.mom' : '';
     if (pk && isHumanClub(p.club)) asOwner(p.club, () => addNews({ cat: 'general', key: pk, params: { player: `${p.first} ${p.last}`.trim(), nation: g.nations[p.nation]?.name ?? '', opp: g.nations[p.nation === home ? away : home]?.name ?? '', n: line.goals }, link: { kind: 'player', id: p.id } }));

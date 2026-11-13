@@ -10,7 +10,6 @@ import { createPortal } from 'react-dom';
 import { gs } from '../game/state';
 import type { GameState, Staff } from '../game/types';
 import { compName, natName, t } from '../i18n';
-import { leagueRows } from '../game/competitions';
 import { useNav, type Route, type ScreenName } from './core';
 import { Crest, NationCrest } from './components';
 import { KitBrand } from './kitBrand';
@@ -18,6 +17,7 @@ import { compLogoUrl } from './logos';
 import { realCompName } from '../i18n/comps';
 import { titleLogo } from './classicOptions';
 import { matchDayComps } from './screens/MatchDayClassic';
+import { authentic } from '../game/rules';
 
 // ---------- pladser (slots) som Shell stiller til rådighed ----------
 
@@ -198,7 +198,7 @@ export const shownComp = (r: Route): string | undefined => (r.state?.cid as stri
 const compColors = (id?: string) => (id === 'CL' ? { bg: '#000000', fg: '#e3262a' } : id === 'UEFA' ? { bg: '#2f5bd6', fg: '#ffffff' } : { bg: '#ffffff', fg: '#1a2a8c' });
 
 const CLUB_TABS: ScreenName[] = ['squad', 'transfers', 'assistant', 'fixtures', 'club'];
-// CM 01/02: Tactics ▸ · Training ▸ · Last Match ▸ · "1st in PL" ▸ (placering i ligaen) · History ▸
+// CM 01/02: Tactics ▸ · Training ▸ · Last Match ▸ · "FA Premier League" ▸ (ligaens navn) · History ▸
 const CLUB_SUB: Hub['sub'] = ['tactics', 'training', 'lastMatch', 'division', 'clubHistory'];
 const OFFICE_TABS: ScreenName[] = ['finance', 'board', 'staff', 'scouting'];
 const OFFICE_SUB: Hub['sub'] = ['squad', 'tactics', 'training', 'division'];
@@ -227,7 +227,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
   // reserveholdet (CM 01/02 "Manchester United Reserves"): samme trupskærm med "Reserves" i titlen
   squad: { title: (g, r) => (r.tab === 'reserves' ? t('cl.res.full', { club: g.clubs[g.userClub]?.name ?? '' }) : clubName(g)), club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   transfers: { title: () => t('cl.tr.title'), club: own },
-  assistant: { title: (g) => `${clubName(g)} – ${t('cl.nextMatch')}`, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
+  // ægte CM 01/02: kun klubbens navn (ejerens skærmbillede 268)
+  assistant: { title: (g) => (authentic() ? clubName(g) : `${clubName(g)} – ${t('cl.nextMatch')}`), club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   fixtures: { title: clubName, club: own, tabs: CLUB_TABS, sub: CLUB_SUB },
   club: {
     title: (g, r) => g.clubs[Number(r.id ?? g.userClub)]?.name ?? '',
@@ -326,12 +327,9 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
     } else if (k === 'division') {
       const cid = viewed || g.userClub;
       const lg = g.clubs[cid]?.league;
-      // "1st in PL": placeringen og ligaens forkortelse (ellers "Division")
-      const comp = lg ? g.comps[lg] : undefined;
-      const rows = comp?.type === 'league' ? leagueRows(comp) : [];
-      const pos = rows.findIndex((r) => r.club === cid) + 1;
-      const abbr = compAbbr(compName(g.leagues[lg ?? '']?.name) ?? '');
-      out.push({ key: k, label: pos > 0 && abbr ? t('cl.posIn', { pos: ordinal(pos), lg: abbr }) : label(k), route: { name: 'competitions', id: lg }, disabled: !lg, arrow: true });
+      // CM 01/02 (ejerens skærmbilleder): knappen viser ligaens navn ("FA Premier League") – ikke placeringen
+      const name = compName(g.leagues[lg ?? '']?.name) ?? '';
+      out.push({ key: k, label: name || label(k), route: { name: 'competitions', id: lg }, disabled: !lg, arrow: true });
     } else if (k === 'clubHistory') {
       const cid = viewed || g.userClub;
       out.push({ key: k, label: t('cl.history'), route: { name: 'clubhistory', id: cid }, on: route.name === 'clubhistory', arrow: true });
@@ -386,6 +384,13 @@ const luma = ([r, g, b]: [number, number, number]) => (0.299 * r + 0.587 * g + 0
 const dist = (a: [number, number, number], b: [number, number, number]) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 
 /** Titelbjælkens farver: klubbens 1. farve som flade, 2. farve som tekst (som i originalen) */
+/** "Print ▾" i klubskærmenes titelbjælke (CM 01/02; menuen i cm0102.exe: Stats/All – her udskrives siden) */
+export function PrintMenu({ clubId }: { clubId?: number }) {
+  const col = titleColors(clubId);
+  return <CxDrop className="cx-act cx-print" label={t('cl.print')} align="right" items={[{ key: 'all', label: t('cl.printAll'), onClick: () => window.print() }]}
+    btn={col.neutral ? undefined : { style: { background: col.bg, color: col.fg } }} />;
+}
+
 export function titleColors(clubId: number | undefined): { bg: string; fg: string; neutral: boolean } {
   const c = clubId ? gs().clubs[clubId] : undefined;
   if (!c) return { bg: '#f4f6fb', fg: '#0b1a5c', neutral: true };
@@ -469,7 +474,7 @@ function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number })
  * Skærmhovedet i klassisk stil: titelbjælke, hub-faner og en værktøjslinje med skærmens egne kontroller.
  * Har hubben ingen faner, fylder skærmens egne faner (Tabs i Head) hovedfanerækken.
  */
-export function ClassicHead({ title, children, action }: { title: ReactNode; children?: ReactNode; action?: ReactNode }) {
+export function ClassicHead({ title, children, action, menu }: { title: ReactNode; children?: ReactNode; action?: ReactNode; menu?: boolean }) {
   const { route } = useNav();
   const slots = useClassicSlots();
   const g = gs();
@@ -499,10 +504,12 @@ export function ClassicHead({ title, children, action }: { title: ReactNode; chi
   return (
     <div className="cx-head">
       <div className={`cx-title ${col.neutral ? 'neutral' : ''}`} style={{ background: col.bg, color: col.fg, ['--tb' as string]: col.bg }}>
-        <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />
+        {/* CM 01/02: ▸-menuen findes kun på klubbens skærme og spillerprofilen – ikke på nyheder, Board Confidence, Find, søgning, transfers,
+            historik eller spillerens handlingssider (menu={false}) */}
+        {menu !== false && (hub?.tabs === CLUB_TABS || route.name === 'player') && <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />}
         {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} />{titleLogo() && <KitBrand club={logoClub} />}</span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : compUrl ? <span className="cx-title-logo"><img src={compUrl} alt="" width={44} height={44} style={{ objectFit: 'contain' }} /></span> : null}
         <h2>{text}</h2>
-        {action && <div className="cx-action">{action}</div>}
+        {action ? <div className="cx-action">{action}</div> : hub?.sub === CLUB_SUB && authentic() ? <div className="cx-action"><PrintMenu clubId={logoClub} /></div> : null}
       </div>
       {tabs.length ? <ButtonRow items={tabs} className="cx-tabrow" /> : <div className="cx-tabslot" ref={slotRef} />}
       {children && <div className="cx-tools">{children}</div>}

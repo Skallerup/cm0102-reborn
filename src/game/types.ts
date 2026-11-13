@@ -71,6 +71,9 @@ export interface SeasonStats {
   lgMom?: number;
   lgRatingSum?: number;
   lgRatingCount?: number;
+  /** landskampe og -mål i denne sæson (spillerprofilens International-række – mangler i ældre gemte spil) */
+  intApps?: number;
+  intGoals?: number;
 }
 
 export interface PlayerMove {
@@ -351,6 +354,8 @@ export interface Staff {
   cmHid?: number[];
   /** personpostens +0x3e (ankomstdatoen, ISO) */
   cmJoined?: string;
+  /** personpost +0x24/+0x28: landsholdet (nations-id i databasen, −1 = intet) og jobbet dér – viljen 0x844780 (cmBoardInterest.ts) */
+  cmNat?: [number, number];
 }
 
 export interface ClubFinance {
@@ -581,6 +586,14 @@ export interface Fixture {
   result?: MatchResultShort;
   /** (runde 10A) tidspunktet på dagen i originalens kalender: 0 formiddag, 1 eftermiddag, 2 aften (skemaets +4 / tv-pladsen) */
   slot?: number;
+  /** (kalenderen, runde 10C) originalens fixture-koder fra turneringens rundetabel (Cup-runden +0x07/+0x09/+0x0d/+0x0f/+0x17, skemaet) –
+   *  sat, når kampen oprettes efter originalens format (kun den originale database i ægte tilstand); gameInputs.ts fixtureCodesOf bruger dem
+   *  før afbildningen af spillets egne formater. w30 = fixture +0x30 (runde-id, +3/+4 for første/andet ben), w32 = +0x32 (stage-id), b34 =
+   *  +0x34 (rundens indeks), b3a = +0x3a (kamptypen), b3c = +0x3c (neutral bane), f38 = +0x38 (kampflag ved oprettelsen), f38dec = rundens
+   *  +0x0f (flag for den afgørende kamp: OR'es ind i andet ben, når første ben er spillet / omkampens flag) */
+  cm?: { w30: number; w32?: number; b34: number; b3a: number; b3c?: number; f38: number; f38dec?: number;
+    /** (runde 10D) pokalernes omkampe: omkampens nummer, tilladte omkampe (+0x20), dage til omkampen (+0x22), flagene for omkamp 1/2 (+0x0f/+0x11) */
+    rep?: number; reps?: number; days?: number; fRep?: number[] };
 }
 
 export interface MatchResultShort {
@@ -1027,6 +1040,8 @@ export interface GameState {
   /** TRAINING_MANAGER +0x688d: ugetælleren (0x8b1730 – dag-i-året % 7 = 0) */
   cmTrainWeek?: number;
   cmClubRep?: Record<number, number>;
+  /** (runde 12) Staff_Records: turneringer, hvis sæsonslut er behandlet (id → sæson) – cmMedia.ts cmRecordsDaily */
+  cmRecDone?: Record<string, number>;
   /** originalens bestyrelse og managerjob (cmBoard.ts/cmBoardGame.ts – kun den originale database i ægte tilstand): MANAGER_MANAGER's poster og lister */
   cmBoard?: import('./cmBoard').CmBoardState;
   /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
@@ -1041,11 +1056,19 @@ export interface GameState {
   cmFin?: Record<number, import('./cmFinance').CmFinRec>;
   cmFinRaw?: Record<number, number[]>;
   cmLowerDiv?: number;
+  /** viljen 0x844780 (cmBoardInterest.ts): nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id, byernes +0x33 og klubbernes
+   *  mål-omdømme Shortlist_Manager +0xdc[9·klub]+5 (0x83bf40, skrevet når computerens trupplan 0x83cb40 kører) */
+  cmNationCont?: number[]; cmEurope?: number; cmCity33?: number[]; cmTargetRep?: Record<number, number>;
   cmSup?: Record<number, number>;
   cmFinStartYear?: number;
   cmCompRep?: Record<number, number>;
   /** (runde 9) tilskuertallet sub_85cba0 (crowd.ts): pr. klub [gns., mindst, højst, stadion-id, by-id, stadionets kapacitet +0x3c (init kan hæve den),
    *  rival 1–3] (club.dat 115/119/123/105/179–187, stadium.dat +56/+60), byernes koordinater (city.dat +0x23/+0x2b fladt) og nation +0x7e */
+  /** (kalender runde 10C) originalens UEFA-seeding (cmEurope.ts): landenes seks sæsonkoefficienter (nation +0xe0..+0x108), sæsonens point/
+   *  deltagere og titelforsvarerne */
+  cmUefa?: import('./cmEurope').CmUefaState;
+  /** (runde 10C) de europæiske kampe før spillets start skal spilles (forkørslen – cmEurope.ts cmEuroCatchUp) */
+  cmEuroCatchUp?: boolean;
   cmCrowd?: Record<number, [number, number, number, number, number, number, number, number, number]>;
   cmCities?: number[];
   cmNation7e?: number[];

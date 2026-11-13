@@ -1432,3 +1432,109 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 }
 .cx-eur-count { margin: 6px 0; padding: 6px; text-align: center; background: rgba(0, 0, 0, 0.45); color: #fff21f; font-weight: 800; font-size: 16px; text-shadow: 1px 1px 0 #000; }
 .cx-eur .cx-sqn-box { font-size: 12px; }
+
+/* Filters for Player/Staff Search, fanen Attributes (CM 01/02): to kolonner med "-", værdien og "+" (2026-11-13) */
+.cx-fl-attrs { display: grid; grid-template-columns: 1fr 1fr; column-gap: 30px; row-gap: 2px; padding: 8px 12px; border: 1px solid rgba(255, 255, 255, 0.25); background: rgba(0, 0, 0, 0.18); }
+.cx-fl-attr { display: flex; align-items: center; gap: 6px; height: 28px; color: #fff; font-size: 16px; font-weight: 700; text-shadow: 1px 1px 0 #000; }
+.cx-fl-attr > span { flex: 1; }
+:root[data-skin='retro'] .cx-fl-attr button { width: 50px; height: 24px; padding: 0; background: rgba(0, 0, 0, 0.3); border: 1px solid; border-color: #3f8a3c #0a280a #0a280a #3f8a3c; color: #fff; font-size: 15px; font-weight: 700; text-shadow: none; }
+:root[data-skin='retro'] .cx-fl-attr button:hover:not(:disabled) { background: rgba(255, 255, 255, 0.16); }
+:root[data-skin='retro'] .cx-fl-attr button:disabled { opacity: 0.45; }
+.cx-fl-attr > b { width: 34px; text-align: center; color: #7fe07a; text-shadow: none; }
+.cx-fl-attr > b.set { color: #fff21f; }
+@media (max-width: 760px) { .cx-fl-attrs { grid-template-columns: 1fr; } }
+/* ---------- Truppen som i CM 01/02 (ejerens skærmbilleder 262-267, kun ægte tilstand: .cx-sq-orig) ---------- */
+/* listen står i en indrammet mørk flade; overskriften ("Position(s)", "Contract Info" …) i en grå bjælke */
+.cx-sq-panel { position: relative; }
+.cx-sq-orig .cx-sq-panel { background: rgba(0, 0, 0, 0.32); padding: 0 0 6px; }
+.cx-sq-orig .cx-sq-head { display: block; margin: 0; padding: 6px 0 8px; background: rgba(60, 60, 60, 0.55); text-align: center; color: #fff21f; font-size: 21px; font-weight: 700; }
+/* strimlen: grøn med hvid tekst, SB6-SB9 dæmpet (bænken har kun 5 pladser), ingen forskel på besat/ledig */
+.cx-sq-orig .cx-sq-slots { grid-template-columns: repeat(auto-fill, minmax(38px, 1fr)); gap: 0; margin: 4px 0 6px; padding: 0; }
+.cx-sq-orig .cx-slot, .cx-sq-orig .cx-slot.filled, .cx-sq-orig .cx-slot.bench.filled { height: 26px; background: #1d7a1a; color: #fff; border: 1px solid; border-color: #4cb045 #0b3a0a #0b3a0a #4cb045; font-size: 12px; font-weight: 700; text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); cursor: pointer; }
+.cx-sq-orig .cx-slot.off { color: #2f9a2a; text-shadow: none; cursor: default; }
+.cx-sq-orig .cx-slot.armed { border-color: #fff21f; box-shadow: inset 0 0 0 1px #fff21f; }
+/* rækkerne: blå udtagelsesfelt (hvid tekst), rødt Inj-mærke, hvidt navn, positionerne i gult */
+.cx-sq-orig .cx-sq-cols { gap: 0 18px; }
+.cx-sq-orig .cx-sq-col { gap: 1px; }
+.cx-sq-orig .cx-sq-row { grid-template-columns: 52px 42px minmax(0, 1fr) 34%; gap: 0 6px; min-height: 30px; }
+.cx-sq-orig .cx-sq-head { position: relative; }
+.cx-sq-agroup { position: absolute !important; right: 8px; top: 50%; transform: translateY(-50%); font-size: 13px; }
+:root[data-skin='retro'] .cx-sq-orig .cx-selbtn, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.xi, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn.bench,
+:root[data-skin='retro'] .cx-sq-orig .cx-selbtn:hover, :root[data-skin='retro'] .cx-sq-orig .cx-selbtn:focus {
+  width: 52px; height: 29px; background: #0000a8; color: #fff; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; font-size: 12px; font-weight: 700; text-shadow: none; filter: none; }
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag:hover { height: 29px; background: #8f1010; color: #fff; border: 1px solid; border-color: #d04a3a #3a0404 #3a0404 #d04a3a; font-size: 12px; font-weight: 500; filter: none; }
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.yel { background: #c8c24a; color: #10164e; }
+:root[data-skin='retro'] .cx-sq-orig .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; text-decoration: none; }
+:root[data-skin='retro'] .cx-sq-orig .cx-sq-name:hover { color: #fff; text-decoration: underline; text-decoration-color: #fff; text-underline-offset: 3px; }
+.cx-sq-orig .cx-sq-info { color: #fff21f; font-size: 14px; font-weight: 500; }
+/* de andre visninger (Contract, Selection, Stats …): én kolonne med kolonneoverskrifter */
+.cx-sq-cols.one { grid-template-columns: 1fr; }
+.cx-sq-row.wide .cx-sq-info { text-align: center; overflow: hidden; text-overflow: ellipsis; }
+.cx-sq-colhead { min-height: 22px !important; }
+.cx-sq-colhead .cx-sq-info { color: #fff !important; font-size: 12px; font-weight: 700; }
+/* Print (titelbjælken): mørk knap i klubbens farve med rullemenu */
+:root[data-skin='retro'] .cx-print .cx-drop-btn, :root[data-skin='retro'] .cx-print .cx-drop-btn:hover { min-width: 120px; filter: brightness(0.85); border-color: rgba(0, 0, 0, 0.6) rgba(255, 255, 255, 0.25) rgba(255, 255, 255, 0.25) rgba(0, 0, 0, 0.6); color: #111; text-shadow: none; font-weight: 700; }
+@media (min-width: 761px) {
+  .cx-sq-orig .cx-sq-panel { margin: 0 16px; min-height: calc(100vh - 335px); }
+  .cx-sq-orig .cx-sq-cols { max-height: calc(100vh - 390px); }
+  .cx-sq-orig .cx-sq-cols.one { max-height: calc(100vh - 445px); }
+}
+@media print {
+  .cx-side, .cx-foot, .cx-tools, .cx-tabrow, .cx-sub, .cx-action { display: none !important; }
+}
+
+/* ---------- Klubskærmene som i CM 01/02 (Next Match, Fixtures, Finances & Info, transferbud – ejerens billeder 268-276) ---------- */
+/* overskriften i en grå bjælke (som "Position(s)" i truppen) */
+.cx-subtitle.cx-orig-band { margin: 0 0 0; padding: 8px 8px 10px; background: rgba(60, 60, 60, 0.55); color: #fff21f; font-size: clamp(18px, 2vw, 24px); font-weight: 700; text-shadow: 1px 1px 0 #000; }
+@media (min-width: 761px) { .cx-subtitle.cx-orig-band { margin: 0 16px; } }
+/* Next Match: listen i en mørk flade, der ruller */
+.cx-nm.cx-nm-orig { overflow-y: auto; max-height: calc(100vh - 345px); }
+@media (min-width: 761px) { .cx-nm.cx-nm-orig { margin: 0 16px; } }
+.cx-nm-orig .cx-nm-comp .cx-link { color: #ff9a2a; border-bottom-color: #ff9a2a; }
+/* Fixtures: blå datofelter, korte klubnavne, H/A hvide, lilla resultatfelt; hover = hvid understregning */
+.cx-fx.cx-fx-orig { background: rgba(0, 0, 0, 0.32); padding: 6px 0 6px 4px; max-height: calc(100vh - 345px); overflow-y: auto; }
+@media (min-width: 761px) { .cx-fx.cx-fx-orig { margin: 0 16px; } }
+.cx-fx-orig .cx-fx-row { grid-template-columns: 170px minmax(0, 1fr) 40px 28px minmax(0, 1fr) 100px; gap: 0 10px; min-height: 30px; }
+.cx-fx-orig .cx-fx-date { height: 29px; background: #0000a8; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; color: #fff; font-weight: 500; }
+.cx-fx-orig .cx-fx-opp { font-size: 20px; font-weight: 500; }
+.cx-fx-orig .cx-fx-opp:hover, .cx-fx-orig .cx-fx-row.clickable:hover .cx-fx-opp { color: #fff; text-decoration: underline; text-underline-offset: 3px; }
+.cx-fx-orig .cx-fx-ha { color: #dfe8ff; font-weight: 500; }
+.cx-fx-orig .cx-fx-comp, .cx-fx-orig .cx-fx-comp.cup { color: #fff21f; font-weight: 500; }
+.cx-fx-orig .cx-fx-res { height: 29px; background: #3c0a5e; border: 1px solid; border-color: #6a2a92 #1e0430 #1e0430 #6a2a92; color: #fff; font-weight: 500; }
+.cx-fx-orig .cx-fx-row.picked .cx-fx-date { border-color: #fff21f; }
+/* Finances & Info: General Info står fast, kun Non-Playing Staff ruller */
+.cx-ci-orig .cx-kv.big { margin: 0 16px; }
+.cx-ci-orig .cx-ci-staff { margin: 6px 16px 0; background: rgba(0, 0, 0, 0.32); max-height: calc(100vh - 610px); min-height: 140px; overflow-y: auto; }
+.cx-ci-orig .cx-ci-staff .cx-kv.big { margin: 0; background: transparent; }
+.cx-ci-orig .cx-section { color: #ff9a2a; text-decoration: none; display: inline-block; border-bottom: 2px solid #ff9a2a; padding-bottom: 2px; margin: 12px 14px 10px; }
+.cx-finv.cx-finv-orig { padding-top: 10px; }
+.cx-finv-orig .cx-fin-stats { font-size: 15px; } .cx-finv-orig .cx-fin-stats span, .cx-finv-orig .cx-fin-stats b { padding: 3px 4px; font-weight: 500; }
+.cx-finv-orig .cx-fin th { font-weight: 500; }
+/* transferbuddet: blå −/+/= og beløbet med ▾ (grøn liste med faste beløb) */
+.cx-bid .cx-pm { background: #0000a8; border-color: #3030d8 #00004a #00004a #3030d8; font-size: 18px; }
+:root[data-skin='retro'] .cx-bid-amt .cx-drop-btn, :root[data-skin='retro'] .cx-bid-amt .cx-drop-btn:hover { width: 100%; min-width: 0; justify-content: flex-end; gap: 14px; background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
+.cx-bid-amt .cx-drop-pop { min-width: 190px; }
+/* Exchange: "Add Player To … Transfer Bid" */
+.cx-exch .cx-exch-head { display: block; margin: 8px 16px 0; padding: 6px 0 8px; background: rgba(60, 60, 60, 0.55); text-align: center; color: #fff21f; font-size: 20px; font-weight: 700; }
+.cx-exch-list { margin: 0 16px; min-height: 50vh; background: rgba(0, 0, 0, 0.32); padding: 6px 0; display: flex; flex-direction: column; }
+.cx-exch-list .cx-sq-row { grid-template-columns: 52px 42px minmax(0, 1fr) 34%; }
+:root[data-skin='retro'] .cx-exch .cx-selbtn, :root[data-skin='retro'] .cx-exch .cx-selbtn:hover { width: 52px; height: 29px; background: #0000a8; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; filter: none; }
+:root[data-skin='retro'] .cx-exch .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; }
+:root[data-skin='retro'] .cx-exch .cx-sq-name:hover { color: #fff; text-decoration: underline; }
+.cx-exch-none { margin: auto; color: #fff; font-size: 19px; text-shadow: 1px 1px 0 #000; text-align: center; padding: 20px; }
+.cx-finv-orig .cx-fin td:first-child, .cx-finv-orig .cx-fin th:first-child { width: 34%; }
+.cx-finv-orig .cx-fin th:first-child { font-size: 20px; }
+.cx-finv-orig .cx-fin tr.profit td:first-child { color: #fff; }
+.cx-finv-orig .cx-fin-bal { grid-template-columns: 34% 1fr; gap: 6px 0; margin: 22px 0 0; padding: 0 12px; }
+.cx-finv-orig .cx-fin-bal span { font-size: 18px; font-weight: 500; }
+:root[data-skin='retro'] .cx-bid .cx-pm { display: grid; place-items: center; padding: 0; line-height: 1; font-size: 18px; font-weight: 700; }
+/* truppen (ægte tilstand): tomme pladser i strimlen lysere, Condition i grønt, udlejede spillere blå, grå = ikke spilleklar, Fut i grå boks */
+.cx-sq-orig .cx-slot:not(.filled):not(.off) { background: #3f9a39; border-color: #7cd070 #145012 #145012 #7cd070; }
+.cx-sq-orig .cx-sq-info.cond { color: #3ef03a; }
+:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.loan:hover { color: #4f9cff; }
+:root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim, :root[data-skin='retro'] .cx-sq-orig .cx-sq-name.dim:hover { color: #9a9a9a; }
+:root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut, :root[data-skin='retro'] .cx-sq-orig button.cx-sq-tag.fut:hover { background: #4a4a4a; color: #fff; border-color: #8a8a8a #1a1a1a #1a1a1a #8a8a8a; }
+.cx-sq-orig .cx-sq-cols { scrollbar-gutter: stable; }
+.cx-sq-orig span.cx-selbtn { display: block; }
+/* standardsættet (originalens billeder): de er allerede mørklagt i RGN-filerne – skallens foto (med et let slør) står alene, som i originalen */
+@media (min-width: 761px) { .shell.cx .main.cx-main.cx-orig { background: transparent; } }

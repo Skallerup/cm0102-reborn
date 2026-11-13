@@ -59,9 +59,9 @@ export default defineConfig({
           options: { cacheName: 'match-sounds', expiration: { maxEntries: 160, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
-          urlPattern: /\/(bg|stadiums|screens)\/[\w.-]+\.jpg$/,
+          urlPattern: /\/(bg|stadiums|screens|original-bg)\/[\w.-]+\.jpg$/,
           handler: 'CacheFirst',
-          options: { cacheName: 'backgrounds', expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 365 } },
+          options: { cacheName: 'backgrounds', expiration: { maxEntries: 140, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {
           // den originale database: altid den nyeste ved nyt spil (cachen bruges kun offline) – med
           // StaleWhileRevalidate fik det første spil efter en opdatering den gamle database (fx uden Tsigalko)

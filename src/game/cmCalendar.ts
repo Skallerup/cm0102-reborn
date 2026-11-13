@@ -19,7 +19,7 @@
 // 0x68a030 + talrækken).
 import type { Fixture, GameState } from './types';
 import { addDays, daysBetween, toDate } from './dates';
-import { CM_FA_CUP, CM_SCHEDULES, type SchedRound, type SchedTv } from './data/cmSchedules';
+import { CM_FA_CUP, CM_SCHEDULES, type SchedRound, type SchedTv, type SchedVar } from './data/cmSchedules';
 import { seasonStartDay } from './cmFitness';
 import { cmActive, cmRand } from './cmPlayerData';
 import { fixturesOn, indexFixture, unindexFixture } from './state';
@@ -70,9 +70,15 @@ export interface CmRound { date: string; slot: number; tv: SchedTv[] }
 export function cmLeagueSchedule(compId: string, year: number): CmRound[] | null {
   const tpl = CM_SCHEDULES[compId];
   if (!tpl) return null;
-  const xmas = tpl.xmas[cmWeekday(`${year}-12-17`)] ?? {};
-  return tpl.rounds.map((base, i) => {
-    const [r, tv] = (xmas[i] ?? [base, tpl.tv[i]]) as [SchedRound, SchedTv[]];
+  // (runde 10D) variant efter året (gen_all.py's nøgle) eller årets egen gren i koden
+  const leap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const wd1712 = cmWeekday(`${year}-12-17`), cal = cmWeekday(`${year}-01-01`) * 4 + (leap(year) ? 2 : 0) + (leap(year + 1) ? 1 : 0);
+  const KEY: Record<string, number> = { none: 0, wd1712, parity: year % 2, wd0101: cmWeekday(`${year + 1}-01-01`), cal, 'parity+wd1712': (year % 2) * 10 + wd1712, 'parity+cal': (year % 2) * 100 + cal };
+  const v: SchedVar = tpl.years[year] ?? tpl.var[KEY[tpl.key] ?? 0] ?? {};
+  const all = 'all' in v && Array.isArray(v.all) ? (v.all as [SchedRound[], SchedTv[][]]) : null;
+  const rounds = all ? all[0] : tpl.rounds, tvs = all ? all[1] : tpl.tv;
+  return rounds.map((base, i) => {
+    const [r, tv] = (!all && (v as Record<string, [SchedRound, SchedTv[]]>)[i]) || [base, tvs[i]];
     return { date: cmDate(r[0], r[1], year + r[2], r[3]), slot: r[4], tv };
   });
 }
@@ -88,6 +94,8 @@ export function cmFaCupDate(nation: number, round: number, total: number, year: 
 
 /** fixture +0x3a (kamptypen – se gameInputs.ts fixtureCodesOf): liga 2, pokal 4 (6 fra kvartfinalen), playoff 5, Europa 8, venskabskamp 1 */
 function fixtureType(g: GameState, f: Fixture): number {
+  // (runde 10C) kampe oprettet efter originalens rundetabel har deres egen +0x3a
+  if (f.cm) return f.cm.b3a;
   const c = g.comps[f.comp];
   if (!c) return 1;
   if (c.type === 'league') return 2;
@@ -190,4 +198,18 @@ function tvMoves(g: GameState, comp: string, row: CmRound): void {
     moveFixture(best, D, slot);
     list = list.filter((f) => f !== best);
   }
+}
+
+/** Datoboksens tidspunkt (originalens "14.7.01 AM": dato + "AM"/"PM"/"EVE" = spillets tidspunkt 0/1/2). Spillet kører hele dage: før dagens kampe
+ *  er det formiddag (spilstarten 0x5cc850 slutter på tidspunkt 0); efter dagens spillede kampe for klubben/de fulgte turneringer det seneste
+ *  kamptidspunkt. null = ikke originalens kalender. */
+export function cmTimeOfDay(g: GameState): 0 | 1 | 2 | null {
+  if (!cmCalendarOn(g)) return null;
+  if (!g.dayDone) return 0;
+  let slot = 0;
+  for (const id of fixturesOn(g.date)) {
+    const f = g.fixtures[id];
+    if (f?.result && (f.home === g.userClub || f.away === g.userClub)) slot = Math.max(slot, f.slot ?? 1);
+  }
+  return slot as 0 | 1 | 2;
 }

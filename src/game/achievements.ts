@@ -27,6 +27,8 @@ export function unlock(id: AchId) {
   const a = (g.manager.ach ??= {});
   if (a[id]) return;
   a[id] = g.date;
+  // ægte CM 01/02: præstationerne findes ikke i originalen – ingen nyhed (de vises stadig på managerprofilen)
+  if (g.options.mode === 'authentic') return;
   addNews({ cat: 'award', key: 'ach.unlocked', params: { name: t(`ach.${id}`), icon: ACHIEVEMENTS.find((x) => x.id === id)?.icon ?? '🏅' } });
 }
 

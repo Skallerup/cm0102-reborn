@@ -8,7 +8,8 @@ import { ClubLink, Crest, Modal, Panel } from '../components';
 import { isRetro } from '../theme';
 import { useGame, useNav } from '../core';
 import { Head } from './common';
-import { cxShortDate } from '../classic';
+import { CxDrop, cxShortDate } from '../classic';
+import { authentic } from '../../game/rules';
 
 export function stageLabel(f: Fixture): string {
   if (!f.stage) return `${t('fix.round')} ${f.round}`;
@@ -39,6 +40,9 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
   const mine = cid === g.userClub;
   const { nav } = useNav();
   const [arrange, setArrange] = useState(false);
+  // CM 01/02: Cancel aflyser den valgte venskabskamp; Arrange ▾ arrangerer en
+  const [picked, setPicked] = useState<string | null>(null);
+  const orig = authentic();
   type Row = { key: string; date: string; opp: number; home?: boolean; comp: string; cup?: boolean; friendly?: boolean; res?: string; win: number; fid?: number };
   const rows: Row[] = Object.values(g.fixtures).filter((f) => f.home === cid || f.away === cid).map((f) => {
     const home = f.home === cid, r = f.result;
@@ -56,18 +60,21 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
         <button className="cx-greybtn" disabled>{t('cl.fx.prev')}</button>
         <button className="cx-greybtn" disabled>{t('cl.fx.next')}</button>
         <span className="grow" />
-        {!g.draft && g.userClub > 0 && <button className="cx-greybtn" onClick={() => setArrange(true)}>{t('cl.fx.arrange')}</button>}
+        {orig ? <>
+          <button className="cx-greybtn" disabled={!picked || !mine} onClick={() => { const fr = rows.find((x) => x.key === picked && x.friendly && !x.res); if (fr) act({ t: 'friendlyCancel', date: fr.date }); setPicked(null); }}>{t('cl.fx.cancel')}</button>
+          <CxDrop label={t('cl.fx.arrangeMenu')} align="right" items={[{ key: 'fr', label: t('cl.fx.arrFriendly'), disabled: !!g.draft || !g.userClub, onClick: () => setArrange(true) }]} />
+        </> : !g.draft && g.userClub > 0 && <button className="cx-greybtn" onClick={() => setArrange(true)}>{t('cl.fx.arrange')}</button>}
       </Head>}
-      <div className="cx-subtitle">{t('cl.fx.season', { s: `${g.season}/${String((g.season + 1) % 100).padStart(2, '0')}` })}</div>
-      <div className="cx-fx">
+      <div className={`cx-subtitle ${orig ? 'cx-orig-band' : ''}`}>{t('cl.fx.season', { s: `${g.season}/${String((g.season + 1) % 100).padStart(2, '0')}` })}</div>
+      <div className={`cx-fx ${orig ? 'cx-fx-orig' : ''}`}>
         {rows.map((r) => {
           const c = g.clubs[r.opp];
           const foreign = c && c.nation !== myNation;
           const open = r.fid !== undefined && !!g.reports[r.fid];
           return (
-            <div key={r.key} className={`cx-fx-row ${open ? 'clickable' : ''}`} onClick={() => open && nav({ name: 'report', id: r.fid! })}>
+            <div key={r.key} className={`cx-fx-row ${open ? 'clickable' : ''} ${picked === r.key ? 'picked' : ''}`} onClick={() => { if (r.friendly && !r.res) setPicked(picked === r.key ? null : r.key); else if (open) nav({ name: 'report', id: r.fid! }); }}>
               <span className="cx-fx-date">{g.draft ? '' : d(r.date)}</span>
-              <span className="cx-fx-opp" onClick={(e) => { e.stopPropagation(); if (c) nav({ name: 'club', id: r.opp }); }}>{c?.name ?? '?'}</span>
+              <span className="cx-fx-opp" onClick={(e) => { e.stopPropagation(); if (c) nav({ name: 'club', id: r.opp }); }}>{(orig ? c?.short : c?.name) ?? '?'}</span>
               <span className="cx-fx-nat">{foreign ? g.nations[c.nation]?.code : ''}</span>
               <span className="cx-fx-ha">{r.home === undefined ? '' : r.home ? t('cl.fx.h') : t('cl.fx.a')}</span>
               <span className={`cx-fx-comp ${r.friendly ? 'friendly' : r.cup ? 'cup' : ''}`}>{r.comp}</span>

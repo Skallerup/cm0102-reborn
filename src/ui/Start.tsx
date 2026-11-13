@@ -172,6 +172,9 @@ function LoadList({ onBack, setBusy }: { onBack: () => void; setBusy: (s: string
 
 // sprogets eget land er valgt fra start (England, hvis landet ikke findes i databasen)
 const LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Brazil', tr: 'Turkey', sv: 'Sweden', nb: 'Norway' };
+/** Den originale database: originalens forvalg pr. sprog (0x827d50 → 0x66f4d0: engelsk England, fransk Frankrig, tysk Tyskland, italiensk Italien,
+ *  spansk Spanien, dansk Danmark, hollandsk Holland, norsk Norge, portugisisk Portugal, svensk Sverige …). Tyrkisk findes ikke i originalen → engelsk. */
+const ORIG_LANG_NATION: Record<Lang, string> = { da: 'Denmark', en: 'England', es: 'Spain', fr: 'France', de: 'Germany', it: 'Italy', pt: 'Portugal', tr: 'England', sv: 'Sweden', nb: 'Norway' };
 
 function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initialDb }: { challenge?: string; onBack: () => void; setBusy: (s: string) => void; setProg?: (p: NewGameProgress | null) => void; online?: boolean; onDraft?: () => void; initialDb?: string }) {
   const [world, setWorld] = useState<WorldData | null>(null);
@@ -222,7 +225,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
     load.then((w) => {
       if (!w) return;
       setWorld(w);
-      const own = LANG_NATION[getLang()];
+      const own = (db === 'original' ? ORIG_LANG_NATION : LANG_NATION)[getLang()];
       const names = ch ? ch.nations : [w.leagues.some((l) => !l.hidden && w.nations[l.nation]?.name === own) ? own : 'England'];
       const ids = names.map((n) => w.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0);
       setActive(new Set(ids));
@@ -351,9 +354,16 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
             {leagueNations.map((n) => (
               <label key={n} className={`choice ${active.has(n) ? 'on' : ''}`}>
                 <input type="checkbox" checked={active.has(n)} onChange={() => {
-                  const s = new Set(active);
+                  let s = new Set(active);
                   const adding = !s.has(n);
                   if (adding) s.add(n); else s.delete(n);
+                  // den originale database: spillets hovedland [0xae2d08] (startdatoen 0x830520) er det først valgte land; fravælges det, bliver
+                  // det første valgte i nøglelandstabellen 0xb63d60 (alfabetisk) hovedlandet (0x81e0b9–0x81e0e9)
+                  if (db === 'original' && !adding && [...active][0] === n && s.size) {
+                    const rest = [...s];
+                    const main = rest.slice().sort((a, b) => (world.nations[a].name < world.nations[b].name ? -1 : 1))[0];
+                    s = new Set([main, ...rest.filter((x) => x !== main)]);
+                  }
                   setActive(s);
                   // klubvalget følger med: et nyt land viser dets bedste liga; fjernes landet for den valgte liga, skiftes der
                   const top = (nat: number) => world.leagues.filter((l) => l.nation === nat && !l.hidden).sort((a, b) => a.tier - b.tier)[0];

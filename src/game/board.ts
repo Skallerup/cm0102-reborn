@@ -1,5 +1,5 @@
 // Bestyrelse, forventninger, fyringer og jobmarked.
-import { cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardResign } from './cmBoardGame';
+import { cmBoardAcceptJob, cmBoardApply, cmBoardDeclineJob, cmBoardOn, cmBoardRequest, cmBoardResign } from './cmBoardGame';
 import { finalOrder, leagueRows } from './competitions';
 import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
@@ -843,6 +843,8 @@ export function meetBoardAvailable(kind: MeetBoardKind): boolean {
   const g = gs();
   const c = g.clubs[g.userClub];
   if (!c) return false;
+  // originalens anmodninger kan altid sendes – bestyrelsen svarer (0x6a8810)
+  if (cmBoardOn(g) && (kind === 'stadium' || kind === 'youth' || kind === 'time')) return true;
   const month = g.date.slice(0, 7);
   switch (kind) {
     case 'stadium': return !(c.projects ?? []).some((p) => p.kind === 'stadium');
@@ -857,6 +859,11 @@ export function meetBoardAvailable(kind: MeetBoardKind): boolean {
  * klubben kan bære (samme regler som budgetLimits) – eller mere tid til at bygge truppen op (lavere forventning).
  */
 export function meetBoard(kind: MeetBoardKind): string {
+  // den originale database i ægte tilstand: originalens beslutning 0x6a8810 og svartekst 0x6a9470 (stadion 1, træningsanlæg 2, tid 5)
+  if (cmBoardOn(gs())) {
+    const req = kind === 'stadium' ? 1 : kind === 'youth' ? 2 : kind === 'time' ? 5 : 0;
+    if (req) { const r = cmBoardRequest(gs(), req as 1 | 2 | 5); if (r !== null) return r; }
+  }
   if (!meetBoardAvailable(kind)) return 'blocked';
   if (kind === 'stadium' || kind === 'youth') return `mb.project.${requestProject(kind)}`;
   if (kind === 'time') return `mb.time.${boardAsk('lowerExp')}`;

@@ -59,6 +59,8 @@ export interface CMWorld extends WorldData {
     chair?: Record<number, number[]>;
     /** (økonomien) turnerings-id'et for "A Lower Division" (nøgle-id'et [0x9cf764]; −1 = findes ikke) */
     lowerDiv?: number
+    /** viljen 0x844780: nation +0x71 (verdensdelens id) pr. nationsindeks, "Europe"s id ([0x9cfa10]) og byernes +0x33 (s8, city.dat-rækkefølge) */
+    nationCont?: number[]; europe?: number; city33?: number[];
     /** bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks */
     nationBoard?: [number, number, number][];
     /** bestyrelse/managerjob: formanden (club.dat +0xbf → staff.dat): [ikke-spillerpost +0x16, +0x1d (Patience), personpost +0x57 (Ambition),
@@ -80,8 +82,8 @@ export interface CMWorld extends WorldData {
   /** … [11] = ikke-spillerposten til originalens spilstart: [PA +6, de 21 egenskaber +0x0e..+0x22 (rå 1..20, 0 = ikke sat), jobkoden]
    *  (cmStaffInit.ts – kun den originale database) */
   /** … [12] = bestyrelse/managerjob (cmBoard.ts): [ikke-spillerpost +8, +0xc (rå), personpost +0x56..+0x5d, +0x22]; [13] = personpost +0x3e
-   *  (ankomstdatoen, ISO; '' = mangler) */
-  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?, number[]?, string?][];
+   *  (ankomstdatoen, ISO; '' = mangler); [14] = personpost +0x24 (landsholdet, nations-id i filen; −1 = intet) og +0x28 (jobbet dér) – viljen 0x844780 */
+  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?, number[]?, string?, number[]?][];
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -231,11 +233,17 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const nationVal = new Map<number, [number, number, number]>(); // nation +0x7E (økonomisk niveau 1-3), +0x8E (omdømme, i16), +0x85 (s8 – staffState 0x5ce8f0)
   // bestyrelse/managerjob (cmBoard.ts): nation +0x75 (u8), +0x85 (s8), +0x88 (i32) pr. nationsindeks
   const nationBoard: [number, number, number][] = [];
+  // viljen 0x844780: nation +0x71 (verdensdelen, continent.dat-id) og "Europe"s id
+  const nationCont: number[] = [];
+  let europe = -1;
+  if (files['continent.dat']) { const Co = new Reader(files['continent.dat']);                // 198 bytes pr. verdensdel: +0 id, +4 navnet
+    for (let o = 0; o + 198 <= files['continent.dat'].byteLength; o += 198) if (Co.str(o + 4, 25) === 'Europe') europe = Co.i32(o); }
   for (let o = 0; o + 290 <= files['nation.dat'].byteLength; o += 290) {
     const id = N.i32(o);
     nationIdx.set(id, nations.length);
     nationVal.set(id, [N.u8(o + 0x7e), N.i16(o + 0x8e), N.i8(o + 0x85)]);
     nationBoard.push([N.u8(o + 0x75), (N.u8(o + 0x85) << 24) >> 24, N.i32(o + 0x88)]);
+    nationCont.push(N.i32(o + 0x71));
     nations.push({ name: N.str(o + 4, 51), code: N.str(o + 83, 4) || N.str(o + 56, 3).toUpperCase(), lang: [N.u8(o + 0x77), N.u8(o + 0x78), N.u8(o + 0x79)] });
   }
 
@@ -282,6 +290,9 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     cities = [];
     for (let o = 0; o + 56 <= files['city.dat'].byteLength; o += 56) cities.push(Ci.getFloat64(o + 0x23, true), Ci.getFloat64(o + 0x2b, true));
   }
+  // viljen 0x844780: byens +0x33 (s8) – klubbens grundled (stadion → by)
+  const city33: number[] = [];
+  if (files['city.dat']) { const Ci = new DataView(files['city.dat']); for (let o = 0; o + 56 <= files['city.dat'].byteLength; o += 56) city33.push(Ci.getInt8(o + 0x33)); }
 
   // klubber
   const CL = new Reader(files['club.dat']);
@@ -440,7 +451,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const bx = [S.i16(np + 8), S.i16(np + 12)];
       for (let k = 0x56; k <= 0x5d; k++) bx.push(S.u8(o + k));
       bx.push(S.u8(o + 0x22));
-      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '']);
+      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]]);
     }
   }
 
@@ -651,7 +662,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       ...(cities ? { cities } : {}),
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
-      fin, chair, chairBoard, nationBoard, lowerDiv, ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
+      fin, chair, chairBoard, nationBoard, lowerDiv, nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }
 

@@ -1,6 +1,6 @@
 // Spillernes egen vilje: kontraktkrav efter gode perioder, utilfredshed der lækkes til pressen,
 // og grupperinger i omklædningsrummet med deres egne ledere.
-import { cmActive, cmContractOf } from './cmPlayerData';
+import { cmActive } from './cmPlayerData';
 import { natName } from '../i18n';
 import { A } from './attributes';
 import { ageOn, daysBetween } from './dates';
@@ -327,17 +327,15 @@ export function targetReaction(p: Player, buyerId: number) {
   const buyer = g.clubs[buyerId];
   const cur = g.clubs[p.club];
   if (!buyer || !cur || p.loan || p.contract?.futureClub || isHumanClub(p.club)) return;
+  // den originale database i ægte tilstand: reaktionen findes ikke i originalen (dens transferønsker er 0x4d8610 i cmPlayerData.ts) – før gav
+  // den nyheden "listed for about £0" uden at spilleren var sat til salg
+  if (cmActive(g)) return;
   if (buyer.rep < cur.rep - 3) return; // ikke et skridt op – han er ligeglad
   const amb = p.attrs[A.ambition];
   if (!rng.chance(Math.min(0.75, 0.2 + (buyer.rep - cur.rep) / 40 + Math.max(0, amb - 10) / 15))) return;
   p.unhappy = Math.min(100, (p.unhappy ?? 0) + 25);
   const request = amb >= 14 && rng.chance(0.5 + (buyer.rep - cur.rep) / 50);
-  if (request && cmActive(g)) {
-    // den originale database i ægte tilstand: et transferønske er kontraktens +0x4e bit 8 (0x4d8610), ikke en listning – klubbens listning er
-    // trupplanens (0x842320, cmSquadPlanGame.ts)
-    cmContractOf(p).b4e = ((p.cmContract?.b4e ?? 0) | 8) & 0xff;
-    p.wantsAway = true;
-  } else if (request) {
+  if (request) {
     // han beder om at blive sat til salg – klubben sætter en realistisk pris
     p.listed = true;
     p.listPrice = Math.round(p.value * (1.05 + rng.next() * 0.2) / 50_000) * 50_000;

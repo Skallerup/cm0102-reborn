@@ -6,13 +6,18 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
 import { ATTRS } from '../../game/attributes';
+import { interestedClubs, transferRealism } from '../../game/transfers';
+import { nationLanguage } from '../../game/languages';
+import { willJoin } from '../../game/staff';
 import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
-import { transferRealism } from '../../game/transfers';
-import type { Player, Staff } from '../../game/types';
+import type { GameState, Player, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
 import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
-import { Seg } from '../classicOptions';
+import { Seg, showRealism } from '../classicOptions';
+import { authentic } from '../../game/rules';
+import { askConfirm, askText } from '../confirm';
+import { FL_ATTRS, SF_ATTRS, countMins, encodeMins, parseMins, staffAttrValue } from './searchAttrs';
 import { Select } from '../select';
 import { Stars, Tabs, posStr } from '../components';
 import { useGame, useNav, useRouteState } from '../core';
@@ -58,6 +63,7 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
 // ---------- søgningen ----------
 
 type Preset = { key: string; set: Partial<Filters> };
+/** Faste søgninger, der ligger under Search → Load Settings sammen med de gemte (originalen har kun de gemte) */
 const PRESETS: Preset[] = [
   { key: 'all', set: {} },
   { key: 'free', set: { onlyFree: true } },
@@ -74,17 +80,71 @@ function ViewMenu({ view, setView }: { view: string; setView: (v: string) => voi
   return <CxDrop label={t('cl.sq.view')} items={VIEWS.map((k) => ({ key: k, label: t(`cl.tr.v.${k}`), checked: view === k, onClick: () => setView(k) }))} />;
 }
 
-export function ClassicSearch({ f, setF, defaults, results, active, nations }: {
-  f: Filters; setF: (v: Filters) => void; defaults: Filters; results: Player[]; active: number; nations: number[];
+// ---------- Search ▾: Load Settings · Save Settings · Save Settings As · Delete Settings · Reset · Clear ----------
+// Søgeindstillinger gemmes under et navn i denne browser (fælles for alle karrierer, som originalens søgeindstillinger).
+
+const SS_KEY = 'cm0102.searchSettings';
+type SettingsStore = Record<string, Record<string, unknown>>;
+const readSettings = (kind: string): Record<string, unknown> => {
+  try { return (JSON.parse(localStorage.getItem(SS_KEY) ?? '{}') as SettingsStore)[kind] ?? {}; } catch { return {}; }
+};
+const writeSettings = (kind: string, v: Record<string, unknown>) => {
+  try { const all = JSON.parse(localStorage.getItem(SS_KEY) ?? '{}') as SettingsStore; all[kind] = v; localStorage.setItem(SS_KEY, JSON.stringify(all)); } catch { /* ignorér */ }
+};
+
+/** Menuen under Search for både spiller- og stabssøgningen. `named` = den indstilling, der er hentet/gemt (vises over listen). */
+function useSearchMenu<F extends object>({ kind, f, defaults, presets, apply, named, setNamed, active }: {
+  kind: 'player' | 'staff'; f: F; defaults: F; presets: { key: string; label: string; set: Partial<F> }[]; apply: (v: F) => void;
+  named: string; setNamed: (n: string) => void; active: number;
+}): DropItem[] {
+  const [, bump] = useState(0);
+  const store = readSettings(kind);
+  const names = Object.keys(store).sort((a, b) => a.localeCompare(b));
+  const full = (v: unknown) => ({ ...defaults, ...(v as Partial<F>) });
+  const same = (a: F, b: F) => JSON.stringify(a) === JSON.stringify(b);
+  const loadedSetting = named && store[named] ? full(store[named]) : null;
+  const dirty = !!loadedSetting && !same(loadedSetting, f);
+  const save = (name: string) => { writeSettings(kind, { ...readSettings(kind), [name]: f }); setNamed(name); bump((n) => n + 1); };
+  const items: DropItem[] = [
+    { key: 'load', label: t('cl.sch.load'), sub: [
+      ...presets.map((p) => ({ key: `p-${p.key}`, label: p.label, checked: !named && same(full(p.set), f), onClick: () => { apply(full(p.set)); setNamed(''); } })),
+      ...(names.length ? [{ key: 'sep', sep: true } as DropItem] : []),
+      ...names.map((n) => ({ key: `n-${n}`, label: n, checked: named === n, onClick: () => { apply(full(store[n])); setNamed(n); } })),
+    ] },
+    { key: 'save', label: t('cl.sch.save'), disabled: !loadedSetting || !dirty, onClick: () => save(named) },
+    { key: 'saveAs', label: t('cl.sch.saveAs'), onClick: async () => {
+      const name = await askText(t('cl.sch.name'), named || '', { head: t('cl.sch.saveAs') });
+      if (!name) return;
+      if (store[name] && name !== named && !(await askConfirm(t('cl.sch.overwrite', { name })))) return;
+      save(name);
+    } },
+    names.length
+      ? { key: 'del', label: t('cl.sch.delete'), sub: names.map((n) => ({ key: `d-${n}`, label: n, onClick: async () => {
+        if (!(await askConfirm(t('cl.sch.confirmDelete', { name: n }), { danger: true }))) return;
+        const rest = { ...readSettings(kind) }; delete rest[n]; writeSettings(kind, rest);
+        if (named === n) setNamed('');
+        bump((x) => x + 1);
+      } })) }
+      : { key: 'del', label: t('cl.sch.delete'), disabled: true, onClick: () => {} },
+    { key: 'reset', label: t('cl.sch.reset'), disabled: !dirty && !(active > 0 && !named), onClick: () => { if (loadedSetting) apply(loadedSetting); else apply({ ...defaults }); } },
+    { key: 'clear', label: t('cl.sch.clear'), disabled: active === 0 && !named, onClick: () => { apply({ ...defaults }); setNamed(''); } },
+  ];
+  return items;
+}
+
+export function ClassicSearch({ f, setF, defaults, results, total, active, nations }: {
+  f: Filters; setF: (v: Filters) => void; defaults: Filters; results: Player[]; total: number; active: number; nations: number[];
 }) {
   const g = useGame()!;
   const [open, setOpen] = useState(false);
   const [view, setView] = useRouteState('tview', 'general');
-  // hvilken forudindstilling svarer filtrene til (ellers "egen søgning")
+  const [named, setNamed] = useRouteState('sname', '');
+  const realism = showRealism();
+  // hvilken fast søgning svarer filtrene til (ellers "egen søgning")
   const same = (p: Preset) => (Object.keys(defaults) as (keyof Filters)[]).every((k) => (k in p.set ? p.set[k] : defaults[k]) === f[k]);
   const preset = PRESETS.find(same);
-  const items: DropItem[] = PRESETS.filter((p) => p.key !== 'realistic' || g.userClub > 0)
-    .map((p) => ({ key: p.key, label: t(`cl.tr.p.${p.key}`), checked: preset?.key === p.key, onClick: () => setF({ ...defaults, ...p.set }) }));
+  const presets = PRESETS.filter((p) => p.key !== 'realistic' || (g.userClub > 0 && realism)).map((p) => ({ key: p.key, label: t(`cl.tr.p.${p.key}`), set: p.set }));
+  const items = useSearchMenu<Filters>({ kind: 'player', f, defaults, presets, apply: setF, named, setNamed, active });
   return (
     <div>
       <div className="cx-tools cx-tools-inline">
@@ -92,10 +152,10 @@ export function ClassicSearch({ f, setF, defaults, results, active, nations }: {
         <ViewMenu view={view} setView={setView} />
         <span className="grow" />
         <button className="cx-greybtn" onClick={() => setOpen(true)}>{t('cl.tr.filters')}{active ? ` (${active})` : ''}</button>
-        <button className="cx-greybtn" disabled={!active} onClick={() => setF({ ...defaults })}>{t('tr.f.reset')}</button>
+        <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
-      <ClassicPlayerTable players={results} title={t('tr.search')} view={view}
-        desc={preset ? t(`cl.tr.p.${preset.key}`) : t('cl.tr.custom', { n: active })} initialSort={f.realism ? 'real' : 'val'} />
+      <ClassicPlayerTable players={results} title={t('tr.search')} view={view} total={total}
+        desc={named || (preset ? t(`cl.tr.p.${preset.key}`) : t('cl.tr.custom', { n: active }))} initialSort={f.realism && realism ? 'real' : 'val'} />
       {open && <FilterDialog f={f} defaults={defaults} nations={nations} onOk={(v) => { setF(v); setOpen(false); }} onClose={() => setOpen(false)} />}
     </div>
   );
@@ -105,8 +165,26 @@ export function ClassicSearch({ f, setF, defaults, results, active, nations }: {
 
 const AGES: [string, number, number][] = [['any', 15, 40], ['0-21', 15, 21], ['19-25', 19, 25], ['20-30', 20, 30], ['25-32', 25, 32], ['30+', 30, 40]];
 const VALUES = [250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 25_000_000, 50_000_000];
-/** De attributter, man oftest søger på – resten findes under "Egenskaber" */
+/** De attributter, man oftest ser i visningen Attributes */
 const SHOW_ATTRS = ['passing', 'tackling', 'dribbling', 'finishing', 'heading', 'technique', 'creativity', 'decisions', 'positioning', 'pace', 'stamina', 'strength'];
+
+/** Fanen Attributes: to kolonner (felterne fyldes skiftevis), hver med navn, "-", værdien (grøn, start 1) og "+" – som i CM 01/02 */
+function AttrMinGrid({ labels, mins, onChange }: { labels: string[]; mins: Record<number, number>; onChange: (m: Record<number, number>) => void }) {
+  const val = (i: number) => mins[i] ?? 1;
+  const step = (i: number, d: number) => onChange({ ...mins, [i]: Math.max(1, Math.min(20, val(i) + d)) });
+  return (
+    <div className="cx-fl-attrs">
+      {labels.map((l, i) => (
+        <div key={i} className="cx-fl-attr">
+          <span>{l}</span>
+          <button aria-label={`${l} -`} onClick={() => step(i, -1)}>-</button>
+          <b className={val(i) > 1 ? 'set' : ''}>{val(i)}</b>
+          <button aria-label={`${l} +`} onClick={() => step(i, 1)}>+</button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 /** Filterdialogen i klassisk stil: rækker med "Alle" og valgmuligheder; ændringerne gælder først ved OK */
 function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Filters; defaults: Filters; nations: number[]; onOk: (f: Filters) => void; onClose: () => void }) {
@@ -127,9 +205,8 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
   const valueRange = f.minValue > 0 || f.maxValue > 0;
   const [rangeOn, setRangeOn] = useState(valueRange);
   const yesNo = (v: boolean, on: (b: boolean) => void, anyLabel = any) => <Seg value={v} opts={[[false, anyLabel], [true, t('cl.fl.yes')]]} onChange={on} />;
-  const attrSlots = (['attr1', 'attr2', 'attr3'] as const);
-  const groupOf = (i: number) => t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping');
-  const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: groupOf(i) }));
+  const realism = showRealism();
+  const ext = !authentic();
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal cx-settings cx-filters" onClick={(e) => e.stopPropagation()}>
@@ -183,26 +260,19 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
               {g.userClub > 0 && row(t('tr.f.scouted'), yesNo(!!f.scouted, (v) => set('scouted', v)))}
               {g.options.masking && row(t('cl.fl.scouted'), yesNo(f.onlyKnown, (v) => set('onlyKnown', v), t('cl.fl.no')))}
               {g.userClub > 0 && row(t('cl.fl.squad'), yesNo(f.includeSquad, (v) => set('includeSquad', v), t('cl.fl.no')))}
+              {ext && <>
+                {row(t('player.ability'), <Seg value={String(f.minAbility)} opts={[0, 1, 2, 3, 4, 5].map((n) => [String(n), n ? '★'.repeat(n) : any] as [string, string])} onChange={(v) => set('minAbility', Number(v))} />)}
+                {row(t('player.potential'), <Seg value={String(f.minPotential)} opts={[0, 1, 2, 3, 4, 5].map((n) => [String(n), n ? '★'.repeat(n) : any] as [string, string])} onChange={(v) => set('minPotential', Number(v))} />)}
+                {row(t('tr.f.foot'), <Seg value={f.foot || 'any'} opts={[['any', any], ['L', t('tr.f.left')], ['R', t('tr.f.right')]]} onChange={(v) => set('foot', v === 'any' ? '' : v)} />)}
+                {row(t('tr.f.height'), <Seg value={String(f.minHeight)} opts={[0, 175, 180, 185, 190].map((h) => [String(h), h ? `≥ ${h}` : any] as [string, string])} onChange={(v) => set('minHeight', Number(v))} />)}
+                {row(t('tr.f.maxWage'), <Seg value={String(f.maxWage)} opts={[0, 5_000, 10_000, 25_000, 50_000, 100_000].map((w) => [String(w), w ? `≤ ${money(w)}` : any] as [string, string])} onChange={(v) => set('maxWage', Number(v))} />)}
+                {row(t('tr.f.trait'), <Seg value={f.trait || 'any'} opts={[['any', any], ...(['leader', 'professional', 'bigGame', 'loyal', 'ambitious'] as Trait[]).map((x) => [x, t(`trait.${x}`)] as [string, string])]} onChange={(v) => set('trait', v === 'any' ? '' : v)} />)}
+                {row(t('tr.f.noTrouble'), yesNo(f.noTrouble, (v) => set('noTrouble', v), t('cl.fl.no')))}
+              </>}
+              {g.userClub > 0 && realism && row(t('real.col'), <Seg value={String(f.realism)} opts={[['0', any], ['1', t('real.only')], ['2', t('real.maybe')]]} onChange={(v) => set('realism', Number(v))} />)}
             </div>
           ) : (
-            <div className="cx-set-grid">
-              {row(t('player.ability'), <Seg value={String(f.minAbility)} opts={[0, 1, 2, 3, 4, 5].map((n) => [String(n), n ? '★'.repeat(n) : any] as [string, string])} onChange={(v) => set('minAbility', Number(v))} />)}
-              {row(t('player.potential'), <Seg value={String(f.minPotential)} opts={[0, 1, 2, 3, 4, 5].map((n) => [String(n), n ? '★'.repeat(n) : any] as [string, string])} onChange={(v) => set('minPotential', Number(v))} />)}
-              {attrSlots.map((ak, i) => {
-                const mk = `${ak}Min` as 'attr1Min';
-                return row(t('cl.fl.attrN', { n: i + 1 }), <>
-                  <Select value={f[ak]} onChange={(v) => set(ak, v)} width={190} options={[{ value: -1, label: any }, ...attrOptions]} />
-                  {f[ak] >= 0 && <Seg value={String(f[mk])} opts={[10, 12, 14, 16, 18].map((n) => [String(n), `≥ ${n}`] as [string, string])} onChange={(v) => set(mk, Number(v))} />}
-                </>);
-              })}
-              {row(t('tr.f.foot'), <Seg value={f.foot || 'any'} opts={[['any', any], ['L', t('tr.f.left')], ['R', t('tr.f.right')]]} onChange={(v) => set('foot', v === 'any' ? '' : v)} />)}
-              {row(t('tr.f.height'), <Seg value={String(f.minHeight)} opts={[0, 175, 180, 185, 190].map((h) => [String(h), h ? `≥ ${h}` : any] as [string, string])} onChange={(v) => set('minHeight', Number(v))} />)}
-              {row(t('tr.f.maxWage'), <Seg value={String(f.maxWage)} opts={[0, 5_000, 10_000, 25_000, 50_000, 100_000].map((w) => [String(w), w ? `≤ ${money(w)}` : any] as [string, string])} onChange={(v) => set('maxWage', Number(v))} />)}
-              {row(t('tr.f.trait'), <Seg value={f.trait || 'any'} opts={[['any', any], ...(['leader', 'professional', 'bigGame', 'loyal', 'ambitious'] as Trait[]).map((x) => [x, t(`trait.${x}`)] as [string, string])]} onChange={(v) => set('trait', v === 'any' ? '' : v)} />)}
-              {row(t('tr.f.noTrouble'), yesNo(f.noTrouble, (v) => set('noTrouble', v), t('cl.fl.no')))}
-              {g.userClub > 0 && row(t('real.col'), <Seg value={String(f.realism)} opts={[['0', any], ['1', t('real.only')], ['2', t('real.maybe')]]} onChange={(v) => set('realism', Number(v))} />)}
-              {g.options.masking && <span className="cx-fl-hint">{t('tr.f.attrHint')}</span>}
-            </div>
+            <AttrMinGrid labels={FL_ATTRS.map((a) => (a.key === 'setPieces' ? t('cl.fl.setPieces') : t(`attr.${a.key}`)))} mins={parseMins(f.attrMins)} onChange={(m) => set('attrMins', encodeMins(m))} />
           )}
         </div>
         <div className="modal-foot cx-set-foot">
@@ -216,103 +286,172 @@ function FilterDialog({ f: initial, defaults, nations, onOk, onClose }: { f: Fil
 
 // ---------- Staff Search ----------
 
-const STAFF_PRESETS = ['all', 'free', 'manager', 'assistant', 'coach', 'physio', 'scout'] as const;
-
 function repLabel(rep: number) {
   return t(`cl.st.rep.${rep >= 85 ? 6 : rep >= 70 ? 5 : rep >= 55 ? 4 : rep >= 40 ? 3 : rep >= 25 ? 2 : 1}`);
 }
 
-// ---------- "Filters for Staff Search" (ejerens ønske 2026-11-10: samme filterknap som spillersøgningen) ----------
+/** Staff Search: View ▾ = General · Attributes · Player Notes (som i originalen) */
+const STAFF_VIEWS = ['general', 'attributes', 'notes'] as const;
 
-interface StaffFilters { role: string; status: 'any' | 'free' | 'employed'; nation: number; minRep: number; maxAge: number }
-const SF_DEFAULT: StaffFilters = { role: '', status: 'any', nation: -1, minRep: 0, maxAge: 0 };
+// ---------- "Filters for Staff Search": Text · Nationality · Age · Language · Based · Job · Interested (+ fanen Attributes) ----------
+
+interface StaffFilters {
+  text: string; nation: number; age: '' | '0-30' | '30-40' | '40-50' | '50-60' | '60+'; lang: boolean;
+  based: '' | 'home' | 'abroad' | 'other'; basedNation: number; role: '' | 'free' | StaffRole; interested: boolean; attrMins: string;
+}
+const SF_DEFAULT: StaffFilters = { text: '', nation: -1, age: '', lang: false, based: '', basedNation: -1, role: '', interested: false, attrMins: '' };
 const STAFF_ROLES = ['manager', 'assistant', 'coach', 'physio', 'scout'] as const;
-/** omdømmets trin (samme grænser som repLabel) */
-const REP_MIN: [number, number][] = [[40, 3], [55, 4], [70, 5], [85, 6]];
-const sfActive = (f: StaffFilters) => (Object.keys(SF_DEFAULT) as (keyof StaffFilters)[]).filter((k) => f[k] !== SF_DEFAULT[k]).length;
+const STAFF_AGES: [StaffFilters['age'], string][] = [['', 'any'], ['0-30', '0-30'], ['30-40', '30-40'], ['40-50', '40-50'], ['50-60', '50-60'], ['60+', '60+']];
+const sfActive = (f: StaffFilters) => (Object.keys(SF_DEFAULT) as (keyof StaffFilters)[]).filter((k) => k !== 'attrMins' && k !== 'basedNation' && f[k] !== SF_DEFAULT[k]).length + countMins(f.attrMins);
+const STAFF_PRESETS: { key: string; set: Partial<StaffFilters> }[] = [
+  { key: 'all', set: {} }, { key: 'free', set: { role: 'free' } },
+  ...STAFF_ROLES.map((r) => ({ key: r, set: { role: r } as Partial<StaffFilters> })),
+];
 
 function StaffFilterDialog({ f: initial, nations, onOk, onClose }: { f: StaffFilters; nations: number[]; onOk: (f: StaffFilters) => void; onClose: () => void }) {
   const g = useGame()!;
   const [f, setF] = useState<StaffFilters>(initial);
+  const [tab, setTab] = useState<'general' | 'attributes'>('general');
+  const [textOn, setTextOn] = useState(!!initial.text);
   const set = <K extends keyof StaffFilters>(k: K, v: StaffFilters[K]) => setF({ ...f, [k]: v });
   const home = g.clubs[g.userClub]?.nation ?? g.manager.nation;
   const homeCode = g.nations[home]?.code ?? '';
   const any = t('cl.fl.any');
   const row = (label: string, ctl: ReactNode) => <><span>{label}</span><div className="cx-fl-ctl">{ctl}</div></>;
   const nat = f.nation < 0 ? 'any' : f.nation === home ? 'home' : 'other';
+  const myLang = nationLanguage(g, home);
+  const langName = myLang ? (() => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(myLang) ?? myLang; } catch { return myLang; } })() : '';
+  const natSel = (value: number, on: (n: number) => void) => <Select value={value} onChange={on} width={190}
+    options={nations.map((n) => ({ value: n, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code }))} />;
+  const otherNation = (skip: number) => nations.find((n) => n !== skip) ?? -1;
   return (
     <div className="modal-bg" onClick={onClose}>
       <div className="modal cx-settings cx-filters" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head"><span>{t('cl.sf.title')}</span><button className="x" onClick={onClose}>×</button></div>
         <div className="modal-body">
-          <div className="cx-set-top"><span /><button className="cx-greybtn" onClick={() => setF({ ...SF_DEFAULT })}>{t('cl.fl.clear')}</button></div>
-          <div className="cx-set-grid">
-            {row(t('cl.st.job'), <Seg value={f.role} opts={[['', any], ...STAFF_ROLES.map((r) => [r, t(`role.staff.${r}`)] as [string, string])]} onChange={(v) => set('role', v)} />)}
-            {row(t('cl.sf.status'), <Seg value={f.status} opts={[['any', any], ['free', t('cl.st.p.free')], ['employed', t('cl.sf.employed')]]} onChange={(v) => set('status', v as StaffFilters['status'])} />)}
-            {row(t('cl.fl.nat'), <>
-              <Seg value={nat} opts={[['any', any], ['home', homeCode], ['other', t('cl.fl.other')]]}
-                onChange={(v) => set('nation', v === 'any' ? -1 : v === 'home' ? home : (nations.find((n) => n !== home) ?? -1))} />
-              {nat === 'other' && <Select value={f.nation} onChange={(v) => set('nation', v)} width={190}
-                options={nations.map((n) => ({ value: n, label: natName(g.nations[n].name), flag: g.nations[n].name, hint: g.nations[n].code }))} />}
-            </>)}
-            {row(t('cl.sf.minRep'), <Seg value={f.minRep} opts={[[0, any], ...REP_MIN.map(([v, lvl]) => [v, t(`cl.st.rep.${lvl}`)] as [number, string])]} onChange={(v) => set('minRep', v)} />)}
-            {row(t('cl.sf.maxAge'), <Seg value={f.maxAge} opts={[[0, any], [35, '35'], [45, '45'], [55, '55']]} onChange={(v) => set('maxAge', v)} />)}
+          <div className="cx-set-top">
+            <div className="cx-fl-tabs">
+              <button className={tab === 'general' ? 'on' : ''} onClick={() => setTab('general')}>{t('cl.fl.general')}</button>
+              <button className={tab === 'attributes' ? 'on' : ''} onClick={() => setTab('attributes')}>{t('cl.fl.attributes')}</button>
+            </div>
+            <button className="cx-greybtn" onClick={() => { setF({ ...SF_DEFAULT }); setTextOn(false); }}>{t('cl.fl.clear')}</button>
           </div>
+          {tab === 'general' ? (
+            <div className="cx-set-grid">
+              {row(t('cl.fl.text'), <>
+                <Seg value={textOn} opts={[[false, any], [true, t('cl.fl.specified')]]} onChange={(v) => { setTextOn(v); if (!v) set('text', ''); }} />
+                {textOn && <input className="cx-fl-input" autoFocus value={f.text} onChange={(e) => set('text', e.target.value)} placeholder={t('tr.name')} />}
+              </>)}
+              {row(t('cl.fl.nat'), <>
+                <Seg value={nat} opts={[['any', any], ['home', homeCode], ['other', t('cl.fl.other')]]}
+                  onChange={(v) => set('nation', v === 'any' ? -1 : v === 'home' ? home : otherNation(home))} />
+                {nat === 'other' && natSel(f.nation, (n) => set('nation', n))}
+              </>)}
+              {row(t('col.age'), <Seg value={f.age} opts={STAFF_AGES.map(([k, l]) => [k, k === '' ? any : l] as [StaffFilters['age'], string])} onChange={(v) => set('age', v)} />)}
+              {row(t('cl.sf.language'), <Seg value={f.lang} opts={[[false, any], ...(langName ? [[true, langName] as [boolean, string]] : [])]} onChange={(v) => set('lang', v)} />)}
+              {row(t('cl.fl.based'), <>
+                <Seg value={f.based} opts={[['', any], ['home', homeCode], ['abroad', t('cl.fl.abroad')], ['other', t('cl.fl.other')]]}
+                  onChange={(v) => setF({ ...f, based: v, basedNation: v === 'other' ? (f.basedNation >= 0 ? f.basedNation : otherNation(home)) : -1 })} />
+                {f.based === 'other' && natSel(f.basedNation, (n) => set('basedNation', n))}
+              </>)}
+              {row(t('cl.st.job'), <>
+                <Seg value={f.role !== ''} opts={[[false, any], [true, t('cl.fl.specified')]]} onChange={(v) => set('role', v ? 'manager' : '')} />
+                {f.role !== '' && <Seg value={f.role} opts={[...STAFF_ROLES.map((r) => [r, t(`role.staff.${r}`)] as [StaffFilters['role'], string]), ['free', t('cl.st.unemployed')]]} onChange={(v) => set('role', v)} />}
+              </>)}
+              {g.userClub > 0 && row(t('cl.fl.interested'), <Seg value={f.interested} opts={[[false, any], [true, t('cl.fl.yes')]]} onChange={(v) => set('interested', v)} />)}
+            </div>
+          ) : (
+            <AttrMinGrid labels={SF_ATTRS.map((k) => t(`staff.${k}`))} mins={parseMins(f.attrMins)} onChange={(m) => set('attrMins', encodeMins(m))} />
+          )}
         </div>
         <div className="modal-foot cx-set-foot">
           <button onClick={onClose}>{t('common.cancel')}</button>
-          <button className="primary" onClick={() => onOk(f)}>{t('common.ok')}</button>
+          <button className="primary" onClick={() => onOk({ ...f, text: textOn ? f.text : '' })}>{t('common.ok')}</button>
         </div>
       </div>
     </div>
   );
 }
 
+/** "Based": ligaens navn for klubber i et spilbart land (en aktiv nation med en synlig liga), ellers landet – ledige: deres land */
+function basedName(g: GameState, club: number, nation: number): string {
+  const c = g.clubs[club];
+  if (!c) return natName(g.nations[nation]?.name) ?? '';
+  const lg = g.leagues[c.league];
+  return lg && !lg.hidden && g.activeNations.includes(c.nation) ? compName(lg.name) ?? '' : natName(g.nations[c.nation]?.name) ?? '';
+}
+const basedRoute = (g: GameState, club: number, nation: number) => {
+  const c = g.clubs[club];
+  const lg = c && g.leagues[c.league];
+  return lg && !lg.hidden && g.activeNations.includes(c.nation) ? { name: 'competitions' as const, id: c.league } : nationRoute(c?.nation ?? nation);
+};
+
 function StaffSearch() {
   const g = useGame()!;
   const { nav } = useNav();
-  const [preset, setPreset] = useRouteState<string>('spreset', 'all');
-  const [q, setQ] = useRouteState('sq', '');
-  const [sf, setSf] = useRouteState<StaffFilters>('sfilters', SF_DEFAULT);
+  const [sf, setSf] = useRouteState<StaffFilters>('sfilters2', SF_DEFAULT);
+  const [named, setNamed] = useRouteState('ssname', '');
+  const [view, setView] = useRouteState<string>('sview', 'general');
   const [open, setOpen] = useState(false);
   const [pg, setPg] = useState(0);
   const [pages, setPages] = useState(1);
   const active = sfActive(sf);
+  const home = g.clubs[g.userClub]?.nation ?? g.manager.nation;
+  const myLang = nationLanguage(g, home);
   const nations = [...new Set(Object.values(g.staff).map((s) => s.nation))].filter((n) => g.nations[n]).sort((a, b) => natName(g.nations[a].name).localeCompare(natName(g.nations[b].name)));
-  const list = Object.values(g.staff).filter((s) => s.club !== g.userClub
-    && (preset === 'all' || (preset === 'free' ? !s.club : s.role === preset))
-    && (!sf.role || s.role === sf.role) && (sf.status === 'any' || (sf.status === 'free' ? !s.club : !!s.club))
-    && (sf.nation < 0 || s.nation === sf.nation) && s.rep >= sf.minRep && (!sf.maxAge || ageOn(s.dob, g.date) <= sf.maxAge)
-    && (!q || !!nameQuery(q)?.(s.first, s.last)));
-  useEffect(() => setPg(0), [list.length]);
-  const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : natName(g.nations[s.nation]?.name);
-  const based = (s: Staff) => { const c = g.clubs[s.club]; return c ? compName(g.leagues[c.league]?.name) ?? natName(g.nations[c.nation]?.name) : natName(g.nations[s.nation]?.name); };
-  const cols: CxCol<Staff>[] = [
-    { key: 'inf', label: t('cl.tn.inf'), render: (s) => (!s.club ? <span className="cx-inf" title={t('common.free')}>{t('cl.st.free')}</span> : null), sort: (s) => (s.club ? 1 : 0) },
-    { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
-      render: (s) => <span className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> },
-    { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where },
-    // Based: ligaen kan klikkes (gul understregning under musen, som i CM 01/02)
-    { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => { const c = g.clubs[s.club]; return c && g.leagues[c.league] ? <span className="link" onClick={() => nav({ name: 'competitions', id: c.league })}>{based(s)}</span> : <span className="link" onClick={() => nav(nationRoute(c?.nation ?? s.nation))}>{based(s)}</span>; }, sort: based },
-    { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: (s) => t(`role.staff.${s.role}`), sort: (s) => t(`role.staff.${s.role}`) },
-    { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => repLabel(s.rep), sort: (s) => s.rep },
-  ];
+  const q = nameQuery(sf.text);
+  const mins = Object.entries(parseMins(sf.attrMins)).map(([i, v]) => [Number(i), v] as [number, number]);
+  const AGE: Record<string, [number, number]> = { '0-30': [0, 30], '30-40': [30, 40], '40-50': [40, 50], '50-60': [50, 60], '60+': [60, 200] };
+  const base = Object.values(g.staff).filter((s) => s.club !== g.userClub);
+  const list = base.filter((s) => {
+    if (sf.role && (sf.role === 'free' ? !!s.club : s.role !== sf.role)) return false;
+    if (sf.nation >= 0 && s.nation !== sf.nation) return false;
+    if (q && !q(s.first, s.last)) return false;
+    if (sf.age) { const a = ageOn(s.dob, g.date); const [lo, hi] = AGE[sf.age]; if (a < lo || a >= hi) return false; }
+    if (sf.lang && nationLanguage(g, s.nation) !== myLang) return false;
+    if (sf.based) {
+      const bn = g.clubs[s.club]?.nation ?? s.nation;
+      if (sf.based === 'home' ? bn !== home : sf.based === 'abroad' ? bn === home : bn !== sf.basedNation) return false;
+    }
+    if (sf.interested && !willJoin(s)) return false;
+    return !mins.some(([i, v]) => staffAttrValue(s, i) < v);
+  });
+  useEffect(() => setPg(0), [list.length, view]);
+  const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : t('cl.st.noClubNation');
+  const based = (s: Staff) => basedName(g, s.club, s.nation);
+  const job = (s: Staff) => (s.club ? t(`role.staff.${s.role}`) : t('cl.st.unemployed'));
+  const nameCol: CxCol<Staff> = { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
+    render: (s) => <span className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> };
+  const infCol: CxCol<Staff> = { key: 'inf', label: t('cl.tn.inf'), render: () => null };
+  const clubCol: CxCol<Staff> = { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where };
+  // Based: ligaen/landet kan klikkes (gul understregning under musen, som i CM 01/02)
+  const basedCol: CxCol<Staff> = { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => <span className="link" onClick={() => nav(basedRoute(g, s.club, s.nation))}>{based(s)}</span>, sort: based };
+  const jobCol: CxCol<Staff> = { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: job, sort: job };
+  const repCol: CxCol<Staff> = { key: 'rep', label: t('cl.st.rep'), cls: 'c-val', render: (s) => repLabel(s.rep), sort: (s) => s.rep };
+  const cols: CxCol<Staff>[] = view === 'attributes'
+    ? [infCol, nameCol, clubCol, jobCol, ...SF_ATTRS.map((k, i): CxCol<Staff> => ({ key: `a-${k}`, label: t(`staff.short.${k}`), title: t(`staff.${k}`), cls: 'c-num c-yel', render: (s) => staffAttrValue(s, i) || '-', sort: (s) => staffAttrValue(s, i) })), repCol]
+    : view === 'notes'
+    ? [infCol, nameCol, clubCol, jobCol, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: () => '-' }]
+    : [infCol, nameCol, clubCol, basedCol, jobCol, repCol];
+  const presets = STAFF_PRESETS.map((p) => ({ key: p.key, label: t(`cl.st.p.${p.key}`), set: p.set }));
+  const preset = STAFF_PRESETS.find((p) => JSON.stringify({ ...SF_DEFAULT, ...p.set }) === JSON.stringify(sf));
+  const items = useSearchMenu<StaffFilters>({ kind: 'staff', f: sf, defaults: SF_DEFAULT, presets, apply: setSf, named, setNamed, active });
   return (
     <div>
       <div className="cx-tools cx-tools-inline">
-        <CxDrop label={t('cl.tr.searchBtn')} items={STAFF_PRESETS.map((k) => ({ key: k, label: t(`cl.st.p.${k}`), checked: preset === k, onClick: () => setPreset(k) }))} />
-        <input className="cx-fl-input" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('tr.name')} />
+        <CxDrop label={t('cl.tr.searchBtn')} items={items} />
+        <CxDrop label={t('cl.sq.view')} items={STAFF_VIEWS.map((k) => ({ key: k, label: t(`cl.tr.v.${k}`), checked: view === k, onClick: () => setView(k) }))} />
         <span className="grow" />
         <button className="cx-greybtn" onClick={() => setOpen(true)}>{t('cl.tr.filters')}{active ? ` (${active})` : ''}</button>
-        <button className="cx-greybtn" disabled={!active} onClick={() => setSf({ ...SF_DEFAULT })}>{t('tr.f.reset')}</button>
+        <button className="cx-greybtn" disabled>{t('cl.tr.delete')}</button>
       </div>
-      <Pager desc={active ? t('cl.tr.custom', { n: active }) : t(`cl.st.p.${preset}`)} pg={pg} pages={pages} setPg={setPg} />
+      <Pager desc={named || (preset ? t(`cl.st.p.${preset.key}`) : t('cl.tr.custom', { n: active }))} pg={pg} pages={pages} setPg={setPg} />
       {open && <StaffFilterDialog f={sf} nations={nations} onOk={(v) => { setSf(v); setOpen(false); }} onClose={() => setOpen(false)} />}
       <div className="cx-subtitle small">{t('cl.tr.staffSearch')}</div>
       <CxTable rows={list} cols={cols} rowKey={(s) => s.id} initialSort="rep" page={{ size: PAGE, index: Math.min(pg, pages - 1) }}
         onPage={(n) => { if (n !== pages) queueMicrotask(() => setPages(n)); }}
         btn={() => <span className="cx-rowbtn" />} />
-      <div className="cx-found">{t('cl.st.found', { n: list.length.toLocaleString(t('cl.locale')) })}</div>
+      <div className="cx-found">{t('cl.st.found', { n: list.length.toLocaleString(t('cl.locale')) })}{active > 0 && list.length < base.length ? ` ${t('cl.tr.filteredOut', { n: (base.length - list.length).toLocaleString(t('cl.locale')) })}` : ''}</div>
     </div>
   );
 }
@@ -354,8 +493,10 @@ export function Pager({ desc, pg, pages, setPg }: { desc: string; pg: number; pa
 }
 
 /** Spillertabellen: blå knap (shortlist), Inf, navn, klub, land/liga, position, værdi – med sider */
-export function ClassicPlayerTable({ players, title, desc, view: viewProp, initialSort = 'val', viewMenu }: {
+export function ClassicPlayerTable({ players, title, desc, view: viewProp, initialSort = 'val', viewMenu, total }: {
   players: Player[]; title: string; desc?: string; view?: string; initialSort?: string;
+  /** alle spillere før filtrene – giver "(N filtered out)" under listen */
+  total?: number;
   /** vis selv View ▾ (når tabellen ikke ligger under søgningens værktøjslinje) */
   viewMenu?: boolean;
 }) {
@@ -366,26 +507,24 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const [pg, setPg] = useState(0);
   const [pages, setPages] = useState(1);
   useEffect(() => setPg(0), [players.length, view]);
-  const seasonEnd = `${Number(g.date.slice(0, 4)) + (Number(g.date.slice(5, 7)) >= 7 ? 1 : 0)}-06-30`;
+  // Inf som i originalens søgning: skadet/suspenderet (røde) og "Wnt" (en anden klub har ham på sin ønskeliste)
   const inf = (p: Player): [string, string, boolean] | null => {
     if (p.injury) return ['Inj', t(`injury.${p.injury.key}`), true];
     if (p.banned > 0) return ['Sus', t('tag.ban'), true];
-    if (!p.club) return ['Fre', t('common.free'), false];
-    if (p.listed) return ['Lst', t('tag.listed'), false];
-    if (p.contract && p.contract.expires <= seasonEnd) return ['Exp', t('col.expires'), false];
-    if (p.loan) return ['Lon', t('tag.loan'), false];
+    if (interestedClubs(p).length) return ['Wnt', t('cl.sq.wanted'), false];
     return null;
   };
-  const based = (p: Player) => { const c = g.clubs[p.club]; return c ? natName(g.nations[c.nation]?.name) ?? '' : t('common.free'); };
+  const based = (p: Player) => basedName(g, p.club, p.nation);
+  const realismOn = showRealism();
   const base: CxCol<Player>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <span className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]}>{t(`cl.tag.${x[0]}`)}</span> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
-    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}{p.club !== g.userClub && (g.knowledge[p.id] ?? 0) >= 60 && <span className="cx-sct" title={t('tr.sctTip')}> Sct</span>}</span>, sort: (p) => `${p.last} ${p.first}` },
+    { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
-  const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : '-'), sort: (p) => g.clubs[p.club]?.name ?? '' };
-  const pos: CxCol<Player> = { key: 'pos', label: t('col.pos'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };
-  const val: CxCol<Player> = { key: 'val', label: t('col.value'), cls: 'c-val', render: (p) => money(p.value), sort: (p) => p.value };
+  const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : t('cl.tr.noClub')), sort: (p) => g.clubs[p.club]?.name ?? '' };
+  const pos: CxCol<Player> = { key: 'pos', label: t('cl.tr.position'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };
+  const val: CxCol<Player> = { key: 'val', label: t('col.value'), cls: 'c-val', render: (p) => (p.club ? money(p.value) : t('cl.tr.free')), sort: (p) => p.value };
   const age: CxCol<Player> = { key: 'age', label: t('col.age'), cls: 'c-num c-yel', render: (p) => ageOn(p.dob, g.date), sort: (p) => -ageOn(p.dob, g.date) };
-  const real: CxCol<Player>[] = g.userClub ? [{ key: 'real', label: t('real.col'), cls: 'c-yel', title: t('real.hint'), render: (p) => t(`real.level${transferRealism(p).level}`), sort: (p) => { const r = transferRealism(p); return -r.level * 100 + r.score; } }] : [];
+  const real: CxCol<Player>[] = g.userClub && realismOn ? [{ key: 'real', label: t('real.col'), cls: 'c-yel', title: t('real.hint'), render: (p) => t(`real.level${transferRealism(p).level}`), sort: (p) => { const r = transferRealism(p); return -r.level * 100 + r.score; } }] : [];
   const st = (p: Player) => p.stats;
   const avr = (p: Player) => (p.stats.ratingCount ? p.stats.ratingSum / p.stats.ratingCount : 0);
   const num = (key: string, label: string, get: (p: Player) => number, fmt = (v: number) => (v ? String(v) : '-')): CxCol<Player> =>
@@ -412,7 +551,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     ? [...base, pos, ...SHOW_ATTRS.map(attrCol)]
     : view === 'notes'
     ? [...base, club, pos, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: (p) => p.notes || '-', sort: (p) => (p.notes ? 0 : 1) }]
-    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: (p) => (p.club && g.clubs[p.club] ? <span className="link" onClick={() => nav(nationRoute(g.clubs[p.club].nation))}>{based(p)}</span> : based(p)), sort: based }, pos, val, ...real];
+    : [...base, club, { key: 'based', label: t('cl.tr.based'), cls: 'c-yel', render: (p) => <span className="link" onClick={() => nav(basedRoute(g, p.club, p.nation))}>{based(p)}</span>, sort: based }, pos, val, ...real];
   return (
     <>
       {viewMenu && <div className="cx-tools cx-tools-inline"><ViewMenu view={view} setView={setOwnView} /></div>}
@@ -424,7 +563,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
           const on = g.shortlist.includes(p.id);
           return <button className={`cx-rowbtn ${on ? 'on' : ''}`} title={on ? t('player.unshortlist') : t('player.shortlist')} onClick={() => act({ t: 'shortlist', pid: p.id, on: !on })}>{on ? '★' : ''}</button>;
         }} />
-      <div className="cx-found">{t('cl.tr.found', { n: players.length.toLocaleString(t('cl.locale')) })}</div>
+      <div className="cx-found">{t('cl.tr.found', { n: players.length.toLocaleString(t('cl.locale')) })}{total !== undefined && players.length < total ? ` ${t('cl.tr.filteredOut', { n: (total - players.length).toLocaleString(t('cl.locale')) })}` : ''}</div>
     </>
   );
 }

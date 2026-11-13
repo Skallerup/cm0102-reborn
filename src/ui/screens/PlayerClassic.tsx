@@ -77,21 +77,9 @@ function BornLine({ p }: { p: Player }) {
 
 /** Statistik pr. turnering + positionen nederst – fælles for profil-, skade-, kontrakt- og transferfanen */
 function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
-  const g = useGame()!;
-  const [real, setReal] = useState<RealSeason[] | null>(null);
-  useEffect(() => {
-    let alive = true;
-    if (!g.draft) realCareer(p.id).then((r) => { if (alive) setReal(r); });
-    return () => { alive = false; };
-  }, [p.id, g.draft]);
-  // ligaen og øvrige turneringer i år, landsholdet og hele seniorkarrieren
+  // al statistik på siden gælder kun den igangværende sæson (ejerens ønske 2026-11-13)
   const s = p.stats;
   const avr = s.ratingCount ? avgRating(p) : 0;
-  // seniorkarriere: virkelige sæsoner før spilstart + sæsoner i spillet + den igangværende (som karrierepanelet)
-  const hist = g.draft ? [] : p.history ?? [];
-  const pre = (real ?? []).reduce((acc, r) => ({ apps: acc.apps + r.apps, goals: acc.goals + r.goals, assists: acc.assists + r.assists }), { apps: 0, goals: 0, assists: 0 });
-  const car = hist.reduce((acc, h) => ({ apps: acc.apps + h.apps, goals: acc.goals + h.goals, assists: acc.assists + h.assists, rs: acc.rs + h.avg * h.apps, rn: acc.rn + (h.avg ? h.apps : 0) }), { apps: pre.apps, goals: pre.goals, assists: pre.assists, rs: 0, rn: 0 });
-  const carApps = car.apps + s.apps + s.subs, carAvg = (car.rs + avr * s.ratingCount) / ((car.rn + s.ratingCount) || 1);
   const dash = '-';
   const statRows: [string, ReactNode[]][] = [
     // liga og øvrige turneringer (pokal/Europa) hver for sig med assists, kampens spiller og snit – som i originalen (ejerens ønske 2026-11-10)
@@ -104,8 +92,8 @@ function StatsBlock({ p, title }: { p: Player; title?: ReactNode }) {
       ] as [string, ReactNode[]][];
     })(),
     [t('cl.pl.season'), [s.subs ? `${s.apps} (${s.subs})` : s.apps, s.goals, s.assists, s.mom, avr ? <Rating r={avr} digits={2} /> : dash]],
-    [t('cl.pl.intl'), [p.caps, p.intGoals, dash, dash, dash]],
-    [t('cl.pl.senior'), [carApps, car.goals + s.goals, car.assists + s.assists, dash, carApps && (car.rn + s.ratingCount) ? <Rating r={carAvg} digits={2} /> : dash]],
+    [t('cl.pl.intl'), [s.intApps ?? 0, s.intGoals ?? 0, dash, dash, dash]],
+    [t('cl.pl.senior'), [s.apps + s.subs, s.goals, s.assists, s.mom, avr ? <Rating r={avr} digits={2} /> : dash]],
   ];
   // CM 01/02: de blå pile skifter til side 2 (kort, minutter, indskiftninger – de tal spillet fører)
   const [page, setPage] = useState(0);
@@ -411,7 +399,7 @@ export function ClassicPlayer({ id }: { id: number }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [repRole, setRepRole] = useState<'physio' | 'coach' | null>(null);
   useEffect(() => setMsg(''), [id]);
-  if (!p) return <div><Head title={t('player.gone')} /></div>;
+  if (!p) return <div><Head menu={false} title={t('player.gone')} /></div>;
   const mine = p.club === g.userClub && !!g.userClub;
   const k = knowledgeOf(p);
   const shortlisted = g.shortlist.includes(p.id);
@@ -487,18 +475,18 @@ export function ClassicPlayer({ id }: { id: number }) {
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
   tabs.push(['history', t('cl.pl.history')]);
 
-  if (noteOpen) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
-  if (nickOpen) return <div><Head title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
-  if (repRole && mine) return <div><Head title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
-  if (discOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
+  if (noteOpen) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><NotePanel p={p} onClose={() => setNoteOpen(false)} /></div>;
+  if (nickOpen) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><NicknamePanel p={p} onClose={() => setNickOpen(false)} /></div>;
+  if (repRole && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`.trim()} /><StaffReportPanel p={p} role={repRole} onClose={() => setRepRole(null)} onDone={() => { setRepRole(null); nav({ name: 'inbox' }); }} /></div>;
+  if (discOpen && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`} /><DisciplinePanel p={p} onClose={() => setDiscOpen(false)} onDone={(m) => { setDiscOpen(false); setMsg(m); }} /></div>;
   // CM 01/02: buddet på sin egen side; svaret kommer som en nyhed (udvidet tilstand: klubbens svar med det samme)
-  if (bidPanel && !mine) return <div><Head title={`${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} onClose={() => setBidPanel(null)} onSent={(o) => {
+  if (bidPanel && !mine) return <div><Head menu={false} title={`${p.first} ${p.last}`} /><BidPanel p={p} loan={bidPanel === 'loan'} onClose={() => setBidPanel(null)} onSent={(o) => {
     setBidPanel(null);
     if (o.status === 'negotiating') setNeg({ offer: o });
     else if (extended()) { dispatch({ t: 'bidNow', offer: o.id }); setBid(o.id); }
     else setMsg(t('player.bidSent'));
   }} /></div>;
-  if (statusOpen && mine) return <div><Head title={`${p.first} ${p.last}`} /><TransferStatusPanel p={p} onClose={() => setStatusOpen(false)} /></div>;
+  if (statusOpen && mine) return <div><Head menu={false} title={`${p.first} ${p.last}`} /><TransferStatusPanel p={p} onClose={() => setStatusOpen(false)} /></div>;
 
   return (
     <div>

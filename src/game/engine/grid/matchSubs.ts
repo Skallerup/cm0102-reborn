@@ -139,7 +139,14 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     subsLeft[s] = Math.max(0, Math.min(env.subs[s], benchSize[s]));                    // 0x6dbac0–0x6dbaed
   }
   const S = (q: GP) => st.get(q)!;
-  const sideOf = (s: Side) => gp.filter((q) => q.side === s && st.has(q)).sort((a, b) => S(a).idx - S(b).idx);
+  // (runde 11B) holdets liste i blokkens rækkefølge, gemt så længe gp har samme længde (st ændres ikke efter opbygningen; listen læses kun)
+  const sideCache: [GP[] | null, GP[] | null] = [null, null], sideLen: [number, number] = [-1, -1];
+  const sideOf = (s: Side) => {
+    const c = sideCache[s];
+    if (c && sideLen[s] === gp.length) return c;
+    sideLen[s] = gp.length;
+    return (sideCache[s] = gp.filter((q) => q.side === s && st.has(q)).sort((a, b) => S(a).idx - S(b).idx));
+  };
   const minute = () => cappedMinute(m.clock, env.periodEnd());
   /** pladsernes felter fra spillerne på dem (aiRetune m.fl. ændrer instruktionerne undervejs) */
   const refresh = (s: Side) => { for (const q of gp) if (q.side === s && q.active && q.slot >= 0 && q.slot <= 10) slotTab[s][q.slot] = fieldsOf(q); };
@@ -401,6 +408,8 @@ export function makeMatchSubs(env: MatchSubsEnv) {
     captain: (s: Side) => captainOf(s),
     /** taktikkens positionsord pr. plads (engine+0x91e2+6371·side +0x12d/+0x14e), som pladserne er udfyldt – sub_6ec010 (0x6d5b20/0x6d5af0) */
     slotWords: (s: Side, j: number) => slotTab[s][j] ? { pos: slotTab[s][j].pos, posAttack: slotTab[s][j].posAttack } : undefined,
+    /** (runde 11B) samme som slotWords(s, j)?.pos / .posAttack uden et nyt objekt pr. opslag (null = tom plads) */
+    slotWord: (s: Side, j: number, att: boolean): number | null => { const f = slotTab[s][j]; return f ? (att ? f.posAttack : f.pos) : null; },
     /** kun låsetrinstesten: pladstabellen igen fra spillerne på banen (efter at originalens tilstand er sprøjtet ind) */
     resyncSlots() { refresh(0); refresh(1); },
     /** init_match 0x6b8bc5–0x6b8bd5: sub_6bbb60(0), sub_6bbb60(1), sub_6bbf60 ved kampstart (kaldt af gridMatch.ts) */

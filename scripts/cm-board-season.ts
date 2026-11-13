@@ -6,6 +6,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
+import { interestHook } from '../src/game/cmBoardGame';
+
+// INTEREST10=1: viljen 0x844780 erstattes af 10 ("alle vil" – runde 1's måling)
+if (process.env.INTEREST10) interestHook.fn = () => 10;
 
 const seed = Number(process.argv[2] ?? 1), days = Number(process.argv[3] ?? 330);
 const file = process.argv[4] ?? 'public/data/world-original.json';

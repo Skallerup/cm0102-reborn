@@ -26,10 +26,16 @@ import { careerEnd, careerStart } from './careers';
 import { fixtureCodesOf } from './engine/grid/gameInputs';
 import {
   type BoardEnv, type BoardNews, type BoardRec, type CmBoardState, type CmDate, type LeagueInfo, type MatchIn, type Person, type StatsEntry,
-  HUMAN0, addVacancy, afterMatch, applyForJob, boardDaily, cmToIso, confidenceBand, initRecords, initStaffRep, humanAppointRep, isoToCm, resetForNewManager,
-  setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch,
+  HUMAN0, addVacancy, after, afterMatch, currentRun, daysSince, leagueBand, s8, applyForJob, boardDaily, cmToIso, confidenceBand, initRecords, initStaffRep, humanAppointRep, isoToCm, resetForNewManager,
+  setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec,
 } from './cmBoard';
 import type { CMWorld } from './data/cm0102';
+import { confidenceText, expectBody, expectTitle, requestReply, requestTitle } from './cmBoardText';
+import { projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
+import { msvcQsort } from './engine/grid/subs';
+import { registerPrerun } from './cmPrerun';
+import { personKey } from './cmRelations';
+import { cmClubEuro } from './cmFitnessGame';
 
 const GBP = 0.86;
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -116,8 +122,19 @@ function entryOf(g: GameState, c: number, today: CmDate): StatsEntry | null {
   return {
     pos: pos > 0 ? pos : 0, p73: cur, p74: best, p75: worst, played: row.p,
     winRun: trail((ch) => ch === 'W'), lossRun: trail((ch) => ch === 'L'), noWinRun: trail((ch) => ch !== 'W'), unbeatenRun: trail((ch) => ch !== 'L'),
-    lastDays: tr?.[2] !== undefined ? dayNum(cmToIso(today)) - tr[2] : 999, formPts: pts, formN: n, projected: best,
+    lastDays: tr?.[2] !== undefined ? dayNum(cmToIso(today)) - tr[2] : 999, formPts: pts, formN: n, get projected() { return projectedOf(g, lid, c) ?? best; },
   };
+}
+
+/** 0x4ae300's første placering (o1 = den midlertidige posts +0x74) af 0x68ac40 – cmBoardInterest.ts projectPositions */
+const ENG_PLAYOFF: Record<string, [number, number]> = { 'English First Division': [3, 6], 'English Second Division': [3, 6], 'English Third Division': [4, 7] };
+function projectedOf(g: GameState, lid: string, c: number): number | null {
+  const comp = g.comps[lid];
+  const rules = g.customRules?.[lid] ?? rulesFor(lid, comp.clubs.length);
+  const rows = leagueRows(comp).map((r) => ({ club: r.club, games: r.p, pts: r.pts, rep: clubRepMem(g, r.club) }));
+  const wa7 = (comp.clubs.length - 1) * (rules.rounds ?? 2);
+  const pr = projectPositions(rows, c, wa7, 3, ENG_PLAYOFF[g.leagues[lid]?.name ?? ''] ?? null, msvcQsort);
+  return pr ? pr[0] : null;
 }
 
 let leftGen = 0;
@@ -166,6 +183,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
   const humanOfClub = (c: number) => allPersons().find((p) => p.human && p.club === c) ?? null;
   const nationName = (n: number) => g.nations[n]?.name ?? '';
   const ranking = nationRanking();
+  let ie: InterestEnv | null = null;
   const env: BoardEnv = {
     today, gameStart,
     clubs: Object.keys(g.clubs).map(Number).sort((a, b) => a - b),
@@ -219,7 +237,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
       if (nationName(n) === 'Italy' && nationName(p.nation) === 'Ukraine') return false;
       return true;
     },
-    interest: (p, c) => interestOf(g, p, c),
+    interest: (p, c) => (interestHook.fn ? interestHook.fn(g, p, c) : staffInterest((ie ??= interestEnv(g, env)), p, c, 5)),
     retiring: () => false,
     inSeason: (c) => clubSeason(g.clubs[c]?.nation, dayNum(todayIso))[0],
     nextFixture: (c, days) => {
@@ -244,10 +262,40 @@ function noNp(s: Staff): Person {
     b59: 10, det: 10, pres: 10, prof: 10, temper: 10, amb: 10, b22: 0, ca: 0, pa: 0, at: () => 0, rep: [1, 1, 1] };
 }
 
-/** 0x844780 staff_interest_in_job_at_club(s, c, 0, 5, NULL) – sat af cmBoardInterest.ts, når den er porteret */
+/** 0x844780 staff_interest_in_job_at_club(s, c, 0, 5, NULL) – cmBoardInterest.ts; krogen overstyrer (målinger) */
 export const interestHook: { fn?: (g: GameState, p: Person, c: number) => number } = {};
-function interestOf(g: GameState, p: Person, c: number): number {
-  return interestHook.fn ? interestHook.fn(g, p, c) : 10;
+
+const idCache = new WeakMap<GameState, InterestEnv['ids']>();
+/** viljens inddata af spillets data (se filhovedet i cmBoardInterest.ts) */
+function interestEnv(g: GameState, b: BoardEnv): InterestEnv {
+  const st = g.cmBoard as unknown as CmBoardState | undefined;
+  const nIdx = (name: string) => g.nations.findIndex((n) => n.name === name);
+  const cIdx = (name: string) => { const c = Object.values(g.clubs).find((x) => x.name === name); return c ? c.id : -1; };
+  let ids = idCache.get(g);
+  if (!ids) {
+    ids = { europe: g.cmEurope ?? -1, interToto: 330, lowerDiv: g.cmLowerDiv ?? -1, celtic: cIdx('Glasgow Celtic'), rangers: cIdx('Glasgow Rangers'),
+      italy: nIdx('Italy'), croatia: nIdx('Croatia'), yugoslavia: nIdx('Yugoslavia') };
+    idCache.set(g, ids);
+  }
+  const staffOf = (p: Person) => (p.human ? null : g.staff[p.id] ?? null);
+  return {
+    b,
+    rec: (c) => (st ? st.rec[c] ?? newRec() : null),
+    name: (p) => { const s = staffOf(p); return s ? `${s.first} ${s.last}`.trim() : p.human ? g.manager.name : ''; },
+    nat: (p) => { const x = staffOf(p)?.cmNat; return { nc: !!x && x[0] >= 0, nj: x ? x[1] : 0 }; },
+    rel: (p) => staffOf(p)?.cmRel,
+    key: (p) => { const s = staffOf(p); return s ? personKey(s) : -1 - p.id; },
+    status: (c) => g.cmClubStat?.[c]?.[0] ?? 1,
+    rivals: (c) => (g.cmCrowd?.[c]?.slice(6, 9) ?? []).filter((x) => x >= 0),
+    divId: (c) => { const l = g.clubs[c]?.league ?? ''; const m = /^CM(\d+)$/.exec(l); return m ? +m[1] : g.cmFinRaw?.[c]?.[0] ?? -1; },
+    compLevel: (id) => g.cmCompRep?.[id] ?? 0,
+    i73: (c) => g.cmCrowd?.[c]?.[0] ?? 0,
+    city33: (c) => { const d = g.cmCrowd?.[c]; return d && d[3] >= 0 && d[4] >= 0 ? g.cmCity33?.[d[4]] ?? 0 : null; },
+    euro: (c) => cmClubEuro(g, c),
+    targetRep: (c) => g.cmTargetRep?.[c] ?? 0,
+    continent: (n) => (n >= 0 ? g.cmNationCont?.[n] ?? -1 : -1),
+    ids,
+  };
 }
 
 // ---------------------------------------------------------------- skrivere
@@ -290,6 +338,7 @@ function humanLeaves(g: GameState, c: number): void {
 const EXP_KEY = (f: number) => (f & 0x02 ? 'title' : f & 0x01 ? 'top3' : f & 0x04 ? 'promotion' : f & 0x08 ? 'playoffs' : f & 0x40 ? 'tophalf' : f & 0x30 ? 'survive' : 'mid');
 
 function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
+  if (prerunQuiet) return;                                                     // forkørslen: ingen nyheder (se cmBoardPrerun)
   const clubName = (c: number) => g.clubs[c]?.name ?? '';
   const mname = (p: Person) => { const s = g.staff[p.id]; return s ? `${s.first} ${s.last}`.trim() : g.manager.name; };
   const mine = (c: number) => c === g.userClub;
@@ -298,11 +347,18 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       if (mine(n.club)) {
         g.board.expectation = EXP_KEY(n.flags);
         g.board.expectedPos = g.cmBoard!.rec[n.club]?.t2c ?? g.board.expectedPos;
-        addNews({ cat: 'board', key: `board.exp.${EXP_KEY(n.flags)}`, params: { club: clubName(n.club) } });
+        // 0x6a4a20: kun når spillets start ≤ i dag (menneskets ansættelse 0x826f20 sker på databasens dato før forkørslen → ingen nyhed)
+        if (after(_env.gameStart, _env.today)) return;
+        const div = _env.division(n.club);
+        addNews({ cat: 'board', key: 'board.cm', params: { club: clubName(n.club), title: expectTitle(n.flags),
+          body: expectBody(clubName(n.club), n.flags, !UEFA_NATIONS.has(nationNameOf(g, g.clubs[n.club]?.nation)), !!(div && _env.league(div)?.autoPromo)) },
+          link: { kind: 'club', id: n.club } });
       }
       return;
     case 'confidence':
-      if (mine(n.club)) addNews({ cat: 'board', key: 'board.update', params: { club: clubName(n.club), ...statementOf(g, n.club) } });
+      // 0x6a4c40 / 0x6a4d40: "Board Confidence Update" med 0x690d80 (formandens trupvurdering 0x693850 er ikke porteret)
+      if (mine(n.club)) addNews({ cat: 'board', key: 'board.cm', params: { club: clubName(n.club), title: 'Board Confidence Update', body: confidenceOf(g, _env, n.club, n.days) },
+        link: { kind: 'club', id: n.club } });
       return;
     case 'jobOffer':
       if (n.human.id === HUMAN0 && !g.jobOffers.includes(n.club)) {
@@ -318,7 +374,9 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       else if (newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.managerSacked', params: { club: clubName(n.club), manager: mname(n.manager) }, link: { kind: 'club', id: n.club } });
       return;
     case 'appointed':
-      if (newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.managerHired', params: { club: clubName(n.club), manager: mname(n.manager) }, link: { kind: 'club', id: n.club } });
+      // 0x6a3060: overskriften "{kort navn} appoint X as manager", brødteksten efter den forrige klub (−1 → 0xa09e18) og arten (3 → 0xa0a2f8)
+      if (newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager),
+        body: appointBody(clubName(n.club), mname(n.manager), n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '') }, link: { kind: 'club', id: n.club } });
       return;
     case 'pressure': case 'ultimatum': case 'protest':
       if (mine(n.club)) addNews({ cat: 'board', key: 'board.warning', params: { club: clubName(n.club) } });
@@ -331,6 +389,93 @@ function newsOn(g: GameState, c: number): boolean {
   const club = g.clubs[c], me = g.clubs[g.userClub];
   if (!club) return false;
   return clubRepMem(g, c) > 7250 || !me || me.nation === club.nation;
+}
+
+const nationNameOf = (g: GameState, n: number | undefined) => (n === undefined ? '' : g.nations[n]?.name ?? '');
+
+/** 0x6a3060 brødteksten: uden forrige klub 0xa09e18, fra en anden klub (art 3) 0xa0a2f8 */
+export function appointBody(club: string, manager: string, prevClub: string): string {
+  return prevClub ? `${club} have appointed ${manager} as their new manager.\n\n${prevClub} are now looking for a new manager.` : `${club} have appointed ${manager} as manager.`;
+}
+
+/** 0x690d80 for klubben (dage i jobbet som 0x6b2080/0x6a4c40) */
+function confidenceOf(g: GameState, env: BoardEnv, c: number, days: number): string {
+  const R = g.cmBoard?.rec[c];
+  const run = currentRun(env, c);
+  return confidenceText({
+    club: g.clubs[c]?.name ?? '', days, wealth: env.wealthBand(c), leagueBand: leagueBand(R?.w12 ?? 0), confBand: confidenceBand(R?.w6 ?? 5000),
+    runType: run.type, runLen: run.len, arrogDays: R ? daysSince(env.today, R.d41) : 9999, conf: s16(R?.w6 ?? 5000), fans: s16(R?.w16 ?? 0),
+  });
+}
+
+/** Board Confidence-skærmen 0x6b2080 (manager_screens.cpp): 0x690d80 med dagene siden menneskets ansættelse (manageren +0x3e/+0x40) */
+export function cmBoardScreenText(g: GameState): string | null {
+  if (!cmBoardOn(g) || !g.userClub) return null;
+  const env = boardEnv(g);
+  const j = isoToCm(g.manager.cmJoined || g.date), t = env.today;
+  const days = ((t.year & 0xffff) - (j.year & 0xffff)) * 365 - s16(j.day) + s16(t.day);
+  return confidenceOf(g, env, g.userClub, days);
+}
+
+/** 0x6a8810 handle_board_request(klub, anmodning) – porteret for 1 stadion, 2 træningsanlæg og 5 tid (3 transferpenge og 4 løn kræver
+ *  Finance::get_transfer_budget 0x598800 og adjust_max_wage, som ikke er porteret – de bruger spillets regler). Svaret er nyheden 0x1786 (tekst
+ *  0x6a9470); null = ikke porteret / intet svar. Bevillingerne (b2 0x40/0x80) bygger først ved sæsonslut i originalen (0x59cfa0 – ikke porteret). */
+export function cmBoardRequest(g: GameState, req: 1 | 2 | 5): string | null {
+  if (!cmBoardOn(g)) return null;
+  const c = g.userClub, club = g.clubs[c];
+  const env = boardEnv(g);
+  const m = env.manager(c);
+  if (!club || !env.division(c) || !m || !m.np) return null;
+  const R = recOfG(g, c);
+  const reply = (code: number) => {
+    const body = requestReply(club.name, req, code);
+    addNews({ cat: 'board', key: 'board.cm', params: { club: club.name, title: requestTitle(req), body }, link: { kind: 'club', id: c } });
+    return body;
+  };
+  R.b4 = (R.b4 + 1) & 0xff;
+  const ch = env.chair(c);
+  const lim = ch ? Math.trunc(s8(ch.b1d) / 5) + 2 : 3;
+  if (R.b4 === lim && req !== 5) return reply(0xc);
+  if (s8(R.b4) > s8(lim) && req !== 5) { R.w6 = s16(R.w6 - 250); return reply(0xa); }
+  if (s16(R.w6) < 3500 && req !== 5) return reply(5);
+  const prev = s8((R.b3 << 3) & 0xff) >> 4;
+  if (prev === req && (R.b2 & 0x20)) return reply(3);
+  R.b3 = (R.b3 & 0xe1) | ((req & 0xf) << 1);
+  if (!env.entry(c)) return null;
+  const bal = env.balance(c), rep = s16(clubRepMem(g, c)), mrep = s16(m.rep[1]);
+  const okRep = (min: number) => mrep >= min && mrep >= rep - 1500;
+  const rand = rnd(g, dayNum(g.date), 0x6a8810, req);
+  if (req === 1) {
+    if (!okRep(5000)) return reply(0xb);
+    if (R.b2 & 0x40) return reply(6);
+    const crowd = g.cmCrowd?.[c];
+    const cap = crowd && crowd[3] >= 0 ? crowd[5] : -1;
+    if (cap < 0 || /^(Bright|Wimble)/.test(club.name)) return reply(7);   // ingen stadion / club +0x6d = 0 (0x8298fd)
+    if (cap > 75000) return reply(4);
+    if (bal < (cap > 25000 ? 7500000 : cap > 15000 ? 5000000 : 2500000)) return reply(2);
+    if (!(cap * 0.85 < (crowd?.[0] ?? 0))) return reply(4);
+    if (rand(ch ? s8(ch.amb) : 5) === 0) return reply(4);
+    R.b2 |= 0x40;
+    return reply(0);
+  }
+  if (req === 2) {
+    if (!okRep(4250)) return reply(0xb);
+    if (R.b2 & 0x80) return reply(6);
+    const tf = s8(club.facilities);
+    if (bal < 125000 * (tf + 2)) return reply(2);
+    const grant = (rep > 7250 && tf < 20) || (rep > 4750 && tf < 15) || (rep > 3250 && tf < 10) || (bal > 1250000 && tf < 6)
+      || (ch ? s8(ch.amb) - tf + 10 : 20 - tf) >= rand(20);
+    if (!grant) return reply(4);
+    R.b2 |= 0x80;
+    return reply(0);
+  }
+  if (R.b3 & 1) return reply(6);
+  if (s16(R.w6) > 4275) return reply(4);
+  const dd = daysSince(env.today, m.joined) - (ch ? 10 * s8(ch.b1d) : 100);
+  if (dd >= 180) return reply(9);
+  R.b3 |= 1;
+  R.w6 = Math.max(s16(R.w6 + 1250), 4275);
+  return reply(0);
 }
 
 /** Board-skærmens tekstkoder (boardStatementCodes) af originalens tillid: bånd 0x690b70 (+6) */
@@ -437,6 +582,19 @@ export function cmBoardDaily(g: GameState): void {
   boardDaily(env, st, rand, (r) => weeklyUpdate(env, st, r));
   syncHuman(g);
 }
+
+/** Forkørslen 0x5cc850 (cmPrerun.ts, 1/1 → dagen før start): MANAGER_MANAGER 0x68f9c0 kører hver dag på tidspunkt 2 (notes/calendar-prerun.md),
+ *  med forkørslens dato som "i dag". Nyhederne sendes ikke: originalens indbakke ved start har kun spilstartens tre nyheder (målt), og
+ *  [0xae2cfc] sættes først til 2 efter løkken. */
+let prerunQuiet = false;
+/** målinger: forkørslens managertrin kan slås fra */
+export const boardPrerun = { on: true };
+registerPrerun('managers', (g, day, iso) => {
+  if (!cmBoardOn(g) || !boardPrerun.on) return;
+  const st = stateOf(g), env = boardEnv(g, iso);
+  prerunQuiet = true;
+  try { boardDaily(env, st, rnd(g, day, 0x68f9c0), (r) => weeklyUpdate(env, st, r)); syncHuman(g); } finally { prerunQuiet = false; }
+});
 
 /** season.ts: League::set_club_season_expectations 0x68aa80 for hver liga (når sæsonen sættes op) */
 export function cmBoardSeasonSetup(g: GameState): void {

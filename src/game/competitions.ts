@@ -8,7 +8,9 @@ import { asOwner, forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
-import { cmCalendarOn, cmFaCupDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
+import { cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
+import { cmEuroFinished, cmEuroResult } from './cmEurope';
+import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
 
 // ---------- kalender ----------
 
@@ -216,7 +218,9 @@ export function setupCup(nation: number, name: string, clubs: number[], season: 
   const seeded = sorted.slice(0, byes);
   const rest = rng.shuffle(sorted.slice(byes));
   const roundsTotal = Math.log2(size);
-  comp.meta = { roundsTotal, byes: seeded, round: 1, ...(cmCalendarOn(g) ? { cmYear: season } : {}) };
+  // (runde 10D) originalens rundetabel for landets pokal (cmCups.ts) – runderne talt fra finalen
+  const cmCup = cmCupKey(g, nation);
+  comp.meta = { roundsTotal, byes: seeded, round: 1, ...(cmCalendarOn(g) ? { cmYear: season } : {}), ...(cmCup ? { cmCup } : {}) };
   const firstPairs: [number, number][] = [];
   for (let i = 0; i + 1 < rest.length; i += 2) firstPairs.push([rest[i], rest[i + 1]]);
   if (firstPairs.length === 0) {
@@ -225,6 +229,38 @@ export function setupCup(nation: number, name: string, clubs: number[], season: 
     return;
   }
   createCupRound(comp, firstPairs, 1, cal);
+}
+
+/** (runde 10D) Liga Cup'en (Worthington Cup, EngCcCup 0x56c570): de 92 ligaklubber; de europæiske klubber fra 3. runde, 36 − 3·k (k = antal i
+ *  Europa) fra 2. runde og resten i 1. runde (tabellens byes-nøgle). Rækkefølgen division → omdømme (*estimeret*: collect_entrants ikke læst). */
+export function setupCmLeagueCup(season: number, inEurope: Set<number>) {
+  const g = gs();
+  const lgs = ['CM7', 'CM8', 'CM9', 'CM10'].map((id) => g.comps[id]);
+  if (lgs.some((c) => !c || c.nation !== 60)) return;
+  const clubs = lgs.flatMap((c, i) => c.clubs.map((id) => ({ id, tier: i })));
+  const euros = clubs.filter((c) => inEurope.has(c.id)).map((c) => c.id);
+  const st = cmLeagueCupStructure(season, euros.length);
+  if (!st || clubs.length !== 92) return;
+  const rest = clubs.filter((c) => !inEurope.has(c.id)).sort((a, b) => a.tier - b.tier || g.clubs[b.id].rep - g.clubs[a.id].rep).map((c) => c.id);
+  const r2 = rest.slice(0, st[1][2]);
+  const r1 = rng.shuffle(rest.slice(st[1][2]));
+  const comp: Competition = { id: 'LC-60', name: 'Worthington Cup', type: 'cup', nation: 60, tier: 0, clubs: clubs.map((c) => c.id), table: [], ties: [], stage: '', finished: false, pending: 0,
+    meta: { roundsTotal: 7, byes: [], round: 1, cmYear: season, cmCup: 'ENG_LC', cmDirect: true, cmEntry: { 2: r2, 3: euros } } };
+  g.comps[comp.id] = comp;
+  const pairs: [number, number][] = [];
+  for (let i = 0; i + 1 < r1.length; i += 2) pairs.push([r1[i], r1[i + 1]]);
+  createCupRound(comp, pairs, 1, calendar(season));
+}
+
+/** (runde 10D) Charity Shield (EngCharity 0x56d640): mesteren mod pokalvinderen (pokalvinderen = mesteren → nr. 2); første sæson 2000/01's */
+export function setupCmCharity(season: number, champion: number | undefined, cupWinner: number | undefined, runnerUp: number | undefined) {
+  const g = gs();
+  const b = cupWinner === champion ? runnerUp : cupWinner;
+  if (champion === undefined || b === undefined || !g.clubs[champion] || !g.clubs[b]) return;
+  const comp: Competition = { id: 'CS-60', name: 'Charity Shield', type: 'cup', nation: 60, tier: 0, clubs: [champion, b], table: [], ties: [], stage: '', finished: false, pending: 0,
+    meta: { roundsTotal: 1, byes: [], round: 1, cmYear: season, cmCup: 'ENG_CS', cmDirect: true } };
+  g.comps[comp.id] = comp;
+  createCupRound(comp, [[champion, b]], 1, calendar(season));
 }
 
 function cupStageName(round: number, total: number): string {
@@ -238,8 +274,9 @@ function createCupRound(comp: Competition, pairs: [number, number][], round: num
   const stage = cupStageName(round, total);
   const idx = Math.max(0, cal.cupRounds.length - (total - 1) + (round - 1));
   let date = stage === 'F' ? cal.cupFinal : cal.cupRounds[Math.min(cal.cupRounds.length - 1, idx)];
-  // (runde 10A) FA Cup i den originale database i ægte tilstand: originalens rundedatoer (EngFaCup::create_round_table 0x56f320)
-  const cmDay = typeof comp.meta?.cmYear === 'number' ? cmFaCupDate(comp.nation, round, total, comp.meta.cmYear) : null;
+  // (runde 10A/10D) originalens rundepost (create_round_table pr. pokalklasse – cmCups.ts): dato, tidspunkt, ben, omkampe og fixture-koder
+  const info = typeof comp.meta?.cmCup === 'string' ? cmCupRound(comp.meta.cmCup, comp.meta.cmYear as number, round, total, !!comp.meta.cmDirect) : null;
+  const cmDay = info?.date ?? (typeof comp.meta?.cmYear === 'number' ? cmFaCupDate(comp.nation, round, total, comp.meta.cmYear) : null);
   if (cmDay) date = cmDay;
   // pokalrunder i vinterpausen flyttes til første onsdag efter pausen
   const brk = comp.nation >= 0 ? nationBreak(comp.nation) : undefined;
@@ -252,6 +289,14 @@ function createCupRound(comp: Competition, pairs: [number, number][], round: num
   for (const [a, b] of pairs) {
     // lavere rangeret hold får hjemmebane
     const [h, aw] = g.clubs[a].rep < g.clubs[b].rep ? [a, b] : [b, a];
+    if (info) {
+      const tie: Tie = { id: g.nextId.tie++, a: h, b: aw, legs: info.legs, stage, fx: [] };
+      comp.ties.push(tie);
+      const single = info.legs === 1 ? { reps: info.replays, days: info.gap, fRep: [info.f0f, info.f11], rep: 0 } : {};
+      cmPlaceFixture(g, newFixture(comp.id, date, h, aw, round, { stage, tieId: tie.id, leg: 1, slot: info.slot, cm: { ...info.cm, ...single } }));
+      if (info.legs === 2) cmPlaceFixture(g, newFixture(comp.id, addDays(date, info.gap), aw, h, round, { stage, tieId: tie.id, leg: 2, slot: info.slot, cm: { ...info.cm, w30: info.cm.w30 + 1 } }));
+      continue;
+    }
     const tie: Tie = { id: g.nextId.tie++, a: h, b: aw, legs: 1, stage, fx: [] };
     comp.ties.push(tie);
     const f = newFixture(comp.id, date, h, aw, round, { stage, tieId: tie.id, leg: 1, ...(cmDay ? { slot: 1 } : {}) });
@@ -474,6 +519,8 @@ export function recordResult(f: Fixture, res: MatchResultShort) {
     checkLeagueProgress(comp);
     return;
   }
+  // (runde 10C) Europa i originalens format: landets point; lodtrækningerne sker på deres dato (cmEurope.ts cmEuroDay)
+  if (comp.meta?.cmEuro) cmEuroResult(f);
   // ny ligafase (samlet tabel)
   if (comp.type === 'continental' && f.stage === 'LP') {
     const h = comp.table.find((r) => r.club === f.home);
@@ -573,7 +620,7 @@ function createKnockout(comp: Competition, clubs: number[], stage: string, dates
 
 function checkGroupsDone(comp: Competition) {
   const g = gs();
-  if (comp.pending > 0) return;
+  if (comp.pending > 0 || comp.meta?.cmEuro) return;
   const winners: number[] = [];
   const runners: number[] = [];
   const groupOf = new Map<number, string>();
@@ -606,7 +653,8 @@ export function aggregateFor(f: Fixture): { prior: [number, number]; awayGoals: 
   const first = tie?.fx.map((id) => g.fixtures[id]).find((x) => x?.leg === 1);
   if (!first?.result) return undefined;
   // første kamp: hjemme = tie.a (= denne kamps udehold)
-  return { prior: [first.result.ag, first.result.hg], awayGoals: true };
+  const flags = cmFlagsOf(g, f);
+  return { prior: [first.result.ag, first.result.hg], awayGoals: !(flags !== null && flags & 0x4004) };
 }
 
 export function needsWinnerFn(f: Fixture): ((hg: number, ag: number) => boolean) | undefined {
@@ -615,6 +663,10 @@ export function needsWinnerFn(f: Fixture): ((hg: number, ag: number) => boolean)
   const comp = g.comps[f.comp];
   const tie = comp?.ties.find((t) => t.id === f.tieId);
   if (!tie) return undefined;
+  // (runde 10D) originalens kampflag: kun +0x38 & 3 (forlænget/straffe) kræver en vinder – ellers omkamp (Cup::process_fixture 0x51a6e0)
+  const flags = cmFlagsOf(g, f);
+  if (flags !== null && tie.legs === 1) return flags & 3 ? (hg, ag) => hg === ag : undefined;
+  if (flags !== null && f.leg === 2 && !(flags & 3)) return undefined;
   if (tie.legs === 1) return (hg, ag) => hg === ag;
   if (f.leg !== 2) return undefined;
   const first = tie.fx.map((id) => g.fixtures[id]).find((x) => x?.leg === 1);
@@ -624,7 +676,8 @@ export function needsWinnerFn(f: Fixture): ((hg: number, ag: number) => boolean)
   return (hg, ag) => {
     const aggA = a1 + ag, aggB = b1 + hg;
     if (aggA !== aggB) return false;
-    // udebanemål
+    // udebanemål (originalen: +0x38 & 0x4 = ingen udebanemål, 0x4000 = først efter forlænget – her ingen)
+    if (flags !== null && flags & 0x4004) return true;
     return ag === b1;
   };
 }
@@ -634,6 +687,15 @@ function resolveTie(comp: Competition, f: Fixture) {
   const tie = comp.ties.find((t) => t.id === f.tieId);
   if (!tie) return;
   const res = f.result!;
+  // (runde 10D) uafgjort uden forlænget/straffe: omkamp efter +0x22 dage med +0x0f/+0x11's flag (Cup::process_fixture 0x51a6e0–0x51a803)
+  if (tie.legs === 1 && f.cm && res.hg === res.ag && !res.pens && (f.cm.reps ?? 0) > (f.cm.rep ?? 0)) {
+    const n = (f.cm.rep ?? 0) + 1;
+    const fr = newFixture(comp.id, addDays(f.date, f.cm.days || 10), f.away, f.home, f.round, { stage: f.stage, tieId: tie.id, leg: 1, slot: f.slot,
+      cm: { ...f.cm, w30: f.cm.w30 - (f.cm.rep ?? 0) + n, f38: f.cm.fRep?.[n - 1] ?? 3, rep: n } });
+    // 0x51a830–0x51a8b2: kampdato + 0x22 dage, så altid find_new_fixture_date 0x5ab510 (oraklet: lørdag 13/10 → onsdag 24/10)
+    cmFindNewDate(g, fr);
+    return;
+  }
   if (tie.legs === 1) {
     if (res.hg !== res.ag) tie.winner = res.hg > res.ag ? f.home : f.away;
     else if (res.pens) tie.winner = res.pens[0] > res.pens[1] ? f.home : f.away;
@@ -644,8 +706,9 @@ function resolveTie(comp: Competition, f: Fixture) {
     if (!first?.result) return;
     const aggA = first.result.hg + res.ag;
     const aggB = first.result.ag + res.hg;
+    const noAway = (cmFlagsOf(g, f) ?? 0) & 0x4004;
     if (aggA !== aggB) tie.winner = aggA > aggB ? tie.a : tie.b;
-    else if (res.ag !== first.result.ag) tie.winner = res.ag > first.result.ag ? tie.a : tie.b;
+    else if (!noAway && res.ag !== first.result.ag) tie.winner = res.ag > first.result.ag ? tie.a : tie.b;
     else if (res.pens) tie.winner = res.pens[0] > res.pens[1] ? f.home : f.away;
     else tie.winner = rng.chance(0.5) ? tie.a : tie.b;
   }
@@ -677,14 +740,19 @@ function advance(comp: Competition, stage: string) {
     comp.meta = { ...(comp.meta ?? {}), runnerUp };
     forEachHuman(() => { if (comp.type === 'continental' || newsRelevant(...comp.clubs)) addNews({ cat: 'general', key: comp.type === 'playoff' ? 'news.playoffWin' : 'news.cupWin', params: { club: g.clubs[winners[0]].name, comp: comp.name }, link: { kind: 'comp', id: comp.id } }); });
     if (comp.type !== 'playoff') celebrateTrophy(winners[0], comp.name, comp.type === 'continental' ? 'europe' : 'cup');
+    if (comp.meta?.cmEuro) cmEuroFinished(comp);
     return;
   }
+  // (runde 10C) næste runde trækkes på sin dato (cmEurope.ts)
+  if (comp.meta?.cmEuro) return;
   if (comp.type === 'cup') {
     const round = (comp.meta!.round as number) + 1;
     const byes = (comp.meta!.byes as number[]) ?? [];
-    const pool = round === 2 ? [...winners, ...byes] : winners;
+    // (runde 10D) Liga Cup: rundens nye hold efter originalens tabel (cmEntry)
+    const entry = (comp.meta!.cmEntry as Record<number, number[]> | undefined)?.[round] ?? [];
+    const pool = [...(round === 2 ? [...winners, ...byes] : winners), ...entry];
     comp.meta!.byes = [];
-    if (pool.length === 2) {
+    if (pool.length === 2 && !comp.meta!.cmCup) {
       createFinal(comp, pool[0], pool[1], cal.cupFinal);
       comp.meta!.round = round;
       return;

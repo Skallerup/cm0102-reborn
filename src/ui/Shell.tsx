@@ -20,6 +20,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { flushAutosave, forgetLast, saveGame, scheduleAutosave } from '../game/save';
 import { runUntil, watchedDay } from '../game/sim';
 import { realCompName, setCompEra } from '../i18n/comps';
+import { authentic } from '../game/rules';
+import { cmTimeOfDay } from '../game/cmCalendar';
 import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
@@ -64,7 +66,7 @@ import { HelpScreen } from './help';
 import { VersionButton } from './Changelog';
 import { prefetchArticles } from './aiArticle';
 import { applyTheme, isRetro, setThemeClub } from './theme';
-import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague } from './backgrounds';
+import { backgroundUrl, bgPack, clubBgUrl, clubPackUrl, loadClubPacks, compBgUrl, eveningFixture, genericMatchdayUrl, loadScreenBgs, loadStadiumBgs, matchdayBgUrl, miscBgUrl, nationBgUrl, sundayLeague, bgSet, loadOriginalBgs, originalBgUrl, originalBgsReady } from './backgrounds';
 import { CompetitionsMenu, NationsClubsMenu, FindMenu, GameOptionsMenu, ManagerMenu, bgChanges, modernBackgrounds, stadiumBackgrounds } from './classicOptions';
 import { ClassicFind } from './screens/FindClassic';
 import { ClassicNation } from './screens/NationClassic';
@@ -125,14 +127,17 @@ function selectionProblems(): string | null {
 export function Shell() {
   const g = useGame()!;
   // 2001-databasen: CM's egne turneringsnavne på engelsk, ellers de rigtige ("Premier League")
-  setCompEra(isOriginal2001());
+  // ægte tilstand: Bosman Editions navne for sæsonen (FA Premier League 2001/02)
+  setCompEra(isOriginal2001(), authentic() ? g.season : 0);
   const { route, nav, back, canBack, forward, canForward } = useNav();
   const cxNext = useClassicNextAction();
   // kampdage (optakt, kamp, rapport): hjemmeholdets stadion som baggrund, som i CM 01/02 – ikke ved finaler på neutral bane
   const [, setStadiumsReady] = useState(0);
   const venueFix = (route.name === 'match' || route.name === 'matchday' || route.name === 'report') ? g.fixtures?.[Number((route as { id?: number }).id)] : undefined;
-  const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() ? g.clubs[venueFix.home]?.stadium : undefined;
-  const matchDay = !!venueFix && stadiumBackgrounds();
+  // standardsættet (originalens billeder) bruger ikke stadionbilleder på kampdage – det gør de andre sæt
+  const origBg = isRetro() && bgSet() === 'original' && !bgPack();
+  const venue = venueFix && venueFix.stage !== 'F' && stadiumBackgrounds() && !origBg ? g.clubs[venueFix.home]?.stadium : undefined;
+  const matchDay = !!venueFix && stadiumBackgrounds() && !origBg;
   useEffect(() => { if (matchDay) void loadStadiumBgs().then(() => setStadiumsReady((x) => x + 1)); }, [matchDay]);
   // aftenkamp: midtuge og europæiske kampe spilles i projektørlys (billedet mørkes og køles i CSS – .cx-night/.mbg-night)
   const night = matchDay && !!venueFix && eveningFixture(venueFix.date ?? g.date, g.comps[venueFix.comp]?.type === 'continental');
@@ -167,13 +172,13 @@ export function Shell() {
   // efter første afsluttede sæson: tilbyd en konto (skygemte spil) og opdateringsmails – én gang, aldrig i fællesspil
   const [newsAsk, closeNewsAsk] = useNewsPrompt(g.manager.history?.length ?? 0, !!g.humans?.length);
   // bokse (bekræftelser, kontrakt …) ligger uden for main – de får samme baggrundsbillede via :root
-  useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs(), loadClubPacks()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
+  useEffect(() => { void Promise.all([loadScreenBgs(), loadStadiumBgs(), loadClubPacks(), loadOriginalBgs()]).then(() => setStadiumsReady((x) => x + 1)); }, []);
   const bgDay = bgChanges() ? g.date : '2001-07-01';
   // kampdage: stadion indefra først – klubpakken (kan være træningsanlæg o.l.) kun når vi ikke har stadionet
   const homePack = venue && venueFix ? clubPackUrl(g.clubs[venueFix.home], venueFix.date ?? g.date) : null;
   // kampdag: hjemmeholdets stadion indefra, ellers klubpakken, ellers et kampbillede med fulde tribuner fra pakken (også finaler på neutral bane)
   const matchPhoto = matchDay && venueFix ? (venue ? matchdayBgUrl(venue, venueFix.date ?? g.date) : null) ?? homePack ?? genericMatchdayUrl(venueFix.date ?? g.date, venueFix.home) : null;
-  const cxPhoto = cmNav ? matchPhoto ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
+  const cxPhoto = cmNav ? matchPhoto ?? (origBg ? originalBackground(g, route, bgDay) : null) ?? screenBackground(g, route, bgDay) ?? backgroundUrl(bgDay, g.userClub) : null;
   useEffect(() => { if (cxPhoto) document.documentElement.style.setProperty('--cx-photo', `url("${cxPhoto}")`); }, [cxPhoto]);
   const matchSide = useClassicMatchSideState();
   // moderne udseende: dagens baggrundsfoto bag indholdet – på kampdage hjemmeholdets stadion
@@ -390,7 +395,10 @@ export function Shell() {
         )}
       </div>
       {cmNav && (() => {
-        const [day, date] = classicDate(g.date);
+        const [day, date0] = classicDate(g.date);
+        // originalens kalender: "14.7.01 AM" (tidspunktet på dagen)
+        const tod = cmTimeOfDay(g);
+        const date = tod === null ? date0 : `${date0} ${t(`cl.tod.${tod}`)}`;
         const quit = async () => {
           if (online) { if (await askConfirm(t('mp.leaveConfirm'))) { void stopVoice(); closeSession(); forgetLast(); setGame(null); } return; }
           if (await askConfirm(t('top.quitConfirm'))) { await saveGame({ cloud: true }).catch(() => {}); forgetLast(); setGame(null); }
@@ -512,7 +520,7 @@ export function Shell() {
       )}
       {menuOpen && <div className="menu-backdrop" onClick={() => setMenuOpen(false)} />}
       <ClassicSlotCtx.Provider value={cmNav ? { tabs: tabSlot, sub: subSlot, setTabs: setTabSlot } : null}>
-        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${matchPhoto ? ' cx-stadium' : ''}${matchPhoto && night ? ' cx-night' : ''}` : modernPhoto ? `mbg${matchPhoto ? ' mbg-stadium' : ''}${matchPhoto && night ? ' mbg-night' : ''}` : ''}`} ref={mainRef}
+        <main className={`main ${cmNav ? `cx-main cx-bg-${route.name}${matchPhoto ? ' cx-stadium' : ''}${origBg && originalBgsReady() ? ' cx-orig' : ''}${matchPhoto && night ? ' cx-night' : ''}` : modernPhoto ? `mbg${matchPhoto ? ' mbg-stadium' : ''}${matchPhoto && night ? ' mbg-night' : ''}` : ''}`} ref={mainRef}
           style={!cmNav && modernPhoto ? ({ '--m-photo': `url("${modernPhoto}")` } as CSSProperties) : cmNav && cxPhoto ? ({ '--cx-photo': `url("${cxPhoto}")` } as CSSProperties) : undefined}>
           {online && !online.inGame ? <Lobby /> : <Screen allowed={allowed} />}
           {online?.status === 'error' && <div className="toast">{online.error}</div>}
@@ -711,6 +719,26 @@ function HolidayPanel({ untilMatch, onClose, onGo }: { untilMatch: boolean; onCl
  * turneringens billede, landshold = landets, træning/bestyrelse/transfer = deres egne og resten af ugen ens egen klub og
  * hverdagen (træningsbanen, bestyrelseslokalet). null = intet billede (så bruges den gamle Sunday League-pakke).
  */
+/**
+ * Originalens billeder (pics.cfg, Pictures/*.RGN). Reglen fra koden (background.cpp i Bosman-projektet): en klub/spiller/turnering
+ * slår op i sin egen pics.cfg-post og falder tilbage til landets liste og så til et tilfældigt billede fra de første seks sektioner
+ * (kun [NATIONS] England har billeder). Fra ejerens skærmbilleder: Finances & Info = [SI] (holdbilledet), træning = [TRAINING],
+ * bestyrelsen = [BOARDROOM], transfers = [TRANSFER]; trofæer vises på hall of fame/klubhistorik (valgt, ikke fra koden).
+ * Billedet er fast pr. skærm og dag (originalen trækker et nyt hver gang skærmen bygges).
+ */
+function originalBackground(g: GameState, route: Route, iso: string): string | null {
+  const id = (route as { id?: string | number }).id;
+  const salt = `${route.name}|${id ?? ''}`;
+  switch (route.name) {
+    case 'club': return originalBgUrl('si', iso, salt);
+    case 'training': return originalBgUrl('training', iso, salt);
+    case 'board': case 'finance': return originalBgUrl('boardroom', iso, salt);
+    case 'transfers': return originalBgUrl('transfer', iso, salt);
+    case 'ranking': case 'clubhistory': return originalBgUrl('trophy', iso, salt);
+    default: return originalBgUrl('nation', iso, salt, g.nations[g.clubs[g.userClub]?.nation ?? -1]?.name);
+  }
+}
+
 function screenBackground(g: GameState, route: Route, iso: string): string | null {
   // Sunday League eller en valgt baggrundspakke fra fællesskabet (Community → Backgrounds): pakkens billeder overalt
   if (sundayLeague() || bgPack()) return null;

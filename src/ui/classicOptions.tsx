@@ -16,21 +16,25 @@ import { createPortal } from 'react-dom';
 import { communityAvailable } from '../online/community';
 import { getProfile } from '../online/rank';
 import { CxDrop, type DropItem } from './classic';
-import { bgPack, setBgPack, setSundayLeague, sundayLeague } from './backgrounds';
+import { bgPack, bgSet, setBgPack, setBgSet, type BgSet } from './backgrounds';
 import { askConfirm } from './confirm';
 import { useGame, useNav } from './core';
 import { notifyEnabled, notifySupported, setNotify } from './notify';
 import { getTheme, setTheme, type Theme } from './theme';
+import { authentic } from '../game/rules';
 import { matchSound, setMatchSound } from './matchSound';
 
 // ---------- små visningsindstillinger (kun i denne browser) ----------
 
-const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo', stadium: 'cm-stadium-bg', modernBg: 'cm-modern-bg', goalFlash: 'cm-goal-flash' } as const;
+const PREF = { bg: 'cm-bg-change', flash: 'cm-flash', pixel: 'cm-pixel', font: 'cm-futuristic', fontKind: 'cm-font', logo: 'cm-title-logo', stadium: 'cm-stadium-bg', modernBg: 'cm-modern-bg', goalFlash: 'cm-goal-flash', realism: 'cm-realism' } as const;
 const read = (k: string, def: boolean) => { try { const v = localStorage.getItem(k); return v === null ? def : v === 'on'; } catch { return def; } };
 const write = (k: string, on: boolean) => { try { localStorage.setItem(k, on ? 'on' : 'off'); } catch { /* ignorér */ } };
 /** Skifter baggrunden hver dag? (ellers samme billede hele karrieren) */
 export const bgChanges = () => read(PREF.bg, true);
 export const flashingText = () => read(PREF.flash, true);
+/** Kolonnen "Realism" i spillersøgningen (og dens filter): findes ikke i originalen – slået fra i ægte CM 01/02, til i det udvidede spil;
+ *  kan slås til under Spilindstillinger (ejerens ønske 2026-11-13) */
+export const showRealism = () => read(PREF.realism, !authentic());
 /** Hvor længe et mål blinker på kampskærmen (ms) – Spilindstillinger (brugerønske 2026-11-10) */
 export const GOAL_FLASH_MS = [2000, 5500, 8000, 12000] as const;
 export const goalFlashMs = (): number => { try { const v = Number(localStorage.getItem(PREF.goalFlash)); return (GOAL_FLASH_MS as readonly number[]).includes(v) ? v : 5500; } catch { return 5500; } };
@@ -118,7 +122,7 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
 
 // ---------- Game Settings ----------
 
-type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; sunday: boolean; save: string; notif: boolean };
+type Draft = { lang: Lang; cur: Currency; theme: Theme; bg: boolean; flash: boolean; goalFlash: number; pixel: PixelLevel; font: CxFont; logo: boolean; stadium: boolean; sound: boolean; bgset: BgSet; realism: boolean; save: string; notif: boolean };
 
 export function Seg<T extends string | boolean | number>({ value, opts, onChange }: { value: T; opts: [T, string][]; onChange: (v: T) => void }) {
   return <div className="cx-set-seg">{opts.map(([v, l]) => <button key={String(v)} className={v === value ? 'on' : ''} onClick={() => onChange(v)}>{l}</button>)}</div>;
@@ -129,7 +133,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
   const { nav } = useNav();
   const [pack, setPack] = useState(bgPack());
   const initial: Draft = {
-    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), sunday: sundayLeague(),
+    lang: getLang(), cur: getCurrency(), theme: getTheme(), bg: bgChanges(), flash: flashingText(), goalFlash: goalFlashMs(), pixel: pixelLook(), font: classicFont(), logo: titleLogo(), stadium: stadiumBackgrounds(), sound: matchSound(), bgset: bgSet(), realism: showRealism(),
     save: g.options.autosaveMode ?? (g.options.autosave === false ? 'off' : 'changes'), notif: notifyEnabled(),
   };
   const [d, setD] = useState<Draft>(initial);
@@ -139,7 +143,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
     if (d.lang !== initial.lang) { setLang(d.lang); g.lang = d.lang; }
     if (d.cur !== initial.cur) setCurrency(d.cur);
     if (d.save !== initial.save) { g.options.autosaveMode = d.save as 'changes'; g.options.autosave = d.save !== 'off'; }
-    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); setMatchSound(d.sound); setSundayLeague(d.sunday); applyFlash();
+    write(PREF.bg, d.bg); write(PREF.flash, d.flash); try { localStorage.setItem(PREF.goalFlash, String(d.goalFlash)); } catch { /* ignorér */ } try { localStorage.setItem(PREF.pixel, d.pixel); } catch { /* ignorér */ } try { localStorage.setItem(PREF.fontKind, d.font); } catch { /* ignorér */ } write(PREF.logo, d.logo); write(PREF.stadium, d.stadium); if (d.realism !== initial.realism) write(PREF.realism, d.realism); setMatchSound(d.sound); setBgSet(d.bgset); applyFlash();
     if (d.notif !== initial.notif) await setNotify(d.notif);
     notify();
     if (d.theme !== initial.theme) { setTheme(d.theme); const m = d.theme === 'retro' ? 'authentic' : 'extended'; if ((g.options.mode ?? 'extended') !== m) act({ t: 'setMode', mode: m }); }
@@ -154,7 +158,7 @@ function GameSettings({ onClose }: { onClose: () => void }) {
           <AccountBar />
           <div className="cx-set-top">
             <span>{t('cl.set.version', { v: APP_VERSION })}</span>
-            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, goalFlash: 5500, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, sunday: false })}>{t('cl.set.reset')}</button>
+            <button className="cx-greybtn" onClick={() => setD({ ...initial, bg: true, flash: true, goalFlash: 5500, pixel: 'light', font: 'futuristic', logo: true, stadium: true, sound: true, bgset: 'original', realism: !authentic() })}>{t('cl.set.reset')}</button>
           </div>
           <div className="cx-set-grid">
             {row(t('opt.language'), <Seg value={d.lang} opts={LANGS.map(([k, , full]) => [k, full] as [Lang, string])} onChange={(v) => up({ lang: v })} />)}
@@ -164,7 +168,8 @@ function GameSettings({ onClose }: { onClose: () => void }) {
             {row(t('cl.set.logo'), onOff(d.logo, (v) => up({ logo: v })))}
             {row(t('cl.set.stadium'), onOff(d.stadium, (v) => up({ stadium: v })))}
             {row(t('cl.set.sound'), onOff(d.sound, (v) => up({ sound: v })))}
-            {row(t('cl.set.sunday'), onOff(d.sunday, (v) => up({ sunday: v })))}
+            {row(t('cl.set.bgset'), <Seg value={d.bgset} opts={[['original', t('cl.set.bgset.original')], ['screens', t('cl.set.bgset.screens')], ['sunday', t('cl.set.bgset.sunday')]]} onChange={(v) => up({ bgset: v })} />)}
+            {row(t('cl.set.realism'), onOff(d.realism, (v) => up({ realism: v })))}
             {row(t('cl.set.pixel'), <Seg value={d.pixel} opts={[['off', t('cl.set.off')], ['light', t('cl.set.light')], ['strong', t('cl.set.strong')]]} onChange={(v) => up({ pixel: v })} />)}
             {row(t('cl.set.bg'), onOff(d.bg, (v) => up({ bg: v })))}
             {row(t('hub.skins.setting'), <div className="cx-set-seg">

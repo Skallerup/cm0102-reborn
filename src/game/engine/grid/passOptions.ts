@@ -124,11 +124,13 @@ export function isCross(c: MatchPlayer, tx: number, ty: number, h: Helpers): boo
   return h.dist(Math.abs(tx - c.x), Math.abs(ty - c.y)) > 1.5;  // 0x6cbab4 (0x968940)
 }
 
+const NATION_K1 = new Set(["England", "Scotland", "Wales", "Northern Ireland", "Republic Of Ireland", "Norway"]);
+const NATION_K06 = new Set(["Sweden", "Denmark", "Germany"]);
 /** Nation factor K, [F+0x48] (0x6c6a4c..0x6c6ab4). */
 export function nationFactor(nation: string): number {
   // float32-værdierne 0x3f800000/0x3f19999a/0x3e4ccccd ([esp+0x40] = dword; fdiv dword) – med double 0,2 rundede −500e/K forkert
-  if (["England", "Scotland", "Wales", "Northern Ireland", "Republic Of Ireland", "Norway"].includes(nation)) return 1.0; // 0x6c6ab4
-  if (["Sweden", "Denmark", "Germany"].includes(nation)) return Math.fround(0.6);                                         // 0x6c6aaa
+  if (NATION_K1.has(nation)) return 1.0;                                                                                  // 0x6c6ab4
+  if (NATION_K06.has(nation)) return Math.fround(0.6);                                                                    // 0x6c6aaa
   return Math.fround(0.2);                                                                                                // 0x6c6a4c
 }
 
@@ -146,7 +148,9 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
 
   const originInAttBox = inAttBox(side, ox, oy); // [F+0x17]
   const originInOwnBox = inOwnBox(side, ox, oy); // [F+0x16]
-  const outfieldOpps = m.players[opp].filter(p => p.slot >= 0 && !(p.posFlags & 1));
+  // (runde 11B) løkker i stedet for filter/destrukturering – samme rækkefølge og tal
+  const outfieldOpps: MatchPlayer[] = [];
+  for (const p of m.players[opp]) if (p.slot >= 0 && !(p.posFlags & 1)) outfieldOpps.push(p);
   const nearestOpp = (x: number, y: number) => {   // 5000.0 start (0x459c4000), 0 if one in the cell
     let d = 5000;
     for (const p of outfieldOpps) { const e = h.dist(Math.abs(p.x - x), Math.abs(p.y - y)); if (e === 0) return 0; if (e < d) d = e; }
@@ -192,7 +196,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
     let ScrossHigh = 0, ScrossLow = 0; // S4c -> 8, S50 -> 7
 
     // tactic roles (sub_897dc0), receiver creativity
-    const [role0, role1] = m.roleStaffId;
+    const role0 = m.roleStaffId[0], role1 = m.roleStaffId[1];
     if (c.staff.id === role0) W += 1000;                                   // 0x6c703c
     else if (c.staff.id === role1) { if (!h.onPitch(role0)) W += 1000; }   // 0x6c70ed
     else { const t = ftol(-5 * c.creativity * c.creativity); Sshort -= t; Sground = -t; } // 0x6c7101 (-5.0)
@@ -337,7 +341,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       mark -= backRows - 0.5;                                              // 0x6c7dca (0.5)
       if (mark < 0) { W += ftol(-500 * mark * mark); mark = 0; }           // 0x6c7def (-500.0)
     } else {
-      const ahead = m.players[side].filter(p => p.slot >= 0 && BEHIND(side, ty, p.y)).length; // 0x6c7e80..0x6c7ed4
+      let ahead = 0; for (const p of m.players[side]) if (p.slot >= 0 && BEHIND(side, ty, p.y)) ahead++; // 0x6c7e80..0x6c7ed4
       if (ahead === 0) mark = 2 * mark + 1;                                // 0x6c7ede / 0x6c7f17
       else if (wide(tx) && !inOwnHalf(side, c.y) && (c.instr.hi & 0x4)) mark = 1.5 * mark + 1; // receiver "Cross Ball: Yes" 0x6c7f11
     }
@@ -388,20 +392,19 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
     // pick the type and its score (0x6c831a..0x6c86e2)
     const NONE = -100000;                                                  // 0x6c8326
     let type = -1, score = NONE;
-    const inB = (lo: number, hi: number) => D >= lo && D <= hi;
     const longRange = 5 - (21 - carrier.strength) * 0.16666666666666666;   // 0x6c838a (21) 0x6c8396 fmul 1/6 (double 0x96a7a8) 0x6c839c (5)
     if (code >= 0) {                                                       // forced type
       type = code;
       switch (code) {
-        case 0x06: case 0x08: score = inB(1, 5) ? ScrossHigh + W : NONE; break;            // case 0 (0x6c8510)
-        case 0x07: score = inB(1, 5) ? ScrossLow + W : NONE; break;                        // case 1 (0x6c8544)
+        case 0x06: case 0x08: score = (D >= 1 && D <= 5) ? ScrossHigh + W : NONE; break;            // case 0 (0x6c8510)
+        case 0x07: score = (D >= 1 && D <= 5) ? ScrossLow + W : NONE; break;                        // case 1 (0x6c8544)
         case 0x0b: score = D <= 2 ? shortScore + W : NONE; break;                          // case 2 (0x6c84ec)
         case 0x1e: case 0x5a: score = D <= longRange && D >= 4 ? longScore + W : NONE; break; // case 3 (0x6c8384)
-        case 0x1f: score = inB(1.5, 3) ? Slofted + W : NONE; break;                        // case 4 (0x6c8426)
+        case 0x1f: score = (D >= 1.5 && D <= 3) ? Slofted + W : NONE; break;                        // case 4 (0x6c8426)
         case 0x34: score = D <= 5.5 && D >= 3 && tx > 1 && tx < 7 && (ty < 3 || ty > 8) ? Sground + W : W + shortScore; break; // case 5 (0x6c849f)
         case 0x36: score = 0.1 * carrier.throwIns + 1 >= D ? W : NONE; break;              // case 6 (0x6c834f)
         case 0x37: score = D <= longRange && D >= 4 ? longScore + W : W + shortScore; break; // case 7 (0x6c83d5)
-        case 0x3c: score = inB(3, 4) ? Sground + W : NONE; break;                          // case 8 (0x6c8462)
+        case 0x3c: score = (D >= 3 && D <= 4) ? Sground + W : NONE; break;                          // case 8 (0x6c8462)
         case 0x3d: score = D <= 2 ? W : NONE; break;                                       // case 9 (0x6c8579)
         default: score = W;                                                                // case 10 (0x6c858a)
       }
@@ -410,11 +413,11 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       type = PASS.HEADER; score = W;
     } else {
       if (D <= longRange && D >= 4) { score = longScore; type = PASS.LONG; }               // 0x6c85fe
-      if (cross && inB(1, 5) && ScrossHigh > score) { score = ScrossHigh; type = PASS.CROSS_HIGH; } // 0x6c8634
-      if (cross && inB(1, 5) && ScrossLow > score) { score = ScrossLow; type = PASS.CROSS_LOW; }    // 0x6c8662
+      if (cross && (D >= 1 && D <= 5) && ScrossHigh > score) { score = ScrossHigh; type = PASS.CROSS_HIGH; } // 0x6c8634
+      if (cross && (D >= 1 && D <= 5) && ScrossLow > score) { score = ScrossLow; type = PASS.CROSS_LOW; }    // 0x6c8662
       if (D <= 2 && shortScore > score && m.ballState < 3) { score = shortScore; type = PASS.SHORT; } // 0x6c8682
-      if (inB(3, 4) && Sground > score) { score = Sground; type = PASS.GROUND_MEDIUM; }    // 0x6c86b0
-      if (inB(1.5, 3) && Slofted > score) { score = Slofted; type = PASS.LOFTED; }         // 0x6c86de
+      if ((D >= 3 && D <= 4) && Sground > score) { score = Sground; type = PASS.GROUND_MEDIUM; }    // 0x6c86b0
+      if ((D >= 1.5 && D <= 3) && Slofted > score) { score = Slofted; type = PASS.LOFTED; }         // 0x6c86de
       score += W;                                                                          // 0x6c86e2
     }
     if (type > -1 && score > best.weight)                                  // 0x6c86e4 / 0x6c86f2 (strict >)

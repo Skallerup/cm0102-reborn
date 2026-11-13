@@ -19,6 +19,8 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { isRetro } from '../theme';
 import { ClassicSearch, ClassicTransfers } from './TransfersClassic';
+import { countMins, parseMins, playerAttrMid } from './searchAttrs';
+import { showRealism } from '../classicOptions';
 import type { RejectReason } from '../../game/will';
 import { NegotiationModal } from './Negotiation';
 
@@ -88,6 +90,8 @@ const DEFAULTS = {
   // klassisk filterdialog: positionsgruppe, side, hvor spilleren spiller, lejet ud, egen trup med
   posGroup: '' as '' | 'GK' | 'D' | 'M' | 'A', side: '' as '' | 'L' | 'C' | 'R', based: '' as '' | 'home' | 'abroad',
   onLoan: false, includeSquad: false,
+  // klassisk filterdialog, fanen Attributes: minimum pr. egenskab (searchAttrs.ts, "idx:min,idx:min")
+  attrMins: '',
 };
 export type Filters = typeof DEFAULTS;
 const FILTER_KEY = 'cm0102.transferFilters';
@@ -121,9 +125,14 @@ export function Search({ classic }: { classic?: boolean } = {}) {
   const me = g.clubs[g.userClub];
   const homeNation = me?.nation ?? g.manager.nation;
   const [prevFilters, setPrevFilters] = useState(lastCareerFilters);
-  const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && f[k] !== DEFAULTS[k]).length;
+  const active = (Object.keys(DEFAULTS) as (keyof Filters)[]).filter((k) => k !== 'attr1Min' && k !== 'attr2Min' && k !== 'attr3Min' && k !== 'attrMins' && f[k] !== DEFAULTS[k]).length + countMins(f.attrMins ?? '');
+  // klassisk: uden kolonnen Realism (slået fra i ægte CM 01/02) gælder realismefilteret heller ikke
+  const useRealism = !classic || showRealism();
+  // "(N filtered out)" regnes fra alle spillere i standardaldersintervallet
+  const total = useMemo(() => Object.values(g.players).filter((p) => (p.club !== g.userClub || f.includeSquad) && ageOn(p.dob, g.date) >= DEFAULTS.minAge && ageOn(p.dob, g.date) <= DEFAULTS.maxAge).length, [g, f.includeSquad]);
   const results = useMemo(() => {
     const q = nameQuery(f.name);
+    const mins = Object.entries(parseMins(f.attrMins ?? '')).map(([i, v]) => [Number(i), v] as [number, number]);
     const attrs = ([[f.attr1, f.attr1Min], [f.attr2, f.attr2Min], [f.attr3, f.attr3Min]] as [number, number][]).filter(([a]) => a >= 0);
     const out: Player[] = [];
     for (const p of Object.values(g.players)) {
@@ -174,7 +183,8 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       if (f.interested && me && playerInterest(p, me) !== 'yes') continue;
       // CM 01/02: "Scouted Only"
       if (f.scouted && p.club !== g.userClub && (g.knowledge[p.id] ?? 0) < 60) continue;
-      if (f.realism) {
+      if (mins.some(([i, v]) => playerAttrMid(p, i) < v)) continue;
+      if (f.realism && useRealism) {
         const r = transferRealism(p);
         if (r.level > (f.realism === 1 ? 0 : 1)) continue;
       }
@@ -182,7 +192,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       out.push(p);
     }
     return out;
-  }, [g, f, seasonEnd, me, homeNation]);
+  }, [g, f, seasonEnd, me, homeNation, useRealism]);
   const groupOf = (i: number) => t(i <= 13 ? 'group.technical' : i <= 24 ? 'group.mental' : i <= 32 ? 'group.physical' : 'group.goalkeeping');
   const attrOptions = ATTRS.slice(0, 36).map((k, i) => ({ value: i, label: t(`attr.${k}`), group: groupOf(i) }))
     .sort((a, b) => a.value - b.value).sort((a, b) => (a.group === b.group ? a.label.localeCompare(b.label) : 0));
@@ -289,7 +299,7 @@ export function Search({ classic }: { classic?: boolean } = {}) {
       </Panel>
     </>
   );
-  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} active={active} nations={nations} />;
+  if (classic) return <ClassicSearch f={f} setF={setF} defaults={DEFAULTS} results={results} total={total} active={active} nations={nations} />;
   return (
     <div>
       {filterPanel}

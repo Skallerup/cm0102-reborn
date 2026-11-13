@@ -198,16 +198,17 @@ export interface GameFixtureCodes {
   /** turneringens id i originalen (comp +0) og omdømme (+0x69); tabelposten */
   compId: number; compRep: number; table: { b3c: number; b43: number; rows: boolean } | null;
 }
-const CM_COMP_ID = (g: GameState, id: string): number => {
+export const CM_COMP_ID = (g: GameState, id: string): number => {
   const m = /^CM(\d+)$/.exec(id);
   if (m) return +m[1];
   // spillets egne turneringer: originalens id efter navnet (Champions League 326, UEFA Cup 328, Intertoto 330, FA Cup 351, League Cup 352)
   const c = g.comps[id], n = (c?.name ?? id).toLowerCase();
   if (/champions/.test(n) || id === 'CL') return 326;
   if (/uefa|europa/.test(n) || id === 'UEFA' || id === 'EL') return 328;
-  if (/intertoto|conference/.test(n) || id === 'UECL') return 330;
+  if (/inter-?toto|conference/.test(n) || id === 'UECL' || id === 'UIC') return 330;
   if (/fa cup/.test(n)) return 351;
   if (/league cup|worthington|carling/.test(n)) return 352;
+  if (/charity|community shield/.test(n)) return 353;
   return -1;
 };
 export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: string | undefined, home: number): GameFixtureCodes {
@@ -230,6 +231,12 @@ export function fixtureCodesOf(g: GameState, f: Fixture | undefined, compId: str
   }
   const legCode = twoLeg ? (leg === 1 ? 3 : 4) : 0;
   const flags38 = !tie ? 0 : twoLeg ? (leg === 2 ? 3 : 0) : 3;
+  // (runde 10C) kampen er oprettet efter originalens rundetabel: dens egne koder (andet ben: +0x0f OR'es ind, når første ben er spillet)
+  if (f?.cm) {
+    const k = f.cm;
+    return { ...base, w30: k.w30, w32: k.w32 ?? 0, b34: k.b34, b3a: k.b3a, b3c: k.b3c ?? 0, firstLeg, flags38: k.f38 | (firstLeg ? k.f38dec ?? 0 : 0),
+      table: (c.meta?.cmTable as GameFixtureCodes['table'] | undefined) ?? { b3c: (c.meta?.roundsTotal as number | undefined) ?? 1, b43: 1, rows: true } };
+  }
   if (c.type === 'playoff') {
     const lg = c.playoffFor ? CM_COMP_ID(g, c.playoffFor) : -1;
     return { ...base, w30: stage === 'F' ? 150 : 130 + legCode, w32: 160, b3a: 5, b3c: stage === 'F' ? 1 : 0, firstLeg, flags38, compId: lg, compRep: lg >= 0 ? g.cmCompRep?.[lg] ?? 0 : 0,

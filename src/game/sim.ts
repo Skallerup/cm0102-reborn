@@ -6,6 +6,7 @@ import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
 import { cmRelDaily } from './cmRelations';
+import { cmRecordsDaily } from './cmMedia';
 import { cmTrainSquads } from './cmTraining';
 import { recordAiTactics } from './engine/grid/aiTeam';
 import { promoteIfShort } from './reserves';
@@ -46,6 +47,8 @@ import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
 import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
+import { cmEuroCatchUp, cmEuroDay } from './cmEurope';
+import { compHooks } from './hooks';
 import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -169,7 +172,7 @@ export function prepareMatch(f: Fixture, userAuto = false): { home: EngineTeam; 
   return {
     home: engineTeam(f.home, ht, euroOnly(f.home, f.comp)),
     away: engineTeam(f.away, at, euroOnly(f.away, f.comp)),
-    neutral: f.stage === 'F',
+    neutral: f.cm ? f.cm.b3c === 1 : f.stage === 'F',
     needsWinner: needsWinnerFn(f),
     weather: weatherFor(f),
     importance: importance(f),
@@ -501,8 +504,12 @@ function newDay() {
   cmSquadPlanDaily(g);
   // League::update_for_date 0x6847c0: tv-flytningerne 4 uger frem (cmCalendar.ts – originalens skema for de engelske ligaer)
   cmCalendarDay(g);
+  // (runde 10C) Europas lodtrækninger på deres dato (Cup::update_for_date 0x51f890 – cmEurope.ts)
+  cmEuroDay(g);
   cmFitDay(g);
   cmPermitDaily(g);
+  // Staff_Records ved turneringernes afslutning (mester/op-/nedrykning/pokal – gårsdagens sidste kampe, cmMedia.ts)
+  cmRecordsDaily(g, squad);
   // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
   cmContractDaily(g, squad);
   // 0x5ce0b0 (efter 0x5ce2d0): truppens moral efter førernes indflydelse og kontrakternes +0x44 (cmPlayerData.ts, runde 10A)
@@ -706,6 +713,7 @@ export function playPendingAsAi() {
 /** "Fortsæt" – én dag frem */
 export function continueGame(pauseBefore?: (date: string) => boolean): DayResult {
   const g = gs();
+  cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
   ensureHumanLeagues();
   // gamle saves: en ventende kamp, der ikke er ens egen klubs (efter et jobskifte)
   if (g.pendingFixture) {
@@ -935,3 +943,6 @@ function holidayDaily() {
     if (cid) applyForJob(cid);
   }
 }
+
+// (runde 10C) forkørslen af Europas kampe før spillets start (newgame.ts kalder krogen; continueGame tager dem, hvis krogen manglede)
+compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));

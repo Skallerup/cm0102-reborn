@@ -26,6 +26,7 @@ import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
 import { nationLanguage, playerLanguages } from './languages';
 import { SQUAD_STATUSES } from './squadStatus';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
+import { targetRep } from './cmBoardInterest';
 
 const GBP = 0.86;                                                             // £ = € · 0,86 (newgame.ts)
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -130,7 +131,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
   const dataOf = (p: Player) => { let d = cache.get(p.id); if (!d) { d = roleDataOf(p, ctxPick, ageOn(p.dob, g.date)); cache.set(p.id, d); } return d; };
   const rand = cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x83cb40);
   const releaseQ: number[] = [];
-  planSquad(e, ind, {
+  const planRes = planSquad(e, ind, {
     rand,
     value: (pp, mask, flags) => {
       const p = byId.get(pp.id)!, d = dataOf(p), c = pp.contract;
@@ -170,6 +171,13 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
     unhappy: (pp) => { const p = byId.get(pp.id); if (p && pp.contract) { syncBack(p, pp); cmUnhappy(g, p, cid); } },
     leaguePos: () => count,
   });
+  // 0x83bf40 (0x83cda7, når planen kører forbi indgangen): klubbens mål-omdømme til viljen 0x844780 (cmBoardInterest.ts)
+  if (planRes.ran) {
+    const mg = g.staff[club.manager ?? -1];
+    const ch = g.cmChair?.[cid], fch = g.cmFin?.[cid]?.chair;
+    (g.cmTargetRep ??= {})[cid] = targetRep(g.cmCrowd?.[cid]?.[0] ?? 0, rep, hum,
+      mg?.cmNp ? [mg.cmHid?.[1] ?? 10, mg.cmNp[0x1d - 0x0e] ?? 0] : null, ch && fch ? [ch[2], ch[1], fch[1]] : null);
+  }
   // tilbage i vores spiller: kontraktens felter og trupstatus (computerens klubber – menneskets status sætter manageren selv)
   for (const pp of pl) {
     const p = byId.get(pp.id);

@@ -8,11 +8,18 @@ import { ADDON_APPS } from '../../game/clauses';
 import type { CoachArea, Player, TransferOffer } from '../../game/types';
 import type { RejectReason } from '../../game/will';
 import { ageOn } from '../../game/dates';
-import { compName, money, moneyFull, t } from '../../i18n';
+import { compName, currencySymbol, fromCurExact, getCurrency, money, moneyFull, t } from '../../i18n';
+import { posStr } from '../components';
 import { jobTerms } from '../../game/board';
 import { useGame } from '../core';
 import { CxDrop, useClassicDialog } from '../classic';
 
+/** "£0", "£100K", "£2.5M" (originalens beløbsliste, i spillerens valuta) */
+const amountLabel = (a: number) => {
+  const n = a >= 1_000_000 ? `${a / 1_000_000}M` : a >= 1000 ? `${a / 1000}K` : String(a);
+  const c = getCurrency();
+  return c === 'DKK' || c === 'SEK' || c === 'NOK' ? `${n} kr.` : `${currencySymbol()}${n}`;
+};
 const round = (v: number) => Math.max(10_000, Math.round(v / 10_000) * 10_000);
 
 export function TransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
@@ -115,6 +122,7 @@ export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolea
   const [sellOn, setSellOn] = useState(0);
   const [addOn, setAddOn] = useState(0);
   const [swap, setSwap] = useState<number[]>([]);
+  const [exch, setExch] = useState(false);
   const [err, setErr] = useState('');
   const cands = p.club ? swapCandidates(p.club, p.id).filter((x) => !swap.includes(x.id)) : [];
   const total = fee + swap.reduce((s, id) => s + swapWorth(id, p.club), 0);
@@ -134,21 +142,54 @@ export function BidPanel({ p, loan, onClose, onSent }: { p: Player; loan: boolea
       {extra}
     </div>
   );
+  // "Add Player To <spiller> Transfer Bid" (CM 01/02, Exchange): egne spillere, sælgeren vil tage i bytte (swapCandidates – spillets regel);
+  // vil de ingen, står originalens tekst midt i listen
+  if (exch) return (
+    <div className="cx-tstatus cx-bid cx-exch">
+      <div className="cx-subtitle cx-orig-band">{t('cl.bid.addTitle', { player: p.last })}</div>
+      <div className="cx-sq-head cx-exch-head"><span>{t('cl.sq.positions')}</span></div>
+      <div className="cx-exch-list">
+        {cands.length ? (
+          <div className="cx-sq-cols">
+            {[0, 1].map((k) => <div key={k} className="cx-sq-col">{cands.filter((_, i) => i % 2 === k).map((x) => (
+              <div key={x.id} className="cx-sq-row">
+                <button className="cx-selbtn cx-orig" onClick={() => { setSwap([...swap, x.id]); setExch(false); }}> </button>
+                <span className="cx-sq-tag" />
+                <button className="cx-sq-name" onClick={() => { setSwap([...swap, x.id]); setExch(false); }}>{x.last}{x.first ? `, ${x.first[0]}` : ''}</button>
+                <span className="cx-sq-info">{posStr(x)}</span>
+              </div>
+            ))}</div>)}
+          </div>
+        ) : <div className="cx-exch-none">{t('cl.bid.notInterested', { club: g.clubs[p.club]?.short ?? seller })}</div>}
+      </div>
+      <div className="cx-ts-buttons">
+        <button onClick={() => setExch(false)}>{t('common.back')}</button>
+        <button className="primary" disabled>{t('top.next')}</button>
+      </div>
+    </div>
+  );
+  // CM 01/02: pilen ved beløbet åbner en liste med faste beløb (i spillerens valuta)
+  const AMOUNTS = [0, 100_000, 250_000, 500_000, 1_000_000, 2_500_000, 5_000_000, 10_000_000, 15_000_000, 20_000_000];
   return (
     <div className="cx-tstatus cx-bid">
       <div className="cx-subtitle">{t(loan ? 'cl.bid.loanTitle' : 'cl.bid.title', { club: me?.short ?? '', player: p.last })}</div>
       <div className="cx-ts-body">
         <p className="cx-ts-intro">{t('cl.bid.valued', { club: seller, player: name, value: moneyFull(p.value) })}<br />{!loan && t('cl.bid.board', { fee: moneyFull(budget) })}</p>
         {!loan && <>
-          {row(t('cl.bid.fee'), money(fee), () => setFee(round(Math.max(0, fee - step))), () => setFee(round(fee + step)),
-            <button className="cx-pm" onClick={() => setFee(round(known?.fee ?? p.value))} title={t('cl.bid.feeEq')}>=</button>)}
+          <div className="cx-bid-row">
+            <span className="cx-bid-label">{t('cl.bid.fee')}</span>
+            <button className="cx-pm" onClick={() => setFee(round(Math.max(0, fee - step)))} aria-label="-">−</button>
+            <CxDrop className="cx-bid-amt" label={money(fee)} fixed items={AMOUNTS.map((a) => { const v = Math.round(fromCurExact(a)); return { key: String(a), label: amountLabel(a), checked: false, onClick: () => setFee(v) }; })} />
+            <button className="cx-pm" onClick={() => setFee(round(fee + step))} aria-label="+">+</button>
+            <button className="cx-pm" onClick={() => setFee(round(known?.fee ?? p.value))} title={t('cl.bid.feeEq')}>=</button>
+          </div>
           {row(t('cl.bid.install'), '-')}
           {row(t('cl.bid.sellOn'), sellOn ? `${sellOn}%` : '-', sellOn > 0 ? () => setSellOn(sellOn - 5) : undefined, sellOn < 50 ? () => setSellOn(sellOn + 5) : undefined)}
           {row(t('cl.bid.addOn', { n: ADDON_APPS }), addOn ? money(addOn) : '-', addOn > 0 ? () => setAddOn(round(Math.max(0, addOn - step))) : undefined, () => setAddOn(round(addOn + step)))}
           {row(t('cl.bid.intl'), '-')}
           <div className="cx-bid-row off"><span className="cx-bid-label">{t('cl.bid.public')}</span><span className="cx-bid-val wide">{t('common.no')}</span></div>
           <div className="cx-bid-tools">
-            <CxDrop label={t('cl.bid.exchange')} items={cands.length ? cands.slice(0, 20).map((x) => ({ key: String(x.id), label: `${x.first} ${x.last} (${money(swapWorth(x.id, p.club))})`, onClick: () => setSwap([...swap, x.id]) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }]} />
+            <button className="cx-greybtn" onClick={() => setExch(true)}>{t('cl.bid.exchange')}</button>
             <button className="cx-greybtn" disabled={!swap.length} onClick={() => setSwap(swap.slice(0, -1))}>{t('cl.bid.remove')}</button>
           </div>
           {swap.map((id) => <div key={id} className="cx-bid-swap">{g.players[id]?.first} {g.players[id]?.last}<span>{money(swapWorth(id, p.club))}</span></div>)}

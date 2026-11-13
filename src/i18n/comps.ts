@@ -3,6 +3,7 @@
 // deres rigtige navne. Navne der ikke kendes, vises uændret – fx de moderne databasers navne.
 import type { Lang } from '../game/types';
 import { isNationName, nationLabel } from './nations';
+import CM_NAMES from './data/cmCompNames.json';
 
 const LEAGUES_DA: Record<string, string> = {
   'Danish Premier Division': 'Superligaen', 'Danish First Division': '1. division',
@@ -53,7 +54,18 @@ const DANISH_WORDS = /pokal\b|^Pokalturneringen$|^Kejserens|^Kongens|^Japans/;
 
 /** Spilles der med 2001/02-databasen? Så bruger engelsk CM's egne navne fra dengang (sættes af Shell) */
 let cmEra = false;
-export const setCompEra = (original2001: boolean) => { cmEra = original2001; };
+/** sæsonen i ægte tilstand med den originale database: ejerens CM 01/02 (Bosman Edition) viser Seasons/names.tsv's navne pr. sæson
+ *  ("English Premier Division" → "FA Premier League" 2001–06, "Premier League" fra 2007) – scripts/build-comp-names.py */
+let cmSeason = 0;
+export const setCompEra = (original2001: boolean, authenticSeason = 0) => { cmEra = original2001; cmSeason = original2001 ? authenticSeason : 0; };
+/** Bosman Editions navn på databasens turnering i sæsonen (undefined: navnet ændres ikke) */
+export function cmCompName(name: string, season: number): string | undefined {
+  const rows = (CM_NAMES as unknown as Record<string, [number, string][]>)[name];
+  if (!rows) return undefined;
+  let out: string | undefined;
+  for (const [s, n] of rows) if (s <= season) out = n;
+  return out ?? rows[0][1];
+}
 
 /** Turneringens rigtige navn (uanset sprog og database) – fx til logoer */
 export const realCompName = (name: string): string => LEAGUES_DA[name] ?? (CM_CUPS_DA[name] && !DANISH_WORDS.test(CM_CUPS_DA[name]) ? CM_CUPS_DA[name] : name);
@@ -61,6 +73,11 @@ export const realCompName = (name: string): string => LEAGUES_DA[name] ?? (CM_CU
 export function compLabel<T extends string | undefined>(name: T, lang: Lang): T {
   // engelsk med 2001-databasen: CM's egne navne; ellers (og på de øvrige sprog) ligaernes og pokalernes rigtige navne
   if (!name) return name;
+  if (cmSeason) {
+    const playoff = name.startsWith('Playoff ') ? 'Playoff ' : '';
+    const bos = cmCompName(name.slice(playoff.length), cmSeason);
+    if (bos) return `${playoff}${bos}` as T;
+  }
   if (lang === 'en') {
     if (cmEra) return name;
     const real = LEAGUES_DA[name] ?? CM_CUPS_DA[name];
