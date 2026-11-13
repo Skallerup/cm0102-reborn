@@ -49,11 +49,16 @@ export function preloadMatchSounds() {
 }
 
 /** Spil en af originalens lyde. prio: 2 = mål/fløjt/kort (afbryder alt), 1 = almindelig lyd, 0 = kort spark (lægges ovenpå) */
+/** alle lyde, der spiller (også lagene og de korte), så de kan stoppes, når kampen er slut */
+const playing = new Set<AudioBufferSourceNode>();
+let epoch = 0;
 export function playSample(name: string, prio = 1, volume = 1, layer = false) {
   const c = ac();
   if (!c || !out) return;
+  const my = epoch;
   void load(name).then((buf) => {
-    if (!buf || !out || !matchSound()) return;
+    // en lyd, der blev hentet, efter at kampens lyde blev stoppet, spilles ikke
+    if (!buf || !out || !matchSound() || my !== epoch) return;
     // layer: et eget lag (tilskuersange), der hverken afbryder eller afbrydes af kommentarens lyde
     const short = layer || buf.duration < 1.2;
     const now = c.currentTime;
@@ -64,13 +69,20 @@ export function playSample(name: string, prio = 1, volume = 1, layer = false) {
     const gain = c.createGain(); gain.gain.value = volume * (short && !layer ? 0.8 : 1);
     src.connect(gain).connect(out);
     src.start();
+    playing.add(src); src.onended = () => playing.delete(src);
     if (!short) current = { src, gain, prio, until: now + buf.duration };
   });
 }
 
 function stopAll() {
-  if (current && ctx) { current.src.stop(); current = null; }
+  epoch++;
+  for (const src of playing) { try { src.stop(); } catch { /* allerede stoppet */ } }
+  playing.clear();
+  current = null;
 }
+
+/** Stop al kamplyd (tilskuerbrus, kommentarens lyde og sange) – når kampen er slut, eller skærmen forlades */
+export function stopMatchSounds() { stopCrowd(); stopAll(); }
 
 /** Tilskuerbrus (originalens fxloop2) i løkke, så længe kampen kører */
 export function startCrowd() {

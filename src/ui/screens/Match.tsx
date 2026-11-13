@@ -20,7 +20,7 @@ import { Bar, ClubLink, Crest, Panel, Pct, PlayerLink, posStr, Rating, Tabs } fr
 import { useGame, useNav } from '../core';
 import { commentaryText, lineSounds, reportLines } from '../commentary';
 import { loadMatchTexts } from '../matchTexts';
-import { chant, playSample, preloadMatchSounds, startCrowd, stopCrowd } from '../matchSound';
+import { chant, playSample, preloadMatchSounds, startCrowd, stopCrowd, stopMatchSounds } from '../matchSound';
 import { regionOf } from '../../game/leagues';
 import { Head } from './common';
 import { PlayedMatchClassic } from './PlayedMatchClassic';
@@ -783,7 +783,9 @@ function LiveMatch({ id }: { id: number }) {
   // tilskuerbrus, mens kampen kører (stille ved pause, slutfløjt og Instant – og når man forlader kampen)
   const crowdOn = !waiting && !paused && !report && !sim.finished;
   useEffect(() => { if (crowdOn) startCrowd(); else stopCrowd(); }, [crowdOn]);
-  useEffect(() => { preloadMatchSounds(); return () => stopCrowd(); }, []);
+  useEffect(() => { preloadMatchSounds(); return () => stopMatchSounds(); }, []);
+  // ejerens fejl 13/11: lyden kørte videre efter slutfløjt – slutfløjtet får lov at klinge ud, så stoppes alt
+  useEffect(() => { if (!sim.finished) return; const tm = setTimeout(stopMatchSounds, 3500); return () => clearTimeout(tm); }, [sim.finished]);
 
   // afspil højdepunktet billede for billede – det sidste billede (udfaldet) bliver stående lidt længere
   const frameMs = Math.round(950 / Math.sqrt(speed));

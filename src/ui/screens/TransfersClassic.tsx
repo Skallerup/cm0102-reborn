@@ -558,7 +558,7 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
   const realismOn = showRealism();
   const base: CxCol<Player>[] = [
     // mærket kan klikkes og åbner spillerens side om det (Inj/Sus → Injuries & Bans, Wnt → Transfer) som i originalen
-    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <button className={`cx-inf ${x[2] ? 'bad' : ''}`} title={x[1]} onClick={() => nav({ name: 'player', id: p.id, tab: x[0] === 'Wnt' ? 'transfer' : 'injuries' })}>{t(`cl.tag.${x[0]}`)}</button> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
+    { key: 'inf', label: t('cl.tn.inf'), render: (p) => { const x = inf(p); return x ? <button className={`cx-inf ${x[2] ? 'bad' : ''} ${x[0] === 'Inj' && (p.injury?.days ?? 0) > 7 ? 'full' : ''}`} title={x[1]} onClick={() => nav({ name: 'player', id: p.id, tab: x[0] === 'Wnt' ? 'transfer' : 'injuries' })}>{t(`cl.tag.${x[0]}`)}</button> : null; }, sort: (p) => inf(p)?.[0] ?? '~' },
     { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : t('cl.tr.noClub')), sort: (p) => g.clubs[p.club]?.name ?? '' };

@@ -651,7 +651,7 @@ async function run(look) {
       // de andre klubfaner som originalen: Next Match med hub og Print, Fixtures med Cancel/Arrange, Stats med originalens 16 rækker
       await go({ name: 'assistant' });
       await page.waitForSelector('.cx-tabrow .cx-tabs button, .cx-tabrow button', { timeout: 5000 });
-      if (!(await page.locator('.cx-print').count())) throw new Error('Next Match mangler hubben/Print');
+      if (await page.locator('.cx-print').count()) throw new Error('Print-knappen skal være fjernet');
       await go({ name: 'fixtures' });
       await page.locator('.cx-drop-btn', { hasText: 'Arrange' }).first().waitFor({ timeout: 5000 });
       await go({ name: 'club', state: { cview: 'stats' } });

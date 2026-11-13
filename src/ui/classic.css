@@ -369,8 +369,10 @@
 .cx-tbl .c-cond { color: #ff9a2a; text-align: center; }
 :root[data-skin='retro'] .cx-rowbtn { width: 100%; min-width: 92px; height: 21px; padding: 0 6px; justify-content: center; background: linear-gradient(180deg, #1d2a8c, #121a66); color: #fff; font-size: 12px; font-weight: 700; }
 :root[data-skin='retro'] .cx-rowbtn.on { background: linear-gradient(180deg, #2fae4c, #1b7a32); }
-.cx-inf { display: inline-grid; place-items: center; min-width: 30px; height: 18px; padding: 0 3px; font-size: 11px; font-weight: 800; color: #10164e; text-shadow: none; background: linear-gradient(180deg, #f4f0c8, #c9c08a); }
-.cx-inf.bad { background: linear-gradient(180deg, #ff6b5a, #b8261a); color: #fff; }
+/* CM 01/02 (ejerens billede 13/11): Wnt = grå knap med gul tekst, Inj = brun/orange (delvis) eller rød (skadet), hvid tekst */
+.cx-inf { display: inline-grid; place-items: center; min-width: 30px; height: 18px; padding: 0 3px; font-size: 11px; font-weight: 600; color: #fff21f; text-shadow: 1px 1px 0 #000; background: #4a4a4e; border: 1px solid; border-color: #8a8a90 #1c1c1e #1c1c1e #8a8a90 !important; }
+.cx-inf.bad { background: #a8601e; color: #fff; border-color: #d89a5a #4a2608 #4a2608 #d89a5a !important; }
+.cx-inf.bad.full { background: #b01a10; border-color: #e0605a #4a0804 #4a0804 #e0605a !important; }
 /* Inf-kolonnen er kun så bred som mærket (CM 01/02); mærket er en knap til spillerens side */
 .cx-tbl .col-inf { width: 1%; white-space: nowrap; padding-left: 4px; padding-right: 4px; }
 .cx-tbl button.cx-inf { border: 0; cursor: pointer; }
@@ -381,6 +383,8 @@
 .cx-pager-line .pg { color: #fff21f; min-width: 74px; text-align: center; }
 .cx-funds { padding: 2px 10px; background: linear-gradient(180deg, #ffe25a, #d4a90f); color: #10164e; font-size: 12px; font-weight: 800; border: 1px solid; border-color: #fff6b0 #6b5200 #6b5200 #fff6b0; white-space: nowrap; cursor: pointer; }
 .cx-funds:hover { filter: brightness(1.08); }
+/* CM 01/02: Funds-knappen i titelbjælkens farve (Man Utd: rød) med lys kant */
+:root[data-skin='retro'] .cx-title:not(.neutral) .cx-funds { background: var(--tb); color: inherit; border-color: color-mix(in srgb, var(--tb) 55%, #fff 45%) color-mix(in srgb, var(--tb) 50%, #000) color-mix(in srgb, var(--tb) 50%, #000) color-mix(in srgb, var(--tb) 55%, #fff 45%); font-weight: 600; }
 @media (max-width: 760px) { .cx-kv { grid-template-columns: minmax(110px, 40%) 1fr; font-size: 13.5px; } .cx-funds { font-size: 10.5px; padding: 2px 4px; } }
 .cx-tools-inline { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
 .cx-tools-inline .grow, .cx-tools .grow { flex: 1; }

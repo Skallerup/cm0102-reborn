@@ -534,7 +534,7 @@ export function ClassicHead({ title, children, action, menu }: { title: ReactNod
         {menu !== false && (hub?.tabs === CLUB_TABS || route.name === 'player') && <TitleMenu clubId={hub?.club ? hub.club(g, route) : undefined} playerId={route.name === 'player' && route.id !== undefined ? Number(route.id) : undefined} />}
         {logoClub ? <span className="cx-title-logo"><Crest id={logoClub} size={44} />{titleLogo() && <KitBrand club={logoClub} />}</span> : logoNation !== undefined ? <span className="cx-title-logo"><NationCrest nation={logoNation} size={44} /></span> : compUrl ? <span className="cx-title-logo"><img src={compUrl} alt="" width={44} height={44} style={{ objectFit: 'contain' }} /></span> : null}
         <h2>{text}</h2>
-        {action ? <div className="cx-action">{action}</div> : setup && hub?.sub === CLUB_SUB ? <div className="cx-action"><button className="cx-take" onClick={setup.takeControl} data-take>{t('cxs.takeControl')}</button></div> : hub?.sub === CLUB_SUB && authentic() ? <div className="cx-action"><PrintMenu clubId={logoClub} /></div> : null}
+        {action ? <div className="cx-action">{action}</div> : setup && hub?.sub === CLUB_SUB ? <div className="cx-action"><button className="cx-take" onClick={setup.takeControl} data-take>{t('cxs.takeControl')}</button></div> : null /* Print er fjernet overalt (ejerens ønske 13/11) */}
       </div>
       {tabs.length ? <ButtonRow items={tabs} className="cx-tabrow" /> : <div className="cx-tabslot" ref={slotRef} />}
       {children && <div className="cx-tools">{children}</div>}

@@ -476,7 +476,8 @@ export function ClassicPlayer({ id }: { id: number }) {
     ] },
   );
   // fællesskabet: foreslå en rettelse til CM-databasen (navn eller egenskaber)
-  if (dbOf(g) && !p.regen) items.push({ key: 'edit', label: t('hub.edit.action'), onClick: () => setEditOpen(true) });
+  // "Propose a fix" findes ikke i CM 01/02 – kun i det udvidede spil
+  if (dbOf(g) && !p.regen && !authentic()) items.push({ key: 'edit', label: t('hub.edit.action'), onClick: () => setEditOpen(true) });
 
   const tabs: [Tab, string][] = [['profile', t('cl.pl.profile')], ['injuries', t('cl.pl.injuries')]];
   if (!g.draft) tabs.push(['contract', t('cl.pl.contract')], ['transfer', t('cl.pl.transfer')]);
