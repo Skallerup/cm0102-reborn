@@ -59,7 +59,7 @@ export function setBgPack(p: BgPack | null) {
 export function backgroundUrl(iso: string, seed: string | number = ''): string {
   const pack = bgPack();
   if (pack) return pack.images[(dayNo(iso) + String(seed).length) % pack.images.length];
-  return `${import.meta.env.BASE_URL}bg/${NAMES[backgroundIndex(iso, seed)]}.jpg`;
+  return `${import.meta.env.BASE_URL}bg/${NAMES[backgroundIndex(iso, seed)]}.webp`;
 }
 
 // ---------- stadioner på kampdage (Naydav's CM0102 Background Image Pack, se scripts/build-stadium-bg.py) ----------
@@ -76,7 +76,7 @@ export function loadStadiumBgs(): Promise<void> {
 export function stadiumBgUrl(stadium: string | undefined, iso: string): string | null {
   const imgs = stadium ? stadiums?.[stadium] : undefined;
   if (!imgs?.length) return null;
-  return `${import.meta.env.BASE_URL}stadiums/${imgs[dayNo(iso) % imgs.length]}.jpg`;
+  return `${import.meta.env.BASE_URL}stadiums/${imgs[dayNo(iso) % imgs.length]}.webp`;
 }
 
 // ---------- baggrunde pr. skærm (Naydav's pakke, scripts/build-screen-bg.py) ----------
@@ -124,12 +124,12 @@ export function originalBgUrl(kind: OriginalKind, iso: string, salt: string | nu
   if (!originals || !keys.length) return null;
   const list = (nation ? entries[nation] : undefined) ?? entries[keys[hash(`${iso}|${salt}|e`) % keys.length]];
   if (!list?.length) return null;
-  return `${import.meta.env.BASE_URL}original-bg/${list[hash(`${iso}|${salt}`) % list.length]}.jpg`;
+  return `${import.meta.env.BASE_URL}original-bg/${list[hash(`${iso}|${salt}`) % list.length]}.webp`;
 }
 
 const pick = (list: string[] | undefined, iso: string, salt = 0) => (list?.length ? list[(dayNo(iso) + salt) % list.length] : undefined);
-const screenUrl = (n: string) => `${import.meta.env.BASE_URL}screens/${n}.jpg`;
-const stadiumUrl = (n: string) => `${import.meta.env.BASE_URL}stadiums/${n}.jpg`;
+const screenUrl = (n: string) => `${import.meta.env.BASE_URL}screens/${n}.webp`;
+const stadiumUrl = (n: string) => `${import.meta.env.BASE_URL}stadiums/${n}.webp`;
 
 /** Stadionets billeder delt i udefra og indefra/kamp */
 function stadiumImgs(stadium: string | undefined, outside: boolean): string[] {

@@ -2,7 +2,7 @@
 """Konverterer CM 01/02's originale baggrundsbilleder (Pictures/*.RGN + pics.cfg) til JPEG.
 RGN: 0x30 bytes header (u32 bredde, u32 hoejde, u32 bytes), derefter RGB565 (lille-endian) raekkevis.
 Brug: python3 scripts/build-original-bg.py [Pictures-mappe]
-Skriver public/original-bg/<navn>.jpg og public/data/original-bg.json."""
+Skriver public/original-bg/<navn>.webp og public/data/original-bg.json."""
 import sys, os, struct, json, re
 from PIL import Image
 
@@ -34,8 +34,8 @@ for f in sorted(os.listdir(SRC)):
 total = 0
 for key, f in files.items():
     im = conv(os.path.join(SRC, f))
-    p = os.path.join(OUT, key + ".jpg")
-    im.save(p, "JPEG", quality=80, optimize=True, progressive=True)
+    p = os.path.join(OUT, key + ".webp")
+    im.convert("RGB").save(p, "WEBP", quality=68, method=6)
     total += os.path.getsize(p)
 
 cfg = {}
@@ -53,6 +53,6 @@ for line in open(os.path.join(SRC, "pics.cfg"), encoding="latin-1"):
         k, v = line.split(":", 1)
         cfg[sec][k.strip()] = [x.strip().lower().removesuffix(".rgn") for x in v.split(",") if x.strip()]
 
-out = {"base": "/original-bg/", "ext": ".jpg", "files": sorted(files.keys()), "cfg": cfg}
+out = {"base": "/original-bg/", "ext": ".webp", "files": sorted(files.keys()), "cfg": cfg}
 json.dump(out, open(os.path.join(ROOT, "public/data/original-bg.json"), "w"), separators=(",", ":"))
 print(len(files), "billeder,", round(total / 1e6, 2), "MB")

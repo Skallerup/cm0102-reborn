@@ -126,7 +126,7 @@ function ClassicBoard() {
       {/* CM 01/02 (0x4253f0): ét punkt ad gangen; med originalens bestyrelse kommer svaret som nyhed (0x1786), og skærmen lukker */}
       {view === 'request' && <MeetPanel key="b" single quiet={cmBoardOn(gs())} title={t('cl.mb.title')} intro={t('cl.mb.intro')} kinds={MEET_BOARD} avail={meetBoardAvailable} label={(k) => t(`cl.mb.${k}`)}
         send={(k) => act<string>({ t: 'meetBoard', kind: k })} onClose={() => setView('confidence')} />}
-      {view === 'fa' && <MeetPanel key="f" title={t('cl.fa.title')} intro={t('cl.fa.intro')} kinds={FA_REQUESTS} avail={faAvailable} label={(k) => t(`cl.fa.${k}`)}
+      {view === 'fa' && <MeetPanel key="f" single quiet={authentic()} title={t('cl.fa.title')} intro={t('cl.fa.intro')} kinds={FA_REQUESTS} avail={faAvailable} label={(k) => t(`cl.fa.${k}`)}
         send={(k) => act<string>({ t: 'faRequest', kind: k })} onClose={() => setView('confidence')} />}
     </div>
   );

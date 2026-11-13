@@ -211,7 +211,7 @@ export function buildDb(conf: DbConf): DbOut {
       id, name: c[1] as string, slug, url: `/${P}/clubs/${slug}/`, nation: c[3] as number, league: hidden ? null : league, stadium: stad, cap: Number(c[6] ?? 0),
       rep: world.clubRep?.[id] ?? gc?.rep ?? 0, balance: fin ? fin[0] : gc ? gbp(gc.balance) : 0, gate: fin?.[1] ?? 0, facilities: fin?.[2] ?? gc?.facilities ?? 0,
       colors: (gc?.colors as [string, string]) ?? null, players: ps, strength: ps.slice(0, 16).reduce((s, p) => s + p.ca, 0) / Math.max(1, Math.min(16, ps.length)),
-      logo: logoUrl(id), photo: photo ? `/stadiums/${photo}.jpg` : null,
+      logo: logoUrl(id), photo: photo ? `/stadiums/${photo}.webp` : null,
       ...managerOf(id, c[7] as string | undefined, c[3] as number),
     });
   }

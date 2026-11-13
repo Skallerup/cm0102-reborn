@@ -4,6 +4,8 @@ import { finalOrder, leagueRows } from './competitions';
 import { cmSquadPlanClub } from './cmSquadPlanGame';
 import { rng } from './rng';
 import { addDays, daysBetween } from './dates';
+import { authentic } from './rules';
+import { DEMONYM } from '../ui/demonyms';
 import { rulesFor, regionOf, type Region } from './leagues';
 
 function rulesForLeague(league: string) {
@@ -888,6 +890,8 @@ const injuredFirstTeam = () => {
 export function faAvailable(kind: FaKind): boolean {
   const g = gs();
   if (!g.clubs[g.userClub]) return false;
+  // CM 01/02: begge punkter kan altid vælges – forbundet svarer med en nyhed (ejerens billeder 13/11)
+  if (authentic()) return true;
   if (kind === 'referee') {
     // efter en kamp inden for den sidste uge, og kun én klage pr. kamp
     const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub) && daysBetween(f.date, g.date) <= 7)
@@ -902,8 +906,42 @@ export function faAvailable(kind: FaKind): boolean {
  * Forbundet: en klage over dommeren noteres (dommerens strenghed falder lidt for ens kampe – *estimeret*); en udsættelse
  * gives kun ved mange skader/karantæner (6+ af de 16 bedste) og flytter ligakampen en uge, hvis begge hold er ledige.
  */
+/** CM 01/02's svar (strengene i cm0102.exe; hvornår hvert svar gives er *estimeret* – koden er ikke fundet) */
+function faRequestOriginal(kind: FaKind): string {
+  const g = gs();
+  const nn = g.nations[g.clubs[g.userClub].nation]?.name ?? '';
+  const nat = DEMONYM[nn] ?? nn;
+  const asked = g.board.faAsked?.season === g.season ? g.board.faAsked : { season: g.season, referee: 0, postpone: 0 };
+  asked[kind]++;
+  g.board.faAsked = asked;
+  let body: string;
+  if (asked[kind] >= 4) body = kind === 'referee' ? 'fa.o.refWaste' : 'fa.o.postWaste';
+  else if (asked[kind] === 3) body = kind === 'referee' ? 'fa.o.refAgain' : 'fa.o.postAgain';
+  else if (kind === 'referee') {
+    const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub) && daysBetween(f.date, g.date) <= 7)
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
+    const r = rng.next();
+    body = !last || g.board.faComplained === last.id || r < 0.6 ? 'fa.o.refBack' : r < 0.85 ? 'fa.o.refGood' : r < 0.97 ? 'fa.o.refReview' : 'fa.o.refDismissed';
+    if (last) g.board.faComplained = last.id;
+  } else {
+    const f = nextLeagueFixture();
+    if (f && injuredFirstTeam() >= 6 && daysBetween(g.date, f.date) <= 14) {
+      const to = addDays(f.date, 7);
+      const busy = (club: number) => Object.values(g.fixtures).some((x) => x.id !== f.id && (x.home === club || x.away === club) && Math.abs(daysBetween(x.date, to)) <= 2);
+      if (busy(f.home) || busy(f.away)) body = 'fa.o.postPacked';
+      else {
+        unindexFixture(f.id, f.date); f.date = to; indexFixture(f.id, to);
+        body = 'fa.o.postOk';
+      }
+    } else body = 'fa.o.postNo';
+  }
+  addNews({ cat: 'board', key: body, params: { nat } });
+  return body;
+}
+
 export function faRequest(kind: FaKind): string {
   const g = gs();
+  if (authentic()) return faRequestOriginal(kind);
   if (!faAvailable(kind)) return 'blocked';
   if (kind === 'referee') {
     const last = Object.values(g.fixtures).filter((f) => f.result && (f.home === g.userClub || f.away === g.userClub)).sort((a, b) => b.date.localeCompare(a.date))[0];

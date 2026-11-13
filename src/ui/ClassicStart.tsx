@@ -80,7 +80,7 @@ function Frame({ step, version, title, sub, children, onBack, onNext, backLabel,
 }) {
   const pct = prog ? Math.max(0, Math.min(100, Math.round(prog.frac * 100))) : 0;
   // baggrunden som i spillet: --cx-photo på :root (Shell sætter den samme variabel), og hovedfladen .cx-orig lader fotoet stå alene
-  useEffect(() => { document.documentElement.style.setProperty('--cx-photo', `url("${import.meta.env.BASE_URL}original-bg/${BG[step]}.jpg")`); }, [step]);
+  useEffect(() => { document.documentElement.style.setProperty('--cx-photo', `url("${import.meta.env.BASE_URL}original-bg/${BG[step]}.webp")`); }, [step]);
   return (
     <div className={`shell cx cxs cxs-${step} ${prog ? 'cx-busy' : ''} ${className ?? ''}`} data-cxs={step}>
       <SetupSide version={version} canBack={hist.back} canFwd={hist.fwd} onBack={() => onHist(-1)} onFwd={() => onHist(1)} onRestart={onRestart} onExit={onExit} atMenu={step === 'menu'} busy={!!prog} />

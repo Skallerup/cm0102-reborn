@@ -10,7 +10,7 @@ Match: 1) navnet (uden accenter), 2) stadion-id'et i filnavnet (`__s__12`) mod d
 
 Kør: python3 scripts/build-stadium-bg.py <moderne Data-mappe> <original Data-mappe>
      (fx .data-update/"October 2026 Data Update" og .orig-db/Original-3.9.68-Database efter npm run data:fetch)
-Skriver public/data/stadium-bg.json: { stadionnavn: [billednavn, …] } (billederne ligger i public/stadiums/<navn>.jpg).
+Skriver public/data/stadium-bg.json: { stadionnavn: [billednavn, …] } (billederne ligger i public/stadiums/<navn>.webp).
 """
 import concurrent.futures, json, os, re, struct, sys, unicodedata, urllib.request
 
@@ -61,13 +61,13 @@ def pack_stadiums():
 
 def convert(path):
     name = os.path.splitext(os.path.basename(path))[0].lower()
-    dest = f"{OUT}/{name}.jpg"
+    dest = f"{OUT}/{name}.webp"
     if not os.path.exists(dest):
         b = urllib.request.urlopen(RAW + urllib.request.quote(path), timeout=120).read()
         w, h = struct.unpack_from("<2i", b, 0)
         a = np.frombuffer(b[48:48 + w * h * 2], dtype="<u2").reshape(h, w)
         rgb = np.dstack([((a >> 11) & 31) * 255 // 31, ((a >> 5) & 63) * 255 // 63, (a & 31) * 255 // 31]).astype("uint8")
-        Image.fromarray(rgb).resize((1024, 640), Image.LANCZOS).save(dest, quality=76, optimize=True, progressive=True)
+        Image.fromarray(rgb).resize((1024, 640), Image.LANCZOS).save(dest, "WEBP", quality=68, method=6)
     return name
 
 

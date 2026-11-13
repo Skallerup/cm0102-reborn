@@ -59,7 +59,7 @@ export default defineConfig({
           options: { cacheName: 'match-sounds', expiration: { maxEntries: 160, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {
           // baggrundsfotos (klassisk tema): hentes først når de vises, derefter fra cachen
-          urlPattern: /\/(bg|stadiums|screens|original-bg)\/[\w.-]+\.jpg$/,
+          urlPattern: /\/(bg|stadiums|screens|original-bg)\/[\w.-]+\.(jpg|webp)$/,
           handler: 'CacheFirst',
           options: { cacheName: 'backgrounds', expiration: { maxEntries: 140, maxAgeSeconds: 60 * 60 * 24 * 365 } },
         }, {

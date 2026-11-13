@@ -42,6 +42,7 @@ import { ageOn } from './dates';
 
 export type Action =
   | { t: 'tactic'; tactic: Tactic }
+  | { t: 'resTactic'; tactic: Tactic }
   | { t: 'savedTactics'; list: Tactic[] }
   | { t: 'training'; pid: number; key: string }
   | { t: 'trainingAll'; key: string }
@@ -158,6 +159,8 @@ export function applyAction(a: Action): unknown {
   const club = g.clubs[g.userClub];
   switch (a.t) {
     case 'tactic': g.tactic = a.tactic; return 'ok';
+    // reserveholdets udtagelse (CM 01/02): gemmes, men reservekampene spilles stadig uden den
+    case 'resTactic': g.resTactic = a.tactic; return 'ok';
     case 'savedTactics': g.savedTactics = a.list; return 'ok';
     case 'training': { const p = g.players[a.pid]; if (p?.club === g.userClub) p.training = a.key; return 'ok'; }
     case 'trainingAll': for (const p of Object.values(g.players)) if (p.club === g.userClub && g.userClub) p.training = a.key; return 'ok';

@@ -829,6 +829,8 @@ export interface BoardState {
   budgetAsked?: { transfer?: string; wage?: string };
   /** CM 01/02: kampen, man sidst har klaget over dommeren i (én klage pr. kamp) */
   faComplained?: number;
+  /** CM 01/02: antal FA-anmodninger i sæsonen (gentagne afvises – originalens tekster) */
+  faAsked?: { season: number; referee: number; postpone: number };
   budgetCounter?: { kind: 'transfer' | 'wage'; pct: number; until: string };
   /** Seneste svar på de øvrige ønsker til bestyrelsen (dato pr. ønske) */
   asked?: Partial<Record<BoardAsk, string>>;
@@ -1138,6 +1140,8 @@ export interface GameState {
   tactic: Tactic | null; // brugerens taktik
   /** startopstillingen fra brugerens seneste kamp (klassisk Last Match) */
   lastMatchTactic?: Tactic;
+  /** reserveholdets udtagelse (klassisk truppen → Reserves) – påvirker ikke reservekampene */
+  resTactic?: Tactic;
   savedTactics: Tactic[];
   reports: Record<number, MatchReport>;
   seasonHistory: SeasonSummary[];
