@@ -45,6 +45,9 @@ import { realCompName } from '../../i18n/comps';
 // Den igangværende kamp overlever navigation mellem skærme
 /** Holdfarver (scoreboard, 2D, kommentar): begge hold i deres egne klubfarver – ligner de hinanden, spiller
  *  udeholdet i sin anden farve (som et udebanesæt), og ellers i hvidt eller mørkeblåt */
+/** 2D-banen og dens højdepunkter (skjult for nu) */
+const HIGHLIGHTS_2D = false;
+
 export function teamColors(home: number, away: number, _me: number): [string, string, string, string] {
   const g = gs();
   const kit = (id: number, fb: [string, string]): [string, string] => { const c = g.clubs[id]?.colors; return c?.[0] ? [c[0], c[1] ?? '#fff'] : fb; };
@@ -518,13 +521,16 @@ function LiveMatch({ id }: { id: number }) {
   if (!L.baseTactic) L.baseTactic = structuredClone(sim.live(me).tactic);
   // klassisk tema: Match Overview (tekstkommentar som i CM 01/02) som standard
   const [tab, setTabState] = useState(() => {
-    try { const v = localStorage.getItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view'); return v === 'commentary' || v === '2d' || (v === 'overview' && isRetro()) ? v : isRetro() ? 'overview' : '2d'; } catch { return isRetro() ? 'overview' : '2d'; }
+    try { const v = localStorage.getItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view'); return v === 'commentary' || (v === '2d' && HIGHLIGHTS_2D) || (v === 'overview' && isRetro()) ? v : isRetro() ? 'overview' : HIGHLIGHTS_2D ? '2d' : 'commentary'; } catch { return isRetro() ? 'overview' : HIGHLIGHTS_2D ? '2d' : 'commentary'; }
   });
   // husk om man ser kampen i 2D, som kommentar eller (klassisk) som Match Overview
   const setTab = (v: string) => { setTabState(v); if (v === '2d' || v === 'commentary' || v === 'overview') { try { localStorage.setItem(isRetro() ? 'cm-match-view-cx' : 'cm-match-view', v); } catch { /* ignorér */ } } };
   const [report, setReport] = useState<MatchReport | null>(null);
   // flashes/bump/reveal: pr. billede – stor tekst, midlertidig ændring af stillingen (jubel før et annulleret mål) og hvor mange nye kommentarlinjer der vises
-  const [hl, setHl] = useState<{ frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number; flashes?: (string | undefined)[]; bump?: number[]; reveal?: number[]; label?: string } | null>(null);
+  type Hl = { frames: Snap[]; i: number; outcome: string; texts: string[]; hideFrom: number; team: number; flashes?: (string | undefined)[]; bump?: number[]; reveal?: number[]; label?: string };
+  const [hl, setHlState] = useState<Hl | null>(null);
+  // 2D-højdepunkterne er skjult, indtil de er gode nok (ejerens ønske 13/11) – HIGHLIGHTS_2D slår dem til igen
+  const setHl = (v: Hl | null) => { if (v === null || HIGHLIGHTS_2D) setHlState(v); };
   const [msg, setMsg] = useState('');
   const boxRef = useRef<HTMLDivElement>(null);
   const home = g.clubs[f.home].short, away = g.clubs[f.away].short;
@@ -954,8 +960,8 @@ function LiveMatch({ id }: { id: number }) {
       </div>}
       {!classic && <div className="muted kbd-hint" style={{ marginBottom: 8 }}>{report ? t('match.keysDone') : h2h ? '' : t('match.keys')}</div>}
       {!(classic && (tab === 'tactics' || tab === 'oppTactics')) && <Tabs tabs={classic
-        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ['2d', t('match.pitch2d')], ...(halfTalk || postTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
-        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ['2d', t('match.pitch2d')], ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={(v) => { if (v === 'tactics' && !classic && !h2h && !report && !sim.finished) setPaused(true); setTab(v); }} />}
+        ? [['overview', t('match.overview')], ['stats', t('cl.mt.stats')], ['zones', t('cl.mt.zones')], ['report', t('cl.mt.report')], ...(HIGHLIGHTS_2D ? [['2d', t('match.pitch2d')] as [string, string]] : []), ...(halfTalk || postTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]
+        : [...(isRetro() ? [['overview', t('match.overview')] as [string, string]] : []), ...(HIGHLIGHTS_2D ? [['2d', t('match.pitch2d')] as [string, string]] : []), ['ratings', t('match.ratings')], ['commentary', t('match.commentary')], ['stats', t('match.stats')], ['scores', t('match.vidiprinter')], ['table', t('comp.table')], ['tactics', `${t('nav.tactics')} (${t('match.subsLeft', { n: myLive.subsLeft })})`], ...(halfTalk ? [['talk', t('tt.tab')] as [string, string]] : [])]} value={tab} onChange={(v) => { if (v === 'tactics' && !classic && !h2h && !report && !sim.finished) setPaused(true); setTab(v); }} />}
       {tab === 'talk' && halfTalk && (
         <TeamTalk fixture={id} stage="half" pids={[...myLive.on.filter((s) => !s.off).map((s) => s.id), ...myLive.bench]} diff={myGoals} ratings={liveRatings}
           onGiven={(boosts) => { sim.applyTalk(me, boosts); setTab(L.prevTab ?? '2d'); }} />

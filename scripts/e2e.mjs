@@ -1174,11 +1174,8 @@ async function run(look) {
     if (look === 'klassisk') {
       // som i CM 01/02: ved slutfløjt bliver Next-knappen nederst til Continue
       await page.screenshot({ path: `${OUT}/klassisk-slutfloejt.png` });
-      // 2D-banen som tilvalg i klassisk: fanen findes, banen tegnes med spillere
-      await page.getByText(await t('match.pitch2d'), { exact: true }).first().click();
-      await page.waitForSelector('.p2d-player', { timeout: 10000 });
-      await page.screenshot({ path: `${OUT}/klassisk-2d.png` });
-      await page.getByText(await t('match.overview'), { exact: true }).first().click();
+      // 2D-banen er skjult for nu (HIGHLIGHTS_2D i Match.tsx)
+      if (await page.getByText(await t('match.pitch2d'), { exact: true }).count()) throw new Error('2D-fanen skal være skjult');
       await page.locator('.cx-side .cx-continue').click({ timeout: 10000 });
     } else await page.getByRole('button', { name: await t('match.continue') }).first().click({ timeout: 10000 });
     await page.waitForTimeout(800);
