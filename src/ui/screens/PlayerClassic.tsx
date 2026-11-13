@@ -146,7 +146,14 @@ function ProfileTab({ p }: { p: Player }) {
   const g = useGame()!;
   const k = knowledgeOf(p);
   const gk = posStr(p).startsWith('GK');
+  // CM 01/02 (Attribute Masking): en kendt spiller (scoutet, egen liga) viser de præcise tal, en ukendt "-" – aldrig intervaller
+  const orig = authentic();
   const val = (a: AttrKey) => {
+    if (orig) {
+      if (k < 45) return <span className="cx-v">-</span>;
+      const v = Math.round(p.attrs[A[a]]);
+      return <span className={`cx-v ${tone(v)}`}>{v}</span>;
+    }
     const [lo, hi] = attrRange(p, A[a], k);
     return <span className={`cx-v ${tone(Math.round((lo + hi) / 2))}`}>{lo === hi ? lo : `${lo}-${hi}`}</span>;
   };
@@ -166,7 +173,7 @@ function ProfileTab({ p }: { p: Player }) {
   return (
     <div className="cx-pl">
       <BornLine p={p} />
-      {g.options.masking && k < 100 && <div className="cx-pl-hint">{t('player.rangeHint')}</div>}
+      {g.options.masking && k < 100 && !orig && <div className="cx-pl-hint">{t('player.rangeHint')}</div>}
       <table className="cx-pl-grid">
         <thead><tr>{cols.map(([h]) => <th key={h} colSpan={2}>{h}</th>)}</tr></thead>
         <tbody>{Array.from({ length: n }, (_, r) => <tr key={r}>{cols.map(([h, list]) => [<td key={`${h}l`}>{list[r]?.[0] ?? ''}</td>, <td key={`${h}v`} className="v">{list[r]?.[1] ?? ''}</td>])}</tr>)}</tbody>

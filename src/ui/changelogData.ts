@@ -45,6 +45,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       { da: "Baggrundsbillederne fylder det halve (WebP) og kommer hurtigere frem", en: "The background pictures are half the size (WebP) and load faster" },
       { da: "Save Game som originalen: skriv et filnavn, se dine gemte spil – og opret en profil for også at gemme i skyen og spille videre på andre enheder", en: "Save Game as in the original: type a file name, see your saved games – and create a profile to also save in the cloud and continue on other devices" },
       { da: "Klassisk: links i nyhederne er understreget i tekstens farve, Playing Career viser alle klubber i sæsonen, og mødet med forbundet giver originalens svar", en: "Classic: links in the news are underlined in the text colour, Playing Career shows every club in the season, and meeting the FA gives the original answers" },
+      { da: "Spillerprofilen viser de præcise egenskaber for kendte og scoutede spillere og \"-\" for ukendte – som originalens Attribute Masking (ingen intervaller)", en: "The player profile shows exact attributes for known and scouted players and \"-\" for unknown ones \u2013 like the original's Attribute Masking (no ranges)" },
       { da: "Rettet: et selvmål under et skud blev talt to gange i kampens statistik; nyheden om, at en spiller var sat til salg \"for £0\" efter et afvist bud, kom i ægte tilstand", en: "Fixed: an own goal during a shot was counted twice in the match stats; a news item said a player was listed \"for £0\" after a rejected bid in authentic mode" },
     ],
   },
