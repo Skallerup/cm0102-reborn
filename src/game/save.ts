@@ -5,6 +5,7 @@ import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
 import { splitReserves } from './reserves';
+import { cashRound } from './cmTransferBid';
 import { deserializeState, serializeState } from './snapshot';
 import type { GameState, Player } from './types';
 
@@ -105,8 +106,17 @@ function ensureAllNumbers() {
 }
 
 /** Opgradér gemte spil fra ældre versioner (nye turneringer m.m.) */
+/** Den originale økonomi: værdierne rundet som originalens (cashStep – £150,000, ikke £150,500) i gemte spil fra før rettelsen */
+function roundValuesOnce() {
+  const g = gs();
+  if (!g.econ || g.fixes?.includes('cashRound')) return;
+  for (const p of Object.values(g.players)) if (p.value > 0) p.value = cashRound(p.value);
+  (g.fixes ??= []).push('cashRound');
+}
+
 export function upgradeLoaded() {
   repairInjuryWave();
+  roundValuesOnce();
   splitReservesOnce();
   const g = gs();
   if (addMissingConference()) {

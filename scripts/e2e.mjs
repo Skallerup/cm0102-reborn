@@ -1061,10 +1061,11 @@ async function run(look) {
   await step('taktik: holdinstruktion og spillerinstruktion', async () => {
     const before = await tac();
     if (look === 'klassisk') {
-      await page.getByRole('button', { name: await t('cl.tac.with') }).click().catch(async () => page.getByRole('button', { name: 'With Ball' }).click());
-      await page.locator('.cx-ti-row', { hasText: await t('ti.tempo') }).getByRole('button', { name: await t('ti.fast') }).click();
-      await page.locator(slotSel).nth(10).click();
-      await page.locator('.cx-ti-row', { hasText: await t('pi.holdUp') }).getByRole('button', { name: await t('common.yes') }).click();
+      // CM 01/02: holdets instruktioner står i Tactics-menuen (Team Instructions), ikke på With/Without Ball
+      await page.locator('.cx-drop-btn', { hasText: 'Tactics' }).first().click();
+      await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Team Instructions' }).first().click();
+      await page.locator('.cx-tidlg-row', { hasText: await t('cl.mt.ti.tackling') }).locator('.cx-tich:not(.on)').first().click();
+      await page.locator('.cx-tidlg-foot .primary').click();
       await tacOk(); await go({ name: 'tactics' });
     } else {
       await page.locator('.ti-row', { hasText: await t('ti.tempo') }).getByRole('radio', { name: await t('ti.fast') }).click();
@@ -1073,8 +1074,10 @@ async function run(look) {
     }
     await page.waitForTimeout(200);
     const after = await gs(() => { const tc = window.__cm.gs().tactic; return { tempo: tc.team.tempo, hold: tc.individual[10]?.holdUp }; });
-    if (after.tempo !== 2) throw new Error(`tempo blev ${after.tempo}`);
-    if (after.hold !== true) throw new Error('"hold bolden" blev ikke sat');
+    if (look !== 'klassisk') {
+      if (after.tempo !== 2) throw new Error(`tempo blev ${after.tempo}`);
+      if (after.hold !== true) throw new Error('"hold bolden" blev ikke sat');
+    }
     if ((await tac()) === before) throw new Error('taktikken ændrede sig ikke');
   });
 
@@ -1082,8 +1085,11 @@ async function run(look) {
     // CM 01/02: banen delt i 3 × 4 boldzoner (gul stiplet = valgt), positionsnavne i cirklerne og i listen; træk = nyt punkt i den zone
     await page.getByRole('button', { name: await t('cl.tac.with') }).click();
     await page.locator('.cx-zone-pitch').waitFor();
-    const names = await page.locator('.cx-zone-list .cx-tac-num').allTextContents();
-    if (names[0] !== 'GK' || !names.includes('SB1')) throw new Error(`positionslisten: ${names.join(' ')}`);
+    // listen er den samme som på Overview (trøjenumre, navne, capt) – og ingen instruktionsboks
+    const nums = await page.locator('.cx-tac-list .cx-tac-num').allTextContents();
+    if (!/^\d+$/.test(nums[0]) || !nums.includes('SB9') || await page.locator('.cx-zone-left, .cx-ti').count()) throw new Error(`listen: ${nums.join(' ')}`);
+    const dots = await page.locator('.cx-zone-dot').allTextContents();
+    if (dots.length !== 11 || !dots.every((x) => /^\d*$/.test(x))) throw new Error(`prikkerne skal have trøjenumre: ${dots.join(' ')}`);
     if (!(await page.locator('.cx-zone-pitch .cx-zone-sel').count())) throw new Error('den valgte boldzone vises ikke');
     const s = page.locator('.cx-zone-slot').nth(9);
     const b = await s.boundingBox();
@@ -1097,6 +1103,19 @@ async function run(look) {
     if (!r.ok) throw new Error('Tactic.positions blev ikke gemt efter Ok');
     if (!r.f.endsWith('*')) throw new Error(`formationen er ikke markeret ændret: ${r.f}`);
     await page.getByRole('button', { name: await t('cl.tac.overview') }).click().catch(() => {});
+  });
+
+  if (look === 'klassisk') await step('taktik: træk "capt" til en anden spiller', async () => {
+    const before = await gs(() => window.__cm.gs().tactic.captain);
+    const rows = page.locator('.cx-tac-list .cx-tac-row.xi');
+    const src = page.locator('.cx-tac-list .cx-tac-tag.capt');
+    await src.waitFor();
+    const idx = await rows.evaluateAll((els) => els.findIndex((e) => e.querySelector('.cx-tac-tag.capt')));
+    await src.dragTo(rows.nth(idx === 0 ? 1 : 0));
+    await page.waitForTimeout(200);
+    await tacOk(); await go({ name: 'tactics' });
+    const after = await gs(() => window.__cm.gs().tactic.captain);
+    if (!after || after === before) throw new Error(`anføreren blev ikke ændret (${before} -> ${after})`);
   });
 
   await step('taktik: samme taktik efter skift af udseende', async () => {

@@ -10,7 +10,7 @@ import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { SlotGuides, coarse, holdDrag } from './runs';
 import { FORMATIONS, autoSelect, available, changeFormation, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
-import type { Fixture, Player, PlayerInstructions, Slot, Tactic, TeamInstructions } from '../../game/types';
+import type { Fixture, Player, PlayerInstructions, Slot, Tactic } from '../../game/types';
 import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
 import { ClassicFoot, CxDrop, useClassicDialog, type DropItem } from '../classic';
@@ -21,7 +21,7 @@ import { Head } from './common';
 import { shapeName } from './Tactics';
 import { LastMatchView, TeamInstrDialog } from './Match';
 import { ZonePitch, type Zone } from './ZonePitch';
-import { maskName, mirrorPositions, movePost, slotMoved, tacticPositions } from '../../game/engine/grid/tacticPositions';
+import { mirrorPositions, movePost, slotMoved } from '../../game/engine/grid/tacticPositions';
 import { positionsValid } from '../../game/engine/grid/tacticTable';
 
 const left = (s: Slot) => s.y;
@@ -58,6 +58,7 @@ export function ClassicTactics() {
   const [pick, setPick] = useState<number | null>(null); // valgt spiller (i listen)
   const [slotSel, setSlotSel] = useState<number | null>(null); // valgt plads (på banen)
   const [drag, setDrag] = useState<number | null>(null);
+  const [dragCapt, setDragCapt] = useState(false); // "capt" trækkes fra listen til en anden spiller
   const [hist, setHist] = useState<Tactic[]>([]);
   const change = (next: Tactic) => { setHist((h) => [...h.slice(-39), tac]); setDraft(next); };
   const ok = () => { if (draft) act({ t: 'tactic', tactic: draft }); setDraft(null); back(); };
@@ -106,6 +107,8 @@ export function ClassicTactics() {
     if (gs().draft || tac.slots[i]?.pos === 'GK') return;
     change(movePost(tac, i, pane === 'with' ? 1 : 0, zone.zx, zone.zy, x, y));
   };
+  /** "capt" slippes på en spiller i startopstillingen: han bliver anfører (kladden – Ok gemmer) */
+  const giveCaptain = (pid: number) => { setDragCapt(false); if (tac.lineup.includes(pid) && tac.captain !== pid) change({ ...tac, captain: pid }); };
   const toggleBench = (pid: number) => {
     if (tac.lineup.includes(pid)) return;
     if (tac.bench.includes(pid)) change({ ...tac, bench: tac.bench.filter((x) => x !== pid) });
@@ -126,6 +129,8 @@ export function ClassicTactics() {
     setPick(null); setSlotSel(null);
   };
   const clickRow = (p: Player) => {
+    // With/Without Ball: et klik på en af de 11 vælger hans prik på banen
+    if (pane !== 'overview' && tac.lineup.includes(p.id)) { const i = tac.lineup.indexOf(p.id); setPick(null); setSlotSel(slotSel === i ? null : i); return; }
     if (slotSel !== null && available(p)) { assign(slotSel, p.id); return; }
     // klik en spiller og så en anden i listen: de bytter (fx bænk ↔ startopstilling)
     if (pick !== null && pick !== p.id && (tac.lineup.includes(pick) || tac.bench.includes(pick) || tac.lineup.includes(p.id) || tac.bench.includes(p.id))) { swapPlayers(pick, p.id); return; }
@@ -149,12 +154,14 @@ export function ClassicTactics() {
   const row = (p: Player, label: string, kind: 'xi' | 'bench' | 'rest', slot?: Slot) => (
     <div key={p.id} className={`cx-tac-row ${kind} ${pick === p.id ? 'on' : ''} ${!available(p) ? 'unavail' : ''}`} draggable={!coarse()}
       onDragStart={(e) => { e.dataTransfer.setData('text/plain', String(p.id)); setTimeout(() => setDrag(p.id), 0); }} onDragEnd={() => setTimeout(() => setDrag(null), 0)} onClick={() => clickRow(p)}
-      onDragOver={(e) => { if (drag !== null && drag !== p.id) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); if (drag !== null) swapPlayers(drag, p.id); setDrag(null); }}>
+      onDragOver={(e) => { if (dragCapt ? tac.lineup.includes(p.id) : drag !== null && drag !== p.id) e.preventDefault(); }}
+      onDrop={(e) => { e.preventDefault(); if (dragCapt) giveCaptain(p.id); else if (drag !== null) swapPlayers(drag, p.id); setDrag(null); }}>
       <button className="cx-tac-num" title={kind === 'xi' ? undefined : t(kind === 'bench' ? 'cl.tac.fromBench' : 'cl.tac.toBench')}
         onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{label}</button>
       <span className="cx-tac-name" onDoubleClick={(e) => { e.stopPropagation(); nav({ name: 'player', id: p.id }); }}>{p.first ? `${p.first} ` : ''}{p.last}</span>
       {/* CM 01/02: kun "capt" i denne visning (frispark/hjørner/straffe står i deres egne menuer) */}
-      <span className="cx-tac-tag">{tac.captain === p.id ? t('cl.tac.capt') : ''}</span>
+      <span className={`cx-tac-tag ${tac.captain === p.id ? 'capt' : ''}`} draggable={tac.captain === p.id && !coarse()}
+        onDragStart={(e) => { e.stopPropagation(); e.dataTransfer.setData('text/plain', 'capt'); setTimeout(() => setDragCapt(true), 0); }} onDragEnd={() => setTimeout(() => setDragCapt(false), 0)}>{tac.captain === p.id ? t('cl.tac.capt') : ''}</span>
       <span className="cx-tac-pos">{posStr(p)}</span>
       <span className="cx-tac-val">{value(p, slot)}</span>
     </div>
@@ -243,30 +250,13 @@ export function ClassicTactics() {
       <div className="cx-tac-body">
         <div className="cx-tac-left">
           <span className="cx-tac-form">{tac.formation}</span>
-          {pane === 'overview' ? (
-            <div className={`cx-tac-list ${all ? 'all' : ''}`}>
-              {/* CM 01/02: trøjenummeret i det blå felt; de 11, udskifterne (grå) og de tomme bænkpladser op til SB9 */}
-              {xi.map((p) => row(p, String(p.number ?? ''), 'xi', tac.slots[tac.lineup.indexOf(p.id)]))}
-              {bench.map((p) => row(p, String(p.number ?? ''), 'bench'))}
-              {Array.from({ length: Math.max(9, benchSize()) - bench.length }, (_, k) => emptyRow(bench.length + k))}
-              {all && rest.map((p) => row(p, String(p.number ?? ''), 'rest'))}
-            </div>
-          ) : (
-            <div className="cx-zone-left">
-              {/* CM 01/02: pladsernes navne i stedet for trøjenumre (GK, DR, DC …) og SB1–SB9; "capt" ved anføreren */}
-              <div className="cx-zone-list">
-                {tacticPositions(tac).masks.map((mk, i) => (
-                  <div key={i} className={`cx-tac-row xi ${curSlot === i ? 'on' : ''}`} onClick={() => { setPick(null); setSlotSel(slotSel === i ? null : i); }}>
-                    <span className="cx-tac-num">{maskName(mk)}</span>
-                    <span className="cx-tac-tag">{tac.lineup[i] && tac.captain === tac.lineup[i] ? t('cl.tac.capt') : ''}</span>
-                  </div>
-                ))}
-                {Array.from({ length: Math.max(9, benchSize()) }, (_, k) => <div key={`sb${k}`} className="cx-tac-row bench"><span className="cx-tac-num">SB{k + 1}</span><span className="cx-tac-tag" /></div>)}
-              </div>
-              {/* vores ekstra: holdets og den valgte spillers instruktioner (originalen har dem i menuerne) */}
-              <Instructions tac={tac} pane={pane} slot={curSlot} byId={byId} change={change} />
-            </div>
-          )}
+          <div className={`cx-tac-list ${all ? 'all' : ''}`}>
+            {/* CM 01/02: trøjenummeret i det blå felt; de 11, udskifterne (grå) og de tomme bænkpladser op til SB9 – ens på Overview, With Ball og Without Ball */}
+            {xi.map((p) => row(p, String(p.number ?? ''), 'xi', tac.slots[tac.lineup.indexOf(p.id)]))}
+            {bench.map((p) => row(p, String(p.number ?? ''), 'bench'))}
+            {Array.from({ length: Math.max(9, benchSize()) - bench.length }, (_, k) => emptyRow(bench.length + k))}
+            {all && rest.map((p) => row(p, String(p.number ?? ''), 'rest'))}
+          </div>
         </div>
         <div className="cx-tac-right">
           <div className="cx-tac-panes">
@@ -274,8 +264,9 @@ export function ClassicTactics() {
           </div>
           {pane !== 'overview' ? (
             <ZonePitch tac={tac} att={pane === 'with' ? 1 : 0} zone={zone} onZone={setZone} sel={curSlot} byId={(id) => byId.get(id)}
-              onSelect={(i) => { setPick(null); setSlotSel(slotSel === i ? null : i); }} onMove={gs().draft ? null : movePos} />
-          ) : <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onRun={setRun} onDrop={(i) => { if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
+              onSelect={(i) => { setPick(null); setSlotSel(slotSel === i ? null : i); }} onMove={gs().draft ? null : movePos}
+              dropCapt={dragCapt ? (i) => giveCaptain(tac.lineup[i]) : undefined} />
+          ) : <Pitch tac={tac} byId={byId} sel={slotSel} drag={drag} onSlot={clickSlot} onRuns={(slot, x, y) => setRunMenu({ slot, x, y })} onRun={setRun} onDrop={(i) => { if (dragCapt) giveCaptain(tac.lineup[i]); else if (drag !== null) assign(i, drag); setDrag(null); }} onDrag={setDrag}
           onMove={(x, y) => {
             // sluppet (eller klikket) på en tom plet: en spiller på holdet flytter sin plads dertil
             const i = drag !== null ? tac.lineup.indexOf(drag) : slotSel;
@@ -403,63 +394,6 @@ function Pitch({ tac, byId, sel, drag, onSlot, onDrop, onDrag, onMove, club, onR
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/** Holdets instruktioner (med eller uden bold) og den valgte spillers – i en grøn boks som i originalen */
-function Instructions({ tac, pane, slot, byId, change }: { tac: Tactic; pane: Pane; slot: number | null; byId: Map<number, Player>; change: (t: Tactic) => void }) {
-  const tm = tac.team;
-  const setTeam = (patch: Partial<TeamInstructions>) => change({ ...tac, team: { ...tm, ...patch } });
-  const ind = slot !== null ? tac.individual[slot] : null;
-  const p = slot !== null ? byId.get(tac.lineup[slot]) : undefined;
-  const setInd = (patch: Partial<PlayerInstructions>) => { if (slot === null) return; const individual = tac.individual.slice(); individual[slot] = { ...individual[slot], ...patch }; change({ ...tac, individual }); };
-  const optRow = <T extends string | number | boolean>(label: string, cur: T, vals: [T, string][], on: (v: T) => void) => (
-    <div className="cx-ti-row" key={label}>
-      <span className="cx-ti-label">{label}</span>
-      <div className="cx-ti-opts">{vals.map(([v, l]) => <button key={String(v)} className={cur === v ? 'on' : ''} onClick={() => on(v)}>{l}</button>)}</div>
-    </div>
-  );
-  const yn: [boolean, string][] = [[false, t('common.no')], [true, t('common.yes')]];
-  const lvl = (a: string, b: string, c: string): [number, string][] => [[0, t(a)], [1, t(b)], [2, t(c)]];
-  return (
-    <div className="cx-ti">
-      <div className="cx-ti-title">{t('tac.team')}</div>
-      <div className="cx-ti-grid">
-        {pane === 'with' ? <>
-          {optRow(t('ti.mentality'), tm.mentality, [0, 1, 2, 3, 4].map((v) => [v, t(`ment.short.${v}`)] as [number, string]), (v) => setTeam({ mentality: v }))}
-          {optRow(t('ti.passing'), tm.passing, lvl('ti.short', 'ti.mixed', 'ti.long'), (v) => setTeam({ passing: v }))}
-          {optRow(t('ti.tempo'), tm.tempo, lvl('ti.slow', 'ti.normal', 'ti.fast'), (v) => setTeam({ tempo: v }))}
-          {optRow(t('ti.width'), tm.width, lvl('ti.narrow', 'ti.normal', 'ti.wide'), (v) => setTeam({ width: v }))}
-          {optRow(t('ti.counter'), tm.counter, yn, (v) => setTeam({ counter: v }))}
-        </> : <>
-          {optRow(t('ti.closingDown'), tm.closingDown, lvl('ti.rarely', 'ti.sometimes', 'ti.often'), (v) => setTeam({ closingDown: v }))}
-          {optRow(t('ti.tackling'), tm.tackling, lvl('ti.easy', 'ti.normal', 'ti.hard'), (v) => setTeam({ tackling: v }))}
-          {optRow(t('ti.marking'), tm.marking, [['zonal', t('ti.zonal')], ['man', t('ti.man')]], (v) => setTeam({ marking: v }))}
-          {optRow(t('ti.offside'), tm.offside, yn, (v) => setTeam({ offside: v }))}
-          {optRow(t('ti.menBehind'), !!tm.menBehind, yn, (v) => setTeam({ menBehind: v }))}
-        </>}
-      </div>
-      <div className="cx-ti-title">{p && ind ? `${t('tac.individual')}: ${p.last}` : t('tac.individual')}</div>
-      {p && ind ? (
-        <div className="cx-ti-grid">
-          {pane === 'with' ? <>
-            {optRow(t('pi.runs'), ind.runs, lvl('tac.roleDef', 'tac.roleBal', 'tac.roleAtt'), (v) => setInd({ runs: v }))}
-            {optRow(t('pi.longShots'), ind.longShots, lvl('ti.rarely', 'ti.mixed', 'ti.often'), (v) => setInd({ longShots: v }))}
-            {optRow(t('pi.crossing'), ind.crossing, lvl('ti.rarely', 'ti.mixed', 'ti.often'), (v) => setInd({ crossing: v }))}
-            {optRow(t('pi.runWithBall'), ind.runWithBall, yn, (v) => setInd({ runWithBall: v }))}
-            {optRow(t('pi.throughBalls'), ind.throughBalls, yn, (v) => setInd({ throughBalls: v }))}
-            {optRow(t('pi.freeRole'), ind.freeRole, yn, (v) => setInd({ freeRole: v }))}
-            {optRow(t('pi.holdUp'), !!ind.holdUp, yn, (v) => setInd({ holdUp: v }))}
-            {optRow(t('pi.passing'), ind.passing ?? -1, [[-1, t('ti.teamSetting')], ...lvl('ti.short', 'ti.mixed', 'ti.long')], (v) => setInd({ passing: v < 0 ? undefined : v }))}
-            {optRow(t('pi.setPieces'), ind.setPieces ?? -1, [[-1, t('ti.auto')], ...lvl('sp.back', 'sp.normal', 'sp.forward')], (v) => setInd({ setPieces: v < 0 ? undefined : v }))}
-          </> : <>
-            {optRow(t('pi.tightMarking'), ind.tightMarking, yn, (v) => setInd({ tightMarking: v }))}
-            {optRow(t('pi.closingDown'), ind.closingDown ?? -1, [[-1, t('ti.teamSetting')], ...lvl('ti.rarely', 'ti.sometimes', 'ti.often')], (v) => setInd({ closingDown: v < 0 ? undefined : v }))}
-            {optRow(t('pi.tackling'), ind.tackling ?? -1, [[-1, t('ti.teamSetting')], ...lvl('ti.easy', 'ti.normal', 'ti.hard')], (v) => setInd({ tackling: v < 0 ? undefined : v }))}
-          </>}
-        </div>
-      ) : <div className="cx-ti-empty">{t('cl.tac.pickSlot')}</div>}
     </div>
   );
 }

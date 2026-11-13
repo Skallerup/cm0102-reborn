@@ -1,5 +1,5 @@
 // CM 01/02's taktikfaner "With Ball" / "Without Ball" (taktikskærmen 0x89f710, tilstand 2/0): banen er delt i 3 × 4 boldzoner (svagt
-// stiplet gitter), den valgte zone står som en gul stiplet firkant, og de 11 står som cirkler med positionsnavnet på deres punkt for den
+// stiplet gitter), den valgte zone står som en gul stiplet firkant, og de 11 står som cirkler med trøjenummeret på deres punkt for den
 // zone med/uden bold. Klik i en zone vælger den; træk en spiller = han snappes til nærmeste af de 27 × 36 punkter (0x5b3560).
 import { useRef, useState } from 'react';
 import type { Player, Tactic } from '../../game/types';
@@ -11,11 +11,13 @@ const topOf = (y: number) => T0 - ((y + 0.5) / 36) * TH;
 
 export interface Zone { zx: number; zy: number }
 
-export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId, dotClass = '' }: {
+export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId, dotClass = '', dropCapt }: {
   tac: Tactic; att: 0 | 1; zone: Zone; onZone: (z: Zone) => void; sel: number | null; onSelect: (slot: number) => void;
   /** null = skrivebeskyttet */
   onMove: ((slot: number, x: number, y: number) => void) | null;
   byId: (id: number) => Player | undefined; dotClass?: string;
+  /** sat, mens "capt" trækkes: en spiller kan tage imod den */
+  dropCapt?: (slot: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<{ slot: number; x: number; y: number } | null>(null);
@@ -57,6 +59,7 @@ export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId,
         return (
           <div key={i} className={`cx-tac-slot cx-zone-slot ${sel === i ? 'on' : ''} ${p ? '' : 'empty'}`} style={{ left: `${leftOf(x)}%`, top: `${topOf(y)}%` }}
             title={p ? `${maskName(pos.masks[i])} – ${p.first} ${p.last}` : maskName(pos.masks[i])}
+            onDragOver={(e) => { if (dropCapt && p) e.preventDefault(); }} onDrop={(e) => { if (dropCapt && p) { e.preventDefault(); e.stopPropagation(); dropCapt(i); } }}
             onClick={(e) => { e.stopPropagation(); if (dragged.current) { dragged.current = false; return; } onSelect(i); }}
             onPointerDown={(e) => {
               if (!onMove || gk || e.button !== 0) return;
@@ -80,7 +83,7 @@ export function ZonePitch({ tac, att, zone, onZone, sel, onSelect, onMove, byId,
               };
               window.addEventListener('pointermove', move); window.addEventListener('pointerup', up);
             }}>
-            <span className={`cx-tac-dot cx-zone-dot ${gk ? 'gk' : ''} ${dotClass}`}>{maskName(pos.masks[i])}</span>
+            <span className={`cx-tac-dot cx-zone-dot ${gk ? 'gk' : ''} ${dotClass}`}>{p?.number ?? ''}</span>
           </div>
         );
       })}
