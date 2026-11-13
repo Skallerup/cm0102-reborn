@@ -262,7 +262,8 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const k = knowledgeOf(p);
   // den originale database i ægte tilstand: originalens Availability og Future (0x87dd80 – cmTransferList.ts)
   const cm = cmActive(g) && mine;
-  const availability = cm ? t(`cm.av.${cmAvailability(p)}`) : mine
+  // CM 01/02 kender kun "Transfer listed by club/by request", "Listed for loan" og "Unknown" – også for andre klubbers spillere (ingen "Could be bought for")
+  const availability = cmActive(g) && p.club ? t(`cm.av.${cmAvailability(p)}`) : mine
     ? p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}` : p.loan ? t('tag.loan') : t('cl.pl.av.notForSale')
     : !p.club ? t('cl.pl.av.free')
     : p.listed ? `${t('tag.listed')}${p.listPrice ? ` (${money(p.listPrice)})` : ''}`
