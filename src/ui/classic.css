@@ -576,7 +576,7 @@
 .cx-tac-row.bench .cx-tac-name, .cx-tac-row.rest .cx-tac-name { color: #b4b4b4; }
 .cx-tac-row.rest .cx-tac-name { color: #8a8fa6; }
 .cx-tac-row.unavail .cx-tac-name { color: #ff6b5a; }
-.cx-tac-row.empty { cursor: default; }
+.cx-tac-row.cx-tac-sbfree { cursor: default; }
 .cx-tac-row.on { background: rgba(255, 242, 31, 0.16); outline: 1px solid #fff21f; }
 .cx-tac-tag { color: #fff21f; font-size: 15px; text-shadow: 1px 1px 0 #000; }
 .cx-tac-pos { color: #ffd84a; font-size: 15px; white-space: nowrap; overflow: hidden; text-shadow: 1px 1px 0 #000; }

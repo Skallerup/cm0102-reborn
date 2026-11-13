@@ -151,7 +151,7 @@ export function ClassicTactics() {
   /** tom bænkplads (SB6 …): en valgt/trukket spiller uden for truppen kan sættes på, hvis der er plads på bænken */
   const toBench = (pid: number | null) => { if (pid !== null && !tac.lineup.includes(pid) && !tac.bench.includes(pid) && tac.bench.length < benchSize()) { change({ ...tac, bench: [...tac.bench, pid] }); setPick(null); } };
   const emptyRow = (i: number) => (
-    <div key={`sb${i}`} className="cx-tac-row empty" onClick={() => toBench(pick)}
+    <div key={`sb${i}`} className="cx-tac-row cx-tac-sbfree" onClick={() => toBench(pick)}
       onDragOver={(e) => { if (drag !== null) e.preventDefault(); }} onDrop={(e) => { e.preventDefault(); toBench(drag); setDrag(null); }}>
       <span className="cx-tac-num">SB{i + 1}</span>
     </div>

@@ -515,7 +515,7 @@ async function run(look) {
     const pos = await page.locator('.cx-tac-row.xi .cx-tac-pos').allTextContents();
     if (pos.length !== 11 || pos.some((x) => !x.trim())) throw new Error(`positionskolonnen: ${pos}`);
     const rows = await page.locator('.cx-tac-list > .cx-tac-row').count();
-    const sb = await page.locator('.cx-tac-row.empty .cx-tac-num').allTextContents();
+    const sb = await page.locator('.cx-tac-row.cx-tac-sbfree .cx-tac-num').allTextContents();
     if (rows !== 11 + Math.max(9, want.bench) || (sb.length && sb.at(-1) !== 'SB9')) throw new Error(`listen: ${rows} rækker, tomme pladser ${sb}`);
     if (await page.locator('.cx-tac-hint').count()) throw new Error('hjælpeteksten står der stadig');
     if (await page.locator('.cx-tac-row .cx-tac-tag', { hasText: /^(fk|cor|pen)$/ }).count()) throw new Error('fk/cor/pen vises i listen');
