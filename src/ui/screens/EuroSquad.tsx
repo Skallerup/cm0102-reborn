@@ -19,7 +19,7 @@ const POS_ORDER = (p: Player) => {
 
 export function ClassicEuroSquad({ onClose }: { onClose: () => void }) {
   const g = useGame()!;
-  const players = squad(g.userClub).filter((p) => !p.reserves).sort((a, b) => POS_ORDER(a) - POS_ORDER(b) || b.ca - a.ca);
+  const players = squad(g.userClub) /* CM 01/02: hele truppen, også reserveholdet */.sort((a, b) => POS_ORDER(a) - POS_ORDER(b) || b.ca - a.ca);
   const [sel, setSel] = useState<Set<number>>(() => euroRegistered(g.userClub) ?? new Set());
   const toggle = (id: number) => {
     const next = new Set(sel);

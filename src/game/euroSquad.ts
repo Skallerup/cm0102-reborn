@@ -28,7 +28,7 @@ export function euroRegistered(cid: number): Set<number> | null {
 
 /** Auto (som originalens knap): de tre bedste målmænd og de 22 bedste markspillere */
 export function autoEuroSquad(cid: number): number[] {
-  const sq = squad(cid).filter((p) => !p.reserves).sort((a, b) => b.ca - a.ca);
+  const sq = squad(cid).sort((a, b) => b.ca - a.ca);
   const gk = sq.filter((p) => naturalRole(p) === 'GK').slice(0, 3);
   const out = sq.filter((p) => naturalRole(p) !== 'GK').slice(0, EURO_MAX - gk.length);
   return [...gk, ...out].map((p) => p.id);
