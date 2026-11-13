@@ -1,3 +1,4 @@
+import { cmStaffDelayAnswer } from './cmStaff';
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
@@ -65,6 +66,7 @@ export type Action =
   | { t: 'meetBoard'; kind: import('./board').MeetBoardKind }
   /** CM 01/02: knappen "Ultimatum" i bestyrelsens svar (nyheden 0x1786) → 0x6ad610 */
   | { t: 'ultimatum'; news: number }
+  | { t: 'staffDelay'; news: number; delay: boolean }
   | { t: 'faRequest'; kind: import('./board').FaKind }
   | { t: 'appealBan'; pid: number }
   | { t: 'bid'; pid: number; fee: number; loan: boolean; sellOn?: number; addOn?: number; swap?: number[]; terms?: import('./cmTransferBid').BidTerms }
@@ -216,6 +218,7 @@ export function applyAction(a: Action): unknown {
     case 'resignNational': return resignNational();
     case 'nationalSquad': return selectNationalSquad(a.pids);
     case 'meetBoard': return meetBoard(a.kind);
+    case 'staffDelay': { cmStaffDelayAnswer(g, a.news, a.delay); return 'ok'; }
     case 'ultimatum': {
       const n = g.news.find((x) => x.id === a.news);
       const req = n ? cmUltimatumReq(g, n) : null;

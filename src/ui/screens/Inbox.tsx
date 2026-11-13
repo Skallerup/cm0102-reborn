@@ -8,11 +8,13 @@ import { euroDue } from '../../game/euroSquad';
 import { ClassicEuroSquad } from './EuroSquad';
 import { ClassicSquadNumbers } from './SquadNumbers';
 import { act } from '../../game/actions';
+import { ClassicFoot, useClassicDialog } from '../classic';
 import { useHotkeys } from '../hotkeys';
 import { dateFmt, money, t } from '../../i18n';
 import { Empty, Modal, Panel } from '../components';
 import { notify } from '../../game/state';
 import { cmUltimatumReq } from '../../game/cmBoardGame';
+import { cmStaffDelayOpen } from '../../game/cmStaff';
 import { ultimatumConfirm } from '../../game/cmBoardText';
 import { askConfirm } from '../confirm';
 import { useGame, useNav, useRouteState } from '../core';
@@ -61,6 +63,7 @@ export function Inbox() {
   const [settings, setSettings] = useState(false);
   const [respond, setRespond] = useState<number | null>(null);
   const [jobOpen, setJobOpen] = useState<number | null>(null);
+  const [delayFor, setDelayFor] = useState<number | null>(null);
   const [sqnOpen, setSqnOpen] = useState(false);
   const [eurOpen, setEurOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
@@ -113,10 +116,17 @@ export function Inbox() {
   const ultReq = item ? cmUltimatumReq(g, item) : null;
   // afviste kontrakttilbud (CM 01/02: Negotiate)
   const rejStaff = item && cmActive(g) ? cmRejectStaff(g, item) : null;
+  const delayOpen = item && cmActive(g) && cmStaffDelayOpen(g, item);
   const rejPid = item?.key === 'contract.offerRejected' && item.link?.kind === 'player' ? Number(item.link.id) : undefined;
   const rejPlayer = rejPid !== undefined && authentic() && g.players[rejPid]?.club === g.userClub && !g.pendingRenewals?.some((r) => r.pid === rejPid) ? rejPid : undefined;
 
   if (classic) {
+    // CM 01/02 "Delay Transfer Offer": Back · Cancel · Delay
+    if (delayFor !== null) {
+      const n = g.news.find((x) => x.id === delayFor);
+      return <div><Head title={g.clubs[g.userClub]?.name ?? ''} /><DelayPanel text={n ? newsBody(n) : ''} onBack={() => setDelayFor(null)}
+        onAnswer={(d) => { act({ t: 'staffDelay', news: delayFor, delay: d }); setDelayFor(null); }} /></div>;
+    }
     if (jobOpen !== null && g.jobOffers.includes(jobOpen)) return <div><Head title={g.manager.name} /><JobOfferPanel cid={jobOpen} onClose={() => setJobOpen(null)} /></div>;
     // Squad Numbers (CM 01/02): Respond på "… squad numbers to be decided" åbner listen
     if (sqnOpen && squadNumbersDue(g.userClub)) return <div><Head title={t('sqn.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicSquadNumbers onClose={() => setSqnOpen(false)} /></div>;
@@ -151,6 +161,7 @@ export function Inbox() {
           {requestOpen(g, item) && <button className="cx-grey cx-respond cx-req-respond" onClick={() => setReqOpen(true)}>{t('cl.bid.respond')}</button>}
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           {/* CM 01/02 (0xa6943c): "X rejects Y" har knappen Negotiate – kontrakttilbuddet igen (stab: cmStaff.ts, egne spillere: forlængelsen) */}
+          {delayOpen && item && <button className="cx-grey cx-respond" onClick={() => setDelayFor(item.id)}>{t('cl.bid.respond')}</button>}
           {rejStaff && item && <button className="cx-grey cx-respond cx-negotiate" onClick={() => nav({ name: 'staff', id: rejStaff.id, state: { stoffer: String(item.params.role ?? rejStaff.role) } })}>{t('cl.negotiate')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}
           {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}
@@ -318,4 +329,19 @@ function AppealBox({ item }: { item: NewsItem }) {
   if (res) return <div className="insight">{t(`ban.appeal.${res}.short`)}</div>;
   if (p.appealed || p.banned <= 0) return null;
   return <div className="row" style={{ marginTop: 8 }}><button className="small" onClick={() => setRes(act<string>({ t: 'appealBan', pid: p.id }))}>{t('ban.appeal')}</button><span className="muted">{t('ban.appealHint')}</span></div>;
+}
+
+function DelayPanel({ text, onBack, onAnswer }: { text: string; onBack: () => void; onAnswer: (delay: boolean) => void }) {
+  useClassicDialog();
+  return (
+    <div className="cx-tstatus">
+      <div className="cx-subtitle">{t('cm.staffNoRoom')}</div>
+      <div className="cx-ts-body"><p className="cx-ts-intro">{text}</p></div>
+      <ClassicFoot cols="2fr 1fr 1fr">
+        <button onClick={onBack}>{t('common.back')}</button>
+        <button onClick={() => onAnswer(false)}>{t('common.cancel')}</button>
+        <button className="primary" onClick={() => onAnswer(true)}>{t('cl.delay')}</button>
+      </ClassicFoot>
+    </div>
+  );
 }

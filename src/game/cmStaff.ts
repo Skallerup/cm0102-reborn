@@ -19,7 +19,7 @@
 //   0x4cb990 hvilke job en person kan tilbydes (Set Role At Club 0x4dd0f0): Assistant Manager (6) fra 30 år, ellers kun for en manager/
 //            assistent/træner; Coach (8) fra 30 år undtagen fysioterapeuter, ellers kun manager/assistent/træner; Scout (9) kun for en
 //            spejder; Physio (10) kun for en fysioterapeut. Ledige har jobkoden 0 (Unemployed).
-import { ageOn } from './dates';
+import { addDays, ageOn } from './dates';
 import { addNews } from './state';
 import { regionOf } from './leagues';
 import { hash01 } from './rng';
@@ -221,7 +221,7 @@ export function cmStaffInterestedIn(g: GameState, s: Staff, role: StaffRole): bo
 /** lønkravet *estimeret* (som spillets staffDemand: lønnen, +10 % for at forlade en klub) */
 export const cmStaffDemand = (s: Staff): number => Math.round((s.wage * (s.club > 0 ? 1.1 : 1)) / 50) * 50;
 
-export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wage: number; years: number; signOn: number; date: string }
+export interface CmStaffOffer { staff: number; club: number; role: StaffRole; wage: number; years: number; signOn: number; date: string; /** venter på svar på "Delay Transfer Offer" (nyhedens id) */ hold?: number }
 
 /** Offer → "Offer contract to X ?" Yes: tilbuddet sendes, svaret kommer som nyhed næste dag (som originalens kontrakttilbud) */
 export function cmOfferStaff(g: GameState, o: Omit<CmStaffOffer, 'club' | 'date'>): string {
@@ -236,9 +236,9 @@ export function cmOfferStaff(g: GameState, o: Omit<CmStaffOffer, 'club' | 'date'
 /** dagligt: svarene på kontrakttilbuddene (afsendt i går eller før) */
 export function cmStaffOffersDaily(g: GameState): void {
   if (!g.cmStaffOffers?.length) return;
-  const due = g.cmStaffOffers.filter((o) => o.date < g.date);
+  const due = g.cmStaffOffers.filter((o) => o.date < g.date && o.hold === undefined);
   if (!due.length) return;
-  g.cmStaffOffers = g.cmStaffOffers.filter((o) => o.date >= g.date);
+  g.cmStaffOffers = g.cmStaffOffers.filter((o) => o.date >= g.date || o.hold !== undefined);
   for (const o of due) {
     const s = g.staff[o.staff];
     const club = g.clubs[o.club];
@@ -248,8 +248,16 @@ export function cmStaffOffersDaily(g: GameState): void {
     // *estimeret*: interesseret i jobbet, lønnen mindst 95 % af kravet, plads i staben og penge til kompensationen
     const fee = s.club ? poachFee(s) : 0;
     const roomOk = staffCountFor(g, o.club, o.role) < STAFF_LIMITS[o.role];
-    const yes = cmStaffInterestedIn(g, s, o.role) && o.wage >= cmStaffDemand(s) * 0.95 && roomOk && club.balance >= fee
+    const willing = cmStaffInterestedIn(g, s, o.role) && o.wage >= cmStaffDemand(s) * 0.95 && club.balance >= fee
       && hash01(g.seed, o.staff, o.club, g.date.length) < 0.98;
+    // CM 01/02 (0x…, strengen "… do not currently have enough spaces at their club for this transfer to go through. Delay the transfer for a
+    // week ?"): han vil gerne, men staben er fuld – mennesket svarer med Back · Cancel · Delay
+    if (willing && !roomOk) {
+      addNews({ cat: 'contract', key: 'cm.staffNoRoom', params: { club: club.name, name, sid: s.id } });
+      g.cmStaffOffers.push({ ...o, hold: g.news[0]?.id ?? 0 });
+      continue;
+    }
+    const yes = willing && roomOk;
     if (!yes) {
       // 0xa964d8: "{}<Selling Club>{s} <Player> has rejected the contract offer from {}<Buying Club>{}." – {s} = genitiv
       const fn = from?.short || from?.name || '';
@@ -295,3 +303,13 @@ export function cmScoutRec(g: GameState, p: import('./types').Player, level: num
   const pot = age < 25 ? stars(est.pa) : 0;
   return Math.max(ab, pot);
 }
+
+/** svaret på "Delay Transfer Offer": Delay = prøv igen om en uge, Cancel = tilbuddet bortfalder */
+export function cmStaffDelayAnswer(g: GameState, newsId: number, delay: boolean): void {
+  const o = (g.cmStaffOffers ?? []).find((x) => x.hold === newsId);
+  if (!o) return;
+  if (delay) { o.hold = undefined; o.date = addDays(g.date, 6); }
+  else g.cmStaffOffers = (g.cmStaffOffers ?? []).filter((x) => x !== o);
+  const n = g.news.find((x) => x.id === newsId); if (n) n.params = { ...n.params, ans: delay ? 1 : 2 };
+}
+export const cmStaffDelayOpen = (g: GameState, n: { id: number; key: string }) => n.key === 'cm.staffNoRoom' && (g.cmStaffOffers ?? []).some((x) => x.hold === n.id);
