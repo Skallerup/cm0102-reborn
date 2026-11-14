@@ -7,7 +7,7 @@ import { gs, squad } from '../src/game/state';
 import { act } from '../src/game/actions';
 import { processOffers } from '../src/game/transfers';
 import { addDays, daysBetween } from '../src/game/dates';
-import { cmAcceptBid, cmTalksDemand, cmTalksOpen } from '../src/game/cmTransferTalks';
+import { cmAcceptBid, cmAgreed, cmConfirmOpen, cmConfirmScreen, cmTalksDemand, cmTalksOpen, cmWhy } from '../src/game/cmTransferTalks';
 import type { Player, TransferOffer } from '../src/game/types';
 
 describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout: 600_000 }, () => {
@@ -68,9 +68,81 @@ describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout
     const from = g.nextId.news;
     g.date = due;
     processOffers();
-    expect(g.news.filter((x) => x.id >= from).reverse().map((x) => x.key)).toContain('transfer.cmAgrees');
+    const agrees = g.news.filter((x) => x.id >= from).reverse().find((x) => x.key === 'transfer.cmAgrees')!;
+    expect(agrees.link).toEqual({ kind: 'offer', id: o.id });
+    // "Confirm Transfer Offer" (0x8f2ec0): handlen gennemføres først med Yes
+    expect(o.cmTalks!.state).toBe(5);
+    expect(p.club).not.toBe(mu);
+    expect(cmConfirmOpen(g, o)).toBe(true);
+    expect(cmTalksOpen(g, o)).toBe(false);
+    g.clubs[mu].transferBudget = o.fee + 1;
+    const sc = cmConfirmScreen(g, o);
+    expect(sc.code).toBe(0);
+    expect(sc.key).toBe(o.fee > 0 ? 'cm.confirm.fee' : 'cm.confirm.free');
+    expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('completed');
     expect(p.club).toBe(mu);
     expect(o.status).toBe('completed');
+  });
+
+  it('Confirm Transfer Offer: Delay udsætter en uge (nyheden kommer igen), No/Cancel trækker buddet tilbage, for lidt penge = Delay Transfer Offer', () => {
+    const g = gs();
+    const { o, p } = accepted(3);
+    cmAgreed(o, p, { wage: 1000, years: 2 }, () => { throw new Error('skal ikke gennemføres'); });
+    expect(o.cmTalks!.state).toBe(5);
+    g.clubs[mu].transferBudget = 0;
+    if (o.fee > 0) {
+      expect(cmConfirmScreen(g, o).code).toBe(1);
+      expect(cmConfirmScreen(g, o).key).toBe('cm.confirm.funds');
+      expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('refused');
+    }
+    expect(act({ t: 'cmConfirm', offer: o.id, answer: 'delay' })).toBe('delayed');
+    expect(cmConfirmOpen(g, o)).toBe(false);
+    const d0 = g.date, n0 = g.nextId.news;
+    g.date = addDays(d0, 6);
+    processOffers();
+    expect(cmConfirmOpen(g, o)).toBe(false);
+    g.date = addDays(d0, 7);
+    processOffers();
+    expect(cmConfirmOpen(g, o)).toBe(true);
+    expect(g.news.filter((x) => x.id >= n0).some((x) => x.key === 'transfer.cmAgrees')).toBe(true);
+    expect(act({ t: 'cmConfirm', offer: o.id, answer: 'no' })).toBe('withdrawn');
+    expect(o.status).toBe('withdrawn');
+    expect(p.club).not.toBe(mu);
+    g.date = d0;
+  });
+
+  it('spillerens grunde til at afvise skiftet (0x8e4ae0): højst to, i originalens rækkefølge', () => {
+    const g = gs();
+    const { p } = accepted(4);
+    const cn = g.clubs[p.club!].short || g.clubs[p.club!].name;
+    expect(cmWhy(g, p, mu, 0x80000000 | 8)).toEqual(['wait']);
+    expect(cmWhy(g, p, mu, 8 | 0x20)).toEqual([`hard:${cn}`]);
+    expect(cmWhy(g, p, mu, 0x20)).toEqual([`rival:${cn}`]);
+    expect(cmWhy(g, p, mu, 0x400 | 0x1000)).toEqual([`happy:${cn}`]);
+    expect(cmWhy(g, p, mu, 0x100000 | 0x20000000)).toEqual([`recent:${cn}`, 'longterm']);
+    expect(cmWhy(g, p, mu, 0x20000000 | 0x2000000 | 0x10000).length).toBeLessThanOrEqual(2);
+    expect(cmWhy(g, p, mu, 1)).toEqual([]);
+  });
+
+  it('en afvisning gemmer grundene i nyheden (why) – ellers den korte tekst', () => {
+    const g = gs();
+    const sellers = Object.values(g.clubs).filter((c) => c.id !== mu && c.league === g.clubs[mu].league);
+    let hit = 0, why = 0;
+    for (const s of sellers) {
+      for (const p of squad(s.id).sort((a, b) => b.ca - a.ca).slice(0, 3)) {
+        const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: mu, seller: s.id, fee: p.value, loan: false, status: 'pending', created: g.date, respondBy: g.date };
+        g.offers.push(o);
+        const from = g.nextId.news;
+        cmAcceptBid(o, p);
+        if (o.status !== 'collapsed') continue;
+        hit++;
+        const n = g.news.filter((x) => x.id >= from).find((x) => x.key === 'transfer.cmRejectsMove')!;
+        if (typeof n.params.why === 'string') { why++; expect(n.params.why.split('|').length).toBeLessThanOrEqual(2); }
+      }
+      if (hit >= 6) break;
+    }
+    expect(hit).toBeGreaterThan(0);
+    expect(why, `${hit} afvisninger`).toBeGreaterThan(0);
   });
 
   it('et for lavt tilbud: "rejects" med "willing to negotiate", +10 dage, så runder 3 og +10 dage, så lukket', () => {

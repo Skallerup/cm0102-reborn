@@ -30,7 +30,7 @@ import { Tabs } from '../components';
 import { ClassicSub, cxShortDate } from '../classic';
 import { IncomingBidPanel, JobOfferPanel, TransferRequestPanel } from './TransferStatusClassic';
 import { requestOpen } from '../../game/cmTransferList';
-import { cmTalksOpen } from '../../game/cmTransferTalks';
+import { cmConfirmOpen, cmConfirmScreen, cmTalksOpen } from '../../game/cmTransferTalks';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -70,6 +70,7 @@ export function Inbox() {
   const [reqOpen, setReqOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState<number | null>(null);
   const [talkOpen, setTalkOpen] = useState<number | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState<number | null>(null);
   const { nav } = useNav();
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
@@ -124,6 +125,9 @@ export function Inbox() {
     ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
   const talkOffer = cmTalksOpen(g, talk) ? talk : undefined;
   const talkLive = talkOpen !== null ? g.offers.find((o) => o.id === talkOpen) : undefined;
+  // CM 01/02 "X accepts {Club} offer": Respond → Confirm Transfer Offer (0x8f2ec0)
+  const agreeOffer = item?.key === 'transfer.cmAgrees' && item.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
+  const confirmLive = confirmOpen !== null ? g.offers.find((o) => o.id === confirmOpen) : undefined;
   const rejPid = item?.key === 'contract.offerRejected' && item.link?.kind === 'player' ? Number(item.link.id) : undefined;
   const rejPlayer = rejPid !== undefined && authentic() && g.players[rejPid]?.club === g.userClub && !g.pendingRenewals?.some((r) => r.pid === rejPid) ? rejPid : undefined;
 
@@ -141,6 +145,13 @@ export function Inbox() {
     if (eurOpen && euroDue(g.userClub)) return <div><Head title={t('eur.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicEuroSquad onClose={() => setEurOpen(false)} /></div>;
     // CM 01/02: Respond på "X requests move" (0x4dca40) åbner Transfer Request
     if (reqOpen && item && requestOpen(g, item)) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><TransferRequestPanel news={item} onClose={() => setReqOpen(false)} /></div>;
+    if (cmConfirmOpen(g, confirmLive)) {
+      const sc = cmConfirmScreen(g, confirmLive);
+      const text = t(sc.key, { ...sc.params, fee: money(confirmLive.fee) });
+      const close = () => setConfirmOpen(null);
+      const ans = (a: 'yes' | 'no' | 'delay') => { close(); act({ t: 'cmConfirm', offer: confirmLive.id, answer: a }); };
+      return <div><Head title={g.clubs[g.userClub]?.name ?? ''} /><TransferConfirmPanel title={sc.code === 1 ? t('cm.staffNoRoom') : t('cm.confirm.title')} text={text} cancelLabel={sc.code === 1 ? t('common.cancel') : t('common.no')} yes={sc.code === 0} onBack={close} onAnswer={ans} /></div>;
+    }
     if (cmTalksOpen(g, talkLive)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
     if (renewOpen !== null && g.players[renewOpen]?.club === g.userClub) return <div><ClassicNegotiation renewPid={renewOpen} onClose={() => setRenewOpen(null)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
@@ -172,6 +183,7 @@ export function Inbox() {
           {delayOpen && item && <button className="cx-grey cx-respond" onClick={() => setDelayFor(item.id)}>{t('cl.bid.respond')}</button>}
           {rejStaff && item && <button className="cx-grey cx-respond cx-negotiate" onClick={() => nav({ name: 'staff', id: rejStaff.id, state: { stoffer: String(item.params.role ?? rejStaff.role) } })}>{t('cl.negotiate')}</button>}
           {talkOffer && <button className={`cx-grey cx-respond ${item?.key === 'transfer.cmTalks' ? 'cx-offer-contract' : 'cx-negotiate'}`} onClick={() => setTalkOpen(talkOffer.id)}>{t(item?.key === 'transfer.cmTalks' ? 'cl.offerContract' : 'cl.negotiate')}</button>}
+          {agreeOffer && cmConfirmOpen(g, agreeOffer) && <button className="cx-grey cx-respond cx-confirm-transfer" onClick={() => setConfirmOpen(agreeOffer.id)}>{t('cl.bid.respond')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}
           {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}
           {ultReq !== null && item && <button className="cx-grey cx-respond cx-ultimatum" onClick={() => {
@@ -341,15 +353,21 @@ function AppealBox({ item }: { item: NewsItem }) {
 }
 
 function DelayPanel({ text, onBack, onAnswer }: { text: string; onBack: () => void; onAnswer: (delay: boolean) => void }) {
+  return <TransferConfirmPanel title={t('cm.staffNoRoom')} text={text} cancelLabel={t('common.cancel')} onBack={onBack} onAnswer={(a) => onAnswer(a === 'delay')} />;
+}
+
+/** CM 01/02 0x8f2ec0: "Confirm Transfer Offer" (Back · No · Delay · Yes) og "Delay Transfer Offer" (Back · Cancel · Delay) */
+function TransferConfirmPanel({ title, text, cancelLabel, yes, onBack, onAnswer }: { title: string; text: string; cancelLabel: string; yes?: boolean; onBack: () => void; onAnswer: (a: 'yes' | 'no' | 'delay') => void }) {
   useClassicDialog();
   return (
-    <div className="cx-tstatus">
-      <div className="cx-subtitle">{t('cm.staffNoRoom')}</div>
+    <div className="cx-tstatus cx-confirm-offer">
+      <div className="cx-subtitle">{title}</div>
       <div className="cx-ts-body"><p className="cx-ts-intro">{text}</p></div>
-      <ClassicFoot cols="2fr 1fr 1fr">
+      <ClassicFoot cols={yes ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr'}>
         <button onClick={onBack}>{t('common.back')}</button>
-        <button onClick={() => onAnswer(false)}>{t('common.cancel')}</button>
-        <button className="primary" onClick={() => onAnswer(true)}>{t('cl.delay')}</button>
+        <button className="cx-cancel" onClick={() => onAnswer('no')}>{cancelLabel}</button>
+        <button className={yes ? '' : 'primary'} onClick={() => onAnswer('delay')}>{t('cl.delay')}</button>
+        {yes && <button className="primary cx-yes" onClick={() => onAnswer('yes')}>{t('common.yes')}</button>}
       </ClassicFoot>
     </div>
   );

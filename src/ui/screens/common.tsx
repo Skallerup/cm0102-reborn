@@ -31,6 +31,14 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.range === 'string' && p.range.startsWith('injury.r.')) p.range = t(p.range);
   if (n.key.startsWith('injury.o.')) p.injury = p.injuryLc;
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
+  // spillerens grunde til at afvise et skifte (cmWhy): "k:argument|k" → "han vil ikke … og …"
+  if (typeof p.why === 'string' && p.why) {
+    const parts = p.why.split('|').map((w) => {
+      const i = w.indexOf(':'), k = i < 0 ? w : w.slice(0, i), a = i < 0 ? '' : w.slice(i + 1);
+      return t(`cm.why.${k}`, { club: a, nation: a, comp: compName(a) ?? a, continent: k === 'continent' ? t(`cm.why.cont.${a}`) : a });
+    });
+    p.reasons = parts.join(` ${t('cm.why.and')} `);
+  }
   // månedens priser (CM 01/02: "<spiller> wins February award"): måneden før nyhedens dato
   if (n.key.startsWith('award.month') && p.month === undefined) {
     const d = new Date(`${n.date.slice(0, 7)}-15T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 1);
@@ -97,6 +105,8 @@ function bodyKey(n: NewsItem): string {
   }
   // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
   // CM 01/02 0xfa4: "However, he is willing to negotiate terms." mens han kan få et nyt tilbud
+  // 0x8d84e0: "… has rejected the move to {Club} because he <grunde>." (0x8e4ae0)
+  if (n.key === 'transfer.cmRejectsMove' && typeof n.params?.why === 'string' && n.params.why) return 'transfer.cmRejectsMove.because';
   if (n.key === 'transfer.cmRejects') return n.params?.again ? 'transfer.cmRejects.again' : 'transfer.cmRejects.body';
   if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
   // Discipline Player (cmFine.ts): originalens brødtekst er valgt i spillet (0x5a76e0/0x5a7ed0/0x5a8090)
@@ -118,7 +128,7 @@ function offerAnswer(n: NewsItem): string {
   // CM 01/02 "Offer contract to X" (0x8d7fb0): tilbuddets +0x10 læst levende – 1 "have offered a contract", 4 "have decided to withdraw the transfer bid"
   if (n.key === 'transfer.cmTalks') {
     const o = g.offers.find((x) => x.id === Number(n.link!.id));
-    const st = !o ? 0 : o.cmTalks?.state === 1 && (o.status === 'negotiating' || o.status === 'completed') ? 1 : o.cmTalks?.state === 4 || o.status === 'collapsed' || o.status === 'withdrawn' ? 4 : 0;
+    const st = !o ? 0 : (o.cmTalks?.state === 1 || o.cmTalks?.state === 5) && (o.status === 'negotiating' || o.status === 'completed') ? 1 : o.cmTalks?.state === 4 || o.status === 'collapsed' || o.status === 'withdrawn' ? 4 : 0;
     return st === 1 ? `\n\n${t('transfer.cmTalks.offered', { buyer: String(n.params.buyer ?? '') })}` : st === 4 ? `\n\n${t('transfer.cmTalks.withdrawn', { buyer: String(n.params.buyer ?? '') })}` : '';
   }
   const o = g.offers.find((x) => x.id === Number(n.link!.id));

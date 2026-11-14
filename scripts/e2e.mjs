@@ -1031,6 +1031,26 @@ async function run(look) {
     const st = await gs((oid) => window.__cm.gs().offers.find((x) => x.id === oid)?.cmTalks?.state, r.oid);
     if (st !== 1) throw new Error(`tilbuddet blev ikke sendt (${st})`);
     if (!(await page.locator('.cx-nbody').innerText()).includes('have offered a contract.')) throw new Error('nyheden viser ikke "have offered a contract."');
+    // spilleren siger ja → "accepts … offer" med Respond → Confirm Transfer Offer (0x8f2ec0): Back · No · Delay · Yes; Yes gennemfører handlen
+    await gs((oid) => {
+      const g = window.__cm.gs(), o = g.offers.find((x) => x.id === oid);
+      g.clubs[g.userClub].transferBudget += o.fee + 1;
+      window.__cm.cmAgreed(o, g.players[o.player], { wage: o.cmTalks.terms.wage, years: o.cmTalks.terms.years }, () => { throw new Error('skal bekræftes først'); });
+      window.__cm.notify();
+    }, r.oid);
+    await page.locator('.cx-nrow', { hasText: `${r.last} accepts` }).first().click();
+    await page.locator('.cx-confirm-transfer').click();
+    await page.waitForSelector('.cx-confirm-offer', { timeout: 5000 });
+    const ctitle = await page.locator('.cx-confirm-offer .cx-subtitle').innerText();
+    if (ctitle !== 'Confirm Transfer Offer') throw new Error(`bekræftelsens titel er "${ctitle}"`);
+    if (!(await page.locator('.cx-confirm-offer .cx-ts-intro').innerText()).startsWith(`Sign `)) throw new Error('spørgsmålet er ikke "Sign … ?"');
+    const btns = (await page.locator('.cx-foot-btns button').allInnerTexts()).map((x) => x.trim()).filter(Boolean);
+    if (btns.join(',') !== 'Back,No,Delay,Yes') throw new Error(`knapperne er ${btns.join(',')}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-confirm-transfer-offer.png` });
+    await page.locator('.cx-foot-btns .cx-yes').click();
+    await page.waitForSelector('.cx-confirm-offer', { state: 'detached', timeout: 5000 });
+    const done = await gs((oid) => { const g = window.__cm.gs(), o = g.offers.find((x) => x.id === oid); return [o.status, g.players[o.player].club === g.userClub]; }, r.oid);
+    if (done[0] !== 'completed' || !done[1]) throw new Error(`handlen blev ikke gennemført med Yes (${done.join(',')})`);
     await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eTalkMode; window.__cm.notify(); });
   });
   // CM 01/02's transferliste med den originale database (cmTransferList.ts): Set Staff Transfer Status (billig udbudspris = værdien +0x52,

@@ -421,11 +421,17 @@ function talkMem(g: GameState, p: Player, clubId: number, site: number) {
 /** 0x8c0080 (timing 0xb): vil spilleren overhovedet tale med køberen? Shortlist_Manager 0x846920(staff, klub, 0, 0, status, &ud) med status 1,
  *  når køberen er menneskets (0x600a50); under 0,75 ([0x969040]) afviser han skiftet (0x8d8310). Null uden for cmActive. */
 export function cmMoveInterest(g: GameState, p: Player, clubId: number): number | null {
+  return cmMoveCheck(g, p, clubId)?.x ?? null;
+}
+
+/** Som cmMoveInterest, med grundene (*out_reasons, bitmasken i notes/board/notes-G2-interest.md §10) – bruges til "because he …" (0x8e4ae0, cmTransferTalks.ts) */
+export function cmMoveCheck(g: GameState, p: Player, clubId: number): { x: number; mask: number } | null {
   const T = talkMem(g, p, clubId, 0x8c0080);
   if (!T) return null;
   const c = T.M.c;
   c.m.w32(OUT, 0);
-  return slCall(c, 0x846920, slmOf(c.m), T.st, T.club, 0, 0, 1, OUT);
+  const x = slCall(c, 0x846920, slmOf(c.m), T.st, T.club, 0, 0, 1, OUT);
+  return { x, mask: c.m.u32(OUT) >>> 0 };
 }
 
 /** Spillerens krav i Offer Contract (0x85fc50 med køberens trupstatus, job 0xb – samme som 0x4ce4e0 sammenligner med) */

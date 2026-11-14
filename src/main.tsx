@@ -16,8 +16,8 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 if (import.meta.env.DEV) {
   const cm: Record<string, unknown> = { t };
   (window as unknown as { __cm: unknown }).__cm = cm;
-  void Promise.all([import('./game/state'), import('./game/sim'), import('./game/dates'), import('./game/press'), import('./game/cmTransferTalks')]).then(([{ gs, notify }, { runUntil }, { addDays }, { invitePress }, { cmAcceptBid }]) => {
-    Object.assign(cm, { gs, notify, advance: (days: number) => runUntil({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), invitePress, cmAcceptBid });
+  void Promise.all([import('./game/state'), import('./game/sim'), import('./game/dates'), import('./game/press'), import('./game/cmTransferTalks')]).then(([{ gs, notify }, { runUntil }, { addDays }, { invitePress }, { cmAcceptBid, cmAgreed }]) => {
+    Object.assign(cm, { gs, notify, advance: (days: number) => runUntil({ untilDate: addDays(gs().date, days), autoPlay: true }).then(() => notify()), invitePress, cmAcceptBid, cmAgreed });
   });
 }
 

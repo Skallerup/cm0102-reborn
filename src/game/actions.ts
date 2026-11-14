@@ -1,4 +1,5 @@
 import { cmStaffDelayAnswer } from './cmStaff';
+import { cmConfirmAnswer } from './cmTransferTalks';
 import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
@@ -29,7 +30,7 @@ import { answerBet, proposeBet, sendJab } from './rivalry';
 import { isHumanClub, removeHuman } from './humans';
 import { addNews, gs, notify, pickNumber, squad } from './state';
 import {
-  acceptCounter, bidNow, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
+  acceptCounter, bidNow, completeTransfer, enquire, loanOut, makeBid, rebid, negotiate, raiseBid, releasePlayer, renewContract, offerRenewalLater, respondToOffer, setListPrice, startPreContract, toggleListed, recallLoan } from './transfers';
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
@@ -77,6 +78,7 @@ export type Action =
   | { t: 'shortlist'; pid: number; on: boolean }
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'cmConfirm'; offer: number; answer: 'yes' | 'no' | 'delay' }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'nickname'; pid: number; nick: string | null }
   | { t: 'reserves'; pid: number; on: boolean }
@@ -246,6 +248,7 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
+    case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, completeTransfer) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);
     case 'nickname': return setNickname(a.pid, a.nick);
     case 'reserves': {
