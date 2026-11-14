@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { authentic } from '../../game/rules';
 import { askConfirm } from '../confirm';
 import { act } from '../../game/actions';
 import { jobTerms, managerRegion } from '../../game/board';
@@ -54,7 +55,8 @@ export function Jobs() {
           </table>
         </Panel>
       </div>
-      <p className="muted">{t('jobs.explain', { rep: Math.round(g.manager.rep) })}</p>
+      {/* CM 01/02 har ingen forklaring om omdømmet her */}
+      {!authentic() && <p className="muted">{t('jobs.explain', { rep: Math.round(g.manager.rep) })}</p>}
     </div>
   );
 }

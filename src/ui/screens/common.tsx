@@ -31,6 +31,11 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   if (typeof p.range === 'string' && p.range.startsWith('injury.r.')) p.range = t(p.range);
   if (n.key.startsWith('injury.o.')) p.injury = p.injuryLc;
   if (typeof p.comp === 'string') p.comp = compName(p.comp) ?? p.comp;
+  // månedens priser (CM 01/02: "<spiller> wins February award"): måneden før nyhedens dato
+  if (n.key.startsWith('award.month') && p.month === undefined) {
+    const d = new Date(`${n.date.slice(0, 7)}-15T00:00:00Z`); d.setUTCMonth(d.getUTCMonth() - 1);
+    try { p.month = d.toLocaleDateString(t('cl.locale'), { month: 'long', timeZone: 'UTC' }); } catch { p.month = d.toISOString().slice(5, 7); }
+  }
   if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
   if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
   // "Four players from Man Utd …" (uden navneliste)

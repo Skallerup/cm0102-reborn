@@ -16,7 +16,7 @@ import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { cmActive } from '../../game/cmPlayerData';
-import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
+import { cmAvailability, cmFutureLines, cmFutureHappy } from '../../game/cmTransferList';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
@@ -239,7 +239,8 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   if (p.contract?.futureClub) rows.push([t('player.nextClub'), <ClubLink id={p.contract.futureClub} />]);
   return (
     <Frame p={p} rows={rows}>
-      {mine && p.renewal && !p.complaint && <div className={`insight ${p.renewal.convinced ? '' : 'warn'}`}>{t(p.renewal.convinced ? 'renewal.status.convinced' : `renewal.status.${p.renewal.stance}`, { player: p.last })}</div>}
+      {/* ægte CM 01/02: spillerens holdning til en forlængelse står ikke på Contract-fanen (findes ikke i originalen) */}
+      {mine && p.renewal && !p.complaint && !authentic() && <div className={`insight ${p.renewal.convinced ? '' : 'warn'}`}>{t(p.renewal.convinced ? 'renewal.status.convinced' : `renewal.status.${p.renewal.stance}`, { player: p.last })}</div>}
     </Frame>
   );
 }
@@ -278,8 +279,8 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const interestIds = interestedClubs(p).map((i) => i.club);
   const cmFut = cm ? cmFutureLines(g, p).map((x) => t(`cm.fut.${x.k}`, x.p)) : [];
   // *estimeret*: blokkene, der ikke er porteret (klubbens resultater, harmoni …), gav ingen linje – så spillets egne
-  // ingen klager: originalens "Happy to stay at the club" (de øvrige tilfredse varianter 0x87ee70– er ikke porteret – *estimeret*)
-  const fut = cm ? (cmFut.length ? cmFut : [p.club ? t('cl.pl.fut.happy') : '-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
+  // ingen linjer: originalens tilfredse blok (0x8844e1, `cmFutureHappy`) – ellers "Unknown" som originalen (0x8852f9)
+  const fut = cm ? (cmFut.length ? cmFut : [p.club ? t(cmFutureHappy(p) ? 'cl.pl.fut.happy' : 'cl.pl.unknown') : '-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
   // CM 01/02: Availability, Value, Fluent Languages, Offers, Interested, Future (én linje pr. række)
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
   const rows: [string, ReactNode, string?][] = [
@@ -347,7 +348,7 @@ function ClassicCareer({ p }: { p: Player }) {
           </tbody>
         </table></div>
       )}
-      {!g.draft && real && real.length > 0 && <div className="cx-fl-hint">{t(g.dbKind === 'cm0102' ? 'career.sourceCm' : 'career.source')}</div>}
+      {!g.draft && real && real.length > 0 && !authentic() && <div className="cx-fl-hint">{t(g.dbKind === 'cm0102' ? 'career.sourceCm' : 'career.source')}</div>}
     </div>
   );
 }
@@ -520,10 +521,11 @@ export function ClassicPlayer({ id }: { id: number }) {
       {msg && !(authentic() && msg === t('player.bidSent')) && <div className="insight">{msg}</div>}
       {/* CM 01/02 viser hverken "Offer sent" eller "Your offer" på spillerens side – svaret kommer som nyhed */}
       {!mine && !authentic() && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} onOpen={(o) => setBid(o.id)} />}
-      {mine && p.complaint && <Complaint pid={p.id} onMsg={setMsg} />}
-      {mine && p.playPromise && <div className="insight warn">{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
-      {mine && p.wantsAway && <WantsAway pid={p.id} onMsg={setMsg} />}
-      {!mine && trialOf(p.id) && <div className="insight">🧪 {t('trial.onTrial', { date: dateFmt(trialOf(p.id)!.end) })}</div>}
+      {/* ægte CM 01/02: ingen samtale-/løfte-/prøvetræningsbokse på spillerens side (originalens transferanmodning besvares via Respond i indbakken) */}
+      {mine && p.complaint && !authentic() && <Complaint pid={p.id} onMsg={setMsg} />}
+      {mine && p.playPromise && !authentic() && <div className="insight warn">{t('complaint.promised', { date: dateFmt(p.playPromise.until) })}</div>}
+      {mine && p.wantsAway && !authentic() && <WantsAway pid={p.id} onMsg={setMsg} />}
+      {!mine && trialOf(p.id) && !authentic() && <div className="insight">🧪 {t('trial.onTrial', { date: dateFmt(trialOf(p.id)!.end) })}</div>}
       {editOpen && <ProposeEditModal kind="player" id={p.id} onClose={() => setEditOpen(false)} />}
       {tab === 'profile' && <ProfileTab p={p} />}
       {tab === 'injuries' && <InjuriesTab p={p} mine={mine} />}

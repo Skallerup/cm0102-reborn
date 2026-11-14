@@ -3,6 +3,7 @@
 import type { Fixture, GameState } from '../../game/types';
 import { compName, natName, t } from '../../i18n';
 import { intlDayResults } from '../../game/international';
+import { authentic } from '../../game/rules';
 import { useGame, useNav, useRouteState } from '../core';
 import { CxLink, clubRoute, compAbbr } from '../classic';
 import { Head } from './common';
@@ -97,7 +98,7 @@ export function MatchDay({ id }: { id: number }) {
           ))}
         </div>
       ))}</div>
-      {g.pendingFixture && !played && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
+      {g.pendingFixture && !played && !authentic() && <div className="cx-md-hint">{t('cl.md.hint')}</div>}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import { clubLevel } from './scouting';
 import { addNews, gs, squad } from './state';
 import { leagueRows } from './competitions';
 import { LEAGUE_RULES } from './leagues';
+import { cmActive } from './cmPlayerData';
 import type { Player, Club } from './types';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
@@ -47,7 +48,8 @@ export function weeklyRumours() {
     g.pursuits = list;
   }
   g.board.lastRumour = g.date;
-  addNews({ cat: 'transfer', key: 'rumour.interest', params: { player: pname(p), club: club.name, outlet: rng.pick(['tabloid', 'paper', 'insider']) }, link: { kind: 'player', id: p.id } });
+  // ægte CM 01/02 (den originale database): "Rumour: X are watching Y" findes ikke i originalen – kun forfølgelsen (budet) bliver
+  if (!cmActive(g)) addNews({ cat: 'transfer', key: 'rumour.interest', params: { player: pname(p), club: club.name, outlet: rng.pick(['tabloid', 'paper', 'insider']) }, link: { kind: 'player', id: p.id } });
 }
 
 /** Den 1. i måneden: klumme om brugerens liga */
@@ -61,7 +63,8 @@ export function monthlyColumn() {
     if ((rows[0]?.p ?? 0) < 4) return;
     const leader = rows[0], second = rows[1];
     const myPos = rows.findIndex((r) => r.club === me!.id) + 1;
-    addNews({ cat: 'general', key: 'column.month', params: { comp: comp.name, leader: g.clubs[leader.club]?.name ?? '', gap: leader.pts - (second?.pts ?? 0), pos: myPos, club: me!.name } });
+    // "Column: X lead the …" findes ikke i CM 01/02 (originalens klummer om holdet og spillerne nedenfor gør)
+    if (!cmActive(g)) addNews({ cat: 'general', key: 'column.month', params: { comp: comp.name, leader: g.clubs[leader.club]?.name ?? '', gap: leader.pts - (second?.pts ?? 0), pos: myPos, club: me!.name } });
     // CM 01/02's klummer om holdet: "climbing to safety", "slip nearer relegation", "title credentials"
     const drop = rows.length - (LEAGUE_RULES[comp.id]?.relegated ?? 0);
     const prev = me!.columnPos;

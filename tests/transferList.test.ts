@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import {
-  cmAnswerRequest, cmAvailability, cmFutureLines, cmInterested, cmRequestNews, deservedStatus, requestBodyKind, requestReasons, statusHappiness,
+  cmAnswerRequest, cmAvailability, cmFutureHappy, cmFutureLines, cmInterested, cmRequestNews, deservedStatus, requestBodyKind, requestReasons, statusHappiness,
 } from '../src/game/cmTransferList';
 import { cmContractOf, cmRand, newCmContract } from '../src/game/cmPlayerData';
 import { createGame, type WorldData } from '../src/game/newgame';
@@ -123,6 +123,21 @@ describe('i spillet (3.9.60, ægte tilstand)', { timeout: 120_000 }, () => {
     // Yes i "Transfer list"-dialogen igen: af listen (0x8f8450)
     act({ t: 'listed', pid: p.id });
     expect(cmAvailability(p)).toBe('unknown');
+  });
+
+  it('Future: "Happy to stay" kun gennem originalens tilfredse blok (0x8844e1) – Key → Not Needed giver "Unknown"', () => {
+    const p = scholes();
+    const c = cmContractOf(p);
+    c.b45 = 0; c.b4e = 0; c.b44 = 0; c.b4f = 0x10;
+    expect(cmFutureHappy(p)).toBe(true);
+    // Key → Not Needed: +0x44 −125 (klemt) < −Loyalty → blokken springes over
+    c.b44 = statusHappiness(0, 1, 7, 0);
+    expect(cmFutureHappy(p)).toBe(false);
+    c.b44 = 0; c.b45 = 0x4000;
+    expect(cmFutureHappy(p)).toBe(false);
+    c.b45 = 0; c.b4e = 1;
+    expect(cmFutureHappy(p)).toBe(false);
+    c.b4e = 0;
   });
 
   it('transferanmodningen: "X requests move" med grundene; Respond → granted (listed by request) / turned down', () => {

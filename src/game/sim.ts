@@ -446,7 +446,8 @@ function userMatchResult(f: Fixture, rep: MatchReport) {
     knowledgeAfterMatch(opp, rep.players.filter((l) => l.team === (userHome ? 1 : 0)).map((l) => l.id));
     g.reports[f.id] = rep;
     const key = scored > conceded ? 'match.won' : scored === conceded ? 'match.drew' : 'match.lost';
-    addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
+    // ægte CM 01/02 (den originale database): ingen nyhed om egne kampresultater – resultatet står på kampdagen
+    if (!cmActive(g)) addNews({ cat: 'match', key, params: { opp: g.clubs[opp].name, score: `${scored}-${conceded}`, comp: comp?.name ?? '', club: g.clubs[g.userClub]?.short ?? '', ha: userHome ? 'h' : 'a' }, link: { kind: 'fixture', id: f.id } });
     for (const line of rep.players) {
       // den originale database i ægte tilstand: konditionsmodulet sender originalens ene skadenyhed (cmFitnessGame.ts) – ikke også denne
       if (line.injured && g.players[line.id]?.club === g.userClub && !cmActive(g)) {
@@ -617,7 +618,7 @@ function newDay() {
     forEachHuman(() => {
       const { mismatches } = monthlyTrainingReport();
       const asst = Object.values(g.staff).find((s) => s.club === g.userClub && s.role === 'assistant');
-      if (mismatches >= 3 && asst && month(d) % 3 === 1) addNews({ cat: 'general', key: 'news.trainingAdvice', params: { coach: `${asst.first} ${asst.last}`, n: mismatches } });
+      if (mismatches >= 3 && asst && month(d) % 3 === 1 && !cmActive(g)) addNews({ cat: 'general', key: 'news.trainingAdvice', params: { coach: `${asst.first} ${asst.last}`, n: mismatches } });
     });
     // den originale database i ægte tilstand: originalens bestyrelse (cmBoardGame.ts) i stedet for spillets egne fyringer og jobmarked
     if (!cmBoardOn(g)) {

@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
 import { squad } from '../../game/state';
+import { authentic } from '../../game/rules';
 import { SCHEDULES, trainingAdvice } from '../../game/training';
 import type { Player } from '../../game/types';
 import { money, t } from '../../i18n';
@@ -26,6 +27,7 @@ export function ClassicTraining() {
   const [tab, setTab] = useRouteState('ttab', 'overview');
   const [grp, setGrp] = useRouteState('tgrp', '');
   const [coaches, setCoaches] = useState(false);
+  const orig = authentic();
   // valgte spillere (klik på rækken, til berøringsskærme): næste klik på en træningsfane flytter dem dertil – ellers kan de trækkes over på fanen
   const [sel, setSel] = useState<number[]>([]);
   const all = squad(g.userClub);
@@ -44,6 +46,8 @@ export function ClassicTraining() {
 
   const cols: CxCol<Player>[] = [
     { key: 'inf', label: t('cl.tn.inf'), render: (p) => {
+      // ægte CM 01/02: assistentens træningsråd ("Adv") findes ikke i originalen
+      if (orig) return null;
       const a = trainingAdvice(p);
       if (a.key === p.training) return null;
       const why = t(a.reason, { attrs: a.attrs.map((x) => t(`attr.${x}`)).join(` ${t('common.and')} `) });
@@ -62,15 +66,15 @@ export function ClassicTraining() {
   return (
     <div>
       <Head title={t('nav.training')}>
-        <button className="cx-greybtn" onClick={followAll}>{t('adv.followAll')}</button>
+        {!orig && <button className="cx-greybtn" onClick={followAll}>{t('adv.followAll')}</button>}
         <CxDrop label={t('cl.tn.setAll')} items={SCHEDULES.map((s) => ({ key: s.key, label: t(`train.${s.key}`), onClick: () => act({ t: 'trainingAll', key: s.key }) }))} />
         <span className="grow" />
         <button className="cx-greybtn" onClick={() => setCoaches(true)}>{t('cl.tn.coaches')}</button>
-        <CxDrop label={t('cl.sq.filter')} align="right" items={['', 'gk', 'def', 'mid', 'att', 'advice'].map((k) => ({ key: k || 'all', label: k === 'advice' ? t('train.f.advice') : t(`train.f.${k || 'all'}`), checked: grp === k, onClick: () => setGrp(k) }))} />
+        <CxDrop label={t('cl.sq.filter')} align="right" items={['', 'gk', 'def', 'mid', 'att', ...(orig ? [] : ['advice'])].map((k) => ({ key: k || 'all', label: k === 'advice' ? t('train.f.advice') : t(`train.f.${k || 'all'}`), checked: grp === k, onClick: () => setGrp(k) }))} />
       </Head>
       <Tabs tabs={[['overview', t('cl.tn.overview')], ...TOP.map((k) => [k, lbl(k)] as [string, string])]} value={tab} onChange={onTab} onDropTab={onDropTab} />
       <ClassicSub items={BOTTOM.map((k) => ({ key: k, label: lbl(k), on: tab === k, onClick: () => onTab(k), onDrop: (d: string) => onDropTab(k, d) }))} />
-      {sel.length > 0 && <div className="cx-tn-hint">{t('cl.tn.moveHint', { n: sel.length })}</div>}
+      {sel.length > 0 && !authentic() && <div className="cx-tn-hint">{t('cl.tn.moveHint', { n: sel.length })}</div>}
       <CxTable rows={players} cols={cols} rowKey={(p) => p.id} initialSort="pos"
         rowAttrs={(p) => ({ draggable: true, className: sel.includes(p.id) ? 'cx-tn-sel' : undefined,
           // dragstart ændrer ikke DOM'en (Chrome afbryder ellers trækket) – kun dataene

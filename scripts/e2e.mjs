@@ -395,7 +395,9 @@ async function run(look) {
     // klik-alternativet: vælg rækken, klik på en fane i nederste række
     const sh = await count('shooting');
     await rows.nth(7).locator('td.c-yel').first().click();
-    if (!(await page.locator('.cx-tn-hint').count())) throw new Error('hjælpelinjen for valgt spiller mangler');
+    if (!(await page.locator('tr.cx-tn-sel').count())) throw new Error('den valgte spiller er ikke markeret');
+    // ægte CM 01/02: ingen hjælpelinje (findes ikke i originalen)
+    if ((await gs(() => window.__cm.gs().options.mode === 'authentic')) && (await page.locator('.cx-tn-hint').count())) throw new Error('hjælpelinjen for valgt spiller står der stadig (findes ikke i CM 01/02)');
     await page.locator('.cx-tabrow button', { hasText: 'Shooting' }).click();
     if ((await count('shooting')) === sh) throw new Error('klik-flyt virkede ikke');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-traening-traek.png` });
@@ -484,6 +486,8 @@ async function run(look) {
       await page.getByRole('button', { name: tab, exact: true }).first().click();
       await page.waitForTimeout(200);
       await checkScreen(`spiller ${tab}`);
+      // ægte CM 01/02: ingen moderne bokse/hjælpetekster på spillerens faner (findes ikke i originalen)
+      if ((await gs(() => window.__cm.gs().options.mode === 'authentic')) && (await page.locator('.cx-pl-hint, .cx-fl-hint, .main .insight').count())) throw new Error(`spillerens ${tab}-fane har en boks/hjælpetekst, der ikke findes i CM 01/02`);
       if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-spiller-${tab.replace(/[^a-z]/gi, '')}.png` });
     }
     for (const v of ['Achievements', 'Injuries', 'Bans', 'Playing Career']) {
@@ -668,7 +672,7 @@ async function run(look) {
   });
   // ægte CM 01/02 (originalens trupskærm): View-menuen, blå udtagelsesfelter, grøn strimmel, ingen omklædningsrum, ligaens navn på knappen
   if (look === 'klassisk') await step('trup som i CM 01/02 (ægte tilstand): View-menu og farver', async () => {
-    await gs(() => { window.__cm.gs().options.mode = 'authentic'; });
+    await gs(() => { window.__e2eSqMode = window.__cm.gs().options.mode; window.__cm.gs().options.mode = 'authentic'; });
     try {
       await go({ name: 'squad', state: { cview: 'trad' } });
       await page.waitForSelector('.cx-sq-orig .cx-sq-row', { timeout: 5000 });
@@ -754,7 +758,8 @@ async function run(look) {
       await page.waitForSelector('.cx-finv-orig', { timeout: 5000 }).catch(() => { throw new Error('Funds åbner ikke originalens økonomioversigt'); });
       if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-klubstats-original.png` });
     } finally {
-      await gs(() => { window.__cm.gs().options.mode = 'extended'; });
+      // tilbage til spillets tilstand (med E2E_ENGINE=original er den ægte – før blev den altid sat til 'extended')
+      await gs(() => { window.__cm.gs().options.mode = window.__e2eSqMode ?? 'extended'; });
     }
   });
   if (look === 'klassisk') await step('klubbens History (Man Utd History)', async () => {
@@ -874,7 +879,7 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-bud.png` });
     // CM 01/02: pilen ved beløbet giver faste beløb (£0 … £20M), Exchange åbner "Add Player To … Transfer Bid"
     await page.locator('.cx-bid-amt .cx-drop-btn').first().click();
-    await page.locator('.cx-drop-pop button', { hasText: /^£1M$/ }).first().click();
+    await page.locator('.cx-drop-pop button', { hasText: /^£1(\.00)?M$/ }).first().click();
     if (!/£1(\.00)?M/.test(await page.locator('.cx-bid-amt .cx-drop-btn').first().innerText())) throw new Error('beløbslisten satte ikke £1M');
     await page.locator('.cx-bid .cx-bid-tools button', { hasText: 'Exchange' }).click();
     await page.waitForSelector('.cx-exch', { timeout: 5000 });
@@ -1211,9 +1216,16 @@ async function run(look) {
     await checkScreen('rapport');
     if (look === 'klassisk') await page.screenshot({ path: `${OUT}/klassisk-rapport.png` });
   });
+  // ægte CM 01/02 med den originale database: kun originalens nyheder (ingen egne kampresultater, rygter, "Column:", træningsråd, trofæhyldest fra anfører/avis)
+  if (look === 'klassisk' && ENGINE_GRID) await step('kun originalens nyheder (ægte tilstand, original DB)', async () => {
+    const bad = await gs(() => window.__cm.gs().news.filter((n) => /^(match\.(won|drew|lost)|rumour\.interest|column\.month|news\.trainingAdvice|trophy\.(press|captain)\.)/.test(n.key ?? '')).map((n) => n.key));
+    if (bad.length) throw new Error(`nyheder, der ikke findes i CM 01/02: ${[...new Set(bad)].join(', ')}`);
+    // kampdagen: ingen "Press Continue Game to go to your match."
+    if (await page.locator('.cx-md-hint').count()) throw new Error('kampdagens hjælpetekst står der stadig');
+  });
   // CM 01/02: også computerklubbernes kampe kan ses som kampskærmen efter slutfløjt (kompakt rapport, g.miniReports)
   if (look === 'klassisk') await step('computerkamp som kampskærm (Player Ratings)', async () => {
-    const id = await gs(() => { const g = window.__cm.gs(); return Object.keys(g.miniReports ?? {}).map(Number).find((i) => g.fixtures[i]?.result && g.comps[g.fixtures[i].comp]?.type === 'league'); });
+    const id = await gs(() => { const g = window.__cm.gs(); return Object.keys(g.miniReports ?? {}).map(Number).find((i) => g.fixtures[i]?.result && g.fixtures[i].comp !== 'FRIENDLY'); });
     if (id === undefined) throw new Error('ingen kompakt rapport for en computerkamp');
     await go({ name: 'report', id });
     await page.getByRole('button', { name: 'Match Stats', exact: true }).first().click({ timeout: 5000 });

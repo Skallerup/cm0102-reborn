@@ -397,6 +397,20 @@ export function cmFutureLines(g: GameState, p: Player): FutureLine[] {
   return out;
 }
 
+/** Den tilfredse blok i Future (0x8844e1–0x884dbc), når ingen af de porterede linjer kom: originalen springer hele blokken over (→ "Unknown"
+ *  0x8852f9, når der ingen linjer er), hvis +0x45 ≠ 0 (0x5d5a50), +0x44 < −Loyalty (0x8857b0 mod staff +0x59), +0x4e & 8 (0x8857f0), og inde i
+ *  blokken (0x884b39) hvis han er transferlistet (0x544520: +0x4e & 9) eller i en tvist (0x569e30 – findes ikke hos os). Ellers skriver den altid
+ *  én tilfreds linje (varianterne 0x884b78–0x884d48 – kun "Happy to stay at the club" er med, *estimeret*). Rettet 14/11: før stod "Happy to stay"
+ *  altid, når der ingen linjer var – også efter Not Needed (statusHappiness: Key → Not Needed −125, så +0x44 < −Loyalty → "Unknown"). */
+export function cmFutureHappy(p: Player): boolean {
+  if (!p.club) return false;
+  const c = cmContractOf(p);
+  if (c.b45 >>> 0) return false;
+  if (s8(c.b44) < -sh(p, 'loyalty')) return false;
+  const b4e = c.b4e ?? (p.listed ? 1 : 0);
+  return !(b4e & 8) && !(b4e & 9);
+}
+
 /** 0x8836b1–0x883bcf (klagen 0x10) */
 function regularLines(p: Player, c: CmContract, fl: number, crep: number, rc: number, age: number, a: { loy: number; prof: number; pres: number; amb: number }): FutureLine[] {
   const out: FutureLine[] = [];
