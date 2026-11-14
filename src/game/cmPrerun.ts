@@ -15,6 +15,7 @@
 // forkørslen hverken moralen (sub_535a80: 10), forholdene (databasens) eller udviklingen; staffState stiger kun af ferie-/skadedagene
 // (0x62c680/0x62d250 i Injury 0x62b7b0).
 //
+// Trinnet 'matches' er koblet af cmPrerunMatches.ts (Oceaniens VM-kvalifikation, Copa América, Intertoto, CL's 1. kvalifikationsrunde).
 // Modulet kører trinene i originalens rækkefølge; de porterede systemer melder sig med registerPrerun (konditionsmodulet: 'injury'). De andre
 // porteringer (kontrakterne 0x4c7ac0, økonomien 0x59b9c0, managerne 0x68f9c0 …) kan koble sig på samme sted – et trin uden port gør intet.
 // Kun den originale database i ægte tilstand.

@@ -457,6 +457,20 @@ export function cmEuroFinished(c: Competition): void {
   g.cmUefa.holders = { ...(g.cmUefa.holders ?? {}), ...(c.id === 'CL' ? { cl: c.winner } : c.id === 'UEFA' ? { uefa: c.winner } : {}) };
 }
 
+/** Forkørslen 0x5cc850, trinnet 'matches': dagens europæiske kampe (Intertoto, CL's kvalifikation) på dagen `d` (g.date er sat til den) – lodtrækningerne
+ *  først (Cup::update_for_date 0x51f890), så dagens kampe. `play` = sim.ts simulateFixture. */
+export function cmEuroPlayDay(g: GameState, d: string, play: (f: Fixture) => void): void {
+  if (!g.cmEuroCatchUp) return;
+  const ids = new Set(['UIC', 'CL', 'UEFA', 'ESC']);
+  const userClub = g.userClub;
+  try {
+    cmEuroDay(g);
+    for (const f of Object.values(g.fixtures).filter((x) => ids.has(x.comp) && !x.result && x.date === d)) play(f);
+  } finally {
+    g.userClub = userClub;
+  }
+}
+
 /** Forkørslen 0x5cc850: de europæiske kampe før spillets startdato (CL's 1. kvalifikationsrunde 11/7-2001) spilles som computerkampe, dag for dag
  *  med lodtrækningerne imellem. `play` = sim.ts simulateFixture. */
 export function cmEuroCatchUp(g: GameState, play: (f: Fixture) => void): void {

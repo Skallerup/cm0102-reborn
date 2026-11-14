@@ -8,4 +8,6 @@ export const compHooks: {
   leagueDone?: (comp: Competition, order: number[]) => void;
   /** (kalenderen, cmEurope.ts) Europas kampe før spilstarten spilles ved nyt spil */
   euroCatchUp?: (g: GameState) => void;
+  /** (forkørslen, cmPrerunMatches.ts) dagens europæiske kampe (Intertoto, CL-kvalifikationen) i forkørslen 0x5cc850 */
+  euroPrerunDay?: (g: GameState, iso: string) => void;
 } = {};

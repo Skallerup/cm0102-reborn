@@ -52,7 +52,7 @@ import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
 import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
-import { cmEuroCatchUp, cmEuroDay } from './cmEurope';
+import { cmEuroCatchUp, cmEuroDay, cmEuroPlayDay } from './cmEurope';
 import { compHooks } from './hooks';
 import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
@@ -988,3 +988,4 @@ function holidayDaily() {
 
 // (runde 10C) forkørslen af Europas kampe før spillets start (newgame.ts kalder krogen; continueGame tager dem, hvis krogen manglede)
 compHooks.euroCatchUp = (g) => cmEuroCatchUp(g, (f) => simulateFixture(f, true, false));
+compHooks.euroPrerunDay = (g, iso) => cmEuroPlayDay(g, iso, (f) => simulateFixture(f, true, false));

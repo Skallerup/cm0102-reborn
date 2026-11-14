@@ -21,7 +21,11 @@ export interface IntlTournament {
   name: IntlName; year: number; groups: number[][]; table: Record<number, IntlRow>; ko: IntlTie[]; stage: string; winner?: number; runnerUp?: number;
   /** spilledage (MM-DD): gruppespillets runder og knockoutrunderne – udeladt = VM/EM i juni/juli */
   days?: { g: string[]; ko: Record<string, string> };
+  /** gruppekampe, der allerede er spillet uden for rundedagen (forkørslen 0x5cc850 – cmPrerunMatches.ts): "a-b" */
+  played?: string[];
 }
+/** VM-kvalifikationen i Oceanien (OFC) i forkørslen: to grupper à fem og en dobbeltkamp mellem gruppevinderne (cmPrerunMatches.ts) */
+export interface OfcQual { year: number; groups: number[][]; table: Record<number, IntlRow>; final: IntlTie[]; winner?: number }
 /** Kvalifikationen til næste VM/EM: grupper af fire i hver verdensdel, spillet i landsholdsvinduerne (*estimeret* format) */
 export interface IntlQual { name: 'wc' | 'euro'; year: number; groups: number[][]; region: string[]; table: Record<number, IntlRow>; round: number; qualified?: number[] }
 export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro' | 'copa' | 'afcon' | 'asian' | 'wcq' | 'euroq' | 'u21'; stage?: string }
@@ -32,6 +36,8 @@ export interface IntlState {
   /** kontinentale slutrunder (Copa América, Afrikamesterskabet, Asian Cup) */
   cont?: IntlTournament[];
   qual?: IntlQual;
+  /** (forkørslen) Oceaniens VM-kvalifikation i foråret 2001 */
+  ofcq?: OfcQual;
   /** originalens data (kun den originale database): stadion, FIFA-koefficient, landstræner, titler og slutrunder før 2001 */
   info?: Record<number, NatInfo>; past?: PastFinal[];
   /** FIFA-point pr. nation (start: originalens koefficient eller styrken; opdateres efter hver landskamp – *estimeret* Elo) */
@@ -46,6 +52,14 @@ const KO_DAYS: Record<string, string> = { R16: '06-23', QF: '06-27', SF: '07-01'
 const INJ = ['bruise', 'hamstring', 'groin', 'calf', 'knee', 'back'];
 
 const state = (): IntlState => (gs().intl ??= { results: [], history: [] });
+export const intlState = state;
+const play = (...a: Parameters<typeof playNation>) => playNation(...a);
+
+/** Fyldspillere til landshold uden nok rigtige spillere (forkørslens VM-kvalifikation i Oceanien: Fiji, Tahiti, Vanuatu …). Originalen fylder
+ *  alle hold op med genererede spillere (virtual_staff.cpp); landsholdenes gren 0x90dc66 er ikke læst – cmPrerunMatches.ts laver dem (*estimeret*).
+ *  De ligger kun her, aldrig i g.players. */
+let fillers: Map<number, Player[]> | null = null;
+export function setNationFillers(m: Map<number, Player[]> | null): void { fillers = m; cache = null; }
 
 /** Landets spillere pr. nation (bygges én gang pr. dag) */
 let cache: { date: string; by: Map<number, Player[]> } | null = null;
@@ -58,6 +72,7 @@ function byNation(): Map<number, Player[]> {
     if (age < 17 || age > 36 || p.injury || p.ca < 60) continue;
     (by.get(p.nation) ?? by.set(p.nation, []).get(p.nation)!).push(p);
   }
+  if (fillers) for (const [n, list] of fillers) by.set(n, [...(by.get(n) ?? []), ...list]);
   for (const list of by.values()) list.sort((a, b) => b.ca - a.ca);
   cache = { date: g.date, by };
   return by;
@@ -87,13 +102,13 @@ export function nationStrength(n: number): number {
   return sq.length >= 14 ? sq.reduce((s, p) => s + p.ca, 0) / sq.length : 0;
 }
 
-function ranked(filter?: (n: number) => boolean): number[] {
+export function ranked(filter?: (n: number) => boolean): number[] {
   const g = gs();
   return g.nations.map((_, i) => i).filter((i) => (!filter || filter(i)) && nationStrength(i) > 0).sort((a, b) => nationStrength(b) - nationStrength(a));
 }
 
 /** Spil en landskamp i kampmotoren og bogfør landskampe, mål og skader */
-function play(home: number, away: number, kind: IntlResult['kind'], stage?: string, needsWinner = false): IntlResult & { pens?: [number, number] } {
+export function playNation(home: number, away: number, kind: IntlResult['kind'], stage?: string, needsWinner = false): IntlResult & { pens?: [number, number] } {
   const g = gs();
   const u21 = kind === 'u21';
   const cm = cmFitOn(g);
@@ -292,7 +307,7 @@ function qualRound() {
   if (!q || q.round >= 4) return new Set<number>();
   const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]], [[1, 0], [3, 2]]][q.round];
   for (const grp of q.groups) for (const [i, j] of pairs) {
-    const r = play(grp[i], grp[j], q.name === 'wc' ? 'wcq' : 'euroq');
+    const r = playNation(grp[i], grp[j], q.name === 'wc' ? 'wcq' : 'euroq');
     const a = q.table[grp[i]], b = q.table[grp[j]];
     a.p++; b.p++; a.gf += r.hg; a.ga += r.ag; b.gf += r.ag; b.ga += r.hg;
     if (r.hg > r.ag) { a.w++; a.pts += 3; b.l++; } else if (r.hg < r.ag) { b.w++; b.pts += 3; a.l++; } else { a.d++; b.d++; a.pts++; b.pts++; }
@@ -333,7 +348,7 @@ function u21Friendlies() {
   for (let i = 0; i + 1 < sh.length; i += 2) play(sh[i], sh[i + 1], 'u21');
 }
 
-const rowsOf = (t: IntlTournament, grp: number[]) => grp.map((n) => t.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
+export const rowsOf = (t: IntlTournament, grp: number[]) => grp.map((n) => t.table[n]).sort((a, b) => b.pts - a.pts || b.gf - b.ga - (a.gf - a.ga) || b.gf - a.gf);
 
 function tournamentDay(t: IntlTournament | undefined) {
   const g = gs();
@@ -345,7 +360,9 @@ function tournamentDay(t: IntlTournament | undefined) {
     // runde 1: 1-2, 3-4 · runde 2: 1-3, 2-4 · runde 3: 1-4, 2-3
     const pairs = [[[0, 1], [2, 3]], [[0, 2], [1, 3]], [[0, 3], [1, 2]]][round];
     for (const grp of t.groups) for (const [i, j] of pairs) {
-      const r = play(grp[i], grp[j], t.name);
+      const key = `${grp[i]}-${grp[j]}`;
+      if (t.played?.includes(key)) continue;                                  // allerede spillet i forkørslen
+      const r = playNation(grp[i], grp[j], t.name);
       const a = t.table[grp[i]], b = t.table[grp[j]];
       a.p++; b.p++; a.gf += r.hg; a.ga += r.ag; b.gf += r.ag; b.ga += r.hg;
       if (r.hg > r.ag) { a.w++; a.pts += 3; b.l++; } else if (r.hg < r.ag) { b.w++; b.pts += 3; a.l++; } else { a.d++; b.d++; a.pts++; b.pts++; }
@@ -364,7 +381,7 @@ function tournamentDay(t: IntlTournament | undefined) {
   const ko = t.ko.filter((x) => x.stage === t.stage && x.winner === undefined);
   if (!ko.length || kdays[t.stage] !== md) return;
   for (const tie of ko) {
-    const r = play(tie.a, tie.b, t.name, tie.stage, true);
+    const r = playNation(tie.a, tie.b, t.name, tie.stage, true);
     tie.hg = r.hg; tie.ag = r.ag; tie.pens = !!r.pens;
     tie.winner = r.hg > r.ag ? tie.a : r.hg < r.ag ? tie.b : r.pens ? (r.pens[0] > r.pens[1] ? tie.a : tie.b) : rng.chance(0.5) ? tie.a : tie.b;
   }
