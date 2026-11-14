@@ -25,7 +25,7 @@
 import type { Club, Contract, ContractClauses, GameState, Player } from './types';
 import { type CmCtx, G } from './cmMem';
 import { buildWageMem, cmMemCall, type WageMem } from './cmWageGame';
-import { setToDesiredContract_85fc50, constructContract_85e410 } from './cmContractWant';
+import { setToDesiredContract_85fc50, constructContract_85e410, calcContractValue_866830 } from './cmContractWant';
 import { offerContract_4cda70 } from './cmContract';
 import { getClubFinance_5a0590 } from './cmWage';
 import { genCtx } from './cmGen/impls';
@@ -399,6 +399,84 @@ export function aiContract(g: GameState, p: Player, club: Club, fallback: () => 
   const c: Contract = { wage: t.wage, expires: t.expires };
   applyCmTerms(c, t);
   return { contract: c, signOn: t.signOn };
+}
+
+// ---------------------------------------------------------------- forhandlingen efter et accepteret bud (cmTransferTalks.ts)
+
+/** Hukommelsen for spilleren og den købende klub (som aiTerms) med en egen talrække for kaldet `site` */
+function talkMem(g: GameState, p: Player, clubId: number, site: number) {
+  if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
+  const home = p.loan?.from ?? p.club;
+  const M = buildWantMem(g, home ? [home, clubId] : [clubId]);
+  let st = M.W.staffOf(p);
+  if (!st) st = M.W.addGenerated(p, 0);
+  const club = M.W.clubOf(clubId);
+  if (!st || !club) return null;
+  const [d] = isoDay(g.date);
+  M.setRand(cmRand(g.seed ?? 0, p.id, clubId, d, site));
+  M.byStaff.set(st, p);
+  return { M, st, club, status: newClubStatus(g, p, clubId) };
+}
+
+/** 0x8c0080 (timing 0xb): vil spilleren overhovedet tale med køberen? Shortlist_Manager 0x846920(staff, klub, 0, 0, status, &ud) med status 1,
+ *  når køberen er menneskets (0x600a50); under 0,75 ([0x969040]) afviser han skiftet (0x8d8310). Null uden for cmActive. */
+export function cmMoveInterest(g: GameState, p: Player, clubId: number): number | null {
+  const T = talkMem(g, p, clubId, 0x8c0080);
+  if (!T) return null;
+  const c = T.M.c;
+  c.m.w32(OUT, 0);
+  return slCall(c, 0x846920, slmOf(c.m), T.st, T.club, 0, 0, 1, OUT);
+}
+
+/** Spillerens krav i Offer Contract (0x85fc50 med køberens trupstatus, job 0xb – samme som 0x4ce4e0 sammenligner med) */
+export function cmTalkDemand(g: GameState, p: Player, clubId: number): CmTerms | null {
+  const T = talkMem(g, p, clubId, 0x85fc50);
+  if (!T) return null;
+  const m = T.M.c.m;
+  constructContract_85e410(m, LOCAL);
+  setToDesiredContract_85fc50(T.M.c, LOCAL, T.st, T.club, -1, T.status, 0xb, 0, 0);
+  return termsOf(T.M.c, LOCAL, false, valueOf(g, p, clubId));
+}
+
+/** Menneskets tilbud i spillets enheder */
+export interface CmOfferTerms { wage: number; expires: string; signOn?: number; bonusGbp?: [number, number, number]; clauses?: number[]; clauseFee?: number; partTime?: boolean }
+
+/** CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0 for ét tilbud fra en anden klub (transfertilbud, job 0xb): point = 0x866830(tilbud)/
+ *  0x866830(krav) − (staff +0x5b − +0x57 + +0x59 − 9)/300; under 0,6 → 0. x = 0x846920(staff, klub, 0, 0, status, 0).
+ *  ≥ 0,9: x' = max(x, 3,15); 0,8–0,9 og x > 3,15: x; 0,7–0,8 og x > 3,5: x; ellers intet. Ja, når x'·point > 2,75 (startværdien `best`). */
+export function cmContractAnswer(g: GameState, p: Player, clubId: number, o: CmOfferTerms): { score: number; x: number; t: number; accept: boolean } | null {
+  const T = talkMem(g, p, clubId, 0x4ce4e0);
+  if (!T) return null;
+  const c = T.M.c, m = c.m, st = T.st;
+  constructContract_85e410(m, LOCAL);
+  setToDesiredContract_85fc50(c, LOCAL, st, T.club, -1, T.status, 0xb, 0, 0);
+  // tilbuddet = kravet med menneskets felter (klubben, startdatoen og typen som kravets)
+  for (let i = 0; i < 0x50; i++) m.w8(OUT + i, m.u8(LOCAL + i));
+  const gbp = (eur: number | undefined) => Math.round((eur ?? 0) * GBP);
+  m.w32(OUT + 0xc, gbp(o.wage));
+  m.w32(OUT + 8, gbp(o.signOn));
+  const b = o.bonusGbp ?? [-1, -1, -1];
+  for (let i = 0; i < 3; i++) m.w32(OUT + 0x10 + 4 * i, b[i]);
+  const cl = o.clauses ?? [0, 0, 0, 0, 0];
+  for (let i = 0; i < 5; i++) m.w8(OUT + 0x1c + i, cl[i] ?? 0);
+  m.w32(OUT + 0x21, gbp(o.clauseFee));
+  const [d, y] = isoDay(o.expires); m.w16(OUT + 0x2d, d); m.w16(OUT + 0x2f, y); m.w32(OUT + 0x31, leap(y));
+  m.w8(OUT + 0x35, (m.u8(OUT + 0x35) & 0x7f) | (o.partTime ? 0x80 : 0));
+  const s8 = (v: number) => (v << 24) >> 24;
+  const loyAdj = (s8(m.u8(st + 0x5b)) - s8(m.u8(st + 0x57)) + s8(m.u8(st + 0x59)) - 9) * 0.0033333333333333335;
+  const a = calcContractValue_866830(c, LOCAL, st, LOCAL) | 0;
+  if (!(a > 0)) return { score: 0, x: 0, t: 0, accept: false };
+  const bv = calcContractValue_866830(c, OUT, st, LOCAL) | 0;
+  let score = bv / a - loyAdj;
+  // 0x4ceae2: ikke-spillerposten +0x69 findes ikke for spillere → 0x846920 alene
+  const x = slCall(c, 0x846920, slmOf(m), st, T.club, 0, 0, T.status, 0);
+  if (score < 0.6) score = 0;
+  let f = 0;
+  if (score >= 0.9) f = x > 3.15 ? x : 3.15;
+  else if (score > 0.8 && x > 3.15) f = x;
+  else if (score > 0.7 && x > 3.5) f = x;
+  const t = f * score;
+  return { score, x, t, accept: t > 2.75 };
 }
 
 export type { ContractClauses };

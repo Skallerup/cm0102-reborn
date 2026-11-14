@@ -783,6 +783,8 @@ async function run(look) {
         const target = page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first();
         await target.scrollIntoViewIfNeeded();
         await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target);
+        // trækket kan glippe under belastning – prøv én gang til
+        if (!(await gs((id) => window.__cm.gs().tactic.lineup[1] === id, free))) { await page.waitForTimeout(300); await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target); }
         await page.waitForFunction((id) => window.__cm.gs().tactic.lineup[1] === id, free, { timeout: 5000 }).catch(() => { throw new Error('trækket fra strimlen ned på en spiller satte ham ikke på pladsen'); });
       }
       // klik på en besat plads i strimlen tømmer den
@@ -992,6 +994,44 @@ async function run(look) {
     const o = await gs((id) => window.__cm.gs().offers.filter((x) => x.player === id).at(-1), pid);
     if (o && (o.months !== 12 || o.sellOn !== 10 || o.lgApps !== 20 || !o.intFee || !o.pub)) throw new Error(`buddets vilkår blev ikke gemt (${JSON.stringify(o)})`);
     await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eBidMode; window.__cm.notify(); });
+  });
+  // CM 01/02 efter et accepteret bud (cmTransferTalks.ts, 0x8c0080): "<X> transfer offer accepted" og "Offer contract to <X>" samme dag;
+  // knappen Offer Contract i nyheden åbner Offer Contract-skærmen, Offer → Yes sender tilbuddet (svaret kommer som nyhed om 1–5 dage)
+  if (look === 'klassisk' && ENGINE_GRID) await step('accepteret bud → to nyheder → Offer Contract (original)', async () => {
+    const r = await gs(() => {
+      const g = window.__cm.gs();
+      window.__e2eTalkMode = g.options.mode; g.options.mode = 'authentic'; g.clubs[g.userClub].wageBudget += 10_000_000;
+      const cands = Object.values(g.players).filter((p) => p.club && p.club !== g.userClub && g.clubs[p.club]?.league === g.clubs[g.userClub].league && !p.loan).sort((a, b) => a.ca - b.ca).slice(0, 40);
+      for (const p of cands) {
+        const o = { id: g.nextId.offer++, player: p.id, buyer: g.userClub, seller: p.club, fee: p.value, loan: false, status: 'pending', created: g.date, respondBy: g.date };
+        g.offers.push(o);
+        window.__cm.cmAcceptBid(o, p);
+        if (o.status === 'negotiating') { window.__cm.notify(); return { oid: o.id, last: p.last, date: g.date }; }
+      }
+      return null;
+    });
+    if (!r) throw new Error('ingen spiller ville forhandle');
+    const heads = await gs((oid) => {
+      const g = window.__cm.gs(), o = g.offers.find((x) => x.id === oid), p = g.players[o.player];
+      return g.news.filter((n) => n.date === g.date && n.params?.last === p.last && (n.key === 'transfer.cmAccepted' || n.key === 'transfer.cmTalks')).map((n) => n.key);
+    }, r.oid);
+    if (heads.length !== 2) throw new Error(`ikke to nyheder samme dag (${heads.join(', ')})`);
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow', { hasText: `${r.last} transfer offer accepted` }).first().waitFor({ timeout: 5000 });
+    await page.locator('.cx-nrow', { hasText: `Offer contract to ${r.last}` }).first().click();
+    await page.waitForSelector('.cx-offer-contract', { timeout: 5000 });
+    if (!(await page.locator('.cx-nbody').innerText()).includes('permission to discuss a contract with')) throw new Error('brødteksten er ikke originalens');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-offer-contract-nyhed.png` });
+    await page.locator('.cx-offer-contract').click();
+    await page.waitForSelector('.cx-neg-tabs', { timeout: 5000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-offer-contract.png` });
+    await page.locator('.cx-dlg-foot button.primary', { hasText: 'Offer' }).click();
+    await page.locator('.cx-dlg-foot button.primary', { hasText: 'Yes' }).click();
+    await page.waitForSelector('.cx-neg-tabs', { state: 'detached', timeout: 5000 });
+    const st = await gs((oid) => window.__cm.gs().offers.find((x) => x.id === oid)?.cmTalks?.state, r.oid);
+    if (st !== 1) throw new Error(`tilbuddet blev ikke sendt (${st})`);
+    if (!(await page.locator('.cx-nbody').innerText()).includes('have offered a contract.')) throw new Error('nyheden viser ikke "have offered a contract."');
+    await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eTalkMode; window.__cm.notify(); });
   });
   // CM 01/02's transferliste med den originale database (cmTransferList.ts): Set Staff Transfer Status (billig udbudspris = værdien +0x52,
   // Not Needed, transferlistet) → Transfer-fanens Availability/Value/Future; transferanmodningen "X requests move" med Respond → Yes

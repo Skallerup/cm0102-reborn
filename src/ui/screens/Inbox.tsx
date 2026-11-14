@@ -30,6 +30,7 @@ import { Tabs } from '../components';
 import { ClassicSub, cxShortDate } from '../classic';
 import { IncomingBidPanel, JobOfferPanel, TransferRequestPanel } from './TransferStatusClassic';
 import { requestOpen } from '../../game/cmTransferList';
+import { cmTalksOpen } from '../../game/cmTransferTalks';
 
 /** Klassisk tema: nyhedsfiltre som faner (øverst) og under-knapper (nederst) */
 const CX_TOP = ['all', 'messages', 'competitions', 'injuries'] as const;
@@ -68,6 +69,7 @@ export function Inbox() {
   const [eurOpen, setEurOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState<number | null>(null);
+  const [talkOpen, setTalkOpen] = useState<number | null>(null);
   const { nav } = useNav();
   const item = g.news.find((n) => n.id === sel);
   if (item && !item.read) queueMicrotask(() => act({ t: 'read', ids: [item.id] }));
@@ -117,6 +119,11 @@ export function Inbox() {
   // afviste kontrakttilbud (CM 01/02: Negotiate)
   const rejStaff = item && cmActive(g) ? cmRejectStaff(g, item) : null;
   const delayOpen = item && cmActive(g) && cmStaffDelayOpen(g, item);
+  // CM 01/02 "Offer contract to X" (0x8f1950: Offer Contract) og "X rejects Y" efter et afvist tilbud (Negotiate) – tilbuddet er stadig åbent
+  const talk = item && (item.key === 'transfer.cmTalks' || item.key === 'transfer.cmRejects') && item.link?.kind === 'offer'
+    ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
+  const talkOffer = cmTalksOpen(g, talk) ? talk : undefined;
+  const talkLive = talkOpen !== null ? g.offers.find((o) => o.id === talkOpen) : undefined;
   const rejPid = item?.key === 'contract.offerRejected' && item.link?.kind === 'player' ? Number(item.link.id) : undefined;
   const rejPlayer = rejPid !== undefined && authentic() && g.players[rejPid]?.club === g.userClub && !g.pendingRenewals?.some((r) => r.pid === rejPid) ? rejPid : undefined;
 
@@ -134,6 +141,7 @@ export function Inbox() {
     if (eurOpen && euroDue(g.userClub)) return <div><Head title={t('eur.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicEuroSquad onClose={() => setEurOpen(false)} /></div>;
     // CM 01/02: Respond på "X requests move" (0x4dca40) åbner Transfer Request
     if (reqOpen && item && requestOpen(g, item)) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><TransferRequestPanel news={item} onClose={() => setReqOpen(false)} /></div>;
+    if (cmTalksOpen(g, talkLive)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
     if (renewOpen !== null && g.players[renewOpen]?.club === g.userClub) return <div><ClassicNegotiation renewPid={renewOpen} onClose={() => setRenewOpen(null)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
     const pick = (k: CxGroup) => { setGrp(k); setCat('all'); const first = g.news.find((n) => k === 'all' ? !n.muted : CX_CATS[k].includes(n.cat)); setSel(first?.id ?? null); };
@@ -163,6 +171,7 @@ export function Inbox() {
           {/* CM 01/02 (0xa6943c): "X rejects Y" har knappen Negotiate – kontrakttilbuddet igen (stab: cmStaff.ts, egne spillere: forlængelsen) */}
           {delayOpen && item && <button className="cx-grey cx-respond" onClick={() => setDelayFor(item.id)}>{t('cl.bid.respond')}</button>}
           {rejStaff && item && <button className="cx-grey cx-respond cx-negotiate" onClick={() => nav({ name: 'staff', id: rejStaff.id, state: { stoffer: String(item.params.role ?? rejStaff.role) } })}>{t('cl.negotiate')}</button>}
+          {talkOffer && <button className={`cx-grey cx-respond ${item?.key === 'transfer.cmTalks' ? 'cx-offer-contract' : 'cx-negotiate'}`} onClick={() => setTalkOpen(talkOffer.id)}>{t(item?.key === 'transfer.cmTalks' ? 'cl.offerContract' : 'cl.negotiate')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}
           {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}
           {ultReq !== null && item && <button className="cx-grey cx-respond cx-ultimatum" onClick={() => {

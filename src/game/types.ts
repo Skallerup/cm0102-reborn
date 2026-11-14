@@ -778,6 +778,8 @@ export interface TransferOffer {
   cmCounter?: import('./cmTransferBid').BidTerms;
   /** buddet er endeligt (timing-nibble 2, 0x8c0810) */
   final?: boolean;
+  /** CM 01/02 (cmTransferTalks.ts): kontraktforhandlingen efter et accepteret bud (0x8c0080 → Offer contract to …) */
+  cmTalks?: import('./cmTransferTalks').CmTalks;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

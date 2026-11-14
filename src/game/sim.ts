@@ -769,7 +769,7 @@ export function continueGame(pauseBefore?: (date: string) => boolean): DayResult
   const r = playDay();
   if (r.match) return r;
   const fresh = g.news.filter((n) => n.id >= lastNews);
-  const important = fresh.find((n) => ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.bidCountered', 'news.jobOffer', 'job.invite', 'board.sacked', 'board.sackedSeason', 'board.warning'].includes(n.key));
+  const important = fresh.find((n) => ['transfer.incomingBid', 'transfer.bidAccepted', 'transfer.cmAccepted', 'transfer.cmAgrees', 'transfer.cmRejects', 'transfer.bidCountered', 'news.jobOffer', 'job.invite', 'board.sacked', 'board.sackedSeason', 'board.warning'].includes(n.key));
   if (important) return { stop: important.key };
   return {};
 }

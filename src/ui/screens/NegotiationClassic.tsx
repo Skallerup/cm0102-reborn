@@ -10,7 +10,8 @@ import { poachFee } from '../../game/staff';
 import { money, t } from '../../i18n';
 import { CxDrop, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
-import { ageOn } from '../../game/dates';
+import { ageOn, year } from '../../game/dates';
+import { cmTalksDemand } from '../../game/cmTransferTalks';
 
 type Tab = 'basic' | 'bonuses' | 'clauses';
 const r50 = (v: number) => Math.max(0, Math.round(v / 50) * 50);
@@ -95,8 +96,10 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const pid = offer?.player ?? renewPid!;
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
-  const demand = r50(offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
-  const wantYears = offer?.demand?.years ?? preferredYears(p);
+  // CM 01/02 efter et accepteret bud: spillerens krav 0x85fc50 (cmTransferTalks.ts)
+  const [cmWant] = useState(() => (offer?.cmTalks ? cmTalksDemand(offer) : null));
+  const demand = r50(cmWant?.wage ?? offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
+  const wantYears = cmWant ? Math.max(1, Number(cmWant.expires.slice(0, 4)) - year(g.date)) : offer?.demand?.years ?? preferredYears(p);
   const [tab, setTab] = useState<Tab>('basic');
   // egen spiller (CM 01/02): først "Set Role At Club" – status i truppen og jobbeskrivelse
   const [roleStep, setRoleStep] = useState(!offer);
@@ -104,7 +107,7 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const [job, setJob] = useState<'player' | 'assistant' | 'coach'>(p.jobRole ?? 'player');
   const [wage, setWage] = useState(demand);
   const [years, setYears] = useState(wantYears);
-  const signReq = signOnDemand(p, demand, !!offer && (!offer.fee || !!offer.preContract));
+  const signReq = cmWant ? Math.round(cmWant.signOn / 500) * 500 : signOnDemand(p, demand, !!offer && (!offer.fee || !!offer.preContract));
   const [cl, setCl] = useState<ContractClauses>(signReq ? { signOn: signReq } : {});
   const [ask, setAsk] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -124,6 +127,8 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
     // egen spiller (CM 01/02): tilbuddet sendes, man er straks tilbage på profilen, og svaret kommer som nyhed i morgen
     if (!offer) { act({ t: 'renewLater', pid, wage, years, clauses: cl }); onClose(); return; }
     const res = offer ? act<string>({ t: 'negotiate', pid, wage, years, clauses: cl }) : act<string>({ t: 'renew', pid, wage, years, clauses: cl });
+    // CM 01/02: tilbuddet er sendt – svaret kommer som nyhed om 1–5 dage
+    if (res === 'cmSent') { onClose(); return; }
     if (res === 'accepted') { setMsg(t('cl.neg.accepted', { player: name })); setTimeout(onClose, 2200); }
     else if (res === 'pending') { setMsg(t('neg.pendingMp')); setTimeout(onClose, 3200); }
     else if (res === 'counter') {

@@ -20,6 +20,7 @@ import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
 import { aiContract, cmAiTerms } from './cmContractGame';
+import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
@@ -538,12 +539,17 @@ export function clausesWorthFor(p: Player, clubId: number, wage: number, years: 
   return clauseWorth(p, wage, years, c, rankIn(p, clubId));
 }
 
-export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' | 'pending' {
+export function negotiate(offerId: number, wage: number, years: number, clauses?: ContractClauses): 'accepted' | 'counter' | 'refused' | 'budget' | 'pending' | 'cmSent' {
   const g = gs();
   const o = g.offers.find((x) => x.id === offerId);
   if (!o) return 'refused';
   const p = g.players[o.player];
   const club = g.clubs[o.buyer];
+  // CM 01/02: Offer Contract efter et accepteret bud – svaret kommer som nyhed om 1–5 dage (cmTransferTalks.ts)
+  if (o.cmTalks && cmActive(g)) {
+    if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
+    return cmOfferContract(o, wage, years, clauses);
+  }
   const interest = playerInterest(p, club);
   if (interest !== 'yes') {
     o.status = 'collapsed';
@@ -892,7 +898,9 @@ export function startPreContract(pid: number): TransferOffer | string {
 
 export function processOffers() {
   const g = gs();
-  const skip = (o: TransferOffer) => !!o.signing;
+  const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks;
+  // CM 01/02: forhandlingerne efter et accepteret bud (svarene, fristerne)
+  for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, completeTransfer);
   // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
   const best = new Map<string, TransferOffer>();
   for (const o of g.offers) {
@@ -948,6 +956,8 @@ function aiAnswerBid(o: TransferOffer) {
   }
   // frikøbsklausulen er betalt: sælgeren kan ikke sige nej
   if (p.contract?.release && o.fee >= p.contract.release) {
+    // CM 01/02: selling_club_must_accept 0x8cd240 → accept_transfer_bid 0x8c0080
+    if (cmTalksOn(g, o)) { cmAcceptBid(o, p); return; }
     o.status = 'negotiating';
     o.respondBy = addDays(g.date, 10);
     addNews({ cat: 'transfer', key: 'transfer.releaseMet', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
@@ -992,9 +1002,8 @@ function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
   const base = newTerms(g, p, buyer.id, 0);
   const r = aiRespond(t, c, { asking, rivals, unwanted, final: !!o.final, base, clause: clauseOptIn(g, p, buyer.id) });
   if (r.kind === 'accept') {
-    o.status = 'negotiating';
-    o.respondBy = addDays(g.date, 10);
-    addNews({ cat: 'transfer', key: 'transfer.bidAccepted', params: { player: pname(p), club: sellerName(o.seller), fee: o.fee }, link: { kind: 'offer', id: o.id } });
+    // 0x8c0080: "<Player> transfer offer accepted" og "Offer contract to <Player>" (cmTransferTalks.ts)
+    cmAcceptBid(o, p);
   } else if (r.kind === 'counter') {
     o.status = 'countered';
     o.counter = Math.max(0, r.terms.fee);
@@ -1061,6 +1070,9 @@ export function acceptCounter(id: number) {
   if (o.counter > buyer.transferBudget) return 'transfer.overBudget';
   if (o.cmCounter && cmActive(g)) { putTerms(o, o.cmCounter); o.cmCounter = undefined; }
   o.fee = o.counter;
+  // CM 01/02: modbuddet accepteret → 0x8c0080 (de to nyheder og Offer Contract)
+  const pp = g.players[o.player];
+  if (pp && cmTalksOn(g, o)) { cmAcceptBid(o, pp); return 'ok'; }
   o.status = 'negotiating';
   o.respondBy = addDays(g.date, 10);
   return 'ok';

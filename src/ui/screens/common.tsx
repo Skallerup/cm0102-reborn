@@ -96,6 +96,8 @@ function bodyKey(n: NewsItem): string {
     return n.key === 'intl.sel1' ? (noOpp ? 'intl.sel1.noOpp' : 'intl.sel1.body') : many ? (noOpp ? 'intl.selN.manyNoOpp' : 'intl.selN.many') : noOpp ? 'intl.selN.noOpp' : 'intl.selN.body';
   }
   // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
+  // CM 01/02 0xfa4: "However, he is willing to negotiate terms." mens han kan få et nyt tilbud
+  if (n.key === 'transfer.cmRejects') return n.params?.again ? 'transfer.cmRejects.again' : 'transfer.cmRejects.body';
   if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
   // Discipline Player (cmFine.ts): originalens brødtekst er valgt i spillet (0x5a76e0/0x5a7ed0/0x5a8090)
   if (n.key.startsWith('cmfine.') && typeof n.params?.body === 'string') return `cmfine.b.${n.params.body}`;
@@ -113,6 +115,12 @@ function offerAnswer(n: NewsItem): string {
   if (n.key === 'eur.request') return n.params?.done !== undefined ? `\n\n${t('eur.registered', { n: Number(n.params.done) })}` : '';
   if (n.link?.kind !== 'offer') return '';
   const g = gs();
+  // CM 01/02 "Offer contract to X" (0x8d7fb0): tilbuddets +0x10 læst levende – 1 "have offered a contract", 4 "have decided to withdraw the transfer bid"
+  if (n.key === 'transfer.cmTalks') {
+    const o = g.offers.find((x) => x.id === Number(n.link!.id));
+    const st = !o ? 0 : o.cmTalks?.state === 1 && (o.status === 'negotiating' || o.status === 'completed') ? 1 : o.cmTalks?.state === 4 || o.status === 'collapsed' || o.status === 'withdrawn' ? 4 : 0;
+    return st === 1 ? `\n\n${t('transfer.cmTalks.offered', { buyer: String(n.params.buyer ?? '') })}` : st === 4 ? `\n\n${t('transfer.cmTalks.withdrawn', { buyer: String(n.params.buyer ?? '') })}` : '';
+  }
   const o = g.offers.find((x) => x.id === Number(n.link!.id));
   if (!o || o.seller !== g.userClub || o.status === 'pending') return '';
   const club = g.clubs[g.userClub]?.short ?? '';
