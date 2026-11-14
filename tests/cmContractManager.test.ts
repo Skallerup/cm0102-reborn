@@ -5,6 +5,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { cmCmScope, cmContractManagerDay } from '../src/game/cmContractManager';
+import { cmContractEnd } from '../src/game/cmContractEnd';
 import type { GameState, Player } from '../src/game/types';
 
 let g: GameState;
@@ -64,5 +65,41 @@ describe('0x4c7ac0 på spillets data', () => {
     cmContractManagerDay(g);
     expect(c.club).toBe(0);
     expect(b.club).toBe(cb);
+  });
+});
+
+// startkontrakternes udløb 0x4c7560: databasens dato som den står, trukket hvis den mangler, +52 uger hvis for tidlig
+describe('cmContractEnd (0x4c7560)', () => {
+  it('databasens dato gælder med dag og måned', () => {
+    expect(cmContractEnd('2003-05-31', '2001-07-14', 'England', 1, 5)).toBe('2003-05-31');
+    expect(cmContractEnd('2002-07-01', '2001-07-14', 'England', 1, 5)).toBe('2002-07-01');
+  });
+  it('for tidlige udløb får 52 uger, så længe de er under start + 8 dage', () => {
+    expect(cmContractEnd('2001-06-30', '2001-07-14', 'England', 1, 5)).toBe('2002-06-29');
+    expect(cmContractEnd('1999-06-30', '2001-07-14', 'England', 1, 5)).toBe('2002-06-26');
+    expect(cmContractEnd('2001-07-20', '2001-07-14', 'England', 1, 5)).toBe('2002-07-19');
+    expect(cmContractEnd('2001-07-22', '2001-07-14', 'England', 1, 5)).toBe('2001-07-22');
+  });
+  it('manglende dato trækkes: år +1…+6, dag 1…28, nationens måned', () => {
+    const years = new Set<string>(), days = new Set<number>();
+    for (let id = 1; id <= 400; id++) {
+      const e = cmContractEnd('', '2001-07-14', 'England', 7, id);
+      expect(e.slice(5, 7)).toBe('06');
+      years.add(e.slice(0, 4)); days.add(Number(e.slice(8)));
+    }
+    expect([...years].sort()).toEqual(['2002', '2003', '2004', '2005', '2006', '2007']);
+    expect(Math.min(...days)).toBe(1);
+    expect(Math.max(...days)).toBe(28);
+    expect(cmContractEnd('', '2001-07-14', 'Brazil', 7, 3).slice(5, 7)).toBe('12');
+    expect(cmContractEnd('', '2001-07-14', 'England', 7, 3)).toBe(cmContractEnd('', '2001-07-14', 'England', 7, 3));
+  });
+  it('nyt spil: engelske udløb er spredt over maj–juli med 30/6 som den hyppigste dag', () => {
+    const ends = scoped().map((p) => p.contract!.expires);
+    const md = new Map<string, number>();
+    for (const e of ends) md.set(e.slice(5), (md.get(e.slice(5)) ?? 0) + 1);
+    const top = [...md.entries()].sort((a, b) => b[1] - a[1])[0];
+    expect(top[0]).toBe('06-30');
+    expect(md.size).toBeGreaterThan(20);
+    expect(md.get('06-01') ?? 0).toBeGreaterThan(50);
   });
 });

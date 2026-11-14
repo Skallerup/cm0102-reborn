@@ -42,6 +42,7 @@ import './cmFriendly';                                              // forkørsl
 import { cmRelNewGame } from './cmRelations';
 import { cmFinanceNewGame } from './cmFinance';
 import { cmContractsNewGame } from './cmContractInit';
+import { cmContractEnd } from './cmContractEnd';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { cmWageFillNewGame } from './cmWageGame';
@@ -203,6 +204,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens ugentlige lønninger (£, staff.dat 78) – kun den originale database bruger dem (2001-økonomien)
   const dbWage = new Map<number, number>(), dbWageGbp = new Map<number, number>();
   if (g.econ && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) { dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP)); dbWageGbp.set(r[F.id] as number, r[F.wage] as number); }
+  const cmStartGame = !!cm && season < 2020 && o.mode === 'authentic';
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
   for (const r of world.players) {
@@ -218,7 +220,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       club, sub: r[F.pos] as SubPos, foot: r[F.foot] as Player['foot'], height: r[F.height] as number,
       ca: cm?.ratings[r[F.id] as number]?.ca ?? caFromValue(value, age), value, caps: r[F.caps] as number, intGoals: r[F.intGoals] as number,
       stats: { apps: r[F.apps] as number, minutes: r[F.minutes] as number, goals: r[F.goals] as number, assists: r[F.assists] as number, yellows: r[F.yellows] as number, reds: r[F.reds] as number },
-      contractEnd: (r[F.contract] as string) || undefined, date, seed, wealth,
+      // originalens startkontrakt 0x4c7560: databasens dato som den er (trukket, hvis den mangler; +52 uger, hvis for tidlig) – cmContractEnd.ts
+      contractEnd: club && cm && cmStartGame ? cmContractEnd((r[F.contract] as string) || '', date, g.nations[g.leagues[g.clubs[club].league]?.nation]?.name, seed, r[F.id] as number)
+        : (r[F.contract] as string) || undefined, date, seed, wealth,
     });
     // CM 01/02: originalens evner, potentiale og positioner
     const rt = cm?.ratings[p.id];

@@ -1497,7 +1497,8 @@ async function run(look) {
   if (look === 'klassisk') await step('Next Match → Progress', async () => {
     await go({ name: 'assistant' });
     const b = page.locator('.cx-greybtn', { hasText: 'Progress' });
-    await b.click({ timeout: 5000 });
+    await page.waitForSelector('.cx-tabrow', { timeout: 15000 });
+    await b.click({ timeout: 15000 });
     await page.waitForSelector('.cx-prog', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-progress.png` });
   });

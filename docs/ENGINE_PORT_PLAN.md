@@ -111,7 +111,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (kun "udløber i dag → type 1"): pre-0-2001 og pre-194-2001 har samme kontrakter (3 ændrede) – ingen forkørsel nødvendig. Udløbne kontrakter
   (type 1) bliver i klubben; kun "vil væk"/sat fri går 31 dage efter. Originalens udløbsdatoer er spredt over juni (06-30 1.190, 06-01 476,
   07-01 402, 06-29 327, ~95 hver anden junidag) – allerede efter indlæsningen; databasen har mest 30/6 og 31/5, vores parser gør alle til 30/6
-  (cm0102.ts) → spillets bånd falder 30/12 og 31/3, så svarene kommer i januar/april i stedet for december/marts (ikke rettet: world-filerne).
+  (cm0102.ts) → spillets bånd faldt 30/12 og 31/3, så svarene kom i januar/april i stedet for december/marts. **Rettet 14/11:** parseren beholder databasens dato (kun `cmMem`-bygget), og `cmContractEnd.ts` (0x4c7560: manglende dato = år +1…+6, dag 1–28 i nationens måned; udløb < start + 8 dage → +364 dage) sætter udløbet ved nyt spil; målt mod pre-0-2001.bin: 1.962 af 2.084 ens, resten de for tidlige.
 - *Estimeret:* [0xae2330]'s opdatering (31/8 i sæsonens startår), TRANSFER_MANAGER 0x8c5cf0/0x8c5e40/0x8c1870 = spillets åbne bud, 0x7a7eb0 =
   cmRetire, ingen nyheder/ønskelister, sign_contract 0x4cf720's øvrige felter.
 - **Tal** (England, frø 1, 14/7-2001 → 30/6-2002; originalen `scripts/cm-contract-days.ts` på work-r3/snap-start/pre-194-2001.bin og

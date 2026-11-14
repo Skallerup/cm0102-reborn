@@ -608,7 +608,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const value = Math.max(0, S.i32(o + 82)) * 3.2;
     players.push([
       id, commonName ? '' : firstName, commonName || lastName || firstName, dob, nation, club, subPos(pos, side), foot, 0,
-      Math.round(value), Math.round(value), S.u8(o + 34), S.u8(o + 35), contract ? `${contract.slice(0, 4)}-06-30` : '', 0, 0, 0, 0, 0, 0,
+      Math.round(value), Math.round(value), S.u8(o + 34), S.u8(o + 35), contract ? (opts.cmMem ? contract : `${contract.slice(0, 4)}-06-30`) : '', 0, 0, 0, 0, 0, 0,
       // trøjenummeret (byte 4 i spillerposten, 0 = intet)
       Math.max(0, Math.min(99, S.i8(po + 4))),
       // ugentlig løn i pund (staff.dat 78)
