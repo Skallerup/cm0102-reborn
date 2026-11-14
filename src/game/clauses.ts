@@ -119,12 +119,16 @@ export function settleSellOn(p: Player, fee: number, seller: Club | undefined, m
 }
 
 /** Efter hver kamp: kamp- og målbonusser (kun kontrakter med bonusser) og nedtælling af add-ons */
-export function afterAppearance(p: Player, goals: number, cleanSheet = false) {
+export function afterAppearance(p: Player, goals: number, cleanSheet = false, cm?: { assists: number; pay: boolean }) {
   const g = gs();
   const club = g.clubs[p.club];
   const c = p.contract;
-  if (club && c && !p.loan) {
-    const bonus = (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
+  if (club && c && !p.loan && (!cm || cm.pay)) {
+    // den originale database i ægte tilstand: CONTRACT_MANAGER::update_after_match 0x4ca6d0 – mål × +0x10 (resultatlinjen +0x21), assists × +0x14
+    // (+0x27) og ved holdets clean sheet (+0x154 = 1, linjen +0x22) +0x18 × +0x27 (sic: assisttallet, ikke 1)
+    const bonus = cm
+      ? (c.goalBonus ?? 0) * goals + (c.cmAssistBonus ?? 0) * cm.assists + (cleanSheet ? (c.cleanSheetBonus ?? 0) * cm.assists : 0)
+      : (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
     if (bonus > 0) { club.balance -= bonus; club.finance.bonuses = (club.finance.bonuses ?? 0) + bonus; }
   }
   const a = p.addOn;

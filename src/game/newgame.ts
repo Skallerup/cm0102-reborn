@@ -39,6 +39,7 @@ import { cmFitNewGame } from './cmFitnessGame';
 import './cmFriendly';                                               // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';
 import { cmFinanceNewGame } from './cmFinance';
+import { cmContractsNewGame } from './cmContractInit';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
@@ -194,8 +195,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   setAutoNumbers(false);
   const F = Object.fromEntries(world.playerFields.map((f, i) => [f, i]));
   // originalens ugentlige lønninger (£, staff.dat 78) – kun den originale database bruger dem (2001-økonomien)
-  const dbWage = new Map<number, number>();
-  if (g.econ && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP));
+  const dbWage = new Map<number, number>(), dbWageGbp = new Map<number, number>();
+  if (g.econ && F.wage !== undefined) for (const r of world.players) if ((r[F.wage] as number) > 0) { dbWage.set(r[F.id] as number, Math.round((r[F.wage] as number) / GBP)); dbWageGbp.set(r[F.id] as number, r[F.wage] as number); }
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
   for (const r of world.players) {
@@ -450,6 +451,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmFitNewGame(g);
   // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
+  // originalens startkontrakter 0x85e960 (cmContractInit.ts): bonusser, klausuler og deltid – kun den originale database i ægte tilstand
+  if (cm) cmContractsNewGame(g, dbWageGbp, seed);
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)

@@ -219,8 +219,11 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
   const bonuses = c ? ([
     c.goalBonus ? t('cl.pl.bonus.goal', { v: money(c.goalBonus) }) : '',
     c.appBonus ? t('cl.pl.bonus.app', { v: money(c.appBonus) }) : '',
+    c.cmAssistBonus ? t('cl.pl.bonus.assist', { v: money(c.cmAssistBonus) }) : '',
     c.cleanSheetBonus ? t('cl.pl.bonus.cs', { v: money(c.cleanSheetBonus) }) : '',
   ].filter(Boolean)) : [];
+  // CM 01/02 (0x85e960): originalens klausuler med det fælles beløb +0x21 (Manager Job Release Clause har intet beløb)
+  const cmCl = c?.cmClauses ? c.cmClauses.map((v, i) => (v ? (i < 4 && c.cmClauseFee ? t('cm.clause.fee', { name: t(`cm.clause.${i}`), v: money(c.cmClauseFee) }) : t(`cm.clause.${i}`)) : '')).filter(Boolean).join(', ') : '';
   const type = p.loan ? <>{t('cl.pl.ctLoan')} <ClubLink id={p.loan.from} /> ({dateFmt(p.loan.until)})</> : !c ? t('common.none') : t(c.partTime ? 'cl.pl.ctPart' : 'cl.pl.ctFull');
   const rows: [string, ReactNode, string?][] = [
     [t('cl.pl.ctType'), type],
@@ -230,7 +233,7 @@ function ContractTab({ p, mine }: { p: Player; mine: boolean }) {
     [t('col.expires'), c ? classicDate(c.expires)[1] : '-'],
     [t('cl.pl.squadStatus'), status ? t(`cl.ts.s.${status}`) : '-'],
     [t('cl.pl.bonuses'), bonuses.length ? bonuses.join(', ') : t('common.none')],
-    [t('cl.pl.clauses'), (mine || k >= 40) && c && clauseText(c) ? clauseText(c) : c?.release && (mine || k >= 40) ? `${t('clause.release')} ${money(c.release)}` : t('common.none')],
+    [t('cl.pl.clauses'), (mine || k >= 40) && cmCl ? cmCl : (mine || k >= 40) && c && clauseText(c) ? clauseText(c) : c?.release && (mine || k >= 40) ? `${t('clause.release')} ${money(c.release)}` : t('common.none')],
     [t('cl.pl.notes'), p.notes || '-'],
   ];
   if (p.contract?.futureClub) rows.push([t('player.nextClub'), <ClubLink id={p.contract.futureClub} />]);

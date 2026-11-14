@@ -4,7 +4,8 @@
 //
 // ---------------------------------------------------------------- kontrakten (80 bytes, STAFF_CONTRACT)
 //   +0 staff-id, +4 klub-id (−1 ingen), +8 underskriftsbeløb (signing on fee), +0xc ugeløn, +0x10/+0x14/+0x18 bonusser (mål, assist, clean sheet;
-//   −1 = ingen), +0x1c..+0x20 fem klausulbytes (+0x1c mindstepris, +0x1d frikøb ved …, +0x1e …, +0x1f nedrykning, +0x20 …), +0x21 klausulbeløb,
+//   −1 = ingen), +0x1c..+0x20 fem klausulbytes (teksttabellen 0x85f940: +0x1c Non Promotion, +0x1d Minimum Fee, +0x1e Non Playing,
+//   +0x1f Relegation, +0x20 Manager Job Release Clause), +0x21 klausulbeløb,
 //   +0x25 start (Date 8 bytes), +0x2d udløb (Date), +0x35 bitfelt (bit 0–5 kontrakttype: 1 rullende/udløbet, 2 almindelig, 5 lån …; bit 6 bevares;
 //   bit 7 ungdomskontrakt/≈ «lav løn»), +0x36 dword, +0x3a byte, +0x3b word, +0x3d/+0x3e/+0x3f tællere, +0x40 begivenheder, +0x44 tilfredshed,
 //   +0x45 klager, +0x49 byte, +0x4a dword (−1), +0x4e flag, +0x4f høj nibble trupstatus.

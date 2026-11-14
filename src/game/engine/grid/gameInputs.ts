@@ -19,7 +19,7 @@
 //   staff+0x65 (forholdene)           Player.cmRel (cmRelations.ts: databasens præferencer + 0x5d6d10 m.fl.), anføreren via captainRel
 //   [0xae2d0c]+79·id+0xa (staffState)  Player.cmStaffState (cmPlayerData.ts – spilstarten 0x828110, dagligt 0x5ce2d0, ferie/skade 0x62c680/0x62d250)
 // Ikke i spillet (dokumenteret i ENGINE_PORT_PLAN.md, runde 8 – grid-input-check.ts måler afvigelsen):
-//   kontraktens +0xc/+0x10/+0x14 (løn/bonusser fra kontraktens oprettelse 0x85e960) – +0x10/+0x14 = −1 (ingen), så leddet 0x6eebda springes over
+//   kontraktens +0x10/+0x14 (bonusserne fra kontraktens oprettelse 0x85e960 – cmContractInit.ts, Contract.cmBonusGbp; nye kontrakter i spillet: −1)
 //   engine+0/+1 (oraklets ligakampe: 0 / 0 eller 2) = 0
 import type { Player } from '../../types';
 import { ageOn } from '../../dates';
@@ -113,7 +113,7 @@ export function matchValuesEnvOf(p: Player, side: GameMatchSide, fx: GameFixture
   return {
     engByte0: 0, engByte1: 0, crowd: 0, cohesion: 0, fx40: 1, fx3a: fx.fx3a, comp: fx.comp, homeLeagueIsComp: fx.homeLeagueIsComp,
     ownClubRep: side.clubRep, captain: null, natOwn: false, natF9: false,
-    contract: ownContract ? { b44: s8(c?.b44 ?? 0), flags: (c?.b45 ?? 0) >>> 0, d0c: Math.round((p.contract!.wage ?? 0) * 0.86), d10: -1, d14: -1 } : null,
+    contract: ownContract ? { b44: s8(c?.b44 ?? 0), flags: (c?.b45 ?? 0) >>> 0, d0c: Math.round((p.contract!.wage ?? 0) * 0.86), d10: p.contract!.cmBonusGbp?.[0] ?? -1, d14: p.contract!.cmBonusGbp?.[1] ?? -1 } : null,
     // 0x53ce90: (+0x4f & 0xf) − 10 for en spiller i databasen med kontrakt med klubben
     contractMod: ownContract && !p.regen && c?.b4f !== undefined ? (c.b4f & 0xf) - 10 : 0,
     inDb: !p.regen, staffState: (p.cmStaffState ?? 0) & 0xff, human: side.human, manager: side.manager,

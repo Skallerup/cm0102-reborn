@@ -46,6 +46,7 @@ import type { Fixture, GameState, MatchReport, MatchResultShort, NewsItem, Playe
 import { monthlyDevelopment, monthlyTrainingReport, monthlyValues, weeklyDevelopment } from './training';
 import { aiLoanOptions, aiPursuits, aiBidsForListed, aiBosman, aiFillSquads, aiReleaseClauses, aiRenewals, aiTransferTick, answerPendingRenewals, contractReminders, processOffers, refreshShortlists, resolveAuctions, resolveSignings, weeklyTransferDigest, windowNews, respondToOffer, askingPrice, cmMonthlyInstalments, cmAppsAfterMatch } from './transfers';
 import { afterAppearance } from './clauses';
+import { cmBonusPaid } from './cmContractInit';
 import { knowledgeAfterMatch, scoutDaily } from './scouting';
 import { cmCalendarDay } from './cmCalendar';
 import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance';
@@ -339,7 +340,7 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     s.ratingCount++;
     if (rep.mom === p.id) s.mom++;
     p.form = [...p.form, line.rating].slice(-5);
-    if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0);
+    if (p.contract?.appBonus || p.contract?.goalBonus || p.contract?.cleanSheetBonus || p.contract?.cmAssistBonus || p.addOn) afterAppearance(p, line.goals, rep.stats[1 - line.team].goals === 0, cm ? { assists: line.assists, pay: cmBonusPaid(g, f, line.team) } : undefined);
     // CM 01/02 0x8c39f0: "Fee after N League Apps." tæller konkurrencekampe (ikke venskabskampe)
     if (p.cmApps && comp) cmAppsAfterMatch(p, 'lg');
     // draft-liga: ingen træthed eller moral, der hænger ved – mange kampe kan spilles samme dag

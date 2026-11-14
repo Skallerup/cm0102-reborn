@@ -32,6 +32,14 @@ export interface Contract {
   cleanSheetBonus?: number;
   /** deltidskontrakt (CM 01/02 Part Time) */
   partTime?: boolean;
+  /** CM 01/02 (den originale database i ægte tilstand, 0x85e960): assistbonus (€, kontrakt +0x14) */
+  cmAssistBonus?: number;
+  /** CM 01/02 kontraktens klausuler +0x1c..+0x20 (1 = aktiv): Non Promotion, Minimum Fee, Non Playing, Relegation, Manager Job Release Clause */
+  cmClauses?: number[];
+  /** klausulens beløb (€, kontrakt +0x21 – fælles for klausulerne) */
+  cmClauseFee?: number;
+  /** originalens bonusser i pund (+0x10 mål, +0x14 assist, +0x18 clean sheet; −1 = ingen) – kampværdierne 0x6ec010 læser dem */
+  cmBonusGbp?: [number, number, number];
 }
 
 /** Klausuler i et kontrakttilbud */

@@ -39,6 +39,35 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
   B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
 
+## Startkontrakterne 0x85e960 (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractInit.ts`)
+- **Porteret (læst instruktion for instruktion, på spillets data – ikke skyggeverdenen):** STAFF_CONTRACT::generate_initial_contract 0x85e960
+  som 0x4c7560 kalder den ved spilstarten (newgame.ts efter cmFinanceNewGame): databasens løn kun når ≤ 15 · omdømmet (ellers −1 → 0x862720),
+  bonusserne +0x10/+0x14/+0x18 (trunc(w/20) − rand(trunc(w/40)) + 25 for angribere ≥ 15 / midtbane-, offensive midtbane- og angribere ≥ 15 /
+  målmænd = 20), klausulerne Non Promotion (+0x1c), Non Playing (+0x1e), Relegation (+0x1f) med det fælles beløb +0x21 og Manager Job (+0x20),
+  semiprofessionel → deltid (+0x35 bit 7), amatør → intet. Klausultyperne efter teksttabellen 0x85f940 (0 Non Promotion, 1 Minimum Fee,
+  2 Non Playing, 3 Relegation, 4 Manager Job); bonustyperne 0x85f830 (0 mål, 1 assist, 2 clean sheet). Bonusserne betales efter kampen som
+  CONTRACT_MANAGER::update_after_match 0x4ca6d0 (clauses.ts afterAppearance: mål × +0x10, resultatlinjens +0x27 × +0x14, clean sheet × +0x27 –
+  sic; venskabskampe kun mod en klub med omdømme ≥ max(1,25·eget, eget + 1500), `cmBonusPaid`). Kampværdierne 0x6ec010 får +0x10/+0x14
+  (`Contract.cmBonusGbp` → gameInputs.ts d10/d14 – før −1).
+- **Målt** (`npx tsx scripts/cm-contract-init.ts`, originalen = `~/cm0102-engine/work-r3/snap-start/pre-194-2001.bin`, frø 1, England):
+  | | originalen 14/7-2001 | vores spil |
+  |---|---|---|
+  | engelske spillere med kontrakt | 3.729 | 3.640 |
+  | målbonus / assistbonus / clean sheet | 26,7 % / 60,4 % / 9,2 % | 27,0 % / 60,7 % / 9,1 % |
+  | Non Promotion / Relegation / Manager Job | 93 / 282 / 38 | 72 / 277 / 37 |
+  | deltid | 9,0 % | 7,8 % |
+  | målbonus median | £55 | £74 |
+  | ugeløn 10/50/90 % | £148 / £665 / £8.146 | £344 / £1.200 / £8.000 |
+  Lønforskellen ligger i den nederste halvdel: 1.788 af 3.640 spillere har ingen løn i databasen; originalen fylder dem med 0x862720 (via
+  0x83a1b0 create_initial_shortlists – cmWage.ts har porten på originalens hukommelse), spillet med sit eget `wageFor`. Næste skridt: koble
+  0x862720 til spillets data (kræver Finance::get_max_wage 0x5968d0 – porteret i den afbrudte agents worktree, `cmMaxWage.ts` – og nation
+  +0x76/+0x7e, som world-filerne ikke har endnu).
+- *Estimeret:* ligaens op-/nedrykningsflag (League +0xbe/+0xd9/+0xc1) = spillets regler (nederste række i et spilbart land: nedrykning);
+  talrækken pr. spiller (cmRand) i stedet for den globale rækkefølge; kontraktens startdato +0x25 (0x85eba8–0x85ec92) bruges ikke.
+- Ikke porteret (stadig): CONTRACT_MANAGER::daily_update 0x4c7ac0 i spillet (porten i cmContract.ts kører kun på originalens hukommelse –
+  kræver en hukommelse af spillets data med ~75 ikke-porterede kald), Shortlist_Manager 0x842e10/0x83b6e0/0x840d80/0x843e10/0x84a020 (3.932
+  instr. + 0x846920's 3.881), udbudsprisen 0x4d1600 (3.185 instr., 24 kaldte funktioner), build_bid 0x8e5d60 (2.013).
+
 ## Næste skridt (overdragelse 2026-11-12, efter runde 10A – start her i en ny session)
 
 **Status:** motoren er tal for tal identisk med originalen i låsetrin (20 PL-kampe, pokal, straffe – runde 7) og efter slutfløjt (runde 9c); kampstarten
