@@ -56,12 +56,28 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   | målbonus / assistbonus / clean sheet | 26,7 % / 60,4 % / 9,2 % | 27,0 % / 60,7 % / 9,1 % |
   | Non Promotion / Relegation / Manager Job | 93 / 282 / 38 | 72 / 277 / 37 |
   | deltid | 9,0 % | 7,8 % |
-  | målbonus median | £55 | £74 |
-  | ugeløn 10/50/90 % | £148 / £665 / £8.146 | £344 / £1.200 / £8.000 |
-  Lønforskellen ligger i den nederste halvdel: 1.788 af 3.640 spillere har ingen løn i databasen; originalen fylder dem med 0x862720 (via
-  0x83a1b0 create_initial_shortlists – cmWage.ts har porten på originalens hukommelse), spillet med sit eget `wageFor`. Næste skridt: koble
-  0x862720 til spillets data (kræver Finance::get_max_wage 0x5968d0 – porteret i den afbrudte agents worktree, `cmMaxWage.ts` – og nation
-  +0x76/+0x7e, som world-filerne ikke har endnu).
+  | målbonus median | £55 | £57 (før lønporten £74) |
+  | ugeløn 10/50/90 % | £148 / £665 / £8.146 | £148 / £703 / £8.593 (før lønporten £344 / £1.200 / £8.000) |
+  | spillernes lønsum PL / Div1 / Div2 / Div3 | – | ×1,01 / ×1,02 / ×1,00 / ×1,01 af originalens (før ×1,19 / ×0,96 / ×0,86 / ×1,23) |
+- **Lønnen for kontrakter uden løn (14/11-2026, `src/game/cmWageFill.ts` + `cmWageGame.ts`):** 1.788 af 3.640 engelske spillere har ingen løn i
+  databasen (eller over 15 · omdømmet). Shortlist_Manager 0x83a1b0 (0x83a246–0x83a65d, efter trupplanen 0x83cb40) giver dem
+  +0xc = ftol(0x862720(staff, klub, 1, kontraktens trupstatus +0x4f >> 4, 0xb, 0)) og udlændinge (staff +0x1a ≠ klubbens land) et blødt loft efter
+  klubbens land (Sydkorea 1000/2500 · 0,5; Tyskland/Frankrig/Skotland/Holland 20000 · 0,25; Sverige 500/250 · 0,25; Wales/Finland/Irland/N-Irland
+  200/100 · 0,15; Danmark/Norge 350/250 · 0,1; Belgien/Portugal gulv 5·L², 500/250 · 0,2; England/Italien/Spanien/Japan/USA intet; ellers 25000 · 0,25).
+  0x862720 (cmWage.ts) kalder Finance::get_max_wage 0x5968d0 og recalc_wages 0x598370 (`cmMaxWage.ts`, fra den afbrudte agents worktree) og
+  0x540a50/0x669bd0/0x53d7f0 (`cmClubLinks.ts`). Kontrol på originalens egen hukommelse (`npx tsx scripts/cm-wage-fill.ts`, øjebliksbilledet
+  pre-194-2001.bin): **2.510 af 2.608** udfyldte engelske lønninger identiske (resten fik ny kontrakt/trupstatus i forkørslen); fixturen
+  `tests/fixtures/cm-wage-fill-194-2001.json.gz` (628 spillere) i `tests/cmWageGame.test.ts`. På spillets data bygger `buildWageMem` originalens
+  poster (person, spillerpost, klub = club.dat-posten, division +0x69 = turneringens omdømme, land +0x76/+0x7e/+0x85 – world-filen har nu
+  `cmRaw.nation76`, finansposten med 0x598370 kørt to gange, kontrakterne, Shortlist-postens +5 = `cmTargetRep`) og kører portene uændret.
+  Bonusserne for de samme spillere regnes nu af standardlønnen 0x864550(staff, klub, 0, −1, 0xb, 0) (0x85eca3) i stedet for spillets skøn
+  (målbonus median £57 mod originalens £55, før £74). Regens: player_regen_sign_for_club 0x7a6f10 → set_default_wage 0x8626e0 =
+  max(55, 0x862720(…, 1, −1, 0xb, 0)) (`cmRegenWage`, season.ts spawnRegen). 0x862720 har kun de to kaldere (0x83a2c3, 0x8626f6); computerens
+  køb og forlængelser bruger ønskekontrakten 0x85fc50 (3 × 0x864550 + 0x846920/0x849f00/0x4d0c60/0x844780 m.fl.) – ikke koblet til spillet
+  (spillets `wageDemand` gælder stadig dér).
+  *Estimeret i lønporten:* personernes id = databasens id (id/[0xae2364] indgår i 0x862720 som ±4 på omdømmet – originalens hukommelse har egne
+  id'er), ingen relationer +0x65 (formandens yndlingsspillere), lejede spillere i moderklubben, menneskets manager uden ikke-spillerpost,
+  ferietjekket 0x5fe040 i 0x600a50, finansposten efter spillets saldo/lønsum (originalens efter forkørslens 194 dage).
 - *Estimeret:* ligaens op-/nedrykningsflag (League +0xbe/+0xd9/+0xc1) = spillets regler (nederste række i et spilbart land: nedrykning);
   talrækken pr. spiller (cmRand) i stedet for den globale rækkefølge; kontraktens startdato +0x25 (0x85eba8–0x85ec92) bruges ikke.
 - Ikke porteret (stadig): CONTRACT_MANAGER::daily_update 0x4c7ac0 i spillet (porten i cmContract.ts kører kun på originalens hukommelse –

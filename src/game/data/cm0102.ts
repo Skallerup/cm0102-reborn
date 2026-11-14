@@ -46,6 +46,8 @@ export interface CMWorld extends WorldData {
     nation7e?: number[];
     /** nation.dat +0x85 (s8) pr. nationsindeks – staffStatens ungdomsled 0x5ce8f0 ((+0x85·0,2 + 0,6)·klubbens omdømme) */
     nation85?: number[];
+    /** nation.dat +0x76 pr. nationsindeks (sprog-/regionsgruppen – lønnen 0x862720/0x864550: udlændinge fra en anden gruppe end klubbens land) */
+    nation76?: number[];
     /** (forholdene, staff+0x65) personernes præferencer fra staff.dat +97..+144 (originaludgavens 157-bytes post): 12 id'er i hukommelsens
      *  rækkefølge – +4/+8/+0xc klubber (0x547d60), +0x10/+0x14/+0x18 klubber (0x547d30), +0x1c/+0x20/+0x24 personer (0x547810), +0x28/+0x2c/+0x30
      *  personer (0x547840); 0 = ingen (databasens −1). Kun personer i world-filen med mindst én præference. */
@@ -235,6 +237,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const nationBoard: [number, number, number][] = [];
   // viljen 0x844780: nation +0x71 (verdensdelen, continent.dat-id) og "Europe"s id
   const nationCont: number[] = [];
+  const nation76: number[] = [];
   let europe = -1;
   if (files['continent.dat']) { const Co = new Reader(files['continent.dat']);                // 198 bytes pr. verdensdel: +0 id, +4 navnet
     for (let o = 0; o + 198 <= files['continent.dat'].byteLength; o += 198) if (Co.str(o + 4, 25) === 'Europe') europe = Co.i32(o); }
@@ -244,6 +247,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     nationVal.set(id, [N.u8(o + 0x7e), N.i16(o + 0x8e), N.i8(o + 0x85)]);
     nationBoard.push([N.u8(o + 0x75), (N.u8(o + 0x85) << 24) >> 24, N.i32(o + 0x88)]);
     nationCont.push(N.i32(o + 0x71));
+    nation76.push(N.u8(o + 0x76));
     nations.push({ name: N.str(o + 4, 51), code: N.str(o + 83, 4) || N.str(o + 56, 3).toUpperCase(), lang: [N.u8(o + 0x77), N.u8(o + 0x78), N.u8(o + 0x79)] });
   }
 
@@ -662,6 +666,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       ...(cities ? { cities } : {}),
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
+      nation76,
       fin, chair, chairBoard, nationBoard, lowerDiv, nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
   };
 }

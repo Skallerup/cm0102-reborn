@@ -1146,6 +1146,8 @@ export interface GameState {
   cmNation7e?: number[];
   /** nation +0x85 pr. nationsindeks (staffStatens ungdomsled 0x5ce8f0 – cmPlayerData.ts) */
   cmNation85?: number[];
+  /** nation +0x76 pr. nationsindeks (sprog-/regionsgruppen – lønnen 0x862720, cmWageGame.ts) */
+  cmNation76?: number[];
   /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
   cmPlan?: Record<number, { s: [number, number, number, number, number, number, number, number, number][]; st: number; fm: number; c: number }>;
   /** spillets startdato ([0xdd6ec8]) */

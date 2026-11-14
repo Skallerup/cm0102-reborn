@@ -1,6 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
+import { cmRegenWage } from './cmWageGame';
 import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
 import { storeCompRecords } from './compHistory';
@@ -305,7 +306,9 @@ function spawnRegen(old: RegenSeed, n: number) {
   for (let i = 36; i < p.attrs.length && i < old.attrs.length; i++) p.attrs[i] = Math.max(1, Math.min(20, Math.round(old.attrs[i] + r.normal(0, 2))));
   p.pos = old.pos.slice(); p.side = old.side.slice();
   p.value = Math.max(10_000, p.value);
-  if (p.contract) p.contract.wage = Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
+  // ægte CM 01/02 med den originale database: player_regen_sign_for_club 0x7a6f10 → set_default_wage 0x8626e0 (0x862720 – cmWageGame.ts)
+  const cmW = p.contract && club ? cmRegenWage(g, p, club) : null;
+  if (p.contract) p.contract.wage = cmW !== null ? cmW / 0.86 : Math.max(150, Math.round(p.contract.wage * 0.3 / 50) * 50);
   addPlayer(p);
   return p;
 }

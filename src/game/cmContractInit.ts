@@ -10,7 +10,7 @@
 //   bl (0x85eaa2): trunc(klubbens omdømme +0x80 / 500) + 1 (0x10624dd3 + sar 5 = /500); semiprofessionel klub (+0x64 = 2): bl − 1 i [1, 4].
 //      Landsholdsspillere (+0x22 ≠ 0): bl += ftol(nation +0x85 · 0,25 · landskampe · 0,125) i [1, 4] (uden land: 1).
 //   lønnen (0x85eb69): databasens løn staff +0x4e, hvis den er sat og ≤ 15 · omdømmet (spillerpost +0xb) – ellers −1, som 0x83a1b0's
-//      0x862720 fylder ud senere; bonusserne regnes da af standardlønnen 0x864550 (ikke koblet til spillet: spillets løn, *estimeret*).
+//      0x862720 fylder ud senere (cmWageFill.ts/cmWageGame.ts); bonusserne regnes da af standardlønnen 0x864550 på spillets data (cmWageGame.ts).
 //   klausulerne (0x85edf4, kun med spillerpost):
 //      Manager Job (+0x20) – alder > 32, omdømme > 3250, id % 3 = 0 og Prof + Determination + Ambition + id % 10 + alder − 28 > 45
 //         (eller en ikke-spillerpost – spillets spillere har ingen);
@@ -34,6 +34,7 @@ import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { rulesFor } from './leagues';
 import { cmActive, cmRand, clubRepMem } from './cmPlayerData';
+import { cmStandardWages } from './cmWageGame';
 
 /** £ → € som newgame.ts (databasens beløb er pund) */
 export const GBP = 0.86;
@@ -52,7 +53,7 @@ export interface InitContractIn {
   value: number;
   /** staff +0x4e, databasens ugeløn (£, 0 = ingen) */
   dbWage: number;
-  /** spillets løn (£) – bruges som 0x864550's standardløn til bonusserne, når databasens løn ikke gælder (*estimeret*) */
+  /** 0x864550's standardløn (£) til bonusserne, når databasens løn ikke gælder (cmContractsNewGame regner den; ellers spillets løn) */
   fallbackWage: number;
   caps: number;
   /** nation +0x85 for spillerens land (null = intet land) */
@@ -174,20 +175,30 @@ export function applyInitialContract(c: Contract, o: InitContractOut): void {
   c.cmBonusGbp = o.goal > 0 || o.assist > 0 || o.cleanSheet > 0 ? [o.goal, o.assist, o.cleanSheet] : undefined;
 }
 
-/** nyt spil: alle databasens spillere med klub og kontrakt (kun cmActive). `dbWage`: spiller-id → databasens ugeløn (£). */
-export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, seed: number): { n: number; dbRejected: number } {
-  if (!cmActive(g) || g.draft) return { n: 0, dbRejected: 0 };
+/** nyt spil: alle databasens spillere med klub og kontrakt (kun cmActive). `dbWage`: spiller-id → databasens ugeløn (£).
+ *  `unset` = spillerne med +0xc = −1 (databasens løn mangler eller er over 15 · omdømmet) – 0x83a1b0 fylder dem ud efter trupplanen
+ *  (cmWageGame.ts cmWageFillNewGame). Deres bonusser regnes af standardlønnen 0x864550(staff, klub, 0, −1, 0xb, 0) som i 0x85eca3. */
+export function cmContractsNewGame(g: GameState, dbWage: Map<number, number>, seed: number): { n: number; dbRejected: number; unset: Set<number> } {
+  const unset = new Set<number>();
+  if (!cmActive(g) || g.draft) return { n: 0, dbRejected: 0, unset };
   let n = 0, dbRejected = 0;
+  const todo: [Player, InitContractIn][] = [];
   for (const p of Object.values(g.players)) {
     if (p.regen || !p.contract) continue;
     const x = initContractInput(g, p, dbWage.get(p.id) ?? 0);
     if (!x) continue;
+    if (!(x.dbWage && x.dbWage <= (x.rep << 16 >> 16) * 15)) unset.add(p.id);
+    todo.push([p, x]);
+  }
+  const std = cmStandardWages(g, todo.filter(([p]) => unset.has(p.id)).map(([p]) => p), unset);
+  for (const [p, x] of todo) {
+    if (unset.has(p.id) && std.has(p.id)) x.fallbackWage = std.get(p.id)!;
     const o = initialContract_85e960(x, cmRand(seed, p.id, 0x85e960));
     if (x.dbWage && o.wage < 0) dbRejected++;
-    applyInitialContract(p.contract, o);
+    applyInitialContract(p.contract!, o);
     n++;
   }
-  return { n, dbRejected };
+  return { n, dbRejected, unset };
 }
 
 /** CONTRACT_MANAGER::update_after_match 0x4ca6d0: betales holdets bonusser i denne kamp? Venskabskampe (fixture +0x3a = 1, 0x4ca7bc): kun mod

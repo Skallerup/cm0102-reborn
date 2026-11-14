@@ -42,6 +42,7 @@ import { cmFinanceNewGame } from './cmFinance';
 import { cmContractsNewGame } from './cmContractInit';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
+import { cmWageFillNewGame } from './cmWageGame';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
 
 export interface WorldData {
@@ -168,6 +169,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     if (cm.cmRaw.cities) g.cmCities = cm.cmRaw.cities.slice();
     if (cm.cmRaw.nation7e) g.cmNation7e = cm.cmRaw.nation7e.slice();
     if (cm.cmRaw.nation85) g.cmNation85 = cm.cmRaw.nation85.slice();
+    if (cm.cmRaw.nation76) g.cmNation76 = cm.cmRaw.nation76.slice();
     if (cm.cmRaw.nationCont) { g.cmNationCont = cm.cmRaw.nationCont.slice(); g.cmEurope = cm.cmRaw.europe ?? -1; }
     if (cm.cmRaw.city33) g.cmCity33 = cm.cmRaw.city33.slice();
   }
@@ -452,12 +454,14 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
   // originalens startkontrakter 0x85e960 (cmContractInit.ts): bonusser, klausuler og deltid – kun den originale database i ægte tilstand
-  if (cm) cmContractsNewGame(g, dbWageGbp, seed);
+  const unsetWages = cm ? cmContractsNewGame(g, dbWageGbp, seed).unset : new Set<number>();
   // originalens arbejdstilladelses-historik (0x8c6e60 – cmPermit.ts)
   cmPermitNewGame(g);
   // computerens trupplan 0x83a1b0 → 0x83cb40 for alle klubber: trupstatus, lejeliste, +0x3d/+0x3e/+0x3f (cmSquadPlanGame.ts)
   progress('plan', 0.8);
   cmSquadPlanStart(g);
+  // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
+  cmWageFillNewGame(g, unsetWages);
   progress('scouting', 0.9);
   initKnowledge();
   monthlyDevelopment();

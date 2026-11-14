@@ -64,3 +64,16 @@ if (process.env.DBW) {
   const our = [...ids].map((id) => Math.round(g.players[id].contract!.wage * 0.86)).sort((x, y) => x - y);
   console.log(`vores 10/50/90 %: ${[0.1, 0.5, 0.9].map((q) => our[Math.floor(q * our.length)]).join('/')}, databasens 10/50/90 %: ${[0.1, 0.5, 0.9].map((q) => nz[Math.floor(q * nz.length)]).join('/')}`);
 }
+// spillernes samlede ugeløn pr. klub i de fire ligaer (originalen: kontrakterne +0xc for klubbens spillere) – sum og median pr. række,
+// og medianen af forholdet vores/originalens pr. klub
+if (origRows) {
+  const tot = (rows: Row[]) => { const t = new Map<string, number>(); for (const r of rows) t.set(r.club, (t.get(r.club) ?? 0) + Math.max(0, r.wage)); return t; };
+  const o = tot(origRows), u = tot(ours);
+  const med = (a: number[]) => { a.sort((x, y) => x - y); return a.length ? a[Math.floor(a.length / 2)] : 0; };
+  for (const t of [1, 2, 3, 4]) {
+    const cl = [...u.keys()].filter((nm) => tierOf!(nm) === t && o.has(nm));
+    const so = cl.reduce((x, nm) => x + o.get(nm)!, 0), su = cl.reduce((x, nm) => x + u.get(nm)!, 0);
+    const ratio = med(cl.map((nm) => u.get(nm)! / Math.max(1, o.get(nm)!)));
+    console.log(`række ${t}: ${cl.length} klubber, lønsum i alt £${su} mod £${so} (×${(su / Math.max(1, so)).toFixed(2)}), median pr. klub £${med(cl.map((nm) => u.get(nm)!))} mod £${med(cl.map((nm) => o.get(nm)!))}, forholdet pr. klub median ×${ratio.toFixed(2)}`);
+  }
+}
