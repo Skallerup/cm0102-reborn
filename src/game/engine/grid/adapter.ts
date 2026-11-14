@@ -23,7 +23,7 @@ import type { EngineOptions, EngineTeam } from '../match';
 import type { LiveSim, LiveSimPlayer, LiveSimTeam, LiveTeamView, PitchSnap } from '../liveSim';
 import { createGridMatch, randOf, randOfRng, type GP, type GridManager, type GridMatch, type GridSideStats } from './gridMatch';
 import { gs } from '../../state';
-import { aiPickCtx, type AiPickCtx } from './aiTeam';
+import { aiPickCtx, engineManager, type AiPickCtx } from './aiTeam';
 import { EVENT_NAMES } from './eventTable';
 import { gameInputsCtx } from './gameInputs';
 import { gridTacOf } from '../../cmStaffInit';
@@ -127,9 +127,9 @@ export class GridSim implements LiveSim {
       clubLang: [home.club, away.club].map((c) => nationLanguage(gs().nations[gs().clubs[c]?.nation ?? -1]?.name)) as [number, number],
       // klubbernes omdømme club +0x80 kommer fra gameInputsCtx (databasens rå værdi); managerne fra den originale database (Staff.tac)
       // (Staff.cmNp: ikke-spillerposten efter originalens spilstart, +0x21 som intern værdi – gridTacOf, cmStaffInit.ts)
-      managers: [home.club, away.club].map((c) => { const st = gs().staff[gs().clubs[c]?.manager ?? -1]; const tac = gridTacOf(st); return st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null; }) as [GridManager | null, GridManager | null],
+      managers: [home.club, away.club].map((c, i) => { const st = engineManager(c, this.ai[i]); const tac = gridTacOf(st); return st && tac ? { id: st.id, ca: st.ca ?? st.rep * 2, tac } : null; }) as [GridManager | null, GridManager | null],
       // computerens holdudtagelse (aiTeam.ts): dato, spillets frø [0xdd7120] og managerens bedømmelse (viste Judging Ability/Potential)
-      pick: [home.club, away.club].map((c) => aiPickCtx(c)) as [AiPickCtx | null, AiPickCtx | null],
+      pick: [home.club, away.club].map((c, i) => aiPickCtx(c, this.ai[i])) as [AiPickCtx | null, AiPickCtx | null],
       // computerstyret hold: sub_6c54a0 retter og skifter kun dem (menneskets hold ændres aldrig af motoren)
       ai: this.ai,
       subs: [subs, subs],
@@ -139,7 +139,7 @@ export class GridSim implements LiveSim {
       watched: !!opts.commentary,
       // spillets egne inddata (gameInputs.ts): spiller-/staffposterne, sub_6ec010's omgivelser, klubbernes omdømme club +0x80, fixture-posten
       ...(() => { const f = opts.fixtureId !== undefined ? gs().fixtures[opts.fixtureId] : undefined;
-        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId }); })(),
+        return gameInputsCtx(home.club, away.club, { compId: f?.comp, stage: f?.stage, date: gs().date, fixtureId: opts.fixtureId, ai: [this.ai[0], this.ai[1]] }); })(),
       on: {
         goal: (p, assister, pen) => {
           const s = this.byId.get(p.src.id), a = assister ? this.byId.get(assister.src.id) : undefined;

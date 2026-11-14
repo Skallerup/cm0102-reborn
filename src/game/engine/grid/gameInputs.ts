@@ -27,7 +27,8 @@ import { ATTRS } from '../../attributes';
 import { gs, hasGame } from '../../state';
 import { isHumanClub } from '../../humans';
 import { clubRepMem } from '../../cmPlayerData';
-import { playerRecord, captainInputOf, joinedOf, type AiPickCtx } from './aiTeam';
+import { playerRecord, captainInputOf, engineManager, joinedOf, type AiPickCtx } from './aiTeam';
+import type { Staff } from '../../types';
 import { captainBase, staffIntrinsic, staffShown } from './roleScore';
 import type { MatchValuesCaptain, MatchValuesEnv } from './matchValues';
 import { crowd85cba0, type CrowdCity, type CrowdClub, type CrowdFixture, type CrowdResult, type CrowdStadium } from './crowd';
@@ -91,9 +92,9 @@ export function fixtureInfoOf(compId: string | undefined, homeClub: number, stag
 }
 
 /** holdets manager: np+0xe (Attacking, databasens værdi) og 0x544410(np, np+0x21) (den viste Tactics) */
-export function managerOf(club: number): { n0e: number; rating: number } | null {
+export function managerOf(club: number, staff?: Staff): { n0e: number; rating: number } | null {
   if (!hasGame()) return null;
-  const g = gs(), st = g.staff[g.clubs[club]?.manager ?? -1];
+  const g = gs(), st = staff ?? g.staff[g.clubs[club]?.manager ?? -1];
   if (!st?.tac) return null;
   // Staff.cmNp: ikke-spillerposten efter originalens spilstart (cmStaffInit.ts – Attacking +0x0e og den interne Tactics +0x21)
   if (st.cmNp) return { n0e: st.cmNp[0], rating: npShown(st, 0x21)! };
@@ -135,15 +136,18 @@ export function captainEnvOfPlayer(p: Player, pos: number, ctx: AiPickCtx, clubR
 }
 
 /** GridMatchCtx-delen med spillets inddata for kampen mellem to klubber (adapteren og grid-stats.ts) */
-export function gameInputsCtx(home: number, away: number, o: { compId?: string; stage?: string; date?: string; human?: [boolean, boolean]; fixtureId?: number } = {}) {
+/** `ai`: holdene, motoren styrer (ctx.ai). En menneskeklub, motoren styrer (ferien), er ikke "menneskets" for 0x6ec010 (0x600a50(klub, 0, 1, 0, 0)
+ *  med ferietjekket 0x5fe040 – oraklets HU-linje: 0 for Arsenal på ferie) og har menneskets managerpost (aiTeam.ts engineManager) */
+export function gameInputsCtx(home: number, away: number, o: { compId?: string; stage?: string; date?: string; human?: [boolean, boolean]; fixtureId?: number; ai?: [boolean, boolean] } = {}) {
   const g = hasGame() ? gs() : null;
   const date = o.date ?? g?.date ?? '2001-08-18';
   const fixture = g && o.fixtureId !== undefined ? g.fixtures[o.fixtureId] : undefined;
   const fx = fixtureInfoOf(o.compId ?? fixture?.comp, home, o.stage ?? fixture?.stage);
   const codes = g ? fixtureCodesOf(g, fixture, o.compId ?? fixture?.comp, home) : null;
   const compId = o.compId ?? fixture?.comp ?? g?.clubs[home]?.league;
-  const human = o.human ?? [isHumanClub(home), isHumanClub(away)];
-  const sides: [GameMatchSide, GameMatchSide] = [home, away].map((c, i) => ({ club: c, human: human[i], manager: managerOf(c), clubRep: g ? clubRepMem(g, c) : 5000 })) as never;
+  const ai = o.ai ?? [false, false];
+  const human = o.human ?? [isHumanClub(home) && !ai[0], isHumanClub(away) && !ai[1]];
+  const sides: [GameMatchSide, GameMatchSide] = [home, away].map((c, i) => ({ club: c, human: human[i], manager: managerOf(c, engineManager(c, ai[i])), clubRep: g ? clubRepMem(g, c) : 5000 })) as never;
   const keys = { us: nationIndex('United States'), can: nationIndex('Canada'), mex: nationIndex('Mexico') };
   const envs = new Map<string, MatchValuesEnv>();
   const caps = new Map<string, MatchValuesCaptain>();

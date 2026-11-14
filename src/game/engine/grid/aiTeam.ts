@@ -14,7 +14,7 @@
 // Player.squadStatus (0 uden); 0x8c7260/0x8c7560 (arbejdstilladelsens kampe spillet/ikke spillet) fra cmPermit.ts; ikke-spillerpostens adresse mod 20
 // (anføreren) = id mod 20. Uden for den originale database: kondition = Player.condition, ingen træthed/skade.
 
-import type { Player } from '../../types';
+import type { Player, Staff } from '../../types';
 import { ATTRS } from '../../attributes';
 import { ageOn } from '../../dates';
 import { CM_INT_OFFSETS } from '../../playerInit';
@@ -27,6 +27,7 @@ import { cmPermitHistory } from '../../cmPermit';
 import { newTacticStats, recordTacticResult } from './aiTacticChoice';
 import { chooseCaptain, judgeAbility, recentForm, roleScore, staffIntrinsic, staffShown, type CaptainInput, type Day, type RoleData, type RoleInput } from './roleScore';
 import { gridTacOf, npShown } from '../../cmStaffInit';
+import { isHumanClub } from '../../humans';
 
 /** spillerens 12 positionsevner som spillerposten +0x0f..+0x1a: GK SW D DM M AM F WB, højre (+0x17, maske 0x800), venstre (+0x18, 0x80),
  *  midt (+0x19, 0x200), fri rolle (+0x1a). Vores Player.side er [L, C, R]. */
@@ -292,10 +293,32 @@ export function aiTeamSetup(o: AiTeamInput): AiTeamResult {
 
 /** AiPickCtx for en klub af spillets tilstand (adapteren): dato, frø, managerens viste Judging Ability/Potential (0x544410 af databasens
  *  værdi og stabens CA – uden CA: værdien som den er) og ankomst (seneste karrierelinje). */
-export function aiPickCtx(clubId: number): AiPickCtx | null {
+/** Menneskets ikke-spillerpost (managerposten) i originalen: hver menneskelig manager har én (de 16 sidste stab-id'er, 0x600a50). Målt i
+ *  oraklets kampspor ls20 (MG-linjen for Arsenal – oraklets menneske, der er på ferie – 18/8-2001, bit for bit brugt af låsetrinet): CA +4 = 180,
+ *  PA +6 = 180, de 21 bytes +0x0e..+0x22 (de 8 interne +0x10 +0x11 +0x17 +0x18 +0x19 +0x1b +0x1e +0x21 som interne værdier) og +0x43 = 3 – samme
+ *  layout som Staff.cmNp. Vist: Judging Ability 19, Judging Potential 15, Tactics 18, Attacking 17, Pressing 20. *estimeret*: at alle menneskelige
+ *  managere får denne post (originalens generering af den er ikke fundet); vores menneske har ingen staffpost. */
+export const HUMAN_NP: readonly number[] = [17, 8, 6, 6, 20, 7, 15, 9, 15, 6, -24, 1, 12, 6, 10, 20, -39, 20, 20, -4, 20, 3];
+export const HUMAN_NP_CA = 180;
+/** Klubbens manager, som gittermotoren ser ham: computerens fra g.staff; en menneskeklub, som motoren styrer (ferien – quickPlayUserMatch med
+ *  aiSubs [true, true]: originalens "computeren vælger" for et menneske med assistent, 0x600a50(klub, 0, …) = 0 med ferietjekket 0x5fe040 –
+ *  oraklets HU-linjer: 0 for Arsenal på ferie), får menneskets egen post (HUMAN_NP). Et menneske, der selv styrer holdet: ingen (som før). */
+export function engineManager(clubId: number, aiControlled: boolean): Staff | undefined {
+  if (!hasGame()) return undefined;
+  const g = gs(), c = g.clubs[clubId];
+  const st = g.staff[c?.manager ?? -1];
+  if (st || !aiControlled || !c || !isHumanClub(clubId)) return st;
+  const joined = clubId === g.userClub ? g.manager.cmJoined : g.humans?.find((h) => h.userClub === clubId)?.manager.cmJoined;
+  return { id: HUMAN0_STAFF, ca: HUMAN_NP_CA, cmPa: HUMAN_NP_CA, cmNp: HUMAN_NP.slice(), tac: [],   // de taktiske egenskaber læses af cmNp (gridTacOf)
+    rep: 90, attrs: {}, career: joined ? [{ from: joined }] : [] } as unknown as Staff;
+}
+/** menneskets managerpost i motoren: et id uden for spillets stab (som cmBoard.ts' HUMAN0) – indgår i 0x6e86d0's/0x6ddab0's frø (*estimeret*) */
+const HUMAN0_STAFF = 1_000_000_000;
+
+export function aiPickCtx(clubId: number, aiControlled = false): AiPickCtx | null {
   if (!hasGame()) return null;
   const g = gs();
-  const st = g.staff[g.clubs[clubId]?.manager ?? -1];
+  const st = engineManager(clubId, aiControlled);
   // med Staff.cmNp (originalens spilstart, cmStaffInit.ts) de interne værdier i hukommelsen; ellers databasens værdi omregnet uden afbalancering
   const shownOf = (v: number, off: number) => npShown(st, off) ?? (st?.ca ? staffShown(st.ca, staffIntrinsic(v, st.ca)) : v);
   const cm = cmActive(g);
