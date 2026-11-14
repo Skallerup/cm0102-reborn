@@ -1703,22 +1703,27 @@ export function cmShortlistApply(events: SlEvent[]) {
     cmAiAiAnswer(o, p, buyer);
   }
 }
+/** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
+export const CM_AIAI = { loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0 };
 /** computer → computer: 0x8c8090 uden nyheder til mennesket */
 function cmAiAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
   const g = gs();
   if (o.loan) {
     // lejebud: sælgeren siger ja til en lejelistet spiller (*estimeret* – 0x8c8090's lejegren er ikke porteret)
-    if (p.loanListed) { o.status = 'negotiating'; completeTransfer(o, p.contract?.wage ?? 0, 0); }
+    CM_AIAI.loan++;
+    if (p.loanListed) { CM_AIAI.loanOk++; o.status = 'negotiating'; completeTransfer(o, p.contract?.wage ?? 0, 0); }
     return;
   }
+  CM_AIAI.bid++;
   const c = valueCtx(g, p);
   const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p));
   const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
   const t = termsOf(o);
   const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: false, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
   let terms: BidTerms | null = null;
+  CM_AIAI[r.kind]++;
   if (r.kind === 'accept') terms = t;
-  else if (r.kind === 'counter' && toGbp(o.maxFee ?? 0) >= r.terms.fee && buyer.transferBudget >= fromGbp(r.terms.fee)) terms = r.terms;
+  else if (r.kind === 'counter' && (o.maxFee ?? 0) >= r.terms.fee && buyer.transferBudget >= fromGbp(r.terms.fee)) { terms = r.terms; CM_AIAI.counterOk++; }
   if (!terms) return;
   putTerms(o, terms);
   o.status = 'negotiating';

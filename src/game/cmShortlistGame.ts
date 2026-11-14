@@ -28,12 +28,12 @@ import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { slCall } from './cmShortlist';
-import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0 } from './cmValue';
+import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0 } from './cmValue';
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50 } from './cmContractWant';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
-import { registerImpl, QSORT_CMP, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
+import { registerImpl, enter, QSORT_CMP, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
 import { ensureImpls } from './cmGen/impls';
@@ -588,6 +588,7 @@ function pairFound(m: CmMem, slm: number, id: number, club: number): boolean {
 /** målinger: frasorteringens grunde (indeks = rækkefølgen i fastReject) */
 export const FR_STATS: Record<number, number> = {};
 export const FR_LAST = { k: -1 };
+const rz = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; return 0; };
 const rj = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; FR_LAST.k = k; return 0x840a81; };
 /** 0x83fa25 for kandidaterne i, i+1, …: en afvist kandidat går videre som 0x840a81 → 0x83fa1a ([esp+0x40] + 1 mod antallet [esp+0x8c];
  *  edx = [esp+0x90], ecx = i) uden at køre de oversatte instruktioner og springene imellem; listens slutning → 0x840a99 (som 0x840a93).
@@ -614,7 +615,7 @@ function fastRejectLoop(R: X86): number {
  *  cmValue.ts, 0x544520/0x544590 og 0x84b180 her – kontrol: cm-sl-bench.ts mod CM_SL_FRPORT=0 */
 const FRPORT = ENV.CM_SL_FRPORT !== '0';
 /** 0x544520 / 0x544590 (staff, klub): kontrakten med klubben (uden klub: hans egen kontrakts klub – [0xae1080] = kontrakten; klubben regnes
- *  som [0xae23b4] + 580 · id, sic: 0x544551–0x544559) har +0x4e & mask (9 hhv. 2) */
+ *  som [0xae23b4] + 0x245 · id – 0x544551–0x544559; før 580 · id, en fejl i porten) har +0x4e & mask (9 hhv. 2) */
 function contractFlag_5445x0(c: CmCtx, st: number, club: number, mask: number): number {
   const m = c.m;
   if (!st) return 0;
@@ -623,7 +624,7 @@ function contractFlag_5445x0(c: CmCtx, st: number, club: number, mask: number): 
     const k = getContract(m, st);
     m.w32(0xae1080, k);
     if (!k) return 0;
-    cl = (m.u32(G.CLUBS) + 580 * m.s32(k + 4)) >>> 0;
+    cl = (m.u32(G.CLUBS) + 0x245 * m.s32(k + 4)) >>> 0;
     if (!cl) return 0;
   }
   const k2 = contractForClub_4cf5f0(c, st, cl);
@@ -640,6 +641,15 @@ function permitOk_84b180(c: CmCtx, st: number, club: number): number {
   if (!m.u32(st + 0x24) && !m.u8(st + 0x22)) return 0;
   return c.call(0x8c7950, m.u32(0xde1f54), st, cn, 0, 0, 0);
 }
+/** 0x84b180 = 0 uden at nå 0x8c7950: uden nation, eller britisk klub og hverken landets eller EU-borger og uden +0x24/+0x22 */
+function permitFails(c: CmCtx, st: number, club: number): boolean {
+  const m = c.m;
+  const nat = m.u32(st + 0x1a);
+  if (!nat) return true;
+  const cn = m.u32(club + 0x53);
+  if (m.u8(cn + 0x76) !== 0xe || nat === cn || m.u32(st + 0x1e) === cn || m.u32(st + 0x24) || m.u8(st + 0x22)) return false;
+  return !slCall(c, 0x53d740, 0, st, cn);
+}
 function fastReject0(R: X86): number {
   const S = ACTIVE;
   if (!S) return 0;
@@ -650,10 +660,17 @@ function fastReject0(R: X86): number {
   if (st === m.u32(ebp + 0x10)) return rj(0);
   if (id >= m.s32(G.STAFF_COUNT) - 16) return rj(1);
   if (m.u8(st + 0x3d) === 5 || m.u8(st + 0x28) === 5) return rj(2);
-  if (m.u32(st + 0x69)) return 0;                                             // stab (0x69fc60) – oversat
   const flag = m.u32((R.esp + 0x14) >>> 0);
-  if (!flag) return 0;
-  if (humanClub_600a50(c, club)) return 0;
+  // flag 0 (stabens pladser): staffSlot (0x83fa7c–0x840058 i TS)
+  if (!flag) return staffSlot(R, S, st, entry, slot, club);
+  if (m.u32(st + 0x69)) {
+    // stab (ikke-spillerpost): 0x83fa83 0x69fc60 → afvis; ellers som de andre. (hastighed, 14/11) Med +0x3d ≠ 0xb afvises han under alle
+    // omstændigheder ved 0x83fb1e, så 0x69fc60 (som kun læser – fejlboksen 0x69fcc0 går til adapterne) springes over.
+    if (humanClub_600a50(c, club)) return rz(102);
+    if (m.u8(st + 0x3d) !== 0xb) return rj(3);
+    const sm = m.u32(0xb67a44);
+    if (sm && slCall(c, 0x69fc60, sm, st) & 0xff) return rj(22);
+  } else if (humanClub_600a50(c, club)) return rz(102);
   if (m.u8(st + 0x3d) !== 0xb) return rj(3);
   if (m.u32(st + 0x24) && m.u8(st + 0x28) === 5) return rj(4);
   if (!m.u32(st + 0x61)) return rj(5);
@@ -685,12 +702,12 @@ function fastReject0(R: X86): number {
   // 0x8c7560(staff, klub, 1): britisk klub (land +0x76 = 0xe) og ikke EU-borger (0x53d740) → kun pladsernes grupper 1/2/3
   const cn0 = club ? m.u32(club + 0x53) : 0;
   if (cn0 && m.u8(cn0 + 0x76) === 0xe && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
-  if (b24 & 1) return 0;                                                     // leje (0x8d0040 …) – oversat
+  if (b24 & 1) return rz(103);                                                     // leje (0x8d0040 …) – oversat
   // 0x8cca10: et aftalt fremtidigt skifte (TRANSFER_MANAGER +0x86e's flag 0x10) – kun da oversat
-  if (m.u8((m.u32(m.u32(0xde1f54) + 0x86e) + 8 * id) >>> 0) & 0x10) return 0;
+  if (m.u8((m.u32(m.u32(0xde1f54) + 0x86e) + 8 * id) >>> 0) & 0x10) return rz(104);
   // ---- herfra ingen vej tilbage (rand): afvis (0x840a81) eller vurdér (0x8400da med esi = staff og de lokale variabler sat som i koden)
   const esp = R.esp >>> 0;
-  const EVAL = () => { R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da; };
+  const EVAL = () => { FR_STATS[200] = (FR_STATS[200] ?? 0) + 1; R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da; };
   if (m.u32(esp + 0x84)) return EVAL();
   const idsum = (id + m.s32(club)) | 0, kk = s16(m.u16(esp + 0x28));
   if (kk !== 0 && idsum % kk === 0) return EVAL();
@@ -715,6 +732,55 @@ function fastReject0(R: X86): number {
   const v = s16(FRPORT ? seenRep_5407e0(c, st, m.u32(club + 0xcf), 0) : slCall(c, 0x5407e0, 0, st, m.u32(club + 0xcf), 0));
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
   return v >= r ? EVAL() : rj(98);
+}
+/** flag 0 (stabens pladser, [esp+0x14] = 0) 0x83fa7c–0x840058: uden ikke-spillerpost afvist (0x83fbdf); 0x69fc60; kontraktens løn (+0x35 & 0x3f
+ *  = 2: 0x85fa00 · ugeløn / 7) mod pladsens +7 og klubbens omdømme; 0x83fc56–0x83fcb5; 0x83fd57–0x83fec2 (leje og 0x8cca10: de oversatte fra
+ *  0x83fcbb med registrene sat); 0x83fed8–0x840058 → afvis, 0x8400da eller 0x840112. Kontrol: cm-sl-bench.ts (150 dage ens) */
+function staffSlot(R: X86, S: SlMem, st: number, entry: number, slot: number, club: number): number {
+  const m = R.m, c = S.c;
+  if (!m.u32(st + 0x69)) return rj(23);
+  // (hastighed, 14/11) 0x84b180 uden 0x8c7950 afviser senere alligevel – 0x69fc60, 0x85fa00 og 0x53d740 kun læser, så tjekket kan stå først
+  if (FRPORT && permitFails(c, st, club)) return rj(26);
+  const sm = m.u32(0xb67a44);
+  if (sm && slCall(c, 0x69fc60, sm, st) & 0xff) return rj(22);
+  const k = getContract(m, st);
+  const w = k && (m.u8(k + 0x35) & 0x3f) === 2 ? (Math.imul(s16(slCall(c, 0x85fa00, k)), m.s32(k + 0xc)) / 7) | 0 : 0;
+  if (w >= m.s32(slot + 7)) return rj(24);
+  if (w > Math.imul(m.s16(club + 0x80) + 0x1f4, 10)) return rj(25);
+  if (m.u32(st + 0x39) === club) return rj(11);
+  m.w32(0xae1080, k);
+  if ((k ? (m.u32(G.CLUBS) + 0x245 * m.s32(k + 4)) >>> 0 : 0) === club) return rj(12);
+  const id = m.s32(st);
+  if ((rowB(m, id) & 0xf) >= 0xa) return rj(13);
+  const esp = R.esp >>> 0;
+  R.esi = st | 0; R.ebx = entry | 0; R.edi = k | 0;
+  m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k);
+  // 0x83fcbb (flag 0: datoen springes over) → 0x83fd57: allerede på klubbens liste
+  if ((rowB(m, id) & 0xf) && m.u32(m.u32((esp + 0x10) >>> 0)) && pairFound(m, S.slm, id, club ? m.s32(club) : -1)) return rj(15);
+  if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, m.u32(st + 0x39), club)) & 0xff)) return rj(16);
+  const b24 = m.u8(slot + 0x24);
+  const cn0 = club ? m.u32(club + 0x53) : 0;
+  if (cn0 && m.u8(cn0 + 0x76) === 0xe && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (b24 & 1 || m.u8((m.u32(m.u32(0xde1f54) + 0x86e) + 8 * id) >>> 0) & 0x10) return rz(103);   // leje / 0x8cca10 – oversat fra 0x83fcbb
+  // 0x83fed8: vurdér (0x8400da; flag 0 → 0x84010f 0x69d1b0) eller afvis
+  const EVAL = (pc: number) => { FR_STATS[201] = (FR_STATS[201] ?? 0) + 1; R.ebx = club | 0; return pc; };
+  if (m.u32(esp + 0x84)) return EVAL(0x8400da);
+  const idsum = (id + m.s32(club)) | 0, kk = s16(m.u16(esp + 0x28));
+  if (kk !== 0 && idsum % kk === 0) return EVAL(0x8400da);
+  const cn = m.u32(club + 0x53), pn = m.u32(st + 0x1a), sc = m.u32(st + 0x39), rec = m.u32(st + 0x61);
+  if (cn === pn || m.u8(st + 0x22) || (sc && m.u32(sc + 0x53) === cn)) return EVAL(0x840112);   // 0x840060 med flag 0 → 0x840112 (ebx = klubben)
+  if (s8(m.u8(st + 0x18)) < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
+  if (cn && pn && m.u8(cn + 0x75) !== m.u8(pn + 0x75)) {
+    const cr = m.s16(club + 0x80);
+    if (cr < 0xabe) return rj(19);
+    let same = false;
+    if (sc) { const scn = m.u32(sc + 0x53); same = !scn || m.u8(scn + 0x75) === m.u8(cn + 0x75); }
+    if (!same && cr < 0x109a && m.u8(cn + 0x85) < 0xc) return rj(20);
+  }
+  const g2 = b24 & 0x1e, youth = g2 === 0xa || g2 === 0xc;
+  const v = s16(FRPORT ? seenRep_5407e0(c, st, m.u32(club + 0xcf), 1) : slCall(c, 0x5407e0, 0, st, m.u32(club + 0xcf), 1));
+  const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
+  return v >= r ? EVAL(0x8400da) : rj(97);
 }
 let cmpDone = false;
 function ensureCmp(): void {
@@ -742,6 +808,21 @@ function ensureCmp(): void {
   for (const [a, f] of Object.entries(GEN)) if (!ADAPTED.has(+a) && ((f as { shared?: boolean }).shared ?? f.toString().includes('R.ret('))) registerImpl(+a, f, true);
   // 0x4d0c60 håndporteret (cmValue.ts – bit for bit som den oversatte, scripts/cm-value-check.ts)
   if (ENV.CM_SL_GENVALUE !== '1') registerImpl(0x4d0c60, (c, _e, a) => playerValue_4d0c60(c, a[0] >>> 0, a[1] >>> 0, a[2], a[3], a[4]));
+  // (hastighed, 14/11) de små hjælpefunktioner, 0x840d80 og 0x83f3a0 kalder, håndporteret (cmValue.ts, frasorteringen) – som delte (cdecl)
+  // funktioner, der selv læser argumenterne af stakken (oversætterens antal argumenter er ikke altid rigtigt for cdecl: "544410=0").
+  // CM_SL_TSHELP=0: de oversatte; CM_SL_TSHELP=adr,adr: kun de nævnte
+  if (ENV.CM_SL_TSHELP !== '0') {
+    const only = ENV.CM_SL_TSHELP ? new Set(ENV.CM_SL_TSHELP.split(',').map((x: string) => parseInt(x, 16))) : null;
+    const reg = (adr: number, f: (c: CmCtx, m: CmMem, sp: number) => number) => {
+      if (only && !only.has(adr)) return;
+      registerImpl(adr, (c, ecx, args) => { const R = enter(c, ecx, args), sp = R.esp >>> 0; R.eax = f(c, c.m, sp) | 0; return R.ret(0); }, true);
+    };
+    reg(0x5408c0, (c, m, sp) => knowledge_5408c0(c, m.u32(sp + 4), m.u32(sp + 8)));
+    // (0x544410 og 0x53d980 i TS gav andre resultater i 0x840d80 – ikke fundet hvorfor; de oversatte bruges)
+    reg(0x5407e0, (c, m, sp) => seenRep_5407e0(c, m.u32(sp + 4), m.u32(sp + 8), m.s32(sp + 12)));
+    reg(0x544520, (c, m, sp) => contractFlag_5445x0(c, m.u32(sp + 4), m.u32(sp + 8), 9));
+    reg(0x544590, (c, m, sp) => contractFlag_5445x0(c, m.u32(sp + 4), m.u32(sp + 8), 2));
+  }
   registerImpl(0x757ea0, (c, _e, a) => byP(c.m, a[0] >>> 0, a[1] >>> 0));
   registerImpl(0x844740, (c, _e, a) => byC(c.m, a[0] >>> 0, a[1] >>> 0));
 }
@@ -1029,6 +1110,47 @@ function onList(S: SlMem, id: number, cid: number): boolean {
   return false;
 }
 
+/** Et afsluttet bud uden handel (afvist, trukket, udløbet – i spillet: ikke længere åbent i g.offers, og målet er ikke kommet til klubben):
+ *  TRANSFER_MANAGER::reject_transfer_offer 0x8bf680's del for køberens ønskeliste – 0x84aeb0(køber, staff) rydder budmærket +0x17 på
+ *  pladserne med ham, og har køberen en plads med ham (0x849ce0(køber, staff, 0, 0)), fjernes han som mål 0x843e10(staff, køber, 1, rolle ≠ 0xb)
+ *  (som genudfylder pladsen). Uden det stod pladserne med et afvist bud låst resten af sæsonen (14/11). Kørt dagen efter (*estimeret*: i
+ *  originalen sker det, når svaret kommer). Computer → computer-bud står ikke i g.offers: de er afgjort samme dag (cmAiAiAnswer). */
+export const SL_DROP = { n: 0 };
+function dropDeadBids(S: SlMem): void {
+  if (ENV.CM_SL_DROP === '0') return;
+  const { g, m } = S;
+  const open = new Set<number>();
+  for (const o of g.offers) if (o.status === 'pending' || o.status === 'negotiating' || o.status === 'countered') open.add(o.id);
+  for (const [k, st] of Object.entries(g.cmPlan ?? {})) {
+    const cid = +k;
+    const drop: number[] = [];
+    for (const r of st.s) {
+      if (r[3] < 0 || r[5] < 0 || open.has(r[5])) continue;
+      const p = g.players[r[3]];
+      // (kommet til klubben – også som lejespiller: så er pladsen udfyldt)
+      if (!p || p.club === cid || (p.loan?.from ?? p.club) === cid || drop.includes(p.id)) continue;
+      drop.push(p.id);
+    }
+    if (!drop.length) continue;
+    const club = S.clubAdr(cid);
+    if (!club) continue;
+    refreshClub(S, cid);
+    S.M.setRand(cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x8bf680));
+    for (const pid of drop) {
+      const id = S.memOf.get(pid);
+      if (id === undefined) continue;
+      const staff = (m.u32(G.STAFF) + 0x6e * id) >>> 0;
+      shared(() => {
+        slCall(S.c, 0x84aeb0, S.slm, club, staff);
+        const sl = slCall(S.c, 0x849ce0, S.slm, club, staff, 0, 0) >>> 0;
+        if (sl) slCall(S.c, 0x843e10, S.slm, staff, club, 1, m.u8(sl) !== 0xb ? 1 : 0);
+      }, S);
+      SL_DROP.n++;
+    }
+    readSlots(S, cid);
+  }
+}
+
 /** 0x84a020 make_club_bids for klubben, når 0x5cccd0's betingelse er opfyldt (omdømme > 6250 hver dag, ellers (dag + klub) % 7 = 0) */
 export function makeBids(S: SlMem, cid: number, day: number): void {
   const { m, g } = S;
@@ -1138,6 +1260,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0, c0 = cpuNow();
   const S = buildSlMem(g);
   SL_DIAG.after?.(S);
+  dropDeadBids(S);
   let tt = now();
   const off = bidDay(g);
   for (const c of Object.values(g.clubs)) {

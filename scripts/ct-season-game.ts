@@ -15,7 +15,9 @@ const user = world.clubs.find((c) => c[1] === 'Arsenal')?.[0] ?? world.clubs.fin
 createGame(world, { managerName: 'Ct', managerNation: eng, clubId: user, activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
 const g = gs();
 const start = g.date;
-while (g.date < `${Number(start.slice(0, 4)) + 1}-06-30`) {
+// DAYS=n: kun n dage; CLUB=navn: klubbens skifter (begge veje) listet til sidst
+const stop = process.env.DAYS ? new Date(Date.parse(start) + +process.env.DAYS * 86400000).toISOString().slice(0, 10) : `${Number(start.slice(0, 4)) + 1}-06-30`;
+while (g.date < stop) {
   const r = continueGame();
   if (r?.match) quickPlayUserMatch();
 }
@@ -40,3 +42,8 @@ console.log(`spillere ${ps.length}, med kontrakt ${wages.length}, uden klub ${ps
 console.log(`ønskekontrakten (cmContractGame): ${WANT_STATS.n} kontrakter (${WANT_STATS.offered} som klubbens tilbud 0x4cda70), ${(WANT_STATS.ms / Math.max(1, WANT_STATS.n)).toFixed(1)} ms pr. stk.`);
 const rs = WANT_STATS.moves.map(([a, b]) => b / Math.max(1, a)).sort((a, b) => a - b);
 if (rs.length) console.log(`ny/gammel ugeløn ved klubskifte (${rs.length}): 10/50/90 % ${[0.1, 0.5, 0.9].map((f) => rs[Math.floor(f * (rs.length - 1))].toFixed(2)).join('/')}`);
+if (process.env.CLUB) {
+  const cl = Object.values(g.clubs).find((c) => c.name === process.env.CLUB)!;
+  const rows = ps.flatMap((p) => (p.moves ?? []).filter((mv) => mv.date >= start && (mv.to === cl.id || mv.from === cl.id)).map((mv) => `${mv.date} ${p.first ?? ''} ${p.last} (${p.dob.slice(0, 4)}, CA ${p.ca}) ${g.clubs[mv.from]?.name ?? '-'} → ${g.clubs[mv.to]?.name ?? '-'} €${mv.fee}${mv.loan ? ' leje' : ''}`)).sort();
+  console.log(`${cl.name}: ${rows.length}\n  ` + rows.join('\n  '));
+}

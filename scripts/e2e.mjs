@@ -793,7 +793,8 @@ async function run(look) {
           b.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
           a.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }));
         }, [src, dst]);
-        await page.waitForFunction((id) => window.__cm.gs().tactic.lineup[1] === id, free, { timeout: 5000 }).catch(async () => {
+        // strimlens rækkefølge følger pladserne, ikke lineup-indekset – det afgørende er, at han nu står i de 11
+        await page.waitForFunction((id) => window.__cm.gs().tactic.lineup.includes(id), free, { timeout: 5000 }).catch(async () => {
           const d = await gs((id) => { const g = window.__cm.gs(); const p = g.players[id]; return { id, club: p?.club === g.userClub, res: p?.reserves, inj: !!p?.injury, ban: p?.banned, virt: p?.virtual, l1: g.tactic.lineup[1], inLineup: g.tactic.lineup.includes(id), inBench: g.tactic.bench.includes(id), slot1: document.querySelectorAll('.cx-sq-orig .cx-slot.xi')[1]?.className }; }, free);
           throw new Error(`trækket fra strimlen ned på en spiller satte ham ikke på pladsen ${JSON.stringify(d)}`);
         });

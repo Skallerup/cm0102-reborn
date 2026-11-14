@@ -148,6 +148,37 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   West Ham 26, Coventry 21, Wimbledon 19, Port Vale/Watford/Cardiff 16 (Tottenham 14 for £25,7 mio.). Uden ønskelisterne (spillets eget system):
   147 transfers, £170,7 mio., median £172.000. Dvs. ønskelisterne giver ~⅓ af originalens skifter, ingen frie spillere og for få køb i de store
   klubber – undersøges, når dagen er hurtig nok.
+- **Hastighed, runde 6 (14/11, stadig slået fra):** 150 dage (`scripts/cm-sl-bench.ts`, esbuild-bundt, samme belastning) 384 → 309 ms pr. dag,
+  **bit for bit** (sha1 af pladser/par/bud/skifter hver dag ens med origin/staging's – med `CM_SL_DROP=0`, se nedenfor). Profilen viste, at
+  frasorteringen sendte 13 mio. kandidater (stabens pladser, [esp+0x14] = 0 – alle med ikke-spillerpost) til de oversatte instruktioner
+  (0x69fc60, 0x85fa00 og 0x84b180 for hver); nu i TS (`staffSlot`): 0x84b180's afvisning uden 0x8c7950 først (`permitFails` – 0x69fc60/0x85fa00/
+  0x53d740 læser kun), så 0x83fbdf–0x83fcb5 og 0x83fd57–0x840058 for flag 0 (videre ved 0x8400da/0x840112). Spillernes stab med +0x3d ≠ 0xb
+  afvises uden 0x69fc60. 0x5408c0, 0x5407e0, 0x544520 og 0x544590 kører i TS for de oversatte kaldere (som delte cdecl-funktioner, der læser
+  argumenterne af stakken – oversætterens antal er ikke altid rigtigt, "544410=0"; `CM_SL_TSHELP=0` = de oversatte). 0x544410 og 0x53d980 i TS gav
+  andre resultater i 0x840d80 (ikke fundet hvorfor) og bruges ikke. **Rettet:** 0x544520/0x544590's klub uden klub er `[0xae23b4] + 0x245 · id`
+  (porten havde 580 · id – "sic" var en fejllæsning af 0x544551: `add edx, eax` før `lea`). Tilbage pr. dag (profil): hukommelsen ~135 ms
+  (buildSlWantMem ~100), 0x83f3a0 ~105 (0x840d80 ~48, heraf 0x6e6340-adapteren ~24; frasorteringen ~36), 0x84a020 ~45. 0x840d80 og
+  vurderingsløkken 0x8400da–0x840a81 er IKKE porteret – de egne instruktioner er kun ~15 ms pr. dag; resten er de kaldte funktioner.
+- **Originalens transferliste læst rigtigt (14/11, `scripts/ct-season-club.ts`):** TRANSFER_MANAGER +0x862's +0x14 er EJEREN (art 0: sælgeren,
+  art 2/4: moderklubben), +0x10 den anden klub (køberen/lejeklubben, art 3: −1) – målt på kendte spillere (Ehiogu Middlesbrough → Arsenal £7,3 mio.,
+  Windass udlejet til Sheffield United). Art 0 = salg (+0x14 = −1: en klubløs skriver under), 2 = leje ud, 3 = kontrakten udløbet, 4 = lejen slut,
+  5 = stab. Sæsontallene ovenfor ("Middlesbrough 28 …") var derfor de AFGIVENDE klubber. Rigtigt talt (`LIGA=1`: købere i spillets fire ligaer):
+  432 køb med sum (£155,8 mio., median £66.576), 45 klubløse skrevet under (25 i juli), lejeaftaler ~116 inden for England; flest køb Crystal
+  Palace 15, Swansea 15, Bradford 14, Bristol Rovers 14, WBA 13 – de store klubber køber heller ikke meget i originalen. Pr. måned (køb/leje)
+  jul 67/9, aug 65/5, sep 48/13, okt 34/16, nov 41/20, dec 46/22, jan 30/14, feb 13/13, mar 12/4, jun 76/0. Originalens ønskelister (`scripts/
+  cm-sl-targets-orig.ts`): ved start 216 engelske pladser med et mål uden for klubben (52 klubløse), 19/7 179 (135 med et åbent bud), 31/1 271.
+- **Fundet og rettet: afviste bud låste pladsen** (`dropDeadBids`, `CM_SL_DROP=0` slår det fra): computer → computer-bud afgøres samme dag
+  (cmAiAiAnswer) og står ikke i g.offers, så pladsens budmærke +0x17 blev stående efter et afslag, og 0x84a020 byder kun på pladser med +0x17 = −1 –
+  efter spilstartens ~200 bud kom der næsten ingen nye (spillet 26/7: 67 pladser med eksternt mål i de klubber, der bød, 8 bud). Nu som
+  reject_transfer_offer 0x8bf680's del for køberen: 0x84aeb0(køber, staff) og 0x849ce0 → 0x843e10(staff, køber, 1, rolle ≠ 0xb) for hvert bud,
+  der ikke længere er åbent, og hvis mål ikke er kommet til klubben (også som lejespiller) – dagen efter (*estimeret*). Også rettet: computerens
+  accept af et modbud sammenlignede maxFee i £ med modbuddet i € (`cmAiAiAnswer`).
+- **Sæsontal nu** (`CM_SL=1 scripts/ct-season-game.ts`, købere = spillets engelske klubber): 560 skifter – 359 køb med sum (£137,6 mio., median
+  £122.500, max £7,9 mio.), 201 lejeaftaler, 0 klubløse (før rettelsen 209 køb/£74,1 mio./133 lejeaftaler; originalen 432/£155,8 mio./~116 + 45
+  klubløse). Ønskelisterne 413 ms pr. dag over sæsonen (flere genudfyldninger 0x843e10 → 0x83f3a0). **Klubløse:** originalens 277 klubløse ved
+  start (179 engelske, mest født 1982 uden fornavn) findes ikke i spillet – 273/277 kan ikke parres (`scripts/cm-free-start.ts`); de er lavet før
+  14/7 (forkørslen/ungdom), så spillet har ingen at skrive under med (verdensfilens 323 klubløse er ikke i originalen). Udestår: buddene lever
+  dage i originalen (135 åbne 19/7), vores afgøres samme dag; lejesvaret (kun lejelistede, *estimeret*); stadig lidt for få køb og for dyre.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
