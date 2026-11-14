@@ -74,7 +74,12 @@ export class SparseMem implements CmMem {
   f32(a: number): number { this.dv.setUint32(0, this.u32(a), true); return this.dv.getFloat32(0, true); }
   f64(a: number): number { this.dv.setUint32(0, this.u32(a), true); this.dv.setUint32(4, this.u32(a + 4), true); return this.dv.getFloat64(0, true); }
   w8(a: number, v: number): void { a >>>= 0; this.page(a >>> PAGE)![a & PMASK] = v & 0xff; }
-  w16(a: number, v: number): void { this.w8(a, v); this.w8(a + 1, v >> 8); }
+  w16(a: number, v: number): void {
+    a >>>= 0;
+    const o = a & PMASK;
+    if (o < PMASK) { const b = this.page(a >>> PAGE)!; b[o] = v & 0xff; b[o + 1] = (v >> 8) & 0xff; return; }
+    this.w8(a, v); this.w8(a + 1, v >> 8);
+  }
   w32(a: number, v: number): void {
     a >>>= 0;
     const o = a & PMASK;
@@ -83,6 +88,8 @@ export class SparseMem implements CmMem {
   }
   wf32(a: number, v: number): void { this.dv.setFloat32(0, v, true); this.w32(a, this.dv.getUint32(0, true)); }
   wf64(a: number, v: number): void { this.dv.setFloat64(0, v, true); this.w32(a, this.dv.getUint32(0, true)); this.w32(a + 4, this.dv.getUint32(4, true)); }
+  /** de byggede sider (sidenummer, indhold) – kontrollen af to byggere (scripts/cm-sl-memcheck.ts) */
+  pageList(): [number, Uint8Array][] { return [...this.pages]; }
   /** siderne tilbage til puljen (hukommelsen bruges ikke mere – ønskelisternes dag bygger 18.000 sider à 4 KB hver dag) */
   release(): void {
     for (const b of this.pages.values()) if (POOL.length < POOL_MAX) POOL.push(b);

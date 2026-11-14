@@ -95,6 +95,28 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   ~110 ms, positionslisterne ~60 ms. 0x4d0c60 læser datoen i 28.351 af 39.502 kald (kontraktens restløbetid) – en husket værdi pr. spiller kan ikke
   bruges; næste skridt: 0x4d0c60 (+ 0x6e86d0/0x8d0a70/0x5407e0, ~1.100 instruktioner) i TS, en billigere postbygger (Map'erne, ~6 µs pr. person),
   eller – som originalen (*estimeret*, se writeValues) – computerens værdier kun på ulige dage.
+- **Hastighed, runde 4 (14/11, stadig slået fra – dagen er stadig for langsom):** dagen 626 → ~460–500 ms i et esbuild-bundt (45 dage frø 1:
+  809 → 500 ms i snit, samme belastning; maskinen var hårdt belastet af andre processer, så tallene svinger ±50 ms). **Bit for bit:**
+  `scripts/cm-sl-bench.ts` 45 dage (sha1 af pladser/par/bud/skifter hver dag) identisk med før. Hvad der er gjort:
+  (1) **værdiformlen 0x4d0c60 håndporteret** (`src/game/cmValue.ts`: 0x4d0c60 + 0x5407e0, 0x5408c0, 0x53d980, 0x6e86d0, 0x544410, 0x8d0a70,
+  0x544670 på hukommelsen, samme double/float32/ftol-semantik som oversætteren; de sjældne grene – uden klub (rand(3)), ikke-spiller 0x8d0780,
+  0x53d980 for [0x9cf434] – kører de oversatte instruktioner). Kontrol: `scripts/cm-value-check.ts` (238.304 kald på spillets hukommelse, 0
+  afvigelser, ~5× hurtigere) og tests/cmValue.test.ts. Registreret som 0x4d0c60 for de oversatte kaldere (0x4d1600 …; `CM_SL_GENVALUE=1` = den
+  oversatte). (2) **hukommelsen** (`src/game/cmSlMem.ts buildSlWantMem`, erstatter buildWantMem(…, { full: true }) i buildSlMem): samme bytes,
+  id'er og adresser som buildWageMem + buildWantMem, men spillernes poster (personposten, rækken, spillerposten, kontrakten, præferenceposten)
+  ligger i en varig hukommelse pr. spil og skrives kun igen, når spillerens fingeraftryk (alle felter, posterne skrives af – moralen og værdien
+  afrundet som de skrives; spillerposten playerRecordInto gemt pr. spiller) er ændret (~5.000 af 40.000 pr. dag; præferencepostens nummer alene:
+  kun den post); dagens hukommelse er en kopi af den varige ved første brug af hver side (SparseMem `miss`), hvor klubberne, staben, landene
+  og globalerne skrives som før. Kontrol: `scripts/cm-sl-memcheck.ts` (`CM_SL_MEMCHECK=1`: alle sider byte for byte mod de oprindelige byggere –
+  45 dage, 715.344 sider, 0 afvigelser); `CM_SL_OLDMEM=1` = de oprindelige byggere, `CM_SL_INCR=0` = uden den varige del. (3) **udskudte
+  værdier:** +0x52 for computerklubber med trupplan uden for de aktive lande (ikke indlæste, ikke i parrene) regnes først i refreshClub, når
+  klubbens trupplan kører (før klubbens poster ændres) – ~22.000 af ~26.000 værdier pr. dag sparet; `scripts/cm-sl-valcheck.ts`: 21 dage, ingen
+  læsninger af en udskudt +0x52, de udskudte = de straks regnede (`CM_SL_LAZYVALUES=0` slår det fra). (4) småting: SparseMem.w16 med ét
+  sideopslag, positionslisternes land/kontrakt/0x867d30 én gang pr. person, sorteringen på én tal-nøgle (V·2^21 + N, kun uden int32-overløb),
+  0x600a50 gemt pr. klub mens listerne bygges. **Tilbage pr. dag (profil, belastet):** fingeraftrykkene ~100 ms (40.000 spillere – læsningen af
+  ~80 felter pr. spiller), resten af hukommelsen ~70 ms, 0x84a020 → 0x843e10 → 0x83f3a0's genudfyldning ~110 ms (heraf 0x840d80 ~37 ms),
+  positionslisterne ~50 ms, writeValues' løkke ~35 ms. Næste skridt: kun de skjulte ligaers spillere, ingen læser (læsevagt som cm-sl-valcheck),
+  0x840d80 (1.350 instruktioner) i TS, og writeValues/positionslisterne direkte på spillets data.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

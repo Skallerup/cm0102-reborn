@@ -14,7 +14,9 @@ if (process.env.V8FLAGS) (await import('node:v8')).setFlagsFromString(process.en
 const prof = process.env.PROF;
 const insp = prof ? new (await import('node:inspector')).Session() : null;
 const post = (m: string, p?: object) => new Promise<unknown>((ok, no) => insp!.post(m, p ?? {}, (e, r) => (e ? no(e) : ok(r))));
-if (insp) { insp.connect(); await post('Profiler.enable'); await post('Profiler.setSamplingInterval', { interval: 500 }); await post('Profiler.start'); }
+// PROF_DAYS=1: kun dagene (profilen startes efter spilstarten)
+const startProf = async () => { insp!.connect(); await post('Profiler.enable'); await post('Profiler.setSamplingInterval', { interval: 500 }); await post('Profiler.start'); };
+if (insp && !process.env.PROF_DAYS) await startProf();
 const days = +(process.argv[2] ?? 21);
 const out = process.argv[3];
 const sha = (v: unknown) => createHash('sha1').update(JSON.stringify(v ?? null)).digest('hex').slice(0, 12);
@@ -30,6 +32,7 @@ console.log(`nyt spil ${Math.round(tStart)} ms (heraf ønskelisterne ${Math.roun
 const startMs = SL_STATS.ms;
 console.log('buildSlMem ved start', Object.fromEntries(Object.entries(SL_T).map(([k, v]) => [k, Math.round(v)])));
 for (const k of Object.keys(SL_T)) SL_T[k] = 0;
+if (insp && process.env.PROF_DAYS) await startProf();
 t = performance.now();
 for (let d = 0; d < days; d++) {
   const r = continueGame();

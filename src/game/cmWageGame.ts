@@ -56,13 +56,13 @@ export function cmMemCall(c: CmCtx, adr: number, ...a: number[]): number {
   throw new Error(`cmWageGame: kald 0x${adr.toString(16)} er ikke porteret`);
 }
 
-const NAT7F = new Map(NATION_7F);
+export const NAT7F = new Map(NATION_7F);
 /** Originalens nøgle-id'er (cmKeyIds.ts: alle landenes, turneringernes og klubbernes id-globaler, verdensdelene [0x9cfa08..0x9cfa1c] =
  *  Afrika 0 … Sydamerika 5) og de faste .data-tabeller (0x9a7f30 aldersprocenterne i værdiformlen 0x4d0c60, 0x9a7f48 udbudsprisens
  *  beløbsgrænser 0x4d1600, 0x9cc270 = 1). Uden dem læste de oversatte funktioner 0 (fx værdien 0 % i 0x4d0c60 → udbudsprisen £90.500 for
  *  Beckham). Klubberne efter navnet (−1 = ikke i spillet); B-hold-parrene og Spaniens 23 klubber er en del af tabellen. [0xad9c6c]'s
  *  personflag (+0xc, 0x418f60) = ingen. */
-function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, number>): void {
+export function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, number>): void {
   for (const [a, nm] of KEY_NATION_GLOBALS) m.w32(a, byName.get(nm) ?? -1);
   for (const [a, v] of KEY_COMP_GLOBALS) m.w32(a, v);
   for (let i = 0; i < 6; i++) m.w32(0x9cfa08 + 4 * i, i);
@@ -77,16 +77,16 @@ function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, number>): v
 const KEYOBJ = 0x68000000;
 
 /** nøglelandenes id-globaler (adresse → nation.dat-navnet), de lønportene læser */
-const KEY_NATIONS: [number, string][] = [
+export const KEY_NATIONS: [number, string][] = [
   [0x9cf218, 'Argentina'], [0x9cf224, 'Australia'], [0x9cf244, 'Belgium'], [0x9cf260, 'Brazil'], [0x9cf2ac, 'Croatia'], [0x9cf2c0, 'Denmark'],
   [0x9cf2dc, 'Republic of Ireland'], [0x9cf2e4, 'England'], [0x9cf2fc, 'Finland'], [0x9cf300, 'France'], [0x9cf314, 'Germany'], [0x9cf338, 'Holland'],
   [0x9cf360, 'Italy'], [0x9cf36c, 'Japan'], [0x9cf3e4, 'Northern Ireland'], [0x9cf408, 'Norway'], [0x9cf430, 'Poland'], [0x9cf434, 'Portugal'],
   [0x9cf45c, 'Scotland'], [0x9cf484, 'South Korea'], [0x9cf488, 'Spain'], [0x9cf4a8, 'Sweden'], [0x9cf4f8, 'United States'], [0x9cf510, 'Wales'],
 ];
 /** de øvrige globaler, portene sammenligner med (0x9cf594 er et turnerings-id, ikke et land) – −1 = ingen */
-const OTHER_GLOBALS = [0x9cf594, 0x9cf2e8, 0x9cf2ec];
+export const OTHER_GLOBALS = [0x9cf594, 0x9cf2e8, 0x9cf2ec];
 
-const STAFF0 = 0x10000000, PREC0 = 0x20000000, CLUB0 = 0x30000000, NAT0 = 0x38000000, DIV0 = 0x3c000000, FIN0 = 0x40000000, K0 = 0x50000000,
+export const STAFF0 = 0x10000000, PREC0 = 0x20000000, CLUB0 = 0x30000000, NAT0 = 0x38000000, DIV0 = 0x3c000000, FIN0 = 0x40000000, K0 = 0x50000000,
   ROWS0 = 0x58000000, TM0 = 0x5f000000, PTRS = 0x5e000000;
 
 const ATTR_IX = new Map<string, number>(ATTRS.map((k, i) => [k, i]));
@@ -125,7 +125,7 @@ export interface WageMem {
 /** spiltilstandens gennemløb, som alle opbygninger samme dag deler (største database-id, udlejede pr. moderklub, staben pr. klub) – genbruges,
  *  så længe dato, antal spillere og antal stab er de samme */
 const SCAN = new WeakMap<GameState, { key: string; maxId: number; loanedOut: Map<number, Player[]>; staffOf: Map<number, import('./types').Staff[]> }>();
-function scanOf(g: GameState) {
+export function scanOf(g: GameState) {
   // samme dag og ingen nye personer (lejeaftaler og stabsskift samme dag ses først næste dag – *estimeret*, kun for hastigheden)
   const key = `${g.date}|${g.nextId?.player}|${g.nextId?.staff}`;
   const c = SCAN.get(g);
