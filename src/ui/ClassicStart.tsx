@@ -429,7 +429,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
       <Frame {...common} title={t('cxs.title')} sub={t('cxs.startSeason')} onBack={() => go('leagues')} onNext={() => void leaguesDone(world, sel, bgn, sel[0])}>
         <div className="cxs-seasons">
           {opts.map((n) => (
-            <button key={n} className={`cxs-season ${n === main ? 'on' : ''}`} data-season={world.nations[n].name}
+            <button key={n} className={`cxs-seasonbtn ${n === main ? 'on' : ''}`} data-season={world.nations[n].name}
               onClick={() => setSel([n, ...sel.filter((x) => x !== n)])}>{natName(world.nations[n].name)} {seasonLabel(n)}</button>
           ))}
         </div>

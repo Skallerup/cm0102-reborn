@@ -120,6 +120,7 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-02-leagues.png` });
     const own = ENGINE_GRID ? { club: 'Arsenal', nation: 'England' } : { club: 'Brøndby', nation: 'Denmark' };
     if (own.nation !== 'England') await page.locator(`.cxs-lrow[data-nation="${own.nation}"] [data-sl=selected]`).click();
+    if (ENGINE_GRID) await page.locator('.cxs-lrow[data-nation="Denmark"] [data-sl=selected]').click();
     if ((await page.locator('.cxs-lrow.lg-sel').count()) < 1) throw new Error('intet land er valgt');
     // BACKGROUND: et land kan sættes som baggrundsland (kun i baggrunden, ikke spilbart) og fjernes igen; SELECTED gør det spilbart
     const bgRow = page.locator('.cxs-lrow[data-nation="France"]');
@@ -130,9 +131,15 @@ async function run(look) {
     await bgRow.locator('[data-sl=background]').click();
     if ((await page.locator('.cxs-lrow.lg-sel [data-sl=selected].on').count()) < 1) throw new Error('SELECTED er ikke markeret');
     // som i originalen står den laveste spilbare division kun ved et valgt land med flere end to divisioner (England)
-    if (own.nation === 'England' && !(await page.locator('.cxs-lrow.lg-sel .lw').first().innerText()).trim()) throw new Error('laveste division mangler for et valgt land');
+    if (own.nation === 'England' && !(await page.locator('.cxs-lrow.lg-sel[data-nation="England"] .lw').first().innerText()).trim()) throw new Error('laveste division mangler for et valgt land');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-02b-leagues-bg.png` });
     await page.locator('.cx-foot .cx-next').click();
+    // flere valgte lande (original DB): Select Start Season – skærmen skal fylde vinduet (klassen cxs-season ramte før knapperne)
+    if (await page.locator('[data-season]').first().waitFor({ timeout: 3000 }).then(() => true).catch(() => false)) {
+      const h = await page.locator('.cxs-season').first().evaluate((el) => el.getBoundingClientRect().height);
+      if (h < 400) throw new Error(`Select Start Season er kun ${Math.round(h)} px høj`);
+      await page.locator('.cx-foot .cx-next').click();
+    }
     await page.waitForSelector('[data-name=first]', { timeout: 20000 });
     await page.fill('[data-name=first]', 'E2E'); await page.fill('[data-name=second]', 'Tester');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-start-03-name.png` });
