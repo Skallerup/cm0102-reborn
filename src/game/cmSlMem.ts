@@ -20,7 +20,7 @@ import { nationLanguage } from './engine/grid/nationLanguage';
 import { regionOf } from './leagues';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
-import { squad, squadIds } from './state';
+import { squadIds } from './state';
 import { isHumanClub } from './humans';
 import { boardEnv } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
@@ -173,12 +173,35 @@ function valueOf(g: GameState, p: Player | undefined, clubId: number): number {
 // pr. spil (Base.P), som kun opdateres for de spillere, hvis inddata (fingeraftrykket – alt, posterne skrives af) er ændret siden i går; dagens
 // hukommelse er en kopi ved første brug af hver side (SparseMem `miss`), hvor resten (klubberne, staben, landene, globalerne) skrives som før.
 
+type StaffOfId = { get(x: number): number | undefined };
+/** (hastighed) spillets id → tal (i stedet for en Map): id'er < 2^18 i typede tabeller (databasens id'er går til ~133.000), resten i en Map */
+const PID_N = 1 << 18;
+class PidMap {
+  private v = new Int32Array(PID_N); private e = new Uint8Array(PID_N); private big = new Map<number, number>();
+  set(x: number, v: number): void { if (x >= 0 && x < PID_N) { this.v[x] = v; this.e[x] = 1; } else this.big.set(x, v); }
+  get(x: number): number | undefined { return x >= 0 && x < PID_N ? (this.e[x] ? this.v[x] : undefined) : this.big.get(x); }
+  has(x: number): boolean { return this.get(x) !== undefined; }
+}
 interface Ent { p: Player; id: number; cid: number; hasK: boolean; pref: number }
-interface Base { P: SparseMem; fp: Map<number, Float64Array>; fs: Map<number, (string | undefined)[]>; fpPref: Map<number, unknown[]>; prefs: Map<number, number[]>; prefMax: number }
+/** (hastighed) id → værdi i et array (personernes id'er er tætte, < ~200.000) i stedet for en Map */
+class IdMap<T> {
+  private a: (T | undefined)[] = [];
+  size = 0;
+  get(k: number): T | undefined { return this.a[k]; }
+  set(k: number, v: T): void { if (this.a[k] === undefined) this.size++; this.a[k] = v; }
+  delete(k: number): void { if (this.a[k] !== undefined) { this.a[k] = undefined; this.size--; } }
+  keys(): number[] { const out: number[] = []; for (let i = 0; i < this.a.length; i++) if (this.a[i] !== undefined) out.push(i); return out; }
+}
+interface Base { P: SparseMem; fp: IdMap<Float64Array>; fs: IdMap<(string | undefined)[]>; fpPref: IdMap<unknown[]>; prefs: IdMap<number[]>; prefMax: number }
 const BASES = new WeakMap<GameState, Base>();
 const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
 /** målinger: personer i alt, skrevet igen, hele genopbygninger */
-export const SLMEM_STATS = { persons: 0, rewritten: 0, prefOnly: 0, builds: 0 };
+export const SLMEM_STATS = { persons: 0, rewritten: 0, prefOnly: 0, builds: 0, stale: 0, deferredWritten: 0, copied: 0 };
+/** målinger (ms): id'erne, den varige del, dagens personer/klubber, buildWantMem's felter */
+export const SLMEM_T = { i: 0, p: 0, b: 0, c: 0 };
+const tnow = () => (typeof performance !== 'undefined' ? performance.now() : 0);
+/** kontrollen (scripts/cm-sl-stalecheck.ts): de udskudte id'er, der endnu ikke er skrevet i dag (`ids` sættes af kontrollen), og om refreshClub skriver */
+export const SLMEM_DEFER: { ids: Set<number> | null; inRefresh: boolean } = { ids: null, inRefresh: false };
 /** fejlsøgning (CM_SL_FPDEBUG=1): hvilket felt i fingeraftrykket der oftest ændres */
 export const FPDBG: Record<string, number> | null = ENV.CM_SL_FPDEBUG === '1' ? {} : null;
 /** dagens hukommelse → den varige under den (kontrollen: slMemPages) */
@@ -218,7 +241,7 @@ function fpInto(o: Float64Array, at: number, ss: (string | undefined)[], si: num
   return at;
 }
 /** fingeraftrykket for præferenceposten (nummeret, Player.cmRel og de personposter, den peger på) */
-function fpPref(o: unknown[], at: number, e: Ent, staffOfId: Map<number, number>): number {
+function fpPref(o: unknown[], at: number, e: Ent, staffOfId: StaffOfId): number {
   o[at++] = e.pref;
   const rel = e.pref >= 0 ? e.p.cmRel! : null;
   if (rel) { o[at++] = rel.length; for (let i = 0; i < rel.length; i++) { o[at++] = rel[i]; if (i >= 6 && rel[i]) o[at++] = staffOfId.get(rel[i]); } }
@@ -252,7 +275,7 @@ function writeRec(m: SparseMem, e: Ent, date: string, nNat: number): void {
     m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0);
   }
 }
-function writeWant(m: SparseMem, e: Ent, staffOfId: Map<number, number>, nNat: number): void {
+function writeWant(m: SparseMem, e: Ent, staffOfId: StaffOfId, nNat: number): void {
   const p = e.p, id = e.id, st = STAFF0 + 0x6e * id;
   if (p.dob) { const y = isoY(p.dob); m.w16(st + 0x10, isoD(p.dob)); m.w16(st + 0x12, y); m.w32(st + 0x14, leap(y)); }
   if (p.cmNation2 !== undefined && p.cmNation2 >= 0) m.w32(st + 0x1e, natA(p.cmNation2, nNat));
@@ -281,7 +304,7 @@ function writeWant(m: SparseMem, e: Ent, staffOfId: Map<number, number>, nNat: n
   }
 }
 /** præferenceposten (PREF0 + 0x40 · nummer) og personpostens +0x65 */
-function writePref(m: SparseMem, e: Ent, staffOfId: Map<number, number>): void {
+function writePref(m: SparseMem, e: Ent, staffOfId: StaffOfId): void {
   if (e.pref < 0) return;
   const rel = e.p.cmRel!, pr = PREF0 + 0x40 * e.pref;
   for (let k = 0; k < rel.length; k++) {
@@ -304,10 +327,14 @@ function zeroId(m: SparseMem, id: number): void {
 }
 
 /** Som buildWantMem(g, clubs, { full: true, call, useLog }) – samme hukommelse og samme kald */
-export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { call?: (adr: number, a: number[]) => number | undefined; useLog?: (adr: number) => boolean }): WantMem {
+export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { call?: (adr: number, a: number[]) => number | undefined; useLog?: (adr: number) => boolean;
+  /** (hastighed) spillere, hvis poster ingen læser, før deres klubs trupplan eller bud kører (cmShortlistGame.ts staleOk): beholder gårsdagens
+   *  poster (når id, klub og kontrakt er de samme), indtil `refreshClub(klub)` skriver dem (WantMem.refreshClub) */
+  stale?: (p: Player, cid: number) => boolean }): WantMem & { refreshClub?: (cid: number, pids?: Set<number>) => number[]; deferredPids?: { has(pid: number): boolean }; pidStaff?: (pid: number) => number | undefined } {
+  let tq = tnow();
   const incr = ENV.CM_SL_INCR !== '0';
   let B = incr ? BASES.get(g) : undefined;
-  if (!B) { B = { P: new SparseMem(), fp: new Map(), fs: new Map(), fpPref: new Map(), prefs: new Map(), prefMax: 0 }; if (incr) BASES.set(g, B); SLMEM_STATS.builds++; }
+  if (!B) { B = { P: new SparseMem(), fp: new IdMap(), fs: new IdMap(), fpPref: new IdMap(), prefs: new IdMap(), prefMax: 0 }; if (incr) BASES.set(g, B); SLMEM_STATS.builds++; }
   const P = B.P;
   const date = g.date;
   const dYear = Number(date.slice(0, 4)), dMd = Number(date.slice(5, 7)) * 100 + Number(date.slice(8, 10));
@@ -317,18 +344,20 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   // ---------------------------------------------------------------- id'erne (som buildWageMem: truppernes spillere, formanden, staben pr. klub; de klubløse; menneskets manager)
   const memId = new Map<Player, number>();
   let next = sc.maxId + 1;
-  const pid = (p: Player) => { let v = memId.get(p); if (v === undefined) { v = !p.regen && p.id < 1_000_000 ? p.id : next++; memId.set(p, v); } return v; };
+  const pid = (p: Player) => { if (!p.regen && p.id < 1_000_000) return p.id; let v = memId.get(p); if (v === undefined) { v = next++; memId.set(p, v); } return v; };
   const ents: Ent[] = [];
   const squads = new Map<number, number[]>(), chairs = new Map<number, number>(), staffIds = new Map<number, [Staff, number][]>();
   for (const cid of clubIds) {
-    const sq = squad(cid).filter((p) => !p.loan).concat(sc.loanedOut.get(cid) ?? []);
+    // (squad(cid) uden udlejede, så de udlejede fra klubben – uden de mellemliggende lister)
     const sts: number[] = [];
-    for (const p of sq) {
-      if (sts.length >= 50 || p.virtual) continue;
+    const add = (p: Player) => {
+      if (sts.length >= 50 || p.virtual) return;
       const id = pid(p);
       sts.push(STAFF0 + 0x6e * id);
       ents.push({ p, id, cid, hasK: !!p.contract, pref: -1 });
-    }
+    };
+    for (const x of squadIds(cid)) { const p = g.players[x]; if (p && p.club === cid && !p.loan) add(p); }
+    for (const p of sc.loanedOut.get(cid) ?? []) add(p);
     squads.set(cid, sts);
     if (g.cmFin?.[cid]?.chair) chairs.set(cid, next++);
     const ss: [Staff, number][] = [];
@@ -343,11 +372,20 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   let prefN = 0;
   for (const e of ents) { const rel = e.p.cmRel; if (rel && rel.some((x) => x)) e.pref = prefN++; }
   const players: [Player, number][] = ents.map((e) => [e.p, STAFF0 + 0x6e * e.id]);
-  const staffOfId = new Map<number, number>();
-  for (const [p, st] of players) if (!p.regen && p.id < 1_000_000) staffOfId.set(p.id, st);
+  // spillets id → personposten (alle spillere; de genererede i genPid); staffOfId: kun de ikke-regenererede med id < 1.000.000 (præferenceposterne)
+  const byPid = new PidMap(), genPid = new Map<number, number>();
+  for (const [p, st] of players) byPid.set(p.id, st);
+  const staffOfId = { get: (x: number) => { if (x >= 1_000_000) return undefined; const st = byPid.get(x); return st === undefined || g.players[x]?.regen ? undefined : st; } };
+  SLMEM_T.i += tnow() - tq; tq = tnow();
   // ---------------------------------------------------------------- den varige del: de ændrede spillere skrives igen
-  const byId = new Map<number, Ent[]>();
-  for (const e of ents) { const l = byId.get(e.id); if (l) l.push(e); else byId.set(e.id, [e]); }
+  // personerne efter id (i rækkefølgen, de først ses – som en Map): én post pr. id i `one`, flere i `multi` (sjældent)
+  const ids: number[] = [], one: (Ent | undefined)[] = new Array(count).fill(undefined), multi = new Map<number, Ent[]>();
+  for (const e of ents) {
+    const o = one[e.id];
+    if (!o) { one[e.id] = e; ids.push(e.id); }
+    else { const l = multi.get(e.id); if (l) l.push(e); else multi.set(e.id, [o, e]); }
+  }
+  const ONE: Ent[] = [ents[0]];
   const scr2: unknown[] = [], strs: (string | undefined)[] = [];
   const changed: [number, Ent[]][] = [], prefOnly: Ent[] = [];
   const same = (old: unknown[] | undefined, a: unknown[], n: number) => {
@@ -367,13 +405,28 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   };
   const zeroPrefs = (id: number) => { for (const k of B.prefs.get(id) ?? []) zeroRange(P, PREF0 + 0x40 * k, 0x40); };
   // (to trin: først nulstilles alle gamle poster – præferenceposternes numre kan skifte mellem spillere – så skrives de ændrede)
-  for (const [id, es] of byId) {
+  const stale = opts.stale;
+  const deferred = new Map<number, Ent[]>(), deferredPids = new PidMap();
+  SLMEM_DEFER.ids?.clear();
+  for (const id of ids) {
+    let es = multi.get(id);
+    if (!es) { ONE[0] = one[id]!; es = ONE; }
     let n = 0, n2 = 0, ns = 0;
-    if (FP.length < 80 * es.length) FP = new Float64Array(160 * es.length);
-    for (const e of es) { n = fpInto(FP, n, strs, ns, e, date, dYear, dMd); ns += 4; }
-    for (const e of es) n2 = fpPref(scr2, n2, e, staffOfId);
     const old = B.fp.get(id), oldP = B.fpPref.get(id);
-    const sameCore = sameNum(old, FP, n) && sameStr(B.fs.get(id), strs, ns);
+    for (const e of es) n2 = fpPref(scr2, n2, e, staffOfId);
+    let sameCore: boolean;
+    const e0 = es[0];
+    if (stale && old && es.length === 1 && old[0] === e0.id && old[1] === e0.cid && old[2] === (e0.hasK ? 1 : 0) && stale(e0.p, e0.cid)) {
+      sameCore = true; SLMEM_STATS.stale++;
+      const l = deferred.get(e0.cid); if (l) l.push(e0); else deferred.set(e0.cid, [e0]);
+      deferredPids.set(e0.p.id, 1);
+      SLMEM_DEFER.ids?.add(e0.id);
+    }
+    else {
+      if (FP.length < 80 * es.length) FP = new Float64Array(160 * es.length);
+      for (const e of es) { n = fpInto(FP, n, strs, ns, e, date, dYear, dMd); ns += 4; }
+      sameCore = sameNum(old, FP, n) && sameStr(B.fs.get(id), strs, ns);
+    }
     if (sameCore && same(oldP, scr2, n2)) continue;
     if (sameCore && es.length === 1) {
       // kun præferenceposten (nummeret skifter, når en spiller før ham får eller mister sin): posten og +0x65
@@ -382,14 +435,14 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     } else {
       if (old) { zeroId(P, id); zeroPrefs(id); }
       B.fp.set(id, FP.slice(0, n)); B.fs.set(id, strs.slice(0, ns));
-      changed.push([id, es]);
+      changed.push([id, es === ONE ? [es[0]] : es]);
     }
     B.fpPref.set(id, scr2.slice(0, n2));
-    const pr = es.filter((e) => e.pref >= 0).map((e) => e.pref);
-    if (pr.length) B.prefs.set(id, pr); else B.prefs.delete(id);
+    if (es.length === 1) { if (es[0].pref >= 0) B.prefs.set(id, [es[0].pref]); else B.prefs.delete(id); }
+    else { const pr = es.filter((e) => e.pref >= 0).map((e) => e.pref); if (pr.length) B.prefs.set(id, pr); else B.prefs.delete(id); }
   }
   // id'er uden spiller i dag: nulstilles
-  if (B.fp.size > byId.size) for (const id of [...B.fp.keys()]) if (!byId.has(id)) { zeroId(P, id); zeroPrefs(id); B.fp.delete(id); B.fs.delete(id); B.fpPref.delete(id); B.prefs.delete(id); }
+  if (B.fp.size > ids.length) for (const id of B.fp.keys()) if (!(id >= 0 && id < count && one[id])) { zeroId(P, id); zeroPrefs(id); B.fp.delete(id); B.fs.delete(id); B.fpPref.delete(id); B.prefs.delete(id); }
   for (const [, es] of changed) {
     for (const e of es) if (e.pref >= 0) zeroRange(P, PREF0 + 0x40 * e.pref, 0x40);
     for (const e of es) writeRec(P, e, date, nNat);
@@ -399,10 +452,11 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   SLMEM_STATS.prefOnly += prefOnly.length;
   SLMEM_STATS.rewritten += changed.length;
   B.prefMax = prefN;
-  SLMEM_STATS.persons += byId.size;
+  SLMEM_STATS.persons += ids.length;
 
+  SLMEM_T.p += tnow() - tq; tq = tnow();
   // ---------------------------------------------------------------- dagens hukommelse: kopi af den varige ved første brug + resten
-  const m = new SparseMem((pg, mem) => { const src = P.page(pg, false); if (src) mem.page(pg, false)!.set(src); });
+  const m = new SparseMem((pg, mem) => { const src = P.page(pg, false); if (src) { mem.page(pg, false)!.set(src); SLMEM_STATS.copied++; } }, ENV.CM_SL_READTHRU === '0' ? undefined : P);
   UNDER.set(m, P);
   const wc: CmCtx = { m, rand: () => { throw new Error('cmWageGame: rand'); }, call: (adr, ...a) => cmMemCall(wc, adr, ...a) };
   let maxClub = 0;
@@ -443,8 +497,8 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   const finAdr = (cid: number) => FIN0 + 0x167 * cid;
   const staffAdr = (id: number) => STAFF0 + 0x6e * id;
   const noContract = (id: number) => { m.w32(ROWS0 + 79 * id, -1); m.w32(ROWS0 + 79 * id + 4, -1); };
-  const contracts = new Map<number, number>();
-  for (const e of ents) if (e.hasK) contracts.set(e.p.id, K0 + 80 * e.id);
+  let contracts: Map<number, number> | null = null;
+  const contractsOf = () => { if (!contracts) { contracts = new Map(); for (const e of ents) if (e.hasK) contracts.set(e.p.id, K0 + 80 * e.id); } return contracts; };
   const staffContract = (id: number, club: number, wage: number) => {
     const k = K0 + 80 * id;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
@@ -498,15 +552,13 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   for (const e of ents) natAdr(e.p.nation);
   m.w32(G.STAFF_COUNT, count);
   for (const cid of humanMgr) { const st = staffAdr(count - 1); m.w32(st, count - 1); noContract(count - 1); m.w32(clubAdr(cid) + 0xcf, st); }
-  const byPid = new Map<number, number>();
-  for (const [p, st] of players) byPid.set(p.id, st);
   for (const cid of clubIds) { const pr = g.clubs[cid].cmPrefs; if (pr) for (let k = 0; k < 3; k++) m.w32(clubAdr(cid) + 0x9b + 4 * k, byPid.get(pr[k]) ?? 0); }
   for (const cid of clubIds) { const f = finAdr(cid); m.w32(f + 0x14, getMaxWage_5968d0(wc, f, 0, -1)); }
   let gen = count;
   const W: WageMem = {
     c: wc,
-    staffOf: (p) => byPid.get(p.id) ?? 0,
-    addGenerated: (p, club) => { const id = gen++; const st = staffAdr(id); writeRec(m, { p, id, cid: club, hasK: false, pref: -1 }, date, nNat); natAdr(p.nation); byPid.set(p.id, st); return st; },
+    staffOf: (p) => byPid.get(p.id) ?? genPid.get(p.id) ?? 0,
+    addGenerated: (p, club) => { const id = gen++; const st = staffAdr(id); writeRec(m, { p, id, cid: club, hasK: false, pref: -1 }, date, nNat); natAdr(p.nation); genPid.set(p.id, st); return st; },
     clubOf: (cid) => (built.has(cid) ? clubAdr(cid) : 0),
     finOf: (cid) => (built.has(cid) ? finAdr(cid) : 0),
     players,
@@ -514,9 +566,10 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     natOf: natAdr,
     divOf: divAdr,
     divIds: () => [...divs],
-    contractOf: (p) => contracts.get(p.id) ?? 0,
+    contractOf: (p) => contractsOf().get(p.id) ?? 0,
   };
 
+  SLMEM_T.b += tnow() - tq; tq = tnow();
   // ---------------------------------------------------------------- buildWantMem's felter (uden personerne)
   m.w8(0xa83608, 10);
   [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334].forEach((d, i) => { m.w16(0x9b8448 + 2 * i, d); m.w16(0x9b8460 + 2 * i, d + (i >= 2 ? 1 : 0)); });
@@ -592,8 +645,8 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
   }
   // (personløkkens landeposter: nat(andet land), nat(landet))
   for (const e of ents) { const p = e.p; if (p.cmNation2 !== undefined && p.cmNation2 >= 0) nat(p.cmNation2); nat(p.nation); }
-  const byStaff = new Map<number, Player>();
-  for (const [p, st] of players) byStaff.set(st, p);
+  let byStaffM: Map<number, Player> | null = null;
+  const byStaffOf = () => { if (!byStaffM) { byStaffM = new Map(); for (const [p, st] of players) byStaffM.set(st, p); } return byStaffM; };
   let env: BoardEnv | null = null;
   let rand: (n: number) => number = () => { throw new Error('cmContractGame: rand uden frø'); };
   const envOf = () => (env ??= boardEnv(g));
@@ -604,14 +657,14 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     switch (adr) {
       case 0x849f00: {
         const withThis = a.length === 4, st = a[withThis ? 1 : 0] >>> 0, club = a[withThis ? 2 : 1] >>> 0, out = withThis ? a[3] >>> 0 : 0;
-        const p = byStaff.get(st), cid = m.s32(club);
+        const p = byStaffOf().get(st), cid = m.s32(club);
         if (p && m.u32(st + 0x39) !== club && g.clubs[cid]) { if (out) m.w32(out, 0xb); return newClubStatus(g, p, cid, caIdx); }
         return withThis ? slCall(gc, adr, a[0], ...a.slice(1)) : slCall(gc, adr, slmOf(m), ...a);
       }
       case 0x846920: case 0x844780: return slCall(gc, adr, slmOf(m), ...a);
       case 0x8cca10: return slCall(gc, adr, m.u32(0xde1f54), ...a);
       case 0x5a0590: return getClubFinance_5a0590(gc, a[a.length - 1]);
-      case 0x4d0c60: return valueOf(g, byStaff.get(a[0] >>> 0), m.s32(a[1]));
+      case 0x4d0c60: return valueOf(g, byStaffOf().get(a[0] >>> 0), m.s32(a[1]));
       case 0x4b02e0: return leagueClash(envOf(), m.s32(a[0]), m.s32(a[1]));
       case 0x4a4850: {
         const e = envOf().entry(m.s32(a[a.length - 1]));
@@ -626,5 +679,31 @@ export function buildSlWantMem(g: GameState, clubs: Iterable<number>, opts: { ca
     return cmMemCall(gc, adr, ...a);
   };
   const gc = genCtx(base);
-  return { W, c: gc, g, env: envOf, setRand: (f) => { rand = f; }, byStaff };
+  /** de udskudte spillere i klubben: fingeraftrykket, og er det ændret, skrives posterne igen – i den varige hukommelse og i dagens (som den varige
+   *  dels ændrede spillere ovenfor; præferenceposten er allerede skrevet). Giver personposterne for de skrevne. */
+  const done = new Set<Ent>();
+  /** klubbens udskudte spillere – eller kun dem med de givne spil-id'er (pids); giver personposterne for alle de behandlede */
+  const refreshClub = (cid: number, pids?: Set<number>): number[] => {
+    const l0 = deferred.get(cid);
+    if (!l0) return [];
+    const l = pids ? l0.filter((e) => pids.has(e.p.id) && !done.has(e)) : l0.filter((e) => !done.has(e));
+    if (!pids) deferred.delete(cid);
+    const out: number[] = [];
+    SLMEM_DEFER.inRefresh = true;
+    for (const e of l) {
+      done.add(e);
+      SLMEM_DEFER.ids?.delete(e.id);
+      out.push(STAFF0 + 0x6e * e.id);
+      const n = fpInto(FP, 0, strs, 0, e, date, dYear, dMd);
+      if (sameNum(B.fp.get(e.id), FP, n) && sameStr(B.fs.get(e.id), strs, 4)) continue;
+      B.fp.set(e.id, FP.slice(0, n)); B.fs.set(e.id, strs.slice(0, 4));
+      for (const mm of [P, m]) { zeroId(mm, e.id); writeRec(mm, e, date, nNat); writeWant(mm, e, staffOfId, nNat); }
+      SLMEM_STATS.deferredWritten++;
+    }
+    SLMEM_DEFER.inRefresh = false;
+    return out;
+  };
+  SLMEM_T.c += tnow() - tq;
+  return { W, c: gc, g, env: envOf, setRand: (f) => { rand = f; }, get byStaff() { return byStaffOf(); }, refreshClub, deferredPids,
+    pidStaff: (pid: number) => byPid.get(pid) };
 }

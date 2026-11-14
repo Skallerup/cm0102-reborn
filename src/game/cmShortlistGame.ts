@@ -24,11 +24,11 @@
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
 import type { GameState, Player } from './types';
 import { type CmCtx, type CmMem, G, getContract, clubAt, type SparseMem } from './cmMem';
-import { buildSlWantMem, slMemPages } from './cmSlMem';
+import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { slCall } from './cmShortlist';
-import { playerValue_4d0c60 } from './cmValue';
+import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0 } from './cmValue';
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50 } from './cmContractWant';
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
@@ -62,9 +62,10 @@ const s16 = (v: number) => (v << 16) >> 16;
 
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft) */
 const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
-/** Ønskelisterne er SLÅET FRA i spillet (14/11-2026): de finder nu mål som originalen (spilstarten 300 mål i 172 klubber mod originalens 258 i
- *  137 – scripts/cm-shortlist.ts / cm-shortlist-orig.ts; udbudsprisen 0x4d1600 median 1,00 × originalens), men 0x83b6e0 for alle klubber tager
- *  ~10 s ved spilstarten og ~0,5 s pr. dag (målet er ≤ 0,3 s – scripts/cm-sl-bench.ts; runde 4: cmValue.ts, cmSlMem.ts) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
+/** Ønskelisterne er SLÅET FRA i spillet (14/11-2026): de finder mål som originalen (spilstarten 300 mål i 172 klubber mod originalens 258 i
+ *  137 – scripts/cm-shortlist.ts / cm-shortlist-orig.ts; udbudsprisen 0x4d1600 median 1,00 × originalens), men en hel sæson koster ~0,49 s pr.
+ *  dag (målet er ≤ 0,3 s; de første 45 dage ~0,3 s – scripts/cm-sl-bench.ts, scripts/ct-season-game.ts; runde 5: trupplanernes 0x83b6e0 →
+ *  0x83f3a0 er ~0,2 s pr. dag i sæsonen) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
 export const SL_ON = { on: ENV.CM_SL === '1' };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
 export const cmShortlistOn = (g: GameState) => SL_ON.on && cmActive(g) && !g.draft;
@@ -90,13 +91,16 @@ export interface SlMem {
   M: WantMem; m: CmMem; c: CmCtx; g: GameState;
   slm: number;
   /** spillets id → hukommelsens id og omvendt */
-  memOf: Map<number, number>; byMem: Map<number, Player>;
+  memOf: { get(pid: number): number | undefined }; byMem: { get(id: number): Player | undefined };
   clubAdr: (cid: number) => number;
   events: SlEvent[];
   /** klubberne, hvis pladser er skrevet i hukommelsen */
   slotted: Set<number>;
   /** planValue: aiPickCtx pr. klub og playerRecord pr. spiller (uændrede, mens hukommelsen lever) */
-  cache?: { ctx: Map<number, ReturnType<typeof aiPickCtx> | object>; rec: Map<number, number[]> };
+  cache?: { ctx: Map<number, ReturnType<typeof aiPickCtx> | object>; rec: Map<number, number[]>; day: { today: Day; yearAgo: Day } | null;
+    pl: Map<number, { joined: Day; age: number; pLang: ReturnType<typeof nationLanguage>; langs: ReturnType<typeof playerLanguages> }>;
+    cl: Map<number, { lang: ReturnType<typeof nationLanguage> | null; mg: ReturnType<typeof managerStaff> | null; np: number[] | null }>;
+    rd: Map<string, ReturnType<typeof roleDataOf>> };
   /** spillerne pr. klub (refreshClub) */
   byClub?: Map<number, [Player, number][]>;
 }
@@ -143,10 +147,32 @@ function buildPositionLists(S: SlMem): void {
   const loaded = loadedFilter(S.g);
   for (let id = 0; id < count - 16; id++) {
     const st = (base + 0x6e * id) >>> 0;
-    if (m.s32(st) !== id) continue;                                          // ingen post (ikke bygget)
+    // (hastighed: de ikke indlæste først – så læses deres poster ikke, og siderne kopieres ikke fra den varige hukommelse)
     const p = S.byMem.get(id);
     if (p && !loaded(p)) continue;                                           // ikke i originalens hukommelse (se loadedFilter)
-    for (let pos = 0; pos < 16; pos++) if (fitsSlot(m, st, pos, count, human)) ids[pos].push(id);
+    if (m.s32(st) !== id) continue;                                          // ingen post (ikke bygget)
+    // (fitsSlot for alle 16 positioner med spillerpostens bytes læst én gang)
+    const r = m.u32(st + 0x61);
+    if (r) {
+      const q = (o: number) => s8(m.u8(r + o)) >= 15;
+      const f = q(0xf), g0 = q(0x10), h = q(0x11), i2 = q(0x12), j = q(0x13), k = q(0x14), l = q(0x15), t16 = q(0x16), t17 = q(0x17), t18 = q(0x18), t19 = q(0x19);
+      if (f) ids[0].push(id);
+      if (g0 && t19) ids[1].push(id);
+      if (h && t18) ids[2].push(id);
+      if (h && t17) ids[3].push(id);
+      if (h && t19) ids[4].push(id);
+      if (t16 && t18) ids[5].push(id);
+      if (i2 && t19) ids[6].push(id);
+      if (t16 && t17) ids[7].push(id);
+      if (j && t18) ids[8].push(id);
+      if (j && t19) ids[9].push(id);
+      if (j && t17) ids[10].push(id);
+      if (k && t18) ids[11].push(id);
+      if (k && t19) ids[12].push(id);
+      if (k && t17) ids[13].push(id);
+      if (l) ids[14].push(id);
+    }
+    if (fitsSlot(m, st, 15, count, human)) ids[15].push(id);
   }
   let cap = 0;
   for (const l of ids) cap = Math.max(cap, l.length);
@@ -199,7 +225,7 @@ function buildPositionLists(S: SlMem): void {
     }
     void today;
     // qsort 0x945333 med 0x83b670 (+8, så +4) – MSVC-qsort'en (subs.ts msvcQsort) på tal i stedet for poster i hukommelsen
-    writeSorted(m, A, kaI, kaN, kaV); writeSorted(m, B, kaI, kaN, kbV);
+    writeSorted(m, A, kaI, kaN, kaV, sortMemo(S.g, 2 * pos)); writeSorted(m, B, kaI, kaN, kbV, sortMemo(S.g, 2 * pos + 1));
   }
   void a;
 }
@@ -218,19 +244,121 @@ function loadedFilter(g: GameState): (p: Player) => boolean {
     return !!c && active.has(c.nation);
   };
 }
+/** (hastighed, 14/11) spillere, hvis poster ingen læser, før deres klubs trupplan eller bud kører: ikke i positionslisterne (loadedFilter), ikke i
+ *  parrene, og deres klub (eller den, de er udlejet fra) er ikke menneskets – udlandets ~35.000 spillere. Deres poster i ønskelisternes hukommelse
+ *  er gårsdagens (cmSlMem.ts `stale`), indtil klubben kører i dag (touchClub – de skjulte ligaers klubber uden trupplan aldrig). Kontrol:
+ *  scripts/cm-sl-stalecheck.ts (ingen læsning af en byte, der afviger fra den friske hukommelse) og cm-sl-bench.ts. CM_SL_STALE=0 slår det fra. */
+function staleOk(g: GameState): (p: Player, cid: number) => boolean {
+  const loaded = loadedFilter(g), plan = g.cmPlan ?? {};
+  const inPairs = new Set((g.cmSlPairs ?? []).map(([pid]) => pid));
+  void plan;
+  return (p, cid) => !(cid && isHumanClub(cid)) && !inPairs.has(p.id) && !loaded(p);
+}
+/** klubbens udskudte spillere (staleOk) skrives i dagens hukommelse, før noget i klubben kører (refreshClub, makeBids), og
+ *  kontraktens +0x4e |= 4 som writeValues for computerens spillere */
+export function touchClub(S: SlMem, cid: number, pids?: Set<number>): void {
+  const f = (S.M as { refreshClub?: (cid: number, pids?: Set<number>) => number[] }).refreshClub;
+  if (!f) return;
+  const { m, c } = S;
+  const sts = f(cid, pids);
+  // (kontrollen: touchClub's egne læsninger og skrivninger er refreshClub's – skyggen har writeValues' værdier)
+  SLMEM_DEFER.inRefresh = true;
+  for (const st of sts) {
+    const k = getContract(m, st), club = k ? clubAt(m, m.s32(k + 4)) : 0;
+    // (writeValues: uden kontrakt (eller klub) +0x52 = 0; computerens kontrakter |= 4 og værdien udskudt – lazyValues)
+    if (k && club && m.s32(club) === m.s32(k + 4)) { if (!humanClub_600a50(c, club)) m.w8(k + 0x4e, m.u8(k + 0x4e) | 4); }
+    else m.w32(st + 0x52, 0);
+  }
+  SLMEM_DEFER.inRefresh = false;
+}
+/** scripts/cm-sl-stalecheck.ts: dagens hukommelse (med gårsdagens poster) og en frisk skygge (uden), som kontrollen skriver dagens skrivninger i
+ *  (ikke refreshClub's) og sammenligner hver læsning med */
+export const STALECHECK = { on: false, mem: null as SparseMem | null, shadow: null as SparseMem | null, days: 0 };
+function staleCheck(g: GameState, M: WantMem, call: (adr: number, a: number[]) => number | undefined, useLog: (adr: number) => boolean): void {
+  const all = Object.keys(g.clubs).map(Number);
+  const prev = ENV.CM_SL_INCR;
+  ENV.CM_SL_INCR = '0';
+  const ids = SLMEM_DEFER.ids;
+  SLMEM_DEFER.ids = null;
+  const O = buildSlWantMem(g, all, { call, useLog });
+  SLMEM_DEFER.ids = ids;
+  ENV.CM_SL_INCR = prev;
+  STALECHECK.shadow?.release();
+  STALECHECK.mem = M.c.m as SparseMem; STALECHECK.shadow = O.c.m as SparseMem; STALECHECK.days++;
+}
 const KSORT = ENV.CM_SL_KSORT !== '0';
+/** MSVC 6 qsort.c som i writeSorted, med nøglerne flyttet sammen med indekserne (samme sammenligninger og ombytninger, uden opslag gennem a[]) */
+function sortKeyed(a: Int32Array, K0: Float64Array): void {
+  const n = a.length;
+  if (n < 2) return;
+  const k = new Float64Array(n);
+  for (let i = 0; i < n; i++) k[i] = K0[a[i]];
+  const lostk = new Int32Array(64), histk = new Int32Array(64);
+  let sp = 0, lo = 0, hi = n - 1;
+  for (;;) {
+    const size = hi - lo + 1;
+    if (size <= 8) {
+      let h = hi;
+      while (h > lo) {
+        let max = lo, km = k[lo];
+        for (let p = lo + 1; p <= h; p++) if (k[p] - km > 0) { max = p; km = k[p]; }
+        if (max !== h) { const t = a[max]; a[max] = a[h]; a[h] = t; const u = k[max]; k[max] = k[h]; k[h] = u; }
+        h--;
+      }
+    } else {
+      const mid = lo + (size >> 1);
+      if (mid !== lo) { const t = a[mid]; a[mid] = a[lo]; a[lo] = t; const u = k[mid]; k[mid] = k[lo]; k[lo] = u; }
+      let loguy = lo, higuy = hi + 1;
+      const kp = k[lo];
+      for (;;) {
+        do loguy++; while (loguy <= hi && k[loguy] - kp <= 0);
+        do higuy--; while (higuy > lo && k[higuy] - kp >= 0);
+        if (higuy < loguy) break;
+        if (loguy !== higuy) { const t = a[loguy]; a[loguy] = a[higuy]; a[higuy] = t; const u = k[loguy]; k[loguy] = k[higuy]; k[higuy] = u; }
+      }
+      if (lo !== higuy) { const t = a[lo]; a[lo] = a[higuy]; a[higuy] = t; const u = k[lo]; k[lo] = k[higuy]; k[higuy] = u; }
+      if (higuy - 1 - lo >= hi - loguy) {
+        if (lo + 1 < higuy) { lostk[sp] = lo; histk[sp++] = higuy - 1; }
+        if (loguy < hi) { lo = loguy; continue; }
+      } else {
+        if (loguy < hi) { lostk[sp] = loguy; histk[sp++] = hi; }
+        if (lo + 1 < higuy) { hi = higuy - 1; continue; }
+      }
+    }
+    if (!sp) break;
+    lo = lostk[--sp]; hi = histk[sp];
+  }
+}
 /** listen (id, landet, værdien) sorteret som qsort 0x945333 med 0x83b670: MSVC 6 qsort.c (subs.ts msvcQsort) på en indeksliste – samme
  *  ombytninger, sammenligningen (+8, så +4, som int32-forskelle) direkte på tallene; så skrevet i hukommelsen à 12 bytes */
-function writeSorted(m: CmMem, base: number, I: Int32Array, N: Int32Array, V: Int32Array): void {
+/** (hastighed) gårsdagens sortering pr. liste: er listen (id, land, værdi i samme rækkefølge) den samme, er ombytningerne de samme */
+interface SortMemo { I: Int32Array; N: Int32Array; V: Int32Array; a: Int32Array }
+const SORT_MEMO = new WeakMap<GameState, (SortMemo | null)[]>();
+function sortMemo(g: GameState, k: number): { get: () => SortMemo | null; set: (x: SortMemo) => void } {
+  let l = SORT_MEMO.get(g);
+  if (!l) { l = []; SORT_MEMO.set(g, l); }
+  const L = l;
+  return { get: () => L[k] ?? null, set: (x) => { L[k] = x; } };
+}
+const sameI32 = (x: Int32Array, y: Int32Array) => { if (x.length !== y.length) return false; for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return false; return true; };
+function writeSorted(m: CmMem, base: number, I: Int32Array, N: Int32Array, V: Int32Array, memo?: ReturnType<typeof sortMemo>): void {
   const n = I.length;
+  const old = memo && ENV.CM_SL_SORTMEMO !== '0' ? memo.get() : null;
+  if (old && sameI32(old.I, I) && sameI32(old.N, N) && sameI32(old.V, V)) {
+    const a = old.a;
+    for (let i = 0; i < n; i++) { const r = a[i], o = base + 12 * i; m.w32(o, I[r]); m.w32(o + 4, N[r]); m.w32(o + 8, V[r]); }
+    return;
+  }
   const a = new Int32Array(n);
   for (let i = 0; i < n; i++) a[i] = i;
+  memo?.set({ I: I.slice(), N: N.slice(), V: V.slice(), a });
   // sammenligningen 0x83b670 på int32-forskelle; uden overløb (alle værdiforskelle < 2^31, nøgleforskelle < 2^20) har den samme fortegn som
   // K[x] − K[y] med K = V · 2^21 + N (eksakt i double) – samme ombytninger, færre opslag
   let vmin = 0, vmax = 0, nmin = 0, nmax = 0;
   for (let i = 0; i < n; i++) { const v = V[i], k = N[i]; if (i === 0 || v < vmin) vmin = v; if (i === 0 || v > vmax) vmax = v; if (i === 0 || k < nmin) nmin = k; if (i === 0 || k > nmax) nmax = k; }
   const K = KSORT && vmax - vmin < 2 ** 31 && nmax - nmin < 2 ** 20 ? new Float64Array(n) : null;
   if (K) for (let i = 0; i < n; i++) K[i] = V[i] * 2097152 + (N[i] - nmin);
+  if (K) { sortKeyed(a, K); for (let i = 0; i < n; i++) { const r = a[i], o = base + 12 * i; m.w32(o, I[r]); m.w32(o + 4, N[r]); m.w32(o + 8, V[r]); } return; }
   const cmp = (x: number, y: number) => { if (K) return K[x] - K[y]; const d = (V[x] - V[y]) | 0; return d !== 0 ? d : (N[x] - N[y]) | 0; };
   const swap = (i: number, j: number) => { if (i !== j) { const t = a[i]; a[i] = a[j]; a[j] = t; } };
   if (n >= 2) {
@@ -272,6 +400,8 @@ function writeSorted(m: CmMem, base: number, I: Int32Array, N: Int32Array, V: In
 
 // ---------------------------------------------------------------- pladserne og parrene ind/ud
 
+/** klubpostens stabspladser i 0x83ebfb's rækkefølge: assistenten, trænerne, fysioterapeuterne, spejderne */
+const STAFF_OFFS = [0xd3, ...[0, 1, 2, 3, 4].map((k) => 0x19f + 4 * k), 0x1cf, 0x1d3, 0x1d7, ...[0, 1, 2, 3, 4, 5, 6].map((k) => 0x1b3 + 4 * k)];
 function writeSlots(S: SlMem, cid: number, e: PlanEntry, staffHolders: boolean): void {
   const { m, memOf } = S;
   const ent = (m.u32(S.slm + 0xdc) + 9 * cid) >>> 0;
@@ -281,14 +411,15 @@ function writeSlots(S: SlMem, cid: number, e: PlanEntry, staffHolders: boolean):
   // stabens pladser (*estimeret*): klubbens nuværende stab efter jobbet (0x83ebfb-listen: assistenten, trænerne, fysioterapeuterne, spejderne)
   const club = S.clubAdr(cid);
   const staff: number[] = [];
-  if (staffHolders && club) for (const o of [0xd3, ...[0, 1, 2, 3, 4].map((k) => 0x19f + 4 * k), 0x1cf, 0x1d3, 0x1d7, ...[0, 1, 2, 3, 4, 5, 6].map((k) => 0x1b3 + 4 * k)]) { const st = m.u32(club + o); if (st) staff.push(st); }
+  if (staffHolders && club) for (const o of STAFF_OFFS) { const st = m.u32(club + o); if (st) staff.push(st); }
   e.slots.forEach((s, i) => {
     const a = base + SLOT * i;
     m.w8(a, s.role); m.w16(a + 1, s.mask); m.w32(a + 3, s.b3 ?? 0); m.w32(a + 7, s.b7 ?? 0); m.w32(a + 0xb, s.bb ?? 0);
     let f = mem(s.f), h = mem(s.s13);
     if (s.role !== 0xb && staffHolders) {
-      const want = s.role === 6 ? [6, 0xd] : s.role === 7 ? [7, 0xe] : s.role === 8 ? [8, 0xf] : [s.role];
-      const k = staff.findIndex((st) => want.includes(m.u8(st + 0x3d)));
+      const w1 = s.role, w2 = s.role === 6 ? 0xd : s.role === 7 ? 0xe : s.role === 8 ? 0xf : s.role;
+      let k = -1;
+      for (let x = 0; x < staff.length; x++) { const j = m.u8(staff[x] + 0x3d); if (j === w1 || j === w2) { k = x; break; } }
       if (k >= 0) { h = f = m.s32(staff[k]); staff.splice(k, 1); } else { h = f = -1; }
     }
     m.w32(a + 0xf, f); m.w32(a + 0x13, h); m.w32(a + 0x17, s.s17);
@@ -365,22 +496,36 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
   const cid = clubAdr ? m.s32(clubAdr) : 0;
   const club = g.clubs[cid];
   if (!p) return -10000;
-  const fit = cmFitRead(g);
-  const today = dayOf(g.date), yearAgo = dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`);
-  const joined = dayOf(p.joined ?? p.cmJoined ?? g.date);
   const pClub = p.loan ? p.loan.from : p.club;
-  S.cache ??= { ctx: new Map(), rec: new Map() };
-  let ctxPick = club ? S.cache.ctx.get(cid) : null;
-  if (club && ctxPick === undefined) { ctxPick = aiPickCtx(cid) ?? {}; S.cache.ctx.set(cid, ctxPick); }
+  return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub);
+}
+function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, p: Player, cid: number, club: GameState['clubs'][number] | undefined, pClub: number): number {
+  const { g, m } = S;
+  const fit = cmFitRead(g);
+  S.cache ??= { ctx: new Map(), rec: new Map(), day: null, pl: new Map(), cl: new Map(), rd: new Map() };
+  const C = S.cache;
+  // (hastighed) dagens, spillerens og klubbens faste dele gemt for dagens hukommelse (spillets data ændres ikke i ønskelisternes dag –
+  // kontraktens bytes læses af hukommelsen hver gang)
+  const D = (C.day ??= { today: dayOf(g.date), yearAgo: dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`) });
+  const today = D.today, yearAgo = D.yearAgo;
+  let P = C.pl.get(p.id);
+  if (!P) { P = { joined: dayOf(p.joined ?? p.cmJoined ?? g.date), age: ageOn(p.dob, g.date), pLang: nationLanguage(g, p.nation), langs: playerLanguages(g, p) }; C.pl.set(p.id, P); }
+  const joined = P.joined;
+  let ctxPick = club ? C.ctx.get(cid) : null;
+  if (club && ctxPick === undefined) { ctxPick = aiPickCtx(cid) ?? {}; C.ctx.set(cid, ctxPick); }
   ctxPick ??= {};
-  const age = ageOn(p.dob, g.date);
-  const d = roleDataOf(p, ctxPick, age);
+  const age = P.age;
+  const rdKey = `${cid}|${p.id}`;
+  let d = C.rd.get(rdKey);
+  if (!d) { d = roleDataOf(p, ctxPick, age); C.rd.set(rdKey, d); }
   const k = contractForClub_4cf5f0(S.c, st, clubAdr);
   const cc = p.cmContract;
   const inj = fit.injury(p);
-  const clubLang = club ? nationLanguage(g, club.nation) : null, pLang = nationLanguage(g, p.nation);
-  const mg = club ? managerStaff(g, cid) : null;
-  const np = mgNp(g, cid);
+  let CL = C.cl.get(cid);
+  if (!CL) { CL = { lang: club ? nationLanguage(g, club.nation) : null, mg: club ? managerStaff(g, cid) : null, np: mgNp(g, cid) }; C.cl.set(cid, CL); }
+  const clubLang = CL.lang, pLang = P.pLang;
+  const mg = CL.mg;
+  const np = CL.np;
   const mgr: ManagerBlockIn = np ? { np, j59: 10, b59: 10, b5b: 10, rel: { d30: dislikesClub(p, cid), d60: favoursClub(p, cid), m840: dislikesPerson(mg, p.id), m810: favoursPerson(mg, p.id) } }
     : { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } };
   let rec = S.cache.rec.get(p.id);
@@ -390,7 +535,7 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
     hasClub: !!clubAdr, atClub: pClub === cid, stHasClub: pClub > 0, sameNationClub: !!club && (g.clubs[pClub]?.nation ?? -1) === club.nation,
     mgrJoined: null, today, yearAgo,
     nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
-    langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && playerLanguages(g, p).includes(clubLang) ? 10 : 0,
+    langDiff: !!clubLang && !!pLang && clubLang !== pLang, lang: clubLang && P.langs.includes(clubLang) ? 10 : 0,
     nationOfClub: !!club && (p.nation === club.nation || p.cmNation2 === club.nation),
     clubRep: club ? clubRepMem(g, cid) : 0, stClubRep: clubRepMem(g, pClub), listed: !!p.listed, daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(p.joined ?? g.date)),
     league69: club ? g.cmCompRep?.[+(club.league?.match(/(\d+)$/)?.[1] ?? NaN)] ?? null : null, mgr,
@@ -448,10 +593,11 @@ const rj = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; FR_LAST.k = k;
  *  edx = [esp+0x90], ecx = i) uden at køre de oversatte instruktioner og springene imellem; listens slutning → 0x840a99 (som 0x840a93).
  *  Kaldene i frasorteringen (slCall – nye processortilstande) får stakken under 0x83f3a0's (før lå den ved `top`, oven i 0x83f3a0's egen
  *  ramme: argumenterne og de gemte registre blev overskrevet – uden følger, da 0x83f3a0 ikke læser dem igen, men skrøbeligt). */
-function fastReject(R: X86): number {
+function fastReject(R: X86): number { return stackBelow(R, fastRejectLoop); }
+function fastRejectLoop(R: X86): number {
   const m = R.m;
   for (;;) {
-    const np = stackBelow(R, fastReject0);
+    const np = fastReject0(R);
     if (np !== 0x840a81) return np;
     const esp = R.esp >>> 0;
     R.eax = m.u32(esp + 0x40) | 0;                                           // 840a81: mov eax, [esp + 0x40]
@@ -463,6 +609,36 @@ function fastReject(R: X86): number {
     R.edx = m.u32(esp + 0x90) | 0;                                           // 83fa1a: mov edx, [esp + 0x90]
     R.ecx = m.u32(esp + 0x40) | 0;                                           // 83fa21: mov ecx, [esp + 0x40]
   }
+}
+/** (hastighed, 14/11) frasorteringens kald i TS i stedet for de oversatte instruktioner (CM_SL_FRPORT=0: de oversatte): 0x53d980/0x5407e0 fra
+ *  cmValue.ts, 0x544520/0x544590 og 0x84b180 her – kontrol: cm-sl-bench.ts mod CM_SL_FRPORT=0 */
+const FRPORT = ENV.CM_SL_FRPORT !== '0';
+/** 0x544520 / 0x544590 (staff, klub): kontrakten med klubben (uden klub: hans egen kontrakts klub – [0xae1080] = kontrakten; klubben regnes
+ *  som [0xae23b4] + 580 · id, sic: 0x544551–0x544559) har +0x4e & mask (9 hhv. 2) */
+function contractFlag_5445x0(c: CmCtx, st: number, club: number, mask: number): number {
+  const m = c.m;
+  if (!st) return 0;
+  let cl = club >>> 0;
+  if (!cl) {
+    const k = getContract(m, st);
+    m.w32(0xae1080, k);
+    if (!k) return 0;
+    cl = (m.u32(G.CLUBS) + 580 * m.s32(k + 4)) >>> 0;
+    if (!cl) return 0;
+  }
+  const k2 = contractForClub_4cf5f0(c, st, cl);
+  return k2 && m.u8(k2 + 0x4e) & mask ? 1 : 0;
+}
+/** 0x84b180 (staff, hans klub, klub): må han spille i klubben – britisk klub (+0x76 = 0xe) og ikke landets/EU-borger (0x53d740, oversat) uden
+ *  +0x24/+0x22: 0; ellers 0x8c7950 (arbejdstilladelsen – adapteren). Kun al bruges. */
+function permitOk_84b180(c: CmCtx, st: number, club: number): number {
+  const m = c.m;
+  const nat = m.u32(st + 0x1a);
+  if (!nat) return 0;
+  const cn = m.u32(club + 0x53);
+  if (m.u8(cn + 0x76) !== 0xe || nat === cn || m.u32(st + 0x1e) === cn || slCall(c, 0x53d740, 0, st, cn)) return 1;
+  if (!m.u32(st + 0x24) && !m.u8(st + 0x22)) return 0;
+  return c.call(0x8c7950, m.u32(0xde1f54), st, cn, 0, 0, 0);
 }
 function fastReject0(R: X86): number {
   const S = ACTIVE;
@@ -487,7 +663,7 @@ function fastReject0(R: X86): number {
   const b24 = m.u8(slot + 0x24);
   if ((b24 & 0x1e) === 0xa && s8(m.u8(st + 0x18)) > 0x17) return rj(8);
   if (!(b24 & 1)) { if (m.s32(slot + 7) < m.s32(entry + 8) * 1.3) return rj(9); }
-  else if (!(m.u32(st + 0x39) && m.s32(entry + 8) <= 0)) { if (!slCall(c, 0x544590, 0, st, 0)) return rj(10); }
+  else if (!(m.u32(st + 0x39) && m.s32(entry + 8) <= 0)) { if (!(FRPORT ? contractFlag_5445x0(c, st, 0, 2) : slCall(c, 0x544590, 0, st, 0))) return rj(10); }
   // 0x83fc56
   if (m.u32(st + 0x39) === club) return rj(11);
   const k = getContract(m, st);
@@ -499,13 +675,13 @@ function fastReject0(R: X86): number {
     const y = m.u16(st + 0x40), dd = m.s16(st + 0x3e);
     if (d.y < y || (d.y === y && d.d < dd)) {
       k34 = k;                                                               // 0x83fd2a: [esp+0x34] = kontrakten
-      if (k && (m.u8(k + 0x4f) & 0xf0) !== 0x70 && !m.u32(k + 0x45) && !slCall(c, 0x544520, 0, st, 0)) return rj(14);
+      if (k && (m.u8(k + 0x4f) & 0xf0) !== 0x70 && !m.u32(k + 0x45) && !(FRPORT ? contractFlag_5445x0(c, st, 0, 9) : slCall(c, 0x544520, 0, st, 0))) return rj(14);
     }
   }
   // 0x83fd57: allerede på klubbens liste (bsearch 0x757ea0)
   if ((rowB(m, id) & 0xf) && m.u32(m.u32((R.esp + 0x10) >>> 0)) && pairFound(m, S.slm, id, club ? m.s32(club) : -1)) return rj(15);
   // 0x84b180 arbejdstilladelsen (oversat)
-  if (!(slCall(c, 0x84b180, 0, st, m.u32(st + 0x39), club) & 0xff)) return rj(16);
+  if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, m.u32(st + 0x39), club)) & 0xff)) return rj(16);
   // 0x8c7560(staff, klub, 1): britisk klub (land +0x76 = 0xe) og ikke EU-borger (0x53d740) → kun pladsernes grupper 1/2/3
   const cn0 = club ? m.u32(club + 0x53) : 0;
   if (cn0 && m.u8(cn0 + 0x76) === 0xe && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
@@ -526,7 +702,7 @@ function fastReject0(R: X86): number {
     const d = np ? 0x19 - s8(m.u8(np + 0x22)) : 15;
     return idsum % d !== 0 ? rj(99) : EVAL();
   }
-  if (s8(m.u8(st + 0x18)) < 0x17 && slCall(c, 0x53d980, 0, st, cn, 1) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
+  if (s8(m.u8(st + 0x18)) < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
   if (cn && pn && m.u8(cn + 0x75) !== m.u8(pn + 0x75)) {
     const cr = m.s16(club + 0x80);
     if (cr < 0xabe) return rj(19);
@@ -536,7 +712,7 @@ function fastReject0(R: X86): number {
   }
   const g2 = b24 & 0x1e, youth = g2 === 0xa || g2 === 0xc;
   if (m.s16(rec + 0xd) < (youth ? 0x6d6 : 0xabe)) return rj(21);
-  const v = s16(slCall(c, 0x5407e0, 0, st, m.u32(club + 0xcf), 0));
+  const v = s16(FRPORT ? seenRep_5407e0(c, st, m.u32(club + 0xcf), 0) : slCall(c, 0x5407e0, 0, st, m.u32(club + 0xcf), 0));
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
   return v >= r ? EVAL() : rj(98);
 }
@@ -585,7 +761,7 @@ export function memDiff(a: SparseMem, b: SparseMem): [string, string][] & { page
 }
 
 /** Bygger dagens hukommelse (alle klubber, de klubløse, pladserne, parrene, buddene, positionslisterne) */
-export function buildSlMem(g: GameState): SlMem {
+export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMem {
   ensureCmp();
   let S!: SlMem;
   const fit = cmFitRead(g);
@@ -659,7 +835,8 @@ export function buildSlMem(g: GameState): SlMem {
   let t = now();
   const all = Object.keys(g.clubs).map(Number), useLog = (adr: number) => ADAPTED.has(adr);
   // cmSlMem.ts: samme hukommelse som buildWantMem(…, { full: true }), hurtigere (CM_SL_OLDMEM=1: den oprindelige; CM_SL_MEMCHECK=1: begge, sammenlignet)
-  const M = ENV.CM_SL_OLDMEM === '1' ? buildWantMem(g, all, { full: true, call, useLog }) : buildSlWantMem(g, all, { call, useLog });
+  const M = ENV.CM_SL_OLDMEM === '1' ? buildWantMem(g, all, { full: true, call, useLog }) : buildSlWantMem(g, all, { call, useLog, stale: opts.noStale || ENV.CM_SL_MEMCHECK === '1' || ENV.CM_SL_STALE === '0' ? undefined : staleOk(g) });
+  if (STALECHECK.on) staleCheck(g, M, call, useLog);
   if (ENV.CM_SL_MEMCHECK === '1') {
     const O = buildWantMem(g, all, { full: true, call, useLog });
     const d = memDiff(O.c.m as SparseMem, M.c.m as SparseMem);
@@ -671,8 +848,12 @@ export function buildSlMem(g: GameState): SlMem {
   }
   t = tick('want', t);
   const m = M.c.m;
-  const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
-  for (const [p, st] of M.W.players) { const id = m.s32(st); memOf.set(p.id, id); byMem.set(id, p); }
+  // (personposten +0 = id'et; cmSlMem.ts' pidStaff = spillets id → personposten, ellers en Map)
+  const pidStaff = (M as { pidStaff?: (pid: number) => number | undefined }).pidStaff, base0 = m.u32(G.STAFF);
+  const memOfM = new Map<number, number>(), byMemA: (Player | undefined)[] = new Array(Math.max(0, m.s32(G.STAFF_COUNT))).fill(undefined);
+  for (const [p, st] of M.W.players) { const id = pidStaff ? (st - base0) / 0x6e : m.s32(st); if (!pidStaff) memOfM.set(p.id, id); byMemA[id] = p; }
+  const memOf = pidStaff ? { get: (pid: number) => { const st = pidStaff(pid); return st === undefined ? undefined : (st - base0) / 0x6e; } } : memOfM;
+  const byMem = { get: (id: number) => (id >= 0 ? byMemA[id] : undefined) };
   S = { M, m, c: M.c, g, slm: m.u32(m.u32(0xde1f54) + 0x856), memOf, byMem, clubAdr: (cid) => M.W.clubOf(cid), events: [], slotted: new Set() };
   M.setRand(cmRand(g.seed ?? 0, dayNum(g.date), 0x842e10));
   // CONTRACT_MANAGER's faste datoer (0x4c7ac0 tidspunkt 0) – 0x867d30
@@ -710,7 +891,17 @@ function writeValues(S: SlMem): void {
   const loaded = loadedFilter(g), plan = g.cmPlan ?? {}, active = new Set(g.activeNations);
   const inPairs = new Set((g.cmSlPairs ?? []).map(([pid]) => pid));
   const all = ENV.CM_SL_ALLVALUES === '1', check = VALCHECK.on;
+  // (hastighed) de udskudte spillere (staleOk – cmSlMem.ts): intet her; touchClub sætter kontraktens +0x4e |= 4 (eller +0x52 = 0 uden kontrakt),
+  // og lazyValues regner værdien, når klubben kører (klubber uden trupplan: aldrig)
+  const dp = (S.M as { deferredPids?: { has(pid: number): boolean } }).deferredPids;
   for (const [p, st] of S.M.W.players) {
+    if (dp && !all && dp.has(p.id)) {
+      // (udskudt: VALUES.dp – lazyValues regner dem, der ikke har en værdi endnu)
+      // (kontrollen: skyggen får de skrivninger, writeValues ellers gør her)
+      const sh = STALECHECK.on ? STALECHECK.shadow : null;
+      if (sh) { const k = getContract(sh, st), cl = k ? clubAt(sh, sh.s32(k + 4)) : 0; if (k && cl && sh.s32(cl) === sh.s32(k + 4)) sh.w8(k + 0x4e, sh.u8(k + 0x4e) | 4); else sh.w32(st + 0x52, 0); }
+      continue;
+    }
     const k = getContract(m, st);
     const club = k ? clubAt(m, m.s32(k + 4)) : 0;
     let v = 0;
@@ -731,7 +922,7 @@ function writeValues(S: SlMem): void {
     m.w32(st + 0x52, v);
     vals.set(p.id, v);
   }
-  VALUES.set(S.g, { date: S.g.date, v: vals, skipped, lazy });
+  VALUES.set(S.g, { date: S.g.date, v: vals, skipped, lazy, dp: dp && !all ? dp : undefined });
 }
 /** 0x4d0c60(staff, klub, 0, −1, menneske) klemt af en aktiv frikøbsklausul (CONTRACT_MANAGER 0x4c7ec5) */
 function valueAt(S: SlMem, st: number, club: number, k: number, human: boolean): number {
@@ -742,22 +933,29 @@ function valueAt(S: SlMem, st: number, club: number, k: number, human: boolean):
 /** kontrollen af de udskudte værdier (scripts/cm-sl-valcheck.ts): de straks regnede værdier (personpost → værdi) og afvigelserne */
 export const VALCHECK = { on: false, eager: new Map<number, number>(), pending: new Set<number>(), lazyDiff: 0, lazyN: 0, lazyTotal: 0 };
 /** dagens +0x52 pr. spiller (£) fra den seneste buildSlMem – cmInterestedClubs og refreshClub */
-const VALUES = new WeakMap<GameState, { date: string; v: Map<number, number>; skipped: Set<number>; lazy: Map<number, [number, number, number]> }>();
+const VALUES = new WeakMap<GameState, { date: string; v: Map<number, number>; skipped: Set<number>; lazy: Map<number, [number, number, number]>; dp?: { has(pid: number): boolean } }>();
 const memValue = (g: GameState, p: Player) => {
   const e = VALUES.get(g);
-  if (e && e.date === g.date && (e.skipped.has(p.id) || e.lazy.has(p.id))) SL_STATS.skipHit++;
+  if (e && e.date === g.date && (e.skipped.has(p.id) || e.lazy.has(p.id) || (e.dp?.has(p.id) && !e.v.has(p.id)))) SL_STATS.skipHit++;
   const v = e && e.date === g.date ? e.v.get(p.id) : undefined;
   return v ?? Math.round(p.value * GBP);
 };
 /** de udskudte værdier for klubbens spillere (refreshClub, før klubbens poster ændres) */
 function lazyValues(S: SlMem, cid: number): void {
   const e = VALUES.get(S.g);
-  if (!e || e.date !== S.g.date || !e.lazy.size) return;
-  for (const [p] of S.byClub?.get(cid) ?? []) {
-    const l = e.lazy.get(p.id);
+  if (!e || e.date !== S.g.date || (!e.lazy.size && !e.dp)) return;
+  for (const [p, st0] of S.byClub?.get(cid) ?? []) {
+    const l = e.lazy.get(p.id) ?? (e.dp?.has(p.id) && !e.v.has(p.id) ? [st0, 0, 0] : null);
     if (!l) continue;
-    const [st, club, k] = l;
-    const v = valueAt(S, st, club, k, false);
+    const st = l[0];
+    let club = l[1], k = l[2];
+    let v: number;
+    if (club) v = valueAt(S, st, club, k, false);
+    else {
+      // (en udskudt spiller: kontrakten og klubben slås op nu – touchClub har skrevet hans poster)
+      k = getContract(S.m, st); club = k ? clubAt(S.m, S.m.s32(k + 4)) : 0;
+      v = k && club && S.m.s32(club) === S.m.s32(k + 4) ? valueAt(S, st, club, k, false) : 0;
+    }
     if (VALCHECK.on) { VALCHECK.lazyN++; VALCHECK.pending.delete(st); if (VALCHECK.eager.get(st) !== v) VALCHECK.lazyDiff++; }
     S.m.w32(st + 0x52, v);
     e.v.set(p.id, v); e.lazy.delete(p.id);
@@ -790,6 +988,7 @@ function refreshClub(S: SlMem, cid: number): void {
     S.byClub = new Map();
     for (const [p, st] of S.M.W.players) { const h = p.loan?.from ?? p.club; if (!h) continue; const l = S.byClub.get(h) ?? []; l.push([p, st]); S.byClub.set(h, l); }
   }
+  touchClub(S, cid);
   lazyValues(S, cid);
   for (const [p, st] of S.byClub.get(cid) ?? []) {
     if ((p.loan?.from ?? p.club) !== cid) continue;
@@ -841,6 +1040,9 @@ export function makeBids(S: SlMem, cid: number, day: number): void {
   if (!m.u8(nat + 0x11c)) due = m.s16(club + 0x80) > 0x186a || (day + cid) % 7 === 0;
   else { const div = m.u32(club + 0x57); due = !!div && m.s32(div) !== m.s32(0x9cf764) ? true : (day + cid) % 7 === 0; }
   if (!due) return;
+  // (de udskudte spillere: 0x84a020 læser kun klubbens egne, der er mål eller indehaver af en plads med et andet mål – kontrakten +0x3d/+0x44)
+  if (ENV.CM_SL_TOUCHBIDS === '1') touchClub(S, cid);
+  else { const ids = new Set<number>(); for (const r of g.cmPlan?.[cid]?.s ?? []) if (r[3] > -1 && r[3] !== r[4]) { ids.add(r[3]); if (r[4] > -1) ids.add(r[4]); } touchClub(S, cid, ids); }
   writeSlots(S, cid, entryOf(g, cid), true);
   S.M.setRand(cmRand(g.seed ?? 0, cid, dayNum(g.date), 0x84a020));
   shared(() => slCall(S.c, 0x84a020, S.slm, club), S);
@@ -925,13 +1127,15 @@ export const SL_T: Record<string, number> = {};
 const now = () => (typeof performance !== 'undefined' ? performance.now() : 0);
 const tick = (k: string, t: number) => { const n = now(); SL_T[k] = (SL_T[k] ?? 0) + n - t; return n; };
 /** målinger: antal dage, tid (ms), bud */
-export const SL_STATS = { days: 0, ms: 0, bids: 0, free: 0, startMs: 0, skipHit: 0 };
+export const SL_STATS = { days: 0, ms: 0, bids: 0, free: 0, startMs: 0, skipHit: 0, cpuMs: 0 };
+/** processens CPU-tid (ms, Node) – målingerne svinger mindre end vægurets på en belastet maskine */
+const cpuNow = () => (typeof process !== 'undefined' && process.cpuUsage ? process.cpuUsage().user / 1000 : 0);
 
 /** 0x5cccd0 pr. klub: +8-tælleren og porten (0x844540), 0x83a730 (trupplanen 0x83cb40 → 0x83b6e0) og 0x84a020; så buddene i spillet */
 export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { dropped: number[] } | null, gateRand: (cid: number) => (n: number) => number,
   gate: (e: PlanEntry, rand: (n: number) => number, bids: number) => boolean): void {
   if (!cmShortlistOn(g) || !g.cmPlan) return;
-  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0, c0 = cpuNow();
   const S = buildSlMem(g);
   SL_DIAG.after?.(S);
   let tt = now();
@@ -952,6 +1156,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   (S.m as SparseMem).release();
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;
   if (t0) SL_STATS.ms += performance.now() - t0;
+  SL_STATS.cpuMs += cpuNow() - c0;
   tt = now();
   applyHook(ev);
   tick('d.apply', tt);

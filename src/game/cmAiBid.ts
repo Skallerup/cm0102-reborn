@@ -24,7 +24,8 @@ export interface AiBidTerms {
 let cache: { g: GameState; date: string; S: SlMem } | null = null;
 function memFor(g: GameState): SlMem {
   if (cache && cache.g === g && cache.date === g.date) return cache.S;
-  const S = buildSlMem(g);
+  // (uden ønskelisternes udskudte spillerposter – cmShortlistGame.ts staleOk: kontrollen dækker ikke build_bid's læsninger)
+  const S = buildSlMem(g, { noStale: true });
   cache = { g, date: g.date, S };
   return S;
 }

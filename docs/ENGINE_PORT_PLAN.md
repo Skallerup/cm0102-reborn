@@ -117,6 +117,37 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   ~80 felter pr. spiller), resten af hukommelsen ~70 ms, 0x84a020 → 0x843e10 → 0x83f3a0's genudfyldning ~110 ms (heraf 0x840d80 ~37 ms),
   positionslisterne ~50 ms, writeValues' løkke ~35 ms. Næste skridt: kun de skjulte ligaers spillere, ingen læser (læsevagt som cm-sl-valcheck),
   0x840d80 (1.350 instruktioner) i TS, og writeValues/positionslisterne direkte på spillets data.
+- **Hastighed, runde 5 (14/11, stadig slået fra – en hel sæson er for langsom):** i et esbuild-bundt, skiftevis med origin/staging's bundt
+  under samme belastning: 45 dage 530–567 → 350–362 ms pr. dag (belastning 5–6; ~290–310 ms ved belastning 3–4), 120 dage 557 → 383 ms.
+  **Bit for bit:** `scripts/cm-sl-bench.ts` 45 og 120 dage (sha1 af pladser/par/bud/skifter hver dag) identisk med origin/staging's;
+  `scripts/cm-sl-memcheck.ts` 0 afvigelser. Hvad der er gjort: (1) **udskudte spillerposter** (`staleOk`, cmSlMem.ts `stale`/`refreshClub`,
+  `touchClub`): udlandets ~32.000 spillere (ikke indlæst – loadedFilter –, ikke i parrene, ikke menneskets) beholder gårsdagens poster
+  (fingeraftrykket regnes ikke), til klubbens trupplan kører (alle klubbens) eller dens bud 0x84a020 (kun klubbens mål og indehaverne af en plads
+  med et andet mål – det eneste, 0x84a020 læser: kontraktens +0x3d/+0x44); writeValues springer dem over (touchClub sætter +0x4e |= 4 eller
+  +0x52 = 0, lazyValues værdien). Kontrol: `scripts/cm-sl-stalecheck.ts` – en frisk skygge-hukommelse får dagens skrivninger, og hver læsning
+  sammenlignes (30 dage, 625 mio. læsninger, 0 afvigende); `CM_SL_STALE=0` slår det fra; cmAiBid.ts bygger uden (`noStale`). (2) **Læsninger
+  går igennem** til den varige hukommelse uden kopi (SparseMem `under`; kopierede sider 222.000 → 80.000 på 21 dage; `CM_SL_READTHRU=0`).
+  (3) **Positionslisterne:** de ikke indlæste sorteres fra, før posten læses; 0x844300 for alle 16 positioner med spillerpostens bytes læst én
+  gang; sorteringen med nøglerne flyttet sammen med indekserne (`sortKeyed`) og gårsdagens ombytninger genbrugt, når listen (id, land, værdi) er
+  den samme (`SORT_MEMO`, `CM_SL_SORTMEMO=0`). (4) **Færre Maps:** spillets id → personpost i typede tabeller (`PidMap`), de varige
+  fingeraftryk i arrays (`IdMap`), byMem som array, memOf af personposten, staffOfId/contracts/byStaff dovne, pid uden Map for databasens id'er,
+  truppen direkte af squadIds. (5) **Frasorteringen 0x83fa25:** 0x544520/0x544590 (sic: klubben uden klub = [0xae23b4] + 580 · id,
+  0x544551–0x544559) og 0x84b180 i TS, 0x53d980/0x5407e0 fra cmValue.ts (`CM_SL_FRPORT=0`: de oversatte); stackBelow én gang pr. løkke.
+  (6) **0x6e6340-adapteren** (planValue): dagens, spillerens og klubbens faste dele (datoerne, alder, sprog, manageren, roleDataOf pr. klub og
+  spiller) gemt for dagens hukommelse. **Derfor stadig slået fra:** en hel sæson (`CM_SL=1 scripts/ct-season-game.ts`, 14/7-2001 → 30/6-2002)
+  koster 488 ms pr. dag – fra august kører trupplanerne (0x83a730 → 0x83b6e0 → 0x83f3a0) for mange klubber hver dag (`d.plan` ~210 ms pr. dag i
+  150 dage). Profil (150 dage): 0x83f3a0 ~220 ms pr. dag, heraf 0x840d80 ~75 ms (mest 0x6e6340-adapteren/planScore) og frasorteringen ~45 ms;
+  0x84a020 ~60 ms; hukommelsen ~125 ms. Næste skridt: 0x83f3a0's vurderingsløkke 0x8400da–0x840a81 og 0x840d80 i TS (samme rand-rækkefølge),
+  frasorteringens hale (liste A er sorteret efter værdien: fra den første med værdi · 1,3 over pladsens +7 afvises alle uden stabspost – rj(9))
+  i ét hug, og planScore uden de midlertidige objekter.
+- **Sæsontal med ønskelisterne slået til** (`CM_SL=1 scripts/ct-season-game.ts` mod originalens `scripts/ct-season.ts` på
+  `oracle/runs/xfer3-snap/post-180-2002.bin`, engelske købere 14/7-2001 → 30/6-2002): spillet 342 skifter i 82 klubber – 209 med sum (£74,1 mio.,
+  snit £354.457, median £98.951, max £7,1 mio.), 133 lejeaftaler, 0 frie; originalen 1.182 i 180 klubber (inkl. Conference-klubber, spillet ikke
+  har) – 583 art 0 (£245,2 mio., snit £420.664, median £32.247, max £12,9 mio.), 226 art 2, 96 frie (art 3), 134 art 4, 143 lejeaftaler (art 5,
+  £5,0 mio.). Flest køb: spillet Darlington 12, Kidderminster 11, Bournemouth 10, Rushden & Diamonds 9, Bury 9; originalen Middlesbrough 28,
+  West Ham 26, Coventry 21, Wimbledon 19, Port Vale/Watford/Cardiff 16 (Tottenham 14 for £25,7 mio.). Uden ønskelisterne (spillets eget system):
+  147 transfers, £170,7 mio., median £172.000. Dvs. ønskelisterne giver ~⅓ af originalens skifter, ingen frie spillere og for få køb i de store
+  klubber – undersøges, når dagen er hurtig nok.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

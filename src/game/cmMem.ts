@@ -40,7 +40,16 @@ export class SparseMem implements CmMem {
   private miss?: (page: number, mem: SparseMem) => void;
   /** sidetabellen i to niveauer (sidenummerets øverste 10 bit → 1024 sider): et opslag uden Map og uden cache-tab */
   private dir: (Uint8Array | null)[][] = new Array(1024).fill(NOPAGES);
-  constructor(miss?: (page: number, mem: SparseMem) => void) { this.miss = miss; }
+  /** en hukommelse nedenunder, som læsninger går igennem til, når siden ikke er her (skrivninger kopierer siden først via `miss`) */
+  private under: SparseMem | null = null;
+  constructor(miss?: (page: number, mem: SparseMem) => void, under?: SparseMem) { this.miss = miss; this.under = under ?? null; }
+  /** siden til læsning: egen, ellers den underliggende hukommelses (uden kopi), ellers en ny */
+  private rp(p: number): Uint8Array {
+    const b = this.dir[p >>> 10][p & 1023];
+    if (b !== null) return b;
+    if (this.under) { const u = this.under.dir[p >>> 10][p & 1023]; if (u !== null) return u; }
+    return this.page(p)!;
+  }
   page(p: number, create = true): Uint8Array | undefined {
     const b = this.dir[p >>> 10][p & 1023];
     if (b !== null) return b;
@@ -55,19 +64,19 @@ export class SparseMem implements CmMem {
     this.miss?.(p, this);
     return nb;
   }
-  u8(a: number): number { a >>>= 0; return this.page(a >>> PAGE)![a & PMASK]; }
+  u8(a: number): number { a >>>= 0; return this.rp(a >>> PAGE)[a & PMASK]; }
   s8(a: number): number { return (this.u8(a) << 24) >> 24; }
   u16(a: number): number {
     a >>>= 0;
     const o = a & PMASK;
-    if (o < PMASK) { const b = this.page(a >>> PAGE)!; return b[o] | (b[o + 1] << 8); }
+    if (o < PMASK) { const b = this.rp(a >>> PAGE); return b[o] | (b[o + 1] << 8); }
     return this.u8(a) | (this.u8(a + 1) << 8);
   }
   s16(a: number): number { return (this.u16(a) << 16) >> 16; }
   u32(a: number): number {
     a >>>= 0;
     const o = a & PMASK;
-    if (o <= PMASK - 3) { const b = this.page(a >>> PAGE)!; return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
+    if (o <= PMASK - 3) { const b = this.rp(a >>> PAGE); return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
     return (this.u16(a) | (this.u16(a + 2) << 16)) >>> 0;
   }
   s32(a: number): number { return this.u32(a) | 0; }

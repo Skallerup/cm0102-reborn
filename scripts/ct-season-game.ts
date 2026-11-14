@@ -6,6 +6,7 @@ import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { WANT_STATS } from '../src/game/cmContractGame';
+import { SL_STATS } from '../src/game/cmShortlistGame';
 
 const file = process.argv[2] ?? 'public/data/world-original.json';
 const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
@@ -25,6 +26,14 @@ const moves = ps.flatMap((p) => (p.moves ?? []).filter((mv) => mv.date >= start 
 const paid = moves.filter((x) => (x.mv.fee ?? 0) > 0), loans = moves.filter((x) => x.mv.loan), free = moves.filter((x) => !(x.mv.fee ?? 0) && !x.mv.loan);
 const fees = paid.map((x) => x.mv.fee! * GBP).sort((a, b) => a - b);
 console.log(`(engelske købere/klubber) ${start} → ${g.date}: skifter ${moves.length}: betalte ${paid.length} (sum £${(fees.reduce((a, b) => a + b, 0) / 1e6).toFixed(1)}m, median £${Math.round(fees[fees.length >> 1] ?? 0)}, max £${Math.round(fees[fees.length - 1] ?? 0)}), frie ${free.length}, lejeaftaler ${loans.length}`);
+// pr. engelsk køber: skifter, med sum, summen (£m)
+const byClub: Record<string, { n: number; paid: number; fee: number }> = {};
+for (const { mv } of moves) { const k = g.clubs[mv.to]!.name, c = (byClub[k] ??= { n: 0, paid: 0, fee: 0 }); c.n++; if ((mv.fee ?? 0) > 0) { c.paid++; c.fee += mv.fee! * GBP; } }
+const bc = Object.entries(byClub).sort((a, b) => b[1].n - a[1].n);
+console.log(`engelske købere: ${bc.length} klubber; skifter pr. klub (med sum, £m):`);
+console.log(bc.slice(0, 25).map(([k, v]) => `${k} ${v.n} (${v.paid}, ${(v.fee / 1e6).toFixed(1)})`).join(' · '));
+const mean = fees.length ? fees.reduce((a, b) => a + b, 0) / fees.length : 0;
+console.log(`gennemsnitspris £${Math.round(mean)}; ønskelisterne ${SL_STATS.days} dage, ${Math.round(SL_STATS.ms / Math.max(1, SL_STATS.days))} ms pr. dag, bud ${SL_STATS.bids}`);
 const wages = ps.filter((p) => p.club && p.contract && g.clubs[p.club]?.nation === engNat).map((p) => p.contract!.wage * GBP).sort((a, b) => a - b);
 const q = (f: number) => Math.round(wages[Math.floor(f * (wages.length - 1))]);
 console.log(`spillere ${ps.length}, med kontrakt ${wages.length}, uden klub ${ps.filter((p) => !p.club).length}; ugeløn £ median ${q(0.5)}, 90 % ${q(0.9)}, 99 % ${q(0.99)}, max ${q(1)}`);

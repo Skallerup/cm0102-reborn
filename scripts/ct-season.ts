@@ -16,6 +16,8 @@ const tm = m.u32(0xde1f54);
 const arr = m.u32(tm + 0x862), n = m.s32(tm + 0x86a);
 const types: Record<number, { n: number; fee: number; fees: number[] }> = {};
 const rows: string[] = [];
+/** pr. engelsk køber (+0x14): skifter, med sum, summen */
+const byClub: Record<string, { n: number; paid: number; fee: number }> = {};
 for (let i = 0; i < n; i++) {
   const r = arr + 37 * i;
   const year = m.s16(r + 0x1d + 2);
@@ -23,15 +25,19 @@ for (let i = 0; i < n; i++) {
   const t = m.u8(r + 0x1c) + (isEng(m.s32(r + 0x14)) ? 100 : 0), fee = m.s32(r + 0x18);
   const e = (types[t] ??= { n: 0, fee: 0, fees: [] });
   e.n++; e.fee += fee; e.fees.push(fee);
+  if (isEng(m.s32(r + 0x14))) { const k = nameOf(m.s32(r + 0x14)), c = (byClub[k] ??= { n: 0, paid: 0, fee: 0 }); c.n++; if (fee > 0) { c.paid++; c.fee += fee; } }
   if (rows.length < 15) rows.push(`${m.s32(r)} ${m.s32(r + 4)} ${m.s32(r + 8)} ${m.s32(r + 0xc)} ${m.s32(r + 0x10)} ${m.s32(r + 0x14)} fee ${fee} type ${t} ${m.s16(r + 0x1d)}/${year}`);
 }
 console.log('art + 100 = engelsk køber (+0x14); +0x10 = sælger');
 console.log(`afsluttede transfers i hukommelsen: ${n} (fra ${fromYear})`);
 for (const [t, e] of Object.entries(types)) {
   e.fees.sort((a, b) => a - b);
-  console.log(`art ${t}: ${e.n} stk, sum £${(e.fee / 1e6).toFixed(1)}m, median £${e.fees[e.fees.length >> 1]}, max £${e.fees[e.fees.length - 1]}`);
+  console.log(`art ${t}: ${e.n} stk, sum £${(e.fee / 1e6).toFixed(1)}m, snit £${Math.round(e.fee / e.n)}, median £${e.fees[e.fees.length >> 1]}, max £${e.fees[e.fees.length - 1]}`);
 }
 console.log(rows.join('\n'));
+const bc = Object.entries(byClub).sort((a, b) => b[1].n - a[1].n);
+console.log(`engelske købere: ${bc.length} klubber; skifter pr. klub (med sum, £m):`);
+console.log(bc.slice(0, 25).map(([k, v]) => `${k} ${v.n} (${v.paid}, ${(v.fee / 1e6).toFixed(1)})`).join(' · '));
 // kontrakterne: ugeløn pr. klub i de engelske ligaer (klubbernes land +0x53 → nationens navn ikke nødvendigt: liga +0x57)
 const staffN = m.s32(G.STAFF_COUNT), staff = m.u32(G.STAFF), rowsB = m.u32(G.ROWS), cArr = m.u32(m.u32(G.CM));
 let players = 0, contracted = 0, free = 0; const wages: number[] = [];

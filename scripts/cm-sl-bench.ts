@@ -6,7 +6,8 @@ import { createHash } from 'node:crypto';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
-import { SL_ON, SL_STATS, SL_T } from '../src/game/cmShortlistGame';
+import { SL_ON, SL_STATS, SL_T, FR_STATS } from '../src/game/cmShortlistGame';
+import { SLMEM_STATS, SLMEM_T } from '../src/game/cmSlMem';
 
 SL_ON.on = process.env.CM_SL !== '0';
 if (process.env.V8FLAGS) (await import('node:v8')).setFlagsFromString(process.env.V8FLAGS);
@@ -29,9 +30,10 @@ const tStart = performance.now() - t;
 const snap = () => ({ plan: sha(g.cmPlan), pairs: sha(g.cmSlPairs), offers: sha(g.offers), moves: sha(Object.values(g.players).map((p) => p.moves ?? [])), n: g.cmSlPairs?.length ?? 0 });
 const res: Record<string, unknown> = { start: snap() };
 console.log(`nyt spil ${Math.round(tStart)} ms (heraf ønskelisterne ${Math.round(SL_STATS.startMs)} ms)`, res.start);
-const startMs = SL_STATS.ms;
+const startMs = SL_STATS.ms, startCpu = SL_STATS.cpuMs;
 console.log('buildSlMem ved start', Object.fromEntries(Object.entries(SL_T).map(([k, v]) => [k, Math.round(v)])));
 for (const k of Object.keys(SL_T)) SL_T[k] = 0;
+for (const k of Object.keys(SLMEM_T) as (keyof typeof SLMEM_T)[]) SLMEM_T[k] = 0;
 if (insp && process.env.PROF_DAYS) await startProf();
 t = performance.now();
 for (let d = 0; d < days; d++) {
@@ -40,8 +42,10 @@ for (let d = 0; d < days; d++) {
   res[g.date] = snap();
 }
 const ms = performance.now() - t;
-console.log(`${days} dage: ${Math.round(ms)} ms; ønskelisterne ${SL_STATS.days} dage ${Math.round(SL_STATS.ms - startMs)} ms (${Math.round((SL_STATS.ms - startMs) / Math.max(1, SL_STATS.days))} ms pr. dag), bud ${SL_STATS.bids}`);
-console.log('slut', snap(), 'sprungne værdier læst', SL_STATS.skipHit);
+console.log(`${days} dage: ${Math.round(ms)} ms; ønskelisterne ${SL_STATS.days} dage ${Math.round(SL_STATS.ms - startMs)} ms (${Math.round((SL_STATS.ms - startMs) / Math.max(1, SL_STATS.days))} ms pr. dag; CPU ${Math.round((SL_STATS.cpuMs - startCpu) / Math.max(1, SL_STATS.days))} ms pr. dag), bud ${SL_STATS.bids}`);
+console.log('slut', snap(), 'sprungne værdier læst', SL_STATS.skipHit, 'hukommelsen', SLMEM_STATS);
 console.log('buildSlMem pr. dag', Object.fromEntries(Object.entries(SL_T).map(([k, v]) => [k, Math.round(v / Math.max(1, days))])));
+console.log('buildSlWantMem pr. dag (ms: id\'er, varige, dagens, felter)', Object.fromEntries(Object.entries(SLMEM_T).map(([k, v]) => [k, Math.round(v / Math.max(1, days))])));
+if (process.env.FR) console.log('frasorteringen', FR_STATS);
 if (out) writeFileSync(out, JSON.stringify(res, null, 1));
 if (insp) { const r = (await post('Profiler.stop')) as { profile: unknown }; writeFileSync(prof!, JSON.stringify(r.profile)); }
