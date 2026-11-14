@@ -121,8 +121,13 @@ export function newTactic(formation: string, mentality = 2): Tactic {
 
 export function changeFormation(t: Tactic, formation: string): Tactic {
   const slots = formationSlots(formation);
-  return { ...t, formation, slots, individual: slots.map(defaultPlayerInstructions), positions: undefined };
+  return { ...t, formation, slots, individual: slots.map(defaultPlayerInstructions), positions: undefined, cmFlags: undefined };
 }
+
+/** instruktioner uden egne valg – gittermotoren beholder pladsens værdier (tacticTable.ts instrOf) */
+export const neutralPlayerInstructions = (): PlayerInstructions =>
+  ({ runs: 1, runWithBall: false, longShots: 1, throughBalls: false, crossing: 1, tightMarking: false, freeRole: false });
+
 
 /** Kan spilleren spille i dag? */
 export function available(p: Player): boolean {

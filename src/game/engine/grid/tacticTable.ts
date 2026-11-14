@@ -232,8 +232,43 @@ export const instrBig = (v: { lo: number; hi: number }) => (BigInt(v.hi >>> 0) <
  *  grupper sættes fra vores Tactic. *estimeret*: vores trin (0..2/0..4) mod originalens valg – afleveringer kort/blandet/lang =
  *  0x2/0x1/0x8 (direkte 0x4 findes ikke hos os), tackling forsigtig/normal/hård = 0x20/0x10/0x40, pres = 0x100 ved closingDown 2,
  *  mentalitet 0–1 defensiv 0x8000, 2 normal 0x20000, 3–4 angreb 0x10000. */
-export function teamFlagsOf(team: { mentality: number; passing: number; tackling: number; closingDown: number; offside: boolean; counter: boolean; menBehind?: boolean },
-  base = TEAM_DEFAULT): number {
+type TeamLike = { mentality: number; passing: number; tackling: number; closingDown: number; offside: boolean; counter: boolean; menBehind?: boolean };
+/** holdflagene → spillets holdinstruktioner (teamFlagsOf baglæns; "direkte" 0x4 vises som blandet) */
+export function teamFromFlags(f: number): Pick<TeamLike, 'mentality' | 'passing' | 'tackling' | 'closingDown' | 'offside' | 'counter' | 'menBehind'> {
+  return {
+    passing: f & 0x2 ? 0 : f & 0x8 ? 2 : 1, tackling: f & 0x20 ? 0 : f & 0x40 ? 2 : 1, closingDown: f & 0x100 ? 2 : 1, offside: !!(f & 0x400),
+    counter: !!(f & 0x1000), menBehind: !!(f & 0x4000), mentality: f & 0x8000 ? 1 : f & 0x10000 ? 3 : 2,
+  };
+}
+/** menneskets holdflag: taktikkens egne instruktioner oven på pladsens/forudindstillingens flag. Med Tactic.cmFlags (den indlæste
+ *  forudindstilling, cmLoadPreset) beholdes de grupper, mennesket ikke har ændret, som forudindstillingen har dem. */
+export function humanTeamFlags(t: { team: TeamLike; cmFlags?: number }, base = TEAM_DEFAULT): number {
+  if (t.cmFlags === undefined) return teamFlagsOf(t.team, base);
+  const ref = teamFromFlags(t.cmFlags), tm = t.team;
+  let f = t.cmFlags >>> 0;
+  const n = (v: number | boolean | undefined) => (typeof v === 'boolean' ? v : !!v);
+  if (tm.passing !== ref.passing) f = setTeamOption(f, tm.passing === 0 ? 0x2 : tm.passing === 2 ? 0x8 : 0x1);
+  if (tm.tackling !== ref.tackling) f = setTeamOption(f, tm.tackling === 0 ? 0x20 : tm.tackling === 2 ? 0x40 : 0x10);
+  if ((tm.closingDown >= 2) !== (ref.closingDown >= 2)) f = setTeamOption(f, tm.closingDown >= 2 ? 0x100 : 0x80);
+  if (n(tm.offside) !== ref.offside) f = setTeamOption(f, tm.offside ? 0x400 : 0x200);
+  if (n(tm.counter) !== ref.counter) f = setTeamOption(f, tm.counter ? 0x1000 : 0x800);
+  if (n(tm.menBehind) !== ref.menBehind) f = setTeamOption(f, tm.menBehind ? 0x4000 : 0x2000);
+  const ment = (m: number) => (m <= 1 ? 1 : m >= 3 ? 3 : 2);
+  if (ment(tm.mentality) !== ref.mentality) f = setTeamOption(f, tm.mentality <= 1 ? 0x8000 : tm.mentality >= 3 ? 0x10000 : 0x20000);
+  return f;
+}
+/** CM 01/02's indlæsning af en forudindstilling (menneskets taktik ved spilstart 0x5fb720 → human_manager.dat's blokke = "4-4-2"/442_default
+ *  – målt i oraklets gemte spil ls20: holdflag 0x22b44, filens instruktioner/taktikbytes; Set To Default): spillets taktik med forudindstillingens
+ *  holdflag (Tactic.cmFlags, holdinstruktionerne vist efter dem) og pladsernes instruktioner urørte (neutrale – motoren bruger filens). Uden en
+ *  forudindstilling med taktikkens masker: standardens 0x22a91. */
+export function cmLoadPreset<T extends { slots: { pos: string; x: number; y: number }[]; formation: string; team: TeamLike; individual: unknown[] }>(t: T,
+  neutral: () => T['individual'][number]): T & { cmFlags: number } {
+  const hit = presetFor(t.slots.slice(0, 11).map(slotMask), t.formation);
+  const flags = hit ? PRESET_TACTICS[hit.index].flags : TEAM_DEFAULT;
+  return { ...t, team: { ...t.team, ...teamFromFlags(flags) }, individual: t.individual.map(() => neutral()), cmFlags: flags };
+}
+
+export function teamFlagsOf(team: TeamLike, base = TEAM_DEFAULT): number {
   let f = base;
   f = setTeamOption(f, team.passing === 0 ? 0x2 : team.passing === 2 ? 0x8 : 0x1);
   f = setTeamOption(f, team.tackling === 0 ? 0x20 : team.tackling === 2 ? 0x40 : 0x10);

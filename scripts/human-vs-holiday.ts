@@ -23,6 +23,10 @@ const userName = variant === 'ai' ? 'Wrexham' : 'Manchester United';
 createGame(world, { managerName: 'Lab', managerNation: eng, clubId: world.clubs.find((c) => c[1] === userName)![0], activeNations: [eng], lang: 'en', masking: true, seed, mode: 'authentic' });
 const g = gs();
 g.options.engine = 'original';
+// OLDTAC=<formation>: menneskets taktik før rettelsen 15/11 (spillets standardholdinstruktioner 0x22a91 og -spillerinstruktioner oven på
+// forudindstillingen – originalen: forudindstillingen som indlæst, tacticTable.ts cmLoadPreset)
+if (process.env.OLDTAC && variant !== 'ai') g.tactic = newTactic(process.env.OLDTAC);
+if (process.env.DIAG) console.error('tactic', g.tactic?.formation, g.tactic?.cmFlags?.toString(16));
 const t0 = Date.now();
 // SUBS=1 (human/humanAuto): mennesket skifter som en spiller ville – en båret ud skadet straks (UI'et stopper kampen og åbner taktikken), og fra
 // minut 65 de trætteste (kondition < 70 %) med den bedste ledige på bænken til pladsen

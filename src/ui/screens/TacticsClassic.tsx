@@ -9,7 +9,8 @@ import { A, naturalRole, roleScore, slotFit, slotRole } from '../../game/attribu
 import { benchSize } from '../../game/rules';
 import { gs, squad } from '../../game/state';
 import { SlotGuides, coarse, holdDrag } from './runs';
-import { FORMATIONS, autoSelect, available, changeFormation, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
+import { FORMATIONS, autoSelect, available, changeFormation, neutralPlayerInstructions, newTactic, runTarget, slotTaken, snapFreeSlot } from '../../game/tactics';
+import { cmActive } from '../../game/cmPlayerData';
 import type { Fixture, Player, PlayerInstructions, Slot, Tactic } from '../../game/types';
 import { aiTactic } from '../../game/sim';
 import { money, t } from '../../i18n';
@@ -22,7 +23,7 @@ import { shapeName } from './Tactics';
 import { LastMatchView, TeamInstrDialog } from './Match';
 import { ZonePitch, type Zone } from './ZonePitch';
 import { mirrorPositions, movePost, slotMoved } from '../../game/engine/grid/tacticPositions';
-import { positionsValid } from '../../game/engine/grid/tacticTable';
+import { cmLoadPreset, positionsValid } from '../../game/engine/grid/tacticTable';
 
 const left = (s: Slot) => s.y;
 const top = (s: Slot) => 97 - s.x * 0.92;
@@ -186,7 +187,7 @@ export function ClassicTactics() {
     { key: 'pens', label: t('cl.tac.penTakers'), onClick: () => setPenScreen(true) },
     // vores ekstra: anfører, frispark og hjørnespark (i originalen trækkes "capt" m.fl. hen på spilleren)
     { key: 'setp', label: t('cl.tac.setPieceTakers'), sub: (['captain', 'freeKicks', 'corners'] as const).map((k) => ({ key: k, label: t(`tac.${k}`), sub: starters.map((id) => ({ key: `${k}${id}`, label: nm(id), checked: tac[k] === id, onClick: () => change({ ...tac, [k]: id }) })) })) },
-    { key: 'def', label: t('cl.mt.default'), sub: FORMATIONS.map((f) => ({ key: `f${f}`, label: f, checked: tac.formation === f, onClick: () => change(changeFormation(tac, f)) })) },
+    { key: 'def', label: t('cl.mt.default'), sub: FORMATIONS.map((f) => ({ key: `f${f}`, label: f, checked: tac.formation === f, onClick: () => change(cmActive(gs()) ? cmLoadPreset(changeFormation(tac, f), neutralPlayerInstructions) : changeFormation(tac, f)) })) },
     { key: 'sep', sep: true },
     { key: 'load', label: t('cl.tac.load'), sub: saved.length ? saved.map((s2, i2) => ({ key: `l${i2}`, label: savedLabel(s2), onClick: () => change({ ...structuredClone(s2), lineup: tac.lineup.length === s2.lineup.length ? tac.lineup : s2.lineup }) })) : [{ key: 'none', label: t('common.none'), disabled: true, onClick: () => {} }] },
     { key: 'save', label: t('cl.tac.save'), disabled: !tac.name || !saved.some((x) => x.name === tac.name), onClick: () => act({ t: 'savedTactics', list: saved.map((x) => (x.name === tac.name ? structuredClone(tac) : x)) }) },

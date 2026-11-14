@@ -832,11 +832,12 @@ async function run(look) {
       await go({ name: 'fixtures' });
       await page.locator('.cx-drop-btn', { hasText: 'Arrange' }).first().waitFor({ timeout: 5000 });
       // den originale database: computerens venskabskampe/turnéer i forsæsonen (cmFriendly.ts) står i Fixtures som "Friendly" før første ligakamp
+      // (en computerklubs kamp – menneskets klub har også venskabskampe fra forkørslen, men ruten til egen klub viser andre skærme)
       if (ENGINE_GRID) {
         const fc = await gs(() => {
           const g = window.__cm.gs();
           const firstLeague = (c) => Object.values(g.fixtures).filter((f) => g.comps[f.comp]?.type === 'league' && (f.home === c || f.away === c)).map((f) => f.date).sort()[0] ?? '9999';
-          const f = Object.values(g.fixtures).find((x) => x.comp === 'FRIENDLY' && g.clubs[x.away]?.nation === g.clubs[g.userClub]?.nation && x.date < firstLeague(x.away));
+          const f = Object.values(g.fixtures).find((x) => x.comp === 'FRIENDLY' && x.away !== g.userClub && x.home !== g.userClub && g.clubs[x.away]?.nation === g.clubs[g.userClub]?.nation && x.date < firstLeague(x.away));
           return f ? f.away : 0;
         });
         if (!fc) throw new Error('ingen venskabskamp før første ligakamp i den originale database');

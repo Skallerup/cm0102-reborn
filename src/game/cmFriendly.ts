@@ -45,7 +45,11 @@ const rivals = (g: GameState, a: number, b: number) => {
 };
 /** [0x9cf6f8]: *estimeret* som Intertoto */
 const inIntertoto = (g: GameState, club: number) => cmClubEuro(g, club) === 330;
-const human = (g: GameState, club: number) => isHumanClub(club) || club === g.userClub;
+/** 0x600a50(klub, 1, 1, 0, 0): klubbens manager er en af menneskenes staffposter. I originalen kører forkørslen 0x5cc850 (create_game 0x828110)
+ *  før menneskets manager sidder i klubben (club +0xcf) – oraklet crowd1: menneskets Arsenal får en turné (dag 206/208/210), ejerens Man Utd en
+ *  Sydafrika-turné med fire kampe. Hos os er klubben overtaget før forkørslen, så forkørslens planlægning ser den ikke som menneskets. */
+let inPrerun = false;
+const human = (g: GameState, club: number) => !inPrerun && (isHumanClub(club) || club === g.userClub);
 
 /** de aktive rækker i sæsontabellen (land, start, slut) – i tabellens rækkefølge (nøglelandene alfabetisk) */
 function rows(g: GameState, today: number): { nation: number; start: number; end: number }[] {
@@ -228,4 +232,4 @@ export function cmFriendlyDay(g: GameState, today = dayNum(g.date)): void {
 }
 
 // forkørslen 0x5cc850: turneringernes vtbl+0x14(dato, 1) ved tidspunkt 2
-registerPrerun('comps1', (g, day) => cmFriendlyDay(g, day));
+registerPrerun('comps1', (g, day) => { inPrerun = true; try { cmFriendlyDay(g, day); } finally { inPrerun = false; } });

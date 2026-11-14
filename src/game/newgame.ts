@@ -20,7 +20,8 @@ import { addNews, addPlayer, ensureNumbers, gs, rebuildIndexes, setAutoNumbers, 
 import { asOwner } from './humans';
 import { initReleaseClauses } from './clauses';
 import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
-import { autoSelect, newTactic, FORMATIONS } from './tactics';
+import { autoSelect, neutralPlayerInstructions, newTactic, FORMATIONS } from './tactics';
+import { cmLoadPreset } from './engine/grid/tacticTable';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
 import { subPos, type CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
@@ -637,7 +638,10 @@ export function takeOverClub(club: Club, viaJob = false) {
     if (score > bestScore + 5) { bestScore = score; best = t; }
   }
   // ægte CM 01/02: ingen er udtaget fra start – manageren (eller assistenten, før kampen) udtager holdet; formationen passer til truppen
-  g.tactic = g.options.mode === 'authentic' ? newTactic(best.formation) : best;
+  // den originale database i ægte tilstand: taktikken hører til manageren (0x5fbd00) – ved spilstart forudindstillingen "4-4-2" (442_default,
+  // human_manager.dat i oraklets gemte spil – tacticTable.ts cmLoadPreset), ved et jobskifte hans egen taktik uden udtagelse
+  if (cmActive(g)) g.tactic = viaJob && g.tactic ? { ...g.tactic, lineup: g.tactic.lineup.map(() => 0), bench: [] } : cmLoadPreset(newTactic('4-4-2'), neutralPlayerInstructions);
+  else g.tactic = g.options.mode === 'authentic' ? newTactic(best.formation) : best;
   for (const p of sq) recordDevelopment(p);
   g.board = { confidence: 65, expectation: 'mid', expectedPos: 10, warnings: 0 };
   // den originale database i ægte tilstand: 0x826f20 → 0x69ebc0 → 0x694c80 (cmBoardGame.ts); ellers spillets egne forventninger

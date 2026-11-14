@@ -610,6 +610,9 @@ export interface Tactic {
   /** CM 01/02 With Ball / Without Ball: taktikkens positionsgitter (taktikfilens blok +0x164), kun når brugeren har flyttet en position.
    *  Gælder kun, så længe pladsernes masker er `positions.masks` (ellers bruges formationens forudindstilling som før). */
   positions?: TacticPositions;
+  /** holdflagene (+0x584) fra den indlæste forudindstilling (CM 01/02: menneskets taktik ved spilstart og Set To Default – tacticTable.ts
+   *  cmLoadPreset). Grupperne, mennesket ikke har ændret siden, bruges som de er (fx "direkte" afleveringer, som spillets tre trin ikke har). */
+  cmFlags?: number;
 }
 
 /** Taktikfilens grove positionsgitter (+0x164) og pladsernes masker (+0x12d/+0x14e) – se engine/grid/tacticPositions.ts */

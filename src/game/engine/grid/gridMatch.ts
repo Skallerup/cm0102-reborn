@@ -19,7 +19,7 @@ import './shotParts/R4';
 import './shotParts/R6';
 import './shotParts/R7';
 import * as H from './helpers';
-import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, tableCellTo, TC, teamFlagsOf, type Table } from './tacticTable';
+import { humanTeamFlags, instrBig, instrOf, mapTactic, setTeamOption, tableCell, tableCellTo, TC, type Table } from './tacticTable';
 import { aiPrematch, PREMATCH_ATTR_KEYS, recordAttr } from './aiPrematch';
 import { aiTeamSetup, captainInputOf, joinedOf, type AiPickCtx } from './aiTeam';
 import { captainValue } from './roleScore';
@@ -1220,7 +1220,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     players: gp, gp, ballX: 4, ballY: 6, ballH: -1, ballSpeed: 0, ballDir: 0, lastTouch: 0, poss: 0, state: 8, shootout: 0, clock: 0, stoppage: 0, subTick: 0,
     paused: false, carrier: null, receiver: null, chaser: [null, null], keeperOut: [false, false], lineSide1: 11, lineSide0: 0, counterFlag: [false, false],
     // holdflaget +0x584 kopieres uændret ind ved kampstart (0x6db8a2): forudindstillingens ord med vores holdinstruktioner (tacticTable.ts)
-    teamFlags: [aiFlags[0] ?? teamFlagsOf(home.tactic.team, maps[0].flags), aiFlags[1] ?? teamFlagsOf(away.tactic.team, maps[1].flags)],
+    teamFlags: [aiFlags[0] ?? humanTeamFlags(home.tactic, maps[0].flags), aiFlags[1] ?? humanTeamFlags(away.tactic, maps[1].flags)],
     aiMode: [2, 2], touchCount: [0, 0], loftCountdown: 0, order: [], prio: null, linesmanMark: 0,
     tactics: [aiTactics[0] ?? home.tactic, aiTactics[1] ?? away.tactic],
     // computerens klubber har ingen skytter i taktiklisten (oraklet: alle 40 TK-linjer i ls17 er 0) – kun menneskets taktik har dem
@@ -1389,7 +1389,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       pendingTactic[s] = null;
       const map = maps[s] = mapTactic(t.slots, t.formation, t.positions);
       m.tactics[s] = t;
-      m.teamFlags[s] = teamFlagsOf(t.team, map.flags);
+      m.teamFlags[s] = humanTeamFlags(t, map.flags);
       const on = gp.filter((q) => q.side === s && q.active && q.slot >= 0);
       const want = on.map((q) => { const i = t.lineup.indexOf(q.src.id); return i >= 0 && i < t.slots.length ? i : q.slot; });
       if (new Set(want).size !== want.length) continue;                                       // opstillingen passer ikke med banen
