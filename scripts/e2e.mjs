@@ -1522,6 +1522,8 @@ async function run(look) {
     await go({ name: 'assistant' });
     const b = page.locator('.cx-greybtn', { hasText: 'Progress' });
     await page.waitForSelector('.cx-tabrow', { timeout: 15000 });
+    // Progress er grå, når næste kamp ikke har spillede kampe at vise (fx en pokalkamp mod en klub uden kampe endnu)
+    if (await b.isDisabled().catch(() => true)) return;
     await b.click({ timeout: 15000 });
     await page.waitForSelector('.cx-prog', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-progress.png` });

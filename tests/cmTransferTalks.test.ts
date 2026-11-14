@@ -42,6 +42,18 @@ describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout
   it('to nyheder samme dag, knappen åbner kun et åbent tilbud, ingen frist', () => {
     createGame(world, { managerName: 'M S', managerNation: eng, clubId: mu, activeNations: [eng], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
     const g = gs();
+    // spilstarten: truppen som originalens liste club+0xd7 (øjebliksbillede pre-194-2001: Man Utd 48, Arsenal 48, Liverpool 41, Bolton 37) –
+    // ingen opdigtede positionsfyld (før 50 hos Man Utd), så 0x8cd450 ikke afviser det første køb
+    const cnt = (n: string) => squad(Object.values(g.clubs).find((c) => c.name === n)!.id).length;
+    expect(cnt('Manchester United')).toBeLessThanOrEqual(48);
+    expect(cnt('Arsenal')).toBeLessThanOrEqual(48);
+    expect(cnt('Liverpool')).toBeLessThanOrEqual(42);
+    expect(cnt('Bolton Wanderers')).toBeLessThanOrEqual(38);
+    {
+      const tp = squad(Object.values(g.clubs).find((c) => c.name === 'Arsenal')!.id)[0];
+      const to: TransferOffer = { id: -1, player: tp.id, buyer: mu, seller: tp.club, fee: 0, loan: false, status: 'pending', created: g.date, respondBy: g.date };
+      expect(cmCheckOffer(g, to).reason).not.toBe(4);
+    }
     const { o, p, from } = accepted();
     const fresh = g.news.filter((x) => x.id >= from).reverse();
     const keys = fresh.map((x) => x.key);

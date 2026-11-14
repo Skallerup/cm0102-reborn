@@ -318,6 +318,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     // skjulte klubber (spiller ingen kampe) beholder databasens trup
     if (g.leagues[c.league]?.hidden) continue;
     const sq = squad(c.id);
+    // ægte CM 01/02 med den originale database: truppen er databasens (Man Utd 48 på listen club+0xd7, ikke 50 – 0x8cd450 tæller dem mod
+    // grænsen på 50, så opdigtede positionsfyld gav "not enough space" ved hvert køb); kun tynde trupper fyldes op
+    if (cmStartGame && sq.length >= 22) continue;
     const lvl = sq.length >= 12 ? median(sq.map((p) => p.ca)) : (leagueLevel.get(c.league) ?? 90) - 4;
     fillSquad(c, sq, lvl, date, seed);
   }
