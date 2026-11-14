@@ -89,10 +89,19 @@ const OTHER_GLOBALS = [0x9cf594, 0x9cf2e8, 0x9cf2ec];
 const STAFF0 = 0x10000000, PREC0 = 0x20000000, CLUB0 = 0x30000000, NAT0 = 0x38000000, DIV0 = 0x3c000000, FIN0 = 0x40000000, K0 = 0x50000000,
   ROWS0 = 0x58000000, TM0 = 0x5f000000, PTRS = 0x5e000000;
 
-const attr = (p: Player, k: string) => Math.round(p.attrs[ATTRS.indexOf(k as never)] || 10);
-const isoDay = (iso: string) => {
-  const y = +iso.slice(0, 4);
-  return [Math.round((Date.parse(iso.slice(0, 10) + 'T00:00:00Z') - Date.UTC(y, 0, 1)) / 86400000), y] as const;
+const ATTR_IX = new Map<string, number>(ATTRS.map((k, i) => [k, i]));
+const attr = (p: Player, k: string) => Math.round(p.attrs[ATTR_IX.get(k) ?? -1] || 10);
+/** (gemt pr. streng – ren funktion; kaldes for alle spillere hver dag) */
+const ISO_MEMO = new Map<string, [number, number]>();
+const isoDay = (iso: string): [number, number] => {
+  let r = ISO_MEMO.get(iso);
+  if (!r) {
+    const y = +iso.slice(0, 4);
+    r = [Math.round((Date.parse(iso.slice(0, 10) + 'T00:00:00Z') - Date.UTC(y, 0, 1)) / 86400000), y];
+    if (ISO_MEMO.size > 200000) ISO_MEMO.clear();
+    ISO_MEMO.set(iso, r);
+  }
+  return [r[0], r[1]];
 };
 
 export interface WageMem {

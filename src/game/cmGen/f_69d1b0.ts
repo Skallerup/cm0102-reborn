@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 53b900=1, 53d980=3, 5407e0=3, 547790=2, 5477d0=2, 547810=2, 547840=2, 549f70=4tc, 54a110=0t, 7c6830=4tc, 945ff0=0
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x69d1b0;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x69d1b0, 0x69d1e1, 0x69d1f3, 0x69d1fa, 0x69d20b, 0x69d212, 0x69d21b, 0x69d229, 0x69d22f, 0x69d23a, 0x69d23f, 0x69d243, 0x69d25b, 0x69d2f7, 0x69d2fe, 0x69d307, 0x69d30c, 0x69d317, 0x69d330, 0x69d33e, 0x69d343, 0x69d352, 0x69d357, 0x69d362, 0x69d366, 0x69d374, 0x69d39b, 0x69d3a3, 0x69d3b1, 0x69d3bb, 0x69d3c6, 0x69d3d4, 0x69d3fb, 0x69d403, 0x69d411, 0x69d41b, 0x69d426, 0x69d43a, 0x69d441, 0x69d454, 0x69d46a, 0x69d471, 0x69d48b, 0x69d4ab, 0x69d4b4, 0x69d4b6, 0x69d4bb, 0x69d4c0, 0x69d4da, 0x69d4df, 0x69d4e4, 0x69d4f9, 0x69d506, 0x69d50b, 0x69d510, 0x69d515, 0x69d539, 0x69d53e, 0x69d558, 0x69d55d, 0x69d562, 0x69d580, 0x69d585, 0x69d58a, 0x69d5a8, 0x69d5ae, 0x69d5b0, 0x69d5ca, 0x69d5d3, 0x69d5dc, 0x69d5fa, 0x69d5fc, 0x69d601, 0x69d61c, 0x69d63c, 0x69d65a, 0x69d667, 0x69d674, 0x69d67d, 0x69d689, 0x69d698, 0x69d6a0, 0x69d6a8, 0x69d6ac, 0x69d6b7, 0x69d6d4, 0x69d6df, 0x69d6e6, 0x69d6ef, 0x69d709, 0x69d70d, 0x69d718, 0x69d725, 0x69d72d, 0x69d751, 0x69d760, 0x69d954, 0x69da4c, 0x69da60, 0x69da66, 0x69da7a, 0x69da8c, 0x69db39, 0x69db41, 0x69dd08, 0x69deb6, 0x69debe, 0x69e085, 0x69e22d, 0x69e235, 0x69e3fc, 0x69e4e7, 0x69e5a0, 0x69e5a6, 0x69e5b9, 0x69e5c0, 0x69e5ca, 0x69e5d1, 0x69e5db, 0x69e5e2, 0x69e5e6, 0x69e5f5, 0x69e600, 0x69e60b, 0x69e61f, 0x69e626, 0x69e634, 0x69e64e, 0x69e655, 0x69e65f, 0x69e661, 0x69e665, 0x69e670, 0x69e678, 0x69e6a1, 0x69e6a9, 0x69e6b1, 0x69e6b5, 0x69e6bc, 0x69e6cf, 0x69e6e0, 0x69e6ea, 0x69e711, 0x69e719, 0x69e729, 0x69e74a, 0x69e754, 0x69e76e, 0x69e776, 0x69e77a, 0x69e797, 0x69e7aa, 0x69e7c7, 0x69e7e2, 0x69e7f1, 0x69e804, 0x69e820, 0x69e824, 0x69e82b, 0x69e83c, 0x69e840, 0x69e84b, 0x69e87d, 0x69e883, 0x69e897, 0x69e8a6, 0x69e8b8, 0x69e8c3, 0x69e8ce, 0x69e8db, 0x69e8e2, 0x69e8f4, 0x69e8ff, 0x69e90c, 0x69e92b, 0x69e932, 0x69e93a, 0x69e951, 0x69e95c, 0x69e967, 0x69e978, 0x69e986, 0x69e98e, 0x69e992, 0x69e9a9, 0x69e9bc, 0x69e9cd, 0x69e9ea, 0x69e9fd, 0x69ea07, 0x69ea16, 0x69ea1c, 0x69ea22, 0x69ea26, 0x69ea31, 0x69ea38, 0x69ea71, 0x69ea79, 0x69ea80, 0x69ea83, 0x69ea86, 0x69ea9c, 0x69eaa3, 0x69eaaa, 0x69eaae, 0x69eabf, 0x69eac6, 0x69eacd, 0x69ead3]);
+const CH = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 10, 11, 12, 12, 12, 12, 13, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 22, 22, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 25, 25, 25, 25, 25, 25, 25, 25, 25, 26, 26, 26, 26, 26, 26, 26, 26, 27, 27, 27, 27, 27, 27, 27, 27, 27, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 29, 29, 29, 29, 29, 29, 29, 29, 29, 29, 30, 30, 30, 30, 30, 30, 30, 30, 30, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 32, 32, 32, 32, 32, 32, 32, 32, 32]);
+function f_69d1b0_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x69d1b0:
+      case 0: // 69d1b0
         R.eax = (0) | 0; // 69d1b0: mov eax, dword ptr fs:[0]
         R.push(0xffffffff); // 69d1b6: push -1
         R.push(0x95cd48); // 69d1b8: push 0x95cd48
@@ -25,58 +26,66 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.edi >>> 0)); // 69d1d5: push edi
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69d1d6: mov eax, dword ptr [esi + 0x69]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d1d9: test eax, eax
-        if (R.zf) { pc = 0x69d5fc; continue; } // 69d1db: je 0x69d5fc
-        pc = 0x69d1e1; continue;
-      case 0x69d1e1:
+        if (R.zf) { pc = 71; continue; } // 69d1db: je 0x69d5fc
+        pc = 1; continue;
+      case 1: // 69d1e1
         R.ebp = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69d1e1: mov ebp, dword ptr [esp + 0xb4]
         R.ebx = (R.m.u32(((R.esp + 0xb0) | 0) >>> 0)) | 0; // 69d1e8: mov ebx, dword ptr [esp + 0xb0]
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69d1ef: test ebp, ebp
-        if (R.zf) { pc = 0x69d1fa; continue; } // 69d1f1: je 0x69d1fa
-        pc = 0x69d1f3; continue;
-      case 0x69d1f3:
+        if (R.zf) { pc = 3; continue; } // 69d1f1: je 0x69d1fa
+        pc = 2; continue;
+      case 2: // 69d1f3
         R.eax = (R.m.u32(((R.ebp + 0x69) | 0) >>> 0)) | 0; // 69d1f3: mov eax, dword ptr [ebp + 0x69]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d1f6: test eax, eax
-        if (!R.zf) { pc = 0x69d21b; continue; } // 69d1f8: jne 0x69d21b
-        pc = 0x69d1fa; continue;
-      case 0x69d1fa:
+        if (!R.zf) { pc = 6; continue; } // 69d1f8: jne 0x69d21b
+        pc = 3; continue;
+      case 3: // 69d1fa
         R.ebp = (R.m.u32(((R.ebx + 0xbf) | 0) >>> 0)) | 0; // 69d1fa: mov ebp, dword ptr [ebx + 0xbf]
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69d200: test ebp, ebp
         R.m.w32(((R.esp + 0xb4) | 0) >>> 0, (R.ebp >>> 0)); // 69d202: mov dword ptr [esp + 0xb4], ebp
-        if (R.zf) { pc = 0x69d212; continue; } // 69d209: je 0x69d212
-        pc = 0x69d20b; continue;
-      case 0x69d20b:
+        if (R.zf) { pc = 5; continue; } // 69d209: je 0x69d212
+        pc = 4; continue;
+      case 4: // 69d20b
         R.eax = (R.m.u32(((R.ebp + 0x69) | 0) >>> 0)) | 0; // 69d20b: mov eax, dword ptr [ebp + 0x69]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d20e: test eax, eax
-        if (!R.zf) { pc = 0x69d21b; continue; } // 69d210: jne 0x69d21b
-        pc = 0x69d212; continue;
-      case 0x69d212:
+        if (!R.zf) { pc = 6; continue; } // 69d210: jne 0x69d21b
+        pc = 5; continue;
+      case 5: // 69d212
         R.ebp = (R.logic((R.ebp >>> 0) ^ (R.ebp >>> 0), 32)) | 0; // 69d212: xor ebp, ebp
         R.m.w32(((R.esp + 0xb4) | 0) >>> 0, (R.ebp >>> 0)); // 69d214: mov dword ptr [esp + 0xb4], ebp
-        pc = 0x69d21b; continue;
-      case 0x69d21b:
+        pc = 6; continue;
+      case 6: // 69d21b
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esi + 0x18) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69d21b: mov al, byte ptr [esi + 0x18]
         R.m.w8(((R.esp + 0x1b) | 0) >>> 0, ((R.eax >>> 0) & 0xff)); // 69d21e: mov byte ptr [esp + 0x1b], al
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esi + 0x3d) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69d222: mov al, byte ptr [esi + 0x3d]
         R.logic(((R.eax >>> 0) & 0xff) & ((R.eax >>> 0) & 0xff), 8); // 69d225: test al, al
-        if (R.zf) { pc = 0x69d22f; continue; } // 69d227: je 0x69d22f
-        pc = 0x69d229; continue;
-      case 0x69d229:
+        if (R.zf) { pc = 8; continue; } // 69d227: je 0x69d22f
+        pc = 7; continue;
+      case 7: // 69d229
         R.m.w8(((R.esp + 0x1a) | 0) >>> 0, ((R.eax >>> 0) & 0xff)); // 69d229: mov byte ptr [esp + 0x1a], al
-        pc = 0x69d23f; continue; // 69d22d: jmp 0x69d23f
-      case 0x69d22f:
+        pc = 10; continue; // 69d22d: jmp 0x69d23f
+      case 8: // 69d22f
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esi + 0x28) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69d22f: mov al, byte ptr [esi + 0x28]
         R.logic(((R.eax >>> 0) & 0xff) & ((R.eax >>> 0) & 0xff), 8); // 69d232: test al, al
         R.m.w8(((R.esp + 0x1a) | 0) >>> 0, ((R.eax >>> 0) & 0xff)); // 69d234: mov byte ptr [esp + 0x1a], al
-        if (!R.zf) { pc = 0x69d23f; continue; } // 69d238: jne 0x69d23f
-        pc = 0x69d23a; continue;
-      case 0x69d23a:
+        if (!R.zf) { pc = 10; continue; } // 69d238: jne 0x69d23f
+        pc = 9; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_1(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 9: // 69d23a
         R.m.w8(((R.esp + 0x1a) | 0) >>> 0, 0xb); // 69d23a: mov byte ptr [esp + 0x1a], 0xb
-        pc = 0x69d23f; continue;
-      case 0x69d23f:
+        pc = 10; continue;
+      case 10: // 69d23f
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69d23f: test ebp, ebp
-        if (R.zf) { pc = 0x69d25b; continue; } // 69d241: je 0x69d25b
-        pc = 0x69d243; continue;
-      case 0x69d243:
+        if (R.zf) { pc = 12; continue; } // 69d241: je 0x69d25b
+        pc = 11; continue;
+      case 11: // 69d243
         R.push(0x1); // 69d243: push 1
         R.push((R.ebp >>> 0)); // 69d245: push ebp
         R.push((R.esi >>> 0)); // 69d246: push esi
@@ -84,8 +93,8 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (((((R.eax >>> 0) & 0xffff)) << 16 >> 16)) | 0; // 69d24c: movsx edi, ax
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69d24f: add esp, 0xc
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d252: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d2f7; continue; // 69d256: jmp 0x69d2f7
-      case 0x69d25b:
+        pc = 13; continue; // 69d256: jmp 0x69d2f7
+      case 12: // 69d25b
         R.ecx = (((R.esp + 0x3c) | 0)) | 0; // 69d25b: lea ecx, [esp + 0x3c]
         R.call(0x54a110, { n: 0, thisEcx: true, calleeClean: false }); // 69d25f: call 0x54a110
         R.edi = (R.logic((R.edi >>> 0) ^ (R.edi >>> 0), 32)) | 0; // 69d264: xor edi, edi
@@ -118,72 +127,88 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69d2e5: add esp, 0xc
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d2e8: mov dword ptr [esp + 0x14], edi
         R.m.w32(((R.esp + 0xa4) | 0) >>> 0, 0xffffffff); // 69d2ec: mov dword ptr [esp + 0xa4], 0xffffffff
-        pc = 0x69d2f7; continue;
-      case 0x69d2f7:
+        pc = 13; continue;
+      case 13: // 69d2f7
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69d2f7: mov eax, dword ptr [esi + 0x69]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d2fa: test eax, eax
-        if (R.zf) { pc = 0x69d33e; continue; } // 69d2fc: je 0x69d33e
-        pc = 0x69d2fe; continue;
-      case 0x69d2fe:
+        if (R.zf) { pc = 19; continue; } // 69d2fc: je 0x69d33e
+        pc = 14; continue;
+      case 14: // 69d2fe
         R.ecx = ((R.ecx & 0xffffff00) | (((R.m.u8(((R.esp + 0x1a) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69d2fe: mov cl, byte ptr [esp + 0x1a]
         R.sub(((R.ecx >>> 0) & 0xff), 0xc, 8); // 69d302: cmp cl, 0xc
-        if (R.zf) { pc = 0x69d30c; continue; } // 69d305: je 0x69d30c
-        pc = 0x69d307; continue;
-      case 0x69d307:
+        if (R.zf) { pc = 16; continue; } // 69d305: je 0x69d30c
+        pc = 15; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_2(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 15: // 69d307
         R.sub(((R.ecx >>> 0) & 0xff), 0x5, 8); // 69d307: cmp cl, 5
-        if (!R.zf) { pc = 0x69d33e; continue; } // 69d30a: jne 0x69d33e
-        pc = 0x69d30c; continue;
-      case 0x69d30c:
+        if (!R.zf) { pc = 19; continue; } // 69d30a: jne 0x69d33e
+        pc = 16; continue;
+      case 16: // 69d30c
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x109a, 16); // 69d30c: cmp word ptr [ebx + 0x80], 0x109a
-        if (R.cLE) { pc = 0x69d33e; continue; } // 69d315: jle 0x69d33e
-        pc = 0x69d317; continue;
-      case 0x69d317:
+        if (R.cLE) { pc = 19; continue; } // 69d315: jle 0x69d33e
+        pc = 17; continue;
+      case 17: // 69d317
         R.ecx = (((R.m.u16(((R.eax + 0x4) | 0) >>> 0)) << 16 >> 16)) | 0; // 69d317: movsx ecx, word ptr [eax + 4]
         R.sub(R.m.u16(((R.eax + 0xc) | 0) >>> 0), 0xcb2, 16); // 69d31b: cmp word ptr [eax + 0xc], 0xcb2
         R.ecx = (((R.ecx + R.ecx * 4) | 0)) | 0; // 69d321: lea ecx, [ecx + ecx*4]
         R.edx = (((R.ecx + R.edi) | 0)) | 0; // 69d324: lea edx, [ecx + edi]
         R.edi = (((R.edx + R.ecx * 4) | 0)) | 0; // 69d327: lea edi, [edx + ecx*4]
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d32a: mov dword ptr [esp + 0x14], edi
-        if (R.cLE) { pc = 0x69d33e; continue; } // 69d32e: jle 0x69d33e
-        pc = 0x69d330; continue;
-      case 0x69d330:
+        if (R.cLE) { pc = 19; continue; } // 69d32e: jle 0x69d33e
+        pc = 18; continue;
+      case 18: // 69d330
         R.eax = (((R.m.u16(((R.eax + 0x6) | 0) >>> 0)) << 16 >> 16)) | 0; // 69d330: movsx eax, word ptr [eax + 6]
         R.ecx = (((R.eax + R.edi) | 0)) | 0; // 69d334: lea ecx, [eax + edi]
         R.edi = (((R.ecx + R.eax * 4) | 0)) | 0; // 69d337: lea edi, [ecx + eax*4]
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d33a: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d33e; continue;
-      case 0x69d33e:
+        pc = 19; continue;
+      case 19: // 69d33e
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d33e: cmp dword ptr [esi + 0x39], ebx
-        if (!R.zf) { pc = 0x69d366; continue; } // 69d341: jne 0x69d366
-        pc = 0x69d343; continue;
-      case 0x69d343:
+        if (!R.zf) { pc = 24; continue; } // 69d341: jne 0x69d366
+        pc = 20; continue;
+      case 20: // 69d343
         R.edx = (R.m.u32(((0xae2364) | 0) >>> 0)) | 0; // 69d343: mov edx, dword ptr [0xae2364]
         R.eax = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 69d349: mov eax, dword ptr [esi]
         R.edx = (R.add((R.edx >>> 0), 0xfffffff0, 32)) | 0; // 69d34b: add edx, -0x10
         R.sub((R.eax >>> 0), (R.edx >>> 0), 32); // 69d34e: cmp eax, edx
-        if (R.cL) { pc = 0x69d357; continue; } // 69d350: jl 0x69d357
-        pc = 0x69d352; continue;
-      case 0x69d352:
+        if (R.cL) { pc = 22; continue; } // 69d350: jl 0x69d357
+        pc = 21; continue;
+      case 21: // 69d352
         R.edi = (R.add((R.edi >>> 0), 0x64, 32)) | 0; // 69d352: add edi, 0x64
-        pc = 0x69d362; continue; // 69d355: jmp 0x69d362
-      case 0x69d357:
+        pc = 23; continue; // 69d355: jmp 0x69d362
+      case 22: // 69d357
         R.eax = (((R.m.u8(((R.esi + 0x59) | 0) >>> 0)) << 24 >> 24)) | 0; // 69d357: movsx eax, byte ptr [esi + 0x59]
         R.ecx = ((R.eax >>> 0)) | 0; // 69d35b: mov ecx, eax
         { const p = BigInt((((R.eax >>> 0)) | 0)) * BigInt((((R.ecx >>> 0)) | 0)); R.cf = R.of = BigInt.asIntN(32, p) !== p; R.ecx = (Number(BigInt.asIntN(32, p))) | 0; } // 69d35d: imul ecx, eax
         R.edi = (R.add((R.edi >>> 0), (R.ecx >>> 0), 32)) | 0; // 69d360: add edi, ecx
-        pc = 0x69d362; continue;
-      case 0x69d362:
+        pc = 23; continue;
+      case 23: // 69d362
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d362: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d366; continue;
-      case 0x69d366:
+        pc = 24; continue;
+      case 24: // 69d366
         R.push((R.ebx >>> 0)); // 69d366: push ebx
         R.push((R.esi >>> 0)); // 69d367: push esi
         R.call(0x547790, { n: 2, thisEcx: false, calleeClean: false }); // 69d368: call 0x547790
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 69d36d: add esp, 8
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d370: test eax, eax
-        if (R.zf) { pc = 0x69d3a3; continue; } // 69d372: je 0x69d3a3
-        pc = 0x69d374; continue;
-      case 0x69d374:
+        if (R.zf) { pc = 27; continue; } // 69d372: je 0x69d3a3
+        pc = 25; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_3(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 25: // 69d374
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d374: fild dword ptr [esp + 0x14]
         R.m.wf64(((R.esp + 0x1c) | 0) >>> 0, R.st[0]); // 69d378: fst qword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 1.1; // 69d37c: fmul qword ptr [0x9689c0]
@@ -193,38 +218,38 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.fcom(R.st[0], R.f64(((R.esp + 0x1c) | 0))); // 69d390: fcom qword ptr [esp + 0x1c]
         R.eax = ((R.eax & 0xffff0000) | R.sw()) | 0; // 69d394: fnstsw ax
         R.logic(((R.eax >>> 8) & 0xff) & 0x41, 8); // 69d396: test ah, 0x41
-        if (R.zf) { pc = 0x69d3bb; continue; } // 69d399: je 0x69d3bb
-        pc = 0x69d39b; continue;
-      case 0x69d39b:
+        if (R.zf) { pc = 29; continue; } // 69d399: je 0x69d3bb
+        pc = 26; continue;
+      case 26: // 69d39b
         R.fpop(); // 69d39b: fstp st(0)
         R.fpush(R.f64(((R.esp + 0x1c) | 0))); // 69d39d: fld qword ptr [esp + 0x1c]
-        pc = 0x69d3bb; continue; // 69d3a1: jmp 0x69d3bb
-      case 0x69d3a3:
+        pc = 29; continue; // 69d3a1: jmp 0x69d3bb
+      case 27: // 69d3a3
         R.push((R.ebx >>> 0)); // 69d3a3: push ebx
         R.push((R.esi >>> 0)); // 69d3a4: push esi
         R.call(0x5477d0, { n: 2, thisEcx: false, calleeClean: false }); // 69d3a5: call 0x5477d0
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 69d3aa: add esp, 8
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d3ad: test eax, eax
-        if (R.zf) { pc = 0x69d3c6; continue; } // 69d3af: je 0x69d3c6
-        pc = 0x69d3b1; continue;
-      case 0x69d3b1:
+        if (R.zf) { pc = 30; continue; } // 69d3af: je 0x69d3c6
+        pc = 28; continue;
+      case 28: // 69d3b1
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d3b1: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.25; // 69d3b5: fmul qword ptr [0x9689e0]
-        pc = 0x69d3bb; continue;
-      case 0x69d3bb:
+        pc = 29; continue;
+      case 29: // 69d3bb
         R.ftol(); // 69d3bb: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d3c0: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d3c2: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d3c6; continue;
-      case 0x69d3c6:
+        pc = 30; continue;
+      case 30: // 69d3c6
         R.push((R.ebp >>> 0)); // 69d3c6: push ebp
         R.push((R.esi >>> 0)); // 69d3c7: push esi
         R.call(0x547810, { n: 2, thisEcx: false, calleeClean: false }); // 69d3c8: call 0x547810
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 69d3cd: add esp, 8
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d3d0: test eax, eax
-        if (R.zf) { pc = 0x69d403; continue; } // 69d3d2: je 0x69d403
-        pc = 0x69d3d4; continue;
-      case 0x69d3d4:
+        if (R.zf) { pc = 33; continue; } // 69d3d2: je 0x69d403
+        pc = 31; continue;
+      case 31: // 69d3d4
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d3d4: fild dword ptr [esp + 0x14]
         R.m.wf64(((R.esp + 0x1c) | 0) >>> 0, R.st[0]); // 69d3d8: fst qword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 1.1; // 69d3dc: fmul qword ptr [0x9689c0]
@@ -234,61 +259,69 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.fcom(R.st[0], R.f64(((R.esp + 0x1c) | 0))); // 69d3f0: fcom qword ptr [esp + 0x1c]
         R.eax = ((R.eax & 0xffff0000) | R.sw()) | 0; // 69d3f4: fnstsw ax
         R.logic(((R.eax >>> 8) & 0xff) & 0x41, 8); // 69d3f6: test ah, 0x41
-        if (R.zf) { pc = 0x69d41b; continue; } // 69d3f9: je 0x69d41b
-        pc = 0x69d3fb; continue;
-      case 0x69d3fb:
+        if (R.zf) { pc = 35; continue; } // 69d3f9: je 0x69d41b
+        pc = 32; continue;
+      case 32: // 69d3fb
         R.fpop(); // 69d3fb: fstp st(0)
         R.fpush(R.f64(((R.esp + 0x1c) | 0))); // 69d3fd: fld qword ptr [esp + 0x1c]
-        pc = 0x69d41b; continue; // 69d401: jmp 0x69d41b
-      case 0x69d403:
+        pc = 35; continue; // 69d401: jmp 0x69d41b
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_4(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 33: // 69d403
         R.push((R.ebp >>> 0)); // 69d403: push ebp
         R.push((R.esi >>> 0)); // 69d404: push esi
         R.call(0x547840, { n: 2, thisEcx: false, calleeClean: false }); // 69d405: call 0x547840
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 69d40a: add esp, 8
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d40d: test eax, eax
-        if (R.zf) { pc = 0x69d426; continue; } // 69d40f: je 0x69d426
-        pc = 0x69d411; continue;
-      case 0x69d411:
+        if (R.zf) { pc = 36; continue; } // 69d40f: je 0x69d426
+        pc = 34; continue;
+      case 34: // 69d411
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d411: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.25; // 69d415: fmul qword ptr [0x9689e0]
-        pc = 0x69d41b; continue;
-      case 0x69d41b:
+        pc = 35; continue;
+      case 35: // 69d41b
         R.ftol(); // 69d41b: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d420: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d422: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d426; continue;
-      case 0x69d426:
+        pc = 36; continue;
+      case 36: // 69d426
         R.eax = (((R.m.u8(((R.esp + 0xb8) | 0) >>> 0)) << 24 >> 24)) | 0; // 69d426: movsx eax, byte ptr [esp + 0xb8]
         R.eax = (R.add((R.eax >>> 0), 0xfffffffb, 32)) | 0; // 69d42e: add eax, -5
         R.sub((R.eax >>> 0), 0xa, 32); // 69d431: cmp eax, 0xa
-        if (!R.cBE) { pc = 0x69d5fc; continue; } // 69d434: ja 0x69d5fc
-        pc = 0x69d43a; continue;
-      case 0x69d43a:
-        pc = [0x69d441, 0x69db39, 0x69db39, 0x69deb6, 0x69e22d, 0x69e4e7, 0x69d5fc, 0x69d441, 0x69db39, 0x69db39, 0x69deb6][R.eax >>> 0]; continue; // 69d43a: jmp dword ptr [eax*4 + 0x69eaec]
-      case 0x69d441:
+        if (!R.cBE) { pc = 71; continue; } // 69d434: ja 0x69d5fc
+        pc = 37; continue;
+      case 37: // 69d43a
+        pc = [38, 102, 102, 105, 108, 111, 71, 38, 102, 102, 105][R.eax >>> 0] ?? -2; continue; // 69d43a: jmp dword ptr [eax*4 + 0x69eaec]
+      case 38: // 69d441
         R.edx = (R.m.u32(((0xae2364) | 0) >>> 0)) | 0; // 69d441: mov edx, dword ptr [0xae2364]
         R.eax = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 69d447: mov eax, dword ptr [esi]
         R.edx = (R.add((R.edx >>> 0), 0xfffffff0, 32)) | 0; // 69d449: add edx, -0x10
         R.sub((R.eax >>> 0), (R.edx >>> 0), 32); // 69d44c: cmp eax, edx
-        if (!R.cL) { pc = 0x69e5b9; continue; } // 69d44e: jge 0x69e5b9
-        pc = 0x69d454; continue;
-      case 0x69d454:
+        if (!R.cL) { pc = 114; continue; } // 69d44e: jge 0x69e5b9
+        pc = 39; continue;
+      case 39: // 69d454
         R.eax = (((R.m.u8(((R.esp + 0x1a) | 0) >>> 0)) << 24 >> 24)) | 0; // 69d454: movsx eax, byte ptr [esp + 0x1a]
         R.eax = (R.add((R.eax >>> 0), 0xfffffffb, 32)) | 0; // 69d459: add eax, -5
         R.ebp = (0x1676) | 0; // 69d45c: mov ebp, 0x1676
         R.sub((R.eax >>> 0), 0xb, 32); // 69d461: cmp eax, 0xb
-        if (!R.cBE) { pc = 0x69d63c; continue; } // 69d464: ja 0x69d63c
-        pc = 0x69d46a; continue;
-      case 0x69d46a:
-        pc = [0x69d65a, 0x69d4da, 0x69d50b, 0x69d580, 0x69d61c, 0x69d63c, 0x69d5ca, 0x69d471, 0x69d4b6, 0x69d63c, 0x69d558, 0x69d48b][R.eax >>> 0]; continue; // 69d46a: jmp dword ptr [eax*4 + 0x69eb18]
-      case 0x69d471:
+        if (!R.cBE) { pc = 74; continue; } // 69d464: ja 0x69d63c
+        pc = 40; continue;
+      case 40: // 69d46a
+        pc = [75, 48, 53, 61, 73, 74, 67, 41, 45, 74, 58, 42][R.eax >>> 0] ?? -2; continue; // 69d46a: jmp dword ptr [eax*4 + 0x69eb18]
+      case 41: // 69d471
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d471: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.95; // 69d475: fmul qword ptr [0x9689d0]
         R.ftol(); // 69d47b: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d480: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d482: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d65a; continue; // 69d486: jmp 0x69d65a
-      case 0x69d48b:
+        pc = 75; continue; // 69d486: jmp 0x69d65a
+      case 42: // 69d48b
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d48b: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.75; // 69d48f: fmul qword ptr [0x969040]
         R.ftol(); // 69d495: call 0x945640
@@ -296,143 +329,167 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.m.u32(((R.esi + 0x39) | 0) >>> 0)) | 0; // 69d49c: mov eax, dword ptr [esi + 0x39]
         R.sub((R.eax >>> 0), (R.ebx >>> 0), 32); // 69d49f: cmp eax, ebx
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d4a1: mov dword ptr [esp + 0x14], edi
-        if (R.zf) { pc = 0x69d65a; continue; } // 69d4a5: je 0x69d65a
-        pc = 0x69d4ab; continue;
-      case 0x69d4ab:
+        if (R.zf) { pc = 75; continue; } // 69d4a5: je 0x69d65a
+        pc = 43; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_5(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 43: // 69d4ab
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d4ab: cmp dword ptr [esi + 0x24], ebx
-        if (R.zf) { pc = 0x69d65a; continue; } // 69d4ae: je 0x69d65a
-        pc = 0x69d4b4; continue;
-      case 0x69d4b4:
-        pc = 0x69d4f9; continue; // 69d4b4: jmp 0x69d4f9
-      case 0x69d4b6:
+        if (R.zf) { pc = 75; continue; } // 69d4ae: je 0x69d65a
+        pc = 44; continue;
+      case 44: // 69d4b4
+        pc = 51; continue; // 69d4b4: jmp 0x69d4f9
+      case 45: // 69d4b6
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d4b6: cmp dword ptr [esi + 0x39], ebx
-        if (R.zf) { pc = 0x69d4c0; continue; } // 69d4b9: je 0x69d4c0
-        pc = 0x69d4bb; continue;
-      case 0x69d4bb:
+        if (R.zf) { pc = 47; continue; } // 69d4b9: je 0x69d4c0
+        pc = 46; continue;
+      case 46: // 69d4bb
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d4bb: cmp dword ptr [esi + 0x24], ebx
-        if (!R.zf) { pc = 0x69d4e4; continue; } // 69d4be: jne 0x69d4e4
-        pc = 0x69d4c0; continue;
-      case 0x69d4c0:
+        if (!R.zf) { pc = 50; continue; } // 69d4be: jne 0x69d4e4
+        pc = 47; continue;
+      case 47: // 69d4c0
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d4c0: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.75; // 69d4c4: fmul qword ptr [0x969040]
         R.ftol(); // 69d4ca: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d4cf: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d4d1: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d65a; continue; // 69d4d5: jmp 0x69d65a
-      case 0x69d4da:
+        pc = 75; continue; // 69d4d5: jmp 0x69d65a
+      case 48: // 69d4da
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d4da: cmp dword ptr [esi + 0x39], ebx
-        if (R.zf) { pc = 0x69d4c0; continue; } // 69d4dd: je 0x69d4c0
-        pc = 0x69d4df; continue;
-      case 0x69d4df:
+        if (R.zf) { pc = 47; continue; } // 69d4dd: je 0x69d4c0
+        pc = 49; continue;
+      case 49: // 69d4df
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d4df: cmp dword ptr [esi + 0x24], ebx
-        if (R.zf) { pc = 0x69d4c0; continue; } // 69d4e2: je 0x69d4c0
-        pc = 0x69d4e4; continue;
-      case 0x69d4e4:
+        if (R.zf) { pc = 47; continue; } // 69d4e2: je 0x69d4c0
+        pc = 50; continue;
+      case 50: // 69d4e4
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d4e4: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.6; // 69d4e8: fmul qword ptr [0x968e48]
         R.ftol(); // 69d4ee: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d4f3: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d4f5: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d4f9; continue;
-      case 0x69d4f9:
+        pc = 51; continue;
+      case 51: // 69d4f9
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), ((R.ebp >>> 0) & 0xffff), 16); // 69d4f9: cmp word ptr [ebx + 0x80], bp
-        if (R.cLE) { pc = 0x69d65a; continue; } // 69d500: jle 0x69d65a
-        pc = 0x69d506; continue;
-      case 0x69d506:
-        pc = 0x69d5fc; continue; // 69d506: jmp 0x69d5fc
-      case 0x69d50b:
+        if (R.cLE) { pc = 75; continue; } // 69d500: jle 0x69d65a
+        pc = 52; continue;
+      case 52: // 69d506
+        pc = 71; continue; // 69d506: jmp 0x69d5fc
+      case 53: // 69d50b
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d50b: cmp dword ptr [esi + 0x39], ebx
-        if (R.zf) { pc = 0x69d53e; continue; } // 69d50e: je 0x69d53e
-        pc = 0x69d510; continue;
-      case 0x69d510:
+        if (R.zf) { pc = 57; continue; } // 69d50e: je 0x69d53e
+        pc = 54; continue;
+      case 54: // 69d510
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d510: cmp dword ptr [esi + 0x24], ebx
-        if (R.zf) { pc = 0x69d53e; continue; } // 69d513: je 0x69d53e
-        pc = 0x69d515; continue;
-      case 0x69d515:
+        if (R.zf) { pc = 57; continue; } // 69d513: je 0x69d53e
+        pc = 55; continue;
+      case 55: // 69d515
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d515: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.3; // 69d519: fmul qword ptr [0x968e80]
         R.ftol(); // 69d51f: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x1482, 16); // 69d524: cmp word ptr [ebx + 0x80], 0x1482
         R.edi = ((R.eax >>> 0)) | 0; // 69d52d: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d52f: mov dword ptr [esp + 0x14], edi
-        if (R.cLE) { pc = 0x69d65a; continue; } // 69d533: jle 0x69d65a
-        pc = 0x69d539; continue;
-      case 0x69d539:
-        pc = 0x69d5fc; continue; // 69d539: jmp 0x69d5fc
-      case 0x69d53e:
+        if (R.cLE) { pc = 75; continue; } // 69d533: jle 0x69d65a
+        pc = 56; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_6(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 56: // 69d539
+        pc = 71; continue; // 69d539: jmp 0x69d5fc
+      case 57: // 69d53e
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d53e: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.5; // 69d542: fmul qword ptr [0x968968]
         R.ftol(); // 69d548: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d54d: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d54f: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d65a; continue; // 69d553: jmp 0x69d65a
-      case 0x69d558:
+        pc = 75; continue; // 69d553: jmp 0x69d65a
+      case 58: // 69d558
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d558: cmp dword ptr [esi + 0x39], ebx
-        if (R.zf) { pc = 0x69d5b0; continue; } // 69d55b: je 0x69d5b0
-        pc = 0x69d55d; continue;
-      case 0x69d55d:
+        if (R.zf) { pc = 66; continue; } // 69d55b: je 0x69d5b0
+        pc = 59; continue;
+      case 59: // 69d55d
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d55d: cmp dword ptr [esi + 0x24], ebx
-        if (R.zf) { pc = 0x69d5b0; continue; } // 69d560: je 0x69d5b0
-        pc = 0x69d562; continue;
-      case 0x69d562:
+        if (R.zf) { pc = 66; continue; } // 69d560: je 0x69d5b0
+        pc = 60; continue;
+      case 60: // 69d562
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d562: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.4; // 69d566: fmul qword ptr [0x968e00]
         R.ftol(); // 69d56c: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), ((R.ebp >>> 0) & 0xffff), 16); // 69d571: cmp word ptr [ebx + 0x80], bp
         R.edi = ((R.eax >>> 0)) | 0; // 69d578: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d57a: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d5a8; continue; // 69d57e: jmp 0x69d5a8
-      case 0x69d580:
+        pc = 64; continue; // 69d57e: jmp 0x69d5a8
+      case 61: // 69d580
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d580: cmp dword ptr [esi + 0x39], ebx
-        if (R.zf) { pc = 0x69d5b0; continue; } // 69d583: je 0x69d5b0
-        pc = 0x69d585; continue;
-      case 0x69d585:
+        if (R.zf) { pc = 66; continue; } // 69d583: je 0x69d5b0
+        pc = 62; continue;
+      case 62: // 69d585
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d585: cmp dword ptr [esi + 0x24], ebx
-        if (R.zf) { pc = 0x69d5b0; continue; } // 69d588: je 0x69d5b0
-        pc = 0x69d58a; continue;
-      case 0x69d58a:
+        if (R.zf) { pc = 66; continue; } // 69d588: je 0x69d5b0
+        pc = 63; continue;
+      case 63: // 69d58a
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d58a: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.475; // 69d58e: fmul qword ptr [0x96d270]
         R.ftol(); // 69d594: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x1482, 16); // 69d599: cmp word ptr [ebx + 0x80], 0x1482
         R.edi = ((R.eax >>> 0)) | 0; // 69d5a2: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d5a4: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d5a8; continue;
-      case 0x69d5a8:
-        if (R.cLE) { pc = 0x69d65a; continue; } // 69d5a8: jle 0x69d65a
-        pc = 0x69d5ae; continue;
-      case 0x69d5ae:
-        pc = 0x69d5fc; continue; // 69d5ae: jmp 0x69d5fc
-      case 0x69d5b0:
+        pc = 64; continue;
+      case 64: // 69d5a8
+        if (R.cLE) { pc = 75; continue; } // 69d5a8: jle 0x69d65a
+        pc = 65; continue;
+      case 65: // 69d5ae
+        pc = 71; continue; // 69d5ae: jmp 0x69d5fc
+      case 66: // 69d5b0
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d5b0: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.6; // 69d5b4: fmul qword ptr [0x968e48]
         R.ftol(); // 69d5ba: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d5bf: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d5c1: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d65a; continue; // 69d5c5: jmp 0x69d65a
-      case 0x69d5ca:
+        pc = 75; continue; // 69d5c5: jmp 0x69d65a
+      case 67: // 69d5ca
         R.sub(R.m.u32(((R.esi + 0x39) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d5ca: cmp dword ptr [esi + 0x39], ebx
-        if (R.zf) { pc = 0x69d471; continue; } // 69d5cd: je 0x69d471
-        pc = 0x69d5d3; continue;
-      case 0x69d5d3:
+        if (R.zf) { pc = 41; continue; } // 69d5cd: je 0x69d471
+        pc = 68; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_7(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 68: // 69d5d3
         R.sub(R.m.u32(((R.esi + 0x24) | 0) >>> 0), (R.ebx >>> 0), 32); // 69d5d3: cmp dword ptr [esi + 0x24], ebx
-        if (R.zf) { pc = 0x69d471; continue; } // 69d5d6: je 0x69d471
-        pc = 0x69d5dc; continue;
-      case 0x69d5dc:
+        if (R.zf) { pc = 41; continue; } // 69d5d6: je 0x69d471
+        pc = 69; continue;
+      case 69: // 69d5dc
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d5dc: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.75; // 69d5e0: fmul qword ptr [0x969040]
         R.ftol(); // 69d5e6: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x1482, 16); // 69d5eb: cmp word ptr [ebx + 0x80], 0x1482
         R.edi = ((R.eax >>> 0)) | 0; // 69d5f4: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d5f6: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d5fa; continue;
-      case 0x69d5fa:
-        if (R.cLE) { pc = 0x69d65a; continue; } // 69d5fa: jle 0x69d65a
-        pc = 0x69d5fc; continue;
-      case 0x69d5fc:
+        pc = 70; continue;
+      case 70: // 69d5fa
+        if (R.cLE) { pc = 75; continue; } // 69d5fa: jle 0x69d65a
+        pc = 71; continue;
+      case 71: // 69d5fc
         R.eax = (0xffffd8f0) | 0; // 69d5fc: mov eax, 0xffffd8f0
-        pc = 0x69d601; continue;
-      case 0x69d601:
+        pc = 72; continue;
+      case 72: // 69d601
         R.ecx = (R.m.u32(((R.esp + 0x9c) | 0) >>> 0)) | 0; // 69d601: mov ecx, dword ptr [esp + 0x9c]
         R.edi = (R.pop()) | 0; // 69d608: pop edi
         R.esi = (R.pop()) | 0; // 69d609: pop esi
@@ -440,112 +497,128 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 69d60b: pop ebx
         /* fs */ // 69d60c: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x98, 32)) | 0; // 69d613: add esp, 0x98
-        return R.ret(4); // 69d619: ret 0x10
-      case 0x69d61c:
+        R.rv = R.ret(4); return -1; // 69d619: ret 0x10
+      case 73: // 69d61c
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d61c: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.2; // 69d620: fmul qword ptr [0x968918]
         R.ftol(); // 69d626: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0xcb2, 16); // 69d62b: cmp word ptr [ebx + 0x80], 0xcb2
         R.edi = ((R.eax >>> 0)) | 0; // 69d634: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d636: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d5fa; continue; // 69d63a: jmp 0x69d5fa
-      case 0x69d63c:
+        pc = 70; continue; // 69d63a: jmp 0x69d5fa
+      case 74: // 69d63c
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d63c: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.001; // 69d640: fmul qword ptr [0x96a350]
         R.ftol(); // 69d646: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), ((R.ebp >>> 0) & 0xffff), 16); // 69d64b: cmp word ptr [ebx + 0x80], bp
         R.edi = ((R.eax >>> 0)) | 0; // 69d652: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d654: mov dword ptr [esp + 0x14], edi
-        if (!R.cLE) { pc = 0x69d5fc; continue; } // 69d658: jg 0x69d5fc
-        pc = 0x69d65a; continue;
-      case 0x69d65a:
+        if (!R.cLE) { pc = 71; continue; } // 69d658: jg 0x69d5fc
+        pc = 75; continue;
+      case 75: // 69d65a
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esp + 0x1b) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69d65a: mov al, byte ptr [esp + 0x1b]
         R.ebp = (0x1b58) | 0; // 69d65e: mov ebp, 0x1b58
         R.sub(((R.eax >>> 0) & 0xff), 0x3b, 8); // 69d663: cmp al, 0x3b
-        if (R.cLE) { pc = 0x69d6a8; continue; } // 69d665: jle 0x69d6a8
-        pc = 0x69d667; continue;
-      case 0x69d667:
+        if (R.cLE) { pc = 82; continue; } // 69d665: jle 0x69d6a8
+        pc = 76; continue;
+      case 76: // 69d667
         R.push((R.ebx >>> 0)); // 69d667: push ebx
         R.call(0x53b900, { n: 1, thisEcx: false, calleeClean: false }); // 69d668: call 0x53b900
         R.esp = (R.add((R.esp >>> 0), 0x4, 32)) | 0; // 69d66d: add esp, 4
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d670: test eax, eax
-        if (R.zf) { pc = 0x69d689; continue; } // 69d672: je 0x69d689
-        pc = 0x69d674; continue;
-      case 0x69d674:
+        if (R.zf) { pc = 79; continue; } // 69d672: je 0x69d689
+        pc = 77; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_8(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 77: // 69d674
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), ((R.ebp >>> 0) & 0xffff), 16); // 69d674: cmp word ptr [ebx + 0x80], bp
-        if (R.cLE) { pc = 0x69d689; continue; } // 69d67b: jle 0x69d689
-        pc = 0x69d67d; continue;
-      case 0x69d67d:
+        if (R.cLE) { pc = 79; continue; } // 69d67b: jle 0x69d689
+        pc = 78; continue;
+      case 78: // 69d67d
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d67d: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.875; // 69d681: fmul qword ptr [0x96a678]
-        pc = 0x69d6d4; continue; // 69d687: jmp 0x69d6d4
-      case 0x69d689:
+        pc = 85; continue; // 69d687: jmp 0x69d6d4
+      case 79: // 69d689
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x1c52, 16); // 69d689: cmp word ptr [ebx + 0x80], 0x1c52
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69d692: fild dword ptr [esp + 0x14]
-        if (R.cLE) { pc = 0x69d6a0; continue; } // 69d696: jle 0x69d6a0
-        pc = 0x69d698; continue;
-      case 0x69d698:
+        if (R.cLE) { pc = 81; continue; } // 69d696: jle 0x69d6a0
+        pc = 80; continue;
+      case 80: // 69d698
         R.st[0] = R.st[0] * 0.9; // 69d698: fmul qword ptr [0x9689d8]
-        pc = 0x69d6d4; continue; // 69d69e: jmp 0x69d6d4
-      case 0x69d6a0:
+        pc = 85; continue; // 69d69e: jmp 0x69d6d4
+      case 81: // 69d6a0
         R.st[0] = R.st[0] * 0.95; // 69d6a0: fmul qword ptr [0x9689d0]
-        pc = 0x69d6d4; continue; // 69d6a6: jmp 0x69d6d4
-      case 0x69d6a8:
+        pc = 85; continue; // 69d6a6: jmp 0x69d6d4
+      case 82: // 69d6a8
         R.sub(((R.eax >>> 0) & 0xff), 0x26, 8); // 69d6a8: cmp al, 0x26
-        if (!R.cL) { pc = 0x69d6df; continue; } // 69d6aa: jge 0x69d6df
-        pc = 0x69d6ac; continue;
-      case 0x69d6ac:
+        if (!R.cL) { pc = 86; continue; } // 69d6aa: jge 0x69d6df
+        pc = 83; continue;
+      case 83: // 69d6ac
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69d6ac: mov eax, dword ptr [esi + 0x69]
         R.sub(R.m.u16(((R.eax + 0xc) | 0) >>> 0), 0x109a, 16); // 69d6af: cmp word ptr [eax + 0xc], 0x109a
-        if (!R.cL) { pc = 0x69d6df; continue; } // 69d6b5: jge 0x69d6df
-        pc = 0x69d6b7; continue;
-      case 0x69d6b7:
+        if (!R.cL) { pc = 86; continue; } // 69d6b5: jge 0x69d6df
+        pc = 84; continue;
+      case 84: // 69d6b7
         R.ecx = (((R.m.u8(((R.esp + 0x1b) | 0) >>> 0)) << 24 >> 24)) | 0; // 69d6b7: movsx ecx, byte ptr [esp + 0x1b]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69d6bc: mov dword ptr [esp + 0x10], ecx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69d6c0: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.05; // 69d6c4: fmul qword ptr [0x967888]
         R.st[0] = R.st[0] - 0.95; // 69d6ca: fsub qword ptr [0x9689d0]
         R.st[0] = R.st[0] * R.m.s32(((R.esp + 0x14) | 0) >>> 0); // 69d6d0: fimul dword ptr [esp + 0x14]
-        pc = 0x69d6d4; continue;
-      case 0x69d6d4:
+        pc = 85; continue;
+      case 85: // 69d6d4
         R.ftol(); // 69d6d4: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69d6d9: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d6db: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d6df; continue;
-      case 0x69d6df:
+        pc = 86; continue;
+      case 86: // 69d6df
         R.sub(R.m.u8(((R.esp + 0x1b) | 0) >>> 0), 0x2d, 8); // 69d6df: cmp byte ptr [esp + 0x1b], 0x2d
-        if (!R.cL) { pc = 0x69d751; continue; } // 69d6e4: jge 0x69d751
-        pc = 0x69d6e6; continue;
-      case 0x69d6e6:
+        if (!R.cL) { pc = 94; continue; } // 69d6e4: jge 0x69d751
+        pc = 87; continue;
+      case 87: // 69d6e6
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), ((R.ebp >>> 0) & 0xffff), 16); // 69d6e6: cmp word ptr [ebx + 0x80], bp
-        if (!R.cL) { pc = 0x69d751; continue; } // 69d6ed: jge 0x69d751
-        pc = 0x69d6ef; continue;
-      case 0x69d6ef:
+        if (!R.cL) { pc = 94; continue; } // 69d6ed: jge 0x69d751
+        pc = 88; continue;
+      case 88: // 69d6ef
         R.ecx = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69d6ef: mov ecx, dword ptr [esi + 0x69]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, 0x32); // 69d6f2: mov dword ptr [esp + 0x10], 0x32
         R.eax = (((R.m.u16(((R.ecx + 0x6) | 0) >>> 0)) << 16 >> 16)) | 0; // 69d6fa: movsx eax, word ptr [ecx + 6]
         R.edx = (((R.m.u16(((R.ecx + 0x4) | 0) >>> 0)) << 16 >> 16)) | 0; // 69d6fe: movsx edx, word ptr [ecx + 4]
         R.eax = (R.sub((R.eax >>> 0), (R.edx >>> 0), 32)) | 0; // 69d702: sub eax, edx
         R.sub((R.eax >>> 0), 0x32, 32); // 69d704: cmp eax, 0x32
-        if (!R.cLE) { pc = 0x69d70d; continue; } // 69d707: jg 0x69d70d
-        pc = 0x69d709; continue;
-      case 0x69d709:
+        if (!R.cLE) { pc = 90; continue; } // 69d707: jg 0x69d70d
+        pc = 89; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_9(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 89: // 69d709
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.eax >>> 0)); // 69d709: mov dword ptr [esp + 0x10], eax
-        pc = 0x69d70d; continue;
-      case 0x69d70d:
+        pc = 90; continue;
+      case 90: // 69d70d
         R.eax = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69d70d: mov eax, dword ptr [esp + 0xb4]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d714: test eax, eax
-        if (R.zf) { pc = 0x69d725; continue; } // 69d716: je 0x69d725
-        pc = 0x69d718; continue;
-      case 0x69d718:
+        if (R.zf) { pc = 92; continue; } // 69d716: je 0x69d725
+        pc = 91; continue;
+      case 91: // 69d718
         R.eax = (R.m.u32(((R.eax + 0x69) | 0) >>> 0)) | 0; // 69d718: mov eax, dword ptr [eax + 0x69]
         R.ecx = (((R.m.u8(((R.eax + 0x1d) | 0) >>> 0)) << 24 >> 24)) | 0; // 69d71b: movsx ecx, byte ptr [eax + 0x1d]
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.ecx >>> 0)); // 69d71f: mov dword ptr [esp + 0x14], ecx
-        pc = 0x69d72d; continue; // 69d723: jmp 0x69d72d
-      case 0x69d725:
+        pc = 93; continue; // 69d723: jmp 0x69d72d
+      case 92: // 69d725
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, 0xa); // 69d725: mov dword ptr [esp + 0x14], 0xa
-        pc = 0x69d72d; continue;
-      case 0x69d72d:
+        pc = 93; continue;
+      case 93: // 69d72d
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69d72d: fild dword ptr [esp + 0x10]
         R.fpush(2.0); // 69d731: fld qword ptr [0x968950]
         R.call(0x945ff0, { n: 0, thisEcx: false, calleeClean: false }); // 69d737: call 0x945ff0
@@ -554,13 +627,21 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.ftol(); // 69d746: call 0x945640
         R.edi = (R.add((R.edi >>> 0), (R.eax >>> 0), 32)) | 0; // 69d74b: add edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69d74d: mov dword ptr [esp + 0x14], edi
-        pc = 0x69d751; continue;
-      case 0x69d751:
+        pc = 94; continue;
+      case 94: // 69d751
         R.eax = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69d751: mov eax, dword ptr [esp + 0xb4]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69d758: test eax, eax
-        if (R.zf) { pc = 0x69d954; continue; } // 69d75a: je 0x69d954
-        pc = 0x69d760; continue;
-      case 0x69d760:
+        if (R.zf) { pc = 96; continue; } // 69d75a: je 0x69d954
+        pc = 95; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_10(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 95: // 69d760
         R.edx = ((R.eax >>> 0)) | 0; // 69d760: mov edx, eax
         R.ebp = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69d762: mov ebp, dword ptr [esi + 0x69]
         R.edi = (R.m.u32(((R.edx + 0x69) | 0) >>> 0)) | 0; // 69d765: mov edi, dword ptr [edx + 0x69]
@@ -695,8 +776,16 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.st[1] = R.st[1] * R.st[0]; R.fpop(); // 69d949: fmulp st(1)
         R.ftol(); // 69d94b: call 0x945640
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.eax >>> 0)); // 69d950: mov dword ptr [esp + 0x14], eax
-        pc = 0x69d954; continue;
-      case 0x69d954:
+        pc = 96; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_11(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 96: // 69d954
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69d954: mov edi, dword ptr [esi + 0x69]
         R.ecx = (((R.m.u8(((R.edi + 0x11) | 0) >>> 0)) << 24 >> 24)) | 0; // 69d957: movsx ecx, byte ptr [edi + 0x11]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69d95b: mov dword ptr [esp + 0x10], ecx
@@ -753,31 +842,47 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.eax >>> 0)); // 69da3b: mov dword ptr [esp + 0x14], eax
         R.eax = ((R.eax & 0xffff0000) | (((R.m.u16(((R.ebx + 0x80) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 69da3f: mov ax, word ptr [ebx + 0x80]
         R.sub(((R.eax >>> 0) & 0xffff), 0x1c52, 16); // 69da46: cmp ax, 0x1c52
-        if (R.cLE) { pc = 0x69da60; continue; } // 69da4a: jle 0x69da60
-        pc = 0x69da4c; continue;
-      case 0x69da4c:
+        if (R.cLE) { pc = 98; continue; } // 69da4a: jle 0x69da60
+        pc = 97; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_12(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 97: // 69da4c
         R.ecx = (((R.m.u8(((R.edi + 0x21) | 0) >>> 0)) << 24 >> 24)) | 0; // 69da4c: movsx ecx, byte ptr [edi + 0x21]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69da50: mov dword ptr [esp + 0x10], ecx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69da54: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.008; // 69da58: fmul qword ptr [0x96d260]
-        pc = 0x69da8c; continue; // 69da5e: jmp 0x69da8c
-      case 0x69da60:
+        pc = 101; continue; // 69da5e: jmp 0x69da8c
+      case 98: // 69da60
         R.sub(((R.eax >>> 0) & 0xffff), 0x1676, 16); // 69da60: cmp ax, 0x1676
-        if (R.cLE) { pc = 0x69da7a; continue; } // 69da64: jle 0x69da7a
-        pc = 0x69da66; continue;
-      case 0x69da66:
+        if (R.cLE) { pc = 100; continue; } // 69da64: jle 0x69da7a
+        pc = 99; continue;
+      case 99: // 69da66
         R.edx = (((R.m.u8(((R.edi + 0x21) | 0) >>> 0)) << 24 >> 24)) | 0; // 69da66: movsx edx, byte ptr [edi + 0x21]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.edx >>> 0)); // 69da6a: mov dword ptr [esp + 0x10], edx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69da6e: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.004; // 69da72: fmul qword ptr [0x968d60]
-        pc = 0x69da8c; continue; // 69da78: jmp 0x69da8c
-      case 0x69da7a:
+        pc = 101; continue; // 69da78: jmp 0x69da8c
+      case 100: // 69da7a
         R.eax = (((R.m.u8(((R.edi + 0x21) | 0) >>> 0)) << 24 >> 24)) | 0; // 69da7a: movsx eax, byte ptr [edi + 0x21]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.eax >>> 0)); // 69da7e: mov dword ptr [esp + 0x10], eax
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69da82: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.002; // 69da86: fmul qword ptr [0x969048]
-        pc = 0x69da8c; continue;
-      case 0x69da8c:
+        pc = 101; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_13(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 101: // 69da8c
         R.st[0] = R.st[0] + 1.0; // 69da8c: fadd qword ptr [0x967890]
         R.st[0] = R.st[0] * R.m.s32(((R.esp + 0x14) | 0) >>> 0); // 69da92: fimul dword ptr [esp + 0x14]
         R.ftol(); // 69da96: call 0x945640
@@ -817,12 +922,20 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69db26: mov dword ptr [esp + 0x10], ecx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69db2a: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.005; // 69db2e: fmul qword ptr [0x968ef0]
-        pc = 0x69e5a6; continue; // 69db34: jmp 0x69e5a6
-      case 0x69db39:
+        pc = 113; continue; // 69db34: jmp 0x69e5a6
+      case 102: // 69db39
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69db39: test ebp, ebp
-        if (R.zf) { pc = 0x69dd08; continue; } // 69db3b: je 0x69dd08
-        pc = 0x69db41; continue;
-      case 0x69db41:
+        if (R.zf) { pc = 104; continue; } // 69db3b: je 0x69dd08
+        pc = 103; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_14(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 103: // 69db41
         R.edx = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69db41: mov edx, dword ptr [esp + 0xb4]
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69db48: mov edi, dword ptr [esi + 0x69]
         R.ebp = (R.m.u32(((R.edx + 0x69) | 0) >>> 0)) | 0; // 69db4b: mov ebp, dword ptr [edx + 0x69]
@@ -938,8 +1051,16 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.st[1] = R.st[1] * R.st[0]; R.fpop(); // 69dcfd: fmulp st(1)
         R.ftol(); // 69dcff: call 0x945640
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.eax >>> 0)); // 69dd04: mov dword ptr [esp + 0x14], eax
-        pc = 0x69dd08; continue;
-      case 0x69dd08:
+        pc = 104; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_15(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 104: // 69dd08
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69dd08: mov edi, dword ptr [esi + 0x69]
         R.eax = (((R.m.u8(((R.edi + 0x11) | 0) >>> 0)) << 24 >> 24)) | 0; // 69dd0b: movsx eax, byte ptr [edi + 0x11]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.eax >>> 0)); // 69dd0f: mov dword ptr [esp + 0x10], eax
@@ -1039,12 +1160,28 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69dea3: mov dword ptr [esp + 0x10], ecx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69dea7: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.005; // 69deab: fmul qword ptr [0x968ef0]
-        pc = 0x69e5a6; continue; // 69deb1: jmp 0x69e5a6
-      case 0x69deb6:
+        pc = 113; continue; // 69deb1: jmp 0x69e5a6
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_16(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 105: // 69deb6
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69deb6: test ebp, ebp
-        if (R.zf) { pc = 0x69e085; continue; } // 69deb8: je 0x69e085
-        pc = 0x69debe; continue;
-      case 0x69debe:
+        if (R.zf) { pc = 107; continue; } // 69deb8: je 0x69e085
+        pc = 106; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_17(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 106: // 69debe
         R.edx = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69debe: mov edx, dword ptr [esp + 0xb4]
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69dec5: mov edi, dword ptr [esi + 0x69]
         R.ebp = (R.m.u32(((R.edx + 0x69) | 0) >>> 0)) | 0; // 69dec8: mov ebp, dword ptr [edx + 0x69]
@@ -1160,8 +1297,16 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.st[1] = R.st[1] * R.st[0]; R.fpop(); // 69e07a: fmulp st(1)
         R.ftol(); // 69e07c: call 0x945640
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.eax >>> 0)); // 69e081: mov dword ptr [esp + 0x14], eax
-        pc = 0x69e085; continue;
-      case 0x69e085:
+        pc = 107; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_18(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 107: // 69e085
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e085: mov edi, dword ptr [esi + 0x69]
         R.eax = (((R.m.u8(((R.edi + 0x11) | 0) >>> 0)) << 24 >> 24)) | 0; // 69e088: movsx eax, byte ptr [edi + 0x11]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.eax >>> 0)); // 69e08c: mov dword ptr [esp + 0x10], eax
@@ -1260,12 +1405,28 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69e21c: fild dword ptr [esp + 0x10]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69e220: mov dword ptr [esp + 0x10], ecx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69e224: fild dword ptr [esp + 0x10]
-        pc = 0x69e5a0; continue; // 69e228: jmp 0x69e5a0
-      case 0x69e22d:
+        pc = 112; continue; // 69e228: jmp 0x69e5a0
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_19(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 108: // 69e22d
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69e22d: test ebp, ebp
-        if (R.zf) { pc = 0x69e3fc; continue; } // 69e22f: je 0x69e3fc
-        pc = 0x69e235; continue;
-      case 0x69e235:
+        if (R.zf) { pc = 110; continue; } // 69e22f: je 0x69e3fc
+        pc = 109; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_20(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 109: // 69e235
         R.edx = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69e235: mov edx, dword ptr [esp + 0xb4]
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e23c: mov edi, dword ptr [esi + 0x69]
         R.ebp = (R.m.u32(((R.edx + 0x69) | 0) >>> 0)) | 0; // 69e23f: mov ebp, dword ptr [edx + 0x69]
@@ -1381,8 +1542,16 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.st[1] = R.st[1] * R.st[0]; R.fpop(); // 69e3f1: fmulp st(1)
         R.ftol(); // 69e3f3: call 0x945640
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.eax >>> 0)); // 69e3f8: mov dword ptr [esp + 0x14], eax
-        pc = 0x69e3fc; continue;
-      case 0x69e3fc:
+        pc = 110; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_21(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 110: // 69e3fc
         R.edi = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e3fc: mov edi, dword ptr [esi + 0x69]
         R.eax = (((R.m.u8(((R.edi + 0x17) | 0) >>> 0)) << 24 >> 24)) | 0; // 69e3ff: movsx eax, byte ptr [edi + 0x17]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.eax >>> 0)); // 69e403: mov dword ptr [esp + 0x10], eax
@@ -1437,8 +1606,16 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.edx >>> 0)); // 69e4d4: mov dword ptr [esp + 0x10], edx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69e4d8: fild dword ptr [esp + 0x10]
         R.st[0] = R.st[0] * 0.002; // 69e4dc: fmul qword ptr [0x969048]
-        pc = 0x69e5a6; continue; // 69e4e2: jmp 0x69e5a6
-      case 0x69e4e7:
+        pc = 113; continue; // 69e4e2: jmp 0x69e5a6
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_22(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 111: // 69e4e7
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e4e7: mov eax, dword ptr [esi + 0x69]
         R.ecx = (((R.m.u8(((R.eax + 0x1e) | 0) >>> 0)) << 24 >> 24)) | 0; // 69e4ea: movsx ecx, byte ptr [eax + 0x1e]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.ecx >>> 0)); // 69e4ee: mov dword ptr [esp + 0x10], ecx
@@ -1483,117 +1660,133 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69e594: fild dword ptr [esp + 0x10]
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.edx >>> 0)); // 69e598: mov dword ptr [esp + 0x10], edx
         R.fpush(R.m.s32(((R.esp + 0x10) | 0) >>> 0)); // 69e59c: fild dword ptr [esp + 0x10]
-        pc = 0x69e5a0; continue;
-      case 0x69e5a0:
+        pc = 112; continue;
+      case 112: // 69e5a0
         R.st[0] = R.st[0] * 0.02; // 69e5a0: fmul qword ptr [0x968a98]
-        pc = 0x69e5a6; continue;
-      case 0x69e5a6:
+        pc = 113; continue;
+      case 113: // 69e5a6
         R.st[0] = R.st[0] + 1.0; // 69e5a6: fadd qword ptr [0x967890]
         R.st[1] = R.st[1] * R.st[0]; R.fpop(); // 69e5ac: fmulp st(1)
         R.ftol(); // 69e5ae: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69e5b3: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69e5b5: mov dword ptr [esp + 0x14], edi
-        pc = 0x69e5b9; continue;
-      case 0x69e5b9:
+        pc = 114; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_23(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 114: // 69e5b9
         R.eax = (R.m.u32(((R.esi + 0x39) | 0) >>> 0)) | 0; // 69e5b9: mov eax, dword ptr [esi + 0x39]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e5bc: test eax, eax
-        if (R.zf) { pc = 0x69e5ca; continue; } // 69e5be: je 0x69e5ca
-        pc = 0x69e5c0; continue;
-      case 0x69e5c0:
+        if (R.zf) { pc = 116; continue; } // 69e5be: je 0x69e5ca
+        pc = 115; continue;
+      case 115: // 69e5c0
         R.eax = (R.m.u32(((R.eax + 0x53) | 0) >>> 0)) | 0; // 69e5c0: mov eax, dword ptr [eax + 0x53]
         R.ecx = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e5c3: mov ecx, dword ptr [ebx + 0x53]
         R.sub((R.eax >>> 0), (R.ecx >>> 0), 32); // 69e5c6: cmp eax, ecx
-        if (R.zf) { pc = 0x69e5e2; continue; } // 69e5c8: je 0x69e5e2
-        pc = 0x69e5ca; continue;
-      case 0x69e5ca:
+        if (R.zf) { pc = 119; continue; } // 69e5c8: je 0x69e5e2
+        pc = 116; continue;
+      case 116: // 69e5ca
         R.eax = (R.m.u32(((R.esi + 0x24) | 0) >>> 0)) | 0; // 69e5ca: mov eax, dword ptr [esi + 0x24]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e5cd: test eax, eax
-        if (R.zf) { pc = 0x69e5db; continue; } // 69e5cf: je 0x69e5db
-        pc = 0x69e5d1; continue;
-      case 0x69e5d1:
+        if (R.zf) { pc = 118; continue; } // 69e5cf: je 0x69e5db
+        pc = 117; continue;
+      case 117: // 69e5d1
         R.eax = (R.m.u32(((R.eax + 0x53) | 0) >>> 0)) | 0; // 69e5d1: mov eax, dword ptr [eax + 0x53]
         R.ecx = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e5d4: mov ecx, dword ptr [ebx + 0x53]
         R.sub((R.eax >>> 0), (R.ecx >>> 0), 32); // 69e5d7: cmp eax, ecx
-        if (R.zf) { pc = 0x69e5e2; continue; } // 69e5d9: je 0x69e5e2
-        pc = 0x69e5db; continue;
-      case 0x69e5db:
+        if (R.zf) { pc = 119; continue; } // 69e5d9: je 0x69e5e2
+        pc = 118; continue;
+      case 118: // 69e5db
         R.eax = (R.m.u32(((R.esi + 0x1a) | 0) >>> 0)) | 0; // 69e5db: mov eax, dword ptr [esi + 0x1a]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e5de: test eax, eax
-        if (R.zf) { pc = 0x69e5e6; continue; } // 69e5e0: je 0x69e5e6
-        pc = 0x69e5e2; continue;
-      case 0x69e5e2:
+        if (R.zf) { pc = 120; continue; } // 69e5e0: je 0x69e5e6
+        pc = 119; continue;
+      case 119: // 69e5e2
         R.m.w32(((R.esp + 0x10) | 0) >>> 0, (R.eax >>> 0)); // 69e5e2: mov dword ptr [esp + 0x10], eax
-        pc = 0x69e5e6; continue;
-      case 0x69e5e6:
+        pc = 120; continue;
+      case 120: // 69e5e6
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x128e, 16); // 69e5e6: cmp word ptr [ebx + 0x80], 0x128e
-        if (R.cLE) { pc = 0x69e6cf; continue; } // 69e5ef: jle 0x69e6cf
-        pc = 0x69e5f5; continue;
-      case 0x69e5f5:
+        if (R.cLE) { pc = 139; continue; } // 69e5ef: jle 0x69e6cf
+        pc = 121; continue;
+      case 121: // 69e5f5
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e5f5: mov eax, dword ptr [ebx + 0x53]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e5f8: test eax, eax
-        if (R.zf) { pc = 0x69e6cf; continue; } // 69e5fa: je 0x69e6cf
-        pc = 0x69e600; continue;
-      case 0x69e600:
+        if (R.zf) { pc = 139; continue; } // 69e5fa: je 0x69e6cf
+        pc = 122; continue;
+      case 122: // 69e600
         R.ecx = (R.m.u32(((R.esi + 0x1a) | 0) >>> 0)) | 0; // 69e600: mov ecx, dword ptr [esi + 0x1a]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 69e603: test ecx, ecx
-        if (R.zf) { pc = 0x69e6cf; continue; } // 69e605: je 0x69e6cf
-        pc = 0x69e60b; continue;
-      case 0x69e60b:
+        if (R.zf) { pc = 139; continue; } // 69e605: je 0x69e6cf
+        pc = 123; continue;
+      case 123: // 69e60b
         R.push(0x1); // 69e60b: push 1
         R.push((R.eax >>> 0)); // 69e60d: push eax
         R.push((R.esi >>> 0)); // 69e60e: push esi
         R.call(0x53d980, { n: 3, thisEcx: false, calleeClean: false }); // 69e60f: call 0x53d980
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e614: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e617: test eax, eax
-        if (R.zf) { pc = 0x69e6cf; continue; } // 69e619: je 0x69e6cf
-        pc = 0x69e61f; continue;
-      case 0x69e61f:
+        if (R.zf) { pc = 139; continue; } // 69e619: je 0x69e6cf
+        pc = 124; continue;
+      case 124: // 69e61f
         R.eax = (R.m.u32(((R.esi + 0x39) | 0) >>> 0)) | 0; // 69e61f: mov eax, dword ptr [esi + 0x39]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e622: test eax, eax
-        if (R.zf) { pc = 0x69e634; continue; } // 69e624: je 0x69e634
-        pc = 0x69e626; continue;
-      case 0x69e626:
+        if (R.zf) { pc = 126; continue; } // 69e624: je 0x69e634
+        pc = 125; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_24(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 125: // 69e626
         R.ecx = (R.m.u32(((R.eax + 0x53) | 0) >>> 0)) | 0; // 69e626: mov ecx, dword ptr [eax + 0x53]
         R.edx = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e629: mov edx, dword ptr [ebx + 0x53]
         R.sub((R.ecx >>> 0), (R.edx >>> 0), 32); // 69e62c: cmp ecx, edx
-        if (R.zf) { pc = 0x69e6cf; continue; } // 69e62e: je 0x69e6cf
-        pc = 0x69e634; continue;
-      case 0x69e634:
+        if (R.zf) { pc = 139; continue; } // 69e62e: je 0x69e6cf
+        pc = 126; continue;
+      case 126: // 69e634
         R.edx = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e634: mov edx, dword ptr [ebx + 0x53]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e637: test eax, eax
         R.ecx = ((R.ecx & 0xffffff00) | (((R.m.u8(((R.edx + 0x85) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e639: mov cl, byte ptr [edx + 0x85]
         R.edx = (R.m.u32(((R.esi + 0x1a) | 0) >>> 0)) | 0; // 69e63f: mov edx, dword ptr [esi + 0x1a]
         R.m.w8(((R.esp + 0x1b) | 0) >>> 0, ((R.ecx >>> 0) & 0xff)); // 69e642: mov byte ptr [esp + 0x1b], cl
         R.ecx = ((R.ecx & 0xffffff00) | (((R.m.u8(((R.edx + 0x85) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e646: mov cl, byte ptr [edx + 0x85]
-        if (R.zf) { pc = 0x69e670; continue; } // 69e64c: je 0x69e670
-        pc = 0x69e64e; continue;
-      case 0x69e64e:
+        if (R.zf) { pc = 132; continue; } // 69e64c: je 0x69e670
+        pc = 127; continue;
+      case 127: // 69e64e
         R.ebp = (R.m.u32(((R.eax + 0x53) | 0) >>> 0)) | 0; // 69e64e: mov ebp, dword ptr [eax + 0x53]
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 69e651: test ebp, ebp
-        if (R.zf) { pc = 0x69e661; continue; } // 69e653: je 0x69e661
-        pc = 0x69e655; continue;
-      case 0x69e655:
+        if (R.zf) { pc = 130; continue; } // 69e653: je 0x69e661
+        pc = 128; continue;
+      case 128: // 69e655
         R.edx = ((R.edx & 0xffffff00) | (((R.m.u8(((R.ebp + 0x85) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e655: mov dl, byte ptr [ebp + 0x85]
         R.sub(((R.edx >>> 0) & 0xff), ((R.ecx >>> 0) & 0xff), 8); // 69e65b: cmp dl, cl
-        if (R.cLE) { pc = 0x69e661; continue; } // 69e65d: jle 0x69e661
-        pc = 0x69e65f; continue;
-      case 0x69e65f:
+        if (R.cLE) { pc = 130; continue; } // 69e65d: jle 0x69e661
+        pc = 129; continue;
+      case 129: // 69e65f
         R.ecx = ((R.ecx & 0xffffff00) | (((((R.edx >>> 0) & 0xff)) & 0xff) << 0)) | 0; // 69e65f: mov cl, dl
-        pc = 0x69e661; continue;
-      case 0x69e661:
+        pc = 130; continue;
+      case 130: // 69e661
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e661: test eax, eax
-        if (R.zf) { pc = 0x69e670; continue; } // 69e663: je 0x69e670
-        pc = 0x69e665; continue;
-      case 0x69e665:
+        if (R.zf) { pc = 132; continue; } // 69e663: je 0x69e670
+        pc = 131; continue;
+      case 131: // 69e665
         R.sub(R.m.u16(((R.eax + 0x80) | 0) >>> 0), 0x1a5e, 16); // 69e665: cmp word ptr [eax + 0x80], 0x1a5e
-        if (!R.cL) { pc = 0x69e6cf; continue; } // 69e66e: jge 0x69e6cf
-        pc = 0x69e670; continue;
-      case 0x69e670:
+        if (!R.cL) { pc = 139; continue; } // 69e66e: jge 0x69e6cf
+        pc = 132; continue;
+      case 132: // 69e670
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esp + 0x1b) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e670: mov al, byte ptr [esp + 0x1b]
         R.sub(((R.ecx >>> 0) & 0xff), ((R.eax >>> 0) & 0xff), 8); // 69e674: cmp cl, al
-        if (!R.cL) { pc = 0x69e6cf; continue; } // 69e676: jge 0x69e6cf
-        pc = 0x69e678; continue;
-      case 0x69e678:
+        if (!R.cL) { pc = 139; continue; } // 69e676: jge 0x69e6cf
+        pc = 133; continue;
+      case 133: // 69e678
         R.ecx = (((((R.ecx >>> 0) & 0xff)) << 24 >> 24)) | 0; // 69e678: movsx ecx, cl
         R.edx = (((((R.eax >>> 0) & 0xff)) << 24 >> 24)) | 0; // 69e67b: movsx edx, al
         R.ecx = (R.sub((R.ecx >>> 0), (R.edx >>> 0), 32)) | 0; // 69e67e: sub ecx, edx
@@ -1604,46 +1797,54 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.fcom(R.st[0], 0.75); // 69e694: fcom qword ptr [0x969040]
         R.eax = ((R.eax & 0xffff0000) | R.sw()) | 0; // 69e69a: fnstsw ax
         R.logic(((R.eax >>> 8) & 0xff) & 0x1, 8); // 69e69c: test ah, 1
-        if (R.zf) { pc = 0x69e6a9; continue; } // 69e69f: je 0x69e6a9
-        pc = 0x69e6a1; continue;
-      case 0x69e6a1:
+        if (R.zf) { pc = 135; continue; } // 69e69f: je 0x69e6a9
+        pc = 134; continue;
+      case 134: // 69e6a1
         R.fpop(); // 69e6a1: fstp st(0)
         R.fpush(0.75); // 69e6a3: fld dword ptr [0x96d248]
-        pc = 0x69e6a9; continue;
-      case 0x69e6a9:
+        pc = 135; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_25(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 135: // 69e6a9
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esp + 0x1a) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e6a9: mov al, byte ptr [esp + 0x1a]
         R.sub(((R.eax >>> 0) & 0xff), 0xc, 8); // 69e6ad: cmp al, 0xc
-        if (R.zf) { pc = 0x69e6bc; continue; } // 69e6af: je 0x69e6bc
-        pc = 0x69e6b1; continue;
-      case 0x69e6b1:
+        if (R.zf) { pc = 138; continue; } // 69e6af: je 0x69e6bc
+        pc = 136; continue;
+      case 136: // 69e6b1
         R.sub(((R.eax >>> 0) & 0xff), 0x5, 8); // 69e6b1: cmp al, 5
-        if (R.zf) { pc = 0x69e6bc; continue; } // 69e6b3: je 0x69e6bc
-        pc = 0x69e6b5; continue;
-      case 0x69e6b5:
+        if (R.zf) { pc = 138; continue; } // 69e6b3: je 0x69e6bc
+        pc = 137; continue;
+      case 137: // 69e6b5
         R.fpop(); // 69e6b5: fstp st(0)
-        pc = 0x69d5fc; continue; // 69e6b7: jmp 0x69d5fc
-      case 0x69e6bc:
+        pc = 71; continue; // 69e6b7: jmp 0x69d5fc
+      case 138: // 69e6bc
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69e6bc: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * R.st[1]; // 69e6c0: fmul st(1)
         R.ftol(); // 69e6c2: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69e6c7: mov edi, eax
         R.fpop(); // 69e6c9: fstp st(0)
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69e6cb: mov dword ptr [esp + 0x14], edi
-        pc = 0x69e6cf; continue;
-      case 0x69e6cf:
+        pc = 139; continue;
+      case 139: // 69e6cf
         R.push((R.ebx >>> 0)); // 69e6cf: push ebx
         R.call(0x53b900, { n: 1, thisEcx: false, calleeClean: false }); // 69e6d0: call 0x53b900
         R.esp = (R.add((R.esp >>> 0), 0x4, 32)) | 0; // 69e6d5: add esp, 4
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e6d8: test eax, eax
-        if (R.zf) { pc = 0x69e8a6; continue; } // 69e6da: je 0x69e8a6
-        pc = 0x69e6e0; continue;
-      case 0x69e6e0:
+        if (R.zf) { pc = 165; continue; } // 69e6da: je 0x69e8a6
+        pc = 140; continue;
+      case 140: // 69e6e0
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e6e0: mov eax, dword ptr [ebx + 0x53]
         R.ecx = (R.m.u32(((R.esi + 0x1a) | 0) >>> 0)) | 0; // 69e6e3: mov ecx, dword ptr [esi + 0x1a]
         R.sub((R.ecx >>> 0), (R.eax >>> 0), 32); // 69e6e6: cmp ecx, eax
-        if (!R.zf) { pc = 0x69e719; continue; } // 69e6e8: jne 0x69e719
-        pc = 0x69e6ea; continue;
-      case 0x69e6ea:
+        if (!R.zf) { pc = 143; continue; } // 69e6e8: jne 0x69e719
+        pc = 141; continue;
+      case 141: // 69e6ea
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69e6ea: fild dword ptr [esp + 0x14]
         R.edi = (R.add((R.edi >>> 0), 0x7d0, 32)) | 0; // 69e6ee: add edi, 0x7d0
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.edi >>> 0)); // 69e6f4: mov dword ptr [esp + 0x1c], edi
@@ -1653,58 +1854,66 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.fcom(R.st[0], R.f64(((R.esp + 0x24) | 0))); // 69e706: fcom qword ptr [esp + 0x24]
         R.eax = ((R.eax & 0xffff0000) | R.sw()) | 0; // 69e70a: fnstsw ax
         R.logic(((R.eax >>> 8) & 0xff) & 0x41, 8); // 69e70c: test ah, 0x41
-        if (R.zf) { pc = 0x69e754; continue; } // 69e70f: je 0x69e754
-        pc = 0x69e711; continue;
-      case 0x69e711:
+        if (R.zf) { pc = 146; continue; } // 69e70f: je 0x69e754
+        pc = 142; continue;
+      case 142: // 69e711
         R.fpop(); // 69e711: fstp st(0)
         R.fpush(R.f64(((R.esp + 0x24) | 0))); // 69e713: fld qword ptr [esp + 0x24]
-        pc = 0x69e754; continue; // 69e717: jmp 0x69e754
-      case 0x69e719:
+        pc = 146; continue; // 69e717: jmp 0x69e754
+      case 143: // 69e719
         R.push(0x1); // 69e719: push 1
         R.push((R.eax >>> 0)); // 69e71b: push eax
         R.push((R.esi >>> 0)); // 69e71c: push esi
         R.call(0x53d980, { n: 3, thisEcx: false, calleeClean: false }); // 69e71d: call 0x53d980
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e722: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e725: test eax, eax
-        if (!R.zf) { pc = 0x69e74a; continue; } // 69e727: jne 0x69e74a
-        pc = 0x69e729; continue;
-      case 0x69e729:
+        if (!R.zf) { pc = 145; continue; } // 69e727: jne 0x69e74a
+        pc = 144; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_26(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 144: // 69e729
         R.eax = (((R.m.u16(((R.ebx + 0x80) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e729: movsx eax, word ptr [ebx + 0x80]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.eax >>> 0)); // 69e730: mov dword ptr [esp + 0x1c], eax
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e734: fild dword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 2.5e-05; // 69e738: fmul qword ptr [0x96d240]
         R.st[0] = 0.75 - R.st[0]; // 69e73e: fsubr qword ptr [0x969040]
         R.st[0] = R.st[0] * R.m.s32(((R.esp + 0x14) | 0) >>> 0); // 69e744: fimul dword ptr [esp + 0x14]
-        pc = 0x69e754; continue; // 69e748: jmp 0x69e754
-      case 0x69e74a:
+        pc = 146; continue; // 69e748: jmp 0x69e754
+      case 145: // 69e74a
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69e74a: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.35; // 69e74e: fmul qword ptr [0x969510]
-        pc = 0x69e754; continue;
-      case 0x69e754:
+        pc = 146; continue;
+      case 146: // 69e754
         R.ftol(); // 69e754: call 0x945640
         R.sub(R.m.u16(((R.ebx + 0x80) | 0) >>> 0), 0x186a, 16); // 69e759: cmp word ptr [ebx + 0x80], 0x186a
         R.edi = ((R.eax >>> 0)) | 0; // 69e762: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69e764: mov dword ptr [esp + 0x14], edi
-        if (R.cLE) { pc = 0x69e7f1; continue; } // 69e768: jle 0x69e7f1
-        pc = 0x69e76e; continue;
-      case 0x69e76e:
+        if (R.cLE) { pc = 154; continue; } // 69e768: jle 0x69e7f1
+        pc = 147; continue;
+      case 147: // 69e76e
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esp + 0x1a) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e76e: mov al, byte ptr [esp + 0x1a]
         R.sub(((R.eax >>> 0) & 0xff), 0xc, 8); // 69e772: cmp al, 0xc
-        if (R.zf) { pc = 0x69e797; continue; } // 69e774: je 0x69e797
-        pc = 0x69e776; continue;
-      case 0x69e776:
+        if (R.zf) { pc = 150; continue; } // 69e774: je 0x69e797
+        pc = 148; continue;
+      case 148: // 69e776
         R.sub(((R.eax >>> 0) & 0xff), 0x5, 8); // 69e776: cmp al, 5
-        if (R.zf) { pc = 0x69e797; continue; } // 69e778: je 0x69e797
-        pc = 0x69e77a; continue;
-      case 0x69e77a:
+        if (R.zf) { pc = 150; continue; } // 69e778: je 0x69e797
+        pc = 149; continue;
+      case 149: // 69e77a
         R.ecx = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e77a: mov ecx, dword ptr [esi + 0x69]
         R.edx = (((R.m.u16(((R.ecx + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e77d: movsx edx, word ptr [ecx + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.edx >>> 0)); // 69e781: mov dword ptr [esp + 0x1c], edx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e785: fild dword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 2.5e-05; // 69e789: fmul qword ptr [0x96d240]
         R.st[0] = R.st[0] + 0.5; // 69e78f: fadd qword ptr [0x968968]
-        pc = 0x69e7e2; continue; // 69e795: jmp 0x69e7e2
-      case 0x69e797:
+        pc = 153; continue; // 69e795: jmp 0x69e7e2
+      case 150: // 69e797
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e797: mov eax, dword ptr [ebx + 0x53]
         R.push(0x1); // 69e79a: push 1
         R.push((R.eax >>> 0)); // 69e79c: push eax
@@ -1712,38 +1921,46 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x53d980, { n: 3, thisEcx: false, calleeClean: false }); // 69e79e: call 0x53d980
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e7a3: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e7a6: test eax, eax
-        if (R.zf) { pc = 0x69e7c7; continue; } // 69e7a8: je 0x69e7c7
-        pc = 0x69e7aa; continue;
-      case 0x69e7aa:
+        if (R.zf) { pc = 152; continue; } // 69e7a8: je 0x69e7c7
+        pc = 151; continue;
+      case 151: // 69e7aa
         R.ecx = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e7aa: mov ecx, dword ptr [esi + 0x69]
         R.edx = (((R.m.u16(((R.ecx + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e7ad: movsx edx, word ptr [ecx + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.edx >>> 0)); // 69e7b1: mov dword ptr [esp + 0x1c], edx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e7b5: fild dword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 5e-05; // 69e7b9: fmul qword ptr [0x96d238]
         R.st[0] = R.st[0] + 0.5; // 69e7bf: fadd qword ptr [0x968968]
-        pc = 0x69e7e2; continue; // 69e7c5: jmp 0x69e7e2
-      case 0x69e7c7:
+        pc = 153; continue; // 69e7c5: jmp 0x69e7e2
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_27(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 152: // 69e7c7
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e7c7: mov eax, dword ptr [esi + 0x69]
         R.ecx = (((R.m.u16(((R.eax + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e7ca: movsx ecx, word ptr [eax + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.ecx >>> 0)); // 69e7ce: mov dword ptr [esp + 0x1c], ecx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e7d2: fild dword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 2.5e-05; // 69e7d6: fmul qword ptr [0x96d240]
         R.st[0] = R.st[0] + 0.75; // 69e7dc: fadd qword ptr [0x969040]
-        pc = 0x69e7e2; continue;
-      case 0x69e7e2:
+        pc = 153; continue;
+      case 153: // 69e7e2
         R.st[0] = R.st[0] * R.m.s32(((R.esp + 0x14) | 0) >>> 0); // 69e7e2: fimul dword ptr [esp + 0x14]
         R.ftol(); // 69e7e6: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69e7eb: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69e7ed: mov dword ptr [esp + 0x14], edi
-        pc = 0x69e7f1; continue;
-      case 0x69e7f1:
+        pc = 154; continue;
+      case 154: // 69e7f1
         R.edx = (R.m.u32(((0xae2364) | 0) >>> 0)) | 0; // 69e7f1: mov edx, dword ptr [0xae2364]
         R.eax = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 69e7f7: mov eax, dword ptr [esi]
         R.edx = (R.add((R.edx >>> 0), 0xfffffff0, 32)) | 0; // 69e7f9: add edx, -0x10
         R.sub((R.eax >>> 0), (R.edx >>> 0), 32); // 69e7fc: cmp eax, edx
-        if (R.cL) { pc = 0x69ea31; continue; } // 69e7fe: jl 0x69ea31
-        pc = 0x69e804; continue;
-      case 0x69e804:
+        if (R.cL) { pc = 194; continue; } // 69e7fe: jl 0x69ea31
+        pc = 155; continue;
+      case 155: // 69e804
         R.eax = (R.m.u32(((R.esp + 0xb4) | 0) >>> 0)) | 0; // 69e804: mov eax, dword ptr [esp + 0xb4]
         R.push(0x1); // 69e80b: push 1
         R.push((R.eax >>> 0)); // 69e80d: push eax
@@ -1752,29 +1969,37 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = ((R.eax >>> 0)) | 0; // 69e814: mov ebp, eax
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e816: add esp, 0xc
         R.sub(((R.ebp >>> 0) & 0xffff), 0x109a, 16); // 69e819: cmp bp, 0x109a
-        if (!R.cL) { pc = 0x69e824; continue; } // 69e81e: jge 0x69e824
-        pc = 0x69e820; continue;
-      case 0x69e820:
+        if (!R.cL) { pc = 157; continue; } // 69e81e: jge 0x69e824
+        pc = 156; continue;
+      case 156: // 69e820
         R.edi = (R.logic((R.edi >>> 0) ^ (R.edi >>> 0), 32)) | 0; // 69e820: xor edi, edi
-        pc = 0x69e83c; continue; // 69e822: jmp 0x69e83c
-      case 0x69e824:
+        pc = 159; continue; // 69e822: jmp 0x69e83c
+      case 157: // 69e824
         R.sub(((R.ebp >>> 0) & 0xffff), 0x1a5e, 16); // 69e824: cmp bp, 0x1a5e
-        if (!R.cL) { pc = 0x69e840; continue; } // 69e829: jge 0x69e840
-        pc = 0x69e82b; continue;
-      case 0x69e82b:
+        if (!R.cL) { pc = 160; continue; } // 69e829: jge 0x69e840
+        pc = 158; continue;
+      case 158: // 69e82b
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69e82b: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.75; // 69e82f: fmul qword ptr [0x969040]
         R.ftol(); // 69e835: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69e83a: mov edi, eax
-        pc = 0x69e83c; continue;
-      case 0x69e83c:
+        pc = 159; continue;
+      case 159: // 69e83c
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69e83c: mov dword ptr [esp + 0x14], edi
-        pc = 0x69e840; continue;
-      case 0x69e840:
+        pc = 160; continue;
+      case 160: // 69e840
         R.sub(((R.ebp >>> 0) & 0xffff), 0x1c52, 16); // 69e840: cmp bp, 0x1c52
-        if (!R.cL) { pc = 0x69ea31; continue; } // 69e845: jge 0x69ea31
-        pc = 0x69e84b; continue;
-      case 0x69e84b:
+        if (!R.cL) { pc = 194; continue; } // 69e845: jge 0x69ea31
+        pc = 161; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_28(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 161: // 69e84b
         R.push(0xffffffff); // 69e84b: push -1
         R.push(0x7d3); // 69e84d: push 0x7d3
         R.push(0x6); // 69e852: push 6
@@ -1788,64 +2013,72 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.esp + 0x28) | 0) >>> 0, (R.edx >>> 0)); // 69e86d: mov dword ptr [esp + 0x28], edx
         R.edx = ((R.edx & 0xffff0000) | (((R.m.u16(((0xae2c92) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 69e871: mov dx, word ptr [0xae2c92]
         R.sub(((R.eax >>> 0) & 0xffff), ((R.edx >>> 0) & 0xffff), 16); // 69e878: cmp ax, dx
-        if (!R.cBE) { pc = 0x69e897; continue; } // 69e87b: ja 0x69e897
-        pc = 0x69e87d; continue;
-      case 0x69e87d:
-        if (R.cf) { pc = 0x69ea31; continue; } // 69e87d: jb 0x69ea31
-        pc = 0x69e883; continue;
-      case 0x69e883:
+        if (!R.cBE) { pc = 164; continue; } // 69e87b: ja 0x69e897
+        pc = 162; continue;
+      case 162: // 69e87d
+        if (R.cf) { pc = 194; continue; } // 69e87d: jb 0x69ea31
+        pc = 163; continue;
+      case 163: // 69e883
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 69e883: xor eax, eax
         R.sub(((R.ecx >>> 0) & 0xffff), R.m.u16(((0xae2c90) | 0) >>> 0), 16); // 69e885: cmp cx, word ptr [0xae2c90]
         R.eax = ((R.eax & 0xffffff00) | (((!R.cLE ? 1 : 0) & 0xff) << 0)) | 0; // 69e88c: setg al
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e88f: test eax, eax
-        if (R.zf) { pc = 0x69ea31; continue; } // 69e891: je 0x69ea31
-        pc = 0x69e897; continue;
-      case 0x69e897:
+        if (R.zf) { pc = 194; continue; } // 69e891: je 0x69ea31
+        pc = 164; continue;
+      case 164: // 69e897
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69e897: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.75; // 69e89b: fmul qword ptr [0x969040]
-        pc = 0x69ea26; continue; // 69e8a1: jmp 0x69ea26
-      case 0x69e8a6:
+        pc = 193; continue; // 69e8a1: jmp 0x69ea26
+      case 165: // 69e8a6
         R.ebp = ((R.ebp & 0xffff0000) | (((R.m.u16(((R.ebx + 0x80) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 69e8a6: mov bp, word ptr [ebx + 0x80]
         R.sub(((R.ebp >>> 0) & 0xffff), 0x1c52, 16); // 69e8ad: cmp bp, 0x1c52
-        if (R.cLE) { pc = 0x69e9ea; continue; } // 69e8b2: jle 0x69e9ea
-        pc = 0x69e8b8; continue;
-      case 0x69e8b8:
+        if (R.cLE) { pc = 187; continue; } // 69e8b2: jle 0x69e9ea
+        pc = 166; continue;
+      case 166: // 69e8b8
         R.eax = (R.m.u32(((R.ebx + 0x57) | 0) >>> 0)) | 0; // 69e8b8: mov eax, dword ptr [ebx + 0x57]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e8bb: test eax, eax
-        if (R.zf) { pc = 0x69e9ea; continue; } // 69e8bd: je 0x69e9ea
-        pc = 0x69e8c3; continue;
-      case 0x69e8c3:
+        if (R.zf) { pc = 187; continue; } // 69e8bd: je 0x69e9ea
+        pc = 167; continue;
+      case 167: // 69e8c3
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e8c3: mov eax, dword ptr [ebx + 0x53]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e8c6: test eax, eax
-        if (R.zf) { pc = 0x69e9ea; continue; } // 69e8c8: je 0x69e9ea
-        pc = 0x69e8ce; continue;
-      case 0x69e8ce:
+        if (R.zf) { pc = 187; continue; } // 69e8c8: je 0x69e9ea
+        pc = 168; continue;
+      case 168: // 69e8ce
         R.sub(R.m.u8(((R.eax + 0x85) | 0) >>> 0), 0xa, 8); // 69e8ce: cmp byte ptr [eax + 0x85], 0xa
-        if (R.cLE) { pc = 0x69e9ea; continue; } // 69e8d5: jle 0x69e9ea
-        pc = 0x69e8db; continue;
-      case 0x69e8db:
+        if (R.cLE) { pc = 187; continue; } // 69e8d5: jle 0x69e9ea
+        pc = 169; continue;
+      case 169: // 69e8db
         R.eax = (R.m.u32(((R.esi + 0x39) | 0) >>> 0)) | 0; // 69e8db: mov eax, dword ptr [esi + 0x39]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e8de: test eax, eax
-        if (R.zf) { pc = 0x69e8f4; continue; } // 69e8e0: je 0x69e8f4
-        pc = 0x69e8e2; continue;
-      case 0x69e8e2:
+        if (R.zf) { pc = 171; continue; } // 69e8e0: je 0x69e8f4
+        pc = 170; continue;
+      case 170: // 69e8e2
         R.eax = (((R.m.u16(((R.eax + 0x80) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e8e2: movsx eax, word ptr [eax + 0x80]
         R.ecx = (((((R.ebp >>> 0) & 0xffff)) << 16 >> 16)) | 0; // 69e8e9: movsx ecx, bp
         R.eax = (R.sub((R.eax >>> 0), (R.ecx >>> 0), 32)) | 0; // 69e8ec: sub eax, ecx
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.eax >>> 0)); // 69e8ee: mov dword ptr [esp + 0x14], eax
-        pc = 0x69e90c; continue; // 69e8f2: jmp 0x69e90c
-      case 0x69e8f4:
+        pc = 173; continue; // 69e8f2: jmp 0x69e90c
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_29(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 171: // 69e8f4
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e8f4: mov eax, dword ptr [esi + 0x69]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e8f7: test eax, eax
-        if (R.zf) { pc = 0x69d5fc; continue; } // 69e8f9: je 0x69d5fc
-        pc = 0x69e8ff; continue;
-      case 0x69e8ff:
+        if (R.zf) { pc = 71; continue; } // 69e8f9: je 0x69d5fc
+        pc = 172; continue;
+      case 172: // 69e8ff
         R.edx = (((R.m.u16(((R.eax + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e8ff: movsx edx, word ptr [eax + 0xc]
         R.eax = (((((R.ebp >>> 0) & 0xffff)) << 16 >> 16)) | 0; // 69e903: movsx eax, bp
         R.edx = (R.sub((R.edx >>> 0), (R.eax >>> 0), 32)) | 0; // 69e906: sub edx, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edx >>> 0)); // 69e908: mov dword ptr [esp + 0x14], edx
-        pc = 0x69e90c; continue;
-      case 0x69e90c:
+        pc = 173; continue;
+      case 173: // 69e90c
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69e90c: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.15; // 69e910: fmul qword ptr [0x968f20]
         R.ftol(); // 69e916: call 0x945640
@@ -1853,18 +2086,18 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.add((R.edi >>> 0), (R.ecx >>> 0), 32)) | 0; // 69e91e: add edi, ecx
         R.sub(((R.ebp >>> 0) & 0xffff), 0x203a, 16); // 69e920: cmp bp, 0x203a
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69e925: mov dword ptr [esp + 0x14], edi
-        if (R.cLE) { pc = 0x69e978; continue; } // 69e929: jle 0x69e978
-        pc = 0x69e92b; continue;
-      case 0x69e92b:
+        if (R.cLE) { pc = 180; continue; } // 69e929: jle 0x69e978
+        pc = 174; continue;
+      case 174: // 69e92b
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e92b: mov eax, dword ptr [esi + 0x69]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e92e: test eax, eax
-        if (R.zf) { pc = 0x69e978; continue; } // 69e930: je 0x69e978
-        pc = 0x69e932; continue;
-      case 0x69e932:
+        if (R.zf) { pc = 180; continue; } // 69e930: je 0x69e978
+        pc = 175; continue;
+      case 175: // 69e932
         R.sub(R.m.u16(((R.eax + 0xc) | 0) >>> 0), 0x109a, 16); // 69e932: cmp word ptr [eax + 0xc], 0x109a
-        if (!R.cL) { pc = 0x69e978; continue; } // 69e938: jge 0x69e978
-        pc = 0x69e93a; continue;
-      case 0x69e93a:
+        if (!R.cL) { pc = 180; continue; } // 69e938: jge 0x69e978
+        pc = 176; continue;
+      case 176: // 69e93a
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e93a: mov eax, dword ptr [ebx + 0x53]
         R.push(0x1); // 69e93d: push 1
         R.push((R.eax >>> 0)); // 69e93f: push eax
@@ -1872,45 +2105,53 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x53d980, { n: 3, thisEcx: false, calleeClean: false }); // 69e941: call 0x53d980
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e946: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e949: test eax, eax
-        if (!R.zf) { pc = 0x69d5fc; continue; } // 69e94b: jne 0x69d5fc
-        pc = 0x69e951; continue;
-      case 0x69e951:
+        if (!R.zf) { pc = 71; continue; } // 69e94b: jne 0x69d5fc
+        pc = 177; continue;
+      case 177: // 69e951
         R.eax = (R.m.u32(((R.esi + 0x39) | 0) >>> 0)) | 0; // 69e951: mov eax, dword ptr [esi + 0x39]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e954: test eax, eax
-        if (R.zf) { pc = 0x69d5fc; continue; } // 69e956: je 0x69d5fc
-        pc = 0x69e95c; continue;
-      case 0x69e95c:
+        if (R.zf) { pc = 71; continue; } // 69e956: je 0x69d5fc
+        pc = 178; continue;
+      case 178: // 69e95c
         R.eax = (R.m.u32(((R.eax + 0x57) | 0) >>> 0)) | 0; // 69e95c: mov eax, dword ptr [eax + 0x57]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e95f: test eax, eax
-        if (R.zf) { pc = 0x69d5fc; continue; } // 69e961: je 0x69d5fc
-        pc = 0x69e967; continue;
-      case 0x69e967:
+        if (R.zf) { pc = 71; continue; } // 69e961: je 0x69d5fc
+        pc = 179; continue;
+      case 179: // 69e967
         R.edx = (R.m.u32(((R.ebx + 0x57) | 0) >>> 0)) | 0; // 69e967: mov edx, dword ptr [ebx + 0x57]
         R.eax = ((R.eax & 0xffff0000) | (((R.m.u16(((R.eax + 0x69) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 69e96a: mov ax, word ptr [eax + 0x69]
         R.sub(((R.eax >>> 0) & 0xffff), R.m.u16(((R.edx + 0x69) | 0) >>> 0), 16); // 69e96e: cmp ax, word ptr [edx + 0x69]
-        if (R.cL) { pc = 0x69d5fc; continue; } // 69e972: jl 0x69d5fc
-        pc = 0x69e978; continue;
-      case 0x69e978:
+        if (R.cL) { pc = 71; continue; } // 69e972: jl 0x69d5fc
+        pc = 180; continue;
+      case 180: // 69e978
         R.sub(R.m.u8(((R.esp + 0xb8) | 0) >>> 0), 0x9, 8); // 69e978: cmp byte ptr [esp + 0xb8], 9
-        if (R.zf) { pc = 0x69ea31; continue; } // 69e980: je 0x69ea31
-        pc = 0x69e986; continue;
-      case 0x69e986:
+        if (R.zf) { pc = 194; continue; } // 69e980: je 0x69ea31
+        pc = 181; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_30(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 181: // 69e986
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.esp + 0x1a) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69e986: mov al, byte ptr [esp + 0x1a]
         R.sub(((R.eax >>> 0) & 0xff), 0xc, 8); // 69e98a: cmp al, 0xc
-        if (R.zf) { pc = 0x69e9a9; continue; } // 69e98c: je 0x69e9a9
-        pc = 0x69e98e; continue;
-      case 0x69e98e:
+        if (R.zf) { pc = 184; continue; } // 69e98c: je 0x69e9a9
+        pc = 182; continue;
+      case 182: // 69e98e
         R.sub(((R.eax >>> 0) & 0xff), 0x5, 8); // 69e98e: cmp al, 5
-        if (R.zf) { pc = 0x69e9a9; continue; } // 69e990: je 0x69e9a9
-        pc = 0x69e992; continue;
-      case 0x69e992:
+        if (R.zf) { pc = 184; continue; } // 69e990: je 0x69e9a9
+        pc = 183; continue;
+      case 183: // 69e992
         R.ecx = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e992: mov ecx, dword ptr [esi + 0x69]
         R.edx = (((R.m.u16(((R.ecx + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e995: movsx edx, word ptr [ecx + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.edx >>> 0)); // 69e999: mov dword ptr [esp + 0x1c], edx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e99d: fild dword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 2.5e-05; // 69e9a1: fmul qword ptr [0x96d240]
-        pc = 0x69ea1c; continue; // 69e9a7: jmp 0x69ea1c
-      case 0x69e9a9:
+        pc = 191; continue; // 69e9a7: jmp 0x69ea1c
+      case 184: // 69e9a9
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e9a9: mov eax, dword ptr [ebx + 0x53]
         R.push(0x1); // 69e9ac: push 1
         R.push((R.eax >>> 0)); // 69e9ae: push eax
@@ -1918,23 +2159,23 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x53d980, { n: 3, thisEcx: false, calleeClean: false }); // 69e9b0: call 0x53d980
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e9b5: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e9b8: test eax, eax
-        if (R.zf) { pc = 0x69e9cd; continue; } // 69e9ba: je 0x69e9cd
-        pc = 0x69e9bc; continue;
-      case 0x69e9bc:
+        if (R.zf) { pc = 186; continue; } // 69e9ba: je 0x69e9cd
+        pc = 185; continue;
+      case 185: // 69e9bc
         R.ecx = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e9bc: mov ecx, dword ptr [esi + 0x69]
         R.edx = (((R.m.u16(((R.ecx + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e9bf: movsx edx, word ptr [ecx + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.edx >>> 0)); // 69e9c3: mov dword ptr [esp + 0x1c], edx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e9c7: fild dword ptr [esp + 0x1c]
-        pc = 0x69ea16; continue; // 69e9cb: jmp 0x69ea16
-      case 0x69e9cd:
+        pc = 190; continue; // 69e9cb: jmp 0x69ea16
+      case 186: // 69e9cd
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69e9cd: mov eax, dword ptr [esi + 0x69]
         R.ecx = (((R.m.u16(((R.eax + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69e9d0: movsx ecx, word ptr [eax + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.ecx >>> 0)); // 69e9d4: mov dword ptr [esp + 0x1c], ecx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69e9d8: fild dword ptr [esp + 0x1c]
         R.st[0] = R.st[0] * 2.5e-05; // 69e9dc: fmul qword ptr [0x96d240]
         R.st[0] = R.st[0] + 0.75; // 69e9e2: fadd qword ptr [0x969040]
-        pc = 0x69ea22; continue; // 69e9e8: jmp 0x69ea22
-      case 0x69e9ea:
+        pc = 192; continue; // 69e9e8: jmp 0x69ea22
+      case 187: // 69e9ea
         R.edx = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69e9ea: mov edx, dword ptr [ebx + 0x53]
         R.push(0x1); // 69e9ed: push 1
         R.push((R.edx >>> 0)); // 69e9ef: push edx
@@ -1942,38 +2183,46 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x53d980, { n: 3, thisEcx: false, calleeClean: false }); // 69e9f1: call 0x53d980
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 69e9f6: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69e9f9: test eax, eax
-        if (R.zf) { pc = 0x69ea31; continue; } // 69e9fb: je 0x69ea31
-        pc = 0x69e9fd; continue;
-      case 0x69e9fd:
+        if (R.zf) { pc = 194; continue; } // 69e9fb: je 0x69ea31
+        pc = 188; continue;
+      case 188: // 69e9fd
         R.sub(R.m.u8(((R.esp + 0xb8) | 0) >>> 0), 0x9, 8); // 69e9fd: cmp byte ptr [esp + 0xb8], 9
-        if (R.zf) { pc = 0x69ea31; continue; } // 69ea05: je 0x69ea31
-        pc = 0x69ea07; continue;
-      case 0x69ea07:
+        if (R.zf) { pc = 194; continue; } // 69ea05: je 0x69ea31
+        pc = 189; continue;
+      case 189: // 69ea07
         R.eax = (R.m.u32(((R.esi + 0x69) | 0) >>> 0)) | 0; // 69ea07: mov eax, dword ptr [esi + 0x69]
         R.ecx = (((R.m.u16(((R.eax + 0xc) | 0) >>> 0)) << 16 >> 16)) | 0; // 69ea0a: movsx ecx, word ptr [eax + 0xc]
         R.m.w32(((R.esp + 0x1c) | 0) >>> 0, (R.ecx >>> 0)); // 69ea0e: mov dword ptr [esp + 0x1c], ecx
         R.fpush(R.m.s32(((R.esp + 0x1c) | 0) >>> 0)); // 69ea12: fild dword ptr [esp + 0x1c]
-        pc = 0x69ea16; continue;
-      case 0x69ea16:
+        pc = 190; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_31(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 190: // 69ea16
         R.st[0] = R.st[0] * 5e-05; // 69ea16: fmul qword ptr [0x96d238]
-        pc = 0x69ea1c; continue;
-      case 0x69ea1c:
+        pc = 191; continue;
+      case 191: // 69ea1c
         R.st[0] = R.st[0] + 0.5; // 69ea1c: fadd qword ptr [0x968968]
-        pc = 0x69ea22; continue;
-      case 0x69ea22:
+        pc = 192; continue;
+      case 192: // 69ea22
         R.st[0] = R.st[0] * R.m.s32(((R.esp + 0x14) | 0) >>> 0); // 69ea22: fimul dword ptr [esp + 0x14]
-        pc = 0x69ea26; continue;
-      case 0x69ea26:
+        pc = 193; continue;
+      case 193: // 69ea26
         R.ftol(); // 69ea26: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69ea2b: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69ea2d: mov dword ptr [esp + 0x14], edi
-        pc = 0x69ea31; continue;
-      case 0x69ea31:
+        pc = 194; continue;
+      case 194: // 69ea31
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69ea31: mov eax, dword ptr [ebx + 0x53]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69ea34: test eax, eax
-        if (R.zf) { pc = 0x69ea71; continue; } // 69ea36: je 0x69ea71
-        pc = 0x69ea38; continue;
-      case 0x69ea38:
+        if (R.zf) { pc = 196; continue; } // 69ea36: je 0x69ea71
+        pc = 195; continue;
+      case 195: // 69ea38
         R.edx = ((R.edx & 0xffffff00) | (((R.m.u8(((R.eax + 0x77) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69ea38: mov dl, byte ptr [eax + 0x77]
         R.ecx = (R.m.u32(((0xb74350) | 0) >>> 0)) | 0; // 69ea3b: mov ecx, dword ptr [0xb74350]
         R.push(0x1); // 69ea41: push 1
@@ -1990,70 +2239,126 @@ export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.ftol(); // 69ea66: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69ea6b: mov edi, eax
         R.m.w32(((R.esp + 0x14) | 0) >>> 0, (R.edi >>> 0)); // 69ea6d: mov dword ptr [esp + 0x14], edi
-        pc = 0x69ea71; continue;
-      case 0x69ea71:
+        pc = 196; continue;
+      case 196: // 69ea71
         R.eax = (R.m.u32(((R.esp + 0x10) | 0) >>> 0)) | 0; // 69ea71: mov eax, dword ptr [esp + 0x10]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69ea75: test eax, eax
-        if (R.zf) { pc = 0x69eaae; continue; } // 69ea77: je 0x69eaae
-        pc = 0x69ea79; continue;
-      case 0x69ea79:
+        if (R.zf) { pc = 204; continue; } // 69ea77: je 0x69eaae
+        pc = 197; continue;
+      case 197: // 69ea79
         R.eax = (((R.m.u8(((R.eax + 0x7e) | 0) >>> 0)) << 24 >> 24)) | 0; // 69ea79: movsx eax, byte ptr [eax + 0x7e]
         R.eax = (R.incdec((R.eax >>> 0), -1, 32)) | 0; // 69ea7d: dec eax
-        if (R.zf) { pc = 0x69eabf; continue; } // 69ea7e: je 0x69eabf
-        pc = 0x69ea80; continue;
-      case 0x69ea80:
+        if (R.zf) { pc = 205; continue; } // 69ea7e: je 0x69eabf
+        pc = 198; continue;
+      case 198: // 69ea80
         R.eax = (R.incdec((R.eax >>> 0), -1, 32)) | 0; // 69ea80: dec eax
-        if (R.zf) { pc = 0x69eac6; continue; } // 69ea81: je 0x69eac6
-        pc = 0x69ea83; continue;
-      case 0x69ea83:
+        if (R.zf) { pc = 206; continue; } // 69ea81: je 0x69eac6
+        pc = 199; continue;
+      case 199: // 69ea83
         R.eax = (R.incdec((R.eax >>> 0), -1, 32)) | 0; // 69ea83: dec eax
-        if (R.zf) { pc = 0x69ea9c; continue; } // 69ea84: je 0x69ea9c
-        pc = 0x69ea86; continue;
-      case 0x69ea86:
+        if (R.zf) { pc = 201; continue; } // 69ea84: je 0x69ea9c
+        pc = 200; continue;
+      default: return pc;
+    }
+  }
+}
+function f_69d1b0_32(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 200: // 69ea86
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69ea86: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.05; // 69ea8a: fmul qword ptr [0x967888]
         R.ftol(); // 69ea90: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69ea95: mov edi, eax
-        pc = 0x69d601; continue; // 69ea97: jmp 0x69d601
-      case 0x69ea9c:
+        pc = 72; continue; // 69ea97: jmp 0x69d601
+      case 201: // 69ea9c
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69ea9c: mov eax, dword ptr [ebx + 0x53]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69ea9f: test eax, eax
-        if (R.zf) { pc = 0x69eabf; continue; } // 69eaa1: je 0x69eabf
-        pc = 0x69eaa3; continue;
-      case 0x69eaa3:
+        if (R.zf) { pc = 205; continue; } // 69eaa1: je 0x69eabf
+        pc = 202; continue;
+      case 202: // 69eaa3
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.eax + 0x7e) | 0) >>> 0)) & 0xff) << 0)) | 0; // 69eaa3: mov al, byte ptr [eax + 0x7e]
         R.sub(((R.eax >>> 0) & 0xff), 0x1, 8); // 69eaa6: cmp al, 1
-        if (R.zf) { pc = 0x69eaae; continue; } // 69eaa8: je 0x69eaae
-        pc = 0x69eaaa; continue;
-      case 0x69eaaa:
+        if (R.zf) { pc = 204; continue; } // 69eaa8: je 0x69eaae
+        pc = 203; continue;
+      case 203: // 69eaaa
         R.sub(((R.eax >>> 0) & 0xff), 0x2, 8); // 69eaaa: cmp al, 2
-        if (!R.zf) { pc = 0x69eabf; continue; } // 69eaac: jne 0x69eabf
-        pc = 0x69eaae; continue;
-      case 0x69eaae:
+        if (!R.zf) { pc = 205; continue; } // 69eaac: jne 0x69eabf
+        pc = 204; continue;
+      case 204: // 69eaae
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69eaae: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.25; // 69eab2: fmul qword ptr [0x9689e0]
         R.ftol(); // 69eab8: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69eabd: mov edi, eax
-        pc = 0x69eabf; continue;
-      case 0x69eabf:
+        pc = 205; continue;
+      case 205: // 69eabf
         R.eax = ((R.edi >>> 0)) | 0; // 69eabf: mov eax, edi
-        pc = 0x69d601; continue; // 69eac1: jmp 0x69d601
-      case 0x69eac6:
+        pc = 72; continue; // 69eac1: jmp 0x69d601
+      case 206: // 69eac6
         R.eax = (R.m.u32(((R.ebx + 0x53) | 0) >>> 0)) | 0; // 69eac6: mov eax, dword ptr [ebx + 0x53]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69eac9: test eax, eax
-        if (R.zf) { pc = 0x69eabf; continue; } // 69eacb: je 0x69eabf
-        pc = 0x69eacd; continue;
-      case 0x69eacd:
+        if (R.zf) { pc = 205; continue; } // 69eacb: je 0x69eabf
+        pc = 207; continue;
+      case 207: // 69eacd
         R.sub(R.m.u8(((R.eax + 0x7e) | 0) >>> 0), 0x1, 8); // 69eacd: cmp byte ptr [eax + 0x7e], 1
-        if (!R.zf) { pc = 0x69eabf; continue; } // 69ead1: jne 0x69eabf
-        pc = 0x69ead3; continue;
-      case 0x69ead3:
+        if (!R.zf) { pc = 205; continue; } // 69ead1: jne 0x69eabf
+        pc = 208; continue;
+      case 208: // 69ead3
         R.fpush(R.m.s32(((R.esp + 0x14) | 0) >>> 0)); // 69ead3: fild dword ptr [esp + 0x14]
         R.st[0] = R.st[0] * 0.75; // 69ead7: fmul qword ptr [0x969040]
         R.ftol(); // 69eadd: call 0x945640
         R.edi = ((R.eax >>> 0)) | 0; // 69eae2: mov edi, eax
-        pc = 0x69d601; continue; // 69eae4: jmp 0x69d601
-      default: throw new Error(`f_69d1b0: ukendt adresse ${pc.toString(16)}`);
+        pc = 72; continue; // 69eae4: jmp 0x69d601
+      default: return pc;
     }
   }
 }
+export function f_69d1b0(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 209) throw new Error(`f_69d1b0: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_69d1b0_0(R, pc); break;
+      case 1: np = f_69d1b0_1(R, pc); break;
+      case 2: np = f_69d1b0_2(R, pc); break;
+      case 3: np = f_69d1b0_3(R, pc); break;
+      case 4: np = f_69d1b0_4(R, pc); break;
+      case 5: np = f_69d1b0_5(R, pc); break;
+      case 6: np = f_69d1b0_6(R, pc); break;
+      case 7: np = f_69d1b0_7(R, pc); break;
+      case 8: np = f_69d1b0_8(R, pc); break;
+      case 9: np = f_69d1b0_9(R, pc); break;
+      case 10: np = f_69d1b0_10(R, pc); break;
+      case 11: np = f_69d1b0_11(R, pc); break;
+      case 12: np = f_69d1b0_12(R, pc); break;
+      case 13: np = f_69d1b0_13(R, pc); break;
+      case 14: np = f_69d1b0_14(R, pc); break;
+      case 15: np = f_69d1b0_15(R, pc); break;
+      case 16: np = f_69d1b0_16(R, pc); break;
+      case 17: np = f_69d1b0_17(R, pc); break;
+      case 18: np = f_69d1b0_18(R, pc); break;
+      case 19: np = f_69d1b0_19(R, pc); break;
+      case 20: np = f_69d1b0_20(R, pc); break;
+      case 21: np = f_69d1b0_21(R, pc); break;
+      case 22: np = f_69d1b0_22(R, pc); break;
+      case 23: np = f_69d1b0_23(R, pc); break;
+      case 24: np = f_69d1b0_24(R, pc); break;
+      case 25: np = f_69d1b0_25(R, pc); break;
+      case 26: np = f_69d1b0_26(R, pc); break;
+      case 27: np = f_69d1b0_27(R, pc); break;
+      case 28: np = f_69d1b0_28(R, pc); break;
+      case 29: np = f_69d1b0_29(R, pc); break;
+      case 30: np = f_69d1b0_30(R, pc); break;
+      case 31: np = f_69d1b0_31(R, pc); break;
+      case 32: np = f_69d1b0_32(R, pc); break;
+      default: throw new Error(`f_69d1b0: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_69d1b0: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_69d1b0.shared = true;

@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 7a82b0=1tc
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_7a6e30(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x7a6e30;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x7a6e30]);
+const CH = new Uint8Array([0]);
+function f_7a6e30_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x7a6e30:
+      case 0: // 7a6e30
         R.eax = (R.m.u32(((R.ecx + 0x1c) | 0) >>> 0)) | 0; // 7a6e30: mov eax, dword ptr [ecx + 0x1c]
         R.push((R.esi >>> 0)); // 7a6e33: push esi
         R.esi = (R.m.u32(((R.esp + 0xc) | 0) >>> 0)) | 0; // 7a6e34: mov esi, dword ptr [esp + 0xc]
@@ -29,8 +30,24 @@ export function f_7a6e30(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.eax >>> 0)); // 7a6e56: push eax
         R.call(0x7a82b0, { n: 1, thisEcx: true, calleeClean: true }); // 7a6e57: call 0x7a82b0
         R.esi = (R.pop()) | 0; // 7a6e5c: pop esi
-        return R.ret(3); // 7a6e5d: ret 0xc
-      default: throw new Error(`f_7a6e30: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(3); return -1; // 7a6e5d: ret 0xc
+      default: return pc;
     }
   }
 }
+export function f_7a6e30(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 1) throw new Error(`f_7a6e30: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_7a6e30_0(R, pc); break;
+      default: throw new Error(`f_7a6e30: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_7a6e30: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_7a6e30.shared = true;

@@ -48,6 +48,8 @@ const REC_ATTRS: [number, string, boolean][] = [
 /** målmandsvarianten (0,1·CA) for disse, når GK = 20 (sub_5442f0 via sub_543540); Handling/Reflexes/One on Ones med 0,1·CA for markspillere */
 const GK_LOW = new Set(['crossing', 'creativity', 'dribbling', 'finishing', 'marking', 'offTheBall', 'throwIns']);
 const OUT_LOW = new Set(['handling', 'reflexes', 'oneOnOnes']);
+/** REC_ATTRS med egenskabens indeks og de to flag slået op én gang (playerRecord kaldes for alle spillere hver dag) */
+const REC_IDX: [number, number, boolean, boolean, boolean][] = REC_ATTRS.map(([o, k, intr]) => [o, ATTRS.indexOf(k as never), intr, GK_LOW.has(k), OUT_LOW.has(k)]);
 
 /** sub_544380's omvendte: den interne værdi (midten af dem, der vises som `shown`) for X = (CA eller 0,1·CA) + 2·intern */
 const IFS_MEMO = new Map<number, number>();
@@ -59,7 +61,25 @@ export function intrinsicFromShown(shown: number, ca: number, low: boolean): num
     if (v === undefined) { v = intrinsicFromShown0(shown, ca, low); IFS_MEMO.set(key, v); }
     return v;
   }
+  // (ikke-heltallig shown: midten af løsningerne afhænger kun af round(shown) – gemt; uden løsninger regnes reserven med shown som før)
+  if (Number.isInteger(ca) && ca >= -100000 && ca <= 100000 && Number.isFinite(shown)) {
+    const rs = Math.round(shown);
+    if (rs >= -1000 && rs <= 1000) {
+      const key = ((ca + 100000) * 2001 + (rs + 1000)) * 2 + (low ? 1 : 0);
+      let v = IFS_MID.get(key);
+      if (v === undefined) { v = okMid(rs, ca, low); IFS_MID.set(key, v); }
+      return Number.isNaN(v) ? intrinsicFromShown0(shown, ca, low) : v;
+    }
+  }
   return intrinsicFromShown0(shown, ca, low);
+}
+const IFS_MID = new Map<number, number>();
+/** intrinsicFromShown0's løsninger for round(shown) = rs: midten, eller NaN uden løsninger */
+function okMid(rs: number, ca: number, low: boolean): number {
+  const base = low ? 0.1 * ca : ca;
+  const ok: number[] = [];
+  for (let v = -125; v <= 125; v++) if (displayX(base + 2 * v) === rs) ok.push(v);
+  return ok.length ? ok[ok.length >> 1] : NaN;
 }
 function intrinsicFromShown0(shown: number, ca: number, low: boolean): number {
   const base = low ? 0.1 * ca : ca;
@@ -75,22 +95,30 @@ function displayX(X: number): number {
 
 /** Spillerposten (0x46 bytes) af vores Player – som originalen har den i hukommelsen under kampen */
 export function playerRecord(p: Player): number[] {
-  const r = new Array(0x46).fill(0);
+  return playerRecordInto(p, new Array(0x46));
+}
+/** playerRecord i et givet array (0x46 pladser, nulstilles) – uden de midlertidige arrays (kaldes for alle spillere hver dag i ønskelisterne) */
+export function playerRecordInto(p: Player, r: number[]): number[] {
+  r.fill(0, 0, 0x46);
   const w = (o: number, v: number) => { r[o] = v & 0xff; r[o + 1] = (v >> 8) & 0xff; };
   const b = (o: number, v: number) => { r[o] = Math.round(v) & 0xff; };
   b(4, p.number ?? 0); w(5, p.ca); w(7, p.pa);
   // omdømmet: spilstartens udfyldte værdier (sub_535a80, cmRepMem) ×50 (0x536e8e); uden dem databasens (cmRep) eller vores 0–100 ×2
-  const rep = (p.cmRepMem ?? p.cmRep ?? [p.rep * 2, p.rep * 2, p.rep * 2]).map((v) => v * 50);
-  w(9, rep[0]); w(0xb, rep[1]); w(0xd, rep[2]);
-  // positionerne og Free Role som i databasen (1 = ingen – originalens spor har 01, ikke 0)
-  recordRatings(p).forEach((v, k) => b(0xf + k, v));
+  const rp = p.cmRepMem ?? p.cmRep;
+  if (rp) { w(9, rp[0] * 50); w(0xb, rp[1] * 50); w(0xd, rp[2] * 50); }
+  else { const v = p.rep * 2 * 50; w(9, v); w(0xb, v); w(0xd, v); }
+  // positionerne og Free Role som i databasen (1 = ingen – originalens spor har 01, ikke 0) – som recordRatings
+  const np = Math.min(8, p.pos.length);
+  for (let k = 0; k < np; k++) b(0xf + k, p.pos[k]);
+  b(0xf + np, p.side[2]); b(0xf + np + 1, p.side[0]); b(0xf + np + 2, p.side[1]); b(0xf + np + 3, p.cmFree ?? 1);
   const gk = p.pos[0] >= 20;
-  for (const [o, k, intr] of REC_ATTRS) {
-    const shown = p.attrs[ATTRS.indexOf(k as never)] || 10;
-    b(o, intr ? intrinsicFromShown(shown, p.ca, gk ? GK_LOW.has(k) : OUT_LOW.has(k)) : shown);
+  for (const [o, ix, intr, gkLow, outLow] of REC_IDX) {
+    const shown = p.attrs[ix] || 10;
+    b(o, intr ? intrinsicFromShown(shown, p.ca, gk ? gkLow : outLow) : shown);
   }
   // originalens interne værdier (Player.cmInt, sub_535a80 ved spilstarten – playerInit.ts), når vi har dem
-  if (p.cmInt) CM_INT_OFFSETS.forEach((o, k) => b(o, p.cmInt![k]));
+  const ci = p.cmInt;
+  if (ci) for (let k = 0; k < CM_INT_OFFSETS.length; k++) b(CM_INT_OFFSETS[k], ci[k]);
   b(0x30, p.feet?.[0] ?? (p.foot === 'L' || p.foot === 'B' ? 18 : 8));
   b(0x3b, p.feet?.[1] ?? (p.foot === 'R' || p.foot === 'B' ? 18 : 8));
   b(0x45, p.morale ?? 10);

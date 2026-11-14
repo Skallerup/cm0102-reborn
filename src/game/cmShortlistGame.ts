@@ -23,7 +23,7 @@
 // 0x8c7950 = rules2001.ts permitOk; lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
 import type { GameState, Player } from './types';
-import { type CmCtx, type CmMem, G, getContract, clubAt } from './cmMem';
+import { type CmCtx, type CmMem, G, getContract, clubAt, type SparseMem } from './cmMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { slCall } from './cmShortlist';
@@ -31,7 +31,7 @@ import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50,
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
-import { registerImpl, QSORT_CMP, SHARED, PC_HOOK } from './cmGen/x86';
+import { registerImpl, QSORT_CMP, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
 import { ensureImpls } from './cmGen/impls';
@@ -62,7 +62,7 @@ const s16 = (v: number) => (v << 16) >> 16;
 const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
 /** Ønskelisterne er SLÅET FRA i spillet (14/11-2026): de finder nu mål som originalen (spilstarten 300 mål i 172 klubber mod originalens 258 i
  *  137 – scripts/cm-shortlist.ts / cm-shortlist-orig.ts; udbudsprisen 0x4d1600 median 1,00 × originalens), men 0x83b6e0 for alle klubber tager
- *  ~42 s ved spilstarten – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
+ *  ~10 s ved spilstarten og ~0,6 s pr. dag (målet er ≤ 0,3 s – scripts/cm-sl-bench.ts) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
 export const SL_ON = { on: ENV.CM_SL === '1' };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
 export const cmShortlistOn = (g: GameState) => SL_ON.on && cmActive(g) && !g.draft;
@@ -152,7 +152,9 @@ function buildPositionLists(S: SlMem): void {
   for (let pos = 0; pos < 16; pos++) {
     const A = a, B = a + 12 * cap; a = B + 12 * cap;
     m.w32(slm + 0x18 + 4 * pos, A); m.w32(slm + 0x58 + 4 * pos, B); m.w32(slm + 0x98 + 4 * pos, ids[pos].length);
-    const ka: number[][] = [], kb: number[][] = [];
+    const n = ids[pos].length;
+    const kaI = new Int32Array(n), kaN = new Int32Array(n), kaV = new Int32Array(n), kbV = new Int32Array(n);
+    let j = 0;
     for (const id of ids[pos]) {
       const st = (base + 0x6e * id) >>> 0;
       const nat = m.u32(st + 0x1a), natId = nat ? m.s32(nat) : 0;
@@ -171,8 +173,8 @@ function buildPositionLists(S: SlMem): void {
           if (va < third) va = third;
         }
       } else va = 0;
-      ka.push([id, natId, va]);
-      if (pos === 15) { kb.push([id, natId, k ? s8(m.u8(k + 0x3d)) : 100]); continue; }   // (0x83a7f7: B rører ikke pos 15 – byggeværdien)
+      kaI[j] = id; kaN[j] = natId; kaV[j] = va;
+      if (pos === 15) { kbV[j++] = k ? s8(m.u8(k + 0x3d)) : 100; continue; }   // (0x83a7f7: B rører ikke pos 15 – byggeværdien)
       // liste B
       let vb = 2000;
       const pr = m.u32(st + 0x61), sc = m.u32(st + 0x39);
@@ -182,13 +184,11 @@ function buildPositionLists(S: SlMem): void {
           if (k) { const f = m.u8(k + 0x4e); vb = f & 2 ? -1000 : f & 9 ? 2000 : s8(m.u8(k + 0x3d)); }
         }
       }
-      kb.push([id, natId, vb]);
+      kbV[j++] = vb;
     }
-    const write = (L: number, rows: number[][]) => rows.forEach((r, i) => { m.w32(L + 12 * i, r[0]); m.w32(L + 12 * i + 4, r[1]); m.w32(L + 12 * i + 8, r[2]); });
-    write(A, ka); write(B, kb);
     void today;
-    // qsort 0x945333 med 0x83b670 (+8, så +4) – kørt gennem CRT-porten (samme MSVC-qsort)
-    sortMem(m, A, ka.length); sortMem(m, B, kb.length);
+    // qsort 0x945333 med 0x83b670 (+8, så +4) – MSVC-qsort'en (subs.ts msvcQsort) på tal i stedet for poster i hukommelsen
+    writeSorted(m, A, kaI, kaN, kaV); writeSorted(m, B, kaI, kaN, kbV);
   }
   void a;
 }
@@ -207,14 +207,50 @@ function loadedFilter(g: GameState): (p: Player) => boolean {
     return !!c && active.has(c.nation);
   };
 }
-function sortMem(m: CmMem, base: number, n: number): void {
-  if (n < 2) return;
-  const rows: number[][] = [];
-  for (let i = 0; i < n; i++) rows.push([m.s32(base + 12 * i), m.s32(base + 12 * i + 4), m.s32(base + 12 * i + 8)]);
-  msvc(rows, (x, y) => { const d = (x[2] - y[2]) | 0; return d !== 0 ? d : (x[1] - y[1]) | 0; });
-  rows.forEach((r, i) => { m.w32(base + 12 * i, r[0]); m.w32(base + 12 * i + 4, r[1]); m.w32(base + 12 * i + 8, r[2]); });
+/** listen (id, landet, værdien) sorteret som qsort 0x945333 med 0x83b670: MSVC 6 qsort.c (subs.ts msvcQsort) på en indeksliste – samme
+ *  ombytninger, sammenligningen (+8, så +4, som int32-forskelle) direkte på tallene; så skrevet i hukommelsen à 12 bytes */
+function writeSorted(m: CmMem, base: number, I: Int32Array, N: Int32Array, V: Int32Array): void {
+  const n = I.length;
+  const a = new Int32Array(n);
+  for (let i = 0; i < n; i++) a[i] = i;
+  const cmp = (x: number, y: number) => { const d = (V[x] - V[y]) | 0; return d !== 0 ? d : (N[x] - N[y]) | 0; };
+  const swap = (i: number, j: number) => { if (i !== j) { const t = a[i]; a[i] = a[j]; a[j] = t; } };
+  if (n >= 2) {
+    const lostk: number[] = [], histk: number[] = [];
+    let lo = 0, hi = n - 1;
+    for (;;) {
+      const size = hi - lo + 1;
+      if (size <= 8) {
+        let h = hi;
+        while (h > lo) {
+          let max = lo;
+          for (let p = lo + 1; p <= h; p++) if (cmp(a[p], a[max]) > 0) max = p;
+          swap(max, h); h--;
+        }
+      } else {
+        swap(lo + (size >> 1), lo);
+        let loguy = lo, higuy = hi + 1;
+        for (;;) {
+          do loguy++; while (loguy <= hi && cmp(a[loguy], a[lo]) <= 0);
+          do higuy--; while (higuy > lo && cmp(a[higuy], a[lo]) >= 0);
+          if (higuy < loguy) break;
+          swap(loguy, higuy);
+        }
+        swap(lo, higuy);
+        if (higuy - 1 - lo >= hi - loguy) {
+          if (lo + 1 < higuy) { lostk.push(lo); histk.push(higuy - 1); }
+          if (loguy < hi) { lo = loguy; continue; }
+        } else {
+          if (loguy < hi) { lostk.push(loguy); histk.push(hi); }
+          if (lo + 1 < higuy) { hi = higuy - 1; continue; }
+        }
+      }
+      if (!lostk.length) break;
+      lo = lostk.pop()!; hi = histk.pop()!;
+    }
+  }
+  for (let i = 0; i < n; i++) { const r = a[i], o = base + 12 * i; m.w32(o, I[r]); m.w32(o + 4, N[r]); m.w32(o + 8, V[r]); }
 }
-import { msvcQsort as msvc } from './engine/grid/subs';
 
 // ---------------------------------------------------------------- pladserne og parrene ind/ud
 
@@ -390,7 +426,27 @@ function pairFound(m: CmMem, slm: number, id: number, club: number): boolean {
 export const FR_STATS: Record<number, number> = {};
 export const FR_LAST = { k: -1 };
 const rj = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; FR_LAST.k = k; return 0x840a81; };
-function fastReject(R: import('./cmGen/x86').X86): number {
+/** 0x83fa25 for kandidaterne i, i+1, …: en afvist kandidat går videre som 0x840a81 → 0x83fa1a ([esp+0x40] + 1 mod antallet [esp+0x8c];
+ *  edx = [esp+0x90], ecx = i) uden at køre de oversatte instruktioner og springene imellem; listens slutning → 0x840a99 (som 0x840a93).
+ *  Kaldene i frasorteringen (slCall – nye processortilstande) får stakken under 0x83f3a0's (før lå den ved `top`, oven i 0x83f3a0's egen
+ *  ramme: argumenterne og de gemte registre blev overskrevet – uden følger, da 0x83f3a0 ikke læser dem igen, men skrøbeligt). */
+function fastReject(R: X86): number {
+  const m = R.m;
+  for (;;) {
+    const np = stackBelow(R, fastReject0);
+    if (np !== 0x840a81) return np;
+    const esp = R.esp >>> 0;
+    R.eax = m.u32(esp + 0x40) | 0;                                           // 840a81: mov eax, [esp + 0x40]
+    R.ecx = m.u32(esp + 0x8c) | 0;                                           // 840a85: mov ecx, [esp + 0x8c]
+    R.eax = R.incdec(R.eax >>> 0, 1, 32) | 0;                                // 840a8c: inc eax
+    R.sub(R.eax >>> 0, R.ecx >>> 0, 32);                                     // 840a8d: cmp eax, ecx
+    m.w32(esp + 0x40, R.eax >>> 0);                                          // 840a8f: mov [esp + 0x40], eax
+    if (!R.cL) return 0x840a99;                                              // 840a93: jl 0x83fa1a
+    R.edx = m.u32(esp + 0x90) | 0;                                           // 83fa1a: mov edx, [esp + 0x90]
+    R.ecx = m.u32(esp + 0x40) | 0;                                           // 83fa21: mov ecx, [esp + 0x40]
+  }
+}
+function fastReject0(R: X86): number {
   const S = ACTIVE;
   if (!S) return 0;
   const m = R.m, c = S.c;
@@ -489,7 +545,7 @@ function ensureCmp(): void {
   QSORT_CMP[0x757ea0] = byP; QSORT_CMP[0x844740] = byC;
   if (ENV.CM_SL_FAST !== '0') PC_HOOK[0x83fa25] = fastReject;
   // kun oversættelser med ret N (R.ret – de nyere); de ældre (runde 2) kaldes som før med egne registre
-  for (const [a, f] of Object.entries(GEN)) if (!ADAPTED.has(+a) && f.toString().includes('R.ret(')) registerImpl(+a, f, true);
+  for (const [a, f] of Object.entries(GEN)) if (!ADAPTED.has(+a) && ((f as { shared?: boolean }).shared ?? f.toString().includes('R.ret('))) registerImpl(+a, f, true);
   registerImpl(0x757ea0, (c, _e, a) => byP(c.m, a[0] >>> 0, a[1] >>> 0));
   registerImpl(0x844740, (c, _e, a) => byC(c.m, a[0] >>> 0, a[1] >>> 0));
 }
@@ -566,7 +622,9 @@ export function buildSlMem(g: GameState): SlMem {
     }
     return undefined;
   };
+  let t = now();
   const M = buildWantMem(g, Object.keys(g.clubs).map(Number), { full: true, call, useLog: (adr) => ADAPTED.has(adr) });
+  t = tick('want', t);
   const m = M.c.m;
   const memOf = new Map<number, number>(), byMem = new Map<number, Player>();
   for (const [p, st] of M.W.players) { const id = m.s32(st); memOf.set(p.id, id); byMem.set(id, p); }
@@ -583,8 +641,11 @@ export function buildSlMem(g: GameState): SlMem {
   for (const c of Object.values(g.clubs)) writeSlots(S, c.id, g.cmPlan?.[c.id] ? entryOf(g, c.id) : newPlanEntry(), true);
   writePairs(S);
   writeOffers(S);
+  t = tick('rest', t);
   writeValues(S);
+  t = tick('values', t);
   buildPositionLists(S);
+  tick('lists', t);
   return S;
 }
 
@@ -593,8 +654,12 @@ export function buildSlMem(g: GameState): SlMem {
  *  anden model – for de små klubbers og de unge spillere op til ×20 originalens; positionslisterne, budgetgrænsen 0x83fbxx og Interested
  *  sammenligner med +0x52.) *Estimeret*: originalen regner computerens spillere på ulige dage – her hver dag. */
 function writeValues(S: SlMem): void {
-  const { m, c } = S;
-  const vals = new Map<number, number>();
+  const { m, c, g } = S;
+  const vals = new Map<number, number>(), skipped = new Set<number>();
+  // (hastighed) spillere, hvis +0x52 ingen læser: ikke i positionslisterne (loadedFilter) og i en klub uden trupplan (ingen 0x83b6e0/0x84a020 for
+  // klubben – de skjulte ligaer). Målt (scripts/cm-sl-count.ts OFF=82): dagens kode læser +0x52 hos 10–20 personer, alle i de aktive lande. 0x4d0c60
+  // skriver kun stakken og [0xae1080] (den sidst slåede kontrakt – læses aldrig); +0x52 bliver spillets værdi fra buildWageMem.
+  const loaded = loadedFilter(g), plan = g.cmPlan ?? {};
   for (const [p, st] of S.M.W.players) {
     const k = getContract(m, st);
     const club = k ? clubAt(m, m.s32(k + 4)) : 0;
@@ -602,17 +667,24 @@ function writeValues(S: SlMem): void {
     if (k && club && m.s32(club) === m.s32(k + 4)) {
       const human = humanClub_600a50(c, club);
       if (!human) m.w8(k + 0x4e, m.u8(k + 0x4e) | 4);
+      const home = p.loan?.from ?? p.club;
+      if (!human && !plan[home] && !loaded(p) && ENV.CM_SL_ALLVALUES !== '1') { skipped.add(p.id); continue; }
       v = slCall(c, 0x4d0c60, 0, st, club, 0, -1, human ? 1 : 0) | 0;
       if (hasActiveReleaseClause_867b50(m, k) && v > m.s32(k + 0x21)) v = m.s32(k + 0x21);
     }
     m.w32(st + 0x52, v);
     vals.set(p.id, v);
   }
-  VALUES.set(S.g, { date: S.g.date, v: vals });
+  VALUES.set(S.g, { date: S.g.date, v: vals, skipped });
 }
 /** dagens +0x52 pr. spiller (£) fra den seneste buildSlMem – cmInterestedClubs og refreshClub */
-const VALUES = new WeakMap<GameState, { date: string; v: Map<number, number> }>();
-const memValue = (g: GameState, p: Player) => { const e = VALUES.get(g); const v = e && e.date === g.date ? e.v.get(p.id) : undefined; return v ?? Math.round(p.value * GBP); };
+const VALUES = new WeakMap<GameState, { date: string; v: Map<number, number>; skipped: Set<number> }>();
+const memValue = (g: GameState, p: Player) => {
+  const e = VALUES.get(g);
+  if (e && e.date === g.date && e.skipped.has(p.id)) SL_STATS.skipHit++;
+  const v = e && e.date === g.date ? e.v.get(p.id) : undefined;
+  return v ?? Math.round(p.value * GBP);
+};
 
 function addBid(S: SlMem, r: number, loan: boolean): number {
   const { m, g } = S;
@@ -753,9 +825,13 @@ export { isoOf };
 /** 0x83a1b0's slutning (spilstarten, efter trupplanen, lønnen og værdierne): 0x83a780 og 0x83b6e0 for alle klubber med plan */
 export function cmShortlistStart(g: GameState): SlEvent[] {
   if (!cmShortlistOn(g) || !g.cmPlan || ENV.CM_SL_START === '0') return [];
+  const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const S = buildSlMem(g);
   for (const c of Object.values(g.clubs)) if (g.cmPlan[c.id]) afterPlan(S, c.id, []);
-  return finishSl(S);
+  const ev = finishSl(S);
+  (S.m as SparseMem).release();
+  if (t0) SL_STATS.startMs += performance.now() - t0;
+  return ev;
 }
 
 // ---------------------------------------------------------------- dagen (0x5cccd0's klubløkke) – erstatter cmSquadPlanDaily
@@ -763,8 +839,14 @@ export function cmShortlistStart(g: GameState): SlEvent[] {
 /** transfers.ts melder, hvem der udfører buddene (undgår en cirkulær import – kaldes, mens modulerne indlæses, derfor på globalThis) */
 export function setSlApply(f: (ev: SlEvent[]) => void): void { (globalThis as { __cmSlApply?: (ev: SlEvent[]) => void }).__cmSlApply = f; }
 const applyHook = (ev: SlEvent[]) => (globalThis as { __cmSlApply?: (ev: SlEvent[]) => void }).__cmSlApply?.(ev);
+/** fejlsøgning: kaldes efter dagens buildSlMem og før finishSl */
+export const SL_DIAG: { after?: (S: SlMem) => void; end?: (S: SlMem) => void } = {};
+/** målinger: tid pr. del af buildSlMem (ms) */
+export const SL_T: Record<string, number> = {};
+const now = () => (typeof performance !== 'undefined' ? performance.now() : 0);
+const tick = (k: string, t: number) => { const n = now(); SL_T[k] = (SL_T[k] ?? 0) + n - t; return n; };
 /** målinger: antal dage, tid (ms), bud */
-export const SL_STATS = { days: 0, ms: 0, bids: 0, free: 0 };
+export const SL_STATS = { days: 0, ms: 0, bids: 0, free: 0, startMs: 0, skipHit: 0 };
 
 /** 0x5cccd0 pr. klub: +8-tælleren og porten (0x844540), 0x83a730 (trupplanen 0x83cb40 → 0x83b6e0) og 0x84a020; så buddene i spillet */
 export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { dropped: number[] } | null, gateRand: (cid: number) => (n: number) => number,
@@ -772,6 +854,8 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   if (!cmShortlistOn(g) || !g.cmPlan) return;
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0;
   const S = buildSlMem(g);
+  SL_DIAG.after?.(S);
+  let tt = now();
   const off = bidDay(g);
   for (const c of Object.values(g.clubs)) {
     if (!c.league || g.leagues[c.league]?.hidden || !g.cmPlan[c.id]) continue;
@@ -780,11 +864,16 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
     const e = entryOf(g, c.id);
     const go = gate(e, gateRand(c.id), bids);
     storeEntry(g, c.id, e);
-    if (go) { const r = planClub(c.id); if (r) afterPlan(S, c.id, r.dropped); }
+    if (go) { const r = planClub(c.id); tt = tick('d.gate', tt); if (r) afterPlan(S, c.id, r.dropped); tt = tick('d.plan', tt); }
     if (!isHumanClub(c.id)) makeBids(S, c.id, off);
+    tt = tick('d.bids', tt);
   }
+  SL_DIAG.end?.(S);
   const ev = finishSl(S);
+  (S.m as SparseMem).release();
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;
   if (t0) SL_STATS.ms += performance.now() - t0;
+  tt = now();
   applyHook(ev);
+  tick('d.apply', tt);
 }

@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_7a7eb0(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x7a7eb0;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x7a7eb0]);
+const CH = new Uint8Array([0]);
+function f_7a7eb0_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x7a7eb0:
+      case 0: // 7a7eb0
         R.eax = (R.m.u32(((R.esp + 0x4) | 0) >>> 0)) | 0; // 7a7eb0: mov eax, dword ptr [esp + 4]
         R.edx = (R.m.u32(((0xae2d0c) | 0) >>> 0)) | 0; // 7a7eb4: mov edx, dword ptr [0xae2d0c]
         R.eax = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 7a7eba: mov eax, dword ptr [eax]
@@ -21,8 +22,24 @@ export function f_7a7eb0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.ecx + R.edx + 0xb) | 0) >>> 0)) & 0xff) << 0)) | 0; // 7a7ec4: mov al, byte ptr [ecx + edx + 0xb]
         R.eax = ((R.eax & 0xffffff00) | (((R.shr(((R.eax >>> 0) & 0xff), 0x4, 8)) & 0xff) << 0)) | 0; // 7a7ec8: shr al, 4
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) & 0x3, 8)) & 0xff) << 0)) | 0; // 7a7ecb: and al, 3
-        return R.ret(1); // 7a7ecd: ret 4
-      default: throw new Error(`f_7a7eb0: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(1); return -1; // 7a7ecd: ret 4
+      default: return pc;
     }
   }
 }
+export function f_7a7eb0(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 1) throw new Error(`f_7a7eb0: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_7a7eb0_0(R, pc); break;
+      default: throw new Error(`f_7a7eb0: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_7a7eb0: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_7a7eb0.shared = true;

@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_417c10(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x417c10;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x417c10]);
+const CH = new Uint8Array([0]);
+function f_417c10_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x417c10:
+      case 0: // 417c10
         R.push((R.ecx >>> 0)); // 417c10: push ecx
         R.eax = (R.m.u32(((R.esp + 0xc) | 0) >>> 0)) | 0; // 417c11: mov eax, dword ptr [esp + 0xc]
         R.m.w32(((R.esp) | 0) >>> 0, 0x0); // 417c15: mov dword ptr [esp], 0
@@ -27,8 +28,24 @@ export function f_417c10(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.ecx + 0x4) | 0) >>> 0)) | 0; // 417c39: mov ecx, dword ptr [ecx + 4]
         R.m.w32(((R.eax + 0x4) | 0) >>> 0, (R.ecx >>> 0)); // 417c3c: mov dword ptr [eax + 4], ecx
         R.ecx = (R.pop()) | 0; // 417c3f: pop ecx
-        return R.ret(2); // 417c40: ret 8
-      default: throw new Error(`f_417c10: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(2); return -1; // 417c40: ret 8
+      default: return pc;
     }
   }
 }
+export function f_417c10(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 1) throw new Error(`f_417c10: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_417c10_0(R, pc); break;
+      default: throw new Error(`f_417c10: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_417c10: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_417c10.shared = true;

@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 5e8290=9, 68d1b0=0t, 90d130=0, 944c9f=0, 944cff=5t
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x69fc60;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x69fc60, 0x69fc82, 0x69fc89, 0x69fc92, 0x69fca0, 0x69fcab, 0x69fcc0, 0x69fd38]);
+const CH = new Uint8Array([0, 0, 0, 0, 0, 0, 1, 1]);
+function f_69fc60_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x69fc60:
+      case 0: // 69fc60
         R.esp = (R.sub((R.esp >>> 0), 0x200, 32)) | 0; // 69fc60: sub esp, 0x200
         R.push((R.ebx >>> 0)); // 69fc66: push ebx
         R.push((R.ebp >>> 0)); // 69fc67: push ebp
@@ -25,30 +26,30 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.eax + 0xa) | 0) >>> 0, (R.ecx >>> 0)); // 69fc77: mov dword ptr [eax + 0xa], ecx
         R.ecx = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fc7a: mov ecx, dword ptr [esi + 8]
         R.sub(R.m.u16(((R.ecx) | 0) >>> 0), ((R.edi >>> 0) & 0xffff), 16); // 69fc7d: cmp word ptr [ecx], di
-        if (R.cLE) { pc = 0x69fcab; continue; } // 69fc80: jle 0x69fcab
-        pc = 0x69fc82; continue;
-      case 0x69fc82:
+        if (R.cLE) { pc = 5; continue; } // 69fc80: jle 0x69fcab
+        pc = 1; continue;
+      case 1: // 69fc82
         R.ebp = (R.m.u32(((R.esp + 0x214) | 0) >>> 0)) | 0; // 69fc82: mov ebp, dword ptr [esp + 0x214]
-        pc = 0x69fc89; continue;
-      case 0x69fc89:
+        pc = 2; continue;
+      case 2: // 69fc89
         R.call(0x68d1b0, { n: 0, thisEcx: true, calleeClean: false }); // 69fc89: call 0x68d1b0
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 69fc8e: test eax, eax
-        if (R.zf) { pc = 0x69fcc0; continue; } // 69fc90: je 0x69fcc0
-        pc = 0x69fc92; continue;
-      case 0x69fc92:
+        if (R.zf) { pc = 6; continue; } // 69fc90: je 0x69fcc0
+        pc = 3; continue;
+      case 3: // 69fc92
         R.edx = (R.m.u32(((R.eax + 0x6) | 0) >>> 0)) | 0; // 69fc92: mov edx, dword ptr [eax + 6]
         R.eax = (R.m.u32(((R.ebp) | 0) >>> 0)) | 0; // 69fc95: mov eax, dword ptr [ebp]
         R.sub((R.edx >>> 0), (R.eax >>> 0), 32); // 69fc98: cmp edx, eax
-        if (R.zf) { pc = 0x69fd38; continue; } // 69fc9a: je 0x69fd38
-        pc = 0x69fca0; continue;
-      case 0x69fca0:
+        if (R.zf) { pc = 7; continue; } // 69fc9a: je 0x69fd38
+        pc = 4; continue;
+      case 4: // 69fca0
         R.ecx = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fca0: mov ecx, dword ptr [esi + 8]
         R.edi = (R.incdec((R.edi >>> 0), 1, 32)) | 0; // 69fca3: inc edi
         R.eax = (((R.m.u16(((R.ecx) | 0) >>> 0)) << 16 >> 16)) | 0; // 69fca4: movsx eax, word ptr [ecx]
         R.sub((R.edi >>> 0), (R.eax >>> 0), 32); // 69fca7: cmp edi, eax
-        if (R.cL) { pc = 0x69fc89; continue; } // 69fca9: jl 0x69fc89
-        pc = 0x69fcab; continue;
-      case 0x69fcab:
+        if (R.cL) { pc = 2; continue; } // 69fca9: jl 0x69fc89
+        pc = 5; continue;
+      case 5: // 69fcab
         R.ecx = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fcab: mov ecx, dword ptr [esi + 8]
         R.edi = (R.pop()) | 0; // 69fcae: pop edi
         R.esi = (R.pop()) | 0; // 69fcaf: pop esi
@@ -57,8 +58,16 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) ^ ((R.eax >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 69fcb4: xor al, al
         R.ebx = (R.pop()) | 0; // 69fcb6: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 69fcb7: add esp, 0x200
-        return R.ret(1); // 69fcbd: ret 4
-      case 0x69fcc0:
+        R.rv = R.ret(1); return -1; // 69fcbd: ret 4
+      default: return pc;
+    }
+  }
+}
+function f_69fc60_1(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 6: // 69fcc0
         R.ecx = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fcc0: mov ecx, dword ptr [esi + 8]
         R.edx = (((R.esp + 0x10) | 0)) | 0; // 69fcc3: lea edx, [esp + 0x10]
         R.eax = (((R.esp + 0x110) | 0)) | 0; // 69fcc7: lea eax, [esp + 0x110]
@@ -92,8 +101,8 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 69fd2d: pop ebp
         R.ebx = (R.pop()) | 0; // 69fd2e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 69fd2f: add esp, 0x200
-        return R.ret(1); // 69fd35: ret 4
-      case 0x69fd38:
+        R.rv = R.ret(1); return -1; // 69fd35: ret 4
+      case 7: // 69fd38
         R.eax = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fd38: mov eax, dword ptr [esi + 8]
         R.edi = (R.pop()) | 0; // 69fd3b: pop edi
         R.esi = (R.pop()) | 0; // 69fd3c: pop esi
@@ -102,8 +111,25 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 69fd41: mov al, 1
         R.ebx = (R.pop()) | 0; // 69fd43: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 69fd44: add esp, 0x200
-        return R.ret(1); // 69fd4a: ret 4
-      default: throw new Error(`f_69fc60: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(1); return -1; // 69fd4a: ret 4
+      default: return pc;
     }
   }
 }
+export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 8) throw new Error(`f_69fc60: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_69fc60_0(R, pc); break;
+      case 1: np = f_69fc60_1(R, pc); break;
+      default: throw new Error(`f_69fc60: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_69fc60: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_69fc60.shared = true;

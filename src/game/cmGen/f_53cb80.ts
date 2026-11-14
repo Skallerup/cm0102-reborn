@@ -3,21 +3,22 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 540a50=3, 5e8290=9, 90d130=0, 944c9f=0, 944cff=5t
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_53cb80(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x53cb80;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x53cb80, 0x53cb8e, 0x53cbfa, 0x53cc04, 0x53cc14, 0x53cc1e, 0x53cc20]);
+const CH = new Uint8Array([0, 0, 0, 0, 0, 0, 0]);
+function f_53cb80_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x53cb80:
+      case 0: // 53cb80
         R.ecx = (R.m.u32(((R.esp + 0x4) | 0) >>> 0)) | 0; // 53cb80: mov ecx, dword ptr [esp + 4]
         R.esp = (R.sub((R.esp >>> 0), 0x200, 32)) | 0; // 53cb84: sub esp, 0x200
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 53cb8a: test ecx, ecx
-        if (!R.zf) { pc = 0x53cbfa; continue; } // 53cb8c: jne 0x53cbfa
-        pc = 0x53cb8e; continue;
-      case 0x53cb8e:
+        if (!R.zf) { pc = 2; continue; } // 53cb8c: jne 0x53cbfa
+        pc = 1; continue;
+      case 1: // 53cb8e
         R.eax = (((R.esp) | 0)) | 0; // 53cb8e: lea eax, [esp]
         R.ecx = (((R.esp + 0x100) | 0)) | 0; // 53cb92: lea ecx, [esp + 0x100]
         R.push((R.eax >>> 0)); // 53cb99: push eax
@@ -45,33 +46,49 @@ export function f_53cb80(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 53cbe7: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53cbf1: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cbf3: add esp, 0x200
-        return R.ret(0); // 53cbf9: ret 
-      case 0x53cbfa:
+        R.rv = R.ret(0); return -1; // 53cbf9: ret 
+      case 2: // 53cbfa
         R.eax = (R.m.u32(((R.ecx + 0xd3) | 0) >>> 0)) | 0; // 53cbfa: mov eax, dword ptr [ecx + 0xd3]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 53cc00: test eax, eax
-        if (!R.zf) { pc = 0x53cc20; continue; } // 53cc02: jne 0x53cc20
-        pc = 0x53cc04; continue;
-      case 0x53cc04:
+        if (!R.zf) { pc = 6; continue; } // 53cc02: jne 0x53cc20
+        pc = 3; continue;
+      case 3: // 53cc04
         R.push(0x1); // 53cc04: push 1
         R.push((R.eax >>> 0)); // 53cc06: push eax
         R.push((R.ecx >>> 0)); // 53cc07: push ecx
         R.call(0x540a50, { n: 3, thisEcx: false, calleeClean: false }); // 53cc08: call 0x540a50
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 53cc0d: add esp, 0xc
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 53cc10: test eax, eax
-        if (R.zf) { pc = 0x53cc1e; continue; } // 53cc12: je 0x53cc1e
-        pc = 0x53cc14; continue;
-      case 0x53cc14:
+        if (R.zf) { pc = 5; continue; } // 53cc12: je 0x53cc1e
+        pc = 4; continue;
+      case 4: // 53cc14
         R.eax = (R.m.u32(((R.eax + 0xd3) | 0) >>> 0)) | 0; // 53cc14: mov eax, dword ptr [eax + 0xd3]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 53cc1a: test eax, eax
-        if (!R.zf) { pc = 0x53cc20; continue; } // 53cc1c: jne 0x53cc20
-        pc = 0x53cc1e; continue;
-      case 0x53cc1e:
+        if (!R.zf) { pc = 6; continue; } // 53cc1c: jne 0x53cc20
+        pc = 5; continue;
+      case 5: // 53cc1e
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53cc1e: xor eax, eax
-        pc = 0x53cc20; continue;
-      case 0x53cc20:
+        pc = 6; continue;
+      case 6: // 53cc20
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cc20: add esp, 0x200
-        return R.ret(0); // 53cc26: ret 
-      default: throw new Error(`f_53cb80: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(0); return -1; // 53cc26: ret 
+      default: return pc;
     }
   }
 }
+export function f_53cb80(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 7) throw new Error(`f_53cb80: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_53cb80_0(R, pc); break;
+      default: throw new Error(`f_53cb80: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_53cb80: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_53cb80.shared = true;

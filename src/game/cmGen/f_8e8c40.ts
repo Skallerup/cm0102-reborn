@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 40a7d0=2tc, 54c5b0=2tc, 54c8e0=2tc
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x8e8c40;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x8e8c40, 0x8e8c76, 0x8e8cb3, 0x8e8cba, 0x8e8cbc, 0x8e8cc0, 0x8e8cca, 0x8e8cd6, 0x8e8cef, 0x8e8d36, 0x8e8d3c, 0x8e8d4e, 0x8e8d67, 0x8e8da4, 0x8e8dab, 0x8e8dad, 0x8e8db1, 0x8e8dbb, 0x8e8dc7, 0x8e8e0a, 0x8e8e0c, 0x8e8e1a, 0x8e8e33]);
+const CH = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3]);
+function f_8e8c40_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x8e8c40:
+      case 0: // 8e8c40
         R.eax = (0) | 0; // 8e8c40: mov eax, dword ptr fs:[0]
         R.push(0xffffffff); // 8e8c46: push -1
         R.push(0x9649f0); // 8e8c48: push 0x9649f0
@@ -28,9 +29,9 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.sub(((R.eax >>> 0) & 0xff), ((R.ecx >>> 0) & 0xff), 8); // 8e8c69: cmp al, cl
         R.eax = ((R.eax & 0xffff0000) | (((R.m.u16(((R.esi + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8c6b: mov ax, word ptr [esi + 2]
         R.push((R.eax >>> 0)); // 8e8c6f: push eax
-        if (R.cLE) { pc = 0x8e8d67; continue; } // 8e8c70: jle 0x8e8d67
-        pc = 0x8e8c76; continue;
-      case 0x8e8c76:
+        if (R.cLE) { pc = 12; continue; } // 8e8c70: jle 0x8e8d67
+        pc = 1; continue;
+      case 1: // 8e8c76
         R.ecx = (((R.esp + 0x18) | 0)) | 0; // 8e8c76: lea ecx, [esp + 0x18]
         R.push((R.ecx >>> 0)); // 8e8c7a: push ecx
         R.ecx = ((R.edi >>> 0)) | 0; // 8e8c7b: mov ecx, edi
@@ -48,29 +49,37 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = ((R.ecx & 0xffff0000) | (((R.m.u16(((R.eax + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8ca5: mov cx, word ptr [eax + 2]
         R.edx = ((R.edx & 0xffff0000) | (((R.m.u16(((R.esp + 0xe) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8ca9: mov dx, word ptr [esp + 0xe]
         R.sub(((R.edx >>> 0) & 0xffff), ((R.ecx >>> 0) & 0xffff), 16); // 8e8cae: cmp dx, cx
-        if (!R.cf) { pc = 0x8e8cba; continue; } // 8e8cb1: jae 0x8e8cba
-        pc = 0x8e8cb3; continue;
-      case 0x8e8cb3:
+        if (!R.cf) { pc = 3; continue; } // 8e8cb1: jae 0x8e8cba
+        pc = 2; continue;
+      case 2: // 8e8cb3
         R.eax = (0x1) | 0; // 8e8cb3: mov eax, 1
-        pc = 0x8e8cca; continue; // 8e8cb8: jmp 0x8e8cca
-      case 0x8e8cba:
-        if (R.cBE) { pc = 0x8e8cc0; continue; } // 8e8cba: jbe 0x8e8cc0
-        pc = 0x8e8cbc; continue;
-      case 0x8e8cbc:
+        pc = 6; continue; // 8e8cb8: jmp 0x8e8cca
+      case 3: // 8e8cba
+        if (R.cBE) { pc = 5; continue; } // 8e8cba: jbe 0x8e8cc0
+        pc = 4; continue;
+      case 4: // 8e8cbc
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8e8cbc: xor eax, eax
-        pc = 0x8e8cca; continue; // 8e8cbe: jmp 0x8e8cca
-      case 0x8e8cc0:
+        pc = 6; continue; // 8e8cbe: jmp 0x8e8cca
+      case 5: // 8e8cc0
         R.ecx = (R.logic((R.ecx >>> 0) ^ (R.ecx >>> 0), 32)) | 0; // 8e8cc0: xor ecx, ecx
         R.sub(((R.ebx >>> 0) & 0xffff), R.m.u16(((R.eax) | 0) >>> 0), 16); // 8e8cc2: cmp bx, word ptr [eax]
         R.ecx = ((R.ecx & 0xffffff00) | (((R.cL ? 1 : 0) & 0xff) << 0)) | 0; // 8e8cc5: setl cl
         R.eax = ((R.ecx >>> 0)) | 0; // 8e8cc8: mov eax, ecx
-        pc = 0x8e8cca; continue;
-      case 0x8e8cca:
+        pc = 6; continue;
+      case 6: // 8e8cca
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8e8cca: test eax, eax
         R.m.w32(((R.esp + 0x3c) | 0) >>> 0, 0xffffffff); // 8e8ccc: mov dword ptr [esp + 0x3c], 0xffffffff
-        if (R.zf) { pc = 0x8e8cef; continue; } // 8e8cd4: je 0x8e8cef
-        pc = 0x8e8cd6; continue;
-      case 0x8e8cd6:
+        if (R.zf) { pc = 8; continue; } // 8e8cd4: je 0x8e8cef
+        pc = 7; continue;
+      default: return pc;
+    }
+  }
+}
+function f_8e8c40_1(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 7: // 8e8cd6
         R.edi = (R.pop()) | 0; // 8e8cd6: pop edi
         R.esi = (R.pop()) | 0; // 8e8cd7: pop esi
         R.eax = (0x1) | 0; // 8e8cd8: mov eax, 1
@@ -78,8 +87,8 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x28) | 0) >>> 0)) | 0; // 8e8cde: mov ecx, dword ptr [esp + 0x28]
         /* fs */ // 8e8ce2: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x34, 32)) | 0; // 8e8ce9: add esp, 0x34
-        return R.ret(2); // 8e8cec: ret 8
-      case 0x8e8cef:
+        R.rv = R.ret(2); return -1; // 8e8cec: ret 8
+      case 8: // 8e8cef
         R.eax = ((R.eax & 0xffff0000) | (((R.m.u16(((R.esi + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8cef: mov ax, word ptr [esi + 2]
         R.edx = (((R.esp + 0x1c) | 0)) | 0; // 8e8cf3: lea edx, [esp + 0x1c]
         R.push((R.eax >>> 0)); // 8e8cf7: push eax
@@ -99,20 +108,20 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = ((R.ecx & 0xffff0000) | (((R.m.u16(((R.eax + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8d24: mov cx, word ptr [eax + 2]
         R.edx = ((R.edx & 0xffff0000) | (((R.m.u16(((R.esp + 0xe) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8d28: mov dx, word ptr [esp + 0xe]
         R.sub(((R.edx >>> 0) & 0xffff), ((R.ecx >>> 0) & 0xffff), 16); // 8e8d2d: cmp dx, cx
-        if (!R.cBE) { pc = 0x8e8e1a; continue; } // 8e8d30: ja 0x8e8e1a
-        pc = 0x8e8d36; continue;
-      case 0x8e8d36:
-        if (R.cf) { pc = 0x8e8e33; continue; } // 8e8d36: jb 0x8e8e33
-        pc = 0x8e8d3c; continue;
-      case 0x8e8d3c:
+        if (!R.cBE) { pc = 21; continue; } // 8e8d30: ja 0x8e8e1a
+        pc = 9; continue;
+      case 9: // 8e8d36
+        if (R.cf) { pc = 22; continue; } // 8e8d36: jb 0x8e8e33
+        pc = 10; continue;
+      case 10: // 8e8d3c
         R.edx = (R.logic((R.edx >>> 0) ^ (R.edx >>> 0), 32)) | 0; // 8e8d3c: xor edx, edx
         R.sub(((R.edi >>> 0) & 0xffff), R.m.u16(((R.eax) | 0) >>> 0), 16); // 8e8d3e: cmp di, word ptr [eax]
         R.edx = ((R.edx & 0xffffff00) | (((!R.cLE ? 1 : 0) & 0xff) << 0)) | 0; // 8e8d41: setg dl
         R.eax = ((R.edx >>> 0)) | 0; // 8e8d44: mov eax, edx
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8e8d46: test eax, eax
-        if (R.zf) { pc = 0x8e8e33; continue; } // 8e8d48: je 0x8e8e33
-        pc = 0x8e8d4e; continue;
-      case 0x8e8d4e:
+        if (R.zf) { pc = 22; continue; } // 8e8d48: je 0x8e8e33
+        pc = 11; continue;
+      case 11: // 8e8d4e
         R.edi = (R.pop()) | 0; // 8e8d4e: pop edi
         R.esi = (R.pop()) | 0; // 8e8d4f: pop esi
         R.eax = (0x1) | 0; // 8e8d50: mov eax, 1
@@ -120,8 +129,16 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x28) | 0) >>> 0)) | 0; // 8e8d56: mov ecx, dword ptr [esp + 0x28]
         /* fs */ // 8e8d5a: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x34, 32)) | 0; // 8e8d61: add esp, 0x34
-        return R.ret(2); // 8e8d64: ret 8
-      case 0x8e8d67:
+        R.rv = R.ret(2); return -1; // 8e8d64: ret 8
+      default: return pc;
+    }
+  }
+}
+function f_8e8c40_2(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 12: // 8e8d67
         R.eax = (((R.esp + 0x20) | 0)) | 0; // 8e8d67: lea eax, [esp + 0x20]
         R.ecx = ((R.edi >>> 0)) | 0; // 8e8d6b: mov ecx, edi
         R.push((R.eax >>> 0)); // 8e8d6d: push eax
@@ -139,29 +156,37 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = ((R.ecx & 0xffff0000) | (((R.m.u16(((R.eax + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8d96: mov cx, word ptr [eax + 2]
         R.edx = ((R.edx & 0xffff0000) | (((R.m.u16(((R.esp + 0xe) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8d9a: mov dx, word ptr [esp + 0xe]
         R.sub(((R.edx >>> 0) & 0xffff), ((R.ecx >>> 0) & 0xffff), 16); // 8e8d9f: cmp dx, cx
-        if (!R.cf) { pc = 0x8e8dab; continue; } // 8e8da2: jae 0x8e8dab
-        pc = 0x8e8da4; continue;
-      case 0x8e8da4:
+        if (!R.cf) { pc = 14; continue; } // 8e8da2: jae 0x8e8dab
+        pc = 13; continue;
+      case 13: // 8e8da4
         R.eax = (0x1) | 0; // 8e8da4: mov eax, 1
-        pc = 0x8e8dbb; continue; // 8e8da9: jmp 0x8e8dbb
-      case 0x8e8dab:
-        if (R.cBE) { pc = 0x8e8db1; continue; } // 8e8dab: jbe 0x8e8db1
-        pc = 0x8e8dad; continue;
-      case 0x8e8dad:
+        pc = 17; continue; // 8e8da9: jmp 0x8e8dbb
+      case 14: // 8e8dab
+        if (R.cBE) { pc = 16; continue; } // 8e8dab: jbe 0x8e8db1
+        pc = 15; continue;
+      case 15: // 8e8dad
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8e8dad: xor eax, eax
-        pc = 0x8e8dbb; continue; // 8e8daf: jmp 0x8e8dbb
-      case 0x8e8db1:
+        pc = 17; continue; // 8e8daf: jmp 0x8e8dbb
+      case 16: // 8e8db1
         R.ecx = (R.logic((R.ecx >>> 0) ^ (R.ecx >>> 0), 32)) | 0; // 8e8db1: xor ecx, ecx
         R.sub(((R.ebx >>> 0) & 0xffff), R.m.u16(((R.eax) | 0) >>> 0), 16); // 8e8db3: cmp bx, word ptr [eax]
         R.ecx = ((R.ecx & 0xffffff00) | (((R.cL ? 1 : 0) & 0xff) << 0)) | 0; // 8e8db6: setl cl
         R.eax = ((R.ecx >>> 0)) | 0; // 8e8db9: mov eax, ecx
-        pc = 0x8e8dbb; continue;
-      case 0x8e8dbb:
+        pc = 17; continue;
+      case 17: // 8e8dbb
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8e8dbb: test eax, eax
         R.m.w32(((R.esp + 0x3c) | 0) >>> 0, 0xffffffff); // 8e8dbd: mov dword ptr [esp + 0x3c], 0xffffffff
-        if (R.zf) { pc = 0x8e8e33; continue; } // 8e8dc5: je 0x8e8e33
-        pc = 0x8e8dc7; continue;
-      case 0x8e8dc7:
+        if (R.zf) { pc = 22; continue; } // 8e8dc5: je 0x8e8e33
+        pc = 18; continue;
+      default: return pc;
+    }
+  }
+}
+function f_8e8c40_3(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 18: // 8e8dc7
         R.eax = ((R.eax & 0xffff0000) | (((R.m.u16(((R.esi + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8dc7: mov ax, word ptr [esi + 2]
         R.edx = (((R.esp + 0x24) | 0)) | 0; // 8e8dcb: lea edx, [esp + 0x24]
         R.push((R.eax >>> 0)); // 8e8dcf: push eax
@@ -181,20 +206,20 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = ((R.ecx & 0xffff0000) | (((R.m.u16(((R.eax + 0x2) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8dfc: mov cx, word ptr [eax + 2]
         R.edx = ((R.edx & 0xffff0000) | (((R.m.u16(((R.esp + 0xe) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 8e8e00: mov dx, word ptr [esp + 0xe]
         R.sub(((R.edx >>> 0) & 0xffff), ((R.ecx >>> 0) & 0xffff), 16); // 8e8e05: cmp dx, cx
-        if (!R.cBE) { pc = 0x8e8e1a; continue; } // 8e8e08: ja 0x8e8e1a
-        pc = 0x8e8e0a; continue;
-      case 0x8e8e0a:
-        if (R.cf) { pc = 0x8e8e33; continue; } // 8e8e0a: jb 0x8e8e33
-        pc = 0x8e8e0c; continue;
-      case 0x8e8e0c:
+        if (!R.cBE) { pc = 21; continue; } // 8e8e08: ja 0x8e8e1a
+        pc = 19; continue;
+      case 19: // 8e8e0a
+        if (R.cf) { pc = 22; continue; } // 8e8e0a: jb 0x8e8e33
+        pc = 20; continue;
+      case 20: // 8e8e0c
         R.edx = (R.logic((R.edx >>> 0) ^ (R.edx >>> 0), 32)) | 0; // 8e8e0c: xor edx, edx
         R.sub(((R.edi >>> 0) & 0xffff), R.m.u16(((R.eax) | 0) >>> 0), 16); // 8e8e0e: cmp di, word ptr [eax]
         R.edx = ((R.edx & 0xffffff00) | (((!R.cLE ? 1 : 0) & 0xff) << 0)) | 0; // 8e8e11: setg dl
         R.eax = ((R.edx >>> 0)) | 0; // 8e8e14: mov eax, edx
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8e8e16: test eax, eax
-        if (R.zf) { pc = 0x8e8e33; continue; } // 8e8e18: je 0x8e8e33
-        pc = 0x8e8e1a; continue;
-      case 0x8e8e1a:
+        if (R.zf) { pc = 22; continue; } // 8e8e18: je 0x8e8e33
+        pc = 21; continue;
+      case 21: // 8e8e1a
         R.edi = (R.pop()) | 0; // 8e8e1a: pop edi
         R.esi = (R.pop()) | 0; // 8e8e1b: pop esi
         R.eax = (0x1) | 0; // 8e8e1c: mov eax, 1
@@ -202,8 +227,8 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x28) | 0) >>> 0)) | 0; // 8e8e22: mov ecx, dword ptr [esp + 0x28]
         /* fs */ // 8e8e26: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x34, 32)) | 0; // 8e8e2d: add esp, 0x34
-        return R.ret(2); // 8e8e30: ret 8
-      case 0x8e8e33:
+        R.rv = R.ret(2); return -1; // 8e8e30: ret 8
+      case 22: // 8e8e33
         R.ecx = (R.m.u32(((R.esp + 0x34) | 0) >>> 0)) | 0; // 8e8e33: mov ecx, dword ptr [esp + 0x34]
         R.edi = (R.pop()) | 0; // 8e8e37: pop edi
         R.esi = (R.pop()) | 0; // 8e8e38: pop esi
@@ -211,8 +236,27 @@ export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 8e8e3b: pop ebx
         /* fs */ // 8e8e3c: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x34, 32)) | 0; // 8e8e43: add esp, 0x34
-        return R.ret(2); // 8e8e46: ret 8
-      default: throw new Error(`f_8e8c40: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(2); return -1; // 8e8e46: ret 8
+      default: return pc;
     }
   }
 }
+export function f_8e8c40(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 23) throw new Error(`f_8e8c40: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_8e8c40_0(R, pc); break;
+      case 1: np = f_8e8c40_1(R, pc); break;
+      case 2: np = f_8e8c40_2(R, pc); break;
+      case 3: np = f_8e8c40_3(R, pc); break;
+      default: throw new Error(`f_8e8c40: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_8e8c40: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_8e8c40.shared = true;

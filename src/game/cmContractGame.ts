@@ -33,11 +33,13 @@ import { slCall, slmOf } from './cmShortlist';
 import { cmActive, cmRand } from './cmPlayerData';
 import { leagueOf } from './cmContractInit';
 import { formulaValueGbp } from './originalValue';
-import { playerRecord } from './engine/grid/aiTeam';
+import { playerRecordInto } from './engine/grid/aiTeam';
+const REC_SCRATCH: number[] = new Array(0x46).fill(0);
 import { nationLanguage } from './engine/grid/nationLanguage';
 import { regionOf } from './leagues';
 import { ATTRS } from './attributes';
 import { ageOn } from './dates';
+import { squadIds } from './state';
 import { boardEnv } from './cmBoardGame';
 import { leagueClash } from './cmBoardInterest';
 import type { BoardEnv } from './cmBoard';
@@ -92,13 +94,22 @@ const SEASON_ROWS: [string, string][] = [
 /** verdensdelenes rækker 3–7: Europa, Nordamerika, Sydamerika, Asien, Oceanien (rækkerne 0–2 har ingen verdensdel) */
 const OCEANIA = new Set(['Australia', 'New Zealand', 'Fiji', 'Papua New Guinea', 'Samoa', 'American Samoa', 'Tonga', 'Vanuatu', 'Tahiti', 'Solomon Islands', 'New Caledonia', 'Cook Islands']);
 
+/** (gemt pr. streng – ren funktion; kaldes for alle spillere hver dag) */
+const ISO_MEMO = new Map<string, [number, number]>();
 const isoDay = (iso: string): [number, number] => {
-  const y = +iso.slice(0, 4);
-  return [Math.round((Date.parse(iso.slice(0, 10) + 'T00:00:00Z') - Date.UTC(y, 0, 1)) / 86400000), y];
+  let r = ISO_MEMO.get(iso);
+  if (!r) {
+    const y = +iso.slice(0, 4);
+    r = [Math.round((Date.parse(iso.slice(0, 10) + 'T00:00:00Z') - Date.UTC(y, 0, 1)) / 86400000), y];
+    if (ISO_MEMO.size > 200000) ISO_MEMO.clear();
+    ISO_MEMO.set(iso, r);
+  }
+  return [r[0], r[1]];
 };
 const leap = (y: number) => (y % 4 === 0 && (y % 100 !== 0 || y % 400 === 0) ? 1 : 0);
 const dayIso = (day: number, year: number) => new Date(Date.UTC(year, 0, 1) + day * 86400000).toISOString().slice(0, 10);
-const attr = (p: Player, k: string) => Math.round(p.attrs[ATTRS.indexOf(k as never)] || 10);
+const ATTR_IX = new Map<string, number>(ATTRS.map((k, i) => [k, i]));
+const attr = (p: Player, k: string) => Math.round(p.attrs[ATTR_IX.get(k) ?? -1] || 10);
 
 /** originalens vilkår i spillets enheder */
 export interface CmTerms {
@@ -235,7 +246,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
       });
       m.w32(st + 0x65, pr);
     }
-    const rec = playerRecord(p), pr = m.u32(st + 0x61);
+    const rec = playerRecordInto(p, REC_SCRATCH), pr = m.u32(st + 0x61);
     m.w8(pr + 4, rec[4]);
     for (let o = 0x16; o < 0x46; o++) m.w8(pr + o, rec[o]);
     const k = W.contractOf(p);
@@ -267,6 +278,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
       return call(adr, a);
     },
   };
+  const caIdx = clubCaIdx(g);
   const call = (adr: number, a: number[]): number => {
       if (opts.call) { const v = opts.call(adr, a); if (v !== undefined) return v; }
       switch (adr) {
@@ -275,7 +287,7 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
           // status efter hans plads i køberens trup (*estimeret*), job 0xb
           const withThis = a.length === 4, st = a[withThis ? 1 : 0] >>> 0, club = a[withThis ? 2 : 1] >>> 0, out = withThis ? a[3] >>> 0 : 0;
           const p = byStaff.get(st), cid = m.s32(club);
-          if (p && m.u32(st + 0x39) !== club && g.clubs[cid]) { if (out) m.w32(out, 0xb); return newClubStatus(g, p, cid); }
+          if (p && m.u32(st + 0x39) !== club && g.clubs[cid]) { if (out) m.w32(out, 0xb); return newClubStatus(g, p, cid, caIdx); }
           return withThis ? slCall(gc, adr, a[0], ...a.slice(1)) : slCall(gc, adr, slmOf(m), ...a);
         }
         case 0x846920: case 0x844780: return slCall(gc, adr, slmOf(m), ...a);
@@ -309,10 +321,30 @@ function valueOf(g: GameState, p: Player | undefined, clubId: number): number {
   return Math.trunc(formulaValueGbp({ pa: p.pa, age: ageOn(p.dob, g.date), pos: p.pos, attrs: p.attrs, rep: p.cmRep, caps: p.caps ?? 0, staffId: p.id, clubId, vc: club.vc }));
 }
 
+/** klubbernes spillere (ikke lejede) som [id, CA] – af trupindekset (state.ts squadIds, som setClub holder ved lige), bygget ved første opslag
+ *  pr. klub; gælder så længe hukommelsen lever (ingen skifter imens – ønskelisternes dag udfører buddene bagefter) */
+interface ClubCaIdx { of(cid: number): [number, number][] }
+function clubCaIdx(g: GameState): ClubCaIdx {
+  const byClub = new Map<number, [number, number][]>();
+  return {
+    of(cid) {
+      let l = byClub.get(cid);
+      if (!l) {
+        l = [];
+        for (const id of squadIds(cid)) { const x = g.players[id]; if (x && x.club === cid && !x.loan) l.push([x.id, x.ca]); }
+        byClub.set(cid, l);
+      }
+      return l;
+    },
+  };
+}
+
 /** trupstatus 1–7 for en spiller hos en ny klub: pladsen efter CA i køberens trup (1 Key de 2 bedste, 2 First Team til 11, 3 Rotation til 16,
  *  ellers 5 Hot Prospect/6 Youngster for de unge og 4 Backup) – *estimeret* (originalen har klubbens ønskeliste) */
-function newClubStatus(g: GameState, p: Player, cid: number): number {
-  const better = Object.values(g.players).filter((x) => x.club === cid && !x.loan && x.id !== p.id && x.ca > p.ca).length;
+function newClubStatus(g: GameState, p: Player, cid: number, idx?: ClubCaIdx): number {
+  let better = 0;
+  if (idx) { for (const [id, ca] of idx.of(cid)) if (id !== p.id && ca > p.ca) better++; }
+  else better = Object.values(g.players).filter((x) => x.club === cid && !x.loan && x.id !== p.id && x.ca > p.ca).length;
   if (better < 2) return 1;
   if (better < 11) return 2;
   if (better < 16) return 3;

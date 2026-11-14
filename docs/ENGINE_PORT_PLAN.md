@@ -79,6 +79,22 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   selve f_83f3a0/`shared` (de store switch-funktioner optimeres næppe af V8) og 0x840d80 (~1,1 mio. vurderinger ved spilstarten, ~85 µs stk.) –
   næste skridt: 0x83f3a0's vurderingsløkke 0x8400da–0x840a81 og 0x840d80 i TS (samme rand-rækkefølge), eller oversætteren deler de store
   funktioner. Sverige/Danmark/Norge koster mest (6,8/3,0/2,9 s). Den daglige kørsel: se scripts/cm-shortlist-days.ts.
+- **Hastighed, runde 3 (14/11, stadig slået fra – dagen er for langsom):** spilstarten (cmShortlistStart) 39,7 s → 11,8 s i tsx / ~9,5 s i et
+  esbuild-bundt (som browseren: uden tsx's keepNames/`__name`), dagen 1.055 → ~630 ms (+ buddenes udførelse 72 → 19 ms). **Bit for bit som før**
+  (`scripts/cm-sl-bench.ts`: sha1 af g.cmPlan/cmSlPairs/offers/skifter efter spilstarten og hver af 21 dage – ens, 219 bud). Hvad der virkede:
+  (1) `scripts/split-cmgen.py` deler alle 197 oversatte funktioner i stykker à ≤ 60 linjer med tætte bloknumre (V8 optimerede slet ikke 0x83f3a0/
+  0x840d80 – bytekoden var over grænsen; `--trace-opt` viste dem aldrig) – alene 39,7 → 14,6 s; `f_X.shared` erstatter ensureCmp's
+  `toString().includes('R.ret(')` (virkede ikke i den minificerede udgave – R omdøbes); (2) SparseMem: sidetabel i to niveauer i stedet for Map +
+  énsides-cache, genbrugte sider (`release()`); (3) x87-stakken uden unshift/shift/`length =` (V8's langsomme veje); (4) frasorteringen 0x83fa25
+  kører videre til næste kandidat selv (0x840a81/0x83fa1a i TS) og giver slCall-kaldene stak under 0x83f3a0's (`stackBelow` – før lå den ved `top`
+  oven i 0x83f3a0's ramme og overskrev argumenterne/de gemte registre, uden følger); (5) positionslisterne sorteres på tal (samme MSVC-qsort);
+  (6) isoDay/attr/playerRecordInto uden midlertidige arrays og Date.parse, intrinsicFromShown gemt også for ikke-heltallige; (7) newClubStatus af
+  trupindekset (før `Object.values(g.players)` pr. kald); (8) 0x4d0c60 (+0x52) springes over for spillere uden for positionslisterne i klubber uden
+  trupplan (de skjulte ligaer – `scripts/cm-sl-count.ts OFF=82`: dagens kode læser +0x52 hos 10–20 personer, alle i de aktive lande; `CM_SL_ALLVALUES=1`
+  regner alle). **Tilbage pr. dag (~630 ms):** buildWantMem for alle 39.800 personer ~250 ms, 0x4d0c60 for ~30.000 ~135 ms, buddene 0x84a020/0x844540
+  ~110 ms, positionslisterne ~60 ms. 0x4d0c60 læser datoen i 28.351 af 39.502 kald (kontraktens restløbetid) – en husket værdi pr. spiller kan ikke
+  bruges; næste skridt: 0x4d0c60 (+ 0x6e86d0/0x8d0a70/0x5407e0, ~1.100 instruktioner) i TS, en billigere postbygger (Map'erne, ~6 µs pr. person),
+  eller – som originalen (*estimeret*, se writeValues) – computerens værdier kun på ulige dage.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

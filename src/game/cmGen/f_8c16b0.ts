@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 4cf6d0=1c, 5e8290=9, 68d0d0=2tc, 90d130=0, 944c9f=0, 944cff=5t
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_8c16b0(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x8c16b0;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x8c16b0, 0x8c16d1, 0x8c173f]);
+const CH = new Uint8Array([0, 0, 0]);
+function f_8c16b0_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x8c16b0:
+      case 0: // 8c16b0
         R.esp = (R.sub((R.esp >>> 0), 0x20c, 32)) | 0; // 8c16b0: sub esp, 0x20c
         R.push((R.esi >>> 0)); // 8c16b6: push esi
         R.push((R.edi >>> 0)); // 8c16b7: push edi
@@ -21,9 +22,9 @@ export function f_8c16b0(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.edi >>> 0)); // 8c16c7: push edi
         R.call(0x4cf6d0, { n: 1, thisEcx: false, calleeClean: true }); // 8c16c8: call 0x4cf6d0
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8c16cd: test eax, eax
-        if (R.zf) { pc = 0x8c173f; continue; } // 8c16cf: je 0x8c173f
-        pc = 0x8c16d1; continue;
-      case 0x8c16d1:
+        if (R.zf) { pc = 2; continue; } // 8c16cf: je 0x8c173f
+        pc = 1; continue;
+      case 1: // 8c16d1
         R.eax = (((R.esp + 0x14) | 0)) | 0; // 8c16d1: lea eax, [esp + 0x14]
         R.ecx = (((R.esp + 0x114) | 0)) | 0; // 8c16d5: lea ecx, [esp + 0x114]
         R.push((R.eax >>> 0)); // 8c16dc: push eax
@@ -52,8 +53,8 @@ export function f_8c16b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 8c1734: pop edi
         R.esi = (R.pop()) | 0; // 8c1735: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x20c, 32)) | 0; // 8c1736: add esp, 0x20c
-        return R.ret(3); // 8c173c: ret 0xc
-      case 0x8c173f:
+        R.rv = R.ret(3); return -1; // 8c173c: ret 0xc
+      case 2: // 8c173f
         R.ecx = (R.m.u32(((R.edi) | 0) >>> 0)) | 0; // 8c173f: mov ecx, dword ptr [edi]
         R.edx = ((R.edx & 0xffffff00) | (((R.m.u8(((R.esp + 0x21c) | 0) >>> 0)) & 0xff) << 0)) | 0; // 8c1741: mov dl, byte ptr [esp + 0x21c]
         R.eax = (R.m.u32(((R.esp + 0x220) | 0) >>> 0)) | 0; // 8c1748: mov eax, dword ptr [esp + 0x220]
@@ -68,8 +69,24 @@ export function f_8c16b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 8c176d: pop edi
         R.esi = (R.pop()) | 0; // 8c176e: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x20c, 32)) | 0; // 8c176f: add esp, 0x20c
-        return R.ret(3); // 8c1775: ret 0xc
-      default: throw new Error(`f_8c16b0: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(3); return -1; // 8c1775: ret 0xc
+      default: return pc;
     }
   }
 }
+export function f_8c16b0(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 3) throw new Error(`f_8c16b0: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_8c16b0_0(R, pc); break;
+      default: throw new Error(`f_8c16b0: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_8c16b0: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_8c16b0.shared = true;

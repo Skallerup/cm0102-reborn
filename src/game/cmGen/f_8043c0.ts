@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 7ae8a0=1tc, 7ae950=0t, 7f6cd0=2c
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_8043c0(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x8043c0;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x8043c0, 0x8043d0, 0x8043e8, 0x804426, 0x804437]);
+const CH = new Uint8Array([0, 0, 0, 0, 0]);
+function f_8043c0_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x8043c0:
+      case 0: // 8043c0
         R.push((R.ecx >>> 0)); // 8043c0: push ecx
         R.push((R.ebx >>> 0)); // 8043c1: push ebx
         R.push((R.esi >>> 0)); // 8043c2: push esi
@@ -19,17 +20,17 @@ export function f_8043c0(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.edi >>> 0)); // 8043c5: push edi
         R.m.w8(((R.esp + 0xc) | 0) >>> 0, ((R.ebx >>> 0) & 0xff)); // 8043c6: mov byte ptr [esp + 0xc], bl
         R.edi = (((R.ecx + 0x1b0e) | 0)) | 0; // 8043ca: lea edi, [ecx + 0x1b0e]
-        pc = 0x8043d0; continue;
-      case 0x8043d0:
+        pc = 1; continue;
+      case 1: // 8043d0
         R.esi = (R.m.u32(((R.esp + 0xc) | 0) >>> 0)) | 0; // 8043d0: mov esi, dword ptr [esp + 0xc]
         R.ecx = (R.m.u32(((0xb74448) | 0) >>> 0)) | 0; // 8043d4: mov ecx, dword ptr [0xb74448]
         R.push(0x0); // 8043da: push 0
         R.push((R.esi >>> 0)); // 8043dc: push esi
         R.call(0x7f6cd0, { n: 2, thisEcx: false, calleeClean: true }); // 8043dd: call 0x7f6cd0
         R.sub(R.m.u8(((R.eax + 0xa) | 0) >>> 0), 0x4, 8); // 8043e2: cmp byte ptr [eax + 0xa], 4
-        if (!R.zf) { pc = 0x804426; continue; } // 8043e6: jne 0x804426
-        pc = 0x8043e8; continue;
-      case 0x8043e8:
+        if (!R.zf) { pc = 3; continue; } // 8043e6: jne 0x804426
+        pc = 2; continue;
+      case 2: // 8043e8
         R.ecx = (R.m.u32(((0xb74448) | 0) >>> 0)) | 0; // 8043e8: mov ecx, dword ptr [0xb74448]
         R.push(0x0); // 8043ee: push 0
         R.push((R.esi >>> 0)); // 8043f0: push esi
@@ -48,22 +49,38 @@ export function f_8043c0(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.eax >>> 0)); // 80441e: push eax
         R.ecx = ((R.edi >>> 0)) | 0; // 80441f: mov ecx, edi
         R.call(0x7ae8a0, { n: 1, thisEcx: true, calleeClean: true }); // 804421: call 0x7ae8a0
-        pc = 0x804426; continue;
-      case 0x804426:
+        pc = 3; continue;
+      case 3: // 804426
         R.ebx = ((R.ebx & 0xffffff00) | (((R.incdec(((R.ebx >>> 0) & 0xff), 1, 8)) & 0xff) << 0)) | 0; // 804426: inc bl
         R.edi = (R.add((R.edi >>> 0), 0x2b0, 32)) | 0; // 804428: add edi, 0x2b0
         R.sub(((R.ebx >>> 0) & 0xff), 0xa, 8); // 80442e: cmp bl, 0xa
         R.m.w8(((R.esp + 0xc) | 0) >>> 0, ((R.ebx >>> 0) & 0xff)); // 804431: mov byte ptr [esp + 0xc], bl
-        if (R.cL) { pc = 0x8043d0; continue; } // 804435: jl 0x8043d0
-        pc = 0x804437; continue;
-      case 0x804437:
+        if (R.cL) { pc = 1; continue; } // 804435: jl 0x8043d0
+        pc = 4; continue;
+      case 4: // 804437
         R.edi = (R.pop()) | 0; // 804437: pop edi
         R.esi = (R.pop()) | 0; // 804438: pop esi
         R.eax = (0x1) | 0; // 804439: mov eax, 1
         R.ebx = (R.pop()) | 0; // 80443e: pop ebx
         R.ecx = (R.pop()) | 0; // 80443f: pop ecx
-        return R.ret(0); // 804440: ret 
-      default: throw new Error(`f_8043c0: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(0); return -1; // 804440: ret 
+      default: return pc;
     }
   }
 }
+export function f_8043c0(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 5) throw new Error(`f_8043c0: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_8043c0_0(R, pc); break;
+      default: throw new Error(`f_8043c0: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_8043c0: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_8043c0.shared = true;

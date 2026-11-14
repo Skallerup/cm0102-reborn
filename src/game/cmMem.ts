@@ -27,26 +27,33 @@ export interface CmMem {
 
 const PAGE = 12;
 const PMASK = (1 << PAGE) - 1;
+/** det fælles tomme andet niveau (kun null) i SparseMem's sidetabel */
+const NOPAGES: (Uint8Array | null)[] = new Array(1024).fill(null);
+/** genbrugte sider (SparseMem.release) – nulstilles, før de bruges igen */
+const POOL: Uint8Array[] = [];
+const POOL_MAX = 24000;
 
 /** Spredt hukommelse i sider à 4 KB; ulæste bytes er 0. `miss` kan fylde en side første gang, den læses (spillets dovne poster). */
 export class SparseMem implements CmMem {
   private pages = new Map<number, Uint8Array>();
   private dv = new DataView(new ArrayBuffer(8));
   private miss?: (page: number, mem: SparseMem) => void;
-  /** den senest brugte side (hurtig vej) */
-  private lp = -1;
-  private lb: Uint8Array = new Uint8Array(0);
+  /** sidetabellen i to niveauer (sidenummerets øverste 10 bit → 1024 sider): et opslag uden Map og uden cache-tab */
+  private dir: (Uint8Array | null)[][] = new Array(1024).fill(NOPAGES);
   constructor(miss?: (page: number, mem: SparseMem) => void) { this.miss = miss; }
   page(p: number, create = true): Uint8Array | undefined {
-    if (p === this.lp) return this.lb;
-    let b = this.pages.get(p);
-    if (!b && create) {
-      b = new Uint8Array(1 << PAGE);
-      this.pages.set(p, b);
-      this.miss?.(p, this);
-    }
-    if (b) { this.lp = p; this.lb = b; }
-    return b;
+    const b = this.dir[p >>> 10][p & 1023];
+    if (b !== null) return b;
+    if (!create) return undefined;
+    const r = POOL.pop();
+    let nb: Uint8Array;
+    if (r) { r.fill(0); nb = r; } else nb = new Uint8Array(1 << PAGE);
+    let t = this.dir[p >>> 10];
+    if (t === NOPAGES) { t = new Array(1024).fill(null); this.dir[p >>> 10] = t; }
+    t[p & 1023] = nb;
+    this.pages.set(p, nb);
+    this.miss?.(p, this);
+    return nb;
   }
   u8(a: number): number { a >>>= 0; return this.page(a >>> PAGE)![a & PMASK]; }
   s8(a: number): number { return (this.u8(a) << 24) >> 24; }
@@ -76,6 +83,11 @@ export class SparseMem implements CmMem {
   }
   wf32(a: number, v: number): void { this.dv.setFloat32(0, v, true); this.w32(a, this.dv.getUint32(0, true)); }
   wf64(a: number, v: number): void { this.dv.setFloat64(0, v, true); this.w32(a, this.dv.getUint32(0, true)); this.w32(a + 4, this.dv.getUint32(4, true)); }
+  /** siderne tilbage til puljen (hukommelsen bruges ikke mere – ønskelisternes dag bygger 18.000 sider à 4 KB hver dag) */
+  release(): void {
+    for (const b of this.pages.values()) if (POOL.length < POOL_MAX) POOL.push(b);
+    this.pages.clear(); this.dir.fill(NOPAGES);
+  }
   /** skriv en række bytes (sporets hex-dump) */
   load(a: number, bytes: ArrayLike<number>): void { for (let i = 0; i < bytes.length; i++) this.w8(a + i, bytes[i]); }
   loadHex(a: number, hex: string): void { for (let i = 0; i + 1 < hex.length; i += 2) this.w8(a + i / 2, parseInt(hex.slice(i, i + 2), 16)); }

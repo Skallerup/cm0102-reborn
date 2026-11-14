@@ -3,180 +3,215 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 import { ROT } from './x86';
 
 const RO_83be3c_1u = [0x0, 0x1, 0x7, 0x2, 0x7, 0x7, 0x7, 0x3, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x4, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x5, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x6, 0x7b, 0xbd, 0x83, 0x0, 0x80, 0xbd, 0x83, 0x0, 0x85, 0xbd, 0x83, 0x0, 0xca, 0xbd, 0x83, 0x0, 0xc5, 0xbd, 0x83, 0x0, 0xcf, 0xbd, 0x83, 0x0, 0xf5, 0xbd, 0x83, 0x0, 0xb, 0xbe, 0x83, 0x0, 0x0, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x1, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x2, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x3, 0x7, 0x7, 0x7, 0x4, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x5, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x6, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90];
 const RO_83be9c_1u = [0x0, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x1, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x2, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x3, 0x7, 0x7, 0x7, 0x4, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x5, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x7, 0x6, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x56, 0x8b, 0x91, 0xdc, 0x0, 0x0, 0x0, 0x57, 0x8b, 0x7c, 0x24, 0xc, 0x6a, 0x0, 0x6a, 0x0, 0x8b, 0x7, 0x8b, 0x4f, 0x73, 0x6a, 0x1, 0x6a, 0x1, 0x8d, 0x34, 0xc0, 0xb8, 0x67, 0x66, 0x66, 0x66, 0x3, 0xf2, 0xf7, 0xe9, 0xc1, 0xfa, 0x2, 0x8b, 0xc2, 0x57, 0xc1, 0xe8, 0x1f, 0x8d, 0x8c, 0x2, 0x94, 0x11, 0x0, 0x0, 0x66, 0x89, 0x4e, 0x5, 0xe8, 0xd2, 0x4a, 0xdc, 0xff, 0x83, 0xc4, 0x14, 0x85, 0xc0, 0x75, 0x42, 0x8b, 0x87, 0xcf, 0x0, 0x0, 0x0, 0x85, 0xc0, 0x74, 0x38, 0x8b, 0x50, 0x69, 0xf, 0xbe, 0x4a, 0x1d, 0xf, 0xbe, 0x50, 0x57, 0xf, 0xbf];
 
-export function f_83bd00(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x83bd00;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x83bd00, 0x83bd0c, 0x83bd12, 0x83bd19, 0x83bd1b, 0x83bd25, 0x83bd34, 0x83bd39, 0x83bd3e, 0x83bd43, 0x83bd48, 0x83bd4d, 0x83bd52, 0x83bd57, 0x83bd5c, 0x83bd6c, 0x83bd7b, 0x83bd80, 0x83bd85, 0x83bd8a, 0x83bd91, 0x83bd93, 0x83bd9a, 0x83bd9c, 0x83bda3, 0x83bda8, 0x83bdad, 0x83bdb2, 0x83bdb9, 0x83bdc0, 0x83bdc5, 0x83bdca, 0x83bdcf, 0x83bdd4, 0x83bddb, 0x83bddd, 0x83bde4, 0x83bde9, 0x83bdf0, 0x83bdf5, 0x83bdfa, 0x83bdff, 0x83be06, 0x83be0b, 0x83be10, 0x83be15]);
+const CH = new Uint8Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2]);
+function f_83bd00_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x83bd00:
+      case 0: // 83bd00
         R.eax = (((R.m.u16(((R.esp + 0x4) | 0) >>> 0)) << 16 >> 16)) | 0; // 83bd00: movsx eax, word ptr [esp + 4]
         R.sub((R.eax >>> 0), 0x140, 32); // 83bd05: cmp eax, 0x140
-        if (!R.cLE) { pc = 0x83bd8a; continue; } // 83bd0a: jg 0x83bd8a
-        pc = 0x83bd0c; continue;
-      case 0x83bd0c:
-        if (R.zf) { pc = 0x83be0b; continue; } // 83bd0c: je 0x83be0b
-        pc = 0x83bd12; continue;
-      case 0x83bd12:
+        if (!R.cLE) { pc = 19; continue; } // 83bd0a: jg 0x83bd8a
+        pc = 1; continue;
+      case 1: // 83bd0c
+        if (R.zf) { pc = 43; continue; } // 83bd0c: je 0x83be0b
+        pc = 2; continue;
+      case 2: // 83bd12
         R.sub((R.eax >>> 0), 0x84, 32); // 83bd12: cmp eax, 0x84
-        if (!R.cLE) { pc = 0x83bd5c; continue; } // 83bd17: jg 0x83bd5c
-        pc = 0x83bd19; continue;
-      case 0x83bd19:
-        if (R.zf) { pc = 0x83bd57; continue; } // 83bd19: je 0x83bd57
-        pc = 0x83bd1b; continue;
-      case 0x83bd1b:
+        if (!R.cLE) { pc = 14; continue; } // 83bd17: jg 0x83bd5c
+        pc = 3; continue;
+      case 3: // 83bd19
+        if (R.zf) { pc = 13; continue; } // 83bd19: je 0x83bd57
+        pc = 4; continue;
+      case 4: // 83bd1b
         R.eax = (R.incdec((R.eax >>> 0), -1, 32)) | 0; // 83bd1b: dec eax
         R.sub((R.eax >>> 0), 0x3f, 32); // 83bd1c: cmp eax, 0x3f
-        if (!R.cBE) { pc = 0x83be0b; continue; } // 83bd1f: ja 0x83be0b
-        pc = 0x83bd25; continue;
-      case 0x83bd25:
+        if (!R.cBE) { pc = 43; continue; } // 83bd1f: ja 0x83be0b
+        pc = 5; continue;
+      case 5: // 83bd25
         R.ecx = (R.logic((R.ecx >>> 0) ^ (R.ecx >>> 0), 32)) | 0; // 83bd25: xor ecx, ecx
         R.ecx = ((R.ecx & 0xffffff00) | (((ROT(RO_83be3c_1u, 0x83be3c, 1, ((R.eax + 0x83be3c) | 0))) & 0xff) << 0)) | 0; // 83bd27: mov cl, byte ptr [eax + 0x83be3c]
-        pc = [0x83bd34, 0x83bd39, 0x83bd3e, 0x83bd43, 0x83bd48, 0x83bd4d, 0x83bd52, 0x83be0b][R.ecx >>> 0]; continue; // 83bd2d: jmp dword ptr [ecx*4 + 0x83be1c]
-      case 0x83bd34:
+        pc = [6, 7, 8, 9, 10, 11, 12, 43][R.ecx >>> 0] ?? -2; continue; // 83bd2d: jmp dword ptr [ecx*4 + 0x83be1c]
+      case 6: // 83bd34
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) ^ ((R.eax >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 83bd34: xor al, al
-        return R.ret(1); // 83bd36: ret 4
-      case 0x83bd39:
+        R.rv = R.ret(1); return -1; // 83bd36: ret 4
+      case 7: // 83bd39
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 83bd39: mov al, 1
-        return R.ret(1); // 83bd3b: ret 4
-      case 0x83bd3e:
+        R.rv = R.ret(1); return -1; // 83bd3b: ret 4
+      case 8: // 83bd3e
         R.eax = ((R.eax & 0xffffff00) | (((0x11) & 0xff) << 0)) | 0; // 83bd3e: mov al, 0x11
-        return R.ret(1); // 83bd40: ret 4
-      case 0x83bd43:
+        R.rv = R.ret(1); return -1; // 83bd40: ret 4
+      case 9: // 83bd43
         R.eax = ((R.eax & 0xffffff00) | (((0x13) & 0xff) << 0)) | 0; // 83bd43: mov al, 0x13
-        return R.ret(1); // 83bd45: ret 4
-      case 0x83bd48:
+        R.rv = R.ret(1); return -1; // 83bd45: ret 4
+      case 10: // 83bd48
         R.eax = ((R.eax & 0xffffff00) | (((0x12) & 0xff) << 0)) | 0; // 83bd48: mov al, 0x12
-        return R.ret(1); // 83bd4a: ret 4
-      case 0x83bd4d:
+        R.rv = R.ret(1); return -1; // 83bd4a: ret 4
+      case 11: // 83bd4d
         R.eax = ((R.eax & 0xffffff00) | (((0x15) & 0xff) << 0)) | 0; // 83bd4d: mov al, 0x15
-        return R.ret(1); // 83bd4f: ret 4
-      case 0x83bd52:
+        R.rv = R.ret(1); return -1; // 83bd4f: ret 4
+      case 12: // 83bd52
         R.eax = ((R.eax & 0xffffff00) | (((0x14) & 0xff) << 0)) | 0; // 83bd52: mov al, 0x14
-        return R.ret(1); // 83bd54: ret 4
-      case 0x83bd57:
+        R.rv = R.ret(1); return -1; // 83bd54: ret 4
+      case 13: // 83bd57
         R.eax = ((R.eax & 0xffffff00) | (((0x2) & 0xff) << 0)) | 0; // 83bd57: mov al, 2
-        return R.ret(1); // 83bd59: ret 4
-      case 0x83bd5c:
+        R.rv = R.ret(1); return -1; // 83bd59: ret 4
+      case 14: // 83bd5c
         R.eax = (R.add((R.eax >>> 0), 0xffffff78, 32)) | 0; // 83bd5c: add eax, 0xffffff78
         R.sub((R.eax >>> 0), 0x98, 32); // 83bd61: cmp eax, 0x98
-        if (!R.cBE) { pc = 0x83be0b; continue; } // 83bd66: ja 0x83be0b
-        pc = 0x83bd6c; continue;
-      case 0x83bd6c:
+        if (!R.cBE) { pc = 43; continue; } // 83bd66: ja 0x83be0b
+        pc = 15; continue;
+      case 15: // 83bd6c
         R.edx = (R.logic((R.edx >>> 0) ^ (R.edx >>> 0), 32)) | 0; // 83bd6c: xor edx, edx
         R.edx = ((R.edx & 0xffffff00) | (((ROT(RO_83be9c_1u, 0x83be9c, 1, ((R.eax + 0x83be9c) | 0))) & 0xff) << 0)) | 0; // 83bd6e: mov dl, byte ptr [eax + 0x83be9c]
-        pc = [0x83bd7b, 0x83bd80, 0x83bd85, 0x83bdca, 0x83bdc5, 0x83bdcf, 0x83bdf5, 0x83be0b][R.edx >>> 0]; continue; // 83bd74: jmp dword ptr [edx*4 + 0x83be7c]
-      case 0x83bd7b:
+        pc = [16, 17, 18, 31, 30, 32, 39, 43][R.edx >>> 0] ?? -2; continue; // 83bd74: jmp dword ptr [edx*4 + 0x83be7c]
+      case 16: // 83bd7b
         R.eax = ((R.eax & 0xffffff00) | (((0x5) & 0xff) << 0)) | 0; // 83bd7b: mov al, 5
-        return R.ret(1); // 83bd7d: ret 4
-      case 0x83bd80:
-        R.eax = ((R.eax & 0xffffff00) | (((0x8) & 0xff) << 0)) | 0; // 83bd80: mov al, 8
-        return R.ret(1); // 83bd82: ret 4
-      case 0x83bd85:
-        R.eax = ((R.eax & 0xffffff00) | (((0xb) & 0xff) << 0)) | 0; // 83bd85: mov al, 0xb
-        return R.ret(1); // 83bd87: ret 4
-      case 0x83bd8a:
-        R.sub((R.eax >>> 0), 0x410, 32); // 83bd8a: cmp eax, 0x410
-        if (!R.cLE) { pc = 0x83bdd4; continue; } // 83bd8f: jg 0x83bdd4
-        pc = 0x83bd91; continue;
-      case 0x83bd91:
-        if (R.zf) { pc = 0x83bdcf; continue; } // 83bd91: je 0x83bdcf
-        pc = 0x83bd93; continue;
-      case 0x83bd93:
-        R.sub((R.eax >>> 0), 0x220, 32); // 83bd93: cmp eax, 0x220
-        if (!R.cLE) { pc = 0x83bdb2; continue; } // 83bd98: jg 0x83bdb2
-        pc = 0x83bd9a; continue;
-      case 0x83bd9a:
-        if (R.zf) { pc = 0x83bdf5; continue; } // 83bd9a: je 0x83bdf5
-        pc = 0x83bd9c; continue;
-      case 0x83bd9c:
-        R.eax = (R.sub((R.eax >>> 0), 0x204, 32)) | 0; // 83bd9c: sub eax, 0x204
-        if (R.zf) { pc = 0x83bdca; continue; } // 83bda1: je 0x83bdca
-        pc = 0x83bda3; continue;
-      case 0x83bda3:
-        R.eax = (R.sub((R.eax >>> 0), 0x4, 32)) | 0; // 83bda3: sub eax, 4
-        if (R.zf) { pc = 0x83bdc5; continue; } // 83bda6: je 0x83bdc5
-        pc = 0x83bda8; continue;
-      case 0x83bda8:
-        R.eax = (R.sub((R.eax >>> 0), 0x8, 32)) | 0; // 83bda8: sub eax, 8
-        if (R.zf) { pc = 0x83bdcf; continue; } // 83bdab: je 0x83bdcf
-        pc = 0x83bdad; continue;
-      case 0x83bdad:
-        R.eax = ((R.eax & 0xffffff00) | (((0xe) & 0xff) << 0)) | 0; // 83bdad: mov al, 0xe
-        return R.ret(1); // 83bdaf: ret 4
-      case 0x83bdb2:
-        R.eax = (R.sub((R.eax >>> 0), 0x240, 32)) | 0; // 83bdb2: sub eax, 0x240
-        if (R.zf) { pc = 0x83be0b; continue; } // 83bdb7: je 0x83be0b
-        pc = 0x83bdb9; continue;
-      case 0x83bdb9:
-        R.eax = (R.sub((R.eax >>> 0), 0x1c4, 32)) | 0; // 83bdb9: sub eax, 0x1c4
-        if (R.zf) { pc = 0x83bdca; continue; } // 83bdbe: je 0x83bdca
-        pc = 0x83bdc0; continue;
-      case 0x83bdc0:
-        R.eax = (R.sub((R.eax >>> 0), 0x4, 32)) | 0; // 83bdc0: sub eax, 4
-        if (!R.zf) { pc = 0x83be0b; continue; } // 83bdc3: jne 0x83be0b
-        pc = 0x83bdc5; continue;
-      case 0x83bdc5:
-        R.eax = ((R.eax & 0xffffff00) | (((0x6) & 0xff) << 0)) | 0; // 83bdc5: mov al, 6
-        return R.ret(1); // 83bdc7: ret 4
-      case 0x83bdca:
-        R.eax = ((R.eax & 0xffffff00) | (((0x4) & 0xff) << 0)) | 0; // 83bdca: mov al, 4
-        return R.ret(1); // 83bdcc: ret 4
-      case 0x83bdcf:
-        R.eax = ((R.eax & 0xffffff00) | (((0x9) & 0xff) << 0)) | 0; // 83bdcf: mov al, 9
-        return R.ret(1); // 83bdd1: ret 4
-      case 0x83bdd4:
-        R.sub((R.eax >>> 0), 0x808, 32); // 83bdd4: cmp eax, 0x808
-        if (!R.cLE) { pc = 0x83bdff; continue; } // 83bdd9: jg 0x83bdff
-        pc = 0x83bddb; continue;
-      case 0x83bddb:
-        if (R.zf) { pc = 0x83bdfa; continue; } // 83bddb: je 0x83bdfa
-        pc = 0x83bddd; continue;
-      case 0x83bddd:
-        R.eax = (R.sub((R.eax >>> 0), 0x420, 32)) | 0; // 83bddd: sub eax, 0x420
-        if (R.zf) { pc = 0x83bdf5; continue; } // 83bde2: je 0x83bdf5
-        pc = 0x83bde4; continue;
-      case 0x83bde4:
-        R.eax = (R.sub((R.eax >>> 0), 0x20, 32)) | 0; // 83bde4: sub eax, 0x20
-        if (R.zf) { pc = 0x83be0b; continue; } // 83bde7: je 0x83be0b
-        pc = 0x83bde9; continue;
-      case 0x83bde9:
-        R.eax = (R.sub((R.eax >>> 0), 0x3c4, 32)) | 0; // 83bde9: sub eax, 0x3c4
-        if (!R.zf) { pc = 0x83be0b; continue; } // 83bdee: jne 0x83be0b
-        pc = 0x83bdf0; continue;
-      case 0x83bdf0:
-        R.eax = ((R.eax & 0xffffff00) | (((0x3) & 0xff) << 0)) | 0; // 83bdf0: mov al, 3
-        return R.ret(1); // 83bdf2: ret 4
-      case 0x83bdf5:
-        R.eax = ((R.eax & 0xffffff00) | (((0xc) & 0xff) << 0)) | 0; // 83bdf5: mov al, 0xc
-        return R.ret(1); // 83bdf7: ret 4
-      case 0x83bdfa:
-        R.eax = ((R.eax & 0xffffff00) | (((0x7) & 0xff) << 0)) | 0; // 83bdfa: mov al, 7
-        return R.ret(1); // 83bdfc: ret 4
-      case 0x83bdff:
-        R.eax = (R.sub((R.eax >>> 0), 0x810, 32)) | 0; // 83bdff: sub eax, 0x810
-        if (R.zf) { pc = 0x83be15; continue; } // 83be04: je 0x83be15
-        pc = 0x83be06; continue;
-      case 0x83be06:
-        R.eax = (R.sub((R.eax >>> 0), 0x10, 32)) | 0; // 83be06: sub eax, 0x10
-        if (R.zf) { pc = 0x83be10; continue; } // 83be09: je 0x83be10
-        pc = 0x83be0b; continue;
-      case 0x83be0b:
-        R.eax = ((R.eax & 0xffffff00) | (((0xe) & 0xff) << 0)) | 0; // 83be0b: mov al, 0xe
-        return R.ret(1); // 83be0d: ret 4
-      case 0x83be10:
-        R.eax = ((R.eax & 0xffffff00) | (((0xd) & 0xff) << 0)) | 0; // 83be10: mov al, 0xd
-        return R.ret(1); // 83be12: ret 4
-      case 0x83be15:
-        R.eax = ((R.eax & 0xffffff00) | (((0xa) & 0xff) << 0)) | 0; // 83be15: mov al, 0xa
-        return R.ret(1); // 83be17: ret 4
-      default: throw new Error(`f_83bd00: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(1); return -1; // 83bd7d: ret 4
+      default: return pc;
     }
   }
 }
+function f_83bd00_1(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 17: // 83bd80
+        R.eax = ((R.eax & 0xffffff00) | (((0x8) & 0xff) << 0)) | 0; // 83bd80: mov al, 8
+        R.rv = R.ret(1); return -1; // 83bd82: ret 4
+      case 18: // 83bd85
+        R.eax = ((R.eax & 0xffffff00) | (((0xb) & 0xff) << 0)) | 0; // 83bd85: mov al, 0xb
+        R.rv = R.ret(1); return -1; // 83bd87: ret 4
+      case 19: // 83bd8a
+        R.sub((R.eax >>> 0), 0x410, 32); // 83bd8a: cmp eax, 0x410
+        if (!R.cLE) { pc = 33; continue; } // 83bd8f: jg 0x83bdd4
+        pc = 20; continue;
+      case 20: // 83bd91
+        if (R.zf) { pc = 32; continue; } // 83bd91: je 0x83bdcf
+        pc = 21; continue;
+      case 21: // 83bd93
+        R.sub((R.eax >>> 0), 0x220, 32); // 83bd93: cmp eax, 0x220
+        if (!R.cLE) { pc = 27; continue; } // 83bd98: jg 0x83bdb2
+        pc = 22; continue;
+      case 22: // 83bd9a
+        if (R.zf) { pc = 39; continue; } // 83bd9a: je 0x83bdf5
+        pc = 23; continue;
+      case 23: // 83bd9c
+        R.eax = (R.sub((R.eax >>> 0), 0x204, 32)) | 0; // 83bd9c: sub eax, 0x204
+        if (R.zf) { pc = 31; continue; } // 83bda1: je 0x83bdca
+        pc = 24; continue;
+      case 24: // 83bda3
+        R.eax = (R.sub((R.eax >>> 0), 0x4, 32)) | 0; // 83bda3: sub eax, 4
+        if (R.zf) { pc = 30; continue; } // 83bda6: je 0x83bdc5
+        pc = 25; continue;
+      case 25: // 83bda8
+        R.eax = (R.sub((R.eax >>> 0), 0x8, 32)) | 0; // 83bda8: sub eax, 8
+        if (R.zf) { pc = 32; continue; } // 83bdab: je 0x83bdcf
+        pc = 26; continue;
+      case 26: // 83bdad
+        R.eax = ((R.eax & 0xffffff00) | (((0xe) & 0xff) << 0)) | 0; // 83bdad: mov al, 0xe
+        R.rv = R.ret(1); return -1; // 83bdaf: ret 4
+      case 27: // 83bdb2
+        R.eax = (R.sub((R.eax >>> 0), 0x240, 32)) | 0; // 83bdb2: sub eax, 0x240
+        if (R.zf) { pc = 43; continue; } // 83bdb7: je 0x83be0b
+        pc = 28; continue;
+      case 28: // 83bdb9
+        R.eax = (R.sub((R.eax >>> 0), 0x1c4, 32)) | 0; // 83bdb9: sub eax, 0x1c4
+        if (R.zf) { pc = 31; continue; } // 83bdbe: je 0x83bdca
+        pc = 29; continue;
+      case 29: // 83bdc0
+        R.eax = (R.sub((R.eax >>> 0), 0x4, 32)) | 0; // 83bdc0: sub eax, 4
+        if (!R.zf) { pc = 43; continue; } // 83bdc3: jne 0x83be0b
+        pc = 30; continue;
+      case 30: // 83bdc5
+        R.eax = ((R.eax & 0xffffff00) | (((0x6) & 0xff) << 0)) | 0; // 83bdc5: mov al, 6
+        R.rv = R.ret(1); return -1; // 83bdc7: ret 4
+      case 31: // 83bdca
+        R.eax = ((R.eax & 0xffffff00) | (((0x4) & 0xff) << 0)) | 0; // 83bdca: mov al, 4
+        R.rv = R.ret(1); return -1; // 83bdcc: ret 4
+      case 32: // 83bdcf
+        R.eax = ((R.eax & 0xffffff00) | (((0x9) & 0xff) << 0)) | 0; // 83bdcf: mov al, 9
+        R.rv = R.ret(1); return -1; // 83bdd1: ret 4
+      case 33: // 83bdd4
+        R.sub((R.eax >>> 0), 0x808, 32); // 83bdd4: cmp eax, 0x808
+        if (!R.cLE) { pc = 41; continue; } // 83bdd9: jg 0x83bdff
+        pc = 34; continue;
+      default: return pc;
+    }
+  }
+}
+function f_83bd00_2(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 34: // 83bddb
+        if (R.zf) { pc = 40; continue; } // 83bddb: je 0x83bdfa
+        pc = 35; continue;
+      case 35: // 83bddd
+        R.eax = (R.sub((R.eax >>> 0), 0x420, 32)) | 0; // 83bddd: sub eax, 0x420
+        if (R.zf) { pc = 39; continue; } // 83bde2: je 0x83bdf5
+        pc = 36; continue;
+      case 36: // 83bde4
+        R.eax = (R.sub((R.eax >>> 0), 0x20, 32)) | 0; // 83bde4: sub eax, 0x20
+        if (R.zf) { pc = 43; continue; } // 83bde7: je 0x83be0b
+        pc = 37; continue;
+      case 37: // 83bde9
+        R.eax = (R.sub((R.eax >>> 0), 0x3c4, 32)) | 0; // 83bde9: sub eax, 0x3c4
+        if (!R.zf) { pc = 43; continue; } // 83bdee: jne 0x83be0b
+        pc = 38; continue;
+      case 38: // 83bdf0
+        R.eax = ((R.eax & 0xffffff00) | (((0x3) & 0xff) << 0)) | 0; // 83bdf0: mov al, 3
+        R.rv = R.ret(1); return -1; // 83bdf2: ret 4
+      case 39: // 83bdf5
+        R.eax = ((R.eax & 0xffffff00) | (((0xc) & 0xff) << 0)) | 0; // 83bdf5: mov al, 0xc
+        R.rv = R.ret(1); return -1; // 83bdf7: ret 4
+      case 40: // 83bdfa
+        R.eax = ((R.eax & 0xffffff00) | (((0x7) & 0xff) << 0)) | 0; // 83bdfa: mov al, 7
+        R.rv = R.ret(1); return -1; // 83bdfc: ret 4
+      case 41: // 83bdff
+        R.eax = (R.sub((R.eax >>> 0), 0x810, 32)) | 0; // 83bdff: sub eax, 0x810
+        if (R.zf) { pc = 45; continue; } // 83be04: je 0x83be15
+        pc = 42; continue;
+      case 42: // 83be06
+        R.eax = (R.sub((R.eax >>> 0), 0x10, 32)) | 0; // 83be06: sub eax, 0x10
+        if (R.zf) { pc = 44; continue; } // 83be09: je 0x83be10
+        pc = 43; continue;
+      case 43: // 83be0b
+        R.eax = ((R.eax & 0xffffff00) | (((0xe) & 0xff) << 0)) | 0; // 83be0b: mov al, 0xe
+        R.rv = R.ret(1); return -1; // 83be0d: ret 4
+      case 44: // 83be10
+        R.eax = ((R.eax & 0xffffff00) | (((0xd) & 0xff) << 0)) | 0; // 83be10: mov al, 0xd
+        R.rv = R.ret(1); return -1; // 83be12: ret 4
+      case 45: // 83be15
+        R.eax = ((R.eax & 0xffffff00) | (((0xa) & 0xff) << 0)) | 0; // 83be15: mov al, 0xa
+        R.rv = R.ret(1); return -1; // 83be17: ret 4
+      default: return pc;
+    }
+  }
+}
+export function f_83bd00(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 46) throw new Error(`f_83bd00: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_83bd00_0(R, pc); break;
+      case 1: np = f_83bd00_1(R, pc); break;
+      case 2: np = f_83bd00_2(R, pc); break;
+      default: throw new Error(`f_83bd00: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_83bd00: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_83bd00.shared = true;

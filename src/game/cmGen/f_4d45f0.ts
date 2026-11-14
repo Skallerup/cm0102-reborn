@@ -3,15 +3,16 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 54a110=0t, 54c5b0=2tc, 54cfb0=7t, 669bd0=3
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_4d45f0(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x4d45f0;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x4d45f0]);
+const CH = new Uint8Array([0]);
+function f_4d45f0_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x4d45f0:
+      case 0: // 4d45f0
         R.push(0xffffffff); // 4d45f0: push -1
         R.push(0x956e40); // 4d45f2: push 0x956e40
         R.eax = (0) | 0; // 4d45f7: mov eax, dword ptr fs:[0]
@@ -39,8 +40,24 @@ export function f_4d45f0(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x10) | 0) >>> 0)) | 0; // 4d4649: mov ecx, dword ptr [esp + 0x10]
         /* fs */ // 4d464d: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x1c, 32)) | 0; // 4d4654: add esp, 0x1c
-        return R.ret(1); // 4d4657: ret 4
-      default: throw new Error(`f_4d45f0: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(1); return -1; // 4d4657: ret 4
+      default: return pc;
     }
   }
 }
+export function f_4d45f0(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 1) throw new Error(`f_4d45f0: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_4d45f0_0(R, pc); break;
+      default: throw new Error(`f_4d45f0: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_4d45f0: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_4d45f0.shared = true;

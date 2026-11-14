@@ -3,28 +3,29 @@
 // Kaldte funktioner (n argumenter, this, kaldte rydder, float): 5e8290=9, 90d130=0, 944c9f=0, 944cff=5t
 /* eslint-disable */
 import type { CmCtx } from '../cmMem';
-import { enter, TRACE } from './x86';
+import { enter, TRACE, type X86 } from './x86';
 
-export function f_8e7810(c: CmCtx, ecx: number, args: number[]): number {
-  const R = enter(c, ecx, args);
-  let pc = 0x8e7810;
+// (delt af scripts/split-cmgen.py)
+const AD = new Int32Array([0x8e7810, 0x8e7821, 0x8e782c, 0x8e7884]);
+const CH = new Uint8Array([0, 0, 0, 1]);
+function f_8e7810_0(R: X86, pc: number): number {
   for (;;) {
-    if (TRACE.on) TRACE.f!(pc, R);
+    if (TRACE.on) TRACE.f!(AD[pc], R);
     switch (pc) {
-      case 0x8e7810:
+      case 0: // 8e7810
         R.edx = (R.m.u32(((R.esp + 0x4) | 0) >>> 0)) | 0; // 8e7810: mov edx, dword ptr [esp + 4]
         R.esp = (R.sub((R.esp >>> 0), 0x200, 32)) | 0; // 8e7814: sub esp, 0x200
         R.push((R.ebx >>> 0)); // 8e781a: push ebx
         R.ebx = (R.logic((R.ebx >>> 0) ^ (R.ebx >>> 0), 32)) | 0; // 8e781b: xor ebx, ebx
         R.sub((R.edx >>> 0), (R.ebx >>> 0), 32); // 8e781d: cmp edx, ebx
-        if (R.zf) { pc = 0x8e7884; continue; } // 8e781f: je 0x8e7884
-        pc = 0x8e7821; continue;
-      case 0x8e7821:
+        if (R.zf) { pc = 3; continue; } // 8e781f: je 0x8e7884
+        pc = 1; continue;
+      case 1: // 8e7821
         R.eax = (R.m.u32(((R.esp + 0x20c) | 0) >>> 0)) | 0; // 8e7821: mov eax, dword ptr [esp + 0x20c]
         R.sub((R.eax >>> 0), (R.ebx >>> 0), 32); // 8e7828: cmp eax, ebx
-        if (R.zf) { pc = 0x8e7884; continue; } // 8e782a: je 0x8e7884
-        pc = 0x8e782c; continue;
-      case 0x8e782c:
+        if (R.zf) { pc = 3; continue; } // 8e782a: je 0x8e7884
+        pc = 2; continue;
+      case 2: // 8e782c
         R.m.w8(((R.ecx + 0x2d) | 0) >>> 0, ((R.ebx >>> 0) & 0xff)); // 8e782c: mov byte ptr [ecx + 0x2d], bl
         R.m.w32(((R.ecx) | 0) >>> 0, (R.ebx >>> 0)); // 8e782f: mov dword ptr [ecx], ebx
         R.m.w8(((R.ecx + 0x11) | 0) >>> 0, 0xb); // 8e7831: mov byte ptr [ecx + 0x11], 0xb
@@ -54,8 +55,16 @@ export function f_8e7810(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w8(((R.ecx + 0x30) | 0) >>> 0, ((R.eax >>> 0) & 0xff)); // 8e7877: mov byte ptr [ecx + 0x30], al
         R.ebx = (R.pop()) | 0; // 8e787a: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8e787b: add esp, 0x200
-        return R.ret(2); // 8e7881: ret 8
-      case 0x8e7884:
+        R.rv = R.ret(2); return -1; // 8e7881: ret 8
+      default: return pc;
+    }
+  }
+}
+function f_8e7810_1(R: X86, pc: number): number {
+  for (;;) {
+    if (TRACE.on) TRACE.f!(AD[pc], R);
+    switch (pc) {
+      case 3: // 8e7884
         R.eax = (((R.esp + 0x4) | 0)) | 0; // 8e7884: lea eax, [esp + 4]
         R.ecx = (((R.esp + 0x104) | 0)) | 0; // 8e7888: lea ecx, [esp + 0x104]
         R.push((R.eax >>> 0)); // 8e788f: push eax
@@ -83,8 +92,25 @@ export function f_8e7810(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, (R.ebx >>> 0)); // 8e78da: mov dword ptr [0xb67a34], ebx
         R.ebx = (R.pop()) | 0; // 8e78e0: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8e78e1: add esp, 0x200
-        return R.ret(2); // 8e78e7: ret 8
-      default: throw new Error(`f_8e7810: ukendt adresse ${pc.toString(16)}`);
+        R.rv = R.ret(2); return -1; // 8e78e7: ret 8
+      default: return pc;
     }
   }
 }
+export function f_8e7810(c: CmCtx, ecx: number, args: number[]): number {
+  const R = enter(c, ecx, args);
+  let pc = 0;
+  for (;;) {
+    let np: number;
+    if (pc < 0 || pc >= 4) throw new Error(`f_8e7810: ukendt adresse (spring nr. ${pc})`);
+    switch (CH[pc]) {
+      case 0: np = f_8e7810_0(R, pc); break;
+      case 1: np = f_8e7810_1(R, pc); break;
+      default: throw new Error(`f_8e7810: ukendt stykke`);
+    }
+    if (np === -1) return R.rv;
+    if (CH[np] === CH[pc]) throw new Error(`f_8e7810: ukendt adresse ${AD[np].toString(16)}`);
+    pc = np;
+  }
+}
+f_8e7810.shared = true;

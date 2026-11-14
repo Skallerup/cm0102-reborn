@@ -24,6 +24,9 @@ export const PC_HOOK: Record<number, ((R: X86) => number) | undefined> = {};
 export const TRACE: { on: boolean; f?: (pc: number, R: X86) => void } = { on: false };
 export const STACK_TOP = 0x003f8000;
 let top = STACK_TOP;
+/** f(R) med nye processortilstandes stak (enter uden delt tilstand) under R's stak – til håndindsatte genveje (PC_HOOK), der kalder oversatte
+ *  funktioner midt i en oversat funktion (ellers lægges deres stak ved `top`, oven i den kørende funktions ramme) */
+export function stackBelow<T>(R: X86, f: (R: X86) => T): T { const saved = top; top = (R.esp - 0x40) | 0; try { return f(R); } finally { top = saved; } }
 /** kør en oversat funktion på en given processortilstand (skyggeverdenen: oraklets registre og stak – returadressen ligger ved esp) */
 export function runOn(R: X86, f: Impl): void { PENDING = R; R.retN = 0; const saved = top; top = (R.esp - 4) | 0; try { f(R.c, R.ecx, []); } finally { PENDING = null; top = saved; } }
 
@@ -60,6 +63,8 @@ export class X86 {
   c: CmCtx; m: CmMem;
   /** ret N i den senest returnerede oversatte funktion (antal argumentord, den kaldte fjerner) */
   retN = 0;
+  /** returværdien fra en delt funktions stykke (scripts/split-cmgen.py) */
+  rv = 0;
   constructor(c: CmCtx, m: CmMem) { this.c = c; this.m = m; }
   /** ret [N] i en oversat funktion: N noteres til kalderen (delt kald), returværdien er eax (eller ST(0) for float-funktioner) */
   ret(n: number, fl = false): number { this.retN = n; return fl ? this.st[0] : this.eax; }
@@ -119,8 +124,22 @@ export class X86 {
   push(v: number): void { this.esp = (this.esp - 4) | 0; this.m.w32(this.esp >>> 0, v); }
   pop(): number { const v = this.m.u32(this.esp >>> 0); this.esp = (this.esp + 4) | 0; return v | 0; }
   // ------------------------------------------------ x87
-  fpush(v: number): void { if (this.st.length >= 8) throw new Error('x87-stakken over 8'); this.st.unshift(v); }
-  fpop(): number { return this.st.shift()!; }
+  // (uden unshift/shift – de flytter hele arrayet og er langsomme i V8; samme indhold)
+  fpush(v: number): void {
+    const st = this.st, n = st.length;
+    if (n >= 8) throw new Error('x87-stakken over 8');
+    st.push(0);
+    for (let i = n; i > 0; i--) st[i] = st[i - 1];
+    st[0] = v;
+  }
+  fpop(): number {
+    const st = this.st, n = st.length;
+    if (!n) return undefined as unknown as number;
+    const v = st[0];
+    for (let i = 1; i < n; i++) st[i - 1] = st[i];
+    st.pop();
+    return v;
+  }
   fcom(a: number, b: number): void {
     if (Number.isNaN(a) || Number.isNaN(b)) { this.c0 = this.c2 = this.c3 = true; return; }
     this.c2 = false; this.c0 = a < b; this.c3 = a === b;
