@@ -43,6 +43,8 @@ const NOARGS: number[] = [];
 export const SHARED = { on: false };
 /** en porteret funktion melder sig (de oversatte funktioner kalder den i stedet for c.call); gen = mekanisk oversat (delt tilstand) */
 /** den registrerede funktion på adressen (til omslag i skyggen) */
+/** den registrerede funktion på adressen eller undefined */
+export function implGet(adr: number): Impl | undefined { return IMPL.get(adr); }
 export function implOf(adr: number): Impl { const f = IMPL.get(adr); if (!f) throw new Error(`implOf: 0x${adr.toString(16)}`); return f; }
 export function registerImpl(adr: number, f: Impl, gen = false): void { IMPL.set(adr, f); if (gen) { GENSET.add(adr); GENF.set(adr, f); } else { GENSET.delete(adr); GENF.delete(adr); } }
 /** falsk returadresse, som de delte kald skubber (kun til fejlsøgning) */
@@ -269,6 +271,40 @@ export const QSORT_CMP: Record<number, (m: CmMem, a: number, b: number) => numbe
   // 0x83b6c0 pladserne efter indekset +0x23 (aldrig 0)
   0x83b6c0: (m, a, b) => { const d = s8(m.u8(a + 0x23)) - s8(m.u8(b + 0x23)); return d !== 0 ? d : 1; },
 };
+/** (hastighed, 14/11) qsort-sammenligninger for poster à 8 bytes (to int32: a0, a1 / b0, b1) – samme svar som QSORT_CMP på posterne.
+ *  `strict` = sammenligningen er en streng leksikografisk orden for posterne (fx ingen −1-jokertegn) */
+export const QSORT_CMP8: Record<number, { cmp: (a0: number, a1: number, b0: number, b1: number) => number; strict: (x0: number, x1: number) => boolean }> = {};
+export const QSORT_STATS = { fast: 0, slow: 0 };
+/** qsort af 8-bytes-poster: er posterne 0..n−2 strengt sorterede (og alle uden jokertegn), er den sorterede rækkefølge entydig – den sidste
+ *  post sættes ind ved binær søgning (8423f0 tilføjer ét par og sorterer). Ellers MSVC-qsort'en med de samme sammenligninger på tallene. */
+function qsort8(m: CmMem, base: number, n: number, vc: (typeof QSORT_CMP8)[number]): void {
+  const A0 = new Int32Array(n), A1 = new Int32Array(n);
+  for (let i = 0; i < n; i++) { A0[i] = m.s32(base + 8 * i); A1[i] = m.s32(base + 8 * i + 4); }
+  let ok = true;
+  for (let i = 0; i < n && ok; i++) if (!vc.strict(A0[i], A1[i])) ok = false;
+  for (let i = 0; i + 2 < n && ok; i++) if (vc.cmp(A0[i], A1[i], A0[i + 1], A1[i + 1]) >= 0) ok = false;
+  if (ok) {
+    const x0 = A0[n - 1], x1 = A1[n - 1];
+    let lo = 0, hi = n - 2;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1, d = vc.cmp(A0[mid], A1[mid], x0, x1);
+      if (d === 0) { ok = false; break; }
+      if (d < 0) lo = mid + 1; else hi = mid - 1;
+    }
+    if (ok) {
+      QSORT_STATS.fast++;
+      if (lo === n - 1) return;
+      for (let i = n - 1; i > lo; i--) { m.w32(base + 8 * i, A0[i - 1]); m.w32(base + 8 * i + 4, A1[i - 1]); }
+      m.w32(base + 8 * lo, x0); m.w32(base + 8 * lo + 4, x1);
+      return;
+    }
+  }
+  QSORT_STATS.slow++;
+  const ix: number[] = [];
+  for (let i = 0; i < n; i++) ix.push(i);
+  msvcSort(ix, (x, y) => vc.cmp(A0[x], A1[x], A0[y], A1[y]));
+  for (let i = 0; i < n; i++) { m.w32(base + 8 * i, A0[ix[i]]); m.w32(base + 8 * i + 4, A1[ix[i]]); }
+}
 const arg = (R: X86, i: number) => R.m.u32((R.esp + 4 * i) >>> 0);
 const CRT: Record<number, (R: X86) => void> = {
   // operator new / malloc
@@ -292,6 +328,8 @@ const CRT: Record<number, (R: X86) => void> = {
     const cmp = QSORT_CMP[cmpA];
     if (!cmp) throw new Error(`qsort: sammenligningen 0x${cmpA.toString(16)} er ikke porteret`);
     if (n < 2) return;
+    const vc = w === 8 && QSORT_CMP8[cmpA];
+    if (vc) { qsort8(m, base >>> 0, n, vc); return; }
     const recs: Uint8Array[] = [];
     for (let i = 0; i < n; i++) { const r = new Uint8Array(w); for (let k = 0; k < w; k++) r[k] = m.u8(base + i * w + k); recs.push(r); }
     // sammenligningen læser posterne i hukommelsen: to skrabeposter
@@ -319,6 +357,8 @@ const CRT: Record<number, (R: X86) => void> = {
 let msvcSort: (a: number[], comp: (x: number, y: number) => number) => void = () => { throw new Error('qsort: msvcSort ikke sat'); };
 let crtPowX: (x: number, y: number) => number = Math.pow;
 export function setCrt(sort: typeof msvcSort, pow: typeof crtPowX): void { msvcSort = sort; crtPowX = pow; }
+/** _CIpow 0x945ff0 som de oversatte kalder den (x = ST(1), y = ST(0)) */
+export const crtPow = (x: number, y: number) => crtPowX(x, y);
 
 const mask = (v: number, bits: number) => (bits === 32 ? v >>> 0 : bits === 16 ? v & 0xffff : v & 0xff);
 const maxU = (bits: number) => (bits === 32 ? 0xffffffff : bits === 16 ? 0xffff : 0xff);

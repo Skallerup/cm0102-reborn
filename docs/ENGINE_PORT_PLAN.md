@@ -240,6 +240,26 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   cm-sl-bench 60 dage ens): planValue's svar (0x6e6340-adapteren) gemt pr. (staff, maske, flag, klub, tærskel, kontraktens bytes, listet) fra
   buildSlMem til finishSl (`S.pv`, `CM_SL_PVMEMO=0`) – ~4 %. Prøvet og fjernet: halespring i frasorteringen (rj(9) rammer kun ~450 kandidater pr. dag).
   ≤ 300 ms kræver, at 0x83f3a0's vurderingsløkke 0x8400da–0x840a81 og 0x840d80 porteres til TS, eller færre genudfyldninger (dropDeadBids).
+- **Hastighed, runde 10 (14/11, stadig slået fra – ≤ 0,3 s er ikke nået):** hel sæson (`CM_SL=1 scripts/ct-season-game.ts`, esbuild-bundt,
+  belastning ~2, kørt lige efter hinanden): **721 → 583 ms pr. dag** (351 dage); 30 dage (cm-sl-bench) 986 → 837 ms under samme (højere)
+  belastning. **Bit for bit:** cm-sl-bench 30 dage (sha1 hver dag) ens med origin/staging's, hele sæsonens tal ens med de gamle veje
+  (`CM_SL_840TS=0 CM_SL_QSORT8=0`: 431 køb/£133,5 mio./176 klubløse/150 lejeaftaler/10.433 bud begge), cm-sl-stalecheck 15 dage 0 afvigende
+  læsninger, tests/cmShortlist + cmAiBid grønne. Gjort: (1) **0x840d80 value_player_for_club håndporteret** (`src/game/cmSlEval.ts`
+  `value_840d80`, registreret for de oversatte kaldere): samme kald i samme rækkefølge, doubles som x87 med 53 bit, _ftol, _CIpow = crtPow(ST1,
+  ST0); 0x544410/0x53d980 fra cmValue.ts (rigtige i 840d80, når de kaldes med argumenterne – runde 6's afvigelse var kaldkonventionen);
+  menneskets klub og en manager uden ikke-spillerpost (rand 0x840dd2) kører de oversatte. Kontrol `CM_SL_840CHECK=1` (hvert kald begge veje):
+  1,55 mio. kald, 0 afvigende. Fundet undervejs: 0x841e16's magiske tal 0x10624dd3 med `sar 5` er /500 (ikke /1000). (2) **qsort af parrene**
+  (8423f0 tilføjer ét par og sorterer begge lister): `qsort8` i x86.ts – er listen strengt sorteret uden −1, er rækkefølgen entydig, og parret
+  sættes ind ved binær søgning (ellers MSVC-qsort'en på tallene i stedet for bytekopier); `CM_SL_QSORT8=0` slår det fra.
+  **Tællinger** (`scripts/cm-sl-counts.ts`, første 20 dage): ~255.000 kandidater pr. dag i frasorteringen, ~46.000 vurderinger 0x840d80
+  (planValue 46.000 kald, 87 % nye – nøglen uden tærsklen ville kun give 24 % genbrug), ~90–190 genudfyldninger efter afviste bud.
+  **Genudfyldningerne er allerede som originalens:** 0x843e10(staff, klub, 1, flag) genudfylder kun de pladser, hvor +0xf = den afviste
+  spiller (flag vælger rolle 0xb eller ej), og 0x83f3a0 kalder kun sig selv igen (lejeforsøget +0x24 |= 1, 0x840d46), når ingen kandidat
+  fandtes – der er ikke færre pladser at nøjes med; antallet følger antallet af afslag (~10.400 bud på sæsonen). **Tilbage pr. dag** (profil,
+  30 dage): dropDeadBids → 0x843e10 → 0x83f3a0 ~51 % (heraf 0x840d80 ~200 ms, mest planValue/0x6e6340 ~145 ms; frasorteringen ~115 ms,
+  0x4d1600 ~80 ms), 0x84a020 ~140 ms, hukommelsen ~145 ms, cmAiAiDue ~60 ms. **Ikke porteret:** vurderingsløkken 0x8400da–0x840a81 – dens egne
+  instruktioner er kun ~27 ms pr. dag (de kaldte 0x4d1600 ~37 ms og 0x846920 ~14 ms); en port sparer under 10 %. ≤ 0,3 s kræver, at
+  planScore (0x6e6340) og frasorteringen bliver ~3× billigere eller færre vurderinger pr. genudfyldning (originalens kandidatliste er den samme).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

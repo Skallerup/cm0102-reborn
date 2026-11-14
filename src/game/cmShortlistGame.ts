@@ -33,9 +33,10 @@ import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50,
 import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
-import { registerImpl, enter, QSORT_CMP, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
+import { registerImpl, enter, QSORT_CMP, QSORT_CMP8, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
 import { GEN } from './cmGen/index';
 import { humanClub_600a50 } from './cmWageGame';
+import { contractFlag_5445x0, value_840d80_impl } from './cmSlEval';
 import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
@@ -65,7 +66,7 @@ const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
 /** Ønskelisterne er SLÅET FRA i spillet (14/11-2026): de finder mål som originalen (spilstarten 300 mål i 172 klubber mod originalens 258 i
  *  137 – scripts/cm-shortlist.ts / cm-shortlist-orig.ts; udbudsprisen 0x4d1600 median 1,00 × originalens), men en hel sæson koster ~0,49 s pr.
  *  dag (målet er ≤ 0,3 s; de første 45 dage ~0,3 s – scripts/cm-sl-bench.ts, scripts/ct-season-game.ts; runde 5: trupplanernes 0x83b6e0 →
- *  0x83f3a0 er ~0,2 s pr. dag i sæsonen) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
+ *  0x83f3a0 er ~0,2 s pr. dag i sæsonen; runde 10 med databasestørrelsen Maximum: 0,58 s pr. dag over en sæson) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
 export const SL_ON = { on: ENV.CM_SL === '1' };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
 export const cmShortlistOn = (g: GameState) => SL_ON.on && cmActive(g) && !g.draft;
@@ -510,10 +511,13 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
   const k = contractForClub_4cf5f0(S.c, st, clubAdr);
   const key = (p.listed ? "L" : "") + (k ? `${st}|${mask}|${flags}|${clubAdr}|${thr}|${k}|${m.u32(k + 0x3d)}|${m.u32(k + 0x41)}|${m.u32(k + 0x45)}|${m.u8(k + 0x4f)}` : `${st}|${mask}|${flags}|${clubAdr}|${thr}`);
   let v = pv.get(key);
-  if (v === undefined) { v = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub); pv.set(key, v); }
+  PV_STATS.n++;
+  if (v === undefined) { PV_STATS.miss++; v = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub); pv.set(key, v); }
   return v;
 }
 const PVMEMO = ENV.CM_SL_PVMEMO !== '0';
+/** målinger: planValue-kald og nye svar */
+export const PV_STATS = { n: 0, miss: 0 };
 function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, p: Player, cid: number, club: GameState['clubs'][number] | undefined, pClub: number): number {
   const { g, m } = S;
   const fit = cmFitRead(g);
@@ -629,22 +633,6 @@ function fastRejectLoop(R: X86): number {
 /** (hastighed, 14/11) frasorteringens kald i TS i stedet for de oversatte instruktioner (CM_SL_FRPORT=0: de oversatte): 0x53d980/0x5407e0 fra
  *  cmValue.ts, 0x544520/0x544590 og 0x84b180 her – kontrol: cm-sl-bench.ts mod CM_SL_FRPORT=0 */
 const FRPORT = ENV.CM_SL_FRPORT !== '0';
-/** 0x544520 / 0x544590 (staff, klub): kontrakten med klubben (uden klub: hans egen kontrakts klub – [0xae1080] = kontrakten; klubben regnes
- *  som [0xae23b4] + 0x245 · id – 0x544551–0x544559; før 580 · id, en fejl i porten) har +0x4e & mask (9 hhv. 2) */
-function contractFlag_5445x0(c: CmCtx, st: number, club: number, mask: number): number {
-  const m = c.m;
-  if (!st) return 0;
-  let cl = club >>> 0;
-  if (!cl) {
-    const k = getContract(m, st);
-    m.w32(0xae1080, k);
-    if (!k) return 0;
-    cl = (m.u32(G.CLUBS) + 0x245 * m.s32(k + 4)) >>> 0;
-    if (!cl) return 0;
-  }
-  const k2 = contractForClub_4cf5f0(c, st, cl);
-  return k2 && m.u8(k2 + 0x4e) & mask ? 1 : 0;
-}
 /** 0x84b180 (staff, hans klub, klub): må han spille i klubben – britisk klub (+0x76 = 0xe) og ikke landets/EU-borger (0x53d740, oversat) uden
  *  +0x24/+0x22: 0; ellers 0x8c7950 (arbejdstilladelsen – adapteren). Kun al bruges. */
 function permitOk_84b180(c: CmCtx, st: number, club: number): number {
@@ -818,6 +806,12 @@ function ensureCmp(): void {
     return a0 === -1 || b0 === -1 ? 0 : (a0 - b0) | 0;
   };
   QSORT_CMP[0x757ea0] = byP; QSORT_CMP[0x844740] = byC;
+  // (hastighed) de samme to på tallene – qsort8 (x86.ts): uden −1 er de strenge leksikografiske ordener (spiller, klub) / (klub, spiller)
+  if (ENV.CM_SL_QSORT8 !== '0') {
+    const strict = (x0: number, x1: number) => x0 !== -1 && x1 !== -1;
+    QSORT_CMP8[0x757ea0] = { strict, cmp: (a0, a1, b0, b1) => (a0 !== b0 ? (a0 - b0) | 0 : a1 === -1 || b1 === -1 ? 0 : (a1 - b1) | 0) };
+    QSORT_CMP8[0x844740] = { strict, cmp: (a0, a1, b0, b1) => (a1 !== b1 ? (a1 - b1) | 0 : a0 === -1 || b0 === -1 ? 0 : (a0 - b0) | 0) };
+  }
   if (ENV.CM_SL_FAST !== '0') PC_HOOK[0x83fa25] = fastReject;
   // kun oversættelser med ret N (R.ret – de nyere); de ældre (runde 2) kaldes som før med egne registre
   for (const [a, f] of Object.entries(GEN)) if (!ADAPTED.has(+a) && ((f as { shared?: boolean }).shared ?? f.toString().includes('R.ret('))) registerImpl(+a, f, true);
@@ -838,6 +832,8 @@ function ensureCmp(): void {
     reg(0x544520, (c, m, sp) => contractFlag_5445x0(c, m.u32(sp + 4), m.u32(sp + 8), 9));
     reg(0x544590, (c, m, sp) => contractFlag_5445x0(c, m.u32(sp + 4), m.u32(sp + 8), 2));
   }
+  // (hastighed, runde 10) 0x840d80 håndporteret (cmSlEval.ts – CM_SL_840TS=0: de oversatte; CM_SL_840CHECK=1: begge, sammenlignet)
+  registerImpl(0x840d80, (c, e, a) => value_840d80_impl(c, e, a, enter), true);
   registerImpl(0x757ea0, (c, _e, a) => byP(c.m, a[0] >>> 0, a[1] >>> 0));
   registerImpl(0x844740, (c, _e, a) => byC(c.m, a[0] >>> 0, a[1] >>> 0));
 }
