@@ -73,14 +73,15 @@ if (look === 'klassisk') {
   await page.locator('[data-field=new]').click();
   await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
   if (!(await page.locator(`.cxs-lrow.lg-sel[data-nation="${found.nation}"]`).count())) await page.locator(`.cxs-lrow[data-nation="${found.nation}"]`).click();
-  await page.locator('.cxs-next').click();
+  await page.locator('.cx-foot .cx-next').click();
+  if (await page.locator('[data-season]').first().waitFor({ timeout: 3000 }).then(() => true).catch(() => false)) await page.locator('.cx-foot .cx-next').click();
   await page.waitForSelector('[data-name=first]', { timeout: 20000 });
   await page.fill('[data-name=first]', 'Soak'); await page.fill('[data-name=second]', 'Tester');
-  await page.locator('.cxs-next').click(); await page.waitForSelector('[data-nat]');
-  await page.locator('.cxs-next').click(); await page.waitForSelector('[data-club]');
+  await page.locator('.cx-foot .cx-next').click(); await page.waitForSelector('[data-nat]');
+  await page.locator('.cx-foot .cx-next').click(); await page.waitForSelector('[data-club]', { timeout: 120000 });
   await page.locator(`[data-club="${found.short}"]`).click();
-  await page.locator('[data-take]').click();
-  await page.locator('.cxs-next').click();
+  await page.locator('[data-take]').click(); await page.waitForSelector('[data-confirm]');
+  await page.locator('.cx-foot .cx-next').click();
 } else {
   await page.getByRole('button', { name: await t('start.new') }).first().click();
   await page.waitForFunction(() => !!window.__cmPick && !!window.__cmClubId, null, { timeout: 60000 });
