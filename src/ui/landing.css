@@ -318,50 +318,53 @@
 .lp-newsband-tag { font-weight: 900; letter-spacing: 0.16em; font-size: 13px; padding: 6px 12px; border-radius: 8px; background: #58e08c; color: #04210f; }
 .lp-newsband-free { font-weight: 800; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid rgba(88, 224, 140, 0.6); color: #8cf0b3; white-space: nowrap; }
 
-/* ---------- Nostalgisk forside: CM 01/02's egen stil (blå skrivebord, røde titelbjælker, affasede knapper, CRT-skærm) ---------- */
-.lp.lp-retro { --accent: #ffe14a; --accent2: #6fe3ff; --muted: #c9d0f0; --faint: #9aa4d6; --line: rgba(130, 150, 255, 0.35); --line2: rgba(130, 150, 255, 0.5);
-  font-family: 'Saira Semi Condensed', Tahoma, Verdana, 'Segoe UI', sans-serif; color: #fff;
-  background: linear-gradient(rgba(5, 8, 50, 0.72), rgba(5, 8, 40, 0.88)), url('/original-bg/257458.webp') center top / cover fixed, #0a1050; }
-.lp-retro .lp-aurora { display: none; }
-.lp-retro button, .lp-retro input, .lp-retro select, .lp-retro textarea { font-family: inherit; }
-.lp-retro .lp-nav.solid, .lp-retro .lp-nav { background: linear-gradient(180deg, #14208f, #0a1060); backdrop-filter: none; border-bottom: 2px solid; border-color: var(--cx-btn-hi, #5266e0) #050a3c #050a3c; }
-.lp-retro .lp-links a { color: #ffe14a; font-weight: 700; }
-.lp-retro .lp-links a:hover { color: #fff; }
-.lp-retro .lp-brand span { color: #ffe14a; }
-.lp-retro .lp-hero { padding-top: 32px; }
-.lp-retro h1 { font-weight: 900; text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.6), 1px 1px 0 rgba(0, 0, 0, 0.6), 2px 3px 4px rgba(0, 0, 0, 0.5); }
-.lp-retro .lp-grad { background: none; -webkit-text-fill-color: #ffe14a; color: #ffe14a; animation: none; }
-.lp-retro h2 { padding: 10px 16px; font-size: clamp(22px, 3vw, 32px); font-weight: 900; color: #fff; background: linear-gradient(#ee3827, #d8241a); border: 2px solid; border-color: rgba(255, 255, 255, 0.55) rgba(0, 0, 0, 0.55) rgba(0, 0, 0, 0.55) rgba(255, 255, 255, 0.55); text-shadow: -1px -1px 0 rgba(0, 0, 0, 0.55), 1px 1px 0 rgba(0, 0, 0, 0.55), 2px 3px 3px rgba(0, 0, 0, 0.45); letter-spacing: 0; }
-.lp-retro .lp-final h2 { background: linear-gradient(#ee3827, #d8241a); }
-.lp-retro .lp-sub, .lp-retro .lp-lead { color: #6fe3ff; }
-.lp-retro .lp-kicker, .lp-retro .lp-news-ver { color: #ffe14a; }
-.lp-retro .lp-pill { border-radius: 0; background: #000060; border: 2px solid #1818a6; color: #ffe14a; }
-.lp-retro .lp-card, .lp-retro .lp-stat, .lp-retro .lp-step, .lp-retro .lp-news-entry, .lp-retro .lp-faq details, .lp-retro .lp-rank-board, .lp-retro .lp-join-box, .lp-retro .lp-promo, .lp-retro .lp-beta-box {
-  border-radius: 0; background: rgba(0, 0, 0, 0.58); border: 2px solid #1818a6; box-shadow: none; backdrop-filter: none; }
-.lp-retro .lp-card p, .lp-retro .lp-step p, .lp-retro .lp-news-entry li, .lp-retro .lp-faq details p { color: #e1e5fa; }
-.lp-retro .lp-stat b { background: none; -webkit-text-fill-color: #ffe14a; color: #ffe14a; }
-.lp-retro .lp-step span { border-radius: 0; background: #000060; color: #ffe14a; border: 2px solid #1818a6; }
-.lp-retro .lp-ticker { background: #000060; border-block: 2px solid #1818a6; mask-image: none; -webkit-mask-image: none; }
-.lp-retro .lp-ticker span { color: #ffe14a; font-family: inherit; }
-/* knapper: originalens affasede stil */
-.lp-retro .lp-cta, .lp-retro .lp-cta:hover, .lp-retro .lp-cta:hover:not(:disabled) { border-radius: 0; background: #121a80; color: #ffe14a; font-weight: 900; box-shadow: none; transform: none; border: 2px solid; border-color: #5266e0 #050a3c #050a3c #5266e0; text-shadow: 1px 1px 2px #000; }
-.lp-retro .lp-cta:hover, .lp-retro .lp-cta:hover:not(:disabled) { background: #1c27a2; color: #fff; }
-.lp-retro .lp-cta.big { padding: 18px 40px; font-size: 24px; animation: none; border-width: 3px; }
-.lp-retro .lp-ghost, .lp-retro .lp-ghost:hover:not(:disabled) { border-radius: 0; background: linear-gradient(180deg, #a5a9b3, #7a7f89); border: 2px solid; border-color: #e6e8ee #3e424b #3e424b #e6e8ee; color: #fff; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6); }
-.lp-retro .lp-beta-tag, .lp-retro .lp-newsband-tag { border-radius: 0; background: #ffe14a; color: #000060; }
-.lp-retro .lp-newsband { border-radius: 0; border: 2px solid #ffe14a; background: rgba(0, 0, 40, 0.7); }
-.lp-retro .lp-newsband p { color: #e1e5fa; }
-.lp-retro .lp-newsband b { color: #ffe14a; }
-.lp-retro .lp-newsband-free { border-radius: 0; border: 2px solid #1818a6; background: #000060; color: #ffe14a; }
-/* skærmbillederne i en gammel CRT-skærm med scanlinjer */
-.lp-retro .lp-frame { border-radius: 16px; background: #05060f; border: 14px solid #cfc8b4; border-color: #ddd6c2 #a9a290 #928c7b #bdb6a2; box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.85), inset 0 0 0 3px #3a372d, inset 0 0 40px rgba(0, 0, 0, 0.6); position: relative; }
+/* ---------- Moderne forside med CM 01/02-krydderi: nordlys og glas som grundlag; originalens røde titelbjælke, CRT-skærm og blå/gul/rød som accenter ---------- */
+.lp.lp-retro { --cm-blue: #2a3cff; --cm-blue2: #1818a6; --cm-red: #e8301f; --cm-yellow: #ffe14a; --accent: #ffe14a; --accent2: #7fd8ff;
+  background: radial-gradient(1200px 700px at 12% -8%, rgba(42, 60, 255, 0.22), transparent 60%), radial-gradient(900px 600px at 100% 30%, rgba(232, 48, 31, 0.10), transparent 60%), var(--bg); }
+.lp-retro .lp-aurora i:nth-child(1) { background: #2a3cff; opacity: 0.22; }
+.lp-retro .lp-aurora i:nth-child(2) { background: #e8301f; opacity: 0.10; }
+.lp-retro .lp-aurora i:nth-child(3) { background: #ffe14a; opacity: 0.09; }
+.lp-retro .lp-grad { background-image: linear-gradient(100deg, #ffe14a 0%, #fff4b0 35%, #7fd8ff 70%, #ffe14a 100%); background-size: 220% auto; }
+/* røde titelbjælker som accent: sektionsoverskrifter får en affaset rød streg, kickers bliver små røde titelbjælker */
+.lp-retro h2::after { content: ''; display: block; width: 72px; height: 6px; margin: 16px auto 0; border-radius: 2px; background: linear-gradient(#f4503d, #cc2214); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -1px 0 rgba(0, 0, 0, 0.4), 0 6px 18px -4px rgba(232, 48, 31, 0.7); }
+.lp-retro .lp-join-text h2::after, .lp-retro .lp-rank-text h2::after, .lp-retro .lp-promo h2::after { margin-left: 0; }
+.lp-retro .lp-kicker { padding: 4px 12px; border-radius: 6px; color: #fff; letter-spacing: 0.12em; background: linear-gradient(#f4503d, #cc2214); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 0 rgba(0, 0, 0, 0.35), 0 8px 20px -8px rgba(232, 48, 31, 0.8); text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5); }
+.lp-retro .lp-final h2::after { margin-bottom: 4px; }
+.lp-retro .lp-pill { color: var(--cm-yellow); background: rgba(42, 60, 255, 0.16); border-color: rgba(127, 150, 255, 0.4); }
+/* kort: rød titelstribe øverst + blåligt glas */
+.lp-retro .lp-card, .lp-retro .lp-step, .lp-retro .lp-news-entry, .lp-retro .lp-stat { background: linear-gradient(180deg, rgba(26, 38, 110, 0.55), rgba(12, 18, 52, 0.55)); border-color: rgba(127, 150, 255, 0.28); box-shadow: 0 18px 40px -26px rgba(0, 0, 0, 0.9); }
+.lp-retro .lp-card::before, .lp-retro .lp-news-entry::before, .lp-retro .lp-step::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(#f4503d, #cc2214); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.lp-retro .lp-news-entry, .lp-retro .lp-step { position: relative; overflow: hidden; }
+.lp-retro .lp-card:hover { border-color: rgba(255, 225, 74, 0.45); }
+.lp-retro .lp-card-icon { background: rgba(42, 60, 255, 0.2); border-color: rgba(127, 150, 255, 0.4); }
+.lp-retro .lp-stat b { background: linear-gradient(180deg, #fff6c2, #ffe14a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.lp-retro .lp-show-text li::before { background: var(--cm-yellow); }
+.lp-retro .lp-ticker { background: linear-gradient(90deg, rgba(24, 24, 166, 0.35), rgba(12, 18, 52, 0.5), rgba(24, 24, 166, 0.35)); }
+.lp-retro .lp-ticker span { color: #cfd8ff; }
+/* NEW-båndet: glaskort med en affaset rød NEW-mærkat som i originalens titelbjælke */
+.lp-retro .lp-newsband { border-radius: 20px; border: 1px solid rgba(255, 225, 74, 0.45); background: linear-gradient(100deg, rgba(42, 60, 255, 0.28), rgba(12, 18, 52, 0.7) 60%, rgba(232, 48, 31, 0.14)); box-shadow: 0 24px 50px -28px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 225, 74, 0.08); backdrop-filter: blur(8px); }
+.lp-retro .lp-newsband b { color: var(--cm-yellow); font-size: 19px; }
+.lp-retro .lp-newsband p { color: #d6ddf7; }
+.lp-retro .lp-newsband-tag { border-radius: 6px; color: #fff; background: linear-gradient(#f4503d, #cc2214); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), inset 0 -2px 0 rgba(0, 0, 0, 0.35), 0 8px 22px -6px rgba(232, 48, 31, 0.9); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); transform: rotate(-3deg); }
+.lp-retro .lp-newsband-free { border-radius: 999px; border: 1px solid rgba(255, 225, 74, 0.55); background: rgba(255, 225, 74, 0.1); color: var(--cm-yellow); }
+.lp-retro .lp-beta-tag { border-radius: 6px; background: var(--cm-yellow); color: #0a1060; }
+/* skærmbillederne i en elegant monitor med diskrete scanlinjer og glasglans */
+.lp-retro .lp-frame { border-radius: 18px; border: 0; padding: 10px 10px 18px; background: linear-gradient(160deg, #2c3250, #12152a 55%, #1d2240); overflow: hidden; position: relative;
+  box-shadow: 0 40px 80px -30px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(127, 150, 255, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
+.lp-retro .lp-frame:hover { box-shadow: 0 50px 90px -30px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 225, 74, 0.45), 0 0 50px -14px rgba(42, 60, 255, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.18); }
 .lp-retro .lp-frame-bar { display: none; }
-.lp-retro .lp-frame::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.16) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 62%, rgba(0, 0, 0, 0.38) 100%); }
+.lp-retro .lp-frame img { border-radius: 8px; box-shadow: 0 0 0 1px #000, 0 0 28px rgba(0, 0, 0, 0.6); }
+.lp-retro .lp-frame::before { content: ''; position: absolute; left: 50%; bottom: 6px; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: #58e08c; box-shadow: 0 0 8px #58e08c; z-index: 2; }
+.lp-retro .lp-frame::after { content: ''; position: absolute; inset: 10px 10px 18px; border-radius: 8px; pointer-events: none; z-index: 1;
+  background: linear-gradient(115deg, rgba(255, 255, 255, 0.10) 0%, transparent 28%), repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.07) 0 1px, transparent 1px 3px), radial-gradient(ellipse at center, transparent 68%, rgba(0, 0, 0, 0.28) 100%); }
+/* nostalgi-afsnit: tre citatkort med store gule anførselstegn og blå kant */
+.lp-nost-wrap { padding-top: 36px; }
+.lp-nost { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.lp-nost q { display: block; quotes: none; position: relative; padding: 30px 22px 22px; font-size: 18px; line-height: 1.4; font-weight: 600; color: #eef1ff; border-radius: 20px; border: 1px solid rgba(127, 150, 255, 0.3); background: linear-gradient(180deg, rgba(26, 38, 110, 0.55), rgba(12, 18, 52, 0.55)); box-shadow: 0 18px 40px -26px rgba(0, 0, 0, 0.9); overflow: hidden; }
+.lp-nost q::before { content: '\201C'; position: absolute; left: 16px; top: -6px; font-size: 64px; line-height: 1; font-weight: 900; color: var(--cm-yellow); opacity: 0.9; font-family: Georgia, serif; }
+.lp-nost q::after { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 4px; background: linear-gradient(#f4503d, #cc2214); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5); }
+.lp-nost q em { font-style: normal; color: var(--cm-yellow); font-weight: 800; }
+.lp-nost-cta { display: flex; justify-content: center; margin-top: 28px; }
 .lp-retro .lp-footer, .lp-retro .lp-support { color: #c9d0f0; }
-/* nostalgi-afsnit */
-.lp-nost { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 28px auto 0; }
-.lp-nost q { display: block; quotes: none; padding: 18px 20px; font-size: 19px; line-height: 1.35; font-weight: 700; text-align: center; border: 2px solid #1818a6; background: rgba(0, 0, 0, 0.58); text-shadow: 1px 1px 3px #000; }
-.lp-nost q em { font-style: normal; color: #ffe14a; }
-.lp-nost-cta { display: flex; justify-content: center; margin-top: 22px; }
-@media (max-width: 760px) { .lp-nost { grid-template-columns: 1fr; } .lp-retro .lp-cta.big { padding: 16px 24px; font-size: 20px; } .lp-retro .lp-frame { border-width: 9px; } .lp-retro.lp { background-attachment: scroll; } }
-@media (prefers-reduced-motion: reduce) { .lp-retro .lp-ticker-track { animation: none; } }
+@media (max-width: 760px) { .lp-nost { grid-template-columns: 1fr; } .lp-retro .lp-frame { padding: 6px 6px 12px; border-radius: 12px; } .lp-retro .lp-frame::after { inset: 6px 6px 12px; } .lp-retro .lp-newsband-tag { transform: none; } }
+.lp-retro .lp-hero h1 { font-size: clamp(38px, 5vw, 62px); }
