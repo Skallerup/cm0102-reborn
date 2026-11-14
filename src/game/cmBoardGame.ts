@@ -716,13 +716,13 @@ function syncHuman(g: GameState): void {
 /** (ydelse 14/11) boardEnv(g).manager(club) uden at bygge alle personer: samme Person-felter (staffPerson/humanPerson/noNp) og samme
  *  sideeffekt – allPersons gav alle personer et omdømme (cmRep ??= [1, 1, 1]), når manageren blev slået op. Kun til kaldere, der ikke sammenligner
  *  personerne med env.persons() (identiteten): kamprapportens managerdel og bestyrelsen efter kampen (afterMatch læser kun manageren). */
-function managerPerson(g: GameState, club: number, today: CmDate, touched: { done: boolean }): Person | null {
+function managerPerson(g: GameState, club: number, today: CmDate, touched: { done: boolean; all?: Staff[] }): Person | null {
   if (tempManager.has(club)) return tempManager.get(club)!;
   const mid = g.clubs[club]?.manager ?? 0;
   if (mid === -1 || (mid > 0 && g.staff[mid]?.cmNp)) {
     if (!touched.done) {
       touched.done = true;
-      for (const s of Object.values(g.staff)) if (s.cmNp && !s.cmExtra) s.cmRep ??= [1, 1, 1];
+      for (const s of touched.all ?? Object.values(g.staff)) if (s.cmNp && !s.cmExtra) s.cmRep ??= [1, 1, 1];
       for (const h of humanRefs(g)) h.get().manager.cmRep ??= [1, 1, 1];
     }
   }
@@ -736,10 +736,12 @@ postHooks.managerRep = (g, club, v) => {
   if (!cmBoardOn(g)) return;
   // (ydelse 14/11) personerne bygges direkte som boardEnv's manager()/person() ville give dem – før byggede boardEnv ALLE personer
   // (sorteret stab + mennesker) to gange pr. kamp (~0,4 s pr. lørdag med fem lande)
-  const today = isoToCm(g.date), touched = { done: false };
+  // (ydelse) én liste over staben til begge gennemløb (rækkefølgen er Object.values' – staben ændres ikke imellem)
+  const all = Object.values(g.staff);
+  const today = isoToCm(g.date), touched = { done: false, all };
   const m = managerPerson(g, club, today, touched);
   if (!m || !m.np) return;
-  const mine = Object.values(g.staff).filter((s) => s.club === club && s.cmNp);
+  const mine = all.filter((s) => s.club === club && s.cmNp);
   // club +0xd3 (assistenten) og +0x19f (de fem trænerpladser): env.person(id) = den byggede person (cmNp, ikke cmExtra), ellers noNp
   const staff = [...mine.filter((s) => s.role === 'assistant').slice(0, 1), ...mine.filter((s) => s.role === 'coach').slice(0, 5)]
     .map((s) => (s.cmExtra ? noNp(s) : staffPerson(g, s, today))).filter(Boolean);

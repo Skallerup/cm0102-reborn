@@ -27,7 +27,8 @@ import { compLogoUrl } from './logos';
 import { isOriginal2001 } from '../game/rules2001';
 import { intlDayResults } from '../game/international';
 import { gs, hasGame, notify, setGame, squad, subscribe } from '../game/state';
-import { compName, dateFmt, money, t } from '../i18n';
+import { cmActive } from '../game/cmPlayerData';
+import { compName, dateFmt, money, setMoneyRounding, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
 import { Lobby, OnlineControls } from './Online';
@@ -182,6 +183,8 @@ export function Shell() {
   // klassisk tema: fast venstre-kolonne, titelbjælke + faner pr. skærm og en bred Tilbage/Frem-bjælke
   // klassisk tema også som arbejdsløs (men ikke i online-lobbyen, hvor der endnu ikke er en verden)
   const cmNav = isRetro() && !g.draft && !(session() && !session()!.inGame);
+  // ægte CM 01/02 med den originale database: beløbene vises rundet som i originalen
+  setMoneyRounding(cmActive(g));
   const dialogOpen = useClassicDialogOpen();
   const [holiday, setHoliday] = useState<boolean | null>(null);
   const [saveOpen, setSaveOpen] = useState(false);

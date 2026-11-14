@@ -147,6 +147,7 @@ export function fillMissing(r: InitRec, age: number, pool: Packed[], rand: Rand)
         if (!ok(me.ent[i])) continue;
         const d = Math.abs(me.ent[i] - t.ent[i]);
         score += i === 0 ? d * 1000 : i < NPOS ? d * 25 : d * 16;
+        if (score >= bestScore) break;   // summen vokser kun – kan ikke længere slå den bedste (samme valg, færre led)
       }
     }
     if (score < bestScore) { bestScore = score; tpl = t; }

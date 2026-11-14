@@ -139,6 +139,8 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
     const r = regionOf(name);
     return r === 'europe' ? CONT0 : r === 'northAmerica' ? CONT0 + 0x100 : r === 'southAmerica' ? CONT0 + 0x200 : r === 'asia' ? CONT0 + 0x300 : CONT0 + 0x500;
   };
+  // verdensdelenes id'er (+0) som originalens [0x9cfa08..0x9cfa1c]: Europa 2, Nordamerika 3, Sydamerika 5, Asien 1, Oceanien 4, Afrika 0
+  [2, 3, 5, 1, 4, 0].forEach((id, k) => m.w32(CONT0 + 0x100 * k, id));
   const [tday, tyear] = isoDay(g.date);
   const seasonYear = tday >= 181 ? tyear : tyear - 1;
   const byName = new Map(g.nations.map((n, i) => [n.name, i]));
@@ -282,8 +284,8 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full
         case 0x4d0c60: return valueOf(g, byStaff.get(a[0] >>> 0), m.s32(a[1]));
         case 0x4b02e0: return leagueClash(envOf(), m.s32(a[0]), m.s32(a[1]));
         case 0x4a4850: {
-          // tabelrækken for klubben (a[0]) i ligaen: +4 kampe, +0x72 placeringen, +0x73/+0x74/+0x75 fremskrivningerne
-          const e = envOf().entry(m.s32(a[0]));
+          // tabelrækken for klubben (sidste argument) i ligaen: +4 kampe, +0x72 placeringen, +0x73/+0x74/+0x75 fremskrivningerne
+          const e = envOf().entry(m.s32(a[a.length - 1]));   // (thiscall fra 0x846920: [this, klub])
           if (!e) return 0;
           const r = ROW4A;
           m.w8(r + 4, e.played); m.w8(r + 0x72, e.pos); m.w8(r + 0x73, e.p73); m.w8(r + 0x74, e.p74); m.w8(r + 0x75, e.p75);

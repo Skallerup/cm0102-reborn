@@ -51,17 +51,34 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (0x83d0ed → 0x843e10(mål, klub, 3, 0)), 0x5cccd0's port med 0x844540 (`dailyGate(e, rand, bud)`), 0x844300 og positionslisterne 0x839e60/0x83a780
   i TS, 0x842180's computerdel (`cmInterestedClubs`), og 0x83f3a0's frasortering af kandidaterne 0x83fa25–0x8400da i TS (samme rand-rækkefølge –
   slots og par bit for bit som de oversatte instruktioner alene, `CM_SL_FAST=0`; ~2,5× hurtigere).
-- **Hukommelsen** (`buildSlMem`): buildWantMem med `full` (alle 1.714 klubber, de klubløse, staff +0x52, staben på +0xd3/+0x19f/+0x1b3/+0x1cf, np +4/+6),
+- **Hukommelsen** (`buildSlMem`): buildWantMem med `full` (alle 1.714 klubber, de klubløse, staben på +0xd3/+0x19f/+0x1b3/+0x1cf, np +4/+6),
   pladserne (GameState.cmPlan, nu 12 tal pr. plads), parrene (GameState.cmSlPairs), spillets åbne bud som TRANSFER_MANAGER's tabel, CONTRACT_MANAGER's
-  faste datoer, land +0x7f = 2 for EU-15 (*estimeret* – nation.dat-feltet er ikke i world-filen; uden det krævede alle arbejdstilladelse).
-  Adaptere: 0x6e6340 = planScore.ts, 0x8be300/0x8bed60 → spillets bud (transfers.ts `cmShortlistApply`), 0x62ed70 = konditionsmodulet,
-  0x8c7950 = rules2001 workPermitGranted, 0x8d0040 = loanBlocked, 0x4cda70 (sælgerens modtræk) = intet.
-- **Status – derfor slået fra:** (1) ingen mål: 732 klubber gennem 0x83b6e0 ved spilstarten giver 0 par/0 mål; originalen har 336 par og 258 mål i
-  137 klubber (`npx tsx scripts/cm-shortlist-orig.ts` på pre-194-2001.bin). Kandidaterne når 0x840d80 (Aston Villa: 1.033 af 13.788), få klarer
-  grænsen (+3 = 31.020), og 0x84af00 afviser de sidste – fejlen er sandsynligvis inddata: (2) asking price 0x4d1600 på spillets data er for lav
-  (`npx tsx scripts/cm-asking.ts`: Beckham £90.500, median 0,09 × værdien) – næste skridt: spor 0x4d1600 på originalens hukommelse (snap + log) mod
-  porten og find det manglende felt (kontraktens klausuler/+0x40, finansposten, 0x4d42d0). (3) hastighed: 0,3 s pr. klub (spilstarten 222 s for 732
-  klubber) – kræver 0x840d80/0x84af00 i TS eller færre klubber ved start.
+  faste datoer. Adaptere: 0x6e6340 = planScore.ts, 0x8be300/0x8bed60 → spillets bud (transfers.ts `cmShortlistApply`), 0x62ed70 =
+  konditionsmodulet, 0x8c7950 = rules2001 workPermitGranted, 0x8d0040 = loanBlocked, 0x4cda70 (sælgerens modtræk) = intet, 0x8d0590
+  (lejeperioden efter køberlandets lejeregel – fra i dag til juni, højst kontraktens udløb, *estimeret*).
+- **Runde 2 (14/11, stadig slået fra):** fundet med `scripts/cm-asking-diff.ts` (0x4d1600 på originalens hukommelse og spillets for de samme
+  spillere, læselog pr. pc, `WHO=… GROUP=1`) og `scripts/cm-sl-reject.ts` (hvor 0x83f3a0 afviser kandidaterne, `FR_STATS` = fastRejects grunde):
+  (a) **de faste .data-tabeller og id-globalerne manglede i al bygget hukommelse** (`src/game/cmKeyIds.ts` af `scripts/build-cm-keyids.ts` – fra
+  øjebliksbilledet og cm0102.exe; skrives i buildWageMem `writeKeyIds`): 0x9a7f30 aldersprocenterne i værdiformlen 0x4d0c60 (alle 0 → værdien 0),
+  0x9a7f48 udbudsprisens beløbsgrænser, 0x9cc270 = 1, alle 209 landes id-globaler [0x9cf200..0x9cf544] (før 24), turneringernes [0x9cf548..0x9cfa04],
+  verdensdelene [0x9cfa08..0x9cfa1c] = 0..5 (og verdensdelsposternes +0 – Afrika og Europa havde begge id 0), klubbernes [0x9d0000..0x9d0524] og
+  [0xb63c9c..0xb63d00] efter navnet (B-hold-parrene, Spaniens 23 klubber, Celtic/Rangers, MLS …), landenes nation.dat +0x7f fra originalen
+  (1 = uden for EU, 2 = EU/EØS – erstatter EU-15-skønnet). (b) 0x4d1600 brugte sælgerens pladser (0x849ce0) – cmAskingPrice skriver nu sælgerens
+  og køberens pladser. (c) **staff +0x52 = 0x4d0c60(staff, klub, 0, −1, flag)** som CONTRACT_MANAGER's daglige 0x4c7ec5 (`writeValues`; spillets
+  Player.value er op til ×20 originalens for de små klubbers spillere), og 0x4d0c60 kører oversat (ikke spillets formel). (d) **0x846920,
+  0x844780 og 0x8cca10 stod i ADAPTED** – buildWantMem's gren tager ikke this, så kaldt fra de oversatte funktioner (thiscall) blev argumenterne
+  forskudt, og 0x846920 gav 0 for alle → aldrig et mål. Samme fejl i 0x4a4850's gren (klubben = sidste argument). (e) **Kandidaterne som
+  originalens hukommelse** (`loadedFilter`, målt med `scripts/cm-loaded.ts`): originalen har kun de aktive landes spillere, alle med CA ≥ 150
+  (378/378) og de aktive landes statsborgere; world-filens frie spillere er ikke i originalen (0/313) – positionslisterne gik fra ~37.000 til ~4.400.
+- **Tal (spilstarten, frø 1, England):** udbudsprisen spil/original 10/50/90 % 0,00/0,06/0,40 → 0,43/1,00/2,04 (Beckham £90.500 → £32,26M, originalen
+  £32,23M); +0x52 spil/original 0,58/0,97/1,63. 0x83b6e0 for 732 klubber: 0 par/0 mål → **200 par, 300 mål i 172 klubber, 1.924 åbne pladser med
+  andel** (originalen 336/258/137/2.193; England 170 mål i 92 klubber, originalen 214 i 282 klubber inkl. de lavere ligaer, spillet har ikke dem).
+  Målenes klub: fri 68 / udland 81 / samme land 151 (originalen 100/38/120). Ønskelønnen (cm-want-game.ts) uændret.
+- **Hastighed – derfor stadig slået fra:** 0x83b6e0 for 732 klubber 222 s → ~42 s (positionslisterne, refreshClub pr. klub i stedet for alle
+  spillere, playerRecord/aiPickCtx gemt pr. hukommelse); nyt spil i alt ~110 s i Node. Målet (≤ 15 s ekstra) kræver mere: profilen viser tiden i
+  selve f_83f3a0/`shared` (de store switch-funktioner optimeres næppe af V8) og 0x840d80 (~1,1 mio. vurderinger ved spilstarten, ~85 µs stk.) –
+  næste skridt: 0x83f3a0's vurderingsløkke 0x8400da–0x840a81 og 0x840d80 i TS (samme rand-rækkefølge), eller oversætteren deler de store
+  funktioner. Sverige/Danmark/Norge koster mest (6,8/3,0/2,9 s). Den daglige kørsel: se scripts/cm-shortlist-days.ts.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

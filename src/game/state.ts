@@ -164,7 +164,13 @@ export function ensureNumbers(club: number) {
 let autoNumbers = true;
 export function setAutoNumbers(on: boolean) { autoNumbers = on; }
 
+/** tælles op, hver gang en rigtig (ikke genereret) spiller kommer til eller forsvinder via addPlayer/dropPlayer/removePlayer – cmVirtual.ts'
+ *  skabelonliste genbruges, så længe tallet er uændret */
+let realPlayersEpoch = 0;
+export const playersEpoch = () => realPlayersEpoch;
+
 export function addPlayer(p: Player) {
+  if (!p.virtual) realPlayersEpoch++;
   gs().players[p.id] = p;
   if (p.club) {
     let arr = squadIndex.get(p.club);
@@ -177,12 +183,14 @@ export function addPlayer(p: Player) {
 
 /** fjern en spiller helt uden klubskiftets følger (cmVirtual.ts' genererede spillere) */
 export function dropPlayer(p: Player) {
+  if (!p.virtual) realPlayersEpoch++;
   const arr = squadIndex.get(p.club);
   if (arr) squadIndex.set(p.club, arr.filter((id) => id !== p.id));
   delete gs().players[p.id];
 }
 
 export function removePlayer(p: Player) {
+  if (!p.virtual) realPlayersEpoch++;
   setClub(p, 0);
   delete gs().players[p.id];
 }

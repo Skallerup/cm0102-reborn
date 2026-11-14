@@ -255,6 +255,8 @@ const CRT: Record<number, (R: X86) => void> = {
   // operator new / malloc
   0x944e46: (R) => { R.eax = heapAlloc(R.m, arg(R, 0)) | 0; },
   0x944cf1: (R) => { R.eax = heapAlloc(R.m, arg(R, 0)) | 0; },
+  // atexit(fn) – de statiske lokale variablers destruktor (0x54cab0/0x54c770/0x54cc30's engangsinitialisering): intet
+  0x94627a: (R) => { R.eax = 0; },
   // free
   0x9452ca: (R) => { R.eax = 0; },
   0x944c94: (R) => { R.eax = 0; },

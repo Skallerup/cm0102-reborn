@@ -15,7 +15,7 @@
 // Kun den originale database i ægte tilstand (cmPlayerData.cmActive). Originalens tilfældige tal (0x90cfc0) trækkes af en egen deterministisk
 // talrække (cmRand: spillets frø, dagen og et formål), så spillets rng og zonemotoren er uændrede. Hvad der ikke er porteret, står i noten.
 
-import type { Club, GameState, Player } from './types';
+import type { Club, GameState, Player, Staff } from './types';
 import { ATTRS } from './attributes';
 import { ageOn, addDays } from './dates';
 import { cmActive, cmRand, STAFF_STATE_OFF } from './cmPlayerData';
@@ -53,11 +53,23 @@ const u16 = (v: number) => v & 0xffff;
 const ftol = Math.trunc;                                                          // 0x945640
 type Rand = (n: number) => number;
 
+// (ydelse) omregningerne kaldes for tusindvis af spillere med samme dag – den seneste værdi huskes (rene funktioner)
+let dnMemo = { iso: '', dn: NaN }, isoMemo = { dn: NaN, iso: '' };
+const yMemo = new Map<number, { y: number; d0: number }>();   // dateGap skifter mellem to dage – derfor et lille opslag frem for den seneste
 /** dagnummer (dage siden 1970-01-01) ↔ originalens Date (dag i året 0.., år) */
-export const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
-const isoOf = (dn: number) => new Date(dn * 86400000).toISOString().slice(0, 10);
-const yearOf = (dn: number) => new Date(dn * 86400000).getUTCFullYear();
-const doyOf = (dn: number) => dn - Math.round(Date.UTC(yearOf(dn), 0, 1) / 86400000);
+export const dayNum = (iso: string) => (iso === dnMemo.iso ? dnMemo.dn : (dnMemo = { iso, dn: Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000) }).dn);
+const isoOf = (dn: number) => (dn === isoMemo.dn ? isoMemo.iso : (isoMemo = { dn, iso: new Date(dn * 86400000).toISOString().slice(0, 10) }).iso);
+function yearMemo(dn: number) {
+  let v = yMemo.get(dn);
+  if (!v) {
+    if (yMemo.size > 4096) yMemo.clear();
+    const y = new Date(dn * 86400000).getUTCFullYear();
+    yMemo.set(dn, (v = { y, d0: Math.round(Date.UTC(y, 0, 1) / 86400000) }));
+  }
+  return v;
+}
+const yearOf = (dn: number) => (Number.isNaN(dn) ? NaN : yearMemo(dn).y);
+const doyOf = (dn: number) => (Number.isNaN(dn) ? NaN : dn - yearMemo(dn).d0);
 const dateOf = (day: number, year: number) => Math.round(Date.UTC(year, 0, 1) / 86400000) + day;   // 0x549ef0
 const leap = (y: number) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
 /** Date::get_difference 0x54cc30 → 365·år + dage (den seneste dato først; et lån af dage bruger dens års længde, sic) */
@@ -391,9 +403,17 @@ export function endInjury(c: FitCtx, p: Player, post: boolean): void {
 /** 0x62d5c2–0x62d610: den bedste af klubbens tre fysioterapeutpladser club +0x1cf (ikke-spillerposten +0x1e vist med 0x544410, bl starter på 0).
  *  Hos os klubbens fysioterapeuter (højst 3, STAFF_LIMITS – pladserne i ansættelsesrækkefølgen = id) med Physiotherapy vist af stabens CA som
  *  aiTeam.ts' manager (staffShown/staffIntrinsic; uden CA databasens værdi). */
+/** klubbernes fysioterapeuter (Object.values-rækkefølgen) – bygget én gang pr. kontekst (en dags gennemløb ændrer ikke staben) */
+const physioIdx = new WeakMap<FitCtx, Map<number, Staff[]>>();
 function physio(c: FitCtx, club: number): number {
   let best = 0;
-  const slots = Object.values(c.g.staff).filter((s) => s.club === club && s.role === 'physio').sort((a, b) => a.id - b.id).slice(0, 3);
+  let idx = physioIdx.get(c);
+  if (!idx) {
+    idx = new Map();
+    for (const s of Object.values(c.g.staff)) if (s.role === 'physio') { const a = idx.get(s.club); if (a) a.push(s); else idx.set(s.club, [s]); }
+    physioIdx.set(c, idx);
+  }
+  const slots = (idx.get(club) ?? []).filter((s) => s.club === club && s.role === 'physio').sort((a, b) => a.id - b.id).slice(0, 3);
   for (const s of slots) {
     const v = npShown(s, 0x1e) ?? (s.ca ? staffShown(s.ca, staffIntrinsic(s.attrs.physio, s.ca)) : s.attrs.physio);
     if (s8(v) > best) best = s8(v);

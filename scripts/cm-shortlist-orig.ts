@@ -14,6 +14,7 @@ const clubs = m.u32(G.CLUBS), nClubs = m.s32(0xae235c), staff = m.u32(G.STAFF);
 const eng = m.s32(0x9cf2e4);
 let targets = 0, bids = 0, clubsWith = 0, share = 0;
 const perClub: string[] = [];
+const byNat = new Map<string, number[]>(), tk = new Map<string, number>();
 for (let cid = 0; cid < nClubs; cid++) {
   const c = clubs + 0x245 * cid, nat = m.u32(c + 0x53);
   if (!nat) continue;
@@ -25,13 +26,17 @@ for (let cid = 0; cid < nClubs; cid++) {
     const s = base + 0x25 * i;
     if (m.u8(s) !== 0xb) continue;
     const f = m.s32(s + 0xf), h = m.s32(s + 0x13);
-    if (f > -1 && f !== h) { t++; const st = staff + 0x6e * f; tl.push(`${m.s32(st)}@${m.s32(s + 7)}`); }
+    if (f > -1 && f !== h) { t++; const st = staff + 0x6e * f; tl.push(`${m.s32(st)}:${m.u8(m.u32(st + 0x61) + 5)}@${m.s32(s + 7)}/${m.s32(s + 0xb)}`); }
     if (m.s32(s + 0x17) > -1) b++;
     if (f === -1 && m.s32(s + 7) > 0) sh++;
   }
   targets += t; bids += b; share += sh; if (t) clubsWith++;
-  if (m.s32(nat) === eng && perClub.length < 30) perClub.push(`${cid} tilstand ${m.u8(ent + 4)} tæller ${m.u8(ent + 8)} mål ${t} [${tl.slice(0, 6).join(' ')}] bud ${b} andele ${sh}`);
+  { const nn = name(nat + 4); const e = byNat.get(nn) ?? [0, 0, 0]; e[0]++; e[1] += t; if (m.u8(ent + 4) === 1) e[2]++; byNat.set(nn, e); }
+  for (let i = 0; i < 40; i++) { const s = base + 0x25 * i; if (m.u8(s) !== 0xb) continue; const f = m.s32(s + 0xf), h = m.s32(s + 0x13); if (!(f > -1 && f !== h)) continue; const sc = m.u32(staff + 0x6e * f + 0x39); const k = !sc ? 'fri' : m.u32(sc + 0x53) === nat ? 'samme land' : 'udland'; tk.set(k, (tk.get(k) ?? 0) + 1); }
+  if (m.s32(nat) === eng && (t || !process.env.T) && perClub.length < 40) perClub.push(`${cid} ${name(c + 4)} tilstand ${m.u8(ent + 4)} tæller ${m.u8(ent + 8)} mål ${t} [${tl.slice(0, 6).join(' ')}] bud ${b} andele ${sh}`);
 }
 console.log(`mål ${targets} (klubber med mål ${clubsWith}), budmærker ${bids}, åbne pladser med andel ${share}`);
 for (const l of perClub) console.log('  ' + l);
+console.log('pr. land (klubber/mål/tilstand 1): ' + [...byNat].sort((a, b) => b[1][1] - a[1][1]).slice(0, 20).map(([k, v]) => `${k} ${v.join('/')}`).join(', '));
+console.log('målenes klub: ' + [...tk].map(([k, v]) => `${k} ${v}`).join(', '));
 void name;

@@ -30,7 +30,8 @@ import { ageOn } from './dates';
 import { ATTRS } from './attributes';
 import { squad } from './state';
 import { isHumanClub } from './humans';
-import { updateWageBill } from './cmFinance';
+import { updateWageBill, wageIdx } from './cmFinance';
+import { AGE_PCT_9A7F30, FEE_STEPS_9A7F48, KEY_CLUB_GLOBALS, KEY_COMP_GLOBALS, KEY_NATION_GLOBALS, NATION_7F } from './cmKeyIds';
 
 /** £ → € som newgame.ts */
 const GBP = 0.86;
@@ -54,6 +55,26 @@ export function cmMemCall(c: CmCtx, adr: number, ...a: number[]): number {
   }
   throw new Error(`cmWageGame: kald 0x${adr.toString(16)} er ikke porteret`);
 }
+
+const NAT7F = new Map(NATION_7F);
+/** Originalens nøgle-id'er (cmKeyIds.ts: alle landenes, turneringernes og klubbernes id-globaler, verdensdelene [0x9cfa08..0x9cfa1c] =
+ *  Afrika 0 … Sydamerika 5) og de faste .data-tabeller (0x9a7f30 aldersprocenterne i værdiformlen 0x4d0c60, 0x9a7f48 udbudsprisens
+ *  beløbsgrænser 0x4d1600, 0x9cc270 = 1). Uden dem læste de oversatte funktioner 0 (fx værdien 0 % i 0x4d0c60 → udbudsprisen £90.500 for
+ *  Beckham). Klubberne efter navnet (−1 = ikke i spillet); B-hold-parrene og Spaniens 23 klubber er en del af tabellen. [0xad9c6c]'s
+ *  personflag (+0xc, 0x418f60) = ingen. */
+function writeKeyIds(m: SparseMem, g: GameState, byName: Map<string, number>): void {
+  for (const [a, nm] of KEY_NATION_GLOBALS) m.w32(a, byName.get(nm) ?? -1);
+  for (const [a, v] of KEY_COMP_GLOBALS) m.w32(a, v);
+  for (let i = 0; i < 6; i++) m.w32(0x9cfa08 + 4 * i, i);
+  const clubByName = new Map<string, number>();
+  for (const c of Object.values(g.clubs)) if (!clubByName.has(c.name)) clubByName.set(c.name, c.id);
+  for (const [a, nm] of KEY_CLUB_GLOBALS) m.w32(a, clubByName.get(nm) ?? -1);
+  AGE_PCT_9A7F30.forEach((v, i) => m.w8(0x9a7f30 + i, v));
+  FEE_STEPS_9A7F48.forEach((v, i) => m.wf64(0x9a7f48 + 8 * i, v));
+  m.w8(0x9cc270, 1);
+  m.w32(0xad9c6c, KEYOBJ); m.w32(KEYOBJ + 0xc, KEYOBJ + 0x1000);
+}
+const KEYOBJ = 0x68000000;
 
 /** nøglelandenes id-globaler (adresse → nation.dat-navnet), de lønportene læser */
 const KEY_NATIONS: [number, string][] = [
@@ -144,12 +165,14 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   for (let a = 0xb63c9c; a <= 0xb63d00; a += 4) m.w32(a, -1);
   const byName = new Map(g.nations.map((n, i) => [n.name, i]));
   for (const [a, nm] of KEY_NATIONS) m.w32(a, byName.get(nm) ?? -1);
+  writeKeyIds(m, g, byName);
   const natAdr = (n: number | undefined) => {
     if (n === undefined || n < 0 || n >= nNat) return 0;
     const a = NAT0 + 0x200 * n;
     if (m.s32(a + 0xfc) !== 1) {
       m.w32(a + 0xfc, 1); m.w32(a, n);
       m.w8(a + 0x76, g.cmNation76?.[n] ?? 0); m.w8(a + 0x7e, g.cmNation7e?.[n] ?? 3); m.w8(a + 0x85, g.cmNation85?.[n] ?? 0);
+      m.w8(a + 0x7f, NAT7F.get(g.nations[n].name) ?? 0);
     }
     return a;
   };
@@ -314,7 +337,8 @@ export function cmWageFillNewGame(g: GameState, unset: Set<number>): { n: number
     p.contract!.wage = w / GBP;
     n++;
   }
-  for (const cid of clubs) { const c = g.clubs[cid], r = g.cmFin?.[cid]; if (c && r) updateWageBill(g, c, r); }
+  const idx = wageIdx(g);   // udlejede/staben slået op én gang (samme rækkefølge som updateWageBill's eget gennemløb)
+  for (const cid of clubs) { const c = g.clubs[cid], r = g.cmFin?.[cid]; if (c && r) updateWageBill(g, c, r, idx); }
   return { n };
 }
 

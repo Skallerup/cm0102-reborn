@@ -120,8 +120,16 @@ export function currencySymbol(): string {
   return currency === 'DKK' ? 'kr.' : currency === 'SEK' || currency === 'NOK' ? 'kr' : currency === 'GBP' ? '£' : currency === 'BRL' ? 'R$' : currency === 'TRY' ? '₺' : '€';
 }
 
+/** CM 01/02: beløb vises rundet i den viste valuta med originalens trin (Cash 0x4426e0 – 15.000.000 kr., ikke 18.069.768 kr.); slås til i
+ *  ægte tilstand af Shell (i18n må ikke importere motoren, så trinnet står her) */
+let roundCash = false;
+export function setMoneyRounding(on: boolean) { roundCash = on; }
+const cashStepOf = (x: number) => x <= 10_000 ? 1000 : x <= 30_000 ? 2000 : x <= 100_000 ? 5000 : x <= 250_000 ? 10_000 : x <= 1_000_000 ? 25_000
+  : x <= 5_000_000 ? 100_000 : x <= 20_000_000 ? 250_000 : x <= 50_000_000 ? 500_000 : 1_000_000;
+const shown = (v: number) => { if (!roundCash) return v; const a = Math.abs(v), st = cashStepOf(a); return Math.sign(v) * Math.round(a / st) * st; };
+
 export function money(eur: number): string {
-  const v = eur * RATE[currency];
+  const v = shown(eur * RATE[currency]);
   const neg = v < 0;
   const a = Math.abs(v);
   const loc = LOCALE[lang];
@@ -143,7 +151,7 @@ export function money(eur: number): string {
 
 /** Hele beløbet uden forkortelse (CM 01/02: "£22,000,000") */
 export function moneyFull(eur: number): string {
-  const v = Math.round(eur * RATE[currency]);
+  const v = Math.round(shown(eur * RATE[currency]));
   const num = Math.abs(v).toLocaleString(LOCALE[lang]);
   return (v < 0 ? '-' : '') + (currency === 'DKK' ? `${num} kr.` : currency === 'SEK' || currency === 'NOK' ? `${num} kr` : currency === 'BRL' ? `R$ ${num}` : `${currencySymbol()}${num}`);
 }
