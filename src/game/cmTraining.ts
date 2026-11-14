@@ -11,7 +11,8 @@
 //     efter 0x5ce2d0 på dage med dag-i-året % 7 = 0 (0x8b1730 fra 0x5cda8a). 0x8b1750 kaldes ved kampopsætningen MATCH_PLAYER::setup (0x6eb045 –
 //     alle i begge kamptrupper), ved en ny skade Injury::add_injury (0x62d312) og af skærmene (at se en spiller opdaterer ham – ikke porteret).
 //   - 0x8b3640 trækker effekterne fra før re-centreringen 0x538bc0 og lægger dem på igen bagefter.
-import type { GameState, Player } from './types';
+import type { CmSchedule, CoachArea, GameState, Player, Staff } from './types';
+import { staffShown } from './engine/grid/roleScore';
 import { ATTRS } from './attributes';
 import { shownFromInternal, CM_INT_OFFSETS, normaliseInternals } from './playerInit';
 import { cmActive } from './cmPlayerData';
@@ -120,14 +121,15 @@ export function normaliseRec(r: CmRec, e: CmTrainEntry | null): void {
   if (e && saved) applyTraining(r, e, saved);
 }
 
-/** skemaets fem niveauer (+4..+8): 0x8b3d40/0x8b4e50's faste typer (cmFitness.ts PRESET) */
+/** skemaets fem niveauer (+4..+8 = områderne 0 Fitness, 1 Tactics, 2 Shooting, 3 Skills, 4 Goalkeeping – 0x8b5520): 0x8b4e50's faste typer
+ *  (springtabellen 0x8b4f08): 0/7 alt 0, 1 General 25/25/25/25/0, 2 Fitness (+4 = 50), 3 Shooting (+6), 4 Skill (+7), 5 Tactics (+5), 6 Gk */
 export const SCHEDULE_LEVELS: Record<number, number[]> = {
-  0: [0, 0, 0, 0, 0], 1: [25, 25, 25, 25, 0], 2: [50, 10, 10, 10, 0], 3: [10, 50, 10, 10, 0], 4: [10, 10, 50, 10, 0], 5: [10, 10, 10, 50, 0], 6: [10, 10, 0, 10, 50], 7: [0, 0, 0, 0, 0],
+  0: [0, 0, 0, 0, 0], 1: [25, 25, 25, 25, 0], 2: [50, 10, 10, 10, 0], 3: [10, 10, 50, 10, 0], 4: [10, 10, 10, 50, 0], 5: [10, 50, 10, 10, 0], 6: [10, 10, 0, 10, 50], 7: [0, 0, 0, 0, 0],
 };
 export interface TrainIn {
-  /** skemaets niveauer (0x8b39f0: skadet med status 2 → TM+0 "No Training", ellers skemaet; menneskets skemaer *estimeret* via vores programmer) */
+  /** skemaets niveauer (0x8b39f0: skadet med status 2 → TM+0 "No Training", ellers skemaet – menneskets: clubSchedules) */
   levels: readonly number[];
-  /** 0x8b41d0(klub, område): 100 for computerens klubber; menneskets af trænernes fordeling (ikke porteret – 100, *estimeret*) */
+  /** 0x8b41d0(klub, område): 100 for computerens klubber; menneskets af trænernes fordeling (clubCoachValues) */
   coach: (k: number) => number;
   /** staff +0x5b Professionalism, +0x58 Determination; spillerposten +0x0f målmandsevnen */
   prof: number; det: number; gk: number;
@@ -172,8 +174,101 @@ export function trainCore(r: CmRec, e: CmTrainEntry, week: number, i: TrainIn, r
 // ------------------------------------------------------------------------------------------------ i spillet
 
 const coach100 = () => 100;
-/** vores træningsprogram → originalens skematype (som cmFitness.ts SCHEDULE_PRESET) – menneskets skemaer *estimeret* */
-const PRESET_OF: Record<string, number> = { general: 1, fitness: 2, defending: 3, ballcontrol: 4, tactics: 3, attacking: 5, shooting: 5, setpieces: 4, goalkeeping: 6, rest: 0 };
+
+// ------------------------------------------------------------------------------------------------ menneskets skemaer og trænere
+
+/** områderne +4..+8 (0x8b5520): 0 Fitness, 1 Tactics, 2 Shooting, 3 Skills, 4 Goalkeeping – samme navne som Staff.coachAreas */
+export const CM_AREAS: CoachArea[] = ['fitness', 'tactics', 'shooting', 'skills', 'goalkeeping'];
+/** intensiteten (0x8b5690): 0 None, 10 Light, 25 Medium, 50 Intensive – skemaets redigeringsboks har kolonnerne i den rækkefølge */
+export const CM_INTENSITIES = [0, 10, 25, 50] as const;
+/** antal skemapladser pr. menneske (0x8b3d40: 10 á 0x9b bytes) */
+export const CM_SCHED_SLOTS = 10;
+/** 0x8b3d40: menneskets 10 pladser – 0 Overview (−1), 1 No Training, 2 General, 3 Fitness, 4 Shooting, 5 Skill, 6 Tactics, 7 Gk, 8–9 Unused */
+export function newHumanSchedules(): CmSchedule[] {
+  return [-1, 0, 1, 2, 3, 4, 5, 6, 7, 7].map((t) => ({ t, n: '', lv: [...(SCHEDULE_LEVELS[t] ?? [0, 0, 0, 0, 0])] }));
+}
+/** klubbens skemaer (oprettes som 0x8b3d40, første gang de bruges) */
+export function clubSchedules(g: GameState, cid: number): CmSchedule[] {
+  const c = g.clubs[cid];
+  if (!c) return newHumanSchedules();
+  if (!c.cmSched || c.cmSched.length !== CM_SCHED_SLOTS) c.cmSched = newHumanSchedules();
+  return c.cmSched;
+}
+/** 0x8b50f0: navnet efter typen – i18n-nøglen (cl.ts.t<type>) eller, for type 8, skemaets eget navn */
+export function scheduleNameKey(s: CmSchedule): { key?: string; name?: string } {
+  if (s.t === 8) return { name: s.n };
+  return { key: `cl.ts.t${s.t < 0 ? 'o' : s.t}` };
+}
+/** 0x8b4f60 (cmFitness.scheduleLoad) får niveauerne herfra */
+export const levelsOf = (s: CmSchedule | undefined): number[] => (s && s.t >= 0 ? s.lv : [0, 0, 0, 0, 0]);
+/** 0x8b1991–0x8b1b11: en spiller kommer til menneskets klub (+5 bit 0x20 ikke sat) – målmænd (+0x0f ≥ 15) på den sidste "Gk"-plads, de andre på
+ *  den sidste "General"-plads; findes ingen: plads 1 */
+export function joinSlot(scheds: readonly CmSchedule[], gk: number): number {
+  let gkS = -1, gen = -1;
+  for (let k = 0; k < CM_SCHED_SLOTS; k++) { if (scheds[k]?.t === 6) gkS = k; else if (scheds[k]?.t === 1) gen = k; }
+  return gk >= 15 && gkS >= 0 ? gkS : gen >= 0 ? gen : 1;
+}
+/** 0x8b3b11: postens plads (uden for 0..9 → 1) */
+export const slotOf = (s: number) => (s >= 0 && s < CM_SCHED_SLOTS ? s : 1);
+/** skærmen: spillerens plads i menneskets skemaer (uden at ændre posten – en spiller uden bit 0x20 får joinSlot ved næste opdatering) */
+export function playerSlot(g: GameState, p: Player): number {
+  const e = p.cmTrain;
+  if (e && e.b5 & 0x20) return slotOf(e.s);
+  return joinSlot(clubSchedules(g, p.club), p.pos[0]);
+}
+/** skærmens Ok: spilleren på pladsen (posten oprettes og får bit 0x20, som når skærmen kalder 0x8b1750) */
+export function setPlayerSlot(p: Player, slot: number): void {
+  const e = (p.cmTrain ??= newTrainEntry(p.pos[0]));
+  e.s = slotOf(slot);
+  e.b5 |= 0x20;
+}
+
+/** sub_544410 for ikke-spillerpostens interne felter (+0x10 Coaching, +0x11 Coaching Goalkeepers, +0x21 Tactics) og de rå (+0x0e Attacking,
+ *  +0x12 Coaching Technique). Uden Staff.cmNp: de viste stabsegenskaber (Coaching for alle tre interne og de rå – *estimeret*) */
+function npVal(s: Staff, off: number, shown: boolean): number {
+  if (s.cmNp && s.ca) { const v = s.cmNp[off - 0x0e]; return shown ? staffShown(s.ca, v) : v; }
+  return Math.max(1, Math.min(20, Math.round(s.attrs.coaching || 1)));
+}
+const SPREAD = [1, 1, 1.2, 1.4, 1.6, 2];          // 0x8b2892: 1,0/1,2/1,4/1,6/2,0 efter antal områder
+const SHARE = [1, 1, 1.45, 1.7, 1.9, 2.05, 2.2];   // 0x8b41e0: 1,0/1,45/1,7/1,9/2,05/2,2 efter antal trænere
+const f32 = Math.fround;
+/** [0x970400] = 5,714285714285714 (= 40/7) som heltal · 2^-50 */
+const K_MANT = BigInt(5.714285714285714 * 2 ** 50);
+/** 0x8b2880 (TRAINING_MANAGER::update_coaches): trænerens bytes pr. område – valgt område: værdien / spredningen (antal valgte områder), 1..20; ikke
+ *  valgt: 0. Fitness = (Coaching − Coaching Technique + 21) / 2, Tactics = (Tactics + Coaching + Coaching Technique) / 3, Shooting = (Coaching +
+ *  Coaching Technique + Attacking) / 3, Skills = (Coaching + Coaching Technique) / 2, Goalkeeping = Coaching Goalkeepers (heltalsdivision mod 0). */
+export function coachBytes(s: Staff, areas: readonly CoachArea[] | undefined): number[] {
+  const on = CM_AREAS.map((a) => !areas || areas.includes(a));
+  const n = on.filter(Boolean).length;
+  const co = npVal(s, 0x10, true), tech = npVal(s, 0x12, false);
+  const v = [
+    Math.trunc((co - tech + 21) / 2),
+    Math.trunc((npVal(s, 0x21, true) + co + tech) / 3),
+    Math.trunc((co + tech + npVal(s, 0x0e, false)) / 3),
+    Math.trunc((co + tech) / 2),
+    npVal(s, 0x11, true),
+  ];
+  return on.map((x, k) => { if (!x) return 0; const r = Math.trunc(v[k] / f32(SPREAD[n])); return r < 1 ? 1 : r > 20 ? 20 : r; });
+}
+/** de seks trænerpladser (0x8b2880: assistenten club +0xd3 og de fem trænere +0x19f…; her klubbens assistent og de første fem trænere) */
+export function clubCoaches(g: GameState, cid: number): Staff[] {
+  const st = Object.values(g.staff).filter((s) => s.club === cid && cid);
+  const asst = st.find((s) => s.role === 'assistant');
+  return [...(asst ? [asst] : []), ...st.filter((s) => s.role === 'coach').slice(0, 5)];
+}
+/** 0x8b41d0(klub, område): menneskets trænere – summen af de valgte trænerbytes / [1; 1,45; 1,7; 1,9; 2,05; 2,2][antal], ×5,714…, mindst 50 */
+export function coachValue(rows: readonly number[][], k: number): number {
+  let n = 0, sum = 0;
+  for (const b of rows) if (b[k]) { n++; sum += b[k]; }
+  const bp = n ? Math.trunc(sum / f32(SHARE[n])) : 0;
+  // fmul qword [0x970400] i x87's udvidede præcision: produktet er eksakt (bp < 2^11) – trunc af bp·m/2^50 uden dobbeltpræcisionens afrunding
+  const v = Number((BigInt(bp) * K_MANT) >> 50n);
+  return v < 50 ? 50 : v;
+}
+export function clubCoachValues(g: GameState, cid: number, areas?: (s: Staff) => readonly CoachArea[] | undefined): number[] {
+  const rows = clubCoaches(g, cid).map((s) => coachBytes(s, areas ? areas(s) : s.coachAreas));
+  return CM_AREAS.map((_, k) => coachValue(rows, k));
+}
 
 /** hvad 0x8b1750 får fra resten af spillet (cmFitnessGame.ts sætter skadestatus 0x62c400; humans = menneskets klubber) */
 export interface TrainCtx { injured: (p: Player) => boolean; human: (club: number) => boolean; rand: (p: Player, salt: number) => (n: number) => number }
@@ -184,18 +279,27 @@ export function cmTrainOn(g: GameState, p: Player): boolean {
   // fyldspillerne (cmVirtual.ts) har ingen TRAINING_MANAGER-post – de laves på ny til hver kamp (*estimeret*)
   return !!p.cmInt && !p.regen && !p.virtual && cmActive(g);
 }
+/** træningsbelastningen (0x8b1bb1: 0x8b4f60 af pladsens skema): menneskets spiller → niveauerne (null = computerens) */
+export function humanLevels(g: GameState, p: Player): number[] | null {
+  if (!p.club || !g.clubs[p.club]) return null;
+  return levelsOf(clubSchedules(g, p.club)[playerSlot(g, p)]);
+}
 /** 0x8b1750(staff, 0) for én spiller i spillet; salt adskiller kaldestederne i vores egen talrække */
 export function cmTrainPlayer(g: GameState, p: Player, salt: number): void {
   if (!tctx || !cmTrainOn(g, p)) return;
   const e = (p.cmTrain ??= newTrainEntry(p.pos[0]));
+  const human = !!p.club && tctx.human(p.club);
+  // 0x8b188d: menneskets klub uden bit 0x20 → standardpladsen (bitten sættes i trainCore, 0x8b198e)
+  const scheds = human ? clubSchedules(g, p.club) : null;
+  if (scheds && !(e.b5 & 0x20)) { e.s = joinSlot(scheds, p.pos[0]); e.b5 |= 0x20; }
   const week = g.cmTrainWeek ?? 0;
   if (((week - e.w) & 0xffff) === 0) return;
-  const human = !!p.club && tctx.human(p.club);
-  // 0x8b39f0: skadet (status 2) → skema 0; menneskets klub: managerens skema (vores program); ellers postens skema (1 eller 6)
-  const type = tctx.injured(p) ? 0 : human && p.training ? PRESET_OF[p.training] ?? e.s : e.s;
+  // 0x8b39f0: skadet (status 2) → TM+0 / menneskets plads 1 (No Training); menneskets klub: pladsens skema; ellers postens faste type (1 eller 6)
+  const levels = tctx.injured(p) ? SCHEDULE_LEVELS[0] : scheds ? levelsOf(scheds[slotOf(e.s)]) : SCHEDULE_LEVELS[e.s] ?? SCHEDULE_LEVELS[1];
+  const cv = scheds ? clubCoachValues(g, p.club) : null;
   const r = recOf(p);
   const A = (k: string) => Math.round(p.attrs[ATTRS.indexOf(k as never)] ?? 10);
-  if (trainCore(r, e, week, { levels: SCHEDULE_LEVELS[type] ?? SCHEDULE_LEVELS[1], coach: coach100, prof: A('professionalism'), det: A('determination'), gk: r.b[0x0f], human },
+  if (trainCore(r, e, week, { levels, coach: cv ? (k) => cv[k] : coach100, prof: A('professionalism'), det: A('determination'), gk: r.b[0x0f], human },
     tctx.rand(p, salt))) recInto(g, p, r);
 }
 /** MATCH_PLAYER::setup (0x6eb045): begge kamptrupper */

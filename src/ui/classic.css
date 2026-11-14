@@ -1794,3 +1794,10 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 :root[data-skin='retro'] .cxl .start-ghost, :root[data-skin='retro'] .cxl .footer-note { color: #fff; }
 :root[data-skin='retro'] .cxl textarea { background: #0a1150; color: #fff; border: 1px solid; border-color: var(--cx-btn-lo) var(--cx-btn-hi) var(--cx-btn-hi) var(--cx-btn-lo); border-radius: 0; }
 :root[data-skin='retro'] .cxl .footer-note { display: none; }
+
+/* Træning som CM 01/02 (TrainingCm.tsx): Edit/Coaches/Select File i den grønne boks */
+.cx-tn { position: relative; }
+.cx-ts-dlg .cx-ts-name { background: #0b2a06; color: #fff21f; border: 1px solid #3d7a2a; font-size: 16px; padding: 4px 8px; margin: 4px 6px; }
+.cx-ts-files .cx-tidlg-grid { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; }
+.cx-ts-files .cx-ts-file { margin: 0; }
+.cx-tidlg .cx-ts-buttons { grid-template-columns: 1fr 1fr; margin: 12px 0 0; }

@@ -15,6 +15,8 @@ import { useGame, useNav, useRouteState } from '../core';
 import { Head } from './common';
 import { CxTable, type CxCol } from './CxTable';
 import { posGroup } from './Training';
+import { cmActive } from '../../game/cmPlayerData';
+import { CmTraining } from './TrainingCm';
 
 const TOP = ['rest', 'general', 'fitness', 'shooting'];
 const BOTTOM = ['ballcontrol', 'attacking', 'defending', 'setpieces', 'goalkeeping'];
@@ -22,6 +24,12 @@ const moraleShort = (m: number) => t(`morale.${m >= 16 ? 'superb' : m >= 13 ? 'g
 const formAvg = (p: Player) => (p.form.length ? p.form.slice(-5).reduce((s, x) => s + x, 0) / Math.min(5, p.form.length) : 0);
 
 export function ClassicTraining() {
+  const g = useGame()!;
+  // den originale database i ægte tilstand: originalens skærm (training_screens.cpp) med menneskets skemaer (cmTraining.ts)
+  return cmActive(g) && g.clubs[g.userClub] ? <CmTraining /> : <OwnTraining />;
+}
+
+function OwnTraining() {
   const g = useGame()!;
   const { nav } = useNav();
   const [tab, setTab] = useRouteState('ttab', 'overview');

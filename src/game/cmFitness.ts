@@ -668,15 +668,17 @@ export function scheduleLoad(c: readonly number[]): number {
 /** de faste skemaer 0x8b4e50(id, type) – 0x8b3d40 lægger 0..6 ud: 0 og 7 alt 0; 1 det generelle (25/25/25/25/0); 2–5 ét område på 50 og de
  *  andre tre på 10; 6 målmændene (10/10/0/10/50). c4 (vægt 1,3) er konditionen, c8 målmandstræningen, c5–c7 de tre andre (samme vægt). */
 const PRESET: Record<number, number[]> = {
-  0: [0, 0, 0, 0, 0], 1: [25, 25, 25, 25, 0], 2: [50, 10, 10, 10, 0], 3: [10, 50, 10, 10, 0], 4: [10, 10, 50, 10, 0], 5: [10, 10, 10, 50, 0], 6: [10, 10, 0, 10, 50],
+  0: [0, 0, 0, 0, 0], 1: [25, 25, 25, 25, 0], 2: [50, 10, 10, 10, 0], 3: [10, 10, 50, 10, 0], 4: [10, 10, 10, 50, 0], 5: [10, 50, 10, 10, 0], 6: [10, 10, 0, 10, 50],
 };
 /** vores træningsskemaer (training.ts SCHEDULES) → originalens: generelt = 1, kondition = 2 (c4), målmænd = 6, hvile = 0, de øvrige
  *  (forsvar, boldkontrol, angreb, afslutning, dødbolde) et af 3–5 (c5–c7 – samme belastning) */
 const SCHEDULE_PRESET: Record<string, number> = { general: 1, fitness: 2, defending: 3, ballcontrol: 4, tactics: 3, attacking: 5, shooting: 5, setpieces: 4, goalkeeping: 6, rest: 0 };
 /** træningsbelastningen +0x1e: computerens spillere 50 (0x62cf70; sat til 50, når en spiller forlader en menneskeklub); et menneskes spillere
  *  efter deres skema (0x8b1750 → 0x62c660 med 0x8b4f60); uden skema originalens standard 0x8b3d40 (GK ≥ 15 målmandsskemaet, ellers det generelle) */
-export function trainingLoad(p: Player, human: boolean): number {
+export function trainingLoad(p: Player, human: boolean, levels?: readonly number[] | null): number {
   if (!human) return 50;
+  // menneskets skemaer (cmTraining.ts clubSchedules – spillerens plads, 0x8b1bb1)
+  if (levels) return scheduleLoad(levels);
   const k = p.training ? SCHEDULE_PRESET[p.training] : undefined;
   return scheduleLoad(PRESET[k ?? (gkRating(p) >= 15 ? 6 : 1)]);
 }

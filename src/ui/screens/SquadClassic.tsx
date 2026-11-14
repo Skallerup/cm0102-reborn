@@ -154,7 +154,7 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
 }
 
 /** Ægte CM 01/02: kun originalens statusmærker (Inj, Sus, Yel, Fut, Lst, Loa, Unh) – ingen "Int", "Fgn" eller "Wnt" (ejerens skærmbilleder) */
-function originalTag(p: Player): { k: string; title: string } | null {
+export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
   if (p.yellowCount === 4) return { k: 'Yel', title: t('cl.tag.yelTitle') };
@@ -176,7 +176,7 @@ function nationalTag(p: Player): { k: string; title: string } | null {
 const TAG_TAB: Record<string, string> = { Inj: 'injuries', Sus: 'injuries', Yel: 'injuries', Fut: 'transfer', Lst: 'transfer', Lon: 'contract', Unh: 'transfer', Wnt: 'transfer', Fgn: 'profile' };
 
 /** Mærket foran navnet – et klik åbner den del af spillerprofilen, der handler om det */
-function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }) {
+export function Tag({ p, tag }: { p: Player; tag: { k: string; title: string } | null }) {
   const { nav } = useNav();
   if (!tag) return <span className="cx-sq-tag" />;
   return <button className={`cx-sq-tag ${tag.k.toLowerCase()}`} title={tag.title} onClick={() => nav({ name: 'player', id: p.id, tab: TAG_TAB[tag.k] })}>{t(`cl.tag.${tag.k}`)}</button>;

@@ -442,6 +442,11 @@ export interface ClubSeasonStats {
   red: number;
 }
 
+/** TRAINING_SCHEDULE (0x9b bytes): +0x15 typen (−1 Overview, 0 No Training, 1 General, 2 Fitness, 3 Shooting, 4 Skill, 5 Tactics, 6 Gk,
+ *  7 Unused, 8 eget), +9 navnet (højst 11 tegn – kun type 8 beholder det, 0x8b50f0), +4..+8 områdernes intensitet (0/10/25/50: Fitness, Tactics,
+ *  Shooting, Skills, Goalkeeping), +0x2e filen (.tsh) */
+export interface CmSchedule { t: number; n: string; lv: number[]; f?: string }
+
 export interface Club {
   /** club +0x9b/+0x9f/+0xa3 (0x547790) og +0xa7/+0xab/+0xaf (0x5477d0): klubbens personer (databasens person-id'er, 0 = tom) – cmRelations.ts */
   cmPrefs?: number[];
@@ -461,6 +466,8 @@ export interface Club {
   /** European Squad (CM 01/02): sæsonen, hvor klubben skal tilmelde sin europæiske trup (31/8, 1/2), og de tilmeldte */
   euroDue?: number;
   euroSquad?: { season: number; ids: number[] };
+  /** CM 01/02's træningsskemaer for en menneskeklub (TRAINING_MANAGER: 10 pladser á 0x9b bytes pr. menneske, 0x8b3d40) – cmTraining.ts */
+  cmSched?: CmSchedule[];
   /** Opsparet omdømmeændring i løbet af sæsonen (brøkdele, før de bliver til hele point) */
   repDrift?: number;
   /** Spillere klubben holder øje med (AI-klubbernes shortliste) */

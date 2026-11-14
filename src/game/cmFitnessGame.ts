@@ -10,7 +10,7 @@ import {
 import { addNews, squad } from './state';
 import { asOwner, isHumanClub } from './humans';
 import { cmRand, statCategory } from './cmPlayerData';
-import { cmTrainPlayer, setTrainCtx } from './cmTraining';
+import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
 import { CM_SETUP_INJURIES } from './data/cmPreseason';
@@ -128,7 +128,7 @@ export function cmFitNewGame(g: GameState): void {
   cmSetupInjuries(g, start);
   const c = fitCtx(g, SALT.init, start);
   initSquadFitness(c, ps);
-  for (const p of ps) { if (p.cmFit) p.cmFit.load = trainingLoad(p, !!p.club && isHumanClub(p.club)); syncPlayer(c, p); }
+  for (const p of ps) { if (p.cmFit) { const h = !!p.club && isHumanClub(p.club); p.cmFit.load = trainingLoad(p, h, h ? humanLevels(g, p) : null); } syncPlayer(c, p); }
 }
 
 /** player_setup.cfg 0x7a30c0(0x203b) efter forkørslen (0x5cc850, før 0x62a920): INJURY-linjerne → add_injury(type, 0, staff, 0, 1, −1, niveau,
@@ -163,7 +163,7 @@ export function cmFitDay(g: GameState): void {
     recoverFatigue(rc, p);
     const human = !!p.club && isHumanClub(p.club);
     // +0x1e: 0x8b1750 – et menneskes spillere på standardskemaet, de andre 50 (sættes, når spilleren forlader menneskets klub)
-    const load = trainingLoad(p, human);
+    const load = trainingLoad(p, human, human ? humanLevels(g, p) : null);
     if (p.cmFit && p.cmFit.load !== load) p.cmFit.load = load;
     if (human || p.cmFit?.inj || p.injury) syncPlayer(rd, p);
   }

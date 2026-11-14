@@ -380,7 +380,67 @@ async function run(look) {
     const n = await gs((id) => (window.__cm.gs().cmStaffOffers ?? []).filter((o) => o.staff === id).length, sid);
     if (n !== 1) throw new Error('kontrakttilbuddet blev ikke sendt');
   });
+  // den originale database i ægte tilstand: originalens træningsskærm (TrainingCm.tsx) – skemaer, Edit, tildeling, Ok
+  const cmTrain = () => gs(() => { const g = window.__cm.gs(); return g.dbKind === 'cm0102' && g.options.mode === 'authentic' && (g.dbYear ?? g.season) < 2020; });
+  if (look === 'klassisk') await step('træning som CM 01/02: opret/ændr skema, tildel spillere, Ok', async () => {
+    if (!(await cmTrain())) return;
+    await go({ name: 'training' });
+    await page.waitForSelector('.cx-tabrow button:has-text("Overview")', { timeout: 5000 });
+    const top = (txt) => page.locator('.cx-tabrow button', { hasText: txt }).first();
+    const sub = (txt) => page.locator('.cx-subrow button', { hasText: txt }).first();
+    for (const l of ['No Training (', 'General (', 'Fitness (', 'Shooting (']) if (!(await top(l).count())) throw new Error(`fanen ${l}…) mangler`);
+    for (const l of ['Skill (', 'Tactics (', 'Gk (', 'Unused']) if (!(await sub(l).count())) throw new Error(`den nederste fane ${l} mangler`);
+    if (!(await page.locator('.cx-ts-sched').isDisabled())) throw new Error('Schedule skal være grå på Overview');
+    const n = async (loc) => Number((await loc.innerText()).match(/\((\d+)\)/)?.[1] ?? -1);
+    const rows = page.locator('.cx-tbl tbody tr');
+    // træk en spiller til Fitness
+    const fit0 = await n(top('Fitness ('));
+    await rows.nth(2).dragTo(top('Fitness ('));
+    if ((await n(top('Fitness ('))) !== fit0 + 1) throw new Error('træk til Fitness flyttede ikke spilleren');
+    // rækkens skemaknap → Tactics
+    const tac0 = await n(sub('Tactics ('));
+    await rows.nth(4).locator('.cx-ts-row .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Tactics' }).first().click();
+    if ((await n(sub('Tactics ('))) !== tac0 + 1) throw new Error('rækkens skemamenu flyttede ikke spilleren');
+    // et eget skema på den første Unused-plads: Edit → navn og intensiteter
+    await sub('Unused').click();
+    if (await page.locator('.cx-ts-sched').isDisabled()) throw new Error('Schedule er grå på et skema');
+    await page.locator('.cx-ts-edit').click();
+    await page.waitForSelector('.cx-ts-dlg', { timeout: 3000 });
+    await page.locator('.cx-ts-dlg .cx-ts-name').fill('E2E Plan');
+    await page.locator('.cx-ts-dlg button[data-area="0"][data-lv="50"]').click();
+    await page.locator('.cx-ts-dlg button[data-area="2"][data-lv="25"]').click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-traening-edit.png` });
+    await page.locator('.cx-ts-editok').click();
+    if (!(await sub('E2E Plan (0)').count())) throw new Error('det nye skema står ikke på fanen');
+    // tildel en spiller til det nye skema (træk fra Overview)
+    await top('Overview').click();
+    await rows.nth(6).dragTo(sub('E2E Plan'));
+    if (!(await sub('E2E Plan (1)').count())) throw new Error('spilleren kom ikke på det nye skema');
+    // Save As (localStorage) og menuens gemte skema
+    await sub('E2E Plan').click();
+    await page.locator('.cx-ts-sched').click();
+    await page.locator('.cx-drop-pop button', { hasText: 'Save As' }).click();
+    await page.locator('.cx-dlg-input').fill('e2e-plan');
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(200);
+    await page.locator('.cx-ts-sched').click();
+    if (!(await page.locator('.cx-drop-pop button', { hasText: 'e2e-plan' }).count())) throw new Error('det gemte skema står ikke i Schedule-menuen');
+    await page.keyboard.press('Escape');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-traening-skema.png` });
+    // intet er gemt i spillet før Ok
+    if ((await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].cmSched?.[8]?.t)) === 8) throw new Error('skemaet blev gemt før Ok');
+    await page.locator('.cx-ts-ok').click();
+    await page.waitForTimeout(300);
+    const st = await gs(() => {
+      const g = window.__cm.gs(), c = g.clubs[g.userClub], ps = Object.values(g.players).filter((p) => p.club === g.userClub);
+      return { s: c.cmSched?.[8], plan: ps.filter((p) => p.cmTrain?.s === 8).length, fit: ps.filter((p) => p.cmTrain?.s === 3).length };
+    });
+    if (st.s?.t !== 8 || st.s?.n !== 'E2E Plan' || st.s?.lv?.[0] !== 50 || st.s?.lv?.[2] !== 25 || st.s?.f !== 'e2e-plan') throw new Error(`skemaet blev ikke gemt: ${JSON.stringify(st.s)}`);
+    if (st.plan !== 1 || st.fit < 1) throw new Error(`tildelingen blev ikke gemt: ${JSON.stringify(st)}`);
+  });
   if (look === 'klassisk') await step('træning: træk spiller til fane + klik-flyt (klassisk)', async () => {
+    if (await cmTrain()) return;
     await go({ name: 'training' });
     await page.waitForTimeout(300);
     const rows = page.locator('.cx-tbl tbody tr');
@@ -536,6 +596,8 @@ async function run(look) {
     await page.locator('.cx-coaches .cx-coach-row .cx-tich').first().click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-coaches.png` });
     await page.locator('.cx-coaches .cx-tidlg-foot button', { hasText: 'Ok' }).click();
+    // originalens skærm: Coaches-boksen ændrer kun kopien – skærmens Ok gemmer
+    if (await page.locator('.cx-ts-ok').count()) await page.locator('.cx-ts-ok').click();
     if (!(await gs(() => Object.values(window.__cm.gs().staff).some((s) => s.coachAreas)))) throw new Error('trænerområdet blev ikke gemt');
   });
   if (look === 'klassisk') await step('løb fremad med højreklik på taktikbanen', async () => {

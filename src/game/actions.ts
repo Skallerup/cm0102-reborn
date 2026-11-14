@@ -4,6 +4,7 @@ import { cmStaffDelayAnswer } from './cmStaff';
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
 import { submitSquadNumbers } from './squadNumbers';
 import { cmActive, setStatusCode } from './cmPlayerData';
+import { CM_INTENSITIES, CM_SCHED_SLOTS, setPlayerSlot } from './cmTraining';
 import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
 import { submitEuroSquad } from './euroSquad';
@@ -31,7 +32,7 @@ import {
 import { addBot } from './bots';
 import { markChatRead, sendChat } from './chat';
 import type { RejectReason } from './will';
-import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer, CoachArea, StaffRole } from './types';
+import type { BoardAsk, BotStyle, ContractClauses, MatchReport, ScoutAssignment, Tactic, TalkStage, TalkTone, TransferOffer, CoachArea, CmSchedule, StaffRole } from './types';
 import { giveTalk, matchExpectation } from './teamtalk';
 import type { SquadStatus } from './squadStatus';
 import { startScoutAssignment } from './scouting';
@@ -90,6 +91,8 @@ export type Action =
   | { t: 'staffNote'; id: number; nick?: string | null; notes?: string }
   | { t: 'fireStaff'; id: number }
   | { t: 'coachAreas'; id: number; areas: CoachArea[] | null }
+  /** CM 01/02's træningsskærm (Ok): skemaerne, spillernes pladser og trænernes områder på én gang (cmTraining.ts) */
+  | { t: 'cmTraining'; sched: CmSchedule[]; assign: [number, number][]; coaches: [number, CoachArea[] | null][] }
   | { t: 'budget'; kind: 'transfer' | 'wage'; pct?: number }
   | { t: 'budgetCounter'; accept: boolean }
   | { t: 'budgetShift'; toWage: boolean; amount: number }
@@ -263,6 +266,16 @@ export function applyAction(a: Action): unknown {
     case 'withdraw': { const o = myOffer(a.pid); if (o) o.status = 'withdrawn'; return 'ok'; }
     case 'hireStaff': return hireStaff(a.id, a.wage);
     case 'fireStaff': return fireStaff(a.id);
+    case 'cmTraining': {
+      const c = g.clubs[g.userClub];
+      if (!c || !Array.isArray(a.sched) || a.sched.length !== CM_SCHED_SLOTS) return 'error';
+      const lvOk = (v: number) => (CM_INTENSITIES as readonly number[]).includes(v);
+      c.cmSched = a.sched.map((s, k) => ({ t: k === 0 ? -1 : Math.max(0, Math.min(8, s.t | 0)), n: String(s.n ?? '').slice(0, 11),
+        lv: k === 0 ? [0, 0, 0, 0, 0] : [0, 1, 2, 3, 4].map((i) => (lvOk(s.lv?.[i]) ? s.lv[i] : 0)), ...(s.f ? { f: String(s.f).slice(0, 60) } : {}) }));
+      for (const [pid, slot] of a.assign) { const p = g.players[pid]; if (p?.club === g.userClub && slot >= 1 && slot < CM_SCHED_SLOTS) setPlayerSlot(p, slot); }
+      for (const [id, areas] of a.coaches) { const st = g.staff[id]; if (st?.club === g.userClub) st.coachAreas = areas ?? undefined; }
+      return 'ok';
+    }
     case 'coachAreas': { const st = g.staff[a.id]; if (!st || st.club !== g.userClub) return 'error'; st.coachAreas = a.areas ?? undefined; return 'ok'; }
     case 'budget': return requestBudget(a.kind, a.pct);
     case 'budgetCounter': return answerBudgetCounter(a.accept);
