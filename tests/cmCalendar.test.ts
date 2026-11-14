@@ -10,7 +10,7 @@ import { daysBetween } from '../src/game/dates';
 const FIX = JSON.parse(readFileSync(new URL('./fixtures/cm-schedules.json', import.meta.url), 'utf8')) as Record<string, string>;
 
 describe('originalens ligaskemaer', () => {
-  it('EngPrm/EngFirst/EngSecond/EngThird::create_schedule 2001–2016 som originalens kode', () => {
+  it('EngPrm/EngFirst/EngSecond/EngThird::create_schedule 2001–2016 (England + 16 andre ligaer) som originalens kode', () => {
     let n = 0;
     for (const [key, want] of Object.entries(FIX)) {
       const [id, ys] = key.split('-');
@@ -23,7 +23,7 @@ describe('originalens ligaskemaer', () => {
       expect(got, key).toBe(want);
       n++;
     }
-    expect(n).toBe(64);
+    expect(n).toBe(Object.keys(FIX).length);
   });
   it('Date(dag, måned, år, ugedag) = nærmeste ugedag højst 3 dage væk', () => {
     expect(cmDate(19, 7, 2001, 5)).toBe('2001-08-18'); // søndag 19/8 → lørdag 18/8
@@ -68,5 +68,23 @@ describe('nyt spil med originalens kalender', () => {
     createGame(world, { managerName: 'T', managerNation: eng, clubId: world.clubs.find((c) => c[1] === 'Wrexham')![0], activeNations: [eng], lang: 'en', masking: true, seed: 1, mode: 'extended' });
     expect(gs().date).toBe('2001-07-01');
     expect(Object.values(gs().fixtures).filter((f) => f.comp === 'CM7').map((f) => f.date).sort()[0]).toBe('2001-08-11');
+  });
+  it('Danmark (33 runder), Skotland (33 + 5 i split-grupperne), Sverige og Japan bruger originalens skemaer', () => {
+    const nat = (n: string) => world.nations.findIndex((x) => x.name === n);
+    const [den, sco, swe, jpn] = [nat('Denmark'), nat('Scotland'), nat('Sweden'), nat('Japan')];
+    createGame(world, { managerName: 'T', managerNation: den, clubId: world.clubs.find((c) => c[4] === 'CM4')![0], activeNations: [den, sco, swe, jpn], lang: 'en', masking: true, seed: 1, mode: 'authentic' });
+    const g = gs();
+    const rounds = (id: string) => Math.max(...Object.values(g.fixtures).filter((f) => f.comp === id).map((f) => f.round ?? 0));
+    const first = (id: string) => Object.values(g.fixtures).filter((f) => f.comp === id).map((f) => f.date).sort()[0];
+    expect(g.comps.CM4.meta?.cmSched).toBe(true);
+    expect(rounds('CM4')).toBe(33);
+    expect(first('CM4')).toBe('2001-07-29');
+    expect(g.comps.CM34.meta?.cmSched).toBe(true);
+    expect(rounds('CM34')).toBe(33);
+    expect((g.comps.CM34.meta?.dates as string[]).length).toBe(38);
+    expect(g.comps.CM38.meta?.cmSched).toBe(true);
+    expect(first('CM38')).toBe('2001-04-08');
+    expect(g.comps.CM69.meta?.cmSched).toBe(true);
+    expect(first('CM69')).toBe('2001-03-10');
   });
 });

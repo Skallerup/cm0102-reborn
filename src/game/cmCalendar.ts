@@ -12,7 +12,10 @@
 //     2–5 dage før/efter, 0x5acbe0) → ugedagen nærmest datoen og pladsens tidspunkt.
 //   FA Cup: EngFaCup::create_round_table 0x56f320 (9 runder; spillets pokal har færre – runderne tælles fra finalen).
 //
-// IKKE porteret (se ENGINE_PORT_PLAN.md, runde 10A): de andre landes skemaer (35 nøglelande, ~100 klasser), Liga Cup/Charity Shield/
+// Ligaskemaerne (runde 10D): 34 klasser i data/cmSchedules.ts (England, Tyskland, Belgien, Danmark, Skotland, Sverige, Norge 1, Japan, Rusland, Sydkorea …).
+// IKKE porteret (se ENGINE_PORT_PLAN.md, runde 10A): skemaerne for Australien (24 + 10 finalerunder), Polen (to halvdele à 14), Norge 2 (26 runder, spillet har 16
+// klubber), USA (32 runder, 12 klubber) – antallet af runder passer ikke med spillets liga, så de bruger spillets kalender – og Tjekkiet/Østrig/Mexico/
+// Schweiz (ingen klasse fundet), Liga Cup/Charity Shield/
 // Intertoto/landskampene i forkørslen, sammenstødsreglen 0x5ad780/0x5adba0 (kodernes rækkefølge; her: en anden kamp for et af holdene dagen
 // før/samme dag/dagen efter, koden = den anden kamps type), resolve_same_day_clash 0x5ae380, klubbens foretrukne kampdag +0x72 (alle
 // engelske klubber har 5 = lørdag eller 0xff), tv-nyheden (0x77bbe0/0x7861e0) og originalens parring af holdene (league_next_schedule_round
@@ -65,6 +68,19 @@ export function cmStartDate(mainNation: number | undefined, season: number): str
 }
 
 export interface CmRound { date: string; slot: number; tv: SchedTv[] }
+
+/** (runde 10D) Ligaer, hvis skema har flere runder end en dobbelt turnering: Danmarks Superliga 3 × 11 = 33 runder (CM4, 0x552900), Sydkorea
+ *  3 × 9 = 27 (CM229, 0x66b130) og Skotlands Premier League 33 + 5 i split-grupperne = 38 (CM34, 0x7f0e80 – 12 klubber, 2 grupper à 6 med én
+ *  runde). Databasens regler siger 2 runder, så de overskrives ved et nyt spil (ellers passer rundeantallet ikke med skemaet). */
+const CM_ROUND_RULES: Record<string, { rounds: number; split?: { after: number; groups: number; rounds: number } }> = {
+  CM4: { rounds: 3 }, CM229: { rounds: 3 }, CM34: { rounds: 3, split: { after: 33, groups: 2, rounds: 1 } },
+};
+export function cmLeagueRules<T extends Record<string, any> | undefined>(rules: T): T {
+  if (!rules) return rules;
+  const out: Record<string, any> = { ...rules };
+  for (const [id, o] of Object.entries(CM_ROUND_RULES)) if (out[id]) out[id] = { ...out[id], ...o };
+  return out as T;
+}
 
 /** Skemaet for en liga i sæsonen `year` (create_schedule med comp +0x40 = year); null = ligaen har ikke originalens skema her */
 export function cmLeagueSchedule(compId: string, year: number): CmRound[] | null {

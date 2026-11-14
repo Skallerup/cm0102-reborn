@@ -174,7 +174,7 @@ export function setupLeague(id: string, name: string, nation: number, tier: numb
   }
   // (runde 10A) originalens skema (create_schedule) for ligaen i den originale database i ægte tilstand – runde i = skemaets række i, og
   // add_fixture 0x5aa680 flytter en kamp, der støder sammen med en af holdenes andre kampe (to runder samme dag: PL 2/2-2002)
-  const sched = cmCalendarOn(g) && !rules.split ? cmLeagueSchedule(id, season) : null;
+  const sched = cmCalendarOn(g) ? cmLeagueSchedule(id, season) : null;
   if (sched && sched.length === total) {
     comp.meta = { dates: sched.map((r) => r.date), cmSched: true, cmYear: season, cmLast: sched[sched.length - 1].date };
     rounds.forEach((r, i) => r.forEach(([h, a]) => cmPlaceFixture(g, newFixture(id, sched[i].date, h, a, i + 1, { slot: sched[i].slot }))));
