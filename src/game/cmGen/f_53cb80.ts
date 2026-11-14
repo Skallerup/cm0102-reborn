@@ -45,7 +45,7 @@ export function f_53cb80(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 53cbe7: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53cbf1: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cbf3: add esp, 0x200
-        return R.eax; // 53cbf9: ret 
+        return R.ret(0); // 53cbf9: ret 
       case 0x53cbfa:
         R.eax = (R.m.u32(((R.ecx + 0xd3) | 0) >>> 0)) | 0; // 53cbfa: mov eax, dword ptr [ecx + 0xd3]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 53cc00: test eax, eax
@@ -70,7 +70,7 @@ export function f_53cb80(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x53cc20; continue;
       case 0x53cc20:
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cc20: add esp, 0x200
-        return R.eax; // 53cc26: ret 
+        return R.ret(0); // 53cc26: ret 
       default: throw new Error(`f_53cb80: ukendt adresse ${pc.toString(16)}`);
     }
   }

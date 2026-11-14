@@ -28,7 +28,7 @@ export function f_53d980(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53d992: mov eax, 1
         R.ebx = (R.pop()) | 0; // 53d997: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x10, 32)) | 0; // 53d998: add esp, 0x10
-        return R.eax; // 53d99b: ret 
+        return R.ret(0); // 53d99b: ret 
       case 0x53d99c:
         R.ecx = (R.m.u32(((R.esp + 0x24) | 0) >>> 0)) | 0; // 53d99c: mov ecx, dword ptr [esp + 0x24]
         R.ebp = (R.m.u32(((R.ecx + 0x1a) | 0) >>> 0)) | 0; // 53d9a0: mov ebp, dword ptr [ecx + 0x1a]
@@ -53,7 +53,7 @@ export function f_53d980(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53d9c5: mov eax, 1
         R.ebx = (R.pop()) | 0; // 53d9ca: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x10, 32)) | 0; // 53d9cb: add esp, 0x10
-        return R.eax; // 53d9ce: ret 
+        return R.ret(0); // 53d9ce: ret 
       case 0x53d9cf:
         R.eax = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 53d9cf: mov eax, dword ptr [eax]
         R.edx = (R.m.u32(((0x9cf2e4) | 0) >>> 0)) | 0; // 53d9d1: mov edx, dword ptr [0x9cf2e4]
@@ -220,7 +220,7 @@ export function f_53d980(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53db20: mov eax, 1
         R.ebx = (R.pop()) | 0; // 53db25: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x10, 32)) | 0; // 53db26: add esp, 0x10
-        return R.eax; // 53db29: ret 
+        return R.ret(0); // 53db29: ret 
       case 0x53db2a:
         R.edi = (R.pop()) | 0; // 53db2a: pop edi
         R.esi = (R.pop()) | 0; // 53db2b: pop esi
@@ -228,7 +228,7 @@ export function f_53d980(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53db2d: xor eax, eax
         R.ebx = (R.pop()) | 0; // 53db2f: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x10, 32)) | 0; // 53db30: add esp, 0x10
-        return R.eax; // 53db33: ret 
+        return R.ret(0); // 53db33: ret 
       default: throw new Error(`f_53d980: ukendt adresse ${pc.toString(16)}`);
     }
   }

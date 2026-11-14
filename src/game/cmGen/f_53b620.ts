@@ -30,10 +30,10 @@ export function f_53b620(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x53b634; continue;
       case 0x53b634:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53b634: xor eax, eax
-        return R.eax; // 53b636: ret 
+        return R.ret(0); // 53b636: ret 
       case 0x53b637:
         R.eax = (0x1) | 0; // 53b637: mov eax, 1
-        return R.eax; // 53b63c: ret 
+        return R.ret(0); // 53b63c: ret 
       default: throw new Error(`f_53b620: ukendt adresse ${pc.toString(16)}`);
     }
   }

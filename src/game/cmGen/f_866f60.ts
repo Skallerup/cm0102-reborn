@@ -277,7 +277,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 867117: mov eax, 1
         R.ebx = (R.pop()) | 0; // 86711c: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 86711d: add esp, 0xc
-        return R.eax; // 867120: ret 
+        return R.ret(0); // 867120: ret 
       case 0x867121:
         R.ecx = (R.m.u32(((R.esp + 0x18) | 0) >>> 0)) | 0; // 867121: mov ecx, dword ptr [esp + 0x18]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 867125: test ecx, ecx
@@ -298,7 +298,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 867135: mov eax, 1
         R.ebx = (R.pop()) | 0; // 86713a: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 86713b: add esp, 0xc
-        return R.eax; // 86713e: ret 
+        return R.ret(0); // 86713e: ret 
       case 0x86713f:
         R.ecx = (R.m.u32(((R.esp + 0x14) | 0) >>> 0)) | 0; // 86713f: mov ecx, dword ptr [esp + 0x14]
         R.logic((R.ecx >>> 0) & 0x20020, 32); // 867143: test ecx, 0x20020
@@ -315,7 +315,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 867153: mov eax, 1
         R.ebx = (R.pop()) | 0; // 867158: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 867159: add esp, 0xc
-        return R.eax; // 86715c: ret 
+        return R.ret(0); // 86715c: ret 
       case 0x86715d:
         R.logic(((R.ecx >>> 8) & 0xff) & 0x2, 8); // 86715d: test ch, 2
         if (R.zf) { pc = 0x867174; continue; } // 867160: je 0x867174
@@ -331,7 +331,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 86716a: mov eax, 1
         R.ebx = (R.pop()) | 0; // 86716f: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 867170: add esp, 0xc
-        return R.eax; // 867173: ret 
+        return R.ret(0); // 867173: ret 
       case 0x867174:
         R.logic(((R.ecx >>> 0) & 0xff) & 0x4, 8); // 867174: test cl, 4
         if (R.zf) { pc = 0x867193; continue; } // 867177: je 0x867193
@@ -351,7 +351,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 867189: mov eax, 1
         R.ebx = (R.pop()) | 0; // 86718e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 86718f: add esp, 0xc
-        return R.eax; // 867192: ret 
+        return R.ret(0); // 867192: ret 
       case 0x867193:
         R.logic((R.ecx >>> 0) & 0x2808, 32); // 867193: test ecx, 0x2808
         if (R.zf) { pc = 0x8671b8; continue; } // 867199: je 0x8671b8
@@ -375,7 +375,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8671ae: mov eax, 1
         R.ebx = (R.pop()) | 0; // 8671b3: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 8671b4: add esp, 0xc
-        return R.eax; // 8671b7: ret 
+        return R.ret(0); // 8671b7: ret 
       case 0x8671b8:
         R.logic((R.ecx >>> 0) & 0x82200, 32); // 8671b8: test ecx, 0x82200
         if (!R.zf) { pc = 0x8671c4; continue; } // 8671be: jne 0x8671c4
@@ -399,7 +399,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8671d3: mov eax, 1
         R.ebx = (R.pop()) | 0; // 8671d8: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 8671d9: add esp, 0xc
-        return R.eax; // 8671dc: ret 
+        return R.ret(0); // 8671dc: ret 
       case 0x8671dd:
         R.logic(((R.ecx >>> 0) & 0xff) & 0x1, 8); // 8671dd: test cl, 1
         if (R.zf) { pc = 0x8671ef; continue; } // 8671e0: je 0x8671ef
@@ -411,7 +411,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8671e5: mov eax, 1
         R.ebx = (R.pop()) | 0; // 8671ea: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 8671eb: add esp, 0xc
-        return R.eax; // 8671ee: ret 
+        return R.ret(0); // 8671ee: ret 
       case 0x8671ef:
         R.logic(((R.ecx >>> 0) & 0xff) & 0x10, 8); // 8671ef: test cl, 0x10
         if (R.zf) { pc = 0x867201; continue; } // 8671f2: je 0x867201
@@ -423,7 +423,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8671f7: mov eax, 1
         R.ebx = (R.pop()) | 0; // 8671fc: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 8671fd: add esp, 0xc
-        return R.eax; // 867200: ret 
+        return R.ret(0); // 867200: ret 
       case 0x867201:
         R.logic(((R.ecx >>> 8) & 0xff) & 0x1, 8); // 867201: test ch, 1
         if (R.zf) { pc = 0x867213; continue; } // 867204: je 0x867213
@@ -435,7 +435,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 867209: mov eax, 1
         R.ebx = (R.pop()) | 0; // 86720e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 86720f: add esp, 0xc
-        return R.eax; // 867212: ret 
+        return R.ret(0); // 867212: ret 
       case 0x867213:
         R.edx = (((R.m.u8(((R.esp + 0x13) | 0) >>> 0)) << 24 >> 24)) | 0; // 867213: movsx edx, byte ptr [esp + 0x13]
         R.eax = (((((R.eax >>> 0) & 0xff)) << 24 >> 24)) | 0; // 867218: movsx eax, al
@@ -451,7 +451,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 867229: mov eax, 1
         R.ebx = (R.pop()) | 0; // 86722e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 86722f: add esp, 0xc
-        return R.eax; // 867232: ret 
+        return R.ret(0); // 867232: ret 
       case 0x867233:
         R.edi = (R.pop()) | 0; // 867233: pop edi
         R.esi = (R.pop()) | 0; // 867234: pop esi
@@ -459,7 +459,7 @@ export function f_866f60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 867236: xor eax, eax
         R.ebx = (R.pop()) | 0; // 867238: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0xc, 32)) | 0; // 867239: add esp, 0xc
-        return R.eax; // 86723c: ret 
+        return R.ret(0); // 86723c: ret 
       default: throw new Error(`f_866f60: ukendt adresse ${pc.toString(16)}`);
     }
   }

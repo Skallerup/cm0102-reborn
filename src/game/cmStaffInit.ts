@@ -246,3 +246,14 @@ export function npShown(st: { ca?: number; cmNp?: number[] } | undefined, off: n
   if (!st?.cmNp || !st.ca) return null;
   return staffShown(st.ca, st.cmNp[off - 0x0e]);
 }
+
+/** sub_535a80's personlige egenskaber (staff +0x56..+0x5f, 0x535ea4–0x5360xx) for alle personer: en værdi uden for 1..20 udfyldes – −1 (0xff)
+ *  → rand(16) + 5, ellers to terninger a = rand(20) + 1, b = rand(20) + 1: Ambition (+0x57) og de fleste andre trunc((a + b)/2), Loyalty
+ *  (+0x59) og +0x56 den mindste. Formændene (club +0xbf) har 0 hos 52 af 99 engelske klubber i databasen (cmFinance.ts, cmBoardGame.ts). */
+export function personalFill_535a80(v: number, rand: Rand, kind: 'avg' | 'min'): number {
+  const x = s8(v);
+  if (x >= 1 && x <= 20) return x;
+  if (x === -1) return rand(16) + 5;
+  const a = rand(20) + 1, b = rand(20) + 1;
+  return kind === 'min' ? Math.min(a, b) : trunc((a + b) / 2);
+}

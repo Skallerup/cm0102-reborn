@@ -45,7 +45,7 @@ export function f_5409b0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 540a17: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 540a21: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 540a23: add esp, 0x200
-        return R.eax; // 540a29: ret 
+        return R.ret(0); // 540a29: ret 
       case 0x540a2a:
         R.ecx = (R.m.u32(((0xae235c) | 0) >>> 0)) | 0; // 540a2a: mov ecx, dword ptr [0xae235c]
         R.edx = (R.m.u32(((0xae2350) | 0) >>> 0)) | 0; // 540a30: mov edx, dword ptr [0xae2350]
@@ -58,7 +58,7 @@ export function f_5409b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edx = ((R.edx & 0xffffff00) | (((!R.cL ? 1 : 0) & 0xff) << 0)) | 0; // 540a40: setge dl
         R.eax = ((R.edx >>> 0)) | 0; // 540a43: mov eax, edx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 540a45: add esp, 0x200
-        return R.eax; // 540a4b: ret 
+        return R.ret(0); // 540a4b: ret 
       default: throw new Error(`f_5409b0: ukendt adresse ${pc.toString(16)}`);
     }
   }

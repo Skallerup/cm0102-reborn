@@ -39,6 +39,33 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
   B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
 
+## Ønskelisterne – Shortlist_Manager på spillets data (2026-11-14, SLÅET FRA – `src/game/cmShortlistGame.ts`, `SL_ON`)
+- **Oversat (cmGen/, x86ts.py, 78 nye funktioner):** 0x83b6e0 allocate_transfer_budget, 0x83f3a0 fill_shortlist_slot, 0x840d80 value_player_for_club,
+  0x4d1600 calc_asking_price (+0x4d42d0), 0x598800 get_transfer_budget, 0x84a020 make_club_bids, 0x8e5d60 build_bid, 0x842e10, 0x843800, 0x843e10,
+  0x842180, 0x8423f0, 0x844540, 0x844660, 0x84af00, 0x84b180, 0x84b6f0, 0x842740, 0x8ce990, 0x8c7950 m.fl. De 121 ældre oversættelser er genereret
+  igen (kun `ret N` → `R.ret(n)`, så de kan køre på delt processortilstand, `SHARED`). x86.ts har CRT'en: malloc/new 0x944e46/0x944cf1, realloc
+  0x945667, qsort 0x945333 (sammenligningerne 0x83b670/0x83b690/0x83b6c0/0x757ea0/0x844740 i `QSORT_CMP`), pow 0x945ff0 på x87-stakken, __alldiv
+  0x945e80, strstr 0x945a60, og `PC_HOOK` (en håndindsat genvej i f_83f3a0.ts ved 0x83fa25).
+- **Håndporteret:** trupplanens hale 0x83e9bd–0x83ebe9 (cmSquadPlan.ts: +3 grænsen, +7 = 0, +0xb pladsens værdi efter gruppen – k = 2,5/2/1,8 med
+  klubbens omdømme, 0,8, 0,5; r = 1,25 − v/max(grænse, 1000) i [0,5; 1]; målmanden uden indehaver ×3), +7 = 0 ved nulstillingen, de slupne mål
+  (0x83d0ed → 0x843e10(mål, klub, 3, 0)), 0x5cccd0's port med 0x844540 (`dailyGate(e, rand, bud)`), 0x844300 og positionslisterne 0x839e60/0x83a780
+  i TS, 0x842180's computerdel (`cmInterestedClubs`), og 0x83f3a0's frasortering af kandidaterne 0x83fa25–0x8400da i TS (samme rand-rækkefølge –
+  slots og par bit for bit som de oversatte instruktioner alene, `CM_SL_FAST=0`; ~2,5× hurtigere).
+- **Hukommelsen** (`buildSlMem`): buildWantMem med `full` (alle 1.714 klubber, de klubløse, staff +0x52, staben på +0xd3/+0x19f/+0x1b3/+0x1cf, np +4/+6),
+  pladserne (GameState.cmPlan, nu 12 tal pr. plads), parrene (GameState.cmSlPairs), spillets åbne bud som TRANSFER_MANAGER's tabel, CONTRACT_MANAGER's
+  faste datoer, land +0x7f = 2 for EU-15 (*estimeret* – nation.dat-feltet er ikke i world-filen; uden det krævede alle arbejdstilladelse).
+  Adaptere: 0x6e6340 = planScore.ts, 0x8be300/0x8bed60 → spillets bud (transfers.ts `cmShortlistApply`), 0x62ed70 = konditionsmodulet,
+  0x8c7950 = rules2001 workPermitGranted, 0x8d0040 = loanBlocked, 0x4cda70 (sælgerens modtræk) = intet.
+- **Status – derfor slået fra:** (1) ingen mål: 732 klubber gennem 0x83b6e0 ved spilstarten giver 0 par/0 mål; originalen har 336 par og 258 mål i
+  137 klubber (`npx tsx scripts/cm-shortlist-orig.ts` på pre-194-2001.bin). Kandidaterne når 0x840d80 (Aston Villa: 1.033 af 13.788), få klarer
+  grænsen (+3 = 31.020), og 0x84af00 afviser de sidste – fejlen er sandsynligvis inddata: (2) asking price 0x4d1600 på spillets data er for lav
+  (`npx tsx scripts/cm-asking.ts`: Beckham £90.500, median 0,09 × værdien) – næste skridt: spor 0x4d1600 på originalens hukommelse (snap + log) mod
+  porten og find det manglende felt (kontraktens klausuler/+0x40, finansposten, 0x4d42d0). (3) hastighed: 0,3 s pr. klub (spilstarten 222 s for 732
+  klubber) – kræver 0x840d80/0x84af00 i TS eller færre klubber ved start.
+- **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
+  Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
+  (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
+
 ## Ønskekontrakten 0x85fc50 i spillet (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractGame.ts`)
 - **Koblet ind:** computerklubbernes nye kontrakter (completeTransfer for en computerkøber og byttespillere, frie agenter i aiTransferTick,
   købsoptionen, aiRenewals, aiFillSquads, aiBosmans futureWage) = CONTRACT_MANAGER::offer_contract 0x4cda70 (faktor 1,0, ud-kontrakt) →

@@ -41,7 +41,7 @@ export function f_54cfb0(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x54cfdc; continue;
       case 0x54cfdc:
         R.esi = (R.pop()) | 0; // 54cfdc: pop esi
-        return R.eax; // 54cfdd: ret 
+        return R.ret(0); // 54cfdd: ret 
       default: throw new Error(`f_54cfb0: ukendt adresse ${pc.toString(16)}`);
     }
   }

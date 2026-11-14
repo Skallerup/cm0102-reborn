@@ -19,7 +19,7 @@ export function f_8c5410(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (((R.eax + R.edx * 8) | 0)) | 0; // 8c541f: lea eax, [eax + edx*8]
         R.ecx = ((R.ecx & 0xffffff00) | (((R.logic(((R.ecx >>> 0) & 0xff) | 0x40, 8)) & 0xff) << 0)) | 0; // 8c5422: or cl, 0x40
         R.m.w8(((R.eax) | 0) >>> 0, ((R.ecx >>> 0) & 0xff)); // 8c5425: mov byte ptr [eax], cl
-        return R.eax; // 8c5427: ret 4
+        return R.ret(1); // 8c5427: ret 4
       default: throw new Error(`f_8c5410: ukendt adresse ${pc.toString(16)}`);
     }
   }

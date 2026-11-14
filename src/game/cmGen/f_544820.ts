@@ -51,7 +51,7 @@ export function f_544820(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 544865: pop edi
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 544866: mov al, 1
         R.esi = (R.pop()) | 0; // 544868: pop esi
-        return R.eax; // 544869: ret 
+        return R.ret(0); // 544869: ret 
       case 0x54486a:
         R.eax = (R.m.u32(((R.esi + 0x57) | 0) >>> 0)) | 0; // 54486a: mov eax, dword ptr [esi + 0x57]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 54486d: test eax, eax
@@ -92,12 +92,12 @@ export function f_544820(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 5448ad: pop edi
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 5448ae: mov al, 1
         R.esi = (R.pop()) | 0; // 5448b0: pop esi
-        return R.eax; // 5448b1: ret 
+        return R.ret(0); // 5448b1: ret 
       case 0x5448b2:
         R.edi = (R.pop()) | 0; // 5448b2: pop edi
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) ^ ((R.eax >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 5448b3: xor al, al
         R.esi = (R.pop()) | 0; // 5448b5: pop esi
-        return R.eax; // 5448b6: ret 
+        return R.ret(0); // 5448b6: ret 
       default: throw new Error(`f_544820: ukendt adresse ${pc.toString(16)}`);
     }
   }

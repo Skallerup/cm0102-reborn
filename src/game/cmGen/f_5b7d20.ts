@@ -51,7 +51,7 @@ export function f_5b7d20(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 5b7d93: pop edi
         R.esi = (R.pop()) | 0; // 5b7d94: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x204, 32)) | 0; // 5b7d95: add esp, 0x204
-        return R.eax; // 5b7d9b: ret 
+        return R.ret(0); // 5b7d9b: ret 
       case 0x5b7d9c:
         R.push((R.ebx >>> 0)); // 5b7d9c: push ebx
         R.ebx = ((R.ebx & 0xffffff00) | (((R.m.u8(((R.ecx + 0x11) | 0) >>> 0)) & 0xff) << 0)) | 0; // 5b7d9d: mov bl, byte ptr [ecx + 0x11]
@@ -168,7 +168,7 @@ export function f_5b7d20(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 5b7e52: pop edi
         R.esi = (R.pop()) | 0; // 5b7e53: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x204, 32)) | 0; // 5b7e54: add esp, 0x204
-        return R.eax; // 5b7e5a: ret 
+        return R.ret(0); // 5b7e5a: ret 
       default: throw new Error(`f_5b7d20: ukendt adresse ${pc.toString(16)}`);
     }
   }

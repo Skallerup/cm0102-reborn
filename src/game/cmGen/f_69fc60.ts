@@ -57,7 +57,7 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) ^ ((R.eax >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 69fcb4: xor al, al
         R.ebx = (R.pop()) | 0; // 69fcb6: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 69fcb7: add esp, 0x200
-        return R.eax; // 69fcbd: ret 4
+        return R.ret(1); // 69fcbd: ret 4
       case 0x69fcc0:
         R.ecx = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fcc0: mov ecx, dword ptr [esi + 8]
         R.edx = (((R.esp + 0x10) | 0)) | 0; // 69fcc3: lea edx, [esp + 0x10]
@@ -92,7 +92,7 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 69fd2d: pop ebp
         R.ebx = (R.pop()) | 0; // 69fd2e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 69fd2f: add esp, 0x200
-        return R.eax; // 69fd35: ret 4
+        return R.ret(1); // 69fd35: ret 4
       case 0x69fd38:
         R.eax = (R.m.u32(((R.esi + 0x8) | 0) >>> 0)) | 0; // 69fd38: mov eax, dword ptr [esi + 8]
         R.edi = (R.pop()) | 0; // 69fd3b: pop edi
@@ -102,7 +102,7 @@ export function f_69fc60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 69fd41: mov al, 1
         R.ebx = (R.pop()) | 0; // 69fd43: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 69fd44: add esp, 0x200
-        return R.eax; // 69fd4a: ret 4
+        return R.ret(1); // 69fd4a: ret 4
       default: throw new Error(`f_69fc60: ukendt adresse ${pc.toString(16)}`);
     }
   }

@@ -183,7 +183,7 @@ export function f_8d0bb0(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 8d0d79: pop esi
         /* fs */ // 8d0d7a: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x3c, 32)) | 0; // 8d0d81: add esp, 0x3c
-        return R.eax; // 8d0d84: ret 8
+        return R.ret(2); // 8d0d84: ret 8
       default: throw new Error(`f_8d0bb0: ukendt adresse ${pc.toString(16)}`);
     }
   }

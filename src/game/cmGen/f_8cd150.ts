@@ -93,7 +93,7 @@ export function f_8cd150(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x10) | 0) >>> 0)) | 0; // 8cd1fc: mov ecx, dword ptr [esp + 0x10]
         /* fs */ // 8cd200: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x1c, 32)) | 0; // 8cd207: add esp, 0x1c
-        return R.eax; // 8cd20a: ret 4
+        return R.ret(1); // 8cd20a: ret 4
       case 0x8cd20d:
         R.ecx = (((R.esp + 0x8) | 0)) | 0; // 8cd20d: lea ecx, [esp + 8]
         R.m.w32(((R.esp + 0x20) | 0) >>> 0, 0xffffffff); // 8cd211: mov dword ptr [esp + 0x20], 0xffffffff
@@ -104,7 +104,7 @@ export function f_8cd150(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 8cd228: pop esi
         /* fs */ // 8cd229: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x1c, 32)) | 0; // 8cd230: add esp, 0x1c
-        return R.eax; // 8cd233: ret 4
+        return R.ret(1); // 8cd233: ret 4
       default: throw new Error(`f_8cd150: ukendt adresse ${pc.toString(16)}`);
     }
   }

@@ -252,7 +252,7 @@ export function f_842c00(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 842df9: pop ebp
         R.ebx = (R.pop()) | 0; // 842dfa: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x14, 32)) | 0; // 842dfb: add esp, 0x14
-        return R.eax; // 842dfe: ret 8
+        return R.ret(2); // 842dfe: ret 8
       default: throw new Error(`f_842c00: ukendt adresse ${pc.toString(16)}`);
     }
   }

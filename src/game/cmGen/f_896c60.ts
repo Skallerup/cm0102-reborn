@@ -78,7 +78,7 @@ export function f_896c60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 896d14: pop ebp
         R.ebx = (R.pop()) | 0; // 896d15: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x20c, 32)) | 0; // 896d16: add esp, 0x20c
-        return R.eax; // 896d1c: ret 0x10
+        return R.ret(4); // 896d1c: ret 0x10
       case 0x896d1f:
         R.edi = (R.m.u32(((R.esp + 0x228) | 0) >>> 0)) | 0; // 896d1f: mov edi, dword ptr [esp + 0x228]
         R.ecx = ((R.esi >>> 0)) | 0; // 896d26: mov ecx, esi
@@ -95,7 +95,7 @@ export function f_896c60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 896d37: xor eax, eax
         R.ebx = (R.pop()) | 0; // 896d39: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x20c, 32)) | 0; // 896d3a: add esp, 0x20c
-        return R.eax; // 896d40: ret 0x10
+        return R.ret(4); // 896d40: ret 0x10
       case 0x896d43:
         R.edx = (((R.eax + R.eax * 8) | 0)) | 0; // 896d43: lea edx, [eax + eax*8]
         R.ecx = (R.logic((R.ecx >>> 0) ^ (R.ecx >>> 0), 32)) | 0; // 896d46: xor ecx, ecx
@@ -249,7 +249,7 @@ export function f_896c60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 896e7a: pop ebp
         R.ebx = (R.pop()) | 0; // 896e7b: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x20c, 32)) | 0; // 896e7c: add esp, 0x20c
-        return R.eax; // 896e82: ret 0x10
+        return R.ret(4); // 896e82: ret 0x10
       default: throw new Error(`f_896c60: ukendt adresse ${pc.toString(16)}`);
     }
   }

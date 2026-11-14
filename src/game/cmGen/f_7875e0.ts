@@ -20,7 +20,7 @@ export function f_7875e0(c: CmCtx, ecx: number, args: number[]): number {
       case 0x7875e9:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7875e9: xor eax, eax
         R.esi = (R.pop()) | 0; // 7875eb: pop esi
-        return R.eax; // 7875ec: ret 4
+        return R.ret(1); // 7875ec: ret 4
       case 0x7875ef:
         R.push(0x0); // 7875ef: push 0
         R.push(0x0); // 7875f1: push 0
@@ -34,7 +34,7 @@ export function f_7875e0(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x787604; continue;
       case 0x787604:
         R.esi = (R.pop()) | 0; // 787604: pop esi
-        return R.eax; // 787605: ret 4
+        return R.ret(1); // 787605: ret 4
       case 0x787608:
         R.push((R.esi >>> 0)); // 787608: push esi
         R.call(0x53ca90, { n: 1, thisEcx: false, calleeClean: false }); // 787609: call 0x53ca90
@@ -44,7 +44,7 @@ export function f_7875e0(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x5fd210, { n: 1, thisEcx: false, calleeClean: true }); // 787618: call 0x5fd210
         R.eax = (0x1) | 0; // 78761d: mov eax, 1
         R.esi = (R.pop()) | 0; // 787622: pop esi
-        return R.eax; // 787623: ret 4
+        return R.ret(1); // 787623: ret 4
       default: throw new Error(`f_7875e0: ukendt adresse ${pc.toString(16)}`);
     }
   }

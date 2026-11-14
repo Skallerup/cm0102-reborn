@@ -74,7 +74,7 @@ export function f_897dc0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (((R.eax + R.eax * 4) | 0)) | 0; // 897e5f: lea eax, [eax + eax*4]
         R.eax = (((R.ecx + R.eax * 2) | 0)) | 0; // 897e62: lea eax, [ecx + eax*2]
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897e65: add esp, 0x200
-        return R.eax; // 897e6b: ret 0xc
+        return R.ret(3); // 897e6b: ret 0xc
       case 0x897e6e:
         R.edx = (((R.esp + 0x108) | 0)) | 0; // 897e6e: lea edx, [esp + 0x108]
         R.eax = (((R.esp + 0x8) | 0)) | 0; // 897e75: lea eax, [esp + 8]
@@ -109,7 +109,7 @@ export function f_897dc0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 897ed2: xor eax, eax
         R.ebx = (R.pop()) | 0; // 897ed4: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897ed5: add esp, 0x200
-        return R.eax; // 897edb: ret 0xc
+        return R.ret(3); // 897edb: ret 0xc
       default: throw new Error(`f_897dc0: ukendt adresse ${pc.toString(16)}`);
     }
   }

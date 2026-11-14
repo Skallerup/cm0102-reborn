@@ -20,6 +20,7 @@ import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
 import { aiContract, cmAiTerms } from './cmContractGame';
+import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -481,8 +482,8 @@ function cmRespond(o: TransferOffer, p: Player, buyer: Club, action: 'accept' | 
     for (const x of offers) {
       x.status = 'rejected';
       const b = g.clubs[x.buyer];
-      // computerens køber kan komme igen (spillets egen forfølgelse – originalens Shortlist_Manager 0x843e10 er ikke porteret, *estimeret*)
-      if (b && !isHumanClub(b.id) && !x.loan) startPursuit(x);
+      // computerens køber kommer igen via sin ønskeliste (cmShortlistGame.ts: pladsens mål bliver stående, 0x84a020 byder igen)
+      if (b && !isHumanClub(b.id) && !x.loan && !cmShortlistOn(g)) startPursuit(x);
       if (b && isHumanClub(b.id)) asOwner(b.id, () => addNews({ cat: 'transfer', key: 'transfer.bidRejected', params: { player: pname(p), club: myName }, link: { kind: 'player', id: p.id } }));
     }
     return null;
@@ -983,7 +984,7 @@ function cmAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
   const g = gs();
   const c = valueCtx(g, p);
   // asking price 0x4d1600 er ikke porteret: spillets askingPrice (med 'ikke til salg'-tillægget som ved en forespørgsel), *estimeret*
-  const asking = toGbp(askingPrice(p) * Math.max(1, notForSaleMult(p, buyer)));
+  const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p) * Math.max(1, notForSaleMult(p, buyer)));
   const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
   const t = termsOf(o);
   const wanted = swapCandidates(o.seller, p.id, o.buyer).map((x) => x.id);
@@ -1248,6 +1249,8 @@ function aiClubTurn(club: Club) {
     const surplus = sq.filter((p) => !p.joined || p.joined <= addDays(g.date, -120)).sort((a, b) => a.ca - b.ca).slice(0, 3);
     for (const p of surplus) p.listed = true;
   }
+  // den originale database i ægte tilstand: computerens køb kommer fra ønskelisterne (cmShortlistGame.ts – 0x83b6e0/0x84a020)
+  if (plan && cmShortlistOn(g)) return;
   const needs = analyzeNeeds(club.id);
   // fuld trup: kun køb hvis en position helt mangler dækning
   if (sq.length >= 33 && !(needs[0]?.score >= 2)) return;
@@ -1294,6 +1297,7 @@ function aiClubTurn(club: Club) {
 /** En AI-klub der har fået afslag, vender måske tilbage med et højere bud */
 function startPursuit(o: TransferOffer) {
   const g = gs();
+  if (cmShortlistOn(g)) return;
   const buyer = g.clubs[o.buyer];
   const p = g.players[o.player];
   if (!buyer || !p) return;
@@ -1621,7 +1625,7 @@ export function aiBidsForListed() {
  *  ventende bud pr. spiller og tre i alt. Originalen har ingen transfervinduer i 2001/02 (windowOpen gælder ikke her). */
 function cmBidsForListed() {
   const g = gs();
-  if (!g.userClub) return;
+  if (!g.userClub || cmShortlistOn(g)) return;   // ønskelisternes bud (0x84a020) erstatter skønnet
   const rnd = new Rng(hash(g.seed ?? 0, daysBetween('2000-01-01', g.date), 0x842180));
   for (const p of squad(g.userClub)) {
     if (p.loan || p.contract?.futureClub) continue;
@@ -1643,6 +1647,61 @@ function cmBidsForListed() {
 }
 
 registerAskingPrice(askingPrice, playerInterest, (p) => transferRealism(p).level);
+
+/** Ønskelisternes bud (cmShortlistGame.ts, 0x84a020 → 0x8e5d60/0x8be300): bud på menneskets spillere bliver ventende bud (Respond i indbakken);
+ *  en computerklubs svar kommer straks (0x8c8090 – originalen venter 0x8cc5b0's dage, *estimeret*); et modbud tages, når det er inden for
+ *  køberens værdisætning 0x840d80 og transferbudgettet; klubløse spillere skriver under med det samme. */
+export function cmShortlistApply(events: SlEvent[]) {
+  const g = gs();
+  for (const e of events) {
+    const p = g.players[e.player], buyer = g.clubs[e.buyer];
+    if (!p || !buyer || p.contract?.futureClub || p.club === buyer.id || isHumanClub(buyer.id)) continue;
+    if (!p.club) {
+      if (e.loan) continue;
+      p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
+      recordMove(p, buyer.id, 0);
+      setClub(p, buyer.id);
+      p.joined = g.date;
+      forEachHuman(() => { originalTransferNews(p, buyer, undefined, 0, false); });
+      continue;
+    }
+    if (p.loan || g.offers.some((o) => o.player === p.id && o.buyer === buyer.id && ['pending', 'negotiating', 'countered'].includes(o.status))) continue;
+    const o: TransferOffer = { id: e.id, player: p.id, buyer: buyer.id, seller: p.club, fee: e.loan ? 0 : fromGbp(e.fee), loan: e.loan, status: 'pending', created: g.date,
+      respondBy: addDays(g.date, 5), maxFee: fromGbp(Math.max(e.max, e.fee)),
+      ...(e.months > 0 ? { months: e.months } : {}), ...(e.sellOn > 0 ? { sellOn: e.sellOn } : {}),
+      ...(e.lgFee > 0 ? { lgFee: fromGbp(e.lgFee), lgApps: e.lgApps } : {}), ...(e.intFee > 0 ? { intFee: fromGbp(e.intFee), intApps: e.intApps } : {}),
+      ...(e.pub ? { pub: e.pub as 1 | 2 } : {}) };
+    if (isHumanClub(p.club)) {
+      if (refusedBy(p, buyer.id)) continue;
+      g.offers.push(o);
+      asOwner(p.club, () => addNews({ cat: 'transfer', key: e.loan ? 'transfer.incomingLoan' : 'transfer.incomingBid', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
+      continue;
+    }
+    cmAiAiAnswer(o, p, buyer);
+  }
+}
+/** computer → computer: 0x8c8090 uden nyheder til mennesket */
+function cmAiAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
+  const g = gs();
+  if (o.loan) {
+    // lejebud: sælgeren siger ja til en lejelistet spiller (*estimeret* – 0x8c8090's lejegren er ikke porteret)
+    if (p.loanListed) { o.status = 'negotiating'; completeTransfer(o, p.contract?.wage ?? 0, 0); }
+    return;
+  }
+  const c = valueCtx(g, p);
+  const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p));
+  const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
+  const t = termsOf(o);
+  const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: false, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
+  let terms: BidTerms | null = null;
+  if (r.kind === 'accept') terms = t;
+  else if (r.kind === 'counter' && toGbp(o.maxFee ?? 0) >= r.terms.fee && buyer.transferBudget >= fromGbp(r.terms.fee)) terms = r.terms;
+  if (!terms) return;
+  putTerms(o, terms);
+  o.status = 'negotiating';
+  completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
+}
+setSlApply(cmShortlistApply);
 
 // ---------- frikøbsklausuler hos menneskestyrede klubber ----------
 
@@ -1849,8 +1908,8 @@ export function interestedClubs(p: Player): Interest[] {
   const g = gs();
   const out: Interest[] = [];
   // den originale database i ægte tilstand, menneskets spiller: computerklubberne efter 0x842180 (cmTransferList.ts, *estimeret*)
-  const cm = cmActive(g) && isHumanClub(p.club);
-  if (cm) for (const id of cmInterested(g, p, clubLevel)) out.push({ club: id });
+  const cm = cmActive(g) && (isHumanClub(p.club) || cmShortlistOn(g));
+  if (cm) for (const id of cmShortlistOn(g) ? cmInterestedClubs(g, p) : cmInterested(g, p, clubLevel)) out.push({ club: id });
   for (const c of Object.values(g.clubs)) {
     if (c.id === p.club || cm) continue;
     if (c.shortlist?.includes(p.id)) out.push({ club: c.id, ...(isBotClubId(c.id) ? { bot: true } : {}) });

@@ -12,7 +12,7 @@ export function f_5a53c0(c: CmCtx, ecx: number, args: number[]): number {
     if (TRACE.on) TRACE.f!(pc, R);
     switch (pc) {
       case 0x5a53c0:
-        return R.eax; // 5a53c0: ret 
+        return R.ret(0); // 5a53c0: ret 
       default: throw new Error(`f_5a53c0: ukendt adresse ${pc.toString(16)}`);
     }
   }

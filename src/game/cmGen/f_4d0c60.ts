@@ -748,7 +748,7 @@ export function f_4d0c60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 4d1389: pop ebx
         R.esp = ((R.ebp >>> 0)) | 0; // 4d138a: mov esp, ebp
         R.ebp = (R.pop()) | 0; // 4d138c: pop ebp
-        return R.eax; // 4d138d: ret 0x14
+        return R.ret(5); // 4d138d: ret 0x14
       case 0x4d1390:
         R.esi = (R.m.u32(((R.esp + 0x1c) | 0) >>> 0)) | 0; // 4d1390: mov esi, dword ptr [esp + 0x1c]
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 4d1394: test esi, esi
@@ -989,7 +989,7 @@ export function f_4d0c60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 4d15c4: pop ebx
         R.esp = ((R.ebp >>> 0)) | 0; // 4d15c5: mov esp, ebp
         R.ebp = (R.pop()) | 0; // 4d15c7: pop ebp
-        return R.eax; // 4d15c8: ret 0x14
+        return R.ret(5); // 4d15c8: ret 0x14
       case 0x4d15cb:
         R.logic((R.edi >>> 0) & (R.edi >>> 0), 32); // 4d15cb: test edi, edi
         if (R.zf) { pc = 0x4d15e7; continue; } // 4d15cd: je 0x4d15e7
@@ -1005,7 +1005,7 @@ export function f_4d0c60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 4d15e0: pop ebx
         R.esp = ((R.ebp >>> 0)) | 0; // 4d15e1: mov esp, ebp
         R.ebp = (R.pop()) | 0; // 4d15e3: pop ebp
-        return R.eax; // 4d15e4: ret 0x14
+        return R.ret(5); // 4d15e4: ret 0x14
       case 0x4d15e7:
         R.edi = (R.pop()) | 0; // 4d15e7: pop edi
         R.esi = (R.pop()) | 0; // 4d15e8: pop esi
@@ -1013,7 +1013,7 @@ export function f_4d0c60(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 4d15eb: pop ebx
         R.esp = ((R.ebp >>> 0)) | 0; // 4d15ec: mov esp, ebp
         R.ebp = (R.pop()) | 0; // 4d15ee: pop ebp
-        return R.eax; // 4d15ef: ret 0x14
+        return R.ret(5); // 4d15ef: ret 0x14
       default: throw new Error(`f_4d0c60: ukendt adresse ${pc.toString(16)}`);
     }
   }

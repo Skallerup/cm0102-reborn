@@ -36,10 +36,10 @@ export function f_5446d0(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x544700; continue;
       case 0x544700:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 544700: xor eax, eax
-        return R.eax; // 544702: ret 
+        return R.ret(0); // 544702: ret 
       case 0x544703:
         R.eax = (0x1) | 0; // 544703: mov eax, 1
-        return R.eax; // 544708: ret 
+        return R.ret(0); // 544708: ret 
       default: throw new Error(`f_5446d0: ukendt adresse ${pc.toString(16)}`);
     }
   }

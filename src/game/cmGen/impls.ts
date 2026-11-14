@@ -1,6 +1,8 @@
 // De porterede funktioner, som de mekanisk oversatte (f_*.ts) kalder direkte – med originalens kaldkonvention: (ecx, stakkens argumenter).
 // Ikke-porterede funktioner går til c.call (sporet i kontrollen, spillets adapter i spillet).
-import { registerImpl } from './x86';
+import { registerImpl, setCrt } from './x86';
+import { msvcQsort } from '../engine/grid/subs';
+import { crtPow } from '../engine/crtMath';
 import { getContract, G } from '../cmMem';
 import { contractForClub_4cf5f0, constructContract_85e410, deservedStatus_4ca470, daysSince_54cdb0 } from '../cmContractWant';
 import { dateInit_54a110, subDays_54c8e0, addDays_54c5b0 } from '../cmContract';
@@ -15,6 +17,7 @@ let done = false;
 export function ensureImpls(): void {
   if (done) return;
   done = true;
+  setCrt(msvcQsort, crtPow);
   const wrDt = (m: import('../cmMem').CmMem, a: number, t: { d: number; y: number; x: number }) => { m.w16(a, t.d); m.w16(a + 2, t.y); m.w32(a + 4, t.x); };
   registerImpl(0x4cf5a0, (c, _e, a) => getContract(c.m, a[0] >>> 0));
   registerImpl(0x4cf5f0, (c, _e, a) => contractForClub_4cf5f0(c, a[0] >>> 0, a[1] >>> 0));

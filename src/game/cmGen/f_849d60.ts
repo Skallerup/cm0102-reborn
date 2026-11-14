@@ -129,7 +129,7 @@ export function f_849d60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 849e6f: mov al, 1
         R.ebx = (R.pop()) | 0; // 849e71: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 849e72: add esp, 8
-        return R.eax; // 849e75: ret 8
+        return R.ret(2); // 849e75: ret 8
       case 0x849e78:
         R.fpush(R.f32(((R.esp + 0x20) | 0))); // 849e78: fld dword ptr [esp + 0x20]
         R.fcom(R.st[0], 1.2); R.fpop(); // 849e7c: fcomp qword ptr [0x968978]
@@ -148,7 +148,7 @@ export function f_849d60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x2) & 0xff) << 0)) | 0; // 849e93: mov al, 2
         R.ebx = (R.pop()) | 0; // 849e95: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 849e96: add esp, 8
-        return R.eax; // 849e99: ret 8
+        return R.ret(2); // 849e99: ret 8
       case 0x849e9c:
         R.fpush(R.f32(((R.esp + 0x20) | 0))); // 849e9c: fld dword ptr [esp + 0x20]
         R.fcom(R.st[0], 1.2); R.fpop(); // 849ea0: fcomp qword ptr [0x968978]
@@ -178,7 +178,7 @@ export function f_849d60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x5) & 0xff) << 0)) | 0; // 849ecd: mov al, 5
         R.ebx = (R.pop()) | 0; // 849ecf: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 849ed0: add esp, 8
-        return R.eax; // 849ed3: ret 8
+        return R.ret(2); // 849ed3: ret 8
       case 0x849ed6:
         R.sub(((R.ecx >>> 0) & 0xff), 0x18, 8); // 849ed6: cmp cl, 0x18
         R.edi = (R.pop()) | 0; // 849ed9: pop edi
@@ -190,7 +190,7 @@ export function f_849d60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.add((R.eax >>> 0), 0x4, 32)) | 0; // 849ee3: add eax, 4
         R.ebx = (R.pop()) | 0; // 849ee6: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 849ee7: add esp, 8
-        return R.eax; // 849eea: ret 8
+        return R.ret(2); // 849eea: ret 8
       case 0x849eed:
         R.edi = (R.pop()) | 0; // 849eed: pop edi
         R.esi = (R.pop()) | 0; // 849eee: pop esi
@@ -198,7 +198,7 @@ export function f_849d60(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x3) & 0xff) << 0)) | 0; // 849ef0: mov al, 3
         R.ebx = (R.pop()) | 0; // 849ef2: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 849ef3: add esp, 8
-        return R.eax; // 849ef6: ret 8
+        return R.ret(2); // 849ef6: ret 8
       default: throw new Error(`f_849d60: ukendt adresse ${pc.toString(16)}`);
     }
   }

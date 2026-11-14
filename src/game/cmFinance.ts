@@ -26,7 +26,7 @@ import { seasonStartDay } from './cmFitness';
 import { addDays } from './dates';
 import { gs, squad } from './state';
 import { compHooks } from './hooks';
-import { npFromWorld, npTemplate, staffInitRecord, type NpTemplate } from './cmStaffInit';
+import { npFromWorld, npTemplate, personalFill_535a80, staffInitRecord, type NpTemplate } from './cmStaffInit';
 import type { CMWorld } from './data/cm0102';
 
 export const GBP = 0.86;
@@ -184,7 +184,8 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
     if (ch) {
       const np = npFromWorld(ch[0], [ch[1], ...ch.slice(2, 23), ch[23]], ch[24]);
       if (pool.length) staffInitRecord({ np, job: ch[23], nation: g.nations[ch[25]]?.name ?? null, clubRep: repOf(g, c), name: '', hasPlayer: false }, pool, cmRand(seed, c.id, 0x537d59));
-      chair = [np.a[0x0f - 0x0e], np.a[0x20 - 0x0e], ch[26], ch[27]];
+      // Ambition +0x57 og Loyalty +0x59 som sub_535a80 udfylder dem, når databasen har 0 (samme talrække som cmBoardGame.ts' formand)
+      chair = [np.a[0x0f - 0x0e], np.a[0x20 - 0x0e], personalFill_535a80(ch[26], cmRand(seed, c.id, 0x535f04), 'avg'), personalFill_535a80(ch[27], cmRand(seed, c.id, 0x535f8f), 'min')];
     }
     // 0x5965a2: +0x166 efter velstanden (ejer stadion: 5 rig / 15 gæld, ellers 10)
     const band = wealthBand(bal, repOf(g, c));

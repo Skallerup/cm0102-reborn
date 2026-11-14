@@ -23,7 +23,9 @@ const f32 = Math.fround;
 
 /** En plads (0x25 bytes): +0 rolle (0xb spiller, 6–10 staben), +1 positionsmaske, +0x24 gruppen i bit 1–4, +0xf mål/indehaver, +0x13 indehaveren,
  *  +0x17, +0x23 indekset, +0x1b dato (dag, år) */
-export interface PlanSlot { role: number; mask: number; b24: number; f: number; s13: number; s17: number; idx: number; day: number; year: number }
+export interface PlanSlot { role: number; mask: number; b24: number; f: number; s13: number; s17: number; idx: number; day: number; year: number;
+  /** +3 grænsen, +7 budgetandelen (0x83b6e0), +0xb pladsens værdi – halen 0x83e9bd–0x83ebe9 (ønskelisterne, cmShortlistGame.ts) */
+  b3?: number; b7?: number; bb?: number }
 /** Klubbens post i planlæggeren ([this+0xdc] + 9·klub): pladserne, +4 tilstanden, +7 formationen, +8 tælleren */
 export interface PlanEntry { slots: PlanSlot[]; state: number; form: number; counter: number }
 
@@ -149,11 +151,12 @@ const dayNo = (d: number, y: number) => {
 };
 
 /** Udfaldet til sporet/spillet */
-export interface PlanResult { ran: boolean; groups: { A: number[]; B: number[]; C: number[] } }
+/** dropped: mål (+0xf), pladserne slap – 0x83d0ed kalder 0x843e10(mål, klub, 3, 0), når parret står på ønskelisten */
+export interface PlanResult { ran: boolean; groups: { A: number[]; B: number[]; C: number[] }; dropped: number[] }
 
 /** 0x83cb40 */
 export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResult {
-  const res: PlanResult = { ran: false, groups: { A: [], B: [], C: [] } };
+  const res: PlanResult = { ran: false, groups: { A: [], B: [], C: [] }, dropped: [] };
   let first = ind.first;
   if (e.slots[0].idx === -1) first = true;                                     // 0x83cbb4: +0x23 = 0xff
   e.counter = 0;
@@ -199,7 +202,8 @@ export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResul
       const passed = s.year < ind.today.year || (s.year === ind.today.year && s.day < ind.today.day);
       if (!passed) continue;                                                   // (målets job 0x10 – ingen ønskeliste hos os)
     }
-    s.f = -1; s.s13 = -1;
+    if (s.f > -1) res.dropped.push(s.f);
+    s.f = -1; s.s13 = -1; s.b7 = 0;
     if (s.role !== 0xb) continue;
     const g = slotGroup(s);
     if (g === 2 || g === 3) mA.push(s.mask); else if (g === 4) mB.push(s.mask); else if (g === 5) mC.push(s.mask);
@@ -395,7 +399,15 @@ export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResul
     if (s.f > -1 || s.role !== 0xb) continue;
     let thr = T < 36000 ? T : 36000;
     if (s.mask === 1 && s.s13 === -1) thr = ftol(thr * 0.75);
-    if (s.s13 <= -1) { s.f = -1; continue; }
+    // 0x83eb2a: ingen indehaver – +3 = grænsen, +7 = 0, +0xb efter gruppen (målmanden ×3)
+    if (s.s13 <= -1) {
+      s.f = -1; s.b3 = thr; s.b7 = 0;
+      const k = TAIL_K[slotGroup(s)];
+      let v = k ? ftol(thr * k + s16(ind.rep)) : ftol(thr * (slotGroup(s) === 4 || slotGroup(s) === 5 ? 0.8 : 0.5));
+      if (s.mask & 1) v = (v * 3) | 0;
+      s.bb = v;
+      continue;
+    }
     const p = byId.get(s.s13);
     if (!p) continue;
     const c = p.contract;
@@ -417,6 +429,14 @@ export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResul
     if (v >= thr && (!c || !c.b45 || (!(c.b45 & 0x100) && !(c.b45 & 1) && dayNo(c.endDay, c.endYear) - todayNo >= 365))) { s.f = p.id; continue; }
     const al = s8(ftol((1 - v / thr) * -100));
     const g2 = s.b24 & 0x1e;
+    // 0x83e9bd: +3 = grænsen, +7 = 0, +0xb = omdømmet · r + k · (grænse − v) med r = 1,25 − v/max(grænse, 1000) i [0,5; 1]
+    {
+      s.b3 = thr; s.b7 = 0;
+      let r = 1.25 - v / Math.max(thr, 1000);
+      r = r > 1 ? 1 : r < 0.5 ? 0.5 : r;
+      const gg = slotGroup(s), k = TAIL_K[gg];
+      s.bb = k ? ftol(s16(ind.rep) * r + thr * k - v * k) : gg === 4 || gg === 5 ? ftol(thr * 0.8 - v * 0.8) : ftol(thr * 0.5 - v * 0.5);
+    }
     if (c) {
       if (first) c.b3d = CLAMP100(s8(c.b3d) + al);
       if (g2 === 4 || g2 === 6) { if (s8(c.b3d) < 25 && first) c.b3d = 25; s.f = -1; }
@@ -426,6 +446,9 @@ export function planSquad(e: PlanEntry, ind: PlanInput, ctx: PlanCtx): PlanResul
   }
   return res;
 }
+
+/** 0x83f360/0x83f374: gruppe 1 → 2,5, 2 → 2, 3 → 1,8 (med klubbens omdømme); 4/5 → 0,8 og ellers 0,5 (uden) */
+const TAIL_K: Record<number, number> = { 1: 2.5, 2: 2, 3: 1.8 };
 
 /** Date + n dage (0x54c5b0) */
 function addDays(day: number, year: number, n: number): { day: number; year: number } {
@@ -499,9 +522,10 @@ export function clubStrength(i: StrengthInput): { T: number; R: number } {
 
 /** Planlæggeren kører hver dag (når 0x5cccd0 skifter dato), [0x9cd1f8] slået til: pr. klub med land +8 = min(200, +8 + 1); uden åbne mål eller
  *  med tilstand ≠ 2: kør, når +8 > rand(70) + 30 og rand(5) = 0 (0x83a730: arg3 = 1, arg4 = 0). (rand(2) for 0x84a020 trækkes før løkken.) */
-export function dailyGate(e: PlanEntry, rand: (n: number) => number): boolean {
+export function dailyGate(e: PlanEntry, rand: (n: number) => number, bids = 0): boolean {
   if (e.counter < 200) e.counter++;
-  if (e.state === 2) return true;
+  // 0x844540(klub, −1) = 0 (ingen pladser med bud) og +4 = 2 → straks
+  if (bids === 0 && e.state === 2) return true;
   if (e.counter > rand(70) + 30) return rand(5) === 0;
   return false;
 }

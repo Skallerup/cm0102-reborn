@@ -46,11 +46,11 @@ export function f_7ae950(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 7ae9aa: pop esi
         R.eax = (((R.eax + R.eax * 4) | 0)) | 0; // 7ae9ab: lea eax, [eax + eax*4]
         R.eax = (((R.ecx + R.eax * 2) | 0)) | 0; // 7ae9ae: lea eax, [ecx + eax*2]
-        return R.eax; // 7ae9b1: ret 
+        return R.ret(0); // 7ae9b1: ret 
       case 0x7ae9b2:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7ae9b2: xor eax, eax
         R.esi = (R.pop()) | 0; // 7ae9b4: pop esi
-        return R.eax; // 7ae9b5: ret 
+        return R.ret(0); // 7ae9b5: ret 
       default: throw new Error(`f_7ae950: ukendt adresse ${pc.toString(16)}`);
     }
   }

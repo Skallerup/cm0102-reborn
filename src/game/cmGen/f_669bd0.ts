@@ -219,7 +219,7 @@ export function f_669bd0(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x20) | 0) >>> 0)) | 0; // 669dd8: mov ecx, dword ptr [esp + 0x20]
         /* fs */ // 669ddc: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x2c, 32)) | 0; // 669de3: add esp, 0x2c
-        return R.eax; // 669de6: ret 
+        return R.ret(0); // 669de6: ret 
       case 0x669de7:
         R.sub(((R.edx >>> 0) & 0xffff), ((R.eax >>> 0) & 0xffff), 16); // 669de7: cmp dx, ax
         if (!R.cL) { pc = 0x669e63; continue; } // 669dea: jge 0x669e63
@@ -271,7 +271,7 @@ export function f_669bd0(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x20) | 0) >>> 0)) | 0; // 669e54: mov ecx, dword ptr [esp + 0x20]
         /* fs */ // 669e58: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x2c, 32)) | 0; // 669e5f: add esp, 0x2c
-        return R.eax; // 669e62: ret 
+        return R.ret(0); // 669e62: ret 
       case 0x669e63:
         R.esi = (R.m.u32(((R.esp + 0x40) | 0) >>> 0)) | 0; // 669e63: mov esi, dword ptr [esp + 0x40]
         R.sub(((R.edx >>> 0) & 0xffff), ((R.ecx >>> 0) & 0xffff), 16); // 669e67: cmp dx, cx
@@ -365,7 +365,7 @@ export function f_669bd0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 669f37: pop ebx
         /* fs */ // 669f38: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x2c, 32)) | 0; // 669f3f: add esp, 0x2c
-        return R.eax; // 669f42: ret 
+        return R.ret(0); // 669f42: ret 
       default: throw new Error(`f_669bd0: ukendt adresse ${pc.toString(16)}`);
     }
   }

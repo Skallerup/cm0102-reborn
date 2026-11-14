@@ -16,7 +16,7 @@ export function f_68d010(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.eax >>> 0)); // 68d012: push eax
         R.call(0x944c94, { n: 0, thisEcx: false, calleeClean: false }); // 68d013: call 0x944c94
         R.ecx = (R.pop()) | 0; // 68d018: pop ecx
-        return R.eax; // 68d019: ret 
+        return R.ret(0); // 68d019: ret 
       default: throw new Error(`f_68d010: ukendt adresse ${pc.toString(16)}`);
     }
   }

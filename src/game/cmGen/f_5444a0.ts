@@ -73,12 +73,12 @@ export function f_5444a0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 544513: pop edi
         R.eax = (0x1) | 0; // 544514: mov eax, 1
         R.esi = (R.pop()) | 0; // 544519: pop esi
-        return R.eax; // 54451a: ret 
+        return R.ret(0); // 54451a: ret 
       case 0x54451b:
         R.edi = (R.pop()) | 0; // 54451b: pop edi
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 54451c: xor eax, eax
         R.esi = (R.pop()) | 0; // 54451e: pop esi
-        return R.eax; // 54451f: ret 
+        return R.ret(0); // 54451f: ret 
       default: throw new Error(`f_5444a0: ukendt adresse ${pc.toString(16)}`);
     }
   }

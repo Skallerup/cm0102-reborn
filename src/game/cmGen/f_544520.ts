@@ -56,11 +56,11 @@ export function f_544520(c: CmCtx, ecx: number, args: number[]): number {
       case 0x544577:
         R.eax = (0x1) | 0; // 544577: mov eax, 1
         R.esi = (R.pop()) | 0; // 54457c: pop esi
-        return R.eax; // 54457d: ret 
+        return R.ret(0); // 54457d: ret 
       case 0x54457e:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 54457e: xor eax, eax
         R.esi = (R.pop()) | 0; // 544580: pop esi
-        return R.eax; // 544581: ret 
+        return R.ret(0); // 544581: ret 
       default: throw new Error(`f_544520: ukendt adresse ${pc.toString(16)}`);
     }
   }

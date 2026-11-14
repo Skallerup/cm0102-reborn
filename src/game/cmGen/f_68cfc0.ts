@@ -39,7 +39,7 @@ export function f_68cfc0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 68cffc: pop edi
         R.esi = (R.pop()) | 0; // 68cffd: pop esi
         R.ebx = (R.pop()) | 0; // 68cffe: pop ebx
-        return R.eax; // 68cfff: ret 8
+        return R.ret(2); // 68cfff: ret 8
       default: throw new Error(`f_68cfc0: ukendt adresse ${pc.toString(16)}`);
     }
   }

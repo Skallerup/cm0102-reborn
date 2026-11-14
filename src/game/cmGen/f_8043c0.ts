@@ -62,7 +62,7 @@ export function f_8043c0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 804439: mov eax, 1
         R.ebx = (R.pop()) | 0; // 80443e: pop ebx
         R.ecx = (R.pop()) | 0; // 80443f: pop ecx
-        return R.eax; // 804440: ret 
+        return R.ret(0); // 804440: ret 
       default: throw new Error(`f_8043c0: ukendt adresse ${pc.toString(16)}`);
     }
   }

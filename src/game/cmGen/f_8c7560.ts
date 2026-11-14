@@ -62,7 +62,7 @@ export function f_8c7560(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c75e1: xor eax, eax
         R.esi = (R.pop()) | 0; // 8c75e3: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x210, 32)) | 0; // 8c75e4: add esp, 0x210
-        return R.eax; // 8c75ea: ret 0xc
+        return R.ret(3); // 8c75ea: ret 0xc
       case 0x8c75ed:
         R.sub(R.m.u8(((R.eax + 0x76) | 0) >>> 0), 0xe, 8); // 8c75ed: cmp byte ptr [eax + 0x76], 0xe
         if (!R.zf) { pc = 0x8c75e0; continue; } // 8c75f1: jne 0x8c75e0
@@ -85,7 +85,7 @@ export function f_8c7560(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8c760e: mov eax, 1
         R.esi = (R.pop()) | 0; // 8c7613: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x210, 32)) | 0; // 8c7614: add esp, 0x210
-        return R.eax; // 8c761a: ret 0xc
+        return R.ret(3); // 8c761a: ret 0xc
       case 0x8c761d:
         R.ecx = (R.m.u32(((0xae1050) | 0) >>> 0)) | 0; // 8c761d: mov ecx, dword ptr [0xae1050]
         R.push((R.esi >>> 0)); // 8c7623: push esi
@@ -130,7 +130,7 @@ export function f_8c7560(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8c767f: mov eax, 1
         R.esi = (R.pop()) | 0; // 8c7684: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x210, 32)) | 0; // 8c7685: add esp, 0x210
-        return R.eax; // 8c768b: ret 0xc
+        return R.ret(3); // 8c768b: ret 0xc
       default: throw new Error(`f_8c7560: ukendt adresse ${pc.toString(16)}`);
     }
   }

@@ -50,7 +50,7 @@ export function f_8b4cd0(c: CmCtx, ecx: number, args: number[]): number {
         R.edx = (((R.eax + R.eax * 8) | 0)) | 0; // 8b4d23: lea edx, [eax + eax*8]
         R.eax = (((R.ecx + R.edx * 2 + 0x652d) | 0)) | 0; // 8b4d26: lea eax, [ecx + edx*2 + 0x652d]
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8b4d2d: add esp, 0x200
-        return R.eax; // 8b4d33: ret 4
+        return R.ret(1); // 8b4d33: ret 4
       case 0x8b4d36:
         R.eax = (((R.esp + 0x100) | 0)) | 0; // 8b4d36: lea eax, [esp + 0x100]
         R.ecx = (((R.esp) | 0)) | 0; // 8b4d3d: lea ecx, [esp]
@@ -81,7 +81,7 @@ export function f_8b4cd0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 8b4d8f: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8b4d99: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8b4d9b: add esp, 0x200
-        return R.eax; // 8b4da1: ret 4
+        return R.ret(1); // 8b4da1: ret 4
       default: throw new Error(`f_8b4cd0: ukendt adresse ${pc.toString(16)}`);
     }
   }

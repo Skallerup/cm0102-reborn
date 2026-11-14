@@ -242,7 +242,7 @@ export function f_8cde70(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 8ce0cf: pop ebx
         /* fs */ // 8ce0d0: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x1c, 32)) | 0; // 8ce0d7: add esp, 0x1c
-        return R.eax; // 8ce0da: ret 8
+        return R.ret(2); // 8ce0da: ret 8
       default: throw new Error(`f_8cde70: ukendt adresse ${pc.toString(16)}`);
     }
   }

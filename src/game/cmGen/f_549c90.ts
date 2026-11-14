@@ -52,7 +52,7 @@ export function f_549c90(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 549ce0: pop esi
         pc = 0x549ce1; continue;
       case 0x549ce1:
-        return R.eax; // 549ce1: ret 
+        return R.ret(0); // 549ce1: ret 
       default: throw new Error(`f_549c90: ukendt adresse ${pc.toString(16)}`);
     }
   }

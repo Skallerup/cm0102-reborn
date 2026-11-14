@@ -77,7 +77,7 @@ export function f_7f6cd0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.shl((R.eax >>> 0), 0x4, 32)) | 0; // 7f6d74: shl eax, 4
         R.eax = (R.add((R.eax >>> 0), (R.edx >>> 0), 32)) | 0; // 7f6d77: add eax, edx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 7f6d79: add esp, 0x200
-        return R.eax; // 7f6d7f: ret 8
+        return R.ret(2); // 7f6d7f: ret 8
       case 0x7f6d82:
         R.eax = (((R.esp + 0x100) | 0)) | 0; // 7f6d82: lea eax, [esp + 0x100]
         R.ecx = (((R.esp) | 0)) | 0; // 7f6d89: lea ecx, [esp]
@@ -126,7 +126,7 @@ export function f_7f6cd0(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 7f6e0d: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7f6e17: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 7f6e19: add esp, 0x200
-        return R.eax; // 7f6e1f: ret 8
+        return R.ret(2); // 7f6e1f: ret 8
       default: throw new Error(`f_7f6cd0: ukendt adresse ${pc.toString(16)}`);
     }
   }

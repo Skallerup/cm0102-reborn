@@ -188,7 +188,7 @@ export function f_8cf0e0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 8cf2a8: pop ebx
         /* fs */ // 8cf2a9: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x40, 32)) | 0; // 8cf2b0: add esp, 0x40
-        return R.eax; // 8cf2b3: ret 8
+        return R.ret(2); // 8cf2b3: ret 8
       case 0x8cf2b6:
         R.eax = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 8cf2b6: mov eax, dword ptr [eax]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8cf2b8: test eax, eax

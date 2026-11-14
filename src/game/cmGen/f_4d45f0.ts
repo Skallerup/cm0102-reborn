@@ -39,7 +39,7 @@ export function f_4d45f0(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x10) | 0) >>> 0)) | 0; // 4d4649: mov ecx, dword ptr [esp + 0x10]
         /* fs */ // 4d464d: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x1c, 32)) | 0; // 4d4654: add esp, 0x1c
-        return R.eax; // 4d4657: ret 4
+        return R.ret(1); // 4d4657: ret 4
       default: throw new Error(`f_4d45f0: ukendt adresse ${pc.toString(16)}`);
     }
   }

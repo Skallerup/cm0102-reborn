@@ -46,7 +46,7 @@ export function f_8c1f80(c: CmCtx, ecx: number, args: number[]): number {
         R.esp = (R.add((R.esp >>> 0), 0x24, 32)) | 0; // 8c1fe4: add esp, 0x24
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 8c1fe7: mov dword ptr [0xb67a34], 0
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8c1ff1: add esp, 0x200
-        return R.eax; // 8c1ff7: ret 4
+        return R.ret(1); // 8c1ff7: ret 4
       case 0x8c1ffa:
         R.sub((R.eax >>> 0), R.m.u32(((R.ecx + 0x4) | 0) >>> 0), 32); // 8c1ffa: cmp eax, dword ptr [ecx + 4]
         if (R.cL) { pc = 0x8c2031; continue; } // 8c1ffd: jl 0x8c2031
@@ -85,7 +85,7 @@ export function f_8c1f80(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x8c204d; continue;
       case 0x8c204d:
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8c204d: add esp, 0x200
-        return R.eax; // 8c2053: ret 4
+        return R.ret(1); // 8c2053: ret 4
       default: throw new Error(`f_8c1f80: ukendt adresse ${pc.toString(16)}`);
     }
   }

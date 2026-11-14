@@ -183,14 +183,14 @@ export function f_600c90(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 600e69: xor eax, eax
         R.ebp = (R.pop()) | 0; // 600e6b: pop ebp
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 600e6c: add esp, 0x200
-        return R.eax; // 600e72: ret 
+        return R.ret(0); // 600e72: ret 
       case 0x600e73:
         R.edi = (R.pop()) | 0; // 600e73: pop edi
         R.esi = (R.pop()) | 0; // 600e74: pop esi
         R.eax = (0x1) | 0; // 600e75: mov eax, 1
         R.ebp = (R.pop()) | 0; // 600e7a: pop ebp
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 600e7b: add esp, 0x200
-        return R.eax; // 600e81: ret 
+        return R.ret(0); // 600e81: ret 
       default: throw new Error(`f_600c90: ukendt adresse ${pc.toString(16)}`);
     }
   }

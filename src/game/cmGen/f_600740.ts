@@ -78,7 +78,7 @@ export function f_600740(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 6007ea: pop esi
         R.eax = (R.neg((R.eax >>> 0), 32)) | 0; // 6007eb: neg eax
         R.esp = (R.add((R.esp >>> 0), 0x220, 32)) | 0; // 6007ed: add esp, 0x220
-        return R.eax; // 6007f3: ret 8
+        return R.ret(2); // 6007f3: ret 8
       case 0x6007f6:
         R.edx = (((R.esp + 0x24) | 0)) | 0; // 6007f6: lea edx, [esp + 0x24]
         R.eax = (((R.esp + 0x124) | 0)) | 0; // 6007fa: lea eax, [esp + 0x124]
@@ -110,7 +110,7 @@ export function f_600740(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 600859: xor eax, eax
         R.esi = (R.pop()) | 0; // 60085b: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x220, 32)) | 0; // 60085c: add esp, 0x220
-        return R.eax; // 600862: ret 8
+        return R.ret(2); // 600862: ret 8
       default: throw new Error(`f_600740: ukendt adresse ${pc.toString(16)}`);
     }
   }

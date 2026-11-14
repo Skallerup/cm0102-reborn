@@ -161,7 +161,7 @@ export function f_54cc30(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 54cd88: pop ebx
         /* fs */ // 54cd89: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x10, 32)) | 0; // 54cd90: add esp, 0x10
-        return R.eax; // 54cd93: ret 0xc
+        return R.ret(3); // 54cd93: ret 0xc
       default: throw new Error(`f_54cc30: ukendt adresse ${pc.toString(16)}`);
     }
   }

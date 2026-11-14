@@ -31,7 +31,7 @@ export function f_448670(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 4486ab: pop esi
         /* fs */ // 4486ac: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x10, 32)) | 0; // 4486b3: add esp, 0x10
-        return R.eax; // 4486b6: ret 
+        return R.ret(0); // 4486b6: ret 
       default: throw new Error(`f_448670: ukendt adresse ${pc.toString(16)}`);
     }
   }

@@ -39,7 +39,7 @@ export function f_804540(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 804570: pop esi
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 804571: xor eax, eax
         R.ebx = (R.pop()) | 0; // 804573: pop ebx
-        return R.eax; // 804574: ret 4
+        return R.ret(1); // 804574: ret 4
       case 0x804577:
         R.ecx = (R.m.u32(((R.esp + 0xc) | 0) >>> 0)) | 0; // 804577: mov ecx, dword ptr [esp + 0xc]
         R.push((R.ecx >>> 0)); // 80457b: push ecx
@@ -47,7 +47,7 @@ export function f_804540(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x7af600, { n: 1, thisEcx: true, calleeClean: true }); // 80457e: call 0x7af600
         R.esi = (R.pop()) | 0; // 804583: pop esi
         R.ebx = (R.pop()) | 0; // 804584: pop ebx
-        return R.eax; // 804585: ret 4
+        return R.ret(1); // 804585: ret 4
       default: throw new Error(`f_804540: ukendt adresse ${pc.toString(16)}`);
     }
   }

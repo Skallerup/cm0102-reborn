@@ -44,7 +44,7 @@ export function f_868210(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x18) | 0) >>> 0)) | 0; // 86825e: mov ecx, dword ptr [esp + 0x18]
         /* fs */ // 868262: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x24, 32)) | 0; // 868269: add esp, 0x24
-        return R.eax; // 86826c: ret 0xc
+        return R.ret(3); // 86826c: ret 0xc
       case 0x86826f:
         R.ecx = (R.m.u32(((0xae2330) | 0) >>> 0)) | 0; // 86826f: mov ecx, dword ptr [0xae2330]
         R.eax = (R.m.u32(((0xae2334) | 0) >>> 0)) | 0; // 868275: mov eax, dword ptr [0xae2334]
@@ -74,7 +74,7 @@ export function f_868210(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x18) | 0) >>> 0)) | 0; // 8682a9: mov ecx, dword ptr [esp + 0x18]
         /* fs */ // 8682ad: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x24, 32)) | 0; // 8682b4: add esp, 0x24
-        return R.eax; // 8682b7: ret 0xc
+        return R.ret(3); // 8682b7: ret 0xc
       case 0x8682ba:
         R.ecx = (R.m.u32(((R.esi + 0x4) | 0) >>> 0)) | 0; // 8682ba: mov ecx, dword ptr [esi + 4]
         R.edx = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 8682bd: mov edx, dword ptr [esi]
@@ -139,7 +139,7 @@ export function f_868210(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.esp + 0x18) | 0) >>> 0)) | 0; // 86834e: mov ecx, dword ptr [esp + 0x18]
         /* fs */ // 868352: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x24, 32)) | 0; // 868359: add esp, 0x24
-        return R.eax; // 86835c: ret 0xc
+        return R.ret(3); // 86835c: ret 0xc
       case 0x86835f:
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 86835f: test ebp, ebp
         if (R.zf) { pc = 0x868376; continue; } // 868361: je 0x868376
@@ -163,7 +163,7 @@ export function f_868210(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 86837e: pop ebp
         /* fs */ // 86837f: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x24, 32)) | 0; // 868386: add esp, 0x24
-        return R.eax; // 868389: ret 0xc
+        return R.ret(3); // 868389: ret 0xc
       default: throw new Error(`f_868210: ukendt adresse ${pc.toString(16)}`);
     }
   }

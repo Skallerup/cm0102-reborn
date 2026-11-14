@@ -74,7 +74,7 @@ export function f_669360(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) ^ ((R.eax >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 669416: xor al, al
         R.esi = (R.pop()) | 0; // 669418: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 669419: add esp, 0x200
-        return R.eax; // 66941f: ret 
+        return R.ret(0); // 66941f: ret 
       case 0x669420:
         R.push((R.esi >>> 0)); // 669420: push esi
         R.call(0x53b900, { n: 1, thisEcx: false, calleeClean: false }); // 669421: call 0x53b900
@@ -107,14 +107,14 @@ export function f_669360(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((0x3) & 0xff) << 0)) | 0; // 669450: mov al, 3
         R.esi = (R.pop()) | 0; // 669452: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 669453: add esp, 0x200
-        return R.eax; // 669459: ret 
+        return R.ret(0); // 669459: ret 
       case 0x66945a:
         R.eax = ((R.eax & 0xffffff00) | (((0x1) & 0xff) << 0)) | 0; // 66945a: mov al, 1
         pc = 0x66945c; continue;
       case 0x66945c:
         R.esi = (R.pop()) | 0; // 66945c: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 66945d: add esp, 0x200
-        return R.eax; // 669463: ret 
+        return R.ret(0); // 669463: ret 
       default: throw new Error(`f_669360: ukendt adresse ${pc.toString(16)}`);
     }
   }

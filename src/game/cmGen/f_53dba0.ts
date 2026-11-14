@@ -115,7 +115,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53dc83: pop ebp
         R.ebx = (R.pop()) | 0; // 53dc84: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53dc85: add esp, 0x200
-        return R.eax; // 53dc8b: ret 
+        return R.ret(0); // 53dc8b: ret 
       case 0x53dc8c:
         R.logic((R.edx >>> 0) & (R.edx >>> 0), 32); // 53dc8c: test edx, edx
         if (R.zf) { pc = 0x53dccd; continue; } // 53dc8e: je 0x53dccd
@@ -152,7 +152,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53dcc4: pop ebp
         R.ebx = (R.pop()) | 0; // 53dcc5: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53dcc6: add esp, 0x200
-        return R.eax; // 53dccc: ret 
+        return R.ret(0); // 53dccc: ret 
       case 0x53dccd:
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 53dccd: test ebp, ebp
         if (R.zf) { pc = 0x53dd17; continue; } // 53dccf: je 0x53dd17
@@ -192,7 +192,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53dd0e: pop ebp
         R.ebx = (R.pop()) | 0; // 53dd0f: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53dd10: add esp, 0x200
-        return R.eax; // 53dd16: ret 
+        return R.ret(0); // 53dd16: ret 
       case 0x53dd17:
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 53dd17: test esi, esi
         if (R.zf) { pc = 0x53df84; continue; } // 53dd19: je 0x53df84
@@ -263,7 +263,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53dd87: pop ebp
         R.ebx = (R.pop()) | 0; // 53dd88: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53dd89: add esp, 0x200
-        return R.eax; // 53dd8f: ret 
+        return R.ret(0); // 53dd8f: ret 
       case 0x53dd90:
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 53dd90: test esi, esi
         if (R.zf) { pc = 0x53dda9; continue; } // 53dd92: je 0x53dda9
@@ -316,7 +316,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53dde9: pop ebp
         R.ebx = (R.pop()) | 0; // 53ddea: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53ddeb: add esp, 0x200
-        return R.eax; // 53ddf1: ret 
+        return R.ret(0); // 53ddf1: ret 
       case 0x53ddf2:
         R.logic((R.edx >>> 0) & (R.edx >>> 0), 32); // 53ddf2: test edx, edx
         if (R.zf) { pc = 0x53de0b; continue; } // 53ddf4: je 0x53de0b
@@ -372,7 +372,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53de4c: pop ebp
         R.ebx = (R.pop()) | 0; // 53de4d: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53de4e: add esp, 0x200
-        return R.eax; // 53de54: ret 
+        return R.ret(0); // 53de54: ret 
       case 0x53de55:
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 53de55: test esi, esi
         if (R.zf) { pc = 0x53df84; continue; } // 53de57: je 0x53df84
@@ -406,7 +406,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53de93: pop ebp
         R.ebx = (R.pop()) | 0; // 53de94: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53de95: add esp, 0x200
-        return R.eax; // 53de9b: ret 
+        return R.ret(0); // 53de9b: ret 
       case 0x53de9c:
         R.logic((R.edx >>> 0) & (R.edx >>> 0), 32); // 53de9c: test edx, edx
         if (R.zf) { pc = 0x53deb2; continue; } // 53de9e: je 0x53deb2
@@ -456,7 +456,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53dee8: pop ebp
         R.ebx = (R.pop()) | 0; // 53dee9: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53deea: add esp, 0x200
-        return R.eax; // 53def0: ret 
+        return R.ret(0); // 53def0: ret 
       case 0x53def1:
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 53def1: test ebp, ebp
         if (R.zf) { pc = 0x53df22; continue; } // 53def3: je 0x53df22
@@ -495,7 +495,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53df25: mov eax, 1
         R.ebx = (R.pop()) | 0; // 53df2a: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53df2b: add esp, 0x200
-        return R.eax; // 53df31: ret 
+        return R.ret(0); // 53df31: ret 
       case 0x53df32:
         R.logic((R.ebp >>> 0) & (R.ebp >>> 0), 32); // 53df32: test ebp, ebp
         if (R.zf) { pc = 0x53df58; continue; } // 53df34: je 0x53df58
@@ -588,7 +588,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53dfb8: mov eax, 1
         R.ebx = (R.pop()) | 0; // 53dfbd: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53dfbe: add esp, 0x200
-        return R.eax; // 53dfc4: ret 
+        return R.ret(0); // 53dfc4: ret 
       case 0x53dfc5:
         R.logic((R.edx >>> 0) & (R.edx >>> 0), 32); // 53dfc5: test edx, edx
         if (R.zf) { pc = 0x53dfdd; continue; } // 53dfc7: je 0x53dfdd
@@ -646,7 +646,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53e01d: pop ebp
         R.ebx = (R.pop()) | 0; // 53e01e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53e01f: add esp, 0x200
-        return R.eax; // 53e025: ret 
+        return R.ret(0); // 53e025: ret 
       case 0x53e026:
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 53e026: test esi, esi
         if (R.zf) { pc = 0x53e03e; continue; } // 53e028: je 0x53e03e
@@ -694,7 +694,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53e066: mov eax, 1
         R.ebx = (R.pop()) | 0; // 53e06b: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53e06c: add esp, 0x200
-        return R.eax; // 53e072: ret 
+        return R.ret(0); // 53e072: ret 
       case 0x53e073:
         R.eax = (((R.esp + 0x10) | 0)) | 0; // 53e073: lea eax, [esp + 0x10]
         R.ecx = (((R.esp + 0x110) | 0)) | 0; // 53e077: lea ecx, [esp + 0x110]
@@ -745,7 +745,7 @@ export function f_53dba0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 53e10c: pop ebp
         R.ebx = (R.pop()) | 0; // 53e10d: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53e10e: add esp, 0x200
-        return R.eax; // 53e114: ret 
+        return R.ret(0); // 53e114: ret 
       default: throw new Error(`f_53dba0: ukendt adresse ${pc.toString(16)}`);
     }
   }

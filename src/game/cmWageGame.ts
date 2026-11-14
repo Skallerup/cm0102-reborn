@@ -115,7 +115,9 @@ function scanOf(g: GameState) {
 
 /** Bygger originalens poster for klubberne `clubs` (alle deres spillere og stab). `unset`: spillere, hvis løn +0xc = −1 (0x85e960 forkastede
  *  databasens løn). `recalc` = 0x598370 for klubberne (ellers +0xc/+0x10 fra cmFinance og +0x14 = 0x5968d0(fin, 0, −1)). */
-export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<number> = new Set(), recalc = true): WageMem {
+/** `full` (ønskelisterne, cmShortlistGame.ts): også de klubløse spillere (+0x39 = 0), værdien staff +0x52 (£), staben på originalens pladser
+ *  (+0xd3 assistenten, +0x19f trænerne, +0x1b3 spejderne, +0x1cf fysioterapeuterne) og ikke-spillerpostens +4 (CA) */
+export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<number> = new Set(), recalc = true, full = false): WageMem {
   const m = new SparseMem();
   const c: CmCtx = { m, rand: () => { throw new Error('cmWageGame: rand'); }, call: (adr, ...a) => cmMemCall(c, adr, ...a) };
   const clubIds = [...new Set(clubs)].filter((id) => g.clubs[id]);
@@ -187,6 +189,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     m.w16(pr + 5, p.ca); m.w16(pr + 7, p.pa);
     m.w16(pr + 9, Math.round(rep[0] * 50)); m.w16(pr + 0xb, Math.round(rep[1] * 50)); m.w16(pr + 0xd, Math.round(rep[2] * 50));
     for (let i = 0; i < 7; i++) m.w8(pr + 0xf + i, p.pos[i] ?? 1);
+    if (full) m.w32(st + 0x52, Math.round((p.value ?? 0) * GBP));
     return st;
   };
   const npRec = (id: number, f: (np: number) => void) => { const np = PREC0 + 0x0c000000 + 0x30 * id; f(np); return np; };
@@ -234,21 +237,30 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     if (isHumanClub(cid)) humanMgr.push(cid);
     let si = 0;
     const slots = [...Array(5).keys()].map((k) => 0x19f + 4 * k).concat([...Array(7).keys()].map((k) => 0x1b3 + 4 * k), [...Array(3).keys()].map((k) => 0x1cf + 4 * k));
+    const byRole: Record<string, [number, number]> = { assistant: [0xd3, 1], coach: [0x19f, 5], scout: [0x1b3, 7], physio: [0x1cf, 3] };
+    const used: Record<string, number> = {};
     for (const s of sc.staffOf.get(cid) ?? []) {
       const id = next++, st = staffAdr(id);
       m.w32(st, id); noContract(id); m.w32(st + 0x39, a);
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
       m.w8(st + 0x3d, s.role === 'manager' ? 5 : s.role === 'assistant' ? 6 : s.role === 'coach' ? 8 : s.role === 'scout' ? 9 : 10);
-      m.w32(st + 0x69, npRec(id, (np) => m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2)));
+      m.w32(st + 0x69, npRec(id, (np) => { m.w16(np + 0xa, s.cmRep?.[1] ?? (s.rep ?? 0) * 2); if (full) { m.w16(np + 4, s.ca ?? (s.rep ?? 0) * 2); m.w16(np + 6, s.cmPa ?? s.ca ?? 0); s.cmNp?.slice(0, 21).forEach((v, k) => m.w8(np + 0x0e + k, v)); } }));
       if (s.wage) contract(id, cid, Math.round(s.wage * GBP));
       if (s.role === 'manager' && !isHumanClub(cid)) m.w32(a + 0xcf, st);
-      if (s.wage && si < slots.length) m.w32(a + slots[si++], st);
+      if (full) { const r = byRole[s.role]; if (r && (used[s.role] ?? 0) < r[1]) m.w32(a + r[0] + 4 * (used[s.role] = (used[s.role] ?? 0) + 1) - 4, st); }
+      else if (s.wage && si < slots.length) m.w32(a + slots[si++], st);
     }
     // finansposten
     const f = finAdr(cid), bal = Math.round(club.balance * GBP);
     m.w32(f, bal >>> 0); m.w32(f + 4, Math.floor(bal / 4294967296)); m.w32(f + 8, cid);
     const r = g.cmFin?.[cid];
     m.w32(f + 0xc, r?.wb ?? 0); m.w32(f + 0x10, r?.top ?? 0);
+  }
+  // de klubløse spillere (full): posterne på deres id, uden klub og kontrakt
+  if (full) for (const p of Object.values(g.players)) {
+    if (p.club || p.virtual || p.loan) continue;
+    const st = playerRec(p, pid(p), 0);
+    players.push([p, st]);
   }
   // menneskets manager (de 16 sidste id'er) og antallet [0xae2364]
   const count = next + 16;

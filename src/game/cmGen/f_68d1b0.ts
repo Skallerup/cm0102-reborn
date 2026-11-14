@@ -20,10 +20,10 @@ export function f_68d1b0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.m.u32(((R.edx) | 0) >>> 0)) | 0; // 68d1b7: mov eax, dword ptr [edx]
         R.edx = (R.m.u32(((R.edx + 0x6) | 0) >>> 0)) | 0; // 68d1b9: mov edx, dword ptr [edx + 6]
         R.m.w32(((R.ecx + 0xa) | 0) >>> 0, (R.edx >>> 0)); // 68d1bc: mov dword ptr [ecx + 0xa], edx
-        return R.eax; // 68d1bf: ret 
+        return R.ret(0); // 68d1bf: ret 
       case 0x68d1c0:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 68d1c0: xor eax, eax
-        return R.eax; // 68d1c2: ret 
+        return R.ret(0); // 68d1c2: ret 
       default: throw new Error(`f_68d1b0: ukendt adresse ${pc.toString(16)}`);
     }
   }

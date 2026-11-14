@@ -208,7 +208,7 @@ export function f_7f7270(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 7f7408: mov eax, 1
         R.ebp = (R.pop()) | 0; // 7f740d: pop ebp
         R.esp = (R.add((R.esp >>> 0), 0x230, 32)) | 0; // 7f740e: add esp, 0x230
-        return R.eax; // 7f7414: ret 4
+        return R.ret(1); // 7f7414: ret 4
       case 0x7f7417:
         R.ecx = (((R.esp + 0x134) | 0)) | 0; // 7f7417: lea ecx, [esp + 0x134]
         R.edx = (((R.esp + 0x34) | 0)) | 0; // 7f741e: lea edx, [esp + 0x34]
@@ -240,7 +240,7 @@ export function f_7f7270(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7f747a: xor eax, eax
         R.ebp = (R.pop()) | 0; // 7f747c: pop ebp
         R.esp = (R.add((R.esp >>> 0), 0x230, 32)) | 0; // 7f747d: add esp, 0x230
-        return R.eax; // 7f7483: ret 4
+        return R.ret(1); // 7f7483: ret 4
       default: throw new Error(`f_7f7270: ukendt adresse ${pc.toString(16)}`);
     }
   }

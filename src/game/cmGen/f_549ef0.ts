@@ -67,13 +67,13 @@ export function f_549ef0(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 549f4e: pop esi
         R.m.w32(((R.ecx + 0x4) | 0) >>> 0, (R.eax >>> 0)); // 549f4f: mov dword ptr [ecx + 4], eax
         R.eax = ((R.ecx >>> 0)) | 0; // 549f52: mov eax, ecx
-        return R.eax; // 549f54: ret 8
+        return R.ret(2); // 549f54: ret 8
       case 0x549f57:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 549f57: xor eax, eax
         R.esi = (R.pop()) | 0; // 549f59: pop esi
         R.m.w32(((R.ecx + 0x4) | 0) >>> 0, (R.eax >>> 0)); // 549f5a: mov dword ptr [ecx + 4], eax
         R.eax = ((R.ecx >>> 0)) | 0; // 549f5d: mov eax, ecx
-        return R.eax; // 549f5f: ret 8
+        return R.ret(2); // 549f5f: ret 8
       default: throw new Error(`f_549ef0: ukendt adresse ${pc.toString(16)}`);
     }
   }

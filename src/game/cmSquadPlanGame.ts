@@ -27,6 +27,7 @@ import { nationLanguage, playerLanguages } from './languages';
 import { SQUAD_STATUSES } from './squadStatus';
 import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
 import { targetRep } from './cmBoardInterest';
+import { cmShortlistDaily, cmShortlistOn } from './cmShortlistGame';
 
 const GBP = 0.86;                                                             // £ = € · 0,86 (newgame.ts)
 const dayNum = (iso: string) => Math.round(Date.parse(iso + 'T00:00:00Z') / 86400000);
@@ -38,16 +39,22 @@ const EURO_REP: Record<number, number> = { 326: 20, 328: 18, 330: 8 };
 
 // ---------------------------------------------------------------- planlæggerens tilstand pr. klub (gemmes kompakt)
 
-type SlotRow = [number, number, number, number, number, number, number, number, number];
+/** [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år, +3, +7, +0xb] (de tre sidste fra ønskelisterne – ældre spil har 9) */
+export type SlotRow = number[];
 interface PlanStore { s: SlotRow[]; st: number; fm: number; c: number }
-const toRow = (s: PlanSlot): SlotRow => [s.role, s.mask, s.b24, s.f, s.s13, s.s17, s.idx, s.day, s.year];
-const fromRow = (r: SlotRow): PlanSlot => ({ role: r[0], mask: r[1], b24: r[2], f: r[3], s13: r[4], s17: r[5], idx: r[6], day: r[7], year: r[8] });
-function entryOf(g: GameState, cid: number): PlanEntry {
+export const toRow = (s: PlanSlot): SlotRow => {
+  const r = [s.role, s.mask, s.b24, s.f, s.s13, s.s17, s.idx, s.day, s.year];
+  if (s.b3 || s.b7 || s.bb) r.push(s.b3 ?? 0, s.b7 ?? 0, s.bb ?? 0);
+  return r;
+};
+export const fromRow = (r: SlotRow): PlanSlot => ({ role: r[0], mask: r[1], b24: r[2], f: r[3], s13: r[4], s17: r[5], idx: r[6], day: r[7], year: r[8],
+  b3: r[9] ?? 0, b7: r[10] ?? 0, bb: r[11] ?? 0 });
+export function entryOf(g: GameState, cid: number): PlanEntry {
   const st = g.cmPlan?.[cid];
   if (!st) return newPlanEntry();
   return { slots: st.s.map(fromRow), state: st.st, form: st.fm, counter: st.c };
 }
-function storeEntry(g: GameState, cid: number, e: PlanEntry): void {
+export function storeEntry(g: GameState, cid: number, e: PlanEntry): void {
   (g.cmPlan ??= {})[cid] = { s: e.slots.map(toRow), st: e.state, fm: e.form, c: e.counter } satisfies PlanStore;
 }
 
@@ -87,10 +94,10 @@ function managerNp(g: GameState, cid: number): number[] | null {
 // ---------------------------------------------------------------- én klub
 
 /** 0x83cb40(entry, klub, daily, first) for en klub i vores spil */
-export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first: boolean, human?: boolean): void {
-  if (!cmActive(g)) return;
+export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first: boolean, human?: boolean): import('./cmSquadPlan').PlanResult | null {
+  if (!cmActive(g)) return null;
   const club = g.clubs[cid];
-  if (!club) return;
+  if (!club) return null;
   const e = entryOf(g, cid);
   const fit = cmFitRead(g);
   const hum = human ?? isHumanClub(cid);
@@ -200,6 +207,7 @@ export function cmSquadPlanClub(g: GameState, cid: number, daily: boolean, first
     p.contract = null;
   }
   storeEntry(g, cid, e);
+  return planRes;
 }
 function syncBack(p: Player, pp: PlanPlayer): void {
   const c = cmContractOf(p), k = pp.contract!;
@@ -223,6 +231,11 @@ export function cmSquadPlanStart(g: GameState): void {
 export function cmSquadPlanDaily(g: GameState): void {
   if (!cmActive(g) || !g.cmPlan) return;
   const day = dayNum(g.date);
+  // ønskelisterne (cmShortlistGame.ts): samme løkke med 0x844540, 0x83b6e0 og 0x84a020
+  if (cmShortlistOn(g)) {
+    cmShortlistDaily(g, (cid) => cmSquadPlanClub(g, cid, true, false), (cid) => cmRand(g.seed ?? 0, cid, day, 0x5cdc68), dailyGate);
+    return;
+  }
   for (const c of Object.values(g.clubs)) {
     if (!c.league || g.leagues[c.league]?.hidden) continue;
     const st = g.cmPlan[c.id];

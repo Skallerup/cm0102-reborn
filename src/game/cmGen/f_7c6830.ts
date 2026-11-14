@@ -39,7 +39,7 @@ export function f_7c6830(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.incdec((R.eax >>> 0), -1, 32)) | 0; // 7c685e: dec eax
         R.eax = (R.logic((R.eax >>> 0) & 0xa, 32)) | 0; // 7c685f: and eax, 0xa
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 7c6862: add esp, 8
-        return R.eax; // 7c6865: ret 0x10
+        return R.ret(4); // 7c6865: ret 0x10
       case 0x7c6868:
         R.eax = (R.m.u32(((R.esp + 0x24) | 0) >>> 0)) | 0; // 7c6868: mov eax, dword ptr [esp + 0x24]
         R.edi = (R.m.u32(((R.esp + 0x1c) | 0) >>> 0)) | 0; // 7c686c: mov edi, dword ptr [esp + 0x1c]
@@ -74,7 +74,7 @@ export function f_7c6830(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) & 0xf, 8)) & 0xff) << 0)) | 0; // 7c689d: and al, 0xf
         R.ebx = (R.pop()) | 0; // 7c689f: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 7c68a0: add esp, 8
-        return R.eax; // 7c68a3: ret 0x10
+        return R.ret(4); // 7c68a3: ret 0x10
       case 0x7c68a6:
         R.logic((R.edi >>> 0) & (R.edi >>> 0), 32); // 7c68a6: test edi, edi
         if (R.zf) { pc = 0x7c68c8; continue; } // 7c68a8: je 0x7c68c8
@@ -125,7 +125,7 @@ export function f_7c6830(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) ^ ((R.eax >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 7c68e9: xor al, al
         R.ebx = (R.pop()) | 0; // 7c68eb: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 7c68ec: add esp, 8
-        return R.eax; // 7c68ef: ret 0x10
+        return R.ret(4); // 7c68ef: ret 0x10
       case 0x7c68f2:
         R.edx = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 7c68f2: mov edx, dword ptr [esi]
         R.m.w8(((R.esp + 0x10) | 0) >>> 0, ((R.ecx >>> 0) & 0xff)); // 7c68f4: mov byte ptr [esp + 0x10], cl
@@ -148,14 +148,14 @@ export function f_7c6830(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 7c691d: pop esi
         R.ebx = (R.pop()) | 0; // 7c691e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 7c691f: add esp, 8
-        return R.eax; // 7c6922: ret 0x10
+        return R.ret(4); // 7c6922: ret 0x10
       case 0x7c6925:
         R.edi = (R.pop()) | 0; // 7c6925: pop edi
         R.esi = (R.pop()) | 0; // 7c6926: pop esi
         R.eax = ((R.eax & 0xffffff00) | (((0xa) & 0xff) << 0)) | 0; // 7c6927: mov al, 0xa
         R.ebx = (R.pop()) | 0; // 7c6929: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x8, 32)) | 0; // 7c692a: add esp, 8
-        return R.eax; // 7c692d: ret 0x10
+        return R.ret(4); // 7c692d: ret 0x10
       default: throw new Error(`f_7c6830: ukendt adresse ${pc.toString(16)}`);
     }
   }

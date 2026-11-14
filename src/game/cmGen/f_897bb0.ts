@@ -87,7 +87,7 @@ export function f_897bb0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 897c74: mov eax, 1
         R.ebx = (R.pop()) | 0; // 897c79: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897c7a: add esp, 0x200
-        return R.eax; // 897c80: ret 0x14
+        return R.ret(5); // 897c80: ret 0x14
       case 0x897c83:
         R.esi = (((((R.ebx >>> 0) & 0xff)) << 24 >> 24)) | 0; // 897c83: movsx esi, bl
         R.edi = (R.m.u32(((R.ebp + 0x601) | 0) >>> 0)) | 0; // 897c86: mov edi, dword ptr [ebp + 0x601]
@@ -129,7 +129,7 @@ export function f_897bb0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 897cd1: mov eax, 1
         R.ebx = (R.pop()) | 0; // 897cd6: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897cd7: add esp, 0x200
-        return R.eax; // 897cdd: ret 0x14
+        return R.ret(5); // 897cdd: ret 0x14
       case 0x897ce0:
         R.eax = (((((R.ebx >>> 0) & 0xff)) << 24 >> 24)) | 0; // 897ce0: movsx eax, bl
         R.eax = (R.add((R.eax >>> 0), (R.edx >>> 0), 32)) | 0; // 897ce3: add eax, edx
@@ -149,7 +149,7 @@ export function f_897bb0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 897d09: mov eax, 1
         R.ebx = (R.pop()) | 0; // 897d0e: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897d0f: add esp, 0x200
-        return R.eax; // 897d15: ret 0x14
+        return R.ret(5); // 897d15: ret 0x14
       case 0x897d18:
         R.edx = (((R.esp + 0x10c) | 0)) | 0; // 897d18: lea edx, [esp + 0x10c]
         R.eax = (((R.esp + 0xc) | 0)) | 0; // 897d1f: lea eax, [esp + 0xc]
@@ -203,7 +203,7 @@ export function f_897bb0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 897da6: xor eax, eax
         R.ebx = (R.pop()) | 0; // 897da8: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897da9: add esp, 0x200
-        return R.eax; // 897daf: ret 0x14
+        return R.ret(5); // 897daf: ret 0x14
       default: throw new Error(`f_897bb0: ukendt adresse ${pc.toString(16)}`);
     }
   }

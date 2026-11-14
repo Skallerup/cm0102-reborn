@@ -47,7 +47,7 @@ export function f_68d040(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x68d071; continue;
       case 0x68d071:
         R.esi = (R.pop()) | 0; // 68d071: pop esi
-        return R.eax; // 68d072: ret 
+        return R.ret(0); // 68d072: ret 
       default: throw new Error(`f_68d040: ukendt adresse ${pc.toString(16)}`);
     }
   }

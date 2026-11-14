@@ -290,7 +290,7 @@ export function f_8d0780(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 8d0a55: pop ebx
         /* fs */ // 8d0a56: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x21c, 32)) | 0; // 8d0a5d: add esp, 0x21c
-        return R.eax; // 8d0a63: ret 0xc
+        return R.ret(3); // 8d0a63: ret 0xc
       default: throw new Error(`f_8d0780: ukendt adresse ${pc.toString(16)}`);
     }
   }

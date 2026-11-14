@@ -44,10 +44,10 @@ export function f_7e6f20(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x7e6f5c; continue;
       case 0x7e6f5c:
         R.eax = (0x1) | 0; // 7e6f5c: mov eax, 1
-        return R.eax; // 7e6f61: ret 4
+        return R.ret(1); // 7e6f61: ret 4
       case 0x7e6f64:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7e6f64: xor eax, eax
-        return R.eax; // 7e6f66: ret 4
+        return R.ret(1); // 7e6f66: ret 4
       default: throw new Error(`f_7e6f20: ukendt adresse ${pc.toString(16)}`);
     }
   }

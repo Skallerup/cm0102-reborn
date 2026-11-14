@@ -125,7 +125,7 @@ export function f_8cca10(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 8ccb1c: pop ebx
         /* fs */ // 8ccb1d: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x1c, 32)) | 0; // 8ccb24: add esp, 0x1c
-        return R.eax; // 8ccb27: ret 8
+        return R.ret(2); // 8ccb27: ret 8
       case 0x8ccb2a:
         R.edi = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 8ccb2a: mov edi, dword ptr [eax]
         R.sub((R.edi >>> 0), 0xffffffff, 32); // 8ccb2c: cmp edi, -1

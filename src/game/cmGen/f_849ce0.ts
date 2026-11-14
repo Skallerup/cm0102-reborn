@@ -69,7 +69,7 @@ export function f_849ce0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 849d39: pop ebp
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 849d3a: xor eax, eax
         R.ebx = (R.pop()) | 0; // 849d3c: pop ebx
-        return R.eax; // 849d3d: ret 0x10
+        return R.ret(4); // 849d3d: ret 0x10
       case 0x849d40:
         R.eax = (((((R.ecx >>> 0) & 0xff)) << 24 >> 24)) | 0; // 849d40: movsx eax, cl
         R.edx = (R.add((R.edx >>> 0), (R.eax >>> 0), 32)) | 0; // 849d43: add edx, eax
@@ -79,7 +79,7 @@ export function f_849ce0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 849d4a: pop ebp
         R.ebx = (R.pop()) | 0; // 849d4b: pop ebx
         R.eax = (((R.edx + R.ecx * 4) | 0)) | 0; // 849d4c: lea eax, [edx + ecx*4]
-        return R.eax; // 849d4f: ret 0x10
+        return R.ret(4); // 849d4f: ret 0x10
       default: throw new Error(`f_849ce0: ukendt adresse ${pc.toString(16)}`);
     }
   }

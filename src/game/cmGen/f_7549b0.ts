@@ -80,7 +80,7 @@ export function f_7549b0(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x754a2c; continue;
       case 0x754a2c:
         R.ecx = (R.pop()) | 0; // 754a2c: pop ecx
-        return R.eax; // 754a2d: ret 4
+        return R.ret(1); // 754a2d: ret 4
       default: throw new Error(`f_7549b0: ukendt adresse ${pc.toString(16)}`);
     }
   }

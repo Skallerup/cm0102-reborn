@@ -47,7 +47,7 @@ export function f_542740(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5427ae: xor eax, eax
         R.esi = (R.pop()) | 0; // 5427b0: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5427b1: add esp, 0x200
-        return R.eax; // 5427b7: ret 
+        return R.ret(0); // 5427b7: ret 
       case 0x5427b8:
         R.ecx = (R.m.u32(((0xae235c) | 0) >>> 0)) | 0; // 5427b8: mov ecx, dword ptr [0xae235c]
         R.edx = (R.m.u32(((0xae2350) | 0) >>> 0)) | 0; // 5427be: mov edx, dword ptr [0xae2350]
@@ -60,7 +60,7 @@ export function f_542740(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5427cc: xor eax, eax
         R.esi = (R.pop()) | 0; // 5427ce: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5427cf: add esp, 0x200
-        return R.eax; // 5427d5: ret 
+        return R.ret(0); // 5427d5: ret 
       case 0x5427d6:
         R.push(0x1); // 5427d6: push 1
         R.push(0x0); // 5427d8: push 0
@@ -74,7 +74,7 @@ export function f_542740(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5427e7: xor eax, eax
         R.esi = (R.pop()) | 0; // 5427e9: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5427ea: add esp, 0x200
-        return R.eax; // 5427f0: ret 
+        return R.ret(0); // 5427f0: ret 
       case 0x5427f1:
         R.edx = (R.m.u32(((0xae2350) | 0) >>> 0)) | 0; // 5427f1: mov edx, dword ptr [0xae2350]
         R.ecx = (R.m.u32(((0xae235c) | 0) >>> 0)) | 0; // 5427f7: mov ecx, dword ptr [0xae235c]
@@ -130,7 +130,7 @@ export function f_542740(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 542856: xor eax, eax
         R.esi = (R.pop()) | 0; // 542858: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 542859: add esp, 0x200
-        return R.eax; // 54285f: ret 
+        return R.ret(0); // 54285f: ret 
       case 0x542860:
         R.esi = (R.m.u32(((R.esi + 0x53) | 0) >>> 0)) | 0; // 542860: mov esi, dword ptr [esi + 0x53]
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 542863: test esi, esi
@@ -154,12 +154,12 @@ export function f_542740(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 542882: xor eax, eax
         R.esi = (R.pop()) | 0; // 542884: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 542885: add esp, 0x200
-        return R.eax; // 54288b: ret 
+        return R.ret(0); // 54288b: ret 
       case 0x54288c:
         R.eax = (0x1) | 0; // 54288c: mov eax, 1
         R.esi = (R.pop()) | 0; // 542891: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 542892: add esp, 0x200
-        return R.eax; // 542898: ret 
+        return R.ret(0); // 542898: ret 
       default: throw new Error(`f_542740: ukendt adresse ${pc.toString(16)}`);
     }
   }

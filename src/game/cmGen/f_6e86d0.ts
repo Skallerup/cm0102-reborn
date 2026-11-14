@@ -132,7 +132,7 @@ export function f_6e86d0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 6e87c0: pop ebx
         R.eax = ((R.eax & 0xffff0000) | (((R.m.u16(((R.eax + 0x5) | 0) >>> 0)) & 0xffff) << 0)) | 0; // 6e87c1: mov ax, word ptr [eax + 5]
         R.ecx = (R.pop()) | 0; // 6e87c5: pop ecx
-        return R.eax; // 6e87c6: ret 
+        return R.ret(0); // 6e87c6: ret 
       case 0x6e87c7:
         R.ebp = (R.m.u32(((R.esp + 0x1c) | 0) >>> 0)) | 0; // 6e87c7: mov ebp, dword ptr [esp + 0x1c]
         pc = 0x6e87cb; continue;
@@ -274,7 +274,7 @@ export function f_6e86d0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffff0000) | (((((R.edx >>> 0) & 0xffff)) & 0xffff) << 0)) | 0; // 6e88fd: mov ax, dx
         R.ebx = (R.pop()) | 0; // 6e8900: pop ebx
         R.ecx = (R.pop()) | 0; // 6e8901: pop ecx
-        return R.eax; // 6e8902: ret 
+        return R.ret(0); // 6e8902: ret 
       default: throw new Error(`f_6e86d0: ukendt adresse ${pc.toString(16)}`);
     }
   }

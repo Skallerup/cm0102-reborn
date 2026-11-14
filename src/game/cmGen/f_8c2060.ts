@@ -51,7 +51,7 @@ export function f_8c2060(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 8c20d8: pop edi
         R.esi = (R.pop()) | 0; // 8c20d9: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8c20da: add esp, 0x200
-        return R.eax; // 8c20e0: ret 8
+        return R.ret(2); // 8c20e0: ret 8
       case 0x8c20e3:
         R.sub((R.eax >>> 0), R.m.u32(((R.ecx + 0x4) | 0) >>> 0), 32); // 8c20e3: cmp eax, dword ptr [ecx + 4]
         if (R.cL) { pc = 0x8c211a; continue; } // 8c20e6: jl 0x8c211a
@@ -129,7 +129,7 @@ export function f_8c2060(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 8c2173: pop edi
         R.esi = (R.pop()) | 0; // 8c2174: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8c2175: add esp, 0x200
-        return R.eax; // 8c217b: ret 8
+        return R.ret(2); // 8c217b: ret 8
       default: throw new Error(`f_8c2060: ukendt adresse ${pc.toString(16)}`);
     }
   }

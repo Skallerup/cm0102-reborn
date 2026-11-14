@@ -48,7 +48,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 547dde: pop edi
         R.m.w32(((R.eax + 0x10) | 0) >>> 0, 0x0); // 547ddf: mov dword ptr [eax + 0x10], 0
         R.esi = (R.pop()) | 0; // 547de6: pop esi
-        return R.eax; // 547de7: ret 
+        return R.ret(0); // 547de7: ret 
       case 0x547de8:
         R.sub(R.m.u32(((R.eax + 0x14) | 0) >>> 0), (R.esi >>> 0), 32); // 547de8: cmp dword ptr [eax + 0x14], esi
         if (!R.zf) { pc = 0x547df7; continue; } // 547deb: jne 0x547df7
@@ -57,7 +57,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 547ded: pop edi
         R.m.w32(((R.eax + 0x14) | 0) >>> 0, 0x0); // 547dee: mov dword ptr [eax + 0x14], 0
         R.esi = (R.pop()) | 0; // 547df5: pop esi
-        return R.eax; // 547df6: ret 
+        return R.ret(0); // 547df6: ret 
       case 0x547df7:
         R.sub(R.m.u32(((R.eax + 0x18) | 0) >>> 0), (R.esi >>> 0), 32); // 547df7: cmp dword ptr [eax + 0x18], esi
         if (!R.zf) { pc = 0x547e06; continue; } // 547dfa: jne 0x547e06
@@ -66,7 +66,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 547dfc: pop edi
         R.m.w32(((R.eax + 0x18) | 0) >>> 0, 0x0); // 547dfd: mov dword ptr [eax + 0x18], 0
         R.esi = (R.pop()) | 0; // 547e04: pop esi
-        return R.eax; // 547e05: ret 
+        return R.ret(0); // 547e05: ret 
       case 0x547e06:
         R.ecx = (R.m.u32(((R.eax + 0x4) | 0) >>> 0)) | 0; // 547e06: mov ecx, dword ptr [eax + 4]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 547e09: test ecx, ecx
@@ -76,7 +76,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.eax + 0x4) | 0) >>> 0, (R.esi >>> 0)); // 547e0d: mov dword ptr [eax + 4], esi
         R.edi = (R.pop()) | 0; // 547e10: pop edi
         R.esi = (R.pop()) | 0; // 547e11: pop esi
-        return R.eax; // 547e12: ret 
+        return R.ret(0); // 547e12: ret 
       case 0x547e13:
         R.ecx = (R.m.u32(((R.eax + 0x8) | 0) >>> 0)) | 0; // 547e13: mov ecx, dword ptr [eax + 8]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 547e16: test ecx, ecx
@@ -86,7 +86,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.eax + 0x8) | 0) >>> 0, (R.esi >>> 0)); // 547e1a: mov dword ptr [eax + 8], esi
         R.edi = (R.pop()) | 0; // 547e1d: pop edi
         R.esi = (R.pop()) | 0; // 547e1e: pop esi
-        return R.eax; // 547e1f: ret 
+        return R.ret(0); // 547e1f: ret 
       case 0x547e20:
         R.ecx = (R.m.u32(((R.eax + 0xc) | 0) >>> 0)) | 0; // 547e20: mov ecx, dword ptr [eax + 0xc]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 547e23: test ecx, ecx
@@ -96,7 +96,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.eax + 0xc) | 0) >>> 0, (R.esi >>> 0)); // 547e27: mov dword ptr [eax + 0xc], esi
         R.edi = (R.pop()) | 0; // 547e2a: pop edi
         R.esi = (R.pop()) | 0; // 547e2b: pop esi
-        return R.eax; // 547e2c: ret 
+        return R.ret(0); // 547e2c: ret 
       case 0x547e2d:
         R.eax = (R.m.u32(((R.esp + 0x14) | 0) >>> 0)) | 0; // 547e2d: mov eax, dword ptr [esp + 0x14]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 547e31: test eax, eax
@@ -122,13 +122,13 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 547e4d: pop edi
         R.m.w32(((R.eax + 0xc) | 0) >>> 0, (R.esi >>> 0)); // 547e4e: mov dword ptr [eax + 0xc], esi
         R.esi = (R.pop()) | 0; // 547e51: pop esi
-        return R.eax; // 547e52: ret 
+        return R.ret(0); // 547e52: ret 
       case 0x547e53:
         R.ecx = (R.m.u32(((R.edi + 0x65) | 0) >>> 0)) | 0; // 547e53: mov ecx, dword ptr [edi + 0x65]
         R.edi = (R.pop()) | 0; // 547e56: pop edi
         R.m.w32(((R.ecx + 0x8) | 0) >>> 0, (R.esi >>> 0)); // 547e57: mov dword ptr [ecx + 8], esi
         R.esi = (R.pop()) | 0; // 547e5a: pop esi
-        return R.eax; // 547e5b: ret 
+        return R.ret(0); // 547e5b: ret 
       case 0x547e5c:
         R.edx = (R.m.u32(((R.edi + 0x65) | 0) >>> 0)) | 0; // 547e5c: mov edx, dword ptr [edi + 0x65]
         R.m.w32(((R.edx + 0x4) | 0) >>> 0, (R.esi >>> 0)); // 547e5f: mov dword ptr [edx + 4], esi
@@ -136,7 +136,7 @@ export function f_547d90(c: CmCtx, ecx: number, args: number[]): number {
       case 0x547e62:
         R.edi = (R.pop()) | 0; // 547e62: pop edi
         R.esi = (R.pop()) | 0; // 547e63: pop esi
-        return R.eax; // 547e64: ret 
+        return R.ret(0); // 547e64: ret 
       default: throw new Error(`f_547d90: ukendt adresse ${pc.toString(16)}`);
     }
   }

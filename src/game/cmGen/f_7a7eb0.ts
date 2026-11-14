@@ -21,7 +21,7 @@ export function f_7a7eb0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.eax & 0xffffff00) | (((R.m.u8(((R.ecx + R.edx + 0xb) | 0) >>> 0)) & 0xff) << 0)) | 0; // 7a7ec4: mov al, byte ptr [ecx + edx + 0xb]
         R.eax = ((R.eax & 0xffffff00) | (((R.shr(((R.eax >>> 0) & 0xff), 0x4, 8)) & 0xff) << 0)) | 0; // 7a7ec8: shr al, 4
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) & 0x3, 8)) & 0xff) << 0)) | 0; // 7a7ecb: and al, 3
-        return R.eax; // 7a7ecd: ret 4
+        return R.ret(1); // 7a7ecd: ret 4
       default: throw new Error(`f_7a7eb0: ukendt adresse ${pc.toString(16)}`);
     }
   }

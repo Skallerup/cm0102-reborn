@@ -40,10 +40,10 @@ export function f_547d60(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x547d86; continue;
       case 0x547d86:
         R.eax = (0x1) | 0; // 547d86: mov eax, 1
-        return R.eax; // 547d8b: ret 
+        return R.ret(0); // 547d8b: ret 
       case 0x547d8c:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 547d8c: xor eax, eax
-        return R.eax; // 547d8e: ret 
+        return R.ret(0); // 547d8e: ret 
       default: throw new Error(`f_547d60: ukendt adresse ${pc.toString(16)}`);
     }
   }

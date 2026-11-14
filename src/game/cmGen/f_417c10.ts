@@ -27,7 +27,7 @@ export function f_417c10(c: CmCtx, ecx: number, args: number[]): number {
         R.ecx = (R.m.u32(((R.ecx + 0x4) | 0) >>> 0)) | 0; // 417c39: mov ecx, dword ptr [ecx + 4]
         R.m.w32(((R.eax + 0x4) | 0) >>> 0, (R.ecx >>> 0)); // 417c3c: mov dword ptr [eax + 4], ecx
         R.ecx = (R.pop()) | 0; // 417c3f: pop ecx
-        return R.eax; // 417c40: ret 8
+        return R.ret(2); // 417c40: ret 8
       default: throw new Error(`f_417c10: ukendt adresse ${pc.toString(16)}`);
     }
   }

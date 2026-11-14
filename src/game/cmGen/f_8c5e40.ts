@@ -35,7 +35,7 @@ export function f_8c5e40(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5e63: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5e65: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5e66: pop ecx
-        return R.eax; // 8c5e67: ret 8
+        return R.ret(2); // 8c5e67: ret 8
       case 0x8c5e6a:
         R.ecx = (R.m.u32(((R.ebp) | 0) >>> 0)) | 0; // 8c5e6a: mov ecx, dword ptr [ebp]
         R.edx = (R.m.u32(((R.edi + 0x86e) | 0) >>> 0)) | 0; // 8c5e6d: mov edx, dword ptr [edi + 0x86e]
@@ -49,7 +49,7 @@ export function f_8c5e40(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5e7d: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5e7f: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5e80: pop ecx
-        return R.eax; // 8c5e81: ret 8
+        return R.ret(2); // 8c5e81: ret 8
       case 0x8c5e84:
         R.ecx = (R.m.u32(((0xae1050) | 0) >>> 0)) | 0; // 8c5e84: mov ecx, dword ptr [0xae1050]
         R.push((R.ebp >>> 0)); // 8c5e8a: push ebp
@@ -75,7 +75,7 @@ export function f_8c5e40(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5eb5: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5eb7: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5eb8: pop ecx
-        return R.eax; // 8c5eb9: ret 8
+        return R.ret(2); // 8c5eb9: ret 8
       case 0x8c5ebc:
         R.ecx = (R.m.u32(((0xae1050) | 0) >>> 0)) | 0; // 8c5ebc: mov ecx, dword ptr [0xae1050]
         R.push((R.ebp >>> 0)); // 8c5ec2: push ebp
@@ -216,7 +216,7 @@ export function f_8c5e40(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 8c5fb6: pop ebp
         R.ebx = (R.pop()) | 0; // 8c5fb7: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5fb8: pop ecx
-        return R.eax; // 8c5fb9: ret 8
+        return R.ret(2); // 8c5fb9: ret 8
       default: throw new Error(`f_8c5e40: ukendt adresse ${pc.toString(16)}`);
     }
   }

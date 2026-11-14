@@ -358,7 +358,7 @@ export function f_8e7b50(c: CmCtx, ecx: number, args: number[]): number {
         R.ebx = (R.pop()) | 0; // 8e7ed3: pop ebx
         R.esp = ((R.ebp >>> 0)) | 0; // 8e7ed4: mov esp, ebp
         R.ebp = (R.pop()) | 0; // 8e7ed6: pop ebp
-        return R.eax; // 8e7ed7: ret 0x14
+        return R.ret(5); // 8e7ed7: ret 0x14
       default: throw new Error(`f_8e7b50: ukendt adresse ${pc.toString(16)}`);
     }
   }

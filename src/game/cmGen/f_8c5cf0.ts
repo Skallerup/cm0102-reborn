@@ -35,7 +35,7 @@ export function f_8c5cf0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5d10: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5d12: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5d13: pop ecx
-        return R.eax; // 8c5d14: ret 0xc
+        return R.ret(3); // 8c5d14: ret 0xc
       case 0x8c5d17:
         R.esi = (R.m.u32(((R.ebp + 0x4) | 0) >>> 0)) | 0; // 8c5d17: mov esi, dword ptr [ebp + 4]
         R.eax = (R.m.u32(((R.ebp) | 0) >>> 0)) | 0; // 8c5d1a: mov eax, dword ptr [ebp]
@@ -65,7 +65,7 @@ export function f_8c5cf0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5d39: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5d3b: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5d3c: pop ecx
-        return R.eax; // 8c5d3d: ret 0xc
+        return R.ret(3); // 8c5d3d: ret 0xc
       case 0x8c5d40:
         R.esi = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 8c5d40: mov esi, dword ptr [eax]
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 8c5d42: test esi, esi
@@ -78,7 +78,7 @@ export function f_8c5cf0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5d49: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5d4b: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5d4c: pop ecx
-        return R.eax; // 8c5d4d: ret 0xc
+        return R.ret(3); // 8c5d4d: ret 0xc
       case 0x8c5d50:
         R.eax = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 8c5d50: mov eax, dword ptr [esi]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8c5d52: test eax, eax
@@ -172,7 +172,7 @@ export function f_8c5cf0(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 8c5de3: pop ebp
         R.ebx = (R.pop()) | 0; // 8c5de4: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5de5: pop ecx
-        return R.eax; // 8c5de6: ret 0xc
+        return R.ret(3); // 8c5de6: ret 0xc
       case 0x8c5de9:
         R.eax = (R.m.u32(((R.esp + 0x20) | 0) >>> 0)) | 0; // 8c5de9: mov eax, dword ptr [esp + 0x20]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 8c5ded: test eax, eax
@@ -218,7 +218,7 @@ export function f_8c5cf0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c5e19: xor eax, eax
         R.ebx = (R.pop()) | 0; // 8c5e1b: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5e1c: pop ecx
-        return R.eax; // 8c5e1d: ret 0xc
+        return R.ret(3); // 8c5e1d: ret 0xc
       case 0x8c5e20:
         R.ecx = (R.m.u32(((R.esp + 0x1c) | 0) >>> 0)) | 0; // 8c5e20: mov ecx, dword ptr [esp + 0x1c]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 8c5e24: test ecx, ecx
@@ -237,7 +237,7 @@ export function f_8c5cf0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 8c5e36: mov eax, 1
         R.ebx = (R.pop()) | 0; // 8c5e3b: pop ebx
         R.ecx = (R.pop()) | 0; // 8c5e3c: pop ecx
-        return R.eax; // 8c5e3d: ret 0xc
+        return R.ret(3); // 8c5e3d: ret 0xc
       default: throw new Error(`f_8c5cf0: ukendt adresse ${pc.toString(16)}`);
     }
   }

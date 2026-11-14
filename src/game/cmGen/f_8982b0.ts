@@ -43,7 +43,7 @@ export function f_8982b0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) | 0xffffffff, 32)) | 0; // 8982f5: or eax, 0xffffffff
         R.esi = (R.pop()) | 0; // 8982f8: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8982f9: add esp, 0x200
-        return R.eax; // 8982ff: ret 8
+        return R.ret(2); // 8982ff: ret 8
       case 0x898302:
         R.edi = (R.m.u32(((R.esi + 0xcf) | 0) >>> 0)) | 0; // 898302: mov edi, dword ptr [esi + 0xcf]
         R.logic((R.edi >>> 0) & (R.edi >>> 0), 32); // 898308: test edi, edi
@@ -131,7 +131,7 @@ export function f_8982b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 8983e2: pop edi
         R.esi = (R.pop()) | 0; // 8983e3: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 8983e4: add esp, 0x200
-        return R.eax; // 8983ea: ret 8
+        return R.ret(2); // 8983ea: ret 8
       default: throw new Error(`f_8982b0: ukendt adresse ${pc.toString(16)}`);
     }
   }

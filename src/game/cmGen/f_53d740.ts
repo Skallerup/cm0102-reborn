@@ -82,12 +82,12 @@ export function f_53d740(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 53d7c3: pop edi
         R.esi = (R.pop()) | 0; // 53d7c4: pop esi
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53d7c5: xor eax, eax
-        return R.eax; // 53d7c7: ret 
+        return R.ret(0); // 53d7c7: ret 
       case 0x53d7c8:
         R.edi = (R.pop()) | 0; // 53d7c8: pop edi
         R.esi = (R.pop()) | 0; // 53d7c9: pop esi
         R.eax = (0x1) | 0; // 53d7ca: mov eax, 1
-        return R.eax; // 53d7cf: ret 
+        return R.ret(0); // 53d7cf: ret 
       default: throw new Error(`f_53d740: ukendt adresse ${pc.toString(16)}`);
     }
   }

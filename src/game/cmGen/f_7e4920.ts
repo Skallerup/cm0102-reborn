@@ -68,7 +68,7 @@ export function f_7e4920(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 7e49c4: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7e49ce: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x208, 32)) | 0; // 7e49d0: add esp, 0x208
-        return R.eax; // 7e49d6: ret 
+        return R.ret(0); // 7e49d6: ret 
       case 0x7e49d7:
         R.edx = (R.m.u32(((R.eax + 0x4) | 0) >>> 0)) | 0; // 7e49d7: mov edx, dword ptr [eax + 4]
         R.logic((R.edx >>> 0) & (R.edx >>> 0), 32); // 7e49da: test edx, edx
@@ -116,7 +116,7 @@ export function f_7e4920(c: CmCtx, ecx: number, args: number[]): number {
         R.call(0x417c10, { n: 2, thisEcx: true, calleeClean: true }); // 7e4a1d: call 0x417c10
         R.eax = (0x1) | 0; // 7e4a22: mov eax, 1
         R.esp = (R.add((R.esp >>> 0), 0x208, 32)) | 0; // 7e4a27: add esp, 0x208
-        return R.eax; // 7e4a2d: ret 
+        return R.ret(0); // 7e4a2d: ret 
       default: throw new Error(`f_7e4920: ukendt adresse ${pc.toString(16)}`);
     }
   }

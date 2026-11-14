@@ -38,7 +38,7 @@ export function f_7a82b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 7a82cf: pop edi
         R.esi = (R.pop()) | 0; // 7a82d0: pop esi
         R.ebx = (R.pop()) | 0; // 7a82d1: pop ebx
-        return R.eax; // 7a82d2: ret 4
+        return R.ret(1); // 7a82d2: ret 4
       case 0x7a82d5:
         R.edx = (R.incdec((R.edx >>> 0), -1, 32)) | 0; // 7a82d5: dec edx
         R.esi = ((R.eax >>> 0)) | 0; // 7a82d6: mov esi, eax
@@ -89,7 +89,7 @@ export function f_7a82b0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 7a833b: pop edi
         R.esi = (R.pop()) | 0; // 7a833c: pop esi
         R.ebx = (R.pop()) | 0; // 7a833d: pop ebx
-        return R.eax; // 7a833e: ret 4
+        return R.ret(1); // 7a833e: ret 4
       default: throw new Error(`f_7a82b0: ukendt adresse ${pc.toString(16)}`);
     }
   }

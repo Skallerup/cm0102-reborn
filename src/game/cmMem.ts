@@ -33,27 +33,47 @@ export class SparseMem implements CmMem {
   private pages = new Map<number, Uint8Array>();
   private dv = new DataView(new ArrayBuffer(8));
   private miss?: (page: number, mem: SparseMem) => void;
+  /** den senest brugte side (hurtig vej) */
+  private lp = -1;
+  private lb: Uint8Array = new Uint8Array(0);
   constructor(miss?: (page: number, mem: SparseMem) => void) { this.miss = miss; }
   page(p: number, create = true): Uint8Array | undefined {
+    if (p === this.lp) return this.lb;
     let b = this.pages.get(p);
     if (!b && create) {
       b = new Uint8Array(1 << PAGE);
       this.pages.set(p, b);
       this.miss?.(p, this);
     }
+    if (b) { this.lp = p; this.lb = b; }
     return b;
   }
   u8(a: number): number { a >>>= 0; return this.page(a >>> PAGE)![a & PMASK]; }
   s8(a: number): number { return (this.u8(a) << 24) >> 24; }
-  u16(a: number): number { return this.u8(a) | (this.u8(a + 1) << 8); }
+  u16(a: number): number {
+    a >>>= 0;
+    const o = a & PMASK;
+    if (o < PMASK) { const b = this.page(a >>> PAGE)!; return b[o] | (b[o + 1] << 8); }
+    return this.u8(a) | (this.u8(a + 1) << 8);
+  }
   s16(a: number): number { return (this.u16(a) << 16) >> 16; }
-  u32(a: number): number { return (this.u16(a) | (this.u16(a + 2) << 16)) >>> 0; }
+  u32(a: number): number {
+    a >>>= 0;
+    const o = a & PMASK;
+    if (o <= PMASK - 3) { const b = this.page(a >>> PAGE)!; return (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0; }
+    return (this.u16(a) | (this.u16(a + 2) << 16)) >>> 0;
+  }
   s32(a: number): number { return this.u32(a) | 0; }
   f32(a: number): number { this.dv.setUint32(0, this.u32(a), true); return this.dv.getFloat32(0, true); }
   f64(a: number): number { this.dv.setUint32(0, this.u32(a), true); this.dv.setUint32(4, this.u32(a + 4), true); return this.dv.getFloat64(0, true); }
   w8(a: number, v: number): void { a >>>= 0; this.page(a >>> PAGE)![a & PMASK] = v & 0xff; }
   w16(a: number, v: number): void { this.w8(a, v); this.w8(a + 1, v >> 8); }
-  w32(a: number, v: number): void { this.w16(a, v); this.w16(a + 2, v >>> 16); }
+  w32(a: number, v: number): void {
+    a >>>= 0;
+    const o = a & PMASK;
+    if (o <= PMASK - 3) { const b = this.page(a >>> PAGE)!; b[o] = v & 0xff; b[o + 1] = (v >>> 8) & 0xff; b[o + 2] = (v >>> 16) & 0xff; b[o + 3] = (v >>> 24) & 0xff; return; }
+    this.w16(a, v); this.w16(a + 2, v >>> 16);
+  }
   wf32(a: number, v: number): void { this.dv.setFloat32(0, v, true); this.w32(a, this.dv.getUint32(0, true)); }
   wf64(a: number, v: number): void { this.dv.setFloat64(0, v, true); this.w32(a, this.dv.getUint32(0, true)); this.w32(a + 4, this.dv.getUint32(4, true)); }
   /** skriv en række bytes (sporets hex-dump) */

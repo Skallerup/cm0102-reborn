@@ -84,7 +84,7 @@ export function f_5fd6b0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5fd75a: xor eax, eax
         R.esi = (R.pop()) | 0; // 5fd75c: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd75d: add esp, 0x200
-        return R.eax; // 5fd763: ret 8
+        return R.ret(2); // 5fd763: ret 8
       case 0x5fd766:
         R.eax = (((R.edx + R.edx * 4) | 0)) | 0; // 5fd766: lea eax, [edx + edx*4]
         R.push((R.ebx >>> 0)); // 5fd769: push ebx
@@ -105,7 +105,7 @@ export function f_5fd6b0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.ecx >>> 0)) | 0; // 5fd78e: mov eax, ecx
         R.esi = (R.pop()) | 0; // 5fd790: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd791: add esp, 0x200
-        return R.eax; // 5fd797: ret 8
+        return R.ret(2); // 5fd797: ret 8
       case 0x5fd79a:
         R.edx = (((R.esp + 0x108) | 0)) | 0; // 5fd79a: lea edx, [esp + 0x108]
         R.eax = (((R.esp + 0x8) | 0)) | 0; // 5fd7a1: lea eax, [esp + 8]
@@ -140,7 +140,7 @@ export function f_5fd6b0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5fd7fe: xor eax, eax
         R.esi = (R.pop()) | 0; // 5fd800: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd801: add esp, 0x200
-        return R.eax; // 5fd807: ret 8
+        return R.ret(2); // 5fd807: ret 8
       default: throw new Error(`f_5fd6b0: ukendt adresse ${pc.toString(16)}`);
     }
   }

@@ -47,7 +47,7 @@ export function f_53cc30(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53cc9e: xor eax, eax
         R.esi = (R.pop()) | 0; // 53cca0: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cca1: add esp, 0x200
-        return R.eax; // 53cca7: ret 
+        return R.ret(0); // 53cca7: ret 
       case 0x53cca8:
         R.push((R.ebx >>> 0)); // 53cca8: push ebx
         R.push((R.ebp >>> 0)); // 53cca9: push ebp
@@ -121,7 +121,7 @@ export function f_53cc30(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53cd24: mov eax, 1
         R.esi = (R.pop()) | 0; // 53cd29: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cd2a: add esp, 0x200
-        return R.eax; // 53cd30: ret 
+        return R.ret(0); // 53cd30: ret 
       case 0x53cd31:
         R.edi = (R.m.u32(((R.esp + 0x218) | 0) >>> 0)) | 0; // 53cd31: mov edi, dword ptr [esp + 0x218]
         R.esi = (R.add((R.esi >>> 0), 0x19f, 32)) | 0; // 53cd38: add esi, 0x19f
@@ -135,7 +135,7 @@ export function f_53cc30(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 53cd48: mov eax, 1
         R.esi = (R.pop()) | 0; // 53cd4d: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cd4e: add esp, 0x200
-        return R.eax; // 53cd54: ret 
+        return R.ret(0); // 53cd54: ret 
       default: throw new Error(`f_53cc30: ukendt adresse ${pc.toString(16)}`);
     }
   }

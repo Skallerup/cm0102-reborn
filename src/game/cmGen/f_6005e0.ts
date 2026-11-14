@@ -96,7 +96,7 @@ export function f_6005e0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.add((R.eax >>> 0), 0x4, 32)) | 0; // 6006b9: add eax, 4
         R.esi = (R.pop()) | 0; // 6006bc: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x220, 32)) | 0; // 6006bd: add esp, 0x220
-        return R.eax; // 6006c3: ret 8
+        return R.ret(2); // 6006c3: ret 8
       case 0x6006c6:
         R.edx = (((R.esp + 0x124) | 0)) | 0; // 6006c6: lea edx, [esp + 0x124]
         R.eax = (((R.esp + 0x24) | 0)) | 0; // 6006cd: lea eax, [esp + 0x24]
@@ -130,7 +130,7 @@ export function f_6005e0(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 600729: xor eax, eax
         R.esi = (R.pop()) | 0; // 60072b: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x220, 32)) | 0; // 60072c: add esp, 0x220
-        return R.eax; // 600732: ret 8
+        return R.ret(2); // 600732: ret 8
       default: throw new Error(`f_6005e0: ukendt adresse ${pc.toString(16)}`);
     }
   }

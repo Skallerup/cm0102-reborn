@@ -55,7 +55,7 @@ export function f_5fd210(c: CmCtx, ecx: number, args: number[]): number {
       case 0x5fd29a:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5fd29a: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd29c: add esp, 0x200
-        return R.eax; // 5fd2a2: ret 4
+        return R.ret(1); // 5fd2a2: ret 4
       case 0x5fd2a5:
         R.edx = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 5fd2a5: mov edx, dword ptr [eax]
         R.eax = (R.m.u32(((0xae2364) | 0) >>> 0)) | 0; // 5fd2a7: mov eax, dword ptr [0xae2364]
@@ -81,7 +81,7 @@ export function f_5fd210(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.m.u32(((R.ecx) | 0) >>> 0)) | 0; // 5fd2d0: mov eax, dword ptr [ecx]
         R.eax = (R.m.u32(((R.edx + R.eax + 0x9a01) | 0) >>> 0)) | 0; // 5fd2d2: mov eax, dword ptr [edx + eax + 0x9a01]
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd2d9: add esp, 0x200
-        return R.eax; // 5fd2df: ret 4
+        return R.ret(1); // 5fd2df: ret 4
       default: throw new Error(`f_5fd210: ukendt adresse ${pc.toString(16)}`);
     }
   }

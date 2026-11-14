@@ -65,7 +65,7 @@ export function f_5fe040(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.m.u32(((R.ecx) | 0) >>> 0)) | 0; // 5fe0bf: mov eax, dword ptr [ecx]
         R.eax = (R.m.u32(((R.edx + R.eax + 0x9ace) | 0) >>> 0)) | 0; // 5fe0c1: mov eax, dword ptr [edx + eax + 0x9ace]
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fe0c8: add esp, 0x200
-        return R.eax; // 5fe0ce: ret 4
+        return R.ret(1); // 5fe0ce: ret 4
       case 0x5fe0d1:
         R.ecx = (((R.esp + 0x100) | 0)) | 0; // 5fe0d1: lea ecx, [esp + 0x100]
         R.edx = (((R.esp) | 0)) | 0; // 5fe0d8: lea edx, [esp]
@@ -96,7 +96,7 @@ export function f_5fe040(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 5fe12a: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5fe134: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fe136: add esp, 0x200
-        return R.eax; // 5fe13c: ret 4
+        return R.ret(1); // 5fe13c: ret 4
       default: throw new Error(`f_5fe040: ukendt adresse ${pc.toString(16)}`);
     }
   }

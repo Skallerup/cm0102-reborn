@@ -136,7 +136,7 @@ export function f_54a2d0(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 54a3d3: pop esi
         /* fs */ // 54a3d4: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x2c, 32)) | 0; // 54a3db: add esp, 0x2c
-        return R.eax; // 54a3de: ret 8
+        return R.ret(2); // 54a3de: ret 8
       default: throw new Error(`f_54a2d0: ukendt adresse ${pc.toString(16)}`);
     }
   }

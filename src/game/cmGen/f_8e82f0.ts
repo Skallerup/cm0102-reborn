@@ -48,7 +48,7 @@ export function f_8e82f0(c: CmCtx, ecx: number, args: number[]): number {
       case 0x8e8327:
         R.edi = (R.pop()) | 0; // 8e8327: pop edi
         R.esi = (R.pop()) | 0; // 8e8328: pop esi
-        return R.eax; // 8e8329: ret 4
+        return R.ret(1); // 8e8329: ret 4
       default: throw new Error(`f_8e82f0: ukendt adresse ${pc.toString(16)}`);
     }
   }

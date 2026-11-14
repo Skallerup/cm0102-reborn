@@ -51,7 +51,7 @@ export function f_68d080(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.esi + 0x6) | 0) >>> 0, 0x0); // 68d0bd: mov dword ptr [esi + 6], 0
         R.m.w32(((R.esi + 0xa) | 0) >>> 0, 0x0); // 68d0c4: mov dword ptr [esi + 0xa], 0
         R.esi = (R.pop()) | 0; // 68d0cb: pop esi
-        return R.eax; // 68d0cc: ret 
+        return R.ret(0); // 68d0cc: ret 
       default: throw new Error(`f_68d080: ukendt adresse ${pc.toString(16)}`);
     }
   }

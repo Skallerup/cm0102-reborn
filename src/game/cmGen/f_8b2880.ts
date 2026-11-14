@@ -410,7 +410,7 @@ export function f_8b2880(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 8b2bb5: pop esi
         R.ebx = (R.pop()) | 0; // 8b2bb6: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x34, 32)) | 0; // 8b2bb7: add esp, 0x34
-        return R.eax; // 8b2bba: ret 8
+        return R.ret(2); // 8b2bba: ret 8
       default: throw new Error(`f_8b2880: ukendt adresse ${pc.toString(16)}`);
     }
   }

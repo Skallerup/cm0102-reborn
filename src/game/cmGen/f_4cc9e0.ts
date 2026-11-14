@@ -53,7 +53,7 @@ export function f_4cc9e0(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 4cca1d: pop edi
         R.esi = (R.pop()) | 0; // 4cca1e: pop esi
         R.ebx = (R.pop()) | 0; // 4cca1f: pop ebx
-        return R.eax; // 4cca20: ret 8
+        return R.ret(2); // 4cca20: ret 8
       default: throw new Error(`f_4cc9e0: ukendt adresse ${pc.toString(16)}`);
     }
   }

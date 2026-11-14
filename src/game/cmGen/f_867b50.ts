@@ -27,10 +27,10 @@ export function f_867b50(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x867b64; continue;
       case 0x867b64:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 867b64: xor eax, eax
-        return R.eax; // 867b66: ret 
+        return R.ret(0); // 867b66: ret 
       case 0x867b67:
         R.eax = (0x1) | 0; // 867b67: mov eax, 1
-        return R.eax; // 867b6c: ret 
+        return R.ret(0); // 867b6c: ret 
       default: throw new Error(`f_867b50: ukendt adresse ${pc.toString(16)}`);
     }
   }

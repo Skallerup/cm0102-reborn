@@ -17,7 +17,7 @@ export function f_4cf6d0(c: CmCtx, ecx: number, args: number[]): number {
         if (!R.zf) { pc = 0x4cf6db; continue; } // 4cf6d6: jne 0x4cf6db
         pc = 0x4cf6d8; continue;
       case 0x4cf6d8:
-        return R.eax; // 4cf6d8: ret 4
+        return R.ret(1); // 4cf6d8: ret 4
       case 0x4cf6db:
         R.eax = (R.m.u32(((R.eax) | 0) >>> 0)) | 0; // 4cf6db: mov eax, dword ptr [eax]
         R.edx = (R.m.u32(((0xae2364) | 0) >>> 0)) | 0; // 4cf6dd: mov edx, dword ptr [0xae2364]
@@ -26,7 +26,7 @@ export function f_4cf6d0(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x4cf6e7; continue;
       case 0x4cf6e7:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 4cf6e7: xor eax, eax
-        return R.eax; // 4cf6e9: ret 4
+        return R.ret(1); // 4cf6e9: ret 4
       case 0x4cf6ec:
         R.edx = (((R.eax + R.eax * 4) | 0)) | 0; // 4cf6ec: lea edx, [eax + eax*4]
         R.edx = (R.shl((R.edx >>> 0), 0x4, 32)) | 0; // 4cf6ef: shl edx, 4
@@ -38,13 +38,13 @@ export function f_4cf6d0(c: CmCtx, ecx: number, args: number[]): number {
         pc = 0x4cf701; continue;
       case 0x4cf701:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 4cf701: xor eax, eax
-        return R.eax; // 4cf703: ret 4
+        return R.ret(1); // 4cf703: ret 4
       case 0x4cf706:
         R.edx = (R.m.u32(((R.ecx) | 0) >>> 0)) | 0; // 4cf706: mov edx, dword ptr [ecx]
         R.eax = (((R.eax + R.eax * 4) | 0)) | 0; // 4cf708: lea eax, [eax + eax*4]
         R.eax = (R.shl((R.eax >>> 0), 0x4, 32)) | 0; // 4cf70b: shl eax, 4
         R.eax = (R.add((R.eax >>> 0), (R.edx >>> 0), 32)) | 0; // 4cf70e: add eax, edx
-        return R.eax; // 4cf710: ret 4
+        return R.ret(1); // 4cf710: ret 4
       default: throw new Error(`f_4cf6d0: ukendt adresse ${pc.toString(16)}`);
     }
   }

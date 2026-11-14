@@ -72,7 +72,7 @@ export function f_5fd480(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = ((R.ecx >>> 0)) | 0; // 5fd511: mov eax, ecx
         R.ebx = (R.pop()) | 0; // 5fd513: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd514: add esp, 0x200
-        return R.eax; // 5fd51a: ret 4
+        return R.ret(1); // 5fd51a: ret 4
       case 0x5fd51d:
         R.edx = (((R.esp + 0x100) | 0)) | 0; // 5fd51d: lea edx, [esp + 0x100]
         R.eax = (((R.esp) | 0)) | 0; // 5fd524: lea eax, [esp]
@@ -103,7 +103,7 @@ export function f_5fd480(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 5fd576: mov dword ptr [0xb67a34], 0
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 5fd580: xor eax, eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 5fd582: add esp, 0x200
-        return R.eax; // 5fd588: ret 4
+        return R.ret(1); // 5fd588: ret 4
       default: throw new Error(`f_5fd480: ukendt adresse ${pc.toString(16)}`);
     }
   }

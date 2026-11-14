@@ -20,10 +20,10 @@ export function f_8c61e0(c: CmCtx, ecx: number, args: number[]): number {
       case 0x8c61eb:
         R.ecx = (R.m.u32(((R.ecx) | 0) >>> 0)) | 0; // 8c61eb: mov ecx, dword ptr [ecx]
         R.eax = (((R.ecx + R.eax * 4) | 0)) | 0; // 8c61ed: lea eax, [ecx + eax*4]
-        return R.eax; // 8c61f0: ret 4
+        return R.ret(1); // 8c61f0: ret 4
       case 0x8c61f3:
         R.eax = (R.m.u32(((R.ecx) | 0) >>> 0)) | 0; // 8c61f3: mov eax, dword ptr [ecx]
-        return R.eax; // 8c61f5: ret 4
+        return R.ret(1); // 8c61f5: ret 4
       default: throw new Error(`f_8c61e0: ukendt adresse ${pc.toString(16)}`);
     }
   }

@@ -17,6 +17,7 @@
 import type { Club, Fixture, GameState, MatchReport, Staff } from './types';
 import { squad, addNews } from './state';
 import { cmActive, cmRand, clubRepMem, postHooks } from './cmPlayerData';
+import { personalFill_535a80 } from './cmStaffInit';
 import { financeStatus } from './cmSquadPlan';
 import { clubSeason } from './cmFitness';
 import { CL_SPOTS, UEFA_SPOTS, UEFA_NATIONS, rulesFor } from './leagues';
@@ -543,7 +544,9 @@ export function cmInitStaffRep(g: GameState, s: Staff, row: NonNullable<CMWorld[
 /** newgame.ts: spilstarten 0x68f130 (på databasens dato 1/1) – efter at klubber, stab og turneringer findes */
 export function cmBoardInit(g: GameState, chair: Record<number, [number, number, number, number]> | undefined, nationBoard: [number, number, number][] | undefined): void {
   if (!cmActive(g) || g.draft) return;
-  g.cmChair = chair ? { ...chair } : {};
+  // formandens Ambition (x[2]) som sub_535a80 udfylder den, når databasen har 0 (samme talrække som cmFinance.ts' formand)
+  g.cmChair = {};
+  for (const [cid, x] of Object.entries(chair ?? {})) g.cmChair[+cid] = [x[0], x[1], personalFill_535a80(x[2], cmRand(g.seed ?? 0, +cid, 0x535f04), 'avg'), x[3]];
   g.cmNationBoard = nationBoard ? nationBoard.map((x) => x.slice() as [number, number, number]) : [];
   g.cmBoardStart = g.date;
   g.cmBoard = { rec: {}, dep: [], vac: [], ult: [], month: -1, tab: {} };

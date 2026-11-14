@@ -65,7 +65,7 @@ export function f_7af600(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 7af6bd: pop esi
         /* fs */ // 7af6be: mov dword ptr fs:[0], ecx
         R.esp = (R.add((R.esp >>> 0), 0x23c, 32)) | 0; // 7af6c5: add esp, 0x23c
-        return R.eax; // 7af6cb: ret 4
+        return R.ret(1); // 7af6cb: ret 4
       case 0x7af6ce:
         R.ecx = (R.m.u32(((R.esi + 0x1f6) | 0) >>> 0)) | 0; // 7af6ce: mov ecx, dword ptr [esi + 0x1f6]
         R.logic((R.ecx >>> 0) & (R.ecx >>> 0), 32); // 7af6d4: test ecx, ecx

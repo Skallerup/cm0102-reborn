@@ -90,7 +90,7 @@ export function f_897990(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 897a68: xor eax, eax
         R.ebx = (R.pop()) | 0; // 897a6a: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897a6b: add esp, 0x200
-        return R.eax; // 897a71: ret 0x10
+        return R.ret(4); // 897a71: ret 0x10
       case 0x897a74:
         R.sub((R.eax >>> 0), 0xffffffff, 32); // 897a74: cmp eax, -1
         if (R.cLE) { pc = 0x897b9a; continue; } // 897a77: jle 0x897b9a
@@ -113,7 +113,7 @@ export function f_897990(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 897a9e: xor eax, eax
         R.ebx = (R.pop()) | 0; // 897aa0: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897aa1: add esp, 0x200
-        return R.eax; // 897aa7: ret 0x10
+        return R.ret(4); // 897aa7: ret 0x10
       case 0x897aaa:
         R.ecx = (R.m.u32(((R.esp + 0x214) | 0) >>> 0)) | 0; // 897aaa: mov ecx, dword ptr [esp + 0x214]
         R.edx = (R.m.u32(((R.eax + R.ebp + 0x39) | 0) >>> 0)) | 0; // 897ab1: mov edx, dword ptr [eax + ebp + 0x39]
@@ -144,7 +144,7 @@ export function f_897990(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 897aef: pop ebp
         R.ebx = (R.pop()) | 0; // 897af0: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897af1: add esp, 0x200
-        return R.eax; // 897af7: ret 0x10
+        return R.ret(4); // 897af7: ret 0x10
       case 0x897afa:
         R.eax = (R.m.u32(((0xae23bc) | 0) >>> 0)) | 0; // 897afa: mov eax, dword ptr [0xae23bc]
         pc = 0x897aff; continue;
@@ -155,7 +155,7 @@ export function f_897990(c: CmCtx, ecx: number, args: number[]): number {
         R.ebp = (R.pop()) | 0; // 897b03: pop ebp
         R.ebx = (R.pop()) | 0; // 897b04: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897b05: add esp, 0x200
-        return R.eax; // 897b0b: ret 0x10
+        return R.ret(4); // 897b0b: ret 0x10
       case 0x897b0e:
         R.edx = (((R.esp + 0x110) | 0)) | 0; // 897b0e: lea edx, [esp + 0x110]
         R.eax = (((R.esp + 0x10) | 0)) | 0; // 897b15: lea eax, [esp + 0x10]
@@ -210,7 +210,7 @@ export function f_897990(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 897b9d: xor eax, eax
         R.ebx = (R.pop()) | 0; // 897b9f: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 897ba0: add esp, 0x200
-        return R.eax; // 897ba6: ret 0x10
+        return R.ret(4); // 897ba6: ret 0x10
       default: throw new Error(`f_897990: ukendt adresse ${pc.toString(16)}`);
     }
   }

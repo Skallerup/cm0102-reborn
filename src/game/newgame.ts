@@ -43,6 +43,7 @@ import { cmContractsNewGame } from './cmContractInit';
 import { cmPermitNewGame } from './cmPermit';
 import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { cmWageFillNewGame } from './cmWageGame';
+import { cmShortlistStart } from './cmShortlistGame';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
 
 export interface WorldData {
@@ -485,6 +486,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   cmSquadPlanStart(g);
   // 0x83a1b0 efter trupplanen: lønnen for kontrakterne uden løn (0x862720 – cmWageGame.ts)
   cmWageFillNewGame(g, unsetWages);
+  // 0x83a1b0's slutning: positionslisterne 0x83a780 og budgettets fordeling/målene 0x83b6e0 for alle klubber (cmShortlistGame.ts)
+  cmShortlistStart(g);
   progress('scouting', 0.9);
   initKnowledge();
   monthlyDevelopment();

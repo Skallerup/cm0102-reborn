@@ -56,7 +56,7 @@ export function f_7f7490(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7f7506: xor eax, eax
         R.ebx = (R.pop()) | 0; // 7f7508: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x204, 32)) | 0; // 7f7509: add esp, 0x204
-        return R.eax; // 7f750f: ret 8
+        return R.ret(2); // 7f750f: ret 8
       case 0x7f7512:
         R.esi = (R.m.u32(((R.esp + 0x218) | 0) >>> 0)) | 0; // 7f7512: mov esi, dword ptr [esp + 0x218]
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 7f7519: test esi, esi
@@ -110,7 +110,7 @@ export function f_7f7490(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 7f758b: pop esi
         R.ebx = (R.pop()) | 0; // 7f758c: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x204, 32)) | 0; // 7f758d: add esp, 0x204
-        return R.eax; // 7f7593: ret 8
+        return R.ret(2); // 7f7593: ret 8
       case 0x7f7596:
         R.ebx = ((R.ebx & 0xffffff00) | (((R.logic(((R.ebx >>> 0) & 0xff) ^ ((R.ebx >>> 0) & 0xff), 8)) & 0xff) << 0)) | 0; // 7f7596: xor bl, bl
         R.m.w8(((R.esp + 0xc) | 0) >>> 0, ((R.ebx >>> 0) & 0xff)); // 7f7598: mov byte ptr [esp + 0xc], bl
@@ -140,7 +140,7 @@ export function f_7f7490(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7f75c0: xor eax, eax
         R.ebx = (R.pop()) | 0; // 7f75c2: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x204, 32)) | 0; // 7f75c3: add esp, 0x204
-        return R.eax; // 7f75c9: ret 8
+        return R.ret(2); // 7f75c9: ret 8
       case 0x7f75cc:
         R.edx = (R.m.u32(((R.esp + 0x214) | 0) >>> 0)) | 0; // 7f75cc: mov edx, dword ptr [esp + 0x214]
         R.ecx = ((R.eax >>> 0)) | 0; // 7f75d3: mov ecx, eax
@@ -150,7 +150,7 @@ export function f_7f7490(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 7f75dc: pop esi
         R.ebx = (R.pop()) | 0; // 7f75dd: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x204, 32)) | 0; // 7f75de: add esp, 0x204
-        return R.eax; // 7f75e4: ret 8
+        return R.ret(2); // 7f75e4: ret 8
       default: throw new Error(`f_7f7490: ukendt adresse ${pc.toString(16)}`);
     }
   }

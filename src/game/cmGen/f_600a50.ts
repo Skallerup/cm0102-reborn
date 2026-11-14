@@ -218,7 +218,7 @@ export function f_600a50(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 600c6e: xor eax, eax
         R.ebx = (R.pop()) | 0; // 600c70: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 600c71: add esp, 0x200
-        return R.eax; // 600c77: ret 
+        return R.ret(0); // 600c77: ret 
       case 0x600c78:
         R.edi = (R.pop()) | 0; // 600c78: pop edi
         R.esi = (R.pop()) | 0; // 600c79: pop esi
@@ -226,7 +226,7 @@ export function f_600a50(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (0x1) | 0; // 600c7b: mov eax, 1
         R.ebx = (R.pop()) | 0; // 600c80: pop ebx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 600c81: add esp, 0x200
-        return R.eax; // 600c87: ret 
+        return R.ret(0); // 600c87: ret 
       default: throw new Error(`f_600a50: ukendt adresse ${pc.toString(16)}`);
     }
   }

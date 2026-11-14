@@ -18,7 +18,7 @@ export function f_68d020(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((R.eax + 0x6) | 0) >>> 0, (R.ecx >>> 0)); // 68d027: mov dword ptr [eax + 6], ecx
         R.m.w32(((R.eax + 0xa) | 0) >>> 0, (R.ecx >>> 0)); // 68d02a: mov dword ptr [eax + 0xa], ecx
         R.m.w16(((R.eax) | 0) >>> 0, ((R.ecx >>> 0) & 0xffff)); // 68d02d: mov word ptr [eax], cx
-        return R.eax; // 68d030: ret 
+        return R.ret(0); // 68d030: ret 
       default: throw new Error(`f_68d020: ukendt adresse ${pc.toString(16)}`);
     }
   }

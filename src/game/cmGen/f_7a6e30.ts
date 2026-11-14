@@ -29,7 +29,7 @@ export function f_7a6e30(c: CmCtx, ecx: number, args: number[]): number {
         R.push((R.eax >>> 0)); // 7a6e56: push eax
         R.call(0x7a82b0, { n: 1, thisEcx: true, calleeClean: true }); // 7a6e57: call 0x7a82b0
         R.esi = (R.pop()) | 0; // 7a6e5c: pop esi
-        return R.eax; // 7a6e5d: ret 0xc
+        return R.ret(3); // 7a6e5d: ret 0xc
       default: throw new Error(`f_7a6e30: ukendt adresse ${pc.toString(16)}`);
     }
   }

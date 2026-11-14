@@ -45,7 +45,7 @@ export function f_53ab90(c: CmCtx, ecx: number, args: number[]): number {
         R.m.w32(((0xb67a34) | 0) >>> 0, 0x0); // 53abf7: mov dword ptr [0xb67a34], 0
         R.eax = ((R.eax & 0xffffff00) | (((R.logic(((R.eax >>> 0) & 0xff) | 0xff, 8)) & 0xff) << 0)) | 0; // 53ac01: or al, 0xff
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53ac03: add esp, 0x200
-        return R.eax; // 53ac09: ret 
+        return R.ret(0); // 53ac09: ret 
       case 0x53ac0a:
         R.ecx = (R.m.u32(((R.esp + 0x208) | 0) >>> 0)) | 0; // 53ac0a: mov ecx, dword ptr [esp + 0x208]
         R.push((R.esi >>> 0)); // 53ac11: push esi
@@ -62,11 +62,11 @@ export function f_53ab90(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.sub((R.eax >>> 0), (R.edx >>> 0), 32)) | 0; // 53ac28: sub eax, edx
         R.eax = (R.incdec((R.eax >>> 0), -1, 32)) | 0; // 53ac2a: dec eax
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53ac2b: add esp, 0x200
-        return R.eax; // 53ac31: ret 
+        return R.ret(0); // 53ac31: ret 
       case 0x53ac32:
         R.eax = (R.sub((R.eax >>> 0), (R.edx >>> 0), 32)) | 0; // 53ac32: sub eax, edx
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53ac34: add esp, 0x200
-        return R.eax; // 53ac3a: ret 
+        return R.ret(0); // 53ac3a: ret 
       default: throw new Error(`f_53ab90: ukendt adresse ${pc.toString(16)}`);
     }
   }

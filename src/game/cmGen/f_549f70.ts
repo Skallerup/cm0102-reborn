@@ -169,7 +169,7 @@ export function f_549f70(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 54a103: pop edi
         R.esi = (R.pop()) | 0; // 54a104: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 54a105: add esp, 0x200
-        return R.eax; // 54a10b: ret 0x10
+        return R.ret(4); // 54a10b: ret 0x10
       default: throw new Error(`f_549f70: ukendt adresse ${pc.toString(16)}`);
     }
   }

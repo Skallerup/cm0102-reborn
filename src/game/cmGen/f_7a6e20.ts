@@ -15,7 +15,7 @@ export function f_7a6e20(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.m.u32(((R.ecx + 0x20) | 0) >>> 0)) | 0; // 7a6e20: mov eax, dword ptr [ecx + 0x20]
         R.logic((R.eax >>> 0) & (R.eax >>> 0), 32); // 7a6e23: test eax, eax
         R.eax = ((R.eax & 0xffffff00) | (((!R.zf ? 1 : 0) & 0xff) << 0)) | 0; // 7a6e25: setne al
-        return R.eax; // 7a6e28: ret 
+        return R.ret(0); // 7a6e28: ret 
       default: throw new Error(`f_7a6e20: ukendt adresse ${pc.toString(16)}`);
     }
   }

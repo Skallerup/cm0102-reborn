@@ -20,7 +20,7 @@ export function f_7c6d40(c: CmCtx, ecx: number, args: number[]): number {
       case 0x7c6d49:
         R.eax = (R.logic((R.eax >>> 0) | 0xffffffff, 32)) | 0; // 7c6d49: or eax, 0xffffffff
         R.esi = (R.pop()) | 0; // 7c6d4c: pop esi
-        return R.eax; // 7c6d4d: ret 
+        return R.ret(0); // 7c6d4d: ret 
       case 0x7c6d4e:
         R.esi = (R.m.u32(((R.esp + 0xc) | 0) >>> 0)) | 0; // 7c6d4e: mov esi, dword ptr [esp + 0xc]
         R.logic((R.esi >>> 0) & (R.esi >>> 0), 32); // 7c6d52: test esi, esi
@@ -29,7 +29,7 @@ export function f_7c6d40(c: CmCtx, ecx: number, args: number[]): number {
       case 0x7c6d56:
         R.eax = (0x1) | 0; // 7c6d56: mov eax, 1
         R.esi = (R.pop()) | 0; // 7c6d5b: pop esi
-        return R.eax; // 7c6d5c: ret 
+        return R.ret(0); // 7c6d5c: ret 
       case 0x7c6d5d:
         R.eax = (R.m.u32(((R.edx) | 0) >>> 0)) | 0; // 7c6d5d: mov eax, dword ptr [edx]
         R.ecx = (R.m.u32(((R.esi) | 0) >>> 0)) | 0; // 7c6d5f: mov ecx, dword ptr [esi]
@@ -53,11 +53,11 @@ export function f_7c6d40(c: CmCtx, ecx: number, args: number[]): number {
       case 0x7c6d7a:
         R.eax = (R.sub((R.eax >>> 0), (R.ecx >>> 0), 32)) | 0; // 7c6d7a: sub eax, ecx
         R.esi = (R.pop()) | 0; // 7c6d7c: pop esi
-        return R.eax; // 7c6d7d: ret 
+        return R.ret(0); // 7c6d7d: ret 
       case 0x7c6d7e:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7c6d7e: xor eax, eax
         R.esi = (R.pop()) | 0; // 7c6d80: pop esi
-        return R.eax; // 7c6d81: ret 
+        return R.ret(0); // 7c6d81: ret 
       default: throw new Error(`f_7c6d40: ukendt adresse ${pc.toString(16)}`);
     }
   }

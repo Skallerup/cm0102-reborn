@@ -41,12 +41,12 @@ export function f_8c1870(c: CmCtx, ecx: number, args: number[]): number {
         R.edi = (R.pop()) | 0; // 8c18a3: pop edi
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 8c18a4: xor eax, eax
         R.esi = (R.pop()) | 0; // 8c18a6: pop esi
-        return R.eax; // 8c18a7: ret 4
+        return R.ret(1); // 8c18a7: ret 4
       case 0x8c18aa:
         R.edi = (R.pop()) | 0; // 8c18aa: pop edi
         R.eax = (0x1) | 0; // 8c18ab: mov eax, 1
         R.esi = (R.pop()) | 0; // 8c18b0: pop esi
-        return R.eax; // 8c18b1: ret 4
+        return R.ret(1); // 8c18b1: ret 4
       default: throw new Error(`f_8c1870: ukendt adresse ${pc.toString(16)}`);
     }
   }

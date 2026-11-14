@@ -84,7 +84,7 @@ export function f_946464(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 9464ce: pop esi
         R.ebx = (R.pop()) | 0; // 9464cf: pop ebx
         R.ebp = (R.pop()) | 0; // 9464d0: pop ebp
-        return R.eax; // 9464d1: ret 
+        return R.ret(0); // 9464d1: ret 
       case 0x9464d2:
         R.eax = ((R.esi >>> 0)) | 0; // 9464d2: mov eax, esi
         pc = 0x9464cd; continue; // 9464d4: jmp 0x9464cd

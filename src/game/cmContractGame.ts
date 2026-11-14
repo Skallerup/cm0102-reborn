@@ -126,8 +126,8 @@ export const WANT_DEBUG: { f?: (adr: number, v: number, a: number[]) => void } =
 export interface WantMem { W: WageMem; c: CmCtx; g: GameState; env: () => BoardEnv; setRand(f: (n: number) => number): void; byStaff: Map<number, Player> }
 
 /** Bygger posterne for klubberne (spillernes nuværende og købende klubber) */
-export function buildWantMem(g: GameState, clubs: Iterable<number>): WantMem {
-  const W = buildWageMem(g, clubs, new Set(), false);
+export function buildWantMem(g: GameState, clubs: Iterable<number>, opts: { full?: boolean; call?: (adr: number, a: number[]) => number | undefined; useLog?: (adr: number) => boolean } = {}): WantMem {
+  const W = buildWageMem(g, clubs, new Set(), false, !!opts.full);
   const m = W.c.m;
   m.w8(0xa83608, 10);
   // månedstabellerne 0x9b8448 (almindeligt år) og 0x9b8460 (skudår): dagen i året, måneden begynder (s16) – 0x54cfb0, 0x85fc50
@@ -259,13 +259,14 @@ export function buildWantMem(g: GameState, clubs: Iterable<number>): WantMem {
   const base: CmCtx = {
     m,
     rand: (n) => rand(n),
-    useLog: (adr) => adr === 0x600a50 || adr === 0x849f00 || (VALUE_FORMULA && adr === 0x4d0c60),
+    useLog: opts.useLog ?? ((adr) => adr === 0x600a50 || adr === 0x849f00 || (VALUE_FORMULA && adr === 0x4d0c60)),
     call: (adr, ...a) => {
       if (WANT_DEBUG.f) { const v = call(adr, a); WANT_DEBUG.f(adr, v, a); return v; }
       return call(adr, a);
     },
   };
   const call = (adr: number, a: number[]): number => {
+      if (opts.call) { const v = opts.call(adr, a); if (v !== undefined) return v; }
       switch (adr) {
         case 0x849f00: {
           // Shortlist_Manager 0x849f00: trupstatussen hos klubben. Hos en ny klub har spillet ingen ønskeliste (originalens 0x83a730/0x84a020) –

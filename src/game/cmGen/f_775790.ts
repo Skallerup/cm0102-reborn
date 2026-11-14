@@ -33,11 +33,11 @@ export function f_775790(c: CmCtx, ecx: number, args: number[]): number {
       case 0x7757b6:
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 7757b6: xor eax, eax
         R.esi = (R.pop()) | 0; // 7757b8: pop esi
-        return R.eax; // 7757b9: ret 4
+        return R.ret(1); // 7757b9: ret 4
       case 0x7757bc:
         R.eax = (0x1) | 0; // 7757bc: mov eax, 1
         R.esi = (R.pop()) | 0; // 7757c1: pop esi
-        return R.eax; // 7757c2: ret 4
+        return R.ret(1); // 7757c2: ret 4
       default: throw new Error(`f_775790: ukendt adresse ${pc.toString(16)}`);
     }
   }

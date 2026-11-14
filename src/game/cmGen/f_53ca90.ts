@@ -85,17 +85,17 @@ export function f_53ca90(c: CmCtx, ecx: number, args: number[]): number {
         R.eax = (R.logic((R.eax >>> 0) ^ (R.eax >>> 0), 32)) | 0; // 53cb57: xor eax, eax
         R.esi = (R.pop()) | 0; // 53cb59: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cb5a: add esp, 0x200
-        return R.eax; // 53cb60: ret 
+        return R.ret(0); // 53cb60: ret 
       case 0x53cb61:
         R.eax = (R.m.u32(((R.esi + 0xcf) | 0) >>> 0)) | 0; // 53cb61: mov eax, dword ptr [esi + 0xcf]
         R.esi = (R.pop()) | 0; // 53cb67: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cb68: add esp, 0x200
-        return R.eax; // 53cb6e: ret 
+        return R.ret(0); // 53cb6e: ret 
       case 0x53cb6f:
         R.eax = (R.m.u32(((R.eax + 0xcf) | 0) >>> 0)) | 0; // 53cb6f: mov eax, dword ptr [eax + 0xcf]
         R.esi = (R.pop()) | 0; // 53cb75: pop esi
         R.esp = (R.add((R.esp >>> 0), 0x200, 32)) | 0; // 53cb76: add esp, 0x200
-        return R.eax; // 53cb7c: ret 
+        return R.ret(0); // 53cb7c: ret 
       default: throw new Error(`f_53ca90: ukendt adresse ${pc.toString(16)}`);
     }
   }

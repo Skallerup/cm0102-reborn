@@ -79,7 +79,7 @@ export function f_7ae8a0(c: CmCtx, ecx: number, args: number[]): number {
         R.esi = (R.pop()) | 0; // 7ae93d: pop esi
         R.eax = (0x1) | 0; // 7ae93e: mov eax, 1
         R.ebx = (R.pop()) | 0; // 7ae943: pop ebx
-        return R.eax; // 7ae944: ret 4
+        return R.ret(1); // 7ae944: ret 4
       default: throw new Error(`f_7ae8a0: ukendt adresse ${pc.toString(16)}`);
     }
   }

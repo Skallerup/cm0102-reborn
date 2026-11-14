@@ -18,6 +18,8 @@ export const API_LOG = { on: false };
 /** importtabellens værdier i hukommelsen (Bosman-runtimens stubadresser) → API-navn: indirekte kald gennem en peger, der er læst af IAT'en */
 export const API_BY_ADDR = new Map<number, string>();
 export const HOSTFN = new Map<number, { n: number; f: (R: X86, a: number[]) => number }>();
+/** håndindsatte genveje i en oversat funktion (f_83f3a0.ts ved 0x83fa25): ny pc eller 0 = fortsæt som oversat */
+export const PC_HOOK: Record<number, ((R: X86) => number) | undefined> = {};
 /** fejlsøgning: kaldes ved hver blok (pc) når on */
 export const TRACE: { on: boolean; f?: (pc: number, R: X86) => void } = { on: false };
 export const STACK_TOP = 0x003f8000;
@@ -204,6 +206,7 @@ export class X86 {
   }
   /** kald adr med konventionen; argumenterne står på stakken ved esp (returadressen er ikke skubbet) */
   call(adr: number, cv: Conv): void {
+    if (adr >= 0x944000 && adr < 0x94c000 && CRT[adr]) { CRT[adr](this); return; }
     if (SHARED.on) { const f = GENF.get(adr); if (f !== undefined && !(this.c.useLog && this.c.useLog(adr))) { this.shared(f); if (this.c.probe) this.c.probe(adr, cv.float ? this.st[0] : this.eax); return; } }
     const args: number[] = [];
     for (let i = 0; i < cv.n; i++) args.push(this.m.s32((this.esp + 4 * i) >>> 0));
@@ -219,6 +222,82 @@ export class X86 {
     if (cv.calleeClean) this.esp = (this.esp + 4 * cv.n) | 0;
   }
 }
+
+// ------------------------------------------------ CRT (MSVC 6), som Shortlist_Manager/TRANSFER_MANAGER-oversættelserne kalder (14/11-2026)
+/** heapen: en bumpallokator i den spredte hukommelse ([HEAP_PTR] = næste ledige adresse); free gør intet */
+export const HEAP0 = 0x60000000, HEAP_PTR = 0x5ffffff0;
+function heapAlloc(m: CmMem, n: number): number {
+  let p = m.u32(HEAP_PTR) >>> 0;
+  if (p < HEAP0) p = HEAP0;
+  const a = (p + 15) & ~15;
+  m.w32(HEAP_PTR, (a + Math.max(16, n + 16)) >>> 0);
+  m.w32(a - 4, n);                                                            // størrelsen (realloc kopierer den)
+  return a >>> 0;
+}
+/** qsort-sammenligningerne (cdecl, pegere til posterne) – porteret i hånden */
+export const QSORT_CMP: Record<number, (m: CmMem, a: number, b: number) => number> = {
+  // 0x83b670 positionslisterne: +8 værdien, så +4 nøglen
+  0x83b670: (m, a, b) => { const d = (m.s32(a + 8) - m.s32(b + 8)) | 0; return d !== 0 ? d : (m.s32(a + 4) - m.s32(b + 4)) | 0; },
+  // 0x83b690 pladserne: uden mål og uden bud først, så faldende +0xb (aldrig 0)
+  0x83b690: (m, a, b) => {
+    if (m.s32(a + 0xf) > -1) return 1;
+    if (m.s32(b + 0xf) > -1) return -1;
+    if (m.s32(a + 0x17) > -1) return 1;
+    if (m.s32(b + 0x17) > -1) return -1;
+    const d = (m.s32(b + 0xb) - m.s32(a + 0xb)) | 0;
+    return d !== 0 ? d : 1;
+  },
+  // 0x83b6c0 pladserne efter indekset +0x23 (aldrig 0)
+  0x83b6c0: (m, a, b) => { const d = s8(m.u8(a + 0x23)) - s8(m.u8(b + 0x23)); return d !== 0 ? d : 1; },
+};
+const arg = (R: X86, i: number) => R.m.u32((R.esp + 4 * i) >>> 0);
+const CRT: Record<number, (R: X86) => void> = {
+  // operator new / malloc
+  0x944e46: (R) => { R.eax = heapAlloc(R.m, arg(R, 0)) | 0; },
+  0x944cf1: (R) => { R.eax = heapAlloc(R.m, arg(R, 0)) | 0; },
+  // free
+  0x9452ca: (R) => { R.eax = 0; },
+  0x944c94: (R) => { R.eax = 0; },
+  // realloc(p, n)
+  0x945667: (R) => {
+    const p = arg(R, 0), n = arg(R, 1), m = R.m;
+    const a = heapAlloc(m, n);
+    if (p) { const old = Math.min(m.u32(p - 4), n); for (let i = 0; i < old; i++) m.w8(a + i, m.u8(p + i)); }
+    R.eax = a | 0;
+  },
+  // qsort(base, n, w, cmp)
+  0x945333: (R) => {
+    const m = R.m, base = arg(R, 0), n = arg(R, 1), w = arg(R, 2), cmpA = arg(R, 3);
+    const cmp = QSORT_CMP[cmpA];
+    if (!cmp) throw new Error(`qsort: sammenligningen 0x${cmpA.toString(16)} er ikke porteret`);
+    if (n < 2) return;
+    const recs: Uint8Array[] = [];
+    for (let i = 0; i < n; i++) { const r = new Uint8Array(w); for (let k = 0; k < w; k++) r[k] = m.u8(base + i * w + k); recs.push(r); }
+    // sammenligningen læser posterne i hukommelsen: to skrabeposter
+    const SA = 0x5fff0000, SB = SA + 0x400;
+    const ix = recs.map((_, i) => i);
+    msvcSort(ix, (x, y) => { for (let k = 0; k < w; k++) { m.w8(SA + k, recs[x][k]); m.w8(SB + k, recs[y][k]); } return cmp(m, SA, SB); });
+    ix.forEach((j, i) => { for (let k = 0; k < w; k++) m.w8(base + i * w + k, recs[j][k]); });
+  },
+  // pow (x = ST(1), y = ST(0)) – crtMath.ts
+  0x945ff0: (R) => { const y = R.fpop(), x = R.fpop(); R.fpush(crtPowX(x, y)); },
+  // __alldiv (stdcall, 4): (a_lo, a_hi, b_lo, b_hi) → edx:eax
+  0x945e80: (R) => {
+    const a = (BigInt(R.m.s32((R.esp + 4) >>> 0)) << 32n) | BigInt(arg(R, 0)), b = (BigInt(R.m.s32((R.esp + 12) >>> 0)) << 32n) | BigInt(arg(R, 2));
+    const q = BigInt.asUintN(64, a / b);
+    R.eax = Number(q & 0xffffffffn) | 0; R.edx = Number(q >> 32n) | 0; R.esp = (R.esp + 16) | 0;
+  },
+  // strstr(s, t)
+  0x945a60: (R) => {
+    const rd = (a: number) => { let s = ''; for (let i = 0; i < 4096; i++) { const b = R.m.u8(a + i); if (!b) break; s += String.fromCharCode(b); } return s; };
+    const s = arg(R, 0), t = arg(R, 1), k = rd(s).indexOf(rd(t));
+    R.eax = k < 0 ? 0 : (s + k) | 0;
+  },
+};
+/** MSVC 6 qsort.c (engine/grid/loop.ts msvcQsort) på indekser */
+let msvcSort: (a: number[], comp: (x: number, y: number) => number) => void = () => { throw new Error('qsort: msvcSort ikke sat'); };
+let crtPowX: (x: number, y: number) => number = Math.pow;
+export function setCrt(sort: typeof msvcSort, pow: typeof crtPowX): void { msvcSort = sort; crtPowX = pow; }
 
 const mask = (v: number, bits: number) => (bits === 32 ? v >>> 0 : bits === 16 ? v & 0xffff : v & 0xff);
 const maxU = (bits: number) => (bits === 32 ? 0xffffffff : bits === 16 ? 0xffff : 0xff);
