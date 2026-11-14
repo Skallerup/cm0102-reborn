@@ -15,6 +15,8 @@ import { notifyNewCareer } from '../online/notify';
 import { gs, inSetup, notify, setGame } from '../game/state';
 import { track } from '../analytics';
 import { askConfirm } from './confirm';
+import { cmStartDate } from '../game/cmCalendar';
+import { addDays } from '../game/dates';
 import { AccountBar, useAccount } from './Login';
 import { GROUP_KEY, NAV_CLOSED_DEFAULT, Shell } from './Shell';
 import { NavProvider } from './core';
@@ -28,12 +30,12 @@ import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, readDb, readVer, writeDb, writeVer, type Db } from './startGame';
 
-type Step = 'menu' | 'db' | 'leagues' | 'name' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account';
+type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account';
 export type LegacyView = 'online' | 'challenges' | 'editor' | 'draft';
 
 /** Baggrundsbillederne fra originalens Pictures-mappe (public/original-bg) – som i skærmbillederne af originalens startskærme */
 const BG: Record<Step, string> = {
-  menu: '324855', db: '324855', leagues: 'holywell03', name: '324855', nation: '214525', team: 'boro3', club: '407618', confirm: '259396',
+  menu: '324855', db: '324855', leagues: 'holywell03', season: 'holywell03', name: '324855', nation: '214525', team: 'boro3', club: '407618', confirm: '259396',
   restore: '349416', delete: '349416', settings: '324855', opts: '324855', extras: '324855', account: '324855',
 };
 
@@ -251,7 +253,18 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
     }
     go('name');
   }
-  const leaguesNext = () => { if (world && sel.length) void leaguesDone(world, sel, bgn, sel[0]); };
+  // CM 01/02 "Select Start Season": med flere valgte lande vælger man, hvilket lands sæson spillet starter i (hovedlandet → startdatoen)
+  const seasonLabel = (n: number) => {
+    const d = cmStartDate(n, 2001);
+    const start = d ? addDays(d, 28) : '2001-08-01';
+    const y = Number(start.slice(0, 4)), m = Number(start.slice(5, 7));
+    return y === 2001 && m >= 6 ? '01/02' : String(y === 2001 ? 2002 : y);
+  };
+  const leaguesNext = () => {
+    if (!world || !sel.length) return;
+    if (db === 'original' && sel.length > 1) { go('season'); return; }
+    void leaguesDone(world, sel, bgn, sel[0]);
+  };
 
   // Select Nationality → Select Team: venter på den midlertidige verden (fremdriftsbjælken viser "Player Initialisation")
   const buildReady = !!bp && bp.done && inSetup();
@@ -404,6 +417,22 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
           {!world && !err && <div className="cxs-wait">{t('cxs.loadingDb')}</div>}
         </div>
         {note}
+      </Frame>
+    );
+  }
+
+  // ---------- Select Start Season ----------
+  if (step === 'season' && world) {
+    const opts = [...sel].sort((a, b) => natName(world.nations[a].name).localeCompare(natName(world.nations[b].name)));
+    const main = sel[0];
+    return (
+      <Frame {...common} title={t('cxs.title')} sub={t('cxs.startSeason')} onBack={() => go('leagues')} onNext={() => void leaguesDone(world, sel, bgn, sel[0])}>
+        <div className="cxs-seasons">
+          {opts.map((n) => (
+            <button key={n} className={`cxs-season ${n === main ? 'on' : ''}`} data-season={world.nations[n].name}
+              onClick={() => setSel([n, ...sel.filter((x) => x !== n)])}>{natName(world.nations[n].name)} {seasonLabel(n)}</button>
+          ))}
+        </div>
       </Frame>
     );
   }

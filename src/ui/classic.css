@@ -1801,3 +1801,8 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cx-ts-files .cx-tidlg-grid { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 12px; }
 .cx-ts-files .cx-ts-file { margin: 0; }
 .cx-tidlg .cx-ts-buttons { grid-template-columns: 1fr 1fr; margin: 12px 0 0; }
+
+/* CM 01/02 Select Start Season: et felt pr. valgt land med sæsonen (England 01/02, Finland 2002); det valgte med gul ramme */
+.cxs-seasons { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; margin: 8px 16px; }
+.cxs-season { flex: 0 0 calc(50% - 2px); height: 96px; background: rgba(0, 0, 0, 0.3); border: 2px solid #0000a5; color: #fff; font-size: 22px; cursor: pointer; }
+.cxs-season.on { border-color: #fff21f; color: #fff21f; }
