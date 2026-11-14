@@ -617,19 +617,41 @@ function futureMove(_c: CmContract, out: FutureLine[], x: TailCtx, o: { dispute:
  *  omdømme mindst hans klubs −15, vurderer ham til modelværdien (0x4d0c60) × 0,7–1,3 (fast pr. klub, spiller og måned); højst fire, størst omdømme først. */
 export function cmInterested(g: GameState, p: Player, level: (club: number) => number): number[] {
   if (!p.club || p.loan) return [];
-  const own = g.clubs[p.club];
-  const target = valueTarget(p);
+  return interestMap(g, level).get(p.id) ?? [];
+}
+
+/** *estimeret* (ejerens fund 14/11: med Bolton havde ALLE spillere interesserede klubber): originalen har ved spilstart kun 258 mål på
+ *  ønskelisterne for 137 klubber i England (cm-shortlist-orig.ts på pre-194-2001.bin), dvs. ~2 pr. klub. Her vælger hver computerklub i en
+ *  synlig liga højst 2 mål pr. måned: de spillere med niveauet (CA mod de 14 bedstes snit −10…+30), som den har råd til, og som den vurderer
+ *  højest over værdien (modelværdien × 0,7–1,3 > værdien); spillerens Interested = de klubber, der valgte ham (højst fire, størst omdømme først). */
+let imCache: { key: string; map: Map<number, number[]> } | null = null;
+function interestMap(g: GameState, level: (club: number) => number): Map<number, number[]> {
   const ym = g.date.slice(0, 7);
-  const out: { id: number; rep: number }[] = [];
+  const key = `${g.id}|${ym}`;
+  if (imCache?.key === key) return imCache.map;
+  const ymN = Number(ym.replace('-', ''));
+  const players = Object.values(g.players).filter((p) => p.club && !p.loan && !p.virtual && !g.leagues[g.clubs[p.club]?.league]?.hidden);
+  const target = new Map(players.map((p) => [p.id, valueTarget(p)]));
+  const picks = new Map<number, { id: number; rep: number }[]>();
   for (const c of Object.values(g.clubs)) {
-    if (c.id === p.club || isHumanClub(c.id) || g.leagues[c.league]?.hidden) continue;
-    if (c.rep < (own?.rep ?? 0) - 15 || c.transferBudget < p.value) continue;
+    if (isHumanClub(c.id) || g.leagues[c.league]?.hidden) continue;
     const lv = level(c.id);
-    if (p.ca < lv - 10 || p.ca > lv + 30) continue;
-    const f = 0.7 + 0.6 * hash01(g.seed ?? 0, p.id, c.id, Number(ym.replace('-', '')));
-    if (target * f > p.value) out.push({ id: c.id, rep: c.rep });
+    const best: { pid: number; r: number }[] = [];
+    for (const p of players) {
+      if (p.club === c.id || c.transferBudget < p.value || p.ca < lv - 10 || p.ca > lv + 30) continue;
+      const own = g.clubs[p.club];
+      if (c.rep < (own?.rep ?? 0) - 15) continue;
+      const v = (target.get(p.id) ?? 0) * (0.7 + 0.6 * hash01(g.seed ?? 0, p.id, c.id, ymN));
+      if (v <= p.value) continue;
+      best.push({ pid: p.id, r: v / Math.max(1, p.value) });
+    }
+    best.sort((a, b) => b.r - a.r);
+    for (const b of best.slice(0, 2)) { const a = picks.get(b.pid) ?? []; a.push({ id: c.id, rep: c.rep }); picks.set(b.pid, a); }
   }
-  return out.sort((a, b) => b.rep - a.rep).slice(0, 4).map((x) => x.id);
+  const map = new Map<number, number[]>();
+  for (const [pid, a] of picks) map.set(pid, a.sort((x, y) => y.rep - x.rep).slice(0, 4).map((x) => x.id));
+  imCache = { key, map };
+  return map;
 }
 
 /** dagens chance for, at en interesseret klub byder (*estimeret*): på listen eller vurderet til mindst det dobbelte af værdien 1/8, Not Needed 1/25 */

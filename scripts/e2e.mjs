@@ -763,7 +763,7 @@ async function run(look) {
       if (look2.slot !== 'rgb(24, 63, 12)' || !['rgb(255, 255, 255)', 'rgb(255, 242, 31)'].includes(look2.slotFg)) throw new Error(`strimlen skal være mørkegrøn (#183f0c, målt i originalen) med hvid tekst: ${look2.slot} / ${look2.slotFg}`);
       if (look2.fullFg !== 'rgb(255, 242, 31)') throw new Error(`en optaget plads i strimlen skal have gul tekst (originalen): ${look2.fullFg}`);
       if (look2.slots[0] !== 'GK' || !look2.slots.includes('SB9')) throw new Error(`strimlen: ${look2.slots.join(' ')}`);
-      if (look2.tags.some((x) => ['Int', 'Fgn', 'Wnt'].includes(x))) throw new Error(`ikke-originale mærker: ${look2.tags.join(' ')}`);
+      if (look2.tags.some((x) => ['Int', 'Fgn'].includes(x))) throw new Error(`ikke-originale mærker: ${look2.tags.join(' ')}`);
       if (look2.stars || look2.dressing || look2.count || look2.division) throw new Error(`ikke-originale elementer: ${JSON.stringify(look2)}`);
       // hover på et udtagelsesfelt må ikke ændre farven
       const b = page.locator('.cx-sq-orig .cx-selbtn').first(); await b.hover();

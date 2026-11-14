@@ -153,7 +153,7 @@ function tagOf(p: Player, g: GameState, clubId = g.userClub): { k: string; title
   return null;
 }
 
-/** Ægte CM 01/02: kun originalens statusmærker (Inj, Sus, Yel, Fut, Lst, Loa, Unh) – ingen "Int", "Fgn" eller "Wnt" (ejerens skærmbilleder) */
+/** Ægte CM 01/02: kun originalens statusmærker (Inj, Sus, Yel, Fut, Lst, Loa, Unh) – Wnt – ingen "Int" eller "Fgn" (ejerens skærmbilleder) */
 export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.injury) return { k: 'Inj', title: `${t(`injury.${p.injury.key}`)} (${p.injury.days} ${t('common.days')})` };
   if (p.banned > 0) return { k: 'Sus', title: `${t('tag.ban')} ${p.banned}` };
@@ -162,6 +162,8 @@ export function originalTag(p: Player): { k: string; title: string } | null {
   if (p.listed) return { k: 'Lst', title: t('tag.listed') };
   if (p.loan) return { k: 'Lon', title: t('tag.loan') };
   if ((p.unhappy ?? 0) > 60 || p.wantsAway) return { k: 'Unh', title: t('tag.unhappy') };
+  // Wnt: en anden klub er interesseret (originalens Interested-række, 0x842180)
+  if (interestedClubs(p).length) return { k: 'Wnt', title: t('cl.sq.wanted') };
   return null;
 }
 
