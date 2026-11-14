@@ -3,8 +3,13 @@
 // cm0102.modern (/?modern=0 slår det fra igen). Så kan et moderne spil startes og gamle moderne gemte spil åbnes. MODERN_ENABLED = true slår det til for alle.
 // Ingen imports her, så både spilmotoren (gamle gemte spil) og forsiden kan læse flaget uden at trække andet med.
 export const MODERN_ENABLED = false;
+// Et gammelt gemt spil i udvidet tilstand åbnes, som det blev gemt (moderne udseende + udvidet) – sat af setGame i state.ts.
+// Nye spil er stadig kun originale/klassiske.
+let savedModern = false;
+export function setSavedModern(on: boolean) { savedModern = on; }
+export function savedModernOn(): boolean { return savedModern; }
 export function modernOn(): boolean {
-  if (MODERN_ENABLED) return true;
+  if (MODERN_ENABLED || savedModern) return true;
   try {
     const q = new URLSearchParams(location.search).get('modern');
     if (q === '1') localStorage.setItem('cm0102.modern', '1');
