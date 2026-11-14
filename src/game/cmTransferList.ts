@@ -21,6 +21,8 @@ import { asOwner, isHumanClub } from './humans';
 import { cmAdjustMorale, cmContractOf, cmFlagSet, cmRand, clubRepMem, curRep, statusCode, wantsToLeave, withFlagCtx, type CmContract } from './cmPlayerData';
 import { valueTarget } from './training';
 import { hash01 } from './rng';
+import { favoursClub, favoursPerson, managerStaff, personKey } from './cmRelations';
+import { DEMONYM } from '../ui/demonyms';
 
 const s8 = (v: number) => (v << 24) >> 24;
 const cl100 = (v: number) => (v > 100 ? 100 : v < -100 ? -100 : v);
@@ -341,9 +343,12 @@ export function cmAvailability(p: Player): 'club' | 'request' | 'loan' | 'unknow
   return b & 1 ? 'club' : b & 8 ? 'request' : b & 2 ? 'loan' : 'unknown';
 }
 
-/** Future (0x87ee70–): de porterede blokke i originalens rækkefølge. Ikke porteret (*estimeret* – vises ikke): forholdene til andre spillere og
- *  managere, klubbens resultater/økonomi/harmoni, kontraktforhandlingerne og de øvrige klager, som spillet ikke sætter. */
-export function cmFutureLines(g: GameState, p: Player): FutureLine[] {
+/** Future (0x87ee70–0x8853ba): hele blokken i originalens rækkefølge – også den tilfredse blok og "Unknown", når intet er skrevet (0x8852ef).
+ *  `interested` = antallet i Interested-rækken (0x842180's liste [esp+0x4c]). Ikke porteret (*estimeret* – vises ikke) i 0x87ee70–0x880a9b:
+ *  det nye kontrakttilbud (0x4cc9e0), landsholdskarrieren (0x776380), tvisten "Sporting Just Cause" (0x569e30), de beundrede holdkammerater
+ *  (0x548da0), salget af talenter/stjerner (+0x45 0x40000000/0x80000000), kontraktens begivenheder +0x40 (ny kontrakt, rivalen, erstatningen),
+ *  konkurrencen om pladserne, harmonien, truppens bredde, ligaplaceringen, den nye manager, spillestilen, vurderingen og økonomien. */
+export function cmFutureLines(g: GameState, p: Player, interested = 0): FutureLine[] {
   const out: FutureLine[] = [];
   if (!p.club) return out;
   const c = cmContractOf(p);
@@ -354,6 +359,17 @@ export function cmFutureLines(g: GameState, p: Player): FutureLine[] {
   const future = !!p.contract?.futureClub;
   const crep = clubRep(g, p.club), rc = curRep(p);
   const st = ((c.b4f ?? statusCode(p) << 4) >> 4) & 0xf;
+  // 0x87f01d: karrieren slutter (0x7a7eb0 = 1 – hos os en karrierestoppende skade, Player.cmRetire) → kun den linje (0x87f0be → 0x8853a0)
+  if (p.cmRetire) return [{ k: age < 0x1e ? 'noFuture' : 'retiring' }];       // (+0x69 ikke-spillerpost → "… from the playing staff" – findes ikke)
+  // 0x87f16a: universitetet (påskeægget "Andrew Mainwaring", PA > 100, 18–21 år)
+  if (pname(p) === 'Andrew Mainwaring' && p.pa > 100 && age > 0x11 && age < 0x16) out.push({ k: 'university' });
+  // 0x87f2c5: interessen (Interested-listen ikke tom, ikke listet, intet aftalt skifte, mere end 150 dage i klubben)
+  if (interested > 0 && !(b4e & 9) && !future && daysSince(g, p.joined ?? p.cmJoined) > 0x96) {
+    const a = !!(fl & 0x14) || crep < 0x109a;
+    if (fl & 0x101 || (a && amb > 15 && loy < 6)) out.push({ k: 'impressScouts' });
+    else if (a && pres < 6) out.push({ k: 'pressuredInterest' });
+    else if (a && crep < 0x109a && amb > 15 && pres > 15) out.push({ k: 'flattered' });
+  }
   const leave = wantsToLeave(leaveIn(p), c);
   // 0x880a9b: transferlistet af klubben, ingen klager, vil ikke væk
   if (b4e & 1 && !future && fl === 0 && !leave) {
@@ -394,6 +410,7 @@ export function cmFutureLines(g: GameState, p: Player): FutureLine[] {
   }
   // 0x8836a4: 0x10 – spilletid (0x8857c0 = +0x3f, kampe i træk med spilletid)
   if (fl & 0x10) out.push(...regularLines(p, c, fl, crep, rc, age, { loy, prof, pres, amb }));
+  tailLines(g, p, c, out, { fl, b4e, age, loy, prof, temp, amb, pres, future, crep, rc, st });
   return out;
 }
 
@@ -401,7 +418,8 @@ export function cmFutureLines(g: GameState, p: Player): FutureLine[] {
  *  0x8852f9, når der ingen linjer er), hvis +0x45 ≠ 0 (0x5d5a50), +0x44 < −Loyalty (0x8857b0 mod staff +0x59), +0x4e & 8 (0x8857f0), og inde i
  *  blokken (0x884b39) hvis han er transferlistet (0x544520: +0x4e & 9) eller i en tvist (0x569e30 – findes ikke hos os). Ellers skriver den altid
  *  én tilfreds linje (varianterne 0x884b78–0x884d48 – kun "Happy to stay at the club" er med, *estimeret*). Rettet 14/11: før stod "Happy to stay"
- *  altid, når der ingen linjer var – også efter Not Needed (statusHappiness: Key → Not Needed −125, så +0x44 < −Loyalty → "Unknown"). */
+ *  altid, når der ingen linjer var – også efter Not Needed (statusHappiness: Key → Not Needed −125, så +0x44 < −Loyalty → "Unknown").
+ *  14/11: varianterne er porteret i happyLines (cmFutureLines viser dem) – denne fortæller kun, om blokken når frem til en tilfreds linje. */
 export function cmFutureHappy(p: Player): boolean {
   if (!p.club) return false;
   const c = cmContractOf(p);
@@ -437,6 +455,159 @@ function regularLines(p: Player, c: CmContract, fl: number, crep: number, rc: nu
   }
   out.push({ k: 'wantsFirst' });
   return out;
+}
+
+// ---------------------------------------------------------------- Future 0x883bcf–0x8853ba (resten af fanen)
+
+type TailCtx = { fl: number; b4e: number; age: number; loy: number; prof: number; temp: number; amb: number; pres: number; future: boolean; crep: number; rc: number; st: number };
+
+/** klubbens manager (club +0xcf): ankomstdatoen (personpost +0x3e) og personnøglen (menneskets manager har ingen staffpost hos os – nøgle 0) */
+function managerOf(g: GameState, club: number): { key: number; joined?: string } {
+  if (isHumanClub(club)) return { key: 0, joined: g.manager?.cmJoined };
+  const m = managerStaff(g, club);
+  return { key: m ? personKey(m) : 0, joined: m?.cmJoined };
+}
+
+/** Future-blokkene 0x883bcf–0x8853ba i originalens rækkefølge (efter klagen 0x10). Felter, spillet ikke har (*estimeret* – grenen findes, men
+ *  tages aldrig): kontraktens +0x40 (0x8676f0: managerens disciplin & 2 og "Willing to stay"-grenen), mediehistorien 0x735780 ([0xb6b7c8], type 2),
+ *  tvisten 0x569e30, ikke-spillerposten staff +0x69 (spillertrænere) og spillermanagere (job 12). Kontraktens +0x49 ("sat fri" – Bosman) =
+ *  spillerens afviste forlængelse (Player.renewal 'refuses', *estimeret*). Sproget [0x9eb2dc] (0x66f4d0) = engelsk (0). */
+function tailLines(g: GameState, p: Player, c: CmContract, out: FutureLine[], x: TailCtx): void {
+  const { fl, b4e, age, loy, prof, temp, amb, pres, future, crep, rc, st } = x;
+  const push = (k: string, pr?: FutureLine['p']) => out.push(pr ? { k, p: pr } : { k });
+  const club = g.clubs[p.club];
+  const joinedDays = daysSince(g, p.joined ?? p.cmJoined);
+  const b44 = s8(c.b44);
+  const b40 = 0;                                                               // kontrakt +0x40 – findes ikke hos os
+  const media = false;                                                         // 0x735780 – mediehistorierne er ikke porteret
+  const dispute = false;                                                       // 0x569e30
+  const listedClub = !!(b4e & 1), loanListed = !!(b4e & 2);                    // 0x5444a0 / 0x544590
+  const listed9 = !!(b4e & 9);                                                 // 0x544520
+  const ca = Math.round(p.ca);
+  const expiry = p.contract?.expires;
+  const daysLeft = expiry ? dayNum(expiry) - dayNum(g.date) : 10000;           // 0x54cdb0(+0x2d, i dag)
+  const nat = g.nations[club?.nation ?? -1]?.name;
+
+  // 0x883c04: 0x20 – tilpasningen (klubbens land club +0x53)
+  if (fl & 0x20 && nat) {
+    if (joinedDays > 0x2d0) push('timeToMove');
+    else if (temp < 6 && prof < 15) push('mistakeMoving', { nation: nat });
+    else push('adjustLifestyle', { nation: nat, adj: DEMONYM[nat] ?? nat });
+  }
+  // 0x883d67: 0x40 – personlige problemer
+  if (fl & 0x40) push(pres < 5 && prof < 6 && temp < 10 && worldRep(p) > 0x109a ? 'depression' : 'personal');
+  // 0x883e0a: 0x200000 – holdkammeratens bemærkninger
+  if (fl & 0x200000) push(pres < 6 ? 'hurtRemarks' : 'unhappyRemarks');
+  // 0x883e95: managerens håndtering af medierne (0x735780)
+  if (media && pres > 15 && temp < 6 && rc > 0xea6 && age > 0x12 && (st === 1 || st === 2))
+    push(temp < 6 && prof < 10 && pres > 5 ? 'mediaOutraged' : pres < 6 ? 'mediaHurt' : 'mediaUpset');
+  // 0x883f89: kontrakt +0x40 & 2
+  if (b40 & 2) push('discipline');
+  // 0x884005: motivationen (spillerpost +0x44 Work Rate)
+  if (club && b44 < -25 && sh(p, 'workRate') < 10 && prof < 10 && rc > crep + 0xfa) push('motivating');
+  // 0x8840c4: 0x100000 – presset/trætheden (spillerpost +0x3c Stamina)
+  if (fl & 0x100000) {
+    if (age < 0x17 && pres < 10 && prof < 6) push('pressureFirst');
+    else if (age < 0x17 && prof > 15 && sh(p, 'stamina') < 15) push('rested');
+    else if (age > 0x1e && pres < 6) push('pastPeak');
+    else if (age <= 0x1e && pres < 6 && !(fl & 0x20181)) push('worriedFuture');
+    else push((s8(c.b3f) > 4 || s8(c.b3d) > 0x4b) && age < 0x1b ? 'reliesTooMuch' : 'jaded');   // 0x88418a (sproget 0x66f4d0 = 0)
+  }
+  // 0x88422d: 0x8000 – træningen
+  if (fl & 0x8000) push(pres < 10 && prof < 10 && age < 0x18 ? 'trainingHarm' : 'unhappyTraining');
+
+  if (future) futureMove(c, out, x, { dispute, b44, loanListed, ca, daysLeft });  // 0x8842c7: et aftalt skifte (0x8cca10) → 0x884e12
+  else {
+    // 0x8842dd: 0x80 – må ikke skifte klub
+    if (fl & 0x80) push(temp < 6 && prof < 15 ? 'angryMove' : prof > 14 ? 'frustratedMove' : 'unhappyMove');
+    const b49 = p.renewal?.stance === 'refuses' && !p.renewal.convinced;      // +0x49 (*estimeret*)
+    if (b49 && expiry) push('bosman', { date: expiry });                        // 0x88437d
+    else if (st === 0) push('clarification');                                   // 0x884406: ingen trupstatus (job 0xb = spiller)
+    else happyLines(g, p, c, out, x, { b44, b40, media, dispute, listedClub, loanListed, listed9, ca, daysLeft, joinedDays });
+  }
+  // 0x88520a: pralet om den større klub (ingen aftalt skifte [esp+0x38])
+  if (club && !future && amb > 15 && loy < 6 && prof < 6 && crep < 0x1676 && rc > 0xcb2 && rc > crep + 0x2ee) push('biggerSoon');
+  if (!out.length) push('unknown');                                             // 0x8852ef
+}
+
+/** 0x8844e1–0x884e0d: den tilfredse blok (springes over ved klager, +0x44 < −Loyalty eller listet efter eget ønske) */
+function happyLines(g: GameState, p: Player, c: CmContract, out: FutureLine[], x: TailCtx,
+  o: { b44: number; b40: number; media: boolean; dispute: boolean; listedClub: boolean; loanListed: boolean; listed9: boolean; ca: number; daysLeft: number; joinedDays: number }): void {
+  const { fl, b4e, age, loy, prof, temp, amb, pres, crep, rc, st } = x;
+  const push = (k: string, pr?: FutureLine['p']) => out.push(pr ? { k, p: pr } : { k });
+  if (fl || o.b44 < -loy || b4e & 8) return;
+  // 0x88451d: kontrakten løber ud
+  if (pres < 6 && age < 0x18 && !o.listed9 && rc < 0xcb2 && rc < crep + 0xfa && o.daysLeft < 200 - pres) push('anxiousContract');
+  // 0x884616: han kan lide sin manager (0x547810)
+  const mgr = managerOf(g, p.club);
+  if (favoursPerson(p, mgr.key)) {
+    let rest = true;
+    if (loy > 15 && !o.listed9 && rc > crep - 0x2ee && o.ca > 100 - amb && crep < 0x128e) push('helpPotential');
+    if (!o.media && (rc < 0xcb2 || rc < crep) && age < 0x18) {
+      rest = false;
+      if (o.listed9) {
+        if (o.listedClub) {
+          if (amb > 15) push('proveWrong');
+          else if (age < 0x13 && rc < 0x9c4 && amb < 6) push('ambitionOver');
+          else if (mgr.joined && daysSince(g, mgr.joined) > 0x258 && age < 0x1c && o.joinedDays > 0x258 && temp < 6 && sh(p, 'aggression') > 15) push('mentorLeft');
+          else if (prof > 15) push('careerOver', { club: g.clubs[p.club]?.name ?? '' });
+          else if (age < 0x13 && amb > 15 && rc < 0x9c4) push('stillMakeIt');
+        } else push('enthusiastic');
+      } else push('managerHelp');                                               // (0x884a20 skriver "Enthusiastic" i bufferen uden at vise den)
+    }
+    if (rest && o.listedClub && age < 0x13 && amb > 15 && rc < 0x9c4) push('stillMakeIt');   // 0x8849dd
+  }
+  // 0x884a32: lejelistet ung spiller
+  if (o.loanListed && age < 0x18 && rc < 0x109a && prof > 15 && pres > 10 && (st < 1 || st > 4)) push('loanExperience');
+  // 0x884b2f: listet eller i en tvist → kun "Unknown", hvis intet er skrevet
+  if (o.listed9 || o.dispute) return;
+  const club = g.clubs[p.club];
+  let k = 'happyStay';
+  if (favoursClub(p, p.club) && loy > 5) {                                      // 0x884b62: klubben er hans yndlingsklub (0x547d60)
+    // job 12 (spillermanager) og ikke-spillerposten +0x69 findes ikke hos os; job 0xb → 0x53b620 ≠ 0
+    if (age < 0x19) k = 'enthusiastic';
+    else if (o.joinedDays < 0x1e) k = 'impressManager';
+    else if (st === 1 || (st === 2 && s8(c.b3d) > 0x19 && o.joinedDays > 0x2d)) k = 'enjoyPlaying';
+    else if (st === 3) k = s8(c.b3e) > 1 ? 'happyStay' : 'enjoyPlaying';
+    else k = age < 0x1f ? 'content' : 'happyStay';
+  } else if (o.b40) {                                                           // 0x884c88: kontrakt +0x40
+    k = loy < 6 ? (prof < 10 ? 'considering' : 'willingCurrently') : 'willing';
+  } else if (club) {
+    if (loy > 15 && o.b44 > 0x19 && rc < crep && age < 0x19) k = 'commitFuture';
+    else if (loy < 5 && prof < 5 && rc > 0x109a && rc > crep - 0x5dc && age < 0x1f) k = 'conditionsNow';
+  }
+  push(k);
+}
+
+/** 0x884e12–0x8851a9: spilleren har et aftalt skifte (0x8cca10 – hos os en forhåndsaftale, Player.contract.futureClub) */
+function futureMove(_c: CmContract, out: FutureLine[], x: TailCtx, o: { dispute: boolean; b44: number; loanListed: boolean; ca: number; daysLeft: number }): void {
+  const { fl, age, loy, prof, temp, amb, pres, crep, rc, st } = x;
+  const push = (k: string) => out.push({ k });
+  if (o.dispute) return;
+  if (fl || o.b44 < -50 - loy) {                                                // 0x8850b4
+    if (fl) return;
+    // 0x8850dd: "Considering his options" kræver, at der intet aftalt skifte er (0x8cca10 = 0) – kan ikke ske her
+    if (!o.loanListed) { push('unsure'); return; }
+    if (age < 0x18) push(prof > 15 && pres > 10 ? 'loanExperience' : loy < 6 && prof < 10 ? 'loanNotSure' : 'unsure');
+    else if (prof < 10 && amb > 15 && rc > 0xcb2) push('loanAbility');
+    else if (prof < 10 && temp < 10) push('loanUpset');
+    else push('unknown');
+    return;
+  }
+  if (o.loanListed) {                                                           // 0x884e5a
+    if (age < 0x18) {
+      if (prof > 15 && pres > 10 && rc < 0xcb2 && (st < 1 || st > 4)) push('loanExperience');
+      else if (loy < 6 && prof < 10 && o.ca > prof - amb + 100) push('loanNotSure');
+      else push('unsure');
+    } else if (prof < 10 && amb > 15 && o.ca > prof - amb + 100 && rc > 0xcb2) push('loanAbility');
+    else if (prof < 10 && temp < 10) push('loanDisappointed');
+    else push('unknown');
+    return;
+  }
+  if (pres < 5 && age < 0x17) push('insecure');                                 // 0x884fa5
+  else if (loy < 5 && age > 0x1f) push('jaded');
+  else if (pres < 10 && rc < 0xcb2 && rc < crep + 0xfa && o.daysLeft < pres + 0x1e) push(age < 0x15 ? 'insecure' : 'extendContract');
+  else push(out.length ? 'unsettled' : 'unknown');
 }
 
 // ---------------------------------------------------------------- interesserede klubber (0x842180) og deres bud – *estimeret*

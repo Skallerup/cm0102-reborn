@@ -16,7 +16,7 @@ import { avgRating } from '../../game/season';
 import { SCHEDULES } from '../../game/training';
 import { askingPrice, canPreContract, interestedClubs, nextWindow, releaseCost, windowOpen } from '../../game/transfers';
 import { cmActive } from '../../game/cmPlayerData';
-import { cmAvailability, cmFutureLines, cmFutureHappy } from '../../game/cmTransferList';
+import { cmAvailability, cmFutureLines } from '../../game/cmTransferList';
 import { trialOf } from '../../game/trials';
 import type { Player, TransferOffer } from '../../game/types';
 import { POSITIONS, SIDES } from '../../game/types';
@@ -277,10 +277,9 @@ function TransferTab({ p, mine }: { p: Player; mine: boolean }) {
   const offers = g.offers.filter((o) => o.player === p.id && (o.status === 'pending' || o.status === 'negotiating'));
   const offerText = <ClubList ids={offers.map((o) => o.buyer)} empty={t('common.none')} suffix={(_, i) => ` (${offers[i].loan ? t('tag.loan') : money(offers[i].fee)})`} />;
   const interestIds = interestedClubs(p).map((i) => i.club);
-  const cmFut = cm ? cmFutureLines(g, p).map((x) => t(`cm.fut.${x.k}`, x.p)) : [];
-  // *estimeret*: blokkene, der ikke er porteret (klubbens resultater, harmoni …), gav ingen linje – så spillets egne
-  // ingen linjer: originalens tilfredse blok (0x8844e1, `cmFutureHappy`) – ellers "Unknown" som originalen (0x8852f9)
-  const fut = cm ? (cmFut.length ? cmFut : [p.club ? t(cmFutureHappy(p) ? 'cl.pl.fut.happy' : 'cl.pl.unknown') : '-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
+  // hele Future-blokken (0x87ee70–0x8853ba) inkl. den tilfredse blok og "Unknown" (0x8852f9), når intet er skrevet
+  const cmFut = cm ? cmFutureLines(g, p, interestIds.length).map((x) => t(`cm.fut.${x.k}`, x.p?.date ? { ...x.p, date: dateFmt(String(x.p.date)) } : x.p)) : [];
+  const fut = cm ? (cmFut.length ? cmFut : ['-']) : cmActive(g) ? [t('cl.pl.unknown')] : futureLines(p, mine, k);
   // CM 01/02: Availability, Value, Fluent Languages, Offers, Interested, Future (én linje pr. række)
   const langs = playerLanguages(g, p).map((l: string) => { try { return new Intl.DisplayNames([t('cl.locale')], { type: 'language' }).of(l) ?? l; } catch { return l; } });
   const rows: [string, ReactNode, string?][] = [

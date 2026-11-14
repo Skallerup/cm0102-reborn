@@ -140,6 +140,81 @@ describe('i spillet (3.9.60, ægte tilstand)', { timeout: 120_000 }, () => {
     c.b4e = 0;
   });
 
+  it('Future, resten af 0x87dd80 (0x883bcf–0x8853ba): klagerne, den tilfredse blok, det aftalte skifte og "Unknown"', () => {
+    const g = gs();
+    const p = squad(mu).sort((a, b) => b.ca - a.ca)[10];
+    const c = cmContractOf(p);
+    const set = (k: string, v: number) => { p.attrs[(ATTRS as readonly string[]).indexOf(k)] = v; };
+    const ks = (n = 0) => cmFutureLines(g, p, n).map((x) => x.k);
+    set('loyalty', 10); set('professionalism', 12); set('pressure', 12); set('temperament', 12); set('ambition', 10);
+    p.cmRel = undefined; p.renewal = undefined; p.cmRetire = undefined;
+    p.dob = `${Number(g.date.slice(0, 4)) - 27}-01-01`;
+    p.joined = '1995-07-01';
+    if (p.contract) p.contract.futureClub = undefined;
+    c.b45 = 0; c.b4e = 0; c.b44 = 0; c.b3d = 0; c.b3e = 0; c.b3f = 0; c.b4f = ((c.b4f ?? 0) & 0xf) | 0x20;
+    // ingen klager og tilfreds (+0x44 ≥ −Loyalty): én tilfreds linje (0x884d48)
+    expect(ks()).toEqual(['happyStay']);
+    // ingen trupstatus (nibble 0): "Wants clarification on his future" (0x884406)
+    c.b4f = (c.b4f ?? 0) & 0xf;
+    expect(ks()).toEqual(['clarification']);
+    c.b4f = ((c.b4f ?? 0) & 0xf) | 0x10;
+    // klubben er hans yndlingsklub og Loyalty > 5: Key → "Is enjoying playing for the club" (0x884c66)
+    p.cmRel = [p.club, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    expect(ks()).toEqual(['enjoyPlaying']);
+    p.cmRel = undefined;
+    // Key → Not Needed (−125 klemt): +0x44 < −Loyalty → blokken springes over → "Unknown" (0x884dbc)
+    c.b44 = statusHappiness(0, 1, 7, 0);
+    expect(ks()).toEqual(['unknown']);
+    c.b44 = 0;
+    // klagerne 0x20 (over 720 dage i klubben), 0x40, 0x200000, 0x8000 – og ingen tilfreds linje, når +0x45 ≠ 0
+    c.b45 = 0x20 | 0x40 | 0x200000 | 0x8000;
+    expect(ks()).toEqual(['timeToMove', 'personal', 'unhappyRemarks', 'unhappyTraining']);
+    p.joined = addDays(g.date, -100);
+    set('temperament', 4);
+    c.b45 = 0x20;
+    expect(ks()).toEqual(['mistakeMoving']);
+    expect(cmFutureLines(g, p)[0].p?.nation).toBe('England');
+    set('temperament', 12);
+    // 0x100000: Pressure ≥ 6 → 0x88418a: +0x3f > 4 og under 27 år → "relies upon him too much", ellers "Jaded"
+    c.b45 = 0x100000; c.b3f = 5;
+    expect(ks()).toEqual(['jaded']);                     // 27 år
+    p.dob = `${Number(g.date.slice(0, 4)) - 25}-01-01`;
+    expect(ks()).toEqual(['reliesTooMuch']);
+    c.b3f = 0;
+    expect(ks()).toEqual(['jaded']);
+    p.dob = `${Number(g.date.slice(0, 4)) - 27}-01-01`;
+    // 0x80: må ikke skifte – Temperament < 6 og Professionalism < 15 → vred
+    c.b45 = 0x80; set('temperament', 4);
+    expect(ks()).toEqual(['angryMove']);
+    set('temperament', 12); c.b45 = 0;
+    // et aftalt skifte (0x8cca10 → 0x884e12): ingen tilfreds linje; Pressure ≥ 10 og intet andet → "Unknown"
+    p.contract!.futureClub = squad(mu).length ? Number(Object.keys(g.clubs).find((id) => Number(id) !== mu)) : 0;
+    expect(ks()).toEqual(['unknown']);
+    set('pressure', 4); p.dob = `${Number(g.date.slice(0, 4)) - 20}-01-01`;
+    expect(ks()).toEqual(['insecure']);
+    p.contract!.futureClub = undefined; set('pressure', 12); p.dob = `${Number(g.date.slice(0, 4)) - 27}-01-01`;
+    // interessen (Interested-listen ikke tom, > 150 dage i klubben): +0x45 & 0x101 → "Is hoping to impress the visiting scouts"
+    c.b45 = 0x100; p.joined = '1995-07-01';
+    expect(ks(2)[0]).toBe('impressScouts');
+    expect(ks(0)).not.toContain('impressScouts');
+    c.b45 = 0;
+    // karrieren slutter (0x7a7eb0): kun den linje
+    p.cmRetire = true;
+    expect(ks()).toEqual(['noFuture']);                  // under 30 år
+    p.dob = `${Number(g.date.slice(0, 4)) - 32}-01-01`;
+    expect(ks()).toEqual(['retiring']);
+    p.dob = `${Number(g.date.slice(0, 4)) - 27}-01-01`;
+    p.cmRetire = undefined;
+    // alle nøgler findes på engelsk og dansk
+    const en = readFileSync('src/i18n/en.ts', 'utf8'), da = readFileSync('src/i18n/da.ts', 'utf8');
+    for (const k of ['happyStay', 'clarification', 'enjoyPlaying', 'unknown', 'timeToMove', 'mistakeMoving', 'adjustLifestyle', 'personal', 'depression',
+      'unhappyRemarks', 'unhappyTraining', 'reliesTooMuch', 'jaded', 'angryMove', 'insecure', 'impressScouts', 'retiring', 'biggerSoon', 'commitFuture',
+      'conditionsNow', 'content', 'enthusiastic', 'loanExperience', 'extendContract', 'bosman', 'anxiousContract']) {
+      expect(en).toContain(`"cm.fut.${k}"`);
+      expect(da).toContain(`"cm.fut.${k}"`);
+    }
+  });
+
   it('transferanmodningen: "X requests move" med grundene; Respond → granted (listed by request) / turned down', () => {
     const g = gs();
     const p = squad(mu).sort((a, b) => b.ca - a.ca)[6];
