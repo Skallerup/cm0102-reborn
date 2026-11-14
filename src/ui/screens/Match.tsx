@@ -690,7 +690,8 @@ function LiveMatch({ id }: { id: number }) {
       if (!h2h) setPaused(true);
       if (tab !== 'tactics') L.prevTab = tab;
       setTab('tactics');
-      setMsg(t(hit.k === 'injury' ? 'match.injuryStop' : 'match.redStop', { name }));
+      // CM 01/02 viser ingen forklaring – kampen står bare stille på taktikskærmen (kommentaren siger, hvad der skete)
+      if (!classic) setMsg(t(hit.k === 'injury' ? 'match.injuryStop' : 'match.redStop', { name }));
     }
     // straffesparkskonkurrencen: hvert spark afspilles på 2D-banen
     const kick = sim.shootout && sim.shootout.kicks.length > Math.max(0, soBefore) ? sim.shootout.kicks.at(-1)! : null;

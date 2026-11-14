@@ -2,6 +2,7 @@
 // spillet simulerer – "Selected" – og resten i baggrunden), med Use Real Players og Attribute Masking øverst.
 import { useEffect, useState, type ReactNode } from 'react';
 import { act } from '../../game/actions';
+import { authentic } from '../../game/rules';
 import { addableNations } from '../../game/sim';
 import { askConfirm } from '../confirm';
 import type { GameState } from '../../game/types';
@@ -60,7 +61,8 @@ export function ClassicSelectedLeagues() {
           </div>
         );
       })}</div>
-      <div className="cx-tac-hint">{t(g.humans?.length ? 'lg.mpOff' : 'cl.sl.hint')}</div>
+      {/* ægte CM 01/02 har ingen forklaringstekst på Selected League(s) */}
+      {(!authentic() || !!g.humans?.length) && <div className="cx-tac-hint">{t(g.humans?.length ? 'lg.mpOff' : 'cl.sl.hint')}</div>}
     </div>
   );
 }

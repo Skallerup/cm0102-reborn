@@ -7,7 +7,7 @@ import { notify } from '../game/state';
 import type { GameState, Lang } from '../game/types';
 import { LANGS, CURRENCIES, compName, getCurrency, getLang, natName, setCurrency, setLang, t, type Currency } from '../i18n';
 import { APP_VERSION } from './changelogData';
-import { ChangelogModal, seenVersion } from './Changelog';
+import { ChangelogModal } from './Changelog';
 import { ProfileGate, WriteModal } from './Community';
 import { GameInfoTable } from './GameInfoPanel';
 import { gameInfoMeta } from './gameInfo';
@@ -99,13 +99,13 @@ export function GameOptionsMenu({ onSave, onQuit, online, allowed }: { onSave: (
   items.push({ key: 'leagues', label: t('cl.sl.title'), onClick: () => nav({ name: 'leagues' }) });
   items.push({ key: 'info', label: t('info.title'), onClick: () => setShow('info') });
   add('ranking', t('cl.go.hall'));
-  add('awards', t('nav.awards'));
+  // ægte CM 01/02 har hverken Awards eller Help i Game Options (Awards ligger under Manager Stats/History)
+  if (!authentic()) add('awards', t('nav.awards'));
   add('community', t('cl.go.credits'));
-  add('help', t('nav.help'));
+  if (!authentic()) add('help', t('nav.help'));
   // som i det moderne tema: hvad er nyt, fejlrapport og feedback (sendes til fællesskabets forslag)
-  const fresh = seenVersion() !== APP_VERSION;
-  items.push({ key: 'sep0', sep: true }, { key: 'news', label: `${t('cl.go.whatsNew', { v: APP_VERSION })}${fresh ? ' ★' : ''}`, onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
-  if (communityAvailable()) items.push({ key: 'bug', label: `🐞 ${t('cm.reportBug')}`, onClick: () => setShow('bug') }, { key: 'idea', label: `💡 ${t('cl.go.feedback')}`, onClick: () => setShow('suggest') });
+  items.push({ key: 'sep0', sep: true }, { key: 'news', label: t('cl.go.whatsNew', { v: APP_VERSION }), onClick: () => { try { localStorage.setItem('cm0102.seenVersion', APP_VERSION); } catch { /* ignorer */ } setShow('changelog'); } });
+  if (communityAvailable()) items.push({ key: 'bug', label: t('cm.reportBug'), onClick: () => setShow('bug') }, { key: 'idea', label: t('cl.go.feedback'), onClick: () => setShow('suggest') });
   items.push({ key: 'sep', sep: true }, { key: 'restart', label: t('cl.go.restart'), onClick: onQuit }, { key: 'quit', label: t('cl.go.exit'), onClick: onQuit });
   return (
     <>
@@ -285,7 +285,8 @@ export function CompetitionsMenu() {
     // CM 01/02: "UEFA Champions League", "UEFA Cup" – UEFA foran de europæiske turneringer
     ...euro.map((c) => { const n = compName(c.name) ?? c.name; return { key: c.id, label: /^UEFA\b/i.test(n) ? n : `UEFA ${n}`, onClick: () => nav({ name: 'competitions', id: c.id }) }; }),
     sep('s3'), awards,
-    { key: 'coef', label: t('cl.cm.coeff'), onClick: () => nav({ name: 'coefficients' }) },
+    // UEFA-koefficienterne findes ikke som skærm i originalen (ingen tekst i exe'en) – kun i det udvidede spil
+    ...(authentic() ? [] : [{ key: 'coef', label: t('cl.cm.coeff'), onClick: () => nav({ name: 'coefficients' }) }]),
   ] });
   // nationerne: ens egen først, så i ligaernes rækkefølge
   const own = g.clubs[g.userClub]?.nation;

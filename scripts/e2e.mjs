@@ -259,6 +259,7 @@ async function run(look) {
     await page.locator('.cx-side .cx-sbtn', { hasText: /^Competitions$/ }).click();
     await page.locator('.cx-drop-subbtn').nth(3).hover();
     await page.screenshot({ path: `${OUT}/klassisk-competitions-menu.png` });
+    if (ENGINE_GRID && (await page.locator('.cx-drop-sub button', { hasText: /Coefficient/ }).count())) throw new Error('European-menuen: UEFA-koefficienterne findes ikke i CM 01/02');
     await page.locator('.cx-drop-sub button').first().click();
     await checkScreen('competitions');
   });
@@ -479,6 +480,7 @@ async function run(look) {
     await page.waitForTimeout(300);
     await menu();
     for (const l of ['Load Settings', 'Save Settings', 'Save Settings As', 'Delete Settings', 'Reset', 'Clear']) if (!(await item(l).count())) throw new Error(`Search-menuen mangler ${l}`);
+    if (ENGINE_GRID) { await item('Load Settings').hover(); if (await page.locator('.cx-drop-sub button', { hasText: /Free transfers|Young talents|Contracts running out/ }).count()) throw new Error('Load Settings: faste søgninger findes ikke i CM 01/02'); }
     if (!(await item('Save Settings').isDisabled())) throw new Error('Save Settings skal være grå, når intet er hentet');
     await page.keyboard.press('Escape');
     // Realism: findes ikke i originalen – slået fra i ægte CM 01/02 (standard i klassisk), men kan slås til (Spilindstillinger)
@@ -516,7 +518,10 @@ async function run(look) {
     if (await gs(() => (localStorage.getItem('cm0102.searchSettings') ?? '').includes('Passers'))) throw new Error('søgeindstillingerne blev ikke slettet');
     await menu(); await item('Clear').click();
     // fri spiller: Club = No Club, Value = Free, Based = hans land
-    await menu(); await item('Load Settings').hover(); await page.locator('.cx-drop-sub button', { hasText: 'Free transfers' }).click(); await page.waitForTimeout(300);
+    // ægte CM 01/02: Load Settings har kun gemte søgninger – gem en "Free"-søgning og hent den
+    await gs(() => { const k = 'cm0102.searchSettings'; const all = JSON.parse(localStorage.getItem(k) ?? '{}'); all.player = { ...(all.player ?? {}), Free: { onlyFree: true } }; localStorage.setItem(k, JSON.stringify(all)); });
+    await go({ name: 'transfers' }); await page.waitForTimeout(300);
+    await menu(); await item('Load Settings').hover(); await page.locator('.cx-drop-sub button', { hasText: /^Free$/ }).click(); await page.waitForTimeout(300);
     const rows = await page.locator('.cx-tbl tbody tr').first().innerText();
     if (!/No Club/.test(rows) || !/Free/.test(rows)) throw new Error(`fri spiller skal vise No Club/Free: ${rows}`);
     if (/Sct|Fre\b/.test(rows)) throw new Error('ingen Sct/Fre-mærker i søgningen');
@@ -877,6 +882,7 @@ async function run(look) {
   if (look === 'klassisk') await step('Manager Status og Selected League(s)', async () => {
     await go({ name: 'mgrstatus' }); await page.waitForSelector('.cx-mstat .cx-chist-row', { timeout: 5000 });
     await go({ name: 'leagues' }); await page.waitForSelector('.cx-sl .cx-sl-row.lg-sel', { timeout: 5000 });
+    if (ENGINE_GRID && await page.locator('.cx-sl .cx-tac-hint').count()) throw new Error('Selected League(s): forklaringsteksten findes ikke i CM 01/02');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-ligaer.png` });
     await go({ name: 'ranking' }); await page.waitForSelector('.cx-subtitle', { timeout: 5000 }); await page.waitForTimeout(800);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-halloffame.png` });
@@ -884,6 +890,12 @@ async function run(look) {
   });
   if (look === 'klassisk') await step('Game Options → Om dette spil (database, tilstand, kampmotor)', async () => {
     await page.click('.cx-gopt');
+    // ægte CM 01/02: Game Options har hverken Help eller Awards, og ingen emoji i menuen
+    if (ENGINE_GRID) {
+      const items = await page.locator('.cx-drop-pop button').allInnerTexts();
+      for (const bad of ['Help', 'Awards']) if (items.some((x) => x.trim() === bad)) throw new Error(`Game Options: ${bad} findes ikke i CM 01/02`);
+      if (items.some((x) => /[\u{1F300}-\u{1FAFF}\u2605]/u.test(x))) throw new Error('Game Options: emoji/stjerner i menuen');
+    }
     await page.locator('.cx-drop-pop >> text=About this game').click();
     await page.waitForSelector('.game-info table', { timeout: 5000 });
     const txt = await page.locator('.game-info').innerText();

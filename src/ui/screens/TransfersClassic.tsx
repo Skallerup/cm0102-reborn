@@ -153,7 +153,8 @@ export function ClassicSearch({ f, setF, defaults, results, total, active, natio
   // hvilken fast søgning svarer filtrene til (ellers "egen søgning")
   const same = (p: Preset) => (Object.keys(defaults) as (keyof Filters)[]).every((k) => (k in p.set ? p.set[k] : defaults[k]) === f[k]);
   const preset = PRESETS.find(same);
-  const presets = PRESETS.filter((p) => p.key !== 'realistic' || (g.userClub > 0 && realism)).map((p) => ({ key: p.key, label: t(`cl.tr.p.${p.key}`), set: p.set }));
+  // ægte CM 01/02: Load Settings viser kun de gemte søgninger (ingen faste)
+  const presets = (authentic() ? [] : PRESETS.filter((p) => p.key !== 'realistic' || (g.userClub > 0 && realism))).map((p) => ({ key: p.key, label: t(`cl.tr.p.${p.key}`), set: p.set }));
   const items = useSearchMenu<Filters>({ kind: 'player', f, defaults, presets, apply: setF, named, setNamed, active });
   return (
     <div>
@@ -455,7 +456,7 @@ function StaffSearch() {
     : view === 'notes'
     ? [infCol, nameCol, clubCol, jobCol, { key: 'notes', label: t('cl.tn.notes'), cls: 'c-cyan', render: () => '-' }]
     : [infCol, nameCol, clubCol, basedCol, jobCol, repCol];
-  const presets = STAFF_PRESETS.map((p) => ({ key: p.key, label: t(`cl.st.p.${p.key}`), set: p.set }));
+  const presets = (authentic() ? [] : STAFF_PRESETS).map((p) => ({ key: p.key, label: t(`cl.st.p.${p.key}`), set: p.set }));
   const preset = STAFF_PRESETS.find((p) => JSON.stringify({ ...SF_DEFAULT, ...p.set }) === JSON.stringify(sf));
   const items = useSearchMenu<StaffFilters>({ kind: 'staff', f: sf, defaults: SF_DEFAULT, presets, apply: setSf, named, setNamed, active });
   return (
