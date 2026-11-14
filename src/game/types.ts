@@ -150,6 +150,9 @@ export interface Player {
   cmFit?: import('./cmFitness').CmFit;
   /** 0x7a7f20: en skade har sluttet karrieren (pensioneres ved sæsonslut) */
   cmRetire?: boolean;
+  /** (den originale database i ægte tilstand) 0x524d70 (Maximum) havde ham i hukommelsen ved spilstarten uanset de valgte lande (CMRatings.tm,
+   *  klubløse tf = 1, reserveposterne) – ønskelisternes positionslister (cmShortlistGame.ts loadedFilter) */
+  cmMem?: 1;
   /** staff +0x1e: anden nationalitet fra den originale database (eller fået efter fem år i Storbritannien, 0x8c7330) – cmPermit.ts */
   cmNation2?: number;
   /** staff +0x3e: datoen han kom til klubben ifølge den originale database – cmPermit.ts */
@@ -1183,6 +1186,8 @@ export interface GameState {
   /** nation +0x76 pr. nationsindeks (sprog-/regionsgruppen – lønnen 0x862720, cmWageGame.ts) */
   cmNation76?: number[];
   /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
+  /** (den originale database i ægte tilstand) spillet er startet med databasestørrelsen Maximum – Player.cmMem er sat (loadedFilter) */
+  cmMaxMem?: true;
   cmPlan?: Record<number, { s: number[][]; st: number; fm: number; c: number }>;
   /** CONTRACT_MANAGER's tilstand mellem dagene (cmContractManager.ts CmCmState): beslutningsdatoerne, forlængelsestilbuddene, rækkernes +0xb */
   cmCm?: { dec: number[][]; off: [number, string][]; row: Record<number, number> };

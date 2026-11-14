@@ -23,14 +23,18 @@ export interface CMRatings { ca: number; pa: number; attrs: number[]; pos: numbe
   /** sprogtabellens "dage" fra karrierehistorien (PlayerStats 0x7bfd50, 0x7c0b74–0x7c0c51 – cmLanguage.ts): [sprog, dage, …] for
    *  spillere med mindst én historikpost før 2001 (tom = posterne findes, men gav ingen dage); udeladt = ingen poster */
   lg?: number[];
-  /** (kun den originale database, klubløse – 0x524d70 ved databasestørrelse 2 som oraklet) om originalen har ham i hukommelsen som klubløs ved
+  /** (kun den originale database, klubløse – 0x524d70 ved databasestørrelsen Maximum som ejerens spil) om originalen har ham i hukommelsen som klubløs ved
    *  spilstarten: 1 = altid, [nation …] = når en af nationerne (world-indeks) er valgt, 0 = ikke i originalen (spillets gamle regel: klubløse
    *  og spillere i klubber uden for spillet med CA 120+ – kun i spil uden originalens systemer) */
-  tf?: 1 | 0 | number[] }
+  tf?: 1 | 0 | number[];
+  /** (kun den originale database, spillere i en klub) 1 = 0x524d70 (Maximum) beholder ham i hukommelsen uanset de valgte lande (de 100 bedste i
+   *  landet, landskampe, klubomdømme ≥ 7500, CA/PA/omdømme over grænserne, rand(30)) – ellers kun, når hans nationalitet eller klubbens land er
+   *  valgt. Ønskelisternes positionslister (cmShortlistGame.ts loadedFilter) */
+  tm?: 1 }
 
 /** (kun den originale database) 0x524d70's tal til reserveposterne 0x52638a: antallet af beholdte personer uden valgte lande (`k0`) og
  *  det ekstra antal pr. valgt nation (world-indeks → antal), og nationaliteterne blandt de `k0` (world-indeks → antal) */
-export interface CMTrim { k0: number; kn: Record<number, number>; nat0: Record<number, number> }
+export interface CMTrim { k0: number; kn: Record<number, number>; nat0: Record<number, number>; /** reserveposternes andel (0x524dcf: 0,02 ved størrelse 1/2, ellers 0,01) – udeladt = 0,02 */ pct?: number }
 
 export interface CMWorld extends WorldData {
   kind: 'cm0102';
@@ -440,17 +444,20 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   const staff: NonNullable<CMWorld['staff']> = [];
   const staffX: NonNullable<CMWorld['staff']> = [];
   const mem = opts.cmMem && NON_REF >= 0 ? trimMemory() : null;
-  /** 0x524d70 database_trim_staff_tables med databasestørrelsen "Maximum" (game.cfg +4 & 7 = 4; ejerens indstilling): hvem originalen beholder
-   *  i hukommelsen ved et nyt spil. Uafhængigt af de valgte lande (1 = altid): de 10 bedste ikke-spillere (+4) og 100 bedste spillere (+5) pr.
-   *  nationalitet (antal = clamp(nation +0x8e, 5, 15)·10/15 og ·100/15, 0x524ff5–0x525288), Collin Samuel/Devon Mitchell (0x525394), landstræner
-   *  (+0x24 og +0x28 = 5/12), klubomdømme ≥ 7500, landskampe > 0, ikke-spillerpost CA ≥ 150, PA ≥ 150/−1/−2, +8 ≥ 160, +0xa ≥ 155, +0xc ≥ 150,
-   *  spillerpost +5/+7/+9/+0xb/+0xd tilsvarende og rand(30) = 0 for resten (0x5259a5 – *estimeret* som en fast hash pr. person). Ellers: de
-   *  nationer (world-indeks), hvis valg beholder ham – nationalitet +0x1a, anden nationalitet +0x1e og klubbens land (+0x39 → +0x53). */
+  /** 0x524d70 database_trim_staff_tables med databasestørrelsen "Maximum" (game.cfg +4 & 7 = 4; ejerens indstilling – argumentet 4,
+   *  [esp+0x17] = 0): hvem originalen beholder i hukommelsen ved et nyt spil, for alle personer (spillere og stab). Personer af type 6 aldrig (0).
+   *  Uafhængigt af de valgte lande (1 = altid): de 10 bedste ikke-spillere (+4, type 1/3) og 100 bedste spillere (+5, type 2/3) pr. nationalitet
+   *  (antal = clamp(nation +0x8e, 5, 15)·10/15 og ·100/15, 0x524ff5–0x525288), de sidste 16 poster (0x525368), Collin Samuel/Devon Mitchell
+   *  (0x525394), landstræner (+0x24 og +0x28 = 5/12), klubomdømme +0x80 ≥ 7500, landskampe +0x22 > 0, ikke-spillerpost (type 1/3) +4 ≥ 150,
+   *  +6 ≥ 150/−1/−2, +8 ≥ 160, +0xa ≥ 155, +0xc ≥ 150, spillerpost (type 2/3) +5/+7/+9/+0xb/+0xd tilsvarende (0x5257bd–0x525878: argumentet ≠ 2)
+   *  og rand(30) = 0 for resten (0x5259a5 – *estimeret* som en fast hash pr. person). Ellers: de nationer (world-indeks), hvis valg beholder ham
+   *  uden terning (0x525498–0x525586) – nationalitet +0x1a, anden nationalitet +0x1e og klubbens land (+0x39 → +0x53). */
   function trimMemory() {
     const clubOf = new Map(rawClubs.map((c) => [c.id, c]));
-    const top = new Map<number, { ids: number[]; v: number[]; min: number; cap: number }>();
-    const topP = new Map<number, { ids: number[]; v: number[]; min: number; cap: number }>();
-    const add = (t: Map<number, { ids: number[]; v: number[]; min: number; cap: number }>, nat: number, mul: number, id: number, v: number) => {
+    type Top = { ids: number[]; v: number[]; min: number; cap: number };
+    const top = new Map<number, Top>();
+    const topP = new Map<number, Top>();
+    const add = (t: Map<number, Top>, nat: number, mul: number, id: number, v: number) => {
       let e = t.get(nat);
       if (!e) { const r = nationVal.get(nat)?.[1] ?? 0; e = { ids: [], v: [], min: 0, cap: Math.trunc((Math.max(5, Math.min(15, r)) * mul) / 15) }; t.set(nat, e); }
       if (e.ids.length < e.cap) {
@@ -464,23 +471,29 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     for (let i = 0; i < tStaff.count; i++) {
       const o = tStaff.offset + i * staffSize;
       if (o + staffSize > files['staff.dat'].byteLength) break;
+      if (!nationIdx.has(S.i32(o + 26))) continue;
+      const type = S.u8(o + 0x5f);
       const np = nonAt.get(S.i32(o + NON_REF)), pl = playerAt.get(S.i32(o + PLAYER_REF));
-      if (np !== undefined) add(top, S.i32(o + 26), 10, S.i32(o), S.i16(np + 4));
-      if (pl !== undefined) add(topP, S.i32(o + 26), 100, S.i32(o), S.i16(pl + 5));
+      if ((type === 1 || type === 3) && np !== undefined) add(top, S.i32(o + 26), 10, S.i32(o), S.i16(np + 4));
+      if ((type === 2 || type === 3) && pl !== undefined) add(topP, S.i32(o + 26), 100, S.i32(o), S.i16(pl + 5));
     }
     const keep = new Set<number>();
     for (const t of [top, topP]) for (const e of t.values()) for (const id of e.ids) keep.add(id);
-    return (o: number, np: number): 1 | number[] => {
-      const id = S.i32(o), pl = playerAt.get(S.i32(o + PLAYER_REF));
+    const last = tStaff.offset + (tStaff.count - 16) * staffSize;
+    return (o: number): 0 | 1 | number[] => {
+      const id = S.i32(o), type = S.u8(o + 0x5f);
+      if (type === 6) return 0;
+      const np = type === 1 || type === 3 ? nonAt.get(S.i32(o + NON_REF)) : undefined;
+      const pl = type === 2 || type === 3 ? playerAt.get(S.i32(o + PLAYER_REF)) : undefined;
       const fn = first[S.i32(o + 4)] ?? '', sn = second[S.i32(o + 8)] ?? '';
       const club = clubOf.get(S.i32(o + 57));
       const big = (b: number, k: number, a: number, c: number, d: number, e: number) => S.i16(b + k) >= 150 || S.i16(b + k + 2) >= 150 || [-1, -2].includes(S.i16(b + k + 2))
         || S.i16(b + a) >= 160 || S.i16(b + c) >= 155 || S.i16(b + d) >= e;
-      if (keep.has(id) || (fn === 'Collin' && sn === 'Samuel') || (fn === 'Devon' && sn === 'Mitchell')
-        || (S.i32(o + 0x24) >= 0 && [5, 12].includes(S.u8(o + 0x28))) || (club && club.rep >= 7500) || S.u8(o + 0x22) > 0
-        || big(np, 4, 8, 0xa, 0xc, 150) || (pl !== undefined && big(pl, 5, 9, 0xb, 0xd, 150)) || hashStr(`trim${id}`) % 30 === 0) return 1;
+      if (keep.has(id) || o >= last || (fn === 'Collin' && sn === 'Samuel') || (fn === 'Devon' && sn === 'Mitchell')) return 1;
       const out: number[] = [];
       for (const n of [S.i32(o + 26), S.i32(o + 30), club?.nation ?? -1]) { const x = nationIdx.get(n); if (x !== undefined && !out.includes(x)) out.push(x); }
+      if ((S.i32(o + 0x24) >= 0 && [5, 12].includes(S.u8(o + 0x28))) || (club && club.rep >= 7500) || S.u8(o + 0x22) > 0
+        || (np !== undefined && big(np, 4, 8, 0xa, 0xc, 150)) || (pl !== undefined && big(pl, 5, 9, 0xb, 0xd, 150)) || hashStr(`trim${id}`) % 30 === 0) return 1;
       return out;
     };
   }
@@ -519,7 +532,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       bx.push(S.u8(o + 0x22));
       const row: NonNullable<CMWorld['staff']>[number] = [core && here ? club : 0, fn, ln, nation, dob, core ? (here ? job : 0) : job, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]];
       // [15] = hukommelsen (0x524d70), [16] = [klubben +0x39 (databasens id, −1 = ingen), jobbet +0x3d] – kun til Staff Search
-      if (mem) row.push(mem(o, np), [club, job]);
+      if (mem) { const m = mem(o); if (m === 0 && !core) continue; row.push(m === 0 ? [] : m, [club, job]); }
       (core ? staff : staffX).push(row);
     }
   }
@@ -621,11 +634,13 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   // de klubløse (+0x39 = −1) med spillerpost: hvem originalen beholder (CMRatings.tf), og reserveposternes tal (CMTrim)
   const freeTf = new Map<number, 1 | number[]>();
   let cmTrim: CMTrim | undefined;
-  if (opts.cmMem) {
+  // Databasestørrelsen: Maximum (4) som ejerens CM 01/02 – `CM_DBSIZE=2` bygger med oraklets størrelse 2 (trim2) til sammenligninger
+  const dbSize2 = typeof process !== 'undefined' && process.env?.CM_DBSIZE === '2';
+  if (opts.cmMem && (dbSize2 || !mem)) {
     const none = trim2(new Set());
     const nat0: Record<number, number> = {};
     for (let i = 0; i < tStaff.count; i++) if (none.keep[i]) { const x = nationIdx.get(S.i32(tStaff.offset + i * staffSize + 26)); if (x !== undefined) nat0[x] = (nat0[x] ?? 0) + 1; }
-    cmTrim = { k0: none.kept, kn: {}, nat0 };
+    cmTrim = { k0: none.kept, kn: {}, nat0, pct: 0.02 };
     // de spilbare nationer (med en liga i spillet): det ekstra antal, når netop den er valgt
     const playable = new Set(clubs.map((c) => rawClubs.find((r) => r.id === c[0])?.nation).filter((x): x is number => x !== undefined));
     for (const nid of playable) { const x = nationIdx.get(nid); if (x !== undefined) cmTrim.kn[x] = trim2(new Set([nid])).kept - none.kept; }
@@ -642,6 +657,33 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       let fe = 0, fo = 0;
       for (let i = 0; i < tStaff.count; i++) { const o = tStaff.offset + i * staffSize; if (e.keep[i] && S.i32(o + 57) === -1 && playerAt.has(S.i32(o + PLAYER_REF))) { if (S.i32(o + 26) === eng) fe++; else fo++; } }
       console.log(`0x524d70 (størrelse 2), England valgt: ${e.kept} beholdt (originalen 8.729), klubløse spillere ${fe} engelske + ${fo} andre (originalen 63 + 28), uden lande ${none.kept}`);
+    }
+  } else if (opts.cmMem && mem) {
+    // Maximum: trimMemory for alle personer; reserveposterne 0x52638a er 1 % af de beholdte (0x524de1: 0,01 ved argumentet ≠ 1/2)
+    const nat0: Record<number, number> = {};
+    cmTrim = { k0: 0, kn: {}, nat0, pct: 0.01 };
+    const playable = new Set(clubs.map((c) => nationIdx.get(rawClubs.find((r) => r.id === c[0])?.nation ?? -1)).filter((x): x is number => x !== undefined));
+    for (const x of playable) cmTrim.kn[x] = 0;
+    for (let i = 0; i < tStaff.count; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const m = mem(o);
+      if (m === 0) continue;
+      if (m === 1) {
+        cmTrim.k0++;
+        const x = nationIdx.get(S.i32(o + 26)); if (x !== undefined) nat0[x] = (nat0[x] ?? 0) + 1;
+      } else for (const x of m) if (cmTrim.kn[x] !== undefined) cmTrim.kn[x]++;
+      // klubløse spillere: kun de lande, der kan vælges (en liga i spillet) – uden et af dem kan han aldrig komme i hukommelsen
+      if (S.i32(o + 57) === -1 && playerAt.has(S.i32(o + PLAYER_REF))) {
+        const sel = m === 1 ? 1 : m.filter((x) => playable.has(x));
+        if (sel === 1 || sel.length) freeTf.set(S.i32(o), sel);
+      }
+    }
+    if (process.env.CM_TRIM_CHECK) {
+      const eng = nationIdx.get([...natName.entries()].find(([, v]) => v === 'England')![0])!;
+      let fe = 0, fo = 0, fa = 0;
+      for (const [, m] of freeTf) { if (m === 1) fa++; else if (m.includes(eng)) { fe++; } else fo++; }
+      console.log(`0x524d70 (Maximum): uden lande ${cmTrim.k0} beholdt, England valgt +${cmTrim.kn[eng]}; klubløse spillere: ${fa} altid, ${fe} via England, ${fo} via andre lande`);
     }
   }
 
@@ -712,7 +754,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     const n2 = nationIdx.get(S.i32(o + 30)), joined = S.date(o + 62);
     ratings[id] = { ca: tf !== undefined && S.i16(po + 5) < 1 ? 0 : ca, pa, attrs, pos, side, ...(paRaw !== undefined ? { paRaw } : {}), rep, feet, ...(fr !== 1 ? { fr } : {}),
       ...(n2 !== undefined && n2 !== nation ? { n2 } : {}), ...(joined ? { j: joined } : {}), ...(histLang.has(id) ? { lg: histLang.get(id) } : {}),
-      ...(opts.cmMem && !club ? { tf: tf ?? 0 } : {}) };
+      ...(opts.cmMem && !club ? { tf: tf ?? 0 } : {}), ...(club && mem && !dbSize2 && mem(o) === 1 ? { tm: 1 as const } : {}) };
   }
 
   // dommere (officials.dat, 43 bytes pr. post): navne-id 4/8, nation 22 (16 bit), omdømme 26, Discipline 0x25, 0x27

@@ -39,7 +39,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
   B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
 
-## Ønskelisterne – Shortlist_Manager på spillets data (2026-11-14, SLÅET FRA – `src/game/cmShortlistGame.ts`, `SL_ON`)
+## Ønskelisterne – Shortlist_Manager på spillets data (2026-11-14, SLÅET FRA – `src/game/cmShortlistGame.ts`, `SL_ON`; databasestørrelsen Maximum fra runde 9)
 - **Oversat (cmGen/, x86ts.py, 78 nye funktioner):** 0x83b6e0 allocate_transfer_budget, 0x83f3a0 fill_shortlist_slot, 0x840d80 value_player_for_club,
   0x4d1600 calc_asking_price (+0x4d42d0), 0x598800 get_transfer_budget, 0x84a020 make_club_bids, 0x8e5d60 build_bid, 0x842e10, 0x843800, 0x843e10,
   0x842180, 0x8423f0, 0x844540, 0x844660, 0x84af00, 0x84b180, 0x84b6f0, 0x842740, 0x8ce990, 0x8c7950 m.fl. De 121 ældre oversættelser er genereret
@@ -216,6 +216,30 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   **Sæson** (`CM_SL=1 scripts/ct-season-game.ts`): køb 465 (432, +8 %), klubløse 30 (45), lejeaftaler 152 (~116, +31 %). Hastighed: 582 ms pr. dag
   over 150 dage – men origin/staging gav 664 ms pr. 60 dage på samme (belastede) maskine, så ændringerne koster ikke målbart; ≤ 300 ms er ikke
   nået (dropDeadBids → 0x843e10 → 0x83f3a0 ~210 ms, 0x84a020 ~150 ms, hukommelsen ~100 ms pr. dag). Derfor stadig slået fra.
+- **Runde 9 (14/11, stadig slået fra): databasestørrelsen Maximum** (ejerens beslutning – som hans eget spil, game.cfg +4 & 7 = 4). 0x524d70 kaldes
+  med argumentet 4: [esp+0x17] = 0, så topplisterne 0x524f55–0x525316 KØRES (10 bedste ikke-spillere/100 bedste spillere pr. nationalitet), og
+  et valgt land (nationalitet +0x1a, anden +0x1e, klubbens land +0x39→+0x53) beholder personen UDEN terning (0x525498–0x525586); klubomdømme ≥ 7500,
+  landskampe > 0 og landstræner uden landebetingelse; spillerpost/ikke-spillerpost +5/+7/+9/+0xb/+0xd over grænserne (grenen 0x5257cd, argumentet
+  ≠ 2), og til sidst rand(30) = 0 (0x5259a5, fast hash – *estimeret*). Halen med nation +0x85 < 6/BIG8/rand(15)/rand(12) gælder kun størrelse 1/2.
+  Reserveposterne 0x52638a: 1 % af de beholdte (0x524de1: double 0,01 – størrelse 1/2 har 0,02) – `CMTrim.pct`. CA-fradraget 0x536e19 og
+  CA-mangleren 0x536c72 (sub_535a80) afhænger ikke af størrelsen. Porteret: `trimMemory` (cm0102.ts, nu med typerne 1/3 og 2/3, type 6 aldrig,
+  de sidste 16 poster) bruges for ALLE personer – klubløse `CMRatings.tf` (1 eller de spilbare lande), spillere i klubber `CMRatings.tm = 1`
+  (altid i hukommelsen) → `Player.cmMem` og `GameState.cmMaxMem`; ønskelisternes `loadedFilter` bruger cmMem i stedet for skønnet CA ≥ 150
+  (`CM_SL_MAXMEM=0` = det gamle skøn). `CM_DBSIZE=2` bygger world-filen med oraklets størrelse 2 (trim2) til sammenligninger. Staff Search uændret
+  (samme staffX byte for byte). world-original.json 18.159.675 → 23.594.785 bytes (37.810 → 54.236 spillerrækker: klubløse fra alle spilbare lande).
+  **Ny spil (England, Arsenal):** 4.121 klubløse (før 278), heraf 1.593 engelske = 1.496 fra databasen (originalen 1.501) + 97 reserveposter; 330
+  reserveposter i alt (før 167); 44.105 spillere (før 40.262); createGame 8,7 s (før 8,2 s) i tsx.
+  **Sæson** (`CM_SL=1 scripts/ct-season-game.ts`, frø 1): 364 køb (£93,9 mio., median £87.420, max £3,4 mio.), 162 klubløse skrevet under,
+  145 lejeaftaler, 9.890 bud (før størrelse 2: 465/30/152; originalen med STØRRELSE 2: 432/£155,8 mio./45/~116). Kun de klubløse (med det gamle
+  loadedFilter-skøn): 410 køb (£129,1 mio.), 126 klubløse, 143 lejeaftaler. Vurdering: 5,4× så mange engelske klubløse (1.501 mod 277) forklarer
+  de flere klubløse skrevet under (45 · 5,4 ≈ 240; vi 162) og de færre/billigere køb (pladserne fyldes af klubløse); udlandets cmMem-spillere
+  (klubomdømme ≥ 7500, landsholdsspillere) gør buddene flere (5.871 → 9.890). Ikke lige sammenligning – oraklet skal køres med Maximum for at vide det.
+  **Hastighed – derfor stadig slået fra:** Maximum gør dagen tungere: 30 dage (esbuild-bundt) 625 ms/dag med det gamle skøn → 827 ms/dag med cmMem;
+  hel sæson 1.141 ms/dag i tsx (belastet maskine; runde 8: 582). Profil (30 dage): dropDeadBids → 0x843e10 → 0x83f3a0 ~460 ms/dag (heraf 0x840d80
+  ~245, planValue ~110), 0x84a020 ~130, hukommelsen ~160; frasorteringen 1,2 mio. vurderinger 0x840d80 på 10 dage. Gjort (bit for bit,
+  cm-sl-bench 60 dage ens): planValue's svar (0x6e6340-adapteren) gemt pr. (staff, maske, flag, klub, tærskel, kontraktens bytes, listet) fra
+  buildSlMem til finishSl (`S.pv`, `CM_SL_PVMEMO=0`) – ~4 %. Prøvet og fjernet: halespring i frasorteringen (rj(9) rammer kun ~450 kandidater pr. dag).
+  ≤ 300 ms kræver, at 0x83f3a0's vurderingsløkke 0x8400da–0x840a81 og 0x840d80 porteres til TS, eller færre genudfyldninger (dropDeadBids).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

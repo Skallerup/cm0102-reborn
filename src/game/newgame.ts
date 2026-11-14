@@ -207,12 +207,13 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const cmStartGame = !!cm && season < 2020 && o.mode === 'authentic';
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
-  // (den originale database i ægte tilstand) 0x524d70's reserveposter 0x52638a: trunc(2 % af de beholdte personer) klubløse, født 1982, med
+  // (den originale database i ægte tilstand) 0x524d70's reserveposter 0x52638a: trunc(1 % (Maximum; størrelse 2: 2 %) af de beholdte personer) klubløse, født 1982, med
   // nationaliteten fra en tilfældig beholdt person, CA 0, alle egenskaber 0 og PA −2 (1/100), −1 (1/50) eller 0 – sub_535a80 udfylder dem som de
-  // andre (databasestørrelse 2 som oraklet; CMTrim). Navnene er spillets egne pr. land (originalen: 0x539c60's lister – *estimeret*)
+  // andre (databasestørrelsen fra world-filen – Maximum; CMTrim). Navnene er spillets egne pr. land (originalen: 0x539c60's lister – *estimeret*)
   const extraRt: Record<number, CMWorld['ratings'][number]> = {};
   const rows = cmStartGame && cm?.cmTrim ? [...world.players, ...reserveRows(cm, o.activeNations, names, seed, F, world.playerFields.length, extraRt)] : world.players;
   const rtOf = (id: number) => cm?.ratings[id] ?? extraRt[id];
+  if (cmStartGame && cm?.cmTrim?.pct === 0.01) g.cmMaxMem = true;
   for (const r of rows) {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;
@@ -264,6 +265,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
         if (rt.fr) p.cmFree = rt.fr;
         // staff +0x1e (anden nationalitet) og +0x3e (kom til klubben) – arbejdstilladelsens historik (cmPermit.ts)
         if (rt.n2 !== undefined) p.cmNation2 = rt.n2;
+        if (cmStartGame && (rt.tm === 1 || rt.tf === 1)) p.cmMem = 1;
         if (rt.j) p.cmJoined = rt.j;
       }
       let attrs = rec.attrs;
@@ -803,7 +805,7 @@ function reserveRows(cm: CMWorld, active: number[], names: Record<number, [strin
   const T = cm.cmTrim!;
   const sel = active.filter((n) => T.kn[n] !== undefined);
   const K = T.k0 + sel.reduce((s, n) => s + T.kn[n], 0);
-  const n = Math.trunc(K * 0.02);
+  const n = Math.trunc(K * (T.pct ?? 0.02));
   const nat0 = Object.entries(T.nat0).map(([k, v]) => [Number(k), v] as const);
   const rr = new Rng(hash(seed, 52638) || 1);
   const rows: WorldData['players'] = [];

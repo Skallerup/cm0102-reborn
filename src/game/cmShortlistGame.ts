@@ -98,6 +98,8 @@ export interface SlMem {
   events: SlEvent[];
   /** klubberne, hvis pladser er skrevet i hukommelsen */
   slotted: Set<number>;
+  /** planValue's svar pr. (staff, maske, flag, klub, tærskel, kontraktens bytes) for dagens hukommelse */
+  pv?: Map<string, number>;
   /** planValue: aiPickCtx pr. klub og playerRecord pr. spiller (uændrede, mens hukommelsen lever) */
   cache?: { ctx: Map<number, ReturnType<typeof aiPickCtx> | object>; rec: Map<number, number[]>; day: { today: Day; yearAgo: Day } | null;
     pl: Map<number, { joined: Day; age: number; pLang: ReturnType<typeof nationLanguage>; langs: ReturnType<typeof playerLanguages> }>;
@@ -238,8 +240,10 @@ function buildPositionLists(S: SlMem): void {
  *  originalen (0/313 parret på navn og fødselsdato) – de frie tæller kun med, når de har forladt en klub i et aktivt land. */
 function loadedFilter(g: GameState): (p: Player) => boolean {
   const active = new Set(g.activeNations);
+  // Databasestørrelsen Maximum (g.cmMaxMem, 0x524d70 for spillerne i parseren): de altid beholdte (Player.cmMem) i stedet for CA ≥ 150-skønnet
+  const max = !!g.cmMaxMem && ENV.CM_SL_MAXMEM !== '0';
   return (p) => {
-    if (p.ca >= 150 || active.has(p.nation) || (p.cmNation2 !== undefined && active.has(p.cmNation2))) return true;
+    if ((max ? p.cmMem === 1 : p.ca >= 150) || active.has(p.nation) || (p.cmNation2 !== undefined && active.has(p.cmNation2))) return true;
     const home = p.loan?.from ?? p.club;
     // de frie: kun dem, der har forladt en klub i et aktivt land (spilstartens frie i world-filen er ikke i originalen – 0/313 parret på navn)
     const c = home ? g.clubs[home] : g.clubs[p.moves?.[p.moves.length - 1]?.from ?? -1];
@@ -499,8 +503,17 @@ function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: n
   const club = g.clubs[cid];
   if (!p) return -10000;
   const pClub = p.loan ? p.loan.from : p.club;
-  return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub);
+  const pv = S.pv;
+  if (!pv) return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub);
+  // (hastighed) svaret gemt for dagens hukommelse: planScore læser kun spillets data (uændrede i ønskelisternes dag) og kontraktens bytes,
+  // som er med i nøglen; kun i cmShortlistDaily fra buildSlMem til finishSl (S.pv) – CM_SL_PVMEMO=0 slår det fra
+  const k = contractForClub_4cf5f0(S.c, st, clubAdr);
+  const key = (p.listed ? "L" : "") + (k ? `${st}|${mask}|${flags}|${clubAdr}|${thr}|${k}|${m.u32(k + 0x3d)}|${m.u32(k + 0x41)}|${m.u32(k + 0x45)}|${m.u8(k + 0x4f)}` : `${st}|${mask}|${flags}|${clubAdr}|${thr}`);
+  let v = pv.get(key);
+  if (v === undefined) { v = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub); pv.set(key, v); }
+  return v;
 }
+const PVMEMO = ENV.CM_SL_PVMEMO !== '0';
 function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, p: Player, cid: number, club: GameState['clubs'][number] | undefined, pClub: number): number {
   const { g, m } = S;
   const fit = cmFitRead(g);
@@ -1292,6 +1305,8 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0, c0 = cpuNow();
   const S = buildSlMem(g);
   SL_DIAG.after?.(S);
+  // (planValue's svar gemmes kun, mens spillets data står stille – til finishSl)
+  if (PVMEMO) S.pv = new Map();
   dropDeadBids(S);
   let tt = now();
   const off = bidDay(g);
@@ -1308,6 +1323,7 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   }
   SL_DIAG.end?.(S);
   const ev = finishSl(S);
+  S.pv = undefined;
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;
   if (t0) SL_STATS.ms += performance.now() - t0;
   SL_STATS.cpuMs += cpuNow() - c0;
