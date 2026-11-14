@@ -1,6 +1,7 @@
 // Sæsonskifte: priser, historik, op/nedrykning, kontrakter, pensioneringer, regens.
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
+import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
 import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
@@ -172,6 +173,7 @@ function promotionRelegation() {
 function contractsAndLoans() {
   const g = gs();
   const today = g.date; // 1. juli
+  const cmOn = cmCmOn(g);
   for (const p of Object.values(g.players)) {
     if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
       // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
@@ -180,7 +182,9 @@ function contractsAndLoans() {
       setClub(p, p.loan.from);
       p.loan = null;
     }
-    if (p.contract && p.contract.expires < today) {
+    // den originale database i ægte tilstand: computerklubbernes udløb styres af CONTRACT_MANAGER 0x4c7ac0 (cmContractManager.ts – spilleren bliver
+    // med den udløbne kontrakt, til han vil væk eller er sat fri)
+    if (p.contract && p.contract.expires < today && !(cmOn && cmCmScope(g, p))) {
       if (p.contract.futureClub && g.clubs[p.contract.futureClub]) {
         const to = p.contract.futureClub;
         const fromName = g.clubs[p.club]?.name ?? '-';

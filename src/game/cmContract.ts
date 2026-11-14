@@ -291,8 +291,9 @@ const copyBytes = (m: CmMem, dst: number, src: number, n: number) => { for (let 
 
 // ---------------------------------------------------------------- 0x4c7ac0 daily_update
 
-/** 0x4c7ac0 CONTRACT_MANAGER::daily_update(dato*, tidspunkt, flag) – thiscall på [0xae1050] */
-export function contractDailyUpdate_4c7ac0(c: CmCtx, D: number, slice: number, flag: number): void {
+/** 0x4c7ac0 CONTRACT_MANAGER::daily_update(dato*, tidspunkt, flag) – thiscall på [0xae1050]. `only` (spillet, cmContractManager.ts): personløkken
+ *  kun for disse poster (i id-rækkefølge) i stedet for alle [0xae2364] – de andre kan ikke blive berørt den dag */
+export function contractDailyUpdate_4c7ac0(c: CmCtx, D: number, slice: number, flag: number, only?: number[]): void {
   const m = c.m;
   const self = m.u32(G.CM);
   const sp0 = SP;
@@ -319,7 +320,8 @@ export function contractDailyUpdate_4c7ac0(c: CmCtx, D: number, slice: number, f
       if (m.s32(self + 0x2c) !== 0) qsortMem(m, m.u32(self + 0x28), m.s32(self + 0x2c), 0x15, cmpTalks);
       // statuslinjen (ftol([0xae2364]·0,004), 0x66f4e0/0x802f80 den 31/12) – udeladt
       // (2) personerne
-      for (let i = 0; i < m.s32(G.STAFF_COUNT) && (flag & 0xff) === 1; i++, st = (st + 0x6e) >>> 0) staffStep(c, self, D, st);
+      if (only) { if ((flag & 0xff) === 1) for (const s of only) staffStep(c, self, D, s); }
+      else for (let i = 0; i < m.s32(G.STAFF_COUNT) && (flag & 0xff) === 1; i++, st = (st + 0x6e) >>> 0) staffStep(c, self, D, st);
       // (3) dag 36 og 200: beslutningslisten komprimeres
       const dd = m.s16(D);
       if (dd === 0x24 || dd === 0xc8) {

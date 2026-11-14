@@ -54,6 +54,7 @@ import { cmFinanceDay, cmFinOn, cmMatchIncome, GBP as CM_GBP } from './cmFinance
 import { fixtureCodesOf, gameCrowd } from './engine/grid/gameInputs';
 import { cmEuroCatchUp, cmEuroDay, cmEuroPlayDay } from './cmEurope';
 import { compHooks } from './hooks';
+import { cmContractManagerDay } from './cmContractManager';
 import { freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -538,6 +539,8 @@ function newDay() {
   cmRecordsDaily(g, squad);
   // 0x5ce2d0's kontraktdel (+0x44/+0x45) og klubtabellen [0xae2d14] (cmPlayerData.ts)
   cmContractDaily(g, squad);
+  // CONTRACT_MANAGER::daily_update 0x4c7ac0: computerklubbernes forlængelser, udløb og frigivelser (cmContractManager.ts)
+  cmContractManagerDay(g);
   // 0x5ce0b0 (efter 0x5ce2d0): truppens moral efter førernes indflydelse og kontrakternes +0x44 (cmPlayerData.ts, runde 10A)
   cmSquadMoraleDaily(g, squad);
   // 0x5ce2d0's udviklingsblok (0x5d38f9–0x5d578d) og træningens ugetæller 0x8b1730 (cmDevelop.ts) – erstatter training.ts' develop()

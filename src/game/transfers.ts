@@ -20,6 +20,7 @@ import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
 import { aiContract, cmAiTerms } from './cmContractGame';
+import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
@@ -1420,8 +1421,10 @@ export function aiRenewals() {
     if (!p.club || p.loan) continue;
     if (!p.contract || p.contract.expires > seasonEnd) staying.set(p.club, (staying.get(p.club) ?? 0) + 1);
   }
+  // den originale database i ægte tilstand: originalens CONTRACT_MANAGER 0x4c7ac0 forlænger computerklubbernes kontrakter (cmContractManager.ts)
+  const cm = cmCmOn(g);
   const expiring = Object.values(g.players)
-    .filter((p) => p.club && !isHumanClub(p.club) && p.contract && !p.loan && p.contract.expires <= seasonEnd && !p.contract.futureClub)
+    .filter((p) => p.club && !isHumanClub(p.club) && p.contract && !p.loan && p.contract.expires <= seasonEnd && !p.contract.futureClub && !(cm && cmCmScope(g, p)))
     .sort((a, b) => b.ca - a.ca);
   for (const p of expiring) {
     const level = clubLevel(p.club);

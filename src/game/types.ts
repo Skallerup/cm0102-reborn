@@ -40,6 +40,11 @@ export interface Contract {
   cmClauseFee?: number;
   /** originalens bonusser i pund (+0x10 mål, +0x14 assist, +0x18 clean sheet; −1 = ingen) – kampværdierne 0x6ec010 læser dem */
   cmBonusGbp?: [number, number, number];
+  /** CONTRACT_MANAGER 0x4c7ac0 (cmContractManager.ts): kontraktens type +0x35 & 0x3f, når den ikke er 2 (1 = udløbet – spilleren bliver i klubben),
+   *  +0x49 (sat fri/vil væk: fri transfer ved udløbet) og startdatoen +0x25 (forlængelsen; ellers ankomsten) */
+  cmType?: number;
+  cmB49?: number;
+  cmStart?: string;
 }
 
 /** Klausuler i et kontrakttilbud */
@@ -1175,6 +1180,8 @@ export interface GameState {
   cmNation76?: number[];
   /** computerens trupplan 0x83cb40 pr. klub: de 40 pladser [rolle, maske, +0x24, +0xf, +0x13, +0x17, +0x23, dag, år], +4, +7, +8 */
   cmPlan?: Record<number, { s: number[][]; st: number; fm: number; c: number }>;
+  /** CONTRACT_MANAGER's tilstand mellem dagene (cmContractManager.ts CmCmState): beslutningsdatoerne, forlængelsestilbuddene, rækkernes +0xb */
+  cmCm?: { dec: number[][]; off: [number, string][]; row: Record<number, number> };
   /** Shortlist_Manager's par (spiller, klub) – computerklubbernes ønskelister (0x8423f0, cmShortlistGame.ts) */
   cmSlPairs?: [number, number][];
   /** spillets startdato ([0xdd6ec8]) */

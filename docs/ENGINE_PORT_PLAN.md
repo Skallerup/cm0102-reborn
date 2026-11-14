@@ -99,6 +99,33 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
 
+## CONTRACT_MANAGER::daily_update 0x4c7ac0 i spillet (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractManager.ts`)
+- **Koblet ind:** porten i cmContract.ts (uændret, nu med `only` = personløkken for udvalgte poster) kører hver dag (sim.ts newDay efter
+  0x5ce2d0's kontraktdel, og på startdagen i newgame.ts) for computerklubbernes spillere i de spilbare lande på buildWantMem's poster +
+  planpladserne (GameState.cmPlan → 0x849ce0/0x849f00) og staff +0x52 = 0x4d0c60. CONTRACT_MANAGER's tilstand gemmes mellem dagene:
+  `GameState.cmCm` (beslutningsdatoerne fra +0x18, tilbuddene 0x6f bytes, rækkernes +0xb), `Contract.cmType` (+0x35: 1 = udløbet),
+  `cmB49` (+0x49 sat fri) og `cmStart` (+0x25). Underskriften 0x8c38b0 → spillets kontrakt (løn, udløb, bonusser, klausuler, Signing On Fee,
+  newCmContract, moral +20); fri transfer 0x8c16b0/0x8c1af0 → klubløs. Slået fra for de samme spillere: aiRenewals og season.ts' udløb 1/7.
+- **Fund:** [0xae233c] = 0 i originalen → 0x868210 svarer 1 → for kontrakter med mere end 182 dage tilbage stopper løkken dér (båndene 550/365
+  nås aldrig). [0xae2330] = 31/8-2001 hele sæsonen (blok 0x4c81a3: tilbud 1/6, 22/6, 2/7, 20/7, 1/8, 24/8). I forkørslen er [0xdd711c] = 0
+  (kun "udløber i dag → type 1"): pre-0-2001 og pre-194-2001 har samme kontrakter (3 ændrede) – ingen forkørsel nødvendig. Udløbne kontrakter
+  (type 1) bliver i klubben; kun "vil væk"/sat fri går 31 dage efter. Originalens udløbsdatoer er spredt over juni (06-30 1.190, 06-01 476,
+  07-01 402, 06-29 327, ~95 hver anden junidag) – allerede efter indlæsningen; databasen har mest 30/6 og 31/5, vores parser gør alle til 30/6
+  (cm0102.ts) → spillets bånd falder 30/12 og 31/3, så svarene kommer i januar/april i stedet for december/marts (ikke rettet: world-filerne).
+- *Estimeret:* [0xae2330]'s opdatering (31/8 i sæsonens startår), TRANSFER_MANAGER 0x8c5cf0/0x8c5e40/0x8c1870 = spillets åbne bud, 0x7a7eb0 =
+  cmRetire, ingen nyheder/ønskelister, sign_contract 0x4cf720's øvrige felter.
+- **Tal** (England, frø 1, 14/7-2001 → 30/6-2002; originalen `scripts/cm-contract-days.ts` på work-r3/snap-start/pre-194-2001.bin og
+  oracle/runs/xfer3-snap/post-180-2002.bin, vores `scripts/cm-contract-days-game.ts`; originalen har 5.037 engelske kontrakter, vi 3.568):
+  | | originalen | før (spillets eget) | nu |
+  |---|---|---|---|
+  | kontrakter med udløb senest 30/6-2002 | 1.334 | 1.144 | 1.144 |
+  | – forlænget / fri / skiftet / udløbet og blevet | 59 / 8 / 25 / 8 % | 59 / 38 (1/7) / 3 / 0 % | 73 / 13 / 3 / 11 % |
+  | forlængelser i samme klub i alt | 1.222 (24 %) | 670 (19 %) | 1.032 (29 %) |
+  | forlængelser pr. måned jul/aug/dec/jan/mar/apr/jun | 307/48/356/67/211/60/21 | 0/0/0/339/89/41/0 | 297/16/59/244/19/266/75 |
+  | type 1 (udløbet, i klubben) 30/6 efter dagen | 128 | 0 | 131 |
+  "Skiftet" er transfermarkedet (ikke denne port). Hastighed: 27 ms pr. dag i snit (9,5 s pr. sæson; dage med mange tilbud ~0,5 s).
+- Test: `tests/cmContractManager.test.ts`.
+
 ## Ønskekontrakten 0x85fc50 i spillet (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractGame.ts`)
 - **Koblet ind:** computerklubbernes nye kontrakter (completeTransfer for en computerkøber og byttespillere, frie agenter i aiTransferTick,
   købsoptionen, aiRenewals, aiFillSquads, aiBosmans futureWage) = CONTRACT_MANAGER::offer_contract 0x4cda70 (faktor 1,0, ud-kontrakt) →
@@ -165,7 +192,7 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   ferietjekket 0x5fe040 i 0x600a50, finansposten efter spillets saldo/lønsum (originalens efter forkørslens 194 dage).
 - *Estimeret:* ligaens op-/nedrykningsflag (League +0xbe/+0xd9/+0xc1) = spillets regler (nederste række i et spilbart land: nedrykning);
   talrækken pr. spiller (cmRand) i stedet for den globale rækkefølge; kontraktens startdato +0x25 (0x85eba8–0x85ec92) bruges ikke.
-- Ikke porteret (stadig): CONTRACT_MANAGER::daily_update 0x4c7ac0 i spillet (porten i cmContract.ts kører kun på originalens hukommelse –
+- Ikke porteret (stadig – 0x4c7ac0 er koblet ind 14/11, se ovenfor): CONTRACT_MANAGER::daily_update 0x4c7ac0 i spillet (porten i cmContract.ts kørte kun på originalens hukommelse –
   kræver en hukommelse af spillets data med ~75 ikke-porterede kald), Shortlist_Manager 0x842e10/0x83b6e0/0x840d80/0x843e10/0x84a020 (3.932
   instr. + 0x846920's 3.881), udbudsprisen 0x4d1600 (3.185 instr., 24 kaldte funktioner), build_bid 0x8e5d60 (2.013).
 
