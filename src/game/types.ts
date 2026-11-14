@@ -785,6 +785,10 @@ export interface TransferOffer {
   final?: boolean;
   /** CM 01/02 (cmTransferTalks.ts): kontraktforhandlingen efter et accepteret bud (0x8c0080 → Offer contract to …) */
   cmTalks?: import('./cmTransferTalks').CmTalks;
+  /** CM 01/02 (cmShortlistGame.ts): computer → computer-bud fra ønskelisterne, der lever til svaret (TRANSFER_MANAGER 0x8c63a0): pending =
+   *  sælgeren svarer på respondBy (0x8cc5b0's svartid), countered = køberen vurderer modbuddet (0x8c0810, 2 dage), negotiating = accepteret,
+   *  spillerens beslutning (0x4cd230) */
+  cmAi?: boolean;
 }
 
 /** En AI-klub der jagter en spiller (vender tilbage med højere bud) */

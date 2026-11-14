@@ -81,6 +81,8 @@ export interface SlBid {
   months: number; sellOn: number; lgFee: number; lgApps: number; intFee: number; intApps: number; pub: number;
   /** 0x840d80's værdisætning (£) – det, køberen højst vil give (0x8c0810) */
   max: number;
+  /** svartiden 0x8cc5b0 → schedule_offer 0x8c6220: dage til sælgerens svar (0 = samme dag) */
+  days: number;
 }
 export interface SlFree { kind: 'free'; buyer: number; player: number }
 export type SlEvent = SlBid;
@@ -483,7 +485,7 @@ function writeOffers(S: SlMem): void {
     m.w32(r + 8, o.buyer); m.w32(r + 0xc, pm); m.w8(r + 0x11, 0xb);
     const d = dayOf(o.created); m.w16(r + 0x12, d.day); m.w16(r + 0x14, d.year); m.w32(r + 0x16, leapY(d.year));
     m.w32(r + 0x1b, Math.round(o.fee * GBP)); m.w8(r + 0x1f, o.loan ? 1 : 0); m.w32(r + 0x24, -1); m.w32(r + 0x28, -1);
-    m.w8(r + 0x2c, o.status === 'pending' ? 0 : o.status === 'countered' ? 2 : 5); m.w8(r + 0x2d, o.pub ?? 0);
+    m.w8(r + 0x2c, o.status === 'pending' ? 0 : o.status === 'countered' ? (o.cmAi ? 1 : 2) : 5); m.w8(r + 0x2d, o.pub ?? 0);
     m.w32(r + 0x35, Math.round((o.lgFee ?? 0) * GBP)); m.w8(r + 0x39, o.lgApps ?? 10);
     m.w32(r + 0x3a, Math.round((o.intFee ?? 0) * GBP)); m.w8(r + 0x3e, o.intApps ?? 10); m.w8(r + 0x3f, o.sellOn ?? 0); m.w8(r + 0x40, o.months ?? 0);
   }
@@ -885,7 +887,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         const st = a[a.length - 6] >>> 0, club = a[a.length - 5] >>> 0;
         const r = 0x5e7f0000;
         for (let i = 0; i < 0x48; i++) m.w8(r + i, 0);
-        m.w32(r + 8, m.s32(club)); m.w32(r + 0xc, m.s32(st)); m.w8(r + 0x1f, 1);
+        m.w32(r + 8, m.s32(club)); m.w32(r + 0xc, m.s32(st)); m.w8(r + 0x1f, 1); m.w8(r + 0x11, 0xb);   // (init_loan_offer 0x8e7810)
         return addBid(S, r, true);
       }
       case 0x8d0590: {
@@ -1049,10 +1051,27 @@ function addBid(S: SlMem, r: number, loan: boolean): number {
   if (!p || !g.clubs[buyer]) return -1;
   const id = g.nextId.offer++;
   const eur = (v: number) => Math.max(0, v);
+  // 0x8be300: menneskets sælger får 28 dage (0x8be884 – spillets egen frist bruges), ellers 0x8cc5b0's svartid (også for klubløse)
+  const st = (m.u32(G.STAFF) + 0x6e * m.s32(r + 0xc)) >>> 0, k = getContract(m, st);
+  const sellerHuman = !!k && (m.u8(k + 0x35) & 0x3f) !== 5 && isHumanClub(m.s32(k + 4));
+  const days = sellerHuman ? 28 : responseDelay(S, r);
   S.events.push({ kind: 'bid', id, buyer, player: p.id, fee: loan ? 0 : eur(m.s32(r + 0x1b)), loan: loan || m.u8(r + 0x1f) === 1,
     months: Math.max(0, s8(m.u8(r + 0x40))), sellOn: Math.max(0, s8(m.u8(r + 0x3f))), lgFee: eur(m.s32(r + 0x35)), lgApps: m.u8(r + 0x39) || 10,
-    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p) });
+    intFee: eur(m.s32(r + 0x3a)), intApps: m.u8(r + 0x3e) || 10, pub: m.u8(r + 0x2d), max: maxOf(S, buyer, p), days });
   return id;
+}
+
+/** TRANSFER_MANAGER::get_offer_response_delay 0x8cc5b0 (oversat, cmGen/) og schedule_offer 0x8c6220's dagsdel: dage til sælgerens svar.
+ *  0x8cc5b0: unge talenter (PA > 130, alder < 26, trupstatus > 0, viljen 0x846920 > 3,15 …) 30 tidspunkter = 10 dage, ellers rand(status/10 + 12)
+ *  tidspunkter (mindst rand(3) + 1); overgangsvinduet 0x8e8ed0 er 365 dage (landenes TRANSFER_RULES +0x8ac findes ikke i hukommelsen –
+ *  2001/02 har ingen vinduer). 0x8c6220: tidspunktet [0xae2c88] + resten; over 2 → næste dag. */
+const DELAY_OUT = 0x5e7f0100;
+export function responseDelay(S: SlMem, r: number): number {
+  const { m } = S;
+  m.w8(DELAY_OUT, 0); m.w8(DELAY_OUT + 4, 0);
+  slCall(S.c, 0x8cc5b0, m.u32(0xde1f54), r, DELAY_OUT, DELAY_OUT + 4);
+  const days = s8(m.u8(DELAY_OUT)), sl = s8(m.u8(DELAY_OUT + 4));
+  return Math.max(0, days + (m.u8(G.SLICE) + sl > 2 ? 1 : 0));
 }
 /** 0x840d80 for køberens plads med spilleren (værdisætningen, køberen højst giver) – pladsen +7 som reserve */
 function maxOf(S: SlMem, buyer: number, p: Player): number {
@@ -1114,7 +1133,7 @@ function onList(S: SlMem, id: number, cid: number): boolean {
  *  TRANSFER_MANAGER::reject_transfer_offer 0x8bf680's del for køberens ønskeliste – 0x84aeb0(køber, staff) rydder budmærket +0x17 på
  *  pladserne med ham, og har køberen en plads med ham (0x849ce0(køber, staff, 0, 0)), fjernes han som mål 0x843e10(staff, køber, 1, rolle ≠ 0xb)
  *  (som genudfylder pladsen). Uden det stod pladserne med et afvist bud låst resten af sæsonen (14/11). Kørt dagen efter (*estimeret*: i
- *  originalen sker det, når svaret kommer). Computer → computer-bud står ikke i g.offers: de er afgjort samme dag (cmAiAiAnswer). */
+ *  originalen sker det, når svaret kommer). Computer → computer-buddene står i g.offers, til svaret er kommet (transfers.ts cmAiAiDue). */
 export const SL_DROP = { n: 0 };
 function dropDeadBids(S: SlMem): void {
   if (ENV.CM_SL_DROP === '0') return;
@@ -1276,11 +1295,63 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   }
   SL_DIAG.end?.(S);
   const ev = finishSl(S);
-  (S.m as SparseMem).release();
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;
   if (t0) SL_STATS.ms += performance.now() - t0;
   SL_STATS.cpuMs += cpuNow() - c0;
   tt = now();
   applyHook(ev);
+  // TRANSFER_MANAGER::daily_update 0x8c5880 → process_due_offer 0x8c63a0: de computer → computer-bud, hvis tid er kommet (også dagens med 0 dage)
+  dueHook({
+    loanAnswer: (pid, buyer, seller) => loanAnswer_84af00(S, pid, buyer, seller),
+    delay: (pid, buyer, site) => offerDelay(S, pid, buyer, site),
+    interest: (pid, buyer) => moveInterest(S, pid, buyer),
+    rand: (pid, buyer) => cmRand(g.seed ?? 0, pid, buyer, dayNum(g.date), 0x4cd230),
+  });
+  (S.m as SparseMem).release();
   tick('d.apply', tt);
+}
+
+/** det, transfers.ts' dagsbehandling af buddene (cmAiAiDue) må spørge dagens hukommelse om */
+export interface SlDueCtx {
+  /** shortlist_manager_predict_selling_club_response 0x84af00(sælger, staff, 0, køber, −1, lejebud 1): 0 = sælgeren siger ja til lejen */
+  loanAnswer(pid: number, buyer: number, seller: number): number;
+  /** 0x8cc5b0 + 0x8c6220 for et nyt bud fra køberen (0x8c0810's nye bud → 0x8be300): dage til svaret */
+  delay(pid: number, buyer: number, site: number): number;
+  /** accept_transfer_bid 0x8c0080: spillerens vilje 0x846920(staff, køber, 0, 0, status 0x849f00(staff, køber, 0), &ud) – under 0,75 siger han nej */
+  interest(pid: number, buyer: number): number;
+  /** en talrække til spillerens beslutningsdag */
+  rand(pid: number, buyer: number): (n: number) => number;
+}
+export function setSlDue(f: (cx: SlDueCtx) => void): void { (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue = f; }
+const dueHook = (cx: SlDueCtx) => (globalThis as { __cmSlDue?: (cx: SlDueCtx) => void }).__cmSlDue?.(cx);
+
+function loanAnswer_84af00(S: SlMem, pid: number, buyer: number, seller: number): number {
+  const id = S.memOf.get(pid), sc = S.clubAdr(seller), bc = S.clubAdr(buyer);
+  if (id === undefined || !sc || !bc) return 2;
+  refreshClub(S, seller);
+  const st = (S.m.u32(G.STAFF) + 0x6e * id) >>> 0;
+  S.M.setRand(cmRand(S.g.seed ?? 0, pid, buyer, dayNum(S.g.date), 0x84af00));
+  return shared(() => slCall(S.c, 0x84af00, S.slm, sc, st, 0, 0, bc, -1, -1, 1), S) & 0xff;
+}
+function moveInterest(S: SlMem, pid: number, buyer: number): number {
+  const id = S.memOf.get(pid), bc = S.clubAdr(buyer);
+  if (id === undefined || !bc) return 0;
+  const st = (S.m.u32(G.STAFF) + 0x6e * id) >>> 0;
+  refreshClub(S, buyer);
+  S.M.setRand(cmRand(S.g.seed ?? 0, pid, buyer, dayNum(S.g.date), 0x8c0080));
+  return shared(() => {
+    const status = slCall(S.c, 0x849f00, S.slm, st, bc, 0) & 0xff;
+    S.m.w32(DELAY_OUT + 8, 0);
+    return slCall(S.c, 0x846920, S.slm, st, bc, 0, 0, status, DELAY_OUT + 8);
+  }, S);
+}
+const DELAY_REC = 0x5e7f0200;
+function offerDelay(S: SlMem, pid: number, buyer: number, site: number): number {
+  const { m } = S;
+  const id = S.memOf.get(pid);
+  if (id === undefined || !S.clubAdr(buyer)) return 2;
+  for (let i = 0; i < 0x48; i++) m.w8(DELAY_REC + i, 0);
+  m.w32(DELAY_REC + 8, buyer); m.w32(DELAY_REC + 0xc, id); m.w8(DELAY_REC + 0x11, 0xb);
+  S.M.setRand(cmRand(S.g.seed ?? 0, pid, buyer, dayNum(S.g.date), site));
+  return shared(() => responseDelay(S, DELAY_REC), S);
 }

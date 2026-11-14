@@ -179,6 +179,26 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   start (179 engelske, mest født 1982 uden fornavn) findes ikke i spillet – 273/277 kan ikke parres (`scripts/cm-free-start.ts`); de er lavet før
   14/7 (forkørslen/ungdom), så spillet har ingen at skrive under med (verdensfilens 323 klubløse er ikke i originalen). Udestår: buddene lever
   dage i originalen (135 åbne 19/7), vores afgøres samme dag; lejesvaret (kun lejelistede, *estimeret*); stadig lidt for få køb og for dyre.
+- **Runde 7 (14/11, stadig slået fra): buddene lever som i originalen.** Computer → computer-bud står nu i g.offers (`TransferOffer.cmAi`) til
+  svaret: 0x8be300 (addBid) kalder den oversatte get_offer_response_delay 0x8cc5b0 (unge talenter 30 tidspunkter = 10 dage, ellers
+  rand(status/10 + 12) tidspunkter; vinduet 0x8e8ed0 = 365 – landenes TRANSFER_RULES +0x8ac findes ikke i hukommelsen) + schedule_offer 0x8c6220's
+  dagsdel; menneskets sælger 28 dage (spillets egen frist bruges). transfers.ts `cmAiAiDue` = process_due_offer 0x8c63a0, kørt sidst i
+  cmShortlistDaily på dagens hukommelse: lejebud → 0x84af00 (oversat; 0 = ja), køb → 0x8c8090 (aiRespond) → accept 0x8c0080 (spillerens vilje
+  0x846920 med køberens status 0x849f00 < 0,75 → nej 0x8d8310, ellers beslutningen efter min(rand(5) + 1, 0x8cc5b0) dage), modbud
+  0x8be9d0 (computerkøberen svarer om 2 dage – 0x7875e0 = 0) → 0x8c0810 (aiReview mod 0x840d80's +7) → endeligt bud med ny svartid eller trukket;
+  afslag 0x8bf680. writeOffers skriver tilstand 1 for et modbud. *Estimeret*: spillerens kontraktsvar 0x4ce4e0 = ja, lejespillerens beslutning
+  0x4cc930 straks, svar på dag 0 kommer sidst på dagen (originalen: et senere tidspunkt). **Sæson** (`CM_SL=1 scripts/ct-season-game.ts`, frø 1):
+  403 køb (£128,1 mio., median £83.030) – originalen 432/£155,8 mio. (−7 %/−18 %); lejeaftaler 236 (originalen ~116 – alle 236 lejebud siger
+  0x84af00 ja til, fordi 0x84a020 kun byder, når samme forudsigelse er 0: forskellen ligger i antallet af lejebud); 0 klubløse (45); bud
+  2.546 – 1.722 accepteret, 994 af dem siger spilleren nej til (0x846920 < 0,75), 701 afvist, 123 modbud (83 nye endelige bud); åbne i snit 16,5
+  (originalen 135 den 19/7). **Hastigheden er værre:** 475 ms pr. dag (før 416) – afslagene og spillerens nej giver flere genudfyldninger
+  (0x843e10 → 0x83f3a0); 30 dage 296 → 551 ms. Derfor stadig slået fra.
+- **De klubløse (14/11, ikke porteret):** `scripts/cm-free-origin.ts` – originalens 277 klubløse den 14/7 var ALLE klubløse allerede 1/1 (før
+  forkørslen; samme 8.904 personer) – de kommer fra indlæsningen, ikke fra forkørslen/frigivelser. Ca. 100 er databasens klubløse (staff.dat +57 = −1:
+  Lee Allen, Andy Pearce, Sam Goodacre …), ~180 er født 1982 med lav CA (1–16, id 8.719–8.903 sidst i listen – Derek Wiseman, Barry Blake: ikke
+  klubløse i databasen, formentlig spillere i klubber, indlæsningen/trimningen 0x524d70 ikke beholder). Spillet har dem ikke, fordi parseren
+  (cm0102.ts `if (!club && ca < 120) continue`) dropper klubløse under CA 120. Databasen har 16.495 klubløse (1.448 engelske) – originalen beholder
+  kun ~277, så reglen i 0x524d70 for klubløse og for klubber uden for de indlæste skal læses, før world-filerne bygges om.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

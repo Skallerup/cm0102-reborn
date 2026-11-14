@@ -23,7 +23,7 @@ import { aiContract, cmAiTerms } from './cmContractGame';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmBuildBid } from './cmAiBid';
-import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, type SlEvent } from './cmShortlistGame';
+import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -900,7 +900,7 @@ export function startPreContract(pid: number): TransferOffer | string {
 
 export function processOffers() {
   const g = gs();
-  const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks;
+  const skip = (o: TransferOffer) => !!o.signing || !!o.cmTalks || !!o.cmAi;
   // CM 01/02: forhandlingerne efter et accepteret bud (svarene, fristerne)
   for (const o of g.offers.slice()) if (o.cmTalks) cmTalksDaily(o, completeTransfer);
   // ældre saves: flere åbne bud fra samme AI-klub på samme spiller → behold kun det højeste
@@ -1672,8 +1672,8 @@ function cmBidsForListed() {
 registerAskingPrice(askingPrice, playerInterest, (p) => transferRealism(p).level);
 
 /** Ønskelisternes bud (cmShortlistGame.ts, 0x84a020 → 0x8e5d60/0x8be300): bud på menneskets spillere bliver ventende bud (Respond i indbakken);
- *  en computerklubs svar kommer straks (0x8c8090 – originalen venter 0x8cc5b0's dage, *estimeret*); et modbud tages, når det er inden for
- *  køberens værdisætning 0x840d80 og transferbudgettet; klubløse spillere skriver under med det samme. */
+ *  bud på computerens spillere lever i g.offers (`cmAi`) til sælgerens svar efter 0x8cc5b0's svartid (cmAiAiDue); klubløse spillere skriver
+ *  under med det samme (*estimeret*: originalen venter også her på svartiden og spillerens beslutning). */
 export function cmShortlistApply(events: SlEvent[]) {
   const g = gs();
   for (const e of events) {
@@ -1700,35 +1700,79 @@ export function cmShortlistApply(events: SlEvent[]) {
       asOwner(p.club, () => addNews({ cat: 'transfer', key: e.loan ? 'transfer.incomingLoan' : 'transfer.incomingBid', params: { club: buyer.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } }));
       continue;
     }
-    cmAiAiAnswer(o, p, buyer);
+    o.cmAi = true;
+    o.respondBy = addDays(g.date, e.days ?? 0);
+    g.offers.push(o);
   }
 }
 /** målinger (fejlsøgning): computer → computer-svarene på ønskelisternes bud */
-export const CM_AIAI = { loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0 };
-/** computer → computer: 0x8c8090 uden nyheder til mennesket */
-function cmAiAiAnswer(o: TransferOffer, p: Player, buyer: Club) {
+export const CM_AIAI = { loan: 0, loanOk: 0, bid: 0, accept: 0, counter: 0, counterOk: 0, reject: 0, refused: 0, withdrawn: 0, review: 0, rebid: 0, done: 0, open: 0, openDays: 0 };
+const cmOpen = (o: TransferOffer) => o.status === 'pending' || o.status === 'countered' || o.status === 'negotiating';
+/** TRANSFER_MANAGER::daily_update 0x8c5880 → process_due_offer 0x8c63a0 for computer → computer-buddene, hvis tid er kommet:
+ *  tilstand 0 (pending): lejebud → 0x84af00 (0 = ja → lejen; ellers reject_loan_offer 0x8bfa30), køb → 0x8c8090 (aiRespond): accept → 0x8c0080
+ *  (spillerens vilje 0x846920 med køberens trupstatus 0x849f00 under 0,75 → han siger nej 0x8d8310; ellers hans beslutning efter
+ *  min(rand(5) + 1, 0x8cc5b0) dage – 0x4cd230), modbud → add_transfer_negotiation 0x8be9d0 (køberen svarer om 2 dage), afslag → 0x8bf680;
+ *  tilstand 1 (countered): køberen 0x8c0810 (aiReview mod 0x840d80's værdisætning) → trækker buddet eller byder endeligt (0x8be300, ny svartid);
+ *  accepteret: handlen. *Estimeret*: spillerens kontraktsvar (0x4ce4e0) er ja, og lejespillerens beslutning (0x4cc930) kommer straks. */
+function cmAiAiDue(cx: SlDueCtx) {
   const g = gs();
-  if (o.loan) {
-    // lejebud: sælgeren siger ja til en lejelistet spiller (*estimeret* – 0x8c8090's lejegren er ikke porteret)
-    CM_AIAI.loan++;
-    if (p.loanListed) { CM_AIAI.loanOk++; o.status = 'negotiating'; completeTransfer(o, p.contract?.wage ?? 0, 0); }
-    return;
+  let closed = false;
+  for (const o of g.offers.slice()) {
+    if (!o.cmAi || !cmOpen(o) || o.respondBy > g.date) continue;
+    const p = g.players[o.player], buyer = g.clubs[o.buyer];
+    if (!p || !buyer || p.club !== o.seller || p.loan || p.contract?.futureClub || isHumanClub(p.club) || isHumanClub(buyer.id)) { o.status = 'withdrawn'; CM_AIAI.withdrawn++; closed = true; continue; }
+    if (o.status === 'pending') {
+      if (o.loan) {
+        CM_AIAI.loan++;
+        if (cx.loanAnswer(p.id, buyer.id, o.seller) === 0) { CM_AIAI.loanOk++; o.status = 'negotiating'; completeTransfer(o, p.contract?.wage ?? 0, 0); }
+        else o.status = 'rejected';
+        closed = true;
+        continue;
+      }
+      CM_AIAI.bid++;
+      const c = valueCtx(g, p);
+      const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p));
+      const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
+      const t = termsOf(o);
+      const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: !!o.final, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
+      CM_AIAI[r.kind]++;
+      if (r.kind === 'accept') {
+        if (cx.interest(p.id, buyer.id) < 0.75) { CM_AIAI.refused++; o.status = 'collapsed'; closed = true; continue; }
+        o.status = 'negotiating';
+        o.respondBy = addDays(g.date, Math.min(cx.rand(p.id, buyer.id)(5) + 1, Math.max(1, cx.delay(p.id, buyer.id, 0x4cd230))));
+      } else if (r.kind === 'counter') {
+        o.status = 'countered';
+        o.cmCounter = { ...r.terms, swap: [...r.terms.swap] };
+        o.respondBy = addDays(g.date, 2);
+      } else { o.status = 'rejected'; closed = true; }
+      continue;
+    }
+    if (o.status === 'countered') {
+      CM_AIAI.review++;
+      const t = o.cmCounter ?? termsOf(o);
+      const c = valueCtx(g, p);
+      const r = aiReview(t, c, toGbp(o.maxFee ?? o.fee), (id) => toGbp(g.players[id] ? askingPrice(g.players[id]) : 0), toGbp(buyer.transferBudget));
+      o.cmCounter = undefined;
+      if (r.kind === 'withdraw') { o.status = 'withdrawn'; closed = true; continue; }
+      CM_AIAI.rebid++;
+      putTerms(o, r.terms);
+      o.final = true;
+      o.status = 'pending';
+      o.respondBy = addDays(g.date, cx.delay(p.id, buyer.id, 0x8c0810));
+      continue;
+    }
+    // accepteret, og spilleren har besluttet sig: handlen (køberen skal stadig have råd – rater: kun første rate)
+    if (!o.loan && !(o.months && o.months > 0) && buyer.transferBudget < o.fee) { o.status = 'collapsed'; closed = true; continue; }
+    CM_AIAI.done++;
+    completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
+    closed = true;
   }
-  CM_AIAI.bid++;
-  const c = valueCtx(g, p);
-  const asking = cmAskingPrice(g, p, buyer.id) ?? toGbp(askingPrice(p));
-  const rivals = g.offers.filter((x) => x !== o && x.player === p.id && x.status === 'pending' && !x.loan).map(termsOf);
-  const t = termsOf(o);
-  const r = aiRespond(t, c, { asking, rivals, unwanted: false, final: false, base: newTerms(g, p, buyer.id, 0), clause: clauseOptIn(g, p, buyer.id) });
-  let terms: BidTerms | null = null;
-  CM_AIAI[r.kind]++;
-  if (r.kind === 'accept') terms = t;
-  else if (r.kind === 'counter' && (o.maxFee ?? 0) >= r.terms.fee && buyer.transferBudget >= fromGbp(r.terms.fee)) { terms = r.terms; CM_AIAI.counterOk++; }
-  if (!terms) return;
-  putTerms(o, terms);
-  o.status = 'negotiating';
-  completeTransfer(o, wageDemand(p, buyer), preferredYears(p));
+  for (const o of g.offers) if (o.cmAi && cmOpen(o)) { CM_AIAI.open++; }
+  CM_AIAI.openDays++;
+  // de afsluttede computer → computer-bud fjernes (originalen: 0x8bf680 efter 25 dage; dropDeadBids ser kun de åbne)
+  if (closed || g.offers.some((o) => o.cmAi && !cmOpen(o))) g.offers = g.offers.filter((o) => !o.cmAi || cmOpen(o));
 }
+setSlDue(cmAiAiDue);
 setSlApply(cmShortlistApply);
 
 // ---------- frikøbsklausuler hos menneskestyrede klubber ----------

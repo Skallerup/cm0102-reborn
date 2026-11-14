@@ -7,6 +7,7 @@ import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
 import { WANT_STATS } from '../src/game/cmContractGame';
 import { SL_STATS } from '../src/game/cmShortlistGame';
+import { CM_AIAI } from '../src/game/transfers';
 
 const file = process.argv[2] ?? 'public/data/world-original.json';
 const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
@@ -36,6 +37,7 @@ console.log(`engelske købere: ${bc.length} klubber; skifter pr. klub (med sum, 
 console.log(bc.slice(0, 25).map(([k, v]) => `${k} ${v.n} (${v.paid}, ${(v.fee / 1e6).toFixed(1)})`).join(' · '));
 const mean = fees.length ? fees.reduce((a, b) => a + b, 0) / fees.length : 0;
 console.log(`gennemsnitspris £${Math.round(mean)}; ønskelisterne ${SL_STATS.days} dage, ${Math.round(SL_STATS.ms / Math.max(1, SL_STATS.days))} ms pr. dag, bud ${SL_STATS.bids}`);
+console.log('computer → computer-buddene', JSON.stringify(CM_AIAI), `åbne i snit ${(CM_AIAI.open / Math.max(1, CM_AIAI.openDays)).toFixed(1)}`);
 const wages = ps.filter((p) => p.club && p.contract && g.clubs[p.club]?.nation === engNat).map((p) => p.contract!.wage * GBP).sort((a, b) => a - b);
 const q = (f: number) => Math.round(wages[Math.floor(f * (wages.length - 1))]);
 console.log(`spillere ${ps.length}, med kontrakt ${wages.length}, uden klub ${ps.filter((p) => !p.club).length}; ugeløn £ median ${q(0.5)}, 90 % ${q(0.9)}, 99 % ${q(0.99)}, max ${q(1)}`);
