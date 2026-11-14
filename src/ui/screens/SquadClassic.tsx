@@ -6,7 +6,7 @@
 import { isInternational } from '../../game/international';
 import { useEffect, useState, type DragEvent, type ReactNode } from 'react';
 import { act } from '../../game/actions';
-import { gs, notify, squad } from '../../game/state';
+import { gs, inSetup, notify, squad } from '../../game/state';
 import { cmVirtualView } from '../../game/cmVirtual';
 import { autoSelect, available, newTactic } from '../../game/tactics';
 import { authentic, benchSize } from '../../game/rules';
@@ -493,7 +493,7 @@ export function ClassicFirstSquad({ reserves = false, cid, pick }: { reserves?: 
             btn={{ className: selCls, draggable: true, onDragStart: dragStart(p.id), onDragEnd: dragEnd, title: orig ? undefined : t('cl.sq.selHint'), 'data-pid': p.id }} />}
         <Tag p={p} tag={tag} />
         <button className={`cx-sq-name ${!orig && !available(p) ? 'unavail' : ''} ${(ro || reserves ? loanedOut : p.loan) ? 'loan' : ''} ${dim ? 'dim' : ''}`} draggable={!ro} onDragStart={dragStart(p.id)} onDragEnd={dragEnd}
-          onClick={() => (pick?.armed && pick.ok(p) ? pick.onPick(p.id) : armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro) && starIds(players).has(p.id))}</button>
+          onClick={() => (pick?.armed && pick.ok(p) ? pick.onPick(p.id) : armedTarget ? putArmed(p) : nav({ name: 'player', id: p.id }))}>{shortName(p, (!orig || ro || inSetup()) && starIds(players).has(p.id))}</button>
         {cols.map((c) => <span key={c.key} className={`cx-sq-info ${trad && c.key === 'cond' ? 'cond' : ''}`} data-col={c.key}>{c.show(p)}</span>)}
       </div>
     );
