@@ -8,7 +8,7 @@ import { askConfirm } from '../confirm';
 import type { GameState } from '../../game/types';
 import { fetchBoard, type Board, type RankRow } from '../../online/rank';
 import { ordinal } from './Competitions';
-import { compName, natName, t } from '../../i18n';
+import { compName, dateFmt, natName, t } from '../../i18n';
 import { CxDrop, CxLink, clubRoute } from '../classic';
 import { useGame } from '../core';
 import { gs } from '../../game/state';
@@ -80,6 +80,53 @@ export async function addNation(n: number) {
 /** Hall of Fame (CM 01/02): managerne i rækkefølge med klub og point (lilla). Vores udgave er fællesskabets rangliste; uden net
  *  vises din egen karriere. "Min karriere" (pointene sæson for sæson) ligger under View. */
 export function ClassicHallOfFame({ fallback }: { fallback: ReactNode }) {
+  if (authentic()) return <OriginalHallOfFame />;
+  return <ReborHallOfFame fallback={fallback} />;
+}
+
+/** Originalens Hall of Fame (hall_of_fame.cpp, 0x5ef0b0–0x5f10c0): 28 tabeller (0 = "January - December", 1-27 = ligaerne, sorteret efter navn)
+ *  med op til 100 poster – managerens navn, "Klub/Nation", score og dato. Originalen gemmer menneskets score i hall_of_fame.bin på tværs af spil;
+ *  vi har ingen fil, så tabellerne fyldes af denne karrieres sæsoner (scoren er *estimeret*: placering + trofæer). */
+const HOF_LEAGUES: [string, string[]][] = [
+  ['Korean', ['south korea', 'korea republic', 'korea']], ['Welsh', ['wales']], ['United States', ['united states', 'usa']], ['Turkish', ['turkey']],
+  ['Swedish', ['sweden']], ['Spanish', ['spain']], ['Scottish', ['scotland']], ['Russian', ['russia']], ['Portuguese', ['portugal']], ['Polish', ['poland']],
+  ['Norwegian', ['norway']], ['Northern Irish', ['northern ireland']], ['Japanese', ['japan']], ['Italian', ['italy']], ['Irish', ['republic of ireland', 'ireland', 'eire']],
+  ['Dutch', ['holland', 'netherlands']], ['Greek', ['greece']], ['German', ['germany']], ['French', ['france']], ['Finnish', ['finland']], ['English', ['england']],
+  ['Danish', ['denmark']], ['Croatian', ['croatia']], ['Brazilian', ['brazil']], ['Belgian', ['belgium']], ['Australian', ['australia']], ['Argentinian', ['argentina']],
+];
+function OriginalHallOfFame() {
+  const g = useGame()! as GameState;
+  const [table, setTable] = useState(0); // 0 = January - December, ellers 1 + indeks i HOF_LEAGUES
+  const order = HOF_LEAGUES.map((l, i) => ({ i, name: `${l[0]} League` })).sort((a, b) => a.name.localeCompare(b.name));
+  const rows = g.manager.history.map((h) => {
+    const c = g.clubs[h.club];
+    const nat = g.nations[c?.nation ?? -1]?.name ?? '';
+    const lg = HOF_LEAGUES.findIndex((l) => l[1].includes(nat.toLowerCase()));
+    const tro = g.manager.trophies.filter((x) => x.season === h.season).length;
+    return { key: h.season, lg, club: c?.short ?? '', nat, score: Math.max(0, 21 - h.pos) * 10 + tro * 50, date: `${h.season + 1}-06-30` };
+  }).filter((r) => table === 0 || r.lg === table - 1).sort((a, b) => b.score - a.score || a.key - b.key).slice(0, 100);
+  const title = table === 0 ? t('cl.hof.janDec') : `${HOF_LEAGUES[table - 1][0]} League`;
+  return (
+    <div>
+      <Head title={t('cl.go.hall')} />
+      <div className="cx-subtitle">{title}</div>
+      <div className="cx-tools"><CxDrop label={t('cl.sq.view')} items={[{ key: 'jd', label: t('cl.hof.janDecShort'), checked: table === 0, onClick: () => setTable(0) }, ...order.map((o) => ({ key: o.name, label: o.name, checked: table === o.i + 1, onClick: () => setTable(o.i + 1) }))]} /></div>
+      <div className="cx-tbl-wrap cx-listpanel cx-hof cx-hof-orig">
+        <table className="cx-tbl">
+          <tbody>{rows.map((r, i) => (
+            <tr key={r.key}>
+              <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
+              <td className="c-yel">{g.manager.name}</td><td>{r.club ? `${r.club}/${natName(r.nat)}` : t('cl.hof.noClub')}</td>
+              <td className="c-val">{r.score.toLocaleString(t('cl.locale'))}</td><td>{dateFmt(r.date)}</td>
+            </tr>
+          ))}</tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function ReborHallOfFame({ fallback }: { fallback: ReactNode }) {
   const [board, setBoard] = useState<Board | 'mine'>('career');
   const [data, setData] = useState<{ rows: RankRow[]; me: { rank: number; points: number } | null } | null | 'none'>(null);
   useEffect(() => { if (board === 'mine') return; let ok = true; setData(null); void fetchBoard(board).then((d) => { if (ok) setData(d ?? 'none'); }); return () => { ok = false; }; }, [board]);

@@ -886,7 +886,17 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-ligaer.png` });
     await go({ name: 'ranking' }); await page.waitForSelector('.cx-subtitle', { timeout: 5000 }); await page.waitForTimeout(800);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-halloffame.png` });
-    await checkScreen('hall of fame');
+    if (!ENGINE_GRID) await checkScreen('hall of fame'); // originalens tabeller er tomme ved spilstart
+    if (ENGINE_GRID) {
+      // ægte tilstand: originalens Hall of Fame (28 tabeller) – ikke CM Rebornes pointmodel
+      if (await page.locator('.cx-hof-orig').count() !== 1) throw new Error('Hall of Fame: originalens skærm mangler');
+      if (/Projection|How points work/i.test(await page.locator('.cx-hof-orig').innerText())) throw new Error('Hall of Fame: CM Rebornes pointmodel i ægte tilstand');
+      await page.click('.cx-tools .cx-drop-btn'); await page.locator('.cx-drop-pop button', { hasText: 'English League' }).first().click();
+      await page.waitForFunction(() => document.querySelector('.cx-subtitle')?.textContent === 'English League', null, { timeout: 3000 });
+      await go({ name: 'scouting' }); await page.waitForTimeout(500);
+      if (await page.locator('.insight, .cols').count()) throw new Error('scouting: den moderne skærm vises i ægte tilstand');
+      await checkScreen('scouting → Scout #1');
+    }
   });
   if (look === 'klassisk') await step('Game Options → Om dette spil (database, tilstand, kampmotor)', async () => {
     await page.click('.cx-gopt');

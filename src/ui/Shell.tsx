@@ -674,7 +674,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'transfers': return <Transfers tab={route.tab} />;
     case 'find': return <ClassicFind tab={route.tab} />;
     case 'nation': return <ClassicNation id={route.id as number | undefined} tab={route.tab} />;
-    case 'scouting': return <Scouting />;
+    case 'scouting': return isRetro() && cmActive(g) ? <Transfers tab="scout1" /> : <Scouting />;
     case 'staff': return <StaffScreen />;
     case 'finance': return <Finance />;
     case 'club': return <ClubScreen id={route.id as number | undefined} />;
