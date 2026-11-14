@@ -3,17 +3,24 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
-import { gs, squad } from '../src/game/state';
+import { gs, squad, setClub } from '../src/game/state';
 import { act } from '../src/game/actions';
 import { processOffers } from '../src/game/transfers';
 import { addDays, daysBetween } from '../src/game/dates';
 import { cmAcceptBid, cmAgreed, cmConfirmOpen, cmConfirmScreen, cmTalksDemand, cmTalksOpen, cmWhy } from '../src/game/cmTransferTalks';
+import { cmCheckOffer, cmInWindow, cmWindowOpen, CM_WINDOWS } from '../src/game/cmOfferCheck';
 import type { Player, TransferOffer } from '../src/game/types';
 
 describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout: 600_000 }, () => {
   const world = JSON.parse(readFileSync('public/data/world-original.json', 'utf8')) as WorldData;
   const eng = world.nations.findIndex((n) => n.name === 'England');
   const mu = world.clubs.find((c) => c[1] === 'Manchester United')![0];
+
+  /** Man Utds spillerliste er fuld (50) i databasen – 0x8cd450 afviser et køb uden plads, så de svageste frigives til testen */
+  function makeRoom(n = 45) {
+    const sq = squad(mu).sort((a, b) => a.ca - b.ca);
+    for (const x of sq.slice(0, Math.max(0, sq.length - n))) setClub(x, 0);
+  }
 
   /** et bud fra Man Utd, sælgeren accepterer – den første spiller, der vil tale med Man Utd */
   function accepted(skip = 0): { o: TransferOffer; p: Player; from: number } {
@@ -75,6 +82,7 @@ describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout
     expect(p.club).not.toBe(mu);
     expect(cmConfirmOpen(g, o)).toBe(true);
     expect(cmTalksOpen(g, o)).toBe(false);
+    makeRoom();
     g.clubs[mu].transferBudget = o.fee + 1;
     const sc = cmConfirmScreen(g, o);
     expect(sc.code).toBe(0);
@@ -109,6 +117,82 @@ describe('accepteret bud → Offer Contract (3.9.60, ægte tilstand)', { timeout
     expect(o.status).toBe('withdrawn');
     expect(p.club).not.toBe(mu);
     g.date = d0;
+  });
+
+  it('Confirm Transfer Offer 0x8cfc90: penge (grund 3, 1,1 × budgettet), trupplads (4), udlændingegrænse (0x14) og transfervindue (9) → Delay/Transfer Cancelled', () => {
+    const g = gs();
+    const { o, p } = accepted(5);
+    cmAgreed(o, p, { wage: 1000, years: 2 }, () => { throw new Error('skal ikke gennemføres'); });
+    makeRoom();
+    const buyer = g.clubs[mu];
+    const budget = buyer.transferBudget, nation = buyer.nation;
+    try {
+      // penge: op til 1,1 × budgettet er i orden (værdien = beløb + klausuler)
+      buyer.transferBudget = Math.ceil(o.fee / 1.1) + 1;
+      expect(cmCheckOffer(g, o)).toEqual({ code: 0, reason: 0 });
+      buyer.transferBudget = Math.floor(o.fee / 1.1) - 2;
+      expect(cmCheckOffer(g, o)).toEqual({ code: 1, reason: 3 });
+      buyer.transferBudget = o.fee * 2;
+      // trupplads: 50 spillere i klubben + den nye → Delay (grund 4); byttespillere frigør pladser
+      const extra: Player[] = [];
+      const base = squad(mu).length;
+      for (let i = base; i < 50; i++) { const c = { ...p, id: g.nextId.player++, club: mu } as Player; g.players[c.id] = c; extra.push(c); }
+      // (pladserne tælles via squad(), så spillerne skal ind i indekset)
+      for (const c of extra) setClub(c, mu);
+      expect(squad(mu).length).toBe(50);
+      expect(cmCheckOffer(g, o)).toEqual({ code: 1, reason: 4 });
+      o.swap = [squad(mu)[0].id];
+      expect(cmCheckOffer(g, o).code).toBe(0);
+      o.swap = undefined;
+      for (const c of extra) { setClub(c, 0); delete g.players[c.id]; }
+      expect(cmCheckOffer(g, o).code).toBe(0);
+      // udlændingegrænsen: England 50 (aldrig); Brasilien 3 – Man Utd som brasiliansk klub er udlænding-tjek, ikke andet
+      const br = g.nations.findIndex((n) => n.name === 'Brazil');
+      buyer.nation = br;
+      const foreign = squad(mu).filter((x) => x.nation !== br && x.cmNation2 !== br).length;
+      expect(foreign).toBeGreaterThan(3);
+      p.nation = (br + 1) % g.nations.length;
+      p.cmNation2 = undefined;
+      const res = cmCheckOffer(g, o);
+      expect(res).toEqual({ code: 2, reason: 0x14 });
+      expect(cmConfirmScreen(g, o).key).toBe('cm.confirm.foreign');
+      expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('refused');
+      expect(act({ t: 'cmConfirm', offer: o.id, answer: 'no' })).toBe('refused');
+      expect(o.status).toBe('negotiating');
+      buyer.nation = nation;
+    } finally {
+      buyer.nation = nation;
+      buyer.transferBudget = budget;
+    }
+  });
+
+  it('transfervinduerne 2001/02 (0x8e8c40): England 2/6 (mandag) – 26/3 (torsdag), vindue uden for = grund 9, Danmark altid åbent', () => {
+    const g = gs();
+    const eng = CM_WINDOWS.England[0];
+    expect(cmInWindow(eng, '2001-07-14')).toBe(true);
+    expect(cmInWindow(eng, '2002-03-27')).toBe(true);   // 26/3 2002 er tirsdag → torsdag 28/3
+    expect(cmInWindow(eng, '2002-03-28')).toBe(true);
+    expect(cmInWindow(eng, '2002-03-29')).toBe(false);
+    expect(cmInWindow(eng, '2002-05-15')).toBe(false);
+    expect(cmInWindow(eng, '2001-06-03')).toBe(false);   // 2/6 2001 er lørdag → mandag 4/6
+    expect(cmInWindow(eng, '2001-06-04')).toBe(true);
+    const mc = g.clubs[mu];
+    expect(cmWindowOpen(g, mc, '2002-04-10')).toBe(false);
+    const nation = mc.nation;
+    mc.nation = g.nations.findIndex((n) => n.name === 'Denmark');
+    expect(cmWindowOpen(g, mc, '2002-04-10')).toBe(true);
+    mc.nation = nation;
+    const { o, p } = accepted(6);
+    cmAgreed(o, p, { wage: 1000, years: 2 }, () => { throw new Error('skal ikke gennemføres'); });
+    makeRoom();
+    const d0 = g.date, budget = mc.transferBudget;
+    try {
+      mc.transferBudget = o.fee * 2;
+      g.date = '2002-04-10';
+      expect(cmCheckOffer(g, o)).toEqual({ code: 2, reason: 9 });
+      expect(cmConfirmScreen(g, o).key).toBe('');
+      expect(act({ t: 'cmConfirm', offer: o.id, answer: 'yes' })).toBe('refused');
+    } finally { g.date = d0; mc.transferBudget = budget; }
   });
 
   it('spillerens grunde til at afvise skiftet (0x8e4ae0): højst to, i originalens rækkefølge', () => {

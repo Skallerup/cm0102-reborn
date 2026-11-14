@@ -147,10 +147,10 @@ export function Inbox() {
     if (reqOpen && item && requestOpen(g, item)) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><TransferRequestPanel news={item} onClose={() => setReqOpen(false)} /></div>;
     if (cmConfirmOpen(g, confirmLive)) {
       const sc = cmConfirmScreen(g, confirmLive);
-      const text = t(sc.key, { ...sc.params, fee: money(confirmLive.fee) });
+      const text = sc.key ? t(sc.key, { ...sc.params, fee: money(confirmLive.fee) }) : '';
       const close = () => setConfirmOpen(null);
       const ans = (a: 'yes' | 'no' | 'delay') => { close(); act({ t: 'cmConfirm', offer: confirmLive.id, answer: a }); };
-      return <div><Head title={g.clubs[g.userClub]?.name ?? ''} /><TransferConfirmPanel title={sc.code === 1 ? t('cm.staffNoRoom') : t('cm.confirm.title')} text={text} cancelLabel={sc.code === 1 ? t('common.cancel') : t('common.no')} yes={sc.code === 0} onBack={close} onAnswer={ans} /></div>;
+      return <div><Head title={g.clubs[g.userClub]?.name ?? ''} /><TransferConfirmPanel title={sc.code === 2 ? t('cm.confirm.cancelled') : sc.code === 1 ? t('cm.staffNoRoom') : t('cm.confirm.title')} text={text} backOnly={sc.code === 2} cancelLabel={sc.code === 1 ? t('common.cancel') : t('common.no')} yes={sc.code === 0} onBack={close} onAnswer={ans} /></div>;
     }
     if (cmTalksOpen(g, talkLive)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
     if (renewOpen !== null && g.players[renewOpen]?.club === g.userClub) return <div><ClassicNegotiation renewPid={renewOpen} onClose={() => setRenewOpen(null)} /></div>;
@@ -357,17 +357,17 @@ function DelayPanel({ text, onBack, onAnswer }: { text: string; onBack: () => vo
 }
 
 /** CM 01/02 0x8f2ec0: "Confirm Transfer Offer" (Back · No · Delay · Yes) og "Delay Transfer Offer" (Back · Cancel · Delay) */
-function TransferConfirmPanel({ title, text, cancelLabel, yes, onBack, onAnswer }: { title: string; text: string; cancelLabel: string; yes?: boolean; onBack: () => void; onAnswer: (a: 'yes' | 'no' | 'delay') => void }) {
+function TransferConfirmPanel({ title, text, cancelLabel, yes, backOnly, onBack, onAnswer }: { title: string; text: string; cancelLabel: string; yes?: boolean; backOnly?: boolean; onBack: () => void; onAnswer: (a: 'yes' | 'no' | 'delay') => void }) {
   useClassicDialog();
   return (
     <div className="cx-tstatus cx-confirm-offer">
       <div className="cx-subtitle">{title}</div>
       <div className="cx-ts-body"><p className="cx-ts-intro">{text}</p></div>
-      <ClassicFoot cols={yes ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr'}>
-        <button onClick={onBack}>{t('common.back')}</button>
-        <button className="cx-cancel" onClick={() => onAnswer('no')}>{cancelLabel}</button>
+      <ClassicFoot cols={backOnly ? '1fr' : yes ? '2fr 1fr 1fr 1fr' : '2fr 1fr 1fr'}>
+        <button className={backOnly ? 'primary' : ''} onClick={onBack}>{t('common.back')}</button>
+        {!backOnly && <><button className="cx-cancel" onClick={() => onAnswer('no')}>{cancelLabel}</button>
         <button className={yes ? '' : 'primary'} onClick={() => onAnswer('delay')}>{t('cl.delay')}</button>
-        {yes && <button className="primary cx-yes" onClick={() => onAnswer('yes')}>{t('common.yes')}</button>}
+        {yes && <button className="primary cx-yes" onClick={() => onAnswer('yes')}>{t('common.yes')}</button>}</>}
       </ClassicFoot>
     </div>
   );

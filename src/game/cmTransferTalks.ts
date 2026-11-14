@@ -28,6 +28,7 @@ import { cmActive, cmRand } from './cmPlayerData';
 import { cmContractAnswer, cmMoveCheck, cmTalkDemand, type CmOfferTerms, type CmTerms } from './cmContractGame';
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
+import { cmCheckOffer } from './cmOfferCheck';
 
 /** Forhandlingen på et accepteret bud (TransferOffer.cmTalks) */
 export interface CmTalks {
@@ -198,17 +199,18 @@ export function cmConfirmOpen(g: GameState, o: TransferOffer | undefined): o is 
   return !!o && !!t && t.state === 5 && !!t.agreed && !(t.delayUntil && g.date < t.delayUntil) && o.status === 'negotiating' && o.buyer === g.userClub && g.players[o.player]?.club === o.seller;
 }
 
-/** Skærmen: kontrollen 0x8cfc90 (0 = Confirm Transfer Offer, 1 = Delay Transfer Offer – for lidt penge; kontrollerne for trupplads, bestyrelsen og
- *  udlændingegrænserne (kode 2 "Transfer Cancelled") er ikke porteret, *estimeret*) og spørgsmålet (0xaa047c "Sign X from Y for Z?", uden beløb 0xaa03bc,
- *  med byttespillere 0xaa0294 "for Z plus …" / 0xaa014c "in a swap deal for …"). */
-export function cmConfirmScreen(g: GameState, o: TransferOffer): { code: 0 | 1; params: Record<string, string | number>; key: string } {
-  const p = g.players[o.player], buyer = g.clubs[o.buyer];
-  const code: 0 | 1 = (buyer?.transferBudget ?? 0) < o.fee ? 1 : 0;
+/** Skærmen: kontrollen 0x8cfc90 (cmOfferCheck.ts: 0 = Confirm Transfer Offer, 1 = Delay Transfer Offer – for lidt penge (grund 3) eller trupplads (4),
+ *  2 = Transfer Cancelled – udlændingegrænsen (0x14) eller transfervinduet (9)) og spørgsmålet (0xaa047c "Sign X from Y for Z?", uden beløb 0xaa03bc,
+ *  med byttespillere 0xaa0294 "for Z plus …" / 0xaa014c "in a swap deal for …"). Teksterne ved fejl: 0xaa000c (3), 0xa9ff74 (4), 0xa9fd24 (0x14); grund 9 har ingen. */
+export function cmConfirmScreen(g: GameState, o: TransferOffer): { code: 0 | 1 | 2; reason: number; params: Record<string, string | number>; key: string } {
+  const p = g.players[o.player];
+  const { code, reason } = cmCheckOffer(g, o);
   const swap = (o.swap ?? []).map((id) => g.players[id]).filter(Boolean).map(pname);
   const list = swap.length < 2 ? swap.join('') : `${swap.slice(0, -1).join(', ')} and ${swap[swap.length - 1]}`;
   const params = { player: pname(p), club: short(g, o.seller), buyer: short(g, o.buyer), fee: o.fee, list };
-  const key = code === 1 ? 'cm.confirm.funds' : swap.length ? (o.fee > 0 ? 'cm.confirm.plus' : 'cm.confirm.swap') : o.fee > 0 ? 'cm.confirm.fee' : 'cm.confirm.free';
-  return { code, params, key };
+  const key = code === 0 ? (swap.length ? (o.fee > 0 ? 'cm.confirm.plus' : 'cm.confirm.swap') : o.fee > 0 ? 'cm.confirm.fee' : 'cm.confirm.free')
+    : reason === 3 ? 'cm.confirm.funds' : reason === 4 ? 'cm.confirm.squad' : reason === 0x14 ? 'cm.confirm.foreign' : '';
+  return { code, reason, params, key };
 }
 
 /** Svaret: Yes (0x8c3310 – handlen gennemføres), No/Cancel (buddet trækkes tilbage 0x8bfcb0), Delay (0x8c36b0 – en uge, *estimeret*). Back lukker kun. */
@@ -216,6 +218,7 @@ export function cmConfirmAnswer(o: TransferOffer, answer: 'yes' | 'no' | 'delay'
   const g = gs();
   if (!cmConfirmOpen(g, o)) return 'refused';
   const a = o.cmTalks!.agreed!;
+  if (cmConfirmScreen(g, o).code === 2) return 'refused';   // Transfer Cancelled: kun Back
   if (answer === 'yes') {
     if (cmConfirmScreen(g, o).code !== 0) return 'refused';
     complete(o, a.wage, a.years, a.clauses);
