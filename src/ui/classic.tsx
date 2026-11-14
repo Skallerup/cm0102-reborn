@@ -321,6 +321,9 @@ function lastMatchId(g: GameState, club: number): number | undefined {
   return best?.id;
 }
 
+/** Moderne skærme uden modstykke i CM 01/02 (Manager-hubbens Profile/Jobs/Managers, Community, Press) – skjult i ægte tilstand */
+const AUTH_HIDDEN = new Set<ScreenName>(['profile', 'jobs', 'community', 'managers', 'press']);
+
 function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, route: Route, allowed: (k: ScreenName) => boolean): Item[] {
   if (!keys) return [];
   // en anden klubs side: fanerne (trup, transfers, næste kamp, kampprogram, økonomi & info) og under-knapperne
@@ -328,6 +331,7 @@ function itemsFor(keys: Hub['sub'] | ScreenName[] | undefined, g: GameState, rou
   const viewed = route.name === 'club' && route.id && Number(route.id) !== g.userClub ? Number(route.id) : 0;
   const out: Item[] = [];
   for (const k of keys) {
+    if (authentic() && AUTH_HIDDEN.has(k as ScreenName)) continue;
     // en anden klub (CM 01/02): Tactics ▸ viser deres opstilling (skrivebeskyttet), Training er grå
     // før klubben er overtaget (nyt spil) og for en klub uden spillede kampe: "No Recent Matches" (CM 01/02 – Tactics viser sidste kamps opstilling)
     if ((viewed || inSetup()) && k === 'tactics') {
@@ -485,7 +489,7 @@ function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number })
       ) : (
         <div className="cx-menu-pop" role="menu">
           {MENU.map(([gr, ks]) => {
-            const shown = ks.filter((k) => allowedFn(k));
+            const shown = ks.filter((k) => allowedFn(k) && !(authentic() && AUTH_HIDDEN.has(k)));
             if (!shown.length) return null;
             return (
               <div key={gr} className="cx-menu-group">

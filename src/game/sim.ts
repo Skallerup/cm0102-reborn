@@ -368,7 +368,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     // unge spillere: debut og en stor kamp ("Talented [spiller] given boost", "Youngster [spiller] praised")
     if (isHumanClub(p.club) && !g.draft) {
       const age = ageOn(p.dob, g.date);
-      if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0) asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
+      if (age <= 19 && s.apps + s.subs === 1 && (p.history?.length ?? 0) === 0 && !cmActive(g)) // ægte tilstand: debutnyheden findes ikke i exe'en
+        asOwner(p.club, () => addNews({ cat: 'youth', key: 'youth.debut', params: { player: pname(p), age }, link: { kind: 'player', id: p.id } }));
       else if (age <= 20 && line.rating >= 8.5) asOwner(p.club, () => addNews({ cat: 'general', key: 'media.youngsterPraised', params: { player: pname(p), age, rating: line.rating.toFixed(1) }, link: { kind: 'player', id: p.id } }));
     }
     if (line.injured && !cm) injure(p);

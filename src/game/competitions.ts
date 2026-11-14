@@ -8,6 +8,7 @@ import { asOwner, forEachHuman } from './humans';
 import { celebrateTrophy } from './fans';
 import type { Competition, Fixture, MatchResultShort, TableRow, Tie } from './types';
 import { econIncome } from './econ';
+import { cmActive } from './cmPlayerData';
 import { cmCalendarOn, cmFaCupDate, cmFindNewDate, cmLeagueSchedule, cmPlaceFixture } from './cmCalendar';
 import { cmEuroFinished, cmEuroResult } from './cmEurope';
 import { cmCupKey, cmCupRound, cmFlagsOf, cmLeagueCupStructure } from './cmCups';
@@ -558,7 +559,7 @@ function checkLeagueProgress(comp: Competition) {
   if (rules?.split && !comp.splitDone) {
     generateSplit(comp);
     // kun til managere, hvis klub spiller i ligaen
-    forEachHuman(() => { if (g.clubs[g.userClub]?.league === comp.id) addNews({ cat: 'general', key: 'news.split', params: { comp: comp.name } }); });
+    if (!cmActive(g)) forEachHuman(() => { if (g.clubs[g.userClub]?.league === comp.id) addNews({ cat: 'general', key: 'news.split', params: { comp: comp.name } }); });
     return;
   }
   comp.finished = true;

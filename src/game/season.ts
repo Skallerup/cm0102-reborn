@@ -515,9 +515,18 @@ function driftRep(cid: number, target: number, rate: number) {
   }
 }
 
+/** Ægte tilstand: klubbens omdømme (0-99) afledes af originalens club +0x80 (opdateres af 0x6d3de0 efter hver kamp) */
+function syncClubRepsFromCm(g: ReturnType<typeof gs>) {
+  for (const [id, v] of Object.entries(g.cmClubRep ?? {})) {
+    const c = g.clubs[+id];
+    if (c) c.rep = Math.max(3, Math.min(99, Math.round(v / 100)));
+  }
+}
+
 /** Den 1. i måneden: omdømmet følger den aktuelle tabelplacering (når der er spillet nok kampe) */
 export function monthlyClubReps() {
   const g = gs();
+  if (cmActive(g)) { syncClubRepsFromCm(g); return; }
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league' || comp.finished) continue;
     const rows = leagueRows(comp);
@@ -541,6 +550,7 @@ export function repTrend(cid: number): -1 | 0 | 1 {
 
 function updateClubReps() {
   const g = gs();
+  if (cmActive(g)) { syncClubRepsFromCm(g); return; }
   // sæsonslut: et større skridt mod det omdømme slutplaceringen er værd (løbende ændringer er sket hver måned)
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league') continue;
@@ -656,8 +666,8 @@ export function seasonRollover() {
     else if (g.season >= g.challenge.deadlineSeason) challengeResults.set(g.active, 'lost');
   });
   seasonWageClauses(tierBefore);
-  achievementsSeasonEnd(tierBefore);
-  storySeasonEnd(tierBefore);
+  // ægte tilstand: spillets egne præstationer og sæsonfortælling har intet modstykke i originalen
+  if (!cmActive(g)) { achievementsSeasonEnd(tierBefore); storySeasonEnd(tierBefore); }
   // ligaer kan have skiftet klubber → opdater prevTables så europæiske pladser kun gives til tier-1
   for (const [lg, order] of Object.entries(prevTables)) prevTables[lg] = order.filter((cid) => g.clubs[cid].league === lg);
   storeCompRecords(); // før statistikken nulstilles og kampprogrammet ryddes
@@ -676,7 +686,8 @@ export function seasonRollover() {
     const sq = squad(c.id);
     if (c.manager === -1) {
       // menneskestyret klub: reserveholdet sørger for at der er nok spillere til at stille hold
-      if (sq.length < 16) {
+      // ægte tilstand: originalens fyldspillere (cmVirtual.ts) dækker en for lille trup – ingen opdigtede spillere eller nyhed
+      if (sq.length < 16 && !cmActive(g)) {
         const before = sq.length;
         fillSquad(c, sq, clubLevel(c.id) - 15, g.date, hash(g.seed, g.season, c.id), 16);
         asOwner(c.id, () => addNews({ cat: 'youth', key: 'news.reservesPromoted', params: { n: squad(c.id).length - before } }));

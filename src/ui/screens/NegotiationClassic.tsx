@@ -11,6 +11,7 @@ import { money, t } from '../../i18n';
 import { CxDrop, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
+import { authentic } from '../../game/rules';
 import { cmTalksDemand } from '../../game/cmTransferTalks';
 
 type Tab = 'basic' | 'bonuses' | 'clauses';
@@ -204,9 +205,13 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
                 <button className={`cx-opt ${cl.release ? 'on' : ''}`} onClick={() => toggle('release', Math.round(relBase * 2.5 / 100_000) * 100_000)}>{t('cl.neg.release')}</button>
                 <Row label={t('cl.neg.releaseFee')} value={cl.release ?? 0} show={money} options={relOpts} on={!!cl.release} onSet={(v) => set('release', v)} />
                 <p className="cx-ts-intro">{t('cl.neg.nonRelease')}</p>
-                <button className={`cx-opt ${cl.wageRise ? 'on' : ''}`} onClick={() => toggle('wageRise', 10)}>{t('cl.neg.wageRise', { n: cl.wageRise ?? 10 })}</button>
+                {!authentic() && (
+                <>
+                  <button className={`cx-opt ${cl.wageRise ? 'on' : ''}`} onClick={() => toggle('wageRise', 10)}>{t('cl.neg.wageRise', { n: cl.wageRise ?? 10 })}</button>
                 <button className={`cx-opt ${cl.relegationCut ? 'on' : ''}`} onClick={() => toggle('relegationCut', 25)}>{t('cl.neg.relegationCut', { n: cl.relegationCut ?? 25 })}</button>
                 <button className={`cx-opt ${cl.promotionRise ? 'on' : ''}`} onClick={() => toggle('promotionRise', 25)}>{t('cl.neg.promotionRise', { n: cl.promotionRise ?? 25 })}</button>
+                </>
+              )}
               </>
             )}
           </div>

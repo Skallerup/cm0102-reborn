@@ -192,6 +192,8 @@ export function monthlyValues() {
     // originalen regner +0x52 om hver måned, vides ikke)
     if (p.cmAsk && p.cmAsk.club === p.club && isHumanClub(p.club)) { p.value = p.cmAsk.v; continue; }
     const target = valueTarget(p);
+    // ægte tilstand: originalens værdiformel direkte (ingen glidning, formfaktor, udløbsrabat eller p.rep-drift)
+    if (cmActive(g)) { p.value = cashRound(Math.max(1000, target)); continue; }
     // glid mod modelværdien og påvirkes af form
     const form = p.form.length ? p.form.reduce((s, x) => s + x, 0) / p.form.length : 6.5;
     const formF = 1 + (form - 6.7) * 0.06;

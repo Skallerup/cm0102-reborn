@@ -283,6 +283,13 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-staffsearch.png` });
   });
   // runde 2 (ejerens billeder 300-309): Last Match uden kampe, målmandsegenskaber, Short List-filtre, spejdere, træning med træk og slip
+  if (look === 'klassisk' && ENGINE_GRID) await step('Manager-hubben uden moderne skærme (ægte tilstand)', async () => {
+    await go({ name: 'history' });
+    await page.waitForTimeout(300);
+    const labels = await page.locator('.cx-tabrow button, .cx-subrow button').allInnerTexts();
+    for (const bad of ['Profile', 'Jobs', 'Managers', 'Community']) if (labels.some((l) => l.trim().startsWith(bad))) throw new Error(`Manager-hubben viser ${bad}, som ikke findes i CM 01/02`);
+    if (!labels.some((l) => /Hall of Fame|Rankings?/i.test(l)) && !labels.some((l) => /History/i.test(l))) throw new Error('Manager-hubben mangler History/Hall of Fame: ' + labels.join('|'));
+  });
   if (look === 'klassisk') await step('Last Match uden kampe (klassisk)', async () => {
     await go({ name: 'club' });
     await page.waitForTimeout(300);
@@ -1058,6 +1065,10 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-offer-contract-nyhed.png` });
     await page.locator('.cx-offer-contract').click();
     await page.waitForSelector('.cx-neg-tabs', { timeout: 5000 });
+    // ægte tilstand: lønstigning/-fald-klausulerne findes ikke i originalen
+    await page.locator('.cx-neg-tabs button', { hasText: 'Clauses' }).click();
+    if (await page.locator('.cx-dlg-body button', { hasText: /Yearly Wage Rise|Wage Drop After|Wage Rise After/ }).count()) throw new Error('Offer Contract har klausuler uden modstykke i CM 01/02');
+    await page.locator('.cx-neg-tabs button', { hasText: 'Basic' }).click();
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-offer-contract.png` });
     await page.locator('.cx-dlg-foot button.primary', { hasText: 'Offer' }).click();
     await page.locator('.cx-dlg-foot button.primary', { hasText: 'Yes' }).click();

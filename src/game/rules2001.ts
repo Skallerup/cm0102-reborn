@@ -2,6 +2,7 @@
 import { addNews, gs, squad } from './state';
 import { rng } from './rng';
 import { econ } from './econ';
+import { cmActive } from './cmPlayerData';
 import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
 
@@ -103,6 +104,7 @@ export const permitOk = (p: Player, club: Club) => !needsWorkPermit(p, club) || 
 export function awolMonthly() {
   if (!isOriginal2001()) return;
   const g = gs();
+  if (cmActive(g)) return; // ægte tilstand: originalens udeblivelse er cmFine.ts
   for (const c of Object.values(g.clubs)) {
     if (!isHumanClub(c.id)) continue;
     for (const p of squad(c.id)) {
@@ -123,6 +125,7 @@ export function awolMonthly() {
 export function boardEventsSeason() {
   if (!isOriginal2001()) return;
   const g = gs();
+  if (cmActive(g)) return; // ægte tilstand: *estimeret* uden modstykke i originalen
   for (const c of Object.values(g.clubs)) {
     if (!isHumanClub(c.id)) continue;
     const k = econ(c.league);

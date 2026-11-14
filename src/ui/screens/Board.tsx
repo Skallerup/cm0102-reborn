@@ -13,6 +13,7 @@ import { Info } from '../help';
 import { Head } from './common';
 import { authentic } from '../../game/rules';
 import { useClassicDialog, ClassicFoot } from '../classic';
+import { cmActive } from '../../game/cmPlayerData';
 import { cmBoardOn, cmBoardScreenText } from '../../game/cmBoardGame';
 
 const ASKS: BoardAsk[] = ['lowerExp', 'confidenceVote', 'youthDrive'];
@@ -98,6 +99,8 @@ function boardStatement(): string[] {
   // den originale database i ægte tilstand: originalens Board Confidence-tekst 0x6b2080/0x690d80 (afsnittene som linjer)
   const orig = cmBoardScreenText(g);
   if (orig !== null) return orig.split('\n\n');
+  // ægte tilstand (original database): aldrig spillets egen udtalelse – uden klub/bestyrelse intet
+  if (cmActive(g)) return [];
   const club = g.clubs[g.userClub];
   const c = boardStatementCodes();
   const out = [t(`cl.ba.conf.${c.lvl}`, { club: club?.name ?? '' })];
