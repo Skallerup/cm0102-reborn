@@ -9,14 +9,14 @@ import { ATTRS } from '../../game/attributes';
 import { interestedClubs, transferRealism } from '../../game/transfers';
 import { nationLanguage } from '../../game/languages';
 import { willJoin } from '../../game/staff';
-import { attrRange, caOfStars, clubLevel, knowledgeOf, scoutStars } from '../../game/scouting';
+import { attrRange, knowledgeOf, scoutStars } from '../../game/scouting';
 import type { Trait } from '../../game/personality';
 import type { GameState, Player, ScoutAssignment, Staff, StaffRole } from '../../game/types';
 import { compName, dateFmt, money, natName, t } from '../../i18n';
 import { ClassicSub, CxDrop, nationRoute, type DropItem } from '../classic';
 import { REGIONS, Seg, regionOfNation, showRealism } from '../classicOptions';
 import { authentic } from '../../game/rules';
-import { cmScoutRec, cmActive, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
+import { JOB_CODE, cmJobCode, cmScoutRec, cmRecScout, cmActive, cmStaffClub, cmStaffInSearch, cmStaffInf, cmJobKey, cmStaffRep, cmStaffRepRank, cmStaffRepWord } from '../../game/cmStaff';
 import { regionOf } from '../../game/leagues';
 import { askConfirm, askText } from '../confirm';
 import { FL_ATTRS, SF_ATTRS, countMins, encodeMins, parseMins, staffAttrValue } from './searchAttrs';
@@ -417,7 +417,7 @@ function StaffSearch() {
   const myRegion = regionOf(g.nations[home]?.name);
   const base = Object.values(g.staff).filter((s) => (cm ? cmStaffInSearch(g, s, myRegion) : s.club !== g.userClub));
   const list = base.filter((s) => {
-    if (sf.role && (sf.role === 'free' ? !!s.club : s.role !== sf.role)) return false;
+    if (sf.role && (sf.role === 'free' ? !!s.club || (cm && !!cmStaffClub(g, s)) : s.role !== sf.role || (cm && !!s.cmExtra && cmJobCode(s) !== JOB_CODE[s.role]))) return false;
     if (sf.nation >= 0 && s.nation !== sf.nation) return false;
     if (q && !q(s.first, s.last)) return false;
     if (sf.age) { const a = ageOn(s.dob, g.date); const [lo, hi] = AGE[sf.age]; if (a < lo || a >= hi) return false; }
@@ -430,8 +430,10 @@ function StaffSearch() {
     return !mins.some(([i, v]) => staffAttrValue(s, i) < v);
   });
   useEffect(() => setPg(0), [list.length, view]);
-  const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : t('cl.st.noClubNation');
-  const based = (s: Staff) => basedName(g, s.club, s.nation);
+  // cmExtra (den originale database): klubben uden for spillets stab (databasens klub – navnet, evt. uden link)
+  const where = (s: Staff) => s.club ? g.clubs[s.club]?.short ?? '' : (cm && cmStaffClub(g, s)?.name) || t('cl.st.noClubNation');
+  const clubOf = (s: Staff) => s.club || (cm ? cmStaffClub(g, s)?.id ?? 0 : 0);
+  const based = (s: Staff) => { const x = cm && !s.club ? cmStaffClub(g, s) : null; return x && !x.id ? natName(g.nations[x.nation]?.name) ?? '' : basedName(g, clubOf(s), s.nation); };
   const job = (s: Staff) => (cm ? t(cmJobKey(s)) : s.club ? t(`role.staff.${s.role}`) : t('cl.st.unemployed'));
   const nameCol: CxCol<Staff> = { key: 'name', label: t('col.name'), cls: 'c-name', sort: (s) => `${s.last} ${s.first}`,
     render: (s) => <span className="link" onClick={() => nav({ name: 'staff', id: s.id })}>{s.last}{s.first ? `, ${s.first}` : ''}</span> };
@@ -440,9 +442,9 @@ function StaffSearch() {
     ? { key: 'inf', label: t('cl.tn.inf'), sort: (s) => { const x = cmStaffInf(g, s); return x === 'Inj' ? 2 : x === 'Wnt' ? 1 : 0; },
       render: (s) => { const x = cmStaffInf(g, s); return x ? <button className={`cx-inf ${x === 'Inj' ? 'bad full' : ''}`} onClick={() => nav({ name: 'staff', id: s.id, state: { sttab: 'transfer' } })}>{t(`cl.tag.${x}`)}</button> : null; } }
     : { key: 'inf', label: t('cl.tn.inf'), render: () => null };
-  const clubCol: CxCol<Staff> = { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (s.club ? <span className="link" onClick={() => nav({ name: 'club', id: s.club })}>{where(s)}</span> : where(s)), sort: where };
+  const clubCol: CxCol<Staff> = { key: 'club', label: t('cl.st.clubNation'), cls: 'c-club', render: (s) => (clubOf(s) ? <span className="link" onClick={() => nav({ name: 'club', id: clubOf(s) })}>{where(s)}</span> : where(s)), sort: where };
   // Based: ligaen/landet kan klikkes (gul understregning under musen, som i CM 01/02)
-  const basedCol: CxCol<Staff> = { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => <span className="link" onClick={() => nav(basedRoute(g, s.club, s.nation))}>{based(s)}</span>, sort: based };
+  const basedCol: CxCol<Staff> = { key: 'based', label: t('cl.tr.basedIn'), cls: 'c-yel', render: (s) => <span className="link" onClick={() => nav(basedRoute(g, clubOf(s), (cm && !s.club ? cmStaffClub(g, s)?.nation : undefined) ?? s.nation))}>{based(s)}</span>, sort: based };
   const jobCol: CxCol<Staff> = { key: 'job', label: t('cl.st.job'), cls: 'c-orange', render: job, sort: job };
   // Rep. (0x80e787): originalens ord og grænser i den originale database
   const repCol: CxCol<Staff> = cm
@@ -587,8 +589,9 @@ export function ClassicPlayerTable({ players, title, desc, view: viewProp, initi
     { key: 'name', label: t('col.name'), cls: 'c-name', render: (p) => <span className="link" onClick={() => nav({ name: 'player', id: p.id })}>{p.last}{p.first ? `, ${p.first}` : ''}</span>, sort: (p) => `${p.last} ${p.first}` },
   ];
   // Rec (0x80d164): spejderens anbefaling som stjerner – den største af evne-/potentialevurderingen (cmScoutRec, 0x7b62a0)
-  const level = rec ? clubLevel(g.userClub) : 0;
-  const recOf = (p: Player) => { const st = scoutStars(p); return cmScoutRec(g, p, level, { ca: caOfStars((st.ability[0] + st.ability[1]) / 2), pa: caOfStars((st.potential[0] + st.potential[1]) / 2) }); };
+  const recScout = rec ? cmRecScout(g) : null;
+  const recMemo = new Map<number, number>();
+  const recOf = (p: Player) => { let v = recMemo.get(p.id); if (v === undefined) { v = cmScoutRec(g, p, recScout); recMemo.set(p.id, v); } return v; };
   if (rec) base.unshift({ key: 'rec', label: t('cm.sc.rec'), render: (p) => { const n = recOf(p); return <span className="cx-rec">{n ? '*'.repeat(n) : ''}</span>; }, sort: (p) => recOf(p) });
   const club: CxCol<Player> = { key: 'club', label: t('col.club'), cls: 'c-club', render: (p) => (p.club ? <span className="link" onClick={() => nav({ name: 'club', id: p.club })}>{g.clubs[p.club]?.name}</span> : t('cl.tr.noClub')), sort: (p) => g.clubs[p.club]?.name ?? '' };
   const pos: CxCol<Player> = { key: 'pos', label: t('cl.tr.position'), cls: 'c-pos', render: (p) => posStr(p), sort: (p) => -p.pos.indexOf(Math.max(...p.pos)) };

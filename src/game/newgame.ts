@@ -414,7 +414,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   for (const row of cm?.staff ?? []) dbStaff.set(row[0], [...(dbStaff.get(row[0]) ?? []), row]);
   // originalens spilstart for ikke-spillerposten (cmStaffInit.ts): skabelonpuljen = world-filens stab med hele posten (staff[11])
   npInit = cm?.cmRaw && season < 2020 && cm.staff?.some((r) => r[11])
-    ? { pool: cm.staff.filter((r) => r[11]).map((r) => npTemplate(npFromWorld(r[7], r[11]!, r[10]?.[7] ?? 0))), nations: world.nations.map((n) => n.name), seed }
+    ? { pool: cm.staff.filter((r) => r[11]).map((r) => npTemplate(npFromWorld(r[7], r[11]!, r[10]?.[7] ?? 0))), nations: world.nations.map((n) => n.name), seed,
+      sel: cm.staffX ? new Set(o.activeNations) : null }
     : null;
   for (const c of Object.values(g.clubs)) createClubStaff(c, world, seed, date, dbStaff.get(c.id) ?? []);
   // ledige stabsfolk fra databasen (CA 100+): rollen efter deres bedste egenskab
@@ -422,6 +423,28 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const [, , , , , , a] = row;
     const role: StaffRole = a[3] >= 12 && a[3] >= Math.max(a[0], a[1], a[2]) ? 'physio' : a[1] + a[2] > 2 * a[0] + 2 ? 'scout' : 'coach';
     addDbStaff(row, 0, role, date, seed);
+  }
+  // Staff Search (0x7afa70 tager alle personer med ikke-spillerpost i hukommelsen): de øvrige ikke-spillere, som originalens 0x524d70 beholder
+  // med de valgte lande – formænd, direktører, stab i klubber uden for spillet, ledige … Kun til søgningen og profilen (cmExtra): de er ikke en
+  // del af spillets stab (club = 0, ingen løn i klubberne); jobbet og klubben står i cmJob/cmClub.
+  if (npInit?.sel && cm?.staffX) {
+    g.cmStaffMem = true;
+    g.cmClubNames = {};
+    const ROLE: Record<number, StaffRole> = { 5: 'manager', 12: 'manager', 6: 'assistant', 13: 'assistant', 7: 'coach', 8: 'coach', 14: 'coach', 15: 'coach', 9: 'scout', 10: 'physio' };
+    for (const row of cm.staffX) {
+      if (!memOf(row)) continue;
+      const s = addDbStaff(row, 0, ROLE[row[5]] ?? 'coach', date, seed);
+      const club = row[16]?.[0] ?? -1;
+      s.cmExtra = true;
+      // uden klub viser originalen "Unemployed" (jobbet følger klubben – *antaget* efter Terzi/Ferguson i ejerens billede)
+      s.cmJob = club >= 0 ? row[5] : 0;
+      s.cmMem = true;
+      s.wage = 0;
+      if (club >= 0 && row[5]) {
+        s.cmClub = club;
+        if (!g.clubs[club] && cm.clubNames?.[club]) g.cmClubNames[club] = cm.clubNames[club];
+      }
+    }
   }
   npInit = null;
   for (let i = 0; i < 160; i++) {
@@ -589,7 +612,9 @@ export function takeOverClub(club: Club, viaJob = false) {
 }
 
 /** originalens spilstart for ikke-spillerposten (sat i createGame, mens databasens stab oprettes) */
-let npInit: { pool: NpTemplate[]; nations: string[]; seed: number } | null = null;
+let npInit: { pool: NpTemplate[]; nations: string[]; seed: number; sel: Set<number> | null } | null = null;
+/** 0x524d70: har originalen personen i hukommelsen med de valgte lande (world-rækkens [15]: 1 = altid, ellers nationerne) */
+const memOf = (row: NonNullable<CMWorld['staff']>[number]): boolean => !!npInit?.sel && (row[15] === 1 || (Array.isArray(row[15]) && row[15].some((n) => npInit!.sel!.has(n))));
 
 /** Stab fra databasen: navn, nation, alder og de egenskaber, databasen har (resten som en genereret på samme niveau) */
 function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, role: StaffRole, date: string, seed: number): Staff {
@@ -618,6 +643,7 @@ function addDbStaff(row: NonNullable<CMWorld['staff']>[number], club: number, ro
   }
   // ikke-spillerpostens omdømmer, de skjulte egenskaber og ankomstdatoen (sub_535a80 0x537d59 – cmBoardGame.ts)
   if (raw && row[12]) cmInitStaffRep(g, s, row);
+  if (npInit?.sel && row[15] !== undefined) s.cmMem = memOf(row);
   g.staff[s.id] = s;
   return s;
 }
@@ -642,6 +668,9 @@ function createClubStaff(c: Club, world: WorldData, seed: number, date: string, 
       [first, last] = randomName(g.names, c.nation, r);
     }
     const s = makeStaff({ id: g.nextId.staff++, first, last, nation, club: c.id, role, level, date, seed });
+    // 0x527240 (database_generate_extra_non_playing_staff): de genererede trænere/spejdere/fysioterapeuter/managere i klubberne i de valgte
+    // lande er i originalens hukommelse og dermed i Staff Search (antallet er spillets eget, ikke 0x527240's – *estimeret*)
+    if (npInit?.sel?.has(c.nation)) s.cmMem = true;
     g.staff[s.id] = s;
     return s;
   };

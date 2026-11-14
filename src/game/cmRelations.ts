@@ -139,7 +139,7 @@ export function fadeRelations(o: Person, rand: (n: number) => number): void {
 function personIndex(g: GameState): Map<number, Person> {
   const m = new Map<number, Person>();
   for (const p of Object.values(g.players)) if (!p.regen) m.set(p.id, p);
-  for (const s of Object.values(g.staff)) if (s.cmId !== undefined) m.set(s.cmId, s);
+  for (const s of Object.values(g.staff)) if (s.cmId !== undefined && !s.cmExtra) m.set(s.cmId, s);
   return m;
 }
 

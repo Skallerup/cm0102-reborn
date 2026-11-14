@@ -41,7 +41,7 @@ export function pickManager(clubId: number): Staff | undefined {
       return hunted;
     }
   }
-  return Object.values(g.staff).filter((s) => s.role === 'manager' && s.club === 0).sort((a, b) => Math.abs(a.rep - club.rep) - Math.abs(b.rep - club.rep))[0];
+  return Object.values(g.staff).filter((s) => s.role === 'manager' && s.club === 0 && !s.cmExtra).sort((a, b) => Math.abs(a.rep - club.rep) - Math.abs(b.rep - club.rep))[0];
 }
 
 /** Sæsonslut: trænernes form (placering mod forventning), trofæer og omdømme */

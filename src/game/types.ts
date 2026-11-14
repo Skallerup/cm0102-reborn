@@ -342,6 +342,14 @@ export interface Staff {
   cmId?: number;
   /** staff+0x65 som Player.cmRel */
   cmRel?: number[];
+  /** Staff Search (den originale database i ægte tilstand): personen er i originalens hukommelse efter 0x524d70/0x527240 med de valgte lande */
+  cmMem?: boolean;
+  /** kun til Staff Search og profilen: en ikke-spiller uden for spillets stab (formand, direktør, stab i en klub uden for spillet …) */
+  cmExtra?: boolean;
+  /** originalens job +0x3d (0x53ad00), når det ikke følger af rollen (cmExtra) */
+  cmJob?: number;
+  /** databasens klub +0x39 for en cmExtra-person (navnet i g.clubs eller g.cmClubNames) */
+  cmClub?: number;
   id: number;
   first: string;
   last: string;
@@ -1124,6 +1132,9 @@ export interface GameState {
   /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
   cmChair?: Record<number, [number, number, number, number]>;
   cmNationBoard?: [number, number, number][];
+  /** Staff Search: world-filen havde originalens hukommelse (Staff.cmMem) – og navnene på klubber uden for spillet [kort navn, nation] */
+  cmStaffMem?: boolean;
+  cmClubNames?: Record<number, [string, number]>;
   /** [0xdd6ec8] spillets start (ISO) */
   cmBoardStart?: string;
   /** club.dat +100/+119 (status, mindste tilskuertal) og club_comp.dat +105 (turneringens omdømme) – computerens trupplan (cmSquadPlanGame.ts) */

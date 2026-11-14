@@ -85,7 +85,12 @@ export interface CMWorld extends WorldData {
    *  (cmStaffInit.ts – kun den originale database) */
   /** … [12] = bestyrelse/managerjob (cmBoard.ts): [ikke-spillerpost +8, +0xc (rå), personpost +0x56..+0x5d, +0x22]; [13] = personpost +0x3e
    *  (ankomstdatoen, ISO; '' = mangler); [14] = personpost +0x24 (landsholdet, nations-id i filen; −1 = intet) og +0x28 (jobbet dér) – viljen 0x844780 */
-  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?, number[]?, string?, number[]?][];
+  staff?: [number, string, string, number, string, number, number[], number, number, number, (number[] | null)?, number[]?, number[]?, string?, number[]?, (1 | number[])?, number[]?][];
+  /** (kun den originale database, Staff Search) [15] = om originalen har personen i hukommelsen efter 0x524d70 (1 = altid, ellers de nationer, hvis
+   *  valg beholder ham), [16] = [klub (databasens id), job +0x3d]. `staffX` = ikke-spillere uden for spillets stab (formænd, direktører, stab i
+   *  klubber uden for spillet …) i samme format med [0] = 0 og [5] = jobbet; `clubNames` = [kort navn, nationsindeks] for deres klubber. */
+  staffX?: NonNullable<CMWorld['staff']>;
+  clubNames?: Record<number, [string, number]>;
   rules: Record<string, { rounds: number; relegated?: number; below?: string; promoted?: number; above?: string; cup?: string; wealth: number }>;
 }
 
@@ -160,7 +165,7 @@ function hashStr(s: string) { let h = 2166136261; for (let i = 0; i < s.length; 
 /** Konverter CM 01/02's Data-mappe til spillets verdensformat */
 /** `maxTiers`: rækker pr. land. `allClubs`: alle klubber og spillere kommer med – klubber uden for de importerede
  *  ligaer får liga-id `CMX<division>` (uden liga-post); byggescriptet afgør, hvad der beholdes. */
-export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean } = {}): CMWorld {
+export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers?: number; allClubs?: boolean; cmMem?: boolean } = {}): CMWorld {
   const MAX_TIERS = opts.maxTiers ?? DEFAULT_TIERS;
   const missing = CM_REQUIRED.filter((f) => !files[f]);
   if (missing.length) throw new Error(`missing:${missing.join(',')}`);
@@ -423,6 +428,52 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
   // stab (ikke-spillerposten, 68 bytes): 21 egenskaber i alfabetisk rækkefølge fra +14 (bekræftet i originalens Non-Playing Staff);
   // jobkoden i personposten +61 (5 Manager, 6 Assistant Manager, 8 Coach, 9 Scout, 10 Physio – bekræftet for Man Utd 3.9.60)
   const staff: NonNullable<CMWorld['staff']> = [];
+  const staffX: NonNullable<CMWorld['staff']> = [];
+  const mem = opts.cmMem && NON_REF >= 0 ? trimMemory() : null;
+  /** 0x524d70 database_trim_staff_tables med databasestørrelsen "Maximum" (game.cfg +4 & 7 = 4; ejerens indstilling): hvem originalen beholder
+   *  i hukommelsen ved et nyt spil. Uafhængigt af de valgte lande (1 = altid): de 10 bedste ikke-spillere (+4) og 100 bedste spillere (+5) pr.
+   *  nationalitet (antal = clamp(nation +0x8e, 5, 15)·10/15 og ·100/15, 0x524ff5–0x525288), Collin Samuel/Devon Mitchell (0x525394), landstræner
+   *  (+0x24 og +0x28 = 5/12), klubomdømme ≥ 7500, landskampe > 0, ikke-spillerpost CA ≥ 150, PA ≥ 150/−1/−2, +8 ≥ 160, +0xa ≥ 155, +0xc ≥ 150,
+   *  spillerpost +5/+7/+9/+0xb/+0xd tilsvarende og rand(30) = 0 for resten (0x5259a5 – *estimeret* som en fast hash pr. person). Ellers: de
+   *  nationer (world-indeks), hvis valg beholder ham – nationalitet +0x1a, anden nationalitet +0x1e og klubbens land (+0x39 → +0x53). */
+  function trimMemory() {
+    const clubOf = new Map(rawClubs.map((c) => [c.id, c]));
+    const top = new Map<number, { ids: number[]; v: number[]; min: number; cap: number }>();
+    const topP = new Map<number, { ids: number[]; v: number[]; min: number; cap: number }>();
+    const add = (t: Map<number, { ids: number[]; v: number[]; min: number; cap: number }>, nat: number, mul: number, id: number, v: number) => {
+      let e = t.get(nat);
+      if (!e) { const r = nationVal.get(nat)?.[1] ?? 0; e = { ids: [], v: [], min: 0, cap: Math.trunc((Math.max(5, Math.min(15, r)) * mul) / 15) }; t.set(nat, e); }
+      if (e.ids.length < e.cap) {
+        if (e.ids.length === 0 || v < e.v[e.min]) e.min = e.ids.length;
+        e.ids.push(id); e.v.push(v);
+      } else if (v > e.v[e.min]) {
+        e.ids[e.min] = id; e.v[e.min] = v;
+        for (let k = 0; k < e.ids.length; k++) if (k === 0 || e.v[k] < e.v[e.min]) e.min = k;
+      }
+    };
+    for (let i = 0; i < tStaff.count; i++) {
+      const o = tStaff.offset + i * staffSize;
+      if (o + staffSize > files['staff.dat'].byteLength) break;
+      const np = nonAt.get(S.i32(o + NON_REF)), pl = playerAt.get(S.i32(o + PLAYER_REF));
+      if (np !== undefined) add(top, S.i32(o + 26), 10, S.i32(o), S.i16(np + 4));
+      if (pl !== undefined) add(topP, S.i32(o + 26), 100, S.i32(o), S.i16(pl + 5));
+    }
+    const keep = new Set<number>();
+    for (const t of [top, topP]) for (const e of t.values()) for (const id of e.ids) keep.add(id);
+    return (o: number, np: number): 1 | number[] => {
+      const id = S.i32(o), pl = playerAt.get(S.i32(o + PLAYER_REF));
+      const fn = first[S.i32(o + 4)] ?? '', sn = second[S.i32(o + 8)] ?? '';
+      const club = clubOf.get(S.i32(o + 57));
+      const big = (b: number, k: number, a: number, c: number, d: number, e: number) => S.i16(b + k) >= 150 || S.i16(b + k + 2) >= 150 || [-1, -2].includes(S.i16(b + k + 2))
+        || S.i16(b + a) >= 160 || S.i16(b + c) >= 155 || S.i16(b + d) >= e;
+      if (keep.has(id) || (fn === 'Collin' && sn === 'Samuel') || (fn === 'Devon' && sn === 'Mitchell')
+        || (S.i32(o + 0x24) >= 0 && [5, 12].includes(S.u8(o + 0x28))) || (club && club.rep >= 7500) || S.u8(o + 0x22) > 0
+        || big(np, 4, 8, 0xa, 0xc, 150) || (pl !== undefined && big(pl, 5, 9, 0xb, 0xd, 150)) || hashStr(`trim${id}`) % 30 === 0) return 1;
+      const out: number[] = [];
+      for (const n of [S.i32(o + 26), S.i32(o + 30), club?.nation ?? -1]) { const x = nationIdx.get(n); if (x !== undefined && !out.includes(x)) out.push(x); }
+      return out;
+    };
+  }
   if (NON_REF >= 0) {
     // Coaching +16, Discipline +20, Judging Ability +23, Judging Potential +24, Motivating +27, Physiotherapy +30, Tactics +33
     const OFS = [16, 23, 24, 30, 27, 20, 33];
@@ -434,9 +485,10 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const club = S.i32(o + 57), job = S.u8(o + 61);
       const ca = S.i16(np + 4);
       const att = OFS.map((k) => { const v = S.u8(np + k); return v >= 1 && v <= 20 ? v : 0; });
-      if (!att.some(Boolean)) continue;
       const here = inGame.has(club);
-      if (here ? ![5, 6, 8, 9, 10].includes(job) : ca < 100) continue;
+      // kernen (spillets stab): de gamle regler; resten (opts.cmMem) kommer i staffX, når originalen kan have dem i hukommelsen
+      const core = att.some(Boolean) && (here ? [5, 6, 8, 9, 10].includes(job) : ca >= 100);
+      if (!core && !mem) continue;
       const nation = nationIdx.get(S.i32(o + 26));
       if (nation === undefined) continue;
       const cn = S.i32(o + 12) >= 0 ? common[S.i32(o + 12)] ?? '' : '';
@@ -455,7 +507,10 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       const bx = [S.i16(np + 8), S.i16(np + 12)];
       for (let k = 0x56; k <= 0x5d; k++) bx.push(S.u8(o + k));
       bx.push(S.u8(o + 0x22));
-      staff.push([here ? club : 0, fn, ln, nation, dob, here ? job : 0, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]]);
+      const row: NonNullable<CMWorld['staff']>[number] = [core && here ? club : 0, fn, ln, nation, dob, core ? (here ? job : 0) : job, att, ca, S.i16(np + 10), S.i32(o), tac, raw, bx, S.date(o + 62) ?? '', [S.i32(o + 0x24), S.u8(o + 0x28)]];
+      // [15] = hukommelsen (0x524d70), [16] = [klubben +0x39 (databasens id, −1 = ingen), jobbet +0x3d] – kun til Staff Search
+      if (mem) row.push(mem(o, np), [club, job]);
+      (core ? staff : staffX).push(row);
     }
   }
 
@@ -667,7 +722,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
       nation7e: [...nationIdx.keys()].map((id) => nationVal.get(id)![0]),
       nation85: [...nationIdx.keys()].map((id) => nationVal.get(id)![2]),
       nation76,
-      fin, chair, chairBoard, nationBoard, lowerDiv, nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), rules,
+      fin, chair, chairBoard, nationBoard, lowerDiv, nationCont, europe, ...(city33.length ? { city33 } : {}), ...(Object.keys(prefs).length ? { prefs, clubPrefs } : {}) }, ...(officials.length ? { officials } : {}), ...(staff.length ? { staff } : {}), ...(staffX.length ? { staffX, clubNames: Object.fromEntries(rawClubs.filter((c) => nationIdx.has(c.nation)).map((c) => [c.id, [c.short || c.name, nationIdx.get(c.nation)!]])) } : {}), rules,
   };
 }
 

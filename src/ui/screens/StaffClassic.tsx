@@ -7,7 +7,7 @@ import { act } from '../../game/actions';
 import { ageOn } from '../../game/dates';
 import { nationLanguage } from '../../game/languages';
 import { fireStaff } from '../../game/staff';
-import { cmCapsLine, cmCoachingStyle, cmJobKey, cmOtherStyles, cmPrefFormation, cmPrefStyle, cmRolesFor, cmStaffAttrList, cmStaffInterested } from '../../game/cmStaff';
+import { cmCapsLine, cmCoachingStyle, cmJobKey, cmStaffClub, cmOtherStyles, cmPrefFormation, cmPrefStyle, cmRolesFor, cmStaffAttrList, cmStaffInterested } from '../../game/cmStaff';
 import type { Staff, StaffRole } from '../../game/types';
 import { dateFmt, getLang, money, natName, t } from '../../i18n';
 import { CxDrop, classicDate, titleColors, useClassicDialog, type DropItem } from '../classic';
@@ -165,8 +165,8 @@ export function ClassicStaffProfile({ id }: { id: number }) {
   if (!s) return <div><Head menu={false} title={t('player.gone')} /></div>;
   const mine = !!g.userClub && s.club === g.userClub;
   const name = staffName(s);
-  const club = s.club ? g.clubs[s.club] : undefined;
-  const title = `${name}${club ? ` (${club.short || club.name})` : ''}`;
+  const club = cmStaffClub(g, s);
+  const title = `${name}${club ? ` (${club.name})` : ''}`;
   if (offerRole) return <div><ClassicStaffNegotiation staffId={s.id} role={offerRole} onClose={(sent) => { setOfferRole(''); if (sent) setMsg(t('cm.neg.sent', { name })); }} /></div>;
   if (panel === 'role') return <div><SetRolePanel s={s} onBack={() => setPanel(null)} onSet={(r) => { setPanel(null); setOfferRole(r); }} /></div>;
   if (panel === 'nick') return <div><Head menu={false} title={title} /><TextPanel title={t('cl.pl.nickTitle')} value={s.nick ?? ''} onClose={() => setPanel(null)}

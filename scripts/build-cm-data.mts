@@ -30,7 +30,7 @@ for (const f of readdirSync(dir)) {
 
 // Den originale database: alle klubber læses, så talenterne uden for de spilbare ligaer kan komme med (se nedenfor)
 const ORIGINAL = SEASON === 2001;
-const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true } : {});
+const w = parseCM0102(files, ORIGINAL ? { maxTiers: 4, allClubs: true, cmMem: true } : {});
 
 // skub en ISO-dato (yyyy-mm-dd) frem med SHIFT år
 const shift = (iso: string) => {
@@ -201,19 +201,40 @@ if (w.cmRaw) { if (!ORIGINAL) delete w.cmRaw; else for (const t of [w.cmRaw.club
 // stab: kun i de klubber, der er med (andre klubbers folk bliver ledige, hvis de er gode nok – CA 100+); datoerne skubbes som spillernes
 if (w.staff) {
   const shown = new Set(w.clubs.filter((c) => { const l = w.leagues.find((x) => x.id === c[4]); return l && !l.hidden; }).map((c) => c[0] as number));
+  const dropped: NonNullable<typeof w.staff> = [];
+  const src = new Map<NonNullable<typeof w.staff>[number], NonNullable<typeof w.staff>[number]>();
+  const out = (s: NonNullable<typeof w.staff>[number]) => {
+    const np = ORIGINAL && s[11] ? [s[11]] : [];
+    // [14] = landsholdet +0x24/+0x28 (kun den originale database: viljen 0x844780); [15]/[16] = hukommelsen og klub/job (Staff Search)
+    const bx = ORIGINAL && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : '', s[14] ?? [-1, 0], ...(s[15] !== undefined ? [s[15], s[16] ?? [-1, 0]] : [])] : [];
+    return [s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s;
+  };
   w.staff = w.staff.flatMap((s) => {
     // [10] = managerens taktiske egenskaber (kun for managere i de viste klubber – computerens taktik i gittermotoren)
     // [11] = hele ikke-spillerposten (kun den originale database: originalens spilstart cmStaffInit.ts)
     // [12] = omdømmerne +8/+0xc og de skjulte egenskaber (kun den originale database: bestyrelse/managerjob cmBoard.ts)
-    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) return []; s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13], s[14]]; }
-    const np = ORIGINAL && s[11] ? [s[11]] : [];
-    // [14] = landsholdet +0x24/+0x28 (kun den originale database: viljen 0x844780)
-    const bx = ORIGINAL && s[11] && s[12] ? [s[12], s[13] ? shift(s[13]) : '', ...(s[14] ? [s[14]] : [])] : [];
-    return [[s[0], s[1], s[2], s[3], shift(s[4]), s[5], s[6], s[7], s[8], s[9], ...(s[5] === 5 && s[10] ? [s[10]] : np.length ? [null] : []), ...np, ...bx] as typeof s];
+    if (s[0] && !shown.has(s[0])) { if (s[7] < 100) { dropped.push(s); return []; } s = [0, s[1], s[2], s[3], s[4], 0, s[6], s[7], s[8], s[9], null, s[11], s[12], s[13], s[14], s[15], s[16]]; }
+    const r = out(s); src.set(r, s);
+    return [r];
   });
   // de ledige: kun de 600 bedste (world.json skal kunne ligge i appens offline-cache, højst 8 MB)
   const free = new Set(w.staff.filter((s) => !s[0]).sort((a, b) => b[7] - a[7]).slice(0, 600));
+  for (const s of w.staff) if (!s[0] && !free.has(s)) dropped.push(src.get(s)!);
   w.staff = w.staff.filter((s) => s[0] || free.has(s));
+  // Staff Search (0x7afa70): originalens hukommelse efter 0x524d70 – de øvrige ikke-spillere, der kan være med (altid, eller når et spilbart
+  // land vælges), i samme format med [0] = 0, [5] = jobbet +0x3d og [16] = [klub, job]; klubberne uden for spillet får deres navn i clubNames
+  if (ORIGINAL && w.staffX) {
+    const playable = new Set(w.leagues.filter((l) => !l.hidden).map((l) => l.nation));
+    const inMem = (s: NonNullable<typeof w.staff>[number]) => s[15] === 1 || (Array.isArray(s[15]) && s[15].some((n) => playable.has(n)));
+    const xs = [...w.staffX, ...dropped.map((s) => { const r = s.slice() as typeof s; r[0] = 0; r[5] = s[16]?.[1] ?? 0; return r; })].filter(inMem);
+    const before = xs.length;
+    w.staffX = xs.map((s) => { const r = out(s); r[10] = s[5] === 5 ? r[10] : null; return r; });
+    const known = new Set(w.clubs.map((c) => c[0] as number));
+    const names: Record<number, [string, number]> = {};
+    for (const s of w.staffX) { const c = s[16]?.[0] ?? -1; if (c >= 0 && !known.has(c) && w.clubNames?.[c]) names[c] = w.clubNames[c]; }
+    w.clubNames = names;
+    console.log(`Staff Search: ${w.staff.length} i spillets stab + ${before} andre ikke-spillere (${Object.keys(names).length} klubber uden for spillet)`);
+  } else { delete w.staffX; delete w.clubNames; }
 }
 // (forholdene) præferencerne kun for de personer og klubber, der er med (cmRelations.ts – id'er uden for spillet bliver 0 ved nyt spil)
 if (w.cmRaw?.prefs) {

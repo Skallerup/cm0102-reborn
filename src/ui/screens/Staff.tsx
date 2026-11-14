@@ -44,7 +44,7 @@ function StaffList() {
   const club = g.clubs[g.userClub];
   const sortKey = KEY_ATTR[role];
   const market = Object.values(g.staff)
-    .filter((s) => s.role === role && (source === 'free' ? !s.club : s.club && s.club !== g.userClub && (!onlyWilling || willJoin(s))))
+    .filter((s) => s.role === role && !s.cmExtra && (source === 'free' ? !s.club : s.club && s.club !== g.userClub && (!onlyWilling || willJoin(s))))
     .sort((a, b) => b.attrs[sortKey] - a.attrs[sortKey] || b.rep - a.rep)
     .slice(0, 60);
 

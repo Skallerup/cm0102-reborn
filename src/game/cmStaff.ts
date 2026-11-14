@@ -24,7 +24,10 @@ import { addNews } from './state';
 import { regionOf } from './leagues';
 import { hash01 } from './rng';
 import { cmActive } from './cmPlayerData';
-import { staffShown } from './engine/grid/roleScore';
+import { staffShown, judgeAbility, recPositions } from './engine/grid/roleScore';
+import { combineScore, positionFactor } from './engine/grid/subs';
+import { playerRecord } from './engine/grid/aiTeam';
+import { clubRepMem } from './cmPlayerData';
 import { poachFee, STAFF_LIMITS } from './staff';
 import type { GameState, Staff, StaffRole } from './types';
 
@@ -32,7 +35,15 @@ export { cmActive };
 
 /** personpostens jobkode +0x3d (ledige = 0) */
 export const JOB_CODE: Record<StaffRole, number> = { manager: 5, assistant: 6, coach: 8, scout: 9, physio: 10 };
-export const cmJobCode = (s: Staff): number => (s.club ? JOB_CODE[s.role] : 0);
+export const cmJobCode = (s: Staff): number => s.cmJob ?? (s.club ? JOB_CODE[s.role] : 0);
+/** klubben, personen står ved i originalen: spillets klub, eller (cmExtra) databasens klub uden for spillets stab – id i g.clubs eller navnet */
+export function cmStaffClub(g: GameState, s: Staff): { id: number; name: string; nation: number } | null {
+  const id = s.club || (s.cmExtra ? s.cmClub ?? 0 : 0);
+  const c = id ? g.clubs[id] : undefined;
+  if (c) return { id: c.id, name: c.short || c.name, nation: c.nation };
+  const x = s.cmExtra && s.cmClub !== undefined ? g.cmClubNames?.[s.cmClub] : undefined;
+  return x ? { id: 0, name: x[0], nation: x[1] } : null;
+}
 /** 0x53ad00: nøglen til jobbets korte navn (i18n `cm.job.<kode>`) */
 export const cmJobKey = (s: Staff): string => `cm.job.${cmJobCode(s)}`;
 
@@ -154,10 +165,15 @@ export function cmRolesFor(s: Staff, date: string): StaffRole[] {
 
 // ---------------------------------------------------------------- Staff Search
 
-/** "Famous staff and all staff in your region" (0x80af8d). Hvem originalen tager med, er ikke fundet: *estimeret* = databasens stab
- *  (ingen genererede), uden egen klub, med omdømmet Good eller bedre eller baseret i samme verdensdel som ens klub. */
+/** "Famous staff and all staff in your region" (0x80af8d) er kun overskriften: søgningen 0x7afa70 (Staff Search, type 3) tager ALLE personer
+ *  i hukommelsen med en ikke-spillerpost (+0x69) undtagen ens egen klubs (+0x39 = klubben) og dem, der allerede står i listen (0x7af600).
+ *  Hukommelsen = databasens personer, som 0x524d70 beholder med de valgte lande (database_trim_staff_tables, databasestørrelse Maximum),
+ *  plus 0x527240's genererede stab i de valgte landes klubber (Staff.cmMem, sat i newgame.ts). Ældre spil uden den oplysning: *estimeret* =
+ *  databasens stab med omdømmet Good eller bedre eller i samme verdensdel. */
 export function cmStaffInSearch(g: GameState, s: Staff, myRegion: string): boolean {
-  if (s.cmId === undefined || (s.club && s.club === g.userClub)) return false;
+  if (s.club && s.club === g.userClub) return false;
+  if (g.cmStaffMem) return !!s.cmMem;
+  if (s.cmId === undefined) return false;
   if (cmStaffRep(s) >= 6000) return true;
   const nation = s.club ? g.clubs[s.club]?.nation ?? s.nation : s.nation;
   return regionOf(g.nations[nation]?.name) === myRegion;
@@ -166,7 +182,7 @@ export function cmStaffInSearch(g: GameState, s: Staff, myRegion: string): boole
 /** Klubber, der vil ansætte en ledig stabsperson (Transfer: Interested, mærket Wnt). *estimeret*: klubber i hans land med en ledig plads
  *  i hans fag (under klubbens grænse) og et omdømme, der passer til hans (klubbens omdømme × 100 inden for ±2500), højst tre. */
 export function cmStaffInterested(g: GameState, s: Staff): number[] {
-  if (s.club || s.cmId === undefined) return [];
+  if (s.club || s.cmId === undefined || (s.cmExtra && cmJobCode(s) !== 0)) return [];
   const cache = interestCache(g);
   const rep = cmStaffRep(s);
   const out: number[] = [];
@@ -211,8 +227,9 @@ export function cmStaffInterestedIn(g: GameState, s: Staff, role: StaffRole): bo
   if (!cmRolesFor(s, g.date).includes(role)) return false;
   const mine = g.clubs[g.userClub];
   if (!mine) return false;
-  if (!s.club) return true;
-  const theirs = g.clubs[s.club];
+  const from = s.club || (s.cmExtra ? s.cmClub ?? 0 : 0);
+  if (!from) return true;
+  const theirs = g.clubs[from];
   if (!theirs) return true;
   const promo = role === 'assistant' && (s.role === 'coach' || s.role === 'scout');
   return mine.rep > theirs.rep + 3 || (promo && mine.rep >= theirs.rep - 5);
@@ -273,6 +290,8 @@ export function cmStaffOffersDaily(g: GameState): void {
     const role = o.role;
     s.club = o.club;
     s.role = role;
+    // en cmExtra-person bliver almindelig stab i klubben
+    if (s.cmExtra) { delete s.cmExtra; delete s.cmJob; delete s.cmClub; }
     s.assignment = null;
     s.wage = o.wage;
     s.expires = `${Number(g.date.slice(0, 4)) + o.years}-06-30`;
@@ -289,19 +308,159 @@ export const cmRejectStaff = (g: GameState, n: { key: string; params: Record<str
 
 // ---------------------------------------------------------------- spejderens anbefaling (Rec)
 
-/** 0x7b62a0 (spejderens vurdering af en spiller): evne-stjernerne (+0x29) og potentiale-stjernerne (+0x2a) efter klubbens niveau L
- *  (0x7bca90, holdt i 1750..35000): ≥ 1,2·L 5 (og over 2·klubbens omdømme + 12750), ≥ L 4 (og over 2·omdømme + 10750), ≥ 0,8·L 3,
- *  ≥ 0,7·L 2, ≥ 0,6·L 1, ellers 0; evnen ganges med 0,85 over 34 år (0x7b661d), potentialet vurderes kun under 25 år (0x7b6638).
- *  Rec i listen = den største af de to (0x80d199). Selve vurderingen (spejderens skøn ± rand(500) og 0x6e2f20 med spillerens mentale
- *  modifikatorer) og omdømmegrænserne er ikke porteret: *estimeret* med spillets skøn (scoutStars → CA/PA) og klubbens niveau (snittet
- *  af de 14 bedste CA – clubLevel). */
-export function cmScoutRec(g: GameState, p: import('./types').Player, level: number, est: { ca: number; pa: number }): number {
-  const age = ageOn(p.dob, g.date);
-  const L = Math.max(1, level);
-  const stars = (x: number) => (x >= 1.2 * L ? 5 : x >= L ? 4 : x >= 0.8 * L ? 3 : x >= 0.7 * L ? 2 : x >= 0.6 * L ? 1 : 0);
-  const ab = stars(age > 34 ? est.ca * 0.85 : est.ca);
-  const pot = age < 25 ? stars(est.pa) : 0;
+/** 0x7bca90(klub, 0, 0): klubbens niveau i spejderens skala (L) – klub +0x80 omdømmet (r), +0x77 (cmClubStat[1]), divisionens +0x69, +0x64
+ *  (cmClubStat[0], ≠ 1 halverer), truppens størrelse 0x53c590 og økonomiens status 0x5986b0. +0x1db (en anden turnering) er −1 ved spilstart. */
+export interface ClubLevelIn { rep: number; b77: number; divRep: number | null; pro: boolean; squad: number; hasComp: boolean; finStatus: number }
+const s8 = (v: number) => (v << 24) >> 24;
+const s16 = (v: number) => (v << 16) >> 16;
+export function cmClubLevel(c: ClubLevelIn): number {
+  const ftol = Math.trunc;
+  const rep = s16(c.rep);
+  let esi = rep, edi = rep;
+  const ax = s16(ftol(c.b77 * 0.43 - 430));
+  const ebx = s16(rep > ax ? rep : ax > 10000 ? 10000 : ax);
+  if (c.divRep !== null && s16(c.divRep) > Math.trunc(rep / 500)) { esi = s16(c.divRep) * 500; edi = esi; }
+  const ebp = rep;
+  const sum = esi < 8000 ? 3 * esi + ebx + 4 * edi + 8 * ebp : ebx + 7 * ebp + 4 * (esi + edi);
+  let v = Math.trunc(sum / 16);
+  if (!c.pro) v = Math.trunc(v / 2);
+  let L = v > 9000 ? 3 * v + 7500 : v > 7000 ? ftol(v * 4.75 - 8250) : v > 5000 ? ftol(v * 2.5 + 7500) : v > 3000 ? 5 * v - 5000 : ftol(v * 1.6 + 5000);
+  const sq = s8(c.squad);
+  if (sq < 16 && c.hasComp) L = Math.trunc(L / 2);                           // 0x7bcc4b
+  else if (sq < 20 && c.hasComp) {                                            // 0x7bcc6e
+    if (c.finStatus === -2) L = Math.trunc(L / 2); else if (c.finStatus === -1) L = ftol(L * (2 / 3));
+  } else {
+    if (c.hasComp && c.divRep !== null) {                                     // 0x7bccc6: for få spillere i forhold til divisionen
+      let d = s8(sq - ftol(s16(c.divRep) * 1.35 + 20));
+      if (d < 0) { if (d < -10) d = -10; L = ftol((d * 0.05 + 1) * L); }
+    }
+    const f = c.finStatus;                                                    // 0x7bcd4a (springtabellen 0x7bce38)
+    if (f === 2) L = ftol(Math.max(L * 1.025, L + 250));
+    else if (f === 1) L = ftol(Math.max(L * 1.0125, L + 125));
+    else if (f === -1) L = ftol(Math.min(L * 0.9523809523809523, L - 500));
+    else if (f === -2) L = ftol(Math.min(L * 0.9090909090909091, L - 1000));
+  }
+  return L < 500 ? 500 : L;
+}
+
+/** 0x5986b0: økonomiens status af saldoen (£) og omdømmet r: 2 over 2500r + 5 mio., 1 over 1000r + 3,5 mio., −2 under −2,5 mio. − 1500r,
+ *  −1 under −250r (r < 5000) eller 1000·(3750 − r), ellers 0 */
+export function cmFinanceStatus(balanceGbp: number, rep: number): number {
+  if (balanceGbp > 2500 * rep + 5_000_000) return 2;
+  if (balanceGbp > 1000 * rep + 3_500_000) return 1;
+  if (balanceGbp < -2_500_000 - 1500 * rep) return -2;
+  if (balanceGbp < (rep < 5000 ? -250 * rep : 1000 * (3750 - rep))) return -1;
+  return 0;
+}
+
+/** Inddata til 0x7b62a0 for én spiller set af én spejder (dommer) */
+export interface ScoutRecIn {
+  /** spillerposten (0x46 bytes, playerRecord) og alderen (staff +0x18) */
+  rec: ArrayLike<number>; age: number; playerId: number; ca: number; pa: number;
+  /** staff +0x39 = 0 (fri) – 0x6e2f20 med klub 0 giver ×1,05 */
+  free: boolean;
+  /** 0x5407e0(spiller, spejder, 0) */
+  repSeen: number;
+  /** spejderen: id og viste Judging Ability/Potential; hans klubs omdømme (+0x80) og niveau (0x7bca90, før loftet) */
+  judge: { id: number; ja: number; jp: number }; clubRep: number; level: number;
+  gameSeed: number;
+  /** arg3 (−1000 fra 0x7f8750, ellers spejderopgavens led) og de fire rand(500) (0x90cfc0) */
+  bias?: number; rand: [number, number, number, number];
+}
+/** 0x7b62a0: spejderens vurdering → [evne-stjerner +0x29, potentiale-stjerner +0x2a] (0..5). Skønnet = arg3 − rand(500) + 0x6e2f20(spiller, …,
+ *  flag 0x1e80 (evnen, 0x6e86d0 kind 2) / 0x1f00 (potentialet, kind 1), klub 0, spejderen som dommer) + rand(500); derefter de fysiske
+ *  egenskaber s = Pace + Acceleration (+0x36 + +0x1b) og m = Jumping + Stamina + Strength + Teamwork + Work Rate (+0x2e, +0x3c, +0x3d, +0x3f,
+ *  +0x44): ×1,2/1,1/1,05 (m > 75/65/50 og s > 30/24/24), ×0,75/0,95 (s < 15/20), ×0,85/0,95 (m < 25/40), over 34 år ×0,85; potentialet kun
+ *  under 25 år (evnen < 5250 → ×0,85, < 7000 og over 19 år → ×0,9; s < 15/24 → ×0,75/0,95; m < 30/45 → ×0,75/0,9; samme bonusser). Stjernerne
+ *  (0x7b687b): over 1,2·L og over 2·omdømmet + 12750 → 5, over L og over 2·omdømmet + 10750 (potentialet + 10500) → 4, over 0,8·L 3, over
+ *  0,7·L 2, over 0,6·L 1, ellers 0; L = 0x7bca90 holdt i 1750..35000. */
+export function scoutJudgement(i: ScoutRecIn): [number, number] {
+  const ftol = Math.trunc;
+  const rec = i.rec;
+  const u = (o: number) => s8(rec[o]);
+  const flagsA = 0x1e80, flagsP = 0x1f00;
+  const P = positionFactor(recPositions(rec), 0, 0, flagsA);              // 0x400 | 0x200: 100 + 100 (− 100 uden naturlig plads)
+  const judged = (kind: 1 | 2) => s16(judgeAbility({ playerId: i.playerId, ca: i.ca, pa: i.pa, age: i.age, gk: u(0xf), gameSeed: i.gameSeed, judge: i.judge, kind, hint: i.repSeen }));
+  const score = (kind: 1 | 2, flags: number) => {
+    let q = judged(kind);
+    if (kind === 1) {                                                         // 0x6e3af3: acceleration og fart
+      if (rec[0x1b] < 6) q -= 10; else if (rec[0x1b] < 10) q -= 5;
+      if (rec[0x36] < 6) q -= 15; else if (rec[0x36] < 10) q -= 10;
+      q = s16(q);
+    }
+    if (q > 150) q = ftol((q - 150) * 1.5 + 150);                           // 0x6e42a1
+    if (i.free) q = ftol(Math.max(q + 5, q * 1.05));                        // 0x6e60d2 (staff +0x39 = klubben = 0)
+    return combineScore(P, q, flags);
+  };
+  const s = s8(u(0x36) + u(0x1b));
+  const m = s8(u(0x44) + u(0x3f) + u(0x3d) + u(0x3c) + u(0x2e));
+  const bias = i.bias ?? -1000;
+  const [r1, r2, r3, r4] = i.rand;
+  const mul = (x: number, k: number) => ftol(x * k);
+  let est = bias - r1 + score(2, flagsA) + r2;
+  if (m > 75 && s > 30) est = mul(est, 1.2); else if (m > 65 && s > 24) est = mul(est, 1.1); else if (m > 50 && s > 24) est = mul(est, 1.05);
+  if (s < 15) est = mul(est, 0.75); else if (s < 20) est = mul(est, 0.95);
+  if (m < 25) est = mul(est, 0.85); else if (m < 40) est = mul(est, 0.95);
+  if (i.age > 34) est = mul(est, 0.85);
+  let pot = 0;
+  if (i.age < 25) {
+    pot = bias - r3 + score(1, flagsP) + r4;
+    if (est < 5250) pot = mul(pot, 0.85); else if (est < 7000 && i.age > 19) pot = mul(pot, 0.9);
+    if (s < 15) pot = mul(pot, 0.75); else if (s < 24) pot = mul(pot, 0.95);
+    if (m < 30) pot = mul(pot, 0.75); else if (m < 45) pot = mul(pot, 0.9);
+    if (m > 75 && s > 30) pot = mul(pot, 1.2); else if (m > 65 && s > 24) pot = mul(pot, 1.1); else if (m > 50 && s > 24) pot = mul(pot, 1.05);
+  }
+  const L = Math.min(35000, Math.max(1750, i.level));
+  const rep2 = 2 * s16(i.clubRep);
+  const stars = (x: number, four: number) => (x > 1.2 * L && x > rep2 + 12750 ? 5 : x > L && x > rep2 + four ? 4 : x > 0.8 * L ? 3 : x > 0.7 * L ? 2 : x > 0.6 * L ? 1 : 0);
+  return [stars(est, 10750), stars(pot, 10500)];
+}
+
+/** Rec i Player Search (0x80d164/0x80d199): den største af spejderens to stjernetal (0x7b62a0). Spejderen = klubbens spejder med den bedste viste
+ *  Judging Ability (*estimeret* – originalen bruger den, der lavede rapporten; uden spejder assistenten). arg3 = −1000 (0x7f8750's kald); de fire
+ *  rand(500) er en fast hash pr. spiller/spejder/sæson (*estimeret* – originalen trækker dem, når rapporten laves). 0x5407e0: samme klub eller
+ *  division → nuværende omdømme, samme land → hjemme, ellers verden (*estimeret*: 0x53d980's region-regel er ikke med). */
+export function cmScoutRec(g: GameState, p: import('./types').Player, scout?: Staff | null): number {
+  const club = g.clubs[g.userClub];
+  if (!club) return 0;
+  const sc = scout === undefined ? cmRecScout(g) : scout;
+  const rec = playerRecord(p);
+  const w = (o: number) => s16(rec[o] | (rec[o + 1] << 8));
+  const pc = p.club ? g.clubs[p.club] : undefined;
+  const repSeen = pc && (pc.id === club.id || pc.league === club.league) ? w(0xb) : (pc?.nation ?? p.nation) === club.nation ? w(9) : w(0xd);
+  const ja = sc ? cmStaffAttr(sc, 'judgingAbility') : 10, jp = sc ? cmStaffAttr(sc, 'judgingPotential') : 10;
+  const jid = sc ? sc.cmId ?? sc.id : 0;
+  const yr = Number(g.date.slice(0, 4)) || 0;
+  const h = (k: number) => Math.floor(hash01(g.seed, p.id, jid, k, yr) * 500);
+  const [ab, pot] = scoutJudgement({ rec, age: ageOn(p.dob, g.date), playerId: p.id, ca: p.ca, pa: p.pa, free: !p.club, repSeen,
+    judge: { id: jid, ja, jp }, clubRep: clubRepMem(g, club.id), level: levelCached(g, club.id), gameSeed: g.seed, rand: [h(1), h(2), h(3), h(4)] });
   return Math.max(ab, pot);
+}
+let lvCache: { key: string; v: number } | null = null;
+const levelCached = (g: GameState, cid: number) => {
+  const key = `${g.seed}:${g.date}:${cid}:${g.clubs[cid]?.balance}`;
+  if (lvCache?.key !== key) lvCache = { key, v: cmClubLevelOf(g, cid) };
+  return lvCache.v;
+};
+/** klubbens spejder med den bedste viste Judging Ability (ellers assistenten) */
+export function cmRecScout(g: GameState): Staff | null {
+  if (!g.userClub) return null;
+  const mine = Object.values(g.staff).filter((s) => s.club === g.userClub);
+  const pick = (xs: Staff[]) => xs.sort((a, b) => cmStaffAttr(b, 'judgingAbility') - cmStaffAttr(a, 'judgingAbility') || a.id - b.id)[0] ?? null;
+  return pick(mine.filter((s) => s.role === 'scout')) ?? pick(mine.filter((s) => s.role === 'assistant'));
+}
+/** 0x7bca90 af spiltilstanden */
+export function cmClubLevelOf(g: GameState, cid: number): number {
+  const c = g.clubs[cid];
+  if (!c) return 500;
+  const st = g.cmClubStat?.[cid];
+  const m = /^CM(\d+)$/.exec(c.league ?? '');
+  const lg = g.leagues[c.league];
+  const rep = clubRepMem(g, cid);
+  let squad = 0;
+  for (const x of Object.values(g.players)) if (x.club === cid) squad++;
+  return cmClubLevel({ rep, b77: st?.[1] ?? 0, divRep: m ? g.cmCompRep?.[+m[1]] ?? 0 : null, pro: (st?.[0] ?? 1) === 1,
+    squad: Math.min(50, squad), hasComp: !!lg && !lg.hidden && g.activeNations.includes(c.nation), finStatus: cmFinanceStatus(Math.round(c.balance * 0.86), rep) });
 }
 
 /** svaret på "Delay Transfer Offer": Delay = prøv igen om en uge, Cancel = tilbuddet bortfalder */

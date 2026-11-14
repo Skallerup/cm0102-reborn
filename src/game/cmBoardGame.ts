@@ -176,7 +176,7 @@ export function boardEnv(g: GameState, todayIso = g.date, startIso?: string): Bo
   const allPersons = () => {
     if (persons) return persons;
     persons = [];
-    for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) if (s.cmNp) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }
+    for (const s of Object.values(g.staff).sort((a, b) => a.id - b.id)) if (s.cmNp && !s.cmExtra) { const p = staffPerson(g, s, today); persons.push(p); byId.set(p.id, p); }
     for (const h of humanRefs(g)) { const p = humanPerson(g, h); persons.push(p); byId.set(p.id, p); }
     return persons;
   };
