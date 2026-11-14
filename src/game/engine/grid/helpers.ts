@@ -113,9 +113,51 @@ export function lineCells(x0: number, y0: number, x1: number, y1: number): [numb
 }
 /** blk: defenders (team without the ball, keeper included) with busy ≤ 1 on the line, own cell included. */
 export function blockersOnLine(defenders: MatchPlayer[], x0: number, y0: number, x1: number, y1: number): number {
+  // (ydelse 14/11) forsvarerne tælles pr. felt i et gitter én gang (før et filter over holdet for hvert felt på linjen og en liste af felterne)
+  const n0 = occFill(defenders, -1);
+  const n = n0 ? walkLine(x0, y0, x1, y1, true, defenders, -1) : 0;
+  if (n0) occClear(defenders, -1);
+  return n;                                                                                 // 0x6cd3fe, 0x6cd412
+}
+
+// (ydelse 14/11) fælles optælling for blockersOnLine/laneBlockers: forsvarerne (busy ≤ 1, og enten slot ≥ 0 eller aktive på siden `side`)
+// lægges i et 9×12-gitter; felterne på linjen slås op i det. Summen er den samme som før (felt for felt, samme felter og samme spillere).
+const OCC = new Int8Array(9 * 12);
+type OccP = { slot?: number; active?: boolean; side: number; busy: number; x: number; y: number };
+const occIn = (o: OccP, side: number) => (side < 0 ? (o.slot as number) >= 0 : !!o.active && o.side === side) && o.busy <= 1;
+const occCell = (x: number, y: number) => ((x | 0) === x && (y | 0) === y && x >= 0 && x <= 8 && y >= 0 && y <= 11 ? y * 9 + x : -1);
+/** forsvarerne i gitteret; antallet med et felt i gitteret (0 = intet at tælle) */
+function occFill(list: readonly OccP[], side: number): number {
   let n = 0;
-  for (const [x, y] of lineCells(x0, y0, x1, y1))
-    n += defenders.filter((d) => d.slot >= 0 && d.busy <= 1 && d.x === x && d.y === y).length; // 0x6cd3fe, 0x6cd412
+  for (let i = 0; i < list.length; i++) { const o = list[i]; if (occIn(o, side)) { const c = occCell(o.x, o.y); if (c >= 0) { OCC[c]++; n++; } } }
+  return n;
+}
+function occClear(list: readonly OccP[], side: number): void {
+  for (let i = 0; i < list.length; i++) { const o = list[i]; if (occIn(o, side)) { const c = occCell(o.x, o.y); if (c >= 0) OCC[c] = 0; } }
+}
+/** antal i feltet (x, y) – felter uden for gitteret (ikke-heltal) tælles direkte i listen som før */
+function occAt(x: number, y: number, list: readonly OccP[], side: number): number {
+  const c = occCell(x, y);
+  if (c >= 0) return OCC[c];
+  let n = 0; for (let i = 0; i < list.length; i++) { const o = list[i]; if (occIn(o, side) && o.x === x && o.y === y) n++; }
+  return n;
+}
+/** lineCells' felter (incl = begge ender på lige linjer; ellers [min, max)) – summen af occAt, uden at bygge listen */
+function walkLine(x0: number, y0: number, x1: number, y1: number, incl: boolean, list: readonly OccP[], side: number): number {
+  const inside = (x: number, y: number) => x >= 0 && x <= 8 && y >= 0 && y <= 11;
+  const adx = Math.abs(x1 - x0), ady = Math.abs(y1 - y0);
+  let n = 0;
+  if (adx === 0) { const hi = Math.max(y0, y1); for (let y = Math.min(y0, y1); incl ? y <= hi : y < hi; y++) { if (!inside(x0, y)) break; n += occAt(x0, y, list, side); } return n; }
+  if (ady === 0) { const hi = Math.max(x0, x1); for (let x = Math.min(x0, x1); incl ? x <= hi : x < hi; x++) { if (!inside(x, y0)) break; n += occAt(x, y0, list, side); } return n; }
+  if (adx >= ady) {
+    if (x0 > x1) { let t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+    const step = y1 - y0 >= 0 ? 1 : -1; let err = 0, y = y0;
+    for (let x = x0; x <= x1; x++) { if (err >= adx) { err -= adx; y += step; } if (!inside(x, y)) break; n += occAt(x, y, list, side); err += ady; }
+  } else {
+    if (y0 > y1) { let t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+    const step = x1 - x0 >= 0 ? 1 : -1; let err = 0, x = x0;
+    for (let y = y0; y <= y1; y++) { if (err >= ady) { err -= ady; x += step; } if (!inside(x, y)) break; n += occAt(x, y, list, side); err += adx; }
+  }
   return n;
 }
 
@@ -214,24 +256,10 @@ export const cellDirection = (x0: number, y0: number, x1: number, y1: number) =>
 export function laneBlockers(gp: { active: boolean; side: number; busy: number; x: number; y: number }[], poss: number,
                              x0: number, y0: number, x1: number, y1: number): number {
   const defSide = poss === 0 ? 1 : 0;
-  // (runde 10B) forsvarerne (aktive, busy ≤ 1) samles én gang – før et filter over alle 40 for hvert felt på linjen (samme antal)
-  const dx: number[] = [], dy: number[] = [];
-  for (let i = 0; i < gp.length; i++) { const o = gp[i]; if (o.active && o.side === defSide && o.busy <= 1) { dx.push(o.x); dy.push(o.y); } }
-  const cnt = (x: number, y: number) => { let c = 0; for (let i = 0; i < dx.length; i++) if (dx[i] === x && dy[i] === y) c++; return c; };
-  const inside = (x: number, y: number) => x >= 0 && x <= 8 && y >= 0 && y <= 11;
-  const adx = Math.abs(x1 - x0), ady = Math.abs(y1 - y0);
-  let n = 0;
-  if (adx === 0) { for (let y = Math.min(y0, y1); y < Math.max(y0, y1); y++) { if (!inside(x0, y)) break; n += cnt(x0, y); } return n; }
-  if (ady === 0) { for (let x = Math.min(x0, x1); x < Math.max(x0, x1); x++) { if (!inside(x, y0)) break; n += cnt(x, y0); } return n; }
-  if (adx >= ady) {
-    if (x0 > x1) [x0, y0, x1, y1] = [x1, y1, x0, y0];
-    const step = y1 - y0 >= 0 ? 1 : -1; let err = 0, y = y0;
-    for (let x = x0; x <= x1; x++) { if (err >= adx) { err -= adx; y += step; } if (!inside(x, y)) break; n += cnt(x, y); err += ady; }
-  } else {
-    if (y0 > y1) [x0, y0, x1, y1] = [x1, y1, x0, y0];
-    const step = x1 - x0 >= 0 ? 1 : -1; let err = 0, x = x0;
-    for (let y = y0; y <= y1; y++) { if (err >= ady) { err -= ady; x += step; } if (!inside(x, y)) break; n += cnt(x, y); err += adx; }
-  }
+  // (runde 10B) forsvarerne (aktive, busy ≤ 1) samles én gang – (ydelse 14/11) i optællingsgitteret i stedet for to lister og en lukning
+  const n0 = occFill(gp, defSide);
+  const n = n0 ? walkLine(x0, y0, x1, y1, false, gp, defSide) : 0;
+  if (n0) occClear(gp, defSide);
   return n;
 }
 /** Returns 0 = left foot, 1 = right foot, 2 = not applicable; penalty = 12·(20 − that foot). */

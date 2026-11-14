@@ -771,7 +771,7 @@ async function run(look) {
       // træk en plads fra strimlen ned på en spiller uden plads: spilleren sættes på pladsen (originalen)
       // en spiller uden plads, der står i listen (ikke skadet – forsæsonen giver startskader)
       const shown = await page.locator('.cx-sq-orig .cx-sq-row [data-pid]').evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-pid'))));
-      const free = await gs((ids) => { const g = window.__cm.gs(); const t = g.tactic; return ids.find((id) => { const p = g.players[id]; return p && !p.injury && !(p.banned > 0) && !t.lineup.includes(id) && !t.bench.includes(id); }) ?? 0; }, shown);
+      const free = await gs((ids) => { const g = window.__cm.gs(); const t = g.tactic; return ids.find((id) => { const p = g.players[id]; return p && p.club === g.userClub && !p.loan && !p.virtual && !p.reserves && !p.injury && !(p.banned > 0) && !t.lineup.includes(id) && !t.bench.includes(id); }) ?? 0; }, shown);
       if (free) {
         const target = page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first();
         await target.scrollIntoViewIfNeeded();

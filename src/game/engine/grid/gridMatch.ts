@@ -56,6 +56,28 @@ const dbg = (k: string) => { if (dbgOn) GRID_DEBUG[k] = (GRID_DEBUG[k] ?? 0) + 1
 /** Rand fra en 0..1-generator (vores Rng.next) som sub_90cfc0 (0x90cfc0–0x90d028): n = 0 → 0 uden at trække; n > 0 → 0..n−1;
  *  n < 0 → n+1..0 (resten af idiv med negativ divisor negeres, 0x90d026). Før gav n < 0 altid 0 – fx 0x7110f5's rand((v + 500)/3)
  *  under pres og ballCarrier's rand(−(…)) i skudvalget. */
+/** (ydelse 14/11) randOf(() => rng.next()) med mulberry32 (rng.ts) skrevet ind – samme tal i samme rækkefølge, uden to kald pr. træk */
+export const randOfRng = (rng: { state: number }): Rand => {
+  const next01 = (): number => {
+    let t = (rng.state = (rng.state + 0x6d2b79f5) >>> 0);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+  const r: Rand = (n) => {
+    if (n >= 1 && n < 65536) return Math.floor(next01() * (n | 0));
+    const k = Math.trunc(n);
+    if (k === 0) return 0;
+    if (k > 0xffff || k < -0xffff) {
+      const x = Math.floor(next01() * 0xffff);
+      let v = Math.trunc(x * (k * (1 / 65535)));
+      v += Math.trunc((r(Math.trunc((10 * k) / 65535)) + 5) / 10);
+      return v > k - 1 ? k - 1 : v;
+    }
+    return k > 0 ? Math.floor(next01() * k) : (-Math.floor(next01() * -k)) | 0;
+  };
+  return r;
+};
 export const randOf = (next01: () => number): Rand => {
   const r: Rand = (n) => {
     // (runde 10B) den almindelige gren først: 1 ≤ n < 65536 → k = trunc(n) = n | 0 i 1..65535 og floor(next01·k) – samme tal som nedenfor
@@ -479,6 +501,8 @@ function facingOk6fa140(p: GP, px: number, py: number, cx: number, cy: number): 
   let d = Math.abs(p.facing - ang); if (d > 180) d = 360 - d;
   return d < lim;
 }
+/** (ydelse 14/11) runTarget's optællinger: felterne om spilleren (3×3) og de aktive markspillere hos modstanderen */
+const RT_IN = new Int8Array(9), RT_FREE = new Int8Array(9), RT_OX = new Float64Array(64), RT_OY = new Float64Array(64);
 const ZONAL_WORLD = new WeakMap<GridMatchState, { rand: Rand; self: unknown; world: ZonalWorld<GP> }>();
 let lastZm: GridMatchState | null = null, lastZw: { rand: Rand; self: unknown; world: ZonalWorld<GP> } | undefined;
 export const GRID_UNKNOWN = {
@@ -539,6 +563,16 @@ export const GRID_UNKNOWN = {
     // (runde 11B) modstanderne direkte fra sidelisten (slot-orden, kun de aktive – som den tidligere kopi) og facingOk uden lukning
     const opps = sidesOf(m)[opp];
     const dribbling = recByte(p, 0x26);                                                      // rec+0x26 med movsx: den interne værdi (kan være < 0)
+    // (ydelse 14/11) modstanderne gås igennem én gang: antal (og ledige, busy < 2) i hvert af de 9 felter om ham, og de aktive markspilleres
+    // felter til afstanden – før to løkker over hele siden for hvert felt. Samme tal (tællinger og et minimum er uafhængige af rækkefølgen).
+    RT_IN.fill(0); RT_FREE.fill(0);
+    let nOut = 0;
+    for (const o of opps) {
+      if (!o.active) continue;
+      const ox = o.x - px + 1, oy = o.y - py + 1;
+      if (ox >= 0 && ox <= 2 && oy >= 0 && oy <= 2 && (ox | 0) === ox && (oy | 0) === oy) { RT_IN[oy * 3 + ox]++; if (o.busy < 2) RT_FREE[oy * 3 + ox]++; }
+      if (!(o.pos & 1)) { RT_OX[nOut] = o.x; RT_OY[nOut] = o.y; nOut++; }
+    }
     for (let cy = py - 1; cy <= py + 1; cy++) {
       if (cy < 0 || cy >= 12) continue;
       if (flags & 4) {
@@ -553,8 +587,8 @@ export const GRID_UNKNOWN = {
         if (cx === px && cy === py && flag2) continue;
         if (flag2 && !facingOk6fa140(p, px, py, cx, cy)) continue;
         if (p.pos & 0x30 && p.pos & 0x880 && cx >= 2 && cx <= 6 && !(px >= 2 && px <= 6) && !(flags & 1)) continue;
-        let nIn = 0, nFree = 0;
-        for (const o of opps) if (o.active && o.x === cx && o.y === cy) { nIn++; if (o.busy < 2) nFree++; }
+        const ci = (cy - py + 1) * 3 + (cx - px + 1);
+        const nIn = RT_IN[ci], nFree = RT_FREE[ci];
         let score = f32(randOff), n = 0;
         if (flag2) {
           n = nIn;
@@ -569,9 +603,8 @@ export const GRID_UNKNOWN = {
         if (n !== 0 && !flag2) score = score - 2 * n * n;
         else {
           let minD = 5000;
-          for (const o of opps) {
-            if (!o.active || o.pos & 1) continue;
-            const d = H.cellDist(o.x - cx, o.y - cy);
+          for (let i = 0; i < nOut; i++) {
+            const d = H.cellDist(RT_OX[i] - cx, RT_OY[i] - cy);
             if (d === 0) { minD = 0; break; }
             if (d < minD) minD = d;
           }
@@ -613,7 +646,7 @@ export const GRID_UNKNOWN = {
         lineSide1: 0, lineSide0: 0, sameClubGroup: false,
         nation: (q) => q.src.nation, reps: (q) => q.src.cmRep ?? repTriple(q.src.rep ?? 50), jumping: (q) => q.a.jumping, longShots: (q) => q.f.longShots,
         tacticalCell: (q) => self.tacticalCell(m, q), manMarkTarget: (q) => L.manMarkTarget(m, q) as GP | null, freeRun: (q) => self.freeRun(m, q, rand),
-        cellList: zonalCells(m),
+        cellList: zonalCells(m), sideList: (s) => sidesOf(m)[s],
       } };
       ZONAL_WORLD.set(m, w);
     }
@@ -664,7 +697,7 @@ export const GRID_UNKNOWN = {
   freeRun(m: GridMatchState, p: GP, rand: Rand): 0 | 1 | 2 {
     if (L.inOwnHalf(p)) return 0;
     const opp = other(p.side), gy = goalRow(p.side);
-    const [os, ms] = opp === 0 ? [sidesOf(m)[0], sidesOf(m)[1]] : [sidesOf(m)[1], sidesOf(m)[0]];
+    const sd = sidesOf(m), os = sd[opp], ms = sd[p.side];                                      // (ydelse 14/11) uden destrukturering
     for (const o of os) if (o.active && o.x === p.x && o.y === p.y) return 0;
     let t = Math.fround(L.dist(p.x, p.y, 4, gy) + 0.5);
     if (!this.facingGoal(m, p, rand)) t = Math.fround(t + 1);
@@ -937,6 +970,7 @@ export function attachView(m: GridMatchState, p: GP): void {
     teamwork: p.f.teamwork, technique: p.f.technique, throwIns: p.f.throwIns, creativity: p.f.creativity, paceRoll: 0, anticRoll: 0, decRoll: 0, offBallRoll: 0, creatRoll: 0,
     instr: { lo: Number(p.instr & 0xffffffffn), hi: Number(p.instr >> 32n) }, staff: { id: p.src.id, nationName: p.nationName ?? (hasGame() ? gs().nations[p.src.nation]?.name : undefined) ?? m.nations[p.side], professionalism: p.src.attrs[ATTRS.indexOf('professionalism')] || 10, favoured: p.favoured ?? [], disliked: p.disliked ?? [] },
     rolls: { b107: 0, b108: 0, b10a: 0, b10c: 0 }, tacklingBit2: false, challengers: [] as H.MatchPlayer[],
+    chBuf: [] as H.MatchPlayer[],                                                            // (ydelse 14/11) sync's genbrugte liste af markørerne
   };
   p.view = v as PassPlayer & H.MatchPlayer;
 }
@@ -972,7 +1006,9 @@ function sync(m: GridMatchState): void {
     v.w35 = p.rating;                                                                        // +0x35 = karakteren ×1000 (0x6c6eb2: W = (kondition + karakter − 15000)·0,25)
     v.paceRoll = p.roll.pace; v.anticRoll = p.roll.anticipation; v.decRoll = p.roll.decisions; v.offBallRoll = p.roll.offTheBall; v.creatRoll = p.roll.creativity;
     v.rolls.b107 = p.roll.offTheBall; v.rolls.b108 = p.roll.marking; v.rolls.b10a = p.roll.positioning; v.rolls.b10c = p.roll.agility;
-    v.challengers = p.markers.length ? p.markers.map((q) => (q as GP).view!) : NO_CHALLENGERS;   // (runde 10B) tom liste deles (læses kun)
+    // (runde 10B) tom liste deles (læses kun); (ydelse 14/11) ellers visningens egen liste fyldt igen (læses kun med includes, før næste sync)
+    if (p.markers.length) { const b = (v as unknown as { chBuf: H.MatchPlayer[] }).chBuf; b.length = 0; for (const q of p.markers) b.push((q as GP).view!); v.challengers = b; }
+    else v.challengers = NO_CHALLENGERS;
     v.tacklingBit2 = (p.tacticByte & 2) !== 0;                                               // sub_6f4600: taktikbyten bit 2 → positionsrullet (før altid false)
   }
 }

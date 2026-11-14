@@ -698,7 +698,9 @@ export function cmBoardAfterMatch(g: GameState, f: Fixture, rep: MatchReport): v
     venueHome: true,
     sides: [sideOf(0), sideOf(1)],
   };
-  afterMatch(env, st, m, rnd(g, f.id, 0x695240));
+  // (ydelse 14/11) afterMatch læser kun manageren (om der er en, og .np) – uden boardEnv's allPersons (alle personer pr. kamp)
+  const touched = { done: false };
+  afterMatch({ ...env, manager: (c) => managerPerson(g, c, env.today, touched) }, st, m, rnd(g, f.id, 0x695240));
   syncHuman(g);
 }
 
@@ -711,15 +713,36 @@ function syncHuman(g: GameState): void {
   g.board.expectation = EXP_KEY(R.e);
 }
 
+/** (ydelse 14/11) boardEnv(g).manager(club) uden at bygge alle personer: samme Person-felter (staffPerson/humanPerson/noNp) og samme
+ *  sideeffekt – allPersons gav alle personer et omdømme (cmRep ??= [1, 1, 1]), når manageren blev slået op. Kun til kaldere, der ikke sammenligner
+ *  personerne med env.persons() (identiteten): kamprapportens managerdel og bestyrelsen efter kampen (afterMatch læser kun manageren). */
+function managerPerson(g: GameState, club: number, today: CmDate, touched: { done: boolean }): Person | null {
+  if (tempManager.has(club)) return tempManager.get(club)!;
+  const mid = g.clubs[club]?.manager ?? 0;
+  if (mid === -1 || (mid > 0 && g.staff[mid]?.cmNp)) {
+    if (!touched.done) {
+      touched.done = true;
+      for (const s of Object.values(g.staff)) if (s.cmNp && !s.cmExtra) s.cmRep ??= [1, 1, 1];
+      for (const h of humanRefs(g)) h.get().manager.cmRep ??= [1, 1, 1];
+    }
+  }
+  if (mid === -1) return humanRefs(g).map((h) => humanPerson(g, h)).find((p) => p.club === club) ?? null;
+  if (mid > 0) { const s = g.staff[mid]; return s?.cmNp ? (s.cmExtra ? null : staffPerson(g, s, today)) : s ? noNp(s) : null; }
+  return null;
+}
+
 /** 0x6b6cc0 (efter kampen): managerens tre værdier fra 0x6d3610, assistenten og trænerne får en fjerdedel af ændringen */
 postHooks.managerRep = (g, club, v) => {
   if (!cmBoardOn(g)) return;
-  const env = boardEnv(g);
-  const m = env.manager(club);
+  // (ydelse 14/11) personerne bygges direkte som boardEnv's manager()/person() ville give dem – før byggede boardEnv ALLE personer
+  // (sorteret stab + mennesker) to gange pr. kamp (~0,4 s pr. lørdag med fem lande)
+  const today = isoToCm(g.date), touched = { done: false };
+  const m = managerPerson(g, club, today, touched);
   if (!m || !m.np) return;
   const mine = Object.values(g.staff).filter((s) => s.club === club && s.cmNp);
-  // club +0xd3 (assistenten) og +0x19f (de fem trænerpladser)
-  const staff = [...mine.filter((s) => s.role === 'assistant').slice(0, 1), ...mine.filter((s) => s.role === 'coach').slice(0, 5)].map((s) => env.person(s.id)!).filter(Boolean);
+  // club +0xd3 (assistenten) og +0x19f (de fem trænerpladser): env.person(id) = den byggede person (cmNp, ikke cmExtra), ellers noNp
+  const staff = [...mine.filter((s) => s.role === 'assistant').slice(0, 1), ...mine.filter((s) => s.role === 'coach').slice(0, 5)]
+    .map((s) => (s.cmExtra ? noNp(s) : staffPerson(g, s, today))).filter(Boolean);
   managerRepAfterMatch(m, staff, v[0], v[1], v[2]);
 };
 

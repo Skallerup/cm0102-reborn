@@ -243,17 +243,17 @@ export function gridEngineOn(g: GameState): boolean {
   return g.options.engine === 'original' || dev === 'original' || (g.options.engine === undefined && GRID_ENGINE_DEFAULT);
 }
 
-/** Hvilke kampe spiller gittermotoren? Menneskets egne kampe og alle hjemlige kampe (liga, pokal, play-off) mellem computerklubber i de
- *  lande, hvor et menneske styrer en klub – i England alle fire rækker, FA Cup og Worthington Cup, som originalen spiller med den fulde motor.
- *  Resten (de øvrige valgte lande, Europa uden mennesket, venskabskampe, landskampe) går stadig på zonemotoren: gittermotoren koster ~75 ms
- *  pr. kamp mod zonemotorens ~5 ms, så en lørdag med flere hele lande ville tage 10+ s (målt 14/11, scripts/lower-divs-day.ts:
- *  18/8-2001 med 45 engelske kampe 1,6 s → 3,5 s). */
+/** Hvilke kampe spiller gittermotoren? Menneskets egne kampe og alle hjemlige kampe (liga, pokal, play-off) i de spilbare (valgte) lande –
+ *  som originalen, der spiller alle kampe i de indlæste ligaer med den fulde motor. Resten (Europa uden mennesket, venskabskampe, landskampe)
+ *  går stadig på zonemotoren. (14/11) Før kun lande med en menneskeklub (og slet ikke, når mennesket var uden job): målt med fem valgte lande
+ *  (Man Utd + Spanien, Italien, Tyskland, Frankrig) og alle hjemlige kampe på gittermotoren tager en lørdag (54–68 kampe) 2,6–4,0 s efter
+ *  ydelsesrunden (søndagens lønsum i cmFinance.ts, managerens personer i cmBoardGame.ts, motoren) – før 2,8–4,9 s, søndage 5,5–9,3 s → 1,1–2,7 s. */
 export function gridFixture(home: number, away: number, fixtureId?: number): boolean {
   const g = gs();
   if (isHumanClub(home) || isHumanClub(away)) return true;
   const comp = fixtureId !== undefined ? g.comps[g.fixtures[fixtureId]?.comp] : undefined;
   if (!comp || comp.type === 'continental' || comp.nation < 0) return false;
-  return Object.values(g.clubs).some((c) => c.manager === -1 && g.comps[c.league]?.nation === comp.nation);
+  return g.activeNations.includes(comp.nation);
 }
 
 /** Alle klubkampe laves her: zonemotoren (MatchSim), eller gittermotoren, når den er slået til og registreret

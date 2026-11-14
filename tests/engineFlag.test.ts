@@ -57,6 +57,19 @@ describe('kampmotoren bag et flag', () => {
     if (friendly) expect(gridFixture(friendly.home, friendly.away, friendly.id)).toBe(false);
   }, 60_000);
 
+  it('(14/11) også de andre valgte landes hjemlige kampe – uden en menneskeklub i landet', () => {
+    const w = load('world-original.json');
+    const eng = w.nations.findIndex((n) => n.name === 'England'), esp = w.nations.findIndex((n) => n.name === 'Spain');
+    createGame(w, { managerName: 'T', managerNation: eng, clubId: w.clubs.find((c) => c[1] === 'Arsenal')![0], activeNations: [eng, esp], lang: 'en', masking: true, seed: 3, mode: 'authentic' });
+    const g = gs();
+    const spanish = Object.values(g.fixtures).filter((f) => g.comps[f.comp]?.nation === esp && g.comps[f.comp].type !== 'continental');
+    const lg = spanish.find((f) => g.comps[f.comp].type === 'league');
+    expect(lg).toBeDefined();
+    expect(gridFixture(lg!.home, lg!.away, lg!.id)).toBe(true);
+    const cup = spanish.find((f) => g.comps[f.comp].type === 'cup');
+    if (cup) expect(gridFixture(cup.home, cup.away, cup.id)).toBe(true);
+  }, 120_000);
+
   it('moderne database: aldrig – heller ikke i ægte tilstand', () => {
     const g = start(load('world.json'), 'Brentford FC', 'authentic');
     g.options.engine = 'original';

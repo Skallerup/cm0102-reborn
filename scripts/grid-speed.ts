@@ -7,7 +7,7 @@ import { gs, squad } from '../src/game/state';
 import { Rng } from '../src/game/rng';
 import { aiTactic, ORIGINAL } from '../src/game/sim';
 import { quickMatch } from '../src/game/engine/match';
-import { randOf, runGridMatch } from '../src/game/engine/grid/gridMatch';
+import { randOfRng, runGridMatch } from '../src/game/engine/grid/gridMatch';
 import { gameInputsCtx } from '../src/game/engine/grid/gameInputs';
 import type { Player } from '../src/game/types';
 
@@ -29,7 +29,7 @@ const time = (name: string, fn: (i: number) => void) => {
   console.log(`${name.padEnd(12)} ${N} kampe ${(ms / 1000).toFixed(1)} s · ${(ms / N).toFixed(1)} ms pr. kamp`);
   return ms / N;
 };
-const rng = new Rng(1), rand = randOf(() => rng.next());
+const rng = new Rng(1), rand = randOfRng(rng);   // som spillet (adapter.ts): mulberry32 skrevet ind i rand
 const zone = time('zonemotoren', (i) => {
   const [h, a] = fixtures[i];
   quickMatch({ club: h, tactic: tac[i][0], players: new Map(sq.get(h)!.map((p) => [p.id, p])) }, { club: a, tactic: tac[i][1], players: new Map(sq.get(a)!.map((p) => [p.id, p])) },

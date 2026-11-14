@@ -197,10 +197,15 @@ export function cmFinanceNewGame(g: GameState, world: CMWorld, seed: number): vo
   }
   // ugens lønsum ved start (FinanceTable 0x59a370 → refresh_all_wage_bills 0x59cf50)
   // (alle klubber på én gang: udlejede spillere og staben slås op pr. klub – samme rækkefølge som i updateWageBill)
+  const idx = wageIdx(g);
+  for (const c of Object.values(g.clubs)) { const r = g.cmFin[c.id]; if (r) updateWageBill(g, c, r, idx); }
+}
+/** udlejede spillere (efter moderklub) og staben (efter klub) i Object.values-rækkefølgen – ét gennemløb i stedet for ét pr. klub */
+export function wageIdx(g: GameState): WageIdx {
   const idx: WageIdx = { loanOut: new Map(), staff: new Map() };
   for (const p of Object.values(g.players)) if (p.loan?.from !== undefined && p.contract) { const a = idx.loanOut.get(p.loan.from) ?? []; a.push(p); idx.loanOut.set(p.loan.from, a); }
   for (const s of Object.values(g.staff)) { const a = idx.staff.get(s.club) ?? []; a.push(s); idx.staff.set(s.club, a); }
-  for (const c of Object.values(g.clubs)) { const r = g.cmFin[c.id]; if (r) updateWageBill(g, c, r, idx); }
+  return idx;
 }
 
 // ------------------------------------------------------------------------------------------------ tilhængernes tillid (MANAGER_MANAGER +8)
@@ -234,7 +239,7 @@ const supporters = (g: GameState, c: Club) => g.cmSup?.[c.id] ?? 5000;
 // ------------------------------------------------------------------------------------------------ Finance::update_wage_bill 0x598370
 
 /** ugens lønsum (£): spillernes og stabens kontrakter, udfyldningen under 15 spillere og omdømmeleddet */
-type WageIdx = { loanOut: Map<number, Player[]>; staff: Map<number, Staff[]> };
+export type WageIdx = { loanOut: Map<number, Player[]>; staff: Map<number, Staff[]> };
 export function updateWageBill(g: GameState, c: Club, r: CmFinRec, idx?: WageIdx): void {
   let wb = 0, top = 0, n = 0;
   for (const p of squad(c.id)) {
@@ -368,13 +373,16 @@ export function cmFinanceDay(g: GameState): void {
   const date = g.date, sunday = cmWeekday(date) === 6;
   const monthEnd = addDays(date, 1).slice(5, 7) !== date.slice(5, 7);
   const dn = Math.round(Date.parse(date) / 86400000);
+  // (ydelse 14/11) søndagens lønsummer: udlejede spillere og staben slås op i ét indeks (før Object.values(g.players) for HVER klub –
+  // ~3,5 s pr. søndag med fem lande); dagens trin herunder flytter hverken spillere, lejeaftaler eller stab, så summerne er de samme
+  let idx: WageIdx | undefined;
   for (const c of Object.values(g.clubs)) {
     const r = g.cmFin![c.id];
     if (!r) continue;
     const rand = cmRand(g.seed ?? 0, c.id, dn, 0x59b9c0);
     if (active(g, c)) {
       if (sunday) {
-        updateWageBill(g, c, r);
+        updateWageBill(g, c, r, idx ??= wageIdx(g));
         book(g, c, K.wages, r.wb);
         weeklyMerch(g, c, rand);
         const { days, past } = daysToSeasonStart(g, c);

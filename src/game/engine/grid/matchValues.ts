@@ -134,9 +134,12 @@ export function noWideMidAttack5b8960(t: { prim: number[]; sec: number[] }): boo
 }
 
 /** sub_6ec010. rand = utils_random 0x90cfc0 (højst 3 kald: rand(50) 0x6ee2e8, rand(20) 0x6ee59e, rand(25) 0x6ee6af). */
+const FR_BYTES = new Uint8Array(0x80), FR_VIEW = new DataView(FR_BYTES.buffer);
 export function matchValues6ec010(q: MatchValuesPlayer, env: MatchValuesEnv, rand: (n: number) => number): void {
   // stakrammen: offset fra esp efter prologen (sub esp,0x54 + 4 push); celler 0x10..0x63
-  const FR = new DataView(new ArrayBuffer(0x80));
+  // (ydelse 14/11) én nulstillet ramme genbruges (før en ny ArrayBuffer pr. kald – også nul); funktionen kalder ikke sig selv
+  FR_BYTES.fill(0);
+  const FR = FR_VIEW;
   const gF = (o: number) => FR.getFloat32(o, true), sF = (o: number, v: number) => FR.setFloat32(o, v, true);
   const gD = (o: number) => FR.getFloat64(o, true), sD = (o: number, v: number) => FR.setFloat64(o, v, true);
   const gI = (o: number) => FR.getInt32(o, true), sI = (o: number, v: number) => FR.setInt32(o, v | 0, true);

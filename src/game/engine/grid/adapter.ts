@@ -17,11 +17,11 @@
 // felt og holdet med bolden), talt her i adapteren uden at røre motoren.
 
 import { nationLanguage } from './nationLanguage';
-import type { Rng } from '../../rng';
+import { Rng } from '../../rng';
 import type { CommentaryLine, MatchEvent, MatchReport, MatchStatsSide, Player, ShootoutKick, ShotRecord, Tactic } from '../../types';
 import type { EngineOptions, EngineTeam } from '../match';
 import type { LiveSim, LiveSimPlayer, LiveSimTeam, LiveTeamView, PitchSnap } from '../liveSim';
-import { createGridMatch, randOf, type GP, type GridManager, type GridMatch, type GridSideStats } from './gridMatch';
+import { createGridMatch, randOf, randOfRng, type GP, type GridManager, type GridMatch, type GridSideStats } from './gridMatch';
 import { gs } from '../../state';
 import { aiPickCtx, type AiPickCtx } from './aiTeam';
 import { EVENT_NAMES } from './eventTable';
@@ -117,7 +117,8 @@ export class GridSim implements LiveSim {
       return { club: t.club, tactic: t.tactic, stats: emptyStats(), all };
     };
     this.teams = [mk(home, 0), mk(away, 1)];
-    const rand = this.rand = randOf(() => r.next());
+    // (ydelse 14/11) spillets Rng: mulberry32 skrevet ind i rand (samme tal); andre generatorer (underklasser, test) som før
+    const rand = this.rand = r instanceof Rng && r.next === Rng.prototype.next ? randOfRng(r) : randOf(() => r.next());
     this.ai = [opts.aiSubs?.[0] ?? true, opts.aiSubs?.[1] ?? true];
     const subs = opts.subs ?? 3;
     this.g = createGridMatch({ players: home.players, tactic: home.tactic }, { players: away.players, tactic: away.tactic }, rand, {

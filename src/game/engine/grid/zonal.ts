@@ -47,6 +47,8 @@ export interface ZonalWorld<P extends ZonalPlayer = ZonalPlayer> {
   freeRun(p: P): 0 | 1 | 2;                       // sub_6cb780 – her bruges kun ≠ 0
   /** gitterlisten for (x, y), side: originalen indsætter i handlingsrækkefølgen (sub_6bd760) – *estimeret* som slot-orden */
   cellList?(x: number, y: number, side: ZSide): P[];
+  /** (ydelse 14/11) sidens spillere i players' rækkefølge (= players.filter(side)) – læses kun */
+  sideList?(side: ZSide): readonly P[];
   /** til test/fejlsøgning: hver kandidats endelige score (før 16-bit-sammenligningen) */
   onScore?(p: P, score: number): void;
 }
@@ -70,7 +72,7 @@ export function zonalPick<P extends ZonalPlayer>(w: ZonalWorld<P>, p: P, rand: R
   let best: P | null = null, bestScore = 0;
   const pr = p.roll.positioning;                                                // +0x10a: 0 ⇒ rand(105), 20 ⇒ rand(5)
   const myNation = w.nation(p);
-  const opps = w.players.filter((o) => o.side === opp);
+  const opps = w.sideList ? w.sideList(opp) : w.players.filter((o) => o.side === opp);   // (ydelse 14/11) sidens liste i samme rækkefølge
 
   const reputation = (o: P) => {                                                // 0x6bc508 / 0x6bcae6
     const [home, cur, world] = w.reps(o);

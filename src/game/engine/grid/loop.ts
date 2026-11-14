@@ -301,18 +301,19 @@ export function rollCaps(p: Player): Caps {
 const F0025 = Math.fround(0.0025);
 /** sub_6f44a0. */
 export function rollTick(p: Player, rand: Rand): void {
-  const max2 = (n: number) => Math.max(rand(n), rand(n));
-  const cp = ftol(p.condition * F0025) + p.cap.pace - 25;    // 0x6f44a7: fmul dword [0x96d758] = float32 0,0025 (6000 → 14, ikke 15)
-  p.roll.pace = max2(cp);                                     // +0x104
-  p.roll.positioning = max2(p.cap.positioning);               // +0x10a
-  p.roll.offTheBall = rand(p.cap.offTheBall);                 // +0x107
-  p.roll.marking = rand(p.cap.marking);                       // +0x108
-  p.roll.flair = rand(p.cap.flair);                           // +0x109
-  p.roll.creativity = max2(p.cap.creativity);                 // +0x10b
-  p.roll.decisions = max2(p.cap.decisions);                   // +0x106
-  p.roll.anticipation = rand(p.cap.anticipation);             // +0x105
-  p.roll.workRate = rand(p.cap.workRate);                     // +0x10d
-  p.roll.agility = rand(p.cap.agility);                       // +0x10c
+  // (ydelse 14/11) max2 skrevet ud (før en lukning pr. kald) – samme træk i samme rækkefølge: rand(n), rand(n), så Math.max
+  const roll = p.roll, cap = p.cap;
+  const cp = ftol(p.condition * F0025) + cap.pace - 25;      // 0x6f44a7: fmul dword [0x96d758] = float32 0,0025 (6000 → 14, ikke 15)
+  let a = rand(cp), b = rand(cp); roll.pace = Math.max(a, b);                                   // +0x104
+  a = rand(cap.positioning); b = rand(cap.positioning); roll.positioning = Math.max(a, b);     // +0x10a
+  roll.offTheBall = rand(cap.offTheBall);                     // +0x107
+  roll.marking = rand(cap.marking);                           // +0x108
+  roll.flair = rand(cap.flair);                               // +0x109
+  a = rand(cap.creativity); b = rand(cap.creativity); roll.creativity = Math.max(a, b);        // +0x10b
+  a = rand(cap.decisions); b = rand(cap.decisions); roll.decisions = Math.max(a, b);           // +0x106
+  roll.anticipation = rand(cap.anticipation);                 // +0x105
+  roll.workRate = rand(cap.workRate);                         // +0x10d
+  roll.agility = rand(cap.agility);                           // +0x10c
 }
 /** sub_6f55c0: rolls + once-a-minute (1/11) condition update. (+0xff part omitted: TODO meaning.) */
 export function playerTick(p: Player, rand: Rand): void {
@@ -416,7 +417,7 @@ export function msvcQsort<T>(a: T[], comp: (x: T, y: T) => number): void {
  * har 3 markører (0x6ba220/0x6ba314) – så står markøren uden at følge (han springer sin tur over, 0x6ba37c), sic.
  */
 export function assignMarking(m: Match, h: Hooks): void {
-  for (const p of m.order) { p.marks = null; p.markers = []; }
+  for (const p of m.order) { p.marks = null; p.markers.length = 0; }        // (ydelse 14/11) listen tømmes (før en ny pr. spiller og tik)
   const ownThird = (s: Side) => (s === 0 ? m.ballY < 3 : m.ballY > 8);
   for (const p of m.order) {
     if (p.tacticByte & 1) continue;                            // 0x6ba1c1 (meaning ukendt)

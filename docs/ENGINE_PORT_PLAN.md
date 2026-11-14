@@ -166,7 +166,7 @@ Herfra (i rækkefølge):
    (game_update_squad_relationships 0x5d6d10 ugentligt + ~20 hændelsessystemer), managerpostens omregning.
 8. **Efter slutfløjtet:** spillets overførsel 0x6b5f00 – 0x6b6cc0 (resultatposten 0x729ff0) og 0x6b74a0 ([0xb67dc8] → kontraktens flag 0x867700).
 9. **Tabelrækken 0x4a4850:** navnene på +0x19/+0x2d/+0x41/+0x55 og datoerne +0x4d/+0x61, rækkefølgen før første kamp (kræver et spor med posterne).
-10. **Hastigheden** (98 ms pr. kamp, bundtet – låsetrinet skal bestå bit for bit; runde 10B).
+10. **Hastigheden** (~35 ms pr. kamp bundtet efter runde 12 – låsetrinet skal bestå bit for bit; ≤ 25 ms kræver omskrivningen fra runde 11B).
 11. Ikke dækket af sporene: golden goal, MLS-straffe, to-benede opgør med udebanemål, 0x6ce9c0's dødboldsskytte-tal.
 
 (Tidligere overdragelser efter runde 8 og 9: se Log-posterne "Runde 8", "Runde 9", "Runde 9b", "Runde 9c" nederst – deres punkter er samlet ovenfor.)
@@ -341,6 +341,24 @@ for alle databaser. Det mangler, i rækkefølge:
 
 ## Log
 
+- 2026-11-14 – **Runde 12: gittermotoren på alle kampe i de valgte lande; Continue Game hurtigere (resultatneutralt) – motorens mål ≤ 25 ms er
+  IKKE nået.** `gridFixture` (sim.ts): menneskets kampe + alle hjemlige kampe (liga, pokal, play-off) i `g.activeNations` – før kun lande med en
+  menneskeklub, så en fyret/arbejdsløs manager fik zonemotoren på resten af sæsonen (grid-season frø 1: Wrexham-manageren er uden job fra april →
+  2,44 → 2,41 mål; med den nye regel alene er alle 45 fingeraftryk 15/7–20/5 ens før/efter). **Målt** (fem lande: Man Utd + Spanien, Italien,
+  Tyskland, Frankrig, frø 11, alle hjemlige kampe på gittermotoren, bundtet, belastning 2–3): lørdage 11/8–22/9 (36–69 kampe) 2,8–4,9 s → 2,6–4,0 s,
+  søndage 5,5–9,3 s → 1,1–2,7 s; torsdage med europæiske kampe (zonemotoren, 41–48 kampe) tager stadig 4,2–4,5 s (ikke undersøgt). **I spillet
+  (ikke motoren):** søndagens update_wage_bill (cmFinance.ts) løb `Object.values(g.players)` + `g.staff` for HVER klub (~3,5 s pr. søndag) – nu ét
+  indeks (`wageIdx`); efter kampen byggede `boardEnv().manager()` ALLE personer (sorteret stab, ~0,4 s pr. lørdag) i `postHooks.managerRep` og
+  `cmBoardAfterMatch` – nu `managerPerson` (samme Person-felter og samme `cmRep ??= [1, 1, 1]`). Ikke rørt: nyt spil tager ~31 s i node, heraf
+  `updateWageBill` uden indeks i cmWageGame.ts:271 (kontraktdelen – kan få `wageIdx(g)`) og cmVirtual's `templates`. **Motoren** (grid-speed 380
+  kampe 36,5 → 35,3 ms; fingeraftrykket 60+10 kampe bedst af 4–6: 34,6 → 32,4–33,5 ms): `randOfRng` (mulberry32 skrevet ind i rand, adapteren
+  bruger den for spillets Rng), forsvarernes optællingsgitter i laneBlockers/blockersOnLine (før lister + filter pr. felt), runTarget tæller
+  modstanderne én gang (3×3-felterne og markspillernes felter), freeRun uden destrukturering, zonevalget med sidelisten, sync genbruger
+  markørlisten, markeringsrunden tømmer listerne i stedet for nye, rollTick uden lukning, sub_6ec010's stakramme genbruges. Profilen er stadig
+  flad (rand 12 %, passOptions 6 %, runTarget 4 %, offsideLines 3,5 %, …); ≤ 25 ms kræver stadig omskrivningen fra runde 11B. **Bevis:**
+  fingeraftrykket (60 kampe + 10 sete) `2f2c062f…` uændret efter hvert trin, `grid-stats.ts 100 1` byte for byte ens, spillets fingeraftryk
+  (kampresultater, spillere, klubbernes økonomi, stab, bestyrelse) ens for fem lande til 23/9 og for England/Wrexham hele sæsonen (mod HEAD +
+  den nye gridFixture); tests/grid* 19 filer (heraf lockstep 15/15), engineFlag (+1 test), cmFinance, cmBoard, engine, tacticsGrid grønne.
 - 2026-11-13 – Transfer/kontrakt, første runde: 0x4c7ac0/0x4cda70/0x4ce4e0/0x85fc50/0x864550/0x862720 porteret og kontrolleret kald for kald på tre dage (se "Transfer/kontrakt" ovenfor); ikke koblet ind i spillet.
 - 2026-11-10 – exe'en verificeret, rekompileret (36 indgange, 1.307 funktioner fulgt, 32 MB C), funktionerne klippet ud,
   offset-ordbog samlet, fire afkodere sat på tacticalCell, runTarget/zonalPick, syn/plads/offside og challenge/preShot.
