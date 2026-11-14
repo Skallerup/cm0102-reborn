@@ -1282,6 +1282,12 @@
 .cx-chist-wh { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 2px; padding: 2px 0; } .cx-chist-wh > span { background: #8b8b8b; color: #e6e6e6; text-align: center; font-size: 12px; padding: 4px 0; } .cx-chist-wh > span:first-child { background: none; }
 .cx-chist-win { max-height: calc(100vh - 330px); }
 .cx-chist-comp .cx-chist-tbl { min-height: 180px; }
+/* Awards (CM 01/02 award_screens.cpp – AwardsClassic.tsx): måned/sæson + vinder, nr. 2, nr. 3 */
+.cx-aw-tbl .cx-chist-row, .cx-aw-tbl .cx-chist-wh { grid-template-columns: 160px 1fr 1fr 1fr; }
+.cx-aw-team .cx-chist-row, .cx-aw-team .cx-chist-wh { grid-template-columns: 160px 1fr 1fr; }
+.cx-awards .cx-chist-row .me { color: #fff21f; } .cx-aw-subs { border-top: 1px solid #8b8b8b; }
+.cx-awards .cx-chist-tbl { max-height: calc(100vh - 360px); overflow-y: auto; }
+@media (max-width: 760px) { .cx-aw-tbl .cx-chist-row, .cx-aw-tbl .cx-chist-wh, .cx-aw-team .cx-chist-row, .cx-aw-team .cx-chist-wh { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 760px) { .cx-chist-row, .cx-chist-row.three { grid-template-columns: 1fr; } }
 /* "Championship Manager" (Nations & Clubs): to kolonner med navn, landekode (gul) og liga (orange) */
 .cx-nc-list { display: grid; grid-template-columns: 1fr 1fr; gap: 0 24px; margin: 0 16px; padding: 6px 12px; background: rgba(0, 0, 0, 0.3); max-height: calc(100vh - 360px); overflow-y: auto; }

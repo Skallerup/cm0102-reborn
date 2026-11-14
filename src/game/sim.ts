@@ -8,6 +8,7 @@ import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
 import { cmRelDaily } from './cmRelations';
 import { cmFineDaily } from './cmFine';
+import { cmAwardsAfterMatch, cmAwardsDaily, cmAwOn } from './cmAwards';
 import { cmRecordsDaily } from './cmMedia';
 import { cmTrainSquads } from './cmTraining';
 import { recordAiTactics } from './engine/grid/aiTeam';
@@ -379,6 +380,8 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
   // originalens spillerdata efter kampen (0x7c0d70 statistikken, 0x4ca6d0 kontraktens tællere) – kun den originale database i ægte tilstand,
   // ingen tal fra spillets rng (cmPlayerData.ts)
   cmAfterMatch(g, f, rep, squad);
+  // AWARD_MANAGER::process_fixture 0x4134c0 + Staff_Records 0x868830: priserne (månedens karakterer, ligaens tal, managernes point – cmAwards.ts)
+  cmAwardsAfterMatch(g, f, rep);
   // 0x8c39f0: arbejdstilladelsens historik (kampe spillet/ikke spillet – cmPermit.ts)
   cmPermitAfterMatch(g, f, rep, (p) => !!p.injury || p.banned > 0);
   // 0x62c080: kampkonditionen, trætheden og kampens skader (konditionsmodulet, cmFitness.ts)
@@ -551,6 +554,8 @@ function newDay() {
   cmDevDaily(g);
   // Fine 0x5a5820 (0x5cdb05, lige før 0x5d6d10): de udløbne Discipline Player-poster og trænerens rapport (cmFine.ts)
   cmFineDaily(g);
+  // AWARD_MANAGER::process_date 0x413540 (EnglandAwards 0x579610/0x579900): månedens og årets priser (cmAwards.ts)
+  cmAwardsDaily(g);
   // game_update_squad_relationships 0x5d6d10 (0x5cdb0a, efter 0x5ce2d0/0x5ce0b0): forholdene i trupperne (cmRelations.ts)
   cmRelDaily(g, squad, (p, flag) => { const c = p.cmContract; if (c) withFlagCtx(g, p, cmRand(g.seed ?? 0, p.id, Math.round(Date.parse(g.date + 'T00:00:00Z') / 86400000), 0x867700), () => cmFlagSet(c, flag)); });
   // FinanceTable::daily_update 0x59b9c0 (cmFinance.ts): søndagens løn/merchandise/sæsonkort, månedens poster, sæsonopdateringen
@@ -622,7 +627,8 @@ function newDay() {
     if (extended()) { monthlyPersonality(); monthlyWill(); fansMonthly(); }
     if (month(d) !== 7) monthlyColumn();
     if (extended()) forEachHuman(boardMeeting);
-    if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth();
+    // den originale database i ægte tilstand: originalens priser (cmAwardsDaily) i stedet for spillets egne
+    if (!cmAwOn(g)) { if (!(month(d) === 7)) monthlyAwards(); else snapshotMonth(); }
     monthlyClubReps();
     refreshShortlists();
     forEachHuman(() => {

@@ -45,6 +45,12 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
     try { p.month = d.toLocaleDateString(t('cl.locale'), { month: 'long', timeZone: 'UTC' }); } catch { p.month = d.toISOString().slice(5, 7); }
   }
   if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
+  // CM 01/02's priser (cmAwards.ts): månedens navn, positionsordet og antallet som ord
+  if (n.key.startsWith('cmaw.')) {
+    if (typeof p.mon === 'number') { try { p.month = new Date(Date.UTC(2001, p.mon - 1, 15)).toLocaleDateString(t('cl.locale'), { month: 'long', timeZone: 'UTC' }); } catch { p.month = String(p.mon); } }
+    if (typeof p.pos === 'string') p.posw = t(`cmaw.pos.${p.pos}`);
+    if (typeof p.num === 'number') p.numw = has(`num.${p.num}`) ? t(`num.${p.num}`) : String(p.num);
+  }
   // Discipline Player: grunden med små bogstaver som originalens 0x5a73a0(…, 1)
   if (n.key.startsWith('cmfine.') && typeof p.why === 'number') p.reason = t(`cmfine.why.${p.why}`);
   if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
@@ -98,6 +104,9 @@ export function newsTitle(n: NewsItem) {
 
 /** Hvilken skabelon brødteksten bruger (nogle nyheder har varianter efter indholdet) */
 function bodyKey(n: NewsItem): string {
+  // CM 01/02's priser (cmAwards.ts): brødteksten er valgt i spillet (0x767580 / 0x930880)
+  if (n.key.startsWith('cmaw.mh.') && typeof n.params?.body === 'string') return `cmaw.mb.${n.params.body}`;
+  if (n.key.startsWith('cmaw.yh.') && typeof n.params?.body === 'string') return `cmaw.yb.${n.params.body}`;
   // landsholdsudtagelse: navnene (højst tre) eller "Four players from Man Utd", med eller uden modstanderen
   if (n.key === 'intl.sel1' || n.key === 'intl.selN') {
     const many = n.key === 'intl.selN' && !n.params?.names, noOpp = !!n.params?.noOpp;

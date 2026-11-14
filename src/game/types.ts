@@ -1151,6 +1151,8 @@ export interface GameState {
   cmBoard?: import('./cmBoard').CmBoardState;
   /** Fine-objektet [0xae2a3c] (Discipline Player – cmFine.ts): posterne, trænerens rapporter og tælleren pr. klub */
   cmFine?: import('./cmFine').CmFineState;
+  /** CM 01/02's priser (cmAwards.ts – original DB i ægte tilstand): månedens karakterer, Comp_Stats, managernes point og vinderne */
+  cmAw?: import('./cmAwards').CmAwState;
   /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
   cmChair?: Record<number, [number, number, number, number]>;
   cmNationBoard?: [number, number, number][];

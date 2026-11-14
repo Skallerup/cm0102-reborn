@@ -253,7 +253,8 @@ export function CompetitionsMenu() {
   const intl = (state: Record<string, string>) => () => nav({ name: 'international', state });
   const past = new Set((g.intl?.past ?? []).map((p) => p.c));
   const items: DropItem[] = [];
-  const awards = { key: 'awards', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards' }) };
+  // CM 01/02: World Cup/International ▸ Awards = "International Awards", en nations ▸ Awards = "{nationality} Awards" (0x414c20)
+  const awards = { key: 'awards', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards', state: { awScope: 'intl' } }) };
   const fifa = { key: 'fifa', label: t('cl.cm.fifa'), onClick: intl({ itab: 'fifa' }) };
   const sep = (k: string) => ({ key: k, sep: true as const });
   const hist = (c: string) => intl({ itab: 'history', ihist: c });
@@ -298,7 +299,7 @@ export function CompetitionsMenu() {
     items.push({ key: `n${n}`, label: natName(g.nations[n]?.name), sub: [
       ...comps.map((c) => ({ key: c.id, label: compName(c.name), onClick: () => nav({ name: 'competitions', id: c.id }) })),
       { key: 'sep', sep: true as const },
-      { key: 'aw', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards' }) },
+      { key: 'aw', label: t('cl.cm.awards'), onClick: () => nav({ name: 'awards', state: { awScope: 'nation' } }) },
       { key: 'nt', label: t('cl.cm.nationalTeam'), onClick: () => nav({ name: 'international', id: n }) },
     ] });
   }

@@ -28,6 +28,7 @@ import { seasonWageClauses } from './clauses';
 import { clubLevel } from './scouting';
 import { CHALLENGES } from './challenges';
 import { monthlyAwards, seasonGala, surpriseOfSeason, teamOfYear } from './awards';
+import { cmAwardsRollover, cmAwOn } from './cmAwards';
 import { initKnowledge } from './scouting';
 import type { Club, Player, RegenSeed, SeasonFinance, SeasonSummary } from './types';
 import { subPos } from './data/cm0102';
@@ -619,9 +620,12 @@ export function seasonRollover() {
   const g = gs();
   cmBeforeRollover(g);
   seasonPrizeMoney();
-  monthlyAwards(); // juni-kåringer inden arkivering
+  const cmAw = cmAwOn(g);
+  if (!cmAw) monthlyAwards(); // juni-kåringer inden arkivering
   const summary = seasonAwards();
-  seasonGala(summary);
+  // den originale database i ægte tilstand: originalens priser (cmAwards.ts) – ingen gallaaften/Ballon d'Or-nyheder fra spillet
+  if (!cmAw) seasonGala(summary);
+  cmAwardsRollover(g);
   g.seasonHistory.push(summary);
   // Udfordringer og bestyrelsens dom – pr. menneskelig manager
   const challengeResults = new Map<string | undefined, 'won' | 'lost'>();

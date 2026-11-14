@@ -274,7 +274,8 @@ const HUBS: Partial<Record<ScreenName, Hub>> = {
     colors: (g, r) => (r.id !== undefined ? nationColors(g.nations[Number(r.id)]?.name) : { bg: '#d6b24c', fg: '#ffffff' }),
   },
   history: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
-  awards: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
+  // ægte tilstand med den originale database: originalens Awards-skærm med sin egen titel ("English Awards", AwardsClassic.tsx)
+  awards: { title: (g, _r, st) => (cmActive(g) ? st : mgrName(g)), tabs: MGR_TABS, sub: MGR_SUB },
   jobs: { title: mgrName, tabs: MGR_TABS, sub: MGR_SUB },
   community: { tabs: MGR_TABS, sub: MGR_SUB },
   managers: { tabs: MGR_TABS, sub: MGR_SUB },

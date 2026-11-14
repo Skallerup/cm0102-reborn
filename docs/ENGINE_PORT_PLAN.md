@@ -3,6 +3,20 @@
 *2026-11-10. Ejeren har (som Bosman Editions forfatter) tilladelse til at bruge så meget af originalens motor som muligt.
 Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.md`, byggestenene: `GRID_ENGINE.md`.*
 
+## Priserne (2026-11-15, kun original DB i ægte tilstand – `src/game/cmAwards.ts`, `ui/screens/AwardsClassic.tsx`, noter `~/cm0102-engine/notes/awards.md`)
+
+- **Porteret:** EnglandAwards 0x5788c0/0x579610/0x579900 (26 priser uden Conference), MONTH_RATINGS 0x767ee0/0x767fa0/0x768130 (snit, min 3→0
+  kampe, de unge efter tre ældre), MONTH_AWARD (aug–maj), Staff_Records' managerpoint 0x868830 (+0xce/+0xba/+0x8e; nulstilling 0x86dda0/0x86d6e0),
+  0x86f950/0x86fab0 (2/28 uger), årets spiller 0x768cf0 og hold 0x7698f0 (Comp_Stats type 0x11 0x4a33df, f 0,66 −0,1), TEAM_AWARD 0x8afa40/0x8afdc0,
+  positionsmasken 0x5b7d20, omdømmet 0x412f00, nyhederne 0x767330/0x767580/0x9304f0/0x930880/0x8b0140/0x8b0370 med modtagerne. Databasens
+  priser og tidligere vindere (staff_comp.dat/staff_comp_history.dat) i `src/game/data/cmAwards.json` (`scripts/build-cm-awards.py`).
+- ***Estimeret*:** ligaens vigtighed (League::get_match_importance 0x68a3e0 – liga+0x51 kendes ikke → 10), Team of the Week-kaldet (0x769c70's
+  kalder ikke fundet → mandag, kampene torsdag–søndag; ingen nyhed), valget af nyhedsvariant (staff-id/utils_random → spillets id/hash), positionsordet,
+  at priserne afgøres ved næste dags start, at managerens sæsonpoint nulstilles 1/7.
+- **Ikke porteret:** International 0x632e20 og European 0x5836a0 (YEAR_RATINGS 0x931d50 og AWARD_SHORTLIST-afstemningerne; 2001 springes over i
+  originalen), Conference-priserne, Fans Player of the Year (0x44c650/0x86dc30), klubbens +1000 og Shortlist-kaldet i 0x412f00. Oraklets kørsler logger
+  ikke priser, så vinderne er ikke kontrolleret mod originalen (kræver en ny orakelkørsel med nyhederne).
+
 ## Bestyrelsens tekster og nyheder (2026-11-13, kun original DB i ægte tilstand – `src/game/cmBoardText.ts`, `cmBoardGame.ts`)
 - **Porteret:** forventningsnyheden 0x6a4a20/0x6a4ae0 (overskrift "Board want the title" …) + brødteksten 0x694440 (ordret fra exe'en; kun
   når spillets start ≤ i dag, så startens ekstra kopi forsvinder – én nyhed); tillidsteksten 0x690d80 med alle 504 blade

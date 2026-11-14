@@ -1446,6 +1446,35 @@ async function run(look) {
     // kampdagen: ingen "Press Continue Game to go to your match."
     if (await page.locator('.cx-md-hint').count()) throw new Error('kampdagens hjælpetekst står der stadig');
   });
+  // CM 01/02's priser (cmAwards.ts / AwardsClassic.tsx): "English Awards" med databasens tidligere vindere og spillets egne vindere
+  if (look === 'klassisk' && ENGINE_GRID) await step('Awards: English Awards (original)', async () => {
+    await go({ name: 'awards', state: { awScope: 'nation' } });
+    await page.waitForSelector('.cx-awards', { timeout: 5000 });
+    // titlen står i den klassiske titelbjælke (uden for skærmen)
+    if (!/English Awards/i.test(await page.locator('body').innerText())) throw new Error('titlen er ikke "English Awards"');
+    if (!(await page.locator('.cx-awards .cx-chist-row', { hasText: 'Teddy Sheringham' }).count())) throw new Error('PFA-prisens tidligere vindere mangler');
+    // en vundet månedspris (lagt ind som cmAwards.ts gemmer den) står øverst med måned, spiller og klub
+    const id = await gs(() => {
+      const g = window.__cm.gs();
+      const p = Object.values(g.players).find((x) => x.club === g.userClub);
+      const aw = (g.cmAw ??= { mr: { y: 2001, m: 8, r: {} }, cs: {}, mg: {}, mgM: '2001-08', won: [] });
+      aw.won.push({ a: 11, y: 2001, m: 8, d: '2001-08-31', w: [{ id: p.id, club: p.club, name: `${p.first} ${p.last}`, v: 8 }] });
+      return p.id;
+    });
+    await go({ name: 'awards', state: { awScope: 'nation', awId: 11 } });
+    await page.waitForSelector('.cx-awards .cx-aw-tbl .cx-chist-row', { timeout: 5000 });
+    const row = await page.locator('.cx-awards .cx-aw-tbl .cx-chist-row').first().innerText();
+    if (!/August 2001/.test(row)) throw new Error(`månedsrækken: ${row}`);
+    await page.locator('.cx-awards .cx-aw-tbl .cx-chist-row .cx-link').first().click();
+    await page.waitForTimeout(200);
+    if (await page.locator('.cx-awards').count()) throw new Error(`spillerlinket (${id}) åbnede ikke spilleren`);
+    await go({ name: 'awards', state: { awScope: 'intl' } });
+    await page.waitForTimeout(200);
+    if (!/International Awards/i.test(await page.locator('body').innerText())) throw new Error('titlen er ikke "International Awards"');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-awards.png` });
+    await gs(() => { const g = window.__cm.gs(); g.cmAw.won = g.cmAw.won.filter((w) => !(w.a === 11 && w.d === '2001-08-31' && w.w[0]?.club === g.userClub)); return 0; });
+    await checkScreen('awards');
+  });
   // CM 01/02: også computerklubbernes kampe kan ses som kampskærmen efter slutfløjt (kompakt rapport, g.miniReports)
   if (look === 'klassisk') await step('computerkamp som kampskærm (Player Ratings)', async () => {
     const id = await gs(() => { const g = window.__cm.gs(); return Object.keys(g.miniReports ?? {}).map(Number).find((i) => g.fixtures[i]?.result && g.fixtures[i].comp !== 'FRIENDLY'); });

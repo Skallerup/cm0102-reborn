@@ -59,6 +59,7 @@ import { PlayedMatchClassic } from './screens/PlayedMatchClassic';
 import { NoRecentMatchesClassic } from './screens/NoRecentMatchesClassic';
 import { History } from './screens/History';
 import { Awards } from './screens/Awards';
+import { AwardsClassic } from './screens/AwardsClassic';
 import { Jobs } from './screens/Jobs';
 import { Options } from './screens/Options';
 import { PressScreen } from './screens/Press';
@@ -704,7 +705,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     // klassisk: en spillet kamp vises som kampskærmen efter slutfløjt (samme faner og sidebjælke)
     case 'report': if (isRetro() && route.state?.none) return <NoRecentMatchesClassic club={route.id !== undefined ? Number(route.id) : undefined} />; return isRetro() && !g.draft && (g.reports[Number(route.id)] || g.fixtures[Number(route.id)]?.result) ? <PlayedMatchClassic id={Number(route.id)} /> : <ReportScreen id={Number(route.id)} />;
     case 'history': return isRetro() ? <ClassicManagerHistory /> : <History />;
-    case 'awards': return <Awards />;
+    case 'awards': return isRetro() && cmActive(g) ? <AwardsClassic /> : <Awards />;
     case 'international': return <International nation={route.id !== undefined ? Number(route.id) : undefined} />;
     case 'jobs': return <Jobs />;
     case 'options': return <Options />;
