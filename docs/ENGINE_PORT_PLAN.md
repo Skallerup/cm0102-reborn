@@ -258,7 +258,7 @@ Herfra (i rækkefølge):
    (game_update_squad_relationships 0x5d6d10 ugentligt + ~20 hændelsessystemer), managerpostens omregning.
 8. **Efter slutfløjtet:** spillets overførsel 0x6b5f00 – 0x6b6cc0 (resultatposten 0x729ff0) og 0x6b74a0 ([0xb67dc8] → kontraktens flag 0x867700).
 9. **Tabelrækken 0x4a4850:** navnene på +0x19/+0x2d/+0x41/+0x55 og datoerne +0x4d/+0x61, rækkefølgen før første kamp (kræver et spor med posterne).
-10. **Hastigheden** (~35 ms pr. kamp bundtet efter runde 12 – låsetrinet skal bestå bit for bit; ≤ 25 ms kræver omskrivningen fra runde 11B).
+10. **Hastigheden** (~24 ms pr. kamp bundtet efter runde 13, før ~34 – låsetrinet skal bestå bit for bit). Profilen er flad; næste skridt: tilfældige tal (~8 %, tilstanden i et typed array kræver en ændring af Rng), passOptions (~6 %), runTarget (~4 %), situationens lukninger.
 11. Ikke dækket af sporene: golden goal, MLS-straffe, to-benede opgør med udebanemål, 0x6ce9c0's dødboldsskytte-tal.
 
 (Tidligere overdragelser efter runde 8 og 9: se Log-posterne "Runde 8", "Runde 9", "Runde 9b", "Runde 9c" nederst – deres punkter er samlet ovenfor.)
@@ -432,6 +432,25 @@ for alle databaser. Det mangler, i rækkefølge:
 | Orakel frø 1 / frø 2 / ejerens Man Utd-sæson (grid-stats-tabellen) | 2,75 / 2,98 / 2,86 | 53/25 · 53/21 · 52/22 (H/U) | 17,0 / 17,8 / 17,0 | 9,9 / 10,5 / 10,0 | 4,9 / 5,3 / 5,1 | 14,5 / 15,3 / 14,3 | 6,1 / 6,9 / 6,0 | 1,79/0,12 · 1,66/0,14 · 1,66/0,17 |
 
 ## Log
+
+- 2026-11-14 – **Runde 13: gittermotoren ~29 % hurtigere (resultatneutralt) – målet ≤ 25 ms er nået.** Målt i ÉN proces med basen og den nye kode
+  skiftevis (samme belastning; 30 PL-kampe pr. omgang, 20 omgange, median): 33,4 → 23,9 ms pr. kamp (×0,715; ved højere belastning 35–37 → 25–27,
+  forholdet 0,71–0,74). **Ændret** (samme rand-kald i samme rækkefølge, samme float32): `Rng.state` (rng.ts) erklæres med en talværdi – klassefeltet
+  uden værdi startede som `undefined`, så V8 holdt feltet "tagged", og HVERT træk lagde et HeapNumber på hoben (~600.000 pr. kamp; alene ~8 %);
+  rullene sub_6f44a0 trækker af et Int32Array-register (loop.ts `rollTickRng`/`drawReg`, kun når tilstanden er et helt uint32) og
+  `floor((u/2³²)·k)` = `(u·k)/2³² | 0` (eksakt: u·k < 2⁴⁸); offsidelinjerne efter hver tur holdes ved lige af `setPos` (`olMoved`: en markspiller
+  kan kun skubbe den yderste række udad, ellers regnes forfra) og de aktive spillere i en liste (`activeOf`, GP's `active` er en accessor, der
+  tæller `ACTIVE.epoch` op); `markers.length = 0` kun på ikke-tomme lister (et dyrt kald); passOptions uden objekter/lukninger pr. kandidat
+  (bedste valg i lokale variabler, `nearestOppOf`, `POW3` = crtPow(k, 3), rækkernes optælling, laneBlockers' forsvarer-gitter fastholdt under
+  hele valget `H.lanePin`, `footOnly`, fladt `DIST_F64`), afleveringshjælperne `ph`/`toOption` én gang pr. kamp, `canSee`'s svar i ét
+  genbrugt objekt, situationens anden sync kun for boldholderen, når ingen har skiftet felt (`MOVES.n`/`ACTIVE.epoch`), inaktive visninger friskes
+  kun op én gang; zonevalget uden lukninger og med et feltgitter til støtten; handlingsrækkefølgens qsort med én nøgle pr. plads
+  (`orderQsort`, samme algoritme og sammenligninger); fordelingens ScoreFn husket i en tabel (`memoScore`, subs.ts/pickTeam.ts); computerens
+  taktikvalg uden en ny liste pr. plads (`SEC_MASK`); tabelcellerne uden lister (`tableCellTo`); `dist`/`cellDist` fra den flade tabel.
+  **Bevis:** fingeraftrykket (60 kampe + 10 sete, scratchpad fp.mts) ens efter hvert trin: HEAD `a0350db9…`, og på runde 12's kode (aa11589 +
+  dens world-fil) `e1516ac2…` med og uden ændringerne (runde 12's `2f2c062f…` kunne ikke genskabes med aa11589 – heller ikke uden ændringerne);
+  `grid-stats.ts 100 1` byte for byte ens; spillets fingeraftryk (alle kampresultater, spillere, klubøkonomi, stab, bestyrelse – også øjebliksbilleder
+  den 1./8./15./22.) ens for England/Wrexham til 15/10 og for fem lande/Man Utd til 24/9; tests/gridLockstep 15/15.
 
 - 2026-11-14 – **Runde 12: gittermotoren på alle kampe i de valgte lande; Continue Game hurtigere (resultatneutralt) – motorens mål ≤ 25 ms er
   IKKE nået.** `gridFixture` (sim.ts): menneskets kampe + alle hjemlige kampe (liga, pokal, play-off) i `g.activeNations` – før kun lande med en

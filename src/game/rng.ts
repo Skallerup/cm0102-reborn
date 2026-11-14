@@ -2,7 +2,9 @@
 // så et save altid fortsætter deterministisk.
 
 export class Rng {
-  state: number;
+  // (ydelse) feltet starter som et tal: en klassefelt-erklæring uden værdi gav først `undefined`, så V8 holdt feltet som "tagged", og hvert
+  // træk lagde et nyt HeapNumber på hoben (~600.000 pr. kamp i gittermotoren). Samme tal som før.
+  state = 0;
   constructor(seed: number) {
     this.state = seed >>> 0 || 0x9e3779b9;
   }

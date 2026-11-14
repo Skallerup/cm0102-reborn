@@ -303,6 +303,8 @@ export interface AiTacticInput {
   flags?: number;
 }
 
+/** den sekundære maskes bit, tællerens plads og positionen (før en ny liste pr. plads og taktik) */
+const SEC_MASK: readonly (readonly [number, number, number])[] = [[2, 0, 1], [4, 0, 2], [8, 1, 3], [0x10, 2, 4], [0x20, 3, 5], [0x40, 4, 6]];
 /** 0x6e0230 med arg4 = 2. Returnerer indeks i listen (AI_TACTIC_LIST; `AI_TACTIC_LIST[i].preset` = indeks i PRESET_TACTICS eller −1)
  *  og scoren pr. taktik. Første strengt største vinder (0x6e0b83). */
 export function chooseAiTactic(inp: AiTacticInput): { index: number; scores: number[] } {
@@ -340,12 +342,11 @@ export function chooseAiTactic(inp: AiTacticInput): { index: number; scores: num
       let pos: number, side = -1;
       if (m & 1) { pos = 0; side = 2; } else if (m & 2) { cnt[0]++; pos = 1; } else if (m & 4) { cnt[0]++; pos = 2; } else if (m & 8) { cnt[1]++; pos = 3; }
       else if (m & 0x10) { cnt[2]++; pos = 4; } else if (m & 0x20) { cnt[3]++; pos = 5; } else { cnt[4]++; pos = 6; }
-      const sec: [number, number, number][] = [[2, 0, 1], [4, 0, 2], [8, 1, 3], [0x10, 2, 4], [0x20, 3, 5], [0x40, 4, 6]];
-      for (const [bit, c, pp] of sec) if (m2 & bit) { cnt[c] += 0.5; pos = pp; break; }   // sekundær maske: ½ + dens position
+      for (let q = 0; q < SEC_MASK.length; q++) if (m2 & SEC_MASK[q][0]) { cnt[SEC_MASK[q][1]] += 0.5; pos = SEC_MASK[q][2]; break; }   // sekundær maske: ½ + dens position
       if (side < 0) side = m & 0x80 ? 0 : m & 0x100 ? 1 : m & 0x200 ? 2 : m & 0x400 ? 3 : 4;
       fit += T[pos * 5 + side];
     }
-    const [D, DM, , AM, F] = cnt, x = D - F;
+    const D = cnt[0], DM = cnt[1], AM = cnt[3], F = cnt[4], x = D - F;
     const W = 32 - (2 * F * F + AM * AM - 2 * D * D - DM * DM) - Math.abs(x - 0.5 * AM) * (x - AM);
     const Qs = 44 - 0.8 * W;
     if (mode === 1) S *= 1 + 0.015 * Qs; else if (mode === 3) S *= 1 - 0.015 * Qs; else if (mode === 4) S *= 1 - 0.025 * Qs;

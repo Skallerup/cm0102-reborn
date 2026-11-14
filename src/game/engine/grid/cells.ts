@@ -1,5 +1,6 @@
 // Gittercellernes lister engine+0x215e (gittermotoren). Egen fil, så gridMatch.ts og matchSubs.ts kan dele dem uden cirkulær import.
 import type { GP, GridMatchState } from './gridMatch';
+import { MOVES, olMoved } from './loop';
 
 // ------------------------------------------------------------------ gittercellerne engine+0x215e
 // 90 bytes pr. felt (12·x + y): 11 pegere side 0 (+0), 11 side 1 (+0x2c), antallet +0x58/+0x59. Listen er i indsættelsesorden med
@@ -24,6 +25,8 @@ export function cellRemove(m: GridMatchState, q: GP): void {
 /** sub_6f46b0 / skridtet 0x6f3a67–0x6f3b9a: ny position – uændret felt rører ikke listerne; ellers ud af den gamle og bagerst i den nye */
 export function setPos(m: GridMatchState, q: GP, x: number, y: number): void {
   if (q.x === x && q.y === y) return;
+  MOVES.n++;                                                                                  // (ydelse) gridMatch's situation (se _pass)
+  olMoved(m, q, q.y, y);                                                                      // (ydelse) loop.ts' offsidelinjer efter turen
   cellRemove(m, q);
   q.x = x; q.y = y;
   if (!m.cells || !onPitch(x, y)) return;

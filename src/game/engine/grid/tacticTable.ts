@@ -36,6 +36,14 @@ export function tableCell(t: Table, side: 0 | 1, slot: number, att: 0 | 1, bx: n
   return [8 - (c & 0xf), 11 - (c >> 4)];
 }
 
+/** (ydelse) som tableCell, men felterne skrives i TC (ingen ny liste) – læs TC.x/TC.y straks efter kaldet */
+export const TC = { x: 0, y: 0 };
+export function tableCellTo(t: Table, side: 0 | 1, slot: number, att: 0 | 1, bx: number, by: number): void {
+  if (side === 0) { const c = t[216 * slot + 108 * att + 12 * bx + by]; TC.x = c & 0xf; TC.y = c >> 4; return; }
+  const c = t[216 * slot + 108 * att + 12 * (8 - bx) + (11 - by)];
+  TC.x = 8 - (c & 0xf); TC.y = 11 - (c >> 4);
+}
+
 const gridCache = new Map<string, Uint8Array>();
 /** forudindstillingens grove gitter (+0x164, 0x420 bytes) */
 export function presetGrid(p: PresetTactic): Uint8Array {

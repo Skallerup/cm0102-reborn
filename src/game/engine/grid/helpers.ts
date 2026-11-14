@@ -12,7 +12,7 @@ export type Side = 0 | 1;
 export const rand = (n: number, rng: () => number = Math.random): number =>
   n === 0 ? 0 : n > 0 ? Math.floor(rng() * n) : -Math.floor(rng() * -n); // sub_90cfc0 (n<0 → n+1..0)
 import { crtPow } from '../crtMath';
-import { DIST } from './loop';
+import { DIST, DIST_F64 } from './loop';
 
 export const ftol = (x: number) => Math.trunc(x); // sub_945640
 export const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, x));
@@ -21,7 +21,7 @@ export const clamp = (x: number, lo: number, hi: number) => Math.min(hi, Math.ma
 export function cellDist(dx: number, dy: number): number {
   dx = Math.abs(dx); dy = Math.abs(dy);
   if (dx > 8 || dy > 11) return 1000;
-  return DIST[dy][dx];
+  return (dx | 0) === dx && (dy | 0) === dy ? DIST_F64[dy * 9 + dx] : DIST[dy][dx];   // (ydelse) det flade opslag (samme tal)
 }
 
 /** Position flag bits, sub_6c38c0 (position) / sub_6c38f0 (position in attack). */
@@ -136,27 +136,27 @@ function occClear(list: readonly OccP[], side: number): void {
   for (let i = 0; i < list.length; i++) { const o = list[i]; if (occIn(o, side)) { const c = occCell(o.x, o.y); if (c >= 0) OCC[c] = 0; } }
 }
 /** antal i feltet (x, y) – felter uden for gitteret (ikke-heltal) tælles direkte i listen som før */
-function occAt(x: number, y: number, list: readonly OccP[], side: number): number {
+function occAt(x: number, y: number, list: readonly OccP[], side: number, grid: Int8Array): number {
   const c = occCell(x, y);
-  if (c >= 0) return OCC[c];
+  if (c >= 0) return grid[c];
   let n = 0; for (let i = 0; i < list.length; i++) { const o = list[i]; if (occIn(o, side) && o.x === x && o.y === y) n++; }
   return n;
 }
 /** lineCells' felter (incl = begge ender på lige linjer; ellers [min, max)) – summen af occAt, uden at bygge listen */
-function walkLine(x0: number, y0: number, x1: number, y1: number, incl: boolean, list: readonly OccP[], side: number): number {
+function walkLine(x0: number, y0: number, x1: number, y1: number, incl: boolean, list: readonly OccP[], side: number, grid: Int8Array = OCC): number {
   const inside = (x: number, y: number) => x >= 0 && x <= 8 && y >= 0 && y <= 11;
   const adx = Math.abs(x1 - x0), ady = Math.abs(y1 - y0);
   let n = 0;
-  if (adx === 0) { const hi = Math.max(y0, y1); for (let y = Math.min(y0, y1); incl ? y <= hi : y < hi; y++) { if (!inside(x0, y)) break; n += occAt(x0, y, list, side); } return n; }
-  if (ady === 0) { const hi = Math.max(x0, x1); for (let x = Math.min(x0, x1); incl ? x <= hi : x < hi; x++) { if (!inside(x, y0)) break; n += occAt(x, y0, list, side); } return n; }
+  if (adx === 0) { const hi = Math.max(y0, y1); for (let y = Math.min(y0, y1); incl ? y <= hi : y < hi; y++) { if (!inside(x0, y)) break; n += occAt(x0, y, list, side, grid); } return n; }
+  if (ady === 0) { const hi = Math.max(x0, x1); for (let x = Math.min(x0, x1); incl ? x <= hi : x < hi; x++) { if (!inside(x, y0)) break; n += occAt(x, y0, list, side, grid); } return n; }
   if (adx >= ady) {
     if (x0 > x1) { let t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
     const step = y1 - y0 >= 0 ? 1 : -1; let err = 0, y = y0;
-    for (let x = x0; x <= x1; x++) { if (err >= adx) { err -= adx; y += step; } if (!inside(x, y)) break; n += occAt(x, y, list, side); err += ady; }
+    for (let x = x0; x <= x1; x++) { if (err >= adx) { err -= adx; y += step; } if (!inside(x, y)) break; n += occAt(x, y, list, side, grid); err += ady; }
   } else {
     if (y0 > y1) { let t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
     const step = x1 - x0 >= 0 ? 1 : -1; let err = 0, x = x0;
-    for (let y = y0; y <= y1; y++) { if (err >= ady) { err -= ady; x += step; } if (!inside(x, y)) break; n += occAt(x, y, list, side); err += adx; }
+    for (let y = y0; y <= y1; y++) { if (err >= ady) { err -= ady; x += step; } if (!inside(x, y)) break; n += occAt(x, y, list, side, grid); err += adx; }
   }
   return n;
 }
@@ -256,11 +256,28 @@ export const cellDirection = (x0: number, y0: number, x1: number, y1: number) =>
 export function laneBlockers(gp: { active: boolean; side: number; busy: number; x: number; y: number }[], poss: number,
                              x0: number, y0: number, x1: number, y1: number): number {
   const defSide = poss === 0 ? 1 : 0;
+  if (gp === PIN_LIST && defSide === PIN_SIDE) return PIN_N ? walkLine(x0, y0, x1, y1, false, gp, defSide, OCC_PIN) : 0;
   // (runde 10B) forsvarerne (aktive, busy ≤ 1) samles én gang – (ydelse 14/11) i optællingsgitteret i stedet for to lister og en lukning
   const n0 = occFill(gp, defSide);
   const n = n0 ? walkLine(x0, y0, x1, y1, false, gp, defSide) : 0;
   if (n0) occClear(gp, defSide);
   return n;
+}
+/** (ydelse) laneBlockers' optælling holdt fast under ét afleveringsvalg (passOptions spørger for hver kandidat, og ingen flytter sig eller
+ *  skifter busy imens): lanePin fylder et eget gitter én gang for (listen, forsvarssiden), laneUnpin tømmer det. Samme antal som før. */
+const OCC_PIN = new Int8Array(9 * 12);
+let PIN_LIST: readonly OccP[] | null = null, PIN_SIDE = -2, PIN_N = 0;
+export function lanePin(gp: readonly OccP[], poss: number): void {
+  if (PIN_LIST) laneUnpin();
+  const defSide = poss === 0 ? 1 : 0;
+  let n = 0;
+  for (let i = 0; i < gp.length; i++) { const o = gp[i]; if (occIn(o, defSide)) { const c = occCell(o.x, o.y); if (c >= 0) { OCC_PIN[c]++; n++; } } }
+  PIN_LIST = gp; PIN_SIDE = defSide; PIN_N = n;
+}
+export function laneUnpin(): void {
+  if (!PIN_LIST) return;
+  if (PIN_N) OCC_PIN.fill(0);
+  PIN_LIST = null; PIN_SIDE = -2; PIN_N = 0;
 }
 /** Returns 0 = left foot, 1 = right foot, 2 = not applicable; penalty = 12·(20 − that foot). */
 export function footForTarget(p: MatchPlayer, code: number, x1: number, y1: number, f: number, ballDir?: number) {
@@ -275,6 +292,19 @@ export function footForTarget(p: MatchPlayer, code: number, x1: number, y1: numb
   if (d > t) return { foot: 0, penalty: 12 * (20 - p.leftFoot) };
   if (d < -t) return { foot: 1, penalty: 12 * (20 - p.rightFoot) };
   return { foot: p.strongFoot, penalty: 0 };
+}
+/** (ydelse) footForTarget(...).foot uden objekterne: p's felt (x, y), facing, technique og stærke fod gives direkte – samme regning */
+export function footOnly(x: number, y: number, facing: number, technique: number, strongFoot: number, code: number, x1: number, y1: number, f: number, ballDir?: number): number {
+  if (DEAD_BALL_CODES.includes(code)) return 2;
+  let d = (x === x1 && y === y1 && ballDir !== undefined ? ballDir : cellDirection(x, y, x1, y1)) - facing;
+  const sign = d >= 0 ? 1 : -1;
+  let a = sign * d;
+  if (a > 180) a = 360 - a;
+  d = sign * a;
+  const t = ftol(90 - (18 * f - technique));
+  if (d > t) return 0;
+  if (d < -t) return 1;
+  return strongFoot;
 }
 /** Ball carrier use (0x712cef): shot on the weak foot costs rand(300·b2d). */
 export const weakFootShotPenalty = (p: MatchPlayer, D: number, rng?: () => number) => {

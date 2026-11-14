@@ -782,9 +782,17 @@ async function run(look) {
       const free = await gs((ids) => { const g = window.__cm.gs(); const t = g.tactic; return ids.find((id) => { const p = g.players[id]; return p && p.club === g.userClub && !p.loan && !p.virtual && !p.reserves && !p.injury && !(p.banned > 0) && !t.lineup.includes(id) && !t.bench.includes(id); }) ?? 0; }, shown);
       if (free) {
         const target = page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first();
-        await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target);
-        // trækket kan glippe under belastning – prøv én gang til
-        if (!(await gs((id) => window.__cm.gs().tactic.lineup[1] === id, free))) { await page.waitForTimeout(300); await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target); }
+        // HTML5-træk med syntetiske hændelser (Playwrights dragTo var ustabil her): dragstart på pladsen, dragover + drop på spillerens række
+        const src = await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).elementHandle();
+        const dst = await target.elementHandle();
+        await page.evaluate(([a, b]) => {
+          const dt = new DataTransfer();
+          a.dispatchEvent(new DragEvent('dragstart', { bubbles: true, cancelable: true, dataTransfer: dt }));
+          b.dispatchEvent(new DragEvent('dragenter', { bubbles: true, cancelable: true, dataTransfer: dt }));
+          b.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: dt }));
+          b.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: dt }));
+          a.dispatchEvent(new DragEvent('dragend', { bubbles: true, cancelable: true, dataTransfer: dt }));
+        }, [src, dst]);
         await page.waitForFunction((id) => window.__cm.gs().tactic.lineup[1] === id, free, { timeout: 5000 }).catch(() => { throw new Error('trækket fra strimlen ned på en spiller satte ham ikke på pladsen'); });
       }
       // klik på en besat plads i strimlen tømmer den

@@ -141,28 +141,28 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
   const opp = (1 - side) as Side;
   const K = nationFactor(carrier.staff.nationName);
   // baseline (0x6c6abc..0x6c6af4)
-  let best: PassChoice = { receiver: null, weight: 3 * (carrier.plads - 1000) - h.rand(500) + h.rand(500) };
+  // (ydelse) det bedste valg i lokale variabler (før et nyt objekt for hver bedre kandidat) – objektet bygges til sidst med samme felter
+  let bestW = 3 * (carrier.plads - 1000) - h.rand(500) + h.rand(500);
+  let bestR: MatchPlayer | null = null, bestType = 0, bestLead = false, bestX = 0, bestY = 0;
 
   // early exit: free run with nobody ahead and facing goal -> no pass options (0x6c6afc..0x6c6b2d)
-  if (!inOwnHalf(carrier.side, carrier.y) && h.freeRun(carrier) === 1 && h.facingGoal(carrier)) return { receiver: null, weight: best.weight };
+  if (!inOwnHalf(carrier.side, carrier.y) && h.freeRun(carrier) === 1 && h.facingGoal(carrier)) return { receiver: null, weight: bestW };
 
   const originInAttBox = inAttBox(side, ox, oy); // [F+0x17]
   const originInOwnBox = inOwnBox(side, ox, oy); // [F+0x16]
-  // (runde 11B) løkker i stedet for filter/destrukturering – samme rækkefølge og tal
-  const outfieldOpps: MatchPlayer[] = [];
-  for (const p of m.players[opp]) if (p.slot >= 0 && !(p.posFlags & 1)) outfieldOpps.push(p);
-  const nearestOpp = (x: number, y: number) => {   // 5000.0 start (0x459c4000), 0 if one in the cell
-    let d = 5000;
-    for (const p of outfieldOpps) { const e = h.dist(Math.abs(p.x - x), Math.abs(p.y - y)); if (e === 0) return 0; if (e < d) d = e; }
-    return d;
-  };
-  const oppNearCarrier = nearestOpp(carrier.x, carrier.y); // 0x6c6bfe..0x6c6c52
+  // (runde 11B) løkker i stedet for filter/destrukturering – samme rækkefølge og tal; (ydelse) modstandernes markspillere i en genbrugt
+  // liste og nearestOpp uden lukning
+  const outfieldOpps = PO_OPPS;
+  let nOpp = 0;
+  for (const p of m.players[opp]) if (p.slot >= 0 && !(p.posFlags & 1)) outfieldOpps[nOpp++] = p;
+  const oppNearCarrier = nearestOppOf(outfieldOpps, nOpp, carrier.x, carrier.y, h); // 0x6c6bfe..0x6c6c52
+  let rowsDone = false;
 
   for (const c of m.players[side]) {
     if (c.slot < 0 || c === carrier) continue;                             // 0x6c6c87 / 0x6c6c99
     if (isGK(carrier) && BEHIND(side, c.y, oy)) continue;                  // keeper only passes level/forward (0x6c6cbf..0x6c6cf5)
 
-    let mark = nearestOpp(c.x, c.y);                                       // [F+0x20]
+    let mark = nearestOppOf(outfieldOpps, nOpp, c.x, c.y, h);              // [F+0x20]
     let lane = 0;                                                          // [F+0x18]
     if (code !== 0x36 && code !== 0x37) {                                  // 0x6c6dba / 0x6c6dbe
       const v = h.canSee(c, c.x, c.y, oppNearCarrier, mark);               // sub_6f9f90(cx, cy, 1, ...)
@@ -229,7 +229,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
           const rx = Math.min(8, Math.max(0, rt.x)), ry = Math.min(11, Math.max(0, rt.y));
           if (rx !== c.x || ry !== c.y) {
             tx = rx; ty = ry; lead = true;
-            mark = nearestOpp(tx, ty);                                     // 0x6c7361..0x6c73b5
+            mark = nearestOppOf(outfieldOpps, nOpp, tx, ty, h);            // 0x6c7361..0x6c73b5
             if (c.posFlags & 0x40) W += 50 * c.paceRoll * c.anticRoll;     // 0x6c73c0 / 0x6c73d5
           }
         }
@@ -258,7 +258,7 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       if (e === 0) crowd += 3; else if (e <= 1.5) crowd += 1;              // 0x6c763e / 0x6c7643
     }
     W += 400 * (5 - crowd);                                                // 0x6c765e..0x6c767d
-    if (tInAttBox && crowd < 3 && a < 1) W += ftol(100 * crtPow(3 - crowd, 3)); // 0x6c76a8 (3.0) 0x6c76b3 (100.0)
+    if (tInAttBox && crowd < 3 && a < 1) W += ftol(100 * POW3[3 - crowd]);     // 0x6c76a8 (3.0) 0x6c76b3 (100.0): crtPow(3 − crowd, 3)
 
     if (h.lineOfSight(ox, oy, tx, ty, D) !== carrier.b2c) W -= h.rand(400 * carrier.b2d); // 0x6c76f4 / 0x6c7708
 
@@ -341,7 +341,12 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       mark -= backRows - 0.5;                                              // 0x6c7dca (0.5)
       if (mark < 0) { W += ftol(-500 * mark * mark); mark = 0; }           // 0x6c7def (-500.0)
     } else {
-      let ahead = 0; for (const p of m.players[side]) if (p.slot >= 0 && BEHIND(side, ty, p.y)) ahead++; // 0x6c7e80..0x6c7ed4
+      let ahead = 0;                                                       // 0x6c7e80..0x6c7ed4
+      if (ty >= 0 && ty <= 11 && (ty | 0) === ty) {                        // (ydelse) rækkernes optælling (én gang pr. kald) – samme antal
+        if (!rowsDone) { rowsOf(m.players[side], side, PO_ROWS); rowsDone = true; }
+        if (side === 0) { for (let b = ty + 1; b <= 12; b++) ahead += PO_ROWS[b]; }
+        else { for (let b = 0; b <= ty; b++) ahead += PO_ROWS[b]; }
+      } else for (const p of m.players[side]) if (p.slot >= 0 && BEHIND(side, ty, p.y)) ahead++;
       if (ahead === 0) mark = 2 * mark + 1;                                // 0x6c7ede / 0x6c7f17
       else if (wide(tx) && !inOwnHalf(side, c.y) && (c.instr.hi & 0x4)) mark = 1.5 * mark + 1; // receiver "Cross Ball: Yes" 0x6c7f11
     }
@@ -420,10 +425,33 @@ export function passOptions(m: MatchState, carrier: MatchPlayer, ox: number, oy:
       if ((D >= 1.5 && D <= 3) && Slofted > score) { score = Slofted; type = PASS.LOFTED; }         // 0x6c86de
       score += W;                                                                          // 0x6c86e2
     }
-    if (type > -1 && score > best.weight)                                  // 0x6c86e4 / 0x6c86f2 (strict >)
-      best = { receiver: c, weight: score, type, lead, x: tx, y: ty };
+    if (type > -1 && score > bestW) {                                      // 0x6c86e4 / 0x6c86f2 (strict >)
+      bestR = c; bestW = score; bestType = type; bestLead = lead; bestX = tx; bestY = ty;
+    }
   }
-  return best;
+  return bestR ? { receiver: bestR, weight: bestW, type: bestType, lead: bestLead, x: bestX, y: bestY } : { receiver: null, weight: bestW };
+}
+/** crtPow(k, 3) for k = 0..3 (samme tal som kaldet – regnet én gang) */
+const POW3 = [0, 1, 2, 3].map((k) => crtPow(k, 3));
+/** egne spillere (slot ≥ 0) pr. række for "foran ty"-optællingen: side 0 tæller y > ty – plads y (1..11), y ≥ 12 i plads 12 (y ≤ 0 tæller
+ *  aldrig); side 1 tæller y < ty – plads y + 1 (y 0..10 → 1..11), y ≤ −1 i plads 0 (y ≥ 11 tæller aldrig). ty er 0..11. */
+const PO_ROWS = new Int32Array(13);
+function rowsOf(list: MatchPlayer[], side: Side, rows: Int32Array): void {
+  rows.fill(0);
+  for (const p of list) {
+    if (p.slot < 0) continue;
+    const y = p.y;
+    if (side === 0) { if (y >= 12) rows[12]++; else if (y >= 1) rows[y]++; }
+    else if (y <= -1) rows[0]++; else if (y <= 10) rows[y + 1]++;
+  }
+}
+/** passOptions' genbrugte liste af modstandernes markspillere (funktionen kaldes ikke rekursivt) */
+const PO_OPPS: MatchPlayer[] = [];
+/** nærmeste modstander-markspiller: 5000.0 start (0x459c4000), 0 if one in the cell */
+function nearestOppOf(opps: MatchPlayer[], n: number, x: number, y: number, h: Helpers): number {
+  let d = 5000;
+  for (let i = 0; i < n; i++) { const p = opps[i]; const e = h.dist(Math.abs(p.x - x), Math.abs(p.y - y)); if (e === 0) return 0; if (e < d) d = e; }
+  return d;
 }
 // TODO: 'mark' for a candidate is a 32-bit float in the original; JS doubles can differ in the last bit
 //       before ftol. TODO: rand() call order must match the original exactly if the RNG stream matters

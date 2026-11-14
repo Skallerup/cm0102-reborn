@@ -172,9 +172,23 @@ export type ScoreFn = (j: number, i: number) => number;
  *     hidtil – NB det mindste tab ([esp+0x64], start 10000) nulstilles aldrig, hverken pr. kandidat eller pr. runde (sic). Højst 10000 runder.
  *  3) ombytninger: byt out[j] og out[j2] (j < j2), når v(j,b) + v(j2,a) > v(j,a) + v(j2,b); efter hver ombytning startes forfra, højst
  *     100 gennemløb. Returnerer kandidatindekset pr. position (null = ingen). (sikker) */
-export function assignPlayers(n: number, k: number, score: ScoreFn): (number | null)[] {
+/** (ydelse) ScoreFn'en husket i en tabel (den er deterministisk – se ScoreFn): fordelingen spørger mange gange om samme par */
+export function memoScore(n: number, kk: number, score: ScoreFn): ScoreFn {
+  if (n <= 0 || kk <= 0) return score;
+  const t = new Float64Array(n * kk), has = new Uint8Array(n * kk);
+  return (j, i) => {
+    if (j >= 0 && j < kk && i >= 0 && i < n && (j | 0) === j && (i | 0) === i) {
+      const c = j * n + i;
+      if (has[c]) return t[c];
+      const v = score(j, i); t[c] = v; has[c] = 1; return v;
+    }
+    return score(j, i);
+  };
+}
+export function assignPlayers(n: number, k: number, score0: ScoreFn): (number | null)[] {
   const out: (number | null)[] = new Array(k).fill(null);
   if (n < 1 || k < 1) return out;
+  const score = memoScore(n, k, score0);
   const used = new Array(n).fill(0);
   assignPhase12(n, k, score, out, used);
   // 3) 0x6e2b58 (uden bænkpladser – med dem: pickTeam.ts assignSquad)

@@ -19,7 +19,7 @@ import './shotParts/R4';
 import './shotParts/R6';
 import './shotParts/R7';
 import * as H from './helpers';
-import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, teamFlagsOf, type Table } from './tacticTable';
+import { instrBig, instrOf, mapTactic, setTeamOption, tableCell, tableCellTo, TC, teamFlagsOf, type Table } from './tacticTable';
 import { aiPrematch, PREMATCH_ATTR_KEYS, recordAttr } from './aiPrematch';
 import { aiTeamSetup, captainInputOf, joinedOf, type AiPickCtx } from './aiTeam';
 import { captainValue } from './roleScore';
@@ -65,7 +65,13 @@ export const randOfRng = (rng: { state: number }): Rand => {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
   const r: Rand = (n) => {
-    if (n >= 1 && n < 65536) return Math.floor(next01() * (n | 0));
+    if (n >= 1 && n < 65536) {
+      // (ydelse) floor((u/2³²)·k) = (u·k)/2³² | 0: u < 2³² og k < 2¹⁶ – produktet er eksakt (< 2⁴⁸), og division med 2³² runder ikke
+      let t = (rng.state = (rng.state + 0x6d2b79f5) >>> 0);
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return (((t ^ (t >>> 14)) >>> 0) * (n | 0) / 4294967296) | 0;
+    }
     const k = Math.trunc(n);
     if (k === 0) return 0;
     if (k > 0xffff || k < -0xffff) {
@@ -76,6 +82,7 @@ export const randOfRng = (rng: { state: number }): Rand => {
     }
     return k > 0 ? Math.floor(next01() * k) : (-Math.floor(next01() * -k)) | 0;
   };
+  (r as L.RandRng).rng = rng;                                                                 // (ydelse) loop.ts' randRng trækker direkte af generatoren
   return r;
 };
 export const randOf = (next01: () => number): Rand => {
@@ -501,6 +508,12 @@ function facingOk6fa140(p: GP, px: number, py: number, cx: number, cy: number): 
   let d = Math.abs(p.facing - ang); if (d > 180) d = 360 - d;
   return d < lim;
 }
+/** (ydelse) afleveringsmulighedernes afstand (|dx|, |dy| ≥ 0): DIST[min(11, dy)][min(8, dx)] fra en flad tabel med de samme tal */
+const DIST_F = new Float64Array(L.DIST.flat());
+const passDist = (dx: number, dy: number) => DIST_F[(dy < 11 ? dy : 11) * 9 + (dx < 8 ? dx : 8)];
+/** (ydelse) canSee's svar i ét genbrugt objekt (kalderne læser ok/lane straks) */
+const SEEN = { ok: false, lane: 0 };
+const seen = (ok: boolean, lane: number) => { SEEN.ok = ok; SEEN.lane = lane; return SEEN; };
 /** (ydelse 14/11) runTarget's optællinger: felterne om spilleren (3×3) og de aktive markspillere hos modstanderen */
 const RT_IN = new Int8Array(9), RT_FREE = new Int8Array(9), RT_OX = new Float64Array(64), RT_OY = new Float64Array(64);
 const ZONAL_WORLD = new WeakMap<GridMatchState, { rand: Rand; self: unknown; world: ZonalWorld<GP> }>();
@@ -526,10 +539,12 @@ export const GRID_UNKNOWN = {
       const lo = L.instrLo(p), gk = p.pos === L.POS.keeper;
       const stay = att ? (lo & 0x20000) !== 0 || (!gk && (lo & 0x40000000) !== 0)                // sub_716270
         : !gk && ((lo & 0x80000000) !== 0 || (lo & 0x80000) !== 0);                              // sub_716310
-      const [x, y] = stay ? [p.x, p.y] : tableCell(p.tbl, side, p.pslot, att, bx, by);
-      return [clampX(x), clampY(y)];
+      if (stay) return [clampX(p.x), clampY(p.y)];
+      tableCellTo(p.tbl, side, p.pslot, att, bx, by);
+      return [clampX(TC.x), clampY(TC.y)];
     }
-    let [x, y] = tableCell(p.tbl, side, p.pslot, att, bx, by);
+    tableCellTo(p.tbl, side, p.pslot, att, bx, by);
+    const x = TC.x; let y = TC.y;
     if (p.pos === L.POS.keeper) return [x, y];
     const flags = m.teamFlags[side], ctr = m.counterFlag[side], fwd = side === 0 ? 1 : -1;
     if (flags & TEAM_FLAGS.counterAttack && !ctr) y = clampY(y - fwd);
@@ -566,12 +581,12 @@ export const GRID_UNKNOWN = {
     // (ydelse 14/11) modstanderne gås igennem én gang: antal (og ledige, busy < 2) i hvert af de 9 felter om ham, og de aktive markspilleres
     // felter til afstanden – før to løkker over hele siden for hvert felt. Samme tal (tællinger og et minimum er uafhængige af rækkefølgen).
     RT_IN.fill(0); RT_FREE.fill(0);
-    let nOut = 0;
+    let nOut = 0, allInt = (px | 0) === px && (py | 0) === py;
     for (const o of opps) {
       if (!o.active) continue;
       const ox = o.x - px + 1, oy = o.y - py + 1;
       if (ox >= 0 && ox <= 2 && oy >= 0 && oy <= 2 && (ox | 0) === ox && (oy | 0) === oy) { RT_IN[oy * 3 + ox]++; if (o.busy < 2) RT_FREE[oy * 3 + ox]++; }
-      if (!(o.pos & 1)) { RT_OX[nOut] = o.x; RT_OY[nOut] = o.y; nOut++; }
+      if (!(o.pos & 1)) { RT_OX[nOut] = o.x; RT_OY[nOut] = o.y; nOut++; if ((o.x | 0) !== o.x || (o.y | 0) !== o.y) allInt = false; }
     }
     for (let cy = py - 1; cy <= py + 1; cy++) {
       if (cy < 0 || cy >= 12) continue;
@@ -603,7 +618,17 @@ export const GRID_UNKNOWN = {
         if (n !== 0 && !flag2) score = score - 2 * n * n;
         else {
           let minD = 5000;
-          for (let i = 0; i < nOut; i++) {
+          if (allInt) {
+            // (ydelse) H.cellDist skrevet ind for hele felter (samme tabel og samme 1000 uden for den)
+            for (let i = 0; i < nOut; i++) {
+              let dx = RT_OX[i] - cx, dy = RT_OY[i] - cy;
+              if (dx < 0) dx = -dx;
+              if (dy < 0) dy = -dy;
+              const d = dx > 8 || dy > 11 ? 1000 : L.DIST_F64[dy * 9 + dx];
+              if (d === 0) { minD = 0; break; }
+              if (d < minD) minD = d;
+            }
+          } else for (let i = 0; i < nOut; i++) {
             const d = H.cellDist(RT_OX[i] - cx, RT_OY[i] - cy);
             if (d === 0) { minD = 0; break; }
             if (d < minD) minD = d;
@@ -661,7 +686,7 @@ export const GRID_UNKNOWN = {
    *  modstandere nær og markering), oppNear = a4, mark = a5, wantLane = a6 ≠ 0 (banen tælles med sub_6cbc00 og Creativity ≥ rand(lane²)). */
   canSee(m: GridMatchState, p: GP, tx: number, ty: number, useSkill: boolean, oppNear: number, mark: number, wantLane: boolean, rand: Rand): { ok: boolean; lane: number } {
     const ang = H.bearing(tx - p.x, ty - p.y);
-    if (p.facing === ang) return { ok: true, lane: 0 };
+    if (p.facing === ang) return seen(true, 0);
     let limit = 75;
     if (useSkill) {
       const cr = p.roll.creativity;                                                            // +0x10b
@@ -670,10 +695,10 @@ export const GRID_UNKNOWN = {
       limit = Math.max(30, Math.min(135, v - w));
     }
     let diff = Math.abs(p.facing - ang); if (diff > 180) diff = 360 - diff;
-    if (diff >= limit) return { ok: false, lane: 0 };
-    if (!wantLane) return { ok: true, lane: 0 };
+    if (diff >= limit) return seen(false, 0);
+    if (!wantLane) return seen(true, 0);
     const lane = H.laneBlockers(sidesOf(m)[m.poss === 0 ? 1 : 0], m.poss, p.x, p.y, tx, ty);   // kun forsvarssiden tælles (samme antal)
-    return { ok: p.roll.creativity >= rand(lane * lane), lane };
+    return seen(p.roll.creativity >= rand(lane * lane), lane);
   },
   /** sub_6f4650 (sikker): står på mållinjens midterfelter, eller ser målet (uden skill, < 75°). */
   facingGoal(m: GridMatchState, q: GP, rand: Rand): boolean {
@@ -912,7 +937,7 @@ function makePlayer(p: Player, side: Side, slot: number, tactic: Tactic, base?: 
     __proto__: GP_F32, _f32: false, marker0: undefined, giver: undefined, markRef: undefined, view: undefined, recRaw: undefined, staffRaw: undefined,
     // afleveringsmulighederne 0x6c82e0/0x6c82fe: staff+0x65's yndlingspersoner/uvenner (cmRelations.ts – kun den originale database)
     nationName: undefined, lang: undefined, favoured: p.cmRel ? relPersons(p, FAV_PERSON) : undefined, disliked: p.cmRel ? relPersons(p, DIS_PERSON) : undefined,
-    side, slot, active: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, _cond: kickFit && p.cmFit ? kickFit(p) : 100 * Math.max(60, p.condition ?? 100), _pcond: 0, busy: 0,
+    side, slot, _act: true, x: bx, y: side === 0 ? by : 11 - by, action: L.ACT.none, rating: 6100, _cond: kickFit && p.cmFit ? kickFit(p) : 100 * Math.max(60, p.condition ?? 100), _pcond: 0, busy: 0,
     // +0x17 moralen: MATCH_PLAYER::setup 0x6eaf46–0x6eaf64 = spillerpostens +0x45 (Player.morale – playerRecord), 10 for spillere uden for databasen
     matchCA: mc.K, form, morale: p.regen ? 10 : ((Math.trunc(p.morale ?? 10) << 24) >> 24), injury: 0, _agit: 2 * (25 - sh('temperament')), agFloor: 2 * (25 - sh('temperament')), pos, tacticByte, _instr: instr, _ilo: Number(instr & 0xffffffffn), _ihi: Number(instr >> 32n), freeRoleRating: p.cmFree ?? 1, a,   // spillerpost +0x1a (0x714286)
     cap: undefined as unknown as L.Caps, roll: { pace: 0, anticipation: 0, decisions: 0, offTheBall: 0, marking: 0, flair: 0, positioning: 0, creativity: 0, agility: 0, workRate: 0 },
@@ -946,6 +971,8 @@ const GP_F32 = Object.create(Object.prototype, {
   agitation: { get(this: F32Store) { return this._agit; }, set(this: F32Store, x: number) { this._agit = this._f32 ? Math.fround(x) : x; }, enumerable: true, configurable: true },
   // instruktionerne (+0x188b, 64 bit): _ilo/_ihi følger med ved hver skrivning (loop.ts instrLo/instrHi – uden BigInt-regning i de varme stier)
   instr: { get(this: InstrStore) { return this._instr; }, set(this: InstrStore, x: bigint) { this._instr = x; this._ilo = Number(x & 0xffffffffn); this._ihi = Number(x >> 32n); }, enumerable: true, configurable: true },
+  // (ydelse) +0x19's "på banen": et skift tæller L.ACTIVE.epoch op, så activeOf's liste over de aktive bygges igen
+  active: { get(this: { _act: boolean }) { return this._act; }, set(this: { _act: boolean }, x: boolean) { if (this._act !== x) { this._act = x; L.ACTIVE.epoch++; } }, enumerable: true, configurable: true },
 });
 interface InstrStore { _instr: bigint; _ilo: number; _ihi: number }
 function f32Fields(p: GP): void {
@@ -1001,13 +1028,27 @@ const NO_CHALLENGERS: H.MatchPlayer[] = Object.freeze([]) as unknown as H.MatchP
 /** opdatér visningerne (positioner, rul) før en beslutning */
 function sync(m: GridMatchState): void {
   for (const p of m.gp) {
+    // (ydelse) en spiller uden for banen: visningen friskes kun op første gang (slot −1); derefter læses kun dens slot (< 0 → springes over)
+    if (!p.active && p.view!.slot === -1) continue;
+    syncOne(p);
+  }
+}
+/** én spillers visning (sync's krop) */
+function syncOne(p: GP): void {
+  {
     const v = p.view!;
     v.x = p.x; v.y = p.y; v.momentum = p.momentum; v.slot = p.active ? p.slot : -1; v.busy = p.busy; v.facing = p.facing; v.action = p.action; v.condition = p.condition;
     v.w35 = p.rating;                                                                        // +0x35 = karakteren ×1000 (0x6c6eb2: W = (kondition + karakter − 15000)·0,25)
     v.paceRoll = p.roll.pace; v.anticRoll = p.roll.anticipation; v.decRoll = p.roll.decisions; v.offBallRoll = p.roll.offTheBall; v.creatRoll = p.roll.creativity;
     v.rolls.b107 = p.roll.offTheBall; v.rolls.b108 = p.roll.marking; v.rolls.b10a = p.roll.positioning; v.rolls.b10c = p.roll.agility;
     // (runde 10B) tom liste deles (læses kun); (ydelse 14/11) ellers visningens egen liste fyldt igen (læses kun med includes, før næste sync)
-    if (p.markers.length) { const b = (v as unknown as { chBuf: H.MatchPlayer[] }).chBuf; b.length = 0; for (const q of p.markers) b.push((q as GP).view!); v.challengers = b; }
+    if (p.markers.length) {
+      // (ydelse) listen skrives over på stedet; længden sættes kun, når antallet har ændret sig (length = … er et dyrt kald)
+      const b = (v as unknown as { chBuf: H.MatchPlayer[] }).chBuf, mk = p.markers; let k = 0;
+      for (; k < mk.length; k++) b[k] = (mk[k] as GP).view!;
+      if (b.length !== k) b.length = k;
+      v.challengers = b;
+    }
     else v.challengers = NO_CHALLENGERS;
     v.tacklingBit2 = (p.tacticByte & 2) !== 0;                                               // sub_6f4600: taktikbyten bit 2 → positionsrullet (før altid false)
   }
@@ -1195,7 +1236,10 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     official29: ctx.official?.b29 ?? GRID_UNKNOWN.official29,
     sideByte, periodEnd: 495, shootoutState: null, firstTime: 0, b1cd: 0, x4782: 0, x4786: 0, passRecv: null, passGiver: null, setPieceGoals: [[0, 0, 0], [0, 0, 0]], b1a9: [0, 0], goldenGoal: 0, b1a4: 0,
     cells: Array.from({ length: 9 * 12 * 2 }, () => [] as GP[]),
+    _act: null,
   };
+  // (ydelse) activeOf's liste kun, når alle spillere har GP_F32's accessor for `active` (ellers opdages et skift ikke)
+  if (gp.every((q) => Object.getPrototypeOf(q) === GP_F32)) m._act = { e: -1, n: 0, l: [] };
   for (const p of gp) { p.skill = actionSkills(p); f32Fields(p); attachView(m, p); }
   // gittercellerne: spillerne på banen i holdenes rækkefølge (*estimeret* – init_match placerer dem med sub_6f46b0; låsetrinstesten indsætter
   // originalens lister)
@@ -1661,11 +1705,11 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
 
   // sub_6c2be0 efterfulgt af sub_715f50 (søjledrift), som alle originalens kaldere gør
   const cellWithDrift = (p: GP): [number, number] => {
-    const [x, y] = GRID_UNKNOWN.tacticalCell(m, p);
+    const c = GRID_UNKNOWN.tacticalCell(m, p);                                                 // (ydelse) en ny liste hver gang – genbruges som svar
     // sub_715f50 læser spillerens aktuelle positionsrul +0x10a og positionsord – visningen (p.view) opdateres ellers kun af sync() før
     // boldholderens valg, så den kunne være et tik gammel
-    if (p.view) { p.view.rolls.b10a = p.roll.positioning; p.view.pos = p.pos; p.view.posFlags = p.pos; p.view.side = p.side; }
-    return [p.view ? H.tacticalColumn(p.view, x, p.posR, undefined, rand) : x, y];
+    if (p.view) { p.view.rolls.b10a = p.roll.positioning; p.view.pos = p.pos; p.view.posFlags = p.pos; p.view.side = p.side; c[0] = H.tacticalColumn(p.view, c[0], p.posR, undefined, rand); }
+    return c;
   };
 
   /** sub_6f4aa0 (hvert tik for alle med plads ≥ 0, 0x6b9fec/0x6ba00e; oversat instruktion for instruktion 11/11): busy tælles ned (negativ → 0),
@@ -3320,8 +3364,41 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     const s0 = gp.filter((o) => o.side === 0), s1 = gp.filter((o) => o.side === 1);
     return (sitCache = { epoch: VIEW_EPOCH, n: gp.length, side: [s0, s1], views: [s0.map((o) => o.view!), s1.map((o) => o.view!)], ref: new Map(gp.map((o) => [o.view!, o])) });
   };
+  let sitMoves = -1, sitAct = -1;                                                              // situationens sync (se _pass)
+  // (ydelse) afleveringsmulighedernes hjælpere én gang pr. kamp (før et objekt med 10 lukninger pr. situation): boldholderen, visning → spiller
+  // og modstanderne sættes af pinnedPassOptions lige før kaldet (passOptions kaldes ikke rekursivt, og ingen situation bygges undervejs)
+  let phP: GP = gp[0], phRef: Map<unknown, GP> = new Map(), phOppViews: (PassPlayer & H.MatchPlayer)[] = [], phOpp: Side = 1;
+  const ph: PassHelpers = {
+    trace: onShot ? (c, W, sh, lo, x) => onShot('PO' as never, [c.side, c.slot, W, sh, lo, ...Object.values(x)]) : undefined,
+    rand, dist: passDist,
+    freeRun: (q) => GRID_UNKNOWN.freeRun(m, phRef.get(q as never)!, rand),
+    facingGoal: (q) => GRID_UNKNOWN.facingGoal(m, phRef.get(q as never)!, rand),
+    canSee: (_c, tx, ty, oppNear, mark) => GRID_UNKNOWN.canSee(m, phP, tx, ty, true, oppNear, mark, true, rand),
+    runTarget: (q) => { const t = GRID_UNKNOWN.runTarget(m, phRef.get(q as never)!, 0, [-1, -1], rand); return t ? { x: t[0], y: t[1] } : null; },
+    // (runde 10B) footForTarget læser kun disse felter – før en kopi af hele visningen ({ ...p.view!, x, y }) pr. kandidat
+    // (ydelse) footOnly = footForTarget(...).foot uden objekter
+    lineOfSight: (x, y, tx2, ty2, d) => { const v = phP.view!; return H.footOnly(x, y, v.facing, v.technique, v.strongFoot, 0x5d, tx2, ty2, d, m.ballDir); },
+    spaceAhead: (q) => GRID_UNKNOWN.spaceAhead(m, phRef.get(q as never)!),
+    // sub_6bd5b0(q, 0): modtagerens EGET felt (+0x21b6 for hans felt – før boldholderens)
+    noDefenderGoalSide: (q) => H.noDefenderGoalSide(q as unknown as H.MatchPlayer, phOppViews, cellListOf(m, q.x, q.y, phOpp).length, false),
+    onPitch: (id) => id !== null && gp.some((q) => q.active && q.src.id === id),
+  };
+  /** passOptions med forsvarernes optælling holdt fast (H.lanePin – canSee's laneBlockers for hver kandidat) */
+  const pinnedPassOptions = (ps: PassState, p: GP, ref: Map<unknown, GP>, oppViews: (PassPlayer & H.MatchPlayer)[], code: number) => {
+    phP = p; phRef = ref; phOppViews = oppViews; phOpp = other(p.side);
+    H.lanePin(sidesOf(m)[m.poss === 0 ? 1 : 0], m.poss);
+    try { return passOptions(ps, p.view!, p.x, p.y, code, ph); } finally { H.laneUnpin(); }
+  };
+  /** afleveringsmulighedernes svar som PassOption (modtageren og "foran ham" i recv/lead) */
+  const toOption = (c: ReturnType<typeof passOptions>, p: GP, ref: Map<unknown, GP>): PassOption | null => {
+    const o: PassOption = c.receiver
+      ? { hasTarget: true, weight: c.weight, type: c.type ?? 0x0b, tx: c.x ?? c.receiver.x, ty: c.y ?? c.receiver.y }
+      : { hasTarget: false, weight: c.weight, type: c.type ?? 0x0b, tx: c.x ?? p.x, ty: c.y ?? p.y };
+    if (c.receiver) { recv.set(o, ref.get(c.receiver as never) ?? null); lead.set(o, !!c.lead); }
+    return o;
+  };
   const situation = (p: GP): Situation => {
-    sync(m);
+    sync(m); sitMoves = L.MOVES.n; sitAct = L.ACTIVE.epoch;
     const opp = other(p.side);
     const SC = sitLists();
     const opps = SC.side[opp];
@@ -3373,32 +3450,11 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
     const ps: PassState = { attackingSide: p.side, ballState: m.ballH, defLine: [m.lineSide1, m.lineSide0], teamFlags: m.teamFlags, competitionReputation: passCompRep, roleStaffId: roles[p.side],
       players: SC.views };
     const ref = SC.ref;
-    const ph: PassHelpers = {
-      trace: onShot ? (c, W, sh, lo, x) => onShot('PO' as never, [c.side, c.slot, W, sh, lo, ...Object.values(x)]) : undefined,
-      rand, dist: (dx, dy) => L.DIST[Math.min(11, dy)][Math.min(8, dx)],
-      freeRun: (q) => GRID_UNKNOWN.freeRun(m, ref.get(q as never)!, rand),
-      facingGoal: (q) => GRID_UNKNOWN.facingGoal(m, ref.get(q as never)!, rand),
-      canSee: (_c, tx, ty, oppNear, mark) => GRID_UNKNOWN.canSee(m, p, tx, ty, true, oppNear, mark, true, rand),
-      runTarget: (q) => { const t = GRID_UNKNOWN.runTarget(m, ref.get(q as never)!, 0, [-1, -1], rand); return t ? { x: t[0], y: t[1] } : null; },
-      // (runde 10B) footForTarget læser kun disse felter – før en kopi af hele visningen ({ ...p.view!, x, y }) pr. kandidat
-      lineOfSight: (x, y, tx2, ty2, d) => { const v = p.view!; return H.footForTarget({ x, y, facing: v.facing, technique: v.technique, leftFoot: v.leftFoot, rightFoot: v.rightFoot, strongFoot: v.strongFoot } as H.MatchPlayer, 0x5d, tx2, ty2, d, m.ballDir).foot; },
-      spaceAhead: (q) => GRID_UNKNOWN.spaceAhead(m, ref.get(q as never)!),
-      // sub_6bd5b0(q, 0): modtagerens EGET felt (+0x21b6 for hans felt – før boldholderens)
-      noDefenderGoalSide: (q) => H.noDefenderGoalSide(q as unknown as H.MatchPlayer, oppViews, cellListOf(m, q.x, q.y, opp).length, false),
-      onPitch: (id) => id !== null && gp.some((q) => q.active && q.src.id === id),
-    };
-    const toOption = (c: ReturnType<typeof passOptions>): PassOption | null => {
-      const o: PassOption = c.receiver
-        ? { hasTarget: true, weight: c.weight, type: c.type ?? 0x0b, tx: c.x ?? c.receiver.x, ty: c.y ?? c.receiver.y }
-        : { hasTarget: false, weight: c.weight, type: c.type ?? 0x0b, tx: c.x ?? p.x, ty: c.y ?? p.y };
-      if (c.receiver) { recv.set(o, ref.get(c.receiver as never) ?? null); lead.set(o, !!c.lead); }
-      return o;
-    };
     let openPass: PassOption | null | undefined;
     let lazyRun: 0 | 1 | 2 | undefined, lazyFace: boolean | undefined, lazyTarget: { found: boolean; tx: number; ty: number } | undefined;
     const foot = H.footForTarget(p.view!, 0x16, 4, gr, D + 1, m.ballDir);
     let shotType = 0xff;                                                                       // sub_7109f0 [esp+0x88]
-    const ctx = () => ({ side: p.side, x: p.x, y: p.y, D, ballHeight: m.ballH, facingGoal: ph.facingGoal(p.view!), creativityRoll: p.roll.creativity, flairRoll: p.roll.flair,
+    const ctx = () => ({ side: p.side, x: p.x, y: p.y, D, ballHeight: m.ballH, facingGoal: GRID_UNKNOWN.facingGoal(m, p, rand), creativityRoll: p.roll.creativity, flairRoll: p.roll.flair,
       condition: p.condition, w29: p.w29, momentum: p.momentum, form: p.form, prevAction: p.action, attrs: shotAttrs(p),
       keeper: k ? { x: k.x, y: k.y, side: opp, down: k.busy, distToShooter: L.dist(k.x, k.y, p.x, p.y), distToOwnGoal: L.dist(k.x, k.y, 4, gr) } : null, weather: GRID_UNKNOWN.weather, matchByte1: GRID_UNKNOWN.byte1 });
     // (runde 10B) objektet har kun datafelter (de dovne felter er lukninger, som SIT_PROTO's accessorer kalder) – med getters i
@@ -3420,14 +3476,16 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       _m: m, _pr: pr,
       _pass: () => {
         if (openPass === undefined) {
-          // spillernes visninger friskes op først: boldholderen kan have vendt sig (0x6f4920) siden situationen blev bygget
-          if (m.state === 0 || m.state === 8) sync(m);
-          openPass = m.state === 0 || m.state === 8 ? toOption(passOptions(ps, p.view!, p.x, p.y, -1, ph)) : null;
+          // spillernes visninger friskes op først: boldholderen kan have vendt sig (0x6f4920) siden situationen blev bygget.
+          // (ydelse) Har ingen skiftet felt eller er kommet på/af banen siden situationens sync, er det kun boldholderen, der kan have ændret
+          // sig (sub_7109f0 mellem situationen og afleveringerne: det taktiske felt og +0x29) – så friskes kun hans visning op
+          if (m.state === 0 || m.state === 8) { if (L.MOVES.n === sitMoves && L.ACTIVE.epoch === sitAct) syncOne(p); else sync(m); }
+          openPass = m.state === 0 || m.state === 8 ? toOption(pinnedPassOptions(ps, p, ref, oppViews, -1), p, ref) : null;
           if (onShot && openPass) { const r = recv.get(openPass); onShot('O', [p.side, p.pslot ?? p.slot, p.x, p.y, openPass.weight, r ? r.side : -1, r ? r.pslot ?? r.slot : -1, openPass.tx, openPass.ty]); }
         }
         return openPass;
       },
-      setPiecePass: (code) => toOption(passOptions(ps, p.view!, p.x, p.y, code, ph)),
+      setPiecePass: (code) => toOption(pinnedPassOptions(ps, p, ref, oppViews, code), p, ref),
       dropMotivation: () => { p.motivation = ((p.motivation - 1) << 24) >> 24; },                    // 0x711721: dec byte +0x100
       // w29 fra sub_7109f0 (0x7110f5–0x711342: kan være negativ – rand(w29) i 0x7016fc trækker så skuddet ned); uden = limens skøn ≥ 0
       shotScore: (w29?: number) => {
@@ -3446,7 +3504,7 @@ export function createGridMatch(home: GridTeam, away: GridTeam, rand: Rand, ctx:
       teammatesAhead: hooks.teammatesAhead(p), _clearRun: () => lazyRun ??= GRID_UNKNOWN.freeRun(m, p, rand),
       oppKeeper: k ? { isRealKeeper: true, x: k.x, y: k.y, hasActed: k.busy !== 0, covers: H.keeperCovers(k.view!, p.x, p.y) } : null,
       oppInCell: inCell.length, committedOppInCell: inCell.filter((o) => (o.yellows & 0xff) !== 0).length,   // 0x713058: modstanderne i feltet med +0x24 (gult kort) ≠ 0 (før 0)
-      _facingGoal: () => lazyFace ??= ph.facingGoal(p.view!), pastLastLine: L.beyondLine(m, p.side, p.y) >= 0,
+      _facingGoal: () => lazyFace ??= GRID_UNKNOWN.facingGoal(m, p, rand), pastLastLine: L.beyondLine(m, p.side, p.y) >= 0,
       noDefenderGoalSide0: H.noDefenderGoalSide(p.view!, oppViews, inCell.length, false), noDefenderGoalSide1: H.noDefenderGoalSide(p.view!, oppViews, inCell.length, true),
       // boldholderen (0x712292–0x7122c0): flags 2 + (sub_6cb780's frie løb [esp+0x68] ≠ 0), io = det taktiske felt
       // uden felt skriver sub_6bce80 −1, −1 i ioX/ioY (0x6bd58f) – boldholderens løb klemmer det til (0, 0) (0x7139f1)

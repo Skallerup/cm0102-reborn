@@ -15,7 +15,7 @@
 // Ikke porteret: rotationen før en vigtigere kamp (0x6dbdc4–0x6dc59f, hold +0x1a ≠ 3 – kræver kampprogrammet; gælder klubber med omdømme
 // ≥ 6000 og over 30 spillere) og turneringens udtagelsesregler 0x8cf880/0x6e8910 (udlændingekvoter – ingen i de engelske 2001-turneringer).
 
-import { assignPhase12, type ScoreFn } from './subs';
+import { assignPhase12, memoScore, type ScoreFn } from './subs';
 
 export type Rand = (n: number) => number;
 
@@ -76,10 +76,11 @@ export function benchSlots(rand: Rand, benchSize: number): number[] {
  *  `score(j, i)` = 0x6e2f20 for kandidat i på plads j (0 ≤ j < k + extra, kaldets flag; pladsens egne felter). `benchScore(j', i)` = kaldet i
  *  rekursionen for bænkplads j' (flag | 0x200 – intet sideled; NB originalen giver instruktioner/taktikbyte fra plads j' – ikke k + j' – med, sic).
  *  `gkOf(i)` = kandidatens målmandsevne (+0xf), `slotIsGk(j)` = pladsens flag & 1 (oprydningen når n < k). Returnerer kandidatindekset pr. plads. */
-export function assignSquad(n: number, k: number, extra: number, score: ScoreFn, benchScore: ScoreFn,
+export function assignSquad(n: number, k: number, extra: number, score0: ScoreFn, benchScore: ScoreFn,
   gkOf: (i: number) => number, slotIsGk: (j: number) => boolean): (number | null)[] {
   const out: (number | null)[] = new Array(k + extra).fill(null);
   if (n < 1 || (k === 0 && extra === 0)) return out;
+  const score = memoScore(n, k + extra, score0);                                             // (ydelse) deterministisk – husket i en tabel
   const used = new Array(n).fill(0);
   if (n >= k) assignPhase12(n, k, score, out, used);
   else {
