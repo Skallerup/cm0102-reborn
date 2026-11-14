@@ -37,6 +37,5 @@ export default function App() {
     setFast(false);
     window.scrollTo(0, 0);
   };
-  const draft = () => { history.replaceState(null, '', `${location.pathname}?draft=1`); setFast(false); window.scrollTo(0, 0); };
-  return <><Landing key={lang} onPlay={play} onLang={setLangState} onDraft={draft} /><ConsentBanner /><InAppBanner /><UpdateToast /></>;
+  return <><Landing key={lang} onPlay={play} onLang={setLangState} /><ConsentBanner /><InAppBanner /><UpdateToast /></>;
 }

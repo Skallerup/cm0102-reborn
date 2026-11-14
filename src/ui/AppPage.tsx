@@ -63,7 +63,7 @@ function AppInner() {
   const [resuming, setResuming] = useState(() => !new URLSearchParams(location.search).get('room') && !!getLast());
   // forsiden vises for nye besøgende (ikke ved invitationslinks eller når man har trykket "Spil" i denne fane)
   const [landing, setLanding] = useState(() => {
-    try { return !new URLSearchParams(location.search).get('room') && sessionStorage.getItem('cm0102.play') !== '1'; } catch { return true; }
+    try { const q = new URLSearchParams(location.search); return !q.get('room') && !q.get('modern') && sessionStorage.getItem('cm0102.play') !== '1'; } catch { return true; }
   });
   const play = () => {
     try { sessionStorage.setItem('cm0102.play', '1'); } catch { /* ignorer */ }
@@ -114,7 +114,7 @@ function AppInner() {
   // draft-liga: lobby, keepers og draft vises, indtil sæsonen er bygget
   if (ds?.room?.draft && (ds.room.draft.phase !== 'playing' || !g || !draftSeen(ds.creds.code, ds.room.draft.season))) return <DraftRoom />;
   if (!g && draftPage) return <DraftLanding key={lang} onLang={setLangState} onBack={() => { history.replaceState(null, '', location.pathname); setDraftPage(false); window.scrollTo(0, 0); }} onCreate={() => { history.replaceState(null, '', `${location.pathname}?newdraft=1`); setDraftPage(false); play(); }} />;
-  if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} onDraft={() => { history.replaceState(null, '', `${location.pathname}?draft=1`); setDraftPage(true); window.scrollTo(0, 0); }} />;
+  if (!g && landing) return <Landing key={lang} onPlay={play} onLang={setLangState} />;
   if (!g) return <Start key={lang} onLang={setLangState} onHome={home} />;
   return (<>
     {previewInfo() && <PreviewBar />}

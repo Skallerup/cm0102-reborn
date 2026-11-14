@@ -245,7 +245,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
   );
 
   return (
-    <div className="lp">
+    <div className="lp lp-retro">
       <div className="lp-aurora" aria-hidden="true"><i /><i /><i /></div>
       <header className={`lp-nav ${scrolled ? 'solid' : ''}`}>
         <div className="lp-wrap lp-nav-in">
@@ -268,6 +268,11 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
       </header>
 
       <section className="lp-hero">
+        <div className="lp-wrap lp-newsband reveal">
+          <span className="lp-newsband-tag">{t('land.new.tag')}</span>
+          <div><b>{t('land.new.title')}</b><p>{t('land.new.text')}</p></div>
+          <span className="lp-newsband-free">{t('land.check.free')} · {t('land.check.online')}</span>
+        </div>
         <div className="lp-wrap lp-hero-in">
           <div className="lp-hero-text">
             <div className="lp-pill reveal"><span className="lp-live" /> {t('land.pill')}</div>
@@ -278,7 +283,7 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
               <button className="lp-ghost" onClick={() => go('screens')}>{t('land.seeScreens')}</button>
             </div>
             <ul className="lp-checks reveal">
-              {['free', 'beta', 'nodl', 'lang'].map((k) => <li key={k}>✓ {t(`land.check.${k}`)}</li>)}
+              {['free', 'online', 'nodl', 'beta', 'lang'].map((k) => <li key={k}>✓ {t(`land.check.${k}`)}</li>)}
             </ul>
           </div>
           <div className="lp-hero-visual reveal">
@@ -289,6 +294,13 @@ export function Landing({ onPlay, onLang, onDraft }: { onPlay: () => void; onLan
             <div className="lp-float bid">💸 {t('land.floatBid')}</div>
           </div>
         </div>
+      </section>
+
+      <section className="lp-wrap lp-nost-wrap">
+        <div className="lp-nost">
+          {[1, 2, 3].map((n) => <q key={n} className="reveal">{t(`land.nost.q${n}`)}</q>)}
+        </div>
+        <div className="lp-nost-cta reveal"><Cta big /></div>
       </section>
 
       <div className="lp-ticker" aria-hidden="true">

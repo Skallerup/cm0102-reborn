@@ -70,7 +70,7 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
         <div className="logo">
           {view === 'menu' && <div className="start-pill"><span className="start-live" />{t('start.pill')}</div>}
           <h1>CM <span>Reborn</span></h1>
-          <p>{t('start.subtitle')}</p>
+          {modernOn() && <p>{t('start.subtitle')}</p>}
         </div>
         {view === 'menu' && (
           <div className="menu-btns">

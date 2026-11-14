@@ -886,7 +886,7 @@ async function run(look) {
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-ligaer.png` });
     await go({ name: 'ranking' }); await page.waitForSelector('.cx-subtitle', { timeout: 5000 }); await page.waitForTimeout(800);
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-halloffame.png` });
-    if (!ENGINE_GRID) await checkScreen('hall of fame'); // originalens tabeller er tomme ved spilstart
+    // originalens Hall of Fame-tabeller er tomme ved spilstart – intet tjek for tom skærm
     if (ENGINE_GRID) {
       // ægte tilstand: originalens Hall of Fame (28 tabeller) – ikke CM Rebornes pointmodel
       if (await page.locator('.cx-hof-orig').count() !== 1) throw new Error('Hall of Fame: originalens skærm mangler');
@@ -1596,8 +1596,90 @@ async function editor() {
   await ctx.close();
 }
 
+/** Network Play (multiplayer) fra den klassiske startmenu: skærmen skal have det klassiske CM 01/02-look (.cxl, skin retro, originalens baggrund) */
+async function multiplayer() {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'retro'); sessionStorage.setItem('cm0102.play', '1'); });
+  const step = async (name, fn) => {
+    const before = errors.length;
+    try {
+      await fn();
+      if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`);
+      console.log(`  ✓ multiplayer: ${name}`);
+    } catch (e) {
+      failures.push(`multiplayer: ${name}: ${e.message.split('\n')[0]}`);
+      console.log(`  ✗ multiplayer: ${name}: ${e.message.split('\n')[0]}`);
+      await page.screenshot({ path: `${OUT}/multiplayer-fejl.png` }).catch(() => {});
+    }
+  };
+  await step('Network Play har det klassiske look', async () => {
+    await page.goto(URL);
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
+    await page.waitForSelector('.cxs [data-field=network]', { timeout: 30000 });
+    await page.locator('[data-field=network]').click();
+    await page.waitForSelector('.cxl', { timeout: 10000 });
+    const look = await page.evaluate(() => {
+      const el = document.querySelector('.cxl');
+      const cs = getComputedStyle(el);
+      return { skin: document.documentElement.dataset.skin, bg: cs.backgroundImage, font: cs.fontFamily, mp: !!el.querySelector('.invite-code, input, .choice, .panel') };
+    });
+    if (look.skin !== 'retro') throw new Error(`skin er ${look.skin}`);
+    if (!/original-bg/.test(look.bg)) throw new Error('mangler originalens baggrund');
+    if (!/Tahoma|Verdana/.test(look.font)) throw new Error(`skrift ${look.font}`);
+    if (!look.mp) throw new Error('ingen multiplayer-indhold');
+    if (await page.locator('.start-aurora:visible, .start-card:visible').count()) throw new Error('moderne startelementer synlige');
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-multiplayer.png` });
+  });
+  // forsiden: nyheden (gratis + online), nostalgi-designet, ingen Draft/moderne omtalt, ingen vandret rulning på mobil
+  for (const [name, vp] of [['desktop', { width: 1280, height: 900 }], ['mobil', { width: 390, height: 844 }]]) {
+    await step(`forsiden (${name})`, async () => {
+      const c2 = await browser.newContext({ viewport: vp });
+      const p2 = await c2.newPage();
+      await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); });
+      await p2.goto(URL);
+      await p2.waitForSelector('.lp-newsband', { timeout: 30000 });
+      const info = await p2.evaluate(() => ({ text: document.body.innerText, retro: !!document.querySelector('.lp.lp-retro'), over: document.documentElement.scrollWidth - window.innerWidth, nost: document.querySelectorAll('.lp-nost q').length }));
+      if (!info.retro) throw new Error('forsiden mangler det nostalgiske design');
+      if (!/free/i.test(info.text) || !/online/i.test(info.text)) throw new Error('forsiden nævner ikke gratis/online');
+      if (/\bdraft\b|\bmodern\b/i.test(info.text)) throw new Error('forsiden nævner Draft eller moderne');
+      if (info.nost !== 3) throw new Error('nostalgi-linjerne mangler');
+      if (info.over > 1) throw new Error(`vandret rulning på forsiden: ${info.over}px`);
+      if (process.env.SHOTS) { await p2.evaluate(() => document.querySelectorAll('.lp .reveal').forEach((e) => e.classList.add('in'))); await p2.waitForTimeout(1200); }
+      if (process.env.SHOTS) await p2.screenshot({ path: `${OUT}/forside-${name}.png`, fullPage: name === 'mobil' });
+      await c2.close();
+    });
+  }
+  // separate indgange: draft-ligaen (/?draft=1) og det moderne udseende (/?modern=1)
+  await step('draft via ?draft=1', async () => {
+    const c2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const p2 = await c2.newPage();
+    await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); });
+    await p2.goto(`${URL}?draft=1`);
+    await p2.waitForSelector('.lp:not(.lp-retro)', { timeout: 30000 });
+    if (!/draft/i.test(await p2.evaluate(() => document.body.innerText))) throw new Error('draft-siden vises ikke');
+    await c2.close();
+  });
+  await step('moderne via ?modern=1', async () => {
+    const c2 = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    const p2 = await c2.newPage();
+    await p2.addInitScript(() => { localStorage.setItem('cm0102.lang', 'en'); localStorage.setItem('cm-theme', 'retro'); });
+    await p2.goto(`${URL}?modern=1`);
+    await p2.waitForSelector('.cxs [data-field=opts]', { timeout: 30000 });
+    if (await p2.locator('.lp-retro').count()) throw new Error('forsiden vistes');
+    if ((await p2.evaluate(() => localStorage.getItem('cm0102.modern'))) !== '1') throw new Error('det moderne blev ikke husket');
+    await p2.locator('[data-field=settings]').click();
+    await p2.locator('select[data-look]').waitFor({ timeout: 10000 });
+    await c2.close();
+  });
+  await ctx.close();
+}
+
 for (const look of ['klassisk', 'moderne']) if (only === look || (!only && (look === 'klassisk' || process.env.E2E_MODERN))) await run(look);
 if (!only || only === 'editor') await editor();
+if (!only || only === 'multiplayer') await multiplayer();
 await browser.close();
 stop();
 if (failures.length) {
