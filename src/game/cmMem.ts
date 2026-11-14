@@ -103,6 +103,8 @@ export interface CmCtx {
   call(adr: number, ...args: number[]): number;
   /** kontrollen: porterede funktioners resultater (adresse, værdi) i rækkefølge */
   probe?(adr: number, v: number): void;
+  /** kontrollen: svar fra sporet i stedet for den oversatte funktion (cmGen) – for kald, hvis hukommelse sporet ikke gengiver */
+  useLog?(adr: number): boolean;
 }
 
 /** staff-post af id */

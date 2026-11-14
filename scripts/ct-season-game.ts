@@ -5,6 +5,7 @@ import { readFileSync } from 'node:fs';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
+import { WANT_STATS } from '../src/game/cmContractGame';
 
 const file = process.argv[2] ?? 'public/data/world-original.json';
 const world = JSON.parse(readFileSync(file, 'utf8')) as WorldData;
@@ -27,3 +28,6 @@ console.log(`(engelske købere/klubber) ${start} → ${g.date}: skifter ${moves.
 const wages = ps.filter((p) => p.club && p.contract && g.clubs[p.club]?.nation === engNat).map((p) => p.contract!.wage * GBP).sort((a, b) => a - b);
 const q = (f: number) => Math.round(wages[Math.floor(f * (wages.length - 1))]);
 console.log(`spillere ${ps.length}, med kontrakt ${wages.length}, uden klub ${ps.filter((p) => !p.club).length}; ugeløn £ median ${q(0.5)}, 90 % ${q(0.9)}, 99 % ${q(0.99)}, max ${q(1)}`);
+console.log(`ønskekontrakten (cmContractGame): ${WANT_STATS.n} kontrakter (${WANT_STATS.offered} som klubbens tilbud 0x4cda70), ${(WANT_STATS.ms / Math.max(1, WANT_STATS.n)).toFixed(1)} ms pr. stk.`);
+const rs = WANT_STATS.moves.map(([a, b]) => b / Math.max(1, a)).sort((a, b) => a - b);
+if (rs.length) console.log(`ny/gammel ugeløn ved klubskifte (${rs.length}): 10/50/90 % ${[0.1, 0.5, 0.9].map((f) => rs[Math.floor(f * (rs.length - 1))].toFixed(2)).join('/')}`);

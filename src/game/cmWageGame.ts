@@ -82,6 +82,35 @@ export interface WageMem {
   addGenerated(p: Player, club: number): number;
   clubOf(cid: number): number;
   finOf(cid: number): number;
+  /** (ønskekontrakten, cmContractGame.ts) de byggede spillere og deres poster, personpostens adresse for et hukommelses-id, landet og
+   *  divisionen (posterne bygges ved første brug) og kontraktposten for en byggede spiller (0 = ingen) */
+  players: [Player, number][];
+  staffAdr(id: number): number;
+  natOf(n: number | undefined): number;
+  divOf(id: number | undefined): number;
+  divIds(): [number, number][];
+  contractOf(p: Player): number;
+}
+
+/** spiltilstandens gennemløb, som alle opbygninger samme dag deler (største database-id, udlejede pr. moderklub, staben pr. klub) – genbruges,
+ *  så længe dato, antal spillere og antal stab er de samme */
+const SCAN = new WeakMap<GameState, { key: string; maxId: number; loanedOut: Map<number, Player[]>; staffOf: Map<number, import('./types').Staff[]> }>();
+function scanOf(g: GameState) {
+  // samme dag og ingen nye personer (lejeaftaler og stabsskift samme dag ses først næste dag – *estimeret*, kun for hastigheden)
+  const key = `${g.date}|${g.nextId?.player}|${g.nextId?.staff}`;
+  const c = SCAN.get(g);
+  if (c && c.key === key) return c;
+  const ps = Object.values(g.players), ss = Object.values(g.staff);
+  let maxId = 0;
+  const loanedOut = new Map<number, Player[]>(), staffOf = new Map<number, import('./types').Staff[]>();
+  for (const p of ps) {
+    if (!p.regen && !p.virtual && p.id < 1_000_000 && p.id > maxId) maxId = p.id;
+    if (p.loan?.from !== undefined) { const l = loanedOut.get(p.loan.from) ?? []; l.push(p); loanedOut.set(p.loan.from, l); }
+  }
+  for (const s of ss) if (s.club) { const l = staffOf.get(s.club) ?? []; l.push(s); staffOf.set(s.club, l); }
+  const r = { key, maxId, loanedOut, staffOf };
+  SCAN.set(g, r);
+  return r;
 }
 
 /** Bygger originalens poster for klubberne `clubs` (alle deres spillere og stab). `unset`: spillere, hvis løn +0xc = −1 (0x85e960 forkastede
@@ -91,8 +120,8 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   const c: CmCtx = { m, rand: () => { throw new Error('cmWageGame: rand'); }, call: (adr, ...a) => cmMemCall(c, adr, ...a) };
   const clubIds = [...new Set(clubs)].filter((id) => g.clubs[id]);
   // id'erne: databasens spillere efter deres id, legender (id ≥ 1e6) bagefter, så stab/formænd, menneskets manager sidst
-  let maxId = 0;
-  for (const p of Object.values(g.players)) if (!p.regen && !p.virtual && p.id < 1_000_000 && p.id > maxId) maxId = p.id;
+  const sc = scanOf(g);
+  const maxId = sc.maxId;
   const memId = new Map<Player, number>();
   let next = maxId + 1;
   const pid = (p: Player) => { let v = memId.get(p); if (v === undefined) { v = !p.regen && p.id < 1_000_000 ? p.id : next++; memId.set(p, v); } return v; };
@@ -115,7 +144,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   for (const [a, nm] of KEY_NATIONS) m.w32(a, byName.get(nm) ?? -1);
   const natAdr = (n: number | undefined) => {
     if (n === undefined || n < 0 || n >= nNat) return 0;
-    const a = NAT0 + 0x100 * n;
+    const a = NAT0 + 0x200 * n;
     if (m.s32(a + 0xfc) !== 1) {
       m.w32(a + 0xfc, 1); m.w32(a, n);
       m.w8(a + 0x76, g.cmNation76?.[n] ?? 0); m.w8(a + 0x7e, g.cmNation7e?.[n] ?? 3); m.w8(a + 0x85, g.cmNation85?.[n] ?? 0);
@@ -134,11 +163,12 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   const staffAdr = (id: number) => STAFF0 + 0x6e * id;
   /** rækken uden kontrakt (0x4cf5a0 → 0) */
   const noContract = (id: number) => { m.w32(ROWS0 + 79 * id, -1); m.w32(ROWS0 + 79 * id + 4, -1); };
+  const contracts = new Map<number, number>();
   const contract = (id: number, club: number, wage: number, p?: Player) => {
     const k = K0 + 80 * id;
     m.w32(ROWS0 + 79 * id, id); m.w32(ROWS0 + 79 * id + 4, -1);
     m.w32(k + 4, club); m.w32(k + 0xc, wage);
-    if (p) { m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0); }
+    if (p) { m.w8(k + 0x35, p.contract?.partTime ? 0x80 : 0); m.w8(k + 0x45, p.cmContract?.b45 ?? 0); m.w8(k + 0x4f, p.cmContract?.b4f ?? 0); contracts.set(p.id, k); }
     return k;
   };
   const playerRec = (p: Player, id: number, club: number) => {
@@ -162,8 +192,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
   const npRec = (id: number, f: (np: number) => void) => { const np = PREC0 + 0x0c000000 + 0x30 * id; f(np); return np; };
 
   // udlejede spillere hører til moderklubben
-  const loanedOut = new Map<number, Player[]>();
-  for (const p of Object.values(g.players)) if (p.loan?.from !== undefined) { const l = loanedOut.get(p.loan.from) ?? []; l.push(p); loanedOut.set(p.loan.from, l); }
+  const loanedOut = sc.loanedOut;
   // klubberne
   const humanMgr: number[] = [];
   const built = new Set<number>();
@@ -205,8 +234,7 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     if (isHumanClub(cid)) humanMgr.push(cid);
     let si = 0;
     const slots = [...Array(5).keys()].map((k) => 0x19f + 4 * k).concat([...Array(7).keys()].map((k) => 0x1b3 + 4 * k), [...Array(3).keys()].map((k) => 0x1cf + 4 * k));
-    for (const s of Object.values(g.staff)) {
-      if (s.club !== cid) continue;
+    for (const s of sc.staffOf.get(cid) ?? []) {
       const id = next++, st = staffAdr(id);
       m.w32(st, id); noContract(id); m.w32(st + 0x39, a);
       m.w8(st + 0x57, s.cmHid?.[1] ?? 10);
@@ -247,6 +275,12 @@ export function buildWageMem(g: GameState, clubs: Iterable<number>, unset: Set<n
     },
     clubOf: (cid) => (built.has(cid) ? clubAdr(cid) : 0),
     finOf: (cid) => (built.has(cid) ? finAdr(cid) : 0),
+    players,
+    staffAdr,
+    natOf: natAdr,
+    divOf: divAdr,
+    divIds: () => [...divs],
+    contractOf: (p) => contracts.get(p.id) ?? 0,
   };
 }
 

@@ -39,6 +39,31 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   (gæld/boost/overtagelse), stadionarbejderne i 0x59cfa0, pokal-/Europapræmierne (0x522240 m.fl.), bonusserne 0x4ca6d0, fixture +0x40,
   B-hold, venskabskampenes billetindtægt (spillets venskabskampe går ikke gennem applyMatchResult), lejekontrakternes løn (spillets andel).
 
+## Ønskekontrakten 0x85fc50 i spillet (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractGame.ts`)
+- **Koblet ind:** computerklubbernes nye kontrakter (completeTransfer for en computerkøber og byttespillere, frie agenter i aiTransferTick,
+  købsoptionen, aiRenewals, aiFillSquads, aiBosmans futureWage) = CONTRACT_MANAGER::offer_contract 0x4cda70 (faktor 1,0, ud-kontrakt) →
+  0x85fc50; giver 0x4cda70 intet tilbud (løn > 1,4 × loftet, ikke længere end den nuværende …), spillerens krav 0x85fc50(staff, klub, −1, 0xff,
+  0xb) kun i kontrolscripterne; i spillet gælder så spillets egen kontrakt (*estimeret* – spillets beslutning om handlen gælder stadig, og kravet kan være originalens spærre 250.000). Løn, udløb (Date +0x2d), bonusser +0x10/+0x14/+0x18, klausuler +0x1c..+0x21,
+  deltid og Signing On Fee +8 (betales af klubben ved underskriften) skrives i spillets kontrakt. Menneskeklubber og andre databaser: uændret.
+- **De kaldte funktioner:** den mekanisk oversatte `src/game/cmGen/` (fra transfer/kontrakt runde 2's worktree – 124 funktioner, 1,8 MB TS;
+  `cmShortlist.ts`): 0x846920, 0x849f00, 0x8cca10, 0x4d0c60, 0x4d45f0, 0x669360, 0x7c6830 … via `genCtx`; 0x600a50 = humanClub_600a50 (spillets
+  menneske), 0x4b02e0 = leagueClash, 0x4a4850 = tabelrækken (boardEnv), datoerne af transfertilbud/skadeposten/fejlboksene = 0.
+- **Postbyggeren** (`buildWantMem` oven på cmWageGame.ts buildWageMem): fødselsdato, andet land, kontraktens datoer/type/bonusser/klausuler/
+  tællere, spillerposten +0x16..+0x45 (playerRecord), præferenceposten (cmRel), managerens ikke-spillerpost (cmNp, CA) og [0xdd7120], klubbens
+  tilskuertal/rivaler/stadion → by +0x33, bestyrelsesposterne [0xb67a44], [0xae2d14] = −1, turneringsobjekterne [0xadadfc] (op-/nedrykning),
+  sæsontabellen 0xb63d60 (originalens 35 rækker fra pre-194-2001.bin, år forskudt), nation +0x71/+0x77/+0x8e/+0x11c, månedstabellerne 0x9b8448/0x9b8460.
+  Nationsposterne i buildWageMem er nu 0x200 bytes (+0x11c).
+- **Kontrol:** `scripts/cm-want-check.ts` – porten på originalens hukommelse 14/7-2001: **17/17** af dagens 0x85fc50-kald ens (fixturen
+  `tests/fixtures/cm-want-194-2001.json.gz`). `scripts/cm-want-diff.ts` – 2.813 engelske spillere parret (klub + fødselsdato): med originalens
+  værdier i spillerens/klubbens poster (COPY=staff,player,contract,finance,club,nation,division,boss) er ønskelønnen inden for 2 % hos
+  **2.781/2.813**; de sidste 32 er mest ×1,05 og udløbsdagen (rand(0x1c) af spillets frø). Med spillets egne inddata (`scripts/cm-want-game.ts`):
+  ens 1.142, inden for 2 % 1.470, inden for 10 % 1.852, forholdet 10/50/90 % 0,59/1,00/1,42 – afvigelserne kommer fra inddataene: trupstatus
+  +0x4f (900 forskellige – trupplanen), den nuværende løn (459 forskellige), de udfyldte skjulte egenskaber, kontraktdatoerne (spillet har 30/6)
+  og **formændenes Ambition/Loyalty: 0 hos 52 af 99 engelske klubber hos os (databasens 0), originalen fylder dem ud** (påvirker mål-omdømmet
+  0x83bf40 og lønloftet 0x5968d0) – ikke porteret.
+- *Estimeret:* trupstatussen hos en ny klub (0x849f00 – spillet har ingen ønskelister 0x83a730/0x84a020): pladsen efter CA i køberens trup
+  (1 de 2 bedste, 2 til 11, 3 til 16, ellers 5/6 for unge og 4); personernes id'er (databasens), europæiske turneringer (−1), landsholdsjob staff +0x24/+0x28 (0), transfertilbuddenes datoer.
+
 ## Startkontrakterne 0x85e960 (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractInit.ts`)
 - **Porteret (læst instruktion for instruktion, på spillets data – ikke skyggeverdenen):** STAFF_CONTRACT::generate_initial_contract 0x85e960
   som 0x4c7560 kalder den ved spilstarten (newgame.ts efter cmFinanceNewGame): databasens løn kun når ≤ 15 · omdømmet (ellers −1 → 0x862720),

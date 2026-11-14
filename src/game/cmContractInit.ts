@@ -136,7 +136,7 @@ function statusOf(g: GameState, club: number): number {
 }
 
 /** ligaposten for klubbens liga: op-/nedrykning efter spillets regler (*estimeret* for originalens +0xbe/+0xd9/+0xc1) */
-function leagueOf(g: GameState, club: number): InitContractIn['league'] {
+export function leagueOf(g: GameState, club: number): InitContractIn['league'] {
   const c = g.clubs[club];
   const comp = c && g.comps[c.league];
   if (!comp || comp.type !== 'league' || g.leagues[c.league]?.hidden) return null;

@@ -18,7 +18,8 @@ import { SHIFT_WEEKS } from './board';
 import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
-import type { Club, ContractClauses, Player, Role, TransferOffer } from './types';
+import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
+import { aiContract, cmAiTerms } from './cmContractGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
 import { AGENT_RULES, agentOf } from './agents';
@@ -638,6 +639,16 @@ function currentBill(clubId: number) {
   return squad(clubId).reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
 }
 
+/** CM 01/02 (den originale database i ægte tilstand): computerklubbens nye kontrakt som originalens 0x4cda70/0x85fc50 (løn, længde,
+ *  bonusser, klausuler – cmContractGame.ts); Signing On Fee betales af klubben ved underskriften. Menneskeklubber og andre databaser: `fallback`. */
+function aiNewContract(p: Player, club: Club, fallback: () => Contract): Contract {
+  const g = gs();
+  if (isHumanClub(club.id)) return fallback();
+  const r = aiContract(g, p, club, fallback);
+  if (r.signOn > 0) { club.balance -= r.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + r.signOn; }
+  return r.contract;
+}
+
 export function completeTransfer(o: TransferOffer, wage: number, years: number, clauses?: ContractClauses) {
   const g = gs();
   const p = g.players[o.player];
@@ -663,7 +674,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     }
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     const rel = isHumanClub(buyer.id) ? undefined : defaultRelease(p, buyer);
-    p.contract = { wage, expires: exp, ...(clauses ?? {}), ...(rel ? { release: rel } : {}) };
+    p.contract = aiNewContract(p, buyer, () => ({ wage, expires: exp, ...(clauses ?? {}), ...(rel ? { release: rel } : {}) }));
     if (clauses?.signOn) { buyer.balance -= clauses.signOn; buyer.finance.signOn = (buyer.finance.signOn ?? 0) + clauses.signOn; }
     p.addOn = undefined;
     if (seller && o.sellOn && !cm) p.sellOn = { club: seller.id, pct: o.sellOn, base: o.fee };
@@ -690,7 +701,7 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
       if (x.stats.apps + x.stats.subs > 0) pushCareerLine(x, x.club, false);
       fansOnDeparture(x, buyer, 'sold', swapWorth(x.id, seller.id));
       recordMove(x, seller.id, swapWorth(x.id, seller.id), false, true);
-      x.contract = { wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` };
+      x.contract = aiNewContract(x, seller, () => ({ wage: wageDemand(x, seller), expires: `${year(g.date) + preferredYears(x)}-06-30` }));
       x.sellOn = undefined; x.addOn = undefined; x.listed = false; x.listPrice = undefined; x.squadStatus = undefined; x.loanListed = undefined; x.renewal = undefined; x.complaint = undefined;
       setClub(x, seller.id);
       x.joined = g.date;
@@ -1252,7 +1263,7 @@ function aiClubTurn(club: Club) {
   if (!target.club) {
     // fri agent
     const wage = wageDemand(target, club);
-    target.contract = { wage, expires: `${year(g.date) + preferredYears(target)}-06-30` };
+    target.contract = aiNewContract(target, club, () => ({ wage, expires: `${year(g.date) + preferredYears(target)}-06-30` }));
     recordMove(target, club.id, 0);
     setClub(target, club.id);
     target.joined = g.date;
@@ -1377,7 +1388,7 @@ export function exerciseLoanOption(p: Player): boolean {
   seller.balance += loan.option;
   seller.finance.transfersIn += loan.option;
   p.loan = null;
-  p.contract = { wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` };
+  p.contract = aiNewContract(p, buyer, () => ({ wage: wageDemand(p, buyer), expires: `${year(g.date) + preferredYears(p)}-06-30` }));
   p.joined = g.date;
   asOwner(seller.id, () => addNews({ cat: 'transfer', key: 'transfer.optionExercised', params: { club: buyer.name, player: pname(p), fee: loan.option! }, link: { kind: 'player', id: p.id } }));
   return true;
@@ -1407,7 +1418,7 @@ export function aiRenewals() {
     if (!wanted || !rng.chance(used ? 0.6 : 0.35)) continue;
     const club = g.clubs[p.club];
     const rel = defaultRelease(p, club);
-    p.contract = { wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30`, ...(rel ? { release: rel } : {}) };
+    p.contract = aiNewContract(p, club, () => ({ wage: wageDemand(p, club), expires: `${year(g.date) + (age >= 33 ? 1 : preferredYears(p))}-06-30`, ...(rel ? { release: rel } : {}) }));
     cmSignContractMorale(g, p);   // sign_contract 0x4cf720 (cmMedia.ts)
     staying.set(p.club, left + 1);
   }
@@ -1439,7 +1450,7 @@ export function aiFillSquads(minSize = 22) {
         break;
       }
       taken.add(gk.id);
-      gk.contract = { wage: Math.round(wageDemand(gk, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(gk) - 1)}-06-30` };
+      gk.contract = aiNewContract(gk, c, () => ({ wage: Math.round(wageDemand(gk, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(gk) - 1)}-06-30` }));
       setClub(gk, c.id);
       gk.joined = g.date;
     }
@@ -1453,7 +1464,7 @@ export function aiFillSquads(minSize = 22) {
         ?? free.find((p) => !taken.has(p.id) && p.ca <= level + 15 && p.ca >= level - 45 && playerInterest(p, c) === 'yes');
       if (!cand) break;
       taken.add(cand.id);
-      cand.contract = { wage: Math.round(wageDemand(cand, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(cand) - 1)}-06-30` };
+      cand.contract = aiNewContract(cand, c, () => ({ wage: Math.round(wageDemand(cand, c) * 0.85 / 50) * 50, expires: `${year(g.date) + Math.max(1, preferredYears(cand) - 1)}-06-30` }));
       setClub(cand, c.id);
       cand.joined = g.date;
       size++;
@@ -1485,8 +1496,9 @@ export function aiBosman() {
     // fansene hører det med det samme: han forlader klubben gratis til sommer
     fansOnDeparture(p, g.clubs[g.userClub], 'free');
     p.contract!.futureClub = c.id;
-    p.contract!.futureWage = wageDemand(p, c);
-    p.contract!.futureExpires = `${year(g.date) + preferredYears(p)}-06-30`;
+    const f0 = cmAiTerms(g, p, c.id), ft = f0?.offered ? f0 : null;
+    p.contract!.futureWage = ft?.wage ?? wageDemand(p, c);
+    p.contract!.futureExpires = ft?.expires ?? `${year(g.date) + preferredYears(p)}-06-30`;
     addNews({ cat: 'contract', key: 'contract.leavingBosman', params: { player: pname(p), club: c.name }, link: { kind: 'player', id: p.id } });
   }
 }
