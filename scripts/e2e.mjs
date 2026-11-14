@@ -110,6 +110,13 @@ async function run(look) {
     // databasevalget (øverste venstre felt): udgaver af den originale + 2026/27; vælg den, testen skal bruge
     await page.locator('[data-field=database]').click();
     if ((await page.locator('.cxs-grid.db .cxs-field').count()) < 4) throw new Error('databasevalget har for få valg');
+    // Populære spillere pr. databaseudgave
+    await page.locator('[data-field=popular]').click();
+    await page.waitForSelector('[data-popular] tbody tr td:nth-child(2) .ok');
+    const madeira = await page.locator('[data-popular] tbody tr', { hasText: 'Madeira' }).first().innerText();
+    if (!madeira.includes('✓')) throw new Error('Populære spillere: Tó Madeira mangler flueben i 3.9.60');
+    if (ENGINE_GRID && !(await page.locator('[data-popular] th.on').count())) throw new Error('Populære spillere: den valgte udgave er ikke fremhævet');
+    await page.locator('[data-popular-close]').click();
     await page.locator(ENGINE_GRID ? '[data-field="db-3.9.60"]' : '[data-field="db-modern"]').click();
     // gemte spil og indstillinger åbner egne skærme og kan forlades igen
     await page.locator('[data-field=settings]').click(); await page.waitForSelector('.cxs-settings'); await page.locator('.cx-foot .cx-back').click();

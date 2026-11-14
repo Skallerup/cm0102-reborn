@@ -260,6 +260,23 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   0x4d1600 ~80 ms), 0x84a020 ~140 ms, hukommelsen ~145 ms, cmAiAiDue ~60 ms. **Ikke porteret:** vurderingsløkken 0x8400da–0x840a81 – dens egne
   instruktioner er kun ~27 ms pr. dag (de kaldte 0x4d1600 ~37 ms og 0x846920 ~14 ms); en port sparer under 10 %. ≤ 0,3 s kræver, at
   planScore (0x6e6340) og frasorteringen bliver ~3× billigere eller færre vurderinger pr. genudfyldning (originalens kandidatliste er den samme).
+- **Hastighed, runde 11 (14/11, stadig slået fra – ≤ 0,3 s er ikke nået):** 30 dage (cm-sl-bench, esbuild-bundt, skiftevis med origin/staging's
+  bundt under samme belastning 2,7–3,5): **724 → 600 og 933 → 796 ms pr. dag (−15–17 %)**. Hel sæson (`CM_SL=1 scripts/ct-season-game.ts`, belastning
+  ~3,7 – maskinen var delt): 678 ms pr. dag (runde 10's 583 blev målt ved belastning ~2; ikke målt skiftevis). **Bit for bit:** sha1 hver dag i 30 dage
+  ens med origin/staging's, hele sæsonens tal ens (431 køb/£133,5 mio./176 klubløse/150 lejeaftaler/10.433 bud), `CM_SL_PVCHECK=1` (hvert planValue-kald
+  også ad den gamle vej, 12 dage + start, 1,33 mio. kald) 0 afvigelser, tests/cmShortlist + cmAiBid grønne. Gjort: (1) **planValue (0x6e6340-adapteren)**:
+  den gamle strengnøgle-memo (87 % nye nøgler – nøglen kostede mere end den sparede) er væk; spillerens faste dele (`playerBase`, pr. hukommelses-id i et
+  array), klubbens (`clubBase`) og RoleData pr. kontekstvariant (`rdOf`, form/belastning/historik gemt, skaden først når planScore spørger) bygges én gang
+  pr. dag og sættes ind i én genbrugt PlanInput med fast form; kun position/flag/tærskel, transferlisten og kontraktens bytes læses pr. kald
+  (`CM_SL_PVPAIR=0`: den gamle vej). planScore.ts selv er uændret (den var allerede TS – det dyre var adapteren). (2) **Frasorteringen**: `fastReject1`
+  med gennemløbets faste dele (`FrCtx`: klub, plads, 0x83f3a0's lokale, globalerne, menneskets klub, 0x54c8e0 første gang den behøves) og personpostens
+  bytes direkte fra siden (`SparseMem.readPage`; poster over en sidegrænse: `fastReject1m`) – `CM_SL_FRHOIST=0`: fastReject0. (3) `cmAskingPrice`
+  giver hukommelsens sider tilbage (`release`). **Målt, ikke gjort:** 0x4d1600: 60.400 kald i spilstarten + 7 dage, 66 % med unikke argumenter (pr. dag) – en memo sparer
+  højst en tredjedel (og hukommelsen, den læser, ændres undervejs); de oversatte 0x4d1600 (~12 %), 0x846920 (~5 %) og 0x83f3a0's egne stykker er nu de
+  største enkeltposter i 0x83f3a0 (~55 % af dagen); buildSlMem ~22 % (heraf ~37 ms buildSlWantMem's egne løkker: staleOk, `Object.values(g.players)`,
+  scanOf), cmAiAiDue → cmAskingPrice → buildWantMem pr. bud ~8 %, GC ~8 %. Hukommelsen med dirty-markering (opgave 3) er ikke lavet: fingeraftrykkene
+  (fpInto) koster ~13 ms pr. dag; det dyre er id-/løkkedelen og dagens kopi, ikke de ændrede poster. **Næste:** håndporter 0x4d1600 (5.170
+  oversatte linjer, 23 kaldte funktioner) og 0x846920 med et `CHECK`-tjek som 840CHECK, og cmAskingPrice på en hukommelse pr. dag (efter applyHook).
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.

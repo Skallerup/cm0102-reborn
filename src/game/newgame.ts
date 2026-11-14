@@ -534,7 +534,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   startScoreSeason();
   addNews({ cat: 'general', key: 'news.welcome', params: { manager: o.managerName, club: club.name } });
   g.manager.onboard = {};
-  if (windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
+  if (!cmActive(g) && windowOpen()) addNews({ cat: 'transfer', key: 'window.opened', params: { date: windowLastDay() ?? g.date } });
   // sponsorvalget findes ikke i ægte CM 01/02
   if (g.options.mode !== 'authentic') addNews({ cat: 'finance', key: 'sponsor.offers', params: {} });
   // ægte CM 01/02 starter med tre nyheder (målt i originalen): ansættelsen, bestyrelsens mål og kampprogrammet

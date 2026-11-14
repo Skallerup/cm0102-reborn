@@ -64,6 +64,8 @@ export class SparseMem implements CmMem {
     this.miss?.(p, this);
     return nb;
   }
+  /** (hastighed) siden med adressen til læsning – samme som u8/u32 læser (egen, den underliggende eller en ny via `miss`) */
+  readPage(a: number): Uint8Array { return this.rp((a >>> 0) >>> PAGE); }
   u8(a: number): number { a >>>= 0; return this.rp(a >>> PAGE)[a & PMASK]; }
   s8(a: number): number { return (this.u8(a) << 24) >> 24; }
   u16(a: number): number {

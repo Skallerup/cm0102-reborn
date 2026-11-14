@@ -23,6 +23,7 @@ import { aiContract, cmAiTerms } from './cmContractGame';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmBuildBid } from './cmAiBid';
+import { cmWindowOpen } from './cmOfferCheck';
 import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, setSlDue, type SlDueCtx, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
@@ -31,7 +32,17 @@ import { econ } from './econ';
 import { authentic, extended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, toGbp, fromGbp, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
 
-export function windowOpen(date = gs().date): boolean {
+/** Klubben, vinduet gælder for i den originale database i ægte tilstand: den angivne, ellers menneskets (landets regelsæt 0x8e8800) */
+function cmWindowClub(club?: number): Club | undefined {
+  const g = gs();
+  if (!cmActive(g)) return undefined;
+  return g.clubs[club ?? (g.userClub || -1)];
+}
+
+export function windowOpen(date = gs().date, club?: number): boolean {
+  // CM 01/02 (ægte tilstand): hver nations egne vinduer (England åbent 2/6–26/3 …, Danmark/Sverige altid) – cmOfferCheck.ts CM_WINDOWS
+  const cc = cmWindowClub(club);
+  if (cc) return cmWindowOpen(gs(), cc, date);
   const m = month(date);
   // som i CM 01/02: handler hele året undtagen i slutspurten (april-maj)
   if (gs().options?.transferWindows === 'classic') return !(m === 4 || m === 5);
@@ -40,7 +51,13 @@ export function windowOpen(date = gs().date): boolean {
 }
 
 /** Hvornår åbner transfervinduet næste gang? */
-export function nextWindow(date = gs().date): string {
+export function nextWindow(date = gs().date, club?: number): string {
+  const cc = cmWindowClub(club);
+  if (cc) {
+    let d = date;
+    for (let i = 0; i < 400 && !cmWindowOpen(gs(), cc, d); i++) d = addDays(d, 1);
+    return d;
+  }
   const y = Number(date.slice(0, 4)), m = month(date);
   if (gs().options?.transferWindows === 'classic') return `${y}-06-01`;
   return m >= 9 ? `${y + 1}-01-01` : `${y}-06-15`;
@@ -345,7 +362,7 @@ export function makeBid(pid: number, fee: number, loan = false, extra?: { sellOn
   const p = g.players[pid];
   const buyer = g.clubs[g.userClub];
   if (!p || !buyer) return 'error';
-  if (!windowOpen()) return 'transfer.windowClosed';
+  if (!windowOpen(gs().date, buyer.id)) return 'transfer.windowClosed';
   if (p.club === buyer.id) return 'error';
   if (!loan && fee > buyer.transferBudget) return 'transfer.overBudget';
   if (loan && loanBlocked(p, buyer)) return 'transfer.loanNonEu';
@@ -1220,7 +1237,7 @@ export function findTarget(club: Club, role: Role): Player | null {
 
 export function aiTransferTick() {
   const g = gs();
-  if (!windowOpen()) return;
+  if (!cmActive(g) && !windowOpen()) return;   // ægte tilstand: hver klubs eget lands vindue (aiClubTurn)
   const m = month(g.date);
   const rate = m === 7 || m === 8 ? 1 / 5 : m === 1 ? 1 / 9 : m === 6 ? 1 / 12 : 1 / 60;
   // skjulte klubber (uden for de spilbare ligaer) handler ikke selv – de sælger kun, når andre byder
@@ -1235,6 +1252,7 @@ export function aiTransferTick() {
 
 function aiClubTurn(club: Club) {
   const g = gs();
+  if (cmActive(g) && !windowOpen(g.date, club.id)) return;
   const sq = squad(club.id);
   // den originale database i ægte tilstand: computerens trupplan 0x83cb40 sætter til salg/leje og fritstiller (cmSquadPlanGame.ts) – ikke her
   const plan = cmActive(g) && !!g.cmPlan?.[club.id];
@@ -1330,12 +1348,13 @@ function startPursuit(o: TransferOffer) {
 /** Dagligt: klubber der jagter en spiller kommer igen med forhøjet bud */
 export function aiPursuits() {
   const g = gs();
-  if (!g.pursuits?.length || !windowOpen()) return;
+  if (!g.pursuits?.length || (!cmActive(g) && !windowOpen())) return;
   const keep: typeof g.pursuits = [];
   for (const pu of g.pursuits) {
     const p = g.players[pu.player];
     const club = g.clubs[pu.club];
     if (!p || !club || !p.club || !isHumanClub(p.club)) continue;
+    if (cmActive(g) && !windowOpen(g.date, club.id)) { keep.push(pu); continue; }
     if (g.date < pu.next) { keep.push(pu); continue; }
     if (g.offers.some((o) => o.player === p.id && o.status === 'pending')) { keep.push(pu); continue; }
     const fee = roundValue(Math.min(pu.maxFee, pu.lastFee * rng.range(1.08, 1.2)));
@@ -1786,8 +1805,8 @@ setSlApply(cmShortlistApply);
  */
 export function aiReleaseClauses() {
   const g = gs();
-  if (!windowOpen()) return;
-  const clubs = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.balance > 0);
+  if (!cmActive(g) && !windowOpen()) return;
+  const clubs = Object.values(g.clubs).filter((c) => !isHumanClub(c.id) && c.balance > 0 && (!cmActive(g) || windowOpen(g.date, c.id)));
   for (const p of Object.values(g.players)) {
     const rel = p.contract?.release;
     if (!rel || !p.club || !isHumanClub(p.club) || p.loan || p.contract?.futureClub) continue;
@@ -2000,10 +2019,10 @@ export function interestedClubs(p: Player): Interest[] {
 // ---------- beskeder om transfervinduet ----------
 
 /** Sidste dag i det vindue, der er åbent på datoen (eller null hvis lukket) */
-export function windowLastDay(date = gs().date): string | null {
-  if (!windowOpen(date)) return null;
+export function windowLastDay(date = gs().date, club?: number): string | null {
+  if (!windowOpen(date, club)) return null;
   let d = date;
-  for (let i = 0; i < 400 && windowOpen(addDays(d, 1)); i++) d = addDays(d, 1);
+  for (let i = 0; i < 400 && windowOpen(addDays(d, 1), club); i++) d = addDays(d, 1);
   return d;
 }
 

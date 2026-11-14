@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { continueGame, quickPlayUserMatch } from '../src/game/sim';
 import { gs } from '../src/game/state';
-import { SL_ON, SL_STATS, SL_T, FR_STATS } from '../src/game/cmShortlistGame';
+import { SL_ON, SL_STATS, SL_T, FR_STATS, PV_STATS } from '../src/game/cmShortlistGame';
 import { SLMEM_STATS, SLMEM_T } from '../src/game/cmSlMem';
 
 SL_ON.on = process.env.CM_SL !== '0';
@@ -47,5 +47,6 @@ console.log('slut', snap(), 'sprungne værdier læst', SL_STATS.skipHit, 'hukomm
 console.log('buildSlMem pr. dag', Object.fromEntries(Object.entries(SL_T).map(([k, v]) => [k, Math.round(v / Math.max(1, days))])));
 console.log('buildSlWantMem pr. dag (ms: id\'er, varige, dagens, felter)', Object.fromEntries(Object.entries(SLMEM_T).map(([k, v]) => [k, Math.round(v / Math.max(1, days))])));
 if (process.env.FR) console.log('frasorteringen', FR_STATS);
+console.log('planValue (kald, nye par, afvigelser)', PV_STATS);
 if (out) writeFileSync(out, JSON.stringify(res, null, 1));
 if (insp) { const r = (await post('Profiler.stop')) as { profile: unknown }; writeFileSync(prof!, JSON.stringify(r.profile)); }

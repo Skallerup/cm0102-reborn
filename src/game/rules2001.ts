@@ -3,6 +3,7 @@ import { addNews, gs, squad } from './state';
 import { rng } from './rng';
 import { econ } from './econ';
 import { cmActive } from './cmPlayerData';
+import { cmNeedsPermit } from './cmPermit';
 import { asOwner, isHumanClub } from './humans';
 import type { Club, Player } from './types';
 
@@ -24,6 +25,8 @@ const UK = new Set(['England', 'Scotland', 'Wales', 'Northern Ireland']);
 export function needsWorkPermit(p: Player, club: Club): boolean {
   if (!isOriginal2001()) return false;
   const g = gs();
+  // ægte tilstand: originalens 0x8c7560 (britiske øer/Irland, EU-borger efter nation +0x7f og andet statsborgerskab, Schweiz) – cmPermit.ts
+  if (cmActive(g)) return cmNeedsPermit(g, p, club.id, true);
   return UK.has(g.nations[club.nation]?.name ?? '') && !EU_EEA.has(g.nations[p.nation]?.name ?? '');
 }
 

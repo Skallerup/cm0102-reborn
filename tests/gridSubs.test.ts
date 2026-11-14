@@ -113,7 +113,7 @@ describe('udskiftningerne i gittermotoren', () => {
 
   it('forlænget spilletid og straffesparkskonkurrence, når kampen skal have en vinder', () => {
     let et = 0, so = 0;
-    for (let seed = 1; seed <= 30 && so < 2; seed++) {
+    for (let seed = 1; seed <= 120 && so < 2; seed++) {
       const [h, a] = teams('Ipswich Town', 'Southampton');
       const home = { club: id('Ipswich Town'), ...h, players: new Map(h.players.map((p) => [p.id, p])) };
       const away = { club: id('Southampton'), ...a, players: new Map(a.players.map((p) => [p.id, p])) };

@@ -23,7 +23,7 @@
 // 0x8c7950 = rules2001.ts permitOk; lejeregler 0x8d0040 = rules2001.ts loanBlocked; spillerens svar på et kontrakttilbud til en fri spiller
 // kommer straks (originalen venter på hans beslutningsdato 0x4cd230).
 import type { GameState, Player } from './types';
-import { type CmCtx, type CmMem, G, getContract, clubAt, type SparseMem } from './cmMem';
+import { type CmCtx, type CmMem, G, getContract, clubAt, SparseMem } from './cmMem';
 import { buildSlWantMem, slMemPages, SLMEM_DEFER } from './cmSlMem';
 import { buildWantMem, type WantMem } from './cmContractGame';
 import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
@@ -45,9 +45,9 @@ import { workPermitGranted, loanBlocked, englandLoanRefused, englandLoanUntil } 
 import { cmFitRead } from './cmFitnessGame';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
-import type { Day } from './engine/grid/roleScore';
+import { judgeAbility, type Day } from './engine/grid/roleScore';
 import { nationLanguage, playerLanguages } from './languages';
-import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff } from './cmRelations';
+import { dislikesClub, dislikesPerson, favoursClub, favoursPerson, managerStaff, relHas, DIS_CLUB, FAV_CLUB } from './cmRelations';
 
 const GBP = 0.86;
 const SLOTS0 = 0x5f100000, OFFERS0 = 0x5e800000, OREC0 = 0x5e900000, INJ0 = 0x5e780000, LISTS0 = 0x61000000;
@@ -66,7 +66,7 @@ const ENV = typeof process !== 'undefined' ? process.env ?? {} : {};
 /** Ønskelisterne er SLÅET FRA i spillet (14/11-2026): de finder mål som originalen (spilstarten 300 mål i 172 klubber mod originalens 258 i
  *  137 – scripts/cm-shortlist.ts / cm-shortlist-orig.ts; udbudsprisen 0x4d1600 median 1,00 × originalens), men en hel sæson koster ~0,49 s pr.
  *  dag (målet er ≤ 0,3 s; de første 45 dage ~0,3 s – scripts/cm-sl-bench.ts, scripts/ct-season-game.ts; runde 5: trupplanernes 0x83b6e0 →
- *  0x83f3a0 er ~0,2 s pr. dag i sæsonen; runde 10 med databasestørrelsen Maximum: 0,58 s pr. dag over en sæson) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
+ *  0x83f3a0 er ~0,2 s pr. dag i sæsonen; runde 10 med databasestørrelsen Maximum: 0,58 s pr. dag over en sæson; runde 11 −15–17 % på 30 dage) – se docs/ENGINE_PORT_PLAN.md "Ønskelisterne". Slås til i måleværktøjerne med CM_SL=1 (og i spillet med SL_ON.on = true). */
 export const SL_ON = { on: ENV.CM_SL === '1' };
 /** ønskelisterne kører (den originale database i ægte tilstand, ikke draft, og SL_ON) */
 export const cmShortlistOn = (g: GameState) => SL_ON.on && cmActive(g) && !g.draft;
@@ -99,8 +99,10 @@ export interface SlMem {
   events: SlEvent[];
   /** klubberne, hvis pladser er skrevet i hukommelsen */
   slotted: Set<number>;
-  /** planValue's svar pr. (staff, maske, flag, klub, tærskel, kontraktens bytes) for dagens hukommelse */
+  /** planValue's svar pr. (staff, maske, flag, klub, tærskel, kontraktens bytes) for dagens hukommelse (ikke brugt siden runde 11) */
   pv?: Map<string, number>;
+  /** planValue: spillernes og klubbernes faste dele for hukommelsens levetid (runde 11) */
+  pbase?: (PlBase | undefined)[]; cbase?: (ClBase | undefined)[];
   /** planValue: aiPickCtx pr. klub og playerRecord pr. spiller (uændrede, mens hukommelsen lever) */
   cache?: { ctx: Map<number, ReturnType<typeof aiPickCtx> | object>; rec: Map<number, number[]>; day: { today: Day; yearAgo: Day } | null;
     pl: Map<number, { joined: Day; age: number; pLang: ReturnType<typeof nationLanguage>; langs: ReturnType<typeof playerLanguages> }>;
@@ -499,25 +501,146 @@ function writeOffers(S: SlMem): void {
 /** 0x6e6340 (staff, positionsflag, flag, klub, tærskel, manager) på spillets data (planScore.ts – som cmSquadPlanGame.ts' kald) */
 function planValue(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number): number {
   const { g, m } = S;
-  const p = S.byMem.get(m.s32(st));
-  const cid = clubAdr ? m.s32(clubAdr) : 0;
-  const club = g.clubs[cid];
+  const mid = m.s32(st);
+  const p = S.byMem.get(mid);
   if (!p) return -10000;
-  const pClub = p.loan ? p.loan.from : p.club;
-  const pv = S.pv;
-  if (!pv) return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub);
-  // (hastighed) svaret gemt for dagens hukommelse: planScore læser kun spillets data (uændrede i ønskelisternes dag) og kontraktens bytes,
-  // som er med i nøglen; kun i cmShortlistDaily fra buildSlMem til finishSl (S.pv) – CM_SL_PVMEMO=0 slår det fra
-  const k = contractForClub_4cf5f0(S.c, st, clubAdr);
-  const key = (p.listed ? "L" : "") + (k ? `${st}|${mask}|${flags}|${clubAdr}|${thr}|${k}|${m.u32(k + 0x3d)}|${m.u32(k + 0x41)}|${m.u32(k + 0x45)}|${m.u8(k + 0x4f)}` : `${st}|${mask}|${flags}|${clubAdr}|${thr}`);
-  let v = pv.get(key);
+  const cid = clubAdr ? m.s32(clubAdr) : 0;
   PV_STATS.n++;
-  if (v === undefined) { PV_STATS.miss++; v = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, pClub); pv.set(key, v); }
+  if (!PVPAIR) {
+    const club = g.clubs[cid];
+    return planValue0(S, st, mask, flags, clubAdr, thr, p, cid, club, p.loan ? p.loan.from : p.club);
+  }
+  // (hastighed, runde 11) spillerens og klubbens faste dele bygges én gang for hukommelsens levetid (spillets data står stille fra buildSlMem
+  // til finishSl) og sættes ind i én genbrugt PlanInput; kun positionen/flagene/tærsklen, transferlisten og kontraktens bytes (hukommelsen)
+  // læses hvert kald. CM_SL_PVPAIR=0: den gamle vej (planValue0 hver gang); CM_SL_PVCHECK=1: begge, sammenlignet.
+  const pb = (S.pbase ??= new Array(Math.max(0, m.s32(G.STAFF_COUNT)) + 64).fill(undefined)), cb = (S.cbase ??= new Array(8192).fill(undefined));
+  const B = pb[mid] ?? playerBase(S, p, mid), CB = (cid >= 0 ? cb[cid] : undefined) ?? clubBase(S, cid), club = CB.club;
+  const R = rdOf(g, B, p, CB.ctx);
+  const i = PI;
+  i.id = B.id; i.real = B.real; i.age = B.age; i.joined = B.joined; i.rec = B.rec;
+  i.pos = mask & 0xffff; i.flags = flags; i.thr = thr;
+  i.hasClub = !!clubAdr; i.atClub = B.pClub === cid; i.stHasClub = B.pClub > 0; i.sameNationClub = !!club && B.pClubNation === CB.nation;
+  i.today = B.today; i.yearAgo = B.yearAgo; i.nationRep = B.nationRep; i.british = B.british; i.caps = B.caps; i.b56 = B.b56;
+  i.langDiff = !!CB.lang && !!B.pLang && CB.lang !== B.pLang; i.lang = CB.lang && B.langs.includes(CB.lang) ? 10 : 0;
+  i.nationOfClub = !!club && (B.nation === CB.nation || B.nation2 === CB.nation);
+  i.clubRep = CB.clubRep; i.stClubRep = B.stClubRep; i.listed = !!p.listed; i.daysNoClub = B.daysNoClub; i.league69 = CB.league69;
+  if (CB.np) {
+    const mg = MG_IN; mg.np = CB.np;
+    const r = mg.rel, rl = B.rel; r.d30 = relHas(rl, DIS_CLUB, cid); r.d60 = relHas(rl, FAV_CLUB, cid); r.m840 = CB.mgDis(B.id); r.m810 = CB.mgFav(B.id);
+    i.mgr = mg;
+  } else i.mgr = MG_NONE;
+  const d = R.data;
+  JUDGE.p = p; JUDGE.ctx = CB.ctx; JUDGE.age = B.age;
+  const k = B.cc ? contractForClub_4cf5f0(S.c, st, clubAdr) : 0;
+  if (k) {
+    const c = R.con;
+    c.b3d = s8(m.u8(k + 0x3d)); c.b3e = s8(m.u8(k + 0x3e)); c.b3f = s8(m.u8(k + 0x3f)); c.b44 = s8(m.u8(k + 0x44)); c.b45 = m.u32(k + 0x45); c.b4f = m.u8(k + 0x4f);
+    d.contract = c;
+  } else d.contract = null;
+  i.data = d;
+  const v = planScore(i);
+  if (PVCHECK) {
+    const w = planValue0(S, st, mask, flags, clubAdr, thr, p, cid, g.clubs[cid], p.loan ? p.loan.from : p.club);
+    if (v !== w) { PV_STATS.bad++; if (PV_STATS.bad < 20) console.log(`planValue afviger: ${p.id} klub ${cid} maske ${mask} flag ${flags} tærskel ${thr}: ${v} mod ${w}`); }
+  }
   return v;
 }
-const PVMEMO = ENV.CM_SL_PVMEMO !== '0';
-/** målinger: planValue-kald og nye svar */
-export const PV_STATS = { n: 0, miss: 0 };
+const PVPAIR = ENV.CM_SL_PVPAIR !== '0';
+const PVCHECK = ENV.CM_SL_PVCHECK === '1';
+/** målinger: planValue-kald, nye (spiller, klub)-par og afvigelser (CM_SL_PVCHECK) */
+export const PV_STATS = { n: 0, miss: 0, bad: 0 };
+type PlanIn = Parameters<typeof planScore>[0];
+type PlanD = PlanIn['data'];
+/** spillerens faste dele (planValue, runde 11) */
+interface PlBase {
+  id: number; nation: number; nation2: number | undefined; rel: number[] | undefined;
+  real: boolean; age: number; joined: Day; rec: number[]; today: Day; yearAgo: Day; nationRep: number; british: boolean; caps: number; b56: number;
+  pClub: number; pClubNation: number; stClubRep: number; daysNoClub: number; pLang: ReturnType<typeof nationLanguage>; langs: ReturnType<typeof playerLanguages>;
+  cc: boolean;
+  /** 0x62ed70 (skaden) – regnes først, når planScore spørger (undefined = ikke regnet) */
+  injV: { w28: number; w2c: number } | null | undefined;
+  /** RoleData pr. kontekstvariant (cm sand/falsk; leagueAvg i posten) med de dovne dele gemt */
+  rdC: RdMemo | null; rdN: RdMemo | null;
+}
+interface RdMemo { la: number | undefined; data: PlanD; con: { b3d: number; b3e: number; b3f: number; b44: number; b45: number; b4f: number } }
+type PickCtx = NonNullable<ReturnType<typeof aiPickCtx>>;
+interface ClBase { club: GameState['clubs'][number] | undefined; nation: number | undefined; mgDis: (id: number) => boolean; mgFav: (id: number) => boolean; ctx: PickCtx; lang: ReturnType<typeof nationLanguage> | null; mg: ReturnType<typeof managerStaff> | null; np: number[] | null; clubRep: number; league69: number | null }
+const MG_NONE: ManagerBlockIn = { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } };
+const MG_IN: ManagerBlockIn = { np: null, j59: 10, b59: 10, b5b: 10, rel: { d30: false, d60: false, m840: false, m810: false } };
+const D0: Day = { day: 0, year: 0 };
+/** den genbrugte PlanInput – alle felter fra start (fast form) */
+const PI: PlanIn = { id: 0, real: false, age: 0, joined: D0, rec: [], pos: 0, flags: 0, thr: -1, hasClub: false, atClub: false, stHasClub: false, sameNationClub: false,
+  mgrJoined: null, today: D0, yearAgo: D0, nationRep: 0, british: false, caps: 0, b56: 0, langDiff: false, lang: 0, nationOfClub: false, clubRep: 0, stClubRep: 0,
+  listed: false, daysNoClub: 0, league69: null, mgr: MG_NONE, data: null as unknown as PlanD };
+/** den aktuelle vurderings dommer (0x6e86d0 – som aiTeam.ts' judgeFor) */
+const JUDGE = { p: null as Player | null, ctx: {} as PickCtx, age: 0 };
+const judgeCur = (kind: 1 | 2, hint: number) => {
+  const p = JUDGE.p!, ctx = JUDGE.ctx;
+  return judgeAbility({ playerId: p.id, ca: p.ca, pa: p.pa, age: JUDGE.age, gk: p.pos[0], gameSeed: ctx.gameSeed ?? 0,
+    judge: ctx.judge ? { id: ctx.judge.id, ja: ctx.judge.ja, jp: ctx.judge.jp } : null, kind, hint, repSeen: (p.cmRepMem ?? p.cmRep ?? [0, p.rep * 2, 0])[1] * 50 });
+};
+function playerBase(S: SlMem, p: Player, mid: number): PlBase {
+  const bases = S.pbase!;
+  let B = bases[mid];
+  if (B) return B;
+  const { g } = S;
+  S.cache ??= { ctx: new Map(), rec: new Map(), day: null, pl: new Map(), cl: new Map(), rd: new Map() };
+  const C = S.cache;
+  const D = (C.day ??= { today: dayOf(g.date), yearAgo: dayOf(`${+g.date.slice(0, 4) - 1}${g.date.slice(4)}`) });
+  let PL = C.pl.get(p.id);
+  if (!PL) { PL = { joined: dayOf(p.joined ?? p.cmJoined ?? g.date), age: ageOn(p.dob, g.date), pLang: nationLanguage(g, p.nation), langs: playerLanguages(g, p) }; C.pl.set(p.id, PL); }
+  let rec = C.rec.get(p.id);
+  if (!rec) { rec = playerRecord(p); C.rec.set(p.id, rec); }
+  const pClub = p.loan ? p.loan.from : p.club;
+  B = {
+    id: p.id, nation: p.nation, nation2: p.cmNation2, rel: p.cmRel,
+    real: !p.regen, age: PL.age, joined: PL.joined, rec, today: D.today, yearAgo: D.yearAgo,
+    nationRep: nationRepMem(g, p.nation), british: BRITISH.has(g.nations[p.nation]?.code ?? ''), caps: p.caps, b56: sh(p, 'adaptability'),
+    pClub, pClubNation: g.clubs[pClub]?.nation ?? -1, stClubRep: clubRepMem(g, pClub), daysNoClub: pClub ? 0 : Math.max(0, dayNum(g.date) - dayNum(p.joined ?? g.date)),
+    pLang: PL.pLang, langs: PL.langs, cc: !!p.cmContract, injV: undefined, rdC: null, rdN: null,
+  };
+  bases[mid] = B;
+  return B;
+}
+function clubBase(S: SlMem, cid: number): ClBase {
+  const cb = S.cbase!;
+  let B = cid >= 0 ? cb[cid] : undefined;
+  if (B) return B;
+  const { g } = S;
+  const club = g.clubs[cid];
+  S.cache ??= { ctx: new Map(), rec: new Map(), day: null, pl: new Map(), cl: new Map(), rd: new Map() };
+  const C = S.cache;
+  let ctxPick = club ? C.ctx.get(cid) : null;
+  if (club && ctxPick === undefined) { ctxPick = aiPickCtx(cid) ?? {}; C.ctx.set(cid, ctxPick); }
+  ctxPick ??= {};
+  const mg = club ? managerStaff(g, cid) : null;
+  B = { club, nation: club?.nation, mgDis: (id: number) => dislikesPerson(mg, id), mgFav: (id: number) => favoursPerson(mg, id), ctx: ctxPick as PickCtx, lang: club ? nationLanguage(g, club.nation) : null, mg: club ? managerStaff(g, cid) : null, np: mgNp(g, cid),
+    clubRep: club ? clubRepMem(g, cid) : 0, league69: club ? g.cmCompRep?.[+(club.league?.match(/(\d+)$/)?.[1] ?? NaN)] ?? null : null };
+  if (cid >= 0) cb[cid] = B;
+  return B;
+}
+/** RoleData (roleDataOf) for spilleren i kontekstens variant – dommeren (judge) er klubbens og sættes pr. kald (JUDGE) */
+function rdOf(g: GameState, B: PlBase, p: Player, ctx: PickCtx): RdMemo {
+  const cm = !!ctx.cm, la = ctx.leagueAvg;
+  let R = cm ? B.rdC : B.rdN;
+  if (R && R.la === la) return R;
+  const rd = roleDataOf(p, ctx, B.age);
+  let form: number | undefined, load: number | undefined, hist: ReturnType<typeof rd.history> | undefined, histDone = false;
+  const data: PlanD = {
+    ...rd, contract: null,
+    injury: () => {
+      if (B.injV === undefined) { const inj = cmFitRead(g).injury(p); B.injV = inj ? { w28: inj.w28, w2c: inj.w2c } : null; }
+      return B.injV;
+    },
+    form: () => (form ??= rd.form()),
+    load: () => (load ??= rd.load()),
+    history: () => { if (!histDone) { hist = rd.history(); histDone = true; } return hist!; },
+    judge: judgeCur,
+  };
+  R = { la, data, con: { b3d: 0, b3e: 0, b3f: 0, b44: 0, b45: 0, b4f: 0 } };
+  if (cm) B.rdC = R; else B.rdN = R;
+  return R;
+}
 function planValue0(S: SlMem, st: number, mask: number, flags: number, clubAdr: number, thr: number, p: Player, cid: number, club: GameState['clubs'][number] | undefined, pClub: number): number {
   const { g, m } = S;
   const fit = cmFitRead(g);
@@ -616,8 +739,9 @@ const rj = (k: number) => { FR_STATS[k] = (FR_STATS[k] ?? 0) + 1; FR_LAST.k = k;
 function fastReject(R: X86): number { return stackBelow(R, fastRejectLoop); }
 function fastRejectLoop(R: X86): number {
   const m = R.m;
+  const fc = FRHOIST && ACTIVE ? frCtx(R, ACTIVE) : null;
   for (;;) {
-    const np = fastReject0(R);
+    const np = fc ? fastReject1(R, fc) : fastReject0(R);
     if (np !== 0x840a81) return np;
     const esp = R.esp >>> 0;
     R.eax = m.u32(esp + 0x40) | 0;                                           // 840a81: mov eax, [esp + 0x40]
@@ -733,6 +857,196 @@ function fastReject0(R: X86): number {
   const g2 = b24 & 0x1e, youth = g2 === 0xa || g2 === 0xc;
   if (m.s16(rec + 0xd) < (youth ? 0x6d6 : 0xabe)) return rj(21);
   const v = s16(FRPORT ? seenRep_5407e0(c, st, m.u32(club + 0xcf), 0) : slCall(c, 0x5407e0, 0, st, m.u32(club + 0xcf), 0));
+  const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
+  return v >= r ? EVAL() : rj(98);
+}
+/** (hastighed, runde 11) det, der er det samme for alle kandidater i ét gennemløb af fastRejectLoop (klubben, pladsen, 0x83f3a0's lokale
+ *  variabler og de globale): en afvisning skriver kun [0xae1080] (0x5445x0) og 0x54c8e0's skrabeplads (samme værdi hver gang) – ingen af
+ *  dem læses her. 0x54c8e0 kaldes først, når en kandidat når den (som før). CM_SL_FRHOIST=0: fastReject0 for hver kandidat. */
+interface FrCtx {
+  ebp: number; esp: number; slot: number; club: number; self: number; staff: number; cnt16: number; flag: number; human: boolean; x9cf: number;
+  b24: number; slot7: number; clubs: number; rows: number; list10: number; clubId: number; cn0: number; brit: boolean; tm86e: number;
+  e84: number; kk: number; idClub: number; cn: number; mgc: number; dNp: number; cr: number; cn75: number; cn85: number;
+  dSet: boolean; dY: number; dD: number;
+  /** dagens hukommelse som SparseMem (readPage) – ellers null */
+  sp: SparseMem | null;
+}
+const FRHOIST = ENV.CM_SL_FRHOIST !== '0';
+const FC: FrCtx = { ebp: 0, esp: 0, slot: 0, club: 0, self: 0, staff: 0, cnt16: 0, flag: 0, human: false, x9cf: 0, b24: 0, slot7: 0, clubs: 0, rows: 0, list10: 0,
+  clubId: 0, cn0: 0, brit: false, tm86e: 0, e84: 0, kk: 0, idClub: 0, cn: 0, mgc: 0, dNp: 0, cr: 0, cn75: 0, cn85: 0, dSet: false, dY: 0, dD: 0, sp: null };
+function frCtx(R: X86, S: SlMem): FrCtx {
+  const m = R.m, c = S.c, f = FC;
+  const ebp = R.ebp >>> 0, esp = R.esp >>> 0;
+  f.ebp = ebp; f.esp = esp;
+  f.slot = m.u32(ebp + 8); f.club = m.u32(ebp + 0xc); f.self = m.u32(ebp + 0x10);
+  f.staff = m.u32(G.STAFF); f.cnt16 = m.s32(G.STAFF_COUNT) - 16;
+  f.flag = m.u32((esp + 0x14) >>> 0);
+  const club = f.club;
+  f.human = humanClub_600a50(c, club);
+  f.x9cf = m.s32(0x9cf458);
+  f.b24 = m.u8(f.slot + 0x24); f.slot7 = m.s32(f.slot + 7);
+  f.clubs = m.u32(G.CLUBS); f.rows = m.u32(G.ROWS);
+  f.list10 = m.u32(m.u32((esp + 0x10) >>> 0));
+  f.clubId = club ? m.s32(club) : -1;
+  f.cn0 = club ? m.u32(club + 0x53) : 0;
+  f.brit = !!f.cn0 && m.u8(f.cn0 + 0x76) === 0xe;
+  f.tm86e = m.u32(m.u32(0xde1f54) + 0x86e);
+  f.e84 = m.u32(esp + 0x84); f.kk = s16(m.u16(esp + 0x28));
+  f.idClub = m.s32(club);
+  f.cn = m.u32(club + 0x53);
+  f.mgc = m.u32(club + 0xcf);
+  const np = f.mgc ? m.u32(f.mgc + 0x69) : 0;
+  f.dNp = np ? 0x19 - s8(m.u8(np + 0x22)) : 15;
+  f.cr = m.s16(club + 0x80);
+  f.cn75 = f.cn ? m.u8(f.cn + 0x75) : 0; f.cn85 = f.cn ? m.u8(f.cn + 0x85) : 0;
+  f.dSet = false;
+  f.sp = m instanceof SparseMem ? m : null;
+  return f;
+}
+/** fastReject0 med gennemløbets faste dele (FrCtx) – samme tjek i samme rækkefølge */
+function fastReject1(R: X86, f: FrCtx): number {
+  const S = ACTIVE!;
+  const m = R.m, c = S.c;
+  const L = R.edx >>> 0, i = R.ecx | 0, entry = (L + 12 * i) >>> 0;
+  const id = m.s32(entry), st = (f.staff + 0x6e * id) >>> 0;
+  const slot = f.slot, club = f.club;
+  if (st === f.self) return rj(0);
+  if (id >= f.cnt16) return rj(1);
+  // (hastighed) personpostens bytes direkte fra siden, når posten ligger på én side (som m.u8/m.u32 læser – ingen skriver i posten undervejs)
+  const so = st & 0xfff;
+  if (!f.sp || so + 0x6e > 0x1000) return fastReject1m(R, f, S, m, c, entry, id, st);
+  const pg = f.sp.readPage(st);
+  const P32 = (k: number) => (pg[so + k] | (pg[so + k + 1] << 8) | (pg[so + k + 2] << 16) | (pg[so + k + 3] << 24)) >>> 0;
+  const b3d = pg[so + 0x3d], b28 = pg[so + 0x28];
+  if (b3d === 5 || b28 === 5) return rj(2);
+  if (!f.flag) return staffSlot(R, S, st, entry, slot, club);
+  if (P32(0x69)) {
+    if (f.human) return rz(102);
+    if (b3d !== 0xb) return rj(3);
+    const sm = m.u32(0xb67a44);
+    if (sm && slCall(c, 0x69fc60, sm, st) & 0xff) return rj(22);
+  } else if (f.human) return rz(102);
+  if (b3d !== 0xb) return rj(3);
+  const sc = P32(0x39);
+  if (P32(0x24) && b28 === 5) return rj(4);
+  const rec = P32(0x61);
+  if (!rec) return rj(5);
+  const rb = m.u8((f.rows + 79 * id + 0xb) >>> 0);
+  if ((rb & 0x30) === 0x10) return rj(6);
+  const pn = P32(0x1a);
+  if (pn && m.s32(pn) === f.x9cf) return rj(7);
+  const b24 = f.b24;
+  const age = s8(pg[so + 0x18]);
+  if ((b24 & 0x1e) === 0xa && age > 0x17) return rj(8);
+  if (!(b24 & 1)) { if (f.slot7 < m.s32(entry + 8) * 1.3) return rj(9); }
+  else if (!(sc && m.s32(entry + 8) <= 0)) { if (!(FRPORT ? contractFlag_5445x0(c, st, 0, 2) : slCall(c, 0x544590, 0, st, 0))) return rj(10); }
+  if (sc === club) return rj(11);
+  const k = getContract(m, st);
+  if ((k ? (f.clubs + 0x245 * m.s32(k + 4)) >>> 0 : 0) === club) return rj(12);
+  if ((rb & 0xf) >= 0xa) return rj(13);
+  let k34 = 0;
+  if (sc) {
+    if (!f.dSet) { const d = subDays_54c8e0(m, G.TODAY, 200); f.dY = d.y; f.dD = d.d; f.dSet = true; }
+    const y = pg[so + 0x40] | (pg[so + 0x41] << 8), dd = s16(pg[so + 0x3e] | (pg[so + 0x3f] << 8));
+    if (f.dY < y || (f.dY === y && f.dD < dd)) {
+      k34 = k;
+      if (k && (m.u8(k + 0x4f) & 0xf0) !== 0x70 && !m.u32(k + 0x45) && !(FRPORT ? contractFlag_5445x0(c, st, 0, 9) : slCall(c, 0x544520, 0, st, 0))) return rj(14);
+    }
+  }
+  if ((rb & 0xf) && f.list10 && pairFound(m, S.slm, id, f.clubId)) return rj(15);
+  if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, sc, club)) & 0xff)) return rj(16);
+  if (f.brit && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (b24 & 1) return rz(103);
+  if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return rz(104);
+  const esp = f.esp;
+  const EVAL = () => { FR_STATS[200] = (FR_STATS[200] ?? 0) + 1; R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da; };
+  if (f.e84) return EVAL();
+  const idsum = (id + f.idClub) | 0, kk = f.kk;
+  if (kk !== 0 && idsum % kk === 0) return EVAL();
+  const cn = f.cn;
+  if (cn === pn || pg[so + 0x22] || (sc && m.u32(sc + 0x53) === cn)) {
+    if (b24 & 1 || !rec || m.s16(rec + 9) >= 0xcb2 || (sc && m.s16(sc + 0x80) >= 0xcb2) || age >= 0x14) return EVAL();
+    return idsum % f.dNp !== 0 ? rj(99) : EVAL();
+  }
+  if (age < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
+  if (cn && pn && f.cn75 !== m.u8(pn + 0x75)) {
+    const cr = f.cr;
+    if (cr < 0xabe) return rj(19);
+    let same = false;
+    if (sc) { const scn = m.u32(sc + 0x53); same = !scn || m.u8(scn + 0x75) === f.cn75; }
+    if (!same && cr < 0x109a && f.cn85 < 0xc) return rj(20);
+  }
+  const g2 = b24 & 0x1e, youth = g2 === 0xa || g2 === 0xc;
+  if (m.s16(rec + 0xd) < (youth ? 0x6d6 : 0xabe)) return rj(21);
+  const v = s16(FRPORT ? seenRep_5407e0(c, st, f.mgc, 0) : slCall(c, 0x5407e0, 0, st, f.mgc, 0));
+  const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
+  return v >= r ? EVAL() : rj(98);
+}
+/** fastReject1 for en personpost, der går over en sidegrænse (læst med m) */
+function fastReject1m(R: X86, f: FrCtx, S: SlMem, m: CmMem, c: CmCtx, entry: number, id: number, st: number): number {
+  const slot = f.slot, club = f.club;
+  const b3d = m.u8(st + 0x3d), b28 = m.u8(st + 0x28);
+  if (b3d === 5 || b28 === 5) return rj(2);
+  if (!f.flag) return staffSlot(R, S, st, entry, slot, club);
+  if (m.u32(st + 0x69)) {
+    if (f.human) return rz(102);
+    if (b3d !== 0xb) return rj(3);
+    const sm = m.u32(0xb67a44);
+    if (sm && slCall(c, 0x69fc60, sm, st) & 0xff) return rj(22);
+  } else if (f.human) return rz(102);
+  if (b3d !== 0xb) return rj(3);
+  const sc = m.u32(st + 0x39);
+  if (m.u32(st + 0x24) && b28 === 5) return rj(4);
+  const rec = m.u32(st + 0x61);
+  if (!rec) return rj(5);
+  const rb = m.u8((f.rows + 79 * id + 0xb) >>> 0);
+  if ((rb & 0x30) === 0x10) return rj(6);
+  const pn = m.u32(st + 0x1a);
+  if (pn && m.s32(pn) === f.x9cf) return rj(7);
+  const b24 = f.b24;
+  const age = s8(m.u8(st + 0x18));
+  if ((b24 & 0x1e) === 0xa && age > 0x17) return rj(8);
+  if (!(b24 & 1)) { if (f.slot7 < m.s32(entry + 8) * 1.3) return rj(9); }
+  else if (!(sc && m.s32(entry + 8) <= 0)) { if (!(FRPORT ? contractFlag_5445x0(c, st, 0, 2) : slCall(c, 0x544590, 0, st, 0))) return rj(10); }
+  if (sc === club) return rj(11);
+  const k = getContract(m, st);
+  if ((k ? (f.clubs + 0x245 * m.s32(k + 4)) >>> 0 : 0) === club) return rj(12);
+  if ((rb & 0xf) >= 0xa) return rj(13);
+  let k34 = 0;
+  if (sc) {
+    if (!f.dSet) { const d = subDays_54c8e0(m, G.TODAY, 200); f.dY = d.y; f.dD = d.d; f.dSet = true; }
+    const y = m.u16(st + 0x40), dd = m.s16(st + 0x3e);
+    if (f.dY < y || (f.dY === y && f.dD < dd)) {
+      k34 = k;
+      if (k && (m.u8(k + 0x4f) & 0xf0) !== 0x70 && !m.u32(k + 0x45) && !(FRPORT ? contractFlag_5445x0(c, st, 0, 9) : slCall(c, 0x544520, 0, st, 0))) return rj(14);
+    }
+  }
+  if ((rb & 0xf) && f.list10 && pairFound(m, S.slm, id, f.clubId)) return rj(15);
+  if (!((FRPORT ? permitOk_84b180(c, st, club) : slCall(c, 0x84b180, 0, st, sc, club)) & 0xff)) return rj(16);
+  if (f.brit && !slCall(c, 0x53d740, 0, st, 0)) { const gr = b24 & 0x1e; if (gr !== 2 && gr !== 4 && gr !== 6) return rj(17); }
+  if (b24 & 1) return rz(103);
+  if (m.u8((f.tm86e + 8 * id) >>> 0) & 0x10) return rz(104);
+  const esp = f.esp;
+  const EVAL = () => { FR_STATS[200] = (FR_STATS[200] ?? 0) + 1; R.esi = st | 0; m.w32(esp + 0x24, entry); m.w32(esp + 0x34, k34); if (k) m.w32(0xae1080, k); return 0x8400da; };
+  if (f.e84) return EVAL();
+  const idsum = (id + f.idClub) | 0, kk = f.kk;
+  if (kk !== 0 && idsum % kk === 0) return EVAL();
+  const cn = f.cn;
+  if (cn === pn || m.u8(st + 0x22) || (sc && m.u32(sc + 0x53) === cn)) {
+    if (b24 & 1 || !rec || m.s16(rec + 9) >= 0xcb2 || (sc && m.s16(sc + 0x80) >= 0xcb2) || age >= 0x14) return EVAL();
+    return idsum % f.dNp !== 0 ? rj(99) : EVAL();
+  }
+  if (age < 0x17 && (FRPORT ? knowsNation_53d980(c, st, cn, 1) : slCall(c, 0x53d980, 0, st, cn, 1)) && rec && m.s16(rec + 0xd) < 0xcb2) return rj(18);
+  if (cn && pn && f.cn75 !== m.u8(pn + 0x75)) {
+    const cr = f.cr;
+    if (cr < 0xabe) return rj(19);
+    let same = false;
+    if (sc) { const scn = m.u32(sc + 0x53); same = !scn || m.u8(scn + 0x75) === f.cn75; }
+    if (!same && cr < 0x109a && f.cn85 < 0xc) return rj(20);
+  }
+  const g2 = b24 & 0x1e, youth = g2 === 0xa || g2 === 0xc;
+  if (m.s16(rec + 0xd) < (youth ? 0x6d6 : 0xabe)) return rj(21);
+  const v = s16(FRPORT ? seenRep_5407e0(c, st, f.mgc, 0) : slCall(c, 0x5407e0, 0, st, f.mgc, 0));
   const r = c.rand(2000) + (youth ? 0xabe : 0xcb2);
   return v >= r ? EVAL() : rj(98);
 }
@@ -1261,6 +1575,8 @@ export function cmAskingPrice(g: GameState, p: Player, buyer?: number): number |
   }
   // CONTRACT_MANAGER (this = [0xae1050]) ::calc_asking_price(sælger, køber, staff, 0, 1, 1) – som 0x840bfb/0x8402fe kalder den
   const v = slCall(M.c, 0x4d1600, m.u32(G.CM), club, b, st, 0, 1, 1);
+  // (hastighed) siderne tilbage til puljen – hukommelsen bruges ikke mere
+  (m as SparseMem).release();
   return v | 0;
 }
 
@@ -1301,8 +1617,6 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   const t0 = typeof performance !== 'undefined' ? performance.now() : 0, c0 = cpuNow();
   const S = buildSlMem(g);
   SL_DIAG.after?.(S);
-  // (planValue's svar gemmes kun, mens spillets data står stille – til finishSl)
-  if (PVMEMO) S.pv = new Map();
   dropDeadBids(S);
   let tt = now();
   const off = bidDay(g);
@@ -1319,7 +1633,6 @@ export function cmShortlistDaily(g: GameState, planClub: (cid: number) => { drop
   }
   SL_DIAG.end?.(S);
   const ev = finishSl(S);
-  S.pv = undefined;
   SL_STATS.days++; SL_STATS.bids += ev.filter((x) => x.kind === 'bid').length;
   if (t0) SL_STATS.ms += performance.now() - t0;
   SL_STATS.cpuMs += cpuNow() - c0;

@@ -31,6 +31,35 @@ import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, readDb, readVer, writeDb, writeVer, type Db } from './startGame';
 
 type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account';
+/** Populære spillere og hvilke udgaver (3.9.60/65/68) de findes i – datafilen hentes først, når boksen åbnes */
+function PopularBox({ ver, onClose }: { ver: OriginalVersion | null; onClose: () => void }) {
+  const [d, setD] = useState<{ v: string[]; p: [string, ([string, number, number] | null)[]][] } | null>(null);
+  const [q, setQ] = useState('');
+  useEffect(() => { fetch(`${import.meta.env.BASE_URL}data/popular-versions.json`).then((r) => r.json()).then(setD).catch(() => setD({ v: [], p: [] })); }, []);
+  const rows = d ? d.p.filter(([n]) => n.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().includes(q.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim())) : [];
+  return (
+    <div className="cxs-pop" role="dialog" data-popular>
+      <div className="cxs-pop-in">
+        <h3>{t('cxs.popular')}</h3>
+        <p>{t('cxs.popularHint')}</p>
+        <input className="cxs-pop-q" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('cxs.popSearch')} />
+        <div className="cxs-pop-tbl">
+          <table>
+            <thead><tr><th>{t('cxs.popName')}</th>{(d?.v ?? []).map((v) => <th key={v} className={v === ver ? 'on' : ''}>{v}</th>)}</tr></thead>
+            <tbody>
+              {!d && <tr><td colSpan={4}>…</td></tr>}
+              {rows.map(([n, h]) => (
+                <tr key={n}><td>{n}</td>{h.map((e, i) => <td key={i} className={d!.v[i] === ver ? 'on' : ''} title={e ? `CA ${e[1]}${e[2] > 0 ? ` · PA ${e[2]}` : ''}` : ''}>{e ? <><span className="ok">✓</span> {e[0]}</> : <span className="no">–</span>}</td>)}</tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="cxs-popbar"><button className="cxs-btn" data-popular-close onClick={onClose}>{t('common.close')}</button></div>
+      </div>
+    </div>
+  );
+}
+
 export type LegacyView = 'online' | 'challenges' | 'editor' | 'draft';
 
 /** Baggrundsbillederne fra originalens Pictures-mappe (public/original-bg) – som i skærmbillederne af originalens startskærme */
@@ -163,6 +192,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
     return () => clearInterval(id);
   }, [prog?.auto]);
 
+  const [popular, setPopular] = useState(false);
   const setDb = (d: Db, v: OriginalVersion = ver) => {
     discard();
     setDbState(d); setVerState(v); writeDb(d); writeVer(v);
@@ -379,6 +409,8 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
             );
           })}
         </div>
+        <div className="cxs-popbar"><button className="cxs-btn" data-field="popular" onClick={() => setPopular(true)}>{t('cxs.popular')}</button></div>
+        {popular && <PopularBox ver={db === 'original' ? ver : null} onClose={() => setPopular(false)} />}
       </Frame>
     );
   }

@@ -1691,7 +1691,7 @@ export const da: Record<string, string> = {
   'cxs.rules': "Skiftende regler", 'cxs.on': "Til", 'cxs.rulesHint': "Databasens regler (pokaler, trupgrænser, arbejdstilladelser) følger sæsonerne – altid slået til.",
   'cxs.startNew': "Start nyt spil", 'cxs.quick': "Hurtigstart", 'cxs.restore': "Hent gemt spil", 'cxs.delete': "Slet gemt spil", 'cxs.network': "Netværksspil",
   'cxs.settings': "Spilindstillinger", 'cxs.rebornOpts': "CM Reborn-valg", 'cxs.extras': "Ekstra", 'cxs.back': "Tilbage", 'cxs.next': "Næste", 'cxs.cancel': "Annuller",
-  'cxs.dataN': "{v}-data", 'cxs.dataModern': "CM-data", 'cxs.custom': "Egen", 'cxs.dbTitle': "Vælg database",
+  'cxs.popular': "Populære spillere", 'cxs.popularHint': "Hvilke af de populære spillere og wonderkids der findes i hvilken databaseudgave. Den valgte udgave er fremhævet.", 'cxs.popName': "Spiller", 'cxs.popSearch': "Søg navn", 'cxs.dataN': "{v}-data", 'cxs.dataModern': "CM-data", 'cxs.custom': "Egen", 'cxs.dbTitle': "Vælg database",
   'cxs.selectAll': "Vælg alle", 'cxs.deselectAll': "Fravælg alle", 'cxs.realOnly': "Databasen indeholder kun rigtige spillere.",
   'cxs.enterName': "Indtast navn", 'cxs.firstName': "Fornavn", 'cxs.secondName': "Efternavn", 'cxs.selectNat': "Vælg nationalitet", 'cxs.filter': "Filter", 'cxs.selectTeam': "Vælg hold",
   'cxs.takeControl': "Overtag klubben", 'cxs.confirm': "Bekræft", 'cxs.takeQ': "Overtage {club} ?",

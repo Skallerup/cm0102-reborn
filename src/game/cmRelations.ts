@@ -51,6 +51,8 @@ export function hidOf(s: Person, k: (typeof HID)[number]): number {
 /** præferenceposten (oprettes ved første skrivning – alle databasens personer har en i originalen) */
 const blk = (s: Person): number[] => (s.cmRel ??= Array(12).fill(0));
 const has3 = (b: number[] | undefined, at: number, x: number) => !!b && !!x && (b[at] === x || b[at + 1] === x || b[at + 2] === x);
+/** (hastighed) has3 på en allerede hentet præferencepost (Person.cmRel) – favoursClub/dislikesClub uden personobjektet */
+export const relHas = has3;
 
 // ---------------------------------------------------------------- læserne
 

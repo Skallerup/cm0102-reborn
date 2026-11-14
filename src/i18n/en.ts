@@ -1660,7 +1660,7 @@ export const en: Record<string, string> = {
   'cxs.rules': "Changing rules", 'cxs.on': "On", 'cxs.rulesHint': "The rules of the database (cups, squad limits, work permits) follow the seasons – always on.",
   'cxs.startNew': "Start New Game", 'cxs.quick': "Quick Start Game", 'cxs.restore': "Restore Saved Game", 'cxs.delete': "Delete Saved Game", 'cxs.network': "Network Play",
   'cxs.settings': "Game Settings", 'cxs.rebornOpts': "CM Reborn Options", 'cxs.extras': "Extras", 'cxs.back': "Back", 'cxs.next': "Next", 'cxs.cancel': "Cancel",
-  'cxs.dataN': "{v} data", 'cxs.dataModern': "CM data", 'cxs.custom': "Custom", 'cxs.dbTitle': "Select Database",
+  'cxs.popular': "Popular players", 'cxs.popularHint': "Which of the popular players and wonderkids are in which database version. The selected version is highlighted.", 'cxs.popName': "Player", 'cxs.popSearch': "Search name", 'cxs.dataN': "{v} data", 'cxs.dataModern': "CM data", 'cxs.custom': "Custom", 'cxs.dbTitle': "Select Database",
   'cxs.selectAll': "Select All", 'cxs.deselectAll': "De-Select All", 'cxs.realOnly': "Only real players are in the database.",
   'cxs.enterName': "Enter Name", 'cxs.firstName': "First Name", 'cxs.secondName': "Second Name", 'cxs.selectNat': "Select Nationality", 'cxs.filter': "Filter", 'cxs.selectTeam': "Select Team",
   'cxs.takeControl': "Take Control", 'cxs.confirm': "Please Confirm", 'cxs.takeQ': "Take control of {club} ?",
