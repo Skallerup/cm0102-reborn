@@ -99,6 +99,16 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
 
+## Computerens bud med klausuler – build_bid 0x8e5d60 (2026-11-14, `src/game/cmAiBid.ts`)
+- 0x8e5d60 var allerede oversat (ønskelisternes 0x84a020 kalder den). Med ønskelisterne slået fra (`SL_ON`) laver `cmBidsForListed` (transfers.ts) budene på menneskets
+  spillere; de kører nu `cmBuildBid(g, p, køber, værdi£)`: TRANSFER_OFFER-posten (this) bygges af 0x8e5d60 på ønskelisternes hukommelse (`buildSlMem`, én gang pr. dag) med
+  en tilføjet plads (rolle 0xb, +7 = værdisætningen, +0xf = spilleren, +0x13/+0x17 = −1) → fee +0x1b, rater +0x40, videresalg +0x3f, ligakampe +0x35/+0x39, landskampe
+  +0x3a/+0x3e, offentligt +0x2d → `TransferOffer.months/sellOn/lgFee/intFee/pub` (som `cmShortlistApply`). Budskærmen (`CmIncomingBidPanel`) og betalingerne
+  (`completeTransfer`: rater, videresalg, `cmApps`) bruger felterne allerede. Værdisætningen 0x840d80 regner funktionen selv; pladsens +7 er *estimeret* (spillerens værdi).
+- Tal: `scripts/cm-aibid.ts` (Arsenals trup × 40 købere: rater i 137 af 192 mulige bud (~12 % af alle forsøg), 0 videresalg/ligakampe/landskampe – de kommer kun ved
+  køberens omdømmeforhold, 0x8c8fd0-grenene) mod originalens åbne bud (`scripts/cm-aibid-orig.ts`: 5–6 % har en klausul, mest rater 6/12 mdr., enkelte
+  videresalg og 600.000 efter 20 ligakampe). Ikke porteret: computer → computer-bud uden ønskelister (aiClubTurn/aiPursuits er stadig kontante).
+
 ## CONTRACT_MANAGER::daily_update 0x4c7ac0 i spillet (2026-11-14, kun original DB i ægte tilstand – `src/game/cmContractManager.ts`)
 - **Koblet ind:** porten i cmContract.ts (uændret, nu med `only` = personløkken for udvalgte poster) kører hver dag (sim.ts newDay efter
   0x5ce2d0's kontraktdel, og på startdagen i newgame.ts) for computerklubbernes spillere i de spilbare lande på buildWantMem's poster +

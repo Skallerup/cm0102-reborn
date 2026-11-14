@@ -22,6 +22,7 @@ import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } fro
 import { aiContract, cmAiTerms } from './cmContractGame';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
+import { cmBuildBid } from './cmAiBid';
 import { cmAskingPrice, cmInterestedClubs, cmShortlistOn, setSlApply, type SlEvent } from './cmShortlistGame';
 import { ADDON_APPS, bidClauseWorth, cleanClauses, clauseWorth, defaultRelease, settleSellOn } from './clauses';
 import { asOwner, forEachHuman, isHumanClub, isMultiplayer } from './humans';
@@ -1652,10 +1653,17 @@ function cmBidsForListed() {
       const club = g.clubs[cid];
       if (refusedBy(p, cid)) continue;
       const fee = Math.max(1000, Math.min(club.transferBudget, p.value));
-      const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: cid, seller: g.userClub, fee, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: fee };
+      // vilkårene som originalens build_bid 0x8e5d60 (rater, videresalg, beløb efter N kampe, offentligt) – ellers et kontant bud
+      // (værdisætningen er spillerens værdi – build_bid ser selv køberens transferbudget og tager rater, hvis han ikke kan betale det hele)
+      const cl = cmBuildBid(g, p, cid, toGbp(Math.max(fee, p.value)));
+      const cash = cl ? (cl.months > 0 ? fromGbp(cl.fee) : Math.min(fromGbp(cl.fee), Math.max(1000, club.transferBudget))) : fee;
+      const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: cid, seller: g.userClub, fee: cash, loan: false, status: 'pending', created: g.date, respondBy: addDays(g.date, 5), maxFee: fee,
+        ...(cl && cl.months > 0 ? { months: cl.months } : {}), ...(cl && cl.sellOn > 0 ? { sellOn: cl.sellOn } : {}),
+        ...(cl && cl.lgFee > 0 ? { lgFee: fromGbp(cl.lgFee), lgApps: cl.lgApps } : {}), ...(cl && cl.intFee > 0 ? { intFee: fromGbp(cl.intFee), intApps: cl.intApps } : {}),
+        ...(cl && cl.pub ? { pub: cl.pub as 1 | 2 } : {}) };
       g.offers.push(o);
       noteInterest(o.buyer, o.player);
-      addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee }, link: { kind: 'offer', id: o.id } });
+      addNews({ cat: 'transfer', key: 'transfer.incomingBid', params: { club: club.name, player: pname(p), fee: o.fee }, link: { kind: 'offer', id: o.id } });
       break;
     }
   }

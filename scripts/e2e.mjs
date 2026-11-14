@@ -777,11 +777,11 @@ async function run(look) {
       if ((await b.evaluate((el) => getComputedStyle(el).backgroundColor)) !== 'rgb(0, 0, 125)') throw new Error('hover ændrer udtagelsesfeltets farve');
       // træk en plads fra strimlen ned på en spiller uden plads: spilleren sættes på pladsen (originalen)
       // en spiller uden plads, der står i listen (ikke skadet – forsæsonen giver startskader)
-      const shown = await page.locator('.cx-sq-orig .cx-sq-row [data-pid]').evaluateAll((els) => els.map((e) => Number(e.getAttribute('data-pid'))));
+      // kun rækker, der allerede er synlige sammen med strimlen (ellers ruller dragTo den ene ud af billedet – det gjorde testen ustabil)
+      const shown = await page.locator('.cx-sq-orig .cx-sq-row [data-pid]').evaluateAll((els) => els.filter((e) => { const r = e.getBoundingClientRect(); return r.top > 0 && r.bottom < window.innerHeight; }).map((e) => Number(e.getAttribute('data-pid'))));
       const free = await gs((ids) => { const g = window.__cm.gs(); const t = g.tactic; return ids.find((id) => { const p = g.players[id]; return p && p.club === g.userClub && !p.loan && !p.virtual && !p.reserves && !p.injury && !(p.banned > 0) && !t.lineup.includes(id) && !t.bench.includes(id); }) ?? 0; }, shown);
       if (free) {
         const target = page.locator(`.cx-sq-orig .cx-sq-row:has([data-pid="${free}"])`).first();
-        await target.scrollIntoViewIfNeeded();
         await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target);
         // trækket kan glippe under belastning – prøv én gang til
         if (!(await gs((id) => window.__cm.gs().tactic.lineup[1] === id, free))) { await page.waitForTimeout(300); await page.locator('.cx-sq-orig .cx-slot.xi').nth(1).dragTo(target); }
