@@ -31,6 +31,14 @@ type CloudHook = (meta: SaveMeta, blob: Blob, force: boolean) => void;
 let cloudHook: CloudHook | null = null;
 export function setCloudHook(h: CloudHook | null) { cloudHook = h; }
 
+/** Bed browseren om varig lagring (én gang), så gemte spil ikke ryddes væk ved pladsmangel/inaktivitet (Safari/iOS mistede spil, rapport #18) */
+let persistAsked = false;
+function requestPersistentStorage() {
+  if (persistAsked) return;
+  persistAsked = true;
+  try { void navigator.storage?.persist?.().catch(() => {}); } catch { /* ikke understøttet */ }
+}
+
 /** Gem lokalt (og i skyen: altid ved cloud=true, ellers højst hvert 5. minut) */
 export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promise<SaveMeta> {
   const g = gs();
@@ -52,6 +60,7 @@ export async function saveGame(opts?: { cloud?: boolean; name?: string }): Promi
   };
   await set(`save:${id}`, blob);
   await set(`meta:${id}`, meta);
+  requestPersistentStorage();
   rememberLast({ kind: 'local', id });
   cloudHook?.(meta, blob, !!opts?.cloud);
   return meta;

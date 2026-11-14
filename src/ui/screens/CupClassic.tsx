@@ -125,12 +125,29 @@ function Days({ comp, played }: { comp: Competition; played: boolean }) {
 }
 
 function DayRow({ f, open }: { f: Fixture; open?: () => void }) {
+  const g = useGame()!;
   const r = f.result;
+  /** som kampdagsskærmen: p = videre efter straffespark, a = videre på udebanemål (står ved vinderen) */
+  const mark = (side: 0 | 1) => {
+    if (!r) return '';
+    if (r.pens) return r.pens[side] > r.pens[1 - side] ? 'p' : '';
+    if (f.leg === 2 && f.tieId !== undefined) {
+      const tie = g.comps[f.comp]?.ties.find((x) => x.id === f.tieId);
+      const first = tie ? g.fixtures[tie.fx[0]] : undefined;
+      if (first?.result && first.id !== f.id) {
+        const club = side === 0 ? f.home : f.away, other = side === 0 ? f.away : f.home;
+        const tot = (c: number) => [first, f].reduce((s, x) => s + (x.home === c ? x.result!.hg : x.result!.ag), 0);
+        const away = (c: number) => [first, f].reduce((s, x) => s + (x.away === c ? x.result!.ag : 0), 0);
+        if (tot(club) === tot(other) && away(club) > away(other)) return 'a';
+      }
+    }
+    return '';
+  };
   return (
     <div className={`cx-cup-row ${open ? 'go' : ''}`} onClick={open}>
-      <Code club={f.home} /><span className="cx-cup-score">{r ? r.hg : ''}</span><Club id={f.home} win={!!r && r.hg > r.ag} />
+      <Code club={f.home} /><span className="cx-cup-score">{r ? r.hg : ''}<span className="cx-md-mark">{mark(0)}</span></span><Club id={f.home} win={!!r && (r.hg > r.ag || (!!r.pens && r.pens[0] > r.pens[1]))} />
       <span className="cx-cup-v">v</span>
-      <Club id={f.away} win={!!r && r.ag > r.hg} /><span className="cx-cup-score">{r ? r.ag : ''}</span><Code club={f.away} />
+      <Club id={f.away} win={!!r && (r.ag > r.hg || (!!r.pens && r.pens[1] > r.pens[0]))} /><span className="cx-cup-score"><span className="cx-md-mark">{mark(1)}</span>{r ? r.ag : ''}</span><Code club={f.away} />
     </div>
   );
 }

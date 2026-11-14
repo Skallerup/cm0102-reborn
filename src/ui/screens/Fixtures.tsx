@@ -51,7 +51,7 @@ export function ClassicFixtures({ clubId, embedded }: { clubId?: number; embedde
     const win = !r ? 0 : my > their || (r.pens && (home ? r.pens[0] > r.pens[1] : r.pens[1] > r.pens[0])) ? 1 : my === their ? 0 : -1;
     // originalens venskabskampe (cmFriendly.ts, comp 'FRIENDLY'): "Friendly" som i CM 01/02 (landekoden står ved en udenlandsk modstander)
     const fr = f.comp === 'FRIENDLY';
-    return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: fr ? t('cl.fx.friendly') : `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, cup: !fr && g.comps[f.comp]?.type !== 'league', cmFr: fr, res: r ? `${my}:${their}${r.pens ? ` (${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
+    return { key: `f${f.id}`, date: f.date, opp: home ? f.away : f.home, home: f.stage === 'F' ? undefined : home, comp: fr ? t('cl.fx.friendly') : `${compName(g.comps[f.comp]?.name) ?? ''}${f.stage && f.stage !== 'LP' ? ` – ${stageLabel(f)}` : ''}`, cup: !fr && g.comps[f.comp]?.type !== 'league', cmFr: fr, res: r ? `${my}:${their}${r.pens ? ` (${home ? r.pens[0] : r.pens[1]}:${home ? r.pens[1] : r.pens[0]} ${t('fix.pens')})` : r.et ? ` ${t('fix.aet')}` : ''}` : undefined, win, fid: f.id };
   });
   if (mine) for (const fr of g.manager.friendlies ?? []) rows.push({ key: `fr${fr.date}`, date: fr.date, opp: fr.opp, comp: t('cl.fx.friendly'), friendly: true, res: fr.result ? `${fr.result[0]}:${fr.result[1]}` : undefined, win: fr.result ? Math.sign(fr.result[0] - fr.result[1]) : 0, fid: undefined });
   rows.sort((a, b) => a.date.localeCompare(b.date));
@@ -118,7 +118,7 @@ function ModernFixtures() {
                   <td className="muted">{stageLabel(f)}</td>
                   <td>{f.stage === 'F' ? t('fix.neutral') : home ? t('fix.home') : t('fix.away')}</td>
                   <td><ClubLink id={opp} /></td>
-                  <td className={`center ${cls}`}><b>{r ? `${home ? r.hg : r.ag} - ${home ? r.ag : r.hg}` : '-'}</b>{r?.pens ? ` (${t('fix.pens')})` : r?.et ? ` ${t('fix.aet')}` : ''}</td>
+                  <td className={`center ${cls}`}><b>{r ? `${home ? r.hg : r.ag} - ${home ? r.ag : r.hg}` : '-'}</b>{r?.pens ? ` (${home ? r.pens[0] : r.pens[1]} - ${home ? r.pens[1] : r.pens[0]} ${t('fix.pens')})` : r?.et ? ` ${t('fix.aet')}` : ''}</td>
                   <td>{g.reports[f.id] && <span className="muted">{t('fix.report')} ›</span>}{f.id === g.pendingFixture && <button className="small primary" onClick={() => nav({ name: 'match', id: f.id })}>{t('top.toTheMatch')}</button>}</td>
                 </tr>
               );

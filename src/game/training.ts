@@ -133,11 +133,16 @@ function develop(p: Player, ci: CoachingInfo) {
   }
   // over loftet (PA − ceil): trækkes ned mod det
   if (DEV.pull > 0 && age < start && p.ca > p.pa - DEV.ceil) delta -= (p.ca - (p.pa - DEV.ceil)) * DEV.pull;
+  // egenskaberne følger udviklingens RETNING (trenden), ikke ugens tilfældige udsving: før blev udsvingene brugt som ændring, og da
+  // opgangsugerne løftede flere egenskaber end nedgangsugerne sænkede dem, drev tackling/hovedspil/dribling … mod 20 og fysikken mod 1
+  // (spillerrapporterne #7/#15/#16, 2026/27-databasen: 33-35-årige med fart 1, næsten alle gode forsvarere med 20 i tackling)
+  const trend = delta;
   delta += rng.normal(0, DEV.noise);
   if (Math.abs(delta) < 0.01) return;
   const before = p.ca;
   p.ca = Math.max(1, Math.min(p.pa + (delta < 0 ? 0 : 0), p.ca + delta, 200));
-  const change = p.ca - before;
+  if (p.ca === before) return;
+  const change = trend > 0 ? Math.min(trend, Math.max(0, p.pa - before)) : Math.max(trend, 1 - before);
   if (change === 0) return;
   // Fordel ændringen på attributter: træningsfokus ved vækst, fysik først ved tilbagegang
   const pts = change * 0.16;
