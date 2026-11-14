@@ -296,6 +296,7 @@ export class GridSim implements LiveSim {
       const sp = this.byId.get(p.src.id); if (!sp) continue;
       // MATCH_PLAYER-tællerne (se filens hoved); tckA/tackles = forsøgt/vundet som zonemotorens linjer (Team Stats: Tck · Won)
       const l = sp.line;
+      if (p.yellows || p.reasons[0] || p.reasons[1]) { l.cy = p.yellows; l.cw = [p.reasons[0], p.reasons[1]]; }   // kampposten +0x9d/+0x9f/+0xa0 (Fine 0x5a69b0)
       l.passes = p.c01 & 0xff; l.passesOk = p.c02 & 0xff; l.tckA = p.tacklesTried & 0xff; l.tackles = p.tacklesWon & 0xff; l.hea = p.b7 & 0xff; l.heaW = p.b8 & 0xff;
       // den viste karakter +0x1b (sub_6ce460: trunc((+0x35 + 500)/1000) klemt 1..10 – originalens Player Ratings og 0x6d26b0's karakter)
       sp.rating = Math.max(1, Math.min(10, Math.trunc((((p.rating << 16) >> 16) + 500) / 1000)));

@@ -929,6 +929,9 @@ export interface PlayerMatchLine {
   hea?: number;
   heaW?: number;
   on?: number;
+  /** gittermotoren: MATCH_PLAYER +0x24 gule kort (2 = udvist for andet gule) og +0x25/+0x26 kortenes årsagskoder – Discipline Player (cmFine.ts) */
+  cy?: number;
+  cw?: [number, number];
 }
 
 export interface MatchEvent {
@@ -1129,6 +1132,8 @@ export interface GameState {
   cmRecDone?: Record<string, number>;
   /** originalens bestyrelse og managerjob (cmBoard.ts/cmBoardGame.ts – kun den originale database i ægte tilstand): MANAGER_MANAGER's poster og lister */
   cmBoard?: import('./cmBoard').CmBoardState;
+  /** Fine-objektet [0xae2a3c] (Discipline Player – cmFine.ts): posterne, trænerens rapporter og tælleren pr. klub */
+  cmFine?: import('./cmFine').CmFineState;
   /** formændene (world.cmRaw.chair: [np +0x16, np +0x1d Patience, staff +0x57 Ambition, nation]) og nationernes +0x75/+0x85/+0x88 */
   cmChair?: Record<number, [number, number, number, number]>;
   cmNationBoard?: [number, number, number][];

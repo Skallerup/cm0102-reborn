@@ -37,6 +37,8 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
     try { p.month = d.toLocaleDateString(t('cl.locale'), { month: 'long', timeZone: 'UTC' }); } catch { p.month = d.toISOString().slice(5, 7); }
   }
   if (typeof p.tour === 'string') p.tour = t(`intl.name.${p.tour}`);
+  // Discipline Player: grunden med små bogstaver som originalens 0x5a73a0(…, 1)
+  if (n.key.startsWith('cmfine.') && typeof p.why === 'number') p.reason = t(`cmfine.why.${p.why}`);
   if (n.key === 'eur.request' && typeof p.phase === 'string') p.phase = t(`eur.phase.${p.phase}`);
   // "Four players from Man Utd …" (uden navneliste)
   if ((n.key === 'intl.selN' || n.key === 'intl.tourSel') && !n.params?.names && typeof p.n === 'number' && has(`num.${p.n}`)) p.n = t(`num.${p.n}`);
@@ -95,6 +97,8 @@ function bodyKey(n: NewsItem): string {
   }
   // slutrunde: "Michaël Silvestre and Fabien Barthez have been selected in the France squad for the FIFA World Cup."
   if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
+  // Discipline Player (cmFine.ts): originalens brødtekst er valgt i spillet (0x5a76e0/0x5a7ed0/0x5a8090)
+  if (n.key.startsWith('cmfine.') && typeof n.params?.body === 'string') return `cmfine.b.${n.params.body}`;
   return `${n.key}.body`;
 }
 

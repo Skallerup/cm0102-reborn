@@ -517,6 +517,7 @@ export function ClassicPlayer({ id }: { id: number }) {
     <div>
       <Head title={`${p.first} ${p.last}`} action={<ActionMenu items={items} clubId={p.club || undefined} />} />
       <Tabs tabs={tabs} value={tab} onChange={(v) => setTab(v as Tab)} />
+      {/* Discipline Player med den originale database i ægte tilstand giver ingen besked (cmFine.ts – reaktionen er en nyhed) */}
       {msg && !(authentic() && msg === t('player.bidSent')) && <div className="insight">{msg}</div>}
       {/* CM 01/02 viser hverken "Offer sent" eller "Your offer" på spillerens side – svaret kommer som nyhed */}
       {!mine && !authentic() && <MyOffer pid={p.id} onNegotiate={(o) => setNeg({ offer: o })} onOpen={(o) => setBid(o.id)} />}

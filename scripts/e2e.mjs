@@ -1040,6 +1040,47 @@ async function run(look) {
     if (!(req & 8)) throw new Error('spilleren er ikke listet efter eget ønske');
     await gs((ids) => { const g = window.__cm.gs(); for (const id of ids) { const p = g.players[id]; p.listed = false; p.wantsAway = undefined; p.squadStatus = undefined; p.cmAsk = undefined; if (p.cmContract) { p.cmContract.b4e = 0; p.cmContract.b45 = 0; } } g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify(); }, [pid, p2]);
   });
+  // CM 01/02's Discipline Player med den originale database (cmFine.ts, Fine.cpp 0x5a5980): bøde uden grund → ingen besked på spillersiden,
+  // nyheden "X feels fine was unfair" og Future "Feels he has been treated unfairly" (ejerens billeder r4/98–99 af originalen)
+  if (look === 'klassisk' && ENGINE_GRID) await step('Discipline Player: bøde uden grund (original)', async () => {
+    const pid = await gs(() => {
+      const g = window.__cm.gs();
+      window.__e2eMode = g.options.mode; g.options.mode = 'authentic';
+      const p = Object.values(g.players).filter((x) => x.club === g.userClub && !x.loan && !x.listed && !x.injury).sort((a, b) => b.ca - a.ca)[8];
+      window.__e2eFine = { joined: p.joined, cmJoined: p.cmJoined, attrs: [...p.attrs], c: p.cmContract ? { ...p.cmContract } : null };
+      // længe i klubben, Pressure 12: Future-linjen er "treated unfairly" (0x883004) og ikke "false pretences"/"victimised"
+      p.joined = '1995-07-01'; p.cmJoined = '1995-07-01';
+      p.attrs[43] = 15; p.attrs[44] = 12; p.attrs[45] = 15;                         // ATTRS 43–45: Loyalty, Pressure, Professionalism
+      if (p.cmContract) { p.cmContract.b45 = 0; p.cmContract.b44 = 0; }
+      window.__cm.notify(); return p.id;
+    });
+    await go({ name: 'player', id: pid });
+    await page.locator('.cx-act .cx-drop-btn').click();
+    await page.locator('.cx-drop-pop button, .cx-drop-pop [role=menuitem]', { hasText: 'Discipline Player' }).first().click();
+    await page.waitForSelector('.cx-tstatus .cx-ts-price', { timeout: 5000 });
+    await page.locator('.cx-ts-price button[aria-label="+"]').click();              // Official Warning → 1 Week Fine
+    if (!(await page.locator('.cx-ts-price .cx-ts-val').innerText()).includes('1 Week Fine')) throw new Error('straffen er ikke 1 Week Fine');
+    await page.locator('.cx-ts-opt', { hasText: 'No Reason' }).click();
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-discipline-original.png` });
+    await page.locator('.cx-foot-btns button.primary', { hasText: 'Confirm' }).click();
+    await page.waitForSelector('.cx-tstatus', { state: 'detached', timeout: 5000 });
+    if (await page.locator('.main .insight').count()) throw new Error(`beskedboks på spillersiden: ${await page.locator('.main .insight').first().innerText()}`);
+    await page.getByRole('button', { name: 'Transfer', exact: true }).first().click();
+    await page.waitForTimeout(200);
+    const kv = (await page.locator('.cx-kv.cx-ruled').first().innerText()).replace(/\s+/g, ' ');
+    if (!kv.includes('Future Feels he has been treated unfairly')) throw new Error(`Future er ikke "Feels he has been treated unfairly": ${kv}`);
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow', { hasText: 'feels fine was unfair' }).first().click({ timeout: 5000 });
+    const body = await page.locator('.cx-nbody').textContent({ timeout: 5000 });
+    if (!/(fine for no reason was unfair|fined him for no reason)/.test(body)) throw new Error(`nyhedens tekst: ${body}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-discipline-nyhed-original.png` });
+    await gs((id) => {
+      const g = window.__cm.gs(); const p = g.players[id]; const s = window.__e2eFine;
+      p.joined = s.joined; p.cmJoined = s.cmJoined; p.attrs = s.attrs; if (s.c) p.cmContract = s.c;
+      if (g.cmFine) g.cmFine = { recs: [], coach: [], count: {} };
+      g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify();
+    }, pid);
+  });
   await step('landshold', async () => { await go({ name: 'international', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) }); await page.screenshot({ path: `${OUT}/${look}-landshold.png` }); });
   // Squad Numbers: skift en spillers nummer – en holdkammerat med samme nummer bytter
   await step('trøjenumre: skift nummer', async () => {

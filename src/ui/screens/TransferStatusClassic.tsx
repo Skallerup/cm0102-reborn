@@ -175,7 +175,8 @@ export function DisciplinePanel({ p, onClose, onDone }: { p: Player; onClose: ()
   const name = `${p.first} ${p.last}`.trim();
   const confirm = () => {
     const r = act<{ key: string }>({ t: 'interact', pid: p.id, kind, reason });
-    onDone(t(r.key, { player: name }));
+    // den originale database i ægte tilstand (cmFine.ts): ingen besked – spillerens reaktion kommer som en nyhed
+    onDone(r?.key ? t(r.key, { player: name }) : '');
   };
   return (
     <div className="cx-tstatus">

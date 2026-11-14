@@ -7,6 +7,7 @@ import { cmPermitAfterMatch, cmPermitDaily } from './cmPermit';
 import { cmSquadPlanDaily } from './cmSquadPlanGame';
 import { cmDevDaily } from './cmDevelop';
 import { cmRelDaily } from './cmRelations';
+import { cmFineDaily } from './cmFine';
 import { cmRecordsDaily } from './cmMedia';
 import { cmTrainSquads } from './cmTraining';
 import { recordAiTactics } from './engine/grid/aiTeam';
@@ -541,6 +542,8 @@ function newDay() {
   cmSquadMoraleDaily(g, squad);
   // 0x5ce2d0's udviklingsblok (0x5d38f9–0x5d578d) og træningens ugetæller 0x8b1730 (cmDevelop.ts) – erstatter training.ts' develop()
   cmDevDaily(g);
+  // Fine 0x5a5820 (0x5cdb05, lige før 0x5d6d10): de udløbne Discipline Player-poster og trænerens rapport (cmFine.ts)
+  cmFineDaily(g);
   // game_update_squad_relationships 0x5d6d10 (0x5cdb0a, efter 0x5ce2d0/0x5ce0b0): forholdene i trupperne (cmRelations.ts)
   cmRelDaily(g, squad, (p, flag) => { const c = p.cmContract; if (c) withFlagCtx(g, p, cmRand(g.seed ?? 0, p.id, Math.round(Date.parse(g.date + 'T00:00:00Z') / 86400000), 0x867700), () => cmFlagSet(c, flag)); });
   // FinanceTable::daily_update 0x59b9c0 (cmFinance.ts): søndagens løn/merchandise/sæsonkort, månedens poster, sæsonopdateringen

@@ -1,4 +1,5 @@
 import { cmStaffDelayAnswer } from './cmStaff';
+import { cmFinePlayer, FINE_REASONS } from './cmFine';
 // Alle ændringer en manager kan lave, som serialiserbare handlinger.
 // Singleplayer: anvendes direkte. Online: anvendes lokalt med det samme (optimistisk) og sendes
 // til serveren, hvor den manager der simulerer næste træk, afspiller dem i rækkefølge.
@@ -312,7 +313,15 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     }
     case 'talk': return talkToPlayer(a.pid, a.choice);
-    case 'interact': return interact(a.pid, a.kind, a.reason);
+    case 'interact': {
+      // den originale database i ægte tilstand: originalens Fine::fine_player 0x5a5980 (cmFine.ts) – ingen besked på spillersiden, svaret er en nyhed
+      const p = g.players[a.pid];
+      if (cmActive(g) && p && club && p.club === club.id && (a.kind === 'warning' || a.kind === 'fine' || a.kind === 'fineHeavy')) {
+        cmFinePlayer(g, p, a.kind === 'warning' ? 1 : a.kind === 'fine' ? 2 : 3, Math.max(0, FINE_REASONS.indexOf(a.reason ?? 'none')));
+        return { key: '', mood: 'neutral' };
+      }
+      return interact(a.pid, a.kind, a.reason);
+    }
     case 'teamTalk': return teamTalk(a.kind);
     case 'matchTalk': { const ex = matchExpectation(a.fixture); return giveTalk({ stage: a.stage, fixture: a.fixture, e: ex.e, big: ex.big, diff: a.diff, ratings: a.ratings }, a.tone, a.pids, a.individual); }
     case 'sponsor': return chooseSponsor(a.kind);

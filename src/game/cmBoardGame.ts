@@ -38,6 +38,7 @@ import { msvcQsort } from './engine/grid/subs';
 import { registerPrerun } from './cmPrerun';
 import { personKey } from './cmRelations';
 import { cmClubEuro } from './cmFitnessGame';
+import { cmFineReset, cmFineSeasonHalve } from './cmFine';
 import { clubNewsToMe, cmForeign } from './cmNewsScope';
 
 const GBP = 0.86;
@@ -300,6 +301,7 @@ function setManagerGame(g: GameState, _env: BoardEnv, c: number, p: Person | nul
   if (old === -2) { if (p) tempManager.set(c, p); else tempManager.delete(c); return; }
   if (!p) {
     // afgang: manageren forlader klubben (0x69b790 → 0x690890)
+    cmFineReset(g, c);                                                  // 0x69b8f5: 0x5a5960 (Discipline Player-tælleren)
     const m = club.manager;
     if (m === -1) humanLeaves(g, c);
     else if (m > 0) { const s = g.staff[m]; if (s) { careerEnd(s, 'sacked'); s.club = 0; } }
@@ -642,7 +644,7 @@ export function cmBoardSeasonSetup(g: GameState): void {
   st.tab = {};
   for (const comp of Object.values(g.comps)) {
     if (comp.type !== 'league' || g.leagues[comp.id]?.hidden) continue;
-    for (const c of comp.clubs) setSeasonExpectations(env, st, c, true, rnd(g, dayNum(g.date), 0x68aa80, c));
+    for (const c of comp.clubs) { setSeasonExpectations(env, st, c, true, rnd(g, dayNum(g.date), 0x68aa80, c)); cmFineSeasonHalve(g, c); }   // 0x6a4472: 0x5a5930
   }
   syncHuman(g);
 }
