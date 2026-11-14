@@ -39,6 +39,59 @@ export function workPermitGranted(p: Player): boolean {
 /** CM 01/02: "Man Utd are not allowed to loan non-EU players." – britiske klubber må ikke leje spillere uden for EU/EØS */
 export const loanBlocked = (p: Player, club: Club) => needsWorkPermit(p, club);
 
+const ENGLAND = (g: { nations: { name: string }[] }, c?: Club) => !!c && g.nations[c.nation]?.name === 'England';
+const isoMonth = (iso: string) => Number(iso.slice(5, 7)) - 1;
+/** det seneste 20/6 (ENGLAND_RULES::daily_update 0x57a020 nulstiller sæsonens lejetal) */
+const lastJune20 = (iso: string) => { const y = Number(iso.slice(0, 4)); return iso.slice(5) >= '06-20' ? `${y}-06-20` : `${y - 1}-06-20`; };
+/** sidste torsdag i marts (vinduets slutning – ENGLAND_RULES 0x579b30: "a Thursday in late March", *estimeret* som den sidste) */
+const lastThursdayOfMarch = (y: number) => { const d = new Date(Date.UTC(y, 2, 31)); d.setUTCDate(31 - ((d.getUTCDay() + 3) % 7)); return d.toISOString().slice(0, 10); };
+
+// sæsonens og de nuværende lejeaftaler pr. klub – regnet én gang pr. dag (og talt op, når en leje gennemføres: noteLoan)
+let LC: { date: string; g: object; season: Map<number, number>; now: Map<number, number> } | null = null;
+function loanCounts(g: ReturnType<typeof gs>) {
+  if (LC && LC.date === g.date && LC.g === g) return LC;
+  const since = lastJune20(g.date), season = new Map<number, number>(), now = new Map<number, number>();
+  for (const q of Object.values(g.players)) {
+    if (q.loan) now.set(q.club, (now.get(q.club) ?? 0) + 1);
+    if (q.moves) for (const mv of q.moves) if (mv.loan && mv.date >= since) season.set(mv.to, (season.get(mv.to) ?? 0) + 1);
+  }
+  return (LC = { date: g.date, g, season, now });
+}
+/** en lejeaftale er gennemført i dag (record_loan 0x579fd0) – kaldes efter at spilleren er skiftet */
+export function noteLoan(buyer: number) { if (LC && LC.date === gs().date) { LC.season.set(buyer, (LC.season.get(buyer) ?? 0) + 1); LC.now.set(buyer, (LC.now.get(buyer) ?? 0) + 1); } }
+/** en lejeaftale er slut (spilleren tilbage) */
+export function noteLoanEnd(club: number) { if (LC && LC.date === gs().date) LC.now.set(club, Math.max(0, (LC.now.get(club) ?? 0) - 1)); }
+
+/** ENGLAND_RULES::can_loan_player 0x579d60 (TRANSFER_MANAGER::can_loan_player 0x8d0040 kalder køberlandets regler): en engelsk klub må ikke
+ *  leje fra en klub i samme liga, når ligaen er Premier League (0x9cf5bc), ikke mere end 5 lejeaftaler pr. sæson (+0x91c, talt af record_loan
+ *  0x579fd0, nulstillet 20/6), ikke have 2 lejede spillere (0x4cf6d0) i truppen, og kun inden for vinduet (0x8e8e50: start juni – sidste torsdag i
+ *  marts). Andre landes regler (TRANSFER_RULES +0x8ac) er ikke porteret. true = afvist. */
+export function englandLoanRefused(p: Player, buyer: Club): boolean {
+  const g = gs();
+  if (!ENGLAND(g, buyer)) return false;
+  const home = g.clubs[p.loan?.from ?? p.club];
+  if (!home) return false;
+  if (home.league === buyer.league && g.leagues[buyer.league]?.tier === 1) return true;
+  const L = loanCounts(g);
+  if ((L.season.get(buyer.id) ?? 0) >= 5 || (L.now.get(buyer.id) ?? 0) >= 2) return true;
+  const y = Number(g.date.slice(0, 4)), mo = isoMonth(g.date);
+  if (mo === 3 || mo === 4) return true;                                       // april–maj: uden for vinduet
+  return mo === 2 && g.date > lastThursdayOfMarch(y);
+}
+
+/** ENGLAND_RULES::get_loan_period 0x579c70: tre måneder fra næste måned; efter 19/6 for spillere under 24 (staff +0x18) TRANSFER_RULES' grundperiode
+ *  0x8e8bd0 (*estimeret*: sæsonen ud). Gælder en engelsk køber; ellers null. */
+export function englandLoanUntil(p: Player, buyer: Club): string | null {
+  const g = gs();
+  if (!ENGLAND(g, buyer)) return null;
+  const y = Number(g.date.slice(0, 4)), mo = isoMonth(g.date);
+  const age = y - Number(p.dob.slice(0, 4)) - (g.date.slice(5) < p.dob.slice(5) ? 1 : 0);
+  if (g.date.slice(5) > '06-19' && age < 24) return `${y + 1}-06-30`;
+  // start = næste måned, slut = start + 3 (måned 0..11): lejen løber til den sidste dag før slutmåneden
+  const end = new Date(Date.UTC(y, mo + 4, 0));
+  return end.toISOString().slice(0, 10);
+}
+
 /** Kan klubben hente ham (ingen tilladelse nødvendig, eller den gives)? */
 export const permitOk = (p: Player, club: Club) => !needsWorkPermit(p, club) || workPermitGranted(p);
 

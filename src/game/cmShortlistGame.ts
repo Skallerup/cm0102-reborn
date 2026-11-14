@@ -30,7 +30,7 @@ import { cmActive, cmRand, clubRepMem, nationRepMem } from './cmPlayerData';
 import { slCall } from './cmShortlist';
 import { playerValue_4d0c60, knowsNation_53d980, seenRep_5407e0, knowledge_5408c0 } from './cmValue';
 import { contractForClub_4cf5f0, expiryBand_867d30, setToDesiredContract_85fc50, hasActiveReleaseClause_867b50 } from './cmContractWant';
-import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0 } from './cmContract';
+import { addDays_54c5b0, subDays_54c8e0, listRemove_68d1f0, offerContract_4cda70 } from './cmContract';
 import { entryOf, storeEntry, fromRow } from './cmSquadPlanGame';
 import { newPlanEntry, type PlanEntry } from './cmSquadPlan';
 import { registerImpl, enter, QSORT_CMP, SHARED, PC_HOOK, stackBelow, type X86 } from './cmGen/x86';
@@ -40,7 +40,7 @@ import { ensureImpls } from './cmGen/impls';
 import { isHumanClub } from './humans';
 import { ageOn } from './dates';
 import { ATTRS } from './attributes';
-import { workPermitGranted, loanBlocked } from './rules2001';
+import { workPermitGranted, loanBlocked, englandLoanRefused, englandLoanUntil } from './rules2001';
 import { cmFitRead } from './cmFitnessGame';
 import { aiPickCtx, roleDataOf, playerRecord } from './engine/grid/aiTeam';
 import { planScore, type ManagerBlockIn } from './engine/grid/planScore';
@@ -874,7 +874,7 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
       case 0x8d0040: {
         // TRANSFER_MANAGER::can_loan_player (*estimeret*: rules2001.ts' lejeregel); 1 = må
         const cl = g.clubs[m.s32(a[a.length - 3] >>> 0)], p = S.byMem.get(m.s32(a[a.length - 2] >>> 0));
-        return p && cl && !loanBlocked(p, cl) ? 1 : 0;
+        return p && cl && !loanBlocked(p, cl) && !englandLoanRefused(p, cl) ? 1 : 0;
       }
       case 0x8ced40: return 1;
       case 0x8be300: {
@@ -901,11 +901,24 @@ export function buildSlMem(g: GameState, opts: { noStale?: boolean } = {}): SlMe
         let ey = cm >= 6 ? y + 1 : y, em = 5;
         const k = getContract(m, a[n - 5] >>> 0);
         if (k) { const ky = m.u16(k + 0x2f), km = mon(m.s16(k + 0x2d), ky); if (ky < ey || (ky === ey && km < em)) { ey = ky; em = km; } }
-        m.w8(a[n - 4] >>> 0, cm); m.w16(a[n - 3] >>> 0, y); m.w8(a[n - 2] >>> 0, em); m.w16(a[n - 1] >>> 0, ey);
+        let sm = cm, sy = y;
+        // engelsk køber: ENGLAND_RULES::get_loan_period 0x579c70 – tre måneder fra næste måned (efter 19/6 for spillere under 24: som før)
+        const bc = g.clubs[m.s32(a[n - 7] >>> 0)], lp = S.byMem.get(m.s32(a[n - 5] >>> 0));
+        if (bc && lp && englandLoanUntil(lp, bc)?.slice(5) !== '06-30') {
+          sm = cm + 1; if (sm > 11) { sm -= 12; sy++; }
+          em = sm + 3; ey = sy; if (em > 11) { em -= 12; ey++; }
+        }
+        m.w8(a[n - 4] >>> 0, sm); m.w16(a[n - 3] >>> 0, sy); m.w8(a[n - 2] >>> 0, em); m.w16(a[n - 1] >>> 0, ey);
         return 0;
       }
       // CONTRACT_MANAGER::offer_contract – sælgerens forsøg på at binde spilleren, når et bud kommer (0x84a99e): ikke i spillet (*estimeret*)
-      case 0x4cda70: return 0;
+      // build_bid 0x8e5d60 → 0x4cda70 for en klubløs (0x8e6423: ud-kontrakten ≠ 0, faktor 1,0, måde 2): klubbens kontrakttilbud (cmContract.ts) –
+      // før 0 her, så 0x8e5d60 opgav alle klubløse (0 skrevet under på en sæson; originalen 45)
+      case 0x4cda70: {
+        if (!(a[3] >>> 0)) return 0;
+        const dv = new DataView(new ArrayBuffer(8)); dv.setInt32(0, a[5] | 0, true); dv.setInt32(4, a[6] | 0, true);
+        return offerContract_4cda70(S.M.c, a[0] >>> 0, a[1] >>> 0, a[2] >>> 0, a[3] >>> 0, a[4] | 0, dv.getFloat64(0, true), a[7] | 0);
+      }
       case 0x85fc50: return setToDesiredContract_85fc50(S.M.c, a[0] >>> 0, a[1] >>> 0, a[2] >>> 0, a[3], a[4], a[5], a[6], a[7] >>> 0);
       case 0x68d1f0: return listRemove_68d1f0(m, a[0] >>> 0, a[1] >>> 0);
       case 0x66f4e0: case 0x4d9460: case 0x58d710:

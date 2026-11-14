@@ -3,7 +3,7 @@ import { cmActive, cmRand, setRequestHooks } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
-import { isOriginal2001, loanBlocked, permitOk } from './rules2001';
+import { englandLoanUntil, isOriginal2001, loanBlocked, noteLoan, permitOk } from './rules2001';
 import { A, naturalRole } from './attributes';
 import { addDays, ageOn, daysBetween, month, year } from './dates';
 import { makePlayer, randomDob, randomName, roundValue, wageFor } from './data/generate';
@@ -665,7 +665,10 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   const seller = o.seller ? g.clubs[o.seller] : undefined;
   if (!p || !buyer) return;
   if (o.loan) {
-    p.loan = { from: p.club, until: `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
+    // ægte tilstand, computer → computer: køberlandets lejeperiode (England: ENGLAND_RULES::get_loan_period 0x579c70 – rules2001.ts)
+    const cmUntil = cmShortlistOn(g) && !isHumanClub(buyer.id) && !isHumanClub(p.club) ? englandLoanUntil(p, buyer) : null;
+    p.loan = { from: p.club, until: cmUntil ?? `${year(g.date) + (month(g.date) >= 7 ? 1 : 0)}-06-30`, ...(o.option ? { option: o.option } : {}) };
+    if (cmShortlistOn(g)) noteLoan(buyer.id);
   } else {
     const cm = cmActive(g) && !!seller;
     // en tidligere klub kan have krav på en del af fortjenesten (CM 01/02 0x8cb0f0: procent af hele summen + bytte-spillernes værdi, ≥ £1000)

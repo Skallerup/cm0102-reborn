@@ -6,7 +6,7 @@ import { cmRegenWage } from './cmWageGame';
 import { splitReserves } from './reserves';
 import { storeSeasonRecords } from './clubHistory';
 import { storeCompRecords } from './compHistory';
-import { boardEventsSeason, isOriginal2001 } from './rules2001';
+import { boardEventsSeason, isOriginal2001, noteLoanEnd } from './rules2001';
 import { recordsAfterMove, recordsSeasonEnd, retireIntoStaff } from './records';
 import { achievementsSeasonEnd, unlock } from './achievements';
 import { storyAdd, storySeasonEnd } from './story';
@@ -170,18 +170,31 @@ function promotionRelegation() {
   }
 }
 
+function endLoanIfDue(p: Player, today: string) {
+  const g = gs();
+  if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
+    // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
+    const loanClub = p.club, from = p.loan.from;
+    for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
+    setClub(p, p.loan.from);
+    p.loan = null;
+    noteLoanEnd(loanClub);
+  }
+}
+
+/** (den originale database i ægte tilstand) lejeaftaler med en slutdato i sæsonen (England: tre måneder – rules2001.ts englandLoanUntil) slutter
+ *  dagen efter (originalen: TRANSFER_MANAGER's art 4 "lejen slut") */
+export function endDueLoansDaily() {
+  const g = gs();
+  for (const p of Object.values(g.players)) if (p.loan && p.loan.until < g.date && p.loan.until.slice(5) !== '06-30') endLoanIfDue(p, g.date);
+}
+
 function contractsAndLoans() {
   const g = gs();
   const today = g.date; // 1. juli
   const cmOn = cmCmOn(g);
   for (const p of Object.values(g.players)) {
-    if (p.loan && p.loan.until < today && !exerciseLoanOption(p)) {
-      // CM 01/02: "[person]'s loan finishes" – til begge klubbers managere
-      const loanClub = p.club, from = p.loan.from;
-      for (const c of [from, loanClub]) asOwner(c, () => addNews({ cat: 'transfer', key: 'transfer.loanEnded', params: { player: `${p.first} ${p.last}`.trim(), club: g.clubs[loanClub]?.name ?? '', from: g.clubs[from]?.name ?? '' }, link: { kind: 'player', id: p.id } }));
-      setClub(p, p.loan.from);
-      p.loan = null;
-    }
+    endLoanIfDue(p, today);
     // den originale database i ægte tilstand: computerklubbernes udløb styres af CONTRACT_MANAGER 0x4c7ac0 (cmContractManager.ts – spilleren bliver
     // med den udløbne kontrakt, til han vil væk eller er sat fri)
     if (p.contract && p.contract.expires < today && !(cmOn && cmCmScope(g, p))) {

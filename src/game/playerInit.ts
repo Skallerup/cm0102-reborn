@@ -50,6 +50,21 @@ export function initialisePA(paDb: number, ca: number, age: number, clubLevel: n
   return reroll();
 }
 
+/** CA mangler (0x536c72; reserveposterne 0x52638a har CA 0): clubLevel = klubbens omdømmebyte (uden klub rand(2) + 1) */
+export function missingCA(pa: number, age: number, clubLevel: number, rand: Rand): number {
+  const peak = 20 + rand(10);
+  const r = Math.max(5, rand(pa));
+  const e = rand(trunc(((pa >> 2) * r) / 100));
+  const k = e + 2 * trunc((10000 - clubLevel) / 100) + 3;
+  let ca = Math.min(200, Math.max(1, pa - trunc((k * Math.max(3, Math.abs(peak - age))) / 5)));
+  if (ca === 1 && rand(10) !== 0) ca = rand(trunc(pa / 5)) + 1;
+  return ca;
+}
+
+/** uden klub og (0 landskampe eller over 32 år): CA += rand(6)·trunc(−0,1·CA) (0x536e19) */
+export const freeAgentCA = (ca: number, caps: number, age: number, rand: Rand): number =>
+  caps === 0 || age > 32 ? Math.min(200, Math.max(1, ca + rand(6) * trunc(-0.1 * ca))) : ca;
+
 /** CA over PA (0x536e5d) */
 export const capCA = (ca: number, pa: number, rand: Rand): number => {
   if (ca <= pa) return ca;

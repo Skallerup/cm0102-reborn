@@ -2,7 +2,7 @@
 import { cmLeagueRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { CLUB_INFO_2026 } from './data/clubInfo2026';
-import { capCA, fillMissing, initialisePA, makePool, makeRand, repairPositions, shownFromStored } from './playerInit';
+import { capCA, fillMissing, freeAgentCA, initialisePA, makePool, makeRand, missingCA, repairPositions, shownFromStored } from './playerInit';
 import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
@@ -10,7 +10,7 @@ import { naturalRole } from './attributes';
 import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupUefaCup } from './competitions';
 import { ageOn } from './dates';
 import {
-  caFromValue, makePlayer, makeStaff, randomDob, randomName, valueFromCA, wageFor, type SubPos,
+  caFromValue, defaultTraining, makePlayer, makeStaff, randomDob, randomName, SUB_ROLE, valueFromCA, wageFor, type SubPos,
 } from './data/generate';
 import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { rulesFor, LEAGUE_RULES } from './leagues';
@@ -22,7 +22,7 @@ import { initReleaseClauses } from './clauses';
 import { refreshShortlists, windowLastDay, windowOpen } from './transfers';
 import { autoSelect, newTactic, FORMATIONS } from './tactics';
 import type { Club, GameState, Lang, Player, Role, Staff, StaffRole } from './types';
-import type { CMWorld } from './data/cm0102';
+import { subPos, type CMWorld } from './data/cm0102';
 import { setBoardExpectation } from './board';
 import { appointBody, cmBoardHumanAppoint, cmBoardInit, cmBoardOn, cmInitStaffRep } from './cmBoardGame';
 import { fairTicketPrice, transferBudgetFor } from './finance';
@@ -207,9 +207,20 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   const cmStartGame = !!cm && season < 2020 && o.mode === 'authentic';
   const initRng = new Rng(1);
   let initPool: ReturnType<typeof makePool> | undefined;
-  for (const r of world.players) {
+  // (den originale database i ægte tilstand) 0x524d70's reserveposter 0x52638a: trunc(2 % af de beholdte personer) klubløse, født 1982, med
+  // nationaliteten fra en tilfældig beholdt person, CA 0, alle egenskaber 0 og PA −2 (1/100), −1 (1/50) eller 0 – sub_535a80 udfylder dem som de
+  // andre (databasestørrelse 2 som oraklet; CMTrim). Navnene er spillets egne pr. land (originalen: 0x539c60's lister – *estimeret*)
+  const extraRt: Record<number, CMWorld['ratings'][number]> = {};
+  const rows = cmStartGame && cm?.cmTrim ? [...world.players, ...reserveRows(cm, o.activeNations, names, seed, F, world.playerFields.length, extraRt)] : world.players;
+  const rtOf = (id: number) => cm?.ratings[id] ?? extraRt[id];
+  for (const r of rows) {
     const club = r[F.club] as number;
     if (club && !g.clubs[club]) continue;
+    // de klubløse (CMRatings.tf): i ægte tilstand dem, originalens 0x524d70 beholder for de valgte lande; ellers som før kun CA 120+
+    const tf = club ? undefined : rtOf(r[F.id] as number)?.tf;
+    if (tf !== undefined) {
+      if (cmStartGame ? tf === 0 || (Array.isArray(tf) && !tf.some((n) => o.activeNations.includes(n))) : rtOf(r[F.id] as number)!.ca < 120) continue;
+    }
     const dob = r[F.dob] as string;
     const age = ageOn(dob, date);
     const value = r[F.value] as number;
@@ -218,27 +229,32 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const p = makePlayer({
       id: r[F.id] as number, first: r[F.first] as string, last: r[F.last] as string, dob, nation: r[F.nation] as number,
       club, sub: r[F.pos] as SubPos, foot: r[F.foot] as Player['foot'], height: r[F.height] as number,
-      ca: cm?.ratings[r[F.id] as number]?.ca ?? caFromValue(value, age), value, caps: r[F.caps] as number, intGoals: r[F.intGoals] as number,
+      ca: rtOf(r[F.id] as number)?.ca ?? caFromValue(value, age), value, caps: r[F.caps] as number, intGoals: r[F.intGoals] as number,
       stats: { apps: r[F.apps] as number, minutes: r[F.minutes] as number, goals: r[F.goals] as number, assists: r[F.assists] as number, yellows: r[F.yellows] as number, reds: r[F.reds] as number },
       // originalens startkontrakt 0x4c7560: databasens dato som den er (trukket, hvis den mangler; +52 uger, hvis for tidlig) – cmContractEnd.ts
       contractEnd: club && cm && cmStartGame ? cmContractEnd((r[F.contract] as string) || '', date, g.nations[g.leagues[g.clubs[club].league]?.nation]?.name, seed, r[F.id] as number)
         : (r[F.contract] as string) || undefined, date, seed, wealth,
     });
     // CM 01/02: originalens evner, potentiale og positioner
-    const rt = cm?.ratings[p.id];
+    const rt = rtOf(p.id);
     if (rt) {
       // originalens "Player Initialisation" (playerInit.ts, sub_535a80): PA-reglerne (−2/−1, manglende PA og de tilfældige
       // omslag i hvert nyt spil), CA over PA, og manglende egenskaber kopieret fra en lignende skabelonspiller
       const rand = makeRand(() => initRng.next());
       initRng.state = hash(seed, p.id, 91) || 1;
-      const pa = initialisePA(rt.paRaw ?? rt.pa, rt.ca, age, club ? rand(4) + 1 : rand(2) + 1, rand);
-      const ca = capCA(rt.ca, pa, rand);
+      const clubLevel = club ? rand(4) + 1 : rand(2) + 1;
+      const pa = initialisePA(rt.paRaw ?? rt.pa, rt.ca, age, clubLevel, rand);
+      // ægte tilstand: CA mangler (0x536c72 – reserveposterne) og klubløses CA (0x536e19) før CA over PA
+      let ca0 = rt.ca;
+      if (cmStartGame && ca0 < 1) ca0 = missingCA(pa, age, clubLevel, rand);
+      if (cmStartGame && !club) ca0 = freeAgentCA(ca0, p.caps, age, rand);
+      const ca = capCA(ca0, pa, rand);
       const stored = cm!.attrScale === 'stored';
       // positioner (sub_535a80 0x536f01): reparation, tabellen rand(182) og siderne – [GK SW D DM M AM F WB R L C]
       const pos11 = [...rt.pos, rt.side[2], rt.side[0], rt.side[1]];
       if (stored) repairPositions(pos11, rand);
       const rec = { ca, pos: pos11.slice(0, 8), side: [pos11[9], pos11[10], pos11[8]], attrs: rt.attrs.slice(), stored };
-      fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings).map((x) => ({ ...x, stored }))), rand);
+      fillMissing(rec, age, initPool ??= makePool(Object.values(cm!.ratings).filter((x) => x.tf === undefined || x.tf === 0 || x.ca >= 120).map((x) => ({ ...x, stored }))), rand);
       if (rt.rep) p.cmRep = rt.rep;
       // sub_535a80 0x536270–0x536ec6: manglende omdømme udfyldes (egen talrække – spillets rng røres ikke) og Free Role (+0x1a)
       if (cm!.cmRaw && season < 2020) {
@@ -266,6 +282,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
       }
       // de få, originalen heller ikke udfylder her (adaptability, ambition, loyalitet …), beholder den genererede værdi
       p.ca = ca; p.pa = pa; p.attrs = attrs.map((v, i) => (v > 0 ? v : p.attrs[i])); p.pos = rec.pos.slice(); p.side = rec.side.slice();
+      if (extraRt[p.id]) p.training = defaultTraining(SUB_ROLE[subPos(p.pos, p.side) as SubPos]);
     }
     // den originale database: originalens egen værdiformel (evne, alder, klubbens omdømme, løn og liga – originalValue.ts)
     if (!value) {
@@ -776,3 +793,33 @@ function clampInt(v: number, lo: number, hi: number) {
 }
 
 export type { Staff };
+
+/** 0x52638a's reserveposter som world-rækker (se createGame) – id 8.900.000 + i */
+function reserveRows(cm: CMWorld, active: number[], names: Record<number, [string[], string[]]>, seed: number, F: Record<string, number>, nf: number,
+  out: Record<number, CMWorld['ratings'][number]>): WorldData['players'] {
+  const T = cm.cmTrim!;
+  const sel = active.filter((n) => T.kn[n] !== undefined);
+  const K = T.k0 + sel.reduce((s, n) => s + T.kn[n], 0);
+  const n = Math.trunc(K * 0.02);
+  const nat0 = Object.entries(T.nat0).map(([k, v]) => [Number(k), v] as const);
+  const rr = new Rng(hash(seed, 52638) || 1);
+  const rows: WorldData['players'] = [];
+  const nAttr = Object.values(cm.ratings)[0]?.attrs.length ?? 0;
+  for (let i = 0; i < n; i++) {
+    // nationaliteten fra en tilfældig beholdt person (0x526402): de ekstra for et valgt land regnes som landets egne (*estimeret*)
+    let x = rr.int(0, Math.max(0, K - 1)), nation = -1;
+    for (const s of sel) { if (x < T.kn[s]) { nation = s; break; } x -= T.kn[s]; }
+    if (nation < 0) for (const [s, v] of nat0) { if (x < v) { nation = s; break; } x -= v; }
+    if (nation < 0) nation = sel[0] ?? active[0] ?? 0;
+    const id = 8_900_000 + i;
+    const [first, last] = randomName(names, nation, rr);
+    const row: (string | number)[] = new Array(nf).fill(0);
+    row[F.id] = id; row[F.first] = first; row[F.last] = last; row[F.nation] = nation; row[F.club] = 0; row[F.pos] = 'CM'; row[F.foot] = 'R';
+    row[F.dob] = new Date(Date.UTC(1982, 0, 1 + rr.int(0, 364))).toISOString().slice(0, 10);
+    if (F.contract !== undefined) row[F.contract] = '';
+    rows.push(row);
+    const paRaw = rr.int(0, 99) === 0 ? -2 : rr.int(0, 49) === 0 ? -1 : 0;
+    out[id] = { ca: 0, pa: 1, paRaw, attrs: new Array(nAttr).fill(0), pos: [1, 1, 1, 1, 1, 1, 1, 1], side: [1, 1, 1], rep: [0, 0, 0], feet: [0, 0], tf: 1 };
+  }
+  return rows;
+}

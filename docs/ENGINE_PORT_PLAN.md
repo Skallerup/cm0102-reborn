@@ -199,6 +199,23 @@ Målet er en så præcis motor som muligt. Baggrund: `ORIGINAL-ENGINE-RESEARCH.m
   klubløse i databasen, formentlig spillere i klubber, indlæsningen/trimningen 0x524d70 ikke beholder). Spillet har dem ikke, fordi parseren
   (cm0102.ts `if (!club && ca < 120) continue`) dropper klubløse under CA 120. Databasen har 16.495 klubløse (1.448 engelske) – originalen beholder
   kun ~277, så reglen i 0x524d70 for klubløse og for klubber uden for de indlæste skal læses, før world-filerne bygges om.
+- **Runde 8 (14/11, stadig slået fra): de klubløse og lejereglerne.** Oraklet kører med databasestørrelse 2 (game.cfg +4 & 7 = 2 – ejerens er 4,
+  Maximum); 0x524d70 med [esp+0x17] = 1: klubløs med valgt nationalitet → rand(20) = 0, ellers kun de faste regler (Collin Samuel/Devon Mitchell,
+  landstræner, CA/omdømme ≥ 150) og halen 0x525878–0x5259c5 (med [ebp]-fejlen: personen på pladsen "beholdt indtil nu"). Porteret i parseren
+  (`trim2` i cm0102.ts, rand som fast hash – *estimeret*): England valgt → 8.391 beholdt (originalen 8.729), 90 + 35 klubløse (63 + 28).
+  `CMRatings.tf` (1 / [nation] / 0 = spillets gamle CA 120+-regel, ikke i ægte tilstand), `CMWorld.cmTrim` (k0, kn, nat0). De ~180 "født 1982"
+  er 0x52638a's reserveposter: trunc(2 % af de beholdte), nationaliteten fra en tilfældig beholdt person, CA 0/egenskaber 0, PA −2/−1/0 →
+  newgame.ts `reserveRows` + sub_535a80's CA-mangler 0x536c72 (`missingCA`) og klubløses CA-fradrag 0x536e19 (`freeAgentCA`, kun ægte tilstand).
+  Ny spil (England, Arsenal): 278 klubløse (originalen 277), 52 klubløse mål i ønskelisterne ved start (originalen 52). world-original.json
+  17.858.773 → 18.159.675 bytes (+894 spillere; ellers byte for byte de samme poster). Årsagen til 0 klubløse skrevet under: adapteren 0x4cda70
+  gav altid 0, så build_bid 0x8e5d60 opgav alle klubløse – nu `offerContract_4cda70` (cmContract.ts) når ud-kontrakten ≠ 0.
+  **Lejebuddene:** 1/2-2002 havde originalen 41 lejede spillere i pladserne (bb nulstillet), vi 135 – vores leje løb til juni uden grænser. Porteret
+  ENGLAND_RULES (Bosmans function-map england_rules.cpp): can_loan_player 0x579d60 (ikke inden for Premier League, højst 5 pr. sæson fra 20/6,
+  højst 2 ad gangen, vinduet juni – sidste torsdag i marts) i 0x8d0040-adapteren, get_loan_period 0x579c70 (tre måneder fra næste måned; efter
+  19/6 for under 24 år: sæsonen ud, *estimeret*) i 0x8d0590 og spillets `Loan.until`, og daglig afslutning (`endDueLoansDaily`) – kun med SL_ON.
+  **Sæson** (`CM_SL=1 scripts/ct-season-game.ts`): køb 465 (432, +8 %), klubløse 30 (45), lejeaftaler 152 (~116, +31 %). Hastighed: 582 ms pr. dag
+  over 150 dage – men origin/staging gav 664 ms pr. 60 dage på samme (belastede) maskine, så ændringerne koster ikke målbart; ≤ 300 ms er ikke
+  nået (dropDeadBids → 0x843e10 → 0x83f3a0 ~210 ms, 0x84a020 ~150 ms, hukommelsen ~100 ms pr. dag). Derfor stadig slået fra.
 - **Formændene** (koblet ind): sub_535a80's personlige egenskaber 0x535ea4– for alle personer – uden for 1..20: −1 → rand(16)+5, ellers to terninger:
   Ambition snittet, Loyalty den mindste (`cmStaffInit.ts personalFill_535a80`, cmFinance.ts' og cmBoardGame.ts' formand). Ønskelønnen
   (`scripts/cm-want-game.ts`): ens 1.142 → 1.148, inden for 2 % 1.470 → 1.483, inden for 10 % 1.852 → 1.848, 10/50/90 % 0,59/1,00/1,42 → 0,60/1,00/1,42.
