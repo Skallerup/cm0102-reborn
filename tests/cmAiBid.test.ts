@@ -37,6 +37,8 @@ describe('computerens bud: build_bid 0x8e5d60 (3.9.60, ægte tilstand)', { timeo
 
   it('et bud på menneskets spiller kommer fra build_bid (beløbet er ikke længere værdien) og kan bære vilkårene', () => {
     const g = gs();
+    // kun klubber i de valgte lande byder (ejerens fund 16/11) – Man Utds spillere er for dyre til de fleste engelske klubber, så vælg de store lande med
+    g.activeNations = [...new Set([...g.activeNations, ...['Spain', 'Italy', 'Germany', 'France'].map((n) => world.nations.findIndex((x) => x.name === n)).filter((i) => i >= 0)])];
     for (const p of squad(mu)) { p.listed = true; p.listPrice = p.value; }
     const seen: { fee: number; maxFee?: number; months?: number; sellOn?: number; lgFee?: number; intFee?: number }[] = [];
     for (let d = 0; d < 120 && seen.length < 3; d++) {
