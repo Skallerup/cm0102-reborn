@@ -1165,6 +1165,8 @@ export interface GameState {
   cmBoard?: import('./cmBoard').CmBoardState;
   /** Fine-objektet [0xae2a3c] (Discipline Player – cmFine.ts): posterne, trænerens rapporter og tælleren pr. klub */
   cmFine?: import('./cmFine').CmFineState;
+  /** CM 01/02's transferrygter (mediets kø [0xb6b7c8]+0xc – cmRumours.ts, kun den originale database i ægte tilstand) */
+  cmRum?: import('./cmRumours').CmRumState;
   /** CM 01/02's karantæner (discipline.cpp/RulingBody) og appeller – cmDiscipline.ts (kun den originale database i ægte tilstand) */
   cmDisc?: import('./cmDiscipline').CmDiscState;
   /** CM 01/02's priser (cmAwards.ts – original DB i ægte tilstand): månedens karakterer, Comp_Stats, managernes point og vinderne */

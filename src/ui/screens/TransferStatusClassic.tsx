@@ -112,6 +112,31 @@ export function TransferRequestPanel({ news, onClose }: { news: NewsItem; onClos
   );
 }
 
+/** CM 01/02 "Select Media Response" (0x7423c0, Ok 0x742de0): Respond på et rygte om egen spiller (cmRumours.ts) – Deny rumour / Confirm rumour /
+ *  No Comment (0x735160 type 0x1f), No Comment valgt fra start; Cancel/Ok */
+export function MediaResponsePanel({ news, onClose }: { news: NewsItem; onClose: () => void }) {
+  const g = useGame()!;
+  useClassicDialog();
+  const [ans, setAns] = useState(3);
+  const p = g.players[Number(news.params.pid)];
+  if (!p) return null;
+  const player = `${p.first} ${p.last}`.trim();
+  return (
+    <div className="cx-tstatus cx-media">
+      <div className="cx-subtitle">{t('cm.rum.sel.title')}</div>
+      <div className="cx-ts-body">
+        <p className="cx-ts-intro">{t('cm.rum.sel.text', { player })}</p>
+        <p className="cx-ts-intro">{t('cm.rum.sel.ask')}</p>
+        {[1, 2, 3].map((k) => <button key={k} className={`cx-opt cx-media-opt ${ans === k ? 'sel' : ''}`} style={{ display: 'block' }} onClick={() => setAns(k)}>{t(`cm.rum.sel.${k}`)}</button>)}
+      </div>
+      <ClassicFoot cols="1fr 1fr" className="cx-bid-answer cx-media-answer">
+        <button onClick={onClose}>{t('common.cancel')}</button>
+        <button className="primary" onClick={() => { act({ t: 'cmRumour', news: news.id, answer: ans }); onClose(); }}>{t('common.ok')}</button>
+      </ClassicFoot>
+    </div>
+  );
+}
+
 function OwnTransferStatusPanel({ p, onClose }: { p: Player; onClose: () => void }) {
   const g = useGame()!;
   useClassicDialog();

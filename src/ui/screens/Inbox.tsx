@@ -29,7 +29,8 @@ import type { NewsCategory, NewsItem } from '../../game/types';
 import { isRetro } from '../theme';
 import { Tabs } from '../components';
 import { ClassicSub, cxShortDate } from '../classic';
-import { IncomingBidPanel, JobOfferPanel, TransferRequestPanel } from './TransferStatusClassic';
+import { IncomingBidPanel, JobOfferPanel, MediaResponsePanel, TransferRequestPanel } from './TransferStatusClassic';
+import { cmRumourOpen } from '../../game/cmRumours';
 import { requestOpen } from '../../game/cmTransferList';
 import { cmConfirmOpen, cmConfirmScreen, cmTalksOpen } from '../../game/cmTransferTalks';
 import { cmAppealAsk, cmAppealOpen } from '../../game/cmDiscipline';
@@ -70,6 +71,7 @@ export function Inbox() {
   const [sqnOpen, setSqnOpen] = useState(false);
   const [eurOpen, setEurOpen] = useState(false);
   const [reqOpen, setReqOpen] = useState(false);
+  const [rumOpen, setRumOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState<number | null>(null);
   const [talkOpen, setTalkOpen] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState<number | null>(null);
@@ -149,6 +151,8 @@ export function Inbox() {
     // European Squad (CM 01/02): Respond på "… to register players for next phase"
     if (eurOpen && euroDue(g.userClub)) return <div><Head title={t('eur.titleClub', { club: g.clubs[g.userClub]?.short ?? '' })} /><ClassicEuroSquad onClose={() => setEurOpen(false)} /></div>;
     // CM 01/02: Respond på "X requests move" (0x4dca40) åbner Transfer Request
+    // CM 01/02: Respond på "X rumour" (0xfbc) åbner Select Media Response (0x7423c0)
+    if (rumOpen && item && cmRumourOpen(g, item)) return <div><Head title={g.manager.name} /><MediaResponsePanel news={item} onClose={() => setRumOpen(false)} /></div>;
     if (reqOpen && item && requestOpen(g, item)) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><TransferRequestPanel news={item} onClose={() => setReqOpen(false)} /></div>;
     if (cmConfirmOpen(g, confirmLive)) {
       const sc = cmConfirmScreen(g, confirmLive);
@@ -184,6 +188,7 @@ export function Inbox() {
           {item && friendlyProposalOpen(g, item) && <button className="cx-grey cx-respond cx-fr-respond" onClick={() => void friendlyAnswer(g, item)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'sqn.request' && squadNumbersDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setSqnOpen(true)}>{t('cl.bid.respond')}</button>}
           {item?.key === 'eur.request' && euroDue(g.userClub) && <button className="cx-grey cx-respond" onClick={() => setEurOpen(true)}>{t('cl.bid.respond')}</button>}
+          {cmRumourOpen(g, item) && <button className="cx-grey cx-respond cx-rum-respond" onClick={() => setRumOpen(true)}>{t('cl.bid.respond')}</button>}
           {requestOpen(g, item) && <button className="cx-grey cx-respond cx-req-respond" onClick={() => setReqOpen(true)}>{t('cl.bid.respond')}</button>}
           {jobOffer !== undefined && <button className="cx-grey cx-respond" onClick={() => setJobOpen(jobOffer)}>{t('cl.bid.respond')}</button>}
           {/* CM 01/02 (0xa6943c): "X rejects Y" har knappen Negotiate – kontrakttilbuddet igen (stab: cmStaff.ts, egne spillere: forlængelsen) */}

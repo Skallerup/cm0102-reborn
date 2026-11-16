@@ -11,6 +11,7 @@ import { cmFineDaily } from './cmFine';
 import { cmBanPreMatch, cmDiscAfterMatch, cmDiscDaily } from './cmDiscipline';
 import { cmAwardsAfterMatch, cmAwardsDaily, cmAwOn } from './cmAwards';
 import { cmRecordsDaily } from './cmMedia';
+import { cmRumoursDaily } from './cmRumours';
 import { cmTrainSquads } from './cmTraining';
 import { recordAiTactics } from './engine/grid/aiTeam';
 import { promoteIfShort } from './reserves';
@@ -685,6 +686,8 @@ function newDay() {
   aiPursuits();
   if (weekday(d) === 4 && extended()) forEachHuman(aiLoanOptions);
   aiTransferTick();
+  // mediets daglige rygter 0x754a30 (0x5cdd8f): dagens nye bud → køen, rygterne og computerens svar (cmRumours.ts)
+  cmRumoursDaily(g);
   forEachHuman(scoutDaily);
   if (day(d) % 3 === 0 && !cmBoardOn(g)) fillVacancies();
   if (weekday(d) === 1) {

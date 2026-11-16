@@ -580,7 +580,12 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     else addNews({ cat: 'general', key: 'news.managerHired', params: { club: club.short, manager: o.managerName }, link: { kind: 'club', id: club.id } });
     for (const b of board) g.news.unshift(b);
     const lg = g.leagues[club.league];
-    if (lg) addNews({ cat: 'match', key: 'comp.fixturesOut', params: { season: `${season}/${String(season + 1).slice(2)}`, comp: lg.name }, link: { kind: 'comp', id: club.league } });
+    // 0x77bc80 type 0xd: brødteksten med klubbens tre første ligakampe (modstander, hjemme/ude, dato) – pladserne 3–14
+    const first3 = Object.values(g.fixtures).filter((f) => f.comp === club.league && (f.home === club.id || f.away === club.id))
+      .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id).slice(0, 3);
+    const games: Record<string, number | string> = { club: club.short };
+    if (first3.length === 3) first3.forEach((f, i) => { games[`o${i + 1}`] = f.home === club.id ? f.away : f.home; games[`h${i + 1}`] = f.home === club.id ? 1 : 0; games[`fd${i + 1}`] = f.date; });
+    if (lg) addNews({ cat: 'match', key: 'comp.fixturesOut', params: { season: `${season}/${String(season + 1).slice(2)}`, comp: lg.name, ...games }, link: { kind: 'comp', id: club.league } });
   }
   rebuildIndexes();
   progress('done', 0.98);

@@ -30,6 +30,18 @@ function memFor(g: GameState): SlMem {
   return S;
 }
 
+/** Shortlist_Manager 0x846920(staff, klub, 1, 0, 1, NULL) på dagens hukommelse – spillerens vilje til at skifte (rygternes variant 0x24,
+ *  cmRumours.ts); −1, når han ikke er i hukommelsen. Trækker ingen tilfældige tal i spillet. */
+export function cmDayWill(g: GameState, p: Player, clubId: number): number {
+  try {
+    const S = memFor(g), M = S.M, m = M.c.m;
+    const st = M.W.staffOf(p), club = M.W.clubOf(clubId);
+    if (!st || !club) return -1;
+    M.setRand(cmRand(g.seed ?? 0, p.id, clubId, dayNum(g.date), 0x846920));
+    return slCall(M.c, 0x846920, m.u32(m.u32(0xde1f54) + 0x856), st, club, 1, 0, 1, 0);
+  } catch { return -1; }
+}
+
 /** build_bid(køber, spiller, værdisætning M i £) – null, hvis originalens funktion ikke vil byde (returnerer 0) */
 export function cmBuildBid(g: GameState, p: Player, buyer: number, maxGbp: number): AiBidTerms | null {
   const home = p.loan?.from ?? p.club;

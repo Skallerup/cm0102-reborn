@@ -1301,6 +1301,36 @@ async function run(look) {
     if (!(req & 8)) throw new Error('spilleren er ikke listet efter eget ønske');
     await gs((ids) => { const g = window.__cm.gs(); for (const id of ids) { const p = g.players[id]; p.listed = false; p.wantsAway = undefined; p.squadStatus = undefined; p.cmAsk = undefined; if (p.cmContract) { p.cmContract.b4e = 0; p.cmContract.b45 = 0; } } g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify(); }, [pid, p2]);
   });
+  // CM 01/02's rygte om egen spiller (cmRumours.ts, nyheden 0xfbc – ejerens billeder 138–139): Respond → Select Media Response → Deny rumour → Ok,
+  // svaret står under nyheden; og kampprogrammets brødtekst (0x77bc80 type 0xd, billede 137)
+  if (look === 'klassisk' && ENGINE_GRID) await step('rygte: Select Media Response (original)', async () => {
+    await gs(() => {
+      const g = window.__cm.gs();
+      window.__e2eMode = g.options.mode; g.options.mode = 'authentic';
+      const p = Object.values(g.players).filter((x) => x.club === g.userClub && !x.loan && !x.listed).sort((a, b) => b.ca - a.ca)[5];
+      const buyer = Object.values(g.clubs).find((c) => c.id !== g.userClub && c.nation !== g.clubs[g.userClub].nation && !g.leagues[c.league]?.hidden);
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'transfer', key: 'cm.rum', read: false, link: { kind: 'player', id: p.id },
+        params: { player: `${p.first} ${p.last}`.trim(), pid: p.id, cur: g.userClub, clubs: String(buyer.id), n: 1, v: 1, amt: 1_400_000, ai: 0, listed: 0, mn: -1, h: 'rumour', ptype: 'CM', own: 1, local: 1 } });
+      window.__cm.notify();
+    });
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow', { hasText: ' rumour' }).first().click();
+    const body = await page.locator('.cx-nbody').textContent({ timeout: 5000 });
+    if (!body.includes('Newspaper reports are suggesting that') || !body.includes('may be on the verge of signing')) throw new Error(`rygtets tekst: ${body}`);
+    await page.locator('.cx-nbar .cx-rum-respond').click({ timeout: 5000 });
+    await page.waitForSelector('.cx-media-answer', { timeout: 5000 });
+    const scr = await page.locator('.cx-media').innerText();
+    if (!scr.includes('Select Media Response') || !scr.includes('may be leaving the club in the near future') || !scr.includes('Deny rumour') || !scr.includes('No Comment')) throw new Error(`Select Media Response: ${scr}`);
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-mediesvar-original.png` });
+    await page.locator('.cx-media-opt', { hasText: 'Deny rumour' }).click();
+    await page.locator('.cx-media-answer button.primary').click();
+    await page.waitForSelector('.cx-inbox', { timeout: 5000 });
+    if (!(await page.locator('.cx-nbody').textContent({ timeout: 5000 })).includes('You have circulated a press release')) throw new Error('svaret står ikke under rygtet');
+    if (await page.locator('.cx-nbar .cx-rum-respond').count()) throw new Error('Respond står der stadig efter svaret');
+    const fx = await gs(() => { const n = window.__cm.gs().news.find((x) => x.key === 'comp.fixturesOut'); return n ? n.params.o1 !== undefined : null; });
+    if (fx === false) throw new Error('kampprogrammet har ikke de tre første kampe');
+    await gs(() => { const g = window.__cm.gs(); g.options.mode = window.__e2eMode ?? g.options.mode; window.__cm.notify(); });
+  });
   // CM 01/02's Discipline Player med den originale database (cmFine.ts, Fine.cpp 0x5a5980): bøde uden grund → ingen besked på spillersiden,
   // nyheden "X feels fine was unfair" og Future "Feels he has been treated unfairly" (ejerens billeder r4/98–99 af originalen)
   if (look === 'klassisk' && ENGINE_GRID) await step('Discipline Player: bøde uden grund (original)', async () => {

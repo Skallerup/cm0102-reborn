@@ -9,6 +9,7 @@ import { cmActive, setStatusCode } from './cmPlayerData';
 import { CM_INTENSITIES, CM_SCHED_SLOTS, setPlayerSlot } from './cmTraining';
 import { cmOfferStaff } from './cmStaff';
 import { cmAnswerRequest, cmSetTransferStatus, cmToggleListed } from './cmTransferList';
+import { cmRumourAnswer } from './cmRumours';
 import { submitEuroSquad } from './euroSquad';
 import { replacePlayer } from './draft';
 import { endTrial, inviteTrial } from './trials';
@@ -58,6 +59,7 @@ export type Action =
   /** den originale database i ægte tilstand: Set Staff Transfer Status → OK (0x8f7f08) og svaret på en transferanmodning (0x4dcd70) */
   | { t: 'cmTransferStatus'; pid: number; status: number; price: number | null; listed: boolean; loan: boolean; request: boolean }
   | { t: 'cmRequest'; news: number; grant: boolean }
+  | { t: 'cmRumour'; news: number; answer: number }
   | { t: 'squadNumber'; pid: number; n: number }
   | { t: 'squadNumbers'; nums: Record<number, number> }
   | { t: 'euroSquad'; ids: number[] }
@@ -204,6 +206,7 @@ export function applyAction(a: Action): unknown {
       return 'ok';
     }
     case 'cmRequest': return cmActive(g) ? cmAnswerRequest(g, a.news, a.grant) : 'error';
+    case 'cmRumour': return cmActive(g) ? cmRumourAnswer(g, a.news, a.answer) : 'error';
     case 'cmStaffOffer': return cmActive(g) ? cmOfferStaff(g, { staff: a.id, role: a.role, wage: a.wage, years: a.years, signOn: a.signOn }) : 'error';
     case 'staffNote': {
       const s = g.staff[a.id];

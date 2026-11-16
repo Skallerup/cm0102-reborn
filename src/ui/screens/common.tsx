@@ -10,7 +10,8 @@ import { boardCmText } from '../../game/cmBoardText';
 import { appointBody } from '../../game/cmBoardGame';
 import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
-import { ClassicHead } from '../classic';
+import { ClassicHead, cxLongDate } from '../classic';
+import { cmRumBody, cmRumTitle } from '../cmRumText';
 
 /** spillerens grunde (cmTransferTalks.ts cmWhy, "k:argument|k") som tekst: "… og …" (0x8e4ae0) */
 export function cmWhyText(why: string): string {
@@ -40,6 +41,17 @@ export function newsParams(n: NewsItem): Record<string, string | number> {
   // bestyrelsens nyheder (cmBoardText.ts) og ansættelsen: teksten bygges igen på det valgte sprog (ældre nyheder uden `bd`/`full` beholder den gemte)
   if (n.key === 'board.cm' && typeof p.bd === 'string') { try { const r = boardCmText(JSON.parse(p.bd)); p.title = r.title; p.body = r.body; } catch { /* den gemte tekst bruges */ } }
   if (n.key === 'news.cmAppoint' && typeof p.full === 'string') p.body = appointBody(p.full, String(p.manager), String(p.prev ?? ''));
+  // CM 01/02's rygte 0xfbc (cmRumours.ts): overskriften 0x756e51
+  if (n.key === 'cm.rum') p.title = cmRumTitle(n);
+  // kampprogrammet 0x77bc80 type 0xd: "Vejle will start with games against B 1909 (home), … on Sunday 5th August 2001, … respectively."
+  if (n.key === 'comp.fixturesOut' && typeof p.o1 === 'number') {
+    const g = gs();
+    for (const i of [1, 2, 3]) {
+      const o = Number(p[`o${i}`]);
+      p[`g${i}`] = t(p[`h${i}`] ? 'comp.fixturesOut.home' : 'comp.fixturesOut.away', { club: g.clubs[o]?.short ?? '' });
+      p[`d${i}`] = cxLongDate(String(p[`fd${i}`]));
+    }
+  }
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   // originalens skadenyhed: periodens ord ("about three weeks") og skaden med lille forbogstav i brødteksten
   if (typeof p.range === 'string' && p.range.startsWith('injury.r.')) p.range = t(p.range);
@@ -183,6 +195,7 @@ export function newsBody(n: NewsItem) {
   if (n.key.startsWith('cmban.h')) return cmBanBody(n);
   if (n.key.startsWith('cmban.fa.')) return cmBanAnswerBody(n);
   if (n.key === 'cm.req') return cmRequestBody(n);
+  if (n.key === 'cm.rum') return cmRumBody(n);
   const k = bodyKey(n);
   if (!has(k)) return '';
   const body = t(k, newsParams(n)) + offerAnswer(n);
@@ -327,6 +340,7 @@ export function NewsBody({ n }: { n: NewsItem }) {
   if (n.key.startsWith('cmban.h')) return <>{cmBanBody(n)}</>;
   if (n.key.startsWith('cmban.fa.')) return <>{cmBanAnswerBody(n)}</>;
   if (n.key === 'cm.req') return <>{cmRequestBody(n)}</>;
+  if (n.key === 'cm.rum') return <>{cmRumBody(n)}</>;
   const k = bodyKey(n);
   return has(k) ? <>{linked(n, k)}{offerAnswer(n)}</> : null;
 }
