@@ -31,7 +31,9 @@ import {
   setSeasonExpectations, s16, weeklyUpdate, managerRepAfterMatch, newRec,
 } from './cmBoard';
 import type { CMWorld } from './data/cm0102';
-import { confidenceText, expectBody, expectTitle, requestReply, requestTitle, ultimatumBody, ultimatumTitle } from './cmBoardText';
+import { boardCmText, confidenceText, type BoardCmDesc, type ConfidenceIn } from './cmBoardText';
+import { APPOINT_DA } from './cmBoardTextDa';
+import { getLang } from '../i18n';
 import { boardRequestAvailable, issueUltimatum, ultimatumOffered, type UltimatumIn } from './cmBoardUltimatum';
 import { projectPositions, staffInterest, type InterestEnv } from './cmBoardInterest';
 import { msvcQsort } from './engine/grid/subs';
@@ -339,6 +341,12 @@ function humanLeaves(g: GameState, c: number): void {
   else for (const h of g.humans) if (h.userClub === c || (h.pid === g.active && g.userClub === c)) { import('./humans').then(() => undefined); doIt(); }
 }
 
+/** nyhedens parametre: teksten nu (som reserve) og `bd` = det, der skal til for at bygge den igen på et andet sprog (common.tsx newsParams) */
+function boardParams(d: BoardCmDesc, extra: Record<string, string | number> = {}): Record<string, string | number> {
+  const r = boardCmText(d);
+  return { club: d.k === 'c' ? d.i.club : d.club, title: r.title, body: r.body, bd: JSON.stringify(d), ...extra };
+}
+
 const EXP_KEY = (f: number) => (f & 0x02 ? 'title' : f & 0x01 ? 'top3' : f & 0x04 ? 'promotion' : f & 0x08 ? 'playoffs' : f & 0x40 ? 'tophalf' : f & 0x30 ? 'survive' : 'mid');
 
 function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
@@ -354,14 +362,13 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
         // 0x6a4a20: kun når spillets start ≤ i dag (menneskets ansættelse 0x826f20 sker på databasens dato før forkørslen → ingen nyhed)
         if (after(_env.gameStart, _env.today)) return;
         const div = _env.division(n.club);
-        addNews({ cat: 'board', key: 'board.cm', params: { club: clubName(n.club), title: expectTitle(n.flags),
-          body: expectBody(clubName(n.club), n.flags, !UEFA_NATIONS.has(nationNameOf(g, g.clubs[n.club]?.nation)), !!(div && _env.league(div)?.autoPromo)) },
+        addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'e', club: clubName(n.club), f: n.flags, ne: !UEFA_NATIONS.has(nationNameOf(g, g.clubs[n.club]?.nation)), ap: !!(div && _env.league(div)?.autoPromo) }),
           link: { kind: 'club', id: n.club } });
       }
       return;
     case 'confidence':
       // 0x6a4c40 / 0x6a4d40: "Board Confidence Update" med 0x690d80 (formandens trupvurdering 0x693850 er ikke porteret)
-      if (mine(n.club)) addNews({ cat: 'board', key: 'board.cm', params: { club: clubName(n.club), title: 'Board Confidence Update', body: confidenceOf(g, _env, n.club, n.days) },
+      if (mine(n.club)) addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'c', i: confidenceIn(g, _env, n.club, n.days) }),
         link: { kind: 'club', id: n.club } });
       return;
     case 'jobOffer':
@@ -388,7 +395,7 @@ function boardNews(g: GameState, _env: BoardEnv, n: BoardNews): void {
       return;
     case 'appointed':
       // 0x6a3060: overskriften "{kort navn} appoint X as manager", brødteksten efter den forrige klub (−1 → 0xa09e18) og arten (3 → 0xa0a2f8)
-      if (n.manager.human ? clubNewsToMe(g, n.club, true) : newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager),
+      if (n.manager.human ? clubNewsToMe(g, n.club, true) : newsOn(g, n.club)) addNews({ cat: 'job', key: 'news.cmAppoint', params: { club: g.clubs[n.club]?.short ?? clubName(n.club), manager: mname(n.manager), full: clubName(n.club), prev: n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '',
         body: appointBody(clubName(n.club), mname(n.manager), n.prev > 0 && n.kind === 3 ? clubName(n.prev) : '') }, link: { kind: 'club', id: n.club } });
       return;
     case 'pressure': case 'ultimatum': case 'protest':
@@ -406,14 +413,18 @@ const nationNameOf = (g: GameState, n: number | undefined) => (n === undefined ?
 
 /** 0x6a3060 brødteksten: uden forrige klub 0xa09e18, fra en anden klub (art 3) 0xa0a2f8 */
 export function appointBody(club: string, manager: string, prevClub: string): string {
+  if (getLang() === 'da') return prevClub ? APPOINT_DA.prev(club, manager, prevClub) : APPOINT_DA.plain(club, manager);
   return prevClub ? `${club} have appointed ${manager} as their new manager.\n\n${prevClub} are now looking for a new manager.` : `${club} have appointed ${manager} as manager.`;
 }
 
 /** 0x690d80 for klubben (dage i jobbet som 0x6b2080/0x6a4c40) */
 function confidenceOf(g: GameState, env: BoardEnv, c: number, days: number): string {
+  return confidenceText(confidenceIn(g, env, c, days));
+}
+function confidenceIn(g: GameState, env: BoardEnv, c: number, days: number): ConfidenceIn {
   const R = g.cmBoard?.rec[c];
   const run = currentRun(env, c);
-  return confidenceText({
+  return ({
     club: g.clubs[c]?.name ?? '', days, wealth: env.wealthBand(c), leagueBand: leagueBand(R?.w12 ?? 0), confBand: confidenceBand(R?.w6 ?? 5000),
     runType: run.type, runLen: run.len, arrogDays: R ? daysSince(env.today, R.d41) : 9999, conf: s16(R?.w6 ?? 5000), fans: s16(R?.w16 ?? 0),
   });
@@ -440,9 +451,10 @@ export function cmBoardRequest(g: GameState, req: 1 | 2 | 3 | 4 | 5): string | n
   if (!club || !env.division(c) || !m || !m.np) return null;
   const R = recOfG(g, c);
   const reply = (code: number) => {
-    const body = requestReply(club.name, req, code);
+    const d: BoardCmDesc = { k: 'r', club: club.name, req, code };
+    const body = boardCmText(d).body;
     // nyheden 0x1786 (0x6a9350): slot 1 anmodningen og slot 2 svarkoden – knappen "Ultimatum" (0x782c6f) læser dem, slot 5 = givet
-    addNews({ cat: 'board', key: 'board.cm', params: { club: club.name, title: requestTitle(req), body, rq: req, rc: code, ult: 0 }, link: { kind: 'club', id: c } });
+    addNews({ cat: 'board', key: 'board.cm', params: boardParams(d, { rq: req, rc: code, ult: 0 }), link: { kind: 'club', id: c } });
     return body;
   };
   R.b4 = (R.b4 + 1) & 0xff;
@@ -576,8 +588,7 @@ export function cmBoardUltimatum(g: GameState, req: number): boolean {
   };
   const o = issueUltimatum(x, R, rnd(g, dayNum(g.date), 0x6ad610, req));
   const short = club.short || club.name, name = g.manager.name;
-  const post = (type: number, sub: number) => addNews({ cat: 'board', key: 'board.cm', params: { club: club.name, title: ultimatumTitle(type, req, o.res, short),
-    body: ultimatumBody(type, req, sub, club.name, name, club.stadium ?? '', o.fansStadium, o.fansTraining) }, link: { kind: 'club', id: c } });
+  const post = (type: number, sub: number) => addNews({ cat: 'board', key: 'board.cm', params: boardParams({ k: 'u', type, req, res: o.res, sub, club: club.name, short, m: name, st: club.stadium ?? '', small: o.fansStadium, poor: o.fansTraining }), link: { kind: 'club', id: c } });
   if (o.fans) post(1, o.fans);
   post(3, o.res);
   if (o.res === 2) stateOf(g).dep.push({ type: 1, reason: o.reason, club: c });

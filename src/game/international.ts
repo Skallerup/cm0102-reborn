@@ -14,6 +14,8 @@ import { cmAppsAfterMatch } from './transfers';
 import { autoSelect, newTactic } from './tactics';
 import type { MiniReport, Player } from './types';
 import { packReport } from './miniReport';
+import { cmActive } from './cmPlayerData';
+import { intlHooks } from './hooks';
 
 export interface IntlRow { n: number; p: number; w: number; d: number; l: number; gf: number; ga: number; pts: number }
 export interface IntlTie { stage: string; a: number; b: number; hg?: number; ag?: number; pens?: boolean; winner?: number }
@@ -28,7 +30,9 @@ export interface IntlTournament {
 /** VM-kvalifikationen i Oceanien (OFC) i forkørslen: to grupper à fem og en dobbeltkamp mellem gruppevinderne (cmPrerunMatches.ts) */
 export interface OfcQual { year: number; groups: number[][]; table: Record<number, IntlRow>; final: IntlTie[]; winner?: number }
 /** Kvalifikationen til næste VM/EM: grupper af fire i hver verdensdel, spillet i landsholdsvinduerne (*estimeret* format) */
-export interface IntlQual { name: 'wc' | 'euro'; year: number; groups: number[][]; region: string[]; table: Record<number, IntlRow>; round: number; qualified?: number[] }
+export interface IntlQual { name: 'wc' | 'euro'; year: number; groups: number[][]; region: string[]; table: Record<number, IntlRow>; round: number; qualified?: number[];
+  /** (ægte tilstand, cmIntl.ts) originalens kvalifikation: rundedatoerne, kampene pr. runde og playoff */
+  cm?: 1; dates?: string[]; sched?: [number, number][][]; po?: IntlTie[]; poDates?: string[] }
 export interface IntlResult { date: string; home: number; away: number; hg: number; ag: number; kind: 'friendly' | 'wc' | 'euro' | 'copa' | 'afcon' | 'asian' | 'wcq' | 'euroq' | 'u21'; stage?: string;
   /** slutrundekampenes kompakte rapport (miniReport.ts) – målscorere, kort, opstillinger, statistik; resultatet i Afternoon Results åbner den */
   mini?: MiniReport; pens?: [number, number] }
@@ -47,7 +51,10 @@ export interface IntlState {
   fifa?: Record<number, number>;
   /** næste vindues venskabskampe, lagt fast ved udtagelsen (så nyheden kan nævne modstanderen) */
   plan?: { date: string; friendlies: [number, number][] };
+  /** (ægte tilstand) originalens landskampkalender – cmIntl.ts */
+  cm?: import('./cmIntl').CmIntlState;
 }
+
 
 const WINDOWS = ['09-05', '10-09', '11-13', '03-26'];
 const GROUP_DAYS = ['06-10', '06-14', '06-18'];
@@ -177,7 +184,7 @@ export function playNation(home: number, away: number, kind: IntlResult['kind'],
 /** CM 01/02: én nyhed pr. landshold med brugerens spillere – "Giggs selected in Wales squad" / "Man Utd players selected in
  *  England squad" – "… have been called up to the England squad for the match against Holland." (to dage før vinduet) */
 /** Udtagelsesnyhed pr. landshold; `tour` = slutrunde (CM 01/02: "France squad chosen for FIFA World Cup") */
-function callUpNews(nations: number[], opp: Map<number, number> = new Map(), tour?: string) {
+export function callUpNews(nations: number[], opp: Map<number, number> = new Map(), tour?: string) {
   const g = gs();
   const squads = new Map(nations.map((n) => [n, new Set(nationSquad(n).map((p) => p.id))]));
   forEachHuman(() => {
@@ -404,7 +411,7 @@ function tournamentDay(t: IntlTournament | undefined) {
  *  0x76e040 ([0xb74318]+4, række nation·110 + type·20 + 0x3a – sat af 0x76bab0 ud fra landsholdets kampe) ligger efter i dag → spilleren
  *  træner fuldt (ingen sommerpause, ingen "lukket sæson"). Hos os: udtaget til næste vindues kamp (de to dage fra udtagelsen, kampdagen =
  *  datoen) eller i truppen til en slutrunde, landet stadig er med i, før dets næste kampdag. U21-holdene (type 2) trækkes først på kampdagen
- *  og har ingen udtagelse før – de tæller ikke (*estimeret*: vores landsholdskalender er ikke originalens). */
+ *  og har ingen udtagelse før – de tæller ikke. I ægte tilstand kommer kampene fra originalens kalender (cmIntl.ts, intlHooks.dutyNations). */
 let dutyCache: { date: string; ids: Set<number> } | null = null;
 export function onIntlDuty(p: Player): boolean {
   const g = gs();
@@ -429,6 +436,7 @@ function dutyIds(): Set<number> {
     if (gi) for (const k of Object.keys(t.table)) nations.add(+k);
     else for (const x of t.ko) if (x.stage === t.stage && x.winner === undefined) { nations.add(x.a); nations.add(x.b); }
   }
+  for (const n of intlHooks.dutyNations?.() ?? []) nations.add(n);
   for (const n of nations) for (const p of nationSquad(n)) out.add(p.id);
   return out;
 }
@@ -440,14 +448,23 @@ export function intlDaily() {
   if (g.draft) return;
   const md = g.date.slice(5);
   const year = Number(g.date.slice(0, 4));
-  if (WINDOWS.some((w) => addDays(g.date, 2).slice(5) === w)) { const opp = planWindow(addDays(g.date, 2)); callUpNews([...opp.keys()], opp); }
-  if (WINDOWS.includes(md)) { const busy = qualRound(); friendlies(busy); u21Friendlies(); }
-  // kvalifikation i august året før (VM i år ≡ 2, EM i år ≡ 0 mod 4)
-  if (md === '08-20' && year % 2 === 1) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
+  // ægte tilstand med den originale database: originalens kalender (cmIntl.ts – landskampdatoerne 0x5ca4f0, venskabskampene 0x5cbdf0, U21-kampene
+  // 0x7e6720, EM-kvalifikationen) i stedet for de fire vinduer, VM-kvalifikationen i 2001 og de 64 stærkestes venskabskampe
+  const cm = !!intlHooks.cmDay && cmActive(g);
+  if (cm) intlHooks.cmDay!();
+  else {
+    if (WINDOWS.some((w) => addDays(g.date, 2).slice(5) === w)) { const opp = planWindow(addDays(g.date, 2)); callUpNews([...opp.keys()], opp); }
+    if (WINDOWS.includes(md)) { const busy = qualRound(); friendlies(busy); u21Friendlies(); }
+  }
+  // kvalifikation i august året før (VM i år ≡ 2, EM i år ≡ 0 mod 4) – ægte tilstand: EM 2004 fra 2002 (cmIntl.ts), VM 2002 har ingen (originalens
+  // Europa-/Sydamerika-/Asien-zoner begynder med 2004-kampagnen); de senere er stadig spillets egne (som i udvidet spil)
+  if (md === '08-20' && year % 2 === 1 && (!cm || year >= 2005)) startQualification((year + 1) % 4 === 2 ? 'wc' : 'euro', year + 1);
   // slutrunder: VM i år ≡ 2 (mod 4), EM i år ≡ 0 (mod 4) – lodtrækning 1. juni
   if (md === '06-01' && (year % 4 === 2 || year % 4 === 0)) startTournament(year % 4 === 2 ? 'wc' : 'euro', year);
   if (md === '01-10' && year % 2 === 0) startContinental('afcon', year);
-  if (md === '07-06' && year % 3 === 0 && year >= 2004) { startContinental('copa', year); startContinental('asian', year); }
+  // originalens cyklusser (sweep-international §4): Copa América (år − 1996) % 2 = 1 (2001 i forkørslen, 2003, 2005 …), Asian Cup (år − 1996) % 4 = 0
+  if (md === '07-06' && (cm ? year > 2001 && year % 2 === 1 : year % 3 === 0 && year >= 2004)) startContinental('copa', year);
+  if (md === '07-06' && (cm ? year % 4 === 0 : year % 3 === 0 && year >= 2004)) startContinental('asian', year);
   tournamentDay(state().tournament);
   for (const c of state().cont ?? []) tournamentDay(c);
   if (md === '07-10' || md === '01-02') nationalOffers();

@@ -11,3 +11,6 @@ export const compHooks: {
   /** (forkørslen, cmPrerunMatches.ts) dagens europæiske kampe (Intertoto, CL-kvalifikationen) i forkørslen 0x5cc850 */
   euroPrerunDay?: (g: GameState, iso: string) => void;
 } = {};
+
+/** (landsholdene, cmIntl.ts) originalens landskampkalender i ægte tilstand – international.ts kalder dem */
+export const intlHooks: { cmDay?: () => void; dutyNations?: () => number[] } = {};

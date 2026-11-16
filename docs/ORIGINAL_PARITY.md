@@ -96,8 +96,42 @@ View Finances (der læser Bonuses fra blokken) viste 0 bonusser, selv om pengene
 1. Ønskelisterne (Shortlist_Manager) – porteret, men slået fra (`SL_ON`): hastighed ~2,5–4,5 s/dag med Maximum-hukommelsen (`tm`, runde 12 – runde 11's 0,6 s var uden `tm`) → 0,3 s/dag kræver genudfyldningen 0x843e10 → 0x83f3a0 og 0x84a020 i TS uden x86-emulering (ENGINE_PORT_PLAN.md, runde 12); derefter computerens interesse/bud/handler fra originalen og vores `cmInterested`, `aiPursuits`, `weeklyRumours`, `aiBosman`, `aiReleaseClauses`, `aiFillSquads`, `freeAgentDrift` slået fra.
 2. Transferbudget/lønbudget: 0x598800 bygget (`cmBudget.ts`) men giver 33,6M mod originalens 24M for Man Utd – mangler et input (fin+0xc m.fl.).
 3. Arbejdstilladelse: tildelingen 0x8c7950 ikke porteret (kun "skal have").
-4. Landsholdsfodbold: NationalTeams 0x76b100, udtagelse 0x7757d0, kvalifikation/VM/EM/OL-format, landstrænere – hele `international.ts` er vores eget.
+4. Landsholdsfodbold – **etape 1 delvis 16/11** (`src/game/cmIntl.ts`, noter ~/cm0102-engine/notes/international.md, `scripts/cm-intl-check.ts`,
+   tests/cmIntl.test.ts). Oraklet (crowd1) viser for 2001/02: ingen VM-kvalifikation uden for Oceanien (forkørslen), 142 A-venskabskampe på 19 datoer,
+   136 U21-kampe dagen før, 3 'B' International, Copa 2001 (12 hold), Afrikamesterskabet feb.–mar. 2002 (32 kampe).
+   **Porteret:** landskampdatoerne 0x5ca4f0/0x5cc510 (110 poster, verdensdel + kvalifikation, firårscyklus), 0x5cbb00 (12 dage før, også i forkørslen,
+   1/1 nulstilling og omdømmesortering), parringen 0x5cbdf0 (±4 dage optaget, rand(500)/+rand(1000), +0x88 ≥ 5, februar uden Afrika, forbudte par
+   0x5cc2d0, ingen gentagelse i året, hjemmebane rand(2)), U21-spejlingen 0x7e6720 (omdømme ≥ 2500, ikke 1/3–1/9 i år % 4 = 0), EM 2004-kvalifikationens
+   grupper 0x57dab0 og rundedatoer 0x57d190 (31/8-2002 … 4/10-2003), cyklusserne for Copa (ulige år) og Asian Cup ((år − 1996) % 4) – vores VM 2002-
+   kvalifikation og de fire vinduer for de 64 stærkeste er slået fra i ægte tilstand. ***Estimeret*:** kampenes rækkefølge i EM-kval.-grupperne
+   (runde-robin), playoff (datoer 15/19-11-2003, lodtrækning, bedste toer), lodtrækningsdagen, U21-fyldspillere, at truppen kaldes ind ved kampens
+   oprettelse (originalen: 0x76bab0 14 dage før). **Mangler:** 'B' International (B-grenen i 0x7e6720), NationalTeams 0x76b100/udtagelsen 0x76bab0/
+   0x76c120 og originalens nyheder (0x76e0b0 …), FIFA_RANKINGS 0x58cf70, HostCountry (slutrundernes datoer ±35 dage, værter), VM 2002-/ACN-/Copa-
+   datoer og felter (Copa 2001 = 12 faste hold), Confederations Cup 2003, OFC Nations Cup, OL 2004, VM-zonerne fra 2004, landskampe i gittermotoren
+   (stadig zonemotoren), landsholdenes fyldspillere 0x90dc66, landstrænerjob/fyring.
+   **Måling** (`scripts/cm-intl-check.ts`, frø 1, Maximum, 14/7-2001 → 30/4-2002 ~10 min): Europas datoer 25/22 (A/U21) mod oraklets 20/20 (1/9, 6/10),
+   30/27 mod 24/24 (14/11), 25/21 mod 20/18 (23/3) – resten er databasestørrelsen (oraklet: størrelse 2) og tilfældighederne. Åbent: Afrikas og
+   CONCACAFs datoer (22/7, 19/8, 30/9, 20/10, 18/11) giver 9–24 kampe mod oraklets 2–3 – i originalen er landene optaget af VM-zonernes
+   2000-kampagne (0x90f210/0x9149f0 "kører" i 2001, men oraklet logger ingen kampe i 391/394); ikke porteret.
 5. Sæsonskiftet og pensioneringer (0x7a7f20, INT_RETIREMENT), end_season pr. nation.
+4. Landsholdsfodbold: NationalTeams 0x76b100, udtagelse 0x7757d0, kvalifikation/VM/EM/OL-format, landstrænere – hele `international.ts` er vores eget.
+5. Sæsonskiftet og pensioneringer. **Pensioneringerne porteret 16/11** (`src/game/cmRetire.ts`, PLAYER_REGEN): listen ved indlæsningen 0x7a58f0/0x7a79c0
+   (databasens dato 1/1), nye kandidater på dag 0/80/173/250 (0x5d6250 → 0x7a5790: check_retirement 0x7a7310 – grænse 34 målmand/30 angriber/31 andre,
+   −1/−2 for manglende kontrakt/status 7/høj løn, v = (1 − (alder − T)·0,075)·omdømme, CA ≤ 100/v < 1500/spilletid +0x3d < 0 i kørende ligaer,
+   rand(3)/v < 3500 udenfor; check_unemployed 0x7a8050), dagligt process_retirements 0x7a59e0 (sorteret 0x7ae2a0, melding dagen efter meldingsdatoen
+   0xbbb 0x7aa340/0x7aa4c0, pension dagen efter stopdatoen 0xbba 0x7a92e0/0x7a9650 – kun når klubben er menneskets 0x7875e0, aflyst ved leje, bud
+   eller nyt klubskifte), datoerne efter sæsontabellen 0xb63d60 +0x15/+0x1d (England: stop 20/6 + rand(30) året efter), skadens pension 0x7a7f20,
+   regen-køen 0x7a87d0 (under 30 samme dag, ellers 1 + rand(65) dage – `spawnDueRegens`). season.ts' `retirements()` og prune's klubløse gælder kun
+   udenfor ægte tilstand. **Målt** (`scripts/cm-retire-season.ts`, world-dbs2, synlige engelske ligaer): listen 14/7 **54 = 54** (samme aldre;
+   `scripts/cm-retire-diff.ts`: 76/76 af oraklets engelske, vi har, er med – oraklets øvrige 180 er i engelske klubber, som world-filen ikke har),
+   1/2 141 (meldt 54) mod 137 (53), 30/6 151 (44) mod 155 (36); pensioneret til 30/6 20 mod oraklets ≥ 31, til 21/7 81 mod ≥ 97 (oraklets tal = poster
+   i billederne med stopdato i perioden). Aldre 31–40, flest 33–35, som oraklet. Ikke porteret: stabens pensioneringer (årsag 0x20 – 0x7aaeb0/0x7ab340),
+   "spilleren bliver træner" (puljen [this+0x20] er 2 fra dag 1 i oraklet, så grenen er død; 0x7a65d0's tildeling ikke porteret), forsikringen 0x58a980.
+   **Sæsonskiftet pr. nation (fundet, ikke porteret):** game_season_update_pass 0x5d5ae0 kører hver nøglerække på dens +0x15-dag (Europa 20/6, Norge 27/11,
+   Sverige/Finland/Rusland 27/12, Japan 25/1, Sydkorea 20/1, USA 20/2, Argentina/Australien 31/7): dagen før arkiveres Club_Records 0x447880,
+   PlayerStats 0x7c1350, Finance 0x59cdd0 og Staff_Records 0x86d6e0 (end_season_for_nation); på dagen rulles rækkens start/slut (+0x2a/+0x39, +0x1d år),
+   ligaerne får ny sæson (tilskuere 0x5d6280, Discipline 0x556210, reserveligaerne 0x84b940). Kontrakterne udløber dagligt efter datoen (CONTRACT_MANAGER,
+   allerede porteret). Spillets seasonRollover kører stadig 1/7 for alle lande – næste skridt: flyt arkivering/tabeller/op-nedrykning til landets +0x15-dag.
 6. Reservekampe (fixtures −2, 0x84be20) og B-hold 0x540a50.
 7. Venskabskampe for mennesket: **porteret 16/11** (cmFriendlyOffers.ts, FriendlyClassic.tsx – Home/Away Friendly, Tour, Choose Friendly Teams, Invite Club, svaret 0x5c5f40 efter omdømmet, også for computerens egne; noter ~/cm0102-engine/notes/friendly-human.md). Mangler: Friendly Cup/League (Tournament).
 8. Priser: Team of the Week (hvornår), Fans Player of the Year, internationale priser, andre landes priser.

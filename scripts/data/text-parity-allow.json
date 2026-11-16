@@ -504,6 +504,14 @@
   ],
   "keys": [
     {
+      "key": "cmret.b.old",
+      "reason": "originalens streng 0xa6f57c (0x7aa4c0) med to linjeskift – strengudtrækket deler den i to linjer, der ikke står ved siden af hinanden"
+    },
+    {
+      "key": "cmret.b.oldClub",
+      "reason": "originalens streng 0xa6e4fc (0x7aa4c0) med to linjeskift – strengudtrækket deler den i to linjer, der ikke står ved siden af hinanden"
+    },
+    {
       "key": "common.ok",
       "reason": "OK findes i exe'en som del af knapper; fælles ord"
     },

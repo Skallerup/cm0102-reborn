@@ -221,5 +221,9 @@ export function cmPrerunMatchDay(g: GameState, day: number, iso: string): void {
   }
 }
 const fillCache = new WeakMap<GameState, Map<number, Player[]>>();
+/** kør `f` med fyldspillere til de nævnte landshold (også efter forkørslen – cmIntl.ts' venskabskampe og EM-kvalifikationen) */
+export function withNationFillers<T>(g: GameState, nations: number[], f: () => T): T {
+  return withFillers(g, nations, (fillCache.get(g) ?? fillCache.set(g, new Map()).get(g)!), f);
+}
 
 registerPrerun('matches', (g, day, iso, slot) => { if (slot === 0) cmPrerunMatchDay(g, day, iso); });

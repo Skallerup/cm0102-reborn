@@ -6,6 +6,8 @@ import type { NewsItem } from '../../game/types';
 import { gs } from '../../game/state';
 import { cmBanAnswerBody, cmBanBody, cmBanParams } from '../cmBanText';
 import { requestBodyKind, requestReasons } from '../../game/cmTransferList';
+import { boardCmText } from '../../game/cmBoardText';
+import { appointBody } from '../../game/cmBoardGame';
 import type { GameState } from '../../game/types';
 import { isRetro } from '../theme';
 import { ClassicHead } from '../classic';
@@ -35,6 +37,9 @@ export function Head({ title, children, action, menu, club }: { title: ReactNode
 
 export function newsParams(n: NewsItem): Record<string, string | number> {
   const p: Record<string, string | number> = { ...n.params };
+  // bestyrelsens nyheder (cmBoardText.ts) og ansættelsen: teksten bygges igen på det valgte sprog (ældre nyheder uden `bd`/`full` beholder den gemte)
+  if (n.key === 'board.cm' && typeof p.bd === 'string') { try { const r = boardCmText(JSON.parse(p.bd)); p.title = r.title; p.body = r.body; } catch { /* den gemte tekst bruges */ } }
+  if (n.key === 'news.cmAppoint' && typeof p.full === 'string') p.body = appointBody(p.full, String(p.manager), String(p.prev ?? ''));
   if (typeof p.injury === 'string') { p.injury = t(`injury.${p.injury}`); p.injuryLc = String(p.injury).toLowerCase(); }
   // originalens skadenyhed: periodens ord ("about three weeks") og skaden med lille forbogstav i brødteksten
   if (typeof p.range === 'string' && p.range.startsWith('injury.r.')) p.range = t(p.range);
@@ -128,6 +133,8 @@ function bodyKey(n: NewsItem): string {
   if (n.key === 'intl.tourSel') return !n.params?.names ? 'intl.tourSel.many' : n.params?.n === 1 ? 'intl.tourSel.body1' : 'intl.tourSel.bodyN';
   // Discipline Player (cmFine.ts): originalens brødtekst er valgt i spillet (0x5a76e0/0x5a7ed0/0x5a8090)
   if (n.key.startsWith('cmfine.') && typeof n.params?.body === 'string') return `cmfine.b.${n.params.body}`;
+  // PLAYER_REGEN (cmRetire.ts): originalens brødtekst er valgt i spillet (0x7a9650/0x7aa4c0)
+  if (n.key.startsWith('cmret.') && typeof n.params?.body === 'string') return `cmret.b.${n.params.body}`;
   // venskabskampens tilbud til mennesket (0x77ce44): arrangøren hjemme "have offered …", ellers "have challenged …"
   if (n.key === 'cmfr.proposal') return `cmfr.proposal.${n.params?.body === 'challenged' ? 'challenged' : 'offered'}`;
   return `${n.key}.body`;

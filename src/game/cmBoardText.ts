@@ -10,6 +10,11 @@
 // Ikke porteret: 0x693850 build_board_squad_opinion_text (formandens favoritter/uvenner blandt spillerne – kræver formandens
 // relationer), som originalen tilføjer efter tillidsteksten, når formanden har nogen.
 import T from './data/cmBoardTexts.json';
+import { getLang } from '../i18n';
+import * as DA from './cmBoardTextDa';
+
+/** Teksterne vælges ved visning (nyhederne gemmer, hvad der skal til for at bygge dem igen): dansk eller originalens engelsk */
+const da = () => getLang() === 'da';
 
 const D = T as { S: string[]; t60: number[][][][]; t30: number[][][]; t0: number[] };
 const fill = (s: string, club: string, n = 0) => s.replace(/\{club\}/g, club).replace(/\{n\}/g, String(n));
@@ -18,6 +23,7 @@ const fill = (s: string, club: string, n = 0) => s.replace(/\{club\}/g, club).re
 
 /** 0x6a4ae0 overskriften (want_body = 0); `fa` = id > clubCount − 2·nationCount (landshold) */
 export function expectTitle(f: number, fa = false): string {
+  if (da()) return fa ? DA.TITLE_DA.fa : f & 0x400 ? DA.TITLE_DA.glory : f & 0x002 ? DA.TITLE_DA.title : f & 0x085 ? DA.TITLE_DA.hope : f & 0x030 ? DA.TITLE_DA.difficult : f & 0x308 ? DA.TITLE_DA.look : DA.TITLE_DA.announce;
   if (fa) return 'F.A. Announce Expectations';
   if (f & 0x400) return 'Board expect glory';
   if (f & 0x002) return 'Board want the title';
@@ -30,6 +36,7 @@ export function expectTitle(f: number, fa = false): string {
 /** 0x694440 brødteksten. `nonEurope` = klubbens land ligger uden for Europa ("Continental"), `autoPromo` = divisionen har direkte oprykning.
  *  Finansvarianterne (bit 0x800) er udeladt: bitten sættes ingen steder i originalen (notes-D-expect.md §5.6). */
 export function expectBody(club: string, f: number, nonEurope: boolean, autoPromo: boolean): string {
+  if (da()) return DA.expectBodyDa(club, f, nonEurope, autoPromo);
   const pre = `The ${club} directors expect`;
   const eu = (e: string, c: string) => (nonEurope ? c : e);
   if (f & 1) {
@@ -76,27 +83,29 @@ const TAIL = {
 };
 
 /** 0x690d80 build_board_confidence_text */
+export const confidenceTitle = () => (da() ? DA.TITLE_DA.confidence : 'Board Confidence Update');
 export function confidenceText(i: ConfidenceIn): string {
+  const TAIL_ = da() ? DA.TAIL_DA : TAIL, SS = da() ? DA.SDA : D.S;
   const W = Math.max(-2, Math.min(2, i.wealth)) + 2;
   let main: string;
   if (i.national !== undefined) {
     const v = i.conf;
     const how = v > 9500 ? 'delighted' : v > 8500 ? 'very pleased' : v > 6500 ? 'pleased' : v > 4275 ? 'satisfied' : v > 3500 ? 'unsatisfied' : 'very disappointed';
-    main = `The ${i.national} Football Association are ${how} with your performance as manager.`;
+    main = da() ? DA.FA_CONF_DA(i.national, DA.FA_HOW_DA[v > 9500 ? 0 : v > 8500 ? 1 : v > 6500 ? 2 : v > 4275 ? 3 : v > 3500 ? 4 : 5]) : `The ${i.national} Football Association are ${how} with your performance as manager.`;
   } else {
-    if (i.days < 30) return fill(D.S[D.t0[W]], i.club);
+    if (i.days < 30) return fill(SS[D.t0[W]], i.club);
     const T5 = Math.max(1, Math.min(5, i.runType)) - 1;
-    if (i.days < 60) return fill(D.S[D.t30[W][i.confBand][T5]], i.club, i.runLen);
-    main = fill(D.S[D.t60[W][i.leagueBand][i.confBand][T5]], i.club, i.runLen);
+    if (i.days < 60) return fill(SS[D.t30[W][i.confBand][T5]], i.club, i.runLen);
+    main = fill(SS[D.t60[W][i.leagueBand][i.confBand][T5]], i.club, i.runLen);
   }
   // halen 0x693267 (dage ≥ 60 og landshold)
   let extra = '';
   if (i.arrogDays < 120 && i.conf < 6500) {
-    if (i.conf > 4275) main = fill(i.fans > 1500 ? TAIL.a1 : TAIL.a2, i.club);
-    else if (i.conf > 3500) main = fill(i.fans > 1500 ? TAIL.a3 : TAIL.a4, i.club);
-  } else if (i.fans < -750) { if (i.conf < 3750) extra = TAIL.f1; else if (i.conf < 5500) extra = TAIL.f2; }
-  else if (i.fans < -500) extra = TAIL.f3;
-  else if (i.fans > 1500) extra = TAIL.f4;
+    if (i.conf > 4275) main = fill(i.fans > 1500 ? TAIL_.a1 : TAIL_.a2, i.club);
+    else if (i.conf > 3500) main = fill(i.fans > 1500 ? TAIL_.a3 : TAIL_.a4, i.club);
+  } else if (i.fans < -750) { if (i.conf < 3750) extra = TAIL_.f1; else if (i.conf < 5500) extra = TAIL_.f2; }
+  else if (i.fans < -500) extra = TAIL_.f3;
+  else if (i.fans > 1500) extra = TAIL_.f4;
   return extra ? `${main}\n\n${extra}` : main;
 }
 
@@ -107,7 +116,7 @@ const REQUEST_TITLE: Record<number, string> = {
   1: 'Board reaction to request to expand stadium', 2: 'Board reaction to request for youth investment', 3: 'Board reaction to request for transfer funds',
   4: 'Board reaction to request for higher wage budget', 5: 'Board reaction to request for time to rebuild squad', 6: 'Board reaction to request for player bonus payments',
 };
-export const requestTitle = (req: number) => REQUEST_TITLE[req] ?? 'Board reaction to request for larger half time oranges';
+export const requestTitle = (req: number) => (da() ? DA.REQUEST_TITLE_DA[req] ?? DA.REQUEST_TITLE_DA_DEFAULT : REQUEST_TITLE[req] ?? 'Board reaction to request for larger half time oranges');
 
 const RQ = {
   c: 'The {club} board have dismissed your request but stressed that if the situation changes they will inform you immediately.',
@@ -163,10 +172,11 @@ const TIME: Record<number, string> = {
 /** 0x6a9470 (want_body): klubbens lange navn, anmodningen og svarkoden fra 0x6a8810 */
 export function requestReply(club: string, req: number, code: number): string {
   let s: string;
-  if (code === 0xc) s = RQ.c;
-  else if (code === 0xa) s = RQ.a;
-  else if (req === 5) s = TIME[code] ?? 'The {club} board feel that you have had more than enough time to make this team your own.\n\nThe stability of your job will depend upon the results that your team obtain.';
-  else { const [list, def] = REPLY[req] ?? [[], '']; s = list[code] ?? def; }
+  const d = da(), rq = d ? DA.RQ_DA : RQ, reply = d ? DA.REPLY_DA : REPLY, time = d ? DA.TIME_DA : TIME;
+  if (code === 0xc) s = rq.c;
+  else if (code === 0xa) s = rq.a;
+  else if (req === 5) s = time[code] ?? (d ? DA.TIME_DA_DEFAULT : 'The {club} board feel that you have had more than enough time to make this team your own.\n\nThe stability of your job will depend upon the results that your team obtain.');
+  else { const [list, def] = reply[req] ?? [[], '']; s = list[code] ?? def; }
   return fill(s, club);
 }
 
@@ -178,11 +188,17 @@ const ULT_CONFIRM: Record<number, string> = {
 };
 /** 0x906610 "Please Confirm" (0xaa1bbc/0xaa1ca8/0xaa1da0, ellers 0xaa1e94) med klubbens korte navn (club +0x38) */
 export function ultimatumConfirm(short: string, req: number): string {
+  if (da()) return DA.ultConfirmDa(short, DA.ULT_CONFIRM_DA[req] ?? DA.ULT_CONFIRM_DA_DEFAULT);
   return `Are you sure that you wish to issue an ultimatum to the ${short} board ?\n\nThis would be a short statement indicating that ${ULT_CONFIRM[req] ?? 'either they agree to increase the wage budget'} or you will resign from your job.`;
 }
 
 /** 0x6adb70 overskriften: type 1 = "{kort navn} fans respond to speculation"; type 3: svar 2/3/4 = afslag, ellers ja (anmodning 4 deler 3's tekst) */
 export function ultimatumTitle(type: number, req: number, res: number, short: string): string {
+  if (da()) {
+    if (type === 1) return DA.ULT_TITLE_DA.fans(short);
+    const k = res === 2 || res === 3 || res === 4 ? 1 : 0;
+    return (req === 1 ? DA.ULT_TITLE_DA.stadium : req === 2 ? DA.ULT_TITLE_DA.training : DA.ULT_TITLE_DA.funds)[k];
+  }
   if (type === 1) return `${short} fans respond to speculation`;
   const refuse = res === 2 || res === 3 || res === 4;
   if (req === 1) return refuse ? 'Board refuse to expand the stadium' : 'Board agree to expand the stadium';
@@ -222,17 +238,36 @@ const BOARD: Record<number, string[]> = {
 };
 const INEXPERIENCED = 'In a private meeting with you the {club} board indicated that such demands are inappropriate from such an inexperienced manager.\n\nThey are willing to excuse this outburst but recommend that you do not repeat it again.';
 /** "{s}" efter managerens navn */
-const poss = (m: string) => (/s$/i.test(m) ? `${m}'` : `${m}'s`);
+const poss = (m: string) => (da() ? (/[sxz]$/i.test(m) ? m : `${m}s`) : /s$/i.test(m) ? `${m}'` : `${m}'s`);
 
 /** 0x6adb70 brødteksten: klubbens lange navn (club +4), managerens navn (0x53dba0) og stadionets navn; `sub` = slot 7 (type 1: 1 kritisk /
  *  2 forstående; type 3: svaret), `small`/`poor` = slot 9/10 (tilhængernes stadion-/træningsflag) */
 export function ultimatumBody(type: number, req: number, sub: number, club: string, manager: string, stadium: string, small: boolean, poor: boolean): string {
   let s: string;
+  const FA = da() ? DA.FANS_DA : FANS, BO = da() ? DA.BOARD_DA : BOARD;
   const i = req === 1 ? 0 : req === 2 ? 1 : req === 3 ? 2 : 3;
   if (type === 1) {
-    if (sub === 2) s = [FANS.s2, FANS.t2, FANS.f2, FANS.w2][i];
-    else s = req === 1 ? (small ? FANS.s1b : FANS.s1) : req === 2 ? (poor ? FANS.t1 : FANS.t1b) : req === 3 ? FANS.f1 : FANS.w1;
-  } else if (sub === 4) s = INEXPERIENCED;
-  else s = BOARD[sub]?.[i] ?? '';
+    if (sub === 2) s = [FA.s2, FA.t2, FA.f2, FA.w2][i];
+    else s = req === 1 ? (small ? FA.s1b : FA.s1) : req === 2 ? (poor ? FA.t1 : FA.t1b) : req === 3 ? FA.f1 : FA.w1;
+  } else if (sub === 4) s = da() ? DA.INEXPERIENCED_DA : INEXPERIENCED;
+  else s = BO[sub]?.[i] ?? '';
   return s.replace(/\{club\}/g, club).replace(/\{m's\}/g, poss(manager)).replace(/\{m\}/g, manager).replace(/\{stadium\}/g, stadium);
+}
+
+// ---------------------------------------------------------------- nyhedernes tekst bygges ved visning
+
+/** Det, der skal til for at bygge en bestyrelsesnyhed igen på det valgte sprog (gemt som JSON i nyhedens `bd`) */
+export type BoardCmDesc =
+  | { k: 'e'; club: string; f: number; ne: boolean; ap: boolean }
+  | { k: 'c'; i: ConfidenceIn }
+  | { k: 'r'; club: string; req: number; code: number }
+  | { k: 'u'; type: number; req: number; res: number; sub: number; club: string; short: string; m: string; st: string; small: boolean; poor: boolean };
+
+export function boardCmText(d: BoardCmDesc): { title: string; body: string } {
+  switch (d.k) {
+    case 'e': return { title: expectTitle(d.f), body: expectBody(d.club, d.f, d.ne, d.ap) };
+    case 'c': return { title: confidenceTitle(), body: confidenceText(d.i) };
+    case 'r': return { title: requestTitle(d.req), body: requestReply(d.club, d.req, d.code) };
+    default: return { title: ultimatumTitle(d.type, d.req, d.res, d.short), body: ultimatumBody(d.type, d.req, d.sub, d.club, d.m, d.st, d.small, d.poor) };
+  }
 }

@@ -164,7 +164,8 @@ export interface FitCtx {
   /** nyheder til mennesket (skade 0x62dca0, tilbage 0x630ee0) */
   news?: (kind: 'injury' | 'recovered', p: Player, inj: CmInjury) => void;
   /** 0x7a7f20: karrieren slutter pga. skaden */
-  retire?: (p: Player) => void;
+  /** 0x7a7f20(person, skadens dage +0x2a) */
+  retire?: (p: Player, days: number) => void;
   /** staff +0x24 ≠ 0 og 0x76e040's dato efter i dag (0x62c8c0–0x62c937): på landsholdsophold */
   onDuty?: (p: Player) => boolean;
   /** club +0x1db ≠ −1: klubben er med i en europæisk turnering (0x62ce30) */
@@ -481,15 +482,15 @@ export function addInjury(c: FitCtx, t: number, backdate: boolean, p: Player, fi
   rollRecurring(c, r, e);
   if (r.rt === t && perm >= 0) {                                                  // 0x62d9d1: tilbagevendende → måske karrierens slut
     r.rl = s8(r.rl + 1);
-    if (r.rl > 1) { let m = 200 - T[2]; if (m <= 5) m = 5; if (perm > 0) m = Math.trunc(m / perm); if (c.rand(r.rl) > c.rand(m)) c.retire?.(p); }
+    if (r.rl > 1) { let m = 200 - T[2]; if (m <= 5) m = 5; if (perm > 0) m = Math.trunc(m / perm); if (c.rand(r.rl) > c.rand(m)) c.retire?.(p, e.w2a); }
   }
   const ip = IP(p);
   let retired = false;
-  const tryRetire = (lim: number, base: number) => { if (!retired && e.w2a > lim && c.rand(e.w2a) > base) { retired = true; c.retire?.(p); } };
+  const tryRetire = (lim: number, base: number) => { if (!retired && e.w2a > lim && c.rand(e.w2a) > base) { retired = true; c.retire?.(p, e.w2a); } };
   if (age > 36) tryRetire(120 - ip - age, 90 - age);                              // 0x62da79: alderen (kaskade, sic)
   if (!retired && age > 33) tryRetire(150 - ip - age, 90 - age);
   if (!retired && age > 31) tryRetire(300 - age, 200 - age);
-  if (!retired && e.w2a > 500 && c.rand(NF(p) + 5) === 0) { retired = true; c.retire?.(p); }
+  if (!retired && e.w2a > 500 && c.rand(NF(p) + 5) === 0) { retired = true; c.retire?.(p, e.w2a); }
   if (outbreak && t <= 2 && p.club) addOutbreak(c, t, p.club);
   return e;
 }

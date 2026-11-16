@@ -2,6 +2,7 @@
 import { cmDiscSeason } from './cmDiscipline';
 import { cmBoardOn, cmBoardSeasonSetup } from './cmBoardGame';
 import { cmActive } from './cmPlayerData';
+import { cmRetireOn } from './cmRetire';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmRegenWage } from './cmWageGame';
 import { splitReserves } from './reserves';
@@ -291,13 +292,21 @@ export const originalRegens = () => isOriginal2001() && !extended();
 
 function spawnRegenQueue() {
   const g = gs();
-  const queue = g.regenQueue ?? [];
-  g.regenQueue = [];
+  const all = g.regenQueue ?? [];
+  // (cmRetire.ts) queue_staff_for_regen 0x7a87d0's dato: kun de forfaldne – resten venter i køen
+  const queue = all.filter((s) => !s.due || s.due <= g.date);
+  g.regenQueue = all.filter((s) => s.due && s.due > g.date);
   queue.forEach((seed, n) => {
     const p = spawnRegen(seed, n);
     // originalens genfødsel sub_7abac0 sender ingen nyhed (player_regen.cpp) – "X – the new Y?" kun i udvidet spil
     if (p.club && isHumanClub(p.club)) asOwner(p.club, () => { g.knowledge[p.id] = 100; if (!originalRegens()) addNews({ cat: 'youth', key: 'youth.regen', params: { player: pname(p), legend: seed.from }, link: { kind: 'player', id: p.id } }); });
   });
+}
+
+/** (den originale database i ægte tilstand) PLAYER_REGEN::process_regen_queue 0x7a65d0 hver dag (0x5cda7a): de forfaldne regens (cmRetire.ts) */
+export function spawnDueRegens() {
+  const g = gs();
+  if (originalRegens() && g.regenQueue?.some((s) => !s.due || s.due <= g.date)) spawnRegenQueue();
 }
 
 /** Originalens alder og CA for en regen (sub_7abac0, "sti 2"): PA arves uændret, CA = rand(PA·k)+PA·b med loft efter alder */
@@ -624,8 +633,9 @@ export function freeAgentDrift() {
 
 function prune() {
   const g = gs();
-  // fri agenter med lav værdi forsvinder
-  const free = Object.values(g.players).filter((p) => !p.club);
+  // fri agenter med lav værdi forsvinder – ikke i den originale database i ægte tilstand: originalens klubløse stopper via PLAYER_REGEN
+  // (cmRetire.ts: check_retirement 0x7a7310/check_unemployed_retirement 0x7a8050 på dag 0/80/173/250)
+  const free = cmRetireOn(g) ? [] : Object.values(g.players).filter((p) => !p.club);
   for (const p of free) {
     const age = ageOn(p.dob, g.date);
     // klubløse der ikke er gode nok, eller er for gamle til at få kontrakt, forsvinder ud af fodbolden
@@ -703,7 +713,8 @@ export function seasonRollover() {
   storeCompRecords(); // før statistikken nulstilles og kampprogrammet ryddes
   archiveStats();
   contractsAndLoans();
-  retirements();
+  // den originale database i ægte tilstand: pensioneringerne sker dagligt efter originalens liste (cmRetire.ts – PLAYER_REGEN 0x7a59e0)
+  if (!cmRetireOn(g)) retirements();
   prune();
   // originalen: regens dukker op lige efter pensioneringen (alder < 30 samme dag, ellers inden for 65 dage) – ikke i marts
   if (originalRegens()) spawnRegenQueue();

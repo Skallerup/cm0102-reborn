@@ -39,6 +39,7 @@ import { cmStartDate } from './cmCalendar';
 import { cmEuroOn, cmEuroRestoreNext, cmSetupEurope } from './cmEurope';
 import { compHooks } from './hooks';
 import { cmFitNewGame } from './cmFitnessGame';
+import './cmIntl';                                              // landskampkalenderen i ægte tilstand (intlHooks, registerPrerun 'comps1')
 import './cmPrerunMatches';                                      // forkørslens konkurrencekampe (registerPrerun 'matches')
 import './cmFriendly';                                              // forkørslens venskabskampe (registerPrerun 'comps1')
 import { cmRelNewGame } from './cmRelations';
@@ -50,6 +51,7 @@ import { cmSquadPlanStart } from './cmSquadPlanGame';
 import { cmWageFillNewGame } from './cmWageGame';
 import { cmShortlistStart } from './cmShortlistGame';
 import { cmValuesApply } from './cmValueGame';
+import { cmRetireInit } from './cmRetire';
 import { cmContractManagerDay } from './cmContractManager';
 import { GRID_ENGINE_DEFAULT } from './engine/liveSim';
 
@@ -530,6 +532,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   // forholdene staff+0x65 og club +0x9b..+0xaf fra databasen (cmRelations.ts – ikke-indlæste id'er bliver 0)
   if (cm?.cmRaw && season < 2020) cmRelNewGame(g, cm.cmRaw.prefs, cm.cmRaw.clubPrefs);
   progress('fitness', 0.7);
+  // PLAYER_REGEN's første pensioneringsliste 0x7a58f0 ved indlæsningen – før forkørslen (cmRetire.ts)
+  cmRetireInit(g);
   cmFitNewGame(g);
   // originalens økonomi (cmFinance.ts): Finance::init_for_club 0x5961d0 og ugens lønsum – kun den originale database i ægte tilstand
   if (cm) { g.cmFinStartYear = season; cmFinanceNewGame(g, cm, seed); }
@@ -571,7 +575,7 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     const board = g.news.filter((n) => n.key.startsWith('board.exp.') || n.key === 'board.cm');
     g.news = [];
     // 0x6a3060: "Man Utd appoint m m as manager" / "Manchester United have appointed m m as manager." (ingen forrige klub)
-    if (cmBoardOn(g)) addNews({ cat: 'general', key: 'news.cmAppoint', params: { club: club.short, manager: o.managerName, body: appointBody(club.name, o.managerName, '') }, link: { kind: 'club', id: club.id } });
+    if (cmBoardOn(g)) addNews({ cat: 'general', key: 'news.cmAppoint', params: { club: club.short, manager: o.managerName, full: club.name, prev: '', body: appointBody(club.name, o.managerName, '') }, link: { kind: 'club', id: club.id } });
     else addNews({ cat: 'general', key: 'news.managerHired', params: { club: club.short, manager: o.managerName }, link: { kind: 'club', id: club.id } });
     for (const b of board) g.news.unshift(b);
     const lg = g.leagues[club.league];

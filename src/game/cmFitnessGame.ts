@@ -13,6 +13,7 @@ import { cmRand, statCategory } from './cmPlayerData';
 import { cmTrainPlayer, humanLevels, setTrainCtx } from './cmTraining';
 import { setDevCtx } from './cmDevelop';
 import { registerPrerun, runPrerun } from './cmPrerun';
+import { cmRetireInjury } from './cmRetire';
 import { CM_SETUP_INJURIES } from './data/cmPreseason';
 import { addInjury } from './cmFitness';
 
@@ -29,7 +30,8 @@ export function fitCtx(g: GameState, salt: number, today = dayNum(g.date)): FitC
     squadOf: (club) => squad(club),
     human: (club) => isHumanClub(club),
     news: (kind, p, inj) => injuryNews(g, kind, p, inj),
-    retire: (p) => { p.cmRetire = true; },
+    // 0x62da70/0x62dbc6 → PLAYER_REGEN::schedule_injury_retirement 0x7a7f20 med skadens dage (+0x2a – cmRetire.ts)
+    retire: (p, days) => cmRetireInjury(g, p, days, today),
     onDuty: (p) => intlDuty?.(p) ?? false,
     inEurope: (club) => cmClubEuro(g, club) > -1,
     train: (p) => cmTrainPlayer(g, p, 0x62d312),

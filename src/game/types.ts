@@ -148,8 +148,11 @@ export interface Player {
     b4e?: number; b4f?: number };
   /** originalens konditionspost (Injury, 31 bytes pr. spiller – cmFitness.ts; kun den originale database i ægte tilstand) */
   cmFit?: import('./cmFitness').CmFit;
-  /** 0x7a7f20: en skade har sluttet karrieren (pensioneres ved sæsonslut) */
+  /** staffState +0xb bit 0x10 (0x7a7eb0 ≠ 0): pensioneringen er meldt (cmRetire.ts – PLAYER_REGEN 0x7a59e0); uden for den originale database i
+   *  ægte tilstand: en skade har sluttet karrieren (pensioneres ved sæsonslut) */
   cmRetire?: boolean;
+  /** staff +0x3e/+0x40 for en klubløs: datoen, han blev klubløs (0x53c190 database_remove_staff_from_club – cmRetire.ts) */
+  cmFreeSince?: string;
   /** (den originale database i ægte tilstand) 0x524d70 (Maximum) havde ham i hukommelsen ved spilstarten uanset de valgte lande (CMRatings.tm,
    *  klubløse tf = 1, reserveposterne) – ønskelisternes positionslister (cmShortlistGame.ts loadedFilter) */
   cmMem?: 1;
@@ -1282,6 +1285,10 @@ export interface GameState {
   supporterRegens?: { first: string; last: string; by: string; used?: boolean }[];
   /** pensionerede stjerner, der "genopstår" som regens ved næste ungdomsårgang (CM 01/02) */
   regenQueue?: RegenSeed[];
+  /** (den originale database i ægte tilstand) PLAYER_REGEN's pensioneringsliste (cmRetire.ts) */
+  cmRet?: import('./cmRetire').CmRetState;
+  /** (den originale database i ægte tilstand) de gennemførte pensioneringer: [dato, alder, årsag, klubben (0 klubløs), nationalitet] */
+  cmRetLog?: [string, number, number, number, number][];
   /** landsholdsfodbold: resultater, slutrunde og historik (international.ts) */
   intl?: import('./international').IntlState;
   nextId: { player: number; staff: number; news: number; fixture: number; offer: number; tie: number };
@@ -1437,7 +1444,9 @@ export interface H2HRecord {
 }
 
 /** Det en regen arver fra den pensionerede spiller: land, positioner, ben, potentiale og egenskabsprofil */
-export interface RegenSeed { from: string; nation: number; pos: number[]; side: number[]; foot: 'L' | 'R' | 'B'; pa: number; attrs: number[] }
+export interface RegenSeed { from: string; nation: number; pos: number[]; side: number[]; foot: 'L' | 'R' | 'B'; pa: number; attrs: number[];
+  /** (cmRetire.ts) queue_staff_for_regen 0x7a87d0's dato – regen'en laves den dag (uden: ved næste kø-gennemløb) */
+  due?: string }
 
 /** Den moderne økonomis kalibrering (econ26.ts) */
 export interface Modern26 { kw: Record<string, number> }

@@ -1945,9 +1945,84 @@ async function multiplayer() {
   await ctx.close();
 }
 
+/** Dansk i ægte tilstand (original DB): nyheder, bestyrelsen og skærmene må ikke stå på engelsk (cmBoardText.ts m.fl. blev før bygget på engelsk). Kun E2E_ENGINE=original. */
+async function danish() {
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const page = await ctx.newPage();
+  const errors = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.addInitScript(() => {
+    localStorage.setItem('cm0102.lang', 'da'); localStorage.setItem('cm-theme', 'retro'); localStorage.setItem('cm0102.mode', 'authentic'); localStorage.setItem('cm0102.db', 'original');
+    localStorage.setItem('cm0102.engine', 'original'); sessionStorage.setItem('cm0102.play', '1');
+  });
+  const t = (k) => page.evaluate((key) => window.__cm.t(key), k);
+  const go = (r) => page.evaluate((route) => window.__cmNav(route), r);
+  // typiske engelske ord i en dansk tekst (unicode-afgrænset, så "især" ikke giver "is")
+  const EN = /(?<!\p{L})(directors|board announce|appoint|appointed|fixture list|are (very|extremely|pleased|delighted)|performance as manager|your|with you|has|have been|the club)(?!\p{L})/iu;
+  const step = async (name, fn) => {
+    const before = errors.length;
+    try {
+      await fn();
+      if (errors.length > before) throw new Error(`sidefejl: ${errors.slice(before).join(' | ')}`);
+      console.log(`  ✓ dansk: ${name}`);
+    } catch (e) {
+      failures.push(`dansk: ${name}: ${e.message.split('\n')[0]}`);
+      console.log(`  ✗ dansk: ${name}: ${e.message.split('\n')[0]}`);
+      await page.screenshot({ path: `${OUT}/dansk-fejl.png` }).catch(() => {});
+    }
+  };
+  await step('nyt spil på dansk', async () => {
+    await page.goto(URL);
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
+    await page.waitForSelector('.cxs [data-field=new]');
+    await page.locator('[data-field=new]').click();
+    await page.waitForSelector('.cxs-lrow', { timeout: 60000 });
+    // Danmark er forvalgt på dansk (sprogets land)
+    if (!(await page.locator('.cxs-lrow.lg-sel', { hasText: 'Danmark' }).count())) await page.locator('.cxs-lrow', { hasText: 'Danmark' }).locator('[data-sl=selected]').click();
+    await page.locator('.cx-foot .cx-next').click();
+    if (await page.locator('[data-season]').first().waitFor({ timeout: 3000 }).then(() => true).catch(() => false)) await page.locator('.cx-foot .cx-next').click();
+    await page.waitForSelector('[data-name=first]', { timeout: 20000 });
+    await page.fill('[data-name=first]', 'E2E'); await page.fill('[data-name=second]', 'Dansker');
+    await page.locator('.cx-foot .cx-next').click();
+    await page.waitForSelector('[data-nat]');
+    await page.locator('.cx-foot .cx-next').click();
+    await page.waitForSelector('[data-club]', { timeout: 120000 });
+    await page.locator('[data-club="Vejle"]').click();
+    await page.waitForSelector('[data-take]');
+    await page.locator('[data-take]').click();
+    await page.waitForSelector('[data-confirm]');
+    await page.locator('.cx-foot .cx-next').click();
+    await page.waitForFunction(() => { try { return window.__cm.gs().manager.name === 'E2E Dansker' && !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 120000 });
+  });
+  await step('nyhederne ved spilstart (overskrift og brødtekst)', async () => {
+    await go({ name: 'inbox' });
+    await page.waitForSelector('.cx-inbox .cx-nrow', { timeout: 15000 });
+    const rows = page.locator('.cx-inbox .cx-nrow');
+    const n = await rows.count();
+    if (n < 3) throw new Error(`kun ${n} nyheder`);
+    for (let i = 0; i < n; i++) {
+      await rows.nth(i).click();
+      await page.waitForTimeout(150);
+      const txt = await page.locator('.cx-inbox').innerText();
+      if (EN.test(txt)) throw new Error(`engelsk i nyhed ${i}: ${txt.match(EN)[0]}`);
+    }
+    const all = await page.locator('.cx-inbox').innerText();
+    if (!/ansætter|ansat/i.test(all)) throw new Error('ansættelsen står ikke på dansk');
+  });
+  await step('Board-skærmen på dansk', async () => {
+    await go({ name: 'board' });
+    await page.waitForTimeout(500);
+    const txt = await page.locator('.cx-main, main, .main').first().innerText();
+    if (EN.test(txt)) throw new Error(`engelsk på Board: ${txt.match(EN)[0]}`);
+    if (!/Bestyrelsen i /.test(txt)) throw new Error('bestyrelsens tillidstekst mangler på dansk');
+  });
+  await ctx.close();
+}
+
 for (const look of ['klassisk', 'moderne']) if (only === look || (!only && (look === 'klassisk' || process.env.E2E_MODERN))) await run(look);
 if (!only || only === 'editor') await editor();
 if (!only || only === 'multiplayer') await multiplayer();
+if (ENGINE_GRID && (!only || only === 'danish')) await danish();
 await browser.close();
 stop();
 if (failures.length) {

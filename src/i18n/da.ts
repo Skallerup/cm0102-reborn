@@ -919,7 +919,7 @@ export const da: Record<string, string> = {
   'news.jobOffer': "{club} tilbyder dig managerjobbet", 'news.applyRejected': '{club} har afvist din ansøgning', 'news.newJob': 'Du er ny manager for {club}',
   // originalens tekster (den originale database i ægte tilstand – cmBoardText.ts / 0x6a3060): overskrift og brødtekst lagt i nyheden
   'cl.tod.0': 'AM', 'cl.tod.1': 'PM', 'cl.tod.2': 'EVE',
-  'board.cm': '{title}', 'board.cm.body': '{body}', 'news.cmAppoint': '{club} appoint {manager} as manager', 'news.cmAppoint.body': '{body}',
+  'board.cm': '{title}', 'board.cm.body': '{body}', 'news.cmAppoint': '{club} ansætter {manager} som manager', 'news.cmAppoint.body': '{body}',
   'news.managerSacked': '{club} har fyret {manager}', 'news.managerHired': '{club} har ansat {manager} som ny manager',
 
   // historik
@@ -2080,4 +2080,19 @@ export const da: Record<string, string> = {
   "cm.staffAgrees": "{last} accepterer {club}s tilbud",
   "cm.staffAgrees.body": "{name} er blevet enig med {club} om vilkårene.",
   "cm.job.acceptQ": "Tag imod jobbet som manager for {club}?",
+  // PLAYER_REGEN (cmRetire.ts): 0xbbb 0x7aa4c0 og 0xbba 0x7a9650
+  "cmret.ann": "{last} meddeler, at han stopper karrieren",
+  "cmret.b.old": "{player} har besluttet, at han er for gammel til at spille professionel fodbold.\n\nHan meddeler officielt, at han stopper karrieren ved sæsonens afslutning.",
+  "cmret.b.oldClub": "{club}s {player} har besluttet, at han er for gammel til at spille professionel fodbold.\n\nHan meddeler officielt, at han stopper karrieren ved sæsonens afslutning.",
+  "cmret.b.last": "{player} har besluttet, at dette bliver hans sidste sæson som professionel fodboldspiller.",
+  "cmret.b.lastClub": "{club}s {player} har besluttet, at dette bliver hans sidste sæson som professionel fodboldspiller.",
+  "cmret.ret": "{last} stopper karrieren",
+  "cmret.shock": "{last} stopper overraskende karrieren",
+  "cmret.inj": "{last} stopper karrieren på grund af en skade",
+  "cmret.b.ret": "{player} stopper som professionel fodboldspiller.",
+  "cmret.b.retIntl": "{club}s og {country}s landsholdsspiller {player} stopper som professionel fodboldspiller.",
+  "cmret.b.now": "{player} har meddelt, at han stopper som professionel fodboldspiller med øjeblikkelig virkning.",
+  "cmret.b.nowIntl": "{country}s landsholdsspiller {player} har meddelt, at han stopper som professionel fodboldspiller med øjeblikkelig virkning.",
+  "cmret.b.inj": "{club}-spilleren {player} er af sin læge blevet rådet til at stoppe som professionel fodboldspiller på grund af en tilbagevendende skade.",
+  "cmret.b.injIntl": "Den tidligere {country}- og {club}-stjerne {player} er af sin læge blevet rådet til at stoppe som professionel fodboldspiller på grund af en tilbagevendende skade.",
 };

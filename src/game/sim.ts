@@ -58,7 +58,8 @@ import { cmEuroCatchUp, cmEuroDay, cmEuroNextSeason, cmEuroPlayDay } from './cmE
 import { compHooks } from './hooks';
 import { cmCmOn, cmContractManagerDay } from './cmContractManager';
 import { cmValuesDaily } from './cmValueGame';
-import { cmExpireOutsideDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, youthIntake, youthPreview } from './season';
+import { cmExpireOutsideDaily, endDueLoansDaily, freeAgentDrift, monthlyClubReps, seasonRollover, spawnDueRegens, youthIntake, youthPreview } from './season';
+import { cmRetireDaily } from './cmRetire';
 import { cmShortlistOn } from './cmShortlistGame';
 import { squadStrength } from './board';
 import { chemistryMorale, monthlyPersonality } from './personality';
@@ -589,6 +590,9 @@ function newDay() {
   cmRelDaily(g, squad, (p, flag) => { const c = p.cmContract; if (c) withFlagCtx(g, p, cmRand(g.seed ?? 0, p.id, Math.round(Date.parse(g.date + 'T00:00:00Z') / 86400000), 0x867700), () => cmFlagSet(c, flag)); });
   // FinanceTable::daily_update 0x59b9c0 (cmFinance.ts): søndagens løn/merchandise/sæsonkort, månedens poster, sæsonopdateringen
   cmFinanceDay(g);
+  // PLAYER_REGEN (0x5cda73/0x5cda7a/0x5cdaa9, lige efter FinanceTable): pensioneringerne, regen-køen og dag 0/80/173/250's nye kandidater (cmRetire.ts)
+  cmRetireDaily(g);
+  spawnDueRegens();
   for (const p of Object.values(g.players)) {
     if (p.injury && (!cmFit || p.injury.key === 'awol')) {
       p.injury.days--;
