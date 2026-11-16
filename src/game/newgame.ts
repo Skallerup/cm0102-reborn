@@ -7,7 +7,7 @@ import { splitReserves } from './reserves';
 import { initialTransferList } from './transfers';
 import { startScoreSeason } from './rating';
 import { naturalRole } from './attributes';
-import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupUefaCup } from './competitions';
+import { europeanQualifiers, setupChampionsLeague, setupCmCharity, setupCmLeagueCup, setupCup, setupLeague, setupSuperCup, setupUefaCup } from './competitions';
 import { ageOn } from './dates';
 import {
   caFromValue, defaultTraining, makePlayer, makeStaff, randomDob, randomName, SUB_ROLE, valueFromCA, wageFor, type SubPos,
@@ -564,6 +564,9 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
 export function setupSeasonComps(season: number, prevTables: Record<string, number[]>, cupWinners: Record<number, number> = {}) {
   const g = gs();
   const active = new Set(g.activeNations);
+  // sidste sæsons pokalfinalister (til supercuppen – setupCup nedenfor overskriver pokalen)
+  const prevRunner: Record<number, number> = {};
+  for (const c of Object.values(g.comps)) if (c.id.startsWith('CUP-') && c.meta?.runnerUp) prevRunner[c.nation] = c.meta.runnerUp as number;
   const byLeague = new Map<string, number[]>();
   for (const c of Object.values(g.clubs)) {
     if (!byLeague.has(c.league)) byLeague.set(c.league, []);
@@ -592,6 +595,12 @@ export function setupSeasonComps(season: number, prevTables: Record<string, numb
       setupCmCharity(season, pl ? pl[0] : byName('Manchester United'), pl ? cupWinners[60] : byName('Liverpool'), pl?.[1]);
     }
     return;
+  }
+  // Supertaça de Portugal (kun den originale database i udvidet tilstand; første sæson har ingen forgænger)
+  if (g.dbKind === 'cm0102' && (g.dbYear ?? season) < 2020) {
+    const pt = [...active].find((n) => g.nations[n]?.name === 'Portugal');
+    const lg = pt === undefined ? undefined : [...leaguesMeta.entries()].find(([, m]) => m.nation === pt && m.tier === 1 && !m.hidden)?.[0];
+    if (pt !== undefined && lg && prevTables[lg]) setupSuperCup(season, pt, 'Portuguese Super Cup', prevTables[lg][0], cupWinners[pt], prevRunner[pt]);
   }
   const { cl, uefa, conf } = europeanQualifiers(prevTables, cupWinners);
   // "[klub] qualify for [turnering]"

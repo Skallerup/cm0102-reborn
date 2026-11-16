@@ -264,6 +264,21 @@ export function setupCmCharity(season: number, champion: number | undefined, cup
   createCupRound(comp, [[champion, b]], 1, calendar(season));
 }
 
+/**
+ * Nationale supercup i udvidet tilstand med den originale database (spillerrapport #26/#27: Supertaça de Portugal): ligamesteren
+ * mod pokalvinderen – og mod pokalfinalisten, hvis mesteren også vandt pokalen. Én kamp i starten af august.
+ */
+export function setupSuperCup(season: number, nation: number, name: string, champion: number | undefined, cupWinner: number | undefined, runnerUp: number | undefined) {
+  const g = gs();
+  const b = cupWinner === champion ? runnerUp : cupWinner;
+  if (!champion || !b || champion === b || !g.clubs[champion] || !g.clubs[b]) return;
+  const comp: Competition = { id: `SC-${nation}`, name, type: 'cup', nation, tier: 0, clubs: [champion, b], table: [], ties: [], stage: 'F', finished: false, pending: 0, meta: { roundsTotal: 1, byes: [], round: 1 } };
+  g.comps[comp.id] = comp;
+  const tie: Tie = { id: g.nextId.tie++, a: champion, b, legs: 1, stage: 'F', fx: [] };
+  comp.ties.push(tie);
+  newFixture(comp.id, addDays(calendar(season).saturdays[0], -7), champion, b, 1, { stage: 'F', tieId: tie.id, leg: 1 });
+}
+
 function cupStageName(round: number, total: number): string {
   const left = total - round;
   return left === 0 ? 'F' : left === 1 ? 'SF' : left === 2 ? 'QF' : `R${round}`;

@@ -358,7 +358,7 @@ export function parseCM0102(files: Record<string, ArrayBuffer>, opts: { maxTiers
     if (!nationIdx.has(nation)) continue;
     const sorted = ids.sort((a, b) => comps.get(b)!.rep - comps.get(a)!.rep || divClubs.get(b)!.length - divClubs.get(a)!.length);
     // pokalturnering: landets mest prestigefyldte nationale turnering der ikke er en liga
-    const cup = [...comps.entries()].filter(([id, c]) => c.nation === nation && !leagueComps.includes(id) && /cup|pokal|copa|coppa|coupe|pokaal|taça|beker/i.test(c.name)).sort((a, b) => b[1].rep - a[1].rep)[0];
+    const cup = [...comps.entries()].filter(([id, c]) => c.nation === nation && !leagueComps.includes(id) && /cup|pokal|copa|coppa|coupe|pokaal|taça|beker/i.test(c.name)).sort((a, b) => (/super/i.test(a[1].name) ? 1 : 0) - (/super/i.test(b[1].name) ? 1 : 0) || b[1].rep - a[1].rep)[0];
     sorted.forEach((id, i) => {
       const c = comps.get(id)!;
       const tier = i + 1;

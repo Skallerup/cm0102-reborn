@@ -75,9 +75,15 @@ export interface CmRound { date: string; slot: number; tv: SchedTv[] }
 const CM_ROUND_RULES: Record<string, { rounds: number; split?: { after: number; groups: number; rounds: number } }> = {
   CM4: { rounds: 3 }, CM229: { rounds: 3 }, CM34: { rounds: 3, split: { after: 33, groups: 2, rounds: 1 } },
 };
+/** Landets pokal i databasen: parseren valgte før den mest prestigefyldte turnering, og for Portugal/Japan er det SUPERpokalen
+ *  (Supertaça / Super Cup) – ikke Taça de Portugal / Kejserens pokal (spillerrapport #26/#27) */
+const SUPER_TO_CUP: Record<string, string> = { 'Portuguese Super Cup': 'Portuguese Cup', 'Japanese Super Cup': 'Japanese Cup' };
+export const cmCupName = (name: string): string => SUPER_TO_CUP[name] ?? name;
+
 export function cmLeagueRules<T extends Record<string, any> | undefined>(rules: T): T {
   if (!rules) return rules;
   const out: Record<string, any> = { ...rules };
+  for (const [id, o] of Object.entries(out)) if (o?.cup && SUPER_TO_CUP[o.cup]) out[id] = { ...o, cup: SUPER_TO_CUP[o.cup] };
   for (const [id, o] of Object.entries(CM_ROUND_RULES)) if (out[id]) out[id] = { ...out[id], ...o };
   return out as T;
 }

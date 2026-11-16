@@ -672,7 +672,7 @@ export function seasonRollover() {
   }
   // pokalvindere (pr. nation) får en europæisk plads
   const cupWinners: Record<number, number> = {};
-  for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0) cupWinners[comp.nation] = comp.winner;
+  for (const comp of Object.values(g.comps)) if (comp.type === 'cup' && comp.winner && comp.nation >= 0 && !comp.id.startsWith('SC-')) cupWinners[comp.nation] = comp.winner;
   // rekordbogen: før op/nedrykning (placeringen i den liga, klubben spillede i) og før statistikken nulstilles
   recordsSeasonEnd((c) => (prevTables[c.league] ?? []).indexOf(c.id) + 1);
   const tierBefore = new Map(Object.values(g.clubs).map((c) => [c.id, g.leagues[c.league]?.tier ?? 9]));

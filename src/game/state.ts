@@ -121,6 +121,9 @@ export function setClub(p: Player, club: number) {
   // originalen: statistikken arkiveres (0x7c5fe0) og en ny kontrakt starter (0x4cf720) – cmPlayerData.ts
   if (moved) { p.cmStats = undefined; p.cmContract = undefined; if (hasGame()) { cmPermitMove(gs(), p, club); cmStaffStateMove(gs(), p, p.club, club); } }
   p.club = club;
+  // en nyindkøbt spiller kommer på førsteholdet: reserve-mærket hører til den gamle klub (spillerrapport #25: Obi og Arthur
+  // stod som reserver hos ejeren – røde, uden "+ Sub" og uden at kunne vælges)
+  if (moved && club && p.reserves && hasGame() && gs().clubs[club]?.manager === -1) p.reserves = undefined;
   // sign_contract 0x4cf720: en ny almindelig kontrakt (ikke leje) giver moralen +20 (cmMedia.ts)
   if (moved && club && !p.loan && hasGame()) signHooks.onSign?.(gs(), p);
   if (club) {

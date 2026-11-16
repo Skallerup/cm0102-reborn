@@ -418,10 +418,11 @@ export function TacticEditor({ tactic, players, onChange, matchMode, onSub, cond
                       <td>{xi >= 0 ? <span className="tag good">{tactic.slots[xi].pos}</span> : onBench ? <span className="tag">{t('tac.sub')}</span> : ''}</td>
                       <td>{posStr(p)}</td>
                       <td><PlayerLink p={p} short />{p.injury && <span className="tag bad">{t('tag.inj')}</span>}{p.banned > 0 && <span className="tag bad">{t('tag.ban')}</span>}
+                        {p.reserves && <span className="tag" title={t('cl.pl.inReserves')}>{t('cl.tag.Res')}</span>}
                         {selSlot && <RoleNote p={p} slot={selSlot} />}</td>
                       <td><Bar value={condOf(p)} /></td>
                       {selSlot && <td className="num">{suit.toFixed(1)}</td>}
-                      <td>{!matchMode && xi < 0 && available(p) && <button className="small" onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{onBench ? '−' : '+'} {t('tac.sub')}</button>}</td>
+                      <td>{!matchMode && p.reserves && <button className="small" title={t('cl.pl.inReserves')} onClick={(e) => { e.stopPropagation(); act({ t: 'reserves', pid: p.id, on: false }); }}>↑ {t('cl.pl.callUp')}</button>}{!matchMode && xi < 0 && available(p) && <button className="small" onClick={(e) => { e.stopPropagation(); toggleBench(p.id); }}>{onBench ? '−' : '+'} {t('tac.sub')}</button>}</td>
                     </tr>
                   );
                 })}

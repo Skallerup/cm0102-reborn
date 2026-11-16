@@ -54,7 +54,8 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       <ClassicSub items={[
         ...[3, 4, 5].map((n) => ({ key: scoutKey(n), label: t('cl.tr.scoutN', { n }), disabled: !scouts[n - 1], on: tab === scoutKey(n), onClick: () => setTab(scoutKey(n)) })),
         // Offers og Deals findes ikke i CM 01/02 – kun i det udvidede spil
-        ...(authentic() ? [] : [
+        // (2026/27-databasen i ægte tilstand har dem også: der er ingen originale skærme for den – bud, accepterede bud og bud på egen trup)
+        ...(authentic() && cmActive(g) ? [] : [
           { key: 'offers', label: `${t('tr.offers')}${pending ? ` (${pending})` : ''}`, on: tab === 'offers', onClick: () => setTab('offers') },
           { key: 'deals', label: t('tr.deals'), on: tab === 'deals' || tab === 'listed', onClick: () => setTab('deals') },
         ]),
@@ -63,8 +64,8 @@ export function ClassicTransfers({ tab: initial }: { tab?: string }) {
       {tab === 'shortlist' && <Search classic shortlist />}
       {tab === 'staff' && <StaffSearch />}
       {scoutTab > 0 && <ScoutTab scout={scouts[scoutTab - 1]} n={scoutTab} onPick={setPicker} />}
-      {tab === 'offers' && !authentic() && <Offers />}
-      {(tab === 'deals' || tab === 'listed') && !authentic() && <Deals />}
+      {tab === 'offers' && !(authentic() && cmActive(g)) && <Offers />}
+      {(tab === 'deals' || tab === 'listed') && !(authentic() && cmActive(g)) && <Deals />}
     </div>
   );
 }

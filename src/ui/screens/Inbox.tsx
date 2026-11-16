@@ -124,6 +124,9 @@ export function Inbox() {
   const talk = item && (item.key === 'transfer.cmTalks' || item.key === 'transfer.cmRejects') && item.link?.kind === 'offer'
     ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
   const talkOffer = cmTalksOpen(g, talk) ? talk : undefined;
+  // andre databaser i ægte tilstand (2026/27): "X have accepted your offer" → knappen Offer Contract åbner kontraktforhandlingen
+  const acceptedBid = item && !cmActive(g) && (item.key === 'transfer.bidAccepted' || item.key === 'transfer.releaseMet') && item.link?.kind === 'offer'
+    ? g.offers.find((o) => o.id === Number(item.link!.id) && o.status === 'negotiating' && o.buyer === g.userClub) : undefined;
   const talkLive = talkOpen !== null ? g.offers.find((o) => o.id === talkOpen) : undefined;
   // CM 01/02 "X accepts {Club} offer": Respond → Confirm Transfer Offer (0x8f2ec0)
   const agreeOffer = item?.key === 'transfer.cmAgrees' && item.link?.kind === 'offer' ? g.offers.find((o) => o.id === Number(item.link!.id)) : undefined;
@@ -152,6 +155,7 @@ export function Inbox() {
       const ans = (a: 'yes' | 'no' | 'delay') => { close(); act({ t: 'cmConfirm', offer: confirmLive.id, answer: a }); };
       return <div><Head title={g.clubs[g.userClub]?.name ?? ''} /><TransferConfirmPanel title={sc.code === 2 ? t('cm.confirm.cancelled') : sc.code === 1 ? t('cm.staffNoRoom') : t('cm.confirm.title')} text={text} backOnly={sc.code === 2} cancelLabel={sc.code === 1 ? t('common.cancel') : t('common.no')} yes={sc.code === 0} onBack={close} onAnswer={ans} /></div>;
     }
+    if (talkLive && talkLive.status === 'negotiating' && !cmActive(g)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
     if (cmTalksOpen(g, talkLive)) return <div><ClassicNegotiation offer={talkLive} onClose={() => setTalkOpen(null)} /></div>;
     if (renewOpen !== null && g.players[renewOpen]?.club === g.userClub) return <div><ClassicNegotiation renewPid={renewOpen} onClose={() => setRenewOpen(null)} /></div>;
     if (respondOffer) return <div><Head title={g.clubs[g.userClub]?.short ?? ''} /><IncomingBidPanel offer={respondOffer} onClose={() => setRespond(null)} /></div>;
@@ -183,6 +187,7 @@ export function Inbox() {
           {delayOpen && item && <button className="cx-grey cx-respond" onClick={() => setDelayFor(item.id)}>{t('cl.bid.respond')}</button>}
           {rejStaff && item && <button className="cx-grey cx-respond cx-negotiate" onClick={() => nav({ name: 'staff', id: rejStaff.id, state: { stoffer: String(item.params.role ?? rejStaff.role) } })}>{t('cl.negotiate')}</button>}
           {talkOffer && <button className={`cx-grey cx-respond ${item?.key === 'transfer.cmTalks' ? 'cx-offer-contract' : 'cx-negotiate'}`} onClick={() => setTalkOpen(talkOffer.id)}>{t(item?.key === 'transfer.cmTalks' ? 'cl.offerContract' : 'cl.negotiate')}</button>}
+          {acceptedBid && <button className="cx-grey cx-respond cx-offer-contract" onClick={() => setTalkOpen(acceptedBid.id)}>{t('cl.offerContract')}</button>}
           {agreeOffer && cmConfirmOpen(g, agreeOffer) && <button className="cx-grey cx-respond cx-confirm-transfer" onClick={() => setConfirmOpen(agreeOffer.id)}>{t('cl.bid.respond')}</button>}
           {rejPlayer !== undefined && <button className="cx-grey cx-respond cx-negotiate" onClick={() => setRenewOpen(rejPlayer)}>{t('cl.negotiate')}</button>}
           {/* CM 01/02 (0x782c6f): bestyrelsens afslag på en anmodning har knappen Ultimatum → "Please Confirm" (0x906610) → 0x6ad610 */}

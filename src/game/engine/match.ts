@@ -11,6 +11,9 @@
 import { A, fitFactor, slotFit, slotRole } from '../attributes';
 import type { Rng } from '../rng';
 import { RATING, addedMinutes, cardFor, cardSeverity, deadBall, fatigueDrain, halfTimeRecovery, knock, knockAllowed, knockSeverity, yellowRatingDelta, type Rand } from './cm0102-original-rules';
+/** Ekstra karakter for mål/assist i den moderne database (rules 'current') */
+const MODERN_GOAL_BONUS = 0.3;
+const MODERN_ASSIST_BONUS = 0.175;
 /** Andel almindelige frispark, der er sene/hårde (type 44) i originalens kortregel – *estimeret* (docs/ENGINE.md, trin 4) */
 const HARD_SHARE = 0.03;
 /** Originalens døde bolde pr. registreret afbrydelse hos os (indkast, målspark efter redninger m.m. tælles ikke) – *estimeret* (trin 5) */
@@ -1616,11 +1619,13 @@ export class MatchSim implements LiveSim {
     }
     T.stats.goals++;
     s.line.goals++;
-    // mål +0,65, assist +0,275 (originalen, sub_702050)
-    this.rate(s, RATING.goal);
+    // mål +0,65, assist +0,275 (originalen, sub_702050). Den moderne database (rules 'current') giver mere: en målscorer
+    // skal kunne ses i snittet (spillerrapport #23: Yamal 43 mål/24 assists = 7,10) – mål +0,95, assist +0,45
+    const modern = this.opts.rules !== 'original';
+    this.rate(s, modern ? RATING.goal + MODERN_GOAL_BONUS : RATING.goal);
     if (assister && kind !== 'pen' && kind !== 'fk') {
       assister.line.assists++;
-      this.rate(assister, RATING.assist);
+      this.rate(assister, modern ? RATING.assist + MODERN_ASSIST_BONUS : RATING.assist);
     }
     const gk = this.gk(O);
     this.rate(gk, -0.25);

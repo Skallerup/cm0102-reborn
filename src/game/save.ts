@@ -5,6 +5,7 @@ import { cmDatabase } from './newgame';
 import { del, get, keys, set } from 'idb-keyval';
 import { gs, setGame, addNews, notify, ensureNumbers, previewInfo, setPreview } from './state';
 import { splitReserves } from './reserves';
+import { cmCupName, cmLeagueRules } from './cmCalendar';
 import { cashRound } from './cmTransferBid';
 import { deserializeState, serializeState } from './snapshot';
 import type { GameState, Player } from './types';
@@ -123,7 +124,16 @@ function roundValuesOnce() {
   (g.fixes ??= []).push('cashRound');
 }
 
+/** Spillerrapport #26/#27: Portugals (og Japans) pokal hed "Portuguese Super Cup" (Supertaça) i gemte spil med den originale database */
+function repairCupNames() {
+  const g = gs();
+  if (g.dbKind !== 'cm0102') return;
+  for (const c of Object.values(g.comps)) if (c.type === 'cup' && cmCupName(c.name) !== c.name) c.name = cmCupName(c.name);
+  if (g.customRules) g.customRules = cmLeagueRules(g.customRules);
+}
+
 export function upgradeLoaded() {
+  repairCupNames();
   repairInjuryWave();
   roundValuesOnce();
   splitReservesOnce();
