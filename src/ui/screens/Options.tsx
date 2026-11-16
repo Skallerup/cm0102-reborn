@@ -99,7 +99,7 @@ export function Options() {
         {!g.draft && <PlayableNations />}
         <Panel title={t('opt.saves')}>
           <div className="col">
-            <button onClick={async () => { await saveGame({ cloud: true }); setMsg(t('top.saved')); }}>{t('nav.save')}</button>
+            {!g.humans?.length && <button onClick={async () => { try { await saveGame({ cloud: true }); setMsg(t('top.saved')); } catch { /* fællesspil gemmes på serveren */ } }}>{t('nav.save')}</button>}
             <button onClick={() => exportSave()}>{t('opt.export')}</button>
             <div className="muted">{t('opt.exportHint')}</div>
             <div className="kv"><span>{t('start.seed')}</span><span>{g.seed}</span></div>

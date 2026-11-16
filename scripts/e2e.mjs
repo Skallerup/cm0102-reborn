@@ -942,11 +942,56 @@ async function run(look) {
     if ((await page.locator('.cx-coef tbody tr').count()) < 10) throw new Error('for få lande i UEFA Coefficients');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-koefficienter.png` });
   });
+  if (look === 'klassisk') await step('Find husker siden efter en spiller (C1)', async () => {
+    await go({ name: 'find' });
+    await page.waitForSelector('.cx-find-row', { timeout: 5000 });
+    await page.locator('.cx-pager-line button[aria-label=next]').click();
+    const label = await page.locator('.cx-pager-line .pg').innerText();
+    if (!/\b2\b/.test(label.split(/ of | af /)[0])) throw new Error(`kom ikke til side 2: ${label}`);
+    await page.locator('.cx-find-row.go').first().click();
+    await page.waitForTimeout(300);
+    await page.locator('.cx-arrows button').first().click();
+    await page.waitForSelector('.cx-find-row', { timeout: 5000 });
+    const after = await page.locator('.cx-pager-line .pg').innerText();
+    if (after !== label) throw new Error(`Find husker ikke siden: ${label} → ${after}`);
+  });
+  if (look === 'klassisk') await step('Manager Stats: klikbare managere i tæt liste med rulning (C3)', async () => {
+    await go({ name: 'nation', tab: 'managers', id: await gs(() => window.__cm.gs().clubs[window.__cm.gs().userClub].nation) });
+    await page.waitForSelector('[data-testid=mgr-stats] .cx-nrow', { timeout: 5000 });
+    const info = await page.evaluate(() => { const el = document.querySelector('[data-testid=mgr-stats]'); const r = el.querySelector('.cx-nrow').getBoundingClientRect(); return { rowH: r.height, links: el.querySelectorAll('.cx-nname .cx-link, .cx-nname [role=link]').length, pager: !!document.querySelector('.cx-pager-line') }; });
+    if (info.pager) throw new Error('Manager Stats har sider i stedet for rulning');
+    if (info.rowH > 30) throw new Error(`rækkerne er for høje: ${info.rowH}px`);
+    if (!info.links) throw new Error('managernavnene kan ikke klikkes');
+  });
+  if (look === 'klassisk') await step('personnavn i nyhed kan klikkes (C7)', async () => {
+    const pid = await gs(() => {
+      const g = window.__cm.gs();
+      const p = Object.values(g.players).find((x) => x.club === g.userClub);
+      g.news.unshift({ id: g.nextId.news++, date: g.date, cat: 'info', key: 'contract.expiring', params: { player: `${p.first} ${p.last}`.trim(), last: p.last }, read: false, link: { kind: 'player', id: p.id } });
+      window.__cm.notify(); return p.id;
+    });
+    await go({ name: 'inbox' });
+    await page.locator('.cx-nrow').first().click();
+    await page.waitForSelector('.cx-nhead a.link', { timeout: 5000 });
+    await page.locator('.cx-nhead a.link').first().click();
+    await page.waitForFunction((id) => window.__cm.gs() && document.querySelector('.cx-title')?.textContent?.includes(window.__cm.gs().players[id].last), pid, { timeout: 5000 });
+  });
+  if (look === 'klassisk') await step('holdmenuen uden All screens i ægte tilstand (C2)', async () => {
+    if (!(await gs(() => window.__cm.gs().options.mode === 'authentic'))) return;
+    await go({ name: 'club', id: await gs(() => { const g = window.__cm.gs(); return Object.values(g.clubs).find((c) => c.id !== g.userClub && c.league === g.clubs[g.userClub].league).id; }) });
+    await page.locator('.cx-menu-btn').first().click();
+    if (await page.locator('.cx-menu-pop button', { hasText: /All screens/ }).count()) throw new Error('"All screens …" findes ikke i CM 01/02');
+  });
   if (look === 'klassisk') await step('slutrundens kampdag (VM)', async () => {
     await gs(() => { const g = window.__cm.gs(); g.intl ??= { results: [], history: [] }; g.intl.results.unshift({ date: g.date, home: g.clubs[g.userClub].nation, away: (g.clubs[g.userClub].nation + 1) % g.nations.length, hg: 1, ag: 0, kind: 'wc', stage: 'F' }); });
     await go({ name: 'intlday' });
     await page.waitForSelector('.cx-md-panel .cx-md-res', { timeout: 5000 });
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-vm-kampdag.png` });
+    // resultatet kan klikkes (C6): Match Overview for landskampen, og tilbage igen
+    await page.locator('[data-testid=intl-result]').first().click();
+    await page.waitForSelector('[data-testid=intl-match]', { timeout: 5000 });
+    await page.locator('[data-testid=intl-match] .cx-greybtn').click();
+    await page.waitForSelector('.cx-md-panel .cx-md-res', { timeout: 5000 });
     await gs(() => { window.__cm.gs().intl.results.shift(); });
   });
   if (look === 'klassisk') await step('jobtilbud (Respond i nyhederne)', async () => {
@@ -1680,6 +1725,22 @@ async function multiplayer() {
     if (!look.mp) throw new Error('ingen multiplayer-indhold');
     if (await page.locator('.start-aurora:visible, .start-card:visible').count()) throw new Error('moderne startelementer synlige');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-multiplayer.png` });
+  });
+  await step('Create online game bruger det klassiske nyt-spil-forløb (D1)', async () => {
+    await page.locator('.cxl button.primary', { hasText: /Create online game/ }).click();
+    await page.waitForSelector('[data-cxs=leagues]', { timeout: 30000 });
+    if (await page.locator('.cxl:visible, .start-card:visible').count()) throw new Error('den gamle nyt-spil-formular vises');
+    await page.waitForSelector('[data-nation]', { timeout: 60000 });
+    await page.locator('.cx-next').click();
+    await page.waitForSelector('[data-cxs=name]', { timeout: 10000 });
+    await page.locator('[data-name=first]').fill('Test');
+    await page.locator('[data-name=second]').fill('Manager');
+    await page.locator('.cx-next').click();
+    await page.waitForSelector('[data-cxs=deadline] [data-deadline]', { timeout: 10000 });
+    if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-multiplayer-frist.png` });
+    await page.locator('.cx-back').click(); // deadline → name
+    await page.locator('.cx-back').click(); // Cancel → Network Play
+    await page.waitForSelector('.cxl', { timeout: 10000 });
   });
   // forsiden: nyheden (gratis + online), nostalgi-designet, ingen Draft/moderne omtalt, ingen vandret rulning på mobil
   for (const [name, vp] of [['desktop', { width: 1280, height: 900 }], ['mobil', { width: 390, height: 844 }]]) {

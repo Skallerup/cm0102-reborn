@@ -2,7 +2,7 @@
 // alfabetisk liste med sider. Et klik åbner nationens liga, klubbens side, stabspersonens ansættelse eller
 // spillerens profil.
 import { nameQuery } from '../search';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { compName, natName, t } from '../../i18n';
 import { Tabs } from '../components';
 import { useGame, useNav, useRouteState, type Route } from '../core';
@@ -19,7 +19,7 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
   const { nav } = useNav();
   const [tab, setTab] = useRouteState<FindTab>('ftab', (FIND_TABS as readonly string[]).includes(initial ?? '') ? initial as FindTab : 'player');
   const [q, setQ] = useRouteState('fq', '');
-  const [pg, setPg] = useState(0);
+  const [pg, setPg] = useRouteState('fpg', 0);
   const noClub = t('cl.fd.noClub'), noDiv = t('cl.fd.noDiv');
   const league = (cid: number) => { const c = g.clubs[cid]; return c ? compName(g.leagues[c.league]?.name) ?? noDiv : noDiv; };
   const all = useMemo((): Row[] => {
@@ -47,7 +47,9 @@ export function ClassicFind({ tab: initial }: { tab?: string }) {
   const needle = q.trim();
   const list = useMemo(() => { const m = nameQuery(needle); return all.filter((r) => !m || m(r.name))
     .sort((a, b) => a.sort.localeCompare(b.sort, t('cl.locale'))); }, [all, needle]);
-  useEffect(() => setPg(0), [tab, needle]);
+  // siden huskes i rutetilstanden – nulstil kun, når fanen/søgningen ændres (ikke ved tilbagevenden fra en spiller)
+  const prev = useRef(`${tab}|${needle}`);
+  useEffect(() => { const k = `${tab}|${needle}`; if (prev.current !== k) { prev.current = k; setPg(0); } }, [tab, needle]);
   const pages = Math.max(1, Math.ceil(list.length / PAGE));
   const shown = list.slice(pg * PAGE, (pg + 1) * PAGE);
   return (

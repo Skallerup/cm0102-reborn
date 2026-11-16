@@ -1,6 +1,6 @@
 // En nations skærme i klassisk tema (som i CM 01/02, via ▸-menuen ved en klub → nationen):
 // Manager Stats (managernes omdømme i landet), Job Information (ledige stillinger) og Transfers (handler pr. måned).
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { GameState } from '../../game/types';
 import { compName, money, natName, t } from '../../i18n';
 import { useGame, useRouteState } from '../core';
@@ -46,26 +46,23 @@ export function ClassicNation({ id, tab: initial }: { id?: number; tab?: string 
 
 function ManagerStats({ nation, name }: { nation: number; name: string }) {
   const g = useGame()!;
-  const [pg, setPg] = useState(0);
   const rows = useMemo(() => {
     const out = Object.values(g.staff).filter((s) => s.role === 'manager' && s.club && s.club !== g.userClub && inNation(g, s.club, nation))
-      .map((s) => ({ key: `s${s.id}`, name: `${s.first} ${s.last}`.trim(), club: s.club, rep: s.rep, me: false }));
-    if (g.userClub && inNation(g, g.userClub, nation)) out.push({ key: 'me', name: g.manager.name, club: g.userClub, rep: g.manager.rep, me: true });
+      .map((s) => ({ key: `s${s.id}`, name: `${s.first} ${s.last}`.trim(), club: s.club, rep: s.rep, me: false, sid: s.id }));
+    if (g.userClub && inNation(g, g.userClub, nation)) out.push({ key: 'me', name: g.manager.name, club: g.userClub, rep: g.manager.rep, me: true, sid: 0 });
     return out.sort((a, b) => b.rep - a.rep || a.name.localeCompare(b.name));
   }, [g, nation]);
-  // start på siden med ens egen plads (som i originalen)
-  useEffect(() => { const i = rows.findIndex((r) => r.me); setPg(i >= 0 ? Math.floor(i / PAGE) : 0); }, [nation]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pages = Math.max(1, Math.ceil(rows.length / PAGE));
-  const p = Math.min(pg, pages - 1);
+  // som i originalen: én tæt liste med rulning, som starter ved ens egen plads
+  const meRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { meRef.current?.scrollIntoView({ block: 'end' }); }, [nation]);
   return (
     <>
       <div className="cx-subtitle">{t('cl.na.repIn', { nation: name })}</div>
-      <Pager desc="" pg={p} pages={pages} setPg={setPg} />
-      <div className="cx-ntab">
-        {rows.slice(p * PAGE, (p + 1) * PAGE).map((r, i) => (
-          <div key={r.key} className={`cx-nrow ${r.me ? 'me' : ''}`}>
-            <span className="cx-nrank">{ordinal(p * PAGE + i + 1)}</span>
-            <span className="cx-nname">{r.name}</span>
+      <div className="cx-ntab tight" data-testid="mgr-stats">
+        {rows.map((r, i) => (
+          <div key={r.key} ref={r.me ? meRef : undefined} className={`cx-nrow ${r.me ? 'me' : ''}`}>
+            <span className="cx-nrank">{ordinal(i + 1)}</span>
+            <span className="cx-nname">{r.me ? <CxLink to={{ name: 'profile' }}>{r.name}</CxLink> : r.sid ? <CxLink to={{ name: 'staff', id: r.sid }}>{r.name}</CxLink> : r.name}</span>
             <span className="cx-nclub"><CxLink to={clubRoute(r.club)}>{g.clubs[r.club]?.short}</CxLink></span>
             <span className="cx-nval">{repWord(r.rep)}</span>
           </div>

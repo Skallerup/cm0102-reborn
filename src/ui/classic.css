@@ -1549,10 +1549,10 @@ button.cx-sl-cell:disabled { opacity: 1; cursor: default; }
 :root[data-skin='retro'] .cx-bid-amt .cx-drop-btn, :root[data-skin='retro'] .cx-bid-amt .cx-drop-btn:hover { width: 100%; min-width: 0; justify-content: flex-end; gap: 14px; background: transparent; border: none; color: #fff; font-size: 16px; font-weight: 500; text-shadow: 1px 1px 0 #000; }
 .cx-bid-amt .cx-drop-pop { min-width: 190px; }
 /* Exchange: "Add Player To … Transfer Bid" */
-.cx-exch .cx-exch-head { display: block; margin: 8px 16px 0; padding: 6px 0 8px; background: rgba(60, 60, 60, 0.55); text-align: center; color: #fff21f; font-size: 20px; font-weight: 700; }
+.cx-exch .cx-exch-head { display: block; margin: 8px 16px 0; padding: 6px 0 8px; background: rgba(60, 60, 60, 0.55); text-align: center; color: #fff21f; font-size: 18px; font-weight: 700; }
 .cx-exch-list { margin: 0 16px; min-height: 50vh; background: rgba(0, 0, 0, 0.32); padding: 6px 0; display: flex; flex-direction: column; }
-.cx-exch-list .cx-sq-row { grid-template-columns: 52px 42px minmax(0, 1fr) 34%; }
-:root[data-skin='retro'] .cx-exch .cx-selbtn, :root[data-skin='retro'] .cx-exch .cx-selbtn:hover { width: 52px; height: 29px; background: #0000a8; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; filter: none; }
+.cx-exch-list .cx-sq-row { grid-template-columns: 42px 42px minmax(0, 1fr) 34%; }
+:root[data-skin='retro'] .cx-exch .cx-selbtn, :root[data-skin='retro'] .cx-exch .cx-selbtn:hover { width: 42px; height: 25px; font-size: 10px; font-weight: 700; color: #fff; background: #0000a8; border: 1px solid; border-color: #3030d8 #00004a #00004a #3030d8; filter: none; }
 :root[data-skin='retro'] .cx-exch .cx-sq-name { color: #fff; font-size: 19px; font-weight: 500; }
 :root[data-skin='retro'] .cx-exch .cx-sq-name:hover { color: #fff; text-decoration: underline; }
 .cx-exch-none { margin: auto; color: #fff; font-size: 19px; text-shadow: 1px 1px 0 #000; text-align: center; padding: 20px; }
@@ -1712,8 +1712,8 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 :root[data-skin='retro'] .cx-bid-amt.over .cx-drop-btn { color: #ff5a4a; }
 .cx-greybtn.on { filter: brightness(0.8); box-shadow: inset 1px 1px 0 #000; }
 .cx-exch-top { position: relative; }
-.cx-exch-btn { position: absolute; right: 0; top: 0; min-width: 160px; height: 26px; background: #fff; color: #00007d; border: 1px solid #c8c8c8; font-size: 14px; cursor: pointer; }
-.cx-exch-btn.on { background: #d8d8d8; box-shadow: inset 2px 2px 0 #888; }
+.cx-exch-btn { position: absolute; right: 0; top: 0; width: 130px; height: 20px; background: linear-gradient(#f4f4f4, #d4d4d4); color: #00007d; border: 1px solid; border-color: #fff #6a6a6a #6a6a6a #fff; font-size: 11px; font-weight: 700; cursor: pointer; padding: 0; }
+.cx-exch-btn.on { background: #bcbcbc; box-shadow: inset 1px 1px 0 #555; border-color: #6a6a6a #fff #fff #6a6a6a; }
 
 /* CM 01/02 Save Game: filnavn, de gemte spil som brede felter med blå ramme, Cancel · Info · Ok */
 .cx-savegame .cx-dlg-body { display: flex; flex-direction: column; gap: 10px; }
@@ -1851,3 +1851,26 @@ button.cx-bid-swap.removing { cursor: pointer; color: #fff21f; }
 .cxs-pop-tbl .on { background: rgba(255, 242, 31, 0.14); }
 .cxs-pop-tbl .ok { color: #7dff7d; font-weight: 800; }
 .cxs-pop-tbl .no { color: #ff9a9a; }
+
+/* Manager Stats som originalen: tæt liste med rulning (ikke sider) */
+.cx-ntab.tight { gap: 1px; max-height: calc(100vh - 230px); min-height: 220px; overflow-y: auto; padding-right: 10px; }
+.cx-ntab.tight .cx-nrow { min-height: 21px; flex: none; }
+.cx-ntab.tight .cx-nname { font-size: 15px; text-shadow: 1px 1px 0 #000; }
+.cx-ntab.tight .cx-nname .cx-link { color: inherit; }
+.cx-ntab.tight .cx-nclub { font-size: 13px; }
+.cx-ntab.tight .cx-nrank, .cx-ntab.tight .cx-nval { font-size: 12px; }
+
+/* Live League Table: egen klubs række (over den stiplede linje) er tydeligt markeret som egen placering */
+.cx-live-tbl tr.cx-live-me td { background: rgba(255, 242, 31, 0.13); }
+.cx-live-tbl tr.cx-live-me .cx-lg-club { color: #fff21f; font-weight: 700; }
+
+/* Sæsonskiftet: bjælken er fuld og stribet (kører), med teksten om hvad der sker */
+.cx-run-bar.busy i { justify-content: center; background: repeating-linear-gradient(45deg, #000a8c 0 14px, #1a22b8 14px 28px); background-size: 40px 40px; animation: cx-run-stripes 0.9s linear infinite; }
+.cx-run-bar.busy b { padding: 0 8px; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@keyframes cx-run-stripes { to { background-position: 40px 0; } }
+
+/* Fællesspil i sidebjælken: Invitér/Fortsæt som originalens blå knapper (.cx-sbtn), kort statuslinje under dem */
+.cx-online { display: contents; }
+.cx-sbtn.cx-invite { font-size: 12px; }
+.cx-sbtn.cx-continue.unready { color: #fff21f; }
+.cx-online-note { display: block; margin: -2px 6px 6px; font-size: 10px; line-height: 1.25; color: #fff21f; text-align: center; }

@@ -28,9 +28,10 @@ import { listDbs } from './customDb';
 import { changeCount, type CustomDb } from '../game/dbEdit';
 import { setTheme, getTheme, modernOn, setStartSkin } from './theme';
 import { ORIGINAL_VERSIONS, type OriginalVersion } from './world';
+import { createOnlineGame } from '../online/client';
 import { createGameAsync, loadStartWorld, LANG_NATION, ORIG_LANG_NATION, readDb, readVer, writeDb, writeVer, type Db } from './startGame';
 
-type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account';
+type Step = 'menu' | 'db' | 'leagues' | 'season' | 'name' | 'deadline' | 'nation' | 'team' | 'club' | 'confirm' | 'restore' | 'delete' | 'settings' | 'opts' | 'extras' | 'account';
 /** Populære spillere og hvilke udgaver (3.9.60/65/68) de findes i – datafilen hentes først, når boksen åbnes */
 function PopularBox({ ver, onClose }: { ver: OriginalVersion | null; onClose: () => void }) {
   const [d, setD] = useState<{ v: string[]; p: [string, ([string, number, number] | null)[]][] } | null>(null);
@@ -64,7 +65,7 @@ export type LegacyView = 'online' | 'challenges' | 'editor' | 'draft';
 
 /** Baggrundsbillederne fra originalens Pictures-mappe (public/original-bg) – som i skærmbillederne af originalens startskærme */
 const BG: Record<Step, string> = {
-  menu: '324855', db: '324855', leagues: 'holywell03', season: 'holywell03', name: '324855', nation: '214525', team: 'boro3', club: '407618', confirm: '259396',
+  menu: '324855', db: '324855', leagues: 'holywell03', season: 'holywell03', name: '324855', deadline: '324855', nation: '214525', team: 'boro3', club: '407618', confirm: '259396',
   restore: '349416', delete: '349416', settings: '324855', opts: '324855', extras: '324855', account: '324855',
 };
 
@@ -139,24 +140,26 @@ function Frame({ step, version, title, sub, children, onBack, onNext, backLabel,
   );
 }
 
-export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lang) => void; onHome?: () => void; onGo: (v: LegacyView) => void; onLook: () => void }) {
+/** `online`: nyt fællesspil (Network Play → Create) – samme forløb som nyt spil (Select League(s) … Please Confirm), plus turfristen, og spillet oprettes på serveren */
+export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang: (l: Lang) => void; onHome?: () => void; onGo: (v: LegacyView) => void; onLook: () => void; online?: { onBack: () => void } }) {
   // originalen er ægte CM 01/02 med den klassiske DOM – temaet sættes, så resten af spillet (og e2e) ser det klassiske udseende
   useEffect(() => { if (getTheme() !== 'retro') setTheme('retro'); }, []);
   // spillets klassiske skin (:root[data-skin='retro']) gælder også før der er et spil – startskærmene bruger spillets egne knapper og lister
   useEffect(() => { setStartSkin(true); return () => setStartSkin(false); }, []);
-  const [hist, setHist] = useState<{ stack: Step[]; i: number }>({ stack: ['menu'], i: 0 });
+  const [hist, setHist] = useState<{ stack: Step[]; i: number }>({ stack: [online ? 'leagues' : 'menu'], i: 0 });
   const step = hist.stack[hist.i];
   const go = (s: Step) => setHist((h) => ({ stack: [...h.stack.slice(0, h.i + 1), s], i: h.i + 1 }));
   const back = () => setHist((h) => (h.i > 0 ? { ...h, i: h.i - 1 } : h));
   const onHist = (d: -1 | 1) => setHist((h) => (h.i + d >= 0 && h.i + d < h.stack.length ? { ...h, i: h.i + d } : h));
-  const reset = () => { discard(); setHist({ stack: ['menu'], i: 0 }); };
+  const reset = () => { discard(); if (online) { online.onBack(); return; } setHist({ stack: ['menu'], i: 0 }); };
+  const [deadline, setDeadline] = useState(24);
 
   const [db, setDbState] = useState<Db>(readDb);
   const [ver, setVerState] = useState<OriginalVersion>(readVer);
   const [mine, setMine] = useState<CustomDb[]>([]);
   useEffect(() => { void listDbs().then(setMine).catch(() => {}); }, []);
   const [world, setWorld] = useState<WorldData | null>(null);
-  const [wanted, setWanted] = useState(false);
+  const [wanted, setWanted] = useState(!!online);
   const [err, setErr] = useState('');
   const [prog, setProg] = useState<Prog | null>(null);
   // Select League(s): SELECTED = spilbart (første valgte = hovedland), BACKGROUND = landet spilles i baggrunden, men kan ikke styres; ingen af dem = ikke med
@@ -316,9 +319,15 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
     const opts = { managerName, managerNation: nat >= 0 ? nat : club.nation, clubId: club.id, activeNations: [...sel, ...bgn], lang: getLang(), masking, seed: seed.current, mode: 'authentic' as const };
     // nyt spil: nulstil sidemenuen, så "Holdet" er foldet ud fra start (resten huskes derefter)
     try { localStorage.setItem(GROUP_KEY, JSON.stringify(NAV_CLOSED_DEFAULT)); } catch { /* ignorer */ }
-    track('start_game', { mode: 'single', db: db.startsWith('custom:') ? 'custom' : db, challenge: false, lang: opts.lang, flow: 'classic' });
+    track('start_game', { mode: online ? 'online' : 'single', db: db.startsWith('custom:') ? 'custom' : db, challenge: false, lang: opts.lang, flow: 'classic' });
     await delay(30);
     try {
+      if (online) {
+        // fællesspil: serveren opretter rummet, verden bygges i arbejderen (ingen frysning), og første version uploades
+        await createOnlineGame(world, { ...opts, deadlineHours: deadline }, undefined, (w, o) => createGameAsync(w, o, (p) => setProg({ label: t('mp.creating'), frac: p.frac, step: p.step })));
+        setProg(null);
+        return;
+      }
       await createGameAsync(world, opts, (p) => setProg({ label: t('cxs.initGame'), frac: p.frac, step: p.step }));
       notify();
       const lg = world.leagues.find((l) => l.id === club.league);
@@ -424,7 +433,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
       </>
     );
     return (
-      <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectLeagues')} onBack={back} onNext={leaguesNext} nextDisabled={!world || !sel.length}>
+      <Frame {...common} title={t('cxs.title')} sub={t('cxs.selectLeagues')} onBack={online ? reset : back} onNext={leaguesNext} nextDisabled={!world || !sel.length}>
         <div className="cxs-lg-top cx-sl-top" data-cxs-lgtop>
           <span>{t('cl.sl.real')}</span>{yn(true, () => {}, true)}
           <span className="gap">{t('cl.sl.masking')}</span>{yn(masking, setMasking)}
@@ -472,12 +481,28 @@ export function ClassicStart({ onLang, onHome, onGo, onLook }: { onLang: (l: Lan
   // ---------- Enter Name (293) ----------
   if (step === 'name') {
     const ok = first.trim() && second.trim();
-    const submit = () => { if (ok) go('nation'); };
+    const submit = () => { if (ok) go(online ? 'deadline' : 'nation'); };
     return (
       <Frame {...common} title={t('cxs.title')} sub={t('cxs.enterName')} onBack={reset} backLabel={t('cxs.cancel')} onNext={submit} nextDisabled={!ok}>
         <div className="cxs-form">
           <label className="cxs-frow"><span>{t('cxs.firstName')}</span><i>:</i><input autoFocus maxLength={24} value={first} onChange={(e) => setFirst(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') document.getElementById('cxs-second')?.focus(); }} data-name="first" /></label>
           <label className="cxs-frow"><span>{t('cxs.secondName')}</span><i>:</i><input id="cxs-second" maxLength={24} value={second} onChange={(e) => setSecond(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} data-name="second" /></label>
+        </div>
+      </Frame>
+    );
+  }
+
+  // ---------- fællesspil: turfrist (efter fristen overtager assistenten for dem, der ikke har trykket Ready) ----------
+  if (step === 'deadline') {
+    return (
+      <Frame {...common} title={t('cxs.title')} sub={t('mp.deadlineTitle')} onBack={back} onNext={() => go('nation')}>
+        <div className="cxs-msg">{t('mp.deadlineHint')}</div>
+        <div className="cxs-list deadline" data-deadlines>
+          {[0, 6, 12, 24, 48].map((h) => (
+            <div key={h} className={`cxs-it ${deadline === h ? 'sel' : ''}`} role="button" tabIndex={0} data-deadline={h} onClick={() => setDeadline(h)}>
+              <span className="n">{h ? t('mp.hours', { n: h }) : t('mp.noDeadline')}</span>
+            </div>
+          ))}
         </div>
       </Frame>
     );

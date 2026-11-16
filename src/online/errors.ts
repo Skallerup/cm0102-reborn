@@ -8,7 +8,7 @@ const sent = new Map<string, number>();
 let total = 0;
 // Støj, der ikke er spillets: browserudvidelser (krypto-wallets sætter window.ethereum, Firefox på iOS injicerer __firefox__),
 // indlejrede browsere i apps (Android WebView: "Java object is gone") og netværksfejl
-const IGNORE = /ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|safari-web-extension:|window\.ethereum|selectedAddress|__firefox__|Java object is gone|Load failed|NetworkError|Failed to fetch|AbortError|The play\(\) request/i;
+const IGNORE = /^Error: online$|ResizeObserver loop|Script error\.?$|chrome-extension:|moz-extension:|safari-extension:|safari-web-extension:|window\.ethereum|selectedAddress|__firefox__|Java object is gone|Load failed|Importing a module script failed|Unable to preload CSS|NetworkError|Failed to fetch|AbortError|The play\(\) request/i;
 
 export function reportError(err: unknown, extra?: string) {
   // admin-preview af en spillers spil: fejlen står i konsollen – den skal ikke tælle som en spillers fejl
@@ -28,7 +28,20 @@ export function reportError(err: unknown, extra?: string) {
   try { void fetch('/api/notify', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body), keepalive: true }).catch(() => {}); } catch { /* ignorér */ }
 }
 
+// efter en ny udgivelse hænger en gammel side på filer, der er væk: genindlæs én gang (sessionStorage-vagt mod løkker)
+function reloadOnce(): boolean {
+  try {
+    if (sessionStorage.getItem('cm0102.preloadReload')) return false;
+    sessionStorage.setItem('cm0102.preloadReload', String(Date.now()));
+  } catch { return false; }
+  location.reload();
+  return true;
+}
+const STALE = /Importing a module script failed|Unable to preload CSS|Failed to fetch dynamically imported module|error loading dynamically imported module/i;
+
 export function startErrorReport() {
+  window.addEventListener('vite:preloadError', (ev) => { if (reloadOnce()) ev.preventDefault(); });
+  window.addEventListener('unhandledrejection', (ev) => { if (STALE.test(String((ev.reason as Error)?.message ?? ev.reason))) reloadOnce(); });
   window.addEventListener('error', (ev) => reportError(ev.error ?? ev.message));
   window.addEventListener('unhandledrejection', (ev) => reportError(ev.reason));
 }

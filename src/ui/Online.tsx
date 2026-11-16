@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { DraftJoin } from './Draft';
 import { askConfirm } from './confirm';
-import type { WorldData } from '../game/newgame';
 import type { GameState } from '../game/types';
 import { compName, dateFmt, t, natName } from '../i18n';
 import {
@@ -13,7 +12,6 @@ import { act } from '../game/actions';
 import { useNav } from './core';
 import { focusNews } from './inboxFocus';
 import { notifyUser } from './notify';
-import { loadWorld } from './world';
 import { modernOn } from './modernFlag';
 
 /** Startmenuens online-del: opret, deltag eller genoptag */
@@ -67,7 +65,6 @@ export function OnlineMenu({ onBack, onCreate, onCreateDraft, setBusy, initialCo
 function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void; setBusy: (s: string) => void }) {
   const [room, setRoom] = useState<RoomInfo | null>(null);
   const [state, setState] = useState<GameState | null>(null);
-  const [world, setWorld] = useState<WorldData | null>(null);
   const [err, setErr] = useState('');
   const [name, setName] = useState('');
   const [league, setLeague] = useState('');
@@ -80,9 +77,8 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
         setRoom(r);
         if (r.draft) return;
         if (!r.snapshot) { setErr('not-ready'); return; }
-        const [{ state: s }, w] = await Promise.all([downloadSnapshot(r.snapshot), loadWorld()]);
+        const { state: s } = await downloadSnapshot(r.snapshot); // (før hentede siden også hele 2026/27-databasen – ubrugt, og den hang indlæsningen)
         setState(s);
-        setWorld(w);
         const firstLeague = Object.keys(s.comps).find((id) => s.comps[id].type === 'league');
         if (firstLeague) setLeague(firstLeague);
       } catch (e) {
@@ -95,7 +91,7 @@ function JoinRoom({ code, onBack, setBusy }: { code: string; onBack: () => void;
   // draft-liga: man opretter sin egen klub i stedet for at vælge en
   if (room?.draft && !err) return <DraftJoin code={code} room={room} onBack={onBack} setBusy={setBusy} />;
   if (err) return <Panel title={`${t('mp.join')} ${code}`} right={<button className="small" onClick={onBack}>{t('common.back')}</button>}><div className="bad">{t(`mp.err.${err}`) !== `mp.err.${err}` ? t(`mp.err.${err}`) : err}</div></Panel>;
-  if (!room || !state || !world) return <Panel title={`${t('mp.join')} ${code}`}><div className="muted">{t('mp.connecting')}</div></Panel>;
+  if (!room || !state) return <Panel title={`${t('mp.join')} ${code}`}><div className="muted">{t('mp.connecting')}</div></Panel>;
   const leagues = Object.values(state.comps).filter((c) => c.type === 'league');
   const clubs = (state.comps[league]?.clubs ?? []).map((id) => state.clubs[id]).filter(Boolean).sort((a, b) => a.short.localeCompare(b.short));
   const canJoin = name.trim() && club && !taken.has(club);
@@ -142,7 +138,16 @@ function blinkTitle(on: boolean) {
   }
 }
 
-export function OnlineControls() {
+/** Klassisk: "Simulating next turn …" som originalens fremdriftsbjælke i foden (som Continue Game) – teksten, mens alle er klar og trækket simuleres */
+export function onlineSimLabel(): string | null {
+  const s = session();
+  if (!s?.room || s.room.players.length === 1) return null;
+  if (s.status === 'error' || !(s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready))) return null;
+  const host = s.room.players.find((p) => p.pid === s.room!.host);
+  return s.status === 'processing' ? t('mp.simYou') : s.room.processing ? t('mp.simOther', { name: host?.name ?? '' }) : t('mp.simWaitHost', { name: host?.name ?? '' });
+}
+
+export function OnlineControls({ cx }: { cx?: boolean }) {
   const s = session();
   const [copied, setCopied] = useState(false);
   const [hostOpen, setHostOpen] = useState(false);
@@ -180,7 +185,7 @@ export function OnlineControls() {
   const onMyMatch = !!myMatch && route.name === 'match' && (route as { id?: number }).id === myMatch;
   return (
     <>
-      {!gs().draft && <button className="small" title={link} onClick={() => setInviteOpen(true)}>🔗 {t('mp.invite')} · {s.creds.code}</button>}
+      {!gs().draft && <button className={cx ? 'cx-sbtn cx-invite' : 'small'} data-testid="invite" title={link} onClick={() => setInviteOpen(true)}>{cx ? '' : '🔗 '}{t('mp.invite')} · {s.creds.code}</button>}
       {inviteOpen && (
         <Modal title={t('mp.inviteTitle')} onClose={() => setInviteOpen(false)}>
           <div className="col">
@@ -201,15 +206,15 @@ export function OnlineControls() {
         const h = Math.floor(left / 3_600_000), m = Math.max(0, Math.floor((left % 3_600_000) / 60_000));
         return <span className="muted nowrap" title={t('mp.deadlineTip')}>⏱ {left > 0 ? t('mp.deadlineLeft', { h, m }) : t('mp.deadlinePassed')}</span>;
       })()}
-      {s.isHost && s.room.players.length > 1 && <button className="small" title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>👑 {t('mp.host')}</button>}
+      {s.isHost && s.room.players.length > 1 && <button className={cx ? 'cx-sbtn' : 'small'} title={t('mp.hostTitle')} onClick={() => setHostOpen(true)}>{cx ? '' : '👑 '}{t('mp.host')}</button>}
       {hostOpen && <HostModal onClose={() => setHostOpen(false)} />}
       {!me && s.inGame && <span className="bad nowrap">{t('mp.youWereRemoved')}</span>}
-      {othersWaiting && !onMyMatch && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
-      {!solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
-      {!onMyMatch && <><span className={othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
+      {othersWaiting && !onMyMatch && !cx && <div className="waiting-banner" role="alert">⏳ {t('mp.allWaitingBanner')}</div>}
+      {!cx && !solo && !simHidden && s.status !== 'error' && (s.status === 'processing' || !!s.room.processing || s.room.players.every((p) => p.ready)) && <SimOverlay onHide={() => setSimHidden(true)} />}
+      {!onMyMatch && <><span className={cx ? 'cx-online-note' : othersWaiting ? 'waiting-me nowrap' : 'muted nowrap'}>
         {othersWaiting ? t('mp.othersWaitingShort') : s.status === 'processing' ? t('mp.processing') : s.room.processing ? t('mp.otherProcessing') : solo ? '' : waiting.length ? t('mp.waitingFor', { names: waiting.join(', ') }) : t('mp.allReady')}
       </span>
-      <button className={`${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
+      <button data-testid="online-continue" className={cx ? `cx-sbtn cx-continue continue ${me?.ready ? 'unready' : ''}` : `${me?.ready ? 'unready' : 'continue primary'} ${othersWaiting ? 'nudge' : ''}`} title={othersWaiting ? t('mp.othersWaiting') : undefined} disabled={s.status !== 'idle' || !!s.room.processing} onClick={() => {
         // kampdag: spil først din kamp (eller tag et hurtigt resultat på kampskærmen)
         if (!me?.ready && myMatch) { nav({ name: 'match', id: myMatch }); return; }
         // som i enkeltspiller: læs først de ulæste beskeder én ad gangen (ældste først), før man melder klar
@@ -219,8 +224,8 @@ export function OnlineControls() {
         }
         void s.setReady(!me?.ready);
       }}>
-        {!me?.ready && myMatch ? t('top.toTheMatch') : solo ? (me?.ready ? t('mp.processingShort') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
-        {!me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
+        {!me?.ready && myMatch ? t('top.toTheMatch') : solo ? (me?.ready ? t('mp.processingShort') : cx ? t('cl.continue') : t('mp.continueSolo')) : me?.ready ? t('mp.notReady') : t('mp.ready')}
+        {!cx && !me?.ready && unread > 0 && <span className="cont-badge">{unread}</span>}
       </button>
       </>}
     </>

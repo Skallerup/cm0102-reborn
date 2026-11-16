@@ -190,9 +190,10 @@ export function useOpenLink() {
 // ---------- nyheder med links til spillere og klubber ----------
 
 const CLUB_PARAMS = new Set(['club', 'from', 'to', 'opp', 'leader', 'buyer', 'seller']);
+const PERSON_PARAMS = new Set(['manager', 'coach', 'scout', 'staff', 'name', 'runner', 'winner', 'who', 'person', 'applicant', 'candidate', 'sacked', 'successor', 'old', 'new', 'captain', 'physio', 'assistant']);
 const MONEY_PARAMS = new Set(['fee', 'fee2', 'wage', 'balance', 'budget', 'bill', 'missing', 'amount', 'bid2', 'wage2']);
 
-let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number> } | null = null;
+let nameIndex: { g: GameState; date: string; players: Map<string, number[]>; clubs: Map<string, number>; staff: Map<string, number[]> } | null = null;
 
 /** Opslag fra navn til id (nyhederne gemmer navne) – bygges én gang pr. spildag */
 function names() {
@@ -206,7 +207,9 @@ function names() {
   }
   const clubs = new Map<string, number>();
   for (const c of Object.values(g.clubs)) { clubs.set(c.name, c.id); if (!clubs.has(c.short)) clubs.set(c.short, c.id); }
-  nameIndex = { g, date: g.date, players, clubs };
+  const staff = new Map<string, number[]>();
+  for (const x of Object.values(g.staff)) { const k = `${x.first} ${x.last}`.trim(); const arr = staff.get(k); if (arr) arr.push(x.id); else staff.set(k, [x.id]); }
+  nameIndex = { g, date: g.date, players, clubs, staff };
   return nameIndex;
 }
 
@@ -224,7 +227,7 @@ function playerFor(n: NewsItem, name: string): number | undefined {
   return ids.find((id) => g.players[id]?.club === g.userClub);
 }
 
-function NewsLink({ kind, id, text }: { kind: 'player' | 'club'; id: number; text: string }) {
+function NewsLink({ kind, id, text }: { kind: 'player' | 'club' | 'staff'; id: number; text: string }) {
   const { nav } = useNav();
   return <a className="link" onClick={(e) => { e.stopPropagation(); nav({ name: kind, id }); }}>{text}</a>;
 }
@@ -246,6 +249,16 @@ function linked(n: NewsItem, key: string): ReactNode {
     } else if (CLUB_PARAMS.has(part)) {
       const id = names().clubs.get(text);
       if (id) return <NewsLink key={i} kind="club" id={id} text={text} />;
+    } else if (part === 'last' && typeof params.player === 'string') {
+      // overskrifter med efternavn ("Kim Rømer's contract expires"): linket går til spilleren i brødtekstens {player}
+      const id = playerFor(n, params.player);
+      if (id) return <NewsLink key={i} kind="player" id={id} text={text} />;
+    } else if (PERSON_PARAMS.has(part)) {
+      // øvrige personer (managere, trænere, spejdere, ansøgere …): spiller først, ellers stab/manager med entydigt navn
+      const id = playerFor(n, text);
+      if (id) return <NewsLink key={i} kind="player" id={id} text={text} />;
+      const sid = names().staff.get(text);
+      if (sid?.length === 1) return <NewsLink key={i} kind="staff" id={sid[0]} text={text} />;
     }
     return <Fragment key={i}>{text}</Fragment>;
   });

@@ -62,6 +62,10 @@ export function Start({ onLang, onHome }: { onLang: (l: Lang) => void; onHome?: 
     return <ClassicStart onLang={onLang} onHome={onHome} onLook={() => bump((x) => x + 1)}
       onGo={(v) => { if (v === 'draft') { setDraftFrom('menu'); setView('newDraft'); } else setView(v); }} />;
   }
+  // nyt fællesspil i det klassiske udseende: samme forløb som nyt spil (ClassicStart) – ikke den gamle formular
+  if (view === 'newOnline' && initialLook() === 'classic') {
+    return <ClassicStart online={{ onBack: () => setView('online') }} onLang={onLang} onHome={onHome} onLook={() => bump((x) => x + 1)} onGo={() => {}} />;
+  }
   return (
     <div className={`start ${view === 'menu' ? 'start-menu' : ''} ${modernOn() ? '' : 'cxl'}`}>
       <div className="start-aurora" aria-hidden><i /><i /><i /></div>

@@ -474,7 +474,7 @@ function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number })
           ))}
           <div className="cx-drop-sep" />
           <button role="menuitem" onClick={() => go(club.id === g.userClub ? { name: 'squad' } : { name: 'club', id: club.id })}>{club.name}</button>
-          <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>
+          {!authentic() && <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>}
         </div>
       ) : rivals.length && !all ? (
         <div className="cx-menu-pop cx-menu-clubs" role="menu">
@@ -484,8 +484,8 @@ function TitleMenu({ clubId, playerId }: { clubId?: number; playerId?: number })
           <div className="cx-drop-sep" />
           <button role="menuitem" onClick={() => go({ name: 'competitions', id: club!.league })}>{compName(g.leagues[club!.league]?.name)}</button>
           <button role="menuitem" onClick={() => go({ name: 'nation', id: club!.nation })}>{natName(g.nations[club!.nation]?.name)}</button>
-          <div className="cx-drop-sep" />
-          <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>
+          {!authentic() && <div className="cx-drop-sep" />}
+          {!authentic() && <button role="menuitem" onClick={() => setAll(true)}>{t('cl.menu.all')}</button>}
         </div>
       ) : (
         <div className="cx-menu-pop" role="menu">

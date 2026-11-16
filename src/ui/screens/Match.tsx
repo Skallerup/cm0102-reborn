@@ -1783,7 +1783,7 @@ export function CxLiveTable({ f, live, others, minute, finished, kicked }: { f: 
   const sorted = sortTable([...rows.values()]);
   const mine = sorted.findIndex((r) => r.club === g.userClub);
   const row = (r: TableRow, i: number) => (
-    <tr key={r.club}>
+    <tr key={r.club} className={r.club === g.userClub ? 'cx-live-me' : undefined}>
       <td className="btn-col"><span className="cx-lg-pos">{ordinal(i + 1)}</span></td>
       <td className={`cx-lg-club ${r.club === g.userClub ? 'me' : ''}`} onClick={() => nav({ name: 'club', id: r.club })}>
         <span className={`cx-live-mv ${(before.get(r.club) ?? i) > i ? 'up' : (before.get(r.club) ?? i) < i ? 'down' : ''}`} />{g.clubs[r.club]?.short}</td>

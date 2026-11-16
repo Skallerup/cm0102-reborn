@@ -104,7 +104,12 @@ export function MatchDay({ id }: { id: number }) {
 }
 
 /** Slutrundens kampdag (CM 01/02 "FIFA World Cup – Afternoon Result"): dagens resultater pr. gruppe/runde med placeringen i gruppen */
-export function IntlDay() {
+export function IntlDay({ match }: { match?: string }) {
+  // (to komponenter: hooks må ikke stå efter et tidligt return)
+  return match ? <IntlMatch match={match} /> : <IntlDayList />;
+}
+
+function IntlDayList() {
   const g = useGame()!;
   const { nav } = useNav();
   const all = intlDayResults(g.date);
@@ -136,13 +141,41 @@ export function IntlDay() {
             <div key={k} className="cx-md-row">
               <span className="cx-md-code">{x.pos ? ordinal(x.pos[0]) : g.nations[x.r.home]?.code ?? ''}</span>
               <span className="cx-md-home">{nat(x.r.home)}</span>
-              <span className="cx-md-res">{x.r.hg}:{x.r.ag}</span>
+              <span className="cx-md-res cx-link" role="link" data-testid="intl-result" onClick={() => nav({ name: 'intlday', id: `${x.r.home}:${x.r.away}:${x.r.date}:${x.r.kind}` })}>{x.r.hg}:{x.r.ag}</span>
               <span className="cx-md-away">{nat(x.r.away)}</span>
               <span className="cx-md-code">{x.pos ? ordinal(x.pos[1]) : g.nations[x.r.away]?.code ?? ''}</span>
             </div>
           ))}
         </div>
       ))}</div>
+    </div>
+  );
+}
+
+/** En landskamp (resultatet i Afternoon Results er klikbart): Match Overview med stilling, runde/gruppe og dato – landskampe gemmer hverken målscorere eller rapport */
+function IntlMatch({ match }: { match: string }) {
+  const g = useGame()!;
+  const { back, nav } = useNav();
+  const [h, a, date, kind] = match.split(':');
+  const x = intlDayResults(date).find((y) => String(y.r.home) === h && String(y.r.away) === a && y.r.kind === kind);
+  if (!x) return <div><Head title={t('report.missing')} /><div className="cx-md-tools"><button className="cx-greybtn" onClick={back}>{t('common.back')}</button></div></div>;
+  const r = x.r;
+  const label = x.group !== undefined ? t('cl.md.group', { g: String.fromCharCode(65 + x.group) }) : r.stage ? t(`stage.${r.stage}`) : '';
+  const nat = (n: number) => <span className="cx-link" role="link" onClick={() => nav({ name: 'international', id: n })}>{natName(g.nations[n]?.name) ?? '?'}</span>;
+  return (
+    <div data-testid="intl-match">
+      <Head title={t(`intl.name.${r.kind}`)} />
+      <div className="cx-subtitle">{t('match.overview')}</div>
+      <div className="cx-md-panel">
+        <div className="cx-md"><div className="cx-md-stage">{label} · {r.date}</div>
+          <div className="cx-md-row">
+            <span className="cx-md-code">{g.nations[r.home]?.code ?? ''}</span><span className="cx-md-home">{nat(r.home)}</span>
+            <span className="cx-md-res">{r.hg}:{r.ag}</span>
+            <span className="cx-md-away">{nat(r.away)}</span><span className="cx-md-code">{g.nations[r.away]?.code ?? ''}</span>
+          </div>
+        </div>
+      </div>
+      <div className="cx-md-tools"><button className="cx-greybtn" onClick={back}>{t('common.back')}</button></div>
     </div>
   );
 }

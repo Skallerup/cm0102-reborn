@@ -31,7 +31,7 @@ import { cmActive } from '../game/cmPlayerData';
 import { compName, dateFmt, money, setMoneyRounding, t } from '../i18n';
 import { Crest } from './components';
 import { Icon } from './icons';
-import { Lobby, OnlineControls } from './Online';
+import { Lobby, OnlineControls, onlineSimLabel } from './Online';
 import { closeSession, session } from '../online/client';
 import { submitPending } from '../online/rank';
 import { focusNews } from './inboxFocus';
@@ -161,6 +161,8 @@ export function Shell() {
   const inMatch = route.name === 'match' && !!g.pendingFixture && (route as { id?: number }).id === g.pendingFixture;
   const [menuOpen, setMenuOpen] = useState(false);
   const [running, setRunning] = useState<string | null>(null);
+  // sæsonskiftet (1/7) er én tung dag uden delfremdrift: bjælken fortæller, hvad der sker, mens den kører
+  const [runNote, setRunNote] = useState<string | null>(null);
   const spanRef = useRef({ start: '', end: '' });
   const [toast, setToast] = useState('');
   const [winNote, setWinNote] = useState<{ head: string; text: string } | null>(null);
@@ -407,8 +409,8 @@ export function Shell() {
     // klassisk: bjælken vises MED DET SAMME og tegnes, før første dag simuleres (en tung første dag gav før 3 s uden noget på skærmen – ejeren
     // 13/11); derefter opdateres den efter hver dag (runUntil giver plads med setTimeout(0) mellem dagene)
     if (cmNav) { setRunning(g0.date); await painted(); }
-    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) setRunning(d); } });
-    setRunning(null);
+    const r = await runUntil({ ...opts, shouldStop: () => stopRef.current, onProgress: (d) => { if (cmNav || Date.now() - t0 > 60) setRunning(d); setRunNote(d.slice(5, 10) === '06-30' ? t('cl.run.season') : null); } });
+    setRunning(null); setRunNote(null);
     if (r.stop === 'news') { notify(); return r; }
     handle(r);
     return r;
@@ -492,7 +494,7 @@ export function Shell() {
               <button disabled={!canBack} onClick={back} aria-label={t('cm.back')}>←</button>
               <button disabled={!canForward} onClick={forward} aria-label={t('cm.next')}>→</button>
             </div>
-            {online ? <div className="cx-online"><OnlineControls /></div> : !inMatch && (
+            {online ? <div className="cx-online"><OnlineControls cx /></div> : !inMatch && (
               <button className="cx-sbtn cx-continue continue" disabled={dialogOpen} onClick={onContinue}>{t('cl.continue')}</button>
             )}
             {/* managerens navn → menu med klubbens og managerens skærme (som i originalen) */}
@@ -597,9 +599,13 @@ export function Shell() {
                 const sp = spanRef.current;
                 const tot = Math.max(1, daysBetween(sp.start, sp.end));
                 const pct = Math.max(2, Math.min(100, Math.round((daysBetween(sp.start, running) / tot) * 100)));
+                if (runNote) return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar busy" role="progressbar" data-testid="run-note"><i style={{ width: '100%' }}><b>{runNote}</b></i></span></>;
                 return <><span className="cx-run-l">{cxLongDate(running)}</span><span className="cx-run-bar" role="progressbar" aria-valuenow={pct}><i style={{ width: `${pct}%` }}>{pct >= 10 && <b>{pct}%</b>}</i></span></>;
               })()}{onHolidayRef.current && <small className="cx-running-hint">{t('cl.hol.bar')}</small>}
             </button>
+          ) : onlineSimLabel() ? (
+            // fællesspil: "Simulating next turn …" som originalens fremdriftsbjælke (samme som Continue Game)
+            <div className="cx-running" role="progressbar" data-testid="online-sim"><span className="cx-run-l">{cxLongDate(g.date)}</span><span className="cx-run-bar busy"><i style={{ width: '100%' }}><b>{t('mp.simTitle')} – {onlineSimLabel()}</b></i></span></div>
           ) : (
             route.name === 'report' && route.state?.none && isRetro() ? (
               // "No Recent Matches": én bred Ok-knap (som i CM 01/02)
@@ -696,7 +702,7 @@ function Screen({ allowed }: { allowed: (k: ScreenName) => boolean }) {
     case 'benchmark': return <Assistant tab="bench" />;
     case 'match': return <MatchScreen id={Number(route.id)} />;
     case 'matchday': return <MatchDay id={Number(route.id)} />;
-    case 'intlday': return <IntlDay />;
+    case 'intlday': return <IntlDay match={typeof route.id === 'string' ? route.id : undefined} />;
     case 'coefficients': return <UefaCoefficients />;
     case 'nations': return <ClassicNations />;
     case 'mgrstatus': return <ClassicManagerStatus />;
@@ -825,7 +831,7 @@ function specificBackground(g: GameState, route: Route, iso: string): string | n
       const c = sc !== undefined ? g.comps[sc] : own ? g.comps[own.league] : undefined;
       return compBgUrl(c?.name, iso) ?? (c?.nation === -1 ? compBgUrl(c.id === 'CL' ? 'UEFA Champions League' : c.name.includes('Europa') ? 'UEFA Europa League' : c.name, iso) : null);
     }
-    case 'international': case 'intlday': return id !== undefined ? nationBgUrl(g.nations[Number(id)]?.name, iso) : compBgUrl('FIFA World Cup', iso);
+    case 'international': case 'intlday': return typeof id === 'number' ? nationBgUrl(g.nations[Number(id)]?.name, iso) : compBgUrl('FIFA World Cup', iso);
     case 'coefficients': return compBgUrl('UEFA Champions League', iso);
     case 'training': return miscBgUrl('training', iso);
     case 'board': case 'finance': return miscBgUrl('boardroom', iso) ?? clubBgUrl(own, iso);
