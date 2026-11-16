@@ -19,7 +19,7 @@ import { fansOnDeparture, fansOnRenewal, fansOnSigning } from './fans';
 import { pushCareerLine, recordMove } from './season';
 import { blockedMoveReaction, playerPraises, targetReaction, type RejectReason } from './will';
 import type { Club, Contract, ContractClauses, Player, Role, TransferOffer } from './types';
-import { aiContract, cmAiTerms } from './cmContractGame';
+import { aiContract, cmAiTerms, cmMoveInterest } from './cmContractGame';
 import { cmCmOn, cmCmScope } from './cmContractManager';
 import { cmAcceptBid, cmOfferContract, cmTalksDaily, cmTalksOn } from './cmTransferTalks';
 import { cmBuildBid } from './cmAiBid';
@@ -592,7 +592,11 @@ export function negotiate(offerId: number, wage: number, years: number, clauses?
     if (club.id === g.userClub && currentBill(club.id) + wage > club.wageBudget) return 'budget';
     return cmOfferContract(o, wage, years, clauses);
   }
-  const interest = playerInterest(p, club);
+  // CM 01/02 (original database, ægte tilstand – her klubløse og forkontrakter uden cmTalks): spillerens vilje 0x846920 som 0x8c0080 (under
+  // 0,75 vil han ikke) i stedet for spillets skøn – samme funktion som Player Search' "Interested" (cmSearchInterest.ts) og budforløbet
+  // (*estimeret*: originalen afgør en klubløs i 0x4ce4e0 resolve_contract_offers)
+  const cmX = cmActive(g) && !o.loan ? cmMoveInterest(g, p, club.id) : null;
+  const interest = cmX !== null ? (cmX < 0.75 ? 'reputation' : 'yes') : playerInterest(p, club);
   if (interest !== 'yes') {
     o.status = 'collapsed';
     addNews({ cat: 'transfer', key: interest === 'reputation' ? 'transfer.refuseRep' : interest === 'abroad' ? 'transfer.refuseAbroad' : interest === 'permit' ? 'transfer.permitRefused' : 'transfer.refuseHappy', params: { player: pname(p), club: club.name } });

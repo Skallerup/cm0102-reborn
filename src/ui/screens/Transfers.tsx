@@ -8,6 +8,7 @@ import { attrRange, knowledgeOf, scoutRecommendation, scoutStars } from '../../g
 import { traits, type Trait } from '../../game/personality';
 import { regionOf, type Region } from '../../game/leagues';
 import { playerInterest, transferRealism } from '../../game/transfers';
+import { cmSearchInterested } from '../../game/cmSearchInterest';
 import { act } from '../../game/actions';
 import { gs } from '../../game/state';
 import { session } from '../../online/client';
@@ -181,7 +182,8 @@ export function Search({ classic, shortlist }: { classic?: boolean; shortlist?: 
         if (f.noTrouble && (tr.includes('troublemaker') || tr.includes('lazy'))) continue;
       }
       if (f.rec >= 0) { const r = scoutRecommendation(p); if (r.level < 0 || r.level > f.rec) continue; }
-      if (f.interested && me && playerInterest(p, me) !== 'yes') continue;
+      // CM 01/02 (original database, ægte tilstand): originalens filter 0x807450 → 0x846920 ≥ 3,15 (cmSearchInterest.ts); ellers spillets skøn
+      if (f.interested && me && !(cmSearchInterested(g, p, me.id) ?? playerInterest(p, me) === 'yes')) continue;
       // CM 01/02: "Scouted Only"
       if (f.scouted && p.club !== g.userClub && (g.knowledge[p.id] ?? 0) < 60) continue;
       if (mins.some(([i, v]) => playerAttrMid(p, i) < v)) continue;
