@@ -44,6 +44,7 @@ og læg ændringen i samme push.
 - Prisniveau: `src/game/econ.ts`. Nye spil med den originale database får `GameState.econ` (faktor pr. liga, målt i
   newgame.ts) – faste beløb ganges med `econ(liga)`, og `valueFromCA` bruger originalens værdikurve. Nye faste beløb
   i økonomien skal ganges med `econ(...)`. Mål med `scripts/econ-run.ts`.
+- 1:1-kontroller i CI (docs/ORIGINAL_PARITY.md): `tests/textParity.test.ts` (K3 – engelske tekster mod exe-strengene; `npx tsx scripts/text-parity.ts [--list <præfiks>|--top]`) og `tests/estimateBudget.test.ts` (K5 – antal `estimeret` i src/game). Begge fejler kun, hvis tallet STIGER. Sænk baseline, når tallet er faldet: K3 `npx tsx scripts/text-parity.ts --update` (skriver `scripts/data/text-parity-baseline.json`), K5 ret `count` i `tests/estimateBudget.baseline.json`. Nye ikke-originale tekster: ret teksten til originalens, eller tilføj området til `scripts/data/text-parity-allow.json` med begrundelse (kun CM Reborn-områder/Game Options/udvidet).
 - Tjek `git log` ved start – der arbejdes ofte på projektet i andre sessioner.
 - Ny computer: docs/NEW_MACHINE.md. Motor-arbejdsmappen `~/cm0102-engine` er det PRIVATE repo `Skallerup/cm0102-engine` (noter, værktøjer, orakel,
   Claudes hukommelse i `claude-memory/`); exe, rekompileret C og gemte spil genskabes med `tools/regen.sh` og kommer aldrig i git.
