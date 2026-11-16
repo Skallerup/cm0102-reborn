@@ -1,4 +1,4 @@
-import { econ, isEra2001, fittedWage } from '../econ';
+import { econ, isEra2001, fittedWage, modern26, modernWage } from '../econ';
 // Deterministisk generering af CM-attributter ud fra Transfermarkt-data,
 // samt fyld-spillere, regens og staff.
 import { A, ATTRS, ATTR_COUNT, ROLE_WEIGHTS, GROUPS } from '../attributes';
@@ -57,8 +57,12 @@ export function roundValue(v: number): number {
 /** Ugeløn ud fra værdi og ligaens økonomi (0.4-1.6) */
 export function wageFor(value: number, wealth = 1, league?: string, clubRep?: number): number {
   // den originale database: originalens egen lønkurve (econ.ts); ellers nutidens formel
+  if (modern26()) return roundWage(modernWage(value, league));
   const fit = fittedWage(value, league, clubRep);
   const w = fit !== null ? Math.max(100, fit) : Math.max(400 * econ(), value * 0.0021 * Math.sqrt(wealth) + 3000 * econ() * wealth);
+  return roundWage(w);
+}
+function roundWage(w: number): number {
   if (w < 5000) return Math.round(w / 50) * 50;
   return Math.round(w / 500) * 500;
 }

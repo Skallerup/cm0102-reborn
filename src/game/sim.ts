@@ -75,7 +75,8 @@ import { recordH2H } from './h2h';
 import { resolveStaffBids } from './staff';
 import { rivalryAfterMatch } from './rivalry';
 import { unhappyMult } from './squadStatus';
-import { econIncome } from './econ';
+import { econIncome, modern26 } from './econ';
+import { euroPrize } from './econ26';
 
 export const INJURIES: [string, number, number, number][] = [
   // nøgle, min dage, max dage, vægt
@@ -419,7 +420,17 @@ export function applyMatchResult(f: Fixture, rep: MatchReport) {
     }
   }
   // præmiepenge i Europa
-  if (comp?.type === 'continental') {
+  if (comp?.type === 'continental' && modern26() && !g.econ) {
+    // den kalibrerede moderne økonomi (econ26.ts): UEFA's 2025/26-fordeling – deltagelse og værdisøjle i ligafasen, resultatpræmier, runde-/finalebeløb
+    const tie = f.tieId !== undefined ? comp.ties.find((t) => t.id === f.tieId) : undefined;
+    const nLP = Number((comp.meta as { matchdays?: number } | undefined)?.matchdays ?? 8);
+    for (const [cid, gf, ga] of [[f.home, hs.goals, as.goals], [f.away, as.goals, hs.goals]] as const) {
+      const c = g.clubs[cid];
+      const amount = Math.round(euroPrize(comp.id, f.stage, tie?.legs ?? 1, c.rep, nLP, gf, ga));
+      c.balance += amount;
+      c.finance.prize += amount;
+    }
+  } else if (comp?.type === 'continental') {
     const win = (comp.id === 'CL' ? 2_800_000 : 800_000) * econIncome();
     const draw = (comp.id === 'CL' ? 900_000 : 300_000) * econIncome();
     for (const [cid, gf, ga] of [[f.home, hs.goals, as.goals], [f.away, as.goals, hs.goals]] as const) {

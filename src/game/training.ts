@@ -117,7 +117,9 @@ function develop(p: Player, ci: CoachingInfo) {
   // tilbagegangen begynder senere for målmænd og midtstoppere, og den er individuel: nogle holder til
   // midt i 30'erne, andre falder brat. Gode trænere, fysioterapi og professionalisme bremser den.
   const start = (p.pos[0] >= 15 ? 32 : p.pos[2] >= 15 && p.side[1] >= 15 ? 31 : 30) + DEV.declineStart;
-  const room = Math.max(0, p.pa - DEV.ceil - p.ca);
+  // nye spil med den moderne økonomi (g.m26): 2026/27-databasens spillere har CA tæt på PA – loftet er PA − 7 i stedet for PA − 13 (ellers falder stjernerne ~13 CA og over en tredjedel i værdi på to sæsoner: Haaland 193 → 127 mio.)
+  const ceil = g.m26 ? 7 : DEV.ceil;
+  const room = Math.max(0, p.pa - ceil - p.ca);
   let delta = 0;
   if (age <= 23) {
     const ageF = age <= 18 ? 1 : age <= 20 ? 0.9 : age <= 22 ? 0.65 : 0.45;
@@ -132,12 +134,13 @@ function develop(p: Player, ci: CoachingInfo) {
     delta = -DEV.decline * (0.02 + (age - start) * 0.025) * curve * (1.2 - p.attrs[A.naturalFitness] / 40) * (1.1 - prof * 0.3) * (1.2 - coachF * 0.25);
   }
   // over loftet (PA − ceil): trækkes ned mod det
-  if (DEV.pull > 0 && age < start && p.ca > p.pa - DEV.ceil) delta -= (p.ca - (p.pa - DEV.ceil)) * DEV.pull;
+  if (DEV.pull > 0 && age < start && p.ca > p.pa - ceil) delta -= (p.ca - (p.pa - ceil)) * DEV.pull;
   // egenskaberne følger udviklingens RETNING (trenden), ikke ugens tilfældige udsving: før blev udsvingene brugt som ændring, og da
   // opgangsugerne løftede flere egenskaber end nedgangsugerne sænkede dem, drev tackling/hovedspil/dribling … mod 20 og fysikken mod 1
   // (spillerrapporterne #7/#15/#16, 2026/27-databasen: 33-35-årige med fart 1, næsten alle gode forsvarere med 20 i tackling)
   const trend = delta;
-  delta += rng.normal(0, DEV.noise);
+  // m26: mindre ugentligt udsving – med et loft og kun langsom vækst tilbage fik den frie tilfældige gang stjernerne til at miste ~10 CA på to sæsoner
+  delta += rng.normal(0, g.m26 ? 0.3 : DEV.noise);
   if (Math.abs(delta) < 0.01) return;
   const before = p.ca;
   p.ca = Math.max(1, Math.min(p.pa + (delta < 0 ? 0 : 0), p.ca + delta, 200));

@@ -15,7 +15,8 @@ import {
 import { formulaValueGbp, originalValueGbp, repTriple } from './originalValue';
 import { rulesFor, LEAGUE_RULES } from './leagues';
 import { Rng, hash, rng } from './rng';
-import { setEconomy } from './econ';
+import { setEconomy, setModern26 } from './econ';
+import { calibrateWages } from './econ26';
 import { addNews, addPlayer, ensureNumbers, gs, rebuildIndexes, setAutoNumbers, setGame, squad } from './state';
 import { asOwner } from './humans';
 import { initReleaseClauses } from './clauses';
@@ -406,6 +407,17 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
   }
 
   progress('economy', 0.4);
+  // den kalibrerede moderne økonomi (econ26.ts): ligaernes lønkurve måles mod virkelighedens løn/omsætning, før lønningerne sættes
+  if (!g.econ) {
+    for (const c of Object.values(g.clubs)) {
+      const sv = squad(c.id).map((p) => p.value).sort((a, b) => b - a).slice(0, 20).reduce((s, v) => s + v, 0);
+      c.rep = cm?.clubRep[c.id] ?? Math.round(Math.max(5, Math.min(98, (Math.log10(Math.max(sv, 1e6)) - 6) * 30)));
+      if (leagueById.get(c.league)?.tier === 2 && !world.clubRepEdited?.includes(c.id)) c.rep = Math.min(c.rep, 62);
+      if (!c.seats || c.seats < 1000) c.seats = Math.round(2000 + c.rep * c.rep * 6);
+    }
+    g.m26 = calibrateWages(g, (cid) => squad(cid).map((p) => p.value));
+    setModern26(g.m26);
+  }
   // Reputation og økonomi
   for (const c of Object.values(g.clubs)) {
     const sq = squad(c.id);
@@ -419,7 +431,8 @@ export function createGame(world: WorldData, o: NewGameOptions): GameState {
     for (const p of sq) if (p.contract) p.contract.wage = dbWage.get(p.id) ?? wageFor(p.value, wealth, c.league, c.rep);
     const wages = sq.reduce((s, p) => s + (p.contract?.wage ?? 0), 0);
     c.wageBudget = Math.round((wages * 1.08) / 1000) * 1000;
-    c.balance = Math.round((sv * 0.12 + wages * 30) / 100_000) * 100_000;
+    // moderne økonomi: kassen ≈ 10 % af trupværdien + 14 ugers løn (Premier League-medianen ca. €70 mio. – Deloitte: likvide midler ca. 20 % af omsætningen)
+    c.balance = g.m26 ? Math.round((sv * 0.1 + wages * 14) / 100_000) * 100_000 : Math.round((sv * 0.12 + wages * 30) / 100_000) * 100_000;
     // databaseeditoren kan sætte klubbens saldo ved start
     const bal = world.clubBalance?.[c.id];
     if (bal !== undefined) c.balance = bal;

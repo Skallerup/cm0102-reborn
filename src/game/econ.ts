@@ -29,3 +29,18 @@ export function fittedWage(value: number, league?: string, clubRep?: number): nu
   const r = clubRep ?? (league !== undefined ? f.rep[league] : undefined) ?? 50;
   return Math.exp(a + f.b * Math.log(Math.max(20_000, value)) + f.c * r);
 }
+
+// ---------- den moderne økonomi (econ26.ts): lønkurven og ligaens kalibrering, sat ved spilstart (GameState.m26) ----------
+import type { Modern26 } from './types';
+let m26: Modern26 | null = null;
+export function setModern26(e: Modern26 | null | undefined) { m26 = e ?? null; }
+/** Spilles der med den kalibrerede moderne økonomi (nye spil med en ikke-original database)? */
+export const modern26 = () => m26 !== null;
+/** Ugeløn for en spiller af en given værdi: en aftagende kurve (løn ~ værdi^0,72) – ganges med ligaens kalibrering */
+export function wageCurve(value: number): number {
+  return 5200 * Math.pow(Math.max(20_000, value) / 1e6, 0.72) + 800;
+}
+export function modernWage(value: number, league?: string): number {
+  const kw = (league !== undefined ? m26?.kw[league] : undefined) ?? m26?.kw['*'] ?? 1;
+  return wageCurve(value) * kw;
+}

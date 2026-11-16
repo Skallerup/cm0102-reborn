@@ -81,6 +81,14 @@ export function gateReceipts(f: Fixture): { att: number; income: number } {
 export function monthlyFigures(c: Club) {
   const g = gs();
   const wealth = rulesFor(c.league, 20).wealth;
+  // den kalibrerede moderne økonomi (econ26.ts): tv/sponsor/merchandise efter virkelighedens tal; driftsudgifter ≈ 25 % af omsætningen
+  if (modern26() && !g.econ) {
+    const tv = Math.round(tvYear(c.rep, c.league) / 12);
+    const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
+    const boost = c.merchBoost && c.merchBoost.until >= g.date ? 1 + c.merchBoost.factor : 1;
+    const merch = Math.round((commercialYear(c.rep, c.league) * 0.2 / 12) * boost);
+    return { wealth, tv, sponsor, merch, upkeep: Math.round((tv + sponsor + merch) * UPKEEP26) };
+  }
   const tier = g.leagues[c.league]?.tier ?? 2;
   const tv = Math.round((tier === 1 ? 1_200_000 : 250_000) * econIncome(c.league) * Math.pow(wealth, 2.5) * (0.6 + c.rep / 120));
   const sponsor = c.sponsor && c.sponsor.season === g.season ? c.sponsor.base : sponsorBase(c);
@@ -165,7 +173,7 @@ export function seasonPrizeMoney() {
     const wealth = rulesFor(lg, clubs.length).wealth;
     const tier = g.leagues[lg]?.tier ?? 1;
     clubs.sort((a, b) => b.rep - a.rep).forEach((c, i) => {
-      const prize = Math.round((clubs.length - i) * 400_000 * econIncome(lg) * wealth * wealth * (tier === 1 ? 1 : 0.3));
+      const prize = modern26() && !g.econ ? leaguePrize(lg, i, clubs.length) : Math.round((clubs.length - i) * 400_000 * econIncome(lg) * wealth * wealth * (tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
     });
@@ -177,7 +185,7 @@ export function seasonPrizeMoney() {
     const wealth = rulesFor(comp.id, order.length).wealth;
     order.forEach((cid, i) => {
       const c = g.clubs[cid];
-      const prize = Math.round((order.length - i) * 400_000 * econIncome(comp.id) * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
+      const prize = modern26() && !g.econ ? leaguePrize(comp.id, i, order.length) : Math.round((order.length - i) * 400_000 * econIncome(comp.id) * wealth * wealth * (comp.tier === 1 ? 1 : 0.3));
       c.balance += prize;
       c.finance.prize += prize;
       // CM 01/02: "Man Utd awarded £5,000,000" – "… for finishing 1st in the FA Premier League."
@@ -203,7 +211,8 @@ export function newSeasonBudgets() {
     // udbytte (CM 01/02: "Dividends"): ejerne tager halvdelen af det, der står i kassen ud over en buffer på 60 % af
     // sæsonens omsætning – ellers hober pengene sig op hos en klub, der ikke handler
     const turnover = c.finance.gate + c.finance.tv + c.finance.prize + c.finance.sponsor + c.finance.merch;
-    const buffer = Math.max(turnover * 0.6, c.finance.wages * 0.5, 2_000_000 * econ());
+    // den moderne økonomi: kassen holdes på ca. 35 % af omsætningen (Deloitte: likvide midler ca. 20 % – skøn), resten tager ejerne
+    const buffer = g.m26 ? Math.max(turnover * 0.35, c.finance.wages * 0.3, 2_000_000 * econ()) : Math.max(turnover * 0.6, c.finance.wages * 0.5, 2_000_000 * econ());
     if (!cmFinOn(g)) c.lastDividend = undefined;
     let dividend = 0;
     // originalens udbytte betales på sæsonopdateringens dag (cmFinance.ts seasonEndClub)
@@ -232,6 +241,7 @@ export function newSeasonBudgets() {
 }
 
 export function fairTicketPrice(rep: number, league: string): number {
+  if (modern26() && !gs().econ) return fairPrice(rep, league);
   return Math.max(1, Math.round((10 + rep * 0.35 * Math.sqrt(Math.max(0.25, rulesFor(league, 20).wealth))) * econIncome(league)));
 }
 
@@ -302,10 +312,15 @@ import type { SponsorDeal, SponsorKind } from './types';
 import { addNews, newsRelevant } from './state';
 import { fanAttendance } from './fans';
 import { asOwner as asOwnerFinance, forEachHuman } from './humans';
-import { econ, econIncome } from './econ';
+import { econ, econIncome, modern26 } from './econ';
+import { tvYear, commercialYear, fairPrice, leaguePrize } from './econ26';
+
+/** Driftsudgifter (stadion, administration, scouting m.m.) som andel af tv + sponsor + merchandise i den moderne økonomi (skøn: ca. 25 % af omsætningen, Deloitte: øvrige driftsudgifter 20–30 %) */
+const UPKEEP26 = 0.34;
 
 /** Standard sponsorindtægt pr. måned ud fra omdømme og ligaens økonomi */
 export function sponsorBase(c: Club): number {
+  if (modern26() && !gs().econ) return Math.round(commercialYear(c.rep, c.league) * 0.8 / 12);
   return Math.round(Math.pow(c.rep, 2.5) * 25 * econIncome(c.league) * rulesFor(c.league, 20).wealth);
 }
 

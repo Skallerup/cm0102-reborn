@@ -1228,6 +1228,8 @@ export interface GameState {
   version: number;
   /** Prisniveau (2001-priser i den originale database, se econ.ts) – mangler = nutidens priser */
   econ?: import("./econ").Economy;
+  /** den kalibrerede moderne økonomi (econ26.ts, kun nye spil uden originalens økonomi): ugelønskurvens faktor pr. liga (`*` = standard) */
+  m26?: Modern26;
   id: string; // save-id
   seed: number;
   rng: number;
@@ -1428,3 +1430,6 @@ export interface H2HRecord {
 
 /** Det en regen arver fra den pensionerede spiller: land, positioner, ben, potentiale og egenskabsprofil */
 export interface RegenSeed { from: string; nation: number; pos: number[]; side: number[]; foot: 'L' | 'R' | 'B'; pa: number; attrs: number[] }
+
+/** Den moderne økonomis kalibrering (econ26.ts) */
+export interface Modern26 { kw: Record<string, number> }

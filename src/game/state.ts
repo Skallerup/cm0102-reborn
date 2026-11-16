@@ -16,7 +16,7 @@ export function hasGame(): boolean {
   return G !== null;
 }
 
-import { setEconomy } from './econ';
+import { setEconomy, setModern26 } from './econ';
 import { setSavedModern } from '../ui/modernFlag';
 import { cmPermitMove } from './cmPermit';
 import { cmActive, cmStaffStateMove } from './cmPlayerData';
@@ -45,6 +45,7 @@ export function setGame(g: GameState | null) {
   setSavedModern(g?.options.mode === 'extended' && !g?.humans?.length);
   // prisniveauet: nye spil med den originale 01/02-database spilles i 2001-priser (econ.ts)
   setEconomy(g?.econ);
+  setModern26(g?.m26);
   if (g) rng.state = g.rng;
   rebuildIndexes();
   notify();
