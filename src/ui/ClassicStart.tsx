@@ -197,6 +197,7 @@ export function ClassicStart({ onLang, onHome, onGo, onLook, online }: { onLang:
 
   const [popular, setPopular] = useState(false);
   const setDb = (d: Db, v: OriginalVersion = ver) => {
+    if (d === db && v === ver && world) return; // samme valg igen: verdenen er allerede indlæst (nulstilling uden genindlæsning hang)
     discard();
     setDbState(d); setVerState(v); writeDb(d); writeVer(v);
     setWorld(null); setPrep(null); setSel([]); setBgn([]); setTeam(0); setNat(-1);

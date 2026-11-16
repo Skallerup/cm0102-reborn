@@ -1714,6 +1714,24 @@ async function editor() {
     // Alle spillere kan desuden få et tilfældigt omslag (1/100 → PA 0, 1/750 → −1), der ender på CA (70) – det er ikke en fejl i editoren
     if (!(p.pa >= p.ca && (p.pa >= 71 || p.pa === p.ca))) throw new Error(`PA -2 slog ikke igennem: ${p.pa} (CA ${p.ca})`);
   });
+  // fejl 16/11: et tryk på det allerede valgte databasekort nulstillede verdenen uden at hente den igen ("Loading player database…" for evigt)
+  await step('Editor → nyt spil: tryk på det valgte databasekort hænger ikke', async () => {
+    await page.goto(URL);
+    await page.waitForFunction(() => !!window.__cm, null, { timeout: 30000 });
+    await page.waitForSelector('.cxs [data-field=opts]', { timeout: 30000 });
+    await page.locator('[data-field=opts]').click();
+    await page.locator('[data-testid=editor], [data-field=editor]').first().click();
+    await page.waitForSelector('.cxl', { timeout: 10000 });
+    await page.getByRole('button', { name: await t('ed.play'), exact: true }).first().click();
+    await page.waitForFunction(() => !!window.__cmPick, null, { timeout: 60000 });
+    if (await page.locator('.db-opt.on').count() !== 1) throw new Error('intet (eller flere) valgt databasekort');
+    await page.locator('.db-opt.on').first().click();
+    await page.waitForFunction(() => !!window.__cmPick && !document.body.innerText.includes('Loading player database'), null, { timeout: 20000 });
+    await page.getByPlaceholder(await t('start.managerPlaceholder')).fill('E2E Valgt');
+    if (!(await page.evaluate(() => window.__cmPick(window.__cmClubId('Millwall'))))) throw new Error('Millwall findes ikke');
+    await page.getByRole('button', { name: await t('start.begin') }).click();
+    await page.waitForFunction(() => { try { return !!window.__cm.gs().userClub; } catch { return false; } }, null, { timeout: 60000 });
+  });
   await ctx.close();
 }
 

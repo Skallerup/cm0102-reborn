@@ -210,10 +210,10 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
     if (challenge) return 'modern';
     try { const v = localStorage.getItem('cm0102.db'); return v === 'modern' || v?.startsWith('custom:') ? v as Db : 'original'; } catch { return 'original'; }
   });
-  const setDb = (d: Db) => { setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
+  const setDb = (d: Db) => { if (d === db) return; setDbState(d); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.db', d); } catch { /* ignorer */ } };
   // den originale databases udgave (3.9.60 = standard)
   const [ver, setVerState] = useState<OriginalVersion>(() => { try { const v = localStorage.getItem('cm0102.dbver'); return (ORIGINAL_VERSIONS as readonly string[]).includes(v ?? '') ? v as OriginalVersion : '3.9.60'; } catch { return '3.9.60'; } });
-  const setVer = (v: OriginalVersion) => { setVerState(v); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.dbver', v); } catch { /* ignorer */ } };
+  const setVer = (v: OriginalVersion) => { if (v === ver) return; setVerState(v); setWorld(null); setClub(0); try { localStorage.setItem('cm0102.dbver', v); } catch { /* ignorer */ } };
   const [mine, setMine] = useState<CustomDb[]>([]);
   // nyt spil starter øverst ved databasevalget (før scrollede autofokus på navnefeltet forbi det – ejerens fejl 9/11)
   useEffect(() => { if (!ch) window.scrollTo(0, 0); }, []);
@@ -224,6 +224,8 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
   const dbKind = customId ? 'custom' : db;
 
   useEffect(() => {
+    let live = true;
+    setErr('');
     const load = customId ? listDbs().then((all) => {
       const d = all.find((x) => x.id === customId);
       // databasen findes ikke længere (slettet): tilbage til standard
@@ -232,7 +234,7 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
     // fællesskabets rettelser gælder 3.9.60 (de andre udgaver bruges præcis som originalen)
     }) : db === 'original' ? loadOriginalWorld(ver).then((w) => (ver === '3.9.60' ? withCommunityEdits(w, 'original') : w)) : loadWorld().then((w) => withCommunityEdits(w, 'cm'));
     load.then((w) => {
-      if (!w) return;
+      if (!live || !w) return;
       setWorld(w);
       const own = (db === 'original' ? ORIG_LANG_NATION : LANG_NATION)[getLang()];
       const names = ch ? ch.nations : [w.leagues.some((l) => !l.hidden && w.nations[l.nation]?.name === own) ? own : 'England'];
@@ -242,7 +244,8 @@ function NewGame({ challenge, onBack, setBusy, setProg, online, onDraft, initial
       if (first) setLeague(first.id);
       // udfordringens klub findes ud fra navnet i databasen
       if (ch) { const cid = challengeClub(ch, w); setClub(cid); const lg = w.clubs.find((c) => c[0] === cid)?.[4]; if (lg) setLeague(lg); }
-    }).catch((e) => setErr(String(e)));
+    }).catch((e) => { if (live) setErr(String(e)); });
+    return () => { live = false; };
   }, [ch, db, ver]);
 
   const leagueNations = useMemo(() => {
