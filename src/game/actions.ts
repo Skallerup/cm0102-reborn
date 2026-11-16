@@ -78,6 +78,7 @@ export type Action =
   | { t: 'shortlist'; pid: number; on: boolean }
   | { t: 'scout'; staffId: number; assignment: ScoutAssignment | null }
   | { t: 'negotiate'; pid: number; wage: number; years: number; clauses?: ContractClauses }
+  | { t: 'cmOfferRole'; pid: number; role: import('./squadStatus').SquadStatus }
   | { t: 'cmConfirm'; offer: number; answer: 'yes' | 'no' | 'delay' }
   | { t: 'renew'; pid: number; wage: number; years: number; clauses?: ContractClauses }
   | { t: 'nickname'; pid: number; nick: string | null }
@@ -247,6 +248,7 @@ export function applyAction(a: Action): unknown {
       if (a.on) g.shortlist.push(a.pid);
       return 'ok';
     case 'scout': startScoutAssignment(a.staffId, a.assignment); return 'ok';
+    case 'cmOfferRole': { const o = myOffer(a.pid); if (!o) return 'error'; o.cmRole = a.role; return 'ok'; }
     case 'negotiate': { const o = myOffer(a.pid); return o ? negotiate(o.id, a.wage, a.years, a.clauses) : 'refused'; }
     case 'cmConfirm': { const o = gs().offers.find((x) => x.id === a.offer); return o ? cmConfirmAnswer(o, a.answer, completeTransfer) : 'refused'; }
     case 'renew': return renewContract(a.pid, a.wage, a.years, a.clauses);

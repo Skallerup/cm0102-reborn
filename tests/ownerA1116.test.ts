@@ -7,10 +7,10 @@ import { describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs, squad } from '../src/game/state';
 import { act } from '../src/game/actions';
-import { processOffers, offerRenewalLater } from '../src/game/transfers';
+import { processOffers, offerRenewalLater, completeTransfer } from '../src/game/transfers';
 import { addDays } from '../src/game/dates';
 import { cmBidBudget, cmBoardLine, cmKnowledgeLevel } from '../src/game/cmBudget';
-import { cmNoInterest } from '../src/game/cmTransferTalks';
+import { cmNoInterest, cmRoleExpected, cmTalksDemand } from '../src/game/cmTransferTalks';
 import { cmDbJob, cmRolesFor, cmStaffDemand, cmStaffOffersDaily, cmOfferStaff } from '../src/game/cmStaff';
 import { cmBoardRequest } from '../src/game/cmBoardGame';
 import { termsOf } from '../src/game/cmTransferBid';
@@ -45,6 +45,29 @@ describe('ejerens fund 16/11 – afsnit A (3.9.60, ægte tilstand, Vejle)', { ti
     const p = byLast('Tsigalko');
     const r = cmNoInterest(g, p, vejle);
     expect(r.key).toMatch(/^cm\.neg\.noInt(Terms|Rot|Backup|Prospect|Youth)(\.because)?$/);
+  });
+
+  it('A3b: Set Role At Club – den valgte rolle (ikke den gamle klubs status) styrer kravet, "no interest" og spillerens status ved underskrift', () => {
+    const p = byLast('Tsigalko');
+    const o: TransferOffer = { id: g.nextId.offer++, player: p.id, buyer: vejle, seller: p.club, fee: 0, loan: false, status: 'negotiating', created: g.date, respondBy: g.date, cmTalks: { rounds: 0, state: 0 } };
+    g.offers.push(o);
+    // forvalget er hans plads i KØBERENS trup
+    const exp = cmRoleExpected(g, p, vejle);
+    expect(['key', 'first', 'rotation', 'backup', 'prospect', 'young']).toContain(exp);
+    // rollen ændrer kravet (0x85fc50 med trupstatus) og "no interest"-teksten
+    const wages = (['key', 'backup', 'prospect'] as const).map((r) => cmTalksDemand(o, r)!.wage);
+    expect(new Set(wages).size).toBeGreaterThan(1);
+    expect(cmNoInterest(g, p, vejle, 'prospect').key).toMatch(/^cm\.neg\.noIntProspect|noIntTerms/);
+    expect(cmNoInterest(g, p, vejle, 'backup').key).toMatch(/^cm\.neg\.noIntBackup|noIntTerms/);
+    expect(cmNoInterest(g, p, vejle, 'rotation').key).toMatch(/^cm\.neg\.noIntRot|noIntTerms/);
+    // actionen gemmer rollen på tilbuddet, og kravet bruger den
+    expect(act({ t: 'cmOfferRole', pid: p.id, role: 'backup' })).toBe('ok');
+    expect(o.cmRole).toBe('backup');
+    expect(cmTalksDemand(o)!.wage).toBe(cmTalksDemand(o, 'backup')!.wage);
+    // underskrift: spilleren får den valgte status
+    completeTransfer(o, 1000, 2);
+    expect(p.club).toBe(vejle);
+    expect(p.squadStatus).toBe('backup');
   });
 
   it('A4: en ledig fysioterapeut (databasens job 10) kan tilbydes Physio, og kravet er ikke £0', () => {

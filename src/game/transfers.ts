@@ -1,5 +1,5 @@
 // Transfers, kontrakter og AI-transfermarked (forbedring #7: behovsstyrede AI-klubber).
-import { cmActive, cmRand, setRequestHooks } from './cmPlayerData';
+import { cmActive, cmRand, setRequestHooks, setStatusCode } from './cmPlayerData';
 import { cmBidChance, cmInterested, cmRequestNews } from './cmTransferList';
 import { transferNewsToMe } from './cmNewsScope';
 import { cmSignContractMorale } from './cmMedia';
@@ -760,7 +760,8 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
   rankCacheDate = '';
   p.listed = false;
   p.listPrice = undefined;
-  p.squadStatus = undefined;
+  p.squadStatus = !o.loan ? o.cmRole : undefined;   // Set Role At Club: han får den valgte status
+  if (p.squadStatus) setStatusCode(p);
   p.loanListed = undefined;
   p.wantsAway = false;
   p.promiseUntil = undefined;

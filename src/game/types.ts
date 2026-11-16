@@ -795,6 +795,8 @@ export interface TransferOffer {
   final?: boolean;
   /** CM 01/02 (cmTransferTalks.ts): kontraktforhandlingen efter et accepteret bud (0x8c0080 → Offer contract to …) */
   cmTalks?: import('./cmTransferTalks').CmTalks;
+  /** Set Role At Club (0x4dd0f0): rollen, spilleren tilbydes hos køberen – bruges som trupstatus i kravet 0x85fc50, "no interest"-reglen 0x4e06e0 og svaret 0x4ce4e0, og han får den ved underskrift */
+  cmRole?: import('./squadStatus').SquadStatus;
   /** CM 01/02 (cmShortlistGame.ts): computer → computer-bud fra ønskelisterne, der lever til svaret (TRANSFER_MANAGER 0x8c63a0): pending =
    *  sælgeren svarer på respondBy (0x8cc5b0's svartid), countered = køberen vurderer modbuddet (0x8c0810, 2 dage), negotiating = accepteret,
    *  spillerens beslutning (0x4cd230) */

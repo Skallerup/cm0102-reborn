@@ -1135,7 +1135,13 @@ async function run(look) {
     if (!(await page.locator('.cx-nbody').innerText()).includes('permission to discuss a contract with')) throw new Error('brødteksten er ikke originalens');
     if (process.env.SHOTS) await page.screenshot({ path: `${OUT}/klassisk-offer-contract-nyhed.png` });
     await page.locator('.cx-offer-contract').click();
+    // Set Role At Club først (0x4dd0f0), derefter Offer Contract med kravet efter den valgte rolle
+    await page.waitForSelector('.cx-offer-role', { timeout: 5000 });
+    if (await page.locator('.cx-neg-tabs').count()) throw new Error('Offer Contract vist før Set Role At Club');
+    await page.locator('.cx-offer-role .cx-dlg-foot button.primary').click();
     await page.waitForSelector('.cx-neg-tabs', { timeout: 5000 });
+    const role = await gs((oid) => window.__cm.gs().offers.find((x) => x.id === oid)?.cmRole, r.oid);
+    if (!role) throw new Error('rollen blev ikke gemt på tilbuddet');
     // ægte tilstand: lønstigning/-fald-klausulerne findes ikke i originalen
     await page.locator('.cx-neg-tabs button', { hasText: 'Clauses' }).click();
     if (await page.locator('.cx-dlg-body button', { hasText: /Yearly Wage Rise|Wage Drop After|Wage Rise After/ }).count()) throw new Error('Offer Contract har klausuler uden modstykke i CM 01/02');

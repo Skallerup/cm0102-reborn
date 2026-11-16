@@ -29,6 +29,12 @@ import { cmContractAnswer, cmMoveCheck, cmTalkDemand, cmTalkStatus, type CmOffer
 import { isHumanClub } from './humans';
 import { regionOf } from './leagues';
 import { cmCheckOffer } from './cmOfferCheck';
+import { expectedStatus, type SquadStatus } from './squadStatus';
+
+/** Set Role At Club: forvalget ("* expected by the player") efter hans plads i KØBERENS trup */
+export function cmRoleExpected(g: GameState, p: Player, buyer: number): SquadStatus {
+  return expectedStatus(p, Object.values(g.players).filter((x) => x.club === buyer && !x.loan), g.date);
+}
 
 /** Forhandlingen på et accepteret bud (TransferOffer.cmTalks) */
 export interface CmTalks {
@@ -122,17 +128,17 @@ export function cmWhy(g: GameState, p: Player, buyer: number, mask: number): str
 }
 
 /** Spillerens krav på Offer Contract-skærmen (0x85fc50) */
-export function cmTalksDemand(o: TransferOffer): CmTerms | null {
+export function cmTalksDemand(o: TransferOffer, role: SquadStatus | undefined = o.cmRole): CmTerms | null {
   const g = gs();
   const p = g.players[o.player];
-  return p ? cmTalkDemand(g, p, o.buyer) : null;
+  return p ? cmTalkDemand(g, p, o.buyer, role) : null;
 }
 
 /** Offer Contract 0x4e06e0, grenen 0x4e0ff9–0x4e118b: teksten, når spilleren ikke vil forhandle (kravet ≥ 1,5 × bestyrelsens loft) – efter
  *  trupstatussen (1–2 uden tilføjelse, 3 rotation, 4 backup, 5 hot prospect, 6 youngster) og med grundene 0x8e4ae0 (`why`, cmWhy), når
  *  interessen 0x846920 er over 1,25 */
-export function cmNoInterest(g: GameState, p: Player, buyer: number): { key: string; why: string } {
-  const st = cmTalkStatus(g, p, buyer);
+export function cmNoInterest(g: GameState, p: Player, buyer: number, role?: SquadStatus): { key: string; why: string } {
+  const st = cmTalkStatus(g, p, buyer, role);
   const chk = cmMoveCheck(g, p, buyer);
   const why = chk && chk.x > 1.25 ? cmWhy(g, p, buyer, chk.mask).join('|') : '';
   const base = st === 3 ? 'cm.neg.noIntRot' : st === 4 ? 'cm.neg.noIntBackup' : st === 5 ? 'cm.neg.noIntProspect' : st === 6 ? 'cm.neg.noIntYouth' : 'cm.neg.noIntTerms';
@@ -171,7 +177,7 @@ export function cmTalksDaily(o: TransferOffer, complete: (o: TransferOffer, wage
   const params = { player: pname(p), last: p.last || pname(p), seller: short(g, o.seller), buyer: short(g, o.buyer) };
   if (t.state === 1 && t.due && g.date >= t.due && t.terms) {
     const { wage, years, clauses } = t.terms;
-    const ans = cmContractAnswer(g, p, o.buyer, offerTerms(g, wage, years, clauses));
+    const ans = cmContractAnswer(g, p, o.buyer, offerTerms(g, wage, years, clauses), o.cmRole);
     if (ans?.accept) { cmAgreed(o, p, { wage, years, clauses }, complete); return; }
     // 0x8c28c0
     const rounds = Math.min(3, t.rounds + 1);

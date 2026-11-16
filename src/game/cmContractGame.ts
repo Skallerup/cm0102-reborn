@@ -31,6 +31,7 @@ import { getClubFinance_5a0590 } from './cmWage';
 import { genCtx } from './cmGen/impls';
 import { slCall, slmOf } from './cmShortlist';
 import { cmActive, cmRand } from './cmPlayerData';
+import type { SquadStatus } from './squadStatus';
 import { leagueOf } from './cmContractInit';
 import { formulaValueGbp } from './originalValue';
 import { playerRecordInto } from './engine/grid/aiTeam';
@@ -436,7 +437,7 @@ export function aiContract(g: GameState, p: Player, club: Club, fallback: () => 
 // ---------------------------------------------------------------- forhandlingen efter et accepteret bud (cmTransferTalks.ts)
 
 /** Hukommelsen for spilleren og den købende klub (som aiTerms) med en egen talrække for kaldet `site` */
-function talkMem(g: GameState, p: Player, clubId: number, site: number) {
+function talkMem(g: GameState, p: Player, clubId: number, site: number, role?: SquadStatus) {
   if (!cmActive(g) || g.draft || !g.clubs[clubId]) return null;
   const home = p.loan?.from ?? p.club;
   const M = buildWantMem(g, home ? [home, clubId] : [clubId]);
@@ -447,7 +448,7 @@ function talkMem(g: GameState, p: Player, clubId: number, site: number) {
   const [d] = isoDay(g.date);
   M.setRand(cmRand(g.seed ?? 0, p.id, clubId, d, site));
   M.byStaff.set(st, p);
-  return { M, st, club, status: newClubStatus(g, p, clubId) };
+  return { M, st, club, status: role ? roleCode(role) : newClubStatus(g, p, clubId) };
 }
 
 /** 0x8c0080 (timing 0xb): vil spilleren overhovedet tale med køberen? Shortlist_Manager 0x846920(staff, klub, 0, 0, status, &ud) med status 1,
@@ -467,11 +468,14 @@ export function cmMoveCheck(g: GameState, p: Player, clubId: number): { x: numbe
 }
 
 /** trupstatussen, køberen tilbyder (newClubStatus – samme som kravet 0x85fc50 bruger) */
-export function cmTalkStatus(g: GameState, p: Player, clubId: number): number { return newClubStatus(g, p, clubId); }
+export function cmTalkStatus(g: GameState, p: Player, clubId: number, role?: SquadStatus): number { return role ? roleCode(role) : newClubStatus(g, p, clubId); }
+
+/** Set Role At Club → trupstatuskoden 1–6 (Key, First Team, Rotation, Backup, Hot Prospect, Decent Young Player; surplus = 4) */
+export function roleCode(r: SquadStatus): number { return r === 'key' ? 1 : r === 'first' ? 2 : r === 'rotation' ? 3 : r === 'prospect' ? 5 : r === 'young' ? 6 : 4; }
 
 /** Spillerens krav i Offer Contract (0x85fc50 med køberens trupstatus, job 0xb – samme som 0x4ce4e0 sammenligner med) */
-export function cmTalkDemand(g: GameState, p: Player, clubId: number): CmTerms | null {
-  const T = talkMem(g, p, clubId, 0x85fc50);
+export function cmTalkDemand(g: GameState, p: Player, clubId: number, role?: SquadStatus): CmTerms | null {
+  const T = talkMem(g, p, clubId, 0x85fc50, role);
   if (!T) return null;
   const m = T.M.c.m;
   constructContract_85e410(m, LOCAL);
@@ -485,8 +489,8 @@ export interface CmOfferTerms { wage: number; expires: string; signOn?: number; 
 /** CONTRACT_MANAGER::resolve_contract_offers 0x4ce4e0 for ét tilbud fra en anden klub (transfertilbud, job 0xb): point = 0x866830(tilbud)/
  *  0x866830(krav) − (staff +0x5b − +0x57 + +0x59 − 9)/300; under 0,6 → 0. x = 0x846920(staff, klub, 0, 0, status, 0).
  *  ≥ 0,9: x' = max(x, 3,15); 0,8–0,9 og x > 3,15: x; 0,7–0,8 og x > 3,5: x; ellers intet. Ja, når x'·point > 2,75 (startværdien `best`). */
-export function cmContractAnswer(g: GameState, p: Player, clubId: number, o: CmOfferTerms): { score: number; x: number; t: number; accept: boolean } | null {
-  const T = talkMem(g, p, clubId, 0x4ce4e0);
+export function cmContractAnswer(g: GameState, p: Player, clubId: number, o: CmOfferTerms, role?: SquadStatus): { score: number; x: number; t: number; accept: boolean } | null {
+  const T = talkMem(g, p, clubId, 0x4ce4e0, role);
   if (!T) return null;
   const c = T.M.c, m = c.m, st = T.st;
   constructContract_85e410(m, LOCAL);

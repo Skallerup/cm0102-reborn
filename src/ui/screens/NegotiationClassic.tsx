@@ -12,7 +12,7 @@ import { CxDrop, titleColors, useClassicDialog } from '../classic';
 import { SQUAD_STATUSES, expectedStatus, statusAllowed, type SquadStatus } from '../../game/squadStatus';
 import { ageOn, year } from '../../game/dates';
 import { authentic } from '../../game/rules';
-import { cmNoInterest, cmTalksDemand } from '../../game/cmTransferTalks';
+import { cmNoInterest, cmRoleExpected, cmTalksDemand } from '../../game/cmTransferTalks';
 import { cmWhyText } from './common';
 
 type Tab = 'basic' | 'bonuses' | 'clauses';
@@ -92,14 +92,48 @@ export function ClassicStaffNegotiation({ staffId, role, onClose }: { staffId: n
   );
 }
 
+/** Offer Contract efter et accepteret bud / til en klubløs (CM 01/02 0x4dd0f0): først Set Role At Club – trupstatus hos KØBEREN med forvalget "* expected
+ *  by the player" (hans plads i købers trup) – derefter Offer Contract, hvor kravet 0x85fc50 og viljen 0x4e06e0 afhænger af den valgte rolle. */
 export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
+  const [rolePicked, setRolePicked] = useState(!offer || offer.loan || !!offer.preContract);
+  if (!rolePicked && offer) return <OfferRoleStep offer={offer} onClose={onClose} onSet={() => setRolePicked(true)} />;
+  return <NegotiationBody offer={offer} renewPid={renewPid} onClose={onClose} />;
+}
+
+function OfferRoleStep({ offer, onClose, onSet }: { offer: TransferOffer; onClose: () => void; onSet: () => void }) {
+  useClassicDialog();
+  const g = gs();
+  const p = g.players[offer.player];
+  const exp = cmRoleExpected(g, p, offer.buyer);
+  const [status, setStatus] = useState<SquadStatus>(offer.cmRole ?? exp);
+  const col = titleColors(p.club || undefined);
+  const name = `${p.first} ${p.last}`.trim();
+  return (
+    <div className="cx-dlg cx-offer-role">
+      <div className="cx-title" style={{ background: col.bg, color: col.fg }}><h2>{name}{p.club ? ` (${g.clubs[p.club]?.short})` : ''}</h2></div>
+      <div className="cx-subtitle">{t('cl.role.title')}</div>
+      <div className="cx-dlg-body">
+        <p className="cx-ts-intro">{t('cl.ts.squad')}</p>
+        {SQUAD_STATUSES.filter((x) => x !== 'surplus').map((x) => {
+          const ok = statusAllowed(p, x, g.date);
+          return <button key={x} className={`cx-opt ${status === x ? 'sel' : ok ? 'on' : ''}`} disabled={!ok} onClick={() => setStatus(x)}>{x === exp ? '* ' : ok ? '' : '+ '}{t(`cl.ts.s.${x}`)}</button>;
+        })}
+        <p className="cx-ts-intro">* {t('cl.role.expected')}</p>
+      </div>
+      <div className="cx-ts-buttons cx-dlg-foot"><button onClick={onClose}>{t('common.back')}</button>
+        <button className="primary" onClick={() => { act({ t: 'cmOfferRole', pid: p.id, role: status }); onSet(); }}>{t('cl.ts.set')}</button></div>
+    </div>
+  );
+}
+
+function NegotiationBody({ offer, renewPid, onClose }: { offer?: TransferOffer; renewPid?: number; onClose: () => void }) {
   useClassicDialog();
   const g = gs();
   const pid = offer?.player ?? renewPid!;
   const p = g.players[pid];
   const club = g.clubs[g.userClub];
   // CM 01/02 efter et accepteret bud: spillerens krav 0x85fc50 (cmTransferTalks.ts)
-  const [cmWant] = useState(() => (offer?.cmTalks ? cmTalksDemand(offer) : null));
+  const [cmWant] = useState(() => (offer?.cmTalks ? cmTalksDemand(offer, offer.cmRole) : null));
   const demand = r50(cmWant?.wage ?? offer?.demand?.wage ?? (offer ? wageDemand(p, club) : renewalDemand(p, club)));
   const wantYears = cmWant ? Math.max(1, Number(cmWant.expires.slice(0, 4)) - year(g.date)) : offer?.demand?.years ?? preferredYears(p);
   const [tab, setTab] = useState<Tab>('basic');
@@ -125,7 +159,7 @@ export function ClassicNegotiation({ offer, renewPid, onClose }: { offer?: Trans
   const [noInt] = useState(() => {
     if (noRenew) return { key: 'cm.neg.noRenewNow', reasons: '' };
     if (!cmWant || demand < 1.5 * allow) return null;
-    const r = cmNoInterest(g, p, club.id);
+    const r = cmNoInterest(g, p, club.id, offer?.cmRole);
     return { key: r.key, reasons: r.why ? cmWhyText(r.why) : '' };
   });
   const end = (y: number) => `${t('cl.neg.jun')} ${g.season + y}`;
