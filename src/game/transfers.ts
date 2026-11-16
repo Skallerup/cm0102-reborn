@@ -31,6 +31,7 @@ import { AGENT_RULES, agentOf } from './agents';
 import { econ } from './econ';
 import { authentic, extended } from './rules';
 import { aiRespond, aiReview, applyRejectReason, clauseOptIn, newTerms, putTerms, termsOf, toGbp, fromGbp, valueCtx, MAX_SWAP, type BidTerms, type RejectKey } from './cmTransferBid';
+import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 
 /** Klubben, vinduet gælder for i den originale database i ægte tilstand: den angivne, ellers menneskets (landets regelsæt 0x8e8800) */
 function cmWindowClub(club?: number): Club | undefined {
@@ -686,7 +687,7 @@ function aiNewContract(p: Player, club: Club, fallback: () => Contract): Contrac
   const g = gs();
   if (isHumanClub(club.id)) return fallback();
   const r = aiContract(g, p, club, fallback);
-  if (r.signOn > 0) { club.balance -= r.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + r.signOn; }
+  if (r.signOn > 0) { club.balance -= r.signOn; club.finance.signOn = (club.finance.signOn ?? 0) + r.signOn; bookBlock(g, club, CMK.signOn, Math.round(r.signOn * GBP_CM)); }
   return r.contract;
 }
 
@@ -711,15 +712,17 @@ export function completeTransfer(o: TransferOffer, wage: number, years: number, 
     buyer.balance -= now;
     buyer.transferBudget = Math.max(0, buyer.transferBudget - o.fee);
     buyer.finance.transfersOut += now;
+    bookBlock(g, buyer, CMK.bought, Math.round(now * GBP_CM));
     if (seller) {
       seller.balance += now;
       seller.finance.transfersIn += now;
+      bookBlock(g, seller, CMK.sold, Math.round(now * GBP_CM));
       seller.transferBudget += Math.round(o.fee * (isHumanClub(seller.id) ? 0.5 : 0.6));
     }
     const exp = `${year(g.date) + Math.max(1, years)}-06-30`;
     const rel = isHumanClub(buyer.id) ? undefined : defaultRelease(p, buyer);
     p.contract = aiNewContract(p, buyer, () => ({ wage, expires: exp, ...(clauses ?? {}), ...(rel ? { release: rel } : {}) }));
-    if (clauses?.signOn) { buyer.balance -= clauses.signOn; buyer.finance.signOn = (buyer.finance.signOn ?? 0) + clauses.signOn; }
+    if (clauses?.signOn) { buyer.balance -= clauses.signOn; buyer.finance.signOn = (buyer.finance.signOn ?? 0) + clauses.signOn; bookBlock(g, buyer, CMK.signOn, Math.round(clauses.signOn * GBP_CM)); }
     p.addOn = undefined;
     if (seller && o.sellOn && !cm) p.sellOn = { club: seller.id, pct: o.sellOn, base: o.fee };
     if (seller && o.addOn) p.addOn = { club: seller.id, payer: buyer.id, fee: o.addOn, left: ADDON_APPS };
@@ -1074,8 +1077,8 @@ function cmBookClauses(o: TransferOffer, p: Player, buyer: Club, seller: Club) {
 
 function payClub(from: Club | undefined, to: Club | undefined, amount: number) {
   if (amount <= 0) return;
-  if (from) { from.balance -= amount; from.finance.transfersOut += amount; }
-  if (to) { to.balance += amount; to.finance.transfersIn += amount; }
+  if (from) { from.balance -= amount; from.finance.transfersOut += amount; bookBlock(gs(), from, CMK.bought, Math.round(amount * GBP_CM)); }
+  if (to) { to.balance += amount; to.finance.transfersIn += amount; bookBlock(gs(), to, CMK.sold, Math.round(amount * GBP_CM)); }
 }
 
 /** 0x8caee0 (hver måned): de resterende rater betales */

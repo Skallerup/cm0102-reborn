@@ -129,6 +129,16 @@ export function book(g: GameState, c: Club, key: number, amt: number): void {
   if (ck) c.finance[ck] = (c.finance[ck] ?? 0) + eur;
 }
 
+/** køb/salg/signing on fee i blokkene (pund) UDEN at røre saldoen – spillets transferkode trækker selv beløbet fra Club.balance/Club.finance.
+ *  Originalen: Finance::add_bought 0x599890 (blok +0x70/+0x110 i64, saldo −), add_sold 0x599800 (+0x78/+0x118 i64, saldo +) og
+ *  add_signing_on 0x5998e0 (+0x9c/+0x13c, saldo −; kaldt fra TRANSFER_MANAGER 0x8c39c4 efter sign_contract 0x4cf720). Fundet af K2 (scripts/
+ *  cm-day-lockstep.ts): originalens sæsonposter Bought/Sold/Signing On var > 0 for alle engelske klubber med handler, vores 0. */
+export function bookBlock(g: GameState, c: Club | undefined, key: number, amt: number): void {
+  const r = c && cmFinOn(g) ? g.cmFin?.[c.id] : undefined;
+  if (!r || !amt) return;
+  r.tm[key] += amt; r.ty[key] += amt;
+}
+
 // ------------------------------------------------------------------------------------------------ Finance::get_wealth_band 0x5986b0
 
 /** −2 (dyb gæld) … 2 (rig): saldoen mod grænser efter klubbens omdømme */

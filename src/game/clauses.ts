@@ -7,6 +7,7 @@ import { hash01 } from './rng';
 import { addNews, gs } from './state';
 import type { Club, ContractClauses, Player } from './types';
 import { econ } from './econ';
+import { bookBlock, K as CMK, GBP as GBP_CM } from './cmFinance';
 
 const pname = (p: Player) => `${p.first} ${p.last}`.trim();
 const round = (v: number, to: number) => Math.round(v / to) * to;
@@ -129,7 +130,11 @@ export function afterAppearance(p: Player, goals: number, cleanSheet = false, cm
     const bonus = cm
       ? (c.goalBonus ?? 0) * goals + (c.cmAssistBonus ?? 0) * cm.assists + (cleanSheet ? (c.cleanSheetBonus ?? 0) * cm.assists : 0)
       : (c.appBonus ?? 0) + (c.goalBonus ?? 0) * goals + (cleanSheet ? c.cleanSheetBonus ?? 0 : 0);
-    if (bonus > 0) { club.balance -= bonus; club.finance.bonuses = (club.finance.bonuses ?? 0) + bonus; }
+    if (bonus > 0) {
+      club.balance -= bonus; club.finance.bonuses = (club.finance.bonuses ?? 0) + bonus;
+      // Finance::add_bonus 0x599960 (kaldt 3 gange fra 0x4ca6d0): blokkens Bonuses +0x28 – View Finances læser blokken (før stod den på 0)
+      if (cm) bookBlock(g, club, CMK.bonuses, Math.round(bonus * GBP_CM));
+    }
   }
   const a = p.addOn;
   if (a && a.payer === p.club && !p.loan) {

@@ -5,6 +5,9 @@ import { describe, expect, it } from 'vitest';
 import { createGame, type WorldData } from '../src/game/newgame';
 import { gs } from '../src/game/state';
 import { balGbp, K, wealthBand } from '../src/game/cmFinance';
+import { completeTransfer } from '../src/game/transfers';
+import { afterAppearance } from '../src/game/clauses';
+import type { TransferOffer } from '../src/game/types';
 
 const load = (f: string) => JSON.parse(readFileSync(`public/data/${f}`, 'utf8')) as WorldData;
 const start = (w: WorldData, club: string, mode?: 'authentic') => {
@@ -53,6 +56,27 @@ describe('originalens økonomi (cmFinance)', () => {
     expect(r.lm[K.maintenance]).toBeGreaterThan(100_000);       // originalen 173K
     expect(r.lm[K.seasonTickets]).toBe(0);                      // første sæson: ingen sæsonkortindtægt
     expect(r.st).toBeGreaterThan(30_000);                        // originalen 37.896 kortholdere
+  });
+
+  it('køb/salg og bonusser i blokkene (Finance 0x599890 add_bought, 0x599800 add_sold, 0x599960 add_bonus) – saldoen trækkes kun én gang', () => {
+    // K2 (scripts/cm-day-lockstep.ts): originalens sæsonposter Bought/Sold/Bonuses var > 0 for de engelske klubber, vores stod på 0
+    const g = start(load('world-original.json'), 'Arsenal', 'authentic');
+    const club = (n: string) => Object.values(g.clubs).find((c) => c.name === n)!;
+    const buyer = club('Leeds United'), seller = club('Everton');
+    const p = Object.values(g.players).find((x) => x.club === seller.id && !x.loan && x.contract)!;
+    const b0 = buyer.balance, s0 = seller.balance, rb = g.cmFin![buyer.id], rs = g.cmFin![seller.id];
+    const fee = 1_000_000;
+    completeTransfer({ id: 1, player: p.id, buyer: buyer.id, seller: seller.id, fee, loan: false, status: 'accepted', created: g.date, respondBy: g.date } as TransferOffer, 10_000, 3);
+    expect(rb.ty[K.bought]).toBe(Math.round(fee * 0.86));
+    expect(rb.tm[K.bought]).toBe(Math.round(fee * 0.86));
+    expect(rs.ty[K.sold]).toBe(Math.round(fee * 0.86));
+    expect(s0 - seller.balance).toBeLessThanOrEqual(-fee + 1);             // sælgeren får beløbet én gang
+    expect(b0 - buyer.balance).toBeGreaterThanOrEqual(fee - 1);            // køberen betaler (+ evt. signing on fee)
+    const q = g.players[p.id];
+    q.contract!.goalBonus = 1000;
+    const bon0 = rb.ty[K.bonuses];
+    afterAppearance(q, 2, false, { assists: 0, pay: true });
+    expect(rb.ty[K.bonuses] - bon0).toBe(Math.round(2000 * 0.86));
   });
 
   it('den moderne database og det udvidede spil har ingen cmFin', () => {
